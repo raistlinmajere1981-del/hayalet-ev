@@ -32,6 +32,7 @@ export interface SlotStateData {
   correlationId: string;
   error: Error | null;
   lastActivity: number;
+  _llmServerActive?: boolean;
   _overrideUrl?: string;
   _pendingLoad?: boolean;
   _targetUrl?: string;

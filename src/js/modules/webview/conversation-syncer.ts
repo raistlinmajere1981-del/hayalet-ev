@@ -10,6 +10,7 @@ import { AppState } from "../app-state.js";
 import { ConversationListManager } from "../conversation-list-manager.js";
 import { AppI18n } from "../i18n/index.js";
 import { getProvider } from "./provider-factory.js";
+import { ProviderRegistry } from "./provider-registry.js";
 import { isProviderScenarioActive } from "./provider-scenario-lock.js";
 import { normalizeUrl, isSlotUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
 import { PendingArchiveHandler } from "./pending-archive-handler.js";
@@ -244,6 +245,32 @@ function buildAttachmentDedupeKey(messageId: string, originalName: string): stri
 
 function hasGeneratedImageSupport(providerId: string | null): boolean {
   return providerId === "chatgpt" || providerId === "gemini" || providerId === "grok";
+}
+
+function getProviderConfig(providerId: string | null): Record<string, unknown> | null {
+  return providerId !== null && providerId !== "" ? ProviderRegistry.get(providerId) : null;
+}
+
+function providerAllowsDefaultPageSync(providerId: string | null): boolean {
+  return getProviderConfig(providerId)?.["syncOnDefaultPage"] === true;
+}
+
+function providerPreservesSyncUrlQuery(providerId: string | null): boolean {
+  return getProviderConfig(providerId)?.["preserveSyncUrlQuery"] === true;
+}
+
+function normalizeSyncWebUrl(providerId: string | null, rawUrl: string): string {
+  if (!providerPreservesSyncUrlQuery(providerId)) {
+    return normalizeUrl(rawUrl);
+  }
+
+  try {
+    const parsed = new URL(rawUrl);
+    parsed.hash = "";
+    return parsed.href;
+  } catch {
+    return rawUrl.split("#")[0] ?? rawUrl;
+  }
 }
 
 class ConversationSyncerClass {
@@ -499,7 +526,11 @@ class ConversationSyncerClass {
     }
 
     const providerId = AppState.getProviderIdForSlot(provider);
-    if (providerId !== null && isDefaultPage(currentUrl, providerId)) {
+    if (
+      providerId !== null &&
+      isDefaultPage(currentUrl, providerId) &&
+      !providerAllowsDefaultPageSync(providerId)
+    ) {
       return { success: false, message: syncT("defaultPage", { provider }) };
     }
 
@@ -539,7 +570,7 @@ class ConversationSyncerClass {
       );
 
       const rawUrl = webview.getURL?.() ?? "";
-      const webUrl = normalizeUrl(rawUrl);
+      const webUrl = normalizeSyncWebUrl(providerId, rawUrl);
 
       const { existing, prevCount, newEntry } = await this._getArchiveStatus(provider, webUrl);
 
@@ -762,7 +793,11 @@ class ConversationSyncerClass {
     }
 
     const providerId = AppState.getProviderIdForSlot(provider);
-    if (providerId !== null && isDefaultPage(currentUrl, providerId)) {
+    if (
+      providerId !== null &&
+      isDefaultPage(currentUrl, providerId) &&
+      !providerAllowsDefaultPageSync(providerId)
+    ) {
       return { success: false, message: syncT("defaultPage", { provider }) };
     }
 
@@ -782,7 +817,7 @@ class ConversationSyncerClass {
         `(${providerModule["scrapeMessages"].toString()})();`
       )) as ScrapedMessage[] | null | undefined;
 
-      const webUrl = normalizeUrl(currentUrl);
+      const webUrl = normalizeSyncWebUrl(providerId, currentUrl);
 
       if (!Array.isArray(messages) || messages.length === 0) {
         return {
@@ -1400,8 +1435,12 @@ class ConversationSyncerClass {
           ? conversationsResult.data
           : [];
 
+      const providerId = AppState.getProviderIdForSlot(provider);
+      const normalizedTargetUrl = normalizeSyncWebUrl(providerId, webUrl);
       const existing =
-        conversations.find((item) => normalizeUrl(item.webUrl as string) === webUrl) ?? null;
+        conversations.find(
+          (item) => normalizeSyncWebUrl(providerId, item.webUrl as string) === normalizedTargetUrl
+        ) ?? null;
 
       return {
         existing,

@@ -1,6 +1,7 @@
 import { config as chatgpt } from "./providers/chatgpt/config.js";
 import { config as grok } from "./providers/grok/config.js";
 import { config as gemini } from "./providers/gemini/config.js";
+import { config as llm } from "./providers/llm/config.js";
 import { config as opencode } from "./providers/opencode/config.js";
 import { config as opencodeUi } from "./providers/opencode-ui/config.js";
 
@@ -8,6 +9,7 @@ const providers = {
   chatgpt,
   grok,
   gemini,
+  llm,
 };
 
 const assistantProviders = {

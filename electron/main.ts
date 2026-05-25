@@ -51,6 +51,7 @@ import {
   googleDriveT,
 } from "./googledrive-manager.ts";
 import { opencodeServerManager } from "./opencode-server-manager.ts";
+import { llmServerManager } from "./llm-server-manager.ts";
 import {
   archiveOpencodeUiSession,
   ensureOpencodeUiSession,
@@ -218,6 +219,7 @@ import { setupI18nHandlers } from "./handlers/ipc-i18n.ts";
 import { setupDatabaseHandlers } from "./handlers/ipc-database.ts";
 import { setupMemoryHandlers } from "./handlers/ipc-memory.ts";
 import { setupOpencodeUiToolsHandlers } from "./handlers/ipc-opencode-ui-tools.ts";
+import { setupLlmServerHandlers } from "./handlers/ipc-llm-server.ts";
 import { setupRoomHandlers } from "./handlers/ipc-rooms.ts";
 import { setupRoomToolHandlers } from "./handlers/ipc-room-tools.ts";
 import { setupSceneThemeHandlers } from "./handlers/ipc-scene-themes.ts";
@@ -421,6 +423,7 @@ void app.whenReady().then(async () => {
     setupCaptureHandlers();
     setupTranscriptHandlers();
     setupOpencodeUiToolsHandlers();
+    setupLlmServerHandlers();
     setupRoomHandlers(null);
     setupRoomToolHandlers();
     setupSceneThemeHandlers();
@@ -585,6 +588,16 @@ async function performCleanup(): Promise<void> {
         error: err,
       }
     );
+  }
+
+  try {
+    await llmServerManager.stop(undefined, { force: true });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.info(`LLM server cleanup failed: ${message}`);
+    await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "LLM server cleanup failed.", {
+      message,
+    });
   }
 
   try {

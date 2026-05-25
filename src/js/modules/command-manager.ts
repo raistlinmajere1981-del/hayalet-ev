@@ -196,6 +196,8 @@ class CommandManagerClass {
 
   addJob(item: Partial<CommandJob> & { target?: string } = {}): CommandJob {
     const deferred = this.defer();
+    // NOTE: Fire-and-forget sends still report failures through command logs.
+    void deferred.promise.catch(() => {});
     const payloadObj = toRecord(item.payload);
     const metaObj = item.meta ?? {};
     const job: CommandJob = {

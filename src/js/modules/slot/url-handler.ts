@@ -56,6 +56,24 @@ function slotUrlT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.logs.slotUrl.${key}`, params);
 }
 
+function shouldPreserveUrlQuery(slotState: UrlHandlerSlotState): boolean {
+  return slotState.providerConfig?.preserveSyncUrlQuery === true;
+}
+
+function normalizeComparableUrl(slotState: UrlHandlerSlotState, url: string): string {
+  if (!shouldPreserveUrlQuery(slotState)) {
+    return normalizeUrl(url);
+  }
+
+  try {
+    const parsed = new URL(url);
+    parsed.hash = "";
+    return parsed.href;
+  } catch {
+    return url.split("#")[0] ?? url;
+  }
+}
+
 export function checkUrlExclusion(slotState: UrlHandlerSlotState, url: string): boolean {
   const config = slotState.providerConfig;
   const excludedUrls = config?.excludedUrls;
@@ -116,8 +134,8 @@ export function handleUrlChange(
 ): void {
   if (slotState.state !== connectedState) return;
 
-  const normalizedNew = normalizeUrl(newUrl);
-  const normalizedOld = normalizeUrl(slotState.currentUrl);
+  const normalizedNew = normalizeComparableUrl(slotState, newUrl);
+  const normalizedOld = normalizeComparableUrl(slotState, slotState.currentUrl);
 
   if (normalizedNew === normalizedOld) return;
 
@@ -172,7 +190,9 @@ export function navigate(
     currentUrl = webview.getURL?.() ?? webview.getAttribute("src") ?? "";
   } catch (_e) {}
 
-  if (normalizeUrl(currentUrl) === normalizeUrl(targetUrl)) {
+  if (
+    normalizeComparableUrl(slotState, currentUrl) === normalizeComparableUrl(slotState, targetUrl)
+  ) {
     return;
   }
 

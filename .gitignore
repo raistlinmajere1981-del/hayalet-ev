@@ -85,3 +85,6 @@ ghost-agent-restart-flag.json
 
 # Git worktrees
 .worktrees/
+
+# Local AI tool runtime/config links
+.antigravitycli/

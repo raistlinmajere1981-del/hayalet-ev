@@ -11,6 +11,7 @@ import { AppState } from "./app-state.js";
 import { parseUs1SyntheticSessionUri } from "@shared/archive.js";
 import { dispatchInternalSlotBridge } from "./commands/slot-bridge-runtime.js";
 import { resolveUs1ForceSelectConversationId } from "./us1-session-selection.js";
+import { ProviderRegistry } from "./webview/provider-registry.js";
 
 interface RawConversationEntry {
   id?: string;
@@ -60,6 +61,44 @@ function isUs1SessionEvent(value: unknown): value is Us1SessionEvent {
     typeof value["conversationId"] === "string" &&
     typeof value["isNewSession"] === "boolean"
   );
+}
+
+function getProviderConfigForSlot(provider: string): Record<string, unknown> | null {
+  const providerId = AppState.getProviderIdForSlot(provider);
+  return providerId !== null && providerId !== "" ? ProviderRegistry.get(providerId) : null;
+}
+
+function isLocalSessionProvider(provider: string): boolean {
+  const config = getProviderConfigForSlot(provider);
+  return config?.["syncOnDefaultPage"] === true && config["preserveSyncUrlQuery"] === true;
+}
+
+function createLocalSessionId(provider: string): string {
+  const cryptoApi = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+  const randomId =
+    typeof cryptoApi?.randomUUID === "function"
+      ? cryptoApi.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${provider}-${randomId}`;
+}
+
+function buildLocalSessionUrl(
+  provider: string,
+  sessionId = createLocalSessionId(provider)
+): string | null {
+  const config = getProviderConfigForSlot(provider);
+  const baseUrl = typeof config?.["baseUrl"] === "string" ? config["baseUrl"] : "";
+  if (baseUrl === "") {
+    return null;
+  }
+
+  try {
+    const url = new URL(baseUrl);
+    url.searchParams.set("session", sessionId);
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 class ConversationListManagerClass {
@@ -170,7 +209,12 @@ class ConversationListManagerClass {
         const slot = payload.slot;
         const isDefaultPage = (payload as { data?: { isDefaultPage?: boolean } }).data
           ?.isDefaultPage;
-        if (slot !== undefined && slot !== "" && isDefaultPage === true) {
+        if (
+          slot !== undefined &&
+          slot !== "" &&
+          isDefaultPage === true &&
+          !isLocalSessionProvider(slot)
+        ) {
           const select = this.selects[slot];
           if (select !== undefined && select !== null && select.value !== "new") {
             select.value = "new";
@@ -274,7 +318,11 @@ class ConversationListManagerClass {
           AppState.setActiveConversation("ai0", conversationId);
         }
       } else {
-        SlotController.navigate(provider as SlotId, entry?.webUrl ?? null);
+        const targetUrl =
+          conversationId === "new" && isLocalSessionProvider(provider)
+            ? buildLocalSessionUrl(provider)
+            : (entry?.webUrl ?? null);
+        SlotController.navigate(provider as SlotId, targetUrl);
       }
     } catch (error) {
       this.currentSelections[provider] = previousSelection;

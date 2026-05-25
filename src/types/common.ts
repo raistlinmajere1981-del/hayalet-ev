@@ -4,7 +4,7 @@ export type UserSlotId = "ai1" | "ai2";
 
 export type AssistantSlotId = "ai0";
 
-export type ProviderId = "chatgpt" | "gemini" | "grok" | "opencode";
+export type ProviderId = "chatgpt" | "gemini" | "grok" | "llm" | "opencode";
 
 export type AssistantProviderId = "opencode" | "opencode-ui";
 

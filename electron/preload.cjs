@@ -425,6 +425,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("opencode-serve-find-running", start, end),
   opencodeServeHealth: (url) => ipcRenderer.invoke("opencode-serve-health", url),
   opencodeServeDoctor: (options) => ipcRenderer.invoke("opencode-serve-doctor", options),
+  llmServeStart: (payload) => ipcRenderer.invoke("llm-serve-start", payload),
+  llmServeStop: (payload) => ipcRenderer.invoke("llm-serve-stop", payload),
+  llmServeStatus: () => ipcRenderer.invoke("llm-serve-status"),
   opencodeCheckUpdates: (installedVersion) =>
     ipcRenderer.invoke("opencode-check-updates", installedVersion),
   opencodeLaunchInstall: () => ipcRenderer.invoke("opencode-launch-install"),

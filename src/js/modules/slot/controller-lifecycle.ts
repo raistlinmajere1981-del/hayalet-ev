@@ -76,6 +76,87 @@ function slotLifecycleT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.logs.slotLifecycle.${key}`, params);
 }
 
+function isLlmAllowedSlot(slot: SlotId): boolean {
+  return slot === "ai1" || slot === "ai2";
+}
+
+function isLlmProviderSlot(slotState: SlotStateData, slot: SlotId): boolean {
+  return isLlmAllowedSlot(slot) && slotState.providerConfig?.id === "llm";
+}
+
+function shouldReleaseLlmSlotServer(slotState: SlotStateData, slot: SlotId): boolean {
+  return (
+    isLlmAllowedSlot(slot) &&
+    (slotState._llmServerActive === true || isLlmProviderSlot(slotState, slot))
+  );
+}
+
+function shouldEmitDefaultPageEvent(slotState: SlotStateData): boolean {
+  return slotState.providerConfig?.syncOnDefaultPage !== true;
+}
+
+async function startLlmSlotServer(
+  slotState: SlotStateData,
+  slot: SlotId,
+  correlationId: string,
+  context: LifecycleContext
+): Promise<{ success: true } | { success: false; message: string }> {
+  if (!isLlmProviderSlot(slotState, slot)) {
+    return { success: true };
+  }
+
+  const api = window.electronAPI;
+  if (typeof api?.llmServeStart !== "function") {
+    return { success: false, message: "LLM server bridge is unavailable." };
+  }
+
+  try {
+    const result = await api.llmServeStart({ slot });
+    if (result.running !== true || typeof result.url !== "string" || result.url.trim() === "") {
+      return {
+        success: false,
+        message: result.error ?? "LLM server did not start.",
+      };
+    }
+    slotState._overrideUrl = result.url;
+    slotState._llmServerActive = true;
+    context.log(slot, "info", `LLM server ready: ${result.url}`, { correlationId });
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      message: getErrorMessage(error),
+    };
+  }
+}
+
+async function stopLlmSlotServer(
+  slotState: SlotStateData,
+  slot: SlotId,
+  correlationId: string,
+  context: LifecycleContext
+): Promise<void> {
+  if (!shouldReleaseLlmSlotServer(slotState, slot)) {
+    return;
+  }
+
+  const api = window.electronAPI;
+  if (typeof api?.llmServeStop !== "function") {
+    context.log(slot, "warning", "LLM server bridge is unavailable.", { correlationId });
+    return;
+  }
+
+  try {
+    await api.llmServeStop({ slot });
+    delete slotState._llmServerActive;
+    context.log(slot, "info", "LLM server slot reference released.", { correlationId });
+  } catch (error) {
+    context.log(slot, "warning", `LLM server stop failed: ${getErrorMessage(error)}`, {
+      correlationId,
+    });
+  }
+}
+
 export async function connectSlotLifecycle(
   slot: SlotId,
   options: { force?: boolean; url?: string; correlationId?: string } = {},
@@ -121,7 +202,14 @@ export async function connectSlotLifecycle(
     return { success: false, message: slotLifecycleT("connectBlockedNoWebview"), correlationId };
   }
 
-  if (options.url !== undefined && options.url !== "") {
+  const llmStartResult = await startLlmSlotServer(slotState, slot, correlationId, context);
+  const llmServerStarted = llmStartResult.success === true && isLlmProviderSlot(slotState, slot);
+  if (llmStartResult.success !== true) {
+    context.log(slot, "error", llmStartResult.message, { correlationId });
+    return { success: false, message: llmStartResult.message, correlationId };
+  }
+
+  if (options.url !== undefined && options.url !== "" && !isLlmProviderSlot(slotState, slot)) {
     slotState._overrideUrl = options.url;
     context.log(slot, "debug", slotLifecycleT("urlOverrideSet", { url: options.url }), {
       correlationId,
@@ -141,6 +229,9 @@ export async function connectSlotLifecycle(
       }),
       { correlationId }
     );
+    if (llmServerStarted) {
+      await stopLlmSlotServer(slotState, slot, correlationId, context);
+    }
     return {
       success: false,
       message: slotLifecycleT("invalidStateTransition"),
@@ -245,6 +336,9 @@ export async function connectSlotLifecycle(
 
     return { success: true, message: slotLifecycleT("connected"), correlationId };
   } catch (error) {
+    if (llmServerStarted) {
+      await stopLlmSlotServer(slotState, slot, correlationId, context);
+    }
     clearTimeout(slot, "connect");
     return handleConnectError(
       slotState,
@@ -274,6 +368,7 @@ export async function disconnectSlotLifecycle(
   }
 
   const correlationId = context.generateCorrelationId(slot, "disconnect");
+  const shouldStopLlmServer = shouldReleaseLlmSlotServer(slotState, slot as SlotId);
 
   context.log(slot, "info", slotLifecycleT("disconnectRequested"), { correlationId });
 
@@ -340,12 +435,19 @@ export async function disconnectSlotLifecycle(
     context.transition(slot, context.states.ASSIGNED);
     context.emit(slot, context.events.DISCONNECT_COMPLETE, { correlationId });
 
+    if (shouldStopLlmServer) {
+      await stopLlmSlotServer(slotState, slot as SlotId, correlationId, context);
+    }
+
     context.log(slot, "success", slotLifecycleT("disconnected"), { correlationId });
     return { success: true, message: slotLifecycleT("disconnected"), correlationId };
   } catch (error) {
     slotState.domReady = false;
     slotState.trafficStarted = false;
     context.transition(slot, context.states.ASSIGNED);
+    if (shouldStopLlmServer) {
+      await stopLlmSlotServer(slotState, slot as SlotId, correlationId, context);
+    }
 
     context.log(
       slot,
@@ -384,7 +486,12 @@ export function handleSlotUrlChange(slot: SlotId, newUrl: string, context: Lifec
   );
 
   const baseUrl = slotState.providerConfig?.baseUrl;
-  if (baseUrl !== undefined && baseUrl !== "" && normalizeUrl(newUrl) === normalizeUrl(baseUrl)) {
+  if (
+    baseUrl !== undefined &&
+    baseUrl !== "" &&
+    shouldEmitDefaultPageEvent(slotState) &&
+    normalizeUrl(newUrl) === normalizeUrl(baseUrl)
+  ) {
     context.emit(slot, context.events.URL_CHANGED, { newUrl, isDefaultPage: true });
   }
 }

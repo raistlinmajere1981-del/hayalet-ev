@@ -1037,6 +1037,29 @@ declare global {
       pid?: number;
       startTime?: number;
     }>;
+    llmServeStart: (payload?: { slot?: string; port?: number }) => Promise<{
+      running: boolean;
+      port?: number;
+      url?: string;
+      activeSlots?: string[];
+      source?: "managed" | "external";
+      error?: string;
+    }>;
+    llmServeStop: (payload?: { slot?: string; force?: boolean }) => Promise<{
+      running: boolean;
+      port?: number;
+      url?: string;
+      activeSlots?: string[];
+      source?: "managed" | "external";
+      error?: string;
+    }>;
+    llmServeStatus: () => Promise<{
+      running: boolean;
+      port?: number;
+      url?: string;
+      activeSlots?: string[];
+      source?: "managed" | "external";
+    }>;
     opencodeServeFindPort: (
       start?: number,
       end?: number

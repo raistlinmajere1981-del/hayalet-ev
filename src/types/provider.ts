@@ -165,6 +165,8 @@ export interface BaseProviderConfig {
   messageIdStrategy?: MessageIdStrategy;
   roleSelectors?: RoleSelectors;
   defaultPaths?: string[];
+  syncOnDefaultPage?: boolean;
+  preserveSyncUrlQuery?: boolean;
   scenarios?: Record<string, ProviderScenarioDefinition>;
   webviewSync?: ProviderWebviewSyncConfig;
 }
@@ -181,6 +183,11 @@ export interface GeminiConfig extends BaseProviderConfig {
 
 export interface GrokConfig extends BaseProviderConfig {
   id: "grok";
+}
+
+export interface LLMConfig extends BaseProviderConfig {
+  id: "llm";
+  loginUrl: null;
 }
 
 export interface OpenCodeConfig extends BaseProviderConfig {
@@ -207,7 +214,12 @@ export interface OpenCodeUiConfig extends BaseProviderConfig {
 
 export type AssistantProviderConfig = OpenCodeConfig | OpenCodeUiConfig;
 
-export type ProviderConfig = ChatGPTConfig | GeminiConfig | GrokConfig | AssistantProviderConfig;
+export type ProviderConfig =
+  | ChatGPTConfig
+  | GeminiConfig
+  | GrokConfig
+  | LLMConfig
+  | AssistantProviderConfig;
 
 export interface ProviderScraper {
   scrapeMessages: (doc: Document) => ScrapedMessage[];

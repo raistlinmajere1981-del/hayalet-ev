@@ -234,6 +234,149 @@ test("ai0 syncProvider skips conversation refresh after latest-message sync", as
   }
 });
 
+test("llm sync persists default-page messages and preserves session query", async () => {
+  const globalScope = globalThis as unknown as {
+    window?: {
+      electronAPI?: {
+        dbGetConversations?: (...args: unknown[]) => Promise<unknown>;
+        dbSyncMessages?: (...args: unknown[]) => Promise<unknown>;
+        dbGetMessages?: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+  };
+
+  const originalWindow = globalScope.window;
+  const originalGetProvider = AppState.getProviderIdForSlot;
+  const originalGetAccount = AppState.getAccountForSlot;
+  const originalGetRelay = AppState.getAssistantRelay;
+  const originalGetNickname = AppState.getNickname;
+  let syncPayload: Record<string, unknown> | null = null;
+
+  resetSyncerState();
+
+  globalScope.window = {
+    electronAPI: {
+      dbGetConversations: async () => ({ data: [] }),
+      dbSyncMessages: async (payload: Record<string, unknown>) => {
+        syncPayload = payload;
+        return { success: true, conversationId: "conv-llm-1", added: 2, total: 2 };
+      },
+      dbGetMessages: async () => ({
+        data: [
+          { id: "user-1", role: "user", text: "hello", dom_id: "llm-session-1-0" },
+          { id: "assistant-1", role: "assistant", text: "local reply", dom_id: "llm-session-1-1" },
+        ],
+      }),
+    },
+  };
+
+  AppState.getProviderIdForSlot = (() => "llm") as typeof AppState.getProviderIdForSlot;
+  AppState.getAccountForSlot = (() => ({
+    id: "llm-account-1",
+    provider: "llm",
+  })) as typeof AppState.getAccountForSlot;
+  AppState.getAssistantRelay = (() => ({
+    active: false,
+    sourceSlot: null,
+  })) as typeof AppState.getAssistantRelay;
+  AppState.getNickname = ((slot: string) => slot) as typeof AppState.getNickname;
+
+  const mockWebview = {
+    getURL: () => "http://127.0.0.1:9876/?session=llm-session-1",
+    isLoading: () => false,
+    executeJavaScript: async () => [
+      {
+        role: "user",
+        text: "hello",
+        index: 0,
+        domIndex: 0,
+        domId: "llm-session-1-0",
+        contentHash: "h-user",
+      },
+      {
+        role: "assistant",
+        text: "local reply",
+        index: 1,
+        domIndex: 1,
+        domId: "llm-session-1-1",
+        contentHash: "h-assistant",
+      },
+    ],
+  };
+
+  try {
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as never, {
+      catchEnabled: false,
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.conversationId, "conv-llm-1");
+    assert.equal(result.webUrl, "http://127.0.0.1:9876/?session=llm-session-1");
+    assert.equal(syncPayload?.["webUrl"], "http://127.0.0.1:9876/?session=llm-session-1");
+    assert.equal((syncPayload?.["messages"] as unknown[]).length, 2);
+  } finally {
+    AppState.getProviderIdForSlot = originalGetProvider;
+    AppState.getAccountForSlot = originalGetAccount;
+    AppState.getAssistantRelay = originalGetRelay;
+    AppState.getNickname = originalGetNickname;
+    globalScope.window = originalWindow;
+  }
+});
+
+test("_getArchiveStatus keeps llm local sessions distinct by query", async () => {
+  const globalScope = globalThis as unknown as {
+    window?: {
+      electronAPI?: {
+        dbGetConversations?: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+  };
+
+  const originalWindow = globalScope.window;
+  const originalGetProvider = AppState.getProviderIdForSlot;
+  const originalGetAccount = AppState.getAccountForSlot;
+
+  globalScope.window = {
+    electronAPI: {
+      dbGetConversations: async () => ({
+        success: true,
+        data: [
+          {
+            id: "conv-llm-1",
+            webUrl: "http://127.0.0.1:9876/?session=llm-session-1",
+            messageCount: 2,
+          },
+        ],
+      }),
+    },
+  };
+
+  AppState.getProviderIdForSlot = (() => "llm") as typeof AppState.getProviderIdForSlot;
+  AppState.getAccountForSlot = (() => ({
+    id: "llm-account-1",
+    provider: "llm",
+  })) as typeof AppState.getAccountForSlot;
+
+  try {
+    const existing = await ConversationSyncer._getArchiveStatus(
+      "ai1",
+      "http://127.0.0.1:9876/?session=llm-session-1"
+    );
+    const otherSession = await ConversationSyncer._getArchiveStatus(
+      "ai1",
+      "http://127.0.0.1:9876/?session=llm-session-2"
+    );
+
+    assert.equal(existing.newEntry, false);
+    assert.equal(existing.prevCount, 2);
+    assert.equal(otherSession.newEntry, true);
+  } finally {
+    AppState.getProviderIdForSlot = originalGetProvider;
+    AppState.getAccountForSlot = originalGetAccount;
+    globalScope.window = originalWindow;
+  }
+});
+
 test("syncConversation saves generated images as assistant attachments", async () => {
   const globalScope = globalThis as unknown as {
     window?: {
@@ -547,7 +690,10 @@ test("syncConversation replaces preview image attachment when final bytes change
       readFile: async () => "UFJFVklFVw==",
       dbSaveAttachmentContent: async (payload: Record<string, unknown>) => {
         saveCalls.push(payload);
-        return { success: true, data: { attachmentId: "att-1", storedPath: "/tmp/generated-preview.png" } };
+        return {
+          success: true,
+          data: { attachmentId: "att-1", storedPath: "/tmp/generated-preview.png" },
+        };
       },
     },
   };
@@ -783,7 +929,10 @@ test("syncConversation prefers webcontents capture fallback and isolates image s
         if (saveCalls.length === 1) {
           return { success: false, error: "first-failed" };
         }
-        return { success: true, data: { attachmentId: "att-2", storedPath: "/tmp/generated-2.png" } };
+        return {
+          success: true,
+          data: { attachmentId: "att-2", storedPath: "/tmp/generated-2.png" },
+        };
       },
       captureWebContentsPage: async () => {
         guestCaptureCalls += 1;

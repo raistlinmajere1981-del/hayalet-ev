@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-05-24T23:59:04.348Z",
+  "updatedAt": "2026-05-25T11:07:57.616Z",
   "rooms": [
     {
       "id": "repair-room",
@@ -560,8 +560,8 @@
           "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
         }
       ],
-      "installedAt": "2026-05-24T20:46:41.131Z",
-      "updatedAt": "2026-05-24T20:46:41.131Z"
+      "installedAt": "2026-05-25T09:57:44.929Z",
+      "updatedAt": "2026-05-25T09:57:44.929Z"
     },
     {
       "id": "forge-room",
@@ -1013,8 +1013,8 @@
           "path": "main-functions/forge-workbench/protocols/forge-room-synthesis.md"
         }
       ],
-      "installedAt": "2026-05-24T20:46:41.327Z",
-      "updatedAt": "2026-05-24T20:46:41.327Z"
+      "installedAt": "2026-05-25T09:57:45.156Z",
+      "updatedAt": "2026-05-25T09:57:45.156Z"
     },
     {
       "id": "game-room",
@@ -1463,8 +1463,8 @@
           "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
         }
       ],
-      "installedAt": "2026-05-24T20:46:41.549Z",
-      "updatedAt": "2026-05-24T20:46:41.549Z"
+      "installedAt": "2026-05-25T09:57:45.376Z",
+      "updatedAt": "2026-05-25T09:57:45.376Z"
     },
     {
       "id": "pattern-room",
@@ -1556,8 +1556,18 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/pattern-room/runtime/i18n",
-      "installedAt": "2026-05-24T20:46:41.659Z",
-      "updatedAt": "2026-05-24T20:46:41.659Z"
+      "protocolSpecs": [
+        {
+          "key": "pattern-room-case-review",
+          "room": "pattern-room",
+          "scenario": "case-review",
+          "title": "[START][PATTERN-ROOM][CASE-REVIEW]",
+          "editable": true,
+          "path": "protocols/pattern-room-case-review.md"
+        }
+      ],
+      "installedAt": "2026-05-25T09:57:45.540Z",
+      "updatedAt": "2026-05-25T09:57:45.540Z"
     },
     {
       "id": "laboratory",
@@ -1656,8 +1666,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-05-24T23:59:04.348Z",
-      "updatedAt": "2026-05-24T23:59:04.348Z"
+      "installedAt": "2026-05-25T11:07:57.616Z",
+      "updatedAt": "2026-05-25T11:07:57.616Z"
     }
   ]
 }

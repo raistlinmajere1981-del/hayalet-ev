@@ -118,6 +118,7 @@ type SlotBridgeHarness = {
     ) => Promise<{ success: boolean; message?: string }>;
     getState: (slot: string) => unknown;
     isConnected: (slot: string) => boolean;
+    navigate: (slot: string, url: string | null) => void;
   };
   webviewManager: {
     syncProvider: (provider: string, opts?: Record<string, unknown>) => Promise<unknown>;
@@ -163,6 +164,7 @@ function createHarness(
   const originalGetState = slotController.getState;
   const originalIsConnected = slotController.isConnected;
   const originalConnect = slotController.connect;
+  const originalNavigate = slotController.navigate;
   const originalGetArchiveAccountIdForProvider = appState.getArchiveAccountIdForProvider;
   const originalGetProviderIdForSlot = appState.getProviderIdForSlot;
   const originalHasUs1Identity = appState.hasUs1Identity;
@@ -207,6 +209,7 @@ function createHarness(
   });
   slotController.isConnected = () => true;
   slotController.connect = async () => ({ success: true });
+  slotController.navigate = () => {};
   appState.getArchiveAccountIdForProvider = () => "acct-1";
   appState.getProviderIdForSlot = (slot: string) => slot;
   appState.hasUs1Identity = () => true;
@@ -232,6 +235,7 @@ function createHarness(
       slotController.getState = originalGetState;
       slotController.isConnected = originalIsConnected;
       slotController.connect = originalConnect;
+      slotController.navigate = originalNavigate;
       appState.getArchiveAccountIdForProvider = originalGetArchiveAccountIdForProvider;
       appState.getProviderIdForSlot = originalGetProviderIdForSlot;
       appState.hasUs1Identity = originalHasUs1Identity;
@@ -1167,6 +1171,96 @@ test(
       ]);
       assert.equal(result.session?.id, "us1-local-1");
       assert.equal(result.session?.conversationId, "conv-us1-1");
+    } finally {
+      harness.restore();
+    }
+  }
+);
+
+test(
+  "SlotBridge session.open creates local LLM session URLs for AI slots",
+  { concurrency: false },
+  async () => {
+    const harness = createHarness();
+    const navigations: Array<{ slot: string; url: string | null }> = [];
+
+    try {
+      harness.appState.getProviderIdForSlot = (slot: string) => (slot === "ai1" ? "llm" : slot);
+      harness.slotController.navigate = (slot, url) => {
+        navigations.push({ slot, url });
+      };
+
+      const result = await slotBridgeHandler({
+        action: "session.open",
+        sessionRef: {
+          id: "llm-session-1",
+        },
+        toSlot: "ai1",
+      });
+
+      assert.equal(result.success, true);
+      assert.equal(result.session?.id, "llm-session-1");
+      assert.deepEqual(navigations, [
+        {
+          slot: "ai1",
+          url: "http://127.0.0.1:9876/?session=llm-session-1",
+        },
+      ]);
+    } finally {
+      harness.restore();
+    }
+  }
+);
+
+test(
+  "SlotBridge session.sync runs manual webview sync for AI slots",
+  { concurrency: false },
+  async () => {
+    const harness = createHarness();
+    const syncCalls: Array<{ provider: string; opts?: Record<string, unknown> }> = [];
+
+    try {
+      harness.appState.getProviderIdForSlot = (slot: string) => (slot === "ai1" ? "llm" : slot);
+      harness.webviewManager.syncProvider = async (provider, opts) => {
+        syncCalls.push({ provider, opts });
+        return {
+          success: true,
+          conversationId: "conv-llm-1",
+          count: 2,
+          webUrl: "http://127.0.0.1:9876/?session=llm-session-1",
+        };
+      };
+      harness.windowRef.electronAPI = {
+        dbGetMessages: async (query = {}) => {
+          assert.equal(query.conversationId, "conv-llm-1");
+          return {
+            data: [{ id: "assistant-1", role: "assistant", text: "local reply" }],
+          };
+        },
+      };
+
+      const result = await slotBridgeHandler({
+        action: "session.sync",
+        payload: {
+          includeMessages: true,
+        },
+        sessionRef: {
+          id: "llm-session-1",
+        },
+        toSlot: "ai1",
+      });
+
+      const data = result.data as Record<string, unknown>;
+
+      assert.equal(result.success, true);
+      assert.deepEqual(syncCalls, [{ provider: "ai1", opts: { from: "manual" } }]);
+      assert.equal(result.session?.id, "llm-session-1");
+      assert.equal(result.session?.conversationId, "conv-llm-1");
+      assert.equal(data["localSessionId"], "llm-session-1");
+      assert.equal(
+        (data["messages"] as Array<Record<string, unknown>>)[0]?.["text"],
+        "local reply"
+      );
     } finally {
       harness.restore();
     }

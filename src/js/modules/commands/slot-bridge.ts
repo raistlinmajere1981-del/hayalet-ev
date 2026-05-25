@@ -23,6 +23,7 @@ import { replaceProtocolTagsWithResolver } from "../../../../shared/protocol-tag
 import { resolveOpencodeUiDbPath } from "../../pages/assistant/opencode-preferences.js";
 import { AssistantProviderRegistry } from "../../pages/assistant/provider-registry.js";
 import { hashString } from "../webview/providers/shared/scraper-helpers.js";
+import { ProviderRegistry } from "../webview/provider-registry.js";
 import {
   getSlotBridgeCoreEngine,
   registerSlotBridgeHandler,
@@ -160,6 +161,79 @@ function normalizeSessionTarget(
   value: unknown
 ): "ai0" | "ai1" | "ai2" | "us1" | null {
   return action === "session.switch" ? normalizeMessageTarget(value) : normalizeSlotId(value);
+}
+
+function getSlotProviderConfig(
+  slot: "ai0" | "ai1" | "ai2"
+): { providerId: string; config: Record<string, unknown> } | null {
+  const providerId = AppState.getProviderIdForSlot(slot)?.trim() ?? "";
+  if (providerId === "") {
+    return null;
+  }
+  const config = ProviderRegistry.get(providerId);
+  return config !== null ? { providerId, config } : null;
+}
+
+function isLocalSessionSlot(slot: "ai0" | "ai1" | "ai2"): boolean {
+  if (slot === "ai0") {
+    return false;
+  }
+  const provider = getSlotProviderConfig(slot);
+  return (
+    provider?.config["syncOnDefaultPage"] === true &&
+    provider.config["preserveSyncUrlQuery"] === true &&
+    typeof provider.config["baseUrl"] === "string"
+  );
+}
+
+function createLocalSessionId(providerId: string): string {
+  const cryptoApi = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+  const randomId =
+    typeof cryptoApi?.randomUUID === "function"
+      ? cryptoApi.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${providerId}-${randomId}`;
+}
+
+function readLocalSessionIdFromUrl(url: string): string {
+  if (url.trim() === "") {
+    return "";
+  }
+  try {
+    return new URL(url).searchParams.get("session")?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function readRequestedLocalSessionId(
+  sessionRef: SlotBridgeSessionRef | null | undefined,
+  providerId: string
+): string {
+  const requested = sessionRef?.id?.trim() ?? "";
+  if (requested !== "") {
+    return requested;
+  }
+  return createLocalSessionId(providerId);
+}
+
+function buildLocalSessionUrl(
+  slot: "ai0" | "ai1" | "ai2",
+  sessionId: string
+): { sessionId: string; url: string } | null {
+  const provider = getSlotProviderConfig(slot);
+  const baseUrl = typeof provider?.config["baseUrl"] === "string" ? provider.config["baseUrl"] : "";
+  if (provider === null || baseUrl === "" || sessionId.trim() === "") {
+    return null;
+  }
+
+  try {
+    const url = new URL(baseUrl);
+    url.searchParams.set("session", sessionId.trim());
+    return { sessionId: sessionId.trim(), url: url.toString() };
+  } catch {
+    return null;
+  }
 }
 
 function readCommandProviderArray(value: unknown): CommandProvider[] {
@@ -2634,14 +2708,67 @@ async function runAi0SessionSwitch(envelope: SlotBridgeEnvelope): Promise<SlotBr
   });
 }
 
-async function runSessionSyncAction(envelope: SlotBridgeEnvelope): Promise<SlotBridgeResult> {
-  const targetSlot = normalizeMessageTarget(envelope.toSlot);
-  if (targetSlot !== "us1") {
+async function runAiSessionSyncAction(
+  envelope: SlotBridgeEnvelope,
+  targetSlot: "ai0" | "ai1" | "ai2"
+): Promise<SlotBridgeResult> {
+  const ready = await ensureConnected(targetSlot, envelope, { waitForReady: true });
+  if (ready.success !== true) {
+    return buildErrorResult(envelope, ready.code, ready.message);
+  }
+
+  const actionPayload = isRecord(envelope.payload) ? envelope.payload : {};
+  const includeMessages = actionPayload["includeMessages"] === true;
+  const webviewManager = await getWebviewManager();
+  const syncResultRaw = await webviewManager.syncProvider(targetSlot, { from: "manual" });
+  const syncResult = isRecord(syncResultRaw) ? syncResultRaw : {};
+  if (syncResult["success"] === false) {
     return buildErrorResult(
       envelope,
-      "SESSION_SYNC_UNSUPPORTED",
-      "session.sync is currently supported only for US1"
+      "SESSION_SYNC_FAILED",
+      typeof syncResult["message"] === "string"
+        ? syncResult["message"]
+        : typeof syncResult["error"] === "string"
+          ? syncResult["error"]
+          : `${targetSlot.toUpperCase()} messages could not be synced`
     );
+  }
+
+  const conversationId =
+    typeof syncResult["conversationId"] === "string" && syncResult["conversationId"] !== ""
+      ? syncResult["conversationId"]
+      : null;
+  const webUrl = typeof syncResult["webUrl"] === "string" ? syncResult["webUrl"] : "";
+  const localSessionId =
+    readLocalSessionIdFromUrl(webUrl) !== ""
+      ? readLocalSessionIdFromUrl(webUrl)
+      : (envelope.sessionRef?.id?.trim() ?? "");
+  const messages =
+    includeMessages === true ? await listConversationMessages(targetSlot, conversationId) : [];
+
+  return buildResult(envelope, {
+    session: {
+      ...(envelope.sessionRef ?? {}),
+      ...(localSessionId !== "" ? { id: localSessionId } : {}),
+      ...(conversationId !== null ? { conversationId } : {}),
+    },
+    data: {
+      ...syncResult,
+      ...(localSessionId !== "" ? { localSessionId } : {}),
+      ...(conversationId !== null ? { conversationId } : {}),
+      ...(messages.length > 0 ? { messages } : includeMessages === true ? { messages: [] } : {}),
+    },
+  });
+}
+
+async function runSessionSyncAction(envelope: SlotBridgeEnvelope): Promise<SlotBridgeResult> {
+  const targetSlot = normalizeMessageTarget(envelope.toSlot);
+  if (targetSlot === null) {
+    return buildErrorResult(envelope, "TARGET_REQUIRED", "Target slot is required");
+  }
+
+  if (targetSlot !== "us1") {
+    return await runAiSessionSyncAction(envelope, targetSlot);
   }
 
   if (AppState.isUs1Connected() !== true) {
@@ -2777,6 +2904,32 @@ async function runSessionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridg
     if (targetSlot === "us1") {
       return buildErrorResult(envelope, "TARGET_REQUIRED", "Target slot is required");
     }
+    if (isLocalSessionSlot(targetSlot)) {
+      const provider = getSlotProviderConfig(targetSlot);
+      const localSession =
+        provider !== null
+          ? buildLocalSessionUrl(
+              targetSlot,
+              readRequestedLocalSessionId(envelope.sessionRef, provider.providerId)
+            )
+          : null;
+      if (localSession === null) {
+        return buildErrorResult(
+          envelope,
+          "SESSION_OPEN_FAILED",
+          `${targetSlot.toUpperCase()} local session URL could not be built`
+        );
+      }
+
+      SlotController.navigate(targetSlot, localSession.url);
+      return buildResult(envelope, {
+        session: {
+          ...(envelope.sessionRef ?? {}),
+          id: localSession.sessionId,
+          conversationId: null,
+        },
+      });
+    }
     SlotController.navigate(targetSlot, null);
     return buildResult(envelope, {
       session: {
@@ -2784,6 +2937,28 @@ async function runSessionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridg
         conversationId: null,
       },
     });
+  }
+
+  if (targetSlot !== "us1" && isLocalSessionSlot(targetSlot)) {
+    const sessionId = envelope.sessionRef?.id?.trim() ?? "";
+    if (sessionId !== "") {
+      const localSession = buildLocalSessionUrl(targetSlot, sessionId);
+      if (localSession === null) {
+        return buildErrorResult(
+          envelope,
+          "SESSION_SWITCH_FAILED",
+          `${targetSlot.toUpperCase()} local session URL could not be built`
+        );
+      }
+
+      SlotController.navigate(targetSlot, localSession.url);
+      return buildResult(envelope, {
+        session: {
+          ...(envelope.sessionRef ?? {}),
+          id: localSession.sessionId,
+        },
+      });
+    }
   }
 
   const conversationListManager = await getConversationListManager();

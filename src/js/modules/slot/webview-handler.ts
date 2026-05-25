@@ -222,25 +222,25 @@ export async function waitForDomReady(
     };
 
     const errorHandler = (event: { errorCode?: number; errorDescription?: string }): void => {
+      if (event.errorCode === -3) {
+        return;
+      }
+
       clearTimeout(timeoutId);
       clearDomReadyHandler(slot);
-      if (event.errorCode !== -3 && event.errorCode !== -102) {
-        reject(
-          new Error(
-            slotWebviewT("loadFailed", {
-              message: event.errorDescription ?? "unknown",
-            })
-          )
-        );
-      } else {
-        resolve();
-      }
+      reject(
+        new Error(
+          slotWebviewT("loadFailed", {
+            message: event.errorDescription ?? "unknown",
+          })
+        )
+      );
     };
 
     domReadyHandlers[slot] = { handler, errorHandler, webview, timeoutId };
 
     webview.addEventListener("dom-ready", handler, { once: true });
-    webview.addEventListener("did-fail-load", errorHandler as EventListener, { once: true });
+    webview.addEventListener("did-fail-load", errorHandler as EventListener);
 
     if (
       slotState._pendingLoad === true &&

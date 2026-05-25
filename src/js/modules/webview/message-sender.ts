@@ -456,11 +456,21 @@ class MessageSenderClass {
     const selectorCandidates = JSON.stringify(sendButtonSelector);
     const script = `(function() {
       const selectorCandidates = ${selectorCandidates};
+      const isVisible = (element) => {
+        if (!element || typeof getComputedStyle !== 'function') return false;
+        const style = getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+          return false;
+        }
+        const rect = element.getBoundingClientRect?.();
+        return !rect || rect.width > 0 || rect.height > 0;
+      };
       let sendButton = null;
       for (const selector of selectorCandidates) {
         try {
-          sendButton = document.querySelector(selector);
-          if (sendButton) {
+          const candidate = document.querySelector(selector);
+          if (candidate && isVisible(candidate)) {
+            sendButton = candidate;
             break;
           }
         } catch (_) {
@@ -643,12 +653,22 @@ class MessageSenderClass {
     const trySend = async (attempt: number): Promise<void> => {
       const script = `(function() {
         const selectorCandidates = ${sendSel};
+        const isVisible = (element) => {
+          if (!element || typeof getComputedStyle !== 'function') return false;
+          const style = getComputedStyle(element);
+          if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+            return false;
+          }
+          const rect = element.getBoundingClientRect?.();
+          return !rect || rect.width > 0 || rect.height > 0;
+        };
         let sendButton = null;
         let matchedSelector = null;
         for (const selector of selectorCandidates) {
           try {
-            sendButton = document.querySelector(selector);
-            if (sendButton) {
+            const candidate = document.querySelector(selector);
+            if (candidate && isVisible(candidate)) {
+              sendButton = candidate;
               matchedSelector = selector;
               break;
             }

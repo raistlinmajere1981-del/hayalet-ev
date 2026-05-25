@@ -71,11 +71,21 @@ export function buildProbeScript(provider: string): string {
       const contentContainers = ${JSON.stringify(contentContainers)};
       const now = Date.now();
 
+      const isVisible = (element) => {
+        if (!element || typeof getComputedStyle !== 'function') return false;
+        const style = getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+          return false;
+        }
+        const rect = element.getBoundingClientRect?.();
+        return !rect || rect.width > 0 || rect.height > 0;
+      };
+
       const findFirst = (candidates) => {
         for (const selector of candidates) {
           try {
             const found = document.querySelector(selector);
-            if (found) return found;
+            if (found && isVisible(found)) return found;
           } catch (_) {
             void 0;
           }
