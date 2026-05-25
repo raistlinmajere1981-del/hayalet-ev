@@ -196,13 +196,40 @@ export type CaptureAnalyzeSessionState =
   | "result-ready"
   | "error";
 
-export interface CaptureAnalyzePreviewVideoStatus {
+export type CaptureScrcpySessionMode = "camera-feed" | "interactive-mirror";
+
+export interface CaptureScrcpyPreviewVideoStatus {
   source: "v4l2";
   devicePath: string;
   label: string;
   width: number;
   height: number;
   fps: number;
+}
+
+export type CaptureAnalyzePreviewVideoStatus = CaptureScrcpyPreviewVideoStatus;
+
+export interface CaptureScrcpyActiveSessionStatus {
+  mode: CaptureScrcpySessionMode;
+  deviceId: string;
+  target: TranscriptTargetId | null;
+  requestId: string | null;
+  startedAt: number;
+  previewVideo: CaptureScrcpyPreviewVideoStatus | null;
+}
+
+export interface CaptureScrcpyStatus {
+  available: boolean;
+  version: string | null;
+  activeSession: CaptureScrcpyActiveSessionStatus | null;
+  mode: CaptureScrcpySessionMode | null;
+  deviceId: string | null;
+  target: TranscriptTargetId | null;
+  startedAt: number | null;
+  previewVideo: CaptureScrcpyPreviewVideoStatus | null;
+  lastLogs: string[];
+  lastError: string | null;
+  setupHint: string | null;
 }
 
 export interface CaptureAnalyzeSessionStatus {
@@ -239,6 +266,7 @@ export interface CaptureServiceStatus {
   checkedAt: number;
   transcript: CaptureTranscriptStatusSnapshot;
   android: CaptureAndroidStatus;
+  scrcpy: CaptureScrcpyStatus;
   bridge: CaptureBridgeStatus;
   analyze: CaptureAnalyzeSessionStatus;
   operation: CaptureOperationStatus;
@@ -256,6 +284,10 @@ export type CaptureHostAction =
   | "start-analyze-dictation"
   | "stop-analyze-dictation"
   | "cancel-analyze-dictation"
+  | "start-camera-feed"
+  | "stop-camera-feed"
+  | "start-interactive-mirror"
+  | "stop-interactive-mirror"
   | "start-analyze-preview"
   | "stop-analyze-preview"
   | "start-ambient-listener"

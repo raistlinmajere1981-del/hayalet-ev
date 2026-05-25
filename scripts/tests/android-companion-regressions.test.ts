@@ -50,6 +50,7 @@ test("android companion keeps openWake ambient, Vosk dictation, and scrcpy camer
     "utf8"
   );
   const captureServiceSource = readFileSync("electron/capture-service.ts", "utf8");
+  const scrcpySessionManagerSource = readFileSync("electron/scrcpy-session-manager.ts", "utf8");
 
   assert.match(sessionSource, /previewActive = cameraController\.isPreviewBound\(\)/);
   assert.match(sessionSource, /cameraController\.stopSession\(\)/);
@@ -215,10 +216,10 @@ test("android companion keeps openWake ambient, Vosk dictation, and scrcpy camer
   assert.doesNotMatch(captureServiceSource, /CAPTURE_PREVIEW_FRAME_CHANNEL/);
   assert.match(captureServiceSource, /CAPTURE_AMBIENT_STATUS_CHANNEL/);
   assert.match(captureServiceSource, /CAPTURE_SCRCPY_V4L2_LABEL/);
-  assert.match(captureServiceSource, /--video-source=camera/);
-  assert.match(captureServiceSource, /--no-window/);
-  assert.match(captureServiceSource, /--v4l2-sink/);
-  assert.doesNotMatch(captureServiceSource, /--stay-awake/);
+  assert.match(scrcpySessionManagerSource, /--video-source=camera/);
+  assert.match(scrcpySessionManagerSource, /--no-window/);
+  assert.match(scrcpySessionManagerSource, /--v4l2-sink/);
+  assert.doesNotMatch(scrcpySessionManagerSource, /--stay-awake/);
   assert.match(captureServiceSource, /CAPTURE_VOSK_MODEL_DESCRIPTORS/);
   assert.match(captureServiceSource, /return "vosk";/);
   assert.doesNotMatch(captureServiceSource, /commandKind === "open-camera"\s*\?\s*"ready"/);

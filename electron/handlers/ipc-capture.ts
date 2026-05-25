@@ -73,6 +73,31 @@ export function setupCaptureHandlers(): void {
   );
 
   registerHandler(
+    "capture-start-camera-feed",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.startCameraFeed(options);
+    }
+  );
+
+  registerHandler(
+    "capture-stop-camera-feed",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.stopCameraFeed(options);
+    }
+  );
+
+  registerHandler(
+    "capture-start-interactive-mirror",
+    async (_event, options?: CaptureTargetActionOptions) => {
+      return await captureService.startInteractiveMirror(options);
+    }
+  );
+
+  registerHandler("capture-stop-interactive-mirror", async () => {
+    return await captureService.stopInteractiveMirror();
+  });
+
+  registerHandler(
     "capture-start-analyze-dictation",
     async (_event, options?: CaptureTargetActionOptions) => {
       return await captureService.requestAnalyzeDictation("start", options);

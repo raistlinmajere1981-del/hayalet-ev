@@ -5132,7 +5132,24 @@
         "expectedVersion": "Expected version",
         "connectAddress": "Wireless ADB address",
         "previewTitle": "Live preview",
-        "previewHint": "The live camera preview stays on the phone; capture and add images to Analyze files from the companion.",
+        "previewHint": "Camera feed uses scrcpy with v4l2loopback; still captures and dictation continue through the companion app.",
+        "scrcpy": {
+          "available": "scrcpy",
+          "version": "Version",
+          "mode": "Active mode",
+          "device": "Active device",
+          "none": "None",
+          "availableYes": "Available",
+          "availableNo": "Missing",
+          "feedbackReady": "scrcpy is ready for camera feed or interactive mirror sessions.",
+          "logs": "Recent logs",
+          "logsEmpty": "No scrcpy logs yet.",
+          "modes": {
+            "idle": "Idle",
+            "camera-feed": "Camera feed",
+            "interactive-mirror": "Interactive mirror"
+          }
+        },
         "actions": {
           "scan": "Scan devices",
           "install": "Install companion",

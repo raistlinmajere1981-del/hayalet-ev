@@ -80,6 +80,18 @@ interface RoomHostApi {
       requestId?: string
     ) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
     stopAmbientListener: (requestId: string) => Promise<CaptureActionOutcome>;
+    startCameraFeed: (
+      requestId?: string
+    ) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
+    stopCameraFeed: (
+      requestId?: string
+    ) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
+    startInteractiveMirror: (
+      requestId?: string
+    ) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
+    stopInteractiveMirror: (
+      requestId?: string
+    ) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
   };
   registerProtocols: (protocols: Record<string, string>) => void;
   notifyRoom: (type: string, payload?: Record<string, unknown>) => void;
@@ -676,6 +688,21 @@ class RoomHostRuntimeClass {
         message: `++cmd:${SLOT_BRIDGE_COMMAND_NAME}`,
       });
     };
+    const notifyCaptureFeedStatus = (
+      requestId: string,
+      mode: "camera-feed" | "interactive-mirror",
+      outcome: CaptureActionOutcome
+    ): void => {
+      registration.bridge?.sendToRoom({
+        type: "capture-feed-status",
+        payload: {
+          requestId,
+          mode,
+          outcome,
+          scrcpy: outcome.status.scrcpy,
+        },
+      });
+    };
 
     return {
       room: { ...registration.room },
@@ -746,6 +773,46 @@ class RoomHostRuntimeClass {
         },
         stopAmbientListener: async (requestId): Promise<CaptureActionOutcome> =>
           await runCaptureAction("stop-ambient-listener", { target: transcriptTarget, requestId }),
+        startCameraFeed: async (
+          requestId = crypto.randomUUID()
+        ): Promise<{ requestId: string; outcome: CaptureActionOutcome }> => {
+          const outcome = await runCaptureAction("start-camera-feed", {
+            target: transcriptTarget,
+            requestId,
+          });
+          notifyCaptureFeedStatus(requestId, "camera-feed", outcome);
+          return { requestId, outcome };
+        },
+        stopCameraFeed: async (
+          requestId = crypto.randomUUID()
+        ): Promise<{ requestId: string; outcome: CaptureActionOutcome }> => {
+          const outcome = await runCaptureAction("stop-camera-feed", {
+            target: transcriptTarget,
+            requestId,
+          });
+          notifyCaptureFeedStatus(requestId, "camera-feed", outcome);
+          return { requestId, outcome };
+        },
+        startInteractiveMirror: async (
+          requestId = crypto.randomUUID()
+        ): Promise<{ requestId: string; outcome: CaptureActionOutcome }> => {
+          const outcome = await runCaptureAction("start-interactive-mirror", {
+            target: transcriptTarget,
+            requestId,
+          });
+          notifyCaptureFeedStatus(requestId, "interactive-mirror", outcome);
+          return { requestId, outcome };
+        },
+        stopInteractiveMirror: async (
+          requestId = crypto.randomUUID()
+        ): Promise<{ requestId: string; outcome: CaptureActionOutcome }> => {
+          const outcome = await runCaptureAction("stop-interactive-mirror", {
+            target: transcriptTarget,
+            requestId,
+          });
+          notifyCaptureFeedStatus(requestId, "interactive-mirror", outcome);
+          return { requestId, outcome };
+        },
       },
       registerProtocols: (protocols): void => {
         RoomProtocolRegistry.registerRuntimeProtocols(registration.room.id, protocols);

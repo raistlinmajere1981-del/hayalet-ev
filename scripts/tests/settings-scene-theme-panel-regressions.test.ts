@@ -142,6 +142,12 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(panelSource, /disconnectCaptureDevice/);
   assert.match(panelSource, /setPreferredDevice/);
   assert.match(panelSource, /captureT\("android\.previewHint"\)/);
+  assert.match(panelSource, /renderScrcpyManagementState/);
+  assert.match(panelSource, /renderScrcpyLogList/);
+  assert.match(htmlSource, /id="capture-scrcpy-available"/);
+  assert.match(htmlSource, /id="capture-scrcpy-mode"/);
+  assert.match(htmlSource, /id="capture-scrcpy-feedback"/);
+  assert.match(htmlSource, /id="capture-scrcpy-log-list"/);
   assert.match(panelSource, /renderCaptureVoiceCommands/);
   assert.match(panelSource, /saveCaptureVoiceCommands/);
   assert.match(panelSource, /resetCaptureVoiceCommandDefaults/);

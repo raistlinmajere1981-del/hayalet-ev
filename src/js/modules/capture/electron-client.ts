@@ -8,6 +8,7 @@ import type {
   CaptureHostAction,
   CaptureImportedAsset,
   CaptureMediaIngressPayload,
+  CaptureScrcpyStatus,
   CaptureServiceStatus,
   CaptureTargetActionOptions,
   CaptureTranscriptStatusSnapshot,
@@ -41,6 +42,19 @@ const FALLBACK_CAPTURE_STATUS: CaptureServiceStatus = {
       sourceManifestPath: "",
       bridgePort: 48561,
     },
+  },
+  scrcpy: {
+    available: false,
+    version: null,
+    activeSession: null,
+    mode: null,
+    deviceId: null,
+    target: null,
+    startedAt: null,
+    previewVideo: null,
+    lastLogs: [],
+    lastError: "Electron capture bridge is unavailable.",
+    setupHint: null,
   },
   bridge: {
     state: "error",
@@ -122,6 +136,23 @@ function normalizeAndroidStatus(value: unknown): CaptureAndroidStatus {
   return FALLBACK_CAPTURE_STATUS.android;
 }
 
+function normalizeScrcpyStatus(value: unknown): CaptureScrcpyStatus {
+  if (typeof value === "object" && value !== null && "available" in value) {
+    const rawStatus = value as CaptureScrcpyStatus;
+    return {
+      ...FALLBACK_CAPTURE_STATUS.scrcpy,
+      ...rawStatus,
+      lastLogs: Array.isArray(rawStatus.lastLogs)
+        ? rawStatus.lastLogs.filter(
+            (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
+          )
+        : FALLBACK_CAPTURE_STATUS.scrcpy.lastLogs,
+    };
+  }
+
+  return FALLBACK_CAPTURE_STATUS.scrcpy;
+}
+
 function normalizeCaptureStatus(value: unknown): CaptureServiceStatus {
   if (
     typeof value === "object" &&
@@ -141,6 +172,7 @@ function normalizeCaptureStatus(value: unknown): CaptureServiceStatus {
       checkedAt: Number.isFinite(checkedAt) ? checkedAt : 0,
       transcript: normalizeTranscriptSnapshot((value as CaptureServiceStatus).transcript),
       android: normalizeAndroidStatus((value as CaptureServiceStatus).android),
+      scrcpy: normalizeScrcpyStatus((value as CaptureServiceStatus).scrcpy),
       operation:
         rawOperation !== null
           ? {
@@ -291,6 +323,34 @@ export async function runCaptureAction(
       return normalizeActionOutcome(
         typeof api?.captureStopAnalyzePreview === "function"
           ? await api.captureStopAnalyzePreview(options)
+          : null,
+        action
+      );
+    case "start-camera-feed":
+      return normalizeActionOutcome(
+        typeof api?.captureStartCameraFeed === "function"
+          ? await api.captureStartCameraFeed(options)
+          : null,
+        action
+      );
+    case "stop-camera-feed":
+      return normalizeActionOutcome(
+        typeof api?.captureStopCameraFeed === "function"
+          ? await api.captureStopCameraFeed(options)
+          : null,
+        action
+      );
+    case "start-interactive-mirror":
+      return normalizeActionOutcome(
+        typeof api?.captureStartInteractiveMirror === "function"
+          ? await api.captureStartInteractiveMirror(options)
+          : null,
+        action
+      );
+    case "stop-interactive-mirror":
+      return normalizeActionOutcome(
+        typeof api?.captureStopInteractiveMirror === "function"
+          ? await api.captureStopInteractiveMirror(options)
           : null,
         action
       );

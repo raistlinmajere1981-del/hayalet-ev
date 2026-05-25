@@ -1166,6 +1166,16 @@ declare global {
     captureStopAnalyzePreview?: (
       options?: CaptureTargetActionOptions
     ) => Promise<CaptureActionOutcome>;
+    captureStartCameraFeed?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
+    captureStopCameraFeed?: (options?: CaptureTargetActionOptions) => Promise<CaptureActionOutcome>;
+    captureStartInteractiveMirror?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
+    captureStopInteractiveMirror?: (
+      options?: CaptureTargetActionOptions
+    ) => Promise<CaptureActionOutcome>;
     captureStartAnalyzeDictation?: (
       options?: CaptureTargetActionOptions
     ) => Promise<CaptureActionOutcome>;

@@ -476,6 +476,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("capture-start-analyze-preview", options),
   captureStopAnalyzePreview: (options) =>
     ipcRenderer.invoke("capture-stop-analyze-preview", options),
+  captureStartCameraFeed: (options) => ipcRenderer.invoke("capture-start-camera-feed", options),
+  captureStopCameraFeed: (options) => ipcRenderer.invoke("capture-stop-camera-feed", options),
+  captureStartInteractiveMirror: (options) =>
+    ipcRenderer.invoke("capture-start-interactive-mirror", options),
+  captureStopInteractiveMirror: (options) =>
+    ipcRenderer.invoke("capture-stop-interactive-mirror", options),
   captureStartAnalyzeDictation: (options) =>
     ipcRenderer.invoke("capture-start-analyze-dictation", options),
   captureStopAnalyzeDictation: (options) =>

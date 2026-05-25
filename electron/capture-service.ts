@@ -8,6 +8,12 @@ import { BrowserWindow } from "electron";
 import { Paths } from "./paths.ts";
 import { loadSettings } from "./settings-manager.ts";
 import { transcriptService } from "./transcript-service.ts";
+import {
+  ScrcpySessionManager,
+  type ScrcpyChildProcess,
+  type ScrcpySessionStartResult,
+  type ScrcpyUnexpectedCloseEvent,
+} from "./scrcpy-session-manager.ts";
 import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 import {
   DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
@@ -144,16 +150,6 @@ interface CompanionBridgeSessionRecord {
 
 type PendingBridgeCommand = CaptureCompanionCommandEnvelope;
 let adbServerTouchedByCaptureService = false;
-
-interface ScrcpyCameraFeedSession {
-  process: ReturnType<typeof spawn>;
-  deviceId: string;
-  requestId: string;
-  previewVideo: CaptureAnalyzePreviewVideoStatus;
-  startedAt: number;
-  stopping: boolean;
-  logs: string[];
-}
 
 interface CaptureIngressPaths {
   rootDir: string;
@@ -1652,16 +1648,50 @@ class CaptureService {
   private readonly bridgeSessions = new Map<string, CompanionBridgeSessionRecord>();
   private readonly pendingCommands = new Map<string, PendingBridgeCommand[]>();
   private readonly activeAnalyzeMediaRequestIds = new Set<string>();
-  private scrcpyCameraFeed: ScrcpyCameraFeedSession | null = null;
+  private readonly scrcpyHub: ScrcpySessionManager;
   private analyzeState = createDefaultAnalyzeState();
   private operationState = createDefaultOperationState();
+
+  constructor() {
+    this.scrcpyHub = new ScrcpySessionManager({
+      onUnexpectedClose: (event): void => {
+        this.handleScrcpyUnexpectedClose(event);
+      },
+      resolveScrcpyPath: async (): Promise<string | null> =>
+        await resolveExecutableOnPath("scrcpy"),
+      inspectScrcpyVersion: async (scrcpyPath): Promise<string | null> => {
+        const versionResult = await runCommand(scrcpyPath, ["--version"], 5_000).catch(() => null);
+        const rawVersion =
+          normalizeText(versionResult?.stdout) ?? normalizeText(versionResult?.stderr);
+        return (
+          rawVersion
+            ?.split(/\r?\n/)
+            .map((line) => line.trim())
+            .find((line) => line !== "") ?? null
+        );
+      },
+      resolveV4l2Sink: async (): ReturnType<typeof resolveScrcpyV4l2Sink> =>
+        await resolveScrcpyV4l2Sink(),
+      spawnProcess: (scrcpyPath, args, options): ScrcpyChildProcess =>
+        spawn(scrcpyPath, args, options) as unknown as ScrcpyChildProcess,
+      getProjectRoot: getCaptureProjectRoot,
+      getSetupHint: (): string | null =>
+        process.platform === "linux" ? buildScrcpyV4l2SetupHint() : null,
+      startupGraceMs: CAPTURE_SCRCPY_STARTUP_GRACE_MS,
+      stopTimeoutMs: CAPTURE_SCRCPY_STOP_TIMEOUT_MS,
+      logLimit: CAPTURE_SCRCPY_LOG_LIMIT,
+      cameraSize: CAPTURE_SCRCPY_CAMERA_SIZE,
+      cameraFps: CAPTURE_SCRCPY_CAMERA_FPS,
+      v4l2BufferMs: CAPTURE_SCRCPY_V4L2_BUFFER_MS,
+    });
+  }
 
   async getStatus(): Promise<CaptureServiceStatus> {
     return this.lastStatus ?? (await this.refreshStatus());
   }
 
   async shutdown(): Promise<void> {
-    await this.stopScrcpyCameraFeed();
+    await this.scrcpyHub.stopSession();
     await this.closeBridgeServer();
     this.bridgeSessions.clear();
     this.pendingCommands.clear();
@@ -1708,16 +1738,22 @@ class CaptureService {
     await this.ensureBridgeServer();
     this.cleanupStaleBridgeSessions();
     const android = await this.inspectAndroid(captureSettings.preferredDeviceId);
+    const scrcpy = await this.scrcpyHub.getStatus();
     const ingress = await readAnalyzeIngressSnapshot();
     const activeSession =
       android.selectedDeviceId !== null
         ? (this.bridgeSessions.get(android.selectedDeviceId) ?? null)
         : null;
+    const analyzePreviewVideo =
+      scrcpy.activeSession?.mode === "camera-feed" &&
+      scrcpy.activeSession.target === CAPTURE_ANALYZE_TARGET
+        ? scrcpy.activeSession.previewVideo
+        : null;
 
     this.analyzeState = {
       ...this.analyzeState,
       deviceId: android.selectedDeviceId,
-      previewVideo: this.scrcpyCameraFeed?.previewVideo ?? null,
+      previewVideo: analyzePreviewVideo,
       pendingInboxCount: ingress.pendingInboxCount,
       latestAsset: ingress.latestStagedAsset ?? this.analyzeState.latestAsset,
       message: this.resolveAnalyzeMessage(activeSession, ingress.pendingInboxCount),
@@ -1732,6 +1768,7 @@ class CaptureService {
         runtime: transcriptRuntime,
       },
       android,
+      scrcpy,
       bridge: {
         ...this.bridgeState,
       },
@@ -2030,16 +2067,100 @@ class CaptureService {
       return await this.buildActionOutcome(
         "start-analyze-preview",
         false,
-        "Scrcpy camera feed is only available for Analyze."
+        "Analyze preview wrapper requires the Analyze target."
       );
     }
 
+    return await this.startCameraFeedForAction(options, "start-analyze-preview");
+  }
+
+  async startCameraFeed(
+    options: {
+      target?: TranscriptTargetId | null;
+      requestId?: string | null;
+      deviceId?: string | null;
+    } = {}
+  ): Promise<CaptureActionOutcome> {
+    return await this.startCameraFeedForAction(options, "start-camera-feed");
+  }
+
+  async stopAnalyzePreviewStream(
+    options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}
+  ): Promise<CaptureActionOutcome> {
+    return await this.stopCameraFeedForAction(options, "stop-analyze-preview");
+  }
+
+  async stopCameraFeed(
+    options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}
+  ): Promise<CaptureActionOutcome> {
+    return await this.stopCameraFeedForAction(options, "stop-camera-feed");
+  }
+
+  async startInteractiveMirror(
+    options: {
+      target?: TranscriptTargetId | null;
+      requestId?: string | null;
+      deviceId?: string | null;
+    } = {}
+  ): Promise<CaptureActionOutcome> {
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
+    const requestId = normalizeText(options.requestId) ?? randomUUID();
+    const status = await this.refreshStatus();
+    const deviceId = options.deviceId ?? status.android.selectedDeviceId;
+    if (deviceId === null) {
+      return await this.buildActionOutcome(
+        "start-interactive-mirror",
+        false,
+        status.android.message ?? "No ready Android device is available."
+      );
+    }
+
+    const started = await this.scrcpyHub.startInteractiveMirror({
+      deviceId,
+      target,
+      requestId,
+      action: "start-interactive-mirror",
+    });
+    if (started.ok !== true) {
+      return await this.buildActionOutcome("start-interactive-mirror", false, started.message);
+    }
+    this.lastStatus = null;
+    return await this.buildActionOutcome("start-interactive-mirror", true, started.message);
+  }
+
+  async stopInteractiveMirror(): Promise<CaptureActionOutcome> {
+    const stopped = await this.scrcpyHub.stopSession("interactive-mirror");
+    this.lastStatus = null;
+    if (stopped !== true) {
+      return await this.buildPassiveActionOutcome(
+        "stop-interactive-mirror",
+        true,
+        "Scrcpy interactive mirror is already stopped."
+      );
+    }
+
+    return await this.buildActionOutcome(
+      "stop-interactive-mirror",
+      true,
+      "Scrcpy interactive mirror was stopped."
+    );
+  }
+
+  private async startCameraFeedForAction(
+    options: {
+      target?: TranscriptTargetId | null;
+      requestId?: string | null;
+      deviceId?: string | null;
+    },
+    action: "start-camera-feed" | "start-analyze-preview"
+  ): Promise<CaptureActionOutcome> {
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
     const requestId = normalizeText(options.requestId) ?? randomUUID();
     const settings = await loadSettings();
     const captureSettings = resolveCaptureSettings(settings);
-    if (captureSettings.androidCompanionEnabled !== true) {
+    if (target === CAPTURE_ANALYZE_TARGET && captureSettings.androidCompanionEnabled !== true) {
       return await this.buildActionOutcome(
-        "start-analyze-preview",
+        action,
         false,
         "Android capture is disabled in Settings > Capture."
       );
@@ -2049,264 +2170,107 @@ class CaptureService {
     const deviceId = options.deviceId ?? status.android.selectedDeviceId;
     if (deviceId === null) {
       return await this.buildActionOutcome(
-        "start-analyze-preview",
+        action,
         false,
         status.android.message ?? "No ready Android device is available."
       );
     }
 
-    const scrcpyPath = await resolveExecutableOnPath("scrcpy");
-    if (scrcpyPath === null) {
-      return await this.buildActionOutcome(
-        "start-analyze-preview",
-        false,
-        "scrcpy is not available on PATH."
-      );
-    }
-
-    const activeFeed = this.scrcpyCameraFeed;
-    if (activeFeed !== null && activeFeed.deviceId === deviceId) {
-      this.analyzeState = {
-        ...this.analyzeState,
-        state: "ready",
-        deviceId,
-        previewVideo: activeFeed.previewVideo,
-        pendingCommand: null,
-        message: "Scrcpy camera feed is already active.",
-      };
-      return await this.buildActionOutcome(
-        "start-analyze-preview",
-        true,
-        "Scrcpy camera feed is already active."
-      );
-    }
-
-    const launchOutcome = await this.launchCompanion({ target });
-    if (launchOutcome.ok !== true) {
-      return await this.buildActionOutcome("start-analyze-preview", false, launchOutcome.message);
+    if (target === CAPTURE_ANALYZE_TARGET) {
+      const launchOutcome = await this.launchCompanion({ target });
+      if (launchOutcome.ok !== true) {
+        return await this.buildActionOutcome(action, false, launchOutcome.message);
+      }
     }
 
     const started = await this.startScrcpyCameraFeed({
-      scrcpyPath,
       deviceId,
+      target,
       requestId,
       cameraFacing: captureSettings.defaultLens,
+      action,
     });
     if (started.ok !== true) {
-      return await this.buildActionOutcome("start-analyze-preview", false, started.message);
+      return await this.buildActionOutcome(action, false, started.message);
     }
 
-    this.analyzeState = {
-      ...this.analyzeState,
-      state: "ready",
-      target,
-      deviceId,
-      previewVideo: started.previewVideo,
-      pendingCommand: null,
-      message: started.message,
-    };
+    if (target === CAPTURE_ANALYZE_TARGET) {
+      this.analyzeState = {
+        ...this.analyzeState,
+        state: "ready",
+        target,
+        deviceId,
+        previewVideo: started.session.previewVideo,
+        pendingCommand: null,
+        message: started.message,
+      };
+    }
     this.lastStatus = null;
-    return await this.buildActionOutcome("start-analyze-preview", true, started.message);
+    return await this.buildActionOutcome(action, true, started.message);
   }
 
-  async stopAnalyzePreviewStream(
-    options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}
+  private async stopCameraFeedForAction(
+    options: { target?: TranscriptTargetId | null; requestId?: string | null },
+    action: "stop-camera-feed" | "stop-analyze-preview"
   ): Promise<CaptureActionOutcome> {
     void options;
+    const activeSession = this.scrcpyHub.getActiveSessionStatus();
     const stopped = await this.stopScrcpyCameraFeed();
-    this.analyzeState = {
-      ...this.analyzeState,
-      state: "idle",
-      previewVideo: null,
-      pendingCommand: null,
-      message: stopped
-        ? "Scrcpy camera feed was stopped."
-        : "Scrcpy camera feed is already stopped.",
-    };
-    this.lastStatus = null;
-    if (stopped !== true) {
-      return await this.buildPassiveActionOutcome(
-        "stop-analyze-preview",
-        true,
-        "Scrcpy camera feed is already stopped."
-      );
-    }
-
-    return await this.buildActionOutcome(
-      "stop-analyze-preview",
-      true,
-      "Scrcpy camera feed was stopped."
-    );
-  }
-
-  private async startScrcpyCameraFeed(options: {
-    scrcpyPath: string;
-    deviceId: string;
-    requestId: string;
-    cameraFacing: "back" | "front";
-  }): Promise<
-    | { ok: true; message: string; previewVideo: CaptureAnalyzePreviewVideoStatus }
-    | { ok: false; message: string }
-  > {
-    await this.stopScrcpyCameraFeed();
-    const sink = await resolveScrcpyV4l2Sink();
-    if (sink.ok !== true) {
-      return sink;
-    }
-
-    const args = [
-      "--serial",
-      options.deviceId,
-      "--video-source=camera",
-      `--camera-facing=${options.cameraFacing}`,
-      `--camera-size=${CAPTURE_SCRCPY_CAMERA_SIZE}`,
-      `--camera-fps=${String(CAPTURE_SCRCPY_CAMERA_FPS)}`,
-      "--no-audio",
-      "--no-window",
-      `--v4l2-sink=${sink.previewVideo.devicePath}`,
-      `--v4l2-buffer=${String(CAPTURE_SCRCPY_V4L2_BUFFER_MS)}`,
-    ];
-    const child = spawn(options.scrcpyPath, args, {
-      stdio: ["ignore", "pipe", "pipe"],
-      env: process.env,
-      cwd: getCaptureProjectRoot(),
-    });
-    const session: ScrcpyCameraFeedSession = {
-      process: child,
-      deviceId: options.deviceId,
-      requestId: options.requestId,
-      previewVideo: sink.previewVideo,
-      startedAt: Date.now(),
-      stopping: false,
-      logs: [],
-    };
-    this.scrcpyCameraFeed = session;
-    const appendOutput = (chunk: Buffer | string): void => {
-      const lines = normalizeCommandChunk(chunk)
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter((line) => line !== "");
-      session.logs.push(...lines);
-      if (session.logs.length > CAPTURE_SCRCPY_LOG_LIMIT) {
-        session.logs.splice(0, session.logs.length - CAPTURE_SCRCPY_LOG_LIMIT);
-      }
-    };
-    child.stdout.on("data", appendOutput);
-    child.stderr.on("data", appendOutput);
-    child.once("close", (exitCode, signal) => {
-      if (this.scrcpyCameraFeed !== session) {
-        return;
-      }
-
-      this.scrcpyCameraFeed = null;
+    if (activeSession?.target === CAPTURE_ANALYZE_TARGET || action === "stop-analyze-preview") {
       this.analyzeState = {
         ...this.analyzeState,
         state: "idle",
         previewVideo: null,
         pendingCommand: null,
-        message:
-          session.stopping === true
-            ? "Scrcpy camera feed was stopped."
-            : `Scrcpy camera feed exited (${exitCode ?? signal ?? "unknown"}).`,
+        message: stopped
+          ? "Scrcpy camera feed was stopped."
+          : "Scrcpy camera feed is already stopped.",
       };
-      this.lastStatus = null;
-      if (session.stopping !== true) {
-        this.setOperationState({
-          state: "error",
-          action: "start-analyze-preview",
-          message: this.summarizeScrcpyCameraFailure(session),
-          progress: null,
-          details: session.logs,
-        });
-      }
-    });
+    }
+    this.lastStatus = null;
+    if (stopped !== true) {
+      return await this.buildPassiveActionOutcome(
+        action,
+        true,
+        "Scrcpy camera feed is already stopped."
+      );
+    }
 
-    return await new Promise((resolve) => {
-      let settled = false;
-      const settle = (
-        result:
-          | { ok: true; message: string; previewVideo: CaptureAnalyzePreviewVideoStatus }
-          | { ok: false; message: string }
-      ): void => {
-        if (settled) {
-          return;
-        }
+    return await this.buildActionOutcome(action, true, "Scrcpy camera feed was stopped.");
+  }
 
-        settled = true;
-        resolve(result);
-      };
-      const startupTimer = globalThis.setTimeout(() => {
-        settle({
-          ok: true,
-          message: "Scrcpy camera feed was started in the Analyze panel.",
-          previewVideo: sink.previewVideo,
-        });
-      }, CAPTURE_SCRCPY_STARTUP_GRACE_MS);
-      child.once("error", (error) => {
-        globalThis.clearTimeout(startupTimer);
-        if (this.scrcpyCameraFeed === session) {
-          this.scrcpyCameraFeed = null;
-        }
-        settle({
-          ok: false,
-          message: error.message,
-        });
-      });
-      child.once("close", () => {
-        globalThis.clearTimeout(startupTimer);
-        if (settled) {
-          return;
-        }
-
-        if (this.scrcpyCameraFeed === session) {
-          this.scrcpyCameraFeed = null;
-        }
-        settle({
-          ok: false,
-          message: this.summarizeScrcpyCameraFailure(session),
-        });
-      });
-    });
+  private async startScrcpyCameraFeed(options: {
+    deviceId: string;
+    target: TranscriptTargetId | null;
+    requestId: string | null;
+    cameraFacing: "back" | "front";
+    action: "start-camera-feed" | "start-analyze-preview";
+  }): Promise<ScrcpySessionStartResult> {
+    return await this.scrcpyHub.startCameraFeed(options);
   }
 
   private async stopScrcpyCameraFeed(): Promise<boolean> {
-    const session = this.scrcpyCameraFeed;
-    if (session === null) {
-      return false;
-    }
-
-    session.stopping = true;
-    const child = session.process;
-    if (child.exitCode !== null || child.signalCode !== null) {
-      this.scrcpyCameraFeed = null;
-      return true;
-    }
-
-    await new Promise<void>((resolve) => {
-      const timeoutId = globalThis.setTimeout(() => {
-        child.kill("SIGKILL");
-        resolve();
-      }, CAPTURE_SCRCPY_STOP_TIMEOUT_MS);
-      child.once("close", () => {
-        globalThis.clearTimeout(timeoutId);
-        resolve();
-      });
-      child.kill("SIGTERM");
-    });
-    if (this.scrcpyCameraFeed === session) {
-      this.scrcpyCameraFeed = null;
-    }
-    return true;
+    return await this.scrcpyHub.stopSession("camera-feed");
   }
 
-  private summarizeScrcpyCameraFailure(session: ScrcpyCameraFeedSession): string {
-    const latestErrorLog =
-      [...session.logs]
-        .reverse()
-        .find((entry) => /\b(error|cannot|failed|denied|busy)\b/i.test(entry)) ?? null;
-    const latestLog =
-      latestErrorLog ?? [...session.logs].reverse().find((entry) => normalizeText(entry) !== null);
-    return latestLog ?? "scrcpy camera feed failed.";
+  private handleScrcpyUnexpectedClose(event: ScrcpyUnexpectedCloseEvent): void {
+    if (event.session.mode === "camera-feed" && event.session.target === CAPTURE_ANALYZE_TARGET) {
+      this.analyzeState = {
+        ...this.analyzeState,
+        state: "idle",
+        previewVideo: null,
+        pendingCommand: null,
+        message: event.message,
+      };
+    }
+    this.lastStatus = null;
+    this.setOperationState({
+      state: "error",
+      action: event.action,
+      message: event.message,
+      progress: null,
+      details: event.logs,
+    });
   }
 
   async requestAnalyzeDictation(
@@ -2703,8 +2667,9 @@ class CaptureService {
     activeSession: CompanionBridgeSessionRecord | null,
     pendingInboxCount: number
   ): string {
-    if (this.scrcpyCameraFeed !== null) {
-      return "Scrcpy camera feed is active in the Analyze panel.";
+    const activeScrcpy = this.scrcpyHub.getActiveSessionStatus();
+    if (activeScrcpy?.mode === "camera-feed" && activeScrcpy.target === CAPTURE_ANALYZE_TARGET) {
+      return "Scrcpy camera feed is active for Analyze.";
     }
     if (pendingInboxCount > 0) {
       return `${String(pendingInboxCount)} phone capture(s) are waiting in the Analyze inbox.`;
@@ -2729,7 +2694,8 @@ class CaptureService {
     activeSession: CompanionBridgeSessionRecord | null,
     pendingInboxCount: number
   ): CaptureAnalyzeSessionState {
-    if (this.scrcpyCameraFeed !== null) {
+    const activeScrcpy = this.scrcpyHub.getActiveSessionStatus();
+    if (activeScrcpy?.mode === "camera-feed" && activeScrcpy.target === CAPTURE_ANALYZE_TARGET) {
       return "ready";
     }
     if (pendingInboxCount > 0) {

@@ -2235,7 +2235,7 @@ export class AnalyzeController {
       this._renderAndroidCameraPanel();
 
       try {
-        const outcome = await runCaptureAction("start-analyze-preview", {
+        const outcome = await runCaptureAction("start-camera-feed", {
           target: "analyze-compose",
           requestId: this._cameraPreviewRequestId,
         });
@@ -2246,7 +2246,9 @@ export class AnalyzeController {
         }
         this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.waiting");
         this._renderAndroidCameraPanel();
-        await this._attachAndroidCameraFeed(outcome.status.analyze.previewVideo);
+        await this._attachAndroidCameraFeed(
+          outcome.status.scrcpy.activeSession?.previewVideo ?? outcome.status.analyze.previewVideo
+        );
         this._cameraPanelHasFrame = true;
         this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.live");
         this._renderAndroidCameraPanel();
@@ -2260,7 +2262,7 @@ export class AnalyzeController {
         this._cameraPanelOpen = false;
         this._cameraPanelHasFrame = false;
         this._renderAndroidCameraPanel();
-        await runCaptureAction("stop-analyze-preview", {
+        await runCaptureAction("stop-camera-feed", {
           target: "analyze-compose",
           requestId: failedRequestId,
         }).catch(() => null);
@@ -2291,7 +2293,7 @@ export class AnalyzeController {
     }
 
     try {
-      const outcome = await runCaptureAction("stop-analyze-preview", {
+      const outcome = await runCaptureAction("stop-camera-feed", {
         target: "analyze-compose",
         requestId,
       });

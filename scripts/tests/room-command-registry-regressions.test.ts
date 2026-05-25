@@ -227,8 +227,17 @@ test("Room host capture API exposes target-based ambient listener controls", () 
 
   assert.match(hostRuntimeSource, /startAmbientListener/);
   assert.match(hostRuntimeSource, /stopAmbientListener/);
+  assert.match(hostRuntimeSource, /startCameraFeed/);
+  assert.match(hostRuntimeSource, /stopCameraFeed/);
+  assert.match(hostRuntimeSource, /startInteractiveMirror/);
+  assert.match(hostRuntimeSource, /stopInteractiveMirror/);
   assert.match(hostRuntimeSource, /runCaptureAction\("start-ambient-listener"/);
   assert.match(hostRuntimeSource, /runCaptureAction\("stop-ambient-listener"/);
+  assert.match(hostRuntimeSource, /runCaptureAction\("start-camera-feed"/);
+  assert.match(hostRuntimeSource, /runCaptureAction\("stop-camera-feed"/);
+  assert.match(hostRuntimeSource, /runCaptureAction\("start-interactive-mirror"/);
+  assert.match(hostRuntimeSource, /runCaptureAction\("stop-interactive-mirror"/);
+  assert.match(hostRuntimeSource, /type: "capture-feed-status"/);
   assert.match(hostRuntimeSource, /target: transcriptTarget/);
 });
 

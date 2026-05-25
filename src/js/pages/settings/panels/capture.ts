@@ -129,6 +129,14 @@ function describeOperationAction(action: CaptureHostAction | null): string {
       return "Analyze preview";
     case "stop-analyze-preview":
       return "Analyze preview stop";
+    case "start-camera-feed":
+      return "Camera feed";
+    case "stop-camera-feed":
+      return "Camera feed stop";
+    case "start-interactive-mirror":
+      return "Interactive mirror";
+    case "stop-interactive-mirror":
+      return "Interactive mirror stop";
     case "capture-analyze-photo":
       return "Phone capture";
     case "retake-analyze-photo":
@@ -254,6 +262,51 @@ function formatSelectedPermissions(state: CapturePanelState, root: HTMLElement):
     selectedDevice.permissions.microphone,
     root
   );
+}
+
+function renderScrcpyLogList(root: HTMLElement, logs: string[]): void {
+  const list = root.querySelector<HTMLElement>("#capture-scrcpy-log-list");
+  if (!(list instanceof HTMLElement)) {
+    return;
+  }
+
+  list.innerHTML = "";
+  const visibleLogs = logs.length > 0 ? logs : [captureT("android.scrcpy.logsEmpty")];
+  visibleLogs.forEach((logLine) => {
+    const item = document.createElement("li");
+    item.textContent = logLine;
+    list.appendChild(item);
+  });
+}
+
+function renderScrcpyManagementState(root: HTMLElement, state: CapturePanelState): void {
+  const scrcpyStatus = state.status?.scrcpy ?? null;
+  const activeMode = scrcpyStatus?.mode ?? "idle";
+  const activeDevice = scrcpyStatus?.deviceId ?? captureT("android.scrcpy.none");
+  const lastLogs = scrcpyStatus?.lastLogs ?? [];
+  const latestLog = lastLogs[lastLogs.length - 1] ?? null;
+  const feedback =
+    scrcpyStatus?.lastError ??
+    latestLog ??
+    scrcpyStatus?.setupHint ??
+    captureT("android.scrcpy.feedbackReady");
+
+  setText(
+    root,
+    "#capture-scrcpy-available",
+    scrcpyStatus?.available === true
+      ? captureT("android.scrcpy.availableYes")
+      : captureT("android.scrcpy.availableNo")
+  );
+  setText(
+    root,
+    "#capture-scrcpy-version",
+    scrcpyStatus?.version ?? captureT("android.scrcpy.none")
+  );
+  setText(root, "#capture-scrcpy-mode", captureT(`android.scrcpy.modes.${activeMode}`));
+  setText(root, "#capture-scrcpy-device", activeDevice);
+  setText(root, "#capture-scrcpy-feedback", feedback);
+  renderScrcpyLogList(root, lastLogs);
 }
 
 function formatDeviceConnection(device: CaptureAndroidDeviceStatus): string {
@@ -641,6 +694,7 @@ function renderAndroidManagementState(root: HTMLElement, state: CapturePanelStat
     captureT(`android.states.preview.${androidStatus?.previewMode ?? "scrcpy-camera"}`)
   );
   setText(root, "#capture-android-preview-note", captureT("android.previewHint"));
+  renderScrcpyManagementState(root, state);
   setText(
     root,
     "#capture-android-bridge-status",

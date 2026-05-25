@@ -13,6 +13,7 @@ test("analyze page wires central capture inbox imports into staged attachments",
     "utf8"
   );
   const captureServiceSource = readFileSync("electron/capture-service.ts", "utf8");
+  const scrcpySessionManagerSource = readFileSync("electron/scrcpy-session-manager.ts", "utf8");
   const commandCatalogSource = readFileSync("shared/capture/command-catalog.ts", "utf8");
   const companionCoordinatorSource = readFileSync(
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/session/CompanionSessionCoordinator.kt",
@@ -51,8 +52,8 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.doesNotMatch(pageSource, /_closeCapturePanel/);
   assert.doesNotMatch(pageSource, /clearCapturePreview/);
   assert.match(pageSource, /capture-analyze-photo/);
-  assert.match(pageSource, /start-analyze-preview/);
-  assert.match(pageSource, /stop-analyze-preview/);
+  assert.match(pageSource, /start-camera-feed/);
+  assert.match(pageSource, /stop-camera-feed/);
   assert.match(pageSource, /start-analyze-session/);
   assert.match(pageSource, /stop-analyze-session/);
   assert.match(pageSource, /_syncVoiceCommandSettings/);
@@ -91,6 +92,10 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(captureClientSource, /captureStopAnalyzeSession/);
   assert.match(captureClientSource, /captureStartAnalyzePreview/);
   assert.match(captureClientSource, /captureStopAnalyzePreview/);
+  assert.match(captureClientSource, /captureStartCameraFeed/);
+  assert.match(captureClientSource, /captureStopCameraFeed/);
+  assert.match(captureClientSource, /captureStartInteractiveMirror/);
+  assert.match(captureClientSource, /captureStopInteractiveMirror/);
   assert.match(captureClientSource, /captureStartAmbientListener/);
   assert.match(captureClientSource, /captureStopAmbientListener/);
   assert.doesNotMatch(captureClientSource, /onCapturePreviewFrame/);
@@ -106,17 +111,30 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(captureServiceSource, /CAPTURE_AMBIENT_STATUS_CHANNEL = "capture:ambient-status"/);
   assert.match(captureServiceSource, /CAPTURE_SCRCPY_V4L2_LABEL/);
   assert.match(captureServiceSource, /HAYALET_SCRCPY_V4L2_DEVICE/);
-  assert.match(captureServiceSource, /--video-source=camera/);
-  assert.match(captureServiceSource, /--camera-size/);
-  assert.match(captureServiceSource, /--no-window/);
-  assert.match(captureServiceSource, /--v4l2-sink/);
-  assert.match(captureServiceSource, /--v4l2-buffer/);
+  assert.match(scrcpySessionManagerSource, /--video-source=camera/);
+  assert.match(scrcpySessionManagerSource, /--camera-size/);
+  assert.match(scrcpySessionManagerSource, /--no-window/);
+  assert.match(scrcpySessionManagerSource, /--v4l2-sink/);
+  assert.match(scrcpySessionManagerSource, /--v4l2-buffer/);
+  assert.match(captureServiceSource, /startCameraFeedForAction/);
+  assert.match(scrcpySessionManagerSource, /startInteractiveMirror/);
+  assert.match(scrcpySessionManagerSource, /args: \["--serial", options\.deviceId\]/);
+  const interactiveMirrorBlock =
+    scrcpySessionManagerSource.match(/async startInteractiveMirror[\s\S]*?async stopSession/)?.[0] ??
+    "";
+  assert.doesNotMatch(interactiveMirrorBlock, /--video-source=camera/);
+  assert.doesNotMatch(interactiveMirrorBlock, /--v4l2-sink/);
+  assert.doesNotMatch(interactiveMirrorBlock, /--no-window/);
   assert.match(captureServiceSource, /previewVideo/);
   assert.doesNotMatch(captureServiceSource, /--stay-awake/);
   assert.match(captureServiceSource, /stopScrcpyCameraFeed/);
   assert.match(
     captureServiceSource,
-    /async startAnalyzePreviewStream[\s\S]*const launchOutcome = await this\.launchCompanion\(\{ target \}\);[\s\S]*if \(launchOutcome\.ok !== true\)[\s\S]*"start-analyze-preview"[\s\S]*launchOutcome\.message[\s\S]*this\.startScrcpyCameraFeed/
+    /async startAnalyzePreviewStream[\s\S]*return await this\.startCameraFeedForAction\(options, "start-analyze-preview"\)/
+  );
+  assert.match(
+    captureServiceSource,
+    /if \(target === CAPTURE_ANALYZE_TARGET\)[\s\S]*const launchOutcome = await this\.launchCompanion\(\{ target \}\)/
   );
   assert.match(captureServiceSource, /normalizeTranscriptTarget/);
   assert.match(captureServiceSource, /requestId and target are required/);

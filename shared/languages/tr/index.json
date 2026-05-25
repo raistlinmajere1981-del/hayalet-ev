@@ -5132,7 +5132,24 @@
         "expectedVersion": "Beklenen sürüm",
         "connectAddress": "Wireless ADB adresi",
         "previewTitle": "Canlı önizleme",
-        "previewHint": "Canlı kamera önizlemesi telefonda kalır; resim çekme ve Analyze dosyalarına ekleme işlemleri companion içinden yapılır.",
+        "previewHint": "Kamera feed'i scrcpy ve v4l2loopback kullanır; fotoğraf ve dikte akışları companion uygulamasında kalır.",
+        "scrcpy": {
+          "available": "scrcpy",
+          "version": "Sürüm",
+          "mode": "Aktif mod",
+          "device": "Aktif cihaz",
+          "none": "Yok",
+          "availableYes": "Hazır",
+          "availableNo": "Eksik",
+          "feedbackReady": "scrcpy kamera feed veya interactive mirror oturumları için hazır.",
+          "logs": "Son loglar",
+          "logsEmpty": "Henüz scrcpy logu yok.",
+          "modes": {
+            "idle": "Boşta",
+            "camera-feed": "Kamera feed",
+            "interactive-mirror": "Interactive mirror"
+          }
+        },
         "actions": {
           "scan": "Cihazları tara",
           "install": "Companion kur",
