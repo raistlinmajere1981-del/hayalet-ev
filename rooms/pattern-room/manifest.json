@@ -26,6 +26,16 @@
   "i18n": {
     "baseDir": "i18n"
   },
+  "protocolSpecs": [
+    {
+      "key": "pattern-room-case-review",
+      "room": "pattern-room",
+      "scenario": "case-review",
+      "title": "[START][PATTERN-ROOM][CASE-REVIEW]",
+      "editable": true,
+      "path": "protocols/pattern-room-case-review.md"
+    }
+  ],
   "scene": {
     "referenceSize": {
       "width": 1600,
