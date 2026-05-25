@@ -13,6 +13,8 @@ test("analyze page wires central capture inbox imports into staged attachments",
     "utf8"
   );
   const captureServiceSource = readFileSync("electron/capture-service.ts", "utf8");
+  const captureTypesSource = readFileSync("electron/capture/types-and-defaults.ts", "utf8");
+  const captureAdbHelperSource = readFileSync("electron/capture/adb-helper.ts", "utf8");
   const scrcpySessionManagerSource = readFileSync("electron/scrcpy-session-manager.ts", "utf8");
   const commandCatalogSource = readFileSync("shared/capture/command-catalog.ts", "utf8");
   const companionCoordinatorSource = readFileSync(
@@ -110,7 +112,7 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.doesNotMatch(captureServiceSource, /CAPTURE_PREVIEW_FRAME_CHANNEL/);
   assert.match(captureServiceSource, /CAPTURE_AMBIENT_STATUS_CHANNEL = "capture:ambient-status"/);
   assert.match(captureServiceSource, /CAPTURE_SCRCPY_V4L2_LABEL/);
-  assert.match(captureServiceSource, /HAYALET_SCRCPY_V4L2_DEVICE/);
+  assert.match(captureAdbHelperSource, /HAYALET_SCRCPY_V4L2_DEVICE/);
   assert.match(scrcpySessionManagerSource, /--video-source=camera/);
   assert.match(scrcpySessionManagerSource, /--camera-size/);
   assert.match(scrcpySessionManagerSource, /--no-window/);
@@ -184,13 +186,13 @@ test("analyze page wires central capture inbox imports into staged attachments",
     settingsSchemaSource,
     /androidDictationBackend:[\s\S]*normalizeAndroidDictationBackend/
   );
-  assert.match(captureServiceSource, /defaults\["androidTranscriptModelVariant"\][\s\S]*"light"/);
-  assert.match(captureServiceSource, /defaults\?\.\["androidDictationBackend"\]/);
-  assert.match(captureServiceSource, /androidDictationBackend: settings\.androidDictationBackend/);
+  assert.match(captureTypesSource, /defaults\["androidTranscriptModelVariant"\][\s\S]*"light"/);
+  assert.match(captureTypesSource, /defaults\?\.\["androidDictationBackend"\]/);
+  assert.match(captureTypesSource, /androidDictationBackend: settings\.androidDictationBackend/);
   assert.match(settingsSchemaSource, /normalizeAmbientWakePhrases/);
   assert.match(settingsSchemaSource, /DEFAULT_AMBIENT_ACTIVE_WINDOW_MS/);
-  assert.match(captureServiceSource, /return "vosk";/);
-  assert.match(captureServiceSource, /vosk-model-small-tr-0\.3\.zip/);
+  assert.match(captureTypesSource, /return "vosk";/);
+  assert.match(captureTypesSource, /vosk-model-small-tr-0\.3\.zip/);
   assert.match(captureServiceSource, /ensureDirectCompanionModelArchive/);
   assert.doesNotMatch(
     captureServiceSource,

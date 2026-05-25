@@ -2,9 +2,21 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+function readRoomToolServiceTreeSource(): string {
+  return [
+    "electron/room-tool-service.ts",
+    "electron/room-tool/types.ts",
+    "electron/room-tool/archive-helper.ts",
+    "electron/room-tool/python-manager.ts",
+    "electron/room-tool/system-command-helper.ts",
+  ]
+    .map((filePath) => readFileSync(filePath, "utf8"))
+    .join("\n");
+}
+
 test("room tool run request supports companion executable selection", () => {
   const typeSource = readFileSync("src/types/room-tools.ts", "utf8");
-  const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
+  const serviceSource = readRoomToolServiceTreeSource();
 
   assert.match(typeSource, /export interface RoomToolRunRequest[\s\S]*executableName\?: string;/);
   assert.match(
@@ -16,7 +28,7 @@ test("room tool run request supports companion executable selection", () => {
 });
 
 test("room tool service stays generic and avoids laboratory-specific branching", () => {
-  const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
+  const serviceSource = readRoomToolServiceTreeSource();
   const handlerSource = readFileSync("electron/handlers/ipc-room-tools.ts", "utf8");
 
   assert.match(handlerSource, /registerHandler\("room-tools-call"/);
@@ -35,7 +47,7 @@ test("room tool service stays generic and avoids laboratory-specific branching",
 });
 
 test("room tool service keeps write roots narrow while allowing packaged tool cwd", () => {
-  const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
+  const serviceSource = readRoomToolServiceTreeSource();
 
   assert.match(
     serviceSource,
@@ -50,7 +62,7 @@ test("room tool service keeps write roots narrow while allowing packaged tool cw
 });
 
 test("room tool service supports app-managed installers and system-command probes", () => {
-  const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
+  const serviceSource = readRoomToolServiceTreeSource();
   const typeSource = readFileSync("src/types/room-tools.ts", "utf8");
   const manifestSource = readFileSync("rooms/laboratory/tools/toolchain.manifest.json", "utf8");
   const projectToolStatusSource = readFileSync(
@@ -261,7 +273,7 @@ test("room tool service supports app-managed installers and system-command probe
 });
 
 test("room tool service resolves toolchain manifests from installed and workspace fallback layouts", () => {
-  const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
+  const serviceSource = readRoomToolServiceTreeSource();
 
   assert.match(
     serviceSource,

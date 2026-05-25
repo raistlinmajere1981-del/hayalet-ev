@@ -25,6 +25,10 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
     "utf8"
   );
   const captureServiceSource = readFileSync("electron/capture-service.ts", "utf8");
+  const captureDiagnosticsHelperSource = readFileSync(
+    "electron/capture/diagnostics-helper.ts",
+    "utf8"
+  );
   const sessionSource = readFileSync(
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/session/CompanionSessionCoordinator.kt",
     "utf8"
@@ -148,7 +152,7 @@ test("android companion diagnostics panel stays wired across ui and runtime flow
 
   assert.match(captureServiceSource, /\/api\/v1\/diagnostics\/snapshot/);
   assert.match(captureServiceSource, /writeCompanionDiagnosticsShadowSnapshot/);
-  assert.match(captureServiceSource, /Paths\.getLogsDir\(\),\s*"android-companion"/);
+  assert.match(captureDiagnosticsHelperSource, /Paths\.getLogsDir\(\),\s*"android-companion"/);
 
   assert.match(transportSource, /CompanionDiagnostics\.e\("bridge", "GET \$path failed\."/);
   assert.match(transportSource, /reportFailureToDiagnostics: Boolean = true/);
