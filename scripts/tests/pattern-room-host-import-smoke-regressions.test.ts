@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { buildRoomHostModuleDataUrl } from "../../src/js/modules/rooms/room-host-source.ts";
+import { PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND } from "../../rooms/pattern-room/shared/types/pattern-room-case-review-dispatch.ts";
 import {
   PATTERN_ROOM_LOAD_COMMAND,
   PATTERN_ROOM_SAVE_COMMAND,
@@ -34,9 +35,11 @@ function assertPatternRoomHostModule(moduleNamespace: PatternRoomHostModule): vo
   assert.equal(typeof moduleNamespace.default?.activate, "function");
   const activation = moduleNamespace.default.activate({});
   assert.deepEqual(Object.keys(activation.commands).sort(), [
+    PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
     PATTERN_ROOM_LOAD_COMMAND,
     PATTERN_ROOM_SAVE_COMMAND,
   ]);
+  assert.equal(typeof activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND], "function");
   assert.equal(typeof activation.commands[PATTERN_ROOM_LOAD_COMMAND], "function");
   assert.equal(typeof activation.commands[PATTERN_ROOM_SAVE_COMMAND], "function");
   assert.equal(typeof activation.onRoomEvent, "function");

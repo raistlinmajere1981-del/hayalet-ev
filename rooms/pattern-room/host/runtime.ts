@@ -2,6 +2,19 @@ import { PATTERN_ROOM_DOMAIN_MOCK } from "../shared/data/pattern-room-domain.moc
 import { migratePatternRoomSnapshot } from "../shared/state/pattern-room-snapshot-migration.js";
 import { parsePatternRoomSessionSnapshot } from "../shared/state/pattern-room-snapshot.js";
 import {
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_FAILED_EVENT,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_PROTOCOL,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCHED_EVENT,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_ACTION,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_CONNECT_POLICY,
+  type PatternRoomCaseReviewDispatchDraft,
+  type PatternRoomCaseReviewDispatchedEventPayload,
+  type PatternRoomCaseReviewDispatchFailedEventPayload,
+  type PatternRoomCaseReviewDispatchRoleSlot,
+  type PatternRoomCaseReviewTargetSlot,
+} from "../shared/types/pattern-room-case-review-dispatch.js";
+import {
   PATTERN_ROOM_LOAD_COMMAND,
   PATTERN_ROOM_LOADED_EVENT,
   PATTERN_ROOM_SAVE_COMMAND,
@@ -20,8 +33,17 @@ import type { PatternRoomSessionSnapshot } from "../shared/types/pattern-room-sn
 const PATTERN_ROOM_ID = "pattern-room";
 const STORAGE_PATH_STATE_KEYS = ["storageDir", "runtimePaths", "paths"] as const;
 const DEFAULT_FAILURE_MESSAGE = "Pattern Room persistence failed.";
+const DEFAULT_DISPATCH_FAILURE_MESSAGE = "Pattern Room case review dispatch failed.";
 const SNAPSHOT_FILE_SUFFIX = ".snapshot.json";
 const SAFE_TOPIC_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const CASE_REVIEW_TARGET_SLOT_BY_ROLE: Readonly<
+  Record<PatternRoomCaseReviewDispatchRoleSlot, PatternRoomCaseReviewTargetSlot>
+> = {
+  AI0: "ai0",
+  AI1: "ai1",
+  AI2: "ai2",
+  US1: "us1",
+};
 
 type PatternRoomCommandExposure = "public" | "internal";
 
@@ -62,6 +84,7 @@ type PatternRoomElectronApi = {
 };
 
 export type PatternRoomHostApi = {
+  dispatchBridge?: (payload: Record<string, unknown>) => Promise<unknown>;
   getState?: (key: string) => unknown;
   log?: (level: string, message: string) => void;
   notifyRoom?: (type: string, payload?: Record<string, unknown>) => void;
@@ -78,7 +101,9 @@ export type PatternRoomHostApi = {
 
 export type PatternRoomHostActivation = {
   commands: Record<
-    typeof PATTERN_ROOM_SAVE_COMMAND | typeof PATTERN_ROOM_LOAD_COMMAND,
+    | typeof PATTERN_ROOM_SAVE_COMMAND
+    | typeof PATTERN_ROOM_LOAD_COMMAND
+    | typeof PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
     PatternRoomCommandHandler
   >;
   dispose: () => Promise<void>;
@@ -105,6 +130,14 @@ export type PatternRoomHostRuntimeOptions = {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && Array.isArray(value) === false;
+}
+
+function isCaseReviewRoleSlot(value: unknown): value is PatternRoomCaseReviewDispatchRoleSlot {
+  return value === "AI0" || value === "AI1" || value === "AI2" || value === "US1";
+}
+
+function isCaseReviewTargetSlot(value: unknown): value is PatternRoomCaseReviewTargetSlot {
+  return value === "ai0" || value === "ai1" || value === "ai2" || value === "us1";
 }
 
 function asNonEmptyString(value: unknown): string | null {
@@ -335,6 +368,59 @@ function getSafeErrorMessage(error: unknown): string {
   return normalized;
 }
 
+function getSafeDispatchErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : DEFAULT_DISPATCH_FAILURE_MESSAGE;
+  const normalized = message.trim().replace(/\s+/g, " ").slice(0, 160);
+  if (normalized === "" || normalized.includes("/") || normalized.includes("\\")) {
+    return DEFAULT_DISPATCH_FAILURE_MESSAGE;
+  }
+  return normalized;
+}
+
+function isCaseReviewDispatchDraft(value: unknown): value is PatternRoomCaseReviewDispatchDraft {
+  if (!isRecord(value) || !isCaseReviewRoleSlot(value["roleSlot"])) {
+    return false;
+  }
+
+  const expectedTargetSlot = CASE_REVIEW_TARGET_SLOT_BY_ROLE[value["roleSlot"]];
+  if (value["targetSlot"] !== expectedTargetSlot || !Array.isArray(value["warnings"])) {
+    return false;
+  }
+
+  if (
+    value["warnings"].every((warning) => typeof warning === "string") !== true ||
+    !isRecord(value["payload"])
+  ) {
+    return false;
+  }
+
+  const bridgePayload = value["payload"];
+  if (
+    bridgePayload["action"] !== PATTERN_ROOM_CASE_REVIEW_DISPATCH_ACTION ||
+    bridgePayload["toSlot"] !== expectedTargetSlot ||
+    !isCaseReviewTargetSlot(bridgePayload["toSlot"]) ||
+    bridgePayload["connectPolicy"] !== PATTERN_ROOM_CASE_REVIEW_DISPATCH_CONNECT_POLICY ||
+    !isRecord(bridgePayload["payload"])
+  ) {
+    return false;
+  }
+
+  const payloadBody = bridgePayload["payload"];
+  const protocol = payloadBody["protocol"];
+  if (
+    asNonEmptyString(payloadBody["text"]) === null ||
+    !isRecord(protocol) ||
+    Object.hasOwn(protocol, "context") ||
+    protocol["room"] !== PATTERN_ROOM_CASE_REVIEW_DISPATCH_PROTOCOL.room ||
+    protocol["scenario"] !== PATTERN_ROOM_CASE_REVIEW_DISPATCH_PROTOCOL.scenario ||
+    protocol["protocolKey"] !== PATTERN_ROOM_CASE_REVIEW_DISPATCH_PROTOCOL.protocolKey
+  ) {
+    return false;
+  }
+
+  return payloadBody["page"] === undefined || asNonEmptyString(payloadBody["page"]) !== null;
+}
+
 export default function createPatternRoomHostRuntime(
   options: PatternRoomHostRuntimeOptions = {}
 ): PatternRoomHostRuntime {
@@ -376,6 +462,22 @@ export default function createPatternRoomHostRuntime(
           error,
           success: false,
         } satisfies PatternRoomSaveFailedEventPayload);
+      }
+
+      function notifyCaseReviewDispatched(draft: PatternRoomCaseReviewDispatchDraft): void {
+        api.notifyRoom?.(PATTERN_ROOM_CASE_REVIEW_DISPATCHED_EVENT, {
+          roleSlot: draft.roleSlot,
+          success: true,
+          targetSlot: draft.targetSlot,
+          warnings: [...draft.warnings],
+        } satisfies PatternRoomCaseReviewDispatchedEventPayload);
+      }
+
+      function notifyCaseReviewDispatchFailed(error: string): void {
+        api.notifyRoom?.(PATTERN_ROOM_CASE_REVIEW_DISPATCH_FAILED_EVENT, {
+          error,
+          success: false,
+        } satisfies PatternRoomCaseReviewDispatchFailedEventPayload);
       }
 
       async function enqueueSave(snapshot: PatternRoomSessionSnapshot): Promise<void> {
@@ -438,6 +540,41 @@ export default function createPatternRoomHostRuntime(
         }
       }
 
+      async function dispatchCaseReview(payload: unknown): Promise<PatternRoomCommandResult> {
+        const commandPayload = readCommandPayload(payload);
+        const draft = commandPayload["draft"];
+        if (!isCaseReviewDispatchDraft(draft)) {
+          const error = "Pattern Room case review dispatch draft is invalid.";
+          notifyCaseReviewDispatchFailed(error);
+          return {
+            error,
+            success: false,
+          };
+        }
+
+        if (typeof api.dispatchBridge !== "function") {
+          const error = "Pattern Room dispatch bridge is unavailable.";
+          notifyCaseReviewDispatchFailed(error);
+          return {
+            error,
+            success: false,
+          };
+        }
+
+        try {
+          await api.dispatchBridge(draft.payload);
+          notifyCaseReviewDispatched(draft);
+          return { success: true };
+        } catch (error) {
+          const message = getSafeDispatchErrorMessage(error);
+          notifyCaseReviewDispatchFailed(message);
+          return {
+            error: message,
+            success: false,
+          };
+        }
+      }
+
       api.registerCommand?.(PATTERN_ROOM_SAVE_COMMAND, saveSnapshot, {
         description: "Persist the active Pattern Room snapshot from the room UI runtime.",
         exposure: "internal",
@@ -448,11 +585,17 @@ export default function createPatternRoomHostRuntime(
         exposure: "internal",
         scope: "room-ui",
       });
+      api.registerCommand?.(PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND, dispatchCaseReview, {
+        description: "Dispatch a prepared Pattern Room case review draft from the room UI runtime.",
+        exposure: "internal",
+        scope: "room-ui",
+      });
 
       return {
         commands: {
           [PATTERN_ROOM_SAVE_COMMAND]: saveSnapshot,
           [PATTERN_ROOM_LOAD_COMMAND]: loadSnapshot,
+          [PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND]: dispatchCaseReview,
         },
         async dispose(): Promise<void> {
           await saveQueue;
