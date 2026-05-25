@@ -56,11 +56,6 @@ export function renderWorkspaceInteractiveControls(
 ) {
   return `
     <section class="labx-card labx-controls-card labx-workspace-focus-row__panel" data-tone="accent">
-      <div class="labx-card__header">
-        <div>
-          <h2 class="labx-card__title">${escapeHtml(copy.t("mediaAnalysis.interactiveControls.title", "Visual Adjustments"))}</h2>
-        </div>
-      </div>
       <div class="labx-card__body">
         <div class="labx-controls-stack">
           ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.brightness", "Brightness"), "brightness", settings.brightness, 0, 200, 1, "%", 100)}

@@ -344,6 +344,10 @@
   line-height: 1.35;
 }
 
+.labx-operation-card__main[data-title-hidden="true"] p {
+  margin-top: 0;
+}
+
 .labx-operation-card__status {
   flex: 0 0 auto;
   padding: var(--lab-inspector-rem-0-14) var(--lab-inspector-rem-0-36);
@@ -876,10 +880,6 @@
   border: var(--lab-inspector-px-1) solid var(--lab-border-default);
   border-radius: var(--lab-radius-md);
   background: var(--lab-inspector-color-32);
-}
-
-.labx-audio-focus__header {
-  margin-bottom: var(--lab-inspector-rem-0-15);
 }
 
 .labx-audio-focus__controls {

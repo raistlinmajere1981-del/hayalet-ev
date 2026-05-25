@@ -989,28 +989,29 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     }
     case "analysis-prep-group-toggled": {
-      const expandedCapabilityIds = normalizeLabCapabilityIds(
-        state.ui.workspace.analysisPrepExpandedCapabilityIds
-      );
       const capabilityIds = normalizeWorkspaceCapabilityIds(state.selectedCapabilities);
-      const nextCapabilityIds = capabilityIds.includes(event.capabilityId)
-        ? capabilityIds.filter(function (entry) {
+      const capabilityModuleIds = getAnalysisModuleIdsForCapabilityId(event.capabilityId);
+      const moduleToggles = asLabRecord(asLabRecord(state.workbench)["moduleToggles"]);
+      const groupFullySelected =
+        capabilityIds.includes(event.capabilityId) &&
+        capabilityModuleIds.length > 0 &&
+        capabilityModuleIds.every(function (moduleId) {
+          return moduleToggles[moduleId] !== false;
+        });
+      const nextGroupSelected = groupFullySelected !== true;
+      const nextCapabilityIds = nextGroupSelected
+        ? capabilityIds.includes(event.capabilityId)
+          ? capabilityIds
+          : capabilityIds.concat(event.capabilityId)
+        : capabilityIds.filter(function (entry) {
             return entry !== event.capabilityId;
-          })
-        : capabilityIds.concat(event.capabilityId);
-      const nextExpandedCapabilityIds = expandedCapabilityIds.includes(event.capabilityId)
-        ? expandedCapabilityIds
-        : expandedCapabilityIds.concat(event.capabilityId);
-      state.ui.workspace = {
-        ...state.ui.workspace,
-        analysisPrepExpandedCapabilityIds: nextExpandedCapabilityIds,
-      };
+          });
       state.selectedCapabilities = normalizeWorkspaceCapabilityIds(nextCapabilityIds);
       state.workbench = patchAnalysisPreparationCapabilityModuleToggles(
         state.workbench,
         event.capabilityId,
         state.selectedCapabilities,
-        nextCapabilityIds.includes(event.capabilityId)
+        nextGroupSelected
       );
       return state;
     }

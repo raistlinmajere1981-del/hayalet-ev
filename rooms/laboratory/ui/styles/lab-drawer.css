@@ -139,11 +139,6 @@
   background: var(--lab-surface-2);
 }
 
-.labx-drawer__intent-item[data-blocked="true"] {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 .labx-drawer__intent-block {
   color: var(--lab-text-dim);
   font-size: var(--lab-drawer-rem-0-68);
@@ -195,8 +190,19 @@
   font-size: var(--lab-drawer-rem-0-76);
 }
 
+.labx-drawer__intent-item input[type="checkbox"] {
+  accent-color: var(--lab-drawer-color-19);
+  opacity: 0.74;
+}
+
 .labx-drawer__intent-cluster[data-selection-state="partial"] .labx-drawer__intent-item input {
-  opacity: 0.55;
+  accent-color: var(--lab-drawer-color-15);
+  opacity: 0.82;
+}
+
+.labx-drawer__intent-cluster[data-selection-state="full"] .labx-drawer__intent-item input {
+  accent-color: var(--lab-drawer-color-16);
+  opacity: 1;
 }
 
 .labx-drawer__intent-cluster[data-selection-state="partial"] .labx-drawer__intent-item strong {
@@ -267,12 +273,17 @@
 
 .labx-analysis-group__modules {
   display: grid;
-  gap: var(--lab-drawer-rem-0-32);
+  gap: var(--lab-drawer-rem-0-48);
 }
 
 .labx-analysis-module {
   display: grid;
-  gap: var(--lab-drawer-rem-0-42);
+  gap: var(--lab-drawer-rem-0-28);
+  min-width: 0;
+  padding: var(--lab-drawer-rem-0-42);
+  border: var(--lab-drawer-px-1) solid var(--lab-rail-processing-color-21);
+  border-radius: var(--lab-radius-sm);
+  background: var(--lab-inspector-color-20);
   color: var(--lab-text-strong);
   font-size: var(--lab-drawer-rem-0-68);
 }
@@ -294,6 +305,34 @@
 
 .labx-analysis-module[data-active="true"] strong {
   color: var(--lab-drawer-color-24);
+}
+
+.labx-analysis-module > .labx-settings-block {
+  width: auto;
+  min-width: 0;
+  margin-left: var(--lab-drawer-rem-1-4);
+  padding: var(--lab-drawer-rem-0-2) 0 0 var(--lab-drawer-rem-0-55);
+  border-top: 0;
+  border-left: var(--lab-drawer-px-1) solid var(--lab-drawer-color-22);
+  opacity: 0.72;
+}
+
+.labx-analysis-module > .labx-settings-block[open],
+.labx-analysis-module > .labx-settings-block:hover {
+  opacity: 1;
+}
+
+.labx-analysis-module > .labx-settings-block .labx-settings-block__summary {
+  min-height: var(--lab-drawer-rem-1-7);
+  padding: var(--lab-drawer-rem-0-16) var(--lab-drawer-rem-0-28);
+}
+
+.labx-analysis-module > .labx-settings-block[open] .labx-settings-block__summary {
+  color: var(--lab-text-default);
+}
+
+.labx-analysis-module > .labx-settings-block .labx-settings-grid {
+  padding-top: var(--lab-drawer-rem-0-32);
 }
 
 /* Drawer preflight. */

@@ -8,7 +8,7 @@
   display: grid;
   grid-template-columns:
     minmax(var(--lab-shell-rem-14), var(--lab-shell-rem-18)) minmax(0, 1fr)
-    minmax(var(--lab-shell-rem-18), var(--lab-shell-rem-22));
+    minmax(var(--lab-shell-rem-18), var(--lab-shell-rem-24));
   grid-template-rows: var(--lab-topbar-height) minmax(0, 1fr) var(--lab-strip-height);
   grid-template-areas:
     "topbar topbar  topbar"
@@ -30,7 +30,7 @@
 
 /* Collapse left panel while preserving grid areas. */
 .labx-shell[data-source-panel-collapsed="true"] {
-  grid-template-columns: 0 minmax(0, 1fr) minmax(var(--lab-shell-rem-18), var(--lab-shell-rem-22));
+  grid-template-columns: 0 minmax(0, 1fr) minmax(var(--lab-shell-rem-18), var(--lab-shell-rem-24));
 }
 
 /* Collapse right panel while preserving grid areas. */
@@ -635,7 +635,7 @@
 
 .labx-module-overlay {
   position: relative;
-  width: min(96rem, calc(100vw - var(--lab-shell-rem-2)));
+  width: min(var(--lab-shell-rem-96), calc(100vw - var(--lab-shell-rem-2)));
   max-height: var(--lab-overlay-max-height);
   padding: var(--lab-shell-rem-1-1);
   box-sizing: border-box;

@@ -584,6 +584,11 @@ test("laboratory v2 shell renders source intake in the setup drawer and preview 
   assert.match(surface.inspector ?? "", /data-lab-action="workspace-controls-tab-select"/);
   assert.match(surface.inspector ?? "", /data-inspector-panel="audio"[\s\S]*id="lab-audio-focus"/);
   assert.match(surface.inspector ?? "", /data-inspector-panel="visual"[\s\S]*labx-controls-card/);
+  assert.doesNotMatch(surface.inspector ?? "", /labx-audio-focus__header/);
+  assert.doesNotMatch(
+    surface.inspector ?? "",
+    /<h2 class="labx-card__title">(?:Görsel Ayarlar|Visual Adjustments)<\/h2>/
+  );
   assert.doesNotMatch(surface.main, /class="labx-workspace-focus-row"/);
   assert.doesNotMatch(surface.main, /labx-timeline__range-info/);
   assert.doesNotMatch(surface.main, /labx-bookmarks/);
@@ -912,6 +917,9 @@ test("laboratory icon rail operation popovers mirror active timeline and ROI sco
   const surface = renderWorkspaceSurface(store.getState());
 
   assert.match(surface.main, /data-slot="clip-export"/);
+  assert.match(surface.main, /data-slot="clip-export"[\s\S]*labx-icon-rail-popover__title/);
+  assert.doesNotMatch(surface.main, /data-slot="clip-export"[\s\S]*<h3>/);
+  assert.match(surface.main, /data-title-hidden="true"/);
   assert.match(surface.main, /data-lab-operation-scope="timeRange"/);
   assert.match(surface.main, /data-lab-operation-scope="roi"/);
   assert.match(
@@ -933,7 +941,7 @@ test("laboratory video ROI without a timeline range stays ROI-only in operation 
   });
   store.dispatch({
     type: "icon-rail-slot-selected",
-    slotId: "roi-crop",
+    slotId: "roi-select",
   });
 
   const state = store.getState();
@@ -944,6 +952,8 @@ test("laboratory video ROI without a timeline range stays ROI-only in operation 
   assert.equal(state.ui.workspace.timelineStartMs, null);
   assert.equal(state.ui.workspace.timelineEndMs, null);
   assert.match(surface.main, /data-lab-selection-roi-enabled="true"/);
+  assert.doesNotMatch(surface.main, /data-slot="roi-select"[\s\S]*<h3>/);
+  assert.match(surface.main, /data-title-hidden="true"/);
   assert.match(operationMarkup, /data-lab-operation-scope="roi"/);
   assert.doesNotMatch(operationMarkup, /data-lab-operation-scope="timeRange"/);
 });
@@ -960,6 +970,7 @@ test("laboratory source drawer tab remains report-analysis only", () => {
   assert.match(drawer, /data-block-id="analysis-prep"/);
   assert.match(drawer, /data-lab-action="run-deep-analysis"/);
   assert.match(drawer, /Analysis Modules/);
+  assert.doesNotMatch(drawer, /labx-decision-header/);
   assert.doesNotMatch(drawer, /data-operation-id=/);
   assert.doesNotMatch(drawer, /operationSettings\./);
   assert.doesNotMatch(
@@ -1465,9 +1476,12 @@ test("laboratory operation error buttons keep retry label short and expose messa
   ]);
 
   assert.match(html, /data-action-status="error"/);
+  assert.match(html, /<h3>Enhanced Frame<\/h3>/);
+  assert.match(html, /data-title-hidden="false"/);
   assert.match(html, />Retry<\/button>/);
   assert.match(html, /title="ffmpeg returned a very long diagnostic about an unsupported filter"/);
   assert.match(html, /class="labx-operation-card__action-state"/);
+  assert.doesNotMatch(html, /<h2 class="labx-card__title">(?:Operations|İşlemler)<\/h2>/);
 });
 
 test("laboratory operation success state returns controls to the normal run action", () => {
@@ -1504,6 +1518,7 @@ test("laboratory operation success state returns controls to the normal run acti
 test("laboratory Turkish workspace controls localize operation and analysis catalog labels", () => {
   const store = createSeededState(true);
   store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
+  store.dispatch({ type: "analysis-prep-group-expanded", capabilityIds: ["audio-signal"] });
   const trCopy = createTurkishCopy();
   const surface = renderWorkspaceSurface(store.getState(), { copy: trCopy });
   const drawer = renderLabDrawer(store.getState(), surface, trCopy);
@@ -1544,20 +1559,29 @@ test("laboratory analysis preparation groups default closed and expand on demand
 
   const closedDrawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
   assert.match(closedDrawer, /data-lab-action="analysis-prep-group-toggle"/);
+  assert.match(closedDrawer, /data-lab-action="analysis-prep-group-drawer-toggle"/);
   assert.match(closedDrawer, /aria-expanded="false"/);
   assert.doesNotMatch(closedDrawer, /class="labx-analysis-module"/);
+  const closedGroupToggle = closedDrawer.match(
+    /<input[^>]*data-lab-action="analysis-prep-group-toggle"[^>]*data-lab-value="audio-signal"[^>]*>/
+  )?.[0];
+  assert.ok(closedGroupToggle);
+  assert.match(closedGroupToggle, /aria-checked="false"/);
+  assert.match(closedGroupToggle, /data-selection-state="none"/);
+  assert.doesNotMatch(closedGroupToggle, /\sdisabled(\s|>|\/)/);
 
-  store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
+  store.dispatch({ type: "analysis-prep-group-expanded", capabilityIds: ["audio-signal"] });
   const openDrawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
 
   assert.match(openDrawer, /data-lab-value="audio-signal"[\s\S]*aria-expanded="true"/);
   assert.match(openDrawer, /class="labx-analysis-module"/);
   assert.match(openDrawer, /Audio signal/);
+  assert.deepEqual(store.getState().selectedCapabilities, []);
   const signalToggle = openDrawer.match(
-    /<input[\s\S]*data-lab-action="module-toggle"[\s\S]*data-lab-value="audio-signal::signal-health"[\s\S]*?\/>/
+    /<input[^>]*data-lab-action="module-toggle"[^>]*data-lab-value="audio-signal::signal-health"[^>]*>/
   )?.[0];
   assert.ok(signalToggle);
-  assert.match(signalToggle, /\schecked(\s|>)/);
+  assert.doesNotMatch(signalToggle, /\schecked(\s|>)/);
   assert.match(
     openDrawer,
     /data-lab-field="analysisSettings\.modules\.signal-health\.sampleWindowSeconds"/
@@ -1574,6 +1598,7 @@ test("laboratory analysis preparation parent and child toggles stay synchronized
   });
   assert.equal(audioGroup?.selectionState, "full");
   assert.ok(audioGroup?.modules.every((module) => module.enabled));
+  assert.deepEqual(store.getState().ui.workspace.analysisPrepExpandedCapabilityIds, []);
 
   store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
   audioGroup = getAnalysisPreparationGroups(store.getState()).find(function (group) {
@@ -1581,6 +1606,7 @@ test("laboratory analysis preparation parent and child toggles stay synchronized
   });
   assert.equal(audioGroup?.selectionState, "none");
   assert.ok(audioGroup?.modules.every((module) => !module.enabled));
+  assert.deepEqual(store.getState().ui.workspace.analysisPrepExpandedCapabilityIds, []);
 
   store.dispatch({
     type: "analysis-prep-module-toggled",
@@ -1599,6 +1625,31 @@ test("laboratory analysis preparation parent and child toggles stay synchronized
 
   const drawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
   assert.match(drawer, /data-selection-state="partial"[\s\S]*data-lab-value="audio-signal"/);
+  const partialGroupToggle = drawer.match(
+    /<input[^>]*data-lab-action="analysis-prep-group-toggle"[^>]*data-lab-value="audio-signal"[^>]*>/
+  )?.[0];
+  assert.ok(partialGroupToggle);
+  assert.match(partialGroupToggle, /aria-checked="mixed"/);
+  assert.match(partialGroupToggle, /data-lab-indeterminate="true"/);
+  assert.match(partialGroupToggle, /data-selection-state="partial"/);
+  assert.doesNotMatch(partialGroupToggle, /\schecked(\s|>|\/)/);
+  assert.doesNotMatch(partialGroupToggle, /\sdisabled(\s|>|\/)/);
+
+  store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
+  audioGroup = getAnalysisPreparationGroups(store.getState()).find(function (group) {
+    return group.capabilityId === "audio-signal";
+  });
+  assert.equal(audioGroup?.selectionState, "full");
+  assert.ok(audioGroup?.modules.every((module) => module.enabled));
+  const fullDrawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
+  const fullGroupToggle = fullDrawer.match(
+    /<input[^>]*data-lab-action="analysis-prep-group-toggle"[^>]*data-lab-value="audio-signal"[^>]*>/
+  )?.[0];
+  assert.ok(fullGroupToggle);
+  assert.match(fullGroupToggle, /aria-checked="true"/);
+  assert.match(fullGroupToggle, /data-lab-indeterminate="false"/);
+  assert.match(fullGroupToggle, /data-selection-state="full"/);
+  assert.match(fullGroupToggle, /\schecked(\s|>|\/)/);
 });
 
 test("laboratory selection guidance splits expanded operation and analysis suggestions", () => {

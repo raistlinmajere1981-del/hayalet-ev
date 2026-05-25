@@ -457,6 +457,14 @@ export function startLaboratoryLabRoot() {
     return snapshot;
   }
 
+  function syncIndeterminateCheckboxes(root: ParentNode) {
+    root
+      .querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-lab-indeterminate]')
+      .forEach(function (input) {
+        input.indeterminate = input.dataset["labIndeterminate"] === "true";
+      });
+  }
+
   function replaceLabLayout(state: LabStoreState, surface: LabWorkspaceSurface, copy: LabI18n) {
     const previousShell = runtimeRoot.querySelector<HTMLElement>(".labx-shell");
     const preserveDebug = isLabRegionDebugEnabled(previousShell);
@@ -479,6 +487,7 @@ export function startLaboratoryLabRoot() {
         });
       }
       syncDecisionLayer(mountedShell, state);
+      syncIndeterminateCheckboxes(mountedShell);
     }
   }
 
@@ -610,6 +619,9 @@ export function startLaboratoryLabRoot() {
       shell
     );
     syncDecisionLayer(shell, state);
+    if (shell instanceof HTMLElement) {
+      syncIndeterminateCheckboxes(shell);
+    }
 
     syncProcessStripHeartbeat(state);
   }

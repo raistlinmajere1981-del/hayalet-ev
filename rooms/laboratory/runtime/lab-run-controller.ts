@@ -1592,6 +1592,20 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "asset-remove":
         removeAssetsWithConfirmation([value]);
         return;
+      case "analysis-prep-group-drawer-toggle":
+        if (value.trim() !== "") {
+          const capabilityId = value.trim() as CapabilityFamilyId;
+          const expandedCapabilityIds = state.ui.workspace.analysisPrepExpandedCapabilityIds;
+          dispatch({
+            type: "analysis-prep-group-expanded",
+            capabilityIds: expandedCapabilityIds.includes(capabilityId)
+              ? expandedCapabilityIds.filter(function (entry) {
+                  return entry !== capabilityId;
+                })
+              : expandedCapabilityIds.concat(capabilityId),
+          });
+        }
+        return;
       case "analysis-prep-group-toggle":
         if (isWorkspaceMutationLocked("analysis")) {
           pushLockedWorkspaceEvent("Analiz modülleri aktif analiz sırasında kilitli.");

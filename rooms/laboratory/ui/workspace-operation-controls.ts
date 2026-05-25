@@ -25,6 +25,10 @@ export type LabOperationComparisonState = {
   viewMode: string;
 };
 
+export type LabCapabilityCardRenderOptions = {
+  hideTitle?: boolean;
+};
+
 const GROUP_LABEL_FALLBACKS: Record<LabOperationCapabilityProjection["groupId"], string> = {
   audio: "Audio Outputs",
   clip: "Clip Outputs",
@@ -271,7 +275,8 @@ export function renderCapabilityCard(
   activeCapabilityId: LabOperationCapabilityProjection["id"] | null,
   copy: LabI18n,
   scope: LabOperationScopeState = { hasRoi: false, hasTimeRange: false },
-  comparison: LabOperationComparisonState | null = null
+  comparison: LabOperationComparisonState | null = null,
+  options: LabCapabilityCardRenderOptions = {}
 ) {
   const actionStatus = capability.actionStatus === "success" ? "idle" : capability.actionStatus;
   const readinessLabel =
@@ -297,9 +302,9 @@ export function renderCapabilityCard(
       data-operation-id="${escapeHtml(capability.id)}"
       data-active="${activeCapabilityId === capability.id ? "true" : "false"}"
     >
-      <div class="labx-operation-card__main">
+      <div class="labx-operation-card__main" data-title-hidden="${options.hideTitle === true ? "true" : "false"}">
         <div>
-          <h3>${escapeHtml(operationCopy.label)}</h3>
+          ${options.hideTitle === true ? "" : `<h3>${escapeHtml(operationCopy.label)}</h3>`}
           <p>${escapeHtml(operationCopy.description)}</p>
         </div>
         <span class="labx-operation-card__status">${escapeHtml(readinessLabel)}</span>
@@ -357,11 +362,6 @@ export function renderWorkspaceOperationControls(
   }
   return `
     <section class="labx-card labx-operation-controls labx-workspace-focus-row__panel" data-tone="accent">
-      <div class="labx-card__header">
-        <div>
-          <h2 class="labx-card__title">${escapeHtml(copy.t("mediaAnalysis.operations.title", "Operations"))}</h2>
-        </div>
-      </div>
       <div class="labx-card__body">
         <div class="labx-operation-groups">
           ${GROUP_ORDER.map(function (groupId) {

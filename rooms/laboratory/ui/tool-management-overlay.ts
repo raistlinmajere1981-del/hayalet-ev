@@ -758,19 +758,11 @@ function getSystemCommandVerificationHint(
 function getStatusChip(
   descriptor: LabToolDescriptorRecord,
   entry: LabToolEntryRecord,
-  stageId: string,
   copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const availability = asNonEmptyString(descriptor.availability) || "installable";
   const installStrategy = getInstallStrategy(descriptor);
-  const supportLevel = getSupportLevel(descriptor, stageId);
   const chips = [
-    supportLevel !== "unsupported"
-      ? renderStatusChip(
-          getSupportLabel(supportLevel, stageId, copy),
-          supportLevel === "required" ? "running" : "neutral"
-        )
-      : "",
     entry.busy === true
       ? renderStatusChip(copy.t("mediaAnalysis.toolManager.status.busy", "Çalışıyor"), "running")
       : entry.installed === true
@@ -800,7 +792,7 @@ function getLifecycleHint(
   descriptor: LabToolDescriptorRecord,
   entry: LabToolEntryRecord,
   copy: LabI18n = LAB_FALLBACK_I18N
-): string {
+): string | null {
   const toolId = asNonEmptyString(descriptor.toolId) || asNonEmptyString(entry.toolId);
   if (isSettingsManagedTool(toolId)) {
     return copy.t(
@@ -832,9 +824,7 @@ function getLifecycleHint(
         }
       );
     }
-    return copy.t("mediaAnalysis.toolManager.lifecycle.upToDate", "Güncel ({checkedAt}).", {
-      checkedAt,
-    });
+    return null;
   }
   if (
     asNonEmptyString(descriptor.availability) === "system-command" &&
@@ -972,6 +962,11 @@ function renderToolCard(
 
   const hasError = typeof entry.lastError === "string" && entry.lastError.trim() !== "";
   const lifecycleHint = getLifecycleHint(descriptor, entry, copy);
+  const lifecycleMarkup = hasError
+    ? `<p class="labx-module-card__error-hint">${escapeHtml(truncateErrorMessage(entry.lastError as string))}</p>`
+    : lifecycleHint === null
+      ? ""
+      : `<p class="labx-panel-hint">${escapeHtml(lifecycleHint)}</p>`;
   const truncatedLocation = truncateLocationPath(locationLabel);
   const pythonRuntimeLabel = getPythonRuntimeLabel(descriptor, copy);
   const supportedPythonLabel = getSupportedPythonLabel(descriptor);
@@ -984,14 +979,10 @@ function renderToolCard(
           <strong>${escapeHtml(displayName)}</strong>
         </div>
         <div class="labx-chip-row">
-          ${getStatusChip(descriptor, entry, stageId, copy)}
+          ${getStatusChip(descriptor, entry, copy)}
         </div>
       </div>
-      ${
-        hasError
-          ? `<p class="labx-module-card__error-hint">${escapeHtml(truncateErrorMessage(entry.lastError as string))}</p>`
-          : `<p class="labx-panel-hint">${escapeHtml(lifecycleHint)}</p>`
-      }
+      ${lifecycleMarkup}
       ${renderUsedBy(descriptor, copy)}
       <div class="labx-module-card__meta-details">
         <div class="labx-summary-list">

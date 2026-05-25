@@ -192,6 +192,14 @@
   object-fit: contain;
 }
 
+.labx-channel-filter {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .labx-preview-filter-wrap {
   position: relative;
   width: 100%;

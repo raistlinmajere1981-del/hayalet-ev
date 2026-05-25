@@ -805,7 +805,7 @@ test("laboratory mounted shell keeps chrome when YouTube is selected as a source
     const clickListener = environment.listener("click");
     assert.ok(clickListener);
     clickListener({
-      target: new MountedActionElement("analysis-prep-group-toggle", "audio-signal"),
+      target: new MountedActionElement("analysis-prep-group-drawer-toggle", "audio-signal"),
     } as unknown as Event);
     assert.match(environment.runtimeRoot.innerHTML, /data-lab-value="audio-signal"/);
     assert.match(
@@ -814,7 +814,7 @@ test("laboratory mounted shell keeps chrome when YouTube is selected as a source
     );
 
     clickListener({
-      target: new MountedActionElement("analysis-prep-group-toggle", "audio-signal"),
+      target: new MountedActionElement("analysis-prep-group-drawer-toggle", "audio-signal"),
     } as unknown as Event);
     assert.match(
       environment.runtimeRoot.innerHTML,
@@ -857,10 +857,10 @@ test("laboratory mounted shell coalesces store side effects into one animation f
     assert.ok(clickListener);
 
     clickListener({
-      target: new MountedActionElement("analysis-prep-group-toggle", "audio-signal"),
+      target: new MountedActionElement("analysis-prep-group-drawer-toggle", "audio-signal"),
     } as unknown as Event);
     clickListener({
-      target: new MountedActionElement("analysis-prep-group-toggle", "audio-signal"),
+      target: new MountedActionElement("analysis-prep-group-drawer-toggle", "audio-signal"),
     } as unknown as Event);
 
     assert.equal(environment.animationFrameCount(), 1);
@@ -890,11 +890,11 @@ test("laboratory mounted fallback logs missing region diagnostics before preserv
     const clickListener = environment.listener("click");
     assert.ok(clickListener);
 
-      const debugLogs = captureDebugLogs(function () {
-        clickListener({
-          target: new MountedActionElement("analysis-prep-group-toggle", "audio-signal"),
-        } as unknown as Event);
-      });
+    const debugLogs = captureDebugLogs(function () {
+      clickListener({
+        target: new MountedActionElement("analysis-prep-group-drawer-toggle", "audio-signal"),
+      } as unknown as Event);
+    });
     const debugMessages = debugLogs.map(function (entry) {
       return entry[0];
     });
@@ -931,9 +931,7 @@ test("laboratory YouTube source panel renders checked stream controls without im
   const sourcePresets = JSON.parse(
     readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
   );
-  const ytDlpForm = JSON.parse(
-    readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8")
-  );
+  const ytDlpForm = JSON.parse(readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8"));
   const store = createLabStore();
   store.dispatch({
     type: "snapshot-received",
@@ -1974,6 +1972,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
     workspaceSurfaceSource,
     /class="labx-workspace-stage"[\s\S]*class="labx-media-workbench"[\s\S]*renderPreviewArea\(\{ content: previewMarkup, focusClassName: previewFocusClassName \}\)[\s\S]*renderTimelineArea\(durationMs > 0 && !comparisonPreviewActive \? renderLabWaveformTimeline\(timelineModel\) : ""\)/
   );
+  assert.match(workspaceSurfaceSource, /renderCapabilityCard\([\s\S]*\{ hideTitle: true \}/);
   assert.doesNotMatch(
     workspaceSurfaceSource,
     /class="labx-workspace-stage"[\s\S]*\$\{inspectorMarkup\}/
@@ -2041,6 +2040,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
     themeSource,
     /\.labx-workspace-inspector\[data-open="false"\]\s*\.labx-workspace-inspector__body\s*\{[\s\S]*display:\s*none;/
   );
+  assert.doesNotMatch(themeSource, /\.labx-audio-focus__header\s*\{/);
   assert.match(
     themeSource,
     /\.labx-media-workbench\s*>\s*\.labx-timeline\s*\{[\s\S]*padding:\s*0 0 var\(--lab-workspace-rem-0-45\);[\s\S]*border-width:\s*0;[\s\S]*border-radius:\s*0;[\s\S]*box-shadow:\s*none;/
@@ -2073,6 +2073,10 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   assert.match(
     themeSource,
     /\.labx-preview-filter-wrap\s*\{[\s\S]*position:\s*relative;[\s\S]*width:\s*100%;[\s\S]*height:\s*100%;[\s\S]*max-height:\s*100%;[\s\S]*overflow:\s*hidden;/
+  );
+  assert.match(
+    themeSource,
+    /\.labx-channel-filter\s*\{[\s\S]*position:\s*absolute;[\s\S]*width:\s*0;[\s\S]*height:\s*0;[\s\S]*overflow:\s*hidden;[\s\S]*pointer-events:\s*none;/
   );
   assert.match(
     themeSource,
@@ -2139,7 +2143,7 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   assert.match(tokenSource, /--labx-danger:\s*var\(--lab-error\);/);
   assert.match(
     themeSource,
-    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*minmax\(var\(--lab-shell-rem-14\), var\(--lab-shell-rem-18\)\)\s+minmax\(\s*0,\s*1fr\s*\)\s+minmax\(var\(--lab-shell-rem-18\), var\(--lab-shell-rem-22\)\);[\s\S]*grid-template-rows:\s*var\(--lab-topbar-height\)\s+minmax\(\s*0,\s*1fr\s*\)\s+var\(--lab-strip-height\);/
+    /\.labx-shell\s*\{[\s\S]*grid-template-columns:\s*minmax\(var\(--lab-shell-rem-14\), var\(--lab-shell-rem-18\)\)\s+minmax\(\s*0,\s*1fr\s*\)\s+minmax\(var\(--lab-shell-rem-18\), var\(--lab-shell-rem-24\)\);[\s\S]*grid-template-rows:\s*var\(--lab-topbar-height\)\s+minmax\(\s*0,\s*1fr\s*\)\s+var\(--lab-strip-height\);/
   );
   assert.match(
     themeSource,
@@ -2147,7 +2151,7 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   );
   assert.match(
     themeSource,
-    /\.labx-shell\[data-source-panel-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*0\s+minmax\(\s*0,\s*1fr\s*\)\s+minmax\(var\(--lab-shell-rem-18\), var\(--lab-shell-rem-22\)\);/
+    /\.labx-shell\[data-source-panel-collapsed="true"\]\s*\{[\s\S]*grid-template-columns:\s*0\s+minmax\(\s*0,\s*1fr\s*\)\s+minmax\(var\(--lab-shell-rem-18\), var\(--lab-shell-rem-24\)\);/
   );
   assert.match(
     themeSource,

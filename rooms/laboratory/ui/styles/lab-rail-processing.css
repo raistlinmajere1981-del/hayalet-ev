@@ -548,7 +548,7 @@
 
 .labx-drawer__mode-nav {
   display: flex;
-  padding: var(--lab-space-2) var(--lab-space-3) var(--lab-space-1_5);
+  padding: var(--lab-space-1_5) var(--lab-space-1_5) var(--lab-space-1);
   border-bottom: var(--lab-rail-processing-px-1) solid var(--lab-border-subtle);
   margin: 0;
 }
@@ -556,9 +556,9 @@
 .labx-drawer__mode-nav .labx-rail-segment {
   flex-direction: row;
   flex-wrap: nowrap;
-  gap: var(--lab-space-1);
+  gap: var(--lab-space-0_5);
   width: 100%;
-  padding: var(--lab-space-1);
+  padding: var(--lab-space-0_5);
   border: var(--lab-rail-processing-px-1) solid var(--lab-border-subtle);
   border-radius: var(--lab-radius-md);
   background: var(--lab-surface-1);
@@ -569,8 +569,8 @@
   flex: 1;
   flex-direction: row;
   justify-content: center;
-  gap: var(--lab-space-1_5);
-  padding: var(--lab-space-1_5) var(--lab-space-2);
+  gap: var(--lab-space-1);
+  padding: var(--lab-space-1_5);
   border: var(--lab-rail-processing-px-1) solid var(--lab-border-subtle);
   border-radius: var(--lab-radius-sm);
   background: var(--lab-surface-2);
@@ -614,8 +614,8 @@
 .labx-drawer__mode-nav .labx-topbar-pill[data-pill-state="active"]::after {
   content: "";
   position: absolute;
-  left: var(--lab-space-2);
-  right: var(--lab-space-2);
+  left: var(--lab-space-1_5);
+  right: var(--lab-space-1_5);
   bottom: var(--lab-rail-processing-px-2);
   height: var(--lab-rail-processing-px-2);
   background: var(--lab-accent);
@@ -638,8 +638,7 @@
 /* Analysis group module row separator. */
 
 .labx-analysis-group__modules .labx-analysis-module + .labx-analysis-module {
-  border-top: var(--lab-rail-processing-px-1) solid var(--lab-rail-processing-color-21);
-  padding-top: var(--lab-rail-processing-rem-0-32);
+  border-color: var(--lab-drawer-color-22);
 }
 
 /* Drawer decision subtitle. */

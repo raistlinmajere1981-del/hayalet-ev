@@ -162,7 +162,7 @@ test("laboratory wireframe v2 renders locked timeline and roi without native pre
     surface.main,
     /labx-preview-media--workspace-video"[^>]*\scontrols(?:\s|>|=)/
   );
-  assert.match(surface.inspector ?? "", /Visual Adjustments/);
+  assert.match(surface.inspector ?? "", /data-inspector-panel="visual"[\s\S]*labx-controls-card/);
   assert.match(surface.inspector ?? "", /workspace\.interactive\.brightness/);
   assert.match(surface.inspector ?? "", /data-lab-action="workspace-setting-adjust"/);
 });

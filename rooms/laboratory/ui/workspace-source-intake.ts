@@ -112,7 +112,7 @@ function buildSvgChannelFilter(settings: LabInteractiveSettings, filterId = "lab
     return "";
   }
   return `
-    <svg class="labx-channel-filter" xmlns="http://www.w3.org/2000/svg">
+    <svg class="labx-channel-filter" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
       <defs>
         <filter id="${escapeHtml(filterId)}">
           <feColorMatrix type="matrix" values="${String(r)} 0 0 0 0  0 ${String(g)} 0 0 0  0 0 ${String(b)} 0 0  0 0 0 1 0"/>

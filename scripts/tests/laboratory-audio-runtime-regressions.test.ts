@@ -772,6 +772,7 @@ test("workspace audio focus leaves transport controls on the unified waveform ti
   assert.match(markup, /data-lab-action="workspace-setting-adjust"/);
   assert.match(markup, /workspace\.audioFocus\.gain/);
   assert.match(markup, /workspace\.audioFocus\.eqBands\.0\.gain/);
+  assert.doesNotMatch(markup, /labx-audio-focus__header|AUDIO FOCUS/);
   assert.doesNotMatch(markup, /workspace\.audioFocus\.playbackRate/);
   assert.doesNotMatch(markup, /workspace\.audioFocus\.preservePitch/);
   assert.doesNotMatch(markup, /ANALYSIS AID/);

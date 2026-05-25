@@ -222,9 +222,10 @@ function renderAnalysisPreparationAccordion(
   activeCapabilityIds: CapabilityFamilyId[],
   copy: LabI18n
 ) {
-  const blocked = group.readiness === "blocked";
   const selectionState = group.selectionState;
-  const selected = selectionState !== "none";
+  const fullySelected = selectionState === "full";
+  const partiallySelected = selectionState === "partial";
+  const selected = fullySelected || partiallySelected;
   const groupActive = group.modules.some(function (module) {
     return activeCapabilityIds.includes(module.capabilityId);
   });
@@ -236,7 +237,6 @@ function renderAnalysisPreparationAccordion(
   const toggleLabel = expanded
     ? copy.t("mediaAnalysis.drawer.setup.collapseGroup", "Collapse")
     : copy.t("mediaAnalysis.drawer.setup.expandGroup", "Expand");
-  const blockReason = group.blockReason ? translateLabRuntimeText(group.blockReason, copy) : "";
 
   return `
     <div
@@ -248,12 +248,13 @@ function renderAnalysisPreparationAccordion(
       data-active="${String(groupActive)}"
     >
       <div class="labx-drawer__intent-head">
-        <label class="labx-drawer__intent-item" data-blocked="${String(blocked)}">
+        <label class="labx-drawer__intent-item">
           <input
             type="checkbox"
-            ${selected ? "checked" : ""}
-            aria-checked="${selectionState === "partial" ? "mixed" : String(selected)}"
-            ${blocked ? "disabled" : ""}
+            ${fullySelected ? "checked" : ""}
+            aria-checked="${partiallySelected ? "mixed" : String(fullySelected)}"
+            data-lab-indeterminate="${partiallySelected ? "true" : "false"}"
+            data-selection-state="${escapeHtml(selectionState)}"
             data-lab-action="analysis-prep-group-toggle"
             data-lab-value="${escapeHtml(group.capabilityId)}"
           />
@@ -261,12 +262,11 @@ function renderAnalysisPreparationAccordion(
             <strong>${escapeHtml(group.label)}</strong>
             <small>${escapeHtml(group.description)}</small>
           </span>
-          ${blockReason !== "" ? `<small class="labx-drawer__intent-block">${escapeHtml(blockReason)}</small>` : ""}
         </label>
         <button
           class="labx-drawer__intent-toggle"
           type="button"
-          data-lab-action="analysis-prep-group-toggle"
+          data-lab-action="analysis-prep-group-drawer-toggle"
           data-lab-value="${escapeHtml(group.capabilityId)}"
           aria-expanded="${String(expanded)}"
           aria-label="${escapeHtml(toggleLabel)}"
@@ -891,11 +891,10 @@ export function renderLabDrawer(
   }
 
   const decisionSnapshot = buildLabDecisionSnapshot({ mode, state });
-  const decisionHeader = renderDecisionHeader(
-    decisionSnapshot.intent,
-    decisionSnapshot.state,
-    copy
-  );
+  const decisionHeader =
+    mode === "setup"
+      ? ""
+      : renderDecisionHeader(decisionSnapshot.intent, decisionSnapshot.state, copy);
 
   const modeNav = `<nav class="labx-drawer__mode-nav" aria-label="${escapeHtml(copy.t("mediaAnalysis.topBar.navLabel", "Mode indicators"))}">${renderModePills(state, copy)}</nav>`;
 

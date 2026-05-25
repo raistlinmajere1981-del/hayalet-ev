@@ -108,9 +108,6 @@ export function renderWorkspaceAudioFocus(
   const showFilterControls = audioFocus.filterType !== "none";
   return `
     <section class="labx-audio-focus labx-workspace-focus-row__panel" id="lab-audio-focus">
-      <div class="labx-audio-focus__header">
-        <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.audioFocus.eyebrow", "AUDIO FOCUS"))}</p>
-      </div>
       <div class="labx-audio-focus__controls">
         ${renderAudioSlider(copy.t("mediaAnalysis.audioFocus.fields.gain", "Gain"), "gain", audioFocus.gain, 0, 3, 0.1, "x", 1)}
         <div class="labx-control-row labx-control-row--select">

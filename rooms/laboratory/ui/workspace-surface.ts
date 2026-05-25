@@ -662,7 +662,8 @@ function renderIconRailPopoverBody(
     content.activeOperationCapabilityId,
     copy,
     content.operationScope,
-    content.comparison
+    content.comparison,
+    { hideTitle: true }
   );
 }
 

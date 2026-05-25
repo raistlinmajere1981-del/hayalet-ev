@@ -513,9 +513,11 @@
   --lab-drawer-rem-0-08: 0.08rem;
   --lab-drawer-rem-0-1: 0.1rem;
   --lab-drawer-rem-0-15: 0.15rem;
+  --lab-drawer-rem-0-16: 0.16rem;
   --lab-drawer-rem-0-2: 0.2rem;
   --lab-drawer-rem-0-22: 0.22rem;
   --lab-drawer-rem-0-25: 0.25rem;
+  --lab-drawer-rem-0-28: 0.28rem;
   --lab-drawer-rem-0-3: 0.3rem;
   --lab-drawer-rem-0-32: 0.32rem;
   --lab-drawer-rem-0-34: 0.34rem;
@@ -524,6 +526,7 @@
   --lab-drawer-rem-0-4: 0.4rem;
   --lab-drawer-rem-0-42: 0.42rem;
   --lab-drawer-rem-0-45: 0.45rem;
+  --lab-drawer-rem-0-48: 0.48rem;
   --lab-drawer-rem-0-5: 0.5rem;
   --lab-drawer-rem-0-55: 0.55rem;
   --lab-drawer-rem-0-6: 0.6rem;
@@ -538,6 +541,7 @@
   --lab-drawer-rem-1: 1rem;
   --lab-drawer-rem-1-2: 1.2rem;
   --lab-drawer-rem-1-4: 1.4rem;
+  --lab-drawer-rem-1-7: 1.7rem;
   --lab-drawer-rem-1-72: 1.72rem;
   --lab-drawer-rem-1-9: 1.9rem;
   --lab-drawer-rem-2: 2rem;
@@ -887,6 +891,7 @@
   --lab-shell-rem-44: 44rem;
   --lab-shell-rem-5: 5rem;
   --lab-shell-rem-68: 68rem;
+  --lab-shell-rem-96: 96rem;
   /* Workspace selection literal tokens. */
   --lab-workspace-gradient-01: linear-gradient(180deg, var(--lab-surface-1), var(--lab-surface-0));
   --lab-workspace-gradient-02: linear-gradient(
