@@ -80,6 +80,8 @@ export function createDefaultSettings(): AppSettings {
         commandConfirmation: "toast",
         androidTranscriptModelVariant: "light",
         androidDictationBackend: "vosk",
+        ttsMode: "local",
+        ttsLanguage: "tr",
       },
       providers: {
         androidCompanionEnabled: true,

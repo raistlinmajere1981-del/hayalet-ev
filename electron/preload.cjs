@@ -8,6 +8,7 @@ const TRANSCRIPT_INGRESS_CHANNEL = "transcript:ingress";
 const CAPTURE_MEDIA_INGRESS_CHANNEL = "capture:media-ingress";
 const CAPTURE_DICTATION_STATUS_CHANNEL = "capture:dictation-status";
 const CAPTURE_AMBIENT_STATUS_CHANNEL = "capture:ambient-status";
+const TTS_STATUS_CHANNEL = "tts:status";
 const SETTINGS_BROADCAST_NAME = "app-settings";
 const opencodeUiSessionUpdatedHandlers = new Map();
 const providerScenarioProgressHandlers = new Map();
@@ -16,6 +17,7 @@ const transcriptIngressHandlers = new Map();
 const captureMediaIngressHandlers = new Map();
 const captureDictationStatusHandlers = new Map();
 const captureAmbientStatusHandlers = new Map();
+const ttsStatusHandlers = new Map();
 let __app_preload_locale = "tr";
 let __app_preload_catalog = null;
 let __app_preload_settings_channel = null;
@@ -549,6 +551,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
   transcriptTranscribeLocal: (request) =>
     ipcRenderer.invoke("transcript-transcribe-local", request),
   transcriptSubmitIngress: (request) => ipcRenderer.invoke("transcript-submit-ingress", request),
+  ttsStatus: () => ipcRenderer.invoke("tts-status"),
+  ttsSpeak: (request) => ipcRenderer.invoke("tts-speak", request),
+  ttsStop: (requestId) => ipcRenderer.invoke("tts-stop", requestId),
+  ttsListModels: () => ipcRenderer.invoke("tts-list-models"),
+  ttsInstallModel: (modelId) => ipcRenderer.invoke("tts-install-model", modelId),
+  ttsOnStatus: (callback) => {
+    if (typeof callback !== "function" || ttsStatusHandlers.has(callback)) {
+      return;
+    }
+    const handler = (_event, payload) => callback(payload);
+    ttsStatusHandlers.set(callback, handler);
+    ipcRenderer.on(TTS_STATUS_CHANNEL, handler);
+  },
+  ttsOffStatus: (callback) => {
+    const handler = ttsStatusHandlers.get(callback);
+    if (!handler) return;
+    ipcRenderer.removeListener(TTS_STATUS_CHANNEL, handler);
+    ttsStatusHandlers.delete(callback);
+  },
   transcriptOnIngress: (callback) => {
     if (typeof callback !== "function" || transcriptIngressHandlers.has(callback)) {
       return;

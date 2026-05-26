@@ -3,7 +3,6 @@
   "id": "forge-room",
   "name": "Forge Room",
   "version": "0.1.0",
-  "description": "A guided production workbench where goals are shaped into tasks, compared across AI roles, and prepared for downstream handoff.",
   "menu": {
     "label": "Forge Room",
     "icon": "FG",
@@ -15,51 +14,6 @@
     "hostEntry": "host/index.js"
   },
   "defaultFeatureId": "forge-workbench",
-  "workbench": {
-    "experienceId": "forge-workbench",
-    "label": "Forge Workbench",
-    "description": "A room-local orchestration workbench for goal planning, review, synthesis, and handoff.",
-    "mode": "guided",
-    "primaryFeatureId": "forge-workbench",
-    "availableFeatureIds": ["forge-workbench"]
-  },
-  "i18n": {
-    "baseDir": "i18n"
-  },
-  "scene": {
-    "referenceSize": {
-      "width": 1600,
-      "height": 900
-    },
-    "roomBackgroundSrc": "shared/assets/room-background.svg",
-    "chrome": {
-      "pageShellVariant": "immersive-stage"
-    },
-    "roomsHotspot": {
-      "id": "forge-room-door",
-      "rect": {
-        "leftPx": 736,
-        "topPx": 232,
-        "widthPx": 170,
-        "heightPx": 332
-      },
-      "label": {
-        "text": "Forge Room"
-      }
-    },
-    "backHotspot": {
-      "id": "forge-room-back",
-      "rect": {
-        "leftPx": 56,
-        "topPx": 154,
-        "widthPx": 168,
-        "heightPx": 252
-      },
-      "label": {
-        "text": "Corridor"
-      }
-    }
-  },
   "features": [
     {
       "id": "forge-workbench",
@@ -271,5 +225,51 @@
         }
       }
     }
-  ]
+  ],
+  "workbench": {
+    "experienceId": "forge-workbench",
+    "label": "Forge Workbench",
+    "description": "A room-local orchestration workbench for goal planning, review, synthesis, and handoff.",
+    "mode": "guided",
+    "primaryFeatureId": "forge-workbench",
+    "availableFeatureIds": ["forge-workbench"]
+  },
+  "description": "A guided production workbench where goals are shaped into tasks, compared across AI roles, and prepared for downstream handoff.",
+  "scene": {
+    "referenceSize": {
+      "width": 1600,
+      "height": 900
+    },
+    "roomBackgroundSrc": "shared/assets/room-background.svg",
+    "roomsHotspot": {
+      "id": "forge-room-door",
+      "rect": {
+        "leftPx": 736,
+        "topPx": 402,
+        "widthPx": 170,
+        "heightPx": 332
+      },
+      "label": {
+        "text": "Forge Room"
+      }
+    },
+    "backHotspot": {
+      "id": "forge-room-back",
+      "rect": {
+        "leftPx": 56,
+        "topPx": 154,
+        "widthPx": 168,
+        "heightPx": 252
+      },
+      "label": {
+        "text": "Corridor"
+      }
+    },
+    "chrome": {
+      "pageShellVariant": "immersive-stage"
+    }
+  },
+  "i18n": {
+    "baseDir": "i18n"
+  }
 }

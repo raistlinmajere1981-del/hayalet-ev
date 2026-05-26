@@ -15,6 +15,7 @@ import {
 } from "./scrcpy-session-manager.ts";
 import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 import { normalizeTranscriptModelVariant } from "../shared/transcript/model-catalog.js";
+import { getTtsModelDescriptor } from "../shared/tts/model-catalog.js";
 
 import type {
   CaptureActionOutcome,
@@ -25,6 +26,7 @@ import type {
   CaptureAndroidStatus,
   CaptureAndroidPermissionStatus,
   CaptureAnalyzeSessionState,
+  CaptureCompanionTtsPayload,
   CaptureDictationStatusPayload,
   CaptureImportedAsset,
   CaptureMediaIngressPayload,
@@ -32,6 +34,12 @@ import type {
 } from "../src/types/capture.ts";
 
 import type { TranscriptTargetId } from "../src/types/transcript.ts";
+import type {
+  TtsLanguage,
+  TtsManagedModelId,
+  TtsStatusState,
+  TtsTargetId,
+} from "../src/types/tts.ts";
 
 import {
   isRecord,
@@ -456,7 +464,7 @@ class CaptureService {
   }
 
   async launchCompanion(
-    options: { target?: TranscriptTargetId | null } = {}
+    options: { target?: TranscriptTargetId | null; activeTab?: string | null } = {}
   ): Promise<CaptureActionOutcome> {
     const status = await this.refreshStatus();
     const settings = await loadSettings();
@@ -488,7 +496,7 @@ class CaptureService {
       return await this.buildActionOutcome("launch-companion", false, reverseState.message);
     }
 
-    const launchResult = await runCommand(adbPath, [
+    const launchArgs = [
       "-s",
       deviceId,
       "shell",
@@ -508,7 +516,13 @@ class CaptureService {
       "--es",
       "photoQuality",
       captureSettings.photoQuality,
-    ]).catch((error) => {
+    ];
+    const activeTab = normalizeText(options.activeTab);
+    if (activeTab !== null) {
+      launchArgs.push("--es", "activeTab", activeTab);
+    }
+
+    const launchResult = await runCommand(adbPath, launchArgs).catch((error) => {
       throw new Error(error instanceof Error ? error.message : String(error));
     });
     if (launchResult.exitCode !== 0) {
@@ -534,6 +548,66 @@ class CaptureService {
       true,
       "Companion app launch was requested on the phone."
     );
+  }
+
+  async startTts(options: {
+    target: TranscriptTargetId;
+    requestId: string;
+    text: string;
+    language: TtsLanguage;
+    modelId: TtsManagedModelId;
+  }): Promise<CaptureActionOutcome> {
+    const normalizedText = normalizeText(options.text);
+    const requestId = normalizeText(options.requestId);
+    const descriptor = getTtsModelDescriptor(options.modelId);
+    if (normalizedText === null || requestId === null || descriptor === null) {
+      return await this.buildActionOutcome(
+        "start-tts",
+        false,
+        "TTS text, requestId, and model are required."
+      );
+    }
+
+    const launchOutcome = await this.launchCompanion({ target: options.target, activeTab: "tts" });
+    if (launchOutcome.ok !== true) {
+      return launchOutcome;
+    }
+
+    const ttsPayload: CaptureCompanionTtsPayload = {
+      text: normalizedText,
+      language: options.language,
+      modelId: options.modelId,
+      profile: {
+        engine: "sherpa-onnx",
+        modelId: options.modelId,
+        language: options.language,
+        voice: descriptor.voice,
+        sampleRate: descriptor.sampleRate,
+      },
+    };
+
+    return await this.enqueueAnalyzeCommand("start-tts", "Android TTS requested.", {
+      target: options.target,
+      requestId,
+      replaceExistingKinds: ["start-tts", "stop-tts"],
+      tts: ttsPayload,
+    });
+  }
+
+  async stopTts(options: {
+    target: TranscriptTargetId;
+    requestId: string;
+  }): Promise<CaptureActionOutcome> {
+    const requestId = normalizeText(options.requestId);
+    if (requestId === null) {
+      return await this.buildActionOutcome("stop-tts", false, "TTS requestId is required.");
+    }
+
+    return await this.enqueueAnalyzeCommand("stop-tts", "Android TTS stop requested.", {
+      target: options.target,
+      requestId,
+      replaceExistingKinds: ["stop-tts"],
+    });
   }
 
   async requestAnalyzeSession(
@@ -1397,7 +1471,11 @@ class CaptureService {
                 ? "Android dictation is recording on the phone."
                 : commandKind === "stop-dictation"
                   ? "Android dictation is transcribing on the phone."
-                  : "The phone acknowledged the latest command.";
+                  : commandKind === "start-tts"
+                    ? "Android TTS is preparing on the phone."
+                    : commandKind === "stop-tts"
+                      ? "Android TTS stop was acknowledged by the phone."
+                      : "The phone acknowledged the latest command.";
         const message = normalizeText(body["message"]) ?? fallbackMessage;
         if (
           requestId !== null &&
@@ -1445,6 +1523,30 @@ class CaptureService {
             },
           });
         }
+        const acknowledgedTtsTarget: TtsTargetId | null =
+          target === "analyze-compose" || target?.startsWith("room:") === true
+            ? (target as TtsTargetId)
+            : null;
+        if (
+          requestId !== null &&
+          acknowledgedTtsTarget !== null &&
+          (commandKind === "start-tts" || commandKind === "stop-tts")
+        ) {
+          const { ttsService } = await import("./tts-service.ts");
+          await ttsService.acceptAndroidStatus({
+            requestId,
+            target: acknowledgedTtsTarget,
+            deviceId,
+            status:
+              statusText === "failed"
+                ? "failed"
+                : commandKind === "stop-tts" || statusText === "done"
+                  ? "stopped"
+                  : "preparing",
+            message,
+            progress: statusText === "done" ? 1 : 0.2,
+          });
+        }
         if (
           requestId !== null &&
           target === CAPTURE_ANALYZE_TARGET &&
@@ -1484,9 +1586,11 @@ class CaptureService {
                       ? this.analyzeState.state === "idle"
                         ? "pending-launch"
                         : this.analyzeState.state
-                      : previewActive === true
-                        ? "ready"
-                        : "pending-launch",
+                      : commandKind === "start-tts" || commandKind === "stop-tts"
+                        ? this.analyzeState.state
+                        : previewActive === true
+                          ? "ready"
+                          : "pending-launch",
             pendingCommand:
               statusText === "failed" || statusText === "done"
                 ? null
@@ -1494,7 +1598,9 @@ class CaptureService {
                   ? "capture-photo"
                   : commandKind === "start-dictation"
                     ? "start-dictation"
-                    : null,
+                    : commandKind === "start-tts"
+                      ? "start-tts"
+                      : null,
             message,
           };
         }
@@ -1583,6 +1689,55 @@ class CaptureService {
           message: normalizeText(body["message"]) ?? `Ambient listener status: ${status}`,
           transcript: normalizeText(body["transcript"]),
           metadata: this.normalizeMetadata(body["metadata"]),
+        });
+        this.sendJson(response, 200, { ok: true });
+        return;
+      }
+
+      if (method === "POST" && requestUrl.pathname === "/api/v1/tts/status") {
+        const body = await this.readJsonBody(request);
+        const requestId = normalizeText(body["requestId"]);
+        const target = normalizeTranscriptTarget(body["target"]);
+        const rawStatus = normalizeText(body["status"]);
+        const status: TtsStatusState | null =
+          rawStatus === "queued" ||
+          rawStatus === "preparing" ||
+          rawStatus === "playing" ||
+          rawStatus === "done" ||
+          rawStatus === "stopped" ||
+          rawStatus === "failed"
+            ? rawStatus
+            : null;
+        const ttsTarget: TtsTargetId | null =
+          target === "analyze-compose" || target?.startsWith("room:") === true
+            ? (target as TtsTargetId)
+            : null;
+        if (requestId === null || ttsTarget === null || status === null) {
+          this.sendJson(response, 400, {
+            ok: false,
+            error: "requestId, target, and status are required.",
+          });
+          return;
+        }
+
+        const progress =
+          typeof body["progress"] === "number" && Number.isFinite(body["progress"])
+            ? body["progress"]
+            : null;
+        const language = body["language"];
+        const modelId = body["modelId"];
+        const { ttsService } = await import("./tts-service.ts");
+        await ttsService.acceptAndroidStatus({
+          requestId,
+          target: ttsTarget,
+          deviceId: normalizeText(body["deviceId"]),
+          status,
+          message: normalizeText(body["message"]) ?? `Android TTS status: ${status}`,
+          progress,
+          language: language === "tr" || language === "en" ? language : null,
+          modelId:
+            modelId === "tr_TR-dfki-medium" || modelId === "en_US-lessac-medium" ? modelId : null,
+          error: normalizeText(body["error"]),
         });
         this.sendJson(response, 200, { ok: true });
         return;
@@ -2146,6 +2301,7 @@ class CaptureService {
       replaceExistingKinds?: CaptureCompanionCommandKind[];
       requireSession?: boolean;
       ambient?: CaptureAmbientListenerOptions;
+      tts?: CaptureCompanionTtsPayload | null;
     }
   ): Promise<CaptureActionOutcome> {
     const status = await this.refreshStatus();
@@ -2193,6 +2349,7 @@ class CaptureService {
         kind === "start-ambient-listener"
           ? resolveAmbientCommandProfile(captureSettings, options?.ambient)
           : null,
+      tts: options?.tts ?? null,
     };
     if (target === CAPTURE_ANALYZE_TARGET && isMediaCaptureCommand(kind)) {
       this.activeAnalyzeMediaRequestIds.add(getCommandRequestId(command));
@@ -2228,12 +2385,17 @@ class CaptureService {
               : kind === "start-dictation" ||
                   kind === "stop-dictation" ||
                   kind === "start-ambient-listener" ||
-                  kind === "stop-ambient-listener"
+                  kind === "stop-ambient-listener" ||
+                  kind === "start-tts" ||
+                  kind === "stop-tts"
                 ? this.analyzeState.state
                 : "capture-requested",
         deviceId,
         pendingCommand:
-          kind === "close-camera" || kind === "stop-dictation" || kind === "stop-ambient-listener"
+          kind === "close-camera" ||
+          kind === "stop-dictation" ||
+          kind === "stop-ambient-listener" ||
+          kind === "stop-tts"
             ? null
             : kind,
         message: successMessage,

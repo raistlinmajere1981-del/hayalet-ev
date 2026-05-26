@@ -20,10 +20,12 @@ import com.hayaletev.androidcompanion.transcript.AndroidRecordingResult
 import com.hayaletev.androidcompanion.transcript.AndroidVoskTranscriber
 import com.hayaletev.androidcompanion.transcript.TranscriptModelManager
 import com.hayaletev.androidcompanion.transcript.requireAndroidVoskModelProfile
+import com.hayaletev.androidcompanion.tts.AndroidSherpaTtsPlayer
 import com.hayaletev.androidcompanion.transport.BridgeCommand
 import com.hayaletev.androidcompanion.transport.BridgeCommandProfile
 import com.hayaletev.androidcompanion.transport.BridgePermissions
 import com.hayaletev.androidcompanion.transport.BridgeTranscriptModelProfile
+import com.hayaletev.androidcompanion.transport.BridgeTtsPayload
 import com.hayaletev.androidcompanion.transport.DesktopBridgeClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +56,10 @@ data class CompanionUiState(
     val ambientDetail: String? = null,
     val ambientWakePhrase: String? = null,
     val ambientHistory: String? = null,
+    val ttsStatus: String? = null,
+    val ttsDetail: String? = null,
+    val ttsModel: String? = null,
+    val ttsTextSummary: String? = null,
 )
 
 data class CompanionLaunchContext(
@@ -82,14 +88,22 @@ class CompanionSessionCoordinator(
     private val ambientListener = AndroidAmbientOpenWakeListener(appContext, scope)
     private val modelManager = TranscriptModelManager(appContext, bridgeClient)
     private val voskTranscriber = AndroidVoskTranscriber()
+    private val ttsPlayer = AndroidSherpaTtsPlayer(appContext)
     private var ambientTone: ToneGenerator? =
         runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 70) }.getOrNull()
+    private var ttsJob: Job? = null
+    private var activeTtsRequestId: String? = null
+    private var activeTtsPayload: BridgeTtsPayload? = null
     private var dictationStatus = appContext.getString(R.string.dictation_status_idle)
     private var dictationDetail = appContext.getString(R.string.dictation_detail_waiting)
     private var ambientMicrophoneStatus = appContext.getString(R.string.ambient_microphone_idle)
     private var ambientListeningStatus = appContext.getString(R.string.ambient_status_idle)
     private var ambientDetail = appContext.getString(R.string.ambient_detail_waiting)
     private var ambientWakePhraseSummary = "Hey Jarvis"
+    private var ttsStatus = appContext.getString(R.string.tts_status_idle)
+    private var ttsDetail = appContext.getString(R.string.tts_detail_waiting)
+    private var ttsModel = appContext.getString(R.string.tts_model_waiting)
+    private var ttsTextSummary = appContext.getString(R.string.tts_text_empty)
     private val ambientHistoryEntries = mutableListOf<String>()
     private val ambientHistoryClock = SimpleDateFormat("HH:mm:ss", Locale.US)
 
@@ -241,11 +255,22 @@ class CompanionSessionCoordinator(
         updateAmbientUi("stopped", appContext.getString(R.string.ambient_event_stopped), null)
         audioRecorder.cancel()
         cameraController.stopSession()
+        ttsPlayer.stop()
+        ttsJob?.cancel()
+        ttsJob = null
+        activeTtsRequestId = null
+        activeTtsPayload = null
+        updateTtsUi(
+            appContext.getString(R.string.tts_status_idle),
+            appContext.getString(R.string.tts_detail_waiting),
+            null,
+        )
     }
 
     fun destroy() {
         CompanionDiagnostics.i("session", "Destroying session coordinator.")
         stop()
+        ttsPlayer.release()
         ambientTone?.release()
         ambientTone = null
     }
@@ -518,6 +543,213 @@ class CompanionSessionCoordinator(
                         previewActive = cameraController.isPreviewBound(),
                     )
                 }
+
+                "start-tts" -> {
+                    audioRecorder.cancel()
+                    ambientListener.stop()
+                    activeTtsRequestId = null
+                    ttsPlayer.stop()
+                    ttsJob?.cancel()
+                    ttsJob = null
+                    val payload = command.tts
+                        ?: throw IllegalStateException(appContext.getString(R.string.tts_error_missing_payload))
+                    val requestId = command.requestId ?: command.id
+                    activeTtsRequestId = requestId
+                    activeTtsPayload = payload
+                    updateTtsUi(
+                        appContext.getString(R.string.tts_status_preparing),
+                        appContext.getString(R.string.tts_detail_preparing),
+                        payload,
+                    )
+                    publishUiState(
+                        connectionStatus = appContext.getString(R.string.status_connected_desktop),
+                        permissionsSummary = appContext.getString(R.string.permissions_ready),
+                    )
+                    bridgeClient.submitTtsStatus(
+                        requestId = requestId,
+                        deviceId = launchContext.deviceId,
+                        target = command.target,
+                        status = "preparing",
+                        message = "Android companion accepted TTS command.",
+                        progress = 0.2,
+                        language = payload.language,
+                        modelId = payload.modelId,
+                    )
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "accepted",
+                        message = "Android sherpa-onnx TTS request accepted.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                    ttsJob =
+                        scope.launch {
+                            runCatching {
+                                bridgeClient.submitTtsStatus(
+                                    requestId = requestId,
+                                    deviceId = launchContext.deviceId,
+                                    target = command.target,
+                                    status = "preparing",
+                                    message = "Preparing Android sherpa-onnx TTS runtime on the phone.",
+                                    progress = 0.35,
+                                    language = payload.language,
+                                    modelId = payload.modelId,
+                                )
+                                val result =
+                                    ttsPlayer.speak(payload) {
+                                        scope.launch {
+                                            if (activeTtsRequestId == requestId) {
+                                                withContext(Dispatchers.Main.immediate) {
+                                                    updateTtsUi(
+                                                        appContext.getString(R.string.tts_status_playing),
+                                                        appContext.getString(R.string.tts_detail_playing),
+                                                        payload,
+                                                    )
+                                                    publishUiState(
+                                                        connectionStatus =
+                                                            appContext.getString(R.string.status_connected_desktop),
+                                                        permissionsSummary =
+                                                            appContext.getString(R.string.permissions_ready),
+                                                    )
+                                                }
+                                                bridgeClient.submitTtsStatus(
+                                                    requestId = requestId,
+                                                    deviceId = launchContext.deviceId,
+                                                    target = command.target,
+                                                    status = "playing",
+                                                    message = "Android companion is playing TTS on the phone.",
+                                                    progress = 0.45,
+                                                    language = payload.language,
+                                                    modelId = payload.modelId,
+                                                )
+                                            }
+                                        }
+                                    }
+                                if (activeTtsRequestId != requestId) {
+                                    return@runCatching
+                                }
+                                activeTtsRequestId = null
+                                activeTtsPayload = null
+                                if (result.stopped) {
+                                    withContext(Dispatchers.Main.immediate) {
+                                        updateTtsUi(
+                                            appContext.getString(R.string.tts_status_idle),
+                                            appContext.getString(R.string.tts_detail_stopped),
+                                            payload,
+                                        )
+                                        publishUiState(
+                                            connectionStatus = appContext.getString(R.string.status_connected_desktop),
+                                            permissionsSummary = appContext.getString(R.string.permissions_ready),
+                                        )
+                                    }
+                                    bridgeClient.submitTtsStatus(
+                                        requestId = requestId,
+                                        deviceId = launchContext.deviceId,
+                                        target = command.target,
+                                        status = "stopped",
+                                        message = "Android TTS stopped.",
+                                        progress = 1.0,
+                                        language = payload.language,
+                                        modelId = payload.modelId,
+                                    )
+                                } else {
+                                    val doneDetail =
+                                        if (result.sampleRate > 0 && result.sampleCount > 0) {
+                                            appContext.getString(
+                                                R.string.tts_detail_done,
+                                                result.sampleRate,
+                                                result.sampleCount,
+                                            )
+                                        } else {
+                                            appContext.getString(R.string.tts_detail_done_engine)
+                                        }
+                                    withContext(Dispatchers.Main.immediate) {
+                                        updateTtsUi(
+                                            appContext.getString(R.string.tts_status_done),
+                                            doneDetail,
+                                            payload,
+                                        )
+                                        publishUiState(
+                                            connectionStatus = appContext.getString(R.string.status_connected_desktop),
+                                            permissionsSummary = appContext.getString(R.string.permissions_ready),
+                                        )
+                                    }
+                                    bridgeClient.submitTtsStatus(
+                                        requestId = requestId,
+                                        deviceId = launchContext.deviceId,
+                                        target = command.target,
+                                        status = "done",
+                                        message = "Android TTS playback finished.",
+                                        progress = 1.0,
+                                        language = payload.language,
+                                        modelId = payload.modelId,
+                                    )
+                                }
+                            }.onFailure { error ->
+                                if (activeTtsRequestId != requestId) {
+                                    return@onFailure
+                                }
+                                activeTtsRequestId = null
+                                activeTtsPayload = null
+                                val errorSummary = summarizeError(error)
+                                withContext(Dispatchers.Main.immediate) {
+                                    updateTtsUi(
+                                        appContext.getString(R.string.tts_status_error),
+                                        errorSummary,
+                                        payload,
+                                    )
+                                    publishUiState(
+                                        connectionStatus = appContext.getString(R.string.status_connected_desktop),
+                                        permissionsSummary = appContext.getString(R.string.permissions_ready),
+                                    )
+                                }
+                                bridgeClient.submitTtsStatus(
+                                    requestId = requestId,
+                                    deviceId = launchContext.deviceId,
+                                    target = command.target,
+                                    status = "failed",
+                                    message = errorSummary,
+                                    language = payload.language,
+                                    modelId = payload.modelId,
+                                    error = errorSummary,
+                                )
+                            }
+                        }
+                }
+
+                "stop-tts" -> {
+                    val stoppedPayload = command.tts ?: activeTtsPayload
+                    activeTtsRequestId = null
+                    activeTtsPayload = null
+                    ttsPlayer.stop()
+                    ttsJob = null
+                    updateTtsUi(
+                        appContext.getString(R.string.tts_status_idle),
+                        appContext.getString(R.string.tts_detail_stopped),
+                        stoppedPayload,
+                    )
+                    publishUiState(
+                        connectionStatus = appContext.getString(R.string.status_connected_desktop),
+                        permissionsSummary = appContext.getString(R.string.permissions_ready),
+                    )
+                    bridgeClient.submitTtsStatus(
+                        requestId = command.requestId ?: command.id,
+                        deviceId = launchContext.deviceId,
+                        target = command.target,
+                        status = "stopped",
+                        message = "Android TTS stopped.",
+                        progress = 1.0,
+                        language = stoppedPayload?.language,
+                        modelId = stoppedPayload?.modelId,
+                    )
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "done",
+                        message = "Android TTS stopped.",
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                }
             }
         }.onFailure { error ->
             CompanionDiagnostics.e(
@@ -537,7 +769,7 @@ class CompanionSessionCoordinator(
                 command.kind == "start-dictation" ||
                 command.kind == "stop-dictation" ||
                 command.kind == "start-ambient-listener" ||
-                command.kind == "stop-ambient-listener"
+                    command.kind == "stop-ambient-listener"
             ) {
                 if (
                     command.kind == "start-ambient-listener" ||
@@ -554,6 +786,29 @@ class CompanionSessionCoordinator(
                     connectionStatus = appContext.getString(R.string.status_connected_desktop),
                     permissionsSummary = appContext.getString(R.string.permissions_ready),
                 )
+            }
+            if (command.kind == "start-tts" || command.kind == "stop-tts") {
+                updateTtsUi(
+                    appContext.getString(R.string.tts_status_error),
+                    errorSummary,
+                    command.tts,
+                )
+                publishUiState(
+                    connectionStatus = appContext.getString(R.string.status_connected_desktop),
+                    permissionsSummary = appContext.getString(R.string.permissions_ready),
+                )
+                runCatching {
+                    bridgeClient.submitTtsStatus(
+                        requestId = command.requestId ?: command.id,
+                        deviceId = launchContext.deviceId,
+                        target = command.target,
+                        status = "failed",
+                        message = errorSummary,
+                        language = command.tts?.language,
+                        modelId = command.tts?.modelId,
+                        error = errorSummary,
+                    )
+                }
             }
             runCatching {
                 bridgeClient.acknowledgeCommand(
@@ -589,6 +844,10 @@ class CompanionSessionCoordinator(
             ambientDetail = ambientDetail,
             ambientWakePhrase = ambientWakePhraseSummary,
             ambientHistory = ambientHistoryEntries.joinToString("\n"),
+            ttsStatus = ttsStatus,
+            ttsDetail = ttsDetail,
+            ttsModel = ttsModel,
+            ttsTextSummary = ttsTextSummary,
         )
     }
 
@@ -619,6 +878,22 @@ class CompanionSessionCoordinator(
         appendAmbientHistory(resolveAmbientHistoryEntry(status, message, transcript))
         CompanionDiagnostics.setState("Ambient", ambientListeningStatus)
         CompanionDiagnostics.setState("Ambient detail", ambientDetail)
+    }
+
+    private fun updateTtsUi(status: String, detail: String, payload: BridgeTtsPayload?) {
+        ttsStatus = status
+        ttsDetail = detail
+        ttsModel = payload?.let { "${it.profile.engine} / ${it.modelId}" }
+            ?: appContext.getString(R.string.tts_model_waiting)
+        ttsTextSummary =
+            payload?.text
+                ?.replace(Regex("\\s+"), " ")
+                ?.trim()
+                ?.take(160)
+                ?.ifBlank { appContext.getString(R.string.tts_text_empty) }
+                ?: appContext.getString(R.string.tts_text_empty)
+        CompanionDiagnostics.setState("TTS", status)
+        CompanionDiagnostics.setState("TTS detail", detail)
     }
 
     private suspend fun publishAmbientStatus(

@@ -104,6 +104,27 @@
         "captureSessionLatestEmpty": "Henüz hazır edilmiş telefon çekimi yok.",
         "captureSessionDisabled": "Android companion capture, Ayarlar > Capture altında kapalı.",
         "captureImportButton": "Scrcpy Kamera",
+        "tts": {
+          "settingsButton": "TTS",
+          "settingsTitle": "Seslendirme Ayarları",
+          "modeLabel": "Mod",
+          "modeLocal": "Yerel",
+          "modeAndroid": "Android",
+          "languageLabel": "Dil",
+          "languageTr": "Türkçe",
+          "languageEn": "İngilizce",
+          "deviceLabel": "Telefon",
+          "deviceAuto": "Hazır telefonu otomatik seç",
+          "companionLabel": "Companion",
+          "runtimeLabel": "Runtime",
+          "refreshButton": "Yenile",
+          "prepareModelButton": "Modeli hazırla",
+          "installingModel": "Hazırlanıyor...",
+          "launchButton": "TTS Aç",
+          "modelReady": "{model} hazır",
+          "statusIdle": "Boşta",
+          "statusUnknown": "Bilinmiyor"
+        },
         "cameraPanel": {
           "closed": "Scrcpy kamera kapalı.",
           "opening": "Scrcpy kamera açılıyor.",
@@ -201,6 +222,9 @@
         "attachmentFallback": "dosya",
         "actions": {
           "read": "Okuma modu",
+          "speak": "Seslendir",
+          "stopSpeech": "Seslendirmeyi durdur",
+          "speechLoading": "Ses hazırlanıyor",
           "prepend": "Mesajın başına ekle",
           "append": "Mesajın sonuna ekle"
         },

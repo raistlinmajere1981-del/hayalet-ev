@@ -1,7 +1,457 @@
 {
   "version": 2,
-  "updatedAt": "2026-05-25T11:07:57.616Z",
+  "updatedAt": "2026-05-26T06:25:08.300Z",
   "rooms": [
+    {
+      "id": "game-room",
+      "name": "Game Room",
+      "version": "2.5.0",
+      "description": "A focused board-game room for Tavla matches, four-seat Team Tetris matches, and a clean Fate Knots placeholder for the next design pass.",
+      "icon": "🎮",
+      "iconPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/shared/assets/nav-icon.svg",
+      "sourceDir": "/home/raistlin/hayalet-ev/rooms/game-room",
+      "installedDir": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime",
+      "manifestPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/manifest.json",
+      "runtimeEntryPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/ui/index.html",
+      "hostEntryPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/host/index.js",
+      "defaultFeatureId": "backgammon",
+      "features": [
+        {
+          "id": "backgammon",
+          "name": "Tavla",
+          "description": "Classic Tavla matches against AI1, AI2, or the connected US1 remote user.",
+          "icon": "TV",
+          "commandSpecs": [
+            {
+              "name": "GameRoomBackgammonStart",
+              "description": "Start a new Tavla match from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomBackgammonReset",
+              "description": "Reset the active Tavla match state.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomBackgammonUserMove",
+              "description": "Apply the user's Tavla legal move from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomBackgammonAiMove",
+              "description": "Apply the AI Tavla move returned by the selected opponent slot.",
+              "scope": "ai-slots",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomBackgammonRemoteMove",
+              "description": "Apply the remote US1 Tavla move delivered over room mail transport.",
+              "scope": "us1",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomBackgammonAcceptInvite",
+              "description": "Accept an incoming US1 Tavla invite from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomBackgammonRejectInvite",
+              "description": "Reject an incoming US1 Tavla invite from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            }
+          ],
+          "protocolSpecs": [
+            {
+              "key": "game-room-backgammon-user-start",
+              "room": "game-room",
+              "scenario": "backgammon-user-start",
+              "title": "[START][GAME-ROOM][TAVLA][USER-FIRST]",
+              "editable": true,
+              "path": "main-functions/backgammon/protocols/game-room-backgammon-user-start.md"
+            },
+            {
+              "key": "game-room-backgammon-ai-start",
+              "room": "game-room",
+              "scenario": "backgammon-ai-start",
+              "title": "[START][GAME-ROOM][TAVLA][AI-FIRST]",
+              "editable": true,
+              "path": "main-functions/backgammon/protocols/game-room-backgammon-ai-start.md"
+            },
+            {
+              "key": "game-room-backgammon-us1-transport",
+              "room": "game-room",
+              "scenario": "backgammon-us1-transport",
+              "title": "[INFO][GAME-ROOM][TAVLA][US1-TRANSPORT]",
+              "editable": false,
+              "path": "main-functions/backgammon/protocols/game-room-backgammon-us1-transport.md"
+            }
+          ],
+          "scene": {
+            "hotspot": {
+              "id": "game-room-backgammon",
+              "rect": {
+                "leftPx": 188,
+                "topPx": 362,
+                "widthPx": 446,
+                "heightPx": 258
+              },
+              "label": {
+                "text": "Tavla"
+              }
+            },
+            "view": {
+              "id": "backgammon-closeup",
+              "backgroundPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/main-functions/backgammon/assets/backgammon-view.webp",
+              "transparentWindow": {
+                "leftPct": 28.28,
+                "topPct": 18.8,
+                "widthPct": 43.59,
+                "heightPct": 54.17
+              }
+            }
+          }
+        },
+        {
+          "id": "team-tetris",
+          "name": "Team Tetris",
+          "description": "A four-seat, turn-based team Tetris mode for the local user, AI1, AI2, and the connected US1 remote user.",
+          "icon": "TT",
+          "commandSpecs": [
+            {
+              "name": "GameRoomTeamTetrisStart",
+              "description": "Start a new Team Tetris match from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomTeamTetrisReset",
+              "description": "Reset the active Team Tetris match state.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomTeamTetrisUserMove",
+              "description": "Apply the local user's Team Tetris path selection from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomTeamTetrisAiMove",
+              "description": "Apply the Team Tetris move returned by AI1 or AI2.",
+              "scope": "ai-slots",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomTeamTetrisRemoteMove",
+              "description": "Apply the Team Tetris move delivered over the connected US1 transport.",
+              "scope": "us1",
+              "exposure": "internal"
+            }
+          ],
+          "protocolSpecs": [
+            {
+              "key": "game-room-team-tetris-ai-opening",
+              "room": "game-room",
+              "scenario": "team-tetris-ai-opening",
+              "title": "[TURN][GAME-ROOM][TEAM-TETRIS][AI][OPENING]",
+              "editable": true,
+              "path": "main-functions/team-tetris/protocols/game-room-team-tetris-ai-opening.md"
+            },
+            {
+              "key": "game-room-team-tetris-ai-followup",
+              "room": "game-room",
+              "scenario": "team-tetris-ai-followup",
+              "title": "[TURN][GAME-ROOM][TEAM-TETRIS][AI][FOLLOWUP]",
+              "editable": true,
+              "path": "main-functions/team-tetris/protocols/game-room-team-tetris-ai-followup.md"
+            },
+            {
+              "key": "game-room-team-tetris-us1-transport",
+              "room": "game-room",
+              "scenario": "team-tetris-us1-transport",
+              "title": "[INFO][GAME-ROOM][TEAM-TETRIS][US1-TRANSPORT]",
+              "editable": false,
+              "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
+            }
+          ],
+          "scene": {
+            "hotspot": {
+              "id": "game-room-team-tetris",
+              "rect": {
+                "leftPx": 958,
+                "topPx": 346,
+                "widthPx": 428,
+                "heightPx": 272
+              },
+              "label": {
+                "text": "Team Tetris"
+              }
+            },
+            "view": {
+              "id": "team-tetris-closeup",
+              "backgroundPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/main-functions/team-tetris/assets/team-tetris-view.webp",
+              "transparentWindow": {
+                "leftPct": 12.4,
+                "topPct": 16.4,
+                "widthPct": 75.2,
+                "heightPct": 63.8
+              }
+            }
+          }
+        },
+        {
+          "id": "fate-knots",
+          "name": "Fate Knots",
+          "description": "A clean Fate Knots placeholder kept ready for a new game system and UI design.",
+          "icon": "FK",
+          "commandSpecs": [
+            {
+              "name": "GameRoomFateKnotsStart",
+              "description": "Activate the Fate Knots placeholder from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsReset",
+              "description": "Reset the Fate Knots placeholder state.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            }
+          ],
+          "scene": {
+            "hotspot": {
+              "id": "game-room-fate-knots",
+              "rect": {
+                "leftPx": 632,
+                "topPx": 268,
+                "widthPx": 304,
+                "heightPx": 216
+              },
+              "label": {
+                "text": "Fate Knots"
+              }
+            },
+            "view": {
+              "id": "fate-knots-closeup",
+              "backgroundPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/main-functions/fate-knots/assets/fate-knots-view.webp",
+              "transparentWindow": {
+                "leftPct": 17.5,
+                "topPct": 14.2,
+                "widthPct": 65.4,
+                "heightPct": 67.6
+              }
+            }
+          }
+        }
+      ],
+      "scene": {
+        "referenceSize": {
+          "width": 1600,
+          "height": 900
+        },
+        "roomBackgroundPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/shared/assets/room-background.webp",
+        "roomsHotspot": {
+          "id": "game-room-door",
+          "rect": {
+            "leftPx": 986,
+            "topPx": 454,
+            "widthPx": 164,
+            "heightPx": 168
+          },
+          "label": {
+            "text": "Game Room"
+          }
+        },
+        "backHotspot": {
+          "id": "game-room-back",
+          "rect": {
+            "leftPx": 52,
+            "topPx": 152,
+            "widthPx": 156,
+            "heightPx": 248
+          },
+          "label": {
+            "text": "Corridor"
+          }
+        },
+        "characterRosterPreset": "connected-plus-user",
+        "characters": [
+          {
+            "id": "anchor-ai1-primary",
+            "characterKind": "ai",
+            "preferredSlot": "ai1",
+            "leftPx": 948,
+            "bottomPx": -12,
+            "scale": 0.74,
+            "depth": 3
+          },
+          {
+            "id": "anchor-user",
+            "characterKind": "user",
+            "leftPx": 1208,
+            "bottomPx": -64,
+            "scale": 0.84,
+            "depth": 4
+          },
+          {
+            "id": "anchor-ai2-primary",
+            "characterKind": "ai",
+            "preferredSlot": "ai2",
+            "leftPx": 1432,
+            "bottomPx": -8,
+            "scale": 0.74,
+            "depth": 5
+          }
+        ],
+        "chrome": {
+          "pageShellVariant": "immersive-stage"
+        }
+      },
+      "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/i18n",
+      "commandSpecs": [
+        {
+          "name": "GameRoomBackgammonStart",
+          "description": "Start a new Tavla match from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomBackgammonReset",
+          "description": "Reset the active Tavla match state.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomBackgammonUserMove",
+          "description": "Apply the user's Tavla legal move from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomBackgammonAiMove",
+          "description": "Apply the AI Tavla move returned by the selected opponent slot.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomBackgammonRemoteMove",
+          "description": "Apply the remote US1 Tavla move delivered over room mail transport.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomBackgammonAcceptInvite",
+          "description": "Accept an incoming US1 Tavla invite from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomBackgammonRejectInvite",
+          "description": "Reject an incoming US1 Tavla invite from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomTeamTetrisStart",
+          "description": "Start a new Team Tetris match from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomTeamTetrisReset",
+          "description": "Reset the active Team Tetris match state.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomTeamTetrisUserMove",
+          "description": "Apply the local user's Team Tetris path selection from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomTeamTetrisAiMove",
+          "description": "Apply the Team Tetris move returned by AI1 or AI2.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomTeamTetrisRemoteMove",
+          "description": "Apply the Team Tetris move delivered over the connected US1 transport.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsStart",
+          "description": "Activate the Fate Knots placeholder from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsReset",
+          "description": "Reset the Fate Knots placeholder state.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        }
+      ],
+      "protocolSpecs": [
+        {
+          "key": "game-room-backgammon-user-start",
+          "room": "game-room",
+          "scenario": "backgammon-user-start",
+          "title": "[START][GAME-ROOM][TAVLA][USER-FIRST]",
+          "editable": true,
+          "path": "main-functions/backgammon/protocols/game-room-backgammon-user-start.md"
+        },
+        {
+          "key": "game-room-backgammon-ai-start",
+          "room": "game-room",
+          "scenario": "backgammon-ai-start",
+          "title": "[START][GAME-ROOM][TAVLA][AI-FIRST]",
+          "editable": true,
+          "path": "main-functions/backgammon/protocols/game-room-backgammon-ai-start.md"
+        },
+        {
+          "key": "game-room-backgammon-us1-transport",
+          "room": "game-room",
+          "scenario": "backgammon-us1-transport",
+          "title": "[INFO][GAME-ROOM][TAVLA][US1-TRANSPORT]",
+          "editable": false,
+          "path": "main-functions/backgammon/protocols/game-room-backgammon-us1-transport.md"
+        },
+        {
+          "key": "game-room-team-tetris-ai-opening",
+          "room": "game-room",
+          "scenario": "team-tetris-ai-opening",
+          "title": "[TURN][GAME-ROOM][TEAM-TETRIS][AI][OPENING]",
+          "editable": true,
+          "path": "main-functions/team-tetris/protocols/game-room-team-tetris-ai-opening.md"
+        },
+        {
+          "key": "game-room-team-tetris-ai-followup",
+          "room": "game-room",
+          "scenario": "team-tetris-ai-followup",
+          "title": "[TURN][GAME-ROOM][TEAM-TETRIS][AI][FOLLOWUP]",
+          "editable": true,
+          "path": "main-functions/team-tetris/protocols/game-room-team-tetris-ai-followup.md"
+        },
+        {
+          "key": "game-room-team-tetris-us1-transport",
+          "room": "game-room",
+          "scenario": "team-tetris-us1-transport",
+          "title": "[INFO][GAME-ROOM][TEAM-TETRIS][US1-TRANSPORT]",
+          "editable": false,
+          "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
+        }
+      ],
+      "installedAt": "2026-05-26T06:13:06.763Z",
+      "updatedAt": "2026-05-26T06:13:06.763Z"
+    },
     {
       "id": "repair-room",
       "name": "Repair Room",
@@ -300,8 +750,8 @@
         "roomsHotspot": {
           "id": "repair-room-door",
           "rect": {
-            "leftPx": 736,
-            "topPx": 232,
+            "leftPx": 1236,
+            "topPx": 372,
             "widthPx": 170,
             "heightPx": 332
           },
@@ -560,8 +1010,8 @@
           "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
         }
       ],
-      "installedAt": "2026-05-25T09:57:44.929Z",
-      "updatedAt": "2026-05-25T09:57:44.929Z"
+      "installedAt": "2026-05-26T06:13:06.845Z",
+      "updatedAt": "2026-05-26T06:13:06.845Z"
     },
     {
       "id": "forge-room",
@@ -808,7 +1258,7 @@
           "id": "forge-room-door",
           "rect": {
             "leftPx": 736,
-            "topPx": 232,
+            "topPx": 402,
             "widthPx": 170,
             "heightPx": 332
           },
@@ -1013,458 +1463,8 @@
           "path": "main-functions/forge-workbench/protocols/forge-room-synthesis.md"
         }
       ],
-      "installedAt": "2026-05-25T09:57:45.156Z",
-      "updatedAt": "2026-05-25T09:57:45.156Z"
-    },
-    {
-      "id": "game-room",
-      "name": "Game Room",
-      "version": "2.5.0",
-      "description": "A focused board-game room for Tavla matches, four-seat Team Tetris matches, and a clean Fate Knots placeholder for the next design pass.",
-      "icon": "🎮",
-      "iconPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/shared/assets/nav-icon.svg",
-      "sourceDir": "/home/raistlin/hayalet-ev/rooms/game-room",
-      "installedDir": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime",
-      "manifestPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/manifest.json",
-      "runtimeEntryPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/ui/index.html",
-      "hostEntryPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/host/index.js",
-      "defaultFeatureId": "backgammon",
-      "features": [
-        {
-          "id": "backgammon",
-          "name": "Tavla",
-          "description": "Classic Tavla matches against AI1, AI2, or the connected US1 remote user.",
-          "icon": "TV",
-          "commandSpecs": [
-            {
-              "name": "GameRoomBackgammonStart",
-              "description": "Start a new Tavla match from the room UI.",
-              "scope": "room-ui",
-              "exposure": "internal"
-            },
-            {
-              "name": "GameRoomBackgammonReset",
-              "description": "Reset the active Tavla match state.",
-              "scope": "room-ui",
-              "exposure": "internal"
-            },
-            {
-              "name": "GameRoomBackgammonUserMove",
-              "description": "Apply the user's Tavla legal move from the room UI.",
-              "scope": "room-ui",
-              "exposure": "internal"
-            },
-            {
-              "name": "GameRoomBackgammonAiMove",
-              "description": "Apply the AI Tavla move returned by the selected opponent slot.",
-              "scope": "ai-slots",
-              "exposure": "internal"
-            },
-            {
-              "name": "GameRoomBackgammonRemoteMove",
-              "description": "Apply the remote US1 Tavla move delivered over room mail transport.",
-              "scope": "us1",
-              "exposure": "internal"
-            },
-            {
-              "name": "GameRoomBackgammonAcceptInvite",
-              "description": "Accept an incoming US1 Tavla invite from the room UI.",
-              "scope": "room-ui",
-              "exposure": "internal"
-            },
-            {
-              "name": "GameRoomBackgammonRejectInvite",
-              "description": "Reject an incoming US1 Tavla invite from the room UI.",
-              "scope": "room-ui",
-              "exposure": "internal"
-            }
-          ],
-          "protocolSpecs": [
-            {
-              "key": "game-room-backgammon-user-start",
-              "room": "game-room",
-              "scenario": "backgammon-user-start",
-              "title": "[START][GAME-ROOM][TAVLA][USER-FIRST]",
-              "editable": true,
-              "path": "main-functions/backgammon/protocols/game-room-backgammon-user-start.md"
-            },
-            {
-              "key": "game-room-backgammon-ai-start",
-              "room": "game-room",
-              "scenario": "backgammon-ai-start",
-              "title": "[START][GAME-ROOM][TAVLA][AI-FIRST]",
-              "editable": true,
-              "path": "main-functions/backgammon/protocols/game-room-backgammon-ai-start.md"
-            },
-            {
-              "key": "game-room-backgammon-us1-transport",
-              "room": "game-room",
-              "scenario": "backgammon-us1-transport",
-              "title": "[INFO][GAME-ROOM][TAVLA][US1-TRANSPORT]",
-              "editable": false,
-              "path": "main-functions/backgammon/protocols/game-room-backgammon-us1-transport.md"
-            }
-          ],
-          "scene": {
-            "hotspot": {
-              "id": "game-room-backgammon",
-              "rect": {
-                "leftPx": 188,
-                "topPx": 362,
-                "widthPx": 446,
-                "heightPx": 258
-              },
-              "label": {
-                "text": "Tavla"
-              }
-            },
-            "view": {
-              "id": "backgammon-closeup",
-              "backgroundPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/main-functions/backgammon/assets/backgammon-view.webp",
-              "transparentWindow": {
-                "leftPct": 28.28,
-                "topPct": 18.8,
-                "widthPct": 43.59,
-                "heightPct": 54.17
-              }
-            }
-          }
-        },
-        {
-          "id": "team-tetris",
-          "name": "Team Tetris",
-          "description": "A four-seat, turn-based team Tetris mode for the local user, AI1, AI2, and the connected US1 remote user.",
-          "icon": "TT",
-          "commandSpecs": [
-            {
-              "name": "GameRoomTeamTetrisStart",
-              "description": "Start a new Team Tetris match from the room UI.",
-              "scope": "room-ui",
-              "exposure": "internal"
-            },
-            {
-              "name": "GameRoomTeamTetrisReset",
-              "description": "Reset the active Team Tetris match state.",
-              "scope": "room-ui",
-              "exposure": "internal"
-            },
-            {
-              "name": "GameRoomTeamTetrisUserMove",
-              "description": "Apply the local user's Team Tetris path selection from the room UI.",
-              "scope": "room-ui",
-              "exposure": "internal"
-            },
-            {
-              "name": "GameRoomTeamTetrisAiMove",
-              "description": "Apply the Team Tetris move returned by AI1 or AI2.",
-              "scope": "ai-slots",
-              "exposure": "internal"
-            },
-            {
-              "name": "GameRoomTeamTetrisRemoteMove",
-              "description": "Apply the Team Tetris move delivered over the connected US1 transport.",
-              "scope": "us1",
-              "exposure": "internal"
-            }
-          ],
-          "protocolSpecs": [
-            {
-              "key": "game-room-team-tetris-ai-opening",
-              "room": "game-room",
-              "scenario": "team-tetris-ai-opening",
-              "title": "[TURN][GAME-ROOM][TEAM-TETRIS][AI][OPENING]",
-              "editable": true,
-              "path": "main-functions/team-tetris/protocols/game-room-team-tetris-ai-opening.md"
-            },
-            {
-              "key": "game-room-team-tetris-ai-followup",
-              "room": "game-room",
-              "scenario": "team-tetris-ai-followup",
-              "title": "[TURN][GAME-ROOM][TEAM-TETRIS][AI][FOLLOWUP]",
-              "editable": true,
-              "path": "main-functions/team-tetris/protocols/game-room-team-tetris-ai-followup.md"
-            },
-            {
-              "key": "game-room-team-tetris-us1-transport",
-              "room": "game-room",
-              "scenario": "team-tetris-us1-transport",
-              "title": "[INFO][GAME-ROOM][TEAM-TETRIS][US1-TRANSPORT]",
-              "editable": false,
-              "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
-            }
-          ],
-          "scene": {
-            "hotspot": {
-              "id": "game-room-team-tetris",
-              "rect": {
-                "leftPx": 958,
-                "topPx": 346,
-                "widthPx": 428,
-                "heightPx": 272
-              },
-              "label": {
-                "text": "Team Tetris"
-              }
-            },
-            "view": {
-              "id": "team-tetris-closeup",
-              "backgroundPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/main-functions/team-tetris/assets/team-tetris-view.webp",
-              "transparentWindow": {
-                "leftPct": 12.4,
-                "topPct": 16.4,
-                "widthPct": 75.2,
-                "heightPct": 63.8
-              }
-            }
-          }
-        },
-        {
-          "id": "fate-knots",
-          "name": "Fate Knots",
-          "description": "A clean Fate Knots placeholder kept ready for a new game system and UI design.",
-          "icon": "FK",
-          "commandSpecs": [
-            {
-              "name": "GameRoomFateKnotsStart",
-              "description": "Activate the Fate Knots placeholder from the room UI.",
-              "scope": "room-ui",
-              "exposure": "internal"
-            },
-            {
-              "name": "GameRoomFateKnotsReset",
-              "description": "Reset the Fate Knots placeholder state.",
-              "scope": "room-ui",
-              "exposure": "internal"
-            }
-          ],
-          "scene": {
-            "hotspot": {
-              "id": "game-room-fate-knots",
-              "rect": {
-                "leftPx": 632,
-                "topPx": 268,
-                "widthPx": 304,
-                "heightPx": 216
-              },
-              "label": {
-                "text": "Fate Knots"
-              }
-            },
-            "view": {
-              "id": "fate-knots-closeup",
-              "backgroundPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/main-functions/fate-knots/assets/fate-knots-view.webp",
-              "transparentWindow": {
-                "leftPct": 17.5,
-                "topPct": 14.2,
-                "widthPct": 65.4,
-                "heightPct": 67.6
-              }
-            }
-          }
-        }
-      ],
-      "scene": {
-        "referenceSize": {
-          "width": 1600,
-          "height": 900
-        },
-        "roomBackgroundPath": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/shared/assets/room-background.webp",
-        "roomsHotspot": {
-          "id": "game-room-door",
-          "rect": {
-            "leftPx": 726,
-            "topPx": 244,
-            "widthPx": 154,
-            "heightPx": 318
-          },
-          "label": {
-            "text": "Game Room"
-          }
-        },
-        "backHotspot": {
-          "id": "game-room-back",
-          "rect": {
-            "leftPx": 52,
-            "topPx": 152,
-            "widthPx": 156,
-            "heightPx": 248
-          },
-          "label": {
-            "text": "Corridor"
-          }
-        },
-        "characterRosterPreset": "connected-plus-user",
-        "characters": [
-          {
-            "id": "anchor-ai1-primary",
-            "characterKind": "ai",
-            "preferredSlot": "ai1",
-            "leftPx": 948,
-            "bottomPx": -12,
-            "scale": 0.74,
-            "depth": 3
-          },
-          {
-            "id": "anchor-user",
-            "characterKind": "user",
-            "leftPx": 1208,
-            "bottomPx": -64,
-            "scale": 0.84,
-            "depth": 4
-          },
-          {
-            "id": "anchor-ai2-primary",
-            "characterKind": "ai",
-            "preferredSlot": "ai2",
-            "leftPx": 1432,
-            "bottomPx": -8,
-            "scale": 0.74,
-            "depth": 5
-          }
-        ],
-        "chrome": {
-          "pageShellVariant": "immersive-stage"
-        }
-      },
-      "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/game-room/runtime/i18n",
-      "commandSpecs": [
-        {
-          "name": "GameRoomBackgammonStart",
-          "description": "Start a new Tavla match from the room UI.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomBackgammonReset",
-          "description": "Reset the active Tavla match state.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomBackgammonUserMove",
-          "description": "Apply the user's Tavla legal move from the room UI.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomBackgammonAiMove",
-          "description": "Apply the AI Tavla move returned by the selected opponent slot.",
-          "scope": "ai-slots",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomBackgammonRemoteMove",
-          "description": "Apply the remote US1 Tavla move delivered over room mail transport.",
-          "scope": "us1",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomBackgammonAcceptInvite",
-          "description": "Accept an incoming US1 Tavla invite from the room UI.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomBackgammonRejectInvite",
-          "description": "Reject an incoming US1 Tavla invite from the room UI.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomTeamTetrisStart",
-          "description": "Start a new Team Tetris match from the room UI.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomTeamTetrisReset",
-          "description": "Reset the active Team Tetris match state.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomTeamTetrisUserMove",
-          "description": "Apply the local user's Team Tetris path selection from the room UI.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomTeamTetrisAiMove",
-          "description": "Apply the Team Tetris move returned by AI1 or AI2.",
-          "scope": "ai-slots",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomTeamTetrisRemoteMove",
-          "description": "Apply the Team Tetris move delivered over the connected US1 transport.",
-          "scope": "us1",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomFateKnotsStart",
-          "description": "Activate the Fate Knots placeholder from the room UI.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomFateKnotsReset",
-          "description": "Reset the Fate Knots placeholder state.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        }
-      ],
-      "protocolSpecs": [
-        {
-          "key": "game-room-backgammon-user-start",
-          "room": "game-room",
-          "scenario": "backgammon-user-start",
-          "title": "[START][GAME-ROOM][TAVLA][USER-FIRST]",
-          "editable": true,
-          "path": "main-functions/backgammon/protocols/game-room-backgammon-user-start.md"
-        },
-        {
-          "key": "game-room-backgammon-ai-start",
-          "room": "game-room",
-          "scenario": "backgammon-ai-start",
-          "title": "[START][GAME-ROOM][TAVLA][AI-FIRST]",
-          "editable": true,
-          "path": "main-functions/backgammon/protocols/game-room-backgammon-ai-start.md"
-        },
-        {
-          "key": "game-room-backgammon-us1-transport",
-          "room": "game-room",
-          "scenario": "backgammon-us1-transport",
-          "title": "[INFO][GAME-ROOM][TAVLA][US1-TRANSPORT]",
-          "editable": false,
-          "path": "main-functions/backgammon/protocols/game-room-backgammon-us1-transport.md"
-        },
-        {
-          "key": "game-room-team-tetris-ai-opening",
-          "room": "game-room",
-          "scenario": "team-tetris-ai-opening",
-          "title": "[TURN][GAME-ROOM][TEAM-TETRIS][AI][OPENING]",
-          "editable": true,
-          "path": "main-functions/team-tetris/protocols/game-room-team-tetris-ai-opening.md"
-        },
-        {
-          "key": "game-room-team-tetris-ai-followup",
-          "room": "game-room",
-          "scenario": "team-tetris-ai-followup",
-          "title": "[TURN][GAME-ROOM][TEAM-TETRIS][AI][FOLLOWUP]",
-          "editable": true,
-          "path": "main-functions/team-tetris/protocols/game-room-team-tetris-ai-followup.md"
-        },
-        {
-          "key": "game-room-team-tetris-us1-transport",
-          "room": "game-room",
-          "scenario": "team-tetris-us1-transport",
-          "title": "[INFO][GAME-ROOM][TEAM-TETRIS][US1-TRANSPORT]",
-          "editable": false,
-          "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
-        }
-      ],
-      "installedAt": "2026-05-25T09:57:45.376Z",
-      "updatedAt": "2026-05-25T09:57:45.376Z"
+      "installedAt": "2026-05-26T06:13:06.940Z",
+      "updatedAt": "2026-05-26T06:13:06.940Z"
     },
     {
       "id": "pattern-room",
@@ -1530,10 +1530,10 @@
         "roomsHotspot": {
           "id": "pattern-room-door",
           "rect": {
-            "leftPx": 728,
-            "topPx": 224,
-            "widthPx": 184,
-            "heightPx": 342
+            "leftPx": 1608,
+            "topPx": 329,
+            "widthPx": 169,
+            "heightPx": 482
           },
           "label": {
             "text": "Pattern Room"
@@ -1566,8 +1566,8 @@
           "path": "protocols/pattern-room-case-review.md"
         }
       ],
-      "installedAt": "2026-05-25T09:57:45.540Z",
-      "updatedAt": "2026-05-25T09:57:45.540Z"
+      "installedAt": "2026-05-26T06:13:07.000Z",
+      "updatedAt": "2026-05-26T06:13:07.000Z"
     },
     {
       "id": "laboratory",
@@ -1640,10 +1640,10 @@
         "roomsHotspot": {
           "id": "laboratory-door",
           "rect": {
-            "leftPx": 722,
-            "topPx": 234,
-            "widthPx": 170,
-            "heightPx": 330
+            "leftPx": 352,
+            "topPx": 284,
+            "widthPx": 200,
+            "heightPx": 530
           },
           "label": {
             "text": "Laboratory"
@@ -1666,8 +1666,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-05-25T11:07:57.616Z",
-      "updatedAt": "2026-05-25T11:07:57.616Z"
+      "installedAt": "2026-05-26T06:25:08.300Z",
+      "updatedAt": "2026-05-26T06:25:08.300Z"
     }
   ]
 }

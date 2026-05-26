@@ -18,6 +18,7 @@ import type {
   CaptureActionOutcome,
   CaptureCompanionAmbientProfile,
   CaptureCompanionCommandProfile,
+  CaptureCompanionTtsPayload,
   CaptureCompanionTranscriptModelProfile,
   CaptureCompanionCommandEnvelope,
   CaptureCompanionCommandKind,
@@ -113,6 +114,7 @@ export interface CompanionBridgeSessionRecord {
 }
 
 export type PendingBridgeCommand = CaptureCompanionCommandEnvelope;
+export type PendingBridgeTtsPayload = CaptureCompanionTtsPayload;
 
 export interface CompanionBuildScriptEvent {
   type: "progress" | "plan" | "result" | "error";
@@ -460,6 +462,10 @@ export function resolveCaptureActionFromCommand(
       return "start-ambient-listener";
     case "stop-ambient-listener":
       return "stop-ambient-listener";
+    case "start-tts":
+      return "start-tts";
+    case "stop-tts":
+      return "stop-tts";
     default:
       throw new Error(`Unsupported capture companion command: ${String(kind)}`);
   }

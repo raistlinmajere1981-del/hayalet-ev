@@ -29,6 +29,32 @@ const ANDROID_CMDLINE_TOOLS_REPOSITORY_URL =
 const ADOPTIUM_API_URL = "https://api.adoptium.net/v3/assets/latest/21/hotspot";
 const WHISPER_CPP_REPOSITORY_URL = "https://github.com/ggml-org/whisper.cpp.git";
 const WHISPER_CPP_TAG = "v1.8.4";
+const SHERPA_ONNX_VERSION = "v1.13.2";
+const SHERPA_ANDROID_RUNTIME_URL = `https://github.com/k2-fsa/sherpa-onnx/releases/download/${SHERPA_ONNX_VERSION}/sherpa-onnx-${SHERPA_ONNX_VERSION}-android.tar.bz2`;
+const SHERPA_TTS_KOTLIN_API_URL = `https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/${SHERPA_ONNX_VERSION}/sherpa-onnx/kotlin-api/Tts.kt`;
+const NCNN_ANDROID_VERSION = "20260113";
+const NCNN_ANDROID_RUNTIME_URL = `https://github.com/Tencent/ncnn/releases/download/${NCNN_ANDROID_VERSION}/ncnn-${NCNN_ANDROID_VERSION}-android-vulkan.zip`;
+const NCNN_PIPER_RELEASE = "20260114.270a6be";
+const NCNN_PIPER_APK_URL = `https://github.com/nihui/ncnn-android-piper/releases/download/${NCNN_PIPER_RELEASE}/ncnn-android-piper-${NCNN_PIPER_RELEASE}.apk`;
+const NCNN_PIPER_TR_MODEL = {
+  modelId: "tr_TR-fahrettin",
+  archiveName: "tr_TR-fahrettin-ncnn.zip",
+  url: "https://huggingface.co/gyroing/PiperTTS-NCNN-Models/resolve/main/tr_TR-fahrettin.zip",
+};
+const SHERPA_TTS_MODELS = [
+  {
+    modelId: "tr_TR-dfki-medium",
+    archiveName: "vits-piper-tr_TR-dfki-medium.tar.bz2",
+    assetDir: "vits-piper-tr_TR-dfki-medium",
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-tr_TR-dfki-medium.tar.bz2",
+  },
+  {
+    modelId: "en_US-lessac-medium",
+    archiveName: "vits-piper-en_US-lessac-medium.tar.bz2",
+    assetDir: "vits-piper-en_US-lessac-medium",
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2",
+  },
+];
 const USER_AGENT = "HayaletEvAndroidCompanion/1.0";
 
 export const projectRoot = resolve(currentDir, "..");
@@ -39,6 +65,14 @@ export const downloadCacheRoot = join(toolchainRoot, "downloads");
 export const managedJdkRoot = join(toolchainRoot, "jdk");
 export const managedAndroidSdkRoot = join(toolchainRoot, "android-sdk");
 export const whisperCppSourceRoot = join(projectRoot, "data", "transcript", "whisper.cpp-src");
+export const sherpaTtsRoot = join(projectRoot, "dist", "android-sherpa-tts");
+export const sherpaTtsGeneratedKotlinRoot = join(sherpaTtsRoot, "generated", "kotlin");
+export const sherpaTtsJniLibsRoot = join(sherpaTtsRoot, "jniLibs");
+export const sherpaTtsAssetsRoot = join(sherpaTtsRoot, "assets");
+export const ncnnPiperRoot = join(projectRoot, "dist", "android-ncnn-piper");
+export const ncnnPiperSdkRoot = join(ncnnPiperRoot, `ncnn-${NCNN_ANDROID_VERSION}-android-vulkan`);
+export const ncnnPiperAssetsRoot = join(ncnnPiperRoot, "assets");
+export const ncnnPiperJniLibsRoot = join(ncnnPiperRoot, "jniLibs");
 export const sourceManifestPath = join(
   companionRoot,
   "app",
@@ -49,7 +83,9 @@ export const sourceManifestPath = join(
 );
 export const artifactManifestPath = join(artifactRoot, "manifest.json");
 export const wrapperPath =
-  process.platform === "win32" ? join(companionRoot, "gradlew.bat") : join(companionRoot, "gradlew");
+  process.platform === "win32"
+    ? join(companionRoot, "gradlew.bat")
+    : join(companionRoot, "gradlew");
 
 export async function fileExists(targetPath) {
   try {
@@ -158,9 +194,7 @@ function parseJavaMajorVersion(output) {
   }
 
   const versionToken =
-    text.match(/version "([^"]+)"/)?.[1] ??
-    text.match(/openjdk (\d+(?:\.\d+){0,2})/)?.[1] ??
-    null;
+    text.match(/version "([^"]+)"/)?.[1] ?? text.match(/openjdk (\d+(?:\.\d+){0,2})/)?.[1] ?? null;
   if (versionToken == null) {
     return null;
   }
@@ -182,11 +216,7 @@ function getManagedJdkHome() {
 }
 
 function getManagedJavaPath() {
-  return join(
-    getManagedJdkHome(),
-    "bin",
-    process.platform === "win32" ? "java.exe" : "java"
-  );
+  return join(getManagedJdkHome(), "bin", process.platform === "win32" ? "java.exe" : "java");
 }
 
 function getManagedSdkManagerPath() {
@@ -221,11 +251,7 @@ async function inspectJavaHome(javaHome) {
   }
 
   const candidateHome = javaHome.trim();
-  const javaPath = join(
-    candidateHome,
-    "bin",
-    process.platform === "win32" ? "java.exe" : "java"
-  );
+  const javaPath = join(candidateHome, "bin", process.platform === "win32" ? "java.exe" : "java");
   if ((await isExecutable(javaPath)) !== true) {
     return null;
   }
@@ -286,13 +312,15 @@ async function inspectAndroidSdkRoot(rootPath) {
   const normalizedRoot = rootPath.trim();
   const { platformPath, buildToolsPath, cmakePath, ndkPath, sdkManagerPath } =
     getExpectedAndroidSdkPaths(normalizedRoot);
-  const [platformReady, buildToolsReady, cmakeReady, ndkReady, sdkManagerReady] = await Promise.all([
-    fileExists(platformPath),
-    fileExists(buildToolsPath),
-    fileExists(cmakePath),
-    fileExists(ndkPath),
-    isExecutable(sdkManagerPath),
-  ]);
+  const [platformReady, buildToolsReady, cmakeReady, ndkReady, sdkManagerReady] = await Promise.all(
+    [
+      fileExists(platformPath),
+      fileExists(buildToolsPath),
+      fileExists(cmakePath),
+      fileExists(ndkPath),
+      isExecutable(sdkManagerPath),
+    ]
+  );
 
   return {
     rootPath: normalizedRoot,
@@ -313,7 +341,10 @@ export async function resolveUsableAndroidSdk() {
     process.env.ANDROID_SDK_ROOT ?? null,
     process.env.ANDROID_HOME ?? null,
     "/usr/lib/android-sdk",
-  ].filter((value, index, list) => typeof value === "string" && value.trim() !== "" && list.indexOf(value) === index);
+  ].filter(
+    (value, index, list) =>
+      typeof value === "string" && value.trim() !== "" && list.indexOf(value) === index
+  );
 
   for (const candidate of candidates) {
     const inspected = await inspectAndroidSdkRoot(candidate);
@@ -358,7 +389,9 @@ function resolveAndroidCmdlineToolsHost() {
     case "win32":
       return "win";
     default:
-      throw new Error(`Unsupported platform for managed Android SDK bootstrap: ${process.platform}`);
+      throw new Error(
+        `Unsupported platform for managed Android SDK bootstrap: ${process.platform}`
+      );
   }
 }
 
@@ -441,7 +474,7 @@ async function fetchManagedJdkPackageInfo() {
     name:
       typeof packageRecord?.name === "string" && packageRecord.name.trim() !== ""
         ? packageRecord.name.trim()
-        : new URL(link).pathname.split("/").pop() ?? "temurin-jdk.tar.gz",
+        : (new URL(link).pathname.split("/").pop() ?? "temurin-jdk.tar.gz"),
   };
 }
 
@@ -453,21 +486,25 @@ async function fetchAndroidCmdlineToolsInfo() {
     },
   });
   if (!response.ok) {
-    throw new Error(`Android command-line tools manifest could not be loaded: ${response.statusText}`);
+    throw new Error(
+      `Android command-line tools manifest could not be loaded: ${response.statusText}`
+    );
   }
 
   const xml = await response.text();
   const hostToken = resolveAndroidCmdlineToolsHost();
-  const urlMatches = [...xml.matchAll(new RegExp(`<url>(commandlinetools-${hostToken}-(\\d+)_latest\\.zip)</url>`, "g"))];
+  const urlMatches = [
+    ...xml.matchAll(
+      new RegExp(`<url>(commandlinetools-${hostToken}-(\\d+)_latest\\.zip)</url>`, "g")
+    ),
+  ];
   const latestMatch =
     urlMatches
       .map((match) => ({
         full: match[1] ?? null,
         version: Number.parseInt(match[2] ?? "", 10),
       }))
-      .filter(
-        (entry) => entry.full !== null && Number.isFinite(entry.version)
-      )
+      .filter((entry) => entry.full !== null && Number.isFinite(entry.version))
       .sort((left, right) => right.version - left.version)[0] ?? null;
   const relativeUrl = latestMatch?.full ?? null;
   if (relativeUrl === null) {
@@ -511,7 +548,9 @@ async function installManagedJdk(emitProgress) {
   const extractDir = await mkdtemp(join(tmpdir(), "hayalet-ev-jdk-"));
   const extractResult = await runCommand("tar", ["-xzf", archivePath, "-C", extractDir]);
   if (extractResult.exitCode !== 0) {
-    throw new Error(extractResult.stderr.trim() || extractResult.stdout.trim() || "Managed JDK extraction failed.");
+    throw new Error(
+      extractResult.stderr.trim() || extractResult.stdout.trim() || "Managed JDK extraction failed."
+    );
   }
 
   const extractedHome = await findDirectoryContaining(
@@ -573,7 +612,9 @@ async function installManagedAndroidSdk(javaRuntime, emitProgress) {
   const extractResult = await runCommand("unzip", ["-q", archivePath, "-d", extractDir]);
   if (extractResult.exitCode !== 0) {
     throw new Error(
-      extractResult.stderr.trim() || extractResult.stdout.trim() || "Android command-line tools extraction failed."
+      extractResult.stderr.trim() ||
+        extractResult.stdout.trim() ||
+        "Android command-line tools extraction failed."
     );
   }
 
@@ -623,7 +664,9 @@ async function installManagedAndroidSdk(javaRuntime, emitProgress) {
   );
   if (licensesResult.exitCode !== 0) {
     throw new Error(
-      licensesResult.stderr.trim() || licensesResult.stdout.trim() || "Android SDK license acceptance failed."
+      licensesResult.stderr.trim() ||
+        licensesResult.stdout.trim() ||
+        "Android SDK license acceptance failed."
     );
   }
 
@@ -650,13 +693,17 @@ async function installManagedAndroidSdk(javaRuntime, emitProgress) {
   );
   if (packageResult.exitCode !== 0) {
     throw new Error(
-      packageResult.stderr.trim() || packageResult.stdout.trim() || "Android SDK package installation failed."
+      packageResult.stderr.trim() ||
+        packageResult.stdout.trim() ||
+        "Android SDK package installation failed."
     );
   }
 
   const sdk = await inspectAndroidSdkRoot(managedAndroidSdkRoot);
   if (sdk?.complete !== true) {
-    throw new Error("Managed Android SDK installation completed but required packages are still missing.");
+    throw new Error(
+      "Managed Android SDK installation completed but required packages are still missing."
+    );
   }
 
   notify({
@@ -686,7 +733,60 @@ export async function planCompanionBuildEnvironment() {
   }
 
   if ((await fileExists(join(whisperCppSourceRoot, "CMakeLists.txt"))) !== true) {
-    plan.details.push(`whisper.cpp ${WHISPER_CPP_TAG} will be cloned into ${whisperCppSourceRoot}.`);
+    plan.details.push(
+      `whisper.cpp ${WHISPER_CPP_TAG} will be cloned into ${whisperCppSourceRoot}.`
+    );
+  }
+
+  if (
+    (await fileExists(join(sherpaTtsJniLibsRoot, "arm64-v8a", "libsherpa-onnx-jni.so"))) !== true
+  ) {
+    plan.details.push(
+      `sherpa-onnx ${SHERPA_ONNX_VERSION} Android TTS runtime will be cached into ${sherpaTtsRoot}.`
+    );
+  }
+
+  for (const model of SHERPA_TTS_MODELS) {
+    if (
+      (await fileExists(join(sherpaTtsAssetsRoot, "tts-models", model.assetDir, "tokens.txt"))) !==
+      true
+    ) {
+      plan.details.push(
+        `${model.modelId} Piper TTS assets will be cached into ${sherpaTtsAssetsRoot}.`
+      );
+    }
+  }
+
+  if (
+    (await fileExists(
+      join(ncnnPiperSdkRoot, "armeabi-v7a", "lib", "cmake", "ncnn", "ncnnConfig.cmake")
+    )) !== true
+  ) {
+    plan.details.push(
+      `ncnn ${NCNN_ANDROID_VERSION} Android runtime will be cached into ${ncnnPiperRoot}.`
+    );
+  }
+
+  if ((await fileExists(join(ncnnPiperAssetsRoot, "en-word_id.bin"))) !== true) {
+    plan.details.push(
+      `ncnn Piper English assets will be extracted from ${NCNN_PIPER_RELEASE} into ${ncnnPiperAssetsRoot}.`
+    );
+  }
+
+  if ((await fileExists(join(ncnnPiperAssetsRoot, "tr_enc_p.ncnn.bin"))) !== true) {
+    plan.details.push(
+      `${NCNN_PIPER_TR_MODEL.modelId} ncnn Piper assets will be cached into ${ncnnPiperAssetsRoot}.`
+    );
+  }
+
+  if (
+    (await fileExists(join(ncnnPiperJniLibsRoot, "armeabi-v7a", "libhayalet_tts_ncnn.so"))) !==
+      true ||
+    (await fileExists(join(ncnnPiperJniLibsRoot, "arm64-v8a", "libhayalet_tts_ncnn.so"))) !== true
+  ) {
+    plan.details.push(
+      `Hayalet ncnn Piper native TTS libraries will be built into ${ncnnPiperJniLibsRoot}.`
+    );
   }
 
   plan.needsConfirmation = plan.details.length > 0;
@@ -756,6 +856,264 @@ async function ensureWhisperCppSource(emitProgress) {
   return whisperCppSourceRoot;
 }
 
+async function ensureSherpaTtsRuntime(emitProgress) {
+  const notify = normalizeProgressEmitter(emitProgress);
+  const runtimeLibraryPath = join(sherpaTtsJniLibsRoot, "arm64-v8a", "libsherpa-onnx-jni.so");
+  const bindingPath = join(
+    sherpaTtsGeneratedKotlinRoot,
+    "com",
+    "k2fsa",
+    "sherpa",
+    "onnx",
+    "Tts.kt"
+  );
+  const ttsModelsRoot = join(sherpaTtsAssetsRoot, "tts-models");
+
+  notify({
+    message: "Preparing sherpa-onnx Android TTS runtime.",
+    progress: 0.78,
+    detail: `sherpa-onnx Android runtime and Piper voices are prepared under ${sherpaTtsRoot}.`,
+  });
+
+  await mkdir(downloadCacheRoot, { recursive: true });
+  const runtimeArchivePath = join(
+    downloadCacheRoot,
+    `sherpa-onnx-${SHERPA_ONNX_VERSION}-android.tar.bz2`
+  );
+  if ((await fileExists(runtimeArchivePath)) !== true) {
+    await downloadFile(SHERPA_ANDROID_RUNTIME_URL, runtimeArchivePath);
+  }
+
+  if ((await fileExists(runtimeLibraryPath)) !== true) {
+    const extractDir = await mkdtemp(join(tmpdir(), "hayalet-ev-sherpa-android-"));
+    const extractResult = await runCommand("tar", ["-xjf", runtimeArchivePath, "-C", extractDir]);
+    if (extractResult.exitCode !== 0) {
+      throw new Error(
+        extractResult.stderr.trim() ||
+          extractResult.stdout.trim() ||
+          "sherpa-onnx Android runtime extraction failed."
+      );
+    }
+    await rm(sherpaTtsJniLibsRoot, { recursive: true, force: true });
+    await mkdir(dirname(sherpaTtsJniLibsRoot), { recursive: true });
+    await cp(join(extractDir, "jniLibs"), sherpaTtsJniLibsRoot, { recursive: true });
+    await rm(extractDir, { recursive: true, force: true });
+  }
+
+  await downloadFile(SHERPA_TTS_KOTLIN_API_URL, bindingPath);
+
+  await mkdir(ttsModelsRoot, { recursive: true });
+  for (const model of SHERPA_TTS_MODELS) {
+    const modelRoot = join(ttsModelsRoot, model.assetDir);
+    if ((await fileExists(join(modelRoot, "tokens.txt"))) === true) {
+      continue;
+    }
+
+    const archivePath = join(downloadCacheRoot, model.archiveName);
+    if ((await fileExists(archivePath)) !== true) {
+      await downloadFile(model.url, archivePath);
+    }
+
+    await rm(modelRoot, { recursive: true, force: true });
+    const extractResult = await runCommand("tar", ["-xjf", archivePath, "-C", ttsModelsRoot]);
+    if (extractResult.exitCode !== 0) {
+      throw new Error(
+        extractResult.stderr.trim() ||
+          extractResult.stdout.trim() ||
+          `${model.modelId} Piper TTS model extraction failed.`
+      );
+    }
+  }
+
+  notify({
+    message: "sherpa-onnx Android TTS runtime is ready.",
+    progress: 0.8,
+    detail: `TTS runtime, bindings, and Piper voices are ready at ${sherpaTtsRoot}.`,
+  });
+}
+
+async function buildNcnnPiperNativeLibraries(env) {
+  const sdkRootCandidate = env.ANDROID_HOME ?? env.ANDROID_SDK_ROOT ?? null;
+  const androidSdk =
+    typeof sdkRootCandidate === "string"
+      ? await inspectAndroidSdkRoot(sdkRootCandidate)
+      : await resolveUsableAndroidSdk();
+  if (androidSdk === null) {
+    throw new Error("ncnn Piper native TTS build needs a usable Android SDK.");
+  }
+
+  const { cmakePath, ndkPath } = getExpectedAndroidSdkPaths(androidSdk.rootPath);
+  const executableSuffix = process.platform === "win32" ? ".exe" : "";
+  const cmakeBin = join(cmakePath, "bin", `cmake${executableSuffix}`);
+  const ninjaBin = join(cmakePath, "bin", `ninja${executableSuffix}`);
+  const toolchainFile = join(ndkPath, "build", "cmake", "android.toolchain.cmake");
+  const sourceDir = join(projectRoot, "scripts", "android-ncnn-piper-native");
+
+  for (const executable of [cmakeBin, ninjaBin, toolchainFile]) {
+    if ((await fileExists(executable)) !== true) {
+      throw new Error(`ncnn Piper native TTS build dependency is missing: ${executable}`);
+    }
+  }
+
+  for (const abi of ["armeabi-v7a", "arm64-v8a"]) {
+    const buildDir = join(ncnnPiperRoot, "native-build", abi);
+    const outputDir = join(ncnnPiperJniLibsRoot, abi);
+    await mkdir(buildDir, { recursive: true });
+    await mkdir(outputDir, { recursive: true });
+
+    const configureResult = await runCommand(
+      cmakeBin,
+      [
+        "-S",
+        sourceDir,
+        "-B",
+        buildDir,
+        "-G",
+        "Ninja",
+        `-DCMAKE_MAKE_PROGRAM=${ninjaBin}`,
+        `-DANDROID_ABI=${abi}`,
+        "-DANDROID_PLATFORM=android-28",
+        `-DANDROID_NDK=${ndkPath}`,
+        `-DCMAKE_TOOLCHAIN_FILE=${toolchainFile}`,
+        "-DCMAKE_BUILD_TYPE=Release",
+        `-DNCNN_ANDROID_SDK_DIR=${ncnnPiperSdkRoot}`,
+      ],
+      { env }
+    );
+    if (configureResult.exitCode !== 0) {
+      throw new Error(
+        configureResult.stderr.trim() ||
+          configureResult.stdout.trim() ||
+          `ncnn Piper native TTS configure failed for ${abi}.`
+      );
+    }
+
+    const buildResult = await runCommand(
+      cmakeBin,
+      ["--build", buildDir, "--target", "hayalet_tts_ncnn", "--parallel", "2"],
+      { env }
+    );
+    if (buildResult.exitCode !== 0) {
+      throw new Error(
+        buildResult.stderr.trim() ||
+          buildResult.stdout.trim() ||
+          `ncnn Piper native TTS build failed for ${abi}.`
+      );
+    }
+
+    const builtLibraryPath = join(buildDir, "libhayalet_tts_ncnn.so");
+    if ((await fileExists(builtLibraryPath)) !== true) {
+      throw new Error(`ncnn Piper native TTS output is missing: ${builtLibraryPath}`);
+    }
+    await cp(builtLibraryPath, join(outputDir, "libhayalet_tts_ncnn.so"));
+  }
+}
+
+async function ensureNcnnPiperTtsRuntime(emitProgress, env = process.env) {
+  const notify = normalizeProgressEmitter(emitProgress);
+  const ncnnConfigPath = join(
+    ncnnPiperSdkRoot,
+    "armeabi-v7a",
+    "lib",
+    "cmake",
+    "ncnn",
+    "ncnnConfig.cmake"
+  );
+
+  notify({
+    message: "Preparing ncnn Piper Android TTS runtime.",
+    progress: 0.81,
+    detail: `ncnn runtime and Piper assets are prepared under ${ncnnPiperRoot}.`,
+  });
+
+  await mkdir(downloadCacheRoot, { recursive: true });
+  const runtimeArchivePath = join(
+    downloadCacheRoot,
+    `ncnn-${NCNN_ANDROID_VERSION}-android-vulkan.zip`
+  );
+  if ((await fileExists(runtimeArchivePath)) !== true) {
+    await downloadFile(NCNN_ANDROID_RUNTIME_URL, runtimeArchivePath);
+  }
+
+  if ((await fileExists(ncnnConfigPath)) !== true) {
+    await rm(ncnnPiperSdkRoot, { recursive: true, force: true });
+    await mkdir(ncnnPiperRoot, { recursive: true });
+    const extractResult = await runCommand("unzip", [
+      "-q",
+      "-o",
+      runtimeArchivePath,
+      "-d",
+      ncnnPiperRoot,
+    ]);
+    if (extractResult.exitCode !== 0) {
+      throw new Error(
+        extractResult.stderr.trim() ||
+          extractResult.stdout.trim() ||
+          "ncnn Android runtime extraction failed."
+      );
+    }
+  }
+
+  await mkdir(ncnnPiperAssetsRoot, { recursive: true });
+
+  const sampleApkPath = join(downloadCacheRoot, `ncnn-android-piper-${NCNN_PIPER_RELEASE}.apk`);
+  if ((await fileExists(sampleApkPath)) !== true) {
+    await downloadFile(NCNN_PIPER_APK_URL, sampleApkPath);
+  }
+
+  if ((await fileExists(join(ncnnPiperAssetsRoot, "en-word_id.bin"))) !== true) {
+    const extractEnglishResult = await runCommand("unzip", [
+      "-q",
+      "-o",
+      "-j",
+      sampleApkPath,
+      "assets/en_*",
+      "assets/en-word_id.bin",
+      "-d",
+      ncnnPiperAssetsRoot,
+    ]);
+    if (extractEnglishResult.exitCode !== 0) {
+      throw new Error(
+        extractEnglishResult.stderr.trim() ||
+          extractEnglishResult.stdout.trim() ||
+          "ncnn Piper English asset extraction failed."
+      );
+    }
+  }
+
+  const trArchivePath = join(downloadCacheRoot, NCNN_PIPER_TR_MODEL.archiveName);
+  if ((await fileExists(trArchivePath)) !== true) {
+    await downloadFile(NCNN_PIPER_TR_MODEL.url, trArchivePath);
+  }
+
+  if ((await fileExists(join(ncnnPiperAssetsRoot, "tr_enc_p.ncnn.bin"))) !== true) {
+    const extractTurkishResult = await runCommand("unzip", [
+      "-q",
+      "-o",
+      "-j",
+      trArchivePath,
+      "tr_TR-fahrettin/tr_*",
+      "-d",
+      ncnnPiperAssetsRoot,
+    ]);
+    if (extractTurkishResult.exitCode !== 0) {
+      throw new Error(
+        extractTurkishResult.stderr.trim() ||
+          extractTurkishResult.stdout.trim() ||
+          `${NCNN_PIPER_TR_MODEL.modelId} ncnn Piper asset extraction failed.`
+      );
+    }
+  }
+
+  await buildNcnnPiperNativeLibraries(env);
+
+  notify({
+    message: "ncnn Piper Android TTS runtime is ready.",
+    progress: 0.82,
+    detail: `ncnn runtime and Piper assets are ready at ${ncnnPiperRoot}.`,
+  });
+}
+
 export async function prepareCompanionBuildEnvironment(options = {}) {
   const { autoInstall = false, emitProgress = null } = options;
   const notify = normalizeProgressEmitter(emitProgress);
@@ -809,11 +1167,7 @@ export async function prepareCompanionBuildEnvironment(options = {}) {
 }
 
 export async function buildCompanionArtifact(options = {}) {
-  const {
-    env = process.env,
-    emitProgress = null,
-    stdio = "inherit",
-  } = options;
+  const { env = process.env, emitProgress = null, stdio = "inherit" } = options;
   const notify = normalizeProgressEmitter(emitProgress);
   await mkdir(artifactRoot, { recursive: true });
 
@@ -824,8 +1178,10 @@ export async function buildCompanionArtifact(options = {}) {
   }
 
   await ensureWhisperCppSource(notify);
+  await ensureSherpaTtsRuntime(notify);
+  await ensureNcnnPiperTtsRuntime(notify, env);
 
-  const javaRuntime = await inspectJavaHome(env.JAVA_HOME ?? "") ?? (await inspectPathJava());
+  const javaRuntime = (await inspectJavaHome(env.JAVA_HOME ?? "")) ?? (await inspectPathJava());
   if (javaRuntime === null) {
     throw new Error("Android companion build is blocked: Java was not found on PATH.");
   }

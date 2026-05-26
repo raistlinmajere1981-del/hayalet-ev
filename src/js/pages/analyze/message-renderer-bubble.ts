@@ -12,8 +12,8 @@ import {
 
 interface BubbleCallbacks {
   onMessageAction?: (
-    action: "read" | "prepend" | "append",
-    data: { provider: string; text: string }
+    action: "read" | "prepend" | "append" | "speak",
+    data: { provider: string; text: string; messageId: string }
   ) => void;
 }
 
@@ -108,6 +108,7 @@ export function createMessageBubble(
 ): HTMLElement {
   const bubble = document.createElement("div");
   bubble.className = `msg-bubble ${msg.role === "assistant" ? "msg-ai" : "msg-user"}`;
+  bubble.dataset["messageId"] = msg.id;
 
   const messageText = msg.content ?? msg.text ?? "";
 
@@ -127,11 +128,12 @@ export function createMessageBubble(
     actions.className = "msg-actions";
 
     const actionConfigs: Array<{
-      action: "read" | "prepend" | "append";
+      action: "read" | "prepend" | "append" | "speak";
       icon: string;
       title: string;
     }> = [
       { action: "read", icon: "👁", title: analyzeBubbleT("actions.read") },
+      { action: "speak", icon: "▶", title: analyzeBubbleT("actions.speak") },
       { action: "prepend", icon: "↥", title: analyzeBubbleT("actions.prepend") },
       { action: "append", icon: "↧", title: analyzeBubbleT("actions.append") },
     ];
@@ -140,13 +142,19 @@ export function createMessageBubble(
       const button = document.createElement("button");
       button.type = "button";
       button.className = "msg-action-btn btn btn-xs btn-secondary btn-icon";
+      if (action === "speak") {
+        button.classList.add("msg-action-btn--speak");
+        button.dataset["ttsState"] = "idle";
+        button.dataset["messageId"] = msg.id;
+      }
+      button.dataset["messageAction"] = action;
       button.textContent = icon;
       button.title = title;
       button.setAttribute("aria-label", title);
       button.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        callbacks.onMessageAction?.(action, { provider, text: messageText });
+        callbacks.onMessageAction?.(action, { provider, text: messageText, messageId: msg.id });
       });
       actions.appendChild(button);
     });

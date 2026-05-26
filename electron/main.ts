@@ -226,8 +226,10 @@ import { setupSceneThemeHandlers } from "./handlers/ipc-scene-themes.ts";
 import { setupBackupHandlers } from "./handlers/ipc-backup.ts";
 import { setupCaptureHandlers } from "./handlers/ipc-capture.ts";
 import { setupTranscriptHandlers } from "./handlers/ipc-transcript.ts";
+import { setupTtsHandlers } from "./handlers/ipc-tts.ts";
 import { setupUs1MailHandlers } from "./handlers/ipc-us1-mail.ts";
 import { captureService } from "./capture-service.ts";
+import { registerTtsAndroidBridge } from "./tts-service.ts";
 
 import { registerHandler, handleLoggerAppendBatch } from "./handlers/ipc-helpers.ts";
 import { initLogger, shutdownLogger, getLoggerCore } from "./logger/index.js";
@@ -422,6 +424,8 @@ void app.whenReady().then(async () => {
     setupMemoryHandlers();
     setupCaptureHandlers();
     setupTranscriptHandlers();
+    registerTtsAndroidBridge(captureService);
+    setupTtsHandlers();
     setupOpencodeUiToolsHandlers();
     setupLlmServerHandlers();
     setupRoomHandlers(null);

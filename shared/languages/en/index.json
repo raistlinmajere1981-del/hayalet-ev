@@ -104,6 +104,27 @@
         "captureSessionLatestEmpty": "No phone capture has been staged yet.",
         "captureSessionDisabled": "Android companion capture is disabled in Settings > Capture.",
         "captureImportButton": "Scrcpy Camera",
+        "tts": {
+          "settingsButton": "TTS",
+          "settingsTitle": "Speech Settings",
+          "modeLabel": "Mode",
+          "modeLocal": "Local",
+          "modeAndroid": "Android",
+          "languageLabel": "Language",
+          "languageTr": "Turkish",
+          "languageEn": "English",
+          "deviceLabel": "Phone",
+          "deviceAuto": "Auto-select ready phone",
+          "companionLabel": "Companion",
+          "runtimeLabel": "Runtime",
+          "refreshButton": "Refresh",
+          "prepareModelButton": "Prepare model",
+          "installingModel": "Preparing...",
+          "launchButton": "Open TTS",
+          "modelReady": "{model} is ready",
+          "statusIdle": "Idle",
+          "statusUnknown": "Unknown"
+        },
         "cameraPanel": {
           "closed": "Scrcpy camera is closed.",
           "opening": "Opening Scrcpy camera.",
@@ -201,6 +222,9 @@
         "attachmentFallback": "file",
         "actions": {
           "read": "Read mode",
+          "speak": "Speak",
+          "stopSpeech": "Stop speech",
+          "speechLoading": "Preparing speech",
           "prepend": "Prepend to the message",
           "append": "Append to the message"
         },

@@ -46,6 +46,16 @@ import type {
   TranscriptTranscriptionResult,
 } from "../types/transcript.js";
 import type {
+  TtsInstallModelResult,
+  TtsManagedModelId,
+  TtsManagedModelStatus,
+  TtsRequest,
+  TtsRuntimeStatus,
+  TtsSpeakResult,
+  TtsStatus,
+  TtsStopResult,
+} from "../types/tts.js";
+import type {
   CaptureActionOutcome,
   CaptureAmbientListenerOptions,
   CaptureAmbientStatusPayload,
@@ -1243,6 +1253,13 @@ declare global {
     transcriptSubmitIngress: (
       request: TranscriptSubmitIngressRequest
     ) => Promise<TranscriptSubmitIngressResult>;
+    ttsStatus?: () => Promise<TtsRuntimeStatus>;
+    ttsSpeak?: (request: TtsRequest) => Promise<TtsSpeakResult>;
+    ttsStop?: (requestId: string) => Promise<TtsStopResult>;
+    ttsListModels?: () => Promise<TtsManagedModelStatus[]>;
+    ttsInstallModel?: (modelId: TtsManagedModelId) => Promise<TtsInstallModelResult>;
+    ttsOnStatus?: (callback: (payload: TtsStatus) => void) => void;
+    ttsOffStatus?: (callback: (payload: TtsStatus) => void) => void;
     transcriptOnIngress?: (callback: (payload: TranscriptIngressPayload) => void) => void;
     transcriptOffIngress?: (callback: (payload: TranscriptIngressPayload) => void) => void;
     assistantOnTranscriptIngress?: (callback: (payload: TranscriptIngressPayload) => void) => void;

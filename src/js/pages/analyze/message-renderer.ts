@@ -25,8 +25,8 @@ import { createMessageBubble } from "./message-renderer-bubble.js";
 
 export interface RenderCallbacks {
   onMessageAction?: (
-    action: "read" | "prepend" | "append",
-    data: { provider: string; text: string }
+    action: "read" | "prepend" | "append" | "speak",
+    data: { provider: string; text: string; messageId: string }
   ) => void;
 }
 

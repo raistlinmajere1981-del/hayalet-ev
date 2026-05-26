@@ -1,6 +1,7 @@
 import type { SlotId, ProviderId, AllProviderId, AssistantProviderId } from "./common.js";
 import type { AppLanguage } from "./i18n.js";
 import type { TranscriptDictationBackend, TranscriptModelVariant } from "./transcript.js";
+import type { TtsLanguage, TtsMode } from "./tts.js";
 export type { AppLanguage } from "./i18n.js";
 
 export const ASSISTANT_SLOT_SETTINGS_KEY = "assistantSlot";
@@ -237,6 +238,8 @@ export interface CaptureDefaultsSettings {
   commandConfirmation?: CaptureCommandConfirmation;
   androidTranscriptModelVariant?: TranscriptModelVariant;
   androidDictationBackend?: AndroidDictationBackend;
+  ttsMode?: TtsMode;
+  ttsLanguage?: TtsLanguage;
 }
 
 export interface CaptureProviderSettings {

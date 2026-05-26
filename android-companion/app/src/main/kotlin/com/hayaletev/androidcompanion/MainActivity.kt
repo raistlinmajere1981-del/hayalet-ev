@@ -44,6 +44,7 @@ private enum class CompanionTab {
     IMAGE,
     DICTATE,
     AMBIENT,
+    TTS,
     LOGS,
 }
 
@@ -101,6 +102,7 @@ class MainActivity : AppCompatActivity() {
         manualAudioRecorder = AndroidAudioRecorder(applicationContext, lifecycleScope)
         manualModelManager = TranscriptModelManager(applicationContext, bridgeClient)
         manualVoskTranscriber = AndroidVoskTranscriber()
+        activeTab = resolveIntentTab(intent) ?: CompanionTab.IMAGE
         sessionCoordinator = CompanionSessionCoordinator(
             appContext = applicationContext,
             scope = lifecycleScope,
@@ -125,6 +127,10 @@ class MainActivity : AppCompatActivity() {
         binding.ambientDetailValue.text = getString(R.string.ambient_detail_waiting)
         binding.ambientWakePhraseValue.text = getString(R.string.ambient_wake_phrase_waiting)
         binding.ambientHistoryValue.text = getString(R.string.ambient_history_empty)
+        binding.ttsStatusValue.text = getString(R.string.tts_status_idle)
+        binding.ttsDetailValue.text = getString(R.string.tts_detail_waiting)
+        binding.ttsModelValue.text = getString(R.string.tts_model_waiting)
+        binding.ttsTextValue.text = getString(R.string.tts_text_empty)
         renderUiState(
             CompanionUiState(
                 connectionStatus = getString(R.string.status_waiting_desktop),
@@ -153,6 +159,7 @@ class MainActivity : AppCompatActivity() {
             ensureCaptureForegroundService()
             renderManualImageControls()
         }
+        resolveIntentTab(intent)?.let { setActiveTab(it) }
         sessionCoordinator.updateLaunchContext(intent)
         updatePermissionsUi()
         if (hasCapturePermissions()) {
@@ -292,6 +299,10 @@ class MainActivity : AppCompatActivity() {
         binding.ambientHistoryValue.text =
             state.ambientHistory?.takeIf { it.isNotBlank() }
                 ?: getString(R.string.ambient_history_empty)
+        binding.ttsStatusValue.text = state.ttsStatus ?: getString(R.string.tts_status_idle)
+        binding.ttsDetailValue.text = state.ttsDetail ?: getString(R.string.tts_detail_waiting)
+        binding.ttsModelValue.text = state.ttsModel ?: getString(R.string.tts_model_waiting)
+        binding.ttsTextValue.text = state.ttsTextSummary ?: getString(R.string.tts_text_empty)
         CompanionDiagnostics.setState("Connection", state.connectionStatus)
         CompanionDiagnostics.setState("Target", state.target)
         CompanionDiagnostics.setState("Permissions", state.permissionsSummary)
@@ -446,7 +457,8 @@ class MainActivity : AppCompatActivity() {
                         when (tab.position) {
                             1 -> CompanionTab.DICTATE
                             2 -> CompanionTab.AMBIENT
-                            3 -> CompanionTab.LOGS
+                            3 -> CompanionTab.TTS
+                            4 -> CompanionTab.LOGS
                             else -> CompanionTab.IMAGE
                         }
                     )
@@ -465,13 +477,36 @@ class MainActivity : AppCompatActivity() {
         binding.imageTabPanel.isVisible = tab == CompanionTab.IMAGE
         binding.dictateTabPanel.isVisible = tab == CompanionTab.DICTATE
         binding.ambientTabPanel.isVisible = tab == CompanionTab.AMBIENT
+        binding.ttsTabPanel.isVisible = tab == CompanionTab.TTS
         binding.logsTabPanel.isVisible = tab == CompanionTab.LOGS
+        val tabIndex =
+            when (tab) {
+                CompanionTab.IMAGE -> 0
+                CompanionTab.DICTATE -> 1
+                CompanionTab.AMBIENT -> 2
+                CompanionTab.TTS -> 3
+                CompanionTab.LOGS -> 4
+            }
+        if (binding.companionTabs.selectedTabPosition != tabIndex) {
+            binding.companionTabs.getTabAt(tabIndex)?.select()
+        }
         if (tab == CompanionTab.LOGS) {
             diagnosticsRenderJob?.cancel()
             diagnosticsRenderJob = null
             val snapshot = pendingDiagnosticsSnapshot ?: CompanionDiagnostics.snapshot()
             pendingDiagnosticsSnapshot = null
             renderDiagnostics(snapshot)
+        }
+    }
+
+    private fun resolveIntentTab(intent: Intent?): CompanionTab? {
+        return when (intent?.getStringExtra("activeTab")?.trim()?.lowercase()) {
+            "image" -> CompanionTab.IMAGE
+            "dictate" -> CompanionTab.DICTATE
+            "ambient" -> CompanionTab.AMBIENT
+            "tts" -> CompanionTab.TTS
+            "logs" -> CompanionTab.LOGS
+            else -> null
         }
     }
 

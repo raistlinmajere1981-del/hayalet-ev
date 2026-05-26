@@ -57,6 +57,11 @@ import {
   normalizeTranscriptModelVariant,
 } from "../../../../shared/transcript/model-catalog.js";
 import {
+  normalizeTtsLanguage,
+  normalizeTtsMode,
+  resolveTtsLanguageFromLocale,
+} from "../../../../shared/tts/model-catalog.js";
+import {
   DEFAULT_ASSISTANT_ACCOUNT_ID,
   DEFAULT_OPENCODE_UI_ACCOUNT_ID,
   createDefaultAssistantAccount,
@@ -138,7 +143,10 @@ function normalizeLocalTranscriptBackend(value: unknown): TranscriptDictationBac
   return normalizeTranscriptBackend(value, "whisper.cpp");
 }
 
-function normalizeCaptureSettings(raw: unknown): AppSettings["capture"] | undefined {
+function normalizeCaptureSettings(
+  raw: unknown,
+  appLanguage: unknown = "tr"
+): AppSettings["capture"] | undefined {
   if (!isPlainObject(raw)) {
     return undefined;
   }
@@ -162,6 +170,11 @@ function normalizeCaptureSettings(raw: unknown): AppSettings["capture"] | undefi
       ),
       androidDictationBackend: normalizeAndroidDictationBackend(
         defaults["androidDictationBackend"]
+      ),
+      ttsMode: normalizeTtsMode(defaults["ttsMode"], "local"),
+      ttsLanguage: normalizeTtsLanguage(
+        defaults["ttsLanguage"],
+        resolveTtsLanguageFromLocale(appLanguage)
       ),
     },
     providers: {
@@ -1078,7 +1091,10 @@ function normalizeKnownSettings(raw: unknown): Record<string, unknown> {
     out.general = r.general;
   }
 
-  const capture = normalizeCaptureSettings(r.capture);
+  const capture = normalizeCaptureSettings(
+    r.capture,
+    isPlainObject(r.general) ? r.general["language"] : "tr"
+  );
   if (capture !== undefined) {
     out.capture = capture;
   }

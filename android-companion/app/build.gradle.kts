@@ -2,6 +2,10 @@ plugins {
   id("com.android.application")
 }
 
+val ncnnPiperRoot = file("${rootProject.projectDir}/../dist/android-ncnn-piper")
+val ncnnPiperAssetsRoot = file("${ncnnPiperRoot}/assets")
+val ncnnPiperJniLibsRoot = file("${ncnnPiperRoot}/jniLibs")
+
 android {
   namespace = "com.hayaletev.androidcompanion"
   compileSdk = 36
@@ -42,6 +46,17 @@ android {
 
   buildFeatures {
     viewBinding = true
+  }
+
+  sourceSets {
+    getByName("main") {
+      kotlin.srcDir(file("${rootProject.projectDir}/../dist/android-sherpa-tts/generated/kotlin"))
+      jniLibs.srcDirs(
+        file("${rootProject.projectDir}/../dist/android-sherpa-tts/jniLibs"),
+        ncnnPiperJniLibsRoot
+      )
+      assets.srcDirs(file("${rootProject.projectDir}/../dist/android-sherpa-tts/assets"), ncnnPiperAssetsRoot)
+    }
   }
 
   packaging {

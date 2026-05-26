@@ -16,6 +16,7 @@ import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { ButtonStates } from "../ui/button-states.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 import { notifyUser } from "../ui/user-notification.js";
+import { ModalManager } from "../ui/modal-manager.js";
 import { shellT } from "../app/shell-i18n.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import type { Us1RoomPackageCandidate, Us1SessionEvent } from "@shared/us1-mail.js";
@@ -100,6 +101,13 @@ import {
   runCaptureAction,
 } from "../modules/capture/electron-client.js";
 import { onTranscriptIngress } from "../modules/transcript/electron-client.js";
+import {
+  getTtsStatus,
+  installTtsModel,
+  onTtsStatus,
+  speakText,
+  stopSpeech,
+} from "../modules/tts/electron-client.js";
 import type {
   CaptureActionOutcome,
   CaptureAmbientStatusPayload,
@@ -110,6 +118,7 @@ import type {
   CaptureServiceStatus,
 } from "../../types/capture.js";
 import type { TranscriptIngressPayload, TranscriptTargetId } from "../../types/transcript.js";
+import type { TtsLanguage, TtsMode, TtsRuntimeStatus, TtsStatus } from "../../types/tts.js";
 import type { CaptureCommandPhraseSettings } from "../../types/settings.js";
 import {
   DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
@@ -119,6 +128,12 @@ import {
   normalizeAmbientWakePhrases,
 } from "../../../shared/capture/ambient-defaults.js";
 import { DEFAULT_CAPTURE_COMMAND_PHRASES } from "../../../shared/capture/command-catalog.js";
+import {
+  normalizeTtsLanguage,
+  normalizeTtsMode,
+  resolveTtsLanguageFromLocale,
+  resolveTtsModelId,
+} from "../../../shared/tts/model-catalog.js";
 interface ConversationSelectedDetail {
   provider?: "ai0" | "ai1" | "ai2" | "us1";
   isNew?: boolean;
@@ -263,6 +278,7 @@ export class AnalyzeController {
   _unsubCaptureMediaIngress: (() => void) | null;
   _unsubCaptureAmbientStatus: (() => void) | null;
   _unsubAmbientTranscriptIngress: (() => void) | null;
+  _unsubTtsStatus: (() => void) | null;
   _boundActions: boolean;
   _us1PollTimer: number | null;
   _us1SyncInFlight: boolean;
@@ -289,6 +305,9 @@ export class AnalyzeController {
   _cameraPreviewStream: MediaStream | null;
   _cameraPanelStatusMessage: string | null;
   _cameraPanelHasFrame: boolean;
+  _ttsRuntimeStatus: TtsRuntimeStatus | null;
+  _ttsActiveRequestId: string | null;
+  _ttsActiveMessageId: string | null;
   _voiceCommandsEnabled: boolean;
   _ambientEnabled: boolean;
   _ambientRequestId: string | null;
@@ -327,6 +346,7 @@ export class AnalyzeController {
     this._unsubCaptureMediaIngress = null;
     this._unsubCaptureAmbientStatus = null;
     this._unsubAmbientTranscriptIngress = null;
+    this._unsubTtsStatus = null;
     this._boundActions = false;
     this._us1PollTimer = null;
     this._us1SyncInFlight = false;
@@ -352,6 +372,9 @@ export class AnalyzeController {
     this._cameraPreviewStream = null;
     this._cameraPanelStatusMessage = null;
     this._cameraPanelHasFrame = false;
+    this._ttsRuntimeStatus = null;
+    this._ttsActiveRequestId = null;
+    this._ttsActiveMessageId = null;
     this._voiceCommandsEnabled =
       SettingsManager.getSnapshot().voiceCommands?.analyzeEnabled === true;
     this._ambientEnabled = false;
@@ -376,6 +399,7 @@ export class AnalyzeController {
           this._syncDictationAvailability();
           this.renderCaptureSessionState();
           this._renderAmbientToggle();
+          this._syncTtsBubbleStates();
         }
         if (
           changedPaths.includes("*") ||
@@ -420,6 +444,9 @@ export class AnalyzeController {
     this._unsubAmbientTranscriptIngress ??= onTranscriptIngress((payload) => {
       void this._handleAmbientTranscriptIngress(payload);
     });
+    this._unsubTtsStatus ??= onTtsStatus((payload) => {
+      this._handleTtsStatus(payload);
+    });
     TrafficManager.onUpdate(() => {
       this.updateSendButtonState();
       void this._renderAnalyzeSceneCharacters();
@@ -442,6 +469,7 @@ export class AnalyzeController {
       this._dictationBinding?.refresh();
       this._renderVoiceCommandToggle();
       this._renderAmbientToggle();
+      this._syncTtsBubbleStates();
       this.refreshUploads();
       this.renderCaptureSessionState();
       this._renderAnalyzeSceneHotspots();
@@ -456,6 +484,7 @@ export class AnalyzeController {
     this.refreshUploads();
     this.renderCaptureSessionState();
     this._renderAmbientToggle();
+    void this._refreshTtsRuntimeStatus();
     this._initializeAnalyzeScene();
     this._unsubSceneTheme ??= SceneThemeManager.onChange(() => {
       this._analyzeSceneSession.reloadFromActiveTheme(this._analyzeSceneDebugEnabled);
@@ -1239,6 +1268,9 @@ export class AnalyzeController {
     document.getElementById("capture-import-btn")?.addEventListener("click", () => {
       void this.toggleAndroidCameraPanel();
     });
+    document.getElementById("analyze-tts-settings-btn")?.addEventListener("click", () => {
+      void this._openTtsSettingsOverlay();
+    });
     document.getElementById("compose-input")?.addEventListener("input", () => {
       this.updateSendButtonState();
     });
@@ -1343,6 +1375,31 @@ export class AnalyzeController {
     ReturnType<typeof SettingsManager.getSnapshot>["capture"]
   >["providers"] {
     return SettingsManager.getSnapshot().capture?.providers ?? {};
+  }
+
+  _ttsMode(): TtsMode {
+    return normalizeTtsMode(this._captureDefaults()?.ttsMode, "local");
+  }
+
+  _ttsLanguage(): TtsLanguage {
+    const settings = SettingsManager.getSnapshot();
+    const fallback = resolveTtsLanguageFromLocale(settings.general?.language);
+    return normalizeTtsLanguage(this._captureDefaults()?.ttsLanguage, fallback);
+  }
+
+  _isTtsStatusActive(status: TtsStatus | null | undefined): boolean {
+    return (
+      status?.status === "queued" || status?.status === "preparing" || status?.status === "playing"
+    );
+  }
+
+  async _refreshTtsRuntimeStatus(): Promise<void> {
+    this._ttsRuntimeStatus = await getTtsStatus().catch(() => null);
+    const active = this._ttsRuntimeStatus?.active ?? null;
+    if (this._isTtsStatusActive(active) === true && active?.target === "analyze-compose") {
+      this._ttsActiveRequestId = active.requestId;
+    }
+    this._syncTtsBubbleStates();
   }
 
   _ambientWakePhrases(): string[] {
@@ -2246,9 +2303,17 @@ export class AnalyzeController {
         }
         this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.waiting");
         this._renderAndroidCameraPanel();
-        await this._attachAndroidCameraFeed(
-          outcome.status.scrcpy.activeSession?.previewVideo ?? outcome.status.analyze.previewVideo
-        );
+        const previewVideo =
+          outcome.status.scrcpy.activeSession?.previewVideo ?? outcome.status.analyze.previewVideo;
+        if (previewVideo === null) {
+          const scrcpyMessage =
+            outcome.status.operation.action === "start-camera-feed" &&
+            outcome.status.operation.state === "error"
+              ? outcome.status.operation.message
+              : outcome.status.scrcpy.lastError;
+          throw new Error(scrcpyMessage ?? "Scrcpy video device was not reported.");
+        }
+        await this._attachAndroidCameraFeed(previewVideo);
         this._cameraPanelHasFrame = true;
         this._cameraPanelStatusMessage = analyzeT("page.cameraPanel.live");
         this._renderAndroidCameraPanel();
@@ -2446,6 +2511,9 @@ export class AnalyzeController {
 
     const headerStatusEl = document.getElementById("compose-android-status");
     const captureButton = document.getElementById("capture-import-btn") as HTMLButtonElement | null;
+    const ttsSettingsButton = document.getElementById(
+      "analyze-tts-settings-btn"
+    ) as HTMLButtonElement | null;
     const androidCompanionEnabled = this._captureProviders()?.androidCompanionEnabled !== false;
     const deviceLabel = selectedDevice?.label ?? analyzeT("page.captureSessionDeviceNone");
     const hasReadyDevice = selectedDevice !== null;
@@ -2476,9 +2544,16 @@ export class AnalyzeController {
       captureButton.setAttribute("aria-expanded", this._cameraPanelOpen ? "true" : "false");
     }
 
+    if (ttsSettingsButton) {
+      const activeTts = this._isTtsStatusActive(this._ttsRuntimeStatus?.active);
+      ttsSettingsButton.classList.toggle("is-active", activeTts);
+      ttsSettingsButton.setAttribute("aria-pressed", activeTts ? "true" : "false");
+    }
+
     this._syncDictationAvailability();
     this._renderAmbientToggle();
     this._renderAndroidCameraPanel();
+    this._syncTtsBubbleStates();
   }
 
   async refreshCaptureSessionState(forceRefresh = false): Promise<void> {
@@ -2529,6 +2604,324 @@ export class AnalyzeController {
     }
   }
 
+  _handleMessageAction(
+    action: "read" | "prepend" | "append" | "speak",
+    payload: { provider: string; text: string; messageId: string }
+  ): void {
+    if (action === "speak") {
+      void this._toggleMessageSpeech(payload);
+      return;
+    }
+
+    applyMessageAction(action, payload, () => {
+      this.updateSendButtonState();
+    });
+  }
+
+  async _toggleMessageSpeech(payload: {
+    provider: string;
+    text: string;
+    messageId: string;
+  }): Promise<void> {
+    const text = payload.text.trim();
+    if (text === "") {
+      return;
+    }
+
+    const activeRequestId = this._ttsActiveRequestId;
+    if (
+      activeRequestId !== null &&
+      this._ttsActiveMessageId === payload.messageId &&
+      this._isTtsStatusActive(this._ttsRuntimeStatus?.active) === true
+    ) {
+      await stopSpeech(activeRequestId);
+      return;
+    }
+
+    if (activeRequestId !== null && this._isTtsStatusActive(this._ttsRuntimeStatus?.active)) {
+      await stopSpeech(activeRequestId).catch(() => null);
+    }
+
+    this._ttsActiveMessageId = payload.messageId;
+    this._syncTtsBubbleStates();
+
+    const result = await speakText({
+      text,
+      target: "analyze-compose",
+      mode: this._ttsMode(),
+      language: this._ttsLanguage(),
+    });
+    this._ttsRuntimeStatus = result.runtime;
+    this._ttsActiveRequestId = result.requestId;
+    this._applyAnalyzeTtsStatus(result.status);
+  }
+
+  _handleTtsStatus(payload: TtsStatus): void {
+    if (payload.target !== "analyze-compose") {
+      return;
+    }
+
+    this._applyAnalyzeTtsStatus(payload);
+  }
+
+  _applyAnalyzeTtsStatus(payload: TtsStatus): void {
+    this._ttsRuntimeStatus = {
+      ...(this._ttsRuntimeStatus ?? {
+        mode: this._ttsMode(),
+        language: this._ttsLanguage(),
+        active: null,
+        local: {
+          ready: false,
+          runtimeAvailable: false,
+          runtimePath: null,
+          modelPath: null,
+          modelId: payload.modelId,
+          message: null,
+        },
+        android: {
+          ready: false,
+          deviceId: null,
+          message: null,
+        },
+        models: [],
+      }),
+      active: this._isTtsStatusActive(payload) ? payload : null,
+    };
+    this._ttsActiveRequestId = payload.requestId;
+    if (payload.status === "failed") {
+      this._notifyCaptureFeedback("error", payload.message, `analyze-tts-${payload.requestId}`);
+    }
+    this._syncTtsBubbleStates();
+    if (payload.status === "done" || payload.status === "stopped" || payload.status === "failed") {
+      this._ttsActiveRequestId = null;
+      this._ttsActiveMessageId = null;
+    }
+  }
+
+  _syncTtsBubbleStates(): void {
+    const buttons = document.querySelectorAll<HTMLButtonElement>(".msg-action-btn--speak");
+    const active = this._ttsRuntimeStatus?.active ?? null;
+    const activeMessageId =
+      this._isTtsStatusActive(active) === true ? this._ttsActiveMessageId : null;
+    const speakTitle = analyzeT("bubble.actions.speak");
+    const stopTitle = analyzeT("bubble.actions.stopSpeech");
+    const loadingTitle = analyzeT("bubble.actions.speechLoading");
+
+    buttons.forEach((button) => {
+      const isActiveMessage =
+        activeMessageId !== null && button.dataset["messageId"] === activeMessageId;
+      const isPreparing =
+        isActiveMessage && (active?.status === "queued" || active?.status === "preparing");
+      const isPlaying = isActiveMessage && active?.status === "playing";
+      const title = isPreparing ? loadingTitle : isPlaying ? stopTitle : speakTitle;
+      button.classList.toggle("is-loading", isPreparing);
+      button.classList.toggle("is-playing", isPlaying);
+      button.dataset["ttsState"] = isPreparing ? "loading" : isPlaying ? "playing" : "idle";
+      button.textContent = isPreparing ? "..." : isPlaying ? "■" : "▶";
+      button.title = title;
+      button.setAttribute("aria-label", title);
+      button.setAttribute("aria-pressed", isActiveMessage ? "true" : "false");
+    });
+  }
+
+  async _openTtsSettingsOverlay(): Promise<void> {
+    await Promise.all([this.refreshCaptureSessionState(true), this._refreshTtsRuntimeStatus()]);
+    const content = document.createElement("div");
+    content.className = "analyze-tts-settings";
+
+    const createRow = (labelText: string, value: HTMLElement): HTMLLabelElement => {
+      const row = document.createElement("label");
+      row.className = "analyze-tts-settings__row";
+      const label = document.createElement("span");
+      label.className = "analyze-tts-settings__label";
+      label.textContent = labelText;
+      row.append(label, value);
+      return row;
+    };
+
+    const modeSelect = document.createElement("select");
+    modeSelect.className = "form-input";
+    const modeOptions: Array<{ value: TtsMode; label: string }> = [
+      { value: "local", label: analyzeT("page.tts.modeLocal") },
+      { value: "android", label: analyzeT("page.tts.modeAndroid") },
+    ];
+    modeOptions.forEach(({ value, label }) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      modeSelect.appendChild(option);
+    });
+    modeSelect.value = this._ttsMode();
+
+    const languageSelect = document.createElement("select");
+    languageSelect.className = "form-input";
+    const languageOptions: Array<{ value: TtsLanguage; label: string }> = [
+      { value: "tr", label: analyzeT("page.tts.languageTr") },
+      { value: "en", label: analyzeT("page.tts.languageEn") },
+    ];
+    languageOptions.forEach(({ value, label }) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      languageSelect.appendChild(option);
+    });
+    languageSelect.value = this._ttsLanguage();
+
+    const deviceSelect = document.createElement("select");
+    deviceSelect.className = "form-input";
+    const companionValue = document.createElement("div");
+    companionValue.className = "analyze-tts-settings__value";
+    const runtimeValue = document.createElement("div");
+    runtimeValue.className = "analyze-tts-settings__value";
+
+    const selectedModelId = (): ReturnType<typeof resolveTtsModelId> =>
+      resolveTtsModelId(normalizeTtsLanguage(languageSelect.value));
+
+    const populateDeviceSelect = (): void => {
+      const preferredDeviceId = this._captureDefaults()?.preferredDeviceId ?? "";
+      deviceSelect.innerHTML = "";
+      const autoOption = document.createElement("option");
+      autoOption.value = "";
+      autoOption.textContent = analyzeT("page.tts.deviceAuto");
+      deviceSelect.appendChild(autoOption);
+      (this._captureStatus?.android.devices ?? [])
+        .filter((device) => device.connectionState === "device")
+        .forEach((device) => {
+          const option = document.createElement("option");
+          option.value = device.deviceId;
+          option.textContent = device.label;
+          deviceSelect.appendChild(option);
+        });
+      deviceSelect.value =
+        preferredDeviceId !== "" &&
+        Array.from(deviceSelect.options).some((option) => option.value === preferredDeviceId)
+          ? preferredDeviceId
+          : "";
+    };
+
+    const renderStatus = (): void => {
+      companionValue.textContent =
+        this._captureStatus?.android.message ?? analyzeT("page.tts.statusUnknown");
+      const model = this._ttsRuntimeStatus?.models.find(
+        (entry) => entry.modelId === selectedModelId()
+      );
+      runtimeValue.textContent =
+        this._ttsRuntimeStatus?.active?.message ??
+        (model?.ready === true
+          ? analyzeT("page.tts.modelReady", { model: model.label })
+          : (model?.lastError ?? this._ttsRuntimeStatus?.local.message)) ??
+        analyzeT("page.tts.statusIdle");
+    };
+
+    modeSelect.addEventListener("change", () => {
+      void SettingsManager.set("capture.defaults.ttsMode", normalizeTtsMode(modeSelect.value));
+    });
+    languageSelect.addEventListener("change", () => {
+      void (async (): Promise<void> => {
+        await SettingsManager.set(
+          "capture.defaults.ttsLanguage",
+          normalizeTtsLanguage(languageSelect.value)
+        );
+        await this._refreshTtsRuntimeStatus();
+        renderStatus();
+      })();
+    });
+    deviceSelect.addEventListener("change", () => {
+      void (async (): Promise<void> => {
+        await SettingsManager.set(
+          "capture.defaults.preferredDeviceId",
+          deviceSelect.value.trim() === "" ? null : deviceSelect.value.trim()
+        );
+        await this.refreshCaptureSessionState(true);
+        populateDeviceSelect();
+        renderStatus();
+      })();
+    });
+
+    const actions = document.createElement("div");
+    actions.className = "analyze-tts-settings__actions";
+    const refreshButton = document.createElement("button");
+    refreshButton.type = "button";
+    refreshButton.className = "btn btn-secondary btn-sm";
+    refreshButton.textContent = analyzeT("page.tts.refreshButton");
+    refreshButton.addEventListener("click", () => {
+      void (async (): Promise<void> => {
+        await Promise.all([this.refreshCaptureSessionState(true), this._refreshTtsRuntimeStatus()]);
+        populateDeviceSelect();
+        renderStatus();
+      })();
+    });
+    const prepareModelButton = document.createElement("button");
+    prepareModelButton.type = "button";
+    prepareModelButton.className = "btn btn-secondary btn-sm";
+    prepareModelButton.textContent = analyzeT("page.tts.prepareModelButton");
+    prepareModelButton.addEventListener("click", () => {
+      void (async (): Promise<void> => {
+        prepareModelButton.disabled = true;
+        prepareModelButton.textContent = analyzeT("page.tts.installingModel");
+        const modelId = selectedModelId();
+        const result = await installTtsModel(modelId).catch((error: unknown) => ({
+          success: false,
+          model: null,
+          error: getErrorMessage(error),
+        }));
+        await this._refreshTtsRuntimeStatus();
+        this._notifyCaptureFeedback(
+          result?.success === true ? "success" : "error",
+          result?.success === true
+            ? analyzeT("page.tts.modelReady", {
+                model: result.model?.label ?? modelId,
+              })
+            : (result?.error ?? analyzeT("page.tts.statusUnknown")),
+          "analyze-tts-model-install"
+        );
+        prepareModelButton.disabled = false;
+        prepareModelButton.textContent = analyzeT("page.tts.prepareModelButton");
+        renderStatus();
+      })();
+    });
+    const launchButton = document.createElement("button");
+    launchButton.type = "button";
+    launchButton.className = "btn btn-secondary btn-sm";
+    launchButton.textContent = analyzeT("page.tts.launchButton");
+    launchButton.addEventListener("click", () => {
+      void (async (): Promise<void> => {
+        const outcome = await runCaptureAction("launch-companion", {
+          target: "analyze-compose",
+          activeTab: "tts",
+          deviceId: deviceSelect.value.trim() === "" ? null : deviceSelect.value.trim(),
+        });
+        this._captureStatus = outcome.status;
+        this._notifyCaptureFeedback(
+          outcome.ok ? "success" : "error",
+          outcome.message,
+          "analyze-tts-launch"
+        );
+        populateDeviceSelect();
+        renderStatus();
+      })();
+    });
+    actions.append(refreshButton, prepareModelButton, launchButton);
+
+    content.append(
+      createRow(analyzeT("page.tts.modeLabel"), modeSelect),
+      createRow(analyzeT("page.tts.languageLabel"), languageSelect),
+      createRow(analyzeT("page.tts.deviceLabel"), deviceSelect),
+      createRow(analyzeT("page.tts.companionLabel"), companionValue),
+      createRow(analyzeT("page.tts.runtimeLabel"), runtimeValue),
+      actions
+    );
+    populateDeviceSelect();
+    renderStatus();
+
+    ModalManager.open({
+      title: analyzeT("page.tts.settingsTitle"),
+      content,
+      size: "medium",
+      containerClassName: "modal-tts-settings",
+    });
+  }
+
   _clearSlotMessages(provider: string): void {
     if (provider === "ai1" || provider === "ai2") {
       resetMessageRenderState(provider);
@@ -2551,13 +2944,12 @@ export class AnalyzeController {
   async _renderMessages(provider: "ai1" | "ai2"): Promise<void> {
     Logger.debug(LogCategory.ANALYZE, analyzeT("logs.renderMessagesStarted", { provider }));
     const callbacks: RenderCallbacks = {
-      onMessageAction: (action, payload: { provider: string; text: string }) => {
-        applyMessageAction(action, payload, () => {
-          this.updateSendButtonState();
-        });
+      onMessageAction: (action, payload) => {
+        this._handleMessageAction(action, payload);
       },
     };
     const result = await renderMessages(provider, callbacks);
+    this._syncTtsBubbleStates();
     Logger.debug(LogCategory.ANALYZE, analyzeT("logs.renderMessagesCompleted", { provider }), {
       lastMessage: result.lastMessage.substring(0, 50),
     });
@@ -2632,10 +3024,8 @@ export class AnalyzeController {
       {}
     );
     const callbacks: RenderCallbacks = {
-      onMessageAction: (action, payload: { provider: string; text: string }) => {
-        applyMessageAction(action, payload, () => {
-          this.updateSendButtonState();
-        });
+      onMessageAction: (action, payload) => {
+        this._handleMessageAction(action, payload);
       },
     };
     const attachmentsBasePath = `data/${accountId}/attachments/${conversationId}`;
@@ -2663,6 +3053,7 @@ export class AnalyzeController {
       return text !== "" && (message.role === "assistant" || message.role === "user");
     });
     this.lastMessages.us1 = lastAssistant?.content ?? lastAssistant?.text ?? "";
+    this._syncTtsBubbleStates();
     this._us1AwaitingReply = lastMeaningful?.role === "user";
     AppState.clearUs1PendingSession(this.us1SessionId);
     AppState.clearUs1PendingSessionByConversation(conversationId);

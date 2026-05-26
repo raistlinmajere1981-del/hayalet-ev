@@ -7,12 +7,14 @@ import type {
   CaptureMediaIngressPayload,
 } from "../../../types/capture.js";
 import type { TranscriptIngressPayload } from "../../../types/transcript.js";
+import type { TtsRequest, TtsSpeakResult, TtsStatus, TtsStopResult } from "../../../types/tts.js";
 import { AppState } from "../app-state.js";
 import {
   onCaptureDictationStatus,
   onCaptureMediaIngress,
   runCaptureAction,
 } from "../capture/electron-client.js";
+import { onTtsStatus, speakText, stopSpeech } from "../tts/electron-client.js";
 import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory, LogLevel } from "../logger/index.js";
 import { ServerCommands } from "../server-commands.js";
@@ -49,6 +51,7 @@ interface RoomHostRegistration {
   state: Map<string, unknown>;
   activeTranscriptRequestIds: Set<string>;
   activeMediaRequestIds: Set<string>;
+  activeTtsRequestIds: Set<string>;
   hostModuleCleanup: (() => void) | null;
   loadPromise: Promise<boolean> | null;
   loaded: boolean;
@@ -92,6 +95,13 @@ interface RoomHostApi {
     stopInteractiveMirror: (
       requestId?: string
     ) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
+  };
+  tts: {
+    speak: (
+      text: string,
+      options?: Pick<TtsRequest, "requestId" | "mode" | "language" | "modelId">
+    ) => Promise<{ requestId: string; outcome: TtsSpeakResult }>;
+    stop: (requestId: string) => Promise<TtsStopResult>;
   };
   registerProtocols: (protocols: Record<string, string>) => void;
   notifyRoom: (type: string, payload?: Record<string, unknown>) => void;
@@ -207,6 +217,7 @@ class RoomHostRuntimeClass {
 
     onCaptureMediaIngress(this.handleCaptureMediaIngress);
     onCaptureDictationStatus(this.handleCaptureDictationStatus);
+    onTtsStatus(this.handleTtsStatus);
   }
 
   private handleExpectedCommandCaptureFailureEvent = (event: Event): void => {
@@ -329,6 +340,35 @@ class RoomHostRuntimeClass {
     });
   };
 
+  private handleTtsStatus = (payload: TtsStatus): void => {
+    if (payload.target.startsWith("room:") !== true) {
+      return;
+    }
+
+    const roomId = payload.target.slice("room:".length).trim();
+    if (roomId === "") {
+      return;
+    }
+
+    const registration = this.rooms.get(roomId);
+    if (registration === undefined) {
+      return;
+    }
+
+    if (registration.activeTtsRequestIds.has(payload.requestId) !== true) {
+      return;
+    }
+
+    if (payload.status === "done" || payload.status === "stopped" || payload.status === "failed") {
+      registration.activeTtsRequestIds.delete(payload.requestId);
+    }
+
+    registration.bridge?.sendToRoom({
+      type: "tts-status",
+      payload,
+    });
+  };
+
   async ensureRoomHost(room: InstalledRoomRecord, bridge: RoomBridge): Promise<boolean> {
     let registration = this.rooms.get(room.id);
     if (registration === undefined) {
@@ -345,6 +385,7 @@ class RoomHostRuntimeClass {
         state: new Map<string, unknown>(),
         activeTranscriptRequestIds: new Set<string>(),
         activeMediaRequestIds: new Set<string>(),
+        activeTtsRequestIds: new Set<string>(),
         loadPromise: null,
         loaded: false,
       };
@@ -813,6 +854,26 @@ class RoomHostRuntimeClass {
           notifyCaptureFeedStatus(requestId, "interactive-mirror", outcome);
           return { requestId, outcome };
         },
+      },
+      tts: {
+        speak: async (
+          text,
+          options = {}
+        ): Promise<{ requestId: string; outcome: TtsSpeakResult }> => {
+          const requestId = options.requestId ?? crypto.randomUUID();
+          registration.activeTtsRequestIds.add(requestId);
+          const outcome = await speakText({
+            ...options,
+            requestId,
+            target: transcriptTarget,
+            text,
+          });
+          if (outcome.status.status === "failed") {
+            registration.activeTtsRequestIds.delete(requestId);
+          }
+          return { requestId, outcome };
+        },
+        stop: async (requestId): Promise<TtsStopResult> => await stopSpeech(requestId),
       },
       registerProtocols: (protocols): void => {
         RoomProtocolRegistry.registerRuntimeProtocols(registration.room.id, protocols);

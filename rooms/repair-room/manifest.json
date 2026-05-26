@@ -3,7 +3,6 @@
   "id": "repair-room",
   "name": "Repair Room",
   "version": "0.1.0",
-  "description": "An electronics repair workstation that combines a live PCB workbench, AİÖ tactical feed, knowledge pack research, and operator-aware diagnostic guidance.",
   "menu": {
     "label": "Repair Room",
     "icon": "RR",
@@ -15,51 +14,6 @@
     "hostEntry": "host/index.js"
   },
   "defaultFeatureId": "repair-workbench",
-  "workbench": {
-    "experienceId": "repair-workbench",
-    "label": "Repair Workbench",
-    "description": "Live PCB stage with overlay annotations, AI tactical feed, measurement panel, knowledge pack viewer, and operator profile awareness.",
-    "mode": "guided",
-    "primaryFeatureId": "repair-workbench",
-    "availableFeatureIds": ["repair-workbench"]
-  },
-  "i18n": {
-    "baseDir": "i18n"
-  },
-  "scene": {
-    "referenceSize": {
-      "width": 1600,
-      "height": 900
-    },
-    "roomBackgroundSrc": "shared/assets/room-background.svg",
-    "chrome": {
-      "pageShellVariant": "immersive-stage"
-    },
-    "roomsHotspot": {
-      "id": "repair-room-door",
-      "rect": {
-        "leftPx": 736,
-        "topPx": 232,
-        "widthPx": 170,
-        "heightPx": 332
-      },
-      "label": {
-        "text": "Repair Room"
-      }
-    },
-    "backHotspot": {
-      "id": "repair-room-back",
-      "rect": {
-        "leftPx": 56,
-        "topPx": 154,
-        "widthPx": 168,
-        "heightPx": 252
-      },
-      "label": {
-        "text": "Corridor"
-      }
-    }
-  },
   "features": [
     {
       "id": "repair-workbench",
@@ -325,5 +279,51 @@
         }
       }
     }
-  ]
+  ],
+  "workbench": {
+    "experienceId": "repair-workbench",
+    "label": "Repair Workbench",
+    "description": "Live PCB stage with overlay annotations, AI tactical feed, measurement panel, knowledge pack viewer, and operator profile awareness.",
+    "mode": "guided",
+    "primaryFeatureId": "repair-workbench",
+    "availableFeatureIds": ["repair-workbench"]
+  },
+  "description": "An electronics repair workstation that combines a live PCB workbench, AİÖ tactical feed, knowledge pack research, and operator-aware diagnostic guidance.",
+  "scene": {
+    "referenceSize": {
+      "width": 1600,
+      "height": 900
+    },
+    "roomBackgroundSrc": "shared/assets/room-background.svg",
+    "roomsHotspot": {
+      "id": "repair-room-door",
+      "rect": {
+        "leftPx": 1236,
+        "topPx": 372,
+        "widthPx": 170,
+        "heightPx": 332
+      },
+      "label": {
+        "text": "Repair Room"
+      }
+    },
+    "backHotspot": {
+      "id": "repair-room-back",
+      "rect": {
+        "leftPx": 56,
+        "topPx": 154,
+        "widthPx": 168,
+        "heightPx": 252
+      },
+      "label": {
+        "text": "Corridor"
+      }
+    },
+    "chrome": {
+      "pageShellVariant": "immersive-stage"
+    }
+  },
+  "i18n": {
+    "baseDir": "i18n"
+  }
 }

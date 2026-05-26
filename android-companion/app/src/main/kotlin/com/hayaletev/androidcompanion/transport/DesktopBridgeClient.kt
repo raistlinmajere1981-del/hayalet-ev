@@ -21,6 +21,7 @@ data class BridgeCommand(
     val requestId: String? = null,
     val profile: BridgeCommandProfile? = null,
     val ambient: BridgeAmbientOptions? = null,
+    val tts: BridgeTtsPayload? = null,
 )
 
 data class BridgePermissions(
@@ -50,6 +51,21 @@ data class BridgeAmbientOptions(
     val wakePhrases: List<String>,
     val activeWindowMs: Long,
     val silenceTimeoutMs: Long,
+)
+
+data class BridgeTtsProfile(
+    val engine: String,
+    val modelId: String,
+    val language: String,
+    val voice: String,
+    val sampleRate: Int?,
+)
+
+data class BridgeTtsPayload(
+    val text: String,
+    val language: String,
+    val modelId: String,
+    val profile: BridgeTtsProfile,
 )
 
 class DesktopBridgeClient(private val manifest: CompanionManifest) {
@@ -215,6 +231,43 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         )
     }
 
+    suspend fun submitTtsStatus(
+        requestId: String,
+        deviceId: String,
+        target: String,
+        status: String,
+        message: String,
+        progress: Double? = null,
+        language: String? = null,
+        modelId: String? = null,
+        error: String? = null,
+    ) {
+        val payload = JSONObject()
+            .put("requestId", requestId)
+            .put("deviceId", deviceId)
+            .put("target", target)
+            .put("status", status)
+            .put("message", message)
+        if (progress != null) {
+            payload.put("progress", progress)
+        }
+        if (language != null) {
+            payload.put("language", language)
+        }
+        if (modelId != null) {
+            payload.put("modelId", modelId)
+        }
+        if (error != null) {
+            payload.put("error", error)
+        }
+        postJson("/api/v1/tts/status", payload)
+        CompanionDiagnostics.d(
+            "tts",
+            "Submitted TTS status to desktop bridge.",
+            "target=$target, status=$status",
+        )
+    }
+
     suspend fun downloadTranscriptModel(
         fileName: String,
         destination: File,
@@ -345,6 +398,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
                         requestId = item.optString("requestId").trim().ifBlank { null },
                         profile = item.optJSONObject("profile")?.toBridgeCommandProfile(),
                         ambient = item.optJSONObject("ambient")?.toBridgeAmbientOptions(),
+                        tts = item.optJSONObject("tts")?.toBridgeTtsPayload(),
                     )
                 )
             }
@@ -405,6 +459,38 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             wakePhrases = wakePhrases,
             activeWindowMs = optLong("activeWindowMs", 6_000L).coerceIn(1_000L, 30_000L),
             silenceTimeoutMs = optLong("silenceTimeoutMs", 1_200L).coerceIn(300L, 10_000L),
+        )
+    }
+
+    private fun JSONObject.toBridgeTtsPayload(): BridgeTtsPayload? {
+        val text = optString("text").trim()
+        val language = optString("language").trim().ifBlank { "tr" }
+        val modelId = optString("modelId").trim()
+        val profile = optJSONObject("profile")?.toBridgeTtsProfile()
+        if (text.isBlank() || modelId.isBlank() || profile == null) {
+            return null
+        }
+
+        return BridgeTtsPayload(
+            text = text,
+            language = language,
+            modelId = modelId,
+            profile = profile,
+        )
+    }
+
+    private fun JSONObject.toBridgeTtsProfile(): BridgeTtsProfile {
+        return BridgeTtsProfile(
+            engine = optString("engine").trim().ifBlank { "sherpa-onnx" },
+            modelId = optString("modelId").trim(),
+            language = optString("language").trim().ifBlank { "tr" },
+            voice = optString("voice").trim().ifBlank { "unknown" },
+            sampleRate =
+                if (has("sampleRate") && isNull("sampleRate").not()) {
+                    optInt("sampleRate")
+                } else {
+                    null
+                },
         )
     }
 

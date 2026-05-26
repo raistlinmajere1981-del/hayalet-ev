@@ -5,6 +5,7 @@ import type {
   TranscriptSupportedLanguage,
   TranscriptTargetId,
 } from "./transcript.js";
+import type { TtsLanguage, TtsManagedModelId } from "./tts.js";
 
 export type CaptureAndroidHostState =
   | "checking"
@@ -138,7 +139,24 @@ export type CaptureCompanionCommandKind =
   | "start-dictation"
   | "stop-dictation"
   | "start-ambient-listener"
-  | "stop-ambient-listener";
+  | "stop-ambient-listener"
+  | "start-tts"
+  | "stop-tts";
+
+export interface CaptureCompanionTtsProfile {
+  engine: "sherpa-onnx";
+  modelId: TtsManagedModelId;
+  language: TtsLanguage;
+  voice: string;
+  sampleRate: number | null;
+}
+
+export interface CaptureCompanionTtsPayload {
+  text: string;
+  language: TtsLanguage;
+  modelId: TtsManagedModelId;
+  profile: CaptureCompanionTtsProfile;
+}
 
 export interface CaptureCompanionAmbientProfile {
   wakePhrases: string[];
@@ -174,12 +192,14 @@ export interface CaptureCompanionCommandEnvelope {
   createdAt: number;
   profile: CaptureCompanionCommandProfile | null;
   ambient?: CaptureCompanionAmbientProfile | null;
+  tts?: CaptureCompanionTtsPayload | null;
 }
 
 export interface CaptureTargetActionOptions {
   target?: TranscriptTargetId | null;
   requestId?: string | null;
   deviceId?: string | null;
+  activeTab?: "image" | "dictate" | "ambient" | "tts" | "logs" | null;
 }
 
 export interface CaptureAmbientListenerOptions extends CaptureTargetActionOptions {
@@ -291,7 +311,9 @@ export type CaptureHostAction =
   | "start-analyze-preview"
   | "stop-analyze-preview"
   | "start-ambient-listener"
-  | "stop-ambient-listener";
+  | "stop-ambient-listener"
+  | "start-tts"
+  | "stop-tts";
 
 export interface CaptureActionOutcome {
   action: CaptureHostAction;
