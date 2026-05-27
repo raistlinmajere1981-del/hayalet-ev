@@ -21,7 +21,7 @@ export interface CommandResult {
   timedOut: boolean;
 }
 
-export const CAPTURE_ADB_TIMEOUT_MS = 12_000;
+export const CAPTURE_ADB_TIMEOUT_MS = 300_000;
 export const CAPTURE_ADB_SHUTDOWN_TIMEOUT_MS = 5_000;
 export const CAPTURE_SCRCPY_CAMERA_FPS = 30;
 export const CAPTURE_SCRCPY_V4L2_LABEL = "Hayalet Ev Camera Feed";
