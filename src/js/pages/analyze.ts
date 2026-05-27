@@ -2384,12 +2384,58 @@ export class AnalyzeController {
     previewVideo: CaptureAnalyzePreviewVideoStatus
   ): MediaDeviceInfo | null {
     const expectedLabel = previewVideo.label.toLowerCase();
+    const expectedDevicePath = previewVideo.devicePath.toLowerCase();
+    const expectedDeviceNode = expectedDevicePath.match(/video\d+/)?.[0] ?? null;
+    const videoInputs = devices.filter((device) => device.kind === "videoinput");
+
+    const labelMatch =
+      videoInputs.find((device) => device.label.toLowerCase().includes(expectedLabel)) ?? null;
+    if (labelMatch !== null) {
+      return labelMatch;
+    }
+
+    if (expectedDeviceNode !== null) {
+      const devicePathMatch =
+        videoInputs.find((device) => device.label.toLowerCase().includes(expectedDeviceNode)) ??
+        null;
+      if (devicePathMatch !== null) {
+        return devicePathMatch;
+      }
+    }
+
     return (
-      devices.find(
-        (device) =>
-          device.kind === "videoinput" && device.label.toLowerCase().includes(expectedLabel)
-      ) ?? null
+      videoInputs.find((device) => {
+        const normalizedLabel = device.label.toLowerCase();
+        return normalizedLabel.includes("v4l2") && normalizedLabel.includes("loopback");
+      }) ?? null
     );
+  }
+
+  async _waitForAndroidCameraMediaDevice(
+    previewVideo: CaptureAnalyzePreviewVideoStatus,
+    options: { maxAttempts?: number; delayMs?: number } = {}
+  ): Promise<MediaDeviceInfo | null> {
+    const mediaDevices = navigator.mediaDevices as Partial<MediaDevices> | undefined;
+    if (mediaDevices?.enumerateDevices === undefined) {
+      return null;
+    }
+
+    const maxAttempts = options.maxAttempts ?? 12;
+    const delayMs = options.delayMs ?? 250;
+    const enumerateDevices = mediaDevices.enumerateDevices.bind(mediaDevices);
+    const attemptResolve = async (attempt: number): Promise<MediaDeviceInfo | null> => {
+      const matched = this._findAndroidCameraMediaDevice(await enumerateDevices(), previewVideo);
+      if (matched !== null || attempt + 1 >= maxAttempts) {
+        return matched;
+      }
+
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, delayMs);
+      });
+      return await attemptResolve(attempt + 1);
+    };
+
+    return await attemptResolve(0);
   }
 
   async _resolveAndroidCameraMediaDevice(
@@ -2400,11 +2446,7 @@ export class AnalyzeController {
       throw new Error("Local camera capture is not available in this browser context.");
     }
 
-    const enumerateDevices = mediaDevices.enumerateDevices.bind(mediaDevices);
-    const findDevice = async (): Promise<MediaDeviceInfo | null> =>
-      this._findAndroidCameraMediaDevice(await enumerateDevices(), previewVideo);
-
-    const existingDevice = await findDevice();
+    const existingDevice = await this._waitForAndroidCameraMediaDevice(previewVideo);
     if (existingDevice !== null) {
       return existingDevice;
     }
@@ -2417,12 +2459,17 @@ export class AnalyzeController {
       track.stop();
     });
 
-    const permittedDevice = await findDevice();
+    const permittedDevice = await this._waitForAndroidCameraMediaDevice(previewVideo, {
+      maxAttempts: 16,
+      delayMs: 250,
+    });
     if (permittedDevice !== null) {
       return permittedDevice;
     }
 
-    throw new Error(`Local camera device not found: ${previewVideo.label}`);
+    throw new Error(
+      `Local camera device not found: ${previewVideo.label} (${previewVideo.devicePath})`
+    );
   }
 
   async _attachAndroidCameraFeed(
