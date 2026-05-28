@@ -85,26 +85,99 @@ function parseInteractionProcessLine(line: string): InteractionProcessEntry | nu
   return { pid, ppid, args };
 }
 
+function normalizeInteractionArgs(args: string): string {
+  return args.replace(/\\/g, "/").toLowerCase();
+}
+
 function isInteractionMainAppProcess(args: string): boolean {
+  const normalizedArgs = normalizeInteractionArgs(args);
   return (
-    args.includes("dist/electron/main.js") && !args.includes("dist/ghost-agent/electron/main.js")
+    normalizedArgs.includes("dist/electron/main.js") &&
+    !normalizedArgs.includes("dist/ghost-agent/electron/main.js")
   );
 }
 
 function isInteractionGhostProcess(args: string): boolean {
-  return args.includes("dist/ghost-agent/electron/main.js");
+  return normalizeInteractionArgs(args).includes("dist/ghost-agent/electron/main.js");
 }
 
 function isInteractionWrapperProcess(args: string): boolean {
-  return args.includes("scripts/ghost-agent-wrapper.mjs");
+  return normalizeInteractionArgs(args).includes("scripts/ghost-agent-wrapper.mjs");
 }
 
 function isInteractionOpencodeServeProcess(args: string): boolean {
   return /\bopencode\b.*\bserve\b/iu.test(args);
 }
 
+async function readWindowsProcessListWith(
+  shellCommand: "powershell.exe" | "pwsh"
+): Promise<string> {
+  const command = [
+    "$ErrorActionPreference = 'Stop'",
+    "Get-CimInstance Win32_Process |",
+    "Select-Object ProcessId,ParentProcessId,CommandLine,Name |",
+    "ConvertTo-Json -Compress",
+  ].join("; ");
+  const { stdout } = await execFileAsync(
+    shellCommand,
+    ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+    { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 }
+  );
+  return stdout;
+}
+
+async function readWindowsProcessList(): Promise<string> {
+  try {
+    return await readWindowsProcessListWith("powershell.exe");
+  } catch {
+    try {
+      return await readWindowsProcessListWith("pwsh");
+    } catch (fallbackError) {
+      throw new Error("Unable to read Windows process list.", {
+        cause: fallbackError,
+      });
+    }
+  }
+}
+
+function parseInteractionProcessId(value: unknown): number {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    return Number.parseInt(value, 10);
+  }
+
+  return Number.NaN;
+}
+
 async function readInteractionProcessEntries(): Promise<InteractionProcessEntry[]> {
   try {
+    if (process.platform === "win32") {
+      const stdout = await readWindowsProcessList();
+      const trimmedStdout = stdout.trim();
+      const parsed: unknown = JSON.parse(trimmedStdout !== "" ? trimmedStdout : "[]");
+      const rows = Array.isArray(parsed) ? parsed : [parsed];
+      return rows
+        .map((entry): InteractionProcessEntry | null => {
+          if (entry === null || typeof entry !== "object") return null;
+          const record = entry as Record<string, unknown>;
+          const pid = parseInteractionProcessId(record["ProcessId"]);
+          const ppid = parseInteractionProcessId(record["ParentProcessId"]);
+          const args =
+            typeof record["CommandLine"] === "string" && record["CommandLine"].trim() !== ""
+              ? record["CommandLine"].trim()
+              : typeof record["Name"] === "string"
+                ? record["Name"].trim()
+                : "";
+          return Number.isFinite(pid) && Number.isFinite(ppid) && args !== ""
+            ? { pid, ppid, args }
+            : null;
+        })
+        .filter((entry): entry is InteractionProcessEntry => entry !== null);
+    }
+
     const { stdout } = await execFileAsync("ps", ["-eo", "pid=,ppid=,args="]);
     return stdout
       .split("\n")

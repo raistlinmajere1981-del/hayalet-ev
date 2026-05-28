@@ -1533,7 +1533,7 @@ class CaptureService {
           (commandKind === "start-tts" || commandKind === "stop-tts")
         ) {
           const { ttsService } = await import("./tts-service.ts");
-          await ttsService.acceptAndroidStatus({
+          ttsService.acceptAndroidStatus({
             requestId,
             target: acknowledgedTtsTarget,
             deviceId,
@@ -1727,7 +1727,7 @@ class CaptureService {
         const language = body["language"];
         const modelId = body["modelId"];
         const { ttsService } = await import("./tts-service.ts");
-        await ttsService.acceptAndroidStatus({
+        ttsService.acceptAndroidStatus({
           requestId,
           target: ttsTarget,
           deviceId: normalizeText(body["deviceId"]),

@@ -1,9 +1,14 @@
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
-import { execSync } from "child_process";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { DEV_TIMEOUTS } from "@timeouts";
+import {
+  bufferishToString,
+  firstNonEmptyString,
+  resolveTypescriptCli,
+  runNodeCli,
+} from "./command-runner.js";
 
 interface BatchFixOptions {
   file_path: string;
@@ -31,13 +36,11 @@ function resolveTsconfigForFile(filePath: string): string | null {
 
   if (normalizedPath.startsWith("mcp-server/")) return "mcp-server/tsconfig.mcp.json";
   if (normalizedPath.startsWith("electron/")) return "electron/tsconfig.electron.json";
-  if (normalizedPath.startsWith("ghost-agent/electron/")) return "ghost-agent/tsconfig.electron.json";
+  if (normalizedPath.startsWith("ghost-agent/electron/"))
+    return "ghost-agent/tsconfig.electron.json";
   if (normalizedPath.startsWith("ghost-agent/")) return "ghost-agent/tsconfig.json";
   if (normalizedPath.startsWith("rooms/")) return "rooms/tsconfig.rooms.json";
-  if (
-    normalizedPath.startsWith("src/") ||
-    normalizedPath.startsWith("shared/")
-  ) {
+  if (normalizedPath.startsWith("src/") || normalizedPath.startsWith("shared/")) {
     return "src/tsconfig.json";
   }
 
@@ -129,27 +132,24 @@ function getTypescriptErrors(
   try {
     const cwd = projectRoot;
     const tsconfigPath = resolveTsconfigForFile(filePath);
-    const tsCommand =
-      tsconfigPath !== null
-        ? `npx tsc --noEmit -p "${tsconfigPath}"`
-        : `npx tsc --noEmit "${filePath}"`;
+    const tsArgs =
+      tsconfigPath !== null ? ["--noEmit", "-p", tsconfigPath] : ["--noEmit", filePath];
     let result = "";
 
     try {
-      result = execSync(tsCommand, {
+      result = runNodeCli(resolveTypescriptCli(cwd), tsArgs, {
         cwd,
         encoding: "utf-8",
         timeout: DEV_TIMEOUTS.TYPESCRIPT_CHECK,
+        maxBuffer: 10 * 1024 * 1024,
       });
     } catch (execError: unknown) {
-      interface ExecError {
-        stdout?: string;
-        stderr?: string;
-      }
-      const err = execError as ExecError;
-      result = err.stdout ?? err.stderr ?? "";
+      const err = execError as { stdout?: unknown; stderr?: unknown };
+      const stdout = bufferishToString(err.stdout);
+      const stderr = bufferishToString(err.stderr);
+      result = firstNonEmptyString(stdout, stderr, String(execError));
       process.stderr.write(
-        `[DEBUG] execError caught, stdout length: ${err.stdout?.length ?? 0}, stderr length: ${err.stderr?.length ?? 0}\n`
+        `[DEBUG] execError caught, stdout length: ${stdout.length}, stderr length: ${stderr.length}\n`
       );
     }
 

@@ -198,25 +198,28 @@ test("room package manager keeps installed room record building in a dedicated b
   assert.match(workspaceRoomBuildSupportSource, /async function loadEsbuildModule\(/);
   assert.equal(
     scripts["rooms:bundle"],
-    "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/build-room-bundle.mjs"
+    "node scripts/run-with-env.mjs TSX_TSCONFIG_PATH=src/tsconfig.json -- node --import tsx scripts/rooms/build-room-bundle.mjs"
   );
   assert.equal(
     scripts["rooms:build"],
-    "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/build-workspace-rooms.ts"
+    "node scripts/run-with-env.mjs TSX_TSCONFIG_PATH=src/tsconfig.json -- node --import tsx scripts/rooms/build-workspace-rooms.ts"
   );
   assert.equal(
     scripts["rooms:paths"],
-    "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/report-room-paths.ts"
+    "node scripts/run-with-env.mjs TSX_TSCONFIG_PATH=src/tsconfig.json -- node --import tsx scripts/rooms/report-room-paths.ts"
   );
   assert.equal(
     scripts["rooms:clean-generated"],
-    "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/clean-generated-room-artifacts.ts"
+    "node scripts/run-with-env.mjs TSX_TSCONFIG_PATH=src/tsconfig.json -- node --import tsx scripts/rooms/clean-generated-room-artifacts.ts"
   );
   assert.equal(
     scripts["rooms:test:file"],
-    "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx --import ./scripts/tests/register-asset-loader.mjs --test --test-concurrency=1"
+    "node scripts/run-with-env.mjs TSX_TSCONFIG_PATH=src/tsconfig.json -- node --import tsx --import ./scripts/tests/register-asset-loader.mjs --test --test-concurrency=1"
   );
-  assert.ok(scripts["rooms:lint"]?.startsWith("NODE_OPTIONS="));
+  assert.equal(
+    scripts["rooms:lint"],
+    "node scripts/run-with-env.mjs NODE_OPTIONS=--max-old-space-size=4096 -- eslint --cache --cache-location node_modules/.cache/eslint \"rooms/**/*.{js,ts}\""
+  );
   assert.ok(scripts["rooms:lint"]?.includes('"rooms/**/*.{js,ts}"'));
   assert.match(rendererRegistrySource, /async prepareStartupSnapshot\(/);
   assert.match(rendererRegistrySource, /roomsSyncLinkedStartup/);

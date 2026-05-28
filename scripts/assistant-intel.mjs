@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { createWriteStream } from "node:fs";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
+import yauzl from "yauzl";
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const VERSION = "v0.6.1";
@@ -85,16 +88,19 @@ function platformAsset() {
   const platform = os.platform();
   const arch = os.arch();
   if (platform === "linux" && arch === "x64") {
-    return "codebase-memory-mcp-linux-amd64-portable.tar.gz";
+    return { name: "codebase-memory-mcp-linux-amd64-portable.tar.gz", type: "tar.gz" };
   }
   if (platform === "linux" && arch === "arm64") {
-    return "codebase-memory-mcp-linux-arm64-portable.tar.gz";
+    return { name: "codebase-memory-mcp-linux-arm64-portable.tar.gz", type: "tar.gz" };
   }
   if (platform === "darwin" && arch === "x64") {
-    return "codebase-memory-mcp-darwin-amd64.tar.gz";
+    return { name: "codebase-memory-mcp-darwin-amd64.tar.gz", type: "tar.gz" };
   }
   if (platform === "darwin" && arch === "arm64") {
-    return "codebase-memory-mcp-darwin-arm64.tar.gz";
+    return { name: "codebase-memory-mcp-darwin-arm64.tar.gz", type: "tar.gz" };
+  }
+  if (platform === "win32" && arch === "x64") {
+    return { name: "codebase-memory-mcp-windows-amd64.zip", type: "zip" };
   }
   throw new Error(`Unsupported assistant-intel platform: ${platform}/${arch}`);
 }
@@ -127,6 +133,61 @@ async function sha256(filePath) {
   return hash.digest("hex");
 }
 
+async function extractZip(zipPath, destination) {
+  await new Promise((resolve, reject) => {
+    yauzl.open(zipPath, { lazyEntries: true }, (openError, zipfile) => {
+      if (openError || !zipfile) {
+        reject(openError ?? new Error("zip open failed"));
+        return;
+      }
+
+      zipfile.readEntry();
+      zipfile.on("entry", (entry) => {
+        const targetPath = path.resolve(destination, entry.fileName);
+        if (!targetPath.startsWith(path.resolve(destination) + path.sep)) {
+          reject(new Error(`Unsafe zip entry: ${entry.fileName}`));
+          return;
+        }
+
+        if (/\/$/.test(entry.fileName)) {
+          fs.mkdir(targetPath, { recursive: true })
+            .then(() => zipfile.readEntry())
+            .catch(reject);
+          return;
+        }
+
+        zipfile.openReadStream(entry, (streamError, stream) => {
+          if (streamError || !stream) {
+            reject(streamError ?? new Error(`Could not read zip entry: ${entry.fileName}`));
+            return;
+          }
+
+          fs.mkdir(path.dirname(targetPath), { recursive: true })
+            .then(async () => {
+              await pipeline(stream, createWriteStream(targetPath));
+              zipfile.readEntry();
+            })
+            .catch(reject);
+        });
+      });
+      zipfile.on("error", reject);
+      zipfile.on("end", resolve);
+    });
+  });
+}
+
+async function extractArchive(asset, archive, stage) {
+  if (asset.type === "zip") {
+    await extractZip(archive, stage);
+    return;
+  }
+
+  const tar = spawnSync("tar", ["-xzf", archive, "-C", stage], { encoding: "utf8" });
+  if (tar.status !== 0) {
+    throw new Error(tar.stderr || tar.stdout || "tar extraction failed");
+  }
+}
+
 async function setup({ force = false } = {}) {
   await ensureDir(DOWNLOAD_DIR);
   await ensureDir(BIN_DIR);
@@ -134,11 +195,11 @@ async function setup({ force = false } = {}) {
 
   const asset = platformAsset();
   const baseUrl = `https://github.com/${REPO}/releases/download/${VERSION}`;
-  const archive = path.join(DOWNLOAD_DIR, asset);
+  const archive = path.join(DOWNLOAD_DIR, asset.name);
   const checksums = path.join(DOWNLOAD_DIR, "checksums.txt");
 
   if (force || !(await exists(archive))) {
-    await download(`${baseUrl}/${asset}`, archive);
+    await download(`${baseUrl}/${asset.name}`, archive);
   }
   if (force || !(await exists(checksums))) {
     await download(`${baseUrl}/checksums.txt`, checksums);
@@ -147,9 +208,9 @@ async function setup({ force = false } = {}) {
   const expected = (await fs.readFile(checksums, "utf8"))
     .split(/\r?\n/)
     .map((line) => line.trim().split(/\s+/))
-    .find((parts) => parts[1] === asset)?.[0];
+    .find((parts) => parts[1] === asset.name)?.[0];
   if (!expected) {
-    throw new Error(`Checksum missing for ${asset}`);
+    throw new Error(`Checksum missing for ${asset.name}`);
   }
   const actual = await sha256(archive);
   if (actual !== expected) {
@@ -159,10 +220,7 @@ async function setup({ force = false } = {}) {
   const stage = path.join(DOWNLOAD_DIR, "extract");
   await fs.rm(stage, { recursive: true, force: true });
   await ensureDir(stage);
-  const tar = spawnSync("tar", ["-xzf", archive, "-C", stage], { encoding: "utf8" });
-  if (tar.status !== 0) {
-    throw new Error(tar.stderr || tar.stdout || "tar extraction failed");
-  }
+  await extractArchive(asset, archive, stage);
   const extracted = await findFile(stage, BIN_NAME);
   if (!extracted) {
     throw new Error(`Extracted binary ${BIN_NAME} not found`);
@@ -172,7 +230,7 @@ async function setup({ force = false } = {}) {
   await fs.writeFile(
     path.join(RUNTIME_ROOT, "manifest.json"),
     JSON.stringify(
-      { engine: "codebase-memory-mcp", version: VERSION, asset, sha256: actual },
+      { engine: "codebase-memory-mcp", version: VERSION, asset: asset.name, sha256: actual },
       null,
       2
     ) + "\n",

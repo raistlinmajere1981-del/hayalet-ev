@@ -1,10 +1,17 @@
-import { execSync } from "child_process";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { createProgress } from "../../utils/progress.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { DEV_TIMEOUTS } from "@timeouts";
+import {
+  bufferishToString,
+  firstNonEmptyString,
+  formatCommandForLog,
+  resolvePackageBin,
+  runNodeCli,
+  runNpm,
+} from "./command-runner.js";
 
 interface PackageJsonLike {
   devDependencies?: Record<string, unknown>;
@@ -26,34 +33,78 @@ export function testRun(
   const progress = createProgress({ operation: testRunnerT("progress.operation"), interval: 3000 });
 
   try {
-    let cmd = "npm test";
-
-    const pkgRaw: unknown = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf-8"));
-    const pkg: PackageJsonLike =
-      typeof pkgRaw === "object" && pkgRaw !== null ? (pkgRaw) : {};
-    const hasVitest = Boolean(pkg.devDependencies?.["vitest"] ?? pkg.dependencies?.["vitest"]);
-    const hasJest = Boolean(pkg.devDependencies?.["jest"] ?? pkg.dependencies?.["jest"]);
-
-    if (hasVitest) {
-      cmd = "npx vitest run";
-      if (options.file !== undefined && options.file.length > 0) cmd += ` ${options.file}`;
-      if (options.grep !== undefined && options.grep.length > 0) cmd += ` --grep "${options.grep}"`;
-    } else if (hasJest) {
-      cmd = "npx jest";
-      if (options.file !== undefined && options.file.length > 0) cmd += ` ${options.file}`;
-      if (options.grep !== undefined && options.grep.length > 0) cmd += ` -t "${options.grep}"`;
-    }
-
-    const timeout = options.timeout ?? DEV_TIMEOUTS.TEST;
-    progress.update(0, testRunnerT("progress.running", { command: cmd }));
-
-    try {
-      const output = execSync(cmd, {
+    let commandLabel = "npm test";
+    let runTests: (timeout: number) => string = (timeout: number): string =>
+      runNpm(["test"], {
         cwd: projectRoot,
         encoding: "utf-8",
         timeout,
         maxBuffer: 10 * 1024 * 1024,
       });
+
+    const pkgRaw: unknown = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf-8"));
+    const pkg: PackageJsonLike = typeof pkgRaw === "object" && pkgRaw !== null ? pkgRaw : {};
+    const hasVitest = Boolean(pkg.devDependencies?.["vitest"] ?? pkg.dependencies?.["vitest"]);
+    const hasJest = Boolean(pkg.devDependencies?.["jest"] ?? pkg.dependencies?.["jest"]);
+
+    if (hasVitest) {
+      const args = [
+        "run",
+        ...(options.file !== undefined && options.file.length > 0 ? [options.file] : []),
+        ...(options.grep !== undefined && options.grep.length > 0 ? ["--grep", options.grep] : []),
+      ];
+      const vitestCli = resolvePackageBin("vitest", projectRoot, "vitest");
+      if (vitestCli !== null) {
+        commandLabel = formatCommandForLog(process.execPath, [vitestCli, ...args]);
+        runTests = (timeout: number): string =>
+          runNodeCli(vitestCli, args, {
+            cwd: projectRoot,
+            encoding: "utf-8",
+            timeout,
+            maxBuffer: 10 * 1024 * 1024,
+          });
+      } else {
+        commandLabel = formatCommandForLog("npm exec", ["--", "vitest", ...args]);
+        runTests = (timeout: number): string =>
+          runNpm(["exec", "--", "vitest", ...args], {
+            cwd: projectRoot,
+            encoding: "utf-8",
+            timeout,
+            maxBuffer: 10 * 1024 * 1024,
+          });
+      }
+    } else if (hasJest) {
+      const args = [
+        ...(options.file !== undefined && options.file.length > 0 ? [options.file] : []),
+        ...(options.grep !== undefined && options.grep.length > 0 ? ["-t", options.grep] : []),
+      ];
+      const jestCli = resolvePackageBin("jest", projectRoot, "jest");
+      if (jestCli !== null) {
+        commandLabel = formatCommandForLog(process.execPath, [jestCli, ...args]);
+        runTests = (timeout: number): string =>
+          runNodeCli(jestCli, args, {
+            cwd: projectRoot,
+            encoding: "utf-8",
+            timeout,
+            maxBuffer: 10 * 1024 * 1024,
+          });
+      } else {
+        commandLabel = formatCommandForLog("npm exec", ["--", "jest", ...args]);
+        runTests = (timeout: number): string =>
+          runNpm(["exec", "--", "jest", ...args], {
+            cwd: projectRoot,
+            encoding: "utf-8",
+            timeout,
+            maxBuffer: 10 * 1024 * 1024,
+          });
+      }
+    }
+
+    const timeout = options.timeout ?? DEV_TIMEOUTS.TEST;
+    progress.update(0, testRunnerT("progress.running", { command: commandLabel }));
+
+    try {
+      const output = runTests(timeout);
 
       const passMatch = output.match(/(\d+)\s+pass/i);
       const failMatch = output.match(/(\d+)\s+fail/i);
@@ -68,8 +119,12 @@ export function testRun(
         failed,
       };
     } catch (err) {
-      const error = err as { stdout?: string; stderr?: string };
-      const output = error.stdout ?? error.stderr ?? "";
+      const error = err as { stdout?: unknown; stderr?: unknown };
+      const output = firstNonEmptyString(
+        bufferishToString(error.stdout),
+        bufferishToString(error.stderr),
+        String(err)
+      );
 
       const passMatch = output.match(/(\d+)\s+pass/i);
       const failMatch = output.match(/(\d+)\s+fail/i);

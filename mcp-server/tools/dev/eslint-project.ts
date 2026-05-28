@@ -1,8 +1,13 @@
-import { execSync } from "child_process";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { createProgress } from "../../utils/progress.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { DEV_TIMEOUTS } from "@timeouts";
+import {
+  bufferishToString,
+  firstNonEmptyString,
+  resolveEslintCli,
+  runNodeCli,
+} from "./command-runner.js";
 
 interface LintProjectOptions {
   pattern?: string;
@@ -52,17 +57,20 @@ export function lintProject(
     const cwd = projectRoot;
     progress.update(0, lintProjectT("progress.scanning"));
 
-    const fixArg = fix ? " --fix" : "";
-    const cacheArg = cache ? " --cache" : "";
-    const maxWarningsArg = maxWarnings >= 0 ? ` --max-warnings ${maxWarnings}` : "";
-    const formatArg = ` --format ${format}`;
-
-    const cmd = `npx eslint "${pattern}"${formatArg}${cacheArg}${fixArg}${maxWarningsArg}`;
+    const patterns = pattern.split(/\s+/u).filter((item) => item.length > 0);
+    const args = [
+      ...patterns,
+      "--format",
+      format,
+      ...(cache ? ["--cache"] : []),
+      ...(fix ? ["--fix"] : []),
+      ...(maxWarnings >= 0 ? ["--max-warnings", String(maxWarnings)] : []),
+    ];
 
     progress.update(25, lintProjectT("progress.running"));
 
     try {
-      const output = execSync(cmd, {
+      const output = runNodeCli(resolveEslintCli(cwd), args, {
         cwd,
         encoding: "utf-8",
         timeout: DEV_TIMEOUTS.LINT * 5,
@@ -82,8 +90,12 @@ export function lintProject(
         files_with_issues: 0,
       };
     } catch (err) {
-      const error = err as { stdout?: string; stderr?: string; status?: number };
-      const output = error.stdout ?? error.stderr ?? "";
+      const error = err as { stdout?: unknown; stderr?: unknown };
+      const output = firstNonEmptyString(
+        bufferishToString(error.stdout),
+        bufferishToString(error.stderr),
+        String(err)
+      );
 
       progress.update(75, lintProjectT("progress.parsing"));
 

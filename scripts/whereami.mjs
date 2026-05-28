@@ -1,15 +1,12 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { defaultControl, normalizeControl } from "./lib/ghost-wrapper-runtime.mjs";
+import { hasProcessPathFragment, readProcessEntries } from "./lib/process-entries.mjs";
 import { readAssistantSlotSettingsReport } from "./lib/settings-status.mjs";
 import { resolveWhereamiProviderContext } from "./lib/whereami-provider-context.mjs";
 import { resolveWhereAmI } from "./lib/whereami-runtime.mjs";
-
-const execFileAsync = promisify(execFile);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -31,52 +28,23 @@ async function readRuntimeControl() {
   }
 }
 
-function parseProcessLine(line) {
-  const match = line.trim().match(/^(\d+)\s+(\d+)\s+(.+)$/);
-  if (match === null) return null;
-
-  const pid = Number.parseInt(match[1] ?? "", 10);
-  const ppid = Number.parseInt(match[2] ?? "", 10);
-  const args = (match[3] ?? "").trim();
-  if (!Number.isFinite(pid) || !Number.isFinite(ppid) || args === "") {
-    return null;
-  }
-
-  return {
-    pid,
-    ppid,
-    args,
-  };
-}
-
 function isMainAppProcess(args) {
-  return args.includes("dist/electron/main.js") && !args.includes("dist/ghost-agent/electron/main.js");
+  return (
+    hasProcessPathFragment(args, "dist/electron/main.js") &&
+    !hasProcessPathFragment(args, "dist/ghost-agent/electron/main.js")
+  );
 }
 
 function isGhostAppProcess(args) {
-  return args.includes("dist/ghost-agent/electron/main.js");
+  return hasProcessPathFragment(args, "dist/ghost-agent/electron/main.js");
 }
 
 function isWrapperProcess(args) {
-  return args.includes("scripts/ghost-agent-wrapper.mjs");
+  return hasProcessPathFragment(args, "scripts/ghost-agent-wrapper.mjs");
 }
 
 function isOpencodeServeProcess(args) {
   return /\bopencode\b.*\bserve\b/i.test(args);
-}
-
-async function readProcessEntries() {
-  try {
-    const { stdout } = await execFileAsync("ps", ["-eo", "pid=,ppid=,args="]);
-    return stdout
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => parseProcessLine(line))
-      .filter((entry) => entry !== null);
-  } catch {
-    return [];
-  }
 }
 
 function buildProcessProbes(entries) {
@@ -135,7 +103,6 @@ async function main() {
     timestamp: nowIso(),
     runtimeControlPath,
   };
-
 
   if (modeOnly) {
     process.stdout.write(`${payload.mode}\n`);

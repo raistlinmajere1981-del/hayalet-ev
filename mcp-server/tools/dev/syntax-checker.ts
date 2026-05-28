@@ -1,9 +1,15 @@
 import { readFileSync, existsSync } from "fs";
 import { join, extname } from "path";
-import { execSync } from "child_process";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 
 import { countBracketsContextAware } from "./structure-visualizer.js";
+import {
+  bufferishToString,
+  firstNonEmptyString,
+  resolveEslintCli,
+  resolveTypescriptCli,
+  runNodeCli,
+} from "./command-runner.js";
 
 interface SyntaxCheckResult {
   success: boolean;
@@ -18,13 +24,11 @@ function resolveTsconfigForFile(filePath: string): string | null {
 
   if (normalizedPath.startsWith("mcp-server/")) return "mcp-server/tsconfig.mcp.json";
   if (normalizedPath.startsWith("electron/")) return "electron/tsconfig.electron.json";
-  if (normalizedPath.startsWith("ghost-agent/electron/")) return "ghost-agent/tsconfig.electron.json";
+  if (normalizedPath.startsWith("ghost-agent/electron/"))
+    return "ghost-agent/tsconfig.electron.json";
   if (normalizedPath.startsWith("ghost-agent/")) return "ghost-agent/tsconfig.json";
   if (normalizedPath.startsWith("rooms/")) return "rooms/tsconfig.rooms.json";
-  if (
-    normalizedPath.startsWith("src/") ||
-    normalizedPath.startsWith("shared/")
-  ) {
+  if (normalizedPath.startsWith("src/") || normalizedPath.startsWith("shared/")) {
     return "src/tsconfig.json";
   }
 
@@ -171,18 +175,31 @@ export async function checkSyntax(
 
   if (checkEslint && projectRoot !== undefined && /\.(ts|js|tsx|jsx)$/.test(ext)) {
     try {
-      execSync(
-        `npx eslint "${filePath}" --format stylish --cache --cache-location node_modules/.cache/eslint`,
+      runNodeCli(
+        resolveEslintCli(projectRoot),
+        [
+          filePath,
+          "--format",
+          "stylish",
+          "--cache",
+          "--cache-location",
+          "node_modules/.cache/eslint",
+        ],
         {
           cwd: projectRoot,
           encoding: "utf-8",
           timeout: 15000,
+          maxBuffer: 10 * 1024 * 1024,
         }
       );
       output.push(syntaxCheckerT("runtime.eslintOk"));
     } catch (err: unknown) {
-      const error = err as { stdout?: string; stderr?: string };
-      const eslintOutput = error.stdout ?? error.stderr ?? "";
+      const error = err as { stdout?: unknown; stderr?: unknown };
+      const eslintOutput = firstNonEmptyString(
+        bufferishToString(error.stdout),
+        bufferishToString(error.stderr),
+        String(err)
+      );
 
       const errorMatch = eslintOutput.match(/(\d+) errors?/);
       const warningMatch = eslintOutput.match(/(\d+) warnings?/);
@@ -203,16 +220,15 @@ export async function checkSyntax(
 
   if (checkTs && projectRoot !== undefined && /\.(ts|tsx)$/.test(ext)) {
     const tsconfigPath = resolveTsconfigForFile(filePath);
-    const tsCommand =
-      tsconfigPath !== null
-        ? `npx tsc --noEmit -p "${tsconfigPath}"`
-        : `npx tsc --noEmit "${filePath}"`;
+    const tsArgs =
+      tsconfigPath !== null ? ["--noEmit", "-p", tsconfigPath] : ["--noEmit", filePath];
 
     try {
-      const tsOutput = execSync(tsCommand, {
+      const tsOutput = runNodeCli(resolveTypescriptCli(projectRoot), tsArgs, {
         cwd: projectRoot,
         encoding: "utf-8",
         timeout: 15000,
+        maxBuffer: 10 * 1024 * 1024,
       });
       const relevantTsOutput =
         tsconfigPath !== null ? filterTypeScriptOutputForFile(tsOutput, filePath) : tsOutput;
@@ -228,8 +244,12 @@ export async function checkSyntax(
         output.push(syntaxCheckerT("runtime.typescriptOk"));
       }
     } catch (err: unknown) {
-      const error = err as { stdout?: string; stderr?: string };
-      const tsOutput = error.stdout ?? error.stderr ?? "";
+      const error = err as { stdout?: unknown; stderr?: unknown };
+      const tsOutput = firstNonEmptyString(
+        bufferishToString(error.stdout),
+        bufferishToString(error.stderr),
+        String(err)
+      );
       const relevantTsOutput =
         tsconfigPath !== null ? filterTypeScriptOutputForFile(tsOutput, filePath) : tsOutput;
       const tsErrors = relevantTsOutput.match(/error TS\d+:/g);

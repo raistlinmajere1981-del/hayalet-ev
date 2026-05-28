@@ -1,4 +1,6 @@
 import { spawn } from "child_process";
+import { existsSync } from "fs";
+import { delimiter, extname, join } from "path";
 import { logToolError as _logToolError } from "../../utils/mcp-logger.js";
 import { FS_TIMEOUTS } from "@timeouts";
 import { checkGitLock, removeStaleLock } from "../../utils/git-utils.js";
@@ -30,6 +32,50 @@ function chunkToString(data: unknown): string {
   if (typeof data === "string") return data;
   if (Buffer.isBuffer(data)) return data.toString("utf-8");
   return String(data);
+}
+
+function resolveExecutableOnPath(executableName: string): string | null {
+  const extensions =
+    process.platform === "win32" && extname(executableName) === ""
+      ? ["", ".exe", ".cmd", ".bat"]
+      : [""];
+  const pathEntries = (process.env["PATH"] ?? "")
+    .split(delimiter)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== "");
+
+  for (const entry of pathEntries) {
+    for (const extension of extensions) {
+      const candidate = join(entry, `${executableName}${extension}`);
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
+function resolveShellInvocation(command: string): { command: string; args: string[] } {
+  if (process.platform !== "win32") {
+    return { command: "bash", args: ["-c", command] };
+  }
+
+  const bashPath = resolveExecutableOnPath("bash");
+  if (bashPath !== null) {
+    return { command: bashPath, args: ["-c", command] };
+  }
+
+  const powershellPath =
+    resolveExecutableOnPath("powershell.exe") ?? resolveExecutableOnPath("pwsh");
+  if (powershellPath !== null) {
+    return {
+      command: powershellPath,
+      args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+    };
+  }
+
+  return { command: process.env["ComSpec"] ?? "cmd.exe", args: ["/d", "/s", "/c", command] };
 }
 
 export async function executeBash(
@@ -73,7 +119,8 @@ export async function executeBash(
       }
     }
 
-    const child = spawn("bash", ["-c", actualCommand], {
+    const shellInvocation = resolveShellInvocation(actualCommand);
+    const child = spawn(shellInvocation.command, shellInvocation.args, {
       cwd: workspacePath,
       env: { ...process.env },
       stdio: ["pipe", "pipe", "pipe"],

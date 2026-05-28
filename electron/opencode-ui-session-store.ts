@@ -42,7 +42,18 @@ export type {
   OpencodeUiToolCall,
 } from "./opencode-ui-session/types.ts";
 
-const DEFAULT_OPENCODE_DB_PATH = join(homedir(), ".local", "share", "opencode", "opencode.db");
+function getDefaultOpencodeDbPath(): string {
+  if (process.platform === "win32") {
+    const localAppData = process.env["LOCALAPPDATA"]?.trim();
+    return localAppData !== undefined && localAppData !== ""
+      ? join(localAppData, "opencode", "opencode.db")
+      : join(homedir(), "AppData", "Local", "opencode", "opencode.db");
+  }
+
+  return join(homedir(), ".local", "share", "opencode", "opencode.db");
+}
+
+const DEFAULT_OPENCODE_DB_PATH = getDefaultOpencodeDbPath();
 
 function opencodeUiSessionStoreT(key: string, params?: Record<string, string | number>): string {
   const locale = readElectronAppLanguageSync();

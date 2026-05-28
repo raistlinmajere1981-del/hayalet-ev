@@ -1,8 +1,13 @@
-import { execSync } from "child_process";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { createProgress } from "../../utils/progress.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { DEV_TIMEOUTS } from "@timeouts";
+import {
+  bufferishToString,
+  firstNonEmptyString,
+  resolveEslintCli,
+  runNodeCli,
+} from "./command-runner.js";
 
 function linterT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.linter.${key}`, params);
@@ -20,15 +25,23 @@ export function lintFile(
   const progress = createProgress({ operation: linterT("progress.operation"), interval: 5000 });
 
   try {
-    const fixArg = fix ? " --fix" : "";
-    const cmd = `npx eslint "${filePath}" --format stylish --cache --cache-location node_modules/.cache/eslint${fixArg}`;
+    const args = [
+      filePath,
+      "--format",
+      "stylish",
+      "--cache",
+      "--cache-location",
+      "node_modules/.cache/eslint",
+      ...(fix ? ["--fix"] : []),
+    ];
     progress.update(0, linterT("progress.lintingFile", { filePath }));
 
     try {
-      const output = execSync(cmd, {
+      const output = runNodeCli(resolveEslintCli(projectRoot), args, {
         cwd: projectRoot,
         encoding: "utf-8",
         timeout: DEV_TIMEOUTS.LINT,
+        maxBuffer: 10 * 1024 * 1024,
       });
       progress.done(linterT("progress.noIssues"));
       return {
@@ -38,8 +51,12 @@ export function lintFile(
         warningCount: 0,
       };
     } catch (err) {
-      const error = err as { stdout?: string; stderr?: string; status?: number };
-      const output = error.stdout ?? error.stderr ?? "";
+      const error = err as { stdout?: unknown; stderr?: unknown };
+      const output = firstNonEmptyString(
+        bufferishToString(error.stdout),
+        bufferishToString(error.stderr),
+        String(err)
+      );
 
       const errorMatch = output.match(/(\d+) errors?/);
       const warningMatch = output.match(/(\d+) warnings?/);

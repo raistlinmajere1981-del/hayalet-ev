@@ -151,6 +151,10 @@ function describeOperationAction(action: CaptureHostAction | null): string {
       return "Ambient listener";
     case "stop-ambient-listener":
       return "Ambient listener stop";
+    case "start-tts":
+      return "Android TTS";
+    case "stop-tts":
+      return "Android TTS stop";
     default:
       return "Android companion";
   }

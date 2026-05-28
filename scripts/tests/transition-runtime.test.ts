@@ -9,6 +9,23 @@ import {
   isTransitionAction,
   resolveActionForTargetMode,
 } from "../lib/transition-runtime.mjs";
+import { hasProcessPathFragment, parsePosixProcessLine } from "../lib/process-entries.mjs";
+
+test("process entry parser reads POSIX pid ppid args lines", () => {
+  assert.deepEqual(parsePosixProcessLine("123 45 node dist/electron/main.js"), {
+    pid: 123,
+    ppid: 45,
+    args: "node dist/electron/main.js",
+  });
+  assert.equal(parsePosixProcessLine("bad line"), null);
+});
+
+test("process path matching normalizes Windows separators", () => {
+  assert.equal(
+    hasProcessPathFragment("C:\\App\\dist\\electron\\main.js", "dist/electron/main.js"),
+    true
+  );
+});
 
 test("isTransitionAction validates supported actions", () => {
   assert.equal(isTransitionAction("main-close"), true);

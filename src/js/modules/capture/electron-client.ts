@@ -389,6 +389,10 @@ export async function runCaptureAction(
           : null,
         action
       );
+    case "start-tts":
+      return normalizeActionOutcome(null, action);
+    case "stop-tts":
+      return normalizeActionOutcome(null, action);
     case "capture-analyze-photo":
       return normalizeActionOutcome(
         typeof api?.captureRequestAnalyzePhoto === "function"

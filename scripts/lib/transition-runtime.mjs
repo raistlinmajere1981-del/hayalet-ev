@@ -1,12 +1,9 @@
-import { execFile } from "node:child_process";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { promisify } from "node:util";
 
 import { defaultControl, formatWrapperEvent, normalizeControl } from "./ghost-wrapper-runtime.mjs";
+import { hasProcessPathFragment, readProcessEntries } from "./process-entries.mjs";
 import { resolveWhereAmI } from "./whereami-runtime.mjs";
-
-const execFileAsync = promisify(execFile);
 
 const MODE_SET = new Set(["terminal", "app", "ghost-agent", "transitioning", "conflict"]);
 
@@ -132,51 +129,23 @@ export function buildControlForAction(rawControl, action, options = {}) {
   );
 }
 
-function parseProcessLine(line) {
-  const match = line.trim().match(/^(\d+)\s+(.+)$/);
-  if (match === null) return null;
-
-  const pidText = match[1];
-  const args = match[2] ?? "";
-  const pid = Number.parseInt(pidText ?? "", 10);
-  if (!Number.isFinite(pid)) return null;
-
-  return {
-    pid,
-    args,
-  };
-}
-
 export function isMainAppProcess(args) {
-  return args.includes("dist/electron/main.js") && !args.includes("dist/ghost-agent/electron/main.js");
+  return (
+    hasProcessPathFragment(args, "dist/electron/main.js") &&
+    !hasProcessPathFragment(args, "dist/ghost-agent/electron/main.js")
+  );
 }
 
 export function isGhostAppProcess(args) {
-  return args.includes("dist/ghost-agent/electron/main.js");
+  return hasProcessPathFragment(args, "dist/ghost-agent/electron/main.js");
 }
 
 export function isWrapperProcess(args) {
-  return args.includes("scripts/ghost-agent-wrapper.mjs");
+  return hasProcessPathFragment(args, "scripts/ghost-agent-wrapper.mjs");
 }
 
 export function isOpencodeServeProcess(args) {
   return /\bopencode\b.*\bserve\b/i.test(args);
-}
-
-export async function readProcessEntries() {
-  try {
-    const { stdout } = await execFileAsync("ps", ["-eo", "pid=,args="]);
-    const lines = stdout
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line !== "");
-
-    return lines
-      .map((line) => parseProcessLine(line))
-      .filter((entry) => entry !== null);
-  } catch {
-    return [];
-  }
 }
 
 export function buildProcessSnapshot(entries) {
@@ -251,7 +220,10 @@ export async function appendRuntimeEvent(runtimeEventLogPath, event, details = {
 }
 
 export async function getRuntimeStatus({ runtimeControlPath, maxStaleMs = 60000, now = nowIso() }) {
-  const [control, entries] = await Promise.all([readControl(runtimeControlPath, now), readProcessEntries()]);
+  const [control, entries] = await Promise.all([
+    readControl(runtimeControlPath, now),
+    readProcessEntries(),
+  ]);
   const snapshot = buildProcessSnapshot(entries);
   const probes = buildWhereamiProbes(snapshot);
   const resolved = resolveWhereAmI({
@@ -360,7 +332,11 @@ export function resolveActionForTargetMode(currentMode, targetMode) {
   }
 
   if (targetMode === "transitioning" || targetMode === "conflict") {
-    return { action: null, noop: false, error: "Target mode must be terminal, app, or ghost-agent." };
+    return {
+      action: null,
+      noop: false,
+      error: "Target mode must be terminal, app, or ghost-agent.",
+    };
   }
 
   if (currentMode === "transitioning" || currentMode === "conflict") {

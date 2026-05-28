@@ -1,4 +1,6 @@
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
+import { createRequire } from "module";
+import { dirname, join } from "path";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError, logToolCall } from "../../utils/mcp-logger.js";
 import { createProgress } from "../../utils/progress.js";
@@ -104,6 +106,15 @@ const RULE_DESCRIPTIONS: Record<string, string> = {
   semi: "semi",
 };
 
+const require = createRequire(import.meta.url);
+const eslintCliPath = join(dirname(require.resolve("eslint/package.json")), "bin", "eslint.js");
+
+function bufferishToString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Buffer.isBuffer(value)) return value.toString("utf-8");
+  return "";
+}
+
 export function generateEslintDashboard(
   options: DashboardOptions = {},
   projectRoot: string
@@ -129,24 +140,28 @@ export function generateEslintDashboard(
     const patterns = pattern.split(/\s+/).filter((p) => p.length > 0);
 
     // NOTE: --cache disabled to always show fresh results.
-    const cmd = `NODE_OPTIONS="--max-old-space-size=4096" npx eslint ${patterns.map((p) => `"${p}"`).join(" ")} --format json`;
+    const args = [eslintCliPath, ...patterns, "--format", "json"];
 
-    logToolCall("hev_dev_eslint_dashboard", { patterns, cmd, cwd });
+    logToolCall("hev_dev_eslint_dashboard", { patterns, command: process.execPath, args, cwd });
 
     let rawOutput: string;
     try {
-      rawOutput = execSync(cmd, {
+      rawOutput = execFileSync(process.execPath, args, {
         cwd,
         encoding: "utf-8",
+        env: {
+          ...process.env,
+          NODE_OPTIONS: "--max-old-space-size=4096",
+        },
         timeout: 300_000,
         maxBuffer: 20 * 1024 * 1024,
-        shell: "/bin/bash",
       });
       logToolCall("hev_dev_eslint_dashboard", { outputLength: rawOutput.length });
     } catch (err) {
-      const error = err as { stdout?: string; stderr?: string; code?: string };
+      const error = err as { stdout?: unknown; stderr?: unknown; code?: string };
+      const stdout = bufferishToString(error.stdout);
 
-      if (error.code === "ETIMEDOUT" || error.stdout === undefined || error.stdout.length === 0) {
+      if (error.code === "ETIMEDOUT" || stdout.length === 0) {
         progress.stop();
         return {
           success: false,
@@ -164,11 +179,11 @@ export function generateEslintDashboard(
       }
 
       logToolError("hev_dev_eslint_dashboard", err as Error, {
-        stdoutLength: error.stdout.length,
-        hasStdout: error.stdout.length > 0,
+        stdoutLength: stdout.length,
+        hasStdout: stdout.length > 0,
         code: error.code,
       });
-      rawOutput = error.stdout.length > 0 ? error.stdout : "[]";
+      rawOutput = stdout.length > 0 ? stdout : "[]";
     }
 
     progress.update(50, eslintDashT("progress.analyzing"));

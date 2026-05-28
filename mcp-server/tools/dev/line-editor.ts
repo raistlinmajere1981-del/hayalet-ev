@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { getContextPreview } from "../../utils/file-utils.js";
 import { analyzeScopeImpact, validateBracketBalance } from "./scope-validator.js";
@@ -7,6 +7,7 @@ import {
   validateBrackets as prettierValidateBrackets,
   isCodeFile,
 } from "../../utils/prettier-validator.js";
+import { bufferishToString, firstNonEmptyString, resolveNodeExecutable } from "./command-runner.js";
 
 interface EditLinesResult {
   success: boolean;
@@ -274,7 +275,7 @@ export async function editLines(
       ) {
         const tempContent = newLines.join("\n");
         try {
-          execSync(`node --check --input-type=module`, {
+          execFileSync(resolveNodeExecutable(), ["--check", "--input-type=module"], {
             input: tempContent,
             cwd: projectRoot,
             encoding: "utf-8",
@@ -284,9 +285,12 @@ export async function editLines(
           syntaxValid = true;
         } catch (err: unknown) {
           syntaxValid = false;
-          const error = err as { stderr?: { toString(): string }; message?: string };
-          syntaxError =
-            error.stderr?.toString() ?? error.message ?? lineEditorT("runtime.syntaxError");
+          const error = err as { stderr?: unknown; message?: string };
+          syntaxError = firstNonEmptyString(
+            bufferishToString(error.stderr),
+            error.message ?? "",
+            lineEditorT("runtime.syntaxError")
+          );
 
           if (options.dryRun !== true) {
             return {

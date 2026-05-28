@@ -31,6 +31,7 @@ const env = {
   ...process.env,
   APP_UI_MODE: normalizeMainAppUiMode(process.env.APP_UI_MODE),
 };
+delete env.ELECTRON_RUN_AS_NODE;
 
 function isSceneDebugEnabled() {
   const value = String(env.APP_SCENE_DEBUG ?? "").trim().toLowerCase();

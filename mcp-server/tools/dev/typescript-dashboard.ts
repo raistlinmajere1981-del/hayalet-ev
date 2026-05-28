@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import _fs from "fs";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError } from "../../utils/mcp-logger.js";
@@ -57,6 +57,23 @@ function tsDashboardDefT(key: string, params?: Record<string, string | number | 
   );
 }
 
+function resolveNpmCommand(): string {
+  return process.platform === "win32" ? "npm.cmd" : "npm";
+}
+
+function buildCheckTypesCommand(): { command: string; args: string[] } {
+  const npmExecPath = process.env["npm_execpath"]?.trim();
+  return npmExecPath !== undefined && npmExecPath !== ""
+    ? { command: process.execPath, args: [npmExecPath, "run", "check-types"] }
+    : { command: resolveNpmCommand(), args: ["run", "check-types"] };
+}
+
+function bufferishToString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Buffer.isBuffer(value)) return value.toString("utf-8");
+  return "";
+}
+
 export function generateTypescriptDashboard(
   options: DashboardOptions = {},
   projectRoot: string
@@ -72,11 +89,18 @@ export function generateTypescriptDashboard(
     const cwd = projectRoot;
     const startTime = Date.now();
 
-    const result = execSync("npm run check-types 2>&1 || true", {
-      cwd,
-      encoding: "utf-8",
-      maxBuffer: 10 * 1024 * 1024,
-    });
+    const checkTypes = buildCheckTypesCommand();
+    let result: string;
+    try {
+      result = execFileSync(checkTypes.command, checkTypes.args, {
+        cwd,
+        encoding: "utf-8",
+        maxBuffer: 10 * 1024 * 1024,
+      });
+    } catch (error) {
+      const failure = error as { stdout?: unknown; stderr?: unknown };
+      result = `${bufferishToString(failure.stdout)}\n${bufferishToString(failure.stderr)}`;
+    }
 
     const errors = parseTypescriptErrors(result);
 
