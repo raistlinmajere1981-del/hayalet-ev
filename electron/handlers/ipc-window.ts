@@ -7,7 +7,7 @@ import {
   appRestart,
 } from "../window-manager.ts";
 import { registerHandler } from "./ipc-helpers.ts";
-import { spawn, execFile } from "child_process";
+import { spawn, spawnSync, execFile } from "child_process";
 import { platform } from "os";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { join, dirname } from "path";
@@ -740,32 +740,61 @@ export function setupWindowHandlers(): void {
 
   registerHandler("open-terminal", async (_event, targetPath: string) => {
     const os = platform();
-    let command: string;
-    let args: string[];
 
     if (os === "darwin") {
-      command = "open";
-      args = ["-a", "Terminal", targetPath];
-    } else if (os === "win32") {
-      command = "cmd";
-      args = ["/c", "start", "cmd", "/K", `cd /d "${targetPath}"`];
-    } else {
-      command = "gnome-terminal";
-      args = ["--working-directory=" + targetPath];
+      return await new Promise((resolve, reject) => {
+        const proc = spawn("open", ["-a", "Terminal", targetPath], {
+          detached: true,
+          stdio: "ignore",
+        });
+        proc.unref();
+        proc.on(LogLevel.ERROR, reject);
+        setTimeout(() => { resolve({ success: true }); }, 100);
+      });
     }
 
-    return await new Promise((resolve, reject) => {
-      const proc = spawn(command, args, {
-        detached: true,
-        stdio: "ignore",
-        shell: os === "win32",
+    if (os === "win32") {
+      const wtResult = spawnSync("where", ["wt.exe"], { encoding: "utf8" });
+      const useWt = wtResult.status === 0 && wtResult.stdout.trim() !== "";
+      const [command, args] = useWt
+        ? ["wt.exe", ["-d", targetPath]]
+        : ["cmd", ["/c", "start", "cmd", "/K", `cd /d "${targetPath}"`]];
+      return await new Promise((resolve, reject) => {
+        const proc = spawn(command, args, {
+          detached: true,
+          stdio: "ignore",
+          shell: true,
+        });
+        proc.unref();
+        proc.on(LogLevel.ERROR, reject);
+        setTimeout(() => { resolve({ success: true }); }, 100);
       });
-      proc.unref();
-      proc.on(LogLevel.ERROR, reject);
-      setTimeout(() => {
-        resolve({ success: true });
-      }, 100);
-    });
+    }
+
+    const linuxTerminals: Array<{ command: string; args: string[] }> = [
+      { command: "gnome-terminal", args: ["--working-directory=" + targetPath] },
+      { command: "konsole", args: ["--workdir", targetPath] },
+      { command: "xfce4-terminal", args: ["--working-directory=" + targetPath] },
+      { command: "x-terminal-emulator", args: [] },
+    ];
+
+    for (const term of linuxTerminals) {
+      const check = spawnSync("which", [term.command], { encoding: "utf8" });
+      if (check.status === 0 && check.stdout.trim() !== "") {
+        return await new Promise((resolve, reject) => {
+          const proc = spawn(term.command, term.args, {
+            detached: true,
+            stdio: "ignore",
+            cwd: targetPath,
+          });
+          proc.unref();
+          proc.on(LogLevel.ERROR, reject);
+          setTimeout(() => { resolve({ success: true }); }, 100);
+        });
+      }
+    }
+
+    return { success: false, error: "No terminal emulator found" };
   });
 
   registerHandler("opencode-check-updates", async (_event, installedVersion: string) => {

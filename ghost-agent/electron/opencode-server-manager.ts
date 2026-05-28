@@ -1,5 +1,5 @@
 import type { ChildProcess } from "child_process";
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import * as net from "net";
 import type { ServerOptions, ServerInfo } from "./types/server.ts";
 import { logGhost } from "./logger.ts";
@@ -8,6 +8,21 @@ function chunkToString(data: unknown): string {
   if (typeof data === "string") return data;
   if (Buffer.isBuffer(data)) return data.toString("utf-8");
   return String(data);
+}
+
+function resolveOpencodeBinary(): string {
+  if (process.platform !== "win32") {
+    return "opencode";
+  }
+
+  for (const candidate of ["opencode.cmd", "opencode.exe", "opencode"]) {
+    const result = spawnSync("where", [candidate], { encoding: "utf8" });
+    if (result.status === 0 && result.stdout.trim() !== "") {
+      return result.stdout.trim().split(/\r?\n/)[0] ?? candidate;
+    }
+  }
+
+  return "opencode.cmd";
 }
 
 /**
@@ -120,17 +135,19 @@ export class OpenCodeServerManager {
       args.push("--cors", origin);
     });
 
-    void logGhost("info", "Starting OpenCode serve", { port, args });
+    const opencodeExecutable = resolveOpencodeBinary();
+    void logGhost("info", "Starting OpenCode serve", { port, args, executable: opencodeExecutable });
 
     const childEnv = { ...process.env };
     delete childEnv["CDP_PORT"];
     delete childEnv["NODE_OPTIONS"];
     delete childEnv["NODE_INSPECT_RESUME_ON_START"];
 
-    this.process = spawn("opencode", args, {
+    this.process = spawn(opencodeExecutable, args, {
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
       env: childEnv,
+      shell: process.platform === "win32",
     });
 
     this.currentPort = port;

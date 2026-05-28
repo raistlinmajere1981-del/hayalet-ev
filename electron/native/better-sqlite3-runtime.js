@@ -188,6 +188,10 @@ function runLocalNodeCommand(args, label) {
  * @param {string} label
  * @returns {void}
  */
+function resolveNpmCommand() {
+  return process.platform === "win32" ? "npm.cmd" : "npm"
+}
+
 function runLocalNpmCommand(args, label) {
   const npmExecPath = process.env["npm_execpath"]?.trim()
   const result = npmExecPath
@@ -195,9 +199,10 @@ function runLocalNpmCommand(args, label) {
         cwd: projectRoot,
         encoding: "utf8",
       })
-    : spawnSync("npm", args, {
+    : spawnSync(resolveNpmCommand(), args, {
         cwd: projectRoot,
         encoding: "utf8",
+        shell: process.platform === "win32",
       })
 
   if (result.error) {

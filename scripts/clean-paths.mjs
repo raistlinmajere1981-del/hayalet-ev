@@ -1,4 +1,5 @@
 import { readdir, rm } from "node:fs/promises";
+import { join } from "node:path";
 
 async function cleanPath(targetPath) {
   await rm(targetPath, { recursive: true, force: true });
@@ -11,7 +12,7 @@ async function cleanContents(targetPath) {
   } catch {
     return;
   }
-  await Promise.all(entries.map(async (entry) => cleanPath(`${targetPath}/${entry}`)));
+  await Promise.all(entries.map(async (entry) => cleanPath(join(targetPath, entry))));
 }
 
 async function main() {

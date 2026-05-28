@@ -101,7 +101,15 @@ export async function isExecutable(targetPath) {
     await access(targetPath, fsConstants.X_OK);
     return true;
   } catch {
-    return false;
+    if (process.platform !== "win32") {
+      return false;
+    }
+    try {
+      await access(targetPath, fsConstants.F_OK);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
