@@ -136,6 +136,8 @@ export function createWrapperSupervisor({
       cwd: root,
       env: { ...env, ...(options.env ?? {}) },
       stdio: ["ignore", "pipe", "pipe"],
+      shell: process.platform === "win32",
+      windowsHide: true,
     });
     attachPipe(role, "stdout", child.stdout);
     attachPipe(role, "stderr", child.stderr);
