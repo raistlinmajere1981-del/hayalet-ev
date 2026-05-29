@@ -136,7 +136,11 @@ export class OpenCodeServerManager {
     });
 
     const opencodeExecutable = resolveOpencodeBinary();
-    void logGhost("info", "Starting OpenCode serve", { port, args, executable: opencodeExecutable });
+    void logGhost("info", "Starting OpenCode serve", {
+      port,
+      args,
+      executable: opencodeExecutable,
+    });
 
     const childEnv = { ...process.env };
     delete childEnv["CDP_PORT"];

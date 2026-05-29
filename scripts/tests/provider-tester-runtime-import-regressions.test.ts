@@ -14,9 +14,20 @@ test("provider tester types import resolves without Vite-only aliases", () => {
     "  });",
   ].join("\n");
 
-  const result = spawnSync(process.execPath, ["-e", script], {
+  const nodeArgs = [
+    "--import",
+    "tsx",
+    "--import",
+    "./scripts/tests/register-asset-loader.mjs",
+    "-e",
+    script,
+  ];
+
+  const result = spawnSync(process.execPath, nodeArgs, {
     cwd: projectRoot,
     encoding: "utf-8",
+    env: process.env,
+    stdio: ["ignore", "pipe", "pipe"],
   });
 
   const output = `${result.stdout}\n${result.stderr}`;

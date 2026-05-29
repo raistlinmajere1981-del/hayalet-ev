@@ -16,7 +16,11 @@ function resolveWindowsCommand(command) {
   }
 
   const pathEntries = (process.env.PATH ?? "").split(delimiter).filter((entry) => entry !== "");
-  const extensions = ["", ".cmd", ".exe", ".bat"];
+  // Prefer Windows command wrappers first (.cmd/.exe/.bat) before
+  // checking extensionless files, to avoid spawning shell scripts
+  // (which exist in node_modules/.bin on non-Windows systems) and
+  // causing ENOENT on Windows.
+  const extensions = [".cmd", ".exe", ".bat", ""]; 
   for (const entry of pathEntries) {
     for (const extension of extensions) {
       const candidate = join(entry, `${command}${extension}`);
@@ -55,11 +59,65 @@ function parseArgs(argv) {
 }
 
 const parsed = parseArgs(process.argv.slice(2));
-const child = spawn(resolveWindowsCommand(parsed.command), parsed.args, {
-  cwd: process.cwd(),
-  env: parsed.env,
-  stdio: "inherit",
-});
+const spawnCommand = resolveWindowsCommand(parsed.command);
+
+function quoteForCmd(arg) {
+  if (arg === "") return '""';
+  // If contains whitespace or double quote, wrap in double quotes and escape inner quotes
+  if (/\s|\"/.test(arg)) {
+    return `"${arg.replace(/\"/g, '\\\"')}"`;
+  }
+  return arg;
+}
+
+let child;
+if (process.platform === "win32") {
+  const cmd = process.env.ComSpec || process.env.comspec || "cmd.exe";
+  const hasExt = extname(spawnCommand) !== "";
+  const spawnOptions = {
+    cwd: process.cwd(),
+    env: parsed.env,
+    stdio: "inherit",
+  };
+
+  if (hasExt) {
+    try {
+      child = spawn(spawnCommand, parsed.args, spawnOptions);
+    } catch (err) {
+      // If direct spawn fails (EINVAL on some Windows setups), fallback
+      // to launching via cmd.exe with a quoted command line.
+      const commandLine = [spawnCommand, ...parsed.args].map(quoteForCmd).join(" ");
+      child = spawn(cmd, ["/s", "/c", commandLine], spawnOptions);
+    }
+  } else {
+    // When the command has no extension, prefer running through cmd.exe so
+    // PATHEXT and cmd shim behavior is honored. Still guard against errors.
+    const commandLine = [spawnCommand, ...parsed.args].map(quoteForCmd).join(" ");
+    try {
+      child = spawn(cmd, ["/s", "/c", commandLine], spawnOptions);
+    } catch (err) {
+      // As a last resort, attempt to spawn the command directly.
+      child = spawn(spawnCommand, parsed.args, spawnOptions);
+    }
+  }
+} else {
+  try {
+    child = spawn(spawnCommand, parsed.args, {
+      cwd: process.cwd(),
+      env: parsed.env,
+      stdio: "inherit",
+    });
+  } catch (err) {
+    // Non-Windows fallback: run via the system shell if direct spawn fails.
+    const shell = process.env.SHELL || "/bin/sh";
+    const commandLine = [spawnCommand, ...parsed.args].map((a) => a).join(" ");
+    child = spawn(shell, ["-c", commandLine], {
+      cwd: process.cwd(),
+      env: parsed.env,
+      stdio: "inherit",
+    });
+  }
+}
 
 child.on("error", (error) => {
   console.error(error.message);

@@ -749,7 +749,9 @@ export function setupWindowHandlers(): void {
         });
         proc.unref();
         proc.on(LogLevel.ERROR, reject);
-        setTimeout(() => { resolve({ success: true }); }, 100);
+        setTimeout(() => {
+          resolve({ success: true });
+        }, 100);
       });
     }
 
@@ -767,7 +769,9 @@ export function setupWindowHandlers(): void {
         });
         proc.unref();
         proc.on(LogLevel.ERROR, reject);
-        setTimeout(() => { resolve({ success: true }); }, 100);
+        setTimeout(() => {
+          resolve({ success: true });
+        }, 100);
       });
     }
 
@@ -778,20 +782,28 @@ export function setupWindowHandlers(): void {
       { command: "x-terminal-emulator", args: [] },
     ];
 
+    let foundTerm: { command: string; args: string[] } | null = null;
     for (const term of linuxTerminals) {
       const check = spawnSync("which", [term.command], { encoding: "utf8" });
       if (check.status === 0 && check.stdout.trim() !== "") {
-        return await new Promise((resolve, reject) => {
-          const proc = spawn(term.command, term.args, {
-            detached: true,
-            stdio: "ignore",
-            cwd: targetPath,
-          });
-          proc.unref();
-          proc.on(LogLevel.ERROR, reject);
-          setTimeout(() => { resolve({ success: true }); }, 100);
-        });
+        foundTerm = term;
+        break;
       }
+    }
+
+    if (foundTerm !== null) {
+      return await new Promise((resolve, reject) => {
+        const proc = spawn(foundTerm.command, foundTerm.args, {
+          detached: true,
+          stdio: "ignore",
+          cwd: targetPath,
+        });
+        proc.unref();
+        proc.on(LogLevel.ERROR, reject);
+        setTimeout(() => {
+          resolve({ success: true });
+        }, 100);
+      });
     }
 
     return { success: false, error: "No terminal emulator found" };

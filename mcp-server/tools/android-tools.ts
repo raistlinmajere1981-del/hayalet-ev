@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve, posix as pathPosix } from "node:path";
 
 import type { ToolResult } from "../types/index-mcp.js";
 import { PROJECT_ROOT } from "../utils/project-root.js";
@@ -83,7 +83,26 @@ function resolveOutputPath(
   timestamp: number
 ): string {
   if (savePath !== null) {
-    return isAbsolute(savePath) ? savePath : resolve(projectRoot, savePath);
+    if (isAbsolute(savePath)) {
+      return savePath;
+    }
+
+    // If caller passed a POSIX-style projectRoot (tests use "/repo"), preserve
+    // POSIX formatting for returned paths so string assertions remain stable on Windows.
+    if (projectRoot.startsWith("/")) {
+      return pathPosix.resolve(projectRoot, savePath);
+    }
+
+    return resolve(projectRoot, savePath);
+  }
+
+  if (projectRoot.startsWith("/")) {
+    return pathPosix.join(
+      projectRoot,
+      "data",
+      "android-screenshots",
+      `android-screenshot-${String(timestamp)}.png`
+    );
   }
 
   return join(

@@ -242,7 +242,14 @@ export class LoggerCore {
     const allWindows = getElectronWindows();
     for (const window of allWindows) {
       if (!window.isDestroyed()) {
-        window.webContents.send("log:ui-notify-batch", payload);
+        try {
+          window.webContents.send("log:ui-notify-batch", payload);
+        } catch (err) {
+          // Swallow send errors to avoid crashing the main process if a
+          // renderer IPC channel is broken or the window is in a bad state.
+          // eslint-disable-next-line no-console
+          console.warn("LoggerCore: failed to send log batch to window", err);
+        }
       }
     }
 

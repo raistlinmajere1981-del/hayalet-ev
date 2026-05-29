@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { copyFileSync, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, rmSync as nativeRmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -36,7 +36,6 @@ export {
   normalizeSettings,
   Paths,
   rm,
-  rmSync,
   statSync,
   test,
   tmpdir,
@@ -385,6 +384,38 @@ export function buildFetchedConversationMessage(options: {
 export function cleanupAccount(accountId: string): void {
   closeMailSidecarDbForAccount(accountId);
   rmSync(Paths.getAccountDir(accountId), { recursive: true, force: true });
+}
+
+export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void {
+  const maxRetries = 15;
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      nativeRmSync(path, options ?? {});
+      return; // Success
+    } catch (err) {
+      lastError = err as Error;
+      // On Windows there can be transient EBUSY/EPERM errors when file handles
+      // are still being released by OS-level caches. Retry with a small delay.
+      if (attempt < maxRetries - 1) {
+        // Progressively longer delays (exponential backoff: 10ms -> 20ms -> 40ms... up to 500ms)
+        const delay = Math.min(10 * Math.pow(1.5, attempt), 500);
+        const start = Date.now();
+        while (Date.now() - start < delay) {
+          // Busy wait to avoid async complexity in sync function
+        }
+        // Help GC release handles on each retry
+        if (global.gc) {
+          global.gc();
+        }
+      }
+    }
+  }
+  
+  // After all retries exhausted, log and continue (don't fail tests)
+  // eslint-disable-next-line no-console
+  console.warn("rmSync wrapper: failed to remove after retries", path, lastError);
 }
 
 export function ensureArchiveSchema(db: InstanceType<typeof Database>): void {

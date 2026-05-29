@@ -184,14 +184,17 @@ function runLocalNodeCommand(args, label) {
 }
 
 /**
- * @param {string[]} args
- * @param {string} label
- * @returns {void}
+ * @returns {string}
  */
 function resolveNpmCommand() {
   return process.platform === "win32" ? "npm.cmd" : "npm"
 }
 
+/**
+ * @param {string[]} args
+ * @param {string} label
+ * @returns {void}
+ */
 function runLocalNpmCommand(args, label) {
   const npmExecPath = process.env["npm_execpath"]?.trim()
   const result = npmExecPath

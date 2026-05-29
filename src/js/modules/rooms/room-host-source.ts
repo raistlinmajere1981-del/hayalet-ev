@@ -52,6 +52,13 @@ function normalizeRoomHostBoundaryPath(filePath: string): string {
   return filePath.replace(/\\/g, "/");
 }
 
+function toHostFsPath(p: string): string {
+  if (typeof process !== "undefined" && process.platform === "win32") {
+    return p.replace(/\//g, "\\");
+  }
+  return p;
+}
+
 function resolveRoomHostRootPath(entryPath: string): string {
   const entryUrl = new URL(toRoomRuntimeFileUrl(entryPath));
   return normalizeFileUrlPath(new URL("../", new URL("./", entryUrl)).toString());
@@ -163,7 +170,7 @@ async function buildRoomHostResolvedModuleUrl(
     }
 
     const pending = (async function (): Promise<string> {
-      const source = await readModuleSource(normalizedPath);
+      const source = await readModuleSource(toHostFsPath(normalizedPath));
       const specifiers = collectRoomHostModuleSpecifiers(source).filter(function (specifier) {
         return specifier.startsWith("./") || specifier.startsWith("../");
       });

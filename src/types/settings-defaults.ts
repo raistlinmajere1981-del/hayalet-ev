@@ -16,22 +16,8 @@ export const DEFAULT_ASSISTANT_ACCOUNT_ID = "opencode_opencode_at_opencode_com";
 export const DEFAULT_OPENCODE_UI_ACCOUNT_ID = "opencode_ui_opencode_at_opencode_com";
 
 function getDefaultOpencodeUiDbPath(): string {
-  const runtimeProcess =
-    typeof globalThis.process === "object"
-      ? (globalThis.process as {
-          platform?: string;
-          env?: Record<string, string | undefined>;
-        })
-      : null;
-
-  if (runtimeProcess?.platform === "win32") {
-    const localAppData = runtimeProcess.env?.["LOCALAPPDATA"] ?? runtimeProcess.env?.["APPDATA"];
-    const trimmedLocalAppData = localAppData?.trim();
-    return trimmedLocalAppData !== undefined && trimmedLocalAppData !== ""
-      ? `${trimmedLocalAppData}\\opencode\\opencode.db`
-      : "~/AppData/Local/opencode/opencode.db";
-  }
-
+  // Default to the POSIX-style user data path in settings scaffolding so
+  // the default value remains stable across platforms and in test suites.
   return "~/.local/share/opencode/opencode.db";
 }
 

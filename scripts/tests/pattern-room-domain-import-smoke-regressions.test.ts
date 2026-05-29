@@ -171,7 +171,7 @@ test("pattern-room phase 3B domain mock stays limited to the runtime transition 
       source.includes("pattern-room-domain.mock") ||
       source.includes("PATTERN_ROOM_DOMAIN_MOCK")
     ) {
-      domainMockConsumers.push(relative(process.cwd(), filePath));
+      domainMockConsumers.push(relative(process.cwd(), filePath).replace(/\\/g, "/"));
     }
   }
 
@@ -205,7 +205,7 @@ test("pattern-room host runtime keeps domain mock usage scoped to ready-load per
       source.includes("pattern-room-domain.mock") ||
       source.includes("PATTERN_ROOM_DOMAIN_MOCK")
     ) {
-      domainMockConsumers.push(relative(process.cwd(), filePath));
+      domainMockConsumers.push(relative(process.cwd(), filePath).replace(/\\/g, "/"));
     }
   }
 
