@@ -247,7 +247,6 @@ export class LoggerCore {
         } catch (err) {
           // Swallow send errors to avoid crashing the main process if a
           // renderer IPC channel is broken or the window is in a bad state.
-          // eslint-disable-next-line no-console
           console.warn("LoggerCore: failed to send log batch to window", err);
         }
       }

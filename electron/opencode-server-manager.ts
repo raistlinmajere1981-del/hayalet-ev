@@ -1,6 +1,8 @@
 import type { ChildProcess } from "child_process";
-import { spawn } from "child_process";
+import { execFile, spawn } from "child_process";
+import { existsSync } from "fs";
 import * as net from "net";
+import { dirname, extname, join } from "path";
 import { getLoggerCore } from "./logger/index.js";
 import { Paths } from "./paths.ts";
 import { LogCategory, LogLevel } from "../src/types/logging-core.js";
@@ -11,11 +13,27 @@ import { translateElectronMessage } from "./i18n/language-service.ts";
 const logger = getLoggerCore();
 const OPENCODE_COMMAND = "opencode";
 const WINDOWS_PATH_PATTERN = /^[A-Za-z]:[\\/]/;
+const WINDOWS_CMD_EXTENSIONS = new Set([".cmd", ".bat"]);
+const WINDOWS_POWERSHELL_EXTENSIONS = new Set([".ps1"]);
+
+interface SpawnCommandSpec {
+  command: string;
+  args: string[];
+  shell: boolean;
+}
 
 function chunkToString(data: unknown): string {
   if (typeof data === "string") return data;
   if (Buffer.isBuffer(data)) return data.toString("utf-8");
   return String(data);
+}
+
+function quoteWindowsCommandArg(value: string): string {
+  if (/^[A-Za-z0-9_./:=+-]+$/.test(value)) {
+    return value;
+  }
+
+  return `"${value.replace(/"/g, '\\"')}"`;
 }
 
 export class OpenCodeServerManager {
@@ -42,9 +60,46 @@ export class OpenCodeServerManager {
       .map((line) => line.trim())
       .filter((line) => line !== "");
 
-    return lines.find(
+    const candidates = lines.filter(
       (line) => line.startsWith("/") || line.startsWith("\\\\") || WINDOWS_PATH_PATTERN.test(line)
     );
+
+    if (process.platform !== "win32") {
+      return candidates[0];
+    }
+
+    const resolvedCandidates = candidates.map((candidate) =>
+      this.resolveWindowsShimExecutable(candidate)
+    );
+
+    return (
+      resolvedCandidates.find((line) => extname(line).toLowerCase() === ".exe") ??
+      resolvedCandidates.find((line) =>
+        [".cmd", ".bat", ".ps1"].includes(extname(line).toLowerCase())
+      ) ??
+      candidates[0]
+    );
+  }
+
+  private resolveWindowsShimExecutable(candidate: string): string {
+    if (process.platform !== "win32") return candidate;
+    const extension = extname(candidate).toLowerCase();
+    if (
+      extension !== "" &&
+      !WINDOWS_CMD_EXTENSIONS.has(extension) &&
+      !WINDOWS_POWERSHELL_EXTENSIONS.has(extension)
+    ) {
+      return candidate;
+    }
+
+    const npmGlobalPackageExecutable = join(
+      dirname(candidate),
+      "node_modules",
+      "opencode-ai",
+      "bin",
+      "opencode.exe"
+    );
+    return existsSync(npmGlobalPackageExecutable) ? npmGlobalPackageExecutable : candidate;
   }
 
   private isMissingCommandProbe(result: {
@@ -89,9 +144,11 @@ export class OpenCodeServerManager {
         resolve(payload);
       };
 
-      const child = spawn(command, args, {
+      const commandSpec = this.buildSpawnCommand(command, args);
+      const child = spawn(commandSpec.command, commandSpec.args, {
         stdio: ["ignore", "pipe", "pipe"],
         detached: false,
+        shell: commandSpec.shell,
         ...(env !== undefined ? { env } : {}),
       });
 
@@ -171,10 +228,50 @@ export class OpenCodeServerManager {
     return undefined;
   }
 
+  private buildSpawnCommand(command: string, args: string[]): SpawnCommandSpec {
+    if (process.platform !== "win32") {
+      return { command, args, shell: false };
+    }
+
+    const extension = extname(command).toLowerCase();
+    if (WINDOWS_CMD_EXTENSIONS.has(extension)) {
+      const commandLine = [
+        quoteWindowsCommandArg(command),
+        ...args.map(quoteWindowsCommandArg),
+      ].join(" ");
+      return {
+        command: "cmd.exe",
+        args: ["/d", "/s", "/c", commandLine],
+        shell: false,
+      };
+    }
+
+    if (WINDOWS_POWERSHELL_EXTENSIONS.has(extension)) {
+      return {
+        command: "powershell.exe",
+        args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", command, ...args],
+        shell: false,
+      };
+    }
+
+    return { command, args, shell: false };
+  }
+
+  private async killWindowsProcessTree(pid: number): Promise<void> {
+    if (process.platform !== "win32") return;
+    await new Promise<void>((resolve) => {
+      execFile("taskkill.exe", ["/PID", String(pid), "/T", "/F"], { windowsHide: true }, () => {
+        resolve();
+      });
+    });
+  }
+
   async diagnoseBinary(): Promise<ServerBinaryInfo> {
     const command = OPENCODE_COMMAND;
+    const resolvedPath = await this.resolveBinaryPath(command);
+    const probeCommand = resolvedPath ?? command;
     const versionProbe = await this.runCommandCapture(
-      command,
+      probeCommand,
       ["--version"],
       SERVER_TIMEOUTS.BINARY_PROBE
     );
@@ -206,8 +303,6 @@ export class OpenCodeServerManager {
     }
 
     const version = this.parseVersion(combinedOutput);
-    const resolvedPath = await this.resolveBinaryPath(command);
-
     return {
       available: true,
       command,
@@ -370,10 +465,12 @@ export class OpenCodeServerManager {
     delete childEnv["NODE_OPTIONS"];
     delete childEnv["NODE_INSPECT_RESUME_ON_START"];
 
-    this.process = spawn(binaryExecutable, args, {
+    const commandSpec = this.buildSpawnCommand(binaryExecutable, args);
+    this.process = spawn(commandSpec.command, commandSpec.args, {
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
       env: childEnv,
+      shell: commandSpec.shell,
       ...(workspacePath !== undefined ? { cwd: workspacePath } : {}),
     });
 
@@ -461,6 +558,11 @@ export class OpenCodeServerManager {
       const proc = this.process;
       const pid = proc.pid;
       this.cleanup();
+
+      if (process.platform === "win32" && typeof pid === "number") {
+        await this.killWindowsProcessTree(pid);
+        return;
+      }
 
       const canKillGroup = process.platform !== "win32";
       const tryKill = (signal: NodeJS.Signals, useGroup: boolean): boolean => {

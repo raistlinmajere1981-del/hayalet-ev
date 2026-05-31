@@ -235,6 +235,30 @@ export async function resolveSystemCommandBinaryPath(
   }
 }
 
+export async function resolveCompanionSystemCommandPath(
+  companionExecutableName: string,
+  primaryBinaryPath: string
+): Promise<string | null> {
+  const normalizedName = asNonEmptyString(companionExecutableName);
+  if (normalizedName === null) {
+    return null;
+  }
+
+  const siblingPath = join(dirname(primaryBinaryPath), normalizedName);
+  if (existsSync(siblingPath)) {
+    return siblingPath;
+  }
+
+  if (process.platform === "win32" && !/\.exe$/iu.test(normalizedName)) {
+    const windowsSiblingPath = join(dirname(primaryBinaryPath), `${normalizedName}.exe`);
+    if (existsSync(windowsSiblingPath)) {
+      return windowsSiblingPath;
+    }
+  }
+
+  return await resolveSystemCommandBinaryPath(normalizedName);
+}
+
 export async function readJsonFile<T>(filePath: string): Promise<T> {
   return JSON.parse(await readFile(filePath, "utf8")) as T;
 }

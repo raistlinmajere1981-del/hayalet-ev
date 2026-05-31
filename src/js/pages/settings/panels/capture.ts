@@ -27,8 +27,11 @@ import {
 } from "../../../../../shared/capture/ambient-defaults.js";
 import type {
   CaptureActionOutcome,
+  CaptureAndroidBuildDependencyStatus,
   CaptureAndroidDeviceStatus,
+  CaptureHostDependencyState,
   CaptureHostAction,
+  CaptureHostToolDependencyStatus,
   CaptureServiceStatus,
 } from "../../../../types/capture.js";
 import type { CaptureCommandPhraseSettings } from "../../../../types/settings.js";
@@ -79,6 +82,7 @@ function startActionProgressPolling(root: HTMLElement, state: CapturePanelState)
       .then((status) => {
         state.status = status;
         renderAndroidManagementState(root, state);
+        renderHostDependencies(root, state);
         syncActionButtons(root, state);
       })
       .catch(() => {});
@@ -107,12 +111,15 @@ function primeActionProgress(
     },
   };
   renderAndroidManagementState(root, state);
+  renderHostDependencies(root, state);
 }
 
 function describeOperationAction(action: CaptureHostAction | null): string {
   switch (action) {
     case null:
       return "Android companion";
+    case "prepare-host-dependencies":
+      return captureT("dependencies.actions.prepare");
     case "install-companion":
       return captureT("android.actions.install");
     case "launch-companion":
@@ -311,6 +318,174 @@ function renderScrcpyManagementState(root: HTMLElement, state: CapturePanelState
   setText(root, "#capture-scrcpy-device", activeDevice);
   setText(root, "#capture-scrcpy-feedback", feedback);
   renderScrcpyLogList(root, lastLogs);
+}
+
+function formatHostDependencyState(value: CaptureHostDependencyState): string {
+  return captureT(`dependencies.states.${value}`);
+}
+
+function appendDependencyMeta(container: HTMLElement, label: string, value: string | null): void {
+  if (value === null || value.trim() === "") {
+    return;
+  }
+
+  const item = document.createElement("div");
+  item.className = "settings-capture-device-stat";
+
+  const labelEl = document.createElement("span");
+  labelEl.className = "settings-capture-stat-label";
+  labelEl.textContent = label;
+
+  const valueEl = document.createElement("strong");
+  valueEl.textContent = value;
+
+  item.append(labelEl, valueEl);
+  container.appendChild(item);
+}
+
+function appendDependencyDetails(container: HTMLElement, details: string[]): void {
+  const visibleDetails = details.filter((entry) => entry.trim() !== "").slice(0, 4);
+  if (visibleDetails.length === 0) {
+    return;
+  }
+
+  const list = document.createElement("ul");
+  list.className = "settings-capture-progress-details";
+  visibleDetails.forEach((entry) => {
+    const item = document.createElement("li");
+    item.textContent = entry;
+    list.appendChild(item);
+  });
+  container.appendChild(list);
+}
+
+function renderToolDependencyCard(
+  list: HTMLElement,
+  title: string,
+  dependency: CaptureHostToolDependencyStatus,
+  metadata: Array<[string, string | null]>
+): void {
+  const article = document.createElement("article");
+  article.className = "settings-capture-device-card";
+
+  const header = document.createElement("div");
+  header.className = "settings-capture-device-header";
+
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "settings-capture-device-title";
+
+  const titleEl = document.createElement("strong");
+  titleEl.textContent = title;
+  titleWrap.appendChild(titleEl);
+
+  const stateEl = document.createElement("span");
+  stateEl.className = "settings-capture-note";
+  stateEl.textContent = formatHostDependencyState(dependency.state);
+  titleWrap.appendChild(stateEl);
+  header.appendChild(titleWrap);
+
+  const stats = document.createElement("div");
+  stats.className = "settings-capture-device-stats";
+  metadata.forEach(([label, value]) => {
+    appendDependencyMeta(stats, label, value);
+  });
+
+  const message = document.createElement("p");
+  message.className = "settings-capture-note";
+  message.textContent = dependency.message ?? formatHostDependencyState(dependency.state);
+
+  article.append(header, stats, message);
+  list.appendChild(article);
+}
+
+function renderAndroidBuildDependencyCard(
+  list: HTMLElement,
+  dependency: CaptureAndroidBuildDependencyStatus
+): void {
+  const article = document.createElement("article");
+  article.className = "settings-capture-device-card";
+
+  const header = document.createElement("div");
+  header.className = "settings-capture-device-header";
+
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "settings-capture-device-title";
+
+  const titleEl = document.createElement("strong");
+  titleEl.textContent = captureT("dependencies.items.androidBuild");
+  titleWrap.appendChild(titleEl);
+
+  const stateEl = document.createElement("span");
+  stateEl.className = "settings-capture-note";
+  stateEl.textContent = formatHostDependencyState(dependency.state);
+  titleWrap.appendChild(stateEl);
+  header.appendChild(titleWrap);
+
+  const stats = document.createElement("div");
+  stats.className = "settings-capture-device-stats";
+  appendDependencyMeta(stats, captureT("dependencies.meta.javaHome"), dependency.javaHome);
+  appendDependencyMeta(
+    stats,
+    captureT("dependencies.meta.androidSdkRoot"),
+    dependency.androidSdkRoot
+  );
+  appendDependencyMeta(
+    stats,
+    captureT("dependencies.meta.needsConfirmation"),
+    dependency.needsConfirmation
+      ? captureT("dependencies.meta.yes")
+      : captureT("dependencies.meta.no")
+  );
+
+  const message = document.createElement("p");
+  message.className = "settings-capture-note";
+  message.textContent = dependency.message ?? formatHostDependencyState(dependency.state);
+
+  article.append(header, stats, message);
+  appendDependencyDetails(article, dependency.details);
+  list.appendChild(article);
+}
+
+function renderHostDependencies(root: HTMLElement, state: CapturePanelState): void {
+  const summary = root.querySelector<HTMLElement>("#capture-host-dependencies-summary");
+  const list = root.querySelector<HTMLElement>("#capture-host-dependencies-list");
+  const dependencies = state.status?.hostDependencies ?? null;
+  if (!(summary instanceof HTMLElement) || !(list instanceof HTMLElement)) {
+    return;
+  }
+
+  list.innerHTML = "";
+  if (dependencies === null) {
+    summary.textContent = captureT("dependencies.loading");
+    return;
+  }
+
+  const entries = [
+    dependencies.adb.state,
+    dependencies.scrcpy.state,
+    dependencies.ffmpeg.state,
+    dependencies.androidBuild.state,
+  ];
+  const readyCount = entries.filter((entry) => entry === "ready").length;
+  summary.textContent = captureT("dependencies.summary")
+    .replace("{ready}", String(readyCount))
+    .replace("{total}", String(entries.length));
+
+  renderToolDependencyCard(list, captureT("dependencies.items.adb"), dependencies.adb, [
+    [captureT("dependencies.meta.path"), dependencies.adb.path],
+    [captureT("dependencies.meta.version"), dependencies.adb.version],
+  ]);
+  renderToolDependencyCard(list, captureT("dependencies.items.scrcpy"), dependencies.scrcpy, [
+    [captureT("dependencies.meta.path"), dependencies.scrcpy.path],
+    [captureT("dependencies.meta.version"), dependencies.scrcpy.version],
+  ]);
+  renderToolDependencyCard(list, captureT("dependencies.items.ffmpeg"), dependencies.ffmpeg, [
+    [captureT("dependencies.meta.path"), dependencies.ffmpeg.path],
+    [captureT("dependencies.meta.version"), dependencies.ffmpeg.version],
+    [captureT("dependencies.meta.ffprobe"), dependencies.ffmpeg.ffprobePath],
+    [captureT("dependencies.meta.managedPath"), dependencies.ffmpeg.managedPath],
+  ]);
+  renderAndroidBuildDependencyCard(list, dependencies.androidBuild);
 }
 
 function formatDeviceConnection(device: CaptureAndroidDeviceStatus): string {
@@ -758,7 +933,19 @@ function syncActionButtons(root: HTMLElement, state: CapturePanelState): void {
   const cancelInstallButton = root.querySelector<HTMLButtonElement>(
     "#capture-android-progress-cancel-btn"
   );
+  const prepareDependenciesButton = root.querySelector<HTMLButtonElement>(
+    "#capture-host-dependencies-prepare-btn"
+  );
+  const refreshDependenciesButton = root.querySelector<HTMLButtonElement>(
+    "#capture-host-dependencies-refresh-btn"
+  );
 
+  if (prepareDependenciesButton) {
+    prepareDependenciesButton.disabled = busy;
+  }
+  if (refreshDependenciesButton) {
+    refreshDependenciesButton.disabled = busy;
+  }
   if (scanButton) {
     scanButton.disabled = busy;
   }
@@ -823,6 +1010,7 @@ async function loadAndroidState(
   state.loading = true;
   state.error = null;
   renderAndroidManagementState(root, state);
+  renderHostDependencies(root, state);
   renderCaptureDefaults(root, state);
   renderCaptureSpeechPolicy(root);
   syncActionButtons(root, state);
@@ -834,6 +1022,7 @@ async function loadAndroidState(
   } finally {
     state.loading = false;
     renderAndroidManagementState(root, state);
+    renderHostDependencies(root, state);
     renderCaptureDefaults(root, state);
     renderCaptureSpeechPolicy(root);
     syncActionButtons(root, state);
@@ -880,6 +1069,7 @@ async function runAndSyncCaptureAction(
     state.actionLoading = false;
     stopActionProgressPolling(state);
     renderAndroidManagementState(root, state);
+    renderHostDependencies(root, state);
     renderCaptureDefaults(root, state);
     renderCaptureSpeechPolicy(root);
     syncActionButtons(root, state);
@@ -1019,6 +1209,12 @@ async function setPreferredDevice(
 function bindActions(root: HTMLElement, state: CapturePanelState): void {
   const scanButton = root.querySelector<HTMLButtonElement>("#capture-android-scan-btn");
   const refreshButton = root.querySelector<HTMLButtonElement>("#capture-android-refresh-btn");
+  const prepareDependenciesButton = root.querySelector<HTMLButtonElement>(
+    "#capture-host-dependencies-prepare-btn"
+  );
+  const refreshDependenciesButton = root.querySelector<HTMLButtonElement>(
+    "#capture-host-dependencies-refresh-btn"
+  );
   const installButton = root.querySelector<HTMLButtonElement>("#capture-android-install-btn");
   const openButton = root.querySelector<HTMLButtonElement>("#capture-android-open-btn");
   const connectButton = root.querySelector<HTMLButtonElement>("#capture-android-connect-btn");
@@ -1056,6 +1252,18 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
       void loadAndroidState(state, root, true);
     };
   }
+  if (prepareDependenciesButton) {
+    prepareDependenciesButton.onclick = (): void => {
+      void runAndSyncCaptureAction(state, root, "prepare-host-dependencies", {
+        progressMessage: captureT("dependencies.progress.starting"),
+      });
+    };
+  }
+  if (refreshDependenciesButton) {
+    refreshDependenciesButton.onclick = (): void => {
+      void loadAndroidState(state, root, true);
+    };
+  }
   if (installButton) {
     installButton.onclick = (): void => {
       void runAndSyncCaptureAction(state, root, "install-companion");
@@ -1088,6 +1296,7 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
         .finally(() => {
           state.actionLoading = false;
           renderAndroidManagementState(root, state);
+          renderHostDependencies(root, state);
           renderCaptureDefaults(root, state);
           renderCaptureSpeechPolicy(root);
           syncActionButtons(root, state);
@@ -1133,6 +1342,7 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
           state.actionLoading = false;
           stopActionProgressPolling(state);
           renderAndroidManagementState(root, state);
+          renderHostDependencies(root, state);
           renderCaptureDefaults(root, state);
           renderCaptureSpeechPolicy(root);
           syncActionButtons(root, state);
@@ -1214,6 +1424,7 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
             state.actionLoading = false;
             stopActionProgressPolling(state);
             renderAndroidManagementState(root, state);
+            renderHostDependencies(root, state);
             renderCaptureDefaults(root, state);
             renderCaptureSpeechPolicy(root);
             syncActionButtons(root, state);
@@ -1245,6 +1456,7 @@ export function setupSettingsCapturePanel(): void {
     applySettingsPanelStaticTranslations(root);
     transcriptPanel.render();
     renderAndroidManagementState(root, state);
+    renderHostDependencies(root, state);
     renderCaptureDefaults(root, state);
     renderCaptureSpeechPolicy(root);
     renderCaptureVoiceCommands(root);

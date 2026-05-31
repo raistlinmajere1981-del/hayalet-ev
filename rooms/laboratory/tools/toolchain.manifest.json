@@ -67,6 +67,7 @@
     "ffmpeg": {
       "displayName": "FFmpeg",
       "installDirName": "ffmpeg",
+      "availability": "system-command",
       "installStrategy": "automatic",
       "usedBy": ["Media edit", "Profile artifacts", "Managed process runs"],
       "testImpact": ["media-edit", "profile-preflight", "managed-reporting"],
@@ -87,6 +88,18 @@
       "probe": {
         "args": ["-version"],
         "versionRegex": "ffmpeg version\\s+([^\\s]+)"
+      },
+      "systemCommand": {
+        "executableName": "ffmpeg",
+        "companionExecutables": ["ffprobe", "ffprobe.exe"],
+        "envVarNames": ["HAYALET_FFMPEG_PATH", "FFMPEG_PATH"],
+        "candidatePaths": [
+          "${dataDir}/host-dependencies/ffmpeg/win32-x64/ffmpeg.exe",
+          "${dataDir}/host-dependencies/ffmpeg/win32-arm64/ffmpeg.exe",
+          "${dataDir}/host-dependencies/ffmpeg/linux-x64/ffmpeg",
+          "${dataDir}/host-dependencies/ffmpeg/linux-arm64/ffmpeg"
+        ],
+        "setupHint": "Prepare the shared FFmpeg runtime from Settings > Capture, or expose ffmpeg on PATH and refresh Laboratory tools."
       },
       "assets": {
         "linux-x64": {
@@ -295,7 +308,7 @@
     "ffmpeg-libvmaf": {
       "displayName": "FFmpeg libvmaf Probe",
       "installDirName": "ffmpeg-libvmaf",
-      "availability": "installable",
+      "availability": "system-command",
       "installStrategy": "automatic",
       "usedBy": ["Reference quality check", "VMAF availability probe"],
       "testImpact": ["reference-quality", "ffmpeg-filter-probe"],
@@ -345,7 +358,15 @@
       },
       "systemCommand": {
         "executableName": "ffmpeg",
-        "setupHint": "Use the in-app install to prepare a room-local FFmpeg build with the libvmaf probe path, then refresh Laboratory tools."
+        "companionExecutables": ["ffprobe", "ffprobe.exe"],
+        "envVarNames": ["HAYALET_FFMPEG_PATH", "FFMPEG_PATH"],
+        "candidatePaths": [
+          "${dataDir}/host-dependencies/ffmpeg/win32-x64/ffmpeg.exe",
+          "${dataDir}/host-dependencies/ffmpeg/win32-arm64/ffmpeg.exe",
+          "${dataDir}/host-dependencies/ffmpeg/linux-x64/ffmpeg",
+          "${dataDir}/host-dependencies/ffmpeg/linux-arm64/ffmpeg"
+        ],
+        "setupHint": "Prepare the shared FFmpeg runtime from Settings > Capture, then refresh Laboratory tools to probe libvmaf support."
       }
     },
     "raft-optical-flow": {

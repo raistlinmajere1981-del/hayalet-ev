@@ -72,7 +72,18 @@ test("room tool service supports app-managed installers and system-command probe
   const roomSnapshotSource = readFileSync("rooms/laboratory/shared/host/room-snapshot.ts", "utf8");
   const toolOverlaySource = readFileSync("rooms/laboratory/ui/tool-management-overlay.ts", "utf8");
   const manifest = JSON.parse(manifestSource) as {
-    tools: Record<string, { probe?: { versionRegex?: string } }>;
+    tools: Record<
+      string,
+      {
+        availability?: string;
+        probe?: { versionRegex?: string };
+        systemCommand?: {
+          candidatePaths?: string[];
+          companionExecutables?: string[];
+          envVarNames?: string[];
+        };
+      }
+    >;
   };
 
   assert.match(
@@ -120,6 +131,8 @@ test("room tool service supports app-managed installers and system-command probe
     /const latestVersion = findVersion\(releasePage, releaseProvider\.versionRegex\);/
   );
   assert.match(serviceSource, /async function resolveSystemCommandBinaryPath\(/);
+  assert.match(serviceSource, /async function resolveCompanionSystemCommandPath\(/);
+  assert.match(serviceSource, /resolveCompanionSystemCommandPath\(selectedExecutableName/);
   assert.match(serviceSource, /allowPathLookup\?: boolean \| undefined;/);
   assert.match(serviceSource, /if \(options\?\.allowPathLookup === false\) \{\s*return null;\s*\}/);
   assert.match(serviceSource, /expandRuntimePathTemplate\(/);
@@ -175,7 +188,7 @@ test("room tool service supports app-managed installers and system-command probe
   );
   assert.match(
     serviceSource,
-    /allowPathLookup:\s*this\.getInstallerType\(resolvedSystemCommand\.manifest\)\s*!==\s*"python-venv-pip",/
+    /const allowPathLookup =\s*this\.getInstallerType\(resolvedSystemCommand\.manifest\) !== "python-venv-pip";/
   );
   assert.match(serviceSource, /installerType,/);
   assert.match(
@@ -250,8 +263,26 @@ test("room tool service supports app-managed installers and system-command probe
   assert.match(manifestSource, /"exiftool"[\s\S]*"sourceExecutableName":\s*"exiftool\(-k\)\.exe"/);
   assert.match(manifestSource, /"mediainfo"[\s\S]*"availability":\s*"installable"/);
   assert.match(manifestSource, /"mediainfo"[\s\S]*"downloadUrlTemplate"/);
+  assert.equal(manifest.tools["ffmpeg"]?.availability, "system-command");
+  assert.deepEqual(manifest.tools["ffmpeg"]?.systemCommand?.envVarNames, [
+    "HAYALET_FFMPEG_PATH",
+    "FFMPEG_PATH",
+  ]);
+  assert.ok(
+    manifest.tools["ffmpeg"]?.systemCommand?.candidatePaths?.some((entry) =>
+      entry.includes("${dataDir}/host-dependencies/ffmpeg/win32-x64/ffmpeg.exe")
+    )
+  );
+  assert.ok(
+    manifest.tools["ffmpeg"]?.systemCommand?.companionExecutables?.includes("ffprobe.exe")
+  );
   assert.equal(manifest.tools["ffmpeg-libvmaf"]?.probe?.versionRegex, "\\blibvmaf\\b");
-  assert.match(manifestSource, /"ffmpeg-libvmaf"[\s\S]*"availability":\s*"installable"/);
+  assert.equal(manifest.tools["ffmpeg-libvmaf"]?.availability, "system-command");
+  assert.ok(
+    manifest.tools["ffmpeg-libvmaf"]?.systemCommand?.candidatePaths?.some((entry) =>
+      entry.includes("${dataDir}/host-dependencies/ffmpeg/win32-x64/ffmpeg.exe")
+    )
+  );
   assert.match(manifestSource, /"raft-optical-flow"[\s\S]*"availability":\s*"system-command"/);
   assert.match(
     manifestSource,

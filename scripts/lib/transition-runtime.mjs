@@ -1,4 +1,5 @@
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import { dirname } from "node:path";
 
 import { defaultControl, formatWrapperEvent, normalizeControl } from "./ghost-wrapper-runtime.mjs";
@@ -266,6 +267,16 @@ async function waitForProcessExit(pid, timeoutMs) {
   return !isProcessAlive(pid);
 }
 
+async function terminateWindowsProcessTree(pid) {
+  if (process.platform !== "win32") return false;
+  await new Promise((resolve) => {
+    execFile("taskkill.exe", ["/PID", String(pid), "/T", "/F"], { windowsHide: true }, (error) => {
+      resolve(error === null);
+    });
+  });
+  return true;
+}
+
 export async function terminateProcesses(pids, options = {}) {
   const signal = typeof options.signal === "string" ? options.signal : "SIGTERM";
   const waitTimeoutMs =
@@ -294,7 +305,11 @@ export async function terminateProcesses(pids, options = {}) {
 
   const waitResults = await Promise.all(
     killedPids.map(async (pid) => {
-      const exited = await waitForProcessExit(pid, waitTimeoutMs);
+      let exited = await waitForProcessExit(pid, waitTimeoutMs);
+      if (!exited) {
+        await terminateWindowsProcessTree(pid);
+        exited = await waitForProcessExit(pid, waitTimeoutMs);
+      }
       return { pid, exited };
     })
   );

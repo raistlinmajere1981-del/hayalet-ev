@@ -197,7 +197,7 @@ export async function runCommand(
   command: string,
   args: string[],
   timeoutMs = CAPTURE_ADB_TIMEOUT_MS,
-  options?: { cwd?: string; stdio?: "pipe" | "inherit" }
+  options?: { cwd?: string; env?: NodeJS.ProcessEnv; stdio?: "pipe" | "inherit" }
 ): Promise<CommandResult> {
   if (isAdbExecutablePath(command)) {
     adbServerTouchedByCaptureService = true;
@@ -206,7 +206,7 @@ export async function runCommand(
   return await new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: options?.stdio === "inherit" ? "inherit" : ["ignore", "pipe", "pipe"],
-      env: process.env,
+      env: options?.env ?? process.env,
       cwd: options?.cwd,
     });
 
@@ -264,12 +264,14 @@ export async function runCommand(
   });
 }
 
-export async function shutdownAdbServerIfTouched(): Promise<void> {
+export async function shutdownAdbServerIfTouched(
+  resolveAdbPath: () => Promise<string | null> = async () => await resolveExecutableOnPath("adb")
+): Promise<void> {
   if (adbServerTouchedByCaptureService !== true) {
     return;
   }
 
-  const adbPath = await resolveExecutableOnPath("adb");
+  const adbPath = await resolveAdbPath();
   if (adbPath === null) {
     adbServerTouchedByCaptureService = false;
     return;
@@ -289,6 +291,7 @@ export async function runStreamingCommand(
   args: string[],
   options?: {
     cwd?: string;
+    env?: NodeJS.ProcessEnv;
     timeoutMs?: number;
     onStdoutLine?: (line: string) => void;
     onStderrLine?: (line: string) => void;
@@ -297,7 +300,7 @@ export async function runStreamingCommand(
   return await new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: ["ignore", "pipe", "pipe"],
-      env: process.env,
+      env: options?.env ?? process.env,
       cwd: options?.cwd,
     });
     const stdoutStream = child.stdout;

@@ -57,11 +57,11 @@ async function readPosixProcessEntries() {
 
 async function readWindowsProcessEntriesWith(shellName) {
   const command = [
-    "$ErrorActionPreference = 'Stop'",
-    "Get-CimInstance Win32_Process |",
-    "Select-Object ProcessId,ParentProcessId,CommandLine,Name |",
-    "ConvertTo-Json -Compress",
-  ].join("; ");
+    "$ErrorActionPreference = 'Stop';",
+    "Get-CimInstance Win32_Process",
+    "| Select-Object ProcessId,ParentProcessId,CommandLine,Name",
+    "| ConvertTo-Json -Compress",
+  ].join(" ");
   const { stdout } = await execFileAsync(
     shellName,
     ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],

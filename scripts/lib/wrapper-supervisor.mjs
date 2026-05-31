@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { join } from "node:path";
 
 import { buildMainAppLaunchArgs, normalizeMainAppUiMode } from "./ghost-wrapper-runtime.mjs";
@@ -16,6 +16,33 @@ function createDeferred() {
     resolve = nextResolve;
   });
   return { promise, resolve };
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function withTimeout(promise, timeoutMs) {
+  let timeoutId;
+  const timeout = new Promise((resolve) => {
+    timeoutId = setTimeout(() => resolve(null), timeoutMs);
+  });
+  const result = await Promise.race([promise, timeout]);
+  clearTimeout(timeoutId);
+  return result;
+}
+
+async function killProcessTree(pid) {
+  if (process.platform !== "win32") return false;
+  await new Promise((resolve) => {
+    execFile("taskkill.exe", ["/PID", String(pid), "/T", "/F"], { windowsHide: true }, () => {
+      resolve();
+    });
+  });
+  await sleep(250);
+  return true;
 }
 
 export function splitLines(chunk, remainder = "") {
@@ -156,13 +183,32 @@ export function createWrapperSupervisor({
     }
   }
 
-  async function stopRole(role, { signal = "SIGTERM" } = {}) {
+  async function stopRole(role, { signal = "SIGTERM", timeoutMs = 5000 } = {}) {
     const record = children.get(role);
     if (record === undefined) return;
 
+    if (process.platform === "win32") {
+      developer(`Stopping ${role} process tree`);
+      await killProcessTree(record.child.pid);
+      const treeExitCode = await withTimeout(record.closed, timeoutMs);
+      if (treeExitCode === null) {
+        record.child.kill("SIGKILL");
+        await withTimeout(record.closed, timeoutMs);
+      }
+      return;
+    }
+
     developer(`Stopping ${role} with ${signal}`);
     record.child.kill(signal);
-    await record.closed;
+    const cleanExitCode = await withTimeout(record.closed, timeoutMs);
+    if (cleanExitCode !== null) return;
+
+    developer(`Stopping ${role} process tree after timeout`);
+    const treeKilled = await killProcessTree(record.child.pid);
+    if (!treeKilled) {
+      record.child.kill("SIGKILL");
+    }
+    await withTimeout(record.closed, timeoutMs);
   }
 
   async function resetVite() {

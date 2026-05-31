@@ -468,6 +468,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   captureStatus: () => ipcRenderer.invoke("capture-status"),
   captureRefreshStatus: () => ipcRenderer.invoke("capture-refresh-status"),
   captureConsumeAnalyzeAssets: () => ipcRenderer.invoke("capture-consume-analyze-assets"),
+  capturePrepareHostDependencies: () => ipcRenderer.invoke("capture-prepare-host-dependencies"),
   captureInstallCompanion: (options) => ipcRenderer.invoke("capture-install-companion", options),
   captureDismissOperation: () => ipcRenderer.invoke("capture-dismiss-operation"),
   captureConnectDevice: (address) => ipcRenderer.invoke("capture-connect-device", address),

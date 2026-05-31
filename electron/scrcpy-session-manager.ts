@@ -13,6 +13,15 @@ type ScrcpyV4l2SinkResult =
   | { ok: true; previewVideo: CaptureScrcpyPreviewVideoStatus }
   | { ok: false; message: string };
 
+type WindowsCameraFeedStartResult =
+  | {
+      ok: true;
+      message: string;
+      previewVideo: CaptureScrcpyPreviewVideoStatus;
+      process: ScrcpyChildProcess;
+    }
+  | { ok: false; message: string };
+
 export interface ScrcpyChildProcess {
   stdout: Pick<EventEmitter, "on">;
   stderr: Pick<EventEmitter, "on">;
@@ -49,6 +58,14 @@ export interface ScrcpySessionManagerOptions {
   resolveScrcpyPath: () => Promise<string | null>;
   inspectScrcpyVersion: (scrcpyPath: string) => Promise<string | null>;
   resolveV4l2Sink: () => Promise<ScrcpyV4l2SinkResult>;
+  startWindowsCameraFeed?: (options: {
+    action: CaptureHostAction;
+    cameraFps: number;
+    cameraSize: string;
+    deviceId: string;
+    requestId: string | null;
+    target: TranscriptTargetId | null;
+  }) => Promise<WindowsCameraFeedStartResult>;
   spawnProcess: (scrcpyPath: string, args: string[], options: SpawnOptions) => ScrcpyChildProcess;
   getProjectRoot: () => string;
   getSetupHint: () => string | null;
@@ -150,13 +167,45 @@ export class ScrcpySessionManager {
       };
     }
 
-    const availability = await this.inspectScrcpy();
-    if (availability.available !== true || availability.path === null) {
+    const useWindowsStream =
+      process.platform === "win32" && typeof this.options.startWindowsCameraFeed === "function";
+    const availability = useWindowsStream ? null : await this.inspectScrcpy();
+    if (
+      useWindowsStream !== true &&
+      (availability?.available !== true || availability.path === null)
+    ) {
       this.lastError = "scrcpy is not available on PATH.";
       return {
         ok: false,
         message: this.lastError,
       };
+    }
+
+    if (useWindowsStream === true) {
+      await this.stopSession();
+      const started = await this.options.startWindowsCameraFeed?.({
+        action: options.action,
+        cameraFps: this.options.cameraFps,
+        cameraSize: this.options.cameraSize,
+        deviceId: options.deviceId,
+        requestId: options.requestId,
+        target: options.target,
+      });
+      if (started?.ok !== true) {
+        this.lastError = started?.message ?? "Windows FFmpeg camera feed could not be started.";
+        return { ok: false, message: this.lastError };
+      }
+
+      return await this.startProcess({
+        mode: "camera-feed",
+        process: started.process,
+        deviceId: options.deviceId,
+        target: options.target,
+        requestId: options.requestId,
+        previewVideo: started.previewVideo,
+        action: options.action,
+        successMessage: started.message,
+      });
     }
 
     const sink = await this.options.resolveV4l2Sink();
@@ -181,7 +230,7 @@ export class ScrcpySessionManager {
 
     return await this.startProcess({
       mode: "camera-feed",
-      scrcpyPath: availability.path,
+      scrcpyPath: availability?.path ?? "",
       args,
       deviceId: options.deviceId,
       target: options.target,
@@ -269,8 +318,9 @@ export class ScrcpySessionManager {
 
   private async startProcess(options: {
     mode: CaptureScrcpySessionMode;
-    scrcpyPath: string;
-    args: string[];
+    process?: ScrcpyChildProcess | undefined;
+    scrcpyPath?: string | undefined;
+    args?: string[] | undefined;
     deviceId: string;
     target: TranscriptTargetId | null;
     requestId: string | null;
@@ -278,11 +328,13 @@ export class ScrcpySessionManager {
     action: CaptureHostAction;
     successMessage: string;
   }): Promise<ScrcpySessionStartResult> {
-    const child = this.options.spawnProcess(options.scrcpyPath, options.args, {
-      stdio: ["ignore", "pipe", "pipe"],
-      env: process.env,
-      cwd: this.options.getProjectRoot(),
-    });
+    const child =
+      options.process ??
+      this.options.spawnProcess(options.scrcpyPath ?? "", options.args ?? [], {
+        stdio: ["ignore", "pipe", "pipe"],
+        env: process.env,
+        cwd: this.options.getProjectRoot(),
+      });
     const session: ScrcpyManagedSession = {
       process: child,
       mode: options.mode,

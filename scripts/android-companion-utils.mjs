@@ -1,4 +1,4 @@
-import { createWriteStream, constants as fsConstants } from "node:fs";
+import { createReadStream, createWriteStream, constants as fsConstants } from "node:fs";
 import {
   access,
   cp,
@@ -11,14 +11,19 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
+import { createRequire } from "node:module";
 import { inspectCompanionArtifactCache } from "./lib/android-companion-artifact.mjs";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const tar = require("tar");
+const unbzip2Stream = require("unbzip2-stream");
+const yauzl = require("yauzl");
 
 const ANDROID_COMPILE_SDK = "36";
 const ANDROID_BUILD_TOOLS = "36.0.0";
@@ -156,9 +161,13 @@ export async function writeJsonFile(filePath, value) {
 
 export async function runCommand(command, args, options = {}) {
   const { cwd = projectRoot, stdio = "pipe", env = process.env, input = null } = options;
+  const isWindowsBatchCommand =
+    process.platform === "win32" && /\.(?:bat|cmd)$/i.test(String(command));
+  const spawnCommand = isWindowsBatchCommand ? (process.env.ComSpec ?? "cmd.exe") : command;
+  const spawnArgs = isWindowsBatchCommand ? ["/d", "/s", "/c", command, ...args] : args;
 
   return await new Promise((resolvePromise, rejectPromise) => {
-    const child = spawn(command, args, {
+    const child = spawn(spawnCommand, spawnArgs, {
       cwd,
       env,
       stdio,
@@ -193,6 +202,134 @@ export async function runCommand(command, args, options = {}) {
       });
     });
   });
+}
+
+function escapeZipPatternToken(token) {
+  return token.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
+}
+
+function normalizeZipPath(value) {
+  return String(value).replace(/\\/g, "/");
+}
+
+function createZipPatternMatcher(patterns) {
+  if (!Array.isArray(patterns) || patterns.length === 0) {
+    return () => true;
+  }
+
+  const expressions = patterns.map((pattern) => {
+    const normalized = normalizeZipPath(pattern);
+    const source = normalized
+      .split("*")
+      .map((token) => escapeZipPatternToken(token))
+      .join("[^/]*");
+    return new RegExp(`^${source}$`);
+  });
+
+  return (entryName) => expressions.some((expression) => expression.test(entryName));
+}
+
+function resolveZipEntryDestination(destinationRoot, entryName, options = {}) {
+  const normalizedName = normalizeZipPath(entryName);
+  const relativeName = options.junkPaths === true ? basename(normalizedName) : normalizedName;
+  if (relativeName === "" || relativeName.includes("\0")) {
+    return null;
+  }
+
+  const resolvedRoot = resolve(destinationRoot);
+  const resolvedPath = resolve(resolvedRoot, relativeName);
+  const rootPrefix = resolvedRoot.endsWith(sep) ? resolvedRoot : `${resolvedRoot}${sep}`;
+  if (resolvedPath !== resolvedRoot && !resolvedPath.startsWith(rootPrefix)) {
+    throw new Error(`Zip entry escapes destination: ${entryName}`);
+  }
+
+  return resolvedPath;
+}
+
+async function extractZipArchive(archivePath, destinationRoot, options = {}) {
+  const shouldExtract = createZipPatternMatcher(options.entries);
+  await mkdir(destinationRoot, { recursive: true });
+
+  let extractedCount = 0;
+  await new Promise((resolvePromise, rejectPromise) => {
+    yauzl.open(archivePath, { lazyEntries: true, autoClose: true }, (openError, zipFile) => {
+      if (openError || !zipFile) {
+        rejectPromise(openError ?? new Error("Zip archive could not be opened."));
+        return;
+      }
+
+      let settled = false;
+      const rejectOnce = (error) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        zipFile.close();
+        rejectPromise(error);
+      };
+
+      zipFile.on("error", rejectOnce);
+      zipFile.on("end", () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (Array.isArray(options.entries) && options.entries.length > 0 && extractedCount === 0) {
+          rejectPromise(new Error(`No matching zip entries found in ${archivePath}.`));
+          return;
+        }
+        resolvePromise();
+      });
+
+      zipFile.on("entry", (entry) => {
+        void (async () => {
+          const entryName = normalizeZipPath(entry.fileName);
+          const isDirectory = entryName.endsWith("/");
+          if (!shouldExtract(entryName)) {
+            zipFile.readEntry();
+            return;
+          }
+
+          const destinationPath = resolveZipEntryDestination(destinationRoot, entryName, options);
+          if (destinationPath === null) {
+            zipFile.readEntry();
+            return;
+          }
+
+          if (isDirectory) {
+            if (options.junkPaths !== true) {
+              await mkdir(destinationPath, { recursive: true });
+            }
+            zipFile.readEntry();
+            return;
+          }
+
+          await mkdir(dirname(destinationPath), { recursive: true });
+          const readStream = await new Promise((resolveStream, rejectStream) => {
+            zipFile.openReadStream(entry, (streamError, stream) => {
+              if (streamError || !stream) {
+                rejectStream(streamError ?? new Error(`Zip entry could not be read: ${entryName}`));
+                return;
+              }
+              resolveStream(stream);
+            });
+          });
+          await pipeline(readStream, createWriteStream(destinationPath));
+          extractedCount += 1;
+          zipFile.readEntry();
+        })().catch(rejectOnce);
+      });
+
+      zipFile.readEntry();
+    });
+  });
+
+  return extractedCount;
+}
+
+async function extractTarBzipArchive(archivePath, destinationRoot) {
+  await mkdir(destinationRoot, { recursive: true });
+  await pipeline(createReadStream(archivePath), unbzip2Stream(), tar.x({ cwd: destinationRoot }));
 }
 
 function parseJavaMajorVersion(output) {
@@ -617,14 +754,13 @@ async function installManagedAndroidSdk(javaRuntime, emitProgress) {
     detail: `The command-line tools archive is being unpacked from ${archivePath}.`,
   });
   const extractDir = await mkdtemp(join(tmpdir(), "hayalet-ev-android-sdk-"));
-  const extractResult = await runCommand("unzip", ["-q", archivePath, "-d", extractDir]);
-  if (extractResult.exitCode !== 0) {
+  await extractZipArchive(archivePath, extractDir).catch((error) => {
     throw new Error(
-      extractResult.stderr.trim() ||
-        extractResult.stdout.trim() ||
-        "Android command-line tools extraction failed."
+      `Android command-line tools extraction failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
-  }
+  });
 
   const extractedTools = await findDirectoryContaining(
     extractDir,
@@ -679,10 +815,10 @@ async function installManagedAndroidSdk(javaRuntime, emitProgress) {
   }
 
   notify({
-    message: "Installing Android SDK packages for API 35.",
+    message: `Installing Android SDK packages for API ${ANDROID_COMPILE_SDK}.`,
     progress: 0.64,
     detail:
-      "platform-tools, platforms;android-35, build-tools;35.0.0, CMake, and NDK are being installed.",
+      `platform-tools, platforms;android-${ANDROID_COMPILE_SDK}, build-tools;${ANDROID_BUILD_TOOLS}, CMake, and NDK are being installed.`,
   });
   const packageResult = await runCommand(
     sdkManagerPath,
@@ -894,12 +1030,13 @@ async function ensureSherpaTtsRuntime(emitProgress) {
 
   if ((await fileExists(runtimeLibraryPath)) !== true) {
     const extractDir = await mkdtemp(join(tmpdir(), "hayalet-ev-sherpa-android-"));
-    const extractResult = await runCommand("tar", ["-xjf", runtimeArchivePath, "-C", extractDir]);
-    if (extractResult.exitCode !== 0) {
+    try {
+      await extractTarBzipArchive(runtimeArchivePath, extractDir);
+    } catch (error) {
       throw new Error(
-        extractResult.stderr.trim() ||
-          extractResult.stdout.trim() ||
-          "sherpa-onnx Android runtime extraction failed."
+        `sherpa-onnx Android runtime extraction failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       );
     }
     await rm(sherpaTtsJniLibsRoot, { recursive: true, force: true });
@@ -923,12 +1060,13 @@ async function ensureSherpaTtsRuntime(emitProgress) {
     }
 
     await rm(modelRoot, { recursive: true, force: true });
-    const extractResult = await runCommand("tar", ["-xjf", archivePath, "-C", ttsModelsRoot]);
-    if (extractResult.exitCode !== 0) {
+    try {
+      await extractTarBzipArchive(archivePath, ttsModelsRoot);
+    } catch (error) {
       throw new Error(
-        extractResult.stderr.trim() ||
-          extractResult.stdout.trim() ||
-          `${model.modelId} Piper TTS model extraction failed.`
+        `${model.modelId} Piper TTS model extraction failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       );
     }
   }
@@ -1046,20 +1184,13 @@ async function ensureNcnnPiperTtsRuntime(emitProgress, env = process.env) {
   if ((await fileExists(ncnnConfigPath)) !== true) {
     await rm(ncnnPiperSdkRoot, { recursive: true, force: true });
     await mkdir(ncnnPiperRoot, { recursive: true });
-    const extractResult = await runCommand("unzip", [
-      "-q",
-      "-o",
-      runtimeArchivePath,
-      "-d",
-      ncnnPiperRoot,
-    ]);
-    if (extractResult.exitCode !== 0) {
+    await extractZipArchive(runtimeArchivePath, ncnnPiperRoot).catch((error) => {
       throw new Error(
-        extractResult.stderr.trim() ||
-          extractResult.stdout.trim() ||
-          "ncnn Android runtime extraction failed."
+        `ncnn Android runtime extraction failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       );
-    }
+    });
   }
 
   await mkdir(ncnnPiperAssetsRoot, { recursive: true });
@@ -1070,23 +1201,16 @@ async function ensureNcnnPiperTtsRuntime(emitProgress, env = process.env) {
   }
 
   if ((await fileExists(join(ncnnPiperAssetsRoot, "en-word_id.bin"))) !== true) {
-    const extractEnglishResult = await runCommand("unzip", [
-      "-q",
-      "-o",
-      "-j",
-      sampleApkPath,
-      "assets/en_*",
-      "assets/en-word_id.bin",
-      "-d",
-      ncnnPiperAssetsRoot,
-    ]);
-    if (extractEnglishResult.exitCode !== 0) {
+    await extractZipArchive(sampleApkPath, ncnnPiperAssetsRoot, {
+      entries: ["assets/en_*", "assets/en-word_id.bin"],
+      junkPaths: true,
+    }).catch((error) => {
       throw new Error(
-        extractEnglishResult.stderr.trim() ||
-          extractEnglishResult.stdout.trim() ||
-          "ncnn Piper English asset extraction failed."
+        `ncnn Piper English asset extraction failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       );
-    }
+    });
   }
 
   const trArchivePath = join(downloadCacheRoot, NCNN_PIPER_TR_MODEL.archiveName);
@@ -1095,22 +1219,16 @@ async function ensureNcnnPiperTtsRuntime(emitProgress, env = process.env) {
   }
 
   if ((await fileExists(join(ncnnPiperAssetsRoot, "tr_enc_p.ncnn.bin"))) !== true) {
-    const extractTurkishResult = await runCommand("unzip", [
-      "-q",
-      "-o",
-      "-j",
-      trArchivePath,
-      "tr_TR-fahrettin/tr_*",
-      "-d",
-      ncnnPiperAssetsRoot,
-    ]);
-    if (extractTurkishResult.exitCode !== 0) {
+    await extractZipArchive(trArchivePath, ncnnPiperAssetsRoot, {
+      entries: ["tr_TR-fahrettin/tr_*"],
+      junkPaths: true,
+    }).catch((error) => {
       throw new Error(
-        extractTurkishResult.stderr.trim() ||
-          extractTurkishResult.stdout.trim() ||
-          `${NCNN_PIPER_TR_MODEL.modelId} ncnn Piper asset extraction failed.`
+        `${NCNN_PIPER_TR_MODEL.modelId} ncnn Piper asset extraction failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       );
-    }
+    });
   }
 
   await buildNcnnPiperNativeLibraries(env);
@@ -1174,6 +1292,11 @@ export async function prepareCompanionBuildEnvironment(options = {}) {
   };
 }
 
+async function writeCompanionLocalProperties(androidSdkRoot) {
+  const normalizedSdkRoot = String(androidSdkRoot).replace(/\\/g, "/");
+  await writeFile(join(companionRoot, "local.properties"), `sdk.dir=${normalizedSdkRoot}\n`, "utf8");
+}
+
 export async function buildCompanionArtifact(options = {}) {
   const { env = process.env, emitProgress = null, stdio = "inherit" } = options;
   const notify = normalizeProgressEmitter(emitProgress);
@@ -1198,6 +1321,11 @@ export async function buildCompanionArtifact(options = {}) {
       `Android companion build is blocked: Java ${String(javaRuntime.major)} is not supported. Use JDK 17 or 21.`
     );
   }
+  const androidSdkRoot = env.ANDROID_HOME ?? env.ANDROID_SDK_ROOT ?? null;
+  if (typeof androidSdkRoot !== "string" || androidSdkRoot.trim() === "") {
+    throw new Error("Android companion build is blocked: Android SDK root was not resolved.");
+  }
+  await writeCompanionLocalProperties(androidSdkRoot);
 
   notify({
     message: "Building the Android companion APK with Gradle.",

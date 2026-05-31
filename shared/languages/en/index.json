@@ -5094,6 +5094,42 @@
           "none": "Silent"
         }
       },
+      "dependencies": {
+        "title": "Shared Host Setup",
+        "subtitle": "Prepare ADB, scrcpy, FFmpeg, and Android build prerequisites once for Capture and room workflows.",
+        "summaryLabel": "Setup readiness",
+        "summary": "{ready}/{total} dependencies ready",
+        "loading": "Waiting for the capture service.",
+        "progress": {
+          "starting": "Preparing shared host dependencies..."
+        },
+        "actions": {
+          "prepare": "Prepare shared setup",
+          "refresh": "Refresh setup"
+        },
+        "states": {
+          "ready": "Ready",
+          "missing": "Missing",
+          "blocked": "Blocked"
+        },
+        "items": {
+          "adb": "ADB",
+          "scrcpy": "scrcpy",
+          "ffmpeg": "FFmpeg",
+          "androidBuild": "Android build toolchain"
+        },
+        "meta": {
+          "path": "Path",
+          "version": "Version",
+          "managedPath": "Managed path",
+          "ffprobe": "ffprobe",
+          "javaHome": "JAVA_HOME",
+          "androidSdkRoot": "ANDROID_SDK_ROOT",
+          "needsConfirmation": "Needs setup approval",
+          "yes": "Yes",
+          "no": "No"
+        }
+      },
       "policy": {
         "title": "Android Companion Policy",
         "subtitle": "Control whether the Android companion can provide phone-side camera capture and dictation.",

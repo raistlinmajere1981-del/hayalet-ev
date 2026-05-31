@@ -303,6 +303,7 @@ export class AnalyzeController {
   _cameraPanelOpen: boolean;
   _cameraPreviewRequestId: string | null;
   _cameraPreviewStream: MediaStream | null;
+  _cameraPreviewVideoSource: CaptureAnalyzePreviewVideoStatus["source"] | null;
   _cameraPanelStatusMessage: string | null;
   _cameraPanelHasFrame: boolean;
   _ttsRuntimeStatus: TtsRuntimeStatus | null;
@@ -370,6 +371,7 @@ export class AnalyzeController {
     this._cameraPanelOpen = false;
     this._cameraPreviewRequestId = null;
     this._cameraPreviewStream = null;
+    this._cameraPreviewVideoSource = null;
     this._cameraPanelStatusMessage = null;
     this._cameraPanelHasFrame = false;
     this._ttsRuntimeStatus = null;
@@ -2484,6 +2486,24 @@ export class AnalyzeController {
       throw new Error("Analyze camera video surface is missing.");
     }
 
+    if (previewVideo.source === "ffmpeg-stream") {
+      const streamUrl = previewVideo.streamUrl ?? previewVideo.devicePath;
+      if (streamUrl.trim() === "") {
+        throw new Error("FFmpeg camera stream URL was not reported.");
+      }
+
+      this._stopAndroidCameraFeed();
+      video.srcObject = null;
+      this._cameraPreviewVideoSource = "ffmpeg-stream";
+      video.muted = true;
+      video.playsInline = true;
+      video.autoplay = true;
+      video.src = streamUrl;
+      video.hidden = false;
+      await video.play();
+      return;
+    }
+
     const mediaDevices = navigator.mediaDevices as Partial<MediaDevices> | undefined;
     if (mediaDevices?.getUserMedia === undefined) {
       throw new Error("Local camera capture is not available in this browser context.");
@@ -2501,6 +2521,7 @@ export class AnalyzeController {
       },
     });
     this._cameraPreviewStream = stream;
+    this._cameraPreviewVideoSource = previewVideo.source;
     video.srcObject = stream;
     video.hidden = false;
     await video.play();
@@ -2513,11 +2534,14 @@ export class AnalyzeController {
       });
       this._cameraPreviewStream = null;
     }
+    this._cameraPreviewVideoSource = null;
 
     const video = document.getElementById("android-camera-feed") as HTMLVideoElement | null;
     if (video !== null) {
       video.pause();
       video.srcObject = null;
+      video.removeAttribute("src");
+      video.load();
       video.hidden = true;
     }
   }
@@ -2538,7 +2562,9 @@ export class AnalyzeController {
     const message =
       this._cameraPanelStatusMessage ??
       analyzeT(this._cameraPanelOpen ? "page.cameraPanel.waiting" : "page.cameraPanel.closed");
-    const hasVisibleFeed = this._cameraPanelHasFrame === true && this._cameraPreviewStream !== null;
+    const hasVisibleFeed =
+      this._cameraPanelHasFrame === true &&
+      (this._cameraPreviewStream !== null || this._cameraPreviewVideoSource === "ffmpeg-stream");
     if (video !== null) {
       video.hidden = hasVisibleFeed !== true;
     }

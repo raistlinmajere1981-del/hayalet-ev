@@ -262,6 +262,47 @@ module.exports = tseslint.config(
   // === Base JS Config ===
   js.configs.recommended,
 
+  // === Node Utility Scripts ===
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: {
+        AbortSignal: "readonly",
+        Buffer: "readonly",
+        URL: "readonly",
+        URLSearchParams: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        clearImmediate: "readonly",
+        clearInterval: "readonly",
+        clearTimeout: "readonly",
+        console: "readonly",
+        fetch: "readonly",
+        global: "readonly",
+        process: "readonly",
+        setImmediate: "readonly",
+        setInterval: "readonly",
+        setTimeout: "readonly",
+      },
+    },
+    rules: {
+      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-undef": "error",
+      "no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^(_|e|err|error|evt|event)",
+          caughtErrorsIgnorePattern: "^(_|e|err|error)",
+          varsIgnorePattern: "^(_|e|err|error|evt|event)",
+        },
+      ],
+      "prefer-const": "error",
+    },
+  },
+
   // === JavaScript Config (Renderer - src/js) - NO TYPE-AWARE RULES ===
   {
     files: ["src/js/**/*.js"],

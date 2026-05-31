@@ -5094,6 +5094,42 @@
           "none": "Sessiz"
         }
       },
+      "dependencies": {
+        "title": "Ortak Host Kurulumu",
+        "subtitle": "ADB, scrcpy, FFmpeg ve Android build gereksinimlerini Capture ve oda akışları için tek kez hazırla.",
+        "summaryLabel": "Kurulum hazır oluşu",
+        "summary": "{ready}/{total} bağımlılık hazır",
+        "loading": "Capture servisi bekleniyor.",
+        "progress": {
+          "starting": "Ortak host bağımlılıkları hazırlanıyor..."
+        },
+        "actions": {
+          "prepare": "Ortak kurulumu hazırla",
+          "refresh": "Kurulumu yenile"
+        },
+        "states": {
+          "ready": "Hazır",
+          "missing": "Eksik",
+          "blocked": "Bloke"
+        },
+        "items": {
+          "adb": "ADB",
+          "scrcpy": "scrcpy",
+          "ffmpeg": "FFmpeg",
+          "androidBuild": "Android build toolchain"
+        },
+        "meta": {
+          "path": "Yol",
+          "version": "Sürüm",
+          "managedPath": "Yönetilen yol",
+          "ffprobe": "ffprobe",
+          "javaHome": "JAVA_HOME",
+          "androidSdkRoot": "ANDROID_SDK_ROOT",
+          "needsConfirmation": "Kurulum onayı gerekiyor",
+          "yes": "Evet",
+          "no": "Hayır"
+        }
+      },
       "policy": {
         "title": "Android Companion Politikası",
         "subtitle": "Android companion'ın telefon tarafı kamera capture ve dikte sağlayıp sağlamayacağını buradan yönet.",

@@ -21,6 +21,43 @@ const FALLBACK_CAPTURE_STATUS: CaptureServiceStatus = {
     variant: "full",
     runtime: null,
   },
+  hostDependencies: {
+    adb: {
+      state: "missing",
+      path: null,
+      version: null,
+      message: "Electron capture bridge is unavailable.",
+      installable: false,
+      managedPath: null,
+    },
+    scrcpy: {
+      state: "missing",
+      path: null,
+      version: null,
+      message: "Electron capture bridge is unavailable.",
+      installable: false,
+      managedPath: null,
+    },
+    ffmpeg: {
+      state: "missing",
+      path: null,
+      version: null,
+      message: "Electron capture bridge is unavailable.",
+      installable: false,
+      managedPath: null,
+      ffprobePath: null,
+      managedDir: null,
+    },
+    androidBuild: {
+      state: "missing",
+      javaHome: null,
+      androidSdkRoot: null,
+      needsConfirmation: false,
+      message: "Electron capture bridge is unavailable.",
+      details: [],
+      installable: false,
+    },
+  },
   android: {
     hostState: "missing-adb",
     adbPath: null,
@@ -173,6 +210,10 @@ function normalizeCaptureStatus(value: unknown): CaptureServiceStatus {
       transcript: normalizeTranscriptSnapshot((value as CaptureServiceStatus).transcript),
       android: normalizeAndroidStatus((value as CaptureServiceStatus).android),
       scrcpy: normalizeScrcpyStatus((value as CaptureServiceStatus).scrcpy),
+      hostDependencies:
+        "hostDependencies" in value
+          ? (value as CaptureServiceStatus).hostDependencies
+          : FALLBACK_CAPTURE_STATUS.hostDependencies,
       operation:
         rawOperation !== null
           ? {
@@ -284,6 +325,13 @@ export async function runCaptureAction(
 ): Promise<CaptureActionOutcome> {
   const api = getElectronApi();
   switch (action) {
+    case "prepare-host-dependencies":
+      return normalizeActionOutcome(
+        typeof api?.capturePrepareHostDependencies === "function"
+          ? await api.capturePrepareHostDependencies()
+          : null,
+        action
+      );
     case "install-companion":
       return normalizeActionOutcome(
         typeof api?.captureInstallCompanion === "function"

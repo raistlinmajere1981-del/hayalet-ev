@@ -428,6 +428,7 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
       // NOTE: Room hosts fall back to data: module graphs when the renderer cannot import file URLs directly.
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:",
       "img-src 'self' data: https:",
+      "media-src 'self' data: blob: http://localhost:* http://127.0.0.1:*",
       "connect-src 'self' http://localhost:* ws://localhost:* http://127.0.0.1:*",
     ].join("; ");
 
@@ -435,6 +436,7 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
       "default-src 'self' 'unsafe-inline'",
       "script-src 'self' 'unsafe-inline' data: blob:",
       "img-src 'self' data: https:",
+      "media-src 'self' data: blob: http://127.0.0.1:*",
       "connect-src 'self' http://127.0.0.1:*",
     ].join("; ");
 

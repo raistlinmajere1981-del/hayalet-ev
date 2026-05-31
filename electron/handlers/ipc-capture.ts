@@ -18,6 +18,10 @@ export function setupCaptureHandlers(): void {
     return await captureService.consumeAnalyzeInboxAssets();
   });
 
+  registerHandler("capture-prepare-host-dependencies", async () => {
+    return await captureService.prepareHostDependencies();
+  });
+
   registerHandler(
     "capture-install-companion",
     async (_event, options?: { allowBootstrap?: boolean }) => {

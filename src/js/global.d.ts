@@ -1178,6 +1178,7 @@ declare global {
     captureStatus?: () => Promise<CaptureServiceStatus>;
     captureRefreshStatus?: () => Promise<CaptureServiceStatus>;
     captureConsumeAnalyzeAssets?: () => Promise<CaptureImportedAsset[]>;
+    capturePrepareHostDependencies?: () => Promise<CaptureActionOutcome>;
     captureInstallCompanion?: (options?: {
       allowBootstrap?: boolean;
     }) => Promise<CaptureActionOutcome>;

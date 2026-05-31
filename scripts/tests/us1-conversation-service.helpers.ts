@@ -55,6 +55,7 @@ export const FIXED_NOW = 1700000000000;
 export const MESSAGE_PROTOCOL = "hayalet-ev-us1-message";
 export const MESSAGE_PAYLOAD_START = "--- HAYALET_EV_US1_MESSAGE_PAYLOAD ---";
 export const MESSAGE_PAYLOAD_END = "--- /HAYALET_EV_US1_MESSAGE_PAYLOAD ---";
+const archiveTestDbsByAccount = new Map<string, Set<InstanceType<typeof Database>>>();
 
 export const electronDir = join(process.cwd(), "electron");
 initPaths(electronDir);
@@ -382,8 +383,33 @@ export function buildFetchedConversationMessage(options: {
 }
 
 export function cleanupAccount(accountId: string): void {
+  closeArchiveTestDbsForAccount(accountId);
   closeMailSidecarDbForAccount(accountId);
   rmSync(Paths.getAccountDir(accountId), { recursive: true, force: true });
+}
+
+function trackArchiveTestDb(accountId: string, db: InstanceType<typeof Database>): void {
+  const existing = archiveTestDbsByAccount.get(accountId);
+  if (existing !== undefined) {
+    existing.add(db);
+    return;
+  }
+
+  archiveTestDbsByAccount.set(accountId, new Set([db]));
+}
+
+function closeArchiveTestDbsForAccount(accountId: string): void {
+  const dbs = archiveTestDbsByAccount.get(accountId);
+  if (dbs === undefined) return;
+
+  for (const db of dbs) {
+    try {
+      db.close();
+    } catch {
+      // The test cleanup should keep going even if a handle is already closed.
+    }
+  }
+  archiveTestDbsByAccount.delete(accountId);
 }
 
 export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void {
@@ -476,6 +502,7 @@ export function createArchiveFactory() {
   return async (accountId: string) => {
     mkdirSync(Paths.getAccountDir(accountId), { recursive: true });
     const db = new Database(Paths.getAccountDbPath(accountId));
+    trackArchiveTestDb(accountId, db);
     ensureArchiveSchema(db);
 
     return {

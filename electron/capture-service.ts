@@ -13,6 +13,18 @@ import {
   type ScrcpySessionStartResult,
   type ScrcpyUnexpectedCloseEvent,
 } from "./scrcpy-session-manager.ts";
+import {
+  resolveAdbPath,
+  resolveScrcpyPath,
+  resolveFfmpegPath,
+  inspectFfmpegDependency,
+  installManagedFfmpeg,
+  getManagedFfmpegPath,
+  getManagedAdbPath,
+  getManagedAndroidSdkRoot,
+  getManagedJdkHome,
+} from "./host-dependency-service.ts";
+import { startWindowsCameraFeed } from "./capture/windows-camera-feed.ts";
 import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 import { normalizeTranscriptModelVariant } from "../shared/transcript/model-catalog.js";
 import { getTtsModelDescriptor } from "../shared/tts/model-catalog.js";
@@ -28,6 +40,7 @@ import type {
   CaptureAnalyzeSessionState,
   CaptureCompanionTtsPayload,
   CaptureDictationStatusPayload,
+  CaptureHostDependenciesStatus,
   CaptureImportedAsset,
   CaptureMediaIngressPayload,
   CaptureServiceStatus,
@@ -70,7 +83,6 @@ import {
 import {
   fileExists,
   resolveScrcpyV4l2Sink,
-  resolveExecutableOnPath,
   runCommand,
   shutdownAdbServerIfTouched,
   runStreamingCommand,
@@ -141,6 +153,13 @@ function createDefaultOperationState(): CaptureServiceStatus["operation"] {
   };
 }
 
+function createCompanionBuildScriptEnv(): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    ELECTRON_RUN_AS_NODE: "1",
+  };
+}
+
 class CaptureService {
   private lastStatus: CaptureServiceStatus | null = null;
   private bridgeServer: Server | null = null;
@@ -163,8 +182,7 @@ class CaptureService {
       onUnexpectedClose: (event): void => {
         this.handleScrcpyUnexpectedClose(event);
       },
-      resolveScrcpyPath: async (): Promise<string | null> =>
-        await resolveExecutableOnPath("scrcpy"),
+      resolveScrcpyPath: async (): Promise<string | null> => await resolveScrcpyPath(),
       inspectScrcpyVersion: async (scrcpyPath): Promise<string | null> => {
         const versionResult = await runCommand(scrcpyPath, ["--version"], 5_000).catch(() => null);
         const rawVersion =
@@ -178,6 +196,29 @@ class CaptureService {
       },
       resolveV4l2Sink: async (): ReturnType<typeof resolveScrcpyV4l2Sink> =>
         await resolveScrcpyV4l2Sink(),
+      startWindowsCameraFeed: async (options) => {
+        const [adbPath, ffmpegPath] = await Promise.all([resolveAdbPath(), resolveFfmpegPath()]);
+        if (adbPath === null) {
+          return {
+            ok: false,
+            message:
+              "ADB is not available. Prepare shared host setup or expose adb on PATH first.",
+          };
+        }
+        if (ffmpegPath === null) {
+          return {
+            ok: false,
+            message:
+              "FFmpeg is not available. Prepare shared host setup before starting camera feed.",
+          };
+        }
+
+        return await startWindowsCameraFeed({
+          ...options,
+          adbPath,
+          ffmpegPath,
+        });
+      },
       spawnProcess: (scrcpyPath, args, options): ScrcpyChildProcess =>
         spawn(scrcpyPath, args, options) as unknown as ScrcpyChildProcess,
       getProjectRoot: getCaptureProjectRoot,
@@ -203,7 +244,7 @@ class CaptureService {
     this.pendingCommands.clear();
     this.activeAnalyzeMediaRequestIds.clear();
     this.lastStatus = null;
-    await shutdownAdbServerIfTouched();
+    await shutdownAdbServerIfTouched(resolveAdbPath);
   }
 
   private async closeBridgeServer(): Promise<void> {
@@ -245,6 +286,7 @@ class CaptureService {
     this.cleanupStaleBridgeSessions();
     const android = await this.inspectAndroid(captureSettings.preferredDeviceId);
     const scrcpy = await this.scrcpyHub.getStatus();
+    const hostDependencies = await this.inspectHostDependencies(android, scrcpy);
     const ingress = await readAnalyzeIngressSnapshot();
     const activeSession =
       android.selectedDeviceId !== null
@@ -273,6 +315,7 @@ class CaptureService {
         variant,
         runtime: transcriptRuntime,
       },
+      hostDependencies,
       android,
       scrcpy,
       bridge: {
@@ -287,6 +330,53 @@ class CaptureService {
     };
     this.lastStatus = status;
     return status;
+  }
+
+  async prepareHostDependencies(): Promise<CaptureActionOutcome> {
+    this.setOperationState({
+      state: "running",
+      action: "prepare-host-dependencies",
+      message: "Preparing shared capture dependencies.",
+      progress: 0.02,
+      details: ["Shared FFmpeg and Android companion prerequisites will be prepared."],
+    });
+
+    try {
+      const ffmpegStatus = await inspectFfmpegDependency();
+      if (ffmpegStatus.installed !== true) {
+        await installManagedFfmpeg((event) => {
+          this.setOperationState({
+            state: "running",
+            action: "prepare-host-dependencies",
+            message: event.message,
+            progress: 0.04 + event.progress * 0.34,
+            details: event.details,
+          });
+        });
+      } else {
+        this.setOperationState({
+          state: "running",
+          action: "prepare-host-dependencies",
+          message: "Using the existing shared FFmpeg runtime.",
+          progress: 0.38,
+          details: [`FFmpeg: ${ffmpegStatus.ffmpegPath ?? getManagedFfmpegPath()}`],
+        });
+      }
+
+      await this.ensureCompanionArtifact({
+        allowBootstrap: true,
+        action: "prepare-host-dependencies",
+      });
+
+      return await this.buildActionOutcome(
+        "prepare-host-dependencies",
+        true,
+        "Shared capture dependencies are ready."
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return await this.buildActionOutcome("prepare-host-dependencies", false, message);
+    }
   }
 
   private setOperationState(
@@ -342,6 +432,7 @@ class CaptureService {
       return artifact;
     }
 
+    const apkPath = artifact.apkPath ?? getCompanionApkPath();
     this.setOperationState({
       state: "running",
       action: "install-companion",
@@ -354,18 +445,71 @@ class CaptureService {
       deviceId,
       "install",
       "-r",
-      artifact.apkPath ?? getCompanionApkPath(),
+      apkPath,
     ]).catch((error) => {
       throw new Error(error instanceof Error ? error.message : String(error));
     });
     if (installResult.exitCode !== 0) {
-      return await this.buildActionOutcome(
-        "install-companion",
-        false,
+      const installMessage =
         normalizeText(installResult.stderr) ??
-          normalizeText(installResult.stdout) ??
-          "ADB install failed."
-      );
+        normalizeText(installResult.stdout) ??
+        "ADB install failed.";
+      if (installMessage.includes("INSTALL_FAILED_UPDATE_INCOMPATIBLE")) {
+        this.setOperationState({
+          state: "running",
+          action: "install-companion",
+          message: "Existing Android companion signature differs; reinstalling cleanly.",
+          progress: 0.88,
+          details: [
+            ...this.operationState.details,
+            "Removing the existing companion package before a clean install.",
+          ],
+        });
+        const uninstallResult = await runCommand(adbPath, [
+          "-s",
+          deviceId,
+          "uninstall",
+          CAPTURE_ANDROID_COMPANION_PACKAGE,
+        ]).catch((error) => {
+          throw new Error(error instanceof Error ? error.message : String(error));
+        });
+        if (uninstallResult.exitCode !== 0) {
+          return await this.buildActionOutcome(
+            "install-companion",
+            false,
+            normalizeText(uninstallResult.stderr) ??
+              normalizeText(uninstallResult.stdout) ??
+              "ADB uninstall failed before clean companion install."
+          );
+        }
+
+        this.setOperationState({
+          state: "running",
+          action: "install-companion",
+          message: `Installing the Android companion cleanly on ${deviceId}.`,
+          progress: 0.92,
+          details: [...this.operationState.details, `Clean installing the APK on ${deviceId}.`],
+        });
+        const cleanInstallResult = await runCommand(adbPath, [
+          "-s",
+          deviceId,
+          "install",
+          apkPath,
+        ]).catch((error) => {
+          throw new Error(error instanceof Error ? error.message : String(error));
+        });
+        if (cleanInstallResult.exitCode !== 0) {
+          return await this.buildActionOutcome(
+            "install-companion",
+            false,
+            normalizeText(cleanInstallResult.stderr) ??
+              normalizeText(cleanInstallResult.stdout) ??
+              "ADB clean install failed."
+          );
+        }
+      } else {
+        return await this.buildActionOutcome("install-companion", false, installMessage);
+      }
     }
 
     return await this.buildActionOutcome(
@@ -749,9 +893,22 @@ class CaptureService {
     }
 
     if (target === CAPTURE_ANALYZE_TARGET) {
-      const launchOutcome = await this.launchCompanion({ target });
+      const launchOutcome = await this.launchCompanion({ target, activeTab: "image" });
       if (launchOutcome.ok !== true) {
         return await this.buildActionOutcome(action, false, launchOutcome.message);
+      }
+      const openCameraOutcome = await this.enqueueAnalyzeCommand(
+        "open-camera",
+        "Phone preview activation requested.",
+        {
+          target,
+          requestId,
+          replaceExistingKinds: ["open-camera"],
+          requireSession: false,
+        }
+      );
+      if (openCameraOutcome.ok !== true) {
+        return await this.buildActionOutcome(action, false, openCameraOutcome.message);
       }
     }
 
@@ -1977,7 +2134,7 @@ class CaptureService {
 
   private async inspectAndroid(preferredDeviceId: string | null): Promise<CaptureAndroidStatus> {
     const artifact = await readCompanionManifest();
-    const adbPath = await resolveExecutableOnPath("adb");
+    const adbPath = await resolveAdbPath();
     if (adbPath === null) {
       return {
         hostState: "missing-adb",
@@ -2072,6 +2229,91 @@ class CaptureService {
     };
   }
 
+  private async inspectHostDependencies(
+    android: CaptureAndroidStatus,
+    scrcpy: CaptureServiceStatus["scrcpy"]
+  ): Promise<CaptureHostDependenciesStatus> {
+    const [discoveredAdbPath, scrcpyPath, ffmpegStatus, androidPlan] = await Promise.all([
+      resolveAdbPath(),
+      resolveScrcpyPath(),
+      inspectFfmpegDependency().catch((error: unknown) => ({
+        installed: false,
+        ffmpegPath: null,
+        ffprobePath: null,
+        version: null,
+        managedDir: null,
+        message: error instanceof Error ? error.message : String(error),
+      })),
+      this.readCompanionBootstrapPlan().catch((error: unknown) => ({
+        type: "plan-error" as const,
+        needsConfirmation: true,
+        message: error instanceof Error ? error.message : String(error),
+        details: [],
+      })),
+    ]);
+
+    const adbPath = android.adbPath ?? discoveredAdbPath;
+    const androidPlanMessage =
+      androidPlan !== null && "message" in androidPlan
+        ? normalizeText(androidPlan.message)
+        : null;
+    const androidPlanDetails =
+      androidPlan !== null && Array.isArray(androidPlan.details) ? androidPlan.details : [];
+    const androidPlanBlocked = androidPlan?.type === "plan-error";
+    const androidPlanReady =
+      androidPlan?.type === "plan" && androidPlan.needsConfirmation !== true;
+    const androidBuildReady =
+      android.artifact.buildState === "artifact-ready" ||
+      (androidPlanReady === true && android.artifact.buildState !== "build-blocked");
+    const androidBuildBlocked =
+      androidPlanBlocked === true || android.artifact.buildState === "build-blocked";
+
+    return {
+      adb: {
+        state: adbPath !== null ? "ready" : "missing",
+        path: adbPath,
+        version: null,
+        message: adbPath !== null ? "ADB is available." : "ADB is not available on PATH.",
+        installable: true,
+        managedPath: getManagedAdbPath(),
+      },
+      scrcpy: {
+        state: scrcpy.available === true ? "ready" : "missing",
+        path: scrcpyPath,
+        version: scrcpy.version,
+        message:
+          scrcpy.available === true
+            ? "scrcpy is available."
+            : (scrcpy.lastError ?? "scrcpy is not available on PATH."),
+        installable: false,
+        managedPath: null,
+      },
+      ffmpeg: {
+        state: ffmpegStatus.installed === true ? "ready" : "missing",
+        path: ffmpegStatus.ffmpegPath,
+        version: ffmpegStatus.version,
+        message: ffmpegStatus.message,
+        installable: true,
+        managedPath: getManagedFfmpegPath(),
+        ffprobePath: ffmpegStatus.ffprobePath,
+        managedDir: ffmpegStatus.managedDir,
+      },
+      androidBuild: {
+        state: androidBuildReady ? "ready" : androidBuildBlocked ? "blocked" : "missing",
+        javaHome: getManagedJdkHome(),
+        androidSdkRoot: getManagedAndroidSdkRoot(),
+        needsConfirmation: androidPlan?.needsConfirmation === true,
+        message:
+          androidPlanMessage ??
+          (androidBuildReady
+            ? "Android companion build prerequisites are ready."
+            : "Android companion build prerequisites need preparation."),
+        details: androidPlanDetails,
+        installable: true,
+      },
+    };
+  }
+
   private buildPairingHint(hostState: CaptureAndroidHostState, bridgePort: number): string | null {
     switch (hostState) {
       case "checking":
@@ -2120,6 +2362,7 @@ class CaptureService {
       0,
       {
         cwd: getCaptureProjectRoot(),
+        env: createCompanionBuildScriptEnv(),
         stdio: "pipe",
       }
     ).catch((error) => {
@@ -2143,13 +2386,23 @@ class CaptureService {
     return planEvent;
   }
 
-  private async buildCompanionArtifactWithBootstrap(): Promise<CaptureAndroidArtifactStatus> {
+  private async buildCompanionArtifactWithBootstrap(
+    action: CaptureActionOutcome["action"] = "install-companion"
+  ): Promise<CaptureAndroidArtifactStatus> {
+    let structuredErrorMessage: string | null = null;
     let latestErrorMessage: string | null = null;
+    const mapProgress = (progress: number | null | undefined): number | null => {
+      if (typeof progress !== "number" || !Number.isFinite(progress)) {
+        return this.operationState.progress;
+      }
+      return action === "prepare-host-dependencies" ? 0.42 + progress * 0.54 : progress;
+    };
     const buildResult = await runStreamingCommand(
       process.execPath,
       [getCompanionBuildScriptPath(), "--bootstrap", "--json-progress"],
       {
         cwd: getCaptureProjectRoot(),
+        env: createCompanionBuildScriptEnv(),
         timeoutMs: 0,
         onStdoutLine: (line) => {
           const event = this.parseBuildScriptEvent(line);
@@ -2157,18 +2410,16 @@ class CaptureService {
             return;
           }
           if (event.type === "error") {
-            latestErrorMessage = normalizeText(event.message) ?? latestErrorMessage;
+            structuredErrorMessage = normalizeText(event.message) ?? structuredErrorMessage;
+            latestErrorMessage = structuredErrorMessage ?? latestErrorMessage;
             return;
           }
           if (event.type === "progress" || event.type === "result") {
             this.setOperationState({
               state: "running",
-              action: "install-companion",
+              action,
               message: normalizeText(event.message) ?? this.operationState.message,
-              progress:
-                typeof event.progress === "number" && Number.isFinite(event.progress)
-                  ? event.progress
-                  : this.operationState.progress,
+              progress: mapProgress(event.progress),
               details: Array.isArray(event.details) ? event.details : this.operationState.details,
             });
           }
@@ -2176,12 +2427,13 @@ class CaptureService {
         onStderrLine: (line) => {
           const event = this.parseBuildScriptEvent(line);
           if (event?.type === "error") {
-            latestErrorMessage = normalizeText(event.message) ?? latestErrorMessage;
+            structuredErrorMessage = normalizeText(event.message) ?? structuredErrorMessage;
+            latestErrorMessage = structuredErrorMessage ?? latestErrorMessage;
             if (Array.isArray(event.details)) {
               this.setOperationState({
                 state: "running",
-                action: "install-companion",
-                message: latestErrorMessage,
+                action,
+                message: structuredErrorMessage,
                 progress: this.operationState.progress,
                 details: event.details,
               });
@@ -2201,6 +2453,7 @@ class CaptureService {
 
     if (buildResult.exitCode !== 0) {
       const buildFailureMessage =
+        normalizeText(structuredErrorMessage) ??
         normalizeText(latestErrorMessage) ??
         summarizeCompanionBuildFailure(
           `${buildResult.stderr}\n${buildResult.stdout}\nexitCode=${String(buildResult.exitCode)}`
@@ -2217,14 +2470,16 @@ class CaptureService {
 
   private async ensureCompanionArtifact(options?: {
     allowBootstrap?: boolean;
+    action?: CaptureActionOutcome["action"];
   }): Promise<CaptureAndroidArtifactStatus | CaptureActionOutcome> {
+    const action = options?.action ?? "install-companion";
     const artifact = await readCompanionManifest();
     if (artifact.apkPath !== null && (await fileExists(artifact.apkPath)) === true) {
       this.setOperationState({
         state: "running",
-        action: "install-companion",
+        action,
         message: "Using the existing companion APK artifact.",
-        progress: 0.22,
+        progress: action === "prepare-host-dependencies" ? 0.62 : 0.22,
         details: ["The cached APK artifact is already ready and will be reused."],
       });
       return artifact;
@@ -2239,7 +2494,7 @@ class CaptureService {
     if (plan?.needsConfirmation === true && options?.allowBootstrap !== true) {
       this.setOperationState({
         state: "needs-confirmation",
-        action: "install-companion",
+        action,
         message:
           normalizeText(plan.message) ??
           "Android companion setup requires a local toolchain bootstrap.",
@@ -2250,14 +2505,14 @@ class CaptureService {
             : ["A repo-local JDK 21 and Android SDK will be prepared before the APK build starts."],
       });
       return await this.buildPassiveActionOutcome(
-        "install-companion",
+        action,
         false,
         normalizeText(plan.message) ??
           "Android companion setup requires confirmation before the bootstrap starts."
       );
     }
 
-    return await this.buildCompanionArtifactWithBootstrap();
+    return await this.buildCompanionArtifactWithBootstrap(action);
   }
 
   private async ensureReverseTunnel(

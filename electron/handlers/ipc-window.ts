@@ -113,11 +113,11 @@ async function readWindowsProcessListWith(
   shellCommand: "powershell.exe" | "pwsh"
 ): Promise<string> {
   const command = [
-    "$ErrorActionPreference = 'Stop'",
-    "Get-CimInstance Win32_Process |",
-    "Select-Object ProcessId,ParentProcessId,CommandLine,Name |",
-    "ConvertTo-Json -Compress",
-  ].join("; ");
+    "$ErrorActionPreference = 'Stop';",
+    "Get-CimInstance Win32_Process",
+    "| Select-Object ProcessId,ParentProcessId,CommandLine,Name",
+    "| ConvertTo-Json -Compress",
+  ].join(" ");
   const { stdout } = await execFileAsync(
     shellCommand,
     ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],

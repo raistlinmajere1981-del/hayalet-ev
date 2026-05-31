@@ -84,6 +84,7 @@ import {
   findVersion,
   compareLooseVersion,
   resolveSystemCommandBinaryPath,
+  resolveCompanionSystemCommandPath,
   readJsonFile,
   normalizeToolStatus,
   summarizeCommandFailure,
@@ -937,19 +938,26 @@ class RoomToolService {
         this.isSystemCommandTool(toolManifest) === true
           ? this.resolveSystemCommandTool(manifest, request.toolId)
           : this.resolveToolSystemCommandSpec(toolManifest, request.toolId);
-      const resolvedBinaryPath = await resolveSystemCommandBinaryPath(selectedExecutableName, {
-        allowPathLookup:
-          this.getInstallerType(resolvedSystemCommand.manifest) !== "python-venv-pip",
-        envVarNames:
-          selectedExecutableName === resolvedSystemCommand.systemCommand.executableName
-            ? resolvedSystemCommand.systemCommand.envVarNames
-            : undefined,
-        candidatePaths:
-          selectedExecutableName === resolvedSystemCommand.systemCommand.executableName
-            ? resolvedSystemCommand.systemCommand.candidatePaths
-            : undefined,
-        runtimePaths: paths,
-      });
+      const allowPathLookup =
+        this.getInstallerType(resolvedSystemCommand.manifest) !== "python-venv-pip";
+      const primaryBinaryPath = await resolveSystemCommandBinaryPath(
+        resolvedSystemCommand.systemCommand.executableName,
+        {
+          allowPathLookup,
+          envVarNames: resolvedSystemCommand.systemCommand.envVarNames,
+          candidatePaths: resolvedSystemCommand.systemCommand.candidatePaths,
+          runtimePaths: paths,
+        }
+      );
+      const resolvedBinaryPath =
+        selectedExecutableName === resolvedSystemCommand.systemCommand.executableName
+          ? primaryBinaryPath
+          : primaryBinaryPath !== null
+            ? await resolveCompanionSystemCommandPath(selectedExecutableName, primaryBinaryPath)
+            : await resolveSystemCommandBinaryPath(selectedExecutableName, {
+                allowPathLookup,
+                runtimePaths: paths,
+              });
       if (resolvedBinaryPath === null) {
         throw new Error(
           `${request.toolId}:${selectedExecutableName} is not available on the shared transcript runtime or PATH for room ${request.roomId}`
@@ -2210,7 +2218,7 @@ class RoomToolService {
     await Promise.all(
       (resolved.systemCommand.companionExecutables ?? []).map(
         async (companionName): Promise<void> => {
-          const companionPath = await resolveSystemCommandBinaryPath(companionName);
+          const companionPath = await resolveCompanionSystemCommandPath(companionName, binaryPath);
           if (companionPath !== null) {
             companionPaths[companionName] = companionPath;
           }

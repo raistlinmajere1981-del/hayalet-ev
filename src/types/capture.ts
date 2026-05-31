@@ -219,8 +219,10 @@ export type CaptureAnalyzeSessionState =
 export type CaptureScrcpySessionMode = "camera-feed" | "interactive-mirror";
 
 export interface CaptureScrcpyPreviewVideoStatus {
-  source: "v4l2";
+  source: "v4l2" | "ffmpeg-stream";
   devicePath: string;
+  streamUrl?: string | null;
+  contentType?: string | null;
   label: string;
   width: number;
   height: number;
@@ -250,6 +252,37 @@ export interface CaptureScrcpyStatus {
   lastLogs: string[];
   lastError: string | null;
   setupHint: string | null;
+}
+
+export type CaptureHostDependencyState = "ready" | "missing" | "blocked";
+
+export interface CaptureHostToolDependencyStatus {
+  state: CaptureHostDependencyState;
+  path: string | null;
+  version: string | null;
+  message: string | null;
+  installable: boolean;
+  managedPath: string | null;
+}
+
+export interface CaptureAndroidBuildDependencyStatus {
+  state: CaptureHostDependencyState;
+  javaHome: string | null;
+  androidSdkRoot: string | null;
+  needsConfirmation: boolean;
+  message: string | null;
+  details: string[];
+  installable: boolean;
+}
+
+export interface CaptureHostDependenciesStatus {
+  adb: CaptureHostToolDependencyStatus;
+  scrcpy: CaptureHostToolDependencyStatus;
+  ffmpeg: CaptureHostToolDependencyStatus & {
+    ffprobePath: string | null;
+    managedDir: string | null;
+  };
+  androidBuild: CaptureAndroidBuildDependencyStatus;
 }
 
 export interface CaptureAnalyzeSessionStatus {
@@ -285,6 +318,7 @@ export interface CaptureOperationStatus {
 export interface CaptureServiceStatus {
   checkedAt: number;
   transcript: CaptureTranscriptStatusSnapshot;
+  hostDependencies: CaptureHostDependenciesStatus;
   android: CaptureAndroidStatus;
   scrcpy: CaptureScrcpyStatus;
   bridge: CaptureBridgeStatus;
@@ -293,6 +327,7 @@ export interface CaptureServiceStatus {
 }
 
 export type CaptureHostAction =
+  | "prepare-host-dependencies"
   | "install-companion"
   | "connect-device"
   | "disconnect-device"
