@@ -32,6 +32,7 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(htmlSource, /id="compose-ambient-status"/);
   assert.match(htmlSource, /id="android-camera-panel"/);
   assert.match(htmlSource, /<video[\s\S]*id="android-camera-feed"/);
+  assert.match(htmlSource, /<img[\s\S]*id="android-camera-frame"/);
   assert.doesNotMatch(htmlSource, /compose-user-identity/);
   assert.doesNotMatch(htmlSource, /id="analyze-capture-shell"/);
   assert.doesNotMatch(htmlSource, /id="capture-clear-btn"/);
@@ -106,6 +107,8 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(captureServiceSource, /consumeAnalyzeInboxAssets/);
   assert.match(captureServiceSource, /api\/v1\/media\/analyze/);
   assert.doesNotMatch(captureServiceSource, /api\/v1\/preview\/analyze/);
+  assert.match(captureServiceSource, /api\/v1\/live\/analyze\/frame/);
+  assert.match(captureServiceSource, /api\/v1\/live\/analyze\/stream/);
   assert.match(captureServiceSource, /api\/v1\/transcript\/ingress/);
   assert.match(captureServiceSource, /api\/v1\/ambient\/status/);
   assert.match(captureServiceSource, /CAPTURE_MEDIA_INGRESS_CHANNEL = "capture:media-ingress"/);
@@ -122,8 +125,9 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(scrcpySessionManagerSource, /startInteractiveMirror/);
   assert.match(scrcpySessionManagerSource, /args: \["--serial", options\.deviceId\]/);
   const interactiveMirrorBlock =
-    scrcpySessionManagerSource.match(/async startInteractiveMirror[\s\S]*?async stopSession/)?.[0] ??
-    "";
+    scrcpySessionManagerSource.match(
+      /async startInteractiveMirror[\s\S]*?async stopSession/
+    )?.[0] ?? "";
   assert.doesNotMatch(interactiveMirrorBlock, /--video-source=camera/);
   assert.doesNotMatch(interactiveMirrorBlock, /--v4l2-sink/);
   assert.doesNotMatch(interactiveMirrorBlock, /--no-window/);
@@ -136,7 +140,7 @@ test("analyze page wires central capture inbox imports into staged attachments",
   );
   assert.match(
     captureServiceSource,
-    /if \(target === CAPTURE_ANALYZE_TARGET\)[\s\S]*const launchOutcome = await this\.launchCompanion\(\{ target \}\)/
+    /if \(target === CAPTURE_ANALYZE_TARGET\)[\s\S]*const launchOutcome = await this\.launchCompanion\(\{ target, activeTab: "image" \}\)/
   );
   assert.match(captureServiceSource, /normalizeTranscriptTarget/);
   assert.match(captureServiceSource, /requestId and target are required/);

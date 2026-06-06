@@ -6,6 +6,7 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 import android.os.SystemClock
 import com.hayaletev.androidcompanion.R
+import com.hayaletev.androidcompanion.capture.CameraPreviewFrame
 import com.hayaletev.androidcompanion.capture.CameraSessionConfig
 import com.hayaletev.androidcompanion.capture.CameraSessionController
 import com.hayaletev.androidcompanion.capture.CaptureLens
@@ -94,6 +95,10 @@ class CompanionSessionCoordinator(
     private var ttsJob: Job? = null
     private var activeTtsRequestId: String? = null
     private var activeTtsPayload: BridgeTtsPayload? = null
+    private var livePreviewRequestId: String? = null
+    private var livePreviewUploadInFlight = false
+    private var lastLivePreviewFailureSignature: String? = null
+    private val livePreviewUploadLock = Any()
     private var dictationStatus = appContext.getString(R.string.dictation_status_idle)
     private var dictationDetail = appContext.getString(R.string.dictation_detail_waiting)
     private var ambientMicrophoneStatus = appContext.getString(R.string.ambient_microphone_idle)
@@ -254,6 +259,7 @@ class CompanionSessionCoordinator(
         ambientListener.stop()
         updateAmbientUi("stopped", appContext.getString(R.string.ambient_event_stopped), null)
         audioRecorder.cancel()
+        stopLivePreviewStreaming()
         cameraController.stopSession()
         ttsPlayer.stop()
         ttsJob?.cancel()
@@ -302,6 +308,77 @@ class CompanionSessionCoordinator(
         )
     }
 
+    private fun startLivePreviewStreaming(command: BridgeCommand) {
+        val requestId = command.requestId ?: command.id
+        livePreviewRequestId = requestId
+        livePreviewUploadInFlight = false
+        lastLivePreviewFailureSignature = null
+        cameraController.setLivePreviewFrameSink { frame ->
+            submitLivePreviewFrame(command.target, requestId, frame)
+        }
+        CompanionDiagnostics.setState("Live feed", "Streaming")
+        CompanionDiagnostics.i(
+            "camera",
+            "Desktop live preview streaming is enabled.",
+            "target=${command.target}, requestId=$requestId",
+        )
+    }
+
+    private fun stopLivePreviewStreaming() {
+        livePreviewRequestId = null
+        synchronized(livePreviewUploadLock) {
+            livePreviewUploadInFlight = false
+        }
+        lastLivePreviewFailureSignature = null
+        cameraController.setLivePreviewFrameSink(null)
+        CompanionDiagnostics.setState("Live feed", "Idle")
+    }
+
+    private fun submitLivePreviewFrame(
+        target: String,
+        requestId: String,
+        frame: CameraPreviewFrame,
+    ) {
+        val shouldUpload =
+            synchronized(livePreviewUploadLock) {
+                if (livePreviewRequestId != requestId || livePreviewUploadInFlight) {
+                    false
+                } else {
+                    livePreviewUploadInFlight = true
+                    true
+                }
+            }
+        if (!shouldUpload) {
+            return
+        }
+
+        scope.launch(Dispatchers.IO) {
+            try {
+                bridgeClient.submitAnalyzePreviewFrame(
+                    deviceId = launchContext.deviceId,
+                    target = target,
+                    requestId = requestId,
+                    frame = frame,
+                )
+                lastLivePreviewFailureSignature = null
+            } catch (error: Exception) {
+                val signature = summarizeError(error)
+                if (lastLivePreviewFailureSignature != signature) {
+                    CompanionDiagnostics.w(
+                        "camera",
+                        "Live preview frame upload failed.",
+                        throwable = error,
+                    )
+                }
+                lastLivePreviewFailureSignature = signature
+            } finally {
+                synchronized(livePreviewUploadLock) {
+                    livePreviewUploadInFlight = false
+                }
+            }
+        }
+    }
+
     private suspend fun handleCommand(command: BridgeCommand) {
         applyCommandProfile(command.profile)
         CompanionDiagnostics.setState("Last command", command.kind)
@@ -313,6 +390,11 @@ class CompanionSessionCoordinator(
         runCatching {
             when (command.kind) {
                 "open-camera" -> {
+                    if (command.profile?.livePreview == true) {
+                        startLivePreviewStreaming(command)
+                    } else {
+                        stopLivePreviewStreaming()
+                    }
                     cameraController.ensurePreview(launchContext.cameraConfig)
                     bridgeClient.acknowledgeCommand(
                         deviceId = launchContext.deviceId,
@@ -358,6 +440,7 @@ class CompanionSessionCoordinator(
                     ambientListener.stop()
                     updateAmbientUi("stopped", appContext.getString(R.string.ambient_event_stopped), null)
                     audioRecorder.cancel()
+                    stopLivePreviewStreaming()
                     updateDictationUi(
                         appContext.getString(R.string.dictation_status_idle),
                         appContext.getString(R.string.dictation_detail_waiting),

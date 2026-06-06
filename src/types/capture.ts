@@ -182,6 +182,7 @@ export interface CaptureCompanionCommandProfile {
   commandConfirmation: "none" | "toast";
   androidDictationBackend: "whisper.cpp" | "vosk";
   transcriptModel: CaptureCompanionTranscriptModelProfile | null;
+  livePreview?: boolean | null;
 }
 
 export interface CaptureCompanionCommandEnvelope {
@@ -219,7 +220,7 @@ export type CaptureAnalyzeSessionState =
 export type CaptureScrcpySessionMode = "camera-feed" | "interactive-mirror";
 
 export interface CaptureScrcpyPreviewVideoStatus {
-  source: "v4l2" | "ffmpeg-stream";
+  source: "v4l2" | "mjpeg-stream";
   devicePath: string;
   streamUrl?: string | null;
   contentType?: string | null;

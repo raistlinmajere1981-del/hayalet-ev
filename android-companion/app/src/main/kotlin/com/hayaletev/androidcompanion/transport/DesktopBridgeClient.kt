@@ -2,6 +2,7 @@ package com.hayaletev.androidcompanion.transport
 
 import com.hayaletev.androidcompanion.debug.CompanionDiagnostics
 import com.hayaletev.androidcompanion.model.CompanionManifest
+import com.hayaletev.androidcompanion.capture.CameraPreviewFrame
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -34,6 +35,7 @@ data class BridgeCommandProfile(
     val photoQuality: String? = null,
     val androidDictationBackend: String = "vosk",
     val transcriptModel: BridgeTranscriptModelProfile? = null,
+    val livePreview: Boolean = false,
 )
 
 data class BridgeTranscriptModelProfile(
@@ -174,6 +176,30 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
             "bridge",
             "Uploaded analyze capture to desktop.",
             "file=${file.name}, bytes=${bytes.size}",
+        )
+    }
+
+    suspend fun submitAnalyzePreviewFrame(
+        deviceId: String,
+        target: String,
+        requestId: String,
+        frame: CameraPreviewFrame,
+    ) {
+        val payload = JSONObject()
+            .put("requestId", requestId)
+            .put("deviceId", deviceId)
+            .put("target", target)
+            .put("width", frame.width)
+            .put("height", frame.height)
+            .put("capturedAt", frame.capturedAtMs)
+            .put(
+                "contentBase64",
+                android.util.Base64.encodeToString(frame.jpegBytes, android.util.Base64.NO_WRAP),
+            )
+        postJson(
+            "/api/v1/live/analyze/frame",
+            payload,
+            reportFailureToDiagnostics = false,
         )
     }
 
@@ -413,6 +439,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
                 "vosk"
             },
             transcriptModel = optJSONObject("transcriptModel")?.toBridgeTranscriptModelProfile(),
+            livePreview = optBoolean("livePreview", false),
         )
     }
 

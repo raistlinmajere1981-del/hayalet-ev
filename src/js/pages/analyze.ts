@@ -2482,26 +2482,26 @@ export class AnalyzeController {
     }
 
     const video = document.getElementById("android-camera-feed") as HTMLVideoElement | null;
-    if (video === null) {
-      throw new Error("Analyze camera video surface is missing.");
-    }
+    const image = document.getElementById("android-camera-frame") as HTMLImageElement | null;
 
-    if (previewVideo.source === "ffmpeg-stream") {
+    if (previewVideo.source === "mjpeg-stream") {
       const streamUrl = previewVideo.streamUrl ?? previewVideo.devicePath;
       if (streamUrl.trim() === "") {
-        throw new Error("FFmpeg camera stream URL was not reported.");
+        throw new Error("Android companion live camera stream URL was not reported.");
+      }
+      if (image === null) {
+        throw new Error("Analyze camera image surface is missing.");
       }
 
       this._stopAndroidCameraFeed();
-      video.srcObject = null;
-      this._cameraPreviewVideoSource = "ffmpeg-stream";
-      video.muted = true;
-      video.playsInline = true;
-      video.autoplay = true;
-      video.src = streamUrl;
-      video.hidden = false;
-      await video.play();
+      this._cameraPreviewVideoSource = "mjpeg-stream";
+      image.src = streamUrl;
+      image.hidden = false;
       return;
+    }
+
+    if (video === null) {
+      throw new Error("Analyze camera video surface is missing.");
     }
 
     const mediaDevices = navigator.mediaDevices as Partial<MediaDevices> | undefined;
@@ -2544,6 +2544,11 @@ export class AnalyzeController {
       video.load();
       video.hidden = true;
     }
+    const image = document.getElementById("android-camera-frame") as HTMLImageElement | null;
+    if (image !== null) {
+      image.removeAttribute("src");
+      image.hidden = true;
+    }
   }
 
   _renderAndroidCameraPanel(): void {
@@ -2551,6 +2556,7 @@ export class AnalyzeController {
     const row = panel?.closest(".compose-row");
     const placeholder = document.getElementById("android-camera-placeholder");
     const video = document.getElementById("android-camera-feed") as HTMLVideoElement | null;
+    const image = document.getElementById("android-camera-frame") as HTMLImageElement | null;
     const status = document.getElementById("android-camera-status");
     if (row instanceof HTMLElement) {
       row.classList.toggle("is-camera-panel-open", this._cameraPanelOpen);
@@ -2564,9 +2570,14 @@ export class AnalyzeController {
       analyzeT(this._cameraPanelOpen ? "page.cameraPanel.waiting" : "page.cameraPanel.closed");
     const hasVisibleFeed =
       this._cameraPanelHasFrame === true &&
-      (this._cameraPreviewStream !== null || this._cameraPreviewVideoSource === "ffmpeg-stream");
+      (this._cameraPreviewStream !== null || this._cameraPreviewVideoSource === "mjpeg-stream");
     if (video !== null) {
-      video.hidden = hasVisibleFeed !== true;
+      video.hidden = !(hasVisibleFeed === true && this._cameraPreviewStream !== null);
+    }
+    if (image !== null) {
+      image.hidden = !(
+        hasVisibleFeed === true && this._cameraPreviewVideoSource === "mjpeg-stream"
+      );
     }
     if (placeholder !== null) {
       placeholder.textContent = message;

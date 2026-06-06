@@ -103,7 +103,7 @@
         },
         "captureSessionLatestEmpty": "Henüz hazır edilmiş telefon çekimi yok.",
         "captureSessionDisabled": "Android companion capture, Ayarlar > Capture altında kapalı.",
-        "captureImportButton": "Scrcpy Kamera",
+        "captureImportButton": "Canlı Kamera",
         "tts": {
           "settingsButton": "TTS",
           "settingsTitle": "Seslendirme Ayarları",
@@ -126,10 +126,10 @@
           "statusUnknown": "Bilinmiyor"
         },
         "cameraPanel": {
-          "closed": "Scrcpy kamera kapalı.",
-          "opening": "Scrcpy kamera açılıyor.",
-          "waiting": "Scrcpy kamera feed'i hazırlanıyor.",
-          "live": "Scrcpy kamera feed'i panelde açık.",
+          "closed": "Canlı kamera kapalı.",
+          "opening": "Canlı kamera açılıyor.",
+          "waiting": "Canlı kamera feed'i hazırlanıyor.",
+          "live": "Canlı kamera feed'i panelde açık.",
           "stopped": "Canlı kamera kapatıldı.",
           "error": "Canlı kamera hatası: {{message}}"
         },
@@ -5192,7 +5192,7 @@
         "expectedVersion": "Beklenen sürüm",
         "connectAddress": "Wireless ADB adresi",
         "previewTitle": "Canlı önizleme",
-        "previewHint": "Kamera feed'i scrcpy ve v4l2loopback kullanır; fotoğraf ve dikte akışları companion uygulamasında kalır.",
+        "previewHint": "Canlı kamera Windows'ta Android companion stream, Linux'ta scrcpy v4l2 kullanır; fotoğraf ve dikte akışları companion uygulamasında kalır.",
         "scrcpy": {
           "available": "scrcpy",
           "version": "Sürüm",
@@ -5201,7 +5201,7 @@
           "none": "Yok",
           "availableYes": "Hazır",
           "availableNo": "Eksik",
-          "feedbackReady": "scrcpy kamera feed veya interactive mirror oturumları için hazır.",
+          "feedbackReady": "scrcpy Linux v4l2 kamera feed'i veya interactive mirror oturumları için hazır.",
           "logs": "Son loglar",
           "logsEmpty": "Henüz scrcpy logu yok.",
           "modes": {

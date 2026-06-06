@@ -16,7 +16,6 @@ import {
 import {
   resolveAdbPath,
   resolveScrcpyPath,
-  resolveFfmpegPath,
   inspectFfmpegDependency,
   installManagedFfmpeg,
   getManagedFfmpegPath,
@@ -24,7 +23,10 @@ import {
   getManagedAndroidSdkRoot,
   getManagedJdkHome,
 } from "./host-dependency-service.ts";
-import { startWindowsCameraFeed } from "./capture/windows-camera-feed.ts";
+import {
+  CompanionLiveFeedHub,
+  type CompanionLiveFramePayload,
+} from "./capture/companion-live-feed.ts";
 import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 import { normalizeTranscriptModelVariant } from "../shared/transcript/model-catalog.js";
 import { getTtsModelDescriptor } from "../shared/tts/model-catalog.js";
@@ -153,6 +155,14 @@ function createDefaultOperationState(): CaptureServiceStatus["operation"] {
   };
 }
 
+function parseCaptureSize(value: string): { width: number; height: number } {
+  const match = value.match(/^(\d+)x(\d+)$/);
+  return {
+    width: match?.[1] !== undefined ? Number(match[1]) : 640,
+    height: match?.[2] !== undefined ? Number(match[2]) : 480,
+  };
+}
+
 function createCompanionBuildScriptEnv(): NodeJS.ProcessEnv {
   return {
     ...process.env,
@@ -174,6 +184,7 @@ class CaptureService {
   private readonly pendingCommands = new Map<string, PendingBridgeCommand[]>();
   private readonly activeAnalyzeMediaRequestIds = new Set<string>();
   private readonly scrcpyHub: ScrcpySessionManager;
+  private readonly companionLiveFeed = new CompanionLiveFeedHub();
   private analyzeState = createDefaultAnalyzeState();
   private operationState = createDefaultOperationState();
 
@@ -196,29 +207,6 @@ class CaptureService {
       },
       resolveV4l2Sink: async (): ReturnType<typeof resolveScrcpyV4l2Sink> =>
         await resolveScrcpyV4l2Sink(),
-      startWindowsCameraFeed: async (options) => {
-        const [adbPath, ffmpegPath] = await Promise.all([resolveAdbPath(), resolveFfmpegPath()]);
-        if (adbPath === null) {
-          return {
-            ok: false,
-            message:
-              "ADB is not available. Prepare shared host setup or expose adb on PATH first.",
-          };
-        }
-        if (ffmpegPath === null) {
-          return {
-            ok: false,
-            message:
-              "FFmpeg is not available. Prepare shared host setup before starting camera feed.",
-          };
-        }
-
-        return await startWindowsCameraFeed({
-          ...options,
-          adbPath,
-          ffmpegPath,
-        });
-      },
       spawnProcess: (scrcpyPath, args, options): ScrcpyChildProcess =>
         spawn(scrcpyPath, args, options) as unknown as ScrcpyChildProcess,
       getProjectRoot: getCaptureProjectRoot,
@@ -292,11 +280,17 @@ class CaptureService {
       android.selectedDeviceId !== null
         ? (this.bridgeSessions.get(android.selectedDeviceId) ?? null)
         : null;
-    const analyzePreviewVideo =
+    const scrcpyPreviewVideo =
       scrcpy.activeSession?.mode === "camera-feed" &&
       scrcpy.activeSession.target === CAPTURE_ANALYZE_TARGET
         ? scrcpy.activeSession.previewVideo
         : null;
+    const analyzePreviewVideo =
+      scrcpyPreviewVideo ??
+      this.companionLiveFeed.getActivePreviewVideo({
+        deviceId: android.selectedDeviceId,
+        target: CAPTURE_ANALYZE_TARGET,
+      });
 
     this.analyzeState = {
       ...this.analyzeState,
@@ -893,22 +887,61 @@ class CaptureService {
     }
 
     if (target === CAPTURE_ANALYZE_TARGET) {
-      const launchOutcome = await this.launchCompanion({ target, activeTab: "image" });
-      if (launchOutcome.ok !== true) {
-        return await this.buildActionOutcome(action, false, launchOutcome.message);
+      const useCompanionLiveFeed = process.platform === "win32";
+      const existingBridgeSession = this.getBridgeSessionForTarget(deviceId, target, {
+        requirePreviewActive: false,
+      });
+      if (existingBridgeSession === null) {
+        const launchOutcome = await this.launchCompanion({ target, activeTab: "image" });
+        if (launchOutcome.ok !== true) {
+          return await this.buildActionOutcome(action, false, launchOutcome.message);
+        }
       }
-      const openCameraOutcome = await this.enqueueAnalyzeCommand(
-        "open-camera",
-        "Phone preview activation requested.",
+      const transcriptModel = resolveCompanionTranscriptModelProfile(settings, captureSettings);
+      this.queuePendingBridgeCommand(
+        deviceId,
         {
+          id: randomUUID(),
+          kind: "open-camera",
           target,
           requestId,
-          replaceExistingKinds: ["open-camera"],
-          requireSession: false,
-        }
+          createdAt: Date.now(),
+          profile: buildCompanionCommandProfile(captureSettings, transcriptModel, {
+            livePreview: useCompanionLiveFeed,
+          }),
+          ambient: null,
+          tts: null,
+        },
+        { replaceExistingKinds: ["open-camera"] }
       );
-      if (openCameraOutcome.ok !== true) {
-        return await this.buildActionOutcome(action, false, openCameraOutcome.message);
+
+      if (useCompanionLiveFeed) {
+        const { width, height } = parseCaptureSize(CAPTURE_SCRCPY_CAMERA_SIZE);
+        const liveFeed = this.companionLiveFeed.start({
+          bridgePort: this.bridgeState.port,
+          deviceId,
+          target,
+          requestId,
+          width,
+          height,
+          fps: Math.min(CAPTURE_SCRCPY_CAMERA_FPS, 10),
+        });
+        this.analyzeState = {
+          ...this.analyzeState,
+          state: "ready",
+          target,
+          deviceId,
+          previewVideo: liveFeed.previewVideo,
+          pendingCommand: null,
+          message: "Android companion live camera feed was started.",
+        };
+        this.lastStatus = null;
+        return this.buildImmediateActionOutcome(
+          action,
+          true,
+          "Android companion live camera feed was started.",
+          status
+        );
       }
     }
 
@@ -942,18 +975,39 @@ class CaptureService {
     options: { target?: TranscriptTargetId | null; requestId?: string | null },
     action: "stop-camera-feed" | "stop-analyze-preview"
   ): Promise<CaptureActionOutcome> {
-    void options;
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
+    const requestId = normalizeText(options.requestId);
     const activeSession = this.scrcpyHub.getActiveSessionStatus();
-    const stopped = await this.stopScrcpyCameraFeed();
-    if (activeSession?.target === CAPTURE_ANALYZE_TARGET || action === "stop-analyze-preview") {
+    const stoppedLiveFeed = this.companionLiveFeed.stop();
+    const stoppedScrcpyFeed = await this.stopScrcpyCameraFeed();
+    const stopped = stoppedLiveFeed || stoppedScrcpyFeed;
+    if (target === CAPTURE_ANALYZE_TARGET && process.platform === "win32") {
+      const status = await this.refreshStatus();
+      const deviceId = this.resolveAnalyzeCommandDeviceId(status, false);
+      if (deviceId !== null) {
+        this.markBridgePreviewInactive(deviceId, target);
+        await this.enqueueAnalyzeCommand("close-camera", "Phone live camera feed was stopped.", {
+          deviceId,
+          target,
+          requestId,
+          replaceExistingKinds: ["open-camera", "close-camera"],
+          requireSession: false,
+        }).catch(() => null);
+      }
+    }
+    if (
+      activeSession?.target === CAPTURE_ANALYZE_TARGET ||
+      stoppedLiveFeed === true ||
+      action === "stop-analyze-preview"
+    ) {
       this.analyzeState = {
         ...this.analyzeState,
         state: "idle",
         previewVideo: null,
         pendingCommand: null,
         message: stopped
-          ? "Scrcpy camera feed was stopped."
-          : "Scrcpy camera feed is already stopped.",
+          ? "Android camera feed was stopped."
+          : "Android camera feed is already stopped.",
       };
     }
     this.lastStatus = null;
@@ -961,11 +1015,11 @@ class CaptureService {
       return await this.buildPassiveActionOutcome(
         action,
         true,
-        "Scrcpy camera feed is already stopped."
+        "Android camera feed is already stopped."
       );
     }
 
-    return await this.buildActionOutcome(action, true, "Scrcpy camera feed was stopped.");
+    return await this.buildActionOutcome(action, true, "Android camera feed was stopped.");
   }
 
   private async startScrcpyCameraFeed(options: {
@@ -1359,6 +1413,19 @@ class CaptureService {
       : null;
   }
 
+  private markBridgePreviewInactive(deviceId: string, target: TranscriptTargetId): void {
+    const session = this.getBridgeSessionForTarget(deviceId, target, {
+      requirePreviewActive: false,
+    });
+    if (session === null) {
+      return;
+    }
+
+    session.previewActive = false;
+    session.lastSeenAt = Date.now();
+    this.bridgeSessions.set(deviceId, session);
+  }
+
   private clearPendingAnalyzeCommands(deviceId: string): void {
     this.clearPendingTargetCommands(deviceId, CAPTURE_ANALYZE_TARGET);
   }
@@ -1398,7 +1465,7 @@ class CaptureService {
   ): string {
     const activeScrcpy = this.scrcpyHub.getActiveSessionStatus();
     if (activeScrcpy?.mode === "camera-feed" && activeScrcpy.target === CAPTURE_ANALYZE_TARGET) {
-      return "Scrcpy camera feed is active for Analyze.";
+      return "Live camera feed is active for Analyze.";
     }
     if (pendingInboxCount > 0) {
       return `${String(pendingInboxCount)} phone capture(s) are waiting in the Analyze inbox.`;
@@ -1762,6 +1829,43 @@ class CaptureService {
           };
         }
 
+        this.sendJson(response, 200, { ok: true });
+        return;
+      }
+
+      if (method === "GET" && requestUrl.pathname === "/api/v1/live/analyze/stream") {
+        const attached = this.companionLiveFeed.attachClient({
+          response,
+          deviceId: normalizeText(requestUrl.searchParams.get("deviceId")),
+          target:
+            normalizeTranscriptTarget(requestUrl.searchParams.get("target")) ??
+            CAPTURE_ANALYZE_TARGET,
+          requestId: normalizeText(requestUrl.searchParams.get("requestId")),
+        });
+        if (attached !== true) {
+          this.sendJson(response, 404, { ok: false, error: "Live camera feed is not active." });
+        }
+        return;
+      }
+
+      if (method === "POST" && requestUrl.pathname === "/api/v1/live/analyze/frame") {
+        const body = await this.readJsonBody(request);
+        const payload = this.normalizeCompanionLiveFramePayload(body);
+        if (payload === null) {
+          this.sendJson(response, 400, {
+            ok: false,
+            error: "deviceId, target, requestId, and contentBase64 are required.",
+          });
+          return;
+        }
+
+        const accepted = this.companionLiveFeed.acceptFrame(payload);
+        if (accepted.ok !== true) {
+          this.sendJson(response, 200, { ok: true, dropped: true, message: accepted.message });
+          return;
+        }
+
+        this.lastStatus = null;
         this.sendJson(response, 200, { ok: true });
         return;
       }
@@ -2132,6 +2236,28 @@ class CaptureService {
     return isRecord(value) ? { ...value } : null;
   }
 
+  private normalizeCompanionLiveFramePayload(
+    value: Record<string, unknown>
+  ): CompanionLiveFramePayload | null {
+    const deviceId = normalizeText(value["deviceId"]);
+    const target = normalizeTranscriptTarget(value["target"]);
+    const requestId = normalizeText(value["requestId"]);
+    const contentBase64 = normalizeText(value["contentBase64"]);
+    if (deviceId === null || target === null || requestId === null || contentBase64 === null) {
+      return null;
+    }
+
+    return {
+      deviceId,
+      target,
+      requestId,
+      contentBase64,
+      width: typeof value["width"] === "number" ? value["width"] : 640,
+      height: typeof value["height"] === "number" ? value["height"] : 480,
+      capturedAt: typeof value["capturedAt"] === "number" ? value["capturedAt"] : Date.now(),
+    };
+  }
+
   private async inspectAndroid(preferredDeviceId: string | null): Promise<CaptureAndroidStatus> {
     const artifact = await readCompanionManifest();
     const adbPath = await resolveAdbPath();
@@ -2254,14 +2380,11 @@ class CaptureService {
 
     const adbPath = android.adbPath ?? discoveredAdbPath;
     const androidPlanMessage =
-      androidPlan !== null && "message" in androidPlan
-        ? normalizeText(androidPlan.message)
-        : null;
+      androidPlan !== null && "message" in androidPlan ? normalizeText(androidPlan.message) : null;
     const androidPlanDetails =
       androidPlan !== null && Array.isArray(androidPlan.details) ? androidPlan.details : [];
     const androidPlanBlocked = androidPlan?.type === "plan-error";
-    const androidPlanReady =
-      androidPlan?.type === "plan" && androidPlan.needsConfirmation !== true;
+    const androidPlanReady = androidPlan?.type === "plan" && androidPlan.needsConfirmation !== true;
     const androidBuildReady =
       android.artifact.buildState === "artifact-ready" ||
       (androidPlanReady === true && android.artifact.buildState !== "build-blocked");
@@ -2323,7 +2446,7 @@ class CaptureService {
       case "no-devices":
         return "Connect a phone with USB debugging or attach it with `adb connect <host>:<port>`.";
       case "ready":
-        return "Use Scrcpy Camera for live feed, or the phone companion for still captures.";
+        return "Use Live Camera for live feed, or the phone companion for still captures.";
       case "multiple-devices":
         return "Pick the active phone in Settings > Capture. Extra phones stay visible for diagnostics.";
       case "unauthorized":
@@ -2335,7 +2458,7 @@ class CaptureService {
       case "package-query-failed":
         return "Reinstall or reopen the companion app so package inspection and permissions can refresh.";
       case "error":
-        return "Use Scrcpy Camera for live feed, or the phone companion for still captures.";
+        return "Use Live Camera for live feed, or the phone companion for still captures.";
       default:
         return null;
     }
@@ -2555,6 +2678,7 @@ class CaptureService {
       replaceExisting?: boolean;
       replaceExistingKinds?: CaptureCompanionCommandKind[];
       requireSession?: boolean;
+      livePreview?: boolean;
       ambient?: CaptureAmbientListenerOptions;
       tts?: CaptureCompanionTtsPayload | null;
     }
@@ -2599,7 +2723,9 @@ class CaptureService {
       target,
       requestId: normalizeText(options?.requestId),
       createdAt: Date.now(),
-      profile: buildCompanionCommandProfile(captureSettings, transcriptModel),
+      profile: buildCompanionCommandProfile(captureSettings, transcriptModel, {
+        livePreview: options?.livePreview === true,
+      }),
       ambient:
         kind === "start-ambient-listener"
           ? resolveAmbientCommandProfile(captureSettings, options?.ambient)
@@ -2609,26 +2735,10 @@ class CaptureService {
     if (target === CAPTURE_ANALYZE_TARGET && isMediaCaptureCommand(kind)) {
       this.activeAnalyzeMediaRequestIds.add(getCommandRequestId(command));
     }
-    const replaceExistingKinds = options?.replaceExistingKinds ?? [];
-    const currentQueue = this.pendingCommands.get(deviceId) ?? [];
-    const queue =
-      options?.replaceExisting === true
-        ? currentQueue.filter((entry) => entry.target !== target)
-        : replaceExistingKinds.length > 0
-          ? currentQueue.filter(
-              (entry) =>
-                entry.target !== target || replaceExistingKinds.includes(entry.kind) !== true
-            )
-          : currentQueue;
-    currentQueue
-      .filter((entry) => queue.includes(entry) !== true)
-      .forEach((entry) => {
-        if (entry.target === CAPTURE_ANALYZE_TARGET && isMediaCaptureCommand(entry.kind)) {
-          this.activeAnalyzeMediaRequestIds.delete(getCommandRequestId(entry));
-        }
-      });
-    queue.push(command);
-    this.pendingCommands.set(deviceId, queue);
+    this.queuePendingBridgeCommand(deviceId, command, {
+      replaceExisting: options?.replaceExisting,
+      replaceExistingKinds: options?.replaceExistingKinds,
+    });
     if (target === CAPTURE_ANALYZE_TARGET) {
       this.analyzeState = {
         ...this.analyzeState,
@@ -2662,6 +2772,64 @@ class CaptureService {
       true,
       successMessage
     );
+  }
+
+  private queuePendingBridgeCommand(
+    deviceId: string,
+    command: PendingBridgeCommand,
+    options: {
+      replaceExisting?: boolean | undefined;
+      replaceExistingKinds?: CaptureCompanionCommandKind[] | undefined;
+    } = {}
+  ): void {
+    const target = command.target;
+    const replaceExistingKinds = options.replaceExistingKinds ?? [];
+    const currentQueue = this.pendingCommands.get(deviceId) ?? [];
+    const queue =
+      options.replaceExisting === true
+        ? currentQueue.filter((entry) => entry.target !== target)
+        : replaceExistingKinds.length > 0
+          ? currentQueue.filter(
+              (entry) =>
+                entry.target !== target || replaceExistingKinds.includes(entry.kind) !== true
+            )
+          : currentQueue;
+    currentQueue
+      .filter((entry) => queue.includes(entry) !== true)
+      .forEach((entry) => {
+        if (entry.target === CAPTURE_ANALYZE_TARGET && isMediaCaptureCommand(entry.kind)) {
+          this.activeAnalyzeMediaRequestIds.delete(getCommandRequestId(entry));
+        }
+      });
+    queue.push(command);
+    this.pendingCommands.set(deviceId, queue);
+  }
+
+  private buildImmediateActionOutcome(
+    action: CaptureActionOutcome["action"],
+    ok: boolean,
+    message: string,
+    baseStatus: CaptureServiceStatus
+  ): CaptureActionOutcome {
+    this.setOperationState({
+      state: ok ? "success" : "error",
+      action,
+      message,
+      progress: ok ? 1 : null,
+    });
+    const status: CaptureServiceStatus = {
+      ...baseStatus,
+      analyze: this.analyzeState,
+      bridge: this.bridgeState,
+      operation: this.operationState,
+    };
+    this.lastStatus = status;
+    return {
+      action,
+      ok,
+      message,
+      status,
+    };
   }
 
   private async buildActionOutcome(

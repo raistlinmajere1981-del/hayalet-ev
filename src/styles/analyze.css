@@ -792,6 +792,10 @@
   background: var(--bg-app);
 }
 
+.compose-camera-panel__video:is(img) {
+  display: block;
+}
+
 .compose-camera-panel__video[hidden] {
   display: none;
 }

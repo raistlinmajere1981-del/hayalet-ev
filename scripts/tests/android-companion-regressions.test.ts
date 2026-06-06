@@ -3,7 +3,7 @@ import test from "node:test";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 
-test("android companion keeps openWake ambient, Vosk dictation, and scrcpy camera contract wired", () => {
+test("android companion keeps openWake ambient, Vosk dictation, and live camera contract wired", () => {
   const sessionSource = readFileSync(
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/session/CompanionSessionCoordinator.kt",
     "utf8"
@@ -52,17 +52,18 @@ test("android companion keeps openWake ambient, Vosk dictation, and scrcpy camer
   const captureServiceSource = readFileSync("electron/capture-service.ts", "utf8");
   const captureTypesSource = readFileSync("electron/capture/types-and-defaults.ts", "utf8");
   const scrcpySessionManagerSource = readFileSync("electron/scrcpy-session-manager.ts", "utf8");
-  const windowsCameraFeedSource = readFileSync("electron/capture/windows-camera-feed.ts", "utf8");
 
   assert.match(sessionSource, /previewActive = cameraController\.isPreviewBound\(\)/);
   assert.match(sessionSource, /cameraController\.stopSession\(\)/);
+  assert.match(sessionSource, /startLivePreviewStreaming\(command\)/);
+  assert.match(sessionSource, /stopLivePreviewStreaming\(\)/);
+  assert.match(sessionSource, /submitLivePreviewFrame/);
+  assert.match(sessionSource, /livePreviewUploadInFlight/);
   assert.match(sessionSource, /applyCommandProfile\(command\.profile\)/);
   assert.match(sessionSource, /"start-dictation"/);
   assert.match(sessionSource, /"stop-dictation"/);
   assert.doesNotMatch(sessionSource, /"start-preview-stream"/);
   assert.doesNotMatch(sessionSource, /"stop-preview-stream"/);
-  assert.doesNotMatch(sessionSource, /setPreviewStreamingEnabled/);
-  assert.doesNotMatch(sessionSource, /submitPreviewFrameIfActive/);
   assert.match(sessionSource, /"start-ambient-listener"/);
   assert.match(sessionSource, /"stop-ambient-listener"/);
   assert.match(sessionSource, /AndroidAmbientOpenWakeListener/);
@@ -112,8 +113,8 @@ test("android companion keeps openWake ambient, Vosk dictation, and scrcpy camer
   assert.match(transportSource, /BridgeAmbientOptions/);
   assert.match(transportSource, /optJSONObject\("ambient"\)/);
   assert.match(transportSource, /\/api\/v1\/ambient\/status/);
-  assert.doesNotMatch(transportSource, /\/api\/v1\/preview\/analyze/);
-  assert.doesNotMatch(transportSource, /submitAnalyzePreviewFrame/);
+  assert.match(transportSource, /\/api\/v1\/live\/analyze\/frame/);
+  assert.match(transportSource, /submitAnalyzePreviewFrame/);
   assert.doesNotMatch(transportSource, /submitAnalyzePreviewChunk/);
   assert.match(transportSource, /archiveFormat/);
   assert.match(transportSource, /downloadTranscriptModel/);
@@ -128,11 +129,11 @@ test("android companion keeps openWake ambient, Vosk dictation, and scrcpy camer
   assert.match(transportSource, /stageForAnalyze: Boolean = false/);
   assert.match(transportSource, /put\("stageForAnalyze", stageForAnalyze\)/);
 
-  assert.doesNotMatch(cameraControllerSource, /ImageAnalysis\.Builder\(\)/);
-  assert.doesNotMatch(cameraControllerSource, /STRATEGY_KEEP_ONLY_LATEST/);
-  assert.doesNotMatch(cameraControllerSource, /CameraPreviewFrame/);
-  assert.doesNotMatch(cameraControllerSource, /compressToJpeg/);
-  assert.doesNotMatch(cameraControllerSource, /LIVE_PREVIEW_FRAME_INTERVAL_MS/);
+  assert.match(cameraControllerSource, /ImageAnalysis\.Builder\(\)/);
+  assert.match(cameraControllerSource, /STRATEGY_KEEP_ONLY_LATEST/);
+  assert.match(cameraControllerSource, /CameraPreviewFrame/);
+  assert.match(cameraControllerSource, /compressToJpeg/);
+  assert.match(cameraControllerSource, /LIVE_PREVIEW_FRAME_INTERVAL_MS/);
 
   assert.match(recorderSource, /MediaRecorder\.AudioSource\.MIC/);
   assert.match(recorderSource, /android-dictation-/);
@@ -214,17 +215,22 @@ test("android companion keeps openWake ambient, Vosk dictation, and scrcpy camer
   assert.match(captureServiceSource, /const previewActive =/);
   assert.match(captureServiceSource, /\/api\/v1\/transcript\/model/);
   assert.match(captureServiceSource, /\/api\/v1\/ambient\/status/);
-  assert.doesNotMatch(captureServiceSource, /\/api\/v1\/preview\/analyze/);
+  assert.match(captureServiceSource, /\/api\/v1\/live\/analyze\/frame/);
+  assert.match(captureServiceSource, /\/api\/v1\/live\/analyze\/stream/);
+  assert.match(captureServiceSource, /dropped: true/);
   assert.doesNotMatch(captureServiceSource, /CAPTURE_PREVIEW_FRAME_CHANNEL/);
   assert.match(captureServiceSource, /CAPTURE_AMBIENT_STATUS_CHANNEL/);
   assert.match(captureServiceSource, /CAPTURE_SCRCPY_V4L2_LABEL/);
   assert.match(scrcpySessionManagerSource, /--video-source=camera/);
   assert.match(scrcpySessionManagerSource, /--no-window/);
   assert.match(scrcpySessionManagerSource, /--v4l2-sink/);
-  assert.match(scrcpySessionManagerSource, /startWindowsCameraFeed/);
-  assert.match(windowsCameraFeedSource, /screenrecord/);
-  assert.match(windowsCameraFeedSource, /frag_keyframe\+empty_moov\+default_base_moof/);
-  assert.match(windowsCameraFeedSource, /source: "ffmpeg-stream"/);
+  assert.doesNotMatch(scrcpySessionManagerSource, /startWindowsCameraFeed/);
+  assert.doesNotMatch(captureServiceSource, /windows-camera-feed/);
+  assert.match(captureServiceSource, /CompanionLiveFeedHub/);
+  assert.match(captureServiceSource, /existingBridgeSession/);
+  assert.match(captureServiceSource, /queuePendingBridgeCommand/);
+  assert.match(captureServiceSource, /buildImmediateActionOutcome/);
+  assert.match(captureServiceSource, /livePreview: useCompanionLiveFeed/);
   assert.doesNotMatch(scrcpySessionManagerSource, /--stay-awake/);
   assert.match(captureTypesSource, /CAPTURE_VOSK_MODEL_DESCRIPTORS/);
   assert.match(captureTypesSource, /return "vosk";/);
@@ -281,7 +287,7 @@ test("capture settings exposes shared host dependency preparation", () => {
   const androidCompanionUtilsSource = readFileSync("scripts/android-companion-utils.mjs", "utf8");
   const adbHelperSource = readFileSync("electron/capture/adb-helper.ts", "utf8");
   const windowManagerSource = readFileSync("electron/window-manager.ts", "utf8");
-  const windowsCameraFeedSource = readFileSync("electron/capture/windows-camera-feed.ts", "utf8");
+  const companionLiveFeedSource = readFileSync("electron/capture/companion-live-feed.ts", "utf8");
 
   assert.match(hostDependencySource, /host-dependencies/);
   assert.match(hostDependencySource, /getManagedAdbPath/);
@@ -291,7 +297,7 @@ test("capture settings exposes shared host dependency preparation", () => {
   assert.match(hostDependencySource, /backupDir/);
   assert.match(hostDependencySource, /installManagedFfmpeg/);
   assert.match(captureTypesSource, /export interface CaptureHostDependenciesStatus/);
-  assert.match(captureTypesSource, /"ffmpeg-stream"/);
+  assert.match(captureTypesSource, /"mjpeg-stream"/);
   assert.match(captureTypesSource, /"prepare-host-dependencies"/);
   assert.match(captureServiceSource, /async prepareHostDependencies\(\)/);
   assert.match(captureServiceSource, /inspectHostDependencies/);
@@ -299,7 +305,8 @@ test("capture settings exposes shared host dependency preparation", () => {
   assert.match(preloadSource, /capturePrepareHostDependencies/);
   assert.match(ipcCaptureSource, /capture-prepare-host-dependencies/);
   assert.match(captureClientSource, /case "prepare-host-dependencies":/);
-  assert.match(analyzeSource, /previewVideo\.source === "ffmpeg-stream"/);
+  assert.match(analyzeSource, /previewVideo\.source === "mjpeg-stream"/);
+  assert.match(analyzeSource, /android-camera-frame/);
   assert.match(capturePanelSource, /renderHostDependencies/);
   assert.match(settingsHtmlSource, /capture-host-dependencies-prepare-btn/);
   assert.match(settingsHtmlSource, /capture\.dependencies\.title/);
@@ -319,19 +326,20 @@ test("capture settings exposes shared host dependency preparation", () => {
   assert.match(captureServiceSource, /"uninstall",\s*CAPTURE_ANDROID_COMPANION_PACKAGE/);
   assert.match(captureServiceSource, /Clean installing the APK/);
   assert.match(adbHelperSource, /env\?: NodeJS\.ProcessEnv/);
-  assert.match(windowManagerSource, /media-src 'self' data: blob: http:\/\/localhost:\* http:\/\/127\.0\.0\.1:\*/);
+  assert.match(
+    windowManagerSource,
+    /media-src 'self' data: blob: http:\/\/localhost:\* http:\/\/127\.0\.0\.1:\*/
+  );
   assert.match(windowManagerSource, /media-src 'self' data: blob: http:\/\/127\.0\.0\.1:\*/);
+  assert.match(
+    windowManagerSource,
+    /img-src 'self' data: blob: https: http:\/\/localhost:\* http:\/\/127\.0\.0\.1:\*/
+  );
+  assert.match(windowManagerSource, /img-src 'self' data: blob: https: http:\/\/127\.0\.0\.1:\*/);
   assert.match(analyzeSource, /_cameraPreviewVideoSource/);
-  assert.match(analyzeSource, /this\._cameraPreviewVideoSource === "ffmpeg-stream"/);
-  assert.match(windowsCameraFeedSource, /initializationChunks/);
-  assert.match(windowsCameraFeedSource, /CameraStreamClient/);
-  assert.match(windowsCameraFeedSource, /waitingForFragment/);
-  assert.match(windowsCameraFeedSource, /private started = false/);
-  assert.match(windowsCameraFeedSource, /response\.on\("error", cleanup\);\s*this\.start\(\);/);
-  assert.match(windowsCameraFeedSource, /findMp4BoxOffset/);
-  assert.match(windowsCameraFeedSource, /STREAM_INIT_SEGMENT_LIMIT_BYTES/);
-  assert.doesNotMatch(windowsCameraFeedSource, /bufferedChunks/);
-  assert.doesNotMatch(windowsCameraFeedSource, /STREAM_BUFFER_LIMIT_BYTES/);
-  assert.doesNotMatch(windowsCameraFeedSource, /appendStreamBuffer/);
-  assert.doesNotMatch(windowsCameraFeedSource, /processWrapper\.start\(\)/);
+  assert.match(analyzeSource, /this\._cameraPreviewVideoSource === "mjpeg-stream"/);
+  assert.match(captureServiceSource, /CompanionLiveFeedHub/);
+  assert.match(captureServiceSource, /normalizeCompanionLiveFramePayload/);
+  assert.match(companionLiveFeedSource, /mjpeg-stream/);
+  assert.equal(existsSync("electron/capture/windows-camera-feed.ts"), false);
 });

@@ -351,7 +351,8 @@ export function resolveAmbientCommandProfile(
 
 export function buildCompanionCommandProfile(
   settings: ResolvedCaptureSettings,
-  transcriptModel: CaptureCompanionTranscriptModelProfile | null
+  transcriptModel: CaptureCompanionTranscriptModelProfile | null,
+  options: { livePreview?: boolean } = {}
 ): CaptureCompanionCommandProfile {
   return {
     defaultLens: settings.defaultLens,
@@ -360,6 +361,7 @@ export function buildCompanionCommandProfile(
     commandConfirmation: settings.commandConfirmation,
     androidDictationBackend: settings.androidDictationBackend,
     transcriptModel,
+    livePreview: options.livePreview === true,
   };
 }
 
