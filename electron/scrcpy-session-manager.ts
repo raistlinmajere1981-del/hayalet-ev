@@ -151,7 +151,7 @@ export class ScrcpySessionManager {
     }
 
     const availability = await this.inspectScrcpy();
-    if (availability?.available !== true || availability.path === null) {
+    if (availability.available !== true || availability.path === null) {
       this.lastError = "scrcpy is not available on PATH.";
       return {
         ok: false,
@@ -181,7 +181,7 @@ export class ScrcpySessionManager {
 
     return await this.startProcess({
       mode: "camera-feed",
-      scrcpyPath: availability?.path ?? "",
+      scrcpyPath: availability.path,
       args,
       deviceId: options.deviceId,
       target: options.target,

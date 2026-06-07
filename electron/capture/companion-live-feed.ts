@@ -115,7 +115,7 @@ export class CompanionLiveFeedHub {
     target: TranscriptTargetId;
   }): CaptureAnalyzePreviewVideoStatus | null {
     const session = this.activeSession;
-    if (session === null || session.target !== options.target) {
+    if (session?.target !== options.target) {
       return null;
     }
 
@@ -132,12 +132,11 @@ export class CompanionLiveFeedHub {
 
   acceptFrame(payload: CompanionLiveFramePayload): { ok: true } | { ok: false; message: string } {
     const session = this.activeSession;
-    if (
-      session === null ||
-      session.deviceId !== payload.deviceId ||
-      session.target !== payload.target ||
-      session.requestId !== payload.requestId
-    ) {
+    if (session?.deviceId !== payload.deviceId) {
+      return { ok: false, message: "No matching live camera feed is active." };
+    }
+
+    if (session.target !== payload.target || session.requestId !== payload.requestId) {
       return { ok: false, message: "No matching live camera feed is active." };
     }
 
@@ -172,9 +171,11 @@ export class CompanionLiveFeedHub {
     requestId: string | null;
   }): boolean {
     const session = this.activeSession;
+    if (session?.target !== options.target) {
+      return false;
+    }
+
     if (
-      session === null ||
-      options.target !== session.target ||
       (options.deviceId !== null && options.deviceId !== session.deviceId) ||
       (options.requestId !== null && options.requestId !== session.requestId)
     ) {
