@@ -1,9 +1,7 @@
 import { getErrorMessage } from "@shared/index.js";
 import type {
-  TranscriptDictationBackend,
   TranscriptManagedModelId,
   TranscriptManagedModelStatus,
-  TranscriptModelVariant,
   TranscriptRuntimeStatus,
 } from "@shared/transcript.js";
 import type { AppSettings } from "@shared/settings.js";
@@ -18,7 +16,6 @@ import {
 
 interface SettingsManagerLike {
   getSnapshot(): AppSettings;
-  save(settings: Record<string, unknown>): Promise<boolean>;
 }
 
 type TranscriptPanelBusyState =
@@ -70,52 +67,6 @@ export class CaptureTranscriptRuntimePanel {
   }
 
   render(): void {
-    const settings = this.settingsManager.getSnapshot();
-    const backendLabelEl = this.getElement("backend-label");
-    const backendHintEl = this.getElement("backend-hint");
-    const backendSelectEl = this.getElement("backend-select") as HTMLSelectElement | null;
-    const profileLabelEl = this.getElement("profile-label");
-    const profileHintEl = this.getElement("profile-hint");
-    const profileSelectEl = this.getElement("profile-select") as HTMLSelectElement | null;
-
-    if (backendLabelEl) {
-      backendLabelEl.textContent = AppI18n.t("entrance.user.transcriptBackend.label");
-    }
-    if (backendHintEl) {
-      backendHintEl.textContent = AppI18n.t("entrance.user.transcriptBackend.hint");
-    }
-    if (backendSelectEl) {
-      const whisperOption = backendSelectEl.querySelector<HTMLOptionElement>(
-        "option[value='whisper.cpp']"
-      );
-      const voskOption = backendSelectEl.querySelector<HTMLOptionElement>("option[value='vosk']");
-      if (whisperOption) {
-        whisperOption.textContent = AppI18n.t("entrance.user.transcriptBackend.options.whisper");
-      }
-      if (voskOption) {
-        voskOption.textContent = AppI18n.t("entrance.user.transcriptBackend.options.vosk");
-      }
-      backendSelectEl.value = settings.general?.transcriptBackend ?? "whisper.cpp";
-    }
-
-    if (profileLabelEl) {
-      profileLabelEl.textContent = AppI18n.t("entrance.user.transcriptProfile.label");
-    }
-    if (profileHintEl) {
-      profileHintEl.textContent = AppI18n.t("entrance.user.transcriptProfile.hint");
-    }
-    if (profileSelectEl) {
-      const lightOption = profileSelectEl.querySelector<HTMLOptionElement>("option[value='light']");
-      const fullOption = profileSelectEl.querySelector<HTMLOptionElement>("option[value='full']");
-      if (lightOption) {
-        lightOption.textContent = AppI18n.t("entrance.user.transcriptProfile.options.light");
-      }
-      if (fullOption) {
-        fullOption.textContent = AppI18n.t("entrance.user.transcriptProfile.options.full");
-      }
-      profileSelectEl.value = settings.general?.transcriptModelVariant ?? "full";
-    }
-
     this.renderTranscriptRuntimePanel();
   }
 
@@ -134,20 +85,6 @@ export class CaptureTranscriptRuntimePanel {
   }
 
   private setupListeners(): void {
-    const backendSelect = this.getElement("backend-select") as HTMLSelectElement | null;
-    if (backendSelect !== null) {
-      backendSelect.onchange = (event): void => {
-        void this.saveTranscriptBackend((event.target as HTMLSelectElement).value);
-      };
-    }
-
-    const profileSelect = this.getElement("profile-select") as HTMLSelectElement | null;
-    if (profileSelect !== null) {
-      profileSelect.onchange = (event): void => {
-        void this.saveTranscriptModelVariant((event.target as HTMLSelectElement).value);
-      };
-    }
-
     const ensureButton = this.getElement("runtime-ensure-btn");
     if (ensureButton instanceof HTMLElement) {
       ensureButton.onclick = (): void => {
@@ -186,36 +123,6 @@ export class CaptureTranscriptRuntimePanel {
         }
       });
     }
-  }
-
-  private async saveTranscriptBackend(value: string): Promise<void> {
-    const nextBackend: TranscriptDictationBackend = value === "vosk" ? "vosk" : "whisper.cpp";
-    const current = this.settingsManager.getSnapshot();
-
-    if (current.general?.transcriptBackend === nextBackend) {
-      return;
-    }
-
-    const updated = {
-      ...current,
-      general: { ...current.general, transcriptBackend: nextBackend },
-    };
-    await this.settingsManager.save(updated);
-  }
-
-  private async saveTranscriptModelVariant(value: string): Promise<void> {
-    const nextVariant: TranscriptModelVariant = value === "light" ? "light" : "full";
-    const current = this.settingsManager.getSnapshot();
-
-    if (current.general?.transcriptModelVariant === nextVariant) {
-      return;
-    }
-
-    const updated = {
-      ...current,
-      general: { ...current.general, transcriptModelVariant: nextVariant },
-    };
-    await this.settingsManager.save(updated);
   }
 
   private async ensureActiveTranscriptRuntime(): Promise<void> {
@@ -357,6 +264,10 @@ export class CaptureTranscriptRuntimePanel {
         ? this.getTranscriptRuntimeModelTitle(activeModel)
         : (status?.modelId ?? "--");
     }
+    this.setCaptureSummary(
+      statusKey,
+      activeModel ? this.getTranscriptRuntimeModelTitle(activeModel) : (status?.message ?? "")
+    );
 
     if (ensureBtn) {
       ensureBtn.textContent = AppI18n.t("entrance.user.transcriptRuntime.actions.prepare");
@@ -497,6 +408,29 @@ export class CaptureTranscriptRuntimePanel {
 
   private getElement(suffix: string): HTMLElement | null {
     return this.root.querySelector<HTMLElement>(`#${this.selectIdPrefix}-${suffix}`);
+  }
+
+  private setCaptureSummary(statusKey: string, note: string): void {
+    const card = this.root.querySelector<HTMLElement>('[data-capture-summary="runtime"]');
+    const valueEl = this.root.querySelector<HTMLElement>("#capture-summary-runtime");
+    const noteEl = this.root.querySelector<HTMLElement>("#capture-summary-runtime-note");
+    const state =
+      statusKey === "ready"
+        ? "ready"
+        : this.transcriptPanelState.busy !== null
+          ? "running"
+          : this.transcriptPanelState.error !== null
+            ? "blocked"
+            : "warning";
+    if (card) {
+      card.dataset["state"] = state;
+    }
+    if (valueEl) {
+      valueEl.textContent = AppI18n.t(`entrance.user.transcriptRuntime.states.${statusKey}`);
+    }
+    if (noteEl) {
+      noteEl.textContent = note;
+    }
   }
 
   private getSettingsSignature(): string {

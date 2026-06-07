@@ -227,10 +227,13 @@ test("android companion keeps openWake ambient, Vosk dictation, and live camera 
   assert.doesNotMatch(scrcpySessionManagerSource, /startWindowsCameraFeed/);
   assert.doesNotMatch(captureServiceSource, /windows-camera-feed/);
   assert.match(captureServiceSource, /CompanionLiveFeedHub/);
+  assert.match(captureServiceSource, /function shouldUseCompanionLiveFeed/);
+  assert.match(captureServiceSource, /return target === CAPTURE_ANALYZE_TARGET;/);
   assert.match(captureServiceSource, /existingBridgeSession/);
   assert.match(captureServiceSource, /queuePendingBridgeCommand/);
   assert.match(captureServiceSource, /buildImmediateActionOutcome/);
   assert.match(captureServiceSource, /livePreview: useCompanionLiveFeed/);
+  assert.doesNotMatch(captureServiceSource, /process\.platform === "win32"/);
   assert.doesNotMatch(scrcpySessionManagerSource, /--stay-awake/);
   assert.match(captureTypesSource, /CAPTURE_VOSK_MODEL_DESCRIPTORS/);
   assert.match(captureTypesSource, /return "vosk";/);
@@ -282,6 +285,7 @@ test("capture settings exposes shared host dependency preparation", () => {
   const captureClientSource = readFileSync("src/js/modules/capture/electron-client.ts", "utf8");
   const capturePanelSource = readFileSync("src/js/pages/settings/panels/capture.ts", "utf8");
   const settingsHtmlSource = readFileSync("src/pages/settings.html", "utf8");
+  const packageSource = readFileSync("package.json", "utf8");
   const preloadSource = readFileSync("electron/preload.cjs", "utf8");
   const ipcCaptureSource = readFileSync("electron/handlers/ipc-capture.ts", "utf8");
   const androidCompanionUtilsSource = readFileSync("scripts/android-companion-utils.mjs", "utf8");
@@ -296,20 +300,27 @@ test("capture settings exposes shared host dependency preparation", () => {
   assert.match(hostDependencySource, /stagingFfmpegPath/);
   assert.match(hostDependencySource, /backupDir/);
   assert.match(hostDependencySource, /installManagedFfmpeg/);
+  assert.match(hostDependencySource, /inspectV4l2LoopbackDependency/);
+  assert.match(hostDependencySource, /getScrcpyV4l2SetupCommand/);
   assert.match(captureTypesSource, /export interface CaptureHostDependenciesStatus/);
+  assert.match(captureTypesSource, /v4l2Loopback: CaptureV4l2LoopbackDependencyStatus/);
   assert.match(captureTypesSource, /"mjpeg-stream"/);
   assert.match(captureTypesSource, /"prepare-host-dependencies"/);
   assert.match(captureServiceSource, /async prepareHostDependencies\(\)/);
   assert.match(captureServiceSource, /inspectHostDependencies/);
   assert.match(captureServiceSource, /installManagedFfmpeg/);
+  assert.match(captureServiceSource, /inspectV4l2LoopbackDependency/);
   assert.match(preloadSource, /capturePrepareHostDependencies/);
   assert.match(ipcCaptureSource, /capture-prepare-host-dependencies/);
   assert.match(captureClientSource, /case "prepare-host-dependencies":/);
   assert.match(analyzeSource, /previewVideo\.source === "mjpeg-stream"/);
   assert.match(analyzeSource, /android-camera-frame/);
   assert.match(capturePanelSource, /renderHostDependencies/);
+  assert.match(capturePanelSource, /renderDependencyRow/);
+  assert.match(capturePanelSource, /v4l2Loopback/);
   assert.match(settingsHtmlSource, /capture-host-dependencies-prepare-btn/);
   assert.match(settingsHtmlSource, /capture\.dependencies\.title/);
+  assert.match(packageSource, /capture:v4l2:setup/);
   assert.match(androidCompanionUtilsSource, /extractZipArchive/);
   assert.match(androidCompanionUtilsSource, /extractTarBzipArchive/);
   assert.match(androidCompanionUtilsSource, /unbzip2Stream/);
@@ -326,6 +337,7 @@ test("capture settings exposes shared host dependency preparation", () => {
   assert.match(captureServiceSource, /"uninstall",\s*CAPTURE_ANDROID_COMPANION_PACKAGE/);
   assert.match(captureServiceSource, /Clean installing the APK/);
   assert.match(adbHelperSource, /env\?: NodeJS\.ProcessEnv/);
+  assert.match(adbHelperSource, /capture:v4l2:setup/);
   assert.match(
     windowManagerSource,
     /media-src 'self' data: blob: http:\/\/localhost:\* http:\/\/127\.0\.0\.1:\*/

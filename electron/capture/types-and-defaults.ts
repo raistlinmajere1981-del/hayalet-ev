@@ -70,6 +70,7 @@ export interface ResolvedCaptureSettings {
   photoQuality: "high" | "balanced";
   attachMode: "manual-sync" | "auto-stage";
   commandConfirmation: "toast" | "none";
+  dictationLanguage: TranscriptSupportedLanguage;
   androidDictationBackend: CaptureCompanionTranscriptModelProfile["backend"];
   androidCompanionEnabled: boolean;
   ambientWakePhrases: string[];
@@ -298,6 +299,8 @@ export function resolveCaptureSettings(settings: unknown): ResolvedCaptureSettin
   const capture = isRecord(settings) && isRecord(settings["capture"]) ? settings["capture"] : null;
   const defaults = capture && isRecord(capture["defaults"]) ? capture["defaults"] : null;
   const providers = capture && isRecord(capture["providers"]) ? capture["providers"] : null;
+  const general = isRecord(settings) && isRecord(settings["general"]) ? settings["general"] : null;
+  const appLanguage = normalizeAppLanguage(general?.["language"]);
   const voiceCommands =
     isRecord(settings) && isRecord(settings["voiceCommands"]) ? settings["voiceCommands"] : null;
   const ambient =
@@ -309,6 +312,9 @@ export function resolveCaptureSettings(settings: unknown): ResolvedCaptureSettin
     photoQuality: defaults?.["photoQuality"] === "balanced" ? "balanced" : "high",
     attachMode: defaults?.["attachMode"] === "auto-stage" ? "auto-stage" : "manual-sync",
     commandConfirmation: defaults?.["commandConfirmation"] === "none" ? "none" : "toast",
+    dictationLanguage: resolveTranscriptSupportedLanguage(
+      defaults?.["dictationLanguage"] ?? appLanguage
+    ),
     androidDictationBackend: normalizeAndroidDictationBackend(
       defaults?.["androidDictationBackend"]
     ),
@@ -370,11 +376,9 @@ export function resolveCompanionTranscriptModelProfile(
   captureSettings: ResolvedCaptureSettings
 ): CaptureCompanionTranscriptModelProfile {
   const appSettings = isRecord(settings) ? settings : {};
-  const general = isRecord(appSettings["general"]) ? appSettings["general"] : {};
   const capture = isRecord(appSettings["capture"]) ? appSettings["capture"] : {};
   const defaults = isRecord(capture["defaults"]) ? capture["defaults"] : {};
-  const appLanguage = normalizeAppLanguage(general["language"]);
-  const language = resolveTranscriptSupportedLanguage(appLanguage);
+  const language = captureSettings.dictationLanguage;
   if (captureSettings.androidDictationBackend === "vosk") {
     const descriptor = CAPTURE_VOSK_MODEL_DESCRIPTORS[language];
     return {

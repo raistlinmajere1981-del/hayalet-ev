@@ -14,41 +14,19 @@ import { notifyUser } from "../../../ui/user-notification.js";
 import { CaptureTranscriptRuntimePanel } from "../capture/transcript-runtime-panel.js";
 import { registerSettingsPanelLifecycle } from "../controller.js";
 import { applySettingsPanelStaticTranslations } from "../panel-i18n.js";
-import {
-  DEFAULT_CAPTURE_COMMAND_PHRASES,
-  normalizeCapturePhraseList,
-} from "../../../../../shared/capture/command-catalog.js";
-import {
-  DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
-  DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
-  DEFAULT_AMBIENT_WAKE_PHRASES,
-  normalizeAmbientDurationMs,
-  normalizeAmbientWakePhrases,
-} from "../../../../../shared/capture/ambient-defaults.js";
 import type {
   CaptureActionOutcome,
-  CaptureAndroidBuildDependencyStatus,
   CaptureAndroidDeviceStatus,
   CaptureHostDependencyState,
   CaptureHostAction,
-  CaptureHostToolDependencyStatus,
   CaptureServiceStatus,
 } from "../../../../types/capture.js";
-import type { CaptureCommandPhraseSettings } from "../../../../types/settings.js";
 
 let initialized = false;
 
 function captureT(key: string): string {
   return AppI18n.t(`entrance.capture.${key}`);
 }
-
-const CAPTURE_VOICE_COMMAND_FIELDS = [
-  { key: "openCamera", inputId: "capture-voice-command-open-camera-input" },
-  { key: "capture", inputId: "capture-voice-command-capture-input" },
-  { key: "stop", inputId: "capture-voice-command-stop-input" },
-] as const;
-
-type CaptureVoiceCommandKey = (typeof CAPTURE_VOICE_COMMAND_FIELDS)[number]["key"];
 
 type CapturePanelState = {
   loading: boolean;
@@ -193,6 +171,13 @@ function renderAndroidOperationState(root: HTMLElement, state: CapturePanelState
   shell.classList.toggle("is-hidden", activeOperation !== true);
 
   if (activeOperation !== true) {
+    setSummaryCard(
+      root,
+      "operation",
+      captureT("overview.operationIdle"),
+      captureT("overview.operationIdleNote"),
+      "idle"
+    );
     title.textContent = "";
     percent.textContent = "";
     message.textContent = "";
@@ -204,7 +189,21 @@ function renderAndroidOperationState(root: HTMLElement, state: CapturePanelState
   }
 
   const progressValue = Math.max(0, Math.min(100, Math.round((operation.progress ?? 0) * 100)));
-  title.textContent = describeOperationAction(operation.action);
+  const operationTitle = describeOperationAction(operation.action);
+  const operationState =
+    operation.state === "running" || operation.state === "needs-confirmation"
+      ? "running"
+      : operation.state === "success"
+        ? "ready"
+        : "blocked";
+  setSummaryCard(
+    root,
+    "operation",
+    operation.state === "running" ? `${operationTitle} ${String(progressValue)}%` : operationTitle,
+    operation.message ?? "",
+    operationState
+  );
+  title.textContent = operationTitle;
   percent.textContent =
     operation.state === "running"
       ? `${String(progressValue)}%`
@@ -232,6 +231,27 @@ function setText(root: HTMLElement, selector: string, value: string): void {
   const element = root.querySelector<HTMLElement>(selector);
   if (element) {
     element.textContent = value;
+  }
+}
+
+function setSummaryCard(
+  root: HTMLElement,
+  key: "host" | "android" | "operation",
+  value: string,
+  note: string,
+  state: "ready" | "running" | "warning" | "blocked" | "idle"
+): void {
+  const card = root.querySelector<HTMLElement>(`[data-capture-summary="${key}"]`);
+  const valueEl = root.querySelector<HTMLElement>(`#capture-summary-${key}`);
+  const noteEl = root.querySelector<HTMLElement>(`#capture-summary-${key}-note`);
+  if (card) {
+    card.dataset["state"] = state;
+  }
+  if (valueEl) {
+    valueEl.textContent = value;
+  }
+  if (noteEl) {
+    noteEl.textContent = note;
   }
 }
 
@@ -324,52 +344,15 @@ function formatHostDependencyState(value: CaptureHostDependencyState): string {
   return captureT(`dependencies.states.${value}`);
 }
 
-function appendDependencyMeta(container: HTMLElement, label: string, value: string | null): void {
-  if (value === null || value.trim() === "") {
-    return;
-  }
-
-  const item = document.createElement("div");
-  item.className = "settings-capture-device-stat";
-
-  const labelEl = document.createElement("span");
-  labelEl.className = "settings-capture-stat-label";
-  labelEl.textContent = label;
-
-  const valueEl = document.createElement("strong");
-  valueEl.textContent = value;
-
-  item.append(labelEl, valueEl);
-  container.appendChild(item);
-}
-
-function appendDependencyDetails(container: HTMLElement, details: string[]): void {
-  const visibleDetails = details.filter((entry) => entry.trim() !== "").slice(0, 4);
-  if (visibleDetails.length === 0) {
-    return;
-  }
-
-  const list = document.createElement("ul");
-  list.className = "settings-capture-progress-details";
-  visibleDetails.forEach((entry) => {
-    const item = document.createElement("li");
-    item.textContent = entry;
-    list.appendChild(item);
-  });
-  container.appendChild(list);
-}
-
-function renderToolDependencyCard(
+function renderDependencyRow(
   list: HTMLElement,
   title: string,
-  dependency: CaptureHostToolDependencyStatus,
-  metadata: Array<[string, string | null]>
+  state: CaptureHostDependencyState,
+  message: string | null = null
 ): void {
   const article = document.createElement("article");
-  article.className = "settings-capture-device-card";
-
-  const header = document.createElement("div");
-  header.className = "settings-capture-device-header";
+  article.className = "settings-capture-dependency-row";
+  article.dataset["state"] = state;
 
   const titleWrap = document.createElement("div");
   titleWrap.className = "settings-capture-device-title";
@@ -379,70 +362,20 @@ function renderToolDependencyCard(
   titleWrap.appendChild(titleEl);
 
   const stateEl = document.createElement("span");
-  stateEl.className = "settings-capture-note";
-  stateEl.textContent = formatHostDependencyState(dependency.state);
-  titleWrap.appendChild(stateEl);
-  header.appendChild(titleWrap);
+  stateEl.className = "settings-capture-state-pill";
+  stateEl.dataset["state"] = state;
+  stateEl.textContent = formatHostDependencyState(state);
 
-  const stats = document.createElement("div");
-  stats.className = "settings-capture-device-stats";
-  metadata.forEach(([label, value]) => {
-    appendDependencyMeta(stats, label, value);
-  });
+  article.append(titleWrap, stateEl);
 
-  const message = document.createElement("p");
-  message.className = "settings-capture-note";
-  message.textContent = dependency.message ?? formatHostDependencyState(dependency.state);
+  const visibleMessage = state === "ready" ? "" : (message ?? "").trim();
+  if (visibleMessage !== "") {
+    const messageEl = document.createElement("p");
+    messageEl.className = "settings-capture-note";
+    messageEl.textContent = visibleMessage;
+    article.appendChild(messageEl);
+  }
 
-  article.append(header, stats, message);
-  list.appendChild(article);
-}
-
-function renderAndroidBuildDependencyCard(
-  list: HTMLElement,
-  dependency: CaptureAndroidBuildDependencyStatus
-): void {
-  const article = document.createElement("article");
-  article.className = "settings-capture-device-card";
-
-  const header = document.createElement("div");
-  header.className = "settings-capture-device-header";
-
-  const titleWrap = document.createElement("div");
-  titleWrap.className = "settings-capture-device-title";
-
-  const titleEl = document.createElement("strong");
-  titleEl.textContent = captureT("dependencies.items.androidBuild");
-  titleWrap.appendChild(titleEl);
-
-  const stateEl = document.createElement("span");
-  stateEl.className = "settings-capture-note";
-  stateEl.textContent = formatHostDependencyState(dependency.state);
-  titleWrap.appendChild(stateEl);
-  header.appendChild(titleWrap);
-
-  const stats = document.createElement("div");
-  stats.className = "settings-capture-device-stats";
-  appendDependencyMeta(stats, captureT("dependencies.meta.javaHome"), dependency.javaHome);
-  appendDependencyMeta(
-    stats,
-    captureT("dependencies.meta.androidSdkRoot"),
-    dependency.androidSdkRoot
-  );
-  appendDependencyMeta(
-    stats,
-    captureT("dependencies.meta.needsConfirmation"),
-    dependency.needsConfirmation
-      ? captureT("dependencies.meta.yes")
-      : captureT("dependencies.meta.no")
-  );
-
-  const message = document.createElement("p");
-  message.className = "settings-capture-note";
-  message.textContent = dependency.message ?? formatHostDependencyState(dependency.state);
-
-  article.append(header, stats, message);
-  appendDependencyDetails(article, dependency.details);
   list.appendChild(article);
 }
 
@@ -457,35 +390,75 @@ function renderHostDependencies(root: HTMLElement, state: CapturePanelState): vo
   list.innerHTML = "";
   if (dependencies === null) {
     summary.textContent = captureT("dependencies.loading");
+    setSummaryCard(
+      root,
+      "host",
+      captureT("overview.loading"),
+      captureT("dependencies.loading"),
+      "running"
+    );
     return;
   }
 
-  const entries = [
-    dependencies.adb.state,
-    dependencies.scrcpy.state,
-    dependencies.ffmpeg.state,
-    dependencies.androidBuild.state,
+  const entries: Array<{
+    title: string;
+    state: CaptureHostDependencyState;
+    message: string | null;
+  }> = [
+    {
+      title: captureT("dependencies.items.adb"),
+      state: dependencies.adb.state,
+      message: dependencies.adb.message,
+    },
+    {
+      title: captureT("dependencies.items.scrcpy"),
+      state: dependencies.scrcpy.state,
+      message: dependencies.scrcpy.message,
+    },
+    {
+      title: captureT("dependencies.items.v4l2Loopback"),
+      state: dependencies.v4l2Loopback.state,
+      message: dependencies.v4l2Loopback.message,
+    },
+    {
+      title: captureT("dependencies.items.ffmpeg"),
+      state: dependencies.ffmpeg.state,
+      message: dependencies.ffmpeg.message,
+    },
+    {
+      title: captureT("dependencies.items.androidBuild"),
+      state: dependencies.androidBuild.state,
+      message: dependencies.androidBuild.message,
+    },
   ];
-  const readyCount = entries.filter((entry) => entry === "ready").length;
+  const readyCount = entries.filter((entry) => entry.state === "ready").length;
   summary.textContent = captureT("dependencies.summary")
     .replace("{ready}", String(readyCount))
     .replace("{total}", String(entries.length));
 
-  renderToolDependencyCard(list, captureT("dependencies.items.adb"), dependencies.adb, [
-    [captureT("dependencies.meta.path"), dependencies.adb.path],
-    [captureT("dependencies.meta.version"), dependencies.adb.version],
-  ]);
-  renderToolDependencyCard(list, captureT("dependencies.items.scrcpy"), dependencies.scrcpy, [
-    [captureT("dependencies.meta.path"), dependencies.scrcpy.path],
-    [captureT("dependencies.meta.version"), dependencies.scrcpy.version],
-  ]);
-  renderToolDependencyCard(list, captureT("dependencies.items.ffmpeg"), dependencies.ffmpeg, [
-    [captureT("dependencies.meta.path"), dependencies.ffmpeg.path],
-    [captureT("dependencies.meta.version"), dependencies.ffmpeg.version],
-    [captureT("dependencies.meta.ffprobe"), dependencies.ffmpeg.ffprobePath],
-    [captureT("dependencies.meta.managedPath"), dependencies.ffmpeg.managedPath],
-  ]);
-  renderAndroidBuildDependencyCard(list, dependencies.androidBuild);
+  const pendingEntries = entries.filter((entry) => entry.state !== "ready");
+  setSummaryCard(
+    root,
+    "host",
+    captureT("dependencies.summary")
+      .replace("{ready}", String(readyCount))
+      .replace("{total}", String(entries.length)),
+    pendingEntries.length === 0
+      ? captureT("overview.allReady")
+      : pendingEntries
+          .slice(0, 2)
+          .map((entry) => entry.title)
+          .join(", "),
+    pendingEntries.some((entry) => entry.state === "blocked")
+      ? "blocked"
+      : pendingEntries.length === 0
+        ? "ready"
+        : "warning"
+  );
+
+  entries.forEach((entry) => {
+    renderDependencyRow(list, entry.title, entry.state, entry.message);
+  });
 }
 
 function formatDeviceConnection(device: CaptureAndroidDeviceStatus): string {
@@ -523,215 +496,6 @@ function formatDeviceHint(device: CaptureAndroidDeviceStatus): string {
 
 function shouldShowCaptureConfirmation(): boolean {
   return getCaptureSettingsSnapshot().defaults?.commandConfirmation !== "none";
-}
-
-function renderCaptureDefaults(root: HTMLElement, state: CapturePanelState): void {
-  const settings = getCaptureSettingsSnapshot();
-  const defaults = settings.defaults;
-  const deviceSelect = root.querySelector<HTMLSelectElement>("#capture-default-device-select");
-  const lensSelect = root.querySelector<HTMLSelectElement>("#capture-default-lens-select");
-  const qualitySelect = root.querySelector<HTMLSelectElement>("#capture-default-quality-select");
-  const attachSelect = root.querySelector<HTMLSelectElement>("#capture-default-attach-mode-select");
-  const confirmationSelect = root.querySelector<HTMLSelectElement>(
-    "#capture-default-confirmation-select"
-  );
-  const feedbackEl = root.querySelector<HTMLElement>("#capture-defaults-feedback");
-  const devices = state.status?.android.devices ?? [];
-
-  if (deviceSelect) {
-    const previousValue = deviceSelect.value;
-    deviceSelect.innerHTML = "";
-
-    const noneOption = document.createElement("option");
-    noneOption.value = "";
-    noneOption.textContent = captureT("defaults.deviceOptions.auto");
-    deviceSelect.appendChild(noneOption);
-
-    devices
-      .filter((device) => device.connectionState === "device")
-      .forEach((device) => {
-        const option = document.createElement("option");
-        option.value = device.deviceId;
-        option.textContent = `${device.label} (${formatDeviceTransport(device)})`;
-        deviceSelect.appendChild(option);
-      });
-
-    deviceSelect.value = defaults?.preferredDeviceId ?? "";
-    if (deviceSelect.value === "" && previousValue !== "") {
-      deviceSelect.value = previousValue;
-    }
-  }
-
-  if (lensSelect) {
-    lensSelect.value = defaults?.defaultLens ?? "back";
-  }
-  if (qualitySelect) {
-    qualitySelect.value = defaults?.photoQuality ?? "high";
-  }
-  if (attachSelect) {
-    attachSelect.value = defaults?.attachMode ?? "manual-sync";
-  }
-  if (confirmationSelect) {
-    confirmationSelect.value = defaults?.commandConfirmation ?? "toast";
-  }
-  if (feedbackEl) {
-    feedbackEl.textContent = captureT("defaults.hint");
-  }
-}
-
-function renderCaptureSpeechPolicy(root: HTMLElement): void {
-  const settings = getCaptureSettingsSnapshot();
-  const providers = settings.providers;
-  const androidCompanionInput = root.querySelector<HTMLInputElement>(
-    "#capture-provider-android-companion"
-  );
-  const androidDictationBackendSelect = root.querySelector<HTMLSelectElement>(
-    "#capture-android-dictation-backend-select"
-  );
-  const feedbackEl = root.querySelector<HTMLElement>("#capture-policy-feedback");
-
-  if (androidCompanionInput) {
-    androidCompanionInput.checked = providers?.androidCompanionEnabled !== false;
-  }
-  if (androidDictationBackendSelect) {
-    androidDictationBackendSelect.value = "vosk";
-  }
-  if (feedbackEl) {
-    feedbackEl.textContent = captureT("policy.hint");
-  }
-}
-
-function createDefaultCaptureVoiceCommandPhrases(): Required<CaptureCommandPhraseSettings> {
-  return {
-    openCamera: [...DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera],
-    capture: [...DEFAULT_CAPTURE_COMMAND_PHRASES.capture],
-    stop: [...DEFAULT_CAPTURE_COMMAND_PHRASES.stop],
-  };
-}
-
-function getCaptureVoiceCommandPhrases(): Required<CaptureCommandPhraseSettings> {
-  const phrases = SettingsManager.getSnapshot().voiceCommands?.analyzePhrases;
-  return {
-    openCamera: normalizeCapturePhraseList(
-      phrases?.openCamera,
-      DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera
-    ),
-    capture: normalizeCapturePhraseList(phrases?.capture, DEFAULT_CAPTURE_COMMAND_PHRASES.capture),
-    stop: normalizeCapturePhraseList(phrases?.stop, DEFAULT_CAPTURE_COMMAND_PHRASES.stop),
-  };
-}
-
-function parseCaptureVoiceCommandInput(
-  root: HTMLElement,
-  inputId: string,
-  key: CaptureVoiceCommandKey
-): string[] {
-  const textarea = root.querySelector<HTMLTextAreaElement>(`#${inputId}`);
-  const source = textarea?.value.split(/[\n,]/) ?? [];
-  return normalizeCapturePhraseList(source, DEFAULT_CAPTURE_COMMAND_PHRASES[key]);
-}
-
-function readCaptureVoiceCommandPhrases(root: HTMLElement): Required<CaptureCommandPhraseSettings> {
-  return {
-    openCamera: parseCaptureVoiceCommandInput(
-      root,
-      "capture-voice-command-open-camera-input",
-      "openCamera"
-    ),
-    capture: parseCaptureVoiceCommandInput(root, "capture-voice-command-capture-input", "capture"),
-    stop: parseCaptureVoiceCommandInput(root, "capture-voice-command-stop-input", "stop"),
-  };
-}
-
-function getAmbientVoiceCommandSettings(): {
-  wakePhrases: string[];
-  activeWindowMs: number;
-  silenceTimeoutMs: number;
-} {
-  const ambient = SettingsManager.getSnapshot().voiceCommands?.ambient;
-  return {
-    wakePhrases: normalizeAmbientWakePhrases(ambient?.wakePhrases, DEFAULT_AMBIENT_WAKE_PHRASES),
-    activeWindowMs: normalizeAmbientDurationMs(
-      ambient?.activeWindowMs,
-      DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
-      { min: 1_000, max: 30_000 }
-    ),
-    silenceTimeoutMs: normalizeAmbientDurationMs(
-      ambient?.silenceTimeoutMs,
-      DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
-      { min: 300, max: 10_000 }
-    ),
-  };
-}
-
-function readAmbientVoiceCommandSettings(root: HTMLElement): {
-  wakePhrases: string[];
-  activeWindowMs: number;
-  silenceTimeoutMs: number;
-} {
-  const wakeInput = root.querySelector<HTMLTextAreaElement>("#capture-ambient-wake-input");
-  const activeWindowInput = root.querySelector<HTMLInputElement>(
-    "#capture-ambient-active-window-input"
-  );
-  const silenceInput = root.querySelector<HTMLInputElement>("#capture-ambient-silence-input");
-  return {
-    wakePhrases: normalizeAmbientWakePhrases(
-      wakeInput?.value.split(/[\n,]/),
-      DEFAULT_AMBIENT_WAKE_PHRASES
-    ),
-    activeWindowMs: normalizeAmbientDurationMs(
-      activeWindowInput?.value,
-      DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
-      { min: 1_000, max: 30_000 }
-    ),
-    silenceTimeoutMs: normalizeAmbientDurationMs(
-      silenceInput?.value,
-      DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
-      { min: 300, max: 10_000 }
-    ),
-  };
-}
-
-function renderCaptureVoiceCommands(root: HTMLElement): void {
-  const voiceCommands = SettingsManager.getSnapshot().voiceCommands;
-  const enabledInput = root.querySelector<HTMLInputElement>("#capture-voice-command-enabled");
-  const feedbackEl = root.querySelector<HTMLElement>("#capture-voice-command-feedback");
-  const phrases = getCaptureVoiceCommandPhrases();
-  const ambient = getAmbientVoiceCommandSettings();
-
-  if (enabledInput) {
-    enabledInput.checked = voiceCommands?.analyzeEnabled === true;
-  }
-
-  CAPTURE_VOICE_COMMAND_FIELDS.forEach((field) => {
-    const textarea = root.querySelector<HTMLTextAreaElement>(`#${field.inputId}`);
-    if (textarea === null || document.activeElement === textarea) {
-      return;
-    }
-
-    textarea.value = phrases[field.key].join("\n");
-    textarea.placeholder = DEFAULT_CAPTURE_COMMAND_PHRASES[field.key].join(", ");
-  });
-
-  const ambientWakeInput = root.querySelector<HTMLTextAreaElement>("#capture-ambient-wake-input");
-  const activeWindowInput = root.querySelector<HTMLInputElement>(
-    "#capture-ambient-active-window-input"
-  );
-  const silenceInput = root.querySelector<HTMLInputElement>("#capture-ambient-silence-input");
-  if (ambientWakeInput && document.activeElement !== ambientWakeInput) {
-    ambientWakeInput.value = ambient.wakePhrases.join("\n");
-    ambientWakeInput.placeholder = DEFAULT_AMBIENT_WAKE_PHRASES.join(", ");
-  }
-  if (activeWindowInput && document.activeElement !== activeWindowInput) {
-    activeWindowInput.value = String(ambient.activeWindowMs);
-  }
-  if (silenceInput && document.activeElement !== silenceInput) {
-    silenceInput.value = String(ambient.silenceTimeoutMs);
-  }
-
-  if (feedbackEl) {
-    feedbackEl.textContent = captureT("voiceCommands.hint");
-  }
 }
 
 function renderAndroidDeviceList(root: HTMLElement, state: CapturePanelState): void {
@@ -775,26 +539,10 @@ function renderAndroidDeviceList(root: HTMLElement, state: CapturePanelState): v
 
     header.appendChild(titleWrap);
 
-    const actions = document.createElement("div");
-    actions.className = "settings-capture-actions";
-
-    const selectButton = document.createElement("button");
-    selectButton.type = "button";
-    selectButton.className = "btn btn-secondary btn-sm";
-    selectButton.dataset["deviceId"] = device.deviceId;
-    selectButton.dataset["deviceAction"] = "select";
-    if (device.connectionState === "device") {
-      selectButton.textContent = device.selected
-        ? captureT("android.actions.activeDevice")
-        : captureT("android.actions.useDevice");
-      selectButton.disabled = state.loading || state.actionLoading || device.selected;
-    } else {
-      selectButton.textContent = captureT("android.actions.inspectOnly");
-      selectButton.disabled = true;
-    }
-    actions.appendChild(selectButton);
-
     if (device.transport === "wireless") {
+      const actions = document.createElement("div");
+      actions.className = "settings-capture-actions";
+
       const disconnectButton = document.createElement("button");
       disconnectButton.type = "button";
       disconnectButton.className = "btn btn-secondary btn-sm";
@@ -803,8 +551,8 @@ function renderAndroidDeviceList(root: HTMLElement, state: CapturePanelState): v
       disconnectButton.textContent = captureT("android.actions.disconnect");
       disconnectButton.disabled = state.loading || state.actionLoading;
       actions.appendChild(disconnectButton);
+      header.appendChild(actions);
     }
-    header.appendChild(actions);
 
     const stats = document.createElement("div");
     stats.className = "settings-capture-device-stats";
@@ -903,6 +651,19 @@ function renderAndroidManagementState(root: HTMLElement, state: CapturePanelStat
       bridgeStatus?.lastError ??
       captureT(`android.feedback.${hostStatus}`)
   );
+  setSummaryCard(
+    root,
+    "android",
+    captureT(`android.states.host.${hostStatus}`),
+    selectedDevice?.label ?? captureT("android.states.activeDevice.none"),
+    hostStatus === "ready" || hostStatus === "multiple-devices"
+      ? "ready"
+      : hostStatus === "checking"
+        ? "running"
+        : hostStatus === "error" || hostStatus === "package-query-failed"
+          ? "blocked"
+          : "warning"
+  );
 
   const installButton = root.querySelector<HTMLButtonElement>("#capture-android-install-btn");
   if (installButton) {
@@ -992,13 +753,8 @@ function syncActionButtons(root: HTMLElement, state: CapturePanelState): void {
       const device =
         androidStatus?.devices.find((entry) => entry.deviceId === button.dataset["deviceId"]) ??
         null;
-      if (button.dataset["deviceAction"] === "disconnect") {
-        button.disabled = busy || device?.transport !== "wireless";
-        return;
-      }
-
       button.disabled =
-        busy || device === null || device.selected || device.connectionState !== "device";
+        busy || button.dataset["deviceAction"] !== "disconnect" || device?.transport !== "wireless";
     });
 }
 
@@ -1011,8 +767,6 @@ async function loadAndroidState(
   state.error = null;
   renderAndroidManagementState(root, state);
   renderHostDependencies(root, state);
-  renderCaptureDefaults(root, state);
-  renderCaptureSpeechPolicy(root);
   syncActionButtons(root, state);
 
   try {
@@ -1023,8 +777,6 @@ async function loadAndroidState(
     state.loading = false;
     renderAndroidManagementState(root, state);
     renderHostDependencies(root, state);
-    renderCaptureDefaults(root, state);
-    renderCaptureSpeechPolicy(root);
     syncActionButtons(root, state);
   }
 }
@@ -1070,139 +822,7 @@ async function runAndSyncCaptureAction(
     stopActionProgressPolling(state);
     renderAndroidManagementState(root, state);
     renderHostDependencies(root, state);
-    renderCaptureDefaults(root, state);
-    renderCaptureSpeechPolicy(root);
     syncActionButtons(root, state);
-  }
-}
-
-async function saveCapturePolicy(root: HTMLElement, state: CapturePanelState): Promise<void> {
-  const deviceSelect = root.querySelector<HTMLSelectElement>("#capture-default-device-select");
-  const lensSelect = root.querySelector<HTMLSelectElement>("#capture-default-lens-select");
-  const qualitySelect = root.querySelector<HTMLSelectElement>("#capture-default-quality-select");
-  const attachSelect = root.querySelector<HTMLSelectElement>("#capture-default-attach-mode-select");
-  const confirmationSelect = root.querySelector<HTMLSelectElement>(
-    "#capture-default-confirmation-select"
-  );
-  const androidCompanionEnabled = root.querySelector<HTMLInputElement>(
-    "#capture-provider-android-companion"
-  );
-  const androidDictationBackendSelect = root.querySelector<HTMLSelectElement>(
-    "#capture-android-dictation-backend-select"
-  );
-
-  await SettingsManager.patch((settings) => {
-    const nextCapture = (settings["capture"] ?? {}) as Record<string, unknown>;
-    const nextDefaults = (nextCapture["defaults"] ?? {}) as Record<string, unknown>;
-    const nextProviders = (nextCapture["providers"] ?? {}) as Record<string, unknown>;
-
-    nextDefaults["preferredDeviceId"] =
-      deviceSelect && deviceSelect.value.trim() !== "" ? deviceSelect.value.trim() : null;
-    nextDefaults["defaultLens"] = lensSelect?.value === "front" ? "front" : "back";
-    nextDefaults["photoQuality"] = qualitySelect?.value === "balanced" ? "balanced" : "high";
-    nextDefaults["attachMode"] =
-      attachSelect?.value === "auto-stage" ? "auto-stage" : "manual-sync";
-    nextDefaults["commandConfirmation"] = confirmationSelect?.value === "none" ? "none" : "toast";
-    void androidDictationBackendSelect;
-    nextDefaults["androidDictationBackend"] = "vosk";
-
-    nextProviders["androidCompanionEnabled"] = androidCompanionEnabled?.checked !== false;
-
-    nextCapture["defaults"] = nextDefaults;
-    nextCapture["providers"] = nextProviders;
-    delete nextCapture["commandPhrases"];
-    settings["capture"] = nextCapture;
-  });
-
-  renderCaptureDefaults(root, state);
-  renderCaptureSpeechPolicy(root);
-  if (shouldShowCaptureConfirmation()) {
-    notifyUser({
-      kind: "success",
-      title: captureT("defaults.saved"),
-      dedupeKey: "settings-capture-defaults-saved",
-    });
-  }
-}
-
-async function saveCaptureVoiceCommands(root: HTMLElement): Promise<void> {
-  const enabledInput = root.querySelector<HTMLInputElement>("#capture-voice-command-enabled");
-  const analyzeEnabled = enabledInput?.checked === true;
-  const analyzePhrases = readCaptureVoiceCommandPhrases(root);
-  const ambient = readAmbientVoiceCommandSettings(root);
-
-  await SettingsManager.patch((settings) => {
-    const nextVoiceCommands = (settings["voiceCommands"] ?? {}) as Record<string, unknown>;
-    nextVoiceCommands["analyzeEnabled"] = analyzeEnabled;
-    nextVoiceCommands["analyzePhrases"] = analyzePhrases;
-    nextVoiceCommands["ambient"] = ambient;
-    delete nextVoiceCommands["commandPhrases"];
-    settings["voiceCommands"] = nextVoiceCommands;
-  });
-
-  renderCaptureVoiceCommands(root);
-  notifyUser({
-    kind: "success",
-    title: captureT("voiceCommands.saved"),
-    dedupeKey: "settings-capture-voice-commands-saved",
-  });
-}
-
-async function resetCaptureVoiceCommandDefaults(root: HTMLElement): Promise<void> {
-  const enabledInput = root.querySelector<HTMLInputElement>("#capture-voice-command-enabled");
-  const analyzeEnabled =
-    enabledInput instanceof HTMLInputElement
-      ? enabledInput.checked
-      : SettingsManager.getSnapshot().voiceCommands?.analyzeEnabled === true;
-  const analyzePhrases = createDefaultCaptureVoiceCommandPhrases();
-  const ambient = {
-    wakePhrases: [...DEFAULT_AMBIENT_WAKE_PHRASES],
-    activeWindowMs: DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
-    silenceTimeoutMs: DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
-  };
-
-  await SettingsManager.patch((settings) => {
-    const nextVoiceCommands = (settings["voiceCommands"] ?? {}) as Record<string, unknown>;
-    nextVoiceCommands["analyzeEnabled"] = analyzeEnabled;
-    nextVoiceCommands["analyzePhrases"] = analyzePhrases;
-    nextVoiceCommands["ambient"] = ambient;
-    delete nextVoiceCommands["commandPhrases"];
-    settings["voiceCommands"] = nextVoiceCommands;
-  });
-
-  renderCaptureVoiceCommands(root);
-  notifyUser({
-    kind: "success",
-    title: captureT("voiceCommands.resetSaved"),
-    dedupeKey: "settings-capture-voice-commands-reset",
-  });
-}
-
-async function setPreferredDevice(
-  root: HTMLElement,
-  state: CapturePanelState,
-  deviceId: string
-): Promise<void> {
-  const device = state.status?.android.devices.find((entry) => entry.deviceId === deviceId) ?? null;
-  if (device?.connectionState !== "device") {
-    return;
-  }
-
-  await SettingsManager.patch((settings) => {
-    const nextCapture = (settings["capture"] ?? {}) as Record<string, unknown>;
-    const nextDefaults = (nextCapture["defaults"] ?? {}) as Record<string, unknown>;
-    nextDefaults["preferredDeviceId"] = deviceId;
-    nextCapture["defaults"] = nextDefaults;
-    settings["capture"] = nextCapture;
-  });
-
-  await loadAndroidState(state, root, true);
-  if (shouldShowCaptureConfirmation()) {
-    notifyUser({
-      kind: "success",
-      title: captureT("android.deviceList.preferredSaved"),
-      dedupeKey: `settings-capture-device-${deviceId}`,
-    });
   }
 }
 
@@ -1219,27 +839,12 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
   const openButton = root.querySelector<HTMLButtonElement>("#capture-android-open-btn");
   const connectButton = root.querySelector<HTMLButtonElement>("#capture-android-connect-btn");
   const connectInput = root.querySelector<HTMLInputElement>("#capture-android-connect-address");
-  const voiceCommandSaveButton = root.querySelector<HTMLButtonElement>(
-    "#capture-voice-command-save-btn"
-  );
-  const voiceCommandResetButton = root.querySelector<HTMLButtonElement>(
-    "#capture-voice-command-reset-btn"
-  );
   const confirmInstallButton = root.querySelector<HTMLButtonElement>(
     "#capture-android-progress-confirm-btn"
   );
   const cancelInstallButton = root.querySelector<HTMLButtonElement>(
     "#capture-android-progress-cancel-btn"
   );
-  const policyInputs = [
-    root.querySelector<HTMLSelectElement>("#capture-default-device-select"),
-    root.querySelector<HTMLSelectElement>("#capture-default-lens-select"),
-    root.querySelector<HTMLSelectElement>("#capture-default-quality-select"),
-    root.querySelector<HTMLSelectElement>("#capture-default-attach-mode-select"),
-    root.querySelector<HTMLSelectElement>("#capture-default-confirmation-select"),
-    root.querySelector<HTMLInputElement>("#capture-provider-android-companion"),
-    root.querySelector<HTMLSelectElement>("#capture-android-dictation-backend-select"),
-  ];
   const deviceList = root.querySelector<HTMLElement>("#capture-android-device-list");
 
   if (scanButton) {
@@ -1297,8 +902,6 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
           state.actionLoading = false;
           renderAndroidManagementState(root, state);
           renderHostDependencies(root, state);
-          renderCaptureDefaults(root, state);
-          renderCaptureSpeechPolicy(root);
           syncActionButtons(root, state);
         });
     };
@@ -1343,8 +946,6 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
           stopActionProgressPolling(state);
           renderAndroidManagementState(root, state);
           renderHostDependencies(root, state);
-          renderCaptureDefaults(root, state);
-          renderCaptureSpeechPolicy(root);
           syncActionButtons(root, state);
         });
     };
@@ -1354,34 +955,6 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
       syncActionButtons(root, state);
     };
   }
-
-  if (voiceCommandSaveButton) {
-    voiceCommandSaveButton.onclick = (): void => {
-      void saveCaptureVoiceCommands(root);
-    };
-  }
-  if (voiceCommandResetButton) {
-    voiceCommandResetButton.onclick = (): void => {
-      void resetCaptureVoiceCommandDefaults(root);
-    };
-  }
-
-  policyInputs.forEach((element) => {
-    if (!(element instanceof HTMLSelectElement) && !(element instanceof HTMLInputElement)) {
-      return;
-    }
-
-    const handler = (): void => {
-      void saveCapturePolicy(root, state);
-    };
-
-    if (element instanceof HTMLInputElement && element.type === "text") {
-      element.onblur = handler;
-      return;
-    }
-
-    element.onchange = handler;
-  });
 
   if (deviceList) {
     deviceList.onclick = (event: MouseEvent): void => {
@@ -1425,14 +998,9 @@ function bindActions(root: HTMLElement, state: CapturePanelState): void {
             stopActionProgressPolling(state);
             renderAndroidManagementState(root, state);
             renderHostDependencies(root, state);
-            renderCaptureDefaults(root, state);
-            renderCaptureSpeechPolicy(root);
             syncActionButtons(root, state);
           });
-        return;
       }
-
-      void setPreferredDevice(root, state, deviceId);
     };
   }
 }
@@ -1457,9 +1025,6 @@ export function setupSettingsCapturePanel(): void {
     transcriptPanel.render();
     renderAndroidManagementState(root, state);
     renderHostDependencies(root, state);
-    renderCaptureDefaults(root, state);
-    renderCaptureSpeechPolicy(root);
-    renderCaptureVoiceCommands(root);
     syncActionButtons(root, state);
   };
 

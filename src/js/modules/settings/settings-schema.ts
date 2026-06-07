@@ -7,6 +7,7 @@ import type {
   CaptureDefaultLens,
   CapturePhotoQuality,
   AndroidDictationBackend,
+  AnalyzeDictationMode,
   SceneAppearanceSettings,
   SlotSettings,
   RemoteUserIdentity,
@@ -55,6 +56,7 @@ import {
 import {
   normalizeTranscriptBackend,
   normalizeTranscriptModelVariant,
+  resolveTranscriptSupportedLanguage,
 } from "../../../../shared/transcript/model-catalog.js";
 import {
   normalizeTtsLanguage,
@@ -139,6 +141,10 @@ function normalizeAndroidDictationBackend(value: unknown): AndroidDictationBacke
   return "vosk";
 }
 
+function normalizeAnalyzeDictationMode(value: unknown): AnalyzeDictationMode {
+  return value === "android" ? "android" : "local";
+}
+
 function normalizeLocalTranscriptBackend(value: unknown): TranscriptDictationBackend {
   return normalizeTranscriptBackend(value, "whisper.cpp");
 }
@@ -164,6 +170,10 @@ function normalizeCaptureSettings(
       photoQuality: normalizeCapturePhotoQuality(defaults["photoQuality"]),
       attachMode: normalizeCaptureAttachMode(defaults["attachMode"]),
       commandConfirmation: normalizeCaptureCommandConfirmation(defaults["commandConfirmation"]),
+      dictationMode: normalizeAnalyzeDictationMode(defaults["dictationMode"]),
+      dictationLanguage: resolveTranscriptSupportedLanguage(
+        defaults["dictationLanguage"] ?? appLanguage
+      ),
       androidTranscriptModelVariant: normalizeTranscriptModelVariant(
         defaults["androidTranscriptModelVariant"],
         "light"

@@ -1,5 +1,5 @@
-import { existsSync } from "fs";
-import { cp, mkdir, mkdtemp, readdir, rename, rm, writeFile } from "fs/promises";
+import { constants as fsConstants, existsSync } from "fs";
+import { access, cp, mkdir, mkdtemp, readdir, rename, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
 import { Paths } from "./paths.ts";
@@ -11,10 +11,7 @@ import {
   runCommand,
 } from "./room-tool/archive-helper.ts";
 import { detectPlatformKey } from "./room-tool/python-manager.ts";
-import {
-  findVersion,
-  resolveSystemCommandBinaryPath,
-} from "./room-tool/system-command-helper.ts";
+import { findVersion, resolveSystemCommandBinaryPath } from "./room-tool/system-command-helper.ts";
 
 const FFMPEG_RELEASE_PROVIDER = {
   type: "github-release" as const,
@@ -31,6 +28,9 @@ const FFMPEG_ASSET_MATCH: Record<string, RegExp> = {
 };
 
 const FFMPEG_VERSION_REGEX = "ffmpeg version\\s+([^\\s]+)";
+const SCRCPY_V4L2_LABEL = "Hayalet Ev Camera Feed";
+const SCRCPY_V4L2_DEFAULT_DEVICE = "/dev/video42";
+const SCRCPY_V4L2_ENV_DEVICE = "HAYALET_SCRCPY_V4L2_DEVICE";
 
 export function getHostDependencyRoot(): string {
   return join(Paths.getDataDir(), "host-dependencies");
@@ -147,6 +147,161 @@ export async function resolveFfprobePath(): Promise<string | null> {
   });
 }
 
+function normalizeText(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+async function hasReadWriteAccess(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath, fsConstants.R_OK | fsConstants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function parseKeyedValue(output: string, key: string): string | null {
+  const prefix = `${key}:`;
+  return (
+    output
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .find((line) => line.startsWith(prefix))
+      ?.slice(prefix.length)
+      .trim() ?? null
+  );
+}
+
+function parseV4l2DeviceForLabel(output: string, label: string): string | null {
+  const lines = output.split(/\r?\n/u);
+  const normalizedLabel = label.toLowerCase();
+  for (let index = 0; index < lines.length; index += 1) {
+    if (lines[index]?.toLowerCase().includes(normalizedLabel) !== true) {
+      continue;
+    }
+
+    for (let deviceIndex = index + 1; deviceIndex < lines.length; deviceIndex += 1) {
+      const line = lines[deviceIndex] ?? "";
+      if (line.trim() === "") {
+        break;
+      }
+
+      const match = line.match(/\/dev\/video\d+/u);
+      if (match !== null) {
+        return match[0];
+      }
+    }
+  }
+
+  return null;
+}
+
+export function getScrcpyV4l2SetupCommand(): string {
+  return "npm run capture:v4l2:setup";
+}
+
+export async function inspectV4l2LoopbackDependency(): Promise<{
+  required: boolean;
+  available: boolean;
+  deviceReady: boolean;
+  moduleLoaded: boolean;
+  modulePath: string | null;
+  controlPath: string | null;
+  devicePath: string | null;
+  version: string | null;
+  setupCommand: string | null;
+  message: string;
+}> {
+  if (process.platform !== "linux") {
+    return {
+      required: false,
+      available: true,
+      deviceReady: true,
+      moduleLoaded: false,
+      modulePath: null,
+      controlPath: null,
+      devicePath: null,
+      version: null,
+      setupCommand: null,
+      message: "v4l2loopback is not required on this platform.",
+    };
+  }
+
+  const [modinfoPath, lsmodPath, v4l2CtlPath] = await Promise.all([
+    resolveSystemCommandBinaryPath("modinfo"),
+    resolveSystemCommandBinaryPath("lsmod"),
+    resolveSystemCommandBinaryPath("v4l2-ctl"),
+  ]);
+  const modinfo =
+    modinfoPath !== null
+      ? await runCommand(modinfoPath, ["v4l2loopback"], undefined, undefined, 5_000).catch(
+          () => null
+        )
+      : null;
+  const modulePath =
+    modinfo !== null && modinfo.exitCode === 0 ? parseKeyedValue(modinfo.stdout, "filename") : null;
+  const version =
+    modinfo !== null && modinfo.exitCode === 0 ? parseKeyedValue(modinfo.stdout, "version") : null;
+  const lsmod =
+    lsmodPath !== null
+      ? await runCommand(lsmodPath, [], undefined, undefined, 5_000).catch(() => null)
+      : null;
+  const moduleLoaded = lsmod?.exitCode === 0 && /^v4l2loopback\s/mu.test(lsmod.stdout);
+
+  const listedDevice =
+    v4l2CtlPath !== null
+      ? await runCommand(v4l2CtlPath, ["--list-devices"], undefined, undefined, 5_000)
+          .then((result) =>
+            result.exitCode === 0 ? parseV4l2DeviceForLabel(result.stdout, SCRCPY_V4L2_LABEL) : null
+          )
+          .catch(() => null)
+      : null;
+  const configuredDevice = normalizeText(process.env[SCRCPY_V4L2_ENV_DEVICE]);
+  const candidates = [
+    ...new Set([configuredDevice, listedDevice, SCRCPY_V4L2_DEFAULT_DEVICE]),
+  ].filter((candidate): candidate is string => candidate !== null);
+  const accessibleCandidates = await Promise.all(
+    candidates.map(async (candidate) => ({
+      candidate,
+      accessible: await hasReadWriteAccess(candidate),
+    }))
+  );
+  const devicePath =
+    accessibleCandidates.find((candidate) => candidate.accessible === true)?.candidate ??
+    listedDevice ??
+    configuredDevice ??
+    SCRCPY_V4L2_DEFAULT_DEVICE;
+  const deviceReady = accessibleCandidates.some((candidate) => candidate.accessible === true);
+  const available = modulePath !== null;
+  const setupCommand = getScrcpyV4l2SetupCommand();
+  const message =
+    available !== true
+      ? "v4l2loopback kernel module is not available on this Linux host."
+      : deviceReady
+        ? `v4l2loopback is ready at ${devicePath}.`
+        : moduleLoaded
+          ? `v4l2loopback is loaded, but ${devicePath} is not readable/writable.`
+          : `v4l2loopback is available but ${devicePath} is not ready. Run: ${setupCommand}`;
+
+  return {
+    required: true,
+    available,
+    deviceReady,
+    moduleLoaded,
+    modulePath,
+    controlPath: v4l2CtlPath,
+    devicePath,
+    version,
+    setupCommand,
+    message,
+  };
+}
+
 export async function inspectFfmpegDependency(): Promise<{
   installed: boolean;
   ffmpegPath: string | null;
@@ -251,10 +406,7 @@ export async function installManagedFfmpeg(
     await mkdir(stagingDir, { recursive: true });
     await cp(ffmpegSource, stagingFfmpegPath);
     await cp(ffprobeSource, stagingFfprobePath);
-    await Promise.all([
-      markExecutable(stagingFfmpegPath),
-      markExecutable(stagingFfprobePath),
-    ]);
+    await Promise.all([markExecutable(stagingFfmpegPath), markExecutable(stagingFfprobePath)]);
 
     const stagingProbe = await runCommand(
       stagingFfmpegPath,

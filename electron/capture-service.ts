@@ -17,6 +17,7 @@ import {
   resolveAdbPath,
   resolveScrcpyPath,
   inspectFfmpegDependency,
+  inspectV4l2LoopbackDependency,
   installManagedFfmpeg,
   getManagedFfmpegPath,
   getManagedAdbPath,
@@ -168,6 +169,10 @@ function createCompanionBuildScriptEnv(): NodeJS.ProcessEnv {
     ...process.env,
     ELECTRON_RUN_AS_NODE: "1",
   };
+}
+
+function shouldUseCompanionLiveFeed(target: TranscriptTargetId | null): boolean {
+  return target === CAPTURE_ANALYZE_TARGET;
 }
 
 class CaptureService {
@@ -887,7 +892,7 @@ class CaptureService {
     }
 
     if (target === CAPTURE_ANALYZE_TARGET) {
-      const useCompanionLiveFeed = process.platform === "win32";
+      const useCompanionLiveFeed = shouldUseCompanionLiveFeed(target);
       const existingBridgeSession = this.getBridgeSessionForTarget(deviceId, target, {
         requirePreviewActive: false,
       });
@@ -981,7 +986,10 @@ class CaptureService {
     const stoppedLiveFeed = this.companionLiveFeed.stop();
     const stoppedScrcpyFeed = await this.stopScrcpyCameraFeed();
     const stopped = stoppedLiveFeed || stoppedScrcpyFeed;
-    if (target === CAPTURE_ANALYZE_TARGET && process.platform === "win32") {
+    if (
+      target === CAPTURE_ANALYZE_TARGET &&
+      (stoppedLiveFeed === true || action === "stop-analyze-preview")
+    ) {
       const status = await this.refreshStatus();
       const deviceId = this.resolveAnalyzeCommandDeviceId(status, false);
       if (deviceId !== null) {
@@ -2359,24 +2367,37 @@ class CaptureService {
     android: CaptureAndroidStatus,
     scrcpy: CaptureServiceStatus["scrcpy"]
   ): Promise<CaptureHostDependenciesStatus> {
-    const [discoveredAdbPath, scrcpyPath, ffmpegStatus, androidPlan] = await Promise.all([
-      resolveAdbPath(),
-      resolveScrcpyPath(),
-      inspectFfmpegDependency().catch((error: unknown) => ({
-        installed: false,
-        ffmpegPath: null,
-        ffprobePath: null,
-        version: null,
-        managedDir: null,
-        message: error instanceof Error ? error.message : String(error),
-      })),
-      this.readCompanionBootstrapPlan().catch((error: unknown) => ({
-        type: "plan-error" as const,
-        needsConfirmation: true,
-        message: error instanceof Error ? error.message : String(error),
-        details: [],
-      })),
-    ]);
+    const [discoveredAdbPath, scrcpyPath, v4l2LoopbackStatus, ffmpegStatus, androidPlan] =
+      await Promise.all([
+        resolveAdbPath(),
+        resolveScrcpyPath(),
+        inspectV4l2LoopbackDependency().catch((error: unknown) => ({
+          required: process.platform === "linux",
+          available: false,
+          deviceReady: false,
+          moduleLoaded: false,
+          modulePath: null,
+          controlPath: null,
+          devicePath: null,
+          version: null,
+          setupCommand: null,
+          message: error instanceof Error ? error.message : String(error),
+        })),
+        inspectFfmpegDependency().catch((error: unknown) => ({
+          installed: false,
+          ffmpegPath: null,
+          ffprobePath: null,
+          version: null,
+          managedDir: null,
+          message: error instanceof Error ? error.message : String(error),
+        })),
+        this.readCompanionBootstrapPlan().catch((error: unknown) => ({
+          type: "plan-error" as const,
+          needsConfirmation: true,
+          message: error instanceof Error ? error.message : String(error),
+          details: [],
+        })),
+      ]);
 
     const adbPath = android.adbPath ?? discoveredAdbPath;
     const androidPlanMessage =
@@ -2410,6 +2431,24 @@ class CaptureService {
             : (scrcpy.lastError ?? "scrcpy is not available on PATH."),
         installable: false,
         managedPath: null,
+      },
+      v4l2Loopback: {
+        state:
+          v4l2LoopbackStatus.required !== true ||
+          (v4l2LoopbackStatus.available === true && v4l2LoopbackStatus.deviceReady === true)
+            ? "ready"
+            : "missing",
+        path: v4l2LoopbackStatus.modulePath,
+        version: v4l2LoopbackStatus.version,
+        message: v4l2LoopbackStatus.message,
+        installable: v4l2LoopbackStatus.required === true,
+        managedPath: null,
+        required: v4l2LoopbackStatus.required,
+        moduleLoaded: v4l2LoopbackStatus.moduleLoaded,
+        modulePath: v4l2LoopbackStatus.modulePath,
+        controlPath: v4l2LoopbackStatus.controlPath,
+        devicePath: v4l2LoopbackStatus.devicePath,
+        setupCommand: v4l2LoopbackStatus.setupCommand,
       },
       ffmpeg: {
         state: ffmpegStatus.installed === true ? "ready" : "missing",

@@ -61,6 +61,7 @@ interface BindDictationTriggerOptions {
   ) => () => void;
   onFinalTranscript?: (payload: TranscriptIngressPayload) => boolean | Promise<boolean>;
   getMode?: () => DictationMode;
+  getLanguage?: () => string | null;
   requestAndroidDictation?: (
     request: AndroidDictationRequest
   ) => Promise<AndroidDictationRequestState>;
@@ -302,6 +303,7 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
       const transcription = await transcribeLocalAudio({
         requestId,
         audioBase64: capture.audioBase64,
+        language: options.getLanguage?.() ?? null,
         source: "pc-mic",
       });
 

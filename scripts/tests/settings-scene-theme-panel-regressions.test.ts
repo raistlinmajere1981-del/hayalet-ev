@@ -90,11 +90,13 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(htmlSource, /id="settings-tab-capture"/);
   assert.match(htmlSource, /id="settings-panel-capture"/);
   assert.match(htmlSource, /data-settings-panel="capture"/);
+  assert.match(htmlSource, /class="settings-capture-overview"/);
+  assert.match(htmlSource, /id="capture-summary-host"/);
+  assert.match(htmlSource, /id="capture-summary-android"/);
+  assert.match(htmlSource, /id="capture-summary-runtime"/);
+  assert.match(htmlSource, /id="capture-summary-operation"/);
   assert.match(htmlSource, /id="capture-android-host-status"/);
   assert.match(htmlSource, /id="capture-android-preview-note"/);
-  assert.match(htmlSource, /id="capture-default-device-select"/);
-  assert.match(htmlSource, /id="capture-provider-android-companion"/);
-  assert.match(htmlSource, /id="capture-android-dictation-backend-select"/);
   assert.match(htmlSource, /id="capture-android-device-list"/);
   assert.match(htmlSource, /id="capture-android-progress-shell"/);
   assert.match(htmlSource, /id="capture-android-progress-bar"/);
@@ -103,18 +105,24 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(htmlSource, /id="capture-android-progress-cancel-btn"/);
   assert.match(htmlSource, /id="capture-android-connect-address"/);
   assert.match(htmlSource, /id="capture-android-connect-btn"/);
-  assert.match(htmlSource, /id="capture-default-lens-select"/);
-  assert.match(htmlSource, /id="capture-voice-command-enabled"/);
-  assert.match(htmlSource, /id="capture-voice-command-open-camera-input"/);
-  assert.match(htmlSource, /id="capture-voice-command-capture-input"/);
-  assert.match(htmlSource, /id="capture-voice-command-stop-input"/);
+  assert.doesNotMatch(htmlSource, /id="capture-default-device-select"/);
+  assert.doesNotMatch(htmlSource, /id="capture-default-lens-select"/);
+  assert.doesNotMatch(htmlSource, /id="capture-provider-android-companion"/);
+  assert.doesNotMatch(htmlSource, /id="capture-android-dictation-backend-select"/);
+  assert.doesNotMatch(htmlSource, /id="capture-voice-command-enabled"/);
+  assert.doesNotMatch(htmlSource, /id="capture-voice-command-open-camera-input"/);
+  assert.doesNotMatch(htmlSource, /id="capture-voice-command-capture-input"/);
+  assert.doesNotMatch(htmlSource, /id="capture-voice-command-stop-input"/);
   assert.doesNotMatch(htmlSource, /id="capture-voice-command-retake-input"/);
   assert.doesNotMatch(htmlSource, /id="capture-voice-command-attach-input"/);
   assert.doesNotMatch(htmlSource, /id="capture-voice-command-cancel-input"/);
-  assert.match(htmlSource, /id="capture-voice-command-save-btn"/);
-  assert.match(htmlSource, /id="capture-voice-command-reset-btn"/);
-  assert.match(htmlSource, /id="app-transcript-backend-select"/);
+  assert.doesNotMatch(htmlSource, /id="capture-voice-command-save-btn"/);
+  assert.doesNotMatch(htmlSource, /id="capture-voice-command-reset-btn"/);
+  assert.doesNotMatch(htmlSource, /id="app-transcript-backend-select"/);
+  assert.doesNotMatch(htmlSource, /id="app-transcript-profile-select"/);
   assert.match(htmlSource, /id="app-transcript-runtime-models"/);
+  assert.match(htmlSource, /data-i18n-text="capture\.transcript\.modelsSummary"/);
+  assert.match(htmlSource, /data-i18n-text="capture\.android\.detailsSummary"/);
 
   assert.match(controllerSource, /"capture"/);
   assert.match(
@@ -125,12 +133,14 @@ test("settings capture panel centralizes transcript runtime and android manageme
 
   assert.match(panelSource, /registerSettingsPanelLifecycle\("capture"/);
   assert.match(panelSource, /new CaptureTranscriptRuntimePanel\(SettingsManager, root\)/);
+  assert.match(panelSource, /setSummaryCard/);
+  assert.match(panelSource, /settings-capture-dependency-row/);
   assert.match(panelSource, /capture-android-host-status/);
   assert.match(panelSource, /capture-android-bridge-status/);
-  assert.match(panelSource, /saveCapturePolicy/);
-  assert.match(panelSource, /capture-default-device-select/);
-  assert.match(panelSource, /capture-provider-android-companion/);
-  assert.match(panelSource, /capture-android-dictation-backend-select/);
+  assert.doesNotMatch(panelSource, /saveCapturePolicy/);
+  assert.doesNotMatch(panelSource, /capture-default-device-select/);
+  assert.doesNotMatch(panelSource, /capture-provider-android-companion/);
+  assert.doesNotMatch(panelSource, /capture-android-dictation-backend-select/);
   assert.match(panelSource, /capture-android-device-list/);
   assert.match(panelSource, /renderAndroidOperationState/);
   assert.match(panelSource, /startActionProgressPolling/);
@@ -140,7 +150,7 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(panelSource, /runAndSyncCaptureAction\(state, root, "launch-companion"\)/);
   assert.match(panelSource, /connectCaptureDevice/);
   assert.match(panelSource, /disconnectCaptureDevice/);
-  assert.match(panelSource, /setPreferredDevice/);
+  assert.doesNotMatch(panelSource, /setPreferredDevice/);
   assert.match(panelSource, /captureT\("android\.previewHint"\)/);
   assert.match(panelSource, /renderScrcpyManagementState/);
   assert.match(panelSource, /renderScrcpyLogList/);
@@ -148,27 +158,31 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(htmlSource, /id="capture-scrcpy-mode"/);
   assert.match(htmlSource, /id="capture-scrcpy-feedback"/);
   assert.match(htmlSource, /id="capture-scrcpy-log-list"/);
-  assert.match(panelSource, /renderCaptureVoiceCommands/);
-  assert.match(panelSource, /saveCaptureVoiceCommands/);
-  assert.match(panelSource, /resetCaptureVoiceCommandDefaults/);
-  assert.match(panelSource, /DEFAULT_CAPTURE_COMMAND_PHRASES/);
-  assert.match(panelSource, /normalizeCapturePhraseList/);
+  assert.doesNotMatch(panelSource, /renderCaptureVoiceCommands/);
+  assert.doesNotMatch(panelSource, /saveCaptureVoiceCommands/);
+  assert.doesNotMatch(panelSource, /resetCaptureVoiceCommandDefaults/);
+  assert.doesNotMatch(panelSource, /DEFAULT_CAPTURE_COMMAND_PHRASES/);
+  assert.doesNotMatch(panelSource, /normalizeCapturePhraseList/);
   assert.equal((htmlSource.match(/id="capture-provider-fallback-select"/g) ?? []).length, 0);
-  assert.equal((htmlSource.match(/id="capture-policy-feedback"/g) ?? []).length, 1);
+  assert.equal((htmlSource.match(/id="capture-policy-feedback"/g) ?? []).length, 0);
   assert.equal((htmlSource.match(/id="capture-provider-android-speech"/g) ?? []).length, 0);
   assert.equal((htmlSource.match(/id="capture-provider-local-whisper"/g) ?? []).length, 0);
   assert.equal(
     (htmlSource.match(/capture\.policy\.androidDictationBackendOptions\.whisper/g) ?? []).length,
     0
   );
-  assert.equal((htmlSource.match(/id="capture-voice-command-open-camera-input"/g) ?? []).length, 1);
-  assert.equal((htmlSource.match(/id="capture-voice-command-capture-input"/g) ?? []).length, 1);
-  assert.equal((htmlSource.match(/id="capture-voice-command-stop-input"/g) ?? []).length, 1);
+  assert.equal((htmlSource.match(/id="capture-voice-command-open-camera-input"/g) ?? []).length, 0);
+  assert.equal((htmlSource.match(/id="capture-voice-command-capture-input"/g) ?? []).length, 0);
+  assert.equal((htmlSource.match(/id="capture-voice-command-stop-input"/g) ?? []).length, 0);
   assert.equal((htmlSource.match(/id="capture-android-device-list"/g) ?? []).length, 1);
 
   assert.match(transcriptSource, /ensureTranscriptRuntime/);
   assert.match(transcriptSource, /listTranscriptModels/);
-  assert.match(transcriptSource, /saveTranscriptBackend/);
+  assert.doesNotMatch(transcriptSource, /saveTranscriptBackend/);
+  assert.doesNotMatch(transcriptSource, /saveTranscriptModelVariant/);
+  assert.doesNotMatch(transcriptSource, /backend-select/);
+  assert.doesNotMatch(transcriptSource, /profile-select/);
+  assert.match(transcriptSource, /setCaptureSummary/);
   assert.match(transcriptSource, /vosk-small-tr/);
   assert.match(transcriptSource, /getSettingsSignature/);
 

@@ -117,7 +117,13 @@ import type {
   CaptureMediaIngressPayload,
   CaptureServiceStatus,
 } from "../../types/capture.js";
-import type { TranscriptIngressPayload, TranscriptTargetId } from "../../types/transcript.js";
+import type {
+  TranscriptDictationBackend,
+  TranscriptIngressPayload,
+  TranscriptModelVariant,
+  TranscriptSupportedLanguage,
+  TranscriptTargetId,
+} from "../../types/transcript.js";
 import type { TtsLanguage, TtsMode, TtsRuntimeStatus, TtsStatus } from "../../types/tts.js";
 import type { CaptureCommandPhraseSettings } from "../../types/settings.js";
 import {
@@ -127,7 +133,14 @@ import {
   normalizeAmbientDurationMs,
   normalizeAmbientWakePhrases,
 } from "../../../shared/capture/ambient-defaults.js";
-import { DEFAULT_CAPTURE_COMMAND_PHRASES } from "../../../shared/capture/command-catalog.js";
+import {
+  DEFAULT_CAPTURE_COMMAND_PHRASES,
+  normalizeCapturePhraseList,
+} from "../../../shared/capture/command-catalog.js";
+import {
+  normalizeTranscriptBackend,
+  normalizeTranscriptModelVariant,
+} from "../../../shared/transcript/model-catalog.js";
 import {
   normalizeTtsLanguage,
   normalizeTtsMode,
@@ -364,7 +377,7 @@ export class AnalyzeController {
     this._unsubSceneTheme = null;
     this._unsubSceneThemeAssets = null;
     this._dictationBinding = null;
-    this._dictationMode = "local";
+    this._dictationMode = this._settingsDictationMode();
     this._captureStatus = null;
     this._captureStatusPollTimer = null;
     this._lastAutoStagedCapturePath = null;
@@ -398,6 +411,7 @@ export class AnalyzeController {
     this._unsubSettings ??= SettingsManager.subscribe(
       ({ changedPaths }: { changedPaths: string[] }) => {
         if (changedPaths.includes("*") || changedPaths.some((path) => path.startsWith("capture"))) {
+          this._dictationMode = this._settingsDictationMode();
           this._syncDictationAvailability();
           this.renderCaptureSessionState();
           this._renderAmbientToggle();
@@ -1271,7 +1285,7 @@ export class AnalyzeController {
       void this.toggleAndroidCameraPanel();
     });
     document.getElementById("analyze-tts-settings-btn")?.addEventListener("click", () => {
-      void this._openTtsSettingsOverlay();
+      void this._openOperationSettingsOverlay();
     });
     document.getElementById("compose-input")?.addEventListener("input", () => {
       this.updateSendButtonState();
@@ -1285,6 +1299,7 @@ export class AnalyzeController {
         }
 
         this._dictationMode = target.checked ? "android" : "local";
+        void SettingsManager.set("capture.defaults.dictationMode", this._dictationMode);
         this._bindDictationUi();
       });
     document.getElementById("compose-voice-command-btn")?.addEventListener("click", () => {
@@ -1350,6 +1365,7 @@ export class AnalyzeController {
         });
       },
       getMode: (): DictationMode => this._dictationMode,
+      getLanguage: (): TranscriptSupportedLanguage => this._dictationLanguage(),
       requestAndroidDictation: async (request) => {
         return await this._requestAndroidDictation(request);
       },
@@ -1377,6 +1393,30 @@ export class AnalyzeController {
     ReturnType<typeof SettingsManager.getSnapshot>["capture"]
   >["providers"] {
     return SettingsManager.getSnapshot().capture?.providers ?? {};
+  }
+
+  _settingsDictationMode(): DictationMode {
+    return this._captureDefaults()?.dictationMode === "android" ? "android" : "local";
+  }
+
+  _dictationLanguage(): TranscriptSupportedLanguage {
+    const settings = SettingsManager.getSnapshot();
+    const value = this._captureDefaults()?.dictationLanguage ?? settings.general?.language;
+    return typeof value === "string" && value.toLowerCase().startsWith("tr") ? "tr" : "en";
+  }
+
+  _localTranscriptBackend(): TranscriptDictationBackend {
+    return normalizeTranscriptBackend(
+      SettingsManager.getSnapshot().general?.transcriptBackend,
+      "whisper.cpp"
+    );
+  }
+
+  _localTranscriptVariant(): TranscriptModelVariant {
+    return normalizeTranscriptModelVariant(
+      SettingsManager.getSnapshot().general?.transcriptModelVariant,
+      "full"
+    );
   }
 
   _ttsMode(): TtsMode {
@@ -2808,58 +2848,200 @@ export class AnalyzeController {
     });
   }
 
-  async _openTtsSettingsOverlay(): Promise<void> {
+  async _openOperationSettingsOverlay(): Promise<void> {
     await Promise.all([this.refreshCaptureSessionState(true), this._refreshTtsRuntimeStatus()]);
     const content = document.createElement("div");
-    content.className = "analyze-tts-settings";
+    content.className = "analyze-operation-settings";
+
+    const normalizeOperationLanguage = (value: string): TranscriptSupportedLanguage =>
+      value === "tr" ? "tr" : "en";
+
+    const createSection = (titleText: string, hintText: string): HTMLElement => {
+      const section = document.createElement("section");
+      section.className = "analyze-operation-settings__section";
+
+      const header = document.createElement("div");
+      header.className = "analyze-operation-settings__section-head";
+      const title = document.createElement("h3");
+      title.textContent = titleText;
+      const hint = document.createElement("p");
+      hint.textContent = hintText;
+      header.append(title, hint);
+      section.appendChild(header);
+      return section;
+    };
 
     const createRow = (labelText: string, value: HTMLElement): HTMLLabelElement => {
       const row = document.createElement("label");
-      row.className = "analyze-tts-settings__row";
+      row.className = "analyze-operation-settings__row";
       const label = document.createElement("span");
-      label.className = "analyze-tts-settings__label";
+      label.className = "analyze-operation-settings__label";
       label.textContent = labelText;
       row.append(label, value);
       return row;
     };
 
-    const modeSelect = document.createElement("select");
-    modeSelect.className = "form-input";
-    const modeOptions: Array<{ value: TtsMode; label: string }> = [
-      { value: "local", label: analyzeT("page.tts.modeLocal") },
-      { value: "android", label: analyzeT("page.tts.modeAndroid") },
-    ];
-    modeOptions.forEach(({ value, label }) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = label;
-      modeSelect.appendChild(option);
-    });
-    modeSelect.value = this._ttsMode();
+    const createSelect = <T extends string>(
+      options: Array<{ value: T; label: string }>,
+      value: T
+    ): HTMLSelectElement => {
+      const select = document.createElement("select");
+      select.className = "form-input";
+      options.forEach((optionConfig) => {
+        const option = document.createElement("option");
+        option.value = optionConfig.value;
+        option.textContent = optionConfig.label;
+        select.appendChild(option);
+      });
+      select.value = value;
+      return select;
+    };
 
-    const languageSelect = document.createElement("select");
-    languageSelect.className = "form-input";
-    const languageOptions: Array<{ value: TtsLanguage; label: string }> = [
-      { value: "tr", label: analyzeT("page.tts.languageTr") },
-      { value: "en", label: analyzeT("page.tts.languageEn") },
-    ];
-    languageOptions.forEach(({ value, label }) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = label;
-      languageSelect.appendChild(option);
-    });
-    languageSelect.value = this._ttsLanguage();
+    const createTextarea = (value: string, rows: number): HTMLTextAreaElement => {
+      const textarea = document.createElement("textarea");
+      textarea.className = "form-input analyze-operation-settings__textarea";
+      textarea.rows = rows;
+      textarea.spellcheck = false;
+      textarea.value = value;
+      return textarea;
+    };
+
+    const createNumberInput = (
+      value: number,
+      options: { min: number; max: number; step: number }
+    ): HTMLInputElement => {
+      const input = document.createElement("input");
+      input.className = "form-input";
+      input.type = "number";
+      input.min = String(options.min);
+      input.max = String(options.max);
+      input.step = String(options.step);
+      input.value = String(value);
+      return input;
+    };
+
+    const createValueBox = (): HTMLElement => {
+      const box = document.createElement("div");
+      box.className = "analyze-operation-settings__value";
+      return box;
+    };
+
+    const androidEnabledInput = document.createElement("input");
+    androidEnabledInput.type = "checkbox";
+    androidEnabledInput.checked = this._captureProviders()?.androidCompanionEnabled !== false;
+    const androidEnabledLabel = document.createElement("span");
+    androidEnabledLabel.className = "analyze-operation-settings__inline-check";
+    androidEnabledLabel.append(androidEnabledInput);
+    androidEnabledLabel.append(
+      document.createTextNode(analyzeT("page.operationSettings.androidEnabled"))
+    );
 
     const deviceSelect = document.createElement("select");
     deviceSelect.className = "form-input";
-    const companionValue = document.createElement("div");
-    companionValue.className = "analyze-tts-settings__value";
-    const runtimeValue = document.createElement("div");
-    runtimeValue.className = "analyze-tts-settings__value";
+    const androidStatusValue = createValueBox();
+    const companionValue = createValueBox();
+    const transcriptValue = createValueBox();
+    const ttsRuntimeValue = createValueBox();
 
-    const selectedModelId = (): ReturnType<typeof resolveTtsModelId> =>
-      resolveTtsModelId(normalizeTtsLanguage(languageSelect.value));
+    const dictationModeSelect = createSelect<DictationMode>(
+      [
+        { value: "local", label: analyzeT("page.tts.modeLocal") },
+        { value: "android", label: analyzeT("page.tts.modeAndroid") },
+      ],
+      this._settingsDictationMode()
+    );
+    const dictationLanguageSelect = createSelect<TranscriptSupportedLanguage>(
+      [
+        { value: "tr", label: analyzeT("page.tts.languageTr") },
+        { value: "en", label: analyzeT("page.tts.languageEn") },
+      ],
+      this._dictationLanguage()
+    );
+    const transcriptBackendSelect = createSelect<TranscriptDictationBackend>(
+      [
+        { value: "whisper.cpp", label: "whisper.cpp" },
+        { value: "vosk", label: "Vosk" },
+      ],
+      this._localTranscriptBackend()
+    );
+    const transcriptVariantSelect = createSelect<TranscriptModelVariant>(
+      [
+        { value: "light", label: analyzeT("page.operationSettings.modelLight") },
+        { value: "full", label: analyzeT("page.operationSettings.modelFull") },
+      ],
+      this._localTranscriptVariant()
+    );
+
+    const voiceEnabledInput = document.createElement("input");
+    voiceEnabledInput.type = "checkbox";
+    voiceEnabledInput.checked = this._voiceCommandsEnabled;
+    const voiceEnabledLabel = document.createElement("span");
+    voiceEnabledLabel.className = "analyze-operation-settings__inline-check";
+    voiceEnabledLabel.append(voiceEnabledInput);
+    voiceEnabledLabel.append(
+      document.createTextNode(analyzeT("page.operationSettings.voiceCommandsEnabled"))
+    );
+    const ambientWakeInput = createTextarea(this._ambientWakePhrases().join("\n"), 2);
+    const ambientActiveWindowInput = createNumberInput(this._ambientActiveWindowMs(), {
+      min: 1_000,
+      max: 30_000,
+      step: 100,
+    });
+    const ambientSilenceInput = createNumberInput(this._ambientSilenceTimeoutMs(), {
+      min: 300,
+      max: 10_000,
+      step: 100,
+    });
+    const voicePhrases = this._voiceCommandPhrases();
+    const openCameraPhrasesInput = createTextarea(voicePhrases.openCamera.join("\n"), 2);
+    const capturePhrasesInput = createTextarea(voicePhrases.capture.join("\n"), 2);
+    const stopPhrasesInput = createTextarea(voicePhrases.stop.join("\n"), 2);
+
+    const ttsModeSelect = createSelect<TtsMode>(
+      [
+        { value: "local", label: analyzeT("page.tts.modeLocal") },
+        { value: "android", label: analyzeT("page.tts.modeAndroid") },
+      ],
+      this._ttsMode()
+    );
+    const ttsLanguageSelect = createSelect<TtsLanguage>(
+      [
+        { value: "tr", label: analyzeT("page.tts.languageTr") },
+        { value: "en", label: analyzeT("page.tts.languageEn") },
+      ],
+      this._ttsLanguage()
+    );
+    const selectedTtsModelId = (): ReturnType<typeof resolveTtsModelId> =>
+      resolveTtsModelId(normalizeTtsLanguage(ttsLanguageSelect.value));
+
+    const lensSelect = createSelect<"back" | "front">(
+      [
+        { value: "back", label: analyzeT("page.operationSettings.lensBack") },
+        { value: "front", label: analyzeT("page.operationSettings.lensFront") },
+      ],
+      this._captureDefaults()?.defaultLens === "front" ? "front" : "back"
+    );
+    const qualitySelect = createSelect<"high" | "balanced">(
+      [
+        { value: "high", label: analyzeT("page.operationSettings.qualityHigh") },
+        { value: "balanced", label: analyzeT("page.operationSettings.qualityBalanced") },
+      ],
+      this._captureDefaults()?.photoQuality === "balanced" ? "balanced" : "high"
+    );
+    const attachModeSelect = createSelect<"manual-sync" | "auto-stage">(
+      [
+        { value: "manual-sync", label: analyzeT("page.operationSettings.attachManual") },
+        { value: "auto-stage", label: analyzeT("page.operationSettings.attachAuto") },
+      ],
+      this._captureDefaults()?.attachMode === "auto-stage" ? "auto-stage" : "manual-sync"
+    );
+    const confirmationSelect = createSelect<"toast" | "none">(
+      [
+        { value: "toast", label: analyzeT("page.operationSettings.confirmToast") },
+        { value: "none", label: analyzeT("page.operationSettings.confirmNone") },
+      ],
+      this._captureDefaults()?.commandConfirmation === "none" ? "none" : "toast"
+    );
 
     const populateDeviceSelect = (): void => {
       const preferredDeviceId = this._captureDefaults()?.preferredDeviceId ?? "";
@@ -2884,12 +3066,23 @@ export class AnalyzeController {
     };
 
     const renderStatus = (): void => {
+      const activeDevice = this._selectedAndroidDictationDevice(this._captureStatus);
+      androidStatusValue.textContent =
+        activeDevice !== null
+          ? analyzeT("page.operationSettings.androidReady", { device: activeDevice.label })
+          : analyzeT("page.dictation.androidUnavailableTitle");
       companionValue.textContent =
         this._captureStatus?.android.message ?? analyzeT("page.tts.statusUnknown");
+      const transcriptRuntime = this._captureStatus?.transcript.runtime ?? null;
+      transcriptValue.textContent =
+        transcriptRuntime?.message ??
+        (transcriptRuntime?.ready === true
+          ? analyzeT("page.operationSettings.runtimeReady")
+          : analyzeT("page.tts.statusUnknown"));
       const model = this._ttsRuntimeStatus?.models.find(
-        (entry) => entry.modelId === selectedModelId()
+        (entry) => entry.modelId === selectedTtsModelId()
       );
-      runtimeValue.textContent =
+      ttsRuntimeValue.textContent =
         this._ttsRuntimeStatus?.active?.message ??
         (model?.ready === true
           ? analyzeT("page.tts.modelReady", { model: model.label })
@@ -2897,18 +3090,11 @@ export class AnalyzeController {
         analyzeT("page.tts.statusIdle");
     };
 
-    modeSelect.addEventListener("change", () => {
-      void SettingsManager.set("capture.defaults.ttsMode", normalizeTtsMode(modeSelect.value));
-    });
-    languageSelect.addEventListener("change", () => {
-      void (async (): Promise<void> => {
-        await SettingsManager.set(
-          "capture.defaults.ttsLanguage",
-          normalizeTtsLanguage(languageSelect.value)
-        );
-        await this._refreshTtsRuntimeStatus();
-        renderStatus();
-      })();
+    androidEnabledInput.addEventListener("change", () => {
+      void SettingsManager.set(
+        "capture.providers.androidCompanionEnabled",
+        androidEnabledInput.checked
+      );
     });
     deviceSelect.addEventListener("change", () => {
       void (async (): Promise<void> => {
@@ -2921,9 +3107,128 @@ export class AnalyzeController {
         renderStatus();
       })();
     });
+    dictationModeSelect.addEventListener("change", () => {
+      void (async (): Promise<void> => {
+        const nextMode: DictationMode =
+          dictationModeSelect.value === "android" ? "android" : "local";
+        this._dictationMode = nextMode;
+        await SettingsManager.set("capture.defaults.dictationMode", nextMode);
+        this._syncDictationAvailability();
+        renderStatus();
+      })();
+    });
+    dictationLanguageSelect.addEventListener("change", () => {
+      void SettingsManager.set(
+        "capture.defaults.dictationLanguage",
+        normalizeOperationLanguage(dictationLanguageSelect.value)
+      );
+    });
+    transcriptBackendSelect.addEventListener("change", () => {
+      void SettingsManager.set(
+        "general.transcriptBackend",
+        normalizeTranscriptBackend(transcriptBackendSelect.value, "whisper.cpp")
+      );
+    });
+    transcriptVariantSelect.addEventListener("change", () => {
+      void SettingsManager.set(
+        "general.transcriptModelVariant",
+        normalizeTranscriptModelVariant(transcriptVariantSelect.value, "full")
+      );
+    });
+    ttsModeSelect.addEventListener("change", () => {
+      void SettingsManager.set("capture.defaults.ttsMode", normalizeTtsMode(ttsModeSelect.value));
+    });
+    ttsLanguageSelect.addEventListener("change", () => {
+      void (async (): Promise<void> => {
+        await SettingsManager.set(
+          "capture.defaults.ttsLanguage",
+          normalizeTtsLanguage(ttsLanguageSelect.value)
+        );
+        await this._refreshTtsRuntimeStatus();
+        renderStatus();
+      })();
+    });
+    [lensSelect, qualitySelect, attachModeSelect, confirmationSelect].forEach((select) => {
+      select.addEventListener("change", () => {
+        void SettingsManager.patch((settings) => {
+          const nextCapture = (settings["capture"] ?? {}) as Record<string, unknown>;
+          const nextDefaults = (nextCapture["defaults"] ?? {}) as Record<string, unknown>;
+          nextDefaults["defaultLens"] = lensSelect.value === "front" ? "front" : "back";
+          nextDefaults["photoQuality"] =
+            qualitySelect.value === "balanced" ? "balanced" : "high";
+          nextDefaults["attachMode"] =
+            attachModeSelect.value === "auto-stage" ? "auto-stage" : "manual-sync";
+          nextDefaults["commandConfirmation"] =
+            confirmationSelect.value === "none" ? "none" : "toast";
+          nextCapture["defaults"] = nextDefaults;
+          settings["capture"] = nextCapture;
+        });
+      });
+    });
 
-    const actions = document.createElement("div");
-    actions.className = "analyze-tts-settings__actions";
+    const saveAmbientButton = document.createElement("button");
+    saveAmbientButton.type = "button";
+    saveAmbientButton.className = "btn btn-secondary btn-sm";
+    saveAmbientButton.textContent = analyzeT("page.operationSettings.saveVoiceSettings");
+    saveAmbientButton.addEventListener("click", () => {
+      void (async (): Promise<void> => {
+        const analyzePhrases: Required<CaptureCommandPhraseSettings> = {
+          openCamera: normalizeCapturePhraseList(
+            openCameraPhrasesInput.value.split(/[\n,]/),
+            DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera
+          ),
+          capture: normalizeCapturePhraseList(
+            capturePhrasesInput.value.split(/[\n,]/),
+            DEFAULT_CAPTURE_COMMAND_PHRASES.capture
+          ),
+          stop: normalizeCapturePhraseList(
+            stopPhrasesInput.value.split(/[\n,]/),
+            DEFAULT_CAPTURE_COMMAND_PHRASES.stop
+          ),
+        };
+        await SettingsManager.patch((settings) => {
+          const nextVoiceCommands = (settings["voiceCommands"] ?? {}) as Record<string, unknown>;
+          nextVoiceCommands["analyzeEnabled"] = voiceEnabledInput.checked;
+          nextVoiceCommands["analyzePhrases"] = analyzePhrases;
+          nextVoiceCommands["ambient"] = {
+            wakePhrases: normalizeAmbientWakePhrases(
+              ambientWakeInput.value.split(/[\n,]/),
+              DEFAULT_AMBIENT_WAKE_PHRASES
+            ),
+            activeWindowMs: normalizeAmbientDurationMs(
+              ambientActiveWindowInput.value,
+              DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
+              { min: 1_000, max: 30_000 }
+            ),
+            silenceTimeoutMs: normalizeAmbientDurationMs(
+              ambientSilenceInput.value,
+              DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
+              { min: 300, max: 10_000 }
+            ),
+          };
+          delete nextVoiceCommands["commandPhrases"];
+          settings["voiceCommands"] = nextVoiceCommands;
+        });
+        this._syncVoiceCommandSettings();
+        this._renderAmbientToggle();
+        notifyUser({
+          kind: "success",
+          title: analyzeT("page.operationSettings.saved"),
+          dedupeKey: "analyze-operation-settings-saved",
+        });
+      })();
+    });
+    voiceEnabledInput.addEventListener("change", () => {
+      this._voiceCommandsEnabled = voiceEnabledInput.checked;
+      this._renderVoiceCommandToggle();
+      void SettingsManager.patch((settings) => {
+        settings["voiceCommands"] = {
+          ...(settings["voiceCommands"] ?? {}),
+          analyzeEnabled: voiceEnabledInput.checked,
+        };
+      });
+    });
+
     const refreshButton = document.createElement("button");
     refreshButton.type = "button";
     refreshButton.className = "btn btn-secondary btn-sm";
@@ -2943,7 +3248,7 @@ export class AnalyzeController {
       void (async (): Promise<void> => {
         prepareModelButton.disabled = true;
         prepareModelButton.textContent = analyzeT("page.tts.installingModel");
-        const modelId = selectedModelId();
+        const modelId = selectedTtsModelId();
         const result = await installTtsModel(modelId).catch((error: unknown) => ({
           success: false,
           model: null,
@@ -2967,42 +3272,107 @@ export class AnalyzeController {
     const launchButton = document.createElement("button");
     launchButton.type = "button";
     launchButton.className = "btn btn-secondary btn-sm";
-    launchButton.textContent = analyzeT("page.tts.launchButton");
+    launchButton.textContent = analyzeT("page.operationSettings.launchCompanion");
     launchButton.addEventListener("click", () => {
       void (async (): Promise<void> => {
         const outcome = await runCaptureAction("launch-companion", {
           target: "analyze-compose",
-          activeTab: "tts",
+          activeTab: "dictate",
           deviceId: deviceSelect.value.trim() === "" ? null : deviceSelect.value.trim(),
         });
         this._captureStatus = outcome.status;
         this._notifyCaptureFeedback(
           outcome.ok ? "success" : "error",
           outcome.message,
-          "analyze-tts-launch"
+          "analyze-operation-launch"
         );
         populateDeviceSelect();
         renderStatus();
       })();
     });
-    actions.append(refreshButton, prepareModelButton, launchButton);
 
-    content.append(
-      createRow(analyzeT("page.tts.modeLabel"), modeSelect),
-      createRow(analyzeT("page.tts.languageLabel"), languageSelect),
-      createRow(analyzeT("page.tts.deviceLabel"), deviceSelect),
-      createRow(analyzeT("page.tts.companionLabel"), companionValue),
-      createRow(analyzeT("page.tts.runtimeLabel"), runtimeValue),
-      actions
+    const androidSection = createSection(
+      analyzeT("page.operationSettings.androidSection"),
+      analyzeT("page.operationSettings.androidHint")
     );
+    androidSection.append(
+      createRow(analyzeT("page.operationSettings.androidEnabledLabel"), androidEnabledLabel),
+      createRow(analyzeT("page.tts.deviceLabel"), deviceSelect),
+      createRow(analyzeT("page.operationSettings.androidStatusLabel"), androidStatusValue),
+      createRow(analyzeT("page.tts.companionLabel"), companionValue)
+    );
+
+    const dictationSection = createSection(
+      analyzeT("page.operationSettings.dictationSection"),
+      analyzeT("page.operationSettings.dictationHint")
+    );
+    dictationSection.append(
+      createRow(analyzeT("page.operationSettings.sourceLabel"), dictationModeSelect),
+      createRow(analyzeT("page.tts.languageLabel"), dictationLanguageSelect),
+      createRow(analyzeT("page.operationSettings.transcriptBackendLabel"), transcriptBackendSelect),
+      createRow(analyzeT("page.operationSettings.transcriptVariantLabel"), transcriptVariantSelect),
+      createRow(analyzeT("page.operationSettings.runtimeLabel"), transcriptValue)
+    );
+
+    const ambientSection = createSection(
+      analyzeT("page.operationSettings.ambientSection"),
+      analyzeT("page.operationSettings.ambientHint")
+    );
+    const ambientActions = document.createElement("div");
+    ambientActions.className = "analyze-operation-settings__actions";
+    ambientActions.append(saveAmbientButton);
+    ambientSection.append(
+      createRow(analyzeT("page.operationSettings.voiceCommandsToggleLabel"), voiceEnabledLabel),
+      createRow(analyzeT("page.operationSettings.ambientWakeLabel"), ambientWakeInput),
+      createRow(
+        analyzeT("page.operationSettings.ambientActiveWindowLabel"),
+        ambientActiveWindowInput
+      ),
+      createRow(analyzeT("page.operationSettings.ambientSilenceLabel"), ambientSilenceInput),
+      createRow(analyzeT("page.operationSettings.openCameraPhrasesLabel"), openCameraPhrasesInput),
+      createRow(analyzeT("page.operationSettings.capturePhrasesLabel"), capturePhrasesInput),
+      createRow(analyzeT("page.operationSettings.stopPhrasesLabel"), stopPhrasesInput),
+      ambientActions
+    );
+
+    const ttsSection = createSection(
+      analyzeT("page.operationSettings.ttsSection"),
+      analyzeT("page.operationSettings.ttsHint")
+    );
+    const ttsActions = document.createElement("div");
+    ttsActions.className = "analyze-operation-settings__actions";
+    ttsActions.append(refreshButton, prepareModelButton);
+    ttsSection.append(
+      createRow(analyzeT("page.tts.modeLabel"), ttsModeSelect),
+      createRow(analyzeT("page.tts.languageLabel"), ttsLanguageSelect),
+      createRow(analyzeT("page.tts.runtimeLabel"), ttsRuntimeValue),
+      ttsActions
+    );
+
+    const cameraSection = createSection(
+      analyzeT("page.operationSettings.cameraSection"),
+      analyzeT("page.operationSettings.cameraHint")
+    );
+    const cameraActions = document.createElement("div");
+    cameraActions.className = "analyze-operation-settings__actions";
+    cameraActions.append(launchButton);
+    cameraSection.append(
+      createRow(analyzeT("page.operationSettings.lensLabel"), lensSelect),
+      createRow(analyzeT("page.operationSettings.qualityLabel"), qualitySelect),
+      createRow(analyzeT("page.operationSettings.attachModeLabel"), attachModeSelect),
+      createRow(analyzeT("page.operationSettings.confirmationLabel"), confirmationSelect),
+      cameraActions
+    );
+
+    content.append(androidSection, dictationSection, ambientSection, ttsSection, cameraSection);
     populateDeviceSelect();
     renderStatus();
 
     ModalManager.open({
-      title: analyzeT("page.tts.settingsTitle"),
+      title: analyzeT("page.operationSettings.title"),
       content,
-      size: "medium",
-      containerClassName: "modal-tts-settings",
+      size: "large",
+      containerClassName: "modal-analyze-operation-settings",
     });
   }
 

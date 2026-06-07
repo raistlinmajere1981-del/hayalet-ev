@@ -229,117 +229,56 @@
                   </div>
 
                   <div class="settings-panel-scroll settings-panel-scroll--capture">
+                    <div
+                      class="settings-capture-overview"
+                      aria-label=""
+                      data-i18n-aria-label="capture.overview.ariaLabel"
+                    >
+                      <article class="settings-capture-overview-card" data-capture-summary="host">
+                        <span
+                          class="settings-capture-stat-label"
+                          data-i18n-text="capture.overview.host"
+                        ></span>
+                        <strong id="capture-summary-host">--</strong>
+                        <p class="settings-capture-note" id="capture-summary-host-note"></p>
+                      </article>
+                      <article
+                        class="settings-capture-overview-card"
+                        data-capture-summary="android"
+                      >
+                        <span
+                          class="settings-capture-stat-label"
+                          data-i18n-text="capture.overview.android"
+                        ></span>
+                        <strong id="capture-summary-android">--</strong>
+                        <p class="settings-capture-note" id="capture-summary-android-note"></p>
+                      </article>
+                      <article
+                        class="settings-capture-overview-card"
+                        data-capture-summary="runtime"
+                      >
+                        <span
+                          class="settings-capture-stat-label"
+                          data-i18n-text="capture.overview.runtime"
+                        ></span>
+                        <strong id="capture-summary-runtime">--</strong>
+                        <p class="settings-capture-note" id="capture-summary-runtime-note"></p>
+                      </article>
+                      <article
+                        class="settings-capture-overview-card"
+                        data-capture-summary="operation"
+                      >
+                        <span
+                          class="settings-capture-stat-label"
+                          data-i18n-text="capture.overview.operation"
+                        ></span>
+                        <strong id="capture-summary-operation">--</strong>
+                        <p class="settings-capture-note" id="capture-summary-operation-note"></p>
+                      </article>
+                    </div>
+
                     <div class="settings-capture-grid">
                       <section class="settings-capture-stack">
-                        <div
-                          class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
-                        >
-                          <div class="entrance-panel__header ds-surface-card__header">
-                            <div class="settings-capture-card-header">
-                              <span
-                                class="entrance-panel__title ds-panel-title"
-                                data-i18n-text="capture.defaults.title"
-                              ></span>
-                              <p
-                                class="settings-capture-card-copy"
-                                data-i18n-text="capture.defaults.subtitle"
-                              ></p>
-                            </div>
-                          </div>
-                          <div class="entrance-panel__content settings-capture-card-body">
-                            <div class="settings-capture-profile">
-                              <label
-                                class="settings-capture-profile-row"
-                                for="capture-default-device-select"
-                              >
-                                <span data-i18n-text="capture.defaults.device"></span>
-                                <span class="settings-capture-profile-input">
-                                  <select
-                                    class="select"
-                                    id="capture-default-device-select"
-                                  ></select>
-                                </span>
-                              </label>
-                              <label
-                                class="settings-capture-profile-row"
-                                for="capture-default-lens-select"
-                              >
-                                <span data-i18n-text="capture.defaults.lens"></span>
-                                <span class="settings-capture-profile-input">
-                                  <select class="select" id="capture-default-lens-select">
-                                    <option
-                                      value="back"
-                                      data-i18n-text="capture.defaults.lensOptions.back"
-                                    ></option>
-                                    <option
-                                      value="front"
-                                      data-i18n-text="capture.defaults.lensOptions.front"
-                                    ></option>
-                                  </select>
-                                </span>
-                              </label>
-                              <label
-                                class="settings-capture-profile-row"
-                                for="capture-default-quality-select"
-                              >
-                                <span data-i18n-text="capture.defaults.quality"></span>
-                                <span class="settings-capture-profile-input">
-                                  <select class="select" id="capture-default-quality-select">
-                                    <option
-                                      value="high"
-                                      data-i18n-text="capture.defaults.qualityOptions.high"
-                                    ></option>
-                                    <option
-                                      value="balanced"
-                                      data-i18n-text="capture.defaults.qualityOptions.balanced"
-                                    ></option>
-                                  </select>
-                                </span>
-                              </label>
-                              <label
-                                class="settings-capture-profile-row"
-                                for="capture-default-attach-mode-select"
-                              >
-                                <span data-i18n-text="capture.defaults.attachMode"></span>
-                                <span class="settings-capture-profile-input">
-                                  <select class="select" id="capture-default-attach-mode-select">
-                                    <option
-                                      value="manual-sync"
-                                      data-i18n-text="capture.defaults.attachOptions.manualSync"
-                                    ></option>
-                                    <option
-                                      value="auto-stage"
-                                      data-i18n-text="capture.defaults.attachOptions.autoStage"
-                                    ></option>
-                                  </select>
-                                </span>
-                              </label>
-                              <label
-                                class="settings-capture-profile-row"
-                                for="capture-default-confirmation-select"
-                              >
-                                <span data-i18n-text="capture.defaults.confirmation"></span>
-                                <span class="settings-capture-profile-input">
-                                  <select class="select" id="capture-default-confirmation-select">
-                                    <option
-                                      value="toast"
-                                      data-i18n-text="capture.defaults.confirmationOptions.toast"
-                                    ></option>
-                                    <option
-                                      value="none"
-                                      data-i18n-text="capture.defaults.confirmationOptions.none"
-                                    ></option>
-                                  </select>
-                                </span>
-                              </label>
-                            </div>
-                            <p
-                              class="settings-capture-note settings-capture-note--status"
-                              id="capture-defaults-feedback"
-                            ></p>
-                          </div>
-                        </div>
-
                         <div
                           class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
                         >
@@ -394,217 +333,6 @@
                             <div class="settings-capture-card-header">
                               <span
                                 class="entrance-panel__title ds-panel-title"
-                                data-i18n-text="capture.voiceCommands.title"
-                              ></span>
-                              <p
-                                class="settings-capture-card-copy"
-                                data-i18n-text="capture.voiceCommands.subtitle"
-                              ></p>
-                            </div>
-                          </div>
-                          <div class="entrance-panel__content settings-capture-card-body">
-                            <div class="settings-capture-profile">
-                              <label
-                                class="settings-capture-profile-row settings-capture-profile-row--toggle"
-                                for="capture-voice-command-enabled"
-                              >
-                                <span data-i18n-text="capture.voiceCommands.enabled"></span>
-                                <span
-                                  class="settings-capture-profile-input settings-capture-profile-input--check"
-                                >
-                                  <input id="capture-voice-command-enabled" type="checkbox" />
-                                </span>
-                              </label>
-                              <label
-                                class="settings-capture-profile-row settings-capture-profile-row--stacked"
-                                for="capture-ambient-wake-input"
-                              >
-                                <span data-i18n-text="capture.voiceCommands.ambientWake"></span>
-                                <span
-                                  class="settings-capture-profile-input settings-capture-profile-input--full"
-                                >
-                                  <textarea
-                                    id="capture-ambient-wake-input"
-                                    class="input input-sm settings-capture-command-textarea"
-                                    rows="2"
-                                    spellcheck="false"
-                                  ></textarea>
-                                </span>
-                              </label>
-                              <label
-                                class="settings-capture-profile-row"
-                                for="capture-ambient-active-window-input"
-                              >
-                                <span
-                                  data-i18n-text="capture.voiceCommands.ambientActiveWindow"
-                                ></span>
-                                <span class="settings-capture-profile-input">
-                                  <input
-                                    id="capture-ambient-active-window-input"
-                                    class="input input-sm"
-                                    type="number"
-                                    min="1000"
-                                    max="30000"
-                                    step="100"
-                                  />
-                                </span>
-                              </label>
-                              <label
-                                class="settings-capture-profile-row"
-                                for="capture-ambient-silence-input"
-                              >
-                                <span data-i18n-text="capture.voiceCommands.ambientSilence"></span>
-                                <span class="settings-capture-profile-input">
-                                  <input
-                                    id="capture-ambient-silence-input"
-                                    class="input input-sm"
-                                    type="number"
-                                    min="300"
-                                    max="10000"
-                                    step="100"
-                                  />
-                                </span>
-                              </label>
-                            </div>
-                            <div class="settings-capture-command-grid">
-                              <label
-                                class="settings-capture-profile-row settings-capture-profile-row--stacked"
-                                for="capture-voice-command-open-camera-input"
-                              >
-                                <span
-                                  data-i18n-text="capture.voiceCommands.commands.openCamera"
-                                ></span>
-                                <span
-                                  class="settings-capture-profile-input settings-capture-profile-input--full"
-                                >
-                                  <textarea
-                                    id="capture-voice-command-open-camera-input"
-                                    class="input input-sm settings-capture-command-textarea"
-                                    rows="3"
-                                    spellcheck="false"
-                                  ></textarea>
-                                </span>
-                              </label>
-                              <label
-                                class="settings-capture-profile-row settings-capture-profile-row--stacked"
-                                for="capture-voice-command-capture-input"
-                              >
-                                <span
-                                  data-i18n-text="capture.voiceCommands.commands.capture"
-                                ></span>
-                                <span
-                                  class="settings-capture-profile-input settings-capture-profile-input--full"
-                                >
-                                  <textarea
-                                    id="capture-voice-command-capture-input"
-                                    class="input input-sm settings-capture-command-textarea"
-                                    rows="3"
-                                    spellcheck="false"
-                                  ></textarea>
-                                </span>
-                              </label>
-                              <label
-                                class="settings-capture-profile-row settings-capture-profile-row--stacked"
-                                for="capture-voice-command-stop-input"
-                              >
-                                <span data-i18n-text="capture.voiceCommands.commands.stop"></span>
-                                <span
-                                  class="settings-capture-profile-input settings-capture-profile-input--full"
-                                >
-                                  <textarea
-                                    id="capture-voice-command-stop-input"
-                                    class="input input-sm settings-capture-command-textarea"
-                                    rows="3"
-                                    spellcheck="false"
-                                  ></textarea>
-                                </span>
-                              </label>
-                            </div>
-                            <div class="settings-capture-actions">
-                              <button
-                                id="capture-voice-command-save-btn"
-                                class="btn btn-secondary btn-sm"
-                                type="button"
-                                data-i18n-text="capture.voiceCommands.actions.save"
-                              ></button>
-                              <button
-                                id="capture-voice-command-reset-btn"
-                                class="btn btn-secondary btn-sm"
-                                type="button"
-                                data-i18n-text="capture.voiceCommands.actions.reset"
-                              ></button>
-                            </div>
-                            <p
-                              class="settings-capture-note settings-capture-note--status"
-                              id="capture-voice-command-feedback"
-                            ></p>
-                          </div>
-                        </div>
-
-                        <div
-                          class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
-                        >
-                          <div class="entrance-panel__header ds-surface-card__header">
-                            <div class="settings-capture-card-header">
-                              <span
-                                class="entrance-panel__title ds-panel-title"
-                                data-i18n-text="capture.policy.title"
-                              ></span>
-                              <p
-                                class="settings-capture-card-copy"
-                                data-i18n-text="capture.policy.subtitle"
-                              ></p>
-                            </div>
-                          </div>
-                          <div class="entrance-panel__content settings-capture-card-body">
-                            <div class="settings-capture-profile">
-                              <label
-                                class="settings-capture-profile-row settings-capture-profile-row--toggle"
-                                for="capture-provider-android-companion"
-                              >
-                                <span
-                                  data-i18n-text="capture.policy.providers.androidCompanion"
-                                ></span>
-                                <span
-                                  class="settings-capture-profile-input settings-capture-profile-input--check"
-                                >
-                                  <input id="capture-provider-android-companion" type="checkbox" />
-                                </span>
-                              </label>
-                              <label
-                                class="settings-capture-profile-row"
-                                for="capture-android-dictation-backend-select"
-                              >
-                                <span
-                                  data-i18n-text="capture.policy.androidDictationBackend"
-                                ></span>
-                                <span class="settings-capture-profile-input">
-                                  <select
-                                    class="select"
-                                    id="capture-android-dictation-backend-select"
-                                  >
-                                    <option
-                                      value="vosk"
-                                      data-i18n-text="capture.policy.androidDictationBackendOptions.vosk"
-                                    ></option>
-                                  </select>
-                                </span>
-                              </label>
-                            </div>
-                            <p
-                              class="settings-capture-note settings-capture-note--status"
-                              id="capture-policy-feedback"
-                            ></p>
-                          </div>
-                        </div>
-
-                        <div
-                          class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
-                        >
-                          <div class="entrance-panel__header ds-surface-card__header">
-                            <div class="settings-capture-card-header">
-                              <span
-                                class="entrance-panel__title ds-panel-title"
                                 data-i18n-text="capture.transcript.title"
                               ></span>
                               <p
@@ -614,64 +342,6 @@
                             </div>
                           </div>
                           <div class="entrance-panel__content settings-capture-card-body">
-                            <div class="settings-capture-profile">
-                              <div class="settings-capture-profile-row">
-                                <label
-                                  class="form-label"
-                                  id="app-transcript-backend-label"
-                                  for="app-transcript-backend-select"
-                                  data-i18n-text="user.transcriptBackend.label"
-                                ></label>
-                                <div class="settings-capture-profile-input">
-                                  <select
-                                    id="app-transcript-backend-select"
-                                    class="select select-sm"
-                                  >
-                                    <option
-                                      value="whisper.cpp"
-                                      data-i18n-text="user.transcriptBackend.options.whisper"
-                                    ></option>
-                                    <option
-                                      value="vosk"
-                                      data-i18n-text="user.transcriptBackend.options.vosk"
-                                    ></option>
-                                  </select>
-                                  <p
-                                    class="settings-capture-note"
-                                    id="app-transcript-backend-hint"
-                                    data-i18n-text="user.transcriptBackend.hint"
-                                  ></p>
-                                </div>
-                              </div>
-                              <div class="settings-capture-profile-row">
-                                <label
-                                  class="form-label"
-                                  id="app-transcript-profile-label"
-                                  for="app-transcript-profile-select"
-                                  data-i18n-text="user.transcriptProfile.label"
-                                ></label>
-                                <div class="settings-capture-profile-input">
-                                  <select
-                                    id="app-transcript-profile-select"
-                                    class="select select-sm"
-                                  >
-                                    <option
-                                      value="light"
-                                      data-i18n-text="user.transcriptProfile.options.light"
-                                    ></option>
-                                    <option
-                                      value="full"
-                                      data-i18n-text="user.transcriptProfile.options.full"
-                                    ></option>
-                                  </select>
-                                  <p
-                                    class="settings-capture-note"
-                                    id="app-transcript-profile-hint"
-                                    data-i18n-text="user.transcriptProfile.hint"
-                                  ></p>
-                                </div>
-                              </div>
-                            </div>
                             <section
                               class="user-profile-inline__runtime-panel"
                               aria-labelledby="app-transcript-runtime-label"
@@ -726,10 +396,13 @@
                                   data-i18n-text="user.transcriptRuntime.actions.refresh"
                                 ></button>
                               </div>
-                              <div
-                                class="user-profile-inline__runtime-models"
-                                id="app-transcript-runtime-models"
-                              ></div>
+                              <details class="settings-capture-details">
+                                <summary data-i18n-text="capture.transcript.modelsSummary"></summary>
+                                <div
+                                  class="user-profile-inline__runtime-models"
+                                  id="app-transcript-runtime-models"
+                                ></div>
+                              </details>
                               <p
                                 class="settings-capture-note user-profile-inline__runtime-feedback"
                                 id="app-transcript-runtime-feedback"
@@ -801,101 +474,104 @@
                               ></p>
                             </div>
 
-                            <div class="settings-capture-preview-card">
+                            <details class="settings-capture-details">
+                              <summary data-i18n-text="capture.android.detailsSummary"></summary>
+                              <div class="settings-capture-preview-card">
+                                <div
+                                  class="settings-capture-status-grid settings-capture-status-grid--detail"
+                                >
+                                  <article class="settings-capture-stat-card">
+                                    <span
+                                      class="settings-capture-stat-label"
+                                      data-i18n-text="capture.android.scrcpy.available"
+                                    ></span>
+                                    <strong id="capture-scrcpy-available">--</strong>
+                                  </article>
+                                  <article class="settings-capture-stat-card">
+                                    <span
+                                      class="settings-capture-stat-label"
+                                      data-i18n-text="capture.android.scrcpy.version"
+                                    ></span>
+                                    <strong id="capture-scrcpy-version">--</strong>
+                                  </article>
+                                  <article class="settings-capture-stat-card">
+                                    <span
+                                      class="settings-capture-stat-label"
+                                      data-i18n-text="capture.android.scrcpy.mode"
+                                    ></span>
+                                    <strong id="capture-scrcpy-mode">--</strong>
+                                  </article>
+                                  <article class="settings-capture-stat-card">
+                                    <span
+                                      class="settings-capture-stat-label"
+                                      data-i18n-text="capture.android.scrcpy.device"
+                                    ></span>
+                                    <strong id="capture-scrcpy-device">--</strong>
+                                  </article>
+                                </div>
+                                <p class="settings-capture-note" id="capture-scrcpy-feedback"></p>
+                                <div class="settings-capture-section-header">
+                                  <span
+                                    class="settings-capture-stat-label"
+                                    data-i18n-text="capture.android.scrcpy.logs"
+                                  ></span>
+                                </div>
+                                <ul
+                                  class="settings-capture-progress-details"
+                                  id="capture-scrcpy-log-list"
+                                ></ul>
+                              </div>
+
                               <div
                                 class="settings-capture-status-grid settings-capture-status-grid--detail"
                               >
                                 <article class="settings-capture-stat-card">
                                   <span
                                     class="settings-capture-stat-label"
-                                    data-i18n-text="capture.android.scrcpy.available"
+                                    data-i18n-text="capture.android.bridgeStatus"
                                   ></span>
-                                  <strong id="capture-scrcpy-available">--</strong>
+                                  <strong id="capture-android-bridge-status">--</strong>
                                 </article>
                                 <article class="settings-capture-stat-card">
                                   <span
                                     class="settings-capture-stat-label"
-                                    data-i18n-text="capture.android.scrcpy.version"
+                                    data-i18n-text="capture.android.permissions"
                                   ></span>
-                                  <strong id="capture-scrcpy-version">--</strong>
+                                  <strong id="capture-android-permissions">--</strong>
                                 </article>
                                 <article class="settings-capture-stat-card">
                                   <span
                                     class="settings-capture-stat-label"
-                                    data-i18n-text="capture.android.scrcpy.mode"
+                                    data-i18n-text="capture.android.reverseStatus"
                                   ></span>
-                                  <strong id="capture-scrcpy-mode">--</strong>
+                                  <strong id="capture-android-reverse-status">--</strong>
                                 </article>
                                 <article class="settings-capture-stat-card">
                                   <span
                                     class="settings-capture-stat-label"
-                                    data-i18n-text="capture.android.scrcpy.device"
+                                    data-i18n-text="capture.android.expectedVersion"
                                   ></span>
-                                  <strong id="capture-scrcpy-device">--</strong>
+                                  <strong id="capture-android-expected-version">--</strong>
                                 </article>
                               </div>
-                              <p class="settings-capture-note" id="capture-scrcpy-feedback"></p>
-                              <div class="settings-capture-section-header">
-                                <span
-                                  class="settings-capture-stat-label"
-                                  data-i18n-text="capture.android.scrcpy.logs"
-                                ></span>
-                              </div>
-                              <ul
-                                class="settings-capture-progress-details"
-                                id="capture-scrcpy-log-list"
-                              ></ul>
-                            </div>
 
-                            <div
-                              class="settings-capture-status-grid settings-capture-status-grid--detail"
-                            >
-                              <article class="settings-capture-stat-card">
-                                <span
-                                  class="settings-capture-stat-label"
-                                  data-i18n-text="capture.android.bridgeStatus"
-                                ></span>
-                                <strong id="capture-android-bridge-status">--</strong>
-                              </article>
-                              <article class="settings-capture-stat-card">
-                                <span
-                                  class="settings-capture-stat-label"
-                                  data-i18n-text="capture.android.permissions"
-                                ></span>
-                                <strong id="capture-android-permissions">--</strong>
-                              </article>
-                              <article class="settings-capture-stat-card">
-                                <span
-                                  class="settings-capture-stat-label"
-                                  data-i18n-text="capture.android.reverseStatus"
-                                ></span>
-                                <strong id="capture-android-reverse-status">--</strong>
-                              </article>
-                              <article class="settings-capture-stat-card">
-                                <span
-                                  class="settings-capture-stat-label"
-                                  data-i18n-text="capture.android.expectedVersion"
-                                ></span>
-                                <strong id="capture-android-expected-version">--</strong>
-                              </article>
-                            </div>
-
-                            <section class="settings-capture-device-list-shell">
-                              <div class="settings-capture-section-header">
-                                <span
-                                  class="settings-capture-stat-label"
-                                  data-i18n-text="capture.android.deviceList.title"
-                                ></span>
-                                <p
-                                  class="settings-capture-note"
-                                  data-i18n-text="capture.android.deviceList.subtitle"
-                                ></p>
-                              </div>
-                              <div
-                                id="capture-android-device-list"
-                                class="settings-capture-device-list"
-                              ></div>
-                            </section>
+                              <section class="settings-capture-device-list-shell">
+                                <div class="settings-capture-section-header">
+                                  <span
+                                    class="settings-capture-stat-label"
+                                    data-i18n-text="capture.android.deviceList.title"
+                                  ></span>
+                                  <p
+                                    class="settings-capture-note"
+                                    data-i18n-text="capture.android.deviceList.subtitle"
+                                  ></p>
+                                </div>
+                                <div
+                                  id="capture-android-device-list"
+                                  class="settings-capture-device-list"
+                                ></div>
+                              </section>
+                            </details>
 
                             <div class="settings-capture-actions">
                               <button

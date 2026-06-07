@@ -108,8 +108,7 @@ export class SessionManager {
       await Promise.all(
         staleSessions
           .filter((item): item is { entry: string; sessionPath: string } => item !== null)
-          .map(async ({ entry, sessionPath }) => {
-            console.info(await loggerT("logs.cleanupOldSession", { sessionId: entry }));
+          .map(async ({ sessionPath }) => {
             await rm(sessionPath, { recursive: true, force: true });
           })
       );

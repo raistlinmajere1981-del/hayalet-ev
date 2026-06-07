@@ -98,7 +98,7 @@ export function parseV4l2DeviceForLabel(output: string, label: string): string |
 }
 
 export function buildScrcpyV4l2SetupHint(): string {
-  return `sudo modprobe v4l2loopback video_nr=42 card_label="${CAPTURE_SCRCPY_V4L2_LABEL}" exclusive_caps=1`;
+  return "npm run capture:v4l2:setup";
 }
 
 export async function resolveScrcpyV4l2Sink(): Promise<

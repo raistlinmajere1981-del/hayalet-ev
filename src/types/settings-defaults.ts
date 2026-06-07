@@ -84,6 +84,8 @@ export function createDefaultSettings(): AppSettings {
         photoQuality: "high",
         attachMode: "manual-sync",
         commandConfirmation: "toast",
+        dictationMode: "local",
+        dictationLanguage: "tr",
         androidTranscriptModelVariant: "light",
         androidDictationBackend: "vosk",
         ttsMode: "local",

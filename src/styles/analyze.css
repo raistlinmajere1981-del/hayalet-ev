@@ -865,6 +865,90 @@
   gap: var(--space-2);
 }
 
+.analyze-operation-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  min-width: min(72vw, 56rem);
+}
+
+.analyze-operation-settings__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-panel) 86%, transparent);
+}
+
+.analyze-operation-settings__section-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.analyze-operation-settings__section-head h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-base);
+}
+
+.analyze-operation-settings__section-head p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+.analyze-operation-settings__row {
+  display: grid;
+  grid-template-columns: minmax(calc(var(--space-16) * 1.35), 0.42fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.analyze-operation-settings__label {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.analyze-operation-settings__value {
+  min-height: var(--btn-height-sm);
+  padding: var(--space-2);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+}
+
+.analyze-operation-settings__textarea {
+  min-height: calc(var(--space-8) + var(--space-4));
+  resize: vertical;
+}
+
+.analyze-operation-settings__inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.analyze-operation-settings__inline-check input {
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.analyze-operation-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
 .page-analyze {
   position: relative;
   height: var(--layout-page-height);
@@ -986,6 +1070,15 @@
   .compose-dictation-controls {
     max-width: calc(100% - var(--space-4));
     flex-wrap: wrap;
+  }
+
+  .analyze-operation-settings {
+    grid-template-columns: 1fr;
+    min-width: 0;
+  }
+
+  .analyze-operation-settings__row {
+    grid-template-columns: 1fr;
   }
 }
 

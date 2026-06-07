@@ -1,6 +1,10 @@
 import type { SlotId, ProviderId, AllProviderId, AssistantProviderId } from "./common.js";
 import type { AppLanguage } from "./i18n.js";
-import type { TranscriptDictationBackend, TranscriptModelVariant } from "./transcript.js";
+import type {
+  TranscriptDictationBackend,
+  TranscriptModelVariant,
+  TranscriptSupportedLanguage,
+} from "./transcript.js";
 import type { TtsLanguage, TtsMode } from "./tts.js";
 export type { AppLanguage } from "./i18n.js";
 
@@ -229,6 +233,7 @@ export type CapturePhotoQuality = "balanced" | "high";
 export type CaptureAttachMode = "manual-sync" | "auto-stage";
 export type CaptureCommandConfirmation = "none" | "toast";
 export type AndroidDictationBackend = "whisper.cpp" | "vosk";
+export type AnalyzeDictationMode = "local" | "android";
 
 export interface CaptureDefaultsSettings {
   preferredDeviceId?: string | null;
@@ -236,6 +241,8 @@ export interface CaptureDefaultsSettings {
   photoQuality?: CapturePhotoQuality;
   attachMode?: CaptureAttachMode;
   commandConfirmation?: CaptureCommandConfirmation;
+  dictationMode?: AnalyzeDictationMode;
+  dictationLanguage?: TranscriptSupportedLanguage;
   androidTranscriptModelVariant?: TranscriptModelVariant;
   androidDictationBackend?: AndroidDictationBackend;
   ttsMode?: TtsMode;

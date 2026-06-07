@@ -276,9 +276,19 @@ export interface CaptureAndroidBuildDependencyStatus {
   installable: boolean;
 }
 
+export interface CaptureV4l2LoopbackDependencyStatus extends CaptureHostToolDependencyStatus {
+  required: boolean;
+  moduleLoaded: boolean;
+  modulePath: string | null;
+  controlPath: string | null;
+  devicePath: string | null;
+  setupCommand: string | null;
+}
+
 export interface CaptureHostDependenciesStatus {
   adb: CaptureHostToolDependencyStatus;
   scrcpy: CaptureHostToolDependencyStatus;
+  v4l2Loopback: CaptureV4l2LoopbackDependencyStatus;
   ffmpeg: CaptureHostToolDependencyStatus & {
     ffprobePath: string | null;
     managedDir: string | null;

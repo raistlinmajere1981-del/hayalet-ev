@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 test("analyze page wires central capture inbox imports into staged attachments", () => {
   const htmlSource = readFileSync("src/pages/analyze.html", "utf8");
+  const settingsHtmlSource = readFileSync("src/pages/settings.html", "utf8");
   const pageSource = readFileSync("src/js/pages/analyze.ts", "utf8");
   const uploadSource = readFileSync("src/js/pages/analyze/upload-handler.ts", "utf8");
   const captureClientSource = readFileSync("src/js/modules/capture/electron-client.ts", "utf8");
@@ -30,6 +31,7 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(htmlSource, /id="compose-android-status"/);
   assert.match(htmlSource, /id="compose-ambient-btn"/);
   assert.match(htmlSource, /id="compose-ambient-status"/);
+  assert.match(htmlSource, /id="analyze-tts-settings-btn"/);
   assert.match(htmlSource, /id="android-camera-panel"/);
   assert.match(htmlSource, /<video[\s\S]*id="android-camera-feed"/);
   assert.match(htmlSource, /<img[\s\S]*id="android-camera-frame"/);
@@ -51,8 +53,13 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(pageSource, /getUserMedia/);
   assert.match(pageSource, /_stageCaptureAsset/);
   assert.match(pageSource, /openAndroidCameraManagement/);
+  assert.match(pageSource, /_openOperationSettingsOverlay/);
+  assert.match(pageSource, /capture\.defaults\.dictationMode/);
+  assert.match(pageSource, /capture\.defaults\.dictationLanguage/);
+  assert.match(pageSource, /normalizeCapturePhraseList/);
   assert.doesNotMatch(pageSource, /_openCapturePanel/);
   assert.doesNotMatch(pageSource, /_closeCapturePanel/);
+  assert.doesNotMatch(pageSource, /_openTtsSettingsOverlay/);
   assert.doesNotMatch(pageSource, /clearCapturePreview/);
   assert.match(pageSource, /capture-analyze-photo/);
   assert.match(pageSource, /start-camera-feed/);
@@ -181,9 +188,14 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(settingsTypeSource, /transcriptBackend\?: TranscriptDictationBackend/);
   assert.match(settingsTypeSource, /androidTranscriptModelVariant\?: TranscriptModelVariant/);
   assert.match(settingsTypeSource, /androidDictationBackend\?: AndroidDictationBackend/);
+  assert.match(settingsTypeSource, /export type AnalyzeDictationMode = "local" \| "android"/);
+  assert.match(settingsTypeSource, /dictationMode\?: AnalyzeDictationMode/);
+  assert.match(settingsTypeSource, /dictationLanguage\?: TranscriptSupportedLanguage/);
   assert.match(settingsTypeSource, /ambient\?: VoiceCommandAmbientSettings/);
   assert.match(settingsDefaultsSource, /androidTranscriptModelVariant: "light"/);
   assert.match(settingsDefaultsSource, /androidDictationBackend: "vosk"/);
+  assert.match(settingsDefaultsSource, /dictationMode: "local"/);
+  assert.match(settingsDefaultsSource, /dictationLanguage: "tr"/);
   assert.match(settingsDefaultsSource, /DEFAULT_AMBIENT_WAKE_PHRASES/);
   assert.match(settingsSchemaSource, /androidTranscriptModelVariant:[\s\S]*"light"/);
   assert.match(
@@ -194,6 +206,8 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(captureTypesSource, /defaults\?\.\["androidDictationBackend"\]/);
   assert.match(captureTypesSource, /androidDictationBackend: settings\.androidDictationBackend/);
   assert.match(settingsSchemaSource, /normalizeAmbientWakePhrases/);
+  assert.match(settingsSchemaSource, /normalizeAnalyzeDictationMode/);
+  assert.match(settingsSchemaSource, /dictationLanguage:[\s\S]*resolveTranscriptSupportedLanguage/);
   assert.match(settingsSchemaSource, /DEFAULT_AMBIENT_ACTIVE_WINDOW_MS/);
   assert.match(captureTypesSource, /return "vosk";/);
   assert.match(captureTypesSource, /vosk-model-small-tr-0\.3\.zip/);
@@ -216,6 +230,8 @@ test("analyze page wires central capture inbox imports into staged attachments",
     dictationUiSource,
     /cancelAndroidTranscription\(requestId, options\.getLabels\(\)\.androidTimeoutMessage\)/
   );
+  assert.match(dictationUiSource, /getLanguage\?: \(\) => string \| null/);
+  assert.match(dictationUiSource, /language: options\.getLanguage\?\.\(\) \?\? null/);
   assert.match(
     dictationUiSource,
     /button\.disabled = state === "transcribing" && mode !== "android"/
@@ -234,4 +250,14 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(captureServiceSource, /requirePreviewActive: false/);
   assert.match(captureServiceSource, /requireSession: false/);
   assert.doesNotMatch(pageSource, /captureState === "pending-launch"[\s\S]*return "starting"/);
+  assert.match(settingsHtmlSource, /id="capture-host-dependencies-prepare-btn"/);
+  assert.match(settingsHtmlSource, /data-i18n-text="capture\.dependencies\.title"/);
+  assert.doesNotMatch(settingsHtmlSource, /data-i18n-text="capture\.defaults\.title"/);
+  assert.doesNotMatch(settingsHtmlSource, /data-i18n-text="capture\.voiceCommands\.title"/);
+  assert.doesNotMatch(settingsHtmlSource, /data-i18n-text="capture\.policy\.title"/);
+  assert.doesNotMatch(settingsHtmlSource, /id="capture-default-device-select"/);
+  assert.doesNotMatch(settingsHtmlSource, /id="capture-provider-android-companion"/);
+  assert.doesNotMatch(settingsHtmlSource, /id="capture-voice-command-save-btn"/);
+  assert.doesNotMatch(settingsHtmlSource, /id="app-transcript-backend-select"/);
+  assert.doesNotMatch(settingsHtmlSource, /id="app-transcript-profile-select"/);
 });

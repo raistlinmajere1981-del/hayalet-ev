@@ -1183,7 +1183,7 @@ body.is-scroll-locked {
 .settings-capture-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: var(--space-5);
+  gap: var(--space-4);
   align-items: start;
 }
 
@@ -1195,7 +1195,7 @@ body.is-scroll-locked {
 }
 
 .settings-hub-panel[data-settings-panel="capture"] .entrance-panel__content {
-  padding: var(--space-4);
+  padding: var(--space-3);
 }
 
 .settings-capture-card-header {
@@ -1208,19 +1208,71 @@ body.is-scroll-locked {
   margin: 0;
   color: var(--text-secondary);
   font-size: var(--text-xs);
-  line-height: 1.5;
+  line-height: 1.35;
 }
 
 .settings-capture-card-body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
-.settings-capture-profile {
+.settings-capture-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.settings-capture-overview-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: var(--border-1) solid
+    color-mix(in srgb, var(--settings-workbench-border) 82%, transparent);
+  background: color-mix(in srgb, var(--bg-surface-3) 68%, transparent);
+}
+
+.settings-capture-overview-card strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-capture-overview-card .settings-capture-note {
+  overflow: hidden;
+  min-height: 1.2em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-capture-overview-card[data-state="ready"],
+.settings-capture-state-pill[data-state="ready"],
+.settings-capture-dependency-row[data-state="ready"] .settings-capture-state-pill {
+  border-color: color-mix(in srgb, var(--color-success) 42%, var(--settings-workbench-border));
+}
+
+.settings-capture-overview-card[data-state="running"],
+.settings-capture-state-pill[data-state="running"] {
+  border-color: color-mix(in srgb, var(--color-accent) 48%, var(--settings-workbench-border));
+}
+
+.settings-capture-overview-card[data-state="warning"],
+.settings-capture-state-pill[data-state="missing"],
+.settings-capture-dependency-row[data-state="missing"] .settings-capture-state-pill {
+  border-color: color-mix(in srgb, var(--color-warning) 48%, var(--settings-workbench-border));
+}
+
+.settings-capture-overview-card[data-state="blocked"],
+.settings-capture-state-pill[data-state="blocked"],
+.settings-capture-dependency-row[data-state="blocked"] .settings-capture-state-pill {
+  border-color: color-mix(in srgb, var(--color-error) 48%, var(--settings-workbench-border));
 }
 
 .settings-capture-profile-row {
@@ -1230,21 +1282,6 @@ body.is-scroll-locked {
   align-items: start;
 }
 
-.settings-capture-toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.settings-capture-profile-row--toggle {
-  align-items: center;
-}
-
-.settings-capture-profile-row--stacked {
-  grid-template-columns: 1fr;
-}
-
 .settings-capture-profile-input {
   display: flex;
   flex-direction: column;
@@ -1252,33 +1289,8 @@ body.is-scroll-locked {
   min-width: 0;
 }
 
-.settings-capture-profile-input .select {
-  width: min(100%, var(--layout-settings-capture-select-max-w));
-}
-
 .settings-capture-profile-input .input {
   width: min(100%, var(--layout-settings-capture-input-max-w));
-}
-
-.settings-capture-profile-input--check {
-  align-items: flex-end;
-}
-
-.settings-capture-profile-input--full .input {
-  width: 100%;
-}
-
-.settings-capture-command-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-.settings-capture-command-textarea {
-  --field-textarea-min-h: var(--space-16);
-  --field-textarea-padding: var(--space-2);
-  width: 100%;
-  font-size: var(--text-xs);
 }
 
 .settings-capture-section-header {
@@ -1367,6 +1379,28 @@ body.is-scroll-locked {
   gap: var(--space-2);
 }
 
+.settings-capture-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings-capture-details[open] {
+  gap: var(--space-3);
+}
+
+.settings-capture-details summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+}
+
+.settings-capture-details[open] summary {
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+}
+
 .settings-capture-progress {
   display: flex;
   flex-direction: column;
@@ -1449,6 +1483,31 @@ body.is-scroll-locked {
   gap: var(--space-2);
 }
 
+.settings-capture-dependency-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: var(--border-1) solid
+    color-mix(in srgb, var(--settings-workbench-border) 78%, transparent);
+  background: color-mix(in srgb, var(--bg-surface-2) 62%, transparent);
+}
+
+.settings-capture-dependency-row > .settings-capture-note {
+  grid-column: 1 / -1;
+}
+
+.settings-capture-state-pill {
+  padding: var(--space-0-5) var(--space-2);
+  border: var(--border-1) solid var(--settings-workbench-border);
+  border-radius: var(--radius-badge);
+  color: var(--text-secondary);
+  font-size: var(--text-2xs);
+  line-height: 1.2;
+}
+
 .settings-capture-device-card {
   display: flex;
   flex-direction: column;
@@ -1494,6 +1553,17 @@ body.is-scroll-locked {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+}
+
+.settings-hub-panel[data-settings-panel="capture"] .user-profile-inline__runtime-panel {
+  gap: var(--space-3);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.settings-hub-panel[data-settings-panel="capture"] .user-profile-inline__runtime-model {
+  padding: var(--space-2);
 }
 
 .settings-capture-connect-row {
@@ -1996,6 +2066,10 @@ body.is-scroll-locked {
   .settings-capture-grid {
     grid-template-columns: 1fr;
   }
+
+  .settings-capture-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (--breakpoint-max-1024) {
@@ -2061,7 +2135,7 @@ body.is-scroll-locked {
     grid-template-columns: 1fr;
   }
 
-  .settings-capture-command-grid {
+  .settings-capture-overview {
     grid-template-columns: 1fr;
   }
 
