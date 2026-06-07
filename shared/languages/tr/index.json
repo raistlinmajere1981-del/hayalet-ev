@@ -5193,7 +5193,12 @@
           "availableYes": "Hazır",
           "availableNo": "Eksik",
           "feedbackReady": "scrcpy Linux v4l2 kamera feed'i veya interactive mirror oturumları için hazır.",
+          "feedbackMissing": "scrcpy kamera önizlemesi için host kurulumu gerekiyor.",
+          "feedbackNeedsSetup": "v4l2 kamera feed'i kullanmadan önce host kurulumu gerekiyor.",
+          "diagnostics": "Tanılama",
+          "setupCommand": "Kurulum komutu",
           "logs": "Son loglar",
+          "logsCount": "{{count}} kayıt",
           "logsEmpty": "Henüz scrcpy logu yok.",
           "modes": {
             "idle": "Boşta",

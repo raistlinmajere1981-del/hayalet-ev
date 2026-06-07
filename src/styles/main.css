@@ -1180,48 +1180,40 @@ body.is-scroll-locked {
   align-items: start;
 }
 
-.settings-capture-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: var(--space-4);
-  align-items: start;
+.settings-panel-scroll--capture {
+  gap: 0;
 }
 
-.settings-capture-stack {
+.settings-capture-report {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
-.settings-hub-panel[data-settings-panel="capture"] .entrance-panel__content {
-  padding: var(--space-3);
-}
-
-.settings-capture-card-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.settings-capture-card-copy {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
-  line-height: 1.35;
-}
-
-.settings-capture-card-body {
-  display: flex;
-  flex-direction: column;
+  min-height: 0;
   gap: var(--space-3);
+  padding: var(--space-3);
+  border: var(--border-1) solid var(--settings-workbench-border);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-accent-soft) 10%, transparent),
+      transparent 32%
+    ),
+    var(--settings-workbench-section);
+  box-shadow: var(--surface-shadow);
+}
+
+.settings-capture-report-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(var(--layout-action-flex-min), 0.42fr);
+  gap: var(--space-3);
+  align-items: stretch;
 }
 
 .settings-capture-overview {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  min-width: 0;
 }
 
 .settings-capture-overview-card {
@@ -1233,23 +1225,19 @@ body.is-scroll-locked {
   border-radius: var(--radius-lg);
   border: var(--border-1) solid
     color-mix(in srgb, var(--settings-workbench-border) 82%, transparent);
-  background: color-mix(in srgb, var(--bg-surface-3) 68%, transparent);
+  background: color-mix(in srgb, var(--bg-surface-3) 72%, transparent);
 }
 
 .settings-capture-overview-card strong {
-  overflow: hidden;
   color: var(--text-primary);
   font-size: var(--text-sm);
   line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .settings-capture-overview-card .settings-capture-note {
-  overflow: hidden;
   min-height: 1.2em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .settings-capture-overview-card[data-state="ready"],
@@ -1275,6 +1263,75 @@ body.is-scroll-locked {
 .settings-capture-state-pill[data-state="blocked"],
 .settings-capture-dependency-row[data-state="blocked"] .settings-capture-state-pill {
   border-color: color-mix(in srgb, var(--color-error) 48%, var(--settings-workbench-border));
+}
+
+.settings-capture-report-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+.settings-capture-report-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: var(--space-3);
+  border: var(--border-1) solid
+    color-mix(in srgb, var(--settings-workbench-border) 86%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-surface-2) 66%, transparent);
+}
+
+.settings-capture-report-section--infrastructure,
+.settings-capture-report-section--runtime {
+  align-self: stretch;
+}
+
+.settings-capture-report-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.settings-capture-report-group + .settings-capture-report-group {
+  padding-top: var(--space-3);
+  border-top: var(--border-1) solid
+    color-mix(in srgb, var(--settings-workbench-border) 72%, transparent);
+}
+
+.settings-capture-report-title {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  line-height: 1.2;
+}
+
+.settings-capture-report-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-1) solid
+    color-mix(in srgb, var(--settings-workbench-border) 78%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-surface-3) 62%, transparent);
+}
+
+.settings-capture-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-top: var(--space-3);
+  border-top: var(--border-1) solid
+    color-mix(in srgb, var(--settings-workbench-border) 70%, transparent);
 }
 
 .settings-capture-profile-row {
@@ -1314,7 +1371,7 @@ body.is-scroll-locked {
 
 .settings-capture-status-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
@@ -1322,21 +1379,21 @@ body.is-scroll-locked {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.settings-capture-report-section--infrastructure .settings-capture-status-grid,
+.settings-capture-report-section--infrastructure .settings-capture-status-grid--detail {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .settings-capture-stat-card {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-3);
-  border-radius: var(--radius-lg);
+  min-width: 0;
+  border-radius: var(--radius-md);
   border: var(--border-1) solid
     color-mix(in srgb, var(--settings-workbench-border) 80%, transparent);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-accent-soft) 14%, transparent),
-      transparent 70%
-    ),
-    color-mix(in srgb, var(--bg-surface-3) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-surface-3) 68%, transparent);
 }
 
 .settings-capture-stat-label {
@@ -1350,14 +1407,16 @@ body.is-scroll-locked {
   color: var(--text-primary);
   font-size: var(--text-sm);
   line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .settings-capture-preview-card {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.24fr) minmax(0, 1fr);
   gap: var(--space-2);
+  align-items: start;
   padding: var(--space-3);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   border: var(--border-1) solid
     color-mix(in srgb, var(--settings-workbench-border-strong) 74%, transparent);
   background:
@@ -1375,32 +1434,88 @@ body.is-scroll-locked {
   gap: var(--space-1);
 }
 
+.settings-capture-diagnostics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: var(--border-1) solid
+    color-mix(in srgb, var(--settings-workbench-border) 78%, transparent);
+  background: color-mix(in srgb, var(--bg-surface-3) 58%, transparent);
+}
+
+.settings-capture-diagnostics .settings-capture-section-header strong {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.settings-capture-command-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 0.24fr) minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.settings-capture-command-row code {
+  min-width: 0;
+  overflow: auto hidden;
+  padding: var(--space-1-5) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: var(--border-1) solid
+    color-mix(in srgb, var(--settings-workbench-border-strong) 62%, transparent);
+  background: color-mix(in srgb, var(--bg-surface-1) 74%, transparent);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.settings-capture-log-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.settings-capture-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: min(10rem, 28vh);
+  min-height: var(--space-7);
+  margin: 0;
+  overflow: auto;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: var(--border-1) solid
+    color-mix(in srgb, var(--settings-workbench-border) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-surface-1) 68%, transparent);
+  color: color-mix(in srgb, var(--text-secondary) 92%, transparent);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 1.4;
+}
+
+.settings-capture-log-list li {
+  overflow-wrap: anywhere;
+}
+
+.settings-capture-log-empty {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: var(--border-1) dashed
+    color-mix(in srgb, var(--settings-workbench-border) 70%, transparent);
+  background: color-mix(in srgb, var(--bg-surface-1) 46%, transparent);
+}
+
 .settings-capture-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-}
-
-.settings-capture-details {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.settings-capture-details[open] {
-  gap: var(--space-3);
-}
-
-.settings-capture-details summary {
-  cursor: pointer;
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
-  line-height: 1.35;
-}
-
-.settings-capture-details[open] summary {
-  margin-bottom: var(--space-2);
-  color: var(--text-primary);
 }
 
 .settings-capture-progress {
@@ -1418,6 +1533,10 @@ body.is-scroll-locked {
       transparent 70%
     ),
     color-mix(in srgb, var(--bg-surface-2) 68%, transparent);
+}
+
+.settings-capture-progress[data-state="idle"] {
+  background: color-mix(in srgb, var(--bg-surface-3) 62%, transparent);
 }
 
 .settings-capture-progress.is-hidden {
@@ -1480,8 +1599,7 @@ body.is-scroll-locked {
 }
 
 .settings-capture-device-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-2);
 }
 
@@ -1515,20 +1633,19 @@ body.is-scroll-locked {
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-3);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   border: var(--border-1) solid
-    color-mix(in srgb, var(--settings-workbench-border) 72%, transparent);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-accent-soft) 10%, transparent),
-      transparent 72%
-    ),
-    color-mix(in srgb, var(--bg-surface-2) 74%, transparent);
+    color-mix(in srgb, var(--settings-workbench-border) 78%, transparent);
+  background: color-mix(in srgb, var(--bg-surface-3) 62%, transparent);
 }
 
 .settings-capture-device-card.is-selected {
-  border-color: color-mix(in srgb, var(--color-accent) 44%, var(--settings-workbench-border));
+  border-color: color-mix(
+    in srgb,
+    var(--color-accent) 60%,
+    var(--settings-workbench-border-strong)
+  );
+  box-shadow: 0 0 0 var(--border-1) color-mix(in srgb, var(--color-accent) 24%, transparent);
 }
 
 .settings-capture-device-header {
@@ -1558,6 +1675,8 @@ body.is-scroll-locked {
 }
 
 .settings-hub-panel[data-settings-panel="capture"] .user-profile-inline__runtime-panel {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
   padding: 0;
   border: 0;
@@ -1566,6 +1685,34 @@ body.is-scroll-locked {
 
 .settings-hub-panel[data-settings-panel="capture"] .user-profile-inline__runtime-model {
   padding: var(--space-2);
+}
+
+.settings-capture-runtime-panel .user-profile-inline__runtime-meta {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-capture-report-section--infrastructure
+  .settings-capture-device-list-shell
+  .settings-capture-device-list {
+  grid-template-columns: repeat(auto-fit, minmax(var(--layout-action-flex-min), 1fr));
+}
+
+.settings-capture-report-section--runtime .settings-capture-runtime-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.settings-capture-report-section--runtime .settings-capture-subsection {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.settings-capture-report-section--runtime .user-profile-inline__runtime-models {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-height: 0;
+  overflow: auto;
 }
 
 .settings-capture-connect-row {
@@ -1579,58 +1726,7 @@ body.is-scroll-locked {
   flex: 1 1 var(--layout-settings-capture-connect-basis);
 }
 
-.settings-capture-device-list {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.settings-capture-device-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-lg);
-  border: var(--border-1) solid
-    color-mix(in srgb, var(--settings-workbench-border) 78%, transparent);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-accent-soft) 10%, transparent),
-      transparent 75%
-    ),
-    color-mix(in srgb, var(--bg-surface-2) 74%, transparent);
-}
-
-.settings-capture-device-card.is-selected {
-  border-color: color-mix(
-    in srgb,
-    var(--color-accent) 60%,
-    var(--settings-workbench-border-strong)
-  );
-  box-shadow: 0 0 0 var(--border-1) color-mix(in srgb, var(--color-accent) 24%, transparent);
-}
-
-.settings-capture-device-header {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.settings-capture-device-title {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.settings-capture-device-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.settings-capture-device-stat {
+.settings-capture-feedback-stack {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -2065,7 +2161,8 @@ body.is-scroll-locked {
 
 @media (--breakpoint-max-1200) {
   .settings-accounts-grid,
-  .settings-capture-grid {
+  .settings-capture-report-head,
+  .settings-capture-report-body {
     grid-template-columns: 1fr;
   }
 
@@ -2138,6 +2235,11 @@ body.is-scroll-locked {
   }
 
   .settings-capture-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-capture-preview-card,
+  .settings-capture-runtime-panel .user-profile-inline__runtime-meta {
     grid-template-columns: 1fr;
   }
 

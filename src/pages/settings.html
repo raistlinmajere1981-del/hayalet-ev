@@ -229,73 +229,127 @@
                   </div>
 
                   <div class="settings-panel-scroll settings-panel-scroll--capture">
-                    <div
-                      class="settings-capture-overview"
+                    <section
+                      class="settings-capture-report"
                       aria-label=""
                       data-i18n-aria-label="capture.overview.ariaLabel"
                     >
-                      <article class="settings-capture-overview-card" data-capture-summary="host">
-                        <span
-                          class="settings-capture-stat-label"
-                          data-i18n-text="capture.overview.host"
-                        ></span>
-                        <strong id="capture-summary-host">--</strong>
-                        <p class="settings-capture-note" id="capture-summary-host-note"></p>
-                      </article>
-                      <article
-                        class="settings-capture-overview-card"
-                        data-capture-summary="android"
-                      >
-                        <span
-                          class="settings-capture-stat-label"
-                          data-i18n-text="capture.overview.android"
-                        ></span>
-                        <strong id="capture-summary-android">--</strong>
-                        <p class="settings-capture-note" id="capture-summary-android-note"></p>
-                      </article>
-                      <article
-                        class="settings-capture-overview-card"
-                        data-capture-summary="runtime"
-                      >
-                        <span
-                          class="settings-capture-stat-label"
-                          data-i18n-text="capture.overview.runtime"
-                        ></span>
-                        <strong id="capture-summary-runtime">--</strong>
-                        <p class="settings-capture-note" id="capture-summary-runtime-note"></p>
-                      </article>
-                      <article
-                        class="settings-capture-overview-card"
-                        data-capture-summary="operation"
-                      >
-                        <span
-                          class="settings-capture-stat-label"
-                          data-i18n-text="capture.overview.operation"
-                        ></span>
-                        <strong id="capture-summary-operation">--</strong>
-                        <p class="settings-capture-note" id="capture-summary-operation-note"></p>
-                      </article>
-                    </div>
+                      <div class="settings-capture-report-head">
+                        <div class="settings-capture-overview">
+                          <article
+                            class="settings-capture-overview-card"
+                            data-capture-summary="host"
+                          >
+                            <span
+                              class="settings-capture-stat-label"
+                              data-i18n-text="capture.overview.host"
+                            ></span>
+                            <strong id="capture-summary-host">--</strong>
+                            <p class="settings-capture-note" id="capture-summary-host-note"></p>
+                          </article>
+                          <article
+                            class="settings-capture-overview-card"
+                            data-capture-summary="android"
+                          >
+                            <span
+                              class="settings-capture-stat-label"
+                              data-i18n-text="capture.overview.android"
+                            ></span>
+                            <strong id="capture-summary-android">--</strong>
+                            <p class="settings-capture-note" id="capture-summary-android-note"></p>
+                          </article>
+                          <article
+                            class="settings-capture-overview-card"
+                            data-capture-summary="runtime"
+                          >
+                            <span
+                              class="settings-capture-stat-label"
+                              data-i18n-text="capture.overview.runtime"
+                            ></span>
+                            <strong id="capture-summary-runtime">--</strong>
+                            <p class="settings-capture-note" id="capture-summary-runtime-note"></p>
+                          </article>
+                          <article
+                            class="settings-capture-overview-card"
+                            data-capture-summary="operation"
+                          >
+                            <span
+                              class="settings-capture-stat-label"
+                              data-i18n-text="capture.overview.operation"
+                            ></span>
+                            <strong id="capture-summary-operation">--</strong>
+                            <p
+                              class="settings-capture-note"
+                              id="capture-summary-operation-note"
+                            ></p>
+                          </article>
+                        </div>
 
-                    <div class="settings-capture-grid">
-                      <section class="settings-capture-stack">
-                        <div
-                          class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
+                        <section
+                          class="settings-capture-progress"
+                          id="capture-android-progress-shell"
+                          aria-live="polite"
                         >
-                          <div class="entrance-panel__header ds-surface-card__header">
-                            <div class="settings-capture-card-header">
+                          <div class="settings-capture-progress-header">
+                            <strong id="capture-android-progress-title"></strong>
+                            <span
+                              class="settings-capture-note"
+                              id="capture-android-progress-percent"
+                            ></span>
+                          </div>
+                          <div
+                            class="settings-capture-progress-bar"
+                            role="progressbar"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            aria-valuenow="0"
+                          >
+                            <span id="capture-android-progress-bar"></span>
+                          </div>
+                          <p
+                            class="settings-capture-note settings-capture-note--status"
+                            id="capture-android-progress-message"
+                          ></p>
+                          <ul
+                            class="settings-capture-progress-details"
+                            id="capture-android-progress-details"
+                          ></ul>
+                          <div
+                            class="settings-capture-actions settings-capture-actions--progress is-hidden"
+                            id="capture-android-progress-actions"
+                          >
+                            <button
+                              id="capture-android-progress-confirm-btn"
+                              class="btn btn-primary btn-sm"
+                              type="button"
+                              data-i18n-text="capture.android.progress.confirm"
+                            ></button>
+                            <button
+                              id="capture-android-progress-cancel-btn"
+                              class="btn btn-secondary btn-sm"
+                              type="button"
+                              data-i18n-text="capture.android.progress.cancel"
+                            ></button>
+                          </div>
+                        </section>
+                      </div>
+
+                      <div class="settings-capture-report-body">
+                        <section
+                          class="settings-capture-report-section settings-capture-report-section--infrastructure"
+                        >
+                          <section class="settings-capture-report-group">
+                            <header class="settings-capture-section-header">
                               <span
-                                class="entrance-panel__title ds-panel-title"
+                                class="settings-capture-report-title"
                                 data-i18n-text="capture.dependencies.title"
                               ></span>
                               <p
-                                class="settings-capture-card-copy"
+                                class="settings-capture-note"
                                 data-i18n-text="capture.dependencies.subtitle"
                               ></p>
-                            </div>
-                          </div>
-                          <div class="entrance-panel__content settings-capture-card-body">
-                            <div class="settings-capture-section-header">
+                            </header>
+                            <div class="settings-capture-report-summary">
                               <span
                                 class="settings-capture-stat-label"
                                 data-i18n-text="capture.dependencies.summaryLabel"
@@ -323,112 +377,20 @@
                                 data-i18n-text="capture.dependencies.actions.refresh"
                               ></button>
                             </div>
-                          </div>
-                        </div>
+                          </section>
 
-                        <div
-                          class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
-                        >
-                          <div class="entrance-panel__header ds-surface-card__header">
-                            <div class="settings-capture-card-header">
+                          <section class="settings-capture-report-group">
+                            <header class="settings-capture-section-header">
                               <span
-                                class="entrance-panel__title ds-panel-title"
-                                data-i18n-text="capture.transcript.title"
-                              ></span>
-                              <p
-                                class="settings-capture-card-copy"
-                                data-i18n-text="capture.transcript.subtitle"
-                              ></p>
-                            </div>
-                          </div>
-                          <div class="entrance-panel__content settings-capture-card-body">
-                            <section
-                              class="user-profile-inline__runtime-panel"
-                              aria-labelledby="app-transcript-runtime-label"
-                            >
-                              <div class="settings-capture-section-header">
-                                <label
-                                  class="form-label"
-                                  id="app-transcript-runtime-label"
-                                  for="app-transcript-runtime-ensure-btn"
-                                  data-i18n-text="user.transcriptRuntime.label"
-                                ></label>
-                                <p
-                                  class="settings-capture-note"
-                                  id="app-transcript-runtime-hint"
-                                  data-i18n-text="user.transcriptRuntime.hint"
-                                ></p>
-                              </div>
-                              <div class="user-profile-inline__runtime-meta">
-                                <article class="user-profile-inline__runtime-stat">
-                                  <span
-                                    id="app-transcript-runtime-status-label"
-                                    data-i18n-text="user.transcriptRuntime.statusLabel"
-                                  ></span>
-                                  <strong id="app-transcript-runtime-status-value">--</strong>
-                                </article>
-                                <article class="user-profile-inline__runtime-stat">
-                                  <span
-                                    id="app-transcript-runtime-active-language-label"
-                                    data-i18n-text="user.transcriptRuntime.activeLanguageLabel"
-                                  ></span>
-                                  <strong id="app-transcript-runtime-active-language">--</strong>
-                                </article>
-                                <article class="user-profile-inline__runtime-stat">
-                                  <span
-                                    id="app-transcript-runtime-active-model-label"
-                                    data-i18n-text="user.transcriptRuntime.activeModelLabel"
-                                  ></span>
-                                  <strong id="app-transcript-runtime-active-model">--</strong>
-                                </article>
-                              </div>
-                              <div class="user-profile-inline__runtime-actions">
-                                <button
-                                  id="app-transcript-runtime-ensure-btn"
-                                  class="btn btn-secondary btn-sm"
-                                  type="button"
-                                  data-i18n-text="user.transcriptRuntime.actions.prepare"
-                                ></button>
-                                <button
-                                  id="app-transcript-runtime-refresh-btn"
-                                  class="btn btn-secondary btn-sm"
-                                  type="button"
-                                  data-i18n-text="user.transcriptRuntime.actions.refresh"
-                                ></button>
-                              </div>
-                              <details class="settings-capture-details">
-                                <summary data-i18n-text="capture.transcript.modelsSummary"></summary>
-                                <div
-                                  class="user-profile-inline__runtime-models"
-                                  id="app-transcript-runtime-models"
-                                ></div>
-                              </details>
-                              <p
-                                class="settings-capture-note user-profile-inline__runtime-feedback"
-                                id="app-transcript-runtime-feedback"
-                              ></p>
-                            </section>
-                          </div>
-                        </div>
-                      </section>
-
-                      <section class="settings-capture-stack">
-                        <div
-                          class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
-                        >
-                          <div class="entrance-panel__header ds-surface-card__header">
-                            <div class="settings-capture-card-header">
-                              <span
-                                class="entrance-panel__title ds-panel-title"
+                                class="settings-capture-report-title"
                                 data-i18n-text="capture.android.title"
                               ></span>
                               <p
-                                class="settings-capture-card-copy"
+                                class="settings-capture-note"
                                 data-i18n-text="capture.android.subtitle"
                               ></p>
-                            </div>
-                          </div>
-                          <div class="entrance-panel__content settings-capture-card-body">
+                            </header>
+
                             <div class="settings-capture-status-grid">
                               <article class="settings-capture-stat-card">
                                 <span
@@ -474,54 +436,11 @@
                               ></p>
                             </div>
 
-                            <details class="settings-capture-details">
-                              <summary data-i18n-text="capture.android.detailsSummary"></summary>
-                              <div class="settings-capture-preview-card">
-                                <div
-                                  class="settings-capture-status-grid settings-capture-status-grid--detail"
-                                >
-                                  <article class="settings-capture-stat-card">
-                                    <span
-                                      class="settings-capture-stat-label"
-                                      data-i18n-text="capture.android.scrcpy.available"
-                                    ></span>
-                                    <strong id="capture-scrcpy-available">--</strong>
-                                  </article>
-                                  <article class="settings-capture-stat-card">
-                                    <span
-                                      class="settings-capture-stat-label"
-                                      data-i18n-text="capture.android.scrcpy.version"
-                                    ></span>
-                                    <strong id="capture-scrcpy-version">--</strong>
-                                  </article>
-                                  <article class="settings-capture-stat-card">
-                                    <span
-                                      class="settings-capture-stat-label"
-                                      data-i18n-text="capture.android.scrcpy.mode"
-                                    ></span>
-                                    <strong id="capture-scrcpy-mode">--</strong>
-                                  </article>
-                                  <article class="settings-capture-stat-card">
-                                    <span
-                                      class="settings-capture-stat-label"
-                                      data-i18n-text="capture.android.scrcpy.device"
-                                    ></span>
-                                    <strong id="capture-scrcpy-device">--</strong>
-                                  </article>
-                                </div>
-                                <p class="settings-capture-note" id="capture-scrcpy-feedback"></p>
-                                <div class="settings-capture-section-header">
-                                  <span
-                                    class="settings-capture-stat-label"
-                                    data-i18n-text="capture.android.scrcpy.logs"
-                                  ></span>
-                                </div>
-                                <ul
-                                  class="settings-capture-progress-details"
-                                  id="capture-scrcpy-log-list"
-                                ></ul>
-                              </div>
-
+                            <section class="settings-capture-subsection">
+                              <span
+                                class="settings-capture-stat-label"
+                                data-i18n-text="capture.android.detailsSummary"
+                              ></span>
                               <div
                                 class="settings-capture-status-grid settings-capture-status-grid--detail"
                               >
@@ -554,24 +473,103 @@
                                   <strong id="capture-android-expected-version">--</strong>
                                 </article>
                               </div>
+                            </section>
 
-                              <section class="settings-capture-device-list-shell">
+                            <section class="settings-capture-subsection">
+                              <span
+                                class="settings-capture-stat-label"
+                                data-i18n-text="capture.android.scrcpy.available"
+                              ></span>
+                              <div
+                                class="settings-capture-status-grid settings-capture-status-grid--detail"
+                              >
+                                <article class="settings-capture-stat-card">
+                                  <span
+                                    class="settings-capture-stat-label"
+                                    data-i18n-text="capture.android.scrcpy.available"
+                                  ></span>
+                                  <strong id="capture-scrcpy-available">--</strong>
+                                </article>
+                                <article class="settings-capture-stat-card">
+                                  <span
+                                    class="settings-capture-stat-label"
+                                    data-i18n-text="capture.android.scrcpy.version"
+                                  ></span>
+                                  <strong id="capture-scrcpy-version">--</strong>
+                                </article>
+                                <article class="settings-capture-stat-card">
+                                  <span
+                                    class="settings-capture-stat-label"
+                                    data-i18n-text="capture.android.scrcpy.mode"
+                                  ></span>
+                                  <strong id="capture-scrcpy-mode">--</strong>
+                                </article>
+                                <article class="settings-capture-stat-card">
+                                  <span
+                                    class="settings-capture-stat-label"
+                                    data-i18n-text="capture.android.scrcpy.device"
+                                  ></span>
+                                  <strong id="capture-scrcpy-device">--</strong>
+                                </article>
+                              </div>
+                              <div class="settings-capture-diagnostics">
                                 <div class="settings-capture-section-header">
                                   <span
                                     class="settings-capture-stat-label"
-                                    data-i18n-text="capture.android.deviceList.title"
+                                    data-i18n-text="capture.android.scrcpy.diagnostics"
                                   ></span>
-                                  <p
-                                    class="settings-capture-note"
-                                    data-i18n-text="capture.android.deviceList.subtitle"
-                                  ></p>
+                                  <strong id="capture-scrcpy-feedback">--</strong>
                                 </div>
                                 <div
-                                  id="capture-android-device-list"
-                                  class="settings-capture-device-list"
-                                ></div>
-                              </section>
-                            </details>
+                                  class="settings-capture-command-row is-hidden"
+                                  id="capture-scrcpy-setup-command-row"
+                                >
+                                  <span
+                                    class="settings-capture-stat-label"
+                                    data-i18n-text="capture.android.scrcpy.setupCommand"
+                                  ></span>
+                                  <code id="capture-scrcpy-setup-command"></code>
+                                </div>
+                                <div class="settings-capture-log-header">
+                                  <span
+                                    class="settings-capture-stat-label"
+                                    data-i18n-text="capture.android.scrcpy.logs"
+                                  ></span>
+                                  <span
+                                    class="settings-capture-note"
+                                    id="capture-scrcpy-log-count"
+                                  ></span>
+                                </div>
+                                <p
+                                  class="settings-capture-note settings-capture-log-empty"
+                                  id="capture-scrcpy-log-empty"
+                                  data-i18n-text="capture.android.scrcpy.logsEmpty"
+                                ></p>
+                                <ul
+                                  class="settings-capture-log-list"
+                                  id="capture-scrcpy-log-list"
+                                  role="log"
+                                  aria-live="polite"
+                                ></ul>
+                              </div>
+                            </section>
+
+                            <section class="settings-capture-device-list-shell">
+                              <div class="settings-capture-section-header">
+                                <span
+                                  class="settings-capture-stat-label"
+                                  data-i18n-text="capture.android.deviceList.title"
+                                ></span>
+                                <p
+                                  class="settings-capture-note"
+                                  data-i18n-text="capture.android.deviceList.subtitle"
+                                ></p>
+                              </div>
+                              <div
+                                id="capture-android-device-list"
+                                class="settings-capture-device-list"
+                              ></div>
+                            </section>
 
                             <div class="settings-capture-actions">
                               <button
@@ -600,54 +598,6 @@
                               ></button>
                             </div>
 
-                            <section
-                              class="settings-capture-progress is-hidden"
-                              id="capture-android-progress-shell"
-                              aria-live="polite"
-                            >
-                              <div class="settings-capture-progress-header">
-                                <strong id="capture-android-progress-title"></strong>
-                                <span
-                                  class="settings-capture-note"
-                                  id="capture-android-progress-percent"
-                                ></span>
-                              </div>
-                              <div
-                                class="settings-capture-progress-bar"
-                                role="progressbar"
-                                aria-valuemin="0"
-                                aria-valuemax="100"
-                                aria-valuenow="0"
-                              >
-                                <span id="capture-android-progress-bar"></span>
-                              </div>
-                              <p
-                                class="settings-capture-note settings-capture-note--status"
-                                id="capture-android-progress-message"
-                              ></p>
-                              <ul
-                                class="settings-capture-progress-details"
-                                id="capture-android-progress-details"
-                              ></ul>
-                              <div
-                                class="settings-capture-actions settings-capture-actions--progress is-hidden"
-                                id="capture-android-progress-actions"
-                              >
-                                <button
-                                  id="capture-android-progress-confirm-btn"
-                                  class="btn btn-primary btn-sm"
-                                  type="button"
-                                  data-i18n-text="capture.android.progress.confirm"
-                                ></button>
-                                <button
-                                  id="capture-android-progress-cancel-btn"
-                                  class="btn btn-secondary btn-sm"
-                                  type="button"
-                                  data-i18n-text="capture.android.progress.cancel"
-                                ></button>
-                              </div>
-                            </section>
-
                             <div class="settings-capture-connect-row">
                               <label
                                 class="settings-capture-profile-row"
@@ -671,18 +621,104 @@
                               ></button>
                             </div>
 
+                            <div class="settings-capture-feedback-stack">
+                              <p
+                                class="settings-capture-note settings-capture-note--status"
+                                id="capture-android-pairing-hint"
+                              ></p>
+                              <p
+                                class="settings-capture-note settings-capture-note--status"
+                                id="capture-android-feedback"
+                              ></p>
+                            </div>
+                          </section>
+                        </section>
+
+                        <section
+                          class="settings-capture-report-section settings-capture-report-section--runtime"
+                        >
+                          <header class="settings-capture-section-header">
+                            <span
+                              class="settings-capture-report-title"
+                              data-i18n-text="capture.transcript.title"
+                            ></span>
                             <p
-                              class="settings-capture-note settings-capture-note--status"
-                              id="capture-android-pairing-hint"
+                              class="settings-capture-note"
+                              data-i18n-text="capture.transcript.subtitle"
                             ></p>
+                          </header>
+                          <section
+                            class="user-profile-inline__runtime-panel settings-capture-runtime-panel"
+                            aria-labelledby="app-transcript-runtime-label"
+                          >
+                            <div class="settings-capture-section-header">
+                              <label
+                                class="form-label"
+                                id="app-transcript-runtime-label"
+                                for="app-transcript-runtime-ensure-btn"
+                                data-i18n-text="user.transcriptRuntime.label"
+                              ></label>
+                              <p
+                                class="settings-capture-note"
+                                id="app-transcript-runtime-hint"
+                                data-i18n-text="user.transcriptRuntime.hint"
+                              ></p>
+                            </div>
+                            <div class="user-profile-inline__runtime-meta">
+                              <article class="user-profile-inline__runtime-stat">
+                                <span
+                                  id="app-transcript-runtime-status-label"
+                                  data-i18n-text="user.transcriptRuntime.statusLabel"
+                                ></span>
+                                <strong id="app-transcript-runtime-status-value">--</strong>
+                              </article>
+                              <article class="user-profile-inline__runtime-stat">
+                                <span
+                                  id="app-transcript-runtime-active-language-label"
+                                  data-i18n-text="user.transcriptRuntime.activeLanguageLabel"
+                                ></span>
+                                <strong id="app-transcript-runtime-active-language">--</strong>
+                              </article>
+                              <article class="user-profile-inline__runtime-stat">
+                                <span
+                                  id="app-transcript-runtime-active-model-label"
+                                  data-i18n-text="user.transcriptRuntime.activeModelLabel"
+                                ></span>
+                                <strong id="app-transcript-runtime-active-model">--</strong>
+                              </article>
+                            </div>
+                            <div class="user-profile-inline__runtime-actions">
+                              <button
+                                id="app-transcript-runtime-ensure-btn"
+                                class="btn btn-secondary btn-sm"
+                                type="button"
+                                data-i18n-text="user.transcriptRuntime.actions.prepare"
+                              ></button>
+                              <button
+                                id="app-transcript-runtime-refresh-btn"
+                                class="btn btn-secondary btn-sm"
+                                type="button"
+                                data-i18n-text="user.transcriptRuntime.actions.refresh"
+                              ></button>
+                            </div>
+                            <section class="settings-capture-subsection">
+                              <span
+                                class="settings-capture-stat-label"
+                                data-i18n-text="capture.transcript.modelsSummary"
+                              ></span>
+                              <div
+                                class="user-profile-inline__runtime-models"
+                                id="app-transcript-runtime-models"
+                              ></div>
+                            </section>
                             <p
-                              class="settings-capture-note settings-capture-note--status"
-                              id="capture-android-feedback"
+                              class="settings-capture-note user-profile-inline__runtime-feedback"
+                              id="app-transcript-runtime-feedback"
                             ></p>
-                          </div>
-                        </div>
-                      </section>
-                    </div>
+                          </section>
+                        </section>
+                      </div>
+                    </section>
                   </div>
                 </div>
               </section>

@@ -78,6 +78,7 @@ test("settings language panel wires tab, panel, and renderer bootstrap", () => {
 
 test("settings capture panel centralizes transcript runtime and android management wiring", () => {
   const htmlSource = readFileSync("src/pages/settings.html", "utf8");
+  const styleSource = readFileSync("src/styles/main.css", "utf8");
   const controllerSource = readFileSync("src/js/pages/settings/controller.ts", "utf8");
   const initSource = readFileSync("src/js/pages/settings/panels/init.ts", "utf8");
   const panelSource = readFileSync("src/js/pages/settings/panels/capture.ts", "utf8");
@@ -90,6 +91,12 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(htmlSource, /id="settings-tab-capture"/);
   assert.match(htmlSource, /id="settings-panel-capture"/);
   assert.match(htmlSource, /data-settings-panel="capture"/);
+  assert.match(htmlSource, /class="settings-capture-report"/);
+  assert.match(htmlSource, /class="settings-capture-report-head"/);
+  assert.match(htmlSource, /class="settings-capture-report-body"/);
+  assert.match(htmlSource, /settings-capture-report-section--infrastructure/);
+  assert.match(htmlSource, /settings-capture-report-section--runtime/);
+  assert.match(htmlSource, /settings-capture-report-group/);
   assert.match(htmlSource, /class="settings-capture-overview"/);
   assert.match(htmlSource, /id="capture-summary-host"/);
   assert.match(htmlSource, /id="capture-summary-android"/);
@@ -123,6 +130,12 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(htmlSource, /id="app-transcript-runtime-models"/);
   assert.match(htmlSource, /data-i18n-text="capture\.transcript\.modelsSummary"/);
   assert.match(htmlSource, /data-i18n-text="capture\.android\.detailsSummary"/);
+  assert.doesNotMatch(htmlSource, /settings-capture-grid/);
+  assert.doesNotMatch(htmlSource, /settings-capture-stack/);
+  assert.doesNotMatch(htmlSource, /settings-capture-card-header/);
+  assert.doesNotMatch(htmlSource, /settings-capture-details/);
+  assert.doesNotMatch(htmlSource, /settings-capture-report-section--wide/);
+  assert.doesNotMatch(htmlSource, /<details class="settings-capture/);
 
   assert.match(controllerSource, /"capture"/);
   assert.match(
@@ -154,15 +167,35 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.match(panelSource, /captureT\("android\.previewHint"\)/);
   assert.match(panelSource, /renderScrcpyManagementState/);
   assert.match(panelSource, /renderScrcpyLogList/);
+  assert.match(styleSource, /\.settings-capture-report\s*\{/);
+  assert.match(styleSource, /\.settings-capture-report-section\s*\{/);
+  assert.match(styleSource, /\.settings-capture-report-group\s*\{/);
+  assert.match(styleSource, /\.settings-capture-report-section--infrastructure/);
+  assert.match(styleSource, /\.settings-capture-report-section--runtime/);
+  assert.doesNotMatch(styleSource, /\.settings-capture-grid\s*\{/);
+  assert.doesNotMatch(styleSource, /\.settings-capture-stack\s*\{/);
+  assert.doesNotMatch(styleSource, /\.settings-capture-details/);
+  assert.doesNotMatch(styleSource, /settings-capture-report-section--wide/);
   assert.match(htmlSource, /id="capture-scrcpy-available"/);
   assert.match(htmlSource, /id="capture-scrcpy-mode"/);
   assert.match(htmlSource, /id="capture-scrcpy-feedback"/);
+  assert.match(htmlSource, /class="settings-capture-diagnostics"/);
+  assert.match(htmlSource, /id="capture-scrcpy-setup-command-row"/);
+  assert.match(htmlSource, /id="capture-scrcpy-setup-command"/);
+  assert.match(htmlSource, /id="capture-scrcpy-log-count"/);
+  assert.match(htmlSource, /id="capture-scrcpy-log-empty"/);
   assert.match(htmlSource, /id="capture-scrcpy-log-list"/);
   assert.doesNotMatch(panelSource, /renderCaptureVoiceCommands/);
   assert.doesNotMatch(panelSource, /saveCaptureVoiceCommands/);
   assert.doesNotMatch(panelSource, /resetCaptureVoiceCommandDefaults/);
   assert.doesNotMatch(panelSource, /DEFAULT_CAPTURE_COMMAND_PHRASES/);
   assert.doesNotMatch(panelSource, /normalizeCapturePhraseList/);
+  assert.match(panelSource, /capture-scrcpy-setup-command-row/);
+  assert.match(panelSource, /capture-scrcpy-log-empty/);
+  assert.doesNotMatch(panelSource, /logs\.length > 0 \? logs :/);
+  assert.match(styleSource, /\.settings-capture-diagnostics\s*\{/);
+  assert.match(styleSource, /\.settings-capture-log-list\s*\{/);
+  assert.match(styleSource, /max-height: min\(10rem, 28vh\)/);
   assert.equal((htmlSource.match(/id="capture-provider-fallback-select"/g) ?? []).length, 0);
   assert.equal((htmlSource.match(/id="capture-policy-feedback"/g) ?? []).length, 0);
   assert.equal((htmlSource.match(/id="capture-provider-android-speech"/g) ?? []).length, 0);

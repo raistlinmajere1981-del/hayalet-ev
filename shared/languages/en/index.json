@@ -5193,7 +5193,12 @@
           "availableYes": "Available",
           "availableNo": "Missing",
           "feedbackReady": "scrcpy is ready for Linux v4l2 camera feed or interactive mirror sessions.",
+          "feedbackMissing": "scrcpy host integration needs setup before camera preview can start.",
+          "feedbackNeedsSetup": "v4l2 camera feed needs host setup before use.",
+          "diagnostics": "Diagnostics",
+          "setupCommand": "Setup command",
           "logs": "Recent logs",
+          "logsCount": "{{count}} entries",
           "logsEmpty": "No scrcpy logs yet.",
           "modes": {
             "idle": "Idle",

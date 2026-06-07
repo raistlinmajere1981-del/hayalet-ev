@@ -1,3 +1,4 @@
+import type { TranslationParams } from "@shared/i18n.js";
 import { getErrorMessage } from "@shared/index.js";
 import { AppI18n } from "../../../modules/i18n/index.js";
 import {
@@ -24,8 +25,8 @@ import type {
 
 let initialized = false;
 
-function captureT(key: string): string {
-  return AppI18n.t(`entrance.capture.${key}`);
+function captureT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`entrance.capture.${key}`, params);
 }
 
 type CapturePanelState = {
@@ -168,9 +169,10 @@ function renderAndroidOperationState(root: HTMLElement, state: CapturePanelState
   }
 
   const activeOperation = operation !== null && operation.state !== "idle";
-  shell.classList.toggle("is-hidden", activeOperation !== true);
 
   if (activeOperation !== true) {
+    shell.classList.remove("is-hidden");
+    shell.dataset["state"] = "idle";
     setSummaryCard(
       root,
       "operation",
@@ -178,9 +180,9 @@ function renderAndroidOperationState(root: HTMLElement, state: CapturePanelState
       captureT("overview.operationIdleNote"),
       "idle"
     );
-    title.textContent = "";
+    title.textContent = captureT("overview.operationIdle");
     percent.textContent = "";
-    message.textContent = "";
+    message.textContent = captureT("overview.operationIdleNote");
     details.innerHTML = "";
     actions.classList.add("is-hidden");
     bar.style.width = "0%";
@@ -212,6 +214,8 @@ function renderAndroidOperationState(root: HTMLElement, state: CapturePanelState
         : operation.state === "success"
           ? captureT("android.progress.states.success")
           : captureT("android.progress.states.error");
+  shell.classList.remove("is-hidden");
+  shell.dataset["state"] = operationState;
   message.textContent = operation.message ?? "";
   details.innerHTML = "";
   operation.details.forEach((entry) => {
@@ -297,13 +301,21 @@ function formatSelectedPermissions(state: CapturePanelState, root: HTMLElement):
 
 function renderScrcpyLogList(root: HTMLElement, logs: string[]): void {
   const list = root.querySelector<HTMLElement>("#capture-scrcpy-log-list");
+  const empty = root.querySelector<HTMLElement>("#capture-scrcpy-log-empty");
+  const count = root.querySelector<HTMLElement>("#capture-scrcpy-log-count");
   if (!(list instanceof HTMLElement)) {
     return;
   }
 
   list.innerHTML = "";
-  const visibleLogs = logs.length > 0 ? logs : [captureT("android.scrcpy.logsEmpty")];
-  visibleLogs.forEach((logLine) => {
+  list.classList.toggle("is-hidden", logs.length === 0);
+  empty?.classList.toggle("is-hidden", logs.length > 0);
+  if (count) {
+    count.textContent =
+      logs.length > 0 ? captureT("android.scrcpy.logsCount", { count: String(logs.length) }) : "";
+  }
+
+  logs.forEach((logLine) => {
     const item = document.createElement("li");
     item.textContent = logLine;
     list.appendChild(item);
@@ -315,12 +327,22 @@ function renderScrcpyManagementState(root: HTMLElement, state: CapturePanelState
   const activeMode = scrcpyStatus?.mode ?? "idle";
   const activeDevice = scrcpyStatus?.deviceId ?? captureT("android.scrcpy.none");
   const lastLogs = scrcpyStatus?.lastLogs ?? [];
-  const latestLog = lastLogs[lastLogs.length - 1] ?? null;
-  const feedback =
+  const setupCommand = scrcpyStatus?.setupHint?.trim() ?? "";
+  const setupCommandRow = root.querySelector<HTMLElement>("#capture-scrcpy-setup-command-row");
+  const setupCommandEl = root.querySelector<HTMLElement>("#capture-scrcpy-setup-command");
+
+  setupCommandRow?.classList.toggle("is-hidden", setupCommand === "");
+  if (setupCommandEl) {
+    setupCommandEl.textContent = setupCommand;
+  }
+
+  const feedbackText =
     scrcpyStatus?.lastError ??
-    latestLog ??
-    scrcpyStatus?.setupHint ??
-    captureT("android.scrcpy.feedbackReady");
+    (setupCommand !== ""
+      ? captureT("android.scrcpy.feedbackNeedsSetup")
+      : scrcpyStatus?.available === true
+        ? captureT("android.scrcpy.feedbackReady")
+        : captureT("android.scrcpy.feedbackMissing"));
 
   setText(
     root,
@@ -336,7 +358,7 @@ function renderScrcpyManagementState(root: HTMLElement, state: CapturePanelState
   );
   setText(root, "#capture-scrcpy-mode", captureT(`android.scrcpy.modes.${activeMode}`));
   setText(root, "#capture-scrcpy-device", activeDevice);
-  setText(root, "#capture-scrcpy-feedback", feedback);
+  setText(root, "#capture-scrcpy-feedback", feedbackText);
   renderScrcpyLogList(root, lastLogs);
 }
 
