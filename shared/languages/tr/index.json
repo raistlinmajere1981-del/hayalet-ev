@@ -5137,6 +5137,7 @@
         },
         "states": {
           "ready": "Hazır",
+          "partial": "Hazırlık gerekli",
           "missing": "Eksik",
           "blocked": "Bloke"
         },

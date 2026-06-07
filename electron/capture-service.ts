@@ -2411,6 +2411,27 @@ class CaptureService {
       (androidPlanReady === true && android.artifact.buildState !== "build-blocked");
     const androidBuildBlocked =
       androidPlanBlocked === true || android.artifact.buildState === "build-blocked";
+    const androidBuildPartial =
+      androidBuildReady !== true &&
+      androidBuildBlocked !== true &&
+      android.artifact.buildState === "source-ready";
+    const androidBuildState = androidBuildReady
+      ? "ready"
+      : androidBuildBlocked
+        ? "blocked"
+        : androidBuildPartial
+          ? "partial"
+          : "missing";
+    const androidBuildMessage =
+      androidBuildReady === true
+        ? "Android companion build prerequisites are ready."
+        : androidBuildPartial === true
+          ? "Android build source is available; artifact publish or runtime cache preparation is still needed."
+          : (androidPlanMessage ?? "Android companion build prerequisites need preparation.");
+    const v4l2LoopbackReady =
+      v4l2LoopbackStatus.required !== true ||
+      (v4l2LoopbackStatus.available === true && v4l2LoopbackStatus.deviceReady === true);
+    const v4l2LoopbackPartial = v4l2LoopbackReady !== true && v4l2LoopbackStatus.available === true;
 
     return {
       adb: {
@@ -2433,11 +2454,7 @@ class CaptureService {
         managedPath: null,
       },
       v4l2Loopback: {
-        state:
-          v4l2LoopbackStatus.required !== true ||
-          (v4l2LoopbackStatus.available === true && v4l2LoopbackStatus.deviceReady === true)
-            ? "ready"
-            : "missing",
+        state: v4l2LoopbackReady ? "ready" : v4l2LoopbackPartial ? "partial" : "missing",
         path: v4l2LoopbackStatus.modulePath,
         version: v4l2LoopbackStatus.version,
         message: v4l2LoopbackStatus.message,
@@ -2461,15 +2478,11 @@ class CaptureService {
         managedDir: ffmpegStatus.managedDir,
       },
       androidBuild: {
-        state: androidBuildReady ? "ready" : androidBuildBlocked ? "blocked" : "missing",
+        state: androidBuildState,
         javaHome: getManagedJdkHome(),
         androidSdkRoot: getManagedAndroidSdkRoot(),
         needsConfirmation: androidPlan?.needsConfirmation === true,
-        message:
-          androidPlanMessage ??
-          (androidBuildReady
-            ? "Android companion build prerequisites are ready."
-            : "Android companion build prerequisites need preparation."),
+        message: androidBuildMessage,
         details: androidPlanDetails,
         installable: true,
       },

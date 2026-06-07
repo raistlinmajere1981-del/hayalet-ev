@@ -5,6 +5,8 @@ import { spawn } from "node:child_process";
 const label = "Hayalet Ev Camera Feed";
 const devicePath = process.env.HAYALET_SCRCPY_V4L2_DEVICE?.trim() || "/dev/video42";
 const videoNumber = devicePath.match(/\/dev\/video(\d+)$/)?.[1] ?? "42";
+const deviceReadyTimeoutMs = 5_000;
+const deviceReadyPollMs = 250;
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -38,6 +40,24 @@ async function hasReadWriteAccess(targetPath) {
   } catch {
     return false;
   }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function waitForReadWriteAccess(targetPath, timeoutMs = deviceReadyTimeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  do {
+    if (await hasReadWriteAccess(targetPath)) {
+      return true;
+    }
+    await delay(deviceReadyPollMs);
+  } while (Date.now() < deadline);
+
+  return await hasReadWriteAccess(targetPath);
 }
 
 async function main() {
@@ -84,7 +104,7 @@ async function main() {
     throw new Error(`v4l2loopback setup failed with exit code ${String(result.exitCode)}.`);
   }
 
-  if (!(await hasReadWriteAccess(devicePath))) {
+  if (!(await waitForReadWriteAccess(devicePath))) {
     throw new Error(
       `${devicePath} was created but is not readable/writable by this user. Check video group or udev permissions.`
     );

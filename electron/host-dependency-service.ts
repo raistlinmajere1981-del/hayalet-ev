@@ -285,8 +285,8 @@ export async function inspectV4l2LoopbackDependency(): Promise<{
       : deviceReady
         ? `v4l2loopback is ready at ${devicePath}.`
         : moduleLoaded
-          ? `v4l2loopback is loaded, but ${devicePath} is not readable/writable.`
-          : `v4l2loopback is available but ${devicePath} is not ready. Run: ${setupCommand}`;
+          ? `v4l2loopback module is loaded, but ${devicePath} is not readable/writable. Run: ${setupCommand}`
+          : `v4l2loopback module is installed, but ${devicePath} is not ready. Run: ${setupCommand}`;
 
   return {
     required: true,

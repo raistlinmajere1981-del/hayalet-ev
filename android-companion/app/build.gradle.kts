@@ -8,7 +8,7 @@ val ncnnPiperJniLibsRoot = file("${ncnnPiperRoot}/jniLibs")
 
 android {
   namespace = "com.hayaletev.androidcompanion"
-  compileSdk = 36
+  compileSdk = 37
   ndkVersion = "26.3.11579264"
 
   defaultConfig {

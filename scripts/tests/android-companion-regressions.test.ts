@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 
 test("android companion keeps openWake ambient, Vosk dictation, and live camera contract wired", () => {
   const sessionSource = readFileSync(
@@ -163,6 +163,8 @@ test("android companion keeps openWake ambient, Vosk dictation, and live camera 
   assert.match(modelManagerSource, /ZipInputStream/);
   assert.match(modelManagerSource, /Vosk model archive contains an unsafe path/);
   assert.match(gradleSource, /abiFilters \+= listOf\("armeabi-v7a", "arm64-v8a"\)/);
+  assert.match(gradleSource, /compileSdk = 37/);
+  assert.match(gradleSource, /androidx\.core:core-ktx:1\.19\.0/);
   assert.match(gradleSource, /com\.alphacephei:vosk-android:0\.3\.75/);
   assert.match(gradleSource, /xyz\.rementia:openwakeword:0\.1\.5/);
   assert.doesNotMatch(gradleSource, /WHISPER_CPP_DIR/);
@@ -289,6 +291,7 @@ test("capture settings exposes shared host dependency preparation", () => {
   const preloadSource = readFileSync("electron/preload.cjs", "utf8");
   const ipcCaptureSource = readFileSync("electron/handlers/ipc-capture.ts", "utf8");
   const androidCompanionUtilsSource = readFileSync("scripts/android-companion-utils.mjs", "utf8");
+  const v4l2SetupSource = readFileSync("scripts/setup-scrcpy-v4l2loopback.mjs", "utf8");
   const adbHelperSource = readFileSync("electron/capture/adb-helper.ts", "utf8");
   const windowManagerSource = readFileSync("electron/window-manager.ts", "utf8");
   const companionLiveFeedSource = readFileSync("electron/capture/companion-live-feed.ts", "utf8");
@@ -303,6 +306,7 @@ test("capture settings exposes shared host dependency preparation", () => {
   assert.match(hostDependencySource, /inspectV4l2LoopbackDependency/);
   assert.match(hostDependencySource, /getScrcpyV4l2SetupCommand/);
   assert.match(captureTypesSource, /export interface CaptureHostDependenciesStatus/);
+  assert.match(captureTypesSource, /"partial"/);
   assert.match(captureTypesSource, /v4l2Loopback: CaptureV4l2LoopbackDependencyStatus/);
   assert.match(captureTypesSource, /"mjpeg-stream"/);
   assert.match(captureTypesSource, /"prepare-host-dependencies"/);
@@ -310,6 +314,8 @@ test("capture settings exposes shared host dependency preparation", () => {
   assert.match(captureServiceSource, /inspectHostDependencies/);
   assert.match(captureServiceSource, /installManagedFfmpeg/);
   assert.match(captureServiceSource, /inspectV4l2LoopbackDependency/);
+  assert.match(captureServiceSource, /v4l2LoopbackPartial/);
+  assert.match(captureServiceSource, /androidBuildPartial/);
   assert.match(preloadSource, /capturePrepareHostDependencies/);
   assert.match(ipcCaptureSource, /capture-prepare-host-dependencies/);
   assert.match(captureClientSource, /case "prepare-host-dependencies":/);
@@ -321,6 +327,13 @@ test("capture settings exposes shared host dependency preparation", () => {
   assert.match(settingsHtmlSource, /capture-host-dependencies-prepare-btn/);
   assert.match(settingsHtmlSource, /capture\.dependencies\.title/);
   assert.match(packageSource, /capture:v4l2:setup/);
+  assert.match(androidCompanionUtilsSource, /ANDROID_COMPILE_SDK = "37\.0"/);
+  assert.match(androidCompanionUtilsSource, /ANDROID_BUILD_TOOLS = "37\.0\.0"/);
+  assert.match(androidCompanionUtilsSource, /getAndroidSdkCandidatePaths/);
+  assert.match(androidCompanionUtilsSource, /homedir/);
+  assert.match(androidCompanionUtilsSource, /join\(homeDir, "Android", "Sdk"\)/);
+  assert.match(v4l2SetupSource, /waitForReadWriteAccess/);
+  assert.match(v4l2SetupSource, /deviceReadyTimeoutMs/);
   assert.match(androidCompanionUtilsSource, /extractZipArchive/);
   assert.match(androidCompanionUtilsSource, /extractTarBzipArchive/);
   assert.match(androidCompanionUtilsSource, /unbzip2Stream/);
@@ -338,6 +351,7 @@ test("capture settings exposes shared host dependency preparation", () => {
   assert.match(captureServiceSource, /Clean installing the APK/);
   assert.match(adbHelperSource, /env\?: NodeJS\.ProcessEnv/);
   assert.match(adbHelperSource, /capture:v4l2:setup/);
+  assert.equal((statSync("android-companion/gradlew").mode & 0o111) !== 0, true);
   assert.match(
     windowManagerSource,
     /media-src 'self' data: blob: http:\/\/localhost:\* http:\/\/127\.0\.0\.1:\*/

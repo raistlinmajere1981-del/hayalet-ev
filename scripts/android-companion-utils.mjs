@@ -10,7 +10,7 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
@@ -25,8 +25,8 @@ const tar = require("tar");
 const unbzip2Stream = require("unbzip2-stream");
 const yauzl = require("yauzl");
 
-const ANDROID_COMPILE_SDK = "36";
-const ANDROID_BUILD_TOOLS = "36.0.0";
+const ANDROID_COMPILE_SDK = "37.0";
+const ANDROID_BUILD_TOOLS = "37.0.0";
 const ANDROID_CMAKE_VERSION = "3.22.1";
 const ANDROID_NDK_VERSION = "26.3.11579264";
 const ANDROID_CMDLINE_TOOLS_REPOSITORY_URL =
@@ -374,6 +374,33 @@ function getManagedSdkManagerPath() {
   );
 }
 
+function getAndroidSdkCandidatePaths() {
+  const homeDir = homedir();
+  const candidates = [
+    managedAndroidSdkRoot,
+    process.env.ANDROID_SDK_ROOT ?? null,
+    process.env.ANDROID_HOME ?? null,
+  ];
+
+  if (process.platform === "win32") {
+    candidates.push(
+      process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, "Android", "Sdk") : null,
+      process.env.USERPROFILE
+        ? join(process.env.USERPROFILE, "AppData", "Local", "Android", "Sdk")
+        : null
+    );
+  } else if (process.platform === "darwin") {
+    candidates.push(join(homeDir, "Library", "Android", "sdk"), join(homeDir, "Android", "Sdk"));
+  } else {
+    candidates.push(join(homeDir, "Android", "Sdk"), "/usr/lib/android-sdk");
+  }
+
+  return candidates.filter(
+    (value, index, list) =>
+      typeof value === "string" && value.trim() !== "" && list.indexOf(value) === index
+  );
+}
+
 function getExpectedAndroidSdkPaths(rootPath) {
   return {
     platformPath: join(rootPath, "platforms", `android-${ANDROID_COMPILE_SDK}`),
@@ -481,17 +508,7 @@ async function inspectAndroidSdkRoot(rootPath) {
 }
 
 export async function resolveUsableAndroidSdk() {
-  const candidates = [
-    managedAndroidSdkRoot,
-    process.env.ANDROID_SDK_ROOT ?? null,
-    process.env.ANDROID_HOME ?? null,
-    "/usr/lib/android-sdk",
-  ].filter(
-    (value, index, list) =>
-      typeof value === "string" && value.trim() !== "" && list.indexOf(value) === index
-  );
-
-  for (const candidate of candidates) {
+  for (const candidate of getAndroidSdkCandidatePaths()) {
     const inspected = await inspectAndroidSdkRoot(candidate);
     if (inspected?.complete === true) {
       return inspected;
@@ -817,8 +834,7 @@ async function installManagedAndroidSdk(javaRuntime, emitProgress) {
   notify({
     message: `Installing Android SDK packages for API ${ANDROID_COMPILE_SDK}.`,
     progress: 0.64,
-    detail:
-      `platform-tools, platforms;android-${ANDROID_COMPILE_SDK}, build-tools;${ANDROID_BUILD_TOOLS}, CMake, and NDK are being installed.`,
+    detail: `platform-tools, platforms;android-${ANDROID_COMPILE_SDK}, build-tools;${ANDROID_BUILD_TOOLS}, CMake, and NDK are being installed.`,
   });
   const packageResult = await runCommand(
     sdkManagerPath,
@@ -1294,7 +1310,11 @@ export async function prepareCompanionBuildEnvironment(options = {}) {
 
 async function writeCompanionLocalProperties(androidSdkRoot) {
   const normalizedSdkRoot = String(androidSdkRoot).replace(/\\/g, "/");
-  await writeFile(join(companionRoot, "local.properties"), `sdk.dir=${normalizedSdkRoot}\n`, "utf8");
+  await writeFile(
+    join(companionRoot, "local.properties"),
+    `sdk.dir=${normalizedSdkRoot}\n`,
+    "utf8"
+  );
 }
 
 export async function buildCompanionArtifact(options = {}) {

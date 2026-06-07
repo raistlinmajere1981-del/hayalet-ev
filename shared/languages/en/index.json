@@ -5137,6 +5137,7 @@
         },
         "states": {
           "ready": "Ready",
+          "partial": "Setup needed",
           "missing": "Missing",
           "blocked": "Blocked"
         },

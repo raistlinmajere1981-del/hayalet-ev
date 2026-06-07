@@ -255,7 +255,7 @@ export interface CaptureScrcpyStatus {
   setupHint: string | null;
 }
 
-export type CaptureHostDependencyState = "ready" | "missing" | "blocked";
+export type CaptureHostDependencyState = "ready" | "partial" | "missing" | "blocked";
 
 export interface CaptureHostToolDependencyStatus {
   state: CaptureHostDependencyState;

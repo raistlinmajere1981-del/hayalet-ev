@@ -1264,7 +1264,9 @@ body.is-scroll-locked {
 }
 
 .settings-capture-overview-card[data-state="warning"],
+.settings-capture-state-pill[data-state="partial"],
 .settings-capture-state-pill[data-state="missing"],
+.settings-capture-dependency-row[data-state="partial"] .settings-capture-state-pill,
 .settings-capture-dependency-row[data-state="missing"] .settings-capture-state-pill {
   border-color: color-mix(in srgb, var(--color-warning) 48%, var(--settings-workbench-border));
 }
