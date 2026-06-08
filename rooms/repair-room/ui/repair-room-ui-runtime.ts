@@ -46,7 +46,12 @@ interface RepairUiContext {
 }
 
 type RepairPanelRenderer = () => HTMLElement;
-type RepairMutableStyleProperty = "left" | "width" | "transform" | "transformOrigin";
+type RepairMutableStyleProperty =
+  | "gridTemplateColumns"
+  | "left"
+  | "width"
+  | "transform"
+  | "transformOrigin";
 
 interface RepairSpatialFocusTween {
   cancel: () => void;
@@ -75,6 +80,43 @@ interface RepairPersistentShell {
   dock: HTMLElement;
   panelElements: Map<RepairPanelId, HTMLElement>;
   panelSignatures: Map<RepairPanelId, string>;
+}
+
+export const REPAIR_DOCK_PANEL_IDS = [
+  "operator-profile",
+  "chat",
+  "measurement",
+  "room-sync",
+] as const satisfies readonly RepairPanelId[];
+
+export interface RepairDockLayoutProjection {
+  visiblePanelIds: RepairPanelId[];
+  gridTemplateColumns: string;
+}
+
+export function getRepairVisibleDockPanelIds(
+  panels: RepairGuidanceProjection["panelVisibility"]["panels"],
+  dockPanelIds: readonly RepairPanelId[] = REPAIR_DOCK_PANEL_IDS
+): RepairPanelId[] {
+  return dockPanelIds.filter((panelId) => panels[panelId] !== "hidden");
+}
+
+export function getRepairDockGridTemplateColumns(visiblePanelCount: number): string {
+  const normalizedCount =
+    Number.isFinite(visiblePanelCount) && visiblePanelCount > 0 ? Math.floor(visiblePanelCount) : 0;
+  if (normalizedCount === 0) return "none";
+  return Array.from({ length: normalizedCount }, () => "1fr").join(" ");
+}
+
+export function getRepairDockLayoutProjection(
+  panels: RepairGuidanceProjection["panelVisibility"]["panels"],
+  dockPanelIds: readonly RepairPanelId[] = REPAIR_DOCK_PANEL_IDS
+): RepairDockLayoutProjection {
+  const visiblePanelIds = getRepairVisibleDockPanelIds(panels, dockPanelIds);
+  return {
+    visiblePanelIds,
+    gridTemplateColumns: getRepairDockGridTemplateColumns(visiblePanelIds.length),
+  };
 }
 
 function easeOutPower2(progress: number): number {
@@ -1280,6 +1322,16 @@ export function createRepairRoomUiRuntime() {
     }
   }
 
+  function syncDockLayout(dock: HTMLElement): void {
+    const dockLayout = getRepairDockLayoutProjection(state.guidance.panelVisibility.panels);
+    const visiblePanelCount = dockLayout.visiblePanelIds.length;
+    if (dock.hidden !== (visiblePanelCount === 0)) {
+      dock.hidden = visiblePanelCount === 0;
+    }
+    setDatasetIfChanged(dock, "visiblePanelCount", String(visiblePanelCount));
+    setStyleIfChanged(dock, "gridTemplateColumns", dockLayout.gridTemplateColumns);
+  }
+
   function syncCoordHudLabels(hud: HTMLElement, labels: string[]): void {
     labels.forEach((labelText, index) => {
       const item = hud.children.item(index);
@@ -2076,6 +2128,7 @@ export function createRepairRoomUiRuntime() {
       )
     );
 
+    syncDockLayout(persistentShell.dock);
     if (!persistentShell.workspace.contains(persistentShell.dock)) {
       persistentShell.workspace.append(persistentShell.dock);
     }

@@ -136,6 +136,10 @@ body {
   max-height: var(--repair-px-260);
 }
 
+.repair-bottom-dock[hidden] {
+  display: none;
+}
+
 /* ── Panel (generic card) ────────────────────────────────────────── */
 .repair-panel {
   display: flex;

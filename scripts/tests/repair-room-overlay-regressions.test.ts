@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { REPAIR_UI_COMMANDS } from "../../rooms/repair-room/shared/repair-constants.ts";
+import { createRepairDefaultGuidanceProjection } from "../../rooms/repair-room/shared/ui/state.ts";
 import { resolveRepairAssetUrl } from "../../rooms/repair-room/ui/repair-asset-url.ts";
+import {
+  REPAIR_DOCK_PANEL_IDS,
+  getRepairDockLayoutProjection,
+} from "../../rooms/repair-room/ui/repair-room-ui-runtime.ts";
 import {
   getContainedImageFrame,
   imagePointToStagePoint,
@@ -17,6 +22,11 @@ import {
   getRepairSnapAssist,
   repairImageRectsIntersect,
 } from "../../rooms/repair-room/ui/overlay/overlay-geometry.ts";
+
+function countGridTemplateTracks(template: string): number {
+  if (template === "none") return 0;
+  return template.trim().split(/\s+/).filter(Boolean).length;
+}
 
 test("repair-room overlay coordinate mapping round-trips image and stage space", () => {
   const frame = getContainedImageFrame(1000, 600, 1600, 900);
@@ -122,6 +132,29 @@ test("repair-room resolves runtime assets from the UI entry directory", () => {
     resolveRepairAssetUrl("https://example.test/pcb.svg", baseHref),
     "https://example.test/pcb.svg"
   );
+});
+
+test("repair-room dock grid tracks match visible Phase 3 dock panels", () => {
+  const cases = [
+    ["operator-profile", "measurement"],
+    ["operator-profile", "chat", "measurement"],
+    ["operator-profile", "chat", "measurement", "room-sync"],
+  ] as const;
+
+  for (const visibleDockPanelIds of cases) {
+    const panels = { ...createRepairDefaultGuidanceProjection("advanced").panelVisibility.panels };
+    for (const panelId of REPAIR_DOCK_PANEL_IDS) {
+      panels[panelId] = visibleDockPanelIds.includes(panelId) ? "compact" : "hidden";
+    }
+
+    const dockLayout = getRepairDockLayoutProjection(panels);
+    assert.deepEqual(dockLayout.visiblePanelIds, [...visibleDockPanelIds]);
+    assert.equal(
+      countGridTemplateTracks(dockLayout.gridTemplateColumns),
+      visibleDockPanelIds.length
+    );
+    assert.equal(dockLayout.gridTemplateColumns, visibleDockPanelIds.map(() => "1fr").join(" "));
+  }
 });
 
 test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync controls", () => {
