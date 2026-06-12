@@ -6,6 +6,10 @@ import {
   createRepairReplayProjection,
 } from "../../rooms/repair-room/host/state/repair-replay-projection.ts";
 import { REPAIR_UI_COMMANDS } from "../../rooms/repair-room/shared/repair-constants.ts";
+import {
+  REPAIR_ACTION_REGISTRY,
+  getRepairVoiceCommandPhraseMap,
+} from "../../rooms/repair-room/shared/repair-action-registry.ts";
 import { normalizeRepairHostMessage } from "../../rooms/repair-room/shared/ui/host-messages.ts";
 import { createRepairDefaultGuidanceProjection } from "../../rooms/repair-room/shared/ui/state.ts";
 
@@ -1276,4 +1280,299 @@ test("repair-room runtime drifts live readings into recent instrument history", 
   assert.equal(measurement.recent[0]?.reference, "Live drift sample");
   assert.equal(measurement.current.display, "0.000");
   t.mock.timers.reset();
+});
+
+test("repair-room P3.5 keeps operations projection optional for standalone room runs", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+
+  const projection = createRepairReplayProjection(state, session);
+  assert.equal(projection.operationsAvailable, false);
+  assert.deepEqual(projection.operations.activeCapabilities, []);
+  assert.equal(projection.operations.localMicActive, false);
+  assert.equal(projection.voiceReadiness.available, false);
+  assert.deepEqual(projection.liveSource, {
+    available: true,
+    connected: false,
+    sourceType: "image",
+  });
+
+  runtime.dispose();
+});
+
+test("repair-room P3.5 projects central operations status without owning capabilities", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+
+  const projection = createRepairReplayProjection(
+    {
+      ...state,
+      operationsStatus: {
+        updatedAt: 1,
+        records: [
+          {
+            capability: "local-microphone",
+            owner: { id: "repair-room", label: "Repair Room", roomId: "repair-room" },
+            startedAt: 1,
+          },
+          {
+            capability: "android-camera",
+            owner: { id: "repair-room", label: "Repair Room", roomId: "repair-room" },
+            startedAt: 2,
+          },
+          {
+            capability: "live-feed",
+            owner: { id: "repair-room", label: "Repair Room", roomId: "repair-room" },
+            startedAt: 3,
+          },
+          {
+            capability: "ambient-listening",
+            owner: { id: "repair-room", label: "Repair Room", roomId: "repair-room" },
+            startedAt: 4,
+          },
+          {
+            capability: "local-tts",
+            owner: { id: "repair-room", label: "Repair Room", roomId: "repair-room" },
+            startedAt: 5,
+          },
+        ],
+      },
+    },
+    session
+  );
+
+  assert.equal(projection.operationsAvailable, true);
+  assert.equal(projection.operations.localMicActive, true);
+  assert.equal(projection.operations.androidMicActive, false);
+  assert.equal(projection.operations.cameraActive, true);
+  assert.equal(projection.operations.liveFeedActive, true);
+  assert.equal(projection.operations.ambientActive, true);
+  assert.equal(projection.operations.ttsActive, true);
+  assert.equal(projection.operations.activeOwner, "Repair Room");
+  assert.deepEqual(projection.liveSource, {
+    available: true,
+    connected: true,
+    sourceType: "android-camera",
+  });
+
+  runtime.dispose();
+});
+
+test("repair-room P3.5 projects voice readiness from operations and guidance state", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setVoiceGuidance, {
+      ambientListeningState: "listening",
+      handsBusyMode: true,
+    }).success,
+    true
+  );
+
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  const projection = createRepairReplayProjection(
+    {
+      ...state,
+      operationsStatus: {
+        updatedAt: 2,
+        records: [
+          {
+            capability: "android-microphone",
+            owner: { id: "repair-room", label: "Repair Room" },
+            startedAt: 10,
+          },
+          {
+            capability: "ambient-listening",
+            owner: { id: "repair-room", label: "Repair Room" },
+            startedAt: 11,
+          },
+        ],
+      },
+    },
+    session
+  );
+
+  assert.deepEqual(projection.voiceReadiness, {
+    available: true,
+    listening: true,
+    handsBusyMode: true,
+    ambientMode: true,
+  });
+
+  runtime.dispose();
+});
+
+test("repair-room P3.5 keeps live source extensible for future camera providers", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+
+  const projection = createRepairReplayProjection(
+    {
+      ...state,
+      operationsStatus: {
+        updatedAt: 3,
+        records: [
+          {
+            capability: "thermal-camera",
+            owner: { id: "scope", label: "Thermal scope" },
+            startedAt: 20,
+          },
+          {
+            capability: "live-feed",
+            owner: { id: "scope", label: "Thermal scope" },
+            startedAt: 21,
+          },
+        ],
+      },
+    },
+    session
+  );
+
+  assert.equal(projection.operations.cameraActive, true);
+  assert.deepEqual(projection.liveSource, {
+    available: true,
+    connected: true,
+    sourceType: "thermal-camera",
+  });
+
+  runtime.dispose();
+});
+
+test("repair-room P3.5 action registry carries reusable disabled metadata", () => {
+  const requiredIds = [
+    "focus-measurement",
+    "focus-ai-mark",
+    "next-event",
+    "previous-event",
+    "take-snapshot",
+    "start-measurement",
+    "verify-region",
+    "conclude-investigation",
+  ];
+  const ids = REPAIR_ACTION_REGISTRY.map((entry) => entry.id);
+  assert.deepEqual(ids, requiredIds);
+  assert.equal(new Set(ids).size, ids.length);
+
+  const commandNames = new Set(Object.values(REPAIR_UI_COMMANDS));
+  REPAIR_ACTION_REGISTRY.forEach((entry) => {
+    assert.equal(entry.enabled, false, entry.id);
+    assert.equal(commandNames.has(entry.commandName), true, entry.id);
+    assert.ok(entry.label.length > 0, entry.id);
+    assert.ok(entry.phrases.length > 0, entry.id);
+    assert.ok(
+      ["navigation", "capture", "measurement", "verification", "investigation"].includes(
+        entry.category
+      ),
+      entry.id
+    );
+  });
+
+  const phraseMap = getRepairVoiceCommandPhraseMap();
+  assert.deepEqual(phraseMap, {});
+  const enabledPhraseMap = getRepairVoiceCommandPhraseMap([
+    {
+      ...REPAIR_ACTION_REGISTRY[0],
+      enabled: true,
+    },
+    {
+      ...REPAIR_ACTION_REGISTRY[5],
+      enabled: true,
+    },
+  ]);
+  assert.ok(
+    enabledPhraseMap[REPAIR_UI_COMMANDS.focusOverlayEntity]?.includes("focus measurement")
+  );
+  assert.ok(enabledPhraseMap[REPAIR_UI_COMMANDS.addMeasurement]?.includes("start measurement"));
+
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  }) as { voiceCommands?: Record<string, readonly string[]>; dispose: () => void };
+  assert.deepEqual(runtime.voiceCommands, {});
+  runtime.dispose();
+});
+
+test("repair-room P3.5 projects continuity from focus, measurement, and verified regions", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.focusKnowledgeSpatialRef, {
+      spatialRefId: "startup-resistor-open",
+    }).success,
+    true
+  );
+
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  const regionSession = {
+    ...session,
+    events: [
+      ...session.events,
+      {
+        kind: "investigation-region-created" as const,
+        id: "evt-continuity-region-create",
+        sessionId: session.id,
+        occurredAt: "2026-05-10T10:43:00.000Z",
+        source: "operator" as const,
+        linkedEventIds: ["evt-psu-meas-4"],
+        regionId: "region-continuity",
+        label: "Continuity verified region",
+        region: { xPx: 440, yPx: 245, widthPx: 140, heightPx: 110 },
+        status: "active" as const,
+        color: "rgb(86, 200, 222)",
+        sourceRef: { kind: "event" as const, id: "evt-psu-ai-2" },
+        measurementEventIds: ["evt-psu-meas-4"],
+      },
+      {
+        kind: "investigation-region-updated" as const,
+        id: "evt-continuity-region-update",
+        sessionId: session.id,
+        occurredAt: "2026-05-10T10:44:00.000Z",
+        source: "operator" as const,
+        linkedEventIds: ["evt-psu-meas-4"],
+        regionId: "region-continuity",
+        label: "Continuity verified region",
+        status: "resolved" as const,
+      },
+    ],
+  };
+
+  const projection = createRepairReplayProjection(state, regionSession);
+  assert.deepEqual(projection.continuity.lastFocusTarget, {
+    ref: { kind: "knowledge-region", id: "startup-resistor-open" },
+    label: "Startup resistor open",
+  });
+  assert.equal(projection.continuity.lastMeasurement?.eventId, "evt-psu-meas-5");
+  assert.deepEqual(projection.continuity.lastVerifiedRegion, {
+    ref: { kind: "investigation-region", id: "region-continuity" },
+    label: "Continuity verified region",
+  });
+  assert.equal(
+    projection.continuity.currentInvestigationPhase,
+    projection.guidance.investigationPhase
+  );
+
+  runtime.dispose();
 });

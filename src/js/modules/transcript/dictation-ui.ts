@@ -1,9 +1,14 @@
 import type { CaptureDictationStatusPayload } from "../../../types/capture.js";
+import type { OperationCapability, OperationOwner } from "../../../types/operations.js";
 import type {
   TranscriptDictationBackend,
   TranscriptIngressPayload,
   TranscriptTargetId,
 } from "../../../types/transcript.js";
+import {
+  acquireOperationCapability,
+  releaseOperationCapability,
+} from "../operations/electron-client.js";
 import {
   getTranscriptStatus,
   submitTranscriptIngress,
@@ -66,6 +71,7 @@ interface BindDictationTriggerOptions {
     request: AndroidDictationRequest
   ) => Promise<AndroidDictationRequestState>;
   cancelAndroidDictation?: (request: AndroidDictationRequest) => Promise<void>;
+  operationOwner?: OperationOwner;
 }
 
 const MICROPHONE_ICON = `
@@ -129,6 +135,29 @@ function formatTranscriptBackend(backend: TranscriptDictationBackend | undefined
   return backend === "vosk" ? "Vosk" : "whisper.cpp";
 }
 
+function resolveDefaultOperationOwner(targetId: TranscriptTargetId): OperationOwner {
+  if (targetId === "analyze-compose") {
+    return {
+      id: "analyze-room",
+      label: "Analyze Room",
+    };
+  }
+
+  if (targetId.startsWith("room:")) {
+    const roomId = targetId.slice("room:".length).trim();
+    return {
+      id: targetId,
+      label: roomId === "" ? "Room" : `Room ${roomId}`,
+      ...(roomId !== "" ? { roomId } : {}),
+    };
+  }
+
+  return {
+    id: `dictation:${targetId}`,
+    label: "Dictation",
+  };
+}
+
 export function bindDictationTrigger(options: BindDictationTriggerOptions): DictationBinding {
   const { button, textarea } = options;
 
@@ -142,8 +171,10 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
   let captureSession: MicrophoneCaptureSession | null = null;
   let currentState: DictationState = "idle";
   let activeAndroidRequestId: string | null = null;
+  let activeOperationCapability: OperationCapability | null = null;
   let androidTranscriptionTimeout: number | null = null;
   let disposed = false;
+  const operationOwner = options.operationOwner ?? resolveDefaultOperationOwner(options.targetId);
 
   const refresh = (): void => {
     setButtonState(button, currentState, options.getLabels(), options.getMode?.() ?? "local");
@@ -164,6 +195,28 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
     androidTranscriptionTimeout = null;
   };
 
+  const releaseActiveOperationCapability = async (): Promise<void> => {
+    const capability = activeOperationCapability;
+    if (capability === null) {
+      return;
+    }
+
+    activeOperationCapability = null;
+    await releaseOperationCapability(capability, operationOwner);
+  };
+
+  const acquireOperationCapabilityForMode = async (
+    capability: OperationCapability
+  ): Promise<string | null> => {
+    const outcome = await acquireOperationCapability(capability, operationOwner);
+    if (outcome.success !== true) {
+      return outcome.error;
+    }
+
+    activeOperationCapability = capability;
+    return null;
+  };
+
   const cancelAndroidTranscription = (requestId: string, message: string | null): void => {
     clearAndroidTranscriptionTimeout();
     if (activeAndroidRequestId === requestId) {
@@ -174,6 +227,7 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
     if (message !== null && disposed !== true) {
       options.showNotice(options.getLabels().androidError(message), "error");
     }
+    void releaseActiveOperationCapability();
     void options
       .cancelAndroidDictation?.({
         action: "stop",
@@ -242,6 +296,7 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
     if (payload.isFinal === true) {
       activeAndroidRequestId = null;
       clearAndroidTranscriptionTimeout();
+      void releaseActiveOperationCapability();
     }
     if (mode === "android" && (currentState === "listening" || currentState === "transcribing")) {
       currentState = "idle";
@@ -274,12 +329,14 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
       clearAndroidTranscriptionTimeout();
       currentState = "idle";
       refresh();
+      void releaseActiveOperationCapability();
       options.showNotice(options.getLabels().androidError(payload.message), "error");
       return;
     }
 
     activeAndroidRequestId = null;
     clearAndroidTranscriptionTimeout();
+    void releaseActiveOperationCapability();
     if (currentState === "transcribing") {
       currentState = "idle";
       refresh();
@@ -341,6 +398,7 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
       const message = error instanceof Error ? error.message : String(error);
       options.showNotice(labels.transcriptionError(message), "error");
     } finally {
+      await releaseActiveOperationCapability();
       currentState = "idle";
       refresh();
     }
@@ -381,6 +439,12 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
             return;
           }
 
+          const operationError = await acquireOperationCapabilityForMode("android-microphone");
+          if (operationError !== null) {
+            options.showNotice(labels.androidError(operationError), "error");
+            return;
+          }
+
           requestId = crypto.randomUUID();
           activeAndroidRequestId = requestId;
           currentState = "transcribing";
@@ -391,6 +455,7 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
             targetId: options.targetId,
           });
           if (disposed || activeAndroidRequestId !== requestId) {
+            void releaseActiveOperationCapability();
             void options.requestAndroidDictation?.({
               action: "stop",
               requestId,
@@ -413,6 +478,7 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
             activeAndroidRequestId = null;
           }
           clearAndroidTranscriptionTimeout();
+          void releaseActiveOperationCapability();
           currentState = "idle";
           refresh();
           if (disposed) {
@@ -434,6 +500,12 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
       const labels = options.getLabels();
 
       try {
+        const operationError = await acquireOperationCapabilityForMode("local-microphone");
+        if (operationError !== null) {
+          options.showNotice(labels.captureError(operationError), "error");
+          return;
+        }
+
         const status = await getTranscriptStatus();
         if (status.ready !== true) {
           options.showNotice(labels.preparingMessage, "info");
@@ -445,6 +517,7 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
         options.showNotice(labels.listeningMessage, "info");
       } catch (error) {
         captureSession = null;
+        void releaseActiveOperationCapability();
         currentState = "idle";
         refresh();
         const message = error instanceof Error ? error.message : String(error);
@@ -483,6 +556,7 @@ export function bindDictationTrigger(options: BindDictationTriggerOptions): Dict
         void captureSession.abort();
         captureSession = null;
       }
+      void releaseActiveOperationCapability();
       activeAndroidRequestId = null;
       currentState = "idle";
     },

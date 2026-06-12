@@ -31,6 +31,7 @@ import {
 import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 import { normalizeTranscriptModelVariant } from "../shared/transcript/model-catalog.js";
 import { getTtsModelDescriptor } from "../shared/tts/model-catalog.js";
+import { operationsService } from "./operations-service.ts";
 
 import type {
   CaptureActionOutcome,
@@ -1594,6 +1595,14 @@ class CaptureService {
         this.sendJson(response, 200, {
           ok: true,
           bridge: this.bridgeState,
+        });
+        return;
+      }
+
+      if (method === "GET" && requestUrl.pathname === "/api/v1/operations/status") {
+        this.sendJson(response, 200, {
+          ok: true,
+          ...operationsService.getStatus(),
         });
         return;
       }

@@ -3,18 +3,40 @@ import { getErrorMessage } from "@shared/index.js";
 import type { RemoteUserIdentity } from "@shared/settings.js";
 import type {
   CaptureActionOutcome,
+  CaptureAmbientStatusPayload,
   CaptureDictationStatusPayload,
+  CaptureHostAction,
   CaptureMediaIngressPayload,
 } from "../../../types/capture.js";
+import type {
+  OperationCapability,
+  OperationOwner,
+  OperationsStatus,
+} from "../../../types/operations.js";
 import type { TranscriptIngressPayload } from "../../../types/transcript.js";
-import type { TtsRequest, TtsSpeakResult, TtsStatus, TtsStopResult } from "../../../types/tts.js";
+import type {
+  TtsMode,
+  TtsRequest,
+  TtsRuntimeStatus,
+  TtsSpeakResult,
+  TtsStatus,
+  TtsStopResult,
+} from "../../../types/tts.js";
 import { AppState } from "../app-state.js";
 import {
+  getCaptureStatus,
+  onCaptureAmbientStatus,
   onCaptureDictationStatus,
   onCaptureMediaIngress,
   runCaptureAction,
 } from "../capture/electron-client.js";
-import { onTtsStatus, speakText, stopSpeech } from "../tts/electron-client.js";
+import {
+  acquireOperationCapability,
+  getOperationsStatus,
+  onOperationsStatus,
+  releaseOperationCapability,
+} from "../operations/electron-client.js";
+import { getTtsStatus, onTtsStatus, speakText, stopSpeech } from "../tts/electron-client.js";
 import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory, LogLevel } from "../logger/index.js";
 import { ServerCommands } from "../server-commands.js";
@@ -52,6 +74,8 @@ interface RoomHostRegistration {
   activeTranscriptRequestIds: Set<string>;
   activeMediaRequestIds: Set<string>;
   activeTtsRequestIds: Set<string>;
+  activeOperationCapabilitiesByRequestId: Map<string, OperationCapability[]>;
+  activeOperationCapabilityCounts: Map<OperationCapability, number>;
   hostModuleCleanup: (() => void) | null;
   loadPromise: Promise<boolean> | null;
   loaded: boolean;
@@ -102,6 +126,10 @@ interface RoomHostApi {
       options?: Pick<TtsRequest, "requestId" | "mode" | "language" | "modelId">
     ) => Promise<{ requestId: string; outcome: TtsSpeakResult }>;
     stop: (requestId: string) => Promise<TtsStopResult>;
+  };
+  operations: {
+    getStatus: () => Promise<OperationsStatus>;
+    subscribe: (listener: (status: OperationsStatus) => void) => () => void;
   };
   registerProtocols: (protocols: Record<string, string>) => void;
   notifyRoom: (type: string, payload?: Record<string, unknown>) => void;
@@ -190,6 +218,21 @@ function resolveHostActivator(exported: unknown): RoomHostActivator | null {
 
 const EXPECTED_COMMAND_CAPTURE_STATE_KEY = "room.expectedCommandCapture";
 
+function isTerminalTtsStatus(status: TtsStatus["status"]): boolean {
+  return status === "done" || status === "stopped" || status === "failed";
+}
+
+function resolveTtsCapability(mode: TtsMode): OperationCapability {
+  return mode === "android" ? "android-tts" : "local-tts";
+}
+
+function resolveTtsMode(
+  requestedMode: TtsRequest["mode"] | undefined,
+  runtime: TtsRuntimeStatus
+): TtsMode {
+  return requestedMode === "android" || requestedMode === "local" ? requestedMode : runtime.mode;
+}
+
 class RoomHostRuntimeClass {
   private rooms = new Map<string, RoomHostRegistration>();
 
@@ -217,6 +260,7 @@ class RoomHostRuntimeClass {
 
     onCaptureMediaIngress(this.handleCaptureMediaIngress);
     onCaptureDictationStatus(this.handleCaptureDictationStatus);
+    onCaptureAmbientStatus(this.handleCaptureAmbientStatus);
     onTtsStatus(this.handleTtsStatus);
   }
 
@@ -332,10 +376,41 @@ class RoomHostRuntimeClass {
 
     if (payload.status === "failed" || payload.status === "done") {
       registration.activeTranscriptRequestIds.delete(payload.requestId);
+      void this.releaseTrackedOperationCapabilities(registration, payload.requestId);
     }
 
     registration.bridge?.sendToRoom({
       type: "capture-dictation-status",
+      payload,
+    });
+  };
+
+  private handleCaptureAmbientStatus = (payload: CaptureAmbientStatusPayload): void => {
+    if (payload.target.startsWith("room:") !== true) {
+      return;
+    }
+
+    const roomId = payload.target.slice("room:".length).trim();
+    if (roomId === "") {
+      return;
+    }
+
+    const registration = this.rooms.get(roomId);
+    if (registration === undefined) {
+      return;
+    }
+
+    if (registration.activeTranscriptRequestIds.has(payload.requestId) !== true) {
+      return;
+    }
+
+    if (payload.status === "stopped" || payload.status === "failed") {
+      registration.activeTranscriptRequestIds.delete(payload.requestId);
+      void this.releaseTrackedOperationCapabilities(registration, payload.requestId);
+    }
+
+    registration.bridge?.sendToRoom({
+      type: "capture-ambient-status",
       payload,
     });
   };
@@ -359,8 +434,9 @@ class RoomHostRuntimeClass {
       return;
     }
 
-    if (payload.status === "done" || payload.status === "stopped" || payload.status === "failed") {
+    if (isTerminalTtsStatus(payload.status)) {
       registration.activeTtsRequestIds.delete(payload.requestId);
+      void this.releaseTrackedOperationCapabilities(registration, payload.requestId);
     }
 
     registration.bridge?.sendToRoom({
@@ -386,6 +462,8 @@ class RoomHostRuntimeClass {
         activeTranscriptRequestIds: new Set<string>(),
         activeMediaRequestIds: new Set<string>(),
         activeTtsRequestIds: new Set<string>(),
+        activeOperationCapabilitiesByRequestId: new Map<string, OperationCapability[]>(),
+        activeOperationCapabilityCounts: new Map<OperationCapability, number>(),
         loadPromise: null,
         loaded: false,
       };
@@ -552,9 +630,154 @@ class RoomHostRuntimeClass {
 
     RoomCommandRegistry.unregisterRoom(roomId);
     RoomProtocolRegistry.clearRuntimeProtocols(roomId);
+    await this.releaseAllOperationCapabilities(registration);
     registration.hostModuleCleanup?.();
     registration.hostModuleCleanup = null;
     this.rooms.delete(roomId);
+  }
+
+  private buildOperationOwner(registration: RoomHostRegistration): OperationOwner {
+    return {
+      id: `room:${registration.room.id}`,
+      label: registration.room.name,
+      roomId: registration.room.id,
+    };
+  }
+
+  private async acquireOperationCapabilities(
+    registration: RoomHostRegistration,
+    capabilities: OperationCapability[]
+  ): Promise<
+    | { success: true; acquiredCapabilities: OperationCapability[] }
+    | { success: false; message: string }
+  > {
+    const owner = this.buildOperationOwner(registration);
+    const requiredCapabilities = capabilities.filter(
+      (capability) => (registration.activeOperationCapabilityCounts.get(capability) ?? 0) === 0
+    );
+    const outcomes = await Promise.all(
+      requiredCapabilities.map(async (capability) => ({
+        capability,
+        outcome: await acquireOperationCapability(capability, owner),
+      }))
+    );
+    const blocked = outcomes.find((entry) => entry.outcome.success !== true);
+    if (blocked !== undefined && blocked.outcome.success !== true) {
+      await Promise.all(
+        outcomes
+          .filter((entry) => entry.outcome.success === true)
+          .map(async (entry) => await releaseOperationCapability(entry.capability, owner))
+      );
+      return {
+        success: false,
+        message: blocked.outcome.error,
+      };
+    }
+
+    return {
+      success: true,
+      acquiredCapabilities: requiredCapabilities,
+    };
+  }
+
+  private async releaseOperationCapabilities(
+    registration: RoomHostRegistration,
+    capabilities: OperationCapability[]
+  ): Promise<void> {
+    const owner = this.buildOperationOwner(registration);
+    await Promise.all(
+      capabilities.map(async (capability) => await releaseOperationCapability(capability, owner))
+    );
+  }
+
+  private trackOperationCapabilities(
+    registration: RoomHostRegistration,
+    requestId: string,
+    capabilities: OperationCapability[]
+  ): void {
+    registration.activeOperationCapabilitiesByRequestId.set(requestId, capabilities);
+    for (const capability of capabilities) {
+      const current = registration.activeOperationCapabilityCounts.get(capability) ?? 0;
+      registration.activeOperationCapabilityCounts.set(capability, current + 1);
+    }
+  }
+
+  private async releaseTrackedOperationCapabilities(
+    registration: RoomHostRegistration,
+    requestId: string
+  ): Promise<void> {
+    const capabilities = registration.activeOperationCapabilitiesByRequestId.get(requestId);
+    if (capabilities === undefined) {
+      return;
+    }
+
+    registration.activeOperationCapabilitiesByRequestId.delete(requestId);
+    const releasable: OperationCapability[] = [];
+    for (const capability of capabilities) {
+      const current = registration.activeOperationCapabilityCounts.get(capability) ?? 0;
+      const next = current - 1;
+      if (next > 0) {
+        registration.activeOperationCapabilityCounts.set(capability, next);
+      } else {
+        registration.activeOperationCapabilityCounts.delete(capability);
+        releasable.push(capability);
+      }
+    }
+
+    await this.releaseOperationCapabilities(registration, releasable);
+  }
+
+  private async releaseAllOperationCapabilities(registration: RoomHostRegistration): Promise<void> {
+    const capabilities = Array.from(registration.activeOperationCapabilityCounts.keys());
+    registration.activeOperationCapabilitiesByRequestId.clear();
+    registration.activeOperationCapabilityCounts.clear();
+    if (capabilities.length === 0) {
+      return;
+    }
+
+    await this.releaseOperationCapabilities(registration, capabilities);
+  }
+
+  private async makeCaptureOperationBlockedOutcome(
+    action: CaptureHostAction,
+    message: string
+  ): Promise<CaptureActionOutcome> {
+    return {
+      action,
+      ok: false,
+      message,
+      status: await getCaptureStatus(),
+    };
+  }
+
+  private makeTtsOperationBlockedResult(
+    requestId: string,
+    target: TtsRequest["target"],
+    request: Pick<TtsRequest, "mode" | "language" | "modelId">,
+    runtime: TtsRuntimeStatus,
+    message: string
+  ): TtsSpeakResult {
+    const timestamp = new Date().toISOString();
+    const mode = resolveTtsMode(request.mode, runtime);
+    return {
+      requestId,
+      runtime,
+      status: {
+        requestId,
+        target: target ?? "analyze-compose",
+        mode,
+        language: request.language ?? runtime.language,
+        modelId: request.modelId ?? runtime.local.modelId,
+        status: "failed",
+        progress: null,
+        message,
+        error: message,
+        audioPath: null,
+        source: mode === "android" ? "android-bridge" : "local",
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    };
   }
 
   private async loadRoomHost(registration: RoomHostRegistration): Promise<boolean> {
@@ -787,6 +1010,18 @@ class RoomHostRuntimeClass {
         startDictation: async (
           requestId = crypto.randomUUID()
         ): Promise<{ requestId: string; outcome: CaptureActionOutcome }> => {
+          const capabilities: OperationCapability[] = ["android-microphone"];
+          const operation = await this.acquireOperationCapabilities(registration, capabilities);
+          if (operation.success !== true) {
+            return {
+              requestId,
+              outcome: await this.makeCaptureOperationBlockedOutcome(
+                "start-analyze-dictation",
+                operation.message
+              ),
+            };
+          }
+
           registration.activeTranscriptRequestIds.add(requestId);
           const outcome = await runCaptureAction("start-analyze-dictation", {
             target: transcriptTarget,
@@ -794,14 +1029,37 @@ class RoomHostRuntimeClass {
           });
           if (outcome.ok !== true) {
             registration.activeTranscriptRequestIds.delete(requestId);
+            await this.releaseOperationCapabilities(registration, operation.acquiredCapabilities);
+          } else {
+            this.trackOperationCapabilities(registration, requestId, capabilities);
           }
           return { requestId, outcome };
         },
-        stopDictation: async (requestId): Promise<CaptureActionOutcome> =>
-          await runCaptureAction("stop-analyze-dictation", { target: transcriptTarget, requestId }),
+        stopDictation: async (requestId): Promise<CaptureActionOutcome> => {
+          const outcome = await runCaptureAction("stop-analyze-dictation", {
+            target: transcriptTarget,
+            requestId,
+          });
+          if (outcome.ok === true) {
+            await this.releaseTrackedOperationCapabilities(registration, requestId);
+          }
+          return outcome;
+        },
         startAmbientListener: async (
           requestId = crypto.randomUUID()
         ): Promise<{ requestId: string; outcome: CaptureActionOutcome }> => {
+          const capabilities: OperationCapability[] = ["android-microphone", "ambient-listening"];
+          const operation = await this.acquireOperationCapabilities(registration, capabilities);
+          if (operation.success !== true) {
+            return {
+              requestId,
+              outcome: await this.makeCaptureOperationBlockedOutcome(
+                "start-ambient-listener",
+                operation.message
+              ),
+            };
+          }
+
           registration.activeTranscriptRequestIds.add(requestId);
           const outcome = await runCaptureAction("start-ambient-listener", {
             target: transcriptTarget,
@@ -809,18 +1067,46 @@ class RoomHostRuntimeClass {
           });
           if (outcome.ok !== true) {
             registration.activeTranscriptRequestIds.delete(requestId);
+            await this.releaseOperationCapabilities(registration, operation.acquiredCapabilities);
+          } else {
+            this.trackOperationCapabilities(registration, requestId, capabilities);
           }
           return { requestId, outcome };
         },
-        stopAmbientListener: async (requestId): Promise<CaptureActionOutcome> =>
-          await runCaptureAction("stop-ambient-listener", { target: transcriptTarget, requestId }),
+        stopAmbientListener: async (requestId): Promise<CaptureActionOutcome> => {
+          const outcome = await runCaptureAction("stop-ambient-listener", {
+            target: transcriptTarget,
+            requestId,
+          });
+          if (outcome.ok === true) {
+            registration.activeTranscriptRequestIds.delete(requestId);
+            await this.releaseTrackedOperationCapabilities(registration, requestId);
+          }
+          return outcome;
+        },
         startCameraFeed: async (
           requestId = crypto.randomUUID()
         ): Promise<{ requestId: string; outcome: CaptureActionOutcome }> => {
+          const capabilities: OperationCapability[] = ["android-camera", "live-feed"];
+          const operation = await this.acquireOperationCapabilities(registration, capabilities);
+          if (operation.success !== true) {
+            const outcome = await this.makeCaptureOperationBlockedOutcome(
+              "start-camera-feed",
+              operation.message
+            );
+            notifyCaptureFeedStatus(requestId, "camera-feed", outcome);
+            return { requestId, outcome };
+          }
+
           const outcome = await runCaptureAction("start-camera-feed", {
             target: transcriptTarget,
             requestId,
           });
+          if (outcome.ok !== true) {
+            await this.releaseOperationCapabilities(registration, operation.acquiredCapabilities);
+          } else {
+            this.trackOperationCapabilities(registration, requestId, capabilities);
+          }
           notifyCaptureFeedStatus(requestId, "camera-feed", outcome);
           return { requestId, outcome };
         },
@@ -831,16 +1117,35 @@ class RoomHostRuntimeClass {
             target: transcriptTarget,
             requestId,
           });
+          if (outcome.ok === true) {
+            await this.releaseTrackedOperationCapabilities(registration, requestId);
+          }
           notifyCaptureFeedStatus(requestId, "camera-feed", outcome);
           return { requestId, outcome };
         },
         startInteractiveMirror: async (
           requestId = crypto.randomUUID()
         ): Promise<{ requestId: string; outcome: CaptureActionOutcome }> => {
+          const capabilities: OperationCapability[] = ["live-feed"];
+          const operation = await this.acquireOperationCapabilities(registration, capabilities);
+          if (operation.success !== true) {
+            const outcome = await this.makeCaptureOperationBlockedOutcome(
+              "start-interactive-mirror",
+              operation.message
+            );
+            notifyCaptureFeedStatus(requestId, "interactive-mirror", outcome);
+            return { requestId, outcome };
+          }
+
           const outcome = await runCaptureAction("start-interactive-mirror", {
             target: transcriptTarget,
             requestId,
           });
+          if (outcome.ok !== true) {
+            await this.releaseOperationCapabilities(registration, operation.acquiredCapabilities);
+          } else {
+            this.trackOperationCapabilities(registration, requestId, capabilities);
+          }
           notifyCaptureFeedStatus(requestId, "interactive-mirror", outcome);
           return { requestId, outcome };
         },
@@ -851,6 +1156,9 @@ class RoomHostRuntimeClass {
             target: transcriptTarget,
             requestId,
           });
+          if (outcome.ok === true) {
+            await this.releaseTrackedOperationCapabilities(registration, requestId);
+          }
           notifyCaptureFeedStatus(requestId, "interactive-mirror", outcome);
           return { requestId, outcome };
         },
@@ -861,19 +1169,53 @@ class RoomHostRuntimeClass {
           options = {}
         ): Promise<{ requestId: string; outcome: TtsSpeakResult }> => {
           const requestId = options.requestId ?? crypto.randomUUID();
+          const runtime = await getTtsStatus();
+          const mode = resolveTtsMode(options.mode, runtime);
+          const capabilities: OperationCapability[] = [resolveTtsCapability(mode)];
+          const operation = await this.acquireOperationCapabilities(registration, capabilities);
+          if (operation.success !== true) {
+            return {
+              requestId,
+              outcome: this.makeTtsOperationBlockedResult(
+                requestId,
+                transcriptTarget,
+                options,
+                runtime,
+                operation.message
+              ),
+            };
+          }
+
           registration.activeTtsRequestIds.add(requestId);
           const outcome = await speakText({
             ...options,
             requestId,
             target: transcriptTarget,
             text,
+            metadata: {
+              operationManaged: true,
+            },
           });
           if (outcome.status.status === "failed") {
             registration.activeTtsRequestIds.delete(requestId);
+            await this.releaseOperationCapabilities(registration, operation.acquiredCapabilities);
+          } else {
+            this.trackOperationCapabilities(registration, requestId, capabilities);
           }
           return { requestId, outcome };
         },
-        stop: async (requestId): Promise<TtsStopResult> => await stopSpeech(requestId),
+        stop: async (requestId): Promise<TtsStopResult> => {
+          const outcome = await stopSpeech(requestId);
+          if (isTerminalTtsStatus(outcome.status.status)) {
+            registration.activeTtsRequestIds.delete(requestId);
+            await this.releaseTrackedOperationCapabilities(registration, requestId);
+          }
+          return outcome;
+        },
+      },
+      operations: {
+        getStatus: async (): Promise<OperationsStatus> => await getOperationsStatus(),
+        subscribe: (listener): (() => void) => onOperationsStatus(listener),
       },
       registerProtocols: (protocols): void => {
         RoomProtocolRegistry.registerRuntimeProtocols(registration.room.id, protocols);

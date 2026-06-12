@@ -12,6 +12,7 @@ import {
   REPAIR_UI_COLORS,
   REPAIR_UI_COMMANDS,
 } from "../shared/repair-constants.js";
+import { getRepairVoiceCommandPhraseMap } from "../shared/repair-action-registry.js";
 import {
   MOCK_REPAIR_KNOWLEDGE_PACKS,
   MOCK_REPAIR_PCB_IMAGES,
@@ -54,10 +55,15 @@ import {
 } from "./state/repair-runtime-state.js";
 import { createRepairRuntimeStore, type RepairRuntimeStore } from "./state/repair-runtime-store.js";
 import { createRepairUiSnapshot, createRepairUiSnapshotMeta } from "./state/repair-selectors.js";
+import type { RepairOperationsSnapshot } from "../shared/ui/state.js";
 
 interface RepairRoomApi {
   log: (level: string, message: string) => void;
   notifyRoom: (type: string, payload?: Record<string, unknown>) => void;
+  operations?: {
+    getStatus?: () => Promise<unknown> | unknown;
+    subscribe?: (listener: (status: unknown) => void) => (() => void) | void;
+  };
   getState?: (key: string) => unknown;
   setState?: (key: string, value: unknown) => unknown;
 }
@@ -190,6 +196,53 @@ function safeStringArray(value: unknown): string[] | null {
 
 function uniqueStringList(values: string[]): string[] {
   return Array.from(new Set(values));
+}
+
+function normalizeRepairOperationsSnapshot(value: unknown): RepairOperationsSnapshot | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const records = record["records"];
+  const updatedAt = safeNumber(record["updatedAt"]);
+  if (!Array.isArray(records) || updatedAt === null) {
+    return null;
+  }
+
+  return {
+    updatedAt,
+    records: records.flatMap((entry) => {
+      if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return [];
+      const source = entry as Record<string, unknown>;
+      const capability = safeString(source["capability"]);
+      const startedAt = safeNumber(source["startedAt"]);
+      const ownerSource = source["owner"];
+      if (
+        capability === null ||
+        startedAt === null ||
+        typeof ownerSource !== "object" ||
+        ownerSource === null ||
+        Array.isArray(ownerSource)
+      ) {
+        return [];
+      }
+      const ownerRecord = ownerSource as Record<string, unknown>;
+      const ownerId = safeString(ownerRecord["id"]);
+      if (ownerId === null) return [];
+      const owner = {
+        id: ownerId,
+        label: safeString(ownerRecord["label"]) ?? ownerId,
+      };
+      const roomId = safeString(ownerRecord["roomId"]);
+      return [
+        {
+          capability,
+          owner: roomId === null ? owner : { ...owner, roomId },
+          startedAt,
+        },
+      ];
+    }),
+  };
 }
 
 function safeNumber(value: unknown): number | null {
@@ -820,6 +873,7 @@ export default function createRepairRoomHostRuntime() {
       let liveTimelineSessionId = store.getState().activeSessionId;
       let liveTimelineAnchorAtMs = Date.now();
       let liveTimelineBaseMs = getSessionTimelineMs(getActiveSession(store.getState()));
+      let operationsUnsubscribe: (() => void) | null = null;
       const replayController = createReplayRuntimeController(store, () =>
         getActiveSession(store.getState())
       );
@@ -854,6 +908,38 @@ export default function createRepairRoomHostRuntime() {
           snapshot: createRepairUiSnapshot(state),
           meta: createRepairUiSnapshotMeta(state),
         });
+      }
+
+      function applyOperationsStatus(value: unknown): void {
+        const status = normalizeRepairOperationsSnapshot(value);
+        if (status === null) return;
+        store.dispatch({ type: "operations/status-set", status });
+      }
+
+      function startOperationsProjectionBridge(): void {
+        if (typeof api.operations?.getStatus === "function") {
+          void Promise.resolve(api.operations.getStatus())
+            .then((status) => {
+              applyOperationsStatus(status);
+            })
+            .catch((error: unknown) => {
+              api.log(
+                "debug",
+                `[${REPAIR_ROOM_ID}] operations status unavailable: ${
+                  error instanceof Error ? error.message : String(error)
+                }`
+              );
+            });
+        }
+
+        if (typeof api.operations?.subscribe === "function") {
+          const unsubscribe = api.operations.subscribe((status) => {
+            applyOperationsStatus(status);
+          });
+          if (typeof unsubscribe === "function") {
+            operationsUnsubscribe = unsubscribe;
+          }
+        }
       }
 
       function clearFeedStream(): void {
@@ -1104,6 +1190,7 @@ export default function createRepairRoomHostRuntime() {
       store.subscribe(() => {
         pushState();
       });
+      startOperationsProjectionBridge();
 
       function applyViewportUpdate(flat: Record<string, unknown>): {
         success: boolean;
@@ -2314,11 +2401,14 @@ export default function createRepairRoomHostRuntime() {
           }
         },
         commands,
+        voiceCommands: getRepairVoiceCommandPhraseMap(),
         handleCommand,
         getStateSnapshot(): { state: RepairRuntimeState } {
           return { state: store.getState() };
         },
         dispose() {
+          operationsUnsubscribe?.();
+          operationsUnsubscribe = null;
           clearFeedStream();
           clearResearchStream();
           if (clockInterval !== null) {

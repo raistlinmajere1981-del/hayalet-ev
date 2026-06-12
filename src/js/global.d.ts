@@ -56,6 +56,13 @@ import type {
   TtsStopResult,
 } from "../types/tts.js";
 import type {
+  OperationAcquireResult,
+  OperationCapability,
+  OperationOwner,
+  OperationReleaseResult,
+  OperationsStatus,
+} from "../types/operations.js";
+import type {
   CaptureActionOutcome,
   CaptureAmbientListenerOptions,
   CaptureAmbientStatusPayload,
@@ -1259,6 +1266,17 @@ declare global {
     ttsStop?: (requestId: string) => Promise<TtsStopResult>;
     ttsListModels?: () => Promise<TtsManagedModelStatus[]>;
     ttsInstallModel?: (modelId: TtsManagedModelId) => Promise<TtsInstallModelResult>;
+    operationsStatus?: () => Promise<OperationsStatus>;
+    operationsAcquire?: (
+      capability: OperationCapability,
+      owner: OperationOwner
+    ) => Promise<OperationAcquireResult>;
+    operationsRelease?: (
+      capability: OperationCapability,
+      owner: OperationOwner
+    ) => Promise<OperationReleaseResult>;
+    operationsOnStatus?: (callback: (payload: OperationsStatus) => void) => void;
+    operationsOffStatus?: (callback: (payload: OperationsStatus) => void) => void;
     ttsOnStatus?: (callback: (payload: TtsStatus) => void) => void;
     ttsOffStatus?: (callback: (payload: TtsStatus) => void) => void;
     transcriptOnIngress?: (callback: (payload: TranscriptIngressPayload) => void) => void;

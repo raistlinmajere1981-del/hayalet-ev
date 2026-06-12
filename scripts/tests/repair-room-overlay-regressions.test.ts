@@ -4,11 +4,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { REPAIR_UI_COMMANDS } from "../../rooms/repair-room/shared/repair-constants.ts";
 import { createRepairDefaultGuidanceProjection } from "../../rooms/repair-room/shared/ui/state.ts";
+import { createInitialRepairRuntimeState } from "../../rooms/repair-room/host/state/repair-runtime-state.ts";
+import { createRepairUiSnapshot } from "../../rooms/repair-room/host/state/repair-selectors.ts";
 import { resolveRepairAssetUrl } from "../../rooms/repair-room/ui/repair-asset-url.ts";
 import {
   REPAIR_DOCK_PANEL_IDS,
   getRepairDockLayoutProjection,
 } from "../../rooms/repair-room/ui/repair-room-ui-runtime.ts";
+import { renderWorkbenchStagePanel } from "../../rooms/repair-room/ui/panels/workbench-stage-panel.ts";
 import {
   getContainedImageFrame,
   imagePointToStagePoint,
@@ -26,6 +29,53 @@ import {
 function countGridTemplateTracks(template: string): number {
   if (template === "none") return 0;
   return template.trim().split(/\s+/).filter(Boolean).length;
+}
+
+class RepairFakeElement {
+  children: RepairFakeElement[] = [];
+  parentElement: RepairFakeElement | null = null;
+  dataset: Record<string, string> = {};
+  className = "";
+  textContent = "";
+  innerHTML = "";
+  type = "";
+  title = "";
+  draggable = true;
+  style: Record<string, string> = {};
+
+  constructor(readonly tagName: string) {}
+
+  append(...children: RepairFakeElement[]): void {
+    children.forEach((child) => {
+      child.parentElement = this;
+      this.children.push(child);
+    });
+  }
+}
+
+class RepairFakeDocument {
+  createElement(tagName: string): RepairFakeElement {
+    return new RepairFakeElement(tagName.toLowerCase());
+  }
+}
+
+function findRepairFakeElements(
+  root: RepairFakeElement,
+  predicate: (element: RepairFakeElement) => boolean
+): RepairFakeElement[] {
+  const matches: RepairFakeElement[] = [];
+  if (predicate(root)) matches.push(root);
+  root.children.forEach((child) => {
+    matches.push(...findRepairFakeElements(child, predicate));
+  });
+  return matches;
+}
+
+function readRepairFakeText(element: RepairFakeElement): string {
+  return [element.textContent, ...element.children.map(readRepairFakeText)]
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 test("repair-room overlay coordinate mapping round-trips image and stage space", () => {
@@ -308,4 +358,105 @@ test("repair-room manifest command specs stay aligned with UI constants", () => 
   Object.values(REPAIR_UI_COMMANDS).forEach((commandName) => {
     assert.equal(commandNames.has(commandName), true, commandName);
   });
+});
+
+test("repair-room P3.5 operation status stays quiet until capabilities are active", () => {
+  const workbenchPanel = readFileSync(
+    join(process.cwd(), "rooms/repair-room/ui/panels/workbench-stage-panel.ts"),
+    "utf8"
+  );
+  const style = readFileSync(join(process.cwd(), "rooms/repair-room/ui/style.css"), "utf8");
+  const renderText = (_path: string[], fallback: string): string => fallback;
+  const documentRef = new RepairFakeDocument() as unknown as Document;
+  const offlineState = createRepairUiSnapshot(
+    createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z")
+  );
+  const offlinePanel = renderWorkbenchStagePanel(
+    documentRef,
+    offlineState,
+    renderText
+  ) as unknown as RepairFakeElement;
+  assert.equal(
+    findRepairFakeElements(
+      offlinePanel,
+      (element) => element.dataset["repairOperationStatus"] === "active"
+    ).length,
+    0
+  );
+
+  const passiveState = createRepairUiSnapshot({
+    ...createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z"),
+    operationsStatus: { updatedAt: 1, records: [] },
+  });
+  const passivePanel = renderWorkbenchStagePanel(
+    documentRef,
+    passiveState,
+    renderText
+  ) as unknown as RepairFakeElement;
+  assert.equal(
+    findRepairFakeElements(
+      passivePanel,
+      (element) => element.dataset["repairOperationStatus"] === "active"
+    ).length,
+    0
+  );
+
+  const activeState = createRepairUiSnapshot({
+    ...createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z"),
+    operationsStatus: {
+      updatedAt: 2,
+      records: [
+        {
+          capability: "local-microphone",
+          owner: { id: "repair-room", label: "Repair Room" },
+          startedAt: 1,
+        },
+        {
+          capability: "android-camera",
+          owner: { id: "repair-room", label: "Repair Room" },
+          startedAt: 2,
+        },
+        {
+          capability: "live-feed",
+          owner: { id: "repair-room", label: "Repair Room" },
+          startedAt: 3,
+        },
+        {
+          capability: "ambient-listening",
+          owner: { id: "repair-room", label: "Repair Room" },
+          startedAt: 4,
+        },
+      ],
+    },
+  });
+  const activePanel = renderWorkbenchStagePanel(
+    documentRef,
+    activeState,
+    renderText
+  ) as unknown as RepairFakeElement;
+  const statusSurface = findRepairFakeElements(
+    activePanel,
+    (element) => element.dataset["repairOperationStatus"] === "active"
+  );
+  assert.equal(statusSurface.length, 1);
+  const chipLabels = findRepairFakeElements(activePanel, (element) =>
+    element.className.split(/\s+/).includes("repair-operation-status__chip")
+  ).map(readRepairFakeText);
+  assert.deepEqual(chipLabels, ["Mic", "Camera", "Live", "Ambient"]);
+
+  assert.match(workbenchPanel, /function getOperationalStatusChips/);
+  assert.match(workbenchPanel, /state\.operationsAvailable !== true\) return \[\]/);
+  assert.match(workbenchPanel, /operationChips\.length > 0/);
+  assert.match(workbenchPanel, /repairOperationStatus/);
+  assert.match(workbenchPanel, /state\.operations\.localMicActive/);
+  assert.match(workbenchPanel, /state\.operations\.androidMicActive/);
+  assert.match(workbenchPanel, /state\.operations\.cameraActive/);
+  assert.match(workbenchPanel, /state\.operations\.liveFeedActive/);
+  assert.match(workbenchPanel, /state\.operations\.ambientActive/);
+
+  assert.match(style, /\.repair-operation-status/);
+  assert.match(style, /\.repair-operation-status__chip/);
+  const chipBlockStart = style.indexOf(".repair-operation-status__chip");
+  const chipBlock = style.slice(chipBlockStart, chipBlockStart + 500);
+  assert.doesNotMatch(chipBlock, /risk|critical|alarm|red/i);
 });

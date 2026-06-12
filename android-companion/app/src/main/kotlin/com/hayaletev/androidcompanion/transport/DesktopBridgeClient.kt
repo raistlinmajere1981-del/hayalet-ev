@@ -70,6 +70,23 @@ data class BridgeTtsPayload(
     val profile: BridgeTtsProfile,
 )
 
+data class BridgeOperationOwner(
+    val id: String,
+    val label: String,
+    val roomId: String? = null,
+)
+
+data class BridgeOperationRecord(
+    val capability: String,
+    val owner: BridgeOperationOwner,
+    val startedAt: Long,
+)
+
+data class BridgeOperationsStatus(
+    val records: List<BridgeOperationRecord>,
+    val updatedAt: Long,
+)
+
 class DesktopBridgeClient(private val manifest: CompanionManifest) {
     private val client = OkHttpClient.Builder()
         .callTimeout(10, TimeUnit.SECONDS)
@@ -337,6 +354,13 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         )
     }
 
+    suspend fun fetchOperationsStatus(
+        reportFailureToDiagnostics: Boolean = false,
+    ): BridgeOperationsStatus {
+        val response = getJson("/api/v1/operations/status", reportFailureToDiagnostics)
+        return response.toBridgeOperationsStatus()
+    }
+
     private suspend fun getJson(
         path: String,
         reportFailureToDiagnostics: Boolean = true,
@@ -518,6 +542,44 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
                 } else {
                     null
                 },
+        )
+    }
+
+    private fun JSONObject.toBridgeOperationsStatus(): BridgeOperationsStatus {
+        val array = optJSONArray("records")
+        val records = buildList {
+            if (array == null) {
+                return@buildList
+            }
+
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                val capability = item.optString("capability").trim()
+                val ownerJson = item.optJSONObject("owner") ?: continue
+                val ownerId = ownerJson.optString("id").trim()
+                val ownerLabel = ownerJson.optString("label").trim().ifBlank { ownerId }
+                if (capability.isBlank() || ownerId.isBlank()) {
+                    continue
+                }
+
+                add(
+                    BridgeOperationRecord(
+                        capability = capability,
+                        owner =
+                            BridgeOperationOwner(
+                                id = ownerId,
+                                label = ownerLabel,
+                                roomId = ownerJson.optString("roomId").trim().ifBlank { null },
+                            ),
+                        startedAt = item.optLong("startedAt", 0L),
+                    )
+                )
+            }
+        }
+
+        return BridgeOperationsStatus(
+            records = records,
+            updatedAt = optLong("updatedAt", 0L),
         )
     }
 

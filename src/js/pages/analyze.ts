@@ -100,6 +100,10 @@ import {
   refreshCaptureStatus,
   runCaptureAction,
 } from "../modules/capture/electron-client.js";
+import {
+  acquireOperationCapability,
+  releaseOperationCapability,
+} from "../modules/operations/electron-client.js";
 import { onTranscriptIngress } from "../modules/transcript/electron-client.js";
 import {
   getTtsStatus,
@@ -126,6 +130,7 @@ import type {
 } from "../../types/transcript.js";
 import type { TtsLanguage, TtsMode, TtsRuntimeStatus, TtsStatus } from "../../types/tts.js";
 import type { CaptureCommandPhraseSettings } from "../../types/settings.js";
+import type { OperationCapability, OperationOwner } from "../../types/operations.js";
 import {
   DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
   DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
@@ -185,6 +190,15 @@ interface AnalyzeAmbientDictationIntent {
 
 const ANALYZE_AMBIENT_DICTATION_PREFIXES = ["mesaj yaz", "mesaj", "yaz", "dikte"] as const;
 const ANALYZE_AMBIENT_CANCEL_PHRASES = ["iptal", "iptal et", "vazgeç", "vazgec"] as const;
+const ANALYZE_CAMERA_OPERATION_OWNER: OperationOwner = {
+  id: "analyze-room",
+  label: "Analyze Room",
+  roomId: "analyze",
+};
+const ANALYZE_CAMERA_OPERATION_CAPABILITIES: OperationCapability[] = [
+  "android-camera",
+  "live-feed",
+];
 
 function analyzeT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.analyze.${key}`, params);
@@ -317,6 +331,7 @@ export class AnalyzeController {
   _cameraPreviewRequestId: string | null;
   _cameraPreviewStream: MediaStream | null;
   _cameraPreviewVideoSource: CaptureAnalyzePreviewVideoStatus["source"] | null;
+  _cameraPanelOperationCapabilities: OperationCapability[];
   _cameraPanelStatusMessage: string | null;
   _cameraPanelHasFrame: boolean;
   _ttsRuntimeStatus: TtsRuntimeStatus | null;
@@ -385,6 +400,7 @@ export class AnalyzeController {
     this._cameraPreviewRequestId = null;
     this._cameraPreviewStream = null;
     this._cameraPreviewVideoSource = null;
+    this._cameraPanelOperationCapabilities = [];
     this._cameraPanelStatusMessage = null;
     this._cameraPanelHasFrame = false;
     this._ttsRuntimeStatus = null;
@@ -2312,6 +2328,47 @@ export class AnalyzeController {
     }
   }
 
+  async _acquireAndroidCameraPanelOperations(): Promise<void> {
+    if (this._cameraPanelOperationCapabilities.length > 0) {
+      return;
+    }
+
+    const acquiredCapabilities: OperationCapability[] = [];
+    for (const capability of ANALYZE_CAMERA_OPERATION_CAPABILITIES) {
+      const outcome = await acquireOperationCapability(capability, ANALYZE_CAMERA_OPERATION_OWNER);
+      if (outcome.success !== true) {
+        await Promise.all(
+          acquiredCapabilities.map(async (acquiredCapability) => {
+            await releaseOperationCapability(
+              acquiredCapability,
+              ANALYZE_CAMERA_OPERATION_OWNER
+            ).catch(() => null);
+          })
+        );
+        throw new Error(outcome.error);
+      }
+      acquiredCapabilities.push(capability);
+    }
+
+    this._cameraPanelOperationCapabilities = acquiredCapabilities;
+  }
+
+  async _releaseAndroidCameraPanelOperations(): Promise<void> {
+    if (this._cameraPanelOperationCapabilities.length === 0) {
+      return;
+    }
+
+    const capabilities = this._cameraPanelOperationCapabilities;
+    this._cameraPanelOperationCapabilities = [];
+    await Promise.all(
+      capabilities.map(async (capability) => {
+        await releaseOperationCapability(capability, ANALYZE_CAMERA_OPERATION_OWNER).catch(
+          () => null
+        );
+      })
+    );
+  }
+
   async toggleAndroidCameraPanel(): Promise<void> {
     await this._setAndroidCameraPanelOpen(this._cameraPanelOpen !== true);
   }
@@ -2334,6 +2391,7 @@ export class AnalyzeController {
       this._renderAndroidCameraPanel();
 
       try {
+        await this._acquireAndroidCameraPanelOperations();
         const outcome = await runCaptureAction("start-camera-feed", {
           target: "analyze-compose",
           requestId: this._cameraPreviewRequestId,
@@ -2373,6 +2431,7 @@ export class AnalyzeController {
           target: "analyze-compose",
           requestId: failedRequestId,
         }).catch(() => null);
+        await this._releaseAndroidCameraPanelOperations();
         if (options.notify !== false) {
           this._notifyCaptureFeedback(
             "error",
@@ -2395,6 +2454,7 @@ export class AnalyzeController {
     this._renderAndroidCameraPanel();
 
     if (requestId === null) {
+      await this._releaseAndroidCameraPanelOperations();
       this.renderCaptureSessionState();
       return;
     }
@@ -2417,6 +2477,7 @@ export class AnalyzeController {
         );
       }
     } finally {
+      await this._releaseAndroidCameraPanelOperations();
       this.renderCaptureSessionState();
     }
   }

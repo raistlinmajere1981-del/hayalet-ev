@@ -223,6 +223,59 @@ export interface RepairVoiceGuidanceProjection {
   spokenLine: string | null;
 }
 
+export interface RepairOperationsOwnerProjection {
+  id: string;
+  label: string;
+  roomId?: string;
+}
+
+export interface RepairOperationsRecordProjection {
+  capability: string;
+  owner: RepairOperationsOwnerProjection;
+  startedAt: number;
+}
+
+export interface RepairOperationsSnapshot {
+  records: RepairOperationsRecordProjection[];
+  updatedAt: number;
+}
+
+export interface RepairOperationsProjection {
+  localMicActive: boolean;
+  androidMicActive: boolean;
+  cameraActive: boolean;
+  liveFeedActive: boolean;
+  ambientActive: boolean;
+  ttsActive: boolean;
+  activeOwner?: string;
+  activeCapabilities: string[];
+}
+
+export interface RepairVoiceReadinessProjection {
+  available: boolean;
+  listening: boolean;
+  handsBusyMode: boolean;
+  ambientMode: boolean;
+}
+
+export interface RepairContinuityTargetProjection {
+  ref: RepairOverlayEntityRef;
+  label: string;
+}
+
+export interface RepairContinuityMeasurementProjection {
+  eventId: string;
+  reference: string;
+  display: string;
+}
+
+export interface RepairContinuityProjection {
+  lastFocusTarget?: RepairContinuityTargetProjection;
+  lastMeasurement?: RepairContinuityMeasurementProjection;
+  lastVerifiedRegion?: RepairContinuityTargetProjection;
+  currentInvestigationPhase?: RepairInvestigationPhase;
+}
+
 export interface RepairGuidanceProjection {
   operationalProfile: RepairOperationalProfile;
   investigationPhase: RepairInvestigationPhase;
@@ -372,9 +425,39 @@ export function createRepairDefaultGuidanceProjection(
   };
 }
 
+export function createRepairDefaultOperationsProjection(): RepairOperationsProjection {
+  return {
+    localMicActive: false,
+    androidMicActive: false,
+    cameraActive: false,
+    liveFeedActive: false,
+    ambientActive: false,
+    ttsActive: false,
+    activeCapabilities: [],
+  };
+}
+
+export function createRepairDefaultVoiceReadinessProjection(): RepairVoiceReadinessProjection {
+  return {
+    available: false,
+    listening: false,
+    handsBusyMode: false,
+    ambientMode: false,
+  };
+}
+
+export function createRepairDefaultContinuityProjection(): RepairContinuityProjection {
+  return {};
+}
+
 export interface RepairReplayProjection {
   playheadMs: number;
   replayMode: RepairWorkbenchState["timeline"]["replayMode"];
+  operationsAvailable: boolean;
+  operations: RepairOperationsProjection;
+  voiceReadiness: RepairVoiceReadinessProjection;
+  continuity: RepairContinuityProjection;
+  liveSource: RepairWorkbenchState["liveSource"];
   visibleEvents: RepairEvent[];
   overlayEvents: RepairEvent[];
   tacticalFeed: RepairTacticalFeedItem[];
@@ -413,6 +496,10 @@ export interface RepairUiState {
   chat: RepairChatState;
   layout: RepairLayoutState;
   guidance: RepairGuidanceProjection;
+  operationsAvailable: boolean;
+  operations: RepairOperationsProjection;
+  voiceReadiness: RepairVoiceReadinessProjection;
+  continuity: RepairContinuityProjection;
   ambient: {
     nowIso: string;
     sessionDurationMs: number;

@@ -448,6 +448,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--repair-sp-2);
   padding: var(--repair-sp-2) var(--repair-sp-3);
   border-bottom: var(--repair-px-1) solid var(--repair-border);
   min-height: var(--repair-px-36);
@@ -463,6 +465,28 @@ body {
   font-family: var(--repair-mono);
   font-size: var(--repair-px-10);
   color: var(--repair-text-dim);
+}
+
+.repair-operation-status {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--repair-px-4);
+  min-width: 0;
+}
+
+.repair-operation-status__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--repair-px-22);
+  padding: var(--repair-px-2) var(--repair-px-7);
+  border: var(--repair-px-1) solid var(--repair-border-strong);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-cyan);
+  font: 700 var(--repair-px-9) var(--repair-mono);
+  letter-spacing: var(--repair-em-0-04);
+  text-transform: uppercase;
 }
 
 .repair-profile-toggle {

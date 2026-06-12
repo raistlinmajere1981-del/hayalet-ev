@@ -166,6 +166,7 @@ test("android companion keeps openWake ambient, Vosk dictation, and live camera 
   assert.match(gradleSource, /compileSdk = 37/);
   assert.match(gradleSource, /androidx\.core:core-ktx:1\.19\.0/);
   assert.match(gradleSource, /com\.alphacephei:vosk-android:0\.3\.75/);
+  assert.match(gradleSource, /com\.microsoft\.onnxruntime:onnxruntime-android:1\.24\.3/);
   assert.match(gradleSource, /xyz\.rementia:openwakeword:0\.1\.5/);
   assert.doesNotMatch(gradleSource, /WHISPER_CPP_DIR/);
   assert.doesNotMatch(gradleSource, /externalNativeBuild/);

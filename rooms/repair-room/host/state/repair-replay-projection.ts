@@ -1,7 +1,10 @@
 import { repairEventToTacticalFeedItem } from "../../shared/data/index.js";
 import {
   REPAIR_INVESTIGATION_LIFECYCLE,
+  createRepairDefaultContinuityProjection,
   createRepairDefaultGuidanceProjection,
+  createRepairDefaultOperationsProjection,
+  createRepairDefaultVoiceReadinessProjection,
 } from "../../shared/ui/state.js";
 import type {
   RepairAiMarkEvent,
@@ -13,6 +16,7 @@ import type {
   RepairInvestigationRegionLinkage,
   RepairInvestigationRegionUpdatedEvent,
   RepairKnowledgeSpatialRef,
+  RepairLiveSourceType,
   RepairMeasurementEvidenceState,
   RepairMeasurementEvent,
   RepairMeasurementGroup,
@@ -33,6 +37,7 @@ import type {
   RepairInvestigationPhase,
   RepairKnowledgeRegionProjection,
   RepairMeasurementRelationship,
+  RepairOperationsProjection,
   RepairPanelVisibilityMode,
   RepairReplayProjection,
   RepairSpatialFocusState,
@@ -1689,11 +1694,146 @@ export function projectRepairTacticalFeedItems(
   return [...prioritized, ...fallback].slice(0, maxItems);
 }
 
+function hasOperationCapability(capabilities: string[], capability: string): boolean {
+  return capabilities.includes(capability);
+}
+
+function isCameraCapability(capability: string): boolean {
+  return capability === "android-camera" || capability.endsWith("-camera");
+}
+
+function buildOperationsProjection(
+  state: RepairRuntimeState
+): { operationsAvailable: boolean; operations: RepairOperationsProjection } {
+  const status = state.operationsStatus;
+  if (status === null || status.updatedAt <= 0) {
+    return {
+      operationsAvailable: false,
+      operations: createRepairDefaultOperationsProjection(),
+    };
+  }
+
+  const activeCapabilities = uniqueStrings(status.records.map((record) => record.capability));
+  const firstOwner = status.records[0]?.owner ?? null;
+  const operations: RepairOperationsProjection = {
+    localMicActive: hasOperationCapability(activeCapabilities, "local-microphone"),
+    androidMicActive: hasOperationCapability(activeCapabilities, "android-microphone"),
+    cameraActive: activeCapabilities.some(isCameraCapability),
+    liveFeedActive: hasOperationCapability(activeCapabilities, "live-feed"),
+    ambientActive: hasOperationCapability(activeCapabilities, "ambient-listening"),
+    ttsActive:
+      hasOperationCapability(activeCapabilities, "local-tts") ||
+      hasOperationCapability(activeCapabilities, "android-tts"),
+    activeCapabilities,
+  };
+  if (firstOwner !== null) {
+    operations.activeOwner = firstOwner.label.trim() === "" ? firstOwner.id : firstOwner.label;
+  }
+  return { operationsAvailable: true, operations };
+}
+
+function buildVoiceReadinessProjection(
+  state: RepairRuntimeState,
+  operationsAvailable: boolean,
+  operations: RepairOperationsProjection
+): RepairReplayProjection["voiceReadiness"] {
+  const micActive = operations.localMicActive || operations.androidMicActive;
+  const ambientMode = operationsAvailable && operations.ambientActive;
+  return {
+    available: operationsAvailable && (micActive || ambientMode),
+    listening:
+      operationsAvailable &&
+      (micActive || ambientMode) &&
+      state.layout.voiceGuidance.ambientListeningState === "listening",
+    handsBusyMode: state.layout.voiceGuidance.handsBusyMode,
+    ambientMode,
+  };
+}
+
+function buildLiveSourceProjection(params: {
+  activeFreezeFrameEventId: string | null;
+  activeSnapshotEventId: string | null;
+  operations: RepairOperationsProjection;
+  session: RepairSession | null;
+  state: RepairRuntimeState;
+}): RepairReplayProjection["liveSource"] {
+  if (
+    params.activeFreezeFrameEventId !== null ||
+    (params.state.workbench.timeline.autoFollowLive === false &&
+      params.activeSnapshotEventId !== null)
+  ) {
+    return { available: true, connected: false, sourceType: "snapshot" };
+  }
+
+  if (params.operations.liveFeedActive && params.operations.cameraActive) {
+    const sourceType =
+      params.operations.activeCapabilities.find(isCameraCapability) ?? "android-camera";
+    return {
+      available: true,
+      connected: true,
+      sourceType: sourceType as RepairLiveSourceType,
+    };
+  }
+
+  if (params.session?.pcbImage !== null && params.session?.pcbImage !== undefined) {
+    return { available: true, connected: false, sourceType: "image" };
+  }
+
+  return { available: false, connected: false };
+}
+
+function buildContinuityProjection(params: {
+  activeSpatialFocus: RepairSpatialFocusState | null;
+  guidance: RepairGuidanceProjection;
+  investigationRegions: RepairInvestigationRegion[];
+  visibleEvents: RepairEvent[];
+}): RepairReplayProjection["continuity"] {
+  const continuity: RepairReplayProjection["continuity"] = {
+    currentInvestigationPhase: params.guidance.investigationPhase,
+  };
+
+  if (params.activeSpatialFocus !== null) {
+    continuity.lastFocusTarget = {
+      ref: params.activeSpatialFocus.ref,
+      label: params.activeSpatialFocus.label,
+    };
+  }
+
+  const lastMeasurement = params.visibleEvents
+    .filter((event): event is RepairMeasurementEvent => event.kind === "measurement")
+    .at(-1);
+  if (lastMeasurement !== undefined) {
+    continuity.lastMeasurement = {
+      eventId: lastMeasurement.id,
+      reference: lastMeasurement.reference ?? lastMeasurement.channel,
+      display: `${lastMeasurement.rawDisplay}${lastMeasurement.unit}`,
+    };
+  }
+
+  const lastVerifiedRegion = [...params.investigationRegions]
+    .filter((region) => region.status === "resolved")
+    .sort((left, right) => Date.parse(left.updatedAt) - Date.parse(right.updatedAt))
+    .at(-1);
+  if (lastVerifiedRegion !== undefined) {
+    continuity.lastVerifiedRegion = {
+      ref: regionEntityRef(lastVerifiedRegion.regionId),
+      label: lastVerifiedRegion.label,
+    };
+  }
+
+  return continuity;
+}
+
 export function createEmptyRepairReplayProjection(): RepairReplayProjection {
   const guidance = createRepairDefaultGuidanceProjection();
   return {
     playheadMs: 0,
     replayMode: "live",
+    operationsAvailable: false,
+    operations: createRepairDefaultOperationsProjection(),
+    voiceReadiness: createRepairDefaultVoiceReadinessProjection(),
+    continuity: createRepairDefaultContinuityProjection(),
+    liveSource: { available: false, connected: false },
     visibleEvents: [],
     overlayEvents: [],
     tacticalFeed: [],
@@ -1719,6 +1859,8 @@ export function createRepairReplayProjection(
 ): RepairReplayProjection {
   if (session === null) return createEmptyRepairReplayProjection();
 
+  const { operationsAvailable, operations } = buildOperationsProjection(state);
+  const voiceReadiness = buildVoiceReadinessProjection(state, operationsAvailable, operations);
   const orderedEvents = sortRepairEventsForReplay(session.events);
   const playheadMs = getProjectionPlayheadMs(state, session);
   const visibleEvents = orderedEvents.filter((event) =>
@@ -1786,10 +1928,28 @@ export function createRepairReplayProjection(
     temporarySpatialRegions,
     visibleEvents,
   });
+  const liveSource = buildLiveSourceProjection({
+    activeFreezeFrameEventId: activeFreeze?.id ?? null,
+    activeSnapshotEventId: activeSnapshot?.id ?? null,
+    operations,
+    session,
+    state,
+  });
+  const continuity = buildContinuityProjection({
+    activeSpatialFocus,
+    guidance,
+    investigationRegions,
+    visibleEvents,
+  });
 
   return {
     playheadMs,
     replayMode: state.workbench.timeline.replayMode,
+    operationsAvailable,
+    operations,
+    voiceReadiness,
+    continuity,
+    liveSource,
     visibleEvents,
     overlayEvents,
     tacticalFeed: projectRepairTacticalFeedItems(preliminaryFeed, guidance),

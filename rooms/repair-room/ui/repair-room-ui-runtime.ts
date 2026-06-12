@@ -9,7 +9,12 @@ import type {
   RepairUiState,
   RepairUiSnapshotMeta,
 } from "../shared/ui/state.js";
-import { createRepairDefaultGuidanceProjection } from "../shared/ui/state.js";
+import {
+  createRepairDefaultContinuityProjection,
+  createRepairDefaultGuidanceProjection,
+  createRepairDefaultOperationsProjection,
+  createRepairDefaultVoiceReadinessProjection,
+} from "../shared/ui/state.js";
 import { normalizeRepairHostMessage } from "../shared/ui/host-messages.js";
 import { REPAIR_ROOM_ID, REPAIR_UI_COLORS } from "../shared/repair-constants.js";
 import { createRepairUiRequestRuntime } from "../shared/ui/request-runtime.js";
@@ -222,6 +227,7 @@ function createInitialState(): RepairUiState {
         liveEdgeMs: 0,
       },
       cursor: null,
+      liveSource: { available: false, connected: false },
       visibleLayers: {
         grid: true,
         "ai-marks": true,
@@ -361,6 +367,10 @@ function createInitialState(): RepairUiState {
       ambientClock: "",
     },
     guidance,
+    operationsAvailable: false,
+    operations: createRepairDefaultOperationsProjection(),
+    voiceReadiness: createRepairDefaultVoiceReadinessProjection(),
+    continuity: createRepairDefaultContinuityProjection(),
     ambient: { nowIso: "", sessionDurationMs: 0 },
   };
 }
@@ -374,6 +384,11 @@ export function createRepairRoomUiRuntime() {
     replay: {
       playheadMs: 0,
       replayMode: "live",
+      operationsAvailable: false,
+      operations: createRepairDefaultOperationsProjection(),
+      voiceReadiness: createRepairDefaultVoiceReadinessProjection(),
+      continuity: createRepairDefaultContinuityProjection(),
+      liveSource: { available: false, connected: false },
       visibleEvents: [],
       overlayEvents: [],
       tacticalFeed: [],

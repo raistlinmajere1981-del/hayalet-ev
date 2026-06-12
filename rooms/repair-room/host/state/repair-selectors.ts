@@ -56,6 +56,7 @@ export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState
             : state.workbench.activeTool === "select"
               ? "inspect"
               : "annotate",
+      liveSource: replay.liveSource,
       operationalMode: replay.operationalMode,
       measurementEvidence: replay.measurementEvidence,
     },
@@ -71,6 +72,10 @@ export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState
     chat: state.chat,
     layout: state.layout,
     guidance: replay.guidance,
+    operationsAvailable: replay.operationsAvailable,
+    operations: replay.operations,
+    voiceReadiness: replay.voiceReadiness,
+    continuity: replay.continuity,
     ambient: {
       nowIso: state.ambientNowIso,
       sessionDurationMs:

@@ -52,6 +52,12 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(pageSource, /_attachAndroidCameraFeed/);
   assert.match(pageSource, /getUserMedia/);
   assert.match(pageSource, /_stageCaptureAsset/);
+  assert.match(pageSource, /acquireOperationCapability/);
+  assert.match(pageSource, /releaseOperationCapability/);
+  assert.match(pageSource, /ANALYZE_CAMERA_OPERATION_CAPABILITIES:[\s\S]*"android-camera"/);
+  assert.match(pageSource, /ANALYZE_CAMERA_OPERATION_CAPABILITIES:[\s\S]*"live-feed"/);
+  assert.match(pageSource, /_acquireAndroidCameraPanelOperations/);
+  assert.match(pageSource, /_releaseAndroidCameraPanelOperations/);
   assert.match(pageSource, /openAndroidCameraManagement/);
   assert.match(pageSource, /_openOperationSettingsOverlay/);
   assert.match(pageSource, /capture\.defaults\.dictationMode/);

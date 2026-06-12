@@ -1,13 +1,19 @@
+import type { OperationCapability, OperationOwner } from "../../../types/operations.js";
 import type {
   TtsInstallModelResult,
   TtsManagedModelId,
   TtsManagedModelStatus,
+  TtsMode,
   TtsRequest,
   TtsRuntimeStatus,
   TtsSpeakResult,
   TtsStatus,
   TtsStopResult,
 } from "../../../types/tts.js";
+import {
+  acquireOperationCapability,
+  releaseOperationCapability,
+} from "../operations/electron-client.js";
 
 const FALLBACK_RUNTIME_STATUS: TtsRuntimeStatus = {
   mode: "local",
@@ -31,6 +37,14 @@ const FALLBACK_RUNTIME_STATUS: TtsRuntimeStatus = {
 
 let activeAudioContext: AudioContext | null = null;
 let activeAudioSource: AudioBufferSourceNode | null = null;
+let ttsOperationStatusSubscriptionReady = false;
+const activeTtsOperationLocks = new Map<
+  string,
+  {
+    capability: OperationCapability;
+    owner: OperationOwner;
+  }
+>();
 
 function getElectronApi(): typeof window.electronAPI | undefined {
   return window.electronAPI;
@@ -144,6 +158,120 @@ function createFallbackStatus(requestId: string): TtsStatus {
   };
 }
 
+function isTerminalTtsStatus(status: TtsStatus["status"]): boolean {
+  return status === "done" || status === "stopped" || status === "failed";
+}
+
+function isOperationManagedRequest(request: TtsRequest): boolean {
+  return request.metadata?.["operationManaged"] === true;
+}
+
+function resolveTtsOperationCapability(mode: TtsMode): OperationCapability {
+  return mode === "android" ? "android-tts" : "local-tts";
+}
+
+function resolveTtsOperationOwner(request: TtsRequest): OperationOwner {
+  const target = request.target ?? "analyze-compose";
+  if (target === "analyze-compose") {
+    return {
+      id: "analyze-room",
+      label: "Analyze Room",
+    };
+  }
+
+  if (target.startsWith("room:")) {
+    const roomId = target.slice("room:".length).trim();
+    return {
+      id: target,
+      label: roomId === "" ? "Room" : `Room ${roomId}`,
+      ...(roomId !== "" ? { roomId } : {}),
+    };
+  }
+
+  return {
+    id: `tts:${target}`,
+    label: "TTS",
+  };
+}
+
+function createOperationBlockedStatus(
+  requestId: string,
+  request: TtsRequest,
+  runtime: TtsRuntimeStatus,
+  mode: TtsMode,
+  message: string
+): TtsStatus {
+  const timestamp = new Date().toISOString();
+  return {
+    requestId,
+    target: request.target ?? "analyze-compose",
+    mode,
+    language: request.language ?? runtime.language,
+    modelId: request.modelId ?? runtime.local.modelId,
+    status: "failed",
+    progress: null,
+    message,
+    error: message,
+    audioPath: null,
+    source: mode === "android" ? "android-bridge" : "local",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+async function releaseTtsOperationLock(requestId: string): Promise<void> {
+  const lock = activeTtsOperationLocks.get(requestId);
+  if (lock === undefined) {
+    return;
+  }
+
+  activeTtsOperationLocks.delete(requestId);
+  await releaseOperationCapability(lock.capability, lock.owner);
+}
+
+function ensureTtsOperationStatusSubscription(): void {
+  if (ttsOperationStatusSubscriptionReady) {
+    return;
+  }
+
+  const api = getElectronApi();
+  if (typeof api?.ttsOnStatus !== "function") {
+    return;
+  }
+
+  ttsOperationStatusSubscriptionReady = true;
+  api.ttsOnStatus((payload) => {
+    const status = normalizeTtsStatus(payload);
+    if (status !== null && isTerminalTtsStatus(status.status)) {
+      void releaseTtsOperationLock(status.requestId);
+    }
+  });
+}
+
+async function acquireTtsOperationLock(
+  request: TtsRequest,
+  mode: TtsMode
+): Promise<
+  | { success: true; capability: OperationCapability; owner: OperationOwner }
+  | { success: false; error: string }
+> {
+  const capability = resolveTtsOperationCapability(mode);
+  const owner = resolveTtsOperationOwner(request);
+  const outcome = await acquireOperationCapability(capability, owner);
+  if (outcome.success !== true) {
+    return {
+      success: false,
+      error: outcome.error,
+    };
+  }
+
+  return {
+    success: true,
+    capability,
+    owner,
+  };
+}
+
 export async function getTtsStatus(): Promise<TtsRuntimeStatus> {
   const api = getElectronApi();
   if (typeof api?.ttsStatus !== "function") {
@@ -173,7 +301,40 @@ export async function speakText(request: TtsRequest): Promise<TtsSpeakResult> {
     };
   }
 
+  const runtime = await getTtsStatus();
+  const requestedMode =
+    normalizedRequest.mode === "android" || normalizedRequest.mode === "local"
+      ? normalizedRequest.mode
+      : runtime.mode;
+  const operation =
+    isOperationManagedRequest(normalizedRequest) === true
+      ? null
+      : await acquireTtsOperationLock(normalizedRequest, requestedMode);
+  if (operation !== null && operation.success !== true) {
+    return {
+      requestId,
+      status: createOperationBlockedStatus(
+        requestId,
+        normalizedRequest,
+        runtime,
+        requestedMode,
+        operation.error
+      ),
+      runtime,
+    };
+  }
+  if (operation !== null) {
+    activeTtsOperationLocks.set(requestId, {
+      capability: operation.capability,
+      owner: operation.owner,
+    });
+    ensureTtsOperationStatusSubscription();
+  }
+
   const result = normalizeSpeakResult(await api.ttsSpeak(normalizedRequest), requestId);
+  if (isTerminalTtsStatus(result.status.status)) {
+    await releaseTtsOperationLock(requestId);
+  }
   void playLocalAudio(result.status);
   return result;
 }
@@ -182,6 +343,7 @@ export async function stopSpeech(requestId: string): Promise<TtsStopResult> {
   const api = getElectronApi();
   await stopLocalAudio();
   if (typeof api?.ttsStop !== "function") {
+    await releaseTtsOperationLock(requestId);
     return {
       requestId,
       status: createFallbackStatus(requestId),
@@ -189,7 +351,11 @@ export async function stopSpeech(requestId: string): Promise<TtsStopResult> {
     };
   }
 
-  return normalizeStopResult(await api.ttsStop(requestId), requestId);
+  const result = normalizeStopResult(await api.ttsStop(requestId), requestId);
+  if (isTerminalTtsStatus(result.status.status)) {
+    await releaseTtsOperationLock(requestId);
+  }
+  return result;
 }
 
 function getAudioContextConstructor(): typeof AudioContext | null {

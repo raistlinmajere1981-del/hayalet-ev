@@ -9,6 +9,7 @@ export * from "./relay.js";
 export * from "./ipc-channels.js";
 export * from "./rooms.js";
 export * from "./tts.js";
+export * from "./operations.js";
 
 export * from "./logging-core.js";
 

@@ -25,6 +25,7 @@ import type {
 } from "../../shared/types/index.js";
 import type {
   RepairKnowledgePackPanelState,
+  RepairOperationsSnapshot,
   RepairTacticalFeedItem,
   RepairUiPhase,
 } from "../../shared/ui/state.js";
@@ -44,6 +45,7 @@ export interface RepairRuntimeState {
   measurement: RepairMeasurementState;
   chat: RepairChatState;
   layout: RepairLayoutState;
+  operationsStatus: RepairOperationsSnapshot | null;
   ambientNowIso: string;
 }
 
@@ -127,6 +129,7 @@ export function createInitialRepairRuntimeState(nowIso: string): RepairRuntimeSt
         liveEdgeMs: activeSessionDurationMs,
       },
       cursor: { xPx: 1280, yPx: 720, gridX: 16, gridY: 16 },
+      liveSource: { available: true, connected: false, sourceType: "image" },
       visibleLayers: createVisibleLayersMap(),
       hoveredEventId: null,
       focusedEventId: null,
@@ -180,6 +183,7 @@ export function createInitialRepairRuntimeState(nowIso: string): RepairRuntimeSt
       focusMode: false,
       ambientClock: nowIso,
     },
+    operationsStatus: null,
     ambientNowIso: nowIso,
   };
 }

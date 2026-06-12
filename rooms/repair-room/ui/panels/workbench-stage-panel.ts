@@ -111,6 +111,30 @@ function getGuidanceMetaText(state: RepairUiState): string {
   return parts.join(" / ");
 }
 
+function getOperationalStatusChips(
+  state: RepairUiState
+): Array<{ label: string; title: string }> {
+  if (state.operationsAvailable !== true) return [];
+  const chips: Array<{ label: string; title: string }> = [];
+  const micSources = [
+    state.operations.localMicActive ? "local" : null,
+    state.operations.androidMicActive ? "android" : null,
+  ].filter((source): source is string => source !== null);
+  if (micSources.length > 0) {
+    chips.push({ label: "Mic", title: `Microphone active: ${micSources.join(", ")}` });
+  }
+  if (state.operations.cameraActive) {
+    chips.push({ label: "Camera", title: "Camera capability active" });
+  }
+  if (state.operations.liveFeedActive) {
+    chips.push({ label: "Live", title: "Live feed capability active" });
+  }
+  if (state.operations.ambientActive) {
+    chips.push({ label: "Ambient", title: "Ambient listening capability active" });
+  }
+  return chips;
+}
+
 export function renderWorkbenchStagePanel(
   documentRef: Document,
   state: RepairUiState,
@@ -152,6 +176,20 @@ export function renderWorkbenchStagePanel(
   headerLeft.append(info);
 
   liveHeader.append(headerLeft);
+  const operationChips = getOperationalStatusChips(state);
+  if (operationChips.length > 0) {
+    const operationStatus = documentRef.createElement("div");
+    operationStatus.className = "repair-operation-status";
+    operationStatus.dataset["repairOperationStatus"] = "active";
+    operationChips.forEach((chip) => {
+      const chipElement = documentRef.createElement("span");
+      chipElement.className = "repair-operation-status__chip";
+      chipElement.textContent = chip.label;
+      chipElement.title = chip.title;
+      operationStatus.append(chipElement);
+    });
+    liveHeader.append(operationStatus);
+  }
   const profileToggle = documentRef.createElement("div");
   profileToggle.className = "repair-profile-toggle";
   (["novice", "advanced"] as const).forEach((profile) => {

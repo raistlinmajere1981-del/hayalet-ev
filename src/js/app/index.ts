@@ -31,6 +31,7 @@ import {
   setupReportPanel,
 } from "./navigation.js";
 import { updateIndicatorAvatars } from "./indicators.js";
+import { setupOperationsIndicators } from "./operations-indicators.js";
 import {
   updateRelayIndicator,
   setupTopBarRelayButtons,
@@ -207,6 +208,7 @@ async function initApp(): Promise<void> {
     setupWindowControls();
     setupTopBarButtons();
     setupTopbarWorkspaceTools();
+    setupOperationsIndicators();
     setupTopBarRelayButtons();
     setupReportPanel();
 

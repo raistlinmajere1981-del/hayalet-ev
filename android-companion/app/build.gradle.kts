@@ -80,5 +80,7 @@ dependencies {
   implementation("androidx.camera:camera-view:1.6.1")
   implementation("com.squareup.okhttp3:okhttp:5.3.2")
   implementation("com.alphacephei:vosk-android:0.3.75")
+  // Keep openWakeWord's ONNX JNI aligned with the sherpa runtime bundled through jniLibs.
+  implementation("com.microsoft.onnxruntime:onnxruntime-android:1.24.3")
   implementation("xyz.rementia:openwakeword:0.1.5")
 }

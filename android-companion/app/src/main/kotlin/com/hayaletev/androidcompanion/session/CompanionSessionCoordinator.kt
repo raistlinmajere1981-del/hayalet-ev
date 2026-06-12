@@ -24,6 +24,7 @@ import com.hayaletev.androidcompanion.transcript.requireAndroidVoskModelProfile
 import com.hayaletev.androidcompanion.tts.AndroidSherpaTtsPlayer
 import com.hayaletev.androidcompanion.transport.BridgeCommand
 import com.hayaletev.androidcompanion.transport.BridgeCommandProfile
+import com.hayaletev.androidcompanion.transport.BridgeOperationRecord
 import com.hayaletev.androidcompanion.transport.BridgePermissions
 import com.hayaletev.androidcompanion.transport.BridgeTranscriptModelProfile
 import com.hayaletev.androidcompanion.transport.BridgeTtsPayload
@@ -49,6 +50,7 @@ data class CompanionUiState(
     val connectionStatus: String,
     val target: String,
     val permissionsSummary: String,
+    val operationsSummary: String? = null,
     val dictationStatus: String? = null,
     val dictationDetail: String? = null,
     val dictationModel: String? = null,
@@ -82,6 +84,7 @@ class CompanionSessionCoordinator(
     private var pollJob: Job? = null
     private var lastBridgeFailureSignature: String? = null
     private var lastDiagnosticsSyncFailureSignature: String? = null
+    private var lastOperationsSyncFailureSignature: String? = null
     private var lastDiagnosticsSyncAtMs = -DIAGNOSTICS_SYNC_INTERVAL_MS
     private var lastUiState: CompanionUiState? = null
     private var bridgeConnected = false
@@ -109,6 +112,7 @@ class CompanionSessionCoordinator(
     private var ttsDetail = appContext.getString(R.string.tts_detail_waiting)
     private var ttsModel = appContext.getString(R.string.tts_model_waiting)
     private var ttsTextSummary = appContext.getString(R.string.tts_text_empty)
+    private var operationsSummary = appContext.getString(R.string.operations_status_idle)
     private val ambientHistoryEntries = mutableListOf<String>()
     private val ambientHistoryClock = SimpleDateFormat("HH:mm:ss", Locale.US)
 
@@ -211,6 +215,7 @@ class CompanionSessionCoordinator(
                             )
                         }
 
+                        syncOperationsSnapshot()
                         publishUiState(
                             connectionStatus = appContext.getString(R.string.status_connected_desktop),
                             permissionsSummary = appContext.getString(R.string.permissions_ready),
@@ -266,6 +271,7 @@ class CompanionSessionCoordinator(
         ttsJob = null
         activeTtsRequestId = null
         activeTtsPayload = null
+        operationsSummary = appContext.getString(R.string.operations_status_idle)
         updateTtsUi(
             appContext.getString(R.string.tts_status_idle),
             appContext.getString(R.string.tts_detail_waiting),
@@ -917,6 +923,7 @@ class CompanionSessionCoordinator(
             connectionStatus = connectionStatus,
             target = launchContext.target,
             permissionsSummary = permissionsSummary,
+            operationsSummary = operationsSummary,
             dictationStatus = dictationStatus,
             dictationDetail = dictationDetail,
             dictationModel =
@@ -1239,6 +1246,60 @@ class CompanionSessionCoordinator(
         }
         lastDiagnosticsSyncAtMs = now
         syncDiagnosticsSnapshot()
+    }
+
+    private suspend fun syncOperationsSnapshot() {
+        runCatching {
+            bridgeClient.fetchOperationsStatus(reportFailureToDiagnostics = false)
+        }.onSuccess { status ->
+            operationsSummary = summarizeOperationRecords(status.records)
+            CompanionDiagnostics.setState("Operations", operationsSummary)
+            if (lastOperationsSyncFailureSignature != null) {
+                CompanionDiagnostics.i("bridge", "Desktop operations snapshot sync recovered.")
+            }
+            lastOperationsSyncFailureSignature = null
+        }.onFailure { error ->
+            val errorSignature = summarizeError(error)
+            if (lastOperationsSyncFailureSignature != errorSignature) {
+                CompanionDiagnostics.w(
+                    "bridge",
+                    "Desktop operations snapshot sync failed.",
+                    throwable = error,
+                )
+            }
+            lastOperationsSyncFailureSignature = errorSignature
+        }
+    }
+
+    private fun summarizeOperationRecords(records: List<BridgeOperationRecord>): String {
+        if (records.isEmpty()) {
+            return appContext.getString(R.string.operations_status_idle)
+        }
+
+        val visibleRecords = records.take(4)
+        val summary =
+            visibleRecords.joinToString(" • ") { record ->
+                "${formatOperationCapability(record.capability)}: ${record.owner.label}"
+            }
+        val extraCount = records.size - visibleRecords.size
+        return if (extraCount > 0) {
+            appContext.getString(R.string.operations_status_active_extra, summary, extraCount)
+        } else {
+            summary
+        }
+    }
+
+    private fun formatOperationCapability(capability: String): String {
+        return when (capability) {
+            "local-microphone" -> "Local mic"
+            "android-microphone" -> "Android mic"
+            "android-camera" -> "Camera"
+            "local-tts" -> "Local TTS"
+            "android-tts" -> "Android TTS"
+            "ambient-listening" -> "Ambient"
+            "live-feed" -> "Live feed"
+            else -> capability
+        }
     }
 
     private suspend fun syncDiagnosticsSnapshot() {

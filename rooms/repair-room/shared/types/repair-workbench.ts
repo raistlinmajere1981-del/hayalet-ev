@@ -32,6 +32,16 @@ export type RepairReplayMode = "live" | "replay" | "paused" | "freeze";
 
 export type RepairOperationalMode = "live" | "replay" | "freeze" | "investigation";
 
+export type RepairKnownLiveSourceType = "android-camera" | "image" | "snapshot";
+
+export type RepairLiveSourceType = RepairKnownLiveSourceType | (string & {});
+
+export interface RepairLiveSourceState {
+  available: boolean;
+  connected: boolean;
+  sourceType?: RepairLiveSourceType;
+}
+
 export type RepairContextualCursor =
   | "inspect"
   | "annotate"
@@ -100,6 +110,7 @@ export interface RepairWorkbenchState {
   viewport: RepairWorkbenchViewport;
   timeline: RepairTimelineState;
   cursor: RepairWorkbenchCursor | null;
+  liveSource: RepairLiveSourceState;
   visibleLayers: Record<RepairOverlayLayerId, boolean>;
   hoveredEventId: string | null;
   focusedEventId: string | null;

@@ -277,6 +277,8 @@ class MainActivity : AppCompatActivity() {
         binding.statusValue.text = state.connectionStatus
         binding.targetValue.text = state.target
         binding.permissionsValue.text = state.permissionsSummary
+        binding.operationsValue.text =
+            state.operationsSummary ?: getString(R.string.operations_status_idle)
         binding.dictationStatusValue.text =
             state.dictationStatus ?: getString(R.string.dictation_status_idle)
         binding.dictationDetailValue.text =

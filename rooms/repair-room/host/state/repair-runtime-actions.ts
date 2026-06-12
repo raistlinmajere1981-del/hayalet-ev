@@ -20,7 +20,11 @@ import type {
   RepairWizardDraft,
   RepairWorkbenchTool,
 } from "../../shared/types/index.js";
-import type { RepairTacticalFeedItem, RepairUiPhase } from "../../shared/ui/state.js";
+import type {
+  RepairOperationsSnapshot,
+  RepairTacticalFeedItem,
+  RepairUiPhase,
+} from "../../shared/ui/state.js";
 
 export type RepairRuntimeAction =
   | { type: "phase/set"; phase: RepairUiPhase }
@@ -194,6 +198,10 @@ export type RepairRuntimeAction =
   | {
       type: "layout/set-attention-budget";
       attentionBudget: Partial<RepairAttentionBudgetState>;
+    }
+  | {
+      type: "operations/status-set";
+      status: RepairOperationsSnapshot | null;
     }
   | {
       type: "ambient/tick";

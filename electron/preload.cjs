@@ -9,6 +9,7 @@ const CAPTURE_MEDIA_INGRESS_CHANNEL = "capture:media-ingress";
 const CAPTURE_DICTATION_STATUS_CHANNEL = "capture:dictation-status";
 const CAPTURE_AMBIENT_STATUS_CHANNEL = "capture:ambient-status";
 const TTS_STATUS_CHANNEL = "tts:status";
+const OPERATIONS_STATUS_CHANNEL = "operations:status";
 const SETTINGS_BROADCAST_NAME = "app-settings";
 const opencodeUiSessionUpdatedHandlers = new Map();
 const providerScenarioProgressHandlers = new Map();
@@ -18,6 +19,7 @@ const captureMediaIngressHandlers = new Map();
 const captureDictationStatusHandlers = new Map();
 const captureAmbientStatusHandlers = new Map();
 const ttsStatusHandlers = new Map();
+const operationsStatusHandlers = new Map();
 let __app_preload_locale = "tr";
 let __app_preload_catalog = null;
 let __app_preload_settings_channel = null;
@@ -557,6 +559,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
   ttsStop: (requestId) => ipcRenderer.invoke("tts-stop", requestId),
   ttsListModels: () => ipcRenderer.invoke("tts-list-models"),
   ttsInstallModel: (modelId) => ipcRenderer.invoke("tts-install-model", modelId),
+  operationsStatus: () => ipcRenderer.invoke("operations-status"),
+  operationsAcquire: (capability, owner) =>
+    ipcRenderer.invoke("operations-acquire", capability, owner),
+  operationsRelease: (capability, owner) =>
+    ipcRenderer.invoke("operations-release", capability, owner),
+  operationsOnStatus: (callback) => {
+    if (typeof callback !== "function" || operationsStatusHandlers.has(callback)) {
+      return;
+    }
+    const handler = (_event, payload) => callback(payload);
+    operationsStatusHandlers.set(callback, handler);
+    ipcRenderer.on(OPERATIONS_STATUS_CHANNEL, handler);
+  },
+  operationsOffStatus: (callback) => {
+    const handler = operationsStatusHandlers.get(callback);
+    if (!handler) return;
+    ipcRenderer.removeListener(OPERATIONS_STATUS_CHANNEL, handler);
+    operationsStatusHandlers.delete(callback);
+  },
   ttsOnStatus: (callback) => {
     if (typeof callback !== "function" || ttsStatusHandlers.has(callback)) {
       return;

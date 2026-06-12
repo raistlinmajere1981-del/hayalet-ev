@@ -370,6 +370,11 @@ export function reduceRepairRuntimeState(
           },
         },
       };
+    case "operations/status-set":
+      return {
+        ...state,
+        operationsStatus: action.status,
+      };
     case "ambient/tick":
       return {
         ...state,
