@@ -60,6 +60,7 @@ export function renderChatPanel(
   input.className = "repair-chat-composer__input";
   input.type = "text";
   input.placeholder = text(["chat", "placeholder"], "Type a message...");
+  input.value = state.chat.composerDraft;
   input.dataset["repairInput"] = "chat-composer";
   composer.append(input);
 

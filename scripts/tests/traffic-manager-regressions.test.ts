@@ -29,6 +29,26 @@ function makeTrafficState(lastHref = "https://chatgpt.com") {
   };
 }
 
+function installTimerCapture(): {
+  scheduled: Array<{ fn: () => void; delay: number }>;
+  restore: () => void;
+} {
+  const originalSetTimeout = globalThis.setTimeout;
+  const scheduled: Array<{ fn: () => void; delay: number }> = [];
+
+  globalThis.setTimeout = ((fn: (...args: unknown[]) => void, delay?: number) => {
+    scheduled.push({ fn: () => fn(), delay: delay ?? 0 });
+    return scheduled.length as unknown as ReturnType<typeof setTimeout>;
+  }) as typeof globalThis.setTimeout;
+
+  return {
+    scheduled,
+    restore: () => {
+      globalThis.setTimeout = originalSetTimeout;
+    },
+  };
+}
+
 test("thinking stays idle when stop button is not visible even if send is detected", () => {
   const tracker = new ThinkingTracker({ thinking: { stopButtonDetectionTimeoutMs: 2000 } });
   const now = Date.now();
@@ -50,6 +70,138 @@ test("thinking stays idle when stop button is not visible even if send is detect
   );
 
   assert.equal(result.indicator, "idle");
+});
+
+test("provider-state thinking transition drives traffic listeners", () => {
+  const slot = "ai2";
+  const originalState = TrafficManager.state[slot];
+  const originalListeners = TrafficManager.listeners;
+  const originalRunner = TrafficManager._runners[slot];
+  const documentScope = globalThis as unknown as {
+    document?: { getElementById: (id: string) => HTMLElement | null };
+  };
+  const originalDocument = documentScope.document;
+  const timerCapture = installTimerCapture();
+  const snapshots: unknown[] = [];
+
+  try {
+    documentScope.document = { getElementById: () => null };
+    TrafficManager.listeners = [];
+    TrafficManager._runners[slot] = { startedAt: Date.now(), nextProbeAt: Date.now() };
+    TrafficManager.state[slot] = makeTrafficState("https://chatgpt.com/c/provider-state");
+    TrafficManager.onUpdate((snapshot) => {
+      if (snapshot.provider === slot) {
+        const state = snapshot.state as {
+          thinkingState?: string;
+          status?: { thinking?: string };
+        };
+        snapshots.push({
+          thinkingState: state.thinkingState,
+          status: { thinking: state.status?.thinking },
+        });
+      }
+    });
+
+    TrafficManager.applyProviderState(slot, {
+      thinkingState: "thinking",
+      sendState: "disabled",
+    });
+    TrafficManager.applyProviderState(slot, {
+      thinkingState: "idle",
+      sendState: "enabled",
+    });
+
+    const state = TrafficManager.state[slot];
+    assert.equal(state?.status.thinking, "idle");
+    assert.equal(state?.thinkingState, "idle");
+    assert.equal(state?.thinkingJustEnded, true);
+    assert.equal(typeof state?.thinkingEndedAt, "number");
+    assert.equal(timerCapture.scheduled.length, 1);
+    assert.equal(
+      snapshots.some(
+        (snapshot) =>
+          (snapshot as { thinkingState?: string; status?: { thinking?: string } }).thinkingState ===
+            "thinking" ||
+          (snapshot as { thinkingState?: string; status?: { thinking?: string } }).status
+            ?.thinking === "busy"
+      ),
+      true
+    );
+    assert.equal(
+      (snapshots[snapshots.length - 1] as { thinkingState?: string } | undefined)?.thinkingState,
+      "idle"
+    );
+  } finally {
+    timerCapture.restore();
+    TrafficManager.state[slot] = originalState;
+    TrafficManager.listeners = originalListeners;
+    if (originalRunner === undefined) {
+      delete TrafficManager._runners[slot];
+    } else {
+      TrafficManager._runners[slot] = originalRunner;
+    }
+    documentScope.document = originalDocument;
+  }
+});
+
+test("provider-state ready transition marks loading as just ended", () => {
+  const slot = "ai2";
+  const originalState = TrafficManager.state[slot];
+  const originalListeners = TrafficManager.listeners;
+  const originalRunner = TrafficManager._runners[slot];
+  const documentScope = globalThis as unknown as {
+    document?: { getElementById: (id: string) => HTMLElement | null };
+  };
+  const originalDocument = documentScope.document;
+  const timerCapture = installTimerCapture();
+  const snapshots: unknown[] = [];
+
+  try {
+    documentScope.document = { getElementById: () => null };
+    TrafficManager.listeners = [];
+    TrafficManager._runners[slot] = { startedAt: Date.now(), nextProbeAt: Date.now() };
+    TrafficManager.state[slot] = {
+      ...makeTrafficState("https://chatgpt.com/c/provider-state"),
+      status: { loading: "busy", thinking: "idle", send: "busy" },
+      loadingActive: true,
+      readyState: "loading",
+      sendState: "disabled",
+    };
+    TrafficManager.onUpdate((snapshot) => {
+      if (snapshot.provider === slot) {
+        const state = snapshot.state as { readyState?: string };
+        snapshots.push({ readyState: state.readyState });
+      }
+    });
+
+    TrafficManager.applyProviderState(slot, {
+      readyState: "ready",
+      sendState: "enabled",
+      thinkingState: "idle",
+    });
+
+    const state = TrafficManager.state[slot];
+    assert.equal(state?.status.loading, "idle");
+    assert.equal(state?.readyState, "ready");
+    assert.equal(state?.loadingActive, false);
+    assert.equal(state?.loadingJustEnded, true);
+    assert.equal(typeof state?.loadingEndedAt, "number");
+    assert.equal(timerCapture.scheduled.length, 1);
+    assert.equal(
+      (snapshots[snapshots.length - 1] as { readyState?: string } | undefined)?.readyState,
+      "ready"
+    );
+  } finally {
+    timerCapture.restore();
+    TrafficManager.state[slot] = originalState;
+    TrafficManager.listeners = originalListeners;
+    if (originalRunner === undefined) {
+      delete TrafficManager._runners[slot];
+    } else {
+      TrafficManager._runners[slot] = originalRunner;
+    }
+    documentScope.document = originalDocument;
+  }
 });
 
 test("thinking is busy only while stop button is visible", () => {

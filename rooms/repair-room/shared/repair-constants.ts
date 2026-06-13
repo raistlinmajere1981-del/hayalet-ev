@@ -9,8 +9,6 @@ export const REPAIR_LOCAL_OWNER_SCOPE_ID = "repair-room:local-owner";
 // rather than a synchronous batch. Phase 1 mocks honor these timings for perceived realism.
 export const REPAIR_FEED_EVENT_MIN_DELAY_MS = 1200;
 export const REPAIR_FEED_EVENT_MAX_DELAY_MS = 3000;
-export const REPAIR_CHAT_REPLY_MIN_DELAY_MS = 800;
-export const REPAIR_CHAT_REPLY_MAX_DELAY_MS = 1400;
 export const REPAIR_MEASUREMENT_DRIFT_INTERVAL_MS = 1100;
 export const REPAIR_AMBIENT_CLOCK_INTERVAL_MS = 1000;
 
@@ -36,7 +34,9 @@ export const REPAIR_UI_COMMANDS = {
   scrubTimeline: "RepairRoomScrubTimeline",
   addMeasurement: "RepairRoomAddMeasurement",
   dismissAiMark: "RepairRoomDismissAiMark",
+  setAiTargetSlot: "RepairRoomSetAiTargetSlot",
   sendChatTurn: "RepairRoomSendChatTurn",
+  setChatComposer: "RepairRoomSetChatComposer",
   updateOperatorProfile: "RepairRoomUpdateOperatorProfile",
   updateViewport: "RepairRoomUpdateViewport",
   updateTimeline: "RepairRoomUpdateTimeline",
@@ -46,6 +46,16 @@ export const REPAIR_UI_COMMANDS = {
   updateLayout: "RepairRoomUpdateLayout",
   setOperationalProfile: "RepairRoomSetOperationalProfile",
   setVoiceGuidance: "RepairRoomSetVoiceGuidance",
+  setInteractionSettings: "RepairRoomSetInteractionSettings",
+  setSettingsOverlay: "RepairRoomSetSettingsOverlay",
+  startDictation: "RepairRoomStartDictation",
+  stopDictation: "RepairRoomStopDictation",
+  startAmbientListener: "RepairRoomStartAmbientListener",
+  stopAmbientListener: "RepairRoomStopAmbientListener",
+  startCameraFeed: "RepairRoomStartCameraFeed",
+  stopCameraFeed: "RepairRoomStopCameraFeed",
+  speakGuidance: "RepairRoomSpeakGuidance",
+  stopSpeech: "RepairRoomStopSpeech",
   setAttentionBudget: "RepairRoomSetAttentionBudget",
   toggleInvestigationMode: "RepairRoomToggleInvestigationMode",
   selectOverlayEntities: "RepairRoomSelectOverlayEntities",

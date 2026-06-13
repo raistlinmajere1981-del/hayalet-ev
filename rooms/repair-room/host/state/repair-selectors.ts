@@ -76,6 +76,8 @@ export function createRepairUiSnapshot(state: RepairRuntimeState): RepairUiState
     operations: replay.operations,
     voiceReadiness: replay.voiceReadiness,
     continuity: replay.continuity,
+    aiDispatch: state.aiDispatch,
+    storage: state.storage,
     ambient: {
       nowIso: state.ambientNowIso,
       sessionDurationMs:

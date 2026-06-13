@@ -29,6 +29,7 @@ body {
 
 /* ── Shell ────────────────────────────────────────────────────────── */
 .repair-shell {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -467,28 +468,6 @@ body {
   color: var(--repair-text-dim);
 }
 
-.repair-operation-status {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--repair-px-4);
-  min-width: 0;
-}
-
-.repair-operation-status__chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--repair-px-22);
-  padding: var(--repair-px-2) var(--repair-px-7);
-  border: var(--repair-px-1) solid var(--repair-border-strong);
-  border-radius: var(--repair-radius-sm);
-  background: var(--repair-surface-control);
-  color: var(--repair-cyan);
-  font: 700 var(--repair-px-9) var(--repair-mono);
-  letter-spacing: var(--repair-em-0-04);
-  text-transform: uppercase;
-}
-
 .repair-profile-toggle {
   display: inline-flex;
   align-items: center;
@@ -515,7 +494,11 @@ body {
 .repair-guidance-controls {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
+  flex: 1 1 var(--repair-px-320);
+  min-width: var(--repair-px-260);
   gap: var(--repair-px-2);
+  flex-wrap: wrap;
 }
 
 .repair-guidance-control {
@@ -527,6 +510,10 @@ body {
   color: var(--repair-text-dim);
   font: 700 var(--repair-px-9) var(--repair-mono);
   cursor: pointer;
+}
+
+.repair-guidance-control--wide {
+  min-width: var(--repair-px-82);
 }
 
 .repair-guidance-control--active,
@@ -1499,6 +1486,198 @@ button.repair-skill-chip:hover,
   background: var(--repair-cyan);
 }
 
+/* ── Repair Settings ─────────────────────────────────────────────── */
+.repair-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-3);
+}
+
+.repair-settings-summary {
+  padding: var(--repair-sp-2);
+  border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-whisper);
+  color: var(--repair-text-muted);
+  font: 700 var(--repair-px-10) var(--repair-mono);
+  text-transform: uppercase;
+  letter-spacing: var(--repair-em-0-04);
+}
+
+.repair-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-2);
+  padding-bottom: var(--repair-sp-3);
+  border-bottom: var(--repair-px-1) solid var(--repair-border-muted);
+}
+
+.repair-settings-section:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.repair-settings-section__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-px-2);
+}
+
+.repair-settings-section__title {
+  color: var(--repair-text);
+  font-size: var(--repair-px-12);
+  font-weight: 700;
+}
+
+.repair-settings-section__subtitle {
+  color: var(--repair-text-dim);
+  font-size: var(--repair-px-11);
+  line-height: 1.35;
+}
+
+.repair-settings-group {
+  display: grid;
+  grid-template-columns: minmax(var(--repair-px-72), 0.6fr) minmax(0, 1.4fr);
+  align-items: center;
+  gap: var(--repair-sp-2);
+}
+
+.repair-settings-group__label {
+  min-width: 0;
+  color: var(--repair-text-muted);
+  font: 700 var(--repair-px-10) var(--repair-mono);
+  text-transform: uppercase;
+}
+
+.repair-settings-group__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--repair-px-4);
+  min-width: 0;
+}
+
+.repair-settings-button {
+  min-height: var(--repair-px-24);
+  padding: var(--repair-px-3) var(--repair-px-8);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-dim);
+  cursor: pointer;
+  font: 700 var(--repair-px-9) var(--repair-mono);
+  text-transform: uppercase;
+}
+
+.repair-settings-button:hover,
+.repair-settings-button--active {
+  border-color: var(--repair-border-strong);
+  color: var(--repair-cyan);
+}
+
+/* ── Settings Overlay ────────────────────────────────────────────── */
+.repair-settings-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: var(--repair-sp-4);
+}
+
+.repair-settings-overlay[hidden] {
+  display: none;
+}
+
+.repair-settings-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: var(--repair-scrim-strong);
+  cursor: pointer;
+}
+
+.repair-settings-overlay__dialog {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(760px, calc(100vw - var(--repair-px-64)));
+  max-height: min(720px, calc(100vh - 96px));
+  min-height: min(420px, calc(100vh - 96px));
+  border: var(--repair-px-1) solid var(--repair-border-strong);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-panel);
+  box-shadow: 0 var(--repair-px-20) 60px rgba(0, 0, 0, 0.62);
+  overflow: hidden;
+}
+
+.repair-settings-overlay__header {
+  display: grid;
+  grid-template-columns: minmax(var(--repair-px-140), 1fr) auto auto;
+  align-items: center;
+  gap: var(--repair-sp-3);
+  padding: var(--repair-sp-3);
+  border-bottom: var(--repair-px-1) solid var(--repair-border);
+}
+
+.repair-settings-overlay__title {
+  min-width: 0;
+  color: var(--repair-text);
+  font-family: var(--repair-display);
+  font-size: var(--repair-px-14);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repair-settings-overlay__tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--repair-px-4);
+}
+
+.repair-settings-overlay__tab,
+.repair-settings-overlay__close {
+  min-height: var(--repair-px-26);
+  padding: var(--repair-px-3) var(--repair-px-9);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-dim);
+  cursor: pointer;
+  font: 700 var(--repair-px-9) var(--repair-mono);
+  text-transform: uppercase;
+}
+
+.repair-settings-overlay__tab:hover,
+.repair-settings-overlay__tab--active,
+.repair-settings-overlay__close:hover {
+  border-color: var(--repair-border-strong);
+  color: var(--repair-cyan);
+}
+
+.repair-settings-overlay__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--repair-sp-3);
+}
+
+.repair-settings-overlay__body > .repair-panel {
+  height: auto;
+  min-height: 100%;
+  background: transparent;
+}
+
+.repair-settings-overlay__body > .repair-panel > .repair-panel__header {
+  display: none;
+}
+
+.repair-settings-overlay__body > .repair-panel > .repair-panel__body {
+  padding: 0;
+}
+
 /* ── Room Sync Panel ─────────────────────────────────────────────── */
 .repair-sync-panel {
   display: flex;
@@ -1528,6 +1707,17 @@ button.repair-skill-chip:hover,
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.repair-sync-row__select {
+  min-width: 76px;
+  border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-radius: var(--repair-radius-sm);
+  background: rgba(4, 9, 13, 0.78);
+  color: var(--repair-text);
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-11);
+  padding: var(--repair-sp-1) var(--repair-sp-2);
 }
 
 .repair-sync-focus {

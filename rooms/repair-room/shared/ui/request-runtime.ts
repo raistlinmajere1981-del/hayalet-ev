@@ -1,9 +1,14 @@
 import { REPAIR_UI_COMMANDS } from "../repair-constants.js";
 import type {
   RepairAmbientListeningState,
+  RepairCameraFeedPreference,
+  RepairDictationRoute,
+  RepairDictationSubmitMode,
   RepairImageRect,
   RepairOverlayEntityRef,
+  RepairSettingsOverlayTabId,
   RepairSpokenGuidanceMode,
+  RepairTtsRoute,
 } from "../types/index.js";
 
 type RepairRoomApi = NonNullable<typeof window.roomAPI>;
@@ -67,8 +72,14 @@ export function createRepairUiRequestRuntime() {
     dismissAiMark(payload: { eventId: string; state?: string; reason?: string }) {
       return sendCommand(REPAIR_UI_COMMANDS.dismissAiMark, payload);
     },
+    setAiTargetSlot(payload: { targetSlot: "ai1" | "ai2" }) {
+      return sendCommand(REPAIR_UI_COMMANDS.setAiTargetSlot, payload);
+    },
     sendChatTurn(payload: { text: string }) {
       return sendCommand(REPAIR_UI_COMMANDS.sendChatTurn, payload);
+    },
+    setChatComposer(payload: { draft: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.setChatComposer, payload);
     },
     updateOperatorProfile(payload: Record<string, unknown>) {
       return sendCommand(REPAIR_UI_COMMANDS.updateOperatorProfile, payload);
@@ -100,6 +111,43 @@ export function createRepairUiRequestRuntime() {
       handsBusyMode?: boolean;
     }) {
       return sendCommand(REPAIR_UI_COMMANDS.setVoiceGuidance, payload);
+    },
+    setInteractionSettings(payload: {
+      androidCompanionEnabled?: boolean;
+      dictationRoute?: RepairDictationRoute;
+      ttsRoute?: RepairTtsRoute;
+      cameraFeedPreference?: RepairCameraFeedPreference;
+      dictationSubmitMode?: RepairDictationSubmitMode;
+      autoReadAiReplies?: boolean;
+    }) {
+      return sendCommand(REPAIR_UI_COMMANDS.setInteractionSettings, payload);
+    },
+    setSettingsOverlay(payload: { open?: boolean; tabId?: RepairSettingsOverlayTabId }) {
+      return sendCommand(REPAIR_UI_COMMANDS.setSettingsOverlay, payload);
+    },
+    startDictation() {
+      return sendCommand(REPAIR_UI_COMMANDS.startDictation);
+    },
+    stopDictation() {
+      return sendCommand(REPAIR_UI_COMMANDS.stopDictation);
+    },
+    startAmbientListener() {
+      return sendCommand(REPAIR_UI_COMMANDS.startAmbientListener);
+    },
+    stopAmbientListener() {
+      return sendCommand(REPAIR_UI_COMMANDS.stopAmbientListener);
+    },
+    startCameraFeed() {
+      return sendCommand(REPAIR_UI_COMMANDS.startCameraFeed);
+    },
+    stopCameraFeed() {
+      return sendCommand(REPAIR_UI_COMMANDS.stopCameraFeed);
+    },
+    speakGuidance(payload: { text?: string } = {}) {
+      return sendCommand(REPAIR_UI_COMMANDS.speakGuidance, payload);
+    },
+    stopSpeech() {
+      return sendCommand(REPAIR_UI_COMMANDS.stopSpeech);
     },
     setAttentionBudget(payload: { windowMs?: number; maxAiInterruptions?: number }) {
       return sendCommand(REPAIR_UI_COMMANDS.setAttentionBudget, payload);

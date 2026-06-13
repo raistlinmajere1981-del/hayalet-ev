@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-06-11T20:24:40.503Z",
+  "updatedAt": "2026-06-13T13:36:02.495Z",
   "rooms": [
     {
       "id": "repair-room",
@@ -113,6 +113,12 @@
               "exposure": "internal"
             },
             {
+              "name": "RepairRoomSetAiTargetSlot",
+              "description": "Select the AI slot used for project-bound repair assistant messages.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
               "name": "RepairRoomSendChatTurn",
               "description": "Append an operator turn to the AİÖ session chat and request a response.",
               "scope": "room-ui",
@@ -169,6 +175,66 @@
             {
               "name": "RepairRoomSetVoiceGuidance",
               "description": "Update ambient listening and hands-busy spoken guidance preferences.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomSetInteractionSettings",
+              "description": "Update Repair Room hands-free route preferences for dictation, TTS, camera feed, and companion access.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomSetSettingsOverlay",
+              "description": "Open, close, or switch the Repair Room settings overlay tab.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomStartDictation",
+              "description": "Start Repair Room dictation through the central capture runtime.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomStopDictation",
+              "description": "Stop the Repair Room dictation request owned by this room.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomStartAmbientListener",
+              "description": "Start ambient listening through the central capture runtime for hands-free repair.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomStopAmbientListener",
+              "description": "Stop the Repair Room ambient listener request owned by this room.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomStartCameraFeed",
+              "description": "Start the Android camera feed for the Repair Room workbench.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomStopCameraFeed",
+              "description": "Stop the Repair Room camera feed request owned by this room.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomSpeakGuidance",
+              "description": "Read the current Repair Room guidance line through the central TTS runtime.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomStopSpeech",
+              "description": "Stop the Repair Room TTS request owned by this room.",
               "scope": "room-ui",
               "exposure": "internal"
             },
@@ -418,6 +484,12 @@
           "exposure": "internal"
         },
         {
+          "name": "RepairRoomSetAiTargetSlot",
+          "description": "Select the AI slot used for project-bound repair assistant messages.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "RepairRoomSendChatTurn",
           "description": "Append an operator turn to the AİÖ session chat and request a response.",
           "scope": "room-ui",
@@ -474,6 +546,66 @@
         {
           "name": "RepairRoomSetVoiceGuidance",
           "description": "Update ambient listening and hands-busy spoken guidance preferences.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomSetInteractionSettings",
+          "description": "Update Repair Room hands-free route preferences for dictation, TTS, camera feed, and companion access.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomSetSettingsOverlay",
+          "description": "Open, close, or switch the Repair Room settings overlay tab.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomStartDictation",
+          "description": "Start Repair Room dictation through the central capture runtime.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomStopDictation",
+          "description": "Stop the Repair Room dictation request owned by this room.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomStartAmbientListener",
+          "description": "Start ambient listening through the central capture runtime for hands-free repair.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomStopAmbientListener",
+          "description": "Stop the Repair Room ambient listener request owned by this room.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomStartCameraFeed",
+          "description": "Start the Android camera feed for the Repair Room workbench.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomStopCameraFeed",
+          "description": "Stop the Repair Room camera feed request owned by this room.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomSpeakGuidance",
+          "description": "Read the current Repair Room guidance line through the central TTS runtime.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomStopSpeech",
+          "description": "Stop the Repair Room TTS request owned by this room.",
           "scope": "room-ui",
           "exposure": "internal"
         },
@@ -560,8 +692,8 @@
           "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
         }
       ],
-      "installedAt": "2026-06-08T14:36:04.630Z",
-      "updatedAt": "2026-06-08T14:36:04.630Z"
+      "installedAt": "2026-06-13T13:36:02.199Z",
+      "updatedAt": "2026-06-13T13:36:02.199Z"
     },
     {
       "id": "laboratory",
@@ -660,8 +792,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-06-11T20:24:40.503Z",
-      "updatedAt": "2026-06-11T20:24:40.503Z"
+      "installedAt": "2026-06-13T13:36:02.495Z",
+      "updatedAt": "2026-06-13T13:36:02.495Z"
     }
   ]
 }

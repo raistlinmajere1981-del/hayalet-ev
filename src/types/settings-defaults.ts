@@ -132,6 +132,7 @@ export function createDefaultSettings(): AppSettings {
     },
     accounts: [],
     remoteUsers: createDefaultRemoteUsers(),
+    projectAiSessions: [],
     us1Slot: {
       communicationSystem: "mail",
       selectedIdentityId: null,

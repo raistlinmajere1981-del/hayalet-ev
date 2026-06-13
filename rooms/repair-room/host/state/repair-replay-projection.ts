@@ -948,6 +948,7 @@ const GUIDANCE_PANEL_IDS: RepairPanelId[] = [
   "knowledge-pack",
   "visual-timeline",
   "operator-profile",
+  "repair-settings",
   "chat",
   "measurement",
   "room-sync",
@@ -1230,6 +1231,7 @@ function buildPanelVisibility(params: {
       ? "contextual"
       : "compact";
   panels["operator-profile"] = params.operationalProfile === "advanced" ? "contextual" : "compact";
+  panels["repair-settings"] = "compact";
   panels["chat"] = params.operationalProfile === "advanced" ? "compact" : "hidden";
   panels["room-sync"] = params.operationalProfile === "advanced" ? "compact" : "hidden";
   panels["knowledge-pack"] = params.hasKnowledgePack ? "compact" : "hidden";
@@ -1241,6 +1243,7 @@ function buildPanelVisibility(params: {
   if (params.focusCorridorActive && params.operationalProfile === "novice") {
     panels["visual-timeline"] = "compact";
     panels["operator-profile"] = "compact";
+    panels["repair-settings"] = "compact";
     panels.chat = "hidden";
     panels["room-sync"] = "hidden";
   }
@@ -1702,9 +1705,10 @@ function isCameraCapability(capability: string): boolean {
   return capability === "android-camera" || capability.endsWith("-camera");
 }
 
-function buildOperationsProjection(
-  state: RepairRuntimeState
-): { operationsAvailable: boolean; operations: RepairOperationsProjection } {
+function buildOperationsProjection(state: RepairRuntimeState): {
+  operationsAvailable: boolean;
+  operations: RepairOperationsProjection;
+} {
   const status = state.operationsStatus;
   if (status === null || status.updatedAt <= 0) {
     return {

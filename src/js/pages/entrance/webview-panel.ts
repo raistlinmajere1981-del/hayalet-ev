@@ -1403,6 +1403,29 @@ export class WebviewPanel {
       (event: Event & { channel?: string; args?: unknown[] }) => {
         try {
           if (event.channel === undefined || event.channel === "") return;
+          if (event.channel === "provider-state") {
+            const payload = event.args?.[0] as
+              | {
+                  slot?: unknown;
+                  readyState?: unknown;
+                  sendState?: unknown;
+                  thinkingState?: unknown;
+                }
+              | null
+              | undefined;
+            if (payload?.slot === type) {
+              TrafficManager.applyProviderState(type, {
+                ...(typeof payload.readyState === "string"
+                  ? { readyState: payload.readyState }
+                  : {}),
+                ...(typeof payload.sendState === "string" ? { sendState: payload.sendState } : {}),
+                ...(typeof payload.thinkingState === "string"
+                  ? { thinkingState: payload.thinkingState }
+                  : {}),
+              });
+            }
+          }
+
           if (event.channel === "provider-usage") {
             const payload = event.args?.[0] as { tokens?: string | string[] } | null;
             if (payload !== null) {

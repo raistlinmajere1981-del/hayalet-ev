@@ -1,7 +1,13 @@
-import type { RepairUiState, RepairUiSnapshotMeta } from "../../shared/ui/state.js";
+import type {
+  RepairAiDispatchChannelState,
+  RepairStorageState,
+  RepairUiState,
+  RepairUiSnapshotMeta,
+} from "../../shared/ui/state.js";
 import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
+export type RepairRoomSyncRow = [string, string];
 
 const AI_LIFECYCLE_ACTIONS = [
   ["acknowledged", "ACK"],
@@ -9,6 +15,76 @@ const AI_LIFECYCLE_ACTIONS = [
   ["resolved", "RES"],
   ["dismissed", "DIS"],
 ] as const;
+
+function formatTime(iso: string | null): string {
+  if (iso === null) return "not started";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "unknown time";
+  return date.toLocaleTimeString("en-GB");
+}
+
+export function formatRepairAiDispatchSummary(channel: RepairAiDispatchChannelState): string {
+  const slot = channel.targetSlot.toUpperCase();
+  if (channel.status === "idle") return `${slot} idle`;
+  if (channel.status === "pending") return `${slot} pending since ${formatTime(channel.startedAt)}`;
+  if (channel.status === "succeeded") {
+    const context = channel.contextRefs.length > 0 ? `, ${channel.contextRefs.length} refs` : "";
+    return `${slot} ok at ${formatTime(channel.completedAt)}${context}`;
+  }
+  return `${slot} failed at ${formatTime(channel.completedAt)}`;
+}
+
+export function formatRepairStorageSummary(storage: RepairStorageState): string {
+  if (storage.status === "hydrating") return "Room storage loading";
+  if (storage.status === "ready") {
+    const count = `${storage.sessionCount} session${storage.sessionCount === 1 ? "" : "s"}`;
+    return `Room storage ready, ${count}`;
+  }
+  if (storage.message !== null && storage.message.trim() !== "") {
+    return storage.message;
+  }
+  if (storage.status === "error") return "Room storage error";
+  if (storage.status === "fallback") return "In-memory fallback";
+  return "In-memory mock";
+}
+
+export function getRepairRoomSyncRows(
+  state: RepairUiState,
+  meta: RepairUiSnapshotMeta,
+  text: TextFn
+): RepairRoomSyncRow[] {
+  const session = state.sessions.detail;
+  const slots = [
+    state.aiDispatch.chat.targetSlot,
+    state.aiDispatch.research.targetSlot,
+    state.aiDispatch.tactical.targetSlot,
+  ].map((slot) => slot.toUpperCase());
+  const firstSlot = slots[0] ?? "AI2";
+  const targetSlot = slots.every((slot) => slot === firstSlot) ? firstSlot : slots.join("/");
+  return [
+    [text(["sync", "storage"], "Storage"), formatRepairStorageSummary(state.storage)],
+    [text(["sync", "registry"], "Room Sync"), "Workspace build ready"],
+    [text(["sync", "events"], "Events"), `${meta.events.length} records`],
+    [text(["sync", "session"], "Session"), session?.title ?? "No active session"],
+    [
+      text(["sync", "playhead"], "Playhead"),
+      `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`,
+    ],
+    [text(["sync", "aiTarget"], "AI Target"), targetSlot],
+    [
+      text(["sync", "chatDispatch"], "Chat AI"),
+      formatRepairAiDispatchSummary(state.aiDispatch.chat),
+    ],
+    [
+      text(["sync", "researchDispatch"], "Research AI"),
+      formatRepairAiDispatchSummary(state.aiDispatch.research),
+    ],
+    [
+      text(["sync", "tacticalDispatch"], "Tactical AI"),
+      formatRepairAiDispatchSummary(state.aiDispatch.tactical),
+    ],
+  ];
+}
 
 export function renderRoomSyncPanel(
   documentRef: Document,
@@ -19,21 +95,11 @@ export function renderRoomSyncPanel(
   const body = documentRef.createElement("div");
   body.className = "repair-panel__body repair-sync-panel";
 
-  const session = state.sessions.detail;
   const focused =
     meta.events.find((event) => event.id === state.workbench.focusedEventId) ??
     meta.events.at(-1) ??
     null;
-  const rows: Array<[string, string]> = [
-    [text(["sync", "storage"], "Storage"), "In-memory mock"],
-    [text(["sync", "registry"], "Room Sync"), "Workspace build ready"],
-    [text(["sync", "events"], "Events"), `${meta.events.length} records`],
-    [text(["sync", "session"], "Session"), session?.title ?? "No active session"],
-    [
-      text(["sync", "playhead"], "Playhead"),
-      `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`,
-    ],
-  ];
+  const rows = getRepairRoomSyncRows(state, meta, text);
 
   rows.forEach(([label, value]) => {
     const row = documentRef.createElement("div");
@@ -51,6 +117,28 @@ export function renderRoomSyncPanel(
 
     body.append(row);
   });
+
+  const selector = documentRef.createElement("label");
+  selector.className = "repair-sync-row repair-sync-row--control";
+
+  const selectorLabel = documentRef.createElement("span");
+  selectorLabel.className = "repair-sync-row__label";
+  selectorLabel.textContent = text(["sync", "aiSlot"], "AI Slot");
+  selector.append(selectorLabel);
+
+  const select = documentRef.createElement("select");
+  select.className = "repair-sync-row__select";
+  select.dataset["repairAction"] = "set-ai-target-slot";
+  const currentTarget = state.aiDispatch.chat.targetSlot;
+  (["ai1", "ai2"] as const).forEach((slot) => {
+    const option = documentRef.createElement("option");
+    option.value = slot;
+    option.textContent = slot.toUpperCase();
+    option.selected = currentTarget === slot;
+    select.append(option);
+  });
+  selector.append(select);
+  body.append(selector);
 
   const focusCard = documentRef.createElement("div");
   focusCard.className = "repair-sync-focus";

@@ -3,6 +3,48 @@ import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
 
+export function formatRepairTacticalFeedStatusLine(state: RepairUiState): string {
+  const tactical = state.aiDispatch.tactical;
+  const tacticalSlot = tactical.targetSlot.toUpperCase();
+  if (tactical.status === "pending") {
+    return `${tacticalSlot} tactical observer is reviewing the latest measurement.`;
+  }
+  if (tactical.status === "succeeded") {
+    return tactical.message ?? `${tacticalSlot} tactical observer added a new observation.`;
+  }
+  if (tactical.status === "failed") {
+    return tactical.message ?? `${tacticalSlot} tactical observer did not return an observation.`;
+  }
+
+  const research = state.aiDispatch.research;
+  const researchSlot = research.targetSlot.toUpperCase();
+  if (research.status === "pending") {
+    return `${researchSlot} research is preparing the knowledge pack.`;
+  }
+  if (research.status === "succeeded") {
+    return research.message ?? `${researchSlot} research prepared a knowledge pack.`;
+  }
+  if (research.status === "failed") {
+    return research.message ?? `${researchSlot} research did not return a knowledge pack.`;
+  }
+
+  const chat = state.aiDispatch.chat;
+  const chatSlot = chat.targetSlot.toUpperCase();
+  if (chat.status === "pending") {
+    return `${chatSlot} chat guidance is drafting a reply.`;
+  }
+  if (chat.status === "succeeded") {
+    return chat.message ?? `${chatSlot} chat guidance is available.`;
+  }
+  if (chat.status === "failed") {
+    return chat.message ?? `${chatSlot} chat guidance did not return a reply.`;
+  }
+
+  return state.guidance.aiInterruption.shouldSpeak === false
+    ? `Quiet unless a meaningful change appears. ${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions} AI interruptions left.`
+    : state.guidance.aiInterruption.toneLine;
+}
+
 export function renderTacticalFeedPanel(
   documentRef: Document,
   state: RepairUiState,
@@ -13,10 +55,7 @@ export function renderTacticalFeedPanel(
 
   const calmLine = documentRef.createElement("div");
   calmLine.className = "repair-feed-calmline";
-  calmLine.textContent =
-    state.guidance.aiInterruption.shouldSpeak === false
-      ? `Quiet unless a meaningful change appears. ${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions} AI interruptions left.`
-      : state.guidance.aiInterruption.toneLine;
+  calmLine.textContent = formatRepairTacticalFeedStatusLine(state);
   body.append(calmLine);
 
   const list = documentRef.createElement("div");

@@ -117,6 +117,12 @@ interface ProbeRunner {
   backoffMs?: number;
 }
 
+interface ProviderStateUpdate {
+  readyState?: string;
+  sendState?: string;
+  thinkingState?: string;
+}
+
 class TrafficManagerClass {
   indicators: Record<string, TrafficIndicator>;
   state: Record<string, TrafficState>;
@@ -636,6 +642,82 @@ class TrafficManagerClass {
 
     this.state[provider] = viewState;
     return true;
+  }
+
+  applyProviderState(provider: string, update: ProviderStateUpdate): void {
+    if (provider === "") return;
+    if (!this._runners[provider]) return;
+    this.state[provider] ??= defaultState();
+    const viewState = this.state[provider];
+    const now = Date.now();
+
+    if (update.readyState === "loading") {
+      if (viewState.loadingActive !== true) {
+        this.loadingTracker.startLoading(viewState, now);
+      }
+      this.setIndicator(provider, "loading", "busy");
+    } else if (update.readyState === "ready") {
+      const wasLoading = viewState.status.loading === "busy" || viewState.loadingActive === true;
+      if (wasLoading) {
+        this.loadingTracker.endLoading(viewState, now);
+        setTimeout(() => {
+          try {
+            const st = this.state[provider] ?? defaultState();
+            this.loadingTracker.clearJustEnded(st);
+            this.state[provider] = st;
+          } catch (err) {
+            Logger.debugT(
+              LogCategory.TRAFFIC,
+              "app.logs.traffic.clearLoadingJustEndedFailed",
+              { provider, message: getErrorMessage(err) },
+              {
+                provider,
+                error: getErrorMessage(err),
+              }
+            );
+          }
+        }, DELAYS.STATE_CLEAR);
+      }
+      this.setIndicator(provider, "loading", "idle");
+    }
+
+    if (update.thinkingState === "thinking") {
+      viewState.stopButtonLastSeen = now;
+      viewState.stopButtonDisappearedAt = 0;
+      this.setIndicator(provider, "thinking", "busy");
+    } else if (update.thinkingState === "idle") {
+      if (viewState.status.thinking === "busy") {
+        this.thinkingTracker.endThinking(viewState, now);
+        setTimeout(() => {
+          try {
+            const st = this.state[provider] ?? defaultState();
+            this.thinkingTracker.clearJustEnded(st);
+            this.state[provider] = st;
+          } catch (err) {
+            Logger.debugT(
+              LogCategory.TRAFFIC,
+              "app.logs.traffic.clearThinkingJustEndedFailed",
+              { provider, message: getErrorMessage(err) },
+              {
+                provider,
+                error: getErrorMessage(err),
+              }
+            );
+          }
+        }, DELAYS.STATE_CLEAR);
+      }
+      this.setIndicator(provider, "thinking", "idle");
+    }
+
+    if (update.sendState === "enabled") {
+      this.setIndicator(provider, "send", "idle");
+    } else if (
+      update.sendState === "disabled" ||
+      update.sendState === "not-found" ||
+      update.sendState === "missing"
+    ) {
+      this.setIndicator(provider, "send", "busy");
+    }
   }
 
   logEvent(event: { messageKey: string; messageParams?: Record<string, string> }): void {

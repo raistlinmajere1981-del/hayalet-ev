@@ -132,6 +132,39 @@ export type RepairAiUrgency = "low" | "medium" | "high";
 
 export type RepairEvidenceDepth = "thin" | "supported" | "strong";
 
+export type RepairAiDispatchChannel = "chat" | "research" | "tactical";
+
+export type RepairAiDispatchStatus = "idle" | "pending" | "succeeded" | "failed";
+
+export type RepairAiTargetSlot = "ai1" | "ai2";
+
+export type RepairStorageMode = "mock" | "room-storage";
+
+export type RepairStorageStatus = "unavailable" | "hydrating" | "ready" | "fallback" | "error";
+
+export interface RepairStorageState {
+  mode: RepairStorageMode;
+  status: RepairStorageStatus;
+  storageDir: string | null;
+  sessionCount: number;
+  message: string | null;
+}
+
+export interface RepairAiDispatchChannelState {
+  status: RepairAiDispatchStatus;
+  targetSlot: RepairAiTargetSlot;
+  startedAt: string | null;
+  completedAt: string | null;
+  message: string | null;
+  contextRefs: string[];
+}
+
+export interface RepairAiDispatchState {
+  chat: RepairAiDispatchChannelState;
+  research: RepairAiDispatchChannelState;
+  tactical: RepairAiDispatchChannelState;
+}
+
 export interface RepairSuggestedActionProjection {
   text: string;
   confidence: RepairAiConfidence;
@@ -309,6 +342,7 @@ const REPAIR_GUIDANCE_PANEL_IDS: RepairPanelId[] = [
   "knowledge-pack",
   "visual-timeline",
   "operator-profile",
+  "repair-settings",
   "chat",
   "measurement",
   "room-sync",
@@ -325,6 +359,7 @@ function createRepairGuidancePanelMap(
     "knowledge-pack": mode,
     "visual-timeline": mode,
     "operator-profile": mode,
+    "repair-settings": mode,
     chat: mode,
     measurement: mode,
     "room-sync": mode,
@@ -338,6 +373,7 @@ export function createRepairDefaultGuidanceProjection(
   panels["workbench-stage"] = "expanded";
   panels["session-wizard"] = "contextual";
   panels["knowledge-pack"] = "hidden";
+  panels["repair-settings"] = "compact";
   panels.chat = operationalProfile === "advanced" ? "compact" : "hidden";
   panels["room-sync"] = operationalProfile === "advanced" ? "compact" : "hidden";
 
@@ -450,6 +486,37 @@ export function createRepairDefaultContinuityProjection(): RepairContinuityProje
   return {};
 }
 
+export function createRepairDefaultAiDispatchState(
+  targetSlot: RepairAiTargetSlot = "ai2"
+): RepairAiDispatchState {
+  const channel = (): RepairAiDispatchChannelState => ({
+    status: "idle",
+    targetSlot,
+    startedAt: null,
+    completedAt: null,
+    message: null,
+    contextRefs: [],
+  });
+  return {
+    chat: channel(),
+    research: channel(),
+    tactical: channel(),
+  };
+}
+
+export function createRepairDefaultStorageState(
+  sessionCount = 0,
+  message = "In-memory mock"
+): RepairStorageState {
+  return {
+    mode: "mock",
+    status: "unavailable",
+    storageDir: null,
+    sessionCount,
+    message,
+  };
+}
+
 export interface RepairReplayProjection {
   playheadMs: number;
   replayMode: RepairWorkbenchState["timeline"]["replayMode"];
@@ -500,6 +567,8 @@ export interface RepairUiState {
   operations: RepairOperationsProjection;
   voiceReadiness: RepairVoiceReadinessProjection;
   continuity: RepairContinuityProjection;
+  aiDispatch: RepairAiDispatchState;
+  storage: RepairStorageState;
   ambient: {
     nowIso: string;
     sessionDurationMs: number;

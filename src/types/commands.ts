@@ -37,6 +37,13 @@ export interface SlotBridgeSessionRef {
   openHint?: string | null;
 }
 
+export interface SlotBridgeProjectRef {
+  id?: string | null;
+  projectId?: string | null;
+  roomId?: string | null;
+  title?: string | null;
+}
+
 export interface SlotBridgeAttachmentDescriptor {
   id?: string;
   ref?: string | null;
@@ -80,6 +87,7 @@ export interface SlotBridgeEnvelope {
   force?: boolean;
   connectPolicy?: SlotBridgeConnectPolicy;
   sessionRef?: SlotBridgeSessionRef | null;
+  projectRef?: SlotBridgeProjectRef | null;
   payload?: Record<string, unknown> | null;
   attachments?: SlotBridgeAttachmentDescriptor[];
 }

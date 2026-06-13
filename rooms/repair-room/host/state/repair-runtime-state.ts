@@ -24,10 +24,16 @@ import type {
   RepairWorkbenchState,
 } from "../../shared/types/index.js";
 import type {
+  RepairAiDispatchState,
   RepairKnowledgePackPanelState,
   RepairOperationsSnapshot,
+  RepairStorageState,
   RepairTacticalFeedItem,
   RepairUiPhase,
+} from "../../shared/ui/state.js";
+import {
+  createRepairDefaultAiDispatchState,
+  createRepairDefaultStorageState,
 } from "../../shared/ui/state.js";
 
 export interface RepairRuntimeState {
@@ -46,6 +52,8 @@ export interface RepairRuntimeState {
   chat: RepairChatState;
   layout: RepairLayoutState;
   operationsStatus: RepairOperationsSnapshot | null;
+  aiDispatch: RepairAiDispatchState;
+  storage: RepairStorageState;
   ambientNowIso: string;
 }
 
@@ -58,6 +66,7 @@ function createCollapsedPanelMap(): Record<RepairPanelId, boolean> {
     "knowledge-pack": false,
     "visual-timeline": false,
     "operator-profile": false,
+    "repair-settings": false,
     chat: false,
     measurement: false,
     "room-sync": false,
@@ -73,6 +82,7 @@ function createPinnedPanelMap(): Record<RepairPanelId, boolean> {
     "knowledge-pack": false,
     "visual-timeline": true,
     "operator-profile": false,
+    "repair-settings": false,
     chat: false,
     measurement: false,
     "room-sync": true,
@@ -175,15 +185,27 @@ export function createInitialRepairRuntimeState(nowIso: string): RepairRuntimeSt
         spokenGuidanceMode: "brief",
         handsBusyMode: false,
       },
+      interactionSettings: {
+        androidCompanionEnabled: true,
+        dictationRoute: "local",
+        ttsRoute: "local",
+        cameraFeedPreference: "manual",
+        dictationSubmitMode: "composer",
+        autoReadAiReplies: true,
+      },
       attentionBudget: {
         windowMs: 180000,
         maxAiInterruptions: 2,
       },
       operatorProfileTabId: "tools",
+      settingsOverlayOpen: false,
+      settingsOverlayTabId: "repair-controls",
       focusMode: false,
       ambientClock: nowIso,
     },
     operationsStatus: null,
+    aiDispatch: createRepairDefaultAiDispatchState("ai2"),
+    storage: createRepairDefaultStorageState(MOCK_REPAIR_SESSION_LIST.length),
     ambientNowIso: nowIso,
   };
 }

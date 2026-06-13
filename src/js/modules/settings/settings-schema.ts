@@ -26,6 +26,7 @@ import type {
   MailTransportAccountBinding,
   MailTransportProviderType,
   MailTransportAuthType,
+  ProjectAiSessionBinding,
   ThemeAppearanceSettings,
 } from "@shared/settings.js";
 import type { TranscriptDictationBackend } from "@shared/transcript.js";
@@ -453,6 +454,87 @@ function normalizeRemoteUsers(raw: unknown): RemoteUserIdentity[] | undefined {
     acc.push(nextRemoteUser);
     return acc;
   }, []);
+}
+
+function normalizeProjectAiSessionString(value: unknown): string {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : "";
+}
+
+function normalizeProjectAiSessionSlot(value: unknown): ProjectAiSessionBinding["slot"] | null {
+  return value === "ai0" || value === "ai1" || value === "ai2" ? value : null;
+}
+
+function normalizeProjectAiSessionTimestamp(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? Math.trunc(value)
+    : undefined;
+}
+
+function normalizeProjectAiSessionRef(
+  raw: unknown
+): NonNullable<ProjectAiSessionBinding["sessionRef"]> | null {
+  if (!isPlainObject(raw)) {
+    return null;
+  }
+
+  const id = normalizeProjectAiSessionString(raw["id"]);
+  const conversationId = normalizeProjectAiSessionString(raw["conversationId"]);
+  const threadId = normalizeProjectAiSessionString(raw["threadId"]);
+  const openHint = normalizeProjectAiSessionString(raw["openHint"]);
+
+  if (id === "" && conversationId === "" && threadId === "" && openHint === "") {
+    return null;
+  }
+
+  return {
+    ...(id !== "" ? { id } : {}),
+    ...(conversationId !== "" ? { conversationId } : {}),
+    ...(threadId !== "" ? { threadId } : {}),
+    ...(openHint !== "" ? { openHint } : {}),
+  };
+}
+
+function normalizeProjectAiSessions(raw: unknown): ProjectAiSessionBinding[] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const byKey = new Map<string, ProjectAiSessionBinding>();
+  raw.forEach((entry) => {
+    if (!isPlainObject(entry)) {
+      return;
+    }
+
+    const projectId =
+      normalizeProjectAiSessionString(entry["projectId"]) ||
+      normalizeProjectAiSessionString(entry["id"]);
+    const roomId = normalizeProjectAiSessionString(entry["roomId"]);
+    const slot = normalizeProjectAiSessionSlot(entry["slot"]);
+    const accountId = normalizeProjectAiSessionString(entry["accountId"]);
+    if (projectId === "" || slot === null || accountId === "") {
+      return;
+    }
+
+    const providerId = normalizeProjectAiSessionString(entry["providerId"]);
+    const webUrl = normalizeProjectAiSessionString(entry["webUrl"]);
+    const sessionRef = normalizeProjectAiSessionRef(entry["sessionRef"]);
+    const createdAt = normalizeProjectAiSessionTimestamp(entry["createdAt"]);
+    const updatedAt = normalizeProjectAiSessionTimestamp(entry["updatedAt"]);
+    const binding: ProjectAiSessionBinding = {
+      projectId,
+      roomId: roomId !== "" ? roomId : null,
+      slot,
+      accountId,
+      providerId: providerId !== "" ? providerId : null,
+      sessionRef,
+      webUrl: webUrl !== "" ? webUrl : null,
+      ...(createdAt !== undefined ? { createdAt } : {}),
+      ...(updatedAt !== undefined ? { updatedAt } : {}),
+    };
+    byKey.set(`${binding.roomId ?? ""}\u0000${projectId}`, binding);
+  });
+
+  return Array.from(byKey.values());
 }
 
 function normalizeAccountKind(value: unknown): "ai-provider" | "remote-email" {
@@ -1144,6 +1226,11 @@ function normalizeKnownSettings(raw: unknown): Record<string, unknown> {
     out.remoteUsers = remoteUsers;
   }
 
+  const projectAiSessions = normalizeProjectAiSessions(r.projectAiSessions);
+  if (projectAiSessions !== undefined) {
+    out.projectAiSessions = projectAiSessions;
+  }
+
   const assistantAccounts = resolveAssistantAccounts(r);
   if (Array.isArray(assistantAccounts)) {
     out.assistantAccounts = assistantAccounts;
@@ -1233,6 +1320,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
   }
   merged.remoteUsers = mergeRemoteUsersWithAccountFallback(merged.remoteUsers, merged.accounts);
   merged.accounts = mergeUnifiedAccounts(merged.accounts, merged.remoteUsers);
+  merged.projectAiSessions = normalizeProjectAiSessions(merged.projectAiSessions) ?? [];
 
   if (!isPlainObject(merged.general)) {
     merged.general = defaults.general ?? { language: "tr" };

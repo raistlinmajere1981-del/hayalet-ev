@@ -1,12 +1,11 @@
 import {
   REPAIR_AMBIENT_CLOCK_INTERVAL_MS,
-  REPAIR_CHAT_REPLY_MAX_DELAY_MS,
-  REPAIR_CHAT_REPLY_MIN_DELAY_MS,
   REPAIR_FEED_EVENT_MAX_DELAY_MS,
   REPAIR_FEED_EVENT_MIN_DELAY_MS,
   REPAIR_HOST_MESSAGES,
   REPAIR_LOCAL_OWNER_SCOPE_ID,
   REPAIR_MEASUREMENT_DRIFT_INTERVAL_MS,
+  REPAIR_PROTOCOL_KEYS,
   REPAIR_ROOM_ID,
   REPAIR_SESSION_SCHEMA_VERSION,
   REPAIR_UI_COLORS,
@@ -14,9 +13,21 @@ import {
 } from "../shared/repair-constants.js";
 import { getRepairVoiceCommandPhraseMap } from "../shared/repair-action-registry.js";
 import {
+  requestRepairAiChatReply,
+  requestRepairAiKnowledgeResearch,
+  requestRepairAiTacticalObservations,
+  type RepairAiDispatchBridge,
+  type RepairAiTacticalObservation,
+} from "./repair-ai-bridge.js";
+import { createRepairHostIoRuntime, type RepairHostIoRuntime } from "../shared/host/io-runtime.js";
+import { readRepairRoomStorageDir } from "../shared/host/repair-paths.js";
+import {
+  createRepairSessionStorage,
+  type RepairSessionStorageRuntime,
+} from "./repair-session-storage.js";
+import {
   MOCK_REPAIR_KNOWLEDGE_PACKS,
   MOCK_REPAIR_PCB_IMAGES,
-  MOCK_REPAIR_WIZARD_INITIAL,
   buildMockTacticalFeed,
   repairEventToTacticalFeedItem,
 } from "../shared/data/index.js";
@@ -28,12 +39,15 @@ import type {
   RepairEvent,
   RepairImagePoint,
   RepairImageRect,
+  RepairInteractionSettingsState,
   RepairInvestigationRegionCreatedEvent,
   RepairInvestigationRegionUpdatedEvent,
   RepairInvestigationRegionStatus,
   RepairInstrumentKind,
+  RepairKnowledgePack,
   RepairKnowledgeSpatialRef,
   RepairKnowledgePackProgress,
+  RepairMeasurementEvent,
   RepairMultimeterReading,
   RepairOperationalProfile,
   RepairOperatorProfileTabId,
@@ -41,6 +55,7 @@ import type {
   RepairPanelId,
   RepairSession,
   RepairSessionListItem,
+  RepairSettingsOverlayTabId,
   RepairSpokenGuidanceMode,
   RepairVoiceGuidanceState,
   RepairWizardDraft,
@@ -55,15 +70,38 @@ import {
 } from "./state/repair-runtime-state.js";
 import { createRepairRuntimeStore, type RepairRuntimeStore } from "./state/repair-runtime-store.js";
 import { createRepairUiSnapshot, createRepairUiSnapshotMeta } from "./state/repair-selectors.js";
-import type { RepairOperationsSnapshot } from "../shared/ui/state.js";
+import type {
+  RepairAiDispatchChannel,
+  RepairAiDispatchStatus,
+  RepairAiTargetSlot,
+  RepairOperationsSnapshot,
+  RepairStorageState,
+} from "../shared/ui/state.js";
 
 interface RepairRoomApi {
+  dispatchBridge?: RepairAiDispatchBridge;
   log: (level: string, message: string) => void;
   notifyRoom: (type: string, payload?: Record<string, unknown>) => void;
   operations?: {
     getStatus?: () => Promise<unknown> | unknown;
     subscribe?: (listener: (status: unknown) => void) => (() => void) | void;
   };
+  capture?: {
+    startDictation?: (requestId?: string) => Promise<RepairCaptureActionResult>;
+    stopDictation?: (requestId: string) => Promise<RepairCaptureActionOutcome>;
+    startAmbientListener?: (requestId?: string) => Promise<RepairCaptureActionResult>;
+    stopAmbientListener?: (requestId: string) => Promise<RepairCaptureActionOutcome>;
+    startCameraFeed?: (requestId?: string) => Promise<RepairCaptureActionResult>;
+    stopCameraFeed?: (requestId?: string) => Promise<RepairCaptureActionResult>;
+  };
+  tts?: {
+    speak?: (
+      text: string,
+      options?: { requestId?: string; mode?: "local" | "android"; language?: "tr" | "en" }
+    ) => Promise<RepairTtsActionResult>;
+    stop?: (requestId: string) => Promise<unknown>;
+  };
+  getLocale?: () => string;
   getState?: (key: string) => unknown;
   setState?: (key: string, value: unknown) => unknown;
 }
@@ -74,6 +112,32 @@ interface RepairCommandPayload {
   [key: string]: unknown;
 }
 
+interface RepairCaptureActionOutcome {
+  ok: boolean;
+  message?: string;
+}
+
+interface RepairCaptureActionResult {
+  requestId: string;
+  outcome: RepairCaptureActionOutcome;
+}
+
+interface RepairTtsActionResult {
+  requestId: string;
+  outcome: {
+    status?: {
+      status?: string;
+      message?: string;
+    };
+  };
+}
+
+interface RepairRoomHostRuntimeOptions {
+  autoHydrateStorage?: boolean;
+  io?: RepairHostIoRuntime;
+  storage?: RepairSessionStorageRuntime;
+}
+
 const FEED_INITIAL_VISIBLE_COUNT = 3;
 const MEASUREMENT_DRIFT_SEQUENCE = ["0.000", "0.001", "0.002", "0.001", "0.000", "OL"];
 const WIZARD_STEP_ORDER: RepairWizardState["currentStep"][] = [
@@ -81,6 +145,13 @@ const WIZARD_STEP_ORDER: RepairWizardState["currentStep"][] = [
   "symptoms",
   "ai-research",
   "ready",
+];
+const REPAIR_RESEARCH_PROGRESS_TEMPLATE: RepairKnowledgePackProgress[] = [
+  { step: "searching-device-info", label: "Reading device context", completed: false },
+  { step: "finding-schematics", label: "Looking for schematic candidates", completed: false },
+  { step: "collecting-board-images", label: "Collecting board references", completed: false },
+  { step: "analyzing-common-failures", label: "Analyzing common failures", completed: false },
+  { step: "preparing-knowledge-pack", label: "Preparing knowledge pack", completed: false },
 ];
 const REPAIR_TOOLS: ReadonlySet<string> = new Set([
   "select",
@@ -106,6 +177,17 @@ const ANNOTATION_TOOLS: ReadonlySet<string> = new Set([
   "measurement-pin",
   "measurement-link",
 ]);
+
+function isRepairAiTargetSlot(value: unknown): value is RepairAiTargetSlot {
+  return value === "ai1" || value === "ai2";
+}
+
+function normalizeRepairAiTargetSlot(
+  value: unknown,
+  fallback: RepairAiTargetSlot = "ai2"
+): RepairAiTargetSlot {
+  return isRepairAiTargetSlot(value) ? value : fallback;
+}
 const AI_MARK_LIFECYCLE_STATES: ReadonlySet<string> = new Set([
   "detected",
   "acknowledged",
@@ -137,6 +219,7 @@ const PANEL_IDS: ReadonlySet<string> = new Set([
   "knowledge-pack",
   "visual-timeline",
   "operator-profile",
+  "repair-settings",
   "chat",
   "measurement",
   "room-sync",
@@ -151,6 +234,11 @@ const OPERATOR_PROFILE_TABS: ReadonlySet<string> = new Set([
 const OPERATIONAL_PROFILES: ReadonlySet<string> = new Set(["novice", "advanced"]);
 const AMBIENT_LISTENING_STATES: ReadonlySet<string> = new Set(["idle", "listening", "muted"]);
 const SPOKEN_GUIDANCE_MODES: ReadonlySet<string> = new Set(["silent", "brief", "step-by-step"]);
+const DICTATION_ROUTES: ReadonlySet<string> = new Set(["local", "android"]);
+const TTS_ROUTES: ReadonlySet<string> = new Set(["local", "android"]);
+const CAMERA_FEED_PREFERENCES: ReadonlySet<string> = new Set(["manual", "android-feed"]);
+const DICTATION_SUBMIT_MODES: ReadonlySet<string> = new Set(["composer", "send"]);
+const SETTINGS_OVERLAY_TABS: ReadonlySet<string> = new Set(["repair-controls", "bench-operator"]);
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -343,6 +431,32 @@ function isAmbientListeningState(value: unknown): value is RepairAmbientListenin
 
 function isSpokenGuidanceMode(value: unknown): value is RepairSpokenGuidanceMode {
   return typeof value === "string" && SPOKEN_GUIDANCE_MODES.has(value);
+}
+
+function isDictationRoute(
+  value: unknown
+): value is RepairInteractionSettingsState["dictationRoute"] {
+  return typeof value === "string" && DICTATION_ROUTES.has(value);
+}
+
+function isTtsRoute(value: unknown): value is RepairInteractionSettingsState["ttsRoute"] {
+  return typeof value === "string" && TTS_ROUTES.has(value);
+}
+
+function isCameraFeedPreference(
+  value: unknown
+): value is RepairInteractionSettingsState["cameraFeedPreference"] {
+  return typeof value === "string" && CAMERA_FEED_PREFERENCES.has(value);
+}
+
+function isDictationSubmitMode(
+  value: unknown
+): value is RepairInteractionSettingsState["dictationSubmitMode"] {
+  return typeof value === "string" && DICTATION_SUBMIT_MODES.has(value);
+}
+
+function isSettingsOverlayTab(value: unknown): value is RepairSettingsOverlayTabId {
+  return typeof value === "string" && SETTINGS_OVERLAY_TABS.has(value);
 }
 
 function createEventId(prefix: string, _iso: string): string {
@@ -544,7 +658,7 @@ function createMeasurementEvent(
   iso: string,
   reading: RepairMultimeterReading,
   payload: Record<string, unknown>
-): RepairEvent {
+): RepairMeasurementEvent {
   return {
     kind: "measurement",
     id: createEventId("evt-meas", iso),
@@ -854,29 +968,59 @@ function setActiveSessionDerivedState(
  * Phase 1 Repair Room host runtime.
  *
  * Responsibilities at this phase:
- *  - hydrate the runtime store from diegetic mock data
+ *  - hydrate the runtime store from room-local session storage when available
  *  - push state snapshots to the UI via api.notifyRoom("repair-state", …)
  *  - accept UI commands and update the store deterministically
  *
- * Out of scope: filesystem persistence, real AİÖ pipeline, real instruments, real camera.
+ * Mock data remains the fallback when Electron room storage is unavailable.
  */
-export default function createRepairRoomHostRuntime() {
+export default function createRepairRoomHostRuntime(options: RepairRoomHostRuntimeOptions = {}) {
+  const ioRuntime = options.io ?? createRepairHostIoRuntime({ roomId: REPAIR_ROOM_ID });
+  const sessionStorage = options.storage ?? createRepairSessionStorage(ioRuntime);
+  const shouldAutoHydrateStorage = options.autoHydrateStorage !== false;
+
   return {
     activate(api: RepairRoomApi) {
       const store = createRepairRuntimeStore(createInitialRepairRuntimeState(nowIso()));
       const feedTimeouts = new Set<ReturnType<typeof setTimeout>>();
-      const researchTimeouts = new Set<ReturnType<typeof setTimeout>>();
       let clockInterval: ReturnType<typeof setInterval> | null = null;
       let measurementInterval: ReturnType<typeof setInterval> | null = null;
       let measurementTick = 0;
-      let chatReplyTick = 0;
+      let disposed = false;
       let liveTimelineSessionId = store.getState().activeSessionId;
       let liveTimelineAnchorAtMs = Date.now();
       let liveTimelineBaseMs = getSessionTimelineMs(getActiveSession(store.getState()));
       let operationsUnsubscribe: (() => void) | null = null;
+      let activeDictationRequestId: string | null = null;
+      let activeAmbientRequestId: string | null = null;
+      let activeCameraFeedRequestId: string | null = null;
+      let activeTtsRequestId: string | null = null;
+      let storageHydratePromise: Promise<void> | null = null;
+      let storagePersistQueue: Promise<void> = Promise.resolve();
+      let storageReady = false;
+      let storageRuntimePaths: unknown = null;
+      const generatedKnowledgePacks = new Map<string, RepairKnowledgePack>();
+      const storedChatTurnsBySessionId = new Map<string, RepairChatTurn[]>();
       const replayController = createReplayRuntimeController(store, () =>
         getActiveSession(store.getState())
       );
+
+      function createRoomStorageState(
+        status: RepairStorageState["status"],
+        params: {
+          message?: string | null;
+          sessionCount?: number;
+          storageDir?: string | null;
+        } = {}
+      ): RepairStorageState {
+        return {
+          mode: status === "ready" || status === "hydrating" ? "room-storage" : "mock",
+          status,
+          storageDir: params.storageDir ?? null,
+          sessionCount: params.sessionCount ?? store.getState().sessionList.length,
+          message: params.message ?? null,
+        };
+      }
 
       function resetLiveTimelineAnchor(session: RepairSession | null): void {
         liveTimelineSessionId = session?.id ?? null;
@@ -902,6 +1046,28 @@ export default function createRepairRoomHostRuntime() {
         return new Date(Date.parse(session.startedAt) + playheadMs).toISOString();
       }
 
+      function setAiDispatchStatus(
+        channel: RepairAiDispatchChannel,
+        status: RepairAiDispatchStatus,
+        params: { message?: string | null; contextRefs?: string[] } = {}
+      ): void {
+        const previous = store.getState().aiDispatch[channel];
+        const iso = nowIso();
+        store.dispatch({
+          type: "ai-dispatch/set",
+          channel,
+          state: {
+            ...previous,
+            status,
+            targetSlot: normalizeRepairAiTargetSlot(previous.targetSlot),
+            startedAt: status === "pending" ? iso : previous.startedAt,
+            completedAt: status === "pending" ? null : iso,
+            message: params.message ?? null,
+            contextRefs: params.contextRefs ?? previous.contextRefs,
+          },
+        });
+      }
+
       function pushState(): void {
         const state = store.getState();
         api.notifyRoom(REPAIR_HOST_MESSAGES.state, {
@@ -910,10 +1076,426 @@ export default function createRepairRoomHostRuntime() {
         });
       }
 
+      function getSessionChatTurns(sessionId: string): RepairChatTurn[] {
+        const state = store.getState();
+        if (state.activeSessionId === sessionId) {
+          return state.chat.turns;
+        }
+        return storedChatTurnsBySessionId.get(sessionId) ?? [];
+      }
+
+      function updateReadyStorageState(sessionCount = store.getState().sessionList.length): void {
+        if (storageRuntimePaths === null) return;
+        store.dispatch({
+          type: "storage/set",
+          storage: createRoomStorageState("ready", {
+            message: "Room storage ready",
+            sessionCount,
+            storageDir: readRepairRoomStorageDir(storageRuntimePaths),
+          }),
+        });
+      }
+
+      function queuePersistSession(session: RepairSession): void {
+        if (storageReady === false || storageRuntimePaths === null) {
+          return;
+        }
+
+        const runtimePaths = storageRuntimePaths;
+        const chatTurns = getSessionChatTurns(session.id);
+        storedChatTurnsBySessionId.set(session.id, chatTurns);
+        storagePersistQueue = storagePersistQueue
+          .then(async () => {
+            await sessionStorage.saveSessionRecord(runtimePaths, { session, chatTurns });
+            if (disposed) return;
+            updateReadyStorageState();
+          })
+          .catch((error: unknown) => {
+            storageReady = false;
+            storageRuntimePaths = null;
+            if (disposed) return;
+            api.log(
+              "warn",
+              `[${REPAIR_ROOM_ID}] session storage save failed: ${
+                error instanceof Error ? error.message : String(error)
+              }`
+            );
+            store.dispatch({
+              type: "storage/set",
+              storage: createRoomStorageState("error", {
+                message: "Room storage error; using in-memory state.",
+              }),
+            });
+          });
+      }
+
+      function queuePersistActiveSessionChat(): void {
+        const state = store.getState();
+        const session = getActiveSession(state);
+        if (session === null) return;
+        storedChatTurnsBySessionId.set(session.id, state.chat.turns);
+        queuePersistSession(session);
+      }
+
+      function hydrateStorage(): Promise<void> {
+        if (storageHydratePromise !== null) {
+          return storageHydratePromise;
+        }
+
+        storageHydratePromise = (async () => {
+          store.dispatch({
+            type: "storage/set",
+            storage: createRoomStorageState("hydrating", {
+              message: "Room storage loading",
+            }),
+          });
+
+          try {
+            const runtimePaths = await ioRuntime.resolveRuntimePaths();
+            const records = await sessionStorage.listSessionRecords(runtimePaths);
+            if (disposed) return;
+
+            storageRuntimePaths = runtimePaths;
+            storageReady = true;
+            storedChatTurnsBySessionId.clear();
+            records.forEach((record) => {
+              storedChatTurnsBySessionId.set(record.session.id, record.chatTurns);
+            });
+
+            const sessions = Object.fromEntries(
+              records.map((record) => [record.session.id, record.session])
+            );
+            const sessionList = buildSessionList(sessions);
+            const activeSession = records[0]?.session ?? null;
+            store.batch(() => {
+              store.dispatch({
+                type: "session/hydrate",
+                activeSessionId: activeSession?.id ?? null,
+                sessions,
+                sessionList,
+              });
+              store.dispatch({
+                type: "chat/set-turns",
+                turns:
+                  activeSession === null
+                    ? []
+                    : (storedChatTurnsBySessionId.get(activeSession.id) ?? []),
+              });
+              setActiveSessionDerivedState(store, activeSession);
+              store.dispatch({
+                type: "storage/set",
+                storage: createRoomStorageState("ready", {
+                  message: "Room storage ready",
+                  sessionCount: sessionList.length,
+                  storageDir: readRepairRoomStorageDir(runtimePaths),
+                }),
+              });
+            });
+            resetLiveTimelineAnchor(activeSession);
+            scheduleFeedStream();
+          } catch (error: unknown) {
+            storageReady = false;
+            storageRuntimePaths = null;
+            if (disposed) return;
+            api.log(
+              "debug",
+              `[${REPAIR_ROOM_ID}] room storage unavailable: ${
+                error instanceof Error ? error.message : String(error)
+              }`
+            );
+            store.dispatch({
+              type: "storage/set",
+              storage: createRoomStorageState("fallback", {
+                message: "Room storage unavailable; using in-memory mock.",
+              }),
+            });
+          }
+        })();
+
+        return storageHydratePromise;
+      }
+
       function applyOperationsStatus(value: unknown): void {
         const status = normalizeRepairOperationsSnapshot(value);
         if (status === null) return;
         store.dispatch({ type: "operations/status-set", status });
+        const capabilities = new Set(status.records.map((record) => record.capability));
+        if (!capabilities.has("android-microphone")) {
+          activeDictationRequestId = null;
+        }
+        if (!capabilities.has("ambient-listening")) {
+          activeAmbientRequestId = null;
+        }
+        if (!capabilities.has("android-camera") && !capabilities.has("live-feed")) {
+          activeCameraFeedRequestId = null;
+        }
+        if (!capabilities.has("local-tts") && !capabilities.has("android-tts")) {
+          activeTtsRequestId = null;
+        }
+      }
+
+      function createOperationRequestId(kind: string): string {
+        return `${REPAIR_ROOM_ID}:${kind}:${globalThis.crypto.randomUUID()}`;
+      }
+
+      function logOperationFailure(kind: string, message: string): void {
+        api.log("warn", `[${REPAIR_ROOM_ID}] ${kind} failed: ${message}`);
+      }
+
+      function getTtsLanguage(): "tr" | "en" {
+        return (api.getLocale?.() ?? "tr").toLowerCase().startsWith("en") ? "en" : "tr";
+      }
+
+      function getCurrentGuidanceLine(): string {
+        const state = createRepairUiSnapshot(store.getState());
+        return (
+          state.guidance.voice.spokenLine ??
+          state.guidance.nextBestAction.text ??
+          "Repair guidance is ready."
+        );
+      }
+
+      function isTerminalTtsStatus(status: string | undefined): boolean {
+        return status === "done" || status === "stopped" || status === "failed";
+      }
+
+      function startDictationRequest(): { success: boolean; message?: string } {
+        if (activeDictationRequestId !== null) {
+          return { success: true, message: "dictation already active" };
+        }
+        if (typeof api.capture?.startDictation !== "function") {
+          return { success: false, message: "capture dictation API is unavailable" };
+        }
+        if (store.getState().layout.interactionSettings.androidCompanionEnabled !== true) {
+          return { success: false, message: "Android companion is disabled for Repair Room" };
+        }
+        const requestId = createOperationRequestId("dictation");
+        activeDictationRequestId = requestId;
+        void api.capture
+          .startDictation(requestId)
+          .then((result) => {
+            activeDictationRequestId = result.requestId;
+            if (result.outcome.ok !== true) {
+              activeDictationRequestId = null;
+              logOperationFailure("dictation", result.outcome.message ?? "unknown error");
+            }
+            pushState();
+          })
+          .catch((error: unknown) => {
+            if (activeDictationRequestId === requestId) activeDictationRequestId = null;
+            logOperationFailure(
+              "dictation",
+              error instanceof Error ? error.message : String(error)
+            );
+            pushState();
+          });
+        return { success: true };
+      }
+
+      function stopDictationRequest(): { success: boolean; message?: string } {
+        if (activeDictationRequestId === null) {
+          return { success: false, message: "Repair Room dictation is not active" };
+        }
+        if (typeof api.capture?.stopDictation !== "function") {
+          return { success: false, message: "capture dictation API is unavailable" };
+        }
+        const requestId = activeDictationRequestId;
+        void api.capture
+          .stopDictation(requestId)
+          .then((outcome) => {
+            if (outcome.ok === true && activeDictationRequestId === requestId) {
+              activeDictationRequestId = null;
+            } else if (outcome.ok !== true) {
+              logOperationFailure("stop dictation", outcome.message ?? "unknown error");
+            }
+            pushState();
+          })
+          .catch((error: unknown) => {
+            logOperationFailure(
+              "stop dictation",
+              error instanceof Error ? error.message : String(error)
+            );
+            pushState();
+          });
+        return { success: true };
+      }
+
+      function startAmbientRequest(): { success: boolean; message?: string } {
+        if (activeAmbientRequestId !== null) {
+          return { success: true, message: "ambient listener already active" };
+        }
+        if (typeof api.capture?.startAmbientListener !== "function") {
+          return { success: false, message: "capture ambient listener API is unavailable" };
+        }
+        if (store.getState().layout.interactionSettings.androidCompanionEnabled !== true) {
+          return { success: false, message: "Android companion is disabled for Repair Room" };
+        }
+        const requestId = createOperationRequestId("ambient");
+        activeAmbientRequestId = requestId;
+        void api.capture
+          .startAmbientListener(requestId)
+          .then((result) => {
+            activeAmbientRequestId = result.requestId;
+            if (result.outcome.ok !== true) {
+              activeAmbientRequestId = null;
+              logOperationFailure("ambient listener", result.outcome.message ?? "unknown error");
+            }
+            pushState();
+          })
+          .catch((error: unknown) => {
+            if (activeAmbientRequestId === requestId) activeAmbientRequestId = null;
+            logOperationFailure(
+              "ambient listener",
+              error instanceof Error ? error.message : String(error)
+            );
+            pushState();
+          });
+        return { success: true };
+      }
+
+      function stopAmbientRequest(): { success: boolean; message?: string } {
+        if (activeAmbientRequestId === null) {
+          return { success: false, message: "Repair Room ambient listener is not active" };
+        }
+        if (typeof api.capture?.stopAmbientListener !== "function") {
+          return { success: false, message: "capture ambient listener API is unavailable" };
+        }
+        const requestId = activeAmbientRequestId;
+        void api.capture
+          .stopAmbientListener(requestId)
+          .then((outcome) => {
+            if (outcome.ok === true && activeAmbientRequestId === requestId) {
+              activeAmbientRequestId = null;
+            } else if (outcome.ok !== true) {
+              logOperationFailure("stop ambient listener", outcome.message ?? "unknown error");
+            }
+            pushState();
+          })
+          .catch((error: unknown) => {
+            logOperationFailure(
+              "stop ambient listener",
+              error instanceof Error ? error.message : String(error)
+            );
+            pushState();
+          });
+        return { success: true };
+      }
+
+      function startCameraFeedRequest(): { success: boolean; message?: string } {
+        if (activeCameraFeedRequestId !== null) {
+          return { success: true, message: "camera feed already active" };
+        }
+        if (typeof api.capture?.startCameraFeed !== "function") {
+          return { success: false, message: "capture camera feed API is unavailable" };
+        }
+        if (store.getState().layout.interactionSettings.androidCompanionEnabled !== true) {
+          return { success: false, message: "Android companion is disabled for Repair Room" };
+        }
+        const requestId = createOperationRequestId("camera");
+        activeCameraFeedRequestId = requestId;
+        void api.capture
+          .startCameraFeed(requestId)
+          .then((result) => {
+            activeCameraFeedRequestId = result.requestId;
+            if (result.outcome.ok !== true) {
+              activeCameraFeedRequestId = null;
+              logOperationFailure("camera feed", result.outcome.message ?? "unknown error");
+            }
+            pushState();
+          })
+          .catch((error: unknown) => {
+            if (activeCameraFeedRequestId === requestId) activeCameraFeedRequestId = null;
+            logOperationFailure(
+              "camera feed",
+              error instanceof Error ? error.message : String(error)
+            );
+            pushState();
+          });
+        return { success: true };
+      }
+
+      function stopCameraFeedRequest(): { success: boolean; message?: string } {
+        if (activeCameraFeedRequestId === null) {
+          return { success: false, message: "Repair Room camera feed is not active" };
+        }
+        if (typeof api.capture?.stopCameraFeed !== "function") {
+          return { success: false, message: "capture camera feed API is unavailable" };
+        }
+        const requestId = activeCameraFeedRequestId;
+        void api.capture
+          .stopCameraFeed(requestId)
+          .then((result) => {
+            if (result.outcome.ok === true && activeCameraFeedRequestId === requestId) {
+              activeCameraFeedRequestId = null;
+            } else if (result.outcome.ok !== true) {
+              logOperationFailure("stop camera feed", result.outcome.message ?? "unknown error");
+            }
+            pushState();
+          })
+          .catch((error: unknown) => {
+            logOperationFailure(
+              "stop camera feed",
+              error instanceof Error ? error.message : String(error)
+            );
+            pushState();
+          });
+        return { success: true };
+      }
+
+      function speakGuidanceRequest(textOverride: string | null): {
+        success: boolean;
+        message?: string;
+      } {
+        if (activeTtsRequestId !== null) {
+          return { success: true, message: "TTS already active" };
+        }
+        if (typeof api.tts?.speak !== "function") {
+          return { success: false, message: "TTS API is unavailable" };
+        }
+        const requestId = createOperationRequestId("tts");
+        activeTtsRequestId = requestId;
+        const text = textOverride ?? getCurrentGuidanceLine();
+        const mode = store.getState().layout.interactionSettings.ttsRoute;
+        void api.tts
+          .speak(text, { requestId, mode, language: getTtsLanguage() })
+          .then((result) => {
+            activeTtsRequestId = result.requestId;
+            const status = result.outcome.status?.status;
+            if (status === "failed") {
+              activeTtsRequestId = null;
+              logOperationFailure("TTS", result.outcome.status?.message ?? "unknown error");
+            } else if (isTerminalTtsStatus(status)) {
+              activeTtsRequestId = null;
+            }
+            pushState();
+          })
+          .catch((error: unknown) => {
+            if (activeTtsRequestId === requestId) activeTtsRequestId = null;
+            logOperationFailure("TTS", error instanceof Error ? error.message : String(error));
+            pushState();
+          });
+        return { success: true };
+      }
+
+      function stopSpeechRequest(): { success: boolean; message?: string } {
+        if (activeTtsRequestId === null) {
+          return { success: false, message: "Repair Room TTS is not active" };
+        }
+        if (typeof api.tts?.stop !== "function") {
+          return { success: false, message: "TTS API is unavailable" };
+        }
+        const requestId = activeTtsRequestId;
+        void api.tts
+          .stop(requestId)
+          .then(() => {
+            if (activeTtsRequestId === requestId) activeTtsRequestId = null;
+            pushState();
+          })
+          .catch((error: unknown) => {
+            logOperationFailure("stop TTS", error instanceof Error ? error.message : String(error));
+            pushState();
+          });
+        return { success: true };
       }
 
       function startOperationsProjectionBridge(): void {
@@ -949,13 +1531,6 @@ export default function createRepairRoomHostRuntime() {
         feedTimeouts.clear();
       }
 
-      function clearResearchStream(): void {
-        researchTimeouts.forEach((timeoutId) => {
-          clearTimeout(timeoutId);
-        });
-        researchTimeouts.clear();
-      }
-
       function scheduleFeedStream(): void {
         clearFeedStream();
         const state = store.getState();
@@ -988,22 +1563,24 @@ export default function createRepairRoomHostRuntime() {
         });
       }
 
-      function scheduleResearchStream(): void {
-        clearResearchStream();
+      function getKnowledgePack(packId: string): RepairKnowledgePack | null {
+        return generatedKnowledgePacks.get(packId) ?? MOCK_REPAIR_KNOWLEDGE_PACKS[packId] ?? null;
+      }
+
+      function readGeneratedKnowledgePack(): RepairKnowledgePack | null {
+        const packId = store.getState().wizard.generatedKnowledgePackId;
+        return packId === null ? null : getKnowledgePack(packId);
+      }
+
+      async function startKnowledgeResearch(): Promise<void> {
         const currentWizard = store.getState().wizard;
-        const progressSeed =
-          currentWizard.researchProgress.length > 0
-            ? currentWizard.researchProgress
-            : MOCK_REPAIR_WIZARD_INITIAL.researchProgress;
-        const resetProgress = progressSeed.map(
-          (item): RepairKnowledgePackProgress => ({
-            ...item,
-            completed: false,
-          })
+        const resetProgress = REPAIR_RESEARCH_PROGRESS_TEMPLATE.map((item) => ({ ...item }));
+        const targetSlot = normalizeRepairAiTargetSlot(
+          store.getState().aiDispatch.research.targetSlot
         );
 
-        store.dispatchMany([
-          {
+        store.batch(() => {
+          store.dispatch({
             type: "wizard/set",
             wizard: {
               ...currentWizard,
@@ -1012,44 +1589,73 @@ export default function createRepairRoomHostRuntime() {
               foundResources: [],
               generatedKnowledgePackId: null,
             },
-          },
-          { type: "phase/set", phase: "wizard-active" },
-        ]);
+          });
+          store.dispatch({ type: "phase/set", phase: "wizard-active" });
+          setAiDispatchStatus("research", "pending", {
+            message: "AI research is preparing the knowledge pack.",
+            contextRefs: [
+              currentWizard.draft.boardCode,
+              currentWizard.draft.model,
+              ...currentWizard.draft.primarySymptoms,
+            ].filter((value) => value.trim() !== ""),
+          });
+        });
 
-        resetProgress.forEach((progress, index) => {
-          const timeoutId = setTimeout(
-            () => {
-              const wizard = store.getState().wizard;
-              const nextProgress = wizard.researchProgress.map((item) =>
-                item.step === progress.step ? { ...item, completed: true } : item
-              );
-              store.batch(() => {
-                store.dispatch({
-                  type: "wizard/set",
-                  wizard: {
-                    ...wizard,
-                    researchProgress: nextProgress,
-                    foundResources:
-                      index >= 1
-                        ? MOCK_REPAIR_WIZARD_INITIAL.foundResources.slice(0, Math.min(index + 1, 4))
-                        : [],
-                    generatedKnowledgePackId:
-                      index === resetProgress.length - 1
-                        ? "bn44-00932a"
-                        : wizard.generatedKnowledgePackId,
-                    currentStep: index === resetProgress.length - 1 ? "ready" : "ai-research",
-                  },
-                });
-                if (index === resetProgress.length - 1) {
-                  store.dispatch({ type: "phase/set", phase: "session-active" });
-                }
-              });
-              researchTimeouts.delete(timeoutId);
-            },
-            700 + index * 650
+        const result = await requestRepairAiKnowledgeResearch({
+          ...(typeof api.dispatchBridge === "function"
+            ? { dispatchBridge: api.dispatchBridge }
+            : {}),
+          draft: currentWizard.draft,
+          locale: typeof api.getLocale === "function" ? api.getLocale() : "en",
+          operatorProfile: store.getState().operatorProfile,
+          targetSlot,
+        }).catch((error: unknown) => ({
+          success: false,
+          pack: null,
+          contextRefs: [],
+          message: error instanceof Error ? error.message : String(error),
+        }));
+
+        if (disposed) return;
+
+        const researchedPack = result.pack;
+        if (result.success !== true || researchedPack === null) {
+          api.log(
+            "debug",
+            `[${REPAIR_ROOM_ID}] AI knowledge research failed: ${result.message ?? "unknown error"}`
           );
-          unrefTimer(timeoutId);
-          researchTimeouts.add(timeoutId);
+          setAiDispatchStatus("research", "failed", {
+            message: result.message ?? "AI research did not return a knowledge pack.",
+            contextRefs: result.contextRefs,
+          });
+          return;
+        }
+
+        generatedKnowledgePacks.set(researchedPack.id, researchedPack);
+        const completedProgress = resetProgress.map((item) => ({ ...item, completed: true }));
+        store.batch(() => {
+          store.dispatch({
+            type: "wizard/set",
+            wizard: {
+              ...store.getState().wizard,
+              currentStep: "ready",
+              researchProgress: completedProgress,
+              foundResources: researchedPack.resources.map((resource) => ({
+                id: resource.id,
+                label: resource.label,
+                kind: resource.kind,
+              })),
+              generatedKnowledgePackId: researchedPack.id,
+            },
+          });
+          store.dispatch({
+            type: "phase/set",
+            phase: getActiveSession(store.getState()) === null ? "wizard-active" : "session-active",
+          });
+          setAiDispatchStatus("research", "succeeded", {
+            message: "AI research prepared a knowledge pack.",
+            contextRefs: result.contextRefs,
+          });
         });
       }
 
@@ -1126,7 +1732,7 @@ export default function createRepairRoomHostRuntime() {
         const feedItem = repairEventToTacticalFeedItem(event, session.startedAt);
         const timeline = store.getState().workbench.timeline;
         store.batch(() => {
-          store.dispatch({ type: "session/upsert", session: nextSession });
+          setSessionAndList(nextSession);
           if (feedItem !== null) {
             store.dispatch({ type: "tactical-feed/append", item: feedItem });
           }
@@ -1148,7 +1754,56 @@ export default function createRepairRoomHostRuntime() {
         return true;
       }
 
-      function setSessionAndList(session: RepairSession): void {
+      function appendEventsToSession(sessionId: string, events: RepairEvent[]): boolean {
+        if (events.length === 0) return true;
+        const state = store.getState();
+        const session = state.sessions[sessionId];
+        if (session === undefined) return false;
+
+        const nextSession: RepairSession = {
+          ...session,
+          events: [...session.events, ...events],
+          updatedAt: events.at(-1)?.occurredAt ?? session.updatedAt,
+        };
+        const active = state.activeSessionId === sessionId;
+        const feedItems = active
+          ? events.flatMap((event) => {
+              const item = repairEventToTacticalFeedItem(event, session.startedAt);
+              return item === null ? [] : [item];
+            })
+          : [];
+        const timeline = state.workbench.timeline;
+
+        store.batch(() => {
+          setSessionAndList(nextSession);
+          feedItems.forEach((item) => {
+            store.dispatch({ type: "tactical-feed/append", item });
+          });
+          if (active && timeline.autoFollowLive) {
+            const liveEdgeMs = getSessionTimelineMs(nextSession);
+            store.dispatch({
+              type: "workbench/set-timeline",
+              playheadMs: liveEdgeMs,
+              zoom: timeline.zoom,
+              rangeStartMs: timeline.rangeStartMs,
+              rangeEndMs: timeline.rangeEndMs,
+              autoFollowLive: true,
+              replayMode: "live",
+              isPlaying: true,
+              liveEdgeMs,
+            });
+          }
+        });
+        if (active) {
+          resetLiveTimelineAnchor(nextSession);
+        }
+        return true;
+      }
+
+      function setSessionAndList(
+        session: RepairSession,
+        options: { persist?: boolean } = {}
+      ): void {
         const nextSessions = {
           ...store.getState().sessions,
           [session.id]: session,
@@ -1157,40 +1812,244 @@ export default function createRepairRoomHostRuntime() {
           { type: "session/upsert", session },
           { type: "session-list/set", list: buildSessionList(nextSessions) },
         ]);
+        if (options.persist !== false) {
+          queuePersistSession(session);
+        }
       }
 
-      function scheduleChatReply(operatorTurn: RepairChatTurn): void {
+      function createAiObservationEvents(params: {
+        baseIso: string;
+        measurementEvent: RepairMeasurementEvent;
+        observations: RepairAiTacticalObservation[];
+        session: RepairSession;
+      }): RepairEvent[] {
+        return params.observations.map((observation, index): RepairEvent => {
+          const occurredAt = new Date(Date.parse(params.baseIso) + index * 250).toISOString();
+          const linkedMeasurementIds = uniqueStringList([
+            params.measurementEvent.id,
+            ...observation.linkedMeasurementIds,
+          ]);
+          const linkedEventIds = uniqueStringList([
+            params.measurementEvent.id,
+            ...observation.linkedEventIds,
+          ]);
+          if (observation.kind === "risk") {
+            return {
+              kind: "risk-flag",
+              id: createEventId("evt-ai-risk", occurredAt),
+              sessionId: params.session.id,
+              occurredAt,
+              source: "ai",
+              linkedEventIds,
+              severity: "risk",
+              message: observation.text,
+              region: observation.region,
+              acknowledged: false,
+              linkedMeasurementIds,
+              linkedAnnotationIds: [],
+            };
+          }
+
+          return {
+            kind: "ai-mark",
+            id: createEventId("evt-ai-mark", occurredAt),
+            sessionId: params.session.id,
+            occurredAt,
+            source: "ai",
+            linkedEventIds,
+            severity: observation.kind,
+            region: observation.region,
+            rationale: observation.text,
+            protocolKey: REPAIR_PROTOCOL_KEYS.tacticalObserver,
+            dismissed: false,
+            lifecycleState: "detected",
+            linkedMeasurementIds,
+            linkedAnnotationIds: [],
+            linkedNoteIds: [],
+            linkedReplayEventIds: linkedEventIds,
+          };
+        });
+      }
+
+      async function requestMeasurementAiObservation(
+        measurementEvent: RepairMeasurementEvent
+      ): Promise<void> {
+        const state = store.getState();
+        const session = state.sessions[measurementEvent.sessionId];
+        const dispatchBridge = api.dispatchBridge;
+        if (session === undefined) return;
+        const targetSlot = normalizeRepairAiTargetSlot(state.aiDispatch.tactical.targetSlot);
+        const measurementRefs = uniqueStringList([
+          measurementEvent.id,
+          ...(measurementEvent.reference === null ? [] : [measurementEvent.reference]),
+          session.id,
+          session.deviceInfo.boardCode,
+        ]);
+        if (typeof dispatchBridge !== "function") {
+          return;
+        }
+
+        setAiDispatchStatus("tactical", "pending", {
+          message: `AI tactical observer is reviewing ${measurementEvent.reference}.`,
+          contextRefs: measurementRefs,
+        });
+
+        const aiResult = await requestRepairAiTacticalObservations({
+          dispatchBridge,
+          locale: typeof api.getLocale === "function" ? api.getLocale() : "en",
+          operatorProfile: state.operatorProfile,
+          session,
+          targetSlot,
+          triggeringEvent: measurementEvent,
+        }).catch((error: unknown) => ({
+          success: false,
+          observations: [],
+          message: error instanceof Error ? error.message : String(error),
+        }));
+
+        if (aiResult.success !== true) {
+          api.log(
+            "debug",
+            `[${REPAIR_ROOM_ID}] AI tactical observation skipped: ${
+              aiResult.message ?? "unknown error"
+            }`
+          );
+          setAiDispatchStatus("tactical", "failed", {
+            message: aiResult.message ?? "AI tactical observer did not return observations.",
+            contextRefs: measurementRefs,
+          });
+          return;
+        }
+
+        const currentState = store.getState();
+        const currentSession = currentState.sessions[measurementEvent.sessionId];
+        if (currentSession === undefined) return;
+        const baseIso =
+          currentState.activeSessionId === currentSession.id
+            ? createLiveSessionIso(currentSession)
+            : new Date(
+                Math.max(
+                  Date.parse(currentSession.updatedAt),
+                  Date.parse(measurementEvent.occurredAt)
+                ) + 1000
+              ).toISOString();
+        appendEventsToSession(
+          currentSession.id,
+          createAiObservationEvents({
+            baseIso,
+            measurementEvent,
+            observations: aiResult.observations,
+            session: currentSession,
+          })
+        );
+        setAiDispatchStatus("tactical", "succeeded", {
+          message: `AI tactical observer added ${aiResult.observations.length} observation${
+            aiResult.observations.length === 1 ? "" : "s"
+          }.`,
+          contextRefs: uniqueStringList([
+            ...measurementRefs,
+            ...aiResult.observations.flatMap((observation) => observation.contextRefs),
+          ]),
+        });
+      }
+
+      function appendChatReply(
+        operatorTurn: RepairChatTurn,
+        text: string,
+        contextRefs: string[]
+      ): void {
+        const current = store.getState();
+        if (current.chat.pendingReplyId !== operatorTurn.id || disposed) return;
+        const reply: RepairChatTurn = {
+          id: createEventId("chat-ai", nowIso()),
+          role: "ai",
+          text,
+          occurredAt: nowIso(),
+          contextRefs,
+        };
+        store.dispatchMany([
+          { type: "chat/append-turn", turn: reply },
+          { type: "chat/set-pending", turnId: null },
+        ]);
+        queuePersistActiveSessionChat();
+        if (store.getState().layout.interactionSettings.autoReadAiReplies) {
+          const result = speakGuidanceRequest(reply.text);
+          if (result.success === false && result.message !== undefined) {
+            api.log("debug", `[${REPAIR_ROOM_ID}] auto-read skipped: ${result.message}`);
+          }
+        }
+      }
+
+      function failChatReply(
+        operatorTurn: RepairChatTurn,
+        message: string,
+        contextRefs: string[]
+      ): void {
+        const current = store.getState();
+        if (current.chat.pendingReplyId !== operatorTurn.id || disposed) return;
+        store.dispatch({ type: "chat/set-pending", turnId: null });
+        setAiDispatchStatus("chat", "failed", {
+          message,
+          contextRefs,
+        });
+        queuePersistActiveSessionChat();
+      }
+
+      async function requestChatReply(operatorTurn: RepairChatTurn): Promise<void> {
         const state = store.getState();
         const session = getActiveSession(state);
-        const replyIndex = chatReplyTick;
-        chatReplyTick += 1;
-        const delay =
-          replyIndex % 2 === 0 ? REPAIR_CHAT_REPLY_MIN_DELAY_MS : REPAIR_CHAT_REPLY_MAX_DELAY_MS;
-        const timeoutId = setTimeout(() => {
-          const current = store.getState();
-          if (current.chat.pendingReplyId !== operatorTurn.id) return;
-          const reply: RepairChatTurn = {
-            id: createEventId("chat-ai", nowIso()),
-            role: "ai",
-            text:
-              session === null
-                ? "I have the bench context open. Select a session and I will pin the next diagnostic step."
-                : `For ${session.deviceInfo.boardCode}, keep the next probe on 5V_STBY and confirm the reading before rework.`,
-            occurredAt: nowIso(),
-            contextRefs: session === null ? [] : [session.id, session.deviceInfo.boardCode],
-          };
-          store.dispatchMany([
-            { type: "chat/append-turn", turn: reply },
-            { type: "chat/set-pending", turnId: null },
-          ]);
-        }, delay);
-        unrefTimer(timeoutId);
+        const targetSlot = normalizeRepairAiTargetSlot(state.aiDispatch.chat.targetSlot);
+        const baseContextRefs = session === null ? [] : [session.id, session.deviceInfo.boardCode];
+        const dispatchBridge = api.dispatchBridge;
+        const aiResult = await requestRepairAiChatReply({
+          ...(typeof dispatchBridge === "function" ? { dispatchBridge } : {}),
+          locale: typeof api.getLocale === "function" ? api.getLocale() : "en",
+          operatorProfile: state.operatorProfile,
+          operatorTurn,
+          recentTurns: state.chat.turns,
+          session,
+          targetSlot,
+        }).catch((error: unknown) => ({
+          success: false,
+          text: null,
+          contextRefs: [],
+          message: error instanceof Error ? error.message : String(error),
+        }));
+        if (aiResult.success !== true) {
+          api.log(
+            "debug",
+            `[${REPAIR_ROOM_ID}] AI chat failed: ${aiResult.message ?? "unknown error"}`
+          );
+          failChatReply(
+            operatorTurn,
+            aiResult.message ?? "AI chat guidance did not return a reply.",
+            uniqueStringList([...baseContextRefs, operatorTurn.id])
+          );
+          return;
+        }
+        const chatContextRefs = uniqueStringList([...baseContextRefs, ...aiResult.contextRefs]);
+        if (aiResult.text === null) {
+          failChatReply(
+            operatorTurn,
+            "AI chat guidance did not return readable text.",
+            chatContextRefs
+          );
+          return;
+        }
+        setAiDispatchStatus("chat", "succeeded", {
+          message: "AI chat guidance returned a reply.",
+          contextRefs: chatContextRefs,
+        });
+        appendChatReply(operatorTurn, aiResult.text, chatContextRefs);
       }
 
       store.subscribe(() => {
         pushState();
       });
       startOperationsProjectionBridge();
+      if (shouldAutoHydrateStorage) {
+        void hydrateStorage();
+      }
 
       function applyViewportUpdate(flat: Record<string, unknown>): {
         success: boolean;
@@ -1760,7 +2619,7 @@ export default function createRepairRoomHostRuntime() {
             pushState();
             startLiveLoops();
             if (store.getState().wizard.currentStep === "ai-research") {
-              scheduleResearchStream();
+              void startKnowledgeResearch();
             }
             api.log("info", `[${REPAIR_ROOM_ID}] ui-ready phase=${store.getState().phase}`);
             return { success: true };
@@ -1771,6 +2630,12 @@ export default function createRepairRoomHostRuntime() {
               sessionId === null ? null : (store.getState().sessions[sessionId] ?? null);
             store.batch(() => {
               store.dispatch({ type: "session/activate", sessionId: session?.id ?? null });
+              if (storageReady) {
+                store.dispatch({
+                  type: "chat/set-turns",
+                  turns: session === null ? [] : (storedChatTurnsBySessionId.get(session.id) ?? []),
+                });
+              }
               setActiveSessionDerivedState(store, session);
             });
             resetLiveTimelineAnchor(session);
@@ -1779,10 +2644,27 @@ export default function createRepairRoomHostRuntime() {
           }
           case REPAIR_UI_COMMANDS.createSession: {
             const iso = nowIso();
-            const session = createDraftSession(store.getState(), iso);
+            const generatedPack = readGeneratedKnowledgePack();
+            const draftSession = createDraftSession(store.getState(), iso);
+            const session: RepairSession =
+              generatedPack === null
+                ? draftSession
+                : {
+                    ...draftSession,
+                    status: "ready",
+                    knowledgePackId: generatedPack.id,
+                    knowledgePack: generatedPack,
+                    updatedAt: iso,
+                  };
+            if (storageReady) {
+              storedChatTurnsBySessionId.set(session.id, []);
+            }
             store.batch(() => {
               setSessionAndList(session);
               store.dispatch({ type: "session/activate", sessionId: session.id });
+              if (storageReady) {
+                store.dispatch({ type: "chat/set-turns", turns: [] });
+              }
               setActiveSessionDerivedState(store, session);
             });
             resetLiveTimelineAnchor(session);
@@ -1860,7 +2742,7 @@ export default function createRepairRoomHostRuntime() {
               ? (requested as RepairWizardState["currentStep"])
               : fallbackStep;
             if (nextStep === "ai-research") {
-              scheduleResearchStream();
+              void startKnowledgeResearch();
               return { success: true };
             }
             store.dispatchMany([
@@ -1873,10 +2755,10 @@ export default function createRepairRoomHostRuntime() {
             return { success: true };
           }
           case REPAIR_UI_COMMANDS.attachKnowledgePack: {
-            const packId = safeString(flat["packId"]) ?? "bn44-00932a";
             const state = store.getState();
+            const packId = safeString(flat["packId"]) ?? state.wizard.generatedKnowledgePackId;
             const session = getActiveSession(state);
-            const pack = MOCK_REPAIR_KNOWLEDGE_PACKS[packId] ?? null;
+            const pack = packId === null ? null : getKnowledgePack(packId);
             if (session === null || pack === null)
               return { success: false, message: "session and pack are required" };
             const nextSession: RepairSession = {
@@ -2080,6 +2962,9 @@ export default function createRepairRoomHostRuntime() {
               });
               success = appendEventToActiveSession(event);
             });
+            if (success) {
+              void requestMeasurementAiObservation(event);
+            }
             return { success };
           }
           case REPAIR_UI_COMMANDS.dismissAiMark: {
@@ -2108,10 +2993,20 @@ export default function createRepairRoomHostRuntime() {
             };
             return { success: appendEventToActiveSession(lifecycleEvent) };
           }
+          case REPAIR_UI_COMMANDS.setAiTargetSlot: {
+            const targetSlot = flat["targetSlot"];
+            if (!isRepairAiTargetSlot(targetSlot)) {
+              return { success: false, message: "valid AI target slot is required" };
+            }
+            store.dispatch({ type: "ai-dispatch/set-target-slot", targetSlot });
+            return { success: true };
+          }
           case REPAIR_UI_COMMANDS.sendChatTurn: {
             const text = safeString(flat["text"]);
             if (text === null) return { success: false, message: "text is required" };
-            const activeSessionId = store.getState().activeSessionId;
+            const state = store.getState();
+            const session = getActiveSession(state);
+            const activeSessionId = state.activeSessionId;
             const turn: RepairChatTurn = {
               id: createEventId("chat-operator", nowIso()),
               role: "operator",
@@ -2119,11 +3014,25 @@ export default function createRepairRoomHostRuntime() {
               occurredAt: nowIso(),
               contextRefs: activeSessionId === null ? [] : [activeSessionId],
             };
-            store.dispatchMany([
-              { type: "chat/append-turn", turn },
-              { type: "chat/set-pending", turnId: turn.id },
-            ]);
-            scheduleChatReply(turn);
+            store.batch(() => {
+              store.dispatch({ type: "chat/append-turn", turn });
+              store.dispatch({ type: "chat/set-composer", draft: "" });
+              store.dispatch({ type: "chat/set-pending", turnId: turn.id });
+              setAiDispatchStatus("chat", "pending", {
+                message: "AI chat guidance is drafting a reply.",
+                contextRefs: uniqueStringList([
+                  ...(session === null ? [] : [session.id, session.deviceInfo.boardCode]),
+                  turn.id,
+                ]),
+              });
+            });
+            queuePersistActiveSessionChat();
+            void requestChatReply(turn);
+            return { success: true };
+          }
+          case REPAIR_UI_COMMANDS.setChatComposer: {
+            const draft = safeString(flat["draft"]) ?? "";
+            store.dispatch({ type: "chat/set-composer", draft });
             return { success: true };
           }
           case REPAIR_UI_COMMANDS.updateOperatorProfile: {
@@ -2191,6 +3100,101 @@ export default function createRepairRoomHostRuntime() {
             });
             return { success: true };
           }
+          case REPAIR_UI_COMMANDS.setInteractionSettings: {
+            const androidCompanionEnabled = flat["androidCompanionEnabled"];
+            const dictationRoute = flat["dictationRoute"];
+            const ttsRoute = flat["ttsRoute"];
+            const cameraFeedPreference = flat["cameraFeedPreference"];
+            const dictationSubmitMode = flat["dictationSubmitMode"];
+            const autoReadAiReplies = flat["autoReadAiReplies"];
+            if (
+              androidCompanionEnabled !== undefined &&
+              typeof androidCompanionEnabled !== "boolean"
+            ) {
+              return { success: false, message: "androidCompanionEnabled must be boolean" };
+            }
+            if (dictationRoute !== undefined && !isDictationRoute(dictationRoute)) {
+              return { success: false, message: "valid dictation route is required" };
+            }
+            if (ttsRoute !== undefined && !isTtsRoute(ttsRoute)) {
+              return { success: false, message: "valid TTS route is required" };
+            }
+            if (
+              cameraFeedPreference !== undefined &&
+              !isCameraFeedPreference(cameraFeedPreference)
+            ) {
+              return { success: false, message: "valid camera feed preference is required" };
+            }
+            if (dictationSubmitMode !== undefined && !isDictationSubmitMode(dictationSubmitMode)) {
+              return { success: false, message: "valid dictation submit mode is required" };
+            }
+            if (autoReadAiReplies !== undefined && typeof autoReadAiReplies !== "boolean") {
+              return { success: false, message: "autoReadAiReplies must be boolean" };
+            }
+            const interactionSettings: Partial<RepairInteractionSettingsState> = {};
+            if (typeof androidCompanionEnabled === "boolean") {
+              interactionSettings.androidCompanionEnabled = androidCompanionEnabled;
+            }
+            if (isDictationRoute(dictationRoute)) {
+              interactionSettings.dictationRoute = dictationRoute;
+            }
+            if (isTtsRoute(ttsRoute)) {
+              interactionSettings.ttsRoute = ttsRoute;
+            }
+            if (isCameraFeedPreference(cameraFeedPreference)) {
+              interactionSettings.cameraFeedPreference = cameraFeedPreference;
+            }
+            if (isDictationSubmitMode(dictationSubmitMode)) {
+              interactionSettings.dictationSubmitMode = dictationSubmitMode;
+            }
+            if (typeof autoReadAiReplies === "boolean") {
+              interactionSettings.autoReadAiReplies = autoReadAiReplies;
+            }
+            if (Object.keys(interactionSettings).length === 0) {
+              return { success: false, message: "interaction settings update is required" };
+            }
+            store.dispatch({
+              type: "layout/set-interaction-settings",
+              interactionSettings,
+            });
+            return { success: true };
+          }
+          case REPAIR_UI_COMMANDS.setSettingsOverlay: {
+            const open = flat["open"];
+            const tabId = flat["tabId"];
+            if (open !== undefined && typeof open !== "boolean") {
+              return { success: false, message: "settings overlay open must be boolean" };
+            }
+            if (tabId !== undefined && !isSettingsOverlayTab(tabId)) {
+              return { success: false, message: "valid settings overlay tab is required" };
+            }
+            if (open === undefined && tabId === undefined) {
+              return { success: false, message: "settings overlay update is required" };
+            }
+            store.dispatch({
+              type: "layout/set-settings-overlay",
+              ...(typeof open === "boolean" ? { open } : {}),
+              ...(isSettingsOverlayTab(tabId) ? { tabId } : {}),
+            });
+            return { success: true };
+          }
+          case REPAIR_UI_COMMANDS.startDictation:
+            return startDictationRequest();
+          case REPAIR_UI_COMMANDS.stopDictation:
+            return stopDictationRequest();
+          case REPAIR_UI_COMMANDS.startAmbientListener:
+            return startAmbientRequest();
+          case REPAIR_UI_COMMANDS.stopAmbientListener:
+            return stopAmbientRequest();
+          case REPAIR_UI_COMMANDS.startCameraFeed:
+            return startCameraFeedRequest();
+          case REPAIR_UI_COMMANDS.stopCameraFeed:
+            return stopCameraFeedRequest();
+          case REPAIR_UI_COMMANDS.speakGuidance: {
+            return speakGuidanceRequest(safeString(flat["text"]));
+          }
+          case REPAIR_UI_COMMANDS.stopSpeech:
+            return stopSpeechRequest();
           case REPAIR_UI_COMMANDS.setAttentionBudget: {
             const windowMs = safeNumber(flat["windowMs"]);
             const maxAiInterruptions = safeNumber(flat["maxAiInterruptions"]);
@@ -2406,11 +3410,40 @@ export default function createRepairRoomHostRuntime() {
         getStateSnapshot(): { state: RepairRuntimeState } {
           return { state: store.getState() };
         },
+        hydrateStorage,
+        flushStorage(): Promise<void> {
+          return storagePersistQueue;
+        },
         dispose() {
+          disposed = true;
+          if (
+            activeDictationRequestId !== null &&
+            typeof api.capture?.stopDictation === "function"
+          ) {
+            void api.capture.stopDictation(activeDictationRequestId);
+            activeDictationRequestId = null;
+          }
+          if (
+            activeAmbientRequestId !== null &&
+            typeof api.capture?.stopAmbientListener === "function"
+          ) {
+            void api.capture.stopAmbientListener(activeAmbientRequestId);
+            activeAmbientRequestId = null;
+          }
+          if (
+            activeCameraFeedRequestId !== null &&
+            typeof api.capture?.stopCameraFeed === "function"
+          ) {
+            void api.capture.stopCameraFeed(activeCameraFeedRequestId);
+            activeCameraFeedRequestId = null;
+          }
+          if (activeTtsRequestId !== null && typeof api.tts?.stop === "function") {
+            void api.tts.stop(activeTtsRequestId);
+            activeTtsRequestId = null;
+          }
           operationsUnsubscribe?.();
           operationsUnsubscribe = null;
           clearFeedStream();
-          clearResearchStream();
           if (clockInterval !== null) {
             clearInterval(clockInterval);
             clockInterval = null;

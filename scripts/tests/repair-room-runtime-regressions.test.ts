@@ -5,13 +5,108 @@ import {
   createEmptyRepairReplayProjection,
   createRepairReplayProjection,
 } from "../../rooms/repair-room/host/state/repair-replay-projection.ts";
-import { REPAIR_UI_COMMANDS } from "../../rooms/repair-room/shared/repair-constants.ts";
+import {
+  createRepairUiSnapshot,
+  createRepairUiSnapshotMeta,
+} from "../../rooms/repair-room/host/state/repair-selectors.ts";
+import { getRepairRoomSyncRows } from "../../rooms/repair-room/ui/panels/room-sync-panel.ts";
+import {
+  REPAIR_ROOM_ID,
+  REPAIR_UI_COMMANDS,
+} from "../../rooms/repair-room/shared/repair-constants.ts";
+import {
+  MOCK_REPAIR_ACTIVE_SESSION_ID,
+  MOCK_REPAIR_SESSIONS,
+} from "../../rooms/repair-room/shared/data/index.ts";
 import {
   REPAIR_ACTION_REGISTRY,
   getRepairVoiceCommandPhraseMap,
 } from "../../rooms/repair-room/shared/repair-action-registry.ts";
 import { normalizeRepairHostMessage } from "../../rooms/repair-room/shared/ui/host-messages.ts";
 import { createRepairDefaultGuidanceProjection } from "../../rooms/repair-room/shared/ui/state.ts";
+import type { RepairStoredSessionRecord } from "../../rooms/repair-room/host/repair-session-storage.ts";
+import type {
+  RepairChatTurn,
+  RepairSession,
+  RepairSessionListItem,
+} from "../../rooms/repair-room/shared/types/index.ts";
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function toStoredSessionListItem(session: RepairSession): RepairSessionListItem {
+  return {
+    id: session.id,
+    title: session.title,
+    deviceLabel: session.deviceInfo.deviceLabel,
+    boardCode: session.deviceInfo.boardCode,
+    serialNumber: session.deviceInfo.serialNumber,
+    status: session.status,
+    riskLevel: session.riskLevel,
+    updatedAt: session.updatedAt,
+    isArchived: session.status === "archived",
+  };
+}
+
+function createMemoryRepairIo() {
+  return {
+    callRoomTools: async () => ({ success: true }),
+    ensureRuntimeDirectory: async () => {},
+    getElectronApi: () => null,
+    listDirectory: async () => [],
+    readJsonFile: async () => null,
+    resolveRuntimePaths: async () => ({ storageDir: "/tmp/repair-room-test" }),
+    writeJsonFile: async () => {},
+  };
+}
+
+function createStoredRepairRecord(
+  session: RepairSession,
+  chatTurns: RepairChatTurn[] = []
+): RepairStoredSessionRecord {
+  return {
+    chatTurns,
+    roomId: REPAIR_ROOM_ID,
+    savedAt: session.updatedAt,
+    schemaVersion: 1,
+    session,
+  };
+}
+
+function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] = []) {
+  const records = new Map<string, RepairStoredSessionRecord>();
+  initialRecords.forEach((record) => {
+    records.set(record.session.id, cloneJson(record));
+  });
+  const listRecords = () =>
+    Array.from(records.values()).sort((left, right) =>
+      right.session.updatedAt.localeCompare(left.session.updatedAt)
+    );
+  return {
+    ensureSessionRoot: async () => "/tmp/repair-room-test/sessions",
+    listSessionRecords: async () => listRecords().map((record) => cloneJson(record)),
+    listSessions: async () =>
+      listRecords().map((record) => toStoredSessionListItem(record.session)),
+    loadLatestSessionRecord: async () => cloneJson(listRecords()[0] ?? null),
+    loadSessionRecord: async (_runtimePaths: unknown, sessionId: string) =>
+      cloneJson(records.get(sessionId) ?? null),
+    saveSessionRecord: async (
+      _runtimePaths: unknown,
+      record: Pick<RepairStoredSessionRecord, "chatTurns" | "session">
+    ) => {
+      const nextRecord = createStoredRepairRecord(
+        cloneJson(record.session),
+        cloneJson(record.chatTurns)
+      );
+      records.set(nextRecord.session.id, nextRecord);
+      return cloneJson(nextRecord);
+    },
+    readRecord(sessionId: string): RepairStoredSessionRecord | null {
+      return cloneJson(records.get(sessionId) ?? null);
+    },
+  };
+}
 
 test("repair-room host exports room-page lifecycle hooks and command registry", () => {
   const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
@@ -75,7 +170,7 @@ test("repair-room host exports room-page lifecycle hooks and command registry", 
   assert.ok(logs.some((entry) => entry.includes("Repair Room host disposed.")));
 });
 
-test("repair-room runtime handles the advertised interactive Phase 1 commands", () => {
+test("repair-room runtime handles the advertised interactive Phase 1 commands", async () => {
   const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
@@ -126,11 +221,461 @@ test("repair-room runtime handles the advertised interactive Phase 1 commands", 
     runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "Check standby rail" }).success,
     true
   );
-  const chatState = runtime.getStateSnapshot().state.chat;
+  let chatState = runtime.getStateSnapshot().state.chat;
   assert.equal(chatState.turns.at(-1)?.role, "operator");
   assert.equal(chatState.pendingReplyId, chatState.turns.at(-1)?.id);
 
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  chatState = runtime.getStateSnapshot().state.chat;
+  assert.equal(chatState.pendingReplyId, null);
+  assert.equal(chatState.turns.at(-1)?.role, "operator");
+  assert.equal(runtime.getStateSnapshot().state.aiDispatch.chat.status, "failed");
+
   assert.ok(notifications.some((entry) => entry.type === "repair-state"));
+  runtime.dispose();
+});
+
+test("repair-room chat uses live protocol bridge guidance", async () => {
+  const dispatchCalls: Record<string, unknown>[] = [];
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+    dispatchBridge: async (payload: Record<string, unknown>) => {
+      dispatchCalls.push(payload);
+      return {
+        success: true,
+        reply: {
+          text: JSON.stringify({
+            replyText:
+              "Measure 5V_STBY first, then compare it with the knowledge-pack expected rail.",
+            contextRefs: ["tp-5v-stby"],
+          }),
+        },
+      };
+    },
+    getLocale: () => "en",
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "What should I check next?" })
+      .success,
+    true
+  );
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  assert.equal(dispatchCalls.length, 1);
+  assert.equal(dispatchCalls[0]?.["action"], "message.sendWait");
+  assert.equal(dispatchCalls[0]?.["toSlot"], "ai2");
+  const payload = dispatchCalls[0]?.["payload"] as Record<string, unknown> | undefined;
+  const protocol = payload?.["protocol"] as Record<string, unknown> | undefined;
+  assert.equal(payload?.["page"], "repair-room:chat");
+  assert.equal(protocol?.["protocolKey"], "repair-room-measurement-coach");
+  assert.match(String(payload?.["text"]), /repair-room-chat-guidance/);
+
+  const chatState = runtime.getStateSnapshot().state.chat;
+  assert.equal(chatState.pendingReplyId, null);
+  assert.equal(chatState.turns.at(-1)?.role, "ai");
+  assert.equal(runtime.getStateSnapshot().state.aiDispatch.chat.status, "succeeded");
+  assert.equal(runtime.getStateSnapshot().state.aiDispatch.chat.targetSlot, "ai2");
+  assert.equal(
+    chatState.turns.at(-1)?.text,
+    "Measure 5V_STBY first, then compare it with the knowledge-pack expected rail."
+  );
+  assert.equal(chatState.turns.at(-1)?.contextRefs.includes("tp-5v-stby"), true);
+
+  runtime.dispose();
+});
+
+test("repair-room sync panel rows expose AI2 dispatch status", async () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+    dispatchBridge: async () => ({
+      success: true,
+      reply: {
+        text: JSON.stringify({
+          replyText: "Probe 5V_STBY and compare against the known good rail.",
+          contextRefs: ["tp-5v-stby"],
+        }),
+      },
+    }),
+    getLocale: () => "en",
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "Which rail next?" }).success,
+    true
+  );
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  const runtimeState = runtime.getStateSnapshot().state;
+  const state = createRepairUiSnapshot(runtimeState);
+  const meta = createRepairUiSnapshotMeta(runtimeState);
+  const rows = Object.fromEntries(
+    getRepairRoomSyncRows(state, meta, (_path, fallback) => fallback)
+  );
+
+  assert.equal(rows["AI Target"], "AI2");
+  assert.match(rows["Chat AI"] ?? "", /^AI2 ok/);
+  assert.match(rows["Chat AI"] ?? "", /\d+ refs/);
+  assert.equal(rows["Research AI"], "AI2 idle");
+  assert.equal(rows["Tactical AI"], "AI2 idle");
+
+  runtime.dispose();
+});
+
+test("repair-room research uses live AI knowledge-pack dispatch", async () => {
+  const dispatchCalls: Record<string, unknown>[] = [];
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+    dispatchBridge: async (payload: Record<string, unknown>) => {
+      dispatchCalls.push(payload);
+      return {
+        success: true,
+        reply: {
+          text: JSON.stringify({
+            contextRefs: ["research-bn44"],
+            knowledgePack: {
+              id: "ai-bn44-00932a",
+              modelNumber: "BN44-00932A",
+              deviceLabel: "Samsung PSU",
+              resources: [
+                {
+                  id: "candidate-schematic",
+                  label: "Candidate service manual",
+                  kind: "schematic",
+                  source: "AI research candidate",
+                  pages: 12,
+                  confidence: 0.74,
+                },
+              ],
+              commonFailures: [
+                {
+                  id: "startup-resistor-open",
+                  label: "Startup resistor open",
+                  rationale: "No standby symptom matches startup bias loss.",
+                  affectedPart: "R201",
+                  recommendedAction: "Measure startup resistance before replacing parts.",
+                  confidence: 0.81,
+                },
+              ],
+              testPoints: [
+                {
+                  id: "tp-5v-stby-ai",
+                  label: "5V_STBY",
+                  rail: "Standby",
+                  expectedValue: 5,
+                  unit: "V",
+                  tolerance: 0.25,
+                },
+              ],
+              notes: ["Discharge the bulk capacitor before primary-side checks."],
+            },
+          }),
+        },
+      };
+    },
+    getLocale: () => "en",
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ai-research" }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.aiDispatch.research.status, "pending");
+
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  assert.equal(dispatchCalls.length, 1);
+  assert.equal(dispatchCalls[0]?.["action"], "message.sendWait");
+  assert.equal(dispatchCalls[0]?.["toSlot"], "ai2");
+  const payload = dispatchCalls[0]?.["payload"] as Record<string, unknown> | undefined;
+  const protocol = payload?.["protocol"] as Record<string, unknown> | undefined;
+  assert.equal(payload?.["page"], "repair-room:knowledge-research");
+  assert.equal(protocol?.["protocolKey"], "repair-room-knowledge-research");
+
+  const state = runtime.getStateSnapshot().state;
+  assert.equal(state.aiDispatch.research.status, "succeeded");
+  assert.equal(state.wizard.currentStep, "ready");
+  assert.equal(state.wizard.generatedKnowledgePackId, "ai-bn44-00932a");
+  assert.equal(state.wizard.foundResources[0]?.id, "candidate-schematic");
+
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, true);
+  const nextState = runtime.getStateSnapshot().state;
+  const activeSession = nextState.sessions[nextState.activeSessionId ?? ""];
+  assert.equal(activeSession?.knowledgePackId, "ai-bn44-00932a");
+  assert.equal(activeSession?.knowledgePack?.testPoints[0]?.label, "5V_STBY");
+
+  runtime.dispose();
+});
+
+test("repair-room hydrates room-local stored session records when storage is available", async () => {
+  const storedSession: RepairSession = {
+    ...cloneJson(MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID]),
+    id: "repair-persisted-session",
+    title: "Persisted repair session",
+    updatedAt: "2026-06-13T10:00:00.000Z",
+  };
+  const storedChat: RepairChatTurn = {
+    id: "chat-stored-1",
+    role: "operator",
+    text: "Stored repair context",
+    occurredAt: "2026-06-13T10:00:01.000Z",
+    contextRefs: [storedSession.id],
+  };
+  const storage = createMemoryRepairStorage([
+    createStoredRepairRecord(storedSession, [storedChat]),
+  ]);
+  const runtime = createRepairRoomHostRuntime({
+    autoHydrateStorage: false,
+    io: createMemoryRepairIo(),
+    storage,
+  }).activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  await runtime.hydrateStorage();
+
+  const runtimeState = runtime.getStateSnapshot().state;
+  assert.equal(runtimeState.storage.status, "ready");
+  assert.equal(runtimeState.storage.sessionCount, 1);
+  assert.equal(runtimeState.activeSessionId, storedSession.id);
+  assert.equal(runtimeState.chat.turns[0]?.text, "Stored repair context");
+
+  const rows = Object.fromEntries(
+    getRepairRoomSyncRows(
+      createRepairUiSnapshot(runtimeState),
+      createRepairUiSnapshotMeta(runtimeState),
+      (_path, fallback) => fallback
+    )
+  );
+  assert.equal(rows["Storage"], "Room storage ready, 1 session");
+
+  runtime.dispose();
+});
+
+test("repair-room persists session event and chat updates to room-local session JSON", async () => {
+  const storedSession: RepairSession = {
+    ...cloneJson(MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID]),
+    id: "repair-persist-session-updates",
+    title: "Persist repair updates",
+    updatedAt: "2026-06-13T11:00:00.000Z",
+  };
+  const storage = createMemoryRepairStorage([createStoredRepairRecord(storedSession)]);
+  const runtime = createRepairRoomHostRuntime({
+    autoHydrateStorage: false,
+    io: createMemoryRepairIo(),
+    storage,
+  }).activate({
+    log: () => {},
+    notifyRoom: () => {},
+    dispatchBridge: async () => ({
+      success: true,
+      reply: {
+        text: JSON.stringify({
+          replyText: "Stored AI reply",
+          contextRefs: ["stored-ref"],
+        }),
+      },
+    }),
+    getLocale: () => "en",
+  });
+
+  await runtime.hydrateStorage();
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addMeasurement, {
+      xPx: 712,
+      yPx: 304,
+      rawDisplay: "0.421",
+      reference: "Persisted TP",
+    }).success,
+    true
+  );
+  await runtime.flushStorage();
+
+  let saved = storage.readRecord(storedSession.id);
+  assert.equal(
+    saved?.session.events.some(
+      (event) => event.kind === "measurement" && event.reference === "Persisted TP"
+    ),
+    true
+  );
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "Persist this chat" }).success,
+    true
+  );
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+  await runtime.flushStorage();
+
+  saved = storage.readRecord(storedSession.id);
+  assert.equal(
+    saved?.chatTurns.some((turn) => turn.text === "Persist this chat"),
+    true
+  );
+  assert.equal(
+    saved?.chatTurns.some((turn) => turn.text === "Stored AI reply"),
+    true
+  );
+
+  runtime.dispose();
+});
+
+test("repair-room measurements can promote AI tactical observations into canonical events", async () => {
+  const dispatchCalls: Record<string, unknown>[] = [];
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+    dispatchBridge: async (payload: Record<string, unknown>) => {
+      dispatchCalls.push(payload);
+      return {
+        success: true,
+        reply: {
+          text: JSON.stringify({
+            observations: [
+              {
+                kind: "risk",
+                text: "Discharge the primary bulk cap before touching this region.",
+                region: { xPx: 360, yPx: 180, widthPx: 180, heightPx: 140 },
+                linkedMeasurementIds: [],
+              },
+              {
+                kind: "suggestion",
+                text: "Compare this probe result with the standby rail before rework.",
+                linkedEventIds: [],
+              },
+            ],
+          }),
+        },
+      };
+    },
+    getLocale: () => "en",
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addMeasurement, {
+      xPx: 712,
+      yPx: 304,
+      rawDisplay: "0.002",
+      reference: "AI TEST U14 VCC",
+    }).success,
+    true
+  );
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  assert.equal(dispatchCalls.length, 1);
+  assert.equal(dispatchCalls[0]?.["action"], "message.sendWait");
+  assert.equal(dispatchCalls[0]?.["toSlot"], "ai2");
+  const payload = dispatchCalls[0]?.["payload"] as Record<string, unknown> | undefined;
+  const protocol = payload?.["protocol"] as Record<string, unknown> | undefined;
+  assert.equal(payload?.["page"], "repair-room:tactical-observer");
+  assert.equal(protocol?.["protocolKey"], "repair-room-tactical-observer");
+  assert.match(String(payload?.["text"]), /repair-room-tactical-observation/);
+
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  const generatedRisk = session.events.find(
+    (event) =>
+      event.kind === "risk-flag" &&
+      event.message === "Discharge the primary bulk cap before touching this region."
+  );
+  const generatedMark = session.events.find(
+    (event) =>
+      event.kind === "ai-mark" &&
+      event.rationale === "Compare this probe result with the standby rail before rework."
+  );
+  const measurement = session.events.find(
+    (event) => event.kind === "measurement" && event.reference === "AI TEST U14 VCC"
+  );
+  assert.ok(measurement);
+  assert.ok(generatedRisk);
+  assert.ok(generatedMark);
+  if (generatedRisk?.kind === "risk-flag" && generatedMark?.kind === "ai-mark") {
+    assert.equal(generatedRisk.linkedMeasurementIds?.includes(measurement.id), true);
+    assert.equal(generatedMark.linkedMeasurementIds?.includes(measurement.id), true);
+    assert.equal(generatedMark.protocolKey, "repair-room-tactical-observer");
+  }
+  assert.equal(
+    state.tacticalFeed.some((item) => item.eventId === generatedRisk?.id),
+    true
+  );
+  assert.equal(state.aiDispatch.tactical.status, "succeeded");
+  assert.equal(state.aiDispatch.tactical.targetSlot, "ai2");
+
+  runtime.dispose();
+});
+
+test("repair-room tactical bridge accepts content-backed top-level observation arrays", async () => {
+  const dispatchCalls: Record<string, unknown>[] = [];
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+    dispatchBridge: async (payload: Record<string, unknown>) => {
+      dispatchCalls.push(payload);
+      return {
+        success: true,
+        reply: {
+          content: `Here is the tactical pass:\n\n\`\`\`json\n[\n  {\n    "severity": "warning",\n    "message": "Confirm isolation before probing primary-side rails.",\n    "linkedMeasurementIds": []\n  }\n]\n\`\`\``,
+        },
+      };
+    },
+    getLocale: () => "en",
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addMeasurement, {
+      xPx: 618,
+      yPx: 286,
+      rawDisplay: "380.0",
+      reference: "AI ARRAY BULK_DC",
+      unit: "V",
+    }).success,
+    true
+  );
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  assert.equal(dispatchCalls.length, 1);
+  assert.equal(dispatchCalls[0]?.["toSlot"], "ai2");
+
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  const measurement = session.events.find(
+    (event) => event.kind === "measurement" && event.reference === "AI ARRAY BULK_DC"
+  );
+  const generatedRisk = session.events.find(
+    (event) =>
+      event.kind === "risk-flag" &&
+      event.message === "Confirm isolation before probing primary-side rails."
+  );
+  assert.ok(measurement);
+  assert.ok(generatedRisk);
+  if (generatedRisk?.kind === "risk-flag") {
+    assert.equal(generatedRisk.linkedMeasurementIds?.includes(measurement.id), true);
+  }
+  assert.equal(state.aiDispatch.tactical.status, "succeeded");
+  assert.match(state.aiDispatch.tactical.message ?? "", /1 observation/);
+
+  runtime.dispose();
 });
 
 test("repair-room Phase 3 arbitrates one calm guidance surface per profile", () => {
@@ -238,7 +783,282 @@ test("repair-room Phase 3 projects confidence, recovery, saturation, and voice h
       projection.guidance.overlaySaturation.maxSimultaneousHighlights,
     true
   );
-  assert.equal(projection.guidance.rhythm.lifecycle[projection.guidance.rhythm.currentIndex], "verify");
+  assert.equal(
+    projection.guidance.rhythm.lifecycle[projection.guidance.rhythm.currentIndex],
+    "verify"
+  );
+
+  runtime.dispose();
+});
+
+test("repair-room updates room-local hands-free interaction settings", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setInteractionSettings, {
+      androidCompanionEnabled: false,
+      dictationRoute: "android",
+      ttsRoute: "android",
+      cameraFeedPreference: "android-feed",
+      dictationSubmitMode: "send",
+      autoReadAiReplies: false,
+    }).success,
+    true
+  );
+  assert.deepEqual(runtime.getStateSnapshot().state.layout.interactionSettings, {
+    androidCompanionEnabled: false,
+    dictationRoute: "android",
+    ttsRoute: "android",
+    cameraFeedPreference: "android-feed",
+    dictationSubmitMode: "send",
+    autoReadAiReplies: false,
+  });
+
+  const invalid = runtime.handleCommand(REPAIR_UI_COMMANDS.setInteractionSettings, {
+    dictationRoute: "cloud",
+  });
+  assert.equal(invalid.success, false);
+  assert.equal(
+    runtime.getStateSnapshot().state.layout.interactionSettings.dictationRoute,
+    "android"
+  );
+
+  runtime.dispose();
+});
+
+test("repair-room opens rare operator and control surfaces in a settings overlay", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  assert.equal(runtime.getStateSnapshot().state.layout.settingsOverlayOpen, false);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setSettingsOverlay, {
+      open: true,
+      tabId: "bench-operator",
+    }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.layout.settingsOverlayOpen, true);
+  assert.equal(runtime.getStateSnapshot().state.layout.settingsOverlayTabId, "bench-operator");
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setSettingsOverlay, {
+      tabId: "repair-controls",
+    }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.layout.settingsOverlayOpen, true);
+  assert.equal(runtime.getStateSnapshot().state.layout.settingsOverlayTabId, "repair-controls");
+
+  const invalid = runtime.handleCommand(REPAIR_UI_COMMANDS.setSettingsOverlay, {
+    tabId: "timeline",
+  });
+  assert.equal(invalid.success, false);
+  assert.equal(runtime.getStateSnapshot().state.layout.settingsOverlayTabId, "repair-controls");
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setSettingsOverlay, { open: false }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.layout.settingsOverlayOpen, false);
+
+  runtime.dispose();
+});
+
+test("repair-room bridges hands-free capture and TTS commands through RoomHost APIs", async () => {
+  const calls: string[] = [];
+  const activeRequestIds: Record<string, string> = {};
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+    capture: {
+      startDictation: async (requestId = "") => {
+        activeRequestIds["dictation"] = requestId;
+        calls.push(`start-dictation:${requestId}`);
+        return { requestId, outcome: { ok: true } };
+      },
+      stopDictation: async (requestId) => {
+        calls.push(`stop-dictation:${requestId}`);
+        return { ok: true };
+      },
+      startAmbientListener: async (requestId = "") => {
+        activeRequestIds["ambient"] = requestId;
+        calls.push(`start-ambient:${requestId}`);
+        return { requestId, outcome: { ok: true } };
+      },
+      stopAmbientListener: async (requestId) => {
+        calls.push(`stop-ambient:${requestId}`);
+        return { ok: true };
+      },
+      startCameraFeed: async (requestId = "") => {
+        activeRequestIds["camera"] = requestId;
+        calls.push(`start-camera:${requestId}`);
+        return { requestId, outcome: { ok: true } };
+      },
+      stopCameraFeed: async (requestId = "") => {
+        calls.push(`stop-camera:${requestId}`);
+        return { requestId, outcome: { ok: true } };
+      },
+    },
+    tts: {
+      speak: async (text, options) => {
+        activeRequestIds["tts"] = options?.requestId ?? "";
+        calls.push(`speak:${options?.mode}:${options?.language}:${text}`);
+        return {
+          requestId: options?.requestId ?? "",
+          outcome: { status: { status: "playing" } },
+        };
+      },
+      stop: async (requestId) => {
+        calls.push(`stop-tts:${requestId}`);
+      },
+    },
+    getLocale: () => "tr",
+  });
+
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startDictation).success, true);
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startAmbientListener).success, true);
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startCameraFeed).success, true);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setInteractionSettings, { ttsRoute: "android" })
+      .success,
+    true
+  );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.speakGuidance, { text: "Bir sonraki adimi oku." })
+      .success,
+    true
+  );
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  assert.match(activeRequestIds["dictation"] ?? "", /^repair-room:dictation:/);
+  assert.match(activeRequestIds["ambient"] ?? "", /^repair-room:ambient:/);
+  assert.match(activeRequestIds["camera"] ?? "", /^repair-room:camera:/);
+  assert.match(activeRequestIds["tts"] ?? "", /^repair-room:tts:/);
+  assert.ok(calls.some((call) => call.startsWith("speak:android:tr:Bir sonraki adimi oku.")));
+
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.stopDictation).success, true);
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.stopAmbientListener).success, true);
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.stopCameraFeed).success, true);
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.stopSpeech).success, true);
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  assert.ok(calls.includes(`stop-dictation:${activeRequestIds["dictation"]}`));
+  assert.ok(calls.includes(`stop-ambient:${activeRequestIds["ambient"]}`));
+  assert.ok(calls.includes(`stop-camera:${activeRequestIds["camera"]}`));
+  assert.ok(calls.includes(`stop-tts:${activeRequestIds["tts"]}`));
+
+  const beforeDisabledCaptureCallCount = calls.length;
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setInteractionSettings, {
+      androidCompanionEnabled: false,
+    }).success,
+    true
+  );
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startCameraFeed).success, false);
+  assert.equal(calls.length, beforeDisabledCaptureCallCount);
+
+  runtime.dispose();
+});
+
+test("repair-room auto-reads AI chat replies when the room setting is enabled", async () => {
+  const spoken: string[] = [];
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+    dispatchBridge: async () => ({
+      success: true,
+      reply: {
+        text: JSON.stringify({
+          replyText: "Measure standby voltage before replacing parts.",
+          contextRefs: ["tp-5v-stby"],
+        }),
+      },
+    }),
+    getLocale: () => "en",
+    tts: {
+      speak: async (text, options) => {
+        spoken.push(`${options?.mode}:${options?.language}:${text}`);
+        return {
+          requestId: options?.requestId ?? "",
+          outcome: { status: { status: "done" } },
+        };
+      },
+      stop: async () => {},
+    },
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "Read this answer" }).success,
+    true
+  );
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  assert.deepEqual(spoken, ["local:en:Measure standby voltage before replacing parts."]);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setInteractionSettings, {
+      autoReadAiReplies: false,
+    }).success,
+    true
+  );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "Do not read this one" })
+      .success,
+    true
+  );
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  assert.equal(spoken.length, 1);
+
+  runtime.dispose();
+});
+
+test("repair-room persists dictated composer drafts before chat submission", async () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+    dispatchBridge: async () => ({
+      success: true,
+      reply: {
+        text: JSON.stringify({
+          replyText: "Composer draft received.",
+          contextRefs: [],
+        }),
+      },
+    }),
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setChatComposer, {
+      draft: "Measure U14 VCC",
+    }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.chat.composerDraft, "Measure U14 VCC");
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "Measure U14 VCC" }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.chat.composerDraft, "");
+
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
 
   runtime.dispose();
 });
@@ -911,14 +1731,10 @@ test("repair-room Phase 2.8 focuses investigation regions, relationships, and li
     id: regionEvent.regionId,
   });
   assert.deepEqual(
-    [...new Set(projection.measurementRelationships.map((relationship) => relationship.kind))].sort(),
     [
-      "investigation-group",
-      "linked-ai-mark",
-      "linked-annotation",
-      "previous-event",
-      "rail",
-    ]
+      ...new Set(projection.measurementRelationships.map((relationship) => relationship.kind)),
+    ].sort(),
+    ["investigation-group", "linked-ai-mark", "linked-annotation", "previous-event", "rail"]
   );
 
   const relationship = projection.measurementRelationships[0];
@@ -1498,9 +2314,7 @@ test("repair-room P3.5 action registry carries reusable disabled metadata", () =
       enabled: true,
     },
   ]);
-  assert.ok(
-    enabledPhraseMap[REPAIR_UI_COMMANDS.focusOverlayEntity]?.includes("focus measurement")
-  );
+  assert.ok(enabledPhraseMap[REPAIR_UI_COMMANDS.focusOverlayEntity]?.includes("focus measurement"));
   assert.ok(enabledPhraseMap[REPAIR_UI_COMMANDS.addMeasurement]?.includes("start measurement"));
 
   const runtime = createRepairRoomHostRuntime().activate({

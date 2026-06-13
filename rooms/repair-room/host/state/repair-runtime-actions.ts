@@ -3,6 +3,7 @@ import type {
   RepairChatTurn,
   RepairEvent,
   RepairInstrumentKind,
+  RepairInteractionSettingsState,
   RepairKnowledgePack,
   RepairMultimeterReading,
   RepairOperationalProfile,
@@ -13,6 +14,7 @@ import type {
   RepairOverlaySelectionState,
   RepairPanelId,
   RepairReplayMode,
+  RepairSettingsOverlayTabId,
   RepairSession,
   RepairSessionListItem,
   RepairVoiceGuidanceState,
@@ -21,13 +23,23 @@ import type {
   RepairWorkbenchTool,
 } from "../../shared/types/index.js";
 import type {
+  RepairAiDispatchChannel,
+  RepairAiDispatchChannelState,
+  RepairAiTargetSlot,
   RepairOperationsSnapshot,
+  RepairStorageState,
   RepairTacticalFeedItem,
   RepairUiPhase,
 } from "../../shared/ui/state.js";
 
 export type RepairRuntimeAction =
   | { type: "phase/set"; phase: RepairUiPhase }
+  | {
+      type: "session/hydrate";
+      activeSessionId: string | null;
+      sessions: Record<string, RepairSession>;
+      sessionList: RepairSessionListItem[];
+    }
   | {
       type: "session/activate";
       sessionId: string | null;
@@ -162,6 +174,10 @@ export type RepairRuntimeAction =
       turn: RepairChatTurn;
     }
   | {
+      type: "chat/set-turns";
+      turns: RepairChatTurn[];
+    }
+  | {
       type: "chat/set-composer";
       draft: string;
     }
@@ -196,12 +212,34 @@ export type RepairRuntimeAction =
       voiceGuidance: Partial<RepairVoiceGuidanceState>;
     }
   | {
+      type: "layout/set-interaction-settings";
+      interactionSettings: Partial<RepairInteractionSettingsState>;
+    }
+  | {
+      type: "layout/set-settings-overlay";
+      open?: boolean;
+      tabId?: RepairSettingsOverlayTabId;
+    }
+  | {
       type: "layout/set-attention-budget";
       attentionBudget: Partial<RepairAttentionBudgetState>;
     }
   | {
       type: "operations/status-set";
       status: RepairOperationsSnapshot | null;
+    }
+  | {
+      type: "storage/set";
+      storage: RepairStorageState;
+    }
+  | {
+      type: "ai-dispatch/set";
+      channel: RepairAiDispatchChannel;
+      state: RepairAiDispatchChannelState;
+    }
+  | {
+      type: "ai-dispatch/set-target-slot";
+      targetSlot: RepairAiTargetSlot;
     }
   | {
       type: "ambient/tick";

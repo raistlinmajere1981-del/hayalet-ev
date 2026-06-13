@@ -37,12 +37,24 @@ export interface RepairResearchProgressHostMessage {
   completed: boolean;
 }
 
+export interface RepairTranscriptIngressHostMessage {
+  type: "transcript-ingress";
+  requestId: string;
+  text: string;
+  source: "pc-mic" | "android-bridge" | "synthetic-test";
+  target: string | null;
+  isFinal: boolean;
+  createdAt: string;
+  metadata: Record<string, unknown> | null;
+}
+
 export type RepairHostMessage =
   | RepairStateHostMessage
   | RepairFeedEventHostMessage
   | RepairMeasurementReadingHostMessage
   | RepairChatReplyHostMessage
-  | RepairResearchProgressHostMessage;
+  | RepairResearchProgressHostMessage
+  | RepairTranscriptIngressHostMessage;
 
 type RepairHostMessageRecord = Record<string, unknown>;
 
@@ -116,6 +128,37 @@ export function normalizeRepairHostMessage(value: unknown): RepairHostMessage | 
     const completed = payload["completed"];
     if (typeof step === "string" && typeof completed === "boolean") {
       return { type, step: step as RepairResearchProgressHostMessage["step"], completed };
+    }
+  }
+
+  if (type === "transcript-ingress") {
+    const requestId = payload["requestId"];
+    const text = payload["text"];
+    const source = payload["source"];
+    const target = payload["target"];
+    const isFinal = payload["isFinal"];
+    const createdAt = payload["createdAt"];
+    const metadata = payload["metadata"];
+    if (
+      typeof requestId === "string" &&
+      typeof text === "string" &&
+      (source === "pc-mic" || source === "android-bridge" || source === "synthetic-test") &&
+      (target === null || typeof target === "string") &&
+      typeof isFinal === "boolean" &&
+      typeof createdAt === "string" &&
+      (metadata === null ||
+        (typeof metadata === "object" && metadata !== null && Array.isArray(metadata) === false))
+    ) {
+      return {
+        type,
+        requestId,
+        text,
+        source,
+        target,
+        isFinal,
+        createdAt,
+        metadata: metadata as Record<string, unknown> | null,
+      };
     }
   }
 

@@ -11,6 +11,8 @@ import {
   REPAIR_DOCK_PANEL_IDS,
   getRepairDockLayoutProjection,
 } from "../../rooms/repair-room/ui/repair-room-ui-runtime.ts";
+import { renderRepairSettingsPanel } from "../../rooms/repair-room/ui/panels/repair-settings-panel.ts";
+import { renderChatPanel } from "../../rooms/repair-room/ui/panels/chat-panel.ts";
 import { renderWorkbenchStagePanel } from "../../rooms/repair-room/ui/panels/workbench-stage-panel.ts";
 import {
   getContainedImageFrame,
@@ -40,6 +42,7 @@ class RepairFakeElement {
   innerHTML = "";
   type = "";
   title = "";
+  value = "";
   draggable = true;
   style: Record<string, string> = {};
 
@@ -186,9 +189,9 @@ test("repair-room resolves runtime assets from the UI entry directory", () => {
 
 test("repair-room dock grid tracks match visible Phase 3 dock panels", () => {
   const cases = [
-    ["operator-profile", "measurement"],
-    ["operator-profile", "chat", "measurement"],
-    ["operator-profile", "chat", "measurement", "room-sync"],
+    ["measurement"],
+    ["measurement", "chat"],
+    ["measurement", "chat", "room-sync"],
   ] as const;
 
   for (const visibleDockPanelIds of cases) {
@@ -205,6 +208,8 @@ test("repair-room dock grid tracks match visible Phase 3 dock panels", () => {
     );
     assert.equal(dockLayout.gridTemplateColumns, visibleDockPanelIds.map(() => "1fr").join(" "));
   }
+
+  assert.deepEqual([...REPAIR_DOCK_PANEL_IDS], ["measurement", "chat", "room-sync"]);
 });
 
 test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync controls", () => {
@@ -213,12 +218,18 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   const timelinePanel = readFileSync(join(uiRoot, "panels/visual-timeline-panel.ts"), "utf8");
   const knowledgePanel = readFileSync(join(uiRoot, "panels/knowledge-pack-panel.ts"), "utf8");
   const operatorPanel = readFileSync(join(uiRoot, "panels/operator-profile-panel.ts"), "utf8");
+  const settingsPanel = readFileSync(join(uiRoot, "panels/repair-settings-panel.ts"), "utf8");
   const workbenchPanel = readFileSync(join(uiRoot, "panels/workbench-stage-panel.ts"), "utf8");
+  const chatPanel = readFileSync(join(uiRoot, "panels/chat-panel.ts"), "utf8");
   const wizardPanel = readFileSync(join(uiRoot, "panels/session-wizard-panel.ts"), "utf8");
   const feedPanel = readFileSync(join(uiRoot, "panels/tactical-feed-panel.ts"), "utf8");
   const roomSyncPanel = readFileSync(join(uiRoot, "panels/room-sync-panel.ts"), "utf8");
   const overlayStage = readFileSync(join(uiRoot, "overlay/overlay-stage.ts"), "utf8");
   const style = readFileSync(join(uiRoot, "style.css"), "utf8");
+  const hostMessages = readFileSync(
+    join(process.cwd(), "rooms/repair-room/shared/ui/host-messages.ts"),
+    "utf8"
+  );
   const replayProjection = readFileSync(
     join(process.cwd(), "rooms/repair-room/host/state/repair-replay-projection.ts"),
     "utf8"
@@ -233,6 +244,10 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   );
 
   assert.match(runtime, /renderRoomSyncPanel/);
+  assert.match(runtime, /renderRepairSettingsPanel/);
+  assert.match(runtime, /repair-settings-overlay/);
+  assert.match(runtime, /setSettingsOverlay/);
+  assert.match(runtime, /set-settings-overlay/);
   assert.match(runtime, /timeline-scrub/);
   assert.match(runtime, /applyLiveSnapshotUpdates/);
   assert.match(runtime, /timelineShape/);
@@ -317,8 +332,14 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(roomSyncPanel, /repair-sync-focus__actions/);
   assert.match(roomSyncPanel, /ai-mark-state/);
   assert.match(replayProjection, /visibleAiMarkIds/);
-  assert.doesNotMatch(overlayStage, /config\.onEntityClick\(\{ kind: "event", id: event\.id \}, interaction\);\s*config\.onEventClick\(event\.id, interaction\);/);
-  assert.doesNotMatch(overlayStage, /config\.onEntityHover\(\{ kind: "event", id: event\.id \}\);\s*config\.onEventHover\(event\.id\);/);
+  assert.doesNotMatch(
+    overlayStage,
+    /config\.onEntityClick\(\{ kind: "event", id: event\.id \}, interaction\);\s*config\.onEventClick\(event\.id, interaction\);/
+  );
+  assert.doesNotMatch(
+    overlayStage,
+    /config\.onEntityHover\(\{ kind: "event", id: event\.id \}\);\s*config\.onEventHover\(event\.id\);/
+  );
   assert.doesNotMatch(overlayStage, /layers\.relationship\.listening\(false\)/);
   assert.doesNotMatch(overlayStage, /selection: currentConfig\.workbench\.selection/);
   assert.doesNotMatch(overlayStage, /viewport: currentConfig\.workbench\.viewport/);
@@ -334,12 +355,30 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(mockEvents, /lifecycleState/);
   assert.match(wizardPanel, /repair-wizard-field__input/);
   assert.match(wizardPanel, /wizard-symptom/);
-  assert.match(workbenchPanel, /set-voice-guidance/);
+  assert.match(chatPanel, /composerDraft/);
+  assert.match(workbenchPanel, /set-hands-free-mode/);
+  assert.match(workbenchPanel, /toggle-ambient-listener/);
+  assert.match(workbenchPanel, /toggle-dictation/);
+  assert.match(workbenchPanel, /toggle-camera-feed/);
+  assert.match(workbenchPanel, /toggle-tts/);
   assert.match(workbenchPanel, /set-attention-budget/);
   assert.match(runtime, /setVoiceGuidance/);
+  assert.match(runtime, /setInteractionSettings/);
+  assert.match(runtime, /setChatComposer/);
+  assert.match(runtime, /handleTranscriptIngress/);
+  assert.match(runtime, /setSettingsOverlay/);
   assert.match(runtime, /setAttentionBudget/);
+  assert.match(hostMessages, /transcript-ingress/);
+  assert.match(settingsPanel, /repair-settings-panel/);
+  assert.match(settingsPanel, /set-interaction-settings/);
+  assert.match(settingsPanel, /androidCompanionEnabled/);
+  assert.match(settingsPanel, /dictationRoute/);
+  assert.match(settingsPanel, /ttsRoute/);
+  assert.match(settingsPanel, /cameraFeedPreference/);
   assert.match(feedPanel, /repair-feed-composer__input/);
   assert.match(style, /\.repair-sync-panel/);
+  assert.match(style, /\.repair-settings-panel/);
+  assert.match(style, /\.repair-settings-overlay/);
   assert.match(style, /\.repair-pack-preview/);
 });
 
@@ -360,9 +399,13 @@ test("repair-room manifest command specs stay aligned with UI constants", () => 
   });
 });
 
-test("repair-room P3.5 operation status stays quiet until capabilities are active", () => {
+test("repair-room hands-free controls stay action-oriented without duplicating topbar status", () => {
   const workbenchPanel = readFileSync(
     join(process.cwd(), "rooms/repair-room/ui/panels/workbench-stage-panel.ts"),
+    "utf8"
+  );
+  const settingsPanel = readFileSync(
+    join(process.cwd(), "rooms/repair-room/ui/panels/repair-settings-panel.ts"),
     "utf8"
   );
   const style = readFileSync(join(process.cwd(), "rooms/repair-room/ui/style.css"), "utf8");
@@ -379,23 +422,6 @@ test("repair-room P3.5 operation status stays quiet until capabilities are activ
   assert.equal(
     findRepairFakeElements(
       offlinePanel,
-      (element) => element.dataset["repairOperationStatus"] === "active"
-    ).length,
-    0
-  );
-
-  const passiveState = createRepairUiSnapshot({
-    ...createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z"),
-    operationsStatus: { updatedAt: 1, records: [] },
-  });
-  const passivePanel = renderWorkbenchStagePanel(
-    documentRef,
-    passiveState,
-    renderText
-  ) as unknown as RepairFakeElement;
-  assert.equal(
-    findRepairFakeElements(
-      passivePanel,
       (element) => element.dataset["repairOperationStatus"] === "active"
     ).length,
     0
@@ -434,29 +460,61 @@ test("repair-room P3.5 operation status stays quiet until capabilities are activ
     activeState,
     renderText
   ) as unknown as RepairFakeElement;
-  const statusSurface = findRepairFakeElements(
-    activePanel,
-    (element) => element.dataset["repairOperationStatus"] === "active"
+  assert.equal(
+    findRepairFakeElements(
+      activePanel,
+      (element) => element.dataset["repairOperationStatus"] === "active"
+    ).length,
+    0
   );
-  assert.equal(statusSurface.length, 1);
-  const chipLabels = findRepairFakeElements(activePanel, (element) =>
-    element.className.split(/\s+/).includes("repair-operation-status__chip")
-  ).map(readRepairFakeText);
-  assert.deepEqual(chipLabels, ["Mic", "Camera", "Live", "Ambient"]);
+  assert.deepEqual(
+    findRepairFakeElements(
+      activePanel,
+      (element) => typeof element.dataset["repairControl"] === "string"
+    ).map((element) => element.dataset["repairControl"]),
+    ["hands-free", "ambient", "dictation-route", "camera-feed", "tts-route"]
+  );
 
-  assert.match(workbenchPanel, /function getOperationalStatusChips/);
-  assert.match(workbenchPanel, /state\.operationsAvailable !== true\) return \[\]/);
-  assert.match(workbenchPanel, /operationChips\.length > 0/);
-  assert.match(workbenchPanel, /repairOperationStatus/);
-  assert.match(workbenchPanel, /state\.operations\.localMicActive/);
-  assert.match(workbenchPanel, /state\.operations\.androidMicActive/);
-  assert.match(workbenchPanel, /state\.operations\.cameraActive/);
-  assert.match(workbenchPanel, /state\.operations\.liveFeedActive/);
-  assert.match(workbenchPanel, /state\.operations\.ambientActive/);
+  const settingsSurface = renderRepairSettingsPanel(
+    documentRef,
+    activeState,
+    renderText
+  ) as unknown as RepairFakeElement;
+  const settingsActions = findRepairFakeElements(
+    settingsSurface,
+    (element) => element.dataset["repairAction"] === "set-interaction-settings"
+  );
+  assert.ok(settingsActions.length >= 8);
+  const chatSurface = renderChatPanel(
+    documentRef,
+    createRepairUiSnapshot({
+      ...createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z"),
+      chat: {
+        ...createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z").chat,
+        composerDraft: "Measure U14 VCC",
+      },
+    }),
+    renderText
+  ) as unknown as RepairFakeElement;
+  const chatInputs = findRepairFakeElements(
+    chatSurface,
+    (element) => element.dataset["repairInput"] === "chat-composer"
+  );
+  assert.equal(chatInputs[0]?.value, "Measure U14 VCC");
 
-  assert.match(style, /\.repair-operation-status/);
-  assert.match(style, /\.repair-operation-status__chip/);
-  const chipBlockStart = style.indexOf(".repair-operation-status__chip");
-  const chipBlock = style.slice(chipBlockStart, chipBlockStart + 500);
-  assert.doesNotMatch(chipBlock, /risk|critical|alarm|red/i);
+  assert.match(workbenchPanel, /repairControl/);
+  assert.match(workbenchPanel, /set-hands-free-mode/);
+  assert.match(workbenchPanel, /toggle-ambient-listener/);
+  assert.match(workbenchPanel, /toggle-dictation/);
+  assert.match(workbenchPanel, /toggle-camera-feed/);
+  assert.match(workbenchPanel, /toggle-tts/);
+  assert.match(workbenchPanel, /set-settings-overlay/);
+  assert.match(workbenchPanel, /bench-operator/);
+  assert.match(workbenchPanel, /repair-controls/);
+  assert.doesNotMatch(workbenchPanel, /getOperationalStatusChips/);
+  assert.doesNotMatch(workbenchPanel, /repairOperationStatus/);
+  assert.match(settingsPanel, /autoReadAiReplies/);
+  assert.match(settingsPanel, /dictationSubmitMode/);
+  assert.doesNotMatch(style, /\.repair-operation-status/);
+  assert.match(style, /\.repair-settings-button/);
 });

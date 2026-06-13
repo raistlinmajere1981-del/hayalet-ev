@@ -7,6 +7,7 @@ import {
   type SlotBridgeAttachmentDescriptor,
   type SlotBridgeConnectPolicy,
   type SlotBridgeEnvelope,
+  type SlotBridgeProjectRef,
   type SlotBridgeProtocolDescriptor,
   type SlotBridgeReply,
   type SlotBridgeResult,
@@ -29,6 +30,13 @@ import {
   registerSlotBridgeHandler,
   type SlotBridgeCoreEngineRef,
 } from "./slot-bridge-runtime.js";
+import {
+  finalizeSlotBridgeProjectSessionResult,
+  prepareSlotBridgeProjectSessionEnvelope,
+  readSlotBridgeProjectRef,
+  shouldReturnProjectSessionWarningOnly,
+  type SlotBridgeProjectSessionContext,
+} from "./slot-bridge-project-sessions.js";
 
 export const SLOT_BRIDGE_COMMAND_NAME = "SlotBridge";
 
@@ -306,6 +314,10 @@ function readSessionRef(value: unknown): SlotBridgeSessionRef | null {
   };
 }
 
+function readProjectRef(value: unknown): SlotBridgeProjectRef | null {
+  return readSlotBridgeProjectRef(value);
+}
+
 function toAttachmentDescriptor(value: unknown): SlotBridgeAttachmentDescriptor | null {
   if (!isRecord(value)) {
     return null;
@@ -434,6 +446,8 @@ function hasEnvelopeKeys(source: Record<string, unknown>): boolean {
     "connectPolicy",
     "sessionRef",
     "session",
+    "projectRef",
+    "project",
     "attachments",
   ];
   return envelopeKeys.some((key) => key in source);
@@ -480,6 +494,8 @@ function buildActionPayload(
     "connectPolicy",
     "sessionRef",
     "session",
+    "projectRef",
+    "project",
     "attachments",
   ]);
 
@@ -511,6 +527,8 @@ function buildTopLevelActionPayload(payload: CommandPayload = {}): Record<string
     "connectPolicy",
     "sessionRef",
     "session",
+    "projectRef",
+    "project",
     "attachments",
     "payload",
     "args",
@@ -566,6 +584,15 @@ function normalizeEnvelope(payload: CommandPayload = {}): NormalizedSlotBridgeEn
     payload["session"] ??
     null;
   const sessionRef = readSessionRef(rawSessionRef);
+  const projectRef = readProjectRef(
+    parsedArgs["projectRef"] ??
+      parsedArgs["project"] ??
+      payload["projectRef"] ??
+      payload["project"] ??
+      directPayload["projectRef"] ??
+      directPayload["project"] ??
+      null
+  );
   const fromSlot =
     normalizeCommandProvider(parsedArgs["fromSlot"]) ??
     normalizeCommandProvider(payload["fromSlot"]) ??
@@ -631,6 +658,7 @@ function normalizeEnvelope(payload: CommandPayload = {}): NormalizedSlotBridgeEn
               args: parsedArgs,
               attachments: payload["attachments"] ?? directPayload["attachments"] ?? null,
               fallbackPayload,
+              projectRef,
               message:
                 typeof payload["message"] === "string" && payload["message"].trim() !== ""
                   ? payload["message"].trim()
@@ -667,6 +695,7 @@ function normalizeEnvelope(payload: CommandPayload = {}): NormalizedSlotBridgeEn
       force
     ),
     sessionRef,
+    projectRef,
     payload: buildActionPayload(
       parsedArgs,
       fallbackPayload,
@@ -2993,33 +3022,99 @@ async function runSessionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridg
       );
 }
 
+function shouldActivateProjectSessionBeforeAction(
+  envelope: SlotBridgeEnvelope,
+  context: SlotBridgeProjectSessionContext | null
+): boolean {
+  return (
+    context?.restored === true &&
+    (envelope.action === "message.send" || envelope.action === "message.sendWait")
+  );
+}
+
+async function activateProjectSessionBeforeAction(
+  envelope: SlotBridgeEnvelope,
+  context: SlotBridgeProjectSessionContext | null
+): Promise<SlotBridgeResult | null> {
+  if (!shouldActivateProjectSessionBeforeAction(envelope, context)) {
+    return null;
+  }
+
+  const switchResult = await runSessionAction({
+    ...envelope,
+    action: "session.switch",
+    wait: false,
+  });
+  if (switchResult.success === true) {
+    return null;
+  }
+
+  return buildErrorResult(
+    envelope,
+    "PROJECT_SESSION_ACTIVATE_FAILED",
+    switchResult.message ?? "Project session could not be activated",
+    switchResult.error
+  );
+}
+
 export async function slotBridgeHandler(payload: CommandPayload = {}): Promise<SlotBridgeResult> {
-  const envelope = normalizeEnvelope(payload);
+  let envelope = normalizeEnvelope(payload);
+  let projectSessionContext: SlotBridgeProjectSessionContext | null = null;
 
   try {
+    const preparedProjectSession = prepareSlotBridgeProjectSessionEnvelope(envelope);
+    envelope = preparedProjectSession.envelope;
+    projectSessionContext = preparedProjectSession.context;
+
+    let result: SlotBridgeResult;
     if (envelope.retiredAction !== undefined && envelope.retiredAction !== null) {
-      return buildErrorResult(
+      result = buildErrorResult(
         envelope,
         "ACTION_RETIRED",
         buildRetiredActionMessage(envelope.retiredAction)
+      );
+      return await finalizeSlotBridgeProjectSessionResult(envelope, result, projectSessionContext);
+    }
+
+    if (shouldReturnProjectSessionWarningOnly(envelope, projectSessionContext)) {
+      result = buildResult(envelope, {
+        data: {
+          projectSessionSkipped: true,
+        },
+      });
+      return await finalizeSlotBridgeProjectSessionResult(envelope, result, projectSessionContext);
+    }
+
+    const activationError = await activateProjectSessionBeforeAction(envelope, projectSessionContext);
+    if (activationError !== null) {
+      return await finalizeSlotBridgeProjectSessionResult(
+        envelope,
+        activationError,
+        projectSessionContext
       );
     }
 
     switch (envelope.action) {
       case "message.send":
       case "message.sendWait":
-        return await runMessageAction(envelope, payload);
+        result = await runMessageAction(envelope, payload);
+        break;
       case "connection.ensure":
-        return await runConnectionAction(envelope);
+        result = await runConnectionAction(envelope);
+        break;
       case "room.command":
-        return await runRoomCommandAction(envelope);
+        result = await runRoomCommandAction(envelope);
+        break;
       case "session.open":
       case "session.switch":
       case "session.sync":
-        return await runSessionAction(envelope);
+        result = await runSessionAction(envelope);
+        break;
       default:
-        return buildErrorResult(envelope, "ACTION_UNSUPPORTED", "Unsupported action");
+        result = buildErrorResult(envelope, "ACTION_UNSUPPORTED", "Unsupported action");
+        break;
     }
+    return await finalizeSlotBridgeProjectSessionResult(envelope, result, projectSessionContext);
   } catch (error) {
     return buildErrorResult(envelope, "SLOT_BRIDGE_FAILED", getErrorMessage(error), error);
   }

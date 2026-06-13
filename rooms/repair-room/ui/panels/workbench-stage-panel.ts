@@ -111,30 +111,6 @@ function getGuidanceMetaText(state: RepairUiState): string {
   return parts.join(" / ");
 }
 
-function getOperationalStatusChips(
-  state: RepairUiState
-): Array<{ label: string; title: string }> {
-  if (state.operationsAvailable !== true) return [];
-  const chips: Array<{ label: string; title: string }> = [];
-  const micSources = [
-    state.operations.localMicActive ? "local" : null,
-    state.operations.androidMicActive ? "android" : null,
-  ].filter((source): source is string => source !== null);
-  if (micSources.length > 0) {
-    chips.push({ label: "Mic", title: `Microphone active: ${micSources.join(", ")}` });
-  }
-  if (state.operations.cameraActive) {
-    chips.push({ label: "Camera", title: "Camera capability active" });
-  }
-  if (state.operations.liveFeedActive) {
-    chips.push({ label: "Live", title: "Live feed capability active" });
-  }
-  if (state.operations.ambientActive) {
-    chips.push({ label: "Ambient", title: "Ambient listening capability active" });
-  }
-  return chips;
-}
-
 export function renderWorkbenchStagePanel(
   documentRef: Document,
   state: RepairUiState,
@@ -176,20 +152,6 @@ export function renderWorkbenchStagePanel(
   headerLeft.append(info);
 
   liveHeader.append(headerLeft);
-  const operationChips = getOperationalStatusChips(state);
-  if (operationChips.length > 0) {
-    const operationStatus = documentRef.createElement("div");
-    operationStatus.className = "repair-operation-status";
-    operationStatus.dataset["repairOperationStatus"] = "active";
-    operationChips.forEach((chip) => {
-      const chipElement = documentRef.createElement("span");
-      chipElement.className = "repair-operation-status__chip";
-      chipElement.textContent = chip.label;
-      chipElement.title = chip.title;
-      operationStatus.append(chipElement);
-    });
-    liveHeader.append(operationStatus);
-  }
   const profileToggle = documentRef.createElement("div");
   profileToggle.className = "repair-profile-toggle";
   (["novice", "advanced"] as const).forEach((profile) => {
@@ -205,38 +167,104 @@ export function renderWorkbenchStagePanel(
     button.dataset["profile"] = profile;
     profileToggle.append(button);
   });
+  const operatorButton = documentRef.createElement("button");
+  operatorButton.type = "button";
+  operatorButton.className = `repair-profile-toggle__btn${
+    state.layout.settingsOverlayOpen && state.layout.settingsOverlayTabId === "bench-operator"
+      ? " repair-profile-toggle__btn--active"
+      : ""
+  }`;
+  operatorButton.textContent = "OPR";
+  operatorButton.title = "Open bench operator settings";
+  operatorButton.dataset["repairAction"] = "set-settings-overlay";
+  operatorButton.dataset["open"] = "true";
+  operatorButton.dataset["tabId"] = "bench-operator";
+  profileToggle.append(operatorButton);
   liveHeader.append(profileToggle);
 
   const guidanceControls = documentRef.createElement("div");
   guidanceControls.className = "repair-guidance-controls";
 
-  const voiceButton = documentRef.createElement("button");
-  voiceButton.type = "button";
+  const handsFreeButton = documentRef.createElement("button");
+  handsFreeButton.type = "button";
   const voiceListening = state.layout.voiceGuidance.ambientListeningState === "listening";
-  voiceButton.className = `repair-guidance-control${voiceListening ? " repair-guidance-control--active" : ""}`;
-  voiceButton.textContent = voiceListening ? "MIC" : "MUTE";
-  voiceButton.title = voiceListening ? "Mute spoken guidance" : "Enable brief spoken guidance";
-  voiceButton.dataset["repairAction"] = "set-voice-guidance";
-  voiceButton.dataset["ambientListeningState"] = voiceListening ? "muted" : "listening";
-  voiceButton.dataset["spokenGuidanceMode"] = state.layout.voiceGuidance.spokenGuidanceMode;
-  guidanceControls.append(voiceButton);
-
-  const handsButton = documentRef.createElement("button");
-  handsButton.type = "button";
-  handsButton.className = `repair-guidance-control${
-    state.layout.voiceGuidance.handsBusyMode ? " repair-guidance-control--active" : ""
+  const ambientActive = state.operationsAvailable && state.operations.ambientActive;
+  const dictationActive =
+    state.operationsAvailable &&
+    (state.operations.localMicActive || state.operations.androidMicActive) &&
+    !state.operations.ambientActive;
+  const cameraActive =
+    state.operationsAvailable && (state.operations.cameraActive || state.operations.liveFeedActive);
+  const ttsActive = state.operationsAvailable && state.operations.ttsActive;
+  const handsFreeEnabled =
+    state.layout.voiceGuidance.handsBusyMode && (voiceListening || ambientActive);
+  handsFreeButton.className = `repair-guidance-control repair-guidance-control--wide${
+    handsFreeEnabled ? " repair-guidance-control--active" : ""
   }`;
-  handsButton.textContent = "HAND";
-  handsButton.title = state.layout.voiceGuidance.handsBusyMode
-    ? "Disable hands-busy guidance"
-    : "Enable hands-busy guidance";
-  handsButton.dataset["repairAction"] = "set-voice-guidance";
-  handsButton.dataset["handsBusyMode"] = state.layout.voiceGuidance.handsBusyMode
-    ? "false"
-    : "true";
-  handsButton.dataset["ambientListeningState"] = state.layout.voiceGuidance.ambientListeningState;
-  handsButton.dataset["spokenGuidanceMode"] = state.layout.voiceGuidance.spokenGuidanceMode;
-  guidanceControls.append(handsButton);
+  handsFreeButton.textContent = "HANDS-FREE";
+  handsFreeButton.title = handsFreeEnabled
+    ? "Disable hands-free repair guidance"
+    : "Enable ambient listening and step-by-step repair guidance";
+  handsFreeButton.dataset["repairAction"] = "set-hands-free-mode";
+  handsFreeButton.dataset["repairControl"] = "hands-free";
+  handsFreeButton.dataset["enabled"] = String(!handsFreeEnabled);
+  guidanceControls.append(handsFreeButton);
+
+  const ambientButton = documentRef.createElement("button");
+  ambientButton.type = "button";
+  ambientButton.className = `repair-guidance-control${ambientActive ? " repair-guidance-control--active" : ""}`;
+  ambientButton.textContent = ambientActive ? "AMB ON" : "AMB";
+  ambientButton.title = ambientActive ? "Stop ambient listening" : "Start ambient listening";
+  ambientButton.dataset["repairAction"] = "toggle-ambient-listener";
+  ambientButton.dataset["repairControl"] = "ambient";
+  ambientButton.dataset["active"] = String(ambientActive);
+  guidanceControls.append(ambientButton);
+
+  const dictationButton = documentRef.createElement("button");
+  dictationButton.type = "button";
+  dictationButton.className = `repair-guidance-control${dictationActive ? " repair-guidance-control--active" : ""}`;
+  dictationButton.textContent = dictationActive
+    ? "DIC ON"
+    : `DIC ${state.layout.interactionSettings.dictationRoute === "android" ? "A" : "L"}`;
+  dictationButton.title = dictationActive
+    ? "Stop dictation"
+    : `Start ${state.layout.interactionSettings.dictationRoute} dictation`;
+  dictationButton.dataset["repairAction"] = "toggle-dictation";
+  dictationButton.dataset["repairControl"] = "dictation-route";
+  dictationButton.dataset["active"] = String(dictationActive);
+  guidanceControls.append(dictationButton);
+
+  const cameraButton = documentRef.createElement("button");
+  cameraButton.type = "button";
+  cameraButton.className = `repair-guidance-control${cameraActive ? " repair-guidance-control--active" : ""}`;
+  cameraButton.textContent = cameraActive ? "CAM ON" : "CAM";
+  cameraButton.title = cameraActive ? "Stop Android camera feed" : "Start Android camera feed";
+  cameraButton.dataset["repairAction"] = "toggle-camera-feed";
+  cameraButton.dataset["repairControl"] = "camera-feed";
+  cameraButton.dataset["active"] = String(cameraActive);
+  guidanceControls.append(cameraButton);
+
+  const ttsButton = documentRef.createElement("button");
+  ttsButton.type = "button";
+  ttsButton.className = `repair-guidance-control${ttsActive ? " repair-guidance-control--active" : ""}`;
+  ttsButton.textContent = ttsActive
+    ? "TTS ON"
+    : `TTS ${state.layout.interactionSettings.ttsRoute === "android" ? "A" : "L"}`;
+  ttsButton.title = ttsActive ? "Stop spoken guidance" : "Read current guidance aloud";
+  ttsButton.dataset["repairAction"] = "toggle-tts";
+  ttsButton.dataset["repairControl"] = "tts-route";
+  ttsButton.dataset["active"] = String(ttsActive);
+  guidanceControls.append(ttsButton);
+
+  const settingsButton = documentRef.createElement("button");
+  settingsButton.type = "button";
+  settingsButton.className = "repair-guidance-control";
+  settingsButton.textContent = "SET";
+  settingsButton.title = "Open Repair Room settings";
+  settingsButton.dataset["repairAction"] = "set-settings-overlay";
+  settingsButton.dataset["open"] = "true";
+  settingsButton.dataset["tabId"] = "repair-controls";
+  guidanceControls.append(settingsButton);
 
   const budgetButton = documentRef.createElement("button");
   budgetButton.type = "button";

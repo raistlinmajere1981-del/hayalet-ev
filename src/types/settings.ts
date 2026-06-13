@@ -1,4 +1,5 @@
 import type { SlotId, ProviderId, AllProviderId, AssistantProviderId } from "./common.js";
+import type { SlotBridgeSessionRef } from "./commands.js";
 import type { AppLanguage } from "./i18n.js";
 import type {
   TranscriptDictationBackend,
@@ -44,6 +45,18 @@ export type AccountKind = "ai-provider" | "remote-email";
 export interface SlotAssignment {
   slot: SlotId;
   accountId: string | null;
+}
+
+export interface ProjectAiSessionBinding {
+  projectId: string;
+  roomId?: string | null;
+  slot: SlotId;
+  accountId: string;
+  providerId?: string | null;
+  sessionRef?: SlotBridgeSessionRef | null;
+  webUrl?: string | null;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface SlotSettings {
@@ -407,6 +420,7 @@ export interface AppSettings {
     [key: string]: SlotSettings;
   };
   remoteUsers?: RemoteUserIdentity[];
+  projectAiSessions?: ProjectAiSessionBinding[];
   us1Slot?: Us1SlotSettings;
   assistantSlot?: SlotSettings;
   accounts: Account[];

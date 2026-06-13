@@ -20,6 +20,13 @@ export function reduceRepairRuntimeState(
   switch (action.type) {
     case "phase/set":
       return { ...state, phase: action.phase };
+    case "session/hydrate":
+      return {
+        ...state,
+        sessions: action.sessions,
+        sessionList: action.sessionList,
+        activeSessionId: action.activeSessionId,
+      };
     case "session/activate":
       return { ...state, activeSessionId: action.sessionId };
     case "session/upsert": {
@@ -301,6 +308,11 @@ export function reduceRepairRuntimeState(
         ...state,
         chat: { ...state.chat, turns: [...state.chat.turns, action.turn] },
       };
+    case "chat/set-turns":
+      return {
+        ...state,
+        chat: { ...state.chat, turns: action.turns, pendingReplyId: null },
+      };
     case "chat/set-composer":
       return {
         ...state,
@@ -310,6 +322,23 @@ export function reduceRepairRuntimeState(
       return {
         ...state,
         chat: { ...state.chat, pendingReplyId: action.turnId },
+      };
+    case "ai-dispatch/set":
+      return {
+        ...state,
+        aiDispatch: {
+          ...state.aiDispatch,
+          [action.channel]: action.state,
+        },
+      };
+    case "ai-dispatch/set-target-slot":
+      return {
+        ...state,
+        aiDispatch: {
+          chat: { ...state.aiDispatch.chat, targetSlot: action.targetSlot },
+          research: { ...state.aiDispatch.research, targetSlot: action.targetSlot },
+          tactical: { ...state.aiDispatch.tactical, targetSlot: action.targetSlot },
+        },
       };
     case "layout/collapse-panel":
       return {
@@ -359,6 +388,26 @@ export function reduceRepairRuntimeState(
           },
         },
       };
+    case "layout/set-interaction-settings":
+      return {
+        ...state,
+        layout: {
+          ...state.layout,
+          interactionSettings: {
+            ...state.layout.interactionSettings,
+            ...action.interactionSettings,
+          },
+        },
+      };
+    case "layout/set-settings-overlay":
+      return {
+        ...state,
+        layout: {
+          ...state.layout,
+          settingsOverlayOpen: action.open ?? state.layout.settingsOverlayOpen,
+          settingsOverlayTabId: action.tabId ?? state.layout.settingsOverlayTabId,
+        },
+      };
     case "layout/set-attention-budget":
       return {
         ...state,
@@ -374,6 +423,11 @@ export function reduceRepairRuntimeState(
       return {
         ...state,
         operationsStatus: action.status,
+      };
+    case "storage/set":
+      return {
+        ...state,
+        storage: action.storage,
       };
     case "ambient/tick":
       return {

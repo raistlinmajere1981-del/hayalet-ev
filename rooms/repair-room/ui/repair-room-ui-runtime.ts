@@ -2,6 +2,7 @@ import type {
   RepairEvent,
   RepairImageRect,
   RepairPanelId,
+  RepairSettingsOverlayTabId,
   RepairWorkbenchViewport,
 } from "../shared/types/index.js";
 import type {
@@ -10,9 +11,11 @@ import type {
   RepairUiSnapshotMeta,
 } from "../shared/ui/state.js";
 import {
+  createRepairDefaultAiDispatchState,
   createRepairDefaultContinuityProjection,
   createRepairDefaultGuidanceProjection,
   createRepairDefaultOperationsProjection,
+  createRepairDefaultStorageState,
   createRepairDefaultVoiceReadinessProjection,
 } from "../shared/ui/state.js";
 import { normalizeRepairHostMessage } from "../shared/ui/host-messages.js";
@@ -21,14 +24,18 @@ import { createRepairUiRequestRuntime } from "../shared/ui/request-runtime.js";
 
 import { renderSessionRailPanel } from "./panels/session-rail-panel.js";
 import { renderWorkbenchStagePanel } from "./panels/workbench-stage-panel.js";
-import { renderTacticalFeedPanel } from "./panels/tactical-feed-panel.js";
+import {
+  formatRepairTacticalFeedStatusLine,
+  renderTacticalFeedPanel,
+} from "./panels/tactical-feed-panel.js";
 import { renderSessionWizardPanel } from "./panels/session-wizard-panel.js";
 import { renderKnowledgePackPanel } from "./panels/knowledge-pack-panel.js";
 import { renderVisualTimelinePanel } from "./panels/visual-timeline-panel.js";
 import { renderOperatorProfilePanel } from "./panels/operator-profile-panel.js";
+import { renderRepairSettingsPanel } from "./panels/repair-settings-panel.js";
 import { renderChatPanel } from "./panels/chat-panel.js";
 import { renderMeasurementPanel } from "./panels/measurement-panel.js";
-import { renderRoomSyncPanel } from "./panels/room-sync-panel.js";
+import { getRepairRoomSyncRows, renderRoomSyncPanel } from "./panels/room-sync-panel.js";
 import { mountRepairOverlayStage, type RepairOverlayController } from "./overlay/overlay-stage.js";
 import { getContainedImageFrame } from "./overlay/overlay-coords.js";
 import { getRepairFocusFrame } from "./overlay/overlay-geometry.js";
@@ -69,6 +76,11 @@ const AI_LIFECYCLE_ACTIONS = [
   ["dismissed", "DIS"],
 ] as const;
 
+const REPAIR_SETTINGS_OVERLAY_TABS: Array<{ id: RepairSettingsOverlayTabId; label: string }> = [
+  { id: "repair-controls", label: "Repair Controls" },
+  { id: "bench-operator", label: "Bench Operator" },
+];
+
 interface RepairPanelLifecycle {
   panelId: RepairPanelId;
   signature: string;
@@ -83,14 +95,16 @@ interface RepairPersistentShell {
   workspace: HTMLElement;
   rightStack: HTMLElement;
   dock: HTMLElement;
+  settingsOverlay: HTMLElement;
+  settingsOverlayBody: HTMLElement;
+  settingsOverlaySignature: string;
   panelElements: Map<RepairPanelId, HTMLElement>;
   panelSignatures: Map<RepairPanelId, string>;
 }
 
 export const REPAIR_DOCK_PANEL_IDS = [
-  "operator-profile",
-  "chat",
   "measurement",
+  "chat",
   "room-sync",
 ] as const satisfies readonly RepairPanelId[];
 
@@ -153,6 +167,7 @@ function getGuidanceSurfaceForPanel(
   if (panelId === "session-wizard") return "session-wizard";
   if (panelId === "knowledge-pack") return "knowledge-pack";
   if (panelId === "visual-timeline") return "visual-timeline";
+  if (panelId === "repair-settings") return "none";
   if (panelId === "measurement") return "measurement";
   if (panelId === "chat") return "chat";
   if (panelId === "room-sync") return "room-sync";
@@ -336,6 +351,7 @@ function createInitialState(): RepairUiState {
         "knowledge-pack": false,
         "visual-timeline": false,
         "operator-profile": false,
+        "repair-settings": false,
         chat: false,
         measurement: false,
         "room-sync": false,
@@ -348,6 +364,7 @@ function createInitialState(): RepairUiState {
         "knowledge-pack": false,
         "visual-timeline": true,
         "operator-profile": false,
+        "repair-settings": false,
         chat: false,
         measurement: false,
         "room-sync": true,
@@ -358,11 +375,21 @@ function createInitialState(): RepairUiState {
         spokenGuidanceMode: "brief",
         handsBusyMode: false,
       },
+      interactionSettings: {
+        androidCompanionEnabled: true,
+        dictationRoute: "local",
+        ttsRoute: "local",
+        cameraFeedPreference: "manual",
+        dictationSubmitMode: "composer",
+        autoReadAiReplies: true,
+      },
       attentionBudget: {
         windowMs: 180000,
         maxAiInterruptions: 2,
       },
       operatorProfileTabId: "tools",
+      settingsOverlayOpen: false,
+      settingsOverlayTabId: "repair-controls",
       focusMode: false,
       ambientClock: "",
     },
@@ -371,6 +398,8 @@ function createInitialState(): RepairUiState {
     operations: createRepairDefaultOperationsProjection(),
     voiceReadiness: createRepairDefaultVoiceReadinessProjection(),
     continuity: createRepairDefaultContinuityProjection(),
+    aiDispatch: createRepairDefaultAiDispatchState(),
+    storage: createRepairDefaultStorageState(),
     ambient: { nowIso: "", sessionDurationMs: 0 },
   };
 }
@@ -471,6 +500,9 @@ export function createRepairRoomUiRuntime() {
       visibility: state.guidance.panelVisibility.panels[panelId],
       primarySurface: state.guidance.panelVisibility.primarySurface,
       operationalProfile: state.guidance.operationalProfile,
+      interactionSettings: state.layout.interactionSettings,
+      settingsOverlayOpen: state.layout.settingsOverlayOpen,
+      settingsOverlayTabId: state.layout.settingsOverlayTabId,
     };
     const guidanceShape = {
       phase: state.guidance.investigationPhase,
@@ -504,6 +536,7 @@ export function createRepairRoomUiRuntime() {
         });
       case "tactical-feed":
         return JSON.stringify({
+          aiDispatch: state.aiDispatch,
           feed: state.tacticalFeed.map((item) => [
             item.eventId,
             item.occurredAt,
@@ -545,6 +578,17 @@ export function createRepairRoomUiRuntime() {
           operatorProfileTabId: state.layout.operatorProfileTabId,
           layoutShape,
         });
+      case "repair-settings":
+        return JSON.stringify({
+          voiceGuidance: state.layout.voiceGuidance,
+          interactionSettings: state.layout.interactionSettings,
+          attentionBudget: state.layout.attentionBudget,
+          operationsAvailable: state.operationsAvailable,
+          operations: state.operations,
+          voiceReadiness: state.voiceReadiness,
+          guidanceShape,
+          layoutShape,
+        });
       case "chat":
         return JSON.stringify({ chat: state.chat, guidanceShape, layoutShape });
       case "measurement":
@@ -565,6 +609,7 @@ export function createRepairRoomUiRuntime() {
         return JSON.stringify({
           phase: state.phase,
           activeId: state.sessions.activeId,
+          aiDispatch: state.aiDispatch,
           focusedEventId: state.workbench.focusedEventId,
           timelineShape: {
             liveWindow: timelineLiveWindow,
@@ -1473,6 +1518,123 @@ export function createRepairRoomUiRuntime() {
           state.workbench.investigationModeEnabled
         );
       });
+
+    const voice = state.layout.voiceGuidance;
+    const interaction = state.layout.interactionSettings;
+    const voiceListening = voice.ambientListeningState === "listening";
+    const ambientActive = state.operationsAvailable && state.operations.ambientActive;
+    const dictationActive =
+      state.operationsAvailable &&
+      (state.operations.localMicActive || state.operations.androidMicActive) &&
+      !state.operations.ambientActive;
+    const cameraActive =
+      state.operationsAvailable &&
+      (state.operations.cameraActive || state.operations.liveFeedActive);
+    const ttsActive = state.operationsAvailable && state.operations.ttsActive;
+    const handsFreeEnabled = voice.handsBusyMode && (voiceListening || ambientActive);
+    const handsFreeButton = panel.querySelector<HTMLElement>("[data-repair-control='hands-free']");
+    if (handsFreeButton !== null) {
+      handsFreeButton.classList.toggle("repair-guidance-control--active", handsFreeEnabled);
+      setTextIfChanged(handsFreeButton, "HANDS-FREE");
+      const nextTitle = handsFreeEnabled
+        ? "Disable hands-free repair guidance"
+        : "Enable ambient listening and step-by-step repair guidance";
+      if (handsFreeButton.title !== nextTitle) handsFreeButton.title = nextTitle;
+      setDatasetIfChanged(handsFreeButton, "repairAction", "set-hands-free-mode");
+      setDatasetIfChanged(handsFreeButton, "enabled", String(!handsFreeEnabled));
+    }
+
+    const ambientButton = panel.querySelector<HTMLElement>("[data-repair-control='ambient']");
+    if (ambientButton !== null) {
+      ambientButton.classList.toggle("repair-guidance-control--active", ambientActive);
+      setTextIfChanged(ambientButton, ambientActive ? "AMB ON" : "AMB");
+      const nextTitle = ambientActive ? "Stop ambient listening" : "Start ambient listening";
+      if (ambientButton.title !== nextTitle) ambientButton.title = nextTitle;
+      setDatasetIfChanged(ambientButton, "repairAction", "toggle-ambient-listener");
+      setDatasetIfChanged(ambientButton, "active", String(ambientActive));
+    }
+
+    const dictationButton = panel.querySelector<HTMLElement>(
+      "[data-repair-control='dictation-route']"
+    );
+    if (dictationButton !== null) {
+      setTextIfChanged(
+        dictationButton,
+        dictationActive ? "DIC ON" : `DIC ${interaction.dictationRoute === "android" ? "A" : "L"}`
+      );
+      dictationButton.classList.toggle("repair-guidance-control--active", dictationActive);
+      const nextTitle = dictationActive
+        ? "Stop dictation"
+        : `Start ${interaction.dictationRoute} dictation`;
+      if (dictationButton.title !== nextTitle) dictationButton.title = nextTitle;
+      setDatasetIfChanged(dictationButton, "repairAction", "toggle-dictation");
+      setDatasetIfChanged(dictationButton, "active", String(dictationActive));
+    }
+
+    const cameraButton = panel.querySelector<HTMLElement>("[data-repair-control='camera-feed']");
+    if (cameraButton !== null) {
+      cameraButton.classList.toggle("repair-guidance-control--active", cameraActive);
+      setTextIfChanged(cameraButton, cameraActive ? "CAM ON" : "CAM");
+      const nextTitle = cameraActive ? "Stop Android camera feed" : "Start Android camera feed";
+      if (cameraButton.title !== nextTitle) cameraButton.title = nextTitle;
+      setDatasetIfChanged(cameraButton, "repairAction", "toggle-camera-feed");
+      setDatasetIfChanged(cameraButton, "active", String(cameraActive));
+    }
+
+    const ttsButton = panel.querySelector<HTMLElement>("[data-repair-control='tts-route']");
+    if (ttsButton !== null) {
+      ttsButton.classList.toggle("repair-guidance-control--active", ttsActive);
+      setTextIfChanged(
+        ttsButton,
+        ttsActive ? "TTS ON" : `TTS ${interaction.ttsRoute === "android" ? "A" : "L"}`
+      );
+      const nextTitle = ttsActive ? "Stop spoken guidance" : "Read current guidance aloud";
+      if (ttsButton.title !== nextTitle) ttsButton.title = nextTitle;
+      setDatasetIfChanged(ttsButton, "repairAction", "toggle-tts");
+      setDatasetIfChanged(ttsButton, "active", String(ttsActive));
+    }
+
+    const budgetButton = panel.querySelector<HTMLElement>(
+      "[data-repair-action='set-attention-budget']"
+    );
+    if (budgetButton !== null) {
+      const currentMax = state.guidance.aiInterruption.attentionBudget.maxAiInterruptions;
+      const nextMax = currentMax >= 3 ? 1 : currentMax + 1;
+      setTextIfChanged(
+        budgetButton,
+        `AI ${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions}/${currentMax}`
+      );
+      setDatasetIfChanged(budgetButton, "maxAiInterruptions", String(nextMax));
+      setDatasetIfChanged(
+        budgetButton,
+        "windowMs",
+        String(state.guidance.aiInterruption.attentionBudget.windowMs)
+      );
+    }
+
+    const operatorOverlayButton = panel.querySelector<HTMLElement>(
+      "[data-repair-action='set-settings-overlay'][data-tab-id='bench-operator']"
+    );
+    if (operatorOverlayButton !== null) {
+      operatorOverlayButton.classList.toggle(
+        "repair-profile-toggle__btn--active",
+        state.layout.settingsOverlayOpen && state.layout.settingsOverlayTabId === "bench-operator"
+      );
+      setDatasetIfChanged(operatorOverlayButton, "open", "true");
+      setDatasetIfChanged(operatorOverlayButton, "tabId", "bench-operator");
+    }
+
+    const settingsOverlayButton = panel.querySelector<HTMLElement>(
+      "[data-repair-action='set-settings-overlay'][data-tab-id='repair-controls']"
+    );
+    if (settingsOverlayButton !== null) {
+      settingsOverlayButton.classList.toggle(
+        "repair-guidance-control--active",
+        state.layout.settingsOverlayOpen && state.layout.settingsOverlayTabId === "repair-controls"
+      );
+      setDatasetIfChanged(settingsOverlayButton, "open", "true");
+      setDatasetIfChanged(settingsOverlayButton, "tabId", "repair-controls");
+    }
   }
 
   function createTacticalFeedEntry(): HTMLElement {
@@ -1557,6 +1719,11 @@ export function createRepairRoomUiRuntime() {
       );
     }
 
+    const calmLine = panel.querySelector<HTMLElement>(".repair-feed-calmline");
+    if (calmLine !== null) {
+      setTextIfChanged(calmLine, formatRepairTacticalFeedStatusLine(state));
+    }
+
     const list = panel.querySelector<HTMLElement>(".repair-feed-list");
     if (list === null) return;
 
@@ -1618,27 +1785,46 @@ export function createRepairRoomUiRuntime() {
       );
     }
 
-    const session = state.sessions.detail;
-    const rows: Array<[string, string]> = [
-      [text(["sync", "storage"], "Storage"), "In-memory mock"],
-      [text(["sync", "registry"], "Room Sync"), "Workspace build ready"],
-      [text(["sync", "events"], "Events"), `${meta.events.length} records`],
-      [text(["sync", "session"], "Session"), session?.title ?? "No active session"],
-      [
-        text(["sync", "playhead"], "Playhead"),
-        `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`,
-      ],
-    ];
-
-    const rowElements = Array.from(panel.querySelectorAll<HTMLElement>(".repair-sync-row"));
+    const rows = getRepairRoomSyncRows(state, meta, text);
+    const body = panel.querySelector<HTMLElement>(".repair-sync-panel");
+    const focusCard = panel.querySelector<HTMLElement>(".repair-sync-focus");
+    const rowElements = Array.from(
+      panel.querySelectorAll<HTMLElement>(".repair-sync-row:not(.repair-sync-row--control)")
+    );
     rows.forEach(([label, value], index) => {
-      const row = rowElements[index];
-      if (row === undefined) return;
+      let row = rowElements[index];
+      if (row === undefined) {
+        row = documentRef.createElement("div");
+        row.className = "repair-sync-row";
+
+        const labelEl = documentRef.createElement("span");
+        labelEl.className = "repair-sync-row__label";
+        row.append(labelEl);
+
+        const valueEl = documentRef.createElement("span");
+        valueEl.className = "repair-sync-row__value";
+        row.append(valueEl);
+
+        if (focusCard !== null) {
+          body?.insertBefore(row, focusCard);
+        } else {
+          body?.append(row);
+        }
+      }
       const labelEl = row.querySelector<HTMLElement>(".repair-sync-row__label");
       if (labelEl !== null) setTextIfChanged(labelEl, label);
       const valueEl = row.querySelector<HTMLElement>(".repair-sync-row__value");
       if (valueEl !== null) setTextIfChanged(valueEl, value);
     });
+    rowElements.slice(rows.length).forEach((row) => {
+      row.remove();
+    });
+    const targetSelect = panel.querySelector<HTMLSelectElement>(
+      "[data-repair-action='set-ai-target-slot']"
+    );
+    if (targetSelect !== null && targetSelect.value !== state.aiDispatch.chat.targetSlot) {
+      targetSelect.value = state.aiDispatch.chat.targetSlot;
+    }
 
     const focused = getSyncFocusedEvent();
     const title = panel.querySelector<HTMLElement>(".repair-sync-focus__title");
@@ -1646,7 +1832,6 @@ export function createRepairRoomUiRuntime() {
       setTextIfChanged(title, focused === null ? "Live edge" : focused.kind.toUpperCase());
     const detail = panel.querySelector<HTMLElement>(".repair-sync-focus__detail");
     if (detail !== null) setTextIfChanged(detail, getSyncFocusedDetail(focused));
-    const focusCard = panel.querySelector<HTMLElement>(".repair-sync-focus");
     if (focusCard !== null) {
       let actions = focusCard.querySelector<HTMLElement>(".repair-sync-focus__actions");
       if (focused?.kind !== "ai-mark") {
@@ -2016,6 +2201,116 @@ export function createRepairRoomUiRuntime() {
     return legendBar;
   }
 
+  function getSettingsOverlayTitle(tabId: RepairSettingsOverlayTabId): string {
+    return tabId === "bench-operator"
+      ? text(["settings", "operatorOverlayTitle"], "Bench Operator")
+      : text(["settings", "title"], "Repair Controls");
+  }
+
+  function createSettingsOverlayShell(): { overlay: HTMLElement; body: HTMLElement } {
+    const overlay = documentRef.createElement("div");
+    overlay.className = "repair-settings-overlay";
+    overlay.hidden = true;
+    overlay.dataset["settingsOverlay"] = "closed";
+
+    const backdrop = documentRef.createElement("button");
+    backdrop.type = "button";
+    backdrop.className = "repair-settings-overlay__backdrop";
+    backdrop.title = "Close settings";
+    backdrop.dataset["repairAction"] = "set-settings-overlay";
+    backdrop.dataset["open"] = "false";
+
+    const dialog = documentRef.createElement("section");
+    dialog.className = "repair-settings-overlay__dialog";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+
+    const header = documentRef.createElement("header");
+    header.className = "repair-settings-overlay__header";
+
+    const title = documentRef.createElement("h2");
+    title.className = "repair-settings-overlay__title";
+    title.dataset["settingsOverlayTitle"] = "true";
+    title.textContent = getSettingsOverlayTitle(state.layout.settingsOverlayTabId);
+    header.append(title);
+
+    const tabs = documentRef.createElement("div");
+    tabs.className = "repair-settings-overlay__tabs";
+    REPAIR_SETTINGS_OVERLAY_TABS.forEach((tab) => {
+      const tabButton = documentRef.createElement("button");
+      tabButton.type = "button";
+      tabButton.className = "repair-settings-overlay__tab";
+      tabButton.textContent =
+        tab.id === "bench-operator"
+          ? text(["settings", "operatorOverlayTitle"], tab.label)
+          : text(["settings", "title"], tab.label);
+      tabButton.dataset["repairAction"] = "set-settings-overlay";
+      tabButton.dataset["open"] = "true";
+      tabButton.dataset["tabId"] = tab.id;
+      tabs.append(tabButton);
+    });
+    header.append(tabs);
+
+    const close = documentRef.createElement("button");
+    close.type = "button";
+    close.className = "repair-settings-overlay__close";
+    close.title = "Close settings";
+    close.textContent = "CLOSE";
+    close.dataset["repairAction"] = "set-settings-overlay";
+    close.dataset["open"] = "false";
+    header.append(close);
+
+    const body = documentRef.createElement("div");
+    body.className = "repair-settings-overlay__body";
+
+    dialog.append(header, body);
+    overlay.append(backdrop, dialog);
+    return { overlay, body };
+  }
+
+  function syncSettingsOverlay(overlay: HTMLElement, body: HTMLElement): void {
+    const open = state.layout.settingsOverlayOpen;
+    const tabId = state.layout.settingsOverlayTabId;
+    if (overlay.hidden === open) overlay.hidden = !open;
+    setDatasetIfChanged(overlay, "settingsOverlay", open ? "open" : "closed");
+    setDatasetIfChanged(overlay, "tabId", tabId);
+
+    const title = overlay.querySelector<HTMLElement>("[data-settings-overlay-title='true']");
+    if (title !== null) setTextIfChanged(title, getSettingsOverlayTitle(tabId));
+
+    overlay.querySelectorAll<HTMLElement>(".repair-settings-overlay__tab").forEach((tab) => {
+      const active = tab.dataset["tabId"] === tabId;
+      tab.classList.toggle("repair-settings-overlay__tab--active", active);
+    });
+
+    if (!open) {
+      if (body.children.length > 0) body.replaceChildren();
+      shell?.panelSignatures.delete("operator-profile");
+      shell?.panelSignatures.delete("repair-settings");
+      shell?.panelElements.delete("operator-profile");
+      shell?.panelElements.delete("repair-settings");
+      if (shell !== null) shell.settingsOverlaySignature = "";
+      return;
+    }
+
+    const panelId: RepairPanelId =
+      tabId === "bench-operator" ? "operator-profile" : "repair-settings";
+    const signature = `${tabId}:${buildPanelSignature(panelId)}`;
+    if (shell?.settingsOverlaySignature === signature && body.children.length > 0) {
+      const current = body.firstElementChild;
+      if (current instanceof HTMLElement) applyPanelGuidanceChrome(current, panelId);
+      return;
+    }
+
+    const panel =
+      tabId === "bench-operator"
+        ? renderOperatorProfilePanel(documentRef, state, text)
+        : renderRepairSettingsPanel(documentRef, state, text);
+    applyPanelGuidanceChrome(panel, panelId);
+    body.replaceChildren(panel);
+    if (shell !== null) shell.settingsOverlaySignature = signature;
+  }
+
   function ensurePersistentShell(mount: HTMLElement): RepairPersistentShell {
     if (shell !== null && mount.contains(shell.root)) return shell;
 
@@ -2054,7 +2349,8 @@ export function createRepairRoomUiRuntime() {
     rightStack.className = "repair-panel--wizard-pack-stack";
     const dock = documentRef.createElement("div");
     dock.className = "repair-bottom-dock";
-    root.append(workspace, createLegendBar());
+    const settingsOverlayShell = createSettingsOverlayShell();
+    root.append(workspace, createLegendBar(), settingsOverlayShell.overlay);
 
     shell = {
       root,
@@ -2062,6 +2358,9 @@ export function createRepairRoomUiRuntime() {
       workspace,
       rightStack,
       dock,
+      settingsOverlay: settingsOverlayShell.overlay,
+      settingsOverlayBody: settingsOverlayShell.body,
+      settingsOverlaySignature: "",
       panelElements: new Map(),
       panelSignatures: new Map(),
     };
@@ -2150,13 +2449,6 @@ export function createRepairRoomUiRuntime() {
     syncPanel(
       persistentShell,
       persistentShell.dock,
-      createPanelLifecycle("operator-profile", () =>
-        renderOperatorProfilePanel(documentRef, state, text)
-      )
-    );
-    syncPanel(
-      persistentShell,
-      persistentShell.dock,
       createPanelLifecycle("chat", () => renderChatPanel(documentRef, state, text))
     );
     syncPanel(
@@ -2170,6 +2462,7 @@ export function createRepairRoomUiRuntime() {
       createPanelLifecycle("room-sync", () => renderRoomSyncPanel(documentRef, state, meta, text))
     );
 
+    syncSettingsOverlay(persistentShell.settingsOverlay, persistentShell.settingsOverlayBody);
     applyLiveSnapshotUpdates();
     void syncOverlay(persistentShell.root);
   }
@@ -2242,6 +2535,97 @@ export function createRepairRoomUiRuntime() {
               ? { spokenGuidanceMode }
               : {}),
             ...(handsBusyMode === undefined ? {} : { handsBusyMode: handsBusyMode === "true" }),
+          });
+          break;
+        }
+        case "set-hands-free-mode": {
+          const enabled = el.dataset["enabled"] === "true";
+          requestRuntime.setVoiceGuidance({
+            handsBusyMode: enabled,
+            ambientListeningState: enabled ? "listening" : "idle",
+            spokenGuidanceMode: enabled
+              ? "step-by-step"
+              : state.layout.voiceGuidance.spokenGuidanceMode,
+          });
+          if (enabled) {
+            requestRuntime.startAmbientListener();
+          } else {
+            requestRuntime.stopAmbientListener();
+          }
+          break;
+        }
+        case "toggle-ambient-listener": {
+          const active = el.dataset["active"] === "true";
+          requestRuntime.setVoiceGuidance({
+            ambientListeningState: active ? "idle" : "listening",
+            spokenGuidanceMode: state.layout.voiceGuidance.spokenGuidanceMode,
+            handsBusyMode: state.layout.voiceGuidance.handsBusyMode,
+          });
+          if (active) {
+            requestRuntime.stopAmbientListener();
+          } else {
+            requestRuntime.startAmbientListener();
+          }
+          break;
+        }
+        case "toggle-dictation": {
+          if (el.dataset["active"] === "true") {
+            requestRuntime.stopDictation();
+          } else {
+            requestRuntime.startDictation();
+          }
+          break;
+        }
+        case "toggle-camera-feed": {
+          if (el.dataset["active"] === "true") {
+            requestRuntime.stopCameraFeed();
+          } else {
+            requestRuntime.setInteractionSettings({ cameraFeedPreference: "android-feed" });
+            requestRuntime.startCameraFeed();
+          }
+          break;
+        }
+        case "toggle-tts": {
+          if (el.dataset["active"] === "true") {
+            requestRuntime.stopSpeech();
+          } else {
+            requestRuntime.speakGuidance();
+          }
+          break;
+        }
+        case "set-interaction-settings": {
+          const dictationRoute = el.dataset["dictationRoute"];
+          const ttsRoute = el.dataset["ttsRoute"];
+          const cameraFeedPreference = el.dataset["cameraFeedPreference"];
+          const dictationSubmitMode = el.dataset["dictationSubmitMode"];
+          const androidCompanionEnabled = el.dataset["androidCompanionEnabled"];
+          const autoReadAiReplies = el.dataset["autoReadAiReplies"];
+          requestRuntime.setInteractionSettings({
+            ...(androidCompanionEnabled === undefined
+              ? {}
+              : { androidCompanionEnabled: androidCompanionEnabled === "true" }),
+            ...(dictationRoute === "local" || dictationRoute === "android"
+              ? { dictationRoute }
+              : {}),
+            ...(ttsRoute === "local" || ttsRoute === "android" ? { ttsRoute } : {}),
+            ...(cameraFeedPreference === "manual" || cameraFeedPreference === "android-feed"
+              ? { cameraFeedPreference }
+              : {}),
+            ...(dictationSubmitMode === "composer" || dictationSubmitMode === "send"
+              ? { dictationSubmitMode }
+              : {}),
+            ...(autoReadAiReplies === undefined
+              ? {}
+              : { autoReadAiReplies: autoReadAiReplies === "true" }),
+          });
+          break;
+        }
+        case "set-settings-overlay": {
+          const open = el.dataset["open"];
+          const tabId = el.dataset["tabId"];
+          requestRuntime.setSettingsOverlay({
+            ...(open === undefined ? {} : { open: open === "true" }),
+            ...(tabId === "repair-controls" || tabId === "bench-operator" ? { tabId } : {}),
           });
           break;
         }
@@ -2328,6 +2712,7 @@ export function createRepairRoomUiRuntime() {
           const input = root.querySelector<HTMLInputElement>("[data-repair-input='chat-composer']");
           if (input && input.value.trim() !== "") {
             requestRuntime.sendChatTurn({ text: input.value.trim() });
+            requestRuntime.setChatComposer({ draft: "" });
             input.value = "";
           }
           break;
@@ -2412,10 +2797,23 @@ export function createRepairRoomUiRuntime() {
 
     root.addEventListener("change", (event) => {
       const el = findActionElement(event.target);
-      if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+      if (
+        !(
+          el instanceof HTMLInputElement ||
+          el instanceof HTMLTextAreaElement ||
+          el instanceof HTMLSelectElement
+        )
+      ) {
+        return;
+      }
       if (el.dataset["repairAction"] === "wizard-field") {
         const field = el.dataset["wizardField"];
         if (field) requestRuntime.updateSession({ wizardField: field, value: el.value });
+      }
+      if (el.dataset["repairAction"] === "set-ai-target-slot") {
+        if (el.value === "ai1" || el.value === "ai2") {
+          requestRuntime.setAiTargetSlot({ targetSlot: el.value });
+        }
       }
     });
   }
@@ -2516,7 +2914,9 @@ export function createRepairRoomUiRuntime() {
         requestRuntime.toggleFreezeFrame();
         break;
       case "Escape":
-        if (state.layout.focusMode) {
+        if (state.layout.settingsOverlayOpen) {
+          requestRuntime.setSettingsOverlay({ open: false });
+        } else if (state.layout.focusMode) {
           requestRuntime.updateFocus({ focusMode: false });
         }
         break;
@@ -2577,6 +2977,52 @@ export function createRepairRoomUiRuntime() {
         requestRuntime.setActiveTool({ tool: "zoom-out" });
         break;
     }
+  }
+
+  function getChatComposerInput(): HTMLInputElement | null {
+    return documentRef.querySelector<HTMLInputElement>("[data-repair-input='chat-composer']");
+  }
+
+  function mergeComposerDraft(currentDraft: string, transcriptText: string): string {
+    const current = currentDraft.trim();
+    const transcript = transcriptText.trim();
+    if (current === "") return transcript;
+    if (transcript === "") return current;
+    return `${current} ${transcript}`;
+  }
+
+  function setChatComposerDraft(draft: string): void {
+    state.chat.composerDraft = draft;
+    const input = getChatComposerInput();
+    if (input !== null) {
+      input.value = draft;
+    }
+    requestRuntime.setChatComposer({ draft });
+  }
+
+  function handleTranscriptIngress(msg: { isFinal: boolean; text: string }): void {
+    if (msg.isFinal !== true) return;
+    const transcriptText = msg.text.trim();
+    if (transcriptText === "") return;
+
+    const input = getChatComposerInput();
+    const currentDraft = input?.value ?? state.chat.composerDraft;
+    const nextDraft = mergeComposerDraft(currentDraft, transcriptText);
+    const shouldSend =
+      state.layout.interactionSettings.dictationSubmitMode === "send" &&
+      state.chat.pendingReplyId === null;
+
+    if (shouldSend) {
+      state.chat.composerDraft = "";
+      if (input !== null) {
+        input.value = "";
+      }
+      requestRuntime.setChatComposer({ draft: "" });
+      requestRuntime.sendChatTurn({ text: nextDraft });
+      return;
+    }
+
+    setChatComposerDraft(nextDraft);
   }
 
   // -- Host message handler
@@ -2656,6 +3102,10 @@ export function createRepairRoomUiRuntime() {
           item.step === msg.step ? { ...item, completed: msg.completed } : item
         );
         render();
+        break;
+      }
+      case "transcript-ingress": {
+        handleTranscriptIngress(msg);
         break;
       }
     }
