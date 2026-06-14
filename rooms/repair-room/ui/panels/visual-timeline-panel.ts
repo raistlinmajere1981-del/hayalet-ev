@@ -14,32 +14,56 @@ function formatOffset(ms: number): string {
   return `+${minutes}:${seconds}`;
 }
 
+function formatTimelineText(value: string): string {
+  return value
+    .split("-")
+    .filter((part) => part.length > 0)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ")
+    .trim();
+}
+
+function formatEventToolLabel(tool: string): string {
+  switch (tool) {
+    case "rect":
+      return "Box";
+    case "freehand":
+      return "Draw";
+    case "measurement-pin":
+      return "Probe";
+    case "freeze-frame":
+      return "Freeze";
+    default:
+      return formatTimelineText(tool);
+  }
+}
+
 function getEventLabel(event: RepairEvent): string {
   switch (event.kind) {
     case "ai-mark":
-      return event.severity.toUpperCase();
+      return formatTimelineText(event.severity);
     case "measurement":
       return event.reference ?? event.channel;
     case "risk-flag":
-      return "RISK";
+      return "Risk";
     case "snapshot":
-      return "SNAP";
+      return "Snapshot";
     case "annotation":
-      return event.tool.toUpperCase();
+      return formatEventToolLabel(event.tool);
     case "freeze-frame":
-      return "FREEZE";
+      return "Freeze";
     case "note":
-      return event.author.toUpperCase();
+      return "Note";
     case "session-start":
-      return "START";
+      return "Start";
     case "ai-mark-lifecycle":
-      return "AI STATE";
+      return "Assistant state";
     case "investigation-region-created":
-      return "REGION";
+      return "Area";
     case "investigation-region-updated":
-      return "REGION";
+      return "Area";
     default:
-      return "EVENT";
+      return "Event";
   }
 }
 
@@ -89,7 +113,7 @@ export function renderVisualTimelinePanel(
   const play = documentRef.createElement("button");
   play.className = "repair-timeline__control-btn";
   play.type = "button";
-  play.textContent = state.workbench.timeline.isPlaying ? "PAU" : "PLY";
+  play.textContent = state.workbench.timeline.isPlaying ? "Pause" : "Play";
   play.dataset["repairAction"] = state.workbench.timeline.isPlaying
     ? "timeline-pause"
     : "timeline-play";
@@ -100,21 +124,21 @@ export function renderVisualTimelinePanel(
     state.workbench.timeline.autoFollowLive ? " repair-timeline__control-btn--active" : ""
   }`;
   live.type = "button";
-  live.textContent = "LIVE";
+  live.textContent = "Follow live";
   live.dataset["repairAction"] = "timeline-live";
   controls.append(live);
 
   const speed = documentRef.createElement("button");
   speed.className = "repair-timeline__control-btn";
   speed.type = "button";
-  speed.textContent = `${state.workbench.timeline.replaySpeed.toFixed(1)}X`;
+  speed.textContent = `${state.workbench.timeline.replaySpeed.toFixed(1)}x`;
   speed.dataset["repairAction"] = "timeline-speed";
   controls.append(speed);
 
   const zoomOut = documentRef.createElement("button");
   zoomOut.className = "repair-timeline__control-btn";
   zoomOut.type = "button";
-  zoomOut.textContent = "Z-";
+  zoomOut.textContent = "Zoom out";
   zoomOut.dataset["repairAction"] = "timeline-zoom";
   zoomOut.dataset["direction"] = "out";
   controls.append(zoomOut);
@@ -122,7 +146,7 @@ export function renderVisualTimelinePanel(
   const zoomIn = documentRef.createElement("button");
   zoomIn.className = "repair-timeline__control-btn";
   zoomIn.type = "button";
-  zoomIn.textContent = "Z+";
+  zoomIn.textContent = "Zoom in";
   zoomIn.dataset["repairAction"] = "timeline-zoom";
   zoomIn.dataset["direction"] = "in";
   controls.append(zoomIn);
@@ -130,7 +154,7 @@ export function renderVisualTimelinePanel(
   const rangeButton = documentRef.createElement("button");
   rangeButton.className = "repair-timeline__control-btn";
   rangeButton.type = "button";
-  rangeButton.textContent = "RNG";
+  rangeButton.textContent = "Mark range";
   rangeButton.dataset["repairAction"] = "timeline-range";
   controls.append(rangeButton);
   timeline.append(controls);

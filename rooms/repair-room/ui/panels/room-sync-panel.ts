@@ -10,11 +10,17 @@ type TextFn = (path: string[], fallback: string) => string;
 export type RepairRoomSyncRow = [string, string];
 
 const AI_LIFECYCLE_ACTIONS = [
-  ["acknowledged", "ACK"],
-  ["investigating", "INV"],
-  ["resolved", "RES"],
-  ["dismissed", "DIS"],
+  ["acknowledged", "Noted"],
+  ["investigating", "Checking"],
+  ["resolved", "Fixed"],
+  ["dismissed", "Ignore"],
 ] as const;
+
+function formatAssistantSlot(slot: string): string {
+  if (slot.toLowerCase() === "ai1") return "Assistant 1";
+  if (slot.toLowerCase() === "ai2") return "Assistant 2";
+  return slot.toUpperCase();
+}
 
 function formatTime(iso: string | null): string {
   if (iso === null) return "not started";
@@ -24,28 +30,28 @@ function formatTime(iso: string | null): string {
 }
 
 export function formatRepairAiDispatchSummary(channel: RepairAiDispatchChannelState): string {
-  const slot = channel.targetSlot.toUpperCase();
+  const slot = formatAssistantSlot(channel.targetSlot);
   if (channel.status === "idle") return `${slot} idle`;
-  if (channel.status === "pending") return `${slot} pending since ${formatTime(channel.startedAt)}`;
+  if (channel.status === "pending") return `${slot} checking since ${formatTime(channel.startedAt)}`;
   if (channel.status === "succeeded") {
     const context = channel.contextRefs.length > 0 ? `, ${channel.contextRefs.length} refs` : "";
-    return `${slot} ok at ${formatTime(channel.completedAt)}${context}`;
+    return `${slot} ready at ${formatTime(channel.completedAt)}${context}`;
   }
   return `${slot} failed at ${formatTime(channel.completedAt)}`;
 }
 
 export function formatRepairStorageSummary(storage: RepairStorageState): string {
-  if (storage.status === "hydrating") return "Room storage loading";
+  if (storage.status === "hydrating") return "Repair history loading";
   if (storage.status === "ready") {
     const count = `${storage.sessionCount} session${storage.sessionCount === 1 ? "" : "s"}`;
-    return `Room storage ready, ${count}`;
+    return `Repair history ready, ${count}`;
   }
   if (storage.message !== null && storage.message.trim() !== "") {
     return storage.message;
   }
-  if (storage.status === "error") return "Room storage error";
-  if (storage.status === "fallback") return "In-memory fallback";
-  return "In-memory mock";
+  if (storage.status === "error") return "Repair history error";
+  if (storage.status === "fallback") return "Temporary repair memory";
+  return "Demo repair memory";
 }
 
 export function getRepairRoomSyncRows(
@@ -58,29 +64,29 @@ export function getRepairRoomSyncRows(
     state.aiDispatch.chat.targetSlot,
     state.aiDispatch.research.targetSlot,
     state.aiDispatch.tactical.targetSlot,
-  ].map((slot) => slot.toUpperCase());
-  const firstSlot = slots[0] ?? "AI2";
+  ].map(formatAssistantSlot);
+  const firstSlot = slots[0] ?? "Assistant 2";
   const targetSlot = slots.every((slot) => slot === firstSlot) ? firstSlot : slots.join("/");
   return [
     [text(["sync", "storage"], "Storage"), formatRepairStorageSummary(state.storage)],
-    [text(["sync", "registry"], "Room Sync"), "Workspace build ready"],
-    [text(["sync", "events"], "Events"), `${meta.events.length} records`],
-    [text(["sync", "session"], "Session"), session?.title ?? "No active session"],
+    [text(["sync", "registry"], "Room status"), "Workspace ready"],
+    [text(["sync", "events"], "Timeline"), `${meta.events.length} repair records`],
+    [text(["sync", "session"], "Repair"), session?.title ?? "No repair open"],
     [
       text(["sync", "playhead"], "Playhead"),
       `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`,
     ],
-    [text(["sync", "aiTarget"], "AI Target"), targetSlot],
+    [text(["sync", "aiTarget"], "Assistant route"), targetSlot],
     [
-      text(["sync", "chatDispatch"], "Chat AI"),
+      text(["sync", "chatDispatch"], "Chat"),
       formatRepairAiDispatchSummary(state.aiDispatch.chat),
     ],
     [
-      text(["sync", "researchDispatch"], "Research AI"),
+      text(["sync", "researchDispatch"], "Evidence search"),
       formatRepairAiDispatchSummary(state.aiDispatch.research),
     ],
     [
-      text(["sync", "tacticalDispatch"], "Tactical AI"),
+      text(["sync", "tacticalDispatch"], "Repair watch"),
       formatRepairAiDispatchSummary(state.aiDispatch.tactical),
     ],
   ];
@@ -123,7 +129,7 @@ export function renderRoomSyncPanel(
 
   const selectorLabel = documentRef.createElement("span");
   selectorLabel.className = "repair-sync-row__label";
-  selectorLabel.textContent = text(["sync", "aiSlot"], "AI Slot");
+  selectorLabel.textContent = text(["sync", "aiSlot"], "Route");
   selector.append(selectorLabel);
 
   const select = documentRef.createElement("select");
@@ -133,7 +139,7 @@ export function renderRoomSyncPanel(
   (["ai1", "ai2"] as const).forEach((slot) => {
     const option = documentRef.createElement("option");
     option.value = slot;
-    option.textContent = slot.toUpperCase();
+    option.textContent = formatAssistantSlot(slot);
     option.selected = currentTarget === slot;
     select.append(option);
   });
@@ -183,7 +189,7 @@ export function renderRoomSyncPanel(
       button.type = "button";
       button.className = "repair-sync-focus__action";
       button.textContent = label;
-      button.title = `Move AI mark to ${stateId}`;
+      button.title = `Mark observation as ${label.toLowerCase()}`;
       button.dataset["repairAction"] = "ai-mark-state";
       button.dataset["eventId"] = focused.id;
       button.dataset["aiState"] = stateId;
@@ -195,8 +201,8 @@ export function renderRoomSyncPanel(
 
   return createRepairPanel(documentRef, {
     panelId: "room-sync",
-    eyebrow: text(["sync", "eyebrow"], "SYNC"),
-    title: text(["sync", "title"], "Room Sync"),
+    eyebrow: text(["sync", "eyebrow"], "STATE"),
+    title: text(["sync", "title"], "Repair State"),
     statusDot: state.phase === "session-active" ? "live" : "idle",
     collapsed: state.layout.collapsedPanels["room-sync"],
     pinned: state.layout.pinnedPanels["room-sync"],

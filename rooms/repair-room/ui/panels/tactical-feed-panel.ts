@@ -3,45 +3,51 @@ import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
 
+function formatAssistantSlot(slot: string): string {
+  if (slot.toLowerCase() === "ai1") return "Assistant 1";
+  if (slot.toLowerCase() === "ai2") return "Assistant 2";
+  return slot.toUpperCase();
+}
+
 export function formatRepairTacticalFeedStatusLine(state: RepairUiState): string {
   const tactical = state.aiDispatch.tactical;
-  const tacticalSlot = tactical.targetSlot.toUpperCase();
+  const tacticalSlot = formatAssistantSlot(tactical.targetSlot);
   if (tactical.status === "pending") {
-    return `${tacticalSlot} tactical observer is reviewing the latest measurement.`;
+    return `${tacticalSlot} is checking the latest measurement.`;
   }
   if (tactical.status === "succeeded") {
-    return tactical.message ?? `${tacticalSlot} tactical observer added a new observation.`;
+    return tactical.message ?? `${tacticalSlot} added a repair note.`;
   }
   if (tactical.status === "failed") {
-    return tactical.message ?? `${tacticalSlot} tactical observer did not return an observation.`;
+    return tactical.message ?? `${tacticalSlot} could not add a repair note.`;
   }
 
   const research = state.aiDispatch.research;
-  const researchSlot = research.targetSlot.toUpperCase();
+  const researchSlot = formatAssistantSlot(research.targetSlot);
   if (research.status === "pending") {
-    return `${researchSlot} research is preparing the knowledge pack.`;
+    return `${researchSlot} is gathering evidence for this device.`;
   }
   if (research.status === "succeeded") {
-    return research.message ?? `${researchSlot} research prepared a knowledge pack.`;
+    return research.message ?? `${researchSlot} prepared an evidence pack.`;
   }
   if (research.status === "failed") {
-    return research.message ?? `${researchSlot} research did not return a knowledge pack.`;
+    return research.message ?? `${researchSlot} could not prepare an evidence pack.`;
   }
 
   const chat = state.aiDispatch.chat;
-  const chatSlot = chat.targetSlot.toUpperCase();
+  const chatSlot = formatAssistantSlot(chat.targetSlot);
   if (chat.status === "pending") {
-    return `${chatSlot} chat guidance is drafting a reply.`;
+    return `${chatSlot} is drafting a reply.`;
   }
   if (chat.status === "succeeded") {
-    return chat.message ?? `${chatSlot} chat guidance is available.`;
+    return chat.message ?? `${chatSlot} reply is ready.`;
   }
   if (chat.status === "failed") {
-    return chat.message ?? `${chatSlot} chat guidance did not return a reply.`;
+    return chat.message ?? `${chatSlot} could not draft a reply.`;
   }
 
   return state.guidance.aiInterruption.shouldSpeak === false
-    ? `Quiet unless a meaningful change appears. ${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions} AI interruptions left.`
+    ? `Quiet mode: waiting for a meaningful change. ${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions} assistant prompts left.`
     : state.guidance.aiInterruption.toneLine;
 }
 
@@ -97,13 +103,13 @@ export function renderTacticalFeedPanel(
   const composerInput = documentRef.createElement("input");
   composerInput.className = "repair-feed-composer__input";
   composerInput.type = "text";
-  composerInput.placeholder = text(["tacticalFeed", "composer"], "Ask AiO...");
+  composerInput.placeholder = text(["tacticalFeed", "composer"], "Ask the repair assistant...");
   composerInput.dataset["repairInput"] = "feed-composer";
   composer.append(composerInput);
   const composerButton = documentRef.createElement("button");
   composerButton.className = "repair-feed-composer__send";
   composerButton.type = "button";
-  composerButton.textContent = "ASK";
+  composerButton.textContent = "Ask";
   composerButton.dataset["repairAction"] = "send-feed-question";
   composer.append(composerButton);
   body.append(composer);
@@ -112,8 +118,8 @@ export function renderTacticalFeedPanel(
 
   return createRepairPanel(documentRef, {
     panelId: "tactical-feed",
-    eyebrow: text(["tacticalFeed", "eyebrow"], "TACTICAL"),
-    title: text(["tacticalFeed", "title"], "Tactical Feed"),
+    eyebrow: text(["tacticalFeed", "eyebrow"], "ASSIST"),
+    title: text(["tacticalFeed", "title"], "Repair Feed"),
     statusDot: hasRisk ? "risk" : "live",
     collapsed: state.layout.collapsedPanels["tactical-feed"],
     pinned: state.layout.pinnedPanels["tactical-feed"],

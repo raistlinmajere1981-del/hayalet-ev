@@ -5,6 +5,16 @@ type TextFn = (path: string[], fallback: string) => string;
 
 type RepairSettingsButtonDataset = Record<string, string>;
 
+function getRouteLabel(route: "local" | "android"): string {
+  return route === "android" ? "Android" : "Local";
+}
+
+function getAssistanceProfileLabel(maxAiInterruptions: number): string {
+  if (maxAiInterruptions <= 1) return "Quiet";
+  if (maxAiInterruptions === 2) return "Balanced";
+  return "Proactive";
+}
+
 function createSettingsSection(
   documentRef: Document,
   title: string,
@@ -89,7 +99,7 @@ export function renderRepairSettingsPanel(
 
   const summary = documentRef.createElement("div");
   summary.className = "repair-settings-summary";
-  summary.textContent = `${settings.dictationRoute.toUpperCase()} dictate / ${settings.ttsRoute.toUpperCase()} TTS / ${settings.cameraFeedPreference === "android-feed" ? "ANDROID CAMERA" : "MANUAL CAMERA"}`;
+  summary.textContent = `Mic: ${getRouteLabel(settings.dictationRoute)} / Read aloud: ${getRouteLabel(settings.ttsRoute)} / View: ${settings.cameraFeedPreference === "android-feed" ? "Android camera" : "Manual image"}`;
   body.append(summary);
 
   const handsFree = createSettingsSection(
@@ -97,14 +107,16 @@ export function renderRepairSettingsPanel(
     text(["settings", "handsFreeTitle"], "Hands-free repair"),
     text(
       ["settings", "handsFreeSubtitle"],
-      "Controls spoken guidance, ambient listening, and AI reply handling."
+      "Choose how the assistant listens, speaks, and handles voice notes while your hands are busy."
     )
   );
 
-  const handsGroup = createButtonGroup(documentRef, text(["settings", "mode"], "Mode"));
+  const handsGroup = createButtonGroup(documentRef, text(["settings", "mode"], "Stance"));
   appendSettingsButton(documentRef, handsGroup.buttons, {
-    label: text(["settings", "handsFree"], "Hands-free"),
-    title: handsFreeEnabled ? "Disable hands-free mode" : "Enable hands-free mode",
+    label: text(["settings", "handsFree"], "Guide me"),
+    title: handsFreeEnabled
+      ? "Return to manual repair controls"
+      : "Enable hands-free listening and step guidance",
     action: "set-voice-guidance",
     active: handsFreeEnabled,
     dataset: {
@@ -114,7 +126,7 @@ export function renderRepairSettingsPanel(
     },
   });
   appendSettingsButton(documentRef, handsGroup.buttons, {
-    label: text(["settings", "readReplies"], "Read replies"),
+    label: text(["settings", "readReplies"], "Read replies aloud"),
     title: settings.autoReadAiReplies
       ? "Disable automatic AI reply reading"
       : "Read AI replies aloud",
@@ -129,11 +141,16 @@ export function renderRepairSettingsPanel(
     appendSettingsButton(documentRef, ambientGroup.buttons, {
       label:
         ambientListeningState === "idle"
-          ? text(["settings", "ambientIdle"], "Idle")
+          ? text(["settings", "ambientIdle"], "Standby")
           : ambientListeningState === "listening"
-            ? text(["settings", "ambientListening"], "Listen")
+            ? text(["settings", "ambientListening"], "Short listen")
             : text(["settings", "ambientMuted"], "Muted"),
-      title: `Set ambient listening to ${ambientListeningState}`,
+      title:
+        ambientListeningState === "idle"
+          ? "Keep the assistant ready but not listening"
+          : ambientListeningState === "listening"
+            ? "Listen for short repair commands"
+            : "Mute ambient command listening",
       action: "set-voice-guidance",
       active: voice.ambientListeningState === ambientListeningState,
       dataset: {
@@ -145,7 +162,7 @@ export function renderRepairSettingsPanel(
   });
   handsFree.append(ambientGroup.group);
 
-  const spokenGroup = createButtonGroup(documentRef, text(["settings", "spoken"], "Spoken"));
+  const spokenGroup = createButtonGroup(documentRef, text(["settings", "spoken"], "Read aloud"));
   (["silent", "brief", "step-by-step"] as const).forEach((spokenGuidanceMode) => {
     appendSettingsButton(documentRef, spokenGroup.buttons, {
       label:
@@ -153,8 +170,13 @@ export function renderRepairSettingsPanel(
           ? text(["settings", "spokenSilent"], "Silent")
           : spokenGuidanceMode === "brief"
             ? text(["settings", "spokenBrief"], "Brief")
-            : text(["settings", "spokenStep"], "Step"),
-      title: `Set spoken guidance to ${spokenGuidanceMode}`,
+            : text(["settings", "spokenStep"], "Step-by-step"),
+      title:
+        spokenGuidanceMode === "silent"
+          ? "Do not read guidance aloud"
+          : spokenGuidanceMode === "brief"
+            ? "Read only short guidance prompts"
+            : "Read each guided repair step aloud",
       action: "set-voice-guidance",
       active: voice.spokenGuidanceMode === spokenGuidanceMode,
       dataset: {
@@ -168,14 +190,14 @@ export function renderRepairSettingsPanel(
 
   const submitGroup = createButtonGroup(
     documentRef,
-    text(["settings", "dictationSubmit"], "Dictation")
+    text(["settings", "dictationSubmit"], "Voice notes")
   );
   (["composer", "send"] as const).forEach((dictationSubmitMode) => {
     appendSettingsButton(documentRef, submitGroup.buttons, {
       label:
         dictationSubmitMode === "composer"
-          ? text(["settings", "dictationComposer"], "Composer")
-          : text(["settings", "dictationSend"], "Send"),
+          ? text(["settings", "dictationComposer"], "Review first")
+          : text(["settings", "dictationSend"], "Send after voice"),
       title:
         dictationSubmitMode === "composer"
           ? "Place dictated text in the composer"
@@ -191,17 +213,17 @@ export function renderRepairSettingsPanel(
   const companion = createSettingsSection(
     documentRef,
     text(["settings", "companionTitle"], "Android companion"),
-    text(["settings", "companionSubtitle"], "Repair Room preferences for Analyze companion routes.")
+    text(["settings", "companionSubtitle"], "Choose where the repair mic, speaker, and camera come from.")
   );
 
   const companionGroup = createButtonGroup(
     documentRef,
-    text(["settings", "companion"], "Companion")
+    text(["settings", "companion"], "Phone link")
   );
   appendSettingsButton(documentRef, companionGroup.buttons, {
     label: settings.androidCompanionEnabled
-      ? text(["settings", "enabled"], "Enabled")
-      : text(["settings", "disabled"], "Disabled"),
+      ? text(["settings", "enabled"], "Phone ready")
+      : text(["settings", "disabled"], "Phone off"),
     title: settings.androidCompanionEnabled
       ? "Disable Android companion for Repair Room"
       : "Enable Android companion for Repair Room",
@@ -213,7 +235,7 @@ export function renderRepairSettingsPanel(
 
   const dictationGroup = createButtonGroup(
     documentRef,
-    text(["settings", "dictationRoute"], "Dictate route")
+    text(["settings", "dictationRoute"], "Microphone")
   );
   (["local", "android"] as const).forEach((dictationRoute) => {
     appendSettingsButton(documentRef, dictationGroup.buttons, {
@@ -229,7 +251,7 @@ export function renderRepairSettingsPanel(
   });
   companion.append(dictationGroup.group);
 
-  const ttsGroup = createButtonGroup(documentRef, text(["settings", "ttsRoute"], "TTS route"));
+  const ttsGroup = createButtonGroup(documentRef, text(["settings", "ttsRoute"], "Speaker"));
   (["local", "android"] as const).forEach((ttsRoute) => {
     appendSettingsButton(documentRef, ttsGroup.buttons, {
       label:
@@ -244,13 +266,13 @@ export function renderRepairSettingsPanel(
   });
   companion.append(ttsGroup.group);
 
-  const cameraGroup = createButtonGroup(documentRef, text(["settings", "camera"], "Camera"));
+  const cameraGroup = createButtonGroup(documentRef, text(["settings", "camera"], "View"));
   (["manual", "android-feed"] as const).forEach((cameraFeedPreference) => {
     appendSettingsButton(documentRef, cameraGroup.buttons, {
       label:
         cameraFeedPreference === "manual"
-          ? text(["settings", "cameraManual"], "Manual")
-          : text(["settings", "cameraAndroid"], "Android feed"),
+          ? text(["settings", "cameraManual"], "Attach image")
+          : text(["settings", "cameraAndroid"], "Phone camera"),
       title:
         cameraFeedPreference === "manual"
           ? "Use manually attached workbench media"
@@ -265,14 +287,17 @@ export function renderRepairSettingsPanel(
 
   const attention = createSettingsSection(
     documentRef,
-    text(["settings", "attentionTitle"], "AI attention"),
-    text(["settings", "attentionSubtitle"], "Limits how often AI interrupts the repair flow.")
+    text(["settings", "attentionTitle"], "Assistance profile"),
+    text(
+      ["settings", "attentionSubtitle"],
+      "Choose how often the assistant can interrupt while your hands are busy."
+    )
   );
-  const budgetGroup = createButtonGroup(documentRef, text(["settings", "budget"], "Budget"));
+  const budgetGroup = createButtonGroup(documentRef, text(["settings", "budget"], "Interruptions"));
   ([1, 2, 3] as const).forEach((maxAiInterruptions) => {
     appendSettingsButton(documentRef, budgetGroup.buttons, {
-      label: `${maxAiInterruptions}`,
-      title: `Allow ${maxAiInterruptions} AI interruptions per window`,
+      label: getAssistanceProfileLabel(maxAiInterruptions),
+      title: `Use ${getAssistanceProfileLabel(maxAiInterruptions).toLowerCase()} assistance (${maxAiInterruptions} interruptions per window)`,
       action: "set-attention-budget",
       active: state.layout.attentionBudget.maxAiInterruptions === maxAiInterruptions,
       dataset: {

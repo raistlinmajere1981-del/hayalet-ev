@@ -4,6 +4,35 @@ import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
 
+function createKnowledgeEmptyState(documentRef: Document, text: TextFn): HTMLElement {
+  const empty = documentRef.createElement("div");
+  empty.className = "repair-empty-state";
+
+  const title = documentRef.createElement("div");
+  title.className = "repair-empty-state__title";
+  title.textContent = text(["knowledgePack", "empty"], "No evidence pack yet");
+  empty.append(title);
+
+  const copy = documentRef.createElement("div");
+  copy.className = "repair-empty-state__copy";
+  copy.textContent = text(
+    ["knowledgePack", "emptyHelp"],
+    "Run evidence search from the repair intake to attach schematics, board photos, failure notes, and test points."
+  );
+  empty.append(copy);
+
+  const steps = documentRef.createElement("div");
+  steps.className = "repair-empty-state__steps";
+  ["Identify board", "Find evidence", "Attach pack"].forEach((step) => {
+    const item = documentRef.createElement("span");
+    item.textContent = step;
+    steps.append(item);
+  });
+  empty.append(steps);
+
+  return empty;
+}
+
 export function renderKnowledgePackPanel(
   documentRef: Document,
   state: RepairUiState,
@@ -15,15 +44,13 @@ export function renderKnowledgePackPanel(
   const kp = state.knowledgePack;
 
   if (kp.pack === null) {
-    const empty = documentRef.createElement("div");
-    empty.className = "repair-empty-state";
-    empty.textContent = text(["knowledgePack", "empty"], "No knowledge pack attached");
+    const empty = createKnowledgeEmptyState(documentRef, text);
     body.append(empty);
 
     return createRepairPanel(documentRef, {
       panelId: "knowledge-pack",
-      eyebrow: text(["knowledgePack", "eyebrow"], "KNOWLEDGE"),
-      title: text(["knowledgePack", "title"], "Knowledge Pack"),
+      eyebrow: text(["knowledgePack", "eyebrow"], "EVIDENCE"),
+      title: text(["knowledgePack", "title"], "Evidence Pack"),
       statusDot: "idle",
       collapsed: state.layout.collapsedPanels["knowledge-pack"],
       pinned: state.layout.pinnedPanels["knowledge-pack"],
@@ -86,10 +113,10 @@ export function renderKnowledgePackPanel(
   const tabItems = [
     {
       id: "schematic-preview",
-      label: text(["knowledgePack", "tabSchematic"], "Schematic Preview"),
+      label: text(["knowledgePack", "tabSchematic"], "Schematic"),
     },
-    { id: "board-view", label: text(["knowledgePack", "tabBoard"], "Board View") },
-    { id: "notes", label: text(["knowledgePack", "tabNotes"], "Notes") },
+    { id: "board-view", label: text(["knowledgePack", "tabBoard"], "Board photos") },
+    { id: "notes", label: text(["knowledgePack", "tabNotes"], "Repair notes") },
   ];
 
   for (const tab of tabItems) {
@@ -158,7 +185,7 @@ export function renderKnowledgePackPanel(
     card.type = "button";
     card.dataset["repairAction"] = "knowledge-spatial-focus";
     card.dataset["spatialRefId"] = failure.id;
-    card.textContent = failure.label;
+    card.textContent = `Likely fault: ${failure.label}`;
     spatialList.append(card);
   });
   pack.testPoints.slice(0, 4).forEach((point) => {
@@ -169,7 +196,7 @@ export function renderKnowledgePackPanel(
     card.type = "button";
     card.dataset["repairAction"] = "knowledge-spatial-focus";
     card.dataset["spatialRefId"] = point.id;
-    card.textContent = `${point.label} • ${point.expectedValue}${point.unit}`;
+    card.textContent = `Probe: ${point.label} • ${point.expectedValue}${point.unit}`;
     spatialList.append(card);
   });
   if (kp.focusedSpatialRefId !== null) {
@@ -178,7 +205,7 @@ export function renderKnowledgePackPanel(
     promote.type = "button";
     promote.dataset["repairAction"] = "knowledge-spatial-promote";
     promote.dataset["spatialRefId"] = kp.focusedSpatialRefId;
-    promote.textContent = "Promote focused region";
+    promote.textContent = "Pin this area to workbench";
     spatialList.append(promote);
   }
   body.append(spatialList);
@@ -187,7 +214,7 @@ export function renderKnowledgePackPanel(
   if (kp.attachedToSessionId === null) {
     const cta = documentRef.createElement("button");
     cta.className = "repair-cta-btn";
-    cta.textContent = text(["knowledgePack", "addToSession"], "Add to Session");
+    cta.textContent = text(["knowledgePack", "addToSession"], "Use in this repair");
     cta.dataset["repairAction"] = "attach-knowledge-pack";
     cta.dataset["packId"] = pack.id;
     body.append(cta);
@@ -195,8 +222,8 @@ export function renderKnowledgePackPanel(
 
   return createRepairPanel(documentRef, {
     panelId: "knowledge-pack",
-    eyebrow: text(["knowledgePack", "eyebrow"], "KNOWLEDGE"),
-    title: text(["knowledgePack", "title"], "Knowledge Pack"),
+    eyebrow: text(["knowledgePack", "eyebrow"], "EVIDENCE"),
+    title: text(["knowledgePack", "title"], "Evidence Pack"),
     statusDot: kp.attachedToSessionId !== null ? "live" : "idle",
     collapsed: state.layout.collapsedPanels["knowledge-pack"],
     pinned: state.layout.pinnedPanels["knowledge-pack"],

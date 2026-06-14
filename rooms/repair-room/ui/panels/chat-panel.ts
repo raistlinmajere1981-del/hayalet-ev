@@ -11,6 +11,21 @@ function isDictationReviewActive(state: RepairUiState): boolean {
   );
 }
 
+function getChatModeText(state: RepairUiState): string {
+  const voice = state.layout.voiceGuidance;
+  const settings = state.layout.interactionSettings;
+  if (isDictationReviewActive(state)) return "Voice note waiting for confirmation";
+  if (state.chat.pendingReplyId !== null) return "Assistant is preparing a reply";
+  if (voice.handsBusyMode && voice.ambientListeningState === "listening") {
+    return settings.dictationSubmitMode === "send"
+      ? "Hands-free mode: say send or clear after dictation"
+      : "Hands-free mode: dictated notes stay in the composer";
+  }
+  return settings.autoReadAiReplies
+    ? "Replies can be read aloud from repair controls"
+    : "Text replies only";
+}
+
 export function renderChatPanel(
   documentRef: Document,
   state: RepairUiState,
@@ -36,7 +51,7 @@ export function renderChatPanel(
 
     const role = documentRef.createElement("span");
     role.className = `repair-chat-turn__role repair-chat-turn__role--${turn.role}`;
-    role.textContent = turn.role === "ai" ? "AiO" : "Operator";
+    role.textContent = turn.role === "ai" ? "Assistant" : "You";
     header.append(role);
 
     const time = documentRef.createElement("span");
@@ -60,6 +75,11 @@ export function renderChatPanel(
 
   body.append(turns);
 
+  const mode = documentRef.createElement("div");
+  mode.className = "repair-chat-mode";
+  mode.textContent = getChatModeText(state);
+  body.append(mode);
+
   // -- Composer
   const composer = documentRef.createElement("div");
   composer.className = "repair-chat-composer";
@@ -70,7 +90,7 @@ export function renderChatPanel(
     review.className = "repair-chat-composer__review";
     review.textContent = text(
       ["chat", "dictationReview"],
-      "Dictation staged for review. Say send, press Send, or clear and dictate again."
+      "Voice note staged. Say send, press Send, or clear and dictate again."
     );
     composer.append(review);
   }
@@ -78,7 +98,7 @@ export function renderChatPanel(
   const input = documentRef.createElement("input");
   input.className = "repair-chat-composer__input";
   input.type = "text";
-  input.placeholder = text(["chat", "placeholder"], "Type a message...");
+  input.placeholder = text(["chat", "placeholder"], "Ask or dictate a repair note...");
   input.value = state.chat.composerDraft;
   input.dataset["repairInput"] = "chat-composer";
   composer.append(input);
@@ -86,7 +106,7 @@ export function renderChatPanel(
   const sendBtn = documentRef.createElement("button");
   sendBtn.className = "repair-chat-composer__send";
   sendBtn.textContent =
-    state.chat.pendingReplyId === null ? text(["chat", "send"], "Send") : "Queued";
+    state.chat.pendingReplyId === null ? text(["chat", "send"], "Send") : "Waiting";
   sendBtn.disabled = state.chat.pendingReplyId !== null;
   sendBtn.dataset["repairAction"] = "send-chat";
   composer.append(sendBtn);
@@ -95,7 +115,7 @@ export function renderChatPanel(
     const clearBtn = documentRef.createElement("button");
     clearBtn.className = "repair-chat-composer__clear";
     clearBtn.type = "button";
-    clearBtn.textContent = text(["chat", "clear"], "Clear");
+    clearBtn.textContent = text(["chat", "clear"], "Discard");
     clearBtn.dataset["repairAction"] = "clear-chat-composer";
     composer.append(clearBtn);
   }
@@ -104,8 +124,8 @@ export function renderChatPanel(
 
   return createRepairPanel(documentRef, {
     panelId: "chat",
-    eyebrow: text(["chat", "eyebrow"], "AiO CHAT"),
-    title: text(["chat", "title"], "Session Chat"),
+    eyebrow: text(["chat", "eyebrow"], "ASSISTANT"),
+    title: text(["chat", "title"], "Repair Chat"),
     statusDot: state.chat.pendingReplyId !== null ? "amber" : "idle",
     collapsed: state.layout.collapsedPanels["chat"],
     pinned: state.layout.pinnedPanels["chat"],

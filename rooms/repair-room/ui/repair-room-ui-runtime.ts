@@ -70,10 +70,10 @@ interface RepairSpatialFocusTween {
 }
 
 const AI_LIFECYCLE_ACTIONS = [
-  ["acknowledged", "ACK"],
-  ["investigating", "INV"],
-  ["resolved", "RES"],
-  ["dismissed", "DIS"],
+  ["acknowledged", "Noted"],
+  ["investigating", "Checking"],
+  ["resolved", "Fixed"],
+  ["dismissed", "Ignore"],
 ] as const;
 
 const REPAIR_SETTINGS_OVERLAY_TABS: Array<{ id: RepairSettingsOverlayTabId; label: string }> = [
@@ -488,6 +488,45 @@ export function createRepairRoomUiRuntime() {
     }
   }
 
+  function getRouteLabel(route: "local" | "android"): string {
+    return route === "android" ? "Android" : "Local";
+  }
+
+  function getAssistanceProfileLabel(maxAiInterruptions: number): string {
+    if (maxAiInterruptions <= 1) return "Quiet";
+    if (maxAiInterruptions === 2) return "Balanced";
+    return "Proactive";
+  }
+
+  function createWorkbenchEmptyState(): HTMLElement {
+    const placeholder = documentRef.createElement("div");
+    placeholder.className = "repair-empty-state";
+
+    const title = documentRef.createElement("div");
+    title.className = "repair-empty-state__title";
+    title.textContent = text(["workbench", "noImage"], "No board image yet");
+    placeholder.append(title);
+
+    const copy = documentRef.createElement("div");
+    copy.className = "repair-empty-state__copy";
+    copy.textContent = text(
+      ["workbench", "noImageHelp"],
+      "Start the Android camera or attach a board image to unlock overlays, measurements, and guided repair steps."
+    );
+    placeholder.append(copy);
+
+    const steps = documentRef.createElement("div");
+    steps.className = "repair-empty-state__steps";
+    ["Open Camera", "Frame board", "Freeze when ready"].forEach((step) => {
+      const item = documentRef.createElement("span");
+      item.textContent = step;
+      steps.append(item);
+    });
+    placeholder.append(steps);
+
+    return placeholder;
+  }
+
   // -- Selector-level signatures for targeted panel updates
   function buildPanelSignature(panelId: RepairPanelId): string {
     const timelineShape = state.workbench.timeline;
@@ -670,32 +709,56 @@ export function createRepairRoomUiRuntime() {
     };
   }
 
+  function formatTimelineText(value: string): string {
+    return value
+      .split("-")
+      .filter((part) => part.length > 0)
+      .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+      .join(" ")
+      .trim();
+  }
+
+  function formatEventToolLabel(tool: string): string {
+    switch (tool) {
+      case "rect":
+        return "Box";
+      case "freehand":
+        return "Draw";
+      case "measurement-pin":
+        return "Probe";
+      case "freeze-frame":
+        return "Freeze";
+      default:
+        return formatTimelineText(tool);
+    }
+  }
+
   function getEventLabel(event: RepairEvent): string {
     switch (event.kind) {
       case "ai-mark":
-        return event.severity.toUpperCase();
+        return formatTimelineText(event.severity);
       case "measurement":
         return event.reference ?? event.channel;
       case "risk-flag":
-        return "RISK";
+        return "Risk";
       case "snapshot":
-        return "SNAP";
+        return "Snapshot";
       case "annotation":
-        return event.tool.toUpperCase();
+        return formatEventToolLabel(event.tool);
       case "freeze-frame":
-        return "FREEZE";
+        return "Freeze";
       case "note":
-        return event.author.toUpperCase();
+        return "Note";
       case "session-start":
-        return "START";
+        return "Start";
       case "ai-mark-lifecycle":
-        return "AI STATE";
+        return "Assistant state";
       case "investigation-region-created":
-        return "REGION";
+        return "Area";
       case "investigation-region-updated":
-        return "REGION";
+        return "Area";
       default:
-        return "EVENT";
+        return "Event";
     }
   }
 
@@ -1374,6 +1437,7 @@ export function createRepairRoomUiRuntime() {
       pin.classList.toggle("repair-panel__icon-btn--active", pinned);
       const nextTitle = pinned ? "Unpin panel" : "Pin panel";
       if (pin.title !== nextTitle) pin.title = nextTitle;
+      setTextIfChanged(pin, pinned ? "Pinned" : "Keep");
       setDatasetIfChanged(pin, "pinned", String(!pinned));
     }
 
@@ -1382,7 +1446,7 @@ export function createRepairRoomUiRuntime() {
     );
     if (collapse !== null) {
       const nextTitle = collapsed ? "Expand panel" : "Collapse panel";
-      const nextText = collapsed ? "EXP" : "COL";
+      const nextText = collapsed ? "Show" : "Hide";
       if (collapse.title !== nextTitle) collapse.title = nextTitle;
       setTextIfChanged(collapse, nextText);
       setDatasetIfChanged(collapse, "collapsed", String(!collapsed));
@@ -1482,9 +1546,7 @@ export function createRepairRoomUiRuntime() {
       } else {
         existingImage?.remove();
         if (existingPlaceholder === null) {
-          const placeholder = documentRef.createElement("div");
-          placeholder.className = "repair-empty-state";
-          placeholder.textContent = text(["workbench", "noImage"], "No PCB image loaded");
+          const placeholder = createWorkbenchEmptyState();
           viewport.insertBefore(placeholder, overlayHost ?? viewport.firstChild);
         }
       }
@@ -1543,7 +1605,7 @@ export function createRepairRoomUiRuntime() {
     const handsFreeButton = panel.querySelector<HTMLElement>("[data-repair-control='hands-free']");
     if (handsFreeButton !== null) {
       handsFreeButton.classList.toggle("repair-guidance-control--active", handsFreeEnabled);
-      setTextIfChanged(handsFreeButton, "HANDS-FREE");
+      setTextIfChanged(handsFreeButton, handsFreeEnabled ? "Guiding" : "Guide me");
       const nextTitle = handsFreeEnabled
         ? "Disable hands-free repair guidance"
         : "Enable ambient listening and step-by-step repair guidance";
@@ -1555,8 +1617,10 @@ export function createRepairRoomUiRuntime() {
     const ambientButton = panel.querySelector<HTMLElement>("[data-repair-control='ambient']");
     if (ambientButton !== null) {
       ambientButton.classList.toggle("repair-guidance-control--active", ambientActive);
-      setTextIfChanged(ambientButton, ambientActive ? "AMB ON" : "AMB");
-      const nextTitle = ambientActive ? "Stop ambient listening" : "Start ambient listening";
+      setTextIfChanged(ambientButton, ambientActive ? "Listening" : "Listen");
+      const nextTitle = ambientActive
+        ? "Stop listening for repair commands"
+        : "Listen for repair commands";
       if (ambientButton.title !== nextTitle) ambientButton.title = nextTitle;
       setDatasetIfChanged(ambientButton, "repairAction", "toggle-ambient-listener");
       setDatasetIfChanged(ambientButton, "active", String(ambientActive));
@@ -1566,14 +1630,12 @@ export function createRepairRoomUiRuntime() {
       "[data-repair-control='dictation-route']"
     );
     if (dictationButton !== null) {
-      setTextIfChanged(
-        dictationButton,
-        dictationActive ? "DIC ON" : `DIC ${interaction.dictationRoute === "android" ? "A" : "L"}`
-      );
+      const dictationRoute = getRouteLabel(interaction.dictationRoute);
+      setTextIfChanged(dictationButton, dictationActive ? "Recording" : "Speak");
       dictationButton.classList.toggle("repair-guidance-control--active", dictationActive);
       const nextTitle = dictationActive
-        ? "Stop dictation"
-        : `Start ${interaction.dictationRoute} dictation`;
+        ? "Stop voice note recording"
+        : `Speak a note or question using the ${dictationRoute} microphone`;
       if (dictationButton.title !== nextTitle) dictationButton.title = nextTitle;
       setDatasetIfChanged(dictationButton, "repairAction", "toggle-dictation");
       setDatasetIfChanged(dictationButton, "active", String(dictationActive));
@@ -1582,8 +1644,8 @@ export function createRepairRoomUiRuntime() {
     const cameraButton = panel.querySelector<HTMLElement>("[data-repair-control='camera-feed']");
     if (cameraButton !== null) {
       cameraButton.classList.toggle("repair-guidance-control--active", cameraActive);
-      setTextIfChanged(cameraButton, cameraActive ? "CAM ON" : "CAM");
-      const nextTitle = cameraActive ? "Stop Android camera feed" : "Start Android camera feed";
+      setTextIfChanged(cameraButton, cameraActive ? "Camera live" : "Camera");
+      const nextTitle = cameraActive ? "Stop the camera feed" : "Start the camera feed";
       if (cameraButton.title !== nextTitle) cameraButton.title = nextTitle;
       setDatasetIfChanged(cameraButton, "repairAction", "toggle-camera-feed");
       setDatasetIfChanged(cameraButton, "active", String(cameraActive));
@@ -1592,11 +1654,11 @@ export function createRepairRoomUiRuntime() {
     const ttsButton = panel.querySelector<HTMLElement>("[data-repair-control='tts-route']");
     if (ttsButton !== null) {
       ttsButton.classList.toggle("repair-guidance-control--active", ttsActive);
-      setTextIfChanged(
-        ttsButton,
-        ttsActive ? "TTS ON" : `TTS ${interaction.ttsRoute === "android" ? "A" : "L"}`
-      );
-      const nextTitle = ttsActive ? "Stop spoken guidance" : "Read current guidance aloud";
+      const ttsRoute = getRouteLabel(interaction.ttsRoute);
+      setTextIfChanged(ttsButton, ttsActive ? "Reading" : "Read");
+      const nextTitle = ttsActive
+        ? "Stop spoken guidance"
+        : `Read current guidance aloud on ${ttsRoute}`;
       if (ttsButton.title !== nextTitle) ttsButton.title = nextTitle;
       setDatasetIfChanged(ttsButton, "repairAction", "toggle-tts");
       setDatasetIfChanged(ttsButton, "active", String(ttsActive));
@@ -1608,10 +1670,8 @@ export function createRepairRoomUiRuntime() {
     if (budgetButton !== null) {
       const currentMax = state.guidance.aiInterruption.attentionBudget.maxAiInterruptions;
       const nextMax = currentMax >= 3 ? 1 : currentMax + 1;
-      setTextIfChanged(
-        budgetButton,
-        `AI ${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions}/${currentMax}`
-      );
+      setTextIfChanged(budgetButton, getAssistanceProfileLabel(currentMax));
+      budgetButton.title = `Cycle assistance profile (${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions}/${currentMax} interruptions left)`;
       setDatasetIfChanged(budgetButton, "maxAiInterruptions", String(nextMax));
       setDatasetIfChanged(
         budgetButton,
@@ -1867,7 +1927,7 @@ export function createRepairRoomUiRuntime() {
         }
         setTextIfChanged(button, label);
         setDatasetIfChanged(button, "eventId", focused.id);
-        button.title = `Move AI mark to ${stateId}`;
+        button.title = `Mark observation as ${label.toLowerCase()}`;
       });
       actions.querySelectorAll<HTMLElement>(".repair-sync-focus__action").forEach((button) => {
         const stateId = button.dataset["aiState"];
@@ -2070,7 +2130,7 @@ export function createRepairRoomUiRuntime() {
     if (playButton !== null) {
       const nextAction = state.workbench.timeline.isPlaying ? "timeline-pause" : "timeline-play";
       setDatasetIfChanged(playButton, "repairAction", nextAction);
-      setTextIfChanged(playButton, state.workbench.timeline.isPlaying ? "PAU" : "PLY");
+      setTextIfChanged(playButton, state.workbench.timeline.isPlaying ? "Pause" : "Play");
     }
     const liveButton = panel.querySelector<HTMLElement>("[data-repair-action='timeline-live']");
     liveButton?.classList.toggle(
@@ -2079,7 +2139,7 @@ export function createRepairRoomUiRuntime() {
     );
     const speedButton = panel.querySelector<HTMLElement>("[data-repair-action='timeline-speed']");
     if (speedButton !== null) {
-      setTextIfChanged(speedButton, `${state.workbench.timeline.replaySpeed.toFixed(1)}X`);
+      setTextIfChanged(speedButton, `${state.workbench.timeline.replaySpeed.toFixed(1)}x`);
     }
 
     const scroller = panel.querySelector<HTMLElement>(".repair-timeline__scroller");
@@ -2184,8 +2244,8 @@ export function createRepairRoomUiRuntime() {
 
     const legends: Array<[string, string]> = [
       ["Snapshot", "var(--repair-cyan)"],
-      ["AI Mark", "var(--repair-amber)"],
-      ["Measurement", "var(--repair-text)"],
+      ["Assistant mark", "var(--repair-amber)"],
+      ["Reading", "var(--repair-text)"],
       ["Note", "var(--repair-info)"],
       ["Risk", "var(--repair-risk)"],
     ];
@@ -2689,7 +2749,7 @@ export function createRepairRoomUiRuntime() {
             requestRuntime.dismissAiMark({
               eventId,
               state: aiState,
-              reason: `Operator marked AI observation ${aiState}.`,
+              reason: `Repair observation marked ${aiState}.`,
             });
           }
           break;

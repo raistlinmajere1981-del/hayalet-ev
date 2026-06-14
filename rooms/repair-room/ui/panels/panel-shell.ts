@@ -41,7 +41,7 @@ export function createRepairPanel(
   pin.className = `repair-panel__icon-btn${options.pinned === true ? " repair-panel__icon-btn--active" : ""}`;
   pin.type = "button";
   pin.title = options.pinned === true ? "Unpin panel" : "Pin panel";
-  pin.textContent = "PIN";
+  pin.textContent = options.pinned === true ? "Pinned" : "Keep";
   pin.dataset["repairAction"] = "toggle-panel-pin";
   pin.dataset["panelId"] = options.panelId;
   pin.dataset["pinned"] = String(options.pinned !== true);
@@ -51,7 +51,7 @@ export function createRepairPanel(
   collapse.className = "repair-panel__icon-btn";
   collapse.type = "button";
   collapse.title = options.collapsed === true ? "Expand panel" : "Collapse panel";
-  collapse.textContent = options.collapsed === true ? "EXP" : "COL";
+  collapse.textContent = options.collapsed === true ? "Show" : "Hide";
   collapse.dataset["repairAction"] = "toggle-panel-collapse";
   collapse.dataset["panelId"] = options.panelId;
   collapse.dataset["collapsed"] = String(options.collapsed !== true);

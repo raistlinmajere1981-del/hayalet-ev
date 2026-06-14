@@ -4,10 +4,10 @@ import { createRepairPanel } from "./panel-shell.js";
 type TextFn = (path: string[], fallback: string) => string;
 
 const STEP_LABELS: Record<string, string> = {
-  "device-info": "Device Info",
+  "device-info": "Device",
   symptoms: "Symptoms",
-  "ai-research": "AI Research",
-  ready: "Ready",
+  "ai-research": "Evidence",
+  ready: "Start",
 };
 
 const STEP_ORDER = ["device-info", "symptoms", "ai-research", "ready"] as const;
@@ -44,6 +44,19 @@ function appendField(
   wrapper.append(input);
 
   parent.append(wrapper);
+}
+
+function getWizardHint(step: RepairUiState["wizard"]["currentStep"]): string {
+  if (step === "device-info") {
+    return "Capture only what helps identify the board. Photos and evidence can be attached later.";
+  }
+  if (step === "symptoms") {
+    return "Pick the main failure signs, then add what you saw, heard, or measured at the bench.";
+  }
+  if (step === "ai-research") {
+    return "The assistant is gathering likely schematics, board views, known failures, and test points.";
+  }
+  return "Review the evidence pack, then start the guided repair session.";
 }
 
 export function renderSessionWizardPanel(
@@ -84,15 +97,20 @@ export function renderSessionWizardPanel(
 
   body.append(stepper);
 
+  const hint = documentRef.createElement("div");
+  hint.className = "repair-wizard-guidance";
+  hint.textContent = getWizardHint(wizard.currentStep);
+  body.append(hint);
+
   const form = documentRef.createElement("div");
   form.className = "repair-wizard-form";
 
   if (wizard.currentStep === "device-info") {
-    appendField(documentRef, form, "Manufacturer", "manufacturer", wizard.draft.manufacturer);
-    appendField(documentRef, form, "Model", "model", wizard.draft.model);
+    appendField(documentRef, form, "Board maker", "manufacturer", wizard.draft.manufacturer);
+    appendField(documentRef, form, "Device model", "model", wizard.draft.model);
     appendField(documentRef, form, "Board code", "boardCode", wizard.draft.boardCode);
-    appendField(documentRef, form, "S/N", "serialNumber", wizard.draft.serialNumber);
-    appendField(documentRef, form, "Intake notes", "intakeNotes", wizard.draft.intakeNotes, true);
+    appendField(documentRef, form, "Serial / job ID", "serialNumber", wizard.draft.serialNumber);
+    appendField(documentRef, form, "Bench notes", "intakeNotes", wizard.draft.intakeNotes, true);
     body.append(form);
   }
 
@@ -112,7 +130,7 @@ export function renderSessionWizardPanel(
     appendField(
       documentRef,
       form,
-      "Symptom notes",
+      "What did you observe?",
       "symptomFreeText",
       wizard.draft.symptomFreeText,
       true
@@ -169,10 +187,12 @@ export function renderSessionWizardPanel(
   nextButton.type = "button";
   nextButton.textContent =
     wizard.currentStep === "ready"
-      ? "Create Session"
+      ? "Start repair"
+      : wizard.currentStep === "ai-research"
+        ? "Review setup"
       : wizard.currentStep === "symptoms"
-        ? "Start Research"
-        : "Next Step";
+        ? "Find evidence"
+        : "Add symptoms";
   nextButton.dataset["repairAction"] =
     wizard.currentStep === "ready" ? "create-session" : "advance-wizard";
   actions.append(nextButton);
@@ -180,8 +200,8 @@ export function renderSessionWizardPanel(
 
   return createRepairPanel(documentRef, {
     panelId: "session-wizard",
-    eyebrow: text(["wizard", "eyebrow"], "NEW SESSION"),
-    title: text(["wizard", "title"], "Session Wizard"),
+    eyebrow: text(["wizard", "eyebrow"], "START REPAIR"),
+    title: text(["wizard", "title"], "Repair Intake"),
     statusDot: wizard.currentStep === "ai-research" ? "amber" : "idle",
     collapsed: state.layout.collapsedPanels["session-wizard"],
     pinned: state.layout.pinnedPanels["session-wizard"],

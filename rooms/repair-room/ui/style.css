@@ -93,8 +93,10 @@ body {
 .repair-workspace {
   flex: 1;
   display: grid;
-  grid-template-columns: var(--repair-px-220) 1fr var(--repair-px-320) var(--repair-px-360);
-  grid-template-rows: 1fr auto auto;
+  grid-template-columns:
+    minmax(var(--repair-px-180), 0.64fr) minmax(0, 1.9fr)
+    minmax(var(--repair-px-260), 0.82fr) minmax(var(--repair-px-280), 0.9fr);
+  grid-template-rows: minmax(0, 1fr) auto auto;
   gap: var(--repair-px-1);
   background: var(--repair-border);
   min-height: 0;
@@ -120,6 +122,20 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--repair-px-1);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.repair-panel--wizard-pack-stack > .repair-panel {
+  min-height: 0;
+}
+
+.repair-panel--wizard-pack-stack > .repair-panel--session-wizard {
+  flex: 0 1 min(42%, var(--repair-px-360));
+}
+
+.repair-panel--wizard-pack-stack > .repair-panel--knowledge-pack {
+  flex: 1 1 0;
 }
 
 .repair-panel--visual-timeline {
@@ -133,8 +149,8 @@ body {
   display: grid;
   grid-template-columns: 1.1fr 1.4fr 1.1fr 1.3fr;
   gap: var(--repair-px-1);
-  min-height: var(--repair-px-180);
-  max-height: var(--repair-px-260);
+  min-height: calc(var(--repair-px-180) * 0.82);
+  max-height: var(--repair-px-180);
 }
 
 .repair-bottom-dock[hidden] {
@@ -288,6 +304,50 @@ body {
 }
 .repair-panel--collapsed > .repair-panel__body {
   display: none;
+}
+
+.repair-workspace:has(> .repair-panel--session-rail.repair-panel--collapsed) {
+  grid-template-columns:
+    minmax(var(--repair-px-44), var(--repair-px-44)) minmax(0, 2.08fr)
+    minmax(var(--repair-px-260), 0.82fr) minmax(var(--repair-px-280), 0.9fr);
+}
+
+.repair-panel--session-rail.repair-panel--collapsed {
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+}
+
+.repair-panel--session-rail.repair-panel--collapsed > .repair-panel__header {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: var(--repair-px-44);
+  height: 100%;
+  min-height: 0;
+  padding: var(--repair-sp-2) var(--repair-px-4);
+  border-right: var(--repair-px-1) solid var(--repair-border);
+  border-bottom: 0;
+}
+
+.repair-panel--session-rail.repair-panel--collapsed .repair-panel__eyebrow {
+  display: none;
+}
+
+.repair-panel--session-rail.repair-panel--collapsed .repair-panel__title {
+  max-height: 12rem;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+}
+
+.repair-panel--session-rail.repair-panel--collapsed .repair-panel__header-spacer {
+  flex: 1;
+}
+
+.repair-panel--session-rail.repair-panel--collapsed .repair-panel__icon-btn {
+  width: var(--repair-px-28);
+  min-width: var(--repair-px-28);
 }
 
 /* ── LIVE Chip ────────────────────────────────────────────────────── */
@@ -450,7 +510,7 @@ body {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--repair-sp-2);
+  gap: var(--repair-sp-1) var(--repair-sp-2);
   padding: var(--repair-sp-2) var(--repair-sp-3);
   border-bottom: var(--repair-px-1) solid var(--repair-border);
   min-height: var(--repair-px-36);
@@ -496,7 +556,7 @@ body {
   align-items: center;
   justify-content: flex-end;
   flex: 1 1 var(--repair-px-320);
-  min-width: var(--repair-px-260);
+  min-width: min(var(--repair-px-260), 100%);
   gap: var(--repair-px-2);
   flex-wrap: wrap;
 }
@@ -504,16 +564,21 @@ body {
 .repair-guidance-control {
   height: var(--repair-px-24);
   min-width: var(--repair-px-38);
+  max-width: calc(var(--repair-px-72) * 1.6);
+  padding: 0 var(--repair-px-8);
   border: var(--repair-px-1) solid var(--repair-border);
   border-radius: var(--repair-radius-sm);
   background: var(--repair-surface-control);
   color: var(--repair-text-dim);
   font: 700 var(--repair-px-9) var(--repair-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
 }
 
 .repair-guidance-control--wide {
-  min-width: var(--repair-px-82);
+  min-width: calc(var(--repair-px-72) * 1.25);
 }
 
 .repair-guidance-control--active,
@@ -762,6 +827,16 @@ body {
   transition: all var(--repair-dur-hover) var(--repair-ease);
 }
 
+.repair-toolbar__btn--text {
+  width: auto;
+  min-width: var(--repair-px-28);
+  max-width: calc(var(--repair-px-72) * 1.7);
+  padding: 0 var(--repair-px-8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .repair-toolbar__btn:hover {
   background: var(--repair-surface-raised);
   color: var(--repair-text);
@@ -992,6 +1067,17 @@ body {
   padding: var(--repair-sp-2) 0;
 }
 
+.repair-wizard-guidance {
+  margin-top: var(--repair-sp-1);
+  padding: var(--repair-sp-2);
+  border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-whisper);
+  color: var(--repair-text-muted);
+  font-size: var(--repair-px-11);
+  line-height: 1.4;
+}
+
 .repair-wizard-field {
   display: flex;
   flex-direction: column;
@@ -1182,12 +1268,14 @@ textarea.repair-wizard-field__input {
 
 .repair-timeline__controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--repair-sp-2);
+  gap: var(--repair-sp-1) var(--repair-sp-2);
   padding: var(--repair-sp-2) var(--repair-sp-3) var(--repair-sp-1);
 }
 
 .repair-timeline__readout {
+  min-width: max-content;
   margin-right: auto;
   font: 700 var(--repair-px-10) var(--repair-mono);
   color: var(--repair-text-muted);
@@ -1195,13 +1283,19 @@ textarea.repair-wizard-field__input {
 }
 
 .repair-timeline__control-btn {
+  width: auto;
+  max-width: calc(var(--repair-px-72) * 1.55);
   height: var(--repair-px-22);
   min-width: var(--repair-px-36);
+  padding: 0 var(--repair-px-8);
+  overflow: hidden;
   border: var(--repair-px-1) solid var(--repair-border);
   border-radius: var(--repair-radius-sm);
   background: var(--repair-surface-control);
   color: var(--repair-text-muted);
   font: 700 var(--repair-px-9) var(--repair-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -1480,6 +1574,44 @@ textarea.repair-wizard-field__input {
   }
 }
 
+@media (--repair-bp-max-980) {
+  .repair-workspace:has(> .repair-panel--session-rail.repair-panel--collapsed) {
+    grid-template-columns: minmax(var(--repair-px-44), var(--repair-px-44)) minmax(0, 1fr);
+  }
+}
+
+@media (--repair-bp-max-680) {
+  .repair-workspace:has(> .repair-panel--session-rail.repair-panel--collapsed) {
+    grid-template-columns: 1fr;
+  }
+
+  .repair-panel--session-rail.repair-panel--collapsed {
+    height: auto;
+    max-height: var(--repair-px-34);
+    min-height: var(--repair-px-34);
+  }
+
+  .repair-panel--session-rail.repair-panel--collapsed > .repair-panel__header {
+    flex-direction: row;
+    width: auto;
+    height: auto;
+    min-height: var(--repair-px-34);
+    padding: var(--repair-sp-2) var(--repair-sp-3);
+    border-right: 0;
+    border-bottom: var(--repair-px-1) solid var(--repair-border);
+  }
+
+  .repair-panel--session-rail.repair-panel--collapsed .repair-panel__eyebrow {
+    display: block;
+  }
+
+  .repair-panel--session-rail.repair-panel--collapsed .repair-panel__title {
+    max-height: none;
+    transform: none;
+    writing-mode: horizontal-tb;
+  }
+}
+
 /* ── Operator Profile ────────────────────────────────────────────── */
 .repair-profile-overview {
   display: flex;
@@ -1632,7 +1764,6 @@ button.repair-skill-chip:hover,
   background: var(--repair-surface-whisper);
   color: var(--repair-text-muted);
   font: 700 var(--repair-px-10) var(--repair-mono);
-  text-transform: uppercase;
   letter-spacing: var(--repair-em-0-04);
 }
 
@@ -1874,7 +2005,7 @@ button.repair-skill-chip:hover,
 
 .repair-sync-focus__actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--repair-px-4);
   margin-top: var(--repair-sp-2);
 }
@@ -1928,6 +2059,17 @@ button.repair-skill-chip:hover,
   font-variant-numeric: tabular-nums;
 }
 
+.repair-chat-mode {
+  margin-top: var(--repair-sp-2);
+  padding: var(--repair-sp-2) var(--repair-sp-3);
+  border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-whisper);
+  color: var(--repair-text-muted);
+  font-size: var(--repair-px-11);
+  line-height: 1.35;
+}
+
 .repair-chat-turn__body {
   font-size: var(--repair-px-12);
   color: var(--repair-text-muted);
@@ -1951,7 +2093,6 @@ button.repair-skill-chip:hover,
   flex-basis: 100%;
   color: var(--repair-amber);
   font: 700 var(--repair-px-10) var(--repair-mono);
-  text-transform: uppercase;
   letter-spacing: var(--repair-em-0-04);
 }
 
@@ -2229,11 +2370,11 @@ button.repair-skill-chip:hover,
 /* ── Legend Bar ───────────────────────────────────────────────────── */
 .repair-legendbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--repair-sp-4);
-  height: var(--repair-px-28);
+  gap: var(--repair-sp-1) var(--repair-sp-3);
   min-height: var(--repair-px-28);
-  padding: 0 var(--repair-sp-4);
+  padding: var(--repair-px-4) var(--repair-sp-4);
   background: var(--repair-bg-strong);
   border-top: var(--repair-px-1) solid var(--repair-border);
   font-family: var(--repair-mono);
@@ -2317,12 +2458,46 @@ button.repair-skill-chip:hover,
 /* ── Utility ─────────────────────────────────────────────────────── */
 .repair-empty-state {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--repair-sp-2);
   height: 100%;
+  max-width: min(var(--repair-px-360), calc(100% - var(--repair-sp-6)));
+  margin: 0 auto;
+  padding: var(--repair-sp-4);
+  text-align: center;
   font-size: var(--repair-px-12);
   color: var(--repair-text-dim);
-  font-style: italic;
+}
+
+.repair-empty-state__title {
+  color: var(--repair-text);
+  font: 700 var(--repair-px-14) var(--repair-body);
+}
+
+.repair-empty-state__copy {
+  max-width: var(--repair-px-320);
+  color: var(--repair-text-muted);
+  line-height: 1.45;
+}
+
+.repair-empty-state__steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--repair-px-5);
+  margin-top: var(--repair-px-4);
+}
+
+.repair-empty-state__steps span {
+  padding: var(--repair-px-2) var(--repair-px-8);
+  border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-dim);
+  font: 700 var(--repair-px-9) var(--repair-mono);
+  text-transform: uppercase;
 }
 
 .repair-mono {
