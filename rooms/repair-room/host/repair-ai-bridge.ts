@@ -213,8 +213,7 @@ function readCommonFailures(value: unknown): RepairCommonFailure[] {
     return [
       {
         id:
-          asNonEmptyString(record["id"]) ??
-          `failure-${slugifyRepairId(label, String(index + 1))}`,
+          asNonEmptyString(record["id"]) ?? `failure-${slugifyRepairId(label, String(index + 1))}`,
         label,
         rationale: asNonEmptyString(record["rationale"]) ?? "AI research correlation.",
         affectedPart:
@@ -359,9 +358,10 @@ function parseRepairAiTacticalObservations(rawText: string): RepairAiTacticalObs
 
 function parseRepairAiKnowledgePack(rawText: string): RepairKnowledgePack | null {
   const parsed = toRecord(extractJsonValue(rawText));
-  const packRecord = Object.keys(toRecord(parsed["knowledgePack"])).length > 0
-    ? toRecord(parsed["knowledgePack"])
-    : parsed;
+  const packRecord =
+    Object.keys(toRecord(parsed["knowledgePack"])).length > 0
+      ? toRecord(parsed["knowledgePack"])
+      : parsed;
   const modelNumber =
     asNonEmptyString(packRecord["modelNumber"]) ??
     asNonEmptyString(packRecord["model"]) ??

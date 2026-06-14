@@ -190,9 +190,9 @@ export function renderSessionWizardPanel(
       ? "Start repair"
       : wizard.currentStep === "ai-research"
         ? "Review setup"
-      : wizard.currentStep === "symptoms"
-        ? "Find evidence"
-        : "Add symptoms";
+        : wizard.currentStep === "symptoms"
+          ? "Find evidence"
+          : "Add symptoms";
   nextButton.dataset["repairAction"] =
     wizard.currentStep === "ready" ? "create-session" : "advance-wizard";
   actions.append(nextButton);

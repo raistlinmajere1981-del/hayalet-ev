@@ -1236,7 +1236,7 @@ body.is-scroll-locked {
 }
 
 .settings-capture-overview-card .settings-capture-note {
-  min-height: 1.2em;
+  min-height: var(--size-settings-capture-note-min-h);
   overflow-wrap: anywhere;
 }
 
@@ -1412,7 +1412,10 @@ body.is-scroll-locked {
 
 .settings-capture-preview-card {
   display: grid;
-  grid-template-columns: minmax(10rem, 0.24fr) minmax(0, 1fr);
+  grid-template-columns: minmax(var(--layout-settings-capture-preview-side-min-w), 0.24fr) minmax(
+      0,
+      1fr
+    );
   gap: var(--space-2);
   align-items: start;
   padding: var(--space-3);
@@ -1454,7 +1457,10 @@ body.is-scroll-locked {
 
 .settings-capture-command-row {
   display: grid;
-  grid-template-columns: minmax(6rem, 0.24fr) minmax(0, 1fr);
+  grid-template-columns: minmax(var(--layout-settings-capture-command-label-min-w), 0.24fr) minmax(
+      0,
+      1fr
+    );
   gap: var(--space-2);
   align-items: center;
 }
@@ -1466,7 +1472,7 @@ body.is-scroll-locked {
   border-radius: var(--radius-sm);
   border: var(--border-1) solid
     color-mix(in srgb, var(--settings-workbench-border-strong) 62%, transparent);
-  background: color-mix(in srgb, var(--bg-surface-1) 74%, transparent);
+  background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
@@ -1485,7 +1491,7 @@ body.is-scroll-locked {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  max-height: min(10rem, 28vh);
+  max-height: var(--layout-settings-capture-log-max-h);
   min-height: var(--space-7);
   margin: 0;
   overflow: auto;
@@ -1493,7 +1499,7 @@ body.is-scroll-locked {
   border-radius: var(--radius-sm);
   border: var(--border-1) solid
     color-mix(in srgb, var(--settings-workbench-border) 72%, transparent);
-  background: color-mix(in srgb, var(--bg-surface-1) 68%, transparent);
+  background: color-mix(in srgb, var(--bg-surface) 68%, transparent);
   color: color-mix(in srgb, var(--text-secondary) 92%, transparent);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
@@ -1509,7 +1515,7 @@ body.is-scroll-locked {
   border-radius: var(--radius-sm);
   border: var(--border-1) dashed
     color-mix(in srgb, var(--settings-workbench-border) 70%, transparent);
-  background: color-mix(in srgb, var(--bg-surface-1) 46%, transparent);
+  background: color-mix(in srgb, var(--bg-surface) 46%, transparent);
 }
 
 .settings-capture-actions {

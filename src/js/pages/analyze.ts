@@ -2334,21 +2334,28 @@ export class AnalyzeController {
     }
 
     const acquiredCapabilities: OperationCapability[] = [];
-    for (const capability of ANALYZE_CAMERA_OPERATION_CAPABILITIES) {
-      const outcome = await acquireOperationCapability(capability, ANALYZE_CAMERA_OPERATION_OWNER);
-      if (outcome.success !== true) {
-        await Promise.all(
-          acquiredCapabilities.map(async (acquiredCapability) => {
-            await releaseOperationCapability(
-              acquiredCapability,
-              ANALYZE_CAMERA_OPERATION_OWNER
-            ).catch(() => null);
-          })
+    await ANALYZE_CAMERA_OPERATION_CAPABILITIES.reduce<Promise<void>>(
+      async (previous, capability) => {
+        await previous;
+        const outcome = await acquireOperationCapability(
+          capability,
+          ANALYZE_CAMERA_OPERATION_OWNER
         );
-        throw new Error(outcome.error);
-      }
-      acquiredCapabilities.push(capability);
-    }
+        if (outcome.success !== true) {
+          await Promise.all(
+            acquiredCapabilities.map(async (acquiredCapability) => {
+              await releaseOperationCapability(
+                acquiredCapability,
+                ANALYZE_CAMERA_OPERATION_OWNER
+              ).catch(() => null);
+            })
+          );
+          throw new Error(outcome.error);
+        }
+        acquiredCapabilities.push(capability);
+      },
+      Promise.resolve()
+    );
 
     this._cameraPanelOperationCapabilities = acquiredCapabilities;
   }
@@ -3215,8 +3222,7 @@ export class AnalyzeController {
           const nextCapture = (settings["capture"] ?? {}) as Record<string, unknown>;
           const nextDefaults = (nextCapture["defaults"] ?? {}) as Record<string, unknown>;
           nextDefaults["defaultLens"] = lensSelect.value === "front" ? "front" : "back";
-          nextDefaults["photoQuality"] =
-            qualitySelect.value === "balanced" ? "balanced" : "high";
+          nextDefaults["photoQuality"] = qualitySelect.value === "balanced" ? "balanced" : "high";
           nextDefaults["attachMode"] =
             attachModeSelect.value === "auto-stage" ? "auto-stage" : "manual-sync";
           nextDefaults["commandConfirmation"] =

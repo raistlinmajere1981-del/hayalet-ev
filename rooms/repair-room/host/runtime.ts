@@ -85,7 +85,7 @@ interface RepairRoomApi {
   notifyRoom: (type: string, payload?: Record<string, unknown>) => void;
   operations?: {
     getStatus?: () => Promise<unknown> | unknown;
-    subscribe?: (listener: (status: unknown) => void) => (() => void) | void;
+    subscribe?: (listener: (status: unknown) => void) => (() => void) | undefined;
   };
   capture?: {
     startDictation?: (requestId?: string) => Promise<RepairCaptureActionResult>;
@@ -1294,11 +1294,7 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
 
       function getCurrentGuidanceLine(): string {
         const state = createRepairUiSnapshot(store.getState());
-        return (
-          state.guidance.voice.spokenLine ??
-          state.guidance.nextBestAction.text ??
-          "Repair guidance is ready."
-        );
+        return state.guidance.voice.spokenLine ?? state.guidance.nextBestAction.text;
       }
 
       function isTerminalTtsStatus(status: string | undefined): boolean {
@@ -3005,7 +3001,6 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
             }
             const reading = createMeasurementReading(iso, flat);
             const event = createMeasurementEvent(session.id, iso, reading, flat);
-            let success = true;
             store.batch(() => {
               store.dispatch({ type: "measurement/append-reading", reading });
               store.dispatch({
@@ -3014,8 +3009,8 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
                 value: reading.value,
                 hold: false,
               });
-              success = appendEventToActiveSession(event);
             });
+            const success = appendEventToActiveSession(event);
             if (success) {
               void requestMeasurementAiObservation(event);
             }

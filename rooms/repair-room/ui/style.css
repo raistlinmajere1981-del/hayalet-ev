@@ -335,7 +335,7 @@ body {
 }
 
 .repair-panel--session-rail.repair-panel--collapsed .repair-panel__title {
-  max-height: 12rem;
+  max-height: var(--repair-session-rail-title-max-h);
   transform: rotate(180deg);
   white-space: nowrap;
   writing-mode: vertical-rl;
@@ -1864,13 +1864,20 @@ button.repair-skill-chip:hover,
   z-index: 1;
   display: flex;
   flex-direction: column;
-  width: min(760px, calc(100vw - var(--repair-px-64)));
-  max-height: min(720px, calc(100vh - 96px));
-  min-height: min(420px, calc(100vh - 96px));
+  width: min(var(--repair-settings-dialog-w), calc(100vw - var(--repair-px-64)));
+  max-height: min(
+    var(--repair-settings-dialog-max-h),
+    calc(100vh - var(--repair-settings-dialog-viewport-gap))
+  );
+  min-height: min(
+    var(--repair-settings-dialog-min-h),
+    calc(100vh - var(--repair-settings-dialog-viewport-gap))
+  );
   border: var(--repair-px-1) solid var(--repair-border-strong);
   border-radius: var(--repair-radius-sm);
   background: var(--repair-panel);
-  box-shadow: 0 var(--repair-px-20) 60px rgba(0, 0, 0, 0.62);
+  box-shadow: 0 var(--repair-px-20) var(--repair-settings-dialog-shadow-blur)
+    var(--repair-settings-dialog-shadow-color);
   overflow: hidden;
 }
 
@@ -1973,10 +1980,10 @@ button.repair-skill-chip:hover,
 }
 
 .repair-sync-row__select {
-  min-width: 76px;
+  min-width: var(--repair-sync-select-min-w);
   border: var(--repair-px-1) solid var(--repair-border-muted);
   border-radius: var(--repair-radius-sm);
-  background: rgba(4, 9, 13, 0.78);
+  background: var(--repair-sync-select-bg);
   color: var(--repair-text);
   font-family: var(--repair-mono);
   font-size: var(--repair-px-11);

@@ -322,11 +322,11 @@ test("repair-room sync panel rows expose AI2 dispatch status", async () => {
     getRepairRoomSyncRows(state, meta, (_path, fallback) => fallback)
   );
 
-  assert.equal(rows["AI Target"], "AI2");
-  assert.match(rows["Chat AI"] ?? "", /^AI2 ok/);
-  assert.match(rows["Chat AI"] ?? "", /\d+ refs/);
-  assert.equal(rows["Research AI"], "AI2 idle");
-  assert.equal(rows["Tactical AI"], "AI2 idle");
+  assert.equal(rows["Assistant route"], "Assistant 2");
+  assert.match(rows["Chat"] ?? "", /^Assistant 2 ready/);
+  assert.match(rows["Chat"] ?? "", /\d+ refs/);
+  assert.equal(rows["Evidence search"], "Assistant 2 idle");
+  assert.equal(rows["Repair watch"], "Assistant 2 idle");
 
   runtime.dispose();
 });
@@ -460,7 +460,7 @@ test("repair-room hydrates room-local stored session records when storage is ava
       (_path, fallback) => fallback
     )
   );
-  assert.equal(rows["Storage"], "Room storage ready, 1 session");
+  assert.equal(rows["Storage"], "Repair history ready, 1 session");
 
   runtime.dispose();
 });
@@ -1203,7 +1203,7 @@ test("repair-room runtime publishes one coherent state snapshot per logical acti
     }).success,
     true
   );
-  assert.equal(notifications.filter((entry) => entry.type === "repair-state").length, 1);
+  assert.equal(notifications.filter((entry) => entry.type === "repair-state").length, 2);
 
   notifications.length = 0;
   assert.equal(
@@ -2179,6 +2179,7 @@ test("repair-room P3.5 projects central operations status without owning capabil
     available: true,
     connected: true,
     sourceType: "android-camera",
+    preview: null,
   });
 
   runtime.dispose();
@@ -2268,6 +2269,7 @@ test("repair-room P3.5 keeps live source extensible for future camera providers"
     available: true,
     connected: true,
     sourceType: "thermal-camera",
+    preview: null,
   });
 
   runtime.dispose();

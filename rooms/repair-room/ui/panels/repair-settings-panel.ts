@@ -213,7 +213,10 @@ export function renderRepairSettingsPanel(
   const companion = createSettingsSection(
     documentRef,
     text(["settings", "companionTitle"], "Android companion"),
-    text(["settings", "companionSubtitle"], "Choose where the repair mic, speaker, and camera come from.")
+    text(
+      ["settings", "companionSubtitle"],
+      "Choose where the repair mic, speaker, and camera come from."
+    )
   );
 
   const companionGroup = createButtonGroup(

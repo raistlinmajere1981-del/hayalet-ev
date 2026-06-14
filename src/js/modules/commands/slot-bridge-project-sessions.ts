@@ -89,7 +89,8 @@ export function readSlotBridgeProjectRef(value: unknown): SlotBridgeProjectRef |
     return null;
   }
 
-  const projectId = readString(value["projectId"]) || readString(value["id"]);
+  const explicitProjectId = readString(value["projectId"]);
+  const projectId = explicitProjectId !== "" ? explicitProjectId : readString(value["id"]);
   if (projectId === "") {
     return null;
   }
@@ -107,7 +108,8 @@ function normalizeProjectRef(
   projectRef: SlotBridgeProjectRef | null | undefined
 ): SlotBridgeProjectSessionContext["projectRef"] | null {
   const normalized = readSlotBridgeProjectRef(projectRef);
-  const projectId = readString(normalized?.projectId) || readString(normalized?.id);
+  const explicitProjectId = readString(normalized?.projectId);
+  const projectId = explicitProjectId !== "" ? explicitProjectId : readString(normalized?.id);
   if (projectId === "") {
     return null;
   }
@@ -126,7 +128,8 @@ function normalizeBinding(value: unknown): ProjectAiSessionBinding | null {
     return null;
   }
 
-  const projectId = readString(value["projectId"]) || readString(value["id"]);
+  const explicitProjectId = readString(value["projectId"]);
+  const projectId = explicitProjectId !== "" ? explicitProjectId : readString(value["id"]);
   const slot = normalizeSlot(value["slot"]);
   const accountId = readString(value["accountId"]);
   if (projectId === "" || slot === null || accountId === "") {
@@ -179,7 +182,7 @@ function getBindingKey(projectRef: SlotBridgeProjectSessionContext["projectRef"]
 
 export function findProjectAiSessionBinding(
   projectRef: SlotBridgeProjectRef | null | undefined,
-  settings: AppSettings | null = SettingsManager.getSnapshot() as AppSettings | null
+  settings: AppSettings | null = SettingsManager.getSnapshot()
 ): ProjectAiSessionBinding | null {
   const normalizedRef = normalizeProjectRef(projectRef);
   if (normalizedRef === null) {
@@ -204,7 +207,8 @@ function getAssignedAccount(slot: SlotId): {
     return null;
   }
 
-  const providerId = readString(AppState.getProviderIdForSlot(slot)) || readString(account?.provider);
+  const assignedProviderId = readString(AppState.getProviderIdForSlot(slot));
+  const providerId = assignedProviderId !== "" ? assignedProviderId : readString(account?.provider);
   return {
     accountId,
     providerId: providerId !== "" ? providerId : null,
@@ -280,7 +284,9 @@ export function prepareSlotBridgeProjectSessionEnvelope(envelope: SlotBridgeEnve
 
   const binding = findProjectAiSessionBinding(projectRef);
   const warning =
-    binding !== null && targetSlot !== null ? buildProjectSessionWarning(binding, targetSlot) : null;
+    binding !== null && targetSlot !== null
+      ? buildProjectSessionWarning(binding, targetSlot)
+      : null;
   toastProjectSessionWarning(warning);
 
   const shouldRestore =

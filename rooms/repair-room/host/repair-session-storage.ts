@@ -1,6 +1,10 @@
 import { REPAIR_ROOM_ID } from "../shared/repair-constants.js";
 import { createRepairStoragePaths, readRepairRoomStorageDir } from "../shared/host/repair-paths.js";
-import type { RepairChatTurn, RepairSession, RepairSessionListItem } from "../shared/types/index.js";
+import type {
+  RepairChatTurn,
+  RepairSession,
+  RepairSessionListItem,
+} from "../shared/types/index.js";
 
 type RepairDirectoryEntry = {
   isDirectory: boolean;

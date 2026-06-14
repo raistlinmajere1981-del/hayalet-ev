@@ -16,7 +16,6 @@ import type {
   RepairInvestigationRegionLinkage,
   RepairInvestigationRegionUpdatedEvent,
   RepairKnowledgeSpatialRef,
-  RepairLiveSourceType,
   RepairMeasurementEvidenceState,
   RepairMeasurementEvent,
   RepairMeasurementGroup,
@@ -1775,7 +1774,7 @@ function buildLiveSourceProjection(params: {
     return {
       available: true,
       connected: true,
-      sourceType: sourceType as RepairLiveSourceType,
+      sourceType,
       preview: params.state.livePreview,
     };
   }

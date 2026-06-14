@@ -48,6 +48,8 @@
   --repair-scrim-strong: rgba(0, 0, 0, 0.7);
   --repair-scrim-inset: rgba(0, 0, 0, 0.36);
   --repair-timeline-bg: rgba(0, 0, 0, 0.12);
+  --repair-settings-dialog-shadow-color: rgba(0, 0, 0, 0.62);
+  --repair-sync-select-bg: rgba(4, 9, 13, 0.78);
   --repair-thumb-ring: rgba(255, 255, 255, 0.82);
   --repair-thumb-bg: rgba(5, 8, 12, 0.86);
   --repair-action-bg: rgba(5, 8, 12, 0.46);
@@ -106,6 +108,14 @@
   --repair-px-300: 300px;
   --repair-px-320: 320px;
   --repair-px-360: 360px;
+
+  --repair-session-rail-title-max-h: 12rem;
+  --repair-settings-dialog-w: 760px;
+  --repair-settings-dialog-max-h: 720px;
+  --repair-settings-dialog-min-h: 420px;
+  --repair-settings-dialog-viewport-gap: 96px;
+  --repair-settings-dialog-shadow-blur: 60px;
+  --repair-sync-select-min-w: 76px;
 
   --repair-em-0-02: 0.02em;
   --repair-em-0-04: 0.04em;

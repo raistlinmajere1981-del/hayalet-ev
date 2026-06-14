@@ -32,7 +32,8 @@ function formatTime(iso: string | null): string {
 export function formatRepairAiDispatchSummary(channel: RepairAiDispatchChannelState): string {
   const slot = formatAssistantSlot(channel.targetSlot);
   if (channel.status === "idle") return `${slot} idle`;
-  if (channel.status === "pending") return `${slot} checking since ${formatTime(channel.startedAt)}`;
+  if (channel.status === "pending")
+    return `${slot} checking since ${formatTime(channel.startedAt)}`;
   if (channel.status === "succeeded") {
     const context = channel.contextRefs.length > 0 ? `, ${channel.contextRefs.length} refs` : "";
     return `${slot} ready at ${formatTime(channel.completedAt)}${context}`;
@@ -77,10 +78,7 @@ export function getRepairRoomSyncRows(
       `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`,
     ],
     [text(["sync", "aiTarget"], "Assistant route"), targetSlot],
-    [
-      text(["sync", "chatDispatch"], "Chat"),
-      formatRepairAiDispatchSummary(state.aiDispatch.chat),
-    ],
+    [text(["sync", "chatDispatch"], "Chat"), formatRepairAiDispatchSummary(state.aiDispatch.chat)],
     [
       text(["sync", "researchDispatch"], "Evidence search"),
       formatRepairAiDispatchSummary(state.aiDispatch.research),

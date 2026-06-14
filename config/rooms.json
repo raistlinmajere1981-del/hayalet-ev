@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-06-14T17:10:21.406Z",
+  "updatedAt": "2026-06-14T22:02:54.100Z",
   "rooms": [
     {
       "id": "repair-room",
@@ -704,8 +704,8 @@
           "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
         }
       ],
-      "installedAt": "2026-06-14T17:00:39.635Z",
-      "updatedAt": "2026-06-14T17:00:39.635Z"
+      "installedAt": "2026-06-14T22:02:53.646Z",
+      "updatedAt": "2026-06-14T22:02:53.646Z"
     },
     {
       "id": "laboratory",
@@ -804,8 +804,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-06-14T17:10:21.406Z",
-      "updatedAt": "2026-06-14T17:10:21.406Z"
+      "installedAt": "2026-06-14T22:02:54.100Z",
+      "updatedAt": "2026-06-14T22:02:54.100Z"
     }
   ]
 }

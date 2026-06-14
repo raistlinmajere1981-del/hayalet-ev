@@ -79,6 +79,7 @@ test("settings language panel wires tab, panel, and renderer bootstrap", () => {
 test("settings capture panel centralizes transcript runtime and android management wiring", () => {
   const htmlSource = readFileSync("src/pages/settings.html", "utf8");
   const styleSource = readFileSync("src/styles/main.css", "utf8");
+  const layoutTokensSource = readFileSync("src/styles/design-system/tokens/layout.css", "utf8");
   const controllerSource = readFileSync("src/js/pages/settings/controller.ts", "utf8");
   const initSource = readFileSync("src/js/pages/settings/panels/init.ts", "utf8");
   const panelSource = readFileSync("src/js/pages/settings/panels/capture.ts", "utf8");
@@ -195,7 +196,8 @@ test("settings capture panel centralizes transcript runtime and android manageme
   assert.doesNotMatch(panelSource, /logs\.length > 0 \? logs :/);
   assert.match(styleSource, /\.settings-capture-diagnostics\s*\{/);
   assert.match(styleSource, /\.settings-capture-log-list\s*\{/);
-  assert.match(styleSource, /max-height: min\(10rem, 28vh\)/);
+  assert.match(styleSource, /max-height: var\(--layout-settings-capture-log-max-h\)/);
+  assert.match(layoutTokensSource, /--layout-settings-capture-log-max-h: min\(10rem, 28vh\)/);
   assert.equal((htmlSource.match(/id="capture-provider-fallback-select"/g) ?? []).length, 0);
   assert.equal((htmlSource.match(/id="capture-policy-feedback"/g) ?? []).length, 0);
   assert.equal((htmlSource.match(/id="capture-provider-android-speech"/g) ?? []).length, 0);

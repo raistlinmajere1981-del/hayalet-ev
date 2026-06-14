@@ -505,9 +505,9 @@ function normalizeProjectAiSessions(raw: unknown): ProjectAiSessionBinding[] | u
       return;
     }
 
+    const explicitProjectId = normalizeProjectAiSessionString(entry["projectId"]);
     const projectId =
-      normalizeProjectAiSessionString(entry["projectId"]) ||
-      normalizeProjectAiSessionString(entry["id"]);
+      explicitProjectId !== "" ? explicitProjectId : normalizeProjectAiSessionString(entry["id"]);
     const roomId = normalizeProjectAiSessionString(entry["roomId"]);
     const slot = normalizeProjectAiSessionSlot(entry["slot"]);
     const accountId = normalizeProjectAiSessionString(entry["accountId"]);

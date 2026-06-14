@@ -3059,12 +3059,11 @@ async function activateProjectSessionBeforeAction(
 
 export async function slotBridgeHandler(payload: CommandPayload = {}): Promise<SlotBridgeResult> {
   let envelope = normalizeEnvelope(payload);
-  let projectSessionContext: SlotBridgeProjectSessionContext | null = null;
 
   try {
     const preparedProjectSession = prepareSlotBridgeProjectSessionEnvelope(envelope);
     envelope = preparedProjectSession.envelope;
-    projectSessionContext = preparedProjectSession.context;
+    const projectSessionContext = preparedProjectSession.context;
 
     let result: SlotBridgeResult;
     if (envelope.retiredAction !== undefined && envelope.retiredAction !== null) {
@@ -3085,7 +3084,10 @@ export async function slotBridgeHandler(payload: CommandPayload = {}): Promise<S
       return await finalizeSlotBridgeProjectSessionResult(envelope, result, projectSessionContext);
     }
 
-    const activationError = await activateProjectSessionBeforeAction(envelope, projectSessionContext);
+    const activationError = await activateProjectSessionBeforeAction(
+      envelope,
+      projectSessionContext
+    );
     if (activationError !== null) {
       return await finalizeSlotBridgeProjectSessionResult(
         envelope,

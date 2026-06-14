@@ -146,8 +146,7 @@ export function normalizeRepairHostMessage(value: unknown): RepairHostMessage | 
       (target === null || typeof target === "string") &&
       typeof isFinal === "boolean" &&
       typeof createdAt === "string" &&
-      (metadata === null ||
-        (typeof metadata === "object" && metadata !== null && Array.isArray(metadata) === false))
+      (metadata === null || (typeof metadata === "object" && Array.isArray(metadata) === false))
     ) {
       return {
         type,

@@ -351,8 +351,7 @@ export function renderWorkbenchStagePanel(
       state.guidance.operationalProfile === profile ? " repair-profile-toggle__btn--active" : ""
     }`;
     button.textContent = profile === "novice" ? "Guided" : "Expert";
-    button.title =
-      profile === "novice" ? "Guided repair profile" : "Expert repair profile";
+    button.title = profile === "novice" ? "Guided repair profile" : "Expert repair profile";
     button.dataset["repairAction"] = "set-operational-profile";
     button.dataset["profile"] = profile;
     profileToggle.append(button);
