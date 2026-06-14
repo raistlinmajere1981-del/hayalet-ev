@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-06-13T13:36:02.495Z",
+  "updatedAt": "2026-06-14T09:27:50.984Z",
   "rooms": [
     {
       "id": "repair-room",
@@ -121,6 +121,12 @@
             {
               "name": "RepairRoomSendChatTurn",
               "description": "Append an operator turn to the AİÖ session chat and request a response.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "RepairRoomSetChatComposer",
+              "description": "Persist the Repair Room chat composer draft for typed or dictated text.",
               "scope": "room-ui",
               "exposure": "internal"
             },
@@ -496,6 +502,12 @@
           "exposure": "internal"
         },
         {
+          "name": "RepairRoomSetChatComposer",
+          "description": "Persist the Repair Room chat composer draft for typed or dictated text.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "RepairRoomUpdateOperatorProfile",
           "description": "Patch the operator profile (tools, skills, preferences).",
           "scope": "room-ui",
@@ -692,8 +704,8 @@
           "path": "main-functions/repair-workbench/protocols/repair-room-risk-detector.md"
         }
       ],
-      "installedAt": "2026-06-13T13:36:02.199Z",
-      "updatedAt": "2026-06-13T13:36:02.199Z"
+      "installedAt": "2026-06-14T09:02:00.848Z",
+      "updatedAt": "2026-06-14T09:02:00.848Z"
     },
     {
       "id": "laboratory",
@@ -792,8 +804,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/rooms/.build/laboratory/runtime/i18n",
-      "installedAt": "2026-06-13T13:36:02.495Z",
-      "updatedAt": "2026-06-13T13:36:02.495Z"
+      "installedAt": "2026-06-14T09:27:50.984Z",
+      "updatedAt": "2026-06-14T09:27:50.984Z"
     }
   ]
 }

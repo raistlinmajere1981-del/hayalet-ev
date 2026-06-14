@@ -111,6 +111,190 @@ function getGuidanceMetaText(state: RepairUiState): string {
   return parts.join(" / ");
 }
 
+function getCapabilityState(
+  active: boolean,
+  ready: boolean
+): "active" | "ready" | "idle" | "unavailable" {
+  if (active) return "active";
+  if (ready) return "ready";
+  return "idle";
+}
+
+function getRouteLabel(route: "local" | "android"): string {
+  return route === "android" ? "Android" : "Local";
+}
+
+function getCameraSourceLabel(state: RepairUiState): string {
+  const sourceType = state.workbench.liveSource.sourceType;
+  if (sourceType === "android-camera") return "Android camera";
+  if (sourceType === "snapshot") return "Snapshot";
+  if (sourceType === "image") return "Board image";
+  return state.layout.interactionSettings.cameraFeedPreference === "android-feed"
+    ? "Android camera"
+    : "Manual image";
+}
+
+function getViewportMode(state: RepairUiState): "live" | "replay" | "freeze" | "investigation" {
+  if (
+    state.workbench.investigationModeEnabled ||
+    state.workbench.operationalMode === "investigation"
+  ) {
+    return "investigation";
+  }
+  if (state.workbench.isFrozen || state.workbench.operationalMode === "freeze") return "freeze";
+  if (
+    state.workbench.timeline.replayMode === "replay" ||
+    state.workbench.operationalMode === "replay"
+  ) {
+    return "replay";
+  }
+  return "live";
+}
+
+function getRepairCommandHints(state: RepairUiState): string {
+  const hints = state.workbench.isFrozen
+    ? ["resume live", "read this again", "save note"]
+    : ["freeze camera", "repeat guidance", "record measurement"];
+  if (state.guidance.unresolvedCriticalItems > 0) hints.unshift("show risks");
+  return hints.slice(0, 3).join(" / ");
+}
+
+function appendCopilotCell(
+  documentRef: Document,
+  parent: HTMLElement,
+  className: string,
+  label: string,
+  value: string
+): void {
+  const cell = documentRef.createElement("span");
+  cell.className = className;
+
+  const labelEl = documentRef.createElement("span");
+  labelEl.className = "repair-guidance-strip__label";
+  labelEl.textContent = label;
+  cell.append(labelEl);
+
+  const valueEl = documentRef.createElement("span");
+  valueEl.className = "repair-guidance-strip__value";
+  valueEl.textContent = value;
+  cell.append(valueEl);
+
+  parent.append(cell);
+}
+
+function appendCapabilityCell(
+  documentRef: Document,
+  parent: HTMLElement,
+  label: string,
+  value: string,
+  state: "active" | "ready" | "idle" | "unavailable"
+): void {
+  const cell = documentRef.createElement("div");
+  cell.className = "repair-capability";
+  cell.dataset["state"] = state;
+
+  const labelEl = documentRef.createElement("span");
+  labelEl.className = "repair-capability__label";
+  labelEl.textContent = label;
+  cell.append(labelEl);
+
+  const valueEl = documentRef.createElement("span");
+  valueEl.className = "repair-capability__value";
+  valueEl.textContent = value;
+  cell.append(valueEl);
+
+  parent.append(cell);
+}
+
+function getCameraHealthState(
+  state: RepairUiState,
+  cameraActive: boolean
+): "live" | "ready" | "manual" | "unavailable" {
+  if (!state.operationsAvailable) return "unavailable";
+  if (cameraActive) return "live";
+  if (state.workbench.liveSource.connected || state.workbench.liveSource.available) return "ready";
+  return "manual";
+}
+
+function getCameraHealthText(
+  state: RepairUiState,
+  cameraActive: boolean,
+  cameraSource: string
+): { status: string; detail: string; action: string } {
+  if (!state.operationsAvailable) {
+    return {
+      status: "Camera unavailable",
+      detail: "Capture runtime is not reporting operations.",
+      action: "Open repair controls and check companion access.",
+    };
+  }
+  if (cameraActive) {
+    return {
+      status: `${cameraSource} live`,
+      detail: "Keep the board centered and avoid glare.",
+      action: "Say freeze camera before probing a tight area.",
+    };
+  }
+  if (state.workbench.liveSource.connected) {
+    return {
+      status: `${cameraSource} connected`,
+      detail: "Feed is connected but not marked live.",
+      action: "Start the camera feed or use the current board image.",
+    };
+  }
+  if (state.workbench.liveSource.available) {
+    return {
+      status: `${cameraSource} ready`,
+      detail: "Live source is available for this session.",
+      action: "Start camera feed, then align board edges.",
+    };
+  }
+  return {
+    status: "Manual board image",
+    detail: "No live companion frame is connected.",
+    action: "Use Android camera for hands-free visual guidance.",
+  };
+}
+
+function appendCameraHealthHud(
+  documentRef: Document,
+  viewport: HTMLElement,
+  state: RepairUiState,
+  cameraActive: boolean,
+  cameraSource: string
+): void {
+  const health = getCameraHealthText(state, cameraActive, cameraSource);
+  const hud = documentRef.createElement("div");
+  hud.className = "repair-camera-hud";
+  hud.dataset["state"] = getCameraHealthState(state, cameraActive);
+
+  const status = documentRef.createElement("div");
+  status.className = "repair-camera-hud__status";
+  status.textContent = health.status;
+  hud.append(status);
+
+  const detail = documentRef.createElement("div");
+  detail.className = "repair-camera-hud__detail";
+  detail.textContent = health.detail;
+  hud.append(detail);
+
+  const action = documentRef.createElement("div");
+  action.className = "repair-camera-hud__action";
+  action.textContent = health.action;
+  hud.append(action);
+
+  const steps = documentRef.createElement("div");
+  steps.className = "repair-camera-hud__steps";
+  ["Frame board", "Check light", "Align overlay"].forEach((step) => {
+    const item = documentRef.createElement("span");
+    item.textContent = step;
+    steps.append(item);
+  });
+  hud.append(steps);
+
+  viewport.append(hud);
+}
+
 export function renderWorkbenchStagePanel(
   documentRef: Document,
   state: RepairUiState,
@@ -196,6 +380,9 @@ export function renderWorkbenchStagePanel(
   const cameraActive =
     state.operationsAvailable && (state.operations.cameraActive || state.operations.liveFeedActive);
   const ttsActive = state.operationsAvailable && state.operations.ttsActive;
+  const dictationRoute = getRouteLabel(state.layout.interactionSettings.dictationRoute);
+  const ttsRoute = getRouteLabel(state.layout.interactionSettings.ttsRoute);
+  const cameraSource = getCameraSourceLabel(state);
   const handsFreeEnabled =
     state.layout.voiceGuidance.handsBusyMode && (voiceListening || ambientActive);
   handsFreeButton.className = `repair-guidance-control repair-guidance-control--wide${
@@ -281,39 +468,135 @@ export function renderWorkbenchStagePanel(
   liveHeader.append(guidanceControls);
   body.append(liveHeader);
 
+  const capabilityStrip = documentRef.createElement("div");
+  capabilityStrip.className = "repair-capability-strip";
+  appendCapabilityCell(
+    documentRef,
+    capabilityStrip,
+    "Ambient",
+    state.operationsAvailable
+      ? ambientActive
+        ? "Listening for commands"
+        : state.layout.voiceGuidance.ambientListeningState === "muted"
+          ? "Muted"
+          : voiceListening
+            ? "Armed"
+            : "Idle"
+      : "Unavailable",
+    state.operationsAvailable ? getCapabilityState(ambientActive, voiceListening) : "unavailable"
+  );
+  appendCapabilityCell(
+    documentRef,
+    capabilityStrip,
+    "Dictate",
+    state.operationsAvailable
+      ? dictationActive
+        ? `${dictationRoute} recording`
+        : state.operations.ambientActive
+          ? "Ambient owns mic"
+          : `${dictationRoute} standby`
+      : "Unavailable",
+    state.operationsAvailable
+      ? getCapabilityState(
+          dictationActive,
+          state.layout.voiceGuidance.ambientListeningState !== "muted"
+        )
+      : "unavailable"
+  );
+  appendCapabilityCell(
+    documentRef,
+    capabilityStrip,
+    "Camera",
+    state.operationsAvailable
+      ? cameraActive
+        ? `${cameraSource} live`
+        : state.workbench.liveSource.connected
+          ? `${cameraSource} connected`
+          : state.workbench.liveSource.available
+            ? `${cameraSource} ready`
+            : "Manual board image"
+      : "Unavailable",
+    state.operationsAvailable
+      ? getCapabilityState(cameraActive, state.workbench.liveSource.available)
+      : "unavailable"
+  );
+  appendCapabilityCell(
+    documentRef,
+    capabilityStrip,
+    "TTS",
+    state.operationsAvailable
+      ? ttsActive
+        ? `${ttsRoute} speaking`
+        : state.layout.voiceGuidance.spokenGuidanceMode === "silent"
+          ? "Silent"
+          : `${ttsRoute} ready`
+      : "Unavailable",
+    state.operationsAvailable
+      ? getCapabilityState(ttsActive, state.layout.voiceGuidance.spokenGuidanceMode !== "silent")
+      : "unavailable"
+  );
+  body.append(capabilityStrip);
+
   const guidance = documentRef.createElement("div");
   guidance.className = "repair-guidance-strip";
   guidance.dataset["confidence"] = state.guidance.nextBestAction.confidence;
   guidance.dataset["urgency"] = state.guidance.nextBestAction.urgency;
 
-  const phase = documentRef.createElement("span");
-  phase.className = "repair-guidance-strip__phase";
-  phase.textContent = state.guidance.investigationPhase;
-  guidance.append(phase);
-
-  const action = documentRef.createElement("span");
-  action.className = "repair-guidance-strip__action";
-  action.textContent = state.guidance.nextBestAction.text;
-  guidance.append(action);
-
-  const recovery = documentRef.createElement("span");
-  recovery.className = "repair-guidance-strip__recovery";
-  recovery.textContent = `${state.guidance.recovery.currentFocus} • ${state.guidance.recovery.pendingAction}`;
-  guidance.append(recovery);
-
-  const meta = documentRef.createElement("span");
-  meta.className = "repair-guidance-strip__meta";
-  meta.textContent = getGuidanceMetaText(state);
-  guidance.append(meta);
+  appendCopilotCell(
+    documentRef,
+    guidance,
+    "repair-guidance-strip__phase",
+    "AI",
+    state.guidance.aiInterruption.toneLine
+  );
+  appendCopilotCell(
+    documentRef,
+    guidance,
+    "repair-guidance-strip__action",
+    "Next",
+    state.guidance.nextBestAction.text
+  );
+  appendCopilotCell(
+    documentRef,
+    guidance,
+    "repair-guidance-strip__recovery",
+    "Say",
+    getRepairCommandHints(state)
+  );
+  appendCopilotCell(
+    documentRef,
+    guidance,
+    "repair-guidance-strip__meta",
+    "Risk",
+    getGuidanceMetaText(state)
+  );
 
   body.append(guidance);
 
   // -- Viewport
   const viewport = documentRef.createElement("div");
   viewport.className = `repair-viewport${state.workbench.isFrozen ? " repair-viewport--frozen" : ""}`;
+  viewport.dataset["mode"] = getViewportMode(state);
+  viewport.dataset["cursor"] = state.workbench.contextualCursor;
+  viewport.dataset["liveSource"] = state.workbench.liveSource.sourceType ?? "image";
 
   const session = state.sessions.detail;
-  if (session !== null && session.pcbImage !== null) {
+  const livePreview = state.workbench.liveSource.preview;
+  const liveStreamUrl =
+    livePreview?.source === "mjpeg-stream" &&
+    livePreview.streamUrl !== null &&
+    livePreview.streamUrl !== undefined
+      ? livePreview.streamUrl.trim()
+      : "";
+
+  if (liveStreamUrl !== "") {
+    const liveFrame = documentRef.createElement("img");
+    liveFrame.className = "repair-viewport__live-frame";
+    liveFrame.src = liveStreamUrl;
+    liveFrame.alt = livePreview?.label ?? "Android camera live feed";
+    liveFrame.draggable = false;
+    viewport.append(liveFrame);
+  } else if (session !== null && session.pcbImage !== null) {
     const img = documentRef.createElement("img");
     img.className = "repair-viewport__image";
     img.src = resolveRepairAssetUrl(session.pcbImage.src) ?? session.pcbImage.src;
@@ -333,6 +616,8 @@ export function renderWorkbenchStagePanel(
   overlayHost.className = "repair-overlay-stage";
   overlayHost.dataset["repairOverlayStage"] = "workbench";
   viewport.append(overlayHost);
+
+  appendCameraHealthHud(documentRef, viewport, state, cameraActive, cameraSource);
 
   // -- Coordinate HUD
   const hud = documentRef.createElement("div");

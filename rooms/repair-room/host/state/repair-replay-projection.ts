@@ -1776,6 +1776,7 @@ function buildLiveSourceProjection(params: {
       available: true,
       connected: true,
       sourceType: sourceType as RepairLiveSourceType,
+      preview: params.state.livePreview,
     };
   }
 

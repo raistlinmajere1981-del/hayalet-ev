@@ -47,6 +47,7 @@ import type {
   RepairKnowledgePack,
   RepairKnowledgeSpatialRef,
   RepairKnowledgePackProgress,
+  RepairLivePreviewState,
   RepairMeasurementEvent,
   RepairMultimeterReading,
   RepairOperationalProfile,
@@ -115,6 +116,7 @@ interface RepairCommandPayload {
 interface RepairCaptureActionOutcome {
   ok: boolean;
   message?: string;
+  status?: unknown;
 }
 
 interface RepairCaptureActionResult {
@@ -335,6 +337,49 @@ function normalizeRepairOperationsSnapshot(value: unknown): RepairOperationsSnap
 
 function safeNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function safeRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function normalizeRepairLivePreview(value: unknown): RepairLivePreviewState | null {
+  const record = safeRecord(value);
+  if (record === null) return null;
+  const source = record["source"];
+  if (source !== "v4l2" && source !== "mjpeg-stream") return null;
+  const devicePath = safeString(record["devicePath"]);
+  const label = safeString(record["label"]);
+  const width = safeNumber(record["width"]);
+  const height = safeNumber(record["height"]);
+  const fps = safeNumber(record["fps"]);
+  if (devicePath === null || label === null || width === null || height === null || fps === null) {
+    return null;
+  }
+  return {
+    source,
+    devicePath,
+    streamUrl: safeString(record["streamUrl"]),
+    contentType: safeString(record["contentType"]),
+    label,
+    width,
+    height,
+    fps,
+  };
+}
+
+function getRepairCapturePreview(
+  outcome: RepairCaptureActionOutcome
+): RepairLivePreviewState | null {
+  const status = safeRecord(outcome.status);
+  if (status === null) return null;
+  const scrcpy = safeRecord(status["scrcpy"]);
+  const analyze = safeRecord(status["analyze"]);
+  const scrcpyPreview = scrcpy === null ? null : scrcpy["previewVideo"];
+  const analyzePreview = analyze === null ? null : analyze["previewVideo"];
+  return normalizeRepairLivePreview(scrcpyPreview) ?? normalizeRepairLivePreview(analyzePreview);
 }
 
 function safeImagePoint(value: unknown): RepairImagePoint | null {
@@ -1228,6 +1273,7 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
         }
         if (!capabilities.has("android-camera") && !capabilities.has("live-feed")) {
           activeCameraFeedRequestId = null;
+          store.dispatch({ type: "operations/live-preview-set", preview: null });
         }
         if (!capabilities.has("local-tts") && !capabilities.has("android-tts")) {
           activeTtsRequestId = null;
@@ -1399,12 +1445,19 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
             activeCameraFeedRequestId = result.requestId;
             if (result.outcome.ok !== true) {
               activeCameraFeedRequestId = null;
+              store.dispatch({ type: "operations/live-preview-set", preview: null });
               logOperationFailure("camera feed", result.outcome.message ?? "unknown error");
+            } else {
+              store.dispatch({
+                type: "operations/live-preview-set",
+                preview: getRepairCapturePreview(result.outcome),
+              });
             }
             pushState();
           })
           .catch((error: unknown) => {
             if (activeCameraFeedRequestId === requestId) activeCameraFeedRequestId = null;
+            store.dispatch({ type: "operations/live-preview-set", preview: null });
             logOperationFailure(
               "camera feed",
               error instanceof Error ? error.message : String(error)
@@ -1427,6 +1480,7 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
           .then((result) => {
             if (result.outcome.ok === true && activeCameraFeedRequestId === requestId) {
               activeCameraFeedRequestId = null;
+              store.dispatch({ type: "operations/live-preview-set", preview: null });
             } else if (result.outcome.ok !== true) {
               logOperationFailure("stop camera feed", result.outcome.message ?? "unknown error");
             }
@@ -3436,6 +3490,7 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
           ) {
             void api.capture.stopCameraFeed(activeCameraFeedRequestId);
             activeCameraFeedRequestId = null;
+            store.dispatch({ type: "operations/live-preview-set", preview: null });
           }
           if (activeTtsRequestId !== null && typeof api.tts?.stop === "function") {
             void api.tts.stop(activeTtsRequestId);

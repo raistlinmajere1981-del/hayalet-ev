@@ -3,6 +3,14 @@ import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
 
+function isDictationReviewActive(state: RepairUiState): boolean {
+  return (
+    state.layout.voiceGuidance.handsBusyMode &&
+    state.layout.interactionSettings.dictationSubmitMode === "send" &&
+    state.chat.composerDraft.trim() !== ""
+  );
+}
+
 export function renderChatPanel(
   documentRef: Document,
   state: RepairUiState,
@@ -55,6 +63,17 @@ export function renderChatPanel(
   // -- Composer
   const composer = documentRef.createElement("div");
   composer.className = "repair-chat-composer";
+  composer.dataset["reviewState"] = isDictationReviewActive(state) ? "dictation-review" : "idle";
+
+  if (isDictationReviewActive(state)) {
+    const review = documentRef.createElement("div");
+    review.className = "repair-chat-composer__review";
+    review.textContent = text(
+      ["chat", "dictationReview"],
+      "Dictation staged for review. Say send, press Send, or clear and dictate again."
+    );
+    composer.append(review);
+  }
 
   const input = documentRef.createElement("input");
   input.className = "repair-chat-composer__input";
@@ -71,6 +90,15 @@ export function renderChatPanel(
   sendBtn.disabled = state.chat.pendingReplyId !== null;
   sendBtn.dataset["repairAction"] = "send-chat";
   composer.append(sendBtn);
+
+  if (state.chat.composerDraft.trim() !== "") {
+    const clearBtn = documentRef.createElement("button");
+    clearBtn.className = "repair-chat-composer__clear";
+    clearBtn.type = "button";
+    clearBtn.textContent = text(["chat", "clear"], "Clear");
+    clearBtn.dataset["repairAction"] = "clear-chat-composer";
+    composer.append(clearBtn);
+  }
 
   body.append(composer);
 

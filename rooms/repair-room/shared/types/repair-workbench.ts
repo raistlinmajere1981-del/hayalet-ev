@@ -36,10 +36,22 @@ export type RepairKnownLiveSourceType = "android-camera" | "image" | "snapshot";
 
 export type RepairLiveSourceType = RepairKnownLiveSourceType | (string & {});
 
+export interface RepairLivePreviewState {
+  source: "v4l2" | "mjpeg-stream";
+  devicePath: string;
+  streamUrl?: string | null;
+  contentType?: string | null;
+  label: string;
+  width: number;
+  height: number;
+  fps: number;
+}
+
 export interface RepairLiveSourceState {
   available: boolean;
   connected: boolean;
   sourceType?: RepairLiveSourceType;
+  preview?: RepairLivePreviewState | null;
 }
 
 export type RepairContextualCursor =

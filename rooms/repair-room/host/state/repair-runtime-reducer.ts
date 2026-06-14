@@ -52,6 +52,11 @@ export function reduceRepairRuntimeState(
           frozenAt: action.frozenAt,
         },
       };
+    case "operations/live-preview-set":
+      return {
+        ...state,
+        livePreview: action.preview,
+      };
     case "workbench/set-cursor":
       return {
         ...state,

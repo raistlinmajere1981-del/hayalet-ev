@@ -528,9 +528,16 @@ export function createRepairRoomUiRuntime() {
           tool: state.workbench.activeTool,
           frozen: state.workbench.isFrozen,
           frozenAt: state.workbench.frozenAt,
+          contextualCursor: state.workbench.contextualCursor,
+          operationalMode: state.workbench.operationalMode,
+          investigationModeEnabled: state.workbench.investigationModeEnabled,
+          liveSource: state.workbench.liveSource,
           viewport: state.workbench.viewport,
           layers: state.workbench.visibleLayers,
           cursor: state.workbench.cursor,
+          operationsAvailable: state.operationsAvailable,
+          operations: state.operations,
+          voiceReadiness: state.voiceReadiness,
           guidanceShape,
           layoutShape,
         });
@@ -1447,7 +1454,8 @@ export function createRepairRoomUiRuntime() {
     if (viewport !== null) {
       viewport.classList.toggle("repair-viewport--frozen", state.workbench.isFrozen);
       setDatasetIfChanged(viewport, "cursor", state.workbench.contextualCursor);
-      setDatasetIfChanged(viewport, "mode", state.workbench.operationalMode);
+      setDatasetIfChanged(viewport, "mode", getWorkbenchViewportMode());
+      setDatasetIfChanged(viewport, "liveSource", state.workbench.liveSource.sourceType ?? "image");
       const overlayHost = viewport.querySelector<HTMLElement>(
         "[data-repair-overlay-stage='workbench']"
       );
@@ -2717,6 +2725,10 @@ export function createRepairRoomUiRuntime() {
           }
           break;
         }
+        case "clear-chat-composer": {
+          setChatComposerDraft("");
+          break;
+        }
         case "send-feed-question": {
           const input = root.querySelector<HTMLInputElement>("[data-repair-input='feed-composer']");
           if (input && input.value.trim() !== "") {
@@ -2877,6 +2889,23 @@ export function createRepairRoomUiRuntime() {
     requestRuntime.scrubTimeline({ positionMs: Math.max(0, Math.round(positionMs)) });
   }
 
+  function getWorkbenchViewportMode(): string {
+    if (
+      state.workbench.investigationModeEnabled ||
+      state.workbench.operationalMode === "investigation"
+    ) {
+      return "investigation";
+    }
+    if (state.workbench.isFrozen || state.workbench.operationalMode === "freeze") return "freeze";
+    if (
+      state.workbench.timeline.replayMode === "replay" ||
+      state.workbench.operationalMode === "replay"
+    ) {
+      return "replay";
+    }
+    return "live";
+  }
+
   // -- Keyboard shortcuts
   function handleKeydown(e: KeyboardEvent): void {
     if (e.defaultPrevented) return;
@@ -2884,8 +2913,10 @@ export function createRepairRoomUiRuntime() {
 
     switch (e.key) {
       case "Tab":
-        e.preventDefault();
-        cycleOverlayEntity(e.shiftKey ? -1 : 1);
+        if (e.altKey) {
+          e.preventDefault();
+          cycleOverlayEntity(e.shiftKey ? -1 : 1);
+        }
         break;
       case "Enter": {
         const ref =
@@ -3000,6 +3031,35 @@ export function createRepairRoomUiRuntime() {
     requestRuntime.setChatComposer({ draft });
   }
 
+  function shouldStageDictationForConfirmation(): boolean {
+    return (
+      state.layout.voiceGuidance.handsBusyMode &&
+      state.layout.interactionSettings.dictationSubmitMode === "send"
+    );
+  }
+
+  function normalizeDictationCommand(textValue: string): string {
+    return textValue
+      .trim()
+      .toLocaleLowerCase("en-US")
+      .replace(/[.!?]+$/g, "")
+      .trim();
+  }
+
+  function handleStagedDictationCommand(commandText: string, stagedDraft: string): boolean {
+    const command = normalizeDictationCommand(commandText);
+    if (["send", "send it", "send message", "gönder", "mesajı gönder"].includes(command)) {
+      requestRuntime.sendChatTurn({ text: stagedDraft });
+      setChatComposerDraft("");
+      return true;
+    }
+    if (["clear", "discard", "cancel", "temizle", "iptal"].includes(command)) {
+      setChatComposerDraft("");
+      return true;
+    }
+    return false;
+  }
+
   function handleTranscriptIngress(msg: { isFinal: boolean; text: string }): void {
     if (msg.isFinal !== true) return;
     const transcriptText = msg.text.trim();
@@ -3007,10 +3067,20 @@ export function createRepairRoomUiRuntime() {
 
     const input = getChatComposerInput();
     const currentDraft = input?.value ?? state.chat.composerDraft;
+    const trimmedCurrentDraft = currentDraft.trim();
+    if (
+      shouldStageDictationForConfirmation() &&
+      trimmedCurrentDraft !== "" &&
+      handleStagedDictationCommand(transcriptText, trimmedCurrentDraft)
+    ) {
+      return;
+    }
+
     const nextDraft = mergeComposerDraft(currentDraft, transcriptText);
     const shouldSend =
       state.layout.interactionSettings.dictationSubmitMode === "send" &&
-      state.chat.pendingReplyId === null;
+      state.chat.pendingReplyId === null &&
+      !shouldStageDictationForConfirmation();
 
     if (shouldSend) {
       state.chat.composerDraft = "";

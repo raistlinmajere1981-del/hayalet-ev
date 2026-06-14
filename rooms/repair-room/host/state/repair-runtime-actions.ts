@@ -5,6 +5,7 @@ import type {
   RepairInstrumentKind,
   RepairInteractionSettingsState,
   RepairKnowledgePack,
+  RepairLivePreviewState,
   RepairMultimeterReading,
   RepairOperationalProfile,
   RepairOperatorProfile,
@@ -227,6 +228,10 @@ export type RepairRuntimeAction =
   | {
       type: "operations/status-set";
       status: RepairOperationsSnapshot | null;
+    }
+  | {
+      type: "operations/live-preview-set";
+      preview: RepairLivePreviewState | null;
     }
   | {
       type: "storage/set";

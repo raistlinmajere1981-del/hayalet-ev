@@ -18,6 +18,7 @@ import type {
   RepairOperatorProfile,
   RepairOverlayLayerId,
   RepairPanelId,
+  RepairLivePreviewState,
   RepairSession,
   RepairSessionListItem,
   RepairWizardState,
@@ -52,6 +53,7 @@ export interface RepairRuntimeState {
   chat: RepairChatState;
   layout: RepairLayoutState;
   operationsStatus: RepairOperationsSnapshot | null;
+  livePreview: RepairLivePreviewState | null;
   aiDispatch: RepairAiDispatchState;
   storage: RepairStorageState;
   ambientNowIso: string;
@@ -204,6 +206,7 @@ export function createInitialRepairRuntimeState(nowIso: string): RepairRuntimeSt
       ambientClock: nowIso,
     },
     operationsStatus: null,
+    livePreview: null,
     aiDispatch: createRepairDefaultAiDispatchState("ai2"),
     storage: createRepairDefaultStorageState(MOCK_REPAIR_SESSION_LIST.length),
     ambientNowIso: nowIso,
