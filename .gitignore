@@ -48,6 +48,7 @@ rooms/.build/
 
 # Config settings may contain sensitive data
 config/settings.json
+config/rooms.json
 
 # Settings (may contain sensitive data - legacy, now in config/)
 settings.json
