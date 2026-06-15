@@ -377,9 +377,16 @@ function getRepairCapturePreview(
   if (status === null) return null;
   const scrcpy = safeRecord(status["scrcpy"]);
   const analyze = safeRecord(status["analyze"]);
+  const scrcpyActiveSession = scrcpy === null ? null : safeRecord(scrcpy["activeSession"]);
   const scrcpyPreview = scrcpy === null ? null : scrcpy["previewVideo"];
+  const scrcpyActivePreview =
+    scrcpyActiveSession === null ? null : scrcpyActiveSession["previewVideo"];
   const analyzePreview = analyze === null ? null : analyze["previewVideo"];
-  return normalizeRepairLivePreview(scrcpyPreview) ?? normalizeRepairLivePreview(analyzePreview);
+  return (
+    normalizeRepairLivePreview(scrcpyPreview) ??
+    normalizeRepairLivePreview(scrcpyActivePreview) ??
+    normalizeRepairLivePreview(analyzePreview)
+  );
 }
 
 function safeImagePoint(value: unknown): RepairImagePoint | null {
@@ -1040,6 +1047,7 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
       let activeAmbientRequestId: string | null = null;
       let activeCameraFeedRequestId: string | null = null;
       let activeTtsRequestId: string | null = null;
+      let operationsProjectionBridgeStarted = false;
       let storageHydratePromise: Promise<void> | null = null;
       let storagePersistQueue: Promise<void> = Promise.resolve();
       let storageReady = false;
@@ -1549,10 +1557,14 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
       }
 
       function startOperationsProjectionBridge(): void {
+        if (operationsProjectionBridgeStarted) return;
+        operationsProjectionBridgeStarted = true;
         if (typeof api.operations?.getStatus === "function") {
           void Promise.resolve(api.operations.getStatus())
             .then((status) => {
+              if (disposed) return;
               applyOperationsStatus(status);
+              pushState();
             })
             .catch((error: unknown) => {
               api.log(
@@ -1566,7 +1578,9 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
 
         if (typeof api.operations?.subscribe === "function") {
           const unsubscribe = api.operations.subscribe((status) => {
+            if (disposed) return;
             applyOperationsStatus(status);
+            pushState();
           });
           if (typeof unsubscribe === "function") {
             operationsUnsubscribe = unsubscribe;
@@ -3444,6 +3458,7 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
       >;
 
       api.log("info", "Repair Room host activated.");
+      startOperationsProjectionBridge();
 
       return {
         onRoomReady(payload: unknown) {

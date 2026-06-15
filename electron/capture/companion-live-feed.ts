@@ -74,9 +74,9 @@ export class CompanionLiveFeedHub {
   }): { previewVideo: CaptureAnalyzePreviewVideoStatus; startedAt: number } {
     this.stop();
 
-    const streamUrl = `http://127.0.0.1:${String(options.bridgePort)}/api/v1/live/analyze/stream?deviceId=${encodeURIComponent(
+    const streamUrl = `http://127.0.0.1:${String(options.bridgePort)}/api/v1/live/camera/stream?deviceId=${encodeURIComponent(
       options.deviceId
-    )}&requestId=${encodeURIComponent(options.requestId)}`;
+    )}&target=${encodeURIComponent(options.target)}&requestId=${encodeURIComponent(options.requestId)}`;
     const previewVideo: CaptureAnalyzePreviewVideoStatus = {
       source: "mjpeg-stream",
       devicePath: streamUrl,
@@ -99,15 +99,33 @@ export class CompanionLiveFeedHub {
     return { previewVideo, startedAt };
   }
 
-  stop(): boolean {
-    const hadSession = this.activeSession !== null;
+  stop(options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}): boolean {
+    const session = this.activeSession;
+    if (session === null) {
+      return false;
+    }
+    if (
+      options.target !== undefined &&
+      options.target !== null &&
+      session.target !== options.target
+    ) {
+      return false;
+    }
+    if (
+      options.requestId !== undefined &&
+      options.requestId !== null &&
+      session.requestId !== options.requestId
+    ) {
+      return false;
+    }
+
     this.activeSession = null;
     this.latestFrame = null;
     for (const client of this.clients) {
       client.response.end();
     }
     this.clients.clear();
-    return hadSession;
+    return true;
   }
 
   getActivePreviewVideo(options: {

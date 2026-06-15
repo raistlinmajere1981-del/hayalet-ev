@@ -957,12 +957,19 @@ class RoomHostRuntimeClass {
       mode: "camera-feed" | "interactive-mirror",
       outcome: CaptureActionOutcome
     ): void => {
+      const preview =
+        outcome.status.scrcpy.previewVideo ??
+        outcome.status.scrcpy.activeSession?.previewVideo ??
+        outcome.status.analyze.previewVideo ??
+        null;
       registration.bridge?.sendToRoom({
         type: "capture-feed-status",
         payload: {
           requestId,
           mode,
+          ok: outcome.ok,
           outcome,
+          preview,
           scrcpy: outcome.status.scrcpy,
         },
       });

@@ -196,7 +196,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         )
     }
 
-    suspend fun submitAnalyzePreviewFrame(
+    suspend fun submitLiveCameraFrame(
         deviceId: String,
         target: String,
         requestId: String,
@@ -214,7 +214,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
                 android.util.Base64.encodeToString(frame.jpegBytes, android.util.Base64.NO_WRAP),
             )
         postJson(
-            "/api/v1/live/analyze/frame",
+            "/api/v1/live/camera/frame",
             payload,
             reportFailureToDiagnostics = false,
         )

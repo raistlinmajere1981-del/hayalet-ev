@@ -1,5 +1,9 @@
-import type { RepairAiMarkEvent, RepairMeasurementEvent } from "../types/index.js";
-import type { RepairUiState, RepairUiSnapshotMeta } from "./state.js";
+import type {
+  RepairAiMarkEvent,
+  RepairLivePreviewState,
+  RepairMeasurementEvent,
+} from "../types/index.js";
+import type { RepairUiSnapshotMeta, RepairUiState } from "./state.js";
 
 export interface RepairStateHostMessage {
   type: "repair-state";
@@ -48,13 +52,22 @@ export interface RepairTranscriptIngressHostMessage {
   metadata: Record<string, unknown> | null;
 }
 
+export interface RepairCaptureFeedStatusHostMessage {
+  type: "capture-feed-status";
+  requestId: string;
+  mode: "camera-feed" | "interactive-mirror";
+  ok: boolean;
+  preview: RepairLivePreviewState | null;
+}
+
 export type RepairHostMessage =
   | RepairStateHostMessage
   | RepairFeedEventHostMessage
   | RepairMeasurementReadingHostMessage
   | RepairChatReplyHostMessage
   | RepairResearchProgressHostMessage
-  | RepairTranscriptIngressHostMessage;
+  | RepairTranscriptIngressHostMessage
+  | RepairCaptureFeedStatusHostMessage;
 
 type RepairHostMessageRecord = Record<string, unknown>;
 
@@ -70,6 +83,22 @@ function unwrapHostPayload(value: unknown): RepairHostMessageRecord {
   return Object.keys(payload).length > 0 ? payload : envelope;
 }
 
+function isRepairUiState(value: unknown): value is RepairUiState {
+  return value !== null && typeof value === "object" && Array.isArray(value) === false;
+}
+
+function isRepairUiSnapshotMeta(value: unknown): value is RepairUiSnapshotMeta {
+  const record = toRecord(value);
+  return (
+    typeof record["schemaVersion"] === "number" &&
+    typeof record["generatedAt"] === "string" &&
+    Array.isArray(record["events"]) &&
+    value !== null &&
+    typeof value === "object" &&
+    Array.isArray(value) === false
+  );
+}
+
 export function normalizeRepairHostMessage(value: unknown): RepairHostMessage | null {
   const envelope = toRecord(value);
   const type = typeof envelope["type"] === "string" ? envelope["type"] : "";
@@ -78,13 +107,10 @@ export function normalizeRepairHostMessage(value: unknown): RepairHostMessage | 
   if (type === "repair-state") {
     const snapshot = payload["snapshot"];
     const meta = payload["meta"];
-    if (
-      typeof snapshot === "object" &&
-      snapshot !== null &&
-      typeof meta === "object" &&
-      meta !== null
-    ) {
-      return { type, snapshot: snapshot as RepairUiState, meta: meta as RepairUiSnapshotMeta };
+    if (isRepairUiState(snapshot) && isRepairUiSnapshotMeta(meta)) {
+      const nextSnapshot: RepairUiState = snapshot;
+      const nextMeta: RepairUiSnapshotMeta = meta;
+      return { type, snapshot: nextSnapshot, meta: nextMeta };
     }
   }
 
@@ -157,6 +183,27 @@ export function normalizeRepairHostMessage(value: unknown): RepairHostMessage | 
         isFinal,
         createdAt,
         metadata: metadata as Record<string, unknown> | null,
+      };
+    }
+  }
+
+  if (type === "capture-feed-status") {
+    const requestId = payload["requestId"];
+    const mode = payload["mode"];
+    const ok = payload["ok"];
+    const preview = payload["preview"];
+    if (
+      typeof requestId === "string" &&
+      (mode === "camera-feed" || mode === "interactive-mirror") &&
+      typeof ok === "boolean" &&
+      (preview === null || (typeof preview === "object" && Array.isArray(preview) === false))
+    ) {
+      return {
+        type,
+        requestId,
+        mode,
+        ok,
+        preview: preview as RepairLivePreviewState | null,
       };
     }
   }

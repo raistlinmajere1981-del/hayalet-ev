@@ -50,6 +50,7 @@ test("android companion keeps openWake ambient, Vosk dictation, and live camera 
     "utf8"
   );
   const captureServiceSource = readFileSync("electron/capture-service.ts", "utf8");
+  const companionLiveFeedSource = readFileSync("electron/capture/companion-live-feed.ts", "utf8");
   const captureTypesSource = readFileSync("electron/capture/types-and-defaults.ts", "utf8");
   const scrcpySessionManagerSource = readFileSync("electron/scrcpy-session-manager.ts", "utf8");
 
@@ -113,8 +114,10 @@ test("android companion keeps openWake ambient, Vosk dictation, and live camera 
   assert.match(transportSource, /BridgeAmbientOptions/);
   assert.match(transportSource, /optJSONObject\("ambient"\)/);
   assert.match(transportSource, /\/api\/v1\/ambient\/status/);
-  assert.match(transportSource, /\/api\/v1\/live\/analyze\/frame/);
-  assert.match(transportSource, /submitAnalyzePreviewFrame/);
+  assert.match(transportSource, /\/api\/v1\/live\/camera\/frame/);
+  assert.doesNotMatch(transportSource, /\/api\/v1\/live\/analyze\/frame/);
+  assert.match(transportSource, /submitLiveCameraFrame/);
+  assert.doesNotMatch(transportSource, /submitAnalyzePreviewFrame/);
   assert.doesNotMatch(transportSource, /submitAnalyzePreviewChunk/);
   assert.match(transportSource, /archiveFormat/);
   assert.match(transportSource, /downloadTranscriptModel/);
@@ -218,6 +221,8 @@ test("android companion keeps openWake ambient, Vosk dictation, and live camera 
   assert.match(captureServiceSource, /const previewActive =/);
   assert.match(captureServiceSource, /\/api\/v1\/transcript\/model/);
   assert.match(captureServiceSource, /\/api\/v1\/ambient\/status/);
+  assert.match(captureServiceSource, /\/api\/v1\/live\/camera\/frame/);
+  assert.match(captureServiceSource, /\/api\/v1\/live\/camera\/stream/);
   assert.match(captureServiceSource, /\/api\/v1\/live\/analyze\/frame/);
   assert.match(captureServiceSource, /\/api\/v1\/live\/analyze\/stream/);
   assert.match(captureServiceSource, /dropped: true/);
@@ -231,7 +236,11 @@ test("android companion keeps openWake ambient, Vosk dictation, and live camera 
   assert.doesNotMatch(captureServiceSource, /windows-camera-feed/);
   assert.match(captureServiceSource, /CompanionLiveFeedHub/);
   assert.match(captureServiceSource, /function shouldUseCompanionLiveFeed/);
-  assert.match(captureServiceSource, /return target === CAPTURE_ANALYZE_TARGET;/);
+  assert.match(captureServiceSource, /target === CAPTURE_ANALYZE_TARGET/);
+  assert.match(captureServiceSource, /target\?\.startsWith\("room:"\)/);
+  assert.match(companionLiveFeedSource, /\/api\/v1\/live\/camera\/stream/);
+  assert.doesNotMatch(companionLiveFeedSource, /\/api\/v1\/live\/analyze\/stream/);
+  assert.match(companionLiveFeedSource, /target=\$\{encodeURIComponent\(options\.target\)\}/);
   assert.match(captureServiceSource, /existingBridgeSession/);
   assert.match(captureServiceSource, /queuePendingBridgeCommand/);
   assert.match(captureServiceSource, /buildImmediateActionOutcome/);

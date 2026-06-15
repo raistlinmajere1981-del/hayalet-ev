@@ -123,48 +123,72 @@ export async function executeBash(
     const child = spawn(shellInvocation.command, shellInvocation.args, {
       cwd: workspacePath,
       env: { ...process.env },
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
     let stdout = "";
     let stderr = "";
     let timedOut = false;
+    let settled = false;
+    const maxOutput = 50000;
+    const foregroundWaitMs = Math.min(Math.max(timeout - 1_000, 1_000), 8_000);
+
+    function appendOutput(current: string, data: unknown): string {
+      const next = current + chunkToString(data);
+      return next.length > maxOutput ? next.slice(0, maxOutput) : next;
+    }
+
+    function resolveOnce(result: BashResult): void {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      clearTimeout(foregroundWaitId);
+      resolve(result);
+    }
 
     const timeoutId = setTimeout(() => {
       timedOut = true;
       child.kill("SIGTERM");
     }, timeout);
 
+    const foregroundWaitId = setTimeout(() => {
+      if (isBackground) return;
+      child.stdout.pause();
+      child.stderr.pause();
+      child.unref();
+      resolveOnce({
+        stdout:
+          `${bashT(t, "backgroundStarted")}\n` +
+          `PID: ${child.pid ?? "unknown"}\n` +
+          "Command is still running; use a normal terminal for long foreground output.",
+        stderr,
+        exitCode: 0,
+        ...(typeof child.pid === "number" ? { pid: child.pid } : {}),
+        success: true,
+      });
+    }, foregroundWaitMs);
+
     child.stdout.on("data", (data: unknown) => {
-      stdout += chunkToString(data);
+      stdout = appendOutput(stdout, data);
     });
 
     child.stderr.on("data", (data: unknown) => {
-      stderr += chunkToString(data);
+      stderr = appendOutput(stderr, data);
     });
 
     child.on("close", (code) => {
-      clearTimeout(timeoutId);
+      const truncatedStdout =
+        stdout.length >= maxOutput
+          ? `${stdout}\n... ${bashT(t, "truncated", { count: "unknown" })}`
+          : stdout;
+      const truncatedStderr =
+        stderr.length >= maxOutput
+          ? `${stderr}\n... ${bashT(t, "truncated", { count: "unknown" })}`
+          : stderr;
 
-      const maxOutput = 50000;
-      if (stdout.length > maxOutput) {
-        stdout =
-          stdout.slice(0, maxOutput) +
-          `\n... ${bashT(t, "truncated", {
-            count: stdout.length - maxOutput,
-          })}`;
-      }
-      if (stderr.length > maxOutput) {
-        stderr =
-          stderr.slice(0, maxOutput) +
-          `\n... ${bashT(t, "truncated", {
-            count: stderr.length - maxOutput,
-          })}`;
-      }
-
-      resolve({
-        stdout,
-        stderr,
+      resolveOnce({
+        stdout: truncatedStdout,
+        stderr: truncatedStderr,
         exitCode: code ?? (timedOut ? 124 : 1),
         ...(typeof child.pid === "number" ? { pid: child.pid } : {}),
         timedOut,
@@ -172,8 +196,7 @@ export async function executeBash(
     });
 
     child.on("error", (err) => {
-      clearTimeout(timeoutId);
-      resolve({
+      resolveOnce({
         stdout,
         stderr: err.message,
         exitCode: 1,
@@ -181,9 +204,8 @@ export async function executeBash(
     });
 
     if (isBackground) {
-      clearTimeout(timeoutId);
       setTimeout(() => {
-        resolve({
+        resolveOnce({
           stdout: bashT(t, "backgroundStarted"),
           stderr: "",
           exitCode: 0,

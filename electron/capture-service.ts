@@ -173,7 +173,7 @@ function createCompanionBuildScriptEnv(): NodeJS.ProcessEnv {
 }
 
 function shouldUseCompanionLiveFeed(target: TranscriptTargetId | null): boolean {
-  return target === CAPTURE_ANALYZE_TARGET;
+  return target === CAPTURE_ANALYZE_TARGET || target?.startsWith("room:") === true;
 }
 
 class CaptureService {
@@ -892,8 +892,8 @@ class CaptureService {
       );
     }
 
-    if (target === CAPTURE_ANALYZE_TARGET) {
-      const useCompanionLiveFeed = shouldUseCompanionLiveFeed(target);
+    const useCompanionLiveFeed = shouldUseCompanionLiveFeed(target);
+    if (useCompanionLiveFeed) {
       const existingBridgeSession = this.getBridgeSessionForTarget(deviceId, target, {
         requirePreviewActive: false,
       });
@@ -921,17 +921,36 @@ class CaptureService {
         { replaceExistingKinds: ["open-camera"] }
       );
 
-      if (useCompanionLiveFeed) {
-        const { width, height } = parseCaptureSize(CAPTURE_SCRCPY_CAMERA_SIZE);
-        const liveFeed = this.companionLiveFeed.start({
-          bridgePort: this.bridgeState.port,
+      const { width, height } = parseCaptureSize(CAPTURE_SCRCPY_CAMERA_SIZE);
+      const liveFeed = this.companionLiveFeed.start({
+        bridgePort: this.bridgeState.port,
+        deviceId,
+        target,
+        requestId,
+        width,
+        height,
+        fps: Math.min(CAPTURE_SCRCPY_CAMERA_FPS, 10),
+      });
+      const statusWithLivePreview: CaptureServiceStatus = {
+        ...status,
+        scrcpy: {
+          ...status.scrcpy,
+          activeSession: {
+            mode: "camera-feed",
+            deviceId,
+            target,
+            requestId,
+            startedAt: liveFeed.startedAt,
+            previewVideo: liveFeed.previewVideo,
+          },
+          mode: "camera-feed",
           deviceId,
           target,
-          requestId,
-          width,
-          height,
-          fps: Math.min(CAPTURE_SCRCPY_CAMERA_FPS, 10),
-        });
+          startedAt: liveFeed.startedAt,
+          previewVideo: liveFeed.previewVideo,
+        },
+      };
+      if (target === CAPTURE_ANALYZE_TARGET) {
         this.analyzeState = {
           ...this.analyzeState,
           state: "ready",
@@ -941,14 +960,14 @@ class CaptureService {
           pendingCommand: null,
           message: "Android companion live camera feed was started.",
         };
-        this.lastStatus = null;
-        return this.buildImmediateActionOutcome(
-          action,
-          true,
-          "Android companion live camera feed was started.",
-          status
-        );
       }
+      this.lastStatus = null;
+      return this.buildImmediateActionOutcome(
+        action,
+        true,
+        "Android companion live camera feed was started.",
+        statusWithLivePreview
+      );
     }
 
     const started = await this.startScrcpyCameraFeed({
@@ -984,12 +1003,12 @@ class CaptureService {
     const target = options.target ?? CAPTURE_ANALYZE_TARGET;
     const requestId = normalizeText(options.requestId);
     const activeSession = this.scrcpyHub.getActiveSessionStatus();
-    const stoppedLiveFeed = this.companionLiveFeed.stop();
+    const stoppedLiveFeed = this.companionLiveFeed.stop({ target, requestId });
     const stoppedScrcpyFeed = await this.stopScrcpyCameraFeed();
     const stopped = stoppedLiveFeed || stoppedScrcpyFeed;
     if (
-      target === CAPTURE_ANALYZE_TARGET &&
-      (stoppedLiveFeed === true || action === "stop-analyze-preview")
+      stoppedLiveFeed === true ||
+      (target === CAPTURE_ANALYZE_TARGET && action === "stop-analyze-preview")
     ) {
       const status = await this.refreshStatus();
       const deviceId = this.resolveAnalyzeCommandDeviceId(status, false);
@@ -1005,9 +1024,10 @@ class CaptureService {
       }
     }
     if (
-      activeSession?.target === CAPTURE_ANALYZE_TARGET ||
-      stoppedLiveFeed === true ||
-      action === "stop-analyze-preview"
+      target === CAPTURE_ANALYZE_TARGET &&
+      (activeSession?.target === CAPTURE_ANALYZE_TARGET ||
+        stoppedLiveFeed === true ||
+        action === "stop-analyze-preview")
     ) {
       this.analyzeState = {
         ...this.analyzeState,
@@ -1850,7 +1870,10 @@ class CaptureService {
         return;
       }
 
-      if (method === "GET" && requestUrl.pathname === "/api/v1/live/analyze/stream") {
+      const isLiveCameraStreamRequest =
+        requestUrl.pathname === "/api/v1/live/camera/stream" ||
+        requestUrl.pathname === "/api/v1/live/analyze/stream";
+      if (method === "GET" && isLiveCameraStreamRequest) {
         const attached = this.companionLiveFeed.attachClient({
           response,
           deviceId: normalizeText(requestUrl.searchParams.get("deviceId")),
@@ -1865,7 +1888,10 @@ class CaptureService {
         return;
       }
 
-      if (method === "POST" && requestUrl.pathname === "/api/v1/live/analyze/frame") {
+      const isLiveCameraFrameRequest =
+        requestUrl.pathname === "/api/v1/live/camera/frame" ||
+        requestUrl.pathname === "/api/v1/live/analyze/frame";
+      if (method === "POST" && isLiveCameraFrameRequest) {
         const body = await this.readJsonBody(request);
         const payload = this.normalizeCompanionLiveFramePayload(body);
         if (payload === null) {

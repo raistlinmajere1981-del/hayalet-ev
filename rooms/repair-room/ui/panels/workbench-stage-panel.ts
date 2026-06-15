@@ -262,43 +262,21 @@ function getCameraHealthText(
   };
 }
 
-function appendCameraHealthHud(
+function appendCameraStatusChip(
   documentRef: Document,
-  viewport: HTMLElement,
+  parent: HTMLElement,
   state: RepairUiState,
   cameraActive: boolean,
   cameraSource: string
 ): void {
   const health = getCameraHealthText(state, cameraActive, cameraSource);
-  const hud = documentRef.createElement("div");
-  hud.className = "repair-camera-hud";
-  hud.dataset["state"] = getCameraHealthState(state, cameraActive);
-
-  const status = documentRef.createElement("div");
-  status.className = "repair-camera-hud__status";
-  status.textContent = health.status;
-  hud.append(status);
-
-  const detail = documentRef.createElement("div");
-  detail.className = "repair-camera-hud__detail";
-  detail.textContent = health.detail;
-  hud.append(detail);
-
-  const action = documentRef.createElement("div");
-  action.className = "repair-camera-hud__action";
-  action.textContent = health.action;
-  hud.append(action);
-
-  const steps = documentRef.createElement("div");
-  steps.className = "repair-camera-hud__steps";
-  ["Frame board", "Check light", "Align overlay"].forEach((step) => {
-    const item = documentRef.createElement("span");
-    item.textContent = step;
-    steps.append(item);
-  });
-  hud.append(steps);
-
-  viewport.append(hud);
+  const chip = documentRef.createElement("span");
+  chip.className = "repair-camera-status-chip";
+  chip.dataset["state"] = getCameraHealthState(state, cameraActive);
+  chip.dataset["repairCameraStatus"] = "true";
+  chip.textContent = health.status;
+  chip.title = `${health.detail} ${health.action}`;
+  parent.append(chip);
 }
 
 export function renderWorkbenchStagePanel(
@@ -435,6 +413,7 @@ export function renderWorkbenchStagePanel(
   cameraButton.dataset["repairControl"] = "camera-feed";
   cameraButton.dataset["active"] = String(cameraActive);
   guidanceControls.append(cameraButton);
+  appendCameraStatusChip(documentRef, guidanceControls, state, cameraActive, cameraSource);
 
   const ttsButton = documentRef.createElement("button");
   ttsButton.type = "button";
@@ -641,8 +620,6 @@ export function renderWorkbenchStagePanel(
   overlayHost.className = "repair-overlay-stage";
   overlayHost.dataset["repairOverlayStage"] = "workbench";
   viewport.append(overlayHost);
-
-  appendCameraHealthHud(documentRef, viewport, state, cameraActive, cameraSource);
 
   // -- Coordinate HUD
   const hud = documentRef.createElement("div");

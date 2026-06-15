@@ -360,7 +360,7 @@ class CompanionSessionCoordinator(
 
         scope.launch(Dispatchers.IO) {
             try {
-                bridgeClient.submitAnalyzePreviewFrame(
+                bridgeClient.submitLiveCameraFrame(
                     deviceId = launchContext.deviceId,
                     target = target,
                     requestId = requestId,

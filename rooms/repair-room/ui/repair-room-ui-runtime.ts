@@ -1,6 +1,7 @@
 import type {
   RepairEvent,
   RepairImageRect,
+  RepairLivePreviewState,
   RepairPanelId,
   RepairSettingsOverlayTabId,
   RepairWorkbenchViewport,
@@ -141,6 +142,45 @@ export function getRepairDockLayoutProjection(
 function easeOutPower2(progress: number): number {
   const remaining = 1 - progress;
   return 1 - remaining * remaining;
+}
+
+function getCameraStatusChipState(
+  state: RepairUiState,
+  cameraActive: boolean
+): "live" | "ready" | "manual" | "unavailable" {
+  if (!state.operationsAvailable) return "unavailable";
+  if (cameraActive) return "live";
+  if (state.workbench.liveSource.connected || state.workbench.liveSource.available) return "ready";
+  return "manual";
+}
+
+function getCameraSourceLabel(state: RepairUiState): string {
+  const sourceType = state.workbench.liveSource.sourceType;
+  if (sourceType === "android-camera") return "Android camera";
+  if (sourceType === "snapshot") return "Snapshot";
+  if (sourceType === "image") return "Board image";
+  return state.layout.interactionSettings.cameraFeedPreference === "android-feed"
+    ? "Android camera"
+    : "Manual image";
+}
+
+function getCameraStatusChipText(state: RepairUiState, cameraActive: boolean): string {
+  const cameraSource = getCameraSourceLabel(state);
+  if (!state.operationsAvailable) return "Camera unavailable";
+  if (cameraActive) return `${cameraSource} live`;
+  if (state.workbench.liveSource.connected) return `${cameraSource} connected`;
+  if (state.workbench.liveSource.available) return `${cameraSource} ready`;
+  return "Manual board image";
+}
+
+function getCameraStatusChipTitle(state: RepairUiState, cameraActive: boolean): string {
+  if (!state.operationsAvailable) {
+    return "Camera feed is optional. Open repair controls if you need companion access.";
+  }
+  if (cameraActive) return "Camera feed is live. Freeze the frame before probing tight areas.";
+  if (state.workbench.liveSource.connected) return "Camera is connected but not marked live.";
+  if (state.workbench.liveSource.available) return "Camera source is ready when needed.";
+  return "Use a manual board image or start the Android camera when needed.";
 }
 
 function interpolateWorkbenchViewport(
@@ -1523,10 +1563,33 @@ export function createRepairRoomUiRuntime() {
       const overlayHost = viewport.querySelector<HTMLElement>(
         "[data-repair-overlay-stage='workbench']"
       );
+      const existingLiveFrame = viewport.querySelector<HTMLImageElement>(
+        ".repair-viewport__live-frame"
+      );
       const existingImage = viewport.querySelector<HTMLImageElement>(".repair-viewport__image");
       const existingPlaceholder = viewport.querySelector<HTMLElement>(".repair-empty-state");
       const session = state.sessions.detail;
-      if (session !== null && session.pcbImage !== null) {
+      const livePreview = state.workbench.liveSource.preview;
+      const liveStreamUrl =
+        livePreview?.source === "mjpeg-stream" &&
+        livePreview.streamUrl !== null &&
+        livePreview.streamUrl !== undefined
+          ? livePreview.streamUrl.trim()
+          : "";
+
+      if (liveStreamUrl !== "") {
+        const liveFrame = existingLiveFrame ?? documentRef.createElement("img");
+        setClassNameIfChanged(liveFrame, "repair-viewport__live-frame");
+        if (liveFrame.getAttribute("src") !== liveStreamUrl) liveFrame.src = liveStreamUrl;
+        liveFrame.alt = livePreview?.label ?? "Android camera live feed";
+        if (liveFrame.draggable) liveFrame.draggable = false;
+        existingImage?.remove();
+        existingPlaceholder?.remove();
+        if (existingLiveFrame === null) {
+          viewport.insertBefore(liveFrame, overlayHost ?? viewport.firstChild);
+        }
+      } else if (session !== null && session.pcbImage !== null) {
+        existingLiveFrame?.remove();
         const resolvedSrc = resolveRepairAssetUrl(session.pcbImage.src) ?? session.pcbImage.src;
         const image = existingImage ?? documentRef.createElement("img");
         setClassNameIfChanged(image, "repair-viewport__image");
@@ -1544,6 +1607,7 @@ export function createRepairRoomUiRuntime() {
           viewport.insertBefore(image, overlayHost ?? viewport.firstChild);
         }
       } else {
+        existingLiveFrame?.remove();
         existingImage?.remove();
         if (existingPlaceholder === null) {
           const placeholder = createWorkbenchEmptyState();
@@ -1649,6 +1713,14 @@ export function createRepairRoomUiRuntime() {
       if (cameraButton.title !== nextTitle) cameraButton.title = nextTitle;
       setDatasetIfChanged(cameraButton, "repairAction", "toggle-camera-feed");
       setDatasetIfChanged(cameraButton, "active", String(cameraActive));
+    }
+
+    const cameraChip = panel.querySelector<HTMLElement>("[data-repair-camera-status='true']");
+    if (cameraChip !== null) {
+      setTextIfChanged(cameraChip, getCameraStatusChipText(state, cameraActive));
+      const chipTitle = getCameraStatusChipTitle(state, cameraActive);
+      if (cameraChip.title !== chipTitle) cameraChip.title = chipTitle;
+      setDatasetIfChanged(cameraChip, "state", getCameraStatusChipState(state, cameraActive));
     }
 
     const ttsButton = panel.querySelector<HTMLElement>("[data-repair-control='tts-route']");
@@ -3155,6 +3227,44 @@ export function createRepairRoomUiRuntime() {
     setChatComposerDraft(nextDraft);
   }
 
+  function handleCaptureFeedStatus(msg: {
+    ok: boolean;
+    preview: RepairLivePreviewState | null;
+  }): void {
+    state.operationsAvailable = true;
+    if (msg.ok === true) {
+      state.operations = {
+        ...state.operations,
+        cameraActive: true,
+        liveFeedActive: true,
+        activeCapabilities: Array.from(
+          new Set([...state.operations.activeCapabilities, "android-camera", "live-feed"])
+        ),
+      };
+      state.workbench.liveSource = {
+        available: true,
+        connected: true,
+        sourceType: "android-camera",
+        preview: msg.preview,
+      };
+    } else {
+      state.operations = {
+        ...state.operations,
+        cameraActive: false,
+        liveFeedActive: false,
+        activeCapabilities: state.operations.activeCapabilities.filter(
+          (capability) => capability !== "android-camera" && capability !== "live-feed"
+        ),
+      };
+      state.workbench.liveSource = {
+        ...state.workbench.liveSource,
+        connected: false,
+        preview: null,
+      };
+    }
+    render();
+  }
+
   // -- Host message handler
   function handleHostMessage(message: unknown): void {
     const msg = normalizeRepairHostMessage(message);
@@ -3162,11 +3272,12 @@ export function createRepairRoomUiRuntime() {
 
     switch (msg.type) {
       case "repair-state": {
+        const nextMeta: RepairUiSnapshotMeta = msg.meta;
         Object.assign(state, msg.snapshot);
-        meta.schemaVersion = msg.meta.schemaVersion;
-        meta.generatedAt = msg.meta.generatedAt;
-        meta.events = msg.meta.events;
-        meta.replay = msg.meta.replay;
+        meta.schemaVersion = nextMeta.schemaVersion;
+        meta.generatedAt = nextMeta.generatedAt;
+        meta.events = nextMeta.events;
+        meta.replay = nextMeta.replay;
         render();
         syncSpatialFocusTween();
         applyLiveSnapshotUpdates();
@@ -3234,6 +3345,11 @@ export function createRepairRoomUiRuntime() {
         render();
         break;
       }
+      case "capture-feed-status": {
+        handleCaptureFeedStatus(msg);
+        break;
+      }
+
       case "transcript-ingress": {
         handleTranscriptIngress(msg);
         break;

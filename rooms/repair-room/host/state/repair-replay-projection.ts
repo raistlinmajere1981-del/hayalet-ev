@@ -1710,13 +1710,28 @@ function buildOperationsProjection(state: RepairRuntimeState): {
 } {
   const status = state.operationsStatus;
   if (status === null || status.updatedAt <= 0) {
+    if (state.livePreview !== null) {
+      return {
+        operationsAvailable: true,
+        operations: {
+          ...createRepairDefaultOperationsProjection(),
+          cameraActive: true,
+          liveFeedActive: true,
+          activeCapabilities: ["android-camera", "live-feed"],
+        },
+      };
+    }
+
     return {
       operationsAvailable: false,
       operations: createRepairDefaultOperationsProjection(),
     };
   }
 
-  const activeCapabilities = uniqueStrings(status.records.map((record) => record.capability));
+  const activeCapabilities = uniqueStrings([
+    ...status.records.map((record) => record.capability),
+    ...(state.livePreview === null ? [] : ["android-camera", "live-feed"]),
+  ]);
   const firstOwner = status.records[0]?.owner ?? null;
   const operations: RepairOperationsProjection = {
     localMicActive: hasOperationCapability(activeCapabilities, "local-microphone"),

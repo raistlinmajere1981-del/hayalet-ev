@@ -30,6 +30,7 @@ import type {
   RepairSession,
   RepairSessionListItem,
 } from "../../rooms/repair-room/shared/types/index.ts";
+import type { OperationsStatus } from "../../src/types/operations.ts";
 
 function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -898,7 +899,30 @@ test("repair-room bridges hands-free capture and TTS commands through RoomHost A
       startCameraFeed: async (requestId = "") => {
         activeRequestIds["camera"] = requestId;
         calls.push(`start-camera:${requestId}`);
-        return { requestId, outcome: { ok: true } };
+        return {
+          requestId,
+          outcome: {
+            ok: true,
+            status: {
+              scrcpy: {
+                activeSession: {
+                  previewVideo: {
+                    source: "mjpeg-stream",
+                    devicePath:
+                      "http://127.0.0.1:4765/api/v1/live/camera/stream?target=room%3Arepair-room",
+                    streamUrl:
+                      "http://127.0.0.1:4765/api/v1/live/camera/stream?target=room%3Arepair-room",
+                    contentType: "multipart/x-mixed-replace; boundary=hayalet-ev-live-frame",
+                    label: "Hayalet Ev Companion Live Camera",
+                    width: 1280,
+                    height: 720,
+                    fps: 10,
+                  },
+                },
+              },
+            },
+          },
+        };
       },
       stopCameraFeed: async (requestId = "") => {
         calls.push(`stop-camera:${requestId}`);
@@ -941,6 +965,11 @@ test("repair-room bridges hands-free capture and TTS commands through RoomHost A
   assert.match(activeRequestIds["dictation"] ?? "", /^repair-room:dictation:/);
   assert.match(activeRequestIds["ambient"] ?? "", /^repair-room:ambient:/);
   assert.match(activeRequestIds["camera"] ?? "", /^repair-room:camera:/);
+  assert.equal(runtime.getStateSnapshot().state.livePreview?.source, "mjpeg-stream");
+  assert.equal(
+    runtime.getStateSnapshot().state.livePreview?.streamUrl,
+    "http://127.0.0.1:4765/api/v1/live/camera/stream?target=room%3Arepair-room"
+  );
   assert.match(activeRequestIds["tts"] ?? "", /^repair-room:tts:/);
   assert.ok(calls.some((call) => call.startsWith("speak:android:tr:Bir sonraki adimi oku.")));
 
@@ -2119,6 +2148,70 @@ test("repair-room P3.5 keeps operations projection optional for standalone room 
   });
 
   runtime.dispose();
+});
+
+test("repair-room P3.5 starts operations bridge and pushes live camera status", async () => {
+  const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
+  const subscribers: Array<(status: OperationsStatus) => void> = [];
+  let unsubscribed = false;
+  const initialStatus: OperationsStatus = {
+    updatedAt: 0,
+    records: [],
+  };
+  const liveStatus: OperationsStatus = {
+    updatedAt: 1,
+    records: [
+      {
+        capability: "android-camera",
+        owner: { id: "repair-room", label: "Repair Room", roomId: "repair-room" },
+        startedAt: 1,
+      },
+      {
+        capability: "live-feed",
+        owner: { id: "repair-room", label: "Repair Room", roomId: "repair-room" },
+        startedAt: 2,
+      },
+    ],
+  };
+
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: (type, payload) => {
+      notifications.push({ type, payload });
+    },
+    operations: {
+      getStatus: async () => initialStatus,
+      subscribe: (listener: (status: OperationsStatus) => void) => {
+        subscribers.push(listener);
+        return () => {
+          unsubscribed = true;
+        };
+      },
+    },
+  });
+
+  await Promise.resolve();
+  assert.equal(runtime.getStateSnapshot().state.operationsStatus?.updatedAt, 0);
+  assert.equal(subscribers.length, 1);
+
+  subscribers.at(-1)?.(liveStatus);
+  const snapshot = runtime.getStateSnapshot().state;
+  const session = snapshot.sessions[snapshot.activeSessionId ?? ""];
+  assert.ok(session);
+  const projection = createRepairReplayProjection(snapshot, session);
+  assert.equal(projection.operationsAvailable, true);
+  assert.equal(projection.operations.cameraActive, true);
+  assert.equal(projection.operations.liveFeedActive, true);
+  assert.deepEqual(projection.liveSource, {
+    available: true,
+    connected: true,
+    sourceType: "android-camera",
+    preview: null,
+  });
+  assert.ok(notifications.some((entry) => entry.type === "repair-state"));
+
+  runtime.dispose();
+  assert.equal(unsubscribed, true);
 });
 
 test("repair-room P3.5 projects central operations status without owning capabilities", () => {
