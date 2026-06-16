@@ -51,8 +51,8 @@ export function formatRepairStorageSummary(storage: RepairStorageState): string 
     return storage.message;
   }
   if (storage.status === "error") return "Repair history error";
-  if (storage.status === "fallback") return "Temporary repair memory";
-  return "Demo repair memory";
+  if (storage.status === "fallback") return "Repair history limited to current session";
+  return "Repair history not connected";
 }
 
 export function getRepairRoomSyncRows(

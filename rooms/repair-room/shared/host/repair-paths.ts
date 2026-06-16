@@ -3,6 +3,7 @@ type RepairRuntimePathsRecord = Record<string, unknown> & {
 };
 
 export interface RepairRoomPaths {
+  operatorProfileFilePath: string;
   roomStorageDir: string;
   sessionsDir: string;
 }
@@ -28,6 +29,7 @@ export function createRepairRoomPaths(runtimePaths: unknown): RepairRoomPaths {
     throw new Error("Repair room storage path is unavailable.");
   }
   return {
+    operatorProfileFilePath: `${roomStorageDir}/operator-profile.json`,
     roomStorageDir,
     sessionsDir: `${roomStorageDir}/sessions`,
   };

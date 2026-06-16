@@ -24,7 +24,10 @@ import {
 } from "../../rooms/repair-room/shared/repair-action-registry.ts";
 import { normalizeRepairHostMessage } from "../../rooms/repair-room/shared/ui/host-messages.ts";
 import { createRepairDefaultGuidanceProjection } from "../../rooms/repair-room/shared/ui/state.ts";
-import type { RepairStoredSessionRecord } from "../../rooms/repair-room/host/repair-session-storage.ts";
+import type {
+  RepairStoredOperatorProfileRecord,
+  RepairStoredSessionRecord,
+} from "../../rooms/repair-room/host/repair-session-storage.ts";
 import type {
   RepairChatTurn,
   RepairSession,
@@ -77,6 +80,7 @@ function createStoredRepairRecord(
 
 function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] = []) {
   const records = new Map<string, RepairStoredSessionRecord>();
+  let operatorProfileRecord: RepairStoredOperatorProfileRecord | null = null;
   initialRecords.forEach((record) => {
     records.set(record.session.id, cloneJson(record));
   });
@@ -89,6 +93,7 @@ function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] =
     listSessionRecords: async () => listRecords().map((record) => cloneJson(record)),
     listSessions: async () =>
       listRecords().map((record) => toStoredSessionListItem(record.session)),
+    loadOperatorProfileRecord: async () => cloneJson(operatorProfileRecord),
     loadLatestSessionRecord: async () => cloneJson(listRecords()[0] ?? null),
     loadSessionRecord: async (_runtimePaths: unknown, sessionId: string) =>
       cloneJson(records.get(sessionId) ?? null),
@@ -102,6 +107,21 @@ function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] =
       );
       records.set(nextRecord.session.id, nextRecord);
       return cloneJson(nextRecord);
+    },
+    saveOperatorProfileRecord: async (
+      _runtimePaths: unknown,
+      profile: RepairStoredOperatorProfileRecord["profile"]
+    ) => {
+      operatorProfileRecord = {
+        profile: cloneJson(profile),
+        roomId: REPAIR_ROOM_ID,
+        savedAt: new Date().toISOString(),
+        schemaVersion: 1,
+      };
+      return cloneJson(operatorProfileRecord);
+    },
+    readOperatorProfileRecord(): unknown {
+      return cloneJson(operatorProfileRecord);
     },
     readRecord(sessionId: string): RepairStoredSessionRecord | null {
       return cloneJson(records.get(sessionId) ?? null);
@@ -219,6 +239,24 @@ test("repair-room runtime handles the advertised interactive Phase 1 commands", 
   assert.equal(measurementState.recent[0]?.reference, "U14 VCC");
 
   assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addTimelineEvent, {
+      kind: "snapshot",
+      caption: "Android companion frame captured.",
+      thumbnailSrc: "/tmp/repair-frame.jpg",
+    }).success,
+    true
+  );
+  const snapshotEvent = runtime
+    .getStateSnapshot()
+    .state.sessions[
+      MOCK_REPAIR_ACTIVE_SESSION_ID
+    ]?.events.find((event) => event.kind === "snapshot" && event.caption === "Android companion frame captured.");
+  assert.equal(snapshotEvent?.kind, "snapshot");
+  if (snapshotEvent?.kind === "snapshot") {
+    assert.equal(snapshotEvent.thumbnailSrc, "/tmp/repair-frame.jpg");
+  }
+
+  assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "Check standby rail" }).success,
     true
   );
@@ -288,6 +326,66 @@ test("repair-room chat uses live protocol bridge guidance", async () => {
     "Measure 5V_STBY first, then compare it with the knowledge-pack expected rail."
   );
   assert.equal(chatState.turns.at(-1)?.contextRefs.includes("tp-5v-stby"), true);
+
+  runtime.dispose();
+});
+
+test("repair-room chat can apply safe AI room commands and reject malformed commands", async () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+    dispatchBridge: async () => ({
+      success: true,
+      reply: {
+        text: JSON.stringify({
+          replyText: "I marked the next safe measurement point.",
+          contextRefs: ["tp-ai-safe"],
+          roomCommands: [
+            {
+              commandName: REPAIR_UI_COMMANDS.addTimelineEvent,
+              payload: {
+                kind: "annotation",
+                tool: "rect",
+                label: "AI suggested safe probe area",
+                xPx: 420,
+                yPx: 240,
+                widthPx: 120,
+                heightPx: 80,
+              },
+              reason: "Operator asked for the next safe visual target.",
+            },
+            {
+              commandName: "RepairRoomDeleteSession",
+              payload: {},
+            },
+          ],
+        }),
+      },
+    }),
+    getLocale: () => "en",
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "Mark the next safe target" })
+      .success,
+    true
+  );
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  assert.equal(
+    session.events.some(
+      (event) => event.kind === "annotation" && event.label === "AI suggested safe probe area"
+    ),
+    true
+  );
+  assert.equal(state.aiDispatch.chat.status, "succeeded");
+  assert.match(state.aiDispatch.chat.message ?? "", /1\/1 room command applied/);
+  assert.match(state.aiDispatch.chat.message ?? "", /1 malformed room command ignored/);
 
   runtime.dispose();
 });
@@ -828,6 +926,94 @@ test("repair-room updates room-local hands-free interaction settings", () => {
   );
 
   runtime.dispose();
+});
+
+test("repair-room patches operator profile equipment, skills, preferences, and adaptation", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateOperatorProfile, {
+      displayName: "Mobile Bench",
+      preferences: {
+        aiVerbosity: "detailed",
+        annotationDefaultStrokeWidth: 4,
+        riskTolerance: "low",
+      },
+      skills: [{ id: "smps-repair", proficiency: 5 }],
+      tools: [
+        { id: "bench-psu", available: false },
+        { id: "hot-air-quick861d", available: false },
+      ],
+      safety: [{ id: "fume-extractor", available: false }],
+    }).success,
+    true
+  );
+
+  const profile = runtime.getStateSnapshot().state.operatorProfile;
+  assert.equal(profile.displayName, "Mobile Bench");
+  assert.equal(profile.preferences.aiVerbosity, "detailed");
+  assert.equal(profile.preferences.annotationDefaultStrokeWidth, 4);
+  assert.equal(profile.preferences.riskTolerance, "low");
+  assert.equal(profile.skills.find((skill) => skill.id === "smps-repair")?.proficiency, 5);
+  assert.equal(profile.bench.tools.find((tool) => tool.id === "bench-psu")?.available, false);
+  assert.equal(
+    profile.bench.tools.find((tool) => tool.id === "hot-air-quick861d")?.available,
+    false
+  );
+  assert.equal(profile.bench.safety.find((item) => item.id === "fume-extractor")?.available, false);
+  assert.equal(runtime.getStateSnapshot().state.operatorAdaptation.hasBenchPsu, false);
+  assert.equal(runtime.getStateSnapshot().state.operatorAdaptation.hasHotAirStation, false);
+  assert.equal(runtime.getStateSnapshot().state.operatorAdaptation.hasMicroscope, true);
+
+  runtime.dispose();
+});
+
+test("repair-room persists operator profile to room-local storage and hydrates it", async () => {
+  const storage = createMemoryRepairStorage();
+  const runtime = createRepairRoomHostRuntime({
+    autoHydrateStorage: false,
+    io: createMemoryRepairIo(),
+    storage,
+  }).activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  await runtime.hydrateStorage();
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateOperatorProfile, {
+      displayName: "Persisted Bench",
+      tools: [{ id: "bench-psu", available: false }],
+    }).success,
+    true
+  );
+  await runtime.flushStorage();
+  assert.equal(
+    (storage.readOperatorProfileRecord() as { profile?: { displayName?: string } } | null)?.profile
+      ?.displayName,
+    "Persisted Bench"
+  );
+  runtime.dispose();
+
+  const hydratedRuntime = createRepairRoomHostRuntime({
+    autoHydrateStorage: false,
+    io: createMemoryRepairIo(),
+    storage,
+  }).activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  await hydratedRuntime.hydrateStorage();
+
+  assert.equal(
+    hydratedRuntime.getStateSnapshot().state.operatorProfile.displayName,
+    "Persisted Bench"
+  );
+  assert.equal(hydratedRuntime.getStateSnapshot().state.operatorAdaptation.hasBenchPsu, false);
+  hydratedRuntime.dispose();
 });
 
 test("repair-room opens rare operator and control surfaces in a settings overlay", () => {

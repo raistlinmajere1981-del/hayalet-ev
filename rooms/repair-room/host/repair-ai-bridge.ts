@@ -3,6 +3,8 @@ import {
   REPAIR_PROTOCOL_KEYS,
   REPAIR_PROTOCOL_SCENARIOS,
   REPAIR_ROOM_ID,
+  REPAIR_UI_COMMANDS,
+  type RepairUiCommandName,
 } from "../shared/repair-constants.js";
 import type {
   RepairAiSeverity,
@@ -39,12 +41,22 @@ export interface RepairAiChatReplyResult {
   success: boolean;
   text: string | null;
   contextRefs: string[];
+  rejectedRoomCommandCount: number;
+  roomCommands: RepairAiRoomCommand[];
   message?: string;
 }
 
 interface RepairAiChatReplyPayload {
   replyText: string;
   contextRefs: string[];
+  rejectedRoomCommandCount: number;
+  roomCommands: RepairAiRoomCommand[];
+}
+
+export interface RepairAiRoomCommand {
+  commandName: RepairUiCommandName;
+  payload: Record<string, unknown>;
+  reason: string | null;
 }
 
 export interface RepairAiTacticalObservation {
@@ -91,6 +103,15 @@ function toRecord(value: unknown): Record<string, unknown> {
     ? (value as Record<string, unknown>)
     : {};
 }
+
+const REPAIR_AI_ROOM_COMMAND_ALLOWLIST = new Set<RepairUiCommandName>([
+  REPAIR_UI_COMMANDS.addMeasurement,
+  REPAIR_UI_COMMANDS.addTimelineEvent,
+  REPAIR_UI_COMMANDS.focusInvestigationRegion,
+  REPAIR_UI_COMMANDS.focusKnowledgeSpatialRef,
+  REPAIR_UI_COMMANDS.focusOverlayEntity,
+  REPAIR_UI_COMMANDS.promoteKnowledgeRegion,
+]);
 
 function asNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
@@ -307,10 +328,45 @@ function parseRepairAiChatReply(rawText: string): RepairAiChatReplyPayload | nul
     asNonEmptyString(parsed["message"]) ??
     asNonEmptyString(parsed["guidance"]);
   if (replyText === null) return null;
+  const roomCommandResult = parseRepairAiRoomCommands(parsed["roomCommands"] ?? parsed["commands"]);
   return {
     replyText,
     contextRefs: asStringArray(parsed["contextRefs"]),
+    rejectedRoomCommandCount: roomCommandResult.rejectedCount,
+    roomCommands: roomCommandResult.commands,
   };
+}
+
+function readRoomCommandEntries(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  return Object.keys(toRecord(value)).length > 0 ? [value] : [];
+}
+
+function parseRepairAiRoomCommands(value: unknown): {
+  commands: RepairAiRoomCommand[];
+  rejectedCount: number;
+} {
+  let rejectedCount = 0;
+  const commands = readRoomCommandEntries(value).flatMap((entry): RepairAiRoomCommand[] => {
+    const record = toRecord(entry);
+    const commandName = asNonEmptyString(record["commandName"] ?? record["command"]);
+    if (
+      commandName === null ||
+      !REPAIR_AI_ROOM_COMMAND_ALLOWLIST.has(commandName as RepairUiCommandName)
+    ) {
+      rejectedCount += 1;
+      return [];
+    }
+    const payloadRecord = toRecord(record["payload"] ?? record["args"]);
+    return [
+      {
+        commandName: commandName as RepairUiCommandName,
+        payload: payloadRecord,
+        reason: asNonEmptyString(record["reason"]),
+      },
+    ];
+  });
+  return { commands: commands.slice(0, 2), rejectedCount };
 }
 
 function readObservationEntries(value: unknown): unknown[] {
@@ -475,12 +531,21 @@ function buildRepairAiChatPrompt(request: RepairAiChatReplyRequest): string {
       outputSchema: {
         replyText: "short operator-facing guidance text",
         contextRefs: ["session/event/test-point ids that support the guidance"],
+        roomCommands: [
+          {
+            commandName: Array.from(REPAIR_AI_ROOM_COMMAND_ALLOWLIST).join(" | "),
+            payload: "JSON payload accepted by that Repair Room command",
+            reason: "why this command is safe and useful now",
+          },
+        ],
       },
       constraints: [
         "Return JSON only.",
         "Do not invent part designators, rails, or test points that are not present in context.",
         "Prioritize safety, verification, and reversible diagnostic steps.",
         "Keep replyText concise enough for a hands-busy repair bench.",
+        "Only include roomCommands when the command can be executed safely from visible context.",
+        "Use only commandName values listed in outputSchema.roomCommands; never emit ++cmd text.",
       ],
       operatorTurn: request.operatorTurn,
       recentTurns: request.recentTurns.slice(-8),
@@ -593,6 +658,8 @@ export async function requestRepairAiChatReply(
       success: false,
       text: null,
       contextRefs: [],
+      rejectedRoomCommandCount: 0,
+      roomCommands: [],
       message: "Repair AI dispatch bridge is unavailable.",
     };
   }
@@ -622,6 +689,8 @@ export async function requestRepairAiChatReply(
       success: false,
       text: null,
       contextRefs: [],
+      rejectedRoomCommandCount: 0,
+      roomCommands: [],
       message: asNonEmptyString(bridgeResult["message"]) ?? "Repair AI dispatch failed.",
     };
   }
@@ -632,6 +701,8 @@ export async function requestRepairAiChatReply(
       success: false,
       text: null,
       contextRefs: [],
+      rejectedRoomCommandCount: 0,
+      roomCommands: [],
       message: "Repair AI dispatch did not return readable text.",
     };
   }
@@ -642,6 +713,8 @@ export async function requestRepairAiChatReply(
       success: true,
       text: parsed.replyText,
       contextRefs: parsed.contextRefs,
+      rejectedRoomCommandCount: parsed.rejectedRoomCommandCount,
+      roomCommands: parsed.roomCommands,
     };
   }
 
@@ -649,6 +722,8 @@ export async function requestRepairAiChatReply(
     success: true,
     text: replyText,
     contextRefs: [],
+    rejectedRoomCommandCount: 0,
+    roomCommands: [],
   };
 }
 

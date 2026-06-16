@@ -166,7 +166,7 @@ function getCameraSourceLabel(state: RepairUiState): string {
 
 function getCameraStatusChipText(state: RepairUiState, cameraActive: boolean): string {
   const cameraSource = getCameraSourceLabel(state);
-  if (!state.operationsAvailable) return "Camera unavailable";
+  if (!state.operationsAvailable) return "Camera not connected";
   if (cameraActive) return `${cameraSource} live`;
   if (state.workbench.liveSource.connected) return `${cameraSource} connected`;
   if (state.workbench.liveSource.available) return `${cameraSource} ready`;
@@ -181,6 +181,10 @@ function getCameraStatusChipTitle(state: RepairUiState, cameraActive: boolean): 
   if (state.workbench.liveSource.connected) return "Camera is connected but not marked live.";
   if (state.workbench.liveSource.available) return "Camera source is ready when needed.";
   return "Use a manual board image or start the Android camera when needed.";
+}
+
+function uniqueRepairCapabilities(capabilities: string[]): string[] {
+  return Array.from(new Set(capabilities));
 }
 
 function interpolateWorkbenchViewport(
@@ -544,7 +548,7 @@ export function createRepairRoomUiRuntime() {
 
     const title = documentRef.createElement("div");
     title.className = "repair-empty-state__title";
-    title.textContent = text(["workbench", "noImage"], "No board image yet");
+    title.textContent = text(["workbench", "noImage"], "Board image required");
     placeholder.append(title);
 
     const copy = documentRef.createElement("div");
@@ -557,7 +561,7 @@ export function createRepairRoomUiRuntime() {
 
     const steps = documentRef.createElement("div");
     steps.className = "repair-empty-state__steps";
-    ["Open Camera", "Frame board", "Freeze when ready"].forEach((step) => {
+    ["Start camera", "Frame board", "Freeze when ready"].forEach((step) => {
       const item = documentRef.createElement("span");
       item.textContent = step;
       steps.append(item);
@@ -2451,6 +2455,18 @@ export function createRepairRoomUiRuntime() {
     if (shell !== null) shell.settingsOverlaySignature = signature;
   }
 
+  function flushWizardFields(root: HTMLElement): void {
+    root
+      .querySelectorAll<
+        HTMLInputElement | HTMLTextAreaElement
+      >("[data-repair-action='wizard-field']")
+      .forEach((fieldElement) => {
+        const field = fieldElement.dataset["wizardField"];
+        if (field === undefined || field.trim() === "") return;
+        requestRuntime.updateSession({ wizardField: field, value: fieldElement.value });
+      });
+  }
+
   function ensurePersistentShell(mount: HTMLElement): RepairPersistentShell {
     if (shell !== null && mount.contains(shell.root)) return shell;
 
@@ -2836,6 +2852,29 @@ export function createRepairRoomUiRuntime() {
           if (operatorProfileTabId) requestRuntime.updatePanelTab({ operatorProfileTabId });
           break;
         }
+        case "operator-profile-update": {
+          const profileKind = el.dataset["profileKind"];
+          if (profileKind === "tool") {
+            const id = el.dataset["toolId"];
+            if (id) {
+              requestRuntime.updateOperatorProfile({
+                tools: [{ id, available: el.dataset["available"] === "true" }],
+              });
+            }
+          }
+          if (profileKind === "preference") {
+            const key = el.dataset["preferenceKey"];
+            const rawValue = el.dataset["preferenceValue"];
+            if (key && rawValue !== undefined) {
+              requestRuntime.updateOperatorProfile({
+                preferences: {
+                  [key]: key === "annotationDefaultStrokeWidth" ? Number(rawValue) : rawValue,
+                },
+              });
+            }
+          }
+          break;
+        }
         case "toggle-panel-collapse": {
           const panelId = el.dataset["panelId"];
           const collapsed = el.dataset["collapsed"] === "true";
@@ -2885,11 +2924,13 @@ export function createRepairRoomUiRuntime() {
           break;
         }
         case "advance-wizard": {
+          flushWizardFields(root);
           const step = el.dataset["step"];
           requestRuntime.advanceWizard(step ? { step } : undefined);
           break;
         }
         case "create-session":
+          flushWizardFields(root);
           requestRuntime.createSession();
           break;
         case "timeline-zoom": {
@@ -2932,10 +2973,17 @@ export function createRepairRoomUiRuntime() {
 
     root.addEventListener("input", (event) => {
       const el = findActionElement(event.target);
-      if (!(el instanceof HTMLInputElement)) return;
-      if (el.dataset["repairAction"] === "timeline-scrub") {
+      if (el === null) return;
+      if (el.dataset["repairAction"] === "timeline-scrub" && el instanceof HTMLInputElement) {
         cancelSpatialFocusTween();
         requestRuntime.scrubTimeline({ positionMs: Number(el.value) });
+      }
+      if (
+        el.dataset["repairAction"] === "wizard-field" &&
+        (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)
+      ) {
+        const field = el.dataset["wizardField"];
+        if (field) requestRuntime.updateSession({ wizardField: field, value: el.value });
       }
     });
 
@@ -3265,12 +3313,113 @@ export function createRepairRoomUiRuntime() {
     render();
   }
 
+  function setOperationsCapabilities(params: { add?: string[]; remove?: string[] }): string[] {
+    const capabilities = new Set(state.operations.activeCapabilities);
+    params.add?.forEach((capability) => capabilities.add(capability));
+    params.remove?.forEach((capability) => capabilities.delete(capability));
+    return uniqueRepairCapabilities([...capabilities]);
+  }
+
+  function handleCaptureDictationStatus(msg: {
+    status: "started" | "transcribing" | "done" | "failed";
+  }): void {
+    state.operationsAvailable = true;
+    const active = msg.status === "started" || msg.status === "transcribing";
+    state.operations = {
+      ...state.operations,
+      androidMicActive: active || state.operations.ambientActive,
+      activeCapabilities: setOperationsCapabilities({
+        add: active ? ["android-microphone"] : [],
+        remove: active || state.operations.ambientActive ? [] : ["android-microphone"],
+      }),
+    };
+    render();
+  }
+
+  function handleCaptureAmbientStatus(msg: {
+    status:
+      | "started"
+      | "wake-detected"
+      | "capturing"
+      | "transcribing"
+      | "done"
+      | "stopped"
+      | "failed";
+  }): void {
+    state.operationsAvailable = true;
+    const active =
+      msg.status === "started" ||
+      msg.status === "wake-detected" ||
+      msg.status === "capturing" ||
+      msg.status === "transcribing";
+    state.layout.voiceGuidance.ambientListeningState = active ? "listening" : "idle";
+    state.operations = {
+      ...state.operations,
+      androidMicActive: active,
+      ambientActive: active,
+      activeCapabilities: setOperationsCapabilities({
+        add: active ? ["android-microphone", "ambient-listening"] : [],
+        remove: active ? [] : ["android-microphone", "ambient-listening"],
+      }),
+    };
+    render();
+  }
+
+  function handleTtsStatus(msg: {
+    mode: "local" | "android";
+    status: "queued" | "preparing" | "playing" | "done" | "stopped" | "failed";
+  }): void {
+    state.operationsAvailable = true;
+    const active =
+      msg.status === "queued" || msg.status === "preparing" || msg.status === "playing";
+    const capability = msg.mode === "android" ? "android-tts" : "local-tts";
+    state.operations = {
+      ...state.operations,
+      ttsActive: active,
+      activeCapabilities: setOperationsCapabilities({
+        add: active ? [capability] : [],
+        remove: active ? [] : ["local-tts", "android-tts"],
+      }),
+    };
+    render();
+  }
+
+  function handleCaptureMediaIngress(msg: {
+    asset: { originalName: string; path: string };
+    createdAt: string;
+  }): void {
+    state.operationsAvailable = true;
+    state.workbench.liveSource = {
+      ...state.workbench.liveSource,
+      available: true,
+      connected: false,
+      sourceType: "snapshot",
+    };
+    if (state.sessions.activeId !== null) {
+      requestRuntime.addTimelineEvent({
+        kind: "snapshot",
+        caption: `Captured ${msg.asset.originalName} from Android companion.`,
+        thumbnailSrc: msg.asset.path,
+        assetPath: msg.asset.path,
+        capturedAt: msg.createdAt,
+      });
+    }
+    render();
+  }
+
   // -- Host message handler
   function handleHostMessage(message: unknown): void {
     const msg = normalizeRepairHostMessage(message);
     if (msg === null) return;
 
     switch (msg.type) {
+      case "host-context": {
+        context.locale = msg.locale;
+        context.translations = msg.translations;
+        documentRef.documentElement.lang = context.locale;
+        render();
+        break;
+      }
       case "repair-state": {
         const nextMeta: RepairUiSnapshotMeta = msg.meta;
         Object.assign(state, msg.snapshot);
@@ -3350,6 +3499,31 @@ export function createRepairRoomUiRuntime() {
         break;
       }
 
+      case "capture-dictation-status": {
+        handleCaptureDictationStatus(msg);
+        break;
+      }
+
+      case "capture-ambient-status": {
+        handleCaptureAmbientStatus(msg);
+        break;
+      }
+
+      case "tts-status": {
+        handleTtsStatus(msg);
+        break;
+      }
+
+      case "capture-media-ingress": {
+        handleCaptureMediaIngress(msg);
+        break;
+      }
+
+      case "command-result": {
+        render();
+        break;
+      }
+
       case "transcript-ingress": {
         handleTranscriptIngress(msg);
         break;
@@ -3382,6 +3556,7 @@ export function createRepairRoomUiRuntime() {
       windowRef.roomAPI.onHostMessage(handleHostMessage);
     }
 
+    documentRef.documentElement.lang = context.locale;
     documentRef.addEventListener("keydown", handleKeydown);
     startClock();
     render();

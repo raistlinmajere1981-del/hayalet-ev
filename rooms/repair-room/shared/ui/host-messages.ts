@@ -11,6 +11,12 @@ export interface RepairStateHostMessage {
   meta: RepairUiSnapshotMeta;
 }
 
+export interface RepairHostContextMessage {
+  type: "host-context";
+  locale: string;
+  translations: Record<string, unknown>;
+}
+
 export interface RepairFeedEventHostMessage {
   type: "repair-feed-event";
   event: RepairAiMarkEvent;
@@ -60,14 +66,83 @@ export interface RepairCaptureFeedStatusHostMessage {
   preview: RepairLivePreviewState | null;
 }
 
+export interface RepairCaptureDictationStatusHostMessage {
+  type: "capture-dictation-status";
+  requestId: string;
+  createdAt: string;
+  source: "android-bridge";
+  target: string;
+  deviceId: string | null;
+  status: "started" | "transcribing" | "done" | "failed";
+  message: string;
+}
+
+export interface RepairCaptureAmbientStatusHostMessage {
+  type: "capture-ambient-status";
+  requestId: string;
+  createdAt: string;
+  source: "android-bridge";
+  target: string;
+  deviceId: string | null;
+  status:
+    | "started"
+    | "wake-detected"
+    | "capturing"
+    | "transcribing"
+    | "done"
+    | "stopped"
+    | "failed";
+  message: string;
+  transcript: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface RepairCaptureMediaIngressHostMessage {
+  type: "capture-media-ingress";
+  requestId: string;
+  createdAt: string;
+  source: "android-bridge";
+  target: string;
+  asset: {
+    name: string;
+    originalName: string;
+    path: string;
+    importedAt: number;
+  };
+  metadata: Record<string, unknown> | null;
+}
+
+export interface RepairTtsStatusHostMessage {
+  type: "tts-status";
+  requestId: string;
+  target: string;
+  mode: "local" | "android";
+  status: "queued" | "preparing" | "playing" | "done" | "stopped" | "failed";
+  message: string;
+  error: string | null;
+  source: "local" | "android-bridge";
+}
+
+export interface RepairCommandResultHostMessage {
+  type: "command-result";
+  command: string;
+  result: Record<string, unknown>;
+}
+
 export type RepairHostMessage =
+  | RepairHostContextMessage
   | RepairStateHostMessage
   | RepairFeedEventHostMessage
   | RepairMeasurementReadingHostMessage
   | RepairChatReplyHostMessage
   | RepairResearchProgressHostMessage
   | RepairTranscriptIngressHostMessage
-  | RepairCaptureFeedStatusHostMessage;
+  | RepairCaptureFeedStatusHostMessage
+  | RepairCaptureDictationStatusHostMessage
+  | RepairCaptureAmbientStatusHostMessage
+  | RepairCaptureMediaIngressHostMessage
+  | RepairTtsStatusHostMessage
+  | RepairCommandResultHostMessage;
 
 type RepairHostMessageRecord = Record<string, unknown>;
 
@@ -81,6 +156,24 @@ function unwrapHostPayload(value: unknown): RepairHostMessageRecord {
   const envelope = toRecord(value);
   const payload = toRecord(envelope["payload"]);
   return Object.keys(payload).length > 0 ? payload : envelope;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function readNullableString(value: unknown): string | null {
+  return value === null || typeof value === "string" ? value : null;
+}
+
+function hasNullableStringShape(value: unknown): boolean {
+  return value === null || typeof value === "string";
+}
+
+function readRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function isRepairUiState(value: unknown): value is RepairUiState {
@@ -103,6 +196,20 @@ export function normalizeRepairHostMessage(value: unknown): RepairHostMessage | 
   const envelope = toRecord(value);
   const type = typeof envelope["type"] === "string" ? envelope["type"] : "";
   const payload = unwrapHostPayload(value);
+
+  if (type === "host-context") {
+    const locale = payload["locale"];
+    const translations = payload["translations"];
+    if (
+      typeof locale === "string" &&
+      locale.trim() !== "" &&
+      typeof translations === "object" &&
+      translations !== null &&
+      Array.isArray(translations) === false
+    ) {
+      return { type, locale: locale.trim(), translations: translations as Record<string, unknown> };
+    }
+  }
 
   if (type === "repair-state") {
     const snapshot = payload["snapshot"];
@@ -205,6 +312,142 @@ export function normalizeRepairHostMessage(value: unknown): RepairHostMessage | 
         ok,
         preview: preview as RepairLivePreviewState | null,
       };
+    }
+  }
+
+  if (type === "capture-dictation-status") {
+    const requestId = readString(payload["requestId"]);
+    const createdAt = readString(payload["createdAt"]);
+    const source = payload["source"];
+    const target = readString(payload["target"]);
+    const deviceId = readNullableString(payload["deviceId"]);
+    const status = payload["status"];
+    const message = readString(payload["message"]);
+    if (
+      requestId !== null &&
+      createdAt !== null &&
+      source === "android-bridge" &&
+      target !== null &&
+      hasNullableStringShape(payload["deviceId"]) &&
+      (status === "started" ||
+        status === "transcribing" ||
+        status === "done" ||
+        status === "failed") &&
+      message !== null
+    ) {
+      return { type, requestId, createdAt, source, target, deviceId, status, message };
+    }
+  }
+
+  if (type === "capture-ambient-status") {
+    const requestId = readString(payload["requestId"]);
+    const createdAt = readString(payload["createdAt"]);
+    const source = payload["source"];
+    const target = readString(payload["target"]);
+    const deviceId = readNullableString(payload["deviceId"]);
+    const status = payload["status"];
+    const message = readString(payload["message"]);
+    const transcript = readNullableString(payload["transcript"] ?? null);
+    const metadata = readRecord(payload["metadata"]) ?? null;
+    if (
+      requestId !== null &&
+      createdAt !== null &&
+      source === "android-bridge" &&
+      target !== null &&
+      hasNullableStringShape(payload["deviceId"]) &&
+      (status === "started" ||
+        status === "wake-detected" ||
+        status === "capturing" ||
+        status === "transcribing" ||
+        status === "done" ||
+        status === "stopped" ||
+        status === "failed") &&
+      message !== null
+    ) {
+      return {
+        type,
+        requestId,
+        createdAt,
+        source,
+        target,
+        deviceId,
+        status,
+        message,
+        transcript,
+        metadata,
+      };
+    }
+  }
+
+  if (type === "capture-media-ingress") {
+    const requestId = readString(payload["requestId"]);
+    const createdAt = readString(payload["createdAt"]);
+    const source = payload["source"];
+    const target = readString(payload["target"]);
+    const asset = readRecord(payload["asset"]);
+    const metadata = readRecord(payload["metadata"]) ?? null;
+    const importedAt =
+      asset === null ? null : payload["asset"] !== null ? asset["importedAt"] : null;
+    if (
+      requestId !== null &&
+      createdAt !== null &&
+      source === "android-bridge" &&
+      target !== null &&
+      asset !== null &&
+      typeof asset["name"] === "string" &&
+      typeof asset["originalName"] === "string" &&
+      typeof asset["path"] === "string" &&
+      typeof importedAt === "number" &&
+      Number.isFinite(importedAt)
+    ) {
+      return {
+        type,
+        requestId,
+        createdAt,
+        source,
+        target,
+        asset: {
+          name: asset["name"],
+          originalName: asset["originalName"],
+          path: asset["path"],
+          importedAt,
+        },
+        metadata,
+      };
+    }
+  }
+
+  if (type === "tts-status") {
+    const requestId = readString(payload["requestId"]);
+    const target = readString(payload["target"]);
+    const mode = payload["mode"];
+    const status = payload["status"];
+    const message = readString(payload["message"]);
+    const error = readNullableString(payload["error"]);
+    const source = payload["source"];
+    if (
+      requestId !== null &&
+      target !== null &&
+      (mode === "local" || mode === "android") &&
+      (status === "queued" ||
+        status === "preparing" ||
+        status === "playing" ||
+        status === "done" ||
+        status === "stopped" ||
+        status === "failed") &&
+      message !== null &&
+      hasNullableStringShape(payload["error"]) &&
+      (source === "local" || source === "android-bridge")
+    ) {
+      return { type, requestId, target, mode, status, message, error, source };
+    }
+  }
+
+  if (type === "command-result") {
+    const command = readString(payload["command"] ?? envelope["command"]);
+    const result = readRecord(payload["result"] ?? envelope["result"]);
+    if (command !== null && result !== null) {
+      return { type, command, result };
     }
   }
 

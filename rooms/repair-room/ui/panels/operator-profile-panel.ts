@@ -87,6 +87,16 @@ export function renderOperatorProfilePanel(
         item.append(model);
       }
 
+      const toggle = documentRef.createElement("button");
+      toggle.type = "button";
+      toggle.className = "repair-sync-focus__action";
+      toggle.textContent = tool.available ? "Disable" : "Enable";
+      toggle.dataset["repairAction"] = "operator-profile-update";
+      toggle.dataset["profileKind"] = "tool";
+      toggle.dataset["toolId"] = tool.id;
+      toggle.dataset["available"] = String(!tool.available);
+      item.append(toggle);
+
       toolList.append(item);
     }
 
@@ -107,7 +117,7 @@ export function renderOperatorProfilePanel(
 
       const model = documentRef.createElement("div");
       model.className = "repair-tool-detail__meta";
-      model.textContent = detailTool.model ?? "No model tag";
+      model.textContent = detailTool.model ?? "Model not specified";
       detail.append(model);
 
       const capabilities = documentRef.createElement("div");
@@ -122,7 +132,7 @@ export function renderOperatorProfilePanel(
 
       const notes = documentRef.createElement("div");
       notes.className = "repair-tool-detail__notes";
-      notes.textContent = detailTool.notes ?? "Available on bench.";
+      notes.textContent = detailTool.notes ?? "No bench note recorded.";
       detail.append(notes);
     }
     toolsGrid.append(detail);
@@ -156,6 +166,41 @@ export function renderOperatorProfilePanel(
       valueEl.className = "repair-sync-row__value";
       valueEl.textContent = value;
       row.append(valueEl);
+      const action = documentRef.createElement("button");
+      action.type = "button";
+      action.className = "repair-sync-focus__action";
+      action.dataset["repairAction"] = "operator-profile-update";
+      action.dataset["profileKind"] = "preference";
+      if (label === "Risk") {
+        action.textContent = "Cycle";
+        action.dataset["preferenceKey"] = "riskTolerance";
+        action.dataset["preferenceValue"] =
+          profile.preferences.riskTolerance === "low"
+            ? "medium"
+            : profile.preferences.riskTolerance === "medium"
+              ? "high"
+              : "low";
+        row.append(action);
+      } else if (label === "AI") {
+        action.textContent = "Cycle";
+        action.dataset["preferenceKey"] = "aiVerbosity";
+        action.dataset["preferenceValue"] =
+          profile.preferences.aiVerbosity === "terse"
+            ? "standard"
+            : profile.preferences.aiVerbosity === "standard"
+              ? "detailed"
+              : "terse";
+        row.append(action);
+      } else if (label === "Annotation") {
+        action.textContent = "+ Stroke";
+        action.dataset["preferenceKey"] = "annotationDefaultStrokeWidth";
+        action.dataset["preferenceValue"] = String(
+          profile.preferences.annotationDefaultStrokeWidth >= 8
+            ? 1
+            : profile.preferences.annotationDefaultStrokeWidth + 1
+        );
+        row.append(action);
+      }
       prefs.append(row);
     });
     body.append(prefs);

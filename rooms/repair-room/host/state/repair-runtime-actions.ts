@@ -1,4 +1,5 @@
 import type {
+  RepairAiAdaptationHints,
   RepairAttentionBudgetState,
   RepairChatTurn,
   RepairEvent,
@@ -158,6 +159,7 @@ export type RepairRuntimeAction =
     }
   | {
       type: "operator-profile/set";
+      adaptation: RepairAiAdaptationHints;
       profile: RepairOperatorProfile;
     }
   | {

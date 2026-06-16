@@ -17,6 +17,7 @@ import {
   requestRepairAiKnowledgeResearch,
   requestRepairAiTacticalObservations,
   type RepairAiDispatchBridge,
+  type RepairAiRoomCommand,
   type RepairAiTacticalObservation,
 } from "./repair-ai-bridge.js";
 import { createRepairHostIoRuntime, type RepairHostIoRuntime } from "../shared/host/io-runtime.js";
@@ -28,6 +29,7 @@ import {
 import {
   MOCK_REPAIR_KNOWLEDGE_PACKS,
   MOCK_REPAIR_PCB_IMAGES,
+  buildMockRepairAiAdaptation,
   buildMockTacticalFeed,
   repairEventToTacticalFeedItem,
 } from "../shared/data/index.js";
@@ -35,6 +37,7 @@ import type {
   RepairAiMarkLifecycleState,
   RepairAmbientListeningState,
   RepairAnnotationTool,
+  RepairConsumable,
   RepairChatTurn,
   RepairEvent,
   RepairImagePoint,
@@ -52,12 +55,16 @@ import type {
   RepairMultimeterReading,
   RepairOperationalProfile,
   RepairOperatorProfileTabId,
+  RepairOperatorPreferences,
   RepairOverlayEntityRef,
   RepairPanelId,
+  RepairSafetyItem,
   RepairSession,
   RepairSessionListItem,
   RepairSettingsOverlayTabId,
   RepairSpokenGuidanceMode,
+  RepairSkillRecord,
+  RepairTool,
   RepairVoiceGuidanceState,
   RepairWizardDraft,
   RepairWizardState,
@@ -343,6 +350,131 @@ function safeRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+}
+
+function normalizeRepairToolPatch(value: unknown, existing: RepairTool[]): RepairTool[] | null {
+  if (!Array.isArray(value)) return null;
+  const byId = new Map(existing.map((tool) => [tool.id, tool]));
+  value.forEach((entry) => {
+    const record = safeRecord(entry);
+    const id = safeString(record?.["id"]);
+    if (record === null || id === null) return;
+    const current = byId.get(id);
+    if (current === undefined) return;
+    byId.set(id, {
+      ...current,
+      ...(typeof record["available"] === "boolean" ? { available: record["available"] } : {}),
+      ...(typeof record["model"] === "string" || record["model"] === null
+        ? { model: record["model"] }
+        : {}),
+      ...(typeof record["notes"] === "string" || record["notes"] === null
+        ? { notes: record["notes"] }
+        : {}),
+    });
+  });
+  return existing.map((tool) => byId.get(tool.id) ?? tool);
+}
+
+function normalizeRepairConsumablePatch(
+  value: unknown,
+  existing: RepairConsumable[]
+): RepairConsumable[] | null {
+  if (!Array.isArray(value)) return null;
+  const byId = new Map(existing.map((item) => [item.id, item]));
+  value.forEach((entry) => {
+    const record = safeRecord(entry);
+    const id = safeString(record?.["id"]);
+    if (record === null || id === null) return;
+    const current = byId.get(id);
+    if (current === undefined) return;
+    byId.set(id, {
+      ...current,
+      ...(typeof record["available"] === "boolean" ? { available: record["available"] } : {}),
+      ...(typeof record["notes"] === "string" || record["notes"] === null
+        ? { notes: record["notes"] }
+        : {}),
+    });
+  });
+  return existing.map((item) => byId.get(item.id) ?? item);
+}
+
+function normalizeRepairSafetyPatch(
+  value: unknown,
+  existing: RepairSafetyItem[]
+): RepairSafetyItem[] | null {
+  if (!Array.isArray(value)) return null;
+  const byId = new Map(existing.map((item) => [item.id, item]));
+  value.forEach((entry) => {
+    const record = safeRecord(entry);
+    const id = safeString(record?.["id"]);
+    if (record === null || id === null) return;
+    const current = byId.get(id);
+    if (current === undefined) return;
+    byId.set(id, {
+      ...current,
+      ...(typeof record["available"] === "boolean" ? { available: record["available"] } : {}),
+    });
+  });
+  return existing.map((item) => byId.get(item.id) ?? item);
+}
+
+function normalizeRepairSkillsPatch(
+  value: unknown,
+  existing: RepairSkillRecord[]
+): RepairSkillRecord[] | null {
+  if (!Array.isArray(value)) return null;
+  const byId = new Map(existing.map((skill) => [skill.id, skill]));
+  value.forEach((entry) => {
+    const record = safeRecord(entry);
+    const id = safeString(record?.["id"]);
+    const proficiency = safeNumber(record?.["proficiency"]);
+    if (record === null || id === null || proficiency === null) return;
+    const current = byId.get(id);
+    if (current === undefined) return;
+    byId.set(id, {
+      ...current,
+      proficiency: Math.max(
+        1,
+        Math.min(5, Math.round(proficiency))
+      ) as RepairSkillRecord["proficiency"],
+    });
+  });
+  return existing.map((skill) => byId.get(skill.id) ?? skill);
+}
+
+function normalizeRepairPreferencesPatch(
+  value: unknown,
+  existing: RepairOperatorPreferences
+): Partial<RepairOperatorPreferences> | null {
+  const record = safeRecord(value);
+  if (record === null) return null;
+  const patch: Partial<RepairOperatorPreferences> = {};
+  if (record["measurementSystem"] === "metric" || record["measurementSystem"] === "imperial") {
+    patch.measurementSystem = record["measurementSystem"];
+  }
+  if (typeof record["annotationDefaultColor"] === "string") {
+    patch.annotationDefaultColor = record["annotationDefaultColor"];
+  }
+  const strokeWidth = safeNumber(record["annotationDefaultStrokeWidth"]);
+  if (strokeWidth !== null) {
+    patch.annotationDefaultStrokeWidth = Math.max(1, Math.min(8, Math.round(strokeWidth)));
+  }
+  if (
+    record["riskTolerance"] === "low" ||
+    record["riskTolerance"] === "medium" ||
+    record["riskTolerance"] === "high"
+  ) {
+    patch.riskTolerance = record["riskTolerance"];
+  }
+  if (
+    record["aiVerbosity"] === "terse" ||
+    record["aiVerbosity"] === "standard" ||
+    record["aiVerbosity"] === "detailed"
+  ) {
+    patch.aiVerbosity = record["aiVerbosity"];
+  }
+  void existing;
+  return Object.keys(patch).length === 0 ? null : patch;
 }
 
 function normalizeRepairLivePreview(value: unknown): RepairLivePreviewState | null {
@@ -635,7 +767,12 @@ function createDraftSession(state: RepairRuntimeState, iso: string): RepairSessi
   };
 }
 
-function createSnapshotEvent(sessionId: string, iso: string, caption: string): RepairEvent {
+function createSnapshotEvent(
+  sessionId: string,
+  iso: string,
+  caption: string,
+  thumbnailSrc: string | null = null
+): RepairEvent {
   return {
     kind: "snapshot",
     id: createEventId("evt-snap", iso),
@@ -643,7 +780,7 @@ function createSnapshotEvent(sessionId: string, iso: string, caption: string): R
     occurredAt: iso,
     source: "operator",
     linkedEventIds: [],
-    thumbnailSrc: null,
+    thumbnailSrc,
     caption,
   };
 }
@@ -1049,6 +1186,7 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
       let activeTtsRequestId: string | null = null;
       let operationsProjectionBridgeStarted = false;
       let storageHydratePromise: Promise<void> | null = null;
+      let operatorProfilePersistQueue: Promise<void> = Promise.resolve();
       let storagePersistQueue: Promise<void> = Promise.resolve();
       let storageReady = false;
       let storageRuntimePaths: unknown = null;
@@ -1190,6 +1328,35 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
         queuePersistSession(session);
       }
 
+      function queuePersistOperatorProfile(): void {
+        if (storageReady === false || storageRuntimePaths === null) return;
+        const runtimePaths = storageRuntimePaths;
+        const profile = store.getState().operatorProfile;
+        operatorProfilePersistQueue = operatorProfilePersistQueue
+          .then(async () => {
+            await sessionStorage.saveOperatorProfileRecord(runtimePaths, profile);
+            if (disposed) return;
+            updateReadyStorageState();
+          })
+          .catch((error: unknown) => {
+            storageReady = false;
+            storageRuntimePaths = null;
+            if (disposed) return;
+            api.log(
+              "warn",
+              `[${REPAIR_ROOM_ID}] operator profile storage save failed: ${
+                error instanceof Error ? error.message : String(error)
+              }`
+            );
+            store.dispatch({
+              type: "storage/set",
+              storage: createRoomStorageState("error", {
+                message: "Room storage error; using in-memory operator profile.",
+              }),
+            });
+          });
+      }
+
       function hydrateStorage(): Promise<void> {
         if (storageHydratePromise !== null) {
           return storageHydratePromise;
@@ -1205,7 +1372,10 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
 
           try {
             const runtimePaths = await ioRuntime.resolveRuntimePaths();
-            const records = await sessionStorage.listSessionRecords(runtimePaths);
+            const [records, storedOperatorProfile] = await Promise.all([
+              sessionStorage.listSessionRecords(runtimePaths),
+              sessionStorage.loadOperatorProfileRecord(runtimePaths),
+            ]);
             if (disposed) return;
 
             storageRuntimePaths = runtimePaths;
@@ -1234,6 +1404,13 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
                     ? []
                     : (storedChatTurnsBySessionId.get(activeSession.id) ?? []),
               });
+              if (storedOperatorProfile !== null) {
+                store.dispatch({
+                  type: "operator-profile/set",
+                  adaptation: buildMockRepairAiAdaptation(storedOperatorProfile.profile),
+                  profile: storedOperatorProfile.profile,
+                });
+              }
               setActiveSessionDerivedState(store, activeSession);
               store.dispatch({
                 type: "storage/set",
@@ -1259,7 +1436,7 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
             store.dispatch({
               type: "storage/set",
               storage: createRoomStorageState("fallback", {
-                message: "Room storage unavailable; using in-memory mock.",
+                message: "Repair history unavailable; using current session only.",
               }),
             });
           }
@@ -2059,6 +2236,30 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
         queuePersistActiveSessionChat();
       }
 
+      function applyRepairAiRoomCommands(commands: RepairAiRoomCommand[]): {
+        applied: number;
+        failed: number;
+      } {
+        return commands.reduce(
+          (summary, command) => {
+            const result = handleCommand(command.commandName, command.payload);
+            if (result.success) {
+              summary.applied += 1;
+            } else {
+              summary.failed += 1;
+              api.log(
+                "warn",
+                `[${REPAIR_ROOM_ID}] AI room command rejected command=${command.commandName} reason=${
+                  result.message ?? "unknown"
+                }`
+              );
+            }
+            return summary;
+          },
+          { applied: 0, failed: 0 }
+        );
+      }
+
       async function requestChatReply(operatorTurn: RepairChatTurn): Promise<void> {
         const state = store.getState();
         const session = getActiveSession(state);
@@ -2077,6 +2278,8 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
           success: false,
           text: null,
           contextRefs: [],
+          rejectedRoomCommandCount: 0,
+          roomCommands: [],
           message: error instanceof Error ? error.message : String(error),
         }));
         if (aiResult.success !== true) {
@@ -2100,8 +2303,21 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
           );
           return;
         }
-        setAiDispatchStatus("chat", "succeeded", {
-          message: "AI chat guidance returned a reply.",
+        const commandSummary = applyRepairAiRoomCommands(aiResult.roomCommands);
+        const commandMessageParts = [
+          aiResult.roomCommands.length > 0
+            ? `${commandSummary.applied}/${aiResult.roomCommands.length} room command applied`
+            : null,
+          aiResult.rejectedRoomCommandCount > 0
+            ? `${aiResult.rejectedRoomCommandCount} malformed room command ignored`
+            : null,
+          commandSummary.failed > 0 ? `${commandSummary.failed} room command failed` : null,
+        ].filter((part): part is string => part !== null);
+        setAiDispatchStatus("chat", commandSummary.failed > 0 ? "failed" : "succeeded", {
+          message:
+            commandMessageParts.length === 0
+              ? "AI chat guidance returned a reply."
+              : `AI chat guidance returned a reply; ${commandMessageParts.join(", ")}.`,
           contextRefs: chatContextRefs,
         });
         appendChatReply(operatorTurn, aiResult.text, chatContextRefs);
@@ -2951,7 +3167,8 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
                 ? createSnapshotEvent(
                     session.id,
                     iso,
-                    safeString(flat["caption"]) ?? "Snapshot captured."
+                    safeString(flat["caption"]) ?? "Snapshot captured.",
+                    safeString(flat["thumbnailSrc"] ?? flat["assetPath"] ?? flat["src"])
                   )
                 : createAnnotationEvent(
                     session.id,
@@ -3101,14 +3318,51 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
           case REPAIR_UI_COMMANDS.updateOperatorProfile: {
             const profile = store.getState().operatorProfile;
             const displayName = safeString(flat["displayName"]);
+            const profilePatch = safeRecord(flat["profile"]);
+            const benchPatch = safeRecord(flat["bench"] ?? profilePatch?.["bench"]);
+            const nextTools = normalizeRepairToolPatch(
+              flat["tools"] ?? benchPatch?.["tools"],
+              profile.bench.tools
+            );
+            const nextConsumables = normalizeRepairConsumablePatch(
+              flat["consumables"] ?? benchPatch?.["consumables"],
+              profile.bench.consumables
+            );
+            const nextSafety = normalizeRepairSafetyPatch(
+              flat["safety"] ?? benchPatch?.["safety"],
+              profile.bench.safety
+            );
+            const nextSkills = normalizeRepairSkillsPatch(
+              flat["skills"] ?? profilePatch?.["skills"],
+              profile.skills
+            );
+            const preferencePatch = normalizeRepairPreferencesPatch(
+              flat["preferences"] ?? profilePatch?.["preferences"],
+              profile.preferences
+            );
+            const nextProfile = {
+              ...profile,
+              bench: {
+                tools: nextTools ?? profile.bench.tools,
+                consumables: nextConsumables ?? profile.bench.consumables,
+                safety: nextSafety ?? profile.bench.safety,
+              },
+              displayName:
+                displayName ?? safeString(profilePatch?.["displayName"]) ?? profile.displayName,
+              preferences: {
+                ...profile.preferences,
+                ...(preferencePatch ?? {}),
+              },
+              skills: nextSkills ?? profile.skills,
+              updatedAt: nowIso(),
+            };
             store.dispatch({
               type: "operator-profile/set",
-              profile: {
-                ...profile,
-                displayName: displayName ?? profile.displayName,
-                updatedAt: nowIso(),
-              },
+              adaptation: buildMockRepairAiAdaptation(nextProfile),
+              profile: nextProfile,
             });
+            queuePersistActiveSessionChat();
+            queuePersistOperatorProfile();
             return { success: true };
           }
           case REPAIR_UI_COMMANDS.updateViewport:
@@ -3476,7 +3730,7 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
         },
         hydrateStorage,
         flushStorage(): Promise<void> {
-          return storagePersistQueue;
+          return Promise.all([storagePersistQueue, operatorProfilePersistQueue]).then(() => {});
         },
         dispose() {
           disposed = true;

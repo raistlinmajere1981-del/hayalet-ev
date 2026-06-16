@@ -506,7 +506,7 @@ export function createRepairDefaultAiDispatchState(
 
 export function createRepairDefaultStorageState(
   sessionCount = 0,
-  message = "In-memory mock"
+  message = "Repair history not connected"
 ): RepairStorageState {
   return {
     mode: "mock",

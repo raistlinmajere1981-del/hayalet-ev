@@ -243,6 +243,24 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
     "utf8"
   );
 
+  assert.match(hostMessages, /RepairHostContextMessage/);
+  assert.match(hostMessages, /type: "host-context"/);
+  assert.match(hostMessages, /capture-dictation-status/);
+  assert.match(hostMessages, /capture-ambient-status/);
+  assert.match(hostMessages, /capture-media-ingress/);
+  assert.match(hostMessages, /tts-status/);
+  assert.match(hostMessages, /command-result/);
+  assert.match(runtime, /case "host-context"/);
+  assert.match(runtime, /handleCaptureDictationStatus/);
+  assert.match(runtime, /handleCaptureAmbientStatus/);
+  assert.match(runtime, /handleCaptureMediaIngress/);
+  assert.match(runtime, /requestRuntime\.addTimelineEvent\(\{\s*kind: "snapshot"/);
+  assert.match(runtime, /thumbnailSrc: msg\.asset\.path/);
+  assert.match(runtime, /handleTtsStatus/);
+  assert.match(runtime, /context\.translations = msg\.translations/);
+  assert.match(runtime, /documentRef\.documentElement\.lang = context\.locale/);
+  assert.match(runtime, /flushWizardFields/);
+  assert.match(runtime, /data-repair-action='wizard-field'/);
   assert.match(runtime, /renderRoomSyncPanel/);
   assert.match(runtime, /renderRepairSettingsPanel/);
   assert.match(runtime, /repair-settings-overlay/);
@@ -302,6 +320,9 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(knowledgePanel, /repair-pack-preview__image/);
   assert.match(knowledgePanel, /resolveRepairAssetUrl/);
   assert.match(operatorPanel, /repair-tool-detail/);
+  assert.match(operatorPanel, /operator-profile-update/);
+  assert.match(operatorPanel, /profileKind/);
+  assert.match(operatorPanel, /preferenceKey/);
   assert.match(overlayStage, /Ruler 10\.0 mm/);
   assert.match(overlayStage, /knowledgeRegions/);
   assert.match(overlayStage, /contextualCursor/);
@@ -326,6 +347,8 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(overlayStage, /onSelectionClear/);
   assert.match(overlayStage, /addRectSelectionAssist/);
   assert.match(runtime, /clearSelection/);
+  assert.match(runtime, /operator-profile-update/);
+  assert.match(runtime, /updateOperatorProfile/);
   assert.match(runtime, /selectionMode/);
   assert.match(runtime, /ai-mark-state/);
   assert.match(runtime, /repair-annotation-inspector__links/);

@@ -229,8 +229,8 @@ function getCameraHealthText(
 ): { status: string; detail: string; action: string } {
   if (!state.operationsAvailable) {
     return {
-      status: "Camera unavailable",
-      detail: "Capture runtime is not reporting operations.",
+      status: "Camera not connected",
+      detail: "Capture runtime has not reported a live camera source.",
       action: "Open repair controls and check companion access.",
     };
   }
@@ -594,7 +594,7 @@ export function renderWorkbenchStagePanel(
     placeholder.className = "repair-empty-state";
     const placeholderTitle = documentRef.createElement("div");
     placeholderTitle.className = "repair-empty-state__title";
-    placeholderTitle.textContent = text(["workbench", "noImage"], "No board image yet");
+    placeholderTitle.textContent = text(["workbench", "noImage"], "Board image required");
     placeholder.append(placeholderTitle);
 
     const placeholderCopy = documentRef.createElement("div");
@@ -607,7 +607,7 @@ export function renderWorkbenchStagePanel(
 
     const placeholderSteps = documentRef.createElement("div");
     placeholderSteps.className = "repair-empty-state__steps";
-    ["Open Camera", "Frame board", "Freeze when ready"].forEach((step) => {
+    ["Start camera", "Frame board", "Freeze when ready"].forEach((step) => {
       const item = documentRef.createElement("span");
       item.textContent = step;
       placeholderSteps.append(item);

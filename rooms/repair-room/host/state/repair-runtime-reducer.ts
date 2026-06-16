@@ -279,7 +279,11 @@ export function reduceRepairRuntimeState(
         knowledgePack: { ...state.knowledgePack, focusedSpatialRefId: action.spatialRefId },
       };
     case "operator-profile/set":
-      return { ...state, operatorProfile: action.profile };
+      return {
+        ...state,
+        operatorAdaptation: action.adaptation,
+        operatorProfile: action.profile,
+      };
     case "measurement/append-reading": {
       const next = [action.reading, ...state.measurement.recent].slice(0, RECENT_READINGS_LIMIT);
       return {

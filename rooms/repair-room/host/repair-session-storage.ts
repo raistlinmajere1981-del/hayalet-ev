@@ -1,7 +1,12 @@
 import { REPAIR_ROOM_ID } from "../shared/repair-constants.js";
-import { createRepairStoragePaths, readRepairRoomStorageDir } from "../shared/host/repair-paths.js";
+import {
+  createRepairRoomPaths,
+  createRepairStoragePaths,
+  readRepairRoomStorageDir,
+} from "../shared/host/repair-paths.js";
 import type {
   RepairChatTurn,
+  RepairOperatorProfile,
   RepairSession,
   RepairSessionListItem,
 } from "../shared/types/index.js";
@@ -25,6 +30,13 @@ export interface RepairStoredSessionRecord {
   savedAt: string;
   schemaVersion: 1;
   session: RepairSession;
+}
+
+export interface RepairStoredOperatorProfileRecord {
+  profile: RepairOperatorProfile;
+  roomId: string;
+  savedAt: string;
+  schemaVersion: 1;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -56,6 +68,37 @@ function asRepairChatTurns(value: unknown): RepairChatTurn[] {
         );
       })
     : [];
+}
+
+function asRepairOperatorProfile(value: unknown): RepairOperatorProfile | null {
+  const record = asRecord(value);
+  return record !== null &&
+    typeof record["profileId"] === "string" &&
+    typeof record["displayName"] === "string"
+    ? (value as RepairOperatorProfile)
+    : null;
+}
+
+function asStoredOperatorProfileRecord(value: unknown): RepairStoredOperatorProfileRecord | null {
+  const rawProfile = asRepairOperatorProfile(value);
+  if (rawProfile !== null) {
+    return {
+      profile: rawProfile,
+      roomId: REPAIR_ROOM_ID,
+      savedAt: rawProfile.updatedAt,
+      schemaVersion: 1,
+    };
+  }
+
+  const record = asRecord(value);
+  const profile = asRepairOperatorProfile(record?.["profile"]);
+  if (profile === null) return null;
+  return {
+    profile,
+    roomId: REPAIR_ROOM_ID,
+    savedAt: typeof record?.["savedAt"] === "string" ? record["savedAt"] : profile.updatedAt,
+    schemaVersion: 1,
+  };
 }
 
 function asStoredSessionRecord(value: unknown): RepairStoredSessionRecord | null {
@@ -131,6 +174,29 @@ export function createRepairSessionStorage(deps: RepairSessionStorageDeps) {
     return nextRecord;
   }
 
+  async function loadOperatorProfileRecord(
+    runtimePaths: unknown
+  ): Promise<RepairStoredOperatorProfileRecord | null> {
+    const paths = createRepairRoomPaths(runtimePaths);
+    return asStoredOperatorProfileRecord(await readJsonFile(paths.operatorProfileFilePath));
+  }
+
+  async function saveOperatorProfileRecord(
+    runtimePaths: unknown,
+    profile: RepairOperatorProfile
+  ): Promise<RepairStoredOperatorProfileRecord> {
+    const paths = createRepairRoomPaths(runtimePaths);
+    const nextRecord: RepairStoredOperatorProfileRecord = {
+      profile,
+      roomId: REPAIR_ROOM_ID,
+      savedAt: new Date().toISOString(),
+      schemaVersion: 1,
+    };
+    await ensureRuntimeDirectory(paths.roomStorageDir);
+    await writeJsonFile(paths.operatorProfileFilePath, nextRecord);
+    return nextRecord;
+  }
+
   async function loadSessionRecord(
     runtimePaths: unknown,
     sessionId: string
@@ -182,8 +248,10 @@ export function createRepairSessionStorage(deps: RepairSessionStorageDeps) {
     ensureSessionRoot,
     listSessionRecords,
     listSessions,
+    loadOperatorProfileRecord,
     loadLatestSessionRecord,
     loadSessionRecord,
+    saveOperatorProfileRecord,
     saveSessionRecord,
   };
 }
