@@ -3,6 +3,10 @@ import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
 
+interface RenderSessionWizardPanelOptions {
+  embedded?: boolean;
+}
+
 const STEP_LABELS: Record<string, string> = {
   "device-info": "Device",
   symptoms: "Symptoms",
@@ -17,6 +21,11 @@ const SYMPTOM_OPTIONS = [
   "HDMI Dead",
   "No 5V_STBY",
   "Overcurrent",
+] as const;
+
+const AI_TARGET_OPTIONS = [
+  { targetSlot: "ai1", label: "AI 1" },
+  { targetSlot: "ai2", label: "AI 2" },
 ] as const;
 
 function appendField(
@@ -54,15 +63,42 @@ function getWizardHint(step: RepairUiState["wizard"]["currentStep"]): string {
     return "Pick the main failure signs, then add what you saw, heard, or measured at the bench.";
   }
   if (step === "ai-research") {
-    return "The assistant is gathering likely schematics, board views, known failures, and test points.";
+    return "Review the intake details, choose the AI slot, then start evidence research when ready.";
   }
   return "Review the evidence pack, then start the guided repair session.";
+}
+
+function appendAiTargetSelect(
+  documentRef: Document,
+  parent: HTMLElement,
+  state: RepairUiState
+): void {
+  const wrapper = documentRef.createElement("label");
+  wrapper.className = "repair-wizard-field";
+
+  const label = documentRef.createElement("span");
+  label.textContent = "Research AI slot";
+  wrapper.append(label);
+
+  const select = documentRef.createElement("select");
+  select.className = "repair-wizard-field__input";
+  select.dataset["repairAction"] = "set-ai-target-slot";
+  select.value = state.aiDispatch.research.targetSlot;
+  AI_TARGET_OPTIONS.forEach((option) => {
+    const optionEl = documentRef.createElement("option");
+    optionEl.value = option.targetSlot;
+    optionEl.textContent = option.label;
+    select.append(optionEl);
+  });
+  wrapper.append(select);
+  parent.append(wrapper);
 }
 
 export function renderSessionWizardPanel(
   documentRef: Document,
   state: RepairUiState,
-  text: TextFn
+  text: TextFn,
+  options: RenderSessionWizardPanelOptions = {}
 ): HTMLElement {
   const body = documentRef.createElement("div");
   body.className = "repair-panel__body";
@@ -138,6 +174,13 @@ export function renderSessionWizardPanel(
     body.append(form);
   }
 
+  if (wizard.currentStep === "ai-research") {
+    const evidenceSetup = documentRef.createElement("div");
+    evidenceSetup.className = "repair-wizard-form";
+    appendAiTargetSelect(documentRef, evidenceSetup, state);
+    body.append(evidenceSetup);
+  }
+
   // -- Research progress list
   if (wizard.researchProgress.length > 0) {
     const resList = documentRef.createElement("div");
@@ -189,22 +232,33 @@ export function renderSessionWizardPanel(
     wizard.currentStep === "ready"
       ? "Start repair"
       : wizard.currentStep === "ai-research"
-        ? "Review setup"
+        ? wizard.researchProgress.length > 0
+          ? "Review setup"
+          : "Start evidence research"
         : wizard.currentStep === "symptoms"
           ? "Find evidence"
           : "Add symptoms";
   nextButton.dataset["repairAction"] =
-    wizard.currentStep === "ready" ? "create-session" : "advance-wizard";
+    wizard.currentStep === "ready"
+      ? "create-session"
+      : wizard.currentStep === "ai-research" && wizard.researchProgress.length === 0
+        ? "start-wizard-research"
+        : "advance-wizard";
   actions.append(nextButton);
   body.append(actions);
 
+  const panelId =
+    options.embedded === true
+      ? "session-wizard repair-panel--session-wizard-embedded"
+      : "session-wizard";
+
   return createRepairPanel(documentRef, {
-    panelId: "session-wizard",
+    panelId,
     eyebrow: text(["wizard", "eyebrow"], "START REPAIR"),
     title: text(["wizard", "title"], "Repair Intake"),
     statusDot: wizard.currentStep === "ai-research" ? "amber" : "idle",
-    collapsed: state.layout.collapsedPanels["session-wizard"],
-    pinned: state.layout.pinnedPanels["session-wizard"],
+    collapsed: options.embedded === true ? false : state.layout.collapsedPanels["session-wizard"],
+    pinned: options.embedded === true ? true : state.layout.pinnedPanels["session-wizard"],
     body,
   });
 }

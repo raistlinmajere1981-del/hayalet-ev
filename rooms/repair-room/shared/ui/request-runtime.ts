@@ -42,8 +42,14 @@ export function createRepairUiRequestRuntime() {
     archiveSession(payload: { sessionId: string }) {
       return sendCommand(REPAIR_UI_COMMANDS.archiveSession, payload);
     },
+    deleteSession(payload: { sessionId: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.deleteSession, payload);
+    },
     advanceWizard(payload: { step?: string } = {}) {
       return sendCommand(REPAIR_UI_COMMANDS.advanceWizard, payload);
+    },
+    startKnowledgeResearch() {
+      return sendCommand(REPAIR_UI_COMMANDS.startKnowledgeResearch);
     },
     attachKnowledgePack(payload: { packId: string }) {
       return sendCommand(REPAIR_UI_COMMANDS.attachKnowledgePack, payload);

@@ -36,6 +36,14 @@ export function reduceRepairRuntimeState(
       };
       return { ...state, sessions: next };
     }
+    case "session/delete": {
+      const { [action.sessionId]: _deleted, ...nextSessions } = state.sessions;
+      return {
+        ...state,
+        activeSessionId: state.activeSessionId === action.sessionId ? null : state.activeSessionId,
+        sessions: nextSessions,
+      };
+    }
     case "session-list/set":
       return { ...state, sessionList: action.list };
     case "workbench/set-tool":

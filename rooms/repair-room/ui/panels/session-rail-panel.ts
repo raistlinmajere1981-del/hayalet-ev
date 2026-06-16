@@ -1,5 +1,6 @@
 import type { RepairUiState } from "../../shared/ui/state.js";
 import { createRepairPanel } from "./panel-shell.js";
+import { renderSessionWizardPanel } from "./session-wizard-panel.js";
 
 type TextFn = (path: string[], fallback: string) => string;
 
@@ -9,7 +10,10 @@ export function renderSessionRailPanel(
   text: TextFn
 ): HTMLElement {
   const body = documentRef.createElement("div");
-  body.className = "repair-panel__body";
+  body.className = "repair-panel__body repair-session-rail-body";
+
+  const wizard = renderSessionWizardPanel(documentRef, state, text, { embedded: true });
+  body.append(wizard);
 
   const list = documentRef.createElement("div");
   list.className = "repair-session-list";
@@ -18,7 +22,7 @@ export function renderSessionRailPanel(
   const archived = state.sessions.list.filter((s) => s.isArchived);
 
   for (const session of active) {
-    list.append(buildSessionCard(documentRef, session, state.sessions.activeId));
+    list.append(buildSessionCard(documentRef, session, state.sessions.activeId, text));
   }
 
   if (archived.length > 0) {
@@ -28,7 +32,7 @@ export function renderSessionRailPanel(
     list.append(divider);
 
     for (const session of archived) {
-      list.append(buildSessionCard(documentRef, session, state.sessions.activeId));
+      list.append(buildSessionCard(documentRef, session, state.sessions.activeId, text));
     }
   }
 
@@ -48,7 +52,8 @@ export function renderSessionRailPanel(
 function buildSessionCard(
   documentRef: Document,
   session: RepairUiState["sessions"]["list"][number],
-  activeId: string | null
+  activeId: string | null,
+  text: TextFn
 ): HTMLElement {
   const card = documentRef.createElement("div");
   const isActive = session.id === activeId;
@@ -56,10 +61,25 @@ function buildSessionCard(
   card.dataset["repairAction"] = "activate-session";
   card.dataset["sessionId"] = session.id;
 
+  const header = documentRef.createElement("div");
+  header.className = "repair-session-card__header";
+
   const title = documentRef.createElement("div");
   title.className = "repair-session-card__title";
   title.textContent = session.title;
-  card.append(title);
+  header.append(title);
+
+  const deleteButton = documentRef.createElement("button");
+  deleteButton.className = "repair-session-card__delete";
+  deleteButton.type = "button";
+  deleteButton.textContent = text(["sessionRail", "delete"], "Delete");
+  deleteButton.title = text(["sessionRail", "deleteTitle"], "Delete saved session and data");
+  deleteButton.dataset["repairAction"] = "delete-session";
+  deleteButton.dataset["sessionId"] = session.id;
+  deleteButton.dataset["sessionTitle"] = session.title;
+  header.append(deleteButton);
+
+  card.append(header);
 
   const device = documentRef.createElement("div");
   device.className = "repair-session-card__device";

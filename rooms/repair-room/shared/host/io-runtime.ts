@@ -22,6 +22,19 @@ export function createRepairHostIoRuntime(deps: RepairHostIoRuntimeDeps) {
     });
   }
 
+  async function deleteRuntimePath(
+    targetPath: string,
+    options: { recursive?: boolean; requestId?: string | null } = {}
+  ) {
+    await callRepairRoomTools({
+      operation: "delete-path",
+      roomId,
+      targetPath,
+      recursive: options.recursive === true,
+      ...(options.requestId ? { requestId: options.requestId } : {}),
+    });
+  }
+
   async function resolveRuntimePaths(requestId?: string | null) {
     const result = await callRepairRoomTools({
       operation: "resolve-paths",
@@ -33,6 +46,7 @@ export function createRepairHostIoRuntime(deps: RepairHostIoRuntimeDeps) {
 
   return {
     callRoomTools: callRepairRoomTools,
+    deleteRuntimePath,
     ensureRuntimeDirectory,
     getElectronApi: getRepairElectronApi,
     listDirectory: listRepairDirectory,

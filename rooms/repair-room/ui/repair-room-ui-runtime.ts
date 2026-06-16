@@ -29,7 +29,6 @@ import {
   formatRepairTacticalFeedStatusLine,
   renderTacticalFeedPanel,
 } from "./panels/tactical-feed-panel.js";
-import { renderSessionWizardPanel } from "./panels/session-wizard-panel.js";
 import { renderKnowledgePackPanel } from "./panels/knowledge-pack-panel.js";
 import { renderVisualTimelinePanel } from "./panels/visual-timeline-panel.js";
 import { renderOperatorProfilePanel } from "./panels/operator-profile-panel.js";
@@ -78,8 +77,8 @@ const AI_LIFECYCLE_ACTIONS = [
 ] as const;
 
 const REPAIR_SETTINGS_OVERLAY_TABS: Array<{ id: RepairSettingsOverlayTabId; label: string }> = [
-  { id: "repair-controls", label: "Repair Controls" },
   { id: "bench-operator", label: "Bench Operator" },
+  { id: "repair-controls", label: "Repair Controls" },
 ];
 
 interface RepairPanelLifecycle {
@@ -433,7 +432,7 @@ function createInitialState(): RepairUiState {
       },
       operatorProfileTabId: "tools",
       settingsOverlayOpen: false,
-      settingsOverlayTabId: "repair-controls",
+      settingsOverlayTabId: "bench-operator",
       focusMode: false,
       ambientClock: "",
     },
@@ -602,6 +601,7 @@ export function createRepairRoomUiRuntime() {
         return JSON.stringify({
           aid: state.sessions.activeId,
           list: state.sessions.list,
+          wizard: state.wizard,
           layoutShape,
         });
       case "workbench-stage":
@@ -2345,10 +2345,8 @@ export function createRepairRoomUiRuntime() {
     return legendBar;
   }
 
-  function getSettingsOverlayTitle(tabId: RepairSettingsOverlayTabId): string {
-    return tabId === "bench-operator"
-      ? text(["settings", "operatorOverlayTitle"], "Bench Operator")
-      : text(["settings", "title"], "Repair Controls");
+  function getSettingsOverlayTitle(_tabId: RepairSettingsOverlayTabId): string {
+    return text(["settings", "operatorOverlayTitle"], "Bench Operator");
   }
 
   function createSettingsOverlayShell(): { overlay: HTMLElement; body: HTMLElement } {
@@ -2479,6 +2477,16 @@ export function createRepairRoomUiRuntime() {
     const label = documentRef.createElement("span");
     label.className = "repair-statusbar__label";
     label.textContent = "Repair Room v0.1.0";
+
+    const setupButton = documentRef.createElement("button");
+    setupButton.className = "repair-statusbar__setup";
+    setupButton.type = "button";
+    setupButton.textContent = "Setup";
+    setupButton.title = "Open bench setup";
+    setupButton.dataset["repairAction"] = "set-settings-overlay";
+    setupButton.dataset["open"] = "true";
+    setupButton.dataset["tabId"] = "bench-operator";
+    label.append(setupButton);
     statusBar.append(label);
 
     const statusActions = documentRef.createElement("div");
@@ -2578,13 +2586,6 @@ export function createRepairRoomUiRuntime() {
     syncPanel(
       persistentShell,
       persistentShell.rightStack,
-      createPanelLifecycle("session-wizard", () =>
-        renderSessionWizardPanel(documentRef, state, text)
-      )
-    );
-    syncPanel(
-      persistentShell,
-      persistentShell.rightStack,
       createPanelLifecycle("knowledge-pack", () =>
         renderKnowledgePackPanel(documentRef, state, text)
       )
@@ -2661,6 +2662,16 @@ export function createRepairRoomUiRuntime() {
         case "activate-session": {
           const sessionId = el.dataset["sessionId"];
           if (sessionId) requestRuntime.activateSession({ sessionId });
+          break;
+        }
+        case "delete-session": {
+          const sessionId = el.dataset["sessionId"];
+          if (!sessionId) break;
+          const sessionTitle = el.dataset["sessionTitle"] ?? "this session";
+          const confirmed = window.confirm(
+            `Delete saved repair session "${sessionTitle}" and all stored data?`
+          );
+          if (confirmed) requestRuntime.deleteSession({ sessionId });
           break;
         }
         case "set-tool": {
@@ -2911,6 +2922,10 @@ export function createRepairRoomUiRuntime() {
         case "wizard-symptom": {
           const symptom = el.dataset["symptom"];
           if (!symptom) return;
+          el.classList.toggle(
+            "repair-skill-chip--active",
+            !el.classList.contains("repair-skill-chip--active")
+          );
           const current = new Set(state.wizard.draft.primarySymptoms);
           if (current.has(symptom)) {
             current.delete(symptom);
@@ -2921,6 +2936,11 @@ export function createRepairRoomUiRuntime() {
             wizardField: "primarySymptoms",
             value: Array.from(current),
           });
+          break;
+        }
+        case "start-wizard-research": {
+          flushWizardFields(root);
+          requestRuntime.startKnowledgeResearch();
           break;
         }
         case "advance-wizard": {
@@ -3004,6 +3024,9 @@ export function createRepairRoomUiRuntime() {
       }
       if (el.dataset["repairAction"] === "set-ai-target-slot") {
         if (el.value === "ai1" || el.value === "ai2") {
+          state.aiDispatch.chat.targetSlot = el.value;
+          state.aiDispatch.research.targetSlot = el.value;
+          state.aiDispatch.tactical.targetSlot = el.value;
           requestRuntime.setAiTargetSlot({ targetSlot: el.value });
         }
       }

@@ -10,8 +10,12 @@ export function createRepairPanel(
     title: string;
   }
 ): HTMLElement {
+  const panelClasses = options.panelId
+    .split(/\s+/)
+    .filter((item) => item.trim() !== "")
+    .map((item) => (item.startsWith("repair-panel--") ? item : `repair-panel--${item}`));
   const section = documentRef.createElement("section");
-  section.className = `repair-panel repair-panel--${options.panelId}${options.collapsed === true ? " repair-panel--collapsed" : ""}${options.pinned === true ? " repair-panel--pinned" : ""}`;
+  section.className = `repair-panel ${panelClasses.join(" ")}${options.collapsed === true ? " repair-panel--collapsed" : ""}${options.pinned === true ? " repair-panel--pinned" : ""}`;
   section.dataset["repairPanel"] = options.panelId;
 
   const header = documentRef.createElement("header");

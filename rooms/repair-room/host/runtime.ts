@@ -2058,6 +2058,14 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
         }
       }
 
+      function deleteSessionAndList(sessionId: string): void {
+        const { [sessionId]: _deleted, ...nextSessions } = store.getState().sessions;
+        store.dispatchMany([
+          { type: "session/delete", sessionId },
+          { type: "session-list/set", list: buildSessionList(nextSessions) },
+        ]);
+      }
+
       function createAiObservationEvents(params: {
         baseIso: string;
         measurementEvent: RepairMeasurementEvent;
@@ -2898,9 +2906,6 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
           case REPAIR_UI_COMMANDS.uiReady: {
             pushState();
             startLiveLoops();
-            if (store.getState().wizard.currentStep === "ai-research") {
-              void startKnowledgeResearch();
-            }
             api.log("info", `[${REPAIR_ROOM_ID}] ui-ready phase=${store.getState().phase}`);
             return { success: true };
           }
@@ -3009,6 +3014,56 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
             }
             return { success: true };
           }
+          case REPAIR_UI_COMMANDS.deleteSession: {
+            const sessionId = safeString(flat["sessionId"]) ?? store.getState().activeSessionId;
+            if (sessionId === null) return { success: false, message: "sessionId is required" };
+            const session = store.getState().sessions[sessionId];
+            if (session === undefined) return { success: false, message: "session was not found" };
+            const wasActive = store.getState().activeSessionId === sessionId;
+            const runtimePaths =
+              storageReady && storageRuntimePaths !== null ? storageRuntimePaths : null;
+
+            storedChatTurnsBySessionId.delete(sessionId);
+            store.batch(() => {
+              deleteSessionAndList(sessionId);
+              if (wasActive) {
+                store.dispatch({ type: "chat/set-turns", turns: [] });
+                setActiveSessionDerivedState(store, null);
+              }
+            });
+            if (wasActive) {
+              resetLiveTimelineAnchor(null);
+              clearFeedStream();
+            }
+            updateReadyStorageState();
+
+            if (runtimePaths !== null) {
+              storagePersistQueue = storagePersistQueue
+                .then(async () => {
+                  await sessionStorage.deleteSessionRecord(runtimePaths, sessionId);
+                  if (disposed) return;
+                  updateReadyStorageState();
+                })
+                .catch((error: unknown) => {
+                  storageReady = false;
+                  storageRuntimePaths = null;
+                  if (disposed) return;
+                  api.log(
+                    "warn",
+                    `[${REPAIR_ROOM_ID}] session storage delete failed: ${
+                      error instanceof Error ? error.message : String(error)
+                    }`
+                  );
+                  store.dispatch({
+                    type: "storage/set",
+                    storage: createRoomStorageState("error", {
+                      message: "Room storage delete error; using in-memory state.",
+                    }),
+                  });
+                });
+            }
+            return { success: true };
+          }
           case REPAIR_UI_COMMANDS.advanceWizard: {
             const requested = safeString(flat["step"]);
             const current = store.getState().wizard.currentStep;
@@ -3021,10 +3076,6 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
             )
               ? (requested as RepairWizardState["currentStep"])
               : fallbackStep;
-            if (nextStep === "ai-research") {
-              void startKnowledgeResearch();
-              return { success: true };
-            }
             store.dispatchMany([
               { type: "wizard/advance", step: nextStep },
               {
@@ -3032,6 +3083,10 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
                 phase: nextStep === "ready" ? "session-active" : "wizard-active",
               },
             ]);
+            return { success: true };
+          }
+          case REPAIR_UI_COMMANDS.startKnowledgeResearch: {
+            void startKnowledgeResearch();
             return { success: true };
           }
           case REPAIR_UI_COMMANDS.attachKnowledgePack: {

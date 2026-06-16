@@ -485,10 +485,7 @@ test("repair-room research uses live AI knowledge-pack dispatch", async () => {
     getLocale: () => "en",
   });
 
-  assert.equal(
-    runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ai-research" }).success,
-    true
-  );
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startKnowledgeResearch).success, true);
   assert.equal(runtime.getStateSnapshot().state.aiDispatch.research.status, "pending");
 
   await new Promise<void>((resolve) => {
@@ -1455,10 +1452,7 @@ test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits sta
     "No 5V_STBY",
   ]);
 
-  assert.equal(
-    runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ai-research" }).success,
-    true
-  );
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startKnowledgeResearch).success, true);
   const researchState = runtime.getStateSnapshot().state.wizard;
   assert.equal(researchState.currentStep, "ai-research");
   assert.equal(researchState.foundResources.length, 0);
@@ -2251,19 +2245,17 @@ test("repair-room opens the existing active session without replaying research s
     notifyRoom: () => {},
   });
 
-  assert.equal(runtime.getStateSnapshot().state.wizard.currentStep, "ready");
-  assert.equal(runtime.getStateSnapshot().state.wizard.generatedKnowledgePackId, "bn44-00932a");
-  assert.ok(
-    runtime.getStateSnapshot().state.wizard.researchProgress.every((item) => item.completed)
-  );
+  assert.equal(runtime.getStateSnapshot().state.wizard.currentStep, "device-info");
+  assert.equal(runtime.getStateSnapshot().state.wizard.generatedKnowledgePackId, null);
+  assert.equal(runtime.getStateSnapshot().state.wizard.researchProgress.length, 0);
 
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.uiReady).success, true);
   t.mock.timers.tick(4000);
 
   const wizard = runtime.getStateSnapshot().state.wizard;
-  assert.equal(wizard.currentStep, "ready");
-  assert.equal(wizard.foundResources.length, 4);
-  assert.ok(wizard.researchProgress.every((item) => item.completed));
+  assert.equal(wizard.currentStep, "device-info");
+  assert.equal(wizard.foundResources.length, 0);
+  assert.equal(wizard.researchProgress.length, 0);
 
   runtime.dispose();
   t.mock.timers.reset();

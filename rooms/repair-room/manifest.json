@@ -52,8 +52,20 @@
           "exposure": "internal"
         },
         {
+          "name": "RepairRoomDeleteSession",
+          "description": "Delete a saved repair session and its room-local stored data.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "RepairRoomAdvanceWizard",
           "description": "Move the new-session wizard to the next or named step.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomStartKnowledgeResearch",
+          "description": "Start AI evidence research for the current wizard draft.",
           "scope": "room-ui",
           "exposure": "internal"
         },

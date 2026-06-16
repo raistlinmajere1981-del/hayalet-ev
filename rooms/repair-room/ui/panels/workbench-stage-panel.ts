@@ -320,35 +320,6 @@ export function renderWorkbenchStagePanel(
   headerLeft.append(info);
 
   liveHeader.append(headerLeft);
-  const profileToggle = documentRef.createElement("div");
-  profileToggle.className = "repair-profile-toggle";
-  (["novice", "advanced"] as const).forEach((profile) => {
-    const button = documentRef.createElement("button");
-    button.type = "button";
-    button.className = `repair-profile-toggle__btn${
-      state.guidance.operationalProfile === profile ? " repair-profile-toggle__btn--active" : ""
-    }`;
-    button.textContent = profile === "novice" ? "Guided" : "Expert";
-    button.title = profile === "novice" ? "Guided repair profile" : "Expert repair profile";
-    button.dataset["repairAction"] = "set-operational-profile";
-    button.dataset["profile"] = profile;
-    profileToggle.append(button);
-  });
-  const operatorButton = documentRef.createElement("button");
-  operatorButton.type = "button";
-  operatorButton.className = `repair-profile-toggle__btn${
-    state.layout.settingsOverlayOpen && state.layout.settingsOverlayTabId === "bench-operator"
-      ? " repair-profile-toggle__btn--active"
-      : ""
-  }`;
-  operatorButton.textContent = "Setup";
-  operatorButton.title = "Open bench setup settings";
-  operatorButton.dataset["repairAction"] = "set-settings-overlay";
-  operatorButton.dataset["open"] = "true";
-  operatorButton.dataset["tabId"] = "bench-operator";
-  profileToggle.append(operatorButton);
-  liveHeader.append(profileToggle);
-
   const guidanceControls = documentRef.createElement("div");
   guidanceControls.className = "repair-guidance-controls";
 
@@ -426,16 +397,6 @@ export function renderWorkbenchStagePanel(
   ttsButton.dataset["repairControl"] = "tts-route";
   ttsButton.dataset["active"] = String(ttsActive);
   guidanceControls.append(ttsButton);
-
-  const settingsButton = documentRef.createElement("button");
-  settingsButton.type = "button";
-  settingsButton.className = "repair-guidance-control";
-  settingsButton.textContent = "Settings";
-  settingsButton.title = "Open Repair Room settings";
-  settingsButton.dataset["repairAction"] = "set-settings-overlay";
-  settingsButton.dataset["open"] = "true";
-  settingsButton.dataset["tabId"] = "repair-controls";
-  guidanceControls.append(settingsButton);
 
   const budgetButton = documentRef.createElement("button");
   budgetButton.type = "button";

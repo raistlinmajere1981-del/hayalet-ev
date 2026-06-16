@@ -18,6 +18,7 @@ type RepairDirectoryEntry = {
 };
 
 export type RepairSessionStorageDeps = {
+  deleteRuntimePath?: (targetPath: string, options?: { recursive?: boolean }) => Promise<void>;
   ensureRuntimeDirectory: (dirPath: string, requestId?: string | null) => Promise<void>;
   listDirectory: (dirPath: string) => Promise<RepairDirectoryEntry[]>;
   readJsonFile: (filePath: string) => Promise<unknown>;
@@ -143,7 +144,8 @@ function toSessionListItem(session: RepairSession): RepairSessionListItem {
 }
 
 export function createRepairSessionStorage(deps: RepairSessionStorageDeps) {
-  const { ensureRuntimeDirectory, listDirectory, readJsonFile, writeJsonFile } = deps;
+  const { deleteRuntimePath, ensureRuntimeDirectory, listDirectory, readJsonFile, writeJsonFile } =
+    deps;
 
   async function ensureSessionRoot(runtimePaths: unknown): Promise<string> {
     const roomStorageDir = readRepairRoomStorageDir(runtimePaths);
@@ -210,6 +212,15 @@ export function createRepairSessionStorage(deps: RepairSessionStorageDeps) {
     return loaded;
   }
 
+  async function deleteSessionRecord(runtimePaths: unknown, sessionId: string): Promise<void> {
+    if (typeof deleteRuntimePath !== "function") {
+      throw new Error("Repair session deletion is unavailable.");
+    }
+    await deleteRuntimePath(createRepairStoragePaths(runtimePaths, sessionId).sessionDir, {
+      recursive: true,
+    });
+  }
+
   async function listSessionRecords(runtimePaths: unknown): Promise<RepairStoredSessionRecord[]> {
     const sessionsDir = await ensureSessionRoot(runtimePaths);
     const entries = await listDirectory(sessionsDir);
@@ -245,6 +256,7 @@ export function createRepairSessionStorage(deps: RepairSessionStorageDeps) {
   }
 
   return {
+    deleteSessionRecord,
     ensureSessionRoot,
     listSessionRecords,
     listSessions,

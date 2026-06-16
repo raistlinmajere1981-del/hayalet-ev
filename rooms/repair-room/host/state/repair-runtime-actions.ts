@@ -51,6 +51,10 @@ export type RepairRuntimeAction =
       session: RepairSession;
     }
   | {
+      type: "session/delete";
+      sessionId: string;
+    }
+  | {
       type: "session-list/set";
       list: RepairSessionListItem[];
     }
