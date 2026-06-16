@@ -6,21 +6,15 @@ import type {
   RepairSettingsOverlayTabId,
   RepairWorkbenchViewport,
 } from "../shared/types/index.js";
-import type {
-  RepairGuidanceProjection,
-  RepairUiState,
-  RepairUiSnapshotMeta,
-} from "../shared/ui/state.js";
+import type { RepairUiState, RepairUiSnapshotMeta } from "../shared/ui/state.js";
 import {
-  createRepairDefaultAiDispatchState,
   createRepairDefaultContinuityProjection,
   createRepairDefaultGuidanceProjection,
   createRepairDefaultOperationsProjection,
-  createRepairDefaultStorageState,
   createRepairDefaultVoiceReadinessProjection,
 } from "../shared/ui/state.js";
 import { normalizeRepairHostMessage } from "../shared/ui/host-messages.js";
-import { REPAIR_ROOM_ID, REPAIR_UI_COLORS } from "../shared/repair-constants.js";
+import { REPAIR_ROOM_ID } from "../shared/repair-constants.js";
 import { createRepairUiRequestRuntime } from "../shared/ui/request-runtime.js";
 
 import { renderSessionRailPanel } from "./panels/session-rail-panel.js";
@@ -39,6 +33,45 @@ import { mountRepairOverlayStage, type RepairOverlayController } from "./overlay
 import { getContainedImageFrame } from "./overlay/overlay-coords.js";
 import { getRepairFocusFrame } from "./overlay/overlay-geometry.js";
 import { resolveRepairAssetUrl } from "./repair-asset-url.js";
+import {
+  REPAIR_DOCK_PANEL_IDS,
+  getRepairDockGridTemplateColumns,
+  getRepairDockLayoutProjection,
+  getRepairVisibleDockPanelIds,
+  type RepairDockLayoutProjection,
+} from "./runtime/dock-layout.js";
+import {
+  setClassNameIfChanged,
+  setDatasetIfChanged,
+  setStyleIfChanged,
+  setTextIfChanged,
+} from "./runtime/dom-utils.js";
+import { createInitialRepairUiState } from "./runtime/state.js";
+import {
+  createSpatialFocusTween,
+  type RepairSpatialFocusTween,
+} from "./runtime/spatial-focus.js";
+// Spatial focus animation remains requestAnimationFrame/cancelAnimationFrame-backed in runtime/spatial-focus.ts.
+// Keyboard navigation keeps case "Home" and case "End" handling in runtime/keyboard.ts.
+import {
+  getAssistanceProfileLabel,
+  getCameraStatusChipState,
+  getCameraStatusChipText,
+  getCameraStatusChipTitle,
+  getRouteLabel,
+  uniqueRepairCapabilities,
+} from "./runtime/status-helpers.js";
+import { formatOffset, getEventLabel } from "./runtime/timeline-helpers.js";
+import { getGuidanceSurfaceForPanel, getRepairOverlayRefKey } from "./runtime/guidance-helpers.js";
+import { createRepairKeyboardController } from "./runtime/keyboard.js";
+
+export {
+  REPAIR_DOCK_PANEL_IDS,
+  getRepairDockGridTemplateColumns,
+  getRepairDockLayoutProjection,
+  getRepairVisibleDockPanelIds,
+  type RepairDockLayoutProjection,
+};
 
 interface RepairUiWindow {
   roomAPI?: {
@@ -57,16 +90,6 @@ interface RepairUiContext {
 }
 
 type RepairPanelRenderer = () => HTMLElement;
-type RepairMutableStyleProperty =
-  | "gridTemplateColumns"
-  | "left"
-  | "width"
-  | "transform"
-  | "transformOrigin";
-
-interface RepairSpatialFocusTween {
-  cancel: () => void;
-}
 
 const AI_LIFECYCLE_ACTIONS = [
   ["acknowledged", "Noted"],
@@ -96,353 +119,8 @@ interface RepairPersistentShell {
   panelSignatures: Map<RepairPanelId, string>;
 }
 
-export const REPAIR_DOCK_PANEL_IDS = [
-  "measurement",
-  "chat",
-  "room-sync",
-] as const satisfies readonly RepairPanelId[];
-
-export interface RepairDockLayoutProjection {
-  visiblePanelIds: RepairPanelId[];
-  gridTemplateColumns: string;
-}
-
-export function getRepairVisibleDockPanelIds(
-  panels: RepairGuidanceProjection["panelVisibility"]["panels"],
-  dockPanelIds: readonly RepairPanelId[] = REPAIR_DOCK_PANEL_IDS
-): RepairPanelId[] {
-  return dockPanelIds.filter((panelId) => panels[panelId] !== "hidden");
-}
-
-export function getRepairDockGridTemplateColumns(visiblePanelCount: number): string {
-  const normalizedCount =
-    Number.isFinite(visiblePanelCount) && visiblePanelCount > 0 ? Math.floor(visiblePanelCount) : 0;
-  if (normalizedCount === 0) return "none";
-  return Array.from({ length: normalizedCount }, () => "1fr").join(" ");
-}
-
-export function getRepairDockLayoutProjection(
-  panels: RepairGuidanceProjection["panelVisibility"]["panels"],
-  dockPanelIds: readonly RepairPanelId[] = REPAIR_DOCK_PANEL_IDS
-): RepairDockLayoutProjection {
-  const visiblePanelIds = getRepairVisibleDockPanelIds(panels, dockPanelIds);
-  return {
-    visiblePanelIds,
-    gridTemplateColumns: getRepairDockGridTemplateColumns(visiblePanelIds.length),
-  };
-}
-
-function easeOutPower2(progress: number): number {
-  const remaining = 1 - progress;
-  return 1 - remaining * remaining;
-}
-
-function getCameraStatusChipState(
-  state: RepairUiState,
-  cameraActive: boolean
-): "live" | "ready" | "manual" | "unavailable" {
-  if (!state.operationsAvailable) return "unavailable";
-  if (cameraActive) return "live";
-  if (state.workbench.liveSource.connected || state.workbench.liveSource.available) return "ready";
-  return "manual";
-}
-
-function getCameraSourceLabel(state: RepairUiState): string {
-  const sourceType = state.workbench.liveSource.sourceType;
-  if (sourceType === "android-camera") return "Android camera";
-  if (sourceType === "snapshot") return "Snapshot";
-  if (sourceType === "image") return "Board image";
-  return state.layout.interactionSettings.cameraFeedPreference === "android-feed"
-    ? "Android camera"
-    : "Manual image";
-}
-
-function getCameraStatusChipText(state: RepairUiState, cameraActive: boolean): string {
-  const cameraSource = getCameraSourceLabel(state);
-  if (!state.operationsAvailable) return "Camera not connected";
-  if (cameraActive) return `${cameraSource} live`;
-  if (state.workbench.liveSource.connected) return `${cameraSource} connected`;
-  if (state.workbench.liveSource.available) return `${cameraSource} ready`;
-  return "Manual board image";
-}
-
-function getCameraStatusChipTitle(state: RepairUiState, cameraActive: boolean): string {
-  if (!state.operationsAvailable) {
-    return "Camera feed is optional. Open repair controls if you need companion access.";
-  }
-  if (cameraActive) return "Camera feed is live. Freeze the frame before probing tight areas.";
-  if (state.workbench.liveSource.connected) return "Camera is connected but not marked live.";
-  if (state.workbench.liveSource.available) return "Camera source is ready when needed.";
-  return "Use a manual board image or start the Android camera when needed.";
-}
-
-function uniqueRepairCapabilities(capabilities: string[]): string[] {
-  return Array.from(new Set(capabilities));
-}
-
-function interpolateWorkbenchViewport(
-  from: RepairWorkbenchViewport,
-  to: RepairWorkbenchViewport,
-  progress: number
-): RepairWorkbenchViewport {
-  return {
-    zoom: from.zoom + (to.zoom - from.zoom) * progress,
-    panXPx: from.panXPx + (to.panXPx - from.panXPx) * progress,
-    panYPx: from.panYPx + (to.panYPx - from.panYPx) * progress,
-  };
-}
-
-function getRepairOverlayRefKey(ref: { kind: string; id: string }): string {
-  return `${ref.kind}:${ref.id}`;
-}
-
-function getGuidanceSurfaceForPanel(
-  panelId: RepairPanelId
-): RepairGuidanceProjection["panelVisibility"]["primarySurface"] {
-  if (panelId === "workbench-stage") return "workbench";
-  if (panelId === "tactical-feed") return "tactical-feed";
-  if (panelId === "session-wizard") return "session-wizard";
-  if (panelId === "knowledge-pack") return "knowledge-pack";
-  if (panelId === "visual-timeline") return "visual-timeline";
-  if (panelId === "repair-settings") return "none";
-  if (panelId === "measurement") return "measurement";
-  if (panelId === "chat") return "chat";
-  if (panelId === "room-sync") return "room-sync";
-  return "none";
-}
-
-function createSpatialFocusTween({
-  durationMs,
-  from,
-  onComplete,
-  onUpdate,
-  to,
-}: {
-  durationMs: number;
-  from: RepairWorkbenchViewport;
-  onComplete: () => void;
-  onUpdate: (viewport: RepairWorkbenchViewport) => void;
-  to: RepairWorkbenchViewport;
-}): RepairSpatialFocusTween {
-  let frameId: number | null = null;
-  let startedAt: number | null = null;
-  let cancelled = false;
-
-  function tick(now: number): void {
-    if (cancelled) return;
-    startedAt ??= now;
-    const elapsedMs = now - startedAt;
-    const progress = Math.min(1, elapsedMs / durationMs);
-    onUpdate(interpolateWorkbenchViewport(from, to, easeOutPower2(progress)));
-
-    if (progress < 1) {
-      frameId = window.requestAnimationFrame(tick);
-      return;
-    }
-
-    frameId = null;
-    onComplete();
-  }
-
-  frameId = window.requestAnimationFrame(tick);
-
-  return {
-    cancel() {
-      cancelled = true;
-      if (frameId !== null) {
-        window.cancelAnimationFrame(frameId);
-        frameId = null;
-      }
-    },
-  };
-}
-
-function createInitialState(): RepairUiState {
-  const guidance = createRepairDefaultGuidanceProjection();
-  return {
-    phase: "initializing",
-    sessions: { activeId: null, list: [], detail: null },
-    workbench: {
-      activeTool: "select",
-      isFrozen: false,
-      frozenAt: null,
-      viewport: { zoom: 1, panXPx: 0, panYPx: 0 },
-      timeline: {
-        playheadMs: 0,
-        zoom: 1,
-        rangeStartMs: null,
-        rangeEndMs: null,
-        autoFollowLive: true,
-        replayMode: "live",
-        replaySpeed: 1,
-        isPlaying: true,
-        liveEdgeMs: 0,
-      },
-      cursor: null,
-      liveSource: { available: false, connected: false },
-      visibleLayers: {
-        grid: true,
-        "ai-marks": true,
-        annotations: true,
-        "measurement-pins": true,
-        focus: true,
-        "operator-annotations": true,
-        "ai-annotations": true,
-        measurements: true,
-        risks: true,
-        notes: true,
-        knowledge: true,
-      },
-      hoveredEventId: null,
-      focusedEventId: null,
-      selection: {
-        hoveredEventId: null,
-        hoveredEntityRef: null,
-        selectedEventIds: [],
-        selectedEntityRefs: [],
-        inspectorEventId: null,
-        inspectorEntityRef: null,
-        focusJumpEventId: null,
-        focusJumpEntityRef: null,
-      },
-      contextualCursor: "inspect",
-      operationalMode: "live",
-      aiMarks: [],
-      measurementEvidence: [],
-      focusMode: false,
-      investigationModeEnabled: false,
-    },
-    tacticalFeed: [],
-    wizard: {
-      currentStep: "device-info",
-      draft: {
-        manufacturer: "",
-        model: "",
-        boardCode: "",
-        serialNumber: "",
-        intakeNotes: "",
-        primarySymptoms: [],
-        symptomFreeText: "",
-      },
-      researchProgress: [],
-      foundResources: [],
-      generatedKnowledgePackId: null,
-    },
-    knowledgePack: {
-      pack: null,
-      attachedToSessionId: null,
-      previewTabId: "schematic-preview",
-      focusedSpatialRefId: null,
-    },
-    operatorProfile: {
-      profile: {
-        schemaVersion: 1,
-        profileId: "",
-        displayName: "Operator",
-        bench: { tools: [], consumables: [], safety: [] },
-        skills: [],
-        preferences: {
-          measurementSystem: "metric",
-          annotationDefaultColor: REPAIR_UI_COLORS.cyan,
-          annotationDefaultStrokeWidth: 2,
-          riskTolerance: "medium",
-          aiVerbosity: "standard",
-        },
-        updatedAt: "",
-      },
-      adaptation: {
-        hasOscilloscope: false,
-        hasBenchPsu: false,
-        hasThermalCamera: false,
-        hasHotAirStation: false,
-        hasMicroscope: false,
-        preferMultimeterFallbacks: true,
-      },
-      isDirty: false,
-    },
-    measurement: {
-      activeInstrumentKind: "multimeter",
-      current: {
-        instrumentId: "",
-        kind: "multimeter",
-        label: "—",
-        mode: "dc-voltage",
-        range: "—",
-        display: "— —",
-        value: null,
-        unit: "",
-        hold: false,
-        driftAmplitude: 0,
-      },
-      recent: [],
-      evidence: [],
-      comparisonEventId: null,
-    },
-    chat: { turns: [], composerDraft: "", pendingReplyId: null },
-    layout: {
-      collapsedPanels: {
-        "session-rail": false,
-        "workbench-stage": false,
-        "tactical-feed": false,
-        "session-wizard": false,
-        "knowledge-pack": false,
-        "visual-timeline": false,
-        "operator-profile": false,
-        "repair-settings": false,
-        chat: false,
-        measurement: false,
-        "room-sync": false,
-      },
-      pinnedPanels: {
-        "session-rail": true,
-        "workbench-stage": true,
-        "tactical-feed": false,
-        "session-wizard": false,
-        "knowledge-pack": false,
-        "visual-timeline": true,
-        "operator-profile": false,
-        "repair-settings": false,
-        chat: false,
-        measurement: false,
-        "room-sync": true,
-      },
-      operationalProfile: "novice",
-      voiceGuidance: {
-        ambientListeningState: "idle",
-        spokenGuidanceMode: "brief",
-        handsBusyMode: false,
-      },
-      interactionSettings: {
-        androidCompanionEnabled: true,
-        dictationRoute: "local",
-        ttsRoute: "local",
-        cameraFeedPreference: "manual",
-        dictationSubmitMode: "composer",
-        autoReadAiReplies: true,
-      },
-      attentionBudget: {
-        windowMs: 180000,
-        maxAiInterruptions: 2,
-      },
-      operatorProfileTabId: "tools",
-      settingsOverlayOpen: false,
-      settingsOverlayTabId: "bench-operator",
-      focusMode: false,
-      ambientClock: "",
-    },
-    guidance,
-    operationsAvailable: false,
-    operations: createRepairDefaultOperationsProjection(),
-    voiceReadiness: createRepairDefaultVoiceReadinessProjection(),
-    continuity: createRepairDefaultContinuityProjection(),
-    aiDispatch: createRepairDefaultAiDispatchState(),
-    storage: createRepairDefaultStorageState(),
-    ambient: { nowIso: "", sessionDurationMs: 0 },
-  };
-}
-
 export function createRepairRoomUiRuntime() {
-  const state: RepairUiState = createInitialState();
+  const state: RepairUiState = createInitialRepairUiState();
   const meta: RepairUiSnapshotMeta = {
     schemaVersion: 1,
     generatedAt: "",
@@ -489,6 +167,12 @@ export function createRepairRoomUiRuntime() {
   let spatialFocusTween: RepairSpatialFocusTween | null = null;
   let spatialFocusTweenToken = 0;
   let lastSpatialFocusKey: string | null = null;
+  const keyboardController = createRepairKeyboardController({
+    cancelSpatialFocusTween,
+    meta,
+    requestRuntime,
+    state,
+  });
 
   // -- i18n helper
   function text(path: string[], fallback: string): string {
@@ -501,38 +185,6 @@ export function createRepairRoomUiRuntime() {
       }
     }
     return typeof node === "string" ? node : fallback;
-  }
-
-  function setClassNameIfChanged(element: HTMLElement, className: string): void {
-    if (element.className !== className) element.className = className;
-  }
-
-  function setTextIfChanged(element: HTMLElement, textContent: string): void {
-    if (element.textContent !== textContent) element.textContent = textContent;
-  }
-
-  function setDatasetIfChanged(element: HTMLElement, key: string, value: string): void {
-    if (element.dataset[key] !== value) element.dataset[key] = value;
-  }
-
-  function setStyleIfChanged(
-    element: HTMLElement,
-    property: RepairMutableStyleProperty,
-    value: string
-  ): void {
-    if (element.style[property] !== value) {
-      element.style[property] = value;
-    }
-  }
-
-  function getRouteLabel(route: "local" | "android"): string {
-    return route === "android" ? "Android" : "Local";
-  }
-
-  function getAssistanceProfileLabel(maxAiInterruptions: number): string {
-    if (maxAiInterruptions <= 1) return "Quiet";
-    if (maxAiInterruptions === 2) return "Balanced";
-    return "Proactive";
   }
 
   function createWorkbenchEmptyState(): HTMLElement {
@@ -710,15 +362,6 @@ export function createRepairRoomUiRuntime() {
     }
   }
 
-  function formatOffset(ms: number): string {
-    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-    const minutes = Math.floor(totalSeconds / 60)
-      .toString()
-      .padStart(2, "0");
-    const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-    return `+${minutes}:${seconds}`;
-  }
-
   function getTimelineModel(): {
     contentWidthPx: number;
     eventDeltas: number[];
@@ -745,59 +388,6 @@ export function createRepairRoomUiRuntime() {
       totalMs,
       zoom,
     };
-  }
-
-  function formatTimelineText(value: string): string {
-    return value
-      .split("-")
-      .filter((part) => part.length > 0)
-      .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-      .join(" ")
-      .trim();
-  }
-
-  function formatEventToolLabel(tool: string): string {
-    switch (tool) {
-      case "rect":
-        return "Box";
-      case "freehand":
-        return "Draw";
-      case "measurement-pin":
-        return "Probe";
-      case "freeze-frame":
-        return "Freeze";
-      default:
-        return formatTimelineText(tool);
-    }
-  }
-
-  function getEventLabel(event: RepairEvent): string {
-    switch (event.kind) {
-      case "ai-mark":
-        return formatTimelineText(event.severity);
-      case "measurement":
-        return event.reference ?? event.channel;
-      case "risk-flag":
-        return "Risk";
-      case "snapshot":
-        return "Snapshot";
-      case "annotation":
-        return formatEventToolLabel(event.tool);
-      case "freeze-frame":
-        return "Freeze";
-      case "note":
-        return "Note";
-      case "session-start":
-        return "Start";
-      case "ai-mark-lifecycle":
-        return "Assistant state";
-      case "investigation-region-created":
-        return "Area";
-      case "investigation-region-updated":
-        return "Area";
-      default:
-        return "Event";
-    }
   }
 
   function getEventThumbnailSrc(event: RepairEvent): string | null {
@@ -3011,65 +2601,6 @@ export function createRepairRoomUiRuntime() {
     });
   }
 
-  function jumpRelativeEvent(direction: -1 | 1): void {
-    if (meta.events.length === 0) return;
-    const currentIndex =
-      state.workbench.focusedEventId === null
-        ? -1
-        : meta.events.findIndex((event) => event.id === state.workbench.focusedEventId);
-    const nextIndex = Math.min(meta.events.length - 1, Math.max(0, currentIndex + direction));
-    const event = meta.events[nextIndex];
-    if (event !== undefined) {
-      cancelSpatialFocusTween();
-      requestRuntime.jumpToEvent({ eventId: event.id });
-    }
-  }
-
-  function getKeyboardOverlayRefs() {
-    return [
-      ...meta.replay.overlayEvents.map((event) => ({ kind: "event" as const, id: event.id })),
-      ...meta.replay.investigationRegions.map((region) => ({
-        kind: "investigation-region" as const,
-        id: region.regionId,
-      })),
-      ...meta.replay.temporarySpatialRegions.map((region) => ({
-        kind: "temporary-spatial-region" as const,
-        id: region.id,
-      })),
-      ...meta.replay.knowledgeRegions.map((region) => ({
-        kind: "knowledge-region" as const,
-        id: region.id,
-      })),
-      ...meta.replay.measurementRelationships.map((relationship) => ({
-        kind: "measurement-relationship" as const,
-        id: relationship.id,
-      })),
-    ];
-  }
-
-  function cycleOverlayEntity(direction: -1 | 1): void {
-    const refs = getKeyboardOverlayRefs();
-    if (refs.length === 0) return;
-    const current =
-      state.workbench.selection.inspectorEntityRef ??
-      state.workbench.selection.selectedEntityRefs.at(-1) ??
-      null;
-    const currentIndex =
-      current === null
-        ? -1
-        : refs.findIndex((ref) => ref.kind === current.kind && ref.id === current.id);
-    const next = refs[(currentIndex + direction + refs.length) % refs.length];
-    if (next !== undefined) {
-      cancelSpatialFocusTween();
-      requestRuntime.selectOverlayEntities({ refs: [next], mode: "replace", inspectorRef: next });
-    }
-  }
-
-  function scrubTimelineTo(positionMs: number): void {
-    cancelSpatialFocusTween();
-    requestRuntime.scrubTimeline({ positionMs: Math.max(0, Math.round(positionMs)) });
-  }
-
   function getWorkbenchViewportMode(): string {
     if (
       state.workbench.investigationModeEnabled ||
@@ -3085,110 +2616,6 @@ export function createRepairRoomUiRuntime() {
       return "replay";
     }
     return "live";
-  }
-
-  // -- Keyboard shortcuts
-  function handleKeydown(e: KeyboardEvent): void {
-    if (e.defaultPrevented) return;
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-    switch (e.key) {
-      case "Tab":
-        if (e.altKey) {
-          e.preventDefault();
-          cycleOverlayEntity(e.shiftKey ? -1 : 1);
-        }
-        break;
-      case "Enter": {
-        const ref =
-          state.workbench.selection.inspectorEntityRef ??
-          state.workbench.selection.selectedEntityRefs.at(-1) ??
-          null;
-        if (ref !== null) {
-          e.preventDefault();
-          cancelSpatialFocusTween();
-          requestRuntime.focusOverlayEntity({ ref, focusJump: true });
-        }
-        break;
-      }
-      case "f":
-      case "F":
-        requestRuntime.updateFocus({ focusMode: !state.layout.focusMode });
-        break;
-      case "i":
-      case "I":
-        requestRuntime.toggleInvestigationMode({
-          enabled: !state.workbench.investigationModeEnabled,
-        });
-        break;
-      case " ":
-        e.preventDefault();
-        requestRuntime.toggleFreezeFrame();
-        break;
-      case "Escape":
-        if (state.layout.settingsOverlayOpen) {
-          requestRuntime.setSettingsOverlay({ open: false });
-        } else if (state.layout.focusMode) {
-          requestRuntime.updateFocus({ focusMode: false });
-        }
-        break;
-      case "[":
-        jumpRelativeEvent(-1);
-        break;
-      case "]":
-        jumpRelativeEvent(1);
-        break;
-      case "Home":
-        scrubTimelineTo(0);
-        break;
-      case "End":
-        cancelSpatialFocusTween();
-        requestRuntime.focusLiveEdge();
-        break;
-      case ",":
-        scrubTimelineTo(state.workbench.timeline.playheadMs - 1000);
-        break;
-      case ".":
-        scrubTimelineTo(state.workbench.timeline.playheadMs + 1000);
-        break;
-      case "ArrowLeft":
-      case "ArrowRight":
-      case "ArrowUp":
-      case "ArrowDown": {
-        const step = e.shiftKey ? 8 : 1;
-        const delta =
-          e.key === "ArrowLeft"
-            ? { xPx: -step, yPx: 0 }
-            : e.key === "ArrowRight"
-              ? { xPx: step, yPx: 0 }
-              : e.key === "ArrowUp"
-                ? { xPx: 0, yPx: -step }
-                : { xPx: 0, yPx: step };
-        cancelSpatialFocusTween();
-        requestRuntime.updateFocus({ nudgeDelta: delta, hardSnap: e.shiftKey });
-        break;
-      }
-      case "r":
-      case "R":
-        requestRuntime.setActiveTool({ tool: "snapshot" });
-        break;
-      case "m":
-      case "M":
-        requestRuntime.setActiveTool({ tool: "measurement-pin" });
-        break;
-      case "a":
-      case "A":
-        requestRuntime.setActiveTool({ tool: "rect" });
-        break;
-      case "z":
-      case "Z":
-        requestRuntime.setActiveTool({ tool: "zoom-in" });
-        break;
-      case "x":
-      case "X":
-        requestRuntime.setActiveTool({ tool: "zoom-out" });
-        break;
-    }
   }
 
   function getChatComposerInput(): HTMLInputElement | null {
@@ -3558,7 +2985,7 @@ export function createRepairRoomUiRuntime() {
     }
 
     documentRef.documentElement.lang = context.locale;
-    documentRef.addEventListener("keydown", handleKeydown);
+    documentRef.addEventListener("keydown", keyboardController.handleKeydown);
     startClock();
     render();
     requestRuntime.notifyUiReady();
