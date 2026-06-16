@@ -239,6 +239,7 @@ const OPERATOR_PROFILE_TABS: ReadonlySet<string> = new Set([
   "tools",
   "skills",
   "preferences",
+  "controls",
 ]);
 const OPERATIONAL_PROFILES: ReadonlySet<string> = new Set(["novice", "advanced"]);
 const AMBIENT_LISTENING_STATES: ReadonlySet<string> = new Set(["idle", "listening", "muted"]);

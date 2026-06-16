@@ -101,7 +101,8 @@
       "overview": "Profil Özeti",
       "tools": "Araçlar & Ekipmanlar",
       "skills": "Beceriler",
-      "preferences": "Tercihler"
+      "preferences": "Tercihler",
+      "controls": "Tamir Kontrolleri"
     },
     "groups": {
       "soldering": "Lehimleme",
@@ -159,7 +160,7 @@
   "settings": {
     "eyebrow": "AYARLAR",
     "title": "Tamir Kontrolleri",
-    "operatorOverlayTitle": "Tezgah Operatörü",
+    "operatorOverlayTitle": "setup",
     "handsFreeTitle": "Eller serbest tamir",
     "handsFreeSubtitle": "Sesli rehberliği, ambient dinlemeyi ve AI cevap okuma davranışını yönetir.",
     "companionTitle": "Android companion",

@@ -85,7 +85,7 @@ function appendSettingsButton(
   parent.append(button);
 }
 
-export function renderRepairSettingsPanel(
+export function renderRepairSettingsPanelBody(
   documentRef: Document,
   state: RepairUiState,
   text: TextFn
@@ -311,6 +311,18 @@ export function renderRepairSettingsPanel(
   });
   attention.append(budgetGroup.group);
   body.append(attention);
+
+  return body;
+}
+
+export function renderRepairSettingsPanel(
+  documentRef: Document,
+  state: RepairUiState,
+  text: TextFn
+): HTMLElement {
+  const voice = state.layout.voiceGuidance;
+  const handsFreeEnabled = voice.handsBusyMode && voice.ambientListeningState === "listening";
+  const body = renderRepairSettingsPanelBody(documentRef, state, text);
 
   return createRepairPanel(documentRef, {
     panelId: "repair-settings",

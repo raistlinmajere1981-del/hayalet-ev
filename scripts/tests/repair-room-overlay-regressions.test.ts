@@ -14,6 +14,7 @@ import {
 import { renderRepairSettingsPanel } from "../../rooms/repair-room/ui/panels/repair-settings-panel.ts";
 import { renderChatPanel } from "../../rooms/repair-room/ui/panels/chat-panel.ts";
 import { renderWorkbenchStagePanel } from "../../rooms/repair-room/ui/panels/workbench-stage-panel.ts";
+import { renderOperatorProfilePanel } from "../../rooms/repair-room/ui/panels/operator-profile-panel.ts";
 import {
   getContainedImageFrame,
   imagePointToStagePoint,
@@ -262,10 +263,14 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(runtime, /flushWizardFields/);
   assert.match(runtime, /data-repair-action='wizard-field'/);
   assert.match(runtime, /renderRoomSyncPanel/);
-  assert.match(runtime, /renderRepairSettingsPanel/);
+  assert.match(runtime, /renderOperatorProfilePanel/);
+  assert.doesNotMatch(runtime, /renderRepairSettingsPanel\(/);
   assert.match(runtime, /repair-settings-overlay/);
   assert.match(runtime, /setSettingsOverlay/);
   assert.match(runtime, /set-settings-overlay/);
+  assert.doesNotMatch(runtime, /repair-settings-overlay__tabs/);
+  assert.match(operatorPanel, /tabControls/);
+  assert.match(operatorPanel, /renderRepairSettingsPanelBody/);
   assert.match(runtime, /timeline-scrub/);
   assert.match(runtime, /applyLiveSnapshotUpdates/);
   assert.match(runtime, /timelineShape/);
@@ -402,6 +407,7 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(style, /\.repair-sync-panel/);
   assert.match(style, /\.repair-settings-panel/);
   assert.match(style, /\.repair-settings-overlay/);
+  assert.match(style, /\.repair-settings-overlay__content > \.repair-panel/);
   assert.match(style, /\.repair-pack-preview/);
 });
 
@@ -508,6 +514,25 @@ test("repair-room hands-free controls stay action-oriented without duplicating t
     (element) => element.dataset["repairAction"] === "set-interaction-settings"
   );
   assert.ok(settingsActions.length >= 8);
+  const setupControlsSurface = renderOperatorProfilePanel(
+    documentRef,
+    {
+      ...activeState,
+      layout: { ...activeState.layout, operatorProfileTabId: "controls" },
+    },
+    renderText
+  ) as unknown as RepairFakeElement;
+  const setupTabs = findRepairFakeElements(
+    setupControlsSurface,
+    (element) => element.dataset["repairAction"] === "operator-profile-tab"
+  );
+  assert.equal(setupTabs.some((element) => element.dataset["tabId"] === "controls"), true);
+  assert.ok(
+    findRepairFakeElements(
+      setupControlsSurface,
+      (element) => element.dataset["repairAction"] === "set-interaction-settings"
+    ).length >= 8
+  );
   const chatSurface = renderChatPanel(
     documentRef,
     createRepairUiSnapshot({
@@ -531,9 +556,9 @@ test("repair-room hands-free controls stay action-oriented without duplicating t
   assert.match(workbenchPanel, /toggle-dictation/);
   assert.match(workbenchPanel, /toggle-camera-feed/);
   assert.match(workbenchPanel, /toggle-tts/);
-  assert.match(workbenchPanel, /set-settings-overlay/);
-  assert.match(workbenchPanel, /bench-operator/);
-  assert.match(workbenchPanel, /repair-controls/);
+  assert.doesNotMatch(workbenchPanel, /set-settings-overlay/);
+  assert.doesNotMatch(workbenchPanel, /bench-operator/);
+  assert.doesNotMatch(workbenchPanel, /repair-controls/);
   assert.doesNotMatch(workbenchPanel, /getOperationalStatusChips/);
   assert.doesNotMatch(workbenchPanel, /repairOperationStatus/);
   assert.match(settingsPanel, /autoReadAiReplies/);

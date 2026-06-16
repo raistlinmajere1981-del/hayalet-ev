@@ -1233,7 +1233,7 @@ function buildPanelVisibility(params: {
   panels["repair-settings"] = "compact";
   panels["chat"] = params.operationalProfile === "advanced" ? "compact" : "hidden";
   panels["room-sync"] = params.operationalProfile === "advanced" ? "compact" : "hidden";
-  panels["knowledge-pack"] = params.hasKnowledgePack ? "compact" : "hidden";
+  panels["knowledge-pack"] = "compact";
   panels["session-wizard"] = "hidden";
   panels["tactical-feed"] = params.unresolvedCriticalItems > 0 ? "contextual" : "compact";
   panels.measurement =

@@ -372,7 +372,7 @@ export function createRepairDefaultGuidanceProjection(
   const panels = createRepairGuidancePanelMap("compact");
   panels["workbench-stage"] = "expanded";
   panels["session-wizard"] = "contextual";
-  panels["knowledge-pack"] = "hidden";
+  panels["knowledge-pack"] = "compact";
   panels["repair-settings"] = "compact";
   panels.chat = operationalProfile === "advanced" ? "compact" : "hidden";
   panels["room-sync"] = operationalProfile === "advanced" ? "compact" : "hidden";

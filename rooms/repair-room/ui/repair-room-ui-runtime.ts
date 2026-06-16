@@ -32,7 +32,6 @@ import {
 import { renderKnowledgePackPanel } from "./panels/knowledge-pack-panel.js";
 import { renderVisualTimelinePanel } from "./panels/visual-timeline-panel.js";
 import { renderOperatorProfilePanel } from "./panels/operator-profile-panel.js";
-import { renderRepairSettingsPanel } from "./panels/repair-settings-panel.js";
 import { renderChatPanel } from "./panels/chat-panel.js";
 import { renderMeasurementPanel } from "./panels/measurement-panel.js";
 import { getRepairRoomSyncRows, renderRoomSyncPanel } from "./panels/room-sync-panel.js";
@@ -75,11 +74,6 @@ const AI_LIFECYCLE_ACTIONS = [
   ["resolved", "Fixed"],
   ["dismissed", "Ignore"],
 ] as const;
-
-const REPAIR_SETTINGS_OVERLAY_TABS: Array<{ id: RepairSettingsOverlayTabId; label: string }> = [
-  { id: "bench-operator", label: "Bench Operator" },
-  { id: "repair-controls", label: "Repair Controls" },
-];
 
 interface RepairPanelLifecycle {
   panelId: RepairPanelId;
@@ -2346,7 +2340,7 @@ export function createRepairRoomUiRuntime() {
   }
 
   function getSettingsOverlayTitle(_tabId: RepairSettingsOverlayTabId): string {
-    return text(["settings", "operatorOverlayTitle"], "Bench Operator");
+    return text(["settings", "operatorOverlayTitle"], "setup");
   }
 
   function createSettingsOverlayShell(): { overlay: HTMLElement; body: HTMLElement } {
@@ -2376,22 +2370,11 @@ export function createRepairRoomUiRuntime() {
     title.textContent = getSettingsOverlayTitle(state.layout.settingsOverlayTabId);
     header.append(title);
 
-    const tabs = documentRef.createElement("div");
-    tabs.className = "repair-settings-overlay__tabs";
-    REPAIR_SETTINGS_OVERLAY_TABS.forEach((tab) => {
-      const tabButton = documentRef.createElement("button");
-      tabButton.type = "button";
-      tabButton.className = "repair-settings-overlay__tab";
-      tabButton.textContent =
-        tab.id === "bench-operator"
-          ? text(["settings", "operatorOverlayTitle"], tab.label)
-          : text(["settings", "title"], tab.label);
-      tabButton.dataset["repairAction"] = "set-settings-overlay";
-      tabButton.dataset["open"] = "true";
-      tabButton.dataset["tabId"] = tab.id;
-      tabs.append(tabButton);
-    });
-    header.append(tabs);
+    const body = documentRef.createElement("div");
+    body.className = "repair-settings-overlay__body";
+    const content = documentRef.createElement("div");
+    content.className = "repair-settings-overlay__content";
+    body.append(content);
 
     const close = documentRef.createElement("button");
     close.type = "button";
@@ -2401,9 +2384,6 @@ export function createRepairRoomUiRuntime() {
     close.dataset["repairAction"] = "set-settings-overlay";
     close.dataset["open"] = "false";
     header.append(close);
-
-    const body = documentRef.createElement("div");
-    body.className = "repair-settings-overlay__body";
 
     dialog.append(header, body);
     overlay.append(backdrop, dialog);
@@ -2426,30 +2406,28 @@ export function createRepairRoomUiRuntime() {
     });
 
     if (!open) {
-      if (body.children.length > 0) body.replaceChildren();
+      const content = body.querySelector<HTMLElement>(".repair-settings-overlay__content");
+      if (content !== null && content.children.length > 0) content.replaceChildren();
       shell?.panelSignatures.delete("operator-profile");
-      shell?.panelSignatures.delete("repair-settings");
       shell?.panelElements.delete("operator-profile");
-      shell?.panelElements.delete("repair-settings");
       if (shell !== null) shell.settingsOverlaySignature = "";
       return;
     }
 
-    const panelId: RepairPanelId =
-      tabId === "bench-operator" ? "operator-profile" : "repair-settings";
+    const panelId: RepairPanelId = "operator-profile";
     const signature = `${tabId}:${buildPanelSignature(panelId)}`;
-    if (shell?.settingsOverlaySignature === signature && body.children.length > 0) {
-      const current = body.firstElementChild;
+    const content = body.querySelector<HTMLElement>(".repair-settings-overlay__content");
+    if (content === null) return;
+
+    if (shell?.settingsOverlaySignature === signature && content.children.length > 0) {
+      const current = content.firstElementChild;
       if (current instanceof HTMLElement) applyPanelGuidanceChrome(current, panelId);
       return;
     }
 
-    const panel =
-      tabId === "bench-operator"
-        ? renderOperatorProfilePanel(documentRef, state, text)
-        : renderRepairSettingsPanel(documentRef, state, text);
+    const panel = renderOperatorProfilePanel(documentRef, state, text);
     applyPanelGuidanceChrome(panel, panelId);
-    body.replaceChildren(panel);
+    content.replaceChildren(panel);
     if (shell !== null) shell.settingsOverlaySignature = signature;
   }
 

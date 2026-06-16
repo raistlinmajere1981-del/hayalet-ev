@@ -1279,6 +1279,7 @@ test("repair-room Phase 3 keeps calm defaults and applies AI attention budget", 
   const defaultGuidance = createRepairDefaultGuidanceProjection();
   const emptyGuidance = createEmptyRepairReplayProjection().guidance;
   assert.deepEqual(emptyGuidance, defaultGuidance);
+  assert.equal(defaultGuidance.panelVisibility.panels["knowledge-pack"], "compact");
 
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
@@ -1295,9 +1296,15 @@ test("repair-room Phase 3 keeps calm defaults and applies AI attention budget", 
   const session = state.sessions[state.activeSessionId ?? ""];
   assert.ok(session);
   const projection = createRepairReplayProjection(state, session);
+  const noPackProjection = createRepairReplayProjection(state, {
+    ...session,
+    knowledgePack: null,
+    knowledgePackId: null,
+  });
 
   assert.equal(projection.guidance.aiInterruption.attentionBudget.windowMs, 240000);
   assert.equal(projection.guidance.aiInterruption.attentionBudget.maxAiInterruptions, 1);
+  assert.equal(noPackProjection.guidance.panelVisibility.panels["knowledge-pack"], "compact");
   assert.equal(
     projection.guidance.aiInterruption.attentionBudget.usedAiInterruptions <=
       projection.guidance.aiInterruption.attentionBudget.maxAiInterruptions,

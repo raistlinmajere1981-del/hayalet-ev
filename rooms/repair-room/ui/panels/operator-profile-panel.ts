@@ -1,5 +1,6 @@
 import type { RepairUiState } from "../../shared/ui/state.js";
 import { createRepairPanel } from "./panel-shell.js";
+import { renderRepairSettingsPanelBody } from "./repair-settings-panel.js";
 
 type TextFn = (path: string[], fallback: string) => string;
 
@@ -23,6 +24,7 @@ export function renderOperatorProfilePanel(
     { id: "tools", label: text(["operatorProfile", "tabTools"], "Tools & Equipment") },
     { id: "skills", label: text(["operatorProfile", "tabSkills"], "Skills") },
     { id: "preferences", label: text(["operatorProfile", "tabPrefs"], "Preferences") },
+    { id: "controls", label: text(["operatorProfile", "tabControls"], "Repair Controls") },
   ];
 
   for (const tab of tabItems) {
@@ -204,6 +206,12 @@ export function renderOperatorProfilePanel(
       prefs.append(row);
     });
     body.append(prefs);
+  }
+
+  if (activeTab === "controls") {
+    const controls = renderRepairSettingsPanelBody(documentRef, state, text);
+    controls.className = `${controls.className} repair-settings-panel--embedded`;
+    body.append(controls);
   }
 
   return createRepairPanel(documentRef, {

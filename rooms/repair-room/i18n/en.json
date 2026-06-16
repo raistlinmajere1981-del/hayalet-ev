@@ -101,7 +101,8 @@
       "overview": "Profile Overview",
       "tools": "Tools & Equipment",
       "skills": "Skills",
-      "preferences": "Preferences"
+      "preferences": "Preferences",
+      "controls": "Repair Controls"
     },
     "groups": {
       "soldering": "Soldering",
@@ -159,7 +160,7 @@
   "settings": {
     "eyebrow": "SETTINGS",
     "title": "Repair Controls",
-    "operatorOverlayTitle": "Bench Operator",
+    "operatorOverlayTitle": "setup",
     "handsFreeTitle": "Hands-free repair",
     "handsFreeSubtitle": "Controls spoken guidance, ambient listening, and AI reply handling.",
     "companionTitle": "Android companion",
