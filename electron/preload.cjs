@@ -500,6 +500,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("capture-start-ambient-listener", options),
   captureStopAmbientListener: (options) =>
     ipcRenderer.invoke("capture-stop-ambient-listener", options),
+  captureSetTorch: (options) => ipcRenderer.invoke("capture-set-torch", options),
   captureRequestAnalyzePhoto: (options) =>
     ipcRenderer.invoke("capture-request-analyze-photo", options),
   captureRetakeAnalyzePhoto: (options) =>

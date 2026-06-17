@@ -190,6 +190,7 @@ function normalizeCaptureSettings(
     },
     providers: {
       androidCompanionEnabled: providers["androidCompanionEnabled"] !== false,
+      androidTorchEnabled: providers["androidTorchEnabled"] === true,
     },
   };
 }

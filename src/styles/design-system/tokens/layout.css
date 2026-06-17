@@ -57,6 +57,9 @@
   --layout-analyze-capture-side-min-w: 14rem;
   --layout-analyze-capture-preview-min-h: 12rem;
   --layout-analyze-capture-preview-max-h: 18rem;
+  --layout-analyze-operation-column-min-w: 22rem;
+  --layout-analyze-operation-label-min-w: 8.5rem;
+  --layout-analyze-operation-value-min-w: 12rem;
 
   --layout-modal-compact-w: 420px;
   --layout-modal-character-w: 860px;

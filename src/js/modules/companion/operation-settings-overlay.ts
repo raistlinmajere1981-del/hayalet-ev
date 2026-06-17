@@ -297,6 +297,16 @@ export async function openCompanionOperationSettings(
     document.createTextNode(companionT("page.operationSettings.androidEnabled"))
   );
 
+  const androidTorchInput = document.createElement("input");
+  androidTorchInput.type = "checkbox";
+  androidTorchInput.checked = captureProviders()?.androidTorchEnabled === true;
+  const androidTorchLabel = document.createElement("span");
+  androidTorchLabel.className = "analyze-operation-settings__inline-check";
+  androidTorchLabel.append(androidTorchInput);
+  androidTorchLabel.append(
+    document.createTextNode(companionT("page.operationSettings.torchEnabled"))
+  );
+
   const deviceSelect = document.createElement("select");
   deviceSelect.className = "form-input";
   const androidStatusValue = createValueBox();
@@ -456,6 +466,27 @@ export async function openCompanionOperationSettings(
       "capture.providers.androidCompanionEnabled",
       androidEnabledInput.checked
     );
+  });
+  androidTorchInput.addEventListener("change", () => {
+    void (async (): Promise<void> => {
+      const enabled = androidTorchInput.checked;
+      await SettingsManager.set("capture.providers.androidTorchEnabled", enabled);
+      const outcome = await runCaptureAction("set-torch", {
+        target: "analyze-compose",
+        deviceId: deviceSelect.value.trim() === "" ? null : deviceSelect.value.trim(),
+        enabled,
+      });
+      currentCaptureStatus = outcome.status;
+      reportCaptureStatus(currentCaptureStatus);
+      notifyCompanionFeedback(
+        options,
+        outcome.ok ? "success" : "error",
+        outcome.message,
+        "companion-operation-torch"
+      );
+      populateDeviceSelect();
+      renderStatus();
+    })();
   });
   deviceSelect.addEventListener("change", () => {
     void (async (): Promise<void> => {
@@ -668,6 +699,7 @@ export async function openCompanionOperationSettings(
   );
   androidSection.append(
     createRow(companionT("page.operationSettings.androidEnabledLabel"), androidEnabledLabel),
+    createRow(companionT("page.operationSettings.torchLabel"), androidTorchLabel),
     createRow(companionT("page.tts.deviceLabel"), deviceSelect),
     createRow(companionT("page.operationSettings.androidStatusLabel"), androidStatusValue),
     createRow(companionT("page.tts.companionLabel"), companionValue)

@@ -264,6 +264,7 @@ export interface CaptureDefaultsSettings {
 
 export interface CaptureProviderSettings {
   androidCompanionEnabled?: boolean;
+  androidTorchEnabled?: boolean;
 }
 
 export interface CaptureCommandPhraseSettings {

@@ -131,6 +131,8 @@
           "androidHint": "Telefon companion erişimini ve ortak cihaz seçimini Analyze içinde yönet.",
           "androidEnabled": "Android companion etkin",
           "androidEnabledLabel": "Companion",
+          "torchEnabled": "Telefon feneri açık",
+          "torchLabel": "Fener",
           "androidStatusLabel": "Android durumu",
           "androidReady": "{{device}} hazır",
           "dictationSection": "Dikte",

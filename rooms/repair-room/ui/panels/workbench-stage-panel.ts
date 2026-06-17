@@ -62,9 +62,10 @@ function getForensicEventMeta(event: RepairEvent): string {
     return `${time} • ${event.status.toUpperCase()} • ${event.regionId}`;
   }
   if (event.kind === "investigation-region-updated") {
-    return `${time} • ${(event.status ?? "updated").toUpperCase()} • ${event.regionId}`;
+    const status = event.status ?? "updated";
+    return `${time} • ${status.toUpperCase()} • ${event.regionId}`;
   }
-  return `${time} • ${(event.linkedEventIds ?? []).length} linked events`;
+  return `${time} • ${event.linkedEventIds.length} linked events`;
 }
 
 function getForensicLinkedText(state: RepairUiState, event: RepairEvent): string {

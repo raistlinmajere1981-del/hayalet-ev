@@ -71,6 +71,7 @@ import type {
   CaptureMediaIngressPayload,
   CaptureServiceStatus,
   CaptureTargetActionOptions,
+  CaptureTorchOptions,
 } from "../types/capture.js";
 import type { SceneThemeRegistration } from "./scene-system/scene-theme-registry-contract.js";
 
@@ -1232,6 +1233,7 @@ declare global {
     captureStopAmbientListener?: (
       options?: CaptureAmbientListenerOptions
     ) => Promise<CaptureActionOutcome>;
+    captureSetTorch?: (options?: CaptureTorchOptions) => Promise<CaptureActionOutcome>;
     captureRequestAnalyzePhoto?: (
       options?: CaptureTargetActionOptions
     ) => Promise<CaptureActionOutcome>;

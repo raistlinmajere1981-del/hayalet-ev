@@ -131,6 +131,8 @@
           "androidHint": "Manage companion access and the shared phone choice from Analyze.",
           "androidEnabled": "Android companion enabled",
           "androidEnabledLabel": "Companion",
+          "torchEnabled": "Phone torch on",
+          "torchLabel": "Torch",
           "androidStatusLabel": "Android state",
           "androidReady": "{{device}} ready",
           "dictationSection": "Dictation",

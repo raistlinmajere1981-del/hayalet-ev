@@ -19,6 +19,7 @@ import type {
   CaptureCompanionAmbientProfile,
   CaptureCompanionCommandProfile,
   CaptureCompanionTtsPayload,
+  CaptureCompanionTorchPayload,
   CaptureCompanionTranscriptModelProfile,
   CaptureCompanionCommandEnvelope,
   CaptureCompanionCommandKind,
@@ -73,6 +74,7 @@ export interface ResolvedCaptureSettings {
   dictationLanguage: TranscriptSupportedLanguage;
   androidDictationBackend: CaptureCompanionTranscriptModelProfile["backend"];
   androidCompanionEnabled: boolean;
+  androidTorchEnabled: boolean;
   ambientWakePhrases: string[];
   ambientActiveWindowMs: number;
   ambientSilenceTimeoutMs: number;
@@ -116,6 +118,7 @@ export interface CompanionBridgeSessionRecord {
 
 export type PendingBridgeCommand = CaptureCompanionCommandEnvelope;
 export type PendingBridgeTtsPayload = CaptureCompanionTtsPayload;
+export type PendingBridgeTorchPayload = CaptureCompanionTorchPayload;
 
 export interface CompanionBuildScriptEvent {
   type: "progress" | "plan" | "result" | "error";
@@ -319,6 +322,7 @@ export function resolveCaptureSettings(settings: unknown): ResolvedCaptureSettin
       defaults?.["androidDictationBackend"]
     ),
     androidCompanionEnabled: providers?.["androidCompanionEnabled"] !== false,
+    androidTorchEnabled: providers?.["androidTorchEnabled"] === true,
     ambientWakePhrases: normalizeAmbientWakePhrases(
       ambient?.["wakePhrases"],
       DEFAULT_AMBIENT_WAKE_PHRASES
@@ -367,6 +371,7 @@ export function buildCompanionCommandProfile(
     commandConfirmation: settings.commandConfirmation,
     androidDictationBackend: settings.androidDictationBackend,
     transcriptModel,
+    torchEnabled: settings.androidTorchEnabled,
     livePreview: options.livePreview === true,
   };
 }
@@ -468,6 +473,8 @@ export function resolveCaptureActionFromCommand(
       return "start-ambient-listener";
     case "stop-ambient-listener":
       return "stop-ambient-listener";
+    case "set-torch":
+      return "set-torch";
     case "start-tts":
       return "start-tts";
     case "stop-tts":

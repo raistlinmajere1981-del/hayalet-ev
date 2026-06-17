@@ -4,6 +4,7 @@ export const OPERATION_CAPABILITIES = [
   "android-camera",
   "local-tts",
   "android-tts",
+  "android-torch",
   "ambient-listening",
   "live-feed",
 ] as const;

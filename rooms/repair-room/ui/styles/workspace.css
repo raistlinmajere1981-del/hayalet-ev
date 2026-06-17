@@ -72,7 +72,7 @@
 .repair-workspace:has(> .repair-panel--tactical-feed.repair-panel--collapsed) {
   grid-template-columns:
     minmax(var(--repair-px-320), 0.95fr) minmax(0, 2.47fr)
-    0px minmax(var(--repair-px-280), 0.9fr);
+    0 minmax(var(--repair-px-280), 0.9fr);
 }
 
 /* col4 (wizard-pack-stack) collapsed — Workbench + Feed expand */
@@ -81,14 +81,14 @@
 ) {
   grid-template-columns:
     minmax(var(--repair-px-320), 0.95fr) minmax(0, 2.1fr)
-    minmax(var(--repair-px-260), 0.82fr) 0px;
+    minmax(var(--repair-px-260), 0.82fr) 0;
 }
 
 /* Both col3 and col4 collapsed — Workbench takes maximum */
 .repair-workspace:has(> .repair-panel--tactical-feed.repair-panel--collapsed):has(
-  > .repair-panel--wizard-pack-stack > .repair-panel--knowledge-pack.repair-panel--collapsed
-) {
+    > .repair-panel--wizard-pack-stack > .repair-panel--knowledge-pack.repair-panel--collapsed
+  ) {
   grid-template-columns:
     minmax(var(--repair-px-320), 0.95fr) minmax(0, 3.37fr)
-    0px 0px;
+    0 0;
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
 import android.media.ToneGenerator
+import android.hardware.camera2.CameraManager
 import android.os.SystemClock
 import com.hayaletev.androidcompanion.R
 import com.hayaletev.androidcompanion.capture.CameraPreviewFrame
@@ -26,6 +27,7 @@ import com.hayaletev.androidcompanion.transport.BridgeCommand
 import com.hayaletev.androidcompanion.transport.BridgeCommandProfile
 import com.hayaletev.androidcompanion.transport.BridgeOperationRecord
 import com.hayaletev.androidcompanion.transport.BridgePermissions
+import com.hayaletev.androidcompanion.transport.BridgeTorchPayload
 import com.hayaletev.androidcompanion.transport.BridgeTranscriptModelProfile
 import com.hayaletev.androidcompanion.transport.BridgeTtsPayload
 import com.hayaletev.androidcompanion.transport.DesktopBridgeClient
@@ -63,6 +65,7 @@ data class CompanionUiState(
     val ttsDetail: String? = null,
     val ttsModel: String? = null,
     val ttsTextSummary: String? = null,
+    val torchStatus: String? = null,
 )
 
 data class CompanionLaunchContext(
@@ -93,6 +96,7 @@ class CompanionSessionCoordinator(
     private val modelManager = TranscriptModelManager(appContext, bridgeClient)
     private val voskTranscriber = AndroidVoskTranscriber()
     private val ttsPlayer = AndroidSherpaTtsPlayer(appContext)
+    private val cameraManager = appContext.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     private var ambientTone: ToneGenerator? =
         runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 70) }.getOrNull()
     private var ttsJob: Job? = null
@@ -112,6 +116,8 @@ class CompanionSessionCoordinator(
     private var ttsDetail = appContext.getString(R.string.tts_detail_waiting)
     private var ttsModel = appContext.getString(R.string.tts_model_waiting)
     private var ttsTextSummary = appContext.getString(R.string.tts_text_empty)
+    private var torchEnabled = false
+    private var torchCameraId: String? = null
     private var operationsSummary = appContext.getString(R.string.operations_status_idle)
     private val ambientHistoryEntries = mutableListOf<String>()
     private val ambientHistoryClock = SimpleDateFormat("HH:mm:ss", Locale.US)
@@ -265,6 +271,7 @@ class CompanionSessionCoordinator(
         updateAmbientUi("stopped", appContext.getString(R.string.ambient_event_stopped), null)
         audioRecorder.cancel()
         stopLivePreviewStreaming()
+        setTorch(false)
         cameraController.stopSession()
         ttsPlayer.stop()
         ttsJob?.cancel()
@@ -839,6 +846,27 @@ class CompanionSessionCoordinator(
                         previewActive = cameraController.isPreviewBound(),
                     )
                 }
+
+                "set-torch" -> {
+                    val torch = command.torch
+                        ?: BridgeTorchPayload(command.profile?.torchEnabled == true)
+                    setTorch(torch.enabled)
+                    publishUiState(
+                        connectionStatus = appContext.getString(R.string.status_connected_desktop),
+                        permissionsSummary = appContext.getString(R.string.permissions_ready),
+                    )
+                    bridgeClient.acknowledgeCommand(
+                        deviceId = launchContext.deviceId,
+                        command = command,
+                        status = "done",
+                        message = if (torch.enabled) {
+                            "Android torch is on."
+                        } else {
+                            "Android torch is off."
+                        },
+                        previewActive = cameraController.isPreviewBound(),
+                    )
+                }
             }
         }.onFailure { error ->
             CompanionDiagnostics.e(
@@ -899,6 +927,12 @@ class CompanionSessionCoordinator(
                     )
                 }
             }
+            if (command.kind == "set-torch") {
+                publishUiState(
+                    connectionStatus = appContext.getString(R.string.status_connected_desktop),
+                    permissionsSummary = appContext.getString(R.string.permissions_ready),
+                )
+            }
             runCatching {
                 bridgeClient.acknowledgeCommand(
                     deviceId = launchContext.deviceId,
@@ -938,6 +972,11 @@ class CompanionSessionCoordinator(
             ttsDetail = ttsDetail,
             ttsModel = ttsModel,
             ttsTextSummary = ttsTextSummary,
+            torchStatus = if (torchEnabled) {
+                appContext.getString(R.string.torch_status_on)
+            } else {
+                appContext.getString(R.string.torch_status_off)
+            },
         )
     }
 
@@ -984,6 +1023,32 @@ class CompanionSessionCoordinator(
                 ?: appContext.getString(R.string.tts_text_empty)
         CompanionDiagnostics.setState("TTS", status)
         CompanionDiagnostics.setState("TTS detail", detail)
+    }
+
+    private fun setTorch(enabled: Boolean) {
+        val cameraId = resolveTorchCameraId()
+            ?: throw IllegalStateException(appContext.getString(R.string.torch_error_unavailable))
+        cameraManager.setTorchMode(cameraId, enabled)
+        torchEnabled = enabled
+        CompanionDiagnostics.setState(
+            "Torch",
+            if (enabled) appContext.getString(R.string.torch_status_on) else appContext.getString(R.string.torch_status_off),
+        )
+        CompanionDiagnostics.i(
+            "torch",
+            if (enabled) "Phone torch enabled." else "Phone torch disabled.",
+            "cameraId=$cameraId",
+        )
+    }
+
+    private fun resolveTorchCameraId(): String? {
+        torchCameraId?.let { return it }
+        val resolved = cameraManager.cameraIdList.firstOrNull { cameraId ->
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            characteristics.get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+        }
+        torchCameraId = resolved
+        return resolved
     }
 
     private suspend fun publishAmbientStatus(
@@ -1296,6 +1361,7 @@ class CompanionSessionCoordinator(
             "android-camera" -> "Camera"
             "local-tts" -> "Local TTS"
             "android-tts" -> "Android TTS"
+            "android-torch" -> "Torch"
             "ambient-listening" -> "Ambient"
             "live-feed" -> "Live feed"
             else -> capability

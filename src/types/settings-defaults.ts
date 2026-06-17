@@ -93,6 +93,7 @@ export function createDefaultSettings(): AppSettings {
       },
       providers: {
         androidCompanionEnabled: true,
+        androidTorchEnabled: false,
       },
     },
     voiceCommands: {

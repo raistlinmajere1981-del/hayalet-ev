@@ -140,8 +140,13 @@ export type CaptureCompanionCommandKind =
   | "stop-dictation"
   | "start-ambient-listener"
   | "stop-ambient-listener"
+  | "set-torch"
   | "start-tts"
   | "stop-tts";
+
+export interface CaptureCompanionTorchPayload {
+  enabled: boolean;
+}
 
 export interface CaptureCompanionTtsProfile {
   engine: "sherpa-onnx";
@@ -182,6 +187,7 @@ export interface CaptureCompanionCommandProfile {
   commandConfirmation: "none" | "toast";
   androidDictationBackend: "whisper.cpp" | "vosk";
   transcriptModel: CaptureCompanionTranscriptModelProfile | null;
+  torchEnabled?: boolean | null;
   livePreview?: boolean | null;
 }
 
@@ -193,6 +199,7 @@ export interface CaptureCompanionCommandEnvelope {
   createdAt: number;
   profile: CaptureCompanionCommandProfile | null;
   ambient?: CaptureCompanionAmbientProfile | null;
+  torch?: CaptureCompanionTorchPayload | null;
   tts?: CaptureCompanionTtsPayload | null;
 }
 
@@ -207,6 +214,10 @@ export interface CaptureAmbientListenerOptions extends CaptureTargetActionOption
   wakePhrases?: string[] | null;
   activeWindowMs?: number | null;
   silenceTimeoutMs?: number | null;
+}
+
+export interface CaptureTorchOptions extends CaptureTargetActionOptions {
+  enabled?: boolean | null;
 }
 
 export type CaptureAnalyzeSessionState =
@@ -358,6 +369,7 @@ export type CaptureHostAction =
   | "stop-analyze-preview"
   | "start-ambient-listener"
   | "stop-ambient-listener"
+  | "set-torch"
   | "start-tts"
   | "stop-tts";
 

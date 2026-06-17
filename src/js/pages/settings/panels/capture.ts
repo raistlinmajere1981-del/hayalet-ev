@@ -137,6 +137,8 @@ function describeOperationAction(action: CaptureHostAction | null): string {
       return "Ambient listener";
     case "stop-ambient-listener":
       return "Ambient listener stop";
+    case "set-torch":
+      return "Android torch";
     case "start-tts":
       return "Android TTS";
     case "stop-tts":

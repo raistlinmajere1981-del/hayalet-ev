@@ -48,6 +48,7 @@ import type {
   CaptureImportedAsset,
   CaptureMediaIngressPayload,
   CaptureServiceStatus,
+  CaptureTorchOptions,
 } from "../src/types/capture.ts";
 
 import type { TranscriptTargetId } from "../src/types/transcript.ts";
@@ -237,6 +238,10 @@ class CaptureService {
     this.bridgeSessions.clear();
     this.pendingCommands.clear();
     this.activeAnalyzeMediaRequestIds.clear();
+    operationsService.release("android-torch", {
+      id: "android-companion-torch",
+      label: "Android torch",
+    });
     this.lastStatus = null;
     await shutdownAdbServerIfTouched(resolveAdbPath);
   }
@@ -595,6 +600,10 @@ class CaptureService {
     }
 
     this.bridgeSessions.delete(normalizedDeviceId);
+    operationsService.release("android-torch", {
+      id: "android-companion-torch",
+      label: "Android torch",
+    });
     this.clearPendingAnalyzeCommands(normalizedDeviceId);
     if (this.analyzeState.deviceId === normalizedDeviceId) {
       this.resetAnalyzeSessionState("Analyze capture session was disconnected.");
@@ -916,6 +925,7 @@ class CaptureService {
             livePreview: useCompanionLiveFeed,
           }),
           ambient: null,
+          torch: null,
           tts: null,
         },
         { replaceExistingKinds: ["open-camera"] }
@@ -1283,6 +1293,72 @@ class CaptureService {
     );
   }
 
+  async setTorch(options: CaptureTorchOptions = {}): Promise<CaptureActionOutcome> {
+    const target = options.target ?? CAPTURE_ANALYZE_TARGET;
+    const enabled = options.enabled === true;
+    const settings = await loadSettings();
+    const captureSettings = resolveCaptureSettings(settings);
+    if (captureSettings.androidCompanionEnabled !== true) {
+      return await this.buildActionOutcome(
+        "set-torch",
+        false,
+        "Android companion is disabled in Settings > Capture."
+      );
+    }
+
+    const status = await this.refreshStatus();
+    const deviceId = options.deviceId ?? this.resolveAnalyzeCommandDeviceId(status, false);
+    if (deviceId === null) {
+      return await this.buildActionOutcome(
+        "set-torch",
+        false,
+        status.android.message ?? "No ready Android device is available."
+      );
+    }
+
+    const existingBridgeSession = this.getBridgeSessionForTarget(deviceId, target, {
+      requirePreviewActive: false,
+    });
+    if (existingBridgeSession === null) {
+      const launchOutcome = await this.launchCompanion({ target, activeTab: "image" });
+      if (launchOutcome.ok !== true) {
+        return await this.buildActionOutcome("set-torch", false, launchOutcome.message);
+      }
+    }
+
+    const transcriptModel = resolveCompanionTranscriptModelProfile(settings, captureSettings);
+    this.queuePendingBridgeCommand(
+      deviceId,
+      {
+        id: randomUUID(),
+        kind: "set-torch",
+        target,
+        requestId: normalizeText(options.requestId),
+        createdAt: Date.now(),
+        profile: buildCompanionCommandProfile(captureSettings, transcriptModel),
+        ambient: null,
+        torch: { enabled },
+        tts: null,
+      },
+      { replaceExistingKinds: ["set-torch"] }
+    );
+
+    const torchOwner = { id: "android-companion-torch", label: "Android torch" };
+    if (enabled) {
+      operationsService.acquire("android-torch", torchOwner);
+    } else {
+      operationsService.release("android-torch", torchOwner);
+    }
+
+    return await this.buildActionOutcome(
+      "set-torch",
+      true,
+      enabled
+        ? "Android companion torch was requested."
+        : "Android companion torch off was requested."
+    );
+  }
+
   async stopAnalyzeSession(
     options: { target?: TranscriptTargetId | null; requestId?: string | null } = {}
   ): Promise<CaptureActionOutcome> {
@@ -1550,6 +1626,10 @@ class CaptureService {
     for (const [deviceId, session] of this.bridgeSessions.entries()) {
       if (now - session.lastSeenAt > CAPTURE_SESSION_STALE_MS) {
         this.bridgeSessions.delete(deviceId);
+        operationsService.release("android-torch", {
+          id: "android-companion-torch",
+          label: "Android torch",
+        });
       }
     }
 
@@ -1806,6 +1886,12 @@ class CaptureService {
                   : "preparing",
             message,
             progress: statusText === "done" ? 1 : 0.2,
+          });
+        }
+        if (commandKind === "set-torch" && statusText === "failed") {
+          operationsService.release("android-torch", {
+            id: "android-companion-torch",
+            label: "Android torch",
           });
         }
         if (
@@ -2817,6 +2903,7 @@ class CaptureService {
         kind === "start-ambient-listener"
           ? resolveAmbientCommandProfile(captureSettings, options?.ambient)
           : null,
+      torch: null,
       tts: options?.tts ?? null,
     };
     if (target === CAPTURE_ANALYZE_TARGET && isMediaCaptureCommand(kind)) {

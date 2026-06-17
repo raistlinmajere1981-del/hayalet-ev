@@ -129,7 +129,7 @@
 .repair-guidance-strip {
   display: grid;
   /* SAY column (3rd) hidden by default; shown when data-show-say="true" */
-  grid-template-columns: auto minmax(0, 2fr) 0px auto;
+  grid-template-columns: auto minmax(0, 2fr) 0 auto;
   align-items: center;
   gap: var(--repair-sp-2);
   min-height: var(--repair-px-36);

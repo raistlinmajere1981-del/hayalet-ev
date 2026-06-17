@@ -3,6 +3,7 @@ import { captureService } from "../capture-service.ts";
 import type {
   CaptureAmbientListenerOptions,
   CaptureTargetActionOptions,
+  CaptureTorchOptions,
 } from "../../src/types/capture.ts";
 
 export function setupCaptureHandlers(): void {
@@ -135,6 +136,10 @@ export function setupCaptureHandlers(): void {
       return await captureService.stopAmbientListener(options);
     }
   );
+
+  registerHandler("capture-set-torch", async (_event, options?: CaptureTorchOptions) => {
+    return await captureService.setTorch(options);
+  });
 
   registerHandler(
     "capture-request-analyze-photo",

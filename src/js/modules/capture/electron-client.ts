@@ -11,6 +11,7 @@ import type {
   CaptureScrcpyStatus,
   CaptureServiceStatus,
   CaptureTargetActionOptions,
+  CaptureTorchOptions,
   CaptureTranscriptStatusSnapshot,
 } from "../../../types/capture.js";
 
@@ -335,7 +336,7 @@ export async function consumeAnalyzeCaptureAssets(): Promise<CaptureImportedAsse
 
 export async function runCaptureAction(
   action: CaptureHostAction,
-  options: CaptureTargetActionOptions | CaptureAmbientListenerOptions = {}
+  options: CaptureTargetActionOptions | CaptureAmbientListenerOptions | CaptureTorchOptions = {}
 ): Promise<CaptureActionOutcome> {
   const api = getElectronApi();
   switch (action) {
@@ -449,6 +450,11 @@ export async function runCaptureAction(
         typeof api?.captureStopAmbientListener === "function"
           ? await api.captureStopAmbientListener(options)
           : null,
+        action
+      );
+    case "set-torch":
+      return normalizeActionOutcome(
+        typeof api?.captureSetTorch === "function" ? await api.captureSetTorch(options) : null,
         action
       );
     case "start-tts":

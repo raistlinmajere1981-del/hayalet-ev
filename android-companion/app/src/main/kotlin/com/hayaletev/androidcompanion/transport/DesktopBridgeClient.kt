@@ -22,6 +22,7 @@ data class BridgeCommand(
     val requestId: String? = null,
     val profile: BridgeCommandProfile? = null,
     val ambient: BridgeAmbientOptions? = null,
+    val torch: BridgeTorchPayload? = null,
     val tts: BridgeTtsPayload? = null,
 )
 
@@ -35,7 +36,12 @@ data class BridgeCommandProfile(
     val photoQuality: String? = null,
     val androidDictationBackend: String = "vosk",
     val transcriptModel: BridgeTranscriptModelProfile? = null,
+    val torchEnabled: Boolean = false,
     val livePreview: Boolean = false,
+)
+
+data class BridgeTorchPayload(
+    val enabled: Boolean,
 )
 
 data class BridgeTranscriptModelProfile(
@@ -448,6 +454,7 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
                         requestId = item.optString("requestId").trim().ifBlank { null },
                         profile = item.optJSONObject("profile")?.toBridgeCommandProfile(),
                         ambient = item.optJSONObject("ambient")?.toBridgeAmbientOptions(),
+                        torch = item.optJSONObject("torch")?.toBridgeTorchPayload(),
                         tts = item.optJSONObject("tts")?.toBridgeTtsPayload(),
                     )
                 )
@@ -463,8 +470,13 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
                 "vosk"
             },
             transcriptModel = optJSONObject("transcriptModel")?.toBridgeTranscriptModelProfile(),
+            torchEnabled = optBoolean("torchEnabled", false),
             livePreview = optBoolean("livePreview", false),
         )
+    }
+
+    private fun JSONObject.toBridgeTorchPayload(): BridgeTorchPayload {
+        return BridgeTorchPayload(enabled = optBoolean("enabled", false))
     }
 
     private fun JSONObject.toBridgeTranscriptModelProfile(): BridgeTranscriptModelProfile? {

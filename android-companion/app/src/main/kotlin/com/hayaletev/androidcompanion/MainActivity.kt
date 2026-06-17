@@ -305,6 +305,7 @@ class MainActivity : AppCompatActivity() {
         binding.ttsDetailValue.text = state.ttsDetail ?: getString(R.string.tts_detail_waiting)
         binding.ttsModelValue.text = state.ttsModel ?: getString(R.string.tts_model_waiting)
         binding.ttsTextValue.text = state.ttsTextSummary ?: getString(R.string.tts_text_empty)
+        binding.torchValue.text = state.torchStatus ?: getString(R.string.torch_status_off)
         CompanionDiagnostics.setState("Connection", state.connectionStatus)
         CompanionDiagnostics.setState("Target", state.target)
         CompanionDiagnostics.setState("Permissions", state.permissionsSummary)

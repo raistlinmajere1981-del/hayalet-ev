@@ -24,6 +24,7 @@ const OPERATION_INDICATORS: OperationsIndicatorSpec[] = [
       "android-microphone",
       "android-camera",
       "android-tts",
+      "android-torch",
       "ambient-listening",
       "live-feed",
     ],
@@ -52,6 +53,11 @@ const OPERATION_INDICATORS: OperationsIndicatorSpec[] = [
     id: "live",
     label: "Live",
     capabilities: ["live-feed"],
+  },
+  {
+    id: "torch",
+    label: "Torch",
+    capabilities: ["android-torch"],
   },
 ];
 
