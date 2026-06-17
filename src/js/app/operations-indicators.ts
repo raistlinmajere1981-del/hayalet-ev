@@ -1,15 +1,20 @@
+import { getErrorMessage } from "@shared/index.js";
 import type {
   OperationCapability,
   OperationRecord,
   OperationsStatus,
 } from "../../types/operations.js";
 import { getOperationsStatus, onOperationsStatus } from "../modules/operations/electron-client.js";
+import { openCompanionOperationSettings } from "../modules/companion/operation-settings-overlay.js";
+import { notifyUser } from "../ui/user-notification.js";
 
 interface OperationsIndicatorSpec {
   id: string;
   label: string;
   capabilities: OperationCapability[];
 }
+
+let hasBoundCompanionSettingsButton = false;
 
 const OPERATION_INDICATORS: OperationsIndicatorSpec[] = [
   {
@@ -110,8 +115,46 @@ function renderOperationsStatus(status: OperationsStatus): void {
   strip.dataset["activeCount"] = String(activeCount);
 }
 
+function setupCompanionSettingsButton(): void {
+  if (hasBoundCompanionSettingsButton) {
+    return;
+  }
+
+  const button = document.getElementById(
+    "topbar-companion-settings-btn"
+  ) as HTMLButtonElement | null;
+  if (button === null) {
+    return;
+  }
+
+  hasBoundCompanionSettingsButton = true;
+  button.addEventListener("click", () => {
+    if (button.classList.contains("is-active")) {
+      return;
+    }
+
+    button.classList.add("is-active");
+    button.setAttribute("aria-expanded", "true");
+    void openCompanionOperationSettings({
+      onClose: () => {
+        button.classList.remove("is-active");
+        button.setAttribute("aria-expanded", "false");
+      },
+    }).catch((error: unknown) => {
+      button.classList.remove("is-active");
+      button.setAttribute("aria-expanded", "false");
+      notifyUser({
+        kind: "error",
+        title: `Companion settings could not be opened: ${getErrorMessage(error)}`,
+        dedupeKey: "topbar-companion-settings-open-error",
+      });
+    });
+  });
+}
+
 export function setupOperationsIndicators(): void {
   const strip = document.getElementById("topbar-operations-strip");
+  setupCompanionSettingsButton();
   if (!(strip instanceof HTMLElement)) {
     return;
   }

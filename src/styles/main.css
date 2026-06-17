@@ -2427,12 +2427,24 @@ body.is-scroll-locked {
   min-width: 0;
 }
 
+.operations-strip-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 .operations-strip {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
   padding: var(--space-1) var(--space-2);
   border: var(--border-1) solid color-mix(in srgb, var(--border-default) 72%, transparent);
   border-radius: var(--radius-lg);
@@ -2467,6 +2479,35 @@ body.is-scroll-locked {
 
 .operations-strip__dot {
   flex: 0 0 auto;
+}
+
+.operations-strip__settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  gap: var(--space-1);
+  min-height: var(--btn-height-xs);
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 72%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-glass) 76%, transparent);
+  color: var(--text-tertiary);
+  font-size: var(--text-2xs);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.operations-strip__settings-btn:hover,
+.operations-strip__settings-btn.is-active {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--border-default));
+  color: var(--text-primary);
+}
+
+.operations-strip__settings-icon,
+.operations-strip__settings-label {
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .indicators-group {

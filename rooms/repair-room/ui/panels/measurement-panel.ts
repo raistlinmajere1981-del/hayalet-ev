@@ -63,11 +63,7 @@ export function renderMeasurementPanel(
 
   // -- Recent readings
   const readingsHeader = documentRef.createElement("div");
-  readingsHeader.style.fontSize = "10px";
-  readingsHeader.style.color = "var(--repair-text-dim)";
-  readingsHeader.style.textTransform = "uppercase";
-  readingsHeader.style.letterSpacing = "0.08em";
-  readingsHeader.style.paddingBottom = "4px";
+  readingsHeader.className = "repair-section-label";
   readingsHeader.textContent = text(["measurement", "recent"], "Recent Readings");
   body.append(readingsHeader);
 

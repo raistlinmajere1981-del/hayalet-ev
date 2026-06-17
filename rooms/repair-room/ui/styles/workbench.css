@@ -271,6 +271,23 @@
   border: var(--repair-px-2) solid var(--repair-amber);
 }
 
+.repair-viewport[data-overlay-error="true"]::after {
+  content: "Overlay unavailable";
+  position: absolute;
+  bottom: var(--repair-sp-3);
+  right: var(--repair-sp-3);
+  padding: var(--repair-px-4) var(--repair-px-10);
+  background: var(--repair-risk-soft);
+  border: var(--repair-px-1) solid var(--repair-risk);
+  border-radius: var(--repair-radius-sm);
+  color: var(--repair-risk);
+  font: 700 var(--repair-px-9) var(--repair-mono);
+  text-transform: uppercase;
+  letter-spacing: var(--repair-em-0-06);
+  z-index: 4;
+  pointer-events: none;
+}
+
 .repair-coord-hud {
   position: absolute;
   bottom: var(--repair-sp-2);

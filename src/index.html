@@ -501,54 +501,72 @@
                   </div>
                 </div>
               </div>
-              <div
-                class="operations-strip"
-                id="topbar-operations-strip"
-                aria-label="Operations"
-                data-active-count="0"
-              >
-                <div class="operations-strip__item" id="operation-indicator-android">
-                  <span class="operations-strip__label">Android</span>
-                  <span
-                    class="indicator-dot operations-strip__dot"
-                    id="operation-indicator-android-dot"
-                  ></span>
+              <div class="operations-strip-shell">
+                <div
+                  class="operations-strip"
+                  id="topbar-operations-strip"
+                  aria-label="Operations"
+                  data-active-count="0"
+                >
+                  <div class="operations-strip__item" id="operation-indicator-android">
+                    <span class="operations-strip__label">Android</span>
+                    <span
+                      class="indicator-dot operations-strip__dot"
+                      id="operation-indicator-android-dot"
+                    ></span>
+                  </div>
+                  <div class="operations-strip__item" id="operation-indicator-mic">
+                    <span class="operations-strip__label">Mic</span>
+                    <span
+                      class="indicator-dot operations-strip__dot"
+                      id="operation-indicator-mic-dot"
+                    ></span>
+                  </div>
+                  <div class="operations-strip__item" id="operation-indicator-camera">
+                    <span class="operations-strip__label">Camera</span>
+                    <span
+                      class="indicator-dot operations-strip__dot"
+                      id="operation-indicator-camera-dot"
+                    ></span>
+                  </div>
+                  <div class="operations-strip__item" id="operation-indicator-tts">
+                    <span class="operations-strip__label">TTS</span>
+                    <span
+                      class="indicator-dot operations-strip__dot"
+                      id="operation-indicator-tts-dot"
+                    ></span>
+                  </div>
+                  <div class="operations-strip__item" id="operation-indicator-ambient">
+                    <span class="operations-strip__label">Ambient</span>
+                    <span
+                      class="indicator-dot operations-strip__dot"
+                      id="operation-indicator-ambient-dot"
+                    ></span>
+                  </div>
+                  <div class="operations-strip__item" id="operation-indicator-live">
+                    <span class="operations-strip__label">Live</span>
+                    <span
+                      class="indicator-dot operations-strip__dot"
+                      id="operation-indicator-live-dot"
+                    ></span>
+                  </div>
                 </div>
-                <div class="operations-strip__item" id="operation-indicator-mic">
-                  <span class="operations-strip__label">Mic</span>
+                <button
+                  type="button"
+                  class="operations-strip__settings-btn"
+                  id="topbar-companion-settings-btn"
+                  title=""
+                  aria-label=""
+                  aria-expanded="false"
+                  data-shell-i18n-title="indicators.companionSettingsTitle"
+                  data-shell-i18n-aria-label="indicators.companionSettingsTitle"
+                >
+                  <span class="operations-strip__settings-icon" aria-hidden="true">⚙</span>
                   <span
-                    class="indicator-dot operations-strip__dot"
-                    id="operation-indicator-mic-dot"
+                    class="operations-strip__settings-label"
+                    data-shell-i18n-text="indicators.companionSettingsLabel"
                   ></span>
-                </div>
-                <div class="operations-strip__item" id="operation-indicator-camera">
-                  <span class="operations-strip__label">Camera</span>
-                  <span
-                    class="indicator-dot operations-strip__dot"
-                    id="operation-indicator-camera-dot"
-                  ></span>
-                </div>
-                <div class="operations-strip__item" id="operation-indicator-tts">
-                  <span class="operations-strip__label">TTS</span>
-                  <span
-                    class="indicator-dot operations-strip__dot"
-                    id="operation-indicator-tts-dot"
-                  ></span>
-                </div>
-                <div class="operations-strip__item" id="operation-indicator-ambient">
-                  <span class="operations-strip__label">Ambient</span>
-                  <span
-                    class="indicator-dot operations-strip__dot"
-                    id="operation-indicator-ambient-dot"
-                  ></span>
-                </div>
-                <div class="operations-strip__item" id="operation-indicator-live">
-                  <span class="operations-strip__label">Live</span>
-                  <span
-                    class="indicator-dot operations-strip__dot"
-                    id="operation-indicator-live-dot"
-                  ></span>
-                </div>
+                </button>
               </div>
             </div>
           </div>

@@ -97,6 +97,7 @@ export function createRepairAiController(params: {
     store,
   } = params;
   const generatedKnowledgePacks = new Map<string, RepairKnowledgePack>();
+  const pendingTurnIds = new Set<string>();
 
   function setAiDispatchStatus(
     channel: RepairAiDispatchChannel,
@@ -130,6 +131,7 @@ export function createRepairAiController(params: {
   }
 
   async function startKnowledgeResearch(): Promise<void> {
+    generatedKnowledgePacks.clear();
     const currentWizard = store.getState().wizard;
     const resetProgress = REPAIR_RESEARCH_PROGRESS_TEMPLATE.map((item) => ({ ...item }));
     const targetSlot = normalizeRepairAiTargetSlot(store.getState().aiDispatch.research.targetSlot);
@@ -353,8 +355,8 @@ export function createRepairAiController(params: {
     text: string,
     contextRefs: string[]
   ): void {
-    const current = store.getState();
-    if (current.chat.pendingReplyId !== operatorTurn.id || getDisposed()) return;
+    if (!pendingTurnIds.has(operatorTurn.id) || getDisposed()) return;
+    pendingTurnIds.delete(operatorTurn.id);
     const reply: RepairChatTurn = {
       id: createEventId("chat-ai", nowIso()),
       role: "ai",
@@ -362,10 +364,12 @@ export function createRepairAiController(params: {
       occurredAt: nowIso(),
       contextRefs,
     };
-    store.dispatchMany([
-      { type: "chat/append-turn", turn: reply },
-      { type: "chat/set-pending", turnId: null },
-    ]);
+    store.batch(() => {
+      store.dispatch({ type: "chat/append-turn", turn: reply });
+      if (pendingTurnIds.size === 0) {
+        store.dispatch({ type: "chat/set-pending", turnId: null });
+      }
+    });
     storageController.queuePersistActiveSessionChat();
     if (store.getState().layout.interactionSettings.autoReadAiReplies) {
       const result = operationsController.speakGuidanceRequest(reply.text);
@@ -380,9 +384,11 @@ export function createRepairAiController(params: {
     message: string,
     contextRefs: string[]
   ): void {
-    const current = store.getState();
-    if (current.chat.pendingReplyId !== operatorTurn.id || getDisposed()) return;
-    store.dispatch({ type: "chat/set-pending", turnId: null });
+    if (!pendingTurnIds.has(operatorTurn.id) || getDisposed()) return;
+    pendingTurnIds.delete(operatorTurn.id);
+    if (pendingTurnIds.size === 0) {
+      store.dispatch({ type: "chat/set-pending", turnId: null });
+    }
     setAiDispatchStatus("chat", "failed", {
       message,
       contextRefs,
@@ -415,6 +421,7 @@ export function createRepairAiController(params: {
   }
 
   async function requestChatReply(operatorTurn: RepairChatTurn): Promise<void> {
+    pendingTurnIds.add(operatorTurn.id);
     const state = store.getState();
     const session = getActiveSession(state);
     const targetSlot = normalizeRepairAiTargetSlot(state.aiDispatch.chat.targetSlot);

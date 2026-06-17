@@ -16,7 +16,6 @@ import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { ButtonStates } from "../ui/button-states.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 import { notifyUser } from "../ui/user-notification.js";
-import { ModalManager } from "../ui/modal-manager.js";
 import { shellT } from "../app/shell-i18n.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import type { Us1RoomPackageCandidate, Us1SessionEvent } from "@shared/us1-mail.js";
@@ -107,7 +106,6 @@ import {
 import { onTranscriptIngress } from "../modules/transcript/electron-client.js";
 import {
   getTtsStatus,
-  installTtsModel,
   onTtsStatus,
   speakText,
   stopSpeech,
@@ -122,36 +120,23 @@ import type {
   CaptureServiceStatus,
 } from "../../types/capture.js";
 import type {
-  TranscriptDictationBackend,
   TranscriptIngressPayload,
-  TranscriptModelVariant,
   TranscriptSupportedLanguage,
   TranscriptTargetId,
 } from "../../types/transcript.js";
-import type { TtsLanguage, TtsMode, TtsRuntimeStatus, TtsStatus } from "../../types/tts.js";
-import type { CaptureCommandPhraseSettings } from "../../types/settings.js";
+import type { TtsRuntimeStatus, TtsStatus } from "../../types/tts.js";
 import type { OperationCapability, OperationOwner } from "../../types/operations.js";
 import {
-  DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
-  DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
-  DEFAULT_AMBIENT_WAKE_PHRASES,
-  normalizeAmbientDurationMs,
-  normalizeAmbientWakePhrases,
-} from "../../../shared/capture/ambient-defaults.js";
-import {
-  DEFAULT_CAPTURE_COMMAND_PHRASES,
-  normalizeCapturePhraseList,
-} from "../../../shared/capture/command-catalog.js";
-import {
-  normalizeTranscriptBackend,
-  normalizeTranscriptModelVariant,
-} from "../../../shared/transcript/model-catalog.js";
-import {
-  normalizeTtsLanguage,
-  normalizeTtsMode,
-  resolveTtsLanguageFromLocale,
-  resolveTtsModelId,
-} from "../../../shared/tts/model-catalog.js";
+  ambientActiveWindowMs,
+  ambientSilenceTimeoutMs,
+  ambientWakePhrases,
+  dictationLanguage,
+  settingsDictationMode,
+  subscribeCompanionOperationSettingsEvents,
+  ttsLanguage,
+  ttsMode,
+  voiceCommandPhrases,
+} from "../modules/companion/operation-settings-overlay.js";
 interface ConversationSelectedDetail {
   provider?: "ai0" | "ai1" | "ai2" | "us1";
   isNew?: boolean;
@@ -306,6 +291,7 @@ export class AnalyzeController {
   _unsubCaptureAmbientStatus: (() => void) | null;
   _unsubAmbientTranscriptIngress: (() => void) | null;
   _unsubTtsStatus: (() => void) | null;
+  _unsubCompanionOperationSettings: (() => void) | null;
   _boundActions: boolean;
   _us1PollTimer: number | null;
   _us1SyncInFlight: boolean;
@@ -376,6 +362,7 @@ export class AnalyzeController {
     this._unsubCaptureAmbientStatus = null;
     this._unsubAmbientTranscriptIngress = null;
     this._unsubTtsStatus = null;
+    this._unsubCompanionOperationSettings = null;
     this._boundActions = false;
     this._us1PollTimer = null;
     this._us1SyncInFlight = false;
@@ -392,7 +379,7 @@ export class AnalyzeController {
     this._unsubSceneTheme = null;
     this._unsubSceneThemeAssets = null;
     this._dictationBinding = null;
-    this._dictationMode = this._settingsDictationMode();
+    this._dictationMode = settingsDictationMode();
     this._captureStatus = null;
     this._captureStatusPollTimer = null;
     this._lastAutoStagedCapturePath = null;
@@ -427,7 +414,7 @@ export class AnalyzeController {
     this._unsubSettings ??= SettingsManager.subscribe(
       ({ changedPaths }: { changedPaths: string[] }) => {
         if (changedPaths.includes("*") || changedPaths.some((path) => path.startsWith("capture"))) {
-          this._dictationMode = this._settingsDictationMode();
+          this._dictationMode = settingsDictationMode();
           this._syncDictationAvailability();
           this.renderCaptureSessionState();
           this._renderAmbientToggle();
@@ -479,6 +466,25 @@ export class AnalyzeController {
     this._unsubTtsStatus ??= onTtsStatus((payload) => {
       this._handleTtsStatus(payload);
     });
+    this._unsubCompanionOperationSettings ??= subscribeCompanionOperationSettingsEvents((event) => {
+      if (event.type === "capture-status") {
+        this._captureStatus = event.status;
+        this.renderCaptureSessionState();
+        return;
+      }
+      if (event.type === "tts-runtime-status") {
+        this._ttsRuntimeStatus = event.status;
+        this._syncTtsBubbleStates();
+        return;
+      }
+      if (event.type === "dictation-mode") {
+        this._dictationMode = event.mode;
+        this._syncDictationAvailability();
+        return;
+      }
+      this._syncVoiceCommandSettings();
+      this._renderAmbientToggle();
+    });
     TrafficManager.onUpdate(() => {
       this.updateSendButtonState();
       void this._renderAnalyzeSceneCharacters();
@@ -499,7 +505,6 @@ export class AnalyzeController {
       this.applyNames();
       this.updateConnectionStates();
       this._dictationBinding?.refresh();
-      this._renderVoiceCommandToggle();
       this._renderAmbientToggle();
       this._syncTtsBubbleStates();
       this.refreshUploads();
@@ -1300,26 +1305,8 @@ export class AnalyzeController {
     document.getElementById("capture-import-btn")?.addEventListener("click", () => {
       void this.toggleAndroidCameraPanel();
     });
-    document.getElementById("analyze-tts-settings-btn")?.addEventListener("click", () => {
-      void this._openOperationSettingsOverlay();
-    });
     document.getElementById("compose-input")?.addEventListener("input", () => {
       this.updateSendButtonState();
-    });
-    document
-      .getElementById("compose-android-dictation-checkbox")
-      ?.addEventListener("change", (event) => {
-        const target = event.target;
-        if (!(target instanceof HTMLInputElement)) {
-          return;
-        }
-
-        this._dictationMode = target.checked ? "android" : "local";
-        void SettingsManager.set("capture.defaults.dictationMode", this._dictationMode);
-        this._bindDictationUi();
-      });
-    document.getElementById("compose-voice-command-btn")?.addEventListener("click", () => {
-      void this._toggleVoiceCommands();
     });
     document.getElementById("compose-ambient-btn")?.addEventListener("click", () => {
       void this._toggleAmbientListener();
@@ -1381,7 +1368,7 @@ export class AnalyzeController {
         });
       },
       getMode: (): DictationMode => this._dictationMode,
-      getLanguage: (): TranscriptSupportedLanguage => this._dictationLanguage(),
+      getLanguage: (): TranscriptSupportedLanguage => dictationLanguage(),
       requestAndroidDictation: async (request) => {
         return await this._requestAndroidDictation(request);
       },
@@ -1396,7 +1383,6 @@ export class AnalyzeController {
       subscribeAndroidDictationStatus: onCaptureDictationStatus,
     });
     this._syncDictationAvailability();
-    this._renderVoiceCommandToggle();
   }
 
   _captureDefaults(): NonNullable<
@@ -1409,40 +1395,6 @@ export class AnalyzeController {
     ReturnType<typeof SettingsManager.getSnapshot>["capture"]
   >["providers"] {
     return SettingsManager.getSnapshot().capture?.providers ?? {};
-  }
-
-  _settingsDictationMode(): DictationMode {
-    return this._captureDefaults()?.dictationMode === "android" ? "android" : "local";
-  }
-
-  _dictationLanguage(): TranscriptSupportedLanguage {
-    const settings = SettingsManager.getSnapshot();
-    const value = this._captureDefaults()?.dictationLanguage ?? settings.general?.language;
-    return typeof value === "string" && value.toLowerCase().startsWith("tr") ? "tr" : "en";
-  }
-
-  _localTranscriptBackend(): TranscriptDictationBackend {
-    return normalizeTranscriptBackend(
-      SettingsManager.getSnapshot().general?.transcriptBackend,
-      "whisper.cpp"
-    );
-  }
-
-  _localTranscriptVariant(): TranscriptModelVariant {
-    return normalizeTranscriptModelVariant(
-      SettingsManager.getSnapshot().general?.transcriptModelVariant,
-      "full"
-    );
-  }
-
-  _ttsMode(): TtsMode {
-    return normalizeTtsMode(this._captureDefaults()?.ttsMode, "local");
-  }
-
-  _ttsLanguage(): TtsLanguage {
-    const settings = SettingsManager.getSnapshot();
-    const fallback = resolveTtsLanguageFromLocale(settings.general?.language);
-    return normalizeTtsLanguage(this._captureDefaults()?.ttsLanguage, fallback);
   }
 
   _isTtsStatusActive(status: TtsStatus | null | undefined): boolean {
@@ -1460,44 +1412,12 @@ export class AnalyzeController {
     this._syncTtsBubbleStates();
   }
 
-  _ambientWakePhrases(): string[] {
-    return normalizeAmbientWakePhrases(
-      SettingsManager.getSnapshot().voiceCommands?.ambient?.wakePhrases,
-      DEFAULT_AMBIENT_WAKE_PHRASES
-    );
-  }
-
-  _ambientActiveWindowMs(): number {
-    return normalizeAmbientDurationMs(
-      SettingsManager.getSnapshot().voiceCommands?.ambient?.activeWindowMs,
-      DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
-      { min: 1_000, max: 30_000 }
-    );
-  }
-
-  _ambientSilenceTimeoutMs(): number {
-    return normalizeAmbientDurationMs(
-      SettingsManager.getSnapshot().voiceCommands?.ambient?.silenceTimeoutMs,
-      DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
-      { min: 300, max: 10_000 }
-    );
-  }
-
   _primaryAmbientWakePhrase(): string {
-    return this._ambientWakePhrases()[0] ?? "Hey Jarvis";
-  }
-
-  _voiceCommandPhrases(): Required<CaptureCommandPhraseSettings> {
-    const phrases = SettingsManager.getSnapshot().voiceCommands?.analyzePhrases;
-    return {
-      openCamera: phrases?.openCamera ?? [...DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera],
-      capture: phrases?.capture ?? [...DEFAULT_CAPTURE_COMMAND_PHRASES.capture],
-      stop: phrases?.stop ?? [...DEFAULT_CAPTURE_COMMAND_PHRASES.stop],
-    };
+    return ambientWakePhrases()[0] ?? "Hey Jarvis";
   }
 
   _buildAnalyzeVoiceCommandSpecs(): VoiceCommandSpec[] {
-    const phrases = this._voiceCommandPhrases();
+    const phrases = voiceCommandPhrases();
     return [
       { id: "openCamera", phrases: phrases.openCamera },
       { id: "capture", phrases: phrases.capture },
@@ -1508,32 +1428,6 @@ export class AnalyzeController {
   _syncVoiceCommandSettings(): void {
     this._voiceCommandsEnabled =
       SettingsManager.getSnapshot().voiceCommands?.analyzeEnabled === true;
-    this._renderVoiceCommandToggle();
-  }
-
-  _renderVoiceCommandToggle(): void {
-    const button = document.getElementById("compose-voice-command-btn") as HTMLButtonElement | null;
-    if (button === null) {
-      return;
-    }
-
-    button.classList.toggle("is-active", this._voiceCommandsEnabled);
-    button.setAttribute("aria-pressed", this._voiceCommandsEnabled ? "true" : "false");
-    button.textContent = this._voiceCommandsEnabled
-      ? analyzeT("page.dictation.voiceCommandActive")
-      : analyzeT("page.dictation.voiceCommandInactive");
-  }
-
-  async _toggleVoiceCommands(): Promise<void> {
-    const enabled = !this._voiceCommandsEnabled;
-    this._voiceCommandsEnabled = enabled;
-    this._renderVoiceCommandToggle();
-    await SettingsManager.patch((settings) => {
-      settings["voiceCommands"] = {
-        ...(settings["voiceCommands"] ?? {}),
-        analyzeEnabled: enabled,
-      };
-    });
   }
 
   _renderAmbientToggle(): void {
@@ -1555,45 +1449,6 @@ export class AnalyzeController {
           ? analyzeT("page.dictation.ambientStopTitle")
           : analyzeT("page.dictation.ambientStartTitle")
         : analyzeT("page.dictation.androidUnavailableTitle");
-    this._renderAmbientFeedback(androidAvailable);
-  }
-
-  _renderAmbientFeedback(androidAvailable = this._isAndroidDictationAvailable()): void {
-    const status = document.getElementById("compose-ambient-status");
-    if (status === null) {
-      return;
-    }
-
-    const feedback = this._resolveAmbientFeedback(androidAvailable);
-    status.hidden = false;
-    status.textContent = feedback.message;
-    status.dataset["state"] = this._ambientStatus;
-    status.classList.toggle("is-active", this._ambientEnabled);
-    status.classList.toggle("is-info", feedback.kind === "info");
-    status.classList.toggle("is-success", feedback.kind === "success");
-    status.classList.toggle("is-warning", feedback.kind === "warning");
-    status.classList.toggle("is-error", feedback.kind === "error");
-  }
-
-  _resolveAmbientFeedback(androidAvailable: boolean): {
-    kind: AnalyzeAmbientFeedbackKind;
-    message: string;
-  } {
-    if (this._ambientStatusMessage !== null) {
-      return {
-        kind: this._ambientStatusMessageKind ?? this._ambientStatusKind(this._ambientStatus),
-        message: this._ambientStatusMessage,
-      };
-    }
-
-    if (androidAvailable !== true && this._ambientEnabled !== true) {
-      return { kind: "warning", message: analyzeT("page.dictation.ambientUnavailableMessage") };
-    }
-
-    return {
-      kind: this._ambientStatusKind(this._ambientStatus),
-      message: this._defaultAmbientStatusMessage(this._ambientStatus),
-    };
   }
 
   _ambientStatusKind(status: AnalyzeAmbientStatus): AnalyzeAmbientFeedbackKind {
@@ -1779,9 +1634,9 @@ export class AnalyzeController {
     const outcome = await runCaptureAction("start-ambient-listener", {
       target: "analyze-compose",
       requestId,
-      wakePhrases: this._ambientWakePhrases(),
-      activeWindowMs: this._ambientActiveWindowMs(),
-      silenceTimeoutMs: this._ambientSilenceTimeoutMs(),
+      wakePhrases: ambientWakePhrases(),
+      activeWindowMs: ambientActiveWindowMs(),
+      silenceTimeoutMs: ambientSilenceTimeoutMs(),
     }).catch((error) => {
       const message = getErrorMessage(error);
       return {
@@ -1954,7 +1809,7 @@ export class AnalyzeController {
 
   _stripAmbientWakePhrase(text: string): string {
     const directText = text.trim();
-    for (const phrase of this._ambientWakePhrases()) {
+    for (const phrase of ambientWakePhrases()) {
       const directPattern = new RegExp(`^\\s*${escapeRegExp(phrase)}[\\s,.:;!?-]*`, "i");
       const stripped = directText.replace(directPattern, "").trim();
       if (stripped !== directText) {
@@ -1963,7 +1818,7 @@ export class AnalyzeController {
     }
 
     const normalizedText = normalizeVoiceCommandText(directText);
-    for (const phrase of this._ambientWakePhrases()) {
+    for (const phrase of ambientWakePhrases()) {
       const normalizedPhrase = normalizeVoiceCommandText(phrase);
       if (
         normalizedPhrase !== "" &&
@@ -2103,24 +1958,6 @@ export class AnalyzeController {
     }
   }
 
-  _renderDictationModeToggle(): void {
-    const toggle = document.getElementById("compose-android-dictation-toggle");
-    const checkbox = document.getElementById(
-      "compose-android-dictation-checkbox"
-    ) as HTMLInputElement | null;
-    const label = document.getElementById("compose-android-dictation-label");
-    if (!(toggle instanceof HTMLElement) || checkbox === null || label === null) {
-      return;
-    }
-
-    this._normalizeDictationMode();
-    const androidAvailable = this._isAndroidDictationAvailable();
-    toggle.hidden = androidAvailable !== true;
-    checkbox.checked = androidAvailable === true && this._dictationMode === "android";
-    checkbox.disabled = androidAvailable !== true;
-    label.textContent = analyzeT("page.dictation.androidToggleLabel");
-  }
-
   _syncDictationAvailability(): void {
     const dictationButton = document.getElementById(
       "compose-dictation-btn"
@@ -2129,7 +1966,7 @@ export class AnalyzeController {
       return;
     }
 
-    this._renderDictationModeToggle();
+    this._normalizeDictationMode();
     this._dictationBinding?.refresh();
 
     const localAvailable = this._isLocalDictationAvailable();
@@ -2237,7 +2074,7 @@ export class AnalyzeController {
   }
 
   _notifyCaptureFeedback(
-    kind: "success" | "info" | "error",
+    kind: "success" | "info" | "error" | "warning",
     title: string,
     dedupeKey: string
   ): void {
@@ -2703,9 +2540,6 @@ export class AnalyzeController {
 
     const headerStatusEl = document.getElementById("compose-android-status");
     const captureButton = document.getElementById("capture-import-btn") as HTMLButtonElement | null;
-    const ttsSettingsButton = document.getElementById(
-      "analyze-tts-settings-btn"
-    ) as HTMLButtonElement | null;
     const androidCompanionEnabled = this._captureProviders()?.androidCompanionEnabled !== false;
     const deviceLabel = selectedDevice?.label ?? analyzeT("page.captureSessionDeviceNone");
     const hasReadyDevice = selectedDevice !== null;
@@ -2734,12 +2568,6 @@ export class AnalyzeController {
       captureButton.classList.toggle("is-active", sessionActive || this._cameraPanelOpen);
       captureButton.setAttribute("aria-pressed", this._cameraPanelOpen ? "true" : "false");
       captureButton.setAttribute("aria-expanded", this._cameraPanelOpen ? "true" : "false");
-    }
-
-    if (ttsSettingsButton) {
-      const activeTts = this._isTtsStatusActive(this._ttsRuntimeStatus?.active);
-      ttsSettingsButton.classList.toggle("is-active", activeTts);
-      ttsSettingsButton.setAttribute("aria-pressed", activeTts ? "true" : "false");
     }
 
     this._syncDictationAvailability();
@@ -2840,8 +2668,8 @@ export class AnalyzeController {
     const result = await speakText({
       text,
       target: "analyze-compose",
-      mode: this._ttsMode(),
-      language: this._ttsLanguage(),
+      mode: ttsMode(),
+      language: ttsLanguage(),
     });
     this._ttsRuntimeStatus = result.runtime;
     this._ttsActiveRequestId = result.requestId;
@@ -2859,8 +2687,8 @@ export class AnalyzeController {
   _applyAnalyzeTtsStatus(payload: TtsStatus): void {
     this._ttsRuntimeStatus = {
       ...(this._ttsRuntimeStatus ?? {
-        mode: this._ttsMode(),
-        language: this._ttsLanguage(),
+        mode: ttsMode(),
+        language: ttsLanguage(),
         active: null,
         local: {
           ready: false,
@@ -2913,533 +2741,6 @@ export class AnalyzeController {
       button.title = title;
       button.setAttribute("aria-label", title);
       button.setAttribute("aria-pressed", isActiveMessage ? "true" : "false");
-    });
-  }
-
-  async _openOperationSettingsOverlay(): Promise<void> {
-    await Promise.all([this.refreshCaptureSessionState(true), this._refreshTtsRuntimeStatus()]);
-    const content = document.createElement("div");
-    content.className = "analyze-operation-settings";
-
-    const normalizeOperationLanguage = (value: string): TranscriptSupportedLanguage =>
-      value === "tr" ? "tr" : "en";
-
-    const createSection = (titleText: string, hintText: string): HTMLElement => {
-      const section = document.createElement("section");
-      section.className = "analyze-operation-settings__section";
-
-      const header = document.createElement("div");
-      header.className = "analyze-operation-settings__section-head";
-      const title = document.createElement("h3");
-      title.textContent = titleText;
-      const hint = document.createElement("p");
-      hint.textContent = hintText;
-      header.append(title, hint);
-      section.appendChild(header);
-      return section;
-    };
-
-    const createRow = (labelText: string, value: HTMLElement): HTMLLabelElement => {
-      const row = document.createElement("label");
-      row.className = "analyze-operation-settings__row";
-      const label = document.createElement("span");
-      label.className = "analyze-operation-settings__label";
-      label.textContent = labelText;
-      row.append(label, value);
-      return row;
-    };
-
-    const createSelect = <T extends string>(
-      options: Array<{ value: T; label: string }>,
-      value: T
-    ): HTMLSelectElement => {
-      const select = document.createElement("select");
-      select.className = "form-input";
-      options.forEach((optionConfig) => {
-        const option = document.createElement("option");
-        option.value = optionConfig.value;
-        option.textContent = optionConfig.label;
-        select.appendChild(option);
-      });
-      select.value = value;
-      return select;
-    };
-
-    const createTextarea = (value: string, rows: number): HTMLTextAreaElement => {
-      const textarea = document.createElement("textarea");
-      textarea.className = "form-input analyze-operation-settings__textarea";
-      textarea.rows = rows;
-      textarea.spellcheck = false;
-      textarea.value = value;
-      return textarea;
-    };
-
-    const createNumberInput = (
-      value: number,
-      options: { min: number; max: number; step: number }
-    ): HTMLInputElement => {
-      const input = document.createElement("input");
-      input.className = "form-input";
-      input.type = "number";
-      input.min = String(options.min);
-      input.max = String(options.max);
-      input.step = String(options.step);
-      input.value = String(value);
-      return input;
-    };
-
-    const createValueBox = (): HTMLElement => {
-      const box = document.createElement("div");
-      box.className = "analyze-operation-settings__value";
-      return box;
-    };
-
-    const androidEnabledInput = document.createElement("input");
-    androidEnabledInput.type = "checkbox";
-    androidEnabledInput.checked = this._captureProviders()?.androidCompanionEnabled !== false;
-    const androidEnabledLabel = document.createElement("span");
-    androidEnabledLabel.className = "analyze-operation-settings__inline-check";
-    androidEnabledLabel.append(androidEnabledInput);
-    androidEnabledLabel.append(
-      document.createTextNode(analyzeT("page.operationSettings.androidEnabled"))
-    );
-
-    const deviceSelect = document.createElement("select");
-    deviceSelect.className = "form-input";
-    const androidStatusValue = createValueBox();
-    const companionValue = createValueBox();
-    const transcriptValue = createValueBox();
-    const ttsRuntimeValue = createValueBox();
-
-    const dictationModeSelect = createSelect<DictationMode>(
-      [
-        { value: "local", label: analyzeT("page.tts.modeLocal") },
-        { value: "android", label: analyzeT("page.tts.modeAndroid") },
-      ],
-      this._settingsDictationMode()
-    );
-    const dictationLanguageSelect = createSelect<TranscriptSupportedLanguage>(
-      [
-        { value: "tr", label: analyzeT("page.tts.languageTr") },
-        { value: "en", label: analyzeT("page.tts.languageEn") },
-      ],
-      this._dictationLanguage()
-    );
-    const transcriptBackendSelect = createSelect<TranscriptDictationBackend>(
-      [
-        { value: "whisper.cpp", label: "whisper.cpp" },
-        { value: "vosk", label: "Vosk" },
-      ],
-      this._localTranscriptBackend()
-    );
-    const transcriptVariantSelect = createSelect<TranscriptModelVariant>(
-      [
-        { value: "light", label: analyzeT("page.operationSettings.modelLight") },
-        { value: "full", label: analyzeT("page.operationSettings.modelFull") },
-      ],
-      this._localTranscriptVariant()
-    );
-
-    const voiceEnabledInput = document.createElement("input");
-    voiceEnabledInput.type = "checkbox";
-    voiceEnabledInput.checked = this._voiceCommandsEnabled;
-    const voiceEnabledLabel = document.createElement("span");
-    voiceEnabledLabel.className = "analyze-operation-settings__inline-check";
-    voiceEnabledLabel.append(voiceEnabledInput);
-    voiceEnabledLabel.append(
-      document.createTextNode(analyzeT("page.operationSettings.voiceCommandsEnabled"))
-    );
-    const ambientWakeInput = createTextarea(this._ambientWakePhrases().join("\n"), 2);
-    const ambientActiveWindowInput = createNumberInput(this._ambientActiveWindowMs(), {
-      min: 1_000,
-      max: 30_000,
-      step: 100,
-    });
-    const ambientSilenceInput = createNumberInput(this._ambientSilenceTimeoutMs(), {
-      min: 300,
-      max: 10_000,
-      step: 100,
-    });
-    const voicePhrases = this._voiceCommandPhrases();
-    const openCameraPhrasesInput = createTextarea(voicePhrases.openCamera.join("\n"), 2);
-    const capturePhrasesInput = createTextarea(voicePhrases.capture.join("\n"), 2);
-    const stopPhrasesInput = createTextarea(voicePhrases.stop.join("\n"), 2);
-
-    const ttsModeSelect = createSelect<TtsMode>(
-      [
-        { value: "local", label: analyzeT("page.tts.modeLocal") },
-        { value: "android", label: analyzeT("page.tts.modeAndroid") },
-      ],
-      this._ttsMode()
-    );
-    const ttsLanguageSelect = createSelect<TtsLanguage>(
-      [
-        { value: "tr", label: analyzeT("page.tts.languageTr") },
-        { value: "en", label: analyzeT("page.tts.languageEn") },
-      ],
-      this._ttsLanguage()
-    );
-    const selectedTtsModelId = (): ReturnType<typeof resolveTtsModelId> =>
-      resolveTtsModelId(normalizeTtsLanguage(ttsLanguageSelect.value));
-
-    const lensSelect = createSelect<"back" | "front">(
-      [
-        { value: "back", label: analyzeT("page.operationSettings.lensBack") },
-        { value: "front", label: analyzeT("page.operationSettings.lensFront") },
-      ],
-      this._captureDefaults()?.defaultLens === "front" ? "front" : "back"
-    );
-    const qualitySelect = createSelect<"high" | "balanced">(
-      [
-        { value: "high", label: analyzeT("page.operationSettings.qualityHigh") },
-        { value: "balanced", label: analyzeT("page.operationSettings.qualityBalanced") },
-      ],
-      this._captureDefaults()?.photoQuality === "balanced" ? "balanced" : "high"
-    );
-    const attachModeSelect = createSelect<"manual-sync" | "auto-stage">(
-      [
-        { value: "manual-sync", label: analyzeT("page.operationSettings.attachManual") },
-        { value: "auto-stage", label: analyzeT("page.operationSettings.attachAuto") },
-      ],
-      this._captureDefaults()?.attachMode === "auto-stage" ? "auto-stage" : "manual-sync"
-    );
-    const confirmationSelect = createSelect<"toast" | "none">(
-      [
-        { value: "toast", label: analyzeT("page.operationSettings.confirmToast") },
-        { value: "none", label: analyzeT("page.operationSettings.confirmNone") },
-      ],
-      this._captureDefaults()?.commandConfirmation === "none" ? "none" : "toast"
-    );
-
-    const populateDeviceSelect = (): void => {
-      const preferredDeviceId = this._captureDefaults()?.preferredDeviceId ?? "";
-      deviceSelect.innerHTML = "";
-      const autoOption = document.createElement("option");
-      autoOption.value = "";
-      autoOption.textContent = analyzeT("page.tts.deviceAuto");
-      deviceSelect.appendChild(autoOption);
-      (this._captureStatus?.android.devices ?? [])
-        .filter((device) => device.connectionState === "device")
-        .forEach((device) => {
-          const option = document.createElement("option");
-          option.value = device.deviceId;
-          option.textContent = device.label;
-          deviceSelect.appendChild(option);
-        });
-      deviceSelect.value =
-        preferredDeviceId !== "" &&
-        Array.from(deviceSelect.options).some((option) => option.value === preferredDeviceId)
-          ? preferredDeviceId
-          : "";
-    };
-
-    const renderStatus = (): void => {
-      const activeDevice = this._selectedAndroidDictationDevice(this._captureStatus);
-      androidStatusValue.textContent =
-        activeDevice !== null
-          ? analyzeT("page.operationSettings.androidReady", { device: activeDevice.label })
-          : analyzeT("page.dictation.androidUnavailableTitle");
-      companionValue.textContent =
-        this._captureStatus?.android.message ?? analyzeT("page.tts.statusUnknown");
-      const transcriptRuntime = this._captureStatus?.transcript.runtime ?? null;
-      transcriptValue.textContent =
-        transcriptRuntime?.message ??
-        (transcriptRuntime?.ready === true
-          ? analyzeT("page.operationSettings.runtimeReady")
-          : analyzeT("page.tts.statusUnknown"));
-      const model = this._ttsRuntimeStatus?.models.find(
-        (entry) => entry.modelId === selectedTtsModelId()
-      );
-      ttsRuntimeValue.textContent =
-        this._ttsRuntimeStatus?.active?.message ??
-        (model?.ready === true
-          ? analyzeT("page.tts.modelReady", { model: model.label })
-          : (model?.lastError ?? this._ttsRuntimeStatus?.local.message)) ??
-        analyzeT("page.tts.statusIdle");
-    };
-
-    androidEnabledInput.addEventListener("change", () => {
-      void SettingsManager.set(
-        "capture.providers.androidCompanionEnabled",
-        androidEnabledInput.checked
-      );
-    });
-    deviceSelect.addEventListener("change", () => {
-      void (async (): Promise<void> => {
-        await SettingsManager.set(
-          "capture.defaults.preferredDeviceId",
-          deviceSelect.value.trim() === "" ? null : deviceSelect.value.trim()
-        );
-        await this.refreshCaptureSessionState(true);
-        populateDeviceSelect();
-        renderStatus();
-      })();
-    });
-    dictationModeSelect.addEventListener("change", () => {
-      void (async (): Promise<void> => {
-        const nextMode: DictationMode =
-          dictationModeSelect.value === "android" ? "android" : "local";
-        this._dictationMode = nextMode;
-        await SettingsManager.set("capture.defaults.dictationMode", nextMode);
-        this._syncDictationAvailability();
-        renderStatus();
-      })();
-    });
-    dictationLanguageSelect.addEventListener("change", () => {
-      void SettingsManager.set(
-        "capture.defaults.dictationLanguage",
-        normalizeOperationLanguage(dictationLanguageSelect.value)
-      );
-    });
-    transcriptBackendSelect.addEventListener("change", () => {
-      void SettingsManager.set(
-        "general.transcriptBackend",
-        normalizeTranscriptBackend(transcriptBackendSelect.value, "whisper.cpp")
-      );
-    });
-    transcriptVariantSelect.addEventListener("change", () => {
-      void SettingsManager.set(
-        "general.transcriptModelVariant",
-        normalizeTranscriptModelVariant(transcriptVariantSelect.value, "full")
-      );
-    });
-    ttsModeSelect.addEventListener("change", () => {
-      void SettingsManager.set("capture.defaults.ttsMode", normalizeTtsMode(ttsModeSelect.value));
-    });
-    ttsLanguageSelect.addEventListener("change", () => {
-      void (async (): Promise<void> => {
-        await SettingsManager.set(
-          "capture.defaults.ttsLanguage",
-          normalizeTtsLanguage(ttsLanguageSelect.value)
-        );
-        await this._refreshTtsRuntimeStatus();
-        renderStatus();
-      })();
-    });
-    [lensSelect, qualitySelect, attachModeSelect, confirmationSelect].forEach((select) => {
-      select.addEventListener("change", () => {
-        void SettingsManager.patch((settings) => {
-          const nextCapture = (settings["capture"] ?? {}) as Record<string, unknown>;
-          const nextDefaults = (nextCapture["defaults"] ?? {}) as Record<string, unknown>;
-          nextDefaults["defaultLens"] = lensSelect.value === "front" ? "front" : "back";
-          nextDefaults["photoQuality"] = qualitySelect.value === "balanced" ? "balanced" : "high";
-          nextDefaults["attachMode"] =
-            attachModeSelect.value === "auto-stage" ? "auto-stage" : "manual-sync";
-          nextDefaults["commandConfirmation"] =
-            confirmationSelect.value === "none" ? "none" : "toast";
-          nextCapture["defaults"] = nextDefaults;
-          settings["capture"] = nextCapture;
-        });
-      });
-    });
-
-    const saveAmbientButton = document.createElement("button");
-    saveAmbientButton.type = "button";
-    saveAmbientButton.className = "btn btn-secondary btn-sm";
-    saveAmbientButton.textContent = analyzeT("page.operationSettings.saveVoiceSettings");
-    saveAmbientButton.addEventListener("click", () => {
-      void (async (): Promise<void> => {
-        const analyzePhrases: Required<CaptureCommandPhraseSettings> = {
-          openCamera: normalizeCapturePhraseList(
-            openCameraPhrasesInput.value.split(/[\n,]/),
-            DEFAULT_CAPTURE_COMMAND_PHRASES.openCamera
-          ),
-          capture: normalizeCapturePhraseList(
-            capturePhrasesInput.value.split(/[\n,]/),
-            DEFAULT_CAPTURE_COMMAND_PHRASES.capture
-          ),
-          stop: normalizeCapturePhraseList(
-            stopPhrasesInput.value.split(/[\n,]/),
-            DEFAULT_CAPTURE_COMMAND_PHRASES.stop
-          ),
-        };
-        await SettingsManager.patch((settings) => {
-          const nextVoiceCommands = (settings["voiceCommands"] ?? {}) as Record<string, unknown>;
-          nextVoiceCommands["analyzeEnabled"] = voiceEnabledInput.checked;
-          nextVoiceCommands["analyzePhrases"] = analyzePhrases;
-          nextVoiceCommands["ambient"] = {
-            wakePhrases: normalizeAmbientWakePhrases(
-              ambientWakeInput.value.split(/[\n,]/),
-              DEFAULT_AMBIENT_WAKE_PHRASES
-            ),
-            activeWindowMs: normalizeAmbientDurationMs(
-              ambientActiveWindowInput.value,
-              DEFAULT_AMBIENT_ACTIVE_WINDOW_MS,
-              { min: 1_000, max: 30_000 }
-            ),
-            silenceTimeoutMs: normalizeAmbientDurationMs(
-              ambientSilenceInput.value,
-              DEFAULT_AMBIENT_SILENCE_TIMEOUT_MS,
-              { min: 300, max: 10_000 }
-            ),
-          };
-          delete nextVoiceCommands["commandPhrases"];
-          settings["voiceCommands"] = nextVoiceCommands;
-        });
-        this._syncVoiceCommandSettings();
-        this._renderAmbientToggle();
-        notifyUser({
-          kind: "success",
-          title: analyzeT("page.operationSettings.saved"),
-          dedupeKey: "analyze-operation-settings-saved",
-        });
-      })();
-    });
-    voiceEnabledInput.addEventListener("change", () => {
-      this._voiceCommandsEnabled = voiceEnabledInput.checked;
-      this._renderVoiceCommandToggle();
-      void SettingsManager.patch((settings) => {
-        settings["voiceCommands"] = {
-          ...(settings["voiceCommands"] ?? {}),
-          analyzeEnabled: voiceEnabledInput.checked,
-        };
-      });
-    });
-
-    const refreshButton = document.createElement("button");
-    refreshButton.type = "button";
-    refreshButton.className = "btn btn-secondary btn-sm";
-    refreshButton.textContent = analyzeT("page.tts.refreshButton");
-    refreshButton.addEventListener("click", () => {
-      void (async (): Promise<void> => {
-        await Promise.all([this.refreshCaptureSessionState(true), this._refreshTtsRuntimeStatus()]);
-        populateDeviceSelect();
-        renderStatus();
-      })();
-    });
-    const prepareModelButton = document.createElement("button");
-    prepareModelButton.type = "button";
-    prepareModelButton.className = "btn btn-secondary btn-sm";
-    prepareModelButton.textContent = analyzeT("page.tts.prepareModelButton");
-    prepareModelButton.addEventListener("click", () => {
-      void (async (): Promise<void> => {
-        prepareModelButton.disabled = true;
-        prepareModelButton.textContent = analyzeT("page.tts.installingModel");
-        const modelId = selectedTtsModelId();
-        const result = await installTtsModel(modelId).catch((error: unknown) => ({
-          success: false,
-          model: null,
-          error: getErrorMessage(error),
-        }));
-        await this._refreshTtsRuntimeStatus();
-        this._notifyCaptureFeedback(
-          result?.success === true ? "success" : "error",
-          result?.success === true
-            ? analyzeT("page.tts.modelReady", {
-                model: result.model?.label ?? modelId,
-              })
-            : (result?.error ?? analyzeT("page.tts.statusUnknown")),
-          "analyze-tts-model-install"
-        );
-        prepareModelButton.disabled = false;
-        prepareModelButton.textContent = analyzeT("page.tts.prepareModelButton");
-        renderStatus();
-      })();
-    });
-    const launchButton = document.createElement("button");
-    launchButton.type = "button";
-    launchButton.className = "btn btn-secondary btn-sm";
-    launchButton.textContent = analyzeT("page.operationSettings.launchCompanion");
-    launchButton.addEventListener("click", () => {
-      void (async (): Promise<void> => {
-        const outcome = await runCaptureAction("launch-companion", {
-          target: "analyze-compose",
-          activeTab: "dictate",
-          deviceId: deviceSelect.value.trim() === "" ? null : deviceSelect.value.trim(),
-        });
-        this._captureStatus = outcome.status;
-        this._notifyCaptureFeedback(
-          outcome.ok ? "success" : "error",
-          outcome.message,
-          "analyze-operation-launch"
-        );
-        populateDeviceSelect();
-        renderStatus();
-      })();
-    });
-
-    const androidSection = createSection(
-      analyzeT("page.operationSettings.androidSection"),
-      analyzeT("page.operationSettings.androidHint")
-    );
-    androidSection.append(
-      createRow(analyzeT("page.operationSettings.androidEnabledLabel"), androidEnabledLabel),
-      createRow(analyzeT("page.tts.deviceLabel"), deviceSelect),
-      createRow(analyzeT("page.operationSettings.androidStatusLabel"), androidStatusValue),
-      createRow(analyzeT("page.tts.companionLabel"), companionValue)
-    );
-
-    const dictationSection = createSection(
-      analyzeT("page.operationSettings.dictationSection"),
-      analyzeT("page.operationSettings.dictationHint")
-    );
-    dictationSection.append(
-      createRow(analyzeT("page.operationSettings.sourceLabel"), dictationModeSelect),
-      createRow(analyzeT("page.tts.languageLabel"), dictationLanguageSelect),
-      createRow(analyzeT("page.operationSettings.transcriptBackendLabel"), transcriptBackendSelect),
-      createRow(analyzeT("page.operationSettings.transcriptVariantLabel"), transcriptVariantSelect),
-      createRow(analyzeT("page.operationSettings.runtimeLabel"), transcriptValue)
-    );
-
-    const ambientSection = createSection(
-      analyzeT("page.operationSettings.ambientSection"),
-      analyzeT("page.operationSettings.ambientHint")
-    );
-    const ambientActions = document.createElement("div");
-    ambientActions.className = "analyze-operation-settings__actions";
-    ambientActions.append(saveAmbientButton);
-    ambientSection.append(
-      createRow(analyzeT("page.operationSettings.voiceCommandsToggleLabel"), voiceEnabledLabel),
-      createRow(analyzeT("page.operationSettings.ambientWakeLabel"), ambientWakeInput),
-      createRow(
-        analyzeT("page.operationSettings.ambientActiveWindowLabel"),
-        ambientActiveWindowInput
-      ),
-      createRow(analyzeT("page.operationSettings.ambientSilenceLabel"), ambientSilenceInput),
-      createRow(analyzeT("page.operationSettings.openCameraPhrasesLabel"), openCameraPhrasesInput),
-      createRow(analyzeT("page.operationSettings.capturePhrasesLabel"), capturePhrasesInput),
-      createRow(analyzeT("page.operationSettings.stopPhrasesLabel"), stopPhrasesInput),
-      ambientActions
-    );
-
-    const ttsSection = createSection(
-      analyzeT("page.operationSettings.ttsSection"),
-      analyzeT("page.operationSettings.ttsHint")
-    );
-    const ttsActions = document.createElement("div");
-    ttsActions.className = "analyze-operation-settings__actions";
-    ttsActions.append(refreshButton, prepareModelButton);
-    ttsSection.append(
-      createRow(analyzeT("page.tts.modeLabel"), ttsModeSelect),
-      createRow(analyzeT("page.tts.languageLabel"), ttsLanguageSelect),
-      createRow(analyzeT("page.tts.runtimeLabel"), ttsRuntimeValue),
-      ttsActions
-    );
-
-    const cameraSection = createSection(
-      analyzeT("page.operationSettings.cameraSection"),
-      analyzeT("page.operationSettings.cameraHint")
-    );
-    const cameraActions = document.createElement("div");
-    cameraActions.className = "analyze-operation-settings__actions";
-    cameraActions.append(launchButton);
-    cameraSection.append(
-      createRow(analyzeT("page.operationSettings.lensLabel"), lensSelect),
-      createRow(analyzeT("page.operationSettings.qualityLabel"), qualitySelect),
-      createRow(analyzeT("page.operationSettings.attachModeLabel"), attachModeSelect),
-      createRow(analyzeT("page.operationSettings.confirmationLabel"), confirmationSelect),
-      cameraActions
-    );
-
-    content.append(androidSection, dictationSection, ambientSection, ttsSection, cameraSection);
-    populateDeviceSelect();
-    renderStatus();
-
-    ModalManager.open({
-      title: analyzeT("page.operationSettings.title"),
-      content,
-      size: "large",
-      containerClassName: "modal-analyze-operation-settings",
     });
   }
 

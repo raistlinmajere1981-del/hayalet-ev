@@ -6,6 +6,12 @@ test("analyze page wires central capture inbox imports into staged attachments",
   const htmlSource = readFileSync("src/pages/analyze.html", "utf8");
   const settingsHtmlSource = readFileSync("src/pages/settings.html", "utf8");
   const pageSource = readFileSync("src/js/pages/analyze.ts", "utf8");
+  const shellSource = readFileSync("src/index.html", "utf8");
+  const operationsIndicatorsSource = readFileSync("src/js/app/operations-indicators.ts", "utf8");
+  const operationSettingsOverlaySource = readFileSync(
+    "src/js/modules/companion/operation-settings-overlay.ts",
+    "utf8"
+  );
   const uploadSource = readFileSync("src/js/pages/analyze/upload-handler.ts", "utf8");
   const captureClientSource = readFileSync("src/js/modules/capture/electron-client.ts", "utf8");
   const dictationUiSource = readFileSync("src/js/modules/transcript/dictation-ui.ts", "utf8");
@@ -30,8 +36,18 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(htmlSource, /class="compose-user-header"/);
   assert.match(htmlSource, /id="compose-android-status"/);
   assert.match(htmlSource, /id="compose-ambient-btn"/);
-  assert.match(htmlSource, /id="compose-ambient-status"/);
-  assert.match(htmlSource, /id="analyze-tts-settings-btn"/);
+  assert.doesNotMatch(htmlSource, /id="compose-ambient-status"/);
+  assert.doesNotMatch(htmlSource, /id="analyze-tts-settings-btn"/);
+  assert.doesNotMatch(htmlSource, /id="compose-android-dictation-checkbox"/);
+  assert.doesNotMatch(htmlSource, /id="compose-voice-command-btn"/);
+  assert.match(shellSource, /id="topbar-companion-settings-btn"/);
+  assert.match(shellSource, /data-shell-i18n-title="indicators\.companionSettingsTitle"/);
+  assert.match(shellSource, /data-shell-i18n-aria-label="indicators\.companionSettingsTitle"/);
+  assert.match(shellSource, /data-shell-i18n-text="indicators\.companionSettingsLabel"/);
+  assert.match(operationsIndicatorsSource, /openCompanionOperationSettings/);
+  assert.match(operationsIndicatorsSource, /aria-expanded", "true"/);
+  assert.match(operationsIndicatorsSource, /aria-expanded", "false"/);
+  assert.match(operationsIndicatorsSource, /topbar-companion-settings-open-error/);
   assert.match(htmlSource, /id="android-camera-panel"/);
   assert.match(htmlSource, /<video[\s\S]*id="android-camera-feed"/);
   assert.match(htmlSource, /<img[\s\S]*id="android-camera-frame"/);
@@ -59,10 +75,10 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(pageSource, /_acquireAndroidCameraPanelOperations/);
   assert.match(pageSource, /_releaseAndroidCameraPanelOperations/);
   assert.match(pageSource, /openAndroidCameraManagement/);
-  assert.match(pageSource, /_openOperationSettingsOverlay/);
-  assert.match(pageSource, /capture\.defaults\.dictationMode/);
-  assert.match(pageSource, /capture\.defaults\.dictationLanguage/);
-  assert.match(pageSource, /normalizeCapturePhraseList/);
+  assert.match(operationSettingsOverlaySource, /openCompanionOperationSettings/);
+  assert.match(operationSettingsOverlaySource, /capture\.defaults\.dictationMode/);
+  assert.match(operationSettingsOverlaySource, /capture\.defaults\.dictationLanguage/);
+  assert.match(operationSettingsOverlaySource, /normalizeCapturePhraseList/);
   assert.doesNotMatch(pageSource, /_openCapturePanel/);
   assert.doesNotMatch(pageSource, /_closeCapturePanel/);
   assert.doesNotMatch(pageSource, /_openTtsSettingsOverlay/);
@@ -73,6 +89,9 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(pageSource, /start-analyze-session/);
   assert.match(pageSource, /stop-analyze-session/);
   assert.match(pageSource, /_syncVoiceCommandSettings/);
+  assert.match(pageSource, /subscribeCompanionOperationSettingsEvents/);
+  assert.match(operationSettingsOverlaySource, /voiceCommands[\s\S]*analyzeEnabled/);
+  assert.match(operationSettingsOverlaySource, /subscribeCompanionOperationSettingsEvents/);
   assert.match(pageSource, /path\.startsWith\("voiceCommands"\)/);
   assert.match(pageSource, /onCaptureAmbientStatus/);
   assert.match(pageSource, /_handleAmbientTranscriptIngress/);

@@ -32,15 +32,11 @@ export function renderChatPanel(
   text: TextFn
 ): HTMLElement {
   const body = documentRef.createElement("div");
-  body.className = "repair-panel__body";
-  body.style.display = "flex";
-  body.style.flexDirection = "column";
+  body.className = "repair-panel__body repair-panel__body--column";
 
   // -- Turns
   const turns = documentRef.createElement("div");
-  turns.className = "repair-chat-turns";
-  turns.style.flex = "1";
-  turns.style.overflowY = "auto";
+  turns.className = "repair-chat-turns repair-chat-turns--scroll";
 
   for (const turn of state.chat.turns) {
     const turnEl = documentRef.createElement("div");

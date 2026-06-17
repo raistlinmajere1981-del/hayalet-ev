@@ -126,7 +126,7 @@
           "statusUnknown": "Bilinmiyor"
         },
         "operationSettings": {
-          "title": "Analyze İşlem Ayarları",
+          "title": "Companion İşlem Ayarları",
           "androidSection": "Genel ve Android",
           "androidHint": "Telefon companion erişimini ve ortak cihaz seçimini Analyze içinde yönet.",
           "androidEnabled": "Android companion etkin",
@@ -197,7 +197,6 @@
           "emptyResultMessage": "Sesten metin sonucu boş döndü.",
           "insertedMessage": "Transcript metin alanına eklendi.",
           "transcribedMessage": "{{backend}} transcript süresi: {{durationMs}} ms.",
-          "androidToggleLabel": "Android dictate",
           "androidIdleTitle": "Bağlı Android cihaz üzerinden dikte başlat",
           "androidPreparingMessage": "Android dictate telefon üzerinde hazırlanıyor. Companion uygulamasını açık tut.",
           "androidListeningMessage": "Android kaydı telefon üzerinde aktif. Bitirdiğinde tekrar tıkla.",
@@ -207,8 +206,6 @@
           "captureError": "Mikrofon başlatılamadı: {{message}}",
           "transcriptionError": "Ses çözümlenemedi: {{message}}",
           "androidError": "Android dictate hazırlanamadı: {{message}}",
-          "voiceCommandActive": "Voice command aktif",
-          "voiceCommandInactive": "Voice command pasif",
           "ambientActive": "Ambient aktif",
           "ambientInactive": "Ambient",
           "ambientStartTitle": "Android ambient wake dinlemeyi başlat",
@@ -802,7 +799,9 @@
       "loading": "Yükleniyor",
       "sending": "Gönderim",
       "thinking": "Düşünüyor",
-      "refreshTitle": "Yenile"
+      "refreshTitle": "Yenile",
+      "companionSettingsTitle": "Companion işlem ayarlarını aç",
+      "companionSettingsLabel": "Ayarlar"
     },
     "relay": {
       "toggle": {

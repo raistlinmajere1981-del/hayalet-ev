@@ -126,7 +126,7 @@
           "statusUnknown": "Unknown"
         },
         "operationSettings": {
-          "title": "Analyze Operation Settings",
+          "title": "Companion Operation Settings",
           "androidSection": "General and Android",
           "androidHint": "Manage companion access and the shared phone choice from Analyze.",
           "androidEnabled": "Android companion enabled",
@@ -197,7 +197,6 @@
           "emptyResultMessage": "The voice transcript came back empty.",
           "insertedMessage": "The transcript was inserted into the text field.",
           "transcribedMessage": "{{backend}} transcription time: {{durationMs}} ms.",
-          "androidToggleLabel": "Android dictate",
           "androidIdleTitle": "Start dictation through the connected Android device",
           "androidPreparingMessage": "Android dictate is preparing on the phone. Keep the companion app open.",
           "androidListeningMessage": "Android recording is active on the phone. Click again when you are done.",
@@ -207,8 +206,6 @@
           "captureError": "Could not start the microphone: {{message}}",
           "transcriptionError": "Could not transcribe the audio: {{message}}",
           "androidError": "Android dictate could not be prepared: {{message}}",
-          "voiceCommandActive": "Voice command active",
-          "voiceCommandInactive": "Voice command passive",
           "ambientActive": "Ambient active",
           "ambientInactive": "Ambient",
           "ambientStartTitle": "Start Android ambient wake listening",
@@ -802,7 +799,9 @@
       "loading": "Loading",
       "sending": "Sending",
       "thinking": "Thinking",
-      "refreshTitle": "Refresh"
+      "refreshTitle": "Refresh",
+      "companionSettingsTitle": "Open companion operation settings",
+      "companionSettingsLabel": "Settings"
     },
     "relay": {
       "toggle": {

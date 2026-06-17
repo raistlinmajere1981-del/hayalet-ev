@@ -124,10 +124,11 @@ export function createRepairCommandRouter(params: {
     command: string,
     payload: RepairCommandPayload = {}
   ): { success: boolean; message?: string } {
+    const { roomArgs: cmdRoomArgs, roomPayload: cmdRoomPayload, ...rest } = payload;
     const flat = {
-      ...(payload.roomArgs ?? {}),
-      ...(payload.roomPayload ?? {}),
-      ...payload,
+      ...(cmdRoomArgs ?? {}),
+      ...(cmdRoomPayload ?? {}),
+      ...rest,
     };
 
     switch (command) {
@@ -180,6 +181,16 @@ export function createRepairCommandRouter(params: {
           setActiveSessionDerivedState(session);
         });
         liveController.resetTimelineAnchor(session);
+        store.dispatch({
+          type: "wizard/set",
+          wizard: {
+            ...store.getState().wizard,
+            currentStep: "device-info",
+            generatedKnowledgePackId: null,
+            researchProgress: [],
+            foundResources: [],
+          },
+        });
         return { success: true };
       }
       case REPAIR_UI_COMMANDS.updateSession: {

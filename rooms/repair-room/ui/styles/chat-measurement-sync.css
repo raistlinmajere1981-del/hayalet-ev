@@ -1,4 +1,9 @@
 /* ── Chat Panel ──────────────────────────────────────────────────── */
+.repair-chat-turns--scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
 .repair-chat-turns {
   display: flex;
   flex-direction: column;

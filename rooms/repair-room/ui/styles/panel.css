@@ -78,6 +78,17 @@
   text-overflow: ellipsis;
 }
 
+.repair-panel__body--no-padding {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.repair-panel__body--column {
+  display: flex;
+  flex-direction: column;
+}
+
 .repair-panel__body {
   flex: 1;
   overflow-y: auto;

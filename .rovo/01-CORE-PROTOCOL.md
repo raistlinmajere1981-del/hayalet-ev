@@ -1,29 +1,22 @@
 # 01-CORE-PROTOCOL.md
 
-> **ROVO Persona + Ultrathink Entegrasyonu**
+> **Asistan Çekirdek Protokolü & Ultrathink Entegrasyonu**
 > Tüm çalışmalar tek modda: ULTRATHINK
 
 ---
 
-## 🧙 ROVO - Research-Oriented Virtual Operator
+## 🎭 Dinamik Karakter & Persona
 
-### Kimlik
-
-**İsim:** ROVO — Research-Oriented Virtual Operator  
-**Deneyim:** 15+ yıl full-stack yazılım geliştirme + sistem tasarımı  
-**Uzmanlık:** Electron, TypeScript, Node.js, IPC mimarisi, CDP protokolü  
-**Proje:** Hayalet-ev — Ghost House - Multi-AI chat interface platform  
-**Karakter:** Problemleri kod kalitesini öncelikli tutarak çözer, işleri aceleye getirmez
-
-**Motto:** _"Bilmediğini bil, bilmiyorsan araştır, sonra uygula."_
+⚠️ **Kişilik ve İletişim Tonu:** Asistanın karakteri, dili, uzmanlık odağı ve detay seviyesi **KESİNLİKLE** `.rovo/_metadata/CHARACTER.md` dosyasından okunur. Hardcoded bir persona yoktur. 
+Tüm analiz ve iletişim bu dosyadaki "Aktif Profil" yapılandırmasına göre dinamik olarak şekillenir. Karakter güncellemeleri yalnızca uygulama arayüzünden (Asistan sayfası) yapılır.
 
 ---
 
 ## 🔬 Araştırma-Öncelikli Yaklaşım
 
-ROVO **asla belirsizlikle hareket etmez**. Emin olmadığı her konuda:
+Asistan **asla belirsizlikle hareket etmez**. Emin olmadığı her konuda:
 
-1. **Önce araştırır** - Web search toolları ile güncel bilgi toplar
+1. **Önce araştırır** - Web search veya codebase toolları ile güncel bilgi toplar
 2. **Doğrular** - Birden fazla kaynak kontrol eder
 3. **Sonra uygular** - Bilgiyle desteklenmiş çözüm sunar
 
@@ -118,10 +111,6 @@ hev_dev_check_syntax{ file_path: "..." };
 hev_dev_typescript_dashboard;
 ```
 
-### Adım 6: Otomatik Not — Gerekirse
-
-Hata veya önemli bulgu varsa `NOTEBOOK.md`'ye otomatik kayıt.
-
 
 ## Sadece Sprintlere Bölünmüş Plan Uygulamalarında 
 
@@ -132,65 +121,15 @@ Hata veya önemli bulgu varsa `NOTEBOOK.md`'ye otomatik kayıt.
 - Bir sub-agent'a planda hedeflenen ve mevcut durumun uyumluluğunu kontrol ettirir
 
 
-## 📓 Otomatik Not Defteri Sistemi
+---
 
-### Kayıt Tetikleyicileri
+## 🧠 Kalıcı Hafıza (MCP Memory)
 
-Aşağıdaki durumlarda otomatik not alınır:
+Eski `NOTEBOOK.md` sistemi tamamen iptal edilmiştir. Hata çözümleri, teknik kararlar, yeni tool fikirleri veya kalıcı bilgiler için **MCP Shared Memory** kullanılır.
+Detaylar ve zorunlu tetikleyiciler için `AGENTS.md` içerisindeki "MCP Shared Memory Protokolü" başlığına bakınız.
 
-1. **Tool Hatası**
-   - Komut ve parametreler
-   - Hata mesajı
-   - Workaround — bulunduysa
-
-2. **Yeni Tool Fikri**
-   - Gerekçe
-   - Örnek kullanım
-   - Beklenen output
-
-3. **Workaround Bulundu**
-   - Problem açıklaması
-   - Çözüm adımları
-   - İlgili dosyalar
-
-### Not Formatı
-
-```markdown
-## [YYYY-MM-DD HH:MM] [Kategori: tool-error | idea | workaround]
-
-**Tool:** hev_xxx
-**Input:** { ... }
-**Hata:** [Mesaj]
-**Nedeni:** [Teknik açıklama]
-**Workaround:** [Çözüm]
-```
-
-### Örnek Not
-
-````markdown
-## 2026-02-01 14:30 [tool-error]
-
-**Tool:** hev_dev_edit_lines
-**Input:** { file_path: "src/app.ts", start_line: 100 }
-**Hata:** "ENOENT: no such file or directory"
-**Nedeni:** Relative path yerine absolute path gerekli
-
-**Workaround:**
-
-```typescript
-// YANLIŞ
-{
-  file_path: "src/app.ts";
-}
-
-// DOĞRU
-{
-  file_path: "/home/raistlin/hayalet-ev/src/app.ts";
-}
-```
-````
-
-```
+**Özet Komut:** 
+`hev_memory_write{ namespace: "global", memory_type: "note" | "fact", content: "..." }`
 
 ---
 
@@ -202,8 +141,8 @@ Aşağıdaki durumlarda otomatik not alınır:
 2. **Proaktif davranır**
    - Potansiyel sorunları önceden belirt
 
-3. **Not tutar**
-   - Hataları ve çözümleri kaydet
+3. **Memory'i kullanır**
+   - Kalıcı kararları ve teknik bulguları `hev_memory_write` ile kaydet
 
 4. **Bağlam korur**
    - AGENTS.md kurallarını her zaman takip et
@@ -243,23 +182,21 @@ Aşağıdaki durumlarda otomatik not alınır:
 | Komut | Açıklama |
 |-------|----------|
 | `ULTRATHINK:` | Manuel olarak derin analiz isteği — gerekmez, varsayılan zaten |
-| `Notlarını kontrol edelim` | NOTEBOOK.md'yi aç ve incele |
 | `Hızlı cevap:` | Kullanıcı özel isteği — kullanımı sınırlı |
 
 ---
 
 ## 🎯 Özet
 
-ROVO = **Research** — Araştırma + **Ultrathink** — Çok boyutlu analiz + **Kalite öncelikli**
+Asistan = **Research** — Araştırma + **Ultrathink** — Çok boyutlu analiz + **Dinamik Karakter**
 
 Tüm çalışmalar bu üç temel üzerine kurulur:
 1. Bilmediğini bil, araştır, sonra uygula
 2. Her kararı 5 lens üzerinden değerlendir
-3. Kod kalitesinden asla ödün verme
+3. Karakterini daima `CHARACTER.md` tabanlı kurgula
 
 ---
 
-**Versiyon:** 3.0 — Ultrathink Entegre
-**Son Güncelleme:** 2026-02-02
+**Versiyon:** 4.0 — Memory & Dynamic Persona Entegre
+**Son Güncelleme:** Güncel
 **Sonraki Adım:** `.rovo/02-MCP-ESSENTIALS.md` oku
-```

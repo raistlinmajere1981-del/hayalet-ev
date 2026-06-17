@@ -64,7 +64,7 @@ function getForensicEventMeta(event: RepairEvent): string {
   if (event.kind === "investigation-region-updated") {
     return `${time} • ${(event.status ?? "updated").toUpperCase()} • ${event.regionId}`;
   }
-  return `${time} • ${event.linkedEventIds.length} linked events`;
+  return `${time} • ${(event.linkedEventIds ?? []).length} linked events`;
 }
 
 function getForensicLinkedText(state: RepairUiState, event: RepairEvent): string {
@@ -285,10 +285,7 @@ export function renderWorkbenchStagePanel(
   text: TextFn
 ): HTMLElement {
   const body = documentRef.createElement("div");
-  body.className = "repair-panel__body";
-  body.style.padding = "0";
-  body.style.display = "flex";
-  body.style.flexDirection = "column";
+  body.className = "repair-panel__body repair-panel__body--no-padding";
 
   // -- Live stream header
   const liveHeader = documentRef.createElement("div");
