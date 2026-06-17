@@ -669,6 +669,9 @@ class CaptureService {
       "--es",
       "photoQuality",
       captureSettings.photoQuality,
+      "--es",
+      "photoFlashMode",
+      captureSettings.photoFlashMode,
     ];
     const activeTab = normalizeText(options.activeTab);
     if (activeTab !== null) {

@@ -183,6 +183,7 @@ export interface CaptureCompanionTranscriptModelProfile {
 export interface CaptureCompanionCommandProfile {
   defaultLens: "back" | "front";
   photoQuality: "balanced" | "high";
+  photoFlashMode?: "off" | "auto" | "on" | null;
   attachMode: "manual-sync" | "auto-stage";
   commandConfirmation: "none" | "toast";
   androidDictationBackend: "whisper.cpp" | "vosk";

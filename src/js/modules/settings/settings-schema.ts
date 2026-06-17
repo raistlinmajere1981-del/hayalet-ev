@@ -5,6 +5,7 @@ import type {
   CaptureCommandPhraseSettings,
   CaptureCommandConfirmation,
   CaptureDefaultLens,
+  CapturePhotoFlashMode,
   CapturePhotoQuality,
   AndroidDictationBackend,
   AnalyzeDictationMode,
@@ -129,6 +130,13 @@ function normalizeCapturePhotoQuality(value: unknown): CapturePhotoQuality {
   return value === "balanced" ? "balanced" : "high";
 }
 
+function normalizeCapturePhotoFlashMode(value: unknown): CapturePhotoFlashMode {
+  if (value === "auto" || value === "on") {
+    return value;
+  }
+  return "off";
+}
+
 function normalizeCaptureAttachMode(value: unknown): CaptureAttachMode {
   return value === "auto-stage" ? "auto-stage" : "manual-sync";
 }
@@ -169,6 +177,9 @@ function normalizeCaptureSettings(
           : null,
       defaultLens: normalizeCaptureDefaultLens(defaults["defaultLens"]),
       photoQuality: normalizeCapturePhotoQuality(defaults["photoQuality"]),
+      photoFlashMode: normalizeCapturePhotoFlashMode(
+        defaults["photoFlashMode"] ?? (defaults["photoFlashEnabled"] === true ? "on" : "off")
+      ),
       attachMode: normalizeCaptureAttachMode(defaults["attachMode"]),
       commandConfirmation: normalizeCaptureCommandConfirmation(defaults["commandConfirmation"]),
       dictationMode: normalizeAnalyzeDictationMode(defaults["dictationMode"]),

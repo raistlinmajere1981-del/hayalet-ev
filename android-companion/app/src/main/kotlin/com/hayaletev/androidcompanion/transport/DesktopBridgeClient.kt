@@ -34,6 +34,7 @@ data class BridgePermissions(
 data class BridgeCommandProfile(
     val defaultLens: String? = null,
     val photoQuality: String? = null,
+    val photoFlashMode: String = "off",
     val androidDictationBackend: String = "vosk",
     val transcriptModel: BridgeTranscriptModelProfile? = null,
     val torchEnabled: Boolean = false,
@@ -466,6 +467,9 @@ class DesktopBridgeClient(private val manifest: CompanionManifest) {
         return BridgeCommandProfile(
             defaultLens = optString("defaultLens").ifBlank { null },
             photoQuality = optString("photoQuality").ifBlank { null },
+            photoFlashMode = optString("photoFlashMode").trim().ifBlank {
+                if (optBoolean("photoFlashEnabled", false)) "on" else "off"
+            },
             androidDictationBackend = optString("androidDictationBackend").trim().ifBlank {
                 "vosk"
             },

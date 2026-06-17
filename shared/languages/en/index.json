@@ -166,6 +166,10 @@
           "qualityLabel": "Photo quality",
           "qualityHigh": "High quality",
           "qualityBalanced": "Balanced speed",
+          "photoFlashLabel": "Capture flash",
+          "photoFlashOff": "Off",
+          "photoFlashAuto": "Auto",
+          "photoFlashOn": "On",
           "attachModeLabel": "Attach mode",
           "attachManual": "Manual attach",
           "attachAuto": "Auto-stage",
@@ -803,7 +807,7 @@
       "thinking": "Thinking",
       "refreshTitle": "Refresh",
       "companionSettingsTitle": "Open companion operation settings",
-      "companionSettingsLabel": "Settings"
+      "companionSettingsLabel": "Companion Management"
     },
     "relay": {
       "toggle": {

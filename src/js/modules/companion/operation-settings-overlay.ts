@@ -119,6 +119,14 @@ export function ttsLanguage(): TtsLanguage {
   return normalizeTtsLanguage(captureDefaults()?.ttsLanguage, fallback);
 }
 
+function photoFlashMode(): "off" | "auto" | "on" {
+  const defaults = captureDefaults() ?? {};
+  if (defaults.photoFlashMode === "auto" || defaults.photoFlashMode === "on") {
+    return defaults.photoFlashMode;
+  }
+  return (defaults as Record<string, unknown>)["photoFlashEnabled"] === true ? "on" : "off";
+}
+
 export function ambientWakePhrases(): string[] {
   return normalizeAmbientWakePhrases(
     SettingsManager.getSnapshot().voiceCommands?.ambient?.wakePhrases,
@@ -258,13 +266,14 @@ export async function openCompanionOperationSettings(
     return select;
   };
 
-  const createTextarea = (value: string, rows: number): HTMLTextAreaElement => {
-    const textarea = document.createElement("textarea");
-    textarea.className = "form-input analyze-operation-settings__textarea";
-    textarea.rows = rows;
-    textarea.spellcheck = false;
-    textarea.value = value;
-    return textarea;
+  const createTextInput = (value: string): HTMLInputElement => {
+    const input = document.createElement("input");
+    input.className = "form-input";
+    input.type = "text";
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.value = value;
+    return input;
   };
 
   const createNumberInput = (
@@ -352,7 +361,7 @@ export async function openCompanionOperationSettings(
   voiceEnabledLabel.append(
     document.createTextNode(companionT("page.operationSettings.voiceCommandsEnabled"))
   );
-  const ambientWakeInput = createTextarea(ambientWakePhrases().join("\n"), 2);
+  const ambientWakeInput = createTextInput(ambientWakePhrases().join(", "));
   const ambientActiveWindowInput = createNumberInput(ambientActiveWindowMs(), {
     min: 1_000,
     max: 30_000,
@@ -364,9 +373,9 @@ export async function openCompanionOperationSettings(
     step: 100,
   });
   const voicePhrases = voiceCommandPhrases();
-  const openCameraPhrasesInput = createTextarea(voicePhrases.openCamera.join("\n"), 2);
-  const capturePhrasesInput = createTextarea(voicePhrases.capture.join("\n"), 2);
-  const stopPhrasesInput = createTextarea(voicePhrases.stop.join("\n"), 2);
+  const openCameraPhrasesInput = createTextInput(voicePhrases.openCamera.join(", "));
+  const capturePhrasesInput = createTextInput(voicePhrases.capture.join(", "));
+  const stopPhrasesInput = createTextInput(voicePhrases.stop.join(", "));
 
   const ttsModeSelect = createSelect<TtsMode>(
     [
@@ -398,6 +407,14 @@ export async function openCompanionOperationSettings(
       { value: "balanced", label: companionT("page.operationSettings.qualityBalanced") },
     ],
     captureDefaults()?.photoQuality === "balanced" ? "balanced" : "high"
+  );
+  const photoFlashSelect = createSelect<"off" | "auto" | "on">(
+    [
+      { value: "off", label: companionT("page.operationSettings.photoFlashOff") },
+      { value: "auto", label: companionT("page.operationSettings.photoFlashAuto") },
+      { value: "on", label: companionT("page.operationSettings.photoFlashOn") },
+    ],
+    photoFlashMode()
   );
   const attachModeSelect = createSelect<"manual-sync" | "auto-stage">(
     [
@@ -540,21 +557,26 @@ export async function openCompanionOperationSettings(
       renderStatus();
     })();
   });
-  [lensSelect, qualitySelect, attachModeSelect, confirmationSelect].forEach((select) => {
-    select.addEventListener("change", () => {
-      void SettingsManager.patch((settings) => {
-        const nextCapture = (settings["capture"] ?? {}) as Record<string, unknown>;
-        const nextDefaults = (nextCapture["defaults"] ?? {}) as Record<string, unknown>;
-        nextDefaults["defaultLens"] = lensSelect.value === "front" ? "front" : "back";
-        nextDefaults["photoQuality"] = qualitySelect.value === "balanced" ? "balanced" : "high";
-        nextDefaults["attachMode"] =
-          attachModeSelect.value === "auto-stage" ? "auto-stage" : "manual-sync";
-        nextDefaults["commandConfirmation"] =
-          confirmationSelect.value === "none" ? "none" : "toast";
-        nextCapture["defaults"] = nextDefaults;
-        settings["capture"] = nextCapture;
-      });
+  const saveCameraDefaults = (): void => {
+    void SettingsManager.patch((settings) => {
+      const nextCapture = (settings["capture"] ?? {}) as Record<string, unknown>;
+      const nextDefaults = (nextCapture["defaults"] ?? {}) as Record<string, unknown>;
+      nextDefaults["defaultLens"] = lensSelect.value === "front" ? "front" : "back";
+      nextDefaults["photoQuality"] = qualitySelect.value === "balanced" ? "balanced" : "high";
+      nextDefaults["photoFlashMode"] =
+        photoFlashSelect.value === "auto" || photoFlashSelect.value === "on"
+          ? photoFlashSelect.value
+          : "off";
+      delete nextDefaults["photoFlashEnabled"];
+      nextDefaults["attachMode"] =
+        attachModeSelect.value === "auto-stage" ? "auto-stage" : "manual-sync";
+      nextDefaults["commandConfirmation"] = confirmationSelect.value === "none" ? "none" : "toast";
+      nextCapture["defaults"] = nextDefaults;
+      settings["capture"] = nextCapture;
     });
+  };
+  [lensSelect, qualitySelect, photoFlashSelect, attachModeSelect, confirmationSelect].forEach((select) => {
+    select.addEventListener("change", saveCameraDefaults);
   });
 
   const saveAmbientButton = document.createElement("button");
@@ -762,12 +784,13 @@ export async function openCompanionOperationSettings(
   cameraSection.append(
     createRow(companionT("page.operationSettings.lensLabel"), lensSelect),
     createRow(companionT("page.operationSettings.qualityLabel"), qualitySelect),
+    createRow(companionT("page.operationSettings.photoFlashLabel"), photoFlashSelect),
     createRow(companionT("page.operationSettings.attachModeLabel"), attachModeSelect),
     createRow(companionT("page.operationSettings.confirmationLabel"), confirmationSelect),
     cameraActions
   );
 
-  content.append(androidSection, dictationSection, ambientSection, ttsSection, cameraSection);
+  content.append(androidSection, dictationSection, cameraSection, ambientSection, ttsSection);
   populateDeviceSelect();
   renderStatus();
 

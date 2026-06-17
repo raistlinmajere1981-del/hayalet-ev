@@ -753,6 +753,19 @@ export function createRepairRoomUiRuntime() {
     };
   }
 
+  function shouldKeepSessionRailDomForActiveInteraction(
+    panelId: RepairPanelId,
+    panel: HTMLElement
+  ): boolean {
+    if (panelId !== "session-rail") return false;
+
+    const activeElement = documentRef.activeElement;
+    if (!(activeElement instanceof HTMLElement) || !panel.contains(activeElement)) return false;
+
+    const action = activeElement.dataset["repairAction"];
+    return action === "wizard-field" || action === "wizard-symptom";
+  }
+
   function syncPanel(
     persistentShell: RepairPersistentShell,
     parent: HTMLElement,
@@ -778,6 +791,13 @@ export function createRepairRoomUiRuntime() {
         lifecycle.update(current);
       }
       applyPanelGuidanceChrome(current, lifecycle.panelId);
+      return;
+    }
+
+    if (shouldKeepSessionRailDomForActiveInteraction(lifecycle.panelId, current)) {
+      // Host echoes draft updates on every keystroke; remounting here drops focus and selection.
+      applyPanelGuidanceChrome(current, lifecycle.panelId);
+      persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
       return;
     }
 

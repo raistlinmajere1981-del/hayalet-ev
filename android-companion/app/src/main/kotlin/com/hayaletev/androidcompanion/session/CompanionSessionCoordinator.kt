@@ -11,6 +11,7 @@ import com.hayaletev.androidcompanion.capture.CameraPreviewFrame
 import com.hayaletev.androidcompanion.capture.CameraSessionConfig
 import com.hayaletev.androidcompanion.capture.CameraSessionController
 import com.hayaletev.androidcompanion.capture.CaptureLens
+import com.hayaletev.androidcompanion.capture.CapturePhotoFlashMode
 import com.hayaletev.androidcompanion.capture.CapturePhotoQuality
 import com.hayaletev.androidcompanion.debug.CompanionDiagnostics
 import com.hayaletev.androidcompanion.model.CompanionManifest
@@ -144,6 +145,10 @@ class CompanionSessionCoordinator(
                             } else {
                                 CapturePhotoQuality.HIGH
                             },
+                        photoFlashMode = resolvePhotoFlashMode(
+                            intent?.getStringExtra("photoFlashMode")
+                                ?: if (intent?.getBooleanExtra("photoFlashEnabled", false) == true) "on" else "off",
+                        ),
                     ),
             )
 
@@ -1264,6 +1269,7 @@ class CompanionSessionCoordinator(
                                 "high" -> CapturePhotoQuality.HIGH
                                 else -> launchContext.cameraConfig.photoQuality
                             },
+                        photoFlashMode = resolvePhotoFlashMode(profile.photoFlashMode),
                     ),
                 transcriptModel = requireAndroidVoskModelProfile(profile.transcriptModel),
             )
@@ -1272,7 +1278,7 @@ class CompanionSessionCoordinator(
         CompanionDiagnostics.d(
             "command",
             "Applied command profile overrides.",
-            "defaultLens=${profile.defaultLens ?: "unchanged"}, photoQuality=${profile.photoQuality ?: "unchanged"}, dictationBackend=vosk",
+            "defaultLens=${profile.defaultLens ?: "unchanged"}, photoQuality=${profile.photoQuality ?: "unchanged"}, photoFlashMode=${profile.photoFlashMode}, dictationBackend=vosk",
         )
     }
 
@@ -1281,7 +1287,7 @@ class CompanionSessionCoordinator(
         CompanionDiagnostics.setState("Target", launchContext.target)
         CompanionDiagnostics.setState(
             "Camera config",
-            "${launchContext.cameraConfig.lens.name.lowercase()} / ${launchContext.cameraConfig.photoQuality.name.lowercase()}",
+            "${launchContext.cameraConfig.lens.name.lowercase()} / ${launchContext.cameraConfig.photoQuality.name.lowercase()} / flash=${launchContext.cameraConfig.photoFlashMode.name.lowercase()}",
         )
         CompanionDiagnostics.setState(
             "Transcript model",
@@ -1299,8 +1305,18 @@ class CompanionSessionCoordinator(
             append(launchContext.cameraConfig.lens.name.lowercase())
             append(", photoQuality=")
             append(launchContext.cameraConfig.photoQuality.name.lowercase())
+            append(", photoFlashMode=")
+            append(launchContext.cameraConfig.photoFlashMode.name.lowercase())
             append(", transcriptModel=")
             append(launchContext.transcriptModel?.modelId ?: "pending")
+        }
+    }
+
+    private fun resolvePhotoFlashMode(value: String?): CapturePhotoFlashMode {
+        return when (value) {
+            "auto" -> CapturePhotoFlashMode.AUTO
+            "on" -> CapturePhotoFlashMode.ON
+            else -> CapturePhotoFlashMode.OFF
         }
     }
 

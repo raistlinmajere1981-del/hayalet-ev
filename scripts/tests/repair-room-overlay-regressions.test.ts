@@ -429,10 +429,11 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(hostMessages, /transcript-ingress/);
   assert.match(settingsPanel, /repair-settings-panel/);
   assert.match(settingsPanel, /set-interaction-settings/);
-  assert.match(settingsPanel, /androidCompanionEnabled/);
-  assert.match(settingsPanel, /dictationRoute/);
-  assert.match(settingsPanel, /ttsRoute/);
-  assert.match(settingsPanel, /cameraFeedPreference/);
+  assert.doesNotMatch(settingsPanel, /androidCompanionEnabled/);
+  assert.doesNotMatch(settingsPanel, /dictationRoute/);
+  assert.doesNotMatch(settingsPanel, /ttsRoute/);
+  assert.doesNotMatch(settingsPanel, /cameraFeedPreference/);
+  assert.doesNotMatch(settingsPanel, /set-attention-budget/);
   assert.match(feedPanel, /repair-feed-composer__input/);
   assert.match(style, /\.repair-sync-panel/);
   assert.match(style, /\.repair-settings-panel/);
@@ -543,7 +544,21 @@ test("repair-room hands-free controls stay action-oriented without duplicating t
     settingsSurface,
     (element) => element.dataset["repairAction"] === "set-interaction-settings"
   );
-  assert.ok(settingsActions.length >= 8);
+  assert.ok(settingsActions.length >= 3);
+  assert.equal(
+    findRepairFakeElements(
+      settingsSurface,
+      (element) => element.dataset["androidCompanionEnabled"] !== undefined
+    ).length,
+    0
+  );
+  assert.equal(
+    findRepairFakeElements(
+      settingsSurface,
+      (element) => element.dataset["repairAction"] === "set-attention-budget"
+    ).length,
+    0
+  );
   const setupControlsSurface = renderOperatorProfilePanel(
     documentRef,
     {
@@ -561,7 +576,21 @@ test("repair-room hands-free controls stay action-oriented without duplicating t
     findRepairFakeElements(
       setupControlsSurface,
       (element) => element.dataset["repairAction"] === "set-interaction-settings"
-    ).length >= 8
+    ).length >= 3
+  );
+  assert.equal(
+    findRepairFakeElements(
+      setupControlsSurface,
+      (element) => element.dataset["androidCompanionEnabled"] !== undefined
+    ).length,
+    0
+  );
+  assert.equal(
+    findRepairFakeElements(
+      setupControlsSurface,
+      (element) => element.dataset["repairAction"] === "set-attention-budget"
+    ).length,
+    0
   );
   const chatSurface = renderChatPanel(
     documentRef,

@@ -82,6 +82,7 @@ export function createDefaultSettings(): AppSettings {
         preferredDeviceId: null,
         defaultLens: "back",
         photoQuality: "high",
+        photoFlashMode: "off",
         attachMode: "manual-sync",
         commandConfirmation: "toast",
         dictationMode: "local",

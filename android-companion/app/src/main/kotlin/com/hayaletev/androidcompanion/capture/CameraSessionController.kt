@@ -6,6 +6,9 @@ import android.graphics.YuvImage
 import android.os.SystemClock
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture.FLASH_MODE_AUTO
+import androidx.camera.core.ImageCapture.FLASH_MODE_OFF
+import androidx.camera.core.ImageCapture.FLASH_MODE_ON
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageAnalysis
@@ -38,9 +41,16 @@ enum class CapturePhotoQuality {
     BALANCED,
 }
 
+enum class CapturePhotoFlashMode {
+    OFF,
+    AUTO,
+    ON,
+}
+
 data class CameraSessionConfig(
     val lens: CaptureLens = CaptureLens.BACK,
     val photoQuality: CapturePhotoQuality = CapturePhotoQuality.HIGH,
+    val photoFlashMode: CapturePhotoFlashMode = CapturePhotoFlashMode.OFF,
 )
 
 data class CameraPreviewFrame(
@@ -116,6 +126,13 @@ class CameraSessionController(
                                 )
                                 .setJpegQuality(
                                     if (config.photoQuality == CapturePhotoQuality.HIGH) 95 else 82
+                                )
+                                .setFlashMode(
+                                    when (config.photoFlashMode) {
+                                        CapturePhotoFlashMode.AUTO -> FLASH_MODE_AUTO
+                                        CapturePhotoFlashMode.ON -> FLASH_MODE_ON
+                                        CapturePhotoFlashMode.OFF -> FLASH_MODE_OFF
+                                    }
                                 )
                                 .build()
                         resolvedProvider.unbindAll()
@@ -201,6 +218,8 @@ class CameraSessionController(
             append(config.lens.name.lowercase(Locale.US))
             append(" / ")
             append(config.photoQuality.name.lowercase(Locale.US))
+            append(" / flash=")
+            append(config.photoFlashMode.name.lowercase(Locale.US))
         }
     }
 

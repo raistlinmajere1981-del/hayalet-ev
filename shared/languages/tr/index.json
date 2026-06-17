@@ -166,6 +166,10 @@
           "qualityLabel": "Fotoğraf kalitesi",
           "qualityHigh": "Yüksek kalite",
           "qualityBalanced": "Dengeli hız",
+          "photoFlashLabel": "Çekimde flash",
+          "photoFlashOff": "Kapalı",
+          "photoFlashAuto": "Auto",
+          "photoFlashOn": "Açık",
           "attachModeLabel": "Ekleme modu",
           "attachManual": "Elle ekle",
           "attachAuto": "Otomatik sahnele",
@@ -803,7 +807,7 @@
       "thinking": "Düşünüyor",
       "refreshTitle": "Yenile",
       "companionSettingsTitle": "Companion işlem ayarlarını aç",
-      "companionSettingsLabel": "Ayarlar"
+      "companionSettingsLabel": "Companion yönetim"
     },
     "relay": {
       "toggle": {

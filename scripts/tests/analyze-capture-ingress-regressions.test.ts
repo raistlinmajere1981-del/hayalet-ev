@@ -80,6 +80,7 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(operationSettingsOverlaySource, /openCompanionOperationSettings/);
   assert.match(operationSettingsOverlaySource, /capture\.defaults\.dictationMode/);
   assert.match(operationSettingsOverlaySource, /capture\.defaults\.dictationLanguage/);
+  assert.match(operationSettingsOverlaySource, /photoFlashMode/);
   assert.match(operationSettingsOverlaySource, /normalizeCapturePhraseList/);
   assert.doesNotMatch(pageSource, /_openCapturePanel/);
   assert.doesNotMatch(pageSource, /_closeCapturePanel/);
@@ -224,6 +225,7 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(settingsDefaultsSource, /androidTranscriptModelVariant: "light"/);
   assert.match(settingsDefaultsSource, /androidDictationBackend: "vosk"/);
   assert.match(settingsDefaultsSource, /androidTorchEnabled: false/);
+  assert.match(settingsDefaultsSource, /photoFlashMode: "off"/);
   assert.match(settingsDefaultsSource, /dictationMode: "local"/);
   assert.match(settingsDefaultsSource, /dictationLanguage: "tr"/);
   assert.match(settingsDefaultsSource, /DEFAULT_AMBIENT_WAKE_PHRASES/);
@@ -238,7 +240,9 @@ test("analyze page wires central capture inbox imports into staged attachments",
   assert.match(settingsSchemaSource, /normalizeAmbientWakePhrases/);
   assert.match(settingsSchemaSource, /normalizeAnalyzeDictationMode/);
   assert.match(settingsSchemaSource, /androidTorchEnabled:[\s\S]*=== true/);
+  assert.match(settingsSchemaSource, /photoFlashMode:[\s\S]*normalizeCapturePhotoFlashMode/);
   assert.match(settingsSchemaSource, /dictationLanguage:[\s\S]*resolveTranscriptSupportedLanguage/);
+  assert.match(captureTypesSource, /photoFlashMode: settings\.photoFlashMode/);
   assert.match(settingsSchemaSource, /DEFAULT_AMBIENT_ACTIVE_WINDOW_MS/);
   assert.match(captureTypesSource, /return "vosk";/);
   assert.match(captureTypesSource, /vosk-model-small-tr-0\.3\.zip/);

@@ -722,6 +722,9 @@ class MainActivity : AppCompatActivity() {
                 intent.getStringExtra("photoQuality")?.takeIf { it.isNotBlank() }?.let {
                     add("photoQuality=$it")
                 }
+                intent.getStringExtra("photoFlashMode")?.takeIf { it.isNotBlank() }?.let {
+                    add("photoFlashMode=$it")
+                }
             }
         return summary.joinToString(", ").ifBlank { null }
     }

@@ -243,6 +243,7 @@ export interface GeneralSettings {
 
 export type CaptureDefaultLens = "back" | "front";
 export type CapturePhotoQuality = "balanced" | "high";
+export type CapturePhotoFlashMode = "off" | "auto" | "on";
 export type CaptureAttachMode = "manual-sync" | "auto-stage";
 export type CaptureCommandConfirmation = "none" | "toast";
 export type AndroidDictationBackend = "whisper.cpp" | "vosk";
@@ -252,6 +253,7 @@ export interface CaptureDefaultsSettings {
   preferredDeviceId?: string | null;
   defaultLens?: CaptureDefaultLens;
   photoQuality?: CapturePhotoQuality;
+  photoFlashMode?: CapturePhotoFlashMode;
   attachMode?: CaptureAttachMode;
   commandConfirmation?: CaptureCommandConfirmation;
   dictationMode?: AnalyzeDictationMode;

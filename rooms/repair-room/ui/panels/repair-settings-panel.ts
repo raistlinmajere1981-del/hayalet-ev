@@ -5,16 +5,6 @@ type TextFn = (path: string[], fallback: string) => string;
 
 type RepairSettingsButtonDataset = Record<string, string>;
 
-function getRouteLabel(route: "local" | "android"): string {
-  return route === "android" ? "Android" : "Local";
-}
-
-function getAssistanceProfileLabel(maxAiInterruptions: number): string {
-  if (maxAiInterruptions <= 1) return "Quiet";
-  if (maxAiInterruptions === 2) return "Balanced";
-  return "Proactive";
-}
-
 function createSettingsSection(
   documentRef: Document,
   title: string,
@@ -96,11 +86,6 @@ export function renderRepairSettingsPanelBody(
   const voice = state.layout.voiceGuidance;
   const settings = state.layout.interactionSettings;
   const handsFreeEnabled = voice.handsBusyMode && voice.ambientListeningState === "listening";
-
-  const summary = documentRef.createElement("div");
-  summary.className = "repair-settings-summary";
-  summary.textContent = `Mic: ${getRouteLabel(settings.dictationRoute)} / Read aloud: ${getRouteLabel(settings.ttsRoute)} / View: ${settings.cameraFeedPreference === "android-feed" ? "Android camera" : "Manual image"}`;
-  body.append(summary);
 
   const handsFree = createSettingsSection(
     documentRef,
@@ -209,108 +194,6 @@ export function renderRepairSettingsPanelBody(
   });
   handsFree.append(submitGroup.group);
   body.append(handsFree);
-
-  const companion = createSettingsSection(
-    documentRef,
-    text(["settings", "companionTitle"], "Android companion"),
-    text(
-      ["settings", "companionSubtitle"],
-      "Choose where the repair mic, speaker, and camera come from."
-    )
-  );
-
-  const companionGroup = createButtonGroup(
-    documentRef,
-    text(["settings", "companion"], "Phone link")
-  );
-  appendSettingsButton(documentRef, companionGroup.buttons, {
-    label: settings.androidCompanionEnabled
-      ? text(["settings", "enabled"], "Phone ready")
-      : text(["settings", "disabled"], "Phone off"),
-    title: settings.androidCompanionEnabled
-      ? "Disable Android companion for Repair Room"
-      : "Enable Android companion for Repair Room",
-    action: "set-interaction-settings",
-    active: settings.androidCompanionEnabled,
-    dataset: { androidCompanionEnabled: String(!settings.androidCompanionEnabled) },
-  });
-  companion.append(companionGroup.group);
-
-  const dictationGroup = createButtonGroup(
-    documentRef,
-    text(["settings", "dictationRoute"], "Microphone")
-  );
-  (["local", "android"] as const).forEach((dictationRoute) => {
-    appendSettingsButton(documentRef, dictationGroup.buttons, {
-      label:
-        dictationRoute === "local"
-          ? text(["settings", "local"], "Local")
-          : text(["settings", "android"], "Android"),
-      title: `Use ${dictationRoute} dictation for Repair Room`,
-      action: "set-interaction-settings",
-      active: settings.dictationRoute === dictationRoute,
-      dataset: { dictationRoute },
-    });
-  });
-  companion.append(dictationGroup.group);
-
-  const ttsGroup = createButtonGroup(documentRef, text(["settings", "ttsRoute"], "Speaker"));
-  (["local", "android"] as const).forEach((ttsRoute) => {
-    appendSettingsButton(documentRef, ttsGroup.buttons, {
-      label:
-        ttsRoute === "local"
-          ? text(["settings", "local"], "Local")
-          : text(["settings", "android"], "Android"),
-      title: `Use ${ttsRoute} TTS for Repair Room`,
-      action: "set-interaction-settings",
-      active: settings.ttsRoute === ttsRoute,
-      dataset: { ttsRoute },
-    });
-  });
-  companion.append(ttsGroup.group);
-
-  const cameraGroup = createButtonGroup(documentRef, text(["settings", "camera"], "View"));
-  (["manual", "android-feed"] as const).forEach((cameraFeedPreference) => {
-    appendSettingsButton(documentRef, cameraGroup.buttons, {
-      label:
-        cameraFeedPreference === "manual"
-          ? text(["settings", "cameraManual"], "Attach image")
-          : text(["settings", "cameraAndroid"], "Phone camera"),
-      title:
-        cameraFeedPreference === "manual"
-          ? "Use manually attached workbench media"
-          : "Prefer Android companion camera feed",
-      action: "set-interaction-settings",
-      active: settings.cameraFeedPreference === cameraFeedPreference,
-      dataset: { cameraFeedPreference },
-    });
-  });
-  companion.append(cameraGroup.group);
-  body.append(companion);
-
-  const attention = createSettingsSection(
-    documentRef,
-    text(["settings", "attentionTitle"], "Assistance profile"),
-    text(
-      ["settings", "attentionSubtitle"],
-      "Choose how often the assistant can interrupt while your hands are busy."
-    )
-  );
-  const budgetGroup = createButtonGroup(documentRef, text(["settings", "budget"], "Interruptions"));
-  ([1, 2, 3] as const).forEach((maxAiInterruptions) => {
-    appendSettingsButton(documentRef, budgetGroup.buttons, {
-      label: getAssistanceProfileLabel(maxAiInterruptions),
-      title: `Use ${getAssistanceProfileLabel(maxAiInterruptions).toLowerCase()} assistance (${maxAiInterruptions} interruptions per window)`,
-      action: "set-attention-budget",
-      active: state.layout.attentionBudget.maxAiInterruptions === maxAiInterruptions,
-      dataset: {
-        maxAiInterruptions: String(maxAiInterruptions),
-        windowMs: String(state.layout.attentionBudget.windowMs),
-      },
-    });
-  });
-  attention.append(budgetGroup.group);
-  body.append(attention);
 
   return body;
 }

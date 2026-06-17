@@ -69,6 +69,7 @@ export interface ResolvedCaptureSettings {
   preferredDeviceId: string | null;
   defaultLens: "back" | "front";
   photoQuality: "high" | "balanced";
+  photoFlashMode: "off" | "auto" | "on";
   attachMode: "manual-sync" | "auto-stage";
   commandConfirmation: "toast" | "none";
   dictationLanguage: TranscriptSupportedLanguage;
@@ -173,6 +174,10 @@ export function normalizeAndroidDictationBackend(
 ): CaptureCompanionTranscriptModelProfile["backend"] {
   void value;
   return "vosk";
+}
+
+export function normalizePhotoFlashMode(value: unknown): ResolvedCaptureSettings["photoFlashMode"] {
+  return value === "auto" || value === "on" ? value : "off";
 }
 
 export function normalizeTranscriptTarget(value: unknown): TranscriptTargetId | null {
@@ -313,6 +318,9 @@ export function resolveCaptureSettings(settings: unknown): ResolvedCaptureSettin
     preferredDeviceId: normalizeText(defaults?.["preferredDeviceId"]),
     defaultLens: defaults?.["defaultLens"] === "front" ? "front" : "back",
     photoQuality: defaults?.["photoQuality"] === "balanced" ? "balanced" : "high",
+    photoFlashMode: normalizePhotoFlashMode(
+      defaults?.["photoFlashMode"] ?? (defaults?.["photoFlashEnabled"] === true ? "on" : "off")
+    ),
     attachMode: defaults?.["attachMode"] === "auto-stage" ? "auto-stage" : "manual-sync",
     commandConfirmation: defaults?.["commandConfirmation"] === "none" ? "none" : "toast",
     dictationLanguage: resolveTranscriptSupportedLanguage(
@@ -367,6 +375,7 @@ export function buildCompanionCommandProfile(
   return {
     defaultLens: settings.defaultLens,
     photoQuality: settings.photoQuality,
+    photoFlashMode: settings.photoFlashMode,
     attachMode: settings.attachMode,
     commandConfirmation: settings.commandConfirmation,
     androidDictationBackend: settings.androidDictationBackend,
