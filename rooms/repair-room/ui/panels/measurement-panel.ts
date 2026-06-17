@@ -147,7 +147,6 @@ export function renderMeasurementPanel(
     title: text(["measurement", "title"], "Measurement"),
     statusDot: meas.current.hold ? "amber" : "live",
     collapsed: state.layout.collapsedPanels["measurement"],
-    pinned: state.layout.pinnedPanels["measurement"],
     body,
   });
 }

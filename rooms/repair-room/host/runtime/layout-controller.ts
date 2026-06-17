@@ -146,11 +146,6 @@ export function createRepairLayoutController(params: {
       store.dispatch({ type: "layout/collapse-panel", panelId, collapsed });
       return { success: true };
     }
-    const pinned = flat["pinned"];
-    if (isPanelId(panelId) && typeof pinned === "boolean") {
-      store.dispatch({ type: "layout/pin-panel", panelId, pinned });
-      return { success: true };
-    }
     return { success: false, message: "panel layout payload is empty" };
   }
 

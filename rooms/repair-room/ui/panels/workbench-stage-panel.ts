@@ -398,6 +398,15 @@ export function renderWorkbenchStagePanel(
   ttsButton.dataset["active"] = String(ttsActive);
   guidanceControls.append(ttsButton);
 
+  // SAY column toggle — shows/hides voice command hints in guidance strip
+  const sayToggleButton = documentRef.createElement("button");
+  sayToggleButton.type = "button";
+  sayToggleButton.className = "repair-guidance-control";
+  sayToggleButton.textContent = "Say";
+  sayToggleButton.title = "Show / hide voice command hints";
+  sayToggleButton.dataset["repairAction"] = "toggle-say-column";
+  guidanceControls.append(sayToggleButton);
+
   const budgetButton = documentRef.createElement("button");
   budgetButton.type = "button";
   const currentMax = state.guidance.aiInterruption.attentionBudget.maxAiInterruptions;
@@ -486,6 +495,8 @@ export function renderWorkbenchStagePanel(
   guidance.className = "repair-guidance-strip";
   guidance.dataset["confidence"] = state.guidance.nextBestAction.confidence;
   guidance.dataset["urgency"] = state.guidance.nextBestAction.urgency;
+  // SAY column visibility — toggled by the Say button in guidance controls
+  guidance.dataset["showSay"] = "false";
 
   appendCopilotCell(
     documentRef,
@@ -628,9 +639,13 @@ export function renderWorkbenchStagePanel(
 
   body.append(viewport);
 
-  // -- Toolbar
+  // -- Toolbar: two rows — tools row + layers row
   const toolbar = documentRef.createElement("div");
   toolbar.className = "repair-toolbar";
+
+  // Row 1: tool selection buttons
+  const toolsRow = documentRef.createElement("div");
+  toolsRow.className = "repair-toolbar-row repair-toolbar-row--tools";
 
   for (const tool of REPAIR_OVERLAY_TOOLS) {
     const btn = documentRef.createElement("button");
@@ -639,14 +654,24 @@ export function renderWorkbenchStagePanel(
     btn.title = tool.title;
     btn.dataset["repairAction"] = "set-tool";
     btn.dataset["tool"] = tool.id;
-    toolbar.append(btn);
+    toolsRow.append(btn);
 
     if (tool.id === "zoom-out" || tool.id === "arrow") {
       const sep = documentRef.createElement("span");
       sep.className = "repair-toolbar__sep";
-      toolbar.append(sep);
+      toolsRow.append(sep);
     }
   }
+  toolbar.append(toolsRow);
+
+  // Separator between rows
+  const rowSep = documentRef.createElement("div");
+  rowSep.className = "repair-toolbar__row-sep";
+  toolbar.append(rowSep);
+
+  // Row 2: overlay layer toggle buttons
+  const layersRow = documentRef.createElement("div");
+  layersRow.className = "repair-toolbar-row repair-toolbar-row--layers";
 
   const layerButtons: Array<{
     id: keyof RepairUiState["workbench"]["visibleLayers"];
@@ -671,7 +696,7 @@ export function renderWorkbenchStagePanel(
     btn.dataset["repairAction"] = "toggle-overlay-layer";
     btn.dataset["layerId"] = layer.id;
     btn.dataset["visible"] = String(!isVisible);
-    toolbar.append(btn);
+    layersRow.append(btn);
   }
 
   const investigation = documentRef.createElement("button");
@@ -681,16 +706,18 @@ export function renderWorkbenchStagePanel(
   investigation.textContent = "Inspect";
   investigation.title = "Toggle investigation mode";
   investigation.dataset["repairAction"] = "toggle-investigation-mode";
-  toolbar.append(investigation);
+  layersRow.append(investigation);
+
+  toolbar.append(layersRow);
 
   body.append(toolbar);
 
   return createRepairPanel(documentRef, {
     panelId: "workbench-stage",
-    title: text(["workbench", "title"], "Workbench"),
+    title: text(["workbench", "title"], "WORKBENCH"),
     statusDot: state.workbench.isFrozen ? "amber" : "live",
     collapsed: state.layout.collapsedPanels["workbench-stage"],
-    pinned: state.layout.pinnedPanels["workbench-stage"],
+    noPanelControls: true,
     body,
   });
 }

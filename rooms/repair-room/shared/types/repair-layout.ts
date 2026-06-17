@@ -56,7 +56,6 @@ export interface RepairAttentionBudgetState {
 
 export interface RepairLayoutState {
   collapsedPanels: Record<RepairPanelId, boolean>;
-  pinnedPanels: Record<RepairPanelId, boolean>;
   operationalProfile: RepairOperationalProfile;
   voiceGuidance: RepairVoiceGuidanceState;
   interactionSettings: RepairInteractionSettingsState;

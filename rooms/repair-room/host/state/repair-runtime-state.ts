@@ -75,22 +75,6 @@ function createCollapsedPanelMap(): Record<RepairPanelId, boolean> {
   };
 }
 
-function createPinnedPanelMap(): Record<RepairPanelId, boolean> {
-  return {
-    "session-rail": true,
-    "workbench-stage": true,
-    "tactical-feed": false,
-    "session-wizard": false,
-    "knowledge-pack": false,
-    "visual-timeline": true,
-    "operator-profile": false,
-    "repair-settings": false,
-    chat: false,
-    measurement: false,
-    "room-sync": true,
-  };
-}
-
 function createVisibleLayersMap(): Record<RepairOverlayLayerId, boolean> {
   return {
     grid: true,
@@ -180,7 +164,6 @@ export function createInitialRepairRuntimeState(nowIso: string): RepairRuntimeSt
     },
     layout: {
       collapsedPanels: createCollapsedPanelMap(),
-      pinnedPanels: createPinnedPanelMap(),
       operationalProfile: "novice",
       voiceGuidance: {
         ambientListeningState: "idle",

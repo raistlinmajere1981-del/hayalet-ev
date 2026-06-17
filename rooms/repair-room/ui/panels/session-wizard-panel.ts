@@ -258,7 +258,6 @@ export function renderSessionWizardPanel(
     title: text(["wizard", "title"], "Repair Intake"),
     statusDot: wizard.currentStep === "ai-research" ? "amber" : "idle",
     collapsed: options.embedded === true ? false : state.layout.collapsedPanels["session-wizard"],
-    pinned: options.embedded === true ? true : state.layout.pinnedPanels["session-wizard"],
     body,
   });
 }

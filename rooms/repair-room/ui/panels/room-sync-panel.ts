@@ -203,7 +203,6 @@ export function renderRoomSyncPanel(
     title: text(["sync", "title"], "Repair State"),
     statusDot: state.phase === "session-active" ? "live" : "idle",
     collapsed: state.layout.collapsedPanels["room-sync"],
-    pinned: state.layout.pinnedPanels["room-sync"],
     body,
   });
 }

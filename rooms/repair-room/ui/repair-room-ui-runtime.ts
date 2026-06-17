@@ -357,18 +357,7 @@ export function createRepairRoomUiRuntime() {
   function updatePanelChrome(panel: HTMLElement, panelId: RepairPanelId): void {
     applyPanelGuidanceChrome(panel, panelId);
     const collapsed = state.layout.collapsedPanels[panelId];
-    const pinned = state.layout.pinnedPanels[panelId];
     panel.classList.toggle("repair-panel--collapsed", collapsed);
-    panel.classList.toggle("repair-panel--pinned", pinned);
-
-    const pin = panel.querySelector<HTMLElement>("[data-repair-action='toggle-panel-pin']");
-    if (pin !== null) {
-      pin.classList.toggle("repair-panel__icon-btn--active", pinned);
-      const nextTitle = pinned ? "Unpin panel" : "Pin panel";
-      if (pin.title !== nextTitle) pin.title = nextTitle;
-      setTextIfChanged(pin, pinned ? "Pinned" : "Keep");
-      setDatasetIfChanged(pin, "pinned", String(!pinned));
-    }
 
     const collapse = panel.querySelector<HTMLElement>(
       "[data-repair-action='toggle-panel-collapse']"
@@ -1360,10 +1349,14 @@ export function createRepairRoomUiRuntime() {
           if (panelId) requestRuntime.updatePanelLayout({ panelId, collapsed });
           break;
         }
-        case "toggle-panel-pin": {
-          const panelId = el.dataset["panelId"];
-          const pinned = el.dataset["pinned"] === "true";
-          if (panelId) requestRuntime.updatePanelLayout({ panelId, pinned });
+        case "toggle-say-column": {
+          // Pure DOM toggle — no state round-trip needed
+          const strip = root.querySelector<HTMLElement>(".repair-guidance-strip");
+          if (strip) {
+            const current = strip.dataset["showSay"] === "true";
+            strip.dataset["showSay"] = String(!current);
+            el.classList.toggle("repair-guidance-control--active", !current);
+          }
           break;
         }
         case "send-chat": {

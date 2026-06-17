@@ -220,7 +220,6 @@ export function renderOperatorProfilePanel(
     title: profile.displayName,
     statusDot: "idle",
     collapsed: state.layout.collapsedPanels["operator-profile"],
-    pinned: state.layout.pinnedPanels["operator-profile"],
     body,
   });
 }

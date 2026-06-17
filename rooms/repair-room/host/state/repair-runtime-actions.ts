@@ -198,11 +198,6 @@ export type RepairRuntimeAction =
       collapsed: boolean;
     }
   | {
-      type: "layout/pin-panel";
-      panelId: RepairPanelId;
-      pinned: boolean;
-    }
-  | {
       type: "layout/set-focus-mode";
       focusMode: boolean;
     }

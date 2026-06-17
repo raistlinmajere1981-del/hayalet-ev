@@ -368,17 +368,6 @@ export function reduceRepairRuntimeState(
           },
         },
       };
-    case "layout/pin-panel":
-      return {
-        ...state,
-        layout: {
-          ...state.layout,
-          pinnedPanels: {
-            ...state.layout.pinnedPanels,
-            [action.panelId]: action.pinned,
-          },
-        },
-      };
     case "layout/set-focus-mode":
       return {
         ...state,

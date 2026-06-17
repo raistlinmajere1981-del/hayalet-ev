@@ -4,8 +4,9 @@ export function createRepairPanel(
     body: HTMLElement;
     collapsed?: boolean;
     eyebrow?: string;
+    /** When true, the collapse (Hide/Show) button is omitted. */
+    noPanelControls?: boolean;
     panelId: string;
-    pinned?: boolean;
     statusDot?: "live" | "risk" | "amber" | "idle";
     title: string;
   }
@@ -15,7 +16,7 @@ export function createRepairPanel(
     .filter((item) => item.trim() !== "")
     .map((item) => (item.startsWith("repair-panel--") ? item : `repair-panel--${item}`));
   const section = documentRef.createElement("section");
-  section.className = `repair-panel ${panelClasses.join(" ")}${options.collapsed === true ? " repair-panel--collapsed" : ""}${options.pinned === true ? " repair-panel--pinned" : ""}`;
+  section.className = `repair-panel ${panelClasses.join(" ")}${options.collapsed === true ? " repair-panel--collapsed" : ""}`;
   section.dataset["repairPanel"] = options.panelId;
 
   const header = documentRef.createElement("header");
@@ -41,25 +42,17 @@ export function createRepairPanel(
   spacer.className = "repair-panel__header-spacer";
   header.append(spacer);
 
-  const pin = documentRef.createElement("button");
-  pin.className = `repair-panel__icon-btn${options.pinned === true ? " repair-panel__icon-btn--active" : ""}`;
-  pin.type = "button";
-  pin.title = options.pinned === true ? "Unpin panel" : "Pin panel";
-  pin.textContent = options.pinned === true ? "Pinned" : "Keep";
-  pin.dataset["repairAction"] = "toggle-panel-pin";
-  pin.dataset["panelId"] = options.panelId;
-  pin.dataset["pinned"] = String(options.pinned !== true);
-  header.append(pin);
-
-  const collapse = documentRef.createElement("button");
-  collapse.className = "repair-panel__icon-btn";
-  collapse.type = "button";
-  collapse.title = options.collapsed === true ? "Expand panel" : "Collapse panel";
-  collapse.textContent = options.collapsed === true ? "Show" : "Hide";
-  collapse.dataset["repairAction"] = "toggle-panel-collapse";
-  collapse.dataset["panelId"] = options.panelId;
-  collapse.dataset["collapsed"] = String(options.collapsed !== true);
-  header.append(collapse);
+  if (options.noPanelControls !== true) {
+    const collapse = documentRef.createElement("button");
+    collapse.className = "repair-panel__icon-btn";
+    collapse.type = "button";
+    collapse.title = options.collapsed === true ? "Expand panel" : "Collapse panel";
+    collapse.textContent = options.collapsed === true ? "Show" : "Hide";
+    collapse.dataset["repairAction"] = "toggle-panel-collapse";
+    collapse.dataset["panelId"] = options.panelId;
+    collapse.dataset["collapsed"] = String(options.collapsed !== true);
+    header.append(collapse);
+  }
 
   section.append(header, options.body);
   return section;

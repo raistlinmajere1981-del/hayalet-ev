@@ -13,7 +13,6 @@ export function buildRepairPanelSignature(params: {
     : 0;
   const layoutShape = {
     collapsed: state.layout.collapsedPanels[panelId],
-    pinned: state.layout.pinnedPanels[panelId],
     visibility: state.guidance.panelVisibility.panels[panelId],
     primarySurface: state.guidance.panelVisibility.primarySurface,
     operationalProfile: state.guidance.operationalProfile,

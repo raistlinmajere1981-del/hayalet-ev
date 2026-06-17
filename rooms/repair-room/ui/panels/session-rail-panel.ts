@@ -44,7 +44,6 @@ export function renderSessionRailPanel(
     title: text(["sessionRail", "title"], "Session Rail"),
     statusDot: state.sessions.activeId !== null ? "live" : "idle",
     collapsed: state.layout.collapsedPanels["session-rail"],
-    pinned: state.layout.pinnedPanels["session-rail"],
     body,
   });
 }
