@@ -1,5 +1,9 @@
 import { repairEventToTacticalFeedItem } from "../../shared/data/index.js";
-import type { RepairImagePoint, RepairOverlayEntityRef, RepairSession } from "../../shared/types/index.js";
+import type {
+  RepairImagePoint,
+  RepairOverlayEntityRef,
+  RepairSession,
+} from "../../shared/types/index.js";
 import type { ReplayRuntimeController } from "../repair-replay-runtime.js";
 import type { RepairRuntimeStore } from "../state/repair-runtime-store.js";
 import { createRepairUiSnapshotMeta } from "../state/repair-selectors.js";
@@ -117,7 +121,9 @@ export function createRepairLayoutController(params: {
       return { success: false, message: "timeline payload is empty" };
     }
     const timeline = store.getState().workbench.timeline;
-    const rangeStartMs = clearTimelineRange ? null : (timelineRangeStartMs ?? timeline.rangeStartMs);
+    const rangeStartMs = clearTimelineRange
+      ? null
+      : (timelineRangeStartMs ?? timeline.rangeStartMs);
     const rangeEndMs = clearTimelineRange ? null : (timelineRangeEndMs ?? timeline.rangeEndMs);
     store.dispatch({
       type: "workbench/set-timeline",
@@ -153,7 +159,11 @@ export function createRepairLayoutController(params: {
     message?: string;
   } {
     const previewTabId = safeString(flat["previewTabId"]);
-    if (previewTabId === "schematic-preview" || previewTabId === "board-view" || previewTabId === "notes") {
+    if (
+      previewTabId === "schematic-preview" ||
+      previewTabId === "board-view" ||
+      previewTabId === "notes"
+    ) {
       store.dispatch({ type: "knowledge-pack/set-preview-tab", tabId: previewTabId });
       return { success: true };
     }
@@ -396,7 +406,8 @@ export function createRepairLayoutController(params: {
 
     const selectedEventIds = safeStringArray(flat["selectedEventIds"]);
     if (selectedEventIds !== null) {
-      const inspectorEventId = safeString(flat["inspectorEventId"]) ?? selectedEventIds.at(-1) ?? null;
+      const inspectorEventId =
+        safeString(flat["inspectorEventId"]) ?? selectedEventIds.at(-1) ?? null;
       store.dispatch({
         type: "workbench/set-selection",
         focusedEventId: inspectorEventId,
@@ -404,9 +415,11 @@ export function createRepairLayoutController(params: {
           selectedEventIds,
           selectedEntityRefs: selectedEventIds.map((id) => ({ kind: "event", id })),
           inspectorEventId,
-          inspectorEntityRef: inspectorEventId === null ? null : { kind: "event", id: inspectorEventId },
+          inspectorEntityRef:
+            inspectorEventId === null ? null : { kind: "event", id: inspectorEventId },
           focusJumpEventId: safeString(flat["focusJumpEventId"]) ?? inspectorEventId,
-          focusJumpEntityRef: inspectorEventId === null ? null : { kind: "event", id: inspectorEventId },
+          focusJumpEntityRef:
+            inspectorEventId === null ? null : { kind: "event", id: inspectorEventId },
         },
       });
       return { success: true };
@@ -441,7 +454,9 @@ export function createRepairLayoutController(params: {
               ? currentSelection.filter((selectedId) => selectedId !== eventId)
               : [...currentSelection, eventId]
             : [eventId];
-      const inspectorEventId = nextSelection.includes(eventId) ? eventId : (nextSelection.at(-1) ?? null);
+      const inspectorEventId = nextSelection.includes(eventId)
+        ? eventId
+        : (nextSelection.at(-1) ?? null);
       store.dispatch({
         type: "workbench/set-selection",
         focusedEventId: inspectorEventId,
@@ -449,7 +464,8 @@ export function createRepairLayoutController(params: {
           selectedEventIds: nextSelection,
           selectedEntityRefs: nextSelection.map((id) => ({ kind: "event", id })),
           inspectorEventId,
-          inspectorEntityRef: inspectorEventId === null ? null : { kind: "event", id: inspectorEventId },
+          inspectorEntityRef:
+            inspectorEventId === null ? null : { kind: "event", id: inspectorEventId },
           focusJumpEventId: flat["focusJump"] === false ? null : (inspectorEventId ?? eventId),
           focusJumpEntityRef:
             flat["focusJump"] === false || inspectorEventId === null

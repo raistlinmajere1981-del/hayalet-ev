@@ -1,0 +1,171 @@
+/* ── Session Rail ────────────────────────────────────────────────── */
+.repair-session-rail-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-3);
+}
+
+.repair-panel--session-wizard-embedded {
+  flex: 0 0 auto;
+  border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-faint);
+}
+
+.repair-panel--session-wizard-embedded > .repair-panel__header {
+  min-height: var(--repair-px-32);
+  padding: var(--repair-sp-2);
+}
+
+.repair-panel--session-wizard-embedded > .repair-panel__header .repair-panel__icon-btn {
+  display: none;
+}
+
+.repair-panel--session-wizard-embedded > .repair-panel__body {
+  overflow: visible;
+  padding: var(--repair-sp-2);
+}
+
+.repair-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-1);
+}
+
+.repair-session-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-px-2);
+  padding: var(--repair-sp-2) var(--repair-sp-3);
+  border-radius: var(--repair-radius-inner);
+  border-left: var(--repair-px-3) solid transparent;
+  cursor: pointer;
+  transition: background var(--repair-dur-hover) var(--repair-ease);
+}
+
+.repair-session-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--repair-sp-2);
+}
+
+.repair-session-card:hover {
+  background: var(--repair-surface-hover);
+}
+
+.repair-session-card--active {
+  background: var(--repair-cyan-soft);
+  border-left-color: var(--repair-cyan);
+}
+
+.repair-session-card--active .repair-session-card__rail-glow {
+  animation: repair-rail-breath 4s ease-in-out infinite;
+}
+
+@keyframes repair-rail-breath {
+  0%,
+  100% {
+    border-left-color: var(--repair-cyan);
+  }
+  50% {
+    border-left-color: var(--repair-cyan-half);
+  }
+}
+
+.repair-session-card--archived {
+  opacity: 0.6;
+}
+
+.repair-session-card__title {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-12);
+  font-weight: 600;
+  color: var(--repair-text);
+}
+
+.repair-session-card__delete {
+  flex: 0 0 auto;
+  min-height: var(--repair-px-20);
+  padding: 0 var(--repair-px-6);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-dim);
+  font: 700 var(--repair-px-8) var(--repair-mono);
+  cursor: pointer;
+}
+
+.repair-session-card__delete:hover {
+  border-color: var(--repair-risk);
+  color: var(--repair-risk);
+}
+
+.repair-session-card__device {
+  font-size: var(--repair-px-11);
+  color: var(--repair-text-muted);
+}
+
+.repair-session-card__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--repair-sp-2);
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
+  color: var(--repair-text-dim);
+}
+
+.repair-session-card__risk {
+  display: inline-flex;
+  padding: var(--repair-px-1) var(--repair-px-6);
+  border-radius: var(--repair-radius-sm);
+  font-size: var(--repair-px-9);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--repair-em-0-04);
+}
+
+.repair-session-card__risk--low {
+  background: var(--repair-success-soft);
+  color: var(--repair-success);
+}
+.repair-session-card__risk--medium {
+  background: var(--repair-amber-soft);
+  color: var(--repair-amber);
+}
+.repair-session-card__risk--high {
+  background: var(--repair-risk-soft);
+  color: var(--repair-risk);
+}
+.repair-session-card__risk--critical {
+  background: var(--repair-critical-soft);
+  color: var(--repair-critical);
+}
+
+.repair-session-card__serial {
+  flex-basis: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repair-archive-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--repair-sp-2);
+  padding: var(--repair-sp-2) var(--repair-sp-3);
+  font-size: var(--repair-px-10);
+  text-transform: uppercase;
+  letter-spacing: var(--repair-em-0-08);
+  color: var(--repair-text-dim);
+}
+
+.repair-archive-divider::after {
+  content: "";
+  flex: 1;
+  height: var(--repair-px-1);
+  background: var(--repair-border);
+}

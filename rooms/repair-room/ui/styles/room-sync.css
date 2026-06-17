@@ -1,0 +1,78 @@
+/* ── Room Sync Panel ─────────────────────────────────────────────── */
+.repair-sync-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-2);
+}
+
+.repair-sync-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--repair-sp-3);
+  padding-bottom: var(--repair-sp-1);
+  border-bottom: var(--repair-px-1) solid var(--repair-border-muted);
+  font-size: var(--repair-px-11);
+}
+
+.repair-sync-row__label {
+  color: var(--repair-text-dim);
+}
+
+.repair-sync-row__value {
+  min-width: 0;
+  color: var(--repair-text-muted);
+  font-family: var(--repair-mono);
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repair-sync-row__select {
+  min-width: var(--repair-sync-select-min-w);
+  border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-sync-select-bg);
+  color: var(--repair-text);
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-11);
+  padding: var(--repair-sp-1) var(--repair-sp-2);
+}
+
+.repair-sync-focus {
+  margin-top: auto;
+  padding: var(--repair-sp-2);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-cyan-panel);
+}
+
+.repair-sync-focus__title {
+  margin-bottom: var(--repair-px-2);
+  color: var(--repair-cyan);
+  font: 700 var(--repair-px-10) var(--repair-mono);
+}
+
+.repair-sync-focus__detail {
+  color: var(--repair-text-muted);
+  font-size: var(--repair-px-11);
+  line-height: 1.4;
+}
+
+.repair-sync-focus__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--repair-px-4);
+  margin-top: var(--repair-sp-2);
+}
+
+.repair-sync-focus__action {
+  min-height: var(--repair-px-26);
+  border: var(--repair-px-1) solid var(--repair-border-strong);
+  border-radius: var(--repair-radius-inner);
+  background: var(--repair-action-bg);
+  color: var(--repair-cyan);
+  font: 700 var(--repair-px-10) var(--repair-mono);
+  cursor: pointer;
+}

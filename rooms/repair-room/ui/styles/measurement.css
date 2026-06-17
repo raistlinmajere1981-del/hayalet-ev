@@ -1,0 +1,70 @@
+/* ── Measurement Panel ───────────────────────────────────────────── */
+.repair-measurement-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--repair-sp-1);
+  padding: var(--repair-sp-3) 0;
+}
+
+.repair-measurement-display__value {
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-28);
+  font-weight: 700;
+  color: var(--repair-cyan);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--repair-em-0-02);
+}
+
+.repair-measurement-display__unit {
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-14);
+  color: var(--repair-text-muted);
+}
+
+.repair-measurement-display__label {
+  font-size: var(--repair-px-11);
+  color: var(--repair-text-dim);
+}
+
+.repair-measurement-display__mode {
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
+  color: var(--repair-text-dim);
+  text-transform: uppercase;
+}
+
+.repair-readings-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-1);
+}
+
+.repair-reading-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--repair-sp-2);
+  padding: var(--repair-sp-1) 0;
+  font-size: var(--repair-px-11);
+  border-bottom: var(--repair-px-1) solid var(--repair-border);
+}
+
+.repair-reading-row__ref {
+  color: var(--repair-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repair-reading-row__value {
+  font-family: var(--repair-mono);
+  color: var(--repair-text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.repair-reading-row__unit {
+  font-family: var(--repair-mono);
+  color: var(--repair-text-dim);
+  width: var(--repair-px-24);
+}

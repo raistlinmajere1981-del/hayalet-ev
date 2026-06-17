@@ -132,9 +132,7 @@ export function createRepairAiController(params: {
   async function startKnowledgeResearch(): Promise<void> {
     const currentWizard = store.getState().wizard;
     const resetProgress = REPAIR_RESEARCH_PROGRESS_TEMPLATE.map((item) => ({ ...item }));
-    const targetSlot = normalizeRepairAiTargetSlot(
-      store.getState().aiDispatch.research.targetSlot
-    );
+    const targetSlot = normalizeRepairAiTargetSlot(store.getState().aiDispatch.research.targetSlot);
 
     store.batch(() => {
       store.dispatch({
@@ -325,8 +323,10 @@ export function createRepairAiController(params: {
       currentState.activeSessionId === currentSession.id
         ? liveController.createLiveSessionIso(currentSession)
         : new Date(
-            Math.max(Date.parse(currentSession.updatedAt), Date.parse(measurementEvent.occurredAt)) +
-              1000
+            Math.max(
+              Date.parse(currentSession.updatedAt),
+              Date.parse(measurementEvent.occurredAt)
+            ) + 1000
           ).toISOString();
     appendEventsToSession(
       currentSession.id,
@@ -437,7 +437,10 @@ export function createRepairAiController(params: {
       message: error instanceof Error ? error.message : String(error),
     }));
     if (aiResult.success !== true) {
-      api.log("debug", `[${REPAIR_ROOM_ID}] AI chat failed: ${aiResult.message ?? "unknown error"}`);
+      api.log(
+        "debug",
+        `[${REPAIR_ROOM_ID}] AI chat failed: ${aiResult.message ?? "unknown error"}`
+      );
       failChatReply(
         operatorTurn,
         aiResult.message ?? "AI chat guidance did not return a reply.",
@@ -447,7 +450,11 @@ export function createRepairAiController(params: {
     }
     const chatContextRefs = uniqueStringList([...baseContextRefs, ...aiResult.contextRefs]);
     if (aiResult.text === null) {
-      failChatReply(operatorTurn, "AI chat guidance did not return readable text.", chatContextRefs);
+      failChatReply(
+        operatorTurn,
+        "AI chat guidance did not return readable text.",
+        chatContextRefs
+      );
       return;
     }
     const commandSummary = applyRepairAiRoomCommands(aiResult.roomCommands);

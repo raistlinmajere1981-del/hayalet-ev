@@ -1,4 +1,8 @@
-import { REPAIR_ROOM_ID, REPAIR_UI_COLORS, REPAIR_UI_COMMANDS } from "../../shared/repair-constants.js";
+import {
+  REPAIR_ROOM_ID,
+  REPAIR_UI_COLORS,
+  REPAIR_UI_COMMANDS,
+} from "../../shared/repair-constants.js";
 import { buildMockRepairAiAdaptation } from "../../shared/data/index.js";
 import type {
   RepairChatTurn,
@@ -50,9 +54,16 @@ import {
 import type { RepairLayoutController } from "./layout-controller.js";
 import type { RepairLiveController } from "./live-controller.js";
 import type { RepairOperationsController } from "./operations-controller.js";
-import { collectKnowledgePromotionLinkage, findKnowledgeSpatialRegion } from "./overlay-selection.js";
+import {
+  collectKnowledgePromotionLinkage,
+  findKnowledgeSpatialRegion,
+} from "./overlay-selection.js";
 import type { RepairSessionController } from "./session-controller.js";
-import { createDraftSession, getActiveSession, patchWizardDraftFromPayload } from "./session-helpers.js";
+import {
+  createDraftSession,
+  getActiveSession,
+  patchWizardDraftFromPayload,
+} from "./session-helpers.js";
 import type { RepairStorageController } from "./storage-controller.js";
 
 export interface RepairCommandPayload {
@@ -62,7 +73,10 @@ export interface RepairCommandPayload {
 }
 
 export interface RepairCommandRouter {
-  handleCommand: (command: string, payload?: RepairCommandPayload) => {
+  handleCommand: (
+    command: string,
+    payload?: RepairCommandPayload
+  ) => {
     success: boolean;
     message?: string;
   };
@@ -482,9 +496,7 @@ export function createRepairCommandRouter(params: {
           return { success: false, message: "ai mark target is required" };
         }
         const iso = liveController.createLiveSessionIso(session);
-        const lifecycleState = isAiMarkLifecycleState(flat["state"])
-          ? flat["state"]
-          : "dismissed";
+        const lifecycleState = isAiMarkLifecycleState(flat["state"]) ? flat["state"] : "dismissed";
         const lifecycleEvent: RepairEvent = {
           kind: "ai-mark-lifecycle",
           id: createEventId("evt-ai-life", iso),
@@ -526,7 +538,10 @@ export function createRepairCommandRouter(params: {
           aiController.setAiDispatchStatus("chat", "pending", {
             message: "AI chat guidance is drafting a reply.",
             contextRefs: Array.from(
-              new Set([...(session === null ? [] : [session.id, session.deviceInfo.boardCode]), turn.id])
+              new Set([
+                ...(session === null ? [] : [session.id, session.deviceInfo.boardCode]),
+                turn.id,
+              ])
             ),
           });
         });
@@ -613,7 +628,10 @@ export function createRepairCommandRouter(params: {
         const ambientListeningState = flat["ambientListeningState"];
         const spokenGuidanceMode = flat["spokenGuidanceMode"];
         const handsBusyMode = flat["handsBusyMode"];
-        if (ambientListeningState !== undefined && !isAmbientListeningState(ambientListeningState)) {
+        if (
+          ambientListeningState !== undefined &&
+          !isAmbientListeningState(ambientListeningState)
+        ) {
           return { success: false, message: "valid ambient listening state is required" };
         }
         if (spokenGuidanceMode !== undefined && !isSpokenGuidanceMode(spokenGuidanceMode)) {
@@ -807,8 +825,7 @@ export function createRepairCommandRouter(params: {
       }
       case REPAIR_UI_COMMANDS.focusKnowledgeSpatialRef: {
         const spatialRefId = safeString(flat["spatialRefId"]);
-        if (spatialRefId === null)
-          return { success: false, message: "spatialRefId is required" };
+        if (spatialRefId === null) return { success: false, message: "spatialRefId is required" };
         const ref: RepairOverlayEntityRef = { kind: "knowledge-region", id: spatialRefId };
         store.dispatchMany([
           { type: "knowledge-pack/set-spatial-focus", spatialRefId },

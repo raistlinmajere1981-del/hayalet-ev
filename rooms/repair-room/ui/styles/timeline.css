@@ -1,0 +1,230 @@
+/* ── Visual Timeline ─────────────────────────────────────────────── */
+.repair-timeline {
+  display: flex;
+  flex-direction: column;
+  min-height: var(--repair-px-112);
+  max-height: var(--repair-px-140);
+}
+
+.repair-timeline__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--repair-sp-1) var(--repair-sp-2);
+  padding: var(--repair-sp-2) var(--repair-sp-3) var(--repair-sp-1);
+}
+
+.repair-timeline__readout {
+  min-width: max-content;
+  margin-right: auto;
+  font: 700 var(--repair-px-10) var(--repair-mono);
+  color: var(--repair-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.repair-timeline__control-btn {
+  width: auto;
+  max-width: calc(var(--repair-px-72) * 1.55);
+  height: var(--repair-px-22);
+  min-width: var(--repair-px-36);
+  padding: 0 var(--repair-px-8);
+  overflow: hidden;
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-muted);
+  font: 700 var(--repair-px-9) var(--repair-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.repair-timeline__control-btn:hover {
+  border-color: var(--repair-border-strong);
+  color: var(--repair-cyan);
+}
+
+.repair-timeline__control-btn--active {
+  border-color: var(--repair-cyan);
+  background: var(--repair-cyan-soft);
+  color: var(--repair-cyan);
+}
+
+.repair-timeline__scrub {
+  width: calc(100% - var(--repair-sp-6));
+  height: var(--repair-px-18);
+  margin: 0 var(--repair-sp-3);
+  accent-color: var(--repair-cyan);
+}
+
+.repair-timeline__scroller {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-top: var(--repair-px-1) solid var(--repair-border);
+  background:
+    linear-gradient(90deg, var(--repair-cyan-wash), transparent 22%), var(--repair-timeline-bg);
+}
+
+.repair-timeline__track {
+  position: relative;
+  height: var(--repair-px-72);
+  min-width: 100%;
+  padding: 0 var(--repair-sp-3);
+}
+
+.repair-timeline__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--repair-px-1);
+  background: var(--repair-border);
+}
+
+.repair-timeline__tick span {
+  position: absolute;
+  top: var(--repair-px-5);
+  left: var(--repair-px-5);
+  font: var(--repair-px-9) var(--repair-mono);
+  color: var(--repair-text-dim);
+  white-space: nowrap;
+}
+
+.repair-timeline__range {
+  position: absolute;
+  top: var(--repair-px-22);
+  height: var(--repair-px-36);
+  border: var(--repair-px-1) solid var(--repair-amber-border);
+  background: var(--repair-amber-wash);
+  border-radius: var(--repair-radius-sm);
+  pointer-events: none;
+}
+
+.repair-timeline__chip {
+  position: absolute;
+  top: var(--repair-px-38);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--repair-px-12);
+  height: var(--repair-px-12);
+  border: 0;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  cursor: pointer;
+  transition:
+    box-shadow var(--repair-dur-hover) var(--repair-ease),
+    transform var(--repair-dur-hover) var(--repair-ease);
+  box-shadow: 0 0 calc(var(--repair-px-16) * var(--repair-chip-density, 0))
+    var(--repair-cyan-glow-soft);
+}
+
+.repair-timeline__chip:hover {
+  transform: translateX(-50%) scale(1.25);
+}
+
+.repair-timeline__chip--active {
+  box-shadow:
+    0 0 0 var(--repair-px-2) var(--repair-thumb-ring),
+    0 0 var(--repair-px-16) var(--repair-cyan-shadow);
+  transform: translateX(-50%) scale(1.22);
+}
+
+.repair-timeline__chip--snapshot {
+  background: var(--repair-cyan);
+}
+.repair-timeline__chip--ai-mark {
+  background: var(--repair-amber);
+}
+.repair-timeline__chip--measurement {
+  background: var(--repair-text);
+  width: var(--repair-px-8);
+  height: var(--repair-px-8);
+}
+.repair-timeline__chip--note {
+  background: var(--repair-info);
+}
+.repair-timeline__chip--risk-flag {
+  background: var(--repair-risk);
+}
+.repair-timeline__chip--freeze-frame {
+  background: var(--repair-text-dim);
+  width: var(--repair-px-28);
+  height: var(--repair-px-8);
+  border-radius: var(--repair-px-3);
+}
+.repair-timeline__chip--session-start {
+  background: var(--repair-success);
+}
+.repair-timeline__chip--annotation {
+  background: var(--repair-amber);
+  width: var(--repair-px-8);
+  height: var(--repair-px-8);
+}
+.repair-timeline__chip--investigation-region-created,
+.repair-timeline__chip--investigation-region-updated {
+  background: var(--repair-cyan);
+  width: var(--repair-px-18);
+  height: var(--repair-px-8);
+  border-radius: var(--repair-px-3);
+}
+
+.repair-timeline__thumb {
+  position: absolute;
+  bottom: var(--repair-px-15);
+  left: 50%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: var(--repair-px-64);
+  height: var(--repair-px-40);
+  padding: var(--repair-px-3) var(--repair-px-4);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background-color: var(--repair-thumb-bg);
+  background-position: center;
+  background-size: cover;
+  color: var(--repair-text-muted);
+  font: var(--repair-px-8) var(--repair-mono);
+  overflow: hidden;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.repair-timeline__thumb-label {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 var(--repair-px-1) var(--repair-px-3) var(--repair-text-shadow-strong);
+  white-space: nowrap;
+}
+
+.repair-timeline__playhead {
+  position: absolute;
+  top: var(--repair-px-14);
+  bottom: var(--repair-px-4);
+  width: var(--repair-px-2);
+  background: var(--repair-text);
+  box-shadow: 0 0 var(--repair-px-14) var(--repair-text-glow);
+  pointer-events: none;
+}
+
+.repair-timeline__live-edge {
+  position: absolute;
+  top: var(--repair-px-12);
+  bottom: var(--repair-px-4);
+  width: var(--repair-px-2);
+  background: var(--repair-cyan);
+  animation: repair-live-pulse 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.repair-shell--profile-novice .repair-live-chip,
+.repair-shell--profile-novice .repair-timeline__live-edge {
+  animation: none;
+}
+
+.repair-shell--profile-novice .repair-timeline__chip {
+  box-shadow: none;
+}

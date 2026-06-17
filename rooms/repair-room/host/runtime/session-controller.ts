@@ -19,10 +19,7 @@ export function createRepairSessionController(params: {
 }): RepairSessionController {
   const { liveController, storageController, store } = params;
 
-  function setSessionAndList(
-    session: RepairSession,
-    options: { persist?: boolean } = {}
-  ): void {
+  function setSessionAndList(session: RepairSession, options: { persist?: boolean } = {}): void {
     const nextSessions = {
       ...store.getState().sessions,
       [session.id]: session,

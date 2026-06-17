@@ -1,4 +1,8 @@
-import { REPAIR_HOST_MESSAGES, REPAIR_ROOM_ID, REPAIR_UI_COMMANDS } from "../shared/repair-constants.js";
+import {
+  REPAIR_HOST_MESSAGES,
+  REPAIR_ROOM_ID,
+  REPAIR_UI_COMMANDS,
+} from "../shared/repair-constants.js";
 import { getRepairVoiceCommandPhraseMap } from "../shared/repair-action-registry.js";
 import type { RepairAiDispatchBridge } from "./repair-ai-bridge.js";
 import { createRepairHostIoRuntime, type RepairHostIoRuntime } from "../shared/host/io-runtime.js";
@@ -16,7 +20,11 @@ import {
 import { createRepairRuntimeStore, type RepairRuntimeStore } from "./state/repair-runtime-store.js";
 import { createRepairUiSnapshot, createRepairUiSnapshotMeta } from "./state/repair-selectors.js";
 import { createRepairAiController } from "./runtime/ai-controller.js";
-import { getActiveSession, getSessionTimelineMs, phaseForSession } from "./runtime/session-helpers.js";
+import {
+  getActiveSession,
+  getSessionTimelineMs,
+  phaseForSession,
+} from "./runtime/session-helpers.js";
 import {
   createRepairOperationsController,
   type RepairCaptureActionOutcome,
@@ -27,10 +35,7 @@ import { createRepairStorageController } from "./runtime/storage-controller.js";
 import { createRepairLiveController } from "./runtime/live-controller.js";
 import { createRepairSessionController } from "./runtime/session-controller.js";
 import { createRepairLayoutController } from "./runtime/layout-controller.js";
-import {
-  createRepairCommandRouter,
-  type RepairCommandPayload,
-} from "./runtime/command-router.js";
+import { createRepairCommandRouter, type RepairCommandPayload } from "./runtime/command-router.js";
 
 interface RepairRoomApi {
   dispatchBridge?: RepairAiDispatchBridge;

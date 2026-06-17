@@ -1,0 +1,15 @@
+/* ── Focus Mode Overlay ──────────────────────────────────────────── */
+.repair-shell--focus-mode .repair-panel:not(.repair-panel--workbench-stage) {
+  opacity: 0.38;
+  transition: opacity var(--repair-dur-focus) var(--repair-ease);
+}
+
+.repair-shell--focus-mode .repair-panel--chat,
+.repair-shell--focus-mode .repair-panel--measurement,
+.repair-shell--focus-mode .repair-panel--tactical-feed {
+  opacity: 0.82;
+}
+
+.repair-shell--focus-mode .repair-panel--workbench-stage {
+  box-shadow: 0 0 0 var(--repair-px-2) var(--repair-border-strong);
+}

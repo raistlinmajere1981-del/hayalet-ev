@@ -1,0 +1,67 @@
+/* ── Workspace Grid ──────────────────────────────────────────────── */
+.repair-workspace {
+  flex: 1;
+  display: grid;
+  grid-template-columns:
+    minmax(var(--repair-px-320), 0.95fr) minmax(0, 1.65fr)
+    minmax(var(--repair-px-260), 0.82fr) minmax(var(--repair-px-280), 0.9fr);
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  gap: var(--repair-px-1);
+  background: var(--repair-border);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Area assignments */
+.repair-panel--session-rail {
+  grid-column: 1;
+  grid-row: 1 / 2;
+}
+.repair-panel--workbench-stage {
+  grid-column: 2;
+  grid-row: 1 / 2;
+}
+.repair-panel--tactical-feed {
+  grid-column: 3;
+  grid-row: 1 / 2;
+}
+.repair-panel--wizard-pack-stack {
+  grid-column: 4;
+  grid-row: 1 / 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-px-1);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.repair-panel--wizard-pack-stack > .repair-panel {
+  min-height: 0;
+}
+
+.repair-panel--wizard-pack-stack > .repair-panel--session-wizard {
+  display: none;
+}
+
+.repair-panel--wizard-pack-stack > .repair-panel--knowledge-pack {
+  flex: 1 1 0;
+}
+
+.repair-panel--visual-timeline {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.repair-bottom-dock {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: grid;
+  grid-template-columns: 1.1fr 1.4fr 1.1fr 1.3fr;
+  gap: var(--repair-px-1);
+  min-height: calc(var(--repair-px-180) * 0.82);
+  max-height: var(--repair-px-180);
+}
+
+.repair-bottom-dock[hidden] {
+  display: none;
+}

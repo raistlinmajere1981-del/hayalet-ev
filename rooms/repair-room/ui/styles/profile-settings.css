@@ -1,0 +1,137 @@
+/* ── Operator Profile ────────────────────────────────────────────── */
+.repair-profile-overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-2);
+}
+
+.repair-profile-name {
+  font-size: var(--repair-px-14);
+  font-weight: 600;
+  color: var(--repair-text);
+}
+
+.repair-profile-meta {
+  font-size: var(--repair-px-11);
+  color: var(--repair-text-muted);
+}
+
+.repair-tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-1);
+}
+
+.repair-tool-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--repair-px-180);
+  gap: var(--repair-sp-2);
+  padding-top: var(--repair-sp-2);
+}
+
+.repair-tool-item {
+  display: flex;
+  align-items: center;
+  gap: var(--repair-sp-2);
+  padding: var(--repair-sp-1) var(--repair-sp-2);
+  border-radius: var(--repair-radius-sm);
+  font-size: var(--repair-px-11);
+  color: var(--repair-text-muted);
+}
+
+.repair-tool-item--available {
+  color: var(--repair-text);
+}
+
+.repair-tool-item__check {
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
+  color: var(--repair-success);
+}
+
+.repair-tool-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-2);
+  min-width: 0;
+  padding: var(--repair-sp-2);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-cyan-panel);
+}
+
+.repair-tool-detail__title {
+  color: var(--repair-text);
+  font-size: var(--repair-px-12);
+  font-weight: 700;
+}
+
+.repair-tool-detail__meta {
+  color: var(--repair-cyan);
+  font: var(--repair-px-10) var(--repair-mono);
+}
+
+.repair-tool-detail__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--repair-sp-1);
+}
+
+.repair-tool-detail__notes {
+  color: var(--repair-text-muted);
+  font-size: var(--repair-px-11);
+  line-height: 1.4;
+}
+
+.repair-profile-preferences {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-2);
+  padding-top: var(--repair-sp-2);
+}
+
+.repair-skill-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--repair-sp-2);
+  padding: var(--repair-sp-2) 0;
+}
+
+.repair-skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--repair-px-4);
+  padding: var(--repair-px-2) var(--repair-px-8);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-inner);
+  background: var(--repair-surface-whisper);
+  font-size: var(--repair-px-11);
+  color: var(--repair-text-muted);
+}
+
+button.repair-skill-chip {
+  cursor: pointer;
+}
+
+button.repair-skill-chip:hover,
+.repair-skill-chip--active {
+  border-color: var(--repair-cyan);
+  background: var(--repair-cyan-soft);
+  color: var(--repair-cyan);
+}
+
+.repair-skill-chip__dots {
+  display: inline-flex;
+  gap: var(--repair-px-2);
+}
+
+.repair-skill-chip__dot {
+  width: var(--repair-px-4);
+  height: var(--repair-px-4);
+  border-radius: 50%;
+  background: var(--repair-text-dim);
+}
+
+.repair-skill-chip__dot--filled {
+  background: var(--repair-cyan);
+}

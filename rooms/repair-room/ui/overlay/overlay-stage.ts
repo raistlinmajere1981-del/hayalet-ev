@@ -16,7 +16,7 @@ import type {
   RepairTemporarySpatialRegion,
 } from "../../shared/ui/state.js";
 import { REPAIR_UI_COLORS } from "../../shared/repair-constants.js";
-import type Konva from "konva";
+import { loadKonvaNamespace, type RepairKonvaNamespace } from "./konva-loader.js";
 import {
   clampImagePoint,
   getContainedImageFrame,
@@ -31,71 +31,22 @@ import {
   type RepairSelectableOverlayEntity,
 } from "./overlay-geometry.js";
 import { isRepairOverlayDrawTool } from "./overlay-tools.js";
+import {
+  getEntityInteractionState,
+  getEventImageRect,
+  getEventInteractionState,
+  getInteractionFromKonvaEvent,
+  getOverlayEntityOpacity,
+  hasEventModifier,
+  type RepairOverlayEventInteraction,
+} from "./overlay-interaction.js";
 
-type KonvaNamespace = typeof Konva;
-type KonvaGlobal = typeof globalThis & { Konva?: unknown };
+type KonvaNamespace = RepairKonvaNamespace;
 type RepairKonvaContainer =
   | InstanceType<KonvaNamespace["Layer"]>
   | InstanceType<KonvaNamespace["Group"]>;
 
-export interface RepairOverlayEventInteraction {
-  additive: boolean;
-  focusJump: boolean;
-}
-
-let konvaLoadPromise: Promise<KonvaNamespace> | null = null;
-
-function isKonvaNamespace(value: unknown): value is KonvaNamespace {
-  if (typeof value !== "object" || value === null) return false;
-  const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate["Stage"] === "function" &&
-    typeof candidate["Layer"] === "function" &&
-    typeof candidate["Group"] === "function" &&
-    typeof candidate["Rect"] === "function" &&
-    typeof candidate["Line"] === "function" &&
-    typeof candidate["Circle"] === "function" &&
-    typeof candidate["Text"] === "function"
-  );
-}
-
-function getGlobalKonva(): KonvaNamespace | null {
-  const value = (globalThis as KonvaGlobal).Konva;
-  return isKonvaNamespace(value) ? value : null;
-}
-
-async function loadKonvaNamespace(documentRef: Document): Promise<KonvaNamespace> {
-  const existing = getGlobalKonva();
-  if (existing !== null) return existing;
-
-  if (konvaLoadPromise === null) {
-    konvaLoadPromise = new Promise<KonvaNamespace>((resolve, reject) => {
-      const script = documentRef.createElement("script");
-      script.async = true;
-      script.dataset["repairVendor"] = "konva";
-      script.src = new URL("../../shared/vendor/konva.min.js", import.meta.url).href;
-      script.onload = () => {
-        const loaded = getGlobalKonva();
-        if (loaded === null) {
-          reject(new Error("Repair Room Konva vendor loaded without exposing window.Konva."));
-          return;
-        }
-        resolve(loaded);
-      };
-      script.onerror = () => {
-        reject(new Error(`Repair Room failed to load Konva vendor from ${script.src}`));
-      };
-      documentRef.head.append(script);
-    });
-  }
-
-  try {
-    return await konvaLoadPromise;
-  } catch (error) {
-    konvaLoadPromise = null;
-    throw error;
-  }
-}
+export type { RepairOverlayEventInteraction } from "./overlay-interaction.js";
 
 export interface RepairOverlayStageConfig {
   container: HTMLElement;
@@ -232,84 +183,6 @@ function addLabel(
     })
   );
   layer.add(label);
-}
-
-function hasEventModifier(
-  event: unknown,
-  key: "shiftKey" | "ctrlKey" | "metaKey" | "altKey"
-): boolean {
-  const candidate = event as Partial<Record<typeof key, unknown>> | null;
-  return typeof candidate?.[key] === "boolean" ? Boolean(candidate[key]) : false;
-}
-
-function getInteractionFromKonvaEvent(event: { evt?: unknown }): RepairOverlayEventInteraction {
-  const nativeEvent = event.evt;
-  return {
-    additive:
-      hasEventModifier(nativeEvent, "shiftKey") ||
-      hasEventModifier(nativeEvent, "ctrlKey") ||
-      hasEventModifier(nativeEvent, "metaKey"),
-    focusJump: hasEventModifier(nativeEvent, "altKey") === false,
-  };
-}
-
-function getEventInteractionState(
-  config: RepairOverlayStageConfig,
-  eventId: string
-): { hovered: boolean; selected: boolean; focused: boolean } {
-  const ref: RepairOverlayEntityRef = { kind: "event", id: eventId };
-  return {
-    hovered:
-      config.workbench.selection.hoveredEventId === eventId ||
-      config.workbench.hoveredEventId === eventId ||
-      (config.workbench.selection.hoveredEntityRef !== null &&
-        repairOverlayRefsEqual(config.workbench.selection.hoveredEntityRef, ref)),
-    selected:
-      config.workbench.selection.selectedEventIds.includes(eventId) ||
-      config.workbench.selection.selectedEntityRefs.some((candidate) =>
-        repairOverlayRefsEqual(candidate, ref)
-      ),
-    focused: config.focusedEventId === eventId,
-  };
-}
-
-function getEntityInteractionState(
-  config: RepairOverlayStageConfig,
-  ref: RepairOverlayEntityRef
-): { hovered: boolean; selected: boolean; focused: boolean } {
-  return {
-    hovered:
-      config.workbench.selection.hoveredEntityRef !== null &&
-      repairOverlayRefsEqual(config.workbench.selection.hoveredEntityRef, ref),
-    selected: config.workbench.selection.selectedEntityRefs.some((candidate) =>
-      repairOverlayRefsEqual(candidate, ref)
-    ),
-    focused:
-      config.workbench.selection.inspectorEntityRef !== null &&
-      repairOverlayRefsEqual(config.workbench.selection.inspectorEntityRef, ref),
-  };
-}
-
-function isRefListed(refs: RepairOverlayEntityRef[], ref: RepairOverlayEntityRef): boolean {
-  return refs.some((candidate) => repairOverlayRefsEqual(candidate, ref));
-}
-
-function getOverlayEntityOpacity(
-  config: RepairOverlayStageConfig,
-  ref: RepairOverlayEntityRef
-): number {
-  const interaction =
-    ref.kind === "event"
-      ? getEventInteractionState(config, ref.id)
-      : getEntityInteractionState(config, ref);
-  if (interaction.focused || interaction.selected || interaction.hovered) return 1;
-  if (isRefListed(config.guidance.overlaySaturation.activeAttentionRefs, ref)) return 1;
-  if (config.guidance.operationalProfile === "advanced") return 1;
-  if (isRefListed(config.guidance.overlaySaturation.fadedSecondaryRefs, ref)) return 0.26;
-  if (config.activeSpatialFocus !== null || config.guidance.overlaySaturation.clutterScore > 0.66) {
-    return 0.52;
-  }
-  return 0.86;
 }
 
 function addRectSelectionAssist(
@@ -666,22 +539,6 @@ function getEventRelationshipPoint(event: RepairEvent): RepairImagePoint | null 
     xPx: rect.xPx + rect.widthPx / 2,
     yPx: rect.yPx + rect.heightPx / 2,
   };
-}
-
-function getEventImageRect(event: RepairEvent): RepairImageRect | null {
-  if ((event.kind === "ai-mark" || event.kind === "risk-flag") && event.region !== null) {
-    return event.region;
-  }
-  if (event.kind === "annotation") {
-    if (event.region !== null) return event.region;
-    if (event.point !== null) {
-      return { xPx: event.point.xPx - 18, yPx: event.point.yPx - 18, widthPx: 36, heightPx: 36 };
-    }
-  }
-  if (event.kind === "measurement" && event.pinAt !== null) {
-    return { xPx: event.pinAt.xPx - 14, yPx: event.pinAt.yPx - 14, widthPx: 28, heightPx: 28 };
-  }
-  return null;
 }
 
 function getOverlayRefPoint(

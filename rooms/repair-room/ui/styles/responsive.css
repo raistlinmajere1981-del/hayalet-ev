@@ -1,0 +1,122 @@
+@media (--repair-bp-max-980) {
+  .repair-workspace {
+    grid-template-columns: minmax(var(--repair-px-180), 0.78fr) minmax(0, 1.6fr);
+    grid-template-rows: minmax(0, 1fr) auto auto auto;
+  }
+
+  .repair-panel--session-rail {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .repair-panel--workbench-stage {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .repair-panel--tactical-feed {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-height: var(--repair-px-180);
+  }
+
+  .repair-panel--wizard-pack-stack,
+  .repair-bottom-dock,
+  .repair-panel--visual-timeline {
+    grid-column: 1 / -1;
+  }
+
+  .repair-panel--visual-timeline {
+    grid-row: 3;
+  }
+
+  .repair-bottom-dock {
+    grid-row: 4;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: var(--repair-px-300);
+  }
+}
+
+@media (--repair-bp-max-680) {
+  .repair-statusbar {
+    height: auto;
+    min-height: var(--repair-px-32);
+    flex-wrap: wrap;
+    row-gap: var(--repair-sp-1);
+  }
+
+  .repair-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(var(--repair-px-360), 1fr) repeat(4, auto);
+  }
+
+  .repair-panel--session-rail,
+  .repair-panel--tactical-feed,
+  .repair-panel--wizard-pack-stack,
+  .repair-panel--visual-timeline,
+  .repair-bottom-dock {
+    grid-column: 1;
+  }
+
+  .repair-panel--session-rail {
+    grid-row: 2;
+  }
+
+  .repair-panel--workbench-stage {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: var(--repair-px-360);
+  }
+
+  .repair-panel--tactical-feed {
+    grid-row: 3;
+  }
+
+  .repair-panel--visual-timeline {
+    grid-row: 4;
+  }
+
+  .repair-bottom-dock {
+    grid-row: 5;
+    grid-template-columns: 1fr;
+    max-height: none;
+  }
+}
+
+@media (--repair-bp-max-980) {
+  .repair-workspace:has(> .repair-panel--session-rail.repair-panel--collapsed) {
+    grid-template-columns: minmax(var(--repair-px-44), var(--repair-px-44)) minmax(0, 1fr);
+  }
+}
+
+@media (--repair-bp-max-680) {
+  .repair-workspace:has(> .repair-panel--session-rail.repair-panel--collapsed) {
+    grid-template-columns: 1fr;
+  }
+
+  .repair-panel--session-rail.repair-panel--collapsed {
+    height: auto;
+    max-height: var(--repair-px-34);
+    min-height: var(--repair-px-34);
+  }
+
+  .repair-panel--session-rail.repair-panel--collapsed > .repair-panel__header {
+    flex-direction: row;
+    width: auto;
+    height: auto;
+    min-height: var(--repair-px-34);
+    padding: var(--repair-sp-2) var(--repair-sp-3);
+    border-right: 0;
+    border-bottom: var(--repair-px-1) solid var(--repair-border);
+  }
+
+  .repair-panel--session-rail.repair-panel--collapsed .repair-panel__eyebrow {
+    display: block;
+  }
+
+  .repair-panel--session-rail.repair-panel--collapsed .repair-panel__title {
+    max-height: none;
+    transform: none;
+    writing-mode: horizontal-tb;
+  }
+}

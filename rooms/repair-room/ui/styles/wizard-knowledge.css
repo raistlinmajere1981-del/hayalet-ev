@@ -1,0 +1,128 @@
+/* ── Session Wizard ──────────────────────────────────────────────── */
+.repair-wizard-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--repair-sp-1);
+  padding: var(--repair-sp-2) 0;
+}
+
+.repair-wizard-step {
+  display: flex;
+  align-items: center;
+  gap: var(--repair-sp-1);
+  min-height: var(--repair-px-24);
+  padding: var(--repair-px-2) var(--repair-px-6);
+  border: var(--repair-px-1) solid transparent;
+  border-radius: var(--repair-radius-sm);
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
+  color: var(--repair-text-dim);
+  cursor: pointer;
+}
+
+.repair-wizard-step--active {
+  color: var(--repair-cyan);
+}
+.repair-wizard-step--done {
+  color: var(--repair-success);
+}
+
+.repair-wizard-step:hover {
+  border-color: var(--repair-border);
+  background: var(--repair-surface-control);
+}
+
+.repair-wizard-step__dot {
+  width: var(--repair-px-8);
+  height: var(--repair-px-8);
+  border-radius: 50%;
+  border: var(--repair-px-1-5) solid currentColor;
+  background: transparent;
+}
+
+.repair-wizard-step--done .repair-wizard-step__dot {
+  background: var(--repair-success);
+}
+
+.repair-wizard-step--active .repair-wizard-step__dot {
+  background: var(--repair-cyan);
+}
+
+.repair-wizard-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-2);
+  padding: var(--repair-sp-2) 0;
+}
+
+.repair-wizard-guidance {
+  margin-top: var(--repair-sp-1);
+  padding: var(--repair-sp-2);
+  border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-whisper);
+  color: var(--repair-text-muted);
+  font-size: var(--repair-px-11);
+  line-height: 1.4;
+}
+
+.repair-wizard-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-px-3);
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
+  color: var(--repair-text-dim);
+}
+
+.repair-wizard-field__input {
+  width: 100%;
+  min-height: var(--repair-px-28);
+  padding: var(--repair-px-6) var(--repair-px-8);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-input-bg);
+  color: var(--repair-text);
+  font: var(--repair-px-11) var(--repair-body);
+  resize: vertical;
+}
+
+textarea.repair-wizard-field__input {
+  min-height: var(--repair-px-64);
+  line-height: 1.4;
+}
+
+.repair-wizard-field__input:focus {
+  outline: none;
+  border-color: var(--repair-border-strong);
+}
+
+.repair-wizard-symptoms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--repair-sp-2);
+}
+
+.repair-research-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-1);
+  padding: var(--repair-sp-2) 0;
+}
+
+.repair-research-item {
+  display: flex;
+  align-items: center;
+  gap: var(--repair-sp-2);
+  font-size: var(--repair-px-11);
+  color: var(--repair-text-muted);
+}
+
+.repair-research-item--done {
+  color: var(--repair-success);
+}
+
+.repair-research-item__icon {
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
+}

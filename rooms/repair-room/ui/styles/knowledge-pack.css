@@ -1,0 +1,87 @@
+/* ── Knowledge Pack ──────────────────────────────────────────────── */
+.repair-pack-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-px-2);
+  padding-bottom: var(--repair-sp-2);
+  border-bottom: var(--repair-px-1) solid var(--repair-border);
+  margin-bottom: var(--repair-sp-2);
+}
+
+.repair-pack-header__model {
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-13);
+  font-weight: 600;
+  color: var(--repair-text);
+}
+
+.repair-pack-header__device {
+  font-size: var(--repair-px-11);
+  color: var(--repair-text-muted);
+}
+
+.repair-pack-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-1);
+}
+
+.repair-pack-stat {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--repair-px-11);
+  color: var(--repair-text-muted);
+}
+
+.repair-pack-stat__value {
+  font-family: var(--repair-mono);
+  color: var(--repair-text);
+}
+
+.repair-pack-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-1);
+  padding-top: var(--repair-sp-2);
+}
+
+.repair-pack-preview__row {
+  padding: var(--repair-sp-1) var(--repair-sp-2);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-faint);
+  color: var(--repair-text-muted);
+  font-size: var(--repair-px-11);
+  line-height: 1.35;
+}
+
+.repair-pack-preview__image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-stage);
+}
+
+.repair-cta-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--repair-sp-2) var(--repair-sp-3);
+  margin-top: var(--repair-sp-3);
+  border: var(--repair-px-1) solid var(--repair-cyan);
+  border-radius: var(--repair-radius-inner);
+  background: var(--repair-cyan-soft);
+  color: var(--repair-cyan);
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-11);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--repair-dur-hover) var(--repair-ease);
+}
+
+.repair-cta-btn:hover {
+  background: var(--repair-cyan-hover);
+}

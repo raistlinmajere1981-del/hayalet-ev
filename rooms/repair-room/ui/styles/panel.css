@@ -1,0 +1,192 @@
+/* ── Panel (generic card) ────────────────────────────────────────── */
+.repair-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--repair-panel);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.repair-panel__header {
+  display: flex;
+  align-items: center;
+  gap: var(--repair-sp-2);
+  padding: var(--repair-sp-2) var(--repair-sp-3);
+  border-bottom: var(--repair-px-1) solid var(--repair-border);
+  min-height: var(--repair-px-34);
+  user-select: none;
+}
+
+.repair-panel__header-spacer {
+  flex: 1;
+}
+
+.repair-panel__icon-btn {
+  height: var(--repair-px-20);
+  min-width: var(--repair-px-28);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-dim);
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-8);
+  cursor: pointer;
+}
+
+.repair-panel__icon-btn:hover,
+.repair-panel__icon-btn--active {
+  border-color: var(--repair-border-strong);
+  color: var(--repair-cyan);
+}
+
+.repair-panel__status-dot {
+  width: var(--repair-px-6);
+  height: var(--repair-px-6);
+  border-radius: 50%;
+  background: var(--repair-text-dim);
+  flex-shrink: 0;
+}
+
+.repair-panel__status-dot--live {
+  background: var(--repair-cyan);
+}
+.repair-panel__status-dot--risk {
+  background: var(--repair-risk);
+}
+.repair-panel__status-dot--amber {
+  background: var(--repair-amber);
+}
+.repair-panel__status-dot--idle {
+  background: var(--repair-text-dim);
+}
+
+.repair-panel__eyebrow {
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-9);
+  text-transform: uppercase;
+  letter-spacing: var(--repair-em-0-08);
+  color: var(--repair-text-dim);
+}
+
+.repair-panel__title {
+  font-family: var(--repair-display);
+  font-size: var(--repair-px-12);
+  font-weight: 600;
+  color: var(--repair-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.repair-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--repair-sp-3);
+  min-height: 0;
+}
+
+.repair-panel__body::-webkit-scrollbar {
+  width: var(--repair-px-4);
+}
+.repair-panel__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.repair-panel__body::-webkit-scrollbar-thumb {
+  background: var(--repair-border-strong);
+  border-radius: var(--repair-px-2);
+}
+
+.repair-panel--dominant > .repair-panel__header {
+  border-bottom-color: var(--repair-border-strong);
+}
+
+.repair-panel--subdued:not(:hover):not(:focus-within) {
+  opacity: 0.58;
+}
+
+.repair-panel--corridor-passive:not(:hover):not(:focus-within) {
+  opacity: 0.42;
+}
+
+.repair-panel--hidden-policy {
+  display: none;
+}
+
+.repair-panel--compact-policy .repair-panel__body {
+  opacity: 0.82;
+}
+
+.repair-shell--profile-novice .repair-panel__icon-btn,
+.repair-shell--profile-novice .repair-toolbar__btn:not(.repair-toolbar__btn--active),
+.repair-shell--profile-novice
+  .repair-timeline__control-btn:not(.repair-timeline__control-btn--active) {
+  opacity: 0.48;
+}
+
+.repair-shell--profile-novice .repair-panel:hover .repair-panel__icon-btn,
+.repair-shell--profile-novice .repair-panel:focus-within .repair-panel__icon-btn,
+.repair-shell--profile-novice .repair-toolbar:hover .repair-toolbar__btn,
+.repair-shell--profile-novice .repair-timeline__controls:hover .repair-timeline__control-btn {
+  opacity: 1;
+}
+
+/* Active panel header glow */
+.repair-panel--active > .repair-panel__header {
+  box-shadow:
+    0 0 0 var(--repair-px-1) var(--repair-border-strong),
+    0 var(--repair-px-8) var(--repair-px-32) var(--repair-cyan-glow-soft);
+}
+
+/* Collapsed panel stub */
+.repair-panel--collapsed {
+  max-height: var(--repair-px-34);
+  min-height: var(--repair-px-34);
+}
+.repair-panel--collapsed > .repair-panel__body {
+  display: none;
+}
+
+.repair-workspace:has(> .repair-panel--session-rail.repair-panel--collapsed) {
+  grid-template-columns:
+    minmax(var(--repair-px-44), var(--repair-px-44)) minmax(0, 2.08fr)
+    minmax(var(--repair-px-260), 0.82fr) minmax(var(--repair-px-280), 0.9fr);
+}
+
+.repair-panel--session-rail.repair-panel--collapsed {
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+}
+
+.repair-panel--session-rail.repair-panel--collapsed > .repair-panel__header {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: var(--repair-px-44);
+  height: 100%;
+  min-height: 0;
+  padding: var(--repair-sp-2) var(--repair-px-4);
+  border-right: var(--repair-px-1) solid var(--repair-border);
+  border-bottom: 0;
+}
+
+.repair-panel--session-rail.repair-panel--collapsed .repair-panel__eyebrow {
+  display: none;
+}
+
+.repair-panel--session-rail.repair-panel--collapsed .repair-panel__title {
+  max-height: var(--repair-session-rail-title-max-h);
+  transform: rotate(180deg);
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+}
+
+.repair-panel--session-rail.repair-panel--collapsed .repair-panel__header-spacer {
+  flex: 1;
+}
+
+.repair-panel--session-rail.repair-panel--collapsed .repair-panel__icon-btn {
+  width: var(--repair-px-28);
+  min-width: var(--repair-px-28);
+}

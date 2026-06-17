@@ -34,6 +34,32 @@ function countGridTemplateTracks(template: string): number {
   return template.trim().split(/\s+/).filter(Boolean).length;
 }
 
+function readRepairUiStyleText(): string {
+  const uiRoot = join(process.cwd(), "rooms/repair-room/ui");
+  const entry = readFileSync(join(uiRoot, "style.css"), "utf8");
+  const imported = [...entry.matchAll(/@import "\.\/styles\/([^"]+)";/g)]
+    .map((match) => readFileSync(join(uiRoot, "styles", match[1] ?? ""), "utf8"))
+    .join("\n");
+  return `${entry}\n${imported}`;
+}
+
+function readRepairUiRuntimeText(): string {
+  const uiRoot = join(process.cwd(), "rooms/repair-room/ui");
+  return [
+    "repair-room-ui-runtime.ts",
+    "runtime/capture-status-handlers.ts",
+    "runtime/dictation-composer.ts",
+    "runtime/measurement-dom.ts",
+    "runtime/overlay-runtime.ts",
+    "runtime/panel-signatures.ts",
+    "runtime/sync-inspector-dom.ts",
+    "runtime/tactical-feed-dom.ts",
+    "runtime/visual-timeline-dom.ts",
+  ]
+    .map((relativePath) => readFileSync(join(uiRoot, relativePath), "utf8"))
+    .join("\n");
+}
+
 class RepairFakeElement {
   children: RepairFakeElement[] = [];
   parentElement: RepairFakeElement | null = null;
@@ -161,7 +187,11 @@ test("repair-room keeps Konva pinned and isolated to the overlay module", () => 
   assert.equal(existsSync(overlayStagePath), true);
   assert.equal(existsSync(vendorPath), true);
   const overlayStage = readFileSync(overlayStagePath, "utf8");
-  assert.match(overlayStage, /shared\/vendor\/konva\.min\.js/);
+  const konvaLoader = readFileSync(
+    join(process.cwd(), "rooms/repair-room/ui/overlay/konva-loader.ts"),
+    "utf8"
+  );
+  assert.match(konvaLoader, /shared\/vendor\/konva\.min\.js/);
   assert.match(overlayStage, /loadKonvaNamespace/);
   assert.doesNotMatch(overlayStage, /import\("konva"\)/);
   assert.doesNotMatch(readFileSync(workbenchPanelPath, "utf8"), /from "konva"|import\("konva"\)/);
@@ -215,7 +245,7 @@ test("repair-room dock grid tracks match visible Phase 3 dock panels", () => {
 
 test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync controls", () => {
   const uiRoot = join(process.cwd(), "rooms/repair-room/ui");
-  const runtime = readFileSync(join(uiRoot, "repair-room-ui-runtime.ts"), "utf8");
+  const runtime = readRepairUiRuntimeText();
   const timelinePanel = readFileSync(join(uiRoot, "panels/visual-timeline-panel.ts"), "utf8");
   const knowledgePanel = readFileSync(join(uiRoot, "panels/knowledge-pack-panel.ts"), "utf8");
   const operatorPanel = readFileSync(join(uiRoot, "panels/operator-profile-panel.ts"), "utf8");
@@ -226,7 +256,7 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   const feedPanel = readFileSync(join(uiRoot, "panels/tactical-feed-panel.ts"), "utf8");
   const roomSyncPanel = readFileSync(join(uiRoot, "panels/room-sync-panel.ts"), "utf8");
   const overlayStage = readFileSync(join(uiRoot, "overlay/overlay-stage.ts"), "utf8");
-  const style = readFileSync(join(uiRoot, "style.css"), "utf8");
+  const style = readRepairUiStyleText();
   const hostMessages = readFileSync(
     join(process.cwd(), "rooms/repair-room/shared/ui/host-messages.ts"),
     "utf8"
@@ -437,7 +467,7 @@ test("repair-room hands-free controls stay action-oriented without duplicating t
     join(process.cwd(), "rooms/repair-room/ui/panels/repair-settings-panel.ts"),
     "utf8"
   );
-  const style = readFileSync(join(process.cwd(), "rooms/repair-room/ui/style.css"), "utf8");
+  const style = readRepairUiStyleText();
   const renderText = (_path: string[], fallback: string): string => fallback;
   const documentRef = new RepairFakeDocument() as unknown as Document;
   const offlineState = createRepairUiSnapshot(
