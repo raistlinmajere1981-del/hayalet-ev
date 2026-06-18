@@ -136,7 +136,7 @@ export type RepairAiDispatchChannel = "chat" | "research" | "tactical";
 
 export type RepairAiDispatchStatus = "idle" | "pending" | "succeeded" | "failed";
 
-export type RepairAiTargetSlot = "ai1" | "ai2";
+export type RepairAiTargetSlot = "ai0" | "ai1" | "ai2";
 
 export type RepairStorageMode = "mock" | "room-storage";
 

@@ -1,4 +1,5 @@
 @custom-media --repair-bp-max-980 (max-width: 980px);
+@custom-media --repair-bp-max-760 (max-width: 760px);
 @custom-media --repair-bp-max-680 (max-width: 680px);
 
 :root {
@@ -100,9 +101,14 @@
   --repair-px-44: 44px;
   --repair-px-64: 64px;
   --repair-px-72: 72px;
+  --repair-px-96: 96px;
   --repair-px-112: 112px;
+  --repair-px-120: 120px;
+  --repair-px-130: 130px;
   --repair-px-140: 140px;
+  --repair-px-160: 160px;
   --repair-px-180: 180px;
+  --repair-px-200: 200px;
   --repair-px-220: 220px;
   --repair-px-260: 260px;
   --repair-px-280: 280px;

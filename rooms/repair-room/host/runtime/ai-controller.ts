@@ -61,11 +61,11 @@ export interface RepairAiController {
     status: RepairAiDispatchStatus,
     params?: { message?: string | null; contextRefs?: string[] }
   ) => void;
-  startKnowledgeResearch: () => Promise<void>;
+  startKnowledgeResearch: (params?: { targetSlot?: RepairAiTargetSlot }) => Promise<void>;
 }
 
 export function isRepairAiTargetSlot(value: unknown): value is RepairAiTargetSlot {
-  return value === "ai1" || value === "ai2";
+  return value === "ai0" || value === "ai1" || value === "ai2";
 }
 
 function normalizeRepairAiTargetSlot(
@@ -141,9 +141,14 @@ export function createRepairAiController(params: {
     return packId === null ? null : getKnowledgePack(packId);
   }
 
-  async function startKnowledgeResearch(): Promise<void> {
+  async function startKnowledgeResearch(
+    researchParams: { targetSlot?: RepairAiTargetSlot } = {}
+  ): Promise<void> {
     const currentWizard = store.getState().wizard;
     const boardCode = currentWizard.draft.boardCode.trim().toLowerCase();
+    const targetSlot = normalizeRepairAiTargetSlot(
+      researchParams.targetSlot ?? store.getState().aiDispatch.research.targetSlot
+    );
 
     const cachedPack = boardCode === "" ? undefined : boardCodeCache.get(boardCode);
     if (cachedPack !== undefined) {
@@ -174,6 +179,7 @@ export function createRepairAiController(params: {
           },
         });
         store.dispatch({ type: "phase/set", phase: "wizard-active" });
+        store.dispatch({ type: "ai-dispatch/set-target-slot", targetSlot });
         setAiDispatchStatus("research", "succeeded", {
           message: "AI research loaded from cache.",
           contextRefs: [boardCode],
@@ -184,7 +190,6 @@ export function createRepairAiController(params: {
 
     generatedKnowledgePacks.clear();
     const resetProgress = REPAIR_RESEARCH_PROGRESS_TEMPLATE.map((item) => ({ ...item }));
-    const targetSlot = normalizeRepairAiTargetSlot(store.getState().aiDispatch.research.targetSlot);
 
     store.batch(() => {
       store.dispatch({
@@ -204,6 +209,7 @@ export function createRepairAiController(params: {
         },
       });
       store.dispatch({ type: "phase/set", phase: "wizard-active" });
+      store.dispatch({ type: "ai-dispatch/set-target-slot", targetSlot });
       setAiDispatchStatus("research", "pending", {
         message: "AI research is preparing the knowledge pack.",
         contextRefs: [

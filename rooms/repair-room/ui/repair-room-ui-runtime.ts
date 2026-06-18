@@ -4,7 +4,11 @@ import type {
   RepairSettingsOverlayTabId,
   RepairWorkbenchViewport,
 } from "../shared/types/index.js";
-import type { RepairUiState, RepairUiSnapshotMeta } from "../shared/ui/state.js";
+import type {
+  RepairAiTargetSlot,
+  RepairUiState,
+  RepairUiSnapshotMeta,
+} from "../shared/ui/state.js";
 import {
   createRepairDefaultContinuityProjection,
   createRepairDefaultGuidanceProjection,
@@ -21,6 +25,10 @@ import { renderTacticalFeedPanel } from "./panels/tactical-feed-panel.js";
 import { renderKnowledgePackPanel } from "./panels/knowledge-pack-panel.js";
 import { renderVisualTimelinePanel } from "./panels/visual-timeline-panel.js";
 import { renderOperatorProfilePanel } from "./panels/operator-profile-panel.js";
+import {
+  createRepairOperatorProfileId,
+  normalizeRepairSkillLevel,
+} from "./panels/operator-profile-panel.js";
 import { renderChatPanel } from "./panels/chat-panel.js";
 import { renderMeasurementPanel } from "./panels/measurement-panel.js";
 import { renderRoomSyncPanel } from "./panels/room-sync-panel.js";
@@ -1110,6 +1118,10 @@ export function createRepairRoomUiRuntime() {
       return target instanceof Element ? target.closest<HTMLElement>("[data-repair-action]") : null;
     }
 
+    function readAiTargetSlot(value: unknown): RepairAiTargetSlot | null {
+      return value === "ai0" || value === "ai1" || value === "ai2" ? value : null;
+    }
+
     root.addEventListener("click", (event) => {
       const el = findActionElement(event.target);
       if (el === null) return;
@@ -1346,7 +1358,30 @@ export function createRepairRoomUiRuntime() {
             const id = el.dataset["toolId"];
             if (id) {
               requestRuntime.updateOperatorProfile({
-                tools: [{ id, available: el.dataset["available"] === "true" }],
+                tools: [
+                  {
+                    id,
+                    ...(el.dataset["remove"] === "true" ? { remove: true } : {}),
+                    ...(el.dataset["available"] === undefined
+                      ? {}
+                      : { available: el.dataset["available"] === "true" }),
+                  },
+                ],
+              });
+            }
+          }
+          if (profileKind === "skill") {
+            const id = el.dataset["skillId"];
+            const proficiency = Number(el.dataset["proficiency"]);
+            if (id) {
+              requestRuntime.updateOperatorProfile({
+                skills: [
+                  {
+                    id,
+                    ...(el.dataset["remove"] === "true" ? { remove: true } : {}),
+                    ...(Number.isFinite(proficiency) ? { proficiency } : {}),
+                  },
+                ],
               });
             }
           }
@@ -1361,6 +1396,56 @@ export function createRepairRoomUiRuntime() {
               });
             }
           }
+          break;
+        }
+        case "operator-profile-add-tool": {
+          const labelInput = root.querySelector<HTMLInputElement>(
+            "[data-repair-input='operator-tool-label']"
+          );
+          const categoryInput = root.querySelector<HTMLSelectElement>(
+            "[data-repair-input='operator-tool-category']"
+          );
+          const modelInput = root.querySelector<HTMLInputElement>(
+            "[data-repair-input='operator-tool-model']"
+          );
+          const label = labelInput?.value.trim() ?? "";
+          if (label === "") break;
+          requestRuntime.updateOperatorProfile({
+            tools: [
+              {
+                id: createRepairOperatorProfileId(label),
+                label,
+                category: categoryInput?.value ?? "measurement",
+                model: modelInput?.value.trim() || null,
+                notes: null,
+                available: true,
+                capabilities: [],
+              },
+            ],
+          });
+          if (labelInput) labelInput.value = "";
+          if (modelInput) modelInput.value = "";
+          break;
+        }
+        case "operator-profile-add-skill": {
+          const labelInput = root.querySelector<HTMLInputElement>(
+            "[data-repair-input='operator-skill-label']"
+          );
+          const proficiencyInput = root.querySelector<HTMLSelectElement>(
+            "[data-repair-input='operator-skill-proficiency']"
+          );
+          const label = labelInput?.value.trim() ?? "";
+          if (label === "") break;
+          requestRuntime.updateOperatorProfile({
+            skills: [
+              {
+                id: createRepairOperatorProfileId(label),
+                label,
+                proficiency: normalizeRepairSkillLevel(Number(proficiencyInput?.value ?? 3)),
+              },
+            ],
+          });
+          if (labelInput) labelInput.value = "";
           break;
         }
         case "toggle-panel-collapse": {
@@ -1421,7 +1506,11 @@ export function createRepairRoomUiRuntime() {
         }
         case "start-wizard-research": {
           flushWizardFields(root);
-          requestRuntime.startKnowledgeResearch();
+          const select = root.querySelector<HTMLSelectElement>(
+            "[data-repair-action='set-ai-target-slot']"
+          );
+          const targetSlot = readAiTargetSlot(select?.value);
+          requestRuntime.startKnowledgeResearch(targetSlot === null ? {} : { targetSlot });
           break;
         }
         case "advance-wizard": {
@@ -1504,11 +1593,32 @@ export function createRepairRoomUiRuntime() {
         if (field) requestRuntime.updateSession({ wizardField: field, value: el.value });
       }
       if (el.dataset["repairAction"] === "set-ai-target-slot") {
-        if (el.value === "ai1" || el.value === "ai2") {
-          state.aiDispatch.chat.targetSlot = el.value;
-          state.aiDispatch.research.targetSlot = el.value;
-          state.aiDispatch.tactical.targetSlot = el.value;
-          requestRuntime.setAiTargetSlot({ targetSlot: el.value });
+        const targetSlot = readAiTargetSlot(el.value);
+        if (targetSlot !== null) {
+          state.aiDispatch.chat.targetSlot = targetSlot;
+          state.aiDispatch.research.targetSlot = targetSlot;
+          state.aiDispatch.tactical.targetSlot = targetSlot;
+          requestRuntime.setAiTargetSlot({ targetSlot });
+        }
+      }
+      if (el.dataset["repairAction"] === "operator-profile-field") {
+        const profileKind = el.dataset["profileKind"];
+        const field = el.dataset["field"];
+        if (profileKind === "tool") {
+          const id = el.dataset["toolId"];
+          if (id && field) {
+            requestRuntime.updateOperatorProfile({ tools: [{ id, [field]: el.value }] });
+          }
+        }
+        if (profileKind === "skill") {
+          const id = el.dataset["skillId"];
+          if (id && field) {
+            requestRuntime.updateOperatorProfile({ skills: [{ id, [field]: el.value }] });
+          }
+        }
+        if (profileKind === "preference") {
+          const key = el.dataset["preferenceKey"];
+          if (key) requestRuntime.updateOperatorProfile({ preferences: { [key]: el.value } });
         }
       }
     });

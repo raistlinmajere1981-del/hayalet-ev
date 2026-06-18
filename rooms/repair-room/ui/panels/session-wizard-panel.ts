@@ -25,6 +25,7 @@ const SYMPTOM_OPTIONS = [
 ] as const;
 
 const AI_TARGET_OPTIONS = [
+  { targetSlot: "ai0", label: "AI 0" },
   { targetSlot: "ai1", label: "AI 1" },
   { targetSlot: "ai2", label: "AI 2" },
 ] as const;

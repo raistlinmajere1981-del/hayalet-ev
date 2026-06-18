@@ -18,6 +18,7 @@ import type {
   RepairSkillRecord,
   RepairSpokenGuidanceMode,
   RepairTool,
+  RepairToolCategory,
   RepairWorkbenchDrawTool,
   RepairWorkbenchTool,
 } from "../../shared/types/index.js";
@@ -85,11 +86,17 @@ const PANEL_IDS: ReadonlySet<string> = new Set([
 ]);
 const INSTRUMENT_KINDS: ReadonlySet<string> = new Set(["multimeter", "power-supply", "signal-gen"]);
 const OPERATOR_PROFILE_TABS: ReadonlySet<string> = new Set([
-  "overview",
   "tools",
   "skills",
   "preferences",
   "controls",
+]);
+const TOOL_CATEGORIES: ReadonlySet<string> = new Set([
+  "soldering",
+  "measurement",
+  "vision",
+  "power",
+  "other",
 ]);
 const OPERATIONAL_PROFILES: ReadonlySet<string> = new Set(["novice", "advanced"]);
 const AMBIENT_LISTENING_STATES: ReadonlySet<string> = new Set(["idle", "listening", "muted"]);
@@ -180,20 +187,38 @@ export function normalizeRepairToolPatch(
     const record = safeRecord(entry);
     const id = safeString(record?.["id"]);
     if (record === null || id === null) return;
+    if (record["remove"] === true) {
+      byId.delete(id);
+      return;
+    }
     const current = byId.get(id);
-    if (current === undefined) return;
+    const label = safeString(record["label"]);
+    const category = isToolCategory(record["category"]) ? record["category"] : null;
+    const model = safeNullableString(record["model"]);
+    const notes = safeNullableString(record["notes"]);
+    if (current === undefined) {
+      if (label === null || category === null) return;
+      byId.set(id, {
+        id,
+        category,
+        label,
+        capabilities: safeStringArray(record["capabilities"]) ?? [],
+        available: typeof record["available"] === "boolean" ? record["available"] : true,
+        model: model ?? null,
+        notes: notes ?? null,
+      });
+      return;
+    }
     byId.set(id, {
       ...current,
+      ...(category !== null ? { category } : {}),
+      ...(label !== null ? { label } : {}),
       ...(typeof record["available"] === "boolean" ? { available: record["available"] } : {}),
-      ...(typeof record["model"] === "string" || record["model"] === null
-        ? { model: record["model"] }
-        : {}),
-      ...(typeof record["notes"] === "string" || record["notes"] === null
-        ? { notes: record["notes"] }
-        : {}),
+      ...(model !== undefined ? { model } : {}),
+      ...(notes !== undefined ? { notes } : {}),
     });
   });
-  return existing.map((tool) => byId.get(tool.id) ?? tool);
+  return Array.from(byId.values());
 }
 
 export function normalizeRepairConsumablePatch(
@@ -249,18 +274,29 @@ export function normalizeRepairSkillsPatch(
     const record = safeRecord(entry);
     const id = safeString(record?.["id"]);
     const proficiency = safeNumber(record?.["proficiency"]);
-    if (record === null || id === null || proficiency === null) return;
+    if (record === null || id === null) return;
+    if (record["remove"] === true) {
+      byId.delete(id);
+      return;
+    }
     const current = byId.get(id);
-    if (current === undefined) return;
+    const label = safeString(record["label"]);
+    if (current === undefined) {
+      if (label === null) return;
+      byId.set(id, {
+        id,
+        label,
+        proficiency: clampSkillLevel(proficiency ?? 3),
+      });
+      return;
+    }
     byId.set(id, {
       ...current,
-      proficiency: Math.max(
-        1,
-        Math.min(5, Math.round(proficiency))
-      ) as RepairSkillRecord["proficiency"],
+      ...(label !== null ? { label } : {}),
+      ...(proficiency !== null ? { proficiency: clampSkillLevel(proficiency) } : {}),
     });
   });
-  return existing.map((skill) => byId.get(skill.id) ?? skill);
+  return Array.from(byId.values());
 }
 
 export function normalizeRepairPreferencesPatch(
@@ -296,6 +332,21 @@ export function normalizeRepairPreferencesPatch(
   }
   void existing;
   return Object.keys(patch).length === 0 ? null : patch;
+}
+
+function safeNullableString(value: unknown): string | null | undefined {
+  if (value === null) return null;
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+function isToolCategory(value: unknown): value is RepairToolCategory {
+  return typeof value === "string" && TOOL_CATEGORIES.has(value);
+}
+
+function clampSkillLevel(value: number): RepairSkillRecord["proficiency"] {
+  return Math.max(1, Math.min(5, Math.round(value))) as RepairSkillRecord["proficiency"];
 }
 
 export function normalizeRepairLivePreview(value: unknown): RepairLivePreviewState | null {

@@ -17,6 +17,7 @@ const AI_LIFECYCLE_ACTIONS = [
 ] as const;
 
 function formatAssistantSlot(slot: string): string {
+  if (slot.toLowerCase() === "ai0") return "Assistant 0";
   if (slot.toLowerCase() === "ai1") return "Assistant 1";
   if (slot.toLowerCase() === "ai2") return "Assistant 2";
   return slot.toUpperCase();
@@ -134,7 +135,7 @@ export function renderRoomSyncPanel(
   select.className = "repair-sync-row__select";
   select.dataset["repairAction"] = "set-ai-target-slot";
   const currentTarget = state.aiDispatch.chat.targetSlot;
-  (["ai1", "ai2"] as const).forEach((slot) => {
+  (["ai0", "ai1", "ai2"] as const).forEach((slot) => {
     const option = documentRef.createElement("option");
     option.value = slot;
     option.textContent = formatAssistantSlot(slot);

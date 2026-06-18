@@ -430,7 +430,7 @@ test("repair-room sync panel rows expose AI2 dispatch status", async () => {
   runtime.dispose();
 });
 
-test("repair-room research uses live AI knowledge-pack dispatch", async () => {
+test("repair-room research uses selected AI slot for live knowledge-pack dispatch", async () => {
   const dispatchCalls: Record<string, unknown>[] = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
@@ -492,7 +492,10 @@ test("repair-room research uses live AI knowledge-pack dispatch", async () => {
     getLocale: () => "en",
   });
 
-  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startKnowledgeResearch).success, true);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.startKnowledgeResearch, { targetSlot: "ai0" }).success,
+    true
+  );
   assert.equal(runtime.getStateSnapshot().state.aiDispatch.research.status, "pending");
 
   await new Promise<void>((resolve) => {
@@ -501,13 +504,14 @@ test("repair-room research uses live AI knowledge-pack dispatch", async () => {
 
   assert.equal(dispatchCalls.length, 1);
   assert.equal(dispatchCalls[0]?.["action"], "message.sendWait");
-  assert.equal(dispatchCalls[0]?.["toSlot"], "ai2");
+  assert.equal(dispatchCalls[0]?.["toSlot"], "ai0");
   const payload = dispatchCalls[0]?.["payload"] as Record<string, unknown> | undefined;
   const protocol = payload?.["protocol"] as Record<string, unknown> | undefined;
   assert.equal(payload?.["page"], "repair-room:knowledge-research");
   assert.equal(protocol?.["protocolKey"], "repair-room-knowledge-research");
 
   const state = runtime.getStateSnapshot().state;
+  assert.equal(state.aiDispatch.research.targetSlot, "ai0");
   assert.equal(state.aiDispatch.research.status, "succeeded");
   assert.equal(state.wizard.currentStep, "evidence-review");
   assert.equal(state.wizard.generatedKnowledgePackId, "ai-bn44-00932a");
@@ -960,12 +964,22 @@ test("repair-room patches operator profile equipment, skills, preferences, and a
         annotationDefaultStrokeWidth: 4,
         riskTolerance: "low",
       },
-      skills: [{ id: "smps-repair", proficiency: 5 }],
+      skills: [{ id: "smps-repair", label: "SMPS repair", proficiency: 5 }],
       tools: [
-        { id: "bench-psu", available: false },
-        { id: "hot-air-quick861d", available: false },
+        { id: "bench-psu", category: "power", label: "DC Bench Power Supply", available: false },
+        {
+          id: "hot-air-quick861d",
+          category: "soldering",
+          label: "Hot Air Station (Quick 861D)",
+          available: false,
+        },
+        {
+          id: "microscope-relife-rl-m3t",
+          category: "vision",
+          label: "Microscope (Relife RL-M3T)",
+          available: true,
+        },
       ],
-      safety: [{ id: "fume-extractor", available: false }],
     }).success,
     true
   );
@@ -981,7 +995,6 @@ test("repair-room patches operator profile equipment, skills, preferences, and a
     profile.bench.tools.find((tool) => tool.id === "hot-air-quick861d")?.available,
     false
   );
-  assert.equal(profile.bench.safety.find((item) => item.id === "fume-extractor")?.available, false);
   assert.equal(runtime.getStateSnapshot().state.operatorAdaptation.hasBenchPsu, false);
   assert.equal(runtime.getStateSnapshot().state.operatorAdaptation.hasHotAirStation, false);
   assert.equal(runtime.getStateSnapshot().state.operatorAdaptation.hasMicroscope, true);

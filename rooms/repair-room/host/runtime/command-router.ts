@@ -318,7 +318,11 @@ export function createRepairCommandRouter(params: {
         return { success: true };
       }
       case REPAIR_UI_COMMANDS.startKnowledgeResearch: {
-        void aiController.startKnowledgeResearch();
+        const targetSlot = flat["targetSlot"];
+        if (targetSlot !== undefined && !isRepairAiTargetSlot(targetSlot)) {
+          return { success: false, message: "valid AI target slot is required" };
+        }
+        void aiController.startKnowledgeResearch(targetSlot === undefined ? {} : { targetSlot });
         return { success: true };
       }
       case REPAIR_UI_COMMANDS.attachKnowledgePack: {

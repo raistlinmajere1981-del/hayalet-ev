@@ -11,12 +11,7 @@ export type RepairPanelId =
   | "measurement"
   | "room-sync";
 
-export type RepairOperatorProfileTabId =
-  | "overview"
-  | "tools"
-  | "skills"
-  | "preferences"
-  | "controls";
+export type RepairOperatorProfileTabId = "tools" | "skills" | "preferences" | "controls";
 
 export type RepairSettingsOverlayTabId = "repair-controls" | "bench-operator";
 

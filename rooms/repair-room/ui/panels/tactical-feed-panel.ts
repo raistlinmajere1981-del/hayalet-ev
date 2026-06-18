@@ -4,6 +4,7 @@ import { createRepairPanel } from "./panel-shell.js";
 type TextFn = (path: string[], fallback: string) => string;
 
 function formatAssistantSlot(slot: string): string {
+  if (slot.toLowerCase() === "ai0") return "Assistant 0";
   if (slot.toLowerCase() === "ai1") return "Assistant 1";
   if (slot.toLowerCase() === "ai2") return "Assistant 2";
   return slot.toUpperCase();

@@ -299,7 +299,7 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(runtime, /setSettingsOverlay/);
   assert.match(runtime, /set-settings-overlay/);
   assert.doesNotMatch(runtime, /repair-settings-overlay__tabs/);
-  assert.match(operatorPanel, /tabControls/);
+  assert.match(operatorPanel, /\["operator", "tabs", "controls"\]/);
   assert.match(operatorPanel, /renderRepairSettingsPanelBody/);
   assert.match(runtime, /timeline-scrub/);
   assert.match(runtime, /applyLiveSnapshotUpdates/);
@@ -354,7 +354,7 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(timelinePanel, /resolveRepairAssetUrl/);
   assert.match(knowledgePanel, /repair-pack-preview__image/);
   assert.match(knowledgePanel, /resolveRepairAssetUrl/);
-  assert.match(operatorPanel, /repair-tool-detail/);
+  assert.match(operatorPanel, /repair-profile-manager/);
   assert.match(operatorPanel, /operator-profile-update/);
   assert.match(operatorPanel, /profileKind/);
   assert.match(operatorPanel, /preferenceKey/);

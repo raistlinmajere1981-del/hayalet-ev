@@ -11,6 +11,8 @@ class FakeElement {
   dataset: Record<string, string> = {};
   parentElement: FakeElement | null = null;
   className = "";
+  placeholder = "";
+  selected = false;
   style: Record<string, string> = {};
   textContent = "";
   title = "";
@@ -111,14 +113,42 @@ test("repair-room operator profile panel emits behavior-ready update actions", (
   const documentRef = new FakeDocument() as unknown as Document;
 
   const toolsPanel = renderOperatorProfilePanel(documentRef, state, (_path, fallback) => fallback);
+  const tabs = findAll(
+    toolsPanel as unknown as FakeElement,
+    (element) => element.dataset["repairAction"] === "operator-profile-tab"
+  );
+  assert.deepEqual(tabs.map((element) => element.dataset["tabId"]), [
+    "tools",
+    "skills",
+    "preferences",
+    "controls",
+  ]);
+
+  const addToolActions = findAll(
+    toolsPanel as unknown as FakeElement,
+    (element) => element.dataset["repairAction"] === "operator-profile-add-tool"
+  );
+  assert.equal(addToolActions.length, 1);
+
   const toolActions = findAll(
     toolsPanel as unknown as FakeElement,
     (element) => element.dataset["repairAction"] === "operator-profile-update"
   );
-  assert.ok(toolActions.length > 0);
-  assert.equal(toolActions[0]?.dataset["profileKind"], "tool");
-  assert.ok(toolActions[0]?.dataset["toolId"]);
-  assert.match(toolActions[0]?.dataset["available"] ?? "", /^(true|false)$/);
+  assert.equal(toolActions.length, 0);
+
+  const skillsPanel = renderOperatorProfilePanel(
+    documentRef,
+    {
+      ...state,
+      layout: { ...state.layout, operatorProfileTabId: "skills" },
+    },
+    (_path, fallback) => fallback
+  );
+  const addSkillActions = findAll(
+    skillsPanel as unknown as FakeElement,
+    (element) => element.dataset["repairAction"] === "operator-profile-add-skill"
+  );
+  assert.equal(addSkillActions.length, 1);
 
   const preferencesPanel = renderOperatorProfilePanel(
     documentRef,
@@ -132,9 +162,25 @@ test("repair-room operator profile panel emits behavior-ready update actions", (
     preferencesPanel as unknown as FakeElement,
     (element) => element.dataset["profileKind"] === "preference"
   );
-  assert.deepEqual(preferenceActions.map((element) => element.dataset["preferenceKey"]).sort(), [
-    "aiVerbosity",
-    "annotationDefaultStrokeWidth",
-    "riskTolerance",
-  ]);
+  assert.ok(
+    preferenceActions.some(
+      (element) =>
+        element.dataset["repairAction"] === "operator-profile-field" &&
+        element.dataset["preferenceKey"] === "measurementSystem"
+    )
+  );
+  assert.equal(
+    preferenceActions.filter(
+      (element) => element.dataset["preferenceKey"] === "annotationDefaultStrokeWidth"
+    ).length,
+    2
+  );
+  assert.equal(
+    preferenceActions.filter((element) => element.dataset["preferenceKey"] === "riskTolerance").length,
+    3
+  );
+  assert.equal(
+    preferenceActions.filter((element) => element.dataset["preferenceKey"] === "aiVerbosity").length,
+    3
+  );
 });

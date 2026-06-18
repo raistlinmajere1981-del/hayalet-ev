@@ -133,7 +133,25 @@
       "power": "Power",
       "other": "Other"
     },
-    "editProfile": "Edit Profile"
+    "editProfile": "Edit Profile",
+    "toolsTitle": "Your tools",
+    "toolsHint": "Add the equipment you actually have on your bench.",
+    "toolsEmpty": "No tools saved yet. Add one below.",
+    "skillsTitle": "Your skills",
+    "skillsHint": "Track repair skills you want AIO to account for.",
+    "skillsEmpty": "No skills saved yet. Add one below.",
+    "available": "Available",
+    "unavailable": "Unavailable",
+    "remove": "Remove",
+    "toolName": "Tool name",
+    "toolModel": "Model",
+    "addTool": "+ Add tool",
+    "skillName": "Skill name",
+    "addSkill": "+ Add skill",
+    "measurement": "Measurement",
+    "annotation": "Annotation",
+    "risk": "Risk",
+    "ai": "AI"
   },
   "measurement": {
     "eyebrow": "MEASUREMENT PANEL",

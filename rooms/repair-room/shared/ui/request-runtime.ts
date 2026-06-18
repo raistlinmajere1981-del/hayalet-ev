@@ -1,4 +1,5 @@
 import { REPAIR_UI_COMMANDS } from "../repair-constants.js";
+import type { RepairAiTargetSlot } from "./state.js";
 import type {
   RepairAmbientListeningState,
   RepairCameraFeedPreference,
@@ -48,8 +49,8 @@ export function createRepairUiRequestRuntime() {
     advanceWizard(payload: { step?: string } = {}) {
       return sendCommand(REPAIR_UI_COMMANDS.advanceWizard, payload);
     },
-    startKnowledgeResearch() {
-      return sendCommand(REPAIR_UI_COMMANDS.startKnowledgeResearch);
+    startKnowledgeResearch(payload: { targetSlot?: RepairAiTargetSlot } = {}) {
+      return sendCommand(REPAIR_UI_COMMANDS.startKnowledgeResearch, payload);
     },
     attachKnowledgePack(payload: { packId: string }) {
       return sendCommand(REPAIR_UI_COMMANDS.attachKnowledgePack, payload);
@@ -78,7 +79,7 @@ export function createRepairUiRequestRuntime() {
     dismissAiMark(payload: { eventId: string; state?: string; reason?: string }) {
       return sendCommand(REPAIR_UI_COMMANDS.dismissAiMark, payload);
     },
-    setAiTargetSlot(payload: { targetSlot: "ai1" | "ai2" }) {
+    setAiTargetSlot(payload: { targetSlot: RepairAiTargetSlot }) {
       return sendCommand(REPAIR_UI_COMMANDS.setAiTargetSlot, payload);
     },
     sendChatTurn(payload: { text: string }) {

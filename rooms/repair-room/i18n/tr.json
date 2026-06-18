@@ -133,7 +133,25 @@
       "power": "Güç",
       "other": "Diğer"
     },
-    "editProfile": "Profili Düzenle"
+    "editProfile": "Profili Düzenle",
+    "toolsTitle": "Aletlerin",
+    "toolsHint": "Tezgahında gerçekten kullandığın aletleri ekle.",
+    "toolsEmpty": "Henüz kayıtlı alet yok. Aşağıdan ekle.",
+    "skillsTitle": "Yeteneklerin",
+    "skillsHint": "AİÖ'nün dikkate almasını istediğin tamir yeteneklerini kaydet.",
+    "skillsEmpty": "Henüz kayıtlı yetenek yok. Aşağıdan ekle.",
+    "available": "Kullanımda",
+    "unavailable": "Pasif",
+    "remove": "Sil",
+    "toolName": "Alet adı",
+    "toolModel": "Model",
+    "addTool": "+ Alet ekle",
+    "skillName": "Yetenek adı",
+    "addSkill": "+ Yetenek ekle",
+    "measurement": "Ölçüm",
+    "annotation": "Annotation",
+    "risk": "Risk",
+    "ai": "AI"
   },
   "measurement": {
     "eyebrow": "ÖLÇÜM PANELİ",
