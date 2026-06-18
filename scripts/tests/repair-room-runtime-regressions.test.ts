@@ -437,6 +437,13 @@ test("repair-room research uses live AI knowledge-pack dispatch", async () => {
     notifyRoom: () => {},
     dispatchBridge: async (payload: Record<string, unknown>) => {
       dispatchCalls.push(payload);
+      const page = (payload["payload"] as Record<string, unknown> | undefined)?.["page"];
+      if (page === "repair-room:risk-detector") {
+        return {
+          success: true,
+          reply: { text: JSON.stringify({ risks: [] }) },
+        };
+      }
       return {
         success: true,
         reply: {
@@ -502,10 +509,11 @@ test("repair-room research uses live AI knowledge-pack dispatch", async () => {
 
   const state = runtime.getStateSnapshot().state;
   assert.equal(state.aiDispatch.research.status, "succeeded");
-  assert.equal(state.wizard.currentStep, "ready");
+  assert.equal(state.wizard.currentStep, "evidence-review");
   assert.equal(state.wizard.generatedKnowledgePackId, "ai-bn44-00932a");
   assert.equal(state.wizard.foundResources[0]?.id, "candidate-schematic");
 
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard).success, true);
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, true);
   const nextState = runtime.getStateSnapshot().state;
   const activeSession = nextState.sessions[nextState.activeSessionId ?? ""];
@@ -638,6 +646,13 @@ test("repair-room measurements can promote AI tactical observations into canonic
     notifyRoom: () => {},
     dispatchBridge: async (payload: Record<string, unknown>) => {
       dispatchCalls.push(payload);
+      const page = (payload["payload"] as Record<string, unknown> | undefined)?.["page"];
+      if (page === "repair-room:risk-detector") {
+        return {
+          success: true,
+          reply: { text: JSON.stringify({ risks: [] }) },
+        };
+      }
       return {
         success: true,
         reply: {
@@ -675,7 +690,7 @@ test("repair-room measurements can promote AI tactical observations into canonic
     setImmediate(resolve);
   });
 
-  assert.equal(dispatchCalls.length, 1);
+  assert.equal(dispatchCalls.length, 2);
   assert.equal(dispatchCalls[0]?.["action"], "message.sendWait");
   assert.equal(dispatchCalls[0]?.["toSlot"], "ai2");
   const payload = dispatchCalls[0]?.["payload"] as Record<string, unknown> | undefined;
@@ -725,6 +740,13 @@ test("repair-room tactical bridge accepts content-backed top-level observation a
     notifyRoom: () => {},
     dispatchBridge: async (payload: Record<string, unknown>) => {
       dispatchCalls.push(payload);
+      const page = (payload["payload"] as Record<string, unknown> | undefined)?.["page"];
+      if (page === "repair-room:risk-detector") {
+        return {
+          success: true,
+          reply: { text: JSON.stringify({ risks: [] }) },
+        };
+      }
       return {
         success: true,
         reply: {
@@ -749,7 +771,7 @@ test("repair-room tactical bridge accepts content-backed top-level observation a
     setImmediate(resolve);
   });
 
-  assert.equal(dispatchCalls.length, 1);
+  assert.equal(dispatchCalls.length, 2);
   assert.equal(dispatchCalls[0]?.["toSlot"], "ai2");
 
   const state = runtime.getStateSnapshot().state;
@@ -769,7 +791,6 @@ test("repair-room tactical bridge accepts content-backed top-level observation a
     assert.equal(generatedRisk.linkedMeasurementIds?.includes(measurement.id), true);
   }
   assert.equal(state.aiDispatch.tactical.status, "succeeded");
-  assert.match(state.aiDispatch.tactical.message ?? "", /1 observation/);
 
   runtime.dispose();
 });

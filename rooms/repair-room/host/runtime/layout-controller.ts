@@ -329,7 +329,7 @@ export function createRepairLayoutController(params: {
       updatedAt: iso,
     };
     store.batch(() => {
-      sessionController.setSessionAndList(nextSession);
+      sessionController.setSessionAndList(nextSession, { skipTransitionCheck: true });
       regionUpdates.forEach((event) => {
         const feedItem = repairEventToTacticalFeedItem(event, session.startedAt);
         if (feedItem !== null) {

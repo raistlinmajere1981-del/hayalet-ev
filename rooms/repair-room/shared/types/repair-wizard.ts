@@ -1,6 +1,11 @@
 import type { RepairKnowledgePackProgress } from "./repair-knowledge-pack.js";
 
-export type RepairWizardStepId = "device-info" | "symptoms" | "ai-research" | "ready";
+export type RepairWizardStepId =
+  | "device-info"
+  | "symptoms"
+  | "ai-research"
+  | "evidence-review"
+  | "ready";
 
 export interface RepairWizardDraft {
   manufacturer: string;
@@ -18,4 +23,5 @@ export interface RepairWizardState {
   researchProgress: RepairKnowledgePackProgress[];
   foundResources: Array<{ id: string; label: string; kind: string }>;
   generatedKnowledgePackId: string | null;
+  evidenceReviewed: boolean;
 }

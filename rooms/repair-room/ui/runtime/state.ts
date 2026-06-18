@@ -79,6 +79,7 @@ export function createInitialRepairUiState(): RepairUiState {
       researchProgress: [],
       foundResources: [],
       generatedKnowledgePackId: null,
+      evidenceReviewed: false,
     },
     knowledgePack: {
       pack: null,

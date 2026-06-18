@@ -16,8 +16,10 @@ import type {
 import {
   requestRepairAiChatReply,
   requestRepairAiKnowledgeResearch,
+  requestRepairAiRiskDetection,
   requestRepairAiTacticalObservations,
   type RepairAiDispatchBridge,
+  type RepairAiRiskObservation,
   type RepairAiRoomCommand,
   type RepairAiTacticalObservation,
 } from "../repair-ai-bridge.js";
@@ -53,6 +55,7 @@ export interface RepairAiController {
   readGeneratedKnowledgePack: () => RepairKnowledgePack | null;
   requestChatReply: (operatorTurn: RepairChatTurn) => Promise<void>;
   requestMeasurementAiObservation: (measurementEvent: RepairMeasurementEvent) => Promise<void>;
+  requestSessionRiskDetection: () => Promise<void>;
   setAiDispatchStatus: (
     channel: RepairAiDispatchChannel,
     status: RepairAiDispatchStatus,
@@ -97,7 +100,10 @@ export function createRepairAiController(params: {
     store,
   } = params;
   const generatedKnowledgePacks = new Map<string, RepairKnowledgePack>();
+  const boardCodeCache = new Map<string, RepairKnowledgePack>();
   const pendingTurnIds = new Set<string>();
+  let chatReplySequence = 0;
+  const pendingChatReplies = new Map<number, { turnId: string; resolved: boolean }>();
 
   function setAiDispatchStatus(
     channel: RepairAiDispatchChannel,
@@ -122,7 +128,12 @@ export function createRepairAiController(params: {
   }
 
   function getKnowledgePack(packId: string): RepairKnowledgePack | null {
-    return generatedKnowledgePacks.get(packId) ?? MOCK_REPAIR_KNOWLEDGE_PACKS[packId] ?? null;
+    return (
+      generatedKnowledgePacks.get(packId) ??
+      boardCodeCache.get(packId) ??
+      MOCK_REPAIR_KNOWLEDGE_PACKS[packId] ??
+      null
+    );
   }
 
   function readGeneratedKnowledgePack(): RepairKnowledgePack | null {
@@ -131,12 +142,56 @@ export function createRepairAiController(params: {
   }
 
   async function startKnowledgeResearch(): Promise<void> {
-    generatedKnowledgePacks.clear();
     const currentWizard = store.getState().wizard;
+    const boardCode = currentWizard.draft.boardCode.trim().toLowerCase();
+
+    const cachedPack = boardCode === "" ? undefined : boardCodeCache.get(boardCode);
+    if (cachedPack !== undefined) {
+      api.log("info", `[${REPAIR_ROOM_ID}] Using cached knowledge pack for ${boardCode}`);
+      generatedKnowledgePacks.set(cachedPack.id, cachedPack);
+      store.batch(() => {
+        store.dispatch({
+          type: "knowledge-pack/set",
+          pack: cachedPack,
+          attachedToSessionId: null,
+        });
+        store.dispatch({
+          type: "wizard/set",
+          wizard: {
+            ...currentWizard,
+            currentStep: "evidence-review",
+            researchProgress: REPAIR_RESEARCH_PROGRESS_TEMPLATE.map((item) => ({
+              ...item,
+              completed: true,
+            })),
+            foundResources: cachedPack.resources.map((resource) => ({
+              id: resource.id,
+              label: resource.label,
+              kind: resource.kind,
+            })),
+            generatedKnowledgePackId: cachedPack.id,
+            evidenceReviewed: false,
+          },
+        });
+        store.dispatch({ type: "phase/set", phase: "wizard-active" });
+        setAiDispatchStatus("research", "succeeded", {
+          message: "AI research loaded from cache.",
+          contextRefs: [boardCode],
+        });
+      });
+      return;
+    }
+
+    generatedKnowledgePacks.clear();
     const resetProgress = REPAIR_RESEARCH_PROGRESS_TEMPLATE.map((item) => ({ ...item }));
     const targetSlot = normalizeRepairAiTargetSlot(store.getState().aiDispatch.research.targetSlot);
 
     store.batch(() => {
+      store.dispatch({
+        type: "knowledge-pack/set",
+        pack: null,
+        attachedToSessionId: null,
+      });
       store.dispatch({
         type: "wizard/set",
         wizard: {
@@ -145,6 +200,7 @@ export function createRepairAiController(params: {
           researchProgress: resetProgress,
           foundResources: [],
           generatedKnowledgePackId: null,
+          evidenceReviewed: false,
         },
       });
       store.dispatch({ type: "phase/set", phase: "wizard-active" });
@@ -187,13 +243,21 @@ export function createRepairAiController(params: {
     }
 
     generatedKnowledgePacks.set(researchedPack.id, researchedPack);
+    if (boardCode !== "") {
+      boardCodeCache.set(boardCode, researchedPack);
+    }
     const completedProgress = resetProgress.map((item) => ({ ...item, completed: true }));
     store.batch(() => {
+      store.dispatch({
+        type: "knowledge-pack/set",
+        pack: researchedPack,
+        attachedToSessionId: null,
+      });
       store.dispatch({
         type: "wizard/set",
         wizard: {
           ...store.getState().wizard,
-          currentStep: "ready",
+          currentStep: "evidence-review",
           researchProgress: completedProgress,
           foundResources: researchedPack.resources.map((resource) => ({
             id: resource.id,
@@ -201,6 +265,7 @@ export function createRepairAiController(params: {
             kind: resource.kind,
           })),
           generatedKnowledgePackId: researchedPack.id,
+          evidenceReviewed: false,
         },
       });
       store.dispatch({
@@ -350,6 +415,98 @@ export function createRepairAiController(params: {
     });
   }
 
+  function createRiskFlagEvents(aiParams: {
+    baseIso: string;
+    risks: RepairAiRiskObservation[];
+    session: RepairSession;
+  }): RepairEvent[] {
+    return aiParams.risks.map((risk, index): RepairEvent => {
+      const occurredAt = new Date(Date.parse(aiParams.baseIso) + index * 250).toISOString();
+      const categoryLabel = risk.category === "operator-safety" ? "OPERATOR SAFETY" : "EQUIPMENT";
+      return {
+        kind: "risk-flag",
+        id: createEventId("evt-ai-risk", occurredAt),
+        sessionId: aiParams.session.id,
+        occurredAt,
+        source: "ai",
+        linkedEventIds: risk.contextRefs,
+        severity: risk.category === "operator-safety" ? "risk" : "risk",
+        message: `[${risk.severity.toUpperCase()}][${categoryLabel}] ${risk.text} Action: ${risk.recommendedAction}`,
+        region: risk.region,
+        acknowledged: false,
+        linkedMeasurementIds: [],
+        linkedAnnotationIds: [],
+      };
+    });
+  }
+
+  async function requestSessionRiskDetection(): Promise<void> {
+    const state = store.getState();
+    const session = getActiveSession(state);
+    if (session === null) return;
+    const targetSessionId = session.id;
+    const dispatchBridge = api.dispatchBridge;
+    if (typeof dispatchBridge !== "function") return;
+
+    const targetSlot = normalizeRepairAiTargetSlot(state.aiDispatch.tactical.targetSlot);
+    const sessionRefs = uniqueStringList([session.id, session.deviceInfo.boardCode]);
+
+    setAiDispatchStatus("tactical", "pending", {
+      message: "AI risk detector is scanning the session.",
+      contextRefs: sessionRefs,
+    });
+
+    const aiResult = await requestRepairAiRiskDetection({
+      dispatchBridge,
+      locale: typeof api.getLocale === "function" ? api.getLocale() : "en",
+      operatorProfile: state.operatorProfile,
+      session,
+      targetSlot,
+    }).catch((error: unknown) => ({
+      success: false,
+      risks: [],
+      message: error instanceof Error ? error.message : String(error),
+    }));
+
+    if (aiResult.success !== true) {
+      api.log(
+        "debug",
+        `[${REPAIR_ROOM_ID}] AI risk detection skipped: ${aiResult.message ?? "unknown error"}`
+      );
+      setAiDispatchStatus("tactical", "failed", {
+        message: aiResult.message ?? "AI risk detector did not return observations.",
+        contextRefs: sessionRefs,
+      });
+      return;
+    }
+
+    const currentState = store.getState();
+    const currentSession = currentState.sessions[targetSessionId];
+    if (currentSession === undefined) return;
+    const baseIso =
+      currentState.activeSessionId === currentSession.id
+        ? liveController.createLiveSessionIso(currentSession)
+        : new Date(Math.max(Date.parse(currentSession.updatedAt), Date.now()) + 1000).toISOString();
+
+    appendEventsToSession(
+      currentSession.id,
+      createRiskFlagEvents({
+        baseIso,
+        risks: aiResult.risks,
+        session: currentSession,
+      })
+    );
+    setAiDispatchStatus("tactical", "succeeded", {
+      message: `AI risk detector found ${aiResult.risks.length} risk${
+        aiResult.risks.length === 1 ? "" : "s"
+      }.`,
+      contextRefs: uniqueStringList([
+        ...sessionRefs,
+        ...aiResult.risks.flatMap((risk) => risk.contextRefs),
+      ]),
+    });
+  }
+
   function appendChatReply(
     operatorTurn: RepairChatTurn,
     text: string,
@@ -364,11 +521,16 @@ export function createRepairAiController(params: {
       occurredAt: nowIso(),
       contextRefs,
     };
+    const turns = store.getState().chat.turns;
+    const operatorIndex = turns.findIndex((turn) => turn.id === operatorTurn.id);
+    const insertAt = operatorIndex === -1 ? turns.length : operatorIndex + 1;
+    const nextTurns = [...turns.slice(0, insertAt), reply, ...turns.slice(insertAt)];
     store.batch(() => {
-      store.dispatch({ type: "chat/append-turn", turn: reply });
-      if (pendingTurnIds.size === 0) {
-        store.dispatch({ type: "chat/set-pending", turnId: null });
-      }
+      store.dispatch({ type: "chat/set-turns", turns: nextTurns });
+      store.dispatch({
+        type: "chat/set-pending",
+        turnId: pendingTurnIds.size === 0 ? null : (Array.from(pendingTurnIds).at(-1) ?? null),
+      });
     });
     storageController.queuePersistActiveSessionChat();
     if (store.getState().layout.interactionSettings.autoReadAiReplies) {
@@ -422,6 +584,8 @@ export function createRepairAiController(params: {
 
   async function requestChatReply(operatorTurn: RepairChatTurn): Promise<void> {
     pendingTurnIds.add(operatorTurn.id);
+    const sequenceId = ++chatReplySequence;
+    pendingChatReplies.set(sequenceId, { turnId: operatorTurn.id, resolved: false });
     const state = store.getState();
     const session = getActiveSession(state);
     const targetSlot = normalizeRepairAiTargetSlot(state.aiDispatch.chat.targetSlot);
@@ -443,6 +607,11 @@ export function createRepairAiController(params: {
       roomCommands: [],
       message: error instanceof Error ? error.message : String(error),
     }));
+
+    const pendingEntry = pendingChatReplies.get(sequenceId);
+    if (pendingEntry === undefined || pendingEntry.resolved || getDisposed()) return;
+    pendingEntry.resolved = true;
+
     if (aiResult.success !== true) {
       api.log(
         "debug",
@@ -489,6 +658,7 @@ export function createRepairAiController(params: {
     readGeneratedKnowledgePack,
     requestChatReply,
     requestMeasurementAiObservation,
+    requestSessionRiskDetection,
     setAiDispatchStatus,
     startKnowledgeResearch,
   };

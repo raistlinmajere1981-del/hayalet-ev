@@ -1,25 +1,61 @@
 import { repairEventToTacticalFeedItem } from "../../shared/data/index.js";
-import type { RepairEvent, RepairSession } from "../../shared/types/index.js";
+import type { RepairEvent, RepairSession, RepairSessionStatus } from "../../shared/types/index.js";
 import type { RepairRuntimeStore } from "../state/repair-runtime-store.js";
 import type { RepairLiveController } from "./live-controller.js";
 import { buildSessionList, getActiveSession, getSessionTimelineMs } from "./session-helpers.js";
 import type { RepairStorageController } from "./storage-controller.js";
 
+// NOTE: Session state machine — legal transitions enforced to prevent inconsistent state.
+// draft → research → ready → in-progress → paused → archived (any state can archive)
+const REPAIR_LEGAL_SESSION_TRANSITIONS: Record<RepairSessionStatus, RepairSessionStatus[]> = {
+  draft: ["research", "ready", "in-progress", "archived"],
+  research: ["ready", "in-progress", "archived"],
+  ready: ["in-progress", "archived"],
+  "in-progress": ["paused", "archived"],
+  paused: ["in-progress", "archived"],
+  archived: [],
+};
+
+export function isLegalSessionTransition(
+  from: RepairSessionStatus,
+  to: RepairSessionStatus
+): boolean {
+  if (from === to) return true;
+  return REPAIR_LEGAL_SESSION_TRANSITIONS[from].includes(to);
+}
+
 export interface RepairSessionController {
   appendEventToActiveSession: (event: RepairEvent) => boolean;
   appendEventsToSession: (sessionId: string, events: RepairEvent[]) => boolean;
   deleteSessionAndList: (sessionId: string) => void;
-  setSessionAndList: (session: RepairSession, options?: { persist?: boolean }) => void;
+  setSessionAndList: (
+    session: RepairSession,
+    options?: { persist?: boolean; skipTransitionCheck?: boolean }
+  ) => boolean;
 }
 
 export function createRepairSessionController(params: {
   liveController: RepairLiveController;
+  log: (level: string, message: string) => void;
   storageController: RepairStorageController;
   store: RepairRuntimeStore;
 }): RepairSessionController {
-  const { liveController, storageController, store } = params;
+  const { liveController, log, storageController, store } = params;
 
-  function setSessionAndList(session: RepairSession, options: { persist?: boolean } = {}): void {
+  function setSessionAndList(
+    session: RepairSession,
+    options: { persist?: boolean; skipTransitionCheck?: boolean } = {}
+  ): boolean {
+    const existing = store.getState().sessions[session.id];
+    if (existing !== undefined && options.skipTransitionCheck !== true) {
+      if (!isLegalSessionTransition(existing.status, session.status)) {
+        log(
+          "warn",
+          `[repair-room] blocked illegal session transition: ${existing.status} → ${session.status} (session=${session.id})`
+        );
+        return false;
+      }
+    }
     const nextSessions = {
       ...store.getState().sessions,
       [session.id]: session,
@@ -31,6 +67,7 @@ export function createRepairSessionController(params: {
     if (options.persist !== false) {
       storageController.queuePersistSession(session);
     }
+    return true;
   }
 
   function deleteSessionAndList(sessionId: string): void {
@@ -53,8 +90,9 @@ export function createRepairSessionController(params: {
     };
     const feedItem = repairEventToTacticalFeedItem(event, session.startedAt);
     const timeline = store.getState().workbench.timeline;
+    const saved = setSessionAndList(nextSession, { skipTransitionCheck: true });
+    if (!saved) return false;
     store.batch(() => {
-      setSessionAndList(nextSession);
       if (feedItem !== null) {
         store.dispatch({ type: "tactical-feed/append", item: feedItem });
       }
@@ -96,8 +134,9 @@ export function createRepairSessionController(params: {
       : [];
     const timeline = state.workbench.timeline;
 
+    const saved = setSessionAndList(nextSession, { skipTransitionCheck: true });
+    if (!saved) return false;
     store.batch(() => {
-      setSessionAndList(nextSession);
       feedItems.forEach((item) => {
         store.dispatch({ type: "tactical-feed/append", item });
       });

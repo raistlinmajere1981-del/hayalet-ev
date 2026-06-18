@@ -575,9 +575,11 @@ export async function openCompanionOperationSettings(
       settings["capture"] = nextCapture;
     });
   };
-  [lensSelect, qualitySelect, photoFlashSelect, attachModeSelect, confirmationSelect].forEach((select) => {
-    select.addEventListener("change", saveCameraDefaults);
-  });
+  [lensSelect, qualitySelect, photoFlashSelect, attachModeSelect, confirmationSelect].forEach(
+    (select) => {
+      select.addEventListener("change", saveCameraDefaults);
+    }
+  );
 
   const saveAmbientButton = document.createElement("button");
   saveAmbientButton.type = "button";

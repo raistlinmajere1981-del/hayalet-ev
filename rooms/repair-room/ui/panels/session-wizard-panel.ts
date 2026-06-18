@@ -11,10 +11,11 @@ const STEP_LABELS: Record<string, string> = {
   "device-info": "Device",
   symptoms: "Symptoms",
   "ai-research": "Evidence",
+  "evidence-review": "Review",
   ready: "Start",
 };
 
-const STEP_ORDER = ["device-info", "symptoms", "ai-research", "ready"] as const;
+const STEP_ORDER = ["device-info", "symptoms", "ai-research", "evidence-review", "ready"] as const;
 const SYMPTOM_OPTIONS = [
   "No Power",
   "Boot Loop",
@@ -65,7 +66,38 @@ function getWizardHint(step: RepairUiState["wizard"]["currentStep"]): string {
   if (step === "ai-research") {
     return "Review the intake details, choose the AI slot, then start evidence research when ready.";
   }
+  if (step === "evidence-review") {
+    return "Review AI evidence before it becomes part of the repair session.";
+  }
   return "Review the evidence pack, then start the guided repair session.";
+}
+
+function getWizardStepLabel(stepId: string, text: TextFn): string {
+  if (stepId === "device-info") return text(["wizard", "steps", "deviceInfo"], "Device");
+  if (stepId === "symptoms") return text(["wizard", "steps", "symptoms"], "Symptoms");
+  if (stepId === "ai-research") return text(["wizard", "steps", "aiResearch"], "Evidence");
+  if (stepId === "evidence-review") return text(["wizard", "steps", "evidenceReview"], "Review");
+  if (stepId === "ready") return text(["wizard", "steps", "ready"], "Start");
+  return STEP_LABELS[stepId] ?? stepId;
+}
+
+function getLocalizedWizardHint(
+  step: RepairUiState["wizard"]["currentStep"],
+  text: TextFn
+): string {
+  if (step === "device-info") {
+    return text(["wizard", "hints", "deviceInfo"], getWizardHint(step));
+  }
+  if (step === "symptoms") {
+    return text(["wizard", "hints", "symptoms"], getWizardHint(step));
+  }
+  if (step === "ai-research") {
+    return text(["wizard", "hints", "aiResearch"], getWizardHint(step));
+  }
+  if (step === "evidence-review") {
+    return text(["wizard", "hints", "evidenceReview"], getWizardHint(step));
+  }
+  return text(["wizard", "hints", "ready"], getWizardHint(step));
 }
 
 function appendAiTargetSelect(
@@ -125,7 +157,7 @@ export function renderSessionWizardPanel(
     step.append(dot);
 
     const label = documentRef.createElement("span");
-    label.textContent = STEP_LABELS[stepId] ?? stepId;
+    label.textContent = getWizardStepLabel(stepId, text);
     step.append(label);
 
     stepper.append(step);
@@ -135,7 +167,7 @@ export function renderSessionWizardPanel(
 
   const hint = documentRef.createElement("div");
   hint.className = "repair-wizard-guidance";
-  hint.textContent = getWizardHint(wizard.currentStep);
+  hint.textContent = getLocalizedWizardHint(wizard.currentStep, text);
   body.append(hint);
 
   const form = documentRef.createElement("div");
@@ -179,6 +211,52 @@ export function renderSessionWizardPanel(
     evidenceSetup.className = "repair-wizard-form";
     appendAiTargetSelect(documentRef, evidenceSetup, state);
     body.append(evidenceSetup);
+  }
+
+  if (wizard.currentStep === "evidence-review") {
+    const review = documentRef.createElement("div");
+    review.className = "repair-wizard-form";
+
+    const pack = state.knowledgePack.pack;
+    const summary = documentRef.createElement("div");
+    summary.className = "repair-wizard-guidance";
+    summary.textContent =
+      pack === null
+        ? text(
+            ["wizard", "evidenceReview", "empty"],
+            "No evidence pack is available yet. Run evidence research again."
+          )
+        : text(
+            ["wizard", "evidenceReview", "summary"],
+            "{resources} resources, {failures} failure notes, {testPoints} test points."
+          )
+            .replace("{resources}", String(pack.resources.length))
+            .replace("{failures}", String(pack.commonFailures.length))
+            .replace("{testPoints}", String(pack.testPoints.length));
+    review.append(summary);
+
+    if (pack !== null) {
+      pack.resources.slice(0, 4).forEach((resource) => {
+        const row = documentRef.createElement("div");
+        row.className = "repair-research-item";
+        row.textContent = `${resource.kind}: ${resource.label} (${Math.round(resource.confidence * 100)}%)`;
+        review.append(row);
+      });
+      pack.commonFailures.slice(0, 3).forEach((failure) => {
+        const row = documentRef.createElement("div");
+        row.className = "repair-research-item";
+        row.textContent = `${text(["wizard", "evidenceReview", "failurePrefix"], "Failure")}: ${failure.label} (${Math.round(failure.confidence * 100)}%)`;
+        review.append(row);
+      });
+      pack.testPoints.slice(0, 3).forEach((point) => {
+        const row = documentRef.createElement("div");
+        row.className = "repair-research-item";
+        row.textContent = `${text(["wizard", "evidenceReview", "probePrefix"], "Probe")}: ${point.label} • ${point.expectedValue}${point.unit}`;
+        review.append(row);
+      });
+    }
+
+    body.append(review);
   }
 
   // -- Research progress list
@@ -230,20 +308,24 @@ export function renderSessionWizardPanel(
   nextButton.type = "button";
   nextButton.textContent =
     wizard.currentStep === "ready"
-      ? "Start repair"
-      : wizard.currentStep === "ai-research"
-        ? wizard.researchProgress.length > 0
-          ? "Review setup"
-          : "Start evidence research"
-        : wizard.currentStep === "symptoms"
-          ? "Find evidence"
-          : "Add symptoms";
+      ? text(["wizard", "actions", "startRepair"], "Start repair")
+      : wizard.currentStep === "evidence-review"
+        ? text(["wizard", "actions", "approveEvidence"], "Approve evidence")
+        : wizard.currentStep === "ai-research"
+          ? wizard.researchProgress.length > 0
+            ? text(["wizard", "actions", "reviewSetup"], "Review setup")
+            : text(["wizard", "actions", "startEvidenceResearch"], "Start evidence research")
+          : wizard.currentStep === "symptoms"
+            ? text(["wizard", "actions", "findEvidence"], "Find evidence")
+            : text(["wizard", "actions", "addSymptoms"], "Add symptoms");
   nextButton.dataset["repairAction"] =
     wizard.currentStep === "ready"
       ? "create-session"
-      : wizard.currentStep === "ai-research" && wizard.researchProgress.length === 0
-        ? "start-wizard-research"
-        : "advance-wizard";
+      : wizard.currentStep === "evidence-review"
+        ? "advance-wizard"
+        : wizard.currentStep === "ai-research" && wizard.researchProgress.length === 0
+          ? "start-wizard-research"
+          : "advance-wizard";
   actions.append(nextButton);
   body.append(actions);
 

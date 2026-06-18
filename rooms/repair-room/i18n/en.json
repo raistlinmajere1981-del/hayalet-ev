@@ -61,7 +61,29 @@
       "deviceInfo": "Device Info",
       "symptoms": "Symptoms",
       "aiResearch": "AI Research",
+      "evidenceReview": "Review",
       "ready": "Ready"
+    },
+    "hints": {
+      "deviceInfo": "Capture only what helps identify the board. Photos and evidence can be attached later.",
+      "symptoms": "Pick the main failure signs, then add what you saw, heard, or measured at the bench.",
+      "aiResearch": "Review the intake details, choose the AI slot, then start evidence research when ready.",
+      "evidenceReview": "Review AI evidence before it becomes part of the repair session.",
+      "ready": "Review the evidence pack, then start the guided repair session."
+    },
+    "actions": {
+      "addSymptoms": "Add symptoms",
+      "findEvidence": "Find evidence",
+      "startEvidenceResearch": "Start evidence research",
+      "reviewSetup": "Review setup",
+      "approveEvidence": "Approve evidence",
+      "startRepair": "Start repair"
+    },
+    "evidenceReview": {
+      "empty": "No evidence pack is available yet. Run evidence research again.",
+      "summary": "{resources} resources, {failures} failure notes, {testPoints} test points.",
+      "failurePrefix": "Failure",
+      "probePrefix": "Probe"
     }
   },
   "knowledgePack": {

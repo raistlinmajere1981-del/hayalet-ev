@@ -154,6 +154,7 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
       });
       const sessionController = createRepairSessionController({
         liveController,
+        log: api.log,
         storageController,
         store,
       });

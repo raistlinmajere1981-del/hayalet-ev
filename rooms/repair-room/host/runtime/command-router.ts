@@ -86,6 +86,7 @@ const WIZARD_STEP_ORDER: RepairWizardState["currentStep"][] = [
   "device-info",
   "symptoms",
   "ai-research",
+  "evidence-review",
   "ready",
 ];
 
@@ -158,6 +159,9 @@ export function createRepairCommandRouter(params: {
       case REPAIR_UI_COMMANDS.createSession: {
         const iso = nowIso();
         const generatedPack = aiController.readGeneratedKnowledgePack();
+        if (generatedPack !== null && !store.getState().wizard.evidenceReviewed) {
+          return { success: false, message: "evidence review is required before creating session" };
+        }
         const draftSession = createDraftSession(store.getState(), iso);
         const session: RepairSession =
           generatedPack === null
@@ -173,7 +177,7 @@ export function createRepairCommandRouter(params: {
           storageController.setSessionChatTurns(session.id, []);
         }
         store.batch(() => {
-          sessionController.setSessionAndList(session);
+          sessionController.setSessionAndList(session, { skipTransitionCheck: true });
           store.dispatch({ type: "session/activate", sessionId: session.id });
           if (storageController.isReady()) {
             store.dispatch({ type: "chat/set-turns", turns: [] });
@@ -187,6 +191,7 @@ export function createRepairCommandRouter(params: {
             ...store.getState().wizard,
             currentStep: "device-info",
             generatedKnowledgePackId: null,
+            evidenceReviewed: false,
             researchProgress: [],
             foundResources: [],
           },
@@ -223,7 +228,7 @@ export function createRepairCommandRouter(params: {
           if (wizardPatch !== null) {
             store.dispatch({ type: "wizard/patch-draft", patch: wizardPatch });
           }
-          sessionController.setSessionAndList(nextSession);
+          sessionController.setSessionAndList(nextSession, { skipTransitionCheck: true });
         });
         return { success: true };
       }
@@ -240,8 +245,11 @@ export function createRepairCommandRouter(params: {
           updatedAt: iso,
         };
         const wasActive = store.getState().activeSessionId === sessionId;
+        const saved = sessionController.setSessionAndList(nextSession);
+        if (!saved) {
+          return { success: false, message: "illegal session transition to archived" };
+        }
         store.batch(() => {
-          sessionController.setSessionAndList(nextSession);
           if (wasActive) {
             store.dispatch({ type: "session/activate", sessionId: null });
             setActiveSessionDerivedState(null);
@@ -276,13 +284,30 @@ export function createRepairCommandRouter(params: {
       }
       case REPAIR_UI_COMMANDS.advanceWizard: {
         const requested = safeString(flat["step"]);
-        const current = store.getState().wizard.currentStep;
+        const wizard = store.getState().wizard;
+        const current = wizard.currentStep;
         const currentIndex = Math.max(0, WIZARD_STEP_ORDER.indexOf(current));
         const fallbackStep =
           WIZARD_STEP_ORDER[Math.min(currentIndex + 1, WIZARD_STEP_ORDER.length - 1)] ?? "ready";
         const nextStep = WIZARD_STEP_ORDER.includes(requested as RepairWizardState["currentStep"])
           ? (requested as RepairWizardState["currentStep"])
           : fallbackStep;
+        if (
+          nextStep === "ready" &&
+          wizard.generatedKnowledgePackId !== null &&
+          !wizard.evidenceReviewed
+        ) {
+          store.dispatch({
+            type: "wizard/set",
+            wizard: {
+              ...wizard,
+              currentStep: "ready",
+              evidenceReviewed: true,
+            },
+          });
+          store.dispatch({ type: "phase/set", phase: "wizard-active" });
+          return { success: true };
+        }
         store.dispatchMany([
           { type: "wizard/advance", step: nextStep },
           {
@@ -303,6 +328,9 @@ export function createRepairCommandRouter(params: {
         const pack = packId === null ? null : aiController.getKnowledgePack(packId);
         if (session === null || pack === null)
           return { success: false, message: "session and pack are required" };
+        if (state.wizard.generatedKnowledgePackId === pack.id && !state.wizard.evidenceReviewed) {
+          return { success: false, message: "evidence review is required before attaching" };
+        }
         const nextSession: RepairSession = {
           ...session,
           status: "in-progress",
@@ -310,8 +338,11 @@ export function createRepairCommandRouter(params: {
           knowledgePack: pack,
           updatedAt: nowIso(),
         };
+        const saved = sessionController.setSessionAndList(nextSession);
+        if (!saved) {
+          return { success: false, message: "illegal session transition to in-progress" };
+        }
         store.batch(() => {
-          sessionController.setSessionAndList(nextSession);
           store.dispatch({
             type: "knowledge-pack/set",
             pack,
@@ -475,7 +506,7 @@ export function createRepairCommandRouter(params: {
             ),
           };
           store.batch(() => {
-            sessionController.setSessionAndList(nextSession);
+            sessionController.setSessionAndList(nextSession, { skipTransitionCheck: true });
             store.dispatch({ type: "workbench/set-focus-event", eventId: existingEventId });
           });
           return { success: true };
@@ -494,6 +525,7 @@ export function createRepairCommandRouter(params: {
         const success = sessionController.appendEventToActiveSession(event);
         if (success) {
           void aiController.requestMeasurementAiObservation(event);
+          void aiController.requestSessionRiskDetection();
         }
         return { success };
       }

@@ -1,4 +1,8 @@
 import {
+  REPAIR_AI_MIN_RESOURCE_CONFIDENCE,
+  REPAIR_AI_RETRY_BASE_DELAY_MS,
+  REPAIR_AI_RETRY_MAX_ATTEMPTS,
+  REPAIR_AI_RETRY_MAX_DELAY_MS,
   REPAIR_KNOWLEDGE_PACK_SCHEMA_VERSION,
   REPAIR_PROTOCOL_KEYS,
   REPAIR_PROTOCOL_SCENARIOS,
@@ -11,6 +15,7 @@ import type {
   RepairChatTurn,
   RepairCommonFailure,
   RepairImageRect,
+  RepairKnowledgeSpatialRef,
   RepairKnowledgePack,
   RepairKnowledgePackResource,
   RepairMeasurementEvent,
@@ -98,6 +103,29 @@ export interface RepairAiKnowledgeResearchResult {
   message?: string;
 }
 
+export interface RepairAiRiskDetectionRequest {
+  dispatchBridge?: RepairAiDispatchBridge;
+  locale: string;
+  operatorProfile: RepairOperatorProfile;
+  session: RepairSession;
+  targetSlot?: RepairAiTargetSlot;
+}
+
+export interface RepairAiRiskObservation {
+  severity: "low" | "medium" | "high" | "critical";
+  category: "operator-safety" | "equipment-reliability";
+  text: string;
+  region: RepairImageRect | null;
+  recommendedAction: string;
+  contextRefs: string[];
+}
+
+export interface RepairAiRiskDetectionResult {
+  success: boolean;
+  risks: RepairAiRiskObservation[];
+  message?: string;
+}
+
 function toRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && Array.isArray(value) === false
     ? (value as Record<string, unknown>)
@@ -111,6 +139,10 @@ const REPAIR_AI_ROOM_COMMAND_ALLOWLIST = new Set<RepairUiCommandName>([
   REPAIR_UI_COMMANDS.focusKnowledgeSpatialRef,
   REPAIR_UI_COMMANDS.focusOverlayEntity,
   REPAIR_UI_COMMANDS.promoteKnowledgeRegion,
+  REPAIR_UI_COMMANDS.toggleFreezeFrame,
+  REPAIR_UI_COMMANDS.jumpToEvent,
+  REPAIR_UI_COMMANDS.speakGuidance,
+  REPAIR_UI_COMMANDS.dismissAiMark,
 ]);
 
 function asNonEmptyString(value: unknown): string | null {
@@ -157,6 +189,37 @@ function asImageRect(value: unknown): RepairImageRect | null {
   };
 }
 
+function isValidLocalAssetSrc(src: string): boolean {
+  return (
+    src.startsWith("shared/assets/") || src.startsWith("main-functions/") || src.startsWith("i18n/")
+  );
+}
+
+function validateResourceSrc(src: string | null): string | null {
+  if (src === null) return null;
+  const trimmed = src.trim();
+  if (trimmed === "") return null;
+  if (isValidLocalAssetSrc(trimmed)) return trimmed;
+  return null;
+}
+
+function validateSpatialRect(
+  rect: RepairImageRect | null,
+  imageBounds: { widthPx: number; heightPx: number } | null
+): RepairImageRect | null {
+  if (rect === null) return null;
+  if (rect.xPx < 0 || rect.yPx < 0 || rect.widthPx <= 0 || rect.heightPx <= 0) return null;
+  if (imageBounds !== null) {
+    if (
+      rect.xPx + rect.widthPx > imageBounds.widthPx + 100 ||
+      rect.yPx + rect.heightPx > imageBounds.heightPx + 100
+    ) {
+      return null;
+    }
+  }
+  return rect;
+}
+
 function asConfidence(value: unknown, fallback = 0.5): number {
   const numeric = asFiniteNumber(value);
   if (numeric === null) return fallback;
@@ -166,6 +229,43 @@ function asConfidence(value: unknown, fallback = 0.5): number {
 function asNullableInteger(value: unknown): number | null {
   const numeric = asFiniteNumber(value);
   return numeric === null ? null : Math.max(1, Math.round(numeric));
+}
+
+function readSpatialRef(value: unknown): RepairKnowledgeSpatialRef | null {
+  const record = toRecord(value);
+  const label = asNonEmptyString(record["label"] ?? record["name"]);
+  if (label === null) return null;
+  const pointRecord = toRecord(record["point"] ?? record["pinAt"]);
+  const xPx = asFiniteNumber(pointRecord["xPx"] ?? record["xPx"]);
+  const yPx = asFiniteNumber(pointRecord["yPx"] ?? record["yPx"]);
+  const point = xPx === null || yPx === null ? null : { xPx, yPx };
+  const region = validateSpatialRect(asImageRect(record["region"] ?? record["rect"]), null);
+  if (point === null && region === null) return null;
+  const kind = asNonEmptyString(record["kind"]);
+  return {
+    kind:
+      kind === "region" || kind === "component" || kind === "rail" || kind === "board-coordinate"
+        ? kind
+        : region !== null
+          ? "region"
+          : "board-coordinate",
+    label,
+    point,
+    region,
+    componentId: asNonEmptyString(record["componentId"] ?? record["component"]),
+    rail: asNonEmptyString(record["rail"]),
+    linkedSnapshotId: asNonEmptyString(record["linkedSnapshotId"] ?? record["snapshotId"]),
+  };
+}
+
+function readSpatialRefs(value: unknown): NonNullable<RepairKnowledgePackResource["spatialRefs"]> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => readSpatialRef(entry))
+    .filter(
+      (entry): entry is NonNullable<RepairKnowledgePackResource["spatialRefs"]>[number] =>
+        entry !== null
+    );
 }
 
 function asResourceKind(value: unknown): RepairKnowledgePackResource["kind"] {
@@ -194,6 +294,7 @@ function slugifyRepairId(value: string, fallback: string): string {
 
 function readKnowledgeResources(value: unknown): RepairKnowledgePackResource[] {
   if (!Array.isArray(value)) return [];
+  const seenIds = new Set<string>();
   return value.flatMap((entry, index): RepairKnowledgePackResource[] => {
     const record = toRecord(entry);
     const label =
@@ -204,15 +305,21 @@ function readKnowledgeResources(value: unknown): RepairKnowledgePackResource[] {
     const id =
       asNonEmptyString(record["id"]) ??
       `${asResourceKind(record["kind"])}-${slugifyRepairId(label, String(index + 1))}`;
+    if (seenIds.has(id)) return [];
+    seenIds.add(id);
+    const rawSrc = asNonEmptyString(record["src"]) ?? asNonEmptyString(record["url"]);
+    const validatedSrc = validateResourceSrc(rawSrc);
+    const spatialRefs = readSpatialRefs(record["spatialRefs"]);
     return [
       {
         id,
         label,
         kind: asResourceKind(record["kind"] ?? record["type"]),
-        src: asNonEmptyString(record["src"]) ?? asNonEmptyString(record["url"]),
+        src: validatedSrc,
         source: asNonEmptyString(record["source"]) ?? "AI research",
         pages: asNullableInteger(record["pages"]),
         confidence: asConfidence(record["confidence"]),
+        ...(spatialRefs.length === 0 ? {} : { spatialRefs }),
       },
     ];
   });
@@ -428,9 +535,13 @@ function parseRepairAiKnowledgePack(rawText: string): RepairKnowledgePack | null
     modelNumber;
   if (modelNumber === null || deviceLabel === null) return null;
 
-  const resources = readKnowledgeResources(packRecord["resources"]);
-  const commonFailures = readCommonFailures(
+  const allResources = readKnowledgeResources(packRecord["resources"]);
+  const resources = allResources.filter((r) => r.confidence >= REPAIR_AI_MIN_RESOURCE_CONFIDENCE);
+  const allCommonFailures = readCommonFailures(
     packRecord["commonFailures"] ?? packRecord["knownFailures"]
+  );
+  const commonFailures = allCommonFailures.filter(
+    (f) => f.confidence >= REPAIR_AI_MIN_RESOURCE_CONFIDENCE
   );
   const testPoints = readTestPoints(packRecord["testPoints"]);
   const notes = asStringArray(packRecord["notes"]);
@@ -520,6 +631,35 @@ function buildRepairProjectRef(session: RepairSession | null): Record<string, un
         projectId: session.id,
         title: session.title,
       };
+}
+
+function isTransientAiError(message: string | undefined): boolean {
+  if (message === undefined) return false;
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("timeout") ||
+    lower.includes("rate limit") ||
+    lower.includes("network") ||
+    lower.includes("unavailable") ||
+    lower.includes("temporarily")
+  );
+}
+
+async function retryAiDispatch<T>(fn: () => Promise<T>, attempt = 0): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (attempt >= REPAIR_AI_RETRY_MAX_ATTEMPTS || !isTransientAiError(message)) {
+      throw error;
+    }
+    const delay = Math.min(
+      REPAIR_AI_RETRY_MAX_DELAY_MS,
+      REPAIR_AI_RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
+    );
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    return retryAiDispatch(fn, attempt + 1);
+  }
 }
 
 function buildRepairAiChatPrompt(request: RepairAiChatReplyRequest): string {
@@ -650,6 +790,39 @@ function buildRepairAiKnowledgeResearchPrompt(request: RepairAiKnowledgeResearch
   );
 }
 
+function buildRepairAiRiskDetectionPrompt(request: RepairAiRiskDetectionRequest): string {
+  return JSON.stringify(
+    {
+      schemaVersion: 1,
+      task: "repair-room-risk-detection",
+      locale: request.locale,
+      outputSchema: {
+        risks: [
+          {
+            severity: "low | medium | high | critical",
+            category: "operator-safety | equipment-reliability",
+            text: "short risk description (≤ 140 chars)",
+            region: "optional image-space rect {xPx,yPx,widthPx,heightPx}",
+            recommendedAction: "minimum action to make the bench safe",
+            contextRefs: ["supporting event/session refs"],
+          },
+        ],
+      },
+      constraints: [
+        "Return JSON only.",
+        "Distinguish operator-safety risks (high voltage, residual charge) from equipment-reliability risks (shorted rails, damaged traces).",
+        "Never suppress critical risks even if they appear redundant.",
+        "Recommend the minimum operator action required to make the bench safe.",
+        "Anchor risks to PCB regions when applicable.",
+      ],
+      session: summarizeSession(request.session),
+      operatorProfile: summarizeOperatorProfile(request.operatorProfile),
+    },
+    null,
+    2
+  );
+}
+
 export async function requestRepairAiChatReply(
   request: RepairAiChatReplyRequest
 ): Promise<RepairAiChatReplyResult> {
@@ -664,24 +837,30 @@ export async function requestRepairAiChatReply(
     };
   }
 
+  const dispatchBridge = request.dispatchBridge;
   const targetSlot = request.targetSlot ?? REPAIR_AI_TARGET_SLOT;
   const projectRef = buildRepairProjectRef(request.session);
   const bridgeResult = toRecord(
-    await request.dispatchBridge({
-      action: "message.sendWait",
-      timeoutMs: 120000,
-      toSlot: targetSlot,
-      ...(projectRef !== null ? { projectRef } : {}),
-      payload: {
-        page: "repair-room:chat",
-        text: buildRepairAiChatPrompt(request),
-        protocol: {
-          room: REPAIR_ROOM_ID,
-          scenario: REPAIR_PROTOCOL_SCENARIOS.measurementCoach,
-          protocolKey: REPAIR_PROTOCOL_KEYS.measurementCoach,
+    await retryAiDispatch(async () =>
+      dispatchBridge({
+        action: "message.sendWait",
+        timeoutMs: 120000,
+        toSlot: targetSlot,
+        ...(projectRef !== null ? { projectRef } : {}),
+        payload: {
+          page: "repair-room:chat",
+          text: buildRepairAiChatPrompt(request),
+          protocol: {
+            room: REPAIR_ROOM_ID,
+            scenario: REPAIR_PROTOCOL_SCENARIOS.measurementCoach,
+            protocolKey: REPAIR_PROTOCOL_KEYS.measurementCoach,
+          },
         },
-      },
-    })
+      })
+    ).catch((error: unknown) => ({
+      success: false,
+      message: error instanceof Error ? error.message : String(error),
+    }))
   );
 
   if (bridgeResult["success"] !== true) {
@@ -739,22 +918,28 @@ export async function requestRepairAiKnowledgeResearch(
     };
   }
 
+  const dispatchBridge = request.dispatchBridge;
   const targetSlot = request.targetSlot ?? REPAIR_AI_TARGET_SLOT;
   const bridgeResult = toRecord(
-    await request.dispatchBridge({
-      action: "message.sendWait",
-      timeoutMs: 120000,
-      toSlot: targetSlot,
-      payload: {
-        page: "repair-room:knowledge-research",
-        text: buildRepairAiKnowledgeResearchPrompt(request),
-        protocol: {
-          room: REPAIR_ROOM_ID,
-          scenario: REPAIR_PROTOCOL_SCENARIOS.knowledgeResearch,
-          protocolKey: REPAIR_PROTOCOL_KEYS.knowledgeResearch,
+    await retryAiDispatch(async () =>
+      dispatchBridge({
+        action: "message.sendWait",
+        timeoutMs: 120000,
+        toSlot: targetSlot,
+        payload: {
+          page: "repair-room:knowledge-research",
+          text: buildRepairAiKnowledgeResearchPrompt(request),
+          protocol: {
+            room: REPAIR_ROOM_ID,
+            scenario: REPAIR_PROTOCOL_SCENARIOS.knowledgeResearch,
+            protocolKey: REPAIR_PROTOCOL_KEYS.knowledgeResearch,
+          },
         },
-      },
-    })
+      })
+    ).catch((error: unknown) => ({
+      success: false,
+      message: error instanceof Error ? error.message : String(error),
+    }))
   );
 
   if (bridgeResult["success"] !== true) {
@@ -805,24 +990,30 @@ export async function requestRepairAiTacticalObservations(
     };
   }
 
+  const dispatchBridge = request.dispatchBridge;
   const targetSlot = request.targetSlot ?? REPAIR_AI_TARGET_SLOT;
   const projectRef = buildRepairProjectRef(request.session);
   const bridgeResult = toRecord(
-    await request.dispatchBridge({
-      action: "message.sendWait",
-      timeoutMs: 120000,
-      toSlot: targetSlot,
-      ...(projectRef !== null ? { projectRef } : {}),
-      payload: {
-        page: "repair-room:tactical-observer",
-        text: buildRepairAiTacticalPrompt(request),
-        protocol: {
-          room: REPAIR_ROOM_ID,
-          scenario: REPAIR_PROTOCOL_SCENARIOS.tacticalObserver,
-          protocolKey: REPAIR_PROTOCOL_KEYS.tacticalObserver,
+    await retryAiDispatch(async () =>
+      dispatchBridge({
+        action: "message.sendWait",
+        timeoutMs: 120000,
+        toSlot: targetSlot,
+        ...(projectRef !== null ? { projectRef } : {}),
+        payload: {
+          page: "repair-room:tactical-observer",
+          text: buildRepairAiTacticalPrompt(request),
+          protocol: {
+            room: REPAIR_ROOM_ID,
+            scenario: REPAIR_PROTOCOL_SCENARIOS.tacticalObserver,
+            protocolKey: REPAIR_PROTOCOL_KEYS.tacticalObserver,
+          },
         },
-      },
-    })
+      })
+    ).catch((error: unknown) => ({
+      success: false,
+      message: error instanceof Error ? error.message : String(error),
+    }))
   );
 
   if (bridgeResult["success"] !== true) {
@@ -854,5 +1045,126 @@ export async function requestRepairAiTacticalObservations(
   return {
     success: true,
     observations,
+  };
+}
+
+function parseRepairAiRiskObservations(rawText: string): RepairAiRiskObservation[] {
+  const parsed = extractJsonValue(rawText);
+  const entries = readObservationEntries(parsed);
+  return entries
+    .flatMap((entry): RepairAiRiskObservation[] => {
+      const record = toRecord(entry);
+      const rawSeverity = asNonEmptyString(record["severity"] ?? record["level"]);
+      if (rawSeverity === null) return [];
+      const severity = ["low", "medium", "high", "critical"].includes(rawSeverity.toLowerCase())
+        ? (rawSeverity.toLowerCase() as RepairAiRiskObservation["severity"])
+        : null;
+      if (severity === null) return [];
+      const rawCategory = asNonEmptyString(record["category"] ?? record["type"]);
+      const category =
+        rawCategory === "operator-safety" || rawCategory === "operator safety"
+          ? "operator-safety"
+          : "equipment-reliability";
+      const text =
+        asNonEmptyString(record["text"]) ??
+        asNonEmptyString(record["description"]) ??
+        asNonEmptyString(record["message"]);
+      const recommendedAction =
+        asNonEmptyString(record["recommendedAction"]) ??
+        asNonEmptyString(record["action"]) ??
+        asNonEmptyString(record["nextStep"]);
+      if (text === null || recommendedAction === null) return [];
+      return [
+        {
+          severity,
+          category,
+          text,
+          region: asImageRect(record["region"] ?? record["rect"]),
+          recommendedAction,
+          contextRefs: asStringArray(record["contextRefs"]),
+        },
+      ];
+    })
+    .slice(0, 5);
+}
+
+function hasExplicitEmptyRiskList(rawText: string): boolean {
+  const parsed = toRecord(extractJsonValue(rawText));
+  const risks = parsed["risks"] ?? parsed["observations"];
+  return Array.isArray(risks) && risks.length === 0;
+}
+
+export async function requestRepairAiRiskDetection(
+  request: RepairAiRiskDetectionRequest
+): Promise<RepairAiRiskDetectionResult> {
+  if (typeof request.dispatchBridge !== "function") {
+    return {
+      success: false,
+      risks: [],
+      message: "Repair AI dispatch bridge is unavailable.",
+    };
+  }
+
+  const dispatchBridge = request.dispatchBridge;
+  const targetSlot = request.targetSlot ?? REPAIR_AI_TARGET_SLOT;
+  const projectRef = buildRepairProjectRef(request.session);
+  const bridgeResult = toRecord(
+    await retryAiDispatch(async () =>
+      dispatchBridge({
+        action: "message.sendWait",
+        timeoutMs: 120000,
+        toSlot: targetSlot,
+        ...(projectRef !== null ? { projectRef } : {}),
+        payload: {
+          page: "repair-room:risk-detector",
+          text: buildRepairAiRiskDetectionPrompt(request),
+          protocol: {
+            room: REPAIR_ROOM_ID,
+            scenario: REPAIR_PROTOCOL_SCENARIOS.riskDetector,
+            protocolKey: REPAIR_PROTOCOL_KEYS.riskDetector,
+          },
+        },
+      })
+    ).catch((error: unknown) => ({
+      success: false,
+      message: error instanceof Error ? error.message : String(error),
+    }))
+  );
+
+  if (bridgeResult["success"] !== true) {
+    return {
+      success: false,
+      risks: [],
+      message: asNonEmptyString(bridgeResult["message"]) ?? "Repair AI risk detection failed.",
+    };
+  }
+
+  const replyText = readBridgeReplyText(bridgeResult);
+  if (replyText === null) {
+    return {
+      success: false,
+      risks: [],
+      message: "Repair AI risk detection did not return readable text.",
+    };
+  }
+
+  const risks = parseRepairAiRiskObservations(replyText);
+  if (risks.length === 0) {
+    if (hasExplicitEmptyRiskList(replyText)) {
+      return {
+        success: true,
+        risks: [],
+      };
+    }
+    return {
+      success: false,
+      risks: [],
+      message: "Repair AI risk detection did not return observations.",
+    };
+  }
+
+  return {
+    success: true,
+    risks,
   };
 }

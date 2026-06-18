@@ -14,4 +14,5 @@ export const MOCK_REPAIR_WIZARD_INITIAL: RepairWizardState = {
   researchProgress: [],
   foundResources: [],
   generatedKnowledgePackId: null,
+  evidenceReviewed: false,
 };

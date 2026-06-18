@@ -61,7 +61,29 @@
       "deviceInfo": "Cihaz Bilgisi",
       "symptoms": "Semptomlar",
       "aiResearch": "AI Araştırma",
+      "evidenceReview": "İnceleme",
       "ready": "Hazır"
+    },
+    "hints": {
+      "deviceInfo": "Yalnızca kartı tanımlamaya yarayan bilgileri gir. Fotoğraf ve kanıtlar sonra eklenebilir.",
+      "symptoms": "Ana arıza belirtilerini seç, ardından tezgahta gördüğün, duyduğun veya ölçtüğün bilgileri ekle.",
+      "aiResearch": "Giriş bilgilerini kontrol et, AI slotunu seç ve hazır olduğunda kanıt araştırmasını başlat.",
+      "evidenceReview": "AI kanıtlarını oturuma eklemeden önce incele.",
+      "ready": "Kanıt paketini gözden geçir ve rehberli tamir oturumunu başlat."
+    },
+    "actions": {
+      "addSymptoms": "Semptom ekle",
+      "findEvidence": "Kanıt bul",
+      "startEvidenceResearch": "Kanıt araştırmasını başlat",
+      "reviewSetup": "Kurulumu gözden geçir",
+      "approveEvidence": "Kanıtları onayla",
+      "startRepair": "Tamiri başlat"
+    },
+    "evidenceReview": {
+      "empty": "Henüz kanıt paketi yok. Kanıt araştırmasını tekrar çalıştır.",
+      "summary": "{resources} kaynak, {failures} arıza notu, {testPoints} test noktası.",
+      "failurePrefix": "Arıza",
+      "probePrefix": "Prob"
     }
   },
   "knowledgePack": {
