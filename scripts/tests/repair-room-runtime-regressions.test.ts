@@ -556,7 +556,10 @@ test("repair-room research uses selected AI slot for live knowledge-pack dispatc
   assert.equal(state.wizard.currentStep, "evidence-review");
   assert.equal(state.wizard.generatedKnowledgePackId, "ai-bn44-00932a");
   assert.equal(state.wizard.foundResources[0]?.id, "candidate-schematic");
-  assert.equal(state.wizard.researchProgress.every((item) => item.completed), true);
+  assert.equal(
+    state.wizard.researchProgress.every((item) => item.completed),
+    true
+  );
   assert.deepEqual(state.wizard.draft.selectedEvidenceResourceIds, ["candidate-schematic"]);
   assert.deepEqual(state.wizard.draft.selectedFailureIds, ["startup-resistor-open"]);
   assert.deepEqual(state.wizard.draft.selectedTestPointIds, ["tp-5v-stby-ai"]);
@@ -630,7 +633,10 @@ test("repair-room wizard v2 gates tabs, accepts unknown fields, and skips failed
   assert.equal(skipped.currentStep, "ready");
   assert.equal(skipped.draft.researchSkipped, true);
   assert.equal(runtime.getStateSnapshot().state.phase, "wizard-active");
-  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ready" }).success, true);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ready" }).success,
+    true
+  );
   assert.equal(runtime.getStateSnapshot().state.phase, "wizard-active");
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, true);
 
@@ -745,7 +751,10 @@ test("repair-room persists selected evidence separately from the v2 session reco
   );
   await runtime.flushStorage();
   assert.equal(storage.readEvidenceSelectionRecord(storedSession.id), null);
-  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ready" }).success, true);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ready" }).success,
+    true
+  );
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, true);
   await runtime.flushStorage();
 
@@ -754,7 +763,8 @@ test("repair-room persists selected evidence separately from the v2 session reco
   assert.equal(activeSession?.schemaVersion, 2);
   assert.equal(activeSession?.knowledgePackId, "ai-selection-pack");
   assert.equal(storage.readEvidenceSelectionRecord(storedSession.id), null);
-  const selection = activeSession === undefined ? null : storage.readEvidenceSelectionRecord(activeSession.id);
+  const selection =
+    activeSession === undefined ? null : storage.readEvidenceSelectionRecord(activeSession.id);
   assert.deepEqual(selection?.selection.selectedEvidenceResourceIds, ["res-a"]);
   assert.deepEqual(selection?.selection.selectedFailureIds, []);
   assert.deepEqual(selection?.selection.selectedTestPointIds, ["tp-a"]);
@@ -796,7 +806,49 @@ test("repair-room hydrate ignores legacy v1 room-local session records", async (
   const state = runtime.getStateSnapshot().state;
   assert.equal(state.storage.sessionCount, 1);
   assert.equal(state.activeSessionId, "repair-v2-session");
-  assert.equal(state.sessionList.some((session) => session.id === "repair-v1-session"), false);
+  assert.equal(
+    state.sessionList.some((session) => session.id === "repair-v1-session"),
+    false
+  );
+
+  runtime.dispose();
+});
+
+test("repair-room hydrate keeps the fallback session list when storage has no v2 sessions", async () => {
+  const v1Session = {
+    ...cloneJson(MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID]),
+    id: "repair-v1-only-session",
+    schemaVersion: 1,
+    title: "Legacy v1 only session",
+    updatedAt: "2026-06-13T13:00:00.000Z",
+  } as RepairSession;
+  delete (v1Session.deviceInfo as Partial<RepairSession["deviceInfo"]>).deviceType;
+
+  const storage = createMemoryRepairStorage([createStoredRepairRecord(v1Session, [], 1)]);
+  const runtime = createRepairRoomHostRuntime({
+    autoHydrateStorage: false,
+    io: createMemoryRepairIo(),
+    storage,
+  }).activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  const before = runtime.getStateSnapshot().state;
+  assert.equal(before.sessionList.length > 0, true);
+  assert.equal(before.activeSessionId, MOCK_REPAIR_ACTIVE_SESSION_ID);
+
+  await runtime.hydrateStorage();
+
+  const after = runtime.getStateSnapshot().state;
+  assert.equal(after.storage.status, "ready");
+  assert.equal(after.storage.sessionCount, 0);
+  assert.equal(after.activeSessionId, MOCK_REPAIR_ACTIVE_SESSION_ID);
+  assert.equal(after.sessionList.length, before.sessionList.length);
+  assert.equal(
+    after.sessionList.some((session) => session.id === "repair-v1-only-session"),
+    false
+  );
 
   runtime.dispose();
 });

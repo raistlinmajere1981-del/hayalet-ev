@@ -211,19 +211,22 @@ export function createRepairStorageController(params: {
         const sessionList = buildSessionList(sessions);
         const activeSession = records[0]?.session ?? null;
         store.batch(() => {
-          store.dispatch({
-            type: "session/hydrate",
-            activeSessionId: activeSession?.id ?? null,
-            sessions,
-            sessionList,
-          });
-          store.dispatch({
-            type: "chat/set-turns",
-            turns:
-              activeSession === null
-                ? []
-                : (storedChatTurnsBySessionId.get(activeSession.id) ?? []),
-          });
+          if (records.length > 0) {
+            store.dispatch({
+              type: "session/hydrate",
+              activeSessionId: activeSession?.id ?? null,
+              sessions,
+              sessionList,
+            });
+            store.dispatch({
+              type: "chat/set-turns",
+              turns:
+                activeSession === null
+                  ? []
+                  : (storedChatTurnsBySessionId.get(activeSession.id) ?? []),
+            });
+            onHydratedActiveSession(activeSession);
+          }
           if (storedOperatorProfile !== null) {
             store.dispatch({
               type: "operator-profile/set",
@@ -231,7 +234,6 @@ export function createRepairStorageController(params: {
               profile: storedOperatorProfile.profile,
             });
           }
-          onHydratedActiveSession(activeSession);
           store.dispatch({
             type: "storage/set",
             storage: createRoomStorageState("ready", {
