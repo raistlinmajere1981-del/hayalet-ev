@@ -19,6 +19,8 @@
 | `bash`                       | `hev_fs_bash` — MCP context gerektiren durumlar  |
 
 > **Built-in Kullanımı:** Hayalet Ev MCP karşılığı yoksa, MCP erişilemiyorsa veya built-in tool açıkça ek yetenek sağlıyorsa fallback olarak tercih et.
+>
+> **AI-facing meta tool'lar:** `hev_assistant_doctor` sağlık/context snapshot için, `hev_assistant_verify_completion` ise görev-sonu kanıt/gap raporu için kullanılır. Bu tool'lar `hev_dev_check_syntax` ve test/build kontrollerinin yerine geçmez; sonuçları tek structured raporda toplar.
 
 ### Dosya Düzenleme Akışı — 3 Adım, ZORUNLU
 
@@ -28,6 +30,15 @@
    VEYA hev_dev_edit_lines{ ... }        → Satır bazlı düzenleme
 3. hev_dev_check_syntax{ file_path }     → Doğrula - ZORUNLU
 ```
+
+### Görev Sonu Verified Completion — ZORUNLU
+
+Kod/dosya değişikliği yapılan işlerde final raporundan önce:
+
+1. `hev_assistant_verify_completion{ changed_files, evidence }` çağrılır.
+2. `evidence` içine çalıştırılan syntax/test/build kontrolleri yazılır.
+3. `blocking` gap varsa tamamlandı raporu verilmez; önce gap kapatılır veya kullanıcıya açıkça bildirilir.
+4. Bu kontrol `hev_dev_check_syntax` zorunluluğunu kaldırmaz; onun üstünde raporlama katmanıdır.
 
 ### Edit Tool Seçimi — Tier Sistemi
 
@@ -201,8 +212,11 @@ Base — her session, düşük maliyet:
 
 1. `hev_mcp_health` → MCP çalışıyor mu? Versiyon ve tool sayısı
 2. `hev_memory_bootstrap_policy{ namespace: "policy" }` → Sadece session başında 1 kez
-3. Gerektiğinde — `hev_list_tools` → MCP tool kullanacaksan
-4. Gerektiğinde — `hev_suggest_tool{ intent }` → Intent belirsizse
+3. Gerektiğinde — `hev_assistant_doctor{ include_runtime: true, include_git: true }` → MCP aktifken AI sağlık/context snapshot
+4. Gerektiğinde — `hev_list_tools` → MCP tool kullanacaksan
+5. Gerektiğinde — `hev_suggest_tool{ intent }` → Intent belirsizse
+
+> `hev_assistant_doctor` MCP'nin kendisi çalışıyorsa tercih edilir; MCP erişilemiyorsa `npm run mode:status`, `npm run whereami`, `npm run mcp:test` fallback'tır.
 
 Koşullu adımlar:
 
@@ -622,4 +636,4 @@ Projede **TypeScript Language Service** doğrudan entegre edilmiştir — `ts.cr
 ---
 
 **Versiyon:** Runtime'da `hev_mcp_health` ile kontrol et
-**Son Güncelleme:** 2026-03-04
+**Son Güncelleme:** 2026-06-19

@@ -1,4 +1,3 @@
-/* ── Session Rail ────────────────────────────────────────────────── */
 .repair-session-rail-body {
   display: flex;
   flex-direction: column;
@@ -7,23 +6,12 @@
 
 .repair-panel--session-wizard-embedded {
   flex: 0 0 auto;
-  border: var(--repair-px-1) solid var(--repair-border-muted);
-  border-radius: var(--repair-radius-sm);
-  background: var(--repair-surface-faint);
-}
-
-.repair-panel--session-wizard-embedded > .repair-panel__header {
-  min-height: var(--repair-px-32);
-  padding: var(--repair-sp-2);
-}
-
-.repair-panel--session-wizard-embedded > .repair-panel__header .repair-panel__icon-btn {
-  display: none;
+  background: transparent;
 }
 
 .repair-panel--session-wizard-embedded > .repair-panel__body {
   overflow: visible;
-  padding: var(--repair-sp-2);
+  padding: 0;
 }
 
 .repair-session-list {

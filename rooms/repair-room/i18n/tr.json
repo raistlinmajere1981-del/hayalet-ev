@@ -13,7 +13,7 @@
     "rail": {
       "eyebrow": "TEZGÂH",
       "title": "Oturumlar",
-      "newSession": "+ Yeni Oturum",
+      "newSession": "+ Alım",
       "searchPlaceholder": "Oturumlarda ara…",
       "viewArchive": "Arşivi Aç",
       "activeBadge": "Aktif",
@@ -55,21 +55,21 @@
     }
   },
   "wizard": {
-    "eyebrow": "OTURUM SİHİRBAZI",
-    "title": "Yeni Oturum",
+    "eyebrow": "TAMİR",
+    "title": "Tamir Alımı",
     "steps": {
-      "deviceInfo": "Cihaz Bilgisi",
-      "symptoms": "Semptomlar",
-      "aiResearch": "AI Araştırma",
+      "deviceInfo": "Cihaz",
+      "symptoms": "Semptom",
+      "aiResearch": "Araştırma",
       "evidenceReview": "İnceleme",
       "ready": "Hazır"
     },
     "hints": {
-      "deviceInfo": "Yalnızca kartı tanımlamaya yarayan bilgileri gir. Fotoğraf ve kanıtlar sonra eklenebilir.",
-      "symptoms": "Ana arıza belirtilerini seç, ardından tezgahta gördüğün, duyduğun veya ölçtüğün bilgileri ekle.",
-      "aiResearch": "Giriş bilgilerini kontrol et, AI slotunu seç ve hazır olduğunda kanıt araştırmasını başlat.",
-      "evidenceReview": "AI kanıtlarını oturuma eklemeden önce incele.",
-      "ready": "Kanıt paketini gözden geçir ve rehberli tamir oturumunu başlat."
+      "deviceInfo": "Cihaz türü, marka, model ve kart kodunu tamamla; bilinmeyenler için Bilinmiyor seç.",
+      "symptoms": "Varsayılan semptomları seç veya kendi semptomunu ekle.",
+      "aiResearch": "AI slotunu seç, araştırmayı başlat veya evidence pack olmadan devam et.",
+      "evidenceReview": "Oturum arşivine alınacak kaynakları, arızaları ve test noktalarını seç.",
+      "ready": "Cihaz, semptom ve araştırma özetini kontrol edip tamiri başlat."
     },
     "actions": {
       "addSymptoms": "Semptom ekle",
@@ -80,10 +80,13 @@
       "startRepair": "Tamiri başlat"
     },
     "evidenceReview": {
-      "empty": "Henüz kanıt paketi yok. Kanıt araştırmasını tekrar çalıştır.",
+      "empty": "Evidence pack yok. Araştırmayı tekrar çalıştır veya AI olmadan devam et.",
       "summary": "{resources} kaynak, {failures} arıza notu, {testPoints} test noktası.",
       "failurePrefix": "Arıza",
       "probePrefix": "Prob"
+    },
+    "research": {
+      "bridgeWarning": "AI bridge çalışmadı veya sonuç dönmedi. Tekrar dene ya da AI olmadan devam et."
     }
   },
   "knowledgePack": {

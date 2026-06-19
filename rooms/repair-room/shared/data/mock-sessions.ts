@@ -29,6 +29,7 @@ export const MOCK_REPAIR_SESSIONS: Record<string, RepairSession> = {
     status: "in-progress",
     riskLevel: "medium",
     deviceInfo: {
+      deviceType: "PSU / power board",
       deviceLabel: "ATX Power Supply",
       manufacturer: "Samsung",
       model: "BN44-00932A",
@@ -57,6 +58,7 @@ export const MOCK_REPAIR_SESSIONS: Record<string, RepairSession> = {
     status: "archived",
     riskLevel: "high",
     deviceInfo: {
+      deviceType: "TV main board",
       deviceLabel: "LG OLED 55C9 Main Board",
       manufacturer: "LG",
       model: "EBT66239903",
@@ -84,6 +86,7 @@ export const MOCK_REPAIR_SESSIONS: Record<string, RepairSession> = {
     status: "archived",
     riskLevel: "medium",
     deviceInfo: {
+      deviceType: "Game console",
       deviceLabel: "Xbox Series X HDMI Repair",
       manufacturer: "Microsoft",
       model: "1882",
@@ -111,6 +114,7 @@ export const MOCK_REPAIR_SESSIONS: Record<string, RepairSession> = {
     status: "archived",
     riskLevel: "low",
     deviceInfo: {
+      deviceType: "Laptop anakart",
       deviceLabel: "Lenovo ThinkPad T14 Gen2",
       manufacturer: "Lenovo",
       model: "20W0-CTO1WW",

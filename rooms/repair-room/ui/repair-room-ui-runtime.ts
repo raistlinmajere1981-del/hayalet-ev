@@ -771,7 +771,9 @@ export function createRepairRoomUiRuntime() {
     if (!(activeElement instanceof HTMLElement) || !panel.contains(activeElement)) return false;
 
     const action = activeElement.dataset["repairAction"];
-    return action === "wizard-field" || action === "wizard-symptom";
+    return (
+      action === "wizard-field" || action === "wizard-suggestion" || action === "wizard-symptom"
+    );
   }
 
   function syncPanel(
@@ -941,13 +943,34 @@ export function createRepairRoomUiRuntime() {
   function flushWizardFields(root: HTMLElement): void {
     root
       .querySelectorAll<
-        HTMLInputElement | HTMLTextAreaElement
+        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
       >("[data-repair-action='wizard-field']")
       .forEach((fieldElement) => {
         const field = fieldElement.dataset["wizardField"];
         if (field === undefined || field.trim() === "") return;
         requestRuntime.updateSession({ wizardField: field, value: fieldElement.value });
       });
+  }
+
+  function collectEvidenceSelection(root: HTMLElement): {
+    selectedEvidenceResourceIds: string[];
+    selectedFailureIds: string[];
+    selectedTestPointIds: string[];
+  } {
+    const readCheckedIds = (kind: string) =>
+      Array.from(
+        root.querySelectorAll<HTMLInputElement>(
+          `[data-repair-action='evidence-selection'][data-evidence-kind='${kind}']`
+        )
+      )
+        .filter((input) => input.checked)
+        .map((input) => input.dataset["evidenceId"])
+        .filter((value): value is string => typeof value === "string" && value.trim() !== "");
+    return {
+      selectedEvidenceResourceIds: readCheckedIds("resource"),
+      selectedFailureIds: readCheckedIds("failure"),
+      selectedTestPointIds: readCheckedIds("test-point"),
+    };
   }
 
   function ensurePersistentShell(mount: HTMLElement): RepairPersistentShell {
@@ -1504,6 +1527,55 @@ export function createRepairRoomUiRuntime() {
           });
           break;
         }
+        case "wizard-suggestion": {
+          const field = el.dataset["wizardField"];
+          const value = el.dataset["value"];
+          if (field === undefined || value === undefined) break;
+          const wrapper = el.closest(".repair-wizard-field");
+          const input = wrapper?.querySelector<HTMLInputElement>(
+            `[data-repair-action='wizard-field'][data-wizard-field='${field}']`
+          );
+          if (input !== undefined && input !== null) {
+            input.value = value;
+          }
+          requestRuntime.updateSession({ wizardField: field, value });
+          el.blur();
+          break;
+        }
+        case "add-custom-symptom": {
+          const input = root.querySelector<HTMLInputElement>(
+            "[data-repair-input='wizard-custom-symptom']"
+          );
+          const symptom = input?.value.trim() ?? "";
+          if (symptom === "") break;
+          const primarySymptoms = Array.from(
+            new Set([...state.wizard.draft.primarySymptoms, symptom])
+          );
+          const customSymptoms = Array.from(
+            new Set([...state.wizard.draft.customSymptoms, symptom])
+          );
+          requestRuntime.updateSession({
+            wizardDraft: {
+              primarySymptoms,
+              customSymptoms,
+            },
+          });
+          if (input) input.value = "";
+          break;
+        }
+        case "remove-wizard-symptom": {
+          const symptom = el.dataset["symptom"];
+          if (!symptom) break;
+          requestRuntime.updateSession({
+            wizardDraft: {
+              primarySymptoms: state.wizard.draft.primarySymptoms.filter(
+                (item) => item !== symptom
+              ),
+              customSymptoms: state.wizard.draft.customSymptoms.filter((item) => item !== symptom),
+            },
+          });
+          break;
+        }
         case "start-wizard-research": {
           flushWizardFields(root);
           const select = root.querySelector<HTMLSelectElement>(
@@ -1511,6 +1583,11 @@ export function createRepairRoomUiRuntime() {
           );
           const targetSlot = readAiTargetSlot(select?.value);
           requestRuntime.startKnowledgeResearch(targetSlot === null ? {} : { targetSlot });
+          break;
+        }
+        case "skip-wizard-research": {
+          flushWizardFields(root);
+          requestRuntime.skipKnowledgeResearch();
           break;
         }
         case "advance-wizard": {
@@ -1591,6 +1668,9 @@ export function createRepairRoomUiRuntime() {
       if (el.dataset["repairAction"] === "wizard-field") {
         const field = el.dataset["wizardField"];
         if (field) requestRuntime.updateSession({ wizardField: field, value: el.value });
+      }
+      if (el.dataset["repairAction"] === "evidence-selection") {
+        requestRuntime.updateEvidenceSelection(collectEvidenceSelection(root));
       }
       if (el.dataset["repairAction"] === "set-ai-target-slot") {
         const targetSlot = readAiTargetSlot(el.value);

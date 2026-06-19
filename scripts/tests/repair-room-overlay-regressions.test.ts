@@ -253,6 +253,7 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   const workbenchPanel = readFileSync(join(uiRoot, "panels/workbench-stage-panel.ts"), "utf8");
   const chatPanel = readFileSync(join(uiRoot, "panels/chat-panel.ts"), "utf8");
   const wizardPanel = readFileSync(join(uiRoot, "panels/session-wizard-panel.ts"), "utf8");
+  const sessionRailPanel = readFileSync(join(uiRoot, "panels/session-rail-panel.ts"), "utf8");
   const feedPanel = readFileSync(join(uiRoot, "panels/tactical-feed-panel.ts"), "utf8");
   const roomSyncPanel = readFileSync(join(uiRoot, "panels/room-sync-panel.ts"), "utf8");
   const overlayStage = readFileSync(join(uiRoot, "overlay/overlay-stage.ts"), "utf8");
@@ -347,6 +348,7 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(runtime, /case "End"/);
   assert.match(runtime, /operator-profile-tab/);
   assert.match(runtime, /wizard-field/);
+  assert.match(runtime, /wizard-suggestion/);
   assert.match(timelinePanel, /repair-timeline__playhead/);
   assert.match(timelinePanel, /repair-timeline__tick/);
   assert.match(timelinePanel, /repair-timeline__thumb/);
@@ -412,7 +414,25 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(mockKnowledge, /spatialRef/);
   assert.match(mockEvents, /lifecycleState/);
   assert.match(wizardPanel, /repair-wizard-field__input/);
+  assert.match(wizardPanel, /repair-wizard-suggestions/);
+  assert.match(wizardPanel, /wizard-suggestion/);
   assert.match(wizardPanel, /wizard-symptom/);
+  assert.match(wizardPanel, /DEVICE_TYPE_OPTIONS/);
+  assert.match(wizardPanel, /add-custom-symptom/);
+  assert.match(wizardPanel, /remove-wizard-symptom/);
+  assert.match(wizardPanel, /skip-wizard-research/);
+  assert.match(wizardPanel, /evidence-selection/);
+  assert.match(wizardPanel, /Tamiri başlat/);
+  assert.match(wizardPanel, /\"Cihaz\"/);
+  assert.match(wizardPanel, /\"Semptom\"/);
+  assert.match(wizardPanel, /\"Araştırma\"/);
+  assert.match(wizardPanel, /\"İnceleme\"/);
+  assert.match(wizardPanel, /\"Hazır\"/);
+  assert.doesNotMatch(wizardPanel, /repair-panel-actions/);
+  assert.doesNotMatch(wizardPanel, /createElement\("datalist"\)/);
+  assert.doesNotMatch(wizardPanel, /Yeni Oturum|New Session/);
+  assert.doesNotMatch(sessionRailPanel, /Session Rail/);
+  assert.match(sessionRailPanel, /noPanelHeader: true/);
   assert.match(chatPanel, /composerDraft/);
   assert.match(workbenchPanel, /set-hands-free-mode/);
   assert.match(workbenchPanel, /toggle-ambient-listener/);
@@ -571,7 +591,10 @@ test("repair-room hands-free controls stay action-oriented without duplicating t
     setupControlsSurface,
     (element) => element.dataset["repairAction"] === "operator-profile-tab"
   );
-  assert.equal(setupTabs.some((element) => element.dataset["tabId"] === "controls"), true);
+  assert.equal(
+    setupTabs.some((element) => element.dataset["tabId"] === "controls"),
+    true
+  );
   assert.ok(
     findRepairFakeElements(
       setupControlsSurface,

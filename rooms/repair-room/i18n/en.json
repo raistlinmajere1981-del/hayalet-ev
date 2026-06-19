@@ -13,7 +13,7 @@
     "rail": {
       "eyebrow": "WORKBENCH",
       "title": "Sessions",
-      "newSession": "+ New Session",
+      "newSession": "+ Intake",
       "searchPlaceholder": "Search sessions…",
       "viewArchive": "View Archive",
       "activeBadge": "Active",
@@ -55,21 +55,21 @@
     }
   },
   "wizard": {
-    "eyebrow": "SESSION WIZARD",
-    "title": "New Session",
+    "eyebrow": "REPAIR",
+    "title": "Repair Intake",
     "steps": {
-      "deviceInfo": "Device Info",
-      "symptoms": "Symptoms",
-      "aiResearch": "AI Research",
+      "deviceInfo": "Device",
+      "symptoms": "Symptom",
+      "aiResearch": "Research",
       "evidenceReview": "Review",
       "ready": "Ready"
     },
     "hints": {
-      "deviceInfo": "Capture only what helps identify the board. Photos and evidence can be attached later.",
-      "symptoms": "Pick the main failure signs, then add what you saw, heard, or measured at the bench.",
-      "aiResearch": "Review the intake details, choose the AI slot, then start evidence research when ready.",
-      "evidenceReview": "Review AI evidence before it becomes part of the repair session.",
-      "ready": "Review the evidence pack, then start the guided repair session."
+      "deviceInfo": "Complete device type, maker, model, and board code; choose Unknown when needed.",
+      "symptoms": "Pick default symptoms or add your own symptom.",
+      "aiResearch": "Choose an AI slot, start research, or continue without an evidence pack.",
+      "evidenceReview": "Choose the resources, failures, and test points saved to the session archive.",
+      "ready": "Check the device, symptom, and research summary before starting repair."
     },
     "actions": {
       "addSymptoms": "Add symptoms",
@@ -80,10 +80,13 @@
       "startRepair": "Start repair"
     },
     "evidenceReview": {
-      "empty": "No evidence pack is available yet. Run evidence research again.",
+      "empty": "No evidence pack is available. Run research again or continue without AI.",
       "summary": "{resources} resources, {failures} failure notes, {testPoints} test points.",
       "failurePrefix": "Failure",
       "probePrefix": "Probe"
+    },
+    "research": {
+      "bridgeWarning": "The AI bridge did not return a result. Retry or continue without AI."
     }
   },
   "knowledgePack": {

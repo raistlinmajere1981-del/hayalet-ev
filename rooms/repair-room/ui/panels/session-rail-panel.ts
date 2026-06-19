@@ -40,10 +40,11 @@ export function renderSessionRailPanel(
 
   return createRepairPanel(documentRef, {
     panelId: "session-rail",
-    eyebrow: text(["sessionRail", "eyebrow"], "SESSIONS"),
-    title: text(["sessionRail", "title"], "Session Rail"),
+    eyebrow: "",
+    title: "",
     statusDot: state.sessions.activeId !== null ? "live" : "idle",
     collapsed: state.layout.collapsedPanels["session-rail"],
+    noPanelHeader: true,
     body,
   });
 }

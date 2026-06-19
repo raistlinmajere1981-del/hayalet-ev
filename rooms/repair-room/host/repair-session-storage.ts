@@ -6,6 +6,7 @@ import {
 } from "../shared/host/repair-paths.js";
 import type {
   RepairChatTurn,
+  RepairEvidenceSelection,
   RepairOperatorProfile,
   RepairSession,
   RepairSessionListItem,
@@ -29,8 +30,16 @@ export interface RepairStoredSessionRecord {
   chatTurns: RepairChatTurn[];
   roomId: string;
   savedAt: string;
-  schemaVersion: 1;
+  schemaVersion: 2;
   session: RepairSession;
+}
+
+export interface RepairStoredEvidenceSelectionRecord {
+  roomId: string;
+  savedAt: string;
+  schemaVersion: 2;
+  selection: RepairEvidenceSelection;
+  sessionId: string;
 }
 
 export interface RepairStoredOperatorProfileRecord {
@@ -49,11 +58,19 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 function asRepairSession(value: unknown): RepairSession | null {
   const record = asRecord(value);
   return record !== null &&
+    record["schemaVersion"] === 2 &&
     typeof record["id"] === "string" &&
     typeof record["roomId"] === "string" &&
+    typeof asRecord(record["deviceInfo"])?.["deviceType"] === "string" &&
     Array.isArray(record["events"])
     ? (value as RepairSession)
     : null;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function asRepairChatTurns(value: unknown): RepairChatTurn[] {
@@ -109,7 +126,7 @@ function asStoredSessionRecord(value: unknown): RepairStoredSessionRecord | null
       chatTurns: [],
       roomId: REPAIR_ROOM_ID,
       savedAt: rawSession.updatedAt,
-      schemaVersion: 1,
+      schemaVersion: 2,
       session: rawSession,
     };
   }
@@ -124,8 +141,53 @@ function asStoredSessionRecord(value: unknown): RepairStoredSessionRecord | null
     chatTurns: asRepairChatTurns(record?.["chatTurns"]),
     roomId: REPAIR_ROOM_ID,
     savedAt: typeof record?.["savedAt"] === "string" ? record["savedAt"] : session.updatedAt,
-    schemaVersion: 1,
+    schemaVersion: 2,
     session,
+  };
+}
+
+function asStoredEvidenceSelectionRecord(
+  value: unknown,
+  fallbackSessionId: string
+): RepairStoredEvidenceSelectionRecord | null {
+  const record = asRecord(value);
+  const rawSelection = asRecord(record?.["selection"]);
+  if (
+    record === null ||
+    record["schemaVersion"] !== 2 ||
+    record["roomId"] !== REPAIR_ROOM_ID ||
+    rawSelection === null
+  ) {
+    return null;
+  }
+
+  const sessionId =
+    typeof rawSelection["sessionId"] === "string"
+      ? rawSelection["sessionId"]
+      : typeof record["sessionId"] === "string"
+        ? record["sessionId"]
+        : fallbackSessionId;
+  if (sessionId !== fallbackSessionId) return null;
+
+  const updatedAt =
+    typeof rawSelection["updatedAt"] === "string"
+      ? rawSelection["updatedAt"]
+      : typeof record["savedAt"] === "string"
+        ? record["savedAt"]
+        : new Date(0).toISOString();
+
+  return {
+    roomId: REPAIR_ROOM_ID,
+    savedAt: typeof record["savedAt"] === "string" ? record["savedAt"] : updatedAt,
+    schemaVersion: 2,
+    sessionId,
+    selection: {
+      sessionId,
+      selectedEvidenceResourceIds: asStringArray(rawSelection["selectedEvidenceResourceIds"]),
+      selectedFailureIds: asStringArray(rawSelection["selectedFailureIds"]),
+      selectedTestPointIds: asStringArray(rawSelection["selectedTestPointIds"]),
+      updatedAt,
+    },
   };
 }
 
@@ -167,12 +229,43 @@ export function createRepairSessionStorage(deps: RepairSessionStorageDeps) {
       chatTurns: record.chatTurns,
       roomId: REPAIR_ROOM_ID,
       savedAt: new Date().toISOString(),
-      schemaVersion: 1,
+      schemaVersion: 2,
       session: record.session,
     };
     await ensureRuntimeDirectory(paths.sessionsDir);
     await ensureRuntimeDirectory(paths.sessionDir);
     await writeJsonFile(paths.sessionFilePath, nextRecord);
+    return nextRecord;
+  }
+
+  async function loadEvidenceSelectionRecord(
+    runtimePaths: unknown,
+    sessionId: string
+  ): Promise<RepairStoredEvidenceSelectionRecord | null> {
+    const loaded = asStoredEvidenceSelectionRecord(
+      await readJsonFile(
+        createRepairStoragePaths(runtimePaths, sessionId).evidenceSelectionFilePath
+      ),
+      sessionId
+    );
+    return loaded;
+  }
+
+  async function saveEvidenceSelectionRecord(
+    runtimePaths: unknown,
+    selection: RepairEvidenceSelection
+  ): Promise<RepairStoredEvidenceSelectionRecord> {
+    const paths = createRepairStoragePaths(runtimePaths, selection.sessionId);
+    const nextRecord: RepairStoredEvidenceSelectionRecord = {
+      roomId: REPAIR_ROOM_ID,
+      savedAt: new Date().toISOString(),
+      schemaVersion: 2,
+      selection,
+      sessionId: selection.sessionId,
+    };
+    await ensureRuntimeDirectory(paths.sessionsDir);
+    await ensureRuntimeDirectory(paths.sessionDir);
+    await writeJsonFile(paths.evidenceSelectionFilePath, nextRecord);
     return nextRecord;
   }
 
@@ -260,9 +353,11 @@ export function createRepairSessionStorage(deps: RepairSessionStorageDeps) {
     ensureSessionRoot,
     listSessionRecords,
     listSessions,
+    loadEvidenceSelectionRecord,
     loadOperatorProfileRecord,
     loadLatestSessionRecord,
     loadSessionRecord,
+    saveEvidenceSelectionRecord,
     saveOperatorProfileRecord,
     saveSessionRecord,
   };

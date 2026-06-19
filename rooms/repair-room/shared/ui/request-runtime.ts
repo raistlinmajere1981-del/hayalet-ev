@@ -52,6 +52,16 @@ export function createRepairUiRequestRuntime() {
     startKnowledgeResearch(payload: { targetSlot?: RepairAiTargetSlot } = {}) {
       return sendCommand(REPAIR_UI_COMMANDS.startKnowledgeResearch, payload);
     },
+    skipKnowledgeResearch() {
+      return sendCommand(REPAIR_UI_COMMANDS.skipKnowledgeResearch);
+    },
+    updateEvidenceSelection(payload: {
+      selectedEvidenceResourceIds?: string[];
+      selectedFailureIds?: string[];
+      selectedTestPointIds?: string[];
+    }) {
+      return sendCommand(REPAIR_UI_COMMANDS.updateEvidenceSelection, payload);
+    },
     attachKnowledgePack(payload: { packId: string }) {
       return sendCommand(REPAIR_UI_COMMANDS.attachKnowledgePack, payload);
     },

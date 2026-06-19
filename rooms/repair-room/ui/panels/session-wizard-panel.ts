@@ -1,3 +1,4 @@
+import type { RepairKnowledgePack } from "../../shared/types/index.js";
 import type { RepairUiState } from "../../shared/ui/state.js";
 import { createRepairPanel } from "./panel-shell.js";
 
@@ -7,15 +8,65 @@ interface RenderSessionWizardPanelOptions {
   embedded?: boolean;
 }
 
-const STEP_LABELS: Record<string, string> = {
-  "device-info": "Device",
-  symptoms: "Symptoms",
-  "ai-research": "Evidence",
-  "evidence-review": "Review",
-  ready: "Start",
-};
+type WizardStepId = RepairUiState["wizard"]["currentStep"];
 
+const UNKNOWN_VALUE = "Bilinmiyor";
 const STEP_ORDER = ["device-info", "symptoms", "ai-research", "evidence-review", "ready"] as const;
+
+const DEVICE_TYPE_OPTIONS = [
+  "Laptop anakart",
+  "Mobile phone",
+  "Tablet",
+  "Desktop motherboard",
+  "GPU",
+  "PSU / power board",
+  "TV main board",
+  "Monitor board",
+  "Game console",
+  "IoT / embedded",
+  "Other",
+  UNKNOWN_VALUE,
+] as const;
+
+const DEVICE_CATALOG = [
+  {
+    deviceType: "Laptop anakart",
+    manufacturer: "Lenovo",
+    models: ["20W0-CTO1WW", "ThinkPad T14 Gen2"],
+    boardCodes: ["NM-D461"],
+  },
+  {
+    deviceType: "Mobile phone",
+    manufacturer: "Apple",
+    models: ["iPhone 12", "iPhone 13"],
+    boardCodes: ["820-02020"],
+  },
+  {
+    deviceType: "Tablet",
+    manufacturer: "Samsung",
+    models: ["Galaxy Tab S7"],
+    boardCodes: ["GH82-series"],
+  },
+  {
+    deviceType: "PSU / power board",
+    manufacturer: "Samsung",
+    models: ["BN44-00932A"],
+    boardCodes: ["BN44-00932A"],
+  },
+  {
+    deviceType: "TV main board",
+    manufacturer: "LG",
+    models: ["EBT66239903"],
+    boardCodes: ["EAX68253604"],
+  },
+  {
+    deviceType: "Game console",
+    manufacturer: "Microsoft",
+    models: ["Xbox Series X 1882"],
+    boardCodes: ["X819994-002"],
+  },
+] as const;
+
 const SYMPTOM_OPTIONS = [
   "No Power",
   "Boot Loop",
@@ -30,75 +81,223 @@ const AI_TARGET_OPTIONS = [
   { targetSlot: "ai2", label: "AI 2" },
 ] as const;
 
+function uniqueList(values: string[]): string[] {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function getManufacturerSuggestions(deviceType: string): string[] {
+  return uniqueList([
+    UNKNOWN_VALUE,
+    ...DEVICE_CATALOG.filter(
+      (entry) => deviceType.trim() === "" || entry.deviceType === deviceType
+    ).map((entry) => entry.manufacturer),
+  ]);
+}
+
+function getModelSuggestions(deviceType: string, manufacturer: string): string[] {
+  return uniqueList([
+    UNKNOWN_VALUE,
+    ...DEVICE_CATALOG.filter(
+      (entry) =>
+        (deviceType.trim() === "" || entry.deviceType === deviceType) &&
+        (manufacturer.trim() === "" || entry.manufacturer === manufacturer)
+    ).flatMap((entry) => entry.models),
+  ]);
+}
+
+function getBoardCodeSuggestions(deviceType: string, manufacturer: string): string[] {
+  return uniqueList([
+    UNKNOWN_VALUE,
+    ...DEVICE_CATALOG.filter(
+      (entry) =>
+        (deviceType.trim() === "" || entry.deviceType === deviceType) &&
+        (manufacturer.trim() === "" || entry.manufacturer === manufacturer)
+    ).flatMap((entry) => entry.boardCodes),
+  ]);
+}
+
+function isDeviceComplete(state: RepairUiState): boolean {
+  const draft = state.wizard.draft;
+  return (
+    draft.deviceType.trim() !== "" &&
+    draft.manufacturer.trim() !== "" &&
+    draft.model.trim() !== "" &&
+    draft.boardCode.trim() !== ""
+  );
+}
+
+function hasSymptoms(state: RepairUiState): boolean {
+  return (
+    state.wizard.draft.primarySymptoms.length > 0 || state.wizard.draft.customSymptoms.length > 0
+  );
+}
+
+function hasResearchResult(state: RepairUiState): boolean {
+  return state.wizard.generatedKnowledgePackId !== null || state.wizard.draft.researchSkipped;
+}
+
+function canEnterStep(state: RepairUiState, stepId: WizardStepId): boolean {
+  if (stepId === "device-info") return true;
+  if (stepId === "symptoms") return isDeviceComplete(state);
+  if (stepId === "ai-research") return isDeviceComplete(state) && hasSymptoms(state);
+  if (stepId === "evidence-review") {
+    return (
+      isDeviceComplete(state) &&
+      hasSymptoms(state) &&
+      state.wizard.generatedKnowledgePackId !== null
+    );
+  }
+  return isDeviceComplete(state) && hasSymptoms(state) && hasResearchResult(state);
+}
+
+function isStepComplete(state: RepairUiState, stepId: WizardStepId): boolean {
+  if (stepId === "device-info") return isDeviceComplete(state);
+  if (stepId === "symptoms") return hasSymptoms(state);
+  if (stepId === "ai-research") return hasResearchResult(state);
+  if (stepId === "evidence-review")
+    return state.wizard.evidenceReviewed || state.wizard.draft.researchSkipped;
+  return state.phase === "session-active" || canEnterStep(state, "ready");
+}
+
+function isStepIncomplete(state: RepairUiState, stepId: WizardStepId): boolean {
+  if (stepId === "device-info") return !isDeviceComplete(state);
+  if (stepId === "symptoms") return isDeviceComplete(state) && !hasSymptoms(state);
+  if (stepId === "ai-research") return state.wizard.draft.researchStatus === "failed";
+  return false;
+}
+
+function getWizardStepLabel(stepId: WizardStepId, text: TextFn): string {
+  if (stepId === "device-info") return text(["wizard", "steps", "deviceInfo"], "Cihaz");
+  if (stepId === "symptoms") return text(["wizard", "steps", "symptoms"], "Semptom");
+  if (stepId === "ai-research") return text(["wizard", "steps", "aiResearch"], "Araştırma");
+  if (stepId === "evidence-review") {
+    return text(["wizard", "steps", "evidenceReview"], "İnceleme");
+  }
+  return text(["wizard", "steps", "ready"], "Hazır");
+}
+
+function getWizardHint(step: WizardStepId, text: TextFn): string {
+  if (step === "device-info") {
+    return text(
+      ["wizard", "hints", "deviceInfo"],
+      "Cihaz türü, marka, model ve kart kodunu tamamla; bilinmeyenler için Bilinmiyor seç."
+    );
+  }
+  if (step === "symptoms") {
+    return text(
+      ["wizard", "hints", "symptoms"],
+      "Varsayılan semptomları seç veya kendi semptomunu ekle."
+    );
+  }
+  if (step === "ai-research") {
+    return text(
+      ["wizard", "hints", "aiResearch"],
+      "AI slotunu seç, araştırmayı başlat veya evidence pack olmadan devam et."
+    );
+  }
+  if (step === "evidence-review") {
+    return text(
+      ["wizard", "hints", "evidenceReview"],
+      "Oturum arşivine alınacak kaynakları, arızaları ve test noktalarını seç."
+    );
+  }
+  return text(
+    ["wizard", "hints", "ready"],
+    "Cihaz, semptom ve araştırma özetini kontrol edip tamiri başlat."
+  );
+}
+
+function appendSuggestionMenu(
+  documentRef: Document,
+  parent: HTMLElement,
+  field: string,
+  options: string[]
+): void {
+  if (options.length === 0) return;
+  const menu = documentRef.createElement("div");
+  menu.className = "repair-wizard-suggestions";
+  menu.setAttribute("role", "listbox");
+  options.forEach((option) => {
+    const optionEl = documentRef.createElement("button");
+    optionEl.className = "repair-wizard-suggestion";
+    optionEl.type = "button";
+    optionEl.textContent = option;
+    optionEl.dataset["repairAction"] = "wizard-suggestion";
+    optionEl.dataset["wizardField"] = field;
+    optionEl.dataset["value"] = option;
+    menu.append(optionEl);
+  });
+  parent.append(menu);
+}
+
 function appendField(
   documentRef: Document,
   parent: HTMLElement,
   label: string,
   field: string,
   value: string,
-  multiline = false
+  options: { datalist?: string[]; multiline?: boolean; required?: boolean } = {}
 ): void {
-  const wrapper = documentRef.createElement("label");
-  wrapper.className = "repair-wizard-field";
+  const wrapper = documentRef.createElement("div");
+  wrapper.className = `repair-wizard-field${options.required === true ? " repair-wizard-field--required" : ""}`;
 
-  const labelEl = documentRef.createElement("span");
+  const inputId = `repair-wizard-${field}-field`;
+  const labelEl = documentRef.createElement("label");
+  labelEl.className = "repair-wizard-field__label";
+  labelEl.htmlFor = inputId;
   labelEl.textContent = label;
   wrapper.append(labelEl);
 
-  const input = multiline
-    ? documentRef.createElement("textarea")
-    : documentRef.createElement("input");
+  const input =
+    options.multiline === true
+      ? documentRef.createElement("textarea")
+      : documentRef.createElement("input");
+  input.id = inputId;
   input.className = "repair-wizard-field__input";
   input.value = value;
   input.dataset["repairAction"] = "wizard-field";
   input.dataset["wizardField"] = field;
   wrapper.append(input);
+  if (options.datalist !== undefined && options.multiline !== true) {
+    input.autocomplete = "off";
+    input.dataset["repairSuggestions"] = "true";
+    appendSuggestionMenu(documentRef, wrapper, field, options.datalist);
+  }
 
   parent.append(wrapper);
 }
 
-function getWizardHint(step: RepairUiState["wizard"]["currentStep"]): string {
-  if (step === "device-info") {
-    return "Capture only what helps identify the board. Photos and evidence can be attached later.";
-  }
-  if (step === "symptoms") {
-    return "Pick the main failure signs, then add what you saw, heard, or measured at the bench.";
-  }
-  if (step === "ai-research") {
-    return "Review the intake details, choose the AI slot, then start evidence research when ready.";
-  }
-  if (step === "evidence-review") {
-    return "Review AI evidence before it becomes part of the repair session.";
-  }
-  return "Review the evidence pack, then start the guided repair session.";
-}
+function appendDeviceTypeSelect(
+  documentRef: Document,
+  parent: HTMLElement,
+  state: RepairUiState
+): void {
+  const wrapper = documentRef.createElement("label");
+  wrapper.className = "repair-wizard-field repair-wizard-field--required";
 
-function getWizardStepLabel(stepId: string, text: TextFn): string {
-  if (stepId === "device-info") return text(["wizard", "steps", "deviceInfo"], "Device");
-  if (stepId === "symptoms") return text(["wizard", "steps", "symptoms"], "Symptoms");
-  if (stepId === "ai-research") return text(["wizard", "steps", "aiResearch"], "Evidence");
-  if (stepId === "evidence-review") return text(["wizard", "steps", "evidenceReview"], "Review");
-  if (stepId === "ready") return text(["wizard", "steps", "ready"], "Start");
-  return STEP_LABELS[stepId] ?? stepId;
-}
+  const label = documentRef.createElement("span");
+  label.textContent = "Cihaz türü";
+  wrapper.append(label);
 
-function getLocalizedWizardHint(
-  step: RepairUiState["wizard"]["currentStep"],
-  text: TextFn
-): string {
-  if (step === "device-info") {
-    return text(["wizard", "hints", "deviceInfo"], getWizardHint(step));
-  }
-  if (step === "symptoms") {
-    return text(["wizard", "hints", "symptoms"], getWizardHint(step));
-  }
-  if (step === "ai-research") {
-    return text(["wizard", "hints", "aiResearch"], getWizardHint(step));
-  }
-  if (step === "evidence-review") {
-    return text(["wizard", "hints", "evidenceReview"], getWizardHint(step));
-  }
-  return text(["wizard", "hints", "ready"], getWizardHint(step));
+  const select = documentRef.createElement("select");
+  select.className = "repair-wizard-field__input";
+  select.dataset["repairAction"] = "wizard-field";
+  select.dataset["wizardField"] = "deviceType";
+
+  const placeholder = documentRef.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Seç";
+  select.append(placeholder);
+
+  DEVICE_TYPE_OPTIONS.forEach((option) => {
+    const optionEl = documentRef.createElement("option");
+    optionEl.value = option;
+    optionEl.textContent = option;
+    select.append(optionEl);
+  });
+  select.value = state.wizard.draft.deviceType;
+  wrapper.append(select);
+  parent.append(wrapper);
 }
 
 function appendAiTargetSelect(
@@ -110,7 +309,7 @@ function appendAiTargetSelect(
   wrapper.className = "repair-wizard-field";
 
   const label = documentRef.createElement("span");
-  label.textContent = "Research AI slot";
+  label.textContent = "AI slot";
   wrapper.append(label);
 
   const select = documentRef.createElement("select");
@@ -127,6 +326,344 @@ function appendAiTargetSelect(
   parent.append(wrapper);
 }
 
+function appendActionButton(
+  documentRef: Document,
+  parent: HTMLElement,
+  label: string,
+  action: string,
+  className = "repair-cta-btn"
+): HTMLButtonElement {
+  const button = documentRef.createElement("button");
+  button.className = className;
+  button.type = "button";
+  button.textContent = label;
+  button.dataset["repairAction"] = action;
+  parent.append(button);
+  return button;
+}
+
+function appendSummaryRow(
+  documentRef: Document,
+  parent: HTMLElement,
+  label: string,
+  value: string
+): void {
+  const row = documentRef.createElement("div");
+  row.className = "repair-wizard-summary-row";
+  const labelEl = documentRef.createElement("span");
+  labelEl.textContent = label;
+  const valueEl = documentRef.createElement("strong");
+  valueEl.textContent = value;
+  row.append(labelEl, valueEl);
+  parent.append(row);
+}
+
+function appendProgressList(
+  documentRef: Document,
+  parent: HTMLElement,
+  state: RepairUiState
+): void {
+  if (state.wizard.researchProgress.length === 0) return;
+  const resList = documentRef.createElement("div");
+  resList.className = "repair-research-list";
+
+  for (const item of state.wizard.researchProgress) {
+    const row = documentRef.createElement("div");
+    row.className = `repair-research-item${item.completed ? " repair-research-item--done" : ""}`;
+
+    const icon = documentRef.createElement("span");
+    icon.className = "repair-research-item__icon";
+    icon.textContent = item.completed ? "[done]" : "[...]";
+    row.append(icon);
+
+    const label = documentRef.createElement("span");
+    label.textContent = item.label;
+    row.append(label);
+
+    resList.append(row);
+  }
+
+  parent.append(resList);
+}
+
+function appendEvidenceCheckbox(params: {
+  checked: boolean;
+  documentRef: Document;
+  id: string;
+  kind: "resource" | "failure" | "test-point";
+  label: string;
+  meta: string;
+  parent: HTMLElement;
+}): void {
+  const row = params.documentRef.createElement("label");
+  row.className = "repair-evidence-option";
+
+  const checkbox = params.documentRef.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = params.checked;
+  checkbox.dataset["repairAction"] = "evidence-selection";
+  checkbox.dataset["evidenceKind"] = params.kind;
+  checkbox.dataset["evidenceId"] = params.id;
+  row.append(checkbox);
+
+  const body = params.documentRef.createElement("span");
+  body.className = "repair-evidence-option__body";
+  const title = params.documentRef.createElement("strong");
+  title.textContent = params.label;
+  const meta = params.documentRef.createElement("span");
+  meta.textContent = params.meta;
+  body.append(title, meta);
+  row.append(body);
+
+  params.parent.append(row);
+}
+
+function appendEvidenceGroup(
+  documentRef: Document,
+  parent: HTMLElement,
+  title: string
+): HTMLElement {
+  const group = documentRef.createElement("div");
+  group.className = "repair-evidence-group";
+  const heading = documentRef.createElement("h3");
+  heading.textContent = title;
+  group.append(heading);
+  parent.append(group);
+  return group;
+}
+
+function renderDeviceStep(documentRef: Document, state: RepairUiState): HTMLElement {
+  const form = documentRef.createElement("div");
+  form.className = "repair-wizard-form";
+  const draft = state.wizard.draft;
+  appendDeviceTypeSelect(documentRef, form, state);
+  appendField(documentRef, form, "Marka", "manufacturer", draft.manufacturer, {
+    datalist: getManufacturerSuggestions(draft.deviceType),
+    required: true,
+  });
+  appendField(documentRef, form, "Model", "model", draft.model, {
+    datalist: getModelSuggestions(draft.deviceType, draft.manufacturer),
+    required: true,
+  });
+  appendField(documentRef, form, "Kart kodu", "boardCode", draft.boardCode, {
+    datalist: getBoardCodeSuggestions(draft.deviceType, draft.manufacturer),
+    required: true,
+  });
+  appendField(documentRef, form, "Seri / iş no", "serialNumber", draft.serialNumber);
+  appendField(documentRef, form, "Tezgah notu", "intakeNotes", draft.intakeNotes, {
+    multiline: true,
+  });
+  return form;
+}
+
+function renderSymptomsStep(documentRef: Document, state: RepairUiState): HTMLElement {
+  const form = documentRef.createElement("div");
+  form.className = "repair-wizard-form";
+  const draft = state.wizard.draft;
+
+  const chipRow = documentRef.createElement("div");
+  chipRow.className = "repair-wizard-symptoms";
+  SYMPTOM_OPTIONS.forEach((symptom) => {
+    const chip = documentRef.createElement("button");
+    chip.className = `repair-skill-chip${draft.primarySymptoms.includes(symptom) ? " repair-skill-chip--active" : ""}`;
+    chip.type = "button";
+    chip.textContent = symptom;
+    chip.dataset["repairAction"] = "wizard-symptom";
+    chip.dataset["symptom"] = symptom;
+    chipRow.append(chip);
+  });
+  form.append(chipRow);
+
+  const selectedSymptoms = uniqueList([...draft.primarySymptoms, ...draft.customSymptoms]);
+  if (selectedSymptoms.length > 0) {
+    const selectedRow = documentRef.createElement("div");
+    selectedRow.className = "repair-wizard-selected-symptoms";
+    selectedSymptoms.forEach((symptom) => {
+      const selected = documentRef.createElement("button");
+      selected.className = "repair-selected-chip";
+      selected.type = "button";
+      selected.textContent = `${symptom} x`;
+      selected.dataset["repairAction"] = "remove-wizard-symptom";
+      selected.dataset["symptom"] = symptom;
+      selectedRow.append(selected);
+    });
+    form.append(selectedRow);
+  }
+
+  const customRow = documentRef.createElement("div");
+  customRow.className = "repair-wizard-inline-add";
+  const customInput = documentRef.createElement("input");
+  customInput.className = "repair-wizard-field__input";
+  customInput.placeholder = "Özel semptom";
+  customInput.dataset["repairInput"] = "wizard-custom-symptom";
+  customRow.append(customInput);
+  appendActionButton(documentRef, customRow, "Ekle", "add-custom-symptom", "repair-secondary-btn");
+  form.append(customRow);
+
+  appendField(documentRef, form, "Gözlem notu", "symptomFreeText", draft.symptomFreeText, {
+    multiline: true,
+  });
+  return form;
+}
+
+function renderResearchStep(
+  documentRef: Document,
+  state: RepairUiState,
+  text: TextFn
+): HTMLElement {
+  const form = documentRef.createElement("div");
+  form.className = "repair-wizard-form";
+  appendAiTargetSelect(documentRef, form, state);
+
+  const message = state.wizard.draft.researchMessage ?? state.aiDispatch.research.message;
+  if (message !== null && message.trim() !== "") {
+    const status = documentRef.createElement("div");
+    status.className = `repair-wizard-status repair-wizard-status--${state.wizard.draft.researchStatus}`;
+    status.textContent = message;
+    form.append(status);
+  }
+
+  if (state.wizard.draft.researchStatus === "failed") {
+    const warning = documentRef.createElement("div");
+    warning.className = "repair-wizard-warning";
+    warning.textContent = text(
+      ["wizard", "research", "bridgeWarning"],
+      "AI bridge çalışmadı veya sonuç dönmedi. Tekrar dene ya da AI olmadan devam et."
+    );
+    form.append(warning);
+  }
+
+  appendProgressList(documentRef, form, state);
+
+  const actions = documentRef.createElement("div");
+  actions.className = "repair-wizard-inline-actions";
+  appendActionButton(
+    documentRef,
+    actions,
+    state.wizard.draft.researchStatus === "failed" ? "Tekrar dene" : "Araştırmayı başlat",
+    "start-wizard-research"
+  );
+  appendActionButton(
+    documentRef,
+    actions,
+    "AI olmadan devam et",
+    "skip-wizard-research",
+    "repair-secondary-btn"
+  );
+  form.append(actions);
+
+  return form;
+}
+
+function renderEvidenceReviewStep(
+  documentRef: Document,
+  state: RepairUiState,
+  text: TextFn
+): HTMLElement {
+  const review = documentRef.createElement("div");
+  review.className = "repair-wizard-form";
+  const pack: RepairKnowledgePack | null = state.knowledgePack.pack;
+
+  if (pack === null) {
+    const summary = documentRef.createElement("div");
+    summary.className = "repair-wizard-guidance";
+    summary.textContent = text(
+      ["wizard", "evidenceReview", "empty"],
+      "Evidence pack yok. Araştırmayı tekrar çalıştır veya AI olmadan devam et."
+    );
+    review.append(summary);
+    return review;
+  }
+
+  const resourceGroup = appendEvidenceGroup(documentRef, review, "Kaynaklar");
+  pack.resources.forEach((resource) => {
+    appendEvidenceCheckbox({
+      checked: state.wizard.draft.selectedEvidenceResourceIds.includes(resource.id),
+      documentRef,
+      id: resource.id,
+      kind: "resource",
+      label: resource.label,
+      meta: `${resource.kind} - ${Math.round(resource.confidence * 100)}%`,
+      parent: resourceGroup,
+    });
+  });
+
+  const failureGroup = appendEvidenceGroup(documentRef, review, "Arızalar");
+  pack.commonFailures.forEach((failure) => {
+    appendEvidenceCheckbox({
+      checked: state.wizard.draft.selectedFailureIds.includes(failure.id),
+      documentRef,
+      id: failure.id,
+      kind: "failure",
+      label: failure.label,
+      meta: `${failure.recommendedAction} - ${Math.round(failure.confidence * 100)}%`,
+      parent: failureGroup,
+    });
+  });
+
+  const testPointGroup = appendEvidenceGroup(documentRef, review, "Test noktaları");
+  pack.testPoints.forEach((point) => {
+    appendEvidenceCheckbox({
+      checked: state.wizard.draft.selectedTestPointIds.includes(point.id),
+      documentRef,
+      id: point.id,
+      kind: "test-point",
+      label: point.label,
+      meta: `${point.rail} ${point.expectedValue}${point.unit}`,
+      parent: testPointGroup,
+    });
+  });
+
+  if (pack.notes.length > 0) {
+    const notes = appendEvidenceGroup(documentRef, review, "Notlar");
+    pack.notes.slice(0, 3).forEach((note) => {
+      const row = documentRef.createElement("div");
+      row.className = "repair-research-item";
+      row.textContent = note;
+      notes.append(row);
+    });
+  }
+
+  return review;
+}
+
+function renderReadyStep(documentRef: Document, state: RepairUiState): HTMLElement {
+  const ready = documentRef.createElement("div");
+  ready.className = "repair-wizard-form";
+  const draft = state.wizard.draft;
+  appendSummaryRow(documentRef, ready, "Cihaz", `${draft.deviceType} / ${draft.manufacturer}`);
+  appendSummaryRow(documentRef, ready, "Model", `${draft.model} / ${draft.boardCode}`);
+  appendSummaryRow(
+    documentRef,
+    ready,
+    "Semptom",
+    uniqueList([...draft.primarySymptoms, ...draft.customSymptoms]).join(", ") || UNKNOWN_VALUE
+  );
+  appendSummaryRow(
+    documentRef,
+    ready,
+    "Araştırma",
+    draft.researchSkipped
+      ? "AI olmadan"
+      : state.wizard.generatedKnowledgePackId !== null
+        ? "Evidence pack hazır"
+        : "Bekliyor"
+  );
+  appendSummaryRow(
+    documentRef,
+    ready,
+    "Evidence",
+    `${draft.selectedEvidenceResourceIds.length} kaynak, ${draft.selectedFailureIds.length} arıza, ${draft.selectedTestPointIds.length} test noktası`
+  );
+
+  const actions = documentRef.createElement("div");
+  actions.className = "repair-wizard-inline-actions";
+  const start = appendActionButton(documentRef, actions, "Tamiri başlat", "create-session");
+  start.disabled = !canEnterStep(state, "ready");
+  ready.append(actions);
+  return ready;
+}
+
 export function renderSessionWizardPanel(
   documentRef: Document,
   state: RepairUiState,
@@ -134,24 +671,35 @@ export function renderSessionWizardPanel(
   options: RenderSessionWizardPanelOptions = {}
 ): HTMLElement {
   const body = documentRef.createElement("div");
-  body.className = "repair-panel__body";
+  body.className = "repair-panel__body repair-wizard-intake";
 
   const wizard = state.wizard;
-
-  // -- Stepper
   const stepper = documentRef.createElement("div");
   stepper.className = "repair-wizard-stepper";
 
   const currentIdx = STEP_ORDER.indexOf(wizard.currentStep);
 
-  for (let i = 0; i < STEP_ORDER.length; i++) {
-    const stepId = STEP_ORDER[i] as (typeof STEP_ORDER)[number];
-    const step = documentRef.createElement("div");
-    const isDone = i < currentIdx;
+  for (const [i, stepId] of STEP_ORDER.entries()) {
+    const step = documentRef.createElement("button");
+    const isDone = isStepComplete(state, stepId);
     const isActive = i === currentIdx;
-    step.className = `repair-wizard-step${isActive ? " repair-wizard-step--active" : ""}${isDone ? " repair-wizard-step--done" : ""}`;
-    step.dataset["repairAction"] = "advance-wizard";
-    step.dataset["step"] = stepId;
+    const isAvailable = canEnterStep(state, stepId);
+    const isIncomplete = isStepIncomplete(state, stepId);
+    step.type = "button";
+    step.className = [
+      "repair-wizard-step",
+      isActive ? "repair-wizard-step--active" : "",
+      isDone && !isActive ? "repair-wizard-step--done" : "",
+      isAvailable ? "repair-wizard-step--clickable" : "repair-wizard-step--disabled",
+      isIncomplete ? "repair-wizard-step--incomplete" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    step.disabled = !isAvailable;
+    if (isAvailable) {
+      step.dataset["repairAction"] = "advance-wizard";
+      step.dataset["step"] = stepId;
+    }
 
     const dot = documentRef.createElement("span");
     dot.className = "repair-wizard-step__dot";
@@ -168,167 +716,24 @@ export function renderSessionWizardPanel(
 
   const hint = documentRef.createElement("div");
   hint.className = "repair-wizard-guidance";
-  hint.textContent = getLocalizedWizardHint(wizard.currentStep, text);
+  hint.textContent = getWizardHint(wizard.currentStep, text);
   body.append(hint);
 
-  const form = documentRef.createElement("div");
-  form.className = "repair-wizard-form";
-
   if (wizard.currentStep === "device-info") {
-    appendField(documentRef, form, "Board maker", "manufacturer", wizard.draft.manufacturer);
-    appendField(documentRef, form, "Device model", "model", wizard.draft.model);
-    appendField(documentRef, form, "Board code", "boardCode", wizard.draft.boardCode);
-    appendField(documentRef, form, "Serial / job ID", "serialNumber", wizard.draft.serialNumber);
-    appendField(documentRef, form, "Bench notes", "intakeNotes", wizard.draft.intakeNotes, true);
-    body.append(form);
+    body.append(renderDeviceStep(documentRef, state));
   }
-
   if (wizard.currentStep === "symptoms") {
-    const chipRow = documentRef.createElement("div");
-    chipRow.className = "repair-wizard-symptoms";
-    SYMPTOM_OPTIONS.forEach((symptom) => {
-      const chip = documentRef.createElement("button");
-      chip.className = `repair-skill-chip${wizard.draft.primarySymptoms.includes(symptom) ? " repair-skill-chip--active" : ""}`;
-      chip.type = "button";
-      chip.textContent = symptom;
-      chip.dataset["repairAction"] = "wizard-symptom";
-      chip.dataset["symptom"] = symptom;
-      chipRow.append(chip);
-    });
-    form.append(chipRow);
-    appendField(
-      documentRef,
-      form,
-      "What did you observe?",
-      "symptomFreeText",
-      wizard.draft.symptomFreeText,
-      true
-    );
-    body.append(form);
+    body.append(renderSymptomsStep(documentRef, state));
   }
-
   if (wizard.currentStep === "ai-research") {
-    const evidenceSetup = documentRef.createElement("div");
-    evidenceSetup.className = "repair-wizard-form";
-    appendAiTargetSelect(documentRef, evidenceSetup, state);
-    body.append(evidenceSetup);
+    body.append(renderResearchStep(documentRef, state, text));
   }
-
   if (wizard.currentStep === "evidence-review") {
-    const review = documentRef.createElement("div");
-    review.className = "repair-wizard-form";
-
-    const pack = state.knowledgePack.pack;
-    const summary = documentRef.createElement("div");
-    summary.className = "repair-wizard-guidance";
-    summary.textContent =
-      pack === null
-        ? text(
-            ["wizard", "evidenceReview", "empty"],
-            "No evidence pack is available yet. Run evidence research again."
-          )
-        : text(
-            ["wizard", "evidenceReview", "summary"],
-            "{resources} resources, {failures} failure notes, {testPoints} test points."
-          )
-            .replace("{resources}", String(pack.resources.length))
-            .replace("{failures}", String(pack.commonFailures.length))
-            .replace("{testPoints}", String(pack.testPoints.length));
-    review.append(summary);
-
-    if (pack !== null) {
-      pack.resources.slice(0, 4).forEach((resource) => {
-        const row = documentRef.createElement("div");
-        row.className = "repair-research-item";
-        row.textContent = `${resource.kind}: ${resource.label} (${Math.round(resource.confidence * 100)}%)`;
-        review.append(row);
-      });
-      pack.commonFailures.slice(0, 3).forEach((failure) => {
-        const row = documentRef.createElement("div");
-        row.className = "repair-research-item";
-        row.textContent = `${text(["wizard", "evidenceReview", "failurePrefix"], "Failure")}: ${failure.label} (${Math.round(failure.confidence * 100)}%)`;
-        review.append(row);
-      });
-      pack.testPoints.slice(0, 3).forEach((point) => {
-        const row = documentRef.createElement("div");
-        row.className = "repair-research-item";
-        row.textContent = `${text(["wizard", "evidenceReview", "probePrefix"], "Probe")}: ${point.label} • ${point.expectedValue}${point.unit}`;
-        review.append(row);
-      });
-    }
-
-    body.append(review);
+    body.append(renderEvidenceReviewStep(documentRef, state, text));
   }
-
-  // -- Research progress list
-  if (wizard.researchProgress.length > 0) {
-    const resList = documentRef.createElement("div");
-    resList.className = "repair-research-list";
-
-    for (const item of wizard.researchProgress) {
-      const row = documentRef.createElement("div");
-      row.className = `repair-research-item${item.completed ? " repair-research-item--done" : ""}`;
-
-      const icon = documentRef.createElement("span");
-      icon.className = "repair-research-item__icon";
-      icon.textContent = item.completed ? "[done]" : "[...]";
-      row.append(icon);
-
-      const label = documentRef.createElement("span");
-      label.textContent = item.label;
-      row.append(label);
-
-      resList.append(row);
-    }
-
-    body.append(resList);
+  if (wizard.currentStep === "ready") {
+    body.append(renderReadyStep(documentRef, state));
   }
-
-  // -- Found resources preview
-  if (wizard.foundResources.length > 0) {
-    const grid = documentRef.createElement("div");
-    grid.style.display = "flex";
-    grid.style.flexWrap = "wrap";
-    grid.style.gap = "4px";
-    grid.style.paddingTop = "8px";
-
-    for (const res of wizard.foundResources) {
-      const chip = documentRef.createElement("span");
-      chip.className = "repair-skill-chip";
-      chip.textContent = `${res.kind}: ${res.label}`;
-      grid.append(chip);
-    }
-
-    body.append(grid);
-  }
-
-  const actions = documentRef.createElement("div");
-  actions.className = "repair-panel-actions";
-  const nextButton = documentRef.createElement("button");
-  nextButton.className = "repair-cta-btn";
-  nextButton.type = "button";
-  nextButton.textContent =
-    wizard.currentStep === "ready"
-      ? text(["wizard", "actions", "startRepair"], "Start repair")
-      : wizard.currentStep === "evidence-review"
-        ? text(["wizard", "actions", "approveEvidence"], "Approve evidence")
-        : wizard.currentStep === "ai-research"
-          ? wizard.researchProgress.length > 0
-            ? text(["wizard", "actions", "reviewSetup"], "Review setup")
-            : text(["wizard", "actions", "startEvidenceResearch"], "Start evidence research")
-          : wizard.currentStep === "symptoms"
-            ? text(["wizard", "actions", "findEvidence"], "Find evidence")
-            : text(["wizard", "actions", "addSymptoms"], "Add symptoms");
-  nextButton.dataset["repairAction"] =
-    wizard.currentStep === "ready"
-      ? "create-session"
-      : wizard.currentStep === "evidence-review"
-        ? "advance-wizard"
-        : wizard.currentStep === "ai-research" && wizard.researchProgress.length === 0
-          ? "start-wizard-research"
-          : "advance-wizard";
-  actions.append(nextButton);
-  body.append(actions);
 
   const panelId =
     options.embedded === true
@@ -337,10 +742,11 @@ export function renderSessionWizardPanel(
 
   return createRepairPanel(documentRef, {
     panelId,
-    eyebrow: text(["wizard", "eyebrow"], "START REPAIR"),
-    title: text(["wizard", "title"], "Repair Intake"),
-    statusDot: wizard.currentStep === "ai-research" ? "amber" : "idle",
+    eyebrow: options.embedded === true ? "" : text(["wizard", "eyebrow"], "TAMİR"),
+    title: options.embedded === true ? "" : text(["wizard", "title"], "Tamir Alımı"),
+    statusDot: wizard.draft.researchStatus === "failed" ? "amber" : "idle",
     collapsed: options.embedded === true ? false : state.layout.collapsedPanels["session-wizard"],
+    noPanelHeader: options.embedded === true,
     body,
   });
 }

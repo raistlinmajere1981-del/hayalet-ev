@@ -3,7 +3,10 @@ import {
   REPAIR_UI_COLORS,
   REPAIR_UI_COMMANDS,
 } from "../../shared/repair-constants.js";
-import { buildMockRepairAiAdaptation } from "../../shared/data/index.js";
+import {
+  MOCK_REPAIR_WIZARD_INITIAL,
+  buildMockRepairAiAdaptation,
+} from "../../shared/data/index.js";
 import type {
   RepairChatTurn,
   RepairEvent,
@@ -60,8 +63,11 @@ import {
 } from "./overlay-selection.js";
 import type { RepairSessionController } from "./session-controller.js";
 import {
+  createEvidenceSelectionFromDraft,
   createDraftSession,
   getActiveSession,
+  hasRequiredWizardDeviceInfo,
+  hasWizardSymptoms,
   patchWizardDraftFromPayload,
 } from "./session-helpers.js";
 import type { RepairStorageController } from "./storage-controller.js";
@@ -121,6 +127,55 @@ export function createRepairCommandRouter(params: {
     store,
   } = params;
 
+  function isWizardStep(value: unknown): value is RepairWizardState["currentStep"] {
+    return WIZARD_STEP_ORDER.includes(value as RepairWizardState["currentStep"]);
+  }
+
+  function canEnterWizardStep(
+    wizard: RepairWizardState,
+    step: RepairWizardState["currentStep"]
+  ): boolean {
+    const deviceReady = hasRequiredWizardDeviceInfo(wizard.draft);
+    const symptomsReady = hasWizardSymptoms(wizard.draft);
+    if (step === "device-info") return true;
+    if (step === "symptoms") return deviceReady;
+    if (step === "ai-research") return deviceReady && symptomsReady;
+    if (step === "evidence-review") {
+      return (
+        deviceReady &&
+        symptomsReady &&
+        (wizard.generatedKnowledgePackId !== null || wizard.draft.researchSkipped)
+      );
+    }
+    return (
+      deviceReady &&
+      symptomsReady &&
+      (wizard.generatedKnowledgePackId !== null || wizard.draft.researchSkipped)
+    );
+  }
+
+  function createResetWizardState(): RepairWizardState {
+    return {
+      ...MOCK_REPAIR_WIZARD_INITIAL,
+      draft: {
+        ...MOCK_REPAIR_WIZARD_INITIAL.draft,
+        customSymptoms: [],
+        primarySymptoms: [],
+        selectedEvidenceResourceIds: [],
+        selectedFailureIds: [],
+        selectedTestPointIds: [],
+      },
+      foundResources: [],
+      researchProgress: [],
+    };
+  }
+
+  function readStringArrayField(value: unknown): string[] | null {
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string")
+      : null;
+  }
+
   function handleCommand(
     command: string,
     payload: RepairCommandPayload = {}
@@ -158,23 +213,34 @@ export function createRepairCommandRouter(params: {
       }
       case REPAIR_UI_COMMANDS.createSession: {
         const iso = nowIso();
+        const state = store.getState();
+        const wizard = state.wizard;
+        if (!hasRequiredWizardDeviceInfo(wizard.draft)) {
+          return { success: false, message: "device intake is incomplete" };
+        }
+        if (!hasWizardSymptoms(wizard.draft)) {
+          return { success: false, message: "at least one symptom is required" };
+        }
+        if (!canEnterWizardStep(wizard, "ready")) {
+          return { success: false, message: "repair intake is not ready" };
+        }
         const generatedPack = aiController.readGeneratedKnowledgePack();
-        if (generatedPack !== null && !store.getState().wizard.evidenceReviewed) {
+        if (generatedPack !== null && !wizard.evidenceReviewed) {
           return { success: false, message: "evidence review is required before creating session" };
         }
-        const draftSession = createDraftSession(store.getState(), iso);
-        const session: RepairSession =
-          generatedPack === null
-            ? draftSession
-            : {
-                ...draftSession,
-                status: "ready",
-                knowledgePackId: generatedPack.id,
-                knowledgePack: generatedPack,
-                updatedAt: iso,
-              };
+        const draftSession = createDraftSession(state, iso);
+        const session: RepairSession = {
+          ...draftSession,
+          status: "in-progress",
+          knowledgePackId: generatedPack?.id ?? null,
+          knowledgePack: generatedPack,
+          updatedAt: iso,
+        };
         if (storageController.isReady()) {
           storageController.setSessionChatTurns(session.id, []);
+          storageController.queuePersistEvidenceSelection(
+            createEvidenceSelectionFromDraft(session.id, store.getState().wizard.draft, iso)
+          );
         }
         store.batch(() => {
           sessionController.setSessionAndList(session, { skipTransitionCheck: true });
@@ -185,17 +251,7 @@ export function createRepairCommandRouter(params: {
           setActiveSessionDerivedState(session);
         });
         liveController.resetTimelineAnchor(session);
-        store.dispatch({
-          type: "wizard/set",
-          wizard: {
-            ...store.getState().wizard,
-            currentStep: "device-info",
-            generatedKnowledgePackId: null,
-            evidenceReviewed: false,
-            researchProgress: [],
-            foundResources: [],
-          },
-        });
+        store.dispatch({ type: "wizard/set", wizard: createResetWizardState() });
         return { success: true };
       }
       case REPAIR_UI_COMMANDS.updateSession: {
@@ -213,6 +269,8 @@ export function createRepairCommandRouter(params: {
           ...session,
           deviceInfo: {
             ...session.deviceInfo,
+            deviceType: safeString(flat["deviceType"]) ?? session.deviceInfo.deviceType,
+            manufacturer: safeString(flat["manufacturer"]) ?? session.deviceInfo.manufacturer,
             model: safeString(flat["model"]) ?? session.deviceInfo.model,
             boardCode: safeString(flat["boardCode"]) ?? session.deviceInfo.boardCode,
             serialNumber: safeString(flat["serialNumber"]) ?? session.deviceInfo.serialNumber,
@@ -220,6 +278,8 @@ export function createRepairCommandRouter(params: {
           },
           symptoms: {
             ...session.symptoms,
+            primarySymptoms:
+              readStringArrayField(flat["primarySymptoms"]) ?? session.symptoms.primarySymptoms,
             freeText: safeString(flat["symptomFreeText"]) ?? session.symptoms.freeText,
           },
           updatedAt: iso,
@@ -289,9 +349,10 @@ export function createRepairCommandRouter(params: {
         const currentIndex = Math.max(0, WIZARD_STEP_ORDER.indexOf(current));
         const fallbackStep =
           WIZARD_STEP_ORDER[Math.min(currentIndex + 1, WIZARD_STEP_ORDER.length - 1)] ?? "ready";
-        const nextStep = WIZARD_STEP_ORDER.includes(requested as RepairWizardState["currentStep"])
-          ? (requested as RepairWizardState["currentStep"])
-          : fallbackStep;
+        const nextStep = isWizardStep(requested) ? requested : fallbackStep;
+        if (!canEnterWizardStep(wizard, nextStep)) {
+          return { success: false, message: `wizard step ${nextStep} is not available yet` };
+        }
         if (
           nextStep === "ready" &&
           wizard.generatedKnowledgePackId !== null &&
@@ -312,17 +373,95 @@ export function createRepairCommandRouter(params: {
           { type: "wizard/advance", step: nextStep },
           {
             type: "phase/set",
-            phase: nextStep === "ready" ? "session-active" : "wizard-active",
+            phase: "wizard-active",
           },
         ]);
         return { success: true };
       }
       case REPAIR_UI_COMMANDS.startKnowledgeResearch: {
+        const wizard = store.getState().wizard;
+        if (!hasRequiredWizardDeviceInfo(wizard.draft)) {
+          return { success: false, message: "device intake is incomplete" };
+        }
+        if (!hasWizardSymptoms(wizard.draft)) {
+          return { success: false, message: "at least one symptom is required" };
+        }
         const targetSlot = flat["targetSlot"];
         if (targetSlot !== undefined && !isRepairAiTargetSlot(targetSlot)) {
           return { success: false, message: "valid AI target slot is required" };
         }
         void aiController.startKnowledgeResearch(targetSlot === undefined ? {} : { targetSlot });
+        return { success: true };
+      }
+      case REPAIR_UI_COMMANDS.skipKnowledgeResearch: {
+        const wizard = store.getState().wizard;
+        if (!hasRequiredWizardDeviceInfo(wizard.draft)) {
+          return { success: false, message: "device intake is incomplete" };
+        }
+        if (!hasWizardSymptoms(wizard.draft)) {
+          return { success: false, message: "at least one symptom is required" };
+        }
+        store.dispatchMany([
+          {
+            type: "knowledge-pack/set",
+            pack: null,
+            attachedToSessionId: null,
+          },
+          {
+            type: "wizard/set",
+            wizard: {
+              ...wizard,
+              currentStep: "ready",
+              draft: {
+                ...wizard.draft,
+                researchMessage: "AI research was skipped for this intake.",
+                researchSkipped: true,
+                researchStatus: "skipped",
+                selectedEvidenceResourceIds: [],
+                selectedFailureIds: [],
+                selectedTestPointIds: [],
+              },
+              evidenceReviewed: true,
+              foundResources: [],
+              generatedKnowledgePackId: null,
+              researchProgress: [],
+            },
+          },
+          { type: "phase/set", phase: "wizard-active" },
+        ]);
+        aiController.setAiDispatchStatus("research", "idle", {
+          message: "AI research skipped; repair can start without a knowledge pack.",
+          contextRefs: [wizard.draft.boardCode, wizard.draft.model].filter(
+            (value) => value.trim() !== ""
+          ),
+        });
+        return { success: true };
+      }
+      case REPAIR_UI_COMMANDS.updateEvidenceSelection: {
+        const wizard = store.getState().wizard;
+        const selectedEvidenceResourceIds =
+          readStringArrayField(flat["selectedEvidenceResourceIds"]) ??
+          wizard.draft.selectedEvidenceResourceIds;
+        const selectedFailureIds =
+          readStringArrayField(flat["selectedFailureIds"]) ?? wizard.draft.selectedFailureIds;
+        const selectedTestPointIds =
+          readStringArrayField(flat["selectedTestPointIds"]) ?? wizard.draft.selectedTestPointIds;
+        const changed =
+          selectedEvidenceResourceIds !== wizard.draft.selectedEvidenceResourceIds ||
+          selectedFailureIds !== wizard.draft.selectedFailureIds ||
+          selectedTestPointIds !== wizard.draft.selectedTestPointIds;
+        if (!changed) return { success: false, message: "evidence selection patch is required" };
+
+        const nextWizard: RepairWizardState = {
+          ...wizard,
+          draft: {
+            ...wizard.draft,
+            selectedEvidenceResourceIds,
+            selectedFailureIds,
+            selectedTestPointIds,
+          },
+        };
+        store.dispatch({ type: "wizard/set", wizard: nextWizard });
         return { success: true };
       }
       case REPAIR_UI_COMMANDS.attachKnowledgePack: {

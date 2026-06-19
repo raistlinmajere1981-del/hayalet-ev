@@ -1,6 +1,6 @@
 export const REPAIR_ROOM_ID = "repair-room";
 export const REPAIR_WORKBENCH_FEATURE_ID = "repair-workbench";
-export const REPAIR_SESSION_SCHEMA_VERSION = 1;
+export const REPAIR_SESSION_SCHEMA_VERSION = 2;
 export const REPAIR_KNOWLEDGE_PACK_SCHEMA_VERSION = 1;
 export const REPAIR_OPERATOR_PROFILE_SCHEMA_VERSION = 1;
 export const REPAIR_LOCAL_OWNER_SCOPE_ID = "repair-room:local-owner";
@@ -33,6 +33,8 @@ export const REPAIR_UI_COMMANDS = {
   deleteSession: "RepairRoomDeleteSession",
   advanceWizard: "RepairRoomAdvanceWizard",
   startKnowledgeResearch: "RepairRoomStartKnowledgeResearch",
+  skipKnowledgeResearch: "RepairRoomSkipKnowledgeResearch",
+  updateEvidenceSelection: "RepairRoomUpdateEvidenceSelection",
   attachKnowledgePack: "RepairRoomAttachKnowledgePack",
   setActiveTool: "RepairRoomSetActiveTool",
   toggleFreezeFrame: "RepairRoomToggleFreezeFrame",

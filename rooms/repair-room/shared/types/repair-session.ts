@@ -12,6 +12,7 @@ export type RepairSessionStatus =
   | "archived";
 
 export interface RepairDeviceInfo {
+  deviceType: string;
   deviceLabel: string;
   manufacturer: string;
   model: string;
@@ -65,4 +66,12 @@ export interface RepairSessionListItem {
   riskLevel: RepairRiskLevel;
   updatedAt: string;
   isArchived: boolean;
+}
+
+export interface RepairEvidenceSelection {
+  sessionId: string;
+  selectedEvidenceResourceIds: string[];
+  selectedFailureIds: string[];
+  selectedTestPointIds: string[];
+  updatedAt: string;
 }

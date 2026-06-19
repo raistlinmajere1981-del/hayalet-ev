@@ -7,14 +7,24 @@ export type RepairWizardStepId =
   | "evidence-review"
   | "ready";
 
+export type RepairWizardResearchStatus = "idle" | "running" | "succeeded" | "failed" | "skipped";
+
 export interface RepairWizardDraft {
+  deviceType: string;
   manufacturer: string;
   model: string;
   boardCode: string;
   serialNumber: string;
   intakeNotes: string;
   primarySymptoms: string[];
+  customSymptoms: string[];
   symptomFreeText: string;
+  selectedEvidenceResourceIds: string[];
+  selectedFailureIds: string[];
+  selectedTestPointIds: string[];
+  researchSkipped: boolean;
+  researchStatus: RepairWizardResearchStatus;
+  researchMessage: string | null;
 }
 
 export interface RepairWizardState {

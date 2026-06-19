@@ -2,7 +2,11 @@ import { REPAIR_ROOM_ID } from "../../shared/repair-constants.js";
 import { buildMockRepairAiAdaptation } from "../../shared/data/index.js";
 import type { RepairHostIoRuntime } from "../../shared/host/io-runtime.js";
 import { readRepairRoomStorageDir } from "../../shared/host/repair-paths.js";
-import type { RepairChatTurn, RepairSession } from "../../shared/types/index.js";
+import type {
+  RepairChatTurn,
+  RepairEvidenceSelection,
+  RepairSession,
+} from "../../shared/types/index.js";
 import type { RepairStorageState } from "../../shared/ui/state.js";
 import type { RepairSessionStorageRuntime } from "../repair-session-storage.js";
 import type { RepairRuntimeStore } from "../state/repair-runtime-store.js";
@@ -20,6 +24,7 @@ export interface RepairStorageController {
   hydrateStorage: () => Promise<void>;
   isReady: () => boolean;
   queueDeleteSession: (sessionId: string) => void;
+  queuePersistEvidenceSelection: (selection: RepairEvidenceSelection) => void;
   queuePersistActiveSessionChat: () => void;
   queuePersistOperatorProfile: () => void;
   queuePersistSession: (session: RepairSession) => void;
@@ -129,6 +134,26 @@ export function createRepairStorageController(params: {
     if (session === null) return;
     storedChatTurnsBySessionId.set(session.id, state.chat.turns);
     queuePersistSession(session);
+  }
+
+  function queuePersistEvidenceSelection(selection: RepairEvidenceSelection): void {
+    if (storageReady === false || storageRuntimePaths === null) return;
+    const runtimePaths = storageRuntimePaths;
+    storagePersistQueue = storagePersistQueue
+      .then(async () => {
+        await sessionStorage.saveEvidenceSelectionRecord(runtimePaths, selection);
+        if (isDisposed()) return;
+        updateReadyStorageState();
+      })
+      .catch((error: unknown) => {
+        api.log(
+          "warn",
+          `[${REPAIR_ROOM_ID}] evidence selection storage save failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        setStorageUnavailable("Room storage error; using in-memory evidence selection.");
+      });
   }
 
   function queuePersistOperatorProfile(): void {
@@ -271,6 +296,7 @@ export function createRepairStorageController(params: {
     hydrateStorage,
     isReady: () => storageReady,
     queueDeleteSession,
+    queuePersistEvidenceSelection,
     queuePersistActiveSessionChat,
     queuePersistOperatorProfile,
     queuePersistSession,

@@ -70,6 +70,18 @@
           "exposure": "internal"
         },
         {
+          "name": "RepairRoomSkipKnowledgeResearch",
+          "description": "Continue the repair intake without AI evidence research.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomUpdateEvidenceSelection",
+          "description": "Update the evidence resources, failures, and test points selected for the session archive.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "RepairRoomAttachKnowledgePack",
           "description": "Attach a generated knowledge pack to the active session.",
           "scope": "room-ui",

@@ -5,6 +5,7 @@ import {
 } from "../../shared/repair-constants.js";
 import { MOCK_REPAIR_PCB_IMAGES } from "../../shared/data/index.js";
 import type {
+  RepairEvidenceSelection,
   RepairSession,
   RepairSessionListItem,
   RepairWizardDraft,
@@ -12,6 +13,10 @@ import type {
 import type { RepairRuntimeState } from "../state/repair-runtime-state.js";
 import { createEventId } from "./event-factory.js";
 import { safeString } from "./guards.js";
+
+const REQUIRED_DEVICE_FIELDS: Array<
+  keyof Pick<RepairWizardDraft, "deviceType" | "manufacturer" | "model" | "boardCode">
+> = ["deviceType", "manufacturer", "model", "boardCode"];
 
 export function buildSessionList(sessions: Record<string, RepairSession>): RepairSessionListItem[] {
   return Object.values(sessions)
@@ -58,6 +63,32 @@ export function getSessionTimelineMs(session: RepairSession | null): number {
   return Math.max(0, lastEventMs);
 }
 
+export function hasRequiredWizardDeviceInfo(draft: RepairWizardDraft): boolean {
+  return REQUIRED_DEVICE_FIELDS.every((field) => draft[field].trim() !== "");
+}
+
+export function hasWizardSymptoms(draft: RepairWizardDraft): boolean {
+  return uniqueStringList([...draft.primarySymptoms, ...draft.customSymptoms]).length > 0;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function uniqueStringList(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  values.forEach((value) => {
+    const trimmed = value.trim();
+    if (trimmed === "" || seen.has(trimmed)) return;
+    seen.add(trimmed);
+    result.push(trimmed);
+  });
+  return result;
+}
+
 export function patchWizardDraftFromPayload(
   payload: Record<string, unknown>
 ): Partial<RepairWizardDraft> | null {
@@ -65,7 +96,19 @@ export function patchWizardDraftFromPayload(
   if (typeof draftPayload === "object" && draftPayload !== null) {
     const raw = draftPayload as Record<string, unknown>;
     const patch: Partial<RepairWizardDraft> = {};
-    const stringFields: Array<keyof Omit<RepairWizardDraft, "primarySymptoms">> = [
+    const stringFields: Array<
+      keyof Pick<
+        RepairWizardDraft,
+        | "deviceType"
+        | "manufacturer"
+        | "model"
+        | "boardCode"
+        | "serialNumber"
+        | "intakeNotes"
+        | "symptomFreeText"
+      >
+    > = [
+      "deviceType",
       "manufacturer",
       "model",
       "boardCode",
@@ -79,9 +122,42 @@ export function patchWizardDraftFromPayload(
         patch[field] = value;
       }
     });
-    const symptoms = raw["primarySymptoms"];
-    if (Array.isArray(symptoms)) {
-      patch.primarySymptoms = symptoms.filter((item): item is string => typeof item === "string");
+    const arrayFields: Array<
+      keyof Pick<
+        RepairWizardDraft,
+        | "primarySymptoms"
+        | "customSymptoms"
+        | "selectedEvidenceResourceIds"
+        | "selectedFailureIds"
+        | "selectedTestPointIds"
+      >
+    > = [
+      "primarySymptoms",
+      "customSymptoms",
+      "selectedEvidenceResourceIds",
+      "selectedFailureIds",
+      "selectedTestPointIds",
+    ];
+    arrayFields.forEach((field) => {
+      const value = raw[field];
+      if (Array.isArray(value)) {
+        patch[field] = asStringArray(value);
+      }
+    });
+    if (typeof raw["researchSkipped"] === "boolean") {
+      patch.researchSkipped = raw["researchSkipped"];
+    }
+    if (
+      raw["researchStatus"] === "idle" ||
+      raw["researchStatus"] === "running" ||
+      raw["researchStatus"] === "succeeded" ||
+      raw["researchStatus"] === "failed" ||
+      raw["researchStatus"] === "skipped"
+    ) {
+      patch.researchStatus = raw["researchStatus"];
+    }
+    if (typeof raw["researchMessage"] === "string" || raw["researchMessage"] === null) {
+      patch.researchMessage = raw["researchMessage"];
     }
     return Object.keys(patch).length === 0 ? null : patch;
   }
@@ -89,6 +165,7 @@ export function patchWizardDraftFromPayload(
   const field = safeString(payload["wizardField"]);
   const value = payload["value"];
   if (
+    field === "deviceType" ||
     field === "manufacturer" ||
     field === "model" ||
     field === "boardCode" ||
@@ -98,16 +175,40 @@ export function patchWizardDraftFromPayload(
   ) {
     return typeof value === "string" ? { [field]: value } : null;
   }
-  if (field === "primarySymptoms" && Array.isArray(value)) {
-    return { primarySymptoms: value.filter((item): item is string => typeof item === "string") };
+  if (
+    field === "primarySymptoms" ||
+    field === "customSymptoms" ||
+    field === "selectedEvidenceResourceIds" ||
+    field === "selectedFailureIds" ||
+    field === "selectedTestPointIds"
+  ) {
+    return Array.isArray(value) ? { [field]: asStringArray(value) } : null;
+  }
+  if (field === "researchSkipped" && typeof value === "boolean") {
+    return { researchSkipped: value };
   }
   return null;
+}
+
+export function createEvidenceSelectionFromDraft(
+  sessionId: string,
+  draft: RepairWizardDraft,
+  iso: string
+): RepairEvidenceSelection {
+  return {
+    sessionId,
+    selectedEvidenceResourceIds: [...draft.selectedEvidenceResourceIds],
+    selectedFailureIds: [...draft.selectedFailureIds],
+    selectedTestPointIds: [...draft.selectedTestPointIds],
+    updatedAt: iso,
+  };
 }
 
 export function createDraftSession(state: RepairRuntimeState, iso: string): RepairSession {
   const draft = state.wizard.draft;
   const id = createEventId("repair-draft", iso);
   const boardCode = draft.boardCode.trim() || "BOARD-PENDING";
+  const primarySymptoms = uniqueStringList([...draft.primarySymptoms, ...draft.customSymptoms]);
   return {
     schemaVersion: REPAIR_SESSION_SCHEMA_VERSION,
     id,
@@ -117,7 +218,8 @@ export function createDraftSession(state: RepairRuntimeState, iso: string): Repa
     status: "draft",
     riskLevel: "medium",
     deviceInfo: {
-      deviceLabel: draft.model.trim() || "Bench intake draft",
+      deviceType: draft.deviceType.trim() || "Bilinmiyor",
+      deviceLabel: draft.model.trim() || draft.deviceType.trim() || "Bench intake draft",
       manufacturer: draft.manufacturer.trim() || "Unknown",
       model: draft.model.trim() || "Model pending",
       boardCode,
@@ -125,7 +227,7 @@ export function createDraftSession(state: RepairRuntimeState, iso: string): Repa
       intakeNotes: draft.intakeNotes.trim() || "Awaiting intake notes.",
     },
     symptoms: {
-      primarySymptoms: draft.primarySymptoms,
+      primarySymptoms,
       freeText: draft.symptomFreeText.trim() || "Symptoms pending.",
       reportedAt: iso,
     },

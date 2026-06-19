@@ -7,6 +7,7 @@ import type {
   RepairKnowledgePackProgress,
   RepairMeasurementEvent,
   RepairSession,
+  RepairWizardDraft,
 } from "../../shared/types/index.js";
 import type {
   RepairAiDispatchChannel,
@@ -77,6 +78,19 @@ function normalizeRepairAiTargetSlot(
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+function createKnowledgePackSelectionPatch(
+  pack: RepairKnowledgePack
+): Pick<
+  RepairWizardDraft,
+  "selectedEvidenceResourceIds" | "selectedFailureIds" | "selectedTestPointIds"
+> {
+  return {
+    selectedEvidenceResourceIds: pack.resources.map((resource) => resource.id),
+    selectedFailureIds: pack.commonFailures.map((failure) => failure.id),
+    selectedTestPointIds: pack.testPoints.map((point) => point.id),
+  };
 }
 
 export function createRepairAiController(params: {
@@ -165,6 +179,13 @@ export function createRepairAiController(params: {
           wizard: {
             ...currentWizard,
             currentStep: "evidence-review",
+            draft: {
+              ...currentWizard.draft,
+              ...createKnowledgePackSelectionPatch(cachedPack),
+              researchMessage: "AI research loaded from cache.",
+              researchSkipped: false,
+              researchStatus: "succeeded",
+            },
             researchProgress: REPAIR_RESEARCH_PROGRESS_TEMPLATE.map((item) => ({
               ...item,
               completed: true,
@@ -202,6 +223,15 @@ export function createRepairAiController(params: {
         wizard: {
           ...currentWizard,
           currentStep: "ai-research",
+          draft: {
+            ...currentWizard.draft,
+            researchMessage: "AI research is preparing the knowledge pack.",
+            researchSkipped: false,
+            researchStatus: "running",
+            selectedEvidenceResourceIds: [],
+            selectedFailureIds: [],
+            selectedTestPointIds: [],
+          },
           researchProgress: resetProgress,
           foundResources: [],
           generatedKnowledgePackId: null,
@@ -219,6 +249,32 @@ export function createRepairAiController(params: {
         ].filter((value) => value.trim() !== ""),
       });
     });
+
+    const advanceResearchProgress = async (index: number): Promise<void> => {
+      if (index >= Math.min(3, resetProgress.length)) return;
+      await Promise.resolve();
+      if (getDisposed()) return;
+      const nextProgress = resetProgress.map((item, progressIndex) => ({
+        ...item,
+        completed: progressIndex <= index,
+      }));
+      const wizard = store.getState().wizard;
+      store.dispatch({
+        type: "wizard/set",
+        wizard: {
+          ...wizard,
+          draft: {
+            ...wizard.draft,
+            researchMessage: nextProgress[index]?.label ?? wizard.draft.researchMessage,
+            researchStatus: "running",
+          },
+          researchProgress: nextProgress,
+        },
+      });
+      await advanceResearchProgress(index + 1);
+    };
+
+    await advanceResearchProgress(0);
 
     const result = await requestRepairAiKnowledgeResearch({
       ...(typeof api.dispatchBridge === "function" ? { dispatchBridge: api.dispatchBridge } : {}),
@@ -245,6 +301,20 @@ export function createRepairAiController(params: {
         message: result.message ?? "AI research did not return a knowledge pack.",
         contextRefs: result.contextRefs,
       });
+      const wizard = store.getState().wizard;
+      store.dispatch({
+        type: "wizard/set",
+        wizard: {
+          ...wizard,
+          currentStep: "ai-research",
+          draft: {
+            ...wizard.draft,
+            researchMessage: result.message ?? "AI research did not return a knowledge pack.",
+            researchSkipped: false,
+            researchStatus: "failed",
+          },
+        },
+      });
       return;
     }
 
@@ -264,6 +334,13 @@ export function createRepairAiController(params: {
         wizard: {
           ...store.getState().wizard,
           currentStep: "evidence-review",
+          draft: {
+            ...store.getState().wizard.draft,
+            ...createKnowledgePackSelectionPatch(researchedPack),
+            researchMessage: "AI research prepared a knowledge pack.",
+            researchSkipped: false,
+            researchStatus: "succeeded",
+          },
           researchProgress: completedProgress,
           foundResources: researchedPack.resources.map((resource) => ({
             id: resource.id,

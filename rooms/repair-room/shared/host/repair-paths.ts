@@ -9,6 +9,7 @@ export interface RepairRoomPaths {
 }
 
 export interface RepairStoragePaths {
+  evidenceSelectionFilePath: string;
   roomStorageDir: string;
   sessionDir: string;
   sessionFilePath: string;
@@ -45,6 +46,7 @@ export function createRepairStoragePaths(
     roomStorageDir,
     sessionsDir,
     sessionDir,
+    evidenceSelectionFilePath: `${sessionDir}/evidence-selection.json`,
     sessionFilePath: `${sessionDir}/session.json`,
   };
 }

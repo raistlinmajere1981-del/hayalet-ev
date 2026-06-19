@@ -25,6 +25,7 @@ import {
 import { normalizeRepairHostMessage } from "../../rooms/repair-room/shared/ui/host-messages.ts";
 import { createRepairDefaultGuidanceProjection } from "../../rooms/repair-room/shared/ui/state.ts";
 import type {
+  RepairStoredEvidenceSelectionRecord,
   RepairStoredOperatorProfileRecord,
   RepairStoredSessionRecord,
 } from "../../rooms/repair-room/host/repair-session-storage.ts";
@@ -67,27 +68,34 @@ function createMemoryRepairIo() {
 
 function createStoredRepairRecord(
   session: RepairSession,
-  chatTurns: RepairChatTurn[] = []
+  chatTurns: RepairChatTurn[] = [],
+  schemaVersion = 2
 ): RepairStoredSessionRecord {
   return {
     chatTurns,
     roomId: REPAIR_ROOM_ID,
     savedAt: session.updatedAt,
-    schemaVersion: 1,
+    schemaVersion: schemaVersion as 2,
     session,
   };
 }
 
 function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] = []) {
   const records = new Map<string, RepairStoredSessionRecord>();
+  const evidenceSelectionRecords = new Map<string, RepairStoredEvidenceSelectionRecord>();
   let operatorProfileRecord: RepairStoredOperatorProfileRecord | null = null;
   initialRecords.forEach((record) => {
     records.set(record.session.id, cloneJson(record));
   });
   const listRecords = () =>
-    Array.from(records.values()).sort((left, right) =>
-      right.session.updatedAt.localeCompare(left.session.updatedAt)
-    );
+    Array.from(records.values())
+      .filter(
+        (record) =>
+          record.schemaVersion === 2 &&
+          record.session.schemaVersion === 2 &&
+          typeof record.session.deviceInfo.deviceType === "string"
+      )
+      .sort((left, right) => right.session.updatedAt.localeCompare(left.session.updatedAt));
   return {
     ensureSessionRoot: async () => "/tmp/repair-room-test/sessions",
     listSessionRecords: async () => listRecords().map((record) => cloneJson(record)),
@@ -108,6 +116,22 @@ function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] =
       records.set(nextRecord.session.id, nextRecord);
       return cloneJson(nextRecord);
     },
+    loadEvidenceSelectionRecord: async (_runtimePaths: unknown, sessionId: string) =>
+      cloneJson(evidenceSelectionRecords.get(sessionId) ?? null),
+    saveEvidenceSelectionRecord: async (
+      _runtimePaths: unknown,
+      selection: RepairStoredEvidenceSelectionRecord["selection"]
+    ) => {
+      const nextRecord: RepairStoredEvidenceSelectionRecord = {
+        roomId: REPAIR_ROOM_ID,
+        savedAt: new Date().toISOString(),
+        schemaVersion: 2,
+        selection: cloneJson(selection),
+        sessionId: selection.sessionId,
+      };
+      evidenceSelectionRecords.set(selection.sessionId, nextRecord);
+      return cloneJson(nextRecord);
+    },
     saveOperatorProfileRecord: async (
       _runtimePaths: unknown,
       profile: RepairStoredOperatorProfileRecord["profile"]
@@ -125,6 +149,9 @@ function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] =
     },
     readRecord(sessionId: string): RepairStoredSessionRecord | null {
       return cloneJson(records.get(sessionId) ?? null);
+    },
+    readEvidenceSelectionRecord(sessionId: string): RepairStoredEvidenceSelectionRecord | null {
+      return cloneJson(evidenceSelectionRecords.get(sessionId) ?? null);
     },
   };
 }
@@ -493,6 +520,19 @@ test("repair-room research uses selected AI slot for live knowledge-pack dispatc
   });
 
   assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateSession, {
+      wizardDraft: {
+        boardCode: "BN44-00932A",
+        deviceType: "PSU / power board",
+        manufacturer: "Samsung",
+        model: "BN44-00932A",
+        primarySymptoms: ["No Power"],
+      },
+    }).success,
+    true
+  );
+
+  assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.startKnowledgeResearch, { targetSlot: "ai0" }).success,
     true
   );
@@ -516,6 +556,10 @@ test("repair-room research uses selected AI slot for live knowledge-pack dispatc
   assert.equal(state.wizard.currentStep, "evidence-review");
   assert.equal(state.wizard.generatedKnowledgePackId, "ai-bn44-00932a");
   assert.equal(state.wizard.foundResources[0]?.id, "candidate-schematic");
+  assert.equal(state.wizard.researchProgress.every((item) => item.completed), true);
+  assert.deepEqual(state.wizard.draft.selectedEvidenceResourceIds, ["candidate-schematic"]);
+  assert.deepEqual(state.wizard.draft.selectedFailureIds, ["startup-resistor-open"]);
+  assert.deepEqual(state.wizard.draft.selectedTestPointIds, ["tp-5v-stby-ai"]);
 
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard).success, true);
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, true);
@@ -523,6 +567,236 @@ test("repair-room research uses selected AI slot for live knowledge-pack dispatc
   const activeSession = nextState.sessions[nextState.activeSessionId ?? ""];
   assert.equal(activeSession?.knowledgePackId, "ai-bn44-00932a");
   assert.equal(activeSession?.knowledgePack?.testPoints[0]?.label, "5V_STBY");
+
+  runtime.dispose();
+});
+
+test("repair-room wizard v2 gates tabs, accepts unknown fields, and skips failed research", async () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "symptoms" }).success,
+    false
+  );
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, false);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateSession, {
+      wizardDraft: {
+        boardCode: "Bilinmiyor",
+        deviceType: "Bilinmiyor",
+        manufacturer: "Bilinmiyor",
+        model: "Bilinmiyor",
+      },
+    }).success,
+    true
+  );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "symptoms" }).success,
+    true
+  );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ai-research" }).success,
+    false
+  );
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, false);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateSession, {
+      wizardDraft: {
+        customSymptoms: ["Intermittent short"],
+      },
+    }).success,
+    true
+  );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ai-research" }).success,
+    true
+  );
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startKnowledgeResearch).success, true);
+
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  const failedResearch = runtime.getStateSnapshot().state.wizard;
+  assert.equal(failedResearch.draft.researchStatus, "failed");
+  assert.match(failedResearch.draft.researchMessage ?? "", /bridge/i);
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, false);
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.skipKnowledgeResearch).success, true);
+
+  const skipped = runtime.getStateSnapshot().state.wizard;
+  assert.equal(skipped.currentStep, "ready");
+  assert.equal(skipped.draft.researchSkipped, true);
+  assert.equal(runtime.getStateSnapshot().state.phase, "wizard-active");
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ready" }).success, true);
+  assert.equal(runtime.getStateSnapshot().state.phase, "wizard-active");
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, true);
+
+  const nextState = runtime.getStateSnapshot().state;
+  const activeSession = nextState.sessions[nextState.activeSessionId ?? ""];
+  assert.equal(activeSession?.status, "in-progress");
+  assert.equal(activeSession?.knowledgePack, null);
+  assert.equal(activeSession?.deviceInfo.deviceType, "Bilinmiyor");
+  assert.deepEqual(activeSession?.symptoms.primarySymptoms, ["Intermittent short"]);
+
+  runtime.dispose();
+});
+
+test("repair-room persists selected evidence separately from the v2 session record", async () => {
+  const baseStoredSession = MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID];
+  assert.ok(baseStoredSession);
+  const storedSession: RepairSession = {
+    ...cloneJson(baseStoredSession),
+    id: "repair-existing-active-session",
+    title: "Existing active repair session",
+    updatedAt: "2026-06-13T11:00:00.000Z",
+  };
+  const storage = createMemoryRepairStorage([createStoredRepairRecord(storedSession)]);
+  const runtime = createRepairRoomHostRuntime({
+    autoHydrateStorage: false,
+    io: createMemoryRepairIo(),
+    storage,
+  }).activate({
+    log: () => {},
+    notifyRoom: () => {},
+    dispatchBridge: async () => ({
+      success: true,
+      reply: {
+        text: JSON.stringify({
+          contextRefs: ["evidence-selection"],
+          knowledgePack: {
+            id: "ai-selection-pack",
+            modelNumber: "BN44-00932A",
+            deviceLabel: "Samsung PSU",
+            resources: [
+              {
+                id: "res-a",
+                label: "Schematic A",
+                kind: "schematic",
+                source: "AI",
+                pages: 4,
+                confidence: 0.8,
+              },
+              {
+                id: "res-b",
+                label: "Thread B",
+                kind: "thread",
+                source: "AI",
+                pages: null,
+                confidence: 0.6,
+              },
+            ],
+            commonFailures: [
+              {
+                id: "fail-a",
+                label: "Startup resistor open",
+                rationale: "No standby symptom.",
+                affectedPart: "R201",
+                recommendedAction: "Measure resistance.",
+                confidence: 0.82,
+              },
+            ],
+            testPoints: [
+              {
+                id: "tp-a",
+                label: "5V_STBY",
+                rail: "Standby",
+                expectedValue: 5,
+                unit: "V",
+                tolerance: 0.25,
+              },
+            ],
+            notes: ["Discharge primary capacitors."],
+          },
+        }),
+      },
+    }),
+    getLocale: () => "en",
+  });
+
+  await runtime.hydrateStorage();
+  assert.equal(runtime.getStateSnapshot().state.activeSessionId, storedSession.id);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateSession, {
+      wizardDraft: {
+        boardCode: "BN44-00932A",
+        deviceType: "PSU / power board",
+        manufacturer: "Samsung",
+        model: "BN44-00932A",
+        primarySymptoms: ["No Power"],
+      },
+    }).success,
+    true
+  );
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startKnowledgeResearch).success, true);
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updateEvidenceSelection, {
+      selectedEvidenceResourceIds: ["res-a"],
+      selectedFailureIds: [],
+      selectedTestPointIds: ["tp-a"],
+    }).success,
+    true
+  );
+  await runtime.flushStorage();
+  assert.equal(storage.readEvidenceSelectionRecord(storedSession.id), null);
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ready" }).success, true);
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, true);
+  await runtime.flushStorage();
+
+  const nextState = runtime.getStateSnapshot().state;
+  const activeSession = nextState.sessions[nextState.activeSessionId ?? ""];
+  assert.equal(activeSession?.schemaVersion, 2);
+  assert.equal(activeSession?.knowledgePackId, "ai-selection-pack");
+  assert.equal(storage.readEvidenceSelectionRecord(storedSession.id), null);
+  const selection = activeSession === undefined ? null : storage.readEvidenceSelectionRecord(activeSession.id);
+  assert.deepEqual(selection?.selection.selectedEvidenceResourceIds, ["res-a"]);
+  assert.deepEqual(selection?.selection.selectedFailureIds, []);
+  assert.deepEqual(selection?.selection.selectedTestPointIds, ["tp-a"]);
+
+  runtime.dispose();
+});
+
+test("repair-room hydrate ignores legacy v1 room-local session records", async () => {
+  const v2Session: RepairSession = {
+    ...cloneJson(MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID]),
+    id: "repair-v2-session",
+    title: "Persisted v2 repair session",
+    updatedAt: "2026-06-13T12:00:00.000Z",
+  };
+  const v1Session = {
+    ...cloneJson(MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID]),
+    id: "repair-v1-session",
+    schemaVersion: 1,
+    title: "Legacy v1 repair session",
+    updatedAt: "2026-06-13T13:00:00.000Z",
+  } as RepairSession;
+  delete (v1Session.deviceInfo as Partial<RepairSession["deviceInfo"]>).deviceType;
+
+  const storage = createMemoryRepairStorage([
+    createStoredRepairRecord(v1Session, [], 1),
+    createStoredRepairRecord(v2Session),
+  ]);
+  const runtime = createRepairRoomHostRuntime({
+    autoHydrateStorage: false,
+    io: createMemoryRepairIo(),
+    storage,
+  }).activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  await runtime.hydrateStorage();
+
+  const state = runtime.getStateSnapshot().state;
+  assert.equal(state.storage.sessionCount, 1);
+  assert.equal(state.activeSessionId, "repair-v2-session");
+  assert.equal(state.sessionList.some((session) => session.id === "repair-v1-session"), false);
 
   runtime.dispose();
 });
@@ -1474,12 +1748,17 @@ test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits sta
 
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.updateSession, {
-      wizardField: "model",
-      value: "BN44-00932A",
+      wizardDraft: {
+        boardCode: "BN44-00932A",
+        deviceType: "PSU / power board",
+        manufacturer: "Samsung",
+        model: "BN44-00932A",
+      },
     }).success,
     true
   );
   assert.equal(runtime.getStateSnapshot().state.wizard.draft.model, "BN44-00932A");
+  assert.equal(runtime.getStateSnapshot().state.wizard.draft.deviceType, "PSU / power board");
 
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.updateSession, {

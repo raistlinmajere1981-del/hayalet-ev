@@ -9,6 +9,7 @@ import { createFilesystemTools } from "./filesystem-handlers.js";
 import { createDevTools } from "./dev-handlers.js";
 import { createMemoryTools } from "./memory-handlers.js";
 import { createWebTools } from "./web-handlers.js";
+import { createAssistantTools } from "../../tools/assistant-tools.js";
 
 const startupTranslator = createMcpTranslatorSync();
 
@@ -24,6 +25,7 @@ export function registerAllTools(context: ToolContext): void {
   registerTools(createDevTools(context), "dev");
   registerTools(createMemoryTools(context), "memory");
   registerTools(createWebTools(), "web");
+  registerTools(createAssistantTools(context.PROJECT_ROOT), "assistant");
 
   const stats = getRegistryStats();
   const categories = Object.entries(stats)
