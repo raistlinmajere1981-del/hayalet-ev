@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import createRepairRoomHostRuntime from "../../rooms/repair-room/host/runtime.ts";
+import createRepairRoomHostRuntimeBase from "../../rooms/repair-room/host/runtime.ts";
 import {
   createEmptyRepairReplayProjection,
   createRepairReplayProjection,
@@ -11,12 +11,16 @@ import {
 } from "../../rooms/repair-room/host/state/repair-selectors.ts";
 import { getRepairRoomSyncRows } from "../../rooms/repair-room/ui/panels/room-sync-panel.ts";
 import {
+  REPAIR_LOCAL_OWNER_SCOPE_ID,
   REPAIR_ROOM_ID,
+  REPAIR_SESSION_SCHEMA_VERSION,
   REPAIR_UI_COMMANDS,
 } from "../../rooms/repair-room/shared/repair-constants.ts";
 import {
-  MOCK_REPAIR_ACTIVE_SESSION_ID,
-  MOCK_REPAIR_SESSIONS,
+  MOCK_REPAIR_CHAT_TURNS,
+  MOCK_REPAIR_EVENTS,
+  MOCK_REPAIR_KNOWLEDGE_PACKS,
+  MOCK_REPAIR_PCB_IMAGES,
 } from "../../rooms/repair-room/shared/data/index.ts";
 import {
   REPAIR_ACTION_REGISTRY,
@@ -52,6 +56,85 @@ function toStoredSessionListItem(session: RepairSession): RepairSessionListItem 
     updatedAt: session.updatedAt,
     isArchived: session.status === "archived",
   };
+}
+
+const TEST_REPAIR_ACTIVE_SESSION_ID = "psu-2025-0510";
+
+type TestRepairSessionOverrides = Partial<Omit<RepairSession, "deviceInfo" | "symptoms">> & {
+  deviceInfo?: Partial<RepairSession["deviceInfo"]>;
+  symptoms?: Partial<RepairSession["symptoms"]>;
+};
+
+function createTestRepairSession(overrides: TestRepairSessionOverrides = {}): RepairSession {
+  const base: RepairSession = {
+    schemaVersion: REPAIR_SESSION_SCHEMA_VERSION,
+    id: TEST_REPAIR_ACTIVE_SESSION_ID,
+    roomId: REPAIR_ROOM_ID,
+    ownerScopeId: REPAIR_LOCAL_OWNER_SCOPE_ID,
+    title: "PSU-2025-0510",
+    status: "in-progress",
+    riskLevel: "medium",
+    deviceInfo: {
+      deviceType: "TV guc karti / PSU",
+      deviceLabel: "ATX Power Supply",
+      manufacturer: "Samsung",
+      model: "BN44-00932A",
+      boardCode: "BN44-00932A",
+      serialNumber: "R21Z14CSN100123",
+      intakeNotes: "No power. Bulk cap discharged before intake.",
+    },
+    symptoms: {
+      primarySymptoms: ["No Power"],
+      freeText: "Dead board. Confirms no 5V_STBY at output connector pin 9.",
+      reportedAt: "2026-05-10T10:14:48.000Z",
+    },
+    pcbImage: cloneJson(MOCK_REPAIR_PCB_IMAGES[TEST_REPAIR_ACTIVE_SESSION_ID] ?? null),
+    knowledgePackId: "bn44-00932a",
+    knowledgePack: cloneJson(MOCK_REPAIR_KNOWLEDGE_PACKS["bn44-00932a"] ?? null),
+    events: cloneJson(MOCK_REPAIR_EVENTS[TEST_REPAIR_ACTIVE_SESSION_ID] ?? []),
+    sessionNotes:
+      "Bulk cap reads 0 V, R201 open, U14 gate flatlined. Plan: replace R201, retest 5V_STBY, then probe gate drive.",
+    startedAt: "2026-05-10T10:18:00.000Z",
+    updatedAt: "2026-05-10T10:42:11.000Z",
+    archivedAt: null,
+  };
+
+  return {
+    ...base,
+    ...overrides,
+    deviceInfo: {
+      ...base.deviceInfo,
+      ...(overrides.deviceInfo ?? {}),
+    },
+    symptoms: {
+      ...base.symptoms,
+      ...(overrides.symptoms ?? {}),
+    },
+  };
+}
+
+function createTestRepairRuntimeSeed() {
+  const session = createTestRepairSession();
+  return {
+    activeSessionId: session.id,
+    chatTurns: cloneJson(MOCK_REPAIR_CHAT_TURNS),
+    sessionList: [toStoredSessionListItem(session)],
+    sessions: { [session.id]: session },
+  };
+}
+
+type RepairRoomHostRuntimeOptions = NonNullable<
+  Parameters<typeof createRepairRoomHostRuntimeBase>[0]
+>;
+
+function createRepairRoomHostRuntime(options: RepairRoomHostRuntimeOptions = {}) {
+  const usesCallerState =
+    options.initialSeed !== undefined || options.io !== undefined || options.storage !== undefined;
+  return createRepairRoomHostRuntimeBase(
+    usesCallerState
+      ? options
+      : { ...options, autoHydrateStorage: false, initialSeed: createTestRepairRuntimeSeed() }
+  );
 }
 
 function createMemoryRepairIo() {
@@ -182,8 +265,8 @@ test("repair-room host exports room-page lifecycle hooks and command registry", 
 
   assert.ok(normalized);
   assert.equal(normalized.type, "repair-state");
-  assert.equal(normalized.snapshot.sessions.activeId, "psu-2025-0510");
-  assert.equal(normalized.snapshot.sessions.list.length, 4);
+  assert.equal(normalized.snapshot.sessions.activeId, TEST_REPAIR_ACTIVE_SESSION_ID);
+  assert.equal(normalized.snapshot.sessions.list.length, 1);
   assert.ok(normalized.snapshot.sessions.detail?.pcbImage);
   assert.equal(normalized.snapshot.tacticalFeed.length, 2);
   assert.equal(normalized.snapshot.guidance.operationalProfile, "novice");
@@ -276,7 +359,7 @@ test("repair-room runtime handles the advertised interactive Phase 1 commands", 
   const snapshotEvent = runtime
     .getStateSnapshot()
     .state.sessions[
-      MOCK_REPAIR_ACTIVE_SESSION_ID
+      TEST_REPAIR_ACTIVE_SESSION_ID
     ]?.events.find((event) => event.kind === "snapshot" && event.caption === "Android companion frame captured.");
   assert.equal(snapshotEvent?.kind, "snapshot");
   if (snapshotEvent?.kind === "snapshot") {
@@ -651,8 +734,7 @@ test("repair-room wizard v2 gates tabs, accepts unknown fields, and skips failed
 });
 
 test("repair-room persists selected evidence separately from the v2 session record", async () => {
-  const baseStoredSession = MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID];
-  assert.ok(baseStoredSession);
+  const baseStoredSession = createTestRepairSession();
   const storedSession: RepairSession = {
     ...cloneJson(baseStoredSession),
     id: "repair-existing-active-session",
@@ -774,13 +856,13 @@ test("repair-room persists selected evidence separately from the v2 session reco
 
 test("repair-room hydrate ignores legacy v1 room-local session records", async () => {
   const v2Session: RepairSession = {
-    ...cloneJson(MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID]),
+    ...cloneJson(createTestRepairSession()),
     id: "repair-v2-session",
     title: "Persisted v2 repair session",
     updatedAt: "2026-06-13T12:00:00.000Z",
   };
   const v1Session = {
-    ...cloneJson(MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID]),
+    ...cloneJson(createTestRepairSession()),
     id: "repair-v1-session",
     schemaVersion: 1,
     title: "Legacy v1 repair session",
@@ -814,9 +896,9 @@ test("repair-room hydrate ignores legacy v1 room-local session records", async (
   runtime.dispose();
 });
 
-test("repair-room hydrate keeps the fallback session list when storage has no v2 sessions", async () => {
+test("repair-room hydrate keeps a clean fallback when storage has no v2 sessions", async () => {
   const v1Session = {
-    ...cloneJson(MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID]),
+    ...cloneJson(createTestRepairSession()),
     id: "repair-v1-only-session",
     schemaVersion: 1,
     title: "Legacy v1 only session",
@@ -835,15 +917,15 @@ test("repair-room hydrate keeps the fallback session list when storage has no v2
   });
 
   const before = runtime.getStateSnapshot().state;
-  assert.equal(before.sessionList.length > 0, true);
-  assert.equal(before.activeSessionId, MOCK_REPAIR_ACTIVE_SESSION_ID);
+  assert.equal(before.sessionList.length, 0);
+  assert.equal(before.activeSessionId, null);
 
   await runtime.hydrateStorage();
 
   const after = runtime.getStateSnapshot().state;
   assert.equal(after.storage.status, "ready");
   assert.equal(after.storage.sessionCount, 0);
-  assert.equal(after.activeSessionId, MOCK_REPAIR_ACTIVE_SESSION_ID);
+  assert.equal(after.activeSessionId, null);
   assert.equal(after.sessionList.length, before.sessionList.length);
   assert.equal(
     after.sessionList.some((session) => session.id === "repair-v1-only-session"),
@@ -855,7 +937,7 @@ test("repair-room hydrate keeps the fallback session list when storage has no v2
 
 test("repair-room hydrates room-local stored session records when storage is available", async () => {
   const storedSession: RepairSession = {
-    ...cloneJson(MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID]),
+    ...cloneJson(createTestRepairSession()),
     id: "repair-persisted-session",
     title: "Persisted repair session",
     updatedAt: "2026-06-13T10:00:00.000Z",
@@ -901,7 +983,7 @@ test("repair-room hydrates room-local stored session records when storage is ava
 
 test("repair-room persists session event and chat updates to room-local session JSON", async () => {
   const storedSession: RepairSession = {
-    ...cloneJson(MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID]),
+    ...cloneJson(createTestRepairSession()),
     id: "repair-persist-session-updates",
     title: "Persist repair updates",
     updatedAt: "2026-06-13T11:00:00.000Z",

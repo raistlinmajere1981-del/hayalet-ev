@@ -5,7 +5,11 @@ import { join } from "node:path";
 
 import { createCdpTools } from "../../mcp-server/core/handlers/cdp-handlers.ts";
 import { handleSuggestTool } from "../../mcp-server/tools/tool-discovery.ts";
-import { getCdpTargetInfo, sendCdpCommand } from "../../mcp-server/tools/cdp-tools.ts";
+import {
+  getCdpTargetInfo,
+  sendCdpCommand,
+  uiActionFlow,
+} from "../../mcp-server/tools/cdp-tools.ts";
 
 test("cdp tool registry includes target-aware CDP tools", () => {
   const entries = createCdpTools();
@@ -15,6 +19,13 @@ test("cdp tool registry includes target-aware CDP tools", () => {
   assert.ok(names.includes("hev_list_cdp_targets"));
   assert.ok(names.includes("hev_get_cdp_target_info"));
   assert.ok(names.includes("hev_send_cdp_command"));
+  assert.ok(names.includes("hev_debug_ui_report"));
+  assert.ok(names.includes("hev_debug_network_requests"));
+  assert.ok(names.includes("hev_debug_console_events"));
+  assert.ok(names.includes("hev_ui_accessibility_snapshot"));
+  assert.ok(names.includes("hev_ui_layout_audit"));
+  assert.ok(names.includes("hev_ui_action_flow"));
+  assert.ok(names.includes("hev_debug_failure_bundle"));
 });
 
 test("cdp tool schemas expose port-aware multi-instance routing", () => {
@@ -33,6 +44,13 @@ test("cdp tool schemas expose port-aware multi-instance routing", () => {
   const inspectElement = definitions.get("hev_inspect_element");
   const queryElements = definitions.get("hev_query_elements");
   const toggleMcpPanel = definitions.get("hev_toggle_mcp_panel_servers");
+  const uiReport = definitions.get("hev_debug_ui_report");
+  const networkRequests = definitions.get("hev_debug_network_requests");
+  const consoleEvents = definitions.get("hev_debug_console_events");
+  const accessibilitySnapshot = definitions.get("hev_ui_accessibility_snapshot");
+  const layoutAudit = definitions.get("hev_ui_layout_audit");
+  const actionFlow = definitions.get("hev_ui_action_flow");
+  const failureBundle = definitions.get("hev_debug_failure_bundle");
 
   assert.equal(listInstances?.inputSchema?.properties?.startPort?.type, "number");
   assert.equal(listInstances?.inputSchema?.properties?.endPort?.type, "number");
@@ -45,6 +63,16 @@ test("cdp tool schemas expose port-aware multi-instance routing", () => {
   assert.equal(inspectElement?.inputSchema?.properties?.port?.type, "number");
   assert.equal(queryElements?.inputSchema?.properties?.port?.type, "number");
   assert.equal(toggleMcpPanel?.inputSchema?.properties?.port?.type, "number");
+  assert.equal(uiReport?.inputSchema?.properties?.port?.type, "number");
+  assert.equal(networkRequests?.inputSchema?.properties?.port?.type, "number");
+  assert.equal(consoleEvents?.inputSchema?.properties?.port?.type, "number");
+  assert.equal(accessibilitySnapshot?.inputSchema?.properties?.port?.type, "number");
+  assert.equal(layoutAudit?.inputSchema?.properties?.port?.type, "number");
+  assert.equal(actionFlow?.inputSchema?.properties?.port?.type, "number");
+  assert.equal(failureBundle?.inputSchema?.properties?.port?.type, "number");
+  assert.equal(uiReport?.inputSchema?.properties?.targetId?.type, "string");
+  assert.equal(networkRequests?.inputSchema?.properties?.reload?.type, "boolean");
+  assert.equal(actionFlow?.inputSchema?.properties?.actions?.type, "array");
 });
 
 test("tool discovery recommends advanced CDP tools for raw CDP intents", () => {
@@ -56,6 +84,26 @@ test("tool discovery recommends advanced CDP tools for raw CDP intents", () => {
   assert.match(text, /hev_send_cdp_command/);
 });
 
+test("tool discovery recommends interpreted UI debug tools for UI failure intents", () => {
+  const result = handleSuggestTool({ intent: "debug blank ui with console error and network fail" });
+  const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+
+  assert.match(text, /hev_debug_ui_report/);
+  assert.match(text, /hev_debug_network_requests/);
+  assert.match(text, /hev_debug_console_events/);
+  assert.match(text, /hev_ui_accessibility_snapshot/);
+  assert.match(text, /hev_ui_layout_audit/);
+});
+
+test("tool discovery recommends UI action flow for repro intents", () => {
+  const result = handleSuggestTool({ intent: "run ui action click flow to repro bug" });
+  const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+
+  assert.match(text, /hev_ui_accessibility_snapshot/);
+  assert.match(text, /hev_ui_action_flow/);
+  assert.match(text, /hev_debug_console_events/);
+});
+
 test("target info requires a target id", async () => {
   const result = await getCdpTargetInfo({});
 
@@ -64,6 +112,12 @@ test("target info requires a target id", async () => {
 
 test("raw CDP command requires domain and method", async () => {
   const result = await sendCdpCommand({});
+
+  assert.equal(result.isError, true);
+});
+
+test("ui action flow requires at least one action", async () => {
+  const result = await uiActionFlow({});
 
   assert.equal(result.isError, true);
 });

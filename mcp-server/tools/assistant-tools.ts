@@ -6,6 +6,8 @@ import type { ToolEntry } from "../core/registry.js";
 import { checkSyntax } from "./dev/index.js";
 
 type JsonObject = Record<string, unknown>;
+type AssistantResponseFormat = "compact" | "json";
+type ToolTextResult = { content: Array<{ type: "text"; text: string }>; isError?: boolean };
 
 interface CommandResult {
   ok: boolean;
@@ -46,6 +48,10 @@ function asNumber(value: unknown, fallback: number): number {
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string" && item.trim() !== "");
+}
+
+function asResponseFormat(value: unknown): AssistantResponseFormat {
+  return value === "json" ? "json" : "compact";
 }
 
 function runCommand(
@@ -167,14 +173,113 @@ function shouldCheckFile(filePath: string): boolean {
   return CHECKABLE_EXTENSIONS.has(extname(normalized));
 }
 
-function textResult(payload: JsonObject, isError = false): { content: Array<{ type: "text"; text: string }>; isError?: boolean } {
+function textResult(payload: JsonObject, isError = false): ToolTextResult {
   return {
     content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
     ...(isError ? { isError: true } : {}),
   };
 }
 
+function textOutput(text: string, isError = false): ToolTextResult {
+  return {
+    content: [{ type: "text", text }],
+    ...(isError ? { isError: true } : {}),
+  };
+}
+
+function compactText(value: string, maxLength = 120): string {
+  const normalized = value.replace(/\s+/gu, " ").trim();
+  return normalized.length > maxLength ? `${normalized.slice(0, Math.max(0, maxLength - 3))}...` : normalized;
+}
+
+function stringField(source: unknown, key: string, fallback: string): string {
+  if (!isRecord(source)) return fallback;
+  const value = source[key];
+  return typeof value === "string" && value !== "" ? value : fallback;
+}
+
+function changedFileCountLabel(git: JsonObject): string {
+  if (git["skipped"] === true) return "skipped";
+  const changedFileCount = git["changedFileCount"];
+  if (typeof changedFileCount === "number") return String(changedFileCount);
+  if (git["dirty"] === false) return "0";
+  return "unknown";
+}
+
+function issueLines(label: string, issues: string[], maxItems = 2): string[] {
+  const visible = issues.slice(0, maxItems).map((issue) => `${label}: ${compactText(issue)}`);
+  const hiddenCount = issues.length - visible.length;
+  return hiddenCount > 0 ? [...visible, `${label}_more=${hiddenCount}`] : visible;
+}
+
+function formatDoctorCompact(params: {
+  status: string;
+  modeStatus: unknown;
+  whereami: unknown;
+  git: JsonObject;
+  critical: string[];
+  warnings: string[];
+}): string {
+  const mode = stringField(params.modeStatus, "mode", "skipped");
+  const surface = stringField(params.whereami, "effectiveMode", stringField(params.whereami, "mode", "skipped"));
+  const next =
+    params.critical.length > 0
+      ? "fix-critical-before-editing"
+      : params.warnings.length > 0
+        ? "proceed-with-warnings"
+        : "proceed";
+  return [
+    `doctor: status=${params.status} mode=${mode} surface=${surface} dirty=${changedFileCountLabel(
+      params.git
+    )} critical=${params.critical.length} warnings=${params.warnings.length} next=${next}`,
+    ...issueLines("critical", params.critical),
+    ...issueLines("warning", params.warnings),
+  ].join("\n");
+}
+
+function formatGap(gap: VerificationGap): string {
+  return `${gap.severity}${gap.file !== undefined ? ` ${gap.file}` : ""}: ${gap.message}`;
+}
+
+function formatVerifyCompact(params: {
+  status: string;
+  readyToReport: boolean;
+  scope: string;
+  candidateFiles: string[];
+  checks: JsonObject[];
+  evidenceCount: number;
+  blockingGaps: VerificationGap[];
+  warningGaps: VerificationGap[];
+  infoGaps: VerificationGap[];
+  runSyntax: boolean;
+}): string {
+  const next =
+    params.status === "blocked"
+      ? "fix-blocking-gaps"
+      : params.status === "needs_evidence"
+        ? "add-verification-evidence"
+        : params.warningGaps.length > 0
+          ? "report-with-warnings"
+          : "report";
+  const gapLines = [...params.blockingGaps, ...params.warningGaps]
+    .slice(0, 3)
+    .map((gap) => `gap: ${compactText(formatGap(gap))}`);
+  const hiddenGapCount = params.blockingGaps.length + params.warningGaps.length - gapLines.length;
+  return [
+    `verify: status=${params.status} ready=${String(params.readyToReport)} scope=${params.scope} candidates=${
+      params.candidateFiles.length
+    } checked=${params.checks.length} evidence=${params.evidenceCount} blocking=${
+      params.blockingGaps.length
+    } warnings=${params.warningGaps.length} info=${params.infoGaps.length} syntax=${
+      params.runSyntax ? "on" : "off"
+    } next=${next}`,
+    ...gapLines,
+    ...(hiddenGapCount > 0 ? [`gap_more=${hiddenGapCount}`] : []),
+  ].join("\n");
+}
+
 function handleAssistantDoctor(args: Record<string, unknown>, projectRoot: string): unknown {
+  const responseFormat = asResponseFormat(args["response_format"]);
   const includeRuntime = asBoolean(args["include_runtime"], true);
   const includeGit = asBoolean(args["include_git"], true);
   const maxGitFiles = Math.max(1, Math.floor(asNumber(args["max_git_files"], DEFAULT_GIT_FILE_LIMIT)));
@@ -227,7 +332,7 @@ function handleAssistantDoctor(args: Record<string, unknown>, projectRoot: strin
 
   const status = critical.length > 0 ? "blocked" : warnings.length > 0 ? "attention" : "ok";
 
-  return textResult({
+  const payload = {
     success: critical.length === 0,
     status,
     generatedAt,
@@ -262,15 +367,32 @@ function handleAssistantDoctor(args: Record<string, unknown>, projectRoot: strin
         : warnings.length > 0
           ? "Proceed carefully and account for warnings in the final verification."
           : "Proceed with the requested task.",
-  });
+  };
+
+  if (responseFormat === "json") {
+    return textResult(payload);
+  }
+
+  return textOutput(
+    formatDoctorCompact({
+      status,
+      modeStatus,
+      whereami,
+      git,
+      critical,
+      warnings,
+    })
+  );
 }
 
 async function handleAssistantVerifyCompletion(
   args: Record<string, unknown>,
   projectRoot: string
 ): Promise<unknown> {
+  const responseFormat = asResponseFormat(args["response_format"]);
   const generatedAt = new Date().toISOString();
   const task = typeof args["task"] === "string" ? args["task"] : "";
+  const hasExplicitFileArgs = Array.isArray(args["changed_files"]) || Array.isArray(args["files"]);
   const explicitFiles = uniqueStrings([
     ...asStringArray(args["changed_files"]),
     ...asStringArray(args["files"]),
@@ -285,7 +407,8 @@ async function handleAssistantVerifyCompletion(
   const gitFiles = Array.isArray(git["files"])
     ? (git["files"] as GitStatusEntry[]).filter((entry) => !entry.deleted).map((entry) => entry.file)
     : [];
-  const candidateFiles = explicitFiles.length > 0 ? explicitFiles : uniqueStrings(gitFiles);
+  const candidateFiles = hasExplicitFileArgs ? explicitFiles : uniqueStrings(gitFiles);
+  const scope = hasExplicitFileArgs ? "explicit" : candidateFiles.length > 0 ? "git" : "none";
   const checkableFiles = candidateFiles.filter(
     (filePath) => existsSync(join(projectRoot, filePath)) && shouldCheckFile(filePath)
   );
@@ -298,6 +421,13 @@ async function handleAssistantVerifyCompletion(
     gaps.push({
       severity: "warning",
       message: "No changed files or external evidence were provided.",
+    });
+  }
+
+  if (!hasExplicitFileArgs && candidateFiles.length > 0) {
+    gaps.push({
+      severity: "warning",
+      message: "No explicit changed_files were provided; using current git changed files.",
     });
   }
 
@@ -364,14 +494,17 @@ async function handleAssistantVerifyCompletion(
 
   const blockingGaps = gaps.filter((gap) => gap.severity === "blocking");
   const warningGaps = gaps.filter((gap) => gap.severity === "warning");
+  const infoGaps = gaps.filter((gap) => gap.severity === "info");
   const automaticEvidence =
     runSyntax && checks.length > 0
       ? [`MCP syntax verification ran for ${checks.length} file(s).`]
       : [];
   const readyToReport = blockingGaps.length === 0 && (checks.length > 0 || evidence.length > 0);
   const status = blockingGaps.length > 0 ? "blocked" : readyToReport ? "verified" : "needs_evidence";
+  const evidenceCount = automaticEvidence.length + evidence.length;
+  const checkedFiles = runSyntax ? filesToCheck : [];
 
-  return textResult({
+  const payload = {
     success: blockingGaps.length === 0,
     readyToReport,
     status,
@@ -387,8 +520,9 @@ async function handleAssistantVerifyCompletion(
         maxFiles,
       },
       candidateFiles,
+      scope,
       checkableFiles,
-      checkedFiles: filesToCheck,
+      checkedFiles,
       checks,
       evidence: [...automaticEvidence, ...evidence],
       gaps,
@@ -397,7 +531,7 @@ async function handleAssistantVerifyCompletion(
       blockingGapCount: blockingGaps.length,
       warningGapCount: warningGaps.length,
       checkedFileCount: checks.length,
-      evidenceCount: automaticEvidence.length + evidence.length,
+      evidenceCount,
     },
     recommendedNextAction:
       status === "blocked"
@@ -405,9 +539,28 @@ async function handleAssistantVerifyCompletion(
         : status === "needs_evidence"
           ? "Run or provide at least one verification check before reporting completion."
           : warningGaps.length > 0
-            ? "Completion can be reported with warnings explicitly mentioned."
-            : "Completion can be reported.",
-  });
+          ? "Completion can be reported with warnings explicitly mentioned."
+          : "Completion can be reported.",
+  };
+
+  if (responseFormat === "json") {
+    return textResult(payload);
+  }
+
+  return textOutput(
+    formatVerifyCompact({
+      status,
+      readyToReport,
+      scope,
+      candidateFiles,
+      checks,
+      evidenceCount,
+      blockingGaps,
+      warningGaps,
+      infoGaps,
+      runSyntax,
+    })
+  );
 }
 
 export const ASSISTANT_DOCTOR_TOOL = {
@@ -431,6 +584,12 @@ export const ASSISTANT_DOCTOR_TOOL = {
         type: "number",
         default: DEFAULT_GIT_FILE_LIMIT,
         description: "Maximum changed files to include in the report.",
+      },
+      response_format: {
+        type: "string",
+        enum: ["compact", "json"],
+        default: "compact",
+        description: "compact returns a short assistant-actionable summary; json returns full diagnostics.",
       },
     },
   },
@@ -495,6 +654,12 @@ export const ASSISTANT_VERIFY_COMPLETION_TOOL = {
         type: "number",
         default: DEFAULT_VERIFY_FILE_LIMIT,
         description: "Maximum checkable files to syntax-check.",
+      },
+      response_format: {
+        type: "string",
+        enum: ["compact", "json"],
+        default: "compact",
+        description: "compact returns a short assistant-actionable summary; json returns full diagnostics.",
       },
     },
   },

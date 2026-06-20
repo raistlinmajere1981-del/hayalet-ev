@@ -4,6 +4,8 @@ export * from "./mock-knowledge-packs.js";
 export * from "./mock-measurement.js";
 export * from "./mock-operator-profile.js";
 export * from "./mock-pcb-images.js";
+export * from "./repair-device-catalog.js";
+export * from "./repair-symptom-catalog.js";
 export * from "./mock-sessions.js";
 export * from "./mock-tactical-feed.js";
 export * from "./mock-wizard.js";

@@ -1,8 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import { toRoomRuntimeFileUrl } from "../../src/js/modules/rooms/room-runtime-url.ts";
+import {
+  canUseDirectFileUrls,
+  toRoomRuntimeFileUrl,
+} from "../../src/js/modules/rooms/room-runtime-url.ts";
 import { readCssWithImports } from "./helpers/css-imports.ts";
+
+type LaboratoryManifestFeature = {
+  id?: string;
+  name?: string;
+  scene?: {
+    hotspot?: { id?: string };
+    view?: {
+      id?: string;
+      backgroundSrc?: string;
+    };
+  };
+};
 
 test("toRoomRuntimeFileUrl normalizes linux paths", () => {
   assert.equal(
@@ -20,6 +35,51 @@ test("toRoomRuntimeFileUrl normalizes windows-style paths", () => {
 
 test("toRoomRuntimeFileUrl encodes reserved url characters", () => {
   assert.equal(toRoomRuntimeFileUrl("/tmp/a b#c/index.html"), "file:///tmp/a%20b%23c/index.html");
+});
+
+test("canUseDirectFileUrls rejects http-backed renderer protocols", () => {
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+
+  try {
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { location: { protocol: "http:" } },
+    });
+    assert.equal(canUseDirectFileUrls(), false);
+
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { location: { protocol: "https:" } },
+    });
+    assert.equal(canUseDirectFileUrls(), false);
+
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { location: { protocol: "file:" } },
+    });
+    assert.equal(canUseDirectFileUrls(), true);
+  } finally {
+    if (originalWindow) {
+      Object.defineProperty(globalThis, "window", originalWindow);
+    } else {
+      delete (globalThis as typeof globalThis & { window?: unknown }).window;
+    }
+  }
+});
+
+test("room host runtime skips direct file imports on http-backed renderer protocols", () => {
+  const hostRuntimeSource = readFileSync("src/js/modules/rooms/room-host-runtime.ts", "utf8");
+  const guardIndex = hostRuntimeSource.indexOf("if (canUseDirectFileUrls())");
+  const fileImportIndex = hostRuntimeSource.indexOf(
+    "await import(/* @vite-ignore */ moduleUrl.toString())"
+  );
+  const fallbackIndex = hostRuntimeSource.indexOf("if (exported === null)");
+
+  assert.notEqual(guardIndex, -1);
+  assert.notEqual(fileImportIndex, -1);
+  assert.notEqual(fallbackIndex, -1);
+  assert.ok(guardIndex < fileImportIndex);
+  assert.ok(fileImportIndex < fallbackIndex);
 });
 
 test("room page syncs slot-aware host context and scene runtime routing", () => {
@@ -415,14 +475,16 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   const initMethodMatch = source.match(
     /(?:async\s+)?init\(\)(?:: [^{]+)? \{([\s\S]*?)\n  }\n\n  onShow\(\): void \{/
   );
-  assert.ok(initMethodMatch);
-  assert.doesNotMatch(initMethodMatch[1], /runtimeHostRuntime\.ensure/);
+  const initMethodBody = initMethodMatch?.[1];
+  assert.ok(initMethodBody);
+  assert.doesNotMatch(initMethodBody, /runtimeHostRuntime\.ensure/);
   const renderMethodMatch = source.match(
     /render\(\): void \{([\s\S]*?)\n  }\n\n  dispose\(\): void \{/
   );
-  assert.ok(renderMethodMatch);
+  const renderMethodBody = renderMethodMatch?.[1];
+  assert.ok(renderMethodBody);
   assert.match(
-    renderMethodMatch[1],
+    renderMethodBody,
     /if \(this\.shouldEnsureRuntimeHost\(page\)\) \{\s*void this\.runtimeHostRuntime\.ensure\(page\);\s*\}/
   );
   assert.doesNotMatch(source, /roomPageT\("page\.badge"\)/);
@@ -509,13 +571,15 @@ test("installed laboratory manifest keeps one workbench scene entry for room-pag
   const manifestPath = existsSync("rooms/.build/laboratory/runtime/manifest.json")
     ? "rooms/.build/laboratory/runtime/manifest.json"
     : "rooms/laboratory/manifest.json";
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  const mediaFeature = Array.isArray(manifest.features)
-    ? manifest.features.find((feature) => feature.id === "media-analysis")
-    : null;
-  const audioFeature = Array.isArray(manifest.features)
-    ? manifest.features.find((feature) => feature.id === "audio-analysis")
-    : null;
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+    features?: unknown;
+    workbench?: { experienceId?: string };
+  };
+  const features = Array.isArray(manifest.features)
+    ? (manifest.features as LaboratoryManifestFeature[])
+    : [];
+  const mediaFeature = features.find((feature) => feature.id === "media-analysis");
+  const audioFeature = features.find((feature) => feature.id === "audio-analysis");
 
   assert.equal(manifest.workbench?.experienceId, "analysis-workbench");
   assert.equal(mediaFeature?.name, "Analysis Workbench");

@@ -15,6 +15,7 @@ import type { RepairSession } from "../shared/types/index.js";
 import { createReplayRuntimeController } from "./repair-replay-runtime.js";
 import {
   createInitialRepairRuntimeState,
+  type RepairRuntimeSeedData,
   type RepairRuntimeState,
 } from "./state/repair-runtime-state.js";
 import { createRepairRuntimeStore, type RepairRuntimeStore } from "./state/repair-runtime-store.js";
@@ -67,6 +68,7 @@ interface RepairRoomApi {
 
 interface RepairRoomHostRuntimeOptions {
   autoHydrateStorage?: boolean;
+  initialSeed?: RepairRuntimeSeedData;
   io?: RepairHostIoRuntime;
   storage?: RepairSessionStorageRuntime;
 }
@@ -119,7 +121,7 @@ function setActiveSessionDerivedState(
  *  - push state snapshots to the UI via api.notifyRoom("repair-state", …)
  *  - accept UI commands and update the store deterministically
  *
- * Mock data remains the fallback when Electron room storage is unavailable.
+ * A clean idle state remains the fallback when Electron room storage is unavailable.
  */
 export default function createRepairRoomHostRuntime(options: RepairRoomHostRuntimeOptions = {}) {
   const ioRuntime = options.io ?? createRepairHostIoRuntime({ roomId: REPAIR_ROOM_ID });
@@ -128,7 +130,9 @@ export default function createRepairRoomHostRuntime(options: RepairRoomHostRunti
 
   return {
     activate(api: RepairRoomApi) {
-      const store = createRepairRuntimeStore(createInitialRepairRuntimeState(nowIso()));
+      const store = createRepairRuntimeStore(
+        createInitialRepairRuntimeState(nowIso(), options.initialSeed)
+      );
       let disposed = false;
       const replayController = createReplayRuntimeController(store, () =>
         getActiveSession(store.getState())

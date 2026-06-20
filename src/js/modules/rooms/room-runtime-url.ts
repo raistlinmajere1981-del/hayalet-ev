@@ -25,7 +25,7 @@ function isBrowserLoadableRoomRuntimeSource(source: string): boolean {
   );
 }
 
-function canUseDirectFileUrls(): boolean {
+export function canUseDirectFileUrls(): boolean {
   if (typeof window === "undefined") {
     return false;
   }

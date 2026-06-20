@@ -3066,7 +3066,7 @@
         "genericTitle": "Genel öneriler:",
         "fileOperations": "Dosya işlemleri → `hev_fs_*` kategorisi",
         "devTools": "TypeScript/ESLint → `hev_dev_*` kategorisi",
-        "debugging": "Debug → `hev_read_electron_logs`, `hev_get_error_hints`",
+        "debugging": "Debug → `hev_debug_ui_report`, `hev_read_electron_logs`, `hev_get_error_hints`",
         "listToolsHint": "`hev_list_tools()` ile tüm tool'ları görebilirsin."
       },
       "categories": {
@@ -3081,7 +3081,8 @@
         "testing": "Test",
         "largeFile": "Büyük Dosya",
         "safeEditing": "Güvenli Düzenleme",
-        "toolManagement": "Tool Yönetimi"
+        "toolManagement": "Tool Yönetimi",
+        "uiActionFlow": "UI Action Flow"
       },
       "reasons": {
         "typescriptErrorAnalysis": "Hata analizi ve dağılımla başla",
@@ -3098,6 +3099,12 @@
         "inspectAvailableTargets": "Önce mevcut CDP hedeflerini incele",
         "inspectSpecificTarget": "Düşük seviyeli komuttan önce seçilen hedefi doğrula",
         "runRawCdpCommand": "Hedef seçildikten sonra ham CDP komutu çalıştır",
+        "uiDebugFirstLook": "Önce yorumlanmış UI debug raporunu topla",
+        "networkFailureTriage": "Failed request ve network timing bilgisini incele",
+        "consoleRuntimeCapture": "Console/runtime event ve stack ipuçlarını yakala",
+        "accessibilitySnapshot": "Screenshot tahmini yerine accessibility tree state kullan",
+        "layoutAudit": "Overflow, clipping, overlap ve viewport dışı kontrolleri denetle",
+        "uiActionRepro": "UI action flow'u tekrarlanabilir mini smoke yolu olarak çalıştır",
         "checkLogsFirst": "Önce logları kontrol et",
         "debugHints": "AI destekli debug ipuçları al",
         "verifyCdpConnection": "CDP bağlantısını doğrula",
@@ -4916,6 +4923,83 @@
           "agentGuidance": "Canlı sorunları izlemek için kullan. Ctrl+C ile durana kadar sürekli stream eder."
         },
         "cdp": {
+          "common": {
+            "targetId": "CDP hedef id'si (opsiyonel; verilmezse tercih edilen page target kullanılır)",
+            "port": "Opsiyonel CDP portu. Varsayılan dev örneği portudur; packaged/AppImage varsayılan olarak bir sonraki portu kullanır.",
+            "limit": "Dahil edilecek maksimum öğe sayısı"
+          },
+          "debugUiReport": {
+            "description": "Page state, network failure, console/runtime event, accessibility özeti, layout audit, performance metric ve opsiyonel screenshot kanıtını yorumlanmış UI debug raporu olarak topla.",
+            "sampleMs": "CDP network ve console event'leri için kısa örnekleme penceresi (ms)",
+            "includeScreenshot": "Screenshot kanıtı al ve rapora boyut/yol bilgisini ekle",
+            "screenshotPath": "Opsiyonel screenshot kayıt yolu",
+            "useCases": {
+              "firstLook": "UI debug için ilk bakış",
+              "blankUi": "Boş veya takılı UI state'lerini teşhis etme",
+              "failureTriage": "Tek kompakt failure triage raporu toplama"
+            },
+            "agentGuidance": "UI/Electron debug işlerinde network, console, accessibility veya layout ayrıntısına inmeden önce bunu kullan."
+          },
+          "debugNetworkRequests": {
+            "description": "Performance entry'leri ve kısa CDP Network event örneklemesiyle network request tanılarını topla.",
+            "sampleMs": "Network event örnekleme penceresi (ms)",
+            "reload": "Startup request'lerini yakalamak için örnekleme sırasında hedefi reload et",
+            "useCases": {
+              "failedRequests": "Failed request bulma",
+              "blankUi": "Eksik asset veya API hatası kaynaklı boş UI teşhisi",
+              "reloadCapture": "Kontrollü reload sırasında request yakalama"
+            },
+            "agentGuidance": "UI yüklenme hatası, eksik asset veya API hatası şüphesi varsa kullan. reload=true yalnızca reload faydalıysa seçilir."
+          },
+          "debugConsoleEvents": {
+            "description": "Mevcut Electron CDP hedefinden console, runtime exception ve log event'lerini örnekle.",
+            "sampleMs": "Console/runtime event örnekleme penceresi (ms)",
+            "useCases": {
+              "runtimeErrors": "Runtime error bulma",
+              "stackTraces": "Stack trace ve source URL toplama",
+              "actionCorrelation": "UI action ile console failure ilişkilendirme"
+            },
+            "agentGuidance": "Özellikle action flow veya reload çevresinde canlı console/runtime hatalarını yakalamak için kullan."
+          },
+          "uiAccessibilitySnapshot": {
+            "description": "Görünür kontroller, dialoglar, heading'ler ve isimli UI node'ları için kompakt accessibility tree snapshot al.",
+            "useCases": {
+              "visibleControls": "Görünür kullanıcı kontrollerini listeleme",
+              "modalState": "Dialog/modal durumunu kontrol etme",
+              "selectorFreeInspection": "Screenshot veya kırılgan selector'a bağlı kalmadan UI inceleme"
+            },
+            "agentGuidance": "Screenshot okumak yerine role/name tabanlı Playwright benzeri UI state gerektiğinde kullan."
+          },
+          "uiLayoutAudit": {
+            "description": "Mevcut UI'da overflow, kırpılmış text, viewport dışı element, üst üste binen kontrol ve sıfır boyutlu interactive element ara.",
+            "useCases": {
+              "overflow": "Text veya container overflow bulma",
+              "overlap": "Üst üste binen kontrolleri bulma",
+              "mobileDesktop": "Viewport benzeri durumlarda layout sorunu kontrolü"
+            },
+            "agentGuidance": "Sorun görsel kalite, kullanılamayan kontrol, görünmez hit target veya responsive layout kırılması ise kullan."
+          },
+          "uiActionFlow": {
+            "description": "CDP üzerinden kompakt UI action flow çalıştır; before/after state, adım sonuçları ve opsiyonel console korelasyonu döndür.",
+            "actions": "Sıralı aksiyonlar: click, type, press, wait, waitForSelector, waitForText, snapshot",
+            "stepTimeoutMs": "Wait benzeri her action için varsayılan timeout (ms)",
+            "sampleConsole": "Flow çalışırken console/runtime event'lerini yakala",
+            "useCases": {
+              "repro": "UI bug reproduce etme",
+              "beforeAfter": "Before/after state yakalama",
+              "smoke": "Küçük Electron UI smoke flow çalıştırma"
+            },
+            "agentGuidance": "Kullanıcının bildirdiği click/type yolunu adım sonuçları ve console korelasyonu olan kanıta çevirmek için kullan."
+          },
+          "debugFailureBundle": {
+            "description": "Screenshot capture açık şekilde UI debug report çalıştırarak failure bundle üret.",
+            "screenshotPath": "Bundle screenshot yolu (varsayılan: logs/debug/failure-bundle-<timestamp>.png)",
+            "useCases": {
+              "testFailure": "UI smoke/test hatası sonrası kanıt toplama",
+              "shareableEvidence": "Screenshot destekli failure kanıtı kaydetme"
+            },
+            "agentGuidance": "Failure sonrası kalıcı screenshot ve yorumlanmış UI debug raporu gerekiyorsa kullan."
+          },
           "listCdpInstances": {
             "description": "Çalışan Hayalet Ev CDP örneklerini listele; böylece dev ve packaged/AppImage kopyaları ayrı hedeflenebilir.",
             "startPort": "Opsiyonel ilk tarama portu",

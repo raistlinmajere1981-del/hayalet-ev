@@ -2,6 +2,7 @@ import type {
   RepairImageRect,
   RepairPanelId,
   RepairSettingsOverlayTabId,
+  RepairWizardDraft,
   RepairWorkbenchViewport,
 } from "../shared/types/index.js";
 import type {
@@ -20,6 +21,15 @@ import { REPAIR_ROOM_ID } from "../shared/repair-constants.js";
 import { createRepairUiRequestRuntime } from "../shared/ui/request-runtime.js";
 
 import { renderSessionRailPanel } from "./panels/session-rail-panel.js";
+import {
+  REPAIR_WIZARD_STEP_ORDER,
+  canEnterRepairWizardStep,
+  getBoardCodeSuggestions,
+  getManufacturerSuggestions,
+  getModelSuggestions,
+  isRepairWizardStepComplete,
+  isRepairWizardStepIncomplete,
+} from "./panels/session-wizard-panel.js";
 import { renderWorkbenchStagePanel } from "./panels/workbench-stage-panel.js";
 import { renderTacticalFeedPanel } from "./panels/tactical-feed-panel.js";
 import { renderKnowledgePackPanel } from "./panels/knowledge-pack-panel.js";
@@ -117,6 +127,175 @@ interface RepairPersistentShell {
   panelSignatures: Map<RepairPanelId, string>;
 }
 
+const WIZARD_DEVICE_CASCADE_FIELDS = ["deviceType", "manufacturer", "model", "boardCode"] as const;
+
+type WizardDeviceCascadeField = (typeof WIZARD_DEVICE_CASCADE_FIELDS)[number];
+type WizardDeviceCascadePatch = Partial<Pick<RepairWizardDraft, WizardDeviceCascadeField>>;
+
+function isWizardDeviceCascadeField(field: string): field is WizardDeviceCascadeField {
+  return WIZARD_DEVICE_CASCADE_FIELDS.includes(field as WizardDeviceCascadeField);
+}
+
+function createWizardDeviceCascadePatch(
+  field: WizardDeviceCascadeField,
+  value: string
+): WizardDeviceCascadePatch {
+  if (field === "deviceType") {
+    return { deviceType: value, manufacturer: "", model: "", boardCode: "" };
+  }
+  if (field === "manufacturer") {
+    return { manufacturer: value, model: "", boardCode: "" };
+  }
+  if (field === "model") {
+    return { model: value, boardCode: "" };
+  }
+  return { boardCode: value };
+}
+
+function getWizardFieldElement(
+  root: HTMLElement,
+  field: WizardDeviceCascadeField
+): HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null {
+  return root.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+    `[data-repair-action='wizard-field'][data-wizard-field='${field}']`
+  );
+}
+
+function getWizardFieldDomValue(root: HTMLElement, field: WizardDeviceCascadeField): string {
+  return getWizardFieldElement(root, field)?.value ?? "";
+}
+
+function setWizardFieldDomValue(
+  root: HTMLElement,
+  field: WizardDeviceCascadeField,
+  value: string
+): void {
+  const fieldElement = getWizardFieldElement(root, field);
+  if (fieldElement !== null) fieldElement.value = value;
+}
+
+function replaceWizardSuggestionMenu(
+  documentRef: Document,
+  root: HTMLElement,
+  field: WizardDeviceCascadeField,
+  options: string[]
+): void {
+  const fieldElement = getWizardFieldElement(root, field);
+  const wrapper = fieldElement?.closest(".repair-wizard-field");
+  if (!(wrapper instanceof HTMLElement)) return;
+
+  wrapper.querySelector(".repair-wizard-suggestions")?.remove();
+  if (options.length === 0) return;
+
+  const menu = documentRef.createElement("div");
+  menu.className = "repair-wizard-suggestions";
+  menu.setAttribute("role", "listbox");
+  options.forEach((option) => {
+    const optionEl = documentRef.createElement("button");
+    optionEl.className = "repair-wizard-suggestion";
+    optionEl.type = "button";
+    optionEl.textContent = option;
+    optionEl.dataset["repairAction"] = "wizard-suggestion";
+    optionEl.dataset["wizardField"] = field;
+    optionEl.dataset["value"] = option;
+    menu.append(optionEl);
+  });
+  wrapper.append(menu);
+}
+
+function getWizardDeviceCascadeValues(root: HTMLElement): Record<WizardDeviceCascadeField, string> {
+  return {
+    deviceType: getWizardFieldDomValue(root, "deviceType"),
+    manufacturer: getWizardFieldDomValue(root, "manufacturer"),
+    model: getWizardFieldDomValue(root, "model"),
+    boardCode: getWizardFieldDomValue(root, "boardCode"),
+  };
+}
+
+function syncWizardDeviceCascadeDom(
+  documentRef: Document,
+  root: HTMLElement,
+  patch: WizardDeviceCascadePatch
+): void {
+  WIZARD_DEVICE_CASCADE_FIELDS.forEach((field) => {
+    const value = patch[field];
+    if (value !== undefined) setWizardFieldDomValue(root, field, value);
+  });
+
+  const values = getWizardDeviceCascadeValues(root);
+  if (patch.deviceType !== undefined) {
+    replaceWizardSuggestionMenu(
+      documentRef,
+      root,
+      "manufacturer",
+      getManufacturerSuggestions(values.deviceType)
+    );
+  }
+  if (patch.deviceType !== undefined || patch.manufacturer !== undefined) {
+    replaceWizardSuggestionMenu(
+      documentRef,
+      root,
+      "model",
+      getModelSuggestions(values.deviceType, values.manufacturer)
+    );
+  }
+  if (
+    patch.deviceType !== undefined ||
+    patch.manufacturer !== undefined ||
+    patch.model !== undefined
+  ) {
+    replaceWizardSuggestionMenu(
+      documentRef,
+      root,
+      "boardCode",
+      getBoardCodeSuggestions(values.deviceType, values.manufacturer, values.model)
+    );
+  }
+}
+
+function getRepairWizardStepClassName(params: {
+  isActive: boolean;
+  isAvailable: boolean;
+  isDone: boolean;
+  isIncomplete: boolean;
+}): string {
+  return [
+    "repair-wizard-step",
+    params.isActive ? "repair-wizard-step--active" : "",
+    params.isDone && !params.isActive ? "repair-wizard-step--done" : "",
+    params.isAvailable ? "repair-wizard-step--clickable" : "repair-wizard-step--disabled",
+    params.isIncomplete ? "repair-wizard-step--incomplete" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function syncSessionWizardStepperDom(panel: HTMLElement, state: RepairUiState): void {
+  const currentIdx = REPAIR_WIZARD_STEP_ORDER.indexOf(state.wizard.currentStep);
+  panel
+    .querySelectorAll<HTMLButtonElement>(".repair-wizard-stepper .repair-wizard-step")
+    .forEach((step, index) => {
+      const stepId = REPAIR_WIZARD_STEP_ORDER[index];
+      if (stepId === undefined) return;
+      const isDone = isRepairWizardStepComplete(state, stepId);
+      const isActive = index === currentIdx;
+      const isAvailable = canEnterRepairWizardStep(state, stepId);
+      const isIncomplete = isRepairWizardStepIncomplete(state, stepId);
+      setClassNameIfChanged(
+        step,
+        getRepairWizardStepClassName({ isActive, isAvailable, isDone, isIncomplete })
+      );
+      if (step.disabled === isAvailable) step.disabled = !isAvailable;
+      if (isAvailable) {
+        setDatasetIfChanged(step, "repairAction", "advance-wizard");
+        setDatasetIfChanged(step, "step", stepId);
+      } else {
+        delete step.dataset["repairAction"];
+        delete step.dataset["step"];
+      }
+    });
+}
+
 export function createRepairRoomUiRuntime() {
   const state: RepairUiState = createInitialRepairUiState();
   const meta: RepairUiSnapshotMeta = {
@@ -153,6 +332,8 @@ export function createRepairRoomUiRuntime() {
   const requestRuntime = createRepairUiRequestRuntime();
   const windowRef = window as unknown as RepairUiWindow;
   const documentRef = document;
+  let pendingSessionRailDraftEcho = false;
+  let pendingSessionRailDraftEchoTimer: ReturnType<typeof setTimeout> | null = null;
 
   let shell: RepairPersistentShell | null = null;
   let clockInterval: ReturnType<typeof setInterval> | null = null;
@@ -771,9 +952,28 @@ export function createRepairRoomUiRuntime() {
     if (!(activeElement instanceof HTMLElement) || !panel.contains(activeElement)) return false;
 
     const action = activeElement.dataset["repairAction"];
-    return (
-      action === "wizard-field" || action === "wizard-suggestion" || action === "wizard-symptom"
-    );
+    return action === "wizard-field" || action === "wizard-suggestion";
+  }
+
+  function armSessionRailDraftEchoGuard(): void {
+    pendingSessionRailDraftEcho = true;
+    if (pendingSessionRailDraftEchoTimer !== null) {
+      clearTimeout(pendingSessionRailDraftEchoTimer);
+    }
+    pendingSessionRailDraftEchoTimer = setTimeout(() => {
+      pendingSessionRailDraftEcho = false;
+      pendingSessionRailDraftEchoTimer = null;
+    }, 1000);
+  }
+
+  function consumeSessionRailDraftEchoGuard(panelId: RepairPanelId): boolean {
+    if (panelId !== "session-rail" || pendingSessionRailDraftEcho === false) return false;
+    pendingSessionRailDraftEcho = false;
+    if (pendingSessionRailDraftEchoTimer !== null) {
+      clearTimeout(pendingSessionRailDraftEchoTimer);
+      pendingSessionRailDraftEchoTimer = null;
+    }
+    return true;
   }
 
   function syncPanel(
@@ -804,8 +1004,12 @@ export function createRepairRoomUiRuntime() {
       return;
     }
 
-    if (shouldKeepSessionRailDomForActiveInteraction(lifecycle.panelId, current)) {
+    if (
+      consumeSessionRailDraftEchoGuard(lifecycle.panelId) ||
+      shouldKeepSessionRailDomForActiveInteraction(lifecycle.panelId, current)
+    ) {
       // Host echoes draft updates on every keystroke; remounting here drops focus and selection.
+      if (lifecycle.panelId === "session-rail") syncSessionWizardStepperDom(current, state);
       applyPanelGuidanceChrome(current, lifecycle.panelId);
       persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
       return;
@@ -938,6 +1142,18 @@ export function createRepairRoomUiRuntime() {
     applyPanelGuidanceChrome(panel, panelId);
     content.replaceChildren(panel);
     if (shell !== null) shell.settingsOverlaySignature = signature;
+  }
+
+  function updateWizardField(root: HTMLElement, field: string, value: string): void {
+    if (isWizardDeviceCascadeField(field)) {
+      const patch = createWizardDeviceCascadePatch(field, value);
+      syncWizardDeviceCascadeDom(documentRef, root, patch);
+      armSessionRailDraftEchoGuard();
+      requestRuntime.updateSession({ wizardDraft: patch });
+      return;
+    }
+
+    requestRuntime.updateSession({ wizardField: field, value });
   }
 
   function flushWizardFields(root: HTMLElement): void {
@@ -1511,19 +1727,20 @@ export function createRepairRoomUiRuntime() {
         case "wizard-symptom": {
           const symptom = el.dataset["symptom"];
           if (!symptom) return;
-          el.classList.toggle(
-            "repair-skill-chip--active",
-            !el.classList.contains("repair-skill-chip--active")
-          );
-          const current = new Set(state.wizard.draft.primarySymptoms);
-          if (current.has(symptom)) {
-            current.delete(symptom);
+          const primarySymptoms = new Set(state.wizard.draft.primarySymptoms);
+          const customSymptoms = new Set(state.wizard.draft.customSymptoms);
+          const isSelected = primarySymptoms.has(symptom) || customSymptoms.has(symptom);
+          if (isSelected) {
+            primarySymptoms.delete(symptom);
+            customSymptoms.delete(symptom);
           } else {
-            current.add(symptom);
+            primarySymptoms.add(symptom);
           }
           requestRuntime.updateSession({
-            wizardField: "primarySymptoms",
-            value: Array.from(current),
+            wizardDraft: {
+              primarySymptoms: Array.from(primarySymptoms),
+              customSymptoms: Array.from(customSymptoms),
+            },
           });
           break;
         }
@@ -1538,7 +1755,7 @@ export function createRepairRoomUiRuntime() {
           if (input !== undefined && input !== null) {
             input.value = value;
           }
-          requestRuntime.updateSession({ wizardField: field, value });
+          updateWizardField(root, field, value);
           el.blur();
           break;
         }
@@ -1650,7 +1867,7 @@ export function createRepairRoomUiRuntime() {
         (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)
       ) {
         const field = el.dataset["wizardField"];
-        if (field) requestRuntime.updateSession({ wizardField: field, value: el.value });
+        if (field) updateWizardField(root, field, el.value);
       }
     });
 
@@ -1665,9 +1882,9 @@ export function createRepairRoomUiRuntime() {
       ) {
         return;
       }
-      if (el.dataset["repairAction"] === "wizard-field") {
+      if (el.dataset["repairAction"] === "wizard-field" && el instanceof HTMLSelectElement) {
         const field = el.dataset["wizardField"];
-        if (field) requestRuntime.updateSession({ wizardField: field, value: el.value });
+        if (field) updateWizardField(root, field, el.value);
       }
       if (el.dataset["repairAction"] === "evidence-selection") {
         requestRuntime.updateEvidenceSelection(collectEvidenceSelection(root));

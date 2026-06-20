@@ -253,6 +253,10 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   const workbenchPanel = readFileSync(join(uiRoot, "panels/workbench-stage-panel.ts"), "utf8");
   const chatPanel = readFileSync(join(uiRoot, "panels/chat-panel.ts"), "utf8");
   const wizardPanel = readFileSync(join(uiRoot, "panels/session-wizard-panel.ts"), "utf8");
+  const symptomCatalog = readFileSync(
+    join(process.cwd(), "rooms/repair-room/shared/data/repair-symptom-catalog.ts"),
+    "utf8"
+  );
   const sessionRailPanel = readFileSync(join(uiRoot, "panels/session-rail-panel.ts"), "utf8");
   const feedPanel = readFileSync(join(uiRoot, "panels/tactical-feed-panel.ts"), "utf8");
   const roomSyncPanel = readFileSync(join(uiRoot, "panels/room-sync-panel.ts"), "utf8");
@@ -349,6 +353,15 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(runtime, /operator-profile-tab/);
   assert.match(runtime, /wizard-field/);
   assert.match(runtime, /wizard-suggestion/);
+  assert.match(runtime, /case "wizard-symptom"/);
+  assert.match(runtime, /customSymptoms: Array\.from\(customSymptoms\)/);
+  assert.match(runtime, /createWizardDeviceCascadePatch/);
+  assert.match(runtime, /syncWizardDeviceCascadeDom/);
+  assert.match(runtime, /syncSessionWizardStepperDom/);
+  assert.match(runtime, /wizardDraft: patch/);
+  assert.match(runtime, /el instanceof HTMLSelectElement/);
+  assert.match(runtime, /armSessionRailDraftEchoGuard/);
+  assert.match(runtime, /consumeSessionRailDraftEchoGuard/);
   assert.match(timelinePanel, /repair-timeline__playhead/);
   assert.match(timelinePanel, /repair-timeline__tick/);
   assert.match(timelinePanel, /repair-timeline__thumb/);
@@ -417,6 +430,19 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(wizardPanel, /repair-wizard-suggestions/);
   assert.match(wizardPanel, /wizard-suggestion/);
   assert.match(wizardPanel, /wizard-symptom/);
+  assert.match(wizardPanel, /REPAIR_SYMPTOM_OPTIONS/);
+  assert.match(wizardPanel, /REPAIR_SYMPTOM_CATALOG/);
+  assert.match(wizardPanel, /getSymptomOptionsForWizardDraft/);
+  assert.match(wizardPanel, /repair-wizard-symptom-group--available/);
+  assert.match(wizardPanel, /repair-wizard-symptom-group--selected/);
+  assert.doesNotMatch(wizardPanel, /const SYMPTOM_OPTIONS/);
+  assert.match(symptomCatalog, /REPAIR_SYMPTOM_CATALOG/);
+  assert.match(symptomCatalog, /deviceType: "Laptop anakart"/);
+  assert.match(symptomCatalog, /deviceType: "TV guc karti \/ PSU"/);
+  assert.match(symptomCatalog, /MacBook Air/);
+  assert.match(symptomCatalog, /HDMI Retimer Fault/);
+  assert.match(symptomCatalog, /No Power/);
+  assert.match(symptomCatalog, /BIOS \/ EC Corruption/);
   assert.match(wizardPanel, /DEVICE_TYPE_OPTIONS/);
   assert.match(wizardPanel, /add-custom-symptom/);
   assert.match(wizardPanel, /remove-wizard-symptom/);
@@ -460,6 +486,13 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.match(style, /\.repair-settings-overlay/);
   assert.match(style, /\.repair-settings-overlay__content > \.repair-panel/);
   assert.match(style, /\.repair-pack-preview/);
+  assert.match(style, /\.repair-wizard-symptom-group--available/);
+  assert.match(style, /\.repair-wizard-symptom-group--selected/);
+  assert.match(style, /\.repair-skill-chip/);
+  assert.match(style, /\.repair-wizard-step--done \.repair-wizard-step__dot/);
+  assert.match(style, /\.repair-wizard-step--incomplete \.repair-wizard-step__dot/);
+  assert.match(style, /\.repair-wizard-step--disabled[\s\S]*color: var\(--repair-text-dim\)/);
+  assert.doesNotMatch(style, /\.repair-wizard-step--done \{\s*color: var\(--repair-success\)/);
 });
 
 test("repair-room manifest command specs stay aligned with UI constants", () => {

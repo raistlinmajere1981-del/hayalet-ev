@@ -250,9 +250,6 @@ module.exports = tseslint.config(
       "rooms/.build/**",
       "rooms/**/shared/vendor/**",
       "**/*.min.js",
-      "scripts/**/*",
-      "!scripts/tests/",
-      "!scripts/tests/laboratory-report-composition-v2-regressions.test.ts",
       "*.min.js",
       "*.tsbuildinfo",
       "package-lock.json",
@@ -300,6 +297,37 @@ module.exports = tseslint.config(
         },
       ],
       "prefer-const": "error",
+    },
+  },
+
+  // === TypeScript Utility Scripts ===
+  {
+    files: ["scripts/**/*.ts"],
+    extends: [...tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      parserOptions: {
+        project: "./scripts/tsconfig.json",
+        tsconfigRootDir: __dirname,
+      },
+      globals: {
+        AbortController: "readonly",
+        AbortSignal: "readonly",
+        Buffer: "readonly",
+        console: "readonly",
+        process: "readonly",
+        setImmediate: "readonly",
+        setInterval: "readonly",
+        setTimeout: "readonly",
+        clearImmediate: "readonly",
+        clearInterval: "readonly",
+        clearTimeout: "readonly",
+      },
+    },
+    rules: {
+      ...sharedTsBaseRules,
+      ...sharedTypeAwareRules,
     },
   },
 

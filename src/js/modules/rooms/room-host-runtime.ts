@@ -50,7 +50,7 @@ import {
   buildRoomHostModuleDataUrl,
   decodeRoomHostSource,
 } from "./room-host-source.js";
-import { toRoomRuntimeFileUrl } from "./room-runtime-url.js";
+import { canUseDirectFileUrls, toRoomRuntimeFileUrl } from "./room-runtime-url.js";
 
 interface RoomBridge {
   sendToRoom: (payload: Record<string, unknown>) => void;
@@ -787,12 +787,18 @@ class RoomHostRuntimeClass {
     try {
       let exported: unknown = null;
 
-      try {
-        const moduleUrl = new URL(toRoomRuntimeFileUrl(registration.room.hostEntryPath));
-        moduleUrl.searchParams.set("roomHostId", registration.room.id);
-        moduleUrl.searchParams.set("roomHostUpdatedAt", registration.room.updatedAt);
-        exported = await import(/* @vite-ignore */ moduleUrl.toString());
-      } catch {
+      if (canUseDirectFileUrls()) {
+        try {
+          const moduleUrl = new URL(toRoomRuntimeFileUrl(registration.room.hostEntryPath));
+          moduleUrl.searchParams.set("roomHostId", registration.room.id);
+          moduleUrl.searchParams.set("roomHostUpdatedAt", registration.room.updatedAt);
+          exported = await import(/* @vite-ignore */ moduleUrl.toString());
+        } catch {
+          exported = null;
+        }
+      }
+
+      if (exported === null) {
         if (typeof readFile !== "function") {
           return false;
         }

@@ -13,6 +13,7 @@ import {
 import type {
   RepairAiAdaptationHints,
   RepairChatState,
+  RepairChatTurn,
   RepairLayoutState,
   RepairMeasurementState,
   RepairOperatorProfile,
@@ -36,6 +37,13 @@ import {
   createRepairDefaultAiDispatchState,
   createRepairDefaultStorageState,
 } from "../../shared/ui/state.js";
+
+export interface RepairRuntimeSeedData {
+  activeSessionId: string | null;
+  chatTurns?: RepairChatTurn[];
+  sessionList: RepairSessionListItem[];
+  sessions: Record<string, RepairSession>;
+}
 
 export interface RepairRuntimeState {
   roomId: string;
@@ -91,8 +99,16 @@ function createVisibleLayersMap(): Record<RepairOverlayLayerId, boolean> {
   };
 }
 
-export function createInitialRepairRuntimeState(nowIso: string): RepairRuntimeState {
-  const activeSession = MOCK_REPAIR_SESSIONS[MOCK_REPAIR_ACTIVE_SESSION_ID] ?? null;
+export function createInitialRepairRuntimeState(
+  nowIso: string,
+  seed: RepairRuntimeSeedData = {
+    activeSessionId: MOCK_REPAIR_ACTIVE_SESSION_ID,
+    sessionList: MOCK_REPAIR_SESSION_LIST,
+    sessions: MOCK_REPAIR_SESSIONS,
+  }
+): RepairRuntimeState {
+  const activeSession =
+    seed.activeSessionId === null ? null : (seed.sessions[seed.activeSessionId] ?? null);
   const activeSessionDurationMs =
     activeSession === null
       ? 0
@@ -106,8 +122,8 @@ export function createInitialRepairRuntimeState(nowIso: string): RepairRuntimeSt
     roomId: REPAIR_ROOM_ID,
     phase: activeSession === null ? "idle" : "session-active",
     activeSessionId: activeSession?.id ?? null,
-    sessionList: MOCK_REPAIR_SESSION_LIST,
-    sessions: MOCK_REPAIR_SESSIONS,
+    sessionList: seed.sessionList,
+    sessions: seed.sessions,
     workbench: {
       activeTool: "select",
       isFrozen: false,
@@ -158,7 +174,7 @@ export function createInitialRepairRuntimeState(nowIso: string): RepairRuntimeSt
     operatorAdaptation: buildMockRepairAiAdaptation(MOCK_REPAIR_OPERATOR_PROFILE),
     measurement: MOCK_REPAIR_MEASUREMENT_STATE,
     chat: {
-      turns: MOCK_REPAIR_CHAT_TURNS,
+      turns: activeSession === null ? [] : (seed.chatTurns ?? MOCK_REPAIR_CHAT_TURNS),
       composerDraft: "",
       pendingReplyId: null,
     },
@@ -191,7 +207,7 @@ export function createInitialRepairRuntimeState(nowIso: string): RepairRuntimeSt
     operationsStatus: null,
     livePreview: null,
     aiDispatch: createRepairDefaultAiDispatchState("ai2"),
-    storage: createRepairDefaultStorageState(MOCK_REPAIR_SESSION_LIST.length),
+    storage: createRepairDefaultStorageState(seed.sessionList.length),
     ambientNowIso: nowIso,
   };
 }

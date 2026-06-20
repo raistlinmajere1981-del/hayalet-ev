@@ -83,6 +83,8 @@
     "mcp:lint:fix": "eslint --fix \"mcp-server/**/*.ts\"",
     "lint": "node scripts/run-with-env.mjs NODE_OPTIONS=--max-old-space-size=4096 -- eslint --cache --cache-location node_modules/.cache/eslint \"src/**/*.{js,ts}\" \"electron/**/*.{ts,cjs}\" \"ghost-agent/**/*.{ts,cjs}\" \"rooms/**/*.{js,ts}\"",
     "lint:fix": "node scripts/run-with-env.mjs NODE_OPTIONS=--max-old-space-size=4096 -- eslint --cache --cache-location node_modules/.cache/eslint \"src/**/*.{js,ts}\" \"electron/**/*.{ts,cjs}\" \"ghost-agent/**/*.{ts,cjs}\" \"rooms/**/*.{js,ts}\" --fix",
+    "scripts:typecheck": "tsc --noEmit -p scripts/tsconfig.json",
+    "scripts:lint": "node scripts/run-with-env.mjs NODE_OPTIONS=--max-old-space-size=4096 -- eslint --cache --cache-location node_modules/.cache/eslint \"scripts/**/*.ts\"",
     "design:audit": "node scripts/design-system-audit.mjs",
     "design:audit:rooms": "node scripts/design-system-audit.mjs --scope=rooms --no-baseline",
     "format": "prettier --write \"src/**/*.{js,ts,css,html,json,md}\" \"electron/**/*.{ts,cjs}\" \"ghost-agent/**/*.{ts,css,html,cjs}\" \"rooms/**/*.{js,ts,css,html,json,md}\"",

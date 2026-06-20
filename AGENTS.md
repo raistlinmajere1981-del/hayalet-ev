@@ -20,7 +20,7 @@
 
 > **Built-in Kullanımı:** Hayalet Ev MCP karşılığı yoksa, MCP erişilemiyorsa veya built-in tool açıkça ek yetenek sağlıyorsa fallback olarak tercih et.
 >
-> **AI-facing meta tool'lar:** `hev_assistant_doctor` sağlık/context snapshot için, `hev_assistant_verify_completion` ise görev-sonu kanıt/gap raporu için kullanılır. Bu tool'lar `hev_dev_check_syntax` ve test/build kontrollerinin yerine geçmez; sonuçları tek structured raporda toplar.
+> **AI-facing meta tool'lar:** `hev_assistant_doctor` sağlık/context snapshot için, `hev_assistant_verify_completion` ise görev-sonu kanıt/gap raporu için kullanılır. Varsayılan kullanım `response_format: "compact"` olmalıdır; kullanıcı bu detayları okumaz, çıktı öncelikle asistana kısa karar sinyali verir. Tam JSON yalnızca debug gerektiğinde `response_format: "json"` ile istenir. Bu tool'lar `hev_dev_check_syntax` ve test/build kontrollerinin yerine geçmez; sonuçları kısa kanıt/gap raporunda toplar.
 
 ### Dosya Düzenleme Akışı — 3 Adım, ZORUNLU
 
@@ -35,10 +35,11 @@
 
 Kod/dosya değişikliği yapılan işlerde final raporundan önce:
 
-1. `hev_assistant_verify_completion{ changed_files, evidence }` çağrılır.
-2. `evidence` içine çalıştırılan syntax/test/build kontrolleri yazılır.
-3. `blocking` gap varsa tamamlandı raporu verilmez; önce gap kapatılır veya kullanıcıya açıkça bildirilir.
-4. Bu kontrol `hev_dev_check_syntax` zorunluluğunu kaldırmaz; onun üstünde raporlama katmanıdır.
+1. `hev_assistant_verify_completion{ changed_files: [...], evidence, response_format: "compact" }` çağrılır.
+2. Dirty worktree karışmasın diye `changed_files` açık dosya listesiyle verilir; dosya değişmediyse `changed_files: []` bilinçli yazılır.
+3. `evidence` içine çalıştırılan syntax/test/build kontrolleri kısa isimlerle yazılır.
+4. `blocking` gap varsa tamamlandı raporu verilmez; önce gap kapatılır veya kullanıcıya açıkça bildirilir.
+5. Bu kontrol `hev_dev_check_syntax` zorunluluğunu kaldırmaz; onun üstünde raporlama katmanıdır.
 
 ### Edit Tool Seçimi — Tier Sistemi
 
@@ -208,15 +209,15 @@ V1 pack kullanım kuralı:
 
 Terminal Sade istisnası: `data/assistant-session-profile.json` içinde aktif `sade` profili varsa session başında yalnızca bu marker okunur; MCP health/policy bootstrap adımları MCP veya policy işi gerektiğinde çalıştırılır.
 
-Base — her session, düşük maliyet:
+Base — her session, maksimum context tasarrufu:
 
-1. `hev_mcp_health` → MCP çalışıyor mu? Versiyon ve tool sayısı
+1. `hev_assistant_doctor{ response_format: "compact", include_runtime: true, include_git: true, max_git_files: 12 }` → tek kısa satırda MCP/runtime/surface/git risk sinyali
 2. `hev_memory_bootstrap_policy{ namespace: "policy" }` → Sadece session başında 1 kez
-3. Gerektiğinde — `hev_assistant_doctor{ include_runtime: true, include_git: true }` → MCP aktifken AI sağlık/context snapshot
-4. Gerektiğinde — `hev_list_tools` → MCP tool kullanacaksan
+3. Gerektiğinde — `hev_mcp_health` → doctor erişilemiyorsa veya MCP sağlığı ayrıca doğrulanacaksa
+4. Gerektiğinde — `hev_list_tools` → MCP tool kategorileri gerçekten gerekiyorsa
 5. Gerektiğinde — `hev_suggest_tool{ intent }` → Intent belirsizse
 
-> `hev_assistant_doctor` MCP'nin kendisi çalışıyorsa tercih edilir; MCP erişilemiyorsa `npm run mode:status`, `npm run whereami`, `npm run mcp:test` fallback'tır.
+> `hev_assistant_doctor` compact çıktısı kullanıcıya aktarılmaz; asistan iç karar sinyali olarak kullanılır. MCP erişilemiyorsa `npm run mode:status`, `npm run whereami`, `npm run mcp:test` fallback'tır. Tam doctor JSON yalnızca debug için `response_format: "json"` ile alınır.
 
 Koşullu adımlar:
 
@@ -267,10 +268,14 @@ Koşullu adımlar:
   5. `hev_dev_test_run` — test varsa
 
 - `debug-electron`:
-  1. `hev_check_electron_connection`
-  2. `hev_read_electron_logs`
-  3. `hev_get_error_hints` — hata mesajı varsa
-  4. `hev_take_cdp_screenshot` — UI sorunu varsa
+  1. `hev_debug_ui_report` — UI/Electron sorunlarında ilk yorumlanmış rapor
+  2. `hev_debug_network_requests` — request/asset/API şüphesi varsa
+  3. `hev_debug_console_events` — runtime/console stack şüphesi varsa
+  4. `hev_ui_accessibility_snapshot` — görsel tahmin yerine role/name state gerektiğinde
+  5. `hev_ui_layout_audit` — overflow, clipping, overlap, görünmez hit target şüphesi varsa
+  6. `hev_ui_action_flow` — click/type/wait ile mini repro veya smoke akışı gerektiğinde
+  7. `hev_debug_failure_bundle` — test/smoke failure sonrası screenshot destekli kanıt paketi gerektiğinde
+  8. `hev_check_electron_connection`, `hev_read_electron_logs`, `hev_get_error_hints` — bağlantı/log/hata pattern fallback
 
 - `create-pr`:
   1. `git diff`

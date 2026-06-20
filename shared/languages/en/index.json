@@ -3066,7 +3066,7 @@
         "genericTitle": "Generic suggestions:",
         "fileOperations": "File operations → `hev_fs_*` category",
         "devTools": "TypeScript/ESLint → `hev_dev_*` category",
-        "debugging": "Debug → `hev_read_electron_logs`, `hev_get_error_hints`",
+        "debugging": "Debug → `hev_debug_ui_report`, `hev_read_electron_logs`, `hev_get_error_hints`",
         "listToolsHint": "Use `hev_list_tools()` to see all available tools."
       },
       "categories": {
@@ -3081,7 +3081,8 @@
         "testing": "Testing",
         "largeFile": "Large File",
         "safeEditing": "Safe Editing",
-        "toolManagement": "Tool Management"
+        "toolManagement": "Tool Management",
+        "uiActionFlow": "UI Action Flow"
       },
       "reasons": {
         "typescriptErrorAnalysis": "Start with error analysis and distribution",
@@ -3098,6 +3099,12 @@
         "inspectAvailableTargets": "Inspect the available CDP targets first",
         "inspectSpecificTarget": "Inspect the chosen target before sending low-level commands",
         "runRawCdpCommand": "Run a raw CDP command only after target selection",
+        "uiDebugFirstLook": "Collect the interpreted UI debug report first",
+        "networkFailureTriage": "Inspect failed requests and network timing",
+        "consoleRuntimeCapture": "Capture console/runtime events and stack hints",
+        "accessibilitySnapshot": "Use accessibility tree state instead of screenshot guessing",
+        "layoutAudit": "Audit overflow, clipping, overlap, and offscreen controls",
+        "uiActionRepro": "Run the UI action flow as a reproducible mini smoke path",
         "checkLogsFirst": "Check the logs first",
         "debugHints": "Get AI-assisted debugging hints",
         "verifyCdpConnection": "Verify the CDP connection",
@@ -4916,6 +4923,83 @@
           "agentGuidance": "Use this for live investigations. It keeps streaming until interrupted with Ctrl+C."
         },
         "cdp": {
+          "common": {
+            "targetId": "CDP target id (optional; defaults to the preferred page target)",
+            "port": "Optional CDP port. Defaults to the dev instance port; packaged/AppImage uses the next port by default.",
+            "limit": "Maximum number of items to include"
+          },
+          "debugUiReport": {
+            "description": "Collect an interpreted UI debug report with page state, network failures, console/runtime events, accessibility summary, layout audit, performance metrics, and optional screenshot evidence.",
+            "sampleMs": "Short sampling window for CDP network and console events (ms)",
+            "includeScreenshot": "Capture screenshot evidence and include its size/path in the report",
+            "screenshotPath": "Optional screenshot save path",
+            "useCases": {
+              "firstLook": "First-look UI debugging",
+              "blankUi": "Diagnosing blank or stuck UI states",
+              "failureTriage": "Collecting one compact failure triage report"
+            },
+            "agentGuidance": "Use this first for UI/Electron debugging before drilling into network, console, accessibility, or layout-specific tools."
+          },
+          "debugNetworkRequests": {
+            "description": "Collect network request diagnostics from performance entries plus a short CDP Network event sample.",
+            "sampleMs": "Network event sampling window (ms)",
+            "reload": "Reload the target while sampling to capture startup requests",
+            "useCases": {
+              "failedRequests": "Finding failed requests",
+              "blankUi": "Diagnosing blank UI caused by missing assets or API failures",
+              "reloadCapture": "Capturing requests during a controlled reload"
+            },
+            "agentGuidance": "Use this when UI load failures, missing assets, or API errors are suspected. Set reload=true only when a reload is useful."
+          },
+          "debugConsoleEvents": {
+            "description": "Sample console, runtime exception, and log events from the current Electron CDP target.",
+            "sampleMs": "Console/runtime event sampling window (ms)",
+            "useCases": {
+              "runtimeErrors": "Finding runtime errors",
+              "stackTraces": "Collecting stack traces and source URLs",
+              "actionCorrelation": "Correlating UI actions with console failures"
+            },
+            "agentGuidance": "Use this to capture live console/runtime failures, especially around an action flow or reload."
+          },
+          "uiAccessibilitySnapshot": {
+            "description": "Capture a compact accessibility tree snapshot of visible controls, dialogs, headings, and named UI nodes.",
+            "useCases": {
+              "visibleControls": "Listing visible user-facing controls",
+              "modalState": "Checking dialog/modal state",
+              "selectorFreeInspection": "Inspecting UI without relying on screenshots or fragile selectors"
+            },
+            "agentGuidance": "Use this when you need Playwright-like UI state from roles/names rather than visual screenshot reading."
+          },
+          "uiLayoutAudit": {
+            "description": "Audit the current UI for overflow, clipped text, offscreen elements, overlapping controls, and zero-size interactive elements.",
+            "useCases": {
+              "overflow": "Finding text or container overflow",
+              "overlap": "Finding overlapping controls",
+              "mobileDesktop": "Checking layout issues across viewport-like states"
+            },
+            "agentGuidance": "Use this when the issue is visual polish, unusable controls, invisible hit targets, or responsive layout breakage."
+          },
+          "uiActionFlow": {
+            "description": "Run a compact UI action flow through CDP and return before/after state, step results, and optional console correlation.",
+            "actions": "Ordered actions: click, type, press, wait, waitForSelector, waitForText, snapshot",
+            "stepTimeoutMs": "Default timeout for each wait-like action (ms)",
+            "sampleConsole": "Capture console/runtime events while the flow runs",
+            "useCases": {
+              "repro": "Reproducing a UI bug",
+              "beforeAfter": "Capturing before/after state",
+              "smoke": "Running a small Electron UI smoke flow"
+            },
+            "agentGuidance": "Use this to turn a user-reported click/type path into evidence with step-level results and console correlation."
+          },
+          "debugFailureBundle": {
+            "description": "Create a failure bundle by running the UI debug report with screenshot capture enabled.",
+            "screenshotPath": "Screenshot path for the bundle (defaults to logs/debug/failure-bundle-<timestamp>.png)",
+            "useCases": {
+              "testFailure": "Collecting evidence after a UI smoke/test failure",
+              "shareableEvidence": "Saving screenshot-backed failure evidence"
+            },
+            "agentGuidance": "Use this after a failure when you need a durable screenshot plus the interpreted UI debug report."
+          },
           "listCdpInstances": {
             "description": "List the running Hayalet Ev CDP instances so dev and packaged/AppImage copies can be targeted separately.",
             "startPort": "Optional first port to scan",

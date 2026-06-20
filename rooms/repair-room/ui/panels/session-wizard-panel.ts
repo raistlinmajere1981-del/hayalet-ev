@@ -1,3 +1,10 @@
+import {
+  REPAIR_DEVICE_CATALOG,
+  REPAIR_DEVICE_TYPE_OPTIONS,
+  REPAIR_SYMPTOM_CATALOG,
+  REPAIR_SYMPTOM_OPTIONS,
+  REPAIR_UNKNOWN_VALUE,
+} from "../../shared/data/index.js";
 import type { RepairKnowledgePack } from "../../shared/types/index.js";
 import type { RepairUiState } from "../../shared/ui/state.js";
 import { createRepairPanel } from "./panel-shell.js";
@@ -10,70 +17,15 @@ interface RenderSessionWizardPanelOptions {
 
 type WizardStepId = RepairUiState["wizard"]["currentStep"];
 
-const UNKNOWN_VALUE = "Bilinmiyor";
-const STEP_ORDER = ["device-info", "symptoms", "ai-research", "evidence-review", "ready"] as const;
-
-const DEVICE_TYPE_OPTIONS = [
-  "Laptop anakart",
-  "Mobile phone",
-  "Tablet",
-  "Desktop motherboard",
-  "GPU",
-  "PSU / power board",
-  "TV main board",
-  "Monitor board",
-  "Game console",
-  "IoT / embedded",
-  "Other",
-  UNKNOWN_VALUE,
+const UNKNOWN_VALUE = REPAIR_UNKNOWN_VALUE;
+export const REPAIR_WIZARD_STEP_ORDER = [
+  "device-info",
+  "symptoms",
+  "ai-research",
+  "evidence-review",
+  "ready",
 ] as const;
-
-const DEVICE_CATALOG = [
-  {
-    deviceType: "Laptop anakart",
-    manufacturer: "Lenovo",
-    models: ["20W0-CTO1WW", "ThinkPad T14 Gen2"],
-    boardCodes: ["NM-D461"],
-  },
-  {
-    deviceType: "Mobile phone",
-    manufacturer: "Apple",
-    models: ["iPhone 12", "iPhone 13"],
-    boardCodes: ["820-02020"],
-  },
-  {
-    deviceType: "Tablet",
-    manufacturer: "Samsung",
-    models: ["Galaxy Tab S7"],
-    boardCodes: ["GH82-series"],
-  },
-  {
-    deviceType: "PSU / power board",
-    manufacturer: "Samsung",
-    models: ["BN44-00932A"],
-    boardCodes: ["BN44-00932A"],
-  },
-  {
-    deviceType: "TV main board",
-    manufacturer: "LG",
-    models: ["EBT66239903"],
-    boardCodes: ["EAX68253604"],
-  },
-  {
-    deviceType: "Game console",
-    manufacturer: "Microsoft",
-    models: ["Xbox Series X 1882"],
-    boardCodes: ["X819994-002"],
-  },
-] as const;
-
-const SYMPTOM_OPTIONS = [
-  "No Power",
-  "Boot Loop",
-  "HDMI Dead",
-  "No 5V_STBY",
-  "Overcurrent",
-] as const;
+const DEVICE_TYPE_OPTIONS = REPAIR_DEVICE_TYPE_OPTIONS;
 
 const AI_TARGET_OPTIONS = [
   { targetSlot: "ai0", label: "AI 0" },
@@ -85,35 +37,116 @@ function uniqueList(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
-function getManufacturerSuggestions(deviceType: string): string[] {
+function getCatalogEntriesForDevice(deviceType: string) {
+  const normalizedDeviceType = deviceType.trim();
+  if (normalizedDeviceType === "" || normalizedDeviceType === UNKNOWN_VALUE) {
+    return REPAIR_DEVICE_CATALOG;
+  }
+  return REPAIR_DEVICE_CATALOG.filter((entry) => entry.deviceType === normalizedDeviceType);
+}
+
+export function getManufacturerSuggestions(deviceType: string): string[] {
   return uniqueList([
     UNKNOWN_VALUE,
-    ...DEVICE_CATALOG.filter(
-      (entry) => deviceType.trim() === "" || entry.deviceType === deviceType
-    ).map((entry) => entry.manufacturer),
+    ...getCatalogEntriesForDevice(deviceType).flatMap((entry) =>
+      entry.manufacturers.map((manufacturer) => manufacturer.manufacturer)
+    ),
   ]);
 }
 
-function getModelSuggestions(deviceType: string, manufacturer: string): string[] {
+function getMatchingManufacturers(deviceType: string, manufacturer: string) {
+  const normalizedManufacturer = manufacturer.trim();
+  return getCatalogEntriesForDevice(deviceType)
+    .flatMap((entry) => entry.manufacturers)
+    .filter(
+      (entry) => normalizedManufacturer === "" || entry.manufacturer === normalizedManufacturer
+    );
+}
+
+export function getModelSuggestions(deviceType: string, manufacturer: string): string[] {
   return uniqueList([
     UNKNOWN_VALUE,
-    ...DEVICE_CATALOG.filter(
-      (entry) =>
-        (deviceType.trim() === "" || entry.deviceType === deviceType) &&
-        (manufacturer.trim() === "" || entry.manufacturer === manufacturer)
-    ).flatMap((entry) => entry.models),
+    ...getMatchingManufacturers(deviceType, manufacturer).flatMap((entry) =>
+      entry.modelFamilies.map((modelFamily) => modelFamily.label)
+    ),
   ]);
 }
 
-function getBoardCodeSuggestions(deviceType: string, manufacturer: string): string[] {
+export function getBoardCodeSuggestions(
+  deviceType: string,
+  manufacturer: string,
+  model: string
+): string[] {
+  const normalizedModel = model.trim();
+  const catalogEntries = getCatalogEntriesForDevice(deviceType);
+  const matchingManufacturers = getMatchingManufacturers(deviceType, manufacturer);
   return uniqueList([
     UNKNOWN_VALUE,
-    ...DEVICE_CATALOG.filter(
-      (entry) =>
-        (deviceType.trim() === "" || entry.deviceType === deviceType) &&
-        (manufacturer.trim() === "" || entry.manufacturer === manufacturer)
-    ).flatMap((entry) => entry.boardCodes),
+    ...catalogEntries.flatMap((entry) => entry.boardCodePatterns),
+    ...matchingManufacturers.flatMap((entry) => entry.boardCodePatterns),
+    ...matchingManufacturers.flatMap((entry) =>
+      entry.modelFamilies
+        .filter((modelFamily) => normalizedModel === "" || modelFamily.label === normalizedModel)
+        .flatMap((modelFamily) => modelFamily.boardCodePatterns)
+    ),
   ]);
+}
+
+function getSymptomCatalogEntriesForDevice(deviceType: string) {
+  const normalizedDeviceType = deviceType.trim();
+  if (normalizedDeviceType === "" || normalizedDeviceType === UNKNOWN_VALUE) return [];
+  return REPAIR_SYMPTOM_CATALOG.filter((entry) => entry.deviceType === normalizedDeviceType);
+}
+
+function getMatchingSymptomManufacturers(deviceType: string, manufacturer: string) {
+  const normalizedManufacturer = manufacturer.trim();
+  return getSymptomCatalogEntriesForDevice(deviceType)
+    .flatMap((entry) => entry.manufacturers)
+    .filter(
+      (entry) => normalizedManufacturer === "" || entry.manufacturer === normalizedManufacturer
+    );
+}
+
+function getSymptomOptionsForWizardDraft(draft: RepairUiState["wizard"]["draft"]): string[] {
+  const normalizedModel = draft.model.trim();
+  const catalogEntries = getSymptomCatalogEntriesForDevice(draft.deviceType);
+  const matchingManufacturers = getMatchingSymptomManufacturers(
+    draft.deviceType,
+    draft.manufacturer
+  );
+  return uniqueList([
+    ...REPAIR_SYMPTOM_OPTIONS,
+    ...catalogEntries.flatMap((entry) => entry.symptoms),
+    ...matchingManufacturers.flatMap((entry) => entry.symptoms),
+    ...matchingManufacturers.flatMap((entry) =>
+      entry.modelFamilies
+        .filter((modelFamily) => normalizedModel === "" || modelFamily.label === normalizedModel)
+        .flatMap((modelFamily) => modelFamily.symptoms)
+    ),
+    ...draft.primarySymptoms,
+    ...draft.customSymptoms,
+  ]);
+}
+
+function appendSymptomGroup(
+  documentRef: Document,
+  parent: HTMLElement,
+  title: string,
+  modifier: "available" | "selected"
+): HTMLElement {
+  const group = documentRef.createElement("div");
+  group.className = [
+    "repair-wizard-symptom-group",
+    modifier === "available"
+      ? "repair-wizard-symptom-group--available"
+      : "repair-wizard-symptom-group--selected",
+  ].join(" ");
+  const heading = documentRef.createElement("div");
+  heading.className = "repair-wizard-symptom-group__title";
+  heading.textContent = title;
+  group.append(heading);
+  parent.append(group);
+  return group;
 }
 
 function isDeviceComplete(state: RepairUiState): boolean {
@@ -136,7 +169,7 @@ function hasResearchResult(state: RepairUiState): boolean {
   return state.wizard.generatedKnowledgePackId !== null || state.wizard.draft.researchSkipped;
 }
 
-function canEnterStep(state: RepairUiState, stepId: WizardStepId): boolean {
+export function canEnterRepairWizardStep(state: RepairUiState, stepId: WizardStepId): boolean {
   if (stepId === "device-info") return true;
   if (stepId === "symptoms") return isDeviceComplete(state);
   if (stepId === "ai-research") return isDeviceComplete(state) && hasSymptoms(state);
@@ -150,16 +183,16 @@ function canEnterStep(state: RepairUiState, stepId: WizardStepId): boolean {
   return isDeviceComplete(state) && hasSymptoms(state) && hasResearchResult(state);
 }
 
-function isStepComplete(state: RepairUiState, stepId: WizardStepId): boolean {
+export function isRepairWizardStepComplete(state: RepairUiState, stepId: WizardStepId): boolean {
   if (stepId === "device-info") return isDeviceComplete(state);
   if (stepId === "symptoms") return hasSymptoms(state);
   if (stepId === "ai-research") return hasResearchResult(state);
   if (stepId === "evidence-review")
     return state.wizard.evidenceReviewed || state.wizard.draft.researchSkipped;
-  return state.phase === "session-active" || canEnterStep(state, "ready");
+  return state.phase === "session-active" || canEnterRepairWizardStep(state, "ready");
 }
 
-function isStepIncomplete(state: RepairUiState, stepId: WizardStepId): boolean {
+export function isRepairWizardStepIncomplete(state: RepairUiState, stepId: WizardStepId): boolean {
   if (stepId === "device-info") return !isDeviceComplete(state);
   if (stepId === "symptoms") return isDeviceComplete(state) && !hasSymptoms(state);
   if (stepId === "ai-research") return state.wizard.draft.researchStatus === "failed";
@@ -446,7 +479,7 @@ function renderDeviceStep(documentRef: Document, state: RepairUiState): HTMLElem
     required: true,
   });
   appendField(documentRef, form, "Kart kodu", "boardCode", draft.boardCode, {
-    datalist: getBoardCodeSuggestions(draft.deviceType, draft.manufacturer),
+    datalist: getBoardCodeSuggestions(draft.deviceType, draft.manufacturer, draft.model),
     required: true,
   });
   appendField(documentRef, form, "Seri / iş no", "serialNumber", draft.serialNumber);
@@ -461,21 +494,24 @@ function renderSymptomsStep(documentRef: Document, state: RepairUiState): HTMLEl
   form.className = "repair-wizard-form";
   const draft = state.wizard.draft;
 
+  const availableGroup = appendSymptomGroup(documentRef, form, "Önerilen semptomlar", "available");
   const chipRow = documentRef.createElement("div");
   chipRow.className = "repair-wizard-symptoms";
-  SYMPTOM_OPTIONS.forEach((symptom) => {
+  const symptomOptions = getSymptomOptionsForWizardDraft(draft);
+  const selectedSymptoms = uniqueList([...draft.primarySymptoms, ...draft.customSymptoms]);
+  symptomOptions.forEach((symptom) => {
     const chip = documentRef.createElement("button");
-    chip.className = `repair-skill-chip${draft.primarySymptoms.includes(symptom) ? " repair-skill-chip--active" : ""}`;
+    chip.className = `repair-skill-chip${selectedSymptoms.includes(symptom) ? " repair-skill-chip--active" : ""}`;
     chip.type = "button";
     chip.textContent = symptom;
     chip.dataset["repairAction"] = "wizard-symptom";
     chip.dataset["symptom"] = symptom;
     chipRow.append(chip);
   });
-  form.append(chipRow);
+  availableGroup.append(chipRow);
 
-  const selectedSymptoms = uniqueList([...draft.primarySymptoms, ...draft.customSymptoms]);
   if (selectedSymptoms.length > 0) {
+    const selectedGroup = appendSymptomGroup(documentRef, form, "Seçili semptomlar", "selected");
     const selectedRow = documentRef.createElement("div");
     selectedRow.className = "repair-wizard-selected-symptoms";
     selectedSymptoms.forEach((symptom) => {
@@ -487,7 +523,7 @@ function renderSymptomsStep(documentRef: Document, state: RepairUiState): HTMLEl
       selected.dataset["symptom"] = symptom;
       selectedRow.append(selected);
     });
-    form.append(selectedRow);
+    selectedGroup.append(selectedRow);
   }
 
   const customRow = documentRef.createElement("div");
@@ -659,7 +695,7 @@ function renderReadyStep(documentRef: Document, state: RepairUiState): HTMLEleme
   const actions = documentRef.createElement("div");
   actions.className = "repair-wizard-inline-actions";
   const start = appendActionButton(documentRef, actions, "Tamiri başlat", "create-session");
-  start.disabled = !canEnterStep(state, "ready");
+  start.disabled = !canEnterRepairWizardStep(state, "ready");
   ready.append(actions);
   return ready;
 }
@@ -677,14 +713,14 @@ export function renderSessionWizardPanel(
   const stepper = documentRef.createElement("div");
   stepper.className = "repair-wizard-stepper";
 
-  const currentIdx = STEP_ORDER.indexOf(wizard.currentStep);
+  const currentIdx = REPAIR_WIZARD_STEP_ORDER.indexOf(wizard.currentStep);
 
-  for (const [i, stepId] of STEP_ORDER.entries()) {
+  for (const [i, stepId] of REPAIR_WIZARD_STEP_ORDER.entries()) {
     const step = documentRef.createElement("button");
-    const isDone = isStepComplete(state, stepId);
+    const isDone = isRepairWizardStepComplete(state, stepId);
     const isActive = i === currentIdx;
-    const isAvailable = canEnterStep(state, stepId);
-    const isIncomplete = isStepIncomplete(state, stepId);
+    const isAvailable = canEnterRepairWizardStep(state, stepId);
+    const isIncomplete = isRepairWizardStepIncomplete(state, stepId);
     step.type = "button";
     step.className = [
       "repair-wizard-step",
