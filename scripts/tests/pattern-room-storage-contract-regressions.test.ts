@@ -31,7 +31,7 @@ async function assertOnlyFinalSnapshotFile(rootDir: string, topicId: string): Pr
   assert.deepEqual((await readdir(rootDir)).sort(), [`${topicId}.snapshot.json`]);
 }
 
-test("pattern-room storage contract saves and loads a session snapshot", async () => {
+void test("pattern-room storage contract saves and loads a session snapshot", async () => {
   await withTempStore(async (store) => {
     const snapshot = createTestSnapshot();
 
@@ -42,7 +42,7 @@ test("pattern-room storage contract saves and loads a session snapshot", async (
   });
 });
 
-test("pattern-room storage contract overwrites the topic snapshot on upsert", async () => {
+void test("pattern-room storage contract overwrites the topic snapshot on upsert", async () => {
   await withTempStore(async (store) => {
     const snapshot = createTestSnapshot();
     const updatedSnapshot: PatternRoomSessionSnapshot = {
@@ -63,7 +63,7 @@ test("pattern-room storage contract overwrites the topic snapshot on upsert", as
   });
 });
 
-test("pattern-room storage contract lists snapshot metadata", async () => {
+void test("pattern-room storage contract lists snapshot metadata", async () => {
   await withTempStore(async (store) => {
     const snapshot = createTestSnapshot();
 
@@ -81,7 +81,7 @@ test("pattern-room storage contract lists snapshot metadata", async () => {
   });
 });
 
-test("pattern-room storage contract deletes snapshots by snapshot id", async () => {
+void test("pattern-room storage contract deletes snapshots by snapshot id", async () => {
   await withTempStore(async (store) => {
     const snapshot = createTestSnapshot();
 
@@ -93,13 +93,13 @@ test("pattern-room storage contract deletes snapshots by snapshot id", async () 
   });
 });
 
-test("pattern-room storage contract returns null for a missing topic", async () => {
+void test("pattern-room storage contract returns null for a missing topic", async () => {
   await withTempStore(async (store) => {
     assert.equal(await store.load("missing-topic"), null);
   });
 });
 
-test("pattern-room storage contract safely handles corrupted JSON", async () => {
+void test("pattern-room storage contract safely handles corrupted JSON", async () => {
   await withTempStore(async (store, rootDir) => {
     await writeFile(join(rootDir, "corrupt-topic.snapshot.json"), "{not json", "utf8");
 
@@ -108,7 +108,7 @@ test("pattern-room storage contract safely handles corrupted JSON", async () => 
   });
 });
 
-test("pattern-room storage contract rejects unsupported snapshot schema versions", async () => {
+void test("pattern-room storage contract rejects unsupported snapshot schema versions", async () => {
   await withTempStore(async (store, rootDir) => {
     const snapshot = createTestSnapshot();
     const futureSnapshot = {
@@ -128,7 +128,7 @@ test("pattern-room storage contract rejects unsupported snapshot schema versions
   });
 });
 
-test("pattern-room storage contract rejects path traversal topic ids", async () => {
+void test("pattern-room storage contract rejects path traversal topic ids", async () => {
   await withTempStore(async (store) => {
     const snapshot = createTestSnapshot();
     const unsafeSnapshot: PatternRoomSessionSnapshot = {
@@ -141,7 +141,7 @@ test("pattern-room storage contract rejects path traversal topic ids", async () 
   });
 });
 
-test("pattern-room storage contract leaves only the final topic file after save and upsert", async () => {
+void test("pattern-room storage contract leaves only the final topic file after save and upsert", async () => {
   await withTempStore(async (store, rootDir) => {
     const snapshot = createTestSnapshot();
     const updatedSnapshot: PatternRoomSessionSnapshot = {

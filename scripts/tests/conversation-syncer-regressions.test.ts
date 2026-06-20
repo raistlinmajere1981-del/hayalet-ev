@@ -18,7 +18,7 @@ function installWindowMock(): {
   globalScope.window = { dispatchEvent: () => true };
   return {
     restore: () => {
-      globalScope.window = originalWindow;
+      globalScope.window = originalWindow!;
     },
   };
 }
@@ -32,11 +32,11 @@ function installTimerMock(): {
   const scheduled: Array<{ fn: () => void; delay: number }> = [];
 
   globalThis.setTimeout = ((fn: (...args: unknown[]) => void, delay?: number) => {
-    scheduled.push({ fn: () => fn(), delay: delay ?? 0 });
+    scheduled.push({ fn: () => { fn(); }, delay: delay ?? 0 });
     return scheduled.length as unknown as ReturnType<typeof setTimeout>;
   }) as TimeoutFn;
 
-  globalThis.clearTimeout = (() => {}) as ClearTimeoutFn;
+  globalThis.clearTimeout = (() => {});
 
   return {
     scheduled,
@@ -55,7 +55,7 @@ function resetSyncerState(): void {
   ConversationSyncer._lastThinkingEndedAt = { ai1: 0, ai2: 0 };
 }
 
-test("auto sync schedules retry when scraped messages are empty", async () => {
+void test("auto sync schedules retry when scraped messages are empty", async () => {
   const windowMock = installWindowMock();
   const timerMock = installTimerMock();
   const originalSyncConversation = ConversationSyncer.syncConversation;
@@ -83,7 +83,7 @@ test("auto sync schedules retry when scraped messages are empty", async () => {
   }
 });
 
-test("auto sync does not schedule retry when last message is assistant", async () => {
+void test("auto sync does not schedule retry when last message is assistant", async () => {
   const windowMock = installWindowMock();
   const timerMock = installTimerMock();
   const originalSyncConversation = ConversationSyncer.syncConversation;
@@ -114,7 +114,7 @@ test("auto sync does not schedule retry when last message is assistant", async (
   }
 });
 
-test("auto sync does not schedule retry when assistant only contains generated images", async () => {
+void test("auto sync does not schedule retry when assistant only contains generated images", async () => {
   const windowMock = installWindowMock();
   const timerMock = installTimerMock();
   const originalSyncConversation = ConversationSyncer.syncConversation;
@@ -135,7 +135,7 @@ test("auto sync does not schedule retry when assistant only contains generated i
     commands: [],
     webUrl: "https://chatgpt.com/c/abc",
   });
-  ConversationListManager.refresh = async () => {};
+  ConversationListManager.refresh = async () => { await Promise.resolve(); };
 
   try {
     await ConversationSyncer.syncProvider("ai1", { from: "auto" });
@@ -148,7 +148,7 @@ test("auto sync does not schedule retry when assistant only contains generated i
   }
 });
 
-test("ai0 sync returns latest assistant message without DB persistence", async () => {
+void test("ai0 sync returns latest assistant message without DB persistence", async () => {
   const globalScope = globalThis as unknown as {
     window?: {
       electronAPI?: {
@@ -168,43 +168,44 @@ test("ai0 sync returns latest assistant message without DB persistence", async (
     electronAPI: {
       dbSyncMessages: async () => {
         dbSyncCallCount += 1;
-        return { success: true, conversationId: "c1", added: 0, total: 0 };
+        return await Promise.resolve({ success: true, conversationId: "c1", added: 0, total: 0 });
       },
-      dbGetMessages: async () => ({ data: [] }),
+      dbGetMessages: async () => await Promise.resolve({ data: [] }),
     },
   };
 
-  AppState.getProviderIdForSlot = (() => "opencode") as typeof AppState.getProviderIdForSlot;
+  AppState.getProviderIdForSlot = (() => "opencode");
   AppState.getAccountForSlot = (() => ({
     id: "opencode_opencode_at_opencode_com",
     provider: "opencode",
-  })) as typeof AppState.getAccountForSlot;
+  })) as unknown as typeof AppState.getAccountForSlot;
 
   const mockWebview = {
     getURL: () => "https://opencode.local/chat",
     isLoading: () => false,
-    executeJavaScript: async () => [
+    executeJavaScript: async () => await Promise.resolve([
       { role: "user", text: "hello" },
       { role: "assistant", text: "latest assistant reply" },
-    ],
+    ]),
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai0", mockWebview as never, {});
+    const result = await ConversationSyncer.syncConversation("ai0", mockWebview, {});
     assert.equal(result.success, true);
-    assert.equal(Array.isArray(result.messages), true);
-    assert.equal((result.messages ?? []).length, 1);
-    assert.equal((result.messages ?? [])[0]?.role, "assistant");
-    assert.equal((result.messages ?? [])[0]?.text, "latest assistant reply");
+    assert.equal(Array.isArray(result["messages"]), true);
+    assert.equal((result["messages"] as unknown[]).length, 1);
+    const msg = (result["messages"] as { role: string; text: string }[])[0]!;
+    assert.equal(msg.role, "assistant");
+    assert.equal(msg.text, "latest assistant reply");
     assert.equal(dbSyncCallCount, 0);
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
     AppState.getAccountForSlot = originalGetAccount;
-    globalScope.window = originalWindow;
+    globalScope.window = originalWindow!;
   }
 });
 
-test("ai0 syncProvider skips conversation refresh after latest-message sync", async () => {
+void test("ai0 syncProvider skips conversation refresh after latest-message sync", async () => {
   const windowMock = installWindowMock();
   const originalSyncConversation = ConversationSyncer.syncConversation;
   const originalRefresh = ConversationListManager.refresh;
@@ -234,7 +235,7 @@ test("ai0 syncProvider skips conversation refresh after latest-message sync", as
   }
 });
 
-test("llm sync persists default-page messages and preserves session query", async () => {
+void test("llm sync persists default-page messages and preserves session query", async () => {
   const globalScope = globalThis as unknown as {
     window?: {
       electronAPI?: {
@@ -256,12 +257,12 @@ test("llm sync persists default-page messages and preserves session query", asyn
 
   globalScope.window = {
     electronAPI: {
-      dbGetConversations: async () => ({ data: [] }),
-      dbSyncMessages: async (payload: Record<string, unknown>) => {
-        syncPayload = payload;
-        return { success: true, conversationId: "conv-llm-1", added: 2, total: 2 };
+      dbGetConversations: async () => await Promise.resolve({ data: [] }),
+      dbSyncMessages: async (...args: unknown[]) => {
+        syncPayload = args[0] as Record<string, unknown> | undefined ?? null;
+        return await Promise.resolve({ success: true, conversationId: "conv-llm-1", added: 2, total: 2 });
       },
-      dbGetMessages: async () => ({
+      dbGetMessages: async () => await Promise.resolve({
         data: [
           { id: "user-1", role: "user", text: "hello", dom_id: "llm-session-1-0" },
           { id: "assistant-1", role: "assistant", text: "local reply", dom_id: "llm-session-1-1" },
@@ -270,16 +271,16 @@ test("llm sync persists default-page messages and preserves session query", asyn
     },
   };
 
-  AppState.getProviderIdForSlot = (() => "llm") as typeof AppState.getProviderIdForSlot;
+  AppState.getProviderIdForSlot = (() => "llm");
   AppState.getAccountForSlot = (() => ({
     id: "llm-account-1",
     provider: "llm",
-  })) as typeof AppState.getAccountForSlot;
+  })) as unknown as typeof AppState.getAccountForSlot;
   AppState.getAssistantRelay = (() => ({
     active: false,
     sourceSlot: null,
-  })) as typeof AppState.getAssistantRelay;
-  AppState.getNickname = ((slot: string) => slot) as typeof AppState.getNickname;
+  }));
+  AppState.getNickname = ((slot: string) => slot);
 
   const mockWebview = {
     getURL: () => "http://127.0.0.1:9876/?session=llm-session-1",
@@ -305,13 +306,13 @@ test("llm sync persists default-page messages and preserves session query", asyn
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as never, {
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview, {
       catchEnabled: false,
     });
 
     assert.equal(result.success, true);
     assert.equal(result.conversationId, "conv-llm-1");
-    assert.equal(result.webUrl, "http://127.0.0.1:9876/?session=llm-session-1");
+    assert.equal(result["webUrl"], "http://127.0.0.1:9876/?session=llm-session-1");
     assert.equal(syncPayload?.["webUrl"], "http://127.0.0.1:9876/?session=llm-session-1");
     assert.equal((syncPayload?.["messages"] as unknown[]).length, 2);
   } finally {
@@ -319,11 +320,11 @@ test("llm sync persists default-page messages and preserves session query", asyn
     AppState.getAccountForSlot = originalGetAccount;
     AppState.getAssistantRelay = originalGetRelay;
     AppState.getNickname = originalGetNickname;
-    globalScope.window = originalWindow;
+    globalScope.window = originalWindow as any;
   }
 });
 
-test("_getArchiveStatus keeps llm local sessions distinct by query", async () => {
+void test("_getArchiveStatus keeps llm local sessions distinct by query", async () => {
   const globalScope = globalThis as unknown as {
     window?: {
       electronAPI?: {
@@ -351,11 +352,11 @@ test("_getArchiveStatus keeps llm local sessions distinct by query", async () =>
     },
   };
 
-  AppState.getProviderIdForSlot = (() => "llm") as typeof AppState.getProviderIdForSlot;
+  AppState.getProviderIdForSlot = (() => "llm");
   AppState.getAccountForSlot = (() => ({
     id: "llm-account-1",
     provider: "llm",
-  })) as typeof AppState.getAccountForSlot;
+  })) as unknown as typeof AppState.getAccountForSlot;
 
   try {
     const existing = await ConversationSyncer._getArchiveStatus(
@@ -373,11 +374,11 @@ test("_getArchiveStatus keeps llm local sessions distinct by query", async () =>
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
     AppState.getAccountForSlot = originalGetAccount;
-    globalScope.window = originalWindow;
+    globalScope.window = originalWindow as any;
   }
 });
 
-test("syncConversation saves generated images as assistant attachments", async () => {
+void test("syncConversation saves generated images as assistant attachments", async () => {
   const globalScope = globalThis as unknown as {
     window?: {
       electronAPI?: {
@@ -416,10 +417,10 @@ test("syncConversation saves generated images as assistant attachments", async (
         ],
       }),
       dbGetAttachments: async () => ({ success: true, data: [] }),
-      dbSaveAttachmentContent: async (payload: Record<string, unknown>) => {
+      dbSaveAttachmentContent: (async (payload: Record<string, unknown>) => {
         saveCalls.push(payload);
         return { success: true, data: { attachmentId: "att-1", storedPath: "/tmp/generated.png" } };
-      },
+      }) as any,
       capturePage: async () => {
         captureCallCount += 1;
         return { success: false };
@@ -427,16 +428,16 @@ test("syncConversation saves generated images as assistant attachments", async (
     },
   };
 
-  AppState.getProviderIdForSlot = (() => "chatgpt") as typeof AppState.getProviderIdForSlot;
+  AppState.getProviderIdForSlot = (() => "chatgpt");
   AppState.getAccountForSlot = (() => ({
     id: "account-1",
     provider: "chatgpt",
-  })) as typeof AppState.getAccountForSlot;
+  })) as unknown as typeof AppState.getAccountForSlot;
   AppState.getAssistantRelay = (() => ({
     active: false,
     sourceSlot: null,
-  })) as typeof AppState.getAssistantRelay;
-  AppState.getNickname = ((slot: string) => slot) as typeof AppState.getNickname;
+  }));
+  AppState.getNickname = ((slot: string) => slot);
 
   const mockWebview = {
     getURL: () => "https://chatgpt.com/c/generated-image",
@@ -475,7 +476,7 @@ test("syncConversation saves generated images as assistant attachments", async (
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as never, {});
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview, {});
     assert.equal(result.success, true);
     assert.equal(saveCalls.length, 1);
     assert.equal(saveCalls[0]?.["messageId"], "db-assistant-1");
@@ -486,11 +487,11 @@ test("syncConversation saves generated images as assistant attachments", async (
     AppState.getAccountForSlot = originalGetAccount;
     AppState.getAssistantRelay = originalGetRelay;
     AppState.getNickname = originalGetNickname;
-    globalScope.window = originalWindow;
+    globalScope.window = originalWindow as any;
   }
 });
 
-test("_getArchiveStatus reads wrapped conversation payloads from IPC", async () => {
+void test("_getArchiveStatus reads wrapped conversation payloads from IPC", async () => {
   const globalScope = globalThis as unknown as {
     window?: {
       electronAPI?: {
@@ -520,7 +521,7 @@ test("_getArchiveStatus reads wrapped conversation payloads from IPC", async () 
   AppState.getAccountForSlot = (() => ({
     id: "account-1",
     provider: "chatgpt",
-  })) as typeof AppState.getAccountForSlot;
+  })) as unknown as typeof AppState.getAccountForSlot;
 
   try {
     const result = await ConversationSyncer._getArchiveStatus(
@@ -533,11 +534,11 @@ test("_getArchiveStatus reads wrapped conversation payloads from IPC", async () 
     assert.equal(result.existing?.webUrl, "https://chatgpt.com/c/archive-demo");
   } finally {
     AppState.getAccountForSlot = originalGetAccount;
-    globalScope.window = originalWindow;
+    globalScope.window = originalWindow as any;
   }
 });
 
-test("syncConversation skips generated image save when attachment already exists", async () => {
+void test("syncConversation skips generated image save when attachment already exists", async () => {
   const globalScope = globalThis as unknown as {
     window?: {
       electronAPI?: {
@@ -589,16 +590,16 @@ test("syncConversation skips generated image save when attachment already exists
     },
   };
 
-  AppState.getProviderIdForSlot = (() => "chatgpt") as typeof AppState.getProviderIdForSlot;
+  AppState.getProviderIdForSlot = (() => "chatgpt");
   AppState.getAccountForSlot = (() => ({
     id: "account-1",
     provider: "chatgpt",
-  })) as typeof AppState.getAccountForSlot;
+  })) as unknown as typeof AppState.getAccountForSlot;
   AppState.getAssistantRelay = (() => ({
     active: false,
     sourceSlot: null,
-  })) as typeof AppState.getAssistantRelay;
-  AppState.getNickname = ((slot: string) => slot) as typeof AppState.getNickname;
+  }));
+  AppState.getNickname = ((slot: string) => slot);
 
   const mockWebview = {
     getURL: () => "https://chatgpt.com/c/generated-image",
@@ -628,7 +629,7 @@ test("syncConversation skips generated image save when attachment already exists
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as never, {});
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview, {});
     assert.equal(result.success, true);
     assert.equal(saveCallCount, 0);
     assert.equal(executeCount, 2);
@@ -637,11 +638,11 @@ test("syncConversation skips generated image save when attachment already exists
     AppState.getAccountForSlot = originalGetAccount;
     AppState.getAssistantRelay = originalGetRelay;
     AppState.getNickname = originalGetNickname;
-    globalScope.window = originalWindow;
+    globalScope.window = originalWindow as any;
   }
 });
 
-test("syncConversation replaces preview image attachment when final bytes change", async () => {
+void test("syncConversation replaces preview image attachment when final bytes change", async () => {
   const globalScope = globalThis as unknown as {
     window?: {
       electronAPI?: {
@@ -688,26 +689,26 @@ test("syncConversation replaces preview image attachment when final bytes change
         ],
       }),
       readFile: async () => "UFJFVklFVw==",
-      dbSaveAttachmentContent: async (payload: Record<string, unknown>) => {
+      dbSaveAttachmentContent: (async (payload: Record<string, unknown>) => {
         saveCalls.push(payload);
         return {
           success: true,
           data: { attachmentId: "att-1", storedPath: "/tmp/generated-preview.png" },
         };
-      },
+      }) as any,
     },
   };
 
-  AppState.getProviderIdForSlot = (() => "chatgpt") as typeof AppState.getProviderIdForSlot;
+  AppState.getProviderIdForSlot = (() => "chatgpt");
   AppState.getAccountForSlot = (() => ({
     id: "account-1",
     provider: "chatgpt",
-  })) as typeof AppState.getAccountForSlot;
+  })) as unknown as typeof AppState.getAccountForSlot;
   AppState.getAssistantRelay = (() => ({
     active: false,
     sourceSlot: null,
-  })) as typeof AppState.getAssistantRelay;
-  AppState.getNickname = ((slot: string) => slot) as typeof AppState.getNickname;
+  }));
+  AppState.getNickname = ((slot: string) => slot);
 
   const mockWebview = {
     getURL: () => "https://chatgpt.com/c/generated-image",
@@ -745,7 +746,7 @@ test("syncConversation replaces preview image attachment when final bytes change
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as never, {});
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview, {});
     assert.equal(result.success, true);
     assert.equal(saveCalls.length, 1);
     assert.equal(saveCalls[0]?.["originalName"], "generated-image-ai1-01-stable.png");
@@ -755,11 +756,11 @@ test("syncConversation replaces preview image attachment when final bytes change
     AppState.getAccountForSlot = originalGetAccount;
     AppState.getAssistantRelay = originalGetRelay;
     AppState.getNickname = originalGetNickname;
-    globalScope.window = originalWindow;
+    globalScope.window = originalWindow as any;
   }
 });
 
-test("syncConversation uses a post-thinking probe to pick up generated images", async () => {
+void test("syncConversation uses a post-thinking probe to pick up generated images", async () => {
   const globalScope = globalThis as unknown as {
     window?: {
       electronAPI?: {
@@ -798,27 +799,27 @@ test("syncConversation uses a post-thinking probe to pick up generated images", 
         ],
       }),
       dbGetAttachments: async () => ({ success: true, data: [] }),
-      dbSaveAttachmentContent: async (payload: Record<string, unknown>) => {
+      dbSaveAttachmentContent: (async (payload: Record<string, unknown>) => {
         saveCalls.push(payload);
         return { success: true, data: { attachmentId: "att-1", storedPath: "/tmp/generated.png" } };
-      },
+      }) as any,
     },
   };
 
-  AppState.getProviderIdForSlot = (() => "chatgpt") as typeof AppState.getProviderIdForSlot;
+  AppState.getProviderIdForSlot = (() => "chatgpt");
   AppState.getAccountForSlot = (() => ({
     id: "account-1",
     provider: "chatgpt",
-  })) as typeof AppState.getAccountForSlot;
+  })) as unknown as typeof AppState.getAccountForSlot;
   AppState.getAssistantRelay = (() => ({
     active: false,
     sourceSlot: null,
-  })) as typeof AppState.getAssistantRelay;
-  AppState.getNickname = ((slot: string) => slot) as typeof AppState.getNickname;
+  }));
+  AppState.getNickname = ((slot: string) => slot);
 
   ConversationSyncer.postThinkingProbePollMs = 0;
   ConversationSyncer.postThinkingProbeMaxPolls = 1;
-  ConversationSyncer._lastThinkingEndedAt.ai1 = Date.now();
+  ConversationSyncer._lastThinkingEndedAt["ai1"] = Date.now();
 
   const mockWebview = {
     getURL: () => "https://chatgpt.com/c/generated-image",
@@ -868,7 +869,7 @@ test("syncConversation uses a post-thinking probe to pick up generated images", 
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as never, {
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview, {
       source: "auto",
     });
     assert.equal(result.success, true);
@@ -880,11 +881,11 @@ test("syncConversation uses a post-thinking probe to pick up generated images", 
     AppState.getNickname = originalGetNickname;
     ConversationSyncer.postThinkingProbePollMs = originalProbeDelay;
     ConversationSyncer.postThinkingProbeMaxPolls = originalProbeMaxPolls;
-    globalScope.window = originalWindow;
+    globalScope.window = originalWindow as any;
   }
 });
 
-test("syncConversation prefers webcontents capture fallback and isolates image save failures", async () => {
+void test("syncConversation prefers webcontents capture fallback and isolates image save failures", async () => {
   const globalScope = globalThis as unknown as {
     window?: {
       electronAPI?: {
@@ -924,7 +925,7 @@ test("syncConversation prefers webcontents capture fallback and isolates image s
         ],
       }),
       dbGetAttachments: async () => ({ success: true, data: [] }),
-      dbSaveAttachmentContent: async (payload: Record<string, unknown>) => {
+      dbSaveAttachmentContent: (async (payload: Record<string, unknown>) => {
         saveCalls.push(payload);
         if (saveCalls.length === 1) {
           return { success: false, error: "first-failed" };
@@ -933,7 +934,7 @@ test("syncConversation prefers webcontents capture fallback and isolates image s
           success: true,
           data: { attachmentId: "att-2", storedPath: "/tmp/generated-2.png" },
         };
-      },
+      }) as any,
       captureWebContentsPage: async () => {
         guestCaptureCalls += 1;
         return { success: true, dataUrl: "data:image/png;base64,Q0FQVFVSRTI=" };
@@ -945,16 +946,16 @@ test("syncConversation prefers webcontents capture fallback and isolates image s
     },
   };
 
-  AppState.getProviderIdForSlot = (() => "chatgpt") as typeof AppState.getProviderIdForSlot;
+  AppState.getProviderIdForSlot = (() => "chatgpt");
   AppState.getAccountForSlot = (() => ({
     id: "account-1",
     provider: "chatgpt",
-  })) as typeof AppState.getAccountForSlot;
+  })) as unknown as typeof AppState.getAccountForSlot;
   AppState.getAssistantRelay = (() => ({
     active: false,
     sourceSlot: null,
-  })) as typeof AppState.getAssistantRelay;
-  AppState.getNickname = ((slot: string) => slot) as typeof AppState.getNickname;
+  }));
+  AppState.getNickname = ((slot: string) => slot);
 
   const mockWebview = {
     getURL: () => "https://chatgpt.com/c/generated-image",
@@ -999,10 +1000,10 @@ test("syncConversation prefers webcontents capture fallback and isolates image s
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as never, {});
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview, {});
     assert.equal(result.success, true);
-    assert.equal(result.generatedImageSavedCount, 1);
-    assert.equal(result.generatedImagePendingCount, 1);
+    assert.equal(result["generatedImageSavedCount"], 1);
+    assert.equal(result["generatedImagePendingCount"], 1);
     assert.equal(guestCaptureCalls, 2);
     assert.equal(windowCaptureCalls, 0);
   } finally {
@@ -1010,6 +1011,6 @@ test("syncConversation prefers webcontents capture fallback and isolates image s
     AppState.getAccountForSlot = originalGetAccount;
     AppState.getAssistantRelay = originalGetRelay;
     AppState.getNickname = originalGetNickname;
-    globalScope.window = originalWindow;
+    globalScope.window = originalWindow as any;
   }
 });

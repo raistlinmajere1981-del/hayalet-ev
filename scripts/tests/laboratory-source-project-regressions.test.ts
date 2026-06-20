@@ -109,7 +109,7 @@ function createSourceProjectState(
   return store.getState();
 }
 
-test("laboratory shared asset kind helper keeps source and content routing consistent", () => {
+void test("laboratory shared asset kind helper keeps source and content routing consistent", () => {
   const baseAsset = {
     id: "asset-1",
     createdAt: 0,
@@ -170,7 +170,7 @@ test("laboratory shared asset kind helper keeps source and content routing consi
   );
 });
 
-test("laboratory source project management owns controls without the retired workspace overlay", () => {
+void test("laboratory source project management owns controls without the retired workspace overlay", () => {
   const state = createSourceProjectState(true);
   const sourcePanel = renderLabSourcePanel(state);
 
@@ -193,7 +193,7 @@ test("laboratory source project management owns controls without the retired wor
   assert.doesNotMatch(sourcePanel, /class="labx-pw-bar/);
 });
 
-test("laboratory source project management keeps the active source-less project navigable", () => {
+void test("laboratory source project management keeps the active source-less project navigable", () => {
   const html = renderLabSourcePanel(
     createSourceProjectState(true, {
       activeProjectId: "project-draft-active",
@@ -212,7 +212,7 @@ test("laboratory source project management keeps the active source-less project 
   assert.doesNotMatch(html, /Hidden Draft/);
 });
 
-test("laboratory source project controls skip redundant button dispatches", () => {
+void test("laboratory source project controls skip redundant button dispatches", () => {
   const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
   const sourceActionControllerSource = readFileSync(
     "rooms/laboratory/runtime/controller/lab-source-action-controller.ts",
@@ -231,7 +231,7 @@ test("laboratory source project controls skip redundant button dispatches", () =
   assert.doesNotMatch(source, /projectWorkspaceGroup/);
 });
 
-test("laboratory source panel renders localized asset groups and context actions", () => {
+void test("laboratory source panel renders localized asset groups and context actions", () => {
   const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
   const trCopy = createLabI18n({ locale: "tr", translations: trTranslations });
   const html = renderLabSourcePanel(
@@ -321,7 +321,7 @@ test("laboratory source panel renders localized asset groups and context actions
   assert.match(html, /data-lab-action="asset-remove"/);
 });
 
-test("laboratory source panel keeps selected assets separate from import progress review state", () => {
+void test("laboratory source panel keeps selected assets separate from import progress review state", () => {
   const state = createSourceProjectState(true, {
     assets: [
       {
@@ -346,7 +346,7 @@ test("laboratory source panel keeps selected assets separate from import progres
   assert.doesNotMatch(html, /class="labx-pw-inspector/);
 });
 
-test("laboratory source panel keeps draft review content separate from committed source preview", () => {
+void test("laboratory source panel keeps draft review content separate from committed source preview", () => {
   const state = createSourceProjectState(true);
   state.source = {
     kind: "video",
@@ -368,7 +368,7 @@ test("laboratory source panel keeps draft review content separate from committed
   assert.doesNotMatch(html, /1:39/);
 });
 
-test("laboratory source panel hides download for assets without a file target", () => {
+void test("laboratory source panel hides download for assets without a file target", () => {
   const html = renderLabSourcePanel(
     createSourceProjectState(true, {
       assets: [
@@ -388,7 +388,7 @@ test("laboratory source panel hides download for assets without a file target", 
   assert.doesNotMatch(html, /data-lab-action="asset-download"/);
 });
 
-test("laboratory source panel renders video source assets as workspace content rows", () => {
+void test("laboratory source panel renders video source assets as workspace content rows", () => {
   const html = renderLabSourcePanel(
     createSourceProjectState(true, {
       assets: [
@@ -415,7 +415,7 @@ test("laboratory source panel renders video source assets as workspace content r
   assert.doesNotMatch(html, /class="labx-pw-inspector__preview-media/);
 });
 
-test("laboratory source panel renders visual analysis artifacts as asset rows", () => {
+void test("laboratory source panel renders visual analysis artifacts as asset rows", () => {
   const html = renderLabSourcePanel(
     createSourceProjectState(true, {
       assets: [
@@ -440,7 +440,7 @@ test("laboratory source panel renders visual analysis artifacts as asset rows", 
   assert.doesNotMatch(html, /class="labx-pw-inspector__preview/);
 });
 
-test("laboratory source project management i18n keys exist in English and Turkish catalogs", () => {
+void test("laboratory source project management i18n keys exist in English and Turkish catalogs", () => {
   const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
   const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
   const sourceFiles = [
@@ -476,7 +476,7 @@ test("laboratory source project management i18n keys exist in English and Turkis
   });
 });
 
-test("laboratory source management css keeps active import styles without retired shell styles", () => {
+void test("laboratory source management css keeps active import styles without retired shell styles", () => {
   const styleSource = readFileSync("rooms/laboratory/ui/style.css", "utf8");
   const sourceImportCss = readFileSync("rooms/laboratory/ui/styles/lab-source-import.css", "utf8");
   const themeSource = readLabThemeSource();

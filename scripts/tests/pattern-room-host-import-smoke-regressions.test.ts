@@ -33,7 +33,7 @@ async function importRoomHostModule(targetPath: string): Promise<PatternRoomHost
 
 function assertPatternRoomHostModule(moduleNamespace: PatternRoomHostModule): void {
   assert.equal(typeof moduleNamespace.default?.activate, "function");
-  const activation = moduleNamespace.default.activate({});
+  const activation = moduleNamespace.default!.activate!({});
   assert.deepEqual(Object.keys(activation.commands).sort(), [
     PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
     PATTERN_ROOM_LOAD_COMMAND,
@@ -47,7 +47,7 @@ function assertPatternRoomHostModule(moduleNamespace: PatternRoomHostModule): vo
   activation.dispose?.();
 }
 
-test("pattern-room build artifact host imports with persistence commands", async () => {
+void test("pattern-room build artifact host imports with persistence commands", async () => {
   const buildArtifact = await createRoomBuiltArtifact("pattern-room");
 
   try {
@@ -59,7 +59,7 @@ test("pattern-room build artifact host imports with persistence commands", async
   }
 });
 
-test("pattern-room installed host imports with persistence commands", async () => {
+void test("pattern-room installed host imports with persistence commands", async () => {
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {

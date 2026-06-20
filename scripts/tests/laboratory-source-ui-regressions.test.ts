@@ -309,7 +309,7 @@ function createSeededState(ffmpegInstalled = false) {
   return store;
 }
 
-test("laboratory top bar reflects active v2 shell navigation", () => {
+void test("laboratory top bar reflects active v2 shell navigation", () => {
   const store = createSeededState();
   store.dispatch({ type: "tool-manager-toggled", open: true });
   const html = renderLabTopBar(store.getState());
@@ -331,7 +331,7 @@ test("laboratory top bar reflects active v2 shell navigation", () => {
   assert.doesNotMatch(html, /Modül Yönetimi|Seçili Modüller|Yoğun operatör tezgahı/);
 });
 
-test("laboratory right drawer defaults to the help tab before source preparation", () => {
+void test("laboratory right drawer defaults to the help tab before source preparation", () => {
   const store = createEmptyReadyState();
   const copy = createTurkishCopy();
   const state = store.getState();
@@ -347,7 +347,7 @@ test("laboratory right drawer defaults to the help tab before source preparation
   assert.doesNotMatch(drawer, /data-block-id="analysis-prep"/);
 });
 
-test("laboratory draft project renders empty workspace before full bootstrap readiness", () => {
+void test("laboratory draft project renders empty workspace before full bootstrap readiness", () => {
   const store = createDraftBootstrapState();
   const copy = createTurkishCopy();
   const state = store.getState();
@@ -362,7 +362,7 @@ test("laboratory draft project renders empty workspace before full bootstrap rea
   assert.match(drawer, /aria-label="Yardım"[\s\S]*data-pill-state="active"/);
 });
 
-test("laboratory inactive right-side regions stay mounted as hidden containers", () => {
+void test("laboratory inactive right-side regions stay mounted as hidden containers", () => {
   const bootStore = createLabStore();
   const bootSurface = renderWorkspaceSurface(bootStore.getState());
 
@@ -382,7 +382,7 @@ test("laboratory inactive right-side regions stay mounted as hidden containers",
   assert.doesNotMatch(drawer, /class="labx-pipeline-block"/);
 });
 
-test("laboratory pipeline renderer escapes metadata and omits hidden or empty blocks", () => {
+void test("laboratory pipeline renderer escapes metadata and omits hidden or empty blocks", () => {
   const markup = renderPipeline(
     [
       {
@@ -422,7 +422,7 @@ test("laboratory pipeline renderer escapes metadata and omits hidden or empty bl
   assert.doesNotMatch(markup, /class="labx-pipeline"/);
 });
 
-test("laboratory pipeline trace is debug gated and follows rendered block order", () => {
+void test("laboratory pipeline trace is debug gated and follows rendered block order", () => {
   const blocks = [
     {
       id: "analysis-prep",
@@ -520,7 +520,7 @@ test("laboratory pipeline trace is debug gated and follows rendered block order"
   });
 });
 
-test("laboratory v2 shell renders source intake in the setup drawer and preview media in center", () => {
+void test("laboratory v2 shell renders source intake in the setup drawer and preview media in center", () => {
   const store = createSeededState();
   store.dispatch({
     type: "asset-added",
@@ -617,7 +617,7 @@ test("laboratory v2 shell renders source intake in the setup drawer and preview 
   assert.doesNotMatch(surface.main, /Kaynak Seçimi|Hızlı modül seçimi burada yapılır/);
 });
 
-test("laboratory drawer keeps project assets visible in result and explore modes", () => {
+void test("laboratory drawer keeps project assets visible in result and explore modes", () => {
   const store = createSeededState();
   store.dispatch({
     type: "asset-added",
@@ -697,7 +697,7 @@ test("laboratory drawer keeps project assets visible in result and explore modes
   assert.doesNotMatch(drawer, /analysis-report\.md|data-lab-action="asset-preview"/);
 });
 
-test("laboratory workspace treats reused local assets as ready sources", () => {
+void test("laboratory workspace treats reused local assets as ready sources", () => {
   const store = createSeededState();
   store.dispatch({
     type: "source-config-patched",
@@ -748,7 +748,7 @@ test("laboratory workspace treats reused local assets as ready sources", () => {
   assert.doesNotMatch(surface.main, /Awaiting source|Select a source to begin/);
 });
 
-test("laboratory setup drawer previews analysis outcomes before the analysis CTA", () => {
+void test("laboratory setup drawer previews analysis outcomes before the analysis CTA", () => {
   const store = createSeededState(true);
 
   let surface = renderWorkspaceSurface(store.getState());
@@ -769,7 +769,7 @@ test("laboratory setup drawer previews analysis outcomes before the analysis CTA
   assert.doesNotMatch(drawer, /olası anormallikler ve sınıflandırılmış ses olayları/);
 });
 
-test("laboratory setup drawer owns active source selection controls under the analysis CTA", () => {
+void test("laboratory setup drawer owns active source selection controls under the analysis CTA", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -791,7 +791,7 @@ test("laboratory setup drawer owns active source selection controls under the an
   assert.equal(selectionPanelIndex, -1);
 });
 
-test("laboratory workspace inspector drawer persists collapsed visual tab state", () => {
+void test("laboratory workspace inspector drawer persists collapsed visual tab state", () => {
   const store = createSeededState(true);
   store.dispatch({ type: "workspace-controls-tab-selected", tab: "visual" });
   store.dispatch({ type: "workspace-controls-drawer-toggled", force: false });
@@ -806,7 +806,7 @@ test("laboratory workspace inspector drawer persists collapsed visual tab state"
   assert.match(surface.inspector ?? "", /data-inspector-panel="visual"/);
 });
 
-test("laboratory workspace focus layer classes map to preview timeline and inspector", () => {
+void test("laboratory workspace focus layer classes map to preview timeline and inspector", () => {
   const store = createSeededState(true);
 
   let surface = renderWorkspaceSurface(store.getState());
@@ -836,7 +836,7 @@ test("laboratory workspace focus layer classes map to preview timeline and inspe
   );
 });
 
-test("laboratory workspace inspector exposes operation controls without selection-tab operation focus", () => {
+void test("laboratory workspace inspector exposes operation controls without selection-tab operation focus", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -874,7 +874,7 @@ test("laboratory workspace inspector exposes operation controls without selectio
   assert.match(surface.inspector ?? "", /data-lab-action="operation-settings-reset"/);
 });
 
-test("laboratory icon rail keeps only runnable realtime and output operations", () => {
+void test("laboratory icon rail keeps only runnable realtime and output operations", () => {
   const store = createSeededState(true);
   const surface = renderWorkspaceSurface(store.getState());
 
@@ -889,7 +889,7 @@ test("laboratory icon rail keeps only runnable realtime and output operations", 
   assert.doesNotMatch(surface.main, /data-lab-value="stabilize"/);
 });
 
-test("laboratory icon rail operation popovers mirror active timeline and ROI scope", () => {
+void test("laboratory icon rail operation popovers mirror active timeline and ROI scope", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -928,7 +928,7 @@ test("laboratory icon rail operation popovers mirror active timeline and ROI sco
   );
 });
 
-test("laboratory video ROI without a timeline range stays ROI-only in operation scope", () => {
+void test("laboratory video ROI without a timeline range stays ROI-only in operation scope", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "selection-roi-updated",
@@ -958,7 +958,7 @@ test("laboratory video ROI without a timeline range stays ROI-only in operation 
   assert.doesNotMatch(operationMarkup, /data-lab-operation-scope="timeRange"/);
 });
 
-test("laboratory source drawer tab remains report-analysis only", () => {
+void test("laboratory source drawer tab remains report-analysis only", () => {
   const store = createSeededState(true);
   store.dispatch({ type: "drawer-mode-requested", mode: "setup" });
   store.dispatch({ type: "selection-tab-toggled", active: false });
@@ -979,7 +979,7 @@ test("laboratory source drawer tab remains report-analysis only", () => {
   );
 });
 
-test("laboratory drawer keeps media operation controls out of report-analysis tabs", () => {
+void test("laboratory drawer keeps media operation controls out of report-analysis tabs", () => {
   const store = createSeededState(true);
   const sourceDrawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
   assert.doesNotMatch(sourceDrawer, /data-lab-drawer-workspace-controls="true"/);
@@ -996,7 +996,7 @@ test("laboratory drawer keeps media operation controls out of report-analysis ta
   assert.match(operationDrawer, /data-lab-action="run-deep-analysis"/);
 });
 
-test("laboratory operation buttons reflect scoped running action state", () => {
+void test("laboratory operation buttons reflect scoped running action state", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "user-action-added",
@@ -1032,7 +1032,7 @@ test("laboratory operation buttons reflect scoped running action state", () => {
   assert.match(surface.inspector ?? "", /data-lab-operation-capability="band-pass-voice"/);
 });
 
-test("laboratory workspace operations follow the selected asset media kind", () => {
+void test("laboratory workspace operations follow the selected asset media kind", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1063,7 +1063,7 @@ test("laboratory workspace operations follow the selected asset media kind", () 
   assert.doesNotMatch(surface.inspector ?? "", /data-operation-id="frame-grab"/);
 });
 
-test("laboratory selected image assets stay on the processable inspection stage", () => {
+void test("laboratory selected image assets stay on the processable inspection stage", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1096,7 +1096,7 @@ test("laboratory selected image assets stay on the processable inspection stage"
   assert.match(surface.inspector ?? "", /data-operation-id="enhanced-frame"/);
 });
 
-test("laboratory image comparison workspace keeps image pair on the inspection workbench", () => {
+void test("laboratory image comparison workspace keeps image pair on the inspection workbench", () => {
   const store = createSeededState(true);
   const state = store.getState();
   state.source = {
@@ -1239,7 +1239,7 @@ test("laboratory image comparison workspace keeps image pair on the inspection w
   assert.match(surface.inspector ?? "", /Primary ROI x=10%, y=20%, w=30%, h=40%/);
 });
 
-test("laboratory image comparison visual controls follow the active image settings", () => {
+void test("laboratory image comparison visual controls follow the active image settings", () => {
   const store = createSeededState(true);
   const state = store.getState();
   state.source = {
@@ -1303,7 +1303,7 @@ test("laboratory image comparison visual controls follow the active image settin
   );
 });
 
-test("laboratory workspace asset preview resets timeline controls to the selected file", () => {
+void test("laboratory workspace asset preview resets timeline controls to the selected file", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -1349,7 +1349,7 @@ test("laboratory workspace asset preview resets timeline controls to the selecte
   assert.doesNotMatch(surface.main, /02:09\.335/);
 });
 
-test("laboratory workspace operations block remote asset targets instead of falling back to source", () => {
+void test("laboratory workspace operations block remote asset targets instead of falling back to source", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -1380,7 +1380,7 @@ test("laboratory workspace operations block remote asset targets instead of fall
   assert.doesNotMatch(surface.inspector ?? "", /data-lab-action="timeline-export-clip"/);
 });
 
-test("laboratory running work keeps the active operation contract without a fullscreen overlay", () => {
+void test("laboratory running work keeps the active operation contract without a fullscreen overlay", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "user-action-added",
@@ -1420,7 +1420,7 @@ test("laboratory running work keeps the active operation contract without a full
   assert.match(surface.main, /class="labx-icon-rail"[^>]*data-locked="true"/);
 });
 
-test("laboratory active analysis locks source and workspace controls while showing process details", () => {
+void test("laboratory active analysis locks source and workspace controls while showing process details", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "run-started",
@@ -1450,7 +1450,7 @@ test("laboratory active analysis locks source and workspace controls while showi
   assert.match(layout, /data-process-view="expanded"/);
 });
 
-test("laboratory operation error buttons keep retry label short and expose message in title", () => {
+void test("laboratory operation error buttons keep retry label short and expose message in title", () => {
   const html = renderWorkspaceOperationControls([
     {
       actionId: "workspace-enhanced-frame-export",
@@ -1484,7 +1484,7 @@ test("laboratory operation error buttons keep retry label short and expose messa
   assert.doesNotMatch(html, /<h2 class="labx-card__title">(?:Operations|İşlemler)<\/h2>/);
 });
 
-test("laboratory operation success state returns controls to the normal run action", () => {
+void test("laboratory operation success state returns controls to the normal run action", () => {
   const html = renderWorkspaceOperationControls([
     {
       actionId: "workspace-selection-roi-export",
@@ -1515,7 +1515,7 @@ test("laboratory operation success state returns controls to the normal run acti
   assert.doesNotMatch(html, /class="labx-operation-card__action-state"/);
 });
 
-test("laboratory Turkish workspace controls localize operation and analysis catalog labels", () => {
+void test("laboratory Turkish workspace controls localize operation and analysis catalog labels", () => {
   const store = createSeededState(true);
   store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
   store.dispatch({ type: "analysis-prep-group-expanded", capabilityIds: ["audio-signal"] });
@@ -1549,7 +1549,7 @@ test("laboratory Turkish workspace controls localize operation and analysis cata
   assert.doesNotMatch(blockedDrawer, /Required tools not installed/);
 });
 
-test("laboratory analysis preparation groups default closed and expand on demand", () => {
+void test("laboratory analysis preparation groups default closed and expand on demand", () => {
   const store = createSeededState(true);
   const defaultGroups = getAnalysisPreparationGroups(store.getState());
   assert.ok(defaultGroups.every((group) => group.selectionState === "none"));
@@ -1589,7 +1589,7 @@ test("laboratory analysis preparation groups default closed and expand on demand
   assert.match(openDrawer, /data-lab-action="analysis-settings-reset"/);
 });
 
-test("laboratory analysis preparation parent and child toggles stay synchronized", () => {
+void test("laboratory analysis preparation parent and child toggles stay synchronized", () => {
   const store = createSeededState(true);
 
   store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
@@ -1652,7 +1652,7 @@ test("laboratory analysis preparation parent and child toggles stay synchronized
   assert.match(fullGroupToggle, /\schecked(\s|>|\/)/);
 });
 
-test("laboratory selection guidance splits expanded operation and analysis suggestions", () => {
+void test("laboratory selection guidance splits expanded operation and analysis suggestions", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -1674,7 +1674,7 @@ test("laboratory selection guidance splits expanded operation and analysis sugge
   assert.match(surface.side, /Sahne gecislerini tara/);
 });
 
-test("laboratory operation suggestions stay out of the selection tab and source analysis rail", () => {
+void test("laboratory operation suggestions stay out of the selection tab and source analysis rail", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -1704,7 +1704,7 @@ test("laboratory operation suggestions stay out of the selection tab and source 
   assert.doesNotMatch(drawer, /data-active="true"[\s\S]*Audio signal/);
 });
 
-test("laboratory analysis suggestion acceptance opens and highlights the preparation rail", () => {
+void test("laboratory analysis suggestion acceptance opens and highlights the preparation rail", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -1734,7 +1734,7 @@ test("laboratory analysis suggestion acceptance opens and highlights the prepara
   assert.doesNotMatch(drawer, /data-active="true"[\s\S]*Audio recovery/);
 });
 
-test("laboratory queued analysis suggestions stay in the help tab after checking ready analyses", () => {
+void test("laboratory queued analysis suggestions stay in the help tab after checking ready analyses", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -1764,7 +1764,7 @@ test("laboratory queued analysis suggestions stay in the help tab after checking
   assert.match(drawer, /lab-selection-panel--drawer/);
 });
 
-test("laboratory root keeps passive selection suggestions outside the run controller", () => {
+void test("laboratory root keeps passive selection suggestions outside the run controller", () => {
   const rootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const binderSource = readFileSync(
     "rooms/laboratory/ui/lab-selection-suggestion-binder.ts",
@@ -1785,14 +1785,14 @@ test("laboratory root keeps passive selection suggestions outside the run contro
   assert.doesNotMatch(runControllerSource, /workspace-execution-dispatch/);
 });
 
-test("laboratory analysis readiness allows capability-only selection when modules are ready", () => {
+void test("laboratory analysis readiness allows capability-only selection when modules are ready", () => {
   const store = createSeededState(true);
   store.dispatch({ type: "capability-set", capabilities: ["visual-forensics"] });
 
   assert.equal(getAnalysisActionBlockReason(store.getState()), null);
 });
 
-test("laboratory tool overlay lists room-local tool lifecycle actions inside the live shell", () => {
+void test("laboratory tool overlay lists room-local tool lifecycle actions inside the live shell", () => {
   const store = createSeededState();
   store.dispatch({ type: "tool-manager-toggled", open: true });
   const state = store.getState();
@@ -1816,9 +1816,9 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
   state.toolState = {
     ...state.toolState,
     tools: {
-      ...((state.toolState.tools as Record<string, unknown>) || {}),
+      ...((state.toolState["tools"]) || {}),
       "yt-dlp": {
-        ...(((state.toolState.tools as Record<string, unknown>) || {})["yt-dlp"] as Record<
+        ...(((state.toolState["tools"] as Record<string, unknown>) || {})["yt-dlp"] as Record<
           string,
           unknown
         >),
@@ -1871,7 +1871,7 @@ test("laboratory tool overlay lists room-local tool lifecycle actions inside the
   assert.doesNotMatch(idleHtml, /Bir araç işlemi başladığında ilerleme burada görünür/);
 });
 
-test("laboratory tool manager asks for install confirmation with package and size details", () => {
+void test("laboratory tool manager asks for install confirmation with package and size details", () => {
   const store = createSeededState(true);
   store.dispatch({ type: "tool-manager-toggled", open: true });
   store.dispatch({ type: "tool-install-review-requested", toolId: "librosa" });
@@ -1890,7 +1890,7 @@ test("laboratory tool manager asks for install confirmation with package and siz
   assert.match(html, /data-lab-action="tool-install-dismiss"/);
 });
 
-test("laboratory workspace panels show snapshot drift as a non-blocking visibility layer", () => {
+void test("laboratory workspace panels show snapshot drift as a non-blocking visibility layer", () => {
   const store = createSeededState(true);
   const eventTimestamp = Date.now();
 
@@ -2014,7 +2014,7 @@ test("laboratory workspace panels show snapshot drift as a non-blocking visibili
   assert.match(strip, /data-lab-region="process-strip"/);
 });
 
-test("laboratory running drawer keeps module summary visible without selected analysis state", () => {
+void test("laboratory running drawer keeps module summary visible without selected analysis state", () => {
   const store = createSeededState(true);
   const eventTimestamp = Date.now();
 
@@ -2064,7 +2064,7 @@ test("laboratory running drawer keeps module summary visible without selected an
   assert.doesNotMatch(drawer, /Analiz plani hazirlaniyor/);
 });
 
-test("laboratory transparency renderers tolerate sparse run payloads", () => {
+void test("laboratory transparency renderers tolerate sparse run payloads", () => {
   const store = createSeededState(true);
   const state = store.getState() as ReturnType<typeof store.getState> & {
     run: Record<string, unknown>;
@@ -2119,7 +2119,7 @@ test("laboratory transparency renderers tolerate sparse run payloads", () => {
   });
 });
 
-test("laboratory process strip renders recent action history from user actions", () => {
+void test("laboratory process strip renders recent action history from user actions", () => {
   const store = createSeededState(true);
 
   store.dispatch({
@@ -2191,7 +2191,7 @@ test("laboratory process strip renders recent action history from user actions",
   assert.match(stripHtml, /frame_01\.png/);
 });
 
-test("laboratory process strip renders multi-output action summaries with overflow counts", () => {
+void test("laboratory process strip renders multi-output action summaries with overflow counts", () => {
   const store = createSeededState(true);
 
   store.dispatch({
@@ -2244,7 +2244,7 @@ test("laboratory process strip renders multi-output action summaries with overfl
   assert.match(stripHtml, /report-user\.md, report-ai\.json/);
 });
 
-test("laboratory source panel renders registry groups and workspace open actions", () => {
+void test("laboratory source panel renders registry groups and workspace open actions", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -2324,7 +2324,7 @@ test("laboratory source panel renders registry groups and workspace open actions
   assert.doesNotMatch(panelHtml, /data-lab-action="asset-use-as-source"/);
 });
 
-test("laboratory source panel opens png artifacts from the primary click", () => {
+void test("laboratory source panel opens png artifacts from the primary click", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -2347,7 +2347,7 @@ test("laboratory source panel opens png artifacts from the primary click", () =>
   assert.doesNotMatch(panelHtml, /data-lab-action="source-activate-asset"/);
 });
 
-test("laboratory source panel keeps asset order stable when active source timestamps change", () => {
+void test("laboratory source panel keeps asset order stable when active source timestamps change", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -2375,7 +2375,7 @@ test("laboratory source panel keeps asset order stable when active source timest
   assert.ok(panelHtml.indexOf("stable-first.mp4") < panelHtml.indexOf("active-newer.mp4"));
 });
 
-test("laboratory source panel opens the selected workspace asset group", () => {
+void test("laboratory source panel opens the selected workspace asset group", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -2398,13 +2398,13 @@ test("laboratory source panel opens the selected workspace asset group", () => {
   assert.doesNotMatch(panelHtml, /<details class="labx-sp-group" open data-group-type="source">/);
 });
 
-test("laboratory source panel marks only the workbench media as active", () => {
+void test("laboratory source panel marks only the workbench media as active", () => {
   const store = createSeededState(true);
   const state = store.getState();
   state.source = {
     ...state.source,
     metadata: {
-      ...((state.source?.metadata as Record<string, unknown> | undefined) ?? {}),
+      ...((state.source?.["metadata"]) ?? {}),
       originAssetId: "asset-active-source",
     },
   };
@@ -2447,13 +2447,13 @@ test("laboratory source panel marks only the workbench media as active", () => {
   assert.doesNotMatch(panelHtml, /Aktif kaynak/);
 });
 
-test("laboratory source panel marks only comparison pair assets as active", () => {
+void test("laboratory source panel marks only comparison pair assets as active", () => {
   const store = createSeededState(true);
   const state = store.getState();
   state.source = {
     ...state.source,
     metadata: {
-      ...((state.source?.metadata as Record<string, unknown> | undefined) ?? {}),
+      ...((state.source?.["metadata"]) ?? {}),
       originAssetId: "asset-active-source",
     },
   };
@@ -2510,7 +2510,7 @@ test("laboratory source panel marks only comparison pair assets as active", () =
   assert.doesNotMatch(panelHtml, /Aktif kaynak/);
 });
 
-test("laboratory comparison pair clicks only switch the active comparison side", () => {
+void test("laboratory comparison pair clicks only switch the active comparison side", () => {
   const store = createSeededState(true);
   const state = store.getState();
   state.source = {
@@ -2585,7 +2585,7 @@ test("laboratory comparison pair clicks only switch the active comparison side",
   assert.match(surface.main, /data-side="reference" data-active="true"/);
 });
 
-test("laboratory selecting media outside the comparison pair returns to single view", () => {
+void test("laboratory selecting media outside the comparison pair returns to single view", () => {
   const store = createSeededState(true);
   const state = store.getState();
   state.source = {
@@ -2665,7 +2665,7 @@ test("laboratory selecting media outside the comparison pair returns to single v
   assert.doesNotMatch(panelHtml, /data-asset-id="asset-reference-frame"[^>]*data-active="true"/);
 });
 
-test("laboratory source panel opens png artifacts from the primary click path", () => {
+void test("laboratory source panel opens png artifacts from the primary click path", () => {
   const store = createSeededState(true);
   store.dispatch({
     type: "asset-added",
@@ -2687,7 +2687,7 @@ test("laboratory source panel opens png artifacts from the primary click path", 
   );
 });
 
-test("laboratory document artifacts open inside the shared overlay shell", () => {
+void test("laboratory document artifacts open inside the shared overlay shell", () => {
   const store = createLabStore();
   store.dispatch({
     type: "asset-added",
@@ -2719,7 +2719,7 @@ test("laboratory document artifacts open inside the shared overlay shell", () =>
   assert.doesNotMatch(html, /class="labx-report-tabs"/);
 });
 
-test("laboratory report overlay renders snapshot summary and workspace-dirty freshness metadata", () => {
+void test("laboratory report overlay renders snapshot summary and workspace-dirty freshness metadata", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;
 
@@ -2799,7 +2799,7 @@ test("laboratory report overlay renders snapshot summary and workspace-dirty fre
   assert.match(translatedHtml, /Snapshot Summary|Snapshot Ozeti/);
 });
 
-test("laboratory report overlay keeps scoped report-level findings without grouping buckets", () => {
+void test("laboratory report overlay keeps scoped report-level findings without grouping buckets", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;
 
@@ -2896,7 +2896,7 @@ test("laboratory report overlay keeps scoped report-level findings without group
   assert.match(html, /report-summary\.json/);
 });
 
-test("laboratory report overlay lists transport-module evidence without selected analysis buckets", () => {
+void test("laboratory report overlay lists transport-module evidence without selected analysis buckets", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;
 
@@ -3072,7 +3072,7 @@ test("laboratory report overlay lists transport-module evidence without selected
   assert.match(html, /Audio anomaly/);
 });
 
-test("laboratory report overlay lists audio transport evidence once without analysis buckets", () => {
+void test("laboratory report overlay lists audio transport evidence once without analysis buckets", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;
 
@@ -3174,7 +3174,7 @@ test("laboratory report overlay lists audio transport evidence once without anal
   assert.equal((html.match(/Audio anomaly/g) || []).length, 1);
 });
 
-test("laboratory store applies optimistic source and workbench patches for source controls", () => {
+void test("laboratory store applies optimistic source and workbench patches for source controls", () => {
   const store = createSeededState();
   store.dispatch({
     type: "source-config-patched",

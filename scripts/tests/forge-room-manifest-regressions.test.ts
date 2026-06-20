@@ -60,13 +60,13 @@ const requiredForgeFiles = [
   "rooms/forge-room/main-functions/forge-workbench/protocols/tr/forge-room-task-response.md",
 ];
 
-test("forge-room workspace keeps the required Phase 1 package files", () => {
+void test("forge-room workspace keeps the required Phase 1 package files", () => {
   requiredForgeFiles.forEach((filePath) => {
     assert.equal(existsSync(filePath), true, filePath);
   });
 });
 
-test("forge-room manifest satisfies workbench and visible feature scene validation", () => {
+void test("forge-room manifest satisfies workbench and visible feature scene validation", () => {
   const manifest = JSON.parse(readFileSync("rooms/forge-room/manifest.json", "utf8"));
   const validation = validateRoomManifest(manifest);
   const forgeFeature = validation.manifest?.features.find(

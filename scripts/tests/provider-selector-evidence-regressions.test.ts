@@ -15,13 +15,13 @@ async function loadEvidenceModule(): Promise<Record<string, unknown> | null> {
   }
 }
 
-test("selector evidence module resolves promotion locale from app settings", async () => {
+void test("selector evidence module resolves promotion locale from app settings", async () => {
   const mod = await loadEvidenceModule();
 
   assert.ok(mod !== null, "electron/provider-tester/selector-evidence.ts should exist");
-  assert.equal(typeof mod.resolvePromotionLocaleFromSettings, "function");
+  assert.equal(typeof mod["resolvePromotionLocaleFromSettings"], "function");
 
-  const resolvePromotionLocaleFromSettings = mod.resolvePromotionLocaleFromSettings as (input: {
+  const resolvePromotionLocaleFromSettings = mod["resolvePromotionLocaleFromSettings"] as (input: {
     general?: {
       language?: string;
     };
@@ -33,11 +33,11 @@ test("selector evidence module resolves promotion locale from app settings", asy
   assert.equal(resolvePromotionLocaleFromSettings({}), "tr");
 });
 
-test("selector evidence module only promotes passing selector evidence from clean suites", async () => {
+void test("selector evidence module only promotes passing selector evidence from clean suites", async () => {
   const mod = await loadEvidenceModule();
 
   assert.ok(mod !== null, "electron/provider-tester/selector-evidence.ts should exist");
-  assert.equal(typeof mod.collectPromotableSelectors, "function");
+  assert.equal(typeof mod["collectPromotableSelectors"], "function");
 
   const results: ProviderTestResult[] = [
     {
@@ -54,13 +54,6 @@ test("selector evidence module only promotes passing selector evidence from clea
           selector: 'button[aria-label="Submit"]',
           promotable: true,
         },
-      } as ProviderTestResult["details"] & {
-        selectorEvidence: {
-          group: string;
-          key: string;
-          selector: string;
-          promotable: boolean;
-        };
       },
       duration: 5,
       timestamp: 0,
@@ -76,7 +69,7 @@ test("selector evidence module only promotes passing selector evidence from clea
     },
   ];
 
-  const collectPromotableSelectors = mod.collectPromotableSelectors as (input: {
+  const collectPromotableSelectors = mod["collectPromotableSelectors"] as (input: {
     locale: string;
     aborted: boolean;
     failed: number;

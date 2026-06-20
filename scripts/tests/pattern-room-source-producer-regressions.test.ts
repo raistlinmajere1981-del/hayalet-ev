@@ -42,7 +42,7 @@ async function walkTypeScriptFiles(baseDir: string): Promise<string[]> {
   return files.sort((left, right) => left.localeCompare(right));
 }
 
-test("pattern-room user text producer rejects empty text", () => {
+void test("pattern-room user text producer rejects empty text", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const validation = producer.validateInput(createPastedTextInput({ text: "" }));
 
@@ -50,7 +50,7 @@ test("pattern-room user text producer rejects empty text", () => {
   assert.equal(validation.errors[0]?.code, "empty-text");
 });
 
-test("pattern-room user text producer rejects whitespace-only text", () => {
+void test("pattern-room user text producer rejects whitespace-only text", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const validation = producer.validateInput(createPastedTextInput({ text: " \n\t " }));
 
@@ -58,7 +58,7 @@ test("pattern-room user text producer rejects whitespace-only text", () => {
   assert.equal(validation.errors[0]?.code, "blank-text");
 });
 
-test("pattern-room user text producer rejects oversized text", () => {
+void test("pattern-room user text producer rejects oversized text", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const oversizedText = "x".repeat(producer.capabilities.maxInputSizeHint + 1);
   const input = createPastedTextInput({ text: oversizedText });
@@ -78,7 +78,7 @@ test("pattern-room user text producer rejects oversized text", () => {
   );
 });
 
-test("pattern-room user text producer accepts valid pasted text", () => {
+void test("pattern-room user text producer accepts valid pasted text", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const validation = producer.validateInput(createPastedTextInput());
 
@@ -87,7 +87,7 @@ test("pattern-room user text producer accepts valid pasted text", () => {
   assert.deepEqual(validation.warnings, []);
 });
 
-test("pattern-room user text producer previews one package for valid text", () => {
+void test("pattern-room user text producer previews one package for valid text", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const preview = producer.getPreview(createPastedTextInput());
 
@@ -98,13 +98,13 @@ test("pattern-room user text producer previews one package for valid text", () =
   assert.deepEqual(preview.warnings, []);
 });
 
-test("pattern-room user text producer produces one raw SourcePackage", () => {
+void test("pattern-room user text producer produces one raw SourcePackage", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const input = createPastedTextInput({
     text: "  Ham metin ilk satır.\nİkinci satır.  ",
-    title: undefined,
-    language: undefined,
   });
+  delete input.title;
+  delete input.language;
   const result = producer.produce(input);
 
   assert.deepEqual(result.errors, []);
@@ -142,7 +142,7 @@ test("pattern-room user text producer produces one raw SourcePackage", () => {
   });
 });
 
-test("pattern-room user text producer returns errors without packages for invalid input", () => {
+void test("pattern-room user text producer returns errors without packages for invalid input", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const result = producer.produce(createPastedTextInput({ text: "   " }));
 
@@ -151,7 +151,7 @@ test("pattern-room user text producer returns errors without packages for invali
   assert.equal(result.errors[0]?.code, "blank-text");
 });
 
-test("pattern-room source package parser keeps old and new item shapes compatible", () => {
+void test("pattern-room source package parser keeps old and new item shapes compatible", () => {
   const oldShape = parseSourcePackage({
     sourcePackageId: "old-item-shape-package",
     sourceKind: "user_text",
@@ -202,7 +202,7 @@ test("pattern-room source package parser keeps old and new item shapes compatibl
   assert.equal(newShape.sourceItems[0]?.timecodeEnd, null);
 });
 
-test("pattern-room user text producer output parses and imports through Source Workbench", () => {
+void test("pattern-room user text producer output parses and imports through Source Workbench", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const produced = producer.produce(createPastedTextInput()).packages[0];
 
@@ -220,7 +220,7 @@ test("pattern-room user text producer output parses and imports through Source W
   assert.deepEqual(importResult.edges, []);
 });
 
-test("pattern-room user text producer does not mutate input", () => {
+void test("pattern-room user text producer does not mutate input", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const input = createPastedTextInput();
   const before = JSON.stringify(input);
@@ -230,7 +230,7 @@ test("pattern-room user text producer does not mutate input", () => {
   assert.equal(JSON.stringify(input), before);
 });
 
-test("pattern-room source producers stay pure and disconnected from runtime surfaces", async () => {
+void test("pattern-room source producers stay pure and disconnected from runtime surfaces", async () => {
   const producerFiles = await walkTypeScriptFiles(
     resolve("rooms/pattern-room/shared/source-producers")
   );

@@ -13,12 +13,12 @@ const assistantSceneLayout = getSceneRoomLayout("assistant");
 const serverSceneLayout = getSceneRoomLayout("server");
 const roomsSceneLayout = getSceneRoomLayout("rooms");
 
-test("scene schema exposes the canonical room and node registries", () => {
+void test("scene schema exposes the canonical room and node registries", () => {
   assert.deepEqual(SCENE_ROOM_IDS, ["entrance", "analyze", "assistant", "server", "rooms", "settings"]);
   assert.deepEqual(SCENE_NODE_KINDS, ["object", "back", "character"]);
 });
 
-test("entrance scene layout can be represented through the shared node schema", () => {
+void test("entrance scene layout can be represented through the shared node schema", () => {
   const nodes = buildSceneNodesFromLayout(entranceSceneLayout);
 
   assert.ok(nodes.some((node) => node.kind === "object" && node.id === "door-analyze"));
@@ -33,7 +33,7 @@ test("entrance scene layout can be represented through the shared node schema", 
   assert.ok(nodes.some((node) => node.kind === "character" && node.id === "anchor-assistant"));
 });
 
-test("assistant room definition keeps room metadata alongside shared scene nodes", () => {
+void test("assistant room definition keeps room metadata alongside shared scene nodes", () => {
   const room = buildSceneRoomDefinition("assistant", assistantSceneLayout);
 
   assert.equal(room.referenceSize.width, 1920);
@@ -45,7 +45,7 @@ test("assistant room definition keeps room metadata alongside shared scene nodes
   assert.ok(room.nodes.every((node) => SCENE_NODE_KINDS.includes(node.kind)));
 });
 
-test("server room definition participates in the shared scene schema", () => {
+void test("server room definition participates in the shared scene schema", () => {
   const room = buildSceneRoomDefinition("server", serverSceneLayout);
 
   assert.equal(room.referenceSize.width, 1920);
@@ -57,7 +57,7 @@ test("server room definition participates in the shared scene schema", () => {
   assert.ok(room.nodes.every((node) => SCENE_NODE_KINDS.includes(node.kind)));
 });
 
-test("rooms room definition keeps a single object entrance link", () => {
+void test("rooms room definition keeps a single object entrance link", () => {
   const room = buildSceneRoomDefinition("rooms", roomsSceneLayout);
 
   assert.equal(room.referenceSize.width, 1920);

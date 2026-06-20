@@ -396,7 +396,7 @@ function mountChatShell(document: FakeDocument): {
   chatInput.id = "chat-input";
   document.body.appendChild(chatInput);
 
-  const sendButton = document.createElement("button") as FakeHTMLButtonElement;
+  const sendButton = document.createElement("button");
   sendButton.id = "send-btn";
   document.body.appendChild(sendButton);
 
@@ -427,6 +427,8 @@ function createRuntime(): RuntimeState {
       favoriteModels: [],
       defaultModelKey: null,
       lastSelectedModelKey: null,
+      disabledProviders: [],
+      disabledModels: [],
     },
     endpointDefaultModelKeys: [],
     isSubmitting: false,
@@ -436,7 +438,7 @@ function createRuntime(): RuntimeState {
   };
 }
 
-test("addMessage renders assistant notice, historic preview card, and semantic blocks", () => {
+void test("addMessage renders assistant notice, historic preview card, and semantic blocks", () => {
   const { document, restore } = installFakeDom();
   const { chatMessages } = mountChatShell(document);
 
@@ -482,9 +484,7 @@ test("addMessage renders assistant notice, historic preview card, and semantic b
     const reasoningSection = chatMessages.querySelector(".ds-message-section--reasoning");
     const patchSection = chatMessages.querySelector(".ds-message-section--patch");
     const noticeTitle = chatMessages.querySelector(".ds-message-notice__title");
-    const previewImage = chatMessages.querySelector(".ds-attachment-card__image") as
-      | FakeHTMLImageElement
-      | null;
+    const previewImage = chatMessages.querySelector(".ds-attachment-card__image");
 
     assert.ok(reasoningSection);
     assert.match(reasoningSection?.textContent ?? "", /Inspect session payload/u);
@@ -497,7 +497,7 @@ test("addMessage renders assistant notice, historic preview card, and semantic b
   }
 });
 
-test("addMessage keeps the change-approval interaction card render path active", async () => {
+void test("addMessage keeps the change-approval interaction card render path active", async () => {
   const { document, restore } = installFakeDom({
     electronApi: {
       loadSettings: async () => ({
@@ -555,7 +555,7 @@ test("addMessage keeps the change-approval interaction card render path active",
   }
 });
 
-test("renderAttachmentTrayHtml keeps image preview cards instead of fallback chips", () => {
+void test("renderAttachmentTrayHtml keeps image preview cards instead of fallback chips", () => {
   const { restore } = installFakeDom();
 
   try {
@@ -577,7 +577,7 @@ test("renderAttachmentTrayHtml keeps image preview cards instead of fallback chi
   }
 });
 
-test("buildRuntimeErrorNotice recognizes Turkish retry-limit phrases", () => {
+void test("buildRuntimeErrorNotice recognizes Turkish retry-limit phrases", () => {
   const notice = buildRuntimeErrorNotice(
     "Kullanım sınırına ulaşıldı, istek otomatik olarak yeniden deneniyor.",
     {
@@ -589,7 +589,7 @@ test("buildRuntimeErrorNotice recognizes Turkish retry-limit phrases", () => {
   assert.equal(notice.meta, t("message.toolStateRetryMeta"));
 });
 
-test("sendComposerMessage keeps the Rovo card path when history sync falls back", async () => {
+void test("sendComposerMessage keeps the Rovo card path when history sync falls back", async () => {
   const tokenizedReply = appendRovoInteractionToken("Approval fallback", {
     id: "approval-fallback-card",
     version: 1,
@@ -639,7 +639,7 @@ test("sendComposerMessage keeps the Rovo card path when history sync falls back"
 
     await sendComposerMessage({
       runtime,
-      byId: (id) => document.getElementById(id) as HTMLElement | null,
+      byId: (id) => document.getElementById(id) as any,
       showToast: () => {},
       ensureActiveSession: async () => "ses_chat_dom",
       loadSessionListAndRender: async () => {},
@@ -647,7 +647,7 @@ test("sendComposerMessage keeps the Rovo card path when history sync falls back"
         await withHistorySyncFallback(
           {
             runtime,
-            byId: (id) => document.getElementById(id) as HTMLElement | null,
+            byId: (id) => document.getElementById(id) as any,
             initialUsageText: "Disk DB",
             clearChatArea: () => {},
             renderTodoPanel: () => {},
@@ -676,7 +676,7 @@ test("sendComposerMessage keeps the Rovo card path when history sync falls back"
   }
 });
 
-test("sendComposerMessage renders a notice bubble for request-time limit failures", async () => {
+void test("sendComposerMessage renders a notice bubble for request-time limit failures", async () => {
   const { document, restore } = installFakeDom({
     electronApi: {
       opencodeUiApiProxy: async () => ({
@@ -695,7 +695,7 @@ test("sendComposerMessage renders a notice bubble for request-time limit failure
 
     await sendComposerMessage({
       runtime,
-      byId: (id) => document.getElementById(id) as HTMLElement | null,
+      byId: (id) => document.getElementById(id) as any,
       showToast: () => {},
       ensureActiveSession: async () => "ses_chat_dom",
       loadSessionListAndRender: async () => {},

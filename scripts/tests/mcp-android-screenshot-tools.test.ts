@@ -15,12 +15,12 @@ function commandResult(stdout: Buffer | string, exitCode = 0, stderr = "") {
   };
 }
 
-test("android tool registry includes ADB screenshot tool", () => {
+void test("android tool registry includes ADB screenshot tool", () => {
   const entries = createAndroidTools({ PROJECT_ROOT: "/repo", LOG_DIR: "/repo/logs" });
   const definitions = new Map(
-    entries.map((entry) => [entry.definition.name, entry.definition] as const)
+    entries.map((entry) => [(entry.definition as any).name, entry.definition] as const)
   );
-  const screenshot = definitions.get("hev_take_android_screenshot");
+  const screenshot: any = definitions.get("hev_take_android_screenshot");
 
   assert.ok(screenshot);
   assert.equal(screenshot.inputSchema.properties?.deviceId?.type, "string");
@@ -34,7 +34,7 @@ test("android tool registry includes ADB screenshot tool", () => {
   ]);
 });
 
-test("android screenshot uses exec-out when PNG data is available", async () => {
+void test("android screenshot uses exec-out when PNG data is available", async () => {
   const calls: string[][] = [];
   let writtenPath = "";
   let writtenBytes = Buffer.alloc(0);
@@ -43,11 +43,11 @@ test("android screenshot uses exec-out when PNG data is available", async () => 
     _timestamp: 1234,
     _resolveAdbPath: async () => "/sdk/platform-tools/adb",
     _mkdir: async () => undefined,
-    _writeFile: async (filePath, data) => {
+    _writeFile: async (filePath: any, data: any) => {
       writtenPath = filePath;
       writtenBytes = data;
     },
-    _runCommand: async (_command, args) => {
+    _runCommand: async (_command: any, args: any[]) => {
       calls.push(args);
       if (args.join(" ") === "devices -l") {
         return commandResult("List of devices attached\nabc123 device product:test\n");
@@ -70,7 +70,7 @@ test("android screenshot uses exec-out when PNG data is available", async () => 
   );
 });
 
-test("android screenshot falls back to device file pull for older adb paths", async () => {
+void test("android screenshot falls back to device file pull for older adb paths", async () => {
   const calls: string[][] = [];
 
   const result = await takeAndroidScreenshot("/repo", {
@@ -78,7 +78,7 @@ test("android screenshot falls back to device file pull for older adb paths", as
     _resolveAdbPath: async () => "/sdk/platform-tools/adb",
     _mkdir: async () => undefined,
     _readFile: async () => PNG_BYTES,
-    _runCommand: async (_command, args) => {
+    _runCommand: async (_command: any, args: any[]) => {
       calls.push(args);
       if (args.join(" ") === "devices -l") {
         return commandResult("List of devices attached\nabc123 device product:test\n");
@@ -120,11 +120,11 @@ test("android screenshot falls back to device file pull for older adb paths", as
   );
 });
 
-test("android screenshot requires deviceId when multiple devices are ready", async () => {
+void test("android screenshot requires deviceId when multiple devices are ready", async () => {
   const result = await takeAndroidScreenshot("/repo", {
     _resolveAdbPath: async () => "/sdk/platform-tools/adb",
     _mkdir: async () => undefined,
-    _runCommand: async (_command, args) => {
+    _runCommand: async (_command: any, args: any[]) => {
       if (args.join(" ") === "devices -l") {
         return commandResult(
           "List of devices attached\nabc123 device product:test\nxyz789 device product:test\n"

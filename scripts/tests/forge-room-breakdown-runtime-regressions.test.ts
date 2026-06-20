@@ -6,7 +6,7 @@ import {
   parseForgeBreakdownDraft,
 } from "../../rooms/forge-room/host/forge-breakdown-runtime.ts";
 
-test("forge-room breakdown runtime parses and normalizes a valid draft payload", () => {
+void test("forge-room breakdown runtime parses and normalizes a valid draft payload", () => {
   const parsed = parseForgeBreakdownDraft(
     JSON.stringify({
       acceptanceCriteria: ["Repair Room can import the handoff package."],
@@ -45,13 +45,13 @@ test("forge-room breakdown runtime parses and normalizes a valid draft payload",
   assert.deepEqual(parsed.validationMessages, []);
   assert.equal(parsed.payload?.tasks.length, 3);
 
-  const normalized = normalizeForgeBreakdownDraft(parsed.payload!);
+  const normalized = normalizeForgeBreakdownDraft(parsed.payload);
   assert.equal(normalized.draftTasks.filter((task) => task.level === 1).length, 3);
   assert.equal(normalized.draftTasks.filter((task) => task.level === 2).length, 1);
   assert.equal(normalized.acceptanceCriteria[0], "Repair Room can import the handoff package.");
 });
 
-test("forge-room breakdown runtime rejects drafts outside the 3-7 task budget", () => {
+void test("forge-room breakdown runtime rejects drafts outside the 3-7 task budget", () => {
   const parsed = parseForgeBreakdownDraft(
     JSON.stringify({
       tasks: [

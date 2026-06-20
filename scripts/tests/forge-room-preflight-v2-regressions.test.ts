@@ -73,7 +73,7 @@ function createProfileStorageDeps() {
   };
 }
 
-test("forge-room operator profile storage allows a truly blank profile and preserves explicit null-safe fields", async () => {
+void test("forge-room operator profile storage allows a truly blank profile and preserves explicit null-safe fields", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "forge-room-profile-"));
   const storage = createForgeOperatorProfileStorage(createProfileStorageDeps());
   const runtimePaths = {
@@ -123,7 +123,7 @@ test("forge-room operator profile storage allows a truly blank profile and prese
   }
 });
 
-test("forge-room legacy operator profile migration keeps arbitrary keys room-local and generic", () => {
+void test("forge-room legacy operator profile migration keeps arbitrary keys room-local and generic", () => {
   const profile = normalizeForgeOperatorProfile({
     skill: {
       level: "advanced",
@@ -150,7 +150,7 @@ test("forge-room legacy operator profile migration keeps arbitrary keys room-loc
   ]);
 });
 
-test("forge-room capability selector keeps repair-relevant metadata and enforces the summary budget", () => {
+void test("forge-room capability selector keeps repair-relevant metadata and enforces the summary budget", () => {
   const context = selectForgeCapabilityContext({
     descriptors: listForgeCapabilityDescriptors(),
     goal: createGoal({
@@ -171,10 +171,10 @@ test("forge-room capability selector keeps repair-relevant metadata and enforces
   );
 });
 
-test("forge-room prompt context rendering stays inside the downstream budget", () => {
+void test("forge-room prompt context rendering stays inside the downstream budget", () => {
   const operatorProfile = createDefaultForgeOperatorProfile("2026-04-16T00:00:00.000Z");
-  operatorProfile.skills = [{ skillKey: "measurement", level: "basic" }];
-  operatorProfile.equipment = [{ equipmentKey: "multimeter", status: "unavailable" }];
+  operatorProfile.skills = [{ skillKey: "measurement", level: "basic" }] as any;
+  operatorProfile.equipment = [{ equipmentKey: "multimeter", status: "unavailable" }] as any;
   operatorProfile.preferences.mode = "learn_first";
   const sessionContextSelection = createEmptyForgeSessionContextSelection();
   sessionContextSelection.skillKeys = ["measurement"];
@@ -207,7 +207,7 @@ test("forge-room prompt context rendering stays inside the downstream budget", (
       rovoPreAnalysis: null,
       sessionContextSelection,
       constraints: ["Keep steps reversible."],
-    },
+    } as any,
     contextCapsule: {
       summary: "Only discuss the export seam, not full implementation.",
       relevantModules: [
@@ -229,7 +229,7 @@ test("forge-room prompt context rendering stays inside the downstream budget", (
   assert.match(rendered, /Run signature:/);
 });
 
-test("forge-room preflight accepts wrapped AI0 observation JSON replies", async () => {
+void test("forge-room preflight accepts wrapped AI0 observation JSON replies", async () => {
   const result = await buildForgePreflightState({
     dispatchBridge: async () => ({
       success: true,
@@ -261,19 +261,19 @@ test("forge-room preflight accepts wrapped AI0 observation JSON replies", async 
   });
 
   assert.equal(
-    result.state.bundle.rovoPreAnalysis?.summary,
+    result.state.bundle!.rovoPreAnalysis?.summary,
     "Forge should keep the handoff narrow and avoid implicit room reuse."
   );
-  assert.deepEqual(result.state.bundle.rovoPreAnalysis?.warnings, [
+  assert.deepEqual(result.state.bundle!.rovoPreAnalysis?.warnings, [
     "ADB transport details are still unspecified.",
   ]);
-  assert.deepEqual(result.state.bundle.rovoPreAnalysis?.missingInfo, [
+  assert.deepEqual(result.state.bundle!.rovoPreAnalysis?.missingInfo, [
     "Exact adb wireless pairing workflow.",
   ]);
   assert.equal(result.state.warnings.includes("AI0 pre-analysis response could not be parsed."), false);
 });
 
-test("forge-room selected synthesis provenance wins during export and strips raw fallback errors", () => {
+void test("forge-room selected synthesis provenance wins during export and strips raw fallback errors", () => {
   const handoffExport = createForgeHandoffExport();
   const session = createEmptyForgeSession("forge-session-v2-export");
   session.goal = createGoal();
@@ -288,7 +288,7 @@ test("forge-room selected synthesis provenance wins during export and strips raw
       "Preflight fell back to minimal context because the full bundle could not be prepared.",
       "socket timeout: 500",
     ],
-  };
+  } as any;
   session.runSignature = {
     source: ["keep-storage-local"],
     updatedAt: "2026-04-16T00:10:00.000Z",
@@ -306,7 +306,7 @@ test("forge-room selected synthesis provenance wins during export and strips raw
         preflightWarnings: [
           "Preflight fell back to minimal context because the full bundle could not be prepared.",
         ],
-      },
+      } as any,
       sourceTaskIds: ["forge-task-1"],
       selectedResponseIds: ["forge-response-1"],
       unresolvedConflictIds: [],
@@ -314,7 +314,7 @@ test("forge-room selected synthesis provenance wins during export and strips raw
       openQuestions: [],
       status: "selected",
       createdAt: "2026-04-16T00:00:00.000Z",
-    },
+    } as any,
   ];
   session.selectedSynthesisId = "forge-synthesis-v2";
 
@@ -341,7 +341,7 @@ test("forge-room selected synthesis provenance wins during export and strips raw
   ]);
 });
 
-test("forge-room run signatures remain human-readable but differ when normalized tokens collide", () => {
+void test("forge-room run signatures remain human-readable but differ when normalized tokens collide", () => {
   const operatorProfile = createDefaultForgeOperatorProfile();
   const sessionContextSelection = createEmptyForgeSessionContextSelection();
   const left = buildForgeRunSignature({
@@ -370,10 +370,10 @@ test("forge-room run signatures remain human-readable but differ when normalized
   assert.notEqual(left.value, right.value);
 });
 
-test("forge-room synthesis provenance stays assumption-free when no session context is selected", () => {
+void test("forge-room synthesis provenance stays assumption-free when no session context is selected", () => {
   const operatorProfile = createDefaultForgeOperatorProfile();
-  operatorProfile.skills = [{ skillKey: "measurement", level: "advanced" }];
-  operatorProfile.equipment = [{ equipmentKey: "hot_air", status: "available" }];
+  operatorProfile.skills = [{ skillKey: "measurement", level: "advanced" }] as any;
+  operatorProfile.equipment = [{ equipmentKey: "hot_air", status: "available" }] as any;
   operatorProfile.preferences.mode = "result_first";
   const sessionContextSelection = createEmptyForgeSessionContextSelection();
 
@@ -393,7 +393,7 @@ test("forge-room synthesis provenance stays assumption-free when no session cont
   ]);
 });
 
-test("forge-room runtime hydration keeps V2 defaults safe when legacy session fields are missing", () => {
+void test("forge-room runtime hydration keeps V2 defaults safe when legacy session fields are missing", () => {
   const legacySession = {
     schemaVersion: 2,
     id: "forge-session-legacy",

@@ -5,13 +5,13 @@ import { createFilesystemBasicTools } from "../../mcp-server/core/handlers/files
 
 function getWriteHandler(): (args: unknown) => Promise<unknown> {
   const tool = createFilesystemBasicTools().find(
-    (entry) => entry.definition.name === "hev_fs_write"
+    (entry) => (entry as { definition: { name: string } }).definition.name === "hev_fs_write"
   );
   assert.ok(tool, "hev_fs_write tool not found");
-  return tool.handler;
+  return tool.handler as unknown as (args: unknown) => Promise<unknown>;
 }
 
-test("hev_fs_write returns deterministic error when content is missing", async () => {
+void test("hev_fs_write returns deterministic error when content is missing", async () => {
   const handler = getWriteHandler();
 
   const result = (await handler({ file_path: "/tmp/hev-missing-content.txt" })) as {
@@ -23,7 +23,7 @@ test("hev_fs_write returns deterministic error when content is missing", async (
   assert.match(String(result.content?.[0]?.text ?? ""), /content.*string/i);
 });
 
-test("hev_fs_write returns deterministic error when content is non-string", async () => {
+void test("hev_fs_write returns deterministic error when content is non-string", async () => {
   const handler = getWriteHandler();
 
   const result = (await handler({

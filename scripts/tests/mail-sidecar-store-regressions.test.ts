@@ -23,7 +23,7 @@ function cleanupAccount(accountId: string): void {
   rmSync(accountDir, { recursive: true, force: true });
 }
 
-test("mail sidecar store uses a dedicated db path per account", () => {
+void test("mail sidecar store uses a dedicated db path per account", () => {
   const accountId = createAccountId("mail_sidecar_path");
 
   try {
@@ -38,7 +38,7 @@ test("mail sidecar store uses a dedicated db path per account", () => {
   }
 });
 
-test("mail sidecar manager persists session mapping, message meta, sync cursor, and receipt ledger", async () => {
+void test("mail sidecar manager persists session mapping, message meta, sync cursor, and receipt ledger", async () => {
   const accountId = createAccountId("mail_sidecar_data");
   const manager = new MailSidecarStoreManager(accountId);
 
@@ -138,7 +138,7 @@ test("mail sidecar manager persists session mapping, message meta, sync cursor, 
   }
 });
 
-test("mail sidecar manager rejects empty identifiers for narrow api writes", () => {
+void test("mail sidecar manager rejects empty identifiers for narrow api writes", () => {
   const accountId = createAccountId("mail_sidecar_validation");
   const manager = new MailSidecarStoreManager(accountId);
 

@@ -6,7 +6,7 @@ async function cleanPath(targetPath) {
 }
 
 async function cleanContents(targetPath) {
-  let entries = [];
+  let entries;
   try {
     entries = await readdir(targetPath);
   } catch {

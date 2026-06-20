@@ -14,7 +14,7 @@ function toRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-test("laboratory runtime events throttle high-frequency custom module updates", () => {
+void test("laboratory runtime events throttle high-frequency custom module updates", () => {
   const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const runtimeEvents = createLaboratoryRuntimeEvents({
     asNonEmptyString,
@@ -75,7 +75,7 @@ test("laboratory runtime events throttle high-frequency custom module updates", 
   assert.match(String(notifications[1]?.payload["detail"] || ""), /updates batched/);
 });
 
-test("laboratory runtime events emit terminal custom module updates inside throttle windows", () => {
+void test("laboratory runtime events emit terminal custom module updates inside throttle windows", () => {
   const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const runtimeEvents = createLaboratoryRuntimeEvents({
     asNonEmptyString,
@@ -132,7 +132,7 @@ test("laboratory runtime events emit terminal custom module updates inside throt
   assert.match(String(notifications[1]?.payload["detail"] || ""), /updates batched/);
 });
 
-test("laboratory runtime events preserve correlation metadata for export jobs and request results", () => {
+void test("laboratory runtime events preserve correlation metadata for export jobs and request results", () => {
   const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const runtimeEvents = createLaboratoryRuntimeEvents({
     asNonEmptyString,
@@ -185,7 +185,7 @@ test("laboratory runtime events preserve correlation metadata for export jobs an
   assert.equal(notifications[1]?.payload["projectId"], "project-1");
 });
 
-test("laboratory runtime events can publish cancelled process action results", () => {
+void test("laboratory runtime events can publish cancelled process action results", () => {
   const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const runtimeEvents = createLaboratoryRuntimeEvents({
     asNonEmptyString,
@@ -223,7 +223,7 @@ test("laboratory runtime events can publish cancelled process action results", (
   assert.equal(notifications[0]?.payload["scope"], "run");
 });
 
-test("laboratory runtime events clear stale workbench context for source activation snapshots", () => {
+void test("laboratory runtime events clear stale workbench context for source activation snapshots", () => {
   const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const workbenchSources: unknown[] = [];
   const runtimeEvents = createLaboratoryRuntimeEvents({
@@ -296,7 +296,7 @@ test("laboratory runtime events clear stale workbench context for source activat
   assert.equal(notifications[1]?.type, "source-state");
 });
 
-test("laboratory room snapshots keep stale context workbench from overriding source reset", () => {
+void test("laboratory room snapshots keep stale context workbench from overriding source reset", () => {
   const snapshotRuntime = createLaboratoryRoomSnapshotRuntime({
     asNonEmptyString,
     clone(value: unknown) {

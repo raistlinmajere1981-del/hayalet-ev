@@ -7,12 +7,12 @@ import {
   resolveStoredProtocolEntryForLocale,
 } from "../../shared/protocol-storage.ts";
 
-test("protocol storage canonicalizes legacy assistant keys", () => {
+void test("protocol storage canonicalizes legacy assistant keys", () => {
   assert.equal(canonicalizeProtocolKey("AI-asistan"), "AI-assistant");
   assert.equal(canonicalizeProtocolKey("AI-assistant"), "AI-assistant");
 });
 
-test("protocol storage migrates legacy keys into canonical entries", () => {
+void test("protocol storage migrates legacy keys into canonical entries", () => {
   const normalized = normalizeStoredProtocols({
     "AI-asistan": "legacy content",
   });
@@ -21,7 +21,7 @@ test("protocol storage migrates legacy keys into canonical entries", () => {
   assert.equal(normalized.changed, true);
 });
 
-test("protocol storage preserves locale variants when a legacy alias duplicates a canonical key", () => {
+void test("protocol storage preserves locale variants when a legacy alias duplicates a canonical key", () => {
   const normalized = normalizeStoredProtocols({
     "AI-assistant": {
       default: "Turkish default",
@@ -40,7 +40,7 @@ test("protocol storage preserves locale variants when a legacy alias duplicates 
   });
 });
 
-test("protocol storage resolves locale entries with Turkish fallback", () => {
+void test("protocol storage resolves locale entries with Turkish fallback", () => {
   const resolvedEn = resolveStoredProtocolEntryForLocale(
     {
       default: "Turkish default",
@@ -64,7 +64,7 @@ test("protocol storage resolves locale entries with Turkish fallback", () => {
   assert.equal(resolvedDe, "Turkish default");
 });
 
-test("protocol storage keeps Turkish fallback ahead of base language for region locales", () => {
+void test("protocol storage keeps Turkish fallback ahead of base language for region locales", () => {
   const resolvedEnUs = resolveStoredProtocolEntryForLocale(
     {
       default: "Turkish default",

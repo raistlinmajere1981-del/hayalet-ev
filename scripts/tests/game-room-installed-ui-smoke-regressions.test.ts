@@ -212,7 +212,7 @@ function emitFateKnotsState(
   });
 }
 
-test("game-room installed UI renders the Fate Knots blank placeholder", async () => {
+void test("game-room installed UI renders the Fate Knots blank placeholder", async () => {
   const installedCopy = await createRoomInstalledCopy("game-room");
 
   try {

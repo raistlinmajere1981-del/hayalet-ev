@@ -16,9 +16,9 @@ function setWindow(api?: Record<string, unknown>): void {
         };
 }
 
-test("system server control returns live status from opencodeServeStatus", async () => {
+void test("system server control returns live status from opencodeServeStatus", async () => {
   setWindow({
-    opencodeServeStatus: async () => ({ running: true, port: 4096 }),
+    opencodeServeStatus: () => ({ running: true, port: 4096 }),
   });
 
   const status = await detectSystemActiveServerStatus();
@@ -26,10 +26,10 @@ test("system server control returns live status from opencodeServeStatus", async
   assert.deepEqual(status, { running: true, port: 4096 });
 });
 
-test("system server control falls back to findRunning when cached status is idle", async () => {
+void test("system server control falls back to findRunning when cached status is idle", async () => {
   setWindow({
-    opencodeServeStatus: async () => ({ running: false }),
-    opencodeServeFindRunning: async () => ({ running: true, port: 4101 }),
+    opencodeServeStatus: () => ({ running: false }),
+    opencodeServeFindRunning: () => ({ running: true, port: 4101 }),
   });
 
   const status = await detectSystemActiveServerStatus();
@@ -37,7 +37,7 @@ test("system server control falls back to findRunning when cached status is idle
   assert.deepEqual(status, { running: true, port: 4101 });
 });
 
-test("system server control returns stopped when electron bridge is unavailable", async () => {
+void test("system server control returns stopped when electron bridge is unavailable", async () => {
   setWindow();
 
   const status = await detectSystemActiveServerStatus();

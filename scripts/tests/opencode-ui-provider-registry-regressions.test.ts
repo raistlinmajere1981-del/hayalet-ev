@@ -13,7 +13,7 @@ function readProviderFactory(): string {
   return readFileSync(providerFactoryPath, "utf8");
 }
 
-test("provider-registry includes opencode-ui in assistant provider ids", () => {
+void test("provider-registry includes opencode-ui in assistant provider ids", () => {
   const registryContent = readProviderRegistry();
 
   assert.match(
@@ -26,7 +26,7 @@ test("provider-registry includes opencode-ui in assistant provider ids", () => {
   assert.match(registryContent, /isAssistant\(id: string\): boolean {\s*return id in assistantProviders;\s*}/s);
 });
 
-test("provider-factory exposes opencode-ui module with send methods", () => {
+void test("provider-factory exposes opencode-ui module with send methods", () => {
   const factoryContent = readProviderFactory();
 
   assert.match(

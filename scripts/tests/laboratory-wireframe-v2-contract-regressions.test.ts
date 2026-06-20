@@ -111,7 +111,7 @@ function setRun(
   };
 }
 
-test("laboratory wireframe v2 derives active-run workspace locks and blocks locked timeline mutations", () => {
+void test("laboratory wireframe v2 derives active-run workspace locks and blocks locked timeline mutations", () => {
   const store = createReadyStore();
   store.dispatch({ type: "workspace-timeline-updated", startMs: 1000, endMs: 3000 });
   store.dispatch({ type: "workspace-hypothesis-updated", text: "pre-run hypothesis" });
@@ -147,7 +147,7 @@ test("laboratory wireframe v2 derives active-run workspace locks and blocks lock
   assert.equal(state.ui.workspace.interactiveSettings.brightness, 112);
 });
 
-test("laboratory wireframe v2 renders locked timeline and roi without native preview controls", () => {
+void test("laboratory wireframe v2 renders locked timeline and roi without native preview controls", () => {
   const store = createReadyStore();
   store.dispatch({ type: "workspace-timeline-updated", startMs: 1000, endMs: 3000 });
   setRun(store.getState());
@@ -167,7 +167,7 @@ test("laboratory wireframe v2 renders locked timeline and roi without native pre
   assert.match(surface.inspector ?? "", /data-lab-action="workspace-setting-adjust"/);
 });
 
-test("laboratory running drawer disables cancel while cancellation is pending", () => {
+void test("laboratory running drawer disables cancel while cancellation is pending", () => {
   const store = createReadyStore();
   setRun(store.getState());
   store.dispatch({ type: "analysis-cancel-requested" });
@@ -197,7 +197,7 @@ test("laboratory running drawer disables cancel while cancellation is pending", 
   assert.match(drawer, /Analiz iptal ediliyor/);
 });
 
-test("laboratory wireframe v2 failed source stays in setup with error viewport and idle strip", () => {
+void test("laboratory wireframe v2 failed source stays in setup with error viewport and idle strip", () => {
   const store = createReadyStore();
   store.dispatch({
     type: "source-probe-failed",
@@ -227,7 +227,7 @@ test("laboratory wireframe v2 failed source stays in setup with error viewport a
   assert.match(strip, /data-strip-state="idle"/);
 });
 
-test("laboratory wireframe v2 treats stale completed sources as empty viewport state", () => {
+void test("laboratory wireframe v2 treats stale completed sources as empty viewport state", () => {
   const store = createReadyStore();
   const state = store.getState();
   state.source = {
@@ -246,7 +246,7 @@ test("laboratory wireframe v2 treats stale completed sources as empty viewport s
   assert.doesNotMatch(surface.main, /data-lab-action="timeline-interact"/);
 });
 
-test("laboratory wireframe v2 source retry contract separates local block and replayable URLs", () => {
+void test("laboratory wireframe v2 source retry contract separates local block and replayable URLs", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const documentRef = new FakeControllerDocument();
@@ -286,7 +286,7 @@ test("laboratory wireframe v2 source retry contract separates local block and re
       action: "source-pick-local",
       detail: "probe failed",
     });
-    clickListener?.({ target: new TestElement("source-probe-retry") } as Event);
+    clickListener?.({ target: new TestElement("source-probe-retry") } as unknown as Event);
     assert.equal(sentEvents.length, 0);
     assert.match(store.getState().activityFeed[0]?.message ?? "", /Choose the file again/);
 
@@ -299,7 +299,7 @@ test("laboratory wireframe v2 source retry contract separates local block and re
       sourceUrl: "https://example.test/source.mp4",
     };
     state.ui.sourceDrafts.urlInput = "";
-    clickListener?.({ target: new TestElement("source-probe-retry") } as Event);
+    clickListener?.({ target: new TestElement("source-probe-retry") } as unknown as Event);
 
     assert.equal(sentEvents.length, 1);
     assert.equal(sentEvents[0]?.eventName, "media-action");
@@ -315,17 +315,17 @@ test("laboratory wireframe v2 source retry contract separates local block and re
     };
     state.ui.sourceDrafts.youtubeUrl = "";
     state.toolState = { tools: { "yt-dlp": { installed: false } } };
-    clickListener?.({ target: new TestElement("source-probe-retry") } as Event);
+    clickListener?.({ target: new TestElement("source-probe-retry") } as unknown as Event);
     assert.equal(sentEvents.length, 1);
     assert.match(store.getState().activityFeed[0]?.message ?? "", /yt-dlp is required/);
 
     store.getState().toolState = { tools: { "yt-dlp": { installed: true } } };
-    clickListener?.({ target: new TestElement("source-probe-retry") } as Event);
+    clickListener?.({ target: new TestElement("source-probe-retry") } as unknown as Event);
     assert.equal(sentEvents.length, 2);
     assert.equal(sentEvents[1]?.payload["action"], "source-download-youtube");
   } finally {
     if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -335,7 +335,7 @@ test("laboratory wireframe v2 source retry contract separates local block and re
   }
 });
 
-test("laboratory wireframe v2 result drawer uses localized decision labels and advisory defaults", () => {
+void test("laboratory wireframe v2 result drawer uses localized decision labels and advisory defaults", () => {
   const store = createReadyStore();
   store.dispatch({ type: "workspace-timeline-updated", startMs: 1000, endMs: 3000 });
 
@@ -392,7 +392,7 @@ test("laboratory wireframe v2 result drawer uses localized decision labels and a
   assert.doesNotMatch(enExploreDrawer, /data-lab-drawer-alternatives="true"/);
 });
 
-test("laboratory wireframe v2 process strip covers partial, cancelled, and indeterminate states", () => {
+void test("laboratory wireframe v2 process strip covers partial, cancelled, and indeterminate states", () => {
   const partialStore = createReadyStore();
   setRun(partialStore.getState(), {
     state: "completed",

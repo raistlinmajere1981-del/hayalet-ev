@@ -6,7 +6,7 @@ const sqliteManagerPath = "electron/database/sqlite-manager.ts";
 const sqliteArchivePath = "electron/database/sqlite-archive.ts";
 const databaseIndexPath = "electron/database/index.ts";
 
-test("conversation schema tracks title ownership for sync modes", () => {
+void test("conversation schema tracks title ownership for sync modes", () => {
   const managerContent = readFileSync(sqliteManagerPath, "utf8");
 
   assert.match(managerContent, /title_source TEXT NOT NULL DEFAULT 'system'/);
@@ -17,7 +17,7 @@ test("conversation schema tracks title ownership for sync modes", () => {
   assert.match(managerContent, /title GLOB 'Sohbet \[0-9\]\[0-9\]\[0-9\]\*'/);
 });
 
-test("sqlite archive adds sync metadata upsert and clean reset helpers", () => {
+void test("sqlite archive adds sync metadata upsert and clean reset helpers", () => {
   const archiveContent = readFileSync(sqliteArchivePath, "utf8");
 
   assert.match(archiveContent, /async upsertConversationMetadata\(/);
@@ -29,7 +29,7 @@ test("sqlite archive adds sync metadata upsert and clean reset helpers", () => {
   );
 });
 
-test("database manager exposes sync metadata upsert and clean reset entry points", () => {
+void test("database manager exposes sync metadata upsert and clean reset entry points", () => {
   const databaseContent = readFileSync(databaseIndexPath, "utf8");
 
   assert.match(databaseContent, /async upsertConversationMetadata\(/);

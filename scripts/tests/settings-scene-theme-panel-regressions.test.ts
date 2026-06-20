@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 
-test("settings theme panel wires scene theme management UI", () => {
+void test("settings theme panel wires scene theme management UI", () => {
   const htmlSource = readFileSync("src/pages/settings.html", "utf8");
   const appSource = readFileSync("src/js/pages/settings/app.ts", "utf8");
   const controllerSource = readFileSync("src/js/pages/settings/controller.ts", "utf8");
@@ -32,7 +32,7 @@ test("settings theme panel wires scene theme management UI", () => {
   assert.match(controllerSource, /this\.sync\(this\.state\);/);
 });
 
-test("settings language panel wires tab, panel, and renderer bootstrap", () => {
+void test("settings language panel wires tab, panel, and renderer bootstrap", () => {
   const htmlSource = readFileSync("src/pages/settings.html", "utf8");
   const appSource = readFileSync("src/js/pages/settings/app.ts", "utf8");
   const pageInitSource = readFileSync("src/js/app/page-init.ts", "utf8");
@@ -76,7 +76,7 @@ test("settings language panel wires tab, panel, and renderer bootstrap", () => {
   assert.match(panelSource, /joinPath\(selectedRoom\.i18nBaseDir, `\$\{locale\}\.json`\)/);
 });
 
-test("settings capture panel centralizes transcript runtime and android management wiring", () => {
+void test("settings capture panel centralizes transcript runtime and android management wiring", () => {
   const htmlSource = readFileSync("src/pages/settings.html", "utf8");
   const styleSource = readFileSync("src/styles/main.css", "utf8");
   const layoutTokensSource = readFileSync("src/styles/design-system/tokens/layout.css", "utf8");

@@ -271,11 +271,11 @@ export function installTimerMock(): {
   const scheduled: Array<{ fn: () => void; delay: number }> = [];
 
   globalThis.setTimeout = ((fn: (...args: unknown[]) => void, delay?: number) => {
-    scheduled.push({ fn: () => fn(), delay: delay ?? 0 });
+    scheduled.push({ fn: () => { fn(); }, delay: delay ?? 0 });
     return scheduled.length as unknown as ReturnType<typeof setTimeout>;
   }) as TimeoutFn;
 
-  globalThis.clearTimeout = (() => {}) as ClearTimeoutFn;
+  globalThis.clearTimeout = (() => {});
 
   return {
     scheduled,
@@ -321,10 +321,10 @@ export class FakeActionElement {
 
   getAttribute(name: string): string | null {
     if (name === "data-lab-action") {
-      return this.dataset.labAction ?? null;
+      return this.dataset["labAction"] ?? null;
     }
     if (name === "data-lab-value") {
-      return this.dataset.labValue ?? null;
+      return this.dataset["labValue"] ?? null;
     }
     return null;
   }
@@ -337,8 +337,8 @@ export class FakeControllerDocument {
   addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
     const handler =
       typeof listener === "function"
-        ? (listener as (event: Event) => void)
-        : (event: Event) => listener.handleEvent(event);
+        ? (listener)
+        : (event: Event) => { listener.handleEvent(event); };
     const listeners = this.listenerSets.get(type) || new Set<(event: Event) => void>();
     listeners.add(handler);
     this.listenerSets.set(type, listeners);
@@ -361,8 +361,8 @@ export class FakeControllerDocument {
     }
     const handler =
       typeof listener === "function"
-        ? (listener as (event: Event) => void)
-        : (event: Event) => listener.handleEvent(event);
+        ? (listener)
+        : (event: Event) => { listener.handleEvent(event); };
     listeners.delete(handler);
     if (listeners.size === 0) {
       this.listenerSets.delete(type);
@@ -402,7 +402,7 @@ export class FakeSelectionSuggestionTarget extends FakeDomElement {
     super();
   }
 
-  closest(selector: string) {
+  override closest(selector?: string): any {
     if (selector === "[data-lab-selection-suggestion]") {
       return this.trigger;
     }
@@ -414,13 +414,13 @@ export class FakeSelectionSuggestionTarget extends FakeDomElement {
 }
 
 export class FakePanelOnlyTarget extends FakeDomElement {
-  closest(selector: string) {
+  override closest(selector?: string): any {
     return selector === "[data-lab-selection-panel]" ? new FakeSelectionPanelTrigger() : null;
   }
 }
 
 export class FakeOutsideTarget extends FakeDomElement {
-  closest(): null {
+  override closest(): null {
     return null;
   }
 }
@@ -463,7 +463,7 @@ export class FakeRoiDrawTarget extends FakeDomElement {
     super();
   }
 
-  closest(selector: string) {
+  override closest(selector?: string): any {
     if (selector === "[data-lab-selection-roi-stage='true']") {
       return this.stage;
     }
@@ -478,9 +478,9 @@ export class FakeRoiClearTrigger {
 }
 
 export class FakeRoiClearTarget extends FakeDomElement {
-  closest(selector: string) {
+  override closest(selector?: string): any {
     return selector === "[data-lab-selection-roi-clear]"
-      ? (new FakeRoiClearTrigger() as unknown as FakeRoiStage)
+      ? (new FakeRoiClearTrigger())
       : null;
   }
 }
@@ -498,9 +498,9 @@ export class FakeInspectionModeTarget extends FakeDomElement {
     super();
   }
 
-  closest(selector: string) {
+  override closest(selector?: string): any {
     if (selector === "[data-lab-selection-inspection-mode]") {
-      return this.trigger as unknown as FakeRoiStage;
+      return this.trigger;
     }
     return null;
   }
@@ -581,8 +581,8 @@ export class FakeMediaElement {
   addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
     const handler =
       typeof listener === "function"
-        ? (listener as (event: Event) => void)
-        : (event: Event) => listener.handleEvent(event);
+        ? (listener)
+        : (event: Event) => { listener.handleEvent(event); };
     const existing = this.listeners.get(type) || new Set<(event: Event) => void>();
     existing.add(handler);
     this.listeners.set(type, existing);
@@ -595,20 +595,20 @@ export class FakeMediaElement {
     }
     const handler =
       typeof listener === "function"
-        ? (listener as (event: Event) => void)
-        : (event: Event) => listener.handleEvent(event);
+        ? (listener)
+        : (event: Event) => { listener.handleEvent(event); };
     existing.delete(handler);
   }
 
-  play() {
+  async play() {
     this.paused = false;
     this.playCalls += 1;
     if (this.failPlay) {
       this.paused = true;
-      return Promise.reject(new Error("Autoplay blocked"));
+      return await Promise.reject(new Error("Autoplay blocked"));
     }
     this.dispatch("play");
-    return Promise.resolve();
+    await Promise.resolve();
   }
 
   pause() {
@@ -620,7 +620,7 @@ export class FakeMediaElement {
   dispatch(type: string) {
     const handlers = Array.from(this.listeners.get(type) || []);
     handlers.forEach(function (handler) {
-      handler({ type } as Event);
+      handler({ type } as unknown as Event);
     });
   }
 
@@ -659,8 +659,8 @@ export class FakeWindowEventTarget {
     this.listeners.set(
       type,
       typeof listener === "function"
-        ? (listener as (event: Event) => void)
-        : (event: Event) => listener.handleEvent(event)
+        ? (listener)
+        : (event: Event) => { listener.handleEvent(event); }
     );
   }
 
@@ -721,7 +721,7 @@ export class FakeTimelineActionElement {
     if (selector === "[data-lab-action]") {
       return this;
     }
-    return selector.includes(this.dataset.labAction) ? this : null;
+    return selector.includes(this.dataset["labAction"]!) ? this : null;
   }
 }
 
@@ -806,7 +806,7 @@ export class FakeCanvasContext {
     const image = args[0] as { src?: string } | undefined;
     this.drawImageCalls += 1;
     this.lastDrawImageArgs = args;
-    this.lastDrawnImageSrc = typeof image.src === "string" ? image.src : null;
+    this.lastDrawnImageSrc = typeof image?.src === "string" ? image.src : null;
   }
 
   fillRect() {
@@ -962,13 +962,13 @@ export class FakeVisualizerAudioContext {
     return sourceNode as unknown as MediaElementAudioSourceNode;
   }
 
-  decodeAudioData() {
+  async decodeAudioData() {
     const sampleCount = 4096;
     const samples = new Float32Array(sampleCount);
     for (let index = 0; index < sampleCount; index += 1) {
       samples[index] = Math.sin(index / 18) * 0.7;
     }
-    return Promise.resolve({
+    return await Promise.resolve({
       length: sampleCount,
       numberOfChannels: 1,
       getChannelData() {
@@ -977,16 +977,16 @@ export class FakeVisualizerAudioContext {
     } as unknown as AudioBuffer);
   }
 
-  close() {
+  async close() {
     this.closeCalls += 1;
     this.state = "closed";
-    return Promise.resolve();
+    await Promise.resolve();
   }
 
-  resume() {
+  async resume() {
     this.resumeCalls += 1;
     this.state = "running";
-    return Promise.resolve();
+    await Promise.resolve();
   }
 }
 
@@ -1044,9 +1044,9 @@ export class FakeVisualizerWindow {
 
   addEventListener() {}
 
-  fetch(url: string) {
+  async fetch(url: string) {
     this.fetchCalls.push(url);
-    return Promise.resolve({
+    return await Promise.resolve({
       arrayBuffer: async () => new ArrayBuffer(16),
       ok: true,
     } as Response);
@@ -1112,8 +1112,8 @@ export class FakeVisualizerDocument {
   addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
     const handler =
       typeof listener === "function"
-        ? (listener as (event: Event) => void)
-        : (event: Event) => listener.handleEvent(event);
+        ? (listener)
+        : (event: Event) => { listener.handleEvent(event); };
     const existing = this.listeners.get(type) || new Set<(event: Event) => void>();
     existing.add(handler);
     this.listeners.set(type, existing);
@@ -1126,14 +1126,14 @@ export class FakeVisualizerDocument {
     }
     const handler =
       typeof listener === "function"
-        ? (listener as (event: Event) => void)
-        : (event: Event) => listener.handleEvent(event);
+        ? (listener)
+        : (event: Event) => { listener.handleEvent(event); };
     existing.delete(handler);
   }
 
   dispatch(type: string) {
     Array.from(this.listeners.get(type) || []).forEach(function (handler) {
-      handler({ type } as Event);
+      handler({ type } as unknown as Event);
     });
   }
 

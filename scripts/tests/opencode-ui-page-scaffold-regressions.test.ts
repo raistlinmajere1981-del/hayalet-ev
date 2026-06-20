@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { existsSync, readFileSync } from "node:fs";
 
-test("opencode-ui page scaffold exposes required shell ids and script path", () => {
+void test("opencode-ui page scaffold exposes required shell ids and script path", () => {
   const pagePath = "src/pages/opencode-ui.html";
 
   assert.equal(existsSync(pagePath), true, "Expected opencode-ui page file to exist");

@@ -2,7 +2,6 @@ import {
   assert,
   createMinimalForgeUiEnvironment,
   createRoomInstalledCopy,
-  FakeElement,
   fireEvent,
   loadTranslations,
   pathToFileURL,
@@ -11,7 +10,7 @@ import {
   test,
 } from "./forge-room-ui-smoke.helpers.ts";
 
-test("forge-room resets the guided surface when a previously selected panel becomes locked", async () => {
+void test("forge-room resets the guided surface when a previously selected panel becomes locked", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
@@ -156,7 +155,7 @@ test("forge-room resets the guided surface when a previously selected panel beco
   }
 });
 
-test("forge-room resets the active stage when the selected stage is no longer reachable", async () => {
+void test("forge-room resets the active stage when the selected stage is no longer reachable", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
@@ -255,7 +254,7 @@ test("forge-room resets the active stage when the selected stage is no longer re
   }
 });
 
-test("forge-room waits for the first forge-state snapshot before rendering empty session and operator panels", async () => {
+void test("forge-room waits for the first forge-state snapshot before rendering empty session and operator panels", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
@@ -370,7 +369,7 @@ test("forge-room waits for the first forge-state snapshot before rendering empty
   }
 });
 
-test("forge-room routes draft generation through the selected architect seat from the tracking stage", async () => {
+void test("forge-room routes draft generation through the selected architect seat from the tracking stage", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
@@ -490,7 +489,7 @@ test("forge-room routes draft generation through the selected architect seat fro
 
     const architectSeatSelect = environment.app.querySelector(
       "#forge-run-override-architect-seat"
-    ) as FakeElement | null;
+    );
     assert.ok(architectSeatSelect);
     architectSeatSelect.value = "ai2";
     fireEvent(architectSeatSelect, "change");
@@ -514,7 +513,7 @@ test("forge-room routes draft generation through the selected architect seat fro
 
     const generateDraftButton = environment.app.querySelector(
       "[data-forge-action='generate-draft']"
-    ) as FakeElement | null;
+    );
     assert.ok(generateDraftButton);
     fireEvent(generateDraftButton, "click");
     assert.deepEqual(environment.sentEvents.at(-1), {
@@ -533,7 +532,7 @@ test("forge-room routes draft generation through the selected architect seat fro
   }
 });
 
-test("forge-room generate-draft uses the live architect select value before host echo arrives", async () => {
+void test("forge-room generate-draft uses the live architect select value before host echo arrives", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
@@ -658,14 +657,14 @@ test("forge-room generate-draft uses the live architect select value before host
 
     const architectSeatSelect = environment.app.querySelector(
       "#forge-run-override-architect-seat"
-    ) as FakeElement | null;
+    );
     assert.ok(architectSeatSelect);
     assert.equal(architectSeatSelect.value, "ai2");
     architectSeatSelect.value = "ai1";
 
     const generateDraftButton = environment.app.querySelector(
       "[data-forge-action='generate-draft']"
-    ) as FakeElement | null;
+    );
     assert.ok(generateDraftButton);
     fireEvent(generateDraftButton, "click");
     assert.deepEqual(environment.sentEvents.at(-1), {
@@ -684,7 +683,7 @@ test("forge-room generate-draft uses the live architect select value before host
   }
 });
 
-test("forge-room keeps preflight dispatch enabled when AI0 is assigned but disconnected", async () => {
+void test("forge-room keeps preflight dispatch enabled when AI0 is assigned but disconnected", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
@@ -859,7 +858,7 @@ test("forge-room keeps preflight dispatch enabled when AI0 is assigned but disco
 
     const runPreflightButton = environment.app.querySelector(
       "[data-forge-action='run-preflight']"
-    ) as FakeElement | null;
+    );
     assert.ok(runPreflightButton);
     assert.equal(runPreflightButton.disabled, false);
     const recoverableText = readTreeText(environment.app);

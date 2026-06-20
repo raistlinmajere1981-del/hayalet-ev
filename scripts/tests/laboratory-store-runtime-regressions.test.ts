@@ -21,7 +21,7 @@ import {
 } from "./laboratory-runtime-truth.helpers.ts";
 import { loadLabPersistedState } from "../../rooms/laboratory/runtime/lab-persistence.ts";
 
-test("laboratory persistence drops stale runtime snapshots before boot hydrate", () => {
+void test("laboratory persistence drops stale runtime snapshots before boot hydrate", () => {
   const storage = new Map<string, string>();
   const windowRef = {
     localStorage: {
@@ -92,7 +92,7 @@ test("laboratory persistence drops stale runtime snapshots before boot hydrate",
   const loaded = loadLabPersistedState(windowRef) as Record<string, unknown>;
   assert.deepEqual(loaded["selectedCapabilities"], []);
   assert.deepEqual(loaded["projectIndex"], { activeProjectId: null, projects: [] });
-  assert.equal(loaded["workbench"] && Object.keys(loaded["workbench"] as object).length, 0);
+  assert.equal(loaded["workbench"] && Object.keys(loaded["workbench"]).length, 0);
   assert.equal(loaded["source"], null);
   assert.equal(loaded["sourceProbeStatus"], "idle");
   assert.equal(loaded["editConfig"], null);
@@ -122,7 +122,7 @@ test("laboratory persistence drops stale runtime snapshots before boot hydrate",
   assert.equal(projectImport["activeKind"], "image");
 });
 
-test("laboratory store tracks comparison capture controls without changing the reference", () => {
+void test("laboratory store tracks comparison capture controls without changing the reference", () => {
   const store = createLabStore();
 
   store.dispatch({ type: "workspace-comparison-reference-set", assetId: "asset-b" });
@@ -144,7 +144,7 @@ test("laboratory store tracks comparison capture controls without changing the r
   assert.equal(workspace.comparisonRois.reference, null);
 });
 
-test("laboratory store keeps checked YouTube import state UI-only and non-persistent", () => {
+void test("laboratory store keeps checked YouTube import state UI-only and non-persistent", () => {
   const store = createLabStore();
   assert.equal(store.getState().ui.labMode, "normal");
   assert.deepEqual(store.getState().ui.youtubeImport, {
@@ -354,11 +354,11 @@ test("laboratory store keeps checked YouTube import state UI-only and non-persis
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
   });
-  assert.equal("youtubeImport" in (store.getState().persisted as Record<string, unknown>), false);
+  assert.equal("youtubeImport" in (store.getState().persisted as unknown as Record<string, unknown>), false);
   assert.equal(store.getState().ui.sourceDrafts.youtubeUrl, "https://youtube.com/watch?v=abc123");
 });
 
-test("laboratory store tracks focus layer as guarded UI-only state", () => {
+void test("laboratory store tracks focus layer as guarded UI-only state", () => {
   const store = createLabStore();
 
   assert.equal(store.getState().ui.labFocusLayer, "preview");
@@ -375,11 +375,11 @@ test("laboratory store tracks focus layer as guarded UI-only state", () => {
   } as unknown as Parameters<typeof store.dispatch>[0]);
   assert.equal(store.getState().ui.labFocusLayer, "inspector");
 
-  store.dispatch({ type: "hydrate", payload: null });
+  store.dispatch({ type: "hydrate", payload: null }) as any;
   assert.equal(store.getState().ui.labFocusLayer, "preview");
 });
 
-test("laboratory store preserves persisted project import route across hydrate and source snapshots", () => {
+void test("laboratory store preserves persisted project import route across hydrate and source snapshots", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -409,6 +409,8 @@ test("laboratory store preserves persisted project import route across hydrate a
           image: "url",
         },
         drafts: {
+          video: { urlInput: "", youtubeUrl: "", youtubePreset: null, youtubeCustom: {}, youtubeCaptureMode: "video+audio" },
+          audio: { urlInput: "", youtubeUrl: "", youtubePreset: null, youtubeCustom: {}, youtubeCaptureMode: "video+audio" },
           image: {
             urlInput: "https://example.com/evidence.png",
             youtubeUrl: "",
@@ -469,7 +471,7 @@ test("laboratory store preserves persisted project import route across hydrate a
   );
 });
 
-test("laboratory store resets project import drafts and checked YouTube state on demand", () => {
+void test("laboratory store resets project import drafts and checked YouTube state on demand", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -527,7 +529,7 @@ test("laboratory store resets project import drafts and checked YouTube state on
   });
 });
 
-test("laboratory store resets project import check state when active project changes", () => {
+void test("laboratory store resets project import check state when active project changes", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -648,7 +650,7 @@ test("laboratory store resets project import check state when active project cha
   assert.equal(store.getState().ui.youtubeImport.status, "idle");
 });
 
-test("laboratory store clears import controls after completed tracked YouTube add", () => {
+void test("laboratory store clears import controls after completed tracked YouTube add", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -732,7 +734,7 @@ test("laboratory store clears import controls after completed tracked YouTube ad
   assert.equal((store.getState().source as Record<string, unknown>)["storedFileName"], "clip.mp4");
 });
 
-test("laboratory store preserves URL draft after failed tracked YouTube add", () => {
+void test("laboratory store preserves URL draft after failed tracked YouTube add", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -803,7 +805,7 @@ test("laboratory store preserves URL draft after failed tracked YouTube add", ()
   assert.equal(store.getState().ui.youtubeImport.status, "ready");
 });
 
-test("laboratory process output parser translates known ffmpeg and download lines", () => {
+void test("laboratory process output parser translates known ffmpeg and download lines", () => {
   const blackdetectEvent = parseProcessOutput("blackdetect=duration:0.42");
   const frameEvent = parseProcessOutput("frame= 248 fps=24");
   const downloadEvent = parseProcessOutput("[download] 42.1% of 12.31MiB");
@@ -817,12 +819,12 @@ test("laboratory process output parser translates known ffmpeg and download line
   assert.equal(mergeEvent?.message, "Kaynak birlestiriliyor");
 });
 
-test("laboratory process output parser leaves unknown lines in raw-log only flow", () => {
+void test("laboratory process output parser leaves unknown lines in raw-log only flow", () => {
   const unknownEvent = parseProcessOutput("totally unknown tool output");
   assert.equal(unknownEvent, null);
 });
 
-test("laboratory finding engine derives findings from semantic events and stays quiet on thin runs", () => {
+void test("laboratory finding engine derives findings from semantic events and stays quiet on thin runs", () => {
   const anomalyFindings = extractFindings([
     {
       id: "evt-1",
@@ -918,7 +920,7 @@ test("laboratory finding engine derives findings from semantic events and stays 
   assert.equal(thinRunFindings.length, 0);
 });
 
-test("laboratory bridge forwards only canonical lab events into the store", () => {
+void test("laboratory bridge forwards only canonical lab events into the store", () => {
   const emitted: string[] = [];
   const bridge = createLabHostBridge({
     emit(event) {
@@ -957,7 +959,7 @@ test("laboratory bridge forwards only canonical lab events into the store", () =
   assert.deepEqual(emitted, ["host-event-received"]);
 });
 
-test("laboratory store derives run state from canonical events without inventing modules", () => {
+void test("laboratory store derives run state from canonical events without inventing modules", () => {
   const store = createLabStore();
   store.dispatch({
     type: "host-event-received",
@@ -982,7 +984,7 @@ test("laboratory store derives run state from canonical events without inventing
   assert.deepEqual(state.run?.moduleOrder, []);
 });
 
-test("laboratory store keeps export user actions separate from analysis run state", () => {
+void test("laboratory store keeps export user actions separate from analysis run state", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -1046,7 +1048,7 @@ test("laboratory store keeps export user actions separate from analysis run stat
   assert.equal(state.run?.events[0]?.action, "process-run");
 });
 
-test("laboratory store keeps tracked export failures and cancellations UI-safe", () => {
+void test("laboratory store keeps tracked export failures and cancellations UI-safe", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -1125,7 +1127,7 @@ test("laboratory store keeps tracked export failures and cancellations UI-safe",
   assert.equal(cancelledAction?.message, "İşlem iptal edildi.");
 });
 
-test("laboratory store hydrates project assets and selectors keep registry lookups scoped", () => {
+void test("laboratory store hydrates project assets and selectors keep registry lookups scoped", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -1220,7 +1222,7 @@ test("laboratory store hydrates project assets and selectors keep registry looku
   assert.equal(getAssetById(store.getState(), "asset-missing"), null);
 });
 
-test("laboratory action output selector resolves linked assets and ignores stale ids", () => {
+void test("laboratory action output selector resolves linked assets and ignores stale ids", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -1267,7 +1269,7 @@ test("laboratory action output selector resolves linked assets and ignores stale
   assert.deepEqual(getActionOutputs(store.getState(), "user-action-missing"), []);
 });
 
-test("laboratory operation outputs replace the targeted workspace media", () => {
+void test("laboratory operation outputs replace the targeted workspace media", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -1331,9 +1333,9 @@ test("laboratory operation outputs replace the targeted workspace media", () => 
   assert.equal(store.getState().ui.workspace.comparisonReferenceAssetId, null);
 });
 
-test("laboratory store no longer carries retired source project ui state", () => {
+void test("laboratory store no longer carries retired source project ui state", () => {
   const store = createLabStore();
-  const uiState = store.getState().ui as Record<string, unknown>;
+  const uiState = store.getState().ui as unknown as Record<string, unknown>;
 
   assert.equal("projectWorkspaceOpen" in uiState, false);
   assert.equal("projectWorkspaceSelectedEntityIds" in uiState, false);
@@ -1345,7 +1347,7 @@ test("laboratory store no longer carries retired source project ui state", () =>
   assert.equal("projectWorkspaceTimelineHighlight" in uiState, false);
 });
 
-test("laboratory lineage selectors resolve current source, linked audio, and parent assets", () => {
+void test("laboratory lineage selectors resolve current source, linked audio, and parent assets", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -1452,7 +1454,7 @@ test("laboratory lineage selectors resolve current source, linked audio, and par
   );
 });
 
-test("laboratory hydrate ignores retired module manager persisted ui flags", () => {
+void test("laboratory hydrate ignores retired module manager persisted ui flags", () => {
   const store = createLabStore();
   const legacyPersistedPayload = {
     featureId: "media-analysis",
@@ -1480,7 +1482,7 @@ test("laboratory hydrate ignores retired module manager persisted ui flags", () 
   assert.equal(store.getState().ui.toolManagerOpen, false);
 });
 
-test("laboratory hydrate reconstructs an active selection from a valid persisted primitive range", () => {
+void test("laboratory hydrate reconstructs an active selection from a valid persisted primitive range", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -1536,7 +1538,7 @@ test("laboratory hydrate reconstructs an active selection from a valid persisted
   });
 });
 
-test("laboratory hydrate drops legacy pixel-like persisted selection roi values", () => {
+void test("laboratory hydrate drops legacy pixel-like persisted selection roi values", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -1578,7 +1580,7 @@ test("laboratory hydrate drops legacy pixel-like persisted selection roi values"
   assert.equal(store.getState().ui.workspace.activeSelection?.roi, undefined);
 });
 
-test("laboratory hydrate rebuilds selection identity from the primitive bridge on rehydrate", () => {
+void test("laboratory hydrate rebuilds selection identity from the primitive bridge on rehydrate", () => {
   const store = createLabStore();
   const originalDateNow = Date.now;
 
@@ -1630,7 +1632,7 @@ test("laboratory hydrate rebuilds selection identity from the primitive bridge o
   }
 });
 
-test("laboratory hydrate drops malformed persisted selection metadata fields", () => {
+void test("laboratory hydrate drops malformed persisted selection metadata fields", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -1657,7 +1659,6 @@ test("laboratory hydrate drops malformed persisted selection metadata fields", (
           startMs: 1500,
           endMs: 3600,
           type: "inspect",
-          intent: "not-real",
           createdAt: 1700000000042,
         },
       },
@@ -1669,7 +1670,7 @@ test("laboratory hydrate drops malformed persisted selection metadata fields", (
   assert.equal("intent" in selection, false);
 });
 
-test("laboratory hydrate suppresses persisted selection entities when the primitive range is invalid", () => {
+void test("laboratory hydrate suppresses persisted selection entities when the primitive range is invalid", () => {
   const store = createLabStore();
 
   store.dispatch({

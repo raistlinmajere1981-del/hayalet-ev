@@ -37,7 +37,7 @@ function installTimerCapture(): {
   const scheduled: Array<{ fn: () => void; delay: number }> = [];
 
   globalThis.setTimeout = ((fn: (...args: unknown[]) => void, delay?: number) => {
-    scheduled.push({ fn: () => fn(), delay: delay ?? 0 });
+    scheduled.push({ fn: () => { fn(); }, delay: delay ?? 0 });
     return scheduled.length as unknown as ReturnType<typeof setTimeout>;
   }) as typeof globalThis.setTimeout;
 
@@ -49,7 +49,7 @@ function installTimerCapture(): {
   };
 }
 
-test("thinking stays idle when stop button is not visible even if send is detected", () => {
+void test("thinking stays idle when stop button is not visible even if send is detected", () => {
   const tracker = new ThinkingTracker({ thinking: { stopButtonDetectionTimeoutMs: 2000 } });
   const now = Date.now();
 
@@ -72,7 +72,7 @@ test("thinking stays idle when stop button is not visible even if send is detect
   assert.equal(result.indicator, "idle");
 });
 
-test("provider-state thinking transition drives traffic listeners", () => {
+void test("provider-state thinking transition drives traffic listeners", () => {
   const slot = "ai2";
   const originalState = TrafficManager.state[slot];
   const originalListeners = TrafficManager.listeners;
@@ -133,18 +133,18 @@ test("provider-state thinking transition drives traffic listeners", () => {
     );
   } finally {
     timerCapture.restore();
-    TrafficManager.state[slot] = originalState;
+    TrafficManager.state[slot] = originalState as any;
     TrafficManager.listeners = originalListeners;
     if (originalRunner === undefined) {
       delete TrafficManager._runners[slot];
     } else {
       TrafficManager._runners[slot] = originalRunner;
     }
-    documentScope.document = originalDocument;
+    documentScope.document = originalDocument as { getElementById: (id: string) => HTMLElement | null; };
   }
 });
 
-test("provider-state ready transition marks loading as just ended", () => {
+void test("provider-state ready transition marks loading as just ended", () => {
   const slot = "ai2";
   const originalState = TrafficManager.state[slot];
   const originalListeners = TrafficManager.listeners;
@@ -193,18 +193,18 @@ test("provider-state ready transition marks loading as just ended", () => {
     );
   } finally {
     timerCapture.restore();
-    TrafficManager.state[slot] = originalState;
+    TrafficManager.state[slot] = originalState as any;
     TrafficManager.listeners = originalListeners;
     if (originalRunner === undefined) {
       delete TrafficManager._runners[slot];
     } else {
       TrafficManager._runners[slot] = originalRunner;
     }
-    documentScope.document = originalDocument;
+    documentScope.document = originalDocument as { getElementById: (id: string) => HTMLElement | null; };
   }
 });
 
-test("thinking is busy only while stop button is visible", () => {
+void test("thinking is busy only while stop button is visible", () => {
   const tracker = new ThinkingTracker({ thinking: { stopButtonDetectionTimeoutMs: 2000 } });
   const now = Date.now();
 
@@ -227,7 +227,7 @@ test("thinking is busy only while stop button is visible", () => {
   assert.equal(result.indicator, "busy");
 });
 
-test("thinking ends with timeout reason when stop button stays hidden without send-ready signals", () => {
+void test("thinking ends with timeout reason when stop button stays hidden without send-ready signals", () => {
   const tracker = new ThinkingTracker({ thinking: { stopButtonDetectionTimeoutMs: 2000 } });
   const now = Date.now();
 
@@ -263,7 +263,7 @@ test("thinking ends with timeout reason when stop button stays hidden without se
   assert.equal(secondProbe.event?.reason, "timeout");
 });
 
-test("default-page to conversation navigation triggers loading when skip flag is not set", () => {
+void test("default-page to conversation navigation triggers loading when skip flag is not set", () => {
   const slot = "ai1";
   const originalGetProvider = AppState.getProviderIdForSlot;
   const originalState = TrafficManager.state[slot];
@@ -280,12 +280,12 @@ test("default-page to conversation navigation triggers loading when skip flag is
     assert.equal(TrafficManager.state[slot]?.loadingActive, true);
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
-    TrafficManager.state[slot] = originalState;
-    TrafficManager._skipNextLoading[slot] = originalSkip;
+    TrafficManager.state[slot] = originalState as any;
+    TrafficManager._skipNextLoading[slot] = originalSkip as boolean;
   }
 });
 
-test("loading is forced to idle when thinking becomes busy during loading", async () => {
+void test("loading is forced to idle when thinking becomes busy during loading", async () => {
   const slot = "ai1";
   const originalGetProvider = AppState.getProviderIdForSlot;
   const originalState = TrafficManager.state[slot];
@@ -303,7 +303,7 @@ test("loading is forced to idle when thinking becomes busy during loading", asyn
     documentScope.document = { getElementById: () => null };
 
     const now = Date.now();
-    TrafficManager.webviews[slot] = {
+    (TrafficManager.webviews as any)[slot] = {
       executeJavaScript: async () => ({
         href: "https://chatgpt.com/c/abc",
         sendState: "disabled",
@@ -336,9 +336,9 @@ test("loading is forced to idle when thinking becomes busy during loading", asyn
     assert.equal(TrafficManager.state[slot]?.loadingActive, false);
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
-    TrafficManager.state[slot] = originalState;
-    TrafficManager._skipNextLoading[slot] = originalSkip;
-    documentScope.document = originalDocument;
+    TrafficManager.state[slot] = originalState as any;
+    TrafficManager._skipNextLoading[slot] = originalSkip as boolean;
+    documentScope.document = originalDocument as { getElementById: (id: string) => HTMLElement | null; };
     if (originalWebview === undefined) {
       delete TrafficManager.webviews[slot];
     } else {
@@ -347,7 +347,7 @@ test("loading is forced to idle when thinking becomes busy during loading", asyn
   }
 });
 
-test("non-default navigation keeps loading busy even if thinking is busy", async () => {
+void test("non-default navigation keeps loading busy even if thinking is busy", async () => {
   const slot = "ai1";
   const originalGetProvider = AppState.getProviderIdForSlot;
   const originalState = TrafficManager.state[slot];
@@ -365,7 +365,7 @@ test("non-default navigation keeps loading busy even if thinking is busy", async
     documentScope.document = { getElementById: () => null };
 
     const now = Date.now();
-    TrafficManager.webviews[slot] = {
+    (TrafficManager.webviews as any)[slot] = {
       executeJavaScript: async () => ({
         href: "https://chatgpt.com/c/next",
         sendState: "disabled",
@@ -398,9 +398,9 @@ test("non-default navigation keeps loading busy even if thinking is busy", async
     assert.equal(TrafficManager.state[slot]?.loadingActive, true);
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
-    TrafficManager.state[slot] = originalState;
-    TrafficManager._skipNextLoading[slot] = originalSkip;
-    documentScope.document = originalDocument;
+    TrafficManager.state[slot] = originalState as any;
+    TrafficManager._skipNextLoading[slot] = originalSkip as boolean;
+    documentScope.document = originalDocument as { getElementById: (id: string) => HTMLElement | null; };
     if (originalWebview === undefined) {
       delete TrafficManager.webviews[slot];
     } else {

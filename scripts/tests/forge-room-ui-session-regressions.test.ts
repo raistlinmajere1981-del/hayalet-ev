@@ -2,7 +2,6 @@ import {
   assert,
   createMinimalForgeUiEnvironment,
   createRoomInstalledCopy,
-  FakeElement,
   fireEvent,
   loadTranslations,
   pathToFileURL,
@@ -11,7 +10,7 @@ import {
   test,
 } from "./forge-room-ui-smoke.helpers.ts";
 
-test("forge-room session context empty states route operator profile entry through the top bar", async () => {
+void test("forge-room session context empty states route operator profile entry through the top bar", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
@@ -138,7 +137,7 @@ test("forge-room session context empty states route operator profile entry throu
   }
 });
 
-test("forge-room control surface renders the Turkish control copy from room translations", async () => {
+void test("forge-room control surface renders the Turkish control copy from room translations", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
@@ -309,7 +308,7 @@ test("forge-room control surface renders the Turkish control copy from room tran
   }
 });
 
-test("forge-room enables session advance only after all combined goal fields are filled", async () => {
+void test("forge-room enables session advance only after all combined goal fields are filled", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
@@ -557,7 +556,7 @@ test("forge-room enables session advance only after all combined goal fields are
     assert.ok(nextButton);
     assert.equal(nextButton.disabled, true);
 
-    const goalSummaryInput = environment.app.querySelector("#forge-goal-summary") as FakeElement | null;
+    const goalSummaryInput = environment.app.querySelector("#forge-goal-summary");
     assert.ok(goalSummaryInput);
     goalSummaryInput.value = "Repair Room integration";
     fireEvent(goalSummaryInput, "input");
@@ -568,7 +567,7 @@ test("forge-room enables session advance only after all combined goal fields are
     assert.ok(nextButton);
     assert.equal(nextButton.disabled, true);
 
-    const briefInput = environment.app.querySelector("#forge-goal-brief") as FakeElement | null;
+    const briefInput = environment.app.querySelector("#forge-goal-brief");
     assert.ok(briefInput);
     briefInput.value = "Document the repair boundary.";
     fireEvent(briefInput, "input");
@@ -580,7 +579,7 @@ test("forge-room enables session advance only after all combined goal fields are
 
     const constraintsInput = environment.app.querySelector(
       "#forge-goal-constraints"
-    ) as FakeElement | null;
+    );
     assert.ok(constraintsInput);
     constraintsInput.value = "Keep the scope local.\nPreserve host logic.";
     fireEvent(constraintsInput, "input");
@@ -593,7 +592,7 @@ test("forge-room enables session advance only after all combined goal fields are
 
     const targetRoomInput = environment.app.querySelector(
       "#forge-goal-target-room"
-    ) as FakeElement | null;
+    );
     assert.ok(targetRoomInput);
     targetRoomInput.value = "repair-room";
     fireEvent(targetRoomInput, "input");

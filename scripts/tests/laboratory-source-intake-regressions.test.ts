@@ -89,7 +89,7 @@ function assertArgPair(args: string[], flag: string, value: string) {
   assert.equal(args[flagIndex + 1], value);
 }
 
-test("laboratory YouTube probe accepts only single video URLs", async () => {
+void test("laboratory YouTube probe accepts only single video URLs", async () => {
   const toolCalls: Array<Record<string, unknown>> = [];
   const runtime = createMediaYoutubeSourceIntakeRuntime({
     asNonEmptyString,
@@ -350,7 +350,7 @@ function createTrackedProjectImportStore(
   return store;
 }
 
-test("laboratory URL intake downloads image sources into the frame asset category", async () => {
+void test("laboratory URL intake downloads image sources into the frame asset category", async () => {
   let activeProject: Record<string, unknown> = {
     id: "project-url-image",
     source: {
@@ -477,7 +477,7 @@ for (const action of [
   });
 }
 
-test("laboratory project import completion ignores unrelated source requests", () => {
+void test("laboratory project import completion ignores unrelated source requests", () => {
   const store = createTrackedProjectImportStore();
 
   store.dispatch({
@@ -505,7 +505,7 @@ test("laboratory project import completion ignores unrelated source requests", (
   assert.equal(state.ui.workspace.reportOverlayOpen, true);
 });
 
-test("laboratory workspace keeps import progress in project management instead of the center surface", () => {
+void test("laboratory workspace keeps import progress in project management instead of the center surface", () => {
   const state = createWorkspaceState({
     activityFeed: [
       {
@@ -581,7 +581,7 @@ test("laboratory workspace keeps import progress in project management instead o
   );
 });
 
-test("laboratory workspace exposes one local picker and one URL checker for every media type", () => {
+void test("laboratory workspace exposes one local picker and one URL checker for every media type", () => {
   const html = renderProjectWorkspaceHtml({
     source: {
       kind: "audio",
@@ -610,7 +610,7 @@ test("laboratory workspace exposes one local picker and one URL checker for ever
   assert.equal(html.includes("project-import." + "file" + "NameHint"), false);
 });
 
-test("laboratory workspace surfaces missing yt-dlp after a checked YouTube URL", () => {
+void test("laboratory workspace surfaces missing yt-dlp after a checked YouTube URL", () => {
   const html = renderProjectWorkspaceHtml({
     toolState: { tools: {} },
     urlCheckResult: {
@@ -643,7 +643,7 @@ test("laboratory workspace surfaces missing yt-dlp after a checked YouTube URL",
   assert.match(html, /yt-dlp is required\./);
 });
 
-test("laboratory workspace shows checked YouTube details and rich download controls", () => {
+void test("laboratory workspace shows checked YouTube details and rich download controls", () => {
   const html = renderProjectWorkspaceHtml({
     toolState: {
       tools: {
@@ -738,7 +738,7 @@ test("laboratory workspace shows checked YouTube details and rich download contr
   );
 });
 
-test("laboratory workspace shows YouTube conversion quality only when audio conversion applies", () => {
+void test("laboratory workspace shows YouTube conversion quality only when audio conversion applies", () => {
   const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
   const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
   const checkedYoutubeResult = {
@@ -820,7 +820,7 @@ test("laboratory workspace shows YouTube conversion quality only when audio conv
   );
 });
 
-test("laboratory workspace hides URL check details while checking", () => {
+void test("laboratory workspace hides URL check details while checking", () => {
   const store = createLabStore();
   store.dispatch({
     type: "snapshot-received",
@@ -872,7 +872,7 @@ test("laboratory workspace hides URL check details while checking", () => {
   assert.doesNotMatch(html, /data-lab-field="project-import\.youtubeAudioFormat"/);
 });
 
-test("laboratory YouTube project import forwards selected yt-dlp streams to host args", () => {
+void test("laboratory YouTube project import forwards selected yt-dlp streams to host args", () => {
   const runtime = createYoutubeArgsRuntime();
   const toolState = {
     ffmpeg: { installed: true },
@@ -937,7 +937,7 @@ test("laboratory YouTube project import forwards selected yt-dlp streams to host
   assertArgPair(audioOnlyArgs, "--audio-quality", "2");
 });
 
-test("laboratory workspace removes the legacy local-copy helper copy from the intake panel", () => {
+void test("laboratory workspace removes the legacy local-copy helper copy from the intake panel", () => {
   const html = renderProjectWorkspaceHtml({
     source: {
       kind: "video",
@@ -965,7 +965,7 @@ test("laboratory workspace removes the legacy local-copy helper copy from the in
   );
 });
 
-test("laboratory controller keeps project import draft and add wiring on the active source flow", () => {
+void test("laboratory controller keeps project import draft and add wiring on the active source flow", () => {
   const formActionControllerSource = readFileSync(
     "rooms/laboratory/runtime/controller/lab-form-action-controller.ts",
     "utf8"
@@ -1029,7 +1029,7 @@ test("laboratory controller keeps project import draft and add wiring on the act
   );
 });
 
-test("laboratory YouTube import progress hides tool command streams", () => {
+void test("laboratory YouTube import progress hides tool command streams", () => {
   const roomToolService = readFileSync("electron/room-tool-service.ts", "utf8");
   const progressRuntime = readFileSync(
     "rooms/laboratory/shared/host/room-tools-progress.ts",

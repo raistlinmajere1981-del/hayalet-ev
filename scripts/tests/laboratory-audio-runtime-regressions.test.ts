@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+import type { LabStoreEvent } from "../../rooms/laboratory/domain/lab-types.ts";
 import {
   assert,
   createAudioVisualizer,
@@ -14,7 +16,7 @@ import {
   test,
 } from "./laboratory-runtime-truth.helpers.ts";
 
-test("runtime audio visualizer draws waveform frames and scales with device pixel ratio", async () => {
+void test("runtime audio visualizer draws waveform frames and scales with device pixel ratio", async () => {
   FakeVisualizerAudioContext.constructed = [];
   const media = new FakeMediaElement();
   media.paused = false;
@@ -49,7 +51,7 @@ test("runtime audio visualizer draws waveform frames and scales with device pixe
   controller.destroy();
 });
 
-test("runtime audio visualizer renders frequency data in spectrum mode", async () => {
+void test("runtime audio visualizer renders frequency data in spectrum mode", async () => {
   FakeVisualizerAudioContext.constructed = [];
   const media = new FakeMediaElement();
   media.paused = false;
@@ -78,14 +80,14 @@ test("runtime audio visualizer renders frequency data in spectrum mode", async (
   controller.destroy();
 });
 
-test("runtime audio visualizer applies preview audio focus through a stable processing graph", async () => {
+void test("runtime audio visualizer applies preview audio focus through a stable processing graph", async () => {
   FakeVisualizerAudioContext.constructed = [];
   const media = new FakeMediaElement();
   media.paused = false;
   const canvas = new FakeCanvasElement();
   const documentRef = new FakeVisualizerDocument(media, null, canvas);
   const windowRef = new FakeVisualizerWindow();
-  let audioFocus = createTestAudioFocusSettings({
+  const audioFocus = createTestAudioFocusSettings({
     gain: 2.4,
     filterType: "highpass",
     filterFrequency: 1280,
@@ -122,7 +124,7 @@ test("runtime audio visualizer applies preview audio focus through a stable proc
   const audioContext = FakeVisualizerAudioContext.constructed[0];
   const gainNode = audioContext?.gainNodes[0];
   const primaryFilter = audioContext?.biquadFilters[0];
-  const eqNodes = audioContext?.biquadFilters.slice(1) || [];
+  const eqNodes = audioContext?.biquadFilters.slice(1) ?? [];
 
   assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
   assert.equal(audioContext?.sourceNodes.length, 1);
@@ -149,7 +151,7 @@ test("runtime audio visualizer applies preview audio focus through a stable proc
   controller.destroy();
 });
 
-test("runtime audio visualizer clamps preview audio focus values and skips unchanged param reapply", async () => {
+void test("runtime audio visualizer clamps preview audio focus values and skips unchanged param reapply", async () => {
   FakeVisualizerAudioContext.constructed = [];
   const media = new FakeMediaElement();
   media.paused = false;
@@ -193,9 +195,9 @@ test("runtime audio visualizer clamps preview audio focus values and skips uncha
   const audioContext = FakeVisualizerAudioContext.constructed[0];
   const gainNode = audioContext?.gainNodes[0];
   const primaryFilter = audioContext?.biquadFilters[0];
-  const eqNodes = audioContext?.biquadFilters.slice(1) || [];
-  const initialGainCalls = gainNode?.gain.setTargetCalls.length || 0;
-  const initialFilterCalls = primaryFilter?.frequency.setTargetCalls.length || 0;
+  const eqNodes = audioContext?.biquadFilters.slice(1) ?? [];
+  const initialGainCalls = gainNode?.gain.setTargetCalls.length ?? 0;
+  const initialFilterCalls = primaryFilter?.frequency.setTargetCalls.length ?? 0;
   const initialPlaybackSetCalls = media.playbackRateSetCalls;
   const initialPitchSetCalls = media.pitchSetCalls;
 
@@ -211,8 +213,8 @@ test("runtime audio visualizer clamps preview audio focus values and skips uncha
 
   controller.start();
   await flushVisualizerWork();
-  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls);
-  assert.equal(primaryFilter?.frequency.setTargetCalls.length, initialFilterCalls);
+  assert.equal(gainNode?.gain.setTargetCalls.length ?? 0, initialGainCalls);
+  assert.equal(primaryFilter?.frequency.setTargetCalls.length ?? 0, initialFilterCalls);
   assert.equal(media.playbackRateSetCalls, initialPlaybackSetCalls);
   assert.equal(media.pitchSetCalls, initialPitchSetCalls);
 
@@ -228,8 +230,8 @@ test("runtime audio visualizer clamps preview audio focus values and skips uncha
   const pitchOnlySetCalls = media.pitchSetCalls;
   assert.equal(media.playbackRate, 0.5);
   assert.equal(media.preservesPitch, true);
-  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls);
-  assert.equal(primaryFilter?.frequency.setTargetCalls.length, initialFilterCalls);
+  assert.equal(gainNode?.gain.setTargetCalls.length ?? 0, initialGainCalls);
+  assert.equal(primaryFilter?.frequency.setTargetCalls.length ?? 0, initialFilterCalls);
   assert.equal(media.playbackRateSetCalls, initialPlaybackSetCalls + 1);
   assert.equal(pitchOnlySetCalls > initialPitchSetCalls, true);
 
@@ -251,14 +253,14 @@ test("runtime audio visualizer clamps preview audio focus values and skips uncha
   assert.deepEqual(primaryFilter?.frequency.setTargetCalls.at(-1), [880, 0, 0.01]);
   assert.deepEqual(primaryFilter?.Q.setTargetCalls.at(-1), [4.5, 0, 0.01]);
   assert.deepEqual(eqNodes[1]?.gain.setTargetCalls.at(-1), [-4, 0, 0.01]);
-  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls + 1);
+  assert.equal(gainNode?.gain.setTargetCalls.length ?? 0, initialGainCalls + 1);
   assert.equal(media.playbackRateSetCalls, playbackOnlySetCalls);
   assert.equal(media.pitchSetCalls, pitchOnlySetCalls);
 
   controller.destroy();
 });
 
-test("runtime audio visualizer bypasses the primary filter stage when filter type is none", async () => {
+void test("runtime audio visualizer bypasses the primary filter stage when filter type is none", async () => {
   FakeVisualizerAudioContext.constructed = [];
   const media = new FakeMediaElement();
   media.paused = false;
@@ -338,7 +340,7 @@ test("runtime audio visualizer bypasses the primary filter stage when filter typ
   controller.destroy();
 });
 
-test("runtime audio visualizer preserves custom preview audio focus across pause play and seek", async () => {
+void test("runtime audio visualizer preserves custom preview audio focus across pause play and seek", async () => {
   FakeVisualizerAudioContext.constructed = [];
   const media = new FakeMediaElement();
   media.paused = false;
@@ -382,10 +384,10 @@ test("runtime audio visualizer preserves custom preview audio focus across pause
   const audioContext = FakeVisualizerAudioContext.constructed[0];
   const gainNode = audioContext?.gainNodes[0];
   const primaryFilter = audioContext?.biquadFilters[0];
-  const eqNodes = audioContext?.biquadFilters.slice(1) || [];
-  const initialGainCalls = gainNode?.gain.setTargetCalls.length || 0;
-  const initialFilterCalls = primaryFilter?.frequency.setTargetCalls.length || 0;
-  const initialEqCalls = eqNodes[2]?.gain.setTargetCalls.length || 0;
+  const eqNodes = audioContext?.biquadFilters.slice(1) ?? [];
+  const initialGainCalls = gainNode?.gain.setTargetCalls.length ?? 0;
+  const initialFilterCalls = primaryFilter?.frequency.setTargetCalls.length ?? 0;
+  const initialEqCalls = eqNodes[2]?.gain.setTargetCalls.length ?? 0;
 
   assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [1.9, 0, 0.01]);
   assert.equal(media.playbackRate, 0.8);
@@ -417,9 +419,9 @@ test("runtime audio visualizer preserves custom preview audio focus across pause
   assert.equal(primaryFilter?.frequency.value, 1450);
   assert.equal(primaryFilter?.Q.value, 6.2);
   assert.equal(eqNodes[2]?.gain.value, 3.5);
-  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls);
-  assert.equal(primaryFilter?.frequency.setTargetCalls.length, initialFilterCalls);
-  assert.equal(eqNodes[2]?.gain.setTargetCalls.length, initialEqCalls);
+  assert.equal(gainNode?.gain.setTargetCalls.length ?? 0, initialGainCalls);
+  assert.equal(primaryFilter?.frequency.setTargetCalls.length ?? 0, initialFilterCalls);
+  assert.equal(eqNodes[2]?.gain.setTargetCalls.length ?? 0, initialEqCalls);
 
   media.dispatch("seeking");
   await flushVisualizerWork();
@@ -432,14 +434,14 @@ test("runtime audio visualizer preserves custom preview audio focus across pause
   assert.equal(primaryFilter?.frequency.value, 1450);
   assert.equal(primaryFilter?.Q.value, 6.2);
   assert.equal(eqNodes[2]?.gain.value, 3.5);
-  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls);
-  assert.equal(primaryFilter?.frequency.setTargetCalls.length, initialFilterCalls);
-  assert.equal(eqNodes[2]?.gain.setTargetCalls.length, initialEqCalls);
+  assert.equal(gainNode?.gain.setTargetCalls.length ?? 0, initialGainCalls);
+  assert.equal(primaryFilter?.frequency.setTargetCalls.length ?? 0, initialFilterCalls);
+  assert.equal(eqNodes[2]?.gain.setTargetCalls.length ?? 0, initialEqCalls);
 
   controller.destroy();
 });
 
-test("runtime audio visualizer keeps realtime rendering alive after seek while playing", async () => {
+void test("runtime audio visualizer keeps realtime rendering alive after seek while playing", async () => {
   FakeVisualizerAudioContext.constructed = [];
   const media = new FakeMediaElement();
   media.paused = false;
@@ -480,7 +482,7 @@ test("runtime audio visualizer keeps realtime rendering alive after seek while p
   controller.destroy();
 });
 
-test("runtime audio visualizer throttles paused seek refreshes to snapshot-only rendering", async () => {
+void test("runtime audio visualizer throttles paused seek refreshes to snapshot-only rendering", async () => {
   FakeVisualizerAudioContext.constructed = [];
   const media = new FakeMediaElement();
   media.paused = true;
@@ -514,7 +516,7 @@ test("runtime audio visualizer throttles paused seek refreshes to snapshot-only 
   controller.destroy();
 });
 
-test("runtime audio visualizer pauses on visibility changes and tears down listeners on destroy", async () => {
+void test("runtime audio visualizer pauses on visibility changes and tears down listeners on destroy", async () => {
   FakeVisualizerAudioContext.constructed = [];
   const media = new FakeMediaElement();
   media.paused = false;
@@ -557,12 +559,12 @@ test("runtime audio visualizer pauses on visibility changes and tears down liste
   assert.equal(windowRef.scheduledFrames.size, 0);
 });
 
-test("laboratory workspace audio focus defaults to waveform visualization", () => {
+void test("laboratory workspace audio focus defaults to waveform visualization", () => {
   const store = createLabStore();
   assert.equal(store.getState().ui.workspace.audioFocus.visualizationMode, "waveform");
 });
 
-test("laboratory hydration upgrades deprecated audio visualization none mode to waveform", () => {
+void test("laboratory hydration upgrades deprecated audio visualization none mode to waveform", () => {
   const store = createLabStore();
   store.dispatch({
     type: "hydrate-complete",
@@ -574,12 +576,12 @@ test("laboratory hydration upgrades deprecated audio visualization none mode to 
         },
       },
     },
-  });
+  } as unknown as LabStoreEvent);
 
   assert.equal(store.getState().ui.workspace.audioFocus.visualizationMode, "waveform");
 });
 
-test("laboratory audio focus updates preserve an existing spectrogram preference", () => {
+void test("laboratory audio focus updates preserve an existing spectrogram preference", () => {
   const store = createLabStore();
   store.dispatch({
     type: "workspace-audio-updated",
@@ -597,11 +599,9 @@ test("laboratory audio focus updates preserve an existing spectrogram preference
   assert.equal(store.getState().ui.workspace.audioFocus.visualizationMode, "spectrum");
 });
 
-test("audio visualization selector prefers renderable current-run artifacts by mode", () => {
+void test("audio visualization selector prefers renderable current-run artifacts by mode", () => {
   const store = createLabStore();
-  const state = store.getState() as ReturnType<typeof store.getState> & {
-    run: Record<string, unknown>;
-  };
+  const state = store.getState();
   state.run = {
     id: "run-audio-visualization",
     state: "completed",
@@ -617,6 +617,7 @@ test("audio visualization selector prefers renderable current-run artifacts by m
         kind: "waveform",
         previewUrl: "file:///tmp/final-waveform.png",
         path: "/tmp/final-waveform.png",
+        fileName: null,
         createdAt: new Date(Date.now() - 4000).toISOString(),
         active: false,
       },
@@ -624,8 +625,8 @@ test("audio visualization selector prefers renderable current-run artifacts by m
         id: "artifact-spectrogram-file-url",
         kind: "spectrogram",
         previewUrl: null,
-        fileUrl: "file:///tmp/file-url-spectrogram.png",
         path: "/tmp/file-url-spectrogram.png",
+        fileName: null,
         createdAt: new Date(Date.now() - 500).toISOString(),
         active: true,
       },
@@ -634,6 +635,7 @@ test("audio visualization selector prefers renderable current-run artifacts by m
         kind: "spectrogram",
         previewUrl: null,
         path: "/tmp/raw-path-only-spectrogram.png",
+        fileName: null,
         createdAt: new Date(Date.now() - 50).toISOString(),
         active: true,
       },
@@ -652,6 +654,7 @@ test("audio visualization selector prefers renderable current-run artifacts by m
         kind: "waveform",
         previewUrl: "file:///tmp/preview-waveform.png",
         path: "/tmp/preview-waveform.png",
+        fileName: null,
         createdAt: new Date(Date.now() - 100).toISOString(),
         active: true,
         status: "ready",
@@ -664,6 +667,7 @@ test("audio visualization selector prefers renderable current-run artifacts by m
         kind: "spectrogram",
         previewUrl: "file:///tmp/preview-spectrogram.png",
         path: "/tmp/preview-spectrogram.png",
+        fileName: null,
         createdAt: new Date(Date.now() - 200).toISOString(),
         active: true,
         status: "ready",
@@ -691,11 +695,9 @@ test("audio visualization selector prefers renderable current-run artifacts by m
   assert.equal(getAudioVisualizationArtifact(store.getState())?.id, "artifact-waveform-final");
 });
 
-test("audio visualization selector keeps stable input order when artifact priority ties", () => {
+void test("audio visualization selector keeps stable input order when artifact priority ties", () => {
   const store = createLabStore();
-  const state = store.getState() as ReturnType<typeof store.getState> & {
-    run: Record<string, unknown>;
-  };
+  const state = store.getState();
   const sharedCreatedAt = new Date().toISOString();
   state.run = {
     id: "run-audio-visualization-stable-order",
@@ -712,6 +714,7 @@ test("audio visualization selector keeps stable input order when artifact priori
         kind: "waveform",
         previewUrl: "file:///tmp/waveform-second.png",
         path: "/tmp/waveform-second.png",
+        fileName: null,
         createdAt: sharedCreatedAt,
         active: false,
       },
@@ -720,6 +723,7 @@ test("audio visualization selector keeps stable input order when artifact priori
         kind: "waveform",
         previewUrl: "file:///tmp/waveform-first.png",
         path: "/tmp/waveform-first.png",
+        fileName: null,
         createdAt: sharedCreatedAt,
         active: false,
       },
@@ -746,7 +750,7 @@ test("audio visualization selector keeps stable input order when artifact priori
   );
 });
 
-test("workspace audio focus leaves transport controls on the unified waveform timeline", () => {
+void test("workspace audio focus leaves transport controls on the unified waveform timeline", () => {
   const markup = renderWorkspaceAudioFocus(
     createTestAudioFocusSettings({
       gain: 1,
@@ -765,7 +769,7 @@ test("workspace audio focus leaves transport controls on the unified waveform ti
     {
       previewTarget: "audio",
       temporalControlsEnabled: true,
-    }
+    } as Parameters<typeof renderWorkspaceAudioFocus>[1]
   );
 
   assert.match(markup, /data-lab-action="workspace-reset-audio-focus"/);

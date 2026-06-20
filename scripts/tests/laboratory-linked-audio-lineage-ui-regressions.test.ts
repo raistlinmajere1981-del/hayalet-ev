@@ -125,7 +125,7 @@ function createLineageState(
   return store.getState();
 }
 
-test("laboratory source panel renders linked source and sync label for audio assets", () => {
+void test("laboratory source panel renders linked source and sync label for audio assets", () => {
   const panelHtml = renderLabSourcePanel(createLineageState());
 
   assert.match(panelHtml, /audio\.wav/);

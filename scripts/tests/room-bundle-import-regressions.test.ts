@@ -7,6 +7,13 @@ import { tmpdir } from "node:os";
 import { RoomPackageManager } from "../../electron/room-package-manager.ts";
 import { ROOM_SCHEMA_VERSION } from "../../src/types/rooms.ts";
 
+interface RoomPackageManagerTestAccess {
+  buildWorkspaceInstalledRoomRecord(
+    room: { manifest: { id: string }; dirPath: string }
+  ): Promise<{ id: string; isWorkspaceFallback?: boolean } | null>;
+}
+
+
 function encodeBase64(value: string): string {
   return Buffer.from(value, "utf8").toString("base64");
 }
@@ -73,7 +80,7 @@ async function waitForFsTick(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 25));
 }
 
-test("RoomPackageManager imports a .hevroom bundle into workspace and installed registry", async () => {
+void test("RoomPackageManager imports a .hevroom bundle into workspace and installed registry", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-bundle-import-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const installedRoot = join(tempRoot, "data", "rooms");
@@ -202,7 +209,7 @@ test("RoomPackageManager imports a .hevroom bundle into workspace and installed 
   }
 });
 
-test("RoomPackageManager packages workspace rooms into room-storage exports by default", async () => {
+void test("RoomPackageManager packages workspace rooms into room-storage exports by default", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-bundle-package-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const dataRoot = join(tempRoot, "data");
@@ -249,7 +256,7 @@ test("RoomPackageManager packages workspace rooms into room-storage exports by d
   }
 });
 
-test("RoomPackageManager startup sync refreshes workspace-linked installed rooms after source edits", async () => {
+void test("RoomPackageManager startup sync refreshes workspace-linked installed rooms after source edits", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-startup-sync-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const dataRoot = join(tempRoot, "data");
@@ -300,7 +307,7 @@ test("RoomPackageManager startup sync refreshes workspace-linked installed rooms
   }
 });
 
-test("RoomPackageManager rejects bundles with missing scene assets", async () => {
+void test("RoomPackageManager rejects bundles with missing scene assets", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-bundle-invalid-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const installedRoot = join(tempRoot, "data", "rooms");
@@ -383,7 +390,7 @@ test("RoomPackageManager rejects bundles with missing scene assets", async () =>
   }
 });
 
-test("RoomPackageManager lists bundled rooms and installs them without deleting the bundle source", async () => {
+void test("RoomPackageManager lists bundled rooms and installs them without deleting the bundle source", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-bundle-workspace-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const bundledWorkspaceRoot = join(tempRoot, "app.asar", "rooms");
@@ -434,7 +441,7 @@ test("RoomPackageManager lists bundled rooms and installs them without deleting 
   }
 });
 
-test("RoomPackageManager removeInstalledRoom preserves user files inside installed room data", async () => {
+void test("RoomPackageManager removeInstalledRoom preserves user files inside installed room data", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-remove-installed-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const dataRoot = join(tempRoot, "data");
@@ -504,7 +511,7 @@ test("RoomPackageManager removeInstalledRoom preserves user files inside install
   }
 });
 
-test("RoomPackageManager exportInstalledRoomToWorkspace skips runtime tool payloads", async () => {
+void test("RoomPackageManager exportInstalledRoomToWorkspace skips runtime tool payloads", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-export-installed-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const dataRoot = join(tempRoot, "data");
@@ -556,7 +563,7 @@ test("RoomPackageManager exportInstalledRoomToWorkspace skips runtime tool paylo
   }
 });
 
-test("RoomPackageManager install and export keep Team Tetris assets and protocols intact", async () => {
+void test("RoomPackageManager install and export keep Team Tetris assets and protocols intact", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-team-tetris-export-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const dataRoot = join(tempRoot, "data");
@@ -700,7 +707,7 @@ test("RoomPackageManager install and export keep Team Tetris assets and protocol
   }
 });
 
-test("RoomPackageManager removeInstalledRoom deleteData clears data without deleting workspace room", async () => {
+void test("RoomPackageManager removeInstalledRoom deleteData clears data without deleting workspace room", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-remove-installed-delete-data-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const dataRoot = join(tempRoot, "data");
@@ -736,7 +743,7 @@ test("RoomPackageManager removeInstalledRoom deleteData clears data without dele
   }
 });
 
-test("RoomPackageManager marks dev fallback installed rooms so settings can avoid uninstall actions", async () => {
+void test("RoomPackageManager marks dev fallback installed rooms so settings can avoid uninstall actions", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-installed-fallback-"));
   const dataRoot = join(tempRoot, "data");
   const workspaceRoot = join(tempRoot, "rooms");
@@ -754,14 +761,11 @@ test("RoomPackageManager marks dev fallback installed rooms so settings can avoi
 
     const workspaceRooms = await manager.listWorkspaceRooms();
     assert.equal(workspaceRooms.length, 1);
-
-    const fallbackRoom = await (
-      manager as RoomPackageManager & {
-        buildWorkspaceInstalledRoomRecord: (
-          room: (typeof workspaceRooms)[number]
-        ) => Promise<{ id: string; isWorkspaceFallback?: boolean } | null>;
-      }
-    ).buildWorkspaceInstalledRoomRecord(workspaceRooms[0]!);
+    assert.ok(workspaceRooms[0] != null);
+    const roomEntry = workspaceRooms[0];
+    const fallbackRoom = await (manager as unknown as RoomPackageManagerTestAccess).buildWorkspaceInstalledRoomRecord(
+      roomEntry as { manifest: { id: string }; dirPath: string }
+    );
 
     assert.equal(fallbackRoom?.id, "game-room");
     assert.equal(fallbackRoom?.isWorkspaceFallback, true);
@@ -770,7 +774,7 @@ test("RoomPackageManager marks dev fallback installed rooms so settings can avoi
   }
 });
 
-test("RoomPackageManager deleteWorkspaceRoom can remove workspace and data folders together", async () => {
+void test("RoomPackageManager deleteWorkspaceRoom can remove workspace and data folders together", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-delete-workspace-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const dataRoot = join(tempRoot, "data");

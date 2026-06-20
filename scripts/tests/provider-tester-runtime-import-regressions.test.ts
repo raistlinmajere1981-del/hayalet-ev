@@ -4,7 +4,7 @@ import test from "node:test";
 
 const projectRoot = process.cwd();
 
-test("provider tester types import resolves without Vite-only aliases", () => {
+void test("provider tester types import resolves without Vite-only aliases", () => {
   const script = [
     "import('./electron/provider-tester/types.ts')",
     "  .then(() => process.exit(0))",

@@ -16,7 +16,7 @@ import {
 
 import type { SendMailRequest } from "./us1-conversation-service.helpers.ts";
 
-test("US1 conversation service includes room event and room command metadata in outbound mail", async () => {
+void test("US1 conversation service includes room event and room command metadata in outbound mail", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_room_meta`;
   const store = createSettingsStore(createSettings(accountId));
   const transportStub = createTransportStub();
@@ -25,8 +25,8 @@ test("US1 conversation service includes room event and room command metadata in 
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => store.loadSettings(),
+      saveSettings: async (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -44,8 +44,7 @@ test("US1 conversation service includes room event and room command metadata in 
         note: "Ready?",
       },
     });
-    const commandResult = await service.sendMessage({
-      localSessionId: inviteResult.localSessionId,
+    const params: Parameters<typeof service.sendMessage>[0] = {
       text: '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomBackgammonRemoteMove","matchId":"invite-1","inviteId":"invite-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
       roomCommand: {
         roomId: "game-room",
@@ -65,7 +64,11 @@ test("US1 conversation service includes room event and room command metadata in 
         rawArgs:
           '{"matchId":"invite-1","inviteId":"invite-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}',
       },
-    });
+    };
+    if (inviteResult.localSessionId !== undefined) {
+      params.localSessionId = inviteResult.localSessionId;
+    }
+    const commandResult = await service.sendMessage(params);
 
     assert.equal(inviteResult.success, true);
     assert.equal(commandResult.success, true);
@@ -111,7 +114,7 @@ test("US1 conversation service includes room event and room command metadata in 
   }
 });
 
-test("US1 conversation sync projects room events, commands, and invite inbox entries", async () => {
+void test("US1 conversation sync projects room events, commands, and invite inbox entries", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_room_sync`;
   const store = createSettingsStore(createSettings(accountId));
   const transportStub = createTransportStub();
@@ -120,8 +123,8 @@ test("US1 conversation sync projects room events, commands, and invite inbox ent
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => store.loadSettings(),
+      saveSettings: async (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -218,7 +221,7 @@ test("US1 conversation sync projects room events, commands, and invite inbox ent
   }
 });
 
-test("US1 conversation sync falls back to inline SlotBridge room.command text", async () => {
+void test("US1 conversation sync falls back to inline SlotBridge room.command text", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_room_inline_cmd`;
   const store = createSettingsStore(createSettings(accountId));
   const transportStub = createTransportStub();
@@ -227,8 +230,8 @@ test("US1 conversation sync falls back to inline SlotBridge room.command text", 
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => store.loadSettings(),
+      saveSettings: async (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -284,7 +287,7 @@ test("US1 conversation sync falls back to inline SlotBridge room.command text", 
   }
 });
 
-test("US1 conversation sync does not infer unknown inline room.command identities", async () => {
+void test("US1 conversation sync does not infer unknown inline room.command identities", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_room_inline_unknown`;
   const store = createSettingsStore(createSettings(accountId));
   const transportStub = createTransportStub();
@@ -293,8 +296,8 @@ test("US1 conversation sync does not infer unknown inline room.command identitie
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => store.loadSettings(),
+      saveSettings: async (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -332,7 +335,7 @@ test("US1 conversation sync does not infer unknown inline room.command identitie
   }
 });
 
-test("US1 conversation sync preserves pending room commands until a consumer drains them", async () => {
+void test("US1 conversation sync preserves pending room commands until a consumer drains them", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_room_pending_cmd`;
   const store = createSettingsStore(createSettings(accountId));
   const transportStub = createTransportStub();
@@ -341,8 +344,8 @@ test("US1 conversation sync preserves pending room commands until a consumer dra
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => store.loadSettings(),
+      saveSettings: async (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -398,7 +401,7 @@ test("US1 conversation sync preserves pending room commands until a consumer dra
   }
 });
 
-test("US1 conversation service preserves Team Tetris start events and turnToken metadata", async () => {
+void test("US1 conversation service preserves Team Tetris start events and turnToken metadata", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_team_tetris_meta`;
   const store = createSettingsStore(createSettings(accountId));
   const transportStub = createTransportStub();
@@ -407,8 +410,8 @@ test("US1 conversation service preserves Team Tetris start events and turnToken 
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => store.loadSettings(),
+      saveSettings: async (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -425,8 +428,7 @@ test("US1 conversation service preserves Team Tetris start events and turnToken 
         note: '{"seed":"tt-seed","hiddenPairs":true}',
       },
     });
-    const commandResult = await service.sendMessage({
-      localSessionId: startResult.localSessionId,
+    const params: Parameters<typeof service.sendMessage>[0] = {
       text: '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomTeamTetrisRemoteMove","schemaVersion":1,"matchId":"tt-match-1","turnIndex":2,"turnToken":"tt_token","pieceId":"T","rotation":1,"rowShifts":[0,1,0]}})',
       roomCommand: {
         roomId: "game-room",
@@ -449,7 +451,11 @@ test("US1 conversation service preserves Team Tetris start events and turnToken 
         rawArgs:
           '{"schemaVersion":1,"matchId":"tt-match-1","turnIndex":2,"turnToken":"tt_token","pieceId":"T","rotation":1,"rowShifts":[0,1,0]}',
       },
-    });
+    };
+    if (startResult.localSessionId !== undefined) {
+      params.localSessionId = startResult.localSessionId;
+    }
+    const commandResult = await service.sendMessage(params);
 
     assert.equal(startResult.success, true);
     assert.equal(commandResult.success, true);
@@ -496,7 +502,7 @@ test("US1 conversation service preserves Team Tetris start events and turnToken 
   }
 });
 
-test("US1 conversation sync keeps invite inbox entries from all registered remote accounts", async () => {
+void test("US1 conversation sync keeps invite inbox entries from all registered remote accounts", async () => {
   const accountIdA = `us1_mail_${Date.now().toString(36)}_multi_a`;
   const accountIdB = `us1_mail_${Date.now().toString(36)}_multi_b`;
   const store = createSettingsStore(
@@ -519,8 +525,8 @@ test("US1 conversation sync keeps invite inbox entries from all registered remot
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => store.loadSettings(),
+      saveSettings: async (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountIdA = buildRemoteEmailAccountId("alpha@example.com");
@@ -604,7 +610,7 @@ test("US1 conversation sync keeps invite inbox entries from all registered remot
   }
 });
 
-test("US1 conversation service projects reset lifecycle events and clears invite inbox", async () => {
+void test("US1 conversation service projects reset lifecycle events and clears invite inbox", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_room_reset`;
   const store = createSettingsStore(createSettings(accountId));
   const transportStub = createTransportStub();
@@ -613,8 +619,8 @@ test("US1 conversation service projects reset lifecycle events and clears invite
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => store.loadSettings(),
+      saveSettings: async (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");

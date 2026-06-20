@@ -1,3 +1,4 @@
+import type { FakeElement } from "./forge-room-ui-smoke.helpers.ts";
 import {
   assert,
   createMinimalForgeUiEnvironment,
@@ -36,8 +37,7 @@ import type { PatternPanelActions } from "../../rooms/pattern-room/shared/types/
 
 const PATTERN_FOCUSED_VIEWS = ["board", "desk", "archive", "tenth-man", "report"] as const;
 type PatternFocusedViewId = (typeof PATTERN_FOCUSED_VIEWS)[number];
-type PatternRoomUiEnvironment = ReturnType<typeof createMinimalForgeUiEnvironment>;
-type PatternRoomFakeApp = PatternRoomUiEnvironment["app"];
+type PatternRoomFakeApp = FakeElement;
 type PatternRoomUiRuntimeModule = {
   createPatternRoomUiRuntime: () => {
     createSnapshot: () => PatternRoomSessionSnapshot;
@@ -53,7 +53,7 @@ function assertTextIncludes(text: string, expectedValues: string[]): void {
 }
 
 function openFocusedView(
-  app: ReturnType<typeof createMinimalForgeUiEnvironment>["app"],
+  app: PatternRoomFakeApp,
   viewId: PatternFocusedViewId
 ): void {
   const hotspot = app.querySelector(`[data-pattern-hotspot='${viewId}']`);
@@ -62,19 +62,20 @@ function openFocusedView(
   assert.ok(app.querySelector(`[data-pattern-view='${viewId}']`));
 }
 
-function returnToOverview(app: ReturnType<typeof createMinimalForgeUiEnvironment>["app"]): void {
+function returnToOverview(app: PatternRoomFakeApp): void {
   const backButton = app.querySelector("[data-pattern-back='true']");
   assert.ok(backButton);
   fireEvent(backButton, "click");
   assert.ok(app.querySelector("[data-pattern-view='overview']"));
 }
 
-function installFormReset(form: { reset?: () => void }): void {
-  form.reset = () => {};
+function installFormReset(form: FakeElement): void {
+  (form as FakeElement & { reset: () => void }).reset = () => {};
 }
 
 function submitForm(form: {
   eventListeners: Map<string, Array<(event?: Record<string, unknown>) => void>>;
+  reset?: () => void;
 }): void {
   let defaultPrevented = false;
   const handlers = form.eventListeners.get("submit") ?? [];
@@ -91,7 +92,7 @@ function submitForm(form: {
 }
 
 function submitUserTextSource(
-  app: ReturnType<typeof createMinimalForgeUiEnvironment>["app"],
+  app: PatternRoomFakeApp,
   titleText: string,
   sourceText: string
 ): void {
@@ -257,7 +258,7 @@ function clickBoardPin(app: PatternRoomFakeApp, pinId: string): void {
 }
 
 function setWindowConfirm(handler: (message: string) => boolean): void {
-  (globalThis.window as unknown as { confirm: (message: string) => boolean }).confirm = handler;
+  (globalThis as unknown as { window: { confirm: (message: string) => boolean } }).window.confirm = handler;
 }
 
 function createHostLoadedSnapshot(
@@ -269,7 +270,9 @@ function createHostLoadedSnapshot(
   return createSnapshot(localState, activeView);
 }
 
-function readLatestSavePayload(environment: PatternRoomUiEnvironment): Record<string, unknown> {
+function readLatestSavePayload(
+  environment: ReturnType<typeof createMinimalForgeUiEnvironment>
+): Record<string, unknown> {
   const event = environment.sentEvents[environment.sentEvents.length - 1];
   assert.ok(event);
   assert.equal(event.command, PATTERN_ROOM_SAVE_COMMAND);
@@ -297,7 +300,6 @@ function assertSavePayloadIncludesLocalNode(
   labelText: string
 ): PatternRoomSessionSnapshot {
   const snapshot = payload["snapshot"] as PatternRoomSessionSnapshot;
-  assert.ok(snapshot);
   assert.equal(snapshot.roomId, "pattern-room");
   assert.equal(
     snapshot.overlay.localAuthoredNodes.some((node) => node.label === labelText),
@@ -306,7 +308,7 @@ function assertSavePayloadIncludesLocalNode(
   return snapshot;
 }
 
-test("pattern-room installed UI renders overview hotspots and returns from focused views", async () => {
+void test("pattern-room installed UI renders overview hotspots and returns from focused views", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -386,7 +388,7 @@ test("pattern-room installed UI renders overview hotspots and returns from focus
   }
 });
 
-test("pattern-room installed UI restores a loaded host snapshot", async () => {
+void test("pattern-room installed UI restores a loaded host snapshot", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const snapshot = createHostLoadedSnapshot("report", "Restored host snapshot note");
@@ -415,7 +417,7 @@ test("pattern-room installed UI restores a loaded host snapshot", async () => {
   }
 });
 
-test("pattern-room installed UI keeps the default state for a null loaded snapshot", async () => {
+void test("pattern-room installed UI keeps the default state for a null loaded snapshot", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -441,7 +443,7 @@ test("pattern-room installed UI keeps the default state for a null loaded snapsh
   }
 });
 
-test("pattern-room installed UI rejects an invalid loaded snapshot without breaking state", async () => {
+void test("pattern-room installed UI rejects an invalid loaded snapshot without breaking state", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -473,7 +475,7 @@ test("pattern-room installed UI rejects an invalid loaded snapshot without break
   }
 });
 
-test("pattern-room installed UI does not autosave local mutations before host load completes", async () => {
+void test("pattern-room installed UI does not autosave local mutations before host load completes", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -495,7 +497,7 @@ test("pattern-room installed UI does not autosave local mutations before host lo
   }
 });
 
-test("pattern-room installed UI debounces autosave after a null host load", async () => {
+void test("pattern-room installed UI debounces autosave after a null host load", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -526,7 +528,7 @@ test("pattern-room installed UI debounces autosave after a null host load", asyn
   }
 });
 
-test("pattern-room installed UI autosaves only user mutations after restoring a snapshot", async () => {
+void test("pattern-room installed UI autosaves only user mutations after restoring a snapshot", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const snapshot = createHostLoadedSnapshot("report", "Restored snapshot suppresses autosave");
@@ -565,7 +567,7 @@ test("pattern-room installed UI autosaves only user mutations after restoring a 
   }
 });
 
-test("pattern-room installed UI coalesces fast autosave mutations into one save", async () => {
+void test("pattern-room installed UI coalesces fast autosave mutations into one save", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -601,7 +603,7 @@ test("pattern-room installed UI coalesces fast autosave mutations into one save"
   }
 });
 
-test("pattern-room installed UI flushes a pending autosave before unload", async () => {
+void test("pattern-room installed UI flushes a pending autosave before unload", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -638,7 +640,7 @@ test("pattern-room installed UI flushes a pending autosave before unload", async
   }
 });
 
-test("pattern-room installed UI dispose flushes pending autosave and disconnects listeners", async () => {
+void test("pattern-room installed UI dispose flushes pending autosave and disconnects listeners", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const originalWarn = console.warn;
@@ -693,7 +695,7 @@ test("pattern-room installed UI dispose flushes pending autosave and disconnects
   }
 });
 
-test("pattern-room installed UI handles save-failed host events without status UI", async () => {
+void test("pattern-room installed UI handles save-failed host events without status UI", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const originalWarn = console.warn;
@@ -732,7 +734,7 @@ test("pattern-room installed UI handles save-failed host events without status U
   }
 });
 
-test("pattern-room installed UI supports phase 4B local interactions without host commands", async () => {
+void test("pattern-room installed UI supports phase 4B local interactions without host commands", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -831,7 +833,7 @@ test("pattern-room installed UI supports phase 4B local interactions without hos
   }
 });
 
-test("pattern-room installed UI phase 7C board node authoring form submits claims and guards blanks", async () => {
+void test("pattern-room installed UI phase 7C board node authoring form submits claims and guards blanks", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
@@ -906,7 +908,7 @@ test("pattern-room installed UI phase 7C board node authoring form submits claim
   }
 });
 
-test("pattern-room installed UI phase 7C board evidence form reaches board and report", async () => {
+void test("pattern-room installed UI phase 7C board evidence form reaches board and report", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
@@ -959,7 +961,7 @@ test("pattern-room installed UI phase 7C board evidence form reaches board and r
   }
 });
 
-test("pattern-room installed UI phase 8B board connection form reaches report only", async () => {
+void test("pattern-room installed UI phase 8B board connection form reaches report only", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
@@ -1021,7 +1023,7 @@ test("pattern-room installed UI phase 8B board connection form reaches report on
   }
 });
 
-test("pattern-room installed UI phase 7C archive source authoring form submits local sources", async () => {
+void test("pattern-room installed UI phase 7C archive source authoring form submits local sources", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
@@ -1063,7 +1065,7 @@ test("pattern-room installed UI phase 7C archive source authoring form submits l
   }
 });
 
-test("pattern-room installed UI phase 12D imports pasted user text through the source producer", async () => {
+void test("pattern-room installed UI phase 12D imports pasted user text through the source producer", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
@@ -1151,7 +1153,7 @@ test("pattern-room installed UI phase 12D imports pasted user text through the s
   }
 });
 
-test("pattern-room installed UI phase 12D derives a source title from untitled user text", async () => {
+void test("pattern-room installed UI phase 12D derives a source title from untitled user text", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -1180,7 +1182,7 @@ test("pattern-room installed UI phase 12D derives a source title from untitled u
   }
 });
 
-test("pattern-room installed UI phase 12D rejects blank pasted user text", async () => {
+void test("pattern-room installed UI phase 12D rejects blank pasted user text", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -1210,7 +1212,7 @@ test("pattern-room installed UI phase 12D rejects blank pasted user text", async
   }
 });
 
-test("pattern-room installed UI phase 13C imports long text as a source only", async () => {
+void test("pattern-room installed UI phase 13C imports long text as a source only", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
@@ -1373,7 +1375,7 @@ test("pattern-room installed UI phase 13C imports long text as a source only", a
   }
 });
 
-test("pattern-room archive source card renders compact preview metadata when provided", () => {
+void test("pattern-room archive source card renders compact preview metadata when provided", () => {
   const environment = createMinimalForgeUiEnvironment();
 
   try {
@@ -1413,7 +1415,7 @@ test("pattern-room archive source card renders compact preview metadata when pro
   }
 });
 
-test("pattern-room installed UI phase 13F captures manual evidence from source detail", async () => {
+void test("pattern-room installed UI phase 13F captures manual evidence from source detail", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const confirmMessages: string[] = [];
@@ -1580,7 +1582,7 @@ test("pattern-room installed UI phase 13F captures manual evidence from source d
   }
 });
 
-test("pattern-room installed UI phase 14B-2 prepares manual evidence from a selected source segment", async () => {
+void test("pattern-room installed UI phase 14B-2 prepares manual evidence from a selected source segment", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const longText =
@@ -1784,7 +1786,7 @@ test("pattern-room installed UI phase 14B-2 prepares manual evidence from a sele
   }
 });
 
-test("pattern-room installed UI phase 14B-3 searches source detail locally", async () => {
+void test("pattern-room installed UI phase 14B-3 searches source detail locally", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const firstSegmentText =
@@ -1988,7 +1990,7 @@ test("pattern-room installed UI phase 14B-3 searches source detail locally", asy
   }
 });
 
-test("pattern-room installed UI phase 15A renders a read-only deterministic report draft", async () => {
+void test("pattern-room installed UI phase 15A renders a read-only deterministic report draft", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const longText =
@@ -2126,7 +2128,7 @@ test("pattern-room installed UI phase 15A renders a read-only deterministic repo
   }
 });
 
-test("pattern-room installed UI phase 13C rejects blank long text fields", async () => {
+void test("pattern-room installed UI phase 13C rejects blank long text fields", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -2182,7 +2184,7 @@ test("pattern-room installed UI phase 13C rejects blank long text fields", async
   }
 });
 
-test("pattern-room installed UI phase 12G-A cancels local source removal safely", async () => {
+void test("pattern-room installed UI phase 12G-A cancels local source removal safely", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
@@ -2234,7 +2236,7 @@ test("pattern-room installed UI phase 12G-A cancels local source removal safely"
   }
 });
 
-test("pattern-room installed UI phase 11D imports a mock SourcePackage from the archive demo", async () => {
+void test("pattern-room installed UI phase 11D imports a mock SourcePackage from the archive demo", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
@@ -2320,7 +2322,7 @@ test("pattern-room installed UI phase 11D imports a mock SourcePackage from the 
   }
 });
 
-test("pattern-room installed UI phase 12G-A removes confirmed local sources and cascades source-linked report links", async () => {
+void test("pattern-room installed UI phase 12G-A removes confirmed local sources and cascades source-linked report links", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
@@ -2433,7 +2435,7 @@ test("pattern-room installed UI phase 12G-A removes confirmed local sources and 
   }
 });
 
-test("pattern-room installed UI phase 12G-C removes selected local board nodes and evidence only", async () => {
+void test("pattern-room installed UI phase 12G-C removes selected local board nodes and evidence only", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
@@ -2622,7 +2624,7 @@ test("pattern-room installed UI phase 12G-C removes selected local board nodes a
   }
 });
 
-test("pattern-room installed UI phase 12G-B resets the local session without touching domain data", async () => {
+void test("pattern-room installed UI phase 12G-B resets the local session without touching domain data", async () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
@@ -2791,7 +2793,7 @@ test("pattern-room installed UI phase 12G-B resets the local session without tou
   }
 });
 
-test("pattern-room installed UI prepares a local AI2 case review dry-run preview", async () => {
+void test("pattern-room installed UI prepares a local AI2 case review dry-run preview", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -2832,7 +2834,7 @@ test("pattern-room installed UI prepares a local AI2 case review dry-run preview
 
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
-    assert.equal(environment.sentCommands.includes("pattern:case-review-dispatch"), false);
+    assert.equal((environment.sentCommands as string[]).includes("pattern:case-review-dispatch"), false);
 
     const previewSource = readFileSync(
       resolve("rooms/pattern-room/ui/pattern-case-review-preview.ts"),
@@ -2856,7 +2858,7 @@ test("pattern-room installed UI prepares a local AI2 case review dry-run preview
   }
 });
 
-test("pattern-room installed UI dispatches the AI2 case review only after preview and confirm", async () => {
+void test("pattern-room installed UI dispatches the AI2 case review only after preview and confirm", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const confirmMessages: string[] = [];
@@ -2919,7 +2921,7 @@ test("pattern-room installed UI dispatches the AI2 case review only after previe
     assert.equal(dispatchEvent.command, PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND);
     assert.equal(environment.sentEvents.length, 1);
     const draft = dispatchEvent.payload["draft"] as PatternRoomCaseReviewDispatchDraft;
-    assert.ok(draft);
+    assert.ok(draft != null);
     assert.equal(draft.roleSlot, "AI2");
     assert.equal(draft.targetSlot, "ai2");
     assert.equal(draft.payload.toSlot, "ai2");
@@ -2954,7 +2956,7 @@ test("pattern-room installed UI dispatches the AI2 case review only after previe
 
     environment.runPendingTimers(2000);
     assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND]);
-    assert.equal(environment.sentCommands.includes(PATTERN_ROOM_SAVE_COMMAND), false);
+    assert.equal((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND), false);
     assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
     runtime.dispose();
   } finally {
@@ -2963,7 +2965,7 @@ test("pattern-room installed UI dispatches the AI2 case review only after previe
   }
 });
 
-test("pattern-room installed UI runs phase 5B local tenth-man debate flow", async () => {
+void test("pattern-room installed UI runs phase 5B local tenth-man debate flow", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 

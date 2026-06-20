@@ -28,7 +28,7 @@ import {
 import { closeLabAssetMenusForClick } from "../../rooms/laboratory/runtime/controller/lab-asset-context-menu-controller.ts";
 import { resolveDrawerMode } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 
-test("laboratory run controller dismisses successful user actions from the topbar after the success window", () => {
+void test("laboratory run controller dismisses successful user actions from the topbar after the success window", () => {
   const timerMock = installTimerMock();
 
   try {
@@ -75,7 +75,7 @@ test("laboratory run controller dismisses successful user actions from the topba
     assert.equal(timerMock.scheduled[0]?.delay, LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS);
     assert.equal(store.getState().userActions[0]?.dismissedFromHubAt, null);
 
-    timerMock.scheduled[0]?.fn();
+    timerMock.scheduled[0].fn();
 
     assert.equal(typeof store.getState().userActions[0]?.dismissedFromHubAt, "number");
   } finally {
@@ -83,7 +83,7 @@ test("laboratory run controller dismisses successful user actions from the topba
   }
 });
 
-test("laboratory run controller waits for linked assets before dismissing success chips", () => {
+void test("laboratory run controller waits for linked assets before dismissing success chips", () => {
   const timerMock = installTimerMock();
 
   try {
@@ -135,7 +135,7 @@ test("laboratory run controller waits for linked assets before dismissing succes
   }
 });
 
-test("laboratory report overlay export buttons send host export actions without webview electron api", () => {
+void test("laboratory report overlay export buttons send host export actions without webview electron api", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const documentRef = new FakeControllerDocument();
@@ -172,9 +172,9 @@ test("laboratory report overlay export buttons send host export actions without 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.({ target: new TestElement("report-export-json") } as Event);
+    clickListener({ target: new TestElement("report-export-json") } as unknown as Event);
     store.dispatch({ type: "report-view-changed", view: "ai" });
-    clickListener?.({ target: new TestElement("report-export-pdf") } as Event);
+    clickListener({ target: new TestElement("report-export-pdf") } as unknown as Event);
 
     const mediaActions = sentEvents.filter(function (entry) {
       return entry.eventName === "media-action";
@@ -212,8 +212,8 @@ test("laboratory report overlay export buttons send host export actions without 
       ]
     );
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -223,7 +223,7 @@ test("laboratory report overlay export buttons send host export actions without 
   }
 });
 
-test("laboratory run controller threads frozen run context into tracked export actions", () => {
+void test("laboratory run controller threads frozen run context into tracked export actions", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const documentRef = new FakeControllerDocument();
@@ -289,6 +289,7 @@ test("laboratory run controller threads frozen run context into tracked export a
       {
         id: "face",
         label: "Face",
+        active: true,
         x: 8,
         y: 12,
         width: 120,
@@ -301,10 +302,10 @@ test("laboratory run controller threads frozen run context into tracked export a
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.({ target: new TestElement("workspace-roi-export", "face") } as Event);
-    clickListener?.({ target: new TestElement("timeline-export-clip") } as Event);
-    clickListener?.({ target: new TestElement("timeline-grab-frame") } as Event);
-    clickListener?.({ target: new TestElement("timeline-extract-audio") } as Event);
+    clickListener({ target: new TestElement("workspace-roi-export", "face") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-export-clip") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-grab-frame") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-extract-audio") } as unknown as Event);
 
     const mediaActions = sentEvents.filter(function (entry) {
       return entry.eventName === "media-action";
@@ -312,14 +313,14 @@ test("laboratory run controller threads frozen run context into tracked export a
     assert.equal(mediaActions.length, 3);
     assert.deepEqual(
       mediaActions.map(function (entry) {
-        return (entry.payload["action"] as string) || null;
+        return entry.payload["action"] as string;
       }),
       ["export-roi-image", "export-frame-grab", "export-audio-track"]
     );
     assert.ok(mediaActions.every((entry) => typeof entry.payload["payload"] === "object"));
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -329,7 +330,7 @@ test("laboratory run controller threads frozen run context into tracked export a
   }
 });
 
-test("laboratory run controller sends comparison ROI payloads with image comparison actions", () => {
+void test("laboratory run controller sends comparison ROI payloads with image comparison actions", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const documentRef = new FakeControllerDocument();
@@ -394,12 +395,12 @@ test("laboratory run controller sends comparison ROI payloads with image compari
 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
-    clickListener?.({ target: new TestElement("workspace-comparison-moment-capture") } as Event);
+    clickListener({ target: new TestElement("workspace-comparison-moment-capture") } as unknown as Event);
 
     assert.equal(sentEvents.length, 1);
     assert.equal(sentEvents[0]?.eventName, "media-action");
-    assert.equal(sentEvents[0]?.payload["action"], "capture-comparison-moment");
-    const payload = sentEvents[0]?.payload["payload"] as Record<string, unknown>;
+    assert.equal(sentEvents[0].payload["action"], "capture-comparison-moment");
+    const payload = sentEvents[0].payload["payload"] as Record<string, unknown>;
     assert.equal(payload["workspaceTargetAssetId"], "asset-primary");
     assert.equal(payload["comparisonReferenceAssetId"], "asset-reference");
     assert.equal(payload["comparisonRoiActiveSide"], "reference");
@@ -420,12 +421,12 @@ test("laboratory run controller sends comparison ROI payloads with image compari
       reference: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
     });
 
-    clickListener?.({ target: new TestElement("workspace-selection-roi-export") } as Event);
+    clickListener({ target: new TestElement("workspace-selection-roi-export") } as unknown as Event);
 
     assert.equal(sentEvents.length, 3);
     assert.equal(sentEvents[1]?.eventName, "media-action");
-    assert.equal(sentEvents[1]?.payload["action"], "export-roi-image");
-    const primaryRoiPayload = sentEvents[1]?.payload["payload"] as Record<string, unknown>;
+    assert.equal(sentEvents[1].payload["action"], "export-roi-image");
+    const primaryRoiPayload = sentEvents[1].payload["payload"] as Record<string, unknown>;
     assert.equal(primaryRoiPayload["workspaceTargetAssetId"], "asset-primary");
     assert.equal(primaryRoiPayload["comparisonReferenceAssetId"], "asset-reference");
     assert.equal(primaryRoiPayload["comparisonRoiActiveSide"], "reference");
@@ -438,8 +439,8 @@ test("laboratory run controller sends comparison ROI payloads with image compari
       height: 0.4,
     });
     assert.equal(sentEvents[2]?.eventName, "media-action");
-    assert.equal(sentEvents[2]?.payload["action"], "export-roi-image");
-    const referenceRoiPayload = sentEvents[2]?.payload["payload"] as Record<string, unknown>;
+    assert.equal(sentEvents[2].payload["action"], "export-roi-image");
+    const referenceRoiPayload = sentEvents[2].payload["payload"] as Record<string, unknown>;
     assert.equal(referenceRoiPayload["workspaceTargetAssetId"], "asset-reference");
     assert.equal(referenceRoiPayload["comparisonReferenceAssetId"], "asset-reference");
     assert.equal(referenceRoiPayload["comparisonRoiActiveSide"], "reference");
@@ -452,8 +453,8 @@ test("laboratory run controller sends comparison ROI payloads with image compari
       height: 0.35,
     });
 
-    const primaryRequestId = sentEvents[1]?.payload["requestId"] as string;
-    const referenceRequestId = sentEvents[2]?.payload["requestId"] as string;
+    const primaryRequestId = sentEvents[1].payload["requestId"] as string;
+    const referenceRequestId = sentEvents[2].payload["requestId"] as string;
     eventBus.emit({
       type: "host-event-received",
       event: {
@@ -521,8 +522,8 @@ test("laboratory run controller sends comparison ROI payloads with image compari
     assert.equal(store.getState().ui.workspace.comparisonRois.primary, null);
     assert.equal(store.getState().ui.workspace.comparisonRois.reference, null);
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -532,7 +533,7 @@ test("laboratory run controller sends comparison ROI payloads with image compari
   }
 });
 
-test("laboratory run controller replaces workspace media from enhanced frame outputs", () => {
+void test("laboratory run controller replaces workspace media from enhanced frame outputs", () => {
   const originalElement = globalThis.Element;
 
   class TestElement extends FakeActionElement {}
@@ -563,7 +564,7 @@ test("laboratory run controller replaces workspace media from enhanced frame out
     assert.ok(clickListener);
     return {
       click(action: string) {
-        clickListener?.({ target: new TestElement(action) } as Event);
+        clickListener({ target: new TestElement(action) } as unknown as Event);
       },
       eventBus,
       sentEvents,
@@ -592,12 +593,12 @@ test("laboratory run controller replaces workspace media from enhanced frame out
 
     assert.equal(single.sentEvents.length, 1);
     assert.equal(single.sentEvents[0]?.payload["action"], "export-enhanced-frame");
-    const singlePayload = single.sentEvents[0]?.payload["payload"] as Record<string, unknown>;
+    const singlePayload = single.sentEvents[0].payload["payload"] as Record<string, unknown>;
     assert.equal(singlePayload["workspaceTargetAssetId"], "asset-single");
     assert.equal(singlePayload["workspaceResultMode"], "replace-workspace-media");
     assert.equal(singlePayload["workspaceResultTargetSide"], "single");
 
-    const singleRequestId = single.sentEvents[0]?.payload["requestId"] as string;
+    const singleRequestId = single.sentEvents[0].payload["requestId"] as string;
     single.eventBus.emit({
       type: "host-event-received",
       event: {
@@ -735,8 +736,8 @@ test("laboratory run controller replaces workspace media from enhanced frame out
       "asset-reference-enhanced"
     );
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -746,7 +747,7 @@ test("laboratory run controller replaces workspace media from enhanced frame out
   }
 });
 
-test("laboratory run controller restores comparison finding focus from inspector actions", () => {
+void test("laboratory run controller restores comparison finding focus from inspector actions", () => {
   const originalElement = globalThis.Element;
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
@@ -834,9 +835,9 @@ test("laboratory run controller restores comparison finding focus from inspector
 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
-    clickListener?.({
+    clickListener({
       target: new TestElement("workspace-comparison-finding-focus", "finding-restore"),
-    } as Event);
+    } as unknown as Event);
 
     const workspace = store.getState().ui.workspace;
     assert.equal(store.getState().ui.activeWorkspaceAssetId, "asset-primary");
@@ -860,8 +861,8 @@ test("laboratory run controller restores comparison finding focus from inspector
       height: 0.35,
     });
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -871,7 +872,7 @@ test("laboratory run controller restores comparison finding focus from inspector
   }
 });
 
-test("laboratory run controller toggles selection micro zoom from the timeline action", () => {
+void test("laboratory run controller toggles selection micro zoom from the timeline action", () => {
   const originalElement = globalThis.Element;
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
@@ -908,18 +909,18 @@ test("laboratory run controller toggles selection micro zoom from the timeline a
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.({ target: new TestElement("timeline-toggle-micro-zoom") } as Event);
+    clickListener({ target: new TestElement("timeline-toggle-micro-zoom") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.selectionMicroZoomOpen, true);
 
-    clickListener?.({ target: new TestElement("timeline-toggle-micro-zoom") } as Event);
+    clickListener({ target: new TestElement("timeline-toggle-micro-zoom") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.selectionMicroZoomOpen, false);
 
     store.dispatch({ type: "workspace-timeline-updated", startMs: null, endMs: null });
-    clickListener?.({ target: new TestElement("timeline-toggle-micro-zoom") } as Event);
+    clickListener({ target: new TestElement("timeline-toggle-micro-zoom") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.selectionMicroZoomOpen, false);
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -929,8 +930,8 @@ test("laboratory run controller toggles selection micro zoom from the timeline a
   }
 });
 
-test("laboratory asset menus close on menu actions and outside clicks", () => {
-  const originalElement = (globalThis as Record<string, unknown>).Element;
+void test("laboratory asset menus close on menu actions and outside clicks", () => {
+  const originalElement = (globalThis as Record<string, unknown>)["Element"];
 
   class TestElement {
     constructor(
@@ -990,7 +991,7 @@ test("laboratory asset menus close on menu actions and outside clicks", () => {
     assert.equal(projectMenu.open, false);
   } finally {
     if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -1000,7 +1001,7 @@ test("laboratory asset menus close on menu actions and outside clicks", () => {
   }
 });
 
-test("laboratory run controller focuses the source preview through explicit source-preview actions", () => {
+void test("laboratory run controller focuses the source preview through explicit source-preview actions", () => {
   const originalElement = globalThis.Element;
   const previewCalls: string[] = [];
   const previewElement = {
@@ -1017,8 +1018,8 @@ test("laboratory run controller focuses the source preview through explicit sour
       this.listeners.set(
         type,
         typeof listener === "function"
-          ? (listener as (event: Event) => void)
-          : (event: Event) => listener.handleEvent(event)
+          ? (listener)
+          : (event: Event) => { listener.handleEvent(event); }
       );
     },
     querySelector(selector: string) {
@@ -1056,12 +1057,12 @@ test("laboratory run controller focuses the source preview through explicit sour
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.({ target: new TestElement("focus-source-preview", "source-active") } as Event);
+    clickListener({ target: new TestElement("focus-source-preview", "source-active") } as unknown as Event);
 
     assert.deepEqual(previewCalls, ["scroll", "focus"]);
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -1071,7 +1072,7 @@ test("laboratory run controller focuses the source preview through explicit sour
   }
 });
 
-test("laboratory run controller wires v2 shell action buttons into workspace state", () => {
+void test("laboratory run controller wires v2 shell action buttons into workspace state", () => {
   const originalElement = globalThis.Element;
   const originalInput = globalThis.HTMLInputElement;
   const originalSelect = globalThis.HTMLSelectElement;
@@ -1125,11 +1126,11 @@ test("laboratory run controller wires v2 shell action buttons into workspace sta
     assert.ok(clickListener);
     assert.ok(keyListener);
 
-    clickListener?.({ target: new TestElement("drawer-collapsed-toggled") } as Event);
+    clickListener({ target: new TestElement("drawer-collapsed-toggled") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.drawerCollapsed, true);
 
     let prevented = false;
-    keyListener?.({
+    keyListener({
       ctrlKey: true,
       key: "b",
       target: new TestElement("not-a-text-control"),
@@ -1140,53 +1141,53 @@ test("laboratory run controller wires v2 shell action buttons into workspace sta
     assert.equal(prevented, true);
     assert.equal(store.getState().ui.workspace.drawerCollapsed, false);
 
-    clickListener?.({
+    clickListener({
       target: new TestElement("analysis-prep-group-toggle", "visual-structure"),
-    } as Event);
+    } as unknown as Event);
     assert.deepEqual(store.getState().selectedCapabilities, ["visual-structure"]);
     assert.equal(
-      (store.getState().workbench.moduleToggles as Record<string, unknown>)["frame-consistency"],
+      (store.getState().workbench["moduleToggles"] as Record<string, unknown>)["frame-consistency"],
       true
     );
 
-    clickListener?.({
+    clickListener({
       target: new TestElement("module-toggle", "audio-signal::signal-health"),
-    } as Event);
+    } as unknown as Event);
     assert.equal(
-      (store.getState().workbench.moduleToggles as Record<string, unknown>)["signal-health"],
+      (store.getState().workbench["moduleToggles"] as Record<string, unknown>)["signal-health"],
       true
     );
     assert.ok(store.getState().selectedCapabilities.includes("audio-signal"));
 
-    clickListener?.({ target: new TestElement("workspace-process-view-toggled") } as Event);
+    clickListener({ target: new TestElement("workspace-process-view-toggled") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.processViewActive, true);
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
         value: originalElement,
       });
     }
-    if (originalInput === undefined) {
-      delete (globalThis as Record<string, unknown>).HTMLInputElement;
+    if (typeof originalInput === "undefined") {
+      delete (globalThis as Record<string, unknown>)["HTMLInputElement"];
     } else {
       Object.defineProperty(globalThis, "HTMLInputElement", {
         configurable: true,
         value: originalInput,
       });
     }
-    if (originalSelect === undefined) {
-      delete (globalThis as Record<string, unknown>).HTMLSelectElement;
+    if (typeof originalSelect === "undefined") {
+      delete (globalThis as Record<string, unknown>)["HTMLSelectElement"];
     } else {
       Object.defineProperty(globalThis, "HTMLSelectElement", {
         configurable: true,
         value: originalSelect,
       });
     }
-    if (originalTextarea === undefined) {
-      delete (globalThis as Record<string, unknown>).HTMLTextAreaElement;
+    if (typeof originalTextarea === "undefined") {
+      delete (globalThis as Record<string, unknown>)["HTMLTextAreaElement"];
     } else {
       Object.defineProperty(globalThis, "HTMLTextAreaElement", {
         configurable: true,
@@ -1196,7 +1197,7 @@ test("laboratory run controller wires v2 shell action buttons into workspace sta
   }
 });
 
-test("laboratory run controller applies fine adjustment controls for audio and visual panels", () => {
+void test("laboratory run controller applies fine adjustment controls for audio and visual panels", () => {
   const originalElement = globalThis.Element;
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
@@ -1204,7 +1205,7 @@ test("laboratory run controller applies fine adjustment controls for audio and v
 
   class TestElement extends FakeActionElement {
     constructor(dataset: Record<string, string>) {
-      super(dataset["labAction"] || "workspace-setting-adjust");
+      super(dataset["labAction"] ?? "workspace-setting-adjust");
       this.dataset = dataset;
     }
   }
@@ -1240,7 +1241,7 @@ test("laboratory run controller applies fine adjustment controls for audio and v
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.({
+    clickListener({
       target: settingButton("workspace.interactive.brightness", {
         labDelta: "1",
         labMin: "0",
@@ -1248,14 +1249,14 @@ test("laboratory run controller applies fine adjustment controls for audio and v
         labStep: "1",
         labResetValue: "100",
       }),
-    } as Event);
+    } as unknown as Event);
     assert.equal(store.getState().ui.workspace.interactiveSettings.brightness, 101);
 
     store.dispatch({
       type: "workspace-comparison-reference-set",
       assetId: "asset-reference",
     });
-    clickListener?.({
+    clickListener({
       target: settingButton("workspace.interactive.brightness", {
         labDelta: "1",
         labMin: "0",
@@ -1263,7 +1264,7 @@ test("laboratory run controller applies fine adjustment controls for audio and v
         labStep: "1",
         labResetValue: "100",
       }),
-    } as Event);
+    } as unknown as Event);
     assert.equal(store.getState().ui.workspace.interactiveSettings.brightness, 101);
     assert.equal(
       store.getState().ui.workspace.comparisonInteractiveSettings.primary.brightness,
@@ -1275,7 +1276,7 @@ test("laboratory run controller applies fine adjustment controls for audio and v
     );
 
     store.dispatch({ type: "workspace-comparison-side-activated", side: "primary" });
-    clickListener?.({
+    clickListener({
       target: settingButton("workspace.interactive.brightness", {
         labMin: "0",
         labMax: "200",
@@ -1283,7 +1284,7 @@ test("laboratory run controller applies fine adjustment controls for audio and v
         labStep: "1",
         labResetValue: "100",
       }),
-    } as Event);
+    } as unknown as Event);
     assert.equal(
       store.getState().ui.workspace.comparisonInteractiveSettings.primary.brightness,
       100
@@ -1293,7 +1294,7 @@ test("laboratory run controller applies fine adjustment controls for audio and v
       102
     );
 
-    clickListener?.({
+    clickListener({
       target: settingButton("workspace.audioFocus.gain", {
         labDelta: "-0.1",
         labMin: "0",
@@ -1301,25 +1302,25 @@ test("laboratory run controller applies fine adjustment controls for audio and v
         labStep: "0.1",
         labResetValue: "1",
       }),
-    } as Event);
+    } as unknown as Event);
     assert.equal(store.getState().ui.workspace.audioFocus.gain, 0.9);
 
-    clickListener?.({
+    clickListener({
       target: settingButton("workspace.audioFocus.filterType", {
         labDelta: "1",
         labOptions: "none|lowpass|highpass|bandpass",
         labResetValue: "none",
       }),
-    } as Event);
+    } as unknown as Event);
     assert.equal(store.getState().ui.workspace.audioFocus.filterType, "lowpass");
 
-    clickListener?.({
+    clickListener({
       target: settingButton("workspace.audioFocus.filterType", {
         labReset: "true",
         labOptions: "none|lowpass|highpass|bandpass",
         labResetValue: "none",
       }),
-    } as Event);
+    } as unknown as Event);
     assert.equal(store.getState().ui.workspace.audioFocus.filterType, "none");
 
     store.dispatch({
@@ -1330,7 +1331,7 @@ test("laboratory run controller applies fine adjustment controls for audio and v
         }),
       },
     });
-    clickListener?.({
+    clickListener({
       target: settingButton("workspace.audioFocus.eqBands.1.gain", {
         labReset: "true",
         labMin: "-12",
@@ -1338,17 +1339,17 @@ test("laboratory run controller applies fine adjustment controls for audio and v
         labStep: "0.5",
         labResetValue: "0",
       }),
-    } as Event);
+    } as unknown as Event);
     assert.equal(store.getState().ui.workspace.audioFocus.eqBands[1]?.gain, 0);
 
-    clickListener?.({
+    clickListener({
       target: new TestElement({ labAction: "workspace-reset-audio-focus" }),
-    } as Event);
+    } as unknown as Event);
     assert.equal(store.getState().ui.workspace.audioFocus.gain, 1);
     assert.equal(store.getState().ui.workspace.audioFocus.playbackRate, 1);
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -1358,7 +1359,7 @@ test("laboratory run controller applies fine adjustment controls for audio and v
   }
 });
 
-test("laboratory run controller routes YouTube source selection without import mode or downloads", () => {
+void test("laboratory run controller routes YouTube source selection without import mode or downloads", () => {
   const originalElement = globalThis.Element;
   const originalInput = globalThis.HTMLInputElement;
   const originalSelect = globalThis.HTMLSelectElement;
@@ -1459,19 +1460,19 @@ test("laboratory run controller routes YouTube source selection without import m
     assert.ok(changeListener);
     assert.ok(inputListener);
 
-    changeListener?.({
+    changeListener({
       target: new TestSelectElement("source.mode", "youtube"),
     } as unknown as Event);
 
     assert.equal(store.getState().ui.labMode, "normal");
-    assert.equal(store.getState().source.mode, "youtube");
-    assert.equal(store.getState().source.storedPath, null);
+    assert.equal(store.getState().source!["mode"], "youtube");
+    assert.equal(store.getState().source!["storedPath"], null);
     assert.equal(sentEvents.length, 1);
     assert.equal(sentEvents[0]?.eventName, "media-action");
-    assert.equal(sentEvents[0]?.payload["action"], "source-set-mode");
-    const sourceAfterModeSelection = JSON.parse(JSON.stringify(store.getState().source));
+    assert.equal(sentEvents[0].payload["action"], "source-set-mode");
+    const sourceAfterModeSelection = JSON.parse(JSON.stringify(store.getState().source)) as Record<string, unknown>;
 
-    inputListener?.({
+    inputListener({
       target: new TestInputElement("source.youtubeUrl", "https://youtube.com/watch?v=focus"),
     } as unknown as Event);
     assert.equal(store.getState().ui.sourceDrafts.youtubeUrl, "https://youtube.com/watch?v=focus");
@@ -1522,23 +1523,23 @@ test("laboratory run controller routes YouTube source selection without import m
     assert.equal(store.getState().ui.youtubeImport.selectedVideoFormatId, "137");
     assert.equal(store.getState().ui.youtubeImport.selectedAudioFormatId, "140");
 
-    changeListener?.({
+    changeListener({
       target: new TestSelectElement("project-import.youtubeVideoFormat", "248"),
     } as unknown as Event);
     assert.equal(store.getState().ui.youtubeImport.selectedVideoFormatId, "248");
 
-    changeListener?.({
+    changeListener({
       target: new TestSelectElement("project-import.youtubeAudioFormat", "251"),
     } as unknown as Event);
     assert.equal(store.getState().ui.youtubeImport.selectedAudioFormatId, "251");
 
-    changeListener?.({
+    changeListener({
       target: new TestSelectElement("project-import.youtubeCaptureMode", "audio-only"),
     } as unknown as Event);
     assert.equal(store.getState().ui.projectImport.drafts.video.youtubeCaptureMode, "audio-only");
 
     assert.equal(sentEvents.length, 1);
-    clickListener?.({ target: new TestElement("youtube-import-clear") } as Event);
+    clickListener({ target: new TestElement("youtube-import-clear") } as unknown as Event);
     assert.deepEqual(store.getState().ui.youtubeImport, {
       url: null,
       status: "idle",
@@ -1550,37 +1551,37 @@ test("laboratory run controller routes YouTube source selection without import m
 
     assert.equal(
       sentEvents.some(function (entry) {
-        return entry.payload.action === "source-download-youtube";
+        return entry.payload["action"] === "source-download-youtube";
       }),
       false
     );
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
         value: originalElement,
       });
     }
-    if (originalInput === undefined) {
-      delete (globalThis as Record<string, unknown>).HTMLInputElement;
+    if (typeof originalInput === "undefined") {
+      delete (globalThis as Record<string, unknown>)["HTMLInputElement"];
     } else {
       Object.defineProperty(globalThis, "HTMLInputElement", {
         configurable: true,
         value: originalInput,
       });
     }
-    if (originalSelect === undefined) {
-      delete (globalThis as Record<string, unknown>).HTMLSelectElement;
+    if (typeof originalSelect === "undefined") {
+      delete (globalThis as Record<string, unknown>)["HTMLSelectElement"];
     } else {
       Object.defineProperty(globalThis, "HTMLSelectElement", {
         configurable: true,
         value: originalSelect,
       });
     }
-    if (originalTextarea === undefined) {
-      delete (globalThis as Record<string, unknown>).HTMLTextAreaElement;
+    if (typeof originalTextarea === "undefined") {
+      delete (globalThis as Record<string, unknown>)["HTMLTextAreaElement"];
     } else {
       Object.defineProperty(globalThis, "HTMLTextAreaElement", {
         configurable: true,
@@ -1590,7 +1591,7 @@ test("laboratory run controller routes YouTube source selection without import m
   }
 });
 
-test("laboratory run controller sends project import draft fields without mutating committed source", () => {
+void test("laboratory run controller sends project import draft fields without mutating committed source", () => {
   const originalElement = globalThis.Element;
   const originalInput = globalThis.HTMLInputElement;
   const originalSelect = globalThis.HTMLSelectElement;
@@ -1612,7 +1613,7 @@ test("laboratory run controller sends project import draft fields without mutati
       metadata: {},
     },
   });
-  const committedSourceBeforeImport = JSON.parse(JSON.stringify(store.getState().source));
+  const committedSourceBeforeImport = JSON.parse(JSON.stringify(store.getState().source)) as Record<string, unknown>;
 
   class TestElement extends FakeActionElement {}
   class TestInputElement {
@@ -1674,17 +1675,17 @@ test("laboratory run controller sends project import draft fields without mutati
     assert.ok(clickListener);
     assert.ok(inputListener);
 
-    inputListener?.({
+    inputListener({
       target: new TestInputElement("project-import.urlInput", "https://example.com/evidence.png"),
     } as unknown as Event);
 
     assert.deepEqual(store.getState().source, committedSourceBeforeImport);
 
-    clickListener?.({ target: new TestElement("project-import-check-url") } as Event);
+    clickListener({ target: new TestElement("project-import-check-url") } as unknown as Event);
 
     assert.equal(sentEvents.length, 1);
     assert.equal(sentEvents[0]?.eventName, "media-action");
-    assert.equal(sentEvents[0]?.payload["action"], "project-import-check-url");
+    assert.equal(sentEvents[0].payload["action"], "project-import-check-url");
     store.dispatch({
       type: "host-event-received",
       event: {
@@ -1710,12 +1711,12 @@ test("laboratory run controller sends project import draft fields without mutati
     assert.equal(store.getState().ui.projectImport.activeKind, "image");
     assert.equal(store.getState().ui.projectImport.methods.image, "url");
 
-    clickListener?.({ target: new TestElement("project-import-url-add") } as Event);
+    clickListener({ target: new TestElement("project-import-url-add") } as unknown as Event);
 
     assert.equal(sentEvents.length, 2);
     assert.equal(sentEvents[1]?.eventName, "media-action");
-    assert.equal(sentEvents[1]?.payload["action"], "source-download-url");
-    const mediaPayload = sentEvents[1]?.payload["payload"] as Record<string, unknown>;
+    assert.equal(sentEvents[1].payload["action"], "source-download-url");
+    const mediaPayload = sentEvents[1].payload["payload"] as Record<string, unknown>;
     const fields = mediaPayload["fields"] as Record<string, unknown>;
     assert.equal(fields["kind"], "image");
     assert.equal(fields["mode"], "url");
@@ -1726,35 +1727,35 @@ test("laboratory run controller sends project import draft fields without mutati
     assert.equal(store.getState().ui.projectImport.lastAction, "source-download-url");
     assert.equal(
       store.getState().ui.projectImport.lastRequestId,
-      sentEvents[1]?.payload["requestId"]
+      sentEvents[1].payload["requestId"]
     );
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
         value: originalElement,
       });
     }
-    if (originalInput === undefined) {
-      delete (globalThis as Record<string, unknown>).HTMLInputElement;
+    if (typeof originalInput === "undefined") {
+      delete (globalThis as Record<string, unknown>)["HTMLInputElement"];
     } else {
       Object.defineProperty(globalThis, "HTMLInputElement", {
         configurable: true,
         value: originalInput,
       });
     }
-    if (originalSelect === undefined) {
-      delete (globalThis as Record<string, unknown>).HTMLSelectElement;
+    if (typeof originalSelect === "undefined") {
+      delete (globalThis as Record<string, unknown>)["HTMLSelectElement"];
     } else {
       Object.defineProperty(globalThis, "HTMLSelectElement", {
         configurable: true,
         value: originalSelect,
       });
     }
-    if (originalTextarea === undefined) {
-      delete (globalThis as Record<string, unknown>).HTMLTextAreaElement;
+    if (typeof originalTextarea === "undefined") {
+      delete (globalThis as Record<string, unknown>)["HTMLTextAreaElement"];
     } else {
       Object.defineProperty(globalThis, "HTMLTextAreaElement", {
         configurable: true,
@@ -1764,7 +1765,7 @@ test("laboratory run controller sends project import draft fields without mutati
   }
 });
 
-test("laboratory run controller routes topbar pills and cancel through v2 contracts", () => {
+void test("laboratory run controller routes topbar pills and cancel through v2 contracts", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const cancelStateDuringSend: Array<{ pending: boolean; requestId: string | null }> = [];
@@ -1856,14 +1857,14 @@ test("laboratory run controller routes topbar pills and cancel through v2 contra
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.({ target: new TestElement("drawer-explore-toggled") } as Event);
+    clickListener({ target: new TestElement("drawer-explore-toggled") } as unknown as Event);
     assert.equal(resolveDrawerMode(store.getState()), "explore");
 
-    clickListener?.({ target: new TestElement("topbar-pill-results") } as Event);
+    clickListener({ target: new TestElement("topbar-pill-results") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.drawerModeOverride, "result");
     assert.equal(resolveDrawerMode(store.getState()), "result");
 
-    clickListener?.({ target: new TestElement("topbar-pill-source") } as Event);
+    clickListener({ target: new TestElement("topbar-pill-source") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.drawerModeOverride, "setup");
     assert.equal(resolveDrawerMode(store.getState()), "setup");
 
@@ -1877,13 +1878,13 @@ test("laboratory run controller routes topbar pills and cancel through v2 contra
       progress: 42,
     };
     store.dispatch({ type: "selection-tab-toggled", active: true });
-    clickListener?.({ target: new TestElement("topbar-pill-analyze") } as Event);
+    clickListener({ target: new TestElement("topbar-pill-analyze") } as unknown as Event);
 
     assert.equal(store.getState().ui.workspace.selectionTabActive, false);
     assert.equal(store.getState().ui.workspace.drawerModeOverride, null);
     assert.equal(resolveDrawerMode(store.getState()), "running");
 
-    clickListener?.({ target: new TestElement("cancel-analysis") } as Event);
+    clickListener({ target: new TestElement("cancel-analysis") } as unknown as Event);
 
     assert.equal(sentEvents.length, 1);
     const sentCancelRequestId = sentEvents[0]?.payload["requestId"];
@@ -1896,12 +1897,12 @@ test("laboratory run controller routes topbar pills and cancel through v2 contra
     assert.equal(store.getState().ui.analysisCancelPending, true);
     assert.equal(store.getState().ui.analysisCancelRequestId, sentCancelRequestId);
     assert.equal(sentEvents[0]?.eventName, "media-action");
-    assert.equal(sentEvents[0]?.payload["action"], "process-cancel");
+    assert.equal(sentEvents[0].payload["action"], "process-cancel");
     assert.equal(
-      (sentEvents[0]?.payload["payload"] as Record<string, unknown>)["featureId"],
+      (sentEvents[0].payload["payload"] as Record<string, unknown>)["featureId"],
       "media-analysis"
     );
-    clickListener?.({ target: new TestElement("cancel-analysis") } as Event);
+    clickListener({ target: new TestElement("cancel-analysis") } as unknown as Event);
     assert.equal(sentEvents.length, 1);
     store.dispatch({
       type: "host-event-received",
@@ -1923,8 +1924,8 @@ test("laboratory run controller routes topbar pills and cancel through v2 contra
     assert.equal(store.getState().ui.analysisCancelPending, false);
     assert.equal(store.getState().ui.analysisCancelRequestId, null);
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -1934,7 +1935,7 @@ test("laboratory run controller routes topbar pills and cancel through v2 contra
   }
 });
 
-test("laboratory run controller honors the analysis preflight auto-run toggle", () => {
+void test("laboratory run controller honors the analysis preflight auto-run toggle", () => {
   const originalElement = globalThis.Element;
 
   class TestElement extends FakeActionElement {}
@@ -1981,8 +1982,8 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
                 processRunPayloadRequestIds.push(
                   typeof payload["requestId"] === "string" ? payload["requestId"] : null
                 );
-                processRunRequestIdsDuringSend.push(store.getState().run?.requestId || null);
-                processRunStatesDuringSend.push(store.getState().run?.state || null);
+                processRunRequestIdsDuringSend.push(store.getState().run?.requestId ?? null);
+                processRunStatesDuringSend.push(store.getState().run?.state ?? null);
               }
             }
           },
@@ -2028,7 +2029,7 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
-    clickListener?.({ target: new TestElement("run-deep-analysis") } as Event);
+    clickListener({ target: new TestElement("run-deep-analysis") } as unknown as Event);
 
     return {
       preflightPayloads,
@@ -2066,8 +2067,8 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
       disabledRun.processRunPayloadRequestIds
     );
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -2077,7 +2078,7 @@ test("laboratory run controller honors the analysis preflight auto-run toggle", 
   }
 });
 
-test("laboratory run controller treats missing area selection as full-media analysis scope", () => {
+void test("laboratory run controller treats missing area selection as full-media analysis scope", () => {
   const originalElement = globalThis.Element;
   const sentActions: string[] = [];
   const prompts: string[] = [];
@@ -2170,7 +2171,7 @@ test("laboratory run controller treats missing area selection as full-media anal
 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
-    clickListener?.({ target: new TestElement("run-deep-analysis") } as Event);
+    clickListener({ target: new TestElement("run-deep-analysis") } as unknown as Event);
 
     const analysisScope = store.getState().run?.analysisScope;
 
@@ -2181,8 +2182,8 @@ test("laboratory run controller treats missing area selection as full-media anal
     assert.equal(analysisScope?.focus, undefined);
     assert.notEqual(analysisScope?.lifecycle?.processId, "stale-process");
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -2192,7 +2193,7 @@ test("laboratory run controller treats missing area selection as full-media anal
   }
 });
 
-test("laboratory run controller carries active image comparison pair into analysis scope", () => {
+void test("laboratory run controller carries active image comparison pair into analysis scope", () => {
   const originalElement = globalThis.Element;
   const sentActions: string[] = [];
   const processRunPayloads: Array<Record<string, unknown>> = [];
@@ -2293,7 +2294,7 @@ test("laboratory run controller carries active image comparison pair into analys
     store.dispatch({ type: "workspace-asset-selected", assetId: "asset-primary" });
     store.dispatch({ type: "workspace-comparison-reference-set", assetId: "asset-reference" });
     store.dispatch({ type: "capability-set", capabilities: ["visual-forensics"] });
-    store.dispatch({ type: "analysis-preflight-auto-run-toggled", force: false });
+    store.dispatch({ type: "analysis-preflight-auto-run-toggled", force: false } as unknown as Parameters<typeof store.dispatch>[0]);
     store.dispatch({
       type: "workspace-comparison-updated",
       patch: {
@@ -2314,20 +2315,20 @@ test("laboratory run controller carries active image comparison pair into analys
 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
-    clickListener?.({ target: new TestElement("run-deep-analysis") } as Event);
+    clickListener({ target: new TestElement("run-deep-analysis") } as unknown as Event);
     if (!sentActions.includes("process-run")) {
-      clickListener?.({ target: new TestElement("analysis-scope-choice", "selected") } as Event);
+      clickListener({ target: new TestElement("analysis-scope-choice", "selected") } as unknown as Event);
     }
 
     const comparison = store.getState().run?.analysisScope?.comparison;
     assert.ok(sentActions.includes("process-run"));
     assert.equal(comparison?.primary.assetId, "asset-primary");
-    assert.equal(comparison?.primary.localPath, "/tmp/primary.png");
-    assert.equal(comparison?.reference.assetId, "asset-reference");
-    assert.equal(comparison?.reference.localPath, "/tmp/reference.png");
-    assert.equal(comparison?.activeSide, "reference");
-    assert.equal(comparison?.viewMode, "difference");
-    assert.equal(comparison?.splitPercent, 38);
+    assert.equal(comparison.primary.localPath, "/tmp/primary.png");
+    assert.equal(comparison.reference.assetId, "asset-reference");
+    assert.equal(comparison.reference.localPath, "/tmp/reference.png");
+    assert.equal(comparison.activeSide, "reference");
+    assert.equal(comparison.viewMode, "difference");
+    assert.equal(comparison.splitPercent, 38);
     assert.equal(processRunPayloads.at(-1)?.["workspaceTargetAssetId"], "asset-primary");
     assert.equal(processRunPayloads.at(-1)?.["comparisonReferenceAssetId"], "asset-reference");
     assert.deepEqual(
@@ -2335,16 +2336,16 @@ test("laboratory run controller carries active image comparison pair into analys
         ?.comparison,
       comparison
     );
-    assert.deepEqual(comparison?.rois?.primary, { x: 100, y: 100, width: 300, height: 200 });
-    assert.deepEqual(comparison?.rois?.reference, {
+    assert.deepEqual(comparison.rois?.primary, { x: 100, y: 100, width: 300, height: 200 });
+    assert.deepEqual(comparison.rois.reference, {
       x: 160,
       y: 60,
       width: 200,
       height: 210,
     });
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -2354,7 +2355,7 @@ test("laboratory run controller carries active image comparison pair into analys
   }
 });
 
-test("laboratory run controller opens an in-room scope overlay for selected ranges", () => {
+void test("laboratory run controller opens an in-room scope overlay for selected ranges", () => {
   const originalElement = globalThis.Element;
   const sentActions: string[] = [];
   const prompts: string[] = [];
@@ -2468,7 +2469,7 @@ test("laboratory run controller opens an in-room scope overlay for selected rang
 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
-    clickListener?.({ target: new TestElement("run-deep-analysis") } as Event);
+    clickListener({ target: new TestElement("run-deep-analysis") } as unknown as Event);
 
     const overlay = documentRef.body.appended[0];
     assert.ok(overlay);
@@ -2477,7 +2478,7 @@ test("laboratory run controller opens an in-room scope overlay for selected rang
     assert.equal(overlay.attributes["data-open"], "true");
     assert.match(overlay.innerHTML, /data-lab-action="analysis-scope-choice"/);
 
-    clickListener?.({ target: new TestElement("analysis-scope-choice", "selected") } as Event);
+    clickListener({ target: new TestElement("analysis-scope-choice", "selected") } as unknown as Event);
 
     const analysisScope = store.getState().run?.analysisScope;
     assert.equal(overlay.removed, true);
@@ -2487,8 +2488,8 @@ test("laboratory run controller opens an in-room scope overlay for selected rang
       endMs: 2600,
     });
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -2498,7 +2499,7 @@ test("laboratory run controller opens an in-room scope overlay for selected rang
   }
 });
 
-test("laboratory run controller syncs the unified timeline playhead to the active preview media", async () => {
+void test("laboratory run controller syncs the unified timeline playhead to the active preview media", async () => {
   const preview = new FakeMediaElement();
   preview.duration = 5;
   preview.currentTime = 1.25;
@@ -2536,18 +2537,18 @@ test("laboratory run controller syncs the unified timeline playhead to the activ
   controller.attach();
   await Promise.resolve();
 
-  assert.equal(playhead.style.left, "25%");
+  assert.equal(playhead.style["left"], "25%");
   assert.equal(playhead.attributes.get("data-active"), "true");
   assert.equal(playheadLabel.textContent, "00:01.250");
 
   preview.currentTime = 2.5;
   preview.dispatch("timeupdate");
 
-  assert.equal(playhead.style.left, "50%");
+  assert.equal(playhead.style["left"], "50%");
   assert.equal(playheadLabel.textContent, "00:02.500");
 });
 
-test("laboratory run controller updates focus layer from user workspace interactions", async () => {
+void test("laboratory run controller updates focus layer from user workspace interactions", async () => {
   const originalElement = Object.getOwnPropertyDescriptor(globalThis, "Element");
   const preview = new FakeMediaElement();
   const documentRef = new FakeDualPreviewDocument(
@@ -2577,7 +2578,7 @@ test("laboratory run controller updates focus layer from user workspace interact
     private readonly surface: "inspector" | "preview" | "timeline" | null;
 
     closest(selector: string): FakeFocusTarget | null {
-      if (selector === "[data-lab-action]" && this.dataset.labAction !== undefined) {
+      if (selector === "[data-lab-action]" && this.dataset["labAction"] !== undefined) {
         return this;
       }
       if (selector === ".labx-workspace-preview" && this.surface === "preview") {
@@ -2623,22 +2624,22 @@ test("laboratory run controller updates focus layer from user workspace interact
     assert.ok(clickListener);
     assert.ok(pointerDownListener);
 
-    clickListener?.({
+    clickListener({
       target: new FakeFocusTarget({ action: "timeline-shift-playhead", surface: "timeline" }),
-    } as Event);
+    } as unknown as Event);
     assert.equal(store.getState().ui.labFocusLayer, "timeline");
 
-    pointerDownListener?.({
+    pointerDownListener({
       target: new FakeFocusTarget({ surface: "preview" }),
-    } as Event);
+    } as unknown as Event);
     assert.equal(store.getState().ui.labFocusLayer, "preview");
 
-    clickListener?.({
+    clickListener({
       target: new FakeFocusTarget({
         action: "workspace-controls-drawer-toggle",
         surface: "inspector",
       }),
-    } as Event);
+    } as unknown as Event);
     assert.equal(store.getState().ui.labFocusLayer, "inspector");
 
     await preview.play();
@@ -2653,7 +2654,7 @@ test("laboratory run controller updates focus layer from user workspace interact
   }
 });
 
-test("laboratory run controller shifts normal playback from timeline step controls", async () => {
+void test("laboratory run controller shifts normal playback from timeline step controls", async () => {
   const originalElement = Object.getOwnPropertyDescriptor(globalThis, "Element");
   const preview = new FakeMediaElement();
   preview.duration = 12;
@@ -2711,17 +2712,17 @@ test("laboratory run controller shifts normal playback from timeline step contro
 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
-    clickListener?.({
+    clickListener({
       target: new FakeActionElement("timeline-shift-playhead", "+1000"),
-    } as Event);
+    } as unknown as Event);
 
     assert.equal(preview.currentTime, 5.321);
     assert.equal(preview.pauseCalls, 0);
     assert.equal(currentTimeLabel.textContent, "00:05.321");
 
-    clickListener?.({
+    clickListener({
       target: new FakeActionElement("timeline-shift-playhead", "-frame"),
-    } as Event);
+    } as unknown as Event);
 
     assert.equal(preview.currentTime, 5.288);
     assert.equal(preview.pauseCalls, 1);
@@ -2730,14 +2731,14 @@ test("laboratory run controller shifts normal playback from timeline step contro
     assert.equal(playToggleLabel.textContent, "▶");
   } finally {
     if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", originalElement);
     }
   }
 });
 
-test("laboratory run controller keeps click-to-seek and drag-to-select separated by the rail threshold", () => {
+void test("laboratory run controller keeps click-to-seek and drag-to-select separated by the rail threshold", () => {
   const originalElement = globalThis.Element;
   const originalMouseEvent = globalThis.MouseEvent;
   const preview = new FakeMediaElement();
@@ -2784,41 +2785,41 @@ test("laboratory run controller keeps click-to-seek and drag-to-select separated
 
     const railTarget = new FakeTimelineActionElement("timeline-interact", timeline);
 
-    mouseDownListener?.(
+    mouseDownListener(
       new FakeMouseEvent(railTarget as unknown as EventTarget, 350) as unknown as Event
     );
-    mouseMoveListener?.(
+    mouseMoveListener(
       new FakeMouseEvent(railTarget as unknown as EventTarget, 352) as unknown as Event
     );
-    mouseUpListener?.({} as Event);
+    mouseUpListener({} as unknown as Event);
 
     assert.equal(preview.currentTime, 2.5);
     assert.equal(store.getState().ui.workspace.timelineStartMs, null);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
 
-    mouseDownListener?.(
+    mouseDownListener(
       new FakeMouseEvent(railTarget as unknown as EventTarget, 350) as unknown as Event
     );
-    mouseMoveListener?.(
+    mouseMoveListener(
       new FakeMouseEvent(railTarget as unknown as EventTarget, 550) as unknown as Event
     );
     assert.equal(preview.currentTime, 2.5);
-    mouseUpListener?.({} as Event);
+    mouseUpListener({} as unknown as Event);
 
     assert.equal(preview.currentTime, 4.5);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 2500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 4500);
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
         value: originalElement,
       });
     }
-    if (originalMouseEvent === undefined) {
-      delete (globalThis as Record<string, unknown>).MouseEvent;
+    if (typeof originalMouseEvent === "undefined") {
+      delete (globalThis as Record<string, unknown>)["MouseEvent"];
     } else {
       Object.defineProperty(globalThis, "MouseEvent", {
         configurable: true,
@@ -2828,7 +2829,7 @@ test("laboratory run controller keeps click-to-seek and drag-to-select separated
   }
 });
 
-test("laboratory run controller keeps timeline drag selection stable after timeline rerender", () => {
+void test("laboratory run controller keeps timeline drag selection stable after timeline rerender", () => {
   const originalElement = globalThis.Element;
   const originalMouseEvent = globalThis.MouseEvent;
   const preview = new FakeMediaElement();
@@ -2891,29 +2892,29 @@ test("laboratory run controller keeps timeline drag selection stable after timel
 
     const railTarget = new FakeTimelineActionElement("timeline-interact", timeline);
 
-    mouseDownListener?.(
+    mouseDownListener(
       new FakeMouseEvent(railTarget as unknown as EventTarget, 350) as unknown as Event
     );
     track.collapse();
-    mouseMoveListener?.(
+    mouseMoveListener(
       new FakeMouseEvent(railTarget as unknown as EventTarget, 550) as unknown as Event
     );
-    mouseUpListener?.({} as Event);
+    mouseUpListener({} as unknown as Event);
 
     assert.equal(preview.currentTime, 4.5);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 2500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 4500);
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
         value: originalElement,
       });
     }
-    if (originalMouseEvent === undefined) {
-      delete (globalThis as Record<string, unknown>).MouseEvent;
+    if (typeof originalMouseEvent === "undefined") {
+      delete (globalThis as Record<string, unknown>)["MouseEvent"];
     } else {
       Object.defineProperty(globalThis, "MouseEvent", {
         configurable: true,
@@ -2923,7 +2924,7 @@ test("laboratory run controller keeps timeline drag selection stable after timel
   }
 });
 
-test("laboratory run controller drags timeline start and end handles independently", () => {
+void test("laboratory run controller drags timeline start and end handles independently", () => {
   const originalElement = globalThis.Element;
   const originalMouseEvent = globalThis.MouseEvent;
   const preview = new FakeMediaElement();
@@ -2973,42 +2974,42 @@ test("laboratory run controller drags timeline start and end handles independent
     assert.ok(mouseMoveListener);
     assert.ok(mouseUpListener);
 
-    mouseDownListener?.(
+    mouseDownListener(
       new FakeMouseEvent(
         new FakeTimelineActionElement("timeline-drag-start", timeline) as unknown as EventTarget,
         200
       ) as unknown as Event
     );
-    mouseMoveListener?.({ clientX: 150 } as MouseEvent);
-    mouseUpListener?.({} as Event);
+    mouseMoveListener({ clientX: 150 } as MouseEvent);
+    mouseUpListener({} as unknown as Event);
 
     assert.equal(store.getState().ui.workspace.timelineStartMs, 500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 3000);
     assert.equal(preview.currentTime, 0.5);
 
-    mouseDownListener?.(
+    mouseDownListener(
       new FakeMouseEvent(
         new FakeTimelineActionElement("timeline-drag-end", timeline) as unknown as EventTarget,
         400
       ) as unknown as Event
     );
-    mouseMoveListener?.({ clientX: 650 } as MouseEvent);
-    mouseUpListener?.({} as Event);
+    mouseMoveListener({ clientX: 650 } as MouseEvent);
+    mouseUpListener({} as unknown as Event);
 
     assert.equal(store.getState().ui.workspace.timelineStartMs, 500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 5500);
     assert.equal(preview.currentTime, 5.5);
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
         value: originalElement,
       });
     }
-    if (originalMouseEvent === undefined) {
-      delete (globalThis as Record<string, unknown>).MouseEvent;
+    if (typeof originalMouseEvent === "undefined") {
+      delete (globalThis as Record<string, unknown>)["MouseEvent"];
     } else {
       Object.defineProperty(globalThis, "MouseEvent", {
         configurable: true,
@@ -3018,7 +3019,7 @@ test("laboratory run controller drags timeline start and end handles independent
   }
 });
 
-test("laboratory run controller drags the timeline selection body from the pointer-down offset", () => {
+void test("laboratory run controller drags the timeline selection body from the pointer-down offset", () => {
   const originalElement = globalThis.Element;
   const originalMouseEvent = globalThis.MouseEvent;
   const preview = new FakeMediaElement();
@@ -3070,29 +3071,29 @@ test("laboratory run controller drags the timeline selection body from the point
 
     const actionTarget = new FakeTimelineActionElement("timeline-drag-body", timeline);
 
-    mouseDownListener?.(
+    mouseDownListener(
       new FakeMouseEvent(actionTarget as unknown as EventTarget, 250) as unknown as Event
     );
-    mouseMoveListener?.(
+    mouseMoveListener(
       new FakeMouseEvent(actionTarget as unknown as EventTarget, 650) as unknown as Event
     );
 
     assert.equal(store.getState().ui.workspace.timelineStartMs, 5000);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 7000);
 
-    mouseUpListener?.({} as Event);
+    mouseUpListener({} as unknown as Event);
     assert.equal(preview.currentTime, 5);
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
         value: originalElement,
       });
     }
-    if (originalMouseEvent === undefined) {
-      delete (globalThis as Record<string, unknown>).MouseEvent;
+    if (typeof originalMouseEvent === "undefined") {
+      delete (globalThis as Record<string, unknown>)["MouseEvent"];
     } else {
       Object.defineProperty(globalThis, "MouseEvent", {
         configurable: true,
@@ -3102,7 +3103,7 @@ test("laboratory run controller drags the timeline selection body from the point
   }
 });
 
-test("laboratory run controller applies timeline finetune and clear actions from the unified timeline", () => {
+void test("laboratory run controller applies timeline finetune and clear actions from the unified timeline", () => {
   const originalElement = globalThis.Element;
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
@@ -3145,7 +3146,7 @@ test("laboratory run controller applies timeline finetune and clear actions from
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.(
+    clickListener(
       new FakeMouseEvent(
         new FakeTimelineActionElement(
           "timeline-finetune",
@@ -3155,7 +3156,7 @@ test("laboratory run controller applies timeline finetune and clear actions from
         0
       ) as unknown as Event
     );
-    clickListener?.(
+    clickListener(
       new FakeMouseEvent(
         new FakeTimelineActionElement(
           "timeline-finetune",
@@ -3170,7 +3171,7 @@ test("laboratory run controller applies timeline finetune and clear actions from
     assert.equal(store.getState().ui.workspace.timelineEndMs, 2500);
     assert.equal(getInspectionMode(store.getState()), "audio");
 
-    clickListener?.(
+    clickListener(
       new FakeMouseEvent(
         new FakeTimelineActionElement("timeline-clear", timeline) as unknown as EventTarget,
         0
@@ -3181,8 +3182,8 @@ test("laboratory run controller applies timeline finetune and clear actions from
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
     assert.equal(getInspectionMode(store.getState()), "audio");
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -3192,7 +3193,7 @@ test("laboratory run controller applies timeline finetune and clear actions from
   }
 });
 
-test("laboratory store promotes timeline ranges into stable selection entities", () => {
+void test("laboratory store promotes timeline ranges into stable selection entities", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -3203,11 +3204,11 @@ test("laboratory store promotes timeline ranges into stable selection entities",
 
   const firstSelection = store.getState().ui.workspace.activeSelection;
   assert.ok(firstSelection);
-  assert.equal(firstSelection?.type, "clip");
-  assert.equal(firstSelection?.startMs, 1000);
-  assert.equal(firstSelection?.endMs, 3000);
-  assert.ok(typeof firstSelection?.id === "string" && firstSelection.id.length > 0);
-  assert.equal(getActiveSelection(store.getState())?.id, firstSelection?.id);
+  assert.equal(firstSelection.type, "clip");
+  assert.equal(firstSelection.startMs, 1000);
+  assert.equal(firstSelection.endMs, 3000);
+  assert.ok(typeof firstSelection.id === "string" && firstSelection.id.length > 0);
+  assert.equal(getActiveSelection(store.getState())?.id, firstSelection.id);
   assert.equal(isSelectionValid(store.getState()), true);
   assert.equal(getSelectionDuration(store.getState()), 2000);
   assert.equal(getInspectionMode(store.getState()), "none");
@@ -3266,11 +3267,11 @@ test("laboratory store promotes timeline ranges into stable selection entities",
 
   const evolvedSelection = store.getState().ui.workspace.activeSelection;
   assert.ok(evolvedSelection);
-  assert.equal(evolvedSelection?.id, firstSelection?.id);
-  assert.equal(evolvedSelection?.createdAt, firstSelection?.createdAt);
-  assert.equal(evolvedSelection?.startMs, 1200);
-  assert.equal(evolvedSelection?.endMs, 3400);
-  assert.equal(evolvedSelection?.roi, undefined);
+  assert.equal(evolvedSelection.id, firstSelection.id);
+  assert.equal(evolvedSelection.createdAt, firstSelection.createdAt);
+  assert.equal(evolvedSelection.startMs, 1200);
+  assert.equal(evolvedSelection.endMs, 3400);
+  assert.equal(evolvedSelection.roi, undefined);
   assert.equal(getRoiFocusActive(store.getState()), false);
   assert.equal(getActiveInspectionSnapshot(store.getState()), null);
 
@@ -3286,7 +3287,7 @@ test("laboratory store promotes timeline ranges into stable selection entities",
   assert.equal(getInspectionMode(store.getState()), "audio");
 });
 
-test("laboratory store keeps inspection mode without requiring an active selection", () => {
+void test("laboratory store keeps inspection mode without requiring an active selection", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -3298,7 +3299,7 @@ test("laboratory store keeps inspection mode without requiring an active selecti
   assert.equal(getInspectionMode(store.getState()), "visual");
 });
 
-test("laboratory store can synthesize and clear an image inspection selection from semantic roi updates", () => {
+void test("laboratory store can synthesize and clear an image inspection selection from semantic roi updates", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -3341,7 +3342,7 @@ test("laboratory store can synthesize and clear an image inspection selection fr
   assert.equal(store.getState().ui.workspace.activeSelection, null);
 });
 
-test("laboratory inspection micro state stays UI-scoped and resets on hydrate", async () => {
+void test("laboratory inspection micro state stays UI-scoped and resets on hydrate", async () => {
   const store = createLabStore();
   const labRootModule = await importLabRootModuleWithDomStub<{
     __testOnlyLabRootPersistence: {
@@ -3405,15 +3406,15 @@ test("laboratory inspection micro state stays UI-scoped and resets on hydrate", 
   assert.equal("roiFocusActive" in persistedState, false);
   assert.equal("activeInspectionSnapshot" in persistedState, false);
   assert.equal(
-    "inspectionMode" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "inspectionMode" in ((persistedState["workspace"] ?? {}) as Record<string, unknown>),
     false
   );
   assert.equal(
-    "roiFocusActive" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "roiFocusActive" in ((persistedState["workspace"] ?? {}) as Record<string, unknown>),
     false
   );
   assert.equal(
-    "activeInspectionSnapshot" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "activeInspectionSnapshot" in ((persistedState["workspace"] ?? {}) as Record<string, unknown>),
     false
   );
 
@@ -3442,7 +3443,7 @@ test("laboratory inspection micro state stays UI-scoped and resets on hydrate", 
   assert.equal(getActiveInspectionSnapshot(store.getState()), null);
 });
 
-test("laboratory source changes clear semantic roi and reset inspection mode", () => {
+void test("laboratory source changes clear semantic roi and reset inspection mode", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -3507,7 +3508,7 @@ test("laboratory source changes clear semantic roi and reset inspection mode", (
   assert.equal(getActiveInspectionSnapshot(store.getState()), null);
 });
 
-test("laboratory source panel delete action removes a confirmed asset", () => {
+void test("laboratory source panel delete action removes a confirmed asset", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const confirmMessages: string[] = [];
@@ -3559,12 +3560,12 @@ test("laboratory source panel delete action removes a confirmed asset", () => {
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.({
+    clickListener({
       target: new TestElement("asset-remove", "asset-source-1"),
-    } as Event);
+    } as unknown as Event);
 
     assert.equal(confirmMessages.length, 1);
-    assert.match(confirmMessages[0] || "", /source\.mp4/);
+    assert.match(confirmMessages[0] ?? "", /source\.mp4/);
     assert.deepEqual(
       sentEvents.map(function (event) {
         return {
@@ -3576,8 +3577,8 @@ test("laboratory source panel delete action removes a confirmed asset", () => {
       [{ eventName: "media-action", action: "asset-remove", assetId: "asset-source-1" }]
     );
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -3587,7 +3588,7 @@ test("laboratory source panel delete action removes a confirmed asset", () => {
   }
 });
 
-test("laboratory asset delete actions stop when confirmation is rejected", () => {
+void test("laboratory asset delete actions stop when confirmation is rejected", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const confirmMessages: string[] = [];
@@ -3639,16 +3640,16 @@ test("laboratory asset delete actions stop when confirmation is rejected", () =>
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.({
+    clickListener({
       target: new TestElement("asset-remove", "asset-cancel-delete"),
-    } as Event);
+    } as unknown as Event);
 
     assert.deepEqual(sentEvents, []);
     assert.equal(confirmMessages.length, 1);
-    assert.match(confirmMessages[0] || "", /keep-report\.md/);
+    assert.match(confirmMessages[0] ?? "", /keep-report\.md/);
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -3658,7 +3659,7 @@ test("laboratory asset delete actions stop when confirmation is rejected", () =>
   }
 });
 
-test("laboratory source panel media click opens workspace content without host source activation", () => {
+void test("laboratory source panel media click opens workspace content without host source activation", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const documentRef = new FakeControllerDocument();
@@ -3705,15 +3706,15 @@ test("laboratory source panel media click opens workspace content without host s
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.({
+    clickListener({
       target: new TestElement("workspace-asset-select", "asset-source-1"),
-    } as Event);
+    } as unknown as Event);
 
     assert.equal(sentEvents.length, 0);
     assert.equal(store.getState().ui.activeWorkspaceAssetId, "asset-source-1");
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -3723,7 +3724,7 @@ test("laboratory source panel media click opens workspace content without host s
   }
 });
 
-test("laboratory report overlay action opens the report overlay", () => {
+void test("laboratory report overlay action opens the report overlay", () => {
   const originalElement = globalThis.Element;
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
@@ -3757,15 +3758,15 @@ test("laboratory report overlay action opens the report overlay", () => {
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.({
+    clickListener({
       target: new TestElement("open-report-overlay", "ai"),
-    } as Event);
+    } as unknown as Event);
 
     assert.equal(store.getState().ui.workspace.reportOverlayOpen, true);
     assert.equal(store.getState().ui.reportView, "ai");
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -3775,7 +3776,7 @@ test("laboratory report overlay action opens the report overlay", () => {
   }
 });
 
-test("laboratory document overlay action opens the shared overlay shell", () => {
+void test("laboratory document overlay action opens the shared overlay shell", () => {
   const originalElement = globalThis.Element;
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
@@ -3809,15 +3810,15 @@ test("laboratory document overlay action opens the shared overlay shell", () => 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener?.({
+    clickListener({
       target: new TestElement("open-document-overlay", "artifact-json-1"),
-    } as Event);
+    } as unknown as Event);
 
     assert.equal(store.getState().ui.workspace.reportOverlayOpen, true);
     assert.equal(store.getState().ui.activeDocumentOverlayAssetId, "artifact-json-1");
   } finally {
-    if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+    if (typeof originalElement === "undefined") {
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,

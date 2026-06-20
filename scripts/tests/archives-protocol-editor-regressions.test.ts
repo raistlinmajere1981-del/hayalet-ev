@@ -5,17 +5,17 @@ class FakeClassList {
   private readonly tokens = new Set<string>();
 
   add(...nextTokens: string[]): void {
-    nextTokens.forEach((token) => {
+    for (const token of nextTokens) {
       if (token !== "") {
         this.tokens.add(token);
       }
-    });
+    }
   }
 
   remove(...nextTokens: string[]): void {
-    nextTokens.forEach((token) => {
+    for (const token of nextTokens) {
       this.tokens.delete(token);
-    });
+    }
   }
 
   contains(token: string): boolean {
@@ -46,14 +46,14 @@ class FakeNode {
 
   set textContent(value: string) {
     this.childNodes = value === "" ? [] : [new FakeTextNode(value)];
-    this.childNodes.forEach((child) => {
+    for (const child of this.childNodes) {
       child.parentNode = this;
-    });
+    }
   }
 }
 
 class FakeTextNode extends FakeNode {
-  nodeType = FakeNode.TEXT_NODE;
+  override nodeType = FakeNode.TEXT_NODE;
 
   constructor(private value: string) {
     super();
@@ -69,19 +69,19 @@ class FakeTextNode extends FakeNode {
 }
 
 class FakeDocumentFragment extends FakeNode {
-  nodeType = 11;
+  override nodeType = 11;
 
-  append(...items: Array<FakeNode | string>): void {
-    items.forEach((item) => {
+  append(...items: (string | FakeNode)[]): void {
+    for (const item of items) {
       const node = typeof item === "string" ? new FakeTextNode(item) : item;
       node.parentNode = this;
       this.childNodes.push(node);
-    });
+    }
   }
 }
 
 class FakeHTMLElement extends FakeNode {
-  nodeType = 1;
+  override nodeType = 1;
   dataset: Record<string, string> = {};
   classList = new FakeClassList();
   contentEditable = "inherit";
@@ -93,26 +93,23 @@ class FakeHTMLElement extends FakeNode {
     super();
   }
 
-  append(...items: Array<FakeNode | string>): void {
-    items.forEach((item) => {
-      const node =
-        item instanceof FakeDocumentFragment
-          ? item
-          : (typeof item === "string" ? new FakeTextNode(item) : item);
-      if (node instanceof FakeDocumentFragment) {
-        node.childNodes.forEach((child) => {
+  append(...items: (string | FakeNode | FakeDocumentFragment)[]): void {
+    for (const item of items) {
+      if (item instanceof FakeDocumentFragment) {
+        for (const child of item.childNodes) {
           child.parentNode = this;
           this.childNodes.push(child);
-        });
-        return;
+        }
+        continue;
       }
 
+      const node = typeof item === "string" ? new FakeTextNode(item) : item;
       node.parentNode = this;
       this.childNodes.push(node);
-    });
+    }
   }
 
-  replaceChildren(...items: Array<FakeNode | string>): void {
+  replaceChildren(...items: (string | FakeNode | FakeDocumentFragment)[]): void {
     this.childNodes = [];
     this.append(...items);
   }
@@ -181,17 +178,18 @@ class FakeBroadcastChannel {
 }
 
 function installFakeDom(): () => void {
-  const originalGlobals = {
-    Node: globalThis.Node,
-    HTMLElement: globalThis.HTMLElement,
-    HTMLBRElement: globalThis.HTMLBRElement,
-    HTMLSpanElement: globalThis.HTMLSpanElement,
-    HTMLTextAreaElement: globalThis.HTMLTextAreaElement,
-    BroadcastChannel: globalThis.BroadcastChannel,
-    document: globalThis.document,
+  const globalObj = globalThis as unknown as Record<string, unknown>;
+  const originalGlobals: Record<string, unknown> = {
+    Node: globalObj['Node'],
+    HTMLElement: globalObj['HTMLElement'],
+    HTMLBRElement: globalObj['HTMLBRElement'],
+    HTMLSpanElement: globalObj['HTMLSpanElement'],
+    HTMLTextAreaElement: globalObj['HTMLTextAreaElement'],
+    BroadcastChannel: globalObj['BroadcastChannel'],
+    document: globalObj['document'],
   };
 
-  Object.assign(globalThis, {
+  Object.assign(globalObj, {
     Node: FakeNode,
     HTMLElement: FakeHTMLElement,
     HTMLBRElement: FakeHTMLBRElement,
@@ -202,24 +200,25 @@ function installFakeDom(): () => void {
   });
 
   return () => {
-    Object.assign(globalThis, originalGlobals);
+    Object.assign(globalObj, originalGlobals);
   };
 }
 
-test("archives protocol editor renders placeholder chips and serializes them back to raw tags", async () => {
+void test("archives protocol editor renders placeholder chips and serializes them back to raw tags", async () => {
   const restoreDom = installFakeDom();
   const { AppState } = await import("../../src/js/modules/app-state.ts");
   const { applyProtocolSelectionView, readProtocolEditorValue } = await import(
     "../../src/js/pages/archives/protocol-editor.ts"
   );
-  const originalGetNickname = AppState.getNickname;
-  (AppState.getNickname as unknown as (provider: string) => string) = (provider: string) =>
+  const appState = AppState as unknown as Record<string, unknown>;
+  const originalGetNickname = appState['getNickname'] as (provider: string) => string;
+  appState['getNickname'] = (provider: string) =>
     ({
       ai0: "Asistan",
       ai1: "Ada",
       ai2: "Bora",
       us1: "Uzak Kullanici",
-    })[provider] ?? provider.toUpperCase();
+    } as Record<string, string>)[provider] ?? (provider).toUpperCase();
 
   try {
     const protocolEditorTitleEl = new FakeHTMLElement("DIV");
@@ -234,13 +233,13 @@ test("archives protocol editor renders placeholder chips and serializes them bac
       protocols: {
         "AI-assistant": "Merhaba <AI0>\n<US1> burada.",
       },
-      protocolEditorTitleEl,
-      protocolEditorEl,
-      protocolTextareaEl,
-      protocolEmptyEl,
-      protocolSaveBtn,
+      protocolEditorTitleEl: protocolEditorTitleEl as unknown as HTMLElement,
+      protocolEditorEl: protocolEditorEl as unknown as HTMLElement,
+      protocolTextareaEl: protocolTextareaEl as unknown as HTMLTextAreaElement,
+      protocolEmptyEl: protocolEmptyEl as unknown as HTMLElement,
+      protocolSaveBtn: protocolSaveBtn as unknown as HTMLElement,
       protocolTagButtonsEl: null,
-      setStatus: (text) => {
+      setStatus: (text: string) => {
         latestStatus = text;
       },
     });
@@ -261,8 +260,8 @@ test("archives protocol editor renders placeholder chips and serializes them bac
     );
     assert.equal(
       readProtocolEditorValue({
-        protocolEditorEl,
-        protocolTextareaEl,
+        protocolEditorEl: protocolEditorEl as unknown as HTMLElement,
+        protocolTextareaEl: protocolTextareaEl as unknown as HTMLTextAreaElement,
       }),
       "Merhaba <AI0>\n<US1> burada."
     );
@@ -270,12 +269,12 @@ test("archives protocol editor renders placeholder chips and serializes them bac
     assert.equal(protocolSaveBtn.classList.contains("is-hidden"), false);
     assert.equal(latestStatus, "");
   } finally {
-    (AppState.getNickname as unknown as (provider: string) => string) = originalGetNickname.bind(AppState);
+    (AppState as unknown as Record<string, unknown>)['getNickname'] = originalGetNickname;
     restoreDom();
   }
 });
 
-test("archives protocol locale change reloads protocols when the page is open", async () => {
+void test("archives protocol locale change reloads protocols when the page is open", async () => {
   const restoreDom = installFakeDom();
   const { handleProtocolLocaleChange } = await import("../../src/js/pages/archives/protocol-locale.ts");
   let loadProtocolsCalls = 0;

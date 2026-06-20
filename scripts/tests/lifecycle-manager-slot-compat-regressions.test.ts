@@ -42,7 +42,7 @@ function resetLifecycleState(): void {
   lifecycleAny._lastActivity = {};
 }
 
-test("register delegates slot providers to SlotController", () => {
+void test("register delegates slot providers to SlotController", () => {
   const slotControllerAny = SlotController as unknown as {
     registerWebview: (slot: string, webview: HTMLElement) => void;
   };
@@ -70,7 +70,7 @@ test("register delegates slot providers to SlotController", () => {
   }
 });
 
-test("attach delegates slot providers to SlotController helpers", () => {
+void test("attach delegates slot providers to SlotController helpers", () => {
   const slotControllerAny = SlotController as unknown as {
     registerWebview: (slot: string, webview: HTMLElement) => void;
     ensureWebviewMounted: (slot: string) => boolean;
@@ -120,9 +120,9 @@ test("attach delegates slot providers to SlotController helpers", () => {
   }
 });
 
-test("detach delegates slot providers to SlotController parkWebview", () => {
+void test("detach delegates slot providers to SlotController parkWebview", () => {
   const slotControllerAny = SlotController as unknown as {
-    parkWebview?: (slot: string) => boolean;
+    parkWebview: ((slot: string) => boolean) | undefined;
   };
 
   const originalPark = slotControllerAny.parkWebview;
@@ -142,9 +142,9 @@ test("detach delegates slot providers to SlotController parkWebview", () => {
   }
 });
 
-test("destroy delegates slot providers to SlotController parkWebview", () => {
+void test("destroy delegates slot providers to SlotController parkWebview", () => {
   const slotControllerAny = SlotController as unknown as {
-    parkWebview?: (slot: string) => boolean;
+    parkWebview: ((slot: string) => boolean) | undefined;
   };
 
   const originalPark = slotControllerAny.parkWebview;
@@ -164,7 +164,7 @@ test("destroy delegates slot providers to SlotController parkWebview", () => {
   }
 });
 
-test("markActive delegates slot providers to SlotController", () => {
+void test("markActive delegates slot providers to SlotController", () => {
   const slotControllerAny = SlotController as unknown as {
     markActive: (slot: string) => boolean;
   };

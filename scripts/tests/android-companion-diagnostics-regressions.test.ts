@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 
-test("android companion diagnostics panel stays wired across ui and runtime flows", () => {
+void test("android companion diagnostics panel stays wired across ui and runtime flows", () => {
   const layoutSource = readFileSync(
     "android-companion/app/src/main/res/layout/activity_main.xml",
     "utf8"

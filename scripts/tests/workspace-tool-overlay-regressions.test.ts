@@ -6,10 +6,10 @@ import test from "node:test";
 const ROOT = process.cwd();
 
 async function readProjectFile(relativePath: string): Promise<string> {
-  return readFile(path.join(ROOT, relativePath), "utf8");
+  return await readFile(path.join(ROOT, relativePath), "utf8");
 }
 
-test("workspace tool runtime exposes central open close and state events", async () => {
+void test("workspace tool runtime exposes central open close and state events", async () => {
   const runtime = await readProjectFile("src/js/ui/workspace-tool-overlay.ts");
 
   assert.match(runtime, /WORKSPACE_TOOL_OPEN_EVENT/);
@@ -19,7 +19,7 @@ test("workspace tool runtime exposes central open close and state events", async
   assert.match(runtime, /syncWorkspaceToolState/);
 });
 
-test("topbar entrypoints route through the workspace tool runtime and external page helpers stay navigation-only", async () => {
+void test("topbar entrypoints route through the workspace tool runtime and external page helpers stay navigation-only", async () => {
   const topbarBindings = await readProjectFile("src/js/app/topbar-tool-overlays.ts");
   const externalPage = await readProjectFile("src/js/pages/shared/external-page.ts");
   const sceneNavigation = await readProjectFile("src/js/scene/navigation.ts");
@@ -38,7 +38,7 @@ test("topbar entrypoints route through the workspace tool runtime and external p
   assert.doesNotMatch(navigation, /"settings", "archives", "whisper"/);
 });
 
-test("settings lifecycle and workspace tool controllers no longer depend on settings-hub state-change", async () => {
+void test("settings lifecycle and workspace tool controllers no longer depend on settings-hub state-change", async () => {
   const settingsController = await readProjectFile("src/js/pages/settings/controller.ts");
   const backupPanel = await readProjectFile("src/js/pages/settings/panels/backup.ts");
   const roomsPanel = await readProjectFile("src/js/pages/settings/panels/rooms.ts");
@@ -61,7 +61,7 @@ test("settings lifecycle and workspace tool controllers no longer depend on sett
   assert.doesNotMatch(liveLogOverlay, /settings-hub:state-change/);
 });
 
-test("scene controllers open workspace tools directly and do not depend on the scene-tool event bus", async () => {
+void test("scene controllers open workspace tools directly and do not depend on the scene-tool event bus", async () => {
   const entranceScene = await readProjectFile("src/js/pages/entrance/scene/scene-controller.ts");
   const analyzeController = await readProjectFile("src/js/pages/analyze.ts");
   const whisperController = await readProjectFile("src/js/pages/whisper/page-controller.ts");

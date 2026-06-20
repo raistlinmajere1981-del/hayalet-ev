@@ -11,7 +11,7 @@ import {
 } from "../lib/transition-runtime.mjs";
 import { hasProcessPathFragment, parsePosixProcessLine } from "../lib/process-entries.mjs";
 
-test("process entry parser reads POSIX pid ppid args lines", () => {
+void test("process entry parser reads POSIX pid ppid args lines", () => {
   assert.deepEqual(parsePosixProcessLine("123 45 node dist/electron/main.js"), {
     pid: 123,
     ppid: 45,
@@ -20,14 +20,14 @@ test("process entry parser reads POSIX pid ppid args lines", () => {
   assert.equal(parsePosixProcessLine("bad line"), null);
 });
 
-test("process path matching normalizes Windows separators", () => {
+void test("process path matching normalizes Windows separators", () => {
   assert.equal(
     hasProcessPathFragment("C:\\App\\dist\\electron\\main.js", "dist/electron/main.js"),
     true
   );
 });
 
-test("isTransitionAction validates supported actions", () => {
+void test("isTransitionAction validates supported actions", () => {
   assert.equal(isTransitionAction("main-close"), true);
   assert.equal(isTransitionAction("main-to-ghost"), true);
   assert.equal(isTransitionAction("ghost-close"), true);
@@ -35,7 +35,7 @@ test("isTransitionAction validates supported actions", () => {
   assert.equal(isTransitionAction("unknown"), false);
 });
 
-test("isActionAllowedFromMode enforces button source modes", () => {
+void test("isActionAllowedFromMode enforces button source modes", () => {
   assert.deepEqual(isActionAllowedFromMode("main-to-ghost", "app"), {
     allowed: true,
     reason: "",
@@ -46,7 +46,7 @@ test("isActionAllowedFromMode enforces button source modes", () => {
   assert.match(invalid.reason, /only allowed from app mode/i);
 });
 
-test("didTerminationFail catches exit and error failures", () => {
+void test("didTerminationFail catches exit and error failures", () => {
   assert.equal(
     didTerminationFail({
       failed: false,
@@ -75,7 +75,7 @@ test("didTerminationFail catches exit and error failures", () => {
   );
 });
 
-test("buildControlForAction stamps workflow session for main-to-ghost", () => {
+void test("buildControlForAction stamps workflow session for main-to-ghost", () => {
   const next = buildControlForAction(
     {
       workflowSessionId: "",
@@ -96,7 +96,7 @@ test("buildControlForAction stamps workflow session for main-to-ghost", () => {
   assert.equal(next.updatedAt, "2026-03-04T10:01:00.000Z");
 });
 
-test("buildControlForAction keeps workflow for ghost-return-main", () => {
+void test("buildControlForAction keeps workflow for ghost-return-main", () => {
   const next = buildControlForAction(
     {
       workflowSessionId: "wf-existing",
@@ -117,14 +117,14 @@ test("buildControlForAction keeps workflow for ghost-return-main", () => {
   assert.equal(next.updatedAt, "2026-03-04T10:02:00.000Z");
 });
 
-test("getActionExpectedMode returns mode mapping", () => {
+void test("getActionExpectedMode returns mode mapping", () => {
   assert.equal(getActionExpectedMode("main-to-ghost"), "ghost-agent");
   assert.equal(getActionExpectedMode("ghost-return-main"), "app");
   assert.equal(getActionExpectedMode("main-close"), "terminal");
   assert.equal(getActionExpectedMode("ghost-close"), "terminal");
 });
 
-test("resolveActionForTargetMode maps valid cross-mode transitions", () => {
+void test("resolveActionForTargetMode maps valid cross-mode transitions", () => {
   assert.deepEqual(resolveActionForTargetMode("app", "ghost-agent"), {
     action: "main-to-ghost",
     noop: false,
@@ -150,7 +150,7 @@ test("resolveActionForTargetMode maps valid cross-mode transitions", () => {
   });
 });
 
-test("resolveActionForTargetMode rejects invalid state combinations", () => {
+void test("resolveActionForTargetMode rejects invalid state combinations", () => {
   const fromTerminalToGhost = resolveActionForTargetMode("terminal", "ghost-agent");
   assert.equal(fromTerminalToGhost.action, null);
   assert.equal(fromTerminalToGhost.noop, false);
@@ -162,7 +162,7 @@ test("resolveActionForTargetMode rejects invalid state combinations", () => {
   assert.match(fromTransitioning.error ?? "", /Cannot compute action while mode is transitioning/i);
 });
 
-test("resolveActionForTargetMode returns noop when already at target", () => {
+void test("resolveActionForTargetMode returns noop when already at target", () => {
   const result = resolveActionForTargetMode("terminal", "terminal");
   assert.equal(result.action, null);
   assert.equal(result.noop, true);

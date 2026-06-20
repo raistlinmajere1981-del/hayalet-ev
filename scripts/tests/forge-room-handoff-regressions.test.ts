@@ -1,10 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import type { ForgeSynthesis, ForgeTaskAssignment } from "../../rooms/forge-room/shared/types/forge-workflow.ts";
+import type { ForgePreflightState, ForgeSynthesisProvenance } from "../../rooms/forge-room/shared/types/forge-preflight.ts";
 import { createForgeHandoffExport } from "../../rooms/forge-room/host/forge-handoff-export.ts";
 import { createEmptyForgeSession } from "../../rooms/forge-room/host/state/forge-runtime-state.ts";
 
-test("forge-room handoff export blocks exports until a selected synthesis exists", () => {
+void test("forge-room handoff export blocks exports until a selected synthesis exists", () => {
   const handoffExport = createForgeHandoffExport();
   const session = createEmptyForgeSession("forge-session-1");
   session.goal = {
@@ -22,7 +24,7 @@ test("forge-room handoff export blocks exports until a selected synthesis exists
   assert.throws(() => handoffExport.buildHandoffPackage(session), /select a synthesis/i);
 });
 
-test("forge-room handoff export requires a target room before export", () => {
+void test("forge-room handoff export requires a target room before export", () => {
   const handoffExport = createForgeHandoffExport();
   const session = createEmptyForgeSession("forge-session-target-missing");
   session.goal = {
@@ -50,7 +52,7 @@ test("forge-room handoff export requires a target room before export", () => {
       openQuestions: [],
       status: "selected",
       createdAt: "2026-04-15T00:00:00.000Z",
-    },
+    } as unknown as ForgeSynthesis,
   ];
   session.selectedSynthesisId = "forge-synthesis-target-missing";
 
@@ -61,7 +63,7 @@ test("forge-room handoff export requires a target room before export", () => {
   assert.throws(() => handoffExport.buildHandoffPackage(session), /target room/i);
 });
 
-test("forge-room handoff export builds the Repair Room contract from the approved session state", () => {
+void test("forge-room handoff export builds the Repair Room contract from the approved session state", () => {
   const handoffExport = createForgeHandoffExport();
   const session = createEmptyForgeSession("forge-session-2");
   session.goal = {
@@ -110,7 +112,7 @@ test("forge-room handoff export builds the Repair Room contract from the approve
       errorMessage: null,
       archiveRef: null,
       completedAt: null,
-    },
+    } as unknown as ForgeTaskAssignment,
   ];
   session.syntheses = [
     {
@@ -124,7 +126,7 @@ test("forge-room handoff export builds the Repair Room contract from the approve
         preflightWarnings: [
           "Preflight fell back to minimal context because the full bundle could not be prepared.",
         ],
-      },
+      } as unknown as ForgeSynthesisProvenance,
       sourceTaskIds: ["forge-task-1"],
       selectedResponseIds: ["forge-response-1"],
       unresolvedConflictIds: [],
@@ -132,7 +134,7 @@ test("forge-room handoff export builds the Repair Room contract from the approve
       openQuestions: [],
       status: "selected",
       createdAt: "2026-04-15T00:00:00.000Z",
-    },
+    } as unknown as ForgeSynthesis,
   ];
   session.selectedSynthesisId = "forge-synthesis-1";
   session.runSignature = {
@@ -152,7 +154,7 @@ test("forge-room handoff export builds the Repair Room contract from the approve
       "Preflight fell back to minimal context because the full bundle could not be prepared.",
       "socket timeout: 500",
     ],
-  };
+  } as unknown as ForgePreflightState;
   session.conflicts = [
     {
       id: "forge-conflict-1",
@@ -189,7 +191,7 @@ test("forge-room handoff export builds the Repair Room contract from the approve
   ]);
 });
 
-test("forge-room handoff export readiness blocks exports while conflicts stay open", () => {
+void test("forge-room handoff export readiness blocks exports while conflicts stay open", () => {
   const handoffExport = createForgeHandoffExport();
   const session = createEmptyForgeSession("forge-session-3");
   session.goal = {
@@ -217,7 +219,7 @@ test("forge-room handoff export readiness blocks exports while conflicts stay op
       openQuestions: [],
       status: "selected",
       createdAt: "2026-04-15T00:00:00.000Z",
-    },
+    } as unknown as ForgeSynthesis,
   ];
   session.selectedSynthesisId = "forge-synthesis-2";
   session.conflicts = [
@@ -241,7 +243,7 @@ test("forge-room handoff export readiness blocks exports while conflicts stay op
   assert.match(summary.reason, /resolve/i);
 });
 
-test("forge-room handoff export blocks while preflight provenance is stale", () => {
+void test("forge-room handoff export blocks while preflight provenance is stale", () => {
   const handoffExport = createForgeHandoffExport();
   const session = createEmptyForgeSession("forge-session-4");
   session.goal = {
@@ -273,7 +275,7 @@ test("forge-room handoff export blocks while preflight provenance is stale", () 
       openQuestions: [],
       status: "selected",
       createdAt: "2026-04-15T00:00:00.000Z",
-    },
+    } as unknown as ForgeSynthesis,
   ];
   session.selectedSynthesisId = "forge-synthesis-4";
   session.preflight = {
@@ -284,7 +286,7 @@ test("forge-room handoff export blocks while preflight provenance is stale", () 
     staleReason: "Session context changed after the last preflight run.",
     status: "stale",
     warnings: [],
-  };
+  } as unknown as ForgePreflightState;
 
   const summary = handoffExport.buildExportReadySummary(session);
 
@@ -297,13 +299,13 @@ test("forge-room handoff export blocks while preflight provenance is stale", () 
           runSignature: "RepairRoom-v3-new-context-z9y8x7",
           operatorProfileSummary: ["Selected skills: Measurement (advanced)."],
           preflightWarnings: [],
-        },
+        } as unknown as ForgeSynthesisProvenance,
       }),
     /preflight/i
   );
 });
 
-test("forge-room handoff export prefers current provenance when the selected synthesis snapshot is stale", () => {
+void test("forge-room handoff export prefers current provenance when the selected synthesis snapshot is stale", () => {
   const handoffExport = createForgeHandoffExport();
   const session = createEmptyForgeSession("forge-session-5");
   session.goal = {
@@ -327,7 +329,7 @@ test("forge-room handoff export prefers current provenance when the selected syn
         runSignature: "RepairRoom-v3-old-context-a1b2c3",
         operatorProfileSummary: ["Selected skills: Measurement (basic)."],
         preflightWarnings: ["Old warning"],
-      },
+      } as unknown as ForgeSynthesisProvenance,
       sourceTaskIds: ["forge-task-1"],
       selectedResponseIds: ["forge-response-1"],
       unresolvedConflictIds: [],
@@ -335,7 +337,7 @@ test("forge-room handoff export prefers current provenance when the selected syn
       openQuestions: [],
       status: "selected",
       createdAt: "2026-04-15T00:00:00.000Z",
-    },
+    } as unknown as ForgeSynthesis,
   ];
   session.selectedSynthesisId = "forge-synthesis-5";
   session.preflight = {
@@ -346,7 +348,7 @@ test("forge-room handoff export prefers current provenance when the selected syn
     staleReason: null,
     status: "warning",
     warnings: ["Fallback context used during export prep."],
-  };
+  } as unknown as ForgePreflightState;
 
   const handoff = handoffExport.buildHandoffPackage(session, {
     fallbackProvenance: {
@@ -356,7 +358,7 @@ test("forge-room handoff export prefers current provenance when the selected syn
         "Preferences: Mode learn first.",
       ],
       preflightWarnings: ["Fallback context used during export prep."],
-    },
+    } as unknown as ForgeSynthesisProvenance,
   });
 
   assert.equal(handoff.runSignature, "RepairRoom-v3-new-context-z9y8x7");

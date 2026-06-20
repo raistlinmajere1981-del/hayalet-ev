@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 
-test("low-resolution app shells keep viewport height under ui zoom", () => {
+void test("low-resolution app shells keep viewport height under ui zoom", () => {
   const layoutSource = readFileSync("src/styles/design-system/tokens/layout.css", "utf8");
   const mainSource = readFileSync("src/styles/main.css", "utf8");
   const sceneShellSource = readFileSync("src/styles/scene-system/shell.css", "utf8");

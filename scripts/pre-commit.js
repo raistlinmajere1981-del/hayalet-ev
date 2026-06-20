@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global console, process */
 
 /**
  * Pre-commit Hook Script
@@ -132,10 +133,10 @@ function checkLint(files) {
     console.log(colors.green("   ✅ Lint kontrolü başarılı"));
     return { success: true, errors: [] };
   } catch (error) {
-    const output = error.stdout?.toString() || error.stderr?.toString() || "";
+    const _output = error.stdout?.toString() || error.stderr?.toString() || "";
 
     // Hata sayısını kontrol et (✖ X problems (Y errors, Z warnings) formatında)
-    const errorMatch = output.match(/\((\d+) error/);
+    const errorMatch = _output.match(/\((\d+) error/);
     const errorCount = errorMatch ? parseInt(errorMatch[1], 10) : 0;
 
     if (errorCount > 0) {
@@ -164,9 +165,9 @@ function checkTypeScript() {
     console.log(colors.green("   ✅ Type kontrolü başarılı"));
     return { success: true, errors: [] };
   } catch (error) {
-    const output = error.stdout?.toString() || error.stderr?.toString() || "";
+    const _output = error.stdout?.toString() || error.stderr?.toString() || "";
 
-    const errorMatch = output.match(/Found (\d+) error/);
+    const errorMatch = _output.match(/Found (\d+) error/);
     const errorCount = errorMatch ? errorMatch[1] : "bilinmeyen sayida";
 
     console.log(colors.red(`   ❌ ${errorCount} TypeScript hatası mevcut`));
@@ -302,8 +303,7 @@ function checkDependencyCycles() {
     });
     console.log(colors.green("   ✅ Döngüsel bağımlılık yok"));
     return { success: true, errors: [] };
-  } catch (error) {
-    const output = error.stdout?.toString() || error.stderr?.toString() || "";
+  } catch {
     console.log(colors.red("   ❌ Döngüsel bağımlılık tespit edildi"));
     console.log(colors.gray("   Çözüm: İmport yapılarını kontrol edin"));
     console.log(

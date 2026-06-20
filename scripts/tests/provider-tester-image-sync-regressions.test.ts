@@ -46,13 +46,13 @@ function createFakeWebview(responses: unknown[]) {
 
   return {
     getURL: () => "https://chatgpt.com/c/test-sync",
-    loadURL: async () => {},
+    loadURL: () => {},
     executeJavaScript: async () => responses[callIndex++] ?? null,
     addEventListener: () => {},
   };
 }
 
-test("provider tester full sync archives generated image attachments", async () => {
+void test("provider tester full sync archives generated image attachments", async () => {
   const syncMessagesCalls: unknown[] = [];
   const saveAttachmentCalls: unknown[] = [];
   const rawMessages = [
@@ -89,7 +89,7 @@ test("provider tester full sync archives generated image attachments", async () 
     },
   ]);
   const databaseManager = {
-    syncMessages: async (_event: null, params: unknown) => {
+    syncMessages: (_event: null, params: unknown) => {
       syncMessagesCalls.push(params);
       return {
         success: true,
@@ -98,7 +98,7 @@ test("provider tester full sync archives generated image attachments", async () 
         total: 2,
       };
     },
-    getMessages: async () => ({
+    getMessages: () => ({
       success: true,
       data: [
         {
@@ -111,7 +111,7 @@ test("provider tester full sync archives generated image attachments", async () 
         },
       ],
     }),
-    upsertConversationMetadata: async () => ({
+    upsertConversationMetadata: () => ({
       success: true,
       data: {
         conversationId: "conv-1",
@@ -120,11 +120,11 @@ test("provider tester full sync archives generated image attachments", async () 
         titleUpdated: false,
       },
     }),
-    getAttachments: async () => ({
+    getAttachments: () => ({
       success: true,
       data: [],
     }),
-    saveAttachmentContent: async (_event: null, params: unknown) => {
+    saveAttachmentContent: (_event: null, params: unknown) => {
       saveAttachmentCalls.push(params);
       return {
         success: true,
@@ -134,7 +134,7 @@ test("provider tester full sync archives generated image attachments", async () 
         },
       };
     },
-    resetConversationMessages: async () => ({
+    resetConversationMessages: () => ({
       success: true,
       data: {
         conversationId: "conv-1",
@@ -157,21 +157,24 @@ test("provider tester full sync archives generated image attachments", async () 
       generatedImagePendingCount: number;
     }>;
   };
-  testerInternals.scrapeActiveConversationMessages = async () => rawMessages;
-
-  const result = await testerInternals.performFullSyncForSession(
-    { title: "Test sync", url: "https://chatgpt.com/c/test-sync" },
-    "account-1"
-  );
-
-  assert.equal(result.generatedImageSavedCount, 1);
-  assert.equal(result.generatedImagePendingCount, 0);
-  assert.equal(syncMessagesCalls.length, 1);
-  assert.equal(saveAttachmentCalls.length, 1);
-  assert.deepEqual(syncMessagesCalls[0], {
-    accountId: "account-1",
-    webUrl: "https://chatgpt.com/c/test-sync",
-    messages: [
+   testerInternals.scrapeActiveConversationMessages = async () => {
+      await Promise.resolve(undefined);
+      return rawMessages;
+    };
+  
+    const result = await testerInternals.performFullSyncForSession(
+      { title: "Test sync", url: "https://chatgpt.com/c/test-sync" },
+      "account-1"
+    );
+  
+    assert.equal(result.generatedImageSavedCount, 1);
+    assert.equal(result.generatedImagePendingCount, 0);
+    assert.equal(syncMessagesCalls.length, 1);
+    assert.equal(saveAttachmentCalls.length, 1);
+    assert.deepEqual(syncMessagesCalls[0], {
+      accountId: "account-1",
+      webUrl: "https://chatgpt.com/c/test-sync",
+      messages: [
       {
         role: "user",
         text: "draw a red apple",
@@ -207,7 +210,7 @@ test("provider tester full sync archives generated image attachments", async () 
   });
 });
 
-test("provider tester full sync skips generated image save when attachment already exists", async () => {
+void test("provider tester full sync skips generated image save when attachment already exists", async () => {
   const saveAttachmentCalls: unknown[] = [];
   const rawMessages = [
     {
@@ -229,13 +232,13 @@ test("provider tester full sync skips generated image save when attachment alrea
   ];
   const fakeWebview = createFakeWebview([]);
   const databaseManager = {
-    syncMessages: async () => ({
+    syncMessages: () => ({
       success: true,
       conversationId: "conv-1",
       added: 1,
       total: 1,
     }),
-    getMessages: async () => ({
+    getMessages: () => ({
       success: true,
       data: [
         {
@@ -248,7 +251,7 @@ test("provider tester full sync skips generated image save when attachment alrea
         },
       ],
     }),
-    upsertConversationMetadata: async () => ({
+    upsertConversationMetadata: () => ({
       success: true,
       data: {
         conversationId: "conv-1",
@@ -257,7 +260,7 @@ test("provider tester full sync skips generated image save when attachment alrea
         titleUpdated: false,
       },
     }),
-    getAttachments: async () => ({
+    getAttachments: () => ({
       success: true,
       data: [
         {
@@ -271,7 +274,7 @@ test("provider tester full sync skips generated image save when attachment alrea
         },
       ],
     }),
-    saveAttachmentContent: async (_event: null, params: unknown) => {
+    saveAttachmentContent: (_event: null, params: unknown) => {
       saveAttachmentCalls.push(params);
       return {
         success: true,
@@ -281,7 +284,7 @@ test("provider tester full sync skips generated image save when attachment alrea
         },
       };
     },
-    resetConversationMessages: async () => ({
+    resetConversationMessages: () => ({
       success: true,
       data: {
         conversationId: "conv-1",
@@ -304,14 +307,17 @@ test("provider tester full sync skips generated image save when attachment alrea
       generatedImagePendingCount: number;
     }>;
   };
-  testerInternals.scrapeActiveConversationMessages = async () => rawMessages;
-
-  const result = await testerInternals.performFullSyncForSession(
-    { title: "Test sync", url: "https://chatgpt.com/c/test-sync" },
-    "account-1"
-  );
-
-  assert.equal(result.generatedImageSavedCount, 0);
-  assert.equal(result.generatedImagePendingCount, 0);
-  assert.equal(saveAttachmentCalls.length, 0);
-});
+   testerInternals.scrapeActiveConversationMessages = async () => {
+      await Promise.resolve(undefined);
+      return rawMessages;
+    };
+  
+    const result = await testerInternals.performFullSyncForSession(
+      { title: "Test sync", url: "https://chatgpt.com/c/test-sync" },
+      "account-1"
+    );
+  
+    assert.equal(result.generatedImageSavedCount, 0);
+    assert.equal(result.generatedImagePendingCount, 0);
+    assert.equal(saveAttachmentCalls.length, 0);
+  });

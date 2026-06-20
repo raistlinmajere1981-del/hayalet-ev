@@ -139,13 +139,14 @@ function createRepairRoomHostRuntime(options: RepairRoomHostRuntimeOptions = {})
 
 function createMemoryRepairIo() {
   return {
-    callRoomTools: async () => ({ success: true }),
-    ensureRuntimeDirectory: async () => {},
+    callRoomTools: async (_request: Record<string, unknown>) => ({ success: true }),
+    ensureRuntimeDirectory: async (_dirPath: string, _requestId?: string | null) => {},
+    deleteRuntimePath: async (_targetPath: string, _options?: { recursive?: boolean; requestId?: string | null }) => {},
     getElectronApi: () => null,
-    listDirectory: async () => [],
-    readJsonFile: async () => null,
-    resolveRuntimePaths: async () => ({ storageDir: "/tmp/repair-room-test" }),
-    writeJsonFile: async () => {},
+    listDirectory: async (_dirPath: string) => [],
+    readJsonFile: async (_filePath: string) => null,
+    resolveRuntimePaths: async (_requestId?: string | null) => ({ storageDir: "/tmp/repair-room-test" }),
+    writeJsonFile: async (_filePath: string, _value: unknown) => {},
   };
 }
 
@@ -180,6 +181,7 @@ function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] =
       )
       .sort((left, right) => right.session.updatedAt.localeCompare(left.session.updatedAt));
   return {
+    deleteSessionRecord: async () => {},
     ensureSessionRoot: async () => "/tmp/repair-room-test/sessions",
     listSessionRecords: async () => listRecords().map((record) => cloneJson(record)),
     listSessions: async () =>
@@ -239,7 +241,7 @@ function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] =
   };
 }
 
-test("repair-room host exports room-page lifecycle hooks and command registry", () => {
+void test("repair-room host exports room-page lifecycle hooks and command registry", () => {
   const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
   const logs: string[] = [];
   const runtime = createRepairRoomHostRuntime().activate({
@@ -247,7 +249,7 @@ test("repair-room host exports room-page lifecycle hooks and command registry", 
       logs.push(message);
     },
     notifyRoom: (type, payload) => {
-      notifications.push({ type, payload });
+      notifications.push({ type, payload } as { type: string; payload?: Record<string, unknown> });
     },
   });
 
@@ -294,19 +296,19 @@ test("repair-room host exports room-page lifecycle hooks and command registry", 
 
   const toggleFreeze = runtime.commands[REPAIR_UI_COMMANDS.toggleFreezeFrame];
   assert.equal(typeof toggleFreeze, "function");
-  assert.equal(toggleFreeze().success, true);
+  assert.equal(toggleFreeze!().success, true);
   assert.equal(runtime.getStateSnapshot().state.workbench.isFrozen, true);
 
   runtime.dispose();
   assert.ok(logs.some((entry) => entry.includes("Repair Room host disposed.")));
 });
 
-test("repair-room runtime handles the advertised interactive Phase 1 commands", async () => {
+void test("repair-room runtime handles the advertised interactive Phase 1 commands", async () => {
   const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: (type, payload) => {
-      notifications.push({ type, payload });
+      notifications.push({ type, payload } as { type: string; payload?: Record<string, unknown> });
     },
   });
 
@@ -387,12 +389,12 @@ test("repair-room runtime handles the advertised interactive Phase 1 commands", 
   runtime.dispose();
 });
 
-test("repair-room chat uses live protocol bridge guidance", async () => {
+void test("repair-room chat uses live protocol bridge guidance", async () => {
   const dispatchCalls: Record<string, unknown>[] = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
-    dispatchBridge: async (payload: Record<string, unknown>) => {
+    dispatchBridge: (payload: Record<string, unknown>) => {
       dispatchCalls.push(payload);
       return {
         success: true,
@@ -440,11 +442,11 @@ test("repair-room chat uses live protocol bridge guidance", async () => {
   runtime.dispose();
 });
 
-test("repair-room chat can apply safe AI room commands and reject malformed commands", async () => {
+void test("repair-room chat can apply safe AI room commands and reject malformed commands", async () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
-    dispatchBridge: async () => ({
+    dispatchBridge: () => ({
       success: true,
       reply: {
         text: JSON.stringify({
@@ -500,11 +502,11 @@ test("repair-room chat can apply safe AI room commands and reject malformed comm
   runtime.dispose();
 });
 
-test("repair-room sync panel rows expose AI2 dispatch status", async () => {
+void test("repair-room sync panel rows expose AI2 dispatch status", async () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
-    dispatchBridge: async () => ({
+    dispatchBridge: () => ({
       success: true,
       reply: {
         text: JSON.stringify({
@@ -540,12 +542,12 @@ test("repair-room sync panel rows expose AI2 dispatch status", async () => {
   runtime.dispose();
 });
 
-test("repair-room research uses selected AI slot for live knowledge-pack dispatch", async () => {
+void test("repair-room research uses selected AI slot for live knowledge-pack dispatch", async () => {
   const dispatchCalls: Record<string, unknown>[] = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
-    dispatchBridge: async (payload: Record<string, unknown>) => {
+    dispatchBridge: (payload: Record<string, unknown>) => {
       dispatchCalls.push(payload);
       const page = (payload["payload"] as Record<string, unknown> | undefined)?.["page"];
       if (page === "repair-room:risk-detector") {
@@ -657,7 +659,7 @@ test("repair-room research uses selected AI slot for live knowledge-pack dispatc
   runtime.dispose();
 });
 
-test("repair-room wizard v2 gates tabs, accepts unknown fields, and skips failed research", async () => {
+void test("repair-room wizard v2 gates tabs, accepts unknown fields, and skips failed research", async () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -733,7 +735,7 @@ test("repair-room wizard v2 gates tabs, accepts unknown fields, and skips failed
   runtime.dispose();
 });
 
-test("repair-room persists selected evidence separately from the v2 session record", async () => {
+void test("repair-room persists selected evidence separately from the v2 session record", async () => {
   const baseStoredSession = createTestRepairSession();
   const storedSession: RepairSession = {
     ...cloneJson(baseStoredSession),
@@ -749,7 +751,7 @@ test("repair-room persists selected evidence separately from the v2 session reco
   }).activate({
     log: () => {},
     notifyRoom: () => {},
-    dispatchBridge: async () => ({
+    dispatchBridge: () => ({
       success: true,
       reply: {
         text: JSON.stringify({
@@ -854,7 +856,7 @@ test("repair-room persists selected evidence separately from the v2 session reco
   runtime.dispose();
 });
 
-test("repair-room hydrate ignores legacy v1 room-local session records", async () => {
+void test("repair-room hydrate ignores legacy v1 room-local session records", async () => {
   const v2Session: RepairSession = {
     ...cloneJson(createTestRepairSession()),
     id: "repair-v2-session",
@@ -867,7 +869,7 @@ test("repair-room hydrate ignores legacy v1 room-local session records", async (
     schemaVersion: 1,
     title: "Legacy v1 repair session",
     updatedAt: "2026-06-13T13:00:00.000Z",
-  } as RepairSession;
+  };
   delete (v1Session.deviceInfo as Partial<RepairSession["deviceInfo"]>).deviceType;
 
   const storage = createMemoryRepairStorage([
@@ -896,14 +898,14 @@ test("repair-room hydrate ignores legacy v1 room-local session records", async (
   runtime.dispose();
 });
 
-test("repair-room hydrate keeps a clean fallback when storage has no v2 sessions", async () => {
+void test("repair-room hydrate keeps a clean fallback when storage has no v2 sessions", async () => {
   const v1Session = {
     ...cloneJson(createTestRepairSession()),
     id: "repair-v1-only-session",
     schemaVersion: 1,
     title: "Legacy v1 only session",
     updatedAt: "2026-06-13T13:00:00.000Z",
-  } as RepairSession;
+  };
   delete (v1Session.deviceInfo as Partial<RepairSession["deviceInfo"]>).deviceType;
 
   const storage = createMemoryRepairStorage([createStoredRepairRecord(v1Session, [], 1)]);
@@ -935,7 +937,7 @@ test("repair-room hydrate keeps a clean fallback when storage has no v2 sessions
   runtime.dispose();
 });
 
-test("repair-room hydrates room-local stored session records when storage is available", async () => {
+void test("repair-room hydrates room-local stored session records when storage is available", async () => {
   const storedSession: RepairSession = {
     ...cloneJson(createTestRepairSession()),
     id: "repair-persisted-session",
@@ -981,7 +983,7 @@ test("repair-room hydrates room-local stored session records when storage is ava
   runtime.dispose();
 });
 
-test("repair-room persists session event and chat updates to room-local session JSON", async () => {
+void test("repair-room persists session event and chat updates to room-local session JSON", async () => {
   const storedSession: RepairSession = {
     ...cloneJson(createTestRepairSession()),
     id: "repair-persist-session-updates",
@@ -996,7 +998,7 @@ test("repair-room persists session event and chat updates to room-local session 
   }).activate({
     log: () => {},
     notifyRoom: () => {},
-    dispatchBridge: async () => ({
+    dispatchBridge: () => ({
       success: true,
       reply: {
         text: JSON.stringify({
@@ -1051,12 +1053,12 @@ test("repair-room persists session event and chat updates to room-local session 
   runtime.dispose();
 });
 
-test("repair-room measurements can promote AI tactical observations into canonical events", async () => {
+void test("repair-room measurements can promote AI tactical observations into canonical events", async () => {
   const dispatchCalls: Record<string, unknown>[] = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
-    dispatchBridge: async (payload: Record<string, unknown>) => {
+    dispatchBridge: (payload: Record<string, unknown>) => {
       dispatchCalls.push(payload);
       const page = (payload["payload"] as Record<string, unknown> | undefined)?.["page"];
       if (page === "repair-room:risk-detector") {
@@ -1145,12 +1147,12 @@ test("repair-room measurements can promote AI tactical observations into canonic
   runtime.dispose();
 });
 
-test("repair-room tactical bridge accepts content-backed top-level observation arrays", async () => {
+void test("repair-room tactical bridge accepts content-backed top-level observation arrays", async () => {
   const dispatchCalls: Record<string, unknown>[] = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
-    dispatchBridge: async (payload: Record<string, unknown>) => {
+    dispatchBridge: (payload: Record<string, unknown>) => {
       dispatchCalls.push(payload);
       const page = (payload["payload"] as Record<string, unknown> | undefined)?.["page"];
       if (page === "repair-room:risk-detector") {
@@ -1207,7 +1209,7 @@ test("repair-room tactical bridge accepts content-backed top-level observation a
   runtime.dispose();
 });
 
-test("repair-room Phase 3 arbitrates one calm guidance surface per profile", () => {
+void test("repair-room Phase 3 arbitrates one calm guidance surface per profile", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -1253,7 +1255,7 @@ test("repair-room Phase 3 arbitrates one calm guidance surface per profile", () 
   runtime.dispose();
 });
 
-test("repair-room Phase 3 projects confidence, recovery, saturation, and voice hooks", () => {
+void test("repair-room Phase 3 projects confidence, recovery, saturation, and voice hooks", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -1320,7 +1322,7 @@ test("repair-room Phase 3 projects confidence, recovery, saturation, and voice h
   runtime.dispose();
 });
 
-test("repair-room updates room-local hands-free interaction settings", () => {
+void test("repair-room updates room-local hands-free interaction settings", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -1358,7 +1360,7 @@ test("repair-room updates room-local hands-free interaction settings", () => {
   runtime.dispose();
 });
 
-test("repair-room patches operator profile equipment, skills, preferences, and adaptation", () => {
+void test("repair-room patches operator profile equipment, skills, preferences, and adaptation", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -1410,7 +1412,7 @@ test("repair-room patches operator profile equipment, skills, preferences, and a
   runtime.dispose();
 });
 
-test("repair-room persists operator profile to room-local storage and hydrates it", async () => {
+void test("repair-room persists operator profile to room-local storage and hydrates it", async () => {
   const storage = createMemoryRepairStorage();
   const runtime = createRepairRoomHostRuntime({
     autoHydrateStorage: false,
@@ -1455,7 +1457,7 @@ test("repair-room persists operator profile to room-local storage and hydrates i
   hydratedRuntime.dispose();
 });
 
-test("repair-room opens rare operator and control surfaces in a settings overlay", () => {
+void test("repair-room opens rare operator and control surfaces in a settings overlay", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -1496,7 +1498,7 @@ test("repair-room opens rare operator and control surfaces in a settings overlay
   runtime.dispose();
 });
 
-test("repair-room bridges hands-free capture and TTS commands through RoomHost APIs", async () => {
+void test("repair-room bridges hands-free capture and TTS commands through RoomHost APIs", async () => {
   const calls: string[] = [];
   const activeRequestIds: Record<string, string> = {};
   const runtime = createRepairRoomHostRuntime().activate({
@@ -1557,7 +1559,7 @@ test("repair-room bridges hands-free capture and TTS commands through RoomHost A
     tts: {
       speak: async (text, options) => {
         activeRequestIds["tts"] = options?.requestId ?? "";
-        calls.push(`speak:${options?.mode}:${options?.language}:${text}`);
+        calls.push(`speak:${String(options?.mode ?? "")}:${String(options?.language ?? "")}:${text}`);
         return {
           requestId: options?.requestId ?? "",
           outcome: { status: { status: "playing" } },
@@ -1606,10 +1608,10 @@ test("repair-room bridges hands-free capture and TTS commands through RoomHost A
     setImmediate(resolve);
   });
 
-  assert.ok(calls.includes(`stop-dictation:${activeRequestIds["dictation"]}`));
-  assert.ok(calls.includes(`stop-ambient:${activeRequestIds["ambient"]}`));
-  assert.ok(calls.includes(`stop-camera:${activeRequestIds["camera"]}`));
-  assert.ok(calls.includes(`stop-tts:${activeRequestIds["tts"]}`));
+  assert.ok(calls.includes(`stop-dictation:${String(activeRequestIds["dictation"])}`));
+  assert.ok(calls.includes(`stop-ambient:${String(activeRequestIds["ambient"])}`));
+  assert.ok(calls.includes(`stop-camera:${String(activeRequestIds["camera"])}`));
+  assert.ok(calls.includes(`stop-tts:${String(activeRequestIds["tts"])}`));
 
   const beforeDisabledCaptureCallCount = calls.length;
   assert.equal(
@@ -1624,12 +1626,12 @@ test("repair-room bridges hands-free capture and TTS commands through RoomHost A
   runtime.dispose();
 });
 
-test("repair-room auto-reads AI chat replies when the room setting is enabled", async () => {
+void test("repair-room auto-reads AI chat replies when the room setting is enabled", async () => {
   const spoken: string[] = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
-    dispatchBridge: async () => ({
+    dispatchBridge: () => ({
       success: true,
       reply: {
         text: JSON.stringify({
@@ -1641,7 +1643,7 @@ test("repair-room auto-reads AI chat replies when the room setting is enabled", 
     getLocale: () => "en",
     tts: {
       speak: async (text, options) => {
-        spoken.push(`${options?.mode}:${options?.language}:${text}`);
+        spoken.push(`${String(options?.mode ?? "")}:${String(options?.language ?? "")}:${text}`);
         return {
           requestId: options?.requestId ?? "",
           outcome: { status: { status: "done" } },
@@ -1681,11 +1683,11 @@ test("repair-room auto-reads AI chat replies when the room setting is enabled", 
   runtime.dispose();
 });
 
-test("repair-room persists dictated composer drafts before chat submission", async () => {
+void test("repair-room persists dictated composer drafts before chat submission", async () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
-    dispatchBridge: async () => ({
+    dispatchBridge: () => ({
       success: true,
       reply: {
         text: JSON.stringify({
@@ -1717,7 +1719,7 @@ test("repair-room persists dictated composer drafts before chat submission", asy
   runtime.dispose();
 });
 
-test("repair-room Phase 3 keeps calm defaults and applies AI attention budget", () => {
+void test("repair-room Phase 3 keeps calm defaults and applies AI attention budget", () => {
   const defaultGuidance = createRepairDefaultGuidanceProjection();
   const emptyGuidance = createEmptyRepairReplayProjection().guidance;
   assert.deepEqual(emptyGuidance, defaultGuidance);
@@ -1758,7 +1760,7 @@ test("repair-room Phase 3 keeps calm defaults and applies AI attention budget", 
   runtime.dispose();
 });
 
-test("repair-room runtime turns timeline jumps and layout controls into state", () => {
+void test("repair-room runtime turns timeline jumps and layout controls into state", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -1816,12 +1818,12 @@ test("repair-room runtime turns timeline jumps and layout controls into state", 
   assert.equal(runtime.getStateSnapshot().state.layout.collapsedPanels["tactical-feed"], false);
 });
 
-test("repair-room runtime keeps event log canonical while feed remains a visibility projection", () => {
+void test("repair-room runtime keeps event log canonical while feed remains a visibility projection", () => {
   const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: (type, payload) => {
-      notifications.push({ type, payload });
+      notifications.push({ type, payload } as { type: string; payload?: Record<string, unknown> });
     },
   });
 
@@ -1841,12 +1843,12 @@ test("repair-room runtime keeps event log canonical while feed remains a visibil
   );
 });
 
-test("repair-room runtime publishes one coherent state snapshot per logical action", () => {
+void test("repair-room runtime publishes one coherent state snapshot per logical action", () => {
   const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: (type, payload) => {
-      notifications.push({ type, payload });
+      notifications.push({ type, payload } as { type: string; payload?: Record<string, unknown> });
     },
   });
 
@@ -1874,7 +1876,7 @@ test("repair-room runtime publishes one coherent state snapshot per logical acti
   assert.equal(notifications.filter((entry) => entry.type === "repair-state").length, 1);
 });
 
-test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits stateful", () => {
+void test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits stateful", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -1969,7 +1971,7 @@ test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits sta
     ];
   const measurement = session?.events.find((event) => event.kind === "measurement");
   assert.ok(measurement);
-  const eventCount = session.events.length;
+  const eventCount = (session as RepairSession).events.length;
 
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.addMeasurement, {
@@ -1981,7 +1983,7 @@ test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits sta
     true
   );
 
-  const updatedSession = runtime.getStateSnapshot().state.sessions[session.id];
+  const updatedSession = runtime.getStateSnapshot().state.sessions[(session as RepairSession).id];
   const updatedMeasurement = updatedSession?.events.find((event) => event.id === measurement.id);
   assert.equal(updatedSession?.events.length, eventCount);
   assert.equal(updatedMeasurement?.kind, "measurement");
@@ -1991,12 +1993,12 @@ test("repair-room runtime keeps P1 wizard, viewport, timeline, and pin edits sta
   assert.equal(runtime.getStateSnapshot().state.workbench.focusedEventId, measurement.id);
 });
 
-test("repair-room Phase 2 projection restores replay state from the canonical event log", () => {
+void test("repair-room Phase 2 projection restores replay state from the canonical event log", () => {
   const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: (type, payload) => {
-      notifications.push({ type, payload });
+      notifications.push({ type, payload } as { type: string; payload?: Record<string, unknown> });
     },
   });
 
@@ -2046,7 +2048,7 @@ test("repair-room Phase 2 projection restores replay state from the canonical ev
   );
 });
 
-test("repair-room replay projection holds forensic overlay state during freeze frames", () => {
+void test("repair-room replay projection holds forensic overlay state during freeze frames", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2105,7 +2107,7 @@ test("repair-room replay projection holds forensic overlay state during freeze f
   assert.equal(projection.activeFreezeFrameEventId, "evt-psu-freeze-1");
 });
 
-test("repair-room AI mark expiry is evaluated against replay playhead", () => {
+void test("repair-room AI mark expiry is evaluated against replay playhead", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2158,7 +2160,7 @@ test("repair-room AI mark expiry is evaluated against replay playhead", () => {
   assert.equal(projection.aiMarkEventIds.includes("evt-expiring-ai"), false);
 });
 
-test("repair-room timeline chips seek to exact event state and replay controls stay deterministic", () => {
+void test("repair-room timeline chips seek to exact event state and replay controls stay deterministic", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2198,7 +2200,7 @@ test("repair-room timeline chips seek to exact event state and replay controls s
   assert.equal(runtime.getStateSnapshot().state.workbench.timeline.replayMode, "live");
 });
 
-test("repair-room annotations and knowledge pack spatial focus are forensic records", () => {
+void test("repair-room annotations and knowledge pack spatial focus are forensic records", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2240,7 +2242,7 @@ test("repair-room annotations and knowledge pack spatial focus are forensic reco
   assert.equal(runtime.getStateSnapshot().state.knowledgePack.previewTabId, "board-view");
 });
 
-test("repair-room Phase 2.8 folds investigation regions from canonical replay events", () => {
+void test("repair-room Phase 2.8 folds investigation regions from canonical replay events", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2310,7 +2312,7 @@ test("repair-room Phase 2.8 folds investigation regions from canonical replay ev
   ]);
 });
 
-test("repair-room Phase 2.8 keeps investigation mode explicit and entity refs commandable", () => {
+void test("repair-room Phase 2.8 keeps investigation mode explicit and entity refs commandable", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2352,7 +2354,7 @@ test("repair-room Phase 2.8 keeps investigation mode explicit and entity refs co
   );
 });
 
-test("repair-room Phase 2.8 focuses investigation regions, relationships, and live edge explicitly", () => {
+void test("repair-room Phase 2.8 focuses investigation regions, relationships, and live edge explicitly", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2376,7 +2378,7 @@ test("repair-room Phase 2.8 focuses investigation regions, relationships, and li
 
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.focusInvestigationRegion, {
-      regionId: regionEvent.regionId,
+      regionId: (regionEvent as { regionId: string }).regionId,
     }).success,
     true
   );
@@ -2387,11 +2389,11 @@ test("repair-room Phase 2.8 focuses investigation regions, relationships, and li
   assert.equal(state.workbench.investigationModeEnabled, true);
   assert.deepEqual(state.workbench.selection.inspectorEntityRef, {
     kind: "investigation-region",
-    id: regionEvent.regionId,
+    id: (regionEvent as { regionId: string }).regionId,
   });
   assert.deepEqual(projection.activeSpatialFocus?.ref, {
     kind: "investigation-region",
-    id: regionEvent.regionId,
+    id: (regionEvent as { regionId: string }).regionId,
   });
   assert.deepEqual(
     [
@@ -2420,7 +2422,7 @@ test("repair-room Phase 2.8 focuses investigation regions, relationships, and li
   assert.deepEqual(
     projection.activeSpatialFocus.relatedMeasurementIds,
     relationship.eventIds.filter((eventId) => {
-      const linked = session.events.find((event) => event.id === eventId);
+      const linked = (session as RepairSession).events.find((event) => event.id === eventId);
       return linked?.kind === "measurement";
     })
   );
@@ -2437,7 +2439,7 @@ test("repair-room Phase 2.8 focuses investigation regions, relationships, and li
   assert.equal(projection.guidance.focusCorridor.active, false);
 });
 
-test("repair-room Phase 2.8 separates temporary knowledge focus from promoted regions", () => {
+void test("repair-room Phase 2.8 separates temporary knowledge focus from promoted regions", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2495,7 +2497,7 @@ test("repair-room Phase 2.8 separates temporary knowledge focus from promoted re
   assert.equal(projection.investigationRegions[0]?.knowledgeSpatialRefId, "startup-resistor-open");
 });
 
-test("repair-room Phase 2.8 keyboard nudging moves event-backed and canonical region refs", () => {
+void test("repair-room Phase 2.8 keyboard nudging moves event-backed and canonical region refs", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2578,7 +2580,7 @@ test("repair-room Phase 2.8 keyboard nudging moves event-backed and canonical re
   });
 });
 
-test("repair-room overlay selection supports hover, multi-select, deselect, and focus jump", () => {
+void test("repair-room overlay selection supports hover, multi-select, deselect, and focus jump", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2633,7 +2635,7 @@ test("repair-room overlay selection supports hover, multi-select, deselect, and 
   assert.equal(runtime.getStateSnapshot().state.workbench.selection.hoveredEventId, null);
 });
 
-test("repair-room AI mark lifecycle changes append canonical replay events", () => {
+void test("repair-room AI mark lifecycle changes append canonical replay events", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2689,7 +2691,7 @@ test("repair-room AI mark lifecycle changes append canonical replay events", () 
   assert.equal(restoredProjection.aiMarkEventIds.includes(target.id), true);
 });
 
-test("repair-room opens the existing active session without replaying research setup", (t) => {
+void test("repair-room opens the existing active session without replaying research setup", (t) => {
   t.mock.timers.enable({
     apis: ["Date", "setInterval", "setTimeout"],
     now: new Date("2026-05-11T09:00:00.000Z"),
@@ -2715,7 +2717,7 @@ test("repair-room opens the existing active session without replaying research s
   t.mock.timers.reset();
 });
 
-test("repair-room live playhead advances from room activation instead of mock wall-clock age", (t) => {
+void test("repair-room live playhead advances from room activation instead of mock wall-clock age", (t) => {
   t.mock.timers.enable({
     apis: ["Date", "setInterval", "setTimeout"],
     now: new Date("2026-05-11T09:00:00.000Z"),
@@ -2738,7 +2740,7 @@ test("repair-room live playhead advances from room activation instead of mock wa
   t.mock.timers.reset();
 });
 
-test("repair-room runtime drifts live readings into recent instrument history", (t) => {
+void test("repair-room runtime drifts live readings into recent instrument history", (t) => {
   t.mock.timers.enable({
     apis: ["Date", "setInterval", "setTimeout"],
     now: new Date("2026-05-11T09:00:00.000Z"),
@@ -2759,7 +2761,7 @@ test("repair-room runtime drifts live readings into recent instrument history", 
   t.mock.timers.reset();
 });
 
-test("repair-room P3.5 keeps operations projection optional for standalone room runs", () => {
+void test("repair-room P3.5 keeps operations projection optional for standalone room runs", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2782,7 +2784,7 @@ test("repair-room P3.5 keeps operations projection optional for standalone room 
   runtime.dispose();
 });
 
-test("repair-room P3.5 starts operations bridge and pushes live camera status", async () => {
+void test("repair-room P3.5 starts operations bridge and pushes live camera status", async () => {
   const notifications: Array<{ type: string; payload?: Record<string, unknown> }> = [];
   const subscribers: Array<(status: OperationsStatus) => void> = [];
   let unsubscribed = false;
@@ -2809,10 +2811,10 @@ test("repair-room P3.5 starts operations bridge and pushes live camera status", 
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: (type, payload) => {
-      notifications.push({ type, payload });
+      notifications.push({ type, payload } as { type: string; payload?: Record<string, unknown> });
     },
     operations: {
-      getStatus: async () => initialStatus,
+      getStatus: () => initialStatus,
       subscribe: (listener: (status: OperationsStatus) => void) => {
         subscribers.push(listener);
         return () => {
@@ -2846,7 +2848,7 @@ test("repair-room P3.5 starts operations bridge and pushes live camera status", 
   assert.equal(unsubscribed, true);
 });
 
-test("repair-room P3.5 projects central operations status without owning capabilities", () => {
+void test("repair-room P3.5 projects central operations status without owning capabilities", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2910,7 +2912,7 @@ test("repair-room P3.5 projects central operations status without owning capabil
   runtime.dispose();
 });
 
-test("repair-room P3.5 projects voice readiness from operations and guidance state", () => {
+void test("repair-room P3.5 projects voice readiness from operations and guidance state", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -2958,7 +2960,7 @@ test("repair-room P3.5 projects voice readiness from operations and guidance sta
   runtime.dispose();
 });
 
-test("repair-room P3.5 keeps live source extensible for future camera providers", () => {
+void test("repair-room P3.5 keeps live source extensible for future camera providers", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -3000,7 +3002,7 @@ test("repair-room P3.5 keeps live source extensible for future camera providers"
   runtime.dispose();
 });
 
-test("repair-room P3.5 action registry carries reusable disabled metadata", () => {
+void test("repair-room P3.5 action registry carries reusable disabled metadata", () => {
   const requiredIds = [
     "focus-measurement",
     "focus-ai-mark",
@@ -3041,8 +3043,8 @@ test("repair-room P3.5 action registry carries reusable disabled metadata", () =
       enabled: true,
     },
   ]);
-  assert.ok(enabledPhraseMap[REPAIR_UI_COMMANDS.focusOverlayEntity]?.includes("focus measurement"));
-  assert.ok(enabledPhraseMap[REPAIR_UI_COMMANDS.addMeasurement]?.includes("start measurement"));
+  assert.ok(enabledPhraseMap[REPAIR_UI_COMMANDS.focusOverlayEntity]?.includes("focus measurement") === true);
+  assert.ok(enabledPhraseMap[REPAIR_UI_COMMANDS.addMeasurement]?.includes("start measurement") === true);
 
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
@@ -3052,7 +3054,7 @@ test("repair-room P3.5 action registry carries reusable disabled metadata", () =
   runtime.dispose();
 });
 
-test("repair-room P3.5 projects continuity from focus, measurement, and verified regions", () => {
+void test("repair-room P3.5 projects continuity from focus, measurement, and verified regions", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},

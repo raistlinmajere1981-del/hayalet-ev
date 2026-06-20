@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
-test("ui mode orchestration centralizes option definitions and shared dropdown rendering", () => {
+void test("ui mode orchestration centralizes option definitions and shared dropdown rendering", () => {
   const stateSource = readFileSync("src/js/app/ui-mode/state.ts", "utf8");
   const dropdownSource = readFileSync("src/js/app/ui-mode/dropdown.ts", "utf8");
   const navigationSource = readFileSync("src/js/app/navigation.ts", "utf8");
@@ -20,7 +20,7 @@ test("ui mode orchestration centralizes option definitions and shared dropdown r
   assert.match(windowControlsSource, /buildUiModeOptionsMarkup/);
 });
 
-test("scene cleanup removes legacy facades and keeps canonical roots only", () => {
+void test("scene cleanup removes legacy facades and keeps canonical roots only", () => {
   const sceneEditorIndexSource = readFileSync("src/js/scene-editor/index.ts", "utf8");
   const sceneSystemIndexSource = readFileSync("src/js/scene-system/index.ts", "utf8");
   const uiIndexSource = readFileSync("src/js/ui/index.ts", "utf8");

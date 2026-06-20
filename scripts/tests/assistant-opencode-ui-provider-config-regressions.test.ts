@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("assistant webview provider selection resolves dynamically for ai0", () => {
+void test("assistant webview provider selection resolves dynamically for ai0", () => {
   const content = readFileSync("src/js/pages/assistant/assistant.ts", "utf8");
 
   assert.match(content, /_initActiveAdapter\(\): void \{\s+const providerId = this\.providerSelect\?\.value;/);

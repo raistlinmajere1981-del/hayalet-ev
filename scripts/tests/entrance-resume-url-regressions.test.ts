@@ -6,7 +6,7 @@ import { defaultSettings } from "../../src/js/modules/settings/settings-schema.t
 import { SettingsManager } from "../../src/js/modules/settings-manager.ts";
 import { SlotController } from "../../src/js/modules/slot-controller.ts";
 
-test("getResumeUrlForSlot returns account lastSessionUrl when slot resume is enabled", () => {
+void test("getResumeUrlForSlot returns account lastSessionUrl when slot resume is enabled", () => {
   const controller = new EntranceHallController();
   const settings = defaultSettings();
 
@@ -26,7 +26,7 @@ test("getResumeUrlForSlot returns account lastSessionUrl when slot resume is ena
   assert.equal(resumeUrl, "https://chatgpt.com/c/resume-123");
 });
 
-test("getResumeUrlForSlot returns empty when resume is disabled", () => {
+void test("getResumeUrlForSlot returns empty when resume is disabled", () => {
   const controller = new EntranceHallController();
   const settings = defaultSettings();
 
@@ -46,7 +46,7 @@ test("getResumeUrlForSlot returns empty when resume is disabled", () => {
   assert.equal(resumeUrl, "");
 });
 
-test("shouldAutoConnectSlot returns true when remember is enabled and last state is connected", () => {
+void test("shouldAutoConnectSlot returns true when remember is enabled and last state is connected", () => {
   const controller = new EntranceHallController();
   const settings = defaultSettings();
 
@@ -58,7 +58,7 @@ test("shouldAutoConnectSlot returns true when remember is enabled and last state
   assert.equal(shouldAutoConnect, true);
 });
 
-test("shouldAutoConnectSlot returns false when remember is enabled but last state is disconnected", () => {
+void test("shouldAutoConnectSlot returns false when remember is enabled but last state is disconnected", () => {
   const controller = new EntranceHallController();
   const settings = defaultSettings();
 
@@ -70,7 +70,7 @@ test("shouldAutoConnectSlot returns false when remember is enabled but last stat
   assert.equal(shouldAutoConnect, false);
 });
 
-test("shouldAutoConnectSlot returns false when remember connection is disabled", () => {
+void test("shouldAutoConnectSlot returns false when remember connection is disabled", () => {
   const controller = new EntranceHallController();
   const settings = defaultSettings();
 
@@ -82,7 +82,7 @@ test("shouldAutoConnectSlot returns false when remember connection is disabled",
   assert.equal(shouldAutoConnect, false);
 });
 
-test("applyDefaultConnections does not click connect before webview is registered", async () => {
+void test("applyDefaultConnections does not click connect before webview is registered", async () => {
   const controller = new EntranceHallController();
   const settings = defaultSettings();
 
@@ -96,7 +96,7 @@ test("applyDefaultConnections does not click connect before webview is registere
   const originalDocument = globalThis.document;
 
   let clickCount = 0;
-  const mockButton = { disabled: false, click: () => clickCount++ } as HTMLButtonElement;
+  const mockButton = { disabled: false, click: () => clickCount++ } as unknown as HTMLButtonElement;
 
   Object.defineProperty(SettingsManager, "getSnapshot", {
     value: () => settings,
@@ -141,7 +141,7 @@ test("applyDefaultConnections does not click connect before webview is registere
   }
 });
 
-test("updateRememberedConnectionState saves connected state when remember is enabled", async () => {
+void test("updateRememberedConnectionState saves connected state when remember is enabled", async () => {
   const controller = new EntranceHallController();
   const settings = defaultSettings();
   settings.slots.ai1.accountId = "chatgpt_demo";
@@ -157,7 +157,7 @@ test("updateRememberedConnectionState saves connected state when remember is ena
     configurable: true,
   });
   Object.defineProperty(SettingsManager, "save", {
-    value: async (next: Record<string, unknown>) => {
+    value: (next: Record<string, unknown>) => {
       savedSettings = next;
       return true;
     },
@@ -167,8 +167,8 @@ test("updateRememberedConnectionState saves connected state when remember is ena
   try {
     await controller.updateRememberedConnectionState("ai1", "connected");
     assert.equal(savedSettings !== null, true);
-    const slots = (savedSettings as AppSettings).slots;
-    assert.equal(slots.ai1.lastConnectionState, "connected");
+    const slots = (savedSettings as unknown as Record<string, unknown>)['slots'] as Record<string, unknown>;
+    assert.equal((slots['ai1'] as Record<string, unknown>)['lastConnectionState'], "connected");
   } finally {
     Object.defineProperty(SettingsManager, "getSnapshot", {
       value: originalGetSnapshot,

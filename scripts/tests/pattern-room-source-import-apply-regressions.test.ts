@@ -100,7 +100,7 @@ function createRichImportResult(): SourceImportResult {
   });
 }
 
-test("pattern-room phase 11C applies SourceImportResult drafts to local overlay", () => {
+void test("pattern-room phase 11C applies SourceImportResult drafts to local overlay", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   let notificationCount = 0;
   const unsubscribe = localState.subscribe(() => {
@@ -172,7 +172,7 @@ test("pattern-room phase 11C applies SourceImportResult drafts to local overlay"
   assert.equal("importBatchId" in (overlay.localNotes[0] ?? {}), false);
 });
 
-test("pattern-room phase 14B-1 applies source segments to local source records only", () => {
+void test("pattern-room phase 14B-1 applies source segments to local source records only", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
 
   const summary = localState.applySourceImportResult(
@@ -226,7 +226,7 @@ test("pattern-room phase 14B-1 applies source segments to local source records o
   assert.deepEqual(overlay.pinnedSourceIds, []);
 });
 
-test("pattern-room phase 12F-B applies optional importBatchId to imported overlay entries", () => {
+void test("pattern-room phase 12F-B applies optional importBatchId to imported overlay entries", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
 
   const summary = localState.applySourceImportResult(createRichImportResult(), {
@@ -266,7 +266,7 @@ test("pattern-room phase 12F-B applies optional importBatchId to imported overla
   );
 });
 
-test("pattern-room phase 12F-B preserves importBatchId through snapshot round-trip", () => {
+void test("pattern-room phase 12F-B preserves importBatchId through snapshot round-trip", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.applySourceImportResult(createRichImportResult(), {
     importBatchId: "source-package-round-trip",
@@ -299,7 +299,7 @@ test("pattern-room phase 12F-B preserves importBatchId through snapshot round-tr
   );
 });
 
-test("pattern-room phase 12D applies user text producer import results through local state", () => {
+void test("pattern-room phase 12D applies user text producer import results through local state", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   let notificationCount = 0;
   const unsubscribe = localState.subscribe(() => {
@@ -342,7 +342,7 @@ test("pattern-room phase 12D applies user text producer import results through l
   ]);
 });
 
-test("pattern-room phase 11C continues local ids from restored max indexes", () => {
+void test("pattern-room phase 11C continues local ids from restored max indexes", () => {
   const seedState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   const restoredSnapshot = restoreFromSnapshot(
     {
@@ -421,7 +421,7 @@ test("pattern-room phase 11C continues local ids from restored max indexes", () 
   assert.equal(overlay.localAuthoredEdges.at(-1)?.targetId, "local-evidence-004");
 });
 
-test("pattern-room phase 11C direct overlay restore continues note ids from max index", () => {
+void test("pattern-room phase 11C direct overlay restore continues note ids from max index", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.restoreOverlay(
     {
@@ -484,7 +484,7 @@ test("pattern-room phase 11C direct overlay restore continues note ids from max 
   assert.equal(overlay.localNotes.at(-1)?.id, "local-note-008");
 });
 
-test("pattern-room phase 11C drops unmapped import edges without throwing", () => {
+void test("pattern-room phase 11C drops unmapped import edges without throwing", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   const result = createSourceImportResult({
     nodes: [
@@ -516,7 +516,7 @@ test("pattern-room phase 11C drops unmapped import edges without throwing", () =
   assert.deepEqual(localState.getOverlay().localAuthoredEdges, []);
 });
 
-test("pattern-room phase 11C skips simple duplicates and drops dependent edges", () => {
+void test("pattern-room phase 11C skips simple duplicates and drops dependent edges", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addAuthoredSource("Duplicate source", "manual:duplicate-source", "");
   localState.addAuthoredEvidence("Duplicate evidence", "Duplicate excerpt.", "");
@@ -598,7 +598,7 @@ test("pattern-room phase 11C skips simple duplicates and drops dependent edges",
   );
 });
 
-test("pattern-room phase 11C preserves imported overlay entries through snapshot restore", () => {
+void test("pattern-room phase 11C preserves imported overlay entries through snapshot restore", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.applySourceImportResult(createRichImportResult());
 
@@ -613,7 +613,7 @@ test("pattern-room phase 11C preserves imported overlay entries through snapshot
   assert.deepEqual(roundTripState.getOverlay(), localState.getOverlay());
 });
 
-test("pattern-room phase 11C keeps overlay shape, snapshot version, and import apply purity", async () => {
+void test("pattern-room phase 11C keeps overlay shape, snapshot version, and import apply purity", async () => {
   const overlay = createLocalState(PATTERN_ROOM_DOMAIN_MOCK).getOverlay();
   assert.deepEqual(Object.keys(overlay).sort(), [
     "debateLocalTurns",

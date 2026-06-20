@@ -9,7 +9,7 @@ import {
 } from "../lib/android-companion-artifact.mjs";
 import { resolveInstallableArtifact } from "../android-companion-utils.mjs";
 
-test("android companion bootstrap parses command-line tools version from the numeric capture group", async () => {
+void test("android companion bootstrap parses command-line tools version from the numeric capture group", async () => {
   const source = await readFile("scripts/android-companion-utils.mjs", "utf8");
 
   assert.match(source, /full: match\[1\] \?\? null/);
@@ -90,7 +90,7 @@ async function createFixture() {
   };
 }
 
-test("keeps a cached artifact installable when tracked companion inputs are not newer", async () => {
+void test("keeps a cached artifact installable when tracked companion inputs are not newer", async () => {
   const fixture = await createFixture();
   await writeFile(join(fixture.companionRoot, "README.md"), "updated docs\n", "utf8");
 
@@ -114,7 +114,7 @@ test("keeps a cached artifact installable when tracked companion inputs are not 
       companionRoot: fixture.companionRoot,
       artifactManifestPath: fixture.artifactManifestPath,
     },
-  });
+  }) as Record<string, unknown> | null;
 
   assert.equal(artifactState.artifactReady, true);
   assert.equal(artifactState.artifactFresh, true);
@@ -122,7 +122,7 @@ test("keeps a cached artifact installable when tracked companion inputs are not 
   assert.notEqual(artifact, null);
 });
 
-test("invalidates a cached artifact when tracked companion inputs are newer than the build", async () => {
+void test("invalidates a cached artifact when tracked companion inputs are newer than the build", async () => {
   const fixture = await createFixture();
   const sourceUpdateTime = new Date(fixture.afterBuildMs);
   const sourceManifest = JSON.stringify(
@@ -148,7 +148,7 @@ test("invalidates a cached artifact when tracked companion inputs are newer than
       companionRoot: fixture.companionRoot,
       artifactManifestPath: fixture.artifactManifestPath,
     },
-  });
+  }) as Record<string, unknown> | null;
 
   assert.equal(artifactState.artifactReady, true);
   assert.equal(artifactState.artifactFresh, false);

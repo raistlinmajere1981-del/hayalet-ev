@@ -6,7 +6,7 @@ import {
   shouldStopSystemActiveServersOnGhostExit,
 } from "../../ghost-agent/electron/ghost-exit-actions.ts";
 
-test("ghost exit action 'close' switches runtime to terminal idle", () => {
+void test("ghost exit action 'close' switches runtime to terminal idle", () => {
   const patch = buildRuntimePatchForGhostExit("close");
 
   assert.deepEqual(patch, {
@@ -15,7 +15,7 @@ test("ghost exit action 'close' switches runtime to terminal idle", () => {
   });
 });
 
-test("ghost exit action 'return-main' switches runtime to soft idle", () => {
+void test("ghost exit action 'return-main' switches runtime to soft idle", () => {
   const patch = buildRuntimePatchForGhostExit("return-main");
 
   assert.deepEqual(patch, {
@@ -24,7 +24,7 @@ test("ghost exit action 'return-main' switches runtime to soft idle", () => {
   });
 });
 
-test("ghost exit server policy stops active servers only on close", () => {
+void test("ghost exit server policy stops active servers only on close", () => {
   assert.equal(shouldStopSystemActiveServersOnGhostExit("close"), true);
   assert.equal(shouldStopSystemActiveServersOnGhostExit("return-main"), false);
 });

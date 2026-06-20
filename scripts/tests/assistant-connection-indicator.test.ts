@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { formatConnectionIndicatorText } from "../../src/js/pages/assistant/connection-indicator.ts";
 
-test("shows connected state with port", () => {
+void test("shows connected state with port", () => {
   const text = formatConnectionIndicatorText({
     isConnected: true,
     isServerRunning: true,
@@ -13,7 +13,7 @@ test("shows connected state with port", () => {
   assert.equal(text, "Bağlı Port: 4110");
 });
 
-test("shows disconnected passive state when server is not running", () => {
+void test("shows disconnected passive state when server is not running", () => {
   const text = formatConnectionIndicatorText({
     isConnected: false,
     isServerRunning: false,
@@ -22,7 +22,7 @@ test("shows disconnected passive state when server is not running", () => {
   assert.equal(text, "Bağlı Değil: <sunucu pasif>");
 });
 
-test("shows disconnected server port when server is running", () => {
+void test("shows disconnected server port when server is running", () => {
   const text = formatConnectionIndicatorText({
     isConnected: false,
     isServerRunning: true,

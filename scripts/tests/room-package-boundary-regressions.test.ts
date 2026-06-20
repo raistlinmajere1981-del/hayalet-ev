@@ -76,7 +76,7 @@ async function writeWorkspaceRoomFixture(baseDir: string, roomId: string): Promi
   await writeFile(join(baseDir, roomId, "host", "index.js"), "export {};\n", "utf8");
 }
 
-test("workspace room packages stay free of generated bundle artifacts", async () => {
+void test("workspace room packages stay free of generated bundle artifacts", async () => {
   const workspaceRoot = resolve("rooms");
   const roomIds = (await readdir(workspaceRoot, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory())
@@ -113,7 +113,7 @@ test("workspace room packages stay free of generated bundle artifacts", async ()
   }
 });
 
-test("workspace-only room operations do not recreate installed room roots", async () => {
+void test("workspace-only room operations do not recreate installed room roots", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-source-boundary-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const installedRoot = join(tempRoot, "data", "rooms");
@@ -200,7 +200,7 @@ test("workspace-only room operations do not recreate installed room roots", asyn
   }
 });
 
-test("room runtime residue is preserved by default and only cleared by explicit deleteData cleanup", async () => {
+void test("room runtime residue is preserved by default and only cleared by explicit deleteData cleanup", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-runtime-residue-policy-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const dataRoot = join(tempRoot, "data");
@@ -306,7 +306,7 @@ test("room runtime residue is preserved by default and only cleared by explicit 
   }
 });
 
-test("delete workspace room removes source and generated artifacts without deleting data by default", async () => {
+void test("delete workspace room removes source and generated artifacts without deleting data by default", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-delete-workspace-artifacts-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const dataRoot = join(tempRoot, "data");
@@ -357,7 +357,7 @@ test("delete workspace room removes source and generated artifacts without delet
   }
 });
 
-test("startup sync repairs registry records whose generated runtime manifest was removed", async () => {
+void test("startup sync repairs registry records whose generated runtime manifest was removed", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-startup-sync-repair-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const dataRoot = join(tempRoot, "data");
@@ -394,7 +394,7 @@ test("startup sync repairs registry records whose generated runtime manifest was
   }
 });
 
-test("startup sync restores legacy installed-only room sources before hydration", async () => {
+void test("startup sync restores legacy installed-only room sources before hydration", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-legacy-source-restore-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const dataRoot = join(tempRoot, "data");
@@ -415,8 +415,8 @@ test("startup sync restores legacy installed-only room sources before hydration"
       "utf8"
     );
 
-    const manifest = JSON.parse(await readFile(join(legacyRoomDir, "manifest.json"), "utf8"));
-    const legacyRecord = buildInstalledRoomRecord(manifest, {
+    const manifest = JSON.parse(await readFile(join(legacyRoomDir, "manifest.json"), "utf8")) as Record<string, unknown>;
+    const legacyRecord = buildInstalledRoomRecord(manifest as unknown as Parameters<typeof buildInstalledRoomRecord>[0], {
       installedAt: now,
       installedDir: legacyRoomDir,
       sourceDir: legacyRoomDir,
@@ -465,7 +465,7 @@ test("startup sync restores legacy installed-only room sources before hydration"
   }
 });
 
-test("generated room cleanup script targets only generated legacy room roots", async () => {
+void test("generated room cleanup script targets only generated legacy room roots", async () => {
   const cleanupSource = await readFile(
     resolve("scripts/rooms/clean-generated-room-artifacts.ts"),
     "utf8"
@@ -481,7 +481,7 @@ test("generated room cleanup script targets only generated legacy room roots", a
   assert.doesNotMatch(cleanupSource, /rm\(storageDir/);
 });
 
-test("legacy installed room copies stay absent and runtime bundle exports live under data/room-storage", async () => {
+void test("legacy installed room copies stay absent and runtime bundle exports live under data/room-storage", async () => {
   const installedRoot = resolve("data/rooms");
   const storageRoot = resolve("data/room-storage");
   const installedDirectories = existsSync(installedRoot)
@@ -527,7 +527,7 @@ test("legacy installed room copies stay absent and runtime bundle exports live u
   );
 });
 
-test("generic room core sources do not hardcode room-specific package ids", async () => {
+void test("generic room core sources do not hardcode room-specific package ids", async () => {
   const coreRoots = [resolve("src"), resolve("electron"), resolve("scripts/rooms")];
   const roomSpecificTokens = ["laboratory", "game-room"];
   const allowedPathSuffixes = [

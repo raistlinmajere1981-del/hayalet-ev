@@ -216,7 +216,7 @@ export function readTreeText(root: FakeElement): string {
 
 export function fireEvent(element: FakeElement, type: string): void {
   const handlers = element.eventListeners.get(type) ?? [];
-  handlers.forEach((handler) => handler({ target: element }));
+  handlers.forEach((handler) => { handler({ target: element }); });
 }
 
 export function loadTranslations(locale: "en" | "tr"): Record<string, unknown> {

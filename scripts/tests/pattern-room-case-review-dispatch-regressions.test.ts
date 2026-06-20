@@ -107,7 +107,7 @@ function assertPayloadTextOrder(text: string): void {
   assert.equal(taskIndex > packetIndex, true);
 }
 
-test("pattern-room case review dispatch draft maps AI2 to the ai2 target", () => {
+void test("pattern-room case review dispatch draft maps AI2 to the ai2 target", () => {
   const draft = createPatternRoomCaseReviewDispatchDraft({
     casePacket: createCasePacketFixture(),
     roleSlot: "AI2",
@@ -120,7 +120,7 @@ test("pattern-room case review dispatch draft maps AI2 to the ai2 target", () =>
   assert.match(draft.payload.payload.text, /AI2 10\. Adam/);
 });
 
-test("pattern-room case review dispatch draft maps every role to its target slot", () => {
+void test("pattern-room case review dispatch draft maps every role to its target slot", () => {
   const expected: ReadonlyArray<
     readonly [PatternRoomCaseReviewDispatchRoleSlot, PatternRoomCaseReviewTargetSlot]
   > = [
@@ -142,7 +142,7 @@ test("pattern-room case review dispatch draft maps every role to its target slot
   }
 });
 
-test("pattern-room case review dispatch draft creates a SlotBridge payload skeleton", () => {
+void test("pattern-room case review dispatch draft creates a SlotBridge payload skeleton", () => {
   const draft = createPatternRoomCaseReviewDispatchDraft({
     casePacket: createCasePacketFixture(),
     roleSlot: "AI0",
@@ -160,7 +160,7 @@ test("pattern-room case review dispatch draft creates a SlotBridge payload skele
   assert.equal(draft.payload.payload.page, "ui/index.html");
 });
 
-test("pattern-room case review dispatch draft keeps Case Packet in text, not protocol context", () => {
+void test("pattern-room case review dispatch draft keeps Case Packet in text, not protocol context", () => {
   const draft = createPatternRoomCaseReviewDispatchDraft({
     casePacket: createCasePacketFixture(),
     roleSlot: "AI1",
@@ -174,7 +174,7 @@ test("pattern-room case review dispatch draft keeps Case Packet in text, not pro
   assert.doesNotMatch(JSON.stringify(draft.payload.payload.protocol), /Yerel vaka|Case Packet/);
 });
 
-test("pattern-room case review dispatch draft does not duplicate protocol markdown in text", () => {
+void test("pattern-room case review dispatch draft does not duplicate protocol markdown in text", () => {
   const draft = createPatternRoomCaseReviewDispatchDraft({
     casePacket: createCasePacketFixture(),
     roleSlot: "AI2",
@@ -186,7 +186,7 @@ test("pattern-room case review dispatch draft does not duplicate protocol markdo
   assert.doesNotMatch(draft.payload.payload.text, /protocolKey: pattern-room-case-review/);
 });
 
-test("pattern-room case review dispatch draft uses a safe default task and truncates packet text", () => {
+void test("pattern-room case review dispatch draft uses a safe default task and truncates packet text", () => {
   const draft = createPatternRoomCaseReviewDispatchDraft({
     casePacket: createCasePacketFixture("Uzun ek bağlam. ".repeat(40)),
     roleSlot: "US1",
@@ -202,7 +202,7 @@ test("pattern-room case review dispatch draft uses a safe default task and trunc
   assert.doesNotMatch(draft.payload.payload.text, /kanıtlandı|kesin|doğrulandı|nihai sonuç/i);
 });
 
-test("pattern-room case review dispatch draft is deterministic and does not mutate input", () => {
+void test("pattern-room case review dispatch draft is deterministic and does not mutate input", () => {
   const packet = createCasePacketFixture();
   const beforePacket = JSON.stringify(packet);
   const input = {
@@ -219,7 +219,7 @@ test("pattern-room case review dispatch draft is deterministic and does not muta
   assert.equal(JSON.stringify(packet), beforePacket);
 });
 
-test("pattern-room case review dispatch draft stays independent from runtime and manifest changes", () => {
+void test("pattern-room case review dispatch draft stays independent from runtime and manifest changes", () => {
   const adapterSource = readFileSync(
     resolve("rooms/pattern-room/shared/adapters/pattern-room-case-review-dispatch-adapter.ts"),
     "utf8"

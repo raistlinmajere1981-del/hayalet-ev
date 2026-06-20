@@ -15,7 +15,7 @@ async function importRoomHostModule(targetPath: string) {
   );
 }
 
-test("repair-room build artifact host imports cleanly through the room host loader graph", async () => {
+void test("repair-room build artifact host imports cleanly through the room host loader graph", async () => {
   const buildArtifact = await createRoomBuiltArtifact("repair-room");
 
   try {
@@ -31,7 +31,7 @@ test("repair-room build artifact host imports cleanly through the room host load
   }
 });
 
-test("repair-room installed host imports cleanly through the portable room host loader graph", async () => {
+void test("repair-room installed host imports cleanly through the portable room host loader graph", async () => {
   const installedCopy = await createRoomInstalledCopy("repair-room");
 
   try {

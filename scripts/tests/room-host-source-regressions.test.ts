@@ -9,20 +9,20 @@ import {
 } from "../../src/js/modules/rooms/room-host-source.ts";
 import { createRoomBuiltArtifact } from "./helpers/room-installed-copy.ts";
 
-test("decodeRoomHostSource decodes base64 room host source", () => {
+void test("decodeRoomHostSource decodes base64 room host source", () => {
   const rawSource = 'module.exports = function () { return { dispose() {} }; };';
   const encoded = Buffer.from(rawSource, "utf8").toString("base64");
 
   assert.equal(decodeRoomHostSource(encoded), rawSource);
 });
 
-test("decodeRoomHostSource keeps plain javascript source unchanged", () => {
+void test("decodeRoomHostSource keeps plain javascript source unchanged", () => {
   const rawSource = 'module.exports = function () { return { dispose() {} }; };';
 
   assert.equal(decodeRoomHostSource(rawSource), rawSource);
 });
 
-test("buildRoomHostModuleDataUrl can inline nested host dependencies for browser fallbacks", async () => {
+void test("buildRoomHostModuleDataUrl can inline nested host dependencies for browser fallbacks", async () => {
   const entryPath = resolve("tmp-inline-room/host/index.js");
   const runtimePath = resolve("tmp-inline-room/host/runtime.js");
   const helperPath = resolve("tmp-inline-room/shared/helper.js");
@@ -56,7 +56,7 @@ test("buildRoomHostModuleDataUrl can inline nested host dependencies for browser
   assert.equal(imported.default?.answer, 42);
 });
 
-test("buildRoomHostModuleBlobUrl rewrites nested host dependencies to blob-backed module urls", async () => {
+void test("buildRoomHostModuleBlobUrl rewrites nested host dependencies to blob-backed module urls", async () => {
   const entryPath = resolve("tmp-blob-room/host/index.js");
   const runtimePath = resolve("tmp-blob-room/host/runtime.js");
   const helperPath = resolve("tmp-blob-room/shared/helper.js");
@@ -114,7 +114,7 @@ test("buildRoomHostModuleBlobUrl rewrites nested host dependencies to blob-backe
   }
 });
 
-test("buildRoomHostModuleDataUrl imports mixed room host module graphs through data urls", async () => {
+void test("buildRoomHostModuleDataUrl imports mixed room host module graphs through data urls", async () => {
   const loadSource = async (filePath: string) => await readFile(filePath, "utf8");
   const laboratoryBuildArtifact = await createRoomBuiltArtifact("laboratory");
   const gameRoomBuildArtifact = await createRoomBuiltArtifact("game-room");
@@ -140,14 +140,14 @@ test("buildRoomHostModuleDataUrl imports mixed room host module graphs through d
     assert.match(laboratoryModuleUrl, /^data:text\/javascript;base64,/);
     assert.match(gameRoomModuleUrl, /^data:text\/javascript;base64,/);
     assert.equal(typeof laboratoryModule.default?.activate, "function");
-    assert.ok(gameRoomModule.default);
-    assert.ok(gameRoomModule.teamTetrisEngine);
+  assert.ok(gameRoomModule.default != null);
+  assert.ok(gameRoomModule.teamTetrisEngine != null);
   } finally {
     await Promise.all([laboratoryBuildArtifact.cleanup(), gameRoomBuildArtifact.cleanup()]);
   }
 });
 
-test("buildRoomHostModuleDataUrl rejects host imports that escape the room root", async () => {
+void test("buildRoomHostModuleDataUrl rejects host imports that escape the room root", async () => {
   const entryPath = resolve("tmp-room/host/index.js");
   const loadSource = async (filePath: string) => {
     if (filePath === entryPath) {

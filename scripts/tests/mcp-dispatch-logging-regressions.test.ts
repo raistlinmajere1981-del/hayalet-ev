@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { executeHandlerWithLogging } from "../../mcp-server/core/handlers.ts";
 
-test("executeHandlerWithLogging logs start and success", async () => {
+void test("executeHandlerWithLogging logs start and success", async () => {
   const events: string[] = [];
 
   const result = await executeHandlerWithLogging(
@@ -29,12 +29,12 @@ test("executeHandlerWithLogging logs start and success", async () => {
   assert.deepEqual(events, ["start:demo_tool:1", "success:demo_tool"]);
 });
 
-test("executeHandlerWithLogging logs error and rethrows", async () => {
+void test("executeHandlerWithLogging logs error and rethrows", async () => {
   const events: string[] = [];
 
   await assert.rejects(
-    () =>
-      executeHandlerWithLogging(
+    async () =>
+      await executeHandlerWithLogging(
         "demo_tool",
         { x: 1 },
         async () => {

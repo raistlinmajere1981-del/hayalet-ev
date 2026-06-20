@@ -64,8 +64,8 @@ const spawnCommand = resolveWindowsCommand(parsed.command);
 function quoteForCmd(arg) {
   if (arg === "") return '""';
   // If contains whitespace or double quote, wrap in double quotes and escape inner quotes
-  if (/\s|\"/.test(arg)) {
-    return `"${arg.replace(/\"/g, '\\\"')}"`;
+  if (/\s|"/.test(arg)) {
+    return `"${arg.replace(/"/g, '\\"')}"`;
   }
   return arg;
 }

@@ -17,12 +17,12 @@ function toRecord(value: unknown) {
 
 const featureIds = ["media-analysis", "audio-analysis"];
 
-test("laboratory workbench collapses analysis controls by default", () => {
+void test("laboratory workbench collapses analysis controls by default", () => {
   const workbench = createLaboratoryWorkbenchState({});
   assert.equal(workbench.controlsCollapsed, true);
 });
 
-test("laboratory activation queues a follow-up process instance when scope changes mid-run", async () => {
+void test("laboratory activation queues a follow-up process instance when scope changes mid-run", async () => {
   let context: Record<string, unknown> = {};
   const queuedContexts: Record<string, unknown>[] = [];
   const activation = createLaboratoryHostActivation({
@@ -30,20 +30,20 @@ test("laboratory activation queues a follow-up process instance when scope chang
       return {};
     },
     emitEvent() {},
-    ensureHydrated() {
-      return Promise.resolve();
+    async ensureHydrated() {
+      await Promise.resolve();
     },
     ensureRoomToolsSubscription() {},
-    handleMediaAction() {
-      return Promise.resolve();
+    async handleMediaAction() {
+      await Promise.resolve();
     },
     loadContext() {
       return context;
     },
     pushMediaState() {},
-    queueInteractiveReprocess(_api, _runtime, nextContext) {
+    async queueInteractiveReprocess(_api, _runtime, nextContext) {
       queuedContexts.push(nextContext);
-      return Promise.resolve();
+      await Promise.resolve();
     },
     saveContext(_api, payload) {
       context = payload;
@@ -79,7 +79,7 @@ test("laboratory activation queues a follow-up process instance when scope chang
   assert.equal(toRecord(toRecord(queuedContexts[0])["workbench"])["activeModuleId"], "media-analysis");
 });
 
-test("queued process instance metadata survives normalized process state", () => {
+void test("queued process instance metadata survives normalized process state", () => {
   const runtime = createLaboratoryProcessReportStateRuntime({
     asNonEmptyString,
     asNumber,
@@ -145,7 +145,7 @@ test("queued process instance metadata survives normalized process state", () =>
   assert.equal(toRecord(mediaRecord["queuedProcessInstance"])["runId"], "media-analysis-queued-8");
 });
 
-test("process runtime consumes queued process instances after the active run completes", () => {
+void test("process runtime consumes queued process instances after the active run completes", () => {
   const source = readFileSync("rooms/laboratory/shared/host/process-runtime.ts", "utf8");
 
   assert.match(source, /queuedProcessInstance/);
@@ -155,7 +155,7 @@ test("process runtime consumes queued process instances after the active run com
   assert.match(source, /await runSingleFeatureProcess\(/);
 });
 
-test("process actions merge live project context with process payload targets", () => {
+void test("process actions merge live project context with process payload targets", () => {
   const actionRouterSource = readFileSync("rooms/laboratory/shared/host/action-router.ts", "utf8");
   const processRuntimeSource = readFileSync("rooms/laboratory/shared/host/process-runtime.ts", "utf8");
 

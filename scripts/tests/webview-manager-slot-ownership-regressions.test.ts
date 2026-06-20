@@ -74,7 +74,7 @@ function resetSlot(slot: "ai0" | "ai1" | "ai2"): void {
   slotState["lastActivity"] = Date.now();
 }
 
-test("resolveWebview returns SlotController-owned webview when lifecycle cache is not used", () => {
+void test("resolveWebview returns SlotController-owned webview when lifecycle cache is not used", () => {
   const webview = createWebview();
 
   resetSlot("ai1");
@@ -87,7 +87,7 @@ test("resolveWebview returns SlotController-owned webview when lifecycle cache i
   resetSlot("ai1");
 });
 
-test("cleanupInactiveWebviews detaches stale disconnected slot webview", () => {
+void test("cleanupInactiveWebviews detaches stale disconnected slot webview", () => {
   const webview = createWebview();
   webview.setAttribute("src", "https://example.test");
 
@@ -96,6 +96,7 @@ test("cleanupInactiveWebviews detaches stale disconnected slot webview", () => {
 
   const slots = (SlotController as unknown as { _slots: Record<string, Record<string, unknown>> })._slots;
   const slotState = slots["ai2"];
+  assert.ok(slotState);
   slotState["state"] = "assigned";
   slotState["lastActivity"] = Date.now() - 31 * 60 * 1000;
 
@@ -108,7 +109,7 @@ test("cleanupInactiveWebviews detaches stale disconnected slot webview", () => {
   resetSlot("ai2");
 });
 
-test("attach routes slot lifecycle through SlotController helpers", () => {
+void test("attach routes slot lifecycle through SlotController helpers", () => {
   const webview = createWebview();
   const slotControllerAny = SlotController as unknown as {
     registerWebview: (slot: string, value: HTMLElement) => void;
@@ -158,9 +159,9 @@ test("attach routes slot lifecycle through SlotController helpers", () => {
   }
 });
 
-test("detach routes slot lifecycle through SlotController parking", () => {
+void test("detach routes slot lifecycle through SlotController parking", () => {
   const slotControllerAny = SlotController as unknown as {
-    parkWebview?: (slot: string) => boolean;
+    parkWebview: (slot: string) => boolean;
   };
 
   const originalParkWebview = slotControllerAny.parkWebview;
@@ -180,9 +181,9 @@ test("detach routes slot lifecycle through SlotController parking", () => {
   }
 });
 
-test("destroyWebview routes slot lifecycle through SlotController parking", () => {
+void test("destroyWebview routes slot lifecycle through SlotController parking", () => {
   const slotControllerAny = SlotController as unknown as {
-    parkWebview?: (slot: string) => boolean;
+    parkWebview: (slot: string) => boolean;
   };
 
   const originalParkWebview = slotControllerAny.parkWebview;

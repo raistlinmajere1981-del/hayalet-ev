@@ -40,11 +40,11 @@ const workshopRoom: InstalledRoomRecord = {
   updatedAt: "2026-03-22T00:00:00.000Z",
 };
 
-test("getRoomPageName derives deterministic page names", () => {
+void test("getRoomPageName derives deterministic page names", () => {
   assert.equal(getRoomPageName("game-room"), "room-game-room");
 });
 
-test("buildRoomNavMarkup renders room nav button metadata", () => {
+void test("buildRoomNavMarkup renders room nav button metadata", () => {
   const markup = buildRoomNavMarkup(room);
   assert.match(markup, /data-room-nav="true"/);
   assert.match(markup, /data-page="room-game-room"/);
@@ -56,14 +56,14 @@ test("buildRoomNavMarkup renders room nav button metadata", () => {
   assert.match(markup, /Game Room/);
 });
 
-test("buildRoomPageMarkup renders room page shell id", () => {
+void test("buildRoomPageMarkup renders room page shell id", () => {
   const markup = buildRoomPageMarkup(room);
   assert.match(markup, /id="page-room-game-room"/);
   assert.match(markup, /data-room-page="true"/);
   assert.match(markup, /data-room-id="game-room"/);
 });
 
-test("secondary room markup renders deterministic nav and page metadata", () => {
+void test("secondary room markup renders deterministic nav and page metadata", () => {
   const navMarkup = buildRoomNavMarkup(workshopRoom);
   const pageMarkup = buildRoomPageMarkup(workshopRoom);
 
@@ -74,7 +74,7 @@ test("secondary room markup renders deterministic nav and page metadata", () => 
   assert.match(pageMarkup, /data-room-id="workshop"/);
 });
 
-test("room webview preload delays the fallback room-ready signal when runtimes self-report readiness", () => {
+void test("room webview preload delays the fallback room-ready signal when runtimes self-report readiness", () => {
   const preloadSource = readFileSync("electron/room-webview-preload.cjs", "utf8");
 
   assert.match(preloadSource, /let pendingAutoRoomReadyTimer = null;/);

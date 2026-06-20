@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { normalizeModelItems } from "../../src/js/pages/opencode-ui/provider-catalog.ts";
 
-test("normalizeModelItems supports provider.models object-map payload", () => {
+void test("normalizeModelItems supports provider.models object-map payload", () => {
   const payload = {
     providers: [
       {
@@ -31,7 +31,7 @@ test("normalizeModelItems supports provider.models object-map payload", () => {
   ]);
 });
 
-test("normalizeModelItems keeps provider and reasoning effort variants", () => {
+void test("normalizeModelItems keeps provider and reasoning effort variants", () => {
   const payload = {
     providers: [
       {
@@ -60,7 +60,7 @@ test("normalizeModelItems keeps provider and reasoning effort variants", () => {
   assert.deepEqual(item.reasoningEfforts, ["low", "medium", "high", "xhigh"]);
 });
 
-test("normalizeModelItems preserves non-openai variant payloads", () => {
+void test("normalizeModelItems preserves non-openai variant payloads", () => {
   const payload = {
     providers: [
       {

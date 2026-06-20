@@ -22,7 +22,7 @@ async function createProjectRootFixture(): Promise<{
   };
 }
 
-test("resolveProjectRootFromFile finds repo root from source tree path", async () => {
+void test("resolveProjectRootFromFile finds repo root from source tree path", async () => {
   const fixture = await createProjectRootFixture();
 
   try {
@@ -36,7 +36,7 @@ test("resolveProjectRootFromFile finds repo root from source tree path", async (
   }
 });
 
-test("resolveProjectRootFromFile finds repo root from compiled mcp dist path", async () => {
+void test("resolveProjectRootFromFile finds repo root from compiled mcp dist path", async () => {
   const fixture = await createProjectRootFixture();
 
   try {
@@ -59,7 +59,7 @@ test("resolveProjectRootFromFile finds repo root from compiled mcp dist path", a
   }
 });
 
-test("resolveProjectRootFromFile finds repo root from bundled standalone dist path", async () => {
+void test("resolveProjectRootFromFile finds repo root from bundled standalone dist path", async () => {
   const fixture = await createProjectRootFixture();
 
   try {

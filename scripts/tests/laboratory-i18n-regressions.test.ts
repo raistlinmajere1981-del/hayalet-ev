@@ -92,14 +92,14 @@ function getLineNumber(source: string, index: number): number {
   return source.slice(0, Math.max(0, index)).split("\n").length;
 }
 
-test("laboratory room catalogs stay structurally aligned across EN and TR", () => {
+void test("laboratory room catalogs stay structurally aligned across EN and TR", () => {
   const enLeaves = flattenCatalog(readCatalog(EN_CATALOG_PATH));
   const trLeaves = flattenCatalog(readCatalog(TR_CATALOG_PATH));
 
   assert.deepEqual([...trLeaves.keys()].sort(), [...enLeaves.keys()].sort());
 });
 
-test("laboratory operation catalog labels are available in room i18n", () => {
+void test("laboratory operation catalog labels are available in room i18n", () => {
   const enCatalog = readCatalog(EN_CATALOG_PATH);
   const trCatalog = readCatalog(TR_CATALOG_PATH);
   const issues: string[] = [];
@@ -127,7 +127,7 @@ test("laboratory operation catalog labels are available in room i18n", () => {
   assert.equal(issues.length, 0, `Missing Laboratory operation i18n keys:\n${issues.join("\n")}`);
 });
 
-test("laboratory analysis preparation modules resolve through room i18n catalogs", () => {
+void test("laboratory analysis preparation modules resolve through room i18n catalogs", () => {
   const enCatalog = readCatalog(EN_CATALOG_PATH);
   const trCatalog = readCatalog(TR_CATALOG_PATH);
   const issues: string[] = [];
@@ -153,7 +153,7 @@ test("laboratory analysis preparation modules resolve through room i18n catalogs
   assert.equal(issues.length, 0, `Missing Laboratory analysis-prep i18n keys:\n${issues.join("\n")}`);
 });
 
-test("laboratory settings field metadata has localized labels and options", () => {
+void test("laboratory settings field metadata has localized labels and options", () => {
   const enCatalog = readCatalog(EN_CATALOG_PATH);
   const trCatalog = readCatalog(TR_CATALOG_PATH);
   const issues: string[] = [];
@@ -191,7 +191,7 @@ test("laboratory settings field metadata has localized labels and options", () =
   assert.equal(issues.length, 0, `Missing Laboratory settings i18n keys:\n${issues.join("\n")}`);
 });
 
-test("laboratory Turkish catalog does not keep known visible English leftovers", () => {
+void test("laboratory Turkish catalog does not keep known visible English leftovers", () => {
   const trLeaves = flattenCatalog(readCatalog(TR_CATALOG_PATH));
   const visibleKeys = [
     "workbench.readinessTitle",
@@ -215,7 +215,7 @@ test("laboratory Turkish catalog does not keep known visible English leftovers",
   assert.equal(issues.length, 0, `Visible Turkish leaves still look English:\n${issues.join("\n")}`);
 });
 
-test("laboratory runtime advisory catalogs stay aligned across EN and TR", () => {
+void test("laboratory runtime advisory catalogs stay aligned across EN and TR", () => {
   assert.deepEqual(Object.keys(labI18nTr).sort(), Object.keys(labI18nEn).sort());
   assert.doesNotMatch(
     [
@@ -228,7 +228,7 @@ test("laboratory runtime advisory catalogs stay aligned across EN and TR", () =>
   );
 });
 
-test("laboratory static i18n references resolve in both room catalogs", () => {
+void test("laboratory static i18n references resolve in both room catalogs", () => {
   const enCatalog = readCatalog(EN_CATALOG_PATH);
   const trCatalog = readCatalog(TR_CATALOG_PATH);
   const issues: string[] = [];
@@ -260,7 +260,7 @@ test("laboratory static i18n references resolve in both room catalogs", () => {
   assert.equal(issues.length, 0, `Missing Laboratory i18n keys:\n${issues.join("\n")}`);
 });
 
-test("laboratory dynamic copy.t namespaces resolve in both room catalogs", () => {
+void test("laboratory dynamic copy.t namespaces resolve in both room catalogs", () => {
   const enCatalog = readCatalog(EN_CATALOG_PATH);
   const trCatalog = readCatalog(TR_CATALOG_PATH);
   const issues: string[] = [];

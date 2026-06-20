@@ -11,7 +11,7 @@ import {
   extractLatestAssistantTextPart,
 } from "../../src/js/pages/opencode-ui/message-content.ts";
 
-test("buildMessageRequestBody sends model as provider+model object", () => {
+void test("buildMessageRequestBody sends model as provider+model object", () => {
   const body = buildMessageRequestBody({
     text: "merhaba",
     modelId: "gpt-5.3-codex",
@@ -29,7 +29,7 @@ test("buildMessageRequestBody sends model as provider+model object", () => {
   });
 });
 
-test("buildMessageRequestBody adds reasoning effort when selected", () => {
+void test("buildMessageRequestBody adds reasoning effort when selected", () => {
   const body = buildMessageRequestBody({
     text: "test",
     modelId: "gpt-5.3-codex",
@@ -49,7 +49,7 @@ test("buildMessageRequestBody adds reasoning effort when selected", () => {
   });
 });
 
-test("buildMessageRequestBody preserves provider-specific variant options", () => {
+void test("buildMessageRequestBody preserves provider-specific variant options", () => {
   const body = buildMessageRequestBody({
     text: "anthropic thinking test",
     modelId: "antigravity-claude-opus-4-6-thinking",
@@ -76,7 +76,7 @@ test("buildMessageRequestBody preserves provider-specific variant options", () =
   });
 });
 
-test("buildMessageRequestBody appends staged attachments as file parts", () => {
+void test("buildMessageRequestBody appends staged attachments as file parts", () => {
   const body = buildMessageRequestBody({
     text: "ekleri incele",
     modelId: null,
@@ -110,7 +110,7 @@ test("buildMessageRequestBody appends staged attachments as file parts", () => {
   });
 });
 
-test("buildMessageRequestBody includes invisible system prompt when provided", () => {
+void test("buildMessageRequestBody includes invisible system prompt when provided", () => {
   const body = buildMessageRequestBody({
     text: "plani derinlestir",
     modelId: null,
@@ -124,7 +124,7 @@ test("buildMessageRequestBody includes invisible system prompt when provided", (
   });
 });
 
-test("buildInteractionSystemPrompt includes selected pack metadata and question bank", () => {
+void test("buildInteractionSystemPrompt includes selected pack metadata and question bank", () => {
   const prompt = buildInteractionSystemPrompt({
     mode: "plan-harder-local",
     protocolText: "# protocol",
@@ -139,7 +139,7 @@ test("buildInteractionSystemPrompt includes selected pack metadata and question 
   assert.match(prompt, /"id": "scope"/);
 });
 
-test("extractLatestAssistantTextPart ignores reasoning and step parts", () => {
+void test("extractLatestAssistantTextPart ignores reasoning and step parts", () => {
   const text = extractLatestAssistantTextPart({
     parts: [
       { type: "step-start", snapshot: "abc123" },
@@ -152,7 +152,7 @@ test("extractLatestAssistantTextPart ignores reasoning and step parts", () => {
   assert.equal(text, "visible [rovo-ui:v1:token]");
 });
 
-test("extractAssistantMessageContent keeps structured assistant parts as semantic blocks", () => {
+void test("extractAssistantMessageContent keeps structured assistant parts as semantic blocks", () => {
   const content = extractAssistantMessageContent({
     parts: [
       { type: "reasoning", text: "Inspect the message timeline." },
@@ -167,7 +167,7 @@ test("extractAssistantMessageContent keeps structured assistant parts as semanti
   assert.match(content.text, /Inspect the message timeline/u);
 });
 
-test("clearConsumedInteractionMode resets only the mode that was used", () => {
+void test("clearConsumedInteractionMode resets only the mode that was used", () => {
   const runtime = { activeInteractionMode: "plan-harder-local" as const };
 
   assert.equal(clearConsumedInteractionMode(runtime, "change-approval"), false);

@@ -22,7 +22,7 @@ function cleanupAccount(accountId: string): void {
   rmSync(Paths.getAccountDir(accountId), { recursive: true, force: true });
 }
 
-test("messaging broker drops duplicate provider events", async () => {
+void test("messaging broker drops duplicate provider events", async () => {
   const accountId = createAccountId("duplicate");
   const manager = new SQLiteArchiveManager(accountId);
 
@@ -70,7 +70,7 @@ test("messaging broker drops duplicate provider events", async () => {
   }
 });
 
-test("messaging broker applies out-of-order events with monotonic sequence", async () => {
+void test("messaging broker applies out-of-order events with monotonic sequence", async () => {
   const accountId = createAccountId("sequence");
   const manager = new SQLiteArchiveManager(accountId);
 
@@ -110,9 +110,9 @@ test("messaging broker applies out-of-order events with monotonic sequence", asy
       ["first applied", "second applied"]
     );
     assert.equal(eventSeqs.length, 2);
-    assert.equal(eventSeqs[0] < eventSeqs[1], true);
+    assert.equal(eventSeqs[0]! < eventSeqs[1]!, true);
 
-    const incremental = await manager.getMessages(conversationId, { afterSeq: eventSeqs[0] });
+    const incremental = await manager.getMessages(conversationId, { afterSeq: eventSeqs[0]! });
     assert.deepEqual(
       (incremental.data ?? []).map((message) => message.content),
       ["second applied"]
@@ -123,7 +123,7 @@ test("messaging broker applies out-of-order events with monotonic sequence", asy
   }
 });
 
-test("messaging broker merges projections by message identity instead of timestamp", async () => {
+void test("messaging broker merges projections by message identity instead of timestamp", async () => {
   const accountId = createAccountId("identity");
   const manager = new SQLiteArchiveManager(accountId);
 
@@ -183,7 +183,7 @@ test("messaging broker merges projections by message identity instead of timesta
   }
 });
 
-test("messaging broker keeps the newest same-identity projection when older events arrive later", async () => {
+void test("messaging broker keeps the newest same-identity projection when older events arrive later", async () => {
   const accountId = createAccountId("same-identity-order");
   const manager = new SQLiteArchiveManager(accountId);
 

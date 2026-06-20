@@ -62,7 +62,8 @@ function extractTarball(tarballPath, destinationDir, label) {
     extractTgz(tarballPath, destinationDir);
   } catch (error) {
     throw new Error(
-      `${label} failed.\n${(error instanceof Error ? error.message : String(error)).trim()}`
+      `${label} failed.\n${(error instanceof Error ? error.message : String(error)).trim()}`,
+      { cause: error }
     );
   }
 }

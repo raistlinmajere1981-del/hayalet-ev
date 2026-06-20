@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { getSessionSummary, readElectronLogs } from "../../mcp-server/tools/log-tools.ts";
 
-test("readElectronLogs structured level filter matches level field", async () => {
+void test("readElectronLogs structured level filter matches level field", async () => {
   const root = await mkdtemp(join(tmpdir(), "app-log-tools-"));
 
   try {
@@ -34,7 +34,7 @@ test("readElectronLogs structured level filter matches level field", async () =>
   }
 });
 
-test("getSessionSummary returns fallback summary for mcp default session", async () => {
+void test("getSessionSummary returns fallback summary for mcp default session", async () => {
   const root = await mkdtemp(join(tmpdir(), "app-log-tools-"));
 
   try {
@@ -71,7 +71,7 @@ test("getSessionSummary returns fallback summary for mcp default session", async
   }
 });
 
-test("getSessionSummary returns incomplete summary when mcp default has no summary sources", async () => {
+void test("getSessionSummary returns incomplete summary when mcp default has no summary sources", async () => {
   const root = await mkdtemp(join(tmpdir(), "app-log-tools-"));
 
   try {

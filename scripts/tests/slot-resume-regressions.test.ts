@@ -6,8 +6,11 @@ import {
   normalizeSettings,
 } from "../../src/js/modules/settings/settings-schema.ts";
 
-test("default settings enable slot command capture and resume defaults", () => {
+void test("default settings enable slot command capture and resume defaults", () => {
   const settings = defaultSettings();
+  assert.ok(settings.us1Slot);
+  assert.ok(settings.assistantSlot);
+  assert.ok(settings.assistants);
 
   assert.equal(settings.slots.ai1.catchCommands, true);
   assert.equal(settings.slots.ai1.resumeLastSession, true);
@@ -22,7 +25,7 @@ test("default settings enable slot command capture and resume defaults", () => {
   assert.equal(settings.assistants.resumeLastSession, true);
 });
 
-test("normalize settings backfills missing slot resume flag", () => {
+void test("normalize settings backfills missing slot resume flag", () => {
   const normalized = normalizeSettings({
     slots: {
       ai1: {
@@ -46,7 +49,7 @@ test("normalize settings backfills missing slot resume flag", () => {
   assert.equal(normalized.slots.ai2.resumeLastSession, true);
 });
 
-test("normalize settings preserves account lastSessionUrl", () => {
+void test("normalize settings preserves account lastSessionUrl", () => {
   const normalized = normalizeSettings({
     accounts: [
       {

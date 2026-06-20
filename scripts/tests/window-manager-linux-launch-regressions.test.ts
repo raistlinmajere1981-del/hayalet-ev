@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 
-test("linux launch path restores windowed bounds via maximize and clamps overflow", () => {
+void test("linux launch path restores windowed bounds via maximize and clamps overflow", () => {
   const source = readFileSync("electron/window-manager.ts", "utf8");
 
   assert.match(

@@ -98,7 +98,7 @@ const installedRooms: InstalledRoomRecord[] = [
   },
 ];
 
-test("room overlay summary reports workspace and installed counts", () => {
+void test("room overlay summary reports workspace and installed counts", () => {
   const markup = buildRoomOverlaySummary(workspaceRooms, installedRooms);
 
   assert.match(markup, /Workspace: <strong>4<\/strong>/);
@@ -106,7 +106,7 @@ test("room overlay summary reports workspace and installed counts", () => {
   assert.match(markup, /Yüklü: <strong>2<\/strong>/);
 });
 
-test("workspace room list renders install and package actions", () => {
+void test("workspace room list renders install and package actions", () => {
   const markup = buildWorkspaceRoomListMarkup(workspaceRooms, installedRooms);
 
   assert.match(markup, /data-room-action="install"/);
@@ -120,7 +120,7 @@ test("workspace room list renders install and package actions", () => {
   assert.match(markup, /manifest\.json missing/);
 });
 
-test("installed room list renders remove action without export", () => {
+void test("installed room list renders remove action without export", () => {
   const markup = buildInstalledRoomListMarkup(installedRooms, workspaceRooms);
 
   assert.match(markup, /data-room-action="remove"/);
@@ -129,7 +129,7 @@ test("installed room list renders remove action without export", () => {
   assert.match(markup, /Workshop/);
 });
 
-test("workspace fallback entries stay out of installed summary and list markup", () => {
+void test("workspace fallback entries stay out of installed summary and list markup", () => {
   const fallbackInstalledRooms: InstalledRoomRecord[] = [
     {
       id: "fallback-room",
@@ -164,7 +164,7 @@ test("workspace fallback entries stay out of installed summary and list markup",
   );
 });
 
-test("room confirmation copy keeps remove and delete actions distinct", () => {
+void test("room confirmation copy keeps remove and delete actions distinct", () => {
   const tr = JSON.parse(
     readFileSync(new URL("../../shared/languages/tr/index.json", import.meta.url), "utf8")
   ) as {
@@ -185,10 +185,10 @@ test("room confirmation copy keeps remove and delete actions distinct", () => {
     };
   };
 
-  assert.equal(tr.shell.rooms.confirm.deleteAction, "Sil");
-  assert.equal(tr.shell.rooms.confirm.removeAction, "Kaldır");
-  assert.match(tr.shell.rooms.confirm.removeDataHint, /rooms klasörüne dokunulmaz/);
-  assert.equal(en.shell.rooms.confirm.deleteAction, "Delete");
-  assert.equal(en.shell.rooms.confirm.removeAction, "Remove");
-  assert.match(en.shell.rooms.confirm.removeDataHint, /rooms folder is untouched/i);
+  assert.equal(tr.shell.rooms.confirm["deleteAction"], "Sil");
+  assert.equal(tr.shell.rooms.confirm["removeAction"], "Kaldır");
+  assert.match(tr.shell.rooms.confirm["removeDataHint"] ?? "", /rooms klasörüne dokunulmaz/);
+  assert.equal(en.shell.rooms.confirm["deleteAction"], "Delete");
+  assert.equal(en.shell.rooms.confirm["removeAction"], "Remove");
+  assert.match(en.shell.rooms.confirm["removeDataHint"] ?? "", /rooms folder is untouched/i);
 });

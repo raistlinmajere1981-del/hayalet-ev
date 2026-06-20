@@ -61,18 +61,18 @@ const FIXTURE_SOURCE = `export const config = {
 };
 `;
 
-test("promotion helper moves winning fallback to locale primary and rewrites source order", async () => {
+void test("promotion helper moves winning fallback to locale primary and rewrites source order", async () => {
   const mod = await loadPromotionModule();
 
   assert.ok(mod !== null, "electron/provider-tester/selector-promotion.ts should exist");
-  assert.equal(typeof mod.promoteProviderConfigFile, "function");
+  assert.equal(typeof mod["promoteProviderConfigFile"], "function");
 
   const tempDir = mkdtempSync(join(tmpdir(), "hev-selector-promotion-"));
   const configPath = join(tempDir, "config.ts");
   writeFileSync(configPath, FIXTURE_SOURCE, "utf8");
 
   const result = await (
-    mod.promoteProviderConfigFile as (opts: {
+    mod["promoteProviderConfigFile"] as (opts: {
       configPath: string;
       locale: string;
       promotions: Array<{ group: string; key: string; selector: string }>;

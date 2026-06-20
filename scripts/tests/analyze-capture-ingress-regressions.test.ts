@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 
-test("analyze page wires central capture inbox imports into staged attachments", () => {
+void test("analyze page wires central capture inbox imports into staged attachments", () => {
   const htmlSource = readFileSync("src/pages/analyze.html", "utf8");
   const settingsHtmlSource = readFileSync("src/pages/settings.html", "utf8");
   const pageSource = readFileSync("src/js/pages/analyze.ts", "utf8");

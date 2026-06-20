@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { resolveWhereAmI } from "../lib/whereami-runtime.mjs";
 
-test("returns app when main process is alive in soft idle and OpenCode serve is active", () => {
+void test("returns app when main process is alive in soft idle and OpenCode serve is active", () => {
   const result = resolveWhereAmI({
     control: {
       workflowSessionId: "wf-1",
@@ -27,7 +27,7 @@ test("returns app when main process is alive in soft idle and OpenCode serve is 
   assert.equal(result.observedSignals.opencodeServerRunning, true);
 });
 
-test("returns app when main process is alive without OpenCode serve", () => {
+void test("returns app when main process is alive without OpenCode serve", () => {
   const result = resolveWhereAmI({
     control: {
       workflowSessionId: "wf-1b",
@@ -52,7 +52,7 @@ test("returns app when main process is alive without OpenCode serve", () => {
   assert.equal(result.reason, "Runtime and process probes agree.");
 });
 
-test("returns ghost-agent when ghost process is alive in in-ghost phase", () => {
+void test("returns ghost-agent when ghost process is alive in in-ghost phase", () => {
   const result = resolveWhereAmI({
     control: {
       workflowSessionId: "wf-2",
@@ -73,7 +73,7 @@ test("returns ghost-agent when ghost process is alive in in-ghost phase", () => 
   assert.equal(result.shouldStop, false);
 });
 
-test("returns terminal when no runtime signal and no app processes", () => {
+void test("returns terminal when no runtime signal and no app processes", () => {
   const result = resolveWhereAmI({
     control: {
       workflowSessionId: "wf-3",
@@ -96,7 +96,7 @@ test("returns terminal when no runtime signal and no app processes", () => {
   assert.equal(result.electronConnectionAvailable, false);
 });
 
-test("returns transitioning during preparing-handoff", () => {
+void test("returns transitioning during preparing-handoff", () => {
   const result = resolveWhereAmI({
     control: {
       workflowSessionId: "wf-4",
@@ -118,7 +118,7 @@ test("returns transitioning during preparing-handoff", () => {
 });
 
 
-test("returns transitioning during returning phase with ghost alive", () => {
+void test("returns transitioning during returning phase with ghost alive", () => {
   const result = resolveWhereAmI({
     control: {
       workflowSessionId: "wf-return",
@@ -140,7 +140,7 @@ test("returns transitioning during returning phase with ghost alive", () => {
 });
 
 
-test("falls back to terminal when preparing-handoff runtime is stale and no processes are alive", () => {
+void test("falls back to terminal when preparing-handoff runtime is stale and no processes are alive", () => {
   const result = resolveWhereAmI({
     control: {
       workflowSessionId: "wf-stale",
@@ -163,7 +163,7 @@ test("falls back to terminal when preparing-handoff runtime is stale and no proc
   assert.match(result.reason, /stale runtime transition/i);
 });
 
-test("returns conflict and stop signal when runtime and process probes disagree", () => {
+void test("returns conflict and stop signal when runtime and process probes disagree", () => {
   const result = resolveWhereAmI({
     control: {
       workflowSessionId: "wf-5",

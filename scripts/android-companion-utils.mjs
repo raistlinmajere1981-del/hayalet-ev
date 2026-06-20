@@ -352,17 +352,11 @@ function normalizeProgressEmitter(emitProgress) {
   return typeof emitProgress === "function" ? emitProgress : () => {};
 }
 
-function sanitizeDetail(detail) {
-  return typeof detail === "string" && detail.trim() !== "" ? detail.trim() : null;
-}
 
 function getManagedJdkHome() {
   return join(managedJdkRoot, "current");
 }
 
-function getManagedJavaPath() {
-  return join(getManagedJdkHome(), "bin", process.platform === "win32" ? "java.exe" : "java");
-}
 
 function getManagedSdkManagerPath() {
   return join(
@@ -1052,7 +1046,8 @@ async function ensureSherpaTtsRuntime(emitProgress) {
       throw new Error(
         `sherpa-onnx Android runtime extraction failed: ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
+        { cause: error }
       );
     }
     await rm(sherpaTtsJniLibsRoot, { recursive: true, force: true });
@@ -1082,7 +1077,8 @@ async function ensureSherpaTtsRuntime(emitProgress) {
       throw new Error(
         `${model.modelId} Piper TTS model extraction failed: ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
+        { cause: error }
       );
     }
   }
@@ -1409,6 +1405,13 @@ export async function buildCompanionArtifact(options = {}) {
   return artifactManifest;
 }
 
+/**
+ * @param {object} [options]
+ * @param {boolean} [options.buildIfMissing]
+ * @param {boolean} [options.autoBootstrap]
+ * @param {Function|null} [options.emitProgress]
+ * @param {{ companionRoot?: string; artifactManifestPath?: string; extraInputRoots?: string[]; } | null} [options.paths]
+ */
 export async function resolveInstallableArtifact({
   buildIfMissing = false,
   autoBootstrap = false,

@@ -83,14 +83,14 @@ function hydrateReadySource(
   });
 }
 
-test("selection suggestion selector returns an empty list without a valid selection", () => {
+void test("selection suggestion selector returns an empty list without a valid selection", () => {
   const store = createLabStore();
 
   assert.deepEqual(getSelectionSuggestions(store.getState()), []);
   assert.deepEqual(getWaveformTimelineModel(store.getState()).selectionSuggestions ?? [], []);
 });
 
-test("selection suggestion selector falls back to the full source scope without a manual selection", () => {
+void test("selection suggestion selector falls back to the full source scope without a manual selection", () => {
   const audioStore = createLabStore();
   hydrateReadySource(audioStore, {
     kind: "audio",
@@ -230,7 +230,7 @@ test("selection suggestion selector falls back to the full source scope without 
   );
 });
 
-test("selection tab renders default full-source suggestions without mutating active selection", () => {
+void test("selection tab renders default full-source suggestions without mutating active selection", () => {
   const store = createLabStore();
   hydrateReadySource(store, {
     kind: "audio",
@@ -260,7 +260,7 @@ test("selection tab renders default full-source suggestions without mutating act
   );
 });
 
-test("selection suggestion selector provides a general fallback for timeline media", () => {
+void test("selection suggestion selector provides a general fallback for timeline media", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -293,7 +293,7 @@ test("selection suggestion selector provides a general fallback for timeline med
   ]);
 });
 
-test("selection suggestion selector fences recommendations by inspection mode and media kind", () => {
+void test("selection suggestion selector fences recommendations by inspection mode and media kind", () => {
   const audioStore = createLabStore();
   audioStore.dispatch({
     type: "source-config-patched",
@@ -447,7 +447,7 @@ test("selection suggestion selector fences recommendations by inspection mode an
   ]);
 });
 
-test("selection suggestion selector boosts region-aware visual and motion guidance", () => {
+void test("selection suggestion selector boosts region-aware visual and motion guidance", () => {
   const videoStore = createLabStore();
   videoStore.dispatch({
     type: "source-config-patched",
@@ -564,7 +564,7 @@ test("selection suggestion selector boosts region-aware visual and motion guidan
   ]);
 });
 
-test("suggestion preview builder returns a dry-run plan for supported actions", () => {
+void test("suggestion preview builder returns a dry-run plan for supported actions", () => {
   const selection: LabSelection = {
     id: "selection-preview",
     startMs: 1200,
@@ -700,7 +700,7 @@ test("suggestion preview builder returns a dry-run plan for supported actions", 
   });
 });
 
-test("selection preview is derived from the active preview id and current suggestion set", () => {
+void test("selection preview is derived from the active preview id and current suggestion set", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -752,7 +752,7 @@ test("selection preview is derived from the active preview id and current sugges
   });
 });
 
-test("selection preview clears on range changes, inspection mode changes, and explicit dismiss events", () => {
+void test("selection preview clears on range changes, inspection mode changes, and explicit dismiss events", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -838,7 +838,7 @@ test("selection preview clears on range changes, inspection mode changes, and ex
   assert.equal(getActiveExecutionIntent(store.getState())?.id, "audio-inspect");
 });
 
-test("selection suggestion accept and queue cannot mutate source analysis while a run is active", () => {
+void test("selection suggestion accept and queue cannot mutate source analysis while a run is active", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -877,7 +877,7 @@ test("selection suggestion accept and queue cannot mutate source analysis while 
   assert.equal(state.ui.activeExecutionIntentId, null);
 });
 
-test("terminal analysis events clear source selections while preserving the run analysis scope", () => {
+void test("terminal analysis events clear source selections while preserving the run analysis scope", () => {
   const store = createLabStore();
 
   hydrateReadySource(store, {
@@ -966,7 +966,7 @@ test("terminal analysis events clear source selections while preserving the run 
   assert.equal(moduleToggles["signal-health"], false);
 });
 
-test("hydrate keeps selection previews and execution intents ephemeral", async () => {
+void test("hydrate keeps selection previews and execution intents ephemeral", async () => {
   const store = createLabStore();
   const labRootModule = await importLabRootModuleWithDomStub<{
     __testOnlyLabRootPersistence: {

@@ -9,7 +9,7 @@ function read(relativePath: string): string {
   return fs.readFileSync(path.join(REPO_ROOT, relativePath), "utf8");
 }
 
-test("scene shell css is wired into the design system", () => {
+void test("scene shell css is wired into the design system", () => {
   const mainCss = read("src/styles/main.css");
   const designSystemIndex = read("src/styles/design-system/index.css");
   const sceneSystemIndex = read("src/styles/scene-system/index.css");
@@ -43,7 +43,7 @@ test("scene shell css is wired into the design system", () => {
   assert.equal(fs.existsSync(path.join(REPO_ROOT, "src/styles/design-system/components/scene-shell.css")), false);
 });
 
-test("scene pages no longer ship static back-zone markup", () => {
+void test("scene pages no longer ship static back-zone markup", () => {
   const targets = [
     "src/pages/assistant.html",
     "src/pages/server.html",
@@ -59,7 +59,7 @@ test("scene pages no longer ship static back-zone markup", () => {
   });
 });
 
-test("scene controllers render the shared generated back layer", () => {
+void test("scene controllers render the shared generated back layer", () => {
   const targets = [
     "src/js/pages/assistant/assistant.ts",
     "src/js/pages/server.ts",

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { ProviderTester } from "../../electron/provider-tester/index.ts";
+import type { WebviewTag } from "../../electron/provider-tester/types.ts";
 
 const preloadPath = "electron/preload.cjs";
 const handlerPath = "electron/handlers/ipc-provider.ts";
@@ -16,7 +17,7 @@ const sharedScenarioPath = "src/js/modules/webview/providers/shared/scenarios.ts
 const pathsPath = "electron/paths.ts";
 const opencodeServerManagerPath = "electron/opencode-server-manager.ts";
 
-test("preload exposes generic provider scenario APIs alongside test compatibility aliases", () => {
+void test("preload exposes generic provider scenario APIs alongside test compatibility aliases", () => {
   const content = readFileSync(preloadPath, "utf8");
 
   assert.match(
@@ -34,7 +35,7 @@ test("preload exposes generic provider scenario APIs alongside test compatibilit
   );
 });
 
-test("ipc provider handler registers a generic scenario entry point", () => {
+void test("ipc provider handler registers a generic scenario entry point", () => {
   const content = readFileSync(handlerPath, "utf8");
 
   assert.match(content, /registerHandler\("run-provider-scenario"/);
@@ -52,7 +53,7 @@ test("ipc provider handler registers a generic scenario entry point", () => {
   assert.doesNotMatch(content, /runTestSuite\(/);
 });
 
-test("provider config paths resolve against the projected source tree for packaged mirrors", () => {
+void test("provider config paths resolve against the projected source tree for packaged mirrors", () => {
   const content = readFileSync(pathsPath, "utf8");
 
   assert.match(
@@ -61,7 +62,7 @@ test("provider config paths resolve against the projected source tree for packag
   );
 });
 
-test("opencode serve startup assigns the project root as the default workspace", () => {
+void test("opencode serve startup assigns the project root as the default workspace", () => {
   const content = readFileSync(opencodeServerManagerPath, "utf8");
 
   assert.match(content, /const workspacePath = Paths\.getProjectRoot\(\)\.trim\(\)/);
@@ -69,14 +70,14 @@ test("opencode serve startup assigns the project root as the default workspace",
   assert.match(content, /cwd: workspacePath/);
 });
 
-test("provider tester exposes a scenario-oriented entry point", () => {
+void test("provider tester exposes a scenario-oriented entry point", () => {
   const content = readFileSync(testerPath, "utf8");
 
   assert.match(content, /async runScenario\(/);
   assert.match(content, /scenarioId/);
 });
 
-test("runtime-loaded provider scenario sources avoid tsconfig alias imports", () => {
+void test("runtime-loaded provider scenario sources avoid tsconfig alias imports", () => {
   const dynamicSourceFiles = [
     testerPath,
     scenarioRunnerPath,
@@ -92,7 +93,7 @@ test("runtime-loaded provider scenario sources avoid tsconfig alias imports", ()
   }
 });
 
-test("provider tester resolves webview-test from provider config scenario definitions", async () => {
+void test("provider tester resolves webview-test from provider config scenario definitions", async () => {
   const executed: string[] = [];
 
   const fakeWebview = {
@@ -156,46 +157,46 @@ test("provider tester resolves webview-test from provider config scenario defini
     },
   };
 
-  const tester = new ProviderTester(fakeWebview as never, config as never, "ai1");
+  const tester = new ProviderTester(fakeWebview as unknown as WebviewTag, config as never, "ai1");
   const testerOverrides = tester as unknown as Record<string, () => Promise<unknown>>;
 
-  testerOverrides.runResetDefaultPageStep = async () => {
+  testerOverrides["runResetDefaultPageStep"] = async () => {
     executed.push("navigate-default");
     return { status: "pass", message: "reset ok" };
   };
-  testerOverrides.runDisabledSendStep = async () => {
+  testerOverrides["runDisabledSendStep"] = async () => {
     executed.push("unexpected-disabled-send");
     return { status: "pass", message: "unexpected" };
   };
-  testerOverrides.runDragDropStep = async () => {
+  testerOverrides["runDragDropStep"] = async () => {
     executed.push("unexpected-drag-drop");
     return { status: "pass", message: "unexpected" };
   };
-  testerOverrides.runInjectMessageStep = async () => {
+  testerOverrides["runInjectMessageStep"] = async () => {
     executed.push("unexpected-inject-message");
     return { status: "pass", message: "unexpected" };
   };
-  testerOverrides.runEnabledSendStep = async () => {
+  testerOverrides["runEnabledSendStep"] = async () => {
     executed.push("unexpected-enabled-send");
     return { status: "pass", message: "unexpected" };
   };
-  testerOverrides.runAttachFileStep = async () => {
+  testerOverrides["runAttachFileStep"] = async () => {
     executed.push("unexpected-attach-file");
     return { status: "pass", message: "unexpected" };
   };
-  testerOverrides.runSendThinkingStep = async () => {
+  testerOverrides["runSendThinkingStep"] = async () => {
     executed.push("unexpected-send-thinking");
     return { status: "pass", message: "unexpected" };
   };
-  testerOverrides.runFinalBubblesStep = async () => {
+  testerOverrides["runFinalBubblesStep"] = async () => {
     executed.push("unexpected-final-bubbles");
     return { status: "pass", message: "unexpected" };
   };
-  testerOverrides.runScrollStep = async () => {
+  testerOverrides["runScrollStep"] = async () => {
     executed.push("unexpected-scroll-behavior");
     return { status: "pass", message: "unexpected" };
   };
-  testerOverrides.runProviderCapabilitiesStep = async () => {
+  testerOverrides["runProviderCapabilitiesStep"] = async () => {
     executed.push("assert-provider-capabilities");
     return { status: "warning", message: "capabilities warning" };
   };
@@ -203,7 +204,7 @@ test("provider tester resolves webview-test from provider config scenario defini
   const result = await tester.runScenario("webview-test");
 
   assert.deepEqual(executed, ["navigate-default", "assert-provider-capabilities"]);
-  assert.ok(result.commands);
+  assert.ok(result.commands != null);
   assert.deepEqual(
     result.commands.map((command) => [command.id, command.name, command.status]),
     [
@@ -213,7 +214,7 @@ test("provider tester resolves webview-test from provider config scenario defini
   );
 });
 
-test("provider tester dispatches generated image archive scenario actions", async () => {
+void test("provider tester dispatches generated image archive scenario actions", async () => {
   const executed: string[] = [];
   const fakeWebview = {
     getURL: () => "https://chatgpt.com/c/test",
@@ -271,9 +272,9 @@ test("provider tester dispatches generated image archive scenario actions", asyn
     },
   };
 
-  const tester = new ProviderTester(fakeWebview as never, config as never, "ai1");
+  const tester = new ProviderTester(fakeWebview as unknown as WebviewTag, config as never, "ai1");
   const testerOverrides = tester as unknown as Record<string, () => Promise<unknown>>;
-  testerOverrides.runGeneratedImageArchiveStep = async () => {
+  testerOverrides["runGeneratedImageArchiveStep"] = async () => {
     executed.push("assert-generated-image-archive");
     return { status: "pass", message: "archive ok" };
   };
@@ -287,7 +288,7 @@ test("provider tester dispatches generated image archive scenario actions", asyn
   );
 });
 
-test("provider tester uses default URL override for opencode-ui reset step", async () => {
+void test("provider tester uses default URL override for opencode-ui reset step", async () => {
   const loadedUrls: string[] = [];
   const fakeWebview = {
     getURL: () => "/pages/opencode-ui.html?port=4096&resumeSessionId=session-42",
@@ -339,7 +340,7 @@ test("provider tester uses default URL override for opencode-ui reset step", asy
     },
   };
 
-  const tester = new ProviderTester(fakeWebview as never, config as never, "ai0", undefined, {
+  const tester = new ProviderTester(fakeWebview as unknown as WebviewTag, config as never, "ai0", undefined, {
     emitProgress: undefined,
     defaultUrlOverride: "/pages/opencode-ui.html?port=4096&resumeSessionId=session-42",
     navigationObservationDelayMs: 0,
@@ -356,7 +357,7 @@ test("provider tester uses default URL override for opencode-ui reset step", asy
   assert.deepEqual(loadedUrls, ["/pages/opencode-ui.html?port=4096&resumeSessionId=session-42"]);
 });
 
-test("provider tester runs webview-sync sidebar collection actions from provider config", async () => {
+void test("provider tester runs webview-sync sidebar collection actions from provider config", async () => {
   let sidebarOpen = false;
   let currentUrl = "https://chatgpt.com/c/current";
   const loadedUrls: string[] = [];
@@ -513,7 +514,7 @@ test("provider tester runs webview-sync sidebar collection actions from provider
     },
   };
 
-  const tester = new ProviderTester(fakeWebview as never, config as never, "ai1", undefined, {
+  const tester = new ProviderTester(fakeWebview as unknown as WebviewTag, config as never, "ai1", undefined, {
     emitProgress: (event) => {
       if (
         event.type === "command-start" &&
@@ -548,7 +549,7 @@ test("provider tester runs webview-sync sidebar collection actions from provider
   };
   const result = await tester.runScenario("webview-sync");
 
-  assert.ok(result.commands);
+  assert.ok(result.commands != null);
   assert.deepEqual(
     result.commands.map((command) => [command.id, command.status]),
     [
@@ -613,7 +614,7 @@ test("provider tester runs webview-sync sidebar collection actions from provider
   assert.equal(result.commands?.length, 11);
 });
 
-test("provider tester waits for navigation settle delay after loading becomes idle", async () => {
+void test("provider tester waits for navigation settle delay after loading becomes idle", async () => {
   const fakeWebview = {
     getURL: () => "https://chatgpt.com/c/current",
     loadURL: async () => {},
@@ -656,11 +657,12 @@ test("provider tester waits for navigation settle delay after loading becomes id
   };
 
   const tester = new ProviderTester(
-    fakeWebview as never,
+    fakeWebview as unknown as WebviewTag,
     config as never,
     "ai1",
     {} as never,
     {
+      emitProgress: undefined,
       navigationObservationDelayMs: 25,
     }
   );
@@ -679,7 +681,7 @@ test("provider tester waits for navigation settle delay after loading becomes id
   assert.ok(elapsedMs >= 110, `expected at least 110ms settle wait, got ${elapsedMs}ms`);
 });
 
-test("provider tester rejects webview-sync for estimated provider configs", async () => {
+void test("provider tester rejects webview-sync for estimated provider configs", async () => {
   const fakeWebview = {
     getURL: () => "https://gemini.google.com/app/test",
     loadURL: async () => {},
@@ -748,7 +750,7 @@ test("provider tester rejects webview-sync for estimated provider configs", asyn
     },
   };
 
-  const tester = new ProviderTester(fakeWebview as never, config as never, "ai1");
+  const tester = new ProviderTester(fakeWebview as unknown as WebviewTag, config as never, "ai1");
 
   await assert.rejects(
     async () => await tester.runScenario("webview-sync"),
@@ -756,7 +758,7 @@ test("provider tester rejects webview-sync for estimated provider configs", asyn
   );
 });
 
-test("provider tester runs the selected sync mode after opening each session URL", async () => {
+void test("provider tester runs the selected sync mode after opening each session URL", async () => {
   let sidebarOpen = false;
   let currentUrl = "https://chatgpt.com/c/current";
   const syncCalls: string[] = [];
@@ -908,7 +910,7 @@ test("provider tester runs the selected sync mode after opening each session URL
     },
   };
 
-  const tester = new ProviderTester(fakeWebview as never, config as never, "ai1", undefined, {
+  const tester = new ProviderTester(fakeWebview as unknown as WebviewTag, config as never, "ai1", undefined, {
     emitProgress: undefined,
     syncMode: "clean",
     commandStartDelayMs: 0,
@@ -962,7 +964,7 @@ test("provider tester runs the selected sync mode after opening each session URL
   );
 });
 
-test("provider tester skips navigation entirely during soft sync", async () => {
+void test("provider tester skips navigation entirely during soft sync", async () => {
   let sidebarOpen = false;
   let currentUrl = "https://chatgpt.com/c/current";
   const callOrder: string[] = [];
@@ -1118,7 +1120,7 @@ test("provider tester skips navigation entirely during soft sync", async () => {
     },
   };
 
-  const tester = new ProviderTester(fakeWebview as never, config as never, "ai1", undefined, {
+  const tester = new ProviderTester(fakeWebview as unknown as WebviewTag, config as never, "ai1", undefined, {
     emitProgress: undefined,
     syncMode: "soft",
     commandStartDelayMs: 0,
@@ -1140,7 +1142,7 @@ test("provider tester skips navigation entirely during soft sync", async () => {
   assert.equal(currentUrl, "https://chatgpt.com/c/current");
 });
 
-test("provider tester refreshes metadata without changing the current page during soft sync", async () => {
+void test("provider tester refreshes metadata without changing the current page during soft sync", async () => {
   let sidebarOpen = false;
   let currentUrl = "https://chatgpt.com/c/current";
   const syncCalls: string[] = [];
@@ -1289,7 +1291,7 @@ test("provider tester refreshes metadata without changing the current page durin
     },
   };
 
-  const tester = new ProviderTester(fakeWebview as never, config as never, "ai1", undefined, {
+  const tester = new ProviderTester(fakeWebview as unknown as WebviewTag, config as never, "ai1", undefined, {
     emitProgress: undefined,
     syncMode: "soft",
     commandStartDelayMs: 0,
@@ -1309,7 +1311,7 @@ test("provider tester refreshes metadata without changing the current page durin
 
   assert.deepEqual(syncCalls, ["https://chatgpt.com/c/abc"]);
   assert.equal(currentUrl, "https://chatgpt.com/c/current");
-  assert.ok(result.commands);
+  assert.ok(result.commands != null);
   assert.equal(result.commands[4]?.status, "pass");
   assert.equal(result.results[4]?.message, "soft ok");
   assert.match(
@@ -1318,7 +1320,7 @@ test("provider tester refreshes metadata without changing the current page durin
   );
 });
 
-test("renderer global types expose generic provider scenario APIs", () => {
+void test("renderer global types expose generic provider scenario APIs", () => {
   const content = readFileSync(globalTypesPath, "utf8");
 
   assert.match(content, /runProviderScenario:/);

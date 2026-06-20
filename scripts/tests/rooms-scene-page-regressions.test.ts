@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("rooms scene page keeps template, controller, and scene background wiring without static nav", () => {
+void test("rooms scene page keeps template, controller, and scene background wiring without static nav", () => {
   const appShellSource = readFileSync("src/index.html", "utf8");
   const pageInitSource = readFileSync("src/js/app/page-init.ts", "utf8");
   const pageSource = readFileSync("src/pages/rooms.html", "utf8");

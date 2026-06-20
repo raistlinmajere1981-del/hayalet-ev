@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("opencode-ui page scaffold contains current provider and tool list anchors", () => {
+void test("opencode-ui page scaffold contains current provider and tool list anchors", () => {
   const html = readFileSync("src/pages/opencode-ui.html", "utf8");
 
   assert.match(html, /id="model-settings-provider-list"/);
@@ -10,7 +10,7 @@ test("opencode-ui page scaffold contains current provider and tool list anchors"
   assert.match(html, /id="tools-list"/);
 });
 
-test("opencode-ui periodic refresh does not reload provider or model lists", () => {
+void test("opencode-ui periodic refresh does not reload provider or model lists", () => {
   const appContent = readFileSync("src/js/pages/opencode-ui/app.ts", "utf8");
   const content = readFileSync("src/js/pages/opencode-ui/bootstrap-actions.ts", "utf8");
 
@@ -21,7 +21,7 @@ test("opencode-ui periodic refresh does not reload provider or model lists", () 
   assert.doesNotMatch(content, /startPeriodicRefresh[\s\S]*loadModels\(/);
 });
 
-test("opencode-ui bootstrap loads provider catalog during initial page setup", () => {
+void test("opencode-ui bootstrap loads provider catalog during initial page setup", () => {
   const content = readFileSync("src/js/pages/opencode-ui/app-bootstrap.ts", "utf8");
 
   assert.match(
@@ -30,7 +30,7 @@ test("opencode-ui bootstrap loads provider catalog during initial page setup", (
   );
 });
 
-test("opencode-ui provider panel merges runtime connection state with provider catalog", () => {
+void test("opencode-ui provider panel merges runtime connection state with provider catalog", () => {
   const appContent = readFileSync("src/js/pages/opencode-ui/app.ts", "utf8");
   const providerContent = readFileSync("src/js/pages/opencode-ui/provider-actions.ts", "utf8");
 
@@ -46,14 +46,14 @@ test("opencode-ui provider panel merges runtime connection state with provider c
   assert.match(providerContent, /renderProvidersPanel\(context, renderProviderRows\(items\)\);/);
 });
 
-test("opencode-ui provider panel falls back to empty render when runtime refresh fails", () => {
+void test("opencode-ui provider panel falls back to empty render when runtime refresh fails", () => {
   const content = readFileSync("src/js/pages/opencode-ui/provider-actions.ts", "utf8");
 
   assert.match(content, /renderProvidersPanel\(context, renderProviderRows\(\[\]\)\);/);
   assert.match(content, /await loadModels\(context, configPayloadOverride\);/);
 });
 
-test("opencode-ui api still detects html fallback payloads", () => {
+void test("opencode-ui api still detects html fallback payloads", () => {
   const apiContent = readFileSync("src/js/pages/opencode-ui/api.ts", "utf8");
 
   assert.match(apiContent, /export function isHtmlDocumentPayload\(data: unknown\): boolean {/);

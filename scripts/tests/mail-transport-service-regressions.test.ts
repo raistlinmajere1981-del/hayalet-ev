@@ -77,7 +77,7 @@ function buildReplyMail(messageId: string, bodyText = "Reply body"): string {
   ].join("\r\n");
 }
 
-test("gmail transport account applies provider defaults", () => {
+void test("gmail transport account applies provider defaults", () => {
   const resolved = applyMailTransportAccountDefaults(createAccount("mail_transport_defaults"));
 
   assert.equal(resolved.imap.host, "imap.gmail.com");
@@ -90,7 +90,7 @@ test("gmail transport account applies provider defaults", () => {
   assert.equal(resolved.defaultMailbox, "INBOX");
 });
 
-test("sendMail updates outbound sidecar metadata and session mapping", async () => {
+void test("sendMail updates outbound sidecar metadata and session mapping", async () => {
   const account = createAccount("mail_transport_send");
   const sentMessages: Array<Record<string, unknown>> = [];
   const service = new MailTransportService({
@@ -136,7 +136,7 @@ test("sendMail updates outbound sidecar metadata and session mapping", async () 
   }
 });
 
-test("processIncomingMessage parses attachments, resolves session mapping, and skips duplicates", async () => {
+void test("processIncomingMessage parses attachments, resolves session mapping, and skips duplicates", async () => {
   const account = createAccount("mail_transport_process");
   const service = new MailTransportService({
     now: () => 1700000005000,
@@ -180,7 +180,7 @@ test("processIncomingMessage parses attachments, resolves session mapping, and s
   }
 });
 
-test("fetchInbox uses injected IMAP client and advances sidecar cursor", async () => {
+void test("fetchInbox uses injected IMAP client and advances sidecar cursor", async () => {
   const account = createAccount("mail_transport_fetch");
   let released = false;
   let loggedOut = false;

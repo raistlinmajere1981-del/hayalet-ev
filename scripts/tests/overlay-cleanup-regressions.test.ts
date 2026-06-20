@@ -6,10 +6,10 @@ import test from "node:test";
 const ROOT = process.cwd();
 
 async function readProjectFile(relativePath: string): Promise<string> {
-  return readFile(path.join(ROOT, relativePath), "utf8");
+  return await readFile(path.join(ROOT, relativePath), "utf8");
 }
 
-test("assistant connection UI talks to the shared status controller without legacy overlay adapter methods", async () => {
+void test("assistant connection UI talks to the shared status controller without legacy overlay adapter methods", async () => {
   const connectionUi = await readProjectFile("src/js/pages/assistant/connection-ui.ts");
   const assistantController = await readProjectFile("src/js/pages/assistant/assistant.ts");
 
@@ -21,7 +21,7 @@ test("assistant connection UI talks to the shared status controller without lega
   assert.doesNotMatch(assistantController, /_hideOverlay/);
 });
 
-test("analyze read modal uses the shared modal runtime and no longer keeps a local modal shell", async () => {
+void test("analyze read modal uses the shared modal runtime and no longer keeps a local modal shell", async () => {
   const analyzeContextMenu = await readProjectFile("src/js/pages/analyze/context-menu.ts");
   const analyzeHtml = await readProjectFile("src/pages/analyze.html");
 

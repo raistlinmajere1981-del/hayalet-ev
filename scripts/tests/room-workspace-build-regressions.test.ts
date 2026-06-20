@@ -20,7 +20,7 @@ async function writeTempRoomFile(
   await writeFile(targetPath, content);
 }
 
-test("workspace room discovery and build support TypeScript runtime sources", async () => {
+void test("workspace room discovery and build support TypeScript runtime sources", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-build-ts-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const roomRoot = join(workspaceRoot, "ts-proof-room");
@@ -166,7 +166,7 @@ test("workspace room discovery and build support TypeScript runtime sources", as
     await access(builtUiBootstrap);
     await access(copiedHtml);
     await access(obsoleteRuntimeFile);
-    await assert.rejects(async () => await access(copiedTsHost));
+    await assert.rejects(async () => { await access(copiedTsHost); });
 
     const builtHostSource = await readFile(builtHostEntry, "utf8");
     const builtRuntimeSource = await readFile(builtHostRuntime, "utf8");
@@ -185,7 +185,7 @@ test("workspace room discovery and build support TypeScript runtime sources", as
     });
 
     assert.equal(rebuildResult.success, true);
-    await assert.rejects(async () => await access(obsoleteRuntimeFile));
+    await assert.rejects(async () => { await access(obsoleteRuntimeFile); });
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

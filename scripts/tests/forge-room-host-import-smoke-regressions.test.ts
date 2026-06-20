@@ -13,12 +13,12 @@ type RoomRegistry = {
   }>;
 };
 
-async function importRoomHostModule(targetPath: string) {
+async function importRoomHostModule(targetPath: string): Promise<Record<string, unknown>> {
   const absolutePath = resolve(targetPath);
   const moduleUrl = await buildRoomHostModuleDataUrl(absolutePath, async (filePath) => {
     return await readFile(filePath, "utf8");
   });
-  return await import(`${moduleUrl}#smoke-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  return (await import(`${moduleUrl}#smoke-${Date.now()}-${Math.random().toString(16).slice(2)}`)) as Record<string, unknown>;
 }
 
 async function resolveLiveForgeRoomHostEntryPath() {
@@ -39,7 +39,7 @@ async function resolveLiveForgeRoomHostEntryPath() {
   return legacyRepoDataCopyPath;
 }
 
-test("forge-room build artifact host imports cleanly through the room host loader graph", async () => {
+void test("forge-room build artifact host imports cleanly through the room host loader graph", async () => {
   const buildArtifact = await createRoomBuiltArtifact("forge-room");
 
   try {
@@ -52,7 +52,7 @@ test("forge-room build artifact host imports cleanly through the room host loade
   }
 });
 
-test("forge-room installed host imports cleanly through the portable room host loader graph", async () => {
+void test("forge-room installed host imports cleanly through the portable room host loader graph", async () => {
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
   try {
@@ -65,7 +65,7 @@ test("forge-room installed host imports cleanly through the portable room host l
   }
 });
 
-test("forge-room live installed host artifact imports cleanly from the repo registry", async (t) => {
+void test("forge-room live installed host artifact imports cleanly from the repo registry", async (t) => {
   const repoHostEntryPath = await resolveLiveForgeRoomHostEntryPath();
   try {
     await access(repoHostEntryPath);

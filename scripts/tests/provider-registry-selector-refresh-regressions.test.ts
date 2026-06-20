@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("provider registry can replace current-session config entries after promotion", () => {
+void test("provider registry can replace current-session config entries after promotion", () => {
   const source = readFileSync("src/js/modules/webview/provider-registry.ts", "utf8");
 
   assert.ok(
@@ -18,7 +18,7 @@ test("provider registry can replace current-session config entries after promoti
   );
 });
 
-test("provider test flow no longer auto-promotes config files from IPC runs", () => {
+void test("provider test flow no longer auto-promotes config files from IPC runs", () => {
   const ipcHandler = readFileSync("electron/handlers/ipc-provider.ts", "utf8");
   const entrancePanel = readFileSync("src/js/pages/entrance/webview-panel.ts", "utf8");
   const assistantIndex = readFileSync("src/js/pages/assistant/assistant.ts", "utf8");

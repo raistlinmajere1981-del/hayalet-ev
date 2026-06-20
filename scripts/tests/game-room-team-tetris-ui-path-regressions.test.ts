@@ -100,7 +100,7 @@ function findAll(root: FakeElement, predicate: (element: FakeElement) => boolean
   return matches;
 }
 
-function trigger(element: FakeElement | null, type: string): void {
+function trigger(element: FakeElement | null | undefined, type: string): void {
   assert.ok(element, `Missing element for ${type}`);
   const handlers = element.eventListeners.get(type) ?? [];
   handlers.forEach((handler) => {
@@ -114,7 +114,7 @@ function trigger(element: FakeElement | null, type: string): void {
 }
 
 function loadTeamTetrisEngine() {
-  return gameRoomHostModule.teamTetrisEngine as {
+  return gameRoomHostModule.default.teamTetrisEngine as {
     createMatch: (options: Record<string, unknown>) => Record<string, unknown>;
     validateMove: (
       match: Record<string, unknown>,
@@ -143,7 +143,7 @@ function findSeedForUserTurn(engine: TeamTetrisEngine): string {
   for (let index = 0; index < 250; index += 1) {
     const seed = `ui-user-seed-${index}`;
     const match = engine.createMatch({ seed, hiddenPairs: true });
-    if ((match.currentTurn as Record<string, unknown>).seatId === "user") {
+    if ((match["currentTurn"] as Record<string, unknown>)["seatId"] === "user") {
       return seed;
     }
   }
@@ -154,7 +154,7 @@ function findSeedForSeat(engine: TeamTetrisEngine, targetSeatId: "user" | "us1")
   for (let index = 0; index < 250; index += 1) {
     const seed = `ui-${targetSeatId}-seed-${index}`;
     const match = engine.createMatch({ seed, hiddenPairs: true });
-    if ((match.currentTurn as Record<string, unknown>).seatId === targetSeatId) {
+    if ((match["currentTurn"] as Record<string, unknown>)["seatId"] === targetSeatId) {
       return seed;
     }
   }
@@ -173,8 +173,8 @@ function findSeedForVisibleSeatWithPartner(
       hiddenPairs: false,
       selectedPartnerSeatId,
     });
-    const currentTurn = match.currentTurn as Record<string, unknown>;
-    if (currentTurn.seatId === targetSeatId) {
+    const currentTurn = match["currentTurn"] as Record<string, unknown>;
+    if (currentTurn["seatId"] === targetSeatId) {
       return seed;
     }
   }
@@ -185,23 +185,23 @@ function findSeedForVisibleSeatWithPartner(
 }
 
 function buildValidMoveForCurrentTurn(engine: TeamTetrisEngine, match: Record<string, unknown>) {
-  const currentTurn = match.currentTurn as Record<string, unknown>;
-  const legalRotations = Array.isArray(currentTurn.legalRotations)
-    ? (currentTurn.legalRotations as number[])
+  const currentTurn = match["currentTurn"] as Record<string, unknown>;
+  const legalRotations = Array.isArray(currentTurn["legalRotations"])
+    ? (currentTurn["legalRotations"] as number[])
     : [0];
 
   for (const rotation of legalRotations) {
     for (let steps = 0; steps <= 19; steps += 1) {
       const move = {
         schemaVersion: 1,
-        matchId: match.matchId,
-        turnIndex: currentTurn.turnIndex,
-        turnToken: currentTurn.turnToken,
-        pieceId: currentTurn.pieceId,
+        matchId: match["matchId"],
+        turnIndex: currentTurn["turnIndex"],
+        turnToken: currentTurn["turnToken"],
+        pieceId: currentTurn["pieceId"],
         rotation,
         rowShifts: Array.from({ length: steps }, () => 0),
       };
-      if (engine.validateMove(match, move).success === true) {
+      if (engine.validateMove(match, move)["success"] === true) {
         return move;
       }
     }
@@ -282,17 +282,17 @@ function buildTeamTetrisState(
       ? { selectedPartnerSeatId: options.selectedPartnerSeatId }
       : {}),
   });
-  const currentTurn = match.currentTurn as Record<string, unknown>;
-  const actingTeam = match.teams[String(currentTurn.teamId)] as Record<string, unknown>;
-  currentTurn.pieceId = "T";
-  currentTurn.legalRotations = [0, 1, 2, 3];
-  currentTurn.turnToken = engine.buildTurnToken(
-    String(match.matchId),
-    Number(currentTurn.turnIndex),
-    String(currentTurn.seatId),
-    String(currentTurn.teamId),
+  const currentTurn = match["currentTurn"] as Record<string, unknown>;
+  const actingTeam = (match["teams"] as Record<string, Record<string, unknown>>)[String((currentTurn as Record<string, string>)["teamId"])] as Record<string, unknown>;
+  currentTurn["pieceId"] = "T";
+  currentTurn["legalRotations"] = [0, 1, 2, 3];
+  currentTurn["turnToken"] = engine.buildTurnToken(
+    String(match["matchId"]),
+    Number(currentTurn["turnIndex"]),
+    String(currentTurn["seatId"]),
+    String((currentTurn as Record<string, string>)["teamId"]),
     "T",
-    actingTeam.board as string[][]
+    actingTeam["board"] as string[][]
   );
 
   const userView = engine.buildSeatView(match, localSeatId);
@@ -308,7 +308,7 @@ function buildTeamTetrisState(
         hiddenPairs: true,
         revealPairsOnFinish: true,
         blockedReason: "",
-        matchId: match.matchId,
+        matchId: match["matchId"],
         canStart: true,
         requiredSlots: {
           ai1: true,
@@ -318,25 +318,25 @@ function buildTeamTetrisState(
         board: {
           width: 10,
           height: 20,
-          seedLabel: String(match.matchId),
+          seedLabel: String(match["matchId"]),
         },
         boards: [
           {
-            teamId: userView?.ownTeam?.teamId ?? "team-a",
+            teamId: (userView as any)?.["ownTeam"]?.teamId ?? "team-a",
             visibility: "private",
-            rows: userView?.ownTeam?.boardRows ?? [],
-            boardBeforePartnerPieceRows: userView?.ownTeam?.boardBeforePartnerPieceRows ?? [],
-            partnerLastPiece: userView?.ownTeam?.partnerLastPiece ?? null,
+            rows: (userView as any)?.["ownTeam"]?.boardRows ?? [],
+            boardBeforePartnerPieceRows: (userView as any)?.["ownTeam"]?.boardBeforePartnerPieceRows ?? [],
+            partnerLastPiece: (userView as any)?.["ownTeam"]?.partnerLastPiece ?? null,
           },
           {
-            teamId: userView?.opponentTeam?.teamId ?? "team-b",
+            teamId: (userView as any)?.["opponentTeam"]?.teamId ?? "team-b",
             visibility: "public",
-            rows: userView?.opponentTeam?.boardRows ?? [],
+            rows: (userView as any)?.["opponentTeam"]?.boardRows ?? [],
           },
         ],
         turnLoop: ["team-a-opener", "team-b-opener", "team-a-followup", "team-b-followup"],
         currentTurn,
-        teams: userView?.teams ?? null,
+        teams: userView?.["teams"] ?? null,
         userView,
         status: "Your turn. Rotate the piece, draw the path, and submit the move.",
       },
@@ -355,18 +355,18 @@ function buildTeamTetrisStateAfterVisiblePartnerMove(engine: TeamTetrisEngine) {
     openingMatch,
     buildValidMoveForCurrentTurn(engine, openingMatch)
   );
-  assert.equal(firstApplied.success, true);
+  assert.equal(firstApplied["success"], true);
 
-  const secondMatch = firstApplied.match as Record<string, unknown>;
+  const secondMatch = firstApplied["match"] as Record<string, unknown>;
   const secondApplied = engine.applyMove(
     secondMatch,
     buildValidMoveForCurrentTurn(engine, secondMatch)
   );
-  assert.equal(secondApplied.success, true);
+  assert.equal(secondApplied["success"], true);
 
-  const match = secondApplied.match as Record<string, unknown>;
-  const currentTurn = match.currentTurn as Record<string, unknown>;
-  assert.equal(currentTurn.seatId, "user");
+  const match = secondApplied["match"] as Record<string, unknown>;
+  const currentTurn = match["currentTurn"] as Record<string, unknown>;
+  assert.equal(currentTurn["seatId"], "user");
 
   const userView = engine.buildSeatView(match, "user");
   return {
@@ -381,7 +381,7 @@ function buildTeamTetrisStateAfterVisiblePartnerMove(engine: TeamTetrisEngine) {
         hiddenPairs: false,
         revealPairsOnFinish: true,
         blockedReason: "",
-        matchId: match.matchId,
+        matchId: match["matchId"],
         canStart: true,
         requiredSlots: {
           ai1: true,
@@ -391,25 +391,25 @@ function buildTeamTetrisStateAfterVisiblePartnerMove(engine: TeamTetrisEngine) {
         board: {
           width: 10,
           height: 20,
-          seedLabel: String(match.matchId),
+          seedLabel: String(match["matchId"]),
         },
         boards: [
           {
-            teamId: userView?.ownTeam?.teamId ?? "team-a",
+            teamId: (userView as any)?.["ownTeam"]?.teamId ?? "team-a",
             visibility: "private",
-            rows: userView?.ownTeam?.boardRows ?? [],
-            boardBeforePartnerPieceRows: userView?.ownTeam?.boardBeforePartnerPieceRows ?? [],
-            partnerLastPiece: userView?.ownTeam?.partnerLastPiece ?? null,
+            rows: (userView as any)?.["ownTeam"]?.boardRows ?? [],
+            boardBeforePartnerPieceRows: (userView as any)?.["ownTeam"]?.boardBeforePartnerPieceRows ?? [],
+            partnerLastPiece: (userView as any)?.["ownTeam"]?.partnerLastPiece ?? null,
           },
           {
-            teamId: userView?.opponentTeam?.teamId ?? "team-b",
+            teamId: (userView as any)?.["opponentTeam"]?.teamId ?? "team-b",
             visibility: "public",
-            rows: userView?.opponentTeam?.boardRows ?? [],
+            rows: (userView as any)?.["opponentTeam"]?.boardRows ?? [],
           },
         ],
         turnLoop: ["team-a-opener", "team-b-opener", "team-a-followup", "team-b-followup"],
         currentTurn,
-        teams: userView?.teams ?? null,
+        teams: userView?.["teams"] ?? null,
         userView,
         status: "Your turn. Rotate the piece, draw the path, and submit the move.",
       },
@@ -480,7 +480,7 @@ function createUiRuntime() {
   };
 }
 
-test("Team Tetris UI renders the playable room surface with two board cards", () => {
+void test("Team Tetris UI renders the playable room surface with two board cards", () => {
   const runtime = createUiRuntime();
   const translations = JSON.parse(readFileSync("rooms/game-room/i18n/en.json", "utf8")) as Record<
     string,
@@ -504,7 +504,7 @@ test("Team Tetris UI renders the playable room surface with two board cards", ()
   );
 });
 
-test("Team Tetris UI derives visible board and seat labels from room-local translations", () => {
+void test("Team Tetris UI derives visible board and seat labels from room-local translations", () => {
   const runtime = createUiRuntime();
   const translations = JSON.parse(readFileSync("rooms/game-room/i18n/tr.json", "utf8")) as Record<
     string,
@@ -513,13 +513,14 @@ test("Team Tetris UI derives visible board and seat labels from room-local trans
   const engine = loadTeamTetrisEngine();
   const teamTetrisState = buildTeamTetrisState(engine);
 
-  teamTetrisState.payload.state.boards[0].label = "Team A";
-  teamTetrisState.payload.state.boards[1].label = "Team B";
-  if (teamTetrisState.payload.state.userView?.seat) {
-    teamTetrisState.payload.state.userView.seat.label = "USER";
-    teamTetrisState.payload.state.userView.hiddenPairs = false;
-    teamTetrisState.payload.state.userView.revealedPairs = true;
-    teamTetrisState.payload.state.userView.teams = [
+  const s = teamTetrisState as any;
+  s.payload.state.boards[0].label = "Team A";
+  s.payload.state.boards[1].label = "Team B";
+  if (s.payload.state.userView?.["seat"]) {
+    s.payload.state.userView["seat"].label = "USER";
+    s.payload.state.userView["hiddenPairs"] = false;
+    s.payload.state.userView["revealedPairs"] = true;
+    s.payload.state.userView["teams"] = [
       { teamId: "team-a", seatIds: ["user", "ai1"], seatLabels: ["USER", "ATLAS"] },
       { teamId: "team-b", seatIds: ["ai2", "us1"], seatLabels: ["NOVA", "UZAK"] },
     ];
@@ -533,7 +534,7 @@ test("Team Tetris UI derives visible board and seat labels from room-local trans
   const hostContext = buildHostContext(translations);
   hostContext.locale = "tr";
   hostContext.room.name = "Oyun Odasi";
-  hostContext.features[1].name = "Takim Tetris";
+  hostContext.features[1]!.name = "Takim Tetris";
   hostContext.activeFeature.name = "Takim Tetris";
   hostContext.user.nickname = "Kullanici";
   hostContext.slots.us1.nickname = "Uzak";
@@ -575,7 +576,7 @@ test("Team Tetris UI derives visible board and seat labels from room-local trans
   );
 });
 
-test("Team Tetris UI requires selecting a local partner before starting visible pairs", () => {
+void test("Team Tetris UI requires selecting a local partner before starting visible pairs", () => {
   const runtime = createUiRuntime();
   const translations = JSON.parse(readFileSync("rooms/game-room/i18n/en.json", "utf8")) as Record<
     string,
@@ -587,8 +588,8 @@ test("Team Tetris UI requires selecting a local partner before starting visible 
   teamTetrisState.payload.state.active = false;
   teamTetrisState.payload.state.result = "idle";
   teamTetrisState.payload.state.hiddenPairs = false;
-  teamTetrisState.payload.state.currentTurn = null;
-  teamTetrisState.payload.state.userView = null;
+  (teamTetrisState as any).payload.state.currentTurn = null;
+  (teamTetrisState as any).payload.state.userView = null;
   teamTetrisState.payload.state.teams = null;
   teamTetrisState.payload.state.status =
     "All required seats are ready. The Team Tetris opener can be seeded.";
@@ -616,11 +617,11 @@ test("Team Tetris UI requires selecting a local partner before starting visible 
   trigger(startButtonAfterPick, "click");
 
   assert.equal(runtime.sentCommands[0]?.command, "GameRoomTeamTetrisStart");
-  assert.equal(runtime.sentCommands[0]?.payload?.hiddenPairs, false);
-  assert.equal(runtime.sentCommands[0]?.payload?.selectedPartnerSeatId, "ai1");
+  assert.equal(runtime.sentCommands[0]?.payload?.["hiddenPairs"], false);
+  assert.equal(runtime.sentCommands[0]?.payload?.["selectedPartnerSeatId"], "ai1");
 });
 
-test("Team Tetris UI rotates a piece, draws a path, and submits the canonical move payload", () => {
+void test("Team Tetris UI rotates a piece, draws a path, and submits the canonical move payload", () => {
   const runtime = createUiRuntime();
   const translations = JSON.parse(readFileSync("rooms/game-room/i18n/en.json", "utf8")) as Record<
     string,
@@ -639,7 +640,7 @@ test("Team Tetris UI rotates a piece, draws a path, and submits the canonical mo
 
   const interactiveBoard = findFirst(
     runtime.document.body,
-    (element) => element.className === "tt-board" && element.dataset.interactive === "true"
+    (element) => element.className === "tt-board" && element.dataset["interactive"] === "true"
   );
   assert.ok(interactiveBoard);
   const targetCell = interactiveBoard.children[17 * 10 + 5];
@@ -647,15 +648,15 @@ test("Team Tetris UI rotates a piece, draws a path, and submits the canonical mo
 
   const refreshedBoard = findFirst(
     runtime.document.body,
-    (element) => element.className === "tt-board" && element.dataset.interactive === "true"
+    (element) => element.className === "tt-board" && element.dataset["interactive"] === "true"
   );
   assert.ok(refreshedBoard);
   assert.equal(
-    refreshedBoard.children.some((element) => element.dataset.path === "trace-valid"),
+    refreshedBoard.children.some((element) => element.dataset["path"] === "trace-valid"),
     true
   );
   assert.equal(
-    refreshedBoard.children.some((element) => element.dataset.overlay === "draft-valid"),
+    refreshedBoard.children.some((element) => element.dataset["overlay"] === "draft-valid"),
     true
   );
 
@@ -674,12 +675,12 @@ test("Team Tetris UI rotates a piece, draws a path, and submits the canonical mo
 
   assert.equal(runtime.sentCommands.length, 1);
   assert.equal(runtime.sentCommands[0]?.command, "GameRoomTeamTetrisUserMove");
-  assert.equal(runtime.sentCommands[0]?.payload?.pieceId, "T");
-  assert.equal(runtime.sentCommands[0]?.payload?.rotation, 1);
-  assert.deepEqual(Array.from((runtime.sentCommands[0]?.payload?.rowShifts as number[]) ?? []), []);
+  assert.equal(runtime.sentCommands[0]?.payload?.["pieceId"], "T");
+  assert.equal(runtime.sentCommands[0]?.payload?.["rotation"], 1);
+  assert.deepEqual(Array.from((runtime.sentCommands[0]?.payload?.["rowShifts"] as number[]) ?? []), []);
 });
 
-test("Team Tetris UI renders the route as one straight drop line plus a single bottom turn cell", () => {
+void test("Team Tetris UI renders the route as one straight drop line plus a single bottom turn cell", () => {
   const runtime = createUiRuntime();
   const translations = JSON.parse(readFileSync("rooms/game-room/i18n/en.json", "utf8")) as Record<
     string,
@@ -687,11 +688,12 @@ test("Team Tetris UI renders the route as one straight drop line plus a single b
   >;
   const engine = loadTeamTetrisEngine();
   const teamTetrisState = buildTeamTetrisState(engine);
-  teamTetrisState.payload.state.currentTurn.pieceId = "O";
-  teamTetrisState.payload.state.currentTurn.legalRotations = [0];
-  teamTetrisState.payload.state.userView.pendingTurn.pieceId = "O";
-  teamTetrisState.payload.state.userView.pendingTurn.legalRotations = [0];
-  teamTetrisState.payload.state.status =
+  const s2 = teamTetrisState as any;
+  s2.payload.state.currentTurn["pieceId"] = "O";
+  s2.payload.state.currentTurn["legalRotations"] = [0];
+  s2.payload.state.userView["pendingTurn"].pieceId = "O";
+  s2.payload.state.userView["pendingTurn"].legalRotations = [0];
+  s2.payload.state.status =
     "Your turn. Rotate the piece, draw the route you expect, and submit the move.";
 
   runtime.emitHostMessage(buildHostContext(translations));
@@ -699,7 +701,7 @@ test("Team Tetris UI renders the route as one straight drop line plus a single b
 
   const interactiveBoard = findFirst(
     runtime.document.body,
-    (element) => element.className === "tt-board" && element.dataset.interactive === "true"
+    (element) => element.className === "tt-board" && element.dataset["interactive"] === "true"
   );
   assert.ok(interactiveBoard);
   const targetCell = interactiveBoard.children[17 * 10 + 7];
@@ -707,32 +709,32 @@ test("Team Tetris UI renders the route as one straight drop line plus a single b
 
   const refreshedBoard = findFirst(
     runtime.document.body,
-    (element) => element.className === "tt-board" && element.dataset.interactive === "true"
+    (element) => element.className === "tt-board" && element.dataset["interactive"] === "true"
   );
   assert.ok(refreshedBoard);
 
   const lineCells = refreshedBoard.children
     .map((element, index) => ({ element, index }))
-    .filter((entry) => entry.element.dataset.path === "trace-valid");
+    .filter((entry) => entry.element.dataset["path"] === "trace-valid");
   const turnCells = refreshedBoard.children
     .map((element, index) => ({ element, index }))
-    .filter((entry) => entry.element.dataset.pathTurn === "trace-valid-turn");
+    .filter((entry) => entry.element.dataset["pathTurn"] === "trace-valid-turn");
 
   assert.equal(turnCells.length, 1);
   assert.equal(lineCells.length > 1, true);
 
   const lineXs = new Set(lineCells.map((entry) => entry.index % 10));
   const lineYs = lineCells.map((entry) => Math.floor(entry.index / 10));
-  const turnX = turnCells[0].index % 10;
-  const turnY = Math.floor(turnCells[0].index / 10);
+  const turnX = turnCells[0]!.index % 10;
+  const turnY = Math.floor(turnCells[0]!.index / 10);
   const [lineX] = Array.from(lineXs);
 
   assert.equal(lineXs.size, 1);
   assert.equal(turnY, Math.max.apply(null, lineYs));
-  assert.equal(Math.abs(turnX - lineX), 1);
+  assert.equal(Math.abs(turnX - lineX!), 1);
 });
 
-test("Team Tetris UI shows a dim truncated preview when the visible route is blocked", () => {
+void test("Team Tetris UI shows a dim truncated preview when the visible route is blocked", () => {
   const runtime = createUiRuntime();
   const translations = JSON.parse(readFileSync("rooms/game-room/i18n/en.json", "utf8")) as Record<
     string,
@@ -742,19 +744,20 @@ test("Team Tetris UI shows a dim truncated preview when the visible route is blo
   const teamTetrisState = buildTeamTetrisState(engine);
   const blockedRows = Array.from({ length: 20 }, () => ".".repeat(10));
   blockedRows[0] = "......Z...";
-  teamTetrisState.payload.state.boards[0].rows = blockedRows.slice();
-  teamTetrisState.payload.state.userView.ownTeam.boardRows = blockedRows.slice();
-  teamTetrisState.payload.state.currentTurn.pieceId = "O";
-  teamTetrisState.payload.state.currentTurn.legalRotations = [0];
-  teamTetrisState.payload.state.userView.pendingTurn.pieceId = "O";
-  teamTetrisState.payload.state.userView.pendingTurn.legalRotations = [0];
+  const s3 = teamTetrisState as any;
+  s3.payload.state.boards[0].rows = blockedRows.slice();
+  s3.payload.state.userView["ownTeam"].boardRows = blockedRows.slice();
+  s3.payload.state.currentTurn["pieceId"] = "O";
+  s3.payload.state.currentTurn["legalRotations"] = [0];
+  s3.payload.state.userView["pendingTurn"].pieceId = "O";
+  s3.payload.state.userView["pendingTurn"].legalRotations = [0];
 
   runtime.emitHostMessage(buildHostContext(translations));
   runtime.emitHostMessage(teamTetrisState);
 
   const interactiveBoard = findFirst(
     runtime.document.body,
-    (element) => element.className === "tt-board" && element.dataset.interactive === "true"
+    (element) => element.className === "tt-board" && element.dataset["interactive"] === "true"
   );
   assert.ok(interactiveBoard);
   const targetCell = interactiveBoard.children[1 * 10 + 6];
@@ -762,20 +765,20 @@ test("Team Tetris UI shows a dim truncated preview when the visible route is blo
 
   const refreshedBoard = findFirst(
     runtime.document.body,
-    (element) => element.className === "tt-board" && element.dataset.interactive === "true"
+    (element) => element.className === "tt-board" && element.dataset["interactive"] === "true"
   );
   assert.ok(refreshedBoard);
   assert.equal(
-    refreshedBoard.children.some((element) => element.dataset.path === "trace-blocked"),
+    refreshedBoard.children.some((element) => element.dataset["path"] === "trace-blocked"),
     true
   );
   assert.equal(
-    refreshedBoard.children.some((element) => element.dataset.overlay === "draft-blocked"),
+    refreshedBoard.children.some((element) => element.dataset["overlay"] === "draft-blocked"),
     true
   );
 });
 
-test("Team Tetris UI keeps the partner lock hidden on the playable board while still surfacing both piece clues", () => {
+void test("Team Tetris UI keeps the partner lock hidden on the playable board while still surfacing both piece clues", () => {
   const runtime = createUiRuntime();
   const translations = JSON.parse(readFileSync("rooms/game-room/i18n/en.json", "utf8")) as Record<
     string,
@@ -788,41 +791,41 @@ test("Team Tetris UI keeps the partner lock hidden on the playable board while s
 
   const interactiveBoard = findFirst(
     runtime.document.body,
-    (element) => element.className === "tt-board" && element.dataset.interactive === "true"
+    (element) => element.className === "tt-board" && element.dataset["interactive"] === "true"
   );
   assert.ok(interactiveBoard);
   assert.equal(
-    interactiveBoard.children.filter((element) => element.dataset.filled === "true").length,
+    interactiveBoard.children.filter((element) => element.dataset["filled"] === "true").length,
     0
   );
 
   const partnerPieceCard = findFirst(
     runtime.document.body,
-    (element) => element.dataset.variant === "partner"
+    (element) => element.dataset["variant"] === "partner"
   );
   const currentPieceCard = findFirst(
     runtime.document.body,
-    (element) => element.dataset.variant === "current-piece"
+    (element) => element.dataset["variant"] === "current-piece"
   );
   assert.ok(partnerPieceCard);
   assert.ok(currentPieceCard);
   assert.equal(
     findAll(
       partnerPieceCard,
-      (element) => element.className === "tt-piece-mini__cell" && element.dataset.filled === "true"
+      (element) => element.className === "tt-piece-mini__cell" && element.dataset["filled"] === "true"
     ).length > 0,
     true
   );
   assert.equal(
     findAll(
       currentPieceCard,
-      (element) => element.className === "tt-piece-mini__cell" && element.dataset.filled === "true"
+      (element) => element.className === "tt-piece-mini__cell" && element.dataset["filled"] === "true"
     ).length > 0,
     true
   );
 });
 
-test("Team Tetris UI treats mirrored US1 seat views as the local playable board", () => {
+void test("Team Tetris UI treats mirrored US1 seat views as the local playable board", () => {
   const runtime = createUiRuntime();
   const translations = JSON.parse(readFileSync("rooms/game-room/i18n/en.json", "utf8")) as Record<
     string,
@@ -854,7 +857,7 @@ test("Team Tetris UI treats mirrored US1 seat views as the local playable board"
 
   const interactiveBoard = findFirst(
     runtime.document.body,
-    (element) => element.className === "tt-board" && element.dataset.interactive === "true"
+    (element) => element.className === "tt-board" && element.dataset["interactive"] === "true"
   );
   assert.ok(interactiveBoard);
 });

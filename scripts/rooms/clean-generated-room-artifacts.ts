@@ -37,7 +37,6 @@ async function copyIfPresent(sourcePath: string, targetPath: string): Promise<bo
 async function migrateLegacyToolRuntime(roomId: string): Promise<string[]> {
   const legacyRoomDir = Paths.getInstalledRoomDir(roomId);
   const storageDir = Paths.getRoomStorageDir(roomId);
-  const migrated: string[] = [];
   const candidates = [
     {
       source: join(legacyRoomDir, "tools", "runtime"),
@@ -49,13 +48,17 @@ async function migrateLegacyToolRuntime(roomId: string): Promise<string[]> {
     },
   ];
 
-  for (const candidate of candidates) {
-    if (await copyIfPresent(candidate.source, candidate.target)) {
-      migrated.push(candidate.source);
-    }
-  }
+  const results = await Promise.all(
+    candidates.map(async (candidate) => {
+      if (await copyIfPresent(candidate.source, candidate.target)) {
+        return candidate.source;
+      }
+      return null;
+    }),
+  );
 
-  return migrated;
+  return results.filter((r): r is string => r !== null);
+
 }
 
 function isLegacyRoomSourceRestorePath(relativePath: string): boolean {
@@ -98,42 +101,63 @@ async function main(): Promise<void> {
   }
 
   const roomStorageRoot = join(Paths.getDataDir(), "room-storage");
-  for (const roomId of await listDirectories(roomStorageRoot)) {
-    const staleBuildDir = join(roomStorageRoot, roomId, "build");
-    if (existsSync(staleBuildDir)) {
-      await rm(staleBuildDir, { recursive: true, force: true });
-      removed.push(staleBuildDir);
-    }
+  const staleDirResults = await Promise.all(
+    (await listDirectories(roomStorageRoot)).map(async (roomId) => {
+      const staleBuildDir = join(roomStorageRoot, roomId, "build");
+      if (existsSync(staleBuildDir)) {
+        await rm(staleBuildDir, { recursive: true, force: true });
+        return staleBuildDir;
+      }
+      return null;
+    }),
+  );
+  for (const dir of staleDirResults) {
+    if (dir !== null) removed.push(dir);
   }
 
   const legacyRoomIds = await listDirectories(Paths.getInstalledRoomsDir());
-  for (const roomId of legacyRoomIds) {
-    try {
-      migrated.push(...(await migrateLegacyToolRuntime(roomId)));
-      const restoredSource = await restoreLegacyRoomSource(roomId);
-      if (restoredSource !== null) {
-        restoredLegacyRoomSources.push(restoredSource);
+  const legacyResults = await Promise.all(
+    legacyRoomIds.map(async (roomId) => {
+      try {
+        const migratedItems = await migrateLegacyToolRuntime(roomId);
+        const restoredSource = await restoreLegacyRoomSource(roomId);
+        return { roomId, migratedItems, restoredSource, error: undefined as string | undefined };
+      } catch (error) {
+        return { roomId, migratedItems: [] as string[], restoredSource: null, error: error instanceof Error ? error.message : String(error) };
       }
-    } catch (error) {
-      errors.push(`${roomId}: ${error instanceof Error ? error.message : String(error)}`);
+    }),
+  );
+  for (const result of legacyResults) {
+    if (result.error !== undefined) {
+      errors.push(`${result.roomId}: ${result.error}`);
+    } else {
+      migrated.push(...result.migratedItems);
+      if (result.restoredSource !== null) {
+        restoredLegacyRoomSources.push(result.restoredSource);
+      }
     }
   }
 
   if (legacyRoomIds.length > 0) {
     const roomPackageManager = new RoomPackageManager();
-    for (const sourcePath of restoredLegacyRoomSources) {
-      const roomId = sourcePath.split(/[\\/]/u).at(-1) ?? "";
-      const installResult = await roomPackageManager.installFromWorkspace(roomId);
-      if (installResult.success === true) {
-        rebuiltRoomIds.push(roomId);
+    const installResults = await Promise.all(
+      restoredLegacyRoomSources.map(async (sourcePath) => {
+        const roomId = sourcePath.split(/[\\/]/u).at(-1) ?? "";
+        const installResult = await roomPackageManager.installFromWorkspace(roomId);
+        return { roomId, success: installResult.success === true, error: installResult.error };
+      }),
+    );
+    for (const result of installResults) {
+      if (result.success) {
+        rebuiltRoomIds.push(result.roomId);
       } else {
-        errors.push(`${roomId}: ${installResult.error ?? "legacy room rebuild failed"}`);
+        errors.push(`${result.roomId}: ${result.error ?? "legacy room rebuild failed"}`);
       }
     }
 
     const syncResult = await roomPackageManager.syncLinkedWorkspaceRoomsOnStartup();
     if (syncResult.success === true) {
-      rebuiltRoomIds.push(...syncResult.syncedRoomIds);
+      rebuiltRoomIds.push(...(syncResult.syncedRoomIds ?? []));
     } else {
       errors.push(syncResult.error ?? "startup room sync failed");
     }
@@ -144,7 +168,7 @@ async function main(): Promise<void> {
     removed.push(Paths.getInstalledRoomsDir());
   }
 
-  console.log(
+  console.info(
     JSON.stringify(
       {
         errors,

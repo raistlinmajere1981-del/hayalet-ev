@@ -11,9 +11,9 @@ import {
   uiActionFlow,
 } from "../../mcp-server/tools/cdp-tools.ts";
 
-test("cdp tool registry includes target-aware CDP tools", () => {
+void test("cdp tool registry includes target-aware CDP tools", () => {
   const entries = createCdpTools();
-  const names = entries.map((entry) => entry.definition.name);
+  const names = entries.map((entry: any) => entry.definition.name);
 
   assert.ok(names.includes("hev_list_cdp_instances"));
   assert.ok(names.includes("hev_list_cdp_targets"));
@@ -28,10 +28,10 @@ test("cdp tool registry includes target-aware CDP tools", () => {
   assert.ok(names.includes("hev_debug_failure_bundle"));
 });
 
-test("cdp tool schemas expose port-aware multi-instance routing", () => {
+void test("cdp tool schemas expose port-aware multi-instance routing", () => {
   const entries = createCdpTools();
-  const definitions = new Map(
-    entries.map((entry) => [entry.definition.name, entry.definition] as const)
+  const definitions: Map<string, any> = new Map(
+    entries.map((entry: any) => [entry.definition.name, entry.definition])
   );
 
   const listInstances = definitions.get("hev_list_cdp_instances");
@@ -75,7 +75,7 @@ test("cdp tool schemas expose port-aware multi-instance routing", () => {
   assert.equal(actionFlow?.inputSchema?.properties?.actions?.type, "array");
 });
 
-test("tool discovery recommends advanced CDP tools for raw CDP intents", () => {
+void test("tool discovery recommends advanced CDP tools for raw CDP intents", () => {
   const result = handleSuggestTool({ intent: "send raw cdp command to a target" });
   const text = result.content[0]?.type === "text" ? result.content[0].text : "";
 
@@ -84,7 +84,7 @@ test("tool discovery recommends advanced CDP tools for raw CDP intents", () => {
   assert.match(text, /hev_send_cdp_command/);
 });
 
-test("tool discovery recommends interpreted UI debug tools for UI failure intents", () => {
+void test("tool discovery recommends interpreted UI debug tools for UI failure intents", () => {
   const result = handleSuggestTool({ intent: "debug blank ui with console error and network fail" });
   const text = result.content[0]?.type === "text" ? result.content[0].text : "";
 
@@ -95,7 +95,7 @@ test("tool discovery recommends interpreted UI debug tools for UI failure intent
   assert.match(text, /hev_ui_layout_audit/);
 });
 
-test("tool discovery recommends UI action flow for repro intents", () => {
+void test("tool discovery recommends UI action flow for repro intents", () => {
   const result = handleSuggestTool({ intent: "run ui action click flow to repro bug" });
   const text = result.content[0]?.type === "text" ? result.content[0].text : "";
 
@@ -104,25 +104,25 @@ test("tool discovery recommends UI action flow for repro intents", () => {
   assert.match(text, /hev_debug_console_events/);
 });
 
-test("target info requires a target id", async () => {
+void test("target info requires a target id", async () => {
   const result = await getCdpTargetInfo({});
 
   assert.equal(result.isError, true);
 });
 
-test("raw CDP command requires domain and method", async () => {
+void test("raw CDP command requires domain and method", async () => {
   const result = await sendCdpCommand({});
 
   assert.equal(result.isError, true);
 });
 
-test("ui action flow requires at least one action", async () => {
+void test("ui action flow requires at least one action", async () => {
   const result = await uiActionFlow({});
 
   assert.equal(result.isError, true);
 });
 
-test("packaged electron defaults to the next CDP port while dev keeps 9222", async () => {
+void test("packaged electron defaults to the next CDP port while dev keeps 9222", async () => {
   const projectRoot = process.cwd();
   const mainSource = await readFile(join(projectRoot, "electron", "main.ts"), "utf8");
   const packagedWrapperSource = await readFile(

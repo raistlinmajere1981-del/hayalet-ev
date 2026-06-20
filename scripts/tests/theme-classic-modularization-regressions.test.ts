@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
-test("classic theme normalization is centralized and reused by settings schema", () => {
+void test("classic theme normalization is centralized and reused by settings schema", () => {
   const normalizerSource = readFileSync("src/js/ui/theme/appearance-normalizer.ts", "utf8");
   const settingsSchemaSource = readFileSync("src/js/modules/settings/settings-schema.ts", "utf8");
   const classicThemeManagerSource = readFileSync(
@@ -27,7 +27,7 @@ test("classic theme normalization is centralized and reused by settings schema",
   assert.equal(existsSync("src/js/ui/theme-manager.ts"), false);
 });
 
-test("classic theme host propagation uses dedicated host sync helpers", () => {
+void test("classic theme host propagation uses dedicated host sync helpers", () => {
   const hostSyncSource = readFileSync("src/js/ui/theme/theme-host-sync.ts", "utf8");
   const opencodeUiSource = readFileSync("src/js/pages/opencode-ui/app.ts", "utf8");
   const assistantSource = readFileSync("src/js/pages/assistant/assistant.ts", "utf8");
@@ -40,7 +40,7 @@ test("classic theme host propagation uses dedicated host sync helpers", () => {
   assert.match(assistantSource, /isOpencodeUiThemeHost/);
 });
 
-test("classic scene scale tokens and theme aliases are centralized", () => {
+void test("classic scene scale tokens and theme aliases are centralized", () => {
   const designSystemIndexSource = readFileSync("src/styles/design-system/index.css", "utf8");
   const sceneScaleSource = readFileSync("src/styles/design-system/tokens/scene-scale.css", "utf8");
   const themeBaseSource = readFileSync("src/styles/design-system/themes/theme-base.css", "utf8");
@@ -75,7 +75,7 @@ test("classic scene scale tokens and theme aliases are centralized", () => {
   );
 });
 
-test("classic scene shell surfaces are centralized behind shared primitives", () => {
+void test("classic scene shell surfaces are centralized behind shared primitives", () => {
   const themeAliasSource = readFileSync(
     "src/styles/design-system/themes/theme-classic-aliases.css",
     "utf8"
@@ -123,11 +123,11 @@ test("classic scene shell surfaces are centralized behind shared primitives", ()
   assert.doesNotMatch(entranceSceneSource, /\.entrance-scene__view-shade\s*\{/);
   assert.match(mainSource, /--settings-workbench-border: var\(--scene-shell-framed-border\);/);
   assert.doesNotMatch(mainSource, /\.settings-panel-shell::before\s*\{/);
-  assert.match(editorPanelSource, /@media \(\-\-breakpoint-max-768\)/);
+  assert.match(editorPanelSource, /@media \(--breakpoint-max-768\)/);
   assert.doesNotMatch(editorPanelSource, /@media \(max-width: 720px\)/);
 });
 
-test("shared page shells and responsive shell measurements are extracted from main.css", () => {
+void test("shared page shells and responsive shell measurements are extracted from main.css", () => {
   const designSystemIndexSource = readFileSync("src/styles/design-system/index.css", "utf8");
   const pageShellsSource = readFileSync(
     "src/styles/design-system/components/page-shells.css",
@@ -141,7 +141,7 @@ test("shared page shells and responsive shell measurements are extracted from ma
   assert.match(pageShellsSource, /\.room-shell \{/);
   assert.match(pageShellsSource, /\.archives-page__content \{/);
   assert.match(pageShellsSource, /\.page-settings\[data-workspace-tool-mode="overlay"\]/);
-  assert.match(pageShellsSource, /@media \(\-\-breakpoint-max-768\)/);
+  assert.match(pageShellsSource, /@media \(--breakpoint-max-768\)/);
   assert.doesNotMatch(mainSource, /\.room-shell \{/);
   assert.doesNotMatch(mainSource, /\.archives-page__content \{/);
   assert.doesNotMatch(mainSource, /--relay-line-width: 28px;/);
@@ -150,11 +150,11 @@ test("shared page shells and responsive shell measurements are extracted from ma
   assert.match(layoutTokenSource, /--layout-topbar-relay-line-w: 28px;/);
   assert.match(spacingTokenSource, /--topbar-height-compact: 84px;/);
   assert.match(spacingTokenSource, /--topbar-height-mobile: 76px;/);
-  assert.match(spacingTokenSource, /@media \(\-\-breakpoint-max-1024\)/);
+  assert.match(spacingTokenSource, /@media \(--breakpoint-max-1024\)/);
   assert.doesNotMatch(mainSource, /:root \{\s*--topbar-height: 84px;/);
 });
 
-test("shell-hosted archives and whisper styles are lazy loaded outside the main html graph", () => {
+void test("shell-hosted archives and whisper styles are lazy loaded outside the main html graph", () => {
   const indexSource = readFileSync("src/index.html", "utf8");
   const runtimeStyleSource = readFileSync("src/js/app/runtime-page-styles.ts", "utf8");
   const archivesControllerSource = readFileSync("src/js/pages/archives/controller.ts", "utf8");
@@ -174,7 +174,7 @@ test("shell-hosted archives and whisper styles are lazy loaded outside the main 
   assert.match(whisperControllerSource, /await ensureRuntimePageStyles\("whisper"\);/);
 });
 
-test("shared surface recipes stay consolidated across classic utility panels", () => {
+void test("shared surface recipes stay consolidated across classic utility panels", () => {
   const opencodeTabsSource = readFileSync(
     "src/styles/design-system/components/opencode-ui-tabs.css",
     "utf8"
@@ -220,7 +220,7 @@ test("shared surface recipes stay consolidated across classic utility panels", (
   assert.match(emberThemeSource, /--archives-shell-bg:/);
 });
 
-test("analyze and server scene palettes resolve through classic theme aliases", () => {
+void test("analyze and server scene palettes resolve through classic theme aliases", () => {
   const themeAliasSource = readFileSync(
     "src/styles/design-system/themes/theme-classic-aliases.css",
     "utf8"
@@ -242,7 +242,7 @@ test("analyze and server scene palettes resolve through classic theme aliases", 
   assert.doesNotMatch(serverSource, /rgb\(123 210 255 \/ 0\.12\)/);
 });
 
-test("entrance scene palette resolves through classic theme aliases", () => {
+void test("entrance scene palette resolves through classic theme aliases", () => {
   const themeAliasSource = readFileSync(
     "src/styles/design-system/themes/theme-classic-aliases.css",
     "utf8"
@@ -258,7 +258,7 @@ test("entrance scene palette resolves through classic theme aliases", () => {
   assert.doesNotMatch(entranceSceneSource, /rgb\(/);
 });
 
-test("assistant scene palette resolves through classic theme aliases", () => {
+void test("assistant scene palette resolves through classic theme aliases", () => {
   const themeAliasSource = readFileSync(
     "src/styles/design-system/themes/theme-classic-aliases.css",
     "utf8"
@@ -275,7 +275,7 @@ test("assistant scene palette resolves through classic theme aliases", () => {
   assert.doesNotMatch(assistantSource, /rgb\(/);
 });
 
-test("shared overlay, splash, and settings scene palettes resolve through classic theme aliases", () => {
+void test("shared overlay, splash, and settings scene palettes resolve through classic theme aliases", () => {
   const themeAliasSource = readFileSync(
     "src/styles/design-system/themes/theme-classic-aliases.css",
     "utf8"

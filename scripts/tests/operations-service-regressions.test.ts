@@ -14,7 +14,7 @@ const analyzeRoom = {
   roomId: "analyze",
 };
 
-test("operations service allows one owner per capability", () => {
+void test("operations service allows one owner per capability", () => {
   const service = new OperationsService();
   const first = service.acquire("local-microphone", repairRoom);
   assert.equal(first.success, true);
@@ -24,7 +24,7 @@ test("operations service allows one owner per capability", () => {
   assert.equal(second.conflict?.owner.id, repairRoom.id);
 });
 
-test("operations service only releases resources for the active owner", () => {
+void test("operations service only releases resources for the active owner", () => {
   const service = new OperationsService();
   service.acquire("android-camera", repairRoom);
 
@@ -38,7 +38,7 @@ test("operations service only releases resources for the active owner", () => {
   assert.equal(service.getStatus().records.length, 0);
 });
 
-test("operations service treats repeated acquire by the same owner as idempotent", () => {
+void test("operations service treats repeated acquire by the same owner as idempotent", () => {
   const service = new OperationsService();
   const first = service.acquire("local-tts", repairRoom);
   const second = service.acquire("local-tts", repairRoom);
@@ -48,7 +48,7 @@ test("operations service treats repeated acquire by the same owner as idempotent
   assert.equal(service.getStatus().records.length, 1);
 });
 
-test("operations service reports invalid requests without changing state", () => {
+void test("operations service reports invalid requests without changing state", () => {
   const service = new OperationsService();
 
   const invalidCapability = service.acquire("camera", repairRoom);

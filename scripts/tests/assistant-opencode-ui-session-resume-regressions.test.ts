@@ -13,7 +13,7 @@ function readAssistantBindings(): string {
   return readFileSync(assistantBindingsPath, "utf8");
 }
 
-test("assistant listens opencode-ui session change event and persists last session id", () => {
+void test("assistant listens opencode-ui session change event and persists last session id", () => {
   const bindingsContent = readAssistantBindings();
   const indexContent = readAssistantIndex();
 
@@ -26,7 +26,7 @@ test("assistant listens opencode-ui session change event and persists last sessi
   );
 });
 
-test("opencode-ui connect url resolver injects resumeSessionId from settings", () => {
+void test("opencode-ui connect url resolver injects resumeSessionId from settings", () => {
   const content = readAssistantIndex();
 
   assert.match(content, /providerId === "opencode-ui"/);
@@ -35,7 +35,7 @@ test("opencode-ui connect url resolver injects resumeSessionId from settings", (
   assert.match(content, /parsed\.searchParams\.set\("resumeSessionId", resumeSessionId\)/);
 });
 
-test("opencode-ui connect url resolver injects active theme and assistant syncs live theme updates", () => {
+void test("opencode-ui connect url resolver injects active theme and assistant syncs live theme updates", () => {
   const content = readAssistantIndex();
 
   assert.match(content, /parsed\.searchParams\.set\("theme", ThemeManager\.current\)/);
@@ -44,7 +44,7 @@ test("opencode-ui connect url resolver injects active theme and assistant syncs 
   assert.match(content, /isOpencodeUiThemeHost/);
 });
 
-test("opencode-ui connect url resolver converts packaged file routes into absolute page URLs", () => {
+void test("opencode-ui connect url resolver converts packaged file routes into absolute page URLs", () => {
   const content = readAssistantIndex();
 
   assert.match(content, /window\.location\.protocol === "file:" && baseUrl\.startsWith\("\/"\)/);
@@ -52,7 +52,7 @@ test("opencode-ui connect url resolver converts packaged file routes into absolu
   assert.match(content, /if \(isPackagedFileRoute\) \{\s*return parsed\.toString\(\);/s);
 });
 
-test("opencode connect url resolver ignores stale root resume urls when adapter returns a workspace route", () => {
+void test("opencode connect url resolver ignores stale root resume urls when adapter returns a workspace route", () => {
   const content = readAssistantIndex();
 
   assert.match(content, /providerId === "opencode"/);

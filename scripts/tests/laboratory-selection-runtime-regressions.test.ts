@@ -31,11 +31,8 @@ import {
   getActiveSelection,
   getActiveSuggestionPreview,
   getActiveSuggestionPreviewId,
-  getEffectivePreviewAudioFocusSettings,
   getInspectionMode,
-  getInterpretationItems,
   getRoiFocusActive,
-  getRunSnapshotSummary,
   getSelectionSuggestions,
   getWaveformTimelineModel,
   renderLabWaveformTimeline,
@@ -46,7 +43,7 @@ import { getReadyAnalysisPreparationGroups } from "../../rooms/laboratory/runtim
 
 import type { LabSelection } from "./laboratory-runtime-truth.helpers.ts";
 
-test("interpretation engine explains audio focus and selection rules with deterministic guidance", () => {
+void test("interpretation engine explains audio focus and selection rules with deterministic guidance", () => {
   const context = {
     activeSelection: {
       id: "selection-short",
@@ -123,7 +120,7 @@ test("interpretation engine explains audio focus and selection rules with determ
   );
 });
 
-test("waveform timeline keeps interpretation guidance out of the player controls", () => {
+void test("waveform timeline keeps interpretation guidance out of the player controls", () => {
   const store = createLabStore();
   store.dispatch({
     type: "snapshot-received",
@@ -152,7 +149,7 @@ test("waveform timeline keeps interpretation guidance out of the player controls
   assert.match(markup, /data-lab-action="timeline-set-selection-boundary"/);
 });
 
-test("interpretation engine maps fast playback and wide selection guidance deterministically", () => {
+void test("interpretation engine maps fast playback and wide selection guidance deterministically", () => {
   const items = buildInterpretationItems({
     activeSelection: {
       id: "selection-wide",
@@ -191,7 +188,7 @@ test("interpretation engine maps fast playback and wide selection guidance deter
   );
 });
 
-test("interpretation engine reacts to semantic roi size and fast motion playback", () => {
+void test("interpretation engine reacts to semantic roi size and fast motion playback", () => {
   const items = buildInterpretationItems({
     activeSelection: {
       id: "selection-roi",
@@ -247,7 +244,7 @@ test("interpretation engine reacts to semantic roi size and fast motion playback
   );
 });
 
-test("interpretation engine flags extreme roi aspect ratios deterministically", () => {
+void test("interpretation engine flags extreme roi aspect ratios deterministically", () => {
   const items = buildInterpretationItems({
     activeSelection: {
       id: "selection-roi-aspect",
@@ -275,7 +272,7 @@ test("interpretation engine flags extreme roi aspect ratios deterministically", 
   );
 });
 
-test("selection suggestions and waveform model deepen when semantic roi inspection is active", () => {
+void test("selection suggestions and waveform model deepen when semantic roi inspection is active", () => {
   const store = createLabStore();
   store.dispatch({
     type: "snapshot-received",
@@ -395,7 +392,7 @@ test("selection suggestions and waveform model deepen when semantic roi inspecti
   assert.match(openMarkup, /lab-audio-viz-inspection/);
 });
 
-test("lab root preserves protected details state while syncing source drawer details", async () => {
+void test("lab root preserves protected details state while syncing source drawer details", async () => {
   class FakeElement {
     attributes = new Map<string, string>();
     childNodes: unknown[] = [];
@@ -435,14 +432,14 @@ test("lab root preserves protected details state while syncing source drawer det
       this.open = Object.prototype.hasOwnProperty.call(attributes, "open");
     }
 
-    setAttribute(name: string, value: string) {
+    override setAttribute(name: string, value: string) {
       super.setAttribute(name, value);
       if (name === "open") {
         this.open = true;
       }
     }
 
-    removeAttribute(name: string) {
+    override removeAttribute(name: string) {
       super.removeAttribute(name);
       if (name === "open") {
         this.open = false;
@@ -564,7 +561,7 @@ test("lab root preserves protected details state while syncing source drawer det
   }
 });
 
-test("laboratory store treats reused local assets as ready sources during snapshot sync", () => {
+void test("laboratory store treats reused local assets as ready sources during snapshot sync", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -617,7 +614,7 @@ test("laboratory store treats reused local assets as ready sources during snapsh
   assert.equal(state.ui.workspace.sourceIntakeCollapsed, true);
 });
 
-test("waveform timeline hides selection affordances for invalid numeric ranges", () => {
+void test("waveform timeline hides selection affordances for invalid numeric ranges", () => {
   const baseModel = {
     bookmarks: [],
     dualPreviewActive: false,
@@ -648,7 +645,7 @@ test("waveform timeline hides selection affordances for invalid numeric ranges",
   assert.doesNotMatch(invertedMarkup, /labx-timeline__selection lab-selection-overlay/);
 });
 
-test("waveform timeline renders selector-driven suggested actions alongside live actions", () => {
+void test("waveform timeline renders selector-driven suggested actions alongside live actions", () => {
   const selection: LabSelection = {
     id: "selection-clip",
     startMs: 12300,
@@ -662,6 +659,7 @@ test("waveform timeline renders selector-driven suggested actions alongside live
     dualPreviewActive: false,
     durationMs: 60000,
     endMs: selection.endMs,
+    ...{} as any,
     activeSuggestionPreview: {
       suggestionId: "audio-inspect",
       title: "Ses analizi yapilacak",
@@ -724,12 +722,13 @@ test("waveform timeline renders selector-driven suggested actions alongside live
   assert.doesNotMatch(markup, /timeline-grab-frame/);
 });
 
-test("waveform timeline does not render suggested actions from fallback-only selection markup", () => {
+void test("waveform timeline does not render suggested actions from fallback-only selection markup", () => {
   const markup = renderLabWaveformTimeline({
     bookmarks: [],
     dualPreviewActive: false,
     durationMs: 60000,
     endMs: 18900,
+    ...{} as any,
     activeSuggestionPreview: {
       suggestionId: "audio-inspect",
       title: "Ses analizi yapilacak",
@@ -759,7 +758,7 @@ test("waveform timeline does not render suggested actions from fallback-only sel
   assert.doesNotMatch(markup, /Ses analizi yapilacak/);
 });
 
-test("workspace surface renders semantic roi overlay and focus mask inside the visual preview stage", () => {
+void test("workspace surface renders semantic roi overlay and focus mask inside the visual preview stage", () => {
   const store = createLabStore();
   store.dispatch({
     type: "snapshot-received",
@@ -788,13 +787,13 @@ test("workspace surface renders semantic roi overlay and focus mask inside the v
   assert.match(surface.main, /labx-selection-roi-mask/);
 });
 
-test("selection roi binder stores a full-video ROI without an explicit timeline range", () => {
+void test("selection roi binder stores a full-video ROI without an explicit timeline range", () => {
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
   const store = createLabStore();
   eventBus.subscribe(store.dispatch);
   bindLabSelectionRoiInteractions({
-    documentRef: documentRef as unknown as Document,
+    documentRef: documentRef,
     emit: eventBus.emit,
     getActiveSelection() {
       return store.getState().ui.workspace.activeSelection;
@@ -842,13 +841,13 @@ test("selection roi binder stores a full-video ROI without an explicit timeline 
     clientY: 10,
     preventDefault() {},
     target: new FakeRoiDrawTarget(stage) as unknown as EventTarget,
-  } as Event);
+  } as unknown as Event);
   mouseMoveListener?.({
     clientX: 100,
     clientY: 60,
     preventDefault() {},
-  } as Event);
-  mouseUpListener?.({} as Event);
+  } as unknown as Event);
+  mouseUpListener?.({} as unknown as Event);
 
   const selection = store.getState().ui.workspace.activeSelection;
   assert.equal(selection?.id, "selection-default:full-video");
@@ -878,7 +877,7 @@ test("selection roi binder stores a full-video ROI without an explicit timeline 
   assert.notEqual(store.getState().ui.workspace.activeSelection?.id, "selection-default:full-video");
 });
 
-test("workspace surface keeps image roi controls out of the visual preview stage", () => {
+void test("workspace surface keeps image roi controls out of the visual preview stage", () => {
   const store = createLabStore();
   store.dispatch({
     type: "hydrate",
@@ -931,7 +930,7 @@ test("workspace surface keeps image roi controls out of the visual preview stage
   assert.match(surface.side, /data-lab-selection-inspection-mode=/);
 });
 
-test("image sources keep visual inspection ready for analysis setup", () => {
+void test("image sources keep visual inspection ready for analysis setup", () => {
   const store = createLabStore();
   store.dispatch({
     type: "hydrate",
@@ -973,7 +972,7 @@ test("image sources keep visual inspection ready for analysis setup", () => {
   assert.ok(readyCapabilityIds.includes("visual-forensics"));
 });
 
-test("selection suggestion binder emits a passive selection suggestion event", () => {
+void test("selection suggestion binder emits a passive selection suggestion event", () => {
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
   const store = createLabStore();
@@ -984,7 +983,7 @@ test("selection suggestion binder emits a passive selection suggestion event", (
         return suggestion.id === suggestionId;
       });
     },
-    documentRef: documentRef as unknown as Document,
+    documentRef: documentRef,
     emit: eventBus.emit,
     getActivePreviewSuggestionId() {
       return getActiveSuggestionPreviewId(store.getState());
@@ -1036,7 +1035,7 @@ test("selection suggestion binder emits a passive selection suggestion event", (
   );
 });
 
-test("selection suggestion binder previews expanded timeline suggestions shown in the panel", () => {
+void test("selection suggestion binder previews expanded timeline suggestions shown in the panel", () => {
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
   const store = createLabStore();
@@ -1048,7 +1047,7 @@ test("selection suggestion binder previews expanded timeline suggestions shown i
         return suggestion.id === suggestionId;
       });
     },
-    documentRef: documentRef as unknown as Document,
+    documentRef: documentRef,
     emit: eventBus.emit,
     getActivePreviewSuggestionId() {
       return getActiveSuggestionPreviewId(store.getState());
@@ -1088,14 +1087,14 @@ test("selection suggestion binder previews expanded timeline suggestions shown i
   assert.equal(getActiveSuggestionPreview(store.getState()), null);
 });
 
-test("selection suggestion binder gates soft execution intent actions by the exact active preview id", () => {
+void test("selection suggestion binder gates soft execution intent actions by the exact active preview id", () => {
   class FakeClosestTarget extends FakeDomElement {
     constructor(private readonly selectors: Record<string, object | null>) {
       super();
     }
 
-    closest(selector: string) {
-      return (this.selectors[selector] ?? null) as object | null;
+    override closest(selector?: string): any {
+      return (this.selectors[selector ?? ""] ?? null);
     }
   }
 
@@ -1120,7 +1119,7 @@ test("selection suggestion binder gates soft execution intent actions by the exa
         return suggestion.id === suggestionId;
       });
     },
-    documentRef: documentRef as unknown as Document,
+    documentRef: documentRef,
     emit: eventBus.emit,
     getActivePreviewSuggestionId() {
       return getActiveSuggestionPreviewId(store.getState());
@@ -1162,7 +1161,7 @@ test("selection suggestion binder gates soft execution intent actions by the exa
     preventDefault() {
       throw new Error("mismatched preview ids should not be consumed");
     },
-  } as Event);
+  } as unknown as Event);
   assert.equal(getActiveExecutionIntent(store.getState()), null);
 
   const acceptEvent = new FakeClickEvent(
@@ -1250,13 +1249,13 @@ test("selection suggestion binder gates soft execution intent actions by the exa
   );
 });
 
-test("selection roi binder enforces minimum drag size and emits passive roi + inspection events", () => {
+void test("selection roi binder enforces minimum drag size and emits passive roi + inspection events", () => {
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
   const store = createLabStore();
   eventBus.subscribe(store.dispatch);
   bindLabSelectionRoiInteractions({
-    documentRef: documentRef as unknown as Document,
+    documentRef: documentRef,
     emit: eventBus.emit,
     getActiveSelection() {
       return store.getState().ui.workspace.activeSelection;
@@ -1308,12 +1307,12 @@ test("selection roi binder enforces minimum drag size and emits passive roi + in
     clientY: 10,
     preventDefault() {},
     target: new FakeRoiDrawTarget(stage) as unknown as EventTarget,
-  } as Event);
+  } as unknown as Event);
   mouseMoveListener?.({
     clientX: 14,
     clientY: 15,
     preventDefault() {},
-  } as Event);
+  } as unknown as Event);
 
   assert.equal(store.getState().ui.workspace.activeSelection?.roi, undefined);
 
@@ -1321,8 +1320,8 @@ test("selection roi binder enforces minimum drag size and emits passive roi + in
     clientX: 70,
     clientY: 60,
     preventDefault() {},
-  } as Event);
-  mouseUpListener?.({} as Event);
+  } as unknown as Event);
+  mouseUpListener?.({} as unknown as Event);
 
   assert.deepEqual(store.getState().ui.workspace.activeSelection?.roi, {
     x: 0.05,
@@ -1346,13 +1345,13 @@ test("selection roi binder enforces minimum drag size and emits passive roi + in
   assert.equal(store.getState().ui.workspace.activeSelection?.roi, undefined);
 });
 
-test("selection roi binder tags comparison side roi updates from the active image pane", () => {
+void test("selection roi binder tags comparison side roi updates from the active image pane", () => {
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
   const store = createLabStore();
   eventBus.subscribe(store.dispatch);
   bindLabSelectionRoiInteractions({
-    documentRef: documentRef as unknown as Document,
+    documentRef: documentRef,
     emit: eventBus.emit,
     getActiveSelection() {
       return store.getState().ui.workspace.activeSelection;
@@ -1399,13 +1398,13 @@ test("selection roi binder tags comparison side roi updates from the active imag
     clientY: 10,
     preventDefault() {},
     target: new FakeRoiDrawTarget(primaryStage) as unknown as EventTarget,
-  } as Event);
+  } as unknown as Event);
   mouseMoveListener?.({
     clientX: 100,
     clientY: 60,
     preventDefault() {},
-  } as Event);
-  mouseUpListener?.({} as Event);
+  } as unknown as Event);
+  mouseUpListener?.({} as unknown as Event);
 
   assert.equal(store.getState().ui.workspace.comparisonRois.activeSide, "primary");
   assert.deepEqual(store.getState().ui.workspace.comparisonRois.primary, {
@@ -1434,8 +1433,8 @@ test("selection roi binder tags comparison side roi updates from the active imag
     clientY: 20,
     preventDefault() {},
     target: new FakeRoiDrawTarget(referenceStage) as unknown as EventTarget,
-  } as Event);
-  mouseUpListener?.({} as Event);
+  } as unknown as Event);
+  mouseUpListener?.({} as unknown as Event);
 
   assert.equal(store.getState().ui.workspace.comparisonRois.activeSide, "reference");
   assert.equal(store.getState().ui.workspace.activeSelection, null);
@@ -1446,13 +1445,13 @@ test("selection roi binder tags comparison side roi updates from the active imag
     clientY: 20,
     preventDefault() {},
     target: new FakeRoiDrawTarget(referenceStage) as unknown as EventTarget,
-  } as Event);
+  } as unknown as Event);
   mouseMoveListener?.({
     clientX: 120,
     clientY: 70,
     preventDefault() {},
-  } as Event);
-  mouseUpListener?.({} as Event);
+  } as unknown as Event);
+  mouseUpListener?.({} as unknown as Event);
 
   assert.equal(store.getState().ui.workspace.comparisonRois.activeSide, "reference");
   assert.deepEqual(store.getState().ui.workspace.comparisonRois.reference, {
@@ -1469,9 +1468,9 @@ test("selection roi binder tags comparison side roi updates from the active imag
   });
 });
 
-test("selection roi redraw binder ignores the existing roi so double-click focus wins precedence", () => {
+void test("selection roi redraw binder ignores the existing roi so double-click focus wins precedence", () => {
   class FakeExistingSelectionRoiTarget extends FakeDomElement {
-    closest(selector: string) {
+    override closest(selector?: string): any {
       if (selector === "[data-lab-selection-roi-ignore='true']") {
         return {} as object;
       }
@@ -1489,7 +1488,7 @@ test("selection roi redraw binder ignores the existing roi so double-click focus
   const calls: string[] = [];
 
   bindLabSelectionRoiInteractions({
-    documentRef: documentRef as unknown as Document,
+    documentRef: documentRef,
     emit: eventBus.emit,
     getActiveSelection() {
       return store.getState().ui.workspace.activeSelection;
@@ -1517,7 +1516,7 @@ test("selection roi redraw binder ignores the existing roi so double-click focus
         return true;
       },
     },
-    documentRef: documentRef as unknown as Document,
+    documentRef: documentRef,
   });
 
   store.dispatch({
@@ -1557,30 +1556,30 @@ test("selection roi redraw binder ignores the existing roi so double-click focus
     clientY: 24,
     preventDefault() {},
     target: new FakeExistingSelectionRoiTarget() as unknown as EventTarget,
-  } as Event);
+  } as unknown as Event);
   mouseMoveListener?.({
     clientX: 80,
     clientY: 64,
     preventDefault() {},
-  } as Event);
+  } as unknown as Event);
   dblClickListener?.({
     target: new FakeExistingSelectionRoiTarget() as unknown as EventTarget,
     preventDefault() {},
     stopImmediatePropagation() {},
-  } as Event);
+  } as unknown as Event);
 
   assert.deepEqual(store.getState().ui.workspace.activeSelection?.roi, initialRoi);
   assert.deepEqual(calls, ["toggle-focus"]);
 });
 
-test("preview inspection binder routes focus, stepping, capture, and escape without touching form fields", () => {
+void test("preview inspection binder routes focus, stepping, capture, and escape without touching form fields", () => {
   class FakeClosestTarget extends FakeDomElement {
     constructor(private readonly selectors: Record<string, object | null>) {
       super();
     }
 
-    closest(selector: string) {
-      return (this.selectors[selector] ?? null) as object | null;
+    override closest(selector?: string): any {
+      return (this.selectors[selector ?? ""] ?? null);
     }
   }
 
@@ -1609,7 +1608,7 @@ test("preview inspection binder routes focus, stepping, capture, and escape with
         return true;
       },
     },
-    documentRef: documentRef as unknown as Document,
+    documentRef: documentRef,
   });
 
   const clickListener = documentRef.listeners.get("click");
@@ -1625,40 +1624,40 @@ test("preview inspection binder routes focus, stepping, capture, and escape with
     }) as unknown as EventTarget,
     preventDefault() {},
     stopImmediatePropagation() {},
-  } as Event);
+  } as unknown as Event);
   clickListener?.({
     target: new FakeClosestTarget({
       "[data-lab-selection-roi-capture]": {},
     }) as unknown as EventTarget,
     preventDefault() {},
     stopImmediatePropagation() {},
-  } as Event);
+  } as unknown as Event);
   clickListener?.({
     target: new FakeClosestTarget({
       "[data-lab-preview-inspection-stage='true']": {},
     }) as unknown as EventTarget,
     preventDefault() {},
     stopImmediatePropagation() {},
-  } as Event);
+  } as unknown as Event);
   dblClickListener?.({
     target: new FakeClosestTarget({
       "[data-lab-selection-roi='true']": {},
     }) as unknown as EventTarget,
     preventDefault() {},
     stopImmediatePropagation() {},
-  } as Event);
+  } as unknown as Event);
   keydownListener?.({
     key: "ArrowRight",
     target: new FakeOutsideTarget() as unknown as EventTarget,
     preventDefault() {},
     stopImmediatePropagation() {},
-  } as Event);
+  } as unknown as Event);
   keydownListener?.({
     key: "Escape",
     target: new FakeOutsideTarget() as unknown as EventTarget,
     preventDefault() {},
     stopImmediatePropagation() {},
-  } as Event);
+  } as unknown as Event);
   keydownListener?.({
     key: "ArrowLeft",
     target: new FakeClosestTarget({
@@ -1670,7 +1669,7 @@ test("preview inspection binder routes focus, stepping, capture, and escape with
     stopImmediatePropagation() {
       throw new Error("editable targets should be ignored");
     },
-  } as Event);
+  } as unknown as Event);
 
   assert.deepEqual(calls, [
     "toggle-focus",
@@ -1681,7 +1680,7 @@ test("preview inspection binder routes focus, stepping, capture, and escape with
   ]);
 });
 
-test("preview inspection controller focuses roi, captures a snapshot, and clears stale state on topology loss", async () => {
+void test("preview inspection controller focuses roi, captures a snapshot, and clears stale state on topology loss", async () => {
   const eventBus = createLabEventBus();
   const store = createLabStore();
   eventBus.subscribe(store.dispatch);
@@ -1853,7 +1852,7 @@ test("preview inspection controller focuses roi, captures a snapshot, and clears
   assert.equal(getActiveInspectionSnapshot(store.getState()), null);
 });
 
-test("preview inspection controller ignores snapshot capture when roi is below the minimum size guard", async () => {
+void test("preview inspection controller ignores snapshot capture when roi is below the minimum size guard", async () => {
   const eventBus = createLabEventBus();
   const store = createLabStore();
   eventBus.subscribe(store.dispatch);
@@ -1924,7 +1923,7 @@ test("preview inspection controller ignores snapshot capture when roi is below t
           currentTime: 1,
           duration: 8,
           getAttribute(sourceName: string) {
-            return sourceName === "src" ? this.currentSrc : null;
+            return sourceName === "src" ? (this as any).currentSrc : null;
           },
           pause() {},
           paused: true,
@@ -1950,7 +1949,7 @@ test("preview inspection controller ignores snapshot capture when roi is below t
         }
         return null;
       },
-    } as unknown as Document,
+    },
     emit: eventBus.emit,
     getActiveSelection() {
       return getActiveSelection(store.getState());
@@ -1976,7 +1975,7 @@ test("preview inspection controller ignores snapshot capture when roi is below t
   assert.equal(getActiveInspectionSnapshot(store.getState()), null);
 });
 
-test("selection suggestion preview dismissal stays stable with stacked document listeners", () => {
+void test("selection suggestion preview dismissal stays stable with stacked document listeners", () => {
   const originalElement = globalThis.Element;
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
@@ -2000,7 +1999,7 @@ test("selection suggestion preview dismissal stays stable with stacked document 
           return suggestion.id === suggestionId;
         });
       },
-      documentRef: documentRef as unknown as Document,
+      documentRef: documentRef,
       emit: eventBus.emit,
       getActivePreviewSuggestionId() {
         return getActiveSuggestionPreviewId(store.getState());
@@ -2065,7 +2064,7 @@ test("selection suggestion preview dismissal stays stable with stacked document 
     assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
   } finally {
     if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -2075,7 +2074,7 @@ test("selection suggestion preview dismissal stays stable with stacked document 
   }
 });
 
-test("selection suggestion accept checks the mapped analysis without auto-running it", () => {
+void test("selection suggestion accept checks the mapped analysis without auto-running it", () => {
   class FakeExecutionIntentAcceptTrigger {
     constructor(private readonly suggestionId: string | null) {}
 
@@ -2089,7 +2088,7 @@ test("selection suggestion accept checks the mapped analysis without auto-runnin
       super();
     }
 
-    closest(selector: string) {
+    override closest(selector?: string): any {
       return selector === "[data-lab-execution-intent-accept]" ? this.trigger : null;
     }
   }
@@ -2107,7 +2106,7 @@ test("selection suggestion accept checks the mapped analysis without auto-runnin
         return suggestion.id === suggestionId;
       });
     },
-    documentRef: documentRef as unknown as Document,
+    documentRef: documentRef,
     emit: eventBus.emit,
     getActivePreviewSuggestionId() {
       return getActiveSuggestionPreviewId(store.getState());
@@ -2223,7 +2222,7 @@ test("selection suggestion accept checks the mapped analysis without auto-runnin
   assert.equal(state.run, null);
 });
 
-test("selection suggestion binder ignores invalid preview ids while keeping passive click history", () => {
+void test("selection suggestion binder ignores invalid preview ids while keeping passive click history", () => {
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
   const store = createLabStore();
@@ -2235,7 +2234,7 @@ test("selection suggestion binder ignores invalid preview ids while keeping pass
         return suggestion.id === suggestionId;
       });
     },
-    documentRef: documentRef as unknown as Document,
+    documentRef: documentRef,
     emit: eventBus.emit,
     getActivePreviewSuggestionId() {
       return getActiveSuggestionPreviewId(store.getState());
@@ -2290,7 +2289,7 @@ test("selection suggestion binder ignores invalid preview ids while keeping pass
   );
 });
 
-test("laboratory store rejects invalid selection preview-set events", () => {
+void test("laboratory store rejects invalid selection preview-set events", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -2330,7 +2329,7 @@ test("laboratory store rejects invalid selection preview-set events", () => {
   assert.equal(store.getState().ui.activeSuggestionPreviewId, "audio-inspect");
 });
 
-test("selection suggestion clicks stay fenced from analysis selection and run execution", () => {
+void test("selection suggestion clicks stay fenced from analysis selection and run execution", () => {
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
   const store = createLabStore();
@@ -2343,7 +2342,7 @@ test("selection suggestion clicks stay fenced from analysis selection and run ex
         return suggestion.id === suggestionId;
       });
     },
-    documentRef: documentRef as unknown as Document,
+    documentRef: documentRef,
     emit: eventBus.emit,
     getActivePreviewSuggestionId() {
       return getActiveSuggestionPreviewId(store.getState());

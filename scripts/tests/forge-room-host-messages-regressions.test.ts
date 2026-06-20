@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { sanitizeForgeRoomSnapshot } from "../../rooms/forge-room/shared/ui/host-messages.ts";
 
-test("forge-room host message normalization ignores legacy hot-air run override seams", () => {
+void test("forge-room host message normalization ignores legacy hot-air run override seams", () => {
   const snapshot = sanitizeForgeRoomSnapshot({
     runOverride: {
       tools: {

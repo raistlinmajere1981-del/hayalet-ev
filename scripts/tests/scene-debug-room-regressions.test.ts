@@ -18,7 +18,7 @@ const settingsSceneLayout = getSceneRoomLayout("settings");
 const serverSceneLayout = getSceneRoomLayout("server");
 const roomsSceneLayout = getSceneRoomLayout("rooms");
 
-test("scene debug room registry includes all unified scene rooms", () => {
+void test("scene debug room registry includes all unified scene rooms", () => {
   const roomRegistrySource = readFileSync("src/js/scene-editor/scene-debug-room-registry.ts", "utf8");
 
   assert.match(roomRegistrySource, /const SCENE_DEBUG_ROOM_LABEL_KEYS/);
@@ -36,7 +36,7 @@ test("scene debug room registry includes all unified scene rooms", () => {
   assert.match(roomRegistrySource, /export function openSceneEditorRoom/);
 });
 
-test("scene debug room registry derives installed room options from room metadata", () => {
+void test("scene debug room registry derives installed room options from room metadata", () => {
   const roomRegistrySource = readFileSync("src/js/scene-editor/scene-debug-room-registry.ts", "utf8");
 
   assert.match(roomRegistrySource, /function getInstalledSceneDebugRooms\(\)/);
@@ -47,7 +47,7 @@ test("scene debug room registry derives installed room options from room metadat
   assert.match(roomRegistrySource, /return \[\.\.\.SCENE_DEBUG_ROOMS, \.\.\.getInstalledSceneDebugRooms\(\)\]\.map/);
 });
 
-test("room scene debug helpers merge installed room hotspots into the corridor layout", () => {
+void test("room scene debug helpers merge installed room hotspots into the corridor layout", () => {
   const source = readFileSync("src/js/modules/rooms/room-scene-debug.ts", "utf8");
 
   assert.match(source, /function mergeRoomsCorridorLayout/);
@@ -62,7 +62,7 @@ test("room scene debug helpers merge installed room hotspots into the corridor l
   assert.doesNotMatch(source, /room\.id === "game-room"/);
 });
 
-test("entrance scene layout keeps room targets and whisper return in one layout registry", () => {
+void test("entrance scene layout keeps room targets and whisper return in one layout registry", () => {
   assert.deepEqual(
     entranceSceneLayout.objects.map((node) => node.id),
     ["door-analyze", "door-assistant", "door-server", "door-settings", "hatch-rooms", "board-whisper"]
@@ -87,7 +87,7 @@ test("entrance scene layout keeps room targets and whisper return in one layout 
   assert.equal(cloned.backs.find((node) => node.id === "back-whisper")?.rect.widthPx, 140);
 });
 
-test("assistant scene layout uses objects plus one view-scoped back node", () => {
+void test("assistant scene layout uses objects plus one view-scoped back node", () => {
   assert.deepEqual(
     assistantSceneLayout.objects.map((node) => node.id),
     ["door-entrance", "screen-primary"]
@@ -96,7 +96,7 @@ test("assistant scene layout uses objects plus one view-scoped back node", () =>
   assert.deepEqual(assistantSceneLayout.characters.map((node) => node.id), ["anchor-ai0"]);
 });
 
-test("analyze scene layout keeps table and archive returns on the shared contract", () => {
+void test("analyze scene layout keeps table and archive returns on the shared contract", () => {
   assert.deepEqual(
     analyzeSceneLayout.objects.map((node) => node.id),
     ["door-entrance", "screen-primary", "screen-archive"]
@@ -111,7 +111,7 @@ test("analyze scene layout keeps table and archive returns on the shared contrac
   assert.ok(room.nodes.some((node) => node.kind === "character" && node.id === "anchor-ai1-primary"));
 });
 
-test("settings scene layout defines close, panels, one back, and one user character", () => {
+void test("settings scene layout defines close, panels, one back, and one user character", () => {
   assert.deepEqual(
     settingsSceneLayout.objects.map((node) => node.id),
     [
@@ -130,7 +130,7 @@ test("settings scene layout defines close, panels, one back, and one user charac
   assert.deepEqual(settingsSceneLayout.characters.map((node) => node.id), ["anchor-user"]);
 });
 
-test("server scene layout stays on the same contract with one back node", () => {
+void test("server scene layout stays on the same contract with one back node", () => {
   assert.deepEqual(
     serverSceneLayout.objects.map((node) => node.id),
     ["door-entrance", "screen-primary"]
@@ -142,7 +142,7 @@ test("server scene layout stays on the same contract with one back node", () => 
   );
 });
 
-test("rooms scene layout ships with one object entrance and no extra nodes", () => {
+void test("rooms scene layout ships with one object entrance and no extra nodes", () => {
   assert.deepEqual(roomsSceneLayout.objects.map((node) => node.id), ["door-entrance"]);
   assert.deepEqual(roomsSceneLayout.backs, []);
   assert.deepEqual(roomsSceneLayout.characters, []);
@@ -152,7 +152,7 @@ test("rooms scene layout ships with one object entrance and no extra nodes", () 
   assert.deepEqual(room.nodes.map((node) => node.kind), ["object"]);
 });
 
-test("scene editor renders unified section labels", () => {
+void test("scene editor renders unified section labels", () => {
   const editorSource = readFileSync("src/js/scene-editor/scene-layout-editor.ts", "utf8");
   assert.match(editorSource, /data-editor-action="room"/);
   assert.match(editorSource, /data-editor-action="save-source"/);
@@ -171,7 +171,7 @@ test("scene editor renders unified section labels", () => {
   assert.equal(existsSync("src/js/scene/debug"), false);
 });
 
-test("scene pages enable clickable labels and shared clickable classes", () => {
+void test("scene pages enable clickable labels and shared clickable classes", () => {
   const controllerTargets = [
     "src/js/pages/entrance/scene/scene-controller.ts",
     "src/js/pages/analyze.ts",
@@ -215,16 +215,16 @@ test("scene pages enable clickable labels and shared clickable classes", () => {
   assert.match(entranceCssSource, /\.entrance-scene \.entrance-scene__character-head,[\s\S]*pointer-events: auto;/);
 });
 
-test("installed laboratory manifest exposes one workbench hotspot while legacy features stay scene-passive", async () => {
+void test("installed laboratory manifest exposes one workbench hotspot while legacy features stay scene-passive", async () => {
   const installedCopy = await createRoomInstalledCopy("laboratory");
 
   try {
     const manifest = JSON.parse(readFileSync(`${installedCopy.rootDir}/manifest.json`, "utf8"));
     const mediaFeature = Array.isArray(manifest.features)
-      ? manifest.features.find((feature) => feature.id === "media-analysis")
+      ? manifest.features.find((feature: { id: string }) => feature.id === "media-analysis")
       : null;
     const audioFeature = Array.isArray(manifest.features)
-      ? manifest.features.find((feature) => feature.id === "audio-analysis")
+      ? manifest.features.find((feature: { id: string }) => feature.id === "audio-analysis")
       : null;
 
     assert.equal(manifest.workbench?.experienceId, "analysis-workbench");
@@ -240,10 +240,10 @@ test("installed laboratory manifest exposes one workbench hotspot while legacy f
   }
 });
 
-test("game-room manifest exposes Team Tetris scene hotspot ids for scene debug visibility", () => {
+void test("game-room manifest exposes Team Tetris scene hotspot ids for scene debug visibility", () => {
   const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
   const feature = Array.isArray(manifest.features)
-    ? manifest.features.find((entry) => entry.id === "team-tetris")
+    ? manifest.features.find((entry: { id: string }) => entry.id === "team-tetris")
     : null;
 
   assert.equal(feature?.scene?.hotspot?.id, "game-room-team-tetris");
@@ -254,10 +254,10 @@ test("game-room manifest exposes Team Tetris scene hotspot ids for scene debug v
   );
 });
 
-test("game-room manifest exposes Fate Knots scene hotspot ids for scene debug visibility", () => {
+void test("game-room manifest exposes Fate Knots scene hotspot ids for scene debug visibility", () => {
   const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
   const feature = Array.isArray(manifest.features)
-    ? manifest.features.find((entry) => entry.id === "fate-knots")
+    ? manifest.features.find((entry: { id: string }) => entry.id === "fate-knots")
     : null;
 
   assert.equal(feature?.scene?.hotspot?.id, "game-room-fate-knots");
@@ -268,7 +268,7 @@ test("game-room manifest exposes Fate Knots scene hotspot ids for scene debug vi
   );
 });
 
-test("entrance and analyze scene layers keep hidden views passive in debug mode", () => {
+void test("entrance and analyze scene layers keep hidden views passive in debug mode", () => {
   const entranceHtmlSource = readFileSync("src/pages/entrance.html", "utf8");
   const analyzeCssSource = readFileSync("src/styles/analyze.css", "utf8");
   const entranceCssSource = readFileSync("src/styles/entrance/scene.css", "utf8");
@@ -297,7 +297,7 @@ test("entrance and analyze scene layers keep hidden views passive in debug mode"
   );
 });
 
-test("scene debug node list exposes object, back, and character nodes", () => {
+void test("scene debug node list exposes object, back, and character nodes", () => {
   const entranceNodes = listSceneDebugNodes(entranceSceneLayout);
   const analyzeNodes = listSceneDebugNodes(analyzeSceneLayout);
   const roomsNodes = listSceneDebugNodes(roomsSceneLayout);

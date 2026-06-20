@@ -41,7 +41,7 @@ function createSceneDebugTestHarness() {
 
   const writeFileAtomic = async (path: string, data: string, encoding = "utf-8"): Promise<string> => {
     writeCalls.push({ path, data, encoding });
-    writeFileSync(path, data, encoding);
+    writeFileSync(path, data, { encoding: encoding as BufferEncoding });
     return path;
   };
 
@@ -70,13 +70,13 @@ function createSceneDebugTestHarness() {
         writeFileAtomic,
         getThemeId: () => themeId,
         getRoomSourcePath: (nextRoomId) => join(tempDir, `${nextRoomId}.scene.json`),
-        getRoomLayout: (nextRoomId) => getSceneRoomLayout(nextRoomId),
+        getRoomLayout: (nextRoomId) => getSceneRoomLayout(nextRoomId as "settings" | "assistant" | "entrance" | "analyze" | "server" | "rooms"),
       });
     },
   };
 }
 
-test("scene editor store keys drafts by active theme and writes back to canonical theme map sources", () => {
+void test("scene editor store keys drafts by active theme and writes back to canonical theme map sources", () => {
   const debugStoreSource = readFileSync("src/js/scene-editor/scene-editor-store.ts", "utf8");
   const runtimeSessionSource = readFileSync(
     "src/js/scene-editor/scene-debug-runtime-session.ts",
@@ -121,7 +121,7 @@ test("scene editor store keys drafts by active theme and writes back to canonica
   assert.equal(existsSync("src/js/scene/debug"), false);
 });
 
-test("scene layout defaults now resolve from shared theme json maps instead of inlined room builders", () => {
+void test("scene layout defaults now resolve from shared theme json maps instead of inlined room builders", () => {
   const layoutStateSource = readFileSync("src/js/scene/layout/scene-layout-model.ts", "utf8");
   const layoutSource = readFileSync("src/js/scene/layout/index.ts", "utf8");
   const layoutRegistrySource = readFileSync("src/js/scene-system/scene-layout-registry.ts", "utf8");
@@ -139,7 +139,7 @@ test("scene layout defaults now resolve from shared theme json maps instead of i
   assert.equal(existsSync("src/assets/themes/castle/scene/debug.ts"), false);
 });
 
-test("scene debug theme store supports draft and source round-trips with injected dependencies", async () => {
+void test("scene debug theme store supports draft and source round-trips with injected dependencies", async () => {
   const harness = createSceneDebugTestHarness();
 
   try {
@@ -173,7 +173,7 @@ test("scene debug theme store supports draft and source round-trips with injecte
   }
 });
 
-test("scene debug runtime session reloads saved theme drafts and resets to defaults", () => {
+void test("scene debug runtime session reloads saved theme drafts and resets to defaults", () => {
   const harness = createSceneDebugTestHarness();
 
   try {

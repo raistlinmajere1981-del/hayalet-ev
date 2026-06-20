@@ -57,7 +57,7 @@ function withMockDocument(querySelectorAll: (selector: string) => unknown[], fn:
   }
 }
 
-test("opencode-ui scraper reads ds-message chat turns in visual order", () => {
+void test("opencode-ui scraper reads ds-message chat turns in visual order", () => {
   const nodes = [
     createMessage("user", "First question"),
     createMessage("assistant", "First answer"),
@@ -80,7 +80,7 @@ test("opencode-ui scraper reads ds-message chat turns in visual order", () => {
   });
 });
 
-test("opencode-ui scraper keeps its fallback helpers local for injected execution", () => {
+void test("opencode-ui scraper keeps its fallback helpers local for injected execution", () => {
   const source = readFileSync("src/js/modules/webview/providers/opencode-ui/scraper.ts", "utf8");
 
   assert.doesNotMatch(source, /^import\s/m);
@@ -88,7 +88,7 @@ test("opencode-ui scraper keeps its fallback helpers local for injected executio
   assert.match(source, /function scrapeLegacyMessages\(\): ScrapedMessage\[] \{/);
 });
 
-test("opencode-ui scraper falls back to legacy opencode selectors when ds-message nodes are absent", () => {
+void test("opencode-ui scraper falls back to legacy opencode selectors when ds-message nodes are absent", () => {
   const legacyUser = {
     innerText: "Legacy user",
     textContent: "Legacy user",

@@ -81,7 +81,7 @@ function createInstalledThemeDocument(themeId: string) {
   };
 }
 
-test("scene theme package manager lists installed themes from the runtime store", async () => {
+void test("scene theme package manager lists installed themes from the runtime store", async () => {
   const runtimeRoot = await mkdtemp(join(tmpdir(), "scene-theme-store-"));
   const themeRoot = join(runtimeRoot, "midnight");
   await mkdir(themeRoot, { recursive: true });
@@ -100,16 +100,16 @@ test("scene theme package manager lists installed themes from the runtime store"
   assert.equal(registrations[0]?.label, "Midnight");
   assert.match(registrations[0]?.sourceRoot ?? "", /scene-theme-store-.*\/midnight$/);
   assert.match(
-    registrations[0]?.source?.rooms.assistant.views?.primary?.panelArtSrc ?? "",
+    registrations[0]?.source?.rooms.assistant.views?.["primary"]?.panelArtSrc ?? "",
     /scene-theme-store-.*\/midnight\/assets\/assistant\/panel\.webp$/
   );
   assert.match(
-    registrations[0]?.source?.characters.roles.ai?.bodySrc ?? "",
+    registrations[0]?.source?.characters.roles["ai"]?.bodySrc ?? "",
     /scene-theme-store-.*\/midnight\/assets\/characters\/ai\.webp$/
   );
 });
 
-test("scene theme package manager ignores invalid installed themes that escape the runtime store", async () => {
+void test("scene theme package manager ignores invalid installed themes that escape the runtime store", async () => {
   const runtimeRoot = await mkdtemp(join(tmpdir(), "scene-theme-store-invalid-"));
   const validThemeRoot = join(runtimeRoot, "midnight");
   const invalidThemeRoot = join(runtimeRoot, "broken");
@@ -139,7 +139,7 @@ test("scene theme package manager ignores invalid installed themes that escape t
   );
 });
 
-test("scene theme package manager exports an installed theme bundle with runtime files", async () => {
+void test("scene theme package manager exports an installed theme bundle with runtime files", async () => {
   const runtimeRoot = await mkdtemp(join(tmpdir(), "scene-theme-package-"));
   const themeRoot = join(runtimeRoot, "midnight");
   const bundlePath = join(runtimeRoot, "exports", "midnight.hevtheme.json");
@@ -172,7 +172,7 @@ test("scene theme package manager exports an installed theme bundle with runtime
   assert.ok(bundle.files["assets/assistant/panel.webp"]);
 });
 
-test("scene theme package manager imports a bundle and renames conflicting theme ids", async () => {
+void test("scene theme package manager imports a bundle and renames conflicting theme ids", async () => {
   const runtimeRoot = await mkdtemp(join(tmpdir(), "scene-theme-import-"));
   const bundlePath = join(runtimeRoot, "midnight.hevtheme.json");
   const existingThemeRoot = join(runtimeRoot, "midnight");
@@ -222,7 +222,7 @@ test("scene theme package manager imports a bundle and renames conflicting theme
   assert.equal(importedThemeDocument.source.themeId, "midnight-2");
 });
 
-test("scene runtime store wiring is exposed through preload and bootstrap", async () => {
+void test("scene runtime store wiring is exposed through preload and bootstrap", async () => {
   const preloadSource = await readFile("electron/preload.cjs", "utf8");
   const appIndexSource = await readFile("src/js/app/index.ts", "utf8");
   const registrySource = await readFile("src/js/scene-system/scene-theme-installed-registry.ts", "utf8");

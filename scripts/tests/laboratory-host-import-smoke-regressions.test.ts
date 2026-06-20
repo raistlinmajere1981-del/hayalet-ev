@@ -13,7 +13,7 @@ async function importRoomHostModule(targetPath: string) {
   return await import(`${moduleUrl}#smoke-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
-test("laboratory build artifact host imports cleanly through the room host loader graph", async () => {
+void test("laboratory build artifact host imports cleanly through the room host loader graph", async () => {
   const buildArtifact = await createRoomBuiltArtifact("laboratory");
 
   try {
@@ -26,7 +26,7 @@ test("laboratory build artifact host imports cleanly through the room host loade
   }
 });
 
-test("laboratory installed host imports cleanly through the portable room host loader graph", async () => {
+void test("laboratory installed host imports cleanly through the portable room host loader graph", async () => {
   const installedCopy = await createRoomInstalledCopy("laboratory");
 
   try {

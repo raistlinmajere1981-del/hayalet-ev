@@ -6,7 +6,7 @@ import {
   parseStartupFlagsFromArgv,
 } from "../../electron/startup-flags.ts";
 
-test("reads startup flags from legacy CLI arguments", () => {
+void test("reads startup flags from legacy CLI arguments", () => {
   const flags = parseStartupFlagsFromArgv([
     "electron",
     "./dist/electron/main.js",
@@ -19,7 +19,7 @@ test("reads startup flags from legacy CLI arguments", () => {
   assert.equal(flags.uiMode, "classic");
 });
 
-test("reads startup flags from app-prefixed preload arguments", () => {
+void test("reads startup flags from app-prefixed preload arguments", () => {
   const flags = parseStartupFlagsFromArgv([
     "electron",
     "./dist/electron/main.js",
@@ -35,7 +35,7 @@ test("reads startup flags from app-prefixed preload arguments", () => {
   assert.equal(flags.displayId, 7);
 });
 
-test("serializes startup flags into preload additional arguments", () => {
+void test("serializes startup flags into preload additional arguments", () => {
   const args = buildPreloadAdditionalArguments({
     startPage: "assistant",
     autoConnect: true,
@@ -53,7 +53,7 @@ test("serializes startup flags into preload additional arguments", () => {
   ]);
 });
 
-test("omits empty startup flags while serializing preload arguments", () => {
+void test("omits empty startup flags while serializing preload arguments", () => {
   const args = buildPreloadAdditionalArguments({
     startPage: null,
     autoConnect: false,

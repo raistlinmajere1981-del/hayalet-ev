@@ -13,14 +13,14 @@ function readAdapter(): string {
   return readFileSync(adapterPath, "utf8");
 }
 
-test("assistant provider-registry registers opencode-ui adapter", () => {
+void test("assistant provider-registry registers opencode-ui adapter", () => {
   const registryContent = readProviderRegistry();
 
   assert.match(registryContent, /import \{ OpenCodeUiAdapter \} from "\.\/opencode-ui-adapter\.js";/);
   assert.match(registryContent, /registerAdapter\(new OpenCodeUiAdapter\(\)\);/);
 });
 
-test("opencode-ui adapter routes to native opencode-ui page path", () => {
+void test("opencode-ui adapter routes to native opencode-ui page path", () => {
   const adapterContent = readAdapter();
 
   assert.match(adapterContent, /private _buildPageUrl\(port: number\): string {/);

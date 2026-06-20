@@ -12,17 +12,22 @@ async function main(): Promise<void> {
     .sort((left, right) => left.localeCompare(right));
 
   if (roomIds.length === 0) {
-    console.log("No workspace rooms found.");
+    console.info("No workspace rooms found.");
     return;
   }
 
-  for (const roomId of roomIds) {
-    const result = await manager.buildWorkspaceRoom(roomId);
-    if (result.success !== true || result.path === undefined) {
-      throw new Error(result.error ?? `Failed to build room: ${roomId}`);
-    }
+  const results = await Promise.all(
+    roomIds.map(async (roomId) => {
+      const result = await manager.buildWorkspaceRoom(roomId);
+      if (result.success !== true || result.path === undefined) {
+        throw new Error(result.error ?? `Failed to build room: ${roomId}`);
+      }
+      return `${roomId}: ${result.path}`;
+    }),
+  );
 
-    console.log(`${roomId}: ${result.path}`);
+  for (const line of results) {
+    console.info(line);
   }
 }
 

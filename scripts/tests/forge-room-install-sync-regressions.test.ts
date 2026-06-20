@@ -11,7 +11,7 @@ async function waitForFsTick(): Promise<void> {
   await new Promise((resolveDelay) => setTimeout(resolveDelay, 25));
 }
 
-test("forge-room installs into the registry and startup sync refreshes the installed copy", async () => {
+void test("forge-room installs into the registry and startup sync refreshes the installed copy", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "forge-room-install-sync-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const installedRoot = join(tempRoot, "data", "rooms");

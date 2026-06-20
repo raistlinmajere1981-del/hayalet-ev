@@ -2,42 +2,42 @@ const KNOWN_CLI_PROVIDERS = Object.freeze([
   {
     id: "opencode",
     label: "OpenCode",
-    patterns: [/(^|[\/\s])opencode([\/\s]|$)/i],
+    patterns: [/(^|[/\s])opencode([/\s]|$)/i],
   },
   {
     id: "codex",
     label: "Codex",
-    patterns: [/@openai\/codex/i, /(^|[\/\s])codex([\/\s]|$)/i],
+    patterns: [/@openai\/codex/i, /(^|[/\s])codex([/\s]|$)/i],
   },
   {
     id: "claude",
     label: "Claude",
-    patterns: [/(^|[\/\s])claude(?:-code)?([\/\s]|$)/i],
+    patterns: [/(^|[/\s])claude(?:-code)?([/\s]|$)/i],
   },
   {
     id: "gemini",
     label: "Gemini",
-    patterns: [/(^|[\/\s])gemini(?:-cli)?([\/\s]|$)/i],
+    patterns: [/(^|[/\s])gemini(?:-cli)?([/\s]|$)/i],
   },
   {
     id: "aider",
     label: "Aider",
-    patterns: [/(^|[\/\s])aider([\/\s]|$)/i],
+    patterns: [/(^|[/\s])aider([/\s]|$)/i],
   },
   {
     id: "cursor",
     label: "Cursor",
-    patterns: [/(^|[\/\s])cursor([\/\s]|$)/i],
+    patterns: [/(^|[/\s])cursor([/\s]|$)/i],
   },
   {
     id: "qwen",
     label: "Qwen",
-    patterns: [/(^|[\/\s])qwen([\/\s]|$)/i],
+    patterns: [/(^|[/\s])qwen([/\s]|$)/i],
   },
   {
     id: "roo",
     label: "Roo",
-    patterns: [/(^|[\/\s])roo([\/\s]|$)/i],
+    patterns: [/(^|[/\s])roo([/\s]|$)/i],
   },
 ]);
 

@@ -12,8 +12,8 @@ async function ensureModulePackage(rootDir: string): Promise<void> {
   await writeFile(join(rootDir, "package.json"), JSON.stringify({ type: "module" }, null, 2), "utf8");
 }
 
-function createRoomTestPackageManager(roomId: string) {
-  return (async (): Promise<{
+async function createRoomTestPackageManager(roomId: string) {
+  return await (async (): Promise<{
     cleanup: () => Promise<void>;
     roomPackageManager: RoomPackageManager;
   }> => {

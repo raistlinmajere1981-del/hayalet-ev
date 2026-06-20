@@ -9,18 +9,19 @@ const electronDir = fileURLToPath(new URL("../electron", import.meta.url));
 
 initPaths(electronDir);
 
-const host = process.env.US1_RELAY_HOST?.trim() || "0.0.0.0";
-const port = Number.parseInt(process.env.US1_RELAY_PORT ?? "47831", 10);
-const relayRoot = process.env.US1_RELAY_ROOT?.trim();
+const rawHost = process.env["US1_RELAY_HOST"]?.trim();
+const host = rawHost !== undefined && rawHost !== "" ? rawHost : "0.0.0.0";
+const port = Number.parseInt(process.env["US1_RELAY_PORT"] ?? "47831", 10);
+const relayRoot = process.env["US1_RELAY_ROOT"]?.trim();
 
-const relayServer = new Us1RelayServer(relayRoot && relayRoot !== "" ? relayRoot : undefined);
+const relayServer = new Us1RelayServer(typeof relayRoot === "string" && relayRoot !== "" ? relayRoot : undefined);
 const listener = relayServer.createListener();
 
 listener.listen(port, host, () => {
   const address = listener.address();
   const location =
-    address && typeof address === "object" ? `${address.address}:${address.port}` : `${host}:${port}`;
-  console.log(`[us1-relay] listening on ${location}`);
-  console.log(`[us1-relay] cwd=${process.cwd()}`);
-  console.log(`[us1-relay] scriptDir=${currentDir}`);
+    address !== null && typeof address === "object" ? `${address.address}:${address.port}` : `${host}:${port}`;
+  console.info(`[us1-relay] listening on ${location}`);
+  console.info(`[us1-relay] cwd=${process.cwd()}`);
+  console.info(`[us1-relay] scriptDir=${currentDir}`);
 });

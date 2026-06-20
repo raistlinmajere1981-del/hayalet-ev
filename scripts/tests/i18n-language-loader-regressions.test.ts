@@ -26,7 +26,7 @@ function getCatalogString(
   return typeof current === "string" ? current : undefined;
 }
 
-test("language loader includes built-ins and external manifests", async () => {
+void test("language loader includes built-ins and external manifests", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "app-i18n-"));
   const germanDir = join(rootDir, "de");
 
@@ -60,7 +60,7 @@ test("language loader includes built-ins and external manifests", async () => {
   assert.ok(languages.some((language) => language.locale === "de"));
 });
 
-test("built-in language packs resolve through folder-backed manifests and catalogs", () => {
+void test("built-in language packs resolve through folder-backed manifests and catalogs", () => {
   const descriptor = getBuiltInLanguageDescriptor("tr");
   const pack = getBuiltInLanguagePack("en");
 
@@ -71,7 +71,7 @@ test("built-in language packs resolve through folder-backed manifests and catalo
   assert.equal(getCatalogString(pack?.catalog, ["entrance", "user", "language", "label"]), "Application Language");
 });
 
-test("language loader merges split external catalogs and preserves selector fallback", async () => {
+void test("language loader merges split external catalogs and preserves selector fallback", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "app-i18n-split-"));
   const azeriDir = join(rootDir, "az");
 
@@ -121,14 +121,14 @@ test("language loader merges split external catalogs and preserves selector fall
   );
 });
 
-test("normalizeAppLanguage preserves custom locales and falls back to Turkish", () => {
+void test("normalizeAppLanguage preserves custom locales and falls back to Turkish", () => {
   assert.equal(normalizeAppLanguage("de"), "de");
   assert.equal(normalizeAppLanguage("EN_us"), "en-US");
   assert.equal(normalizeAppLanguage(""), "tr");
   assert.equal(normalizeAppLanguage(null), "tr");
 });
 
-test("normalizeSettings accepts custom locales without narrowing back to built-ins", () => {
+void test("normalizeSettings accepts custom locales without narrowing back to built-ins", () => {
   const normalized = normalizeSettings({
     general: {
       language: "de",
@@ -146,7 +146,7 @@ test("normalizeSettings accepts custom locales without narrowing back to built-i
   assert.equal(fallback.general?.language, "tr");
 });
 
-test("invalid external language packs are skipped or fall back safely", async () => {
+void test("invalid external language packs are skipped or fall back safely", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "app-i18n-invalid-"));
   const brokenExternalDir = join(rootDir, "fr");
   const brokenOverrideDir = join(rootDir, "en");

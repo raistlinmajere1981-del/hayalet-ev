@@ -5,7 +5,7 @@ import test from "node:test";
 import { shouldSkipAssistantMessage } from "../../src/js/pages/opencode-ui/chat-utils.ts";
 import { buildMessageSnapshotToken } from "../../src/js/pages/opencode-ui/message-content.ts";
 
-test("opencode-ui history renderer uses a tool host when assistant text is empty", () => {
+void test("opencode-ui history renderer uses a tool host when assistant text is empty", () => {
   const historyContent = readFileSync("src/js/pages/opencode-ui/history-actions.ts", "utf8");
   const appContent = readFileSync("src/js/pages/opencode-ui/app.ts", "utf8");
 
@@ -16,7 +16,7 @@ test("opencode-ui history renderer uses a tool host when assistant text is empty
   );
 });
 
-test("opencode-ui history renderer binds todo panel to session detail", () => {
+void test("opencode-ui history renderer binds todo panel to session detail", () => {
   const historyContent = readFileSync("src/js/pages/opencode-ui/history-actions.ts", "utf8");
   const appContent = readFileSync("src/js/pages/opencode-ui/app.ts", "utf8");
 
@@ -27,7 +27,7 @@ test("opencode-ui history renderer binds todo panel to session detail", () => {
   );
 });
 
-test("opencode-ui history renderer binds files panel to session detail", () => {
+void test("opencode-ui history renderer binds files panel to session detail", () => {
   const historyContent = readFileSync("src/js/pages/opencode-ui/history-actions.ts", "utf8");
   const appContent = readFileSync("src/js/pages/opencode-ui/app.ts", "utf8");
 
@@ -38,7 +38,7 @@ test("opencode-ui history renderer binds files panel to session detail", () => {
   );
 });
 
-test("opencode-ui live snapshot key tracks tool call changes", () => {
+void test("opencode-ui live snapshot key tracks tool call changes", () => {
   const baseToken = buildMessageSnapshotToken({
     role: "assistant",
     text: "done",
@@ -84,7 +84,7 @@ test("opencode-ui live snapshot key tracks tool call changes", () => {
   assert.notEqual(baseToken, withBlocksToken);
 });
 
-test("chat utils skip rendering empty assistant bubbles only when no visual block remains", () => {
+void test("chat utils skip rendering empty assistant bubbles only when no visual block remains", () => {
   assert.equal(
     shouldSkipAssistantMessage({
       text: "",

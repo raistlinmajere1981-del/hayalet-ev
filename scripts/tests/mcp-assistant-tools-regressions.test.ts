@@ -10,18 +10,22 @@ import {
 function parseToolText(result: unknown): Record<string, unknown> {
   const payload = result as { content?: Array<{ type?: string; text?: string }> };
   const text = payload.content?.[0]?.text;
-  assert.equal(typeof text, "string");
-  return JSON.parse(text);
+  if (typeof text !== "string") {
+    throw new Error("expected string");
+  }
+  return JSON.parse(text) as Record<string, unknown>;
 }
 
 function readToolText(result: unknown): string {
   const payload = result as { content?: Array<{ type?: string; text?: string }> };
   const text = payload.content?.[0]?.text;
-  assert.equal(typeof text, "string");
+  if (typeof text !== "string") {
+    throw new Error("expected string");
+  }
   return text;
 }
 
-test("assistant MCP tools expose AI-facing doctor and verification names", () => {
+void test("assistant MCP tools expose AI-facing doctor and verification names", () => {
   const entries = createAssistantTools(process.cwd());
   const names = entries.map((entry) => (entry.definition as { name: string }).name);
 
@@ -32,7 +36,7 @@ test("assistant MCP tools expose AI-facing doctor and verification names", () =>
   assert.equal(ASSISTANT_VERIFY_COMPLETION_TOOL.inputSchema.properties.response_format.default, "compact");
 });
 
-test("assistant doctor defaults to compact output", async () => {
+void test("assistant doctor defaults to compact output", async () => {
   const doctorEntry = createAssistantTools(process.cwd()).find(
     (entry) => (entry.definition as { name: string }).name === "hev_assistant_doctor"
   );
@@ -49,7 +53,7 @@ test("assistant doctor defaults to compact output", async () => {
   assert.doesNotMatch(text, /^\{/);
 });
 
-test("assistant verify completion defaults to compact output", async () => {
+void test("assistant verify completion defaults to compact output", async () => {
   const verifyEntry = createAssistantTools(process.cwd()).find(
     (entry) => (entry.definition as { name: string }).name === "hev_assistant_verify_completion"
   );
@@ -68,7 +72,7 @@ test("assistant verify completion defaults to compact output", async () => {
   assert.match(text, /evidence=1/);
 });
 
-test("assistant verify completion can report explicit evidence as json without shell checks", async () => {
+void test("assistant verify completion can report explicit evidence as json without shell checks", async () => {
   const verifyEntry = createAssistantTools(process.cwd()).find(
     (entry) => (entry.definition as { name: string }).name === "hev_assistant_verify_completion"
   );

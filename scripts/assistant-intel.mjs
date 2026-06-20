@@ -311,7 +311,7 @@ function readJsonArg(value) {
   try {
     return JSON.parse(value);
   } catch (error) {
-    throw new Error(`Invalid JSON args: ${error.message}`);
+    throw new Error(`Invalid JSON args: ${error.message}`, { cause: error });
   }
 }
 

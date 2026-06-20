@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { resolveUs1ForceSelectConversationId } from "../../src/js/modules/us1-session-selection.ts";
 
-test("US1 session selection keeps an explicit non-new conversation selection", () => {
+void test("US1 session selection keeps an explicit non-new conversation selection", () => {
   const result = resolveUs1ForceSelectConversationId({
     selectedConversationId: "conv-existing",
     resultConversationId: "conv-fallback",
@@ -21,7 +21,7 @@ test("US1 session selection keeps an explicit non-new conversation selection", (
   assert.equal(result, "conv-existing");
 });
 
-test("US1 session selection falls back to the latest matching session event when new is selected", () => {
+void test("US1 session selection falls back to the latest matching session event when new is selected", () => {
   const result = resolveUs1ForceSelectConversationId({
     selectedConversationId: "new",
     resultConversationId: null,
@@ -45,7 +45,7 @@ test("US1 session selection falls back to the latest matching session event when
   assert.equal(result, "conv-2");
 });
 
-test("US1 session selection can preserve an explicit new selection", () => {
+void test("US1 session selection can preserve an explicit new selection", () => {
   const result = resolveUs1ForceSelectConversationId({
     selectedConversationId: "new",
     resultConversationId: "conv-fallback",
@@ -64,7 +64,7 @@ test("US1 session selection can preserve an explicit new selection", () => {
   assert.equal(result, undefined);
 });
 
-test("US1 session selection ignores session events from other remote users", () => {
+void test("US1 session selection ignores session events from other remote users", () => {
   const result = resolveUs1ForceSelectConversationId({
     selectedConversationId: "new",
     resultConversationId: "conv-fallback",

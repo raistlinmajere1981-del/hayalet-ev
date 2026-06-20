@@ -2,10 +2,9 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type BetterSqlite3 from "better-sqlite3";
 import test from "node:test";
 
-import Database from "../../electron/native/better-sqlite3.ts";
+import Database, { type BetterSqlite3Database } from "../../electron/native/better-sqlite3.ts";
 import {
   ensureOpencodeUiSession,
   listOpencodeUiSessions,
@@ -14,7 +13,7 @@ import {
 import { t } from "../../src/js/pages/opencode-ui/i18n.ts";
 
 interface DbFixture {
-  db: BetterSqlite3.Database;
+  db: BetterSqlite3Database;
   dbPath: string;
   cleanup: () => void;
 }
@@ -103,7 +102,7 @@ function setupFixture(): DbFixture {
   return { db, dbPath, cleanup };
 }
 
-test("listOpencodeUiSessions returns sorted sessions from opencode disk db", async () => {
+void test("listOpencodeUiSessions returns sorted sessions from opencode disk db", async () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -147,7 +146,7 @@ test("listOpencodeUiSessions returns sorted sessions from opencode disk db", asy
   }
 });
 
-test("ensureOpencodeUiSession creates missing session and is idempotent", async () => {
+void test("ensureOpencodeUiSession creates missing session and is idempotent", async () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -202,7 +201,7 @@ test("ensureOpencodeUiSession creates missing session and is idempotent", async 
   }
 });
 
-test("ipc bridge registers opencode-ui session channels and preload methods", () => {
+void test("ipc bridge registers opencode-ui session channels and preload methods", () => {
   const mainContent = readFileSync("electron/main.ts", "utf8");
   const preloadContent = readFileSync("electron/preload.cjs", "utf8");
   const webviewPreloadContent = readFileSync("electron/webview-preload.cjs", "utf8");
@@ -225,7 +224,7 @@ test("ipc bridge registers opencode-ui session channels and preload methods", ()
   assert.match(globalTypes, /opencodeUiFsReadSession/);
 });
 
-test("readOpencodeUiSession parses user/assistant messages with files and tool calls", async () => {
+void test("readOpencodeUiSession parses user/assistant messages with files and tool calls", async () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -338,7 +337,7 @@ test("readOpencodeUiSession parses user/assistant messages with files and tool c
   }
 });
 
-test("readOpencodeUiSession reads structured assistant parts and latest todos", async () => {
+void test("readOpencodeUiSession reads structured assistant parts and latest todos", async () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -566,7 +565,7 @@ test("readOpencodeUiSession reads structured assistant parts and latest todos", 
   }
 });
 
-test("readOpencodeUiSession preserves historic image urls for preview-capable attachments", async () => {
+void test("readOpencodeUiSession preserves historic image urls for preview-capable attachments", async () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -625,7 +624,7 @@ test("readOpencodeUiSession preserves historic image urls for preview-capable at
   }
 });
 
-test("readOpencodeUiSession surfaces retrying tool state as a warning notice", async () => {
+void test("readOpencodeUiSession surfaces retrying tool state as a warning notice", async () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -689,7 +688,7 @@ test("readOpencodeUiSession surfaces retrying tool state as a warning notice", a
   }
 });
 
-test("readOpencodeUiSession prefers tokenized interaction text over merged reasoning fallback", async () => {
+void test("readOpencodeUiSession prefers tokenized interaction text over merged reasoning fallback", async () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -758,7 +757,7 @@ test("readOpencodeUiSession prefers tokenized interaction text over merged reaso
   }
 });
 
-test("readOpencodeUiSession aggregates usage from assistant message tokens", async () => {
+void test("readOpencodeUiSession aggregates usage from assistant message tokens", async () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -54,7 +54,8 @@ function extractTarball(tarballPath, destinationDir, label) {
     extractTgz(tarballPath, destinationDir);
   } catch (error) {
     throw new Error(
-      `${label} failed.\n${(error instanceof Error ? error.message : String(error)).trim()}`
+      `${label} failed.\n${(error instanceof Error ? error.message : String(error)).trim()}`,
+      { cause: error }
     );
   }
 }

@@ -19,8 +19,10 @@ import {
 } from "./laboratory-runtime-truth.helpers.ts";
 
 import type { LabArtifactProjection } from "./laboratory-runtime-truth.helpers.ts";
+import type { LabWaveformTimelineModel } from "../../rooms/laboratory/ui/lab-waveform-timeline-types.ts";
+import type { LabBookmark } from "../../rooms/laboratory/domain/lab-types.ts";
 
-test("waveform timeline renders normal playback timing and step controls without a selection", () => {
+void test("waveform timeline renders normal playback timing and step controls without a selection", () => {
   const store = createLabStore();
   store.dispatch({
     type: "snapshot-received",
@@ -37,7 +39,7 @@ test("waveform timeline renders normal playback timing and step controls without
   assert.match(markup, /data-lab-value="\+frame"/);
 });
 
-test("workspace audio visualizer renders a loadable artifact before live analyser init", async () => {
+void test("workspace audio visualizer renders a loadable artifact before live analyser init", async () => {
   FakeVisualizerAudioContext.constructed = [];
   FakeVisualizerWindow.imageLoadBehavior.clear();
   const audioPreview = new FakeMediaElement();
@@ -72,7 +74,7 @@ test("workspace audio visualizer renders a loadable artifact before live analyse
   assert.equal(canvas.context.lastDrawnImageSrc, "file:///tmp/waveform-artifact.png");
 });
 
-test("workspace audio visualizer crops artifact rendering to the shared waveform window", async () => {
+void test("workspace audio visualizer crops artifact rendering to the shared waveform window", async () => {
   FakeVisualizerAudioContext.constructed = [];
   FakeVisualizerWindow.imageLoadBehavior.clear();
   const audioPreview = new FakeMediaElement();
@@ -125,7 +127,7 @@ test("workspace audio visualizer crops artifact rendering to the shared waveform
   assert.equal(canvas.context.lastDrawImageArgs?.[8], 80);
 });
 
-test("workspace audio visualizer redraws when the shared waveform crop changes without changing the artifact", async () => {
+void test("workspace audio visualizer redraws when the shared waveform crop changes without changing the artifact", async () => {
   FakeVisualizerAudioContext.constructed = [];
   FakeVisualizerWindow.imageLoadBehavior.clear();
   const audioPreview = new FakeMediaElement();
@@ -185,7 +187,7 @@ test("workspace audio visualizer redraws when the shared waveform crop changes w
   assert.equal(canvas.context.lastDrawImageArgs?.[3], 1000);
 });
 
-test("workspace audio visualizer initializes lazily and disconnects on source changes", async () => {
+void test("workspace audio visualizer initializes lazily and disconnects on source changes", async () => {
   FakeVisualizerAudioContext.constructed = [];
   const firstAudio = new FakeMediaElement();
   const canvas = new FakeCanvasElement();
@@ -231,7 +233,7 @@ test("workspace audio visualizer initializes lazily and disconnects on source ch
   visualizer.dispose();
 });
 
-test("workspace audio visualizer updates preview audio focus without recreating the live controller", async () => {
+void test("workspace audio visualizer updates preview audio focus without recreating the live controller", async () => {
   FakeVisualizerAudioContext.constructed = [];
   const audioPreview = new FakeMediaElement();
   const canvas = new FakeCanvasElement();
@@ -256,7 +258,7 @@ test("workspace audio visualizer updates preview audio focus without recreating 
   let bookmarkCount = 0;
   const visualizer = createLabWaveformTimelineVisualizer({
     documentRef: documentRef as unknown as Document,
-    getTimelineModel() {
+    getTimelineModel(): LabWaveformTimelineModel {
       return {
         audioFocus,
         bookmarks: Array.from({ length: bookmarkCount }, function (_, index) {
@@ -264,9 +266,8 @@ test("workspace audio visualizer updates preview audio focus without recreating 
             id: `bookmark-${String(index)}`,
             label: `Bookmark ${String(index)}`,
             timeMs: index * 500,
-          };
+          } as unknown as LabBookmark;
         }),
-        dualPreviewActive: false,
         durationMs: 0,
         endMs: null,
         startMs: null,
@@ -339,7 +340,7 @@ test("workspace audio visualizer updates preview audio focus without recreating 
   visualizer.dispose();
 });
 
-test("workspace audio visualizer prioritizes live spectrum rendering over artifact fallback during playback", async () => {
+void test("workspace audio visualizer prioritizes live spectrum rendering over artifact fallback during playback", async () => {
   FakeVisualizerAudioContext.constructed = [];
   FakeVisualizerWindow.imageLoadBehavior.clear();
   const audioPreview = new FakeMediaElement();
@@ -385,7 +386,7 @@ test("workspace audio visualizer prioritizes live spectrum rendering over artifa
   assert.equal(windowRef.scheduledFrames.size, 1);
 });
 
-test("workspace audio visualizer ignores stale artifact image loads after the selection changes", async () => {
+void test("workspace audio visualizer ignores stale artifact image loads after the selection changes", async () => {
   FakeVisualizerAudioContext.constructed = [];
   FakeVisualizerWindow.imageLoadBehavior.clear();
   FakeVisualizerWindow.imageLoadBehavior.set("file:///tmp/slow-waveform.png", "defer");
@@ -438,7 +439,7 @@ test("workspace audio visualizer ignores stale artifact image loads after the se
   assert.equal(canvas.context.lastDrawnImageSrc, "file:///tmp/fast-waveform.png");
 });
 
-test("laboratory run controller renders loadable audio visualization artifacts before play", async () => {
+void test("laboratory run controller renders loadable audio visualization artifacts before play", async () => {
   FakeVisualizerAudioContext.constructed = [];
   FakeVisualizerWindow.imageLoadBehavior.clear();
   const audioPreview = new FakeMediaElement();
@@ -506,7 +507,7 @@ test("laboratory run controller renders loadable audio visualization artifacts b
   assert.equal(canvas.context.lastDrawnImageSrc, "file:///tmp/controller-waveform.png");
 });
 
-test("laboratory run controller renders decoded waveform peaks before play when the preview source is available", async () => {
+void test("laboratory run controller renders decoded waveform peaks before play when the preview source is available", async () => {
   FakeVisualizerAudioContext.constructed = [];
   FakeVisualizerWindow.imageLoadBehavior.clear();
   const audioPreview = new FakeMediaElement();
@@ -550,7 +551,7 @@ test("laboratory run controller renders decoded waveform peaks before play when 
   assert.equal(canvas.context.strokeStyleHistory.at(-1), "#5cd7df");
 });
 
-test("laboratory run controller keeps live spectrum rendering when a loadable artifact arrives", async () => {
+void test("laboratory run controller keeps live spectrum rendering when a loadable artifact arrives", async () => {
   FakeVisualizerAudioContext.constructed = [];
   FakeVisualizerWindow.imageLoadBehavior.clear();
   const audioPreview = new FakeMediaElement();
@@ -634,7 +635,7 @@ test("laboratory run controller keeps live spectrum rendering when a loadable ar
   );
 });
 
-test("laboratory run controller pauses realtime rendering while hidden and resumes on visibility restore", async () => {
+void test("laboratory run controller pauses realtime rendering while hidden and resumes on visibility restore", async () => {
   FakeVisualizerAudioContext.constructed = [];
   FakeVisualizerWindow.imageLoadBehavior.clear();
   const audioPreview = new FakeMediaElement();
@@ -678,12 +679,12 @@ test("laboratory run controller pauses realtime rendering while hidden and resum
   assert.equal(windowRef.scheduledFrames.size, 1);
 
   documentRef.hidden = true;
-  documentRef.listeners.get("visibilitychange")?.({ type: "visibilitychange" } as Event);
+  documentRef.listeners.get("visibilitychange")?.({ type: "visibilitychange" } as unknown as Event);
   await Promise.resolve();
   assert.equal(windowRef.scheduledFrames.size, 0);
 
   documentRef.hidden = false;
-  documentRef.listeners.get("visibilitychange")?.({ type: "visibilitychange" } as Event);
+  documentRef.listeners.get("visibilitychange")?.({ type: "visibilitychange" } as unknown as Event);
   await flushVisualizerWork();
   assert.equal(windowRef.scheduledFrames.size, 1);
   assert.equal(

@@ -14,7 +14,7 @@ async function loadProviderConfig(providerId: string): Promise<Record<string, un
   return mod.config;
 }
 
-test("opencode-based provider configs expose ui language signals", async () => {
+void test("opencode-based provider configs expose ui language signals", async () => {
   const opencodeProviders = ["opencode", "opencode-ui"];
 
   for (const providerId of opencodeProviders) {
@@ -35,7 +35,7 @@ test("opencode-based provider configs expose ui language signals", async () => {
   }
 });
 
-test("selector locale consumers use shared resolveSelectorLanguage helper", () => {
+void test("selector locale consumers use shared resolveSelectorLanguage helper", () => {
   const files = [
     "src/js/modules/webview/message-sender.ts",
     "src/js/modules/traffic/probe-script-builder.ts",
@@ -49,7 +49,7 @@ test("selector locale consumers use shared resolveSelectorLanguage helper", () =
   }
 });
 
-test("runtime provider config reader requests a serializable subset from the webview", async () => {
+void test("runtime provider config reader requests a serializable subset from the webview", async () => {
   let executedScript = "";
   const config = await getRuntimeProviderConfig({
     executeJavaScript: async (script: string) => {
@@ -94,7 +94,7 @@ test("runtime provider config reader requests a serializable subset from the web
   });
 });
 
-test("app bootstrap initializes renderer i18n from settings", () => {
+void test("app bootstrap initializes renderer i18n from settings", () => {
   const source = readFileSync("src/js/app/index.ts", "utf8");
   const loadIndex = source.indexOf("await SettingsManager.load();");
   const bootstrapIndex = source.indexOf("await AppI18n.bootstrap(SettingsManager);");

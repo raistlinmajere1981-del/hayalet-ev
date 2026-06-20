@@ -11,7 +11,7 @@ function createWebviewMock(results: JsResult[]) {
 
   return {
     webview: {
-      executeJavaScript: async (script: string) => {
+      executeJavaScript: (script: string) => {
         jsCalls.push(script);
         const next = results.shift();
         return next ?? { success: true };
@@ -25,7 +25,7 @@ function createWebviewMock(results: JsResult[]) {
   };
 }
 
-test("character-by-character mode uses bulk insert path when available", async () => {
+void test("character-by-character mode uses bulk insert path when available", async () => {
   const { webview, inputChars } = createWebviewMock([
     { success: true, inputType: "character-by-character" },
     { success: true },

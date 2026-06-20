@@ -34,7 +34,7 @@ function hydrateState(overrides: {
           mode: "local",
           storedFileName: null,
           routeLabel: null,
-        } as Record<string, unknown>),
+        }),
       sourceProbeStatus: overrides.sourceProbeStatus || "idle",
       reports: {
         user: null,
@@ -47,7 +47,7 @@ function hydrateState(overrides: {
   return store.getState();
 }
 
-test("laboratory top bar delegates project management to the source panel", () => {
+void test("laboratory top bar delegates project management to the source panel", () => {
   const state = hydrateState({
     activeProjectId: "draft-1",
     projects: [
@@ -81,7 +81,7 @@ test("laboratory top bar delegates project management to the source panel", () =
   assert.match(sourcePanel, /data-lab-action="project-delete"/);
 });
 
-test("laboratory source panel owns the active project selector", () => {
+void test("laboratory source panel owns the active project selector", () => {
   const state = hydrateState({
     activeProjectId: "project-1",
     projects: [{ id: "project-1", name: "2026-04-20 18-30 - evidence.mp4", hasSource: true }],
@@ -106,7 +106,7 @@ test("laboratory source panel owns the active project selector", () => {
   assert.match(sourcePanel, /2026-04-20 18-30 - evidence\.mp4/);
 });
 
-test("laboratory controller starts clean projects and keeps naming/delete safeguards", () => {
+void test("laboratory controller starts clean projects and keeps naming/delete safeguards", () => {
   const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
   const sourceDraftControllerSource = readFileSync(
     "rooms/laboratory/runtime/controller/lab-source-draft-controller.ts",

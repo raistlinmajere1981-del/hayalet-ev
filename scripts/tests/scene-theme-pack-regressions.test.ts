@@ -16,7 +16,7 @@ import {
 } from "../../src/js/scene-system/scene-clickable-theme-core.ts";
 import { SCENE_CLICKABLE_DEFAULTS } from "../../shared/themes/castle/scene-clickable-defaults.ts";
 
-test("shared castle theme source centralizes scene assets, theme metadata, and room maps", () => {
+void test("shared castle theme source centralizes scene assets, theme metadata, and room maps", () => {
   const manifestSource = readFileSync("shared/themes/castle/manifest.ts", "utf8");
   const clickableDefaultsSource = readFileSync(
     "shared/themes/castle/scene-clickable-defaults.ts",
@@ -82,7 +82,7 @@ test("shared castle theme source centralizes scene assets, theme metadata, and r
   assert.equal(existsSync("src/assets/themes/castle"), false);
 });
 
-test("scene runtime files resolve theme assets through scene-system and avoid legacy scene theme roots", () => {
+void test("scene runtime files resolve theme assets through scene-system and avoid legacy scene theme roots", () => {
   const backLayerSource = readFileSync("src/js/scene/renderers/back-layer.ts", "utf8");
   const objectLayerSource = readFileSync("src/js/scene/renderers/object-layer.ts", "utf8");
   const assistantSource = readFileSync("src/js/pages/assistant/assistant.ts", "utf8");
@@ -120,7 +120,7 @@ test("scene runtime files resolve theme assets through scene-system and avoid le
   assert.doesNotMatch(htmlSource, /loading_door_0[1-4]\.webp/);
 });
 
-test("clickable theme resolvers honor theme precedence and survive draft/source round-trips", async () => {
+void test("clickable theme resolvers honor theme precedence and survive draft/source round-trips", async () => {
   const sceneClickableTheme = cloneSceneClickableTheme(SCENE_CLICKABLE_DEFAULTS);
   sceneClickableTheme.object.glowHueShiftDeg = 25.5;
   sceneClickableTheme.object.glowAlphaScale = 1.4;

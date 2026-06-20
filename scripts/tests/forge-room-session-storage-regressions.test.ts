@@ -62,7 +62,7 @@ function createStorageDeps() {
   };
 }
 
-test("forge-room session storage keeps sessions under the reserved room-local sessions root", async () => {
+void test("forge-room session storage keeps sessions under the reserved room-local sessions root", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "forge-room-storage-"));
   const runtimePaths = {
     storageDir: rootDir,
@@ -114,7 +114,7 @@ test("forge-room session storage keeps sessions under the reserved room-local se
   }
 });
 
-test("forge-room session storage ignores non-session residue outside the reserved session root", async () => {
+void test("forge-room session storage ignores non-session residue outside the reserved session root", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "forge-room-storage-residue-"));
   const runtimePaths = {
     storageDir: rootDir,
@@ -133,7 +133,7 @@ test("forge-room session storage ignores non-session residue outside the reserve
   }
 });
 
-test("forge-room runtime state prunes session selections that drift out of the active catalog", () => {
+void test("forge-room runtime state prunes session selections that drift out of the active catalog", () => {
   const session = createEmptyForgeSession("forge-session-catalog-drift");
   session.sessionContextSelection = {
     skillKeys: ["measurement", "custom_skill"],
@@ -143,12 +143,12 @@ test("forge-room runtime state prunes session selections that drift out of the a
 
   const operatorProfile = createDefaultForgeOperatorProfile();
   operatorProfile.skills = [
-    { skillKey: "measurement", level: "basic" },
-    { skillKey: "custom_skill", level: "advanced" },
+    { skillKey: "measurement", level: "basic", label: "Measurement" },
+    { skillKey: "custom_skill", level: "advanced", label: "Custom Skill" },
   ];
   operatorProfile.equipment = [
-    { equipmentKey: "multimeter", status: "available" },
-    { equipmentKey: "bench_laser", status: "planned" },
+    { equipmentKey: "multimeter", status: "available", label: "Multimeter" },
+    { equipmentKey: "bench_laser", status: "planned", label: "Bench Laser" },
   ];
   operatorProfile.preferences = {
     mode: "learn_first",

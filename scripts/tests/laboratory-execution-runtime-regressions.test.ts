@@ -25,7 +25,6 @@ import {
   buildExecutionStagingFromResolved,
   createLabExecutionDispatcher,
   createMockExecutionResult,
-  createDualPreviewSnapshot,
   createLabStore,
   createTestAudioFocusSettings,
   getActiveExecutionAlternatives,
@@ -68,7 +67,7 @@ import type {
   LabSelection,
 } from "./laboratory-runtime-truth.helpers.ts";
 
-test("laboratory process summary derives a single deterministic state", () => {
+void test("laboratory process summary derives a single deterministic state", () => {
   const store = createLabStore();
 
   assert.equal(getLaboratoryProcessSummary(store.getState()).state, "idle");
@@ -127,7 +126,7 @@ test("laboratory process summary derives a single deterministic state", () => {
   const stagingSummary = getLaboratoryProcessSummary(store.getState());
   assert.equal(stagingSummary.state, "idle");
   assert.equal(
-    (getLaboratoryRightPanelContext(store.getState()) as Record<string, unknown>)[
+    (getLaboratoryRightPanelContext(store.getState()) as unknown as Record<string, unknown>)[
       "stagingStatus"
     ],
     undefined
@@ -148,7 +147,7 @@ test("laboratory process summary derives a single deterministic state", () => {
   assert.equal(analyzingSummary.activeTaskLabel, "audio");
 });
 
-test("store accepts execution intents only from the exact active suggestion preview", () => {
+void test("store accepts execution intents only from the exact active suggestion preview", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -259,7 +258,7 @@ test("store accepts execution intents only from the exact active suggestion prev
   assert.equal(getActiveExecutionIntent(store.getState()), null);
 });
 
-test("execution plan is derived only from accepted intents and survives preview clear", () => {
+void test("execution plan is derived only from accepted intents and survives preview clear", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -317,7 +316,7 @@ test("execution plan is derived only from accepted intents and survives preview 
   assert.equal(getActiveExecutionPlan(store.getState()), null);
 });
 
-test("execution plan lifecycle ignores passive inspection changes and clears on structural changes", () => {
+void test("execution plan lifecycle ignores passive inspection changes and clears on structural changes", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -378,7 +377,7 @@ test("execution plan lifecycle ignores passive inspection changes and clears on 
   assert.equal(getActiveExecutionPlan(store.getState()), null);
 });
 
-test("execution planner is deterministic and resolves ROI tool-hint intents", () => {
+void test("execution planner is deterministic and resolves ROI tool-hint intents", () => {
   const baseSelection: LabSelection = {
     id: "selection-1",
     startMs: 1200,
@@ -466,7 +465,7 @@ test("execution planner is deterministic and resolves ROI tool-hint intents", ()
   assert.match(getActiveExecutionPlan(store.getState())?.title || "", /Region focus plan/);
 });
 
-test("execution planner falls back safely for unknown action types", () => {
+void test("execution planner falls back safely for unknown action types", () => {
   const plan = buildExecutionPlan({
     suggestion: {
       id: "custom-unknown",
@@ -490,7 +489,7 @@ test("execution planner falls back safely for unknown action types", () => {
   assert.equal(plan.steps.length, 3);
 });
 
-test("execution simulation is derived only from active plans and survives preview clear", () => {
+void test("execution simulation is derived only from active plans and survives preview clear", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -552,7 +551,7 @@ test("execution simulation is derived only from active plans and survives previe
   assert.equal(getActiveExecutionSimulation(store.getState()), null);
 });
 
-test("execution simulation is deterministic and stays stable across audio-focus-only updates", () => {
+void test("execution simulation is deterministic and stays stable across audio-focus-only updates", () => {
   const selection: LabSelection = {
     id: "selection-audio-sim",
     startMs: 1000,
@@ -666,7 +665,7 @@ test("execution simulation is deterministic and stays stable across audio-focus-
   );
 });
 
-test("execution readiness is deterministic across ready, needs-review, and blocked states", () => {
+void test("execution readiness is deterministic across ready, needs-review, and blocked states", () => {
   const readySelection: LabSelection = {
     id: "selection-ready",
     startMs: 1000,
@@ -793,7 +792,7 @@ test("execution readiness is deterministic across ready, needs-review, and block
   assert.equal((blockedReadiness.blockers?.length ?? 0) > 0, true);
 });
 
-test("execution readiness is derived only from active plan and simulation", () => {
+void test("execution readiness is derived only from active plan and simulation", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -852,7 +851,7 @@ test("execution readiness is derived only from active plan and simulation", () =
   assert.equal(getActiveExecutionReadiness(store.getState()), null);
 });
 
-test("execution readiness follows upstream invalidation instead of persisting independently", () => {
+void test("execution readiness follows upstream invalidation instead of persisting independently", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -917,7 +916,7 @@ test("execution readiness follows upstream invalidation instead of persisting in
   assert.equal(getActiveExecutionReadiness(store.getState()), null);
 });
 
-test("execution payload preview is derived only from active readiness", () => {
+void test("execution payload preview is derived only from active readiness", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -986,7 +985,7 @@ test("execution payload preview is derived only from active readiness", () => {
   assert.equal(getActiveExecutionPayloadPreview(store.getState()), null);
 });
 
-test("execution payload bridge is deterministic and covers ROI plus fallback shapes", () => {
+void test("execution payload bridge is deterministic and covers ROI plus fallback shapes", () => {
   const roiSelection: LabSelection = {
     id: "selection-payload-roi",
     startMs: 1200,
@@ -1101,7 +1100,7 @@ test("execution payload bridge is deterministic and covers ROI plus fallback sha
   );
 });
 
-test("execution payload preview helper returns null for missing upstream objects", () => {
+void test("execution payload preview helper returns null for missing upstream objects", () => {
   const selection: LabSelection = {
     id: "selection-payload-missing",
     startMs: 1000,
@@ -1171,7 +1170,7 @@ test("execution payload preview helper returns null for missing upstream objects
   );
 });
 
-test("execution reflection maps readiness and simulation into passive decisions", () => {
+void test("execution reflection maps readiness and simulation into passive decisions", () => {
   const proceedSelection: LabSelection = {
     id: "selection-reflection-proceed",
     startMs: 1000,
@@ -1361,7 +1360,7 @@ test("execution reflection maps readiness and simulation into passive decisions"
   );
 });
 
-test("execution reflection is derived only from the complete active dry-run chain", () => {
+void test("execution reflection is derived only from the complete active dry-run chain", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -1423,7 +1422,7 @@ test("execution reflection is derived only from the complete active dry-run chai
   assert.equal(getActiveExecutionReflection(store.getState()), null);
 });
 
-test("execution reflection helper returns null for missing upstream objects", () => {
+void test("execution reflection helper returns null for missing upstream objects", () => {
   const selection: LabSelection = {
     id: "selection-reflection-missing",
     startMs: 1000,
@@ -1696,7 +1695,7 @@ function hasObjectKey(value: unknown, keyName: string): boolean {
   });
 }
 
-test("passive execution descriptor maps conceptual classes deterministically", () => {
+void test("passive execution descriptor maps conceptual classes deterministically", () => {
   const selection: LabSelection = {
     id: "selection-peb-descriptor-map",
     startMs: 1000,
@@ -1759,7 +1758,7 @@ test("passive execution descriptor maps conceptual classes deterministically", (
   assert.doesNotMatch(advisory, /\b(ffmpeg|yt-dlp|opencv|sharp)\b/i);
 });
 
-test("execution bridge maps descriptors to passive contracts deterministically", () => {
+void test("execution bridge maps descriptors to passive contracts deterministically", () => {
   const descriptor = buildExecutionDescriptor({ actionType: "inspect-audio" });
   const bridge = buildExecutionBridge(descriptor);
 
@@ -1846,7 +1845,7 @@ test("execution bridge maps descriptors to passive contracts deterministically",
   );
 });
 
-test("execution bridge derives input shape without runtime payload values", () => {
+void test("execution bridge derives input shape without runtime payload values", () => {
   const selection: LabSelection = {
     id: "selection-bridge-param-shape",
     startMs: 1000,
@@ -1878,7 +1877,7 @@ test("execution bridge derives input shape without runtime payload values", () =
   assert.equal(hasObjectKey(bridge.inputContract, "previewParameters"), false);
 });
 
-test("execution readiness signal maps pressure and projection deterministically", () => {
+void test("execution readiness signal maps pressure and projection deterministically", () => {
   const steadySignal = buildExecutionReadinessSignal({
     decisionPressure: "low",
     goalEvaluation: {
@@ -2020,7 +2019,7 @@ test("execution readiness signal maps pressure and projection deterministically"
   );
 });
 
-test("laboratory advisory i18n resolves semantic keys without leaking selectors", () => {
+void test("laboratory advisory i18n resolves semantic keys without leaking selectors", () => {
   assert.equal(resolveLabI18n("descriptor.view", "en"), "Descriptor view");
   assert.equal(resolveLabI18n("descriptor.view", "tr"), "Tanımlayıcı görünümü");
   assert.notEqual(resolveLabI18n("readiness.view", "en"), resolveLabI18n("readiness.view", "tr"));
@@ -2102,7 +2101,7 @@ test("laboratory advisory i18n resolves semantic keys without leaking selectors"
     formatExecutionBridgeAdvisory(bridge, "tr"),
     formatDecisionCoherenceAdvisory(coherence, "tr"),
   ]);
-  assert.equal(turkishOutputs[3].includes(bridge.summary), false);
+  assert.equal(turkishOutputs[3]!.includes(bridge.summary), false);
 
   const rendered = [...englishOutputs, ...turkishOutputs].join(" ");
   for (const key of [
@@ -2118,7 +2117,7 @@ test("laboratory advisory i18n resolves semantic keys without leaking selectors"
   }
 });
 
-test("decision coherence compresses posture readiness and projection deterministically", () => {
+void test("decision coherence compresses posture readiness and projection deterministically", () => {
   const aligned = buildDecisionCoherence({
     posture: "proceed",
     readiness: {
@@ -2204,7 +2203,7 @@ test("decision coherence compresses posture readiness and projection determinist
   assert.doesNotMatch(conflicted.summary, DESCRIPTOR_EXECUTION_VERB_PATTERN);
 });
 
-test("decision priority reorders advisory summaries without mutating text", () => {
+void test("decision priority reorders advisory summaries without mutating text", () => {
   const parts = {
     posturePrefix: "Proceed with caution:",
     descriptor: "Descriptor view: describes a stable pattern.",
@@ -2259,9 +2258,8 @@ test("decision priority reorders advisory summaries without mutating text", () =
         posturePrefix: "Proceed:",
         descriptor: "",
         readiness: "Readiness view: steady.",
-        bridge: undefined,
         coherence: "Coherence view: aligned.",
-      },
+      } as any,
       coherenceState: "conflicted",
     }),
     "Proceed: Coherence view: aligned. Readiness view: steady."
@@ -2287,7 +2285,7 @@ test("decision priority reorders advisory summaries without mutating text", () =
   );
 });
 
-test("passive execution descriptor remains stable across equivalent feedback contexts", () => {
+void test("passive execution descriptor remains stable across equivalent feedback contexts", () => {
   const selection: LabSelection = {
     id: "selection-peb-equivalent-feedback",
     startMs: 1000,
@@ -2378,7 +2376,7 @@ test("passive execution descriptor remains stable across equivalent feedback con
   assert.equal(extractDescriptorAdvisoryText(failedDeviationCandidate.summary), advisory);
 });
 
-test("execution alternatives compare deterministic counterfactuals across decisions", () => {
+void test("execution alternatives compare deterministic counterfactuals across decisions", () => {
   const proceedSelection: LabSelection = {
     id: "selection-alternatives-proceed",
     startMs: 1000,
@@ -2491,7 +2489,7 @@ test("execution alternatives compare deterministic counterfactuals across decisi
   );
 });
 
-test("passive descriptor and bridge advisories are summary-only and avoid execution verbs", () => {
+void test("passive descriptor and bridge advisories are summary-only and avoid execution verbs", () => {
   const selection: LabSelection = {
     id: "selection-peb-summary-advisory",
     startMs: 1000,
@@ -2702,7 +2700,7 @@ test("passive descriptor and bridge advisories are summary-only and avoid execut
   assert.equal(hasObjectKey(alternatives, "coherenceConfidence"), false);
 });
 
-test("execution alternatives re-weight summary tone without changing structure", () => {
+void test("execution alternatives re-weight summary tone without changing structure", () => {
   const selection: LabSelection = {
     id: "selection-alternatives-feedback",
     startMs: 1000,
@@ -2754,7 +2752,7 @@ test("execution alternatives re-weight summary tone without changing structure",
   assert.match(divergentFeedback.comparisonNote ?? "", /improve coverage or reduce divergence/i);
 });
 
-test("execution alternatives cover known action mappings and fallback", () => {
+void test("execution alternatives cover known action mappings and fallback", () => {
   const videoSelection: LabSelection = {
     id: "selection-alternatives-video",
     startMs: 2000,
@@ -2837,7 +2835,7 @@ test("execution alternatives cover known action mappings and fallback", () => {
   );
 });
 
-test("execution alternatives are derived only from the complete active reflection chain", () => {
+void test("execution alternatives are derived only from the complete active reflection chain", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -2898,7 +2896,7 @@ test("execution alternatives are derived only from the complete active reflectio
   assert.equal(getActiveExecutionAlternatives(store.getState()), null);
 });
 
-test("execution alternatives helper returns null for missing upstream objects", () => {
+void test("execution alternatives helper returns null for missing upstream objects", () => {
   const selection: LabSelection = {
     id: "selection-alternatives-missing",
     startMs: 1000,
@@ -2976,7 +2974,7 @@ test("execution alternatives helper returns null for missing upstream objects", 
   );
 });
 
-test("execution candidate synthesizes structural viability without downgrading stable alternatives", () => {
+void test("execution candidate synthesizes structural viability without downgrading stable alternatives", () => {
   const proceedSelection: LabSelection = {
     id: "selection-candidate-proceed",
     startMs: 1000,
@@ -3106,7 +3104,7 @@ test("execution candidate synthesizes structural viability without downgrading s
   assert.equal(avoidCandidate.reflectionDecision, "avoid");
 });
 
-test("execution candidate adjusts confidence from interpreted result without changing status", () => {
+void test("execution candidate adjusts confidence from interpreted result without changing status", () => {
   const selection: LabSelection = {
     id: "selection-candidate-feedback",
     startMs: 1000,
@@ -3174,7 +3172,7 @@ test("execution candidate adjusts confidence from interpreted result without cha
   assert.equal((deviatingCandidate.confidence ?? 0) < (baseCandidate.confidence ?? 0), true);
 });
 
-test("execution candidate validates upstream coherence and payload preview shape", () => {
+void test("execution candidate validates upstream coherence and payload preview shape", () => {
   const selection: LabSelection = {
     id: "selection-candidate-payload",
     startMs: 1000,
@@ -3312,7 +3310,7 @@ test("execution candidate validates upstream coherence and payload preview shape
   assert.equal(actionMismatchCandidate?.status, "not-viable");
 });
 
-test("execution candidate is derived only from the complete active alternatives chain", () => {
+void test("execution candidate is derived only from the complete active alternatives chain", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -3372,7 +3370,7 @@ test("execution candidate is derived only from the complete active alternatives 
   assert.equal(getActiveExecutionCandidate(store.getState()), null);
 });
 
-test("execution candidate helper returns null for missing upstream objects", () => {
+void test("execution candidate helper returns null for missing upstream objects", () => {
   const selection: LabSelection = {
     id: "selection-candidate-missing",
     startMs: 1000,
@@ -3488,7 +3486,7 @@ function createCommittedAudioExecutionStore(
   };
 }
 
-test("execution commitment is explicit, candidate-gated, and revocable", () => {
+void test("execution commitment is explicit, candidate-gated, and revocable", () => {
   const { afterCommit, beforeCommit, candidate, commitment, store } =
     createCommittedAudioExecutionStore();
 
@@ -3517,7 +3515,7 @@ test("execution commitment is explicit, candidate-gated, and revocable", () => {
   assert.equal(store.getState().ui.activeExecutionIntentId, "audio-inspect");
 });
 
-test("execution commitment rejects missing, mismatched, stale, and not-viable candidates", () => {
+void test("execution commitment rejects missing, mismatched, stale, and not-viable candidates", () => {
   const emptyStore = createLabStore();
   emptyStore.dispatch({
     type: "workspace-execution-commitment-set",
@@ -3590,7 +3588,7 @@ test("execution commitment rejects missing, mismatched, stale, and not-viable ca
   assert.equal(getActiveExecutionCommitment(blockedStore.getState()), null);
 });
 
-test("execution commitment clears on upstream context changes but not preview clear", () => {
+void test("execution commitment clears on upstream context changes but not preview clear", () => {
   const keepStore = createCommittedAudioExecutionStore();
   keepStore.store.dispatch({
     type: "workspace-selection-suggestion-preview-cleared",
@@ -3677,17 +3675,17 @@ function createExecutionStagingChain(params: {
   if (candidate === null) {
     throw new Error("Expected an execution candidate for staging tests");
   }
-  const commitment: LabExecutionCommitment = {
+  const commitment = {
     id: `commitment:${candidate.planId}`,
     planId: candidate.planId,
-    status: "committed",
+    status: "committed" as const,
     candidateStatus: candidate.status,
     summary: "This path has been consciously chosen for passive staging.",
     committedAt: 1,
     notes: candidate.notes,
     uncertainties: candidate.uncertainties,
     confidence: candidate.confidence,
-  };
+  } as any as LabExecutionCommitment;
 
   return {
     ...chain,
@@ -3696,7 +3694,7 @@ function createExecutionStagingChain(params: {
   };
 }
 
-test("execution staging derives a passive staged state from committed viable and unstable chains", () => {
+void test("execution staging derives a passive staged state from committed viable and unstable chains", () => {
   const selection: LabSelection = {
     id: "selection-staging-viable",
     startMs: 1000,
@@ -3758,7 +3756,7 @@ test("execution staging derives a passive staged state from committed viable and
   assert.match(unstableStaging?.warnings?.join(" ") || "", /unstable/i);
 });
 
-test("execution staging returns null for invalid or stale upstream chains", () => {
+void test("execution staging returns null for invalid or stale upstream chains", () => {
   const selection: LabSelection = {
     id: "selection-staging-invalid",
     startMs: 1000,
@@ -3865,7 +3863,7 @@ test("execution staging returns null for invalid or stale upstream chains", () =
   );
 });
 
-test("execution staging can represent a coherent committed path that is not staged yet", () => {
+void test("execution staging can represent a coherent committed path that is not staged yet", () => {
   const selection: LabSelection = {
     id: "selection-staging-review",
     startMs: 1000,
@@ -3905,7 +3903,7 @@ test("execution staging can represent a coherent committed path that is not stag
   assert.match(staging?.warnings?.join(" ") || "", /readiness check|unstable/i);
 });
 
-test("execution staging is selector-derived and clears with its upstream chain", () => {
+void test("execution staging is selector-derived and clears with its upstream chain", () => {
   const { commitment, store } = createCommittedAudioExecutionStore();
   const staging = getActiveExecutionStaging(store.getState());
 
@@ -4036,7 +4034,7 @@ function withCandidateContext(
   };
 }
 
-test("execution result interpretation maps deterministic outcome buckets", () => {
+void test("execution result interpretation maps deterministic outcome buckets", () => {
   const selectionSnapshot = {
     endMs: 3000,
     inspectionMode: "audio" as const,
@@ -4124,7 +4122,7 @@ test("execution result interpretation maps deterministic outcome buckets", () =>
   );
 });
 
-test("execution goal evaluation maps deterministic action-aware outcomes", () => {
+void test("execution goal evaluation maps deterministic action-aware outcomes", () => {
   const analyzeSelectionSnapshot = {
     endMs: 4200,
     inspectionMode: "none" as const,
@@ -4353,7 +4351,7 @@ test("execution goal evaluation maps deterministic action-aware outcomes", () =>
   );
 });
 
-test("execution dispatch candidate exists only for a valid committed staged chain", () => {
+void test("execution dispatch candidate exists only for a valid committed staged chain", () => {
   const store = createLabStore();
 
   assert.equal(getExecutionDispatchCandidate(store.getState()), null);
@@ -4427,7 +4425,7 @@ test("execution dispatch candidate exists only for a valid committed staged chai
   assert.equal(getExecutionDispatchCandidate(store.getState()), null);
 });
 
-test("execution runtime lifecycle is identity-gated and exposes the active result", () => {
+void test("execution runtime lifecycle is identity-gated and exposes the active result", () => {
   const { store } = createCommittedAudioExecutionStore();
   const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
   assert.ok(dispatchCandidate);
@@ -4487,7 +4485,7 @@ test("execution runtime lifecycle is identity-gated and exposes the active resul
   assert.equal(getActiveExecutionResult(store.getState()), null);
 });
 
-test("completed execution result feeds passive reflection candidate and alternatives output", () => {
+void test("completed execution result feeds passive reflection candidate and alternatives output", () => {
   const { candidate: baseCandidate, store } = createCommittedAudioExecutionStore();
   const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
   assert.ok(dispatchCandidate);
@@ -4551,7 +4549,7 @@ test("completed execution result feeds passive reflection candidate and alternat
   assert.doesNotMatch(afterCandidate.adaptiveDecisionHint, /Projected outcome suggests/i);
 });
 
-test("counterfactual projection stays hidden until execution completes", () => {
+void test("counterfactual projection stays hidden until execution completes", () => {
   const { store } = createCommittedAudioExecutionStore();
   const dispatchCandidate = getExecutionDispatchCandidate(store.getState());
   assert.ok(dispatchCandidate);
@@ -4592,7 +4590,7 @@ test("counterfactual projection stays hidden until execution completes", () => {
   assert.doesNotMatch(completedCandidate.adaptiveDecisionHint, /Projected outcome suggests/i);
 });
 
-test("session pattern awareness records completed samples idempotently", () => {
+void test("session pattern awareness records completed samples idempotently", () => {
   __testOnlyResetExecutionPatternRegistry();
 
   const first = createCommittedAudioExecutionStore();
@@ -4661,7 +4659,7 @@ test("session pattern awareness records completed samples idempotently", () => {
   __testOnlyResetExecutionPatternRegistry();
 });
 
-test("session pattern awareness separates duration buckets roi presence and neutral ratios", () => {
+void test("session pattern awareness separates duration buckets roi presence and neutral ratios", () => {
   const weakResult = createAudioExecutionResult({
     confidence: 0.5,
     coverage: 0.4,
@@ -4745,7 +4743,7 @@ test("session pattern awareness separates duration buckets roi presence and neut
   __testOnlyResetExecutionPatternRegistry();
 });
 
-test("session pattern signal softly biases candidate confidence and alternatives tone", () => {
+void test("session pattern signal softly biases candidate confidence and alternatives tone", () => {
   const selection: LabSelection = {
     id: "selection-pattern-signal-feedback",
     startMs: 1000,
@@ -4877,7 +4875,7 @@ test("session pattern signal softly biases candidate confidence and alternatives
   assert.match(weakAlternatives.comparisonNote ?? "", /Slower temporal inspection/i);
 });
 
-test("adaptive decision signal maps goal pattern and alignment deterministically", () => {
+void test("adaptive decision signal maps goal pattern and alignment deterministically", () => {
   const weakFailed = buildAdaptiveDecisionSignal({
     executionGoalEvaluation: {
       outcome: "failed",
@@ -4988,7 +4986,7 @@ test("adaptive decision signal maps goal pattern and alignment deterministically
   });
 });
 
-test("decision posture compresses adaptive feedback into deterministic labels", () => {
+void test("decision posture compresses adaptive feedback into deterministic labels", () => {
   assert.deepEqual(
     buildDecisionPosture({
       decisionPressure: "low",
@@ -5072,7 +5070,7 @@ test("decision posture compresses adaptive feedback into deterministic labels", 
   );
 });
 
-test("decision posture prefix formatter stays idempotent across rerenders", () => {
+void test("decision posture prefix formatter stays idempotent across rerenders", () => {
   const caution = buildDecisionPosture({
     decisionPressure: "low",
   });
@@ -5115,7 +5113,7 @@ test("decision posture prefix formatter stays idempotent across rerenders", () =
   );
 });
 
-test("guided alternative signal ranks advisory alternatives deterministically", () => {
+void test("guided alternative signal ranks advisory alternatives deterministically", () => {
   const alternatives = [
     {
       actionType: "analyze-segment",
@@ -5235,7 +5233,7 @@ test("guided alternative signal ranks advisory alternatives deterministically", 
   );
 });
 
-test("counterfactual projection remains deterministic and pressure-aware", () => {
+void test("counterfactual projection remains deterministic and pressure-aware", () => {
   const selectionSnapshot = {
     endMs: 4400,
     inspectionMode: "visual" as const,
@@ -5384,7 +5382,7 @@ test("counterfactual projection remains deterministic and pressure-aware", () =>
   );
 });
 
-test("goal-aware feedback stays additive when goal success coexists with divergent interpretation", () => {
+void test("goal-aware feedback stays additive when goal success coexists with divergent interpretation", () => {
   const selection: LabSelection = {
     id: "selection-goal-mixed-signal",
     startMs: 1200,
@@ -5488,7 +5486,7 @@ test("goal-aware feedback stays additive when goal success coexists with diverge
   assert.match(mixedSignalAlternatives.comparisonNote ?? "", /remaining divergence/i);
 });
 
-test("goal-aware feedback tightens failed outcomes without changing structure or status", () => {
+void test("goal-aware feedback tightens failed outcomes without changing structure or status", () => {
   const selection: LabSelection = {
     id: "selection-goal-failed-branch",
     startMs: 1000,
@@ -5519,7 +5517,7 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
     goalAlignment: 0.25,
     summary: "Region goal remains unmet because ROI coverage is limited",
   };
-  const executionResult = {
+  const executionResult: any = {
     summary: "Focused region shows localized activity",
     insights: ["Focused region shows localized activity"],
     artifacts: [
@@ -5635,7 +5633,7 @@ test("goal-aware feedback tightens failed outcomes without changing structure or
   assert.match(failedGoalAlternatives.comparisonNote ?? "", /Motion continuity inspection/i);
 });
 
-test("decision posture integration stays additive and leaves inputs immutable", () => {
+void test("decision posture integration stays additive and leaves inputs immutable", () => {
   const selection: LabSelection = {
     id: "selection-posture-immutable",
     startMs: 1200,
@@ -5732,7 +5730,7 @@ test("decision posture integration stays additive and leaves inputs immutable", 
   assert.equal(JSON.stringify(frozenAlternativesInput), alternativesBefore);
 });
 
-test("execution dispatcher emits deterministic mock progress and cleans up stale timers", () => {
+void test("execution dispatcher emits deterministic mock progress and cleans up stale timers", () => {
   const timerMock = installTimerMock();
 
   try {
@@ -5775,7 +5773,7 @@ test("execution dispatcher emits deterministic mock progress and cleans up stale
   }
 });
 
-test("execution mock materialization is deterministic and action-aware", () => {
+void test("execution mock materialization is deterministic and action-aware", () => {
   const { store } = createCommittedAudioExecutionStore();
   const baseCandidate = getExecutionDispatchCandidate(store.getState());
   assert.ok(baseCandidate);
@@ -5886,7 +5884,7 @@ test("execution mock materialization is deterministic and action-aware", () => {
   });
 });
 
-test("focus-region materialization stays segment-scoped when ROI is absent", () => {
+void test("focus-region materialization stays segment-scoped when ROI is absent", () => {
   const { store } = createCommittedAudioExecutionStore();
   const baseCandidate = getExecutionDispatchCandidate(store.getState());
   assert.ok(baseCandidate);
@@ -5899,7 +5897,7 @@ test("focus-region materialization stays segment-scoped when ROI is absent", () 
     selectionSnapshot: {
       ...baseCandidate.selectionSnapshot,
       roi: undefined,
-    },
+    } as any,
   });
 
   const result = createMockExecutionResult(focusCandidate);
@@ -5918,7 +5916,7 @@ test("focus-region materialization stays segment-scoped when ROI is absent", () 
   ]);
 });
 
-test("execution dispatcher invalidation prevents late mock completion", () => {
+void test("execution dispatcher invalidation prevents late mock completion", () => {
   const timerMock = installTimerMock();
 
   try {
@@ -5948,7 +5946,7 @@ test("execution dispatcher invalidation prevents late mock completion", () => {
   }
 });
 
-test("execution runtime clears on upstream invalidation edges", () => {
+void test("execution runtime clears on upstream invalidation edges", () => {
   const scenarios: Array<{
     name: string;
     mutate: (store: ReturnType<typeof createLabStore>) => void;
@@ -5956,7 +5954,7 @@ test("execution runtime clears on upstream invalidation edges", () => {
     {
       name: "hydrate",
       mutate(store) {
-        store.dispatch({ type: "hydrate", payload: null });
+        store.dispatch({ type: "hydrate", payload: null }) as any;
       },
     },
     {

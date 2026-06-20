@@ -37,7 +37,7 @@ function createReportRuntime() {
     getAudioAnalysisModulesForRuntime() {
       return [];
     },
-    getFeatureProcessRecord(project: RecordValue, featureId: string) {
+    getFeatureProcessRecord(project: any, featureId: string): any {
       return toRecord(toRecord(project["process"])["records"])[featureId] || { status: "idle" };
     },
     getFeatureReportRecord(project: RecordValue, featureId: string) {
@@ -86,7 +86,7 @@ function createReportRuntime() {
   });
 }
 
-test("laboratory report composition includes saved image comparison findings", () => {
+void test("laboratory report composition includes saved image comparison findings", () => {
   const runtime = createReportRuntime();
   const project = {
     id: "project-1",

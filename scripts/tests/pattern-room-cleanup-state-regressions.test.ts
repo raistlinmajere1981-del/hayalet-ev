@@ -63,7 +63,7 @@ function createReferencedTurn(referencedIds: readonly string[]): DebateLocalTurn
   };
 }
 
-test("pattern-room phase 12F-A resetOverlayToEmpty clears local overlay without mutating domain mock", () => {
+void test("pattern-room phase 12F-A resetOverlayToEmpty clears local overlay without mutating domain mock", () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const localState = createPopulatedLocalState();
   let notificationCount = 0;
@@ -115,7 +115,7 @@ test("pattern-room phase 12F-A resetOverlayToEmpty clears local overlay without 
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });
 
-test("pattern-room phase 12F-A removeLocalSource deletes only local source references", () => {
+void test("pattern-room phase 12F-A removeLocalSource deletes only local source references", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addAuthoredSource("Removable source", "Local notebook", "");
   localState.addAuthoredClaim("Linked claim", "Linked claim content.");
@@ -158,7 +158,7 @@ test("pattern-room phase 12F-A removeLocalSource deletes only local source refer
   assert.deepEqual(localState.getOverlay().debateReferenceIds, []);
 });
 
-test("pattern-room phase 13F removeLocalSource deletes source-linked local evidence", () => {
+void test("pattern-room phase 13F removeLocalSource deletes source-linked local evidence", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addAuthoredSource("Removable source", "Local notebook", "Source note.");
   localState.addAuthoredEvidence(
@@ -207,7 +207,7 @@ test("pattern-room phase 13F removeLocalSource deletes source-linked local evide
   assert.deepEqual(localState.getOverlay().debateLocalTurns[0]?.referencedIds, ["local-node-001"]);
 });
 
-test("pattern-room phase 12F-B removeLocalNode deletes local node references and edges", () => {
+void test("pattern-room phase 12F-B removeLocalNode deletes local node references and edges", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addAuthoredClaim("Removable node", "Removable node content.");
   localState.addAuthoredEvidence("Linked evidence", "Linked evidence excerpt.");
@@ -252,7 +252,7 @@ test("pattern-room phase 12F-B removeLocalNode deletes local node references and
   assert.deepEqual(localState.getOverlay().localAuthoredEdges, []);
 });
 
-test("pattern-room phase 12F-B removeLocalNode leaves domain node ids as safe no-ops", () => {
+void test("pattern-room phase 12F-B removeLocalNode leaves domain node ids as safe no-ops", () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.sendToDesk("node-navigation-source");
@@ -270,7 +270,7 @@ test("pattern-room phase 12F-B removeLocalNode leaves domain node ids as safe no
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });
 
-test("pattern-room phase 12F-B removeLocalEvidence deletes local evidence references and edges", () => {
+void test("pattern-room phase 12F-B removeLocalEvidence deletes local evidence references and edges", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addAuthoredClaim("Linked node", "Linked node content.");
   localState.addAuthoredEvidence("Removable evidence", "Removable evidence excerpt.");
@@ -308,7 +308,7 @@ test("pattern-room phase 12F-B removeLocalEvidence deletes local evidence refere
   assert.deepEqual(localState.getOverlay().localAuthoredEdges, []);
 });
 
-test("pattern-room phase 12F-A removeLocalSource leaves domain source ids as safe no-ops", () => {
+void test("pattern-room phase 12F-A removeLocalSource leaves domain source ids as safe no-ops", () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.pinSource("source-shadow-comparison", "analysis");
@@ -329,7 +329,7 @@ test("pattern-room phase 12F-A removeLocalSource leaves domain source ids as saf
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });
 
-test("pattern-room phase 12F-A removeLocalSource sweeps orphan local edges", () => {
+void test("pattern-room phase 12F-A removeLocalSource sweeps orphan local edges", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addAuthoredSource("Removable source", "Local notebook", "");
   localState.addAuthoredClaim("Linked claim", "Linked claim content.");
@@ -370,7 +370,7 @@ test("pattern-room phase 12F-A removeLocalSource sweeps orphan local edges", () 
   );
 });
 
-test("pattern-room phase 12F-A removeLocalEdge is a leaf delete", () => {
+void test("pattern-room phase 12F-A removeLocalEdge is a leaf delete", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addAuthoredClaim("Linked claim", "Linked claim content.");
   localState.addAuthoredEvidence("Linked evidence", "Linked excerpt.");
@@ -393,7 +393,7 @@ test("pattern-room phase 12F-A removeLocalEdge is a leaf delete", () => {
   assert.equal(localState.resolveEntityExists("local-evidence-001"), true);
 });
 
-test("pattern-room phase 12F-B removeImportBatch removes only matching batch and cascades references", () => {
+void test("pattern-room phase 12F-B removeImportBatch removes only matching batch and cascades references", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.restoreOverlay(
     {
@@ -621,7 +621,7 @@ test("pattern-room phase 12F-B removeImportBatch removes only matching batch and
   ]);
 });
 
-test("pattern-room phase 12F-B removeImportBatch missing ids are safe no-ops", () => {
+void test("pattern-room phase 12F-B removeImportBatch missing ids are safe no-ops", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addAuthoredClaim("Manual node", "Manual node content.");
   const beforeOverlay = localState.getOverlay();
@@ -640,7 +640,7 @@ test("pattern-room phase 12F-B removeImportBatch missing ids are safe no-ops", (
   assert.deepEqual(localState.getOverlay(), beforeOverlay);
 });
 
-test("pattern-room phase 12F-A removeLocalNote is a leaf delete", () => {
+void test("pattern-room phase 12F-A removeLocalNote is a leaf delete", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addLocalNote("Cleanup note.");
   let notificationCount = 0;
@@ -659,7 +659,7 @@ test("pattern-room phase 12F-A removeLocalNote is a leaf delete", () => {
   assert.deepEqual(localState.getOverlay().localNotes, []);
 });
 
-test("pattern-room phase 12F-A missing cleanup ids do not throw or notify", () => {
+void test("pattern-room phase 12F-A missing cleanup ids do not throw or notify", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   let notificationCount = 0;
   const unsubscribe = localState.subscribe(() => {
@@ -679,7 +679,7 @@ test("pattern-room phase 12F-A missing cleanup ids do not throw or notify", () =
   assert.equal(notificationCount, 0);
 });
 
-test("pattern-room phase 12F-A reset snapshots round-trip with stable schema version", () => {
+void test("pattern-room phase 12F-A reset snapshots round-trip with stable schema version", () => {
   const localState = createPopulatedLocalState();
   localState.resetOverlayToEmpty();
 
@@ -694,7 +694,7 @@ test("pattern-room phase 12F-A reset snapshots round-trip with stable schema ver
   assert.equal(restored.activeView, "board");
 });
 
-test("pattern-room phase 12G-A removed local sources stay removed after snapshot round-trip", () => {
+void test("pattern-room phase 12G-A removed local sources stay removed after snapshot round-trip", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addAuthoredSource("Round-trip source", "Local notebook", "Deleted before save.");
   localState.addAuthoredClaim("Round-trip claim", "Round-trip claim content.");
@@ -710,7 +710,7 @@ test("pattern-room phase 12G-A removed local sources stay removed after snapshot
   assert.deepEqual(restored.overlay.localAuthoredEdges, []);
 });
 
-test("pattern-room phase 12G-C cleanup helpers stay scoped to approved UI actions", async () => {
+void test("pattern-room phase 12G-C cleanup helpers stay scoped to approved UI actions", async () => {
   const localStateOnlyHelperNames = ["removeLocalEdge", "removeLocalNote", "removeImportBatch"];
   const integrationPaths = [
     "rooms/pattern-room/manifest.json",

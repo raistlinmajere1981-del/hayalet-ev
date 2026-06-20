@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { SlotStateMachine, SlotStates } from "../../src/js/modules/slot/state-machine.ts";
 
-test("allows connecting to disconnecting transition for cancellation", () => {
+void test("allows connecting to disconnecting transition for cancellation", () => {
   const machine = new SlotStateMachine("ai0", SlotStates.CONNECTING);
 
   const result = machine.transition(SlotStates.DISCONNECTING, {
@@ -14,7 +14,7 @@ test("allows connecting to disconnecting transition for cancellation", () => {
   assert.equal(machine.state, SlotStates.DISCONNECTING);
 });
 
-test("allows connecting to assigned transition after cancellation", () => {
+void test("allows connecting to assigned transition after cancellation", () => {
   const machine = new SlotStateMachine("ai0", SlotStates.CONNECTING);
 
   const result = machine.transition(SlotStates.ASSIGNED, {
@@ -25,7 +25,7 @@ test("allows connecting to assigned transition after cancellation", () => {
   assert.equal(machine.state, SlotStates.ASSIGNED);
 });
 
-test("blocks invalid empty to connected transition", () => {
+void test("blocks invalid empty to connected transition", () => {
   const machine = new SlotStateMachine("ai0", SlotStates.EMPTY);
 
   const result = machine.transition(SlotStates.CONNECTED, {

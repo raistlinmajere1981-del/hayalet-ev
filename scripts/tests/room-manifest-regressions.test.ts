@@ -10,7 +10,7 @@ import {
   validateRoomManifest,
 } from "../../src/types/rooms.ts";
 
-test("validateRoomManifest accepts a minimal valid room manifest", () => {
+void test("validateRoomManifest accepts a minimal valid room manifest", () => {
   const result = validateRoomManifest({
     schemaVersion: ROOM_SCHEMA_VERSION,
     id: "game-room",
@@ -75,7 +75,7 @@ test("validateRoomManifest accepts a minimal valid room manifest", () => {
   assert.equal(result.manifest?.defaultFeatureId, "backgammon");
 });
 
-test("validateRoomManifest rejects invalid ids, commands, and unsafe paths", () => {
+void test("validateRoomManifest rejects invalid ids, commands, and unsafe paths", () => {
   const result = validateRoomManifest({
     schemaVersion: ROOM_SCHEMA_VERSION,
     id: "Game Room",
@@ -108,7 +108,7 @@ test("validateRoomManifest rejects invalid ids, commands, and unsafe paths", () 
   assert.match(result.errors.join("\n"), /commandSpecs\[0\]\.name must match/);
 });
 
-test("validateRoomManifest allows workbench rooms to keep scene entries only for visible entry features", () => {
+void test("validateRoomManifest allows workbench rooms to keep scene entries only for visible entry features", () => {
   const result = validateRoomManifest({
     schemaVersion: ROOM_SCHEMA_VERSION,
     id: "laboratory",
@@ -172,14 +172,14 @@ test("validateRoomManifest allows workbench rooms to keep scene entries only for
   );
 });
 
-test("normalizeRoomRelativePath blocks traversal and preserves safe paths", () => {
+void test("normalizeRoomRelativePath blocks traversal and preserves safe paths", () => {
   assert.equal(normalizeRoomRelativePath("ui/index.html"), "ui/index.html");
   assert.equal(normalizeRoomRelativePath("ui\\index.html"), "ui/index.html");
   assert.equal(normalizeRoomRelativePath("../escape.js"), null);
   assert.equal(normalizeRoomRelativePath("/absolute/file.js"), null);
 });
 
-test("protocol specs support explicit safe relative paths", () => {
+void test("protocol specs support explicit safe relative paths", () => {
   const result = validateRoomManifest({
     schemaVersion: ROOM_SCHEMA_VERSION,
     id: "protocol-room",
@@ -228,15 +228,15 @@ test("protocol specs support explicit safe relative paths", () => {
   );
 });
 
-test("room id and command validators match project rules", () => {
+void test("room id and command validators match project rules", () => {
   assert.equal(isValidRoomId("game-room"), true);
   assert.equal(isValidRoomId("game_room"), false);
   assert.equal(isValidRoomCommandName("GameRoomStartMatch"), true);
   assert.equal(isValidRoomCommandName("Game.Room"), false);
 });
 
-test("game-room manifest documents the US1 Tavla transport contract", () => {
-  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
+void test("game-room manifest documents the US1 Tavla transport contract", () => {
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<string, unknown>;
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true);
@@ -252,8 +252,8 @@ test("game-room manifest documents the US1 Tavla transport contract", () => {
   );
 });
 
-test("game-room manifest documents the Team Tetris AI and US1 contracts", () => {
-  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
+void test("game-room manifest documents the Team Tetris AI and US1 contracts", () => {
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<string, unknown>;
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true);
@@ -281,8 +281,8 @@ test("game-room manifest documents the Team Tetris AI and US1 contracts", () => 
   );
 });
 
-test("game-room manifest keeps Fate Knots as a blank scene placeholder", () => {
-  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
+void test("game-room manifest keeps Fate Knots as a blank scene placeholder", () => {
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<string, unknown>;
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true);
@@ -297,7 +297,7 @@ test("game-room manifest keeps Fate Knots as a blank scene placeholder", () => {
   assert.equal(fateKnotsFeature?.scene?.view?.id, "fate-knots-closeup");
 });
 
-test("room manifest readers stay split from the main room contract module", () => {
+void test("room manifest readers stay split from the main room contract module", () => {
   const roomsSource = readFileSync("src/types/rooms.ts", "utf8");
   const manifestTypesSource = readFileSync("src/types/room-manifest-types.ts", "utf8");
   const installedTypesSource = readFileSync("src/types/room-installed-types.ts", "utf8");

@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { readAssistantSlotSettingsReport } from "../lib/settings-status.mjs";
 
-test("reads assistant slot command capture state from project settings", async () => {
+void test("reads assistant slot command capture state from project settings", async () => {
   const root = await mkdtemp(join(tmpdir(), "hev-settings-status-"));
   const configDir = join(root, "config");
   await mkdir(configDir, { recursive: true });
@@ -34,7 +34,7 @@ test("reads assistant slot command capture state from project settings", async (
   assert.equal(result.error, null);
 });
 
-test("reports unknown command capture state when project settings file is missing", async () => {
+void test("reports unknown command capture state when project settings file is missing", async () => {
   const root = await mkdtemp(join(tmpdir(), "hev-settings-status-missing-"));
 
   const result = await readAssistantSlotSettingsReport(root);

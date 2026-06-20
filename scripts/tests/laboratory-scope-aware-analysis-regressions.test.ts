@@ -17,7 +17,7 @@ function toRecord(value: unknown) {
 
 const featureIds = ["media-analysis", "audio-analysis"];
 
-test("analysis scope normalization keeps ordered ranges and freeze lifecycle", () => {
+void test("analysis scope normalization keeps ordered ranges and freeze lifecycle", () => {
   const normalized = normalizeAnalysisScope({
     timeRange: {
       startMs: 4200,
@@ -57,7 +57,7 @@ test("analysis scope normalization keeps ordered ranges and freeze lifecycle", (
   assert.equal(frozen?.lifecycle?.frozenAt, "2026-04-20T10:00:00.000Z");
 });
 
-test("analysis scope normalization preserves image comparison pairs and rois", () => {
+void test("analysis scope normalization preserves image comparison pairs and rois", () => {
   const normalized = normalizeAnalysisScope({
     comparison: {
       activeSide: "reference",
@@ -103,7 +103,7 @@ test("analysis scope normalization preserves image comparison pairs and rois", (
   assert.equal(frozen?.lifecycle?.mutable, false);
 });
 
-test("laboratory workbench preserves scope and density controls without dropping the guided shell", () => {
+void test("laboratory workbench preserves scope and density controls without dropping the guided shell", () => {
   const workbench = createLaboratoryWorkbenchState({
     activeModuleId: "media-analysis",
     selectedModuleIds: ["media-analysis", "audio-analysis"],
@@ -134,8 +134,8 @@ test("laboratory workbench preserves scope and density controls without dropping
   });
 
   assert.equal(workbench.activeModuleId, "media-analysis");
-  assert.equal(workbench.analysisScope?.focus, "visual");
-  assert.equal(workbench.analysisScope?.lifecycle?.mutable, true);
+  assert.equal(workbench.analysisScope?.["focus"], "visual");
+  assert.equal((workbench.analysisScope as Record<string, unknown>)?.["lifecycle"]?.["mutable" as never], true);
   assert.equal(workbench.activePreviewArtifactId, "preview-1");
   assert.equal(workbench.activeLiveFindingsStreamId, "media-analysis");
   assert.equal(workbench.controlsCollapsed, true);
@@ -148,7 +148,7 @@ test("laboratory workbench preserves scope and density controls without dropping
   );
 });
 
-test("process normalization freezes scope snapshots after process start and carries v2 report fields", () => {
+void test("process normalization freezes scope snapshots after process start and carries v2 report fields", () => {
   const runtime = createLaboratoryProcessReportStateRuntime({
     asNonEmptyString,
     asNumber,

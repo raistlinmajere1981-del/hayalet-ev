@@ -16,7 +16,7 @@ import {
   toMainRunningControl,
 } from "../lib/ghost-wrapper-runtime.mjs";
 
-test("normalizeControl fills defaults and validates enum fields", () => {
+void test("normalizeControl fills defaults and validates enum fields", () => {
   const control = normalizeControl(
     {
       workflowSessionId: 42,
@@ -33,7 +33,7 @@ test("normalizeControl fills defaults and validates enum fields", () => {
   assert.equal(control.updatedAt, "2026-03-01T10:00:00.000Z");
 });
 
-test("shouldStartGhost only returns true for ghost handoff phases", () => {
+void test("shouldStartGhost only returns true for ghost handoff phases", () => {
   assert.equal(
     shouldStartGhost({
       workflowSessionId: "wf-1",
@@ -65,7 +65,7 @@ test("shouldStartGhost only returns true for ghost handoff phases", () => {
   );
 });
 
-test("toGhostRunningControl updates phase only", () => {
+void test("toGhostRunningControl updates phase only", () => {
   const result = toGhostRunningControl(
     {
       workflowSessionId: "wf-2",
@@ -82,7 +82,7 @@ test("toGhostRunningControl updates phase only", () => {
   assert.equal(result.updatedAt, "2026-03-01T10:01:00.000Z");
 });
 
-test("toPostGhostControl resets ghost mode to soft idle", () => {
+void test("toPostGhostControl resets ghost mode to soft idle", () => {
   const result = toPostGhostControl(
     {
       workflowSessionId: "wf-3",
@@ -98,7 +98,7 @@ test("toPostGhostControl resets ghost mode to soft idle", () => {
   assert.equal(result.updatedAt, "2026-03-01T10:02:00.000Z");
 });
 
-test("shouldReopenMainAfterGhost stops wrapper cycle for terminal mode", () => {
+void test("shouldReopenMainAfterGhost stops wrapper cycle for terminal mode", () => {
   assert.equal(
     shouldReopenMainAfterGhost({
       workflowSessionId: "wf-stop",
@@ -120,7 +120,7 @@ test("shouldReopenMainAfterGhost stops wrapper cycle for terminal mode", () => {
   );
 });
 
-test("formatWrapperEvent creates timestamped log line", () => {
+void test("formatWrapperEvent creates timestamped log line", () => {
   const line = formatWrapperEvent(
     "wrapper.start",
     {
@@ -135,7 +135,7 @@ test("formatWrapperEvent creates timestamped log line", () => {
   assert.match(line, /phase=preparing-handoff/);
 });
 
-test("toGhostOnlyStartControl sets ghost-agent mode and in-ghost phase", () => {
+void test("toGhostOnlyStartControl sets ghost-agent mode and in-ghost phase", () => {
   const result = toGhostOnlyStartControl(
     {
       workflowSessionId: "wf-go",
@@ -152,7 +152,7 @@ test("toGhostOnlyStartControl sets ghost-agent mode and in-ghost phase", () => {
   assert.equal(result.updatedAt, "2026-03-02T10:00:00.000Z");
 });
 
-test("toPostGhostControl after ghost-only: close button sets terminal idle (wrapper stops)", () => {
+void test("toPostGhostControl after ghost-only: close button sets terminal idle (wrapper stops)", () => {
   // Ghost-only: ghost kapandıktan sonra ghost exit action 'close' → terminal+idle yazıldı
   const result = toPostGhostControl(
     {
@@ -169,7 +169,7 @@ test("toPostGhostControl after ghost-only: close button sets terminal idle (wrap
   assert.equal(shouldReopenMainAfterGhost(result), false);
 });
 
-test("toPostGhostControl after ghost-only: return-main button sets soft idle (app reopens)", () => {
+void test("toPostGhostControl after ghost-only: return-main button sets soft idle (app reopens)", () => {
   // Ghost-only: ghost exit action 'return-main' → soft+idle yazıldı
   const result = toPostGhostControl(
     {
@@ -186,7 +186,7 @@ test("toPostGhostControl after ghost-only: return-main button sets soft idle (ap
   assert.equal(shouldReopenMainAfterGhost(result), true);
 });
 
-test("toPostGhostControl after ghost-only crash: ghost-agent mode resets to soft (app reopens)", () => {
+void test("toPostGhostControl after ghost-only crash: ghost-agent mode resets to soft (app reopens)", () => {
   // Ghost beklenmedik kapanırsa in-ghost+ghost-agent durumu soft'a döner
   const result = toPostGhostControl(
     {
@@ -203,13 +203,13 @@ test("toPostGhostControl after ghost-only crash: ghost-agent mode resets to soft
   assert.equal(shouldReopenMainAfterGhost(result), true);
 });
 
-test("buildMainAppLaunchArgs keeps default launch arguments on normal cycle", () => {
+void test("buildMainAppLaunchArgs keeps default launch arguments on normal cycle", () => {
   const args = buildMainAppLaunchArgs("/tmp/main.js", false);
 
   assert.deepEqual(args, ["/tmp/main.js", "--no-sandbox"]);
 });
 
-test("buildMainAppLaunchArgs enables assistant startup flags after ghost return", () => {
+void test("buildMainAppLaunchArgs enables assistant startup flags after ghost return", () => {
   const args = buildMainAppLaunchArgs("/tmp/main.js", true);
 
   assert.deepEqual(args, [
@@ -220,7 +220,7 @@ test("buildMainAppLaunchArgs enables assistant startup flags after ghost return"
   ]);
 });
 
-test("buildMainAppLaunchArgs supports direct-launch options for scene mode", () => {
+void test("buildMainAppLaunchArgs supports direct-launch options for scene mode", () => {
   const args = buildMainAppLaunchArgs("/tmp/main.js", {
     assistantStartup: true,
     uiMode: "scene",
@@ -239,7 +239,7 @@ test("buildMainAppLaunchArgs supports direct-launch options for scene mode", () 
   ]);
 });
 
-test("buildMainAppLaunchArgs ignores sceneDebug outside scene mode", () => {
+void test("buildMainAppLaunchArgs ignores sceneDebug outside scene mode", () => {
   const args = buildMainAppLaunchArgs("/tmp/main.js", {
     assistantStartup: false,
     uiMode: "classic",
@@ -250,13 +250,13 @@ test("buildMainAppLaunchArgs ignores sceneDebug outside scene mode", () => {
   assert.deepEqual(args, ["/tmp/main.js", "--no-sandbox"]);
 });
 
-test("normalizeMainAppUiMode falls back to classic", () => {
+void test("normalizeMainAppUiMode falls back to classic", () => {
   assert.equal(normalizeMainAppUiMode("scene"), "scene");
   assert.equal(normalizeMainAppUiMode("classic"), "classic");
   assert.equal(normalizeMainAppUiMode("unexpected"), "classic");
 });
 
-test("normalizeWrapperRestartRequest normalizes uiMode and sceneDebug", () => {
+void test("normalizeWrapperRestartRequest normalizes uiMode and sceneDebug", () => {
   assert.deepEqual(normalizeWrapperRestartRequest({ uiMode: "scene", sceneDebug: true }), {
     uiMode: "scene",
     sceneDebug: true,
@@ -268,7 +268,7 @@ test("normalizeWrapperRestartRequest normalizes uiMode and sceneDebug", () => {
   });
 });
 
-test("resolveMainAppScriptName picks the correct npm script for uiMode and startup flags", () => {
+void test("resolveMainAppScriptName picks the correct npm script for uiMode and startup flags", () => {
   assert.equal(resolveMainAppScriptName(false, "classic"), "electron:dev");
   assert.equal(resolveMainAppScriptName(false, "scene"), "electron:dev:scene");
   assert.equal(resolveMainAppScriptName(false, "scene", true), "electron:dev:scene:debug");
@@ -277,7 +277,7 @@ test("resolveMainAppScriptName picks the correct npm script for uiMode and start
   assert.equal(resolveMainAppScriptName(true, "scene", true), "electron:dev:assistant:scene:debug");
 });
 
-test("toMainRunningControl forces soft idle for active main app", () => {
+void test("toMainRunningControl forces soft idle for active main app", () => {
   const result = toMainRunningControl(
     {
       workflowSessionId: "wf-main",

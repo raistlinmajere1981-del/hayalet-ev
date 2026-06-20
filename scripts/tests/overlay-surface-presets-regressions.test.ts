@@ -6,10 +6,10 @@ import test from "node:test";
 const ROOT = process.cwd();
 
 async function readProjectFile(relativePath: string): Promise<string> {
-  return readFile(path.join(ROOT, relativePath), "utf8");
+  return await readFile(path.join(ROOT, relativePath), "utf8");
 }
 
-test("overlay presets expose shared factories for status, scenario, assistant tool, and active-class overlays", async () => {
+void test("overlay presets expose shared factories for status, scenario, assistant tool, and active-class overlays", async () => {
   const presets = await readProjectFile("src/js/ui/overlay-presets.ts");
 
   assert.match(presets, /createSharedWebviewStatusOverlayController/);
@@ -19,7 +19,7 @@ test("overlay presets expose shared factories for status, scenario, assistant to
   assert.match(presets, /openSharedAssistantToolModal/);
 });
 
-test("assistant and entrance flows use shared overlay presets instead of ad-hoc overlay wiring", async () => {
+void test("assistant and entrance flows use shared overlay presets instead of ad-hoc overlay wiring", async () => {
   const entrancePanel = await readProjectFile("src/js/pages/entrance/webview-panel.ts");
   const assistantController = await readProjectFile("src/js/pages/assistant/assistant.ts");
   const memoryOverlay = await readProjectFile("src/js/pages/assistant/memory-overlay.ts");
@@ -33,7 +33,7 @@ test("assistant and entrance flows use shared overlay presets instead of ad-hoc 
   assert.match(characterOverlay, /createSharedAssistantToolOverlayController/);
 });
 
-test("assistant test overlay and opencode ui modals share centralized overlay surfaces", async () => {
+void test("assistant test overlay and opencode ui modals share centralized overlay surfaces", async () => {
   const assistantPage = await readProjectFile("src/pages/assistant.html");
   const assistantStyles = await readProjectFile("src/styles/assistant.css");
   const quickPromptPanel = await readProjectFile("src/js/pages/opencode-ui/tools-prompts.ts");

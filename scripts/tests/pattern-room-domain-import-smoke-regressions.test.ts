@@ -74,14 +74,14 @@ async function listTypeScriptFiles(directoryPath: string): Promise<string[]> {
   return filePaths;
 }
 
-test("pattern-room phase 2B domain literal reference sets stay stable", () => {
+void test("pattern-room phase 2B domain literal reference sets stay stable", () => {
   assert.deepEqual(PATTERN_SOURCE_TYPES, EXPECTED_PATTERN_SOURCE_TYPES);
   assert.deepEqual(PATTERN_RELIABILITY_LEVELS, EXPECTED_PATTERN_RELIABILITY_LEVELS);
   assert.deepEqual(DEBATE_SESSION_STATUSES, EXPECTED_DEBATE_SESSION_STATUSES);
   assert.deepEqual(PATTERN_LAYERS, EXPECTED_PATTERN_LAYERS);
 });
 
-test("pattern-room phase 2B domain mock imports with the expected static shape", () => {
+void test("pattern-room phase 2B domain mock imports with the expected static shape", () => {
   const topic: Topic = PATTERN_ROOM_DOMAIN_MOCK.topic;
   const nodes: PatternNode[] = PATTERN_ROOM_DOMAIN_MOCK.nodes;
   const edges: PatternEdge[] = PATTERN_ROOM_DOMAIN_MOCK.edges;
@@ -108,7 +108,7 @@ test("pattern-room phase 2B domain mock imports with the expected static shape",
   assert.equal(reportTrace.length, 3);
 });
 
-test("pattern-room phase 2B domain mock cross references point to existing static items", () => {
+void test("pattern-room phase 2B domain mock cross references point to existing static items", () => {
   const { topic, nodes, edges, sources, evidence, debateSession } = PATTERN_ROOM_DOMAIN_MOCK;
   const nodeIds = new Set(nodes.map((node) => node.id));
   const sourceIds = new Set(sources.map((source) => source.id));
@@ -147,7 +147,7 @@ test("pattern-room phase 2B domain mock cross references point to existing stati
   }
 });
 
-test("pattern-room phase 2B tenth-man debate mock remains disconnected", () => {
+void test("pattern-room phase 2B tenth-man debate mock remains disconnected", () => {
   const { debateSession } = PATTERN_ROOM_DOMAIN_MOCK;
 
   assert.equal(debateSession.status, "mock");
@@ -161,7 +161,7 @@ test("pattern-room phase 2B tenth-man debate mock remains disconnected", () => {
   );
 });
 
-test("pattern-room phase 3B domain mock stays limited to the runtime transition point", async () => {
+void test("pattern-room phase 3B domain mock stays limited to the runtime transition point", async () => {
   const uiFilePaths = await listTypeScriptFiles(resolve("rooms/pattern-room/ui"));
   const domainMockConsumers: string[] = [];
 
@@ -178,7 +178,7 @@ test("pattern-room phase 3B domain mock stays limited to the runtime transition 
   assert.deepEqual(domainMockConsumers, ["rooms/pattern-room/ui/pattern-room-ui-runtime.ts"]);
 });
 
-test("pattern-room phase 3B panels do not import domain types or domain mock data", async () => {
+void test("pattern-room phase 3B panels do not import domain types or domain mock data", async () => {
   const panelFilePaths = await listTypeScriptFiles(resolve("rooms/pattern-room/ui/panels"));
 
   for (const filePath of panelFilePaths) {
@@ -188,7 +188,7 @@ test("pattern-room phase 3B panels do not import domain types or domain mock dat
   }
 });
 
-test("pattern-room host runtime keeps domain mock usage scoped to ready-load persistence", async () => {
+void test("pattern-room host runtime keeps domain mock usage scoped to ready-load persistence", async () => {
   const activation = createPatternRoomHostRuntime().activate({});
   assert.deepEqual(Object.keys(activation.commands).sort(), [
     PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
@@ -212,7 +212,7 @@ test("pattern-room host runtime keeps domain mock usage scoped to ready-load per
   assert.deepEqual(domainMockConsumers, ["rooms/pattern-room/host/runtime.ts"]);
 });
 
-test("pattern-room host runtime stays free of Node-only storage imports", async () => {
+void test("pattern-room host runtime stays free of Node-only storage imports", async () => {
   const source = await readFile(resolve("rooms/pattern-room/host/runtime.ts"), "utf8");
 
   assert.equal(source.includes("pattern-room-json-store"), false);

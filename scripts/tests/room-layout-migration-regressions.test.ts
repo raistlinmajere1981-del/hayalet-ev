@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 
 import { migrateRoomLayouts } from "../rooms/migrate-room-layouts.mjs";
 
-test("migrateRoomLayouts moves workspace dist bundles and laboratory legacy project directories", async () => {
+void test("migrateRoomLayouts moves workspace dist bundles and laboratory legacy project directories", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-layout-migration-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const storageRoot = join(tempRoot, "data", "room-storage");

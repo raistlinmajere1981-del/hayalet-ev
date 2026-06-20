@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("scene runtime sessions and scene-backed pages subscribe to runtime theme and asset refreshes", () => {
+void test("scene runtime sessions and scene-backed pages subscribe to runtime theme and asset refreshes", () => {
   const runtimeSessionSource = readFileSync(
     "src/js/scene-editor/scene-debug-runtime-session.ts",
     "utf8"

@@ -41,7 +41,9 @@ function findCaseReviewSpec(manifest: RoomManifest): RoomProtocolSpec {
 function readCaseReviewProtocol(): string {
   const manifest = readPatternRoomManifest();
   const spec = findCaseReviewSpec(manifest);
-  const protocolPath = resolve(PATTERN_ROOM_ROOT, resolveRoomProtocolFilePath(spec));
+  const relativePath = resolveRoomProtocolFilePath(spec);
+  assert.ok(relativePath);
+  const protocolPath = resolve(PATTERN_ROOM_ROOT, relativePath);
 
   assert.equal(existsSync(protocolPath), true);
   return readFileSync(protocolPath, "utf8");
@@ -60,7 +62,7 @@ function assertForbiddenTermsStayInAvoidanceContext(markdown: string): void {
   });
 }
 
-test("pattern-room manifest exposes the static case review protocol spec", () => {
+void test("pattern-room manifest exposes the static case review protocol spec", () => {
   const manifest = readPatternRoomManifest();
   const spec = findCaseReviewSpec(manifest);
 
@@ -76,7 +78,7 @@ test("pattern-room manifest exposes the static case review protocol spec", () =>
   assert.equal(manifest.runtime.hostEntry, "host/index.js");
 });
 
-test("pattern-room case review protocol markdown documents cautious room semantics", () => {
+void test("pattern-room case review protocol markdown documents cautious room semantics", () => {
   const markdown = readCaseReviewProtocol();
 
   assert.notEqual(markdown.trim(), "");
@@ -104,7 +106,7 @@ test("pattern-room case review protocol markdown documents cautious room semanti
   assertForbiddenTermsStayInAvoidanceContext(markdown);
 });
 
-test("pattern-room protocol spec resolves through the existing room protocol registry", async () => {
+void test("pattern-room protocol spec resolves through the existing room protocol registry", async () => {
   const manifest = readPatternRoomManifest();
   const protocolBody = readCaseReviewProtocol();
   const installedRoom: InstalledRoomRecord = {
@@ -144,7 +146,7 @@ test("pattern-room protocol spec resolves through the existing room protocol reg
   RoomProtocolRegistry.reset();
 });
 
-test("pattern-room phase 15D stays static and separate from dispatch or packet composition", () => {
+void test("pattern-room phase 15D stays static and separate from dispatch or packet composition", () => {
   const manifestSource = readFileSync(MANIFEST_PATH, "utf8");
   const protocolSource = readCaseReviewProtocol();
   const phaseSources = `${manifestSource}\n${protocolSource}`;

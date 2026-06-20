@@ -154,7 +154,7 @@ function readManifestCommandNames(manifest: Record<string, unknown>): string[] {
     .filter((name): name is string => typeof name === "string");
 }
 
-test("pattern-room persistence contract exports stable command and event literals", () => {
+void test("pattern-room persistence contract exports stable command and event literals", () => {
   assert.equal(PATTERN_ROOM_SAVE_COMMAND, "pattern:save");
   assert.equal(PATTERN_ROOM_LOAD_COMMAND, "pattern:load");
   assert.equal(PATTERN_ROOM_SAVED_EVENT, "pattern:saved");
@@ -162,7 +162,7 @@ test("pattern-room persistence contract exports stable command and event literal
   assert.equal(PATTERN_ROOM_SAVE_FAILED_EVENT, "pattern:save-failed");
 });
 
-test("pattern-room persistence commands stay out of manifest public command specs", async () => {
+void test("pattern-room persistence commands stay out of manifest public command specs", async () => {
   const manifest = JSON.parse(
     await readFile(resolve("rooms/pattern-room/manifest.json"), "utf8")
   ) as Record<string, unknown>;
@@ -172,7 +172,7 @@ test("pattern-room persistence commands stay out of manifest public command spec
   assert.equal(commandNames.includes(PATTERN_ROOM_LOAD_COMMAND), false);
 });
 
-test("pattern-room persistence commands register as internal room-ui commands only", async () => {
+void test("pattern-room persistence commands register as internal room-ui commands only", async () => {
   RoomCommandRegistry.reset();
   const snapshot = createTestSnapshot("snapshot-registry-scope");
   const notifications: PatternRoomNotification[] = [];
@@ -259,7 +259,7 @@ test("pattern-room persistence commands register as internal room-ui commands on
   }
 });
 
-test("pattern-room host emits saved after a successful save command", async () => {
+void test("pattern-room host emits saved after a successful save command", async () => {
   const snapshot = createTestSnapshot("snapshot-save-success");
   const savedSnapshots: PatternRoomSessionSnapshot[] = [];
   const { activation, notifications } = activateWithStore(
@@ -282,7 +282,7 @@ test("pattern-room host emits saved after a successful save command", async () =
   ]);
 });
 
-test("pattern-room host emits save-failed after an invalid or rejected save command", async () => {
+void test("pattern-room host emits save-failed after an invalid or rejected save command", async () => {
   const rejectedSnapshot = createTestSnapshot("snapshot-save-rejected");
   const { activation, notifications } = activateWithStore(
     createMockStorageAdapter({
@@ -315,7 +315,7 @@ test("pattern-room host emits save-failed after an invalid or rejected save comm
   assert.equal(typeof notifications[1]?.payload["error"], "string");
 });
 
-test("pattern-room host emits loaded with a snapshot or null", async () => {
+void test("pattern-room host emits loaded with a snapshot or null", async () => {
   const loadedSnapshot = createTestSnapshot("snapshot-load-hit");
   const loadedTopicIds: string[] = [];
   const { activation, notifications } = activateWithStore(
@@ -347,7 +347,7 @@ test("pattern-room host emits loaded with a snapshot or null", async () => {
   ]);
 });
 
-test("pattern-room host default storage uses the preload file bridge", async () => {
+void test("pattern-room host default storage uses the preload file bridge", async () => {
   const snapshot = createTestSnapshot("snapshot-preload-bridge");
   const storageDir = "/room-storage/pattern-room";
   const fileByPath = new Map<string, string>();
@@ -414,7 +414,7 @@ test("pattern-room host default storage uses the preload file bridge", async () 
   assert.deepEqual(notifications[1]?.payload, { snapshot });
 });
 
-test("pattern-room host serializes save commands without dropping submitted snapshots", async () => {
+void test("pattern-room host serializes save commands without dropping submitted snapshots", async () => {
   const firstSnapshot = createTestSnapshot("snapshot-serial-first");
   const secondSnapshot = createTestSnapshot("snapshot-serial-second");
   const firstSave = createDeferred();
@@ -458,7 +458,7 @@ test("pattern-room host serializes save commands without dropping submitted snap
   ]);
 });
 
-test("pattern-room host save queue recovers after a failed save", async () => {
+void test("pattern-room host save queue recovers after a failed save", async () => {
   const firstSnapshot = createTestSnapshot("snapshot-fail-first");
   const secondSnapshot = createTestSnapshot("snapshot-recovers-second");
   const attemptedSnapshotIds: string[] = [];
@@ -489,7 +489,7 @@ test("pattern-room host save queue recovers after a failed save", async () => {
   );
 });
 
-test("pattern-room host ready lifecycle best-effort loads the mock topic", async () => {
+void test("pattern-room host ready lifecycle best-effort loads the mock topic", async () => {
   const loadedTopicIds: string[] = [];
   const { activation, notifications } = activateWithStore(
     createMockStorageAdapter({
@@ -511,7 +511,7 @@ test("pattern-room host ready lifecycle best-effort loads the mock topic", async
   ]);
 });
 
-test("pattern-room host dispose waits for the pending save queue", async () => {
+void test("pattern-room host dispose waits for the pending save queue", async () => {
   const snapshot = createTestSnapshot("snapshot-dispose-waits");
   const saveGate = createDeferred();
   let saved = false;
@@ -536,7 +536,7 @@ test("pattern-room host dispose waits for the pending save queue", async () => {
   assert.equal(saved, true);
 });
 
-test("pattern-room UI runtime wires internal autosave without public persistence UI", async () => {
+void test("pattern-room UI runtime wires internal autosave without public persistence UI", async () => {
   const source = await readFile(
     resolve("rooms/pattern-room/ui/pattern-room-ui-runtime.ts"),
     "utf8"

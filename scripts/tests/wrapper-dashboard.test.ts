@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { createWrapperDashboard, renderDashboardFrame } from "../lib/wrapper-dashboard.mjs";
 
-test("renderDashboardFrame renders user and developer panes", () => {
+void test("renderDashboardFrame renders user and developer panes", () => {
   const frame = renderDashboardFrame({
     sessionId: "wr-test",
     phase: "running-app",
@@ -22,23 +22,23 @@ test("renderDashboardFrame renders user and developer panes", () => {
   assert.match(frame, /\$ vite/);
 });
 
-test("createWrapperDashboard preserves final frame on dispose by default", () => {
+void test("createWrapperDashboard preserves final frame on dispose by default", () => {
   let output = "";
   const stdout = {
     isTTY: true,
     columns: 80,
     rows: 12,
-    write(chunk) {
+    write(chunk: string): void {
       output += String(chunk);
     },
   };
 
   const dashboard = createWrapperDashboard({
-    stdout,
+    stdout: stdout,
     env: { TERM: "xterm-256color" },
     sessionId: "wr-test",
     userLabel: "KULLANICI",
-    formatPhaseLabel(phase) {
+    formatPhaseLabel(phase: string) {
       return phase === "idle" ? "boşta" : phase;
     },
   });
@@ -48,23 +48,24 @@ test("createWrapperDashboard preserves final frame on dispose by default", () =>
 
   assert.match(output, /Calisma dongusu sonlandi\./);
   assert.match(output, /KULLANICI boşta/);
-  assert.match(output, /\u001b\[\?25h/);
-  assert.doesNotMatch(output, /\u001b\[2J\u001b\[H\u001b\[\?25h$/);
+  const ESC = "\u001b";
+  assert.match(output, new RegExp(`${ESC}\\[\\?25h`));
+  assert.doesNotMatch(output, new RegExp(`${ESC}\\[2J${ESC}\\[H${ESC}\\[\\?25h$`));
 });
 
-test("createWrapperDashboard falls back to plain logs for dumb terminals", () => {
+void test("createWrapperDashboard falls back to plain logs for dumb terminals", () => {
   let output = "";
   const stdout = {
     isTTY: true,
     columns: 80,
     rows: 12,
-    write(chunk) {
+    write(chunk: string): void {
       output += String(chunk);
     },
   };
 
   const dashboard = createWrapperDashboard({
-    stdout,
+    stdout: stdout,
     env: { TERM: "dumb" },
     sessionId: "wr-test",
   });
@@ -74,22 +75,23 @@ test("createWrapperDashboard falls back to plain logs for dumb terminals", () =>
 
   assert.match(output, /\[user\] Calisma dongusu sonlandi\./);
   assert.match(output, /\[dev\] build tamamlandi/);
-  assert.doesNotMatch(output, /\u001b\[/);
+  const ESC = "\u001b";
+  assert.doesNotMatch(output, new RegExp(`${ESC}\\[`));
 });
 
-test("createWrapperDashboard coalesces burst updates into one frame render", async () => {
-  const writes = [];
+void test("createWrapperDashboard coalesces burst updates into one frame render", async () => {
+  const writes: string[] = [];
   const stdout = {
     isTTY: true,
     columns: 80,
     rows: 12,
-    write(chunk) {
+    write(chunk: string): void {
       writes.push(String(chunk));
     },
   };
 
   const dashboard = createWrapperDashboard({
-    stdout,
+    stdout: stdout,
     env: { TERM: "xterm-256color" },
     sessionId: "wr-test",
   });
@@ -99,7 +101,7 @@ test("createWrapperDashboard coalesces burst updates into one frame render", asy
   dashboard.user("Calisma dongusu sonlandi.");
   dashboard.developer("build tamamlandi");
 
-  await new Promise((resolve) => {
+  await new Promise<void>((resolve) => {
     setTimeout(resolve, 25);
   });
 

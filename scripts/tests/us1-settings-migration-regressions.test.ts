@@ -10,7 +10,7 @@ import {
   extractRemoteEmailFromAccountId,
 } from "../../src/types/archive.ts";
 
-test("default settings scaffold user email, local mail account, and us1 selected account", () => {
+void test("default settings scaffold user email, local mail account, and us1 selected account", () => {
   const settings = defaultSettings();
 
   assert.equal(settings.user?.email, "");
@@ -22,7 +22,7 @@ test("default settings scaffold user email, local mail account, and us1 selected
   assert.equal(settings.us1Slot?.selectedAccountId, null);
 });
 
-test("normalize settings backfills singleton local mail account from legacy mail accounts", () => {
+void test("normalize settings backfills singleton local mail account from legacy mail accounts", () => {
   const normalized = normalizeSettings({
     integrations: {
       mailTransport: {
@@ -48,7 +48,7 @@ test("normalize settings backfills singleton local mail account from legacy mail
   assert.equal(normalized.user?.email, "local@example.com");
 });
 
-test("normalize settings keeps localAccount empty until a mail account is connected", () => {
+void test("normalize settings keeps localAccount empty until a mail account is connected", () => {
   const normalized = normalizeSettings({
     integrations: {
       mailTransport: {
@@ -74,7 +74,7 @@ test("normalize settings keeps localAccount empty until a mail account is connec
   assert.equal(normalized.user?.email, "");
 });
 
-test("normalize settings derives us1 selected account id from legacy selected remote user id", () => {
+void test("normalize settings derives us1 selected account id from legacy selected remote user id", () => {
   const normalized = normalizeSettings({
     accounts: [
       {
@@ -120,7 +120,7 @@ test("normalize settings derives us1 selected account id from legacy selected re
   );
 });
 
-test("normalize settings derives legacy remote identity from selected remote account id", () => {
+void test("normalize settings derives legacy remote identity from selected remote account id", () => {
   const selectedAccountId = buildRemoteEmailAccountId("remote@example.com");
   const normalized = normalizeSettings({
     remoteUsers: [
@@ -143,7 +143,7 @@ test("normalize settings derives legacy remote identity from selected remote acc
   assert.equal(normalized.us1Slot?.selectedAccountId, selectedAccountId);
 });
 
-test("normalize settings keeps us1 selected account id aligned with selected remote identity", () => {
+void test("normalize settings keeps us1 selected account id aligned with selected remote identity", () => {
   const normalized = normalizeSettings({
     remoteUsers: [
       {
@@ -167,7 +167,7 @@ test("normalize settings keeps us1 selected account id aligned with selected rem
   );
 });
 
-test("normalize settings backfills remote users from stored remote email accounts", () => {
+void test("normalize settings backfills remote users from stored remote email accounts", () => {
   const normalized = normalizeSettings({
     accounts: [
       {
@@ -193,7 +193,7 @@ test("normalize settings backfills remote users from stored remote email account
   assert.equal(normalized.accounts[0]?.remoteEmail?.pendingIncoming, true);
 });
 
-test("normalize settings preserves rejected remote handshake state", () => {
+void test("normalize settings preserves rejected remote handshake state", () => {
   const normalized = normalizeSettings({
     remoteUsers: [
       {
@@ -211,7 +211,7 @@ test("normalize settings preserves rejected remote handshake state", () => {
   assert.equal(normalized.accounts[0]?.remoteEmail?.handshakeState, "rejected");
 });
 
-test("remote email account id helpers round-trip normalized email values", () => {
+void test("remote email account id helpers round-trip normalized email values", () => {
   const accountId = buildRemoteEmailAccountId("Remote@Example.com");
 
   assert.equal(accountId, "remote_email_remote%40example.com");

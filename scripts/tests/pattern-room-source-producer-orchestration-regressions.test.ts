@@ -79,7 +79,7 @@ async function walkTypeScriptFiles(baseDir: string): Promise<string[]> {
   return files.sort((left, right) => left.localeCompare(right));
 }
 
-test("pattern-room source producer orchestration imports valid user text output", () => {
+void test("pattern-room source producer orchestration imports valid user text output", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const result = produceAndImportSource(producer, createPastedTextInput());
 
@@ -101,7 +101,7 @@ test("pattern-room source producer orchestration imports valid user text output"
   assert.equal(result.stats.totalSources, 1);
 });
 
-test("pattern-room source producer orchestration imports long text as a source-only package", () => {
+void test("pattern-room source producer orchestration imports long text as a source-only package", () => {
   const producer = createLongTextProducer({ now: () => FIXED_NOW });
   const result = produceAndImportSource(
     producer,
@@ -135,7 +135,7 @@ test("pattern-room source producer orchestration imports long text as a source-o
   assert.equal(result.stats.totalNodes, 0);
 });
 
-test("pattern-room source producer orchestration rejects invalid user text without import", () => {
+void test("pattern-room source producer orchestration rejects invalid user text without import", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const result = produceAndImportSource(producer, createPastedTextInput({ text: " \n\t " }));
 
@@ -147,7 +147,7 @@ test("pattern-room source producer orchestration rejects invalid user text witho
   assert.equal(result.stats.packagesImported, 0);
 });
 
-test("pattern-room source producer orchestration keeps oversized user text invalid", () => {
+void test("pattern-room source producer orchestration keeps oversized user text invalid", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const oversizedText = "x".repeat(producer.capabilities.maxInputSizeHint + 1);
   const result = produceAndImportSource(producer, createPastedTextInput({ text: oversizedText }));
@@ -160,7 +160,7 @@ test("pattern-room source producer orchestration keeps oversized user text inval
   );
 });
 
-test("pattern-room source producer orchestration stops on producer errors", () => {
+void test("pattern-room source producer orchestration stops on producer errors", () => {
   const packageWithError = createMinimalSourcePackage();
   const producer: SourceProducer<PastedTextInput> = {
     producerId: "mock_error_producer",
@@ -209,7 +209,7 @@ test("pattern-room source producer orchestration stops on producer errors", () =
   assert.equal(result.stats.totalSources, 0);
 });
 
-test("pattern-room source producer orchestration rejects malformed produced packages", () => {
+void test("pattern-room source producer orchestration rejects malformed produced packages", () => {
   const malformedPackage = {
     ...createMinimalSourcePackage(),
     sourceKind: "not-a-source-kind",
@@ -254,7 +254,7 @@ test("pattern-room source producer orchestration rejects malformed produced pack
   assert.equal(result.stats.totalSources, 0);
 });
 
-test("pattern-room source producer orchestration aggregates import warnings", () => {
+void test("pattern-room source producer orchestration aggregates import warnings", () => {
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const input = createPastedTextInput();
   const producedId = producer.produce(input).packages[0]?.sourcePackageId;
@@ -277,7 +277,7 @@ test("pattern-room source producer orchestration aggregates import warnings", ()
   assert.equal(result.stats.totalWarnings, 1);
 });
 
-test("pattern-room source producer orchestration boundaries stay pure", async () => {
+void test("pattern-room source producer orchestration boundaries stay pure", async () => {
   const orchestratorSource = await readFile(
     resolve(
       "rooms/pattern-room/shared/source-producers/orchestration/producer-import-orchestrator.ts"

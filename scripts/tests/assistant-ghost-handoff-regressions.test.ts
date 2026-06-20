@@ -10,19 +10,19 @@ import {
 const assistantHtmlPath = "src/pages/assistant.html";
 const assistantControllerPath = "src/js/pages/assistant/assistant.ts";
 
-test("ghost handoff auto-enables keep-servers toggle when checkbox is unchecked", () => {
+void test("ghost handoff auto-enables keep-servers toggle when checkbox is unchecked", () => {
   const shouldEnable = shouldAutoEnableKeepServersOnClose(false);
 
   assert.equal(shouldEnable, true);
 });
 
-test("ghost handoff does not rewrite keep-servers toggle when already enabled", () => {
+void test("ghost handoff does not rewrite keep-servers toggle when already enabled", () => {
   const shouldEnable = shouldAutoEnableKeepServersOnClose(true);
 
   assert.equal(shouldEnable, false);
 });
 
-test("ghost handoff runtime patch switches to preparing ghost mode", () => {
+void test("ghost handoff runtime patch switches to preparing ghost mode", () => {
   const patch = createGhostHandoffRuntimePatch("wf-ghost-001");
 
   assert.deepEqual(patch, {
@@ -32,7 +32,7 @@ test("ghost handoff runtime patch switches to preparing ghost mode", () => {
   });
 });
 
-test("ghost handoff patch remains transition-only", () => {
+void test("ghost handoff patch remains transition-only", () => {
   const patch = createGhostHandoffRuntimePatch("wf-ghost-002");
 
   assert.equal("provider" in patch, false);
@@ -40,7 +40,7 @@ test("ghost handoff patch remains transition-only", () => {
   assert.equal("port" in patch, false);
 });
 
-test("assistant page leaves ghost-agent handoff to the runtime mode controller", () => {
+void test("assistant page leaves ghost-agent handoff to the runtime mode controller", () => {
   const assistantHtml = readFileSync(assistantHtmlPath, "utf8");
   const assistantController = readFileSync(assistantControllerPath, "utf8");
 

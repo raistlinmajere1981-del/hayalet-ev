@@ -10,7 +10,7 @@ import {
   shouldSkipRender,
 } from "../../src/js/pages/analyze/render-cache.ts";
 
-test("shouldSkipRender returns true for identical snapshot", () => {
+void test("shouldSkipRender returns true for identical snapshot", () => {
   const messages = [
     {
       id: "m1",
@@ -35,7 +35,7 @@ test("shouldSkipRender returns true for identical snapshot", () => {
   assert.equal(shouldSkipRender(prev, next), true);
 });
 
-test("shouldSkipRender returns false when attachments changed", () => {
+void test("shouldSkipRender returns false when attachments changed", () => {
   const messages = [
     {
       id: "m1",
@@ -66,7 +66,7 @@ test("shouldSkipRender returns false when attachments changed", () => {
   assert.equal(shouldSkipRender(prev, next), false);
 });
 
-test("shouldSkipRender returns false when attachment mime type changed", () => {
+void test("shouldSkipRender returns false when attachment mime type changed", () => {
   const messages = [
     {
       id: "m1",
@@ -99,7 +99,7 @@ test("shouldSkipRender returns false when attachment mime type changed", () => {
   assert.equal(shouldSkipRender(prev, next), false);
 });
 
-test("shouldSkipRender returns false when conversation changes", () => {
+void test("shouldSkipRender returns false when conversation changes", () => {
   const messages = [
     {
       id: "m1",
@@ -124,7 +124,7 @@ test("shouldSkipRender returns false when conversation changes", () => {
   assert.equal(shouldSkipRender(prev, next), false);
 });
 
-test("buildAttachmentsByMessage groups attachments by message id", () => {
+void test("buildAttachmentsByMessage groups attachments by message id", () => {
   const map = buildAttachmentsByMessage([
     {
       messageId: "m1",
@@ -150,7 +150,7 @@ test("buildAttachmentsByMessage groups attachments by message id", () => {
   assert.equal((map["m2"] ?? []).length, 1);
 });
 
-test("getScrollTopAfterPrepend preserves viewport offset", () => {
+void test("getScrollTopAfterPrepend preserves viewport offset", () => {
   const value = getScrollTopAfterPrepend({
     previousScrollTop: 180,
     previousHeight: 1200,
@@ -160,7 +160,7 @@ test("getScrollTopAfterPrepend preserves viewport offset", () => {
   assert.equal(value, 540);
 });
 
-test("canUseIncrementalAppend returns append point when messages only appended", () => {
+void test("canUseIncrementalAppend returns append point when messages only appended", () => {
   const result = canUseIncrementalAppend({
     previousMessages: [
       { id: "m1", role: "user", text: "a", createdAt: 1 },
@@ -186,7 +186,7 @@ test("canUseIncrementalAppend returns append point when messages only appended",
   assert.equal(result.appendStart, 2);
 });
 
-test("canUseIncrementalAppend returns false when old message content changed", () => {
+void test("canUseIncrementalAppend returns false when old message content changed", () => {
   const result = canUseIncrementalAppend({
     previousMessages: [
       { id: "m1", role: "user", text: "a", createdAt: 1 },
@@ -211,7 +211,7 @@ test("canUseIncrementalAppend returns false when old message content changed", (
   assert.equal(result.canAppend, false);
 });
 
-test("canUseIncrementalAppend returns false when old attachment list changed", () => {
+void test("canUseIncrementalAppend returns false when old attachment list changed", () => {
   const result = canUseIncrementalAppend({
     previousMessages: [
       { id: "m1", role: "user", text: "a", createdAt: 1 },
@@ -236,7 +236,7 @@ test("canUseIncrementalAppend returns false when old attachment list changed", (
   assert.equal(result.canAppend, false);
 });
 
-test("shouldAutoScrollToBottom returns true when near bottom", () => {
+void test("shouldAutoScrollToBottom returns true when near bottom", () => {
   const shouldScroll = shouldAutoScrollToBottom({
     scrollTop: 860,
     clientHeight: 200,
@@ -247,7 +247,7 @@ test("shouldAutoScrollToBottom returns true when near bottom", () => {
   assert.equal(shouldScroll, true);
 });
 
-test("shouldAutoScrollToBottom returns false when user reading old messages", () => {
+void test("shouldAutoScrollToBottom returns false when user reading old messages", () => {
   const shouldScroll = shouldAutoScrollToBottom({
     scrollTop: 400,
     clientHeight: 200,

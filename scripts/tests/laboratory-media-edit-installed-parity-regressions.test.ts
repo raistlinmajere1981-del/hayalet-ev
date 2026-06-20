@@ -5,7 +5,7 @@ import { join, relative } from "node:path";
 import { createRoomBuiltArtifact } from "./helpers/room-installed-copy.ts";
 
 const IGNORED_PATHS = new Set([".room-install-files.json", "package.json"]);
-const STRICT_SHIPPED_PARITY = process.env.LABORATORY_STRICT_SHIPPED_PARITY === "1";
+const STRICT_SHIPPED_PARITY = process.env["LABORATORY_STRICT_SHIPPED_PARITY"] === "1";
 
 const activeShellFiles = [
   "host/index.js",
@@ -109,7 +109,7 @@ function assertOptionalShippedParity(shippedParityRoot: string, checkParity: () 
   }
 }
 
-test("laboratory shipped room reports stale active lab-root shell build output as a warning", async () => {
+void test("laboratory shipped room reports stale active lab-root shell build output as a warning", async () => {
   const buildArtifact = await createRoomBuiltArtifact("laboratory");
   const shippedParityRoot = resolveLaboratoryShippedParityRoot();
 

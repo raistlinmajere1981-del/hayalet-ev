@@ -109,7 +109,7 @@ async function postJson<TResponse>(url: string, body: unknown): Promise<TRespons
   return (await response.json()) as TResponse;
 }
 
-test("US1 relay server stores, serves, decrypts, and acknowledges encrypted envelopes", async () => {
+void test("US1 relay server stores, serves, decrypts, and acknowledges encrypted envelopes", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "us1-relay-test-"));
   const relayServer = new Us1RelayServer(rootDir);
   const listener = relayServer.createListener();
@@ -168,7 +168,7 @@ test("US1 relay server stores, serves, decrypts, and acknowledges encrypted enve
     sentAt: payload.sentAt,
   });
 
-  await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", () => resolve()));
+  await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", () => { resolve(); }));
   const address = listener.address();
   assert.ok(address && typeof address === "object");
   const baseUrl = `http://127.0.0.1:${address.port}`;
@@ -244,7 +244,7 @@ test("US1 relay server stores, serves, decrypts, and acknowledges encrypted enve
   }
 });
 
-test("US1 relay server stores, downloads, decrypts, and cleans up encrypted attachment chunks", async () => {
+void test("US1 relay server stores, downloads, decrypts, and cleans up encrypted attachment chunks", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "us1-relay-attachment-test-"));
   const relayServer = new Us1RelayServer(rootDir);
   const listener = relayServer.createListener();
@@ -264,7 +264,7 @@ test("US1 relay server stores, downloads, decrypts, and cleans up encrypted atta
   const recipientEncryptionKeyFingerprint = fingerprint(recipientEncryptionPublicKey);
   const recipientSigningKeyFingerprint = fingerprint(recipientSigningPublicKey);
 
-  await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", () => resolve()));
+  await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", () => { resolve(); }));
   const address = listener.address();
   assert.ok(address && typeof address === "object");
   const baseUrl = `http://127.0.0.1:${address.port}`;
@@ -381,7 +381,7 @@ test("US1 relay server stores, downloads, decrypts, and cleans up encrypted atta
   }
 });
 
-test("US1 relay client pins the HTTPS relay certificate fingerprint", async () => {
+void test("US1 relay client pins the HTTPS relay certificate fingerprint", async () => {
   const listener = createHttpsServer(
     {
       key: TEST_TLS_KEY_PEM,
@@ -393,7 +393,7 @@ test("US1 relay client pins the HTTPS relay certificate fingerprint", async () =
     }
   );
 
-  await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", () => resolve()));
+  await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", () => { resolve(); }));
   const address = listener.address();
   assert.ok(address && typeof address === "object");
   const baseUrl = `https://localhost:${address.port}`;
@@ -429,7 +429,7 @@ test("US1 relay client pins the HTTPS relay certificate fingerprint", async () =
   }
 });
 
-test("US1 relay server sweeps orphaned attachment uploads after the retention window", async () => {
+void test("US1 relay server sweeps orphaned attachment uploads after the retention window", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "us1-relay-cleanup-test-"));
   let now = 1_700_000_100_000;
   const relayServer = new Us1RelayServer(rootDir, {
@@ -454,7 +454,7 @@ test("US1 relay server sweeps orphaned attachment uploads after the retention wi
   const recipientEncryptionKeyFingerprint = fingerprint(recipientEncryptionPublicKey);
   const recipientSigningKeyFingerprint = fingerprint(recipientSigningPublicKey);
 
-  await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", () => resolve()));
+  await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", () => { resolve(); }));
   const address = listener.address();
   assert.ok(address && typeof address === "object");
   const baseUrl = `http://127.0.0.1:${address.port}`;

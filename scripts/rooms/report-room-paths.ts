@@ -40,7 +40,7 @@ async function main(): Promise<void> {
     };
   });
 
-  console.log(
+  console.info(
     JSON.stringify(
       {
         roots: {

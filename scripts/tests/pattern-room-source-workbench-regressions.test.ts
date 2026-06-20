@@ -107,7 +107,7 @@ async function walkTypeScriptFiles(baseDir: string): Promise<string[]> {
   return files.sort((left, right) => left.localeCompare(right));
 }
 
-test("pattern-room source workbench exposes source kinds and pattern source mapping", () => {
+void test("pattern-room source workbench exposes source kinds and pattern source mapping", () => {
   assert.deepEqual(SOURCE_KINDS, EXPECTED_SOURCE_KINDS);
   assert.deepEqual(SOURCE_KIND_TO_PATTERN_SOURCE_TYPE, EXPECTED_SOURCE_KIND_MAPPING);
 
@@ -119,7 +119,7 @@ test("pattern-room source workbench exposes source kinds and pattern source mapp
   }
 });
 
-test("pattern-room source workbench parses valid packages and defaults optional arrays", () => {
+void test("pattern-room source workbench parses valid packages and defaults optional arrays", () => {
   const parsed = parseSourcePackage({
     sourcePackageId: "parse-valid",
     sourceKind: "book",
@@ -143,7 +143,7 @@ test("pattern-room source workbench parses valid packages and defaults optional 
   assert.deepEqual(parsed.metadata, {});
 });
 
-test("pattern-room source workbench rejects invalid package shapes defensively", () => {
+void test("pattern-room source workbench rejects invalid package shapes defensively", () => {
   assert.equal(parseSourcePackage(null), null);
   assert.equal(parseSourcePackage({}), null);
   assert.equal(
@@ -169,7 +169,7 @@ test("pattern-room source workbench rejects invalid package shapes defensively",
   );
 });
 
-test("pattern-room source workbench imports a minimal package as a source draft only", () => {
+void test("pattern-room source workbench imports a minimal package as a source draft only", () => {
   const result = importSourcePackage(createMinimalSourcePackage());
 
   assert.equal(result.sources.length, 1);
@@ -190,7 +190,7 @@ test("pattern-room source workbench imports a minimal package as a source draft 
   });
 });
 
-test("pattern-room source workbench preserves source package segments on the source draft", () => {
+void test("pattern-room source workbench preserves source package segments on the source draft", () => {
   const result = importSourcePackage(
     createMinimalSourcePackage({
       sourcePackageId: "segmented-package",
@@ -240,7 +240,7 @@ test("pattern-room source workbench preserves source package segments on the sou
   assert.deepEqual(result.edges, []);
 });
 
-test("pattern-room source workbench maps quotes and motifs into evidence, nodes, and derived edges", () => {
+void test("pattern-room source workbench maps quotes and motifs into evidence, nodes, and derived edges", () => {
   const result = importSourcePackage(
     createMinimalSourcePackage({
       sourcePackageId: "quote-motif-package",
@@ -315,7 +315,7 @@ test("pattern-room source workbench maps quotes and motifs into evidence, nodes,
   assertEdgesResolveToImportDrafts(result);
 });
 
-test("pattern-room source workbench preserves quote timecodes in evidence drafts", () => {
+void test("pattern-room source workbench preserves quote timecodes in evidence drafts", () => {
   const result = importSourcePackage(SAMPLE_SUBTITLE_SOURCE_PACKAGE);
 
   assert.equal(result.evidence.length, 1);
@@ -323,7 +323,7 @@ test("pattern-room source workbench preserves quote timecodes in evidence drafts
   assert.equal(result.evidence[0]?.speaker, "Narrator");
 });
 
-test("pattern-room source workbench imports numeric patterns as inspiration nodes", () => {
+void test("pattern-room source workbench imports numeric patterns as inspiration nodes", () => {
   const result = importSourcePackage(
     createMinimalSourcePackage({
       sourcePackageId: "numeric-package",
@@ -346,7 +346,7 @@ test("pattern-room source workbench imports numeric patterns as inspiration node
   assert.equal(result.nodes[0]?.originKind, "numeric_pattern");
 });
 
-test("pattern-room source workbench imports uncertainties with questions edges", () => {
+void test("pattern-room source workbench imports uncertainties with questions edges", () => {
   const result = importSourcePackage(
     createMinimalSourcePackage({
       sourcePackageId: "uncertainty-package",
@@ -382,7 +382,7 @@ test("pattern-room source workbench imports uncertainties with questions edges",
   assert.equal(result.edges[0]?.edgeType, "questions");
 });
 
-test("pattern-room source workbench imports references as reference edges", () => {
+void test("pattern-room source workbench imports references as reference edges", () => {
   const result = importSourcePackage(
     createMinimalSourcePackage({
       sourcePackageId: "reference-package",
@@ -429,7 +429,7 @@ test("pattern-room source workbench imports references as reference edges", () =
   assertEdgesResolveToImportDrafts(result);
 });
 
-test("pattern-room source workbench skips unresolved references without dangling edges", () => {
+void test("pattern-room source workbench skips unresolved references without dangling edges", () => {
   const result = importSourcePackage(
     createMinimalSourcePackage({
       sourcePackageId: "unresolved-reference-package",
@@ -464,7 +464,7 @@ test("pattern-room source workbench skips unresolved references without dangling
   assertEdgesResolveToImportDrafts(result);
 });
 
-test("pattern-room source workbench skips unresolved related quote edges with warnings", () => {
+void test("pattern-room source workbench skips unresolved related quote edges with warnings", () => {
   const result = importSourcePackage(
     createMinimalSourcePackage({
       sourcePackageId: "unresolved-related-quote-package",
@@ -490,7 +490,7 @@ test("pattern-room source workbench skips unresolved related quote edges with wa
   assertEdgesResolveToImportDrafts(result);
 });
 
-test("pattern-room source workbench keeps every generated edge linked to import drafts", () => {
+void test("pattern-room source workbench keeps every generated edge linked to import drafts", () => {
   const result = importSourcePackage(
     createMinimalSourcePackage({
       sourcePackageId: "edge-integrity-package",
@@ -553,7 +553,7 @@ test("pattern-room source workbench keeps every generated edge linked to import 
   assertEdgesResolveToImportDrafts(result);
 });
 
-test("pattern-room source workbench skips duplicate packages with a warning", () => {
+void test("pattern-room source workbench skips duplicate packages with a warning", () => {
   const result = importSourcePackage(createMinimalSourcePackage(), {
     existingPackageIds: ["minimal-package"],
   });
@@ -566,7 +566,7 @@ test("pattern-room source workbench skips duplicate packages with a warning", ()
   assert.equal(result.stats.duplicatesSkipped, 1);
 });
 
-test("pattern-room source workbench applies quote limits without throwing", () => {
+void test("pattern-room source workbench applies quote limits without throwing", () => {
   const quotes = Array.from({ length: 101 }, (_, index) => {
     const quoteIndex = index + 1;
     return {
@@ -598,7 +598,7 @@ test("pattern-room source workbench applies quote limits without throwing", () =
   );
 });
 
-test("pattern-room source workbench import adapter does not mutate input packages", () => {
+void test("pattern-room source workbench import adapter does not mutate input packages", () => {
   const pkg = createMinimalSourcePackage({
     sourcePackageId: "purity-package",
     quotes: SAMPLE_USER_TEXT_SOURCE_PACKAGE.quotes,
@@ -613,7 +613,7 @@ test("pattern-room source workbench import adapter does not mutate input package
   assert.equal(JSON.stringify(pkg), before);
 });
 
-test("pattern-room source workbench sample packages cover requested source varieties", () => {
+void test("pattern-room source workbench sample packages cover requested source varieties", () => {
   const userTextResult = importSourcePackage(SAMPLE_USER_TEXT_SOURCE_PACKAGE);
   const newspaperResult = importSourcePackage(SAMPLE_NEWSPAPER_SOURCE_PACKAGE);
   const subtitleResult = importSourcePackage(SAMPLE_SUBTITLE_SOURCE_PACKAGE);
@@ -633,7 +633,7 @@ test("pattern-room source workbench sample packages cover requested source varie
   assert.equal(subtitleResult.evidence[0]?.timecode, "00:01:12");
 });
 
-test("pattern-room source workbench stays disconnected from overlay, snapshot, UI, host, and IPC surfaces", async () => {
+void test("pattern-room source workbench stays disconnected from overlay, snapshot, UI, host, and IPC surfaces", async () => {
   const protectedFiles = [
     "rooms/pattern-room/shared/state/pattern-room-snapshot.ts",
     "rooms/pattern-room/shared/types/pattern-room-snapshot.ts",

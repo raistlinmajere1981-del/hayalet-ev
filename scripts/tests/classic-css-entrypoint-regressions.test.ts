@@ -17,7 +17,7 @@ import {
   resolveRepoPath,
 } from "../lib/classic-css-contract.mjs";
 
-test("classic source entrypoints keep the expected stylesheet ownership graph", () => {
+void test("classic source entrypoints keep the expected stylesheet ownership graph", () => {
   for (const entrypoint of CLASSIC_SOURCE_ENTRYPOINTS) {
     const htmlSource = readRepoFile(entrypoint.sourceHtml);
     const stylesheetHrefs = extractStylesheetHrefs(htmlSource);
@@ -37,7 +37,7 @@ test("classic source entrypoints keep the expected stylesheet ownership graph", 
   }
 });
 
-test("page-init raw template imports stay aligned with the shell fragment contract", () => {
+void test("page-init raw template imports stay aligned with the shell fragment contract", () => {
   const pageInitSource = readRepoFile("src/js/app/page-init.ts");
   const importedTemplates = extractRawTemplateImports(pageInitSource);
 
@@ -49,7 +49,7 @@ test("page-init raw template imports stay aligned with the shell fragment contra
   }
 });
 
-test("fragment delivery contract distinguishes linked and lazy shell stylesheet delivery", () => {
+void test("fragment delivery contract distinguishes linked and lazy shell stylesheet delivery", () => {
   const lazyShellFragments = CLASSIC_FRAGMENT_INPUTS.filter(
     (fragment) => fragment.delivery.shell.type === "lazy-runtime-stylesheet"
   ).map((fragment) => fragment.name);
@@ -78,14 +78,14 @@ test("fragment delivery contract distinguishes linked and lazy shell stylesheet 
   );
 });
 
-test("runtime page stylesheet loader keeps lazy shell page styles aligned", () => {
+void test("runtime page stylesheet loader keeps lazy shell page styles aligned", () => {
   const runtimeLoaderSource = readRepoFile(RUNTIME_PAGE_STYLE_ENTRYPOINT.sourceTs);
   const runtimeCssImports = extractDynamicCssImports(runtimeLoaderSource);
 
   assert.deepEqual(runtimeCssImports, RUNTIME_PAGE_STYLE_ENTRYPOINT.expectedCssImports);
 });
 
-test("classic docs capture ownership and token taxonomy guardrails", () => {
+void test("classic docs capture ownership and token taxonomy guardrails", () => {
   const ownershipDoc = readRepoFile(".rovo/classic-css-ownership-matrix.md");
   const taxonomyDoc = readRepoFile(".rovo/classic-theme-token-taxonomy.md");
 
@@ -98,7 +98,7 @@ test("classic docs capture ownership and token taxonomy guardrails", () => {
   assert.match(taxonomyDoc, /assistant\.css/);
 });
 
-test("built renderer html keeps the classic selector coverage contract", (t) => {
+void test("built renderer html keeps the classic selector coverage contract", (t) => {
   if (process.env["CHECK_DIST_RENDERER_CSS_GRAPH"] !== "1") {
     t.skip("Set CHECK_DIST_RENDERER_CSS_GRAPH=1 after npm run build to validate dist/renderer.");
     return;

@@ -44,13 +44,13 @@ const requiredFiles = [
   "rooms/game-room/main-functions/team-tetris/assets/team-tetris-view.webp",
 ];
 
-test("game-room workspace keeps the required Team Tetris package files", () => {
+void test("game-room workspace keeps the required Team Tetris package files", () => {
   requiredFiles.forEach((filePath) => {
     assert.equal(existsSync(filePath), true, filePath);
   });
 });
 
-test("game-room manifest exposes Team Tetris as a second feature with scene metadata", () => {
+void test("game-room manifest exposes Team Tetris as a second feature with scene metadata", () => {
   const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
   const validation = validateRoomManifest(manifest);
 
@@ -84,7 +84,7 @@ test("game-room manifest exposes Team Tetris as a second feature with scene meta
   );
 });
 
-test("game-room Team Tetris UI and host sources expose the new feature shell", () => {
+void test("game-room Team Tetris UI and host sources expose the new feature shell", () => {
   const uiEntrySource = loadWorkspaceScriptForVm("rooms/game-room/ui/index.ts");
   const uiRuntimeSource = loadWorkspaceScriptForVm("rooms/game-room/ui/game-room-ui-runtime.ts");
   const indexHtmlSource = readFileSync("rooms/game-room/ui/index.html", "utf8");

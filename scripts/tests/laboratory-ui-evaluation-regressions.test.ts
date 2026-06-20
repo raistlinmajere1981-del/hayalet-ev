@@ -266,7 +266,7 @@ function createMinimalLaboratoryUiEnvironment(options: MinimalLaboratoryUiEnviro
       });
       while (nextIndex >= 0) {
         const [timer] = queuedTimers.splice(nextIndex, 1);
-        timer.callback();
+        timer!.callback();
         nextIndex = queuedTimers.findIndex(function (candidate) {
           return candidate.delay <= maxDelay;
         });
@@ -317,7 +317,7 @@ class MountedRootElement extends ElementStub {
     this.mountedInnerHtmlValue = this.mountedInnerHtmlValue.replace(shellTag, nextTag);
   }
 
-  override querySelector(selector: string): MountedQueryElement | null {
+  override querySelector(selector?: string): any {
     if (this.mountedQueriesEnabled !== true) {
       return null;
     }
@@ -580,7 +580,7 @@ function createMountedLaboratoryTransitionEnvironment(options: { animationFrame?
 
 function createExecutionReadinessTimelineModel(
   overrides: Record<string, unknown> = {}
-): Parameters<typeof renderLabWaveformTimeline>[0] {
+): any {
   return {
     activeSelection: {
       id: "selection-1",
@@ -602,7 +602,7 @@ function createExecutionReadinessTimelineModel(
   };
 }
 
-test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
+void test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
   const environment = createMinimalLaboratoryUiEnvironment({
     fakeTimers: true,
   });
@@ -631,7 +631,7 @@ test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
   }
 });
 
-test("laboratory boot overlay unlocks from local ready without a room API bridge", async () => {
+void test("laboratory boot overlay unlocks from local ready without a room API bridge", async () => {
   const environment = createMinimalLaboratoryUiEnvironment({
     fakeTimers: true,
     roomApi: "none",
@@ -661,7 +661,7 @@ test("laboratory boot overlay unlocks from local ready without a room API bridge
   }
 });
 
-test("laboratory boot overlay waits for host data when a room API bridge exists", async () => {
+void test("laboratory boot overlay waits for host data when a room API bridge exists", async () => {
   const environment = createMinimalLaboratoryUiEnvironment({
     fakeTimers: true,
   });
@@ -690,7 +690,7 @@ test("laboratory boot overlay waits for host data when a room API bridge exists"
   }
 });
 
-test("laboratory boot overlay fallback waits for idle before unlocking bridge loads", async () => {
+void test("laboratory boot overlay fallback waits for idle before unlocking bridge loads", async () => {
   const environment = createMinimalLaboratoryUiEnvironment({
     fakeTimers: true,
   });
@@ -716,7 +716,7 @@ test("laboratory boot overlay fallback waits for idle before unlocking bridge lo
   }
 });
 
-test("laboratory shell routes host traffic through lab-root orchestration seams", () => {
+void test("laboratory shell routes host traffic through lab-root orchestration seams", () => {
   const uiIndexSource = readFileSync("rooms/laboratory/ui/index.ts", "utf8");
   const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const labLayoutSource = readFileSync("rooms/laboratory/ui/lab-layout.ts", "utf8");
@@ -781,7 +781,7 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
   assert.doesNotMatch(hostBridgeSource, /buildLifecycleEventsFromHostEvent/);
 });
 
-test("laboratory mounted shell keeps chrome when YouTube is selected as a source mode", async () => {
+void test("laboratory mounted shell keeps chrome when YouTube is selected as a source mode", async () => {
   const environment = createMountedLaboratoryTransitionEnvironment();
 
   try {
@@ -841,7 +841,7 @@ test("laboratory mounted shell keeps chrome when YouTube is selected as a source
   }
 });
 
-test("laboratory mounted shell coalesces store side effects into one animation frame", async () => {
+void test("laboratory mounted shell coalesces store side effects into one animation frame", async () => {
   const environment = createMountedLaboratoryTransitionEnvironment({ animationFrame: true });
 
   try {
@@ -875,7 +875,7 @@ test("laboratory mounted shell coalesces store side effects into one animation f
   }
 });
 
-test("laboratory mounted fallback logs missing region diagnostics before preserving debug replacement", async () => {
+void test("laboratory mounted fallback logs missing region diagnostics before preserving debug replacement", async () => {
   const environment = createMountedLaboratoryTransitionEnvironment();
 
   try {
@@ -927,7 +927,7 @@ test("laboratory mounted fallback logs missing region diagnostics before preserv
   }
 });
 
-test("laboratory YouTube source panel renders checked stream controls without import-only shell", () => {
+void test("laboratory YouTube source panel renders checked stream controls without import-only shell", () => {
   const sourcePresets = JSON.parse(
     readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
   );
@@ -1067,14 +1067,14 @@ test("laboratory YouTube source panel renders checked stream controls without im
   );
 });
 
-test("laboratory shell preserves workspace preview nodes while diffing live panels", () => {
+void test("laboratory shell preserves workspace preview nodes while diffing live panels", () => {
   const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const labRootObservabilitySource = readFileSync(
     "rooms/laboratory/ui/lab-root-observability.ts",
     "utf8"
   );
   const labDomSyncSource = readFileSync("rooms/laboratory/ui/lab-dom-sync.ts", "utf8");
-  const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
+  readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
   const workspaceSourceIntakeSource = readFileSync(
     "rooms/laboratory/ui/workspace-source-intake.ts",
     "utf8"
@@ -1175,7 +1175,7 @@ test("laboratory shell preserves workspace preview nodes while diffing live pane
   );
 });
 
-test("laboratory decision layer maps compact signals into the intent backbone", () => {
+void test("laboratory decision layer maps compact signals into the intent backbone", () => {
   assert.deepEqual(
     deriveLabDecisionSignals({
       hasResult: false,
@@ -1210,7 +1210,7 @@ test("laboratory decision layer maps compact signals into the intent backbone", 
   assert.equal(resolveLabDecisionState("idle"), "idle");
 });
 
-test("laboratory decision layer reads active pipeline blocks in rendered DOM order", () => {
+void test("laboratory decision layer reads active pipeline blocks in rendered DOM order", () => {
   const shell = {
     querySelectorAll(selector: string) {
       assert.equal(selector, ".labx-pipeline-block");
@@ -1251,7 +1251,7 @@ test("laboratory decision layer reads active pipeline blocks in rendered DOM ord
   ]);
 });
 
-test("laboratory decision snapshot mirrors current UI state without driving behavior", () => {
+void test("laboratory decision snapshot mirrors current UI state without driving behavior", () => {
   const store = createLabStore();
   const emptySnapshot = buildLabDecisionSnapshot({
     shell: null,
@@ -1307,7 +1307,7 @@ test("laboratory decision snapshot mirrors current UI state without driving beha
   assert.deepEqual(readySnapshot.activeBlocks, ["analysis-prep", "preflight", "analysis-cta"]);
 });
 
-test("laboratory decision signals follow UI readiness instead of raw source presence", () => {
+void test("laboratory decision signals follow UI readiness instead of raw source presence", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -1332,7 +1332,7 @@ test("laboratory decision signals follow UI readiness instead of raw source pres
   assert.deepEqual(deriveLabDecisionSignalsFromState(store.getState()), ["has-selection"]);
 });
 
-test("laboratory decision signals keep explore intent separate from result payload presence", () => {
+void test("laboratory decision signals keep explore intent separate from result payload presence", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -1378,7 +1378,7 @@ test("laboratory decision signals keep explore intent separate from result paylo
   assert.deepEqual(snapshot.triggers, ["has-selection", "has-source"]);
 });
 
-test("laboratory observability helpers are debug gated and structured", async () => {
+void test("laboratory observability helpers are debug gated and structured", async () => {
   const labRootModule = await importLabRootModuleWithDomStub<{
     __testOnlyLabRootObservability: {
       debugLabFallback: (
@@ -1503,7 +1503,7 @@ test("laboratory observability helpers are debug gated and structured", async ()
   assert.equal(quietShell.panelRemoved, true);
 });
 
-test("laboratory observability runtime paths log region fallback and overlay health without replacing shell", async () => {
+void test("laboratory observability runtime paths log region fallback and overlay health without replacing shell", async () => {
   class RuntimeHarnessElement extends ElementStub {
     appendedChildren: RuntimeHarnessElement[] = [];
     attributes = new Map<string, string>();
@@ -1556,7 +1556,8 @@ test("laboratory observability runtime paths log region fallback and overlay hea
       return this.attributes.has(name);
     }
 
-    override querySelector(selector: string): RuntimeHarnessElement | null {
+    override querySelector(selector?: string): any {
+      if (!selector) return null;
       return this.queries.get(selector) ?? null;
     }
 
@@ -1663,24 +1664,24 @@ test("laboratory observability runtime paths log region fallback and overlay hea
 
     const regionLogs = captureDebugLogs(function () {
       const updated = observability.syncRegion({
-        debugShell,
+        debugShell: debugShell as unknown as Element,
         documentRef,
         preserveScroll: true,
         regionKey: "topBar",
         render() {
           return '<article class="labx-top-bar">updated</article>';
         },
-        root,
+        root: root as unknown as ParentNode,
         selectors: ['[data-lab-region="topbar"]', ".labx-top-bar"],
       });
       const missing = observability.syncRegion({
-        debugShell,
+        debugShell: debugShell as unknown as Element,
         documentRef,
         regionKey: "inspectorPanel",
         render() {
           return '<aside class="labx-workspace-inspector">missing</aside>';
         },
-        root,
+        root: root as unknown as ParentNode,
         selectors: ['[data-lab-region="inspector-panel"]', ".labx-workspace-inspector"],
       });
 
@@ -1688,7 +1689,7 @@ test("laboratory observability runtime paths log region fallback and overlay hea
       assert.equal(missing, false);
     });
 
-    assert.equal(observability.queryRegion(root, ['[data-lab-region="topbar"]']), topbar);
+    assert.equal(observability.queryRegion(root as unknown as ParentNode, ['[data-lab-region="topbar"]']), topbar);
     assert.equal(topbar.outerHtmlWrites.length, 1);
     assert.match(topbar.outerHtmlWrites[0] ?? "", /class="labx-top-bar"/);
     assert.deepEqual(
@@ -1709,23 +1710,23 @@ test("laboratory observability runtime paths log region fallback and overlay hea
     const overlayLogs = captureDebugLogs(function () {
       const updatedOverlay = observability.syncOverlayRoot(
         documentRef,
-        overlayRoot,
+        overlayRoot as unknown as HTMLElement,
         "tools",
         ".labx-overlay-root",
         function () {
           return '<aside class="labx-overlay-root">updated</aside>';
         },
-        debugShell
+        debugShell as unknown as Element
       );
       const invalidOverlay = observability.syncOverlayRoot(
         documentRef,
-        overlayRoot,
+        overlayRoot as unknown as HTMLElement,
         "report",
         "#lab-report-overlay-root",
         function () {
           return "";
         },
-        debugShell
+        debugShell as unknown as Element
       );
 
       assert.equal(updatedOverlay, true);
@@ -1745,24 +1746,24 @@ test("laboratory observability runtime paths log region fallback and overlay hea
     const quietShell = new RuntimeHarnessElement("DIV");
     const quietLogs = captureDebugLogs(function () {
       observability.syncRegion({
-        debugShell: quietShell,
+        debugShell: quietShell as unknown as Element,
         documentRef,
         regionKey: "processStrip",
         render() {
           return '<div class="labx-process-strip"></div>';
         },
-        root,
+        root: root as unknown as ParentNode,
         selectors: ['[data-lab-region="process-strip"]'],
       });
       observability.syncOverlayRoot(
         documentRef,
-        overlayRoot,
+        overlayRoot as unknown as HTMLElement,
         "report",
         "#lab-report-overlay-root",
         function () {
           return "";
         },
-        quietShell
+        quietShell as unknown as Element
       );
     });
     assert.equal(quietLogs.length, 0);
@@ -1775,7 +1776,7 @@ test("laboratory observability runtime paths log region fallback and overlay hea
   }
 });
 
-test("laboratory shell persists workspace-facing state and exposes tool lifecycle controls", () => {
+void test("laboratory shell persists workspace-facing state and exposes tool lifecycle controls", () => {
   const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const toolOverlaySource = readFileSync("rooms/laboratory/ui/tool-management-overlay.ts", "utf8");
   const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
@@ -1829,7 +1830,7 @@ test("laboratory shell persists workspace-facing state and exposes tool lifecycl
   assert.doesNotMatch(workspaceSurfaceSource, /renderGlobalProcessSummary\(state, copy\)/);
 });
 
-test("laboratory center workbench attaches media viewport and timeline as one surface", () => {
+void test("laboratory center workbench attaches media viewport and timeline as one surface", () => {
   const labTypesSource = readFileSync("rooms/laboratory/domain/lab-types.ts", "utf8");
   const workspaceSurfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
   const workspaceSourceIntakeSource = readFileSync(
@@ -2084,7 +2085,7 @@ test("laboratory center workbench attaches media viewport and timeline as one su
   );
 });
 
-test("laboratory process strip owns heartbeat and expanded runtime detail rendering", () => {
+void test("laboratory process strip owns heartbeat and expanded runtime detail rendering", () => {
   const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const processStripSource = readFileSync("rooms/laboratory/ui/lab-process-strip.ts", "utf8");
   const themeSource = readLabThemeSource();
@@ -2124,7 +2125,7 @@ test("laboratory process strip owns heartbeat and expanded runtime detail render
   );
 });
 
-test("laboratory theme defines the multi-region shell grid and drawer layout contract", () => {
+void test("laboratory theme defines the multi-region shell grid and drawer layout contract", () => {
   const baseSource = readFileSync("rooms/laboratory/ui/styles/base.css", "utf8");
   const themeSource = readLabThemeSource();
   const sourceImportSource = readFileSync(
@@ -2198,7 +2199,7 @@ test("laboratory theme defines the multi-region shell grid and drawer layout con
   assert.doesNotMatch(sourceImportSource, /\.labx-advanced-settings/);
 });
 
-test("laboratory micro inspection UI exposes roi focus precedence and lens affordances in the preview shell", () => {
+void test("laboratory micro inspection UI exposes roi focus precedence and lens affordances in the preview shell", () => {
   const overlaySource = readFileSync("rooms/laboratory/ui/workspace-roi-overlay.ts", "utf8");
   const surfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
   const timelineSelectionSource = readFileSync(
@@ -2221,7 +2222,7 @@ test("laboratory micro inspection UI exposes roi focus precedence and lens affor
   assert.match(timelineSelectionSource, /id="lab-audio-viz-inspection"/);
 });
 
-test("laboratory selection preview exposes soft execution intent affordances without run semantics", () => {
+void test("laboratory selection preview exposes soft execution intent affordances without run semantics", () => {
   const timelineSelectionSource = readFileSync(
     "rooms/laboratory/ui/timeline/timeline-selection.ts",
     "utf8"
@@ -2239,7 +2240,7 @@ test("laboratory selection preview exposes soft execution intent affordances wit
   assert.doesNotMatch(timelineSelectionSource, />Run</);
 });
 
-test("laboratory execution detail helper panels are removed from the selection timeline surface", () => {
+void test("laboratory execution detail helper panels are removed from the selection timeline surface", () => {
   const timelineSource = readLabWaveformTimelineSource();
   const rootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
   const binderSource = readFileSync(
@@ -2305,7 +2306,7 @@ test("laboratory execution detail helper panels are removed from the selection t
   );
 });
 
-test("laboratory accepted selection renders selected action feedback without helper panels", () => {
+void test("laboratory accepted selection renders selected action feedback without helper panels", () => {
   const markup = renderLabWaveformTimeline(
     createExecutionReadinessTimelineModel({
       activeExecutionIntent: {
@@ -2335,7 +2336,7 @@ test("laboratory accepted selection renders selected action feedback without hel
   assert.doesNotMatch(markup, /Simulation preview|Execution payload|Execution candidate/);
 });
 
-test("laboratory phase 4.95 renders room-local selection labels without execution detail copy", () => {
+void test("laboratory phase 4.95 renders room-local selection labels without execution detail copy", () => {
   const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
   const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
   const enCopy = createLabI18n({ locale: "en", translations: enTranslations });
@@ -2382,7 +2383,7 @@ test("laboratory phase 4.95 renders room-local selection labels without executio
   );
 });
 
-test("laboratory runtime status copy resolves through room-local i18n catalogs", () => {
+void test("laboratory runtime status copy resolves through room-local i18n catalogs", () => {
   const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
   const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
   const enCopy = createLabI18n({ locale: "en", translations: enTranslations });
@@ -2411,7 +2412,7 @@ test("laboratory runtime status copy resolves through room-local i18n catalogs",
   );
 });
 
-test("laboratory phase 4.95 i18n keys keep English and Turkish catalog parity", () => {
+void test("laboratory phase 4.95 i18n keys keep English and Turkish catalog parity", () => {
   const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
   const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
   const phaseKeys = [
@@ -2451,7 +2452,7 @@ test("laboratory phase 4.95 i18n keys keep English and Turkish catalog parity", 
   });
 });
 
-test("laboratory process layer is single-source and old right panel is retired", () => {
+void test("laboratory process layer is single-source and old right panel is retired", () => {
   const surfaceSource = readFileSync("rooms/laboratory/ui/workspace-surface.ts", "utf8");
   const drawerSource = readFileSync("rooms/laboratory/ui/lab-drawer.ts", "utf8");
   const drawerResultExploreSource = readFileSync(

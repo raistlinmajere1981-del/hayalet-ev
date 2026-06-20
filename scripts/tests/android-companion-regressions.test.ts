@@ -3,7 +3,7 @@ import test from "node:test";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 
-test("android companion keeps openWake ambient, Vosk dictation, and live camera contract wired", () => {
+void test("android companion keeps openWake ambient, Vosk dictation, and live camera contract wired", () => {
   const sessionSource = readFileSync(
     "android-companion/app/src/main/kotlin/com/hayaletev/androidcompanion/session/CompanionSessionCoordinator.kt",
     "utf8"
@@ -289,7 +289,7 @@ test("android companion keeps openWake ambient, Vosk dictation, and live camera 
   assert.equal(existsSync("android-companion/app/src/main/cpp/CMakeLists.txt"), false);
 });
 
-test("capture settings exposes shared host dependency preparation", () => {
+void test("capture settings exposes shared host dependency preparation", () => {
   const captureServiceSource = readFileSync("electron/capture-service.ts", "utf8");
   const hostDependencySource = readFileSync("electron/host-dependency-service.ts", "utf8");
   const captureTypesSource = readFileSync("src/types/capture.ts", "utf8");

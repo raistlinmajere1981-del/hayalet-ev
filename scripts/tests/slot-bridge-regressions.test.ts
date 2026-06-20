@@ -134,10 +134,10 @@ function createHarness(
   const originalWindow = globalWithWindow.window;
   const originalDateNow = Date.now;
   const originalTrafficStates = {
-    ai0: TrafficManager.state.ai0,
-    ai1: TrafficManager.state.ai1,
-    ai2: TrafficManager.state.ai2,
-    us1: TrafficManager.state.us1,
+    ai0: TrafficManager.state["ai0"],
+    ai1: TrafficManager.state["ai1"],
+    ai2: TrafficManager.state["ai2"],
+    us1: TrafficManager.state["us1"],
   };
 
   const coreEngine: SlotBridgeHarness["coreEngine"] = {
@@ -182,7 +182,7 @@ function createHarness(
       callback(...args);
     }
     return 0 as unknown as ReturnType<typeof setTimeout>;
-  }) as typeof setTimeout;
+  }) as unknown as typeof setTimeout;
 
   globalWithWindow.window = {
     electronAPI: {},
@@ -226,10 +226,10 @@ function createHarness(
   appState.isUs1Connected = () => true;
   appState.setAssistantToolsReady = () => {};
 
-  TrafficManager.state.ai0 = makeReadyTrafficState("https://chatgpt.com/ai0");
-  TrafficManager.state.ai1 = makeReadyTrafficState("https://chatgpt.com/ai1");
-  TrafficManager.state.ai2 = makeReadyTrafficState("https://chatgpt.com/ai2");
-  TrafficManager.state.us1 = makeReadyTrafficState("https://mail.example.test/us1");
+  TrafficManager.state["ai0"] = makeReadyTrafficState("https://chatgpt.com/ai0");
+  TrafficManager.state["ai1"] = makeReadyTrafficState("https://chatgpt.com/ai1");
+  TrafficManager.state["ai2"] = makeReadyTrafficState("https://chatgpt.com/ai2");
+  TrafficManager.state["us1"] = makeReadyTrafficState("https://mail.example.test/us1");
 
   return {
     appState,
@@ -252,10 +252,10 @@ function createHarness(
       appState.isConnected = originalAppStateIsConnected;
       appState.isUs1Connected = originalAppStateIsUs1Connected;
       appState.setAssistantToolsReady = originalSetAssistantToolsReady;
-      TrafficManager.state.ai0 = originalTrafficStates.ai0;
-      TrafficManager.state.ai1 = originalTrafficStates.ai1;
-      TrafficManager.state.ai2 = originalTrafficStates.ai2;
-      TrafficManager.state.us1 = originalTrafficStates.us1;
+      TrafficManager.state["ai0"] = originalTrafficStates["ai0"]!;
+      TrafficManager.state["ai1"] = originalTrafficStates["ai1"]!;
+      TrafficManager.state["ai2"] = originalTrafficStates["ai2"]!;
+      TrafficManager.state["us1"] = originalTrafficStates["us1"]!;
       Date.now = originalDateNow;
 
       if (originalWindow === undefined) {
@@ -408,7 +408,7 @@ test(
     let sendCalled = false;
 
     try {
-      TrafficManager.state.ai1 = {
+      TrafficManager.state["ai1"] = {
         ...makeReadyTrafficState("https://chatgpt.com/ai1"),
         lastHref: "",
       };
@@ -518,8 +518,8 @@ test(
 
       assert.equal(result.success, true);
       assert.equal(sendCalls.length, 1);
-      assert.equal(sendCalls[0]?.remoteUserId, "beta@example.com");
-      assert.match(String(sendCalls[0]?.text ?? ""), /Ping beta/);
+      assert.equal(sendCalls[0]?.["remoteUserId"], "beta@example.com");
+      assert.match(String(sendCalls[0]?.["text"] ?? ""), /Ping beta/);
     } finally {
       SettingsManager.patch = originalPatch;
       harness.restore();
@@ -567,7 +567,7 @@ test(
           }),
           stopServer: async () => ({ success: true }),
           waitForReady: async () => true,
-        }) as ReturnType<typeof AssistantProviderRegistry.getAdapter>;
+        }) as unknown as ReturnType<typeof AssistantProviderRegistry.getAdapter>;
       harness.coreEngine.sendBatchInternal = async () => {
         throw new Error("sendBatch should not run for single-target text sends");
       };
@@ -862,7 +862,7 @@ test(
             kind: "attachment-ref",
             name: "archive-image.png",
             ref: "archive:ai1:conv-archive:msg-archive:archive-image.png",
-          },
+          } as any,
         ],
         fromSlot: "ai1",
         toSlot: "ai2",
@@ -880,7 +880,7 @@ test(
             kind: "filesystem",
             name: "raw-local.txt",
             path: "/tmp/raw-local.txt",
-          },
+          } as any,
         ],
         fromSlot: "ai1",
         toSlot: "ai2",
@@ -897,7 +897,7 @@ test(
             kind: "attachment-ref",
             name: "archive-image.png",
             ref: "archive:ai1:conv-archive:msg-archive:archive-image.png",
-          },
+          } as any,
         ],
         fromSlot: "ai1",
         toSlot: "ai2",
@@ -914,7 +914,7 @@ test(
             kind: "attachment-ref",
             name: "archive-image.png",
             ref: "archive:ai1:conv-archive:msg-archive:archive-image.png",
-          },
+          } as any,
         ],
         fromSlot: "ai1",
         toSlot: "ai2",
@@ -941,8 +941,8 @@ test(
     try {
       harness.windowRef.electronAPI = {
         us1SyncMessages: async (payload = {}) => {
-          assert.equal(payload.localSessionId, "us1-session-1");
-          assert.equal(payload.consumeRoomCommands, true);
+          assert.equal(payload["localSessionId"], "us1-session-1");
+          assert.equal(payload["consumeRoomCommands"], true);
           return {
             success: true,
             localSessionId: "us1-session-2",
@@ -1007,7 +1007,7 @@ test(
           };
         },
         dbGetMessages: async (query = {}) => {
-          assert.equal(query.conversationId, "conv-us1-2");
+          assert.equal(query["conversationId"], "conv-us1-2");
           return {
             data: [{ id: "assistant-1", role: "assistant", text: "mail reply" }],
           };
@@ -1156,7 +1156,7 @@ test(
           conversationId,
           provider: options.provider,
           silent: options.silent,
-        });
+        } as any);
         return conversationId === "conv-us1-1";
       };
 
@@ -1230,7 +1230,7 @@ test(
     try {
       harness.appState.getProviderIdForSlot = (slot: string) => (slot === "ai1" ? "llm" : slot);
       harness.webviewManager.syncProvider = async (provider, opts) => {
-        syncCalls.push({ provider, opts });
+        syncCalls.push({ provider, opts } as any);
         return {
           success: true,
           conversationId: "conv-llm-1",
@@ -1240,7 +1240,7 @@ test(
       };
       harness.windowRef.electronAPI = {
         dbGetMessages: async (query = {}) => {
-          assert.equal(query.conversationId, "conv-llm-1");
+          assert.equal(query["conversationId"], "conv-llm-1");
           return {
             data: [{ id: "assistant-1", role: "assistant", text: "local reply" }],
           };
@@ -1587,7 +1587,7 @@ test(
       assert.equal(result.success, true);
       assert.equal(runCalls.length, 1);
       assert.equal(runCalls[0]?.commandName, "GameRoomBackgammonRemoteMove");
-      assert.deepEqual(runCalls[0]?.payload.roomPayload, {
+      assert.deepEqual(runCalls[0]?.payload["roomPayload"], {
         roomId: "game-room",
         matchId: "backgammon_1",
         turnIndex: 0,
@@ -1595,7 +1595,7 @@ test(
         cell: 1,
       });
       assert.equal(
-        runCalls[0]?.payload.args,
+        runCalls[0]?.payload["args"],
         '{"matchId":"backgammon_1","turnIndex":0,"boardHashBeforeMove":".........","cell":1}'
       );
       assert.deepEqual(result.data, { success: true, handled: true });
@@ -1640,10 +1640,10 @@ test(
       assert.equal(result.success, true);
       assert.equal(runCalls.length, 1);
       assert.equal(runCalls[0]?.commandName, "GameRoomBackgammonRemoteMove");
-      assert.equal(runCalls[0]?.payload.remoteUserId, "raistlin.majere.1981@gmail.com");
-      assert.equal(runCalls[0]?.payload.localSessionId, "us1-session-1");
-      assert.equal(runCalls[0]?.payload.transportMessageId, "<remote-move@example.test>");
-      assert.deepEqual(runCalls[0]?.payload.roomPayload, {
+      assert.equal(runCalls[0]?.payload["remoteUserId"], "raistlin.majere.1981@gmail.com");
+      assert.equal(runCalls[0]?.payload["localSessionId"], "us1-session-1");
+      assert.equal(runCalls[0]?.payload["transportMessageId"], "<remote-move@example.test>");
+      assert.deepEqual(runCalls[0]?.payload["roomPayload"], {
         roomId: "game-room",
         matchId: "backgammon_1",
         turnIndex: 0,

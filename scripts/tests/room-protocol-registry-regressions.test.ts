@@ -38,7 +38,7 @@ const room: InstalledRoomRecord = {
   updatedAt: "2026-03-08T00:00:00.000Z",
 };
 
-test("RoomProtocolRegistry resolves manifest protocol metadata", async () => {
+void test("RoomProtocolRegistry resolves manifest protocol metadata", async () => {
   RoomProtocolRegistry.reset();
   await RoomProtocolRegistry.syncInstalledRooms([room]);
 
@@ -54,7 +54,7 @@ test("RoomProtocolRegistry resolves manifest protocol metadata", async () => {
   ]);
 });
 
-test("RoomProtocolRegistry merges runtime and saved protocol bodies", async () => {
+void test("RoomProtocolRegistry merges runtime and saved protocol bodies", async () => {
   RoomProtocolRegistry.reset();
   await RoomProtocolRegistry.syncInstalledRooms([room]);
   RoomProtocolRegistry.registerRuntimeProtocols("game-room", {
@@ -68,11 +68,11 @@ test("RoomProtocolRegistry merges runtime and saved protocol bodies", async () =
   assert.equal(merged["game-room-backgammon-user-start"], "Saved override body");
 });
 
-test("RoomProtocolRegistry prefers locale-specific bodies and falls back to Turkish", async () => {
+void test("RoomProtocolRegistry prefers locale-specific bodies and falls back to Turkish", async () => {
   const readFileCalls: string[] = [];
   const electronWindow = {
     electronAPI: {
-      readFile: async (filePath: string): Promise<string | null> => {
+      readFile: (filePath: string): string | null => {
         readFileCalls.push(filePath);
 
         if (filePath.endsWith("/protocols/en/game-room-backgammon-user-start.md")) {

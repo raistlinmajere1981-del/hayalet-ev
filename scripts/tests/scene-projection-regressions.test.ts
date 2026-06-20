@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { getCoverSceneProjection } from "../../src/js/scene/projection.ts";
 
-test("getCoverSceneProjection keeps cover scaling centered", () => {
+void test("getCoverSceneProjection keeps cover scaling centered", () => {
   const projection = getCoverSceneProjection({
     surfaceWidth: 1600,
     surfaceHeight: 900,
@@ -18,7 +18,7 @@ test("getCoverSceneProjection keeps cover scaling centered", () => {
   });
 });
 
-test("getCoverSceneProjection keeps vertical overflow centered", () => {
+void test("getCoverSceneProjection keeps vertical overflow centered", () => {
   const projection = getCoverSceneProjection({
     surfaceWidth: 1200,
     surfaceHeight: 900,
@@ -31,7 +31,7 @@ test("getCoverSceneProjection keeps vertical overflow centered", () => {
   assert.equal(projection.offsetY, 0);
 });
 
-test("getCoverSceneProjection falls back for invalid geometry", () => {
+void test("getCoverSceneProjection falls back for invalid geometry", () => {
   const projection = getCoverSceneProjection({
     surfaceWidth: 0,
     surfaceHeight: 900,

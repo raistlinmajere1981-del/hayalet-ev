@@ -30,7 +30,7 @@ function createReportExportHarness(
       },
     },
   };
-  const runtime = createLaboratoryReportExportRuntime({
+  const deps: Parameters<typeof createLaboratoryReportExportRuntime>[0] = {
     buildReportMarkdown() {
       return "# Laboratory Report";
     },
@@ -55,14 +55,13 @@ function createReportExportHarness(
         exports: [],
       };
     },
-    ensureProjectDirectories() {
-      return Promise.resolve();
+    async ensureProjectDirectories() {
+      await Promise.resolve();
     },
     ensureReportJobSlotAvailable() {},
     getActiveProject() {
-      return project as unknown as { id: string; slug: string };
+      return project;
     },
-    getElectronApi: options.getElectronApi,
     getFeatureReportDir() {
       return "/tmp/reports";
     },
@@ -88,9 +87,9 @@ function createReportExportHarness(
         status: String(source["status"] || "ready"),
       };
     },
-    patchActiveProject(_runtime, patcher) {
-      patcher(project as unknown as { id: string; slug: string });
-      return Promise.resolve();
+    async patchActiveProject(_runtime, patcher) {
+      patcher(project);
+      await Promise.resolve();
     },
     pushJobState() {},
     registerJob() {
@@ -107,11 +106,15 @@ function createReportExportHarness(
         ? ((record as Record<string, unknown>)["exports"] as Array<Record<string, unknown>>)
         : [];
     },
-    writeTextFile(path: string, value: string) {
+    async writeTextFile(path: string, value: string) {
       writes.push({ path, value });
-      return Promise.resolve();
+      await Promise.resolve();
     },
-  });
+  };
+  if (options.getElectronApi !== undefined) {
+    deps.getElectronApi = options.getElectronApi;
+  }
+  const runtime = createLaboratoryReportExportRuntime(deps);
 
   return {
     get persistedExports() {
@@ -162,7 +165,7 @@ function createInsightRun(overrides: Partial<LabRun> = {}): LabRun {
   };
 }
 
-test("laboratory report export persists only canonical user and AI report files", async () => {
+void test("laboratory report export persists only canonical user and AI report files", async () => {
   const harness = createReportExportHarness();
 
   await harness.runtime.exportFeatureReport({}, {}, "req-1", "media-analysis");
@@ -179,7 +182,7 @@ test("laboratory report export persists only canonical user and AI report files"
   );
 });
 
-test("laboratory report JSON overlay export writes one selected-folder JSON file", async () => {
+void test("laboratory report JSON overlay export writes one selected-folder JSON file", async () => {
   const harness = createReportExportHarness();
 
   await harness.runtime.exportFeatureReport({}, {}, "req-json", "media-analysis", {
@@ -195,7 +198,7 @@ test("laboratory report JSON overlay export writes one selected-folder JSON file
   assert.equal(harness.persistedExports[0]?.["format"], "json");
 });
 
-test("laboratory report JSON overlay export opens a host folder picker", async () => {
+void test("laboratory report JSON overlay export opens a host folder picker", async () => {
   const dialogOptions: Array<Record<string, unknown>> = [];
   const harness = createReportExportHarness({
     getElectronApi() {
@@ -218,7 +221,7 @@ test("laboratory report JSON overlay export opens a host folder picker", async (
   assert.match(harness.writes[0]?.path || "", /-ai\.json$/);
 });
 
-test("laboratory report overlay export cancels cleanly when folder picking is cancelled", async () => {
+void test("laboratory report overlay export cancels cleanly when folder picking is cancelled", async () => {
   const harness = createReportExportHarness({
     getElectronApi() {
       return {
@@ -244,7 +247,7 @@ test("laboratory report overlay export cancels cleanly when folder picking is ca
   assert.equal(harness.persistedExports.length, 0);
 });
 
-test("laboratory report PDF overlay export writes one selected-folder PDF file", async () => {
+void test("laboratory report PDF overlay export writes one selected-folder PDF file", async () => {
   const harness = createReportExportHarness();
 
   await harness.runtime.exportFeatureReport({}, {}, "req-pdf", "media-analysis", {
@@ -260,7 +263,7 @@ test("laboratory report PDF overlay export writes one selected-folder PDF file",
   assert.equal(harness.persistedExports[0]?.["format"], "pdf");
 });
 
-test("laboratory report JSON overlay export writes the selected user report", async () => {
+void test("laboratory report JSON overlay export writes the selected user report", async () => {
   const harness = createReportExportHarness();
 
   await harness.runtime.exportFeatureReport({}, {}, "req-user-json", "media-analysis", {
@@ -278,7 +281,7 @@ test("laboratory report JSON overlay export writes the selected user report", as
   assert.equal(harness.persistedExports[0]?.["reportView"], "user");
 });
 
-test("laboratory report PDF overlay export writes the selected technical report", async () => {
+void test("laboratory report PDF overlay export writes the selected technical report", async () => {
   const harness = createReportExportHarness();
 
   await harness.runtime.exportFeatureReport({}, {}, "req-ai-pdf", "media-analysis", {
@@ -294,7 +297,7 @@ test("laboratory report PDF overlay export writes the selected technical report"
   assert.equal(harness.persistedExports[0]?.["reportView"], "ai");
 });
 
-test("laboratory reports surface temporal correlation, narrative cues, and forensic notes", () => {
+void test("laboratory reports surface temporal correlation, narrative cues, and forensic notes", () => {
   const run: LabRun = {
     id: "run-correlated",
     state: "ready",
@@ -426,7 +429,7 @@ test("laboratory reports surface temporal correlation, narrative cues, and foren
   assert.match(aiReport?.forensicNotes?.[0]?.detail || "", /duplicate-frame ratio/);
 });
 
-test("laboratory forensic notes surface optical-flow motion split", () => {
+void test("laboratory forensic notes surface optical-flow motion split", () => {
   const findings: LabRun["findings"] = [
     {
       id: "flow-finding",
@@ -483,7 +486,7 @@ test("laboratory forensic notes surface optical-flow motion split", () => {
   assert.match(attributionNote?.detail || "", /Motion split localized_subject_motion/);
 });
 
-test("laboratory forensic signature mapper classifies low-light compression starvation", () => {
+void test("laboratory forensic signature mapper classifies low-light compression starvation", () => {
   const mapping = buildForensicSignatureMapping({
     black: { count: 1, totalDurationSeconds: 0.8 },
     compressionSignature: {
@@ -520,7 +523,7 @@ test("laboratory forensic signature mapper classifies low-light compression star
   assert.match(String(mapping["learningFingerprint"]), /bpp:starved/);
 });
 
-test("laboratory forensic signature mapper accepts normalized visual-forensics probe aliases", () => {
+void test("laboratory forensic signature mapper accepts normalized visual-forensics probe aliases", () => {
   const mapping = buildForensicSignatureMapping({
     compressionSignature: {
       estimatedBitsPerPixelFrame: 0.15,
@@ -561,7 +564,7 @@ test("laboratory forensic signature mapper accepts normalized visual-forensics p
   assert.match(String(mapping["learningFingerprint"]), /metadata:measured/);
 });
 
-test("laboratory forensic signature mapper classifies remaining artifact families", () => {
+void test("laboratory forensic signature mapper classifies remaining artifact families", () => {
   const cases = [
     {
       expectedFamily: "transport_duplicate_stream_stall",
@@ -672,7 +675,7 @@ test("laboratory forensic signature mapper classifies remaining artifact familie
   });
 });
 
-test("laboratory reports surface forensic signature mapping notes", () => {
+void test("laboratory reports surface forensic signature mapping notes", () => {
   const findings: LabRun["findings"] = [
     {
       id: "signature-finding",
@@ -730,7 +733,7 @@ test("laboratory reports surface forensic signature mapping notes", () => {
   assert.equal(signatureNote?.measuredFields?.includes("compression packet signature"), true);
 });
 
-test("laboratory reports surface triage decision, evidence matrix, and counter-evidence ledger", () => {
+void test("laboratory reports surface triage decision, evidence matrix, and counter-evidence ledger", () => {
   const findings: LabRun["findings"] = [
     {
       id: "triage-finding",
@@ -809,7 +812,7 @@ test("laboratory reports surface triage decision, evidence matrix, and counter-e
   );
 });
 
-test("laboratory counter-evidence ledger surfaces partial metadata and reference coverage", () => {
+void test("laboratory counter-evidence ledger surfaces partial metadata and reference coverage", () => {
   const findings: LabRun["findings"] = [
     {
       id: "partial-cross-check",
@@ -859,7 +862,7 @@ test("laboratory counter-evidence ledger surfaces partial metadata and reference
   );
 });
 
-test("laboratory composite correlation requires distinct signal families", () => {
+void test("laboratory composite correlation requires distinct signal families", () => {
   const findings: LabRun["findings"] = [
     {
       id: "freeze-a",
@@ -908,7 +911,7 @@ test("laboratory composite correlation requires distinct signal families", () =>
   assert.doesNotMatch(userReport?.summary || "", /Composite anomaly cluster/);
 });
 
-test("laboratory narrative cues normalize Turkish diacritics without broad-scope over-correlation", () => {
+void test("laboratory narrative cues normalize Turkish diacritics without broad-scope over-correlation", () => {
   const findings: LabRun["findings"] = [
     {
       id: "freeze-finding",
@@ -973,7 +976,7 @@ test("laboratory narrative cues normalize Turkish diacritics without broad-scope
   );
 });
 
-test("laboratory baseline language does not create correlation signals", () => {
+void test("laboratory baseline language does not create correlation signals", () => {
   const findings: LabRun["findings"] = [
     {
       id: "no-freeze",
@@ -1013,7 +1016,7 @@ test("laboratory baseline language does not create correlation signals", () => {
   assert.equal(aiReport?.correlationClusters?.length, 0);
 });
 
-test("laboratory report keeps text-only transcript triggers as narrative cues", () => {
+void test("laboratory report keeps text-only transcript triggers as narrative cues", () => {
   const findings: LabRun["findings"] = [
     {
       id: "transcript-trigger",
@@ -1046,7 +1049,7 @@ test("laboratory report keeps text-only transcript triggers as narrative cues", 
   assert.equal(aiReport?.correlationClusters?.length, 0);
 });
 
-test("laboratory detection parser preserves temporal segments without double-counting close lines", () => {
+void test("laboratory detection parser preserves temporal segments without double-counting close lines", () => {
   const parserRuntime = createAudioAnalysisParserRuntime();
   const freeze = parserRuntime.parseFreezeDetectLog(
     "[freezedetect] freeze_start: 12.000\n[freezedetect] freeze_duration: 0.700\n[freezedetect] freeze_end: 12.700"

@@ -5,7 +5,7 @@ import test from "node:test";
 const deliveryModulePath = "src/js/modules/assistant-delivery.ts";
 const assistantIndexPath = "src/js/pages/assistant/assistant.ts";
 
-test("shared delivery module navigates to assistant before delegating the send flow", () => {
+void test("shared delivery module navigates to assistant before delegating the send flow", () => {
   const content = readFileSync(deliveryModulePath, "utf8");
 
   assert.match(content, /showPage\("assistant"\)/);
@@ -13,7 +13,7 @@ test("shared delivery module navigates to assistant before delegating the send f
   assert.match(content, /activeAssistantDeliveryHandler/);
 });
 
-test("assistant controller registers a delivery handler and routes delivery through slot bridge", () => {
+void test("assistant controller registers a delivery handler and routes delivery through slot bridge", () => {
   const content = readFileSync(assistantIndexPath, "utf8");
 
   assert.match(

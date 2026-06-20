@@ -62,34 +62,44 @@ async function main(): Promise<void> {
   const service = new MailTransportService();
 
   if (action === "send") {
-    const result = await service.sendMail(account, {
+    const req: Parameters<typeof service.sendMail>[1] = {
       localMessageId: getOptionalArg(args, "local-message-id") ?? `smoke-${Date.now().toString(36)}`,
-      remoteUserId: getOptionalArg(args, "remote-user"),
-      localSessionId: getOptionalArg(args, "local-session"),
-      threadMessageId: getOptionalArg(args, "thread-message-id"),
       to: getRequiredArg(args, "to"),
       subject: getRequiredArg(args, "subject"),
       text: getOptionalArg(args, "text") ?? "",
-      html: getOptionalArg(args, "html") ?? undefined,
+      remoteUserId: getOptionalArg(args, "remote-user"),
+      localSessionId: getOptionalArg(args, "local-session"),
+      threadMessageId: getOptionalArg(args, "thread-message-id"),
       inReplyTo: getOptionalArg(args, "in-reply-to"),
-    });
+    };
 
-    console.log(JSON.stringify(result, null, 2));
+    const html = getOptionalArg(args, "html");
+    if (html !== null) {
+      req.html = html;
+    }
+
+    const result = await service.sendMail(account, req);
+    console.info(JSON.stringify(result, null, 2));
     return;
   }
 
-  const result = await service.fetchInbox(account, {
-    mailbox: getOptionalArg(args, "mailbox") ?? undefined,
-    limit:
-      typeof args["limit"] === "string" && args["limit"].trim() !== ""
-        ? Number.parseInt(args["limit"], 10)
-        : undefined,
+  const req: Parameters<typeof service.fetchInbox>[1] = {
     remoteUserId: getOptionalArg(args, "remote-user"),
     localSessionId: getOptionalArg(args, "local-session"),
     includeAttachmentContent: args["include-attachment-content"] === true,
-  });
+  };
 
-  console.log(JSON.stringify(result, null, 2));
+  const mailbox = getOptionalArg(args, "mailbox");
+  if (mailbox !== null) {
+    req.mailbox = mailbox;
+  }
+
+  if (typeof args["limit"] === "string" && args["limit"].trim() !== "") {
+    req.limit = Number.parseInt(args["limit"], 10);
+  }
+
+  const result = await service.fetchInbox(account, req);
+  console.info(JSON.stringify(result, null, 2));
 }
 
 void main().catch((error) => {

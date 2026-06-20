@@ -4,8 +4,8 @@ import test from "node:test";
 import { splitLines } from "../lib/wrapper-supervisor.mjs";
 import { createUserMessage, formatCommand, isNoiseLogLine } from "../lib/wrapper-events.mjs";
 
-function createTranslator(dictionary) {
-  return (key, params = {}) => {
+function createTranslator(dictionary: Record<string, string>) {
+  return (key: string, params: Record<string, string | number | null | undefined> = {}) => {
     const template = dictionary[key] ?? key;
     return String(template).replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_match, token) => {
       const value = params[token];
@@ -14,7 +14,7 @@ function createTranslator(dictionary) {
   };
 }
 
-test("wrapper event helpers keep user lane terse", () => {
+void test("wrapper event helpers keep user lane terse", () => {
   const t = createTranslator({
     "shell.wrapper.events.viteReset": "Vite yeniden başlatılıyor.",
     "shell.wrapper.events.transitionRouted": "Geçiş {{surface}} yönüne yönlendirildi.",
@@ -29,7 +29,7 @@ test("wrapper event helpers keep user lane terse", () => {
   assert.equal(formatCommand("npm", ["run", "electron:build"]), "npm run electron:build");
 });
 
-test("wrapper event helpers resolve surface labels from ui mode", () => {
+void test("wrapper event helpers resolve surface labels from ui mode", () => {
   const t = createTranslator({
     "shell.wrapper.events.surfacePreparing": "{{surface}} hazırlanıyor.",
     "shell.wrapper.events.transitionRouted": "Geçiş {{surface}} yönüne yönlendirildi.",
@@ -63,14 +63,14 @@ test("wrapper event helpers resolve surface labels from ui mode", () => {
   );
 });
 
-test("wrapper event helpers only suppress blank log lines", () => {
+void test("wrapper event helpers only suppress blank log lines", () => {
   assert.equal(isNoiseLogLine("xapp-gtk3-module warning"), false);
   assert.equal(isNoiseLogLine("Cannot start http server for devtools"), false);
   assert.equal(isNoiseLogLine("   "), true);
   assert.equal(isNoiseLogLine("vite ready in 250 ms"), false);
 });
 
-test("splitLines keeps trailing partial data in remainder", () => {
+void test("splitLines keeps trailing partial data in remainder", () => {
   const first = splitLines(Buffer.from("line-1\npart"), "");
   assert.deepEqual(first.lines, ["line-1"]);
   assert.equal(first.remainder, "part");

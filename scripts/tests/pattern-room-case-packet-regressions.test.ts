@@ -79,7 +79,7 @@ function flattenPacketText(value: unknown): string {
   return JSON.stringify(value);
 }
 
-test("pattern-room phase 15B case packet is deterministic and read-only", () => {
+void test("pattern-room phase 15B case packet is deterministic and read-only", () => {
   const { beforeDomain, viewModels } = createCasePacketFixture();
   const beforeViewModels = JSON.stringify(viewModels);
 
@@ -94,7 +94,7 @@ test("pattern-room phase 15B case packet is deterministic and read-only", () => 
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });
 
-test("pattern-room phase 15B case packet carries local sources, evidence, notes, connections, and debate previews", () => {
+void test("pattern-room phase 15B case packet carries local sources, evidence, notes, connections, and debate previews", () => {
   const { viewModels } = createCasePacketFixture();
   const packet = createPatternRoomCasePacket(viewModels);
 
@@ -149,7 +149,7 @@ test("pattern-room phase 15B case packet carries local sources, evidence, notes,
   assert.ok(packet.openQuestions.some((question) => question.includes("Kullanıcı takip notu.")));
 });
 
-test("pattern-room phase 15B case packet limits long previews without verdict wording", () => {
+void test("pattern-room phase 15B case packet limits long previews without verdict wording", () => {
   const { viewModels } = createCasePacketFixture();
   const packet = createPatternRoomCasePacket(viewModels, {
     maxSources: 1,
@@ -174,7 +174,7 @@ test("pattern-room phase 15B case packet limits long previews without verdict wo
   );
 });
 
-test("pattern-room phase 15B case packet adapter stays independent from UI, host, transport, and snapshot contracts", () => {
+void test("pattern-room phase 15B case packet adapter stays independent from UI, host, transport, and snapshot contracts", () => {
   const adapterSource = readFileSync(
     resolve("rooms/pattern-room/shared/adapters/pattern-room-case-packet-adapter.ts"),
     "utf8"

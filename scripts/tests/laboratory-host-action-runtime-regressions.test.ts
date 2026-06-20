@@ -17,7 +17,7 @@ import {
   toLaboratoryFfmpegTimestamp,
 } from "../../rooms/laboratory/shared/host/host-utils.ts";
 
-test("laboratory host utility helpers preserve file, timestamp, and clamp golden cases", () => {
+void test("laboratory host utility helpers preserve file, timestamp, and clamp golden cases", () => {
   const hostUtils = createLaboratoryHostUtils({
     audioFeatureId: "audio-analysis",
     getDefaultSourceType() {
@@ -42,7 +42,7 @@ test("laboratory host utility helpers preserve file, timestamp, and clamp golden
   assert.equal(hostUtils.clampNumber("bad", 0, 2, 1), 1);
 });
 
-test("laboratory structure probes honor analysis time range and scale full-media timeout", async () => {
+void test("laboratory structure probes honor analysis time range and scale full-media timeout", async () => {
   const toolRuns: Array<Record<string, unknown>> = [];
   const probeRuntime = createAudioAnalysisProbeRuntime({
     asNonEmptyString(value: unknown) {
@@ -120,17 +120,17 @@ test("laboratory structure probes honor analysis time range and scale full-media
     }
   );
   const scopedRun = readStructureProbeRun("req-scoped");
-  const scopedArgs = (scopedRun["args"] || []) as string[];
+  const scopedArgs = (scopedRun["args"] ?? []) as string[];
   const scopedFreeze = scopedProbe.freeze as Record<string, unknown>;
   const scopedSegments = scopedFreeze["segments"] as Array<Record<string, unknown>>;
   assert.deepEqual(scopedArgs.slice(0, 6), ["-hide_banner", "-ss", "89", "-t", "4", "-i"]);
   assert.equal(scopedRun["timeoutMs"], 120_000);
   assert.equal(scopedSegments[0]?.["startSeconds"], 89);
-  assert.equal(scopedSegments[0]?.["endSeconds"], 90);
+  assert.equal(scopedSegments[0]["endSeconds"], 90);
 
   await probeRuntime.runVideoStructureProbe(runtime, project, "req-full", "job-full", target);
   const fullRun = readStructureProbeRun("req-full");
-  const fullArgs = (fullRun["args"] || []) as string[];
+  const fullArgs = (fullRun["args"] ?? []) as string[];
   assert.equal(fullArgs.includes("-ss"), false);
   assert.ok(Number(fullRun["timeoutMs"]) > 120_000);
 
@@ -138,11 +138,11 @@ test("laboratory structure probes honor analysis time range and scale full-media
     fallbackWindowSeconds: 45,
   });
   const sampleRun = readStructureProbeRun("req-sample");
-  const sampleArgs = (sampleRun["args"] || []) as string[];
+  const sampleArgs = (sampleRun["args"] ?? []) as string[];
   assert.deepEqual(sampleArgs.slice(0, 6), ["-hide_banner", "-ss", "0", "-t", "45", "-i"]);
 });
 
-test("laboratory visual forensics probes run real tool paths before degrading", async () => {
+void test("laboratory visual forensics probes run real tool paths before degrading", async () => {
   const toolRuns: Array<Record<string, unknown>> = [];
   const probeRuntime = createAudioAnalysisProbeRuntime({
     asNonEmptyString(value: unknown) {
@@ -310,9 +310,9 @@ test("laboratory visual forensics probes run real tool paths before degrading", 
 
   assert.equal((videoProbe.nearDuplicateFrame as Record<string, unknown>)["method"], "ffmpeg-framehash+opencv-phash-ssim");
   assert.equal((videoProbe.nearDuplicateFrame as Record<string, unknown>)["nearDuplicateFrameCount"], 3);
-  assert.equal((videoProbe.opticalFlowTracking as Record<string, unknown>)["method"], "opencv-farneback");
-  assert.equal((videoProbe.metadataProvenance as Record<string, unknown>)["coverage"], "cross-checked");
-  assert.equal((videoProbe.referenceQuality as Record<string, unknown>)["status"], "measured");
+  assert.equal((videoProbe.opticalFlowTracking)["method"], "opencv-farneback");
+  assert.equal((videoProbe.metadataProvenance)["coverage"], "cross-checked");
+  assert.equal((videoProbe.referenceQuality)["status"], "measured");
   assert.equal((videoProbe.compressionSignature as Record<string, unknown>)["artifactProfile"], "edge");
 
   const duplicateRun = toolRuns.find(function (entry) {
@@ -320,9 +320,9 @@ test("laboratory visual forensics probes run real tool paths before degrading", 
     return entry["toolId"] === "visual-forensics-py" && args[2] === "duplicate";
   });
   assert.ok(duplicateRun);
-  const duplicateOptions = JSON.parse(((duplicateRun["args"] as string[]) || [])[4] || "{}");
-  assert.equal(duplicateOptions.frameStep, 5);
-  assert.equal(duplicateOptions.similarityThreshold, 0.94);
+  const duplicateOptions = JSON.parse((duplicateRun["args"] as string[])[4]!) as Record<string, unknown>;
+  assert.equal(duplicateOptions["frameStep"], 5);
+  assert.equal(duplicateOptions["similarityThreshold"], 0.94);
   assert.equal(
     toolRuns.some(function (entry) {
       return entry["toolId"] === "exiftool";
@@ -350,8 +350,8 @@ test("laboratory visual forensics probes run real tool paths before degrading", 
       sourceKind: "image",
     }
   );
-  assert.equal((imageProbe.metadataProvenance as Record<string, unknown>)["status"], "measured");
-  assert.equal((imageProbe.referenceQuality as Record<string, unknown>)["status"], "measured");
+  assert.equal((imageProbe.metadataProvenance)["status"], "measured");
+  assert.equal((imageProbe.referenceQuality)["status"], "measured");
   assert.equal((imageProbe.nearDuplicateFrame as Record<string, unknown>)["status"], "unavailable");
   assert.equal(
     toolRuns.some(function (entry) {
@@ -362,7 +362,7 @@ test("laboratory visual forensics probes run real tool paths before degrading", 
   );
 });
 
-test("laboratory host activation unwraps host-context room-event payloads before saving context", () => {
+void test("laboratory host activation unwraps host-context room-event payloads before saving context", () => {
   const savedContexts: Array<Record<string, unknown>> = [];
   const emittedEvents: Array<Record<string, unknown>> = [];
   const pushCalls: Array<string | null> = [];
@@ -443,7 +443,7 @@ test("laboratory host activation unwraps host-context room-event payloads before
   assert.equal(emittedEvents.at(-1)?.["scope"], "global");
 });
 
-test("laboratory process runtime keeps cancelled runs cancelled after the active module resolves", async () => {
+void test("laboratory process runtime keeps cancelled runs cancelled after the active module resolves", async () => {
   function toRecord(value: unknown): Record<string, unknown> {
     return value !== null && typeof value === "object" && Array.isArray(value) === false
       ? (value as Record<string, unknown>)
@@ -607,7 +607,7 @@ test("laboratory process runtime keeps cancelled runs cancelled after the active
       };
     },
     sanitizeFileSegment(value, fallbackValue) {
-      return asNonEmptyString(value.replace(/[^a-z0-9-]+/gi, "-").toLowerCase()) || fallbackValue;
+      return asNonEmptyString(value.replace(/[^a-z0-9-]+/gi, "-").toLowerCase()) ?? fallbackValue;
     },
     setFeatureProcessRecord(project, featureId, record) {
       const processState = toRecord(project["process"]);
@@ -637,21 +637,20 @@ test("laboratory process runtime keeps cancelled runs cancelled after the active
     clampProfileTranscriptSampleSeconds() {
       return 30;
     },
-    createProcessArtifact(moduleId, kind, path, title, metadata) {
-      return { id: `${moduleId}-${kind}`, moduleId, kind, path, title, metadata };
+    createProcessArtifact(moduleId: unknown, kind: unknown, path: unknown, title: unknown, metadata: unknown) {
+      return { id: `${String(moduleId)}-${String(kind)}`, moduleId, kind, path, title, metadata };
     },
     createProcessFinding(
-      moduleId,
-      kind,
-      level,
-      confidence,
-      title,
-      detail,
-      evidenceCount,
-      artifactIds
-    ) {
+      moduleId: unknown,
+      kind: unknown,
+      level: unknown,
+      confidence: unknown,
+      title: unknown,
+      detail: unknown,
+      evidenceCount: unknown,
+      artifactIds: unknown) {
       return {
-        id: `${moduleId}-${kind}`,
+        id: `${String(moduleId)}-${String(kind)}`,
         moduleId,
         kind,
         level,
@@ -662,19 +661,19 @@ test("laboratory process runtime keeps cancelled runs cancelled after the active
         artifactIds,
       };
     },
-    async generateProcessFramePreviewArtifact() {
+    generateProcessFramePreviewArtifact() {
       return null;
     },
-    async generateProcessImageComparisonArtifact() {
+    generateProcessImageComparisonArtifact() {
       return null;
     },
-    async generateProcessMetadataArtifact() {
+    generateProcessMetadataArtifact() {
       return null;
     },
-    async generateProcessSpectrogram() {
+    generateProcessSpectrogram() {
       return null;
     },
-    async generateProcessVisualTransformArtifact() {
+    generateProcessVisualTransformArtifact() {
       return null;
     },
     getAudioAnalysisModuleProcessDir() {
@@ -683,16 +682,16 @@ test("laboratory process runtime keeps cancelled runs cancelled after the active
     getAudioAnalysisModuleRunner() {
       return async function () {
         resolveRunnerStarted?.();
-        return runnerOutput;
+        return await runnerOutput;
       };
     },
-    async maybeRunTranscriptProfileSample() {
+    maybeRunTranscriptProfileSample() {
       return null;
     },
-    normalizeProcessArtifact(rawValue) {
+    normalizeProcessArtifact(rawValue: unknown)  {
       return toRecord(rawValue);
     },
-    normalizeProcessFinding(rawValue) {
+    normalizeProcessFinding(rawValue: unknown)  {
       return toRecord(rawValue);
     },
     partitionVisualAnalysisModuleIds() {
@@ -701,10 +700,10 @@ test("laboratory process runtime keeps cancelled runs cancelled after the active
     resolveEnabledVisualAnalysisModuleIds() {
       return [];
     },
-    async runAudioStructureProbe() {
+    runAudioStructureProbe() {
       return null;
     },
-    async runVideoStructureProbe() {
+    runVideoStructureProbe() {
       return null;
     },
     updateProcessModule,
@@ -741,10 +740,10 @@ test("laboratory process runtime keeps cancelled runs cancelled after the active
     toRecord(toRecord(toRecord(activeProject["process"])["records"])["audio-analysis"])["status"],
     "cancelled"
   );
-  releaseCancelJobs?.();
+  (releaseCancelJobs as unknown as () => void)();
   await cancelJobsBlocked;
   await Promise.resolve();
-  resolveRunner?.({ status: "ready", summary: "late success", findings: [], artifacts: [] });
+  (resolveRunner as unknown as (value: unknown) => void)({ status: "ready", summary: "late success", findings: [], artifacts: [] });
   const result = await runPromise;
 
   const processRecord = toRecord(
@@ -768,7 +767,7 @@ test("laboratory process runtime keeps cancelled runs cancelled after the active
   );
 });
 
-test("laboratory process runtime registers generated artifacts as project assets", async () => {
+void test("laboratory process runtime registers generated artifacts as project assets", async () => {
   function toRecord(value: unknown): Record<string, unknown> {
     return value !== null && typeof value === "object" && Array.isArray(value) === false
       ? (value as Record<string, unknown>)
@@ -898,7 +897,7 @@ test("laboratory process runtime registers generated artifacts as project assets
       };
     },
     sanitizeFileSegment(value, fallbackValue) {
-      return asNonEmptyString(value.replace(/[^a-z0-9-]+/gi, "-").toLowerCase()) || fallbackValue;
+      return asNonEmptyString(value.replace(/[^a-z0-9-]+/gi, "-").toLowerCase()) ?? fallbackValue;
     },
     setFeatureProcessRecord(project, featureId, record) {
       const processState = toRecord(project["process"]);
@@ -922,9 +921,9 @@ test("laboratory process runtime registers generated artifacts as project assets
     clampProfileTranscriptSampleSeconds() {
       return 30;
     },
-    createProcessArtifact(moduleId, kind, path, title, metadata) {
+    createProcessArtifact(moduleId: unknown, kind: unknown, path: unknown, title: unknown, metadata: unknown) {
       return {
-        id: `${moduleId}-${kind}`,
+        id: `${String(moduleId)}-${String(kind)}`,
         moduleId,
         kind,
         path,
@@ -934,17 +933,16 @@ test("laboratory process runtime registers generated artifacts as project assets
       };
     },
     createProcessFinding(
-      moduleId,
-      kind,
-      level,
-      confidence,
-      title,
-      detail,
-      evidenceCount,
-      artifactIds
-    ) {
+      moduleId: unknown,
+      kind: unknown,
+      level: unknown,
+      confidence: unknown,
+      title: unknown,
+      detail: unknown,
+      evidenceCount: unknown,
+      artifactIds: unknown) {
       return {
-        id: `${moduleId}-${kind}`,
+        id: `${String(moduleId)}-${String(kind)}`,
         moduleId,
         kind,
         level,
@@ -955,13 +953,13 @@ test("laboratory process runtime registers generated artifacts as project assets
         artifactIds,
       };
     },
-    async generateProcessFramePreviewArtifact() {
+    generateProcessFramePreviewArtifact() {
       return null;
     },
-    async generateProcessImageComparisonArtifact() {
+    generateProcessImageComparisonArtifact() {
       return null;
     },
-    async generateProcessMetadataArtifact() {
+    generateProcessMetadataArtifact() {
       return {
         id: "artifact-metadata-1",
         moduleId: "intake",
@@ -973,27 +971,27 @@ test("laboratory process runtime registers generated artifacts as project assets
         metadata: { format: "json" },
       };
     },
-    async generateProcessSpectrogram() {
+    generateProcessSpectrogram() {
       return null;
     },
-    async generateProcessVisualTransformArtifact() {
+    generateProcessVisualTransformArtifact() {
       return null;
     },
     getAudioAnalysisModuleProcessDir() {
       return "/tmp";
     },
     getAudioAnalysisModuleRunner() {
-      return async function () {
+      return function () {
         return { findings: [], artifacts: [], warnings: [] };
       };
     },
-    async maybeRunTranscriptProfileSample() {
+    maybeRunTranscriptProfileSample() {
       return null;
     },
-    normalizeProcessArtifact(rawValue) {
+    normalizeProcessArtifact(rawValue: unknown)  {
       return toRecord(rawValue);
     },
-    normalizeProcessFinding(rawValue) {
+    normalizeProcessFinding(rawValue: unknown)  {
       return toRecord(rawValue);
     },
     partitionVisualAnalysisModuleIds() {
@@ -1002,10 +1000,10 @@ test("laboratory process runtime registers generated artifacts as project assets
     resolveEnabledVisualAnalysisModuleIds() {
       return [];
     },
-    async runAudioStructureProbe() {
+    runAudioStructureProbe() {
       return null;
     },
-    async runVideoStructureProbe() {
+    runVideoStructureProbe() {
       return null;
     },
     updateProcessModule,
@@ -1029,10 +1027,10 @@ test("laboratory process runtime registers generated artifacts as project assets
   });
 
   assert.equal(artifactAsset?.["type"], "artifact");
-  assert.equal(artifactAsset?.["name"], "source-metadata.json");
-  assert.equal(artifactAsset?.["localPath"], "/tmp/process/source-metadata.json");
-  assert.equal(toRecord(artifactAsset?.["metadata"])["processArtifactId"], "artifact-metadata-1");
-  assert.equal(toRecord(artifactAsset?.["metadata"])["featureId"], "media-analysis");
+  assert.equal(artifactAsset["name"], "source-metadata.json");
+  assert.equal(artifactAsset["localPath"], "/tmp/process/source-metadata.json");
+  assert.equal(toRecord(artifactAsset["metadata"])["processArtifactId"], "artifact-metadata-1");
+  assert.equal(toRecord(artifactAsset["metadata"])["featureId"], "media-analysis");
 
   const reportAssets = assets.filter(function (asset) {
     return asset["type"] === "report";
@@ -1048,7 +1046,7 @@ test("laboratory process runtime registers generated artifacts as project assets
   assert.equal(toRecord(reportAssets[0]?.["metadata"])["reportView"], "user");
 });
 
-test("laboratory process runtime materializes remote workspace image targets before analysis", async () => {
+void test("laboratory process runtime materializes remote workspace image targets before analysis", async () => {
   function toRecord(value: unknown): Record<string, unknown> {
     return value !== null && typeof value === "object" && Array.isArray(value) === false
       ? (value as Record<string, unknown>)
@@ -1154,7 +1152,7 @@ test("laboratory process runtime materializes remote workspace image targets bef
     },
     async callRoomTools(payload) {
       downloads.push(payload);
-      const url = String(payload["url"] || "");
+      const url = typeof payload["url"] === "string" ? payload["url"] : "";
       const fileName = url.endsWith("b.png") ? "b.png" : "a.png";
       return {
         download: {
@@ -1219,13 +1217,13 @@ test("laboratory process runtime materializes remote workspace image targets bef
       const asset =
         assets.find(function (entry) {
           return entry["id"] === assetId;
-        }) || {};
+        }) ?? {};
       resolvedTargetPath = asset["localPath"];
       return {
         requestedMode: "workspace-asset",
         mode: "workspace-asset",
         outputId: assetId,
-        signature: `asset:${assetId}`,
+        signature: `asset:${String(assetId)}`,
         label: asset["name"],
         fileName: asset["name"],
         mimeType: "image/png",
@@ -1234,7 +1232,7 @@ test("laboratory process runtime materializes remote workspace image targets bef
       };
     },
     sanitizeFileSegment(value, fallbackValue) {
-      return asNonEmptyString(value.replace(/[^a-z0-9-]+/gi, "-").toLowerCase()) || fallbackValue;
+      return asNonEmptyString(value.replace(/[^a-z0-9-]+/gi, "-").toLowerCase()) ?? fallbackValue;
     },
     setFeatureProcessRecord(project, featureId, record) {
       const processState = toRecord(project["process"]);
@@ -1258,51 +1256,50 @@ test("laboratory process runtime materializes remote workspace image targets bef
     clampProfileTranscriptSampleSeconds() {
       return 30;
     },
-    createProcessArtifact(moduleId, kind, path, title, metadata) {
-      return { id: `${moduleId}-${kind}`, moduleId, kind, path, title, metadata };
+    createProcessArtifact(moduleId: unknown, kind: unknown, path: unknown, title: unknown, metadata: unknown) {
+      return { id: `${String(moduleId)}-${String(kind)}`, moduleId, kind, path, title, metadata };
     },
     createProcessFinding(
-      moduleId,
-      kind,
-      level,
-      confidence,
-      title,
-      detail,
-      evidenceCount,
-      artifactIds
-    ) {
+      moduleId: unknown,
+      kind: unknown,
+      level: unknown,
+      confidence: unknown,
+      title: unknown,
+      detail: unknown,
+      evidenceCount: unknown,
+      artifactIds: unknown) {
       return { moduleId, kind, level, confidence, title, detail, evidenceCount, artifactIds };
     },
-    async generateProcessFramePreviewArtifact() {
+    generateProcessFramePreviewArtifact() {
       return null;
     },
-    async generateProcessImageComparisonArtifact() {
+    generateProcessImageComparisonArtifact() {
       return null;
     },
-    async generateProcessMetadataArtifact() {
+    generateProcessMetadataArtifact() {
       return null;
     },
-    async generateProcessSpectrogram() {
+    generateProcessSpectrogram() {
       return null;
     },
-    async generateProcessVisualTransformArtifact() {
+    generateProcessVisualTransformArtifact() {
       return null;
     },
     getAudioAnalysisModuleProcessDir() {
       return "/tmp";
     },
     getAudioAnalysisModuleRunner() {
-      return async function () {
+      return function () {
         return { findings: [], artifacts: [], warnings: [] };
       };
     },
-    async maybeRunTranscriptProfileSample() {
+    maybeRunTranscriptProfileSample() {
       return null;
     },
-    normalizeProcessArtifact(rawValue) {
+    normalizeProcessArtifact(rawValue: unknown)  {
       return toRecord(rawValue);
     },
-    normalizeProcessFinding(rawValue) {
+    normalizeProcessFinding(rawValue: unknown)  {
       return toRecord(rawValue);
     },
     partitionVisualAnalysisModuleIds() {
@@ -1312,10 +1309,10 @@ test("laboratory process runtime materializes remote workspace image targets bef
       return [];
     },
     roomId: "laboratory",
-    async runAudioStructureProbe() {
+    runAudioStructureProbe() {
       return null;
     },
-    async runVideoStructureProbe() {
+    runVideoStructureProbe() {
       return null;
     },
     updateProcessModule,
@@ -1377,7 +1374,7 @@ test("laboratory process runtime materializes remote workspace image targets bef
   });
 });
 
-test("laboratory host action composition is extracted into a shared host boundary", async () => {
+void test("laboratory host action composition is extracted into a shared host boundary", async () => {
   const workspaceHostSource = readFileSync("rooms/laboratory/host/index.ts", "utf8");
   const workspaceHostRuntimeSource = readFileSync("rooms/laboratory/host/runtime.ts", "utf8");
   const workspaceHostFoundationSource = readFileSync(
@@ -1559,7 +1556,7 @@ test("laboratory host action composition is extracted into a shared host boundar
   }
 });
 
-test("laboratory media export runtime cancels only prior export jobs for every export handler", async () => {
+void test("laboratory media export runtime cancels only prior export jobs for every export handler", async () => {
   async function runExportCase(
     expectedAssetType: string,
     runExport: (
@@ -1625,9 +1622,9 @@ test("laboratory media export runtime cancels only prior export jobs for every e
       pushJobState(_api, payload) {
         pushedJobStates.push({ ...payload });
       },
-      registerJob: jobState.registerJob,
-      clearJob: jobState.clearJob,
-      cancelJobsForProject: jobState.cancelJobsForProject,
+      registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
+      clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
+      cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
       toRecord(value: unknown) {
         return value !== null && typeof value === "object" && Array.isArray(value) === false
           ? (value as Record<string, unknown>)
@@ -1745,7 +1742,7 @@ test("laboratory media export runtime cancels only prior export jobs for every e
     assert.equal(Boolean(runtime.jobs["process-job"]), true);
     assert.deepEqual(Object.keys(runtime.jobs), ["process-job"]);
 
-    const assets = activeProject.assets as Array<Record<string, unknown>>;
+    const assets = activeProject["assets"] as Array<Record<string, unknown>>;
     assert.equal(assets.length, 2);
     assert.equal(
       assets.some((asset) => asset["type"] === "source"),
@@ -1754,11 +1751,11 @@ test("laboratory media export runtime cancels only prior export jobs for every e
     const outputAsset = assets.find(function (asset) {
       return asset["type"] === expectedAssetType;
     });
-    const metadata = (outputAsset?.["metadata"] || {}) as Record<string, unknown>;
+    const metadata = (outputAsset?.["metadata"] ?? {}) as Record<string, unknown>;
     assert.equal(outputAsset?.["runId"], "run-1");
-    assert.equal(typeof outputAsset?.["sourceId"], "string");
-    assert.equal(outputAsset?.["derivedFromAssetId"], outputAsset?.["sourceId"]);
-    assert.equal(outputAsset?.["derivedFromSourceId"], outputAsset?.["sourceId"]);
+    assert.equal(typeof outputAsset["sourceId"], "string");
+    assert.equal(outputAsset["derivedFromAssetId"], outputAsset["sourceId"]);
+    assert.equal(outputAsset["derivedFromSourceId"], outputAsset["sourceId"]);
     assert.equal(metadata["flowKind"], "operation-result");
     assert.equal(metadata["evidenceRole"], "derived");
     if (expectedAssetType === "audio") {
@@ -1782,12 +1779,12 @@ test("laboratory media export runtime cancels only prior export jobs for every e
     const completedPayload =
       pushedJobStates.find(function (payload) {
         return payload["stage"] === "completed";
-      }) || null;
-    assert.deepEqual(completedPayload?.["resultAssetIds"], [outputAsset?.["id"]]);
+      }) ?? null;
+    assert.deepEqual(completedPayload!["resultAssetIds"], [outputAsset["id"]]);
   }
 
-  await runExportCase("image", function (exportRuntime, runtime) {
-    return exportRuntime.exportROIImage({}, runtime, "req-export-roi-new", {
+  await runExportCase("image", async function (exportRuntime, runtime) {
+    return await exportRuntime.exportROIImage({}, runtime, "req-export-roi-new", {
       regionId: "face",
       x: 8,
       y: 12,
@@ -1796,23 +1793,23 @@ test("laboratory media export runtime cancels only prior export jobs for every e
       seekMs: 1200,
     });
   });
-  await runExportCase("frame", function (exportRuntime, runtime) {
-    return exportRuntime.exportFrameGrab({}, runtime, "req-export-frame-new", {
+  await runExportCase("frame", async function (exportRuntime, runtime) {
+    return await exportRuntime.exportFrameGrab({}, runtime, "req-export-frame-new", {
       seekMs: 1200,
     });
   });
-  await runExportCase("clip", function (exportRuntime, runtime) {
-    return exportRuntime.exportTimelineClip({}, runtime, "req-export-clip-new", {
+  await runExportCase("clip", async function (exportRuntime, runtime) {
+    return await exportRuntime.exportTimelineClip({}, runtime, "req-export-clip-new", {
       startMs: 1000,
       endMs: 2400,
     });
   });
-  await runExportCase("audio", function (exportRuntime, runtime) {
-    return exportRuntime.exportAudioTrack({}, runtime, "req-export-audio-new", {});
+  await runExportCase("audio", async function (exportRuntime, runtime) {
+    return await exportRuntime.exportAudioTrack({}, runtime, "req-export-audio-new", {});
   });
 });
 
-test("laboratory media export runtime reports cancelled tool runs without leaking ffmpeg output", async () => {
+void test("laboratory media export runtime reports cancelled tool runs without leaking ffmpeg output", async () => {
   const pushedJobStates: Array<Record<string, unknown>> = [];
   let activeProject: Record<string, unknown> = {
     id: "project-1",
@@ -1864,9 +1861,9 @@ test("laboratory media export runtime reports cancelled tool runs without leakin
     pushJobState(_api, payload) {
       pushedJobStates.push({ ...payload });
     },
-    registerJob: jobState.registerJob,
-    clearJob: jobState.clearJob,
-    cancelJobsForProject: jobState.cancelJobsForProject,
+    registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
+    clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
+    cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
     toRecord(value: unknown) {
       return value !== null && typeof value === "object" && Array.isArray(value) === false
         ? (value as Record<string, unknown>)
@@ -1887,9 +1884,9 @@ test("laboratory media export runtime reports cancelled tool runs without leakin
   const cancelledPayload =
     pushedJobStates.find(function (payload) {
       return payload["stage"] === "cancelled";
-    }) || null;
+    }) ?? null;
   assert.equal(cancelledPayload?.["message"], "İşlem iptal edildi.");
-  assert.doesNotMatch(String(cancelledPayload?.["message"] || ""), /ffmpeg|-i/);
+  assert.doesNotMatch(String(cancelledPayload["message"] ), /ffmpeg|-i/);
   assert.equal(
     pushedJobStates.some(function (payload) {
       return payload["stage"] === "failed";
@@ -1899,7 +1896,7 @@ test("laboratory media export runtime reports cancelled tool runs without leakin
   assert.deepEqual(Object.keys(runtime.jobs), []);
 });
 
-test("laboratory audio variant exports preserve filter and lineage metadata", async () => {
+void test("laboratory audio variant exports preserve filter and lineage metadata", async () => {
   async function runAudioVariant(action: "clean" | "voice"): Promise<{
     args: string[];
     completedPayload: Record<string, unknown> | null;
@@ -1964,9 +1961,9 @@ test("laboratory audio variant exports preserve filter and lineage metadata", as
       pushJobState(_api, payload) {
         pushedJobStates.push({ ...payload });
       },
-      registerJob: jobState.registerJob,
-      clearJob: jobState.clearJob,
-      cancelJobsForProject: jobState.cancelJobsForProject,
+      registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
+      clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
+      cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
       toRecord(value: unknown) {
         return value !== null && typeof value === "object" && Array.isArray(value) === false
           ? (value as Record<string, unknown>)
@@ -1985,7 +1982,7 @@ test("laboratory audio variant exports preserve filter and lineage metadata", as
       );
     }
 
-    const outputAsset = (activeProject.assets as Array<Record<string, unknown>>).find(
+    const outputAsset = (activeProject["assets"] as Array<Record<string, unknown>>).find(
       function (asset) {
         return asset["type"] === "audio";
       }
@@ -1995,8 +1992,8 @@ test("laboratory audio variant exports preserve filter and lineage metadata", as
       completedPayload:
         pushedJobStates.find(function (payload) {
           return payload["stage"] === "completed";
-        }) || null,
-      metadata: (outputAsset?.["metadata"] || {}) as Record<string, unknown>,
+        }) ?? null,
+      metadata: (outputAsset?.["metadata"] ?? {}) as Record<string, unknown>,
       outputAssetId: outputAsset?.["id"],
     };
   }
@@ -2028,7 +2025,7 @@ test("laboratory audio variant exports preserve filter and lineage metadata", as
   assert.equal(voice.args[voice.args.indexOf("-ac") + 1], "1");
 });
 
-test("laboratory ROI exports normalize crop pixels and preserve operation lineage metadata", async () => {
+void test("laboratory ROI exports normalize crop pixels and preserve operation lineage metadata", async () => {
   let activeProject: Record<string, unknown> = {
     id: "project-roi-lineage",
     source: {
@@ -2084,9 +2081,9 @@ test("laboratory ROI exports normalize crop pixels and preserve operation lineag
       };
     },
     pushJobState() {},
-    registerJob: jobState.registerJob,
-    clearJob: jobState.clearJob,
-    cancelJobsForProject: jobState.cancelJobsForProject,
+    registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
+    clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
+    cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
     toRecord(value: unknown) {
       return value !== null && typeof value === "object" && Array.isArray(value) === false
         ? (value as Record<string, unknown>)
@@ -2115,13 +2112,13 @@ test("laboratory ROI exports normalize crop pixels and preserve operation lineag
 
   const args = toolRuns[0]?.["args"] as string[];
   assert.equal(args.includes("crop=320:180:64:36"), true);
-  const assets = activeProject.assets as Array<Record<string, unknown>>;
+  const assets = activeProject["assets"] as Array<Record<string, unknown>>;
   const outputAsset = assets.find(function (asset) {
     return asset["type"] === "image";
   });
-  const metadata = (outputAsset?.["metadata"] || {}) as Record<string, unknown>;
+  const metadata = (outputAsset?.["metadata"] ?? {}) as Record<string, unknown>;
   assert.equal(outputAsset?.["runId"], "run-roi-lineage");
-  assert.equal(outputAsset?.["derivedFromAssetId"], outputAsset?.["sourceId"]);
+  assert.equal(outputAsset["derivedFromAssetId"], outputAsset["sourceId"]);
   assert.equal(metadata["operationId"], "roi-crop");
   assert.equal(metadata["flowKind"], "operation-result");
   assert.equal(metadata["evidenceRole"], "derived");
@@ -2133,7 +2130,7 @@ test("laboratory ROI exports normalize crop pixels and preserve operation lineag
   activeProject = {
     ...activeProject,
     assets: [
-      ...((activeProject.assets as Array<Record<string, unknown>>) || []),
+      ...(activeProject["assets"] as Array<Record<string, unknown>>),
       {
         id: "asset-image-target",
         type: "image",
@@ -2172,7 +2169,7 @@ test("laboratory ROI exports normalize crop pixels and preserve operation lineag
   const selectedArgs = toolRuns[1]?.["args"] as string[];
   assert.equal(selectedArgs.includes("/tmp/target.png"), true);
   assert.equal(selectedArgs.includes("-ss"), false);
-  const selectedOutputAsset = (activeProject.assets as Array<Record<string, unknown>>).find(
+  const selectedOutputAsset = (activeProject["assets"] as Array<Record<string, unknown>>).find(
     function (asset) {
       return (
         asset["type"] === "image" &&
@@ -2181,16 +2178,16 @@ test("laboratory ROI exports normalize crop pixels and preserve operation lineag
       );
     }
   );
-  const selectedMetadata = (selectedOutputAsset?.["metadata"] || {}) as Record<string, unknown>;
+  const selectedMetadata = (selectedOutputAsset?.["metadata"] ?? {}) as Record<string, unknown>;
   assert.equal(selectedOutputAsset?.["derivedFromAssetId"], "asset-image-target");
-  assert.notEqual(selectedOutputAsset?.["sourceId"], "asset-analysis-artifact");
-  assert.equal(selectedOutputAsset?.["derivedFromSourceId"], undefined);
+  assert.notEqual(selectedOutputAsset["sourceId"], "asset-analysis-artifact");
+  assert.equal(selectedOutputAsset["derivedFromSourceId"], undefined);
   assert.deepEqual(selectedMetadata["sourceDimensions"], { height: 240, width: 320 });
 
   activeProject = {
     ...activeProject,
     assets: [
-      ...((activeProject.assets as Array<Record<string, unknown>>) || []),
+      ...(activeProject["assets"] as Array<Record<string, unknown>>),
       {
         id: "asset-remote-target",
         type: "clip",
@@ -2222,7 +2219,7 @@ test("laboratory ROI exports normalize crop pixels and preserve operation lineag
   );
 });
 
-test("laboratory comparison finding saves independent primary and reference ROI context", async () => {
+void test("laboratory comparison finding saves independent primary and reference ROI context", async () => {
   const primaryRoi = { x: 0.1, y: 0.2, width: 0.3, height: 0.4 };
   const referenceRoi = { x: 0.2, y: 0.1, width: 0.25, height: 0.35 };
   let activeProject: Record<string, unknown> = {
@@ -2296,9 +2293,9 @@ test("laboratory comparison finding saves independent primary and reference ROI 
       };
     },
     pushJobState() {},
-    registerJob: jobState.registerJob,
-    clearJob: jobState.clearJob,
-    cancelJobsForProject: jobState.cancelJobsForProject,
+    registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
+    clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
+    cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
     toRecord(value: unknown) {
       return value !== null && typeof value === "object" && Array.isArray(value) === false
         ? (value as Record<string, unknown>)
@@ -2310,23 +2307,23 @@ test("laboratory comparison finding saves independent primary and reference ROI 
     configurable: true,
     value: {
       electronAPI: {
-        async fmWriteFileAtomic(payload: { data: string; path: string }) {
+        fmWriteFileAtomic(payload: { data: string; path: string }) {
           writes.push(payload);
           return { path: payload.path, success: true };
         },
-        async openPath() {
+        openPath() {
           return { success: true };
         },
-        async readDirectoryFiles() {
+        readDirectoryFiles() {
           return [];
         },
-        async readFile() {
+        readFile() {
           return null;
         },
-        async roomToolsCall() {
+        roomToolsCall() {
           return { success: true };
         },
-        async roomToolsCancel() {
+        roomToolsCancel() {
           return { success: true };
         },
       },
@@ -2374,12 +2371,12 @@ test("laboratory comparison finding saves independent primary and reference ROI 
   const renderRun = toolRuns.find(function (run) {
     return run["operation"] === "tool-run";
   });
-  const args = (renderRun?.["args"] || []) as string[];
-  const filterGraph = args[args.indexOf("-filter_complex") + 1] || "";
+  const args = (renderRun?.["args"] ?? []) as string[];
+  const filterGraph = args[args.indexOf("-filter_complex") + 1] ?? "";
   assert.match(filterGraph, /\[0:v\]crop=iw\*0\.3:ih\*0\.4:iw\*0\.1:ih\*0\.2\[r0src\]/);
   assert.match(filterGraph, /\[1:v\]crop=iw\*0\.25:ih\*0\.35:iw\*0\.2:ih\*0\.1\[r1src\]/);
 
-  const outputAsset = (activeProject.assets as Array<Record<string, unknown>>).find(
+  const outputAsset = (activeProject["assets"] as Array<Record<string, unknown>>).find(
     function (asset) {
       return (
         asset["type"] === "image" &&
@@ -2388,8 +2385,8 @@ test("laboratory comparison finding saves independent primary and reference ROI 
       );
     }
   );
-  const metadata = (outputAsset?.["metadata"] || {}) as Record<string, unknown>;
-  const captureContext = (metadata["captureContext"] || {}) as Record<string, unknown>;
+  const metadata = (outputAsset?.["metadata"] ?? {}) as Record<string, unknown>;
+  const captureContext = (metadata["captureContext"] ?? {}) as Record<string, unknown>;
   assert.equal(outputAsset?.["derivedFromAssetId"], "asset-primary");
   assert.equal(captureContext["comparisonRoiActiveSide"], "reference");
   assert.deepEqual(captureContext["primaryNormalizedRoi"], primaryRoi);
@@ -2400,7 +2397,7 @@ test("laboratory comparison finding saves independent primary and reference ROI 
     reference: referenceRoi,
   });
   assert.equal(writes.length, 1);
-  const manifestPayload = JSON.parse(writes[0]?.data || "{}") as Record<string, unknown>;
+  const manifestPayload = JSON.parse(writes[0]?.data ?? "{}") as Record<string, unknown>;
   assert.deepEqual(manifestPayload["comparisonRois"], {
     activeSide: "reference",
     primary: primaryRoi,
@@ -2410,17 +2407,17 @@ test("laboratory comparison finding saves independent primary and reference ROI 
     manifestPayload["roiSummary"],
     "Primary ROI x=10%, y=20%, w=30%, h=40%; Reference ROI x=20%, y=10%, w=25%, h=35%; active=reference"
   );
-  const manifestAsset = (activeProject.assets as Array<Record<string, unknown>>).find(
+  const manifestAsset = (activeProject["assets"] as Array<Record<string, unknown>>).find(
     function (asset) {
       return asset["type"] === "artifact";
     }
   );
-  const manifestMetadata = (manifestAsset?.["metadata"] || {}) as Record<string, unknown>;
+  const manifestMetadata = (manifestAsset?.["metadata"] ?? {}) as Record<string, unknown>;
   assert.equal(manifestMetadata["roiSummary"], manifestPayload["roiSummary"]);
   assert.deepEqual(manifestMetadata["comparisonRois"], manifestPayload["comparisonRois"]);
 });
 
-test("laboratory frame export settings drive burst and preview filter arguments", async () => {
+void test("laboratory frame export settings drive burst and preview filter arguments", async () => {
   let activeProject: Record<string, unknown> = {
     id: "project-frame-settings",
     source: {
@@ -2479,9 +2476,9 @@ test("laboratory frame export settings drive burst and preview filter arguments"
       };
     },
     pushJobState() {},
-    registerJob: jobState.registerJob,
-    clearJob: jobState.clearJob,
-    cancelJobsForProject: jobState.cancelJobsForProject,
+    registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
+    clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
+    cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
     toRecord(value: unknown) {
       return value !== null && typeof value === "object" && Array.isArray(value) === false
         ? (value as Record<string, unknown>)
@@ -2525,7 +2522,7 @@ test("laboratory frame export settings drive burst and preview filter arguments"
     }),
     true
   );
-  const burstAssets = (activeProject.assets as Array<Record<string, unknown>>).filter(
+  const burstAssets = (activeProject["assets"] as Array<Record<string, unknown>>).filter(
     function (asset) {
       return asset["type"] === "frame";
     }
@@ -2579,19 +2576,19 @@ test("laboratory frame export settings drive burst and preview filter arguments"
 
   assert.deepEqual(cancelledJobIds, []);
   const enhancedArgs = toolRuns[0]?.["args"] as string[];
-  const filterGraph = enhancedArgs[enhancedArgs.indexOf("-filter:v") + 1] || "";
+  const filterGraph = enhancedArgs[enhancedArgs.indexOf("-filter:v") + 1] ?? "";
   assert.match(filterGraph, /colorchannelmixer/);
   assert.match(filterGraph, /edgedetect/);
   assert.match(filterGraph, /negate/);
-  const enhancedAsset = (activeProject.assets as Array<Record<string, unknown>>).find(
+  const enhancedAsset = (activeProject["assets"] as Array<Record<string, unknown>>).find(
     function (asset) {
       return (
         asset["type"] === "frame" &&
-        String(asset["name"] || "").includes("enhanced-frame-reference")
+        (typeof asset["name"] === "string" ? asset["name"] : "").includes("enhanced-frame-reference")
       );
     }
   );
-  const enhancedMetadata = (enhancedAsset?.["metadata"] || {}) as Record<string, unknown>;
+  const enhancedMetadata = (enhancedAsset?.["metadata"] ?? {}) as Record<string, unknown>;
   assert.equal(
     (enhancedMetadata["settingsUsed"] as Record<string, unknown>)["applyPreviewSettings"],
     true
@@ -2602,7 +2599,7 @@ test("laboratory frame export settings drive burst and preview filter arguments"
   assert.equal(enhancedMetadata["workspaceOperationBatchSize"], 2);
 });
 
-test("laboratory source intake no longer exposes asset source promotion", () => {
+void test("laboratory source intake no longer exposes asset source promotion", () => {
   const sourceRuntime = createMediaLocalSourceIntakeRuntime({
     asNonEmptyString(value: unknown) {
       return typeof value === "string" && value.trim() !== "" ? value : null;
@@ -2612,7 +2609,7 @@ test("laboratory source intake no longer exposes asset source promotion", () => 
         id: "project-asset-source",
         source: { kind: "video", status: "ready", storedPath: "/tmp/source.mp4" },
         assets: [],
-      } as Record<string, unknown> & { source: Record<string, unknown> };
+      };
     },
     getElectronApi() {
       return null;
@@ -2629,7 +2626,7 @@ test("laboratory source intake no longer exposes asset source promotion", () => 
     async patchActiveProject() {},
     resetEditForCurrentSource() {},
     resetProfileForCurrentSource() {},
-    async resolvePreparedSource() {
+    resolvePreparedSource() {
       throw new Error("not used");
     },
   });
@@ -2637,7 +2634,7 @@ test("laboratory source intake no longer exposes asset source promotion", () => 
   assert.equal("handleAssetAsSource" in sourceRuntime, false);
 });
 
-test("laboratory local source picker uses requested import kind filters", async () => {
+void test("laboratory local source picker uses requested import kind filters", async () => {
   let activeProject = {
     id: "project-local-source",
     source: {
@@ -2659,7 +2656,7 @@ test("laboratory local source picker uses requested import kind filters", async 
     getElectronApi() {
       return {
         async copyFileTo(sourcePath: string, destinationDir: string) {
-          const fileName = sourcePath.split(/[\\/]/).pop() || "source.bin";
+          const fileName = sourcePath.split(/[\\/]/).pop() ?? "source.bin";
           return {
             success: true,
             path: `${destinationDir}/${fileName}`,
@@ -2720,7 +2717,7 @@ test("laboratory local source picker uses requested import kind filters", async 
   assert.equal(activeProject.source["mimeType"], "image/png");
 });
 
-test("laboratory local source picker validates auto-detected image sources as images", async () => {
+void test("laboratory local source picker validates auto-detected image sources as images", async () => {
   let activeProject = {
     id: "project-auto-image-source",
     source: {
@@ -2793,7 +2790,7 @@ test("laboratory local source picker validates auto-detected image sources as im
   assert.equal(activeProject.source["mimeType"], "image/png");
 });
 
-test("laboratory report export registers user and ai report assets", async () => {
+void test("laboratory report export registers user and ai report assets", async () => {
   let activeProject = {
     id: "project-report-1",
     slug: "project-report",
@@ -2825,7 +2822,7 @@ test("laboratory report export registers user and ai report assets", async () =>
   function getReportRecord(project: Record<string, unknown>, featureId: string) {
     return (((project["report"] as Record<string, unknown>)["records"] as Record<string, unknown>)[
       featureId
-    ] || {}) as Record<string, unknown>;
+    ] ?? {}) as Record<string, unknown>;
   }
 
   const reportRuntime = createLaboratoryReportExportRuntime({
@@ -2899,7 +2896,7 @@ test("laboratory report export registers user and ai report assets", async () =>
   const completedPayload =
     pushedJobStates.find(function (payload) {
       return payload["stage"] === "completed";
-    }) || null;
+    }) ?? null;
   assert.deepEqual(
     completedPayload?.["resultAssetIds"],
     assets.map(function (asset) {
@@ -2908,7 +2905,7 @@ test("laboratory report export registers user and ai report assets", async () =>
   );
 });
 
-test("laboratory project lifecycle serializes concurrent active project asset patches", async () => {
+void test("laboratory project lifecycle serializes concurrent active project asset patches", async () => {
   function asNonEmptyString(value: unknown) {
     return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
   }
@@ -2933,7 +2930,7 @@ test("laboratory project lifecycle serializes concurrent active project asset pa
     buildReportManifest() {
       return {};
     },
-    async callRoomTools() {
+    callRoomTools() {
       return {};
     },
     async cancelJobsForProject() {},
@@ -2954,19 +2951,17 @@ test("laboratory project lifecycle serializes concurrent active project asset pa
     },
     defaultFeatureId: "media-analysis",
     async ensureProjectDirectories() {},
-    findProject(runtime, projectId) {
-      return (
-        runtime.projects.find(function (project) {
-          return String(project.id || "") === String(projectId || "");
-        }) || null
-      );
+    findProject(runtime: Record<string, unknown>, projectId: unknown) {
+      const projects = runtime["projects"] as Array<Record<string, unknown>>;
+      return projects.find(function (project) {
+        return (typeof project["id"] === "string" ? project["id"] : "") === (typeof projectId === "string" ? projectId : "");
+      }) ?? null;
     },
-    getActiveProject(runtime) {
-      return (
-        runtime.projects.find(function (project) {
-          return String(project.id || "") === String(runtime.activeProjectId || "");
-        }) || null
-      );
+    getActiveProject(runtime: Record<string, unknown>) {
+      const projects = runtime["projects"] as Array<Record<string, unknown>>;
+      return projects.find(function (project) {
+        return (typeof project["id"] === "string" ? project["id"] : "") === (typeof runtime["activeProjectId"] === "string" ? runtime["activeProjectId"] : "");
+      }) ?? null;
     },
     getFeatureIdFromContext() {
       return "media-analysis";
@@ -2992,30 +2987,30 @@ test("laboratory project lifecycle serializes concurrent active project asset pa
     getRuntimeToolIds() {
       return [];
     },
-    async listDirectory() {
+    listDirectory() {
       return [];
     },
     loadContext() {
       return {};
     },
-    normalizeProject(rawValue) {
+    normalizeProject(rawValue: unknown) {
       return toRecord(rawValue);
     },
     pushBootstrapState() {},
-    async readJsonFile() {
+    readJsonFile() {
       return {};
     },
     async refreshProfileModelState() {},
     roomId: "laboratory",
     syncProjectFeatureProjections() {},
     toRecord,
-    updateProjectTimestamps(project) {
+    updateProjectTimestamps(project: Record<string, unknown>) {
       project["updatedAt"] = "2026-05-17T02:30:00.000Z";
     },
     async writeJsonFile() {
       await Promise.resolve();
     },
-  });
+  } as unknown as Parameters<typeof createLaboratoryProjectLifecycleRuntime>[0]);
 
   type LifecycleRuntime = Parameters<typeof lifecycle.patchActiveProject>[0];
   const runtime = {
@@ -3064,14 +3059,14 @@ test("laboratory project lifecycle serializes concurrent active project asset pa
       tools: {},
       updatedAt: null,
     },
-  } as LifecycleRuntime;
+  } as unknown as LifecycleRuntime;
 
   await Promise.all([
     lifecycle.patchActiveProject(runtime, function (project) {
       return {
         ...project,
         assets: [
-          ...((project.assets as Array<Record<string, unknown>> | undefined) || []),
+          ...((project.assets as Array<Record<string, unknown>> | undefined) ?? []),
           { id: "asset-primary-crop", type: "image" },
         ],
       };
@@ -3080,7 +3075,7 @@ test("laboratory project lifecycle serializes concurrent active project asset pa
       return {
         ...project,
         assets: [
-          ...((project.assets as Array<Record<string, unknown>> | undefined) || []),
+          ...((project.assets as Array<Record<string, unknown>> | undefined) ?? []),
           { id: "asset-reference-crop", type: "image" },
         ],
       };
@@ -3088,7 +3083,7 @@ test("laboratory project lifecycle serializes concurrent active project asset pa
   ]);
 
   const activeProject = runtime.projects[0] as Record<string, unknown>;
-  const assetIds = ((activeProject["assets"] as Array<Record<string, unknown>>) || [])
+  const assetIds = (activeProject["assets"] as Array<Record<string, unknown>>)
     .map(function (asset) {
       return asset["id"];
     })

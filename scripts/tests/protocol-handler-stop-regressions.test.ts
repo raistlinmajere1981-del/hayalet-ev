@@ -5,7 +5,7 @@ import { AppState } from "../../src/js/modules/app-state.ts";
 import { ProtocolHandler } from "../../src/js/modules/protocol-handler.ts";
 import { SlotController, SlotState } from "../../src/js/modules/slot-controller.ts";
 
-test("user-ai-ai-stop payload stays header-only by omitting protocolKey", () => {
+void test("user-ai-ai-stop payload stays header-only by omitting protocolKey", () => {
   const originalGetState = SlotController.getState;
   const originalIsAssigned = AppState.isAssigned;
 
@@ -34,7 +34,7 @@ test("user-ai-ai-stop payload stays header-only by omitting protocolKey", () => 
   }
 });
 
-test("ai-assistant-stop payload is produced without protocol body key", () => {
+void test("ai-assistant-stop payload is produced without protocol body key", () => {
   const originalGetState = SlotController.getState;
   const originalIsAssigned = AppState.isAssigned;
 
@@ -63,7 +63,7 @@ test("ai-assistant-stop payload is produced without protocol body key", () => {
   }
 });
 
-test("user-ai-ai start payload uses unified start header format", () => {
+void test("user-ai-ai start payload uses unified start header format", () => {
   const originalGetState = SlotController.getState;
   const originalIsAssigned = AppState.isAssigned;
 

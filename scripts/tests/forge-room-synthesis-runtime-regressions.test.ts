@@ -38,7 +38,7 @@ const synthesisTasks = [
   },
 ];
 
-const synthesisResponses = [
+const synthesisResponses: any = [
   {
     id: "forge-response-1",
     assignmentId: "forge-assignment-1",
@@ -71,7 +71,7 @@ const synthesisResponses = [
   },
 ];
 
-const synthesisConflicts = [
+const synthesisConflicts: any = [
   {
     id: "forge-conflict-1",
     taskId: "forge-task-1",
@@ -84,7 +84,7 @@ const synthesisConflicts = [
   },
 ];
 
-test("forge-room synthesis runtime builds a prompt with response ids and parses a valid AI synthesis", () => {
+void test("forge-room synthesis runtime builds a prompt with response ids and parses a valid AI synthesis", () => {
   const prompt = buildForgeSynthesisPrompt({
     conflicts: synthesisConflicts,
     goal: synthesisGoal,
@@ -119,7 +119,7 @@ test("forge-room synthesis runtime builds a prompt with response ids and parses 
   assert.equal(parsed.synthesis?.provenance, null);
 });
 
-test("forge-room synthesis runtime falls back to captured responses when the AI omits ids", () => {
+void test("forge-room synthesis runtime falls back to captured responses when the AI omits ids", () => {
   const parsed = parseForgeSynthesisResponse({
     conflicts: synthesisConflicts,
     goal: synthesisGoal,

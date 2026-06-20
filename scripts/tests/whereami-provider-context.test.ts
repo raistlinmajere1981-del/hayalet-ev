@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { resolveWhereamiProviderContext } from "../lib/whereami-provider-context.mjs";
 
-test("classifies OpenCode CLI without serve as opencode terminal mode", () => {
+void test("classifies OpenCode CLI without serve as opencode terminal mode", () => {
   const result = resolveWhereamiProviderContext({
     currentPid: 300,
     resolvedMode: "app",
@@ -23,7 +23,7 @@ test("classifies OpenCode CLI without serve as opencode terminal mode", () => {
   assert.equal(result.opencodeCliActive, true);
 });
 
-test("classifies non-OpenCode CLI without serve as other provider", () => {
+void test("classifies non-OpenCode CLI without serve as other provider", () => {
   const result = resolveWhereamiProviderContext({
     currentPid: 300,
     resolvedMode: "app",
@@ -43,7 +43,7 @@ test("classifies non-OpenCode CLI without serve as other provider", () => {
   assert.equal(result.opencodeCliActive, false);
 });
 
-test("keeps base mode when OpenCode serve is running", () => {
+void test("keeps base mode when OpenCode serve is running", () => {
   const result = resolveWhereamiProviderContext({
     currentPid: 300,
     resolvedMode: "app",

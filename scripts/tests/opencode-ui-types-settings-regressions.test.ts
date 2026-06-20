@@ -6,19 +6,19 @@ import {
   normalizeSettings,
 } from "../../src/js/modules/settings/settings-schema.ts";
 
-test("default settings scaffold assistants.lastOpencodeUiSessionId as null", () => {
+void test("default settings scaffold assistants.lastOpencodeUiSessionId as null", () => {
   const settings = defaultSettings();
 
   assert.equal(settings.assistants?.lastOpencodeUiSessionId, null);
 });
 
-test("default settings use Turkish as app language", () => {
+void test("default settings use Turkish as app language", () => {
   const settings = defaultSettings();
 
   assert.equal(settings.general?.language, "tr");
 });
 
-test("normalize settings backfills missing assistants.lastOpencodeUiSessionId", () => {
+void test("normalize settings backfills missing assistants.lastOpencodeUiSessionId", () => {
   const normalized = normalizeSettings({
     assistants: {
       preferred: "opencode",
@@ -28,7 +28,7 @@ test("normalize settings backfills missing assistants.lastOpencodeUiSessionId", 
   assert.equal(normalized.assistants?.lastOpencodeUiSessionId, null);
 });
 
-test("normalize settings keeps opencode-ui as assistants.preferred", () => {
+void test("normalize settings keeps opencode-ui as assistants.preferred", () => {
   const normalized = normalizeSettings({
     assistants: {
       preferred: "opencode-ui",
@@ -38,7 +38,7 @@ test("normalize settings keeps opencode-ui as assistants.preferred", () => {
   assert.equal(normalized.assistants?.preferred, "opencode-ui");
 });
 
-test("normalize settings coerces invalid assistants.preferred to opencode", () => {
+void test("normalize settings coerces invalid assistants.preferred to opencode", () => {
   const normalized = normalizeSettings({
     assistants: {
       preferred: "invalid-provider",
@@ -48,7 +48,7 @@ test("normalize settings coerces invalid assistants.preferred to opencode", () =
   assert.equal(normalized.assistants?.preferred, "opencode");
 });
 
-test("normalize settings preserves string assistants.lastOpencodeUiSessionId", () => {
+void test("normalize settings preserves string assistants.lastOpencodeUiSessionId", () => {
   const normalized = normalizeSettings({
     assistants: {
       lastOpencodeUiSessionId: "session-opencode-ui-123",
@@ -58,7 +58,7 @@ test("normalize settings preserves string assistants.lastOpencodeUiSessionId", (
   assert.equal(normalized.assistants?.lastOpencodeUiSessionId, "session-opencode-ui-123");
 });
 
-test("normalize settings coerces invalid assistants.lastOpencodeUiSessionId to null", () => {
+void test("normalize settings coerces invalid assistants.lastOpencodeUiSessionId to null", () => {
   const normalized = normalizeSettings({
     assistants: {
       lastOpencodeUiSessionId: 123,
@@ -68,7 +68,7 @@ test("normalize settings coerces invalid assistants.lastOpencodeUiSessionId to n
   assert.equal(normalized.assistants?.lastOpencodeUiSessionId, null);
 });
 
-test("normalize settings preserves supported app language values", () => {
+void test("normalize settings preserves supported app language values", () => {
   const normalized = normalizeSettings({
     general: {
       language: "en",
@@ -78,7 +78,7 @@ test("normalize settings preserves supported app language values", () => {
   assert.equal(normalized.general?.language, "en");
 });
 
-test("normalize settings preserves custom app language values", () => {
+void test("normalize settings preserves custom app language values", () => {
   const normalized = normalizeSettings({
     general: {
       language: "de",
@@ -88,7 +88,7 @@ test("normalize settings preserves custom app language values", () => {
   assert.equal(normalized.general?.language, "de");
 });
 
-test("normalize settings preserves canonical custom app language tags", () => {
+void test("normalize settings preserves canonical custom app language tags", () => {
   const normalized = normalizeSettings({
     general: {
       language: "pt_br",
@@ -98,7 +98,7 @@ test("normalize settings preserves canonical custom app language tags", () => {
   assert.equal(normalized.general?.language, "pt-BR");
 });
 
-test("normalize settings coerces empty app language to Turkish", () => {
+void test("normalize settings coerces empty app language to Turkish", () => {
   const normalized = normalizeSettings({
     general: {
       language: "   ",
@@ -108,7 +108,7 @@ test("normalize settings coerces empty app language to Turkish", () => {
   assert.equal(normalized.general?.language, "tr");
 });
 
-test("normalize settings coerces non-string app language to Turkish", () => {
+void test("normalize settings coerces non-string app language to Turkish", () => {
   const normalized = normalizeSettings({
     general: {
       language: 42,
@@ -118,7 +118,7 @@ test("normalize settings coerces non-string app language to Turkish", () => {
   assert.equal(normalized.general?.language, "tr");
 });
 
-test("normalize settings backfills opencode-ui assistant account from legacy key", () => {
+void test("normalize settings backfills opencode-ui assistant account from legacy key", () => {
   const normalized = normalizeSettings({
     assistantAccounts: [],
   });
@@ -127,7 +127,7 @@ test("normalize settings backfills opencode-ui assistant account from legacy key
   assert.ok(providers.includes("opencode-ui"));
 });
 
-test("default settings include opencode-ui db path binding", () => {
+void test("default settings include opencode-ui db path binding", () => {
   const settings = defaultSettings();
   const opencodeUiAccount = (settings.assistantAccounts ?? []).find(
     (account) => account.provider === "opencode-ui"
@@ -136,7 +136,7 @@ test("default settings include opencode-ui db path binding", () => {
   assert.equal(opencodeUiAccount?.dbPath, "~/.local/share/opencode/opencode.db");
 });
 
-test("default settings scaffold assistants.opencode preferences", () => {
+void test("default settings scaffold assistants.opencode preferences", () => {
   const settings = defaultSettings();
   assert.deepEqual(settings.assistants?.opencode, {
     defaultPort: 4096,
@@ -144,7 +144,7 @@ test("default settings scaffold assistants.opencode preferences", () => {
   });
 });
 
-test("normalize settings coerces invalid assistants.opencode preferences and drops legacy binaryPath", () => {
+void test("normalize settings coerces invalid assistants.opencode preferences and drops legacy binaryPath", () => {
   const normalized = normalizeSettings({
     assistants: {
       opencode: {

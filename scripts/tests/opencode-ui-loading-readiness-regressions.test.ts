@@ -7,7 +7,7 @@ type ReadyEvent = {
   payload: { ready: boolean; unresolvedServers: string[]; mcpChecks: number; toolCount: number };
 };
 
-test("opencode-ui emits stage progression and ready=true only after settled mcp and final tool snapshot", async () => {
+void test("opencode-ui emits stage progression and ready=true only after settled mcp and final tool snapshot", async () => {
   const { runOpencodeUiBootstrapPipeline } =
     await import("../../src/js/pages/opencode-ui/bootstrap-actions.ts");
 
@@ -19,6 +19,7 @@ test("opencode-ui emits stage progression and ready=true only after settled mcp 
     deps: {
       checkHealth: async () => {
         callOrder.push("health");
+        return { mcpServers: {} };
       },
       loadStatusContext: async () => {
         callOrder.push("status");
@@ -52,7 +53,7 @@ test("opencode-ui emits stage progression and ready=true only after settled mcp 
   });
 });
 
-test("opencode-ui keeps UI unlocked when mcp settle times out", async () => {
+void test("opencode-ui keeps UI unlocked when mcp settle times out", async () => {
   const { runOpencodeUiBootstrapPipeline } =
     await import("../../src/js/pages/opencode-ui/bootstrap-actions.ts");
 
@@ -65,7 +66,7 @@ test("opencode-ui keeps UI unlocked when mcp settle times out", async () => {
 
   await runOpencodeUiBootstrapPipeline({
     deps: {
-      checkHealth: async () => {},
+      checkHealth: async () => ({ mcpServers: {} }),
       loadStatusContext: async () => {},
       waitForMcpServersSettled: async () => ({
         ready: false,
@@ -93,7 +94,7 @@ test("opencode-ui keeps UI unlocked when mcp settle times out", async () => {
   ]);
 });
 
-test("tools snapshot loader uses ids endpoint and falls back to tool listing endpoint", async () => {
+void test("tools snapshot loader uses ids endpoint and falls back to tool listing endpoint", async () => {
   const { loadToolsFinalSnapshot } =
     await import("../../src/js/pages/opencode-ui/tools-prompts.ts");
 
@@ -117,7 +118,7 @@ test("tools snapshot loader uses ids endpoint and falls back to tool listing end
   assert.deepEqual(result.toolIds, ["app_hev_mcp_health", "context7_query-docs"]);
 });
 
-test("tools snapshot loader derives Hayalet Ev MCP tools from OpenCode server ids only", async () => {
+void test("tools snapshot loader derives Hayalet Ev MCP tools from OpenCode server ids only", async () => {
   const { loadToolsFinalSnapshot } =
     await import("../../src/js/pages/opencode-ui/tools-prompts.ts");
   const { splitOpenCodeServerToolIds } =

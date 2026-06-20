@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-
+import type { ProviderScenarioCommandReport } from "../../src/types/provider.ts";
 import {
   buildScenarioCompletionMessage,
   buildScenarioProgressSummary,
@@ -11,7 +11,7 @@ import {
   resolveScenarioSurface,
 } from "../../src/js/pages/shared/provider-test-presentation.ts";
 
-test("provider test surface uses opposite slot overlay for entrance slots", () => {
+void test("provider test surface uses opposite slot overlay for entrance slots", () => {
   assert.deepEqual(resolveScenarioSurface("ai1"), {
     kind: "overlay",
     hostSlot: "ai2",
@@ -31,7 +31,7 @@ test("provider test surface uses opposite slot overlay for entrance slots", () =
   });
 });
 
-test("provider test surface uses side panel for ai0", () => {
+void test("provider test surface uses side panel for ai0", () => {
   assert.deepEqual(resolveProviderTestSurface("ai0"), {
     kind: "side-panel",
     hostSlot: "ai0",
@@ -39,7 +39,7 @@ test("provider test surface uses side panel for ai0", () => {
   });
 });
 
-test("progress summary counts finished commands and exposes the active command id", () => {
+void test("progress summary counts finished commands and exposes the active command id", () => {
   const summary = buildScenarioProgressSummary({
     slot: "ai2",
     providerName: "Grok",
@@ -60,7 +60,7 @@ test("progress summary counts finished commands and exposes the active command i
   });
 });
 
-test("progress summary honors explicit total step counts while commands stream in", () => {
+void test("progress summary honors explicit total step counts while commands stream in", () => {
   const summary = buildScenarioProgressSummary({
     slot: "ai1",
     providerName: "ChatGPT",
@@ -81,7 +81,7 @@ test("progress summary honors explicit total step counts while commands stream i
   });
 });
 
-test("status counts are derived from command reports", () => {
+void test("status counts are derived from command reports", () => {
   const counts = buildScenarioStatusCounts({
     commands: [
       { id: "collect", name: "Collect", status: "pass" },
@@ -89,7 +89,7 @@ test("status counts are derived from command reports", () => {
       { id: "soft-sync-2", name: "Soft Sync 2", status: "warning" },
       { id: "navigate", name: "Navigate", status: "fail" },
       { id: "refresh", name: "Refresh", status: "skip" },
-    ],
+    ] as ProviderScenarioCommandReport[],
   });
 
   assert.deepEqual(counts, {
@@ -101,7 +101,7 @@ test("status counts are derived from command reports", () => {
   });
 });
 
-test("display rows can be filtered by status from command reports", () => {
+void test("display rows can be filtered by status from command reports", () => {
   const rows = filterScenarioDisplayRows({
     filter: "warning",
     commands: [
@@ -110,13 +110,13 @@ test("display rows can be filtered by status from command reports", () => {
         name: "Collect Urls",
         status: "pass",
         message: "collected",
-      },
+      } as ProviderScenarioCommandReport,
       {
         id: "attach-file",
         name: "Attach File",
         status: "warning",
         message: "partial",
-      },
+      } as ProviderScenarioCommandReport,
     ],
   });
 
@@ -130,7 +130,7 @@ test("display rows can be filtered by status from command reports", () => {
   ]);
 });
 
-test("display rows preserve structured session preview details for sync commands", () => {
+void test("display rows preserve structured session preview details for sync commands", () => {
   const rows = filterScenarioDisplayRows({
     filter: "all",
     commands: [
@@ -148,7 +148,7 @@ test("display rows preserve structured session preview details for sync commands
             ],
           },
         },
-      },
+      } as ProviderScenarioCommandReport,
     ],
   });
 
@@ -169,7 +169,7 @@ test("display rows preserve structured session preview details for sync commands
   ]);
 });
 
-test("display rows include running commands while a scenario is active", () => {
+void test("display rows include running commands while a scenario is active", () => {
   const rows = filterScenarioDisplayRows({
     filter: "all",
     commands: [
@@ -178,7 +178,7 @@ test("display rows include running commands while a scenario is active", () => {
         name: "Navigate Session 1",
         status: "running",
         message: "Navigate Session 1",
-      },
+      } as ProviderScenarioCommandReport,
     ],
   });
 
@@ -192,7 +192,7 @@ test("display rows include running commands while a scenario is active", () => {
   ]);
 });
 
-test("completion message falls back to command counts when suite totals are missing", () => {
+void test("completion message falls back to command counts when suite totals are missing", () => {
   const message = buildScenarioCompletionMessage({
     commands: [
       { status: "pass" },
@@ -204,7 +204,7 @@ test("completion message falls back to command counts when suite totals are miss
   assert.equal(message, "2/3 kontrol geçti");
 });
 
-test("completion message avoids undefined totals when there are no commands", () => {
+void test("completion message avoids undefined totals when there are no commands", () => {
   const message = buildScenarioCompletionMessage({});
 
   assert.equal(message, "Senaryo tamamlandı");

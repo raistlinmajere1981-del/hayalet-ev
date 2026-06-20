@@ -71,7 +71,7 @@ function findHtmlTextFallbacks(file: string, html: string): string[] {
 
   $("[data-i18n-text], [data-shell-i18n-text]").each((_index, element) => {
     const attrName =
-      element.attribs["data-shell-i18n-text"] !== undefined
+      $(element).attr("data-shell-i18n-text") !== undefined
         ? "data-shell-i18n-text"
         : "data-i18n-text";
     const rawText = normalizeText(
@@ -106,7 +106,7 @@ function findHtmlAttributeFallbacks(
   const selector = dataAttrs.map((dataAttr) => `[${dataAttr}]`).join(", ");
 
   $(selector).each((_index, element) => {
-    const matchedDataAttr = dataAttrs.find((dataAttr) => element.attribs[dataAttr] !== undefined);
+    const matchedDataAttr = dataAttrs.find((dataAttr) => $(element).attr(dataAttr) !== undefined);
     if (matchedDataAttr === undefined) {
       return;
     }
@@ -144,7 +144,7 @@ function getLineNumber(source: string, index: number): number {
   return source.slice(0, Math.max(0, index)).split("\n").length;
 }
 
-test("hardcoded user-facing strings are blocked (allowlist-aware)", () => {
+void test("hardcoded user-facing strings are blocked (allowlist-aware)", () => {
   const htmlIssues: string[] = [];
 
   for (const file of collectHtmlFiles()) {
@@ -227,7 +227,7 @@ test("hardcoded user-facing strings are blocked (allowlist-aware)", () => {
   assert.equal(issues.length, 0, `Hardcoded i18n fallbacks found:\n${issues.join("\n")}`);
 });
 
-test("html bootstrap uses neutral lang and empty title", () => {
+void test("html bootstrap uses neutral lang and empty title", () => {
   const indexHtml = readFileSync("src/index.html", "utf8");
   const opencodeHtml = readFileSync("src/pages/opencode-ui.html", "utf8");
 
@@ -237,7 +237,7 @@ test("html bootstrap uses neutral lang and empty title", () => {
   assert.match(opencodeHtml, /<title>\s*<\/title>/);
 });
 
-test("mixed-locale smoke test covers key UI strings", () => {
+void test("mixed-locale smoke test covers key UI strings", () => {
   const enPack = getBuiltInLanguagePack("en");
   const trPack = getBuiltInLanguagePack("tr");
 

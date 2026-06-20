@@ -36,13 +36,13 @@ function createProcessRunEvent(overrides: Partial<LabEventFeedItem> = {}): LabEv
   };
 }
 
-test("getToolLifecycleStage returns 'source' when no source is loaded", () => {
+void test("getToolLifecycleStage returns 'source' when no source is loaded", () => {
   const store = createLabStore();
   const state = store.getState();
   assert.equal(getToolLifecycleStage(state), "source");
 });
 
-test("getToolLifecycleStage returns 'edit' when source probe is completed", () => {
+void test("getToolLifecycleStage returns 'edit' when source probe is completed", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -53,7 +53,7 @@ test("getToolLifecycleStage returns 'edit' when source probe is completed", () =
   assert.equal(getToolLifecycleStage(state), "edit");
 });
 
-test("getToolLifecycleStage returns 'process' when a run is active", () => {
+void test("getToolLifecycleStage returns 'process' when a run is active", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -82,7 +82,7 @@ test("getToolLifecycleStage returns 'process' when a run is active", () => {
   assert.equal(isRunActive(state), true);
 });
 
-test("laboratory store keeps process runs active while individual modules finish", () => {
+void test("laboratory store keeps process runs active while individual modules finish", () => {
   const store = createLabStore();
   const timestamp = Date.now();
 
@@ -148,7 +148,7 @@ test("laboratory store keeps process runs active while individual modules finish
   assert.equal(isRunComplete(store.getState()), true);
 });
 
-test("laboratory store keeps host-context adjustments out of pending runs", () => {
+void test("laboratory store keeps host-context adjustments out of pending runs", () => {
   const store = createLabStore();
   store.dispatch({
     type: "host-event-received",
@@ -174,7 +174,7 @@ test("laboratory store keeps host-context adjustments out of pending runs", () =
   assert.equal(state.activityFeed[0]?.scope, "global");
 });
 
-test("laboratory store keeps cancel pending until the process run reaches a terminal state", () => {
+void test("laboratory store keeps cancel pending until the process run reaches a terminal state", () => {
   const store = createLabStore();
   store.dispatch({
     type: "host-event-received",
@@ -237,7 +237,7 @@ test("laboratory store keeps cancel pending until the process run reaches a term
   assert.equal(store.getState().ui.analysisCancelPending, false);
 });
 
-test("laboratory store ignores stale correlated run events from an older process", () => {
+void test("laboratory store ignores stale correlated run events from an older process", () => {
   const store = createLabStore();
   store.dispatch({
     type: "run-started",
@@ -317,7 +317,7 @@ test("laboratory store ignores stale correlated run events from an older process
   );
 });
 
-test("laboratory store clears cancel pending only for matching correlated run terminal events", () => {
+void test("laboratory store clears cancel pending only for matching correlated run terminal events", () => {
   const store = createLabStore();
   store.dispatch({
     type: "run-started",
@@ -356,7 +356,7 @@ test("laboratory store clears cancel pending only for matching correlated run te
   assert.equal(store.getState().ui.analysisCancelPending, false);
 });
 
-test("laboratory store clears cancel pending when the cancel request fails", () => {
+void test("laboratory store clears cancel pending when the cancel request fails", () => {
   const store = createLabStore();
   store.dispatch({ type: "run-started", action: "process-run" });
   store.dispatch({ type: "analysis-cancel-requested", requestId: "cancel-new" });
@@ -408,7 +408,7 @@ test("laboratory store clears cancel pending when the cancel request fails", () 
   assert.equal(store.getState().ui.analysisCancelRequestId, null);
 });
 
-test("laboratory store keeps optimistic running state through stale terminal snapshots", () => {
+void test("laboratory store keeps optimistic running state through stale terminal snapshots", () => {
   const store = createLabStore();
   store.dispatch({ type: "run-started", action: "process-run" });
   const pendingRunId = store.getState().run?.id;
@@ -446,7 +446,7 @@ test("laboratory store keeps optimistic running state through stale terminal sna
   assert.equal(isRunActive(store.getState()), true);
 });
 
-test("laboratory store accepts cancelled snapshots after a cancel request", () => {
+void test("laboratory store accepts cancelled snapshots after a cancel request", () => {
   const store = createLabStore();
   store.dispatch({ type: "run-started", action: "process-run" });
   store.dispatch({ type: "analysis-cancel-requested" });
@@ -485,7 +485,7 @@ test("laboratory store accepts cancelled snapshots after a cancel request", () =
   assert.equal(store.getState().ui.analysisCancelPending, false);
 });
 
-test("laboratory store keeps cancel-pending runs through stale correlated snapshots", () => {
+void test("laboratory store keeps cancel-pending runs through stale correlated snapshots", () => {
   const store = createLabStore();
   store.dispatch({
     type: "snapshot-received",
@@ -586,7 +586,7 @@ test("laboratory store keeps cancel-pending runs through stale correlated snapsh
   assert.equal(store.getState().ui.analysisCancelPending, false);
 });
 
-test("getActiveModule returns the first running module and clears when none are running", () => {
+void test("getActiveModule returns the first running module and clears when none are running", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -670,7 +670,7 @@ test("getActiveModule returns the first running module and clears when none are 
   assert.equal(getActiveModule(state), null);
 });
 
-test("getToolLifecycleStage returns 'report' when run is complete and reports exist", () => {
+void test("getToolLifecycleStage returns 'report' when run is complete and reports exist", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -735,7 +735,7 @@ test("getToolLifecycleStage returns 'report' when run is complete and reports ex
   assert.equal(getToolLifecycleStage(state), "report");
 });
 
-test("source action block reason checks draft fields", () => {
+void test("source action block reason checks draft fields", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -752,7 +752,7 @@ test("source action block reason checks draft fields", () => {
   assert.equal(getSourceActionBlockReason(state2), null);
 });
 
-test("edit action block reason checks probe status", () => {
+void test("edit action block reason checks probe status", () => {
   const store = createLabStore();
   const state = store.getState();
   assert.equal(getEditActionBlockReason(state), "Önce kaynak seçilmelidir.");
@@ -766,7 +766,7 @@ test("edit action block reason checks probe status", () => {
   assert.equal(getEditActionBlockReason(state2), null);
 });
 
-test("tool relevance filter includes tools from selected analysis capabilities", () => {
+void test("tool relevance filter includes tools from selected analysis capabilities", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -786,13 +786,13 @@ test("tool relevance filter includes tools from selected analysis capabilities",
   assert.equal(relevance.optionalToolIds.includes("raft-optical-flow"), true);
 });
 
-test("report action block reason checks report availability", () => {
+void test("report action block reason checks report availability", () => {
   const store = createLabStore();
   const state = store.getState();
   assert.equal(getReportActionBlockReason(state), "Rapor henüz üretilmedi.");
 });
 
-test("featureStage in tool payloads uses projected lifecycle stage", () => {
+void test("featureStage in tool payloads uses projected lifecycle stage", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -807,7 +807,7 @@ test("featureStage in tool payloads uses projected lifecycle stage", () => {
 // Overlay grouping: pure relevance, no stageSupport fallback
 // ---------------------------------------------------------------------------
 
-test("tool relevance filter with no selected capabilities produces empty requiredToolIds", () => {
+void test("tool relevance filter with no selected capabilities produces empty requiredToolIds", () => {
   const store = createLabStore();
   const state = store.getState();
   const relevance = getToolRelevanceFilter(state);
@@ -816,7 +816,7 @@ test("tool relevance filter with no selected capabilities produces empty require
   assert.deepEqual(relevance.selectedCapabilities, []);
 });
 
-test("tool relevance filter groups by selected capabilities, not by lifecycle stage", () => {
+void test("tool relevance filter groups by selected capabilities, not by lifecycle stage", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -834,7 +834,7 @@ test("tool relevance filter groups by selected capabilities, not by lifecycle st
   assert.equal(getToolLifecycleStage(state), "edit");
 });
 
-test("switching selected capabilities changes tool relevance without stage change", () => {
+void test("switching selected capabilities changes tool relevance without stage change", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -853,7 +853,7 @@ test("switching selected capabilities changes tool relevance without stage chang
   assert.equal(getToolLifecycleStage(state), "edit");
 });
 
-test("workspace hydration keeps selected capability state authoritative", () => {
+void test("workspace hydration keeps selected capability state authoritative", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;
 
@@ -883,7 +883,7 @@ test("workspace hydration keeps selected capability state authoritative", () => 
   assert.deepEqual(selectedCapabilityIds, ["audio-signal"]);
 });
 
-test("workspace hydration clears selected capabilities when none remain", () => {
+void test("workspace hydration clears selected capabilities when none remain", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;
 
@@ -904,7 +904,7 @@ test("workspace hydration clears selected capabilities when none remain", () => 
   assert.equal(getAnalysisActionBlockReason(state), "En az bir analiz modülü seçilmelidir.");
 });
 
-test("live capability selection stays authoritative after manual capability updates", () => {
+void test("live capability selection stays authoritative after manual capability updates", () => {
   const store = createLabStore();
   store.dispatch({
     type: "source-config-patched",
@@ -930,7 +930,7 @@ test("live capability selection stays authoritative after manual capability upda
   assert.deepEqual(selectedCapabilityIds, ["visual-structure", "visual-forensics"]);
 });
 
-test("controller startDeepAnalysis uses ready workspace analysis selection before stale capability state", () => {
+void test("controller startDeepAnalysis uses ready workspace analysis selection before stale capability state", () => {
   const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
 
   assert.match(source, /const selectedCapabilities = getReadySelectedAnalysisCapabilityIds\(state\);/);
@@ -961,7 +961,7 @@ test("controller startDeepAnalysis uses ready workspace analysis selection befor
 // Host: job-runtime action-based filtering
 // ---------------------------------------------------------------------------
 
-test("job-runtime getActiveProcessJobs uses action prefix not featureStage", async () => {
+void test("job-runtime getActiveProcessJobs uses action prefix not featureStage", async () => {
   const jobs: Record<string, unknown> = {};
   const collected: string[] = [];
   const jobRuntime = (
@@ -1008,7 +1008,7 @@ test("job-runtime getActiveProcessJobs uses action prefix not featureStage", asy
 // Host: runtime-events action-based scope derivation
 // ---------------------------------------------------------------------------
 
-test("runtime-events derives scope from action name, not featureStage", async () => {
+void test("runtime-events derives scope from action name, not featureStage", async () => {
   const emitted: Array<Record<string, unknown>> = [];
   const runtimeEvents = (
     await import("../../rooms/laboratory/shared/host/runtime-events.ts")
@@ -1046,7 +1046,7 @@ test("runtime-events derives scope from action name, not featureStage", async ()
 
   assert.equal(emitted.length, 1);
   assert.equal(
-    emitted[0]?.scope,
+    emitted[0]?.["scope"],
     "run",
     "scope should be 'run' based on action name containing 'process'"
   );
@@ -1061,7 +1061,7 @@ test("runtime-events derives scope from action name, not featureStage", async ()
 
   assert.equal(emitted.length, 2);
   assert.equal(
-    emitted[1]?.scope,
+    emitted[1]?.["scope"],
     "global",
     "scope should be 'global' for non-process actions even if featureStage says process"
   );

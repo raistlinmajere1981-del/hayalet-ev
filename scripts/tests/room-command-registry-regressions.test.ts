@@ -101,7 +101,7 @@ const forgeRoomWithSharedCommand: InstalledRoomRecord = {
   ],
 };
 
-test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
+void test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([room]);
 
@@ -122,13 +122,13 @@ test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
   ]);
 });
 
-test("RoomCommandRegistry hides internal commands from the public catalog", async () => {
+void test("RoomCommandRegistry hides internal commands from the public catalog", async () => {
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([room]);
   RoomCommandRegistry.registerHandler(
     "game-room",
     "GameRoomInternalBridgeOnly",
-    async (payload) => payload.roomArgs
+    (payload) => payload.roomArgs
   );
 
   const catalog = RoomCommandRegistry.getCatalog("ai1-ai2");
@@ -144,14 +144,14 @@ test("RoomCommandRegistry hides internal commands from the public catalog", asyn
   assert.deepEqual(directResult, { cell: 6 });
 });
 
-test("RoomCommandRegistry runs room-ui commands with structured payloads", async () => {
+void test("RoomCommandRegistry runs room-ui commands with structured payloads", async () => {
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([room]);
 
   RoomCommandRegistry.registerHandler(
     "game-room",
     "GameRoomBackgammonUserMove",
-    async (payload) => payload.roomArgs
+    (payload) => payload.roomArgs
   );
 
   const result = await RoomCommandRegistry.run("GameRoomBackgammonUserMove", {
@@ -162,19 +162,19 @@ test("RoomCommandRegistry runs room-ui commands with structured payloads", async
   assert.deepEqual(result, { cell: 4, symbol: "X" });
 });
 
-test("RoomCommandRegistry scopes duplicate command names by room id", async () => {
+void test("RoomCommandRegistry scopes duplicate command names by room id", async () => {
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([roomWithSharedCommand, forgeRoomWithSharedCommand]);
 
   RoomCommandRegistry.registerHandler(
     "game-room",
     "SharedRoomAction",
-    async (payload) => payload.roomId
+    (payload) => payload.roomId
   );
   RoomCommandRegistry.registerHandler(
     "forge-room",
     "SharedRoomAction",
-    async (payload) => payload.roomId
+    (payload) => payload.roomId
   );
 
   const ambiguous = (await RoomCommandRegistry.run("SharedRoomAction", {
@@ -200,7 +200,7 @@ test("RoomCommandRegistry scopes duplicate command names by room id", async () =
   assert.equal(forgeRoomResult, "forge-room");
 });
 
-test("RoomCommandRegistry matches room-local transcript voice commands", () => {
+void test("RoomCommandRegistry matches room-local transcript voice commands", () => {
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([room]);
 
@@ -222,7 +222,7 @@ test("RoomCommandRegistry matches room-local transcript voice commands", () => {
   assert.equal(RoomCommandRegistry.matchVoiceCommand("forge-room", "mark center"), null);
 });
 
-test("Room host capture API exposes target-based ambient listener controls", () => {
+void test("Room host capture API exposes target-based ambient listener controls", () => {
   const hostRuntimeSource = readFileSync("src/js/modules/rooms/room-host-runtime.ts", "utf8");
 
   assert.match(hostRuntimeSource, /startAmbientListener/);
@@ -241,24 +241,24 @@ test("Room host capture API exposes target-based ambient listener controls", () 
   assert.match(hostRuntimeSource, /target: transcriptTarget/);
 });
 
-test("RoomCommandRegistry parses AI args and enforces scope rules", async () => {
+void test("RoomCommandRegistry parses AI args and enforces scope rules", async () => {
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([room]);
 
   RoomCommandRegistry.registerHandler(
     "game-room",
     "GameRoomBackgammonAiMove",
-    async (payload) => payload.roomArgs
+    (payload) => payload.roomArgs
   );
   RoomCommandRegistry.registerHandler(
     "game-room",
     "GameRoomBackgammonUserMove",
-    async (payload) => payload.roomArgs
+    (payload) => payload.roomArgs
   );
   RoomCommandRegistry.registerHandler(
     "game-room",
     "GameRoomBackgammonRemoteMove",
-    async (payload) => payload.roomArgs
+    (payload) => payload.roomArgs
   );
 
   const allowed = await RoomCommandRegistry.run("GameRoomBackgammonAiMove", {

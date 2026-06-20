@@ -63,7 +63,7 @@ function assertRestoredSnapshotStateMatches(
   assert.deepEqual(left.guards, right.guards);
 }
 
-test("pattern-room phase 6B creates a local session snapshot from local mutations", () => {
+void test("pattern-room phase 6B creates a local session snapshot from local mutations", () => {
   const localState = createSnapshotReadyLocalState();
   const snapshot = createSnapshot(localState, "tenth-man");
 
@@ -88,7 +88,7 @@ test("pattern-room phase 6B creates a local session snapshot from local mutation
   });
 });
 
-test("pattern-room phase 6B restores valid snapshot pieces and applies them to local state", () => {
+void test("pattern-room phase 6B restores valid snapshot pieces and applies them to local state", () => {
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "report");
   const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
 
@@ -112,7 +112,7 @@ test("pattern-room phase 6B restores valid snapshot pieces and applies them to l
   assert.equal(localState.getOverlay().localNotes.length, restored.overlay.localNotes.length);
 });
 
-test("pattern-room phase 6B round-trips snapshot state excluding metadata", () => {
+void test("pattern-room phase 6B round-trips snapshot state excluding metadata", () => {
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "board");
   const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
   assert.ok(restored);
@@ -124,7 +124,7 @@ test("pattern-room phase 6B round-trips snapshot state excluding metadata", () =
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
-test("pattern-room phase 7B round-trips local authored overlay entries", () => {
+void test("pattern-room phase 7B round-trips local authored overlay entries", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
 
   localState.addAuthoredClaim("Snapshot iddia", "Snapshot içinde kalacak local iddia.");
@@ -180,7 +180,7 @@ test("pattern-room phase 7B round-trips local authored overlay entries", () => {
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
-test("pattern-room phase 13F round-trips source-linked local evidence without schema bump", () => {
+void test("pattern-room phase 13F round-trips source-linked local evidence without schema bump", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   localState.addAuthoredSource("Snapshot source", "Archive shelf", "Snapshot source note.");
   localState.addAuthoredEvidence(
@@ -210,7 +210,7 @@ test("pattern-room phase 13F round-trips source-linked local evidence without sc
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
-test("pattern-room phase 12D round-trips user text producer sources", () => {
+void test("pattern-room phase 12D round-trips user text producer sources", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   const producer = createUserTextProducer({ now: () => "2026-05-21T10:00:00.000Z" });
   const orchestrationResult = produceAndImportSource(producer, {
@@ -243,7 +243,7 @@ test("pattern-room phase 12D round-trips user text producer sources", () => {
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
-test("pattern-room phase 12F-B round-trips optional import batch ids without schema bump", () => {
+void test("pattern-room phase 12F-B round-trips optional import batch ids without schema bump", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   const producer = createUserTextProducer({ now: () => "2026-05-21T10:00:00.000Z" });
   const orchestrationResult = produceAndImportSource(producer, {
@@ -275,7 +275,7 @@ test("pattern-room phase 12F-B round-trips optional import batch ids without sch
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
-test("pattern-room phase 13C round-trips long text producer sources without schema bump", () => {
+void test("pattern-room phase 13C round-trips long text producer sources without schema bump", () => {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   const producer = createLongTextProducer({ now: () => "2026-05-21T10:00:00.000Z" });
   const text =
@@ -330,7 +330,7 @@ test("pattern-room phase 13C round-trips long text producer sources without sche
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
-test("pattern-room phase 8B local edge authoring validates endpoints and stays overlay-only", () => {
+void test("pattern-room phase 8B local edge authoring validates endpoints and stays overlay-only", () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   let notificationCount = 0;
@@ -383,7 +383,7 @@ test("pattern-room phase 8B local edge authoring validates endpoints and stays o
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });
 
-test("pattern-room phase 7B restores legacy snapshots with missing authored fields", () => {
+void test("pattern-room phase 7B restores legacy snapshots with missing authored fields", () => {
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "archive");
   const overlay = { ...snapshot.overlay } as Record<string, unknown>;
   delete overlay["localAuthoredNodes"];
@@ -399,7 +399,7 @@ test("pattern-room phase 7B restores legacy snapshots with missing authored fiel
   assert.deepEqual(restored.overlay.localAuthoredEdges, []);
 });
 
-test("pattern-room phase 7B silently skips invalid restored authored entries", () => {
+void test("pattern-room phase 7B silently skips invalid restored authored entries", () => {
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "board");
   const pollutedSnapshot = {
     ...snapshot,
@@ -539,7 +539,7 @@ test("pattern-room phase 7B silently skips invalid restored authored entries", (
   ]);
 });
 
-test("pattern-room phase 6B rejects incompatible snapshot schema or topic", () => {
+void test("pattern-room phase 6B rejects incompatible snapshot schema or topic", () => {
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "archive");
   const wrongSchemaSnapshot = {
     ...snapshot,
@@ -554,7 +554,7 @@ test("pattern-room phase 6B rejects incompatible snapshot schema or topic", () =
   assert.equal(restoreFromSnapshot(wrongTopicSnapshot, PATTERN_ROOM_DOMAIN_MOCK), null);
 });
 
-test("pattern-room phase 6B rejects malformed runtime snapshot input", () => {
+void test("pattern-room phase 6B rejects malformed runtime snapshot input", () => {
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "archive");
   const firstTurn = snapshot.overlay.debateLocalTurns[0];
   assert.ok(firstTurn);
@@ -580,7 +580,7 @@ test("pattern-room phase 6B rejects malformed runtime snapshot input", () => {
   });
 });
 
-test("pattern-room phase 6B defensively filters stale snapshot ids without mutating domain mock", () => {
+void test("pattern-room phase 6B defensively filters stale snapshot ids without mutating domain mock", () => {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "tenth-man");
   const firstTurn = snapshot.overlay.debateLocalTurns[0];
@@ -636,7 +636,7 @@ test("pattern-room phase 6B defensively filters stale snapshot ids without mutat
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
 });
 
-test("pattern-room phase 6B self-heals advanced debate phase with no turns", () => {
+void test("pattern-room phase 6B self-heals advanced debate phase with no turns", () => {
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "tenth-man");
   const inconsistentSnapshot: PatternRoomSessionSnapshot = {
     ...snapshot,
@@ -671,7 +671,7 @@ test("pattern-room phase 6B self-heals advanced debate phase with no turns", () 
   assert.equal(restored.guards.noteIndex, restored.overlay.localNotes.length);
 });
 
-test("pattern-room phase 6B snapshot and UI layer stay free of storage and IPC wiring", async () => {
+void test("pattern-room phase 6B snapshot and UI layer stay free of storage and IPC wiring", async () => {
   const sourcePaths = [
     "rooms/pattern-room/shared/types/pattern-room-snapshot.ts",
     "rooms/pattern-room/shared/state/pattern-room-snapshot.ts",

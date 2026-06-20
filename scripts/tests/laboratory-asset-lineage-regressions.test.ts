@@ -9,7 +9,7 @@ import {
   syncSourceLabAssetForProject,
 } from "../../rooms/laboratory/shared/host/lab-assets.ts";
 
-test("laboratory asset normalization and serialization preserve lineage fields", () => {
+void test("laboratory asset normalization and serialization preserve lineage fields", () => {
   const rawAsset = {
     id: "asset-audio-1",
     type: "audio",
@@ -37,7 +37,7 @@ test("laboratory asset normalization and serialization preserve lineage fields",
   assert.equal(serialized?.derivedFromSourceId, "source-active");
 });
 
-test("laboratory output asset creation accepts top-level lineage fields", () => {
+void test("laboratory output asset creation accepts top-level lineage fields", () => {
   const createdAsset = createLabOutputAsset(
     {
       id: "project-lineage",
@@ -63,7 +63,7 @@ test("laboratory output asset creation accepts top-level lineage fields", () => 
   assert.equal((createdAsset.sourceId || "").startsWith("source-"), true);
 });
 
-test("laboratory source asset projection lifts lineage from source metadata", () => {
+void test("laboratory source asset projection lifts lineage from source metadata", () => {
   const sourceAsset = buildSourceLabAsset({
     id: "project-reuse",
     createdAt: "2026-04-23T18:30:00.000Z",
@@ -84,7 +84,7 @@ test("laboratory source asset projection lifts lineage from source metadata", ()
   assert.equal(sourceAsset?.derivedFromSourceId, "source-1");
 });
 
-test("laboratory source asset sync does not mirror reused non-source assets into source list", () => {
+void test("laboratory source asset sync does not mirror reused non-source assets into source list", () => {
   const sourcePath = "/tmp/project/artifacts/reveal-frame.png";
   const syncedAssets = syncSourceLabAssetForProject(
     {

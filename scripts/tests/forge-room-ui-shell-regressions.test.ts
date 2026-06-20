@@ -2,7 +2,6 @@ import {
   assert,
   createMinimalForgeUiEnvironment,
   createRoomInstalledCopy,
-  FakeElement,
   findElementsByClass,
   fireEvent,
   loadTranslations,
@@ -12,7 +11,7 @@ import {
   test,
 } from "./forge-room-ui-smoke.helpers.ts";
 
-test("forge-room installed UI shell renders the Phase 2 panel controls under a minimal runtime", async () => {
+void test("forge-room installed UI shell renders the Phase 2 panel controls under a minimal runtime", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
@@ -302,13 +301,13 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.doesNotMatch(uiText, /Check handoff/);
     assert.doesNotMatch(uiText, /Export handoff/);
 
-    const briefInput = environment.app.querySelector("#forge-goal-brief") as FakeElement | null;
+    const briefInput = environment.app.querySelector("#forge-goal-brief");
     assert.ok(briefInput);
     briefInput.value = "Document the repair boundary.";
     fireEvent(briefInput, "input");
     const constraintsInput = environment.app.querySelector(
       "#forge-goal-constraints"
-    ) as FakeElement | null;
+    );
     assert.ok(constraintsInput);
     constraintsInput.value = "Keep the scope local.\nPreserve host logic.";
     fireEvent(constraintsInput, "input");
@@ -338,7 +337,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     fireEvent(editEquipmentButton, "click");
     const equipmentLabelInput = environment.app.querySelector(
       "#forge-profile-editor-equipment-label"
-    ) as FakeElement | null;
+    );
     assert.ok(equipmentLabelInput);
     assert.equal(equipmentLabelInput.value, "Multimeter");
     const inlineEditor = equipmentLabelInput.parentElement;
@@ -353,7 +352,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.match(readTreeText(equipmentRecord), /Multimeter/);
     const cancelProfileEntryButton = environment.app.querySelector(
       "[data-forge-action='cancel-profile-entry']"
-    ) as FakeElement | null;
+    );
     assert.ok(cancelProfileEntryButton);
     fireEvent(cancelProfileEntryButton, "click");
 
@@ -364,17 +363,17 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     fireEvent(addSkillButton, "click");
     const skillLabelInput = environment.app.querySelector(
       "#forge-profile-editor-skill-label"
-    ) as FakeElement | null;
+    );
     const skillLevelSelect = environment.app.querySelector(
       "#forge-profile-editor-skill-level"
-    ) as FakeElement | null;
+    );
     assert.ok(skillLabelInput);
     assert.ok(skillLevelSelect);
     skillLabelInput.value = "Soldering";
     skillLevelSelect.value = "advanced";
     const commitProfileEntryButton = environment.app.querySelector(
       "[data-forge-action='commit-profile-entry']"
-    ) as FakeElement | null;
+    );
     assert.ok(commitProfileEntryButton);
     fireEvent(commitProfileEntryButton, "click");
     const toggleProfileButtonsAfterOpen = environment.app.querySelectorAll(
@@ -420,12 +419,12 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     });
     const closeProfileButton = environment.app.querySelector(
       "[data-forge-action='toggle-profile-editor']"
-    ) as FakeElement | null;
+    );
     assert.ok(closeProfileButton);
     fireEvent(closeProfileButton, "click");
 
     const sessionStageNavButtons = environment.app.querySelectorAll("[data-forge-action='open-stage']");
-    let sessionNextButton = sessionStageNavButtons.find(
+    const sessionNextButton = sessionStageNavButtons.find(
       (element) => element.dataset["forgeActionValue"] === "preflight"
     );
     assert.ok(sessionNextButton);
@@ -675,7 +674,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     });
     const disabledPreflightButton = environment.app.querySelector(
       "[data-forge-action='run-preflight']"
-    ) as FakeElement | null;
+    );
     assert.ok(disabledPreflightButton);
     assert.equal(disabledPreflightButton.disabled, true);
     const offlineText = readTreeText(environment.app);
@@ -701,13 +700,13 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
 
     const runConditionInput = environment.app.querySelector(
       "#forge-run-override-condition-input"
-    ) as FakeElement | null;
+    );
     assert.ok(runConditionInput);
     runConditionInput.value = "Protect nearby plastic";
     fireEvent(runConditionInput, "input");
     const commitConditionButton = environment.app.querySelector(
       "[data-forge-action='commit-run-condition']"
-    ) as FakeElement | null;
+    );
     assert.ok(commitConditionButton);
     fireEvent(commitConditionButton, "click");
     assert.deepEqual(environment.sentEvents.at(-1), {
@@ -721,7 +720,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     });
     const removeConditionButton = environment.app.querySelector(
       "[data-forge-remove-run-condition]"
-    ) as FakeElement | null;
+    );
     assert.ok(removeConditionButton);
     fireEvent(removeConditionButton, "click");
     assert.deepEqual(environment.sentEvents.at(-1), {
@@ -819,7 +818,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.match(trackingText, /Architect Two/);
     const architectSeatSelect = environment.app.querySelector(
       "#forge-run-override-architect-seat"
-    ) as FakeElement | null;
+    );
     assert.ok(architectSeatSelect);
     architectSeatSelect.value = "ai2";
     fireEvent(architectSeatSelect, "change");

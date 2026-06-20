@@ -15,7 +15,7 @@ const secondaryDisplay: LaunchDisplay = {
   workArea: { x: 1920, y: 0, width: 1366, height: 728 },
 };
 
-test("resolveLaunchDisplay prefers an explicit display id", () => {
+void test("resolveLaunchDisplay prefers an explicit display id", () => {
   const display = resolveLaunchDisplay(
     [primaryDisplay, secondaryDisplay],
     primaryDisplay,
@@ -26,7 +26,7 @@ test("resolveLaunchDisplay prefers an explicit display id", () => {
   assert.equal(display.id, 2);
 });
 
-test("resolveLaunchDisplay falls back to the cursor display", () => {
+void test("resolveLaunchDisplay falls back to the cursor display", () => {
   const display = resolveLaunchDisplay([primaryDisplay, secondaryDisplay], primaryDisplay, {
     x: 2200,
     y: 120,
@@ -35,7 +35,7 @@ test("resolveLaunchDisplay falls back to the cursor display", () => {
   assert.equal(display.id, 2);
 });
 
-test("resolveLaunchDisplay uses the nearest display when the cursor is outside all bounds", () => {
+void test("resolveLaunchDisplay uses the nearest display when the cursor is outside all bounds", () => {
   const display = resolveLaunchDisplay([primaryDisplay, secondaryDisplay], primaryDisplay, {
     x: 3350,
     y: 120,

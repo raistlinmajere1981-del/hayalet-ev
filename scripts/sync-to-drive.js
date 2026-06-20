@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global console, process */
 
 import { createHash } from "crypto";
 import {
@@ -269,7 +270,7 @@ async function main() {
       await drive.files.list({ pageSize: 1, fields: "files(id)" });
     } catch (err) {
       if (err.code === 401 || err.message.includes("invalid_grant")) {
-        throw new Error("Token süresi geçmiş. Lütfen uygulamada Google Drive'a yeniden bağlanın.");
+        throw new Error("Token süresi geçmiş. Lütfen uygulamada Google Drive'a yeniden bağlanın.", { cause: err });
       }
       throw err;
     }

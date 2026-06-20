@@ -16,8 +16,8 @@ class FakeSettingsDocument {
   addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
     const handler =
       typeof listener === "function"
-        ? (listener as (event: Event) => void)
-        : (event: Event) => listener.handleEvent(event);
+        ? (listener)
+        : (event: Event) => { listener.handleEvent(event); };
     const listeners = this.listenerSets.get(type) || new Set<(event: Event) => void>();
     listeners.add(handler);
     this.listenerSets.set(type, listeners);
@@ -108,7 +108,7 @@ function updateProcessModule(
   return processRecord;
 }
 
-test("laboratory settings controls persist and join operation execution payloads", () => {
+void test("laboratory settings controls persist and join operation execution payloads", () => {
   const originalElement = globalThis.Element;
   const originalInputElement = globalThis.HTMLInputElement;
   const originalSelectElement = globalThis.HTMLSelectElement;
@@ -193,7 +193,7 @@ test("laboratory settings controls persist and join operation execution payloads
     );
     assert.equal(soundEventsSettings["threshold"], 0.32);
 
-    clickListener({ target: new FakeActionElement("timeline-export-clip") } as Event);
+    clickListener({ target: new FakeActionElement("timeline-export-clip") } as unknown as Event);
     const clipAction = sentEvents.find(function (entry) {
       return entry.payload["action"] === "export-timeline-clip";
     });
@@ -207,7 +207,7 @@ test("laboratory settings controls persist and join operation execution payloads
 
     clickListener({
       target: new FakeActionElement("operation-cancel", "clip-export"),
-    } as Event);
+    } as unknown as Event);
     const cancelAction = sentEvents.find(function (entry) {
       return entry.payload["action"] === "job-cancel";
     });
@@ -236,7 +236,7 @@ test("laboratory settings controls persist and join operation execution payloads
     });
     clickListener({
       target: new FakeActionElement("workspace-roi-export", "roi-overlay-1"),
-    } as Event);
+    } as unknown as Event);
     const roiAction = sentEvents.find(function (entry) {
       return entry.payload["action"] === "export-roi-image";
     });
@@ -250,10 +250,10 @@ test("laboratory settings controls persist and join operation execution payloads
 
     clickListener({
       target: new FakeActionElement("operation-settings-reset", "clip-export"),
-    } as Event);
+    } as unknown as Event);
     clickListener({
       target: new FakeActionElement("analysis-settings-reset", "sound-events"),
-    } as Event);
+    } as unknown as Event);
     const resetWorkbench = asRecord(store.getState().workbench);
     const resetClipSettings = asRecord(
       asRecord(resetWorkbench["operationSettings"])["clip-export"]
@@ -290,7 +290,7 @@ test("laboratory settings controls persist and join operation execution payloads
     );
   } finally {
     if (originalElement === undefined) {
-      delete (globalThis as Record<string, unknown>).Element;
+      delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
         configurable: true,
@@ -312,7 +312,7 @@ test("laboratory settings controls persist and join operation execution payloads
   }
 });
 
-test("laboratory visual settings alter managed process filters and ROI scope", async () => {
+void test("laboratory visual settings alter managed process filters and ROI scope", async () => {
   const framePreviewCalls: Array<Record<string, unknown>> = [];
   const transformCalls: Array<Record<string, unknown>> = [];
   const runtime = createLaboratoryManagedMediaRunnerRuntime({
@@ -472,7 +472,7 @@ test("laboratory visual settings alter managed process filters and ROI scope", a
   assert.match(String(edgeCall?.["filterGraph"] || ""), /^crop=100:80:10:20,/);
 });
 
-test("laboratory managed media runner emits A/B image comparison analysis layers", async () => {
+void test("laboratory managed media runner emits A/B image comparison analysis layers", async () => {
   const transformCalls: Array<Record<string, unknown>> = [];
   const comparisonCalls: Array<Record<string, unknown>> = [];
   const runtime = createLaboratoryManagedMediaRunnerRuntime({
@@ -667,7 +667,7 @@ test("laboratory managed media runner emits A/B image comparison analysis layers
   );
 });
 
-test("laboratory process targeting uses selected image assets for single and comparison analysis", () => {
+void test("laboratory process targeting uses selected image assets for single and comparison analysis", () => {
   const runtime = createLaboratoryProcessTargetingRuntime({
     audioFeatureId: "audio-analysis",
     asNonEmptyString(value) {
@@ -772,7 +772,7 @@ test("laboratory process targeting uses selected image assets for single and com
   );
 });
 
-test("laboratory audio settings drive local analyzers and frozen process snapshots", async () => {
+void test("laboratory audio settings drive local analyzers and frozen process snapshots", async () => {
   const filteredAudioCalls: Array<Record<string, unknown>> = [];
   const spectrogramTargets: string[] = [];
   const openSmileTargets: string[] = [];

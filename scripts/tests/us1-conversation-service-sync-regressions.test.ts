@@ -10,7 +10,6 @@ import {
   Database,
   existsSync,
   FIXED_NOW,
-  join,
   MailSidecarStoreManager,
   MESSAGE_PAYLOAD_END,
   MESSAGE_PAYLOAD_START,
@@ -20,7 +19,7 @@ import {
   Us1ConversationService,
 } from "./us1-conversation-service.helpers.ts";
 
-test("US1 conversation service syncs inbound mail, updates remote profile, and flags room bundles", async () => {
+void test("US1 conversation service syncs inbound mail, updates remote profile, and flags room bundles", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_sync`;
   const store = createSettingsStore(createSettings(accountId));
   const transportStub = createTransportStub();
@@ -29,8 +28,8 @@ test("US1 conversation service syncs inbound mail, updates remote profile, and f
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => store.loadSettings(),
+      saveSettings: async (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -158,7 +157,7 @@ test("US1 conversation service syncs inbound mail, updates remote profile, and f
   }
 });
 
-test("US1 conversation sync keeps explicit inbound new session ids isolated", async () => {
+void test("US1 conversation sync keeps explicit inbound new session ids isolated", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_new_session`;
   const store = createSettingsStore(createSettings(accountId));
   const transportStub = createTransportStub();
@@ -167,8 +166,8 @@ test("US1 conversation sync keeps explicit inbound new session ids isolated", as
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => store.loadSettings(),
+      saveSettings: async (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -252,7 +251,7 @@ test("US1 conversation sync keeps explicit inbound new session ids isolated", as
   }
 });
 
-test("US1 conversation sync does not activate unknown remote users from normal conversation mail", async () => {
+void test("US1 conversation sync does not activate unknown remote users from normal conversation mail", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_skip`;
   const store = createSettingsStore(createSettings(accountId));
   const transportStub = createTransportStub();
@@ -261,8 +260,8 @@ test("US1 conversation sync does not activate unknown remote users from normal c
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => store.loadSettings(),
+      saveSettings: async (settings) => store.saveSettings(settings),
     },
   });
   const activeRemoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -344,7 +343,7 @@ test("US1 conversation sync does not activate unknown remote users from normal c
     assert.equal(result.projectedCount, 0);
     assert.equal(result.skippedCount, 1);
     assert.equal(
-      store.snapshot().remoteUsers.some((remoteUser) => remoteUser.remoteUserId === "stranger@example.com"),
+      (store.snapshot().remoteUsers ?? []).some((remoteUser) => remoteUser.remoteUserId === "stranger@example.com"),
       false
     );
     assert.equal(existsSync(Paths.getAccountDbPath(activeRemoteAccountId)), false);

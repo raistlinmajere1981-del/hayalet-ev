@@ -42,7 +42,7 @@ class FakeDocument {
 
 function walk(root: FakeElement, visit: (element: FakeElement) => void): void {
   visit(root);
-  root.children.forEach((child) => walk(child, visit));
+  root.children.forEach((child) => { walk(child, visit); });
 }
 
 function findAll(root: FakeElement, predicate: (element: FakeElement) => boolean): FakeElement[] {
@@ -53,7 +53,7 @@ function findAll(root: FakeElement, predicate: (element: FakeElement) => boolean
   return matches;
 }
 
-test("repair-room host message normalization covers context and capture ingress payloads", () => {
+void test("repair-room host message normalization covers context and capture ingress payloads", () => {
   const context = normalizeRepairHostMessage({
     type: "host-context",
     payload: {
@@ -108,7 +108,7 @@ test("repair-room host message normalization covers context and capture ingress 
   }
 });
 
-test("repair-room operator profile panel emits behavior-ready update actions", () => {
+void test("repair-room operator profile panel emits behavior-ready update actions", () => {
   const state = createRepairUiSnapshot(createInitialRepairRuntimeState("2026-06-16T00:00:00.000Z"));
   const documentRef = new FakeDocument() as unknown as Document;
 

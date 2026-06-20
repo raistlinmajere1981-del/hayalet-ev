@@ -14,7 +14,7 @@ function readRoomToolServiceTreeSource(): string {
     .join("\n");
 }
 
-test("room tool run request supports companion executable selection", () => {
+void test("room tool run request supports companion executable selection", () => {
   const typeSource = readFileSync("src/types/room-tools.ts", "utf8");
   const serviceSource = readRoomToolServiceTreeSource();
 
@@ -27,7 +27,7 @@ test("room tool run request supports companion executable selection", () => {
   assert.match(serviceSource, /does not expose companion executable/);
 });
 
-test("room tool service stays generic and avoids laboratory-specific branching", () => {
+void test("room tool service stays generic and avoids laboratory-specific branching", () => {
   const serviceSource = readRoomToolServiceTreeSource();
   const handlerSource = readFileSync("electron/handlers/ipc-room-tools.ts", "utf8");
 
@@ -46,7 +46,7 @@ test("room tool service stays generic and avoids laboratory-specific branching",
   assert.doesNotMatch(serviceSource, /yt-dlp command/i);
 });
 
-test("room tool service keeps write roots narrow while allowing packaged tool cwd", () => {
+void test("room tool service keeps write roots narrow while allowing packaged tool cwd", () => {
   const serviceSource = readRoomToolServiceTreeSource();
 
   assert.match(
@@ -61,7 +61,7 @@ test("room tool service keeps write roots narrow while allowing packaged tool cw
   assert.match(serviceSource, /ensureRoomToolRunCwdPath\(request\.roomId, cwd\);/);
 });
 
-test("room tool service supports app-managed installers and system-command probes", () => {
+void test("room tool service supports app-managed installers and system-command probes", () => {
   const serviceSource = readRoomToolServiceTreeSource();
   const typeSource = readFileSync("src/types/room-tools.ts", "utf8");
   const manifestSource = readFileSync("rooms/laboratory/tools/toolchain.manifest.json", "utf8");
@@ -303,7 +303,7 @@ test("room tool service supports app-managed installers and system-command probe
   );
 });
 
-test("room tool service resolves toolchain manifests from installed and workspace fallback layouts", () => {
+void test("room tool service resolves toolchain manifests from installed and workspace fallback layouts", () => {
   const serviceSource = readRoomToolServiceTreeSource();
 
   assert.match(
@@ -342,7 +342,7 @@ test("room tool service resolves toolchain manifests from installed and workspac
   assert.match(serviceSource, /const allowedRoots = \[paths\.storageDir, paths\.toolRuntimeDir\];/);
 });
 
-test("room tool preload and global typings expose the generic room-tools seam", () => {
+void test("room tool preload and global typings expose the generic room-tools seam", () => {
   const preloadSource = readFileSync("electron/preload.cjs", "utf8");
   const globalTypes = readFileSync("src/js/global.d.ts", "utf8");
 

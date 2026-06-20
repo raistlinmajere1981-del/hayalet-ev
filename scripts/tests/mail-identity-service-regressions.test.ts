@@ -126,14 +126,18 @@ function createFetchedHandshakeResult(options: {
   avatarAttachmentName?: string | null;
   attachments?: MailTransportParsedAttachment[];
 }): FetchInboxResult {
-  const text = createHandshakePayload({
+  const payload: Parameters<typeof createHandshakePayload>[0] = {
     messageType: options.messageType,
     email: options.email,
-    nickname: options.nickname,
-    inviteId: options.inviteId,
-    avatar: options.avatar,
-    avatarAttachmentName: options.avatarAttachmentName,
-  });
+  };
+  if (options.nickname !== undefined) payload.nickname = options.nickname;
+  if (options.inviteId !== undefined) payload.inviteId = options.inviteId;
+  if (options.avatar !== undefined) payload.avatar = options.avatar;
+  if (options.avatarAttachmentName !== undefined) {
+    payload.avatarAttachmentName = options.avatarAttachmentName;
+  }
+
+  const text = createHandshakePayload(payload);
 
   return {
     accountId: options.accountId,
@@ -255,8 +259,8 @@ async function createConnectedServiceContext() {
     now: () => FIXED_NOW,
     transport: transportStub.transport,
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => await store.loadSettings(),
+      saveSettings: async (settings) => await store.saveSettings(settings),
     },
   });
 
@@ -277,15 +281,15 @@ async function createConnectedServiceContext() {
   };
 }
 
-test("mail identity service saves and verifies a local mail account", async () => {
+void test("mail identity service saves and verifies a local mail account", async () => {
   const store = createSettingsStore();
   const transportStub = createTransportStub();
   const service = new MailIdentityService({
     now: () => FIXED_NOW,
     transport: transportStub.transport,
     settingsStore: {
-      loadSettings: () => store.loadSettings(),
-      saveSettings: (settings) => store.saveSettings(settings),
+      loadSettings: async () => await store.loadSettings(),
+      saveSettings: async (settings) => await store.saveSettings(settings),
     },
   });
 
@@ -308,7 +312,7 @@ test("mail identity service saves and verifies a local mail account", async () =
   assert.equal(verifyResult.state?.verifiedUserEmail, "local@example.com");
 });
 
-test("updating a verified local mail account keeps the old verified identity until re-verify", async () => {
+void test("updating a verified local mail account keeps the old verified identity until re-verify", async () => {
   const { service, store, accountId } = await createConnectedServiceContext();
 
   const updateResult = await service.upsertMailAccount(
@@ -330,7 +334,7 @@ test("updating a verified local mail account keeps the old verified identity unt
   assert.equal(store.snapshot().user?.email, "changed@example.com");
 });
 
-test("inviteRemoteUser creates an invite_sent remote user bound to the selected mail account", async () => {
+void test("inviteRemoteUser creates an invite_sent remote user bound to the selected mail account", async () => {
   const { service, store, transportStub, accountId } = await createConnectedServiceContext();
   const avatarPath = join(Paths.getDataDir(), "mail-identity-local-avatar.png");
   rmSync(avatarPath, { force: true });
@@ -362,7 +366,7 @@ test("inviteRemoteUser creates an invite_sent remote user bound to the selected 
     assert.equal(transportStub.sentMessages[0]?.attachments?.length, 1);
     assert.equal(transportStub.sentMessages[0]?.attachments?.[0]?.path, avatarPath);
 
-    const envelope = extractHandshakeEnvelope(transportStub.sentMessages[0] as SendMailRequest);
+    const envelope = extractHandshakeEnvelope(transportStub.sentMessages[0]);
     assert.equal(
       (envelope["profile"] as Record<string, unknown>)?.["avatarAttachmentName"],
       "us1-avatar.png"
@@ -377,7 +381,7 @@ test("inviteRemoteUser creates an invite_sent remote user bound to the selected 
   }
 });
 
-test("syncRemoteUsers promotes incoming invite to handshake_pending and incoming accept to active", async () => {
+void test("syncRemoteUsers promotes incoming invite to handshake_pending and incoming accept to active", async () => {
   const { service, store, transportStub, accountId } = await createConnectedServiceContext();
   const avatarContent = Buffer.from("remote-avatar");
   const avatarAttachmentName = "us1-avatar.png";
@@ -452,7 +456,7 @@ test("syncRemoteUsers promotes incoming invite to handshake_pending and incoming
   }
 });
 
-test("acceptRemoteUser sends an accept message and activates the remote user", async () => {
+void test("acceptRemoteUser sends an accept message and activates the remote user", async () => {
   const { service, store, transportStub, accountId } = await createConnectedServiceContext();
   try {
     await store.saveSettings({
@@ -490,7 +494,7 @@ test("acceptRemoteUser sends an accept message and activates the remote user", a
   }
 });
 
-test("rejectRemoteUser sends a reject message and removes the pending remote user from receiver settings", async () => {
+void test("rejectRemoteUser sends a reject message and removes the pending remote user from receiver settings", async () => {
   const { service, store, transportStub, accountId } = await createConnectedServiceContext();
 
   await store.saveSettings({
@@ -526,7 +530,7 @@ test("rejectRemoteUser sends a reject message and removes the pending remote use
   );
 });
 
-test("syncRemoteUsers marks invite sender side as rejected when a reject handshake arrives", async () => {
+void test("syncRemoteUsers marks invite sender side as rejected when a reject handshake arrives", async () => {
   const { service, store, transportStub, accountId } = await createConnectedServiceContext();
 
   await store.saveSettings({
@@ -568,7 +572,7 @@ test("syncRemoteUsers marks invite sender side as rejected when a reject handsha
   );
 });
 
-test("deleteMailAccount removes linked remote users and disconnects the US1 slot", async () => {
+void test("deleteMailAccount removes linked remote users and disconnects the US1 slot", async () => {
   const { service, store, accountId } = await createConnectedServiceContext();
 
   await store.saveSettings({

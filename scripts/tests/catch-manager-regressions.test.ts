@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { CatchManager } from "../../src/js/modules/catch-manager.ts";
 
-test("catch manager scans only latest assistant message", () => {
+void test("catch manager scans only latest assistant message", () => {
   const commands = CatchManager.catchCommands({
     provider: "ai2",
     webUrl: "https://grok.com/c/abc",
@@ -21,7 +21,7 @@ test("catch manager scans only latest assistant message", () => {
   assert.equal(commands[0]?.args, "42");
 });
 
-test("catch manager respects prevCount window before latest assistant selection", () => {
+void test("catch manager respects prevCount window before latest assistant selection", () => {
   const commands = CatchManager.catchCommands({
     provider: "ai1",
     webUrl: "https://chatgpt.com/c/xyz",
@@ -41,7 +41,7 @@ test("catch manager respects prevCount window before latest assistant selection"
   assert.equal(commands[0]?.args, "run");
 });
 
-test("catch manager ignores malformed single-plus commands", () => {
+void test("catch manager ignores malformed single-plus commands", () => {
   const commands = CatchManager.catchCommands({
     provider: "ai2",
     webUrl: "https://example.com/room",
@@ -57,7 +57,7 @@ test("catch manager ignores malformed single-plus commands", () => {
   assert.equal(commands.length, 0);
 });
 
-test("catch manager keeps structured Team Tetris AI commands from the latest assistant message", () => {
+void test("catch manager keeps structured Team Tetris AI commands from the latest assistant message", () => {
   const commands = CatchManager.catchCommands({
     provider: "ai1",
     webUrl: "https://chatgpt.com/c/team-tetris",
@@ -75,7 +75,7 @@ test("catch manager keeps structured Team Tetris AI commands from the latest ass
   assert.match(commands[0]?.args ?? "", /"turnToken":"tt_token"/);
 });
 
-test("catch manager keeps balanced SlotBridge JSON when payload contains closing parentheses", () => {
+void test("catch manager keeps balanced SlotBridge JSON when payload contains closing parentheses", () => {
   const commands = CatchManager.catchCommands({
     provider: "ai1",
     webUrl: "https://chatgpt.com/c/slot-bridge",

@@ -62,7 +62,7 @@ const sampleDraftTasks = [
   },
 ];
 
-test("forge-room task editor updates and removes structured draft tasks without leaving stale dependencies", () => {
+void test("forge-room task editor updates and removes structured draft tasks without leaving stale dependencies", () => {
   const updated = upsertForgeDraftTask({
     acceptanceCriteria: ["Repair Room can import the handoff JSON."],
     draftTasks: sampleDraftTasks,
@@ -88,14 +88,14 @@ test("forge-room task editor updates and removes structured draft tasks without 
   const removed = removeForgeDraftTask({
     acceptanceCriteria: ["Repair Room can import the handoff JSON."],
     draftTasks: updated.draftTasks,
-    taskId: updatedTopLevelTasks[0]!.id,
+    taskId: updatedTopLevelTasks[0].id,
   });
   const remainingTopLevelTasks = removed.draftTasks.filter((task) => task.level === 1);
   assert.equal(remainingTopLevelTasks.length, 1);
   assert.deepEqual(remainingTopLevelTasks[0]?.dependsOnTaskIds, []);
 });
 
-test("forge-room task editor updates approved dispatch settings and rebuilds queued assignments", () => {
+void test("forge-room task editor updates approved dispatch settings and rebuilds queued assignments", () => {
   const approvedTasks = sampleDraftTasks
     .filter((task) => task.level === 1)
     .map((task) => ({

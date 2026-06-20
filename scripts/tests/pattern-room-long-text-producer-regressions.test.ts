@@ -30,11 +30,11 @@ function createLongTextInput(partial: Partial<LongTextInput> = {}): LongTextInpu
   };
 }
 
-test("pattern-room long text segmenter returns no segments for blank text", () => {
+void test("pattern-room long text segmenter returns no segments for blank text", () => {
   assert.deepEqual(segmentLongText(" \n\t "), []);
 });
 
-test("pattern-room long text segmenter creates one segment for one paragraph", () => {
+void test("pattern-room long text segmenter creates one segment for one paragraph", () => {
   const segments = segmentLongText("  One paragraph only.  ");
 
   assert.equal(segments.length, 1);
@@ -46,7 +46,7 @@ test("pattern-room long text segmenter creates one segment for one paragraph", (
   assert.equal(segments[0]?.speaker, null);
 });
 
-test("pattern-room long text segmenter splits multiple paragraphs into multiple segments", () => {
+void test("pattern-room long text segmenter splits multiple paragraphs into multiple segments", () => {
   const segments = segmentLongText("First paragraph.\n\nSecond paragraph.\n\nThird paragraph.");
 
   assert.equal(segments.length, 3);
@@ -56,7 +56,7 @@ test("pattern-room long text segmenter splits multiple paragraphs into multiple 
   );
 });
 
-test("pattern-room long text segmenter splits long paragraphs within the limit", () => {
+void test("pattern-room long text segmenter splits long paragraphs within the limit", () => {
   const segments = segmentLongText("abcdefghij".repeat(4), { maxSegmentLength: 12 });
 
   assert.equal(segments.length > 1, true);
@@ -66,7 +66,7 @@ test("pattern-room long text segmenter splits long paragraphs within the limit",
   );
 });
 
-test("pattern-room long text segmenter prefers sentence boundaries when possible", () => {
+void test("pattern-room long text segmenter prefers sentence boundaries when possible", () => {
   const segments = segmentLongText("First sentence. Second sentence continues.", {
     maxSegmentLength: 20,
   });
@@ -75,7 +75,7 @@ test("pattern-room long text segmenter prefers sentence boundaries when possible
   assert.equal(segments[1]?.text.startsWith("Second sentence"), true);
 });
 
-test("pattern-room long text segmenter keeps deterministic ids, order, and labels", () => {
+void test("pattern-room long text segmenter keeps deterministic ids, order, and labels", () => {
   const labelSource = `${"A".repeat(90)}\n\nSecond paragraph.`;
   const segments = segmentLongText(labelSource);
 
@@ -90,7 +90,7 @@ test("pattern-room long text segmenter keeps deterministic ids, order, and label
   assert.equal(segments[0]?.label, "A".repeat(80));
 });
 
-test("pattern-room long text producer rejects empty required fields", () => {
+void test("pattern-room long text producer rejects empty required fields", () => {
   const producer = createLongTextProducer({ now: () => FIXED_NOW });
   const validation = producer.validateInput(
     createLongTextInput({
@@ -115,7 +115,7 @@ test("pattern-room long text producer rejects empty required fields", () => {
   );
 });
 
-test("pattern-room long text producer rejects unsupported source kinds", () => {
+void test("pattern-room long text producer rejects unsupported source kinds", () => {
   const producer = createLongTextProducer({ now: () => FIXED_NOW });
 
   const subtitleValidation = producer.validateInput(
@@ -131,7 +131,7 @@ test("pattern-room long text producer rejects unsupported source kinds", () => {
   assert.equal(invalidValidation.errors[0]?.code, "invalid-source-kind");
 });
 
-test("pattern-room long text producer previews one package with segment estimate", () => {
+void test("pattern-room long text producer previews one package with segment estimate", () => {
   const producer = createLongTextProducer({
     now: () => FIXED_NOW,
     maxSegmentLength: 50,
@@ -146,7 +146,7 @@ test("pattern-room long text producer previews one package with segment estimate
   assert.deepEqual(preview.warnings, []);
 });
 
-test("pattern-room long text producer emits one valid SourcePackage", () => {
+void test("pattern-room long text producer emits one valid SourcePackage", () => {
   const producer = createLongTextProducer({
     now: () => FIXED_NOW,
     maxSegmentLength: 50,
@@ -201,15 +201,17 @@ test("pattern-room long text producer emits one valid SourcePackage", () => {
   assert.equal(parsed.sourceKind, "article");
 });
 
-test("pattern-room long text producer defaults optional language to Turkish", () => {
+void test("pattern-room long text producer defaults optional language to Turkish", () => {
   const producer = createLongTextProducer({ now: () => FIXED_NOW });
-  const pkg = producer.produce(createLongTextInput({ language: undefined })).packages[0];
+  const input = createLongTextInput({});
+  delete input.language;
+  const pkg = producer.produce(input).packages[0];
 
   assert.ok(pkg);
   assert.equal(pkg.language, "tr");
 });
 
-test("pattern-room long text producer returns errors without packages for invalid input", () => {
+void test("pattern-room long text producer returns errors without packages for invalid input", () => {
   const producer = createLongTextProducer({ now: () => FIXED_NOW });
   const result = producer.produce(createLongTextInput({ text: "" }));
 
@@ -217,7 +219,7 @@ test("pattern-room long text producer returns errors without packages for invali
   assert.equal(result.errors[0]?.code, "empty-text");
 });
 
-test("pattern-room long text output imports as a source draft without board-ready evidence", () => {
+void test("pattern-room long text output imports as a source draft without board-ready evidence", () => {
   const producer = createLongTextProducer({
     now: () => FIXED_NOW,
     maxSegmentLength: 50,
@@ -247,7 +249,7 @@ test("pattern-room long text output imports as a source draft without board-read
   assert.equal(importResult.stats.edgesCreated, 0);
 });
 
-test("pattern-room long text producer works with producer orchestration", () => {
+void test("pattern-room long text producer works with producer orchestration", () => {
   const producer = createLongTextProducer({
     now: () => FIXED_NOW,
     maxSegmentLength: 50,
@@ -263,7 +265,7 @@ test("pattern-room long text producer works with producer orchestration", () => 
   assert.equal(result.stats.totalNodes, 0);
 });
 
-test("pattern-room long text producer rejects oversized text", () => {
+void test("pattern-room long text producer rejects oversized text", () => {
   const producer = createLongTextProducer({
     now: () => FIXED_NOW,
     maxInputSizeHint: 5,
@@ -277,7 +279,7 @@ test("pattern-room long text producer rejects oversized text", () => {
   );
 });
 
-test("pattern-room long text producer does not mutate input", () => {
+void test("pattern-room long text producer does not mutate input", () => {
   const producer = createLongTextProducer({ now: () => FIXED_NOW });
   const input = createLongTextInput();
   const before = JSON.stringify(input);
@@ -287,7 +289,7 @@ test("pattern-room long text producer does not mutate input", () => {
   assert.equal(JSON.stringify(input), before);
 });
 
-test("pattern-room long text producer stays pure and disconnected from runtime surfaces", async () => {
+void test("pattern-room long text producer stays pure and disconnected from runtime surfaces", async () => {
   const files = [
     "rooms/pattern-room/shared/source-producers/producers/long-text-segmenter.ts",
     "rooms/pattern-room/shared/source-producers/producers/long-text-producer.ts",

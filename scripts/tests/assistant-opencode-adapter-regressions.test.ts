@@ -13,7 +13,7 @@ function readConfig(): string {
   return readFileSync(configPath, "utf8");
 }
 
-test("opencode config derives a workspace route from the encoded directory path", () => {
+void test("opencode config derives a workspace route from the encoded directory path", () => {
   const configContent = readConfig();
 
   assert.match(configContent, /function encodeWorkspaceSegment\(workspace: string\): string/);
@@ -27,7 +27,7 @@ test("opencode config derives a workspace route from the encoded directory path"
   );
 });
 
-test("opencode adapter prefers the workspace-scoped route returned from workspacePath", () => {
+void test("opencode adapter prefers the workspace-scoped route returned from workspacePath", () => {
   const adapterContent = readAdapter();
 
   assert.match(adapterContent, /private _resolveWorkspaceUrl\(/);

@@ -50,7 +50,7 @@ function readRoomCatalog(locale: "en" | "tr"): TranslationCatalog {
   ) as TranslationCatalog;
 }
 
-test("whisper shell bindings resolve through the entrance namespace", () => {
+void test("whisper shell bindings resolve through the entrance namespace", () => {
   const indexHtml = readFileSync("src/index.html", "utf8");
   const whisperHtml = readFileSync("src/pages/whisper.html", "utf8");
 
@@ -61,7 +61,7 @@ test("whisper shell bindings resolve through the entrance namespace", () => {
   assert.doesNotMatch(whisperHtml, /data-shell-i18n-text="panels\.whisper"/);
 });
 
-test("catalog cleanup removes stale built-in keys and preserves translated replacements", () => {
+void test("catalog cleanup removes stale built-in keys and preserves translated replacements", () => {
   const enPack = getBuiltInLanguagePack("en");
   const trPack = getBuiltInLanguagePack("tr");
 
@@ -109,14 +109,14 @@ test("catalog cleanup removes stale built-in keys and preserves translated repla
   }
 });
 
-test("game-room room catalogs stay structurally aligned across EN and TR", () => {
+void test("game-room room catalogs stay structurally aligned across EN and TR", () => {
   const enCatalog = readRoomCatalog("en");
   const trCatalog = readRoomCatalog("tr");
 
   assert.deepEqual(listCatalogLeafPaths(trCatalog).sort(), listCatalogLeafPaths(enCatalog).sort());
 });
 
-test("room runtime locale bridge refreshes game-room UI and host copy", () => {
+void test("room runtime locale bridge refreshes game-room UI and host copy", () => {
   const roomPageSource = readFileSync("src/js/pages/room-page.ts", "utf8");
   const runtimeContextSource = readFileSync("src/js/pages/room-page/runtime-context.ts", "utf8");
   const runtimeSubscriptionsSource = readFileSync(
@@ -339,7 +339,7 @@ function createGameRoomUiRuntime(initialLanguage = "en-US"): {
   };
 }
 
-test("game-room UI smoke test reflects runtime locale updates", () => {
+void test("game-room UI smoke test reflects runtime locale updates", () => {
   const runtime = createGameRoomUiRuntime("en-US");
   const root = runtime.document.body;
   const trCatalog = readRoomCatalog("tr");
@@ -435,7 +435,7 @@ test("game-room UI smoke test reflects runtime locale updates", () => {
   assert.ok(findAll(root, (element) => element.textContent === "Maci Sifirla").length > 0);
 });
 
-test("game-room UI smoke test renders the Team Tetris bootstrap from active feature context", () => {
+void test("game-room UI smoke test renders the Team Tetris bootstrap from active feature context", () => {
   const runtime = createGameRoomUiRuntime("en-US");
   const root = runtime.document.body;
   const trCatalog = readRoomCatalog("tr");

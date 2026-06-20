@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { testElectron } from "../../mcp-server/tools/electron-tools.ts";
 
-test("testElectron should not start wrapper when runtime mode is already app", async () => {
+void test("testElectron should not start wrapper when runtime mode is already app", async () => {
   const calls: string[] = [];
 
   const runner = async (
@@ -13,12 +13,7 @@ test("testElectron should not start wrapper when runtime mode is already app", a
     calls.push(command);
 
     if (command === "npm run mode:status") {
-      return {
-        stdout:
-          "\n> app@5.4.0 mode:status\n> node scripts/transition.mjs status\n\n{\n  \"success\": true,\n  \"mode\": \"app\"\n}\n",
-
-        stderr: "",
-      };
+      return { stdout: "\n> app@5.4.0 mode:status\n> node scripts/transition.mjs status\n\n{\n  \"success\": true,\n  \"mode\": \"app\"\n}\n", stderr: "" };
     }
 
     if (command === "npm run start") {
@@ -39,7 +34,7 @@ test("testElectron should not start wrapper when runtime mode is already app", a
   assert.deepEqual(calls, ["npm run mode:status"]);
 });
 
-test("testElectron should not start wrapper when app window is already open in terminal mode", async () => {
+void test("testElectron should not start wrapper when app window is already open in terminal mode", async () => {
   const calls: string[] = [];
 
   const runner = async (
@@ -49,11 +44,7 @@ test("testElectron should not start wrapper when app window is already open in t
     calls.push(command);
 
     if (command === "npm run mode:status") {
-      return {
-        stdout:
-          "\n> app@5.4.0 mode:status\n> node scripts/transition.mjs status\n\n{\n  \"success\": true,\n  \"mode\": \"terminal\",\n  \"appOpen\": true,\n  \"electronConnectionAvailable\": true\n}\n",
-        stderr: "",
-      };
+      return { stdout: "\n> app@5.4.0 mode:status\n> node scripts/transition.mjs status\n\n{\n  \"success\": true,\n  \"mode\": \"terminal\",\n  \"appOpen\": true,\n  \"electronConnectionAvailable\": true\n}\n", stderr: "" };
     }
 
     if (command === "npm run start") {

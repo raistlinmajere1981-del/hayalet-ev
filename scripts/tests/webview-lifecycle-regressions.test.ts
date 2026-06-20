@@ -90,7 +90,7 @@ function withMockDocument<T>(mountById: Record<string, MockMount | null>, fn: ()
   }
 }
 
-test("ensureWebviewMounted appends webview to slot mount and applies layout styles", () => {
+void test("ensureWebviewMounted appends webview to slot mount and applies layout styles", () => {
   const webview = createWebview();
   const mount: MockMount = {
     children: [],
@@ -101,7 +101,7 @@ test("ensureWebviewMounted appends webview to slot mount and applies layout styl
   };
 
   const moved = withMockDocument({ "ai1-webview-mount": mount }, () =>
-    ensureWebviewMounted("ai1", webview as unknown as HTMLElement)
+    ensureWebviewMounted("ai1", webview as unknown as any)
   );
 
   assert.equal(moved, true);
@@ -109,23 +109,23 @@ test("ensureWebviewMounted appends webview to slot mount and applies layout styl
   assert.equal(webview.classList.contains("webview-frame"), true);
 });
 
-test("markWebviewDetached parks webview and clears src", () => {
+void test("markWebviewDetached parks webview and clears src", () => {
   const webview = createWebview();
   webview.setAttribute("src", "https://example.test");
 
-  markWebviewDetached(webview as unknown as HTMLElement);
+  markWebviewDetached(webview as unknown as any);
 
   assert.equal(webview.getAttribute("data-detached"), "1");
   assert.equal(webview.getAttribute("src"), null);
   assert.equal(webview.classList.contains("is-hidden"), true);
 });
 
-test("markWebviewAttached clears detached flag and makes webview visible", () => {
+void test("markWebviewAttached clears detached flag and makes webview visible", () => {
   const webview = createWebview();
   webview.setAttribute("data-detached", "1");
   webview.style.display = "none";
 
-  markWebviewAttached(webview as unknown as HTMLElement);
+  markWebviewAttached(webview as unknown as any);
 
   assert.equal(webview.getAttribute("data-detached"), null);
   assert.equal(webview.classList.contains("is-hidden"), false);

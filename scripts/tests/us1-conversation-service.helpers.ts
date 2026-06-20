@@ -16,7 +16,13 @@ import { buildRemoteEmailAccountId } from "../../src/types/archive.ts";
 import { createDefaultSettings } from "../../src/types/settings-defaults.ts";
 import type { AppSettings, MailTransportAccountConfig } from "../../src/types/settings.ts";
 import { normalizeSettings } from "../../src/js/modules/settings/settings-schema.ts";
-import type { FetchInboxResult, SendMailRequest } from "../../electron/mail-transport/index.ts";
+import type {
+  FetchInboxResult,
+  MailTransportMessageAddress,
+  MailTransportParsedAttachment,
+  ProcessIncomingMessageResult,
+  SendMailRequest,
+} from "../../electron/mail-transport/index.ts";
 
 export {
   assert,
@@ -68,10 +74,10 @@ export function createSettingsStore(initial: AppSettings) {
   let current = normalizeSettings(initial);
 
   return {
-    async loadSettings(): Promise<AppSettings> {
+    loadSettings(): AppSettings {
       return clone(current);
     },
-    async saveSettings(next: AppSettings): Promise<boolean> {
+    saveSettings(next: AppSettings): boolean {
       current = normalizeSettings(clone(next));
       return true;
     },
@@ -211,8 +217,8 @@ export function createTransportStub() {
           response: "250 queued",
           remoteUserId: message.remoteUserId ?? null,
           localSessionId: message.localSessionId ?? null,
-          threadMessageId: message.threadMessageId ?? transportMessageId,
-        };
+            threadMessageId: message.threadMessageId ?? transportMessageId,
+          };
       },
       async fetchInbox(account: { id: string }) {
         return (
@@ -302,8 +308,9 @@ export function extractConversationEnvelope(message: SendMailRequest): Record<st
   const match = text.match(
     /--- HAYALET_EV_US1_MESSAGE_PAYLOAD ---\s*([\s\S]+?)\s*--- \/HAYALET_EV_US1_MESSAGE_PAYLOAD ---/
   );
-  assert.ok(match?.[1]);
-  return JSON.parse(match[1]) as Record<string, unknown>;
+  const matched = match?.[1];
+  assert.ok(matched != null && matched !== "");
+  return JSON.parse(matched) as Record<string, unknown>;
 }
 
 export function buildFetchedConversationMessage(options: {
@@ -331,12 +338,12 @@ export function buildFetchedConversationMessage(options: {
   const threadMessageId = options.threadMessageId ?? options.transportMessageId;
 
   return {
-    status: "processed",
+    status: "processed" as const,
     duplicate: false,
     accountId: options.accountId,
     mailbox: "INBOX",
     uid: options.uid,
-    threadId: null,
+    threadId: null as string | null,
     transportMessageId: options.transportMessageId,
     localMessageId: options.localMessageId,
     fingerprint: `fingerprint-${options.uid}`,
@@ -347,39 +354,42 @@ export function buildFetchedConversationMessage(options: {
     threadMessageId,
     parsed: {
       transportMessageId: options.transportMessageId,
-      inReplyTo: null,
-      references: [],
+      inReplyTo: null as string | null,
+      references: [] as string[],
       subject: options.subject ?? "Remote conversation",
-      text: buildConversationPayload(nickname, options.profileRevision ?? 1, options.text, {
-        localSessionId,
-        mode: options.mode,
-        title: options.title,
-        sentAt,
-        profile: {
-          remoteUserId,
-          email: remoteUserId,
-          nickname,
-          profileRevision: options.profileRevision ?? 1,
-        },
-        roomEvent: options.roomEvent,
-        roomCommand: options.roomCommand,
-      }),
-      html: null,
+      text: (() => {
+        const payload: Parameters<typeof buildConversationPayload>[3] = {
+          localSessionId,
+          sentAt,
+          profile: {
+            remoteUserId,
+            email: remoteUserId,
+            nickname,
+            profileRevision: options.profileRevision ?? 1,
+          },
+        };
+        if (options.mode !== undefined) payload.mode = options.mode;
+        if (options.title !== undefined) payload.title = options.title;
+        if (options.roomEvent !== undefined) payload.roomEvent = options.roomEvent;
+        if (options.roomCommand !== undefined) payload.roomCommand = options.roomCommand;
+        return buildConversationPayload(nickname, options.profileRevision ?? 1, options.text, payload);
+      })(),
+      html: null as string | null,
       headersHash: `headers-${options.uid}`,
       headerLines: [
         `X-Hayalet-Ev-Protocol: ${MESSAGE_PROTOCOL}`,
         ...(localSessionId !== null ? [`X-Hayalet-Ev-Session-Id: ${localSessionId}`] : []),
       ],
-      from: [{ name: nickname, address: remoteUserId }],
-      to: [],
-      cc: [],
-      bcc: [],
-      replyTo: [],
-      attachments: [],
+      from: [{ name: nickname, address: remoteUserId }] as MailTransportMessageAddress[],
+      to: [] as MailTransportMessageAddress[],
+      cc: [] as MailTransportMessageAddress[],
+      bcc: [] as MailTransportMessageAddress[],
+      replyTo: [] as MailTransportMessageAddress[],
+      attachments: [] as MailTransportParsedAttachment[],
       receivedAt: sentAt,
       rawSize: 256,
     },
-  };
+  } satisfies ProcessIncomingMessageResult;
 }
 
 export function cleanupAccount(accountId: string): void {
@@ -440,7 +450,7 @@ export function rmSync(path: string, options?: { recursive?: boolean; force?: bo
   }
   
   // After all retries exhausted, log and continue (don't fail tests)
-  // eslint-disable-next-line no-console
+   
   console.warn("rmSync wrapper: failed to remove after retries", path, lastError);
 }
 

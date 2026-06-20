@@ -14,7 +14,7 @@ function createSettingsHarness(initialThemeId: string) {
         activeThemeId: initialThemeId,
       },
     },
-  };
+  } as unknown as AppSettings;
   const listeners = new Set<(event: { settings: unknown; changedPaths: string[] }) => void>();
 
   return {
@@ -24,14 +24,19 @@ function createSettingsHarness(initialThemeId: string) {
       },
       async set(path: string, value: unknown): Promise<boolean> {
         assert.equal(path, "scene.appearance.activeThemeId");
+        const appearance = {
+          ...(snapshot.scene?.appearance ?? {}),
+        };
+        if (typeof value === "string") {
+          appearance.activeThemeId = value;
+        } else {
+          delete appearance.activeThemeId;
+        }
         snapshot = {
           ...snapshot,
           scene: {
             ...(snapshot.scene ?? {}),
-            appearance: {
-              ...(snapshot.scene?.appearance ?? {}),
-              activeThemeId: typeof value === "string" ? value : null,
-            },
+            appearance: appearance,
           },
         };
         listeners.forEach((listener) => {
@@ -73,7 +78,7 @@ function createSceneThemeRegistration(
   };
 }
 
-test("scene theme manager falls back to the built-in theme and ignores installed theme shadowing", () => {
+void test("scene theme manager falls back to the built-in theme and ignores installed theme shadowing", () => {
   const builtInTheme = createSceneThemeRegistration("castle", "built-in");
   const shadowCastleTheme = createSceneThemeRegistration("castle", "installed");
   const importedTheme = createSceneThemeRegistration("midnight", "installed");
@@ -103,7 +108,7 @@ test("scene theme manager falls back to the built-in theme and ignores installed
   ]);
 });
 
-test("scene theme manager persists the selected runtime theme through settings", async () => {
+void test("scene theme manager persists the selected runtime theme through settings", async () => {
   const builtInTheme = createSceneThemeRegistration("castle", "built-in");
   const importedTheme = createSceneThemeRegistration("midnight", "installed");
   const { settingsManager } = createSettingsHarness("castle");
@@ -128,7 +133,7 @@ test("scene theme manager persists the selected runtime theme through settings",
   assert.ok(observedReasons.includes("manual:midnight"));
 });
 
-test("scene theme manager falls back to the bundled theme when an installed theme disappears", () => {
+void test("scene theme manager falls back to the bundled theme when an installed theme disappears", () => {
   const builtInTheme = createSceneThemeRegistration("castle", "built-in");
   const registryListeners = new Set<() => void>();
   let installedThemes = [createSceneThemeRegistration("midnight", "installed")];

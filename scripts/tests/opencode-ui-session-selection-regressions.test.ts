@@ -74,7 +74,7 @@ function createContext(options: {
   };
 }
 
-test("opencode-ui session selection opens a new session when resume mode is new", async () => {
+void test("opencode-ui session selection opens a new session when resume mode is new", async () => {
   const context = createContext({
     sessions: [createSession("session-latest", 20), createSession("session-older", 10)],
     activeSessionId: "session-latest",
@@ -89,7 +89,7 @@ test("opencode-ui session selection opens a new session when resume mode is new"
   assert.equal(context.loadHistoryCalls, 1);
 });
 
-test("opencode-ui session selection falls back to shared active session when explicit resume id is stale", async () => {
+void test("opencode-ui session selection falls back to shared active session when explicit resume id is stale", async () => {
   const context = createContext({
     sessions: [createSession("session-latest", 20), createSession("session-shared", 10)],
     activeSessionId: "session-shared",

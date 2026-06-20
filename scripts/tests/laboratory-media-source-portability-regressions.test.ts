@@ -76,7 +76,7 @@ async function writeWorkspaceRoom(baseDir: string, roomId: string): Promise<void
   );
 }
 
-test("installed room export skips room runtime binaries and install snapshots", async () => {
+void test("installed room export skips room runtime binaries and install snapshots", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "laboratory-portability-"));
   const workspaceRoot = join(tempRoot, "rooms");
   const installedRoot = join(tempRoot, "data", "rooms");

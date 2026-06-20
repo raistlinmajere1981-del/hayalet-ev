@@ -7,7 +7,7 @@ import test from "node:test";
 const projectRoot = process.cwd();
 const tscCliPath = resolve(projectRoot, "node_modules", "typescript", "bin", "tsc");
 
-test("electron typecheck has no TS2375 in log-reader", () => {
+void test("electron typecheck has no TS2375 in log-reader", () => {
   const result = spawnSync(
     process.execPath,
     [tscCliPath, "--noEmit", "-p", "electron/tsconfig.electron.json"],
@@ -27,7 +27,7 @@ test("electron typecheck has no TS2375 in log-reader", () => {
   assert.doesNotMatch(output, /electron\/logger\/log-reader\.ts\(\d+,\d+\): error TS2375/);
 });
 
-test("renderer and main loggers persist the active locale at write time", () => {
+void test("renderer and main loggers persist the active locale at write time", () => {
   const rendererSource = readFileSync("src/js/modules/logger/Logger.ts", "utf8");
   const mainSource = readFileSync("electron/logger/core/LoggerCore.ts", "utf8");
 
@@ -37,7 +37,7 @@ test("renderer and main loggers persist the active locale at write time", () => 
   assert.match(mainSource, /messageKey:\s*key/);
 });
 
-test("log reader preserves stored locale metadata without retranslation", () => {
+void test("log reader preserves stored locale metadata without retranslation", () => {
   const source = readFileSync("electron/logger/log-reader.ts", "utf8");
 
   assert.match(source, /const localeRaw = parsed\["locale"\]/);

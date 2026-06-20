@@ -4,9 +4,10 @@ import test from "node:test";
 import { ConversationListManager } from "../../src/js/modules/conversation-list-manager.ts";
 import { AppState } from "../../src/js/modules/app-state.ts";
 import { SettingsManager } from "../../src/js/modules/settings-manager.ts";
-import { SlotController, SlotEvent } from "../../src/js/modules/slot-controller.ts";
+import type { SlotEvent } from "../../src/js/modules/slot-controller.ts";
+import { SlotController } from "../../src/js/modules/slot-controller.ts";
 
-test("slot account change triggers conversation list refresh", async () => {
+void test("slot account change triggers conversation list refresh", async () => {
   let settingsListener: ((event: { changedPaths: string[] }) => void) | null = null;
   let refreshCallCount = 0;
   let renderAllCallCount = 0;
@@ -47,9 +48,10 @@ test("slot account change triggers conversation list refresh", async () => {
   try {
     ConversationListManager.subscribeToSettings();
 
-    assert.ok(settingsListener !== null, "settings listener should be registered");
+    const sl = settingsListener!;
+    assert.ok(sl !== null, "settings listener should be registered");
 
-    settingsListener({ changedPaths: ["slots.ai1.accountId"] });
+    sl({ changedPaths: ["slots.ai1.accountId"] });
 
     assert.equal(
       refreshCallCount,
@@ -70,7 +72,7 @@ test("slot account change triggers conversation list refresh", async () => {
   }
 });
 
-test("ai0 session change refreshes topbar with stored selection instead of stale DOM value", async () => {
+void test("ai0 session change refreshes topbar with stored selection instead of stale DOM value", async () => {
   let settingsListener: ((event: { changedPaths: string[] }) => void) | null = null;
   const refreshCalls: Array<{
     silent?: boolean;
@@ -114,9 +116,10 @@ test("ai0 session change refreshes topbar with stored selection instead of stale
   try {
     ConversationListManager.subscribeToSettings();
 
-    assert.ok(settingsListener !== null, "settings listener should be registered");
+    const sl = settingsListener!;
+    assert.ok(sl !== null, "settings listener should be registered");
 
-    settingsListener({ changedPaths: ["assistants.lastOpencodeUiSessionId"] });
+    sl({ changedPaths: ["assistants.lastOpencodeUiSessionId"] });
 
     assert.deepEqual(refreshCalls, [
       {
@@ -134,7 +137,7 @@ test("ai0 session change refreshes topbar with stored selection instead of stale
   }
 });
 
-test("llm new conversation selection navigates to a local session URL", async () => {
+void test("llm new conversation selection navigates to a local session URL", async () => {
   const globalScope = globalThis as unknown as {
     window?: { dispatchEvent: (event: Event) => boolean };
   };
@@ -150,8 +153,8 @@ test("llm new conversation selection navigates to a local session URL", async ()
 
   globalScope.window = { dispatchEvent: () => true };
   AppState.getProviderIdForSlot = ((slot: string) =>
-    slot === "ai1" ? "llm" : null) as typeof AppState.getProviderIdForSlot;
-  SlotController.navigate = (slot, url): void => {
+    slot === "ai1" ? "llm" : null);
+  SlotController.navigate = (slot: string, url: string | null): void => {
     navigation = { slot, url };
   };
   ConversationListManager._clearMessagesArea = (): void => {};
@@ -167,8 +170,9 @@ test("llm new conversation selection navigates to a local session URL", async ()
   try {
     await ConversationListManager.handleConversationChange("ai1");
 
-    assert.equal(navigation?.slot, "ai1");
-    assert.match(navigation?.url ?? "", /^http:\/\/127\.0\.0\.1:9876\/\?session=ai1-/);
+    const nav = navigation as unknown as { slot: string; url: string | null };
+    assert.equal(nav.slot, "ai1");
+    assert.match(nav.url ?? "", /^http:\/\/127\.0\.0\.1:9876\/\?session=ai1-/);
   } finally {
     if (originalWindow === undefined) {
       delete globalScope.window;

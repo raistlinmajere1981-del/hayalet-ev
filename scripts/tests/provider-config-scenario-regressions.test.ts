@@ -10,10 +10,10 @@ import { config as opencodeUiConfig } from "../../src/js/modules/webview/provide
 
 const configs = [chatgptConfig, geminiConfig, grokConfig, opencodeConfig, opencodeUiConfig];
 
-test("provider configs expose webview-test scenario metadata", () => {
+void test("provider configs expose webview-test scenario metadata", () => {
   for (const config of configs) {
-    assert.ok(config.scenarios, `${config.id} should define scenarios`);
-    assert.ok(config.scenarios.webviewTest, `${config.id} should define webviewTest`);
+    assert.ok(config.scenarios != null, `${config.id} should define scenarios`);
+    assert.ok(config.scenarios.webviewTest != null, `${config.id} should define webviewTest`);
     assert.equal(config.scenarios.webviewTest.id, "webview-test");
     assert.ok(
       (config.scenarios.webviewTest.commands?.length ?? 0) >= 5,
@@ -22,7 +22,7 @@ test("provider configs expose webview-test scenario metadata", () => {
   }
 });
 
-test("webview-test scenario commands keep stable preset actions", () => {
+void test("webview-test scenario commands keep stable preset actions", () => {
   const scenario = chatgptConfig.scenarios.webviewTest;
 
   assert.deepEqual(
@@ -51,7 +51,7 @@ test("webview-test scenario commands keep stable preset actions", () => {
   );
 });
 
-test("provider config scenario imports stay compatible with tsconfig typecheck", () => {
+void test("provider config scenario imports stay compatible with tsconfig typecheck", () => {
   const configFiles = [
     "chatgpt/config.ts",
     "gemini/config.ts",
@@ -74,11 +74,11 @@ test("provider config scenario imports stay compatible with tsconfig typecheck",
   }
 });
 
-test("chatgpt, grok, and gemini expose a webview-sync scenario scaffold", () => {
+void test("chatgpt, grok, and gemini expose a webview-sync scenario scaffold", () => {
   const syncConfigs = [chatgptConfig, geminiConfig, grokConfig];
 
   for (const config of syncConfigs) {
-    assert.ok(config.scenarios.webviewSync, `${config.id} should define webviewSync`);
+    assert.ok(config.scenarios.webviewSync != null, `${config.id} should define webviewSync`);
     assert.equal(config.scenarios.webviewSync.id, "webview-sync");
     assert.deepEqual(
       config.scenarios.webviewSync.commands?.map((command) => command.action),
@@ -93,14 +93,14 @@ test("chatgpt, grok, and gemini expose a webview-sync scenario scaffold", () => 
         "refresh-conversation-list",
       ]
     );
-    assert.ok(config.webviewSync, `${config.id} should define webviewSync selectors`);
+    assert.ok(config.webviewSync != null, `${config.id} should define webviewSync selectors`);
     assert.ok(config.webviewSync.sidebar.openButtonSelectors.length > 0);
     assert.ok(config.webviewSync.history.itemSelectors.length > 0);
     assert.ok(config.webviewSync.history.titleSelectors.length > 0);
   }
 });
 
-test("gemini marks webview-sync DOM selectors as estimated until real captures arrive", () => {
+void test("gemini marks webview-sync DOM selectors as estimated until real captures arrive", () => {
   assert.equal(geminiConfig.webviewSync.readiness, "estimated");
   assert.equal(chatgptConfig.webviewSync.readiness, "verified");
   assert.equal(grokConfig.webviewSync.readiness, "verified");

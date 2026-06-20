@@ -8,32 +8,32 @@ const providerTesterPath = "electron/provider-tester/index.ts";
 const entranceHtmlPath = "src/pages/entrance.html";
 const assistantHtmlPath = "src/pages/assistant.html";
 
-test("entrance scenario completion keeps results in the overlay instead of reopening the modal", () => {
+void test("entrance scenario completion keeps results in the overlay instead of reopening the modal", () => {
   const content = readFileSync(entrancePath, "utf8");
 
   assert.doesNotMatch(content, /this\.showTestResultsModal\(results\);/);
 });
 
-test("assistant scenario completion keeps results in the side panel instead of reopening the modal", () => {
+void test("assistant scenario completion keeps results in the side panel instead of reopening the modal", () => {
   const content = readFileSync(assistantPath, "utf8");
 
   assert.doesNotMatch(content, /await openTestResultsModal\(results\);/);
 });
 
-test("provider tester collapses entrance settings instead of opening them for the scenario", () => {
+void test("provider tester collapses entrance settings instead of opening them for the scenario", () => {
   const content = readFileSync(providerTesterPath, "utf8");
 
   assert.doesNotMatch(content, /classList\.remove\('open'\)/);
   assert.doesNotMatch(content, /classList\.add\('open'\)/);
 });
 
-test("entrance test button click collapses the settings accordion before opening the launcher", () => {
+void test("entrance test button click collapses the settings accordion before opening the launcher", () => {
   const content = readFileSync(entrancePath, "utf8");
 
   assert.match(content, /collapseSettingsAccordion\(\);/);
 });
 
-test("renderers use generic scenario APIs for webview-test launch and progress", () => {
+void test("renderers use generic scenario APIs for webview-test launch and progress", () => {
   const entranceContent = readFileSync(entrancePath, "utf8");
   const assistantContent = readFileSync(assistantPath, "utf8");
 
@@ -48,7 +48,7 @@ test("renderers use generic scenario APIs for webview-test launch and progress",
   assert.match(assistantContent, /onProviderScenarioProgress\(handler\)/);
 });
 
-test("renderers expose stop controls wired to cancel the active scenario run", () => {
+void test("renderers expose stop controls wired to cancel the active scenario run", () => {
   const entranceContent = readFileSync(entrancePath, "utf8");
   const assistantContent = readFileSync(assistantPath, "utf8");
 
@@ -61,7 +61,7 @@ test("renderers expose stop controls wired to cancel the active scenario run", (
   assert.match(assistantContent, /cancelProviderScenario\(\{\s*runId: state\.runId\s*\}\)/);
 });
 
-test("renderers dismiss scenario surfaces when the tested slot becomes unavailable", () => {
+void test("renderers dismiss scenario surfaces when the tested slot becomes unavailable", () => {
   const entranceContent = readFileSync(entrancePath, "utf8");
   const assistantContent = readFileSync(assistantPath, "utf8");
 
@@ -75,7 +75,7 @@ test("renderers dismiss scenario surfaces when the tested slot becomes unavailab
   assert.match(assistantContent, /this\._dismissScenarioPanelForUnavailableSlot\(\);/);
 });
 
-test("scenario JSON copy uses guarded helper flows instead of raw clipboard writes", () => {
+void test("scenario JSON copy uses guarded helper flows instead of raw clipboard writes", () => {
   const entranceContent = readFileSync(entrancePath, "utf8");
   const assistantContent = readFileSync(assistantPath, "utf8");
 
@@ -83,7 +83,7 @@ test("scenario JSON copy uses guarded helper flows instead of raw clipboard writ
   assert.match(assistantContent, /_copyScenarioSuiteJson/);
 });
 
-test("entrance overlay exposes an Assistant delivery action for completed webview-test results", () => {
+void test("entrance overlay exposes an Assistant delivery action for completed webview-test results", () => {
   const entranceContent = readFileSync(entrancePath, "utf8");
 
   assert.match(entranceContent, /scenario-overlay__send-assistant/);
@@ -92,7 +92,7 @@ test("entrance overlay exposes an Assistant delivery action for completed webvie
   assert.match(entranceContent, /deliverToAssistant\(\{/);
 });
 
-test("only entrance page exposes sync buttons beside test buttons", () => {
+void test("only entrance page exposes sync buttons beside test buttons", () => {
   const entranceHtml = readFileSync(entranceHtmlPath, "utf8");
   const assistantHtml = readFileSync(assistantHtmlPath, "utf8");
 
@@ -101,7 +101,7 @@ test("only entrance page exposes sync buttons beside test buttons", () => {
   assert.doesNotMatch(assistantHtml, /id="ai0-sync-btn"/);
 });
 
-test("only entrance renderer wires sync buttons to the webview-sync launcher flow", () => {
+void test("only entrance renderer wires sync buttons to the webview-sync launcher flow", () => {
   const entranceContent = readFileSync(entrancePath, "utf8");
   const assistantContent = readFileSync(assistantPath, "utf8");
 
@@ -113,13 +113,13 @@ test("only entrance renderer wires sync buttons to the webview-sync launcher flo
   assert.doesNotMatch(assistantContent, /_openScenarioPanel\("webview-sync", "webview-sync"\)/);
 });
 
-test("entrance renderer only enables sync for verified provider configs", () => {
+void test("entrance renderer only enables sync for verified provider configs", () => {
   const entranceContent = readFileSync(entrancePath, "utf8");
 
   assert.match(entranceContent, /webviewSync\?\.readiness === "verified"/);
 });
 
-test("overlay and panel styles keep the result list scrollable", () => {
+void test("overlay and panel styles keep the result list scrollable", () => {
   const entranceCss = readFileSync("src/styles/entrance/test.css", "utf8");
   const assistantCss = readFileSync("src/styles/assistant.css", "utf8");
   const slotCss = readFileSync("src/styles/entrance/slot.css", "utf8");
@@ -131,7 +131,7 @@ test("overlay and panel styles keep the result list scrollable", () => {
   assert.match(slotCss, /\.slot-card\s*\{[^}]*position:\s*relative/s);
 });
 
-test("entrance overlay auto-scrolls scenario results to the latest row", () => {
+void test("entrance overlay auto-scrolls scenario results to the latest row", () => {
   const entranceContent = readFileSync(entrancePath, "utf8");
 
   assert.match(entranceContent, /scrollScenarioOverlayToBottom\(overlayEl\);/);
@@ -140,14 +140,14 @@ test("entrance overlay auto-scrolls scenario results to the latest row", () => {
   assert.match(entranceContent, /requestAnimationFrame\(scrollToBottom\)/);
 });
 
-test("entrance page provides dedicated scenario overlay hosts for full-slot coverage", () => {
+void test("entrance page provides dedicated scenario overlay hosts for full-slot coverage", () => {
   const entranceHtml = readFileSync(entranceHtmlPath, "utf8");
 
   assert.match(entranceHtml, /id="ai1-scenario-overlay"/);
   assert.match(entranceHtml, /id="ai2-scenario-overlay"/);
 });
 
-test("entrance overlay renders a structured session preview list for sync results", () => {
+void test("entrance overlay renders a structured session preview list for sync results", () => {
   const entranceContent = readFileSync(entrancePath, "utf8");
   const entranceCss = readFileSync("src/styles/entrance/test.css", "utf8");
 
@@ -158,7 +158,7 @@ test("entrance overlay renders a structured session preview list for sync result
   assert.match(entranceCss, /\.scenario-step__preview-item\s*\{/);
 });
 
-test("entrance overlay gives sync URL progress messages dedicated styling", () => {
+void test("entrance overlay gives sync URL progress messages dedicated styling", () => {
   const entranceContent = readFileSync(entrancePath, "utf8");
   const entranceCss = readFileSync("src/styles/entrance/test.css", "utf8");
 
@@ -169,7 +169,7 @@ test("entrance overlay gives sync URL progress messages dedicated styling", () =
   assert.match(entranceCss, /overflow-wrap:\s*anywhere/);
 });
 
-test("entrance overlay offers soft full clean mode selection for webview-sync", () => {
+void test("entrance overlay offers soft full clean mode selection for webview-sync", () => {
   const entranceContent = readFileSync(entrancePath, "utf8");
   const entranceCss = readFileSync("src/styles/entrance/test.css", "utf8");
 

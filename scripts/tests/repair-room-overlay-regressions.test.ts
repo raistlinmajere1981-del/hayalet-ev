@@ -101,14 +101,8 @@ function findRepairFakeElements(
   return matches;
 }
 
-function readRepairFakeText(element: RepairFakeElement): string {
-  return [element.textContent, ...element.children.map(readRepairFakeText)]
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
-test("repair-room overlay coordinate mapping round-trips image and stage space", () => {
+void test("repair-room overlay coordinate mapping round-trips image and stage space", () => {
   const frame = getContainedImageFrame(1000, 600, 1600, 900);
   assert.equal(frame.widthPx, 1000);
   assert.equal(frame.heightPx, 562.5);
@@ -130,7 +124,7 @@ test("repair-room overlay coordinate mapping round-trips image and stage space",
   assert.equal(stageRect.heightPx, 112.5);
 });
 
-test("repair-room Phase 2.8 geometry helpers cover marquee, refs, snap, and focus framing", () => {
+void test("repair-room Phase 2.8 geometry helpers cover marquee, refs, snap, and focus framing", () => {
   assert.equal(
     repairImageRectsIntersect(
       { xPx: 10, yPx: 10, widthPx: 20, heightPx: 20 },
@@ -172,7 +166,7 @@ test("repair-room Phase 2.8 geometry helpers cover marquee, refs, snap, and focu
   );
 });
 
-test("repair-room keeps Konva pinned and isolated to the overlay module", () => {
+void test("repair-room keeps Konva pinned and isolated to the overlay module", () => {
   const packageJson = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as {
     dependencies?: Record<string, string>;
   };
@@ -197,7 +191,7 @@ test("repair-room keeps Konva pinned and isolated to the overlay module", () => 
   assert.doesNotMatch(readFileSync(workbenchPanelPath, "utf8"), /from "konva"|import\("konva"\)/);
 });
 
-test("repair-room resolves runtime assets from the UI entry directory", () => {
+void test("repair-room resolves runtime assets from the UI entry directory", () => {
   const baseHref =
     "file:///home/raistlin/hayalet-ev/rooms/.build/repair-room/runtime/ui/index.html";
 
@@ -218,7 +212,7 @@ test("repair-room resolves runtime assets from the UI entry directory", () => {
   );
 });
 
-test("repair-room dock grid tracks match visible Phase 3 dock panels", () => {
+void test("repair-room dock grid tracks match visible Phase 3 dock panels", () => {
   const cases = [
     ["measurement"],
     ["measurement", "chat"],
@@ -228,7 +222,7 @@ test("repair-room dock grid tracks match visible Phase 3 dock panels", () => {
   for (const visibleDockPanelIds of cases) {
     const panels = { ...createRepairDefaultGuidanceProjection("advanced").panelVisibility.panels };
     for (const panelId of REPAIR_DOCK_PANEL_IDS) {
-      panels[panelId] = visibleDockPanelIds.includes(panelId) ? "compact" : "hidden";
+      panels[panelId] = (visibleDockPanelIds as readonly string[]).includes(panelId) ? "compact" : "hidden";
     }
 
     const dockLayout = getRepairDockLayoutProjection(panels);
@@ -243,7 +237,7 @@ test("repair-room dock grid tracks match visible Phase 3 dock panels", () => {
   assert.deepEqual([...REPAIR_DOCK_PANEL_IDS], ["measurement", "chat", "room-sync"]);
 });
 
-test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync controls", () => {
+void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync controls", () => {
   const uiRoot = join(process.cwd(), "rooms/repair-room/ui");
   const runtime = readRepairUiRuntimeText();
   const timelinePanel = readFileSync(join(uiRoot, "panels/visual-timeline-panel.ts"), "utf8");
@@ -495,7 +489,7 @@ test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync contro
   assert.doesNotMatch(style, /\.repair-wizard-step--done \{\s*color: var\(--repair-success\)/);
 });
 
-test("repair-room manifest command specs stay aligned with UI constants", () => {
+void test("repair-room manifest command specs stay aligned with UI constants", () => {
   const manifest = JSON.parse(
     readFileSync(join(process.cwd(), "rooms/repair-room/manifest.json"), "utf8")
   ) as {
@@ -512,7 +506,7 @@ test("repair-room manifest command specs stay aligned with UI constants", () => 
   });
 });
 
-test("repair-room hands-free controls stay action-oriented without duplicating topbar status", () => {
+void test("repair-room hands-free controls stay action-oriented without duplicating topbar status", () => {
   const workbenchPanel = readFileSync(
     join(process.cwd(), "rooms/repair-room/ui/panels/workbench-stage-panel.ts"),
     "utf8"

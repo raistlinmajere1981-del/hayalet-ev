@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { readCssWithImports } from "./helpers/css-imports.ts";
 import { loadWorkspaceScriptForVm } from "./helpers/room-workspace-script.ts";
 
-test("rooms expose the shared shell seams expected by the normalized layout contract", () => {
+void test("rooms expose the shared shell seams expected by the normalized layout contract", () => {
   [
     "rooms/game-room/shared/host/activation.ts",
     "rooms/game-room/shared/host/command-registry.ts",
@@ -22,7 +22,7 @@ test("rooms expose the shared shell seams expected by the normalized layout cont
   });
 });
 
-test("room root entrypoints stay orchestration-only after layout normalization", () => {
+void test("room root entrypoints stay orchestration-only after layout normalization", () => {
   const gameRoomHostIndexSource = loadWorkspaceScriptForVm("rooms/game-room/host/index.ts");
   const gameRoomHostRuntimeSource = loadWorkspaceScriptForVm("rooms/game-room/host/runtime.ts");
   const gameRoomHostActivationSource = loadWorkspaceScriptForVm(

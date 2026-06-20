@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { evaluateGhostLoadingReadiness } from "../../ghost-agent/src/renderer/loading-readiness.ts";
 
-test("stays pending while URL is blank and still loading", () => {
+void test("stays pending while URL is blank and still loading", () => {
   const result = evaluateGhostLoadingReadiness({
     nowMs: 1_000,
     startedAtMs: 0,
@@ -18,7 +18,7 @@ test("stays pending while URL is blank and still loading", () => {
   assert.equal(result.firstNavigatedAtMs, null);
 });
 
-test("resolves success when URL becomes stable even if isLoading stays true", () => {
+void test("resolves success when URL becomes stable even if isLoading stays true", () => {
   const result = evaluateGhostLoadingReadiness({
     nowMs: 4_000,
     startedAtMs: 0,
@@ -33,7 +33,7 @@ test("resolves success when URL becomes stable even if isLoading stays true", ()
   assert.equal(result.reason, "url-stable");
 });
 
-test("captures first navigation timestamp when URL appears", () => {
+void test("captures first navigation timestamp when URL appears", () => {
   const result = evaluateGhostLoadingReadiness({
     nowMs: 2_500,
     startedAtMs: 0,
@@ -48,7 +48,7 @@ test("captures first navigation timestamp when URL appears", () => {
   assert.equal(result.firstNavigatedAtMs, 2_500);
 });
 
-test("times out when maximum wait is exceeded", () => {
+void test("times out when maximum wait is exceeded", () => {
   const result = evaluateGhostLoadingReadiness({
     nowMs: 31_000,
     startedAtMs: 0,

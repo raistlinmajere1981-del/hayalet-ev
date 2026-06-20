@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { createRuntimePageStyleRegistry } from "../../src/js/app/runtime-page-styles.ts";
 
-test("runtime page style loader retries after a rejected request", async () => {
+void test("runtime page style loader retries after a rejected request", async () => {
   let attempts = 0;
   const registry = createRuntimePageStyleRegistry({
     archives: async () => {
@@ -24,7 +24,7 @@ test("runtime page style loader retries after a rejected request", async () => {
   assert.equal(attempts, 2);
 });
 
-test("runtime page style loader shares a single in-flight request per style key", async () => {
+void test("runtime page style loader shares a single in-flight request per style key", async () => {
   let attempts = 0;
   let resolveLoader: (() => void) | null = null;
   const loaderReady = new Promise<void>((resolve) => {
@@ -44,7 +44,7 @@ test("runtime page style loader shares a single in-flight request per style key"
   const secondRequest = registry.ensureStyles("archives");
 
   assert.equal(attempts, 1);
-  resolveLoader?.();
+  (resolveLoader as unknown as () => void)();
   await Promise.all([firstRequest, secondRequest]);
   await registry.ensureStyles("archives");
   assert.equal(attempts, 1);

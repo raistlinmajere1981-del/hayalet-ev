@@ -265,7 +265,7 @@ function latestForgeSnapshot(notifications: ForgeNotification[]) {
   };
 }
 
-test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and reopen through the live room-local flow", async () => {
+void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and reopen through the live room-local flow", async () => {
   const storageDir = await mkdtemp(join(tmpdir(), "forge-room-host-flow-"));
   const notifications: ForgeNotification[] = [];
   const hostState = new Map<string, unknown>();
@@ -304,14 +304,14 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       },
     });
 
-    const createResult = await hostRuntime.commands.ForgeRoomCreateSession();
-    assert.equal(createResult.success, true);
+    const createResult = await hostRuntime.commands["ForgeRoomCreateSession"]!();
+    assert.equal(createResult["success"], true);
 
-    const addRunOverrideResult = await hostRuntime.commands.ForgeRoomUpdateRunOverride({
+    const addRunOverrideResult = await hostRuntime.commands["ForgeRoomUpdateRunOverride"]!({
       notes: "Bench is borrowed for this run.",
       temporaryConditions: ["borrowed microscope"],
     });
-    assert.equal(addRunOverrideResult.success, true);
+    assert.equal(addRunOverrideResult["success"], true);
     const snapshotAfterRunOverride = latestForgeSnapshot(notifications);
     assert.deepEqual(snapshotAfterRunOverride.runOverride, {
       enableRovoPreAnalysis: false,
@@ -319,27 +319,27 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       temporaryConditions: ["borrowed microscope"],
     });
 
-    const clearRunOverrideResult = await hostRuntime.commands.ForgeRoomUpdateRunOverride({
+    const clearRunOverrideResult = await hostRuntime.commands["ForgeRoomUpdateRunOverride"]!({
       notes: "",
       temporaryConditions: [],
     });
-    assert.equal(clearRunOverrideResult.success, true);
+    assert.equal(clearRunOverrideResult["success"], true);
     const snapshotAfterRunOverrideClear = latestForgeSnapshot(notifications);
     assert.equal(snapshotAfterRunOverrideClear.runOverride, null);
 
-    const updateOperatorProfileResult = await hostRuntime.commands.ForgeRoomUpdateOperatorProfile({
+    const updateOperatorProfileResult = await hostRuntime.commands["ForgeRoomUpdateOperatorProfile"]!({
       skills: [{ skillKey: "measurement", level: "basic" }],
       equipment: [{ equipmentKey: "multimeter", status: "unavailable" }],
       preferences: {
         mode: "learn_first",
       },
     });
-    assert.equal(updateOperatorProfileResult.success, true);
+    assert.equal(updateOperatorProfileResult["success"], true);
 
-    const architectSeatResult = await hostRuntime.commands.ForgeRoomUpdateRunOverride({
+    const architectSeatResult = await hostRuntime.commands["ForgeRoomUpdateRunOverride"]!({
       architectSeatId: "ai2",
     });
-    assert.equal(architectSeatResult.success, true);
+    assert.equal(architectSeatResult["success"], true);
     const snapshotAfterArchitectSeat = latestForgeSnapshot(notifications);
     assert.deepEqual(snapshotAfterArchitectSeat.runOverride, {
       architectSeatId: "ai2",
@@ -348,28 +348,28 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       temporaryConditions: [],
     });
 
-    const updateSessionContextResult = await hostRuntime.commands.ForgeRoomUpdateSessionContext({
+    const updateSessionContextResult = await hostRuntime.commands["ForgeRoomUpdateSessionContext"]!({
       skillKeys: ["measurement"],
       equipmentKeys: ["multimeter"],
       preferenceKeys: ["mode"],
     });
-    assert.equal(updateSessionContextResult.success, true);
+    assert.equal(updateSessionContextResult["success"], true);
 
     const snapshotAfterSessionContext = latestForgeSnapshot(notifications);
-    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.skillKeys, ["measurement"]);
-    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.equipmentKeys, ["multimeter"]);
-    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.preferenceKeys, ["mode"]);
+    assert.deepEqual((snapshotAfterSessionContext.sessionContextSelection as any).skillKeys, ["measurement"]);
+    assert.deepEqual((snapshotAfterSessionContext.sessionContextSelection as any).equipmentKeys, ["multimeter"]);
+    assert.deepEqual((snapshotAfterSessionContext.sessionContextSelection as any).preferenceKeys, ["mode"]);
     assert.equal(snapshotAfterSessionContext.preflight.status, "idle");
     assert.equal(snapshotAfterSessionContext.runSignature, null);
 
-    const draftResult = await hostRuntime.commands.ForgeRoomGenerateDraft({
+    const draftResult = await hostRuntime.commands["ForgeRoomGenerateDraft"]!({
       architectSeatId: "ai2",
       summary: "Repair Room integration",
       brief: "Drive the first Forge Room handoff into Repair Room.",
       constraints: ["Keep orchestration room-local."],
       targetRoomId: "repair-room",
     });
-    assert.equal(draftResult.success, true);
+    assert.equal(draftResult["success"], true);
     assert.equal(
       dispatchCalls.filter(
         (call) =>
@@ -391,8 +391,8 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       /Use Turkish for every human-readable JSON string value\./
     );
 
-    const runPreflightResult = await hostRuntime.commands.ForgeRoomRunPreflight();
-    assert.equal(runPreflightResult.success, true);
+    const runPreflightResult = await hostRuntime.commands["ForgeRoomRunPreflight"]!();
+    assert.equal(runPreflightResult["success"], true);
     const preflightDispatchCalls = dispatchCalls.filter(
       (call) =>
         (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
@@ -409,12 +409,12 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     const forgeStateCountAfterPreflight = notifications.filter(
       (entry) => entry.type === "forge-state"
     ).length;
-    const noOpSessionContextResult = await hostRuntime.commands.ForgeRoomUpdateSessionContext({
+    const noOpSessionContextResult = await hostRuntime.commands["ForgeRoomUpdateSessionContext"]!({
       skillKeys: ["measurement"],
       equipmentKeys: ["multimeter"],
       preferenceKeys: ["mode"],
     });
-    assert.equal(noOpSessionContextResult.success, true);
+    assert.equal(noOpSessionContextResult["success"], true);
     assert.equal(
       notifications.filter((entry) => entry.type === "forge-state").length,
       forgeStateCountAfterPreflight
@@ -427,10 +427,10 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     ).draftTasks.find((task) => task.level === 1)?.id;
     assert.ok(approvedTaskId);
 
-    const approveResult = await hostRuntime.commands.ForgeRoomApproveDraft();
-    assert.equal(approveResult.success, true);
+    const approveResult = await hostRuntime.commands["ForgeRoomApproveDraft"]!();
+    assert.equal(approveResult["success"], true);
 
-    const updateApprovedResult = await hostRuntime.commands.ForgeRoomUpdateApprovedTask({
+    const updateApprovedResult = await hostRuntime.commands["ForgeRoomUpdateApprovedTask"]!({
       taskId: approvedTaskId,
       seatId: "ai1",
       roleId: "architect",
@@ -438,11 +438,11 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       compareSeatIds: ["ai2"],
       personaPresetId: "rovo",
     });
-    assert.equal(updateApprovedResult.success, true);
+    assert.equal(updateApprovedResult["success"], true);
 
-    const dispatchResult = await hostRuntime.commands.ForgeRoomDispatchAssignments();
-    assert.equal(dispatchResult.success, true);
-    assert.ok((dispatchResult.completedAssignments as number) >= 3);
+    const dispatchResult = await hostRuntime.commands["ForgeRoomDispatchAssignments"]!();
+    assert.equal(dispatchResult["success"], true);
+    assert.ok((dispatchResult["completedAssignments"] as number) >= 3);
     const taskDispatches = dispatchCalls.filter(
       (call) =>
         (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
@@ -470,21 +470,21 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     assert.ok(conflictId);
     assert.ok(preferredResponseId);
 
-    const preferResult = await hostRuntime.commands.ForgeRoomResolveConflict({
+    const preferResult = await hostRuntime.commands["ForgeRoomResolveConflict"]!({
       conflictId,
       preferredResponseId,
       status: "open",
     });
-    assert.equal(preferResult.success, true);
+    assert.equal(preferResult["success"], true);
 
-    const resolveResult = await hostRuntime.commands.ForgeRoomResolveConflict({
+    const resolveResult = await hostRuntime.commands["ForgeRoomResolveConflict"]!({
       conflictId,
       status: "resolved",
     });
-    assert.equal(resolveResult.success, true);
+    assert.equal(resolveResult["success"], true);
 
-    const synthesisResult = await hostRuntime.commands.ForgeRoomGenerateSynthesis();
-    assert.equal(synthesisResult.success, true);
+    const synthesisResult = await hostRuntime.commands["ForgeRoomGenerateSynthesis"]!();
+    assert.equal(synthesisResult["success"], true);
     const synthesisDispatch = dispatchCalls.findLast(
       (call) =>
         (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
@@ -504,19 +504,19 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     );
     const snapshotAfterSynthesis = latestForgeSnapshot(notifications);
     const selectedSynthesis = snapshotAfterSynthesis.syntheses.find(
-      (entry) => entry.id === synthesisResult.synthesisId
+      (entry) => entry.id === synthesisResult["synthesisId"]
     );
     assert.ok(selectedSynthesis?.provenance);
     assert.equal(typeof selectedSynthesis?.provenance?.runSignature, "string");
 
-    const exportCheckResult = await hostRuntime.commands.ForgeRoomExportHandoffCheck();
-    assert.equal(exportCheckResult.success, true);
+    const exportCheckResult = await hostRuntime.commands["ForgeRoomExportHandoffCheck"]!();
+    assert.equal(exportCheckResult["success"], true);
 
-    const exportResult = await hostRuntime.commands.ForgeRoomExportHandoff();
-    assert.equal(exportResult.success, true);
-    assert.ok(typeof exportResult.filePath === "string");
+    const exportResult = await hostRuntime.commands["ForgeRoomExportHandoff"]!();
+    assert.equal(exportResult["success"], true);
+    assert.ok(typeof exportResult["filePath"] === "string");
 
-    const exportedJson = JSON.parse(await readFile(String(exportResult.filePath), "utf8")) as {
+    const exportedJson = JSON.parse(await readFile(String(exportResult["filePath"]), "utf8")) as {
       contextSummary?: {
         operatorProfileSummary?: string[];
         preflightWarnings?: string[];
@@ -526,7 +526,7 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       targetRoomId: string;
     };
     assert.equal(exportedJson.targetRoomId, "repair-room");
-    assert.equal(exportedJson.selectedSynthesis.id, synthesisResult.synthesisId);
+    assert.equal(exportedJson.selectedSynthesis.id, synthesisResult["synthesisId"]);
     assert.equal(exportedJson.runSignature, selectedSynthesis?.provenance?.runSignature);
     assert.deepEqual(exportedJson.contextSummary?.operatorProfileSummary, [
       "Selected skills: Measurement (basic).",
@@ -535,7 +535,7 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       "Session-specific: Draft architect AI2.",
     ]);
 
-    const sessionId = String(createResult.sessionId);
+    const sessionId = String(createResult["sessionId"]);
     const sessionPath = join(storageDir, "sessions", sessionId, "session.json");
     const savedSession = JSON.parse(await readFile(sessionPath, "utf8")) as {
       conflicts: Array<{ preferredResponseId: string | null; status: string }>;
@@ -555,7 +555,7 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       selectedSynthesisId: string | null;
     };
     assert.equal(savedSession.responses.length >= 3, true);
-    assert.equal(savedSession.selectedSynthesisId, synthesisResult.synthesisId);
+    assert.equal(savedSession.selectedSynthesisId, synthesisResult["synthesisId"]);
     assert.equal(savedSession.conflicts[0]?.status, "resolved");
     assert.equal(savedSession.conflicts[0]?.preferredResponseId, preferredResponseId);
     assert.equal(savedSession.exports.length, 1);
@@ -592,24 +592,24 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
         return value;
       },
     });
-    const loadResult = await reopenedRuntime.commands.ForgeRoomLoadLatestSession();
-    assert.equal(loadResult.success, true);
+    const loadResult = await reopenedRuntime.commands["ForgeRoomLoadLatestSession"]!();
+    assert.equal(loadResult["success"], true);
     const reopenedSnapshot = latestForgeSnapshot(reopenNotifications);
-    assert.equal(reopenedSnapshot.selectedSynthesisId, synthesisResult.synthesisId);
+    assert.equal(reopenedSnapshot.selectedSynthesisId, synthesisResult["synthesisId"]);
     assert.equal(reopenedSnapshot.exports.length, 1);
     assert.equal(reopenedSnapshot.responses.length >= 3, true);
     assert.equal(reopenedSnapshot.conflicts.length >= 1, true);
-    assert.deepEqual(reopenedSnapshot.sessionContextSelection.skillKeys, ["measurement"]);
-    assert.deepEqual(reopenedSnapshot.sessionContextSelection.equipmentKeys, ["multimeter"]);
-    assert.deepEqual(reopenedSnapshot.sessionContextSelection.preferenceKeys, ["mode"]);
+    assert.deepEqual((reopenedSnapshot.sessionContextSelection as any).skillKeys, ["measurement"]);
+    assert.deepEqual((reopenedSnapshot.sessionContextSelection as any).equipmentKeys, ["multimeter"]);
+    assert.deepEqual((reopenedSnapshot.sessionContextSelection as any).preferenceKeys, ["mode"]);
 
     const reopenedConflictId = reopenedSnapshot.conflicts[0]?.id;
     assert.ok(reopenedConflictId);
-    const reopenConflictResult = await reopenedRuntime.commands.ForgeRoomResolveConflict({
+    const reopenConflictResult = await reopenedRuntime.commands["ForgeRoomResolveConflict"]!({
       conflictId: reopenedConflictId,
       status: "open",
     });
-    assert.equal(reopenConflictResult.success, true);
+    assert.equal(reopenConflictResult["success"], true);
     const snapshotAfterConflictReopen = latestForgeSnapshot(reopenNotifications);
     assert.equal(snapshotAfterConflictReopen.exports.length, 1);
     assert.equal(snapshotAfterConflictReopen.selectedSynthesisId, null);

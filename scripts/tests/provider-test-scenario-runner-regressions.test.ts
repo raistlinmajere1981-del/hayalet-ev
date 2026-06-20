@@ -23,7 +23,7 @@ function createCommand(options: {
     action: options.id,
     severity: options.severity ?? "core",
     ...(options.delayAfterMs !== undefined ? { delayAfterMs: options.delayAfterMs } : {}),
-    resolveRuns: async () => [
+    resolveRuns: () => [
       {
         stepId: options.id,
         stepName: options.name,
@@ -48,7 +48,7 @@ function createCommand(options: {
   };
 }
 
-test("command scenario emits ordered progress events and keeps soft failures non-fatal", async () => {
+void test("command scenario emits ordered progress events and keeps soft failures non-fatal", async () => {
   const progress: string[] = [];
   const scenarioIds = new Set<string>();
   const executed: string[] = [];
@@ -118,7 +118,7 @@ test("command scenario emits ordered progress events and keeps soft failures non
   ]);
 });
 
-test("command scenario runner emits scenario metadata for non-test scenarios", async () => {
+void test("command scenario runner emits scenario metadata for non-test scenarios", async () => {
   const progress: string[] = [];
 
   const result = await runCommandScenario({
@@ -134,7 +134,7 @@ test("command scenario runner emits scenario metadata for non-test scenarios", a
       createCommand({
         id: "collect-urls",
         name: "Collect Urls",
-        run: async () => ({ status: "pass", message: "collected" }),
+        run: async () => ({ status: "pass" as "pass", message: "collected" }),
       }),
     ],
   });
@@ -150,7 +150,7 @@ test("command scenario runner emits scenario metadata for non-test scenarios", a
   ]);
 });
 
-test("command scenario waits before each command when a pre-delay is configured", async () => {
+void test("command scenario waits before each command when a pre-delay is configured", async () => {
   const startedAt: number[] = [];
 
   await runCommandScenario({
@@ -180,13 +180,16 @@ test("command scenario waits before each command when a pre-delay is configured"
   });
 
   assert.equal(startedAt.length, 2);
+  const t0 = startedAt[0];
+  const t1 = startedAt[1];
+  assert.ok(t0 != null && t1 != null);
   assert.ok(
-    startedAt[1] - startedAt[0] >= 25,
-    `Expected at least 25ms command pre-delay, got ${startedAt[1] - startedAt[0]}ms`
+    t1 - t0 >= 25,
+    `Expected at least 25ms command pre-delay, got ${t1 - t0}ms`
   );
 });
 
-test("command scenario aborts remaining commands after core failure", async () => {
+void test("command scenario aborts remaining commands after core failure", async () => {
   const executed: string[] = [];
 
   const result = await runCommandScenario({
@@ -224,7 +227,7 @@ test("command scenario aborts remaining commands after core failure", async () =
   );
 });
 
-test("command scenario marks the active command as warning when stopped by user", async () => {
+void test("command scenario marks the active command as warning when stopped by user", async () => {
   const abortController = new AbortController();
   const executed: string[] = [];
 
@@ -256,7 +259,7 @@ test("command scenario marks the active command as warning when stopped by user"
     ],
   });
 
-  setTimeout(() => abortController.abort(), 5);
+  setTimeout(() => { abortController.abort(); }, 5);
   const result = await resultPromise;
 
   assert.deepEqual(executed, ["long-command"]);
@@ -268,7 +271,7 @@ test("command scenario marks the active command as warning when stopped by user"
   );
 });
 
-test("provider test prompt stays deterministic for scroll and scrape assertions", () => {
+void test("provider test prompt stays deterministic for scroll and scrape assertions", () => {
   assert.equal(
     PROVIDER_TEST_PROMPT,
     "1'den 20'ye kadar numaralari yaz. Her satirda yalnizca bir sayi olsun. Baska aciklama ekleme."
@@ -279,7 +282,7 @@ test("provider test prompt stays deterministic for scroll and scrape assertions"
   );
 });
 
-test("command scenario uses the default one-second start delay when not overridden", async () => {
+void test("command scenario uses the default one-second start delay when not overridden", async () => {
   const startedAt: number[] = [];
 
   await runCommandScenario({
@@ -309,8 +312,11 @@ test("command scenario uses the default one-second start delay when not overridd
   });
 
   assert.equal(startedAt.length, 2);
+  const t0 = startedAt[0];
+  const t1 = startedAt[1];
+  assert.ok(t0 != null && t1 != null);
   assert.ok(
-    startedAt[1] - startedAt[0] >= 1000,
-    `Expected at least 1000ms default command start delay, got ${startedAt[1] - startedAt[0]}ms`
+    t1 - t0 >= 1000,
+    `Expected at least 1000ms default command start delay, got ${t1 - t0}ms`
   );
 });

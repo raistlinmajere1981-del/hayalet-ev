@@ -4,7 +4,41 @@ import { loadGameRoomHostModule } from "./helpers/game-room-host-module.ts";
 
 const gameRoomHostModule = await loadGameRoomHostModule();
 
-type HostRuntime = ReturnType<typeof createRoomHostRuntime>;
+interface BackgammonHostRuntime {
+  api: {
+    notifyRoom: (type: string, payload?: Record<string, unknown>) => void;
+    dispatchBridge: (payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
+    dispatchRoomCommand: (
+      commandName: string,
+      payload?: Record<string, unknown>
+    ) => Promise<Record<string, unknown>>;
+    getUs1Identity: () => { remoteUserId: string; nickname: string; email: string };
+    isUs1Connected: () => boolean;
+    showToast: (payload: { type?: string; message?: string }) => void;
+    getLocale: () => string;
+    getState: (key: string) => unknown;
+    setState: (key: string, value: unknown) => unknown;
+    deleteState: (key: string) => boolean;
+    log: () => undefined;
+  };
+  state: Map<string, unknown>;
+  protocolCalls: Array<Record<string, unknown>>;
+  messageCalls: Array<Record<string, unknown>>;
+  us1MessageCalls: Array<Record<string, unknown>>;
+  us1SyncCalls: Array<Record<string, unknown>>;
+  dispatchCalls: Array<Record<string, unknown>>;
+  notifications: Array<{ type: string; payload: Record<string, unknown> }>;
+  toastCalls: Array<{ type?: string; message?: string }>;
+  selectedRemoteUsers: Array<string | null>;
+  exported: Record<string, unknown>;
+  enqueueUs1SyncResult: (result: Record<string, unknown>) => void;
+  emitHostContext: (context: Record<string, unknown>) => Promise<void>;
+  markReady: () => Promise<void>;
+  latestGameState: () => GameState;
+  latestCommandResult: () => CommandResult | undefined;
+}
+
+type HostRuntime = BackgammonHostRuntime;
 type CommandResult = Record<string, unknown> & { success?: boolean; message?: string };
 type GameState = Record<string, unknown>;
 type LegalMove = {
@@ -16,12 +50,16 @@ type LegalMove = {
 
 const activeRuntimes: HostRuntime[] = [];
 
+function str(v: unknown): string {
+  return typeof v === "string" ? v : String(v);
+}
+
 async function flushHostTasks(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-function createRoomHostRuntime() {
+function createRoomHostRuntime(): BackgammonHostRuntime {
   const state = new Map<string, unknown>();
   const protocolCalls: Array<Record<string, unknown>> = [];
   const messageCalls: Array<Record<string, unknown>> = [];
@@ -32,8 +70,6 @@ function createRoomHostRuntime() {
   const toastCalls: Array<{ type?: string; message?: string }> = [];
   const selectedRemoteUsers: Array<string | null> = [];
   const us1SyncQueue: Array<Record<string, unknown>> = [];
-  let exported: Record<string, unknown>;
-
   const api = {
     notifyRoom(type: string, payload: Record<string, unknown> = {}) {
       notifications.push({ type, payload });
@@ -41,18 +77,18 @@ function createRoomHostRuntime() {
     dispatchBridge: async (payload: Record<string, unknown>) => {
       dispatchCalls.push(payload);
       const target =
-        typeof payload.toSlot === "string"
-          ? payload.toSlot
-          : Array.isArray(payload.toSlots) && typeof payload.toSlots[0] === "string"
-            ? payload.toSlots[0]
+        typeof payload["toSlot"] === "string"
+          ? payload["toSlot"]
+          : Array.isArray(payload["toSlots"]) && typeof payload["toSlots"][0] === "string"
+            ? payload["toSlots"][0]
             : null;
       const bridgePayload =
-        payload.payload !== null && typeof payload.payload === "object"
-          ? (payload.payload as Record<string, unknown>)
+        payload["payload"] !== null && typeof payload["payload"] === "object"
+          ? (payload["payload"] as Record<string, unknown>)
           : {};
       const protocol =
-        bridgePayload.protocol !== null && typeof bridgePayload.protocol === "object"
-          ? (bridgePayload.protocol as Record<string, unknown>)
+        bridgePayload["protocol"] !== null && typeof bridgePayload["protocol"] === "object"
+          ? (bridgePayload["protocol"] as Record<string, unknown>)
           : null;
 
       if (protocol !== null) {
@@ -61,41 +97,41 @@ function createRoomHostRuntime() {
 
       if (
         target !== "us1" &&
-        ((typeof bridgePayload.text === "string" && bridgePayload.text.trim() !== "") ||
-          typeof bridgePayload.page === "string")
+        ((typeof bridgePayload["text"] === "string" && bridgePayload["text"].trim() !== "") ||
+          typeof bridgePayload["page"] === "string")
       ) {
         messageCalls.push({
           provider: target,
-          text: bridgePayload.text,
-          page: bridgePayload.page,
+          text: bridgePayload["text"],
+          page: bridgePayload["page"],
         });
       }
 
-      if (payload.action === "message.send" && target === "us1") {
+      if (payload["action"] === "message.send" && target === "us1") {
         const remoteUserId =
-          typeof bridgePayload.remoteUserId === "string" && bridgePayload.remoteUserId.trim() !== ""
-            ? bridgePayload.remoteUserId
+          typeof bridgePayload["remoteUserId"] === "string" && bridgePayload["remoteUserId"].trim() !== ""
+            ? bridgePayload["remoteUserId"]
             : (selectedRemoteUsers.at(-1) ?? "remote@example.com");
         selectedRemoteUsers.push(remoteUserId);
         us1MessageCalls.push({
           localSessionId:
-            payload.sessionRef !== null &&
-            typeof payload.sessionRef === "object" &&
-            typeof (payload.sessionRef as Record<string, unknown>).id === "string"
-              ? (payload.sessionRef as Record<string, unknown>).id
+            payload["sessionRef"] !== null &&
+            typeof payload["sessionRef"] === "object" &&
+            typeof (payload["sessionRef"] as Record<string, unknown>)["id"] === "string"
+              ? (payload["sessionRef"] as Record<string, unknown>)["id"]
               : null,
-          text: bridgePayload.text,
-          roomEvent: bridgePayload.roomEvent,
-          roomCommand: bridgePayload.roomCommand,
+          text: bridgePayload["text"],
+          roomEvent: bridgePayload["roomEvent"],
+          roomCommand: bridgePayload["roomCommand"],
           remoteUserId,
         });
         return {
           success: true,
           session: {
             id:
-              typeof us1MessageCalls.at(-1)?.localSessionId === "string" &&
-              String(us1MessageCalls.at(-1)?.localSessionId).trim() !== ""
-                ? us1MessageCalls.at(-1)?.localSessionId
+              typeof us1MessageCalls.at(-1)?.["localSessionId"] === "string" &&
+              String(us1MessageCalls.at(-1)?.["localSessionId"]).trim() !== ""
+                ? us1MessageCalls.at(-1)?.["localSessionId"]
                 : `us1-session-${us1MessageCalls.length}`,
             conversationId: `us1-conversation-${us1MessageCalls.length}`,
           },
@@ -106,27 +142,27 @@ function createRoomHostRuntime() {
         };
       }
 
-      if (payload.action === "session.sync" && target === "us1") {
+      if (payload["action"] === "session.sync" && target === "us1") {
         us1SyncCalls.push({
           localSessionId:
-            payload.sessionRef !== null &&
-            typeof payload.sessionRef === "object" &&
-            typeof (payload.sessionRef as Record<string, unknown>).id === "string"
-              ? (payload.sessionRef as Record<string, unknown>).id
+            payload["sessionRef"] !== null &&
+            typeof payload["sessionRef"] === "object" &&
+            typeof (payload["sessionRef"] as Record<string, unknown>)["id"] === "string"
+              ? (payload["sessionRef"] as Record<string, unknown>)["id"]
               : null,
-          consumeRoomCommands: bridgePayload.consumeRoomCommands,
+          consumeRoomCommands: bridgePayload["consumeRoomCommands"],
         });
         const queued = us1SyncQueue.shift() ?? {};
         return {
           success: true,
           session: {
             id:
-              typeof queued.localSessionId === "string" && queued.localSessionId.trim() !== ""
-                ? queued.localSessionId
+              typeof queued["localSessionId"] === "string" && queued["localSessionId"].trim() !== ""
+                ? queued["localSessionId"]
                 : null,
             conversationId:
-              typeof queued.conversationId === "string" && queued.conversationId.trim() !== ""
-                ? queued.conversationId
+              typeof queued["conversationId"] === "string" && queued["conversationId"].trim() !== ""
+                ? queued["conversationId"]
                 : null,
           },
           data: {
@@ -149,17 +185,17 @@ function createRoomHostRuntime() {
     },
     dispatchRoomCommand: async (commandName: string, payload: Record<string, unknown> = {}) => {
       dispatchCalls.push({ commandName, ...payload });
-      const commands = exported.commands as Record<string, (payload?: unknown) => unknown>;
+      const commands = exported["commands"] as Record<string, (payload?: unknown) => unknown>;
       const handler = commands[commandName];
       if (typeof handler === "function") {
         return await handler({
           provider: "us1",
-          roomArgs: payload.roomPayload,
-          args: payload.args,
-          transportMessageId: payload.transportMessageId,
-          localSessionId: payload.localSessionId,
-          remoteUserId: payload.remoteUserId,
-        });
+          roomArgs: payload["roomPayload"],
+          args: payload["args"],
+          transportMessageId: payload["transportMessageId"],
+          localSessionId: payload["localSessionId"],
+          remoteUserId: payload["remoteUserId"],
+        }) as Record<string, unknown>;
       }
       return { success: false, message: `Unknown command: ${commandName}` };
     },
@@ -182,7 +218,7 @@ function createRoomHostRuntime() {
     log: () => undefined,
   };
 
-  exported = gameRoomHostModule.default.activate(api);
+  const exported: Record<string, unknown> = gameRoomHostModule.default.activate(api);
 
   const runtime = {
     api,
@@ -200,26 +236,27 @@ function createRoomHostRuntime() {
       us1SyncQueue.push(result);
     },
     async emitHostContext(context: Record<string, unknown>) {
-      const handler = runtime.exported.onRoomEvent;
+      const handler = runtime.exported["onRoomEvent"];
       assert.equal(typeof handler, "function");
       (handler as (payload: unknown) => unknown)(context);
       await flushHostTasks();
     },
     async markReady() {
-      const handler = runtime.exported.onRoomReady;
+      const handler = runtime.exported["onRoomReady"];
       assert.equal(typeof handler, "function");
       (handler as () => unknown)();
       await flushHostTasks();
     },
     latestGameState(): GameState {
       const latest = notifications.filter((entry) => entry.type === "backgammon-state").at(-1)
-        ?.payload?.state as GameState | undefined;
+        ?.payload["state"] as GameState | undefined;
       assert.ok(latest, "expected latest backgammon-state notification");
       return latest;
     },
     latestCommandResult() {
-      return notifications.filter((entry) => entry.type === "command-result").at(-1)?.payload
-        ?.result as CommandResult | undefined;
+      const cmdResultEntry = notifications.filter((entry) => entry.type === "command-result").at(-1);
+if (cmdResultEntry == null) return undefined;
+return cmdResultEntry.payload["result"] as CommandResult | undefined;
     },
   };
 
@@ -228,13 +265,14 @@ function createRoomHostRuntime() {
 }
 
 test.afterEach(async () => {
-  while (activeRuntimes.length > 0) {
-    const runtime = activeRuntimes.pop();
-    const dispose = runtime?.exported?.dispose;
+  const results: Array<Promise<void>> = [];
+  for (const runtime of activeRuntimes.splice(0)) {
+    const dispose = runtime.exported["dispose"];
     if (typeof dispose === "function") {
-      await dispose();
+      results.push(Promise.resolve((dispose as () => void)()));
     }
   }
+  await Promise.all(results);
 });
 
 function buildReadyHostContext(
@@ -296,9 +334,9 @@ async function runCommand(
   commandName: string,
   payload: unknown = {}
 ): Promise<CommandResult> {
-  const commands = runtime.exported.commands as Record<string, (payload?: unknown) => unknown>;
+  const commands = runtime.exported["commands"] as Record<string, (payload?: unknown) => unknown>;
   const handler = commands[commandName];
-  assert.equal(typeof handler, "function", commandName);
+  assert.ok(handler != null, commandName);
   return (await handler(payload)) as CommandResult;
 }
 
@@ -325,8 +363,8 @@ async function startMatch(
 }
 
 function readLegalMoves(state: GameState): LegalMove[] {
-  assert.ok(Array.isArray(state.legalMoves), "expected legalMoves array");
-  return state.legalMoves as LegalMove[];
+  assert.ok(Array.isArray(state["legalMoves"]), "expected legalMoves array");
+  return state["legalMoves"] as LegalMove[];
 }
 
 function firstLegalMove(state: GameState): LegalMove {
@@ -342,8 +380,8 @@ function moveStepsForCommand(move: LegalMove): unknown[] {
     assert.ok(step !== null && typeof step === "object" && Array.isArray(step) === false);
     const source = step as Record<string, unknown>;
     return {
-      from: source.from,
-      to: source.to,
+      from: source["from"],
+      to: source["to"],
     };
   });
 }
@@ -357,8 +395,8 @@ async function applyUserLegalMove(
   return await runCommand(runtime, commandName, {
     roomArgs: {
       legalMoveId: move.id,
-      turnToken: state.turnToken,
-      turnIndex: state.turnIndex,
+      turnToken: state['turnToken'],
+      turnIndex: state['turnIndex'],
     },
   });
 }
@@ -378,23 +416,6 @@ async function applyAiMoveSteps(
   });
 }
 
-async function applyAiLegalMove(
-  runtime: HostRuntime,
-  provider: "ai1" | "ai2" = "ai1",
-  commandName = "GameRoomBackgammonAiMove"
-) {
-  const state = runtime.latestGameState();
-  const move = firstLegalMove(state);
-  return await runCommand(runtime, commandName, {
-    provider,
-    roomArgs: {
-      legalMoveId: move.id,
-      turnToken: state.turnToken,
-      turnIndex: state.turnIndex,
-    },
-  });
-}
-
 async function applyRemoteMove(
   runtime: HostRuntime,
   options: {
@@ -409,7 +430,7 @@ async function applyRemoteMove(
 ) {
   return await runCommand(runtime, "GameRoomBackgammonRemoteMove", {
     provider: "us1",
-    remoteUserId: options.remoteUserId ?? String(runtime.latestGameState().remoteUserId),
+    remoteUserId: options.remoteUserId ?? str(runtime.latestGameState()['remoteUserId']),
     ...(options.transportMessageId !== undefined
       ? { transportMessageId: options.transportMessageId }
       : {}),
@@ -424,13 +445,13 @@ async function applyRemoteMove(
   });
 }
 
-test("game-room Tavla delays protocol until the first AI turn when the user starts", async () => {
+void test("game-room Tavla delays protocol until the first AI turn when the user starts", async () => {
   const runtime = createRoomHostRuntime();
   const startResult = await startMatch(runtime, { target: "ai1", starter: "user" });
 
   assert.equal(startResult.success, true);
   assert.equal(runtime.protocolCalls.length, 0);
-  assert.equal(runtime.latestGameState().awaitingMoveFrom, "user");
+  assert.equal(runtime.latestGameState()['awaitingMoveFrom'], "user");
   assert.ok(readLegalMoves(runtime.latestGameState()).length > 0);
 
   const userMoveResult = await applyUserLegalMove(runtime);
@@ -438,39 +459,39 @@ test("game-room Tavla delays protocol until the first AI turn when the user star
   assert.equal(userMoveResult.success, true);
   assert.equal(runtime.protocolCalls.length, 1);
   assert.equal(runtime.messageCalls.length, 1);
-  assert.equal(runtime.protocolCalls[0]?.scenario, "backgammon-user-start");
-  const protocolContext = runtime.protocolCalls[0]?.context as Record<string, unknown>;
-  assert.match(String(runtime.messageCalls[0]?.text ?? ""), /GameRoomBackgammonAiMove/);
-  assert.doesNotMatch(String(runtime.messageCalls[0]?.text ?? ""), /Legal moves:/);
-  assert.doesNotMatch(String(runtime.messageCalls[0]?.text ?? ""), /legalMoveId/);
+  assert.equal(runtime.protocolCalls[0]!['scenario'], "backgammon-user-start");
+  const protocolContext = runtime.protocolCalls[0]!['context'] as Record<string, unknown>;
+  assert.match(str(runtime.messageCalls[0]?.["text"] ?? ""), /GameRoomBackgammonAiMove/);
+  assert.doesNotMatch(str(runtime.messageCalls[0]?.["text"] ?? ""), /Legal moves:/);
+  assert.doesNotMatch(str(runtime.messageCalls[0]?.["text"] ?? ""), /legalMoveId/);
   assert.equal("legalMoveIds" in protocolContext, false);
   assert.equal("turnToken" in protocolContext, false);
-  assert.ok(Array.isArray(protocolContext.board));
-  assert.equal(runtime.latestGameState().selectedTarget, "ai1");
-  assert.equal(runtime.latestGameState().awaitingMoveFrom, "ai");
-  assert.equal(runtime.latestGameState().protocolDelivered, true);
+  assert.ok(Array.isArray(protocolContext["board"]));
+  assert.equal(runtime.latestGameState()['selectedTarget'], "ai1");
+  assert.equal(runtime.latestGameState()['awaitingMoveFrom'], "ai");
+  assert.equal(runtime.latestGameState()['protocolDelivered'], true);
 });
 
-test("game-room Tavla sends protocol immediately when the AI starts", async () => {
+void test("game-room Tavla sends protocol immediately when the AI starts", async () => {
   const runtime = createRoomHostRuntime();
   const startResult = await startMatch(runtime, { target: "ai2", starter: "ai" });
 
   assert.equal(startResult.success, true);
   assert.equal(runtime.protocolCalls.length, 1);
   assert.equal(runtime.messageCalls.length, 1);
-  assert.equal(runtime.protocolCalls[0]?.scenario, "backgammon-ai-start");
-  assert.equal(runtime.latestGameState().selectedTarget, "ai2");
-  assert.equal(runtime.latestGameState().awaitingMoveFrom, "ai");
-  assert.doesNotMatch(String(runtime.messageCalls[0]?.text ?? ""), /legalMoveId/);
+  assert.equal(runtime.protocolCalls[0]?.['scenario'], "backgammon-ai-start");
+  assert.equal(runtime.latestGameState()['selectedTarget'], "ai2");
+  assert.equal(runtime.latestGameState()['awaitingMoveFrom'], "ai");
+  assert.doesNotMatch(str(runtime.messageCalls[0]?.["text"] ?? ""), /legalMoveId/);
 
   const aiMoveResult = await applyAiMoveSteps(runtime, "ai2");
 
   assert.equal(aiMoveResult.success, true);
-  assert.equal(runtime.latestGameState().awaitingMoveFrom, "user");
-  assert.equal(runtime.latestGameState().turnIndex, 1);
+  assert.equal(runtime.latestGameState()['awaitingMoveFrom'], "user");
+  assert.equal(runtime.latestGameState()['turnIndex'], 1);
 });
 
-test("game-room Tavla starts against an assigned disconnected AI slot", async () => {
+void test("game-room Tavla starts against an assigned disconnected AI slot", async () => {
   const runtime = createRoomHostRuntime();
   const context = buildReadyHostContext("ai1");
   for (const slot of [context.slots.ai1, context.presence.slots.ai1]) {
@@ -489,17 +510,17 @@ test("game-room Tavla starts against an assigned disconnected AI slot", async ()
   });
 
   assert.equal(startResult.success, true);
-  assert.equal(runtime.latestGameState().active, true);
-  assert.equal(runtime.latestGameState().opponentReady, true);
+  assert.equal(runtime.latestGameState()['active'], true);
+  assert.equal(runtime.latestGameState()['opponentReady'], true);
   assert.ok(
     runtime.dispatchCalls.some(
-      (call) => call.action === "connection.ensure" && call.toSlot === "ai1"
+      (call: Record<string, unknown>) => call["action"] === "connection.ensure" && call["toSlot"] === "ai1"
     )
   );
   assert.equal(runtime.messageCalls.length, 0);
 });
 
-test("game-room Tavla rejects stale tokens and invalid user legal move ids", async () => {
+void test("game-room Tavla rejects stale tokens and invalid user legal move ids", async () => {
   const runtime = createRoomHostRuntime();
   await startMatch(runtime, { target: "ai1", starter: "user" });
 
@@ -513,7 +534,7 @@ test("game-room Tavla rejects stale tokens and invalid user legal move ids", asy
   const invalidMoveResult = await runCommand(runtime, "GameRoomBackgammonUserMove", {
     roomArgs: {
       legalMoveId: "missing-move",
-      turnToken: runtime.latestGameState().turnToken,
+      turnToken: runtime.latestGameState()['turnToken'],
       turnIndex: 0,
     },
   });
@@ -526,7 +547,7 @@ test("game-room Tavla rejects stale tokens and invalid user legal move ids", asy
   assert.equal(legalMoveResult.success, true);
 });
 
-test("game-room Tavla blocks invalid opponent legal move ids", async () => {
+void test("game-room Tavla blocks invalid opponent legal move ids", async () => {
   const runtime = createRoomHostRuntime();
   await startMatch(runtime, { target: "ai1", starter: "user" });
   await applyUserLegalMove(runtime);
@@ -535,17 +556,17 @@ test("game-room Tavla blocks invalid opponent legal move ids", async () => {
     provider: "ai1",
     roomArgs: {
       legalMoveId: "missing-move",
-      turnToken: runtime.latestGameState().turnToken,
-      turnIndex: runtime.latestGameState().turnIndex,
+      turnToken: runtime.latestGameState()['turnToken'],
+      turnIndex: runtime.latestGameState()['turnIndex'],
     },
   });
 
   assert.equal(invalidAiMoveResult.success, false);
-  assert.equal(runtime.latestGameState().result, "blocked");
-  assert.equal(runtime.latestGameState().blockedReason, "ai-invalid-move");
+  assert.equal(runtime.latestGameState()['result'], "blocked");
+  assert.equal(runtime.latestGameState()['blockedReason'], "ai-invalid-move");
 });
 
-test("game-room Tavla sends US1 invites with Tavla note metadata", async () => {
+void test("game-room Tavla sends US1 invites with Tavla note metadata", async () => {
   const runtime = createRoomHostRuntime();
   const startResult = await startMatch(runtime, {
     target: "us1",
@@ -556,76 +577,78 @@ test("game-room Tavla sends US1 invites with Tavla note metadata", async () => {
   assert.equal(startResult.success, true);
   assert.equal(runtime.protocolCalls.length, 0);
   assert.equal(runtime.us1MessageCalls.length, 1);
-  assert.equal(runtime.us1MessageCalls[0]?.roomEvent?.eventType, "invite");
-  assert.equal(runtime.us1MessageCalls[0]?.roomEvent?.note, "Ready for a rematch?");
-  assert.equal(runtime.us1MessageCalls[0]?.roomEvent?.starter, "user");
+  const us1Msg0 = runtime.us1MessageCalls[0]!;
+  const roomEvent = us1Msg0["roomEvent"] as Record<string, unknown>;
+  assert.equal(roomEvent["eventType"], "invite");
+  assert.equal(roomEvent["note"], "Ready for a rematch?");
+  assert.equal(roomEvent["starter"], "user");
   assert.match(
-    String(runtime.us1MessageCalls[0]?.text ?? ""),
+    str(us1Msg0["text"] ?? ""),
     /^Ready for a rematch\?\n\nTavla invite/
   );
-  assert.equal(runtime.latestGameState().selectedTarget, "us1");
+  assert.equal(runtime.latestGameState()['selectedTarget'], "us1");
   assert.equal(
-    (runtime.latestGameState().pendingInvite as Record<string, unknown>).direction,
+    (runtime.latestGameState()['pendingInvite'] as Record<string, unknown>)["direction"],
     "outgoing"
   );
-  assert.equal(runtime.us1MessageCalls[0]?.roomEvent?.matchId, runtime.latestGameState().matchId);
+  assert.equal(roomEvent["matchId"], runtime.latestGameState()['matchId']);
 });
 
-test("game-room Tavla sends mirrored US1 legal move metadata after accept", async () => {
+void test("game-room Tavla sends mirrored US1 legal move metadata after accept", async () => {
   const runtime = createRoomHostRuntime();
   await startMatch(runtime, {
     target: "us1",
     starter: "user",
     inviteMessage: "Ready?",
   });
-  const pendingInvite = runtime.latestGameState().pendingInvite as Record<string, unknown>;
+  const pendingInvite = runtime.latestGameState()['pendingInvite'] as Record<string, unknown>;
   runtime.enqueueUs1SyncResult({
     roomEvents: [
       {
         roomId: "game-room",
         featureId: "backgammon",
-        inviteId: pendingInvite.inviteId,
-        matchId: pendingInvite.matchId,
+        inviteId: pendingInvite["inviteId"],
+        matchId: pendingInvite["matchId"],
         eventType: "accept",
         starter: "user",
-        remoteUserId: pendingInvite.remoteUserId,
-        localSessionId: runtime.latestGameState().localSessionId,
+        remoteUserId: pendingInvite["remoteUserId"],
+        localSessionId: runtime.latestGameState()['localSessionId'],
         conversationId: "us1-conversation-1",
         transportMessageId: "<accept-move-meta@example.test>",
         sentAt: 1700000004500,
-        senderNickname: pendingInvite.nickname,
-        senderEmail: `${pendingInvite.remoteUserId}`,
+        senderNickname: pendingInvite["nickname"],
+        senderEmail: str(pendingInvite["remoteUserId"]),
       },
     ],
   });
   await runtime.emitHostContext(
     buildReadyHostContext("us1", {
-      us1RemoteUserId: String(pendingInvite.remoteUserId),
-      us1Nickname: String(pendingInvite.nickname),
+      us1RemoteUserId: String(pendingInvite["remoteUserId"]),
+      us1Nickname: String(pendingInvite["nickname"]),
     })
   );
 
   const beforeMove = runtime.latestGameState();
   const localLegalMove = firstLegalMove(beforeMove);
   const userMoveResult = await applyUserLegalMove(runtime);
-  const sentCommand = runtime.us1MessageCalls[1]?.roomCommand as Record<string, unknown>;
-  const roomPayload = sentCommand.roomPayload as Record<string, unknown>;
+  const sentCommand = runtime.us1MessageCalls[1]?.['roomCommand'] as Record<string, unknown>;
+  const roomPayload = sentCommand["roomPayload"] as Record<string, unknown>;
 
   assert.equal(userMoveResult.success, true);
-  assert.equal(sentCommand.commandName, "GameRoomBackgammonRemoteMove");
-  assert.equal(sentCommand.matchId, pendingInvite.matchId);
-  assert.equal(sentCommand.turnIndex, 0);
-  assert.equal(typeof sentCommand.boardHashBeforeMove, "string");
-  assert.notEqual(sentCommand.boardHashBeforeMove, "");
-  assert.equal(typeof roomPayload.legalMoveId, "string");
-  assert.equal(roomPayload.turnToken, beforeMove.turnToken);
-  assert.equal(roomPayload.turnIndex, 0);
-  assert.notEqual(roomPayload.legalMoveId, localLegalMove.id);
-  assert.match(String(runtime.us1MessageCalls[1]?.text ?? ""), /GameRoomBackgammonRemoteMove/);
-  assert.equal(runtime.latestGameState().turnIndex, 1);
+  assert.equal(sentCommand["commandName"], "GameRoomBackgammonRemoteMove");
+  assert.equal(sentCommand["matchId"], pendingInvite["matchId"]);
+  assert.equal(sentCommand["turnIndex"], 0);
+  assert.equal(typeof sentCommand["boardHashBeforeMove"], "string");
+  assert.notEqual(sentCommand["boardHashBeforeMove"], "");
+  assert.equal(typeof roomPayload["legalMoveId"], "string");
+  assert.equal(roomPayload["turnToken"], beforeMove["turnToken"]);
+  assert.equal(roomPayload["turnIndex"], 0);
+  assert.notEqual(roomPayload["legalMoveId"], localLegalMove.id);
+  assert.match(str(runtime.us1MessageCalls[1]?.['text'] ?? ""), /GameRoomBackgammonRemoteMove/);
+  assert.equal(runtime.latestGameState()['turnIndex'], 1);
 });
 
-test("game-room Tavla applies generated US1 remote moves and rejects duplicate or stale moves", async () => {
+void test("game-room Tavla applies generated US1 remote moves and rejects duplicate or stale moves", async () => {
   const runtime = createRoomHostRuntime();
   const inviteEntry = {
     roomId: "game-room",
@@ -651,48 +674,48 @@ test("game-room Tavla applies generated US1 remote moves and rejects duplicate o
   });
 
   assert.equal(acceptResult.success, true);
-  assert.equal(runtime.latestGameState().awaitingMoveFrom, "ai");
+  assert.equal(runtime.latestGameState()['awaitingMoveFrom'], "ai");
   const firstRemoteState = runtime.latestGameState();
   const firstRemoteMove = firstLegalMove(firstRemoteState);
   const firstMoveResult = await applyRemoteMove(runtime, {
     matchId: "invite-replay",
     legalMoveId: firstRemoteMove.id,
-    turnToken: firstRemoteState.turnToken,
-    turnIndex: firstRemoteState.turnIndex,
-    boardHashBeforeMove: firstRemoteState.boardHash,
+    turnToken: firstRemoteState['turnToken'],
+    turnIndex: firstRemoteState['turnIndex'],
+    boardHashBeforeMove: firstRemoteState['boardHash'],
     transportMessageId: "<remote-replay-1@example.test>",
   });
   const duplicateMoveResult = await applyRemoteMove(runtime, {
     matchId: "invite-replay",
     legalMoveId: firstRemoteMove.id,
-    turnToken: firstRemoteState.turnToken,
-    turnIndex: firstRemoteState.turnIndex,
-    boardHashBeforeMove: firstRemoteState.boardHash,
+    turnToken: firstRemoteState['turnToken'],
+    turnIndex: firstRemoteState['turnIndex'],
+    boardHashBeforeMove: firstRemoteState['boardHash'],
     transportMessageId: "<remote-replay-1@example.test>",
   });
   const staleMoveResult = await applyRemoteMove(runtime, {
     matchId: "invite-replay",
     legalMoveId: firstRemoteMove.id,
-    turnToken: firstRemoteState.turnToken,
-    turnIndex: firstRemoteState.turnIndex,
-    boardHashBeforeMove: firstRemoteState.boardHash,
+    turnToken: firstRemoteState['turnToken'],
+    turnIndex: firstRemoteState['turnIndex'],
+    boardHashBeforeMove: firstRemoteState['boardHash'],
     transportMessageId: "<remote-replay-2@example.test>",
   });
 
   assert.equal(firstMoveResult.success, true);
-  assert.equal(runtime.latestGameState().awaitingMoveFrom, "user");
-  assert.equal(runtime.latestGameState().turnIndex, 1);
+  assert.equal(runtime.latestGameState()['awaitingMoveFrom'], "user");
+  assert.equal(runtime.latestGameState()['turnIndex'], 1);
   assert.equal(duplicateMoveResult.success, false);
   assert.match(String(duplicateMoveResult.message ?? ""), /duplicate/i);
   assert.equal(staleMoveResult.success, false);
   assert.match(String(staleMoveResult.message ?? ""), /stale/i);
   assert.equal(
-    runtime.latestGameState().lastRemoteTransportMessageId,
+    runtime.latestGameState()['lastRemoteTransportMessageId'],
     "<remote-replay-1@example.test>"
   );
 });
 
-test("game-room Tavla blocks the match when the selected opponent disappears mid-game", async () => {
+void test("game-room Tavla blocks the match when the selected opponent disappears mid-game", async () => {
   const runtime = createRoomHostRuntime();
   await startMatch(runtime, { target: "ai1", starter: "user" });
   await applyUserLegalMove(runtime);
@@ -732,12 +755,12 @@ test("game-room Tavla blocks the match when the selected opponent disappears mid
     },
   });
 
-  assert.equal(runtime.latestGameState().result, "blocked");
-  assert.equal(runtime.latestGameState().blockedReason, "opponent-unavailable");
-  assert.match(String(runtime.latestGameState().status ?? ""), /Reset to begin again/);
+  assert.equal(runtime.latestGameState()['result'], "blocked");
+  assert.equal(runtime.latestGameState()['blockedReason'], "opponent-unavailable");
+  assert.match(str(runtime.latestGameState()['status'] ?? ""), /Reset to begin again/);
 });
 
-test("game-room Tavla keeps an assigned AI match alive through disconnect state", async () => {
+void test("game-room Tavla keeps an assigned AI match alive through disconnect state", async () => {
   const runtime = createRoomHostRuntime();
   await startMatch(runtime, { target: "ai1", starter: "user" });
   await applyUserLegalMove(runtime);
@@ -777,12 +800,12 @@ test("game-room Tavla keeps an assigned AI match alive through disconnect state"
     },
   });
 
-  assert.equal(runtime.latestGameState().result, "pending");
-  assert.equal(runtime.latestGameState().blockedReason, "");
-  assert.equal(runtime.latestGameState().awaitingMoveFrom, "ai");
+  assert.equal(runtime.latestGameState()['result'], "pending");
+  assert.equal(runtime.latestGameState()['blockedReason'], "");
+  assert.equal(runtime.latestGameState()['awaitingMoveFrom'], "ai");
 });
 
-test("game-room Backgammon command names route to the Tavla handlers", async () => {
+void test("game-room Backgammon command names route to the Tavla handlers", async () => {
   const runtime = createRoomHostRuntime();
   const startResult = await startMatch(runtime, {
     target: "ai1",
@@ -793,6 +816,6 @@ test("game-room Backgammon command names route to the Tavla handlers", async () 
 
   assert.equal(startResult.success, true);
   assert.equal(userMoveResult.success, true);
-  assert.equal(runtime.latestGameState().selectedTarget, "ai1");
-  assert.equal(runtime.latestGameState().awaitingMoveFrom, "ai");
+  assert.equal(runtime.latestGameState()['selectedTarget'], "ai1");
+  assert.equal(runtime.latestGameState()['awaitingMoveFrom'], "ai");
 });

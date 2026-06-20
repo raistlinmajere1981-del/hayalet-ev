@@ -6,7 +6,7 @@ import {
   resolveProtocolTokenDeletionRange,
 } from "../../shared/protocol-tags.ts";
 
-test("protocol tags replace AI and US1 placeholders with resolved nicknames", () => {
+void test("protocol tags replace AI and US1 placeholders with resolved nicknames", () => {
   const resolved = replaceProtocolTagsWithResolver(
     "Ping <AI0>, <AI1>, <AI2>, and <US1>.",
     (provider) =>
@@ -21,7 +21,7 @@ test("protocol tags replace AI and US1 placeholders with resolved nicknames", ()
   assert.equal(resolved, "Ping Asistan, Ada, Bora, and Uzak Kullanici.");
 });
 
-test("protocol tags delete the whole token on backward delete", () => {
+void test("protocol tags delete the whole token on backward delete", () => {
   const rawValue = "Hello <AI0> world";
   const deletion = resolveProtocolTokenDeletionRange(rawValue, "Hello <AI0>".length, "backward");
 
@@ -32,7 +32,7 @@ test("protocol tags delete the whole token on backward delete", () => {
   });
 });
 
-test("protocol tags delete the whole token on forward delete", () => {
+void test("protocol tags delete the whole token on forward delete", () => {
   const rawValue = "Hello <US1> world";
   const deletion = resolveProtocolTokenDeletionRange(rawValue, "Hello ".length, "forward");
 
@@ -43,7 +43,7 @@ test("protocol tags delete the whole token on forward delete", () => {
   });
 });
 
-test("protocol tags ignore plain text around the caret", () => {
+void test("protocol tags ignore plain text around the caret", () => {
   const rawValue = "Hello <AI1> world";
 
   assert.equal(resolveProtocolTokenDeletionRange(rawValue, 3, "backward"), null);

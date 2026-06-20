@@ -183,7 +183,7 @@ function readPatternRoomManifest(): RoomManifest {
   return result.manifest;
 }
 
-test("pattern-room case review dispatch command contract literals stay stable", () => {
+void test("pattern-room case review dispatch command contract literals stay stable", () => {
   assert.equal(PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND, "pattern:case-review-dispatch");
   assert.equal(PATTERN_ROOM_CASE_REVIEW_DISPATCHED_EVENT, "pattern:case-review-dispatched");
   assert.equal(
@@ -192,7 +192,7 @@ test("pattern-room case review dispatch command contract literals stay stable", 
   );
 });
 
-test("pattern-room case review dispatch command registers as internal room-ui only", async () => {
+void test("pattern-room case review dispatch command registers as internal room-ui only", async () => {
   RoomCommandRegistry.reset();
 
   try {
@@ -239,7 +239,7 @@ test("pattern-room case review dispatch command registers as internal room-ui on
   }
 });
 
-test("pattern-room case review dispatch command stays out of manifest command specs", () => {
+void test("pattern-room case review dispatch command stays out of manifest command specs", () => {
   const manifest = readPatternRoomManifest();
 
   assert.equal(
@@ -250,7 +250,7 @@ test("pattern-room case review dispatch command stays out of manifest command sp
   );
 });
 
-test("pattern-room case review dispatch rejects non room-ui providers and wrong rooms", async () => {
+void test("pattern-room case review dispatch rejects non room-ui providers and wrong rooms", async () => {
   RoomCommandRegistry.reset();
   const draft = createDispatchDraft();
   const { dispatchCalls } = activateHost({ registerWithRegistry: true });
@@ -282,7 +282,7 @@ test("pattern-room case review dispatch rejects non room-ui providers and wrong 
   }
 });
 
-test("pattern-room case review dispatch command forwards the prepared draft payload", async () => {
+void test("pattern-room case review dispatch command forwards the prepared draft payload", async () => {
   RoomCommandRegistry.reset();
   const draft = createDispatchDraft();
   const { dispatchCalls, notifications } = activateHost({ registerWithRegistry: true });
@@ -322,7 +322,7 @@ test("pattern-room case review dispatch command forwards the prepared draft payl
   }
 });
 
-test("pattern-room case review dispatch rejects malformed drafts before bridge dispatch", async () => {
+void test("pattern-room case review dispatch rejects malformed drafts before bridge dispatch", async () => {
   const draft = createDispatchDraft();
   const malformedDrafts: unknown[] = [
     null,
@@ -359,7 +359,7 @@ test("pattern-room case review dispatch rejects malformed drafts before bridge d
   );
 });
 
-test("pattern-room case review dispatch reports bridge failures and accepts the next command", async () => {
+void test("pattern-room case review dispatch reports bridge failures and accepts the next command", async () => {
   const draft = createDispatchDraft();
   let shouldFail = true;
   const { activation, dispatchCalls, notifications } = activateHost({
@@ -392,7 +392,7 @@ test("pattern-room case review dispatch reports bridge failures and accepts the 
   });
 });
 
-test("pattern-room host lifecycle does not dispatch during ready/load restore", async () => {
+void test("pattern-room host lifecycle does not dispatch during ready/load restore", async () => {
   const { activation, dispatchCalls, notifications } = activateHost();
 
   await activation.onRoomReady();
@@ -404,7 +404,7 @@ test("pattern-room host lifecycle does not dispatch during ready/load restore", 
   );
 });
 
-test("pattern-room case review dispatch host stays renderer-safe and UI-free", async () => {
+void test("pattern-room case review dispatch host stays renderer-safe and UI-free", async () => {
   const hostSource = await readFile(resolve("rooms/pattern-room/host/runtime.ts"), "utf8");
   const uiRuntimeSource = await readFile(
     resolve("rooms/pattern-room/ui/pattern-room-ui-runtime.ts"),

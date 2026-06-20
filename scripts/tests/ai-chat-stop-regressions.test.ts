@@ -8,7 +8,7 @@ const { aiaiChatStopHandler, aiAssistantChatStopHandler, aiChatRuntime } = await
   "../../src/js/modules/commands/ai-chat-commands.js"
 );
 
-test("AI-AI stop command does not send stop protocol when relay inactive", async () => {
+void test("AI-AI stop command does not send stop protocol when relay inactive", async () => {
   const originalIsAIAIActive = RelayManager.isAIAIActive;
   const originalSendProtocol = aiChatRuntime.sendProtocol;
   let sendProtocolCalled = false;
@@ -30,7 +30,7 @@ test("AI-AI stop command does not send stop protocol when relay inactive", async
   }
 });
 
-test("AI-Assistant stop command does not stop when relay inactive", async () => {
+void test("AI-Assistant stop command does not stop when relay inactive", async () => {
   const originalIsAIAssistantActive = RelayManager.isAIAssistantActive;
   const originalStopAIAssistantSession = RelayManager.stopAIAssistantSession;
   let stopCalled = false;
@@ -51,14 +51,14 @@ test("AI-Assistant stop command does not stop when relay inactive", async () => 
   }
 });
 
-test("AI-Assistant stop command sends the standardized stop protocol to the active source AI", async () => {
+void test("AI-Assistant stop command sends the standardized stop protocol to the active source AI", async () => {
   const originalIsAIAssistantActive = RelayManager.isAIAssistantActive;
   const originalGetAIAssistantSourceSlot = RelayManager.getAIAssistantSourceSlot;
   const originalStopAIAssistantSession = RelayManager.stopAIAssistantSession;
   const originalSendProtocol = aiChatRuntime.sendProtocol;
 
   let stopCalled = false;
-  let sendArgs: Record<string, unknown> | null = null;
+  let sendArgs: Parameters<typeof aiChatRuntime.sendProtocol>[0] | null = null;
 
   try {
     RelayManager.isAIAssistantActive = () => true;
@@ -66,8 +66,8 @@ test("AI-Assistant stop command sends the standardized stop protocol to the acti
     RelayManager.stopAIAssistantSession = async () => {
       stopCalled = true;
     };
-    aiChatRuntime.sendProtocol = async (args: Record<string, unknown>) => {
-      sendArgs = args;
+    aiChatRuntime.sendProtocol = async (args?: Parameters<typeof aiChatRuntime.sendProtocol>[0]) => {
+      sendArgs = args ?? null;
       return { success: true };
     };
 

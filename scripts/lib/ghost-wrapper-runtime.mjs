@@ -103,6 +103,10 @@ export function resolveMainAppScriptName(
   return normalizedUiMode === "scene" ? `electron:dev:scene${debugSuffix}` : "electron:dev";
 }
 
+/**
+ * @param {string} mainEntry
+ * @param {boolean | { assistantStartup?: boolean; uiMode?: string; sceneDebug?: boolean; cdpPort?: string | null }} [options]
+ */
 export function buildMainAppLaunchArgs(mainEntry, options = false) {
   const normalizedOptions =
     typeof options === "boolean"

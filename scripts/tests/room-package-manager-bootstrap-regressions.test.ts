@@ -58,7 +58,7 @@ const afterPackScriptPath = join(projectRoot, "scripts", "electron-builder-after
 const pathsPath = join(projectRoot, "electron", "paths.ts");
 const eslintConfigPath = join(projectRoot, "eslint.config.cjs");
 
-test("room package manager resolves Paths lazily instead of constructor time", async () => {
+void test("room package manager resolves Paths lazily instead of constructor time", async () => {
   const source = await readFile(roomPackageManagerPath, "utf8");
 
   assert.match(source, /private getWorkspaceRoot\(\): string/);
@@ -70,7 +70,7 @@ test("room package manager resolves Paths lazily instead of constructor time", a
   assert.doesNotMatch(source, /export const roomPackageManager = new RoomPackageManager\(\)/);
 
   const constructorMatch = source.match(
-    /constructor\(options: RoomManagerOptions = \{\}\) \{([\s\S]*?)\n  \}/
+    /constructor\(options: RoomManagerOptions = \{\}\) \{([\s\S]*?)\n {2}\}/
   );
   assert.ok(constructorMatch, "constructor should exist");
   assert.doesNotMatch(
@@ -79,7 +79,7 @@ test("room package manager resolves Paths lazily instead of constructor time", a
   );
 });
 
-test("ipc room handlers resolve the room package manager at handler execution time", async () => {
+void test("ipc room handlers resolve the room package manager at handler execution time", async () => {
   const source = await readFile(ipcRoomsPath, "utf8");
 
   assert.match(source, /import \{ getRoomPackageManager \} from "\.\.\/room-package-manager\.ts"/);
@@ -91,7 +91,7 @@ test("ipc room handlers resolve the room package manager at handler execution ti
   assert.match(source, /registerHandler\("rooms-sync-linked-startup", async \(\) => \{/);
 });
 
-test("room package manager keeps installed room record building in a dedicated builder module", async () => {
+void test("room package manager keeps installed room record building in a dedicated builder module", async () => {
   const packageJsonSource = await readFile(packageJsonPath, "utf8");
   const packageJson = JSON.parse(packageJsonSource) as {
     scripts?: Record<string, string>;
@@ -230,11 +230,11 @@ test("room package manager keeps installed room record building in a dedicated b
   assert.match(eslintConfigSource, /"rooms\/\*\*\/ui\/\*\*\/\*\.ts"/);
   assert.match(eslintConfigSource, /"rooms\/\*\*\/main-functions\/\*\*\/host\/\*\*\/\*\.ts"/);
   assert.match(eslintConfigSource, /project:\s*"\.\/rooms\/tsconfig\.rooms\.json"/);
-  assert.equal(scripts.check, "npm run lint && npm run check-types && npm run rooms:test:core");
-  assert.ok(scripts.typecheck?.includes("rooms/tsconfig.rooms.json"));
+  assert.equal(scripts["check"], "npm run lint && npm run check-types && npm run rooms:test:core");
+  assert.ok(scripts["typecheck"]?.includes("rooms/tsconfig.rooms.json") === true);
 });
 
-test("dev startup falls back to workspace rooms when installed registry is empty", async () => {
+void test("dev startup falls back to workspace rooms when installed registry is empty", async () => {
   const managerSource = await readFile(roomPackageManagerPath, "utf8");
   const mainSource = await readFile(mainPath, "utf8");
 
@@ -253,7 +253,7 @@ test("dev startup falls back to workspace rooms when installed registry is empty
   assert.match(mainSource, /if \(rooms\.length === 0\) \{\s*return null;\s*\}/);
 });
 
-test("packaged startup seeds the external workspace root and bootstraps installed rooms from rooms/", async () => {
+void test("packaged startup seeds the external workspace root and bootstraps installed rooms from rooms/", async () => {
   const managerSource = await readFile(roomPackageManagerPath, "utf8");
   const mainWrapperSource = await readFile(
     join(projectRoot, "electron", "packaged-wrapper-main.ts"),

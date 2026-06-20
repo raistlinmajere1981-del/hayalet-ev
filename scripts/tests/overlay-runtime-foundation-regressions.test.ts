@@ -6,10 +6,10 @@ import test from "node:test";
 const ROOT = process.cwd();
 
 async function readProjectFile(relativePath: string): Promise<string> {
-  return readFile(path.join(ROOT, relativePath), "utf8");
+  return await readFile(path.join(ROOT, relativePath), "utf8");
 }
 
-test("shell index declares one canonical overlay host with shared surface lanes", async () => {
+void test("shell index declares one canonical overlay host with shared surface lanes", async () => {
   const indexHtml = await readProjectFile("src/index.html");
 
   assert.match(indexHtml, /id="app-overlay-host"/);
@@ -21,7 +21,7 @@ test("shell index declares one canonical overlay host with shared surface lanes"
   assert.match(indexHtml, /data-overlay-layer="loading"/);
 });
 
-test("overlay runtime exposes central families, host init, and surface metadata", async () => {
+void test("overlay runtime exposes central families, host init, and surface metadata", async () => {
   const overlayRuntime = await readProjectFile("src/js/ui/overlay-system.ts");
 
   assert.match(overlayRuntime, /OVERLAY_SURFACE_FAMILIES/);
@@ -33,7 +33,7 @@ test("overlay runtime exposes central families, host init, and surface metadata"
   assert.match(overlayRuntime, /overlayActiveFamilies/);
 });
 
-test("app bootstrap initializes the overlay host and styles define shared layers for classic and scene", async () => {
+void test("app bootstrap initializes the overlay host and styles define shared layers for classic and scene", async () => {
   const appIndex = await readProjectFile("src/js/app/index.ts");
   const mainCss = await readProjectFile("src/styles/main.css");
   const sceneCss = await readProjectFile("src/styles/scene-system/shell.css");

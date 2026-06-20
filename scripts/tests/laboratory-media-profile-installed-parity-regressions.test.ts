@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { createRoomBuiltArtifact, createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 
@@ -64,7 +64,7 @@ function assertRoomParity(leftRoot: string, rightRoot: string) {
   });
 }
 
-test("laboratory installed room mirrors the workspace package for the active lab-root shell", async () => {
+void test("laboratory installed room mirrors the workspace package for the active lab-root shell", async () => {
   const buildArtifact = await createRoomBuiltArtifact("laboratory");
   const installedCopy = await createRoomInstalledCopy("laboratory");
 

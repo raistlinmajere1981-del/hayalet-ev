@@ -7,7 +7,7 @@ function toRecord<T extends Record<string, unknown> = Record<string, unknown>>(v
   return value && typeof value === "object" && !Array.isArray(value) ? (value as T) : ({} as T);
 }
 
-test("laboratory host treats preview/apply edit jobs as action-scoped slots", () => {
+void test("laboratory host treats preview/apply edit jobs as action-scoped slots", () => {
   const jobRuntime = createLaboratoryJobRuntime({
     roomId: "laboratory",
     toRecord,

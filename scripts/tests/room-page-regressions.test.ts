@@ -19,25 +19,25 @@ type LaboratoryManifestFeature = {
   };
 };
 
-test("toRoomRuntimeFileUrl normalizes linux paths", () => {
+void test("toRoomRuntimeFileUrl normalizes linux paths", () => {
   assert.equal(
     toRoomRuntimeFileUrl("/workspace/rooms/.build/game-room/runtime/ui/index.html"),
     "file:///workspace/rooms/.build/game-room/runtime/ui/index.html"
   );
 });
 
-test("toRoomRuntimeFileUrl normalizes windows-style paths", () => {
+void test("toRoomRuntimeFileUrl normalizes windows-style paths", () => {
   assert.equal(
     toRoomRuntimeFileUrl("C:\\rooms\\game-room\\ui\\index.html"),
     "file:///C:/rooms/game-room/ui/index.html"
   );
 });
 
-test("toRoomRuntimeFileUrl encodes reserved url characters", () => {
+void test("toRoomRuntimeFileUrl encodes reserved url characters", () => {
   assert.equal(toRoomRuntimeFileUrl("/tmp/a b#c/index.html"), "file:///tmp/a%20b%23c/index.html");
 });
 
-test("canUseDirectFileUrls rejects http-backed renderer protocols", () => {
+void test("canUseDirectFileUrls rejects http-backed renderer protocols", () => {
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
 
   try {
@@ -67,7 +67,7 @@ test("canUseDirectFileUrls rejects http-backed renderer protocols", () => {
   }
 });
 
-test("room host runtime skips direct file imports on http-backed renderer protocols", () => {
+void test("room host runtime skips direct file imports on http-backed renderer protocols", () => {
   const hostRuntimeSource = readFileSync("src/js/modules/rooms/room-host-runtime.ts", "utf8");
   const guardIndex = hostRuntimeSource.indexOf("if (canUseDirectFileUrls())");
   const fileImportIndex = hostRuntimeSource.indexOf(
@@ -82,7 +82,7 @@ test("room host runtime skips direct file imports on http-backed renderer protoc
   assert.ok(fileImportIndex < fallbackIndex);
 });
 
-test("room page syncs slot-aware host context and scene runtime routing", () => {
+void test("room page syncs slot-aware host context and scene runtime routing", () => {
   const source = readFileSync("src/js/pages/room-page.ts", "utf8");
   const shellLayoutSource = readFileSync("src/js/pages/room-page/shell-layout.ts", "utf8");
   const pageShellRuntimeSource = readFileSync(
@@ -473,16 +473,16 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(runtimeMessagingSource, /export function describeRoomCommand\(/);
   assert.match(runtimeMessagingSource, /return `\+\+cmd:\$\{command\.trim\(\)\}`;/);
   const initMethodMatch = source.match(
-    /(?:async\s+)?init\(\)(?:: [^{]+)? \{([\s\S]*?)\n  }\n\n  onShow\(\): void \{/
+    /(?:async\s+)?init\(\)(?:: [^{]+)? \{([\s\S]*?)\n {2}}\n\n {2}onShow\(\): void \{/
   );
   const initMethodBody = initMethodMatch?.[1];
-  assert.ok(initMethodBody);
+  assert.ok(initMethodBody != null);
   assert.doesNotMatch(initMethodBody, /runtimeHostRuntime\.ensure/);
   const renderMethodMatch = source.match(
-    /render\(\): void \{([\s\S]*?)\n  }\n\n  dispose\(\): void \{/
+    /render\(\): void \{([\s\S]*?)\n {2}}\n\n {2}dispose\(\): void \{/
   );
   const renderMethodBody = renderMethodMatch?.[1];
-  assert.ok(renderMethodBody);
+  assert.ok(renderMethodBody != null);
   assert.match(
     renderMethodBody,
     /if \(this\.shouldEnsureRuntimeHost\(page\)\) \{\s*void this\.runtimeHostRuntime\.ensure\(page\);\s*\}/
@@ -567,7 +567,7 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   );
 });
 
-test("installed laboratory manifest keeps one workbench scene entry for room-page routing", () => {
+void test("installed laboratory manifest keeps one workbench scene entry for room-page routing", () => {
   const manifestPath = existsSync("rooms/.build/laboratory/runtime/manifest.json")
     ? "rooms/.build/laboratory/runtime/manifest.json"
     : "rooms/laboratory/manifest.json";

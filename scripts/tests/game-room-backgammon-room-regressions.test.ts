@@ -145,7 +145,7 @@ class MinimalFakeElement {
       target: this,
       preventDefault: () => undefined,
     };
-    (this.listeners["click"] ?? []).forEach((handler) => handler(event));
+    (this.listeners["click"] ?? []).forEach((handler) => { handler(event); });
   }
 
   querySelector(selector: string): MinimalFakeElement | null {
@@ -334,7 +334,7 @@ class FakeKonvaNode {
   }
 
   trigger(eventName: string): void {
-    (this.handlers[eventName] ?? []).forEach((handler) => handler({ target: this }));
+    (this.handlers[eventName] ?? []).forEach((handler) => { handler({ target: this }); });
   }
 
   width(): number;
@@ -454,7 +454,7 @@ function createBackgammonUiStateHarness(): BackgammonUiStateHarness {
 
   const runtimeFactory = windowObject.GameRoomUiFactories?.createBackgammonUiStateRuntime;
   assert.equal(typeof runtimeFactory, "function");
-  const runtime = runtimeFactory({
+  const runtime = runtimeFactory!({
     getState: () => state,
     roomId: "game-room",
     featureId: "backgammon",
@@ -596,23 +596,23 @@ function createGameRoomUiCoalescingHarness(
   );
 
   const runtimeRegistry = windowObject["GameRoomUiRuntime"] as Record<string, unknown> | undefined;
-  const createRuntime = runtimeRegistry?.["createGameRoomUiRuntime"];
+  const createRuntime = runtimeRegistry?.["createGameRoomUiRuntime"] as (() => GameRoomUiCoalescingHarness["runtime"]) | undefined;
   assert.equal(typeof createRuntime, "function");
-  const runtime = createRuntime() as GameRoomUiCoalescingHarness["runtime"];
+  const runtime = createRuntime!();
 
   return {
     flushFrame(): void {
       const callback = frames.shift();
       assert.equal(typeof callback, "function");
-      callback(16);
+      callback!(16);
     },
     flushTimer(): void {
       let handle = timers.shift();
-      while (handle && handle.cleared) {
+      while (handle?.cleared) {
         handle = timers.shift();
       }
       assert.equal(typeof handle?.callback, "function");
-      handle.callback();
+      handle!.callback();
     },
     getFrameCount: () => frames.length,
     getRenderAttempts: () => renderAttempts,
@@ -628,13 +628,13 @@ function createGameRoomUiCoalescingHarness(
   };
 }
 
-test("game-room workspace keeps the required Tavla package files", () => {
+void test("game-room workspace keeps the required Tavla package files", () => {
   requiredFiles.forEach((filePath) => {
     assert.equal(existsSync(filePath), true, filePath);
   });
 });
 
-test("game-room manifest validates with the Tavla-first room contract", () => {
+void test("game-room manifest validates with the Tavla-first room contract", () => {
   const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
   const validation = validateRoomManifest(manifest);
 
@@ -652,7 +652,7 @@ test("game-room manifest validates with the Tavla-first room contract", () => {
   assert.equal(validation.manifest?.scene?.chrome?.pageShellVariant, "immersive-stage");
 });
 
-test("game-room Tavla UI keeps the local idle target selection during snapshot sync", () => {
+void test("game-room Tavla UI keeps the local idle target selection during snapshot sync", () => {
   const { state, runtime } = createBackgammonUiStateHarness();
   state.preferences.target = "us1";
   state.preferences.starter = "ai";
@@ -672,7 +672,7 @@ test("game-room Tavla UI keeps the local idle target selection during snapshot s
   assert.equal(state.preferences.starter, "ai");
 });
 
-test("game-room Tavla UI syncs the host target once the match state becomes authoritative", () => {
+void test("game-room Tavla UI syncs the host target once the match state becomes authoritative", () => {
   const { state, runtime } = createBackgammonUiStateHarness();
   state.preferences.target = "ai1";
   state.preferences.starter = "user";
@@ -692,7 +692,7 @@ test("game-room Tavla UI syncs the host target once the match state becomes auth
   assert.equal(state.preferences.starter, "ai");
 });
 
-test("game-room Tavla UI prioritizes command-result messages over stale game status text", () => {
+void test("game-room Tavla UI prioritizes command-result messages over stale game status text", () => {
   const { state, runtime } = createBackgammonUiStateHarness();
   Object.assign(state.game, {
     active: true,
@@ -704,7 +704,7 @@ test("game-room Tavla UI prioritizes command-result messages over stale game sta
   assert.equal(runtime.getCurrentStatus(), "A duplicate remote move was ignored.");
 });
 
-test("game-room Tavla render keeps the board stage host stable across rail rerenders", () => {
+void test("game-room Tavla render keeps the board stage host stable across rail rerenders", () => {
   const document = new MinimalFakeDocument();
   const stageHosts: unknown[] = [];
   const createSlot = (slotId: string) => ({
@@ -800,9 +800,9 @@ test("game-room Tavla render keeps the board stage host stable across rail reren
   );
 
   const registry = windowObject["GameRoomUiFactories"] as Record<string, unknown>;
-  const createRenderRuntime = registry["createBackgammonUiRenderRuntime"];
+  const createRenderRuntime = registry["createBackgammonUiRenderRuntime"] as ((deps: Record<string, unknown>) => { renderBackgammon(root: MinimalFakeElement): void }) | undefined;
   assert.equal(typeof createRenderRuntime, "function");
-  const renderRuntime = createRenderRuntime({
+  const renderRuntime = createRenderRuntime!({
     getState: () => state,
     featureId: "backgammon",
     bootstrapText: (key: string) => key,
@@ -840,7 +840,7 @@ test("game-room Tavla render keeps the board stage host stable across rail reren
       getMatchHistoryResultTone: () => "neutral",
       formatMatchHistoryDate: () => "",
     },
-  }) as { renderBackgammon(root: MinimalFakeElement): void };
+  });
 
   renderRuntime.renderBackgammon(document.app);
   const rootReplaceCountAfterInitialRender = document.app.replaceChildrenCount;
@@ -887,7 +887,7 @@ test("game-room Tavla render keeps the board stage host stable across rail reren
   assert.equal(document.app.querySelector(".backgammon-stage")?.dataset["awaiting"], "user");
 });
 
-test("game-room Tavla Konva stage reuses layers for selection-only redraws", () => {
+void test("game-room Tavla Konva stage reuses layers for selection-only redraws", () => {
   resetFakeKonva();
   const windowObject: Record<string, unknown> = {
     GameRoomUiFactories: {},
@@ -1024,7 +1024,7 @@ test("game-room Tavla Konva stage reuses layers for selection-only redraws", () 
   assert.equal(FakeKonvaLayer.instances.length, 4);
 });
 
-test("game-room Tavla Konva stage coalesces resize redraws and skips unchanged sizes", () => {
+void test("game-room Tavla Konva stage coalesces resize redraws and skips unchanged sizes", () => {
   resetFakeKonva();
   const frames: Array<() => void> = [];
   const windowObject: Record<string, unknown> = {
@@ -1046,12 +1046,12 @@ test("game-room Tavla Konva stage coalesces resize redraws and skips unchanged s
       getPropertyValue: () => "",
     }),
     requestAnimationFrame: (callback: ScheduledFrameCallback) => {
-      frames.push(() => callback(16));
+      frames.push(() => { callback(16); });
       return frames.length;
     },
     globalThis: {
       requestAnimationFrame: (callback: ScheduledFrameCallback) => {
-        frames.push(() => callback(16));
+        frames.push(() => { callback(16); });
         return frames.length;
       },
     },
@@ -1137,7 +1137,7 @@ test("game-room Tavla Konva stage coalesces resize redraws and skips unchanged s
   assert.equal(FakeKonvaLayer.instances.length, 4);
 });
 
-test("game-room Tavla UI coalesces Tavla state and command-result renders per frame", () => {
+void test("game-room Tavla UI coalesces Tavla state and command-result renders per frame", () => {
   const harness = createGameRoomUiCoalescingHarness("raf");
 
   harness.runtime.handleHostMessage({
@@ -1181,7 +1181,7 @@ test("game-room Tavla UI coalesces Tavla state and command-result renders per fr
   assert.equal(harness.state.lastCommandMessage, "");
 });
 
-test("game-room Tavla UI keeps current final-state semantics when Tavla command-result is stale", () => {
+void test("game-room Tavla UI keeps current final-state semantics when Tavla command-result is stale", () => {
   const harness = createGameRoomUiCoalescingHarness("raf");
 
   harness.runtime.handleHostMessage({
@@ -1207,7 +1207,7 @@ test("game-room Tavla UI keeps current final-state semantics when Tavla command-
   assert.equal(harness.state.lastCommandMessage, "");
 });
 
-test("game-room Tavla UI schedules a follow-up frame for state received during render", () => {
+void test("game-room Tavla UI schedules a follow-up frame for state received during render", () => {
   const harness = createGameRoomUiCoalescingHarness("raf");
   let injectedStateDuringRender = false;
 
@@ -1250,7 +1250,7 @@ test("game-room Tavla UI schedules a follow-up frame for state received during r
   assert.equal(harness.getFrameCount(), 0);
 });
 
-test("game-room Tavla render scheduler falls back when requestAnimationFrame stalls", () => {
+void test("game-room Tavla render scheduler falls back when requestAnimationFrame stalls", () => {
   const harness = createGameRoomUiCoalescingHarness("raf-timeout");
 
   harness.runtime.handleHostMessage({
@@ -1279,7 +1279,7 @@ test("game-room Tavla render scheduler falls back when requestAnimationFrame sta
   assert.equal(harness.getFrameCount(), 0);
 });
 
-test("game-room command-result render scheduling stays scoped to Tavla commands", () => {
+void test("game-room command-result render scheduling stays scoped to Tavla commands", () => {
   const harness = createGameRoomUiCoalescingHarness("raf");
 
   harness.runtime.handleHostMessage({
@@ -1296,7 +1296,7 @@ test("game-room command-result render scheduling stays scoped to Tavla commands"
   assert.equal(harness.state.lastCommandMessage, "Team Tetris setup is incomplete.");
 });
 
-test("game-room Tavla render scheduler supports timer fallback and clears failures", () => {
+void test("game-room Tavla render scheduler supports timer fallback and clears failures", () => {
   const harness = createGameRoomUiCoalescingHarness("timeout");
 
   harness.runtime.handleHostMessage({
@@ -1331,7 +1331,7 @@ test("game-room Tavla render scheduler supports timer fallback and clears failur
     },
   });
   assert.equal(harness.getTimerCount(), 1);
-  assert.throws(() => harness.flushTimer(), /render failed/);
+  assert.throws(() => { harness.flushTimer(); }, /render failed/);
   assert.equal(harness.getRenderAttempts(), 2);
 
   harness.setRenderFailure(false);
@@ -1348,7 +1348,7 @@ test("game-room Tavla render scheduler supports timer fallback and clears failur
   assert.equal(harness.getRenderAttempts(), 3);
 });
 
-test("game-room Tavla UI forwards remote identity with invite actions", () => {
+void test("game-room Tavla UI forwards remote identity with invite actions", () => {
   const uiModuleSource = loadWorkspaceScriptForVm(
     "rooms/game-room/main-functions/backgammon/ui/module.ts"
   );

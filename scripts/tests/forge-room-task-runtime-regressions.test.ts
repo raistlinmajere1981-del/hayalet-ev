@@ -1,13 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import type { ForgeAgentResponse } from "../../rooms/forge-room/shared/types/forge-workflow.ts";
 import {
   createAssignmentsForApprovedTasks,
   createForgeSynthesisCandidate,
   groupForgeConflicts,
 } from "../../rooms/forge-room/host/forge-task-runtime.ts";
 
-test("forge-room task runtime creates compare assignments from approved tasks", () => {
+void test("forge-room task runtime creates compare assignments from approved tasks", () => {
   const assignments = createAssignmentsForApprovedTasks([
     {
       id: "forge-task-1",
@@ -35,7 +36,7 @@ test("forge-room task runtime creates compare assignments from approved tasks", 
   );
 });
 
-test("forge-room task runtime groups compare responses into conflicts and produces synthesis", () => {
+void test("forge-room task runtime groups compare responses into conflicts and produces synthesis", () => {
   const tasks = [
     {
       id: "forge-task-1",
@@ -90,7 +91,7 @@ test("forge-room task runtime groups compare responses into conflicts and produc
   ];
   const conflicts = groupForgeConflicts({
     assignments,
-    responses,
+    responses: responses as unknown as ForgeAgentResponse[],
     tasks,
   });
   const resolvedConflicts = conflicts.map((conflict) => ({
@@ -111,7 +112,7 @@ test("forge-room task runtime groups compare responses into conflicts and produc
       createdAt: "2026-04-15T00:00:00.000Z",
       updatedAt: "2026-04-15T00:00:00.000Z",
     },
-    responses,
+    responses: responses as unknown as ForgeAgentResponse[],
     tasks,
   });
 

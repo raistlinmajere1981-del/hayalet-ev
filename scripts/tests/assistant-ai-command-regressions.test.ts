@@ -43,7 +43,7 @@ const slotBridgeCalls: Array<Record<string, unknown>> = [];
 
 test.beforeEach(() => {
   slotBridgeCalls.length = 0;
-  aiChatRuntime.slotBridge = async (payload: Record<string, unknown> = {}) => {
+  aiChatRuntime.slotBridge = async (payload: Parameters<typeof aiChatRuntime.slotBridge>[0] = {}) => {
     slotBridgeCalls.push(payload);
     return { success: true };
   };
@@ -53,19 +53,19 @@ test.afterEach(() => {
   RoomCommandRegistry.reset();
 });
 
-test("retired assistant wrapper handlers are no longer import-callable", () => {
+void test("retired assistant wrapper handlers are no longer import-callable", () => {
   assert.equal("aiAssistantSendHandler" in aiChatCommandsModule, false);
   assert.equal("assistantAISendHandler" in aiChatCommandsModule, false);
 });
 
-test("RelayManager catches ai0 last-message SlotBridge commands only when assistant checkbox is enabled", async () => {
+void test("RelayManager catches ai0 last-message SlotBridge commands only when assistant checkbox is enabled", async () => {
   const originalGetSnapshot = SettingsManager.getSnapshot;
   const originalCoreEngine = RelayManager.coreEngine;
   const caught: Array<{ command: string; args: string; provider: string }> = [];
 
   try {
     RelayManager.coreEngine = {
-      handleCaughtCommand: async (
+      handleCaughtCommand: (
         command: string,
         payload: { args?: string; provider?: string }
       ) => {
@@ -113,7 +113,7 @@ test("RelayManager catches ai0 last-message SlotBridge commands only when assist
   }
 });
 
-test("server commands treat retired assistant bridge wrappers as removed and still enforce category scope", async () => {
+void test("server commands treat retired assistant bridge wrappers as removed and still enforce category scope", async () => {
   const removed = (await serverCommands.run("AssistantAISend", {
     provider: "ai0",
     args: "ai2",
@@ -132,7 +132,7 @@ test("server commands treat retired assistant bridge wrappers as removed and sti
   assert.match(String(nonAssistantFromAi0.message), /yetki|izin|allowed|kullanamaz/i);
 });
 
-test("server commands expose SlotBridge without retired assistant wrapper commands", () => {
+void test("server commands expose SlotBridge without retired assistant wrapper commands", () => {
   const categoryApi = serverCommands as unknown as {
     listByCategory?: (category: string) => string[];
     has?: (commandName: string) => boolean;
@@ -154,7 +154,7 @@ test("server commands expose SlotBridge without retired assistant wrapper comman
   assert.equal(categoryApi.has?.("AssistantAISend"), false);
 });
 
-test("server command catalog includes internal room commands for slot panels", () => {
+void test("server command catalog includes internal room commands for slot panels", () => {
   const categoryApi = serverCommands as unknown as {
     getCatalog?: (category: string) => Array<{ name: string }>;
   };
@@ -174,7 +174,7 @@ test("server command catalog includes internal room commands for slot panels", (
   );
 });
 
-test("server commands block disabled commands per slot", async () => {
+void test("server commands block disabled commands per slot", async () => {
   const originalGetSnapshot = SettingsManager.getSnapshot;
 
   try {
@@ -199,7 +199,7 @@ test("server commands block disabled commands per slot", async () => {
   }
 });
 
-test("server commands can disable SlotBridge actions per slot", async () => {
+void test("server commands can disable SlotBridge actions per slot", async () => {
   const originalGetSnapshot = SettingsManager.getSnapshot;
 
   try {
@@ -226,7 +226,7 @@ test("server commands can disable SlotBridge actions per slot", async () => {
   }
 });
 
-test("server commands block disabled room commands routed through SlotBridge", async () => {
+void test("server commands block disabled room commands routed through SlotBridge", async () => {
   const originalGetSnapshot = SettingsManager.getSnapshot;
 
   try {
@@ -253,7 +253,7 @@ test("server commands block disabled room commands routed through SlotBridge", a
   }
 });
 
-test("server commands block disabled us1 room commands routed through SlotBridge", async () => {
+void test("server commands block disabled us1 room commands routed through SlotBridge", async () => {
   const originalGetSnapshot = SettingsManager.getSnapshot;
 
   try {

@@ -10,9 +10,9 @@ import {
   buildPlanHarderLocalReply,
   findMissingRequiredPlanQuestions,
 } from "../../src/js/modules/rovo-interactions/reply-builder.ts";
-import type { RovoPlanHarderLocalPayload } from "../../src/js/modules/rovo-interactions/types.ts";
+import type { RovoInteractionPayload, RovoPlanHarderLocalPayload } from "../../src/js/modules/rovo-interactions/types.ts";
 
-function withMockWindow<T>(
+async function withMockWindow<T>(
   electronApi: Record<string, unknown>,
   run: () => Promise<T> | T
 ): Promise<T> {
@@ -23,7 +23,7 @@ function withMockWindow<T>(
     value: { electronAPI: electronApi },
   });
 
-  return Promise.resolve(run()).finally(() => {
+  return await Promise.resolve(run()).finally(() => {
     if (originalDescriptor == null) {
       Reflect.deleteProperty(globalThis, "window");
       return;
@@ -77,7 +77,7 @@ function createPlanPayload(): RovoPlanHarderLocalPayload {
   };
 }
 
-test("Rovo interaction parser round-trips a plan-harder-local token", () => {
+void test("Rovo interaction parser round-trips a plan-harder-local token", () => {
   const payload = createPlanPayload();
   const message = appendRovoInteractionToken(payload.fallbackText, payload);
   const parsed = parseRovoInteraction(message);
@@ -89,7 +89,7 @@ test("Rovo interaction parser round-trips a plan-harder-local token", () => {
   assert.match(parsed.rawToken, /^\[rovo-ui:v1:/u);
 });
 
-test("Rovo interaction parser accepts a same-line transport spacer before the token", () => {
+void test("Rovo interaction parser accepts a same-line transport spacer before the token", () => {
   const payload = createPlanPayload();
   const token = encodeRovoInteractionToken(payload);
   const parsed = parseRovoInteraction(`${payload.fallbackText} ${token}`);
@@ -99,7 +99,7 @@ test("Rovo interaction parser accepts a same-line transport spacer before the to
   assert.equal(parsed.displayText, payload.fallbackText);
 });
 
-test("change-approval parser rejects canonical replies other than evet", () => {
+void test("change-approval parser rejects canonical replies other than evet", () => {
   const parsed = parseRovoInteraction(
     appendRovoInteractionToken("Approval fallback", {
       id: "approval-card",
@@ -116,23 +116,27 @@ test("change-approval parser rejects canonical replies other than evet", () => {
   assert.equal(parsed, null);
 });
 
-test("change-approval parser rejects missing canonical replies", () => {
+void test("change-approval parser rejects missing canonical replies", () => {
+  const incompletePayload = {
+    id: "approval-card",
+    version: 1,
+    type: "change-approval",
+    title: "Change Approval",
+    fallbackText: "Approval fallback",
+    issue: "Example issue",
+    solution: "Example solution",
+  } satisfies Record<string, unknown>;
   const parsed = parseRovoInteraction(
-    appendRovoInteractionToken("Approval fallback", {
-      id: "approval-card",
-      version: 1,
-      type: "change-approval",
-      title: "Change Approval",
-      fallbackText: "Approval fallback",
-      issue: "Example issue",
-      solution: "Example solution",
-    } as any)
+    appendRovoInteractionToken(
+      "Approval fallback",
+      incompletePayload as unknown as RovoInteractionPayload
+    )
   );
 
   assert.equal(parsed, null);
 });
 
-test("parser ignores non-final interaction tokens and falls back to plain text", () => {
+void test("parser ignores non-final interaction tokens and falls back to plain text", () => {
   const payload = createPlanPayload();
   const parsed = parseRovoInteraction(
     `${appendRovoInteractionToken(payload.fallbackText, payload)}\nextra trailing text`
@@ -141,7 +145,7 @@ test("parser ignores non-final interaction tokens and falls back to plain text",
   assert.equal(parsed, null);
 });
 
-test("parser preserves fallback text whitespace exactly", () => {
+void test("parser preserves fallback text whitespace exactly", () => {
   const payload = {
     ...createPlanPayload(),
     fallbackText: "  Plan intake fallback text  \n",
@@ -152,7 +156,7 @@ test("parser preserves fallback text whitespace exactly", () => {
   assert.equal(parsed.displayText, payload.fallbackText);
 });
 
-test("parser rejects visible text drift from fallback text", () => {
+void test("parser rejects visible text drift from fallback text", () => {
   const payload = createPlanPayload();
   const parsed = parseRovoInteraction(
     appendRovoInteractionToken("Visible fallback block", payload)
@@ -161,17 +165,17 @@ test("parser rejects visible text drift from fallback text", () => {
   assert.equal(parsed, null);
 });
 
-test("appendRovoInteractionToken preserves visible text formatting", () => {
+void test("appendRovoInteractionToken preserves visible text formatting", () => {
   const payload = {
     ...createPlanPayload(),
     fallbackText: "  Visible fallback block\n",
   } satisfies RovoPlanHarderLocalPayload;
   const message = appendRovoInteractionToken(payload.fallbackText, payload);
 
-  assert.match(message, /^  Visible fallback block\n\[rovo-ui:v1:/u);
+  assert.match(message, /^ {2}Visible fallback block\n\[rovo-ui:v1:/u);
 });
 
-test("appendRovoInteractionToken falls back to payload fallback text when visible text is blank", () => {
+void test("appendRovoInteractionToken falls back to payload fallback text when visible text is blank", () => {
   const payload = createPlanPayload();
   const message = appendRovoInteractionToken("", payload);
   const parsed = parseRovoInteraction(message);
@@ -180,7 +184,7 @@ test("appendRovoInteractionToken falls back to payload fallback text when visibl
   assert.equal(parsed.displayText, payload.fallbackText);
 });
 
-test("plan-harder-local reply builder uses labels and keeps multiline answers readable", () => {
+void test("plan-harder-local reply builder uses labels and keeps multiline answers readable", () => {
   const payload = createPlanPayload();
   const answers = {
     scope: "v1-core",
@@ -197,7 +201,7 @@ test("plan-harder-local reply builder uses labels and keeps multiline answers re
   assert.match(reply, /Plain text akisi bozulmasin\./u);
 });
 
-test("plan-harder-local reports missing required questions", () => {
+void test("plan-harder-local reports missing required questions", () => {
   const payload = createPlanPayload();
   const missing = findMissingRequiredPlanQuestions(payload, {
     scope: "v1-core",
@@ -210,7 +214,7 @@ test("plan-harder-local reports missing required questions", () => {
   );
 });
 
-test("plan-harder-local reply stays empty until at least one answer exists", () => {
+void test("plan-harder-local reply stays empty until at least one answer exists", () => {
   const payload = createPlanPayload();
   const reply = buildPlanHarderLocalReply(payload, {
     scope: "",
@@ -221,13 +225,13 @@ test("plan-harder-local reply stays empty until at least one answer exists", () 
   assert.equal(reply, "");
 });
 
-test("activation snapshot becomes active only for OpenCode UI account with serve running", async () => {
+void test("activation snapshot becomes active only for OpenCode UI account with serve running", async () => {
   const snapshot = await withMockWindow(
     {
-      loadSettings: async () => ({
+      loadSettings: () => ({
         assistantSlot: { accountId: "opencode_ui_opencode_at_opencode_com" },
       }),
-      rovoInteractionContextRead: async () => ({
+      rovoInteractionContextRead: () => ({
         success: true,
         appMode: "app",
         effectiveMode: "app",
@@ -235,11 +239,11 @@ test("activation snapshot becomes active only for OpenCode UI account with serve
         terminalOwner: "opencode-server",
         cliProvider: "opencode",
       }),
-      assistantRuntimeRead: async () => ({
+      assistantRuntimeRead: () => ({
         success: true,
         state: { desiredMode: "soft", phase: "idle" },
       }),
-      opencodeServeStatus: async () => ({ running: true, port: 4096 }),
+      opencodeServeStatus: () => ({ running: true, port: 4096 }),
     },
     async () => await loadRovoInteractionActivationSnapshot("opencode-ui")
   );
@@ -253,13 +257,13 @@ test("activation snapshot becomes active only for OpenCode UI account with serve
   assert.equal(snapshot.assistantRuntimePhase, "idle");
 });
 
-test("activation snapshot stays inactive when serve is down or account does not match", async () => {
+void test("activation snapshot stays inactive when serve is down or account does not match", async () => {
   const snapshot = await withMockWindow(
     {
-      loadSettings: async () => ({
+      loadSettings: () => ({
         assistantSlot: { accountId: "different-account" },
       }),
-      rovoInteractionContextRead: async () => ({
+      rovoInteractionContextRead: () => ({
         success: true,
         appMode: "app",
         effectiveMode: "app",
@@ -267,11 +271,11 @@ test("activation snapshot stays inactive when serve is down or account does not 
         terminalOwner: "opencode-server",
         cliProvider: "opencode",
       }),
-      assistantRuntimeRead: async () => ({
+      assistantRuntimeRead: () => ({
         success: true,
         state: { desiredMode: "soft", phase: "idle" },
       }),
-      opencodeServeStatus: async () => ({ running: false }),
+      opencodeServeStatus: () => ({ running: false }),
     },
     async () => await loadRovoInteractionActivationSnapshot("opencode-ui")
   );
@@ -281,13 +285,13 @@ test("activation snapshot stays inactive when serve is down or account does not 
   assert.match(snapshot.reason, /OpenCode serve is not active/u);
 });
 
-test("activation snapshot stays active when app context matches even if runtime state is stale", async () => {
+void test("activation snapshot stays active when app context matches even if runtime state is stale", async () => {
   const snapshot = await withMockWindow(
     {
-      loadSettings: async () => ({
+      loadSettings: () => ({
         assistantSlot: { accountId: "opencode_ui_opencode_at_opencode_com" },
       }),
-      rovoInteractionContextRead: async () => ({
+      rovoInteractionContextRead: () => ({
         success: true,
         appMode: "app",
         effectiveMode: "app",
@@ -295,11 +299,11 @@ test("activation snapshot stays active when app context matches even if runtime 
         terminalOwner: "opencode-server",
         cliProvider: "opencode",
       }),
-      assistantRuntimeRead: async () => ({
+      assistantRuntimeRead: () => ({
         success: true,
         state: { desiredMode: "ghost-agent", phase: "in-ghost" },
       }),
-      opencodeServeStatus: async () => ({ running: true, port: 4096 }),
+      opencodeServeStatus: () => ({ running: true, port: 4096 }),
     },
     async () => await loadRovoInteractionActivationSnapshot("opencode-ui")
   );
@@ -310,13 +314,13 @@ test("activation snapshot stays active when app context matches even if runtime 
   assert.equal(snapshot.assistantRuntimePhase, "in-ghost");
 });
 
-test("activation snapshot stays inactive outside app effective mode", async () => {
+void test("activation snapshot stays inactive outside app effective mode", async () => {
   const snapshot = await withMockWindow(
     {
-      loadSettings: async () => ({
+      loadSettings: () => ({
         assistantSlot: { accountId: "opencode_ui_opencode_at_opencode_com" },
       }),
-      rovoInteractionContextRead: async () => ({
+      rovoInteractionContextRead: () => ({
         success: true,
         appMode: "ghost-agent",
         effectiveMode: "ghost-agent",
@@ -324,11 +328,11 @@ test("activation snapshot stays inactive outside app effective mode", async () =
         terminalOwner: "opencode-server",
         cliProvider: "opencode",
       }),
-      assistantRuntimeRead: async () => ({
+      assistantRuntimeRead: () => ({
         success: true,
         state: { desiredMode: "ghost-agent", phase: "in-ghost" },
       }),
-      opencodeServeStatus: async () => ({ running: true, port: 4096 }),
+      opencodeServeStatus: () => ({ running: true, port: 4096 }),
     },
     async () => await loadRovoInteractionActivationSnapshot("opencode-ui")
   );

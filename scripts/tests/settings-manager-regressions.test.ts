@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { SettingsManager } from "../../src/js/modules/settings-manager.ts";
 
-test("no-op save should not persist or emit settings updates", async () => {
+void test("no-op save should not persist or emit settings updates", async () => {
   const originalWindow = (globalThis as { window?: unknown }).window;
   const globalWithWindow = globalThis as {
     window?: {
@@ -33,7 +33,7 @@ test("no-op save should not persist or emit settings updates", async () => {
 
   try {
     const snapshot = SettingsManager.getSnapshot();
-    await SettingsManager.save(snapshot as unknown as Record<string, unknown>);
+    await SettingsManager.save(snapshot);
 
     assert.equal(saveCalls, 0, "no-op save should not write settings to disk");
     assert.equal(emittedEvents, 0, "no-op save should not emit global settings updates");

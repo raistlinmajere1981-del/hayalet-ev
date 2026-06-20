@@ -83,7 +83,7 @@ function createReadySourceStore(reportStatus: "ready" | "stale" | null = null) {
   return store;
 }
 
-test("laboratory drawer mode forces setup when source is removed despite old reports", () => {
+void test("laboratory drawer mode forces setup when source is removed despite old reports", () => {
   const store = createLabStore();
   const state = store.getState() as ReturnType<typeof store.getState> & {
     run: Record<string, unknown>;
@@ -125,7 +125,7 @@ test("laboratory drawer mode forces setup when source is removed despite old rep
   assert.equal(resolveDrawerMode(store.getState()), "setup");
 });
 
-test("laboratory drawer mode routes empty completed runs without reports to explore", () => {
+void test("laboratory drawer mode routes empty completed runs without reports to explore", () => {
   const store = createReadySourceStore();
   const state = store.getState() as ReturnType<typeof store.getState> & {
     run: Record<string, unknown>;
@@ -158,7 +158,7 @@ test("laboratory drawer mode routes empty completed runs without reports to expl
   assert.equal(resolveDrawerMode(store.getState()), "explore");
 });
 
-test("laboratory report freshness treats feature report records as report payloads", () => {
+void test("laboratory report freshness treats feature report records as report payloads", () => {
   const readyStore = createReadySourceStore("ready");
   const readyState = readyStore.getState() as ReturnType<typeof readyStore.getState> & {
     run: Record<string, unknown>;
@@ -212,7 +212,7 @@ test("laboratory report freshness treats feature report records as report payloa
   assert.equal(resolveDrawerMode(staleStore.getState()), "explore");
 });
 
-test("laboratory store resets semantic and primitive selection state on source changes", () => {
+void test("laboratory store resets semantic and primitive selection state on source changes", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -254,7 +254,7 @@ test("laboratory store resets semantic and primitive selection state on source c
   assert.equal(getActiveExecutionIntent(store.getState()), null);
 });
 
-test("laboratory store clears semantic and primitive selection state when the active project changes", () => {
+void test("laboratory store clears semantic and primitive selection state when the active project changes", () => {
   const store = createLabStore();
 
   store.dispatch({
@@ -292,7 +292,7 @@ test("laboratory store clears semantic and primitive selection state when the ac
   assert.equal(getActiveExecutionIntent(store.getState()), null);
 });
 
-test("laboratory timeline bookmarks stay scoped to the active project source", () => {
+void test("laboratory timeline bookmarks stay scoped to the active project source", () => {
   const store = createLabStore();
   const firstSnapshot = createDualPreviewSnapshot(0);
   store.dispatch({
@@ -344,7 +344,7 @@ test("laboratory timeline bookmarks stay scoped to the active project source", (
   assert.equal(getBookmarks(store.getState()).length, 1);
 });
 
-test("laboratory run controller accepts numeric timeline input edits and normalizes invalid ranges", () => {
+void test("laboratory run controller accepts numeric timeline input edits and normalizes invalid ranges", () => {
   const originalInput = Object.getOwnPropertyDescriptor(globalThis, "HTMLInputElement");
   const originalSelect = Object.getOwnPropertyDescriptor(globalThis, "HTMLSelectElement");
   const originalTextArea = Object.getOwnPropertyDescriptor(globalThis, "HTMLTextAreaElement");
@@ -399,28 +399,28 @@ test("laboratory run controller accepts numeric timeline input edits and normali
 
     const startInput = new FakeHtmlInputElement("workspace.timelineStartMs", "1500");
     startInput.type = "number";
-    inputListener?.({ target: startInput } as Event);
+    inputListener?.({ target: startInput } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 3000);
     assert.equal(preview.currentTime, 1.5);
 
     const validEndInput = new FakeHtmlInputElement("workspace.timelineEndMs", "4200");
     validEndInput.type = "number";
-    inputListener?.({ target: validEndInput } as Event);
+    inputListener?.({ target: validEndInput } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 4200);
     assert.equal(preview.currentTime, 4.2);
 
     const invalidEndInput = new FakeHtmlInputElement("workspace.timelineEndMs", "1400");
     invalidEndInput.type = "number";
-    inputListener?.({ target: invalidEndInput } as Event);
+    inputListener?.({ target: invalidEndInput } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
     assert.equal(preview.currentTime, 4.2);
 
     const endInput = new FakeHtmlInputElement("workspace.timelineEndMs", "");
     endInput.type = "number";
-    inputListener?.({ target: endInput } as Event);
+    inputListener?.({ target: endInput } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
     assert.equal(preview.currentTime, 4.2);
@@ -428,22 +428,22 @@ test("laboratory run controller accepts numeric timeline input edits and normali
     if (originalInput) {
       Object.defineProperty(globalThis, "HTMLInputElement", originalInput);
     } else {
-      delete (globalThis as Record<string, unknown>).HTMLInputElement;
+      delete (globalThis as Record<string, unknown>)["HTMLInputElement"];
     }
     if (originalSelect) {
       Object.defineProperty(globalThis, "HTMLSelectElement", originalSelect);
     } else {
-      delete (globalThis as Record<string, unknown>).HTMLSelectElement;
+      delete (globalThis as Record<string, unknown>)["HTMLSelectElement"];
     }
     if (originalTextArea) {
       Object.defineProperty(globalThis, "HTMLTextAreaElement", originalTextArea);
     } else {
-      delete (globalThis as Record<string, unknown>).HTMLTextAreaElement;
+      delete (globalThis as Record<string, unknown>)["HTMLTextAreaElement"];
     }
   }
 });
 
-test("laboratory run controller wires compact timeline transport to primary preview media", async () => {
+void test("laboratory run controller wires compact timeline transport to primary preview media", async () => {
   const originalElement = Object.getOwnPropertyDescriptor(globalThis, "Element");
   const originalInput = Object.getOwnPropertyDescriptor(globalThis, "HTMLInputElement");
   const originalSelect = Object.getOwnPropertyDescriptor(globalThis, "HTMLSelectElement");
@@ -509,26 +509,26 @@ test("laboratory run controller wires compact timeline transport to primary prev
 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
-    clickListener?.({ target: new TestElement("timeline-toggle-playback") } as Event);
+    clickListener?.({ target: new TestElement("timeline-toggle-playback") } as unknown as Event);
     await Promise.resolve();
 
     assert.equal(preview.playCalls, 1);
     assert.equal(preview.paused, false);
     assert.equal(playLabel.textContent, "❚❚");
 
-    clickListener?.({ target: new TestElement("timeline-toggle-playback") } as Event);
+    clickListener?.({ target: new TestElement("timeline-toggle-playback") } as unknown as Event);
     assert.equal(preview.pauseCalls, 1);
     assert.equal(preview.paused, true);
     assert.equal(playLabel.textContent, "▶");
 
-    clickListener?.({ target: new TestElement("timeline-add-bookmark") } as Event);
+    clickListener?.({ target: new TestElement("timeline-add-bookmark") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.bookmarks.length, 1);
     assert.equal(store.getState().ui.workspace.bookmarks[0]?.timeMs, 4321);
     assert.equal(store.getState().ui.workspace.bookmarks[0]?.note, "red flash");
     assert.equal(bookmarkNoteInput.value, "");
 
     preview.currentTime = 5.5;
-    clickListener?.({ target: new TestElement("timeline-add-bookmark") } as Event);
+    clickListener?.({ target: new TestElement("timeline-add-bookmark") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.bookmarks.length, 2);
     assert.equal(store.getState().ui.workspace.bookmarks[1]?.timeMs, 5500);
     assert.equal(store.getState().ui.workspace.bookmarks[1]?.note, "Mark 00:05.500");
@@ -536,7 +536,7 @@ test("laboratory run controller wires compact timeline transport to primary prev
     assert.ok(firstBookmarkId);
     clickListener?.({
       target: new TestElement("timeline-remove-bookmark", firstBookmarkId),
-    } as Event);
+    } as unknown as Event);
     assert.equal(store.getState().ui.workspace.bookmarks.length, 1);
     assert.equal(store.getState().ui.workspace.bookmarks[0]?.timeMs, 5500);
 
@@ -544,7 +544,7 @@ test("laboratory run controller wires compact timeline transport to primary prev
     assert.ok(inputListener);
     const volumeInput = new FakeHtmlInputElement("workspace.previewVolume", "0.35");
     volumeInput.type = "range";
-    inputListener?.({ target: volumeInput } as Event);
+    inputListener?.({ target: volumeInput } as unknown as Event);
 
     assert.equal(preview.volume, 0.35);
     assert.equal(preview.muted, false);
@@ -552,22 +552,22 @@ test("laboratory run controller wires compact timeline transport to primary prev
 
     const muteInput = new FakeHtmlInputElement("workspace.previewVolume", "0");
     muteInput.type = "range";
-    inputListener?.({ target: muteInput } as Event);
+    inputListener?.({ target: muteInput } as unknown as Event);
     assert.equal(preview.volume, 0);
     assert.equal(preview.muted, true);
     assert.equal(volumeRoleInput.value, "0");
 
     preview.currentTime = 2;
-    clickListener?.({ target: new TestElement("timeline-set-selection-boundary", "start") } as Event);
+    clickListener?.({ target: new TestElement("timeline-set-selection-boundary", "start") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 2000);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
 
     preview.currentTime = 6;
-    clickListener?.({ target: new TestElement("timeline-set-selection-boundary", "end") } as Event);
+    clickListener?.({ target: new TestElement("timeline-set-selection-boundary", "end") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 2000);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 6000);
 
-    clickListener?.({ target: new TestElement("timeline-play-selection") } as Event);
+    clickListener?.({ target: new TestElement("timeline-play-selection") } as unknown as Event);
     assert.equal(preview.currentTime, 2);
     assert.equal(preview.playCalls, 2);
     preview.currentTime = 6.1;
@@ -575,15 +575,15 @@ test("laboratory run controller wires compact timeline transport to primary prev
     assert.equal(preview.currentTime, 6);
     assert.equal(preview.pauseCalls, 2);
 
-    clickListener?.({ target: new TestElement("timeline-toggle-selection-loop") } as Event);
+    clickListener?.({ target: new TestElement("timeline-toggle-selection-loop") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.selectionLoopEnabled, true);
-    clickListener?.({ target: new TestElement("timeline-play-selection") } as Event);
+    clickListener?.({ target: new TestElement("timeline-play-selection") } as unknown as Event);
     preview.currentTime = 6.2;
     preview.dispatch("timeupdate");
     assert.equal(preview.currentTime, 2);
     assert.equal(store.getState().ui.workspace.selectionLoopEnabled, true);
 
-    clickListener?.({ target: new TestElement("timeline-clear") } as Event);
+    clickListener?.({ target: new TestElement("timeline-clear") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, null);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
     assert.equal(store.getState().ui.workspace.selectionLoopEnabled, false);
@@ -602,13 +602,13 @@ test("laboratory run controller wires compact timeline transport to primary prev
       },
     });
 
-    clickListener?.({ target: new TestElement("timeline-toggle-playback") } as Event);
+    clickListener?.({ target: new TestElement("timeline-toggle-playback") } as unknown as Event);
     assert.equal(preview.playCalls, 4);
     assert.equal(preview.paused, true);
 
     const lockedVolumeInput = new FakeHtmlInputElement("workspace.previewVolume", "0.75");
     lockedVolumeInput.type = "range";
-    inputListener?.({ target: lockedVolumeInput } as Event);
+    inputListener?.({ target: lockedVolumeInput } as unknown as Event);
     assert.equal(store.getState().ui.workspace.previewVolume, 0);
     assert.equal(preview.volume, 0);
     assert.equal(volumeRoleInput.value, "0");
@@ -616,27 +616,27 @@ test("laboratory run controller wires compact timeline transport to primary prev
     if (originalElement) {
       Object.defineProperty(globalThis, "Element", originalElement);
     } else {
-      delete (globalThis as Record<string, unknown>).Element;
+      delete (globalThis as Record<string, unknown>)["Element"];
     }
     if (originalInput) {
       Object.defineProperty(globalThis, "HTMLInputElement", originalInput);
     } else {
-      delete (globalThis as Record<string, unknown>).HTMLInputElement;
+      delete (globalThis as Record<string, unknown>)["HTMLInputElement"];
     }
     if (originalSelect) {
       Object.defineProperty(globalThis, "HTMLSelectElement", originalSelect);
     } else {
-      delete (globalThis as Record<string, unknown>).HTMLSelectElement;
+      delete (globalThis as Record<string, unknown>)["HTMLSelectElement"];
     }
     if (originalTextArea) {
       Object.defineProperty(globalThis, "HTMLTextAreaElement", originalTextArea);
     } else {
-      delete (globalThis as Record<string, unknown>).HTMLTextAreaElement;
+      delete (globalThis as Record<string, unknown>)["HTMLTextAreaElement"];
     }
   }
 });
 
-test("laboratory run controller keeps invalid scope time ranges out of the analysis draft", () => {
+void test("laboratory run controller keeps invalid scope time ranges out of the analysis draft", () => {
   const originalInput = Object.getOwnPropertyDescriptor(globalThis, "HTMLInputElement");
   const originalSelect = Object.getOwnPropertyDescriptor(globalThis, "HTMLSelectElement");
   const originalTextArea = Object.getOwnPropertyDescriptor(globalThis, "HTMLTextAreaElement");
@@ -681,11 +681,11 @@ test("laboratory run controller keeps invalid scope time ranges out of the analy
 
     const scopeStart = new FakeHtmlInputElement("scope.timeStartMs", "2500");
     scopeStart.type = "number";
-    inputListener?.({ target: scopeStart } as Event);
+    inputListener?.({ target: scopeStart } as unknown as Event);
 
     const scopeEnd = new FakeHtmlInputElement("scope.timeEndMs", "2000");
     scopeEnd.type = "number";
-    inputListener?.({ target: scopeEnd } as Event);
+    inputListener?.({ target: scopeEnd } as unknown as Event);
 
     const analysisScope = (store.getState().workbench["analysisScope"] || {}) as Record<
       string,
@@ -696,22 +696,22 @@ test("laboratory run controller keeps invalid scope time ranges out of the analy
     if (originalInput) {
       Object.defineProperty(globalThis, "HTMLInputElement", originalInput);
     } else {
-      delete (globalThis as Record<string, unknown>).HTMLInputElement;
+      delete (globalThis as Record<string, unknown>)["HTMLInputElement"];
     }
     if (originalSelect) {
       Object.defineProperty(globalThis, "HTMLSelectElement", originalSelect);
     } else {
-      delete (globalThis as Record<string, unknown>).HTMLSelectElement;
+      delete (globalThis as Record<string, unknown>)["HTMLSelectElement"];
     }
     if (originalTextArea) {
       Object.defineProperty(globalThis, "HTMLTextAreaElement", originalTextArea);
     } else {
-      delete (globalThis as Record<string, unknown>).HTMLTextAreaElement;
+      delete (globalThis as Record<string, unknown>)["HTMLTextAreaElement"];
     }
   }
 });
 
-test("laboratory store wires live findings and preview artifacts from custom runtime events", () => {
+void test("laboratory store wires live findings and preview artifacts from custom runtime events", () => {
   const store = createLabStore();
   const eventTimestamp = Date.now();
   store.dispatch({
@@ -827,7 +827,7 @@ test("laboratory store wires live findings and preview artifacts from custom run
   );
 });
 
-test("laboratory store hydration normalizes live runs into safe persisted summaries", () => {
+void test("laboratory store hydration normalizes live runs into safe persisted summaries", () => {
   const store = createLabStore();
   store.dispatch({
     type: "hydrate",
@@ -926,7 +926,7 @@ test("laboratory store hydration normalizes live runs into safe persisted summar
               startFrame: 24,
               endFrame: 48,
             },
-          },
+          } as any,
         ],
         warnings: [],
         error: null,
@@ -959,7 +959,7 @@ test("laboratory store hydration normalizes live runs into safe persisted summar
               width: 120,
               height: 90,
             },
-          },
+          } as any,
         ],
         confidence: "medium",
         moduleTrace: [
@@ -1003,7 +1003,7 @@ test("laboratory store hydration normalizes live runs into safe persisted summar
   assert.equal(state.run?.hypothesisSummary, "Gorunmeyen obje olabilir");
 });
 
-test("laboratory selectors expose frozen snapshot summary and live workspace drift separately", () => {
+void test("laboratory selectors expose frozen snapshot summary and live workspace drift separately", () => {
   const store = createLabStore();
   const baseWorkspace = store.getState().ui.workspace;
 

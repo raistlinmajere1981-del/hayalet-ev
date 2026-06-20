@@ -11,7 +11,7 @@ type MockMessageNode = {
   getAttribute: (name: string) => string | null;
   closest: (selector: string) => MockMessageNode | null;
   querySelectorAll: (selector: string) => unknown[];
-  querySelector: (selector: string) => unknown | null;
+  querySelector: (selector: string) => unknown;
   getBoundingClientRect: () => { left: number };
   contains: (node: unknown) => boolean;
   matches: (selector: string) => boolean;
@@ -64,7 +64,7 @@ function withMockDom(
   }
 }
 
-test("chatgpt scraper reads message text when innerText is empty in hidden render state", () => {
+void test("chatgpt scraper reads message text when innerText is empty in hidden render state", () => {
   const node: MockMessageNode = {
     innerText: "",
     textContent: "Hidden page response",
@@ -86,7 +86,7 @@ test("chatgpt scraper reads message text when innerText is empty in hidden rende
   });
 });
 
-test("chatgpt scraper falls back to default image selectors for image-only assistant turns", () => {
+void test("chatgpt scraper falls back to default image selectors for image-only assistant turns", () => {
   const previousHtmlImageElement = (globalThis as { HTMLImageElement?: unknown }).HTMLImageElement;
 
   class MockHtmlImageElement {

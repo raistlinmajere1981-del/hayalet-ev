@@ -18,7 +18,7 @@ function buildSelectorPattern(selector: string): RegExp {
   return new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 }
 
-test("runtime-generated selector families stay backed by CSS contracts", () => {
+void test("runtime-generated selector families stay backed by CSS contracts", () => {
   for (const contract of RUNTIME_SELECTOR_CONTRACTS) {
     const producerSource = readRepoFile(contract.producer);
     const backingCss = contract.backingCss.map((filePath) => readRepoFile(filePath)).join("\n");

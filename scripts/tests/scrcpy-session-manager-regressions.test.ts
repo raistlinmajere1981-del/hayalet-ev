@@ -85,7 +85,7 @@ function createHarness(options: { scrcpyPath?: string | null } = {}) {
   return { manager, spawnCalls, unexpectedCloseEvents };
 }
 
-test("ScrcpySessionManager reuses an active camera-feed session for the same device", async () => {
+void test("ScrcpySessionManager reuses an active camera-feed session for the same device", async () => {
   const { manager, spawnCalls } = createHarness();
 
   const first = await manager.startCameraFeed({
@@ -115,7 +115,7 @@ test("ScrcpySessionManager reuses an active camera-feed session for the same dev
   assert.equal(spawnCalls.length, 1);
 });
 
-test("ScrcpySessionManager switches from camera-feed to native interactive mirror args", async () => {
+void test("ScrcpySessionManager switches from camera-feed to native interactive mirror args", async () => {
   const { manager, spawnCalls } = createHarness();
 
   await manager.startCameraFeed({
@@ -145,7 +145,7 @@ test("ScrcpySessionManager switches from camera-feed to native interactive mirro
   assert.doesNotMatch(mirrorArgs, /--no-window/);
 });
 
-test("ScrcpySessionManager preserves logs and reports unexpected close failures", async () => {
+void test("ScrcpySessionManager preserves logs and reports unexpected close failures", async () => {
   const { manager, spawnCalls, unexpectedCloseEvents } = createHarness();
 
   await manager.startCameraFeed({
@@ -171,7 +171,7 @@ test("ScrcpySessionManager preserves logs and reports unexpected close failures"
   assert.deepEqual(status.lastLogs, ["INFO camera attached", "ERROR camera busy"]);
 });
 
-test("ScrcpySessionManager reports missing scrcpy without spawning a process", async () => {
+void test("ScrcpySessionManager reports missing scrcpy without spawning a process", async () => {
   const { manager, spawnCalls } = createHarness({ scrcpyPath: null });
 
   const outcome = await manager.startInteractiveMirror({

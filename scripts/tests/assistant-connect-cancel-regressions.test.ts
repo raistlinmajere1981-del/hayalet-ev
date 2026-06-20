@@ -4,7 +4,7 @@ import test from "node:test";
 import { ConnectButtonState } from "../../src/types/assistant.ts";
 import { resolveAssistantConnectButtonState } from "../../src/js/pages/assistant/connect-flow.ts";
 
-test("returns cancel state while slot is connecting", () => {
+void test("returns cancel state while slot is connecting", () => {
   const state = resolveAssistantConnectButtonState({
     slotState: "connecting",
     isServerRunning: false,
@@ -14,7 +14,7 @@ test("returns cancel state while slot is connecting", () => {
   assert.equal(state, ConnectButtonState.CANCEL_CONNECTING);
 });
 
-test("returns cancel state while custom connect flow is active", () => {
+void test("returns cancel state while custom connect flow is active", () => {
   const state = resolveAssistantConnectButtonState({
     slotState: "assigned",
     isServerRunning: false,
@@ -24,7 +24,7 @@ test("returns cancel state while custom connect flow is active", () => {
   assert.equal(state, ConnectButtonState.CANCEL_CONNECTING);
 });
 
-test("returns connected state when server is running", () => {
+void test("returns connected state when server is running", () => {
   const state = resolveAssistantConnectButtonState({
     slotState: "assigned",
     isServerRunning: true,
@@ -34,7 +34,7 @@ test("returns connected state when server is running", () => {
   assert.equal(state, ConnectButtonState.CONNECTED);
 });
 
-test("keeps cancel state while connect flow is active even if server is running", () => {
+void test("keeps cancel state while connect flow is active even if server is running", () => {
   const state = resolveAssistantConnectButtonState({
     slotState: "connected",
     isServerRunning: true,
@@ -44,7 +44,7 @@ test("keeps cancel state while connect flow is active even if server is running"
   assert.equal(state, ConnectButtonState.CANCEL_CONNECTING);
 });
 
-test("returns idle when not connecting and server is passive", () => {
+void test("returns idle when not connecting and server is passive", () => {
   const state = resolveAssistantConnectButtonState({
     slotState: "assigned",
     isServerRunning: false,

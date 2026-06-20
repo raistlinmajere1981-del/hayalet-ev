@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
-test("shared scene consumers import canonical character and debug helpers", () => {
+void test("shared scene consumers import canonical character and debug helpers", () => {
   const sources = [
     readFileSync("src/js/pages/assistant/assistant.ts", "utf8"),
     readFileSync("src/js/pages/analyze.ts", "utf8"),
@@ -28,7 +28,7 @@ test("shared scene consumers import canonical character and debug helpers", () =
   assert.match(sources[1]!, /from "\.\.\/scene-system\/index\.js"/);
 });
 
-test("legacy entrance scene helper files are removed after migration", () => {
+void test("legacy entrance scene helper files are removed after migration", () => {
   const charactersIndex = readFileSync("src/js/scene/characters/index.ts", "utf8");
   const sceneEditorIndex = readFileSync("src/js/scene-editor/index.ts", "utf8");
   const sceneSystemIndex = readFileSync("src/js/scene-system/index.ts", "utf8");

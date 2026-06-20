@@ -98,6 +98,17 @@ function shouldUseInteractiveDashboard(stdout, env) {
   return Number.isFinite(columns) && Number.isFinite(rows) && columns > 0 && rows > 0;
 }
 
+/**
+ * @param {{
+ *   stdout?: any;
+ *   env?: any;
+ *   sessionId?: string;
+ *   enabled?: boolean;
+ *   userLabel?: string;
+ *   developerLabel?: string;
+ *   formatPhaseLabel?: (phase: string) => string;
+ * }} [options]
+ */
 export function createWrapperDashboard({
   stdout = process.stdout,
   env = process.env,

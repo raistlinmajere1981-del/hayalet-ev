@@ -9,12 +9,12 @@ function read(filePath: string): string {
   return readFileSync(resolve(root, filePath), "utf-8");
 }
 
-test("index does not include temporary test page button", () => {
+void test("index does not include temporary test page button", () => {
   const indexHtml = read("src/index.html");
   assert.doesNotMatch(indexHtml, /data-page="test"/);
 });
 
-test("page-init does not wire temporary test page assets", () => {
+void test("page-init does not wire temporary test page assets", () => {
   const pageInit = read("src/js/app/page-init.ts");
 
   assert.doesNotMatch(pageInit, /pages\/test\.js/);
@@ -22,7 +22,7 @@ test("page-init does not wire temporary test page assets", () => {
   assert.doesNotMatch(pageInit, /controllers\["test"\]/);
 });
 
-test("navigation allows assistant page to activate side-nav item", () => {
+void test("navigation allows assistant page to activate side-nav item", () => {
   const indexHtml = read("src/index.html");
   const assistantPage = read("src/pages/assistant.html");
   const entrancePage = read("src/pages/entrance.html");

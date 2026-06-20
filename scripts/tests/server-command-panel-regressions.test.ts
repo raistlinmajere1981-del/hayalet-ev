@@ -15,7 +15,7 @@ import {
   parseCommandExecutionInput,
 } from "../../src/js/pages/server-command-utils.ts";
 
-test("extractExampleArgsFromDescription picks SlotBridge JSON args from detail text", () => {
+void test("extractExampleArgsFromDescription picks SlotBridge JSON args from detail text", () => {
   const detail = [
     "📌 Canonical bridge command.",
     "",
@@ -29,7 +29,7 @@ test("extractExampleArgsFromDescription picks SlotBridge JSON args from detail t
   assert.match(args, /"toSlot":"ai1"/);
 });
 
-test("extractExampleArgsFromDescription returns empty for no-arg command", () => {
+void test("extractExampleArgsFromDescription returns empty for no-arg command", () => {
   const detail = "++cmd:AIAIChatStop()";
 
   const args = extractExampleArgsFromDescription("AIAIChatStop", detail);
@@ -37,7 +37,7 @@ test("extractExampleArgsFromDescription returns empty for no-arg command", () =>
   assert.equal(args, "");
 });
 
-test("extractExampleArgsFromDescription ignores other command examples", () => {
+void test("extractExampleArgsFromDescription ignores other command examples", () => {
   const detail = '++cmd:SlotBridge({"action":"message.send","toSlot":"ai2"})';
 
   const args = extractExampleArgsFromDescription("WhisperManager", detail);
@@ -45,19 +45,19 @@ test("extractExampleArgsFromDescription ignores other command examples", () => {
   assert.equal(args, "");
 });
 
-test("buildInlineCommandSnippet formats command with args", () => {
+void test("buildInlineCommandSnippet formats command with args", () => {
   const snippet = buildInlineCommandSnippet("WhisperManager", "demo");
 
   assert.equal(snippet, "++cmd:WhisperManager(demo)");
 });
 
-test("buildInlineCommandSnippet formats command without args", () => {
+void test("buildInlineCommandSnippet formats command without args", () => {
   const snippet = buildInlineCommandSnippet("AIAIChatStop", "");
 
   assert.equal(snippet, "++cmd:AIAIChatStop()");
 });
 
-test("parseCommandExecutionInput parses SlotBridge inline command input", () => {
+void test("parseCommandExecutionInput parses SlotBridge inline command input", () => {
   const inline =
     '++cmd:SlotBridge({"action":"message.send","fromSlot":"ai0","toSlot":"ai2","payload":{"text":"Selam"}})';
 
@@ -68,7 +68,7 @@ test("parseCommandExecutionInput parses SlotBridge inline command input", () => 
   assert.equal(parsed.inputWasInlineCommand, true);
 });
 
-test("parseCommandExecutionInput keeps balanced SlotBridge JSON payloads intact", () => {
+void test("parseCommandExecutionInput keeps balanced SlotBridge JSON payloads intact", () => {
   const inline =
     '++cmd:SlotBridge({"action":"message.send","toSlot":"ai1","payload":{"text":"https://example.com/path_(demo)"}})';
 
@@ -79,7 +79,7 @@ test("parseCommandExecutionInput keeps balanced SlotBridge JSON payloads intact"
   assert.equal(parsed.inputWasInlineCommand, true);
 });
 
-test("parseCommandExecutionInput falls back to selected command with plain args", () => {
+void test("parseCommandExecutionInput falls back to selected command with plain args", () => {
   const parsed = parseCommandExecutionInput("demo", "WhisperManager");
 
   assert.equal(parsed.commandName, "WhisperManager");
@@ -87,27 +87,27 @@ test("parseCommandExecutionInput falls back to selected command with plain args"
   assert.equal(parsed.inputWasInlineCommand, false);
 });
 
-test("buildCommandTestMessage formats command with args", () => {
+void test("buildCommandTestMessage formats command with args", () => {
   const message = buildCommandTestMessage("WhisperManager", "demo");
 
   assert.equal(message, "++cmd:WhisperManager(demo) Komut paneli test mesaji");
 });
 
-test("buildCommandTestMessage formats command without args", () => {
+void test("buildCommandTestMessage formats command without args", () => {
   const message = buildCommandTestMessage("AIAIChatStop", "");
 
   assert.equal(message, "++cmd:AIAIChatStop() Komut paneli test mesaji");
 });
 
-test("normalizeSlot keeps us1 selection", () => {
+void test("normalizeSlot keeps us1 selection", () => {
   assert.equal(normalizeSlot("us1"), "us1");
 });
 
-test("resolveCategoryForSlot maps us1 to us1 category", () => {
+void test("resolveCategoryForSlot maps us1 to us1 category", () => {
   assert.equal(resolveCategoryForSlot("us1"), "us1");
 });
 
-test("getDisabledCommandsForSlot reads us1 disabled commands", () => {
+void test("getDisabledCommandsForSlot reads us1 disabled commands", () => {
   const disabled = getDisabledCommandsForSlot(
     {
       slots: {
@@ -123,7 +123,7 @@ test("getDisabledCommandsForSlot reads us1 disabled commands", () => {
   assert.deepEqual(disabled, ["GameRoomBackgammonRemoteMove"]);
 });
 
-test("buildSettingsWithDisabledCommands stores disabled commands under us1 slot", () => {
+void test("buildSettingsWithDisabledCommands stores disabled commands under us1 slot", () => {
   const next = buildSettingsWithDisabledCommands(
     {
       slots: {
@@ -140,7 +140,7 @@ test("buildSettingsWithDisabledCommands stores disabled commands under us1 slot"
   assert.deepEqual(next.us1Slot?.disabledCommands, ["GameRoomBackgammonRemoteMove"]);
 });
 
-test("splitCommandCatalogBySource separates system and room commands", () => {
+void test("splitCommandCatalogBySource separates system and room commands", () => {
   const grouped = splitCommandCatalogBySource([
     { name: "SlotBridge", category: "us1", isCustom: false, supportsTestMode: true },
     {

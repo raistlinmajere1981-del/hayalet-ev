@@ -8,7 +8,7 @@ import {
   WRAPPER_TERMINAL_ENV_KEY,
 } from "../../electron/packaged-wrapper-launcher.ts";
 
-test("visible terminal launch requires wrapper surface and non-tty output", () => {
+void test("visible terminal launch requires wrapper surface and non-tty output", () => {
   assert.equal(
     shouldLaunchVisibleTerminal({
       surface: "main",
@@ -42,7 +42,7 @@ test("visible terminal launch requires wrapper surface and non-tty output", () =
   );
 });
 
-test("linux visible terminal launch still requires a desktop session", () => {
+void test("linux visible terminal launch still requires a desktop session", () => {
   assert.equal(
     shouldLaunchVisibleTerminal({
       surface: "wrapper",
@@ -66,7 +66,7 @@ test("linux visible terminal launch still requires a desktop session", () => {
   );
 });
 
-test("windows launchers open a visible cmd wrapper and preserve user flags", () => {
+void test("windows launchers open a visible cmd wrapper and preserve user flags", () => {
   const executablePath = String.raw`C:\Portable Apps\Hayalet Ev\Hayalet Ev.exe`;
   const rootDir = String.raw`C:\Portable Apps\Hayalet Ev`;
   const resourcesPath = String.raw`C:\Users\raistlin\AppData\Local\Temp\hayalet-ev\resources`;

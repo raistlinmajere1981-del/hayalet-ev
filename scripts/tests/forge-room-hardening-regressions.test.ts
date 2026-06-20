@@ -223,7 +223,7 @@ function createSynthesis(runId: string, contextDigest: string): ForgeSynthesis {
   };
 }
 
-test("forge-room rejects draft when preflight digest mismatches", () => {
+void test("forge-room rejects draft when preflight digest mismatches", () => {
   const preflight = {
     ...createEmptyForgePreflightState(),
     status: "fresh" as const,
@@ -244,7 +244,7 @@ test("forge-room rejects draft when preflight digest mismatches", () => {
   );
 });
 
-test("forge-room classifies run-context mismatches as digest mismatch events", () => {
+void test("forge-room classifies run-context mismatches as digest mismatch events", () => {
   const preflight = {
     ...createEmptyForgePreflightState(),
     status: "fresh" as const,
@@ -263,7 +263,7 @@ test("forge-room classifies run-context mismatches as digest mismatch events", (
   assert.equal(eventCode, "forge.context.digest_mismatch");
 });
 
-test("forge-room classifies stale preflight status as stale reject events", () => {
+void test("forge-room classifies stale preflight status as stale reject events", () => {
   const preflight = {
     ...createEmptyForgePreflightState(),
     status: "stale" as const,
@@ -282,7 +282,7 @@ test("forge-room classifies stale preflight status as stale reject events", () =
   assert.equal(eventCode, "forge.preflight.stale_reject");
 });
 
-test("forge-room marks preflight stale on selected context change", () => {
+void test("forge-room marks preflight stale on selected context change", () => {
   const goal = createGoal();
   const operatorProfile = createOperatorProfile();
   const initialSelection = {
@@ -331,7 +331,7 @@ test("forge-room marks preflight stale on selected context change", () => {
   assert.match(reason ?? "", /context changed/i);
 });
 
-test("forge-room does not reuse ai0 output after digest change", () => {
+void test("forge-room does not reuse ai0 output after digest change", () => {
   const preflight = {
     ...createEmptyForgePreflightState(),
     status: "fresh" as const,
@@ -345,7 +345,7 @@ test("forge-room does not reuse ai0 output after digest change", () => {
   assert.equal(getPreflightForRun("run-revision-a", "digest-after", preflight), null);
 });
 
-test("forge-room blank profile serializes as absent", () => {
+void test("forge-room blank profile serializes as absent", () => {
   const payload = serializeForAI0({
     appArchitectureSummary: createAppArchitectureSummary(),
     capabilityContext: null,
@@ -362,7 +362,7 @@ test("forge-room blank profile serializes as absent", () => {
   assert.equal("selectedOperatorProfile" in payload, false);
 });
 
-test("forge-room only sends selected context to provider serializers", () => {
+void test("forge-room only sends selected context to provider serializers", () => {
   const operatorProfile = createOperatorProfile();
   const selection = {
     ...createEmptyForgeSessionContextSelection(),
@@ -429,7 +429,7 @@ test("forge-room only sends selected context to provider serializers", () => {
   assert.equal(JSON.stringify(exportPayload).includes("Sensitive"), false);
 });
 
-test("forge-room export uses immutable synthesis snapshots", () => {
+void test("forge-room export uses immutable synthesis snapshots", () => {
   const goal = createGoal();
   const approvedTasks = [createApprovedTask()];
   const assignments = [createAssignment("run-snapshot", "digest-snapshot")];
@@ -455,9 +455,9 @@ test("forge-room export uses immutable synthesis snapshots", () => {
     snapshot,
   });
 
-  approvedTasks[0]!.title = "mutated task";
-  assignments[0]!.roleId = "challenger";
-  conflicts[0]!.summary = "mutated conflict";
+  if (approvedTasks[0]) approvedTasks[0].title = "mutated task";
+  if (assignments[0]) assignments[0].roleId = "challenger";
+  if (conflicts[0]) conflicts[0].summary = "mutated conflict";
   synthesis.summary = "mutated synthesis";
   goal.summary = "mutated goal";
 
@@ -467,7 +467,7 @@ test("forge-room export uses immutable synthesis snapshots", () => {
   assert.equal(exported.snapshotHash, snapshot.snapshotHash);
 });
 
-test("forge-room post synthesis edits do not change previous export", () => {
+void test("forge-room post synthesis edits do not change previous export", () => {
   const handoffExport = createForgeHandoffExport();
   const snapshot = createSynthesisSnapshot({
     approvedTasks: [createApprovedTask()],
@@ -495,7 +495,7 @@ test("forge-room post synthesis edits do not change previous export", () => {
   assert.deepEqual(secondExport, firstExport);
 });
 
-test("forge-room decision trace and snapshot share the same revision", () => {
+void test("forge-room decision trace and snapshot share the same revision", () => {
   const decisionTrace = ["Digest verified", "Snapshot frozen"];
   const snapshot = createSynthesisSnapshot({
     approvedTasks: [createApprovedTask()],
@@ -517,7 +517,7 @@ test("forge-room decision trace and snapshot share the same revision", () => {
   assert.equal(snapshot.sessionRevision, 9);
 });
 
-test("forge-room run artifacts are run scoped", () => {
+void test("forge-room run artifacts are run scoped", () => {
   const baseStore = createEmptyForgeRunArtifactStore();
   const runOne = withForgeRunPreflight(
     createForgeRunArtifacts({
@@ -551,7 +551,7 @@ test("forge-room run artifacts are run scoped", () => {
   assert.equal(store.entries.length, 2);
 });
 
-test("forge-room artifact queries are owner scoped", () => {
+void test("forge-room artifact queries are owner scoped", () => {
   const sharedRunId = "run-owner-scoped";
   const ownerAEntry = createForgeRunArtifacts({
     contextDigest: "digest-owner-a",
@@ -583,7 +583,7 @@ test("forge-room artifact queries are owner scoped", () => {
   assert.equal(readForgeRunArtifacts(store, sharedRunId, "forge-room:owner-c"), null);
 });
 
-test("forge-room cannot export foreign synthesis snapshots", () => {
+void test("forge-room cannot export foreign synthesis snapshots", () => {
   const ownerScopeId = "forge-room:owner-a";
   const snapshot = createSynthesisSnapshot({
     approvedTasks: [createApprovedTask()],
