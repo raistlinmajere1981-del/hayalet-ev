@@ -163,7 +163,7 @@ void test("extractAssistantMessageContent keeps structured assistant parts as se
   assert.equal(content.blocks.length, 2);
   assert.equal(content.blocks[0]?.kind, "reasoning");
   assert.equal(content.blocks[1]?.kind, "patch");
-  assert.equal(content.blocks[1]?.items?.[0], "chat-utils.ts");
+  assert.equal(content.blocks[1].items?.[0], "chat-utils.ts");
   assert.match(content.text, /Inspect the message timeline/u);
 });
 

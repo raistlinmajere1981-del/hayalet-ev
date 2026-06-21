@@ -235,12 +235,12 @@ function ensureTtsOperationStatusSubscription(): void {
   }
 
   const api = getElectronApi();
-  if (typeof api?.ttsOnStatus !== "function") {
+  if (typeof api?.["ttsOnStatus"] !== "function") {
     return;
   }
 
   ttsOperationStatusSubscriptionReady = true;
-  api.ttsOnStatus((payload) => {
+  api["ttsOnStatus"]((payload: unknown) => {
     const status = normalizeTtsStatus(payload);
     if (status !== null && isTerminalTtsStatus(status.status)) {
       void releaseTtsOperationLock(status.requestId);
@@ -274,11 +274,11 @@ async function acquireTtsOperationLock(
 
 export async function getTtsStatus(): Promise<TtsRuntimeStatus> {
   const api = getElectronApi();
-  if (typeof api?.ttsStatus !== "function") {
+  if (typeof api?.["ttsStatus"] !== "function") {
     return FALLBACK_RUNTIME_STATUS;
   }
 
-  return normalizeRuntimeStatus(await api.ttsStatus());
+  return normalizeRuntimeStatus(await api["ttsStatus"]());
 }
 
 export async function speakText(request: TtsRequest): Promise<TtsSpeakResult> {
@@ -293,7 +293,7 @@ export async function speakText(request: TtsRequest): Promise<TtsSpeakResult> {
     target: request.target ?? "analyze-compose",
   };
 
-  if (typeof api?.ttsSpeak !== "function") {
+  if (typeof api?.["ttsSpeak"] !== "function") {
     return {
       requestId,
       status: createFallbackStatus(requestId),
@@ -331,7 +331,7 @@ export async function speakText(request: TtsRequest): Promise<TtsSpeakResult> {
     ensureTtsOperationStatusSubscription();
   }
 
-  const result = normalizeSpeakResult(await api.ttsSpeak(normalizedRequest), requestId);
+  const result = normalizeSpeakResult(await api["ttsSpeak"](normalizedRequest), requestId);
   if (isTerminalTtsStatus(result.status.status)) {
     await releaseTtsOperationLock(requestId);
   }
@@ -342,7 +342,7 @@ export async function speakText(request: TtsRequest): Promise<TtsSpeakResult> {
 export async function stopSpeech(requestId: string): Promise<TtsStopResult> {
   const api = getElectronApi();
   await stopLocalAudio();
-  if (typeof api?.ttsStop !== "function") {
+  if (typeof api?.["ttsStop"] !== "function") {
     await releaseTtsOperationLock(requestId);
     return {
       requestId,
@@ -351,7 +351,7 @@ export async function stopSpeech(requestId: string): Promise<TtsStopResult> {
     };
   }
 
-  const result = normalizeStopResult(await api.ttsStop(requestId), requestId);
+  const result = normalizeStopResult(await api["ttsStop"](requestId), requestId);
   if (isTerminalTtsStatus(result.status.status)) {
     await releaseTtsOperationLock(requestId);
   }
@@ -408,11 +408,11 @@ async function playLocalAudio(status: TtsStatus): Promise<void> {
   }
 
   const api = getElectronApi();
-  if (typeof api?.readFile !== "function") {
+  if (typeof api?.["readFile"] !== "function") {
     return;
   }
 
-  const base64 = await api.readFile(status.audioPath);
+  const base64 = await api["readFile"](status.audioPath);
   if (typeof base64 !== "string" || base64.trim() === "") {
     return;
   }
@@ -460,11 +460,11 @@ async function playLocalAudio(status: TtsStatus): Promise<void> {
 
 export async function listTtsModels(): Promise<TtsManagedModelStatus[]> {
   const api = getElectronApi();
-  if (typeof api?.ttsListModels !== "function") {
+  if (typeof api?.["ttsListModels"] !== "function") {
     return [];
   }
 
-  const value = await api.ttsListModels();
+  const value = await api["ttsListModels"]();
   if (!Array.isArray(value)) {
     return [];
   }
@@ -478,11 +478,11 @@ export async function installTtsModel(
   modelId: TtsManagedModelId
 ): Promise<TtsInstallModelResult | null> {
   const api = getElectronApi();
-  if (typeof api?.ttsInstallModel !== "function") {
+  if (typeof api?.["ttsInstallModel"] !== "function") {
     return null;
   }
 
-  return await api.ttsInstallModel(modelId);
+  return await api["ttsInstallModel"](modelId);
 }
 
 export function onTtsStatus(callback: (payload: TtsStatus) => void): () => void {

@@ -96,15 +96,15 @@ void test("scene theme package manager lists installed themes from the runtime s
 
   assert.equal(registrations.length, 1);
   assert.equal(registrations[0]?.themeId, "midnight");
-  assert.equal(registrations[0]?.sourceKind, "installed");
-  assert.equal(registrations[0]?.label, "Midnight");
-  assert.match(registrations[0]?.sourceRoot ?? "", /scene-theme-store-.*\/midnight$/);
+  assert.equal(registrations[0].sourceKind, "installed");
+  assert.equal(registrations[0].label, "Midnight");
+  assert.match(registrations[0].sourceRoot , /scene-theme-store-.*\/midnight$/);
   assert.match(
-    registrations[0]?.source?.rooms.assistant.views?.["primary"]?.panelArtSrc ?? "",
+    registrations[0].source?.rooms.assistant.views?.["primary"]?.panelArtSrc ?? "",
     /scene-theme-store-.*\/midnight\/assets\/assistant\/panel\.webp$/
   );
   assert.match(
-    registrations[0]?.source?.characters.roles["ai"]?.bodySrc ?? "",
+    registrations[0].source?.characters.roles["ai"]?.bodySrc ?? "",
     /scene-theme-store-.*\/midnight\/assets\/characters\/ai\.webp$/
   );
 });

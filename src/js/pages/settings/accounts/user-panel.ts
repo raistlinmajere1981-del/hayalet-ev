@@ -241,7 +241,9 @@ export class UserPanel {
     try {
       const electronApi = window.electronAPI;
       if (!electronApi) return;
-      const result = await electronApi.showOpenDialog({
+      const showOpenDialog = electronApi["showOpenDialog"];
+      if (typeof showOpenDialog !== "function") return;
+      const result = await showOpenDialog({
         title: AppI18n.t("entrance.user.dialog.avatarTitle"),
         buttonLabel: AppI18n.t("entrance.user.dialog.selectButton"),
         filters: [
@@ -257,7 +259,9 @@ export class UserPanel {
 
       const selectedPath = result.filePaths[0] ?? "";
       if (selectedPath === "") return;
-      const copied = await electronApi.copyToAssets(selectedPath, "user", null);
+      const copyToAssets = electronApi["copyToAssets"];
+      if (typeof copyToAssets !== "function") return;
+      const copied = await copyToAssets(selectedPath, "user", null);
       const targetPath = copied?.path ?? selectedPath;
 
       const current = this.settingsManager.getSnapshot();
@@ -278,7 +282,9 @@ export class UserPanel {
     try {
       const electronApi = window.electronAPI;
       if (!electronApi) return;
-      await electronApi.googledriveStartAuth();
+      const googledriveStartAuth = electronApi["googledriveStartAuth"];
+      if (typeof googledriveStartAuth !== "function") return;
+      await googledriveStartAuth();
     } catch (err) {
       Logger.error(
         LogCategory.ENTRANCE,
@@ -314,7 +320,9 @@ export class UserPanel {
 
     if (gd.connected === true) {
       try {
-        await electronApi.googledriveDisconnect();
+        const googledriveDisconnect = electronApi["googledriveDisconnect"];
+        if (typeof googledriveDisconnect !== "function") return;
+        await googledriveDisconnect();
         const updated = {
           ...settings,
           integrations: {
@@ -351,7 +359,9 @@ export class UserPanel {
       await this.settingsManager.save(updated);
 
       try {
-        const rawRes: unknown = await electronApi.googledriveExchangeCode(code);
+        const googledriveExchangeCode = electronApi["googledriveExchangeCode"];
+        if (typeof googledriveExchangeCode !== "function") return;
+        const rawRes: unknown = await googledriveExchangeCode(code);
         const res = isGDriveExchangeCodeResult(rawRes) ? rawRes : null;
         if (res?.success === true) {
           const finalUpdated = {

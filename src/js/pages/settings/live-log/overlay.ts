@@ -48,6 +48,29 @@ export function setupLiveLogOverlay({
     return;
   }
 
+  const loggerApi = electronApi["logger"] as {
+    getLogPaths: () => Promise<{
+      console: string;
+      error: string;
+      sessionDir: string;
+      logDir: string;
+    }>;
+    deleteInactiveSessions: () => Promise<{ deletedCount: number }>;
+  };
+  type LogApi = {
+    readFile: (path: string) => Promise<string | null>;
+    readDirectoryFiles: (path: string) => Promise<unknown[]>;
+  };
+  const logApi = electronApi as LogApi;
+  const readFile = logApi.readFile;
+  const readDirectoryFiles = logApi.readDirectoryFiles;
+  const showMessageBox = electronApi["showMessageBox"] as (
+    options: Record<string, unknown>
+  ) => Promise<{ response: number }>;
+  const ipcRenderer = electronApi["ipcRenderer"] as {
+    on: (channel: string, callback: (...args: unknown[]) => void) => void;
+  };
+
   const overlay = document.getElementById("live-log-overlay");
   const overlayContent = document.getElementById("live-log-content");
   const pauseBtn = document.getElementById("live-log-pause") as HTMLButtonElement | null;
@@ -130,7 +153,7 @@ export function setupLiveLogOverlay({
     }
 
     try {
-      const pathsRaw = await electronApi.logger.getLogPaths();
+      const pathsRaw = await loggerApi.getLogPaths();
       const appLogDir =
         isRecord(pathsRaw) && typeof (pathsRaw as { logDir?: unknown }).logDir === "string"
           ? ((pathsRaw as { logDir?: unknown }).logDir as string)
@@ -175,7 +198,7 @@ export function setupLiveLogOverlay({
         const appDir = joinPath(state.baseLogsDir, appDirName);
         try {
           // eslint-disable-next-line no-await-in-loop -- NOTE: directory scan is sequential per candidate.
-          const entriesRaw = await electronApi.readDirectoryFiles(appDir);
+          const entriesRaw = await readDirectoryFiles(appDir);
           const entries = Array.isArray(entriesRaw) ? entriesRaw : [];
           entries
             .filter((entry) => isRecord(entry) && entry["isDirectory"] === true)
@@ -217,7 +240,7 @@ export function setupLiveLogOverlay({
       const structuredPath = joinPath(state.baseLogsDir, appDirName, sessionId, "structured.jsonl");
       try {
         // eslint-disable-next-line no-await-in-loop -- NOTE: probe paths sequentially until a hit.
-        const nextEncoded = await electronApi.readFile(structuredPath);
+        const nextEncoded = await readFile(structuredPath);
         if (typeof nextEncoded === "string" && nextEncoded !== "") {
           encoded = nextEncoded;
           break;
@@ -377,7 +400,7 @@ export function setupLiveLogOverlay({
         return;
       }
 
-      const confirmation = await electronApi.showMessageBox({
+      const confirmation = await showMessageBox({
         type: "warning",
         buttons: [
           entranceT("liveLog.deleteInactiveConfirmAction"),
@@ -398,7 +421,7 @@ export function setupLiveLogOverlay({
       setDeleteInactiveButtonUI();
 
       try {
-        const resultRaw = await electronApi.logger.deleteInactiveSessions();
+        const resultRaw = await loggerApi.deleteInactiveSessions();
         const result = isDeleteInactiveSessionsResult(resultRaw) ? resultRaw : { deletedCount: 0 };
 
         state.entriesByApp.app = [];
@@ -436,7 +459,7 @@ export function setupLiveLogOverlay({
     })();
   });
 
-  electronApi.ipcRenderer.on("log:ui-notify-batch", (_event: unknown, payload: unknown) => {
+  ipcRenderer.on("log:ui-notify-batch", (_event: unknown, payload: unknown) => {
     handleIncomingPayload(payload);
   });
 

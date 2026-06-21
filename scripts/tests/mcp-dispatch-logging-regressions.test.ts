@@ -9,7 +9,7 @@ void test("executeHandlerWithLogging logs start and success", async () => {
   const result = await executeHandlerWithLogging(
     "demo_tool",
     { x: 1 },
-    async () => ({ ok: true }),
+    () => ({ ok: true }),
     {
       logToolCall: (name, args) => {
         events.push(`start:${name}:${String((args as { x: number }).x)}`);
@@ -37,7 +37,7 @@ void test("executeHandlerWithLogging logs error and rethrows", async () => {
       await executeHandlerWithLogging(
         "demo_tool",
         { x: 1 },
-        async () => {
+        () => {
           throw new Error("boom");
         },
         {

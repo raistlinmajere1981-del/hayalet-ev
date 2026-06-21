@@ -280,7 +280,7 @@ export class AccountPanel {
     }
 
     const electronApi = window.electronAPI;
-    const canRead = typeof electronApi?.readFile === "function";
+    const canRead = typeof electronApi?.["readFile"] === "function";
     const avatarPath = account.avatarPath ?? "";
     const avatarUrl = account.avatar ?? "";
     const fallbackPath =
@@ -292,8 +292,10 @@ export class AccountPanel {
     const tryLoadFile = async (filePath: string): Promise<boolean> => {
       if (!canRead) return false;
       try {
-        const data = await electronApi.readFile(filePath);
-        const base64 = String(data ?? "");
+        const readFile = electronApi["readFile"] as ((path: string) => Promise<string>) | undefined;
+        if (typeof readFile !== "function") return false;
+        const data = await readFile(filePath);
+        const base64 = String(data);
         if (base64 === "") return false;
         const mimeType = getMimeTypeFromPath(filePath);
         previewEl.innerHTML = `<img src="data:${mimeType};base64,${base64}" alt="${altText}" class="img-cover">`;
@@ -330,7 +332,7 @@ export class AccountPanel {
     }
 
     const electronApi = window.electronAPI;
-    const canRead = typeof electronApi?.readFile === "function";
+    const canRead = typeof electronApi?.["readFile"] === "function";
     const avatarPath = this._newAccountAvatarPath;
     const requestId = ++this._newAccountAvatarPreviewRequestId;
     const altText = this.escapeHtml(entranceT("accounts.avatarPreviewAlt"));
@@ -338,8 +340,10 @@ export class AccountPanel {
     const tryLoadFile = async (filePath: string): Promise<boolean> => {
       if (!canRead) return false;
       try {
-        const data = await electronApi.readFile(filePath);
-        const base64 = String(data ?? "");
+        const readFile = electronApi["readFile"] as ((path: string) => Promise<string>) | undefined;
+        if (typeof readFile !== "function") return false;
+        const data = await readFile(filePath);
+        const base64 = String(data);
         if (base64 === "") return false;
         if (
           requestId !== this._newAccountAvatarPreviewRequestId ||
@@ -501,7 +505,9 @@ export class AccountPanel {
       if (!electronApi) {
         return;
       }
-      const result = await electronApi.showOpenDialog({
+      const showOpenDialog = electronApi["showOpenDialog"];
+      if (typeof showOpenDialog !== "function") return;
+      const result = await showOpenDialog({
         title: entranceT("accounts.dialog.avatarTitle"),
         buttonLabel: entranceT("accounts.dialog.selectButton"),
         filters: [
@@ -562,7 +568,12 @@ export class AccountPanel {
       return;
     }
 
-    const result = await electronApi.us1InviteRemoteUser({
+    const inviteRemoteUser = electronApi["us1InviteRemoteUser"] as (opts: {
+      mailAccountId: string;
+      email: string;
+    }) => Promise<{ success?: boolean; error?: string }>;
+    if (typeof inviteRemoteUser !== "function") return;
+    const result = await inviteRemoteUser({
       mailAccountId: localMailAccount.id,
       email,
     });
@@ -570,7 +581,7 @@ export class AccountPanel {
     await this.reloadSettings();
     this.render();
 
-    if (result.success) {
+    if (result.success === true) {
       if (emailEl) {
         emailEl.value = "";
       }
@@ -606,7 +617,12 @@ export class AccountPanel {
       return;
     }
 
-    const result = await electronApi.us1SyncRemoteUsers({
+    const syncRemoteUsers = electronApi["us1SyncRemoteUsers"] as (opts: {
+      mailAccountId: string;
+      limit: number;
+    }) => Promise<{ success?: boolean; error?: string; processedCount?: number }>;
+    if (typeof syncRemoteUsers !== "function") return;
+    const result = await syncRemoteUsers({
       mailAccountId: localMailAccount.id,
       limit: 25,
     });
@@ -614,7 +630,7 @@ export class AccountPanel {
     await this.reloadSettings();
     this.render();
 
-    if (result.success) {
+    if (result.success === true) {
       const processedCount = result.processedCount ?? 0;
       this.notifyFeedback(
         entranceT("us1.feedback.syncSuccess", { count: String(processedCount) }),
@@ -641,11 +657,15 @@ export class AccountPanel {
     }
 
     const remoteUserId = this.getRemoteUserId(account);
-    const result = await electronApi.us1AcceptRemoteUser({ remoteUserId });
+    const acceptRemoteUser = electronApi["us1AcceptRemoteUser"] as (opts: {
+      remoteUserId: string;
+    }) => Promise<{ success?: boolean; error?: string }>;
+    if (typeof acceptRemoteUser !== "function") return;
+    const result = await acceptRemoteUser({ remoteUserId });
     await this.reloadSettings();
     this.render();
 
-    if (result.success) {
+    if (result.success === true) {
       this.notifyFeedback(
         entranceT("us1.feedback.acceptSent"),
         "success",
@@ -671,11 +691,15 @@ export class AccountPanel {
     }
 
     const remoteUserId = this.getRemoteUserId(account);
-    const result = await electronApi.us1RejectRemoteUser({ remoteUserId });
+    const rejectRemoteUser = electronApi["us1RejectRemoteUser"] as (opts: {
+      remoteUserId: string;
+    }) => Promise<{ success?: boolean; error?: string }>;
+    if (typeof rejectRemoteUser !== "function") return;
+    const result = await rejectRemoteUser({ remoteUserId });
     await this.reloadSettings();
     this.render();
 
-    if (result.success) {
+    if (result.success === true) {
       this.notifyFeedback(
         entranceT("us1.feedback.rejectSent"),
         "success",
@@ -730,7 +754,13 @@ export class AccountPanel {
           this.showFeedback(entranceT("accounts.feedback.electronApiMissing"), "error");
           return;
         }
-        const copied = await electronApi.copyToAssets(this._newAccountAvatarPath, "account", {
+        const copyToAssets = electronApi["copyToAssets"] as (
+          srcPath: string,
+          kind: string,
+          meta: { id: string; email: string; provider: string }
+        ) => Promise<{ path?: string } | undefined>;
+        if (typeof copyToAssets !== "function") return;
+        const copied = await copyToAssets(this._newAccountAvatarPath, "account", {
           id: accountId,
           email,
           provider,
@@ -750,7 +780,9 @@ export class AccountPanel {
       };
 
       const electronApi = window.electronAPI;
-      const dbInitAccount = electronApi?.["dbInitAccount"];
+      const dbInitAccount = electronApi?.["dbInitAccount"] as
+        | ((opts: { accountId: string }) => Promise<{ success?: boolean; error?: string }>)
+        | undefined;
       if (!dbInitAccount) {
         this.notifyFeedback(
           entranceT("accounts.feedback.dbInitMissing"),
@@ -760,10 +792,7 @@ export class AccountPanel {
         );
         return;
       }
-      const dbResult = (await dbInitAccount({ accountId })) as {
-        success?: boolean;
-        error?: string;
-      };
+      const dbResult = await dbInitAccount({ accountId });
       if (dbResult.success !== true) {
         this.notifyFeedback(
           entranceT("accounts.feedback.dbError", {
@@ -843,7 +872,13 @@ export class AccountPanel {
           this.showFeedback(entranceT("accounts.feedback.electronApiMissing"), "error");
           return;
         }
-        const copied = await electronApi.copyToAssets(this._newAccountAvatarPath, "account", {
+        const copyToAssets = electronApi["copyToAssets"] as (
+          srcPath: string,
+          kind: string,
+          meta: { id: string; email: string; provider: string }
+        ) => Promise<{ path?: string } | undefined>;
+        if (typeof copyToAssets !== "function") return;
+        const copied = await copyToAssets(this._newAccountAvatarPath, "account", {
           id: oldAccount.id,
           email: oldAccount.email,
           provider: oldAccount.provider,
@@ -898,7 +933,16 @@ export class AccountPanel {
     if (!electronApi) {
       return;
     }
-    const result = await electronApi.showMessageBox({
+    const showMessageBox = electronApi["showMessageBox"] as (opts: {
+      type: string;
+      buttons: string[];
+      defaultId: number;
+      cancelId: number;
+      title: string;
+      message: string;
+    }) => Promise<{ response: number }>;
+    if (typeof showMessageBox !== "function") return;
+    const result = await showMessageBox({
       type: "question",
       buttons: [
         entranceT("accounts.dialog.deleteCancel"),
@@ -921,7 +965,9 @@ export class AccountPanel {
       const clearedSlots: Array<{ label: string; dedupeKey: string }> = [];
 
       try {
-        const dbDeleteAccount = electronApi["dbDeleteAccount"];
+        const dbDeleteAccount = electronApi["dbDeleteAccount"] as
+          | ((opts: { accountId: string }) => Promise<{ success?: boolean }>)
+          | undefined;
         if (dbDeleteAccount) {
           await dbDeleteAccount({ accountId: account.id });
         }
@@ -977,7 +1023,16 @@ export class AccountPanel {
       return;
     }
 
-    const result = await electronApi.showMessageBox({
+    const showMessageBox = electronApi["showMessageBox"] as (opts: {
+      type: string;
+      buttons: string[];
+      defaultId: number;
+      cancelId: number;
+      title: string;
+      message: string;
+    }) => Promise<{ response: number }>;
+    if (typeof showMessageBox !== "function") return;
+    const result = await showMessageBox({
       type: "question",
       buttons: [
         entranceT("accounts.dialog.deleteCancel"),

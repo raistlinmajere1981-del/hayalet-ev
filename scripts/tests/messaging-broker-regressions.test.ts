@@ -64,7 +64,7 @@ void test("messaging broker drops duplicate provider events", async () => {
     const messages = await manager.getMessages(first.conversationId ?? "");
     assert.equal(messages.success, true);
     assert.equal(messages.data?.length, 1);
-    assert.equal(messages.data?.[0]?.provider_message_id, "provider-duplicate-1");
+    assert.equal(messages.data[0]?.provider_message_id, "provider-duplicate-1");
   } finally {
     cleanupAccount(accountId);
   }
@@ -110,9 +110,9 @@ void test("messaging broker applies out-of-order events with monotonic sequence"
       ["first applied", "second applied"]
     );
     assert.equal(eventSeqs.length, 2);
-    assert.equal(eventSeqs[0]! < eventSeqs[1]!, true);
+    assert.equal((eventSeqs[0] as number) < (eventSeqs[1] as number), true);
 
-    const incremental = await manager.getMessages(conversationId, { afterSeq: eventSeqs[0]! });
+    const incremental = await manager.getMessages(conversationId, { afterSeq: eventSeqs[0] as number });
     assert.deepEqual(
       (incremental.data ?? []).map((message) => message.content),
       ["second applied"]
@@ -165,7 +165,7 @@ void test("messaging broker merges projections by message identity instead of ti
     const conversationId = first.conversationId ?? "";
     const projectedMessages = await manager.getMessages(conversationId);
     assert.equal(projectedMessages.data?.length, 1);
-    assert.equal(projectedMessages.data?.[0]?.content, "draft v2");
+    assert.equal(projectedMessages.data[0]?.content, "draft v2");
 
     const db = getDatabaseForAccount(accountId);
     const eventCount = db
@@ -221,14 +221,14 @@ void test("messaging broker keeps the newest same-identity projection when older
     const conversationId = first.conversationId ?? "";
     const projectedMessages = await manager.getMessages(conversationId);
     assert.equal(projectedMessages.data?.length, 1);
-    assert.equal(projectedMessages.data?.[0]?.content, "newest");
-    assert.equal(projectedMessages.data?.[0]?.event_seq, 10);
+    assert.equal(projectedMessages.data[0]?.content, "newest");
+    assert.equal(projectedMessages.data[0].event_seq, 10);
   } finally {
     cleanupAccount(accountId);
   }
 });
 
-test(
+void test(
   "messaging broker emits structured event codes for duplicate and out-of-order events",
   { concurrency: false },
   async () => {

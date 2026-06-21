@@ -4,7 +4,13 @@ const LEGACY_SCENE_DEBUG_ATTRIBUTE = "data-scene-debug";
 
 function readSceneEditorStartupFlag(): boolean {
   try {
-    const startupFlags = window.electronAPI?.getStartupFlags();
+    const getStartupFlags = window.electronAPI?.["getStartupFlags"] as
+      | (() => {
+          sceneEditor?: boolean;
+          sceneDebug?: boolean;
+        })
+      | undefined;
+    const startupFlags = typeof getStartupFlags === "function" ? getStartupFlags() : undefined;
     return startupFlags?.sceneEditor === true || startupFlags?.sceneDebug === true;
   } catch {
     return false;

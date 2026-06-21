@@ -399,28 +399,28 @@ void test("laboratory run controller accepts numeric timeline input edits and no
 
     const startInput = new FakeHtmlInputElement("workspace.timelineStartMs", "1500");
     startInput.type = "number";
-    inputListener?.({ target: startInput } as unknown as Event);
+    inputListener({ target: startInput } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 3000);
     assert.equal(preview.currentTime, 1.5);
 
     const validEndInput = new FakeHtmlInputElement("workspace.timelineEndMs", "4200");
     validEndInput.type = "number";
-    inputListener?.({ target: validEndInput } as unknown as Event);
+    inputListener({ target: validEndInput } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 4200);
     assert.equal(preview.currentTime, 4.2);
 
     const invalidEndInput = new FakeHtmlInputElement("workspace.timelineEndMs", "1400");
     invalidEndInput.type = "number";
-    inputListener?.({ target: invalidEndInput } as unknown as Event);
+    inputListener({ target: invalidEndInput } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
     assert.equal(preview.currentTime, 4.2);
 
     const endInput = new FakeHtmlInputElement("workspace.timelineEndMs", "");
     endInput.type = "number";
-    inputListener?.({ target: endInput } as unknown as Event);
+    inputListener({ target: endInput } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 1500);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
     assert.equal(preview.currentTime, 4.2);
@@ -509,32 +509,32 @@ void test("laboratory run controller wires compact timeline transport to primary
 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
-    clickListener?.({ target: new TestElement("timeline-toggle-playback") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-toggle-playback") } as unknown as Event);
     await Promise.resolve();
 
     assert.equal(preview.playCalls, 1);
     assert.equal(preview.paused, false);
     assert.equal(playLabel.textContent, "❚❚");
 
-    clickListener?.({ target: new TestElement("timeline-toggle-playback") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-toggle-playback") } as unknown as Event);
     assert.equal(preview.pauseCalls, 1);
     assert.equal(preview.paused, true);
     assert.equal(playLabel.textContent, "▶");
 
-    clickListener?.({ target: new TestElement("timeline-add-bookmark") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-add-bookmark") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.bookmarks.length, 1);
     assert.equal(store.getState().ui.workspace.bookmarks[0]?.timeMs, 4321);
     assert.equal(store.getState().ui.workspace.bookmarks[0]?.note, "red flash");
     assert.equal(bookmarkNoteInput.value, "");
 
     preview.currentTime = 5.5;
-    clickListener?.({ target: new TestElement("timeline-add-bookmark") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-add-bookmark") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.bookmarks.length, 2);
     assert.equal(store.getState().ui.workspace.bookmarks[1]?.timeMs, 5500);
     assert.equal(store.getState().ui.workspace.bookmarks[1]?.note, "Mark 00:05.500");
     const firstBookmarkId = store.getState().ui.workspace.bookmarks[0]?.id;
-    assert.ok(firstBookmarkId);
-    clickListener?.({
+    assert.ok(firstBookmarkId != null);
+    clickListener({
       target: new TestElement("timeline-remove-bookmark", firstBookmarkId),
     } as unknown as Event);
     assert.equal(store.getState().ui.workspace.bookmarks.length, 1);
@@ -544,7 +544,7 @@ void test("laboratory run controller wires compact timeline transport to primary
     assert.ok(inputListener);
     const volumeInput = new FakeHtmlInputElement("workspace.previewVolume", "0.35");
     volumeInput.type = "range";
-    inputListener?.({ target: volumeInput } as unknown as Event);
+    inputListener({ target: volumeInput } as unknown as Event);
 
     assert.equal(preview.volume, 0.35);
     assert.equal(preview.muted, false);
@@ -552,22 +552,22 @@ void test("laboratory run controller wires compact timeline transport to primary
 
     const muteInput = new FakeHtmlInputElement("workspace.previewVolume", "0");
     muteInput.type = "range";
-    inputListener?.({ target: muteInput } as unknown as Event);
+    inputListener({ target: muteInput } as unknown as Event);
     assert.equal(preview.volume, 0);
     assert.equal(preview.muted, true);
     assert.equal(volumeRoleInput.value, "0");
 
     preview.currentTime = 2;
-    clickListener?.({ target: new TestElement("timeline-set-selection-boundary", "start") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-set-selection-boundary", "start") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 2000);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
 
     preview.currentTime = 6;
-    clickListener?.({ target: new TestElement("timeline-set-selection-boundary", "end") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-set-selection-boundary", "end") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, 2000);
     assert.equal(store.getState().ui.workspace.timelineEndMs, 6000);
 
-    clickListener?.({ target: new TestElement("timeline-play-selection") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-play-selection") } as unknown as Event);
     assert.equal(preview.currentTime, 2);
     assert.equal(preview.playCalls, 2);
     preview.currentTime = 6.1;
@@ -575,15 +575,15 @@ void test("laboratory run controller wires compact timeline transport to primary
     assert.equal(preview.currentTime, 6);
     assert.equal(preview.pauseCalls, 2);
 
-    clickListener?.({ target: new TestElement("timeline-toggle-selection-loop") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-toggle-selection-loop") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.selectionLoopEnabled, true);
-    clickListener?.({ target: new TestElement("timeline-play-selection") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-play-selection") } as unknown as Event);
     preview.currentTime = 6.2;
     preview.dispatch("timeupdate");
     assert.equal(preview.currentTime, 2);
     assert.equal(store.getState().ui.workspace.selectionLoopEnabled, true);
 
-    clickListener?.({ target: new TestElement("timeline-clear") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-clear") } as unknown as Event);
     assert.equal(store.getState().ui.workspace.timelineStartMs, null);
     assert.equal(store.getState().ui.workspace.timelineEndMs, null);
     assert.equal(store.getState().ui.workspace.selectionLoopEnabled, false);
@@ -602,13 +602,13 @@ void test("laboratory run controller wires compact timeline transport to primary
       },
     });
 
-    clickListener?.({ target: new TestElement("timeline-toggle-playback") } as unknown as Event);
+    clickListener({ target: new TestElement("timeline-toggle-playback") } as unknown as Event);
     assert.equal(preview.playCalls, 4);
     assert.equal(preview.paused, true);
 
     const lockedVolumeInput = new FakeHtmlInputElement("workspace.previewVolume", "0.75");
     lockedVolumeInput.type = "range";
-    inputListener?.({ target: lockedVolumeInput } as unknown as Event);
+    inputListener({ target: lockedVolumeInput } as unknown as Event);
     assert.equal(store.getState().ui.workspace.previewVolume, 0);
     assert.equal(preview.volume, 0);
     assert.equal(volumeRoleInput.value, "0");
@@ -681,13 +681,13 @@ void test("laboratory run controller keeps invalid scope time ranges out of the 
 
     const scopeStart = new FakeHtmlInputElement("scope.timeStartMs", "2500");
     scopeStart.type = "number";
-    inputListener?.({ target: scopeStart } as unknown as Event);
+    inputListener({ target: scopeStart } as unknown as Event);
 
     const scopeEnd = new FakeHtmlInputElement("scope.timeEndMs", "2000");
     scopeEnd.type = "number";
-    inputListener?.({ target: scopeEnd } as unknown as Event);
+    inputListener({ target: scopeEnd } as unknown as Event);
 
-    const analysisScope = (store.getState().workbench["analysisScope"] || {}) as Record<
+    const analysisScope = (store.getState().workbench["analysisScope"] ?? {}) as Record<
       string,
       unknown
     >;
@@ -814,13 +814,13 @@ void test("laboratory store wires live findings and preview artifacts from custo
 
   const state = store.getState();
   assert.equal(state.run?.analysisScope?.focus, "visual");
-  assert.equal(state.run?.analysisScope?.hypothesis, "gorunmeyen obje olabilir");
-  assert.equal(state.run?.liveFindings[0]?.id, "finding-live-1");
-  assert.equal(state.run?.liveFindings[0]?.windowKey, "motion-module-batch");
-  assert.equal(state.run?.previewArtifacts[0]?.id, "preview-live-1");
+  assert.equal(state.run.analysisScope.hypothesis, "gorunmeyen obje olabilir");
+  assert.equal(state.run.liveFindings[0]?.id, "finding-live-1");
+  assert.equal(state.run.liveFindings[0].windowKey, "motion-module-batch");
+  assert.equal(state.run.previewArtifacts[0]?.id, "preview-live-1");
   assert.equal(state.ui.activePreviewArtifactId, "preview-live-1");
   assert.equal(
-    state.run?.moduleTrace.some(function (entry) {
+    state.run.moduleTrace.some(function (entry) {
       return entry.id === "trace-live-1";
     }),
     true
@@ -922,11 +922,7 @@ void test("laboratory store hydration normalizes live runs into safe persisted s
             emittedAt: Date.now() - 850,
             windowKey: "frame-window-1",
             streamId: "media-analysis",
-            frameRange: {
-              startFrame: 24,
-              endFrame: 48,
-            },
-          } as any,
+          },
         ],
         warnings: [],
         error: null,
@@ -953,13 +949,10 @@ void test("laboratory store hydration normalizes live runs into safe persisted s
             createdAt: new Date(Date.now() - 750).toISOString(),
             status: "ready",
             active: true,
-            region: {
-              x: 10,
-              y: 20,
-              width: 120,
-              height: 90,
-            },
-          } as any,
+            variantId: null,
+            reference: null,
+            metadata: {},
+          },
         ],
         confidence: "medium",
         moduleTrace: [
@@ -991,16 +984,16 @@ void test("laboratory store hydration normalizes live runs into safe persisted s
 
   const state = store.getState();
   assert.equal(state.run?.state, "cancelled");
-  assert.equal(state.run?.modules["motion"]?.status, "cancelled");
-  assert.equal(state.run?.events.length, 1);
-  assert.equal(state.run?.events[0]?.kind, "activity");
-  assert.equal(state.run?.rawLog.length, 1);
-  assert.equal(state.run?.analysisScope?.focus, "visual");
-  assert.equal(state.run?.analysisScope?.lifecycle?.mutable, false);
-  assert.equal(state.run?.liveFindings[0]?.windowKey, "frame-window-1");
-  assert.equal(state.run?.previewArtifacts[0]?.kind, "frame-preview");
-  assert.equal(state.run?.comparisonVariants[0]?.kind, "gamma-scan");
-  assert.equal(state.run?.hypothesisSummary, "Gorunmeyen obje olabilir");
+  assert.equal(state.run.modules["motion"]?.status, "cancelled");
+  assert.equal(state.run.events.length, 1);
+  assert.equal(state.run.events[0]?.kind, "activity");
+  assert.equal(state.run.rawLog.length, 1);
+  assert.equal(state.run.analysisScope?.focus, "visual");
+  assert.equal(state.run.analysisScope.lifecycle?.mutable, false);
+  assert.equal(state.run.liveFindings[0]?.windowKey, "frame-window-1");
+  assert.equal(state.run.previewArtifacts[0]?.kind, "frame-preview");
+  assert.equal(state.run.comparisonVariants[0]?.kind, "gamma-scan");
+  assert.equal(state.run.hypothesisSummary, "Gorunmeyen obje olabilir");
 });
 
 void test("laboratory selectors expose frozen snapshot summary and live workspace drift separately", () => {

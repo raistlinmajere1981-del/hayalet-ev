@@ -38,8 +38,12 @@ void test("webview preload resolves app language and emits provider language syn
 });
 
 void test("opencode providers declare explicit localStorage language signals", async () => {
-  for (const providerId of ["opencode", "opencode-ui"] as const) {
-    const config = await loadProviderConfig(providerId);
+  const providerIds = ["opencode", "opencode-ui"] as const;
+  const configs = await Promise.all(
+    providerIds.map(async (id) => ({ id, config: await loadProviderConfig(id) }))
+  );
+
+  for (const { id: providerId, config } of configs) {
     const strategy = config["uiLanguage"] as Record<string, unknown> | undefined;
     const signals = strategy?.["signals"] as Record<string, unknown> | undefined;
     const localStorageKeys = signals?.["localStorageKeys"];

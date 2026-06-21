@@ -179,14 +179,14 @@ void test("RoomPackageManager imports a .hevroom bundle into workspace and insta
     const installedRooms = await manager.listInstalledRooms();
     assert.equal(installedRooms.length, 1);
     assert.equal(installedRooms[0]?.id, "game-room-import");
-    assert.equal(installedRooms[0]?.defaultFeatureId, "chess");
-    assert.equal(installedRooms[0]?.sourceDir, join(workspaceRoot, "game-room-import"));
+    assert.equal(installedRooms[0].defaultFeatureId, "chess");
+    assert.equal(installedRooms[0].sourceDir, join(workspaceRoot, "game-room-import"));
     assert.equal(
-      installedRooms[0]?.scene?.roomBackgroundPath,
+      installedRooms[0].scene?.roomBackgroundPath,
       join(installedRoot, "game-room-import", "assets", "room-background.svg")
     );
     assert.equal(
-      installedRooms[0]?.features[0]?.scene?.view.backgroundPath,
+      installedRooms[0].features[0]?.scene?.view.backgroundPath,
       join(installedRoot, "game-room-import", "assets", "chess-view.svg")
     );
 
@@ -201,7 +201,7 @@ void test("RoomPackageManager imports a .hevroom bundle into workspace and insta
       join(installedRoot, "game-room-import", "assets", "room-background.svg")
     );
     assert.equal(
-      registry.rooms[0]?.features?.[0]?.scene?.view?.backgroundPath,
+      registry.rooms[0].features?.[0]?.scene?.view?.backgroundPath,
       join(installedRoot, "game-room-import", "assets", "chess-view.svg")
     );
   } finally {
@@ -295,8 +295,8 @@ void test("RoomPackageManager startup sync refreshes workspace-linked installed 
     assert.equal(syncResult.success, true, syncResult.error);
     assert.deepEqual(syncResult.syncedRoomIds, ["sync-room"]);
     assert.equal(syncResult.snapshot?.rooms.length, 1);
-    assert.ok(syncResult.snapshot?.rooms[0]);
-    assert.notEqual(syncResult.snapshot?.rooms[0]?.updatedAt, initialUpdatedAt);
+    assert.ok(syncResult.snapshot.rooms[0]);
+    assert.notEqual(syncResult.snapshot.rooms[0].updatedAt, initialUpdatedAt);
     assert.match(await readFile(join(runtimeRoomDir, "ui", "index.html"), "utf8"), /Sync Room v2/);
 
     const secondSyncResult = await manager.syncLinkedWorkspaceRoomsOnStartup();
@@ -414,9 +414,9 @@ void test("RoomPackageManager lists bundled rooms and installs them without dele
     const workspaceRooms = await manager.listWorkspaceRooms();
     assert.equal(workspaceRooms.length, 2);
     assert.equal(workspaceRooms[0]?.sourceKind, "bundle");
-    assert.equal(workspaceRooms[0]?.readOnly, true);
+    assert.equal(workspaceRooms[0].readOnly, true);
     assert.equal(workspaceRooms[1]?.sourceKind, "bundle");
-    assert.equal(workspaceRooms[1]?.readOnly, true);
+    assert.equal(workspaceRooms[1].readOnly, true);
 
     const installResult = await manager.installFromWorkspace("workshop");
     assert.equal(installResult.success, true, installResult.error);
@@ -768,7 +768,7 @@ void test("RoomPackageManager marks dev fallback installed rooms so settings can
     );
 
     assert.equal(fallbackRoom?.id, "game-room");
-    assert.equal(fallbackRoom?.isWorkspaceFallback, true);
+    assert.equal(fallbackRoom.isWorkspaceFallback, true);
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

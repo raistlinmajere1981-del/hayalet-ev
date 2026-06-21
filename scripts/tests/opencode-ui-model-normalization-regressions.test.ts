@@ -108,7 +108,7 @@ void test("normalizeModelItems preserves non-openai variant payloads", () => {
     ]
   );
   assert.deepEqual(claudeItem.reasoningEfforts, ["low", "max"]);
-  assert.deepEqual(claudeItem.variantOptions?.[1]?.options, {
+  assert.deepEqual(claudeItem.variantOptions[1]?.options, {
     thinkingConfig: {
       thinkingBudget: 32768,
     },

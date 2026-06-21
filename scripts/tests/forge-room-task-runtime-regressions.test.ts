@@ -60,7 +60,7 @@ void test("forge-room task runtime groups compare responses into conflicts and p
   const responses = [
     {
       id: "forge-response-1",
-      assignmentId: assignments[0]!.id,
+      assignmentId: (assignments[0] as (typeof assignments)[number]).id,
       taskId: "forge-task-1",
       seatId: "ai1" as const,
       roleId: "architect" as const,
@@ -75,7 +75,7 @@ void test("forge-room task runtime groups compare responses into conflicts and p
     },
     {
       id: "forge-response-2",
-      assignmentId: assignments[1]!.id,
+      assignmentId: (assignments[1] as (typeof assignments)[number]).id,
       taskId: "forge-task-1",
       seatId: "ai2" as const,
       roleId: "challenger" as const,
@@ -119,7 +119,7 @@ void test("forge-room task runtime groups compare responses into conflicts and p
   assert.equal(conflicts.length, 1);
   assert.equal(conflicts[0]?.kind, "risk");
   assert.equal(synthesis?.selectedResponseIds.length, 1);
-  assert.deepEqual(synthesis?.selectedResponseIds, ["forge-response-2"]);
-  assert.deepEqual(synthesis?.acceptanceCriteria, ["Repair Room can import the package."]);
-  assert.equal(Array.isArray(synthesis?.decisionTrace), true);
+  assert.deepEqual(synthesis.selectedResponseIds, ["forge-response-2"]);
+  assert.deepEqual(synthesis.acceptanceCriteria, ["Repair Room can import the package."]);
+  assert.equal(Array.isArray(synthesis.decisionTrace), true);
 });

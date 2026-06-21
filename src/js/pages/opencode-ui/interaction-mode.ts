@@ -79,7 +79,9 @@ async function resolveWorkspacePath(): Promise<string> {
 }
 
 async function readWorkspaceTextFile(filePath: string): Promise<string> {
-  const readFile = window.electronAPI?.readFile;
+  const readFile = window.electronAPI?.["readFile"] as
+    | ((path: string) => Promise<string | null>)
+    | undefined;
   if (typeof readFile !== "function") {
     throw new Error("Electron file bridge is unavailable.");
   }

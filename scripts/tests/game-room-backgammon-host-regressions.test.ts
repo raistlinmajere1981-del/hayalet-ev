@@ -7,7 +7,7 @@ const gameRoomHostModule = await loadGameRoomHostModule();
 interface BackgammonHostRuntime {
   api: {
     notifyRoom: (type: string, payload?: Record<string, unknown>) => void;
-    dispatchBridge: (payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
+    dispatchBridge: (payload: Record<string, unknown>) => Record<string, unknown>;
     dispatchRoomCommand: (
       commandName: string,
       payload?: Record<string, unknown>
@@ -74,7 +74,7 @@ function createRoomHostRuntime(): BackgammonHostRuntime {
     notifyRoom(type: string, payload: Record<string, unknown> = {}) {
       notifications.push({ type, payload });
     },
-    dispatchBridge: async (payload: Record<string, unknown>) => {
+    dispatchBridge: (payload: Record<string, unknown>) => {
       dispatchCalls.push(payload);
       const target =
         typeof payload["toSlot"] === "string"
@@ -269,7 +269,8 @@ test.afterEach(async () => {
   for (const runtime of activeRuntimes.splice(0)) {
     const dispose = runtime.exported["dispose"];
     if (typeof dispose === "function") {
-      results.push(Promise.resolve((dispose as () => void)()));
+      (dispose as () => void)();
+      results.push(Promise.resolve());
     }
   }
   await Promise.all(results);
@@ -459,8 +460,8 @@ void test("game-room Tavla delays protocol until the first AI turn when the user
   assert.equal(userMoveResult.success, true);
   assert.equal(runtime.protocolCalls.length, 1);
   assert.equal(runtime.messageCalls.length, 1);
-  assert.equal(runtime.protocolCalls[0]!['scenario'], "backgammon-user-start");
-  const protocolContext = runtime.protocolCalls[0]!['context'] as Record<string, unknown>;
+  assert.equal((runtime.protocolCalls[0] as Record<string, unknown>)['scenario'], "backgammon-user-start");
+  const protocolContext = (runtime.protocolCalls[0] as Record<string, unknown>)['context'] as Record<string, unknown>;
   assert.match(str(runtime.messageCalls[0]?.["text"] ?? ""), /GameRoomBackgammonAiMove/);
   assert.doesNotMatch(str(runtime.messageCalls[0]?.["text"] ?? ""), /Legal moves:/);
   assert.doesNotMatch(str(runtime.messageCalls[0]?.["text"] ?? ""), /legalMoveId/);
@@ -577,7 +578,7 @@ void test("game-room Tavla sends US1 invites with Tavla note metadata", async ()
   assert.equal(startResult.success, true);
   assert.equal(runtime.protocolCalls.length, 0);
   assert.equal(runtime.us1MessageCalls.length, 1);
-  const us1Msg0 = runtime.us1MessageCalls[0]!;
+  const us1Msg0 = runtime.us1MessageCalls[0] as Record<string, unknown>;
   const roomEvent = us1Msg0["roomEvent"] as Record<string, unknown>;
   assert.equal(roomEvent["eventType"], "invite");
   assert.equal(roomEvent["note"], "Ready for a rematch?");

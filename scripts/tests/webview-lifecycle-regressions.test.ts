@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { WebviewElement } from "../../src/js/modules/slot/controller-state.ts";
 import {
   ensureWebviewMounted,
   markWebviewAttached,
@@ -101,7 +102,7 @@ void test("ensureWebviewMounted appends webview to slot mount and applies layout
   };
 
   const moved = withMockDocument({ "ai1-webview-mount": mount }, () =>
-    ensureWebviewMounted("ai1", webview as unknown as any)
+    ensureWebviewMounted("ai1", webview as unknown as WebviewElement)
   );
 
   assert.equal(moved, true);
@@ -113,7 +114,7 @@ void test("markWebviewDetached parks webview and clears src", () => {
   const webview = createWebview();
   webview.setAttribute("src", "https://example.test");
 
-  markWebviewDetached(webview as unknown as any);
+  markWebviewDetached(webview as unknown as WebviewElement);
 
   assert.equal(webview.getAttribute("data-detached"), "1");
   assert.equal(webview.getAttribute("src"), null);
@@ -125,7 +126,7 @@ void test("markWebviewAttached clears detached flag and makes webview visible", 
   webview.setAttribute("data-detached", "1");
   webview.style.display = "none";
 
-  markWebviewAttached(webview as unknown as any);
+  markWebviewAttached(webview as unknown as WebviewElement);
 
   assert.equal(webview.getAttribute("data-detached"), null);
   assert.equal(webview.classList.contains("is-hidden"), false);

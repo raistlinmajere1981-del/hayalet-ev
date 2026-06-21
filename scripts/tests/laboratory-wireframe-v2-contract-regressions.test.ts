@@ -19,12 +19,12 @@ import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surf
 import type { LabRun } from "../../rooms/laboratory/domain/lab-types.ts";
 import { FakeActionElement, FakeControllerDocument } from "./laboratory-runtime-truth.helpers.ts";
 
-const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
-const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8")) as Record<string, unknown>;
+const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")) as Record<string, unknown>;
 
 function getPipelineBlockIds(markup: string): string[] {
   return Array.from(markup.matchAll(/data-block-id="([^"]+)"/g), function (match) {
-    return match[1]!;
+    return match[1] as string;
   });
 }
 
@@ -247,7 +247,7 @@ void test("laboratory wireframe v2 treats stale completed sources as empty viewp
 });
 
 void test("laboratory wireframe v2 source retry contract separates local block and replayable URLs", () => {
-  const originalElement = globalThis.Element;
+  const originalElement: (typeof globalThis)["Element"] | undefined = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const documentRef = new FakeControllerDocument();
   const eventBus = createLabEventBus();
@@ -286,8 +286,9 @@ void test("laboratory wireframe v2 source retry contract separates local block a
       action: "source-pick-local",
       detail: "probe failed",
     });
-    clickListener?.({ target: new TestElement("source-probe-retry") } as unknown as Event);
+    clickListener({ target: new TestElement("source-probe-retry") } as unknown as Event);
     assert.equal(sentEvents.length, 0);
+
     assert.match(store.getState().activityFeed[0]?.message ?? "", /Choose the file again/);
 
     const state = store.getState();
@@ -299,11 +300,11 @@ void test("laboratory wireframe v2 source retry contract separates local block a
       sourceUrl: "https://example.test/source.mp4",
     };
     state.ui.sourceDrafts.urlInput = "";
-    clickListener?.({ target: new TestElement("source-probe-retry") } as unknown as Event);
+    clickListener({ target: new TestElement("source-probe-retry") } as unknown as Event);
 
     assert.equal(sentEvents.length, 1);
     assert.equal(sentEvents[0]?.eventName, "media-action");
-    assert.equal(sentEvents[0]?.payload["action"], "source-download-url");
+    assert.equal(sentEvents[0].payload["action"], "source-download-url");
 
     state.sourceProbeStatus = "failed";
     state.source = {
@@ -315,16 +316,16 @@ void test("laboratory wireframe v2 source retry contract separates local block a
     };
     state.ui.sourceDrafts.youtubeUrl = "";
     state.toolState = { tools: { "yt-dlp": { installed: false } } };
-    clickListener?.({ target: new TestElement("source-probe-retry") } as unknown as Event);
+    clickListener({ target: new TestElement("source-probe-retry") } as unknown as Event);
     assert.equal(sentEvents.length, 1);
     assert.match(store.getState().activityFeed[0]?.message ?? "", /yt-dlp is required/);
 
     store.getState().toolState = { tools: { "yt-dlp": { installed: true } } };
-    clickListener?.({ target: new TestElement("source-probe-retry") } as unknown as Event);
+    clickListener({ target: new TestElement("source-probe-retry") } as unknown as Event);
     assert.equal(sentEvents.length, 2);
     assert.equal(sentEvents[1]?.payload["action"], "source-download-youtube");
   } finally {
-    if (originalElement === undefined) {
+    if (typeof originalElement === "undefined") {
       delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
@@ -342,7 +343,7 @@ void test("laboratory wireframe v2 result drawer uses localized decision labels 
   const state = store.getState();
   const suggestions = getSelectionSuggestions(state);
   assert.ok(suggestions.length > 0);
-  state.ui.activeExecutionIntentId = suggestions[0]!.id;
+  state.ui.activeExecutionIntentId = (suggestions[0] as NonNullable<typeof suggestions[number]>).id;
   setRun(state, {
     state: "completed",
     endedAt: Date.now(),

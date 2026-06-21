@@ -218,8 +218,8 @@ void test("hardcoded user-facing strings are blocked (allowlist-aware)", () => {
       const value = match[3] ?? "";
       if (value === "") continue;
       if (isAllowlisted(TOAST_ALLOWLIST, file, value)) continue;
-      const line = getLineNumber(source, match.index ?? 0);
-      toastIssues.push(`${file}:${line} Toast.${match[1]} uses literal "${value}"`);
+      const line = getLineNumber(source, match.index);
+      toastIssues.push(`${file}:${line} Toast.${match[1] ?? ""} uses literal "${value}"`);
     }
   }
 
@@ -255,11 +255,11 @@ void test("mixed-locale smoke test covers key UI strings", () => {
   ];
 
   for (const item of pairs) {
-    const enValue = getCatalogString(enPack?.catalog, item.path);
-    const trValue = getCatalogString(trPack?.catalog, item.path);
+    const enValue = getCatalogString(enPack.catalog, item.path);
+    const trValue = getCatalogString(trPack.catalog, item.path);
 
-    assert.ok(enValue, `${item.label} should exist in EN catalog`);
-    assert.ok(trValue, `${item.label} should exist in TR catalog`);
+    assert.ok(enValue != null, `${item.label} should exist in EN catalog`);
+    assert.ok(trValue != null, `${item.label} should exist in TR catalog`);
     assert.notEqual(enValue, trValue, `${item.label} should differ between EN/TR`);
   }
 });

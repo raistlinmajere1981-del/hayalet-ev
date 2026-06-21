@@ -96,7 +96,7 @@ void test("ScrcpySessionManager reuses an active camera-feed session for the sam
     action: "start-camera-feed",
   });
   assert.equal(first.ok, true);
-  assert.equal(first.ok === true ? first.reused : null, false);
+  assert.equal(first.reused, false);
   assert.equal(spawnCalls.length, 1);
   assert.match(spawnCalls[0]?.args.join(" ") ?? "", /--video-source=camera/);
   assert.match(spawnCalls[0]?.args.join(" ") ?? "", /--no-window/);
@@ -111,7 +111,7 @@ void test("ScrcpySessionManager reuses an active camera-feed session for the sam
   });
 
   assert.equal(second.ok, true);
-  assert.equal(second.ok === true ? second.reused : null, true);
+  assert.equal(second.reused, true);
   assert.equal(spawnCalls.length, 1);
 });
 
@@ -139,7 +139,7 @@ void test("ScrcpySessionManager switches from camera-feed to native interactive 
   assert.equal(cameraProcess.killedSignals[0], "SIGTERM");
   assert.equal(spawnCalls.length, 2);
   assert.deepEqual(spawnCalls[1]?.args, ["--serial", "device-1"]);
-  const mirrorArgs = spawnCalls[1]?.args.join(" ") ?? "";
+  const mirrorArgs = spawnCalls[1].args.join(" ");
   assert.doesNotMatch(mirrorArgs, /--video-source=camera/);
   assert.doesNotMatch(mirrorArgs, /--v4l2-sink/);
   assert.doesNotMatch(mirrorArgs, /--no-window/);
@@ -163,7 +163,7 @@ void test("ScrcpySessionManager preserves logs and reports unexpected close fail
 
   assert.equal(unexpectedCloseEvents.length, 1);
   assert.equal(unexpectedCloseEvents[0]?.message, "ERROR camera busy");
-  assert.deepEqual(unexpectedCloseEvents[0]?.logs, ["INFO camera attached", "ERROR camera busy"]);
+  assert.deepEqual(unexpectedCloseEvents[0].logs, ["INFO camera attached", "ERROR camera busy"]);
 
   const status = await manager.getStatus();
   assert.equal(status.activeSession, null);

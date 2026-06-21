@@ -74,12 +74,12 @@ export function createSettingsStore(initial: AppSettings) {
   let current = normalizeSettings(initial);
 
   return {
-    loadSettings(): AppSettings {
-      return clone(current);
+    loadSettings(): Promise<AppSettings> {
+      return Promise.resolve(clone(current));
     },
-    saveSettings(next: AppSettings): boolean {
+    saveSettings(next: AppSettings): Promise<boolean> {
       current = normalizeSettings(clone(next));
-      return true;
+      return Promise.resolve(true);
     },
     snapshot(): AppSettings {
       return clone(current);
@@ -201,11 +201,24 @@ export function createTransportStub() {
       fetchQueue.push(result);
     },
     transport: {
-      async sendMail(account: { id: string }, message: SendMailRequest) {
+      sendMail(account: { id: string }, message: SendMailRequest): Promise<{
+          accountId: string;
+          localMessageId: string;
+          transportMessageId: string;
+          deliveryState: "sent";
+          headersHash: string;
+          accepted: string[];
+          rejected: string[];
+          pending: string[];
+          response: string;
+          remoteUserId: string | null;
+          localSessionId: string | null;
+          threadMessageId: string;
+        }> {
         sentAccountIds.push(account.id);
         sentMessages.push(clone(message));
         const transportMessageId = message.messageId ?? `<${message.localMessageId}@example.test>`;
-        return {
+        return Promise.resolve({
           accountId: account.id,
           localMessageId: message.localMessageId,
           transportMessageId,
@@ -218,10 +231,10 @@ export function createTransportStub() {
           remoteUserId: message.remoteUserId ?? null,
           localSessionId: message.localSessionId ?? null,
             threadMessageId: message.threadMessageId ?? transportMessageId,
-          };
+          });
       },
-      async fetchInbox(account: { id: string }) {
-        return (
+      fetchInbox(account: { id: string }): Promise<FetchInboxResult> {
+        return Promise.resolve(
           fetchQueue.shift() ?? {
             accountId: account.id,
             mailbox: "INBOX",

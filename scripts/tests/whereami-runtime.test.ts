@@ -3,6 +3,17 @@ import test from "node:test";
 
 import { resolveWhereAmI } from "../lib/whereami-runtime.mjs";
 
+interface WhereAmIResult {
+  mode: string;
+  shouldStop: boolean;
+  appOpen: boolean;
+  electronConnectionAvailable: boolean;
+  observedSignals: {
+    opencodeServerRunning: boolean;
+  };
+  reason: string;
+}
+
 void test("returns app when main process is alive in soft idle and OpenCode serve is active", () => {
   const result = resolveWhereAmI({
     control: {
@@ -18,7 +29,7 @@ void test("returns app when main process is alive in soft idle and OpenCode serv
       opencodeServerRunning: true,
     },
     nowIso: "2026-03-02T10:00:10.000Z",
-  });
+  }) as WhereAmIResult;
 
   assert.equal(result.mode, "app");
   assert.equal(result.shouldStop, false);
@@ -42,7 +53,7 @@ void test("returns app when main process is alive without OpenCode serve", () =>
       opencodeServerRunning: false,
     },
     nowIso: "2026-03-02T10:00:10.000Z",
-  });
+  }) as WhereAmIResult;
 
   assert.equal(result.mode, "app");
   assert.equal(result.shouldStop, false);
@@ -67,7 +78,7 @@ void test("returns ghost-agent when ghost process is alive in in-ghost phase", (
       opencodeServerRunning: false,
     },
     nowIso: "2026-03-02T10:00:10.000Z",
-  });
+  }) as WhereAmIResult;
 
   assert.equal(result.mode, "ghost-agent");
   assert.equal(result.shouldStop, false);
@@ -88,7 +99,7 @@ void test("returns terminal when no runtime signal and no app processes", () => 
       opencodeServerRunning: false,
     },
     nowIso: "2026-03-02T10:00:10.000Z",
-  });
+  }) as WhereAmIResult;
 
   assert.equal(result.mode, "terminal");
   assert.equal(result.shouldStop, false);
@@ -111,7 +122,7 @@ void test("returns transitioning during preparing-handoff", () => {
       opencodeServerRunning: false,
     },
     nowIso: "2026-03-02T10:00:10.000Z",
-  });
+  }) as WhereAmIResult;
 
   assert.equal(result.mode, "transitioning");
   assert.equal(result.shouldStop, false);
@@ -133,7 +144,7 @@ void test("returns transitioning during returning phase with ghost alive", () =>
       opencodeServerRunning: false,
     },
     nowIso: "2026-03-02T10:00:10.000Z",
-  });
+  }) as WhereAmIResult;
 
   assert.equal(result.mode, "transitioning");
   assert.equal(result.shouldStop, false);
@@ -156,7 +167,7 @@ void test("falls back to terminal when preparing-handoff runtime is stale and no
     },
     nowIso: "2026-03-02T10:05:00.000Z",
     maxStaleMs: 60000,
-  });
+  }) as WhereAmIResult;
 
   assert.equal(result.mode, "terminal");
   assert.equal(result.shouldStop, false);
@@ -178,7 +189,7 @@ void test("returns conflict and stop signal when runtime and process probes disa
       opencodeServerRunning: false,
     },
     nowIso: "2026-03-02T10:00:10.000Z",
-  });
+  }) as WhereAmIResult;
 
   assert.equal(result.mode, "conflict");
   assert.equal(result.shouldStop, true);

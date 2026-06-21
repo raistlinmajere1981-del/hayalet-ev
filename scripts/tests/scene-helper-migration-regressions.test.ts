@@ -20,12 +20,12 @@ void test("shared scene consumers import canonical character and debug helpers",
     assert.doesNotMatch(source, /scene\/theme\/scene-theme-assets\.js/);
   }
 
-  assert.match(sources[0]!, /from "\.\.\/\.\.\/scene\/characters\/index\.js"/);
-  assert.match(sources[0]!, /from "\.\.\/\.\.\/scene-editor\/index\.js"/);
-  assert.match(sources[0]!, /from "\.\.\/\.\.\/scene-system\/index\.js"/);
-  assert.match(sources[1]!, /from "\.\.\/scene\/characters\/index\.js"/);
-  assert.match(sources[1]!, /from "\.\.\/scene-editor\/index\.js"/);
-  assert.match(sources[1]!, /from "\.\.\/scene-system\/index\.js"/);
+  assert.match(sources[0] as string, /from "\.\.\/\.\.\/scene\/characters\/index\.js"/);
+  assert.match(sources[0] as string, /from "\.\.\/\.\.\/scene-editor\/index\.js"/);
+  assert.match(sources[0] as string, /from "\.\.\/\.\.\/scene-system\/index\.js"/);
+  assert.match(sources[1] as string, /from "\.\.\/scene\/characters\/index\.js"/);
+  assert.match(sources[1] as string, /from "\.\.\/scene-editor\/index\.js"/);
+  assert.match(sources[1] as string, /from "\.\.\/scene-system\/index\.js"/);
 });
 
 void test("legacy entrance scene helper files are removed after migration", () => {

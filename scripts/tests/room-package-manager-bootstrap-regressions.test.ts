@@ -74,7 +74,7 @@ void test("room package manager resolves Paths lazily instead of constructor tim
   );
   assert.ok(constructorMatch, "constructor should exist");
   assert.doesNotMatch(
-    constructorMatch?.[1] ?? "",
+    constructorMatch[1] ?? "",
     /Paths\.get(ProjectRoot|GeneratedRoomsDir|DataDir|RoomsRegistryPath)/
   );
 });
@@ -220,7 +220,7 @@ void test("room package manager keeps installed room record building in a dedica
     scripts["rooms:lint"],
     "node scripts/run-with-env.mjs NODE_OPTIONS=--max-old-space-size=4096 -- eslint --cache --cache-location node_modules/.cache/eslint \"rooms/**/*.{js,ts}\""
   );
-  assert.ok(scripts["rooms:lint"]?.includes('"rooms/**/*.{js,ts}"'));
+  assert.ok(scripts["rooms:lint"].includes('"rooms/**/*.{js,ts}"'));
   assert.match(rendererRegistrySource, /async prepareStartupSnapshot\(/);
   assert.match(rendererRegistrySource, /roomsSyncLinkedStartup/);
   assert.match(appIndexSource, /AppI18n\.t\("app\.startup\.syncingLinkedRooms"\)/);

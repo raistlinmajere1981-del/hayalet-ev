@@ -39,11 +39,11 @@ void test("pattern-room long text segmenter creates one segment for one paragrap
 
   assert.equal(segments.length, 1);
   assert.equal(segments[0]?.segmentId, "segment-001");
-  assert.equal(segments[0]?.sourceItemId, "source-item-001");
-  assert.equal(segments[0]?.text, "One paragraph only.");
-  assert.equal(segments[0]?.order, 0);
-  assert.equal(segments[0]?.page, null);
-  assert.equal(segments[0]?.speaker, null);
+  assert.equal(segments[0].sourceItemId, "source-item-001");
+  assert.equal(segments[0].text, "One paragraph only.");
+  assert.equal(segments[0].order, 0);
+  assert.equal(segments[0].page, null);
+  assert.equal(segments[0].speaker, null);
 });
 
 void test("pattern-room long text segmenter splits multiple paragraphs into multiple segments", () => {
@@ -170,10 +170,10 @@ void test("pattern-room long text producer emits one valid SourcePackage", () =>
   );
   assert.equal(pkg.sourceItems.length, 1);
   assert.equal(pkg.sourceItems[0]?.sourceItemId, "source-item-001");
-  assert.equal(pkg.sourceItems[0]?.label, "Archive Chapter");
-  assert.equal(pkg.sourceItems[0]?.origin, "archive:chapter-1");
-  assert.equal(pkg.sourceItems[0]?.content, pkg.cleanedText);
-  assert.deepEqual(pkg.sourceItems[0]?.metadata, {
+  assert.equal(pkg.sourceItems[0].label, "Archive Chapter");
+  assert.equal(pkg.sourceItems[0].origin, "archive:chapter-1");
+  assert.equal(pkg.sourceItems[0].content, pkg.cleanedText);
+  assert.deepEqual(pkg.sourceItems[0].metadata, {
     producerId: "long_text_producer",
     chapter: "Chapter 1",
     page: "12",
@@ -233,10 +233,10 @@ void test("pattern-room long text output imports as a source draft without board
   const importResult = importSourcePackage(parsed);
   assert.equal(importResult.sources.length, 1);
   assert.equal(importResult.sources[0]?.sourceKind, "article");
-  assert.equal(importResult.sources[0]?.patternSourceType, "unknown");
-  assert.equal(importResult.sources[0]?.note, parsed.cleanedText);
+  assert.equal(importResult.sources[0].patternSourceType, "unknown");
+  assert.equal(importResult.sources[0].note, parsed.cleanedText);
   assert.deepEqual(
-    importResult.sources[0]?.segments?.map((segment) => segment.id),
+    importResult.sources[0].segments?.map((segment) => segment.id),
     parsed.segments.map((segment) => segment.segmentId)
   );
   assert.deepEqual(importResult.evidence, []);
@@ -315,8 +315,13 @@ void test("pattern-room long text producer stays pure and disconnected from runt
     /applySourceImportResult\s*\(/,
   ];
 
-  for (const file of files) {
-    const source = await readFile(resolve(file), "utf8");
+  const fileSources = await Promise.all(
+    files.map(async (file) => {
+      const source = await readFile(resolve(file), "utf8");
+      return { file, source };
+    })
+  );
+  for (const { file, source } of fileSources) {
     for (const pattern of prohibitedPatterns) {
       assert.equal(pattern.test(source), false, `${file} matched ${String(pattern)}`);
     }

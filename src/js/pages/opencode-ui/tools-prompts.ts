@@ -101,11 +101,14 @@ function clearLegacyQuickPrompts(): void {
 
 async function readQuickPromptsFromStore(): Promise<QuickPromptRecord[]> {
   const api = window.electronAPI;
-  if (api == null || typeof api.opencodeUiQuickPromptsRead !== "function") {
+  const quickPromptsRead = api?.["opencodeUiQuickPromptsRead"] as
+    | (() => Promise<QuickPromptStoreResponse>)
+    | undefined;
+  if (api == null || typeof quickPromptsRead !== "function") {
     return [];
   }
 
-  const result = (await api.opencodeUiQuickPromptsRead()) as QuickPromptStoreResponse;
+  const result = await quickPromptsRead();
   const prompts = Array.isArray(result.prompts) ? result.prompts : [];
   const legacyPrompts = loadLegacyQuickPrompts();
 
@@ -131,13 +134,14 @@ async function writeQuickPromptsToStore(
 ): Promise<QuickPromptRecord[]> {
   const normalizedPrompts = normalizeQuickPromptRecords(prompts);
   const api = window.electronAPI;
-  if (api == null || typeof api.opencodeUiQuickPromptsWrite !== "function") {
+  const quickPromptsWrite = api?.["opencodeUiQuickPromptsWrite"] as
+    | ((prompts: QuickPromptRecord[]) => Promise<QuickPromptStoreResponse>)
+    | undefined;
+  if (api == null || typeof quickPromptsWrite !== "function") {
     throw new Error(t("prompt.saveError"));
   }
 
-  const result = (await api.opencodeUiQuickPromptsWrite(
-    normalizedPrompts
-  )) as QuickPromptStoreResponse;
+  const result = await quickPromptsWrite(normalizedPrompts);
   if (result.success !== true) {
     throw new Error(formatDetailedErrorMessage("prompt.saveError", resolveIpcErrorMessage(result)));
   }

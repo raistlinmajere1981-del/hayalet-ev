@@ -42,11 +42,11 @@ function getServiceLabel(serviceName: string): string {
 const UPLOAD_SERVICES: Record<ServiceName, { ipcMethod: string; available: () => boolean }> = {
   CATBOX: {
     ipcMethod: "catboxUpload",
-    available: () => !!window.electronAPI?.catboxUpload,
+    available: () => !!window.electronAPI?.["catboxUpload"],
   },
   UGUU: {
     ipcMethod: "uguuUpload",
-    available: () => !!window.electronAPI?.uguuUpload,
+    available: () => !!window.electronAPI?.["uguuUpload"],
   },
   TMPFILE: {
     ipcMethod: "tmpfileUpload",
@@ -54,7 +54,7 @@ const UPLOAD_SERVICES: Record<ServiceName, { ipcMethod: string; available: () =>
   },
   GOOGLEDRIVE: {
     ipcMethod: "googledriveUpload",
-    available: () => !!window.electronAPI?.googledriveUpload,
+    available: () => !!window.electronAPI?.["googledriveUpload"],
   },
 };
 
@@ -162,22 +162,24 @@ const uploadManager = {
       base64: f.base64,
     }));
 
-    const googledriveUpload = window.electronAPI?.googledriveUpload;
-    if (googledriveUpload === undefined) {
+    const electronApi = window.electronAPI;
+    const googledriveUpload = electronApi?.["googledriveUpload"] as
+      | ((options: { files: { name: string; mimeType?: string; base64?: string }[] }) => Promise<{
+          success?: boolean;
+          message?: string;
+          uploadedLinks?: string[];
+          uploaded?: string[];
+          data?: { uploadedLinks?: string[] };
+          errors?: string[];
+        }>)
+      | undefined;
+    if (typeof googledriveUpload !== "function") {
       throw new Error(uploadT("googleDriveIpcUnavailable"));
     }
 
-    const resultRaw: unknown = await googledriveUpload({
-      files: payloadFiles,
+    const result = await googledriveUpload({
+      files: payloadFiles as { name: string; mimeType?: string; base64?: string }[],
     });
-    const result = resultRaw as {
-      success?: boolean;
-      message?: string;
-      uploadedLinks?: string[];
-      uploaded?: string[];
-      data?: { uploadedLinks?: string[] };
-      errors?: string[];
-    };
 
     if (result.success !== true) {
       throw new Error(uploadError("googleDriveUploadFailed", result.message));

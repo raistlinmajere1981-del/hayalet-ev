@@ -47,6 +47,18 @@ type SendMessagePayload = {
   brokerMessageId?: string;
 };
 
+type SlotBridgeAttachmentRef = {
+  kind: "attachment-ref";
+  name: string;
+  ref: string;
+};
+
+type SlotBridgeFileSystemAttachment = {
+  kind: "filesystem";
+  name: string;
+  path: string;
+};
+
 function makeReadyTrafficState(lastHref: string) {
   return {
     status: { loading: "idle", thinking: "idle", send: "idle" },
@@ -142,13 +154,13 @@ function createHarness(
 
   const coreEngine: SlotBridgeHarness["coreEngine"] = {
     ensureReady: async () => {},
-    setActiveTargets: () => {},
-    sendBatchInternal: async () => ({ success: true }),
-    sendMessageInternal: async () => ({ success: true }),
-    setConnection: async () => ({ success: true }),
+    setActiveTargets: async () => {},
+    sendBatchInternal: async () => await Promise.resolve({ success: true }),
+    sendMessageInternal: async () => await Promise.resolve({ success: true }),
+    setConnection: async () => await Promise.resolve({ success: true }),
   };
   const webviewManager: SlotBridgeHarness["webviewManager"] = {
-    syncProvider: async () => null,
+    syncProvider: async () => await Promise.resolve(null),
   };
   const conversationListManager: SlotBridgeHarness["conversationListManager"] = {
     entries: [],
@@ -179,7 +191,7 @@ function createHarness(
   let now = 0;
   const immediateSetTimeout = ((callback: TimerHandler, _delay?: number, ...args: unknown[]) => {
     if (typeof callback === "function") {
-      callback(...args);
+      (callback as (...args: unknown[]) => void)(...args);
     }
     return 0 as unknown as ReturnType<typeof setTimeout>;
   }) as unknown as typeof setTimeout;
@@ -201,16 +213,16 @@ function createHarness(
     };
   }
 
-  runtime.getConversationListManager = async () => conversationListManager;
-  runtime.getCoreEngine = async () => coreEngine;
-  runtime.getWebviewManager = async () => webviewManager;
+  runtime.getConversationListManager = async () => await Promise.resolve(conversationListManager);
+  runtime.getCoreEngine = async () => await Promise.resolve(coreEngine);
+  runtime.getWebviewManager = async () => await Promise.resolve(webviewManager);
   slotController.getState = () => ({
     state: "connected",
     domReady: true,
     urlExcluded: false,
   });
   slotController.isConnected = () => true;
-  slotController.connect = async () => ({ success: true });
+  slotController.connect = async () => await Promise.resolve({ success: true });
   slotController.navigate = () => {};
   appState.getAccountForSlot = (slot: string) => ({
     id: `acct-${slot}`,
@@ -271,7 +283,7 @@ function createHarness(
   };
 }
 
-test(
+void test(
   "SlotBridge sendWait returns archived generated-image replies after full sync",
   { concurrency: false },
   async () => {
@@ -341,8 +353,8 @@ test(
       assert.equal(sentClientRequestId.startsWith("slotbridge-implicit:"), true);
       assert.equal(sentWaitForCompletion, true);
       assert.equal(result.reply?.text, "latest reply");
-      assert.equal(result.reply?.attachments?.[0]?.kind, "generated-image");
-      assert.equal(result.reply?.attachments?.[0]?.path, "/tmp/reply-image.png");
+      assert.equal(result.reply.attachments?.[0]?.kind, "generated-image");
+      assert.equal(result.reply.attachments[0].path, "/tmp/reply-image.png");
       assert.equal(result.artifacts?.[0]?.mimeType, "image/png");
     } finally {
       harness.restore();
@@ -350,7 +362,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge message.send auto-connects assigned AI targets before dispatch",
   { concurrency: false },
   async () => {
@@ -400,7 +412,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge message.send rejects connected AI slots until the first traffic probe completes",
   { concurrency: false },
   async () => {
@@ -436,7 +448,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge retry send is idempotent with the same clientRequestId",
   { concurrency: false },
   async () => {
@@ -484,7 +496,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge forwards explicit US1 remote routing to the server without mutating settings",
   { concurrency: false },
   async () => {
@@ -519,7 +531,7 @@ test(
       assert.equal(result.success, true);
       assert.equal(sendCalls.length, 1);
       assert.equal(sendCalls[0]?.["remoteUserId"], "beta@example.com");
-      assert.match(String(sendCalls[0]?.["text"] ?? ""), /Ping beta/);
+      assert.match(((sendCalls[0]["text"] as string | undefined) ?? ""), /Ping beta/);
     } finally {
       SettingsManager.patch = originalPatch;
       harness.restore();
@@ -527,7 +539,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge message.send auto-connects AI0 through assistant readiness before dispatch",
   { concurrency: false },
   async () => {
@@ -561,12 +573,12 @@ test(
           id: "opencode-ui",
           name: "OpenCode UI",
           getServerStatus: () => ({ running: true }),
-          startServer: async () => ({
+          startServer: () => ({
             success: true,
             url: "/pages/opencode-ui.html?port=4096",
           }),
-          stopServer: async () => ({ success: true }),
-          waitForReady: async () => true,
+          stopServer: () => ({ success: true }),
+          waitForReady: () => true,
         }) as unknown as ReturnType<typeof AssistantProviderRegistry.getAdapter>;
       harness.coreEngine.sendBatchInternal = async () => {
         throw new Error("sendBatch should not run for single-target text sends");
@@ -596,7 +608,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge sendWait succeeds when the awaited archived reply only contains attachments",
   { concurrency: false },
   async () => {
@@ -652,13 +664,13 @@ test(
 
       assert.equal(result.success, true);
       assert.equal(result.reply?.text, "");
-      assert.equal(result.reply?.attachments?.[0]?.path, "/tmp/only-attachment.png");
+      assert.equal(result.reply.attachments?.[0]?.path, "/tmp/only-attachment.png");
       assert.equal(result.artifacts?.[0]?.name, "only-attachment.png");
       assert.equal(sendBatchCalls.length, 1);
       assert.deepEqual(sendBatchCalls[0]?.targets, ["ai0"]);
-      assert.equal(sendBatchCalls[0]?.page, "slot-bridge:reply:ai1");
-      assert.equal(sendBatchCalls[0]?.text?.includes("<!-- hev-sender:ai1 -->"), true);
-      assert.deepEqual(sendBatchCalls[0]?.attachments, [
+      assert.equal(sendBatchCalls[0].page, "slot-bridge:reply:ai1");
+      assert.equal(sendBatchCalls[0].text?.includes("<!-- hev-sender:ai1 -->"), true);
+      assert.deepEqual(sendBatchCalls[0].attachments, [
         {
           name: "only-attachment.png",
           path: "/tmp/only-attachment.png",
@@ -670,7 +682,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge sendWait reads ai0 replies directly from sync results when archive DB is empty",
   { concurrency: false },
   async () => {
@@ -719,14 +731,14 @@ test(
       assert.equal(sentClientRequestId.startsWith("slotbridge-implicit:"), true);
       assert.equal(sentWaitForCompletion, true);
       assert.equal(result.reply?.text, "fresh ai0 reply");
-      assert.equal(result.reply?.conversationId, "conv-ai0");
+      assert.equal(result.reply.conversationId, "conv-ai0");
     } finally {
       harness.restore();
     }
   }
 );
 
-test(
+void test(
   "SlotBridge sendWait forwards replies back to replyToSlot for cross-slot AI routing",
   { concurrency: false },
   async () => {
@@ -775,7 +787,7 @@ test(
       assert.equal(sendMessageCalls.length, 2);
       assert.equal(sendMessageCalls[0]?.provider, "ai2");
       assert.equal(sendMessageCalls[1]?.provider, "ai1");
-      assert.equal(sendMessageCalls[1]?.text?.includes("<!-- hev-sender:ai2 -->"), true);
+      assert.equal(sendMessageCalls[1].text?.includes("<!-- hev-sender:ai2 -->"), true);
       assert.deepEqual(result.data, {
         replyForwardSlot: "ai1",
         replyForwarded: true,
@@ -786,7 +798,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge sendWait returns TARGET_TIMEOUT when no new archived reply arrives",
   { concurrency: false },
   async () => {
@@ -825,7 +837,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge message.send resolves archive attachment refs and hard-rejects retired attachment actions",
   { concurrency: false },
   async () => {
@@ -862,7 +874,7 @@ test(
             kind: "attachment-ref",
             name: "archive-image.png",
             ref: "archive:ai1:conv-archive:msg-archive:archive-image.png",
-          } as any,
+          } as SlotBridgeAttachmentRef,
         ],
         fromSlot: "ai1",
         toSlot: "ai2",
@@ -880,7 +892,7 @@ test(
             kind: "filesystem",
             name: "raw-local.txt",
             path: "/tmp/raw-local.txt",
-          } as any,
+          } as SlotBridgeFileSystemAttachment,
         ],
         fromSlot: "ai1",
         toSlot: "ai2",
@@ -897,7 +909,7 @@ test(
             kind: "attachment-ref",
             name: "archive-image.png",
             ref: "archive:ai1:conv-archive:msg-archive:archive-image.png",
-          } as any,
+          } as SlotBridgeAttachmentRef,
         ],
         fromSlot: "ai1",
         toSlot: "ai2",
@@ -914,7 +926,7 @@ test(
             kind: "attachment-ref",
             name: "archive-image.png",
             ref: "archive:ai1:conv-archive:msg-archive:archive-image.png",
-          } as any,
+          } as SlotBridgeAttachmentRef,
         ],
         fromSlot: "ai1",
         toSlot: "ai2",
@@ -932,7 +944,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge session.sync returns US1 mailbox data through the canonical bridge action",
   { concurrency: false },
   async () => {
@@ -977,7 +989,7 @@ test(
 
       assert.equal(result.success, true);
       assert.equal(result.session?.id, "us1-session-2");
-      assert.equal(result.session?.conversationId, "conv-us1-2");
+      assert.equal(result.session.conversationId, "conv-us1-2");
       assert.equal(data["fetchedCount"], 2);
       assert.equal(data["processedCount"], 1);
       assert.deepEqual(data["roomEvents"], [{ eventType: "invite" }]);
@@ -989,7 +1001,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge session.sync can include archived messages without re-running transport sync",
   { concurrency: false },
   async () => {
@@ -1052,7 +1064,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge session.open honors connectPolicy never without forcing auto-connect",
   { concurrency: false },
   async () => {
@@ -1089,7 +1101,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge session.switch honors connectPolicy require-ready without forcing auto-connect",
   { concurrency: false },
   async () => {
@@ -1129,7 +1141,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge session.switch supports US1 targets and resolves local session ids after refresh",
   { concurrency: false },
   async () => {
@@ -1154,9 +1166,9 @@ test(
       harness.conversationListManager.updateSelection = (conversationId, options = {}) => {
         selectionCalls.push({
           conversationId,
-          provider: options.provider,
-          silent: options.silent,
-        } as any);
+          ...(options.provider !== undefined ? { provider: options.provider } : {}),
+          ...(options.silent !== undefined ? { silent: options.silent } : {}),
+        });
         return conversationId === "conv-us1-1";
       };
 
@@ -1178,14 +1190,14 @@ test(
         },
       ]);
       assert.equal(result.session?.id, "us1-local-1");
-      assert.equal(result.session?.conversationId, "conv-us1-1");
+      assert.equal(result.session.conversationId, "conv-us1-1");
     } finally {
       harness.restore();
     }
   }
 );
 
-test(
+void test(
   "SlotBridge session.open creates local LLM session URLs for AI slots",
   { concurrency: false },
   async () => {
@@ -1220,7 +1232,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge session.sync runs manual webview sync for AI slots",
   { concurrency: false },
   async () => {
@@ -1230,7 +1242,7 @@ test(
     try {
       harness.appState.getProviderIdForSlot = (slot: string) => (slot === "ai1" ? "llm" : slot);
       harness.webviewManager.syncProvider = async (provider, opts) => {
-        syncCalls.push({ provider, opts } as any);
+        syncCalls.push({ provider, ...(opts !== undefined ? { opts } : {}) });
         return {
           success: true,
           conversationId: "conv-llm-1",
@@ -1263,7 +1275,7 @@ test(
       assert.equal(result.success, true);
       assert.deepEqual(syncCalls, [{ provider: "ai1", opts: { from: "manual" } }]);
       assert.equal(result.session?.id, "llm-session-1");
-      assert.equal(result.session?.conversationId, "conv-llm-1");
+      assert.equal(result.session.conversationId, "conv-llm-1");
       assert.equal(data["localSessionId"], "llm-session-1");
       assert.equal(
         (data["messages"] as Array<Record<string, unknown>>)[0]?.["text"],
@@ -1275,7 +1287,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge session.sync stores project AI session bindings from synced session data",
   { concurrency: false },
   async () => {
@@ -1325,7 +1337,7 @@ test(
 
       assert.equal(result.success, true);
       assert.equal(result.session?.id, "grok-local-1");
-      assert.equal(result.session?.conversationId, "conv-grok-1");
+      assert.equal(result.session.conversationId, "conv-grok-1");
       assert.equal(bindings.length, 1);
       assert.equal(binding["projectId"], "repair-session-1");
       assert.equal(binding["roomId"], "repair-room");
@@ -1344,7 +1356,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge session.switch restores a saved project session when the selected account matches",
   { concurrency: false },
   async () => {
@@ -1385,7 +1397,7 @@ test(
       });
       harness.appState.getProviderIdForSlot = () => "grok";
       harness.conversationListManager.refresh = async (options = {}) => {
-        refreshProvider = String(options["provider"] ?? "");
+        refreshProvider = (options["provider"] as string | undefined) ?? "";
       };
       harness.conversationListManager.updateSelection = (conversationId) => {
         selectedConversationId = conversationId;
@@ -1418,7 +1430,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge message.send activates a saved project session before dispatch",
   { concurrency: false },
   async () => {
@@ -1492,7 +1504,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge project session restore warns without switching when the selected account differs",
   { concurrency: false },
   async () => {
@@ -1554,7 +1566,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge room.command keeps explicit payload when args contains raw room args",
   { concurrency: false },
   async () => {
@@ -1587,7 +1599,7 @@ test(
       assert.equal(result.success, true);
       assert.equal(runCalls.length, 1);
       assert.equal(runCalls[0]?.commandName, "GameRoomBackgammonRemoteMove");
-      assert.deepEqual(runCalls[0]?.payload["roomPayload"], {
+      assert.deepEqual(runCalls[0].payload["roomPayload"], {
         roomId: "game-room",
         matchId: "backgammon_1",
         turnIndex: 0,
@@ -1595,7 +1607,7 @@ test(
         cell: 1,
       });
       assert.equal(
-        runCalls[0]?.payload["args"],
+        runCalls[0].payload["args"],
         '{"matchId":"backgammon_1","turnIndex":0,"boardHashBeforeMove":".........","cell":1}'
       );
       assert.deepEqual(result.data, { success: true, handled: true });
@@ -1605,7 +1617,7 @@ test(
   }
 );
 
-test(
+void test(
   "SlotBridge room.command forwards US1 transport metadata to room handlers",
   { concurrency: false },
   async () => {
@@ -1640,10 +1652,10 @@ test(
       assert.equal(result.success, true);
       assert.equal(runCalls.length, 1);
       assert.equal(runCalls[0]?.commandName, "GameRoomBackgammonRemoteMove");
-      assert.equal(runCalls[0]?.payload["remoteUserId"], "raistlin.majere.1981@gmail.com");
-      assert.equal(runCalls[0]?.payload["localSessionId"], "us1-session-1");
-      assert.equal(runCalls[0]?.payload["transportMessageId"], "<remote-move@example.test>");
-      assert.deepEqual(runCalls[0]?.payload["roomPayload"], {
+      assert.equal(runCalls[0].payload["remoteUserId"], "raistlin.majere.1981@gmail.com");
+      assert.equal(runCalls[0].payload["localSessionId"], "us1-session-1");
+      assert.equal(runCalls[0].payload["transportMessageId"], "<remote-move@example.test>");
+      assert.deepEqual(runCalls[0].payload["roomPayload"], {
         roomId: "game-room",
         matchId: "backgammon_1",
         turnIndex: 0,

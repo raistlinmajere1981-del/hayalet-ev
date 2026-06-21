@@ -583,10 +583,10 @@ void test("installed laboratory manifest keeps one workbench scene entry for roo
 
   assert.equal(manifest.workbench?.experienceId, "analysis-workbench");
   assert.equal(mediaFeature?.name, "Analysis Workbench");
-  assert.equal(mediaFeature?.scene?.hotspot?.id, "laboratory-media-analysis");
-  assert.equal(mediaFeature?.scene?.view?.id, "media-analysis-console");
+  assert.equal(mediaFeature.scene?.hotspot?.id, "laboratory-media-analysis");
+  assert.equal(mediaFeature.scene.view?.id, "media-analysis-console");
   assert.equal(
-    mediaFeature?.scene?.view?.backgroundSrc,
+    mediaFeature.scene.view.backgroundSrc,
     "features/media-analysis/assets/media-analysis-view.webp"
   );
   assert.equal(audioFeature?.scene, undefined);

@@ -86,7 +86,7 @@ void test("windows launchers open a visible cmd wrapper and preserve user flags"
 
   assert.equal(launchers.length, 1);
   assert.equal(launchers[0]?.command, "cmd");
-  assert.deepEqual(launchers[0]?.args.slice(0, 7), [
+  assert.deepEqual(launchers[0].args.slice(0, 7), [
     "/d",
     "/c",
     "start",
@@ -96,8 +96,8 @@ void test("windows launchers open a visible cmd wrapper and preserve user flags"
     "/k",
   ]);
   assert.match(
-    launchers[0]?.args[7] ?? "",
+    launchers[0].args[7] ?? "",
     /cd \/d "C:\\Portable Apps\\Hayalet Ev" && set ELECTRON_RUN_AS_NODE=1 && "C:\\Portable Apps\\Hayalet Ev\\Hayalet Ev\.exe" C:\\Users\\raistlin\\AppData\\Local\\Temp\\hayalet-ev\\resources\\app\.asar\\dist\\electron\\packaged-wrapper-cli\.js --start-page=assistant --auto-connect/
   );
-  assert.doesNotMatch(launchers[0]?.args[7] ?? "", /--packaged-surface=wrapper/);
+  assert.doesNotMatch(launchers[0].args[7] ?? "", /--packaged-surface=wrapper/);
 });

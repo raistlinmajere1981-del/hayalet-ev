@@ -161,7 +161,9 @@ export class Us1Panel {
         event.preventDefault();
         const electronApi = window.electronAPI;
         if (electronApi) {
-          void electronApi.openPath("https://myaccount.google.com/apppasswords");
+          const openPath = electronApi["openPath"];
+          if (typeof openPath !== "function") return;
+          void openPath("https://myaccount.google.com/apppasswords");
         }
       };
     }
@@ -468,7 +470,9 @@ export class Us1Panel {
     this.renderMailVerifyButton();
 
     try {
-      const result = await electronApi.us1UpsertMailAccount(draft, { verifyAfterSave });
+      const us1UpsertMailAccount = electronApi["us1UpsertMailAccount"];
+      if (typeof us1UpsertMailAccount !== "function") return;
+      const result = await us1UpsertMailAccount(draft, { verifyAfterSave });
       await this.reloadSettings();
       this.render();
 
@@ -508,7 +512,9 @@ export class Us1Panel {
       return;
     }
 
-    const result = await electronApi.us1DeleteMailAccount({
+    const us1DeleteMailAccount = electronApi["us1DeleteMailAccount"];
+    if (typeof us1DeleteMailAccount !== "function") return;
+    const result = await us1DeleteMailAccount({
       mailAccountId: selectedMailAccount.id,
     });
     await this.reloadSettings();
@@ -749,7 +755,12 @@ export class Us1Panel {
   private async handleRelayHealthCheck(): Promise<void> {
     const electronApi = window.electronAPI;
     const settings = this.settingsManager.getSnapshot();
-    if (electronApi === undefined || typeof electronApi.us1RelayHealthCheck !== "function") {
+    if (electronApi === undefined) {
+      this.showFeedback(entranceT("us1.feedback.electronUnavailable"), "error");
+      return;
+    }
+    const us1RelayHealthCheck = electronApi["us1RelayHealthCheck"];
+    if (typeof us1RelayHealthCheck !== "function") {
       this.showFeedback(entranceT("us1.feedback.electronUnavailable"), "error");
       return;
     }
@@ -766,7 +777,7 @@ export class Us1Panel {
     this.render();
 
     try {
-      const result = await electronApi.us1RelayHealthCheck({
+      const result = await us1RelayHealthCheck({
         baseUrl: this.normalizeText(settings.integrations?.us1Relay?.baseUrl),
       });
       await this.reloadSettings();

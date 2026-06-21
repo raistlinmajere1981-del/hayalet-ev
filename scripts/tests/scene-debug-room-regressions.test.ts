@@ -11,6 +11,19 @@ import {
 } from "../../src/js/scene/layout/index.ts";
 import { getSceneRoomLayout } from "../../src/js/scene-system/scene-layout-registry.ts";
 
+interface RoomManifestFeature {
+  id: string;
+  scene?: {
+    hotspot: { id: string };
+    view: { id: string; backgroundSrc: string };
+  };
+}
+
+interface RoomManifest {
+  features?: RoomManifestFeature[];
+  workbench?: { experienceId: string };
+}
+
 const entranceSceneLayout = getSceneRoomLayout("entrance");
 const assistantSceneLayout = getSceneRoomLayout("assistant");
 const analyzeSceneLayout = getSceneRoomLayout("analyze");
@@ -76,8 +89,8 @@ void test("entrance scene layout keeps room targets and whisper return in one la
   const originalWhisperLeft =
     entranceSceneLayout.objects.find((node) => node.id === "board-whisper")?.rect.leftPx;
   const cloned = cloneSceneLayout(entranceSceneLayout);
-  cloned.objects.find((node) => node.id === "board-whisper")!.rect.leftPx = 408;
-  cloned.backs.find((node) => node.id === "back-whisper")!.rect.widthPx = 140;
+  (cloned.objects.find((node) => node.id === "board-whisper") as { rect: { leftPx: number; widthPx?: number } }).rect.leftPx = 408;
+  (cloned.backs.find((node) => node.id === "back-whisper") as { rect: { leftPx?: number; widthPx: number } }).rect.widthPx = 140;
 
   assert.equal(
     entranceSceneLayout.objects.find((node) => node.id === "board-whisper")?.rect.leftPx,
@@ -219,19 +232,17 @@ void test("installed laboratory manifest exposes one workbench hotspot while leg
   const installedCopy = await createRoomInstalledCopy("laboratory");
 
   try {
-    const manifest = JSON.parse(readFileSync(`${installedCopy.rootDir}/manifest.json`, "utf8"));
-    const mediaFeature = Array.isArray(manifest.features)
-      ? manifest.features.find((feature: { id: string }) => feature.id === "media-analysis")
-      : null;
-    const audioFeature = Array.isArray(manifest.features)
-      ? manifest.features.find((feature: { id: string }) => feature.id === "audio-analysis")
-      : null;
+    const manifest = JSON.parse(readFileSync(`${installedCopy.rootDir}/manifest.json`, "utf8")) as RoomManifest;
+    const mediaFeature = manifest.features?.find((feature) => feature.id === "media-analysis");
+    const audioFeature = manifest.features?.find((feature) => feature.id === "audio-analysis");
 
+    assert.ok(mediaFeature, "media-analysis feature should exist");
+    assert.ok(mediaFeature.scene, "media-analysis feature should have a scene");
     assert.equal(manifest.workbench?.experienceId, "analysis-workbench");
-    assert.equal(mediaFeature?.scene?.hotspot?.id, "laboratory-media-analysis");
-    assert.equal(mediaFeature?.scene?.view?.id, "media-analysis-console");
+    assert.equal(mediaFeature.scene.hotspot.id, "laboratory-media-analysis");
+    assert.equal(mediaFeature.scene.view.id, "media-analysis-console");
     assert.equal(
-      mediaFeature?.scene?.view?.backgroundSrc,
+      mediaFeature.scene.view.backgroundSrc,
       "features/media-analysis/assets/media-analysis-view.webp"
     );
     assert.equal(audioFeature?.scene, undefined);
@@ -241,29 +252,29 @@ void test("installed laboratory manifest exposes one workbench hotspot while leg
 });
 
 void test("game-room manifest exposes Team Tetris scene hotspot ids for scene debug visibility", () => {
-  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
-  const feature = Array.isArray(manifest.features)
-    ? manifest.features.find((entry: { id: string }) => entry.id === "team-tetris")
-    : null;
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as RoomManifest;
+  const feature = manifest.features?.find((entry) => entry.id === "team-tetris");
 
-  assert.equal(feature?.scene?.hotspot?.id, "game-room-team-tetris");
-  assert.equal(feature?.scene?.view?.id, "team-tetris-closeup");
+  assert.ok(feature, "team-tetris feature should exist");
+  assert.ok(feature.scene, "team-tetris feature should have a scene");
+  assert.equal(feature.scene.hotspot.id, "game-room-team-tetris");
+  assert.equal(feature.scene.view.id, "team-tetris-closeup");
   assert.equal(
-    feature?.scene?.view?.backgroundSrc,
+    feature.scene.view.backgroundSrc,
     "main-functions/team-tetris/assets/team-tetris-view.webp"
   );
 });
 
 void test("game-room manifest exposes Fate Knots scene hotspot ids for scene debug visibility", () => {
-  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
-  const feature = Array.isArray(manifest.features)
-    ? manifest.features.find((entry: { id: string }) => entry.id === "fate-knots")
-    : null;
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as RoomManifest;
+  const feature = manifest.features?.find((entry) => entry.id === "fate-knots");
 
-  assert.equal(feature?.scene?.hotspot?.id, "game-room-fate-knots");
-  assert.equal(feature?.scene?.view?.id, "fate-knots-closeup");
+  assert.ok(feature, "fate-knots feature should exist");
+  assert.ok(feature.scene, "fate-knots feature should have a scene");
+  assert.equal(feature.scene.hotspot.id, "game-room-fate-knots");
+  assert.equal(feature.scene.view.id, "fate-knots-closeup");
   assert.equal(
-    feature?.scene?.view?.backgroundSrc,
+    feature.scene.view.backgroundSrc,
     "main-functions/fate-knots/assets/fate-knots-view.webp"
   );
 });

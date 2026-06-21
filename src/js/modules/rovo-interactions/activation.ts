@@ -105,17 +105,36 @@ export async function loadRovoInteractionActivationSnapshot(
     };
   }
 
+  const apiLoadSettings = api["loadSettings"] as
+    | (() => Promise<Record<string, unknown>>)
+    | undefined;
+  const apiOpencodeServeStatus = api["opencodeServeStatus"] as
+    | (() => Promise<{
+        running: boolean;
+        port?: number;
+        url?: string;
+        pid?: number;
+        startTime?: number;
+      }>)
+    | undefined;
+  const apiAssistantRuntimeRead = api["assistantRuntimeRead"] as
+    | (() => Promise<{ success: boolean; state?: unknown }>)
+    | undefined;
+  const apiRovoInteractionContextRead = api["rovoInteractionContextRead"] as
+    | (() => Promise<{ success: boolean; appMode?: string; effectiveMode?: string }>)
+    | undefined;
+
   const [settingsResult, serveStatusResult, runtimeResult, contextResult] =
     await Promise.allSettled([
-      typeof api.loadSettings === "function" ? api.loadSettings() : Promise.resolve({}),
-      typeof api.opencodeServeStatus === "function"
-        ? api.opencodeServeStatus()
+      typeof apiLoadSettings === "function" ? apiLoadSettings() : Promise.resolve({}),
+      typeof apiOpencodeServeStatus === "function"
+        ? apiOpencodeServeStatus()
         : Promise.resolve({ running: false }),
-      typeof api.assistantRuntimeRead === "function"
-        ? api.assistantRuntimeRead()
+      typeof apiAssistantRuntimeRead === "function"
+        ? apiAssistantRuntimeRead()
         : Promise.resolve({ success: false }),
-      typeof api.rovoInteractionContextRead === "function"
-        ? api.rovoInteractionContextRead()
+      typeof apiRovoInteractionContextRead === "function"
+        ? apiRovoInteractionContextRead()
         : Promise.resolve({ success: false }),
     ]);
 

@@ -162,19 +162,19 @@ void test("forge-room capability selector keeps repair-relevant metadata and enf
   });
 
   assert.ok(context);
-  assert.equal(context?.summary.length <= 240, true);
-  assert.ok(context?.items.some((item) => item.id === "forge-target-handoff"));
-  assert.ok(context?.items.some((item) => item.id === "forge-guided-ui"));
+  assert.equal(context.summary.length <= 240, true);
+  assert.ok(context.items.some((item) => item.id === "forge-target-handoff"));
+  assert.ok(context.items.some((item) => item.id === "forge-guided-ui"));
   assert.equal(
-    context?.items.some((item) => item.id === "laboratory-image-analysis"),
+    context.items.some((item) => item.id === "laboratory-image-analysis"),
     false
   );
 });
 
 void test("forge-room prompt context rendering stays inside the downstream budget", () => {
   const operatorProfile = createDefaultForgeOperatorProfile("2026-04-16T00:00:00.000Z");
-  operatorProfile.skills = [{ skillKey: "measurement", level: "basic" }] as any;
-  operatorProfile.equipment = [{ equipmentKey: "multimeter", status: "unavailable" }] as any;
+  operatorProfile.skills = [{ skillKey: "measurement", label: "Measurement", level: "basic" }];
+  operatorProfile.equipment = [{ equipmentKey: "multimeter", label: "Multimeter", status: "unavailable" }];
   operatorProfile.preferences.mode = "learn_first";
   const sessionContextSelection = createEmptyForgeSessionContextSelection();
   sessionContextSelection.skillKeys = ["measurement"];
@@ -189,6 +189,10 @@ void test("forge-room prompt context rendering stays inside the downstream budge
     bundle: {
       schemaVersion: "v3",
       createdAt: "2026-04-16T00:00:00.000Z",
+      contextDigest: "ctx-digest-v3",
+      preflightId: "preflight-v3",
+      runId: "run-v3",
+      sessionRevision: 3,
       coreSystemMetadata: buildForgeCoreSystemMetadata("forge-session-v3"),
       appArchitectureSummary: buildForgeAppArchitectureSummary(),
       targetRoomContext: buildForgeTargetRoomContext("repair-room"),
@@ -207,7 +211,7 @@ void test("forge-room prompt context rendering stays inside the downstream budge
       rovoPreAnalysis: null,
       sessionContextSelection,
       constraints: ["Keep steps reversible."],
-    } as any,
+    },
     contextCapsule: {
       summary: "Only discuss the export seam, not full implementation.",
       relevantModules: [
@@ -261,13 +265,13 @@ void test("forge-room preflight accepts wrapped AI0 observation JSON replies", a
   });
 
   assert.equal(
-    result.state.bundle!.rovoPreAnalysis?.summary,
+    (result.state.bundle as NonNullable<typeof result.state.bundle>).rovoPreAnalysis?.summary,
     "Forge should keep the handoff narrow and avoid implicit room reuse."
   );
-  assert.deepEqual(result.state.bundle!.rovoPreAnalysis?.warnings, [
+  assert.deepEqual((result.state.bundle as NonNullable<typeof result.state.bundle>).rovoPreAnalysis?.warnings, [
     "ADB transport details are still unspecified.",
   ]);
-  assert.deepEqual(result.state.bundle!.rovoPreAnalysis?.missingInfo, [
+  assert.deepEqual((result.state.bundle as NonNullable<typeof result.state.bundle>).rovoPreAnalysis?.missingInfo, [
     "Exact adb wireless pairing workflow.",
   ]);
   assert.equal(result.state.warnings.includes("AI0 pre-analysis response could not be parsed."), false);
@@ -278,17 +282,23 @@ void test("forge-room selected synthesis provenance wins during export and strip
   const session = createEmptyForgeSession("forge-session-v2-export");
   session.goal = createGoal();
   session.preflight = {
+    activeStepId: null,
     bundle: null,
+    contextDigest: null,
     errorMessage: "socket timeout: 500",
+    expectedContextDigest: null,
+    preflightId: null,
     promptCharCount: 0,
     ranAt: "2026-04-16T00:00:00.000Z",
+    runId: null,
+    sessionRevision: null,
     staleReason: null,
     status: "warning",
     warnings: [
       "Preflight fell back to minimal context because the full bundle could not be prepared.",
       "socket timeout: 500",
     ],
-  } as any;
+  };
   session.runSignature = {
     source: ["keep-storage-local"],
     updatedAt: "2026-04-16T00:10:00.000Z",
@@ -296,17 +306,26 @@ void test("forge-room selected synthesis provenance wins during export and strip
   };
   session.syntheses = [
     {
+      contextDigest: null,
       id: "forge-synthesis-v2",
+      preflightId: null,
+      runId: null,
+      sessionRevision: null,
+      snapshotHash: null,
       summary: "Selected synthesis",
       body: "Keep the Repair Room handoff narrow and explicit.",
       decisionTrace: ["Selected the narrow JSON handoff."],
       provenance: {
-        runSignature: "RepairRoom-v3-keep-storage-local-old111",
+        contextDigest: null,
         operatorProfileSummary: ["Profile remained blank, so no tools were assumed."],
+        preflightId: null,
         preflightWarnings: [
           "Preflight fell back to minimal context because the full bundle could not be prepared.",
         ],
-      } as any,
+        runId: null,
+        runSignature: "RepairRoom-v3-keep-storage-local-old111",
+        sessionRevision: null,
+      },
       sourceTaskIds: ["forge-task-1"],
       selectedResponseIds: ["forge-response-1"],
       unresolvedConflictIds: [],
@@ -314,7 +333,7 @@ void test("forge-room selected synthesis provenance wins during export and strip
       openQuestions: [],
       status: "selected",
       createdAt: "2026-04-16T00:00:00.000Z",
-    } as any,
+    },
   ];
   session.selectedSynthesisId = "forge-synthesis-v2";
 
@@ -333,10 +352,10 @@ void test("forge-room selected synthesis provenance wins during export and strip
 
   assert.equal(handoff.runSignature, "RepairRoom-v3-keep-storage-local-old111");
   assert.deepEqual(handoff.contextSummary?.decisionTrace, ["Selected the narrow JSON handoff."]);
-  assert.deepEqual(handoff.contextSummary?.operatorProfileSummary, [
+  assert.deepEqual(handoff.contextSummary.operatorProfileSummary, [
     "Profile remained blank, so no tools were assumed.",
   ]);
-  assert.deepEqual(handoff.contextSummary?.preflightWarnings, [
+  assert.deepEqual(handoff.contextSummary.preflightWarnings, [
     "Preflight fell back to minimal context because the full bundle could not be prepared.",
   ]);
 });
@@ -372,8 +391,8 @@ void test("forge-room run signatures remain human-readable but differ when norma
 
 void test("forge-room synthesis provenance stays assumption-free when no session context is selected", () => {
   const operatorProfile = createDefaultForgeOperatorProfile();
-  operatorProfile.skills = [{ skillKey: "measurement", level: "advanced" }] as any;
-  operatorProfile.equipment = [{ equipmentKey: "hot_air", status: "available" }] as any;
+  operatorProfile.skills = [{ skillKey: "measurement", label: "Measurement", level: "advanced" }];
+  operatorProfile.equipment = [{ equipmentKey: "hot_air", label: "Hot Air", status: "available" }];
   operatorProfile.preferences.mode = "result_first";
   const sessionContextSelection = createEmptyForgeSessionContextSelection();
 

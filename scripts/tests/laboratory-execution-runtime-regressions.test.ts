@@ -462,7 +462,7 @@ void test("execution planner is deterministic and resolves ROI tool-hint intents
   });
 
   assert.equal(getActiveExecutionPlan(store.getState())?.suggestionId, "inspect-region");
-  assert.match(getActiveExecutionPlan(store.getState())?.title || "", /Region focus plan/);
+  assert.match(getActiveExecutionPlan(store.getState())?.title ?? "", /Region focus plan/);
 });
 
 void test("execution planner falls back safely for unknown action types", () => {
@@ -534,15 +534,15 @@ void test("execution simulation is derived only from active plans and survives p
   const activePlan = getActiveExecutionPlan(store.getState());
   const activeSimulation = getActiveExecutionSimulation(store.getState());
   assert.equal(activePlan?.suggestionId, "audio-inspect");
-  assert.equal(activeSimulation?.planId, activePlan?.id);
-  assert.equal(activeSimulation?.id, `simulation:${activePlan?.id}`);
-  assert.equal((activeSimulation?.predictedEffects.length ?? 0) > 0, true);
+  assert.equal(activeSimulation?.planId, activePlan.id);
+  assert.equal(activeSimulation.id, `simulation:${activePlan.id}`);
+  assert.equal((activeSimulation.predictedEffects.length ) > 0, true);
 
   store.dispatch({
     type: "workspace-selection-suggestion-preview-cleared",
   });
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
-  assert.equal(getActiveExecutionSimulation(store.getState())?.planId, activePlan?.id);
+  assert.equal(getActiveExecutionSimulation(store.getState())?.planId, activePlan.id);
 
   store.dispatch({
     type: "workspace-selection-suggestion-dismissed",
@@ -836,7 +836,7 @@ void test("execution readiness is derived only from active plan and simulation",
   const activePlan = getActiveExecutionPlan(store.getState());
   const activeReadiness = getActiveExecutionReadiness(store.getState());
   assert.equal(activeReadiness?.planId, activePlan?.id);
-  assert.equal(activeReadiness?.id, `readiness:${activePlan?.id}`);
+  assert.equal(activeReadiness?.id, `readiness:${activePlan?.id ?? ""}`);
 
   store.dispatch({
     type: "workspace-selection-suggestion-preview-cleared",
@@ -960,23 +960,23 @@ void test("execution payload preview is derived only from active readiness", () 
 
   const activePlan = getActiveExecutionPlan(store.getState());
   const activePayload = getActiveExecutionPayloadPreview(store.getState());
-  assert.equal(activePayload?.id, `payload:${activePlan?.id}`);
-  assert.equal(activePayload?.planId, activePlan?.id);
-  assert.equal(activePayload?.actionType, "inspect-audio");
+  assert.equal(activePayload?.id, `payload:${activePlan?.id ?? ""}`);
+  assert.equal(activePayload.planId, activePlan?.id);
+  assert.equal(activePayload.actionType, "inspect-audio");
   assert.equal(
-    activePayload?.readinessStatus,
+    activePayload.readinessStatus,
     getActiveExecutionReadiness(store.getState())?.status
   );
-  assert.equal(typeof activePayload?.readinessPassesPreview, "boolean");
-  assert.equal(activePayload?.dryRunShape.previewExpectedOutputs[0], "frequencyClusters");
-  assert.deepEqual(Object.keys(activePayload?.dryRunShape.previewInput || {}), ["audioWindow"]);
-  assert.match(activePayload?.summary || "", /dry-run bridge/);
+  assert.equal(typeof activePayload.readinessPassesPreview, "boolean");
+  assert.equal(activePayload.dryRunShape.previewExpectedOutputs[0], "frequencyClusters");
+  assert.deepEqual(Object.keys(activePayload.dryRunShape.previewInput ), ["audioWindow"]);
+  assert.match(activePayload.summary , /dry-run bridge/);
 
   store.dispatch({
     type: "workspace-selection-suggestion-preview-cleared",
   });
   assert.equal(store.getState().ui.activeSuggestionPreviewId, null);
-  assert.equal(getActiveExecutionPayloadPreview(store.getState())?.id, activePayload?.id);
+  assert.equal(getActiveExecutionPayloadPreview(store.getState())?.id, activePayload.id);
 
   store.dispatch({
     type: "workspace-selection-suggestion-dismissed",
@@ -1046,7 +1046,7 @@ void test("execution payload bridge is deterministic and covers ROI plus fallbac
   assert.equal(focusPayload.id, `payload:${focusPlan.id}`);
   assert.equal(focusPayload.readinessPassesPreview, focusReadiness.status === "ready");
   assert.deepEqual(
-    (focusPayload.dryRunShape.previewInput["roi"] as Record<string, unknown>) || {},
+    focusPayload.dryRunShape.previewInput["roi"] ,
     {
       height: 0.28,
       width: 0.24,
@@ -1404,15 +1404,15 @@ void test("execution reflection is derived only from the complete active dry-run
 
   const activePlan = getActiveExecutionPlan(store.getState());
   const activeReflection = getActiveExecutionReflection(store.getState());
-  assert.equal(activeReflection?.id, `reflection:${activePlan?.id}`);
-  assert.equal(activeReflection?.planId, activePlan?.id);
-  assert.equal(activeReflection?.decision, "proceed");
-  assert.equal((activeReflection?.reasoning.length ?? 0) > 0, true);
+  assert.equal(activeReflection?.id, `reflection:${activePlan?.id ?? ""}`);
+  assert.equal(activeReflection.planId, activePlan?.id);
+  assert.equal(activeReflection.decision, "proceed");
+  assert.equal((activeReflection.reasoning.length ) > 0, true);
 
   store.dispatch({
     type: "workspace-selection-suggestion-preview-cleared",
   });
-  assert.equal(getActiveExecutionReflection(store.getState())?.id, activeReflection?.id);
+  assert.equal(getActiveExecutionReflection(store.getState())?.id, activeReflection.id);
 
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -2101,7 +2101,7 @@ void test("laboratory advisory i18n resolves semantic keys without leaking selec
     formatExecutionBridgeAdvisory(bridge, "tr"),
     formatDecisionCoherenceAdvisory(coherence, "tr"),
   ]);
-  assert.equal(turkishOutputs[3]!.includes(bridge.summary), false);
+  assert.equal((turkishOutputs[3] as string).includes(bridge.summary), false);
 
   const rendered = [...englishOutputs, ...turkishOutputs].join(" ");
   for (const key of [
@@ -2259,7 +2259,7 @@ void test("decision priority reorders advisory summaries without mutating text",
         descriptor: "",
         readiness: "Readiness view: steady.",
         coherence: "Coherence view: aligned.",
-      } as any,
+      },
       coherenceState: "conflicted",
     }),
     "Proceed: Coherence view: aligned. Readiness view: steady."
@@ -2568,25 +2568,25 @@ void test("passive descriptor and bridge advisories are summary-only and avoid e
     alternativesCoherenceAdvisory,
     "Coherence view: Signals are mixed, with trade-offs between stability and coverage."
   );
-  assert.equal(countOccurrences(candidate?.summary ?? "", "Readiness view:"), 1);
+  assert.equal(countOccurrences(candidate.summary , "Readiness view:"), 1);
   assert.equal(countOccurrences(alternatives.summary, "Readiness view:"), 1);
-  assert.equal(countOccurrences(candidate?.summary ?? "", "Execution bridge:"), 1);
+  assert.equal(countOccurrences(candidate.summary , "Execution bridge:"), 1);
   assert.equal(countOccurrences(alternatives.summary, "Execution bridge:"), 1);
-  assert.equal(countOccurrences(candidate?.summary ?? "", "Coherence view:"), 1);
+  assert.equal(countOccurrences(candidate.summary , "Coherence view:"), 1);
   assert.equal(countOccurrences(alternatives.summary, "Coherence view:"), 1);
   assert.equal(
-    (candidate?.summary ?? "").indexOf(candidateAdvisory) <
-      (candidate?.summary ?? "").indexOf(candidateReadinessAdvisory),
+    (candidate.summary ).indexOf(candidateAdvisory) <
+      (candidate.summary ).indexOf(candidateReadinessAdvisory),
     true
   );
   assert.equal(
-    (candidate?.summary ?? "").indexOf(candidateReadinessAdvisory) <
-      (candidate?.summary ?? "").indexOf(candidateBridgeAdvisory),
+    (candidate.summary ).indexOf(candidateReadinessAdvisory) <
+      (candidate.summary ).indexOf(candidateBridgeAdvisory),
     true
   );
   assert.equal(
-    (candidate?.summary ?? "").indexOf(candidateBridgeAdvisory) <
-      (candidate?.summary ?? "").indexOf(candidateCoherenceAdvisory),
+    (candidate.summary ).indexOf(candidateBridgeAdvisory) <
+      (candidate.summary ).indexOf(candidateCoherenceAdvisory),
     true
   );
   assert.equal(
@@ -2629,7 +2629,7 @@ void test("passive descriptor and bridge advisories are summary-only and avoid e
   });
 
   assert.ok(localizedCandidate);
-  assert.notEqual(localizedCandidate.summary, candidate?.summary);
+  assert.notEqual(localizedCandidate.summary, candidate.summary);
   assert.notEqual(localizedAlternatives.summary, alternatives.summary);
   assert.equal(localizedCandidate.status, candidate.status);
   assert.equal(localizedCandidate.confidence, candidate.confidence);
@@ -2879,14 +2879,14 @@ void test("execution alternatives are derived only from the complete active refl
 
   const activePlan = getActiveExecutionPlan(store.getState());
   const activeAlternatives = getActiveExecutionAlternatives(store.getState());
-  assert.equal(activeAlternatives?.id, `alternatives:${activePlan?.id}`);
-  assert.equal(activeAlternatives?.planId, activePlan?.id);
-  assert.equal((activeAlternatives?.alternatives.length ?? 0) > 0, true);
+  assert.equal(activeAlternatives?.id, `alternatives:${activePlan?.id ?? ""}`);
+  assert.equal(activeAlternatives.planId, activePlan?.id);
+  assert.equal((activeAlternatives.alternatives.length ) > 0, true);
 
   store.dispatch({
     type: "workspace-selection-suggestion-preview-cleared",
   });
-  assert.equal(getActiveExecutionAlternatives(store.getState())?.id, activeAlternatives?.id);
+  assert.equal(getActiveExecutionAlternatives(store.getState())?.id, activeAlternatives.id);
 
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -3068,7 +3068,7 @@ void test("execution candidate synthesizes structural viability without downgrad
   assert.equal(reviewCandidate.structuralIntegrity, "partial");
   assert.equal(reviewCandidate.readinessStatus, "needs-review");
   assert.equal(reviewCandidate.reflectionDecision, "review");
-  assert.match(reviewCandidate.uncertainties?.join(" ") || "", /warning|tradeoffs|risk/i);
+  assert.match(reviewCandidate.uncertainties?.join(" ") ?? "", /warning|tradeoffs|risk/i);
 
   const avoidSelection: LabSelection = {
     id: "selection-candidate-avoid",
@@ -3301,13 +3301,13 @@ void test("execution candidate validates upstream coherence and payload preview 
   });
 
   assert.equal(emptyInputCandidate?.structuralIntegrity, "insufficient");
-  assert.equal(emptyInputCandidate?.status, "not-viable");
+  assert.equal(emptyInputCandidate.status, "not-viable");
   assert.equal(emptyParametersCandidate?.structuralIntegrity, "insufficient");
   assert.equal(emptyOutputsCandidate?.structuralIntegrity, "insufficient");
   assert.equal(readinessMismatchCandidate?.structuralIntegrity, "partial");
-  assert.equal(readinessMismatchCandidate?.status, "unstable");
+  assert.equal(readinessMismatchCandidate.status, "unstable");
   assert.equal(actionMismatchCandidate?.structuralIntegrity, "insufficient");
-  assert.equal(actionMismatchCandidate?.status, "not-viable");
+  assert.equal(actionMismatchCandidate.status, "not-viable");
 });
 
 void test("execution candidate is derived only from the complete active alternatives chain", () => {
@@ -3354,13 +3354,13 @@ void test("execution candidate is derived only from the complete active alternat
 
   const activePlan = getActiveExecutionPlan(store.getState());
   const activeCandidate = getActiveExecutionCandidate(store.getState());
-  assert.equal(activeCandidate?.id, `candidate:${activePlan?.id}`);
-  assert.equal(activeCandidate?.planId, activePlan?.id);
+  assert.equal(activeCandidate?.id, `candidate:${activePlan?.id ?? ""}`);
+  assert.equal(activeCandidate.planId, activePlan?.id);
 
   store.dispatch({
     type: "workspace-selection-suggestion-preview-cleared",
   });
-  assert.equal(getActiveExecutionCandidate(store.getState())?.id, activeCandidate?.id);
+  assert.equal(getActiveExecutionCandidate(store.getState())?.id, activeCandidate.id);
 
   store.dispatch({
     type: "workspace-timeline-updated",
@@ -3582,7 +3582,7 @@ void test("execution commitment rejects missing, mismatched, stale, and not-viab
   assert.equal(blockedCandidate?.status, "not-viable");
   blockedStore.dispatch({
     type: "workspace-execution-commitment-set",
-    planId: blockedCandidate?.planId ?? "missing",
+    planId: blockedCandidate.planId ,
   });
   assert.equal(blockedStore.getState().ui.activeExecutionCommitment, null);
   assert.equal(getActiveExecutionCommitment(blockedStore.getState()), null);
@@ -3685,7 +3685,7 @@ function createExecutionStagingChain(params: {
     notes: candidate.notes,
     uncertainties: candidate.uncertainties,
     confidence: candidate.confidence,
-  } as any as LabExecutionCommitment;
+  } as unknown as LabExecutionCommitment;
 
   return {
     ...chain,
@@ -3752,8 +3752,8 @@ void test("execution staging derives a passive staged state from committed viabl
     },
   });
   assert.equal(unstableStaging?.status, "staged");
-  assert.equal(unstableStaging?.candidateStatus, "unstable");
-  assert.match(unstableStaging?.warnings?.join(" ") || "", /unstable/i);
+  assert.equal(unstableStaging.candidateStatus, "unstable");
+  assert.match(unstableStaging.warnings?.join(" ") ?? "", /unstable/i);
 });
 
 void test("execution staging returns null for invalid or stale upstream chains", () => {
@@ -3899,8 +3899,8 @@ void test("execution staging can represent a coherent committed path that is not
   assert.equal(chain.candidate.status, "unstable");
   assert.equal(chain.payload.readinessPassesPreview, false);
   assert.equal(staging?.status, "not-staged");
-  assert.equal(staging?.readinessStatus, "needs-review");
-  assert.match(staging?.warnings?.join(" ") || "", /readiness check|unstable/i);
+  assert.equal(staging.readinessStatus, "needs-review");
+  assert.match(staging.warnings?.join(" ") ?? "", /readiness check|unstable/i);
 });
 
 void test("execution staging is selector-derived and clears with its upstream chain", () => {
@@ -4631,7 +4631,7 @@ void test("session pattern awareness records completed samples idempotently", ()
   const rerunEvaluation = getActiveExecutionGoalEvaluation(first.store.getState());
   assert.ok(rerunEvaluation);
   assert.equal(rerunEvaluation.patternSignal?.executionCount, 1);
-  assert.equal(rerunEvaluation.patternSignal?.strength, "weak");
+  assert.equal(rerunEvaluation.patternSignal.strength, "weak");
   assert.match(rerunEvaluation.summary, /Historically similar evaluations show low coverage/);
   assert.equal(
     getActiveExecutionGoalEvaluation(first.store.getState())?.patternSignal?.executionCount,
@@ -4651,9 +4651,9 @@ void test("session pattern awareness records completed samples idempotently", ()
   const nextEvaluation = getActiveExecutionGoalEvaluation(next.store.getState());
   assert.ok(nextEvaluation);
   assert.equal(nextEvaluation.patternSignal?.executionCount, 2);
-  assert.equal(nextEvaluation.patternSignal?.successRatio, 0.5);
-  assert.equal(nextEvaluation.patternSignal?.failureRatio, 0.5);
-  assert.equal(nextEvaluation.patternSignal?.strength, "neutral");
+  assert.equal(nextEvaluation.patternSignal.successRatio, 0.5);
+  assert.equal(nextEvaluation.patternSignal.failureRatio, 0.5);
+  assert.equal(nextEvaluation.patternSignal.strength, "neutral");
   assert.doesNotMatch(nextEvaluation.summary, /Historically similar evaluations/);
 
   __testOnlyResetExecutionPatternRegistry();
@@ -4735,9 +4735,9 @@ void test("session pattern awareness separates duration buckets roi presence and
   );
   assert.ok(neutralPatternEvaluation);
   assert.equal(neutralPatternEvaluation.patternSignal?.executionCount, 1);
-  assert.equal(neutralPatternEvaluation.patternSignal?.successRatio, 0);
-  assert.equal(neutralPatternEvaluation.patternSignal?.failureRatio, 0);
-  assert.equal(neutralPatternEvaluation.patternSignal?.strength, "neutral");
+  assert.equal(neutralPatternEvaluation.patternSignal.successRatio, 0);
+  assert.equal(neutralPatternEvaluation.patternSignal.failureRatio, 0);
+  assert.equal(neutralPatternEvaluation.patternSignal.strength, "neutral");
   assert.doesNotMatch(neutralPatternEvaluation.summary, /Historically similar evaluations/);
 
   __testOnlyResetExecutionPatternRegistry();
@@ -5517,7 +5517,7 @@ void test("goal-aware feedback tightens failed outcomes without changing structu
     goalAlignment: 0.25,
     summary: "Region goal remains unmet because ROI coverage is limited",
   };
-  const executionResult: any = {
+  const executionResult = {
     summary: "Focused region shows localized activity",
     insights: ["Focused region shows localized activity"],
     artifacts: [
@@ -5554,12 +5554,12 @@ void test("goal-aware feedback tightens failed outcomes without changing structu
   const interpretationOnlyCandidate = buildExecutionCandidateFromResolved({
     ...baseInput,
     executionResultInterpretation: interpretation,
-  });
+  } as any);
   const failedGoalCandidate = buildExecutionCandidateFromResolved({
     ...baseInput,
     executionResultInterpretation: interpretation,
     executionGoalEvaluation: goalEvaluation,
-  });
+  } as any);
   const conflictedGoalCandidate = buildExecutionCandidateFromResolved({
     ...baseInput,
     executionResult: null,
@@ -5574,7 +5574,7 @@ void test("goal-aware feedback tightens failed outcomes without changing structu
         successRatio: 0,
       },
     },
-  });
+  } as any);
   const failedGoalAlternatives = buildExecutionAlternatives({
     executionPlan: chain.plan,
     executionSimulation: chain.simulation,
@@ -5586,7 +5586,7 @@ void test("goal-aware feedback tightens failed outcomes without changing structu
     activeSelection: chain.selection,
     inspectionMode: "visual",
     sourceKind: "video",
-  });
+  } as any);
 
   assert.ok(interpretationOnlyCandidate);
   assert.ok(failedGoalCandidate);
@@ -5897,7 +5897,7 @@ void test("focus-region materialization stays segment-scoped when ROI is absent"
     selectionSnapshot: {
       ...baseCandidate.selectionSnapshot,
       roi: undefined,
-    } as any,
+    } as unknown as LabExecutionDispatchCandidate["selectionSnapshot"],
   });
 
   const result = createMockExecutionResult(focusCandidate);
@@ -5954,7 +5954,7 @@ void test("execution runtime clears on upstream invalidation edges", () => {
     {
       name: "hydrate",
       mutate(store) {
-        store.dispatch({ type: "hydrate", payload: null }) as any;
+        store.dispatch({ type: "hydrate", payload: null });
       },
     },
     {

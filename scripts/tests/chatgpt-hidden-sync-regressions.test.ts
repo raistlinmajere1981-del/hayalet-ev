@@ -81,8 +81,8 @@ void test("chatgpt scraper reads message text when innerText is empty in hidden 
     const messages = scrapeMessages();
 
     assert.equal(messages.length, 1);
-    assert.equal(messages[0]?.role, "assistant");
-    assert.equal(messages[0]?.text, "Hidden page response");
+    assert.equal(messages[0]!.role, "assistant");
+    assert.equal(messages[0]!.text, "Hidden page response");
   });
 });
 
@@ -180,14 +180,14 @@ void test("chatgpt scraper falls back to default image selectors for image-only 
     () => {
       const messages = scrapeMessages();
 
-      assert.equal(messages.length, 2);
-      assert.equal(messages[0]?.role, "user");
-      assert.equal(messages[1]?.role, "assistant");
-      assert.equal(messages[1]?.text, "Kirmizi elma");
-      assert.equal(messages[1]?.generatedImages?.length, 1);
-      assert.equal(messages[1]?.generatedImages?.[0]?.imageIndex, 0);
-      assert.equal(
-        messages[1]?.generatedImages?.[0]?.currentSrc,
+    assert.equal(messages.length, 2);
+    assert.equal(messages[0]!.role, "user");
+    assert.equal(messages[1]!.role, "assistant");
+    assert.equal(messages[1]!.text, "Kirmizi elma");
+    assert.equal(messages[1]!.generatedImages!.length, 1);
+    assert.equal(messages[1]!.generatedImages![0]!.imageIndex, 0);
+    assert.equal(
+      messages[1]!.generatedImages![0]!.currentSrc,
         "https://chatgpt.com/backend-api/estuary/content?id=file_test"
       );
     },

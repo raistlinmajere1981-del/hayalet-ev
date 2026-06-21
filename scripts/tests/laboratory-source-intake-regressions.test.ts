@@ -11,10 +11,10 @@ import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surf
 
 const sourcePresets = JSON.parse(
   readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
-);
+) as Record<string, unknown>;
 const ytDlpForm = JSON.parse(
   readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8")
-);
+) as Record<string, unknown>;
 
 function toRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && Array.isArray(value) === false
@@ -177,11 +177,13 @@ void test("laboratory YouTube probe accepts only single video URLs", async () =>
     "https://www.youtube.com/watch?v=abc123&list=PL123",
   ];
 
-  for (const url of rejectedUrls) {
-    await assert.rejects(async function () {
-      await runtime.handleYoutubeProbe({}, runtimeState, "req-youtube-probe", url);
-    }, /Only a single YouTube video URL is supported\./);
+  async function rejectForUrl(url: string): Promise<void> {
+    await assert.rejects(
+      async () => await runtime.handleYoutubeProbe({}, runtimeState, "req-youtube-probe", url),
+      /Only a single YouTube video URL is supported\./
+    );
   }
+  await Promise.all(rejectedUrls.map(rejectForUrl));
 
   assert.equal(toolCalls.length, 0);
 
@@ -241,23 +243,23 @@ function createWorkspaceState(overrides: {
       },
       sourcePresets,
       ytDlpForm,
-      toolState: overrides.toolState || { tools: {} },
+      toolState: overrides.toolState ?? { tools: {} },
       profileModels: [],
-      sourceProbeStatus: overrides.sourceProbeStatus || "idle",
-      activityFeed: overrides.activityFeed || [],
+      sourceProbeStatus: overrides.sourceProbeStatus ?? "idle",
+      activityFeed: overrides.activityFeed ?? [],
     },
   });
-  (overrides.activityFeed || []).forEach(function (event) {
+  (overrides.activityFeed ?? []).forEach(function (event) {
     store.dispatch({
       type: "host-event-received",
       event: event as never,
     });
   });
-  const sourceKind = overrides.projectImportKind || String(overrides.source["kind"] || "video");
+  const sourceKind = overrides.projectImportKind ?? String((overrides.source["kind"] as string | undefined) ?? "video");
   if (sourceKind === "video" || sourceKind === "audio" || sourceKind === "image") {
     store.dispatch({ type: "project-import-kind-changed", kind: sourceKind });
   }
-  const sourceMethod = overrides.projectImportMethod || String(overrides.source["mode"] || "local");
+  const sourceMethod = overrides.projectImportMethod ?? String((overrides.source["mode"] as string | undefined) ?? "local");
   if (sourceMethod === "local" || sourceMethod === "url" || sourceMethod === "youtube") {
     store.dispatch({
       type: "project-import-method-changed",
@@ -395,7 +397,7 @@ void test("laboratory URL intake downloads image sources into the frame asset ca
     normalizeMimeType() {
       return "image/png";
     },
-    async patchActiveProject(_runtime, updater) {
+    patchActiveProject: async function (_runtime, updater) {
       activeProject = updater(activeProject);
     },
     pushJobState: function () {
@@ -410,7 +412,7 @@ void test("laboratory URL intake downloads image sources into the frame asset ca
     resetProfileForCurrentSource: function () {
       return undefined;
     },
-    async resolvePreparedSource(_runtime, _project, options) {
+    resolvePreparedSource: async function (_runtime, _project, options) {
       return {
         metadata: {
           height: 720,
@@ -445,7 +447,7 @@ for (const action of [
   "source-download-url",
   "source-download-youtube",
 ] as const) {
-  test(`laboratory project import completion closes project management for ${action}`, () => {
+  void test(`laboratory project import completion closes project management for ${action}`, () => {
     const store = createTrackedProjectImportStore("req-project-import", action);
 
     store.dispatch({
@@ -707,7 +709,7 @@ void test("laboratory workspace shows checked YouTube details and rich download 
     html,
     /class="labx-project-import__youtube-result"[\s\S]*class="labx-project-import__details"/
   );
-  assert.equal((html.match(/class="labx-project-import__details"/g) || []).length, 1);
+  assert.equal((html.match(/class="labx-project-import__details"/g) ?? []).length, 1);
   assert.match(html, /data-lab-field="project-import\.youtubeVideoFormat"/);
   assert.match(html, /data-lab-field="project-import\.youtubeAudioFormat"/);
   assert.match(html, /<option value="137" selected>Video 1080p<\/option>/);
@@ -739,8 +741,8 @@ void test("laboratory workspace shows checked YouTube details and rich download 
 });
 
 void test("laboratory workspace shows YouTube conversion quality only when audio conversion applies", () => {
-  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
-  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8")) as Record<string, unknown>;
+  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")) as Record<string, unknown>;
   const checkedYoutubeResult = {
     url: "https://youtube.com/watch?v=abc123",
     isYoutube: true,
@@ -810,12 +812,20 @@ void test("laboratory workspace shows YouTube conversion quality only when audio
   });
   assert.match(audioOnlyHtml, /data-lab-field="project-import\.youtubeCustom\.audioQuality"/);
   assert.doesNotMatch(audioOnlyHtml, /data-lab-field="project-import\.youtubeVideoFormat"/);
+  const enYouTubeRoot = enTranslations["mediaAnalysis"] as Record<string, unknown>;
+  const trYouTubeRoot = trTranslations["mediaAnalysis"] as Record<string, unknown>;
+  const enSource = enYouTubeRoot["source"] as Record<string, unknown>;
+  const trSource = trYouTubeRoot["source"] as Record<string, unknown>;
+  const enForm = enSource["youtubeForm"] as Record<string, unknown>;
+  const trForm = trSource["youtubeForm"] as Record<string, unknown>;
+  const enFields = enForm["fields"] as Record<string, unknown>;
+  const trFields = trForm["fields"] as Record<string, unknown>;
   assert.equal(
-    enTranslations.mediaAnalysis.source.youtubeForm.fields.audioQuality,
+    enFields["audioQuality"],
     "Conversion quality"
   );
   assert.equal(
-    trTranslations.mediaAnalysis.source.youtubeForm.fields.audioQuality,
+    trFields["audioQuality"],
     "Donusturme kalitesi"
   );
 });

@@ -121,12 +121,15 @@ class AppI18nManager {
 
   async listLanguages(): Promise<LanguageDescriptor[]> {
     const api = window.electronAPI;
-    if (!api?.i18nListLanguages) {
+    const i18nListLanguages = api?.["i18nListLanguages"] as
+      | (() => Promise<LanguageDescriptor[]>)
+      | undefined;
+    if (typeof i18nListLanguages !== "function") {
       return this.availableLanguages;
     }
 
     try {
-      const languages = await api.i18nListLanguages();
+      const languages = await i18nListLanguages();
       if (Array.isArray(languages) && languages.length > 0) {
         this.availableLanguages = languages;
       }
@@ -140,13 +143,16 @@ class AppI18nManager {
   async setLocale(locale: unknown, options: { forceEmit?: boolean } = {}): Promise<void> {
     const normalized = normalizeAppLanguage(locale);
     const api = window.electronAPI;
+    const i18nLoadLanguage = api?.["i18nLoadLanguage"] as
+      | ((locale: string) => Promise<LoadedLanguagePack | null>)
+      | undefined;
     const previousLocale = this.currentLocale;
     const defaultPackPromise = this.ensureDefaultPack();
     const fallbackLocale = resolveSelectorLanguage(normalized);
     const [nextPack, builtInPack, fallbackPack, defaultPack] = await Promise.all([
       (async (): Promise<LoadedLanguagePack | null> => {
         try {
-          return api?.i18nLoadLanguage ? await api.i18nLoadLanguage(normalized) : null;
+          return typeof i18nLoadLanguage === "function" ? await i18nLoadLanguage(normalized) : null;
         } catch {
           return null;
         }

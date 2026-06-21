@@ -129,7 +129,7 @@ void test("tools snapshot loader derives Hayalet Ev MCP tools from OpenCode serv
 
   globalWithWindow.window = {
     electronAPI: {
-      opencodeUiHevTools: async () => {
+      opencodeUiHevTools: () => {
         localMetadataProbeCount += 1;
         return { success: true, toolNames: ["stale_local_tool"] };
       },

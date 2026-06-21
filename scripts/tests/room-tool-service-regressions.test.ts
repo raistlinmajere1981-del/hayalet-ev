@@ -264,22 +264,22 @@ void test("room tool service supports app-managed installers and system-command 
   assert.match(manifestSource, /"mediainfo"[\s\S]*"availability":\s*"installable"/);
   assert.match(manifestSource, /"mediainfo"[\s\S]*"downloadUrlTemplate"/);
   assert.equal(manifest.tools["ffmpeg"]?.availability, "system-command");
-  assert.deepEqual(manifest.tools["ffmpeg"]?.systemCommand?.envVarNames, [
+  assert.deepEqual(manifest.tools["ffmpeg"].systemCommand?.envVarNames, [
     "HAYALET_FFMPEG_PATH",
     "FFMPEG_PATH",
   ]);
   assert.ok(
-    manifest.tools["ffmpeg"]?.systemCommand?.candidatePaths?.some((entry) =>
+    (manifest.tools["ffmpeg"].systemCommand.candidatePaths ?? []).some((entry) =>
       entry.includes("${dataDir}/host-dependencies/ffmpeg/win32-x64/ffmpeg.exe")
     )
   );
   assert.ok(
-    manifest.tools["ffmpeg"]?.systemCommand?.companionExecutables?.includes("ffprobe.exe")
+    (manifest.tools["ffmpeg"].systemCommand.companionExecutables ?? []).includes("ffprobe.exe")
   );
   assert.equal(manifest.tools["ffmpeg-libvmaf"]?.probe?.versionRegex, "\\blibvmaf\\b");
-  assert.equal(manifest.tools["ffmpeg-libvmaf"]?.availability, "system-command");
+  assert.equal(manifest.tools["ffmpeg-libvmaf"].availability, "system-command");
   assert.ok(
-    manifest.tools["ffmpeg-libvmaf"]?.systemCommand?.candidatePaths?.some((entry) =>
+    (manifest.tools["ffmpeg-libvmaf"].systemCommand?.candidatePaths ?? []).some((entry) =>
       entry.includes("${dataDir}/host-dependencies/ffmpeg/win32-x64/ffmpeg.exe")
     )
   );

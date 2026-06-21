@@ -92,7 +92,7 @@ void test("laboratory persistence drops stale runtime snapshots before boot hydr
   const loaded = loadLabPersistedState(windowRef) as Record<string, unknown>;
   assert.deepEqual(loaded["selectedCapabilities"], []);
   assert.deepEqual(loaded["projectIndex"], { activeProjectId: null, projects: [] });
-  assert.equal(loaded["workbench"] && Object.keys(loaded["workbench"]).length, 0);
+  assert.equal(Object.keys((loaded["workbench"] ?? {}) as Record<string, unknown>).length, 0);
   assert.equal(loaded["source"], null);
   assert.equal(loaded["sourceProbeStatus"], "idle");
   assert.equal(loaded["editConfig"], null);
@@ -191,16 +191,16 @@ void test("laboratory store keeps checked YouTube import state UI-only and non-p
     selectedAudioFormatId: null,
   });
   const formatSelectionSnapshots = {
-    sourceDrafts: JSON.parse(JSON.stringify(store.getState().ui.sourceDrafts)),
+    sourceDrafts: JSON.parse(JSON.stringify(store.getState().ui.sourceDrafts)) as Record<string, unknown>,
     youtubeImportStableFields: {
       url: store.getState().ui.youtubeImport.url,
       status: store.getState().ui.youtubeImport.status,
       preview: store.getState().ui.youtubeImport.preview,
     },
-    source: JSON.parse(JSON.stringify(store.getState().source)),
-    assets: JSON.parse(JSON.stringify(store.getState().assets)),
-    run: JSON.parse(JSON.stringify(store.getState().run)),
-    reports: JSON.parse(JSON.stringify(store.getState().reports)),
+    source: JSON.parse(JSON.stringify(store.getState().source)) as Record<string, unknown>,
+    assets: JSON.parse(JSON.stringify(store.getState().assets)) as Record<string, unknown>,
+    run: JSON.parse(JSON.stringify(store.getState().run)) as Record<string, unknown>,
+    reports: JSON.parse(JSON.stringify(store.getState().reports)) as Record<string, unknown>,
   };
   assert.deepEqual(
     {
@@ -375,7 +375,7 @@ void test("laboratory store tracks focus layer as guarded UI-only state", () => 
   } as unknown as Parameters<typeof store.dispatch>[0]);
   assert.equal(store.getState().ui.labFocusLayer, "inspector");
 
-  store.dispatch({ type: "hydrate", payload: null }) as any;
+  store.dispatch({ type: "hydrate", payload: null });
   assert.equal(store.getState().ui.labFocusLayer, "preview");
 });
 
@@ -812,10 +812,10 @@ void test("laboratory process output parser translates known ffmpeg and download
   const mergeEvent = parseProcessOutput('Merging formats into "clip.mp4"');
 
   assert.equal(blackdetectEvent?.message, "Siyah sahne tespiti calisiyor");
-  assert.equal(blackdetectEvent?.moduleId, "motion");
+  assert.equal(blackdetectEvent.moduleId, "motion");
   assert.equal(frameEvent?.detail, "248 kare incelendi");
   assert.equal(downloadEvent?.message, "Kaynak indiriliyor");
-  assert.equal(downloadEvent?.scope, "global");
+  assert.equal(downloadEvent.scope, "global");
   assert.equal(mergeEvent?.message, "Kaynak birlestiriliyor");
 });
 
@@ -981,7 +981,7 @@ void test("laboratory store derives run state from canonical events without inve
 
   const state = store.getState();
   assert.equal(state.run?.state, "running");
-  assert.deepEqual(state.run?.moduleOrder, []);
+  assert.deepEqual(state.run.moduleOrder, []);
 });
 
 void test("laboratory store keeps export user actions separate from analysis run state", () => {
@@ -1041,11 +1041,11 @@ void test("laboratory store keeps export user actions separate from analysis run
 
   const state = store.getState();
   assert.equal(state.userActions[0]?.status, "success");
-  assert.equal(state.userActions[0]?.message, "Klip hazır");
-  assert.deepEqual(state.userActions[0]?.resultAssetIds, ["asset-clip-export-1"]);
+  assert.equal(state.userActions[0].message, "Klip hazır");
+  assert.deepEqual(state.userActions[0].resultAssetIds, ["asset-clip-export-1"]);
   assert.equal(state.run?.state, "running");
-  assert.equal(state.run?.events.length, 1);
-  assert.equal(state.run?.events[0]?.action, "process-run");
+  assert.equal(state.run.events.length, 1);
+  assert.equal(state.run.events[0]?.action, "process-run");
 });
 
 void test("laboratory store keeps tracked export failures and cancellations UI-safe", () => {
@@ -1122,9 +1122,9 @@ void test("laboratory store keeps tracked export failures and cancellations UI-s
     return entry.id === "user-action-cancelled";
   });
   assert.equal(failedAction?.status, "error");
-  assert.equal(failedAction?.message, "Klip çıkarılamadı");
+  assert.equal(failedAction.message, "Klip çıkarılamadı");
   assert.equal(cancelledAction?.status, "idle");
-  assert.equal(cancelledAction?.message, "İşlem iptal edildi.");
+  assert.equal(cancelledAction.message, "İşlem iptal edildi.");
 });
 
 void test("laboratory store hydrates project assets and selectors keep registry lookups scoped", () => {
@@ -1621,12 +1621,12 @@ void test("laboratory hydrate rebuilds selection identity from the primitive bri
 
     const rehydratedSelection = store.getState().ui.workspace.activeSelection;
     assert.ok(rehydratedSelection);
-    assert.equal(rehydratedSelection?.startMs, 2400);
-    assert.equal(rehydratedSelection?.endMs, 5600);
-    assert.equal(rehydratedSelection?.type, "clip");
+    assert.equal(rehydratedSelection.startMs, 2400);
+    assert.equal(rehydratedSelection.endMs, 5600);
+    assert.equal(rehydratedSelection.type, "clip");
     assert.equal("intent" in rehydratedSelection, false);
-    assert.notEqual(rehydratedSelection?.id, initialSelection?.id);
-    assert.equal(rehydratedSelection?.createdAt, 1700000005000);
+    assert.notEqual(rehydratedSelection.id, initialSelection.id);
+    assert.equal(rehydratedSelection.createdAt, 1700000005000);
   } finally {
     Date.now = originalDateNow;
   }

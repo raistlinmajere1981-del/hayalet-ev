@@ -41,11 +41,11 @@ void test("analysis scope normalization keeps ordered ranges and freeze lifecycl
     startMs: 1200,
     endMs: 4200,
   });
-  assert.deepEqual(normalized?.frameRange, {
+  assert.deepEqual(normalized.frameRange, {
     startFrame: 12,
     endFrame: 84,
   });
-  assert.equal(normalized?.focus, "visual");
+  assert.equal(normalized.focus, "visual");
 
   const frozen = freezeAnalysisScope(
     normalized,
@@ -53,8 +53,8 @@ void test("analysis scope normalization keeps ordered ranges and freeze lifecycl
     "2026-04-20T10:00:00.000Z"
   );
   assert.equal(frozen?.lifecycle?.mutable, false);
-  assert.equal(frozen?.lifecycle?.processId, "media-analysis-run-1");
-  assert.equal(frozen?.lifecycle?.frozenAt, "2026-04-20T10:00:00.000Z");
+  assert.equal(frozen.lifecycle.processId, "media-analysis-run-1");
+  assert.equal(frozen.lifecycle.frozenAt, "2026-04-20T10:00:00.000Z");
 });
 
 void test("analysis scope normalization preserves image comparison pairs and rois", () => {
@@ -84,11 +84,11 @@ void test("analysis scope normalization preserves image comparison pairs and roi
   });
 
   assert.equal(normalized?.comparison?.primary.assetId, "asset-a");
-  assert.equal(normalized?.comparison?.primary.localPath, "/tmp/a.png");
-  assert.equal(normalized?.comparison?.reference.assetId, "asset-b");
-  assert.equal(normalized?.comparison?.activeSide, "reference");
-  assert.equal(normalized?.comparison?.splitPercent, 41.5);
-  assert.deepEqual(normalized?.comparison?.rois?.primary, {
+  assert.equal(normalized.comparison.primary.localPath, "/tmp/a.png");
+  assert.equal(normalized.comparison.reference.assetId, "asset-b");
+  assert.equal(normalized.comparison.activeSide, "reference");
+  assert.equal(normalized.comparison.splitPercent, 41.5);
+  assert.deepEqual(normalized.comparison.rois?.primary, {
     x: 10,
     y: 20,
     width: 101,
@@ -100,7 +100,7 @@ void test("analysis scope normalization preserves image comparison pairs and roi
     "2026-05-17T09:00:00.000Z"
   );
   assert.equal(frozen?.comparison?.reference.localPath, "/tmp/b.png");
-  assert.equal(frozen?.lifecycle?.mutable, false);
+  assert.equal(frozen.lifecycle?.mutable, false);
 });
 
 void test("laboratory workbench preserves scope and density controls without dropping the guided shell", () => {
@@ -135,7 +135,7 @@ void test("laboratory workbench preserves scope and density controls without dro
 
   assert.equal(workbench.activeModuleId, "media-analysis");
   assert.equal(workbench.analysisScope?.["focus"], "visual");
-  assert.equal((workbench.analysisScope as Record<string, unknown>)?.["lifecycle"]?.["mutable" as never], true);
+  assert.equal((workbench.analysisScope as Record<string, unknown>)["lifecycle"]?.["mutable" as never], true);
   assert.equal(workbench.activePreviewArtifactId, "preview-1");
   assert.equal(workbench.activeLiveFindingsStreamId, "media-analysis");
   assert.equal(workbench.controlsCollapsed, true);
@@ -156,26 +156,26 @@ void test("process normalization freezes scope snapshots after process start and
     normalizeProfileArtifact(rawValue: unknown) {
       const source = toRecord(rawValue);
       return {
-        id: asNonEmptyString(source["id"]) || "artifact-1",
-        kind: asNonEmptyString(source["kind"]) || "artifact",
+        id: asNonEmptyString(source["id"]) ?? "artifact-1",
+        kind: asNonEmptyString(source["kind"]) ?? "artifact",
         path: asNonEmptyString(source["path"]),
         fileName: asNonEmptyString(source["fileName"]),
         label: asNonEmptyString(source["label"]),
-        createdAt: asNonEmptyString(source["createdAt"]) || "2026-04-20T10:00:00.000Z",
+        createdAt: asNonEmptyString(source["createdAt"]) ?? "2026-04-20T10:00:00.000Z",
         metadata: toRecord(source["metadata"]),
       };
     },
     normalizeProfileSignal(rawValue: unknown) {
       const source = toRecord(rawValue);
       return {
-        id: asNonEmptyString(source["id"]) || "signal-1",
-        laneId: asNonEmptyString(source["laneId"]) || "metadata-lineage",
-        kind: asNonEmptyString(source["kind"]) || "derived",
-        level: asNonEmptyString(source["level"]) || "low",
-        confidence: asNonEmptyString(source["confidence"]) || "low",
-        title: asNonEmptyString(source["title"]) || "Signal",
-        detail: asNonEmptyString(source["detail"]) || "",
-        evidenceCount: Math.max(0, Math.round(asNumber(source["evidenceCount"]) || 0)),
+        id: asNonEmptyString(source["id"]) ?? "signal-1",
+        laneId: asNonEmptyString(source["laneId"]) ?? "metadata-lineage",
+        kind: asNonEmptyString(source["kind"]) ?? "derived",
+        level: asNonEmptyString(source["level"]) ?? "low",
+        confidence: asNonEmptyString(source["confidence"]) ?? "low",
+        title: asNonEmptyString(source["title"]) ?? "Signal",
+        detail: asNonEmptyString(source["detail"]) ?? "",
+        evidenceCount: Math.max(0, Math.round(asNumber(source["evidenceCount"]) ?? 0)),
         artifactIds: Array.isArray(source["artifactIds"])
           ? source["artifactIds"]
               .map(function (entry) {
@@ -254,9 +254,9 @@ void test("process normalization freezes scope snapshots after process start and
     records: Record<string, Record<string, unknown>>;
   };
 
-  const mediaRecord = processState.records["media-analysis"] || {};
+  const mediaRecord = processState.records["media-analysis"] ?? {};
   assert.equal(
-    toRecord(mediaRecord["analysisScope"])["lifecycle"] &&
+    toRecord(mediaRecord["analysisScope"])["lifecycle"] != null &&
       toRecord(toRecord(mediaRecord["analysisScope"])["lifecycle"])["mutable"],
     false
   );

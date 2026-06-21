@@ -323,7 +323,7 @@ class RoomProtocolRegistryClass {
       return "";
     }
 
-    const readFile = window.electronAPI?.readFile;
+    const readFile = window.electronAPI?.["readFile"];
     if (typeof readFile !== "function") {
       return "";
     }

@@ -17,7 +17,7 @@ export function readCssWithImports(filePath: string, seenPaths = new Set<string>
 
   const source = readFileSync(absolutePath, "utf8");
   const importedSources = Array.from(source.matchAll(CSS_IMPORT_PATTERN), function (match) {
-    const importPath = match[1]!;
+    const importPath = match[1] as string;
     if (isLocalCssImport(importPath) === false) {
       return "";
     }

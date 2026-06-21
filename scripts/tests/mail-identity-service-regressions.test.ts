@@ -35,10 +35,10 @@ function createSettingsStore(initial?: AppSettings) {
   let current = normalizeSettings(initial ?? createDefaultSettings());
 
   return {
-    async loadSettings(): Promise<AppSettings> {
+    loadSettings(): AppSettings {
       return clone(current);
     },
-    async saveSettings(next: AppSettings): Promise<boolean> {
+    saveSettings(next: AppSettings): boolean {
       current = normalizeSettings(clone(next));
       return true;
     },
@@ -173,7 +173,7 @@ function extractHandshakeEnvelope(message: SendMailRequest): Record<string, unkn
   const match = text.match(
     /--- HAYALET_EV_US1_PAYLOAD ---\s*([\s\S]+?)\s*--- \/HAYALET_EV_US1_PAYLOAD ---/
   );
-  assert.ok(match?.[1]);
+  assert.ok(match?.[1] != null);
   return JSON.parse(match[1]) as Record<string, unknown>;
 }
 
@@ -259,16 +259,15 @@ async function createConnectedServiceContext() {
     now: () => FIXED_NOW,
     transport: transportStub.transport,
     settingsStore: {
-      loadSettings: async () => await store.loadSettings(),
-      saveSettings: async (settings) => await store.saveSettings(settings),
+      loadSettings: async () => await Promise.resolve(store.loadSettings()),
+      saveSettings: async (settings) => await Promise.resolve(store.saveSettings(settings)),
     },
   });
 
   const saveResult = await service.upsertMailAccount(createMailAccountDraft(), { verifyAfterSave: false });
   assert.equal(saveResult.success, true);
-
   const accountId = store.snapshot().integrations?.mailTransport?.accounts[0]?.id;
-  assert.ok(accountId);
+  assert.ok(accountId != null);
 
   const verifyResult = await service.verifyMailAccount(accountId);
   assert.equal(verifyResult.success, true);
@@ -288,14 +287,13 @@ void test("mail identity service saves and verifies a local mail account", async
     now: () => FIXED_NOW,
     transport: transportStub.transport,
     settingsStore: {
-      loadSettings: async () => await store.loadSettings(),
-      saveSettings: async (settings) => await store.saveSettings(settings),
+      loadSettings: async () => await Promise.resolve(store.loadSettings()),
+      saveSettings: async (settings) => await Promise.resolve(store.saveSettings(settings)),
     },
   });
 
   const saveResult = await service.upsertMailAccount(createMailAccountDraft(), { verifyAfterSave: false });
   assert.equal(saveResult.success, true);
-
   const savedAccount = store.snapshot().integrations?.mailTransport?.accounts[0];
   assert.ok(savedAccount);
   assert.equal(savedAccount.connectionState, "disconnected");
@@ -309,7 +307,7 @@ void test("mail identity service saves and verifies a local mail account", async
   assert.equal(store.snapshot().integrations?.mailTransport?.localAccount?.id, savedAccount.id);
   assert.equal(store.snapshot().user?.email, "local@example.com");
   assert.equal(verifyResult.state?.verifiedLocalMailAccountId, savedAccount.id);
-  assert.equal(verifyResult.state?.verifiedUserEmail, "local@example.com");
+  assert.equal(verifyResult.state.verifiedUserEmail, "local@example.com");
 });
 
 void test("updating a verified local mail account keeps the old verified identity until re-verify", async () => {
@@ -341,7 +339,7 @@ void test("inviteRemoteUser creates an invite_sent remote user bound to the sele
   writeFileSync(avatarPath, "fake-image");
 
   try {
-    await store.saveSettings({
+    store.saveSettings({
       ...store.snapshot(),
       user: {
         ...(store.snapshot().user ?? {}),
@@ -357,24 +355,24 @@ void test("inviteRemoteUser creates an invite_sent remote user bound to the sele
 
     assert.equal(inviteResult.success, true);
     assert.equal(inviteResult.remoteUser?.handshakeState, "invite_sent");
-    assert.equal(inviteResult.remoteUser?.linkedMailAccountId, accountId);
+    assert.equal(inviteResult.remoteUser.linkedMailAccountId, accountId);
     assert.equal(transportStub.sentMessages.length, 1);
     assert.equal(
       transportStub.sentMessages[0]?.headers?.["X-Hayalet-Ev-Message-Type"],
       "invite"
     );
-    assert.equal(transportStub.sentMessages[0]?.attachments?.length, 1);
-    assert.equal(transportStub.sentMessages[0]?.attachments?.[0]?.path, avatarPath);
+    assert.equal(transportStub.sentMessages[0].attachments?.length, 1);
+    assert.equal(transportStub.sentMessages[0].attachments[0]?.path, avatarPath);
 
     const envelope = extractHandshakeEnvelope(transportStub.sentMessages[0]);
     assert.equal(
-      (envelope["profile"] as Record<string, unknown>)?.["avatarAttachmentName"],
+      (envelope["profile"] as Record<string, unknown>)["avatarAttachmentName"],
       "us1-avatar.png"
     );
 
     const storedRemoteUser = store.snapshot().remoteUsers?.[0];
     assert.equal(storedRemoteUser?.remoteUserId, "remote@example.com");
-    assert.equal(storedRemoteUser?.handshakeState, "invite_sent");
+    assert.equal(storedRemoteUser.handshakeState, "invite_sent");
   } finally {
     rmSync(avatarPath, { force: true });
     cleanupRemoteAccount("remote@example.com");
@@ -459,7 +457,7 @@ void test("syncRemoteUsers promotes incoming invite to handshake_pending and inc
 void test("acceptRemoteUser sends an accept message and activates the remote user", async () => {
   const { service, store, transportStub, accountId } = await createConnectedServiceContext();
   try {
-    await store.saveSettings({
+    store.saveSettings({
       ...store.snapshot(),
       remoteUsers: [
         {
@@ -497,7 +495,7 @@ void test("acceptRemoteUser sends an accept message and activates the remote use
 void test("rejectRemoteUser sends a reject message and removes the pending remote user from receiver settings", async () => {
   const { service, store, transportStub, accountId } = await createConnectedServiceContext();
 
-  await store.saveSettings({
+  store.saveSettings({
     ...store.snapshot(),
     remoteUsers: [
       {
@@ -533,7 +531,7 @@ void test("rejectRemoteUser sends a reject message and removes the pending remot
 void test("syncRemoteUsers marks invite sender side as rejected when a reject handshake arrives", async () => {
   const { service, store, transportStub, accountId } = await createConnectedServiceContext();
 
-  await store.saveSettings({
+  store.saveSettings({
     ...store.snapshot(),
     remoteUsers: [
       {
@@ -575,7 +573,7 @@ void test("syncRemoteUsers marks invite sender side as rejected when a reject ha
 void test("deleteMailAccount removes linked remote users and disconnects the US1 slot", async () => {
   const { service, store, accountId } = await createConnectedServiceContext();
 
-  await store.saveSettings({
+  store.saveSettings({
     ...store.snapshot(),
     remoteUsers: [
       {
@@ -606,9 +604,9 @@ void test("deleteMailAccount removes linked remote users and disconnects the US1
 
   const nextSettings = store.snapshot();
   assert.equal(nextSettings.integrations?.mailTransport?.accounts.length, 0);
-  assert.equal(nextSettings.integrations?.mailTransport?.localAccount, null);
+  assert.equal(nextSettings.integrations.mailTransport.localAccount, null);
   assert.equal(nextSettings.remoteUsers?.length ?? 0, 0);
   assert.equal(nextSettings.user?.email, "");
   assert.equal(nextSettings.us1Slot?.selectedRemoteUserId, null);
-  assert.equal(nextSettings.us1Slot?.connectionState, "disconnected");
+  assert.equal(nextSettings.us1Slot.connectionState, "disconnected");
 });

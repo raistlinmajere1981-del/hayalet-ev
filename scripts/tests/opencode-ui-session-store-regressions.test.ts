@@ -102,7 +102,7 @@ function setupFixture(): DbFixture {
   return { db, dbPath, cleanup };
 }
 
-void test("listOpencodeUiSessions returns sorted sessions from opencode disk db", async () => {
+void test("listOpencodeUiSessions returns sorted sessions from opencode disk db", () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -135,18 +135,18 @@ void test("listOpencodeUiSessions returns sorted sessions from opencode disk db"
   );
 
   try {
-    const result = await listOpencodeUiSessions({ dbPath });
+    const result = listOpencodeUiSessions({ dbPath });
 
     assert.equal(result.success, true);
-    assert.equal(result.sessions?.length, 2);
-    assert.equal(result.sessions?.[0]?.id, "ses_new");
-    assert.equal(result.sessions?.[1]?.id, "ses_old");
+    assert.equal(result.sessions!.length, 2);
+    assert.equal(result.sessions![0]!.id, "ses_new");
+    assert.equal(result.sessions![1]!.id, "ses_old");
   } finally {
     fixture.cleanup();
   }
 });
 
-void test("ensureOpencodeUiSession creates missing session and is idempotent", async () => {
+void test("ensureOpencodeUiSession creates missing session and is idempotent", () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -165,7 +165,7 @@ void test("ensureOpencodeUiSession creates missing session and is idempotent", a
   );
 
   try {
-    const created = await ensureOpencodeUiSession("ses_created", "Created Session", {
+    const created = ensureOpencodeUiSession("ses_created", "Created Session", {
       dbPath,
       now: () => 1700000001000,
     });
@@ -184,12 +184,12 @@ void test("ensureOpencodeUiSession creates missing session and is idempotent", a
         }
       | undefined;
 
-    assert.equal(createdRow?.title, "Created Session");
-    assert.equal(createdRow?.project_id, "proj_main");
-    assert.equal(createdRow?.directory, "/workspace/project");
-    assert.equal(createdRow?.version, "1.2.17");
+    assert.equal(createdRow!.title, "Created Session");
+    assert.equal(createdRow!.project_id, "proj_main");
+    assert.equal(createdRow!.directory, "/workspace/project");
+    assert.equal(createdRow!.version, "1.2.17");
 
-    const second = await ensureOpencodeUiSession("ses_created", "Ignored", {
+    const second = ensureOpencodeUiSession("ses_created", "Ignored", {
       dbPath,
       now: () => 1700000002000,
     });
@@ -224,7 +224,7 @@ void test("ipc bridge registers opencode-ui session channels and preload methods
   assert.match(globalTypes, /opencodeUiFsReadSession/);
 });
 
-void test("readOpencodeUiSession parses user/assistant messages with files and tool calls", async () => {
+void test("readOpencodeUiSession parses user/assistant messages with files and tool calls", () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -314,30 +314,30 @@ void test("readOpencodeUiSession parses user/assistant messages with files and t
   );
 
   try {
-    const result = await readOpencodeUiSession("ses_read", { dbPath });
+    const result = readOpencodeUiSession("ses_read", { dbPath });
 
     assert.equal(result.success, true);
-    assert.equal(result.session?.id, "ses_read");
-    assert.equal(result.session?.messages.length, 2);
+    assert.equal(result.session!.id, "ses_read");
+    assert.equal(result.session!.messages.length, 2);
 
-    const user = result.session?.messages[0];
-    assert.equal(user?.role, "user");
-    assert.equal(user?.text, "hello opencode-ui");
-    assert.equal(user?.files?.[0]?.name, "clipboard");
-    assert.equal(user?.files?.[0]?.media_type, "image/png");
+    const user = result.session!.messages[0]!;
+    assert.equal(user.role, "user");
+    assert.equal(user.text, "hello opencode-ui");
+    assert.equal(user.files[0]!.name, "clipboard");
+    assert.equal(user.files[0]!.media_type, "image/png");
 
-    const assistant = result.session?.messages[1];
-    assert.equal(assistant?.role, "assistant");
-    assert.equal(assistant?.text, "done");
-    assert.equal(assistant?.toolCalls?.[0]?.name, "bash");
-    assert.match(assistant?.toolCalls?.[0]?.args ?? "", /pwd/);
-    assert.match(assistant?.toolCalls?.[0]?.result ?? "", /workspace\/project/);
+    const assistant = result.session!.messages[1]!;
+    assert.equal(assistant.role, "assistant");
+    assert.equal(assistant.text, "done");
+    assert.equal(assistant.toolCalls[0]!.name, "bash");
+    assert.match(assistant.toolCalls[0]!.args, /pwd/);
+    assert.match(assistant.toolCalls[0]!.result, /workspace\/project/);
   } finally {
     fixture.cleanup();
   }
 });
 
-void test("readOpencodeUiSession reads structured assistant parts and latest todos", async () => {
+void test("readOpencodeUiSession reads structured assistant parts and latest todos", () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -533,39 +533,39 @@ void test("readOpencodeUiSession reads structured assistant parts and latest tod
   );
 
   try {
-    const result = await readOpencodeUiSession("ses_text_variants", { dbPath });
+    const result = readOpencodeUiSession("ses_text_variants", { dbPath });
 
     assert.equal(result.success, true);
-    assert.equal(result.session?.messages.length, 5);
-    assert.equal(result.session?.messages[0]?.text, "assistant content text");
-    assert.equal(result.session?.messages[1]?.text, "assistant delta text");
-    assert.equal(result.session?.messages[2]?.text, "");
-    assert.equal(result.session?.messages[2]?.toolCalls?.[0]?.name, "bash");
-    assert.equal(result.session?.messages[3]?.blocks?.[0]?.kind, "step");
-    assert.equal(result.session?.messages[3]?.blocks?.[1]?.kind, "reasoning");
-    assert.equal(result.session?.messages[3]?.blocks?.[2]?.kind, "patch");
-    assert.equal(result.session?.messages[3]?.blocks?.[2]?.items?.[0], "app.ts");
-    assert.match(result.session?.messages[3]?.text ?? "", new RegExp(t("message.stepStartTitle")));
-    assert.match(result.session?.messages[3]?.text ?? "", new RegExp(t("message.reasoningTitle")));
-    assert.match(result.session?.messages[3]?.text ?? "", new RegExp(t("message.patchTitle")));
-    assert.match(result.session?.messages[3]?.text ?? "", /app\.ts/);
-    assert.match(result.session?.messages[3]?.text ?? "", new RegExp(t("message.stepFinishTitle")));
-    assert.equal(result.session?.messages[4]?.toolCalls?.[0]?.name, "todowrite");
-    assert.equal(result.session?.todos?.length, 2);
-    assert.equal(result.session?.todos?.[0]?.content, "Investigate bug");
-    assert.equal(result.session?.todos?.[1]?.status, "pending");
-    assert.equal(result.session?.changed_files?.length, 2);
+    assert.equal(result.session!.messages.length, 5);
+    assert.equal(result.session!.messages[0]!.text, "assistant content text");
+    assert.equal(result.session!.messages[1]!.text, "assistant delta text");
+    assert.equal(result.session!.messages[2]!.text, "");
+    assert.equal(result.session!.messages[2]!.toolCalls[0]!.name, "bash");
+    assert.equal(result.session!.messages[3]!.blocks[0]!.kind, "step");
+    assert.equal(result.session!.messages[3]!.blocks[1]!.kind, "reasoning");
+    assert.equal(result.session!.messages[3]!.blocks[2]!.kind, "patch");
+    assert.equal(result.session!.messages[3]!.blocks[2]!.items![0]!, "app.ts");
+    assert.match(result.session!.messages[3]!.text, new RegExp(t("message.stepStartTitle")));
+    assert.match(result.session!.messages[3]!.text, new RegExp(t("message.reasoningTitle")));
+    assert.match(result.session!.messages[3]!.text, new RegExp(t("message.patchTitle")));
+    assert.match(result.session!.messages[3]!.text, /app\.ts/);
+    assert.match(result.session!.messages[3]!.text, new RegExp(t("message.stepFinishTitle")));
+    assert.equal(result.session!.messages[4]!.toolCalls[0]!.name, "todowrite");
+    assert.equal(result.session!.todos.length, 2);
+    assert.equal(result.session!.todos[0]!.content, "Investigate bug");
+    assert.equal(result.session!.todos[1]!.status, "pending");
+    assert.equal(result.session!.changed_files.length, 2);
     assert.equal(
-      result.session?.changed_files?.[0],
+      result.session!.changed_files[0]!,
       "/workspace/project/src/js/pages/opencode-ui/app.ts"
     );
-    assert.equal(result.session?.changed_files?.[1], "/workspace/project/README.md");
+    assert.equal(result.session!.changed_files[1]!, "/workspace/project/README.md");
   } finally {
     fixture.cleanup();
   }
 });
 
-void test("readOpencodeUiSession preserves historic image urls for preview-capable attachments", async () => {
+void test("readOpencodeUiSession preserves historic image urls for preview-capable attachments", () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -612,19 +612,19 @@ void test("readOpencodeUiSession preserves historic image urls for preview-capab
   );
 
   try {
-    const result = await readOpencodeUiSession("ses_history_image", { dbPath });
-    const file = result.session?.messages[0]?.files?.[0];
+    const result = readOpencodeUiSession("ses_history_image", { dbPath });
+    const file = result.session!.messages[0]!.files[0]!;
 
     assert.equal(result.success, true);
-    assert.equal(file?.fileName, "screen.png");
-    assert.equal(file?.media_type, "image/png");
-    assert.equal(file?.url, "https://example.test/assets/screen.png");
+    assert.equal(file.fileName, "screen.png");
+    assert.equal(file.media_type, "image/png");
+    assert.equal(file.url, "https://example.test/assets/screen.png");
   } finally {
     fixture.cleanup();
   }
 });
 
-void test("readOpencodeUiSession surfaces retrying tool state as a warning notice", async () => {
+void test("readOpencodeUiSession surfaces retrying tool state as a warning notice", () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -674,21 +674,21 @@ void test("readOpencodeUiSession surfaces retrying tool state as a warning notic
   );
 
   try {
-    const result = await readOpencodeUiSession("ses_notice", { dbPath });
-    const assistant = result.session?.messages[0];
+    const result = readOpencodeUiSession("ses_notice", { dbPath });
+    const assistant = result.session!.messages[0]!;
 
     assert.equal(result.success, true);
-    assert.equal(assistant?.role, "assistant");
-    assert.equal(assistant?.toolCalls?.[0]?.name, "bash");
-    assert.equal(assistant?.notices?.[0]?.tone, "warning");
-    assert.equal(assistant?.notices?.[0]?.title, "The usage limit has been reached");
-    assert.equal(assistant?.notices?.[0]?.meta, t("message.toolStateRetryMeta"));
+    assert.equal(assistant.role, "assistant");
+    assert.equal(assistant.toolCalls[0]!.name, "bash");
+    assert.equal(assistant.notices[0]!.tone, "warning");
+    assert.equal(assistant.notices[0]!.title, "The usage limit has been reached");
+    assert.equal(assistant.notices[0]!.meta, t("message.toolStateRetryMeta"));
   } finally {
     fixture.cleanup();
   }
 });
 
-void test("readOpencodeUiSession prefers tokenized interaction text over merged reasoning fallback", async () => {
+void test("readOpencodeUiSession prefers tokenized interaction text over merged reasoning fallback", () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -745,19 +745,19 @@ void test("readOpencodeUiSession prefers tokenized interaction text over merged 
   );
 
   try {
-    const result = await readOpencodeUiSession("ses_interaction", { dbPath });
-    const assistant = result.session?.messages[0];
+    const result = readOpencodeUiSession("ses_interaction", { dbPath });
+    const assistant = result.session!.messages[0]!;
 
     assert.equal(result.success, true);
-    assert.equal(assistant?.role, "assistant");
-    assert.equal(assistant?.text, "Visible fallback\n[rovo-ui:v1:abc123]");
-    assert.doesNotMatch(assistant?.text ?? "", /Need three clarifications/u);
+    assert.equal(assistant.role, "assistant");
+    assert.equal(assistant.text, "Visible fallback\n[rovo-ui:v1:abc123]");
+    assert.doesNotMatch(assistant.text, /Need three clarifications/u);
   } finally {
     fixture.cleanup();
   }
 });
 
-void test("readOpencodeUiSession aggregates usage from assistant message tokens", async () => {
+void test("readOpencodeUiSession aggregates usage from assistant message tokens", () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;
 
@@ -808,13 +808,13 @@ void test("readOpencodeUiSession aggregates usage from assistant message tokens"
   );
 
   try {
-    const result = await readOpencodeUiSession("ses_usage", { dbPath });
+    const result = readOpencodeUiSession("ses_usage", { dbPath });
 
     assert.equal(result.success, true);
-    assert.equal(result.session?.usage?.["prompt_tokens"], 120);
-    assert.equal(result.session?.usage?.["completion_tokens"], 80);
-    assert.equal(result.session?.usage?.["reasoning_tokens"], 20);
-    assert.equal(result.session?.usage?.["total_tokens"], 200);
+    assert.equal(result.session!.usage["prompt_tokens"], 120);
+    assert.equal(result.session!.usage["completion_tokens"], 80);
+    assert.equal(result.session!.usage["reasoning_tokens"], 20);
+    assert.equal(result.session!.usage["total_tokens"], 200);
   } finally {
     fixture.cleanup();
   }

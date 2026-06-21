@@ -5,12 +5,12 @@ import { resolve } from "node:path";
 import { buildRoomHostModuleDataUrl } from "../../src/js/modules/rooms/room-host-source.ts";
 import { createRoomBuiltArtifact, createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 
-async function importRoomHostModule(targetPath: string) {
+async function importRoomHostModule(targetPath: string): Promise<Record<string, unknown>> {
   const absolutePath = resolve(targetPath);
   const moduleUrl = await buildRoomHostModuleDataUrl(absolutePath, async (filePath) => {
     return await readFile(filePath, "utf8");
   });
-  return await import(`${moduleUrl}#smoke-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  return (await import(`${moduleUrl}#smoke-${Date.now()}-${Math.random().toString(16).slice(2)}`)) as Record<string, unknown>;
 }
 
 void test("laboratory build artifact host imports cleanly through the room host loader graph", async () => {

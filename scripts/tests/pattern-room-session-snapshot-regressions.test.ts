@@ -199,10 +199,10 @@ void test("pattern-room phase 13F round-trips source-linked local evidence witho
 
   assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
   assert.equal(snapshot.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
-  assert.equal(snapshot.overlay.localAuthoredEvidence[0]?.sourceLabel, "Snapshot source");
+  assert.equal(snapshot.overlay.localAuthoredEvidence[0].sourceLabel, "Snapshot source");
   assert.ok(restored);
   assert.equal(restored.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
-  assert.equal(restored.overlay.localAuthoredEvidence[0]?.sourceLabel, "Snapshot source");
+  assert.equal(restored.overlay.localAuthoredEvidence[0].sourceLabel, "Snapshot source");
 
   const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   roundTripState.restoreOverlay(restored.overlay, restored.guards);
@@ -305,11 +305,11 @@ void test("pattern-room phase 13C round-trips long text producer sources without
   assert.equal(PATTERN_ROOM_SNAPSHOT_VERSION, 1);
   const restoredSource = restored.overlay.localAuthoredSources[0];
   assert.equal(restoredSource?.id, "local-source-001");
-  assert.equal(restoredSource?.label, "Snapshot uzun metin");
-  assert.equal(restoredSource?.origin, "Arşiv defteri");
-  assert.equal(restoredSource?.note, text);
+  assert.equal(restoredSource.label, "Snapshot uzun metin");
+  assert.equal(restoredSource.origin, "Arşiv defteri");
+  assert.equal(restoredSource.note, text);
   assert.deepEqual(
-    restoredSource?.segments,
+    restoredSource.segments,
     producedSegments.map((segment, index) => {
       return {
         id: segment.segmentId,
@@ -694,8 +694,13 @@ void test("pattern-room phase 6B snapshot and UI layer stay free of storage and 
     "better-sqlite3",
   ];
 
-  for (const sourcePath of sourcePaths) {
-    const source = await readFile(resolve(sourcePath), "utf8");
+  const sourceContents = await Promise.all(
+    sourcePaths.map(async (sourcePath) => {
+      const source = await readFile(resolve(sourcePath), "utf8");
+      return { sourcePath, source };
+    })
+  );
+  for (const { sourcePath, source } of sourceContents) {
     forbiddenRuntimeApis.forEach((runtimeApi) => {
       assert.equal(source.includes(runtimeApi), false, `${sourcePath} includes ${runtimeApi}`);
     });

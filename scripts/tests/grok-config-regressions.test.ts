@@ -44,17 +44,17 @@ void test("mcp provider config parser preserves selector matrix metadata while k
   const parsed = parseProviderConfig(process.cwd(), "grok");
 
   assert.ok(parsed, "grok provider config should parse");
-  assert.equal(typeof parsed?.selectors["sendButton"], "string");
-  assert.equal(typeof parsed?.selectorMatrix?.selectors?.["sendButton"]?.tr, "string");
-  assert.equal(typeof parsed?.selectorMatrix?.selectors?.["sendButton"]?.en, "string");
+  assert.equal(typeof parsed.selectors["sendButton"], "string");
+  assert.equal(typeof parsed.selectorMatrix?.selectors?.["sendButton"]?.tr, "string");
+  assert.equal(typeof parsed.selectorMatrix?.selectors?.["sendButton"]?.en, "string");
 
-  const flattened = flattenSelectors(parsed ?? grokConfig);
+  const flattened = flattenSelectors(parsed);
   assert.equal(
     flattened.some(
       (item) =>
         item.category === "selectorMatrix" &&
         item.key === "sendButton.tr" &&
-        item.selector === grokConfig.selectorMatrix?.selectors?.["sendButton"]?.tr
+        item.selector === grokConfig.selectorMatrix.selectors["sendButton"].tr
     ),
     true
   );

@@ -288,7 +288,10 @@ export class EntranceHallController {
     };
 
     const electronApi = window.electronAPI;
-    if (!electronApi?.readFile) {
+    const readFile = electronApi?.["readFile"] as
+      | ((path: string) => Promise<string | null>)
+      | undefined;
+    if (typeof readFile !== "function") {
       clearAvatar();
       return;
     }
@@ -329,7 +332,7 @@ export class EntranceHallController {
           return false;
         }
 
-        const imageData = await electronApi.readFile(candidate);
+        const imageData = await readFile(candidate);
         if (typeof imageData !== "string" || imageData === "") {
           return await tryLoadCandidate(index + 1);
         }

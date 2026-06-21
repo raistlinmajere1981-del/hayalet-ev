@@ -12,35 +12,32 @@ import { ROOM_SCHEMA_VERSION } from "../../src/types/rooms.ts";
 
 async function walkFiles(baseDir: string): Promise<string[]> {
   const entries = await readdir(baseDir, { withFileTypes: true });
-  const files: string[] = [];
-
-  for (const entry of entries) {
+  const pairs = entries.map((entry) => {
     const absolutePath = join(baseDir, entry.name);
     if (entry.isDirectory()) {
-      files.push(...(await walkFiles(absolutePath)));
-      continue;
+      return { kind: "dir" as const, absolutePath };
     }
-    files.push(absolutePath);
-  }
-
+    return { kind: "file" as const, absolutePath };
+  });
+  const subResults = await Promise.all(
+    pairs
+      .filter((p) => p.kind === "dir")
+      .map(async (p) => await walkFiles(p.absolutePath))
+  );
+  const files = pairs
+    .filter((p) => p.kind === "file")
+    .map((p) => p.absolutePath)
+    .concat(...subResults.flat());
   return files.sort((left, right) => left.localeCompare(right));
 }
 
 async function walkDirectories(baseDir: string): Promise<string[]> {
   const entries = await readdir(baseDir, { withFileTypes: true });
-  const directories: string[] = [];
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) {
-      continue;
-    }
-
-    const absolutePath = join(baseDir, entry.name);
-    directories.push(absolutePath);
-    directories.push(...(await walkDirectories(absolutePath)));
-  }
-
-  return directories.sort((left, right) => left.localeCompare(right));
+  const subDirs = entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => join(baseDir, entry.name));
+  const subResults = await Promise.all(subDirs.map(async (dir) => await walkDirectories(dir)));
+  return [...subDirs, ...subResults.flat()].sort((left, right) => left.localeCompare(right));
 }
 
 async function writeWorkspaceRoomFixture(baseDir: string, roomId: string): Promise<void> {
@@ -83,23 +80,33 @@ void test("workspace room packages stay free of generated bundle artifacts", asy
     .map((entry) => entry.name)
     .sort((left, right) => left.localeCompare(right));
 
-  for (const roomId of roomIds) {
-    const roomDir = join(workspaceRoot, roomId);
+  const roomChecks = await Promise.all(
+    roomIds.map(async (roomId) => {
+      const roomDir = join(workspaceRoot, roomId);
+      const roomDirectories = await walkDirectories(roomDir);
+      const roomFiles = await walkFiles(roomDir);
+      return {
+        roomId,
+        roomDir,
+        roomDirectories,
+        roomFiles,
+        hasDist: existsSync(join(roomDir, "dist")),
+        leakedCaches: roomDirectories.filter(
+          (dirPath) => dirPath.endsWith("/__pycache__") || dirPath.endsWith("\\__pycache__")
+        ),
+        leakedBundles: roomFiles.filter(
+          (filePath) => filePath.endsWith(".hevroom") || filePath.endsWith(".hevroom.json")
+        ),
+      };
+    })
+  );
+
+  for (const { roomId, hasDist, leakedCaches, leakedBundles } of roomChecks) {
     assert.equal(
-      existsSync(join(roomDir, "dist")),
+      hasDist,
       false,
       `${roomId} should not keep dist outputs in workspace`
     );
-
-    const roomDirectories = await walkDirectories(roomDir);
-    const roomFiles = await walkFiles(roomDir);
-    const leakedCaches = roomDirectories.filter(
-      (dirPath) => dirPath.endsWith("/__pycache__") || dirPath.endsWith("\\__pycache__")
-    );
-    const leakedBundles = roomFiles.filter(
-      (filePath) => filePath.endsWith(".hevroom") || filePath.endsWith(".hevroom.json")
-    );
-
     assert.deepEqual(
       leakedCaches.map((dirPath) => relative(workspaceRoot, dirPath)),
       [],
@@ -388,7 +395,7 @@ void test("startup sync repairs registry records whose generated runtime manifes
       "startup sync should rebuild missing generated runtime manifests before hydration"
     );
     assert.equal(syncResult.snapshot?.rooms.length, 1);
-    assert.equal(syncResult.snapshot?.rooms[0]?.id, "workspace-room");
+    assert.equal(syncResult.snapshot.rooms[0]?.id, "workspace-room");
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }
@@ -459,7 +466,7 @@ void test("startup sync restores legacy installed-only room sources before hydra
       rooms: Array<{ installedDir?: string; sourceDir?: string }>;
     };
     assert.equal(registry.rooms[0]?.sourceDir, join(workspaceRoot, "legacy-room"));
-    assert.equal(registry.rooms[0]?.installedDir, join(runtimeBuildRoot, "legacy-room", "runtime"));
+    assert.equal(registry.rooms[0].installedDir, join(runtimeBuildRoot, "legacy-room", "runtime"));
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }
@@ -534,26 +541,26 @@ void test("generic room core sources do not hardcode room-specific package ids",
     "scripts/rooms/build-room-bundle.mjs",
     "scripts/rooms/migrate-room-layouts.mjs",
   ];
-  const leaks: string[] = [];
-
-  for (const rootPath of coreRoots) {
-    if (!existsSync(rootPath)) {
-      continue;
-    }
-
-    const files = await walkFiles(rootPath);
-    for (const filePath of files) {
-      const relativePath = relative(resolve("."), filePath).replace(/\\/g, "/");
-      if (allowedPathSuffixes.includes(relativePath)) {
-        continue;
-      }
-
-      const content = await readFile(filePath, "utf8");
-      if (roomSpecificTokens.some((token) => content.includes(token))) {
-        leaks.push(relativePath);
-      }
-    }
-  }
+  const rootResults = await Promise.all(
+    coreRoots
+      .filter((rootPath) => existsSync(rootPath))
+      .map(async (rootPath) => {
+        const files = await walkFiles(rootPath);
+        const fileChecks = files
+          .map((filePath) => {
+            const relativePath = relative(resolve("."), filePath).replace(/\\/g, "/");
+            return { filePath, relativePath };
+          })
+          .filter(({ relativePath }) => !allowedPathSuffixes.includes(relativePath));
+        const contents = await Promise.all(
+          fileChecks.map(async ({ filePath }) => await readFile(filePath, "utf8"))
+        );
+        return fileChecks
+          .filter((_, i) => roomSpecificTokens.some((token) => contents[i]!.includes(token)))
+          .map(({ relativePath }) => relativePath);
+      })
+  );
+  const leaks = rootResults.flat();
 
   assert.deepEqual(
     leaks,

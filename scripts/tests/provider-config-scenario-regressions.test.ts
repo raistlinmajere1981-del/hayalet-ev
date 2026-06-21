@@ -12,11 +12,9 @@ const configs = [chatgptConfig, geminiConfig, grokConfig, opencodeConfig, openco
 
 void test("provider configs expose webview-test scenario metadata", () => {
   for (const config of configs) {
-    assert.ok(config.scenarios != null, `${config.id} should define scenarios`);
-    assert.ok(config.scenarios.webviewTest != null, `${config.id} should define webviewTest`);
     assert.equal(config.scenarios.webviewTest.id, "webview-test");
     assert.ok(
-      (config.scenarios.webviewTest.commands?.length ?? 0) >= 5,
+      (config.scenarios.webviewTest.commands.length ) >= 5,
       `${config.id} should seed webview-test commands`
     );
   }
@@ -78,10 +76,9 @@ void test("chatgpt, grok, and gemini expose a webview-sync scenario scaffold", (
   const syncConfigs = [chatgptConfig, geminiConfig, grokConfig];
 
   for (const config of syncConfigs) {
-    assert.ok(config.scenarios.webviewSync != null, `${config.id} should define webviewSync`);
     assert.equal(config.scenarios.webviewSync.id, "webview-sync");
     assert.deepEqual(
-      config.scenarios.webviewSync.commands?.map((command) => command.action),
+      config.scenarios.webviewSync.commands.map((command) => command.action),
       [
         "click",
         "wait",
@@ -93,7 +90,6 @@ void test("chatgpt, grok, and gemini expose a webview-sync scenario scaffold", (
         "refresh-conversation-list",
       ]
     );
-    assert.ok(config.webviewSync != null, `${config.id} should define webviewSync selectors`);
     assert.ok(config.webviewSync.sidebar.openButtonSelectors.length > 0);
     assert.ok(config.webviewSync.history.itemSelectors.length > 0);
     assert.ok(config.webviewSync.history.titleSelectors.length > 0);

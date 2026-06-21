@@ -82,7 +82,7 @@ void test("forge-room task editor updates and removes structured draft tasks wit
   assert.deepEqual(updated.validationMessages, ["Draft breakdown must contain 3 to 7 top-level tasks."]);
   const updatedTopLevelTasks = updated.draftTasks.filter((task) => task.level === 1);
   assert.equal(updatedTopLevelTasks[0]?.title, "Frame intake boundary");
-  assert.equal(updatedTopLevelTasks[0]?.dispatchMode, "compare");
+  assert.equal(updatedTopLevelTasks[0].dispatchMode, "compare");
   assert.equal(updated.draftTasks.filter((task) => task.level === 2).length, 2);
 
   const removed = removeForgeDraftTask({
@@ -116,7 +116,7 @@ void test("forge-room task editor updates approved dispatch settings and rebuild
 
   assert.equal(updated.validationMessage, null);
   assert.equal(updated.approvedTasks[0]?.dispatchMode, "compare");
-  assert.equal(updated.approvedTasks[0]?.personaPresetId, "gok");
+  assert.equal(updated.approvedTasks[0].personaPresetId, "gok");
   const assignments = rebuildQueuedAssignments(updated.approvedTasks, { contextDigest: null, runId: null, sessionRevision: null });
   assert.equal(assignments.length, 3);
   assert.deepEqual(

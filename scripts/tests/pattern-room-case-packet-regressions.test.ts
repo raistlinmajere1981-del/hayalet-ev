@@ -165,7 +165,7 @@ void test("pattern-room phase 15B case packet limits long previews without verdi
   assert.equal(packet.connections.length, 1);
   assert.equal(packet.limits.excerptMaxLength, 80);
   assert.equal(packet.evidence[0]?.excerptPreview.length, 80);
-  assert.match(packet.evidence[0]?.excerptPreview ?? "", /\.\.\.$/);
+  assert.match(packet.evidence[0].excerptPreview , /\.\.\.$/);
   assert.equal((packet.connections[0]?.notePreview ?? "").length, 80);
 
   assert.doesNotMatch(

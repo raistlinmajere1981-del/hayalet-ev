@@ -87,26 +87,26 @@ void test("queued process instance metadata survives normalized process state", 
     normalizeProfileArtifact(rawValue: unknown) {
       const source = toRecord(rawValue);
       return {
-        id: asNonEmptyString(source["id"]) || "artifact-1",
-        kind: asNonEmptyString(source["kind"]) || "artifact",
+        id: asNonEmptyString(source["id"]) ?? "artifact-1",
+        kind: asNonEmptyString(source["kind"]) ?? "artifact",
         path: asNonEmptyString(source["path"]),
         fileName: asNonEmptyString(source["fileName"]),
         label: asNonEmptyString(source["label"]),
-        createdAt: asNonEmptyString(source["createdAt"]) || "2026-04-20T10:00:00.000Z",
+        createdAt: asNonEmptyString(source["createdAt"]) ?? "2026-04-20T10:00:00.000Z",
         metadata: toRecord(source["metadata"]),
       };
     },
     normalizeProfileSignal(rawValue: unknown) {
       const source = toRecord(rawValue);
       return {
-        id: asNonEmptyString(source["id"]) || "signal-1",
-        laneId: asNonEmptyString(source["laneId"]) || "metadata-lineage",
-        kind: asNonEmptyString(source["kind"]) || "derived",
-        level: asNonEmptyString(source["level"]) || "low",
-        confidence: asNonEmptyString(source["confidence"]) || "low",
-        title: asNonEmptyString(source["title"]) || "Signal",
-        detail: asNonEmptyString(source["detail"]) || "",
-        evidenceCount: Math.max(0, Math.round(asNumber(source["evidenceCount"]) || 0)),
+        id: asNonEmptyString(source["id"]) ?? "signal-1",
+        laneId: asNonEmptyString(source["laneId"]) ?? "metadata-lineage",
+        kind: asNonEmptyString(source["kind"]) ?? "derived",
+        level: asNonEmptyString(source["level"]) ?? "low",
+        confidence: asNonEmptyString(source["confidence"]) ?? "low",
+        title: asNonEmptyString(source["title"]) ?? "Signal",
+        detail: asNonEmptyString(source["detail"]) ?? "",
+        evidenceCount: Math.max(0, Math.round(asNumber(source["evidenceCount"]) ?? 0)),
         artifactIds: [],
       };
     },
@@ -137,7 +137,7 @@ void test("queued process instance metadata survives normalized process state", 
     records: Record<string, Record<string, unknown>>;
   };
 
-  const mediaRecord = processState.records["media-analysis"] || {};
+  const mediaRecord = processState.records["media-analysis"] ?? {};
   assert.equal(
     toRecord(toRecord(mediaRecord["queuedProcessInstance"])["analysisScope"])["focus"],
     "visual"

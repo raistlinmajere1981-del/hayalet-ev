@@ -290,6 +290,7 @@ class FakeKonvaNode {
       return this.heightValue;
     }
     this.heightValue = value;
+    return;
   }
 
   moveToTop(): void {
@@ -318,6 +319,7 @@ class FakeKonvaNode {
       return this.positionValue;
     }
     this.positionValue = value;
+    return;
   }
 
   scale(): FakeStagePoint;
@@ -327,6 +329,7 @@ class FakeKonvaNode {
       return this.scaleValue;
     }
     this.scaleValue = value;
+    return;
   }
 
   to(): void {
@@ -344,6 +347,7 @@ class FakeKonvaNode {
       return this.widthValue;
     }
     this.widthValue = value;
+    return;
   }
 }
 
@@ -454,7 +458,7 @@ function createBackgammonUiStateHarness(): BackgammonUiStateHarness {
 
   const runtimeFactory = windowObject.GameRoomUiFactories?.createBackgammonUiStateRuntime;
   assert.equal(typeof runtimeFactory, "function");
-  const runtime = runtimeFactory!({
+  const runtime = (runtimeFactory as (deps: Record<string, unknown>) => BackgammonUiStateHarness["runtime"])({
     getState: () => state,
     roomId: "game-room",
     featureId: "backgammon",
@@ -552,7 +556,7 @@ function createGameRoomUiCoalescingHarness(
         getState: () => state,
         backgammonUi: {
           sanitizeGameState: (candidate: unknown) =>
-            candidate && typeof candidate === "object" && Array.isArray(candidate) === false
+            candidate != null && typeof candidate === "object" && Array.isArray(candidate) === false
               ? (candidate as Record<string, unknown>)
               : {},
           syncPreferencesFromGame: () => undefined,
@@ -598,21 +602,21 @@ function createGameRoomUiCoalescingHarness(
   const runtimeRegistry = windowObject["GameRoomUiRuntime"] as Record<string, unknown> | undefined;
   const createRuntime = runtimeRegistry?.["createGameRoomUiRuntime"] as (() => GameRoomUiCoalescingHarness["runtime"]) | undefined;
   assert.equal(typeof createRuntime, "function");
-  const runtime = createRuntime!();
+  const runtime = (createRuntime as () => GameRoomUiCoalescingHarness["runtime"])();
 
   return {
     flushFrame(): void {
       const callback = frames.shift();
       assert.equal(typeof callback, "function");
-      callback!(16);
+      (callback as (...args: unknown[]) => unknown)(16);
     },
     flushTimer(): void {
       let handle = timers.shift();
-      while (handle?.cleared) {
+      while (handle?.cleared === true) {
         handle = timers.shift();
       }
       assert.equal(typeof handle?.callback, "function");
-      handle!.callback();
+      (handle as NonNullable<typeof handle>).callback();
     },
     getFrameCount: () => frames.length,
     getRenderAttempts: () => renderAttempts,
@@ -635,21 +639,21 @@ void test("game-room workspace keeps the required Tavla package files", () => {
 });
 
 void test("game-room manifest validates with the Tavla-first room contract", () => {
-  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<string, unknown>;
   const validation = validateRoomManifest(manifest);
 
   assert.equal(validation.valid, true);
   assert.equal(validation.manifest?.id, "game-room");
-  assert.equal(validation.manifest?.defaultFeatureId, "backgammon");
+  assert.equal(validation.manifest.defaultFeatureId, "backgammon");
   assert.deepEqual(
-    validation.manifest?.features.map((feature) => feature.id),
+    validation.manifest.features.map((feature) => feature.id),
     ["backgammon", "team-tetris", "fate-knots"]
   );
-  assert.equal(validation.manifest?.runtime.uiEntry, "ui/index.html");
-  assert.equal(validation.manifest?.runtime.hostEntry, "host/index.js");
-  assert.equal(validation.manifest?.scene?.characterRosterPreset, "connected-plus-user");
-  assert.equal(validation.manifest?.scene?.characters?.length, 3);
-  assert.equal(validation.manifest?.scene?.chrome?.pageShellVariant, "immersive-stage");
+  assert.equal(validation.manifest.runtime.uiEntry, "ui/index.html");
+  assert.equal(validation.manifest.runtime.hostEntry, "host/index.js");
+  assert.equal(validation.manifest.scene?.characterRosterPreset, "connected-plus-user");
+  assert.equal(validation.manifest.scene.characters?.length, 3);
+  assert.equal(validation.manifest.scene.chrome?.pageShellVariant, "immersive-stage");
 });
 
 void test("game-room Tavla UI keeps the local idle target selection during snapshot sync", () => {
@@ -802,7 +806,7 @@ void test("game-room Tavla render keeps the board stage host stable across rail 
   const registry = windowObject["GameRoomUiFactories"] as Record<string, unknown>;
   const createRenderRuntime = registry["createBackgammonUiRenderRuntime"] as ((deps: Record<string, unknown>) => { renderBackgammon(root: MinimalFakeElement): void }) | undefined;
   assert.equal(typeof createRenderRuntime, "function");
-  const renderRuntime = createRenderRuntime!({
+  const renderRuntime = (createRenderRuntime as (deps: Record<string, unknown>) => { renderBackgammon(root: MinimalFakeElement): void })({
     getState: () => state,
     featureId: "backgammon",
     bootstrapText: (key: string) => key,
@@ -848,7 +852,7 @@ void test("game-room Tavla render keeps the board stage host stable across rail 
   assert.equal(initialSlotCards[0]?.dataset["selected"], "false");
   assert.equal(initialSlotCards[1]?.dataset["selected"], "true");
 
-  initialSlotCards[0]?.click();
+  initialSlotCards[0].click();
 
   assert.equal(state.preferences.target, "ai1");
   assert.equal(document.app.querySelector(".backgammon-button--primary")?.disabled, false);

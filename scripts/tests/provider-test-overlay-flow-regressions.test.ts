@@ -40,7 +40,7 @@ void test("renderers use generic scenario APIs for webview-test launch and progr
   assert.match(entranceContent, /const scenarioRequest =/);
   assert.match(entranceContent, /syncMode: state\.syncMode/);
   assert.match(entranceContent, /runProviderScenario\(scenarioRequest\)/);
-  assert.match(entranceContent, /onProviderScenarioProgress\(handler\)/);
+  assert.match(entranceContent, /onProgress\(handler\)/);
   assert.match(
     assistantContent,
     /runProviderScenario\(\{\s*slot: "ai0",\s*scenarioId: state\.scenarioId/s
@@ -54,7 +54,7 @@ void test("renderers expose stop controls wired to cancel the active scenario ru
 
   assert.match(entranceContent, /scenario-overlay__stop/);
   assert.match(entranceContent, /void this\.stopScenarioTest\(\)/);
-  assert.match(entranceContent, /cancelProviderScenario\(\{\s*runId: state\.runId\s*\}\)/);
+  assert.match(entranceContent, /cancelScenario\(\{\s*runId\s*\}\)/);
 
   assert.match(assistantContent, /assistant-test-panel__stop/);
   assert.match(assistantContent, /void this\._stopScenarioTest\(\)/);

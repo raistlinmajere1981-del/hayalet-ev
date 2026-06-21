@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import type { LabStoreEvent } from "../../rooms/laboratory/domain/lab-types.ts";
 import {
   assert,
@@ -624,7 +623,7 @@ void test("audio visualization selector prefers renderable current-run artifacts
       {
         id: "artifact-spectrogram-file-url",
         kind: "spectrogram",
-        previewUrl: null,
+        previewUrl: "file:///tmp/file-url-spectrogram.png",
         path: "/tmp/file-url-spectrogram.png",
         fileName: null,
         createdAt: new Date(Date.now() - 500).toISOString(),

@@ -165,7 +165,7 @@ void test("laboratory settings field metadata has localized labels and options",
     .forEach(function (fields) {
       fields.forEach(function (field) {
         fieldIds.add(field.id);
-        (field.options || []).forEach(function (option) {
+        (field.options ?? []).forEach(function (option) {
           optionValues.add(option.value);
         });
       });
@@ -208,7 +208,7 @@ void test("laboratory Turkish catalog does not keep known visible English leftov
   ];
   const issues = visibleKeys.filter(function (key) {
     return /Readiness|Transfer|Raw log|Codec|Preset|Lowpass|Highpass|Bandpass|Pipeline/.test(
-      trLeaves.get(key) || ""
+      trLeaves.get(key) ?? ""
     );
   });
 
@@ -253,7 +253,7 @@ void test("laboratory static i18n references resolve in both room catalogs", () 
       if (hasCatalogPath(enCatalog, key) && hasCatalogPath(trCatalog, key)) {
         continue;
       }
-      issues.push(`${file}:${getLineNumber(source, match.index ?? 0)} missing ${key}`);
+      issues.push(`${file}:${getLineNumber(source, match.index)}`);
     }
   }
 
@@ -278,7 +278,7 @@ void test("laboratory dynamic copy.t namespaces resolve in both room catalogs", 
       ) {
         continue;
       }
-      issues.push(`${file}:${getLineNumber(source, match.index ?? 0)} missing ${staticPrefix}`);
+      issues.push(`${file}:${getLineNumber(source, match.index)}`);
     }
   }
 

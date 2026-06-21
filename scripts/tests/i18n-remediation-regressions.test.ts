@@ -37,7 +37,7 @@ function listCatalogLeafPaths(
     if (typeof value === "string") {
       return [path.join(".")];
     }
-    if (value && typeof value === "object" && Array.isArray(value) === false) {
+    if (typeof value === "object" && Array.isArray(value) === false) {
       return listCatalogLeafPaths(value, path);
     }
     return [];
@@ -103,7 +103,7 @@ void test("catalog cleanup removes stale built-in keys and preserves translated 
     const enValue = getCatalogString(enPack?.catalog, entry.path);
     const trValue = getCatalogString(trPack?.catalog, entry.path);
 
-    assert.ok(enValue, `${entry.path.join(".")} should exist in EN catalog`);
+    assert.ok(enValue != null, `${entry.path.join(".")} should exist in EN catalog`);
     assert.equal(trValue, entry.tr);
     assert.notEqual(enValue, trValue, `${entry.path.join(".")} should differ between EN/TR`);
   }
@@ -345,8 +345,8 @@ void test("game-room UI smoke test reflects runtime locale updates", () => {
   const trCatalog = readRoomCatalog("tr");
 
   assert.equal(runtime.readyPayload?.["stage"], "ui-ready");
-  assert.equal(runtime.readyPayload?.["room"], "game-room");
-  assert.equal(runtime.readyPayload?.["feature"], "backgammon");
+  assert.equal(runtime.readyPayload["room"], "game-room");
+  assert.equal(runtime.readyPayload["feature"], "backgammon");
   assert.equal(
     findFirst(root, (element) => element.tagName === "h1")?.textContent,
     "Loading Game Room"

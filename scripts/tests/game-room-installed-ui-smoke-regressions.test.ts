@@ -88,7 +88,7 @@ function findFirst(
 
 function findByRole(root: FakeElement, role: string): FakeElement | null {
   return findFirst(root, (element) =>
-    String(element.dataset["fkRole"] || "")
+    String(element.dataset["fkRole"] ?? "")
       .split(/\s+/)
       .filter(Boolean)
       .includes(role)

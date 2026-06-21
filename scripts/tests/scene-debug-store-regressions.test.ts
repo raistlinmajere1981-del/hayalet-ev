@@ -163,7 +163,7 @@ void test("scene debug theme store supports draft and source round-trips with in
 
     const importedThemeModule = await import(
       `${pathToFileURL(themeStore.getSourcePath()).href}?t=${Date.now()}`
-    );
+    ) as { SCENE_CLICKABLE_DEFAULTS: typeof nextTheme };
     assert.deepEqual(importedThemeModule.SCENE_CLICKABLE_DEFAULTS, nextTheme);
 
     themeStore.clearDraft();

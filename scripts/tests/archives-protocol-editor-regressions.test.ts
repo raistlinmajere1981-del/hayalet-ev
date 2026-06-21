@@ -286,7 +286,7 @@ void test("archives protocol locale change reloads protocols when the page is op
       loadProtocols: async () => {
         loadProtocolsCalls += 1;
       },
-      applyTranslations: () => {
+      applyTranslations: async () => {
         applyTranslationsCalls += 1;
       },
     });

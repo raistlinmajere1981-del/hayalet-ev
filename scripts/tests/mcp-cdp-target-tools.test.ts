@@ -3,6 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import type { ToolEntry } from "../../mcp-server/core/registry.ts";
 import { createCdpTools } from "../../mcp-server/core/handlers/cdp-handlers.ts";
 import { handleSuggestTool } from "../../mcp-server/tools/tool-discovery.ts";
 import {
@@ -11,9 +12,17 @@ import {
   uiActionFlow,
 } from "../../mcp-server/tools/cdp-tools.ts";
 
+interface TestDef {
+  name: string;
+  inputSchema: {
+    type: string;
+    properties?: Record<string, { type?: string; enum?: string[] }>;
+  };
+}
+
 void test("cdp tool registry includes target-aware CDP tools", () => {
   const entries = createCdpTools();
-  const names = entries.map((entry: any) => entry.definition.name);
+  const names = entries.map((entry: ToolEntry) => (entry.definition as TestDef).name);
 
   assert.ok(names.includes("hev_list_cdp_instances"));
   assert.ok(names.includes("hev_list_cdp_targets"));
@@ -30,8 +39,11 @@ void test("cdp tool registry includes target-aware CDP tools", () => {
 
 void test("cdp tool schemas expose port-aware multi-instance routing", () => {
   const entries = createCdpTools();
-  const definitions: Map<string, any> = new Map(
-    entries.map((entry: any) => [entry.definition.name, entry.definition])
+  const definitions = new Map<string, TestDef>(
+    entries.map((entry: ToolEntry) => {
+      const def = entry.definition as TestDef;
+      return [def.name, def] as const;
+    })
   );
 
   const listInstances = definitions.get("hev_list_cdp_instances");
@@ -52,27 +64,45 @@ void test("cdp tool schemas expose port-aware multi-instance routing", () => {
   const actionFlow = definitions.get("hev_ui_action_flow");
   const failureBundle = definitions.get("hev_debug_failure_bundle");
 
-  assert.equal(listInstances?.inputSchema?.properties?.startPort?.type, "number");
-  assert.equal(listInstances?.inputSchema?.properties?.endPort?.type, "number");
-  assert.equal(checkConnection?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(listTargets?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(sendCommand?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(sendRaw?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(screenshot?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(targetInfo?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(inspectElement?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(queryElements?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(toggleMcpPanel?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(uiReport?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(networkRequests?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(consoleEvents?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(accessibilitySnapshot?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(layoutAudit?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(actionFlow?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(failureBundle?.inputSchema?.properties?.port?.type, "number");
-  assert.equal(uiReport?.inputSchema?.properties?.targetId?.type, "string");
-  assert.equal(networkRequests?.inputSchema?.properties?.reload?.type, "boolean");
-  assert.equal(actionFlow?.inputSchema?.properties?.actions?.type, "array");
+  assert.ok(listInstances !== undefined);
+  const listInstancesProps = listInstances.inputSchema.properties;
+  assert.ok(listInstancesProps !== undefined);
+  assert.equal(listInstancesProps["startPort"]?.type, "number");
+  assert.equal(listInstancesProps["endPort"]?.type, "number");
+  assert.equal(checkConnection?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(listTargets?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(sendCommand?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(sendRaw?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(screenshot?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(targetInfo?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(inspectElement?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(queryElements?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(toggleMcpPanel?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(uiReport?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(networkRequests?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(consoleEvents?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(accessibilitySnapshot?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(layoutAudit?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(actionFlow?.inputSchema.properties?.["port"]?.type, "number");
+  assert.equal(failureBundle?.inputSchema.properties?.["port"]?.type, "number");
+  if (typeof uiReport !== "undefined") {
+    const p = uiReport.inputSchema.properties;
+    if (typeof p !== "undefined") {
+      assert.equal(p["targetId"]?.type, "string");
+    }
+  }
+  if (typeof networkRequests !== "undefined") {
+    const p = networkRequests.inputSchema.properties;
+    if (typeof p !== "undefined") {
+      assert.equal(p["reload"]?.type, "boolean");
+    }
+  }
+  if (typeof actionFlow !== "undefined") {
+    const p = actionFlow.inputSchema.properties;
+    if (typeof p !== "undefined") {
+      assert.equal(p["actions"]?.type, "array");
+    }
+  }
 });
 
 void test("tool discovery recommends advanced CDP tools for raw CDP intents", () => {

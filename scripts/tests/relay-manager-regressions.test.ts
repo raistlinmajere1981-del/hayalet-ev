@@ -106,7 +106,7 @@ void test("AI-Assistant relay uses latest-message sync for ai0 thinking completi
   WebviewManager.syncConversation = (async () => {
     calledConversationSync += 1;
     return { success: true, messages: [{ role: "assistant", text: "from-conversation" }] };
-  }) as typeof WebviewManager.syncConversation;
+  }) as unknown as typeof WebviewManager.syncConversation;
 
   (
     WebviewManager as unknown as { syncLatestMessage: (...args: unknown[]) => Promise<unknown> }

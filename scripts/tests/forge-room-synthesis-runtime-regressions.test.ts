@@ -38,14 +38,17 @@ const synthesisTasks = [
   },
 ];
 
-const synthesisResponses: any = [
+const synthesisResponses = [
   {
     id: "forge-response-1",
     assignmentId: "forge-assignment-1",
+    contextDigest: null,
     taskId: "forge-task-1",
     seatId: "ai1" as const,
     roleId: "architect" as const,
     personaPresetId: null,
+    runId: null,
+    sessionRevision: null,
     summary: "Local export first.",
     body: "Use room-local export with a narrow intake boundary.",
     rawText: "",
@@ -57,10 +60,13 @@ const synthesisResponses: any = [
   {
     id: "forge-response-2",
     assignmentId: "forge-assignment-2",
+    contextDigest: null,
     taskId: "forge-task-1",
     seatId: "ai2" as const,
     roleId: "challenger" as const,
     personaPresetId: "rovo" as const,
+    runId: null,
+    sessionRevision: null,
     summary: "Risk-first guardrails.",
     body: "Keep the export minimal, but call out regression risk explicitly.",
     rawText: "",
@@ -71,7 +77,7 @@ const synthesisResponses: any = [
   },
 ];
 
-const synthesisConflicts: any = [
+const synthesisConflicts = [
   {
     id: "forge-conflict-1",
     taskId: "forge-task-1",
@@ -79,6 +85,7 @@ const synthesisConflicts: any = [
     status: "open" as const,
     summary: "The responses disagree on how much risk framing belongs in the handoff.",
     responseIds: ["forge-response-1", "forge-response-2"],
+    preferredResponseId: null,
     resolutionNote: null,
     createdAt: "2026-04-15T00:00:02.000Z",
   },
@@ -114,9 +121,9 @@ void test("forge-room synthesis runtime builds a prompt with response ids and pa
 
   assert.deepEqual(parsed.validationMessages, []);
   assert.equal(parsed.synthesis?.selectedResponseIds.length, 2);
-  assert.deepEqual(parsed.synthesis?.unresolvedConflictIds, ["forge-conflict-1"]);
-  assert.deepEqual(parsed.synthesis?.decisionTrace, ["Compare lane kept explicit risk framing."]);
-  assert.equal(parsed.synthesis?.provenance, null);
+  assert.deepEqual(parsed.synthesis.unresolvedConflictIds, ["forge-conflict-1"]);
+  assert.deepEqual(parsed.synthesis.decisionTrace, ["Compare lane kept explicit risk framing."]);
+  assert.equal(parsed.synthesis.provenance, null);
 });
 
 void test("forge-room synthesis runtime falls back to captured responses when the AI omits ids", () => {
@@ -135,6 +142,6 @@ void test("forge-room synthesis runtime falls back to captured responses when th
 
   assert.deepEqual(parsed.validationMessages, []);
   assert.equal(parsed.synthesis?.selectedResponseIds.length, 1);
-  assert.deepEqual(parsed.synthesis?.acceptanceCriteria, ["Repair Room can import the handoff JSON."]);
-  assert.equal(parsed.synthesis?.provenance, null);
+  assert.deepEqual(parsed.synthesis.acceptanceCriteria, ["Repair Room can import the handoff JSON."]);
+  assert.equal(parsed.synthesis.provenance, null);
 });

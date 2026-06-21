@@ -104,7 +104,7 @@ function readProtocolText(): string {
   assert.ok(spec);
   assert.equal(spec.scenario, PROTOCOL_SCENARIO);
 
-  const protocolPath = resolve(PATTERN_ROOM_ROOT, resolveRoomProtocolFilePath(spec)!);
+  const protocolPath = resolve(PATTERN_ROOM_ROOT, resolveRoomProtocolFilePath(spec) as string);
   assert.equal(existsSync(protocolPath), true);
   return readFileSync(protocolPath, "utf8");
 }

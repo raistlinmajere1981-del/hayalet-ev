@@ -364,11 +364,13 @@ class LifecycleManagerClass {
   _setupWebviewLogger(webview: Electron.WebviewTag, provider: string, providerId: string): void {
     try {
       const webContentsId = webview.getWebContentsId();
-      if (window.electronAPI?.setupWebviewLogger) {
-        window.electronAPI
-          .setupWebviewLogger(webContentsId, provider, providerId)
+      const setupWebviewLogger = window.electronAPI?.["setupWebviewLogger"] as
+        | ((webContentsId: number, provider: string, providerId: string) => Promise<void>)
+        | undefined;
+      if (setupWebviewLogger) {
+        setupWebviewLogger(webContentsId, provider, providerId)
           .then(() => {})
-          .catch((err) => {
+          .catch((err: unknown) => {
             const errorMessage = getErrorMessage(err);
             Logger.warnT(
               LogCategory.WEBVIEW,

@@ -339,11 +339,11 @@ export class FakeControllerDocument {
       typeof listener === "function"
         ? (listener)
         : (event: Event) => { listener.handleEvent(event); };
-    const listeners = this.listenerSets.get(type) || new Set<(event: Event) => void>();
+    const listeners = this.listenerSets.get(type) ?? new Set<(event: Event) => void>();
     listeners.add(handler);
     this.listenerSets.set(type, listeners);
     this.listeners.set(type, (event: Event) => {
-      Array.from(this.listenerSets.get(type) || []).forEach(function (candidate) {
+      Array.from(this.listenerSets.get(type) ?? []).forEach(function (candidate) {
         candidate(event);
       });
     });
@@ -370,7 +370,7 @@ export class FakeControllerDocument {
       return;
     }
     this.listeners.set(type, (event: Event) => {
-      Array.from(this.listenerSets.get(type) || []).forEach(function (candidate) {
+      Array.from(this.listenerSets.get(type) ?? []).forEach(function (candidate) {
         candidate(event);
       });
     });
@@ -378,12 +378,14 @@ export class FakeControllerDocument {
 }
 
 export class FakeDomElement {
-  closest(): null {
+  closest(_selector?: string): unknown {
     return null;
   }
 }
 
 export class FakeSelectionPanelTrigger extends FakeDomElement {
+  suggestionId: string | null = null;
+
   getAttribute(): string | null {
     return null;
   }
@@ -402,7 +404,7 @@ export class FakeSelectionSuggestionTarget extends FakeDomElement {
     super();
   }
 
-  override closest(selector?: string): any {
+  override closest(selector?: string): unknown {
     if (selector === "[data-lab-selection-suggestion]") {
       return this.trigger;
     }
@@ -414,7 +416,7 @@ export class FakeSelectionSuggestionTarget extends FakeDomElement {
 }
 
 export class FakePanelOnlyTarget extends FakeDomElement {
-  override closest(selector?: string): any {
+  override closest(selector?: string): unknown {
     return selector === "[data-lab-selection-panel]" ? new FakeSelectionPanelTrigger() : null;
   }
 }
@@ -463,7 +465,7 @@ export class FakeRoiDrawTarget extends FakeDomElement {
     super();
   }
 
-  override closest(selector?: string): any {
+  override closest(selector?: string): unknown {
     if (selector === "[data-lab-selection-roi-stage='true']") {
       return this.stage;
     }
@@ -478,7 +480,7 @@ export class FakeRoiClearTrigger {
 }
 
 export class FakeRoiClearTarget extends FakeDomElement {
-  override closest(selector?: string): any {
+  override closest(selector?: string): unknown {
     return selector === "[data-lab-selection-roi-clear]"
       ? (new FakeRoiClearTrigger())
       : null;
@@ -498,7 +500,7 @@ export class FakeInspectionModeTarget extends FakeDomElement {
     super();
   }
 
-  override closest(selector?: string): any {
+  override closest(selector?: string): unknown {
     if (selector === "[data-lab-selection-inspection-mode]") {
       return this.trigger;
     }
@@ -583,7 +585,7 @@ export class FakeMediaElement {
       typeof listener === "function"
         ? (listener)
         : (event: Event) => { listener.handleEvent(event); };
-    const existing = this.listeners.get(type) || new Set<(event: Event) => void>();
+    const existing = this.listeners.get(type) ?? new Set<(event: Event) => void>();
     existing.add(handler);
     this.listeners.set(type, existing);
   }
@@ -609,6 +611,7 @@ export class FakeMediaElement {
     }
     this.dispatch("play");
     await Promise.resolve();
+    return undefined;
   }
 
   pause() {
@@ -618,14 +621,14 @@ export class FakeMediaElement {
   }
 
   dispatch(type: string) {
-    const handlers = Array.from(this.listeners.get(type) || []);
+    const handlers = Array.from(this.listeners.get(type) ?? []);
     handlers.forEach(function (handler) {
       handler({ type } as unknown as Event);
     });
   }
 
   listenerCount(type: string) {
-    return (this.listeners.get(type) || new Set()).size;
+    return (this.listeners.get(type) ?? new Set()).size;
   }
 }
 
@@ -721,7 +724,7 @@ export class FakeTimelineActionElement {
     if (selector === "[data-lab-action]") {
       return this;
     }
-    return selector.includes(this.dataset["labAction"]!) ? this : null;
+    return selector.includes(this.dataset["labAction"] as string) ? this : null;
   }
 }
 
@@ -769,7 +772,7 @@ export class FakeDualPreviewDocument extends FakeControllerDocument {
   }
 
   querySelector(selector: string) {
-    return this.queryMap.get(selector) || null;
+    return this.queryMap.get(selector) ?? null;
   }
 
   querySelectorAll(selector: string) {
@@ -992,6 +995,44 @@ export class FakeVisualizerAudioContext {
 
 export class FakeVisualizerWindow {
   static imageLoadBehavior = new Map<string, "load" | "error" | "defer">();
+  static createFakeImageClass(
+    deferredImages: Map<
+      string,
+      Array<{ onerror: null | (() => void); onload: null | (() => void) }>
+    >
+  ): typeof Image {
+    return class FakeImage {
+      height = 120;
+      naturalHeight = 120;
+      naturalWidth = 1200;
+      onerror: null | (() => void) = null;
+      onload: null | (() => void) = null;
+      private _src = "";
+      width = 1200;
+
+      get src() {
+        return this._src;
+      }
+
+      set src(value: string) {
+        this._src = value;
+        queueMicrotask(() => {
+          const behavior = FakeVisualizerWindow.imageLoadBehavior.get(value) ?? "load";
+          if (behavior === "defer") {
+            const pending = deferredImages.get(value) ?? [];
+            pending.push(this);
+            deferredImages.set(value, pending);
+            return;
+          }
+          if (behavior === "error") {
+            this.onerror?.();
+            return;
+          }
+          this.onload?.();
+        });
+      }
+    } as unknown as typeof Image;
+  }
 
   AudioContext = FakeVisualizerAudioContext as unknown as typeof AudioContext;
   Image: typeof Image;
@@ -1008,38 +1049,7 @@ export class FakeVisualizerWindow {
   scheduledFrames = new Map<number, FrameRequestCallback>();
 
   constructor() {
-    const windowRef = this;
-    this.Image = class FakeImage {
-      height = 120;
-      naturalHeight = 120;
-      naturalWidth = 1200;
-      onerror: null | (() => void) = null;
-      onload: null | (() => void) = null;
-      private _src = "";
-      width = 1200;
-
-      get src() {
-        return this._src;
-      }
-
-      set src(value: string) {
-        this._src = value;
-        queueMicrotask(() => {
-          const behavior = FakeVisualizerWindow.imageLoadBehavior.get(value) || "load";
-          if (behavior === "defer") {
-            const pending = windowRef.deferredImages.get(value) || [];
-            pending.push(this);
-            windowRef.deferredImages.set(value, pending);
-            return;
-          }
-          if (behavior === "error") {
-            this.onerror?.();
-            return;
-          }
-          this.onload?.();
-        });
-      }
-    } as unknown as typeof Image;
+    this.Image = FakeVisualizerWindow.createFakeImageClass(this.deferredImages);
   }
 
   addEventListener() {}
@@ -1047,9 +1057,9 @@ export class FakeVisualizerWindow {
   async fetch(url: string) {
     this.fetchCalls.push(url);
     return await Promise.resolve({
-      arrayBuffer: async () => new ArrayBuffer(16),
+      arrayBuffer: () => new ArrayBuffer(16),
       ok: true,
-    } as Response);
+    } as unknown as Response);
   }
 
   cancelAnimationFrame(id: number) {
@@ -1058,7 +1068,7 @@ export class FakeVisualizerWindow {
 
   flushFrame(timestamp = 16) {
     const nextFrame = this.scheduledFrames.entries().next();
-    if (nextFrame.done) {
+    if (nextFrame.done === true) {
       return;
     }
     const [frameId, callback] = nextFrame.value;
@@ -1067,7 +1077,7 @@ export class FakeVisualizerWindow {
   }
 
   flushDeferredImage(url: string) {
-    const pending = this.deferredImages.get(url) || [];
+    const pending = this.deferredImages.get(url) ?? [];
     this.deferredImages.delete(url);
     pending.forEach(function (image) {
       image.onload?.();
@@ -1114,7 +1124,7 @@ export class FakeVisualizerDocument {
       typeof listener === "function"
         ? (listener)
         : (event: Event) => { listener.handleEvent(event); };
-    const existing = this.listeners.get(type) || new Set<(event: Event) => void>();
+    const existing = this.listeners.get(type) ?? new Set<(event: Event) => void>();
     existing.add(handler);
     this.listeners.set(type, existing);
   }
@@ -1132,7 +1142,7 @@ export class FakeVisualizerDocument {
   }
 
   dispatch(type: string) {
-    Array.from(this.listeners.get(type) || []).forEach(function (handler) {
+    Array.from(this.listeners.get(type) ?? []).forEach(function (handler) {
       handler({ type } as unknown as Event);
     });
   }

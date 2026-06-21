@@ -13,13 +13,13 @@ import {
 void test("default settings scaffold user email, local mail account, and us1 selected account", () => {
   const settings = defaultSettings();
 
-  assert.equal(settings.user?.email, "");
-  assert.equal(settings.integrations?.mailTransport?.localAccount, null);
-  assert.equal(settings.integrations?.us1Relay?.enabled, false);
-  assert.equal(settings.integrations?.us1Relay?.trustState, "unknown");
-  assert.equal(settings.us1Slot?.communicationSystem, "mail");
-  assert.equal(settings.us1Slot?.selectedIdentityId, null);
-  assert.equal(settings.us1Slot?.selectedAccountId, null);
+  assert.equal(settings.user!.email, "");
+  assert.equal(settings.integrations!.mailTransport!.localAccount, null);
+  assert.equal(settings.integrations!.us1Relay!.enabled, false);
+  assert.equal(settings.integrations!.us1Relay!.trustState, "unknown");
+  assert.equal(settings.us1Slot!.communicationSystem, "mail");
+  assert.equal(settings.us1Slot!.selectedIdentityId, null);
+  assert.equal(settings.us1Slot!.selectedAccountId, null);
 });
 
 void test("normalize settings backfills singleton local mail account from legacy mail accounts", () => {
@@ -44,8 +44,8 @@ void test("normalize settings backfills singleton local mail account from legacy
     },
   });
 
-  assert.equal(normalized.integrations?.mailTransport?.localAccount?.id, "mail_local_example_com");
-  assert.equal(normalized.user?.email, "local@example.com");
+  assert.equal(normalized.integrations!.mailTransport!.localAccount!.id, "mail_local_example_com");
+  assert.equal(normalized.user!.email, "local@example.com");
 });
 
 void test("normalize settings keeps localAccount empty until a mail account is connected", () => {
@@ -70,8 +70,8 @@ void test("normalize settings keeps localAccount empty until a mail account is c
     },
   });
 
-  assert.equal(normalized.integrations?.mailTransport?.localAccount, null);
-  assert.equal(normalized.user?.email, "");
+  assert.equal(normalized.integrations!.mailTransport!.localAccount, null);
+  assert.equal(normalized.user!.email, "");
 });
 
 void test("normalize settings derives us1 selected account id from legacy selected remote user id", () => {
@@ -99,10 +99,10 @@ void test("normalize settings derives us1 selected account id from legacy select
   });
 
   assert.equal(
-    normalized.us1Slot?.selectedAccountId,
+    normalized.us1Slot!.selectedAccountId,
     buildRemoteEmailAccountId("remote@example.com")
   );
-  assert.equal(normalized.us1Slot?.selectedIdentityId, "remote@example.com");
+  assert.equal(normalized.us1Slot!.selectedIdentityId, "remote@example.com");
   assert.deepEqual(
     normalized.accounts.map((account) => ({ id: account.id, provider: account.provider })),
     [
@@ -114,8 +114,8 @@ void test("normalize settings derives us1 selected account id from legacy select
     ]
   );
   assert.equal(
-    normalized.accounts.find((account) => account.provider === "remote-email")?.remoteEmail
-      ?.linkedLocalMailAccountId,
+    normalized.accounts.find((account) => account.provider === "remote-email")!.remoteEmail!
+      .linkedLocalMailAccountId,
     "mail_local_example_com"
   );
 });
@@ -138,9 +138,9 @@ void test("normalize settings derives legacy remote identity from selected remot
     },
   });
 
-  assert.equal(normalized.us1Slot?.selectedRemoteUserId, "remote@example.com");
-  assert.equal(normalized.us1Slot?.selectedIdentityId, "remote@example.com");
-  assert.equal(normalized.us1Slot?.selectedAccountId, selectedAccountId);
+  assert.equal(normalized.us1Slot!.selectedRemoteUserId, "remote@example.com");
+  assert.equal(normalized.us1Slot!.selectedIdentityId, "remote@example.com");
+  assert.equal(normalized.us1Slot!.selectedAccountId, selectedAccountId);
 });
 
 void test("normalize settings keeps us1 selected account id aligned with selected remote identity", () => {
@@ -162,7 +162,7 @@ void test("normalize settings keeps us1 selected account id aligned with selecte
   });
 
   assert.equal(
-    normalized.us1Slot?.selectedAccountId,
+    normalized.us1Slot!.selectedAccountId,
     buildRemoteEmailAccountId("remote@example.com")
   );
 });
@@ -187,10 +187,10 @@ void test("normalize settings backfills remote users from stored remote email ac
     ],
   });
 
-  assert.equal(normalized.remoteUsers?.length, 1);
-  assert.equal(normalized.remoteUsers?.[0]?.remoteUserId, "remote@example.com");
-  assert.equal(normalized.remoteUsers?.[0]?.linkedMailAccountId, "mail_local_example_com");
-  assert.equal(normalized.accounts[0]?.remoteEmail?.pendingIncoming, true);
+  assert.equal(normalized.remoteUsers!.length, 1);
+  assert.equal(normalized.remoteUsers![0]!.remoteUserId, "remote@example.com");
+  assert.equal(normalized.remoteUsers![0]!.linkedMailAccountId, "mail_local_example_com");
+  assert.equal(normalized.accounts[0]!.remoteEmail!.pendingIncoming, true);
 });
 
 void test("normalize settings preserves rejected remote handshake state", () => {

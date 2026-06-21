@@ -305,12 +305,13 @@ export class WebviewPanel {
         ai1WebviewEl.dataset["eventsSetup"] = "true";
 
         const ai1PreloadAttr = ai1WebviewEl.getAttribute("preload");
+        const getPreloadPath = window.electronAPI?.["getPreloadPath"];
         if (
-          window.electronAPI?.getPreloadPath !== undefined &&
+          typeof getPreloadPath === "function" &&
           (ai1PreloadAttr === null || ai1PreloadAttr === "")
         ) {
           try {
-            const preloadPath = await window.electronAPI.getPreloadPath("ai1");
+            const preloadPath = await getPreloadPath("ai1");
             if (preloadPath !== "") {
               ai1WebviewEl.setAttribute("preload", preloadPath);
               this.addLog(
@@ -347,12 +348,13 @@ export class WebviewPanel {
         ai2WebviewEl.dataset["eventsSetup"] = "true";
 
         const ai2PreloadAttr = ai2WebviewEl.getAttribute("preload");
+        const getPreloadPath2 = window.electronAPI?.["getPreloadPath"];
         if (
-          window.electronAPI?.getPreloadPath !== undefined &&
+          typeof getPreloadPath2 === "function" &&
           (ai2PreloadAttr === null || ai2PreloadAttr === "")
         ) {
           try {
-            const preloadPath = await window.electronAPI.getPreloadPath("ai2");
+            const preloadPath = await getPreloadPath2("ai2");
             if (preloadPath !== "") {
               ai2WebviewEl.setAttribute("preload", preloadPath);
               this.addLog(
@@ -539,11 +541,15 @@ export class WebviewPanel {
       return;
     }
 
-    void electronApi.cancelProviderScenario({ runId }).catch((error) => {
+    const cancelScenario = electronApi["cancelProviderScenario"];
+    if (typeof cancelScenario !== "function") {
+      return;
+    }
+    void Promise.resolve(cancelScenario({ runId })).catch((error: unknown) => {
       Logger.warn(
         LogCategory.ENTRANCE,
         providerTestT("scenario.cancelFailed", {
-          message: getErrorMessage(error as Error),
+          message: getErrorMessage(error),
         })
       );
     });
@@ -946,7 +952,11 @@ export class WebviewPanel {
       this.updateScenarioProgress(event);
     };
     this.providerTestProgressHandler = handler;
-    electronApi.onProviderScenarioProgress(handler);
+    const onProgress = electronApi["onProviderScenarioProgress"];
+    if (typeof onProgress !== "function") {
+      throw new Error(providerTestT("errors.electronApiUnavailable"));
+    }
+    onProgress(handler);
 
     try {
       state.phase = "running";
@@ -973,7 +983,11 @@ export class WebviewPanel {
               slot,
               scenarioId: state.scenarioId,
             };
-      const results = (await electronApi.runProviderScenario(scenarioRequest)) as ProviderTestSuite;
+      const runProviderScenario = electronApi["runProviderScenario"];
+      if (typeof runProviderScenario !== "function") {
+        throw new Error(providerTestT("errors.electronApiUnavailable"));
+      }
+      const results = (await runProviderScenario(scenarioRequest)) as ProviderTestSuite;
 
       if (results.refreshedConfig) {
         ProviderRegistry.update(results.refreshedConfig.id, results.refreshedConfig);
@@ -1022,7 +1036,10 @@ export class WebviewPanel {
       );
     } finally {
       const progressHandler = this.providerTestProgressHandler;
-      electronApi.offProviderScenarioProgress(progressHandler);
+      const offProviderScenarioProgress = electronApi["offProviderScenarioProgress"];
+      if (typeof offProviderScenarioProgress === "function") {
+        offProviderScenarioProgress(progressHandler);
+      }
       this.providerTestProgressHandler = null;
     }
   }
@@ -1044,7 +1061,11 @@ export class WebviewPanel {
     this.renderScenarioOverlay();
 
     try {
-      await electronApi.cancelProviderScenario({ runId: state.runId });
+      const cancelScenario = electronApi["cancelProviderScenario"];
+      if (typeof cancelScenario !== "function") {
+        return;
+      }
+      await cancelScenario({ runId: state.runId });
     } catch (error) {
       state.message = getErrorMessage(error);
       this.renderScenarioOverlay();
@@ -1099,7 +1120,7 @@ export class WebviewPanel {
                 Logger.error(
                   LogCategory.ENTRANCE,
                   providerTestT("modal.copyFailed", {
-                    message: getErrorMessage(error as Error),
+                    message: getErrorMessage(error),
                   })
                 );
               });
@@ -1543,7 +1564,10 @@ export class WebviewPanel {
   destroy(): void {
     const progressHandler = this.providerTestProgressHandler;
     if (progressHandler !== null) {
-      window.electronAPI?.offProviderTestProgress(progressHandler);
+      const offTestProgress = window.electronAPI?.["offProviderTestProgress"];
+      if (typeof offTestProgress === "function") {
+        offTestProgress(progressHandler);
+      }
       this.providerTestProgressHandler = null;
     }
 

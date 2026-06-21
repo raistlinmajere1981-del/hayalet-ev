@@ -112,10 +112,10 @@ void test("provider-state thinking transition drives traffic listeners", () => {
     });
 
     const state = TrafficManager.state[slot];
-    assert.equal(state?.status.thinking, "idle");
-    assert.equal(state?.thinkingState, "idle");
-    assert.equal(state?.thinkingJustEnded, true);
-    assert.equal(typeof state?.thinkingEndedAt, "number");
+    assert.equal(state.status.thinking, "idle");
+    assert.equal(state.thinkingState, "idle");
+    assert.equal(state.thinkingJustEnded, true);
+    assert.equal(typeof state.thinkingEndedAt, "number");
     assert.equal(timerCapture.scheduled.length, 1);
     assert.equal(
       snapshots.some(
@@ -133,7 +133,7 @@ void test("provider-state thinking transition drives traffic listeners", () => {
     );
   } finally {
     timerCapture.restore();
-    TrafficManager.state[slot] = originalState as any;
+    if (originalState !== undefined) TrafficManager.state[slot] = originalState;
     TrafficManager.listeners = originalListeners;
     if (originalRunner === undefined) {
       delete TrafficManager._runners[slot];
@@ -181,11 +181,11 @@ void test("provider-state ready transition marks loading as just ended", () => {
     });
 
     const state = TrafficManager.state[slot];
-    assert.equal(state?.status.loading, "idle");
-    assert.equal(state?.readyState, "ready");
-    assert.equal(state?.loadingActive, false);
-    assert.equal(state?.loadingJustEnded, true);
-    assert.equal(typeof state?.loadingEndedAt, "number");
+    assert.equal(state.status.loading, "idle");
+    assert.equal(state.readyState, "ready");
+    assert.equal(state.loadingActive, false);
+    assert.equal(state.loadingJustEnded, true);
+    assert.equal(typeof state.loadingEndedAt, "number");
     assert.equal(timerCapture.scheduled.length, 1);
     assert.equal(
       (snapshots[snapshots.length - 1] as { readyState?: string } | undefined)?.readyState,
@@ -193,7 +193,7 @@ void test("provider-state ready transition marks loading as just ended", () => {
     );
   } finally {
     timerCapture.restore();
-    TrafficManager.state[slot] = originalState as any;
+    if (originalState !== undefined) TrafficManager.state[slot] = originalState;
     TrafficManager.listeners = originalListeners;
     if (originalRunner === undefined) {
       delete TrafficManager._runners[slot];
@@ -259,8 +259,9 @@ void test("thinking ends with timeout reason when stop button stays hidden witho
   );
 
   assert.equal(secondProbe.indicator, "idle");
-  assert.equal(secondProbe.event?.type, "thinking-ended");
-  assert.equal(secondProbe.event?.reason, "timeout");
+  assert.ok(secondProbe.event != null);
+  assert.equal(secondProbe.event.type, "thinking-ended");
+  assert.equal(secondProbe.event.reason, "timeout");
 });
 
 void test("default-page to conversation navigation triggers loading when skip flag is not set", () => {
@@ -276,11 +277,11 @@ void test("default-page to conversation navigation triggers loading when skip fl
 
     TrafficManager._handleNavigation(slot, "https://chatgpt.com/c/abc");
 
-    assert.equal(TrafficManager.state[slot]?.status?.loading, "busy");
-    assert.equal(TrafficManager.state[slot]?.loadingActive, true);
+    assert.equal(TrafficManager.state[slot].status.loading, "busy");
+    assert.equal(TrafficManager.state[slot].loadingActive, true);
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
-    TrafficManager.state[slot] = originalState as any;
+    if (originalState !== undefined) TrafficManager.state[slot] = originalState;
     TrafficManager._skipNextLoading[slot] = originalSkip as boolean;
   }
 });
@@ -303,9 +304,11 @@ void test("loading is forced to idle when thinking becomes busy during loading",
     documentScope.document = { getElementById: () => null };
 
     const now = Date.now();
-    (TrafficManager.webviews as any)[slot] = {
-      executeJavaScript: async () => ({
-        href: "https://chatgpt.com/c/abc",
+    const mockWebview = {
+      executeJavaScript: async () => {
+        await Promise.resolve();
+        return {
+          href: "https://chatgpt.com/c/abc",
         sendState: "disabled",
         stopVisible: true,
         voiceMode: false,
@@ -314,10 +317,15 @@ void test("loading is forced to idle when thinking becomes busy during loading",
           scrollTop: 0,
           scrollHeight: 200,
           clientHeight: 100,
-          atBottom: true,
-          lastChange: now,
+
+          scrollLeft: 0,
+          scrollWidth: 800,
+          clientWidth: 400,
         },
-      }),
+        isSameOrigin: true,
+        isReady: true,
+      };
+      },
       addEventListener: () => {},
       removeEventListener: () => {},
       getWebContentsId: () => 1,
@@ -325,18 +333,19 @@ void test("loading is forced to idle when thinking becomes busy during loading",
       isLoading: () => false,
       getWebContents: () => ({ isLoading: () => false }),
     };
+    TrafficManager.webviews[slot] = mockWebview as unknown as typeof TrafficManager.webviews[typeof slot];
 
     TrafficManager._handleNavigation(slot, "https://chatgpt.com/c/abc");
-    assert.equal(TrafficManager.state[slot]?.status?.loading, "busy");
+    assert.equal(TrafficManager.state[slot].status.loading, "busy");
 
     await TrafficManager.probe(slot);
 
-    assert.equal(TrafficManager.state[slot]?.status?.thinking, "busy");
-    assert.equal(TrafficManager.state[slot]?.status?.loading, "idle");
-    assert.equal(TrafficManager.state[slot]?.loadingActive, false);
+    assert.equal(TrafficManager.state[slot].status.thinking, "busy");
+    assert.equal(TrafficManager.state[slot].status.loading, "idle");
+    assert.equal(TrafficManager.state[slot].loadingActive, false);
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
-    TrafficManager.state[slot] = originalState as any;
+    if (originalState !== undefined) TrafficManager.state[slot] = originalState;
     TrafficManager._skipNextLoading[slot] = originalSkip as boolean;
     documentScope.document = originalDocument as { getElementById: (id: string) => HTMLElement | null; };
     if (originalWebview === undefined) {
@@ -365,9 +374,11 @@ void test("non-default navigation keeps loading busy even if thinking is busy", 
     documentScope.document = { getElementById: () => null };
 
     const now = Date.now();
-    (TrafficManager.webviews as any)[slot] = {
-      executeJavaScript: async () => ({
-        href: "https://chatgpt.com/c/next",
+    const mockWebview = {
+      executeJavaScript: async () => {
+        await Promise.resolve();
+        return {
+          href: "https://chatgpt.com/c/next",
         sendState: "disabled",
         stopVisible: true,
         voiceMode: false,
@@ -376,10 +387,15 @@ void test("non-default navigation keeps loading busy even if thinking is busy", 
           scrollTop: 0,
           scrollHeight: 200,
           clientHeight: 100,
-          atBottom: true,
-          lastChange: now,
+
+          scrollLeft: 0,
+          scrollWidth: 800,
+          clientWidth: 400,
         },
-      }),
+        isSameOrigin: true,
+        isReady: true,
+      };
+      },
       addEventListener: () => {},
       removeEventListener: () => {},
       getWebContentsId: () => 1,
@@ -387,18 +403,19 @@ void test("non-default navigation keeps loading busy even if thinking is busy", 
       isLoading: () => false,
       getWebContents: () => ({ isLoading: () => false }),
     };
+    TrafficManager.webviews[slot] = mockWebview as unknown as typeof TrafficManager.webviews[typeof slot];
 
     TrafficManager._handleNavigation(slot, "https://chatgpt.com/c/next");
-    assert.equal(TrafficManager.state[slot]?.status?.loading, "busy");
+    assert.equal(TrafficManager.state[slot].status.loading, "busy");
 
     await TrafficManager.probe(slot);
 
-    assert.equal(TrafficManager.state[slot]?.status?.thinking, "busy");
-    assert.equal(TrafficManager.state[slot]?.status?.loading, "busy");
-    assert.equal(TrafficManager.state[slot]?.loadingActive, true);
+    assert.equal(TrafficManager.state[slot].status.thinking, "busy");
+    assert.equal(TrafficManager.state[slot].status.loading, "busy");
+    assert.equal(TrafficManager.state[slot].loadingActive, true);
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
-    TrafficManager.state[slot] = originalState as any;
+    if (originalState !== undefined) TrafficManager.state[slot] = originalState;
     TrafficManager._skipNextLoading[slot] = originalSkip as boolean;
     documentScope.document = originalDocument as { getElementById: (id: string) => HTMLElement | null; };
     if (originalWebview === undefined) {

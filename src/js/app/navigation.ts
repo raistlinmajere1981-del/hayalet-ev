@@ -35,11 +35,12 @@ async function triggerGhostAgentHandoff(): Promise<void> {
   await updateAssistantRuntimeState(createGhostHandoffRuntimePatch(generateWorkflowSessionId()));
 
   const electronApi = window.electronAPI;
-  if (electronApi?.windowClose === undefined) {
+  const windowClose = electronApi?.["windowClose"];
+  if (typeof windowClose !== "function") {
     return;
   }
 
-  electronApi.windowClose();
+  windowClose();
 }
 
 function setUiModeDropdownExpanded(dropdown: HTMLElement, expanded: boolean): void {
@@ -109,14 +110,15 @@ async function handleUiModeOptionSelection(option: HTMLButtonElement): Promise<v
   }
 
   const electronApi = window.electronAPI;
-  if (!electronApi?.appRestart) {
+  const appRestart = electronApi?.["appRestart"];
+  if (typeof appRestart !== "function") {
     return;
   }
 
   const restartOptions = getUiModeRestartOptions(optionState);
 
   try {
-    await electronApi.appRestart({
+    await appRestart({
       forceFullRestart: true,
       uiMode: restartOptions.uiMode,
       sceneEditor: restartOptions.sceneEditor,

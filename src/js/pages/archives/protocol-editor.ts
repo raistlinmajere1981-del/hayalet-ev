@@ -490,7 +490,11 @@ export async function loadProtocolsFromApi(
     return await RoomProtocolRegistry.mergeProtocolMap({}, { locale: AppI18n.getLocale() });
   }
 
-  const result = await electronApi.loadProtocols();
+  const loadProtocols = electronApi['loadProtocols'] as (() => Promise<{ success: boolean; protocols?: Record<string, string> }>) | undefined;
+  if (typeof loadProtocols !== "function") {
+    return await RoomProtocolRegistry.mergeProtocolMap({}, { locale: AppI18n.getLocale() });
+  }
+  const result = await loadProtocols();
   if (result.success === true && result.protocols !== undefined) {
     return await RoomProtocolRegistry.mergeProtocolMap(result.protocols, {
       locale: AppI18n.getLocale(),
@@ -596,7 +600,11 @@ export async function saveProtocolContent(args: {
     return { success: false, message: archivesProtocolT("electronApiUnavailable") };
   }
 
-  const result = await electronApi.saveProtocol(selectedProtocolKey, content);
+  const saveProtocol = electronApi['saveProtocol'] as ((key: string, content: string) => Promise<{ success: boolean; message?: string }>) | undefined;
+  if (typeof saveProtocol !== "function") {
+    return { success: false, message: archivesProtocolT("electronApiUnavailable") };
+  }
+  const result = await saveProtocol(selectedProtocolKey, content);
   if (typeof result.message === "string" && result.message !== "") {
     return {
       success: result.success === true,

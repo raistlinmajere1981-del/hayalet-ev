@@ -28,12 +28,12 @@ import {
 
 const sourcePresets = JSON.parse(
   readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
-);
-const ytDlpForm = JSON.parse(readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8"));
+) as Record<string, unknown>;
+const ytDlpForm = JSON.parse(readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8")) as Record<string, unknown>;
 
 function getPipelineBlockIds(markup: string): string[] {
   return Array.from(markup.matchAll(/data-block-id="([^"]+)"/g), function (match) {
-    return match[1]!;
+    return match[1] as string;
   });
 }
 
@@ -1342,7 +1342,7 @@ void test("laboratory workspace asset preview resets timeline controls to the se
   assert.equal(timeline.startMs, null);
   assert.equal(timeline.endMs, null);
   assert.equal(timeline.activeSelection?.startMs, 0);
-  assert.equal(timeline.activeSelection?.endMs, 4200);
+  assert.equal(timeline.activeSelection.endMs, 4200);
   assert.match(surface.main, /data-duration="4200"/);
   assert.match(surface.main, /00:04\.200/);
   assert.doesNotMatch(surface.main, /01:12\.232/);
@@ -1565,7 +1565,7 @@ void test("laboratory analysis preparation groups default closed and expand on d
   const closedGroupToggle = closedDrawer.match(
     /<input[^>]*data-lab-action="analysis-prep-group-toggle"[^>]*data-lab-value="audio-signal"[^>]*>/
   )?.[0];
-  assert.ok(closedGroupToggle);
+  assert.ok(closedGroupToggle != null);
   assert.match(closedGroupToggle, /aria-checked="false"/);
   assert.match(closedGroupToggle, /data-selection-state="none"/);
   assert.doesNotMatch(closedGroupToggle, /\sdisabled(\s|>|\/)/);
@@ -1580,7 +1580,7 @@ void test("laboratory analysis preparation groups default closed and expand on d
   const signalToggle = openDrawer.match(
     /<input[^>]*data-lab-action="module-toggle"[^>]*data-lab-value="audio-signal::signal-health"[^>]*>/
   )?.[0];
-  assert.ok(signalToggle);
+  assert.ok(signalToggle != null);
   assert.doesNotMatch(signalToggle, /\schecked(\s|>)/);
   assert.match(
     openDrawer,
@@ -1597,7 +1597,7 @@ void test("laboratory analysis preparation parent and child toggles stay synchro
     return group.capabilityId === "audio-signal";
   });
   assert.equal(audioGroup?.selectionState, "full");
-  assert.ok(audioGroup?.modules.every((module) => module.enabled));
+  assert.ok(audioGroup.modules.every((module) => module.enabled));
   assert.deepEqual(store.getState().ui.workspace.analysisPrepExpandedCapabilityIds, []);
 
   store.dispatch({ type: "analysis-prep-group-toggled", capabilityId: "audio-signal" });
@@ -1605,7 +1605,7 @@ void test("laboratory analysis preparation parent and child toggles stay synchro
     return group.capabilityId === "audio-signal";
   });
   assert.equal(audioGroup?.selectionState, "none");
-  assert.ok(audioGroup?.modules.every((module) => !module.enabled));
+  assert.ok(audioGroup.modules.every((module) => !module.enabled));
   assert.deepEqual(store.getState().ui.workspace.analysisPrepExpandedCapabilityIds, []);
 
   store.dispatch({
@@ -1618,7 +1618,7 @@ void test("laboratory analysis preparation parent and child toggles stay synchro
   });
   assert.equal(audioGroup?.selectionState, "partial");
   assert.equal(
-    audioGroup?.modules.find((module) => module.moduleId === "signal-health")?.enabled,
+    audioGroup.modules.find((module) => module.moduleId === "signal-health")?.enabled,
     true
   );
   assert.ok(store.getState().selectedCapabilities.includes("audio-signal"));
@@ -1628,7 +1628,7 @@ void test("laboratory analysis preparation parent and child toggles stay synchro
   const partialGroupToggle = drawer.match(
     /<input[^>]*data-lab-action="analysis-prep-group-toggle"[^>]*data-lab-value="audio-signal"[^>]*>/
   )?.[0];
-  assert.ok(partialGroupToggle);
+  assert.ok(partialGroupToggle != null);
   assert.match(partialGroupToggle, /aria-checked="mixed"/);
   assert.match(partialGroupToggle, /data-lab-indeterminate="true"/);
   assert.match(partialGroupToggle, /data-selection-state="partial"/);
@@ -1640,12 +1640,12 @@ void test("laboratory analysis preparation parent and child toggles stay synchro
     return group.capabilityId === "audio-signal";
   });
   assert.equal(audioGroup?.selectionState, "full");
-  assert.ok(audioGroup?.modules.every((module) => module.enabled));
+  assert.ok(audioGroup.modules.every((module) => module.enabled));
   const fullDrawer = renderLabDrawer(store.getState(), renderWorkspaceSurface(store.getState()));
   const fullGroupToggle = fullDrawer.match(
     /<input[^>]*data-lab-action="analysis-prep-group-toggle"[^>]*data-lab-value="audio-signal"[^>]*>/
   )?.[0];
-  assert.ok(fullGroupToggle);
+  assert.ok(fullGroupToggle != null);
   assert.match(fullGroupToggle, /aria-checked="true"/);
   assert.match(fullGroupToggle, /data-lab-indeterminate="false"/);
   assert.match(fullGroupToggle, /data-selection-state="full"/);
@@ -1797,7 +1797,7 @@ void test("laboratory tool overlay lists room-local tool lifecycle actions insid
   store.dispatch({ type: "tool-manager-toggled", open: true });
   const state = store.getState();
   state.snapshot = {
-    ...(state.snapshot || {}),
+    ...(state.snapshot ?? {}),
     jobs: [
       {
         jobId: "job-yt-dlp-install",
@@ -1816,12 +1816,12 @@ void test("laboratory tool overlay lists room-local tool lifecycle actions insid
   state.toolState = {
     ...state.toolState,
     tools: {
-      ...((state.toolState["tools"]) || {}),
+      ...((state.toolState["tools"]) ?? {}),
       "yt-dlp": {
-        ...(((state.toolState["tools"] as Record<string, unknown>) || {})["yt-dlp"] as Record<
+        ...((state.toolState["tools"] as Record<string, unknown> | undefined)?.["yt-dlp"] ?? {}) as Record<
           string,
           unknown
-        >),
+        >,
         latestVersion: "2026.05.10",
         updateAvailable: true,
       },
@@ -3171,7 +3171,7 @@ void test("laboratory report overlay lists audio transport evidence once without
 
   const html = renderReportOverlay(store.getState());
 
-  assert.equal((html.match(/Audio anomaly/g) || []).length, 1);
+  assert.equal((html.match(/Audio anomaly/g) ?? []).length, 1);
 });
 
 void test("laboratory store applies optimistic source and workbench patches for source controls", () => {
@@ -3195,7 +3195,7 @@ void test("laboratory store applies optimistic source and workbench patches for 
 
   const state = store.getState();
   assert.equal(state.source?.["kind"], "audio");
-  assert.equal(state.source?.["mode"], "url");
+  assert.equal(state.source["mode"], "url");
   assert.equal(state.workbench["activeModuleId"], "audio-analysis");
   assert.equal(state.ui.toolManagerOpen, true);
 });

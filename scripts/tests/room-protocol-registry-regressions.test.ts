@@ -46,7 +46,7 @@ void test("RoomProtocolRegistry resolves manifest protocol metadata", async () =
   const teamTetrisResolved = RoomProtocolRegistry.resolve("game-room", "team-tetris-ai-opening");
 
   assert.equal(resolved?.key, "game-room-backgammon-user-start");
-  assert.equal(resolved?.title, "[START][GAME-ROOM][Tavla][USER-FIRST]");
+  assert.equal(resolved.title, "[START][GAME-ROOM][Tavla][USER-FIRST]");
   assert.equal(teamTetrisResolved?.key, "game-room-team-tetris-ai-opening");
   assert.deepEqual(RoomProtocolRegistry.listKnownKeys(), [
     "game-room-backgammon-user-start",

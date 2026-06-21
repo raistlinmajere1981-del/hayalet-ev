@@ -487,9 +487,9 @@ void test("addMessage renders assistant notice, historic preview card, and seman
     const previewImage = chatMessages.querySelector(".ds-attachment-card__image");
 
     assert.ok(reasoningSection);
-    assert.match(reasoningSection?.textContent ?? "", /Inspect session payload/u);
+    assert.match(reasoningSection.textContent , /Inspect session payload/u);
     assert.ok(patchSection);
-    assert.match(patchSection?.textContent ?? "", /chat-utils\.ts/u);
+    assert.match(patchSection.textContent , /chat-utils\.ts/u);
     assert.equal(noticeTitle?.textContent, t("message.runtimeNotice.limitTitle"));
     assert.equal(previewImage?.src, "https://example.test/assets/screen.png");
   } finally {
@@ -500,17 +500,17 @@ void test("addMessage renders assistant notice, historic preview card, and seman
 void test("addMessage keeps the change-approval interaction card render path active", async () => {
   const { document, restore } = installFakeDom({
     electronApi: {
-      loadSettings: async () => ({
+      loadSettings: () => ({
         assistantSlot: {
           accountId: "opencode_ui_opencode_at_opencode_com",
         },
       }),
-      opencodeServeStatus: async () => ({ running: true }),
-      assistantRuntimeRead: async () => ({
+      opencodeServeStatus: () => ({ running: true }),
+      assistantRuntimeRead: () => ({
         success: true,
         state: { desiredMode: "soft", phase: "idle" },
       }),
-      rovoInteractionContextRead: async () => ({
+      rovoInteractionContextRead: () => ({
         success: true,
         appMode: "app",
         effectiveMode: "app",
@@ -549,7 +549,7 @@ void test("addMessage keeps the change-approval interaction card render path act
 
     const approvalCard = chatMessages.querySelector(".rovo-interaction--approval");
     assert.ok(approvalCard);
-    assert.match(approvalCard?.textContent ?? "", /Revise the assistant message renderer/u);
+    assert.match(approvalCard.textContent , /Revise the assistant message renderer/u);
   } finally {
     restore();
   }
@@ -602,23 +602,23 @@ void test("sendComposerMessage keeps the Rovo card path when history sync falls 
   });
   const { document, restore } = installFakeDom({
     electronApi: {
-      opencodeUiApiProxy: async () => ({
+      opencodeUiApiProxy: () => ({
         success: true,
         data: {
           parts: [{ type: "text", text: tokenizedReply }],
         },
       }),
-      loadSettings: async () => ({
+      loadSettings: () => ({
         assistantSlot: {
           accountId: "opencode_ui_opencode_at_opencode_com",
         },
       }),
-      opencodeServeStatus: async () => ({ running: true }),
-      assistantRuntimeRead: async () => ({
+      opencodeServeStatus: () => ({ running: true }),
+      assistantRuntimeRead: () => ({
         success: true,
         state: { desiredMode: "soft", phase: "idle" },
       }),
-      rovoInteractionContextRead: async () => ({
+      rovoInteractionContextRead: () => ({
         success: true,
         appMode: "app",
         effectiveMode: "app",
@@ -639,7 +639,7 @@ void test("sendComposerMessage keeps the Rovo card path when history sync falls 
 
     await sendComposerMessage({
       runtime,
-      byId: (id) => document.getElementById(id) as any,
+      byId: <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null,
       showToast: () => {},
       ensureActiveSession: async () => "ses_chat_dom",
       loadSessionListAndRender: async () => {},
@@ -647,7 +647,7 @@ void test("sendComposerMessage keeps the Rovo card path when history sync falls 
         await withHistorySyncFallback(
           {
             runtime,
-            byId: (id) => document.getElementById(id) as any,
+            byId: <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null,
             initialUsageText: "Disk DB",
             clearChatArea: () => {},
             renderTodoPanel: () => {},
@@ -670,7 +670,7 @@ void test("sendComposerMessage keeps the Rovo card path when history sync falls 
 
     const approvalCard = chatMessages.querySelector(".rovo-interaction--approval");
     assert.ok(approvalCard);
-    assert.match(approvalCard?.textContent ?? "", /Keep the fallback interaction card visible/u);
+    assert.match(approvalCard.textContent , /Keep the fallback interaction card visible/u);
   } finally {
     restore();
   }
@@ -679,7 +679,7 @@ void test("sendComposerMessage keeps the Rovo card path when history sync falls 
 void test("sendComposerMessage renders a notice bubble for request-time limit failures", async () => {
   const { document, restore } = installFakeDom({
     electronApi: {
-      opencodeUiApiProxy: async () => ({
+      opencodeUiApiProxy: () => ({
         success: false,
         data: {
           message: "The usage limit has been reached",
@@ -695,7 +695,7 @@ void test("sendComposerMessage renders a notice bubble for request-time limit fa
 
     await sendComposerMessage({
       runtime,
-      byId: (id) => document.getElementById(id) as any,
+      byId: <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null,
       showToast: () => {},
       ensureActiveSession: async () => "ses_chat_dom",
       loadSessionListAndRender: async () => {},

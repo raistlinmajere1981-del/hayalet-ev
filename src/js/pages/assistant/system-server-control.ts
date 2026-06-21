@@ -10,8 +10,11 @@ export async function detectSystemActiveServerStatus(): Promise<SystemActiveServ
   }
 
   try {
-    if (typeof electronApi.opencodeServeStatus === "function") {
-      const status = await electronApi.opencodeServeStatus();
+    const opencodeServeStatus = electronApi["opencodeServeStatus"] as
+      | (() => Promise<SystemActiveServerStatus>)
+      | undefined;
+    if (typeof opencodeServeStatus === "function") {
+      const status = await opencodeServeStatus();
       if (status.running === true) {
         return {
           running: true,
@@ -24,8 +27,11 @@ export async function detectSystemActiveServerStatus(): Promise<SystemActiveServ
   }
 
   try {
-    if (typeof electronApi.opencodeServeFindRunning === "function") {
-      const status = await electronApi.opencodeServeFindRunning();
+    const opencodeServeFindRunning = electronApi["opencodeServeFindRunning"] as
+      | (() => Promise<SystemActiveServerStatus>)
+      | undefined;
+    if (typeof opencodeServeFindRunning === "function") {
+      const status = await opencodeServeFindRunning();
       if (status.running === true) {
         return {
           running: true,

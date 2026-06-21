@@ -10,7 +10,7 @@ type MockNode = {
   };
   innerText?: string;
   textContent?: string;
-  querySelector: (selector: string) => unknown | null;
+  querySelector: (selector: string) => unknown;
 };
 
 function createBubble(text: string): MockNode {
@@ -31,7 +31,7 @@ function createMessage(role: "user" | "assistant", text: string): MockNode {
     },
     innerText: text,
     textContent: text,
-    querySelector(selector: string): unknown | null {
+    querySelector(selector: string): unknown {
       return selector === ".ds-message__bubble" ? bubble : null;
     },
   };

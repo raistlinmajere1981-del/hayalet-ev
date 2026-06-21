@@ -1,24 +1,32 @@
 function minimizeToTaskbar(): void {
   try {
-    window.electronAPI?.windowMinimize();
+    const windowMinimize = window.electronAPI?.["windowMinimize"] as (() => void) | undefined;
+    windowMinimize?.();
   } catch {}
 }
 
 function minimizeToTray(): void {
   try {
-    window.electronAPI?.windowMinimizeToTray();
+    const windowMinimizeToTray = window.electronAPI?.["windowMinimizeToTray"] as
+      | (() => void)
+      | undefined;
+    windowMinimizeToTray?.();
   } catch {}
 }
 
 function toggleFullscreen(): void {
   try {
-    window.electronAPI?.windowToggleFullscreen();
+    const windowToggleFullscreen = window.electronAPI?.["windowToggleFullscreen"] as
+      | (() => void)
+      | undefined;
+    windowToggleFullscreen?.();
   } catch {}
 }
 
 function closeApp(): void {
   try {
-    window.electronAPI?.windowClose();
+    const windowClose = window.electronAPI?.["windowClose"] as (() => void) | undefined;
+    windowClose?.();
   } catch {}
 }
 
@@ -74,9 +82,11 @@ const windowManager = {
       case "toggleMenu":
         document.body.classList.toggle("menu-hidden");
         return true;
-      case "alwaysOnTop":
-        window.electronAPI?.windowToggleFullscreen();
+      case "alwaysOnTop": {
+        const toggleFs = window.electronAPI?.["windowToggleFullscreen"] as (() => void) | undefined;
+        toggleFs?.();
         return true;
+      }
       default:
         return setWindowState(action, payload);
     }

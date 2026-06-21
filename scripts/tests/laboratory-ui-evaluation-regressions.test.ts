@@ -24,6 +24,7 @@ import { createRoomBuiltArtifact } from "./helpers/room-installed-copy.ts";
 import { readCssWithImports } from "./helpers/css-imports.ts";
 import { importLabRootModuleWithDomStub } from "./laboratory-runtime-truth.helpers.ts";
 import type { LabDecisionSnapshot, LabRun } from "../../rooms/laboratory/domain/lab-types.ts";
+import type { LabWaveformTimelineModel } from "../../rooms/laboratory/ui/lab-waveform-timeline-types.ts";
 
 function readLabThemeSource() {
   return readCssWithImports("rooms/laboratory/ui/lab-theme.css");
@@ -58,11 +59,11 @@ class ElementStub {
     this.innerHtmlValue = value;
   }
 
-  querySelector(): null {
+  querySelector(_selector?: string): null {
     return null;
   }
 
-  querySelectorAll(): [] {
+  querySelectorAll(_selector?: string): [] {
     return [];
   }
 
@@ -223,7 +224,7 @@ function createMinimalLaboratoryUiEnvironment(options: MinimalLaboratoryUiEnviro
           callback() {
             callback(...args);
           },
-          delay: Number(delay) || 0,
+          delay: isNaN(Number(delay)) ? 0 : Number(delay),
           id,
         });
         return id;
@@ -266,7 +267,7 @@ function createMinimalLaboratoryUiEnvironment(options: MinimalLaboratoryUiEnviro
       });
       while (nextIndex >= 0) {
         const [timer] = queuedTimers.splice(nextIndex, 1);
-        timer!.callback();
+        (timer as NonNullable<typeof timer>).callback();
         nextIndex = queuedTimers.findIndex(function (candidate) {
           return candidate.delay <= maxDelay;
         });
@@ -317,12 +318,12 @@ class MountedRootElement extends ElementStub {
     this.mountedInnerHtmlValue = this.mountedInnerHtmlValue.replace(shellTag, nextTag);
   }
 
-  override querySelector(selector?: string): any {
+  override querySelector(selector?: string): null {
     if (this.mountedQueriesEnabled !== true) {
       return null;
     }
     if (selector === ".labx-shell" && this.innerHTML.includes('class="labx-shell"')) {
-      return new MountedQueryElement(this, selector);
+      return new MountedQueryElement(this, selector) as unknown as null;
     }
     return null;
   }
@@ -580,7 +581,7 @@ function createMountedLaboratoryTransitionEnvironment(options: { animationFrame?
 
 function createExecutionReadinessTimelineModel(
   overrides: Record<string, unknown> = {}
-): any {
+): LabWaveformTimelineModel {
   return {
     activeSelection: {
       id: "selection-1",
@@ -590,7 +591,6 @@ function createExecutionReadinessTimelineModel(
       createdAt: 1,
     },
     bookmarks: [],
-    dualPreviewActive: false,
     durationMs: 4000,
     endMs: 3000,
     startMs: 1000,
@@ -930,8 +930,8 @@ void test("laboratory mounted fallback logs missing region diagnostics before pr
 void test("laboratory YouTube source panel renders checked stream controls without import-only shell", () => {
   const sourcePresets = JSON.parse(
     readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
-  );
-  const ytDlpForm = JSON.parse(readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8"));
+  ) as Record<string, unknown>;
+  const ytDlpForm = JSON.parse(readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8")) as Record<string, unknown>;
   const store = createLabStore();
   store.dispatch({
     type: "snapshot-received",
@@ -1059,11 +1059,19 @@ void test("laboratory YouTube source panel renders checked stream controls witho
   assert.doesNotMatch(panelMarkup, /data-lab-field="project-import\.youtubeCustom\.format"/);
   assert.doesNotMatch(panelMarkup, /class="labx-strategy-list"/);
 
-  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
-  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8")) as Record<string, unknown>;
+  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")) as Record<string, unknown>;
   assert.deepEqual(
-    Object.keys(enTranslations.mediaAnalysis.source.youtubeImport).sort(),
-    Object.keys(trTranslations.mediaAnalysis.source.youtubeImport).sort()
+    Object.keys(
+      (
+        (enTranslations["mediaAnalysis"] as Record<string, unknown>)["source"] as Record<string, unknown>
+      )["youtubeImport"] as Record<string, unknown>
+    ).sort(),
+    Object.keys(
+      (
+        (trTranslations["mediaAnalysis"] as Record<string, unknown>)["source"] as Record<string, unknown>
+      )["youtubeImport"] as Record<string, unknown>
+    ).sort()
   );
 });
 
@@ -1556,9 +1564,9 @@ void test("laboratory observability runtime paths log region fallback and overla
       return this.attributes.has(name);
     }
 
-    override querySelector(selector?: string): any {
-      if (!selector) return null;
-      return this.queries.get(selector) ?? null;
+    override querySelector(selector?: string): null {
+      if (selector == null || selector === "") return null;
+      return (this.queries.get(selector) as unknown as null) ?? null;
     }
 
     remove(): void {
@@ -2337,8 +2345,8 @@ void test("laboratory accepted selection renders selected action feedback withou
 });
 
 void test("laboratory phase 4.95 renders room-local selection labels without execution detail copy", () => {
-  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
-  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8")) as Record<string, unknown>;
+  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")) as Record<string, unknown>;
   const enCopy = createLabI18n({ locale: "en", translations: enTranslations });
   const trCopy = createLabI18n({ locale: "tr", translations: trTranslations });
 
@@ -2384,8 +2392,8 @@ void test("laboratory phase 4.95 renders room-local selection labels without exe
 });
 
 void test("laboratory runtime status copy resolves through room-local i18n catalogs", () => {
-  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
-  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8")) as Record<string, unknown>;
+  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")) as Record<string, unknown>;
   const enCopy = createLabI18n({ locale: "en", translations: enTranslations });
   const trCopy = createLabI18n({ locale: "tr", translations: trTranslations });
 
@@ -2413,8 +2421,8 @@ void test("laboratory runtime status copy resolves through room-local i18n catal
 });
 
 void test("laboratory phase 4.95 i18n keys keep English and Turkish catalog parity", () => {
-  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
-  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8")) as Record<string, unknown>;
+  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")) as Record<string, unknown>;
   const phaseKeys = [
     "mediaAnalysis.processSummary",
     "mediaAnalysis.rightContext",
@@ -2426,14 +2434,14 @@ void test("laboratory phase 4.95 i18n keys keep English and Turkish catalog pari
 
   function readPath(record: Record<string, unknown>, key: string): unknown {
     return key.split(".").reduce<unknown>(function (current, part) {
-      return current && typeof current === "object"
+      return current != null && typeof current === "object"
         ? (current as Record<string, unknown>)[part]
         : undefined;
     }, record);
   }
 
   function collectKeys(value: unknown, prefix = ""): string[] {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
+    if (value == null || typeof value !== "object" || Array.isArray(value)) {
       return [prefix];
     }
     return Object.keys(value as Record<string, unknown>)

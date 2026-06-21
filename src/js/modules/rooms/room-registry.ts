@@ -115,7 +115,8 @@ class RoomRegistryClass {
     startupSnapshot: StartupRoomsSnapshot | null = null
   ): Promise<StartupRoomsSnapshot | null> {
     const api = window.electronAPI;
-    if (api === undefined || typeof api.roomsSyncLinkedStartup !== "function") {
+    const syncLinked = api?.["roomsSyncLinkedStartup"];
+    if (typeof syncLinked !== "function") {
       return startupSnapshot;
     }
 
@@ -123,7 +124,13 @@ class RoomRegistryClass {
       const result = await withTimeout(
         "room-registry.startup-sync",
         STARTUP_SYNC_TIMEOUT_MS,
-        async () => await api.roomsSyncLinkedStartup()
+        async () =>
+          (await syncLinked()) as {
+            success: boolean;
+            error?: string;
+            snapshot?: StartupRoomsSnapshot;
+            syncedRoomIds?: string[];
+          }
       );
       if (result.success !== true) {
         Logger.warnT(
@@ -153,7 +160,8 @@ class RoomRegistryClass {
 
   private async fetchInstalledRooms(): Promise<InstalledRoomRecord[]> {
     const api = window.electronAPI;
-    if (api === undefined || typeof api.roomsListInstalled !== "function") {
+    const listInstalled = api?.["roomsListInstalled"];
+    if (typeof listInstalled !== "function") {
       Logger.warnT(LogCategory.SYSTEM, "app.logs.roomRegistry.installedRoomsUnavailable");
       return [];
     }
@@ -162,7 +170,12 @@ class RoomRegistryClass {
       const result = await withTimeout(
         "room-registry.list-installed",
         LIST_INSTALLED_TIMEOUT_MS,
-        async () => await api.roomsListInstalled()
+        async () =>
+          (await listInstalled()) as {
+            success: boolean;
+            rooms: InstalledRoomRecord[];
+            error?: string;
+          }
       );
       return result.success === true && Array.isArray(result.rooms)
         ? filterManagedInstalledRooms(result.rooms)
@@ -213,12 +226,16 @@ class RoomRegistryClass {
 
   async listWorkspaceRooms(): Promise<RoomWorkspaceEntry[]> {
     const api = window.electronAPI;
-    if (api === undefined || typeof api.roomsListWorkspace !== "function") {
+    const listWorkspace = api?.["roomsListWorkspace"];
+    if (typeof listWorkspace !== "function") {
       return [];
     }
 
     try {
-      const result = await api.roomsListWorkspace();
+      const result = await (listWorkspace() as Promise<{
+        success: boolean;
+        rooms: RoomWorkspaceEntry[];
+      }>);
       return result.success === true && Array.isArray(result.rooms) ? result.rooms : [];
     } catch (error) {
       Logger.warnT(
@@ -239,15 +256,15 @@ class RoomRegistryClass {
     error?: string;
     restartRequired?: boolean;
   }> {
-    const api = window.electronAPI;
-    if (api === undefined || typeof api.roomsInstallFromWorkspace !== "function") {
+    const installFromWs = window.electronAPI?.["roomsInstallFromWorkspace"];
+    if (typeof installFromWs !== "function") {
       return {
         success: false,
         error: "roomsInstallFromWorkspace missing",
       };
     }
 
-    return await api.roomsInstallFromWorkspace(roomId);
+    return await installFromWs(roomId);
   }
 
   async importBundle(bundleFile: string): Promise<{
@@ -257,15 +274,15 @@ class RoomRegistryClass {
     error?: string;
     restartRequired?: boolean;
   }> {
-    const api = window.electronAPI;
-    if (api === undefined || typeof api.roomsImportBundle !== "function") {
+    const importBundle = window.electronAPI?.["roomsImportBundle"];
+    if (typeof importBundle !== "function") {
       return {
         success: false,
         error: "roomsImportBundle missing",
       };
     }
 
-    return await api.roomsImportBundle({
+    return await importBundle({
       bundleFile,
       overwriteWorkspace: true,
     });
@@ -286,15 +303,15 @@ class RoomRegistryClass {
     error?: string;
     restartRequired?: boolean;
   }> {
-    const api = window.electronAPI;
-    if (api === undefined || typeof api.roomsRemoveInstalled !== "function") {
+    const removeInstalled = window.electronAPI?.["roomsRemoveInstalled"];
+    if (typeof removeInstalled !== "function") {
       return {
         success: false,
         error: "roomsRemoveInstalled missing",
       };
     }
 
-    return await api.roomsRemoveInstalled(payload);
+    return await removeInstalled(payload);
   }
 
   async deleteWorkspace(payload: { roomId: string; deleteData?: boolean }): Promise<{
@@ -303,15 +320,15 @@ class RoomRegistryClass {
     error?: string;
     restartRequired?: boolean;
   }> {
-    const api = window.electronAPI;
-    if (api === undefined || typeof api.roomsDeleteWorkspace !== "function") {
+    const deleteWs = window.electronAPI?.["roomsDeleteWorkspace"];
+    if (typeof deleteWs !== "function") {
       return {
         success: false,
         error: "roomsDeleteWorkspace missing",
       };
     }
 
-    return await api.roomsDeleteWorkspace(payload);
+    return await deleteWs(payload);
   }
 }
 

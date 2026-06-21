@@ -7,10 +7,10 @@ import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel
 
 const sourcePresets = JSON.parse(
   readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
-);
+) as Record<string, unknown>;
 const ytDlpForm = JSON.parse(
   readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8")
-);
+) as Record<string, unknown>;
 
 function createLineageState(
   options: {

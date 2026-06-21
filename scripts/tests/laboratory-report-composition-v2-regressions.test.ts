@@ -69,22 +69,20 @@ function createReportExportHarness(
       return "report-export";
     },
     getFeatureReportRecord(nextProject: Record<string, unknown>, featureId: string) {
-      return (
-        (((nextProject["report"] as Record<string, unknown>)["records"] as Record<string, unknown>)[
-          featureId
-        ] as Record<string, unknown>) || {}
-      );
+      const records = (nextProject["report"] as Record<string, unknown>)["records"] as Record<string, unknown>;
+      const value = records[featureId];
+      return (value ?? {}) as Record<string, unknown>;
     },
     normalizeReportExport(value: unknown) {
       const source = value as Record<string, unknown>;
       return {
-        id: String(source["fileName"] || source["path"] || "export"),
-        format: String(source["format"] || "md"),
-        path: source["path"] || null,
-        fileName: source["fileName"] || null,
-        reportView: source["reportView"] || null,
+        id: String((source["fileName"] as string | undefined) ?? (source["path"] as string | undefined) ?? "export"),
+        format: String((source["format"] as string | undefined) ?? "md"),
+        path: (source["path"]) ?? null,
+        fileName: (source["fileName"]) ?? null,
+        reportView: (source["reportView"]) ?? null,
         createdAt: "2026-04-20T10:00:00.000Z",
-        status: String(source["status"] || "ready"),
+        status: String((source["status"] as string | undefined) ?? "ready"),
       };
     },
     async patchActiveProject(_runtime, patcher) {
@@ -191,9 +189,9 @@ void test("laboratory report JSON overlay export writes one selected-folder JSON
   });
 
   assert.equal(harness.writes.length, 1);
-  assert.match(harness.writes[0]?.path || "", /^\/selected\/reports\/lab-project-media-analysis-/);
-  assert.match(harness.writes[0]?.path || "", /-ai\.json$/);
-  assert.deepEqual(JSON.parse(harness.writes[0]?.value || "{}"), { version: 2 });
+  assert.match(harness.writes[0]?.path ?? "", /^\/selected\/reports\/lab-project-media-analysis-/);
+  assert.match(harness.writes[0]?.path ?? "", /-ai\.json$/);
+  assert.deepEqual(JSON.parse(harness.writes[0]?.value ?? "{}"), { version: 2 });
   assert.equal(harness.persistedExports.length, 1);
   assert.equal(harness.persistedExports[0]?.["format"], "json");
 });
@@ -217,8 +215,8 @@ void test("laboratory report JSON overlay export opens a host folder picker", as
 
   assert.equal(dialogOptions.length, 1);
   assert.deepEqual(dialogOptions[0]?.["properties"], ["openDirectory", "createDirectory"]);
-  assert.match(harness.writes[0]?.path || "", /^\/picked\/reports\/lab-project-media-analysis-/);
-  assert.match(harness.writes[0]?.path || "", /-ai\.json$/);
+  assert.match(harness.writes[0]?.path ?? "", /^\/picked\/reports\/lab-project-media-analysis-/);
+  assert.match(harness.writes[0]?.path ?? "", /-ai\.json$/);
 });
 
 void test("laboratory report overlay export cancels cleanly when folder picking is cancelled", async () => {
@@ -256,8 +254,8 @@ void test("laboratory report PDF overlay export writes one selected-folder PDF f
   });
 
   assert.equal(harness.writes.length, 1);
-  assert.match(harness.writes[0]?.path || "", /^\/selected\/reports\/lab-project-media-analysis-/);
-  assert.match(harness.writes[0]?.path || "", /-user\.pdf$/);
+  assert.match(harness.writes[0]?.path ?? "", /^\/selected\/reports\/lab-project-media-analysis-/);
+  assert.match(harness.writes[0]?.path ?? "", /-user\.pdf$/);
   assert.equal(harness.writes[0]?.value.startsWith("%PDF-1.4"), true);
   assert.equal(harness.persistedExports.length, 1);
   assert.equal(harness.persistedExports[0]?.["format"], "pdf");
@@ -273,8 +271,8 @@ void test("laboratory report JSON overlay export writes the selected user report
   });
 
   assert.equal(harness.writes.length, 1);
-  assert.match(harness.writes[0]?.path || "", /-user\.json$/);
-  assert.deepEqual(JSON.parse(harness.writes[0]?.value || "{}"), {
+  assert.match(harness.writes[0]?.path ?? "", /-user\.json$/);
+  assert.deepEqual(JSON.parse(harness.writes[0]?.value ?? "{}"), {
     audience: "user",
     summary: "User report",
   });
@@ -291,9 +289,9 @@ void test("laboratory report PDF overlay export writes the selected technical re
   });
 
   assert.equal(harness.writes.length, 1);
-  assert.match(harness.writes[0]?.path || "", /-ai\.pdf$/);
+  assert.match(harness.writes[0]?.path ?? "", /-ai\.pdf$/);
   assert.equal(harness.writes[0]?.value.startsWith("%PDF-1.4"), true);
-  assert.match(harness.writes[0]?.value || "", /Technical Payload/);
+  assert.match(harness.writes[0].value, /Technical Payload/);
   assert.equal(harness.persistedExports[0]?.["reportView"], "ai");
 });
 
@@ -412,21 +410,21 @@ void test("laboratory reports surface temporal correlation, narrative cues, and 
     status: "ready",
   });
 
-  assert.match(userReport?.summary || "", /Composite anomaly cluster/);
+  assert.match(userReport?.summary ?? "", /Composite anomaly cluster/);
   assert.equal(aiReport?.correlationClusters?.[0]?.signalTypes.includes("freeze"), true);
   assert.equal(
-    aiReport?.correlationClusters?.[0]?.signalTypes.includes("audio-discontinuity"),
+    aiReport.correlationClusters[0].signalTypes.includes("audio-discontinuity"),
     true
   );
   assert.equal(
-    aiReport?.correlationClusters?.[0]?.signalTypes.includes("luminance-collapse"),
+    aiReport.correlationClusters[0].signalTypes.includes("luminance-collapse"),
     true
   );
   assert.equal(
-    aiReport?.narrativeCues?.some((cue) => cue.phrase === "kaybol"),
+    aiReport.narrativeCues?.some((cue) => cue.phrase === "kaybol"),
     true
   );
-  assert.match(aiReport?.forensicNotes?.[0]?.detail || "", /duplicate-frame ratio/);
+  assert.match(aiReport.forensicNotes?.[0]?.detail ?? "", /duplicate-frame ratio/);
 });
 
 void test("laboratory forensic notes surface optical-flow motion split", () => {
@@ -481,9 +479,9 @@ void test("laboratory forensic notes surface optical-flow motion split", () => {
     (note) => note.label === "freeze attribution"
   );
 
-  assert.match(opticalNote?.detail || "", /localized_subject_motion/);
+  assert.match(opticalNote?.detail ?? "", /localized_subject_motion/);
   assert.equal(opticalNote?.measuredFields?.includes("subject/background motion ratio"), true);
-  assert.match(attributionNote?.detail || "", /Motion split localized_subject_motion/);
+  assert.match(attributionNote?.detail ?? "", /Motion split localized_subject_motion/);
 });
 
 void test("laboratory forensic signature mapper classifies low-light compression starvation", () => {
@@ -728,8 +726,8 @@ void test("laboratory reports surface forensic signature mapping notes", () => {
     (note) => note.label === "compression signature mapping"
   );
 
-  assert.match(signatureNote?.detail || "", /Low-light compression starvation/);
-  assert.match(signatureNote?.detail || "", /Learning fingerprint compression:high/);
+  assert.match(signatureNote?.detail ?? "", /Low-light compression starvation/);
+  assert.match(signatureNote?.detail ?? "", /Learning fingerprint compression:high/);
   assert.equal(signatureNote?.measuredFields?.includes("compression packet signature"), true);
 });
 
@@ -789,23 +787,23 @@ void test("laboratory reports surface triage decision, evidence matrix, and coun
   const aiReport = buildAiReport(run, { findings, featureId: "media-analysis" });
 
   assert.equal(userReport?.decisionSummary?.anomaly, "inconclusive");
-  assert.equal(userReport?.decisionSummary?.needsFollowUp, true);
+  assert.equal(userReport.decisionSummary.needsFollowUp, true);
   assert.equal(
     aiReport?.evidenceStrength?.find((entry) => entry.id === "extraordinary")?.strength,
     "not-testable"
   );
   assert.equal(
-    userReport?.evidenceStrength?.find((entry) => entry.id === "compression-artifact")?.strength,
+    userReport.evidenceStrength?.find((entry) => entry.id === "compression-artifact")?.strength,
     "strong"
   );
   assert.equal(
-    userReport?.counterEvidenceLedger?.entries.some(
+    userReport.counterEvidenceLedger?.entries.some(
       (entry) => entry.id === "duplicate-not-found" && entry.status === "measured-not-found"
     ),
     true
   );
   assert.equal(
-    aiReport?.counterEvidenceLedger?.entries.some(
+    aiReport.counterEvidenceLedger?.entries.some(
       (entry) => entry.id === "metadata-provenance-not-measured"
     ),
     true
@@ -855,7 +853,7 @@ void test("laboratory counter-evidence ledger surfaces partial metadata and refe
     true
   );
   assert.equal(
-    userReport?.counterEvidenceLedger?.entries.some(
+    userReport.counterEvidenceLedger.entries.some(
       (entry) => entry.id === "reference-quality-partial" && entry.status === "measured-weak"
     ),
     true
@@ -908,7 +906,7 @@ void test("laboratory composite correlation requires distinct signal families", 
   });
 
   assert.equal(aiReport?.correlationClusters?.length, 0);
-  assert.doesNotMatch(userReport?.summary || "", /Composite anomaly cluster/);
+  assert.doesNotMatch(userReport?.summary ?? "", /Composite anomaly cluster/);
 });
 
 void test("laboratory narrative cues normalize Turkish diacritics without broad-scope over-correlation", () => {
@@ -965,7 +963,7 @@ void test("laboratory narrative cues normalize Turkish diacritics without broad-
     generatedAt: "2026-05-20T10:00:00.000Z",
     status: "ready",
   });
-  const phrases = aiReport?.narrativeCues?.map((cue) => cue.phrase) || [];
+  const phrases = aiReport?.narrativeCues?.map((cue) => cue.phrase) ?? [];
 
   assert.equal(phrases.includes("simdi"), true);
   assert.equal(phrases.includes("kaybol"), true);
@@ -1042,7 +1040,7 @@ void test("laboratory report keeps text-only transcript triggers as narrative cu
     generatedAt: "2026-05-20T10:00:00.000Z",
     status: "ready",
   });
-  const phrases = aiReport?.narrativeCues?.map((cue) => cue.phrase) || [];
+  const phrases = aiReport?.narrativeCues?.map((cue) => cue.phrase) ?? [];
 
   assert.equal(phrases.includes("simdi"), true);
   assert.equal(phrases.includes("kaybol"), true);

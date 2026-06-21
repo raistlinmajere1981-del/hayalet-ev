@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-non-null-assertion */
 import test from "node:test";
 import assert from "node:assert/strict";
 import { loadGameRoomHostModule } from "./helpers/game-room-host-module.ts";
@@ -6,7 +5,7 @@ import { loadGameRoomHostModule } from "./helpers/game-room-host-module.ts";
 const gameRoomHostModule = await loadGameRoomHostModule();
 
 function loadTeamTetrisEngine() {
-  return gameRoomHostModule.default.teamTetrisEngine as {
+  return gameRoomHostModule.teamTetrisEngine as {
     schemaVersion: number;
     moveSchema: Record<string, any>;
     createMatch: (options: Record<string, any>) => Record<string, any>;
@@ -203,7 +202,7 @@ void test("Team Tetris move validation accepts short intent paths, auto-drops, a
   });
 
   assert.equal(intentPath["success"], true);
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
   if (intentPath["success"]) {
     assert.equal(intentPath["replay"].pathComplete, true);
     assert.equal(intentPath["replay"].autoDropDistance > 0, true);
@@ -241,7 +240,7 @@ void test("Team Tetris applies blocked intent paths by locking at the last reach
   });
 
   assert.equal(validation["success"], true);
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
   if (validation["success"]) {
     assert.equal(validation["replay"].pathComplete, false);
     assert.equal(validation["replay"].blockedReason, "horizontal-collision");
@@ -264,7 +263,7 @@ void test("Team Tetris applies blocked intent paths by locking at the last reach
   });
 
   assert.equal(result["success"], true);
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
   if (result["success"]) {
     assert.deepEqual(result["lockedCells"], [
       { x: 4, y: 0 },

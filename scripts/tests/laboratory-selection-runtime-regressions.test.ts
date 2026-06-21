@@ -1831,7 +1831,7 @@ void test("preview inspection controller focuses roi, captures a snapshot, and c
         width: 400,
         height: 200,
       },
-      store.getState().ui.workspace.activeSelection?.roi!
+      store.getState().ui.workspace.activeSelection!["roi"]!
     )?.scale,
     2.857142857142857
   );

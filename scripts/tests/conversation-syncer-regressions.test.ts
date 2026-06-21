@@ -18,7 +18,7 @@ function installWindowMock(): {
   globalScope.window = { dispatchEvent: () => true };
   return {
     restore: () => {
-      globalScope.window = originalWindow!;
+      globalScope.window = originalWindow as Window;
     },
   };
 }
@@ -194,14 +194,14 @@ void test("ai0 sync returns latest assistant message without DB persistence", as
     assert.equal(result.success, true);
     assert.equal(Array.isArray(result["messages"]), true);
     assert.equal((result["messages"] as unknown[]).length, 1);
-    const msg = (result["messages"] as { role: string; text: string }[])[0]!;
+    const msg = (result["messages"] as { role: string; text: string }[])[0] as { role: string; text: string };
     assert.equal(msg.role, "assistant");
     assert.equal(msg.text, "latest assistant reply");
     assert.equal(dbSyncCallCount, 0);
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
     AppState.getAccountForSlot = originalGetAccount;
-    globalScope.window = originalWindow!;
+    globalScope.window = originalWindow as Window;
   }
 });
 
@@ -285,7 +285,7 @@ void test("llm sync persists default-page messages and preserves session query",
   const mockWebview = {
     getURL: () => "http://127.0.0.1:9876/?session=llm-session-1",
     isLoading: () => false,
-    executeJavaScript: async () => [
+    executeJavaScript: () => [
       {
         role: "user",
         text: "hello",
@@ -306,7 +306,7 @@ void test("llm sync persists default-page messages and preserves session query",
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai1", mockWebview, {
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as any, {
       catchEnabled: false,
     });
 
@@ -314,7 +314,7 @@ void test("llm sync persists default-page messages and preserves session query",
     assert.equal(result.conversationId, "conv-llm-1");
     assert.equal(result["webUrl"], "http://127.0.0.1:9876/?session=llm-session-1");
     assert.equal(syncPayload?.["webUrl"], "http://127.0.0.1:9876/?session=llm-session-1");
-    assert.equal((syncPayload?.["messages"] as unknown[]).length, 2);
+    assert.equal((syncPayload["messages"] as unknown[]).length, 2);
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
     AppState.getAccountForSlot = originalGetAccount;
@@ -417,10 +417,10 @@ void test("syncConversation saves generated images as assistant attachments", as
         ],
       }),
       dbGetAttachments: async () => ({ success: true, data: [] }),
-      dbSaveAttachmentContent: (async (payload: Record<string, unknown>) => {
+      dbSaveAttachmentContent: ((payload: Record<string, unknown>) => {
         saveCalls.push(payload);
         return { success: true, data: { attachmentId: "att-1", storedPath: "/tmp/generated.png" } };
-      }) as any,
+      }) as unknown as (...args: unknown[]) => Promise<unknown>,
       capturePage: async () => {
         captureCallCount += 1;
         return { success: false };
@@ -441,7 +441,7 @@ void test("syncConversation saves generated images as assistant attachments", as
 
   const mockWebview = {
     getURL: () => "https://chatgpt.com/c/generated-image",
-    executeJavaScript: async () => {
+    executeJavaScript: () => {
       executeCount += 1;
       if (executeCount === 1) {
         return [
@@ -476,11 +476,11 @@ void test("syncConversation saves generated images as assistant attachments", as
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai1", mockWebview, {});
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as any, {});
     assert.equal(result.success, true);
     assert.equal(saveCalls.length, 1);
     assert.equal(saveCalls[0]?.["messageId"], "db-assistant-1");
-    assert.equal(saveCalls[0]?.["base64"], "QUJD");
+    assert.equal(saveCalls[0]["base64"], "QUJD");
     assert.equal(captureCallCount, 0);
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
@@ -603,7 +603,7 @@ void test("syncConversation skips generated image save when attachment already e
 
   const mockWebview = {
     getURL: () => "https://chatgpt.com/c/generated-image",
-    executeJavaScript: async () => {
+    executeJavaScript: () => {
       executeCount += 1;
       return [
         {
@@ -629,7 +629,7 @@ void test("syncConversation skips generated image save when attachment already e
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai1", mockWebview, {});
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as any, {});
     assert.equal(result.success, true);
     assert.equal(saveCallCount, 0);
     assert.equal(executeCount, 2);
@@ -689,13 +689,13 @@ void test("syncConversation replaces preview image attachment when final bytes c
         ],
       }),
       readFile: async () => "UFJFVklFVw==",
-      dbSaveAttachmentContent: (async (payload: Record<string, unknown>) => {
+      dbSaveAttachmentContent: ((payload: Record<string, unknown>) => {
         saveCalls.push(payload);
         return {
           success: true,
           data: { attachmentId: "att-1", storedPath: "/tmp/generated-preview.png" },
         };
-      }) as any,
+      }) as unknown as (...args: unknown[]) => Promise<unknown>,
     },
   };
 
@@ -712,7 +712,7 @@ void test("syncConversation replaces preview image attachment when final bytes c
 
   const mockWebview = {
     getURL: () => "https://chatgpt.com/c/generated-image",
-    executeJavaScript: async () => {
+    executeJavaScript: () => {
       executeCount += 1;
       if (executeCount === 1) {
         return [
@@ -746,11 +746,11 @@ void test("syncConversation replaces preview image attachment when final bytes c
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai1", mockWebview, {});
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as any, {});
     assert.equal(result.success, true);
     assert.equal(saveCalls.length, 1);
     assert.equal(saveCalls[0]?.["originalName"], "generated-image-ai1-01-stable.png");
-    assert.equal(saveCalls[0]?.["base64"], "RklOQUw=");
+    assert.equal(saveCalls[0]["base64"], "RklOQUw=");
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
     AppState.getAccountForSlot = originalGetAccount;
@@ -799,10 +799,10 @@ void test("syncConversation uses a post-thinking probe to pick up generated imag
         ],
       }),
       dbGetAttachments: async () => ({ success: true, data: [] }),
-      dbSaveAttachmentContent: (async (payload: Record<string, unknown>) => {
+      dbSaveAttachmentContent: ((payload: Record<string, unknown>) => {
         saveCalls.push(payload);
         return { success: true, data: { attachmentId: "att-1", storedPath: "/tmp/generated.png" } };
-      }) as any,
+      }) as unknown as (...args: unknown[]) => Promise<unknown>,
     },
   };
 
@@ -823,7 +823,7 @@ void test("syncConversation uses a post-thinking probe to pick up generated imag
 
   const mockWebview = {
     getURL: () => "https://chatgpt.com/c/generated-image",
-    executeJavaScript: async () => {
+    executeJavaScript: () => {
       executeCount += 1;
       if (executeCount === 1) {
         return [
@@ -869,7 +869,7 @@ void test("syncConversation uses a post-thinking probe to pick up generated imag
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai1", mockWebview, {
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as any, {
       source: "auto",
     });
     assert.equal(result.success, true);
@@ -925,7 +925,7 @@ void test("syncConversation prefers webcontents capture fallback and isolates im
         ],
       }),
       dbGetAttachments: async () => ({ success: true, data: [] }),
-      dbSaveAttachmentContent: (async (payload: Record<string, unknown>) => {
+      dbSaveAttachmentContent: ((payload: Record<string, unknown>) => {
         saveCalls.push(payload);
         if (saveCalls.length === 1) {
           return { success: false, error: "first-failed" };
@@ -934,7 +934,7 @@ void test("syncConversation prefers webcontents capture fallback and isolates im
           success: true,
           data: { attachmentId: "att-2", storedPath: "/tmp/generated-2.png" },
         };
-      }) as any,
+      }) as unknown as (...args: unknown[]) => Promise<unknown>,
       captureWebContentsPage: async () => {
         guestCaptureCalls += 1;
         return { success: true, dataUrl: "data:image/png;base64,Q0FQVFVSRTI=" };
@@ -960,7 +960,7 @@ void test("syncConversation prefers webcontents capture fallback and isolates im
   const mockWebview = {
     getURL: () => "https://chatgpt.com/c/generated-image",
     getWebContentsId: () => 42,
-    executeJavaScript: async () => {
+    executeJavaScript: () => {
       executeCount += 1;
       if (executeCount === 1) {
         return [
@@ -1000,7 +1000,7 @@ void test("syncConversation prefers webcontents capture fallback and isolates im
   };
 
   try {
-    const result = await ConversationSyncer.syncConversation("ai1", mockWebview, {});
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as any, {});
     assert.equal(result.success, true);
     assert.equal(result["generatedImageSavedCount"], 1);
     assert.equal(result["generatedImagePendingCount"], 1);

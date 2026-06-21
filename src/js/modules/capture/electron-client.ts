@@ -302,29 +302,29 @@ function normalizeActionOutcome(value: unknown, action: CaptureHostAction): Capt
 
 export async function getCaptureStatus(): Promise<CaptureServiceStatus> {
   const api = getElectronApi();
-  if (typeof api?.captureStatus !== "function") {
+  if (typeof api?.["captureStatus"] !== "function") {
     return FALLBACK_CAPTURE_STATUS;
   }
 
-  return normalizeCaptureStatus(await api.captureStatus());
+  return normalizeCaptureStatus(await api["captureStatus"]());
 }
 
 export async function refreshCaptureStatus(): Promise<CaptureServiceStatus> {
   const api = getElectronApi();
-  if (typeof api?.captureRefreshStatus !== "function") {
+  if (typeof api?.["captureRefreshStatus"] !== "function") {
     return FALLBACK_CAPTURE_STATUS;
   }
 
-  return normalizeCaptureStatus(await api.captureRefreshStatus());
+  return normalizeCaptureStatus(await api["captureRefreshStatus"]());
 }
 
 export async function consumeAnalyzeCaptureAssets(): Promise<CaptureImportedAsset[]> {
   const api = getElectronApi();
-  if (typeof api?.captureConsumeAnalyzeAssets !== "function") {
+  if (typeof api?.["captureConsumeAnalyzeAssets"] !== "function") {
     return [];
   }
 
-  const value = await api.captureConsumeAnalyzeAssets();
+  const value = await api["captureConsumeAnalyzeAssets"]();
   if (!Array.isArray(value)) {
     return [];
   }
@@ -342,119 +342,121 @@ export async function runCaptureAction(
   switch (action) {
     case "prepare-host-dependencies":
       return normalizeActionOutcome(
-        typeof api?.capturePrepareHostDependencies === "function"
-          ? await api.capturePrepareHostDependencies()
+        typeof api?.["capturePrepareHostDependencies"] === "function"
+          ? await api["capturePrepareHostDependencies"]()
           : null,
         action
       );
     case "install-companion":
       return normalizeActionOutcome(
-        typeof api?.captureInstallCompanion === "function"
-          ? await api.captureInstallCompanion()
+        typeof api?.["captureInstallCompanion"] === "function"
+          ? await api["captureInstallCompanion"]()
           : null,
         action
       );
     case "launch-companion":
       return normalizeActionOutcome(
-        typeof api?.captureLaunchCompanion === "function"
-          ? await api.captureLaunchCompanion(options)
+        typeof api?.["captureLaunchCompanion"] === "function"
+          ? await api["captureLaunchCompanion"](options)
           : null,
         action
       );
     case "start-analyze-session":
       return normalizeActionOutcome(
-        typeof api?.captureStartAnalyzeSession === "function"
-          ? await api.captureStartAnalyzeSession(options)
+        typeof api?.["captureStartAnalyzeSession"] === "function"
+          ? await api["captureStartAnalyzeSession"](options)
           : null,
         action
       );
     case "stop-analyze-session":
       return normalizeActionOutcome(
-        typeof api?.captureStopAnalyzeSession === "function"
-          ? await api.captureStopAnalyzeSession(options)
+        typeof api?.["captureStopAnalyzeSession"] === "function"
+          ? await api["captureStopAnalyzeSession"](options)
           : null,
         action
       );
     case "start-analyze-preview":
       return normalizeActionOutcome(
-        typeof api?.captureStartAnalyzePreview === "function"
-          ? await api.captureStartAnalyzePreview(options)
+        typeof api?.["captureStartAnalyzePreview"] === "function"
+          ? await api["captureStartAnalyzePreview"](options)
           : null,
         action
       );
     case "stop-analyze-preview":
       return normalizeActionOutcome(
-        typeof api?.captureStopAnalyzePreview === "function"
-          ? await api.captureStopAnalyzePreview(options)
+        typeof api?.["captureStopAnalyzePreview"] === "function"
+          ? await api["captureStopAnalyzePreview"](options)
           : null,
         action
       );
     case "start-camera-feed":
       return normalizeActionOutcome(
-        typeof api?.captureStartCameraFeed === "function"
-          ? await api.captureStartCameraFeed(options)
+        typeof api?.["captureStartCameraFeed"] === "function"
+          ? await api["captureStartCameraFeed"](options)
           : null,
         action
       );
     case "stop-camera-feed":
       return normalizeActionOutcome(
-        typeof api?.captureStopCameraFeed === "function"
-          ? await api.captureStopCameraFeed(options)
+        typeof api?.["captureStopCameraFeed"] === "function"
+          ? await api["captureStopCameraFeed"](options)
           : null,
         action
       );
     case "start-interactive-mirror":
       return normalizeActionOutcome(
-        typeof api?.captureStartInteractiveMirror === "function"
-          ? await api.captureStartInteractiveMirror(options)
+        typeof api?.["captureStartInteractiveMirror"] === "function"
+          ? await api["captureStartInteractiveMirror"](options)
           : null,
         action
       );
     case "stop-interactive-mirror":
       return normalizeActionOutcome(
-        typeof api?.captureStopInteractiveMirror === "function"
-          ? await api.captureStopInteractiveMirror(options)
+        typeof api?.["captureStopInteractiveMirror"] === "function"
+          ? await api["captureStopInteractiveMirror"](options)
           : null,
         action
       );
     case "start-analyze-dictation":
       return normalizeActionOutcome(
-        typeof api?.captureStartAnalyzeDictation === "function"
-          ? await api.captureStartAnalyzeDictation(options)
+        typeof api?.["captureStartAnalyzeDictation"] === "function"
+          ? await api["captureStartAnalyzeDictation"](options)
           : null,
         action
       );
     case "stop-analyze-dictation":
       return normalizeActionOutcome(
-        typeof api?.captureStopAnalyzeDictation === "function"
-          ? await api.captureStopAnalyzeDictation(options)
+        typeof api?.["captureStopAnalyzeDictation"] === "function"
+          ? await api["captureStopAnalyzeDictation"](options)
           : null,
         action
       );
     case "cancel-analyze-dictation":
       return normalizeActionOutcome(
-        typeof api?.captureCancelAnalyzeDictation === "function"
-          ? await api.captureCancelAnalyzeDictation(options)
+        typeof api?.["captureCancelAnalyzeDictation"] === "function"
+          ? await api["captureCancelAnalyzeDictation"](options)
           : null,
         action
       );
     case "start-ambient-listener":
       return normalizeActionOutcome(
-        typeof api?.captureStartAmbientListener === "function"
-          ? await api.captureStartAmbientListener(options)
+        typeof api?.["captureStartAmbientListener"] === "function"
+          ? await api["captureStartAmbientListener"](options)
           : null,
         action
       );
     case "stop-ambient-listener":
       return normalizeActionOutcome(
-        typeof api?.captureStopAmbientListener === "function"
-          ? await api.captureStopAmbientListener(options)
+        typeof api?.["captureStopAmbientListener"] === "function"
+          ? await api["captureStopAmbientListener"](options)
           : null,
         action
       );
     case "set-torch":
       return normalizeActionOutcome(
-        typeof api?.captureSetTorch === "function" ? await api.captureSetTorch(options) : null,
+        typeof api?.["captureSetTorch"] === "function"
+          ? await api["captureSetTorch"](options)
+          : null,
         action
       );
     case "start-tts":
@@ -463,15 +465,15 @@ export async function runCaptureAction(
       return normalizeActionOutcome(null, action);
     case "capture-analyze-photo":
       return normalizeActionOutcome(
-        typeof api?.captureRequestAnalyzePhoto === "function"
-          ? await api.captureRequestAnalyzePhoto(options)
+        typeof api?.["captureRequestAnalyzePhoto"] === "function"
+          ? await api["captureRequestAnalyzePhoto"](options)
           : null,
         action
       );
     case "retake-analyze-photo":
       return normalizeActionOutcome(
-        typeof api?.captureRetakeAnalyzePhoto === "function"
-          ? await api.captureRetakeAnalyzePhoto(options)
+        typeof api?.["captureRetakeAnalyzePhoto"] === "function"
+          ? await api["captureRetakeAnalyzePhoto"](options)
           : null,
         action
       );
@@ -487,8 +489,8 @@ export async function runCaptureAction(
 export async function connectCaptureDevice(address: string): Promise<CaptureActionOutcome> {
   const api = getElectronApi();
   return normalizeActionOutcome(
-    typeof api?.captureConnectDevice === "function"
-      ? await api.captureConnectDevice(address)
+    typeof api?.["captureConnectDevice"] === "function"
+      ? await api["captureConnectDevice"](address)
       : null,
     "connect-device"
   );
@@ -497,8 +499,8 @@ export async function connectCaptureDevice(address: string): Promise<CaptureActi
 export async function disconnectCaptureDevice(deviceId: string): Promise<CaptureActionOutcome> {
   const api = getElectronApi();
   return normalizeActionOutcome(
-    typeof api?.captureDisconnectDevice === "function"
-      ? await api.captureDisconnectDevice(deviceId)
+    typeof api?.["captureDisconnectDevice"] === "function"
+      ? await api["captureDisconnectDevice"](deviceId)
       : null,
     "disconnect-device"
   );
@@ -507,8 +509,8 @@ export async function disconnectCaptureDevice(deviceId: string): Promise<Capture
 export async function confirmCaptureBootstrapInstall(): Promise<CaptureActionOutcome> {
   const api = getElectronApi();
   return normalizeActionOutcome(
-    typeof api?.captureInstallCompanion === "function"
-      ? await api.captureInstallCompanion({ allowBootstrap: true })
+    typeof api?.["captureInstallCompanion"] === "function"
+      ? await api["captureInstallCompanion"]({ allowBootstrap: true })
       : null,
     "install-companion"
   );
@@ -516,11 +518,11 @@ export async function confirmCaptureBootstrapInstall(): Promise<CaptureActionOut
 
 export async function dismissCaptureOperation(): Promise<CaptureServiceStatus> {
   const api = getElectronApi();
-  if (typeof api?.captureDismissOperation !== "function") {
+  if (typeof api?.["captureDismissOperation"] !== "function") {
     return FALLBACK_CAPTURE_STATUS;
   }
 
-  return normalizeCaptureStatus(await api.captureDismissOperation());
+  return normalizeCaptureStatus(await api["captureDismissOperation"]());
 }
 
 export function onCaptureMediaIngress(
@@ -531,14 +533,15 @@ export function onCaptureMediaIngress(
     return () => {};
   }
 
-  const { captureOnMediaIngress, captureOffMediaIngress } = api;
-  if (typeof captureOnMediaIngress !== "function" || typeof captureOffMediaIngress !== "function") {
+  const onMedia = api["captureOnMediaIngress"];
+  const offMedia = api["captureOffMediaIngress"];
+  if (typeof onMedia !== "function" || typeof offMedia !== "function") {
     return () => {};
   }
 
-  captureOnMediaIngress(callback);
+  onMedia(callback);
   return () => {
-    captureOffMediaIngress(callback);
+    offMedia(callback);
   };
 }
 
@@ -550,17 +553,15 @@ export function onCaptureDictationStatus(
     return () => {};
   }
 
-  const { captureOnDictationStatus, captureOffDictationStatus } = api;
-  if (
-    typeof captureOnDictationStatus !== "function" ||
-    typeof captureOffDictationStatus !== "function"
-  ) {
+  const onDictation = api["captureOnDictationStatus"];
+  const offDictation = api["captureOffDictationStatus"];
+  if (typeof onDictation !== "function" || typeof offDictation !== "function") {
     return () => {};
   }
 
-  captureOnDictationStatus(callback);
+  onDictation(callback);
   return () => {
-    captureOffDictationStatus(callback);
+    offDictation(callback);
   };
 }
 
@@ -572,16 +573,14 @@ export function onCaptureAmbientStatus(
     return () => {};
   }
 
-  const { captureOnAmbientStatus, captureOffAmbientStatus } = api;
-  if (
-    typeof captureOnAmbientStatus !== "function" ||
-    typeof captureOffAmbientStatus !== "function"
-  ) {
+  const onAmbient = api["captureOnAmbientStatus"];
+  const offAmbient = api["captureOffAmbientStatus"];
+  if (typeof onAmbient !== "function" || typeof offAmbient !== "function") {
     return () => {};
   }
 
-  captureOnAmbientStatus(callback);
+  onAmbient(callback);
   return () => {
-    captureOffAmbientStatus(callback);
+    offAmbient(callback);
   };
 }

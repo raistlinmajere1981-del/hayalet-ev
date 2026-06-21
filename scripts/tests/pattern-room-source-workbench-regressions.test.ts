@@ -93,14 +93,18 @@ async function walkTypeScriptFiles(baseDir: string): Promise<string[]> {
   const entries = await readdir(baseDir, { withFileTypes: true });
   const files: string[] = [];
 
+  const dirResults = await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory())
+      .map(async (entry) => await walkTypeScriptFiles(join(baseDir, entry.name)))
+  );
+  for (const dirResult of dirResults) {
+    files.push(...dirResult);
+  }
+
   for (const entry of entries) {
-    const entryPath = join(baseDir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await walkTypeScriptFiles(entryPath)));
-      continue;
-    }
     if (entry.isFile() && entry.name.endsWith(".ts")) {
-      files.push(entryPath);
+      files.push(join(baseDir, entry.name));
     }
   }
 
@@ -174,7 +178,7 @@ void test("pattern-room source workbench imports a minimal package as a source d
 
   assert.equal(result.sources.length, 1);
   assert.equal(result.sources[0]?.draftId, "import-source-minimal-package");
-  assert.equal(result.sources[0]?.patternSourceType, "personal_note");
+  assert.equal(result.sources[0].patternSourceType, "personal_note");
   assert.deepEqual(result.evidence, []);
   assert.deepEqual(result.nodes, []);
   assert.deepEqual(result.edges, []);
@@ -320,7 +324,7 @@ void test("pattern-room source workbench preserves quote timecodes in evidence d
 
   assert.equal(result.evidence.length, 1);
   assert.equal(result.evidence[0]?.timecode, "00:01:12");
-  assert.equal(result.evidence[0]?.speaker, "Narrator");
+  assert.equal(result.evidence[0].speaker, "Narrator");
 });
 
 void test("pattern-room source workbench imports numeric patterns as inspiration nodes", () => {
@@ -342,8 +346,8 @@ void test("pattern-room source workbench imports numeric patterns as inspiration
 
   assert.equal(result.nodes.length, 1);
   assert.equal(result.nodes[0]?.draftId, "import-node-number-number-1");
-  assert.equal(result.nodes[0]?.nodeType, "inspiration");
-  assert.equal(result.nodes[0]?.originKind, "numeric_pattern");
+  assert.equal(result.nodes[0].nodeType, "inspiration");
+  assert.equal(result.nodes[0].originKind, "numeric_pattern");
 });
 
 void test("pattern-room source workbench imports uncertainties with questions edges", () => {
@@ -424,8 +428,8 @@ void test("pattern-room source workbench imports references as reference edges",
 
   assert.equal(result.edges.length, 1);
   assert.equal(result.edges[0]?.edgeType, "references");
-  assert.equal(result.edges[0]?.sourceDraftId, "import-node-motif-reference-motif-1");
-  assert.equal(result.edges[0]?.targetDraftId, "import-evidence-reference-quote-1");
+  assert.equal(result.edges[0].sourceDraftId, "import-node-motif-reference-motif-1");
+  assert.equal(result.edges[0].targetDraftId, "import-evidence-reference-quote-1");
   assertEdgesResolveToImportDrafts(result);
 });
 
@@ -640,8 +644,13 @@ void test("pattern-room source workbench stays disconnected from overlay, snapsh
     "rooms/pattern-room/host/runtime.ts",
   ];
 
-  for (const filePath of protectedFiles) {
-    const source = await readFile(resolve(filePath), "utf8");
+  const protectedSources = await Promise.all(
+    protectedFiles.map(async (filePath) => {
+      const source = await readFile(resolve(filePath), "utf8");
+      return { filePath, source };
+    })
+  );
+  for (const { filePath, source } of protectedSources) {
     assert.equal(source.includes("source-workbench"), false, filePath);
     assert.equal(source.includes("SourcePackage"), false, filePath);
   }
@@ -717,8 +726,13 @@ void test("pattern-room source workbench stays disconnected from overlay, snapsh
     /LocalAuthored/,
   ];
 
-  for (const filePath of sourceWorkbenchFiles) {
-    const source = await readFile(filePath, "utf8");
+  const workbenchSources = await Promise.all(
+    sourceWorkbenchFiles.map(async (filePath) => {
+      const source = await readFile(filePath, "utf8");
+      return { filePath, source };
+    })
+  );
+  for (const { filePath, source } of workbenchSources) {
     const relativePath = relative(process.cwd(), filePath);
     for (const pattern of prohibitedPatterns) {
       assert.equal(pattern.test(source), false, `${relativePath} matched ${String(pattern)}`);

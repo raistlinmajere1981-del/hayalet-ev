@@ -120,7 +120,9 @@ async function resolveSceneThemeAssetRuntimeSource(sourcePath: string): Promise<
     return cached;
   }
 
-  const readFile = window.electronAPI?.readFile;
+  const readFile = window.electronAPI?.["readFile"] as
+    | ((path: string) => Promise<string | null>)
+    | undefined;
   if (typeof readFile === "function") {
     try {
       const base64 = await readFile(normalizedPath);
@@ -625,7 +627,9 @@ export function subscribeSceneThemeAssetDraft(listener: SceneThemeAssetDraftList
 
 export async function loadSceneThemeAssetDraft(): Promise<void> {
   let nextSavedDraft = createEmptySceneThemeAssetDraft();
-  const readFile = window.electronAPI?.readFile;
+  const readFile = window.electronAPI?.["readFile"] as
+    | ((path: string) => Promise<string | null>)
+    | undefined;
   if (typeof readFile === "function") {
     try {
       const encoded = await readFile(getSceneThemeAssetDraftSourcePath());
@@ -742,8 +746,13 @@ function buildSceneThemeAssetCopyDestination(target: ParsedSceneEditorAssetTarge
 
 export async function pickSceneEditorAssetTarget(targetId: string): Promise<boolean> {
   const target = parseSceneEditorAssetTargetId(targetId);
-  const api = window.electronAPI;
-  if (target === null || api === undefined || typeof api.showOpenDialog !== "function") {
+  const showOpenDialog = window.electronAPI?.["showOpenDialog"] as
+    | ((options: Record<string, unknown>) => Promise<{ canceled: boolean; filePaths: string[] }>)
+    | undefined;
+  const copyFileTo = window.electronAPI?.["copyFileTo"] as
+    | ((srcPath: string, destDir: string) => Promise<{ success?: boolean; path?: string }>)
+    | undefined;
+  if (target === null || typeof showOpenDialog !== "function" || typeof copyFileTo !== "function") {
     return false;
   }
 
@@ -751,7 +760,7 @@ export async function pickSceneEditorAssetTarget(targetId: string): Promise<bool
     (descriptor) => descriptor.id === targetId
   );
 
-  const selection = await api.showOpenDialog({
+  const selection = await showOpenDialog({
     title: "Select scene asset",
     filters: [
       {
@@ -768,7 +777,7 @@ export async function pickSceneEditorAssetTarget(targetId: string): Promise<bool
   }
 
   const destinationDir = buildSceneThemeAssetCopyDestination(target);
-  const copied = await api.copyFileTo(selectedPath, destinationDir);
+  const copied = await copyFileTo(selectedPath, destinationDir);
   const copiedPath =
     copied.success === true && typeof copied.path === "string"
       ? normalizeAssetSourcePath(copied.path)

@@ -122,16 +122,16 @@ function createDispatchDraft(): PatternRoomCaseReviewDispatchDraft {
 function createMockStorageAdapter(): PatternRoomStorageAdapter {
   return {
     async delete(_snapshotId: string): Promise<void> {
-      return undefined;
+      await Promise.resolve(undefined);
     },
     async list(): Promise<[]> {
-      return [];
+      return await Promise.resolve([]);
     },
     async load(_topicId: string): Promise<null> {
-      return null;
+      return await Promise.resolve(null);
     },
     async save(): Promise<void> {
-      return undefined;
+      await Promise.resolve(undefined);
     },
   };
 }
@@ -174,7 +174,7 @@ function activateHost(
 }
 
 function readPatternRoomManifest(): RoomManifest {
-  const manifest = JSON.parse(readFileSync(resolve("rooms/pattern-room/manifest.json"), "utf8"));
+  const manifest = JSON.parse(readFileSync(resolve("rooms/pattern-room/manifest.json"), "utf8")) as RoomManifest;
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true, result.errors.join("\n"));
@@ -192,7 +192,7 @@ void test("pattern-room case review dispatch command contract literals stay stab
   );
 });
 
-void test("pattern-room case review dispatch command registers as internal room-ui only", async () => {
+void test("pattern-room case review dispatch command registers as internal room-ui only", () => {
   RoomCommandRegistry.reset();
 
   try {
@@ -205,7 +205,7 @@ void test("pattern-room case review dispatch command registers as internal room-
     );
 
     assert.equal(metadata?.scope, "room-ui");
-    assert.equal(metadata?.exposure, "internal");
+    assert.equal(metadata.exposure, "internal");
     assert.equal(
       RoomCommandRegistry.listPublicCommands().includes(PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND),
       false
@@ -256,13 +256,17 @@ void test("pattern-room case review dispatch rejects non room-ui providers and w
   const { dispatchCalls } = activateHost({ registerWithRegistry: true });
 
   try {
-    for (const provider of ["ai0", "ai1", "ai2", "us1", "system", "provider"]) {
-      const result = (await RoomCommandRegistry.run(PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND, {
-        provider,
-        roomId: PATTERN_ROOM_RECORD.id,
-        roomPayload: { draft },
-      })) as { success?: boolean };
-
+    const providerResults = await Promise.all(
+      (["ai0", "ai1", "ai2", "us1", "system", "provider"] as const).map(async (provider) => {
+        const result = (await RoomCommandRegistry.run(PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND, {
+          provider,
+          roomId: PATTERN_ROOM_RECORD.id,
+          roomPayload: { draft },
+        })) as { success?: boolean };
+        return { result, provider };
+      })
+    );
+    for (const { result, provider } of providerResults) {
       assert.equal(result.success, false, `provider ${provider} should be rejected`);
     }
 
@@ -297,13 +301,13 @@ void test("pattern-room case review dispatch command forwards the prepared draft
     assert.deepEqual(result, { success: true });
     assert.deepEqual(dispatchCalls, [draft.payload]);
     assert.equal(dispatchCalls[0]?.["action"], "message.send");
-    assert.deepEqual((dispatchCalls[0]?.["payload"] as Record<string, unknown>)["protocol"], {
+    assert.deepEqual((dispatchCalls[0]["payload"] as Record<string, unknown>)["protocol"], {
       room: "pattern-room",
       scenario: "case-review",
       protocolKey: "pattern-room-case-review",
     });
     assert.match(
-      String((dispatchCalls[0]?.["payload"] as Record<string, unknown>)["text"] ?? ""),
+      ((dispatchCalls[0]["payload"] as Record<string, unknown>)["text"] as string | undefined) ?? "",
       /Bu paket kullanıcı tarafından eklenen/
     );
     assert.deepEqual(notifications, [
@@ -342,11 +346,15 @@ void test("pattern-room case review dispatch rejects malformed drafts before bri
   ];
   const { activation, dispatchCalls, notifications } = activateHost();
 
-  for (const malformedDraft of malformedDrafts) {
-    const result = await activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND]({
-      draft: malformedDraft,
-    });
-
+  const malformedResults = await Promise.all(
+    malformedDrafts.map(async (malformedDraft) => {
+      const result = await activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND]({
+        draft: malformedDraft,
+      });
+      return result;
+    })
+  );
+  for (const result of malformedResults) {
     assert.equal(result.success, false);
   }
 
@@ -366,9 +374,9 @@ void test("pattern-room case review dispatch reports bridge failures and accepts
     async dispatchBridge(): Promise<Record<string, unknown>> {
       if (shouldFail) {
         shouldFail = false;
-        throw new Error("dispatch temporary failure");
+        return await Promise.reject(new Error("dispatch temporary failure"));
       }
-      return { success: true };
+      return await Promise.resolve({ success: true });
     },
   });
 

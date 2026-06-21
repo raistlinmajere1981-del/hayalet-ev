@@ -17,22 +17,24 @@ export interface AssistantRuntimeState {
   updatedAt: string;
 }
 
+type AssistantRuntimeReadResponse = { success: boolean; state?: AssistantRuntimeState };
+type AssistantRuntimeReadFn = () => Promise<AssistantRuntimeReadResponse>;
+type AssistantRuntimeWriteFn = (
+  payload: Record<string, unknown>
+) => Promise<AssistantRuntimeReadResponse>;
+
 export function generateWorkflowSessionId(): string {
   return `wf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export async function readAssistantRuntimeState(): Promise<AssistantRuntimeState | null> {
-  const electronApi = window.electronAPI;
-  if (electronApi === undefined || typeof electronApi.assistantRuntimeRead !== "function") {
-    return null;
-  }
+  const api = window.electronAPI;
+  const read = api?.["assistantRuntimeRead"] as AssistantRuntimeReadFn | undefined;
+  if (typeof read !== "function") return null;
 
   try {
-    const response = await electronApi.assistantRuntimeRead();
-    if (response.success !== true || response.state === undefined) {
-      return null;
-    }
-
+    const response = await read();
+    if (response.success !== true || response.state === undefined) return null;
     return response.state;
   } catch {
     return null;
@@ -40,25 +42,32 @@ export async function readAssistantRuntimeState(): Promise<AssistantRuntimeState
 }
 
 export async function syncAssistantRuntimeDefaults(): Promise<void> {
-  const electronApi = window.electronAPI;
-  if (electronApi === undefined || typeof electronApi.assistantRuntimeRead !== "function") return;
+  const api = window.electronAPI;
+  const read = api?.["assistantRuntimeRead"] as AssistantRuntimeReadFn | undefined;
+  if (typeof read !== "function") return;
 
   try {
-    const response = await electronApi.assistantRuntimeRead();
+    const response = await read();
     const state = response.state;
     if (!response.success || state === undefined) {
-      await electronApi.assistantRuntimeWrite({
-        workflowSessionId: generateWorkflowSessionId(),
-        desiredMode: "soft",
-        phase: "idle",
-      });
+      const write = api?.["assistantRuntimeWrite"] as AssistantRuntimeWriteFn | undefined;
+      if (typeof write === "function") {
+        await write({
+          workflowSessionId: generateWorkflowSessionId(),
+          desiredMode: "soft",
+          phase: "idle",
+        });
+      }
       return;
     }
 
     if (state.workflowSessionId === "") {
-      await electronApi.assistantRuntimeWrite({
-        workflowSessionId: generateWorkflowSessionId(),
-      });
+      const write = api?.["assistantRuntimeWrite"] as AssistantRuntimeWriteFn | undefined;
+      if (typeof write === "function") {
+        await write({
+          workflowSessionId: generateWorkflowSessionId(),
+        });
+      }
     }
   } catch (error) {
     Logger.warn(LogCategory.ASSISTANT_CORE, assistantT("logs.runtimeDefaultsWriteFailed"), {
@@ -68,8 +77,9 @@ export async function syncAssistantRuntimeDefaults(): Promise<void> {
 }
 
 export async function updateAssistantRuntimeState(patch: Record<string, unknown>): Promise<void> {
-  const electronApi = window.electronAPI;
-  if (electronApi === undefined || typeof electronApi.assistantRuntimeWrite !== "function") return;
+  const api = window.electronAPI;
+  const write = api?.["assistantRuntimeWrite"] as AssistantRuntimeWriteFn | undefined;
+  if (typeof write !== "function") return;
 
   try {
     const payload = { ...patch };
@@ -80,7 +90,7 @@ export async function updateAssistantRuntimeState(patch: Record<string, unknown>
       payload["workflowSessionId"] = generateWorkflowSessionId();
     }
 
-    await electronApi.assistantRuntimeWrite(payload);
+    await write(payload);
   } catch (error) {
     Logger.warn(LogCategory.ASSISTANT_CORE, assistantT("logs.runtimeStateUpdateFailed"), {
       error: (error as Error).message,

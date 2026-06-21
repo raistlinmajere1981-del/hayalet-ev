@@ -37,8 +37,9 @@ function createReportRuntime() {
     getAudioAnalysisModulesForRuntime() {
       return [];
     },
-    getFeatureProcessRecord(project: any, featureId: string): any {
-      return toRecord(toRecord(project["process"])["records"])[featureId] || { status: "idle" };
+    getFeatureProcessRecord(project, featureId: string) {
+      const p = project as RecordValue;
+      return (toRecord(toRecord(p["process"])["records"])[featureId] ?? { status: "idle" }) as Record<string, unknown>;
     },
     getFeatureReportRecord(project: RecordValue, featureId: string) {
       return toRecord(toRecord(toRecord(project["report"])["records"])[featureId]);
@@ -62,15 +63,15 @@ function createReportRuntime() {
     normalizeProcessFinding(rawValue: unknown) {
       const source = toRecord(rawValue);
       return {
-        id: asNonEmptyString(source["id"]) || "finding",
+        id: asNonEmptyString(source["id"]) ?? "finding",
         moduleId: asNonEmptyString(source["moduleId"]),
         code: asNonEmptyString(source["code"]),
-        title: asNonEmptyString(source["title"]) || "Finding",
-        detail: asNonEmptyString(source["detail"]) || "",
-        level: asNonEmptyString(source["level"]) || "low",
-        severity: asNonEmptyString(source["severity"]) || "info",
-        confidence: asNonEmptyString(source["confidence"]) || "low",
-        kind: asNonEmptyString(source["kind"]) || "derived",
+        title: asNonEmptyString(source["title"]) ?? "Finding",
+        detail: asNonEmptyString(source["detail"]) ?? "",
+        level: asNonEmptyString(source["level"]) ?? "low",
+        severity: asNonEmptyString(source["severity"]) ?? "info",
+        confidence: asNonEmptyString(source["confidence"]) ?? "low",
+        kind: asNonEmptyString(source["kind"]) ?? "derived",
         evidenceCount: typeof source["evidenceCount"] === "number" ? source["evidenceCount"] : 0,
         artifactIds: Array.isArray(source["artifactIds"]) ? source["artifactIds"] : [],
         sourceModule: asNonEmptyString(source["sourceModule"]),
@@ -153,7 +154,7 @@ void test("laboratory report composition includes saved image comparison finding
   assert.equal(findings.length, 1);
   assert.equal(toRecord(findings[0])["id"], "finding-1");
   assert.match(
-    String(toRecord(findings[0])["detail"] || ""),
+    (toRecord(findings[0])["detail"] as string | undefined) ?? "",
     /ROI baglami: Primary ROI x=10%, y=20%, w=30%, h=40%; Reference ROI x=20%, y=10%, w=25%, h=35%; active=reference/
   );
   assert.equal(artifacts.length, 2);
@@ -163,9 +164,9 @@ void test("laboratory report composition includes saved image comparison finding
     reference: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
   });
   assert.match(
-    String(toRecord(toRecord(artifacts[1])["metadata"])["roiSummary"] || ""),
+    (toRecord(toRecord(artifacts[1])["metadata"])["roiSummary"] as string | undefined) ?? "",
     /Primary ROI x=10%/
   );
   assert.equal(topFindings[0]?.["title"], "Sol göz çevresinde belirgin fark");
-  assert.match(String(topFindings[0]?.["detail"] || ""), /ROI baglami:/);
+  assert.match((topFindings[0]["detail"] as string | undefined) ?? "", /ROI baglami:/);
 });

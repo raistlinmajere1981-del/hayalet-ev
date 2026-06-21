@@ -8,7 +8,7 @@ function createTranslator(dictionary: Record<string, string>) {
   return (key: string, params: Record<string, string | number | null | undefined> = {}) => {
     const template = dictionary[key] ?? key;
     return String(template).replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_match, token) => {
-      const value = params[token];
+      const value = params[token as string];
       return value === null || value === undefined ? "" : String(value);
     });
   };

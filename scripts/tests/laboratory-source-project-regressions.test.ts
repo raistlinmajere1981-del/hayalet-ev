@@ -13,10 +13,10 @@ import { readCssWithImports } from "./helpers/css-imports.ts";
 
 const sourcePresets = JSON.parse(
   readFileSync("rooms/laboratory/tools/source-presets.json", "utf8")
-);
+) as Record<string, unknown>;
 const ytDlpForm = JSON.parse(
   readFileSync("rooms/laboratory/tools/yt-dlp.form.json", "utf8")
-);
+) as Record<string, unknown>;
 
 function readLabThemeSource() {
   return readCssWithImports("rooms/laboratory/ui/lab-theme.css");
@@ -40,8 +40,8 @@ function createSourceProjectState(
   } = {}
 ) {
   const store = createLabStore();
-  const activeProjectId = options.activeProjectId || "project-1";
-  const projects = options.projects || [
+  const activeProjectId = options.activeProjectId ?? "project-1";
+  const projects = options.projects ?? [
     { id: "project-1", name: "Workspace Project", hasSource: true },
   ];
   store.dispatch({
@@ -54,11 +54,11 @@ function createSourceProjectState(
       activeProject: {
         id: activeProjectId,
         name:
-          String(
-            projects.find(function (project) {
-              return String(project["id"] || "") === activeProjectId;
-            })?.["name"] || ""
-          ) || "Workspace Project",
+      String(
+        (projects.find(function (project) {
+          return String((project["id"] as string | undefined) ?? "") === activeProjectId;
+        })?.["name"] as string | undefined) ?? "Workspace Project"
+      ),
         createdAt: "2026-04-29T10:00:00.000Z",
         source: {
           kind: "video",
@@ -232,7 +232,7 @@ void test("laboratory source project controls skip redundant button dispatches",
 });
 
 void test("laboratory source panel renders localized asset groups and context actions", () => {
-  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")) as Record<string, unknown>;
   const trCopy = createLabI18n({ locale: "tr", translations: trTranslations });
   const html = renderLabSourcePanel(
     createSourceProjectState(true, {
@@ -441,8 +441,8 @@ void test("laboratory source panel renders visual analysis artifacts as asset ro
 });
 
 void test("laboratory source project management i18n keys exist in English and Turkish catalogs", () => {
-  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8"));
-  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8"));
+  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8")) as Record<string, unknown>;
+  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")) as Record<string, unknown>;
   const sourceFiles = [
     "rooms/laboratory/ui/lab-source-panel.ts",
     "rooms/laboratory/ui/project-source-import.ts",
@@ -454,13 +454,13 @@ void test("laboratory source project management i18n keys exist in English and T
     for (const match of source.matchAll(
       /copy\.t\("((?:mediaAnalysis\.(?:sourcePanel|projectImport))[^"]+)"/g
     )) {
-      keys.add(match[1]!);
+      keys.add(match[1] as string);
     }
   });
 
   function readPath(record: Record<string, unknown>, key: string): unknown {
     return key.split(".").reduce<unknown>(function (current, part) {
-      return current && typeof current === "object"
+      return current != null && typeof current === "object"
         ? (current as Record<string, unknown>)[part]
         : undefined;
     }, record);

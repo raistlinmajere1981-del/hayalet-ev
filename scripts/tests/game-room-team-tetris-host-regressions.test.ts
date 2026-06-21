@@ -38,15 +38,14 @@ function getGameState(
 function hostCommands(
   runtime: TetrisHostRuntime
 ): Record<string, (args: Record<string, unknown>) => Record<string, unknown> | Promise<Record<string, unknown>>> {
-  return (runtime["exported"] as Record<string, unknown>)["commands"] as Record<
+  return runtime.exported["commands"] as Record<
     string,
     (args: Record<string, unknown>) => Record<string, unknown> | Promise<Record<string, unknown>>
   >;
 }
 
 function loadTeamTetrisEngine() {
-  return (gameRoomHostModule as { default: { teamTetrisEngine: Record<string, unknown> } }).default
-    .teamTetrisEngine as {
+  return gameRoomHostModule.teamTetrisEngine as {
     createMatch: (options: Record<string, unknown>) => Record<string, unknown>;
     validateMove: (
       match: Record<string, unknown>,
@@ -370,7 +369,7 @@ void test("game-room host serializes Team Tetris ids without visible board or se
   const runtime = createRoomHostRuntime();
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  const startResult = await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  const startResult = await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (args: Record<string, unknown>) => Promise<Record<string, unknown>>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: false,
@@ -388,7 +387,7 @@ void test("game-room host serializes Team Tetris ids without visible board or se
 
   assert.equal("label" in boards[0]!, false);
   assert.equal("label" in boards[1]!, false);
-  assert.equal("label" in userViewSeat, false);
+  assert.equal("label" in userViewSeat!, false);
   assert.equal("label" in revealedTeams[0]!, false);
   assert.equal("seatLabels" in revealedTeams[0]!, false);
 });
@@ -397,7 +396,7 @@ void test("game-room host resets Team Tetris state when the active feature switc
   const runtime = createRoomHostRuntime();
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  const startResult = await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  const startResult = await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (args: Record<string, unknown>) => Promise<Record<string, unknown>>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: false,
@@ -422,7 +421,7 @@ void test("game-room host blocks Team Tetris start until ai1, ai2, and us1 are r
   const runtime = createRoomHostRuntime();
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: false }));
-  const result = await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  const result = await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (args: Record<string, unknown>) => Promise<Record<string, unknown>>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -437,7 +436,7 @@ void test("game-room host blocks visible Team Tetris setup until a local partner
   const runtime = createRoomHostRuntime();
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  const result = await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  const result = await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (args: Record<string, unknown>) => Promise<Record<string, unknown>>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: false,
@@ -453,7 +452,7 @@ void test("game-room host dispatches Team Tetris AI protocol and turn packet for
   const seed = findSeedForSeat("ai1");
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  const startResult = await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  const startResult = await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (args: Record<string, unknown>) => Promise<Record<string, unknown>>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -464,7 +463,7 @@ void test("game-room host dispatches Team Tetris AI protocol and turn packet for
   assert.equal(startResult['success'], true);
   assert.equal(runtime.protocolCalls.length > 0, true);
   assert.equal(runtime.messageCalls.length > 0, true);
-  assert.equal(runtime.protocolCalls[0]!!["scenario"], "team-tetris-ai-opening");
+  assert.equal((runtime.protocolCalls[0] as Record<string, unknown>)["scenario"], "team-tetris-ai-opening");
   const aiOpeningMessage = str(
     runtime.messageCalls.find((entry: Record<string, unknown>) => entry["provider"] === "ai1")?.["text"] ?? ""
   );
@@ -495,7 +494,7 @@ void test("game-room host mirrors Team Tetris starts and local moves over US1 ro
   });
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  const startResult = await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  const startResult = await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: false,
@@ -505,27 +504,27 @@ void test("game-room host mirrors Team Tetris starts and local moves over US1 ro
   });
 
   assert.equal(startResult['success'], true);
-  assert.equal((runtime.us1MessageCalls[0]!["roomEvent"] as Record<string, unknown> | undefined)?.["eventType"], "start");
-  assert.match(str(runtime.us1MessageCalls[0]!["text"] ?? ""), /Creator pair: USER \+ US1\./);
+  assert.equal(((runtime.us1MessageCalls[0] as Record<string, unknown>)["roomEvent"] as Record<string, unknown> | undefined)?.["eventType"], "start");
+  assert.match(str((runtime.us1MessageCalls[0] as Record<string, unknown>)["text"] ?? ""), /Creator pair: USER \+ US1\./);
   assert.equal(
-    (JSON.parse(str((runtime.us1MessageCalls[0]!["roomEvent"] as Record<string, unknown>)["note"] ?? "{}")) as Record<string, unknown>)["selectedPartnerSeatId"],
+    (JSON.parse(str(((runtime.us1MessageCalls[0] as Record<string, unknown>)["roomEvent"] as Record<string, unknown>)["note"] ?? "{}")) as Record<string, unknown>)["selectedPartnerSeatId"],
     "us1"
   );
 
   const currentMatch = getGameState(runtime)?.["match"] as Record<string, unknown>;
   const move = buildValidMoveForCurrentTurn(currentMatch);
-  const moveResult = await hostCommands(runtime)['GameRoomTeamTetrisUserMove']!({
+  const moveResult = await (hostCommands(runtime)['GameRoomTeamTetrisUserMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: move,
   });
 
   assert.equal(moveResult['success'], true);
-  assert.equal((runtime.us1MessageCalls[1]!["roomCommand"] as Record<string, unknown> | undefined)?.["action"], "room.command");
+  assert.equal(((runtime.us1MessageCalls[1] as Record<string, unknown>)["roomCommand"] as Record<string, unknown> | undefined)?.["action"], "room.command");
   assert.equal(
-    (runtime.us1MessageCalls[1]!["roomCommand"] as Record<string, unknown>)["commandName"],
+    ((runtime.us1MessageCalls[1] as Record<string, unknown>)["roomCommand"] as Record<string, unknown>)["commandName"],
     "GameRoomTeamTetrisRemoteMove"
   );
-  assert.deepEqual((runtime.us1MessageCalls[1]!["roomCommand"] as Record<string, unknown>)["roomPayload"], move);
+  assert.deepEqual(((runtime.us1MessageCalls[1] as Record<string, unknown>)["roomCommand"] as Record<string, unknown>)["roomPayload"], move);
   assert.equal((getGameState(runtime)?.["match"] as Record<string, unknown> | undefined)?.["turnIndex"], 1);
 });
 
@@ -534,7 +533,7 @@ void test("game-room host lets a mirrored US1 room-ui turn submit through room t
   const seed = findSeedForSeat("us1");
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -548,7 +547,7 @@ void test("game-room host lets a mirrored US1 room-ui turn submit through room t
 
   const currentMatch = getGameState(runtime)?.["match"] as Record<string, unknown>;
   const move = buildValidMoveForCurrentTurn(currentMatch);
-  const result = await hostCommands(runtime)['GameRoomTeamTetrisUserMove']!({
+  const result = await (hostCommands(runtime)['GameRoomTeamTetrisUserMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: move,
   });
@@ -566,7 +565,7 @@ void test("game-room host lets a mirrored US1 copy apply relayed Team Tetris rem
   const seed = findSeedForSeat("ai1");
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -580,7 +579,7 @@ void test("game-room host lets a mirrored US1 copy apply relayed Team Tetris rem
 
   const currentMatch = getGameState(runtime)?.["match"] as Record<string, unknown>;
   const move = buildValidMoveForCurrentTurn(currentMatch);
-  const result = await hostCommands(runtime)['GameRoomTeamTetrisRemoteMove']!({
+  const result = await (hostCommands(runtime)['GameRoomTeamTetrisRemoteMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "us1",
     roomCommand: "GameRoomTeamTetrisRemoteMove",
     transportMessageId: "mirrored-relay-1",
@@ -600,7 +599,7 @@ void test("game-room host ignores mirrored US1-caught Team Tetris AI commands wi
   const seed = findSeedForSeat("ai1");
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -615,7 +614,7 @@ void test("game-room host ignores mirrored US1-caught Team Tetris AI commands wi
   const beforeTurnIndex: unknown = (getGameState(runtime)?.["match"] as Record<string, unknown> | undefined)?.["turnIndex"];
   const currentMatch = getGameState(runtime)?.["match"] as Record<string, unknown>;
   const move = buildValidMoveForCurrentTurn(currentMatch);
-  const result = await hostCommands(runtime)['GameRoomTeamTetrisAiMove']!({
+  const result = await (hostCommands(runtime)['GameRoomTeamTetrisAiMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "us1",
     roomCommand: "GameRoomTeamTetrisAiMove",
     transportMessageId: "mirrored-catch-1",
@@ -631,7 +630,7 @@ void test("game-room host selects the followup Team Tetris protocol scenario whe
   const seed = findSeedForTurnSequence(["user", "ai2", "ai1", "us1"]);
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -641,7 +640,7 @@ void test("game-room host selects the followup Team Tetris protocol scenario whe
 
   const firstMatch = getGameState(runtime)?.["match"] as Record<string, unknown>;
   const firstMove = buildValidMoveForCurrentTurn(firstMatch);
-  await hostCommands(runtime)['GameRoomTeamTetrisUserMove']!({
+  await (hostCommands(runtime)['GameRoomTeamTetrisUserMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: firstMove,
   });
@@ -651,24 +650,24 @@ void test("game-room host selects the followup Team Tetris protocol scenario whe
 
   const secondMatch = getGameState(runtime)?.["match"] as Record<string, unknown>;
   const secondMove = buildValidMoveForCurrentTurn(secondMatch);
-  await hostCommands(runtime)['GameRoomTeamTetrisAiMove']!({
+  await (hostCommands(runtime)['GameRoomTeamTetrisAiMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "ai2",
     roomArgs: secondMove,
   });
 
-  assert.equal(runtime.protocolCalls[0]!["scenario"], "team-tetris-ai-followup");
-  assert.equal(runtime.messageCalls[0]!["provider"], "ai1");
+  assert.equal((runtime.protocolCalls[0] as Record<string, unknown>)["scenario"], "team-tetris-ai-followup");
+  assert.equal((runtime.messageCalls[0] as Record<string, unknown>)["provider"], "ai1");
   assert.match(
-    str(runtime.messageCalls[0]!["text"] ?? ""),
+    str((runtime.messageCalls[0] as Record<string, unknown>)["text"] ?? ""),
     /visible board intentionally omits your partner's most recent lock/i
   );
-  assert.match(str(runtime.messageCalls[0]!["text"] ?? ""), /"pieceGeometryCatalog"/i);
+  assert.match(str((runtime.messageCalls[0] as Record<string, unknown>)["text"] ?? ""), /"pieceGeometryCatalog"/i);
   assert.match(
-    str(runtime.messageCalls[0]!["text"] ?? ""),
+    str((runtime.messageCalls[0] as Record<string, unknown>)["text"] ?? ""),
     /"partnerLastPiece"\s*:\s*\{[\s\S]*"cells"\s*:\s*\[\]/i
   );
   assert.doesNotMatch(
-    str(runtime.messageCalls[0]!["text"] ?? ""),
+    str((runtime.messageCalls[0] as Record<string, unknown>)["text"] ?? ""),
     /A legal reference command for this exact board is:/i
   );
 });
@@ -678,7 +677,7 @@ void test("game-room host blocks Team Tetris when a required seat disconnects mi
   const seed = findSeedForSeat("user");
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -699,7 +698,7 @@ void test("game-room host ignores stale Team Tetris remote moves without mutatin
   const seed = findSeedForSeat("us1");
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -709,7 +708,7 @@ void test("game-room host ignores stale Team Tetris remote moves without mutatin
 
   const beforeMatch = getGameState(runtime)?.["match"] as Record<string, unknown>;
   const beforeTurnToken = String((beforeMatch["currentTurn"] as Record<string, unknown>)["turnToken"]);
-  const result = await hostCommands(runtime)['GameRoomTeamTetrisRemoteMove']!({
+  const result = await (hostCommands(runtime)['GameRoomTeamTetrisRemoteMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "us1",
     transportMessageId: "stale-remote-1",
     roomArgs: {
@@ -734,7 +733,7 @@ void test("game-room host ignores duplicate Team Tetris remote moves after the t
   const seed = findSeedForSeat("us1");
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -744,14 +743,14 @@ void test("game-room host ignores duplicate Team Tetris remote moves after the t
 
   const firstMatch = getGameState(runtime)?.["match"] as Record<string, unknown>;
   const firstMove = buildValidMoveForCurrentTurn(firstMatch);
-  const applied = await hostCommands(runtime)['GameRoomTeamTetrisRemoteMove']!({
+  const applied = await (hostCommands(runtime)['GameRoomTeamTetrisRemoteMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "us1",
     transportMessageId: "duplicate-remote-1",
     roomArgs: firstMove,
   });
   const turnIndexAfterMove: unknown = (getGameState(runtime)?.["match"] as Record<string, unknown> | undefined)?.["turnIndex"];
 
-  const duplicate = await hostCommands(runtime)['GameRoomTeamTetrisRemoteMove']!({
+  const duplicate = await (hostCommands(runtime)['GameRoomTeamTetrisRemoteMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "us1",
     transportMessageId: "duplicate-remote-1",
     roomArgs: firstMove,
@@ -768,7 +767,7 @@ void test("game-room host blocks invalid Team Tetris AI payloads and preserves t
   const seed = findSeedForSeat("ai1");
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -778,7 +777,7 @@ void test("game-room host blocks invalid Team Tetris AI payloads and preserves t
 
   const match = primeRuntimeMatchWithPiece(runtime, "O");
   const currentTurn = match["currentTurn"] as Record<string, unknown>;
-  const result = await hostCommands(runtime)['GameRoomTeamTetrisAiMove']!({
+  const result = await (hostCommands(runtime)['GameRoomTeamTetrisAiMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "ai1",
     roomArgs: {
       schemaVersion: 1,
@@ -802,7 +801,7 @@ void test("game-room host returns Team Tetris move resolution details in test mo
   const seed = findSeedForSeat("user");
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -812,7 +811,7 @@ void test("game-room host returns Team Tetris move resolution details in test mo
 
   const currentMatch = getGameState(runtime)?.["match"] as Record<string, unknown>;
   const successMove = buildValidMoveForCurrentTurn(currentMatch);
-  const successResult = await hostCommands(runtime)['GameRoomTeamTetrisUserMove']!({
+  const successResult = await (hostCommands(runtime)['GameRoomTeamTetrisUserMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     testMode: true,
     roomArgs: successMove,
@@ -828,7 +827,7 @@ void test("game-room host returns Team Tetris move resolution details in test mo
   const blockedSeed = findSeedForSeat("ai1");
 
   await blockedRuntime.emitHostContext(buildHostContext({ us1Ready: true }));
-  await hostCommands(blockedRuntime)['GameRoomTeamTetrisStart']!({
+  await (hostCommands(blockedRuntime)['GameRoomTeamTetrisStart'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -838,7 +837,7 @@ void test("game-room host returns Team Tetris move resolution details in test mo
 
   const blockedMatch = primeRuntimeMatchWithPiece(blockedRuntime, "O");
   const blockedTurn = blockedMatch["currentTurn"] as Record<string, unknown>;
-  const failureResult = await hostCommands(blockedRuntime)['GameRoomTeamTetrisAiMove']!({
+  const failureResult = await (hostCommands(blockedRuntime)['GameRoomTeamTetrisAiMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "ai1",
     testMode: true,
     roomArgs: {
@@ -862,7 +861,7 @@ void test("game-room host reveals hidden Team Tetris pairs once a hidden-pair ma
   const seed = findSeedForSeat("user");
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
-  await hostCommands(runtime)['GameRoomTeamTetrisStart']!({
+  await (hostCommands(runtime)['GameRoomTeamTetrisStart'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: true,
@@ -874,14 +873,14 @@ void test("game-room host reveals hidden Team Tetris pairs once a hidden-pair ma
     const currentTurn = currentMatch["currentTurn"] as Record<string, unknown>;
     const team = (currentMatch["teams"] as Record<string, unknown>)[String((currentTurn as Record<string, string>)["teamId"])] as Record<string, unknown>;
     const board = team["board"] as string[][];
-    board[2]![4] = "J";
-    board[2]![5] = "J";
+    (board[2] as string[])[4] = "J";
+    (board[2] as string[])[5] = "J";
     (team["bagState"] as Record<string, unknown>)["bag"] = ["I"];
     (team["bagState"] as Record<string, unknown>)["index"] = 0;
   });
 
   const currentTurn = match["currentTurn"] as Record<string, unknown>;
-  const result = await hostCommands(runtime)['GameRoomTeamTetrisUserMove']!({
+  const result = await (hostCommands(runtime)['GameRoomTeamTetrisUserMove'] as (...args: unknown[]) => Record<string, unknown>)({
     provider: "room-ui",
     roomArgs: {
       schemaVersion: 1,

@@ -389,38 +389,39 @@ class ConversationListManagerClass {
       const ai2Account = AppState.getAccountForSlot("ai2");
       const us1AccountId = AppState.getUs1ArchiveAccountId();
 
+      const listSessionsFn = electronApi["opencodeUiFsListSessions"] as
+        | ((dbPath?: string) => Promise<{ success?: boolean; sessions?: unknown[] }>)
+        | undefined;
+      const getConversationsFn = electronApi["dbGetConversations"] as
+        | ((payload: Record<string, unknown>) => Promise<{ data?: unknown[] }>)
+        | undefined;
+
       const ai0Result =
-        ai0Account?.id !== undefined &&
-        ai0Account.id !== "" &&
-        typeof electronApi.opencodeUiFsListSessions === "function"
-          ? ((await electronApi.opencodeUiFsListSessions()) as
-              | { success?: boolean; sessions?: unknown[] }
-              | undefined)
+        ai0Account?.id !== undefined && ai0Account.id !== "" && typeof listSessionsFn === "function"
+          ? await listSessionsFn()
           : undefined;
       const ai1Result =
-        ai1Account?.id !== undefined && ai1Account.id !== ""
-          ? ((await electronApi.dbGetConversations({ accountId: ai1Account.id })) as
-              | { data: unknown[] }
-              | undefined)
+        ai1Account?.id !== undefined &&
+        ai1Account.id !== "" &&
+        typeof getConversationsFn === "function"
+          ? await getConversationsFn({ accountId: ai1Account.id })
           : { data: [] };
       const ai2Result =
-        ai2Account?.id !== undefined && ai2Account.id !== ""
-          ? ((await electronApi.dbGetConversations({ accountId: ai2Account.id })) as
-              | { data: unknown[] }
-              | undefined)
+        ai2Account?.id !== undefined &&
+        ai2Account.id !== "" &&
+        typeof getConversationsFn === "function"
+          ? await getConversationsFn({ accountId: ai2Account.id })
           : { data: [] };
       const us1Result =
-        us1AccountId !== null && us1AccountId !== ""
-          ? ((await electronApi.dbGetConversations({ accountId: us1AccountId })) as
-              | { data: unknown[] }
-              | undefined)
+        us1AccountId !== null && us1AccountId !== "" && typeof getConversationsFn === "function"
+          ? await getConversationsFn({ accountId: us1AccountId })
           : { data: [] };
 
       const ai0Entries =
         ai0Result?.success === true && Array.isArray(ai0Result.sessions) ? ai0Result.sessions : [];
-      const ai1Entries = Array.isArray(ai1Result?.data) ? ai1Result.data : [];
-      const ai2Entries = Array.isArray(ai2Result?.data) ? ai2Result.data : [];
-      const us1Entries = Array.isArray(us1Result?.data) ? us1Result.data : [];
+      const ai1Entries = Array.isArray(ai1Result.data) ? ai1Result.data : [];
+      const ai2Entries = Array.isArray(ai2Result.data) ? ai2Result.data : [];
+      const us1Entries = Array.isArray(us1Result.data) ? us1Result.data : [];
       const us1PendingSessions = AppState.getUs1PendingSessions();
 
       this.entries = [
@@ -661,7 +662,13 @@ class ConversationListManagerClass {
 
   async handleUs1Refresh(): Promise<void> {
     const electronApi = window.electronAPI;
-    if (electronApi === undefined || typeof electronApi.us1SyncMessages !== "function") {
+    if (electronApi === undefined) {
+      return;
+    }
+    const syncMessagesFn = electronApi["us1SyncMessages"] as
+      | ((params?: Record<string, unknown>) => Promise<unknown>)
+      | undefined;
+    if (typeof syncMessagesFn !== "function") {
       return;
     }
 

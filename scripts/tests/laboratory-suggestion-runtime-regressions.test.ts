@@ -87,7 +87,7 @@ void test("selection suggestion selector returns an empty list without a valid s
   const store = createLabStore();
 
   assert.deepEqual(getSelectionSuggestions(store.getState()), []);
-  assert.deepEqual(getWaveformTimelineModel(store.getState()).selectionSuggestions ?? [], []);
+  assert.deepEqual(getWaveformTimelineModel(store.getState()).selectionSuggestions , []);
 });
 
 void test("selection suggestion selector falls back to the full source scope without a manual selection", () => {
@@ -121,7 +121,7 @@ void test("selection suggestion selector falls back to the full source scope wit
     createdAt: 0,
   });
   assert.equal(
-    getWaveformTimelineModel(audioStore.getState()).selectionSuggestions?.some(function (
+    getWaveformTimelineModel(audioStore.getState()).selectionSuggestions.some(function (
       suggestion
     ) {
       return suggestion.id === "clean-audio";
@@ -129,7 +129,7 @@ void test("selection suggestion selector falls back to the full source scope wit
     false
   );
   assert.equal(
-    getWaveformTimelineModel(audioStore.getState()).selectionSuggestions?.some(function (
+    getWaveformTimelineModel(audioStore.getState()).selectionSuggestions.some(function (
       suggestion
     ) {
       return suggestion.id === "metadata-audit";
@@ -178,7 +178,7 @@ void test("selection suggestion selector falls back to the full source scope wit
   ]);
   assert.equal(getEffectiveActiveSelection(videoStore.getState())?.endMs, 9000);
   assert.equal(
-    getWaveformTimelineModel(videoStore.getState()).selectionSuggestions?.some(function (
+    getWaveformTimelineModel(videoStore.getState()).selectionSuggestions.some(function (
       suggestion
     ) {
       return suggestion.id === "detect-scenes";
@@ -221,7 +221,7 @@ void test("selection suggestion selector falls back to the full source scope wit
     },
   ]);
   assert.equal(
-    getWaveformTimelineModel(imageStore.getState()).selectionSuggestions?.some(function (
+    getWaveformTimelineModel(imageStore.getState()).selectionSuggestions.some(function (
       suggestion
     ) {
       return suggestion.id === "crop-region";
@@ -1064,122 +1064,122 @@ void test("hydrate keeps selection previews and execution intents ephemeral", as
   assert.equal("preferredAlternativeIndex" in persistedState, false);
   assert.equal("preferredAlternativeLabel" in persistedState, false);
   assert.equal(
-    "adaptiveDecisionHint" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "adaptiveDecisionHint" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
     "activeExecutionGoalEvaluation" in
-      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+      ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "activeExecutionIntentId" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "activeExecutionIntentId" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
     "activeExecutionAlternatives" in
-      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+      ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "activeExecutionCandidate" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "activeExecutionCandidate" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "activeExecutionCommitment" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "activeExecutionCommitment" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "activeExecutionReadiness" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "activeExecutionReadiness" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "activeExecutionPlan" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "activeExecutionPlan" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
     "activeExecutionPayloadPreview" in
-      ((persistedState["workspace"] as Record<string, unknown>) || {}),
+      ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "activeExecutionReflection" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "activeExecutionReflection" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "activeExecutionSimulation" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "activeExecutionSimulation" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "activeExecutionStaging" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "activeExecutionStaging" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "executionGoalEvaluation" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "executionGoalEvaluation" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "executionPatternRegistry" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "executionPatternRegistry" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "executionPatternSignal" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "executionPatternSignal" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "executionRuntime" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "executionRuntime" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "patternSignal" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "patternSignal" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "decisionPressure" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "decisionPressure" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "decisionPosture" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "decisionPosture" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "decisionPostureSignal" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "decisionPostureSignal" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "posture" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "posture" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "shortLabel" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "shortLabel" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "counterfactualProjection" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "counterfactualProjection" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "expectedCoverage" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "expectedCoverage" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "expectedAlignment" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "expectedAlignment" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "expectedStability" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "expectedStability" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "preferredAlternative" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "preferredAlternative" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "preferredAlternativeIndex" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "preferredAlternativeIndex" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   assert.equal(
-    "preferredAlternativeLabel" in ((persistedState["workspace"] as Record<string, unknown>) || {}),
+    "preferredAlternativeLabel" in ((persistedState["workspace"] as Record<string, unknown>) ),
     false
   );
   const persistedKeys = collectPersistedKeys(persistedState);

@@ -125,7 +125,9 @@ class WhisperManagerClass {
         return { pending: [], done: [] };
       }
 
-      const whisperLoad = window.electronAPI?.whisperLoad;
+      const whisperLoad = window.electronAPI?.["whisperLoad"] as
+        | ((params?: Record<string, unknown>) => Promise<unknown>)
+        | undefined;
       if (typeof whisperLoad !== "function") {
         return { pending: [], done: [] };
       }
@@ -172,7 +174,14 @@ class WhisperManagerClass {
       }
 
       const accountData = this.data[accountId] ?? { pending: [], done: [] };
-      await electronApi.whisperSave({
+      const whisperSave = electronApi["whisperSave"] as
+        | ((
+            params: { accountId: string; payload?: unknown } | string,
+            data?: unknown
+          ) => Promise<unknown>)
+        | undefined;
+      if (typeof whisperSave !== "function") return;
+      await whisperSave({
         accountId,
         payload: accountData,
       });

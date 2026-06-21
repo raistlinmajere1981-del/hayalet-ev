@@ -300,13 +300,13 @@ void test("laboratory store ignores stale correlated run events from an older pr
 
   const state = store.getState();
   assert.equal(state.run?.state, "running");
-  assert.equal(state.run?.requestId, "req-new");
-  assert.equal(state.run?.jobId, "job-new");
-  assert.equal(state.run?.modules["stale-module"], undefined);
-  assert.equal(state.run?.liveFindings.length, 0);
-  assert.deepEqual(state.run?.warnings, []);
+  assert.equal(state.run.requestId, "req-new");
+  assert.equal(state.run.jobId, "job-new");
+  assert.equal(state.run.modules["stale-module"], undefined);
+  assert.equal(state.run.liveFindings.length, 0);
+  assert.deepEqual(state.run.warnings, []);
   assert.equal(
-    state.run?.events.some(function (entry) {
+    state.run.events.some(function (entry) {
       return (
         entry.id === "evt-old-terminal" ||
         entry.id === "evt-old-module" ||
@@ -969,7 +969,7 @@ void test("job-runtime getActiveProcessJobs uses action prefix not featureStage"
   ).createLaboratoryJobRuntime({
     roomId: "laboratory",
     toRecord(value: unknown) {
-      return value && typeof value === "object" && !Array.isArray(value)
+      return value != null && typeof value === "object" && !Array.isArray(value)
         ? (value as Record<string, unknown>)
         : {};
     },

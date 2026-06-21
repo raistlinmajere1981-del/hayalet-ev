@@ -721,8 +721,13 @@ void test("pattern-room phase 12G-C cleanup helpers stay scoped to approved UI a
     "rooms/pattern-room/ui/panels/pattern-report-panel.ts",
   ];
 
-  for (const sourcePath of integrationPaths) {
-    const source = await readFile(resolve(sourcePath), "utf8");
+  const integrationSources = await Promise.all(
+    integrationPaths.map(async (sourcePath) => {
+      const source = await readFile(resolve(sourcePath), "utf8");
+      return { sourcePath, source };
+    })
+  );
+  for (const { sourcePath, source } of integrationSources) {
     localStateOnlyHelperNames.forEach((helperName) => {
       assert.equal(source.includes(helperName), false, `${sourcePath} wires ${helperName}`);
     });

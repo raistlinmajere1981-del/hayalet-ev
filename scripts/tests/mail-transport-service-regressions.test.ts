@@ -95,7 +95,7 @@ void test("sendMail updates outbound sidecar metadata and session mapping", asyn
   const sentMessages: Array<Record<string, unknown>> = [];
   const service = new MailTransportService({
     now: () => 1700000000000,
-    wait: async () => undefined,
+    wait: async (_ms: number) => {},
     createSmtpTransporter: () => ({
       sendMail: async (message) => {
         sentMessages.push(message as Record<string, unknown>);
@@ -128,9 +128,9 @@ void test("sendMail updates outbound sidecar metadata and session mapping", asyn
     assert.equal(sentMessages.length, 1);
     assert.equal(result.deliveryState, "sent");
     assert.equal(meta?.deliveryState, "sent");
-    assert.equal(meta?.localMessageId, "local-out-1");
+    assert.equal(meta.localMessageId, "local-out-1");
     assert.equal(mapping?.lastMessageId, result.transportMessageId);
-    assert.equal(mapping?.threadMessageId, result.threadMessageId);
+    assert.equal(mapping.threadMessageId, result.threadMessageId);
   } finally {
     cleanupAccount(account.id);
   }
@@ -140,7 +140,7 @@ void test("processIncomingMessage parses attachments, resolves session mapping, 
   const account = createAccount("mail_transport_process");
   const service = new MailTransportService({
     now: () => 1700000005000,
-    wait: async () => undefined,
+    wait: async (_ms: number) => {},
   });
   const sidecar = new MailSidecarStoreManager(account.id);
   const threadMessageId = "<thread-phase4@example.com>";
@@ -186,7 +186,7 @@ void test("fetchInbox uses injected IMAP client and advances sidecar cursor", as
   let loggedOut = false;
 
   const fakeImapClient: MailTransportImapClient = {
-    connect: async () => undefined,
+    connect: async () => {},
     getMailboxLock: async (path) => ({
       path,
       release: () => {
@@ -209,7 +209,7 @@ void test("fetchInbox uses injected IMAP client and advances sidecar cursor", as
 
   const service = new MailTransportService({
     now: () => 1700000010000,
-    wait: async () => undefined,
+    wait: async (_ms: number) => {},
     createImapClient: () => fakeImapClient,
   });
 

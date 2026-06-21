@@ -61,13 +61,18 @@ async function listTypeScriptFiles(directoryPath: string): Promise<string[]> {
   const entries = await readdir(directoryPath, { withFileTypes: true });
   const filePaths: string[] = [];
 
+  const dirResults = await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory())
+      .map(async (entry) => await listTypeScriptFiles(join(directoryPath, entry.name)))
+  );
+  for (const dirResult of dirResults) {
+    filePaths.push(...dirResult);
+  }
+
   for (const entry of entries) {
-    const entryPath = join(directoryPath, entry.name);
-    if (entry.isDirectory()) {
-      filePaths.push(...(await listTypeScriptFiles(entryPath)));
-    }
     if (entry.isFile() && entry.name.endsWith(".ts")) {
-      filePaths.push(entryPath);
+      filePaths.push(join(directoryPath, entry.name));
     }
   }
 
@@ -165,8 +170,13 @@ void test("pattern-room phase 3B domain mock stays limited to the runtime transi
   const uiFilePaths = await listTypeScriptFiles(resolve("rooms/pattern-room/ui"));
   const domainMockConsumers: string[] = [];
 
-  for (const filePath of uiFilePaths) {
-    const source = await readFile(filePath, "utf8");
+  const uiSources = await Promise.all(
+    uiFilePaths.map(async (filePath) => {
+      const source = await readFile(filePath, "utf8");
+      return { filePath, source };
+    })
+  );
+  for (const { filePath, source } of uiSources) {
     if (
       source.includes("pattern-room-domain.mock") ||
       source.includes("PATTERN_ROOM_DOMAIN_MOCK")
@@ -181,8 +191,13 @@ void test("pattern-room phase 3B domain mock stays limited to the runtime transi
 void test("pattern-room phase 3B panels do not import domain types or domain mock data", async () => {
   const panelFilePaths = await listTypeScriptFiles(resolve("rooms/pattern-room/ui/panels"));
 
-  for (const filePath of panelFilePaths) {
-    const source = await readFile(filePath, "utf8");
+  const panelSources = await Promise.all(
+    panelFilePaths.map(async (filePath) => {
+      const source = await readFile(filePath, "utf8");
+      return { filePath, source };
+    })
+  );
+  for (const { filePath, source } of panelSources) {
     assert.equal(source.includes("pattern-room-domain"), false, filePath);
     assert.equal(source.includes("PATTERN_ROOM_DOMAIN"), false, filePath);
   }
@@ -199,8 +214,13 @@ void test("pattern-room host runtime keeps domain mock usage scoped to ready-loa
   const hostFilePaths = await listTypeScriptFiles(resolve("rooms/pattern-room/host"));
   const domainMockConsumers: string[] = [];
 
-  for (const filePath of hostFilePaths) {
-    const source = await readFile(filePath, "utf8");
+  const hostSources = await Promise.all(
+    hostFilePaths.map(async (filePath) => {
+      const source = await readFile(filePath, "utf8");
+      return { filePath, source };
+    })
+  );
+  for (const { filePath, source } of hostSources) {
     if (
       source.includes("pattern-room-domain.mock") ||
       source.includes("PATTERN_ROOM_DOMAIN_MOCK")

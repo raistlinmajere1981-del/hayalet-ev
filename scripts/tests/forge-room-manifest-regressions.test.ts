@@ -67,7 +67,7 @@ void test("forge-room workspace keeps the required Phase 1 package files", () =>
 });
 
 void test("forge-room manifest satisfies workbench and visible feature scene validation", () => {
-  const manifest = JSON.parse(readFileSync("rooms/forge-room/manifest.json", "utf8"));
+  const manifest = JSON.parse(readFileSync("rooms/forge-room/manifest.json", "utf8")) as unknown;
   const validation = validateRoomManifest(manifest);
   const forgeFeature = validation.manifest?.features.find(
     (feature) => feature.id === "forge-workbench"
@@ -75,9 +75,9 @@ void test("forge-room manifest satisfies workbench and visible feature scene val
 
   assert.equal(validation.valid, true);
   assert.equal(validation.manifest?.id, "forge-room");
-  assert.equal(validation.manifest?.workbench?.experienceId, "forge-workbench");
-  assert.equal(validation.manifest?.workbench?.primaryFeatureId, "forge-workbench");
-  assert.deepEqual(validation.manifest?.workbench?.availableFeatureIds, ["forge-workbench"]);
+  assert.equal(validation.manifest.workbench?.experienceId, "forge-workbench");
+  assert.equal(validation.manifest.workbench.primaryFeatureId, "forge-workbench");
+  assert.deepEqual(validation.manifest.workbench.availableFeatureIds, ["forge-workbench"]);
   assert.deepEqual(
     forgeFeature?.protocolSpecs?.map((spec) => spec.key),
     [
@@ -87,8 +87,8 @@ void test("forge-room manifest satisfies workbench and visible feature scene val
       "forge-room-synthesis",
     ]
   );
-  assert.equal(forgeFeature?.scene?.hotspot.id, "forge-room-workbench");
-  assert.equal(forgeFeature?.scene?.view.id, "forge-room-console");
-  assert.equal(validation.manifest?.scene?.roomsHotspot.id, "forge-room-door");
-  assert.equal(validation.manifest?.scene?.backHotspot.id, "forge-room-back");
+  assert.equal(forgeFeature.scene?.hotspot.id, "forge-room-workbench");
+  assert.equal(forgeFeature.scene.view.id, "forge-room-console");
+  assert.equal(validation.manifest.scene?.roomsHotspot.id, "forge-room-door");
+  assert.equal(validation.manifest.scene.backHotspot.id, "forge-room-back");
 });

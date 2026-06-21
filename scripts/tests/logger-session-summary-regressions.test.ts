@@ -1,14 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { LogEntry } from "@shared/index.js";
 import { buildSessionStats } from "../../electron/logger/core/session-stats.ts";
 
 void test("buildSessionStats aggregates totals by level and category", () => {
   const stats = buildSessionStats([
-    { level: "info" as any, category: "system" },
-    { level: "warning" as any, category: "system" },
-    { level: "error" as any, category: "slot" },
-    { level: "info" as any, category: "slot" },
+    { level: "info" as LogEntry["level"], category: "system" },
+    { level: "warning" as LogEntry["level"], category: "system" },
+    { level: "error" as LogEntry["level"], category: "slot" },
+    { level: "info" as LogEntry["level"], category: "slot" },
   ]);
 
   assert.equal(stats.totalLogs, 4);

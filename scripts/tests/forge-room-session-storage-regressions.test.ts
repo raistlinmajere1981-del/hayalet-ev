@@ -101,8 +101,8 @@ void test("forge-room session storage keeps sessions under the reserved room-loc
     const sessionPath = join(rootDir, "sessions", session.id, "session.json");
 
     assert.equal(loaded?.goal?.summary, "Repair Room integration");
-    assert.deepEqual(loaded?.sessionContextSelection.skillKeys, ["measurement"]);
-    assert.deepEqual(loaded?.sessionContextSelection.equipmentKeys, ["multimeter"]);
+    assert.deepEqual(loaded.sessionContextSelection.skillKeys, ["measurement"]);
+    assert.deepEqual(loaded.sessionContextSelection.equipmentKeys, ["multimeter"]);
     assert.equal(latest?.id, session.id);
     assert.equal(listed.length, 1);
     await access(sessionPath);

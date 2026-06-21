@@ -47,11 +47,13 @@ class FileManagerClass {
         return {};
       }
 
-      const res = (await electronApi.fmEnsureDirs(scope)) as
-        | { success: boolean; message?: string; paths?: Record<string, string> }
-        | undefined;
-      if (res === undefined || res.success === false) {
-        throw new Error(fileManagerError("ensureDirsOperationFailed", res?.message));
+      const fmEnsureDirs = electronApi["fmEnsureDirs"] as (
+        scope: string
+      ) => Promise<{ success: boolean; message?: string; paths?: Record<string, string> }>;
+      if (typeof fmEnsureDirs !== "function") return {};
+      const res = await fmEnsureDirs(scope);
+      if (res.success === false) {
+        throw new Error(fileManagerError("ensureDirsOperationFailed", res.message));
       }
       if (res.paths !== undefined && typeof res.paths === "object") {
         this.paths = { ...this.paths, ...res.paths };
@@ -84,7 +86,9 @@ class FileManagerClass {
         const path = entryObj.path ?? entryObj.tempPath ?? entryObj.commandPath;
         if (base === "" || path === undefined || path === "") return null;
         try {
-          const data = (await electronApi.readFile(path)) as string | undefined;
+          const fmReadFile = electronApi["readFile"] as (path: string) => Promise<string>;
+          if (typeof fmReadFile !== "function") return null;
+          const data = (await fmReadFile(path)) as string | undefined;
           if (data === undefined || data === "") return null;
           const ext = getFilename(base).split(".").pop() ?? "";
           const mimeType = getMimeType(ext);
@@ -113,20 +117,32 @@ class FileManagerClass {
         .map((n) => (typeof n === "string" ? n : (n.path ?? n.commandPath ?? n.name)))
         .filter((f): f is string => f !== undefined && f !== ""),
     };
-    const stagedRes = (await electronApi.commandStageAttachments(payload)) as
-      | {
-          success?: boolean;
-          message?: string;
-          staged?: unknown[];
-          temp?: string[];
-          commandDir?: string;
-        }
-      | undefined;
-    if (stagedRes?.success !== true) {
+    const cmdStageAttachments = electronApi["commandStageAttachments"] as (payload: {
+      jobId: string;
+      files: string[];
+    }) => Promise<{
+      success?: boolean;
+      message?: string;
+      staged?: unknown[];
+      temp?: string[];
+      commandDir?: string;
+    }>;
+    if (typeof cmdStageAttachments !== "function") {
       Logger.error(
         LogCategory.FILE_MANAGER,
         fileManagerT("stageAttachmentsFailed", {
-          message: stagedRes?.message ?? fileManagerT("unknown"),
+          message: fileManagerT("apiUnavailable"),
+        }),
+        { jobId }
+      );
+      return { staged: [], temp: [], commandDir: "" };
+    }
+    const stagedRes = await cmdStageAttachments(payload);
+    if (stagedRes.success !== true) {
+      Logger.error(
+        LogCategory.FILE_MANAGER,
+        fileManagerT("stageAttachmentsFailed", {
+          message: stagedRes.message ?? fileManagerT("unknown"),
         }),
         { jobId }
       );
@@ -150,20 +166,24 @@ class FileManagerClass {
     if (electronApi === undefined) {
       return { success: false, message: fileManagerT("apiUnavailable") };
     }
-    const res = (await electronApi.commandArchiveCopy({
-      jobId,
-      targetDir,
-    })) as { success?: boolean; message?: string } | undefined;
-    if (res?.success !== true) {
+    const cmdArchiveCopy = electronApi["commandArchiveCopy"] as (payload: {
+      jobId: string;
+      targetDir: string;
+    }) => Promise<{ success?: boolean; message?: string }>;
+    if (typeof cmdArchiveCopy !== "function") {
+      return { success: false, message: fileManagerT("apiUnavailable") };
+    }
+    const res = await cmdArchiveCopy({ jobId, targetDir });
+    if (res.success !== true) {
       Logger.warn(
         LogCategory.FILE_MANAGER,
         fileManagerT("archiveCopyFailed", {
-          message: res?.message ?? fileManagerT("unknown"),
+          message: res.message ?? fileManagerT("unknown"),
         }),
         { jobId, targetDir }
       );
     }
-    return res ?? { success: false };
+    return res;
   }
 
   commandCleanup(jobId: string, tempEntries: { tempPath?: string }[] = []): void {
@@ -172,7 +192,11 @@ class FileManagerClass {
       return;
     }
     const tempPaths = tempEntries.map((t) => t.tempPath).filter((p): p is string => Boolean(p));
-    void electronApi.commandCleanupJob({ jobId, tempPaths });
+    const cmdCleanupJob = electronApi["commandCleanupJob"] as
+      | ((payload: Record<string, unknown>) => Promise<unknown>)
+      | undefined;
+    if (typeof cmdCleanupJob !== "function") return;
+    void cmdCleanupJob({ jobId, tempPaths });
   }
 
   async commandFail(
@@ -184,15 +208,19 @@ class FileManagerClass {
       return { success: false, message: fileManagerT("apiUnavailable") };
     }
     const tempPaths = tempEntries.map((t) => t.tempPath).filter((p): p is string => Boolean(p));
-    const res = (await electronApi.commandMoveFailed({
-      jobId,
-      tempPaths,
-    })) as { success?: boolean; message?: string } | undefined;
-    if (res?.success !== true) {
+    const cmdMoveFailed = electronApi["commandMoveFailed"] as (payload: {
+      jobId: string;
+      tempPaths: string[];
+    }) => Promise<{ success?: boolean; message?: string }>;
+    if (typeof cmdMoveFailed !== "function") {
+      return { success: false, message: fileManagerT("apiUnavailable") };
+    }
+    const res = await cmdMoveFailed({ jobId, tempPaths });
+    if (res.success !== true) {
       Logger.warn(
         LogCategory.FILE_MANAGER,
         fileManagerT("moveFailed", {
-          message: res?.message ?? fileManagerT("unknown"),
+          message: res.message ?? fileManagerT("unknown"),
         }),
         { jobId }
       );
@@ -241,11 +269,17 @@ class FileManagerClass {
         );
         payload = { path, data: base64, encoding: "base64" };
       }
-      const res = (await electronApi.fmWriteFileAtomic(payload)) as
-        | { success: boolean; path?: string; message?: string }
-        | undefined;
-      if (res == null || res.success === false) {
-        throw new Error(fileManagerError("writeAtomicOperationFailed", res?.message));
+      const fmWriteFileAtomic = electronApi["fmWriteFileAtomic"] as (payload: {
+        path: string;
+        data: string;
+        encoding: string;
+      }) => Promise<{ success: boolean; path?: string; message?: string }>;
+      if (typeof fmWriteFileAtomic !== "function") {
+        throw new Error(fileManagerError("writeAtomicOperationFailed"));
+      }
+      const res = await fmWriteFileAtomic(payload);
+      if (res.success === false) {
+        throw new Error(fileManagerError("writeAtomicOperationFailed", res.message));
       }
       return res.path ?? "";
     } catch (err) {
@@ -265,8 +299,10 @@ class FileManagerClass {
         return "";
       }
 
-      const res = (await electronApi.fmTempPath(prefix, ext)) as { path: string } | undefined;
-      return res != null ? res.path : "";
+      const fmTempPath = electronApi["fmTempPath"];
+      if (typeof fmTempPath !== "function") return "";
+      const res = await fmTempPath(prefix, ext);
+      return res.path;
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       Logger.error(

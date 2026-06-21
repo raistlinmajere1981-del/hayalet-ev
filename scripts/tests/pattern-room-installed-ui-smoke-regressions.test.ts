@@ -1123,9 +1123,9 @@ void test("pattern-room installed UI phase 12D imports pasted user text through 
     ] as PatternRoomSessionSnapshot;
     assert.equal(savedSnapshot.overlay.localAuthoredSources.length, 1);
     assert.equal(savedSnapshot.overlay.localAuthoredSources[0]?.label, "Faz 12D kullanıcı metni");
-    assert.equal(savedSnapshot.overlay.localAuthoredSources[0]?.origin, "Kullanıcı metni");
+    assert.equal(savedSnapshot.overlay.localAuthoredSources[0].origin, "Kullanıcı metni");
     assert.equal(
-      savedSnapshot.overlay.localAuthoredSources[0]?.note,
+      savedSnapshot.overlay.localAuthoredSources[0].note,
       "Kullanıcının yapıştırdığı metin kaynak producer hattından gelir."
     );
     assert.deepEqual(savedSnapshot.overlay.localAuthoredEvidence, []);
@@ -1334,10 +1334,10 @@ void test("pattern-room installed UI phase 13C imports long text as a source onl
     assert.equal(savedSnapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
     assert.equal(savedSnapshot.overlay.localAuthoredSources.length, 1);
     assert.equal(savedSnapshot.overlay.localAuthoredSources[0]?.label, "Faz 13C uzun metin");
-    assert.equal(savedSnapshot.overlay.localAuthoredSources[0]?.origin, "Makale arşivi");
-    assert.equal(savedSnapshot.overlay.localAuthoredSources[0]?.note, longText);
+    assert.equal(savedSnapshot.overlay.localAuthoredSources[0].origin, "Makale arşivi");
+    assert.equal(savedSnapshot.overlay.localAuthoredSources[0].note, longText);
     assert.deepEqual(
-      savedSnapshot.overlay.localAuthoredSources[0]?.segments?.map((segment) => {
+      savedSnapshot.overlay.localAuthoredSources[0].segments?.map((segment) => {
         return segment.id;
       }),
       ["segment-001", "segment-002"]
@@ -1534,7 +1534,7 @@ void test("pattern-room installed UI phase 13F captures manual evidence from sou
     assert.equal(captureSnapshot.overlay.localAuthoredEvidence.length, 1);
     assert.equal(captureSnapshot.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
     assert.equal(
-      captureSnapshot.overlay.localAuthoredEvidence[0]?.sourceLabel,
+      captureSnapshot.overlay.localAuthoredEvidence[0].sourceLabel,
       "Faz 13F uzun kaynak"
     );
     assert.deepEqual(captureSnapshot.overlay.localAuthoredNodes, []);
@@ -1543,7 +1543,7 @@ void test("pattern-room installed UI phase 13F captures manual evidence from sou
     const restored = restoreFromSnapshot(captureSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
     assert.ok(restored);
     assert.equal(restored.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
-    assert.equal(restored.overlay.localAuthoredEvidence[0]?.sourceLabel, "Faz 13F uzun kaynak");
+    assert.equal(restored.overlay.localAuthoredEvidence[0].sourceLabel, "Faz 13F uzun kaynak");
 
     returnToOverview(environment.app);
     openFocusedView(environment.app, "archive");
@@ -1758,16 +1758,16 @@ void test("pattern-room installed UI phase 14B-2 prepares manual evidence from a
       "Düzenlenmiş segment kanıtı"
     );
     assert.equal(
-      evidenceSnapshot.overlay.localAuthoredEvidence[0]?.excerpt,
+      evidenceSnapshot.overlay.localAuthoredEvidence[0].excerpt,
       "Kısaltılmış segment pasajı."
     );
     assert.equal(
-      evidenceSnapshot.overlay.localAuthoredEvidence[0]?.interpretation,
+      evidenceSnapshot.overlay.localAuthoredEvidence[0].interpretation,
       "Kullanıcı yorumu sonradan yazıldı."
     );
-    assert.equal(evidenceSnapshot.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
+    assert.equal(evidenceSnapshot.overlay.localAuthoredEvidence[0].sourceId, "local-source-001");
     assert.equal(
-      evidenceSnapshot.overlay.localAuthoredEvidence[0]?.sourceLabel,
+      evidenceSnapshot.overlay.localAuthoredEvidence[0].sourceLabel,
       "Faz 14B-2 segment kaynağı"
     );
     assert.deepEqual(evidenceSnapshot.overlay.localAuthoredNodes, []);
@@ -1777,7 +1777,7 @@ void test("pattern-room installed UI phase 14B-2 prepares manual evidence from a
     assert.ok(restored);
     assert.equal(restored.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
     assert.equal(
-      restored.overlay.localAuthoredEvidence[0]?.sourceLabel,
+      restored.overlay.localAuthoredEvidence[0].sourceLabel,
       "Faz 14B-2 segment kaynağı"
     );
   } finally {
@@ -1973,12 +1973,12 @@ void test("pattern-room installed UI phase 14B-3 searches source detail locally"
     assert.equal(evidenceSnapshot.overlay.localAuthoredEvidence.length, 1);
     assert.equal(evidenceSnapshot.overlay.localAuthoredEvidence[0]?.label, "Arama sonrası kanıt");
     assert.equal(
-      evidenceSnapshot.overlay.localAuthoredEvidence[0]?.excerpt,
+      evidenceSnapshot.overlay.localAuthoredEvidence[0].excerpt,
       "Arama sonucundan kısaltılmış pasaj."
     );
-    assert.equal(evidenceSnapshot.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
+    assert.equal(evidenceSnapshot.overlay.localAuthoredEvidence[0].sourceId, "local-source-001");
     assert.equal(
-      evidenceSnapshot.overlay.localAuthoredEvidence[0]?.sourceLabel,
+      evidenceSnapshot.overlay.localAuthoredEvidence[0].sourceLabel,
       "Faz 14B-3 aranabilir kaynak"
     );
     assert.deepEqual(evidenceSnapshot.overlay.localAuthoredNodes, []);
@@ -2920,8 +2920,8 @@ void test("pattern-room installed UI dispatches the AI2 case review only after p
     assert.ok(dispatchEvent);
     assert.equal(dispatchEvent.command, PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND);
     assert.equal(environment.sentEvents.length, 1);
-    const draft = dispatchEvent.payload["draft"] as PatternRoomCaseReviewDispatchDraft;
-    assert.ok(draft != null);
+    const draft = dispatchEvent.payload["draft"] as PatternRoomCaseReviewDispatchDraft | undefined;
+    assert.ok(draft);
     assert.equal(draft.roleSlot, "AI2");
     assert.equal(draft.targetSlot, "ai2");
     assert.equal(draft.payload.toSlot, "ai2");

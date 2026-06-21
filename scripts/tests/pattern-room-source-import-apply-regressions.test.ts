@@ -142,10 +142,10 @@ void test("pattern-room phase 11C applies SourceImportResult drafts to local ove
     },
   ]);
   assert.equal(overlay.localAuthoredEvidence[0]?.id, "local-evidence-001");
-  assert.equal(overlay.localAuthoredEvidence[0]?.label, "Imported quote");
-  assert.equal(overlay.localAuthoredEvidence[0]?.excerpt, "The imported quote text.");
+  assert.equal(overlay.localAuthoredEvidence[0].label, "Imported quote");
+  assert.equal(overlay.localAuthoredEvidence[0].excerpt, "The imported quote text.");
   assert.match(
-    overlay.localAuthoredEvidence[0]?.interpretation ?? "",
+    overlay.localAuthoredEvidence[0].interpretation ?? "",
     /Kaynak bağlamı: Zaman: 00:12:43 · Sayfa: 42 · Konuşmacı: Speaker X/
   );
   assert.deepEqual(overlay.localAuthoredEdges, [
@@ -166,7 +166,7 @@ void test("pattern-room phase 11C applies SourceImportResult drafts to local ove
     },
   ]);
   assert.equal("importBatchId" in (overlay.localAuthoredSources[0] ?? {}), false);
-  assert.equal("importBatchId" in (overlay.localAuthoredEvidence[0] ?? {}), false);
+  assert.equal("importBatchId" in (overlay.localAuthoredEvidence[0] ), false);
   assert.equal("importBatchId" in (overlay.localAuthoredNodes[0] ?? {}), false);
   assert.equal("importBatchId" in (overlay.localAuthoredEdges[0] ?? {}), false);
   assert.equal("importBatchId" in (overlay.localNotes[0] ?? {}), false);

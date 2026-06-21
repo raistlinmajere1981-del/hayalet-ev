@@ -47,7 +47,7 @@ function createFakeWebview(responses: unknown[]) {
   return {
     getURL: () => "https://chatgpt.com/c/test-sync",
     loadURL: () => {},
-    executeJavaScript: async () => responses[callIndex++] ?? null,
+    executeJavaScript: () => responses[callIndex++] ?? null,
     addEventListener: () => {},
   };
 }

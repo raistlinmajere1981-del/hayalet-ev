@@ -27,14 +27,14 @@ void test("laboratory asset normalization and serialization preserve lineage fie
 
   const normalized = normalizeLabAsset(rawAsset);
   assert.equal(normalized?.derivedFromAssetId, "source-active");
-  assert.equal(normalized?.derivedFromSourceId, "source-active");
+  assert.equal(normalized.derivedFromSourceId, "source-active");
 
   const serialized = serializeLabAssetForSnapshot(rawAsset, function (path) {
     return `file://${String(path)}`;
   });
   assert.equal(serialized?.url, "file:///tmp/audio.wav");
-  assert.equal(serialized?.derivedFromAssetId, "source-active");
-  assert.equal(serialized?.derivedFromSourceId, "source-active");
+  assert.equal(serialized.derivedFromAssetId, "source-active");
+  assert.equal(serialized.derivedFromSourceId, "source-active");
 });
 
 void test("laboratory output asset creation accepts top-level lineage fields", () => {
@@ -60,7 +60,7 @@ void test("laboratory output asset creation accepts top-level lineage fields", (
   assert.equal(createdAsset.derivedFromAssetId, "source-active");
   assert.equal(createdAsset.derivedFromSourceId, "source-active");
   assert.equal(typeof createdAsset.sourceId, "string");
-  assert.equal((createdAsset.sourceId || "").startsWith("source-"), true);
+  assert.equal((createdAsset.sourceId ?? "").startsWith("source-"), true);
 });
 
 void test("laboratory source asset projection lifts lineage from source metadata", () => {
@@ -81,7 +81,7 @@ void test("laboratory source asset projection lifts lineage from source metadata
   });
 
   assert.equal(sourceAsset?.derivedFromAssetId, "asset-local-clip");
-  assert.equal(sourceAsset?.derivedFromSourceId, "source-1");
+  assert.equal(sourceAsset.derivedFromSourceId, "source-1");
 });
 
 void test("laboratory source asset sync does not mirror reused non-source assets into source list", () => {

@@ -156,7 +156,7 @@ void test("repair-room Phase 2.8 geometry helpers cover marquee, refs, snap, and
 
   const softSnap = getRepairSnapAssist({ xPx: 48, yPx: 50 }, [{ xPx: 52, yPx: 50 }], 8, 2, false);
   assert.equal(softSnap?.softGuide, true);
-  assert.equal(softSnap?.hardSnap, false);
+  assert.equal(softSnap.hardSnap, false);
   const hardSnap = getRepairSnapAssist({ xPx: 51, yPx: 50 }, [{ xPx: 52, yPx: 50 }], 8, 2, true);
   assert.equal(hardSnap?.hardSnap, true);
 
@@ -443,11 +443,11 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(wizardPanel, /skip-wizard-research/);
   assert.match(wizardPanel, /evidence-selection/);
   assert.match(wizardPanel, /Tamiri başlat/);
-  assert.match(wizardPanel, /\"Cihaz\"/);
-  assert.match(wizardPanel, /\"Semptom\"/);
-  assert.match(wizardPanel, /\"Araştırma\"/);
-  assert.match(wizardPanel, /\"İnceleme\"/);
-  assert.match(wizardPanel, /\"Hazır\"/);
+  assert.match(wizardPanel, /"Cihaz"/);
+  assert.match(wizardPanel, /"Semptom"/);
+  assert.match(wizardPanel, /"Araştırma"/);
+  assert.match(wizardPanel, /"İnceleme"/);
+  assert.match(wizardPanel, /"Hazır"/);
   assert.doesNotMatch(wizardPanel, /repair-panel-actions/);
   assert.doesNotMatch(wizardPanel, /createElement\("datalist"\)/);
   assert.doesNotMatch(wizardPanel, /Yeni Oturum|New Session/);

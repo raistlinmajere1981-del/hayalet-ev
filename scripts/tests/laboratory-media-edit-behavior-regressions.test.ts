@@ -3,17 +3,15 @@ import assert from "node:assert/strict";
 
 import { createLaboratoryJobRuntime } from "../../rooms/laboratory/shared/host/job-runtime.ts";
 
-function toRecord<T extends Record<string, unknown> = Record<string, unknown>>(value: unknown): T {
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as T) : ({} as T);
+function toRecord(value: unknown): Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 void test("laboratory host treats preview/apply edit jobs as action-scoped slots", () => {
   const jobRuntime = createLaboratoryJobRuntime({
     roomId: "laboratory",
     toRecord,
-    async cancelRoomTool() {
-      return null;
-    },
+    cancelRoomTool: async () => null,
     clearJob() {},
     pushJobState() {},
   });

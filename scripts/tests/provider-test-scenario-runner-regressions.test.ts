@@ -134,7 +134,7 @@ void test("command scenario runner emits scenario metadata for non-test scenario
       createCommand({
         id: "collect-urls",
         name: "Collect Urls",
-        run: async () => ({ status: "pass" as "pass", message: "collected" }),
+        run: async () => ({ status: "pass" as const, message: "collected" }),
       }),
     ],
   });

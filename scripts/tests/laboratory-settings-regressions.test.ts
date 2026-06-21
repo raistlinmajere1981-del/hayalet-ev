@@ -18,11 +18,11 @@ class FakeSettingsDocument {
       typeof listener === "function"
         ? (listener)
         : (event: Event) => { listener.handleEvent(event); };
-    const listeners = this.listenerSets.get(type) || new Set<(event: Event) => void>();
+    const listeners = this.listenerSets.get(type) ?? new Set<(event: Event) => void>();
     listeners.add(handler);
     this.listenerSets.set(type, listeners);
     this.listeners.set(type, (event: Event) => {
-      Array.from(this.listenerSets.get(type) || []).forEach(function (candidate) {
+      Array.from(this.listenerSets.get(type) ?? []).forEach(function (candidate) {
         candidate(event);
       });
     });
@@ -49,10 +49,10 @@ class FakeActionElement {
 
   getAttribute(name: string): string | null {
     if (name === "data-lab-action") {
-      return this.dataset["labAction"] || null;
+      return this.dataset["labAction"] ?? null;
     }
     if (name === "data-lab-value") {
-      return this.dataset["labValue"] || null;
+      return this.dataset["labValue"] ?? null;
     }
     return null;
   }
@@ -109,7 +109,7 @@ function updateProcessModule(
 }
 
 void test("laboratory settings controls persist and join operation execution payloads", () => {
-  const originalElement = globalThis.Element;
+  const originalElement: (typeof globalThis)["Element"] | undefined = globalThis.Element;
   const originalInputElement = globalThis.HTMLInputElement;
   const originalSelectElement = globalThis.HTMLSelectElement;
   const originalTextAreaElement = globalThis.HTMLTextAreaElement;
@@ -285,11 +285,11 @@ void test("laboratory settings controls persist and join operation execution pay
     assert.equal(lockedClipSettings["format"], "mp4");
     assert.equal(lockedSoundEventSettings["threshold"], 0.15);
     assert.match(
-      String(store.getState().activityFeed[0]?.message || ""),
+      String(store.getState().activityFeed[0]?.message ?? ""),
       /aktif analiz sırasında kilitli/
     );
   } finally {
-    if (originalElement === undefined) {
+    if (typeof originalElement === "undefined") {
       delete (globalThis as Record<string, unknown>)["Element"];
     } else {
       Object.defineProperty(globalThis, "Element", {
@@ -468,8 +468,8 @@ void test("laboratory visual settings alter managed process filters and ROI scop
   const edgeCall = transformCalls.find(function (entry) {
     return asRecord(entry["metadata"])["sourceModule"] === "edge-enhancement";
   });
-  assert.match(String(gammaCall?.["filterGraph"] || ""), /eq=gamma=2.5/);
-  assert.match(String(edgeCall?.["filterGraph"] || ""), /^crop=100:80:10:20,/);
+  assert.match((gammaCall?.["filterGraph"] as string | undefined) ?? "", /eq=gamma=2.5/);
+  assert.match((edgeCall?.["filterGraph"] as string | undefined) ?? "", /^crop=100:80:10:20,/);
 });
 
 void test("laboratory managed media runner emits A/B image comparison analysis layers", async () => {
@@ -645,8 +645,8 @@ void test("laboratory managed media runner emits A/B image comparison analysis l
   assert.equal(transformCalls.length, 2);
   assert.equal(transformCalls[0]?.["targetPath"], "/tmp/a.png");
   assert.equal(transformCalls[1]?.["targetPath"], "/tmp/b.png");
-  assert.match(String(transformCalls[0]?.["filterGraph"] || ""), /^crop=100:80:10:20,/);
-  assert.match(String(transformCalls[1]?.["filterGraph"] || ""), /^crop=70:60:5:6,/);
+  assert.match((transformCalls[0]["filterGraph"] as string | undefined) ?? "", /^crop=100:80:10:20,/);
+  assert.match((transformCalls[1]["filterGraph"] as string | undefined) ?? "", /^crop=70:60:5:6,/);
   assert.deepEqual(
     comparisonCalls.map(function (entry) {
       return entry["comparisonKind"];
@@ -654,7 +654,7 @@ void test("laboratory managed media runner emits A/B image comparison analysis l
     ["side-by-side", "difference"]
   );
   assert.equal(comparisonCalls[0]?.["primaryPath"], "/tmp/a.png");
-  assert.equal(comparisonCalls[0]?.["referencePath"], "/tmp/b.png");
+  assert.equal(comparisonCalls[0]["referencePath"], "/tmp/b.png");
   assert.ok(
     result.artifacts.some(function (artifact) {
       return artifact.moduleId === "image-comparison";
@@ -827,7 +827,7 @@ void test("laboratory audio settings drive local analyzers and frozen process sn
       return { id: `${moduleId}-${artifactBase}`, label, metadata, moduleId, path };
     },
     async generateProcessSpectrogram(_runtime, _project, _requestId, _jobId, target) {
-      spectrogramTargets.push(String(asRecord(target)["path"] || ""));
+      spectrogramTargets.push((asRecord(target)["path"] as string | undefined) ?? "");
       return { id: "spectrogram", moduleId: "spectral-artifacts", path: "/tmp/spectrogram.png" };
     },
     async generateProcessSpectrogramFromInputPath() {
@@ -840,7 +840,7 @@ void test("laboratory audio settings drive local analyzers and frozen process sn
       return { id: "descriptor", moduleId: "spectral-artifacts", path: "/tmp/descriptor.json" };
     },
     async maybeRunTranscriptProfileSample() {
-      return {};
+      return null;
     },
     normalizeProcessArtifact(value) {
       return asRecord(value);
@@ -855,7 +855,7 @@ void test("laboratory audio settings drive local analyzers and frozen process sn
       };
     },
     async runOpenSmileProsodyExtraction(_runtime, _project, _requestId, _jobId, target) {
-      openSmileTargets.push(String(asRecord(target)["path"] || ""));
+      openSmileTargets.push((asRecord(target)["path"] as string | undefined) ?? "");
       return {
         contourPath: "/tmp/prosody.csv",
         prosodySummary: {
@@ -901,7 +901,7 @@ void test("laboratory audio settings drive local analyzers and frozen process sn
     "signal-health"
   );
   assert.match(String(signalResult.summary), /120s/);
-  assert.match(String(asRecord(signalResult.findings[0])["detail"] || ""), /-45 dB/);
+  assert.match((asRecord(signalResult.findings[0])["detail"] as string | undefined) ?? "", /-45 dB/);
 
   await localRunners.runSpectralArtifactsAudioAnalyzer(
     {},
@@ -926,8 +926,8 @@ void test("laboratory audio settings drive local analyzers and frozen process sn
     "/tmp",
     "prosody"
   );
-  assert.match(String(filteredAudioCalls[1]?.["filterGraph"] || ""), /stop_duration=5/);
-  assert.match(String(filteredAudioCalls[1]?.["filterGraph"] || ""), /stop_threshold=-42dB/);
+  assert.match((filteredAudioCalls[1]?.["filterGraph"] as string | undefined) ?? "", /stop_duration=5/);
+  assert.match((filteredAudioCalls[1]?.["filterGraph"] as string | undefined) ?? "", /stop_threshold=-42dB/);
   assert.equal(openSmileTargets[0], "/tmp/artifact-prosody-focus.wav");
 
   let observedFrozenSettings: Record<string, unknown> = {};
@@ -938,7 +938,7 @@ void test("laboratory audio settings drive local analyzers and frozen process sn
     getAudioAnalysisModuleProcessDir() {
       return "/tmp";
     },
-    getAudioAnalysisModuleRunner() {
+    getAudioAnalysisModuleRunner(_moduleId: string) {
       return async function (_runtime, runnerProject) {
         observedFrozenSettings = asRecord(
           asRecord(asRecord(asRecord(runnerProject["workbench"])["analysisSettings"])["modules"])[

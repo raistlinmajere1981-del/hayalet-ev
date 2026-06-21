@@ -25,11 +25,12 @@ function normalizeStatus(value: unknown): OperationsStatus {
 
 export async function getOperationsStatus(): Promise<OperationsStatus> {
   const api = getElectronApi();
-  if (api?.operationsStatus === undefined) {
+  const operationsStatus = api?.["operationsStatus"];
+  if (typeof operationsStatus !== "function") {
     return FALLBACK_OPERATIONS_STATUS;
   }
 
-  return normalizeStatus(await api.operationsStatus());
+  return normalizeStatus(await operationsStatus());
 }
 
 export async function acquireOperationCapability(
@@ -37,7 +38,8 @@ export async function acquireOperationCapability(
   owner: OperationOwner
 ): Promise<OperationAcquireResult> {
   const api = getElectronApi();
-  if (api?.operationsAcquire === undefined) {
+  const operationsAcquire = api?.["operationsAcquire"];
+  if (typeof operationsAcquire !== "function") {
     return {
       success: false,
       error: "Electron operations bridge is unavailable.",
@@ -45,7 +47,7 @@ export async function acquireOperationCapability(
     };
   }
 
-  return await api.operationsAcquire(capability, owner);
+  return await operationsAcquire(capability, owner);
 }
 
 export async function releaseOperationCapability(
@@ -53,7 +55,8 @@ export async function releaseOperationCapability(
   owner: OperationOwner
 ): Promise<OperationReleaseResult> {
   const api = getElectronApi();
-  if (api?.operationsRelease === undefined) {
+  const operationsRelease = api?.["operationsRelease"];
+  if (typeof operationsRelease !== "function") {
     return {
       success: false,
       error: "Electron operations bridge is unavailable.",
@@ -61,12 +64,14 @@ export async function releaseOperationCapability(
     };
   }
 
-  return await api.operationsRelease(capability, owner);
+  return await operationsRelease(capability, owner);
 }
 
 export function onOperationsStatus(callback: (status: OperationsStatus) => void): () => void {
   const api = getElectronApi();
-  if (api?.operationsOnStatus === undefined || api.operationsOffStatus === undefined) {
+  const operationsOnStatus = api?.["operationsOnStatus"];
+  const operationsOffStatus = api?.["operationsOffStatus"];
+  if (typeof operationsOnStatus !== "function" || typeof operationsOffStatus !== "function") {
     return () => {};
   }
 
@@ -74,8 +79,8 @@ export function onOperationsStatus(callback: (status: OperationsStatus) => void)
     callback(normalizeStatus(payload));
   };
 
-  api.operationsOnStatus(handler);
+  operationsOnStatus(handler);
   return () => {
-    api.operationsOffStatus?.(handler);
+    operationsOffStatus(handler);
   };
 }

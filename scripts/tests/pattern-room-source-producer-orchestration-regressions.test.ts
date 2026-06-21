@@ -65,14 +65,18 @@ async function walkTypeScriptFiles(baseDir: string): Promise<string[]> {
   const entries = await readdir(baseDir, { withFileTypes: true });
   const files: string[] = [];
 
+  const dirResults = await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory())
+      .map(async (entry) => await walkTypeScriptFiles(join(baseDir, entry.name)))
+  );
+  for (const dirResult of dirResults) {
+    files.push(...dirResult);
+  }
+
   for (const entry of entries) {
-    const entryPath = join(baseDir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await walkTypeScriptFiles(entryPath)));
-      continue;
-    }
     if (entry.isFile() && entry.name.endsWith(".ts")) {
-      files.push(entryPath);
+      files.push(join(baseDir, entry.name));
     }
   }
 
@@ -94,7 +98,7 @@ void test("pattern-room source producer orchestration imports valid user text ou
   assert.equal(packageResult.sourceKind, "user_text");
   assert.equal(packageResult.importResult.sources.length, 1);
   assert.equal(packageResult.importResult.sources[0]?.sourceKind, "user_text");
-  assert.equal(packageResult.importResult.sources[0]?.note, createPastedTextInput().text);
+  assert.equal(packageResult.importResult.sources[0].note, createPastedTextInput().text);
   assert.equal(result.stats.packagesProduced, 1);
   assert.equal(result.stats.packagesImported, 1);
   assert.equal(result.stats.packagesFailed, 0);
@@ -258,7 +262,7 @@ void test("pattern-room source producer orchestration aggregates import warnings
   const producer = createUserTextProducer({ now: () => FIXED_NOW });
   const input = createPastedTextInput();
   const producedId = producer.produce(input).packages[0]?.sourcePackageId;
-  assert.ok(producedId);
+  assert.ok(producedId != null);
 
   const result = produceAndImportSource(producer, input, {
     importOptions: {
@@ -313,8 +317,13 @@ void test("pattern-room source producer orchestration boundaries stay pure", asy
   const sourceWorkbenchFiles = await walkTypeScriptFiles(
     resolve("rooms/pattern-room/shared/source-workbench")
   );
-  for (const filePath of sourceWorkbenchFiles) {
-    const source = await readFile(filePath, "utf8");
+  const workbenchSources = await Promise.all(
+    sourceWorkbenchFiles.map(async (filePath) => {
+      const source = await readFile(filePath, "utf8");
+      return { filePath, source };
+    })
+  );
+  for (const { filePath, source } of workbenchSources) {
     assert.equal(
       source.includes("source-producers"),
       false,
@@ -338,8 +347,13 @@ void test("pattern-room source producer orchestration boundaries stay pure", asy
     "rooms/pattern-room/shared/types/pattern-room-snapshot.ts",
   ];
 
-  for (const filePath of protectedFiles) {
-    const source = await readFile(resolve(filePath), "utf8");
+  const protectedSources = await Promise.all(
+    protectedFiles.map(async (filePath) => {
+      const source = await readFile(resolve(filePath), "utf8");
+      return { filePath, source };
+    })
+  );
+  for (const { filePath, source } of protectedSources) {
     assert.equal(source.includes("source-producers"), false, filePath);
     assert.equal(source.includes("produceAndImportSource"), false, filePath);
   }

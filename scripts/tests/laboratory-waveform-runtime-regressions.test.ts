@@ -120,11 +120,11 @@ void test("workspace audio visualizer crops artifact rendering to the shared wav
   assert.equal(canvas.context.drawImageCalls, 1);
   assert.equal(canvas.context.lastDrawnImageSrc, "file:///tmp/waveform-cropped.png");
   assert.equal(canvas.context.lastDrawImageArgs?.length, 9);
-  assert.equal(canvas.context.lastDrawImageArgs?.[1], 100);
-  assert.equal(canvas.context.lastDrawImageArgs?.[3], 1000);
-  assert.equal(canvas.context.lastDrawImageArgs?.[4], 120);
-  assert.equal(canvas.context.lastDrawImageArgs?.[7], 320);
-  assert.equal(canvas.context.lastDrawImageArgs?.[8], 80);
+  assert.equal(canvas.context.lastDrawImageArgs[1], 100);
+  assert.equal(canvas.context.lastDrawImageArgs[3], 1000);
+  assert.equal(canvas.context.lastDrawImageArgs[4], 120);
+  assert.equal(canvas.context.lastDrawImageArgs[7], 320);
+  assert.equal(canvas.context.lastDrawImageArgs[8], 80);
 });
 
 void test("workspace audio visualizer redraws when the shared waveform crop changes without changing the artifact", async () => {
@@ -174,7 +174,7 @@ void test("workspace audio visualizer redraws when the shared waveform crop chan
 
   assert.equal(canvas.context.drawImageCalls, 1);
   assert.equal(canvas.context.lastDrawImageArgs?.[1], 0);
-  assert.equal(canvas.context.lastDrawImageArgs?.[3], 1200);
+  assert.equal(canvas.context.lastDrawImageArgs[3], 1200);
 
   cropStartRatio = 1 / 12;
   cropEndRatio = 11 / 12;
@@ -183,8 +183,8 @@ void test("workspace audio visualizer redraws when the shared waveform crop chan
   await Promise.resolve();
 
   assert.equal(canvas.context.drawImageCalls, 2);
-  assert.equal(canvas.context.lastDrawImageArgs?.[1], 100);
-  assert.equal(canvas.context.lastDrawImageArgs?.[3], 1000);
+  assert.equal(canvas.context.lastDrawImageArgs[1], 100);
+  assert.equal(canvas.context.lastDrawImageArgs[3], 1000);
 });
 
 void test("workspace audio visualizer initializes lazily and disconnects on source changes", async () => {
@@ -214,7 +214,7 @@ void test("workspace audio visualizer initializes lazily and disconnects on sour
   assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
   const audioContext = FakeVisualizerAudioContext.constructed[0];
   assert.equal(audioContext?.resumeCalls, 1);
-  assert.equal(audioContext?.sourceNodes.length, 1);
+  assert.equal(audioContext.sourceNodes.length, 1);
   assert.equal(windowRef.scheduledFrames.size, 1);
 
   windowRef.flushFrame();
@@ -227,7 +227,7 @@ void test("workspace audio visualizer initializes lazily and disconnects on sour
   documentRef.primaryMediaPreview = secondAudio;
   visualizer.sync();
 
-  assert.equal(audioContext?.sourceNodes[0]?.disconnectCalls, 1);
+  assert.equal(audioContext.sourceNodes[0]?.disconnectCalls, 1);
   assert.equal(windowRef.scheduledFrames.size, 0);
 
   visualizer.dispose();
@@ -291,8 +291,8 @@ void test("workspace audio visualizer updates preview audio focus without recrea
   const audioContext = FakeVisualizerAudioContext.constructed[0];
   const gainNode = audioContext?.gainNodes[0];
   const primaryFilter = audioContext?.biquadFilters[0];
-  const initialGainCalls = gainNode?.gain.setTargetCalls.length || 0;
-  const initialFilterCalls = primaryFilter?.frequency.setTargetCalls.length || 0;
+  const initialGainCalls = gainNode?.gain.setTargetCalls.length ?? 0;
+  const initialFilterCalls = primaryFilter?.frequency.setTargetCalls.length ?? 0;
   const initialPlaybackSetCalls = audioPreview.playbackRateSetCalls;
   const initialPitchSetCalls = audioPreview.pitchSetCalls;
 
@@ -307,8 +307,8 @@ void test("workspace audio visualizer updates preview audio focus without recrea
   visualizer.sync();
   await flushVisualizerWork();
 
-  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls);
-  assert.equal(primaryFilter?.frequency.setTargetCalls.length, initialFilterCalls);
+  assert.equal(gainNode.gain.setTargetCalls.length, initialGainCalls);
+  assert.equal(primaryFilter.frequency.setTargetCalls.length, initialFilterCalls);
   assert.equal(audioPreview.playbackRateSetCalls, initialPlaybackSetCalls);
   assert.equal(audioPreview.pitchSetCalls, initialPitchSetCalls);
   assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
@@ -327,13 +327,13 @@ void test("workspace audio visualizer updates preview audio focus without recrea
   await flushVisualizerWork();
 
   assert.equal(FakeVisualizerAudioContext.constructed.length, 1);
-  assert.equal(audioContext?.sourceNodes.length, 1);
+  assert.equal(audioContext.sourceNodes.length, 1);
   assert.equal(audioPreview.playbackRate, 0.7);
   assert.equal(audioPreview.preservesPitch, true);
-  assert.deepEqual(gainNode?.gain.setTargetCalls.at(-1), [0.7, 0, 0.01]);
-  assert.deepEqual(primaryFilter?.Q.setTargetCalls.at(-1), [4.2, 0, 0.01]);
-  assert.deepEqual(audioContext?.biquadFilters[4]?.gain.setTargetCalls.at(-1), [5, 0, 0.01]);
-  assert.equal(gainNode?.gain.setTargetCalls.length, initialGainCalls + 1);
+  assert.deepEqual(gainNode.gain.setTargetCalls.at(-1), [0.7, 0, 0.01]);
+  assert.deepEqual(primaryFilter.Q.setTargetCalls.at(-1), [4.2, 0, 0.01]);
+  assert.deepEqual(audioContext.biquadFilters[4]?.gain.setTargetCalls.at(-1), [5, 0, 0.01]);
+  assert.equal(gainNode.gain.setTargetCalls.length, initialGainCalls + 1);
   assert.equal(audioPreview.playbackRateSetCalls > initialPlaybackSetCalls, true);
   assert.equal(audioPreview.pitchSetCalls > initialPitchSetCalls, true);
 

@@ -653,22 +653,28 @@ class ConversationSyncerClass {
         return { success: false, message: syncT("noAccountAssigned", { provider }) };
       }
 
-      const syncResult = (await window.electronAPI?.dbSyncMessages({
+      const dbSyncMessages = window.electronAPI?.["dbSyncMessages"] as
+        | ((payload: Record<string, unknown>) => Promise<DbSyncResult>)
+        | undefined;
+      const syncResult = await dbSyncMessages?.({
         accountId: accountInfo.id,
         clientRequestId: buildSyncClientRequestId(provider, webUrl, normalized),
         webUrl,
         messages: normalized,
         authors,
-      })) as DbSyncResult | undefined;
+      });
 
       if (syncResult?.success !== true) {
         throw new Error(syncError("databaseSyncFailed", syncResult?.error, { provider }));
       }
 
-      const dbMessagesResult = (await window.electronAPI?.dbGetMessages({
+      const dbGetMessages = window.electronAPI?.["dbGetMessages"] as
+        | ((payload: Record<string, unknown>) => Promise<DbMessagesResult>)
+        | undefined;
+      const dbMessagesResult = await dbGetMessages?.({
         accountId: accountInfo.id,
         conversationId: syncResult.conversationId,
-      })) as DbMessagesResult | undefined;
+      });
 
       const finalMessages: ScrapedMessage[] = dbMessagesResult?.data ?? normalized;
       const generatedImageResult = await this._persistGeneratedImages(
@@ -1128,15 +1134,17 @@ class ConversationSyncerClass {
     const guestRegion = `${Math.max(0, Math.round(rect.x))};${Math.max(0, Math.round(rect.y))}:${width};${height}`;
 
     try {
+      const captureWebContentsPage = electronApi?.["captureWebContentsPage"];
       if (
         typeof webContentsId === "number" &&
         Number.isFinite(webContentsId) &&
-        typeof electronApi?.captureWebContentsPage === "function"
+        typeof captureWebContentsPage === "function"
       ) {
-        const guestCapture = (await electronApi.captureWebContentsPage(
-          webContentsId,
-          guestRegion
-        )) as { success?: boolean; dataUrl?: string; data?: string } | null;
+        const guestCapture = (await captureWebContentsPage(webContentsId, guestRegion)) as {
+          success?: boolean;
+          dataUrl?: string;
+          data?: string;
+        } | null;
         if (guestCapture?.success === true) {
           const parsed = parseGeneratedImageDataUrl(
             guestCapture.dataUrl ?? guestCapture.data ?? ""
@@ -1151,9 +1159,10 @@ class ConversationSyncerClass {
         }
       }
 
+      const capturePage = electronApi?.["capturePage"];
       if (
         typeof webview.getBoundingClientRect !== "function" ||
-        typeof electronApi?.capturePage !== "function"
+        typeof capturePage !== "function"
       ) {
         return null;
       }
@@ -1162,7 +1171,7 @@ class ConversationSyncerClass {
       const x = Math.max(0, Math.round(hostRect.x + rect.x));
       const y = Math.max(0, Math.round(hostRect.y + rect.y));
       const windowRegion = `${x};${y}:${width};${height}`;
-      const capture = (await electronApi.capturePage("region", windowRegion)) as {
+      const capture = (await capturePage("region", windowRegion)) as {
         success?: boolean;
         dataUrl?: string;
         data?: string;
@@ -1208,9 +1217,9 @@ class ConversationSyncerClass {
       return { savedCount: 0, pendingCount };
     }
 
-    const saveAttachmentContent = window.electronAPI?.dbSaveAttachmentContent;
+    const saveAttachmentContent = window.electronAPI?.["dbSaveAttachmentContent"];
     const getAttachments = window.electronAPI?.["dbGetAttachments"];
-    const readFile = window.electronAPI?.readFile;
+    const readFile = window.electronAPI?.["readFile"];
     if (typeof saveAttachmentContent !== "function" || typeof getAttachments !== "function") {
       return { savedCount: 0, pendingCount: 0 };
     }
@@ -1426,7 +1435,12 @@ class ConversationSyncerClass {
         return { existing: null, prevCount: 0, newEntry: true };
       }
 
-      const conversationsResult = (await window.electronAPI?.dbGetConversations({
+      const dbGetConversations = window.electronAPI?.["dbGetConversations"] as
+        | ((
+            payload: Record<string, unknown>
+          ) => Promise<{ data?: ConversationItem[] } | ConversationItem[]>)
+        | undefined;
+      const conversationsResult = (await dbGetConversations?.({
         accountId: accountInfo.id,
       })) as { data?: ConversationItem[] } | ConversationItem[] | undefined;
       const conversations = Array.isArray(conversationsResult)

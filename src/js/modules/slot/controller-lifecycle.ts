@@ -106,12 +106,15 @@ async function startLlmSlotServer(
   }
 
   const api = window.electronAPI;
-  if (typeof api?.llmServeStart !== "function") {
+  const llmServeStart = api?.["llmServeStart"] as
+    | ((payload: { slot: SlotId }) => Promise<{ running: boolean; url?: string; error?: string }>)
+    | undefined;
+  if (typeof llmServeStart !== "function") {
     return { success: false, message: "LLM server bridge is unavailable." };
   }
 
   try {
-    const result = await api.llmServeStart({ slot });
+    const result = await llmServeStart({ slot });
     if (result.running !== true || typeof result.url !== "string" || result.url.trim() === "") {
       return {
         success: false,
@@ -141,13 +144,16 @@ async function stopLlmSlotServer(
   }
 
   const api = window.electronAPI;
-  if (typeof api?.llmServeStop !== "function") {
+  const llmServeStop = api?.["llmServeStop"] as
+    | ((payload: { slot: SlotId }) => Promise<void>)
+    | undefined;
+  if (typeof llmServeStop !== "function") {
     context.log(slot, "warning", "LLM server bridge is unavailable.", { correlationId });
     return;
   }
 
   try {
-    await api.llmServeStop({ slot });
+    await llmServeStop({ slot });
     delete slotState._llmServerActive;
     context.log(slot, "info", "LLM server slot reference released.", { correlationId });
   } catch (error) {

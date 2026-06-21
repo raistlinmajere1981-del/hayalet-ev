@@ -31,12 +31,12 @@ void test("forge-room installs into the registry and startup sync refreshes the 
     assert.equal(installResult.success, true, installResult.error);
     assert.equal(installResult.room?.id, "forge-room");
     assert.equal(
-      installResult.room?.runtimeEntryPath,
+      installResult.room.runtimeEntryPath,
       join(installedRoot, "forge-room", "ui", "index.html")
     );
-    assert.equal(installResult.room?.hostEntryPath, join(installedRoot, "forge-room", "host", "index.js"));
-    assert.equal(installResult.room?.workbench?.experienceId, "forge-workbench");
-    assert.equal(installResult.room?.features[0]?.scene?.view.id, "forge-room-console");
+    assert.equal(installResult.room.hostEntryPath, join(installedRoot, "forge-room", "host", "index.js"));
+    assert.equal(installResult.room.workbench?.experienceId, "forge-workbench");
+    assert.equal(installResult.room.features[0]?.scene?.view.id, "forge-room-console");
     assert.equal(existsSync(join(installedRoot, "forge-room", "ui", "index.js")), true);
 
     const registry = JSON.parse(await readFile(registryPath, "utf8")) as {
@@ -48,8 +48,8 @@ void test("forge-room installs into the registry and startup sync refreshes the 
     };
     const forgeRegistryEntry = registry.rooms.find((room) => room.id === "forge-room");
     assert.equal(forgeRegistryEntry?.defaultFeatureId, "forge-workbench");
-    assert.equal(forgeRegistryEntry?.workbench?.experienceId, "forge-workbench");
-    assert.equal(forgeRegistryEntry?.workbench?.primaryFeatureId, "forge-workbench");
+    assert.equal(forgeRegistryEntry.workbench?.experienceId, "forge-workbench");
+    assert.equal(forgeRegistryEntry.workbench.primaryFeatureId, "forge-workbench");
 
     await waitForFsTick();
     await writeFile(

@@ -105,8 +105,8 @@ void test("RelayManager catches ai0 last-message SlotBridge commands only when a
     assert.equal(enabledResult, true);
     assert.equal(caught.length, 1);
     assert.equal(caught[0]?.command, "SlotBridge");
-    assert.match(String(caught[0]?.args), /"toSlot":"ai1"/);
-    assert.equal(caught[0]?.provider, "ai0");
+    assert.match(String(caught[0].args), /"toSlot":"ai1"/);
+    assert.equal(caught[0].provider, "ai0");
   } finally {
     SettingsManager.getSnapshot = originalGetSnapshot;
     RelayManager.coreEngine = originalCoreEngine;

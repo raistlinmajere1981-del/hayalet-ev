@@ -110,7 +110,7 @@ void test("workspace room discovery and build support TypeScript runtime sources
       "ui/index.html",
       [
         "<!doctype html>",
-        '<html lang=\"en\">',
+        '<html lang="en">',
         "  <body>",
         '    <div id="app"></div>',
         '    <script type="module" src="./bootstrap.js"></script>',
@@ -136,23 +136,20 @@ void test("workspace room discovery and build support TypeScript runtime sources
     const workspaceRoom = workspaceRooms.find((entry) => entry.manifest?.id === "ts-proof-room");
 
     assert.ok(workspaceRoom);
-    assert.equal(workspaceRoom?.valid, true);
-    assert.deepEqual(workspaceRoom?.errors ?? [], []);
+    assert.equal(workspaceRoom.valid, true);
+    assert.deepEqual(workspaceRoom.errors , []);
 
     const buildResult = await buildWorkspaceRoomArtifact({
       getRoomRuntimeBuildDir: (roomId) => join(runtimeBuildRoot, roomId, "runtime"),
       getRoomStorageRoot: (roomId) => join(buildRoot, roomId),
       roomId: "ts-proof-room",
       roomPackageError: async (_key, detail) =>
-        detail instanceof Error ? detail.message : String(detail ?? "room-package-error"),
+        detail instanceof Error ? detail.message : String((detail as string | undefined) ?? "room-package-error"),
       roomPackageT: async (_key, params) => String(params?.["path"] ?? params?.["roomId"] ?? "ok"),
       workspaceRooms,
     });
 
     assert.equal(buildResult.success, true);
-    if (buildResult.success !== true) {
-      return;
-    }
 
     const builtHostEntry = join(buildResult.artifact.buildDir, "host/index.js");
     const builtHostRuntime = join(buildResult.artifact.buildDir, "host/runtime.js");
@@ -179,7 +176,7 @@ void test("workspace room discovery and build support TypeScript runtime sources
       getRoomStorageRoot: (roomId) => join(buildRoot, roomId),
       roomId: "ts-proof-room",
       roomPackageError: async (_key, detail) =>
-        detail instanceof Error ? detail.message : String(detail ?? "room-package-error"),
+        detail instanceof Error ? detail.message : String((detail as string | undefined) ?? "room-package-error"),
       roomPackageT: async (_key, params) => String(params?.["path"] ?? params?.["roomId"] ?? "ok"),
       workspaceRooms,
     });

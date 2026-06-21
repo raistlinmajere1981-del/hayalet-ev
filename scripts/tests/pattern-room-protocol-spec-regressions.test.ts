@@ -42,7 +42,7 @@ function readCaseReviewProtocol(): string {
   const manifest = readPatternRoomManifest();
   const spec = findCaseReviewSpec(manifest);
   const relativePath = resolveRoomProtocolFilePath(spec);
-  assert.ok(relativePath);
+  assert.ok(relativePath != null);
   const protocolPath = resolve(PATTERN_ROOM_ROOT, relativePath);
 
   assert.equal(existsSync(protocolPath), true);
@@ -139,8 +139,8 @@ void test("pattern-room protocol spec resolves through the existing room protoco
   const merged = await RoomProtocolRegistry.mergeProtocolMap({});
 
   assert.equal(resolved?.key, PROTOCOL_KEY);
-  assert.equal(resolved?.title, "[START][PATTERN-ROOM][CASE-REVIEW]");
-  assert.equal(resolved?.relativeProtocolPath, "protocols/pattern-room-case-review.md");
+  assert.equal(resolved.title, "[START][PATTERN-ROOM][CASE-REVIEW]");
+  assert.equal(resolved.relativeProtocolPath, "protocols/pattern-room-case-review.md");
   assert.equal(merged[PROTOCOL_KEY], protocolBody);
 
   RoomProtocolRegistry.reset();

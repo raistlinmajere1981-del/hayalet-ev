@@ -60,13 +60,42 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         return { success: false, error: assistantT("errors.electronApiUnavailable") };
       }
 
+      type OpenCodeServeMethods = {
+        opencodeServeFindRunning(
+          start?: number,
+          end?: number
+        ): Promise<{
+          running: boolean;
+          port?: number;
+          url?: string;
+          workspacePath?: string;
+          error?: string;
+        }>;
+        opencodeServeFindPort(
+          start?: number,
+          end?: number
+        ): Promise<{ port?: number; error?: string }>;
+        opencodeServeStart(options?: { port?: number; cors?: string[] }): Promise<{
+          success: boolean;
+          port?: number;
+          url?: string;
+          workspacePath?: string;
+          pid?: number;
+          startTime?: number;
+          alreadyRunning?: boolean;
+          error?: string;
+        }>;
+        opencodeServeStop(): Promise<{ success: boolean; error?: string }>;
+      };
+      const api = electronApi as OpenCodeServeMethods;
+
       const portRange = this._resolvePortRange();
-      const running = await electronApi.opencodeServeFindRunning(portRange.start, portRange.end);
+      const running = await api.opencodeServeFindRunning(portRange.start, portRange.end);
       if (running.running === true && running.port !== undefined && running.port !== 0) {
         this._isRunning = true;
         this._currentPort = running.port;
         const serverUrl = running.url ?? `http://127.0.0.1:${this._currentPort}/`;
-        const url = this._resolveWorkspaceUrl(serverUrl, running.workspacePath, this._currentPort);
+        const url = this._resolveWorkspaceUrl(serverUrl, running.workspacePath, running.port);
 
         Logger.infoT(
           LogCategory.ASSISTANT_CORE,
@@ -88,7 +117,7 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       let port: number | undefined;
 
       if (portSelection === "auto" || portSelection === undefined || portSelection === "") {
-        const portResult = await electronApi.opencodeServeFindPort(portRange.start, portRange.end);
+        const portResult = await api.opencodeServeFindPort(portRange.start, portRange.end);
         const portErrorMessage = resolveIpcErrorMessage(portResult) ?? portResult.error;
         if (portErrorMessage !== undefined && portErrorMessage !== "") {
           throw new Error(
@@ -103,7 +132,7 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         }
       }
 
-      const result = await electronApi.opencodeServeStart({
+      const result = await api.opencodeServeStart({
         ...(typeof port === "number" ? { port } : {}),
         cors: ["http://localhost:5174"],
       });
@@ -173,7 +202,10 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         return { success: true };
       }
 
-      const result = await electronApi.opencodeServeStop();
+      const api = electronApi as {
+        opencodeServeStop(): Promise<{ success: boolean; error?: string }>;
+      };
+      const result = await api.opencodeServeStop();
       this._isRunning = false;
       this._currentPort = null;
 
@@ -227,6 +259,13 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       return false;
     }
 
+    const waitApi = electronApi as {
+      opencodeServeFindPort(
+        start?: number,
+        end?: number
+      ): Promise<{ port?: number; error?: string }>;
+    };
+
     try {
       const parsed = new URL(url);
       port = parsed.port !== "" ? Number(parsed.port) : null;
@@ -246,7 +285,7 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
 
       try {
         if (port !== null && port !== 0) {
-          const portCheck = await electronApi.opencodeServeFindPort(port, port);
+          const portCheck = await waitApi.opencodeServeFindPort(port, port);
           if (portCheck.error?.includes("No available port found") === true) {
             return true;
           }

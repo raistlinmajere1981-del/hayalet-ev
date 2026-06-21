@@ -6,14 +6,14 @@ import { join, resolve } from "node:path";
 import { buildRoomHostModuleDataUrl } from "../../src/js/modules/rooms/room-host-source.ts";
 import { createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 
-async function importRoomHostModule(targetPath: string) {
+async function importRoomHostModule(targetPath: string): Promise<InstalledGameRoomHostModule> {
   const absolutePath = resolve(targetPath);
   const moduleUrl = await buildRoomHostModuleDataUrl(absolutePath, async (filePath) => {
     return await readFile(filePath, "utf8");
   });
   return await import(
     `${moduleUrl}#installed-runtime-${Date.now()}-${Math.random().toString(16).slice(2)}`
-  );
+  ) as InstalledGameRoomHostModule;
 }
 
 type InstalledGameRoomHostModule = {
@@ -34,8 +34,8 @@ function createInstalledHostRuntime(installedGameRoomHostModule: InstalledGameRo
     notifyRoom(type: string, payload: Record<string, unknown> = {}) {
       notifications.push({ type, payload });
     },
-    dispatchBridge: async () => ({ success: true }),
-    dispatchRoomCommand: async () => ({ success: false }),
+    dispatchBridge: () => ({ success: true }),
+    dispatchRoomCommand: () => ({ success: false }),
     getUs1Identity: () => ({
       remoteUserId: "remote@example.com",
       nickname: "Remote Ghost",
@@ -62,8 +62,7 @@ function createInstalledHostRuntime(installedGameRoomHostModule: InstalledGameRo
       exported.onRoomEvent(context);
     },
     latestFateKnotsState() {
-      return notifications.filter((entry) => entry.type === "fate-knots-state").at(-1)?.payload
-        ?.["state"] as Record<string, unknown> | undefined;
+      return notifications.filter((entry) => entry.type === "fate-knots-state").at(-1)?.payload["state"] as Record<string, unknown> | undefined;
     },
   };
 }
@@ -107,21 +106,21 @@ void test("game-room installed host exposes Fate Knots as a blank placeholder", 
   const installedCopy = await createRoomInstalledCopy("game-room");
 
   try {
-    const installedGameRoomHostModule = (await importRoomHostModule(
+    const installedGameRoomHostModule = await importRoomHostModule(
       join(installedCopy.rootDir, "host/index.js")
-    )) as InstalledGameRoomHostModule;
+    );
     const runtime = createInstalledHostRuntime(installedGameRoomHostModule);
 
     runtime.emitHostContext(buildHostContext());
     assert.equal(runtime.latestFateKnotsState()?.["phase"], "blank-slate");
 
-    const startResult = await runtime.exported.commands["GameRoomFateKnotsStart"]!({});
-    assert.equal((startResult as { success?: unknown })?.success, true);
+    const startResult = await runtime.exported.commands["GameRoomFateKnotsStart"]?.({});
+    assert.equal((startResult as { success?: unknown } | undefined)?.success, true);
     assert.equal(runtime.latestFateKnotsState()?.["active"], true);
     assert.equal(runtime.latestFateKnotsState()?.["phase"], "ready");
 
-    const resetResult = await runtime.exported.commands["GameRoomFateKnotsReset"]!();
-    assert.equal((resetResult as { success?: unknown })?.success, true);
+    const resetResult = await runtime.exported.commands["GameRoomFateKnotsReset"]?.();
+    assert.equal((resetResult as { success?: unknown } | undefined)?.success, true);
     assert.equal(runtime.latestFateKnotsState()?.["active"], false);
     assert.equal(runtime.latestFateKnotsState()?.["phase"], "blank-slate");
 

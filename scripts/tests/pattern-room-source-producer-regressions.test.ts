@@ -28,14 +28,18 @@ async function walkTypeScriptFiles(baseDir: string): Promise<string[]> {
   const entries = await readdir(baseDir, { withFileTypes: true });
   const files: string[] = [];
 
+  const dirResults = await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory())
+      .map(async (entry) => await walkTypeScriptFiles(join(baseDir, entry.name)))
+  );
+  for (const dirResult of dirResults) {
+    files.push(...dirResult);
+  }
+
   for (const entry of entries) {
-    const entryPath = join(baseDir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await walkTypeScriptFiles(entryPath)));
-      continue;
-    }
     if (entry.isFile() && entry.name.endsWith(".ts")) {
-      files.push(entryPath);
+      files.push(join(baseDir, entry.name));
     }
   }
 
@@ -134,10 +138,10 @@ void test("pattern-room user text producer produces one raw SourcePackage", () =
 
   assert.equal(pkg.sourceItems.length, 1);
   assert.equal(pkg.sourceItems[0]?.content, "Ham metin ilk satır.\nİkinci satır.");
-  assert.equal(pkg.sourceItems[0]?.order, 0);
-  assert.equal(pkg.sourceItems[0]?.timecodeStart, null);
-  assert.equal(pkg.sourceItems[0]?.timecodeEnd, null);
-  assert.deepEqual(pkg.sourceItems[0]?.metadata, {
+  assert.equal(pkg.sourceItems[0].order, 0);
+  assert.equal(pkg.sourceItems[0].timecodeStart, null);
+  assert.equal(pkg.sourceItems[0].timecodeEnd, null);
+  assert.deepEqual(pkg.sourceItems[0].metadata, {
     producerId: "user_text_producer",
   });
 });
@@ -170,10 +174,10 @@ void test("pattern-room source package parser keeps old and new item shapes comp
   });
   assert.ok(oldShape);
   assert.equal(oldShape.sourceItems[0]?.sourceItemId, "old-item-1");
-  assert.equal(oldShape.sourceItems[0]?.content, null);
-  assert.equal(oldShape.sourceItems[0]?.order, null);
-  assert.equal(oldShape.sourceItems[0]?.timecodeStart, null);
-  assert.equal(oldShape.sourceItems[0]?.timecodeEnd, null);
+  assert.equal(oldShape.sourceItems[0].content, null);
+  assert.equal(oldShape.sourceItems[0].order, null);
+  assert.equal(oldShape.sourceItems[0].timecodeStart, null);
+  assert.equal(oldShape.sourceItems[0].timecodeEnd, null);
 
   const newShape = parseSourcePackage({
     sourcePackageId: "new-item-shape-package",
@@ -197,9 +201,9 @@ void test("pattern-room source package parser keeps old and new item shapes comp
   });
   assert.ok(newShape);
   assert.equal(newShape.sourceItems[0]?.content, "New item content.");
-  assert.equal(newShape.sourceItems[0]?.order, 0);
-  assert.equal(newShape.sourceItems[0]?.timecodeStart, null);
-  assert.equal(newShape.sourceItems[0]?.timecodeEnd, null);
+  assert.equal(newShape.sourceItems[0].order, 0);
+  assert.equal(newShape.sourceItems[0].timecodeStart, null);
+  assert.equal(newShape.sourceItems[0].timecodeEnd, null);
 });
 
 void test("pattern-room user text producer output parses and imports through Source Workbench", () => {
@@ -214,7 +218,7 @@ void test("pattern-room user text producer output parses and imports through Sou
   const importResult = importSourcePackage(parsed);
   assert.equal(importResult.sources.length, 1);
   assert.equal(importResult.sources[0]?.sourceKind, "user_text");
-  assert.equal(importResult.sources[0]?.note, createPastedTextInput().text);
+  assert.equal(importResult.sources[0].note, createPastedTextInput().text);
   assert.deepEqual(importResult.evidence, []);
   assert.deepEqual(importResult.nodes, []);
   assert.deepEqual(importResult.edges, []);
@@ -259,16 +263,26 @@ void test("pattern-room source producers stay pure and disconnected from runtime
   );
   const prohibitedCoreProducerPatterns = [/importSourcePackage\s*\(/];
 
-  for (const filePath of producerFiles) {
-    const source = await readFile(filePath, "utf8");
+  const producerFileSources = await Promise.all(
+    producerFiles.map(async (filePath) => {
+      const source = await readFile(filePath, "utf8");
+      return { filePath, source };
+    })
+  );
+  for (const { filePath, source } of producerFileSources) {
     const relativePath = relative(process.cwd(), filePath);
     for (const pattern of prohibitedProducerPatterns) {
       assert.equal(pattern.test(source), false, `${relativePath} matched ${String(pattern)}`);
     }
   }
 
-  for (const filePath of producerCoreFiles) {
-    const source = await readFile(filePath, "utf8");
+  const producerCoreSources = await Promise.all(
+    producerCoreFiles.map(async (filePath) => {
+      const source = await readFile(filePath, "utf8");
+      return { filePath, source };
+    })
+  );
+  for (const { filePath, source } of producerCoreSources) {
     const relativePath = relative(process.cwd(), filePath);
     for (const pattern of prohibitedCoreProducerPatterns) {
       assert.equal(pattern.test(source), false, `${relativePath} matched ${String(pattern)}`);
@@ -290,8 +304,13 @@ void test("pattern-room source producers stay pure and disconnected from runtime
     "rooms/pattern-room/shared/types/pattern-room-snapshot.ts",
   ];
 
-  for (const filePath of protectedFiles) {
-    const source = await readFile(resolve(filePath), "utf8");
+  const protectedSources = await Promise.all(
+    protectedFiles.map(async (filePath) => {
+      const source = await readFile(resolve(filePath), "utf8");
+      return { filePath, source };
+    })
+  );
+  for (const { filePath, source } of protectedSources) {
     assert.equal(source.includes("source-producers"), false, filePath);
     assert.equal(source.includes("createUserTextProducer"), false, filePath);
   }

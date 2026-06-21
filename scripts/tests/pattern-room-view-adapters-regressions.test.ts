@@ -107,7 +107,7 @@ void test("pattern-room phase 13D archive source previews stay compact while not
   assert.ok(localSource);
   assert.equal(localSource.note, longNote);
   assert.equal(localSource.notePreview, expectedPreview);
-  assert.equal(localSource.notePreview?.includes("Bu kuyruk"), false);
+  assert.equal(localSource.notePreview.includes("Bu kuyruk"), false);
   assert.ok(domainSource);
   assert.equal(domainSource.notePreview, domainSource.note);
 });
@@ -377,8 +377,8 @@ void test("pattern-room phase 13F local evidence can expose source labels in boa
   assert.equal(evidencePin.sourceLabel, "Kaynaklı arşiv");
   assert.ok(localEvidenceSection);
   assert.equal(localEvidenceSection.items[0]?.body, "Kaynaklı alıntı");
-  assert.equal(localEvidenceSection.items[0]?.detail, "Yorum: Kaynaklı yorum");
-  assert.ok(localEvidenceSection.items[0]?.meta.includes("Kaynak: Kaynaklı arşiv"));
+  assert.equal(localEvidenceSection.items[0].detail, "Yorum: Kaynaklı yorum");
+  assert.ok(localEvidenceSection.items[0].meta.includes("Kaynak: Kaynaklı arşiv"));
 });
 
 void test("pattern-room phase 8B local authored connections appear only in the report", () => {
@@ -561,13 +561,13 @@ void test("pattern-room phase 15A report adapter drafts local evidence without v
   assert.ok(sourceSection);
   assert.equal(sourceSection.items[0]?.body, "Archive sayımı: 4 domain kaynak, 1 local kaynak.");
   assert.equal(sourceSection.items[1]?.label, "Uzun kaynak başlığı");
-  assert.ok(sourceSection.items[1]?.meta.includes("Segment: 2"));
+  assert.ok(sourceSection.items[1].meta.includes("Segment: 2"));
 
   assert.ok(evidenceSection);
   assert.equal(evidenceSection.items[0]?.label, "Kaynaklı kanıt");
-  assert.equal(evidenceSection.items[0]?.body, "Kaynak detayından seçilen kısa pasaj.");
-  assert.equal(evidenceSection.items[0]?.detail, "Yorum: Kullanıcı yorumu ayrı kalır.");
-  assert.ok(evidenceSection.items[0]?.meta.includes("Kaynak: Uzun kaynak başlığı"));
+  assert.equal(evidenceSection.items[0].body, "Kaynak detayından seçilen kısa pasaj.");
+  assert.equal(evidenceSection.items[0].detail, "Yorum: Kullanıcı yorumu ayrı kalır.");
+  assert.ok(evidenceSection.items[0].meta.includes("Kaynak: Uzun kaynak başlığı"));
 
   assert.ok(boardSection);
   assert.deepEqual(
@@ -577,7 +577,7 @@ void test("pattern-room phase 15A report adapter drafts local evidence without v
 
   assert.ok(connectionSection);
   assert.equal(connectionSection.items[0]?.body, "Yerel iddia → destekliyor → Kaynaklı kanıt");
-  assert.equal(connectionSection.items[0]?.detail, "Not: Bağ notu.");
+  assert.equal(connectionSection.items[0].detail, "Not: Bağ notu.");
 
   assert.ok(tenthManSection);
   assert.equal(tenthManSection.items.length > 0, true);

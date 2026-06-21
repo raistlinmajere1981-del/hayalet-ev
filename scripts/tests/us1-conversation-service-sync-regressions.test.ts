@@ -28,8 +28,14 @@ void test("US1 conversation service syncs inbound mail, updates remote profile, 
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: async () => {
+        await Promise.resolve();
+        return store.loadSettings();
+      },
+      saveSettings: async (settings) => {
+        await Promise.resolve();
+        return store.saveSettings(settings);
+      },
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -81,7 +87,7 @@ void test("US1 conversation service syncs inbound mail, updates remote profile, 
           parsed: {
             transportMessageId: "<incoming-1@example.test>",
             inReplyTo: outbound.transportMessageId ?? null,
-            references: outbound.transportMessageId ? [outbound.transportMessageId] : [],
+            references: outbound.transportMessageId != null ? [outbound.transportMessageId] : [],
             subject: "Re: Thread opener",
             text: buildConversationPayload("Remote Fresh", 10, "Inbound hello"),
             html: null,
@@ -117,21 +123,21 @@ void test("US1 conversation service syncs inbound mail, updates remote profile, 
     assert.equal(result.projectedCount, 1);
     assert.equal(result.localSessionId, outbound.localSessionId);
     assert.equal(result.sessionEvents?.[0]?.mode, "reply");
-    assert.equal(result.sessionEvents?.[0]?.isNewSession, false);
+    assert.equal(result.sessionEvents[0].isNewSession, false);
     assert.equal(result.roomPackages?.length, 1);
-    assert.equal(result.roomPackages?.[0]?.originalName, "mail-room.hevroom.json");
+    assert.equal(result.roomPackages[0]?.originalName, "mail-room.hevroom.json");
 
     const nextRemoteUser = store.snapshot().remoteUsers?.find(
       (remoteUser) => remoteUser.remoteUserId === "remote@example.com"
     );
     assert.equal(nextRemoteUser?.nickname, "Remote Fresh");
-    assert.equal(nextRemoteUser?.avatar, "https://example.com/avatar.png");
-    assert.equal(nextRemoteUser?.profileRevision, 10);
+    assert.equal(nextRemoteUser.avatar, "https://example.com/avatar.png");
+    assert.equal(nextRemoteUser.profileRevision, 10);
 
     const sidecar = new MailSidecarStoreManager(accountId);
     const meta = sidecar.getMessageMeta("<incoming-1@example.test>");
     assert.equal(meta?.metadata?.["direction"], "inbound");
-    assert.equal(meta?.metadata?.["localSessionId"], outbound.localSessionId);
+    assert.equal(meta.metadata["localSessionId"], outbound.localSessionId);
 
     const db = new Database(Paths.getAccountDbPath(remoteAccountId), { readonly: true });
     const messages = db
@@ -148,7 +154,7 @@ void test("US1 conversation service syncs inbound mail, updates remote profile, 
 
     assert.equal(messages.length, 2);
     assert.equal(messages[1]?.role, "assistant");
-    assert.equal(messages[1]?.content, "Inbound hello");
+    assert.equal(messages[1].content, "Inbound hello");
     assert.equal(attachments.length, 1);
     assert.equal(attachments[0]?.original_name, "mail-room.hevroom.json");
   } finally {
@@ -166,8 +172,14 @@ void test("US1 conversation sync keeps explicit inbound new session ids isolated
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: async () => {
+        await Promise.resolve();
+        return store.loadSettings();
+      },
+      saveSettings: async (settings) => {
+        await Promise.resolve();
+        return store.saveSettings(settings);
+      },
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -231,9 +243,9 @@ void test("US1 conversation sync keeps explicit inbound new session ids isolated
     assert.equal(result.projectedCount, 1);
     assert.equal(result.localSessionId, "us1-remote-session-1");
     assert.equal(result.sessionEvents?.length, 1);
-    assert.equal(result.sessionEvents?.[0]?.localSessionId, "us1-remote-session-1");
-    assert.equal(result.sessionEvents?.[0]?.mode, "new");
-    assert.equal(result.sessionEvents?.[0]?.isNewSession, true);
+    assert.equal(result.sessionEvents[0]?.localSessionId, "us1-remote-session-1");
+    assert.equal(result.sessionEvents[0].mode, "new");
+    assert.equal(result.sessionEvents[0].isNewSession, true);
 
     const db = new Database(Paths.getAccountDbPath(remoteAccountId), { readonly: true });
     const conversation = db
@@ -244,7 +256,7 @@ void test("US1 conversation sync keeps explicit inbound new session ids isolated
     db.close();
 
     assert.equal(conversation?.title, "Sohbet 001");
-    assert.match(conversation?.web_url ?? "", /us1-remote-session-1/);
+    assert.match(conversation.web_url, /us1-remote-session-1/);
   } finally {
     cleanupAccount(accountId);
     cleanupAccount(remoteAccountId);
@@ -260,8 +272,14 @@ void test("US1 conversation sync does not activate unknown remote users from nor
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: async () => {
+        await Promise.resolve();
+        return store.loadSettings();
+      },
+      saveSettings: async (settings) => {
+        await Promise.resolve();
+        return store.saveSettings(settings);
+      },
     },
   });
   const activeRemoteAccountId = buildRemoteEmailAccountId("remote@example.com");

@@ -11,11 +11,48 @@ type ForgeNotification = {
   type: string;
 };
 
+type ForgeSnapshot = {
+  activeSessionId: string | null;
+  conflicts: Array<{ id: string }>;
+  exports: Array<{ filePath: string }>;
+  preflight: {
+    status: string;
+  };
+  responses: Array<{ id: string }>;
+  runOverride: {
+    architectSeatId?: "ai2";
+    enableRovoPreAnalysis: boolean;
+    notes: string;
+    temporaryConditions: string[];
+  } | null;
+  runSignature: {
+    value: string;
+  } | null;
+  selectedSynthesisId: string | null;
+  sessionContextSelection: {
+    preferences: { mode: boolean };
+    skill: { measurement: boolean };
+    tools: { multimeter: boolean };
+    skillKeys: string[];
+    equipmentKeys: string[];
+    preferenceKeys: string[];
+  };
+  syntheses: Array<{
+    id: string;
+    provenance?: {
+      operatorProfileSummary?: string[];
+      preflightWarnings?: string[];
+      runSignature?: string | null;
+    } | null;
+    status: string;
+  }>;
+};
+
 function encodeBase64Text(value: string): string {
   return Buffer.from(value, "utf8").toString("base64");
 }
 
-async function createElectronApi(storageDir: string) {
+function createElectronApi(storageDir: string) {
   return {
     async fmWriteFileAtomic(payload: { data: string; path: string }) {
       await mkdir(dirname(payload.path), { recursive: true });
@@ -191,7 +228,7 @@ function createDispatchBridge(dispatchCalls: Array<Record<string, unknown>>) {
       };
     }
     if (protocolKey === "forge-room-synthesis") {
-      const promptText = String((payload["payload"] as { text?: unknown } | undefined)?.text ?? "");
+      const promptText = String((payload["payload"] as { text?: string } | undefined)?.text ?? "");
       const responseIds = Array.from(promptText.matchAll(/responseId:\s+([a-z0-9-]+)/gi)).map(
         (match) => match[1]
       );
@@ -226,43 +263,11 @@ function createDispatchBridge(dispatchCalls: Array<Record<string, unknown>>) {
   };
 }
 
-function latestForgeSnapshot(notifications: ForgeNotification[]) {
-  const snapshot = notifications.filter((entry) => entry.type === "forge-state").at(-1)?.payload[
-    "snapshot"
-  ];
-  return snapshot as {
-    activeSessionId: string | null;
-    conflicts: Array<{ id: string }>;
-    exports: Array<{ filePath: string }>;
-    preflight: {
-      status: string;
-    };
-    responses: Array<{ id: string }>;
-    runOverride: {
-      architectSeatId?: "ai2";
-      enableRovoPreAnalysis: boolean;
-      notes: string;
-      temporaryConditions: string[];
-    } | null;
-    runSignature: {
-      value: string;
-    } | null;
-    selectedSynthesisId: string | null;
-    sessionContextSelection: {
-      preferences: { mode: boolean };
-      skill: { measurement: boolean };
-      tools: { multimeter: boolean };
-    };
-    syntheses: Array<{
-      id: string;
-      provenance?: {
-        operatorProfileSummary?: string[];
-        preflightWarnings?: string[];
-        runSignature?: string | null;
-      } | null;
-      status: string;
-    }>;
-  };
+function latestForgeSnapshot(notifications: ForgeNotification[]): ForgeSnapshot {
+  const snapshot = notifications
+    .filter((entry) => entry.type === "forge-state")
+    .at(-1)?.payload["snapshot"];
+  return snapshot as ForgeSnapshot;
 }
 
 void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and reopen through the live room-local flow", async () => {
@@ -270,7 +275,7 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
   const notifications: ForgeNotification[] = [];
   const hostState = new Map<string, unknown>();
   const dispatchCalls: Array<Record<string, unknown>> = [];
-  const electronApi = await createElectronApi(storageDir);
+  const electronApi = createElectronApi(storageDir);
   const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
 
   Object.defineProperty(globalThis, "window", {
@@ -304,10 +309,10 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
       },
     });
 
-    const createResult = await hostRuntime.commands["ForgeRoomCreateSession"]!();
+    const createResult = await (hostRuntime.commands["ForgeRoomCreateSession"]! as unknown as (...args: unknown[]) => Record<string, unknown>)();
     assert.equal(createResult["success"], true);
 
-    const addRunOverrideResult = await hostRuntime.commands["ForgeRoomUpdateRunOverride"]!({
+    const addRunOverrideResult = await (hostRuntime.commands["ForgeRoomUpdateRunOverride"]! as unknown as (...args: unknown[]) => Record<string, unknown>)({
       notes: "Bench is borrowed for this run.",
       temporaryConditions: ["borrowed microscope"],
     });
@@ -319,7 +324,7 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
       temporaryConditions: ["borrowed microscope"],
     });
 
-    const clearRunOverrideResult = await hostRuntime.commands["ForgeRoomUpdateRunOverride"]!({
+    const clearRunOverrideResult = await (hostRuntime.commands["ForgeRoomUpdateRunOverride"]! as unknown as (...args: unknown[]) => Record<string, unknown>)({
       notes: "",
       temporaryConditions: [],
     });
@@ -327,7 +332,7 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
     const snapshotAfterRunOverrideClear = latestForgeSnapshot(notifications);
     assert.equal(snapshotAfterRunOverrideClear.runOverride, null);
 
-    const updateOperatorProfileResult = await hostRuntime.commands["ForgeRoomUpdateOperatorProfile"]!({
+    const updateOperatorProfileResult = await (hostRuntime.commands["ForgeRoomUpdateOperatorProfile"]! as unknown as (...args: unknown[]) => Record<string, unknown>)({
       skills: [{ skillKey: "measurement", level: "basic" }],
       equipment: [{ equipmentKey: "multimeter", status: "unavailable" }],
       preferences: {
@@ -336,7 +341,7 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
     });
     assert.equal(updateOperatorProfileResult["success"], true);
 
-    const architectSeatResult = await hostRuntime.commands["ForgeRoomUpdateRunOverride"]!({
+    const architectSeatResult = await (hostRuntime.commands["ForgeRoomUpdateRunOverride"]! as unknown as (...args: unknown[]) => Record<string, unknown>)({
       architectSeatId: "ai2",
     });
     assert.equal(architectSeatResult["success"], true);
@@ -348,7 +353,7 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
       temporaryConditions: [],
     });
 
-    const updateSessionContextResult = await hostRuntime.commands["ForgeRoomUpdateSessionContext"]!({
+    const updateSessionContextResult = await (hostRuntime.commands["ForgeRoomUpdateSessionContext"]! as unknown as (...args: unknown[]) => Record<string, unknown>)({
       skillKeys: ["measurement"],
       equipmentKeys: ["multimeter"],
       preferenceKeys: ["mode"],
@@ -356,13 +361,13 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
     assert.equal(updateSessionContextResult["success"], true);
 
     const snapshotAfterSessionContext = latestForgeSnapshot(notifications);
-    assert.deepEqual((snapshotAfterSessionContext.sessionContextSelection as any).skillKeys, ["measurement"]);
-    assert.deepEqual((snapshotAfterSessionContext.sessionContextSelection as any).equipmentKeys, ["multimeter"]);
-    assert.deepEqual((snapshotAfterSessionContext.sessionContextSelection as any).preferenceKeys, ["mode"]);
+    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.skillKeys, ["measurement"]);
+    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.equipmentKeys, ["multimeter"]);
+    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.preferenceKeys, ["mode"]);
     assert.equal(snapshotAfterSessionContext.preflight.status, "idle");
     assert.equal(snapshotAfterSessionContext.runSignature, null);
 
-    const draftResult = await hostRuntime.commands["ForgeRoomGenerateDraft"]!({
+    const draftResult = await (hostRuntime.commands["ForgeRoomGenerateDraft"]! as unknown as (...args: unknown[]) => Record<string, unknown>)({
       architectSeatId: "ai2",
       summary: "Repair Room integration",
       brief: "Drive the first Forge Room handoff into Repair Room.",
@@ -387,11 +392,11 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
     );
     assert.equal(breakdownDispatch?.["toSlot"], "ai2");
     assert.match(
-      String((breakdownDispatch?.["payload"] as { text?: unknown } | undefined)?.text ?? ""),
+      String((breakdownDispatch["payload"] as { text?: string } | undefined)?.text ?? ""),
       /Use Turkish for every human-readable JSON string value\./
     );
 
-    const runPreflightResult = await hostRuntime.commands["ForgeRoomRunPreflight"]!();
+    const runPreflightResult = await (hostRuntime.commands["ForgeRoomRunPreflight"]! as unknown as (...args: unknown[]) => Record<string, unknown>)();
     assert.equal(runPreflightResult["success"], true);
     const preflightDispatchCalls = dispatchCalls.filter(
       (call) =>
@@ -409,7 +414,7 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
     const forgeStateCountAfterPreflight = notifications.filter(
       (entry) => entry.type === "forge-state"
     ).length;
-    const noOpSessionContextResult = await hostRuntime.commands["ForgeRoomUpdateSessionContext"]!({
+    const noOpSessionContextResult = await (hostRuntime.commands["ForgeRoomUpdateSessionContext"]! as unknown as (...args: unknown[]) => Record<string, unknown>)({
       skillKeys: ["measurement"],
       equipmentKeys: ["multimeter"],
       preferenceKeys: ["mode"],
@@ -425,12 +430,12 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
         draftTasks: Array<{ id: string; level: number }>;
       }
     ).draftTasks.find((task) => task.level === 1)?.id;
-    assert.ok(approvedTaskId);
+    assert.ok(approvedTaskId != null);
 
-    const approveResult = await hostRuntime.commands["ForgeRoomApproveDraft"]!();
+    const approveResult = await (hostRuntime.commands["ForgeRoomApproveDraft"]! as unknown as (...args: unknown[]) => Record<string, unknown>)();
     assert.equal(approveResult["success"], true);
 
-    const updateApprovedResult = await hostRuntime.commands["ForgeRoomUpdateApprovedTask"]!({
+    const updateApprovedResult = await (hostRuntime.commands["ForgeRoomUpdateApprovedTask"]! as unknown as (...args: unknown[]) => Record<string, unknown>)({
       taskId: approvedTaskId,
       seatId: "ai1",
       roleId: "architect",
@@ -440,7 +445,7 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
     });
     assert.equal(updateApprovedResult["success"], true);
 
-    const dispatchResult = await hostRuntime.commands["ForgeRoomDispatchAssignments"]!();
+    const dispatchResult = await (hostRuntime.commands["ForgeRoomDispatchAssignments"]! as unknown as (...args: unknown[]) => Record<string, unknown>)();
     assert.equal(dispatchResult["success"], true);
     assert.ok((dispatchResult["completedAssignments"] as number) >= 3);
     const taskDispatches = dispatchCalls.filter(
@@ -451,7 +456,7 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
     assert.ok(taskDispatches.length >= 3);
     taskDispatches.forEach((call) => {
       assert.match(
-        String((call["payload"] as { text?: unknown } | undefined)?.text ?? ""),
+        String((call["payload"] as { text?: string } | undefined)?.text ?? ""),
         /Use Turkish for every human-readable JSON string value\./
       );
     });
@@ -467,23 +472,23 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
     const snapshotAfterDispatch = latestForgeSnapshot(notifications);
     const conflictId = snapshotAfterDispatch.conflicts[0]?.id;
     const preferredResponseId = snapshotAfterDispatch.responses[0]?.id;
-    assert.ok(conflictId);
-    assert.ok(preferredResponseId);
+    assert.ok(conflictId != null);
+    assert.ok(preferredResponseId != null);
 
-    const preferResult = await hostRuntime.commands["ForgeRoomResolveConflict"]!({
+    const preferResult = await (hostRuntime.commands["ForgeRoomResolveConflict"]! as unknown as (...args: unknown[]) => Record<string, unknown>)({
       conflictId,
       preferredResponseId,
       status: "open",
     });
     assert.equal(preferResult["success"], true);
 
-    const resolveResult = await hostRuntime.commands["ForgeRoomResolveConflict"]!({
+    const resolveResult = await (hostRuntime.commands["ForgeRoomResolveConflict"]! as unknown as (...args: unknown[]) => Record<string, unknown>)({
       conflictId,
       status: "resolved",
     });
     assert.equal(resolveResult["success"], true);
 
-    const synthesisResult = await hostRuntime.commands["ForgeRoomGenerateSynthesis"]!();
+    const synthesisResult = await (hostRuntime.commands["ForgeRoomGenerateSynthesis"]! as unknown as (...args: unknown[]) => Record<string, unknown>)();
     assert.equal(synthesisResult["success"], true);
     const synthesisDispatch = dispatchCalls.findLast(
       (call) =>
@@ -491,7 +496,7 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
           ?.protocolKey === "forge-room-synthesis"
     );
     assert.match(
-      String((synthesisDispatch?.["payload"] as { text?: unknown } | undefined)?.text ?? ""),
+      String((synthesisDispatch?.["payload"] as { text?: string } | undefined)?.text ?? ""),
       /Use Turkish for every human-readable JSON string value\./
     );
     assert.equal(
@@ -507,12 +512,12 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
       (entry) => entry.id === synthesisResult["synthesisId"]
     );
     assert.ok(selectedSynthesis?.provenance);
-    assert.equal(typeof selectedSynthesis?.provenance?.runSignature, "string");
+    assert.equal(typeof selectedSynthesis.provenance.runSignature, "string");
 
-    const exportCheckResult = await hostRuntime.commands["ForgeRoomExportHandoffCheck"]!();
+    const exportCheckResult = await (hostRuntime.commands["ForgeRoomExportHandoffCheck"]! as unknown as (...args: unknown[]) => Record<string, unknown>)();
     assert.equal(exportCheckResult["success"], true);
 
-    const exportResult = await hostRuntime.commands["ForgeRoomExportHandoff"]!();
+    const exportResult = await (hostRuntime.commands["ForgeRoomExportHandoff"]! as unknown as (...args: unknown[]) => Record<string, unknown>)();
     assert.equal(exportResult["success"], true);
     assert.ok(typeof exportResult["filePath"] === "string");
 
@@ -527,7 +532,7 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
     };
     assert.equal(exportedJson.targetRoomId, "repair-room");
     assert.equal(exportedJson.selectedSynthesis.id, synthesisResult["synthesisId"]);
-    assert.equal(exportedJson.runSignature, selectedSynthesis?.provenance?.runSignature);
+    assert.equal(exportedJson.runSignature, selectedSynthesis.provenance.runSignature);
     assert.deepEqual(exportedJson.contextSummary?.operatorProfileSummary, [
       "Selected skills: Measurement (basic).",
       "Unavailable equipment: Multimeter.",
@@ -557,7 +562,7 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
     assert.equal(savedSession.responses.length >= 3, true);
     assert.equal(savedSession.selectedSynthesisId, synthesisResult["synthesisId"]);
     assert.equal(savedSession.conflicts[0]?.status, "resolved");
-    assert.equal(savedSession.conflicts[0]?.preferredResponseId, preferredResponseId);
+    assert.equal(savedSession.conflicts[0].preferredResponseId, preferredResponseId);
     assert.equal(savedSession.exports.length, 1);
     assert.deepEqual(savedSession.runOverride, {
       architectSeatId: "ai2",
@@ -592,20 +597,20 @@ void test("forge-room host runtime runs breakdown, dispatch, synthesis, export, 
         return value;
       },
     });
-    const loadResult = await reopenedRuntime.commands["ForgeRoomLoadLatestSession"]!();
+    const loadResult = await (reopenedRuntime.commands["ForgeRoomLoadLatestSession"]! as unknown as (...args: unknown[]) => Record<string, unknown>)();
     assert.equal(loadResult["success"], true);
     const reopenedSnapshot = latestForgeSnapshot(reopenNotifications);
     assert.equal(reopenedSnapshot.selectedSynthesisId, synthesisResult["synthesisId"]);
     assert.equal(reopenedSnapshot.exports.length, 1);
     assert.equal(reopenedSnapshot.responses.length >= 3, true);
     assert.equal(reopenedSnapshot.conflicts.length >= 1, true);
-    assert.deepEqual((reopenedSnapshot.sessionContextSelection as any).skillKeys, ["measurement"]);
-    assert.deepEqual((reopenedSnapshot.sessionContextSelection as any).equipmentKeys, ["multimeter"]);
-    assert.deepEqual((reopenedSnapshot.sessionContextSelection as any).preferenceKeys, ["mode"]);
+    assert.deepEqual(reopenedSnapshot.sessionContextSelection.skillKeys, ["measurement"]);
+    assert.deepEqual(reopenedSnapshot.sessionContextSelection.equipmentKeys, ["multimeter"]);
+    assert.deepEqual(reopenedSnapshot.sessionContextSelection.preferenceKeys, ["mode"]);
 
     const reopenedConflictId = reopenedSnapshot.conflicts[0]?.id;
-    assert.ok(reopenedConflictId);
-    const reopenConflictResult = await reopenedRuntime.commands["ForgeRoomResolveConflict"]!({
+    assert.ok(reopenedConflictId != null);
+    const reopenConflictResult = await (reopenedRuntime.commands["ForgeRoomResolveConflict"]! as unknown as (...args: unknown[]) => Record<string, unknown>)({
       conflictId: reopenedConflictId,
       status: "open",
     });

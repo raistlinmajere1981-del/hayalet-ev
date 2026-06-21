@@ -409,7 +409,10 @@ class Logger {
   private flushBatch(): void {
     if (this.batchQueue.length === 0) return;
 
-    const appendBatch = window.electronAPI?.logger.appendBatch;
+    const loggerApi = window.electronAPI?.["logger"] as
+      | { appendBatch: (entries: unknown[]) => Promise<{ success?: boolean; error?: string }> }
+      | undefined;
+    const appendBatch = loggerApi?.appendBatch;
     if (typeof appendBatch !== "function") {
       if (!this.hasWarnedBatchBridgeUnavailable) {
         this.hasWarnedBatchBridgeUnavailable = true;
@@ -423,7 +426,7 @@ class Logger {
     this.batchQueue = [];
 
     appendBatch(batch)
-      .then((result) => {
+      .then((result: { success?: boolean; error?: string }) => {
         if (result.success === false) {
           this.requeueBatch(batch);
         }

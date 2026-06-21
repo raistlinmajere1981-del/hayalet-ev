@@ -16,7 +16,7 @@ import {
   PATTERN_ROOM_SAVED_EVENT,
   PATTERN_ROOM_SAVE_FAILED_EVENT,
 } from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
-import type { PatternRoomStorageAdapter } from "../../rooms/pattern-room/shared/types/pattern-room-storage.ts";
+import type { PatternRoomSnapshotMeta, PatternRoomStorageAdapter } from "../../rooms/pattern-room/shared/types/pattern-room-storage.ts";
 import type { PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
 
 type PatternRoomNotification = {
@@ -54,16 +54,16 @@ function createMockStorageAdapter(
 ): PatternRoomStorageAdapter {
   return {
     async delete(_snapshotId: string): Promise<void> {
-      return undefined;
+      await Promise.resolve();
     },
-    async list(): Promise<[]> {
-      return [];
+    async list(): Promise<PatternRoomSnapshotMeta[]> {
+      return await Promise.resolve([]);
     },
     async load(_topicId: string): Promise<PatternRoomSessionSnapshot | null> {
-      return null;
+      return await Promise.resolve(null);
     },
     async save(_snapshot: PatternRoomSessionSnapshot): Promise<void> {
-      return undefined;
+      await Promise.resolve();
     },
     ...overrides,
   };
@@ -123,14 +123,18 @@ function createDeferred(): {
   };
 }
 
+async function tick(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+}
+
 async function waitForQueueCheckpoint(predicate: () => boolean): Promise<void> {
   for (let attempt = 0; attempt < 20; attempt += 1) {
     if (predicate()) {
       return;
     }
-    await new Promise((resolve) => {
-      setTimeout(resolve, 0);
-    });
+    await tick();
   }
 
   assert.fail("Timed out waiting for the save queue checkpoint.");
@@ -198,7 +202,7 @@ void test("pattern-room persistence commands register as internal room-ui comman
     for (const commandName of [PATTERN_ROOM_SAVE_COMMAND, PATTERN_ROOM_LOAD_COMMAND]) {
       const metadata = RoomCommandRegistry.getMetadata(commandName, PATTERN_ROOM_RECORD.id);
       assert.equal(metadata?.scope, "room-ui");
-      assert.equal(metadata?.exposure, "internal");
+      assert.equal(metadata.exposure, "internal");
       assert.equal(RoomCommandRegistry.listPublicCommands().includes(commandName), false);
       assert.equal(
         RoomCommandRegistry.getCatalog().some((entry) => entry.name === commandName),
@@ -235,12 +239,17 @@ void test("pattern-room persistence commands register as internal room-ui comman
       { success: true }
     );
 
-    for (const provider of ["ai0", "ai1", "ai2", "us1", "system"]) {
-      const result = (await RoomCommandRegistry.run(PATTERN_ROOM_SAVE_COMMAND, {
-        provider,
-        roomId: PATTERN_ROOM_RECORD.id,
-        roomPayload: { snapshot },
-      })) as { success?: boolean };
+    const providerResults = await Promise.all(
+      (["ai0", "ai1", "ai2", "us1", "system"] as const).map(async (provider) => {
+        const result = (await RoomCommandRegistry.run(PATTERN_ROOM_SAVE_COMMAND, {
+          provider,
+          roomId: PATTERN_ROOM_RECORD.id,
+          roomPayload: { snapshot },
+        })) as { success?: boolean };
+        return { result, provider };
+      })
+    );
+    for (const { result, provider } of providerResults) {
       assert.equal(result.success, false, `provider ${provider} should not run persistence save`);
     }
 
@@ -266,6 +275,7 @@ void test("pattern-room host emits saved after a successful save command", async
     createMockStorageAdapter({
       async save(nextSnapshot): Promise<void> {
         savedSnapshots.push(nextSnapshot);
+        await Promise.resolve();
       },
     })
   );
@@ -287,7 +297,7 @@ void test("pattern-room host emits save-failed after an invalid or rejected save
   const { activation, notifications } = activateWithStore(
     createMockStorageAdapter({
       async save(): Promise<void> {
-        throw new Error("disk path /private/verbose/details could not be written");
+        await Promise.reject(new Error("disk path /private/verbose/details could not be written"));
       },
     })
   );
@@ -322,7 +332,7 @@ void test("pattern-room host emits loaded with a snapshot or null", async () => 
     createMockStorageAdapter({
       async load(topicId): Promise<PatternRoomSessionSnapshot | null> {
         loadedTopicIds.push(topicId);
-        return topicId === loadedSnapshot.topicId ? loadedSnapshot : null;
+        return await Promise.resolve(topicId === loadedSnapshot.topicId ? loadedSnapshot : null);
       },
     })
   );
@@ -356,15 +366,15 @@ void test("pattern-room host default storage uses the preload file bridge", asyn
   await withMockWindow(
     {
       electronAPI: {
-        async fmWriteFileAtomic(
+        fmWriteFileAtomic(
           payload: Record<string, unknown>
-        ): Promise<Record<string, unknown>> {
+        ): Record<string, unknown> {
           const filePath = typeof payload["path"] === "string" ? payload["path"] : "";
           const data = typeof payload["data"] === "string" ? payload["data"] : "";
           fileByPath.set(filePath, data);
           return { path: filePath, success: true };
         },
-        async readDirectoryFiles(): Promise<Array<Record<string, unknown>>> {
+        readDirectoryFiles(): Array<Record<string, unknown>> {
           return Array.from(fileByPath.keys()).map((filePath) => {
             return {
               isDirectory: false,
@@ -373,11 +383,11 @@ void test("pattern-room host default storage uses the preload file bridge", asyn
             };
           });
         },
-        async readFile(filePath: string): Promise<string | null> {
+        readFile(filePath: string): string | null {
           const data = fileByPath.get(filePath);
           return data === undefined ? null : Buffer.from(data, "utf8").toString("base64");
         },
-        async roomToolsCall(request: Record<string, unknown>): Promise<Record<string, unknown>> {
+        roomToolsCall(request: Record<string, unknown>): Record<string, unknown> {
           if (request["operation"] === "resolve-paths") {
             return { paths: { storageDir } };
           }
@@ -469,6 +479,7 @@ void test("pattern-room host save queue recovers after a failed save", async () 
         if (snapshot.snapshotId === firstSnapshot.snapshotId) {
           throw new Error("first write failed");
         }
+        await Promise.resolve();
       },
     })
   );
@@ -495,7 +506,7 @@ void test("pattern-room host ready lifecycle best-effort loads the mock topic", 
     createMockStorageAdapter({
       async load(topicId): Promise<PatternRoomSessionSnapshot | null> {
         loadedTopicIds.push(topicId);
-        return null;
+        return await Promise.resolve(null);
       },
     })
   );

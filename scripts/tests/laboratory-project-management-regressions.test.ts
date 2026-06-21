@@ -27,7 +27,7 @@ function hydrateState(overrides: {
         selectedModuleIds: ["media-analysis"],
       },
       source:
-        overrides.source ||
+        overrides.source ??
         ({
           status: "idle",
           kind: "video",
@@ -35,7 +35,7 @@ function hydrateState(overrides: {
           storedFileName: null,
           routeLabel: null,
         }),
-      sourceProbeStatus: overrides.sourceProbeStatus || "idle",
+      sourceProbeStatus: overrides.sourceProbeStatus ?? "idle",
       reports: {
         user: null,
         ai: null,

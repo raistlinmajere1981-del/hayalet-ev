@@ -65,10 +65,10 @@ void test("built-in language packs resolve through folder-backed manifests and c
   const pack = getBuiltInLanguagePack("en");
 
   assert.equal(descriptor?.locale, "tr");
-  assert.equal(descriptor?.source, "builtin");
+  assert.equal(descriptor.source, "builtin");
   assert.equal(pack?.locale, "en");
-  assert.equal(pack?.source, "builtin");
-  assert.equal(getCatalogString(pack?.catalog, ["entrance", "user", "language", "label"]), "Application Language");
+  assert.equal(pack.source, "builtin");
+  assert.equal(getCatalogString(pack.catalog, ["entrance", "user", "language", "label"]), "Application Language");
 });
 
 void test("language loader merges split external catalogs and preserves selector fallback", async () => {
@@ -113,10 +113,10 @@ void test("language loader merges split external catalogs and preserves selector
   const pack = await loadInstalledLanguage(rootDir, "az");
 
   assert.equal(pack?.locale, "az");
-  assert.equal(pack?.selectorLanguage, "tr");
-  assert.equal(getCatalogString(pack?.catalog, ["entrance", "user", "language", "label"]), "Tətbiq dili");
+  assert.equal(pack.selectorLanguage, "tr");
+  assert.equal(getCatalogString(pack.catalog, ["entrance", "user", "language", "label"]), "Tətbiq dili");
   assert.equal(
-    getCatalogString(pack?.catalog, ["entrance", "user", "language", "restartHint"]),
+    getCatalogString(pack.catalog, ["entrance", "user", "language", "restartHint"]),
     "Dil dəyişiklikləri yenidən başladıldıqdan sonra tətbiq olunur."
   );
 });
@@ -180,7 +180,7 @@ void test("invalid external language packs are skipped or fall back safely", asy
   assert.equal(languages.some((language) => language.locale === "fr"), false);
   assert.equal(englishPack?.locale, "en");
   assert.equal(
-    getCatalogString(englishPack?.catalog, ["entrance", "user", "language", "label"]),
+    getCatalogString(englishPack.catalog, ["entrance", "user", "language", "label"]),
     "Application Language"
   );
 });

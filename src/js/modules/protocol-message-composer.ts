@@ -46,7 +46,9 @@ export function composeProtocolMessage(
 }
 
 async function loadProtocolMap(): Promise<{ protocols: ProtocolMap | null; error?: Error }> {
-  const loadProtocols = window.electronAPI?.loadProtocols;
+  const loadProtocols = window.electronAPI?.["loadProtocols"] as
+    | (() => Promise<{ success: boolean; protocols?: Record<string, string> }>)
+    | undefined;
   if (loadProtocols === undefined) {
     return {
       protocols: await RoomProtocolRegistry.mergeProtocolMap({}, { locale: AppI18n.getLocale() }),

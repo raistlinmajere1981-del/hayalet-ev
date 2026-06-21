@@ -166,8 +166,11 @@ void test("updateRememberedConnectionState saves connected state when remember i
 
   try {
     await controller.updateRememberedConnectionState("ai1", "connected");
-    assert.equal(savedSettings !== null, true);
-    const slots = (savedSettings as unknown as Record<string, unknown>)['slots'] as Record<string, unknown>;
+    const savedSettingsRef = { value: savedSettings as Record<string, unknown> | null };
+    if (savedSettingsRef.value == null) {
+      assert.fail("Expected savedSettings to be set");
+    }
+    const slots = savedSettingsRef.value['slots'] as Record<string, unknown>;
     assert.equal((slots['ai1'] as Record<string, unknown>)['lastConnectionState'], "connected");
   } finally {
     Object.defineProperty(SettingsManager, "getSnapshot", {

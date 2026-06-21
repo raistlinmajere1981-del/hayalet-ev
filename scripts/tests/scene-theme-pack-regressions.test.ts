@@ -150,7 +150,7 @@ void test("clickable theme resolvers honor theme precedence and survive draft/so
     writeFileSync(themeSourcePath, serializeSceneClickableThemeSource(sceneClickableTheme), "utf8");
     const importedThemeModule = await import(
       `${pathToFileURL(themeSourcePath).href}?t=${Date.now()}`
-    );
+    ) as { SCENE_CLICKABLE_DEFAULTS: typeof sceneClickableTheme };
 
     assert.deepEqual(importedThemeModule.SCENE_CLICKABLE_DEFAULTS, sceneClickableTheme);
   } finally {

@@ -71,8 +71,8 @@ void test("laboratory runtime events throttle high-frequency custom module updat
   assert.equal(notifications.length, 2);
   assert.equal(notifications[0]?.type, "lab-event");
   assert.equal(notifications[1]?.type, "lab-event");
-  assert.equal(notifications[1]?.payload["batchedCount"], 2);
-  assert.match(String(notifications[1]?.payload["detail"] || ""), /updates batched/);
+  assert.equal(notifications[1].payload["batchedCount"], 2);
+  assert.match((notifications[1].payload["detail"] as string | undefined) ?? "", /updates batched/);
 });
 
 void test("laboratory runtime events emit terminal custom module updates inside throttle windows", () => {
@@ -128,8 +128,8 @@ void test("laboratory runtime events emit terminal custom module updates inside 
 
   assert.equal(notifications.length, 2);
   assert.equal(notifications[1]?.payload["stage"], "completed");
-  assert.equal(notifications[1]?.payload["batchedCount"], 2);
-  assert.match(String(notifications[1]?.payload["detail"] || ""), /updates batched/);
+  assert.equal(notifications[1].payload["batchedCount"], 2);
+  assert.match((notifications[1].payload["detail"] as string | undefined) ?? "", /updates batched/);
 });
 
 void test("laboratory runtime events preserve correlation metadata for export jobs and request results", () => {
@@ -177,12 +177,12 @@ void test("laboratory runtime events preserve correlation metadata for export jo
 
   assert.equal(notifications.length, 2);
   assert.equal(notifications[0]?.payload["requestId"], "req-export-1");
-  assert.equal(notifications[0]?.payload["jobId"], "job-export-1");
-  assert.equal(notifications[0]?.payload["projectId"], "project-1");
-  assert.deepEqual(notifications[0]?.payload["resultAssetIds"], ["asset-frame-result-1"]);
+  assert.equal(notifications[0].payload["jobId"], "job-export-1");
+  assert.equal(notifications[0].payload["projectId"], "project-1");
+  assert.deepEqual(notifications[0].payload["resultAssetIds"], ["asset-frame-result-1"]);
   assert.equal(notifications[1]?.payload["requestId"], "req-export-1");
-  assert.equal(notifications[1]?.payload["jobId"], "job-export-1");
-  assert.equal(notifications[1]?.payload["projectId"], "project-1");
+  assert.equal(notifications[1].payload["jobId"], "job-export-1");
+  assert.equal(notifications[1].payload["projectId"], "project-1");
 });
 
 void test("laboratory runtime events can publish cancelled process action results", () => {
@@ -219,8 +219,8 @@ void test("laboratory runtime events can publish cancelled process action result
   });
 
   assert.equal(notifications[0]?.payload["stage"], "cancelled");
-  assert.equal(notifications[0]?.payload["severity"], "warning");
-  assert.equal(notifications[0]?.payload["scope"], "run");
+  assert.equal(notifications[0].payload["severity"], "warning");
+  assert.equal(notifications[0].payload["scope"], "run");
 });
 
 void test("laboratory runtime events clear stale workbench context for source activation snapshots", () => {
@@ -299,8 +299,8 @@ void test("laboratory runtime events clear stale workbench context for source ac
 void test("laboratory room snapshots keep stale context workbench from overriding source reset", () => {
   const snapshotRuntime = createLaboratoryRoomSnapshotRuntime({
     asNonEmptyString,
-    clone(value: unknown) {
-      return JSON.parse(JSON.stringify(value));
+    clone<T>(value: T): T {
+      return JSON.parse(JSON.stringify(value)) as T;
     },
     defaultFeatureId: "media-analysis",
     featureIds: ["media-analysis", "audio-analysis"],

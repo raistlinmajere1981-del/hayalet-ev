@@ -25,8 +25,8 @@ void test("US1 conversation service includes room event and room command metadat
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -123,8 +123,8 @@ void test("US1 conversation sync projects room events, commands, and invite inbo
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -195,26 +195,26 @@ void test("US1 conversation sync projects room events, commands, and invite inbo
     assert.equal(result.roomEvents?.length, 1);
     assert.equal(result.roomCommands?.length, 1);
     assert.equal(result.roomInviteInbox?.length, 1);
-    assert.equal(result.roomEvents?.[0]?.inviteId, "invite-sync-1");
-    assert.equal(result.roomEvents?.[0]?.matchId, "invite-sync-1");
-    assert.equal(result.roomEvents?.[0]?.senderNickname, "Remote Player");
-    assert.equal(result.roomCommands?.[0]?.commandName, "GameRoomBackgammonRemoteMove");
-    assert.equal(result.roomCommands?.[0]?.action, "room.command");
-    assert.deepEqual(result.roomCommands?.[0]?.roomPayload, {
+    assert.equal(result.roomEvents[0]?.inviteId, "invite-sync-1");
+    assert.equal(result.roomEvents[0].matchId, "invite-sync-1");
+    assert.equal(result.roomEvents[0].senderNickname, "Remote Player");
+    assert.equal(result.roomCommands[0]?.commandName, "GameRoomBackgammonRemoteMove");
+    assert.equal(result.roomCommands[0].action, "room.command");
+    assert.deepEqual(result.roomCommands[0].roomPayload, {
       matchId: "invite-sync-1",
       inviteId: "invite-sync-1",
       turnIndex: 0,
       boardHashBeforeMove: ".........",
       cell: 4,
     });
-    assert.deepEqual(result.roomCommands?.[0]?.commandArgs, {
+    assert.deepEqual(result.roomCommands[0].commandArgs, {
       matchId: "invite-sync-1",
       inviteId: "invite-sync-1",
       turnIndex: 0,
       boardHashBeforeMove: ".........",
       cell: 4,
     });
-    assert.equal(result.roomInviteInbox?.[0]?.remoteUserId, "remote@example.com");
+    assert.equal(result.roomInviteInbox[0]?.remoteUserId, "remote@example.com");
   } finally {
     cleanupAccount(accountId);
     cleanupAccount(remoteAccountId);
@@ -230,8 +230,8 @@ void test("US1 conversation sync falls back to inline SlotBridge room.command te
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -263,18 +263,18 @@ void test("US1 conversation sync falls back to inline SlotBridge room.command te
     assert.equal(result.success, true);
     assert.equal(result.projectedCount, 1);
     assert.equal(result.roomCommands?.length, 1);
-    assert.equal(result.roomCommands?.[0]?.roomId, "game-room");
-    assert.equal(result.roomCommands?.[0]?.featureId, "backgammon");
-    assert.equal(result.roomCommands?.[0]?.commandName, "GameRoomBackgammonRemoteMove");
-    assert.equal(result.roomCommands?.[0]?.action, "room.command");
-    assert.deepEqual(result.roomCommands?.[0]?.roomPayload, {
+    assert.equal(result.roomCommands[0]?.roomId, "game-room");
+    assert.equal(result.roomCommands[0].featureId, "backgammon");
+    assert.equal(result.roomCommands[0].commandName, "GameRoomBackgammonRemoteMove");
+    assert.equal(result.roomCommands[0].action, "room.command");
+    assert.deepEqual(result.roomCommands[0].roomPayload, {
       matchId: "invite-inline-1",
       inviteId: "invite-inline-1",
       turnIndex: 0,
       boardHashBeforeMove: ".........",
       cell: 4,
     });
-    assert.deepEqual(result.roomCommands?.[0]?.commandArgs, {
+    assert.deepEqual(result.roomCommands[0].commandArgs, {
       matchId: "invite-inline-1",
       inviteId: "invite-inline-1",
       turnIndex: 0,
@@ -296,8 +296,8 @@ void test("US1 conversation sync does not infer unknown inline room.command iden
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -344,8 +344,8 @@ void test("US1 conversation sync preserves pending room commands until a consume
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -392,7 +392,7 @@ void test("US1 conversation sync preserves pending room commands until a consume
     assert.equal(repeatedPreviewResult.duplicateCount, 0);
     assert.equal(consumeResult.success, true);
     assert.equal(consumeResult.roomCommands?.length, 1);
-    assert.equal(consumeResult.roomCommands?.[0]?.commandName, "GameRoomBackgammonRemoteMove");
+    assert.equal(consumeResult.roomCommands[0]?.commandName, "GameRoomBackgammonRemoteMove");
     assert.equal(drainedResult.success, true);
     assert.equal(drainedResult.roomCommands?.length, 0);
   } finally {
@@ -410,8 +410,8 @@ void test("US1 conversation service preserves Team Tetris start events and turnT
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -525,8 +525,8 @@ void test("US1 conversation sync keeps invite inbox entries from all registered 
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountIdA = buildRemoteEmailAccountId("alpha@example.com");
@@ -597,7 +597,7 @@ void test("US1 conversation sync keeps invite inbox entries from all registered 
     assert.equal(result.success, true);
     assert.equal(result.fetchedCount, 2);
     assert.equal(result.roomInviteInbox?.length, 2);
-    assert.deepEqual(result.roomInviteInbox?.map((entry) => entry.remoteUserId).sort(), [
+    assert.deepEqual(result.roomInviteInbox.map((entry) => entry.remoteUserId).sort(), [
       "alpha@example.com",
       "beta@example.com",
     ]);
@@ -619,8 +619,8 @@ void test("US1 conversation service projects reset lifecycle events and clears i
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -674,8 +674,8 @@ void test("US1 conversation service projects reset lifecycle events and clears i
 
     assert.equal(result.success, true);
     assert.equal(result.roomEvents?.length, 2);
-    assert.equal(result.roomEvents?.[1]?.eventType, "reset");
-    assert.equal(result.roomEvents?.[1]?.matchId, "invite-reset-sync");
+    assert.equal(result.roomEvents[1]?.eventType, "reset");
+    assert.equal(result.roomEvents[1].matchId, "invite-reset-sync");
     assert.equal(result.roomInviteInbox?.length, 0);
   } finally {
     cleanupAccount(accountId);

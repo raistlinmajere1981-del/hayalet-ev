@@ -170,7 +170,7 @@ void test("US1 relay server stores, serves, decrypts, and acknowledges encrypted
 
   await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", () => { resolve(); }));
   const address = listener.address();
-  assert.ok(address && typeof address === "object");
+  assert.ok(address !== null && typeof address === "object");
   const baseUrl = `http://127.0.0.1:${address.port}`;
 
   try {
@@ -191,7 +191,7 @@ void test("US1 relay server stores, serves, decrypts, and acknowledges encrypted
     );
 
     assert.equal(publishResult.success, true);
-    assert.ok(publishResult.messageId);
+    assert.ok(publishResult.messageId != null);
 
     const pollUnsignedPayload = {
       recipientSigningPublicKey,
@@ -211,9 +211,11 @@ void test("US1 relay server stores, serves, decrypts, and acknowledges encrypted
 
     assert.equal(pollResult.success, true);
     assert.equal(pollResult.messages?.length, 1);
+    const message = pollResult.messages[0];
+    assert.ok(message != null);
 
     const decrypted = decryptRelayPayload({
-      envelope: pollResult.messages?.[0]?.envelope as Us1RelayEncryptedEnvelope,
+      envelope: message.envelope,
       localPrivateKey: recipientEncryptionKeys.privateKey,
       remotePublicKeyBase64: senderEncryptionPublicKey,
     });
@@ -224,7 +226,7 @@ void test("US1 relay server stores, serves, decrypts, and acknowledges encrypted
     const ackUnsignedPayload = {
       recipientSigningPublicKey,
       recipientSigningKeyFingerprint,
-      messageIds: [pollResult.messages?.[0]?.id as string],
+      messageIds: [message.id],
       signedAt: Date.now(),
       nonce: randomToken(12),
     };
@@ -266,49 +268,48 @@ void test("US1 relay server stores, downloads, decrypts, and cleans up encrypted
 
   await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", () => { resolve(); }));
   const address = listener.address();
-  assert.ok(address && typeof address === "object");
+  assert.ok(address !== null && typeof address === "object");
   const baseUrl = `http://127.0.0.1:${address.port}`;
   const attachmentId = "relay-attachment-1";
   const chunkPayloads = [Buffer.from("hello "), Buffer.from("from relay chunks")];
 
   try {
-    for (let chunkIndex = 0; chunkIndex < chunkPayloads.length; chunkIndex += 1) {
-      const chunkPayload = chunkPayloads[chunkIndex];
-      assert.ok(chunkPayload);
+    await Promise.all(
+      chunkPayloads.map(async (chunkPayload, chunkIndex) => {
+        const envelope = encryptRelayBinary({
+          payload: chunkPayload,
+          localPrivateKey: senderEncryptionKeys.privateKey,
+          remotePublicKeyBase64: recipientEncryptionPublicKey,
+          senderRemoteUserId: "sender@example.com",
+          senderEncryptionKeyFingerprint,
+          recipientEncryptionKeyFingerprint,
+          messageId: `${attachmentId}:${chunkIndex}`,
+          sentAt: 1700000000000 + chunkIndex,
+        });
 
-      const envelope = encryptRelayBinary({
-        payload: chunkPayload,
-        localPrivateKey: senderEncryptionKeys.privateKey,
-        remotePublicKeyBase64: recipientEncryptionPublicKey,
-        senderRemoteUserId: "sender@example.com",
-        senderEncryptionKeyFingerprint,
-        recipientEncryptionKeyFingerprint,
-        messageId: `${attachmentId}:${chunkIndex}`,
-        sentAt: 1700000000000 + chunkIndex,
-      });
+        const uploadUnsignedPayload = {
+          senderSigningPublicKey,
+          senderSigningKeyFingerprint,
+          recipientSigningKeyFingerprint,
+          attachmentId,
+          chunkIndex,
+          chunkCount: chunkPayloads.length,
+          signedAt: Date.now(),
+          nonce: randomToken(12),
+          envelope,
+        };
+        const uploadResult = await postJson<{ success: boolean; chunkIndex?: number }>(
+          `${baseUrl}/v1/attachment/upload`,
+          {
+            ...uploadUnsignedPayload,
+            signature: signRelayPayload(uploadUnsignedPayload, senderSigningKeys.privateKey),
+          }
+        );
 
-      const uploadUnsignedPayload = {
-        senderSigningPublicKey,
-        senderSigningKeyFingerprint,
-        recipientSigningKeyFingerprint,
-        attachmentId,
-        chunkIndex,
-        chunkCount: chunkPayloads.length,
-        signedAt: Date.now(),
-        nonce: randomToken(12),
-        envelope,
-      };
-      const uploadResult = await postJson<{ success: boolean; chunkIndex?: number }>(
-        `${baseUrl}/v1/attachment/upload`,
-        {
-          ...uploadUnsignedPayload,
-          signature: signRelayPayload(uploadUnsignedPayload, senderSigningKeys.privateKey),
-        }
-      );
-
-      assert.equal(uploadResult.success, true);
-      assert.equal(uploadResult.chunkIndex, chunkIndex);
-    }
+        assert.equal(uploadResult.success, true);
+        assert.equal(uploadResult.chunkIndex, chunkIndex);
+      })
+    );
 
     const downloadUnsignedPayload = {
       recipientSigningPublicKey,
@@ -395,7 +396,7 @@ void test("US1 relay client pins the HTTPS relay certificate fingerprint", async
 
   await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", () => { resolve(); }));
   const address = listener.address();
-  assert.ok(address && typeof address === "object");
+  assert.ok(address !== null && typeof address === "object");
   const baseUrl = `https://localhost:${address.port}`;
   const expectedFingerprint = fingerprintFromPemCertificate(TEST_TLS_CERT_PEM);
 
@@ -456,7 +457,7 @@ void test("US1 relay server sweeps orphaned attachment uploads after the retenti
 
   await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", () => { resolve(); }));
   const address = listener.address();
-  assert.ok(address && typeof address === "object");
+  assert.ok(address !== null && typeof address === "object");
   const baseUrl = `http://127.0.0.1:${address.port}`;
   const attachmentId = "relay-orphaned-attachment-1";
 

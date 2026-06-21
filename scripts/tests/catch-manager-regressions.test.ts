@@ -17,8 +17,8 @@ void test("catch manager scans only latest assistant message", () => {
   });
 
   assert.equal(commands.length, 1);
-  assert.equal(commands[0]?.command, "last");
-  assert.equal(commands[0]?.args, "42");
+  assert.equal(commands[0]!.command, "last");
+  assert.equal(commands[0]!.args, "42");
 });
 
 void test("catch manager respects prevCount window before latest assistant selection", () => {
@@ -37,8 +37,8 @@ void test("catch manager respects prevCount window before latest assistant selec
   });
 
   assert.equal(commands.length, 1);
-  assert.equal(commands[0]?.command, "new");
-  assert.equal(commands[0]?.args, "run");
+  assert.equal(commands[0]!.command, "new");
+  assert.equal(commands[0]!.args, "run");
 });
 
 void test("catch manager ignores malformed single-plus commands", () => {
@@ -71,8 +71,8 @@ void test("catch manager keeps structured Team Tetris AI commands from the lates
   });
 
   assert.equal(commands.length, 1);
-  assert.equal(commands[0]?.command, "GameRoomTeamTetrisAiMove");
-  assert.match(commands[0]?.args ?? "", /"turnToken":"tt_token"/);
+  assert.equal(commands[0]!.command, "GameRoomTeamTetrisAiMove");
+  assert.match(commands[0]!.args, /"turnToken":"tt_token"/);
 });
 
 void test("catch manager keeps balanced SlotBridge JSON when payload contains closing parentheses", () => {
@@ -89,6 +89,6 @@ void test("catch manager keeps balanced SlotBridge JSON when payload contains cl
   });
 
   assert.equal(commands.length, 1);
-  assert.equal(commands[0]?.command, "SlotBridge");
-  assert.match(commands[0]?.args ?? "", /path_\(demo\)/);
+  assert.equal(commands[0]!.command, "SlotBridge");
+  assert.match(commands[0]!.args, /path_\(demo\)/);
 });

@@ -7,7 +7,7 @@ import { SettingsManager } from "../../src/js/modules/settings-manager.ts";
 import type { SlotEvent } from "../../src/js/modules/slot-controller.ts";
 import { SlotController } from "../../src/js/modules/slot-controller.ts";
 
-void test("slot account change triggers conversation list refresh", async () => {
+void test("slot account change triggers conversation list refresh", () => {
   let settingsListener: ((event: { changedPaths: string[] }) => void) | null = null;
   let refreshCallCount = 0;
   let renderAllCallCount = 0;
@@ -39,6 +39,7 @@ void test("slot account change triggers conversation list refresh", async () => 
 
   ConversationListManager.refresh = async (): Promise<void> => {
     refreshCallCount += 1;
+    await Promise.resolve();
   };
 
   ConversationListManager.renderAll = (): void => {
@@ -48,8 +49,7 @@ void test("slot account change triggers conversation list refresh", async () => 
   try {
     ConversationListManager.subscribeToSettings();
 
-    const sl = settingsListener!;
-    assert.ok(sl !== null, "settings listener should be registered");
+    const sl = settingsListener as unknown as (event: { changedPaths: string[] }) => void;
 
     sl({ changedPaths: ["slots.ai1.accountId"] });
 
@@ -72,7 +72,7 @@ void test("slot account change triggers conversation list refresh", async () => 
   }
 });
 
-void test("ai0 session change refreshes topbar with stored selection instead of stale DOM value", async () => {
+void test("ai0 session change refreshes topbar with stored selection instead of stale DOM value", () => {
   let settingsListener: ((event: { changedPaths: string[] }) => void) | null = null;
   const refreshCalls: Array<{
     silent?: boolean;
@@ -109,6 +109,7 @@ void test("ai0 session change refreshes topbar with stored selection instead of 
 
   ConversationListManager.refresh = async (options = {}): Promise<void> => {
     refreshCalls.push(options);
+    await Promise.resolve();
   };
 
   ConversationListManager._syncAi0SelectionFromSettings = (): void => {};
@@ -116,8 +117,7 @@ void test("ai0 session change refreshes topbar with stored selection instead of 
   try {
     ConversationListManager.subscribeToSettings();
 
-    const sl = settingsListener!;
-    assert.ok(sl !== null, "settings listener should be registered");
+    const sl = settingsListener as unknown as (event: { changedPaths: string[] }) => void;
 
     sl({ changedPaths: ["assistants.lastOpencodeUiSessionId"] });
 

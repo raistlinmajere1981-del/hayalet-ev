@@ -81,7 +81,7 @@ export async function resolveRoomRuntimeAssetSource(
     return cached;
   }
 
-  const readFile = window.electronAPI?.readFile;
+  const readFile = window.electronAPI?.["readFile"];
   if (typeof readFile === "function") {
     try {
       const base64 = await readFile(source);

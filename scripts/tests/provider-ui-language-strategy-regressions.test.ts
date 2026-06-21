@@ -16,21 +16,25 @@ async function loadProviderConfig(providerId: string): Promise<Record<string, un
 
 void test("opencode-based provider configs expose ui language signals", async () => {
   const opencodeProviders = ["opencode", "opencode-ui"];
+  const opencodeConfigs = await Promise.all(
+    opencodeProviders.map(async (id) => ({ id, config: await loadProviderConfig(id) }))
+  );
 
-  for (const providerId of opencodeProviders) {
-    const config = await loadProviderConfig(providerId);
+  for (const { id: providerId, config } of opencodeConfigs) {
     const strategy = config["uiLanguage"] as Record<string, unknown> | undefined;
     const signals = strategy?.["signals"] as Record<string, unknown> | undefined;
 
     assert.ok(strategy, `${providerId} should expose uiLanguage metadata`);
     assert.ok(signals, `${providerId} should expose ui language signal metadata`);
-    assert.ok(Array.isArray(signals?.["localStorageKeys"]));
-    assert.ok((signals?.["localStorageKeys"] as unknown[]).length > 0);
+    assert.ok(Array.isArray(signals["localStorageKeys"]));
+    assert.ok((signals["localStorageKeys"] as unknown[]).length > 0);
   }
 
   const otherProviders = ["chatgpt", "gemini", "grok"];
-  for (const providerId of otherProviders) {
-    const config = await loadProviderConfig(providerId);
+  const otherConfigs = await Promise.all(
+    otherProviders.map(async (id) => ({ id, config: await loadProviderConfig(id) }))
+  );
+  for (const { id: providerId, config } of otherConfigs) {
     assert.equal(config["uiLanguage"], undefined, `${providerId} should not require uiLanguage metadata`);
   }
 });

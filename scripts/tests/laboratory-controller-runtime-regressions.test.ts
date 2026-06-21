@@ -1465,8 +1465,8 @@ void test("laboratory run controller routes YouTube source selection without imp
     } as unknown as Event);
 
     assert.equal(store.getState().ui.labMode, "normal");
-    assert.equal(store.getState().source!["mode"], "youtube");
-    assert.equal(store.getState().source!["storedPath"], null);
+    assert.equal(store.getState().source?.["mode"], "youtube");
+    assert.equal(store.getState().source?.["storedPath"], null);
     assert.equal(sentEvents.length, 1);
     assert.equal(sentEvents[0]?.eventName, "media-action");
     assert.equal(sentEvents[0].payload["action"], "source-set-mode");

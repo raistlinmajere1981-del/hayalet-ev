@@ -16,15 +16,15 @@ async function getBuiltHostEntryPath(): Promise<string> {
 export async function loadGameRoomHostModule(): Promise<{
   default: {
     activate: (api: Record<string, unknown>) => Record<string, unknown>;
-    teamTetrisEngine: Record<string, unknown>;
   };
+  teamTetrisEngine: Record<string, unknown>;
 }> {
   const moduleUrl = pathToFileURL(await getBuiltHostEntryPath());
   moduleUrl.searchParams.set("ts", `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   return await import(moduleUrl.toString()) as {
     default: {
       activate: (api: Record<string, unknown>) => Record<string, unknown>;
-      teamTetrisEngine: Record<string, unknown>;
     };
+    teamTetrisEngine: Record<string, unknown>;
   };
 }

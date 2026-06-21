@@ -71,9 +71,7 @@ void test("laboratory structure probes honor analysis time range and scale full-
     parseVolumeDetectLog() {
       return {};
     },
-    readTextFile: async function () {
-      return null;
-    },
+    readTextFile: async () => null,
     runProfileTool: async function (_runtime, options) {
       toolRuns.push(options);
       return { stderr: "probe output" };
@@ -166,9 +164,7 @@ void test("laboratory visual forensics probes run real tool paths before degradi
     parseVolumeDetectLog() {
       return {};
     },
-    readTextFile: async function () {
-      return null;
-    },
+    readTextFile: async () => null,
     runProfileTool: async function (_runtime, options) {
       toolRuns.push(options);
       const args = Array.isArray(options["args"]) ? (options["args"] as string[]) : [];
@@ -320,7 +316,7 @@ void test("laboratory visual forensics probes run real tool paths before degradi
     return entry["toolId"] === "visual-forensics-py" && args[2] === "duplicate";
   });
   assert.ok(duplicateRun);
-  const duplicateOptions = JSON.parse((duplicateRun["args"] as string[])[4]!) as Record<string, unknown>;
+  const duplicateOptions = JSON.parse((duplicateRun["args"] as string[])[4] as string) as Record<string, unknown>;
   assert.equal(duplicateOptions["frameStep"], 5);
   assert.equal(duplicateOptions["similarityThreshold"], 0.94);
   assert.equal(
@@ -1150,7 +1146,7 @@ void test("laboratory process runtime materializes remote workspace image target
     buildMediaProcessModules() {
       return [];
     },
-    async callRoomTools(payload) {
+    callRoomTools: async (payload) => {
       downloads.push(payload);
       const url = typeof payload["url"] === "string" ? payload["url"] : "";
       const fileName = url.endsWith("b.png") ? "b.png" : "a.png";
@@ -1587,7 +1583,7 @@ void test("laboratory media export runtime cancels only prior export jobs for ev
     };
     const jobState = createLaboratoryJobStateRuntime({
       roomId: "laboratory",
-      cancelRoomTool: async function (_roomId, jobId) {
+      cancelRoomTool: async function (_roomId, jobId, _requestId) {
         cancelledJobIds.push(jobId);
       },
     });
@@ -1599,13 +1595,11 @@ void test("laboratory media export runtime cancels only prior export jobs for ev
       asNumber(value: unknown) {
         return typeof value === "number" && Number.isFinite(value) ? value : null;
       },
-      async callRoomTools() {
-        return {
-          run: {
-            exitCode: 0,
-          },
-        };
-      },
+      callRoomTools: async (_payload) => ({
+        run: {
+          exitCode: 0,
+        },
+      }),
       getActiveProject() {
         return activeProject;
       },
@@ -1780,7 +1774,7 @@ void test("laboratory media export runtime cancels only prior export jobs for ev
       pushedJobStates.find(function (payload) {
         return payload["stage"] === "completed";
       }) ?? null;
-    assert.deepEqual(completedPayload!["resultAssetIds"], [outputAsset["id"]]);
+    assert.deepEqual((completedPayload as NonNullable<typeof completedPayload>)["resultAssetIds"], [outputAsset["id"]]);
   }
 
   await runExportCase("image", async function (exportRuntime, runtime) {
@@ -1832,7 +1826,7 @@ void test("laboratory media export runtime reports cancelled tool runs without l
   };
   const jobState = createLaboratoryJobStateRuntime({
     roomId: "laboratory",
-    cancelRoomTool: async function () {},
+    cancelRoomTool: async function (_roomId, _jobId, _requestId) {},
   });
   const exportRuntime = createMediaExportActionRuntime({
     asNonEmptyString(value: unknown) {
@@ -1841,29 +1835,27 @@ void test("laboratory media export runtime reports cancelled tool runs without l
     asNumber(value: unknown) {
       return typeof value === "number" && Number.isFinite(value) ? value : null;
     },
-    async callRoomTools() {
-      return {
+      callRoomTools: async (_payload) => ({
         run: {
           cancelled: true,
           stderr: "ffmpeg version n6.1 -i /tmp/lab-demo.mp4 leaked command output",
         },
-      };
-    },
-    getActiveProject() {
-      return activeProject;
-    },
-    getProjectEditOutputDir() {
-      return "/tmp";
-    },
-    async patchActiveProject(_runtime, patcher) {
-      activeProject = patcher(activeProject);
-    },
-    pushJobState(_api, payload) {
-      pushedJobStates.push({ ...payload });
-    },
-    registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
-    clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
-    cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
+      }),
+      getActiveProject() {
+        return activeProject;
+      },
+      getProjectEditOutputDir() {
+        return "/tmp";
+      },
+      async patchActiveProject(_runtime, patcher) {
+        activeProject = patcher(activeProject);
+      },
+      pushJobState(_api, payload) {
+        pushedJobStates.push({ ...payload });
+      },
+      registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
+      clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
+      cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
     toRecord(value: unknown) {
       return value !== null && typeof value === "object" && Array.isArray(value) === false
         ? (value as Record<string, unknown>)
@@ -1928,7 +1920,7 @@ void test("laboratory audio variant exports preserve filter and lineage metadata
     const toolRuns: Array<Record<string, unknown>> = [];
     const jobState = createLaboratoryJobStateRuntime({
       roomId: "laboratory",
-      cancelRoomTool: async function () {},
+      cancelRoomTool: async function (_roomId, _jobId, _requestId) {},
     });
     const exportRuntime = createMediaExportActionRuntime({
       asNonEmptyString(value: unknown) {
@@ -1937,7 +1929,7 @@ void test("laboratory audio variant exports preserve filter and lineage metadata
       asNumber(value: unknown) {
         return typeof value === "number" && Number.isFinite(value) ? value : null;
       },
-      async callRoomTools(payload) {
+      callRoomTools: async (payload) => {
         toolRuns.push({ ...payload });
         return {
           run: {
@@ -2050,7 +2042,7 @@ void test("laboratory ROI exports normalize crop pixels and preserve operation l
   const toolRuns: Array<Record<string, unknown>> = [];
   const jobState = createLaboratoryJobStateRuntime({
     roomId: "laboratory",
-    cancelRoomTool: async function () {},
+    cancelRoomTool: async function (_roomId, _jobId, _requestId) {},
   });
   const exportRuntime = createMediaExportActionRuntime({
     asNonEmptyString(value: unknown) {
@@ -2059,7 +2051,7 @@ void test("laboratory ROI exports normalize crop pixels and preserve operation l
     asNumber(value: unknown) {
       return typeof value === "number" && Number.isFinite(value) ? value : null;
     },
-    async callRoomTools(payload) {
+    callRoomTools: async (payload) => {
       toolRuns.push({ ...payload });
       return {
         run: {
@@ -2262,7 +2254,7 @@ void test("laboratory comparison finding saves independent primary and reference
   const writes: Array<{ data: string; path: string }> = [];
   const jobState = createLaboratoryJobStateRuntime({
     roomId: "laboratory",
-    cancelRoomTool: async function () {},
+    cancelRoomTool: async function (_roomId, _jobId, _requestId) {},
   });
   const exportRuntime = createMediaExportActionRuntime({
     asNonEmptyString(value: unknown) {
@@ -2271,7 +2263,7 @@ void test("laboratory comparison finding saves independent primary and reference
     asNumber(value: unknown) {
       return typeof value === "number" && Number.isFinite(value) ? value : null;
     },
-    async callRoomTools(payload) {
+    callRoomTools: async (payload) => {
       toolRuns.push({ ...payload });
       return {
         run: {
@@ -2443,7 +2435,7 @@ void test("laboratory frame export settings drive burst and preview filter argum
   const toolRuns: Array<Record<string, unknown>> = [];
   const jobState = createLaboratoryJobStateRuntime({
     roomId: "laboratory",
-    cancelRoomTool: async function (_roomId, jobId) {
+    cancelRoomTool: async function (_roomId, jobId, _requestId) {
       cancelledJobIds.push(jobId);
     },
   });
@@ -2454,7 +2446,7 @@ void test("laboratory frame export settings drive burst and preview filter argum
     asNumber(value: unknown) {
       return typeof value === "number" && Number.isFinite(value) ? value : null;
     },
-    async callRoomTools(payload) {
+    callRoomTools: async (payload) => {
       toolRuns.push({ ...payload });
       return {
         run: {
@@ -2653,9 +2645,9 @@ void test("laboratory local source picker uses requested import kind filters", a
     getActiveProject() {
       return activeProject;
     },
-    getElectronApi() {
+    getElectronApi(): any {
       return {
-        async copyFileTo(sourcePath: string, destinationDir: string) {
+        copyFileTo(sourcePath: string, destinationDir: string) {
           const fileName = sourcePath.split(/[\\/]/).pop() ?? "source.bin";
           return {
             success: true,
@@ -2663,7 +2655,7 @@ void test("laboratory local source picker uses requested import kind filters", a
             name: fileName,
           };
         },
-        async showOpenDialog(options: Record<string, unknown>) {
+        showOpenDialog(options: Record<string, unknown>) {
           dialogFilters.push(options["filters"]);
           return {
             canceled: false,
@@ -2734,16 +2726,16 @@ void test("laboratory local source picker validates auto-detected image sources 
     getActiveProject() {
       return activeProject;
     },
-    getElectronApi() {
+    getElectronApi(): any {
       return {
-        async copyFileTo() {
+        copyFileTo() {
           return {
             success: true,
             path: "/tmp/project/sources/frame.png",
             name: "frame.png",
           };
         },
-        async showOpenDialog() {
+        showOpenDialog() {
           return {
             canceled: false,
             filePaths: ["/tmp/frame.png"],
@@ -2870,7 +2862,7 @@ void test("laboratory report export registers user and ai report assets", async 
       const records = report["records"] as Record<string, unknown>;
       records[featureId] = record;
     },
-    async writeTextFile(filePath) {
+    async writeTextFile(filePath, _value) {
       writtenPaths.push(filePath);
     },
   });

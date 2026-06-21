@@ -61,11 +61,11 @@ void test("provider configs expose locale-aware selector metadata for promotable
 
   assert.ok(selectorMatrix, "provider config should expose selectorMatrix metadata");
 
-  const selectors = selectorMatrix?.["selectors"] as Record<string, unknown> | undefined;
+  const selectors = selectorMatrix["selectors"] as Record<string, unknown> | undefined;
   const sendButton = selectors?.["sendButton"] as Record<string, unknown> | undefined;
 
   assert.ok(sendButton, "sendButton should have locale-aware metadata");
-  assert.equal(typeof sendButton?.["tr"], "string");
-  assert.equal(typeof sendButton?.["en"], "string");
-  assert.ok(Array.isArray(sendButton?.["fallbacks"]), "sendButton fallbacks should be an array");
+  assert.equal(typeof sendButton["tr"], "string");
+  assert.equal(typeof sendButton["en"], "string");
+  assert.ok(Array.isArray(sendButton["fallbacks"]), "sendButton fallbacks should be an array");
 });

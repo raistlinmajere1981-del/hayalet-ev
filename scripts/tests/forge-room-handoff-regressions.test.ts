@@ -175,18 +175,18 @@ void test("forge-room handoff export builds the Repair Room contract from the ap
   assert.equal(handoff.goalId, "forge-goal-2");
   assert.equal(handoff.selectedSynthesis.id, "forge-synthesis-1");
   assert.equal(handoff.taskGraph.tasks[0]?.assignedSeatId, "ai1");
-  assert.equal(handoff.taskGraph.tasks[0]?.assignedRoleId, "architect");
+  assert.equal(handoff.taskGraph.tasks[0].assignedRoleId, "architect");
   assert.equal(handoff.conflicts[0]?.preferredResponseId, "forge-response-1");
   assert.deepEqual(handoff.acceptanceCriteria, ["Repair Room can import the handoff package."]);
   assert.equal(handoff.runSignature, "RepairRoom-v2-result-first-medium-risk-a1b2c3");
   assert.deepEqual(handoff.contextSummary?.decisionTrace, [
     "Local export path selected for the first handoff.",
   ]);
-  assert.deepEqual(handoff.contextSummary?.operatorProfileSummary, [
+  assert.deepEqual(handoff.contextSummary.operatorProfileSummary, [
     "Working mode result-first.",
     "Risk tolerance medium.",
   ]);
-  assert.deepEqual(handoff.contextSummary?.preflightWarnings, [
+  assert.deepEqual(handoff.contextSummary.preflightWarnings, [
     "Preflight fell back to minimal context because the full bundle could not be prepared.",
   ]);
 });
@@ -366,7 +366,7 @@ void test("forge-room handoff export prefers current provenance when the selecte
     "Selected skills: Measurement (advanced).",
     "Preferences: Mode learn first.",
   ]);
-  assert.deepEqual(handoff.contextSummary?.preflightWarnings, [
+  assert.deepEqual(handoff.contextSummary.preflightWarnings, [
     "Fallback context used during export prep.",
   ]);
 });

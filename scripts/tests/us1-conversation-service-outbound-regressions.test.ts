@@ -31,8 +31,8 @@ void test("US1 conversation service sends outbound mail and projects archive met
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const tempRoot = await mkdtemp(join(tmpdir(), "us1-mail-outbound-"));
@@ -54,17 +54,17 @@ void test("US1 conversation service sends outbound mail and projects archive met
     assert.equal(typeof result.conversationId, "string");
     const envelope = extractConversationEnvelope(transportStub.sentMessages[0]);
     assert.equal(
-      (envelope["session"] as Record<string, unknown>)?.["id"],
+      (envelope["session"] as Record<string, unknown>)["id"],
       result.localSessionId ?? null
     );
-    assert.equal((envelope["session"] as Record<string, unknown>)?.["mode"], "new");
-    assert.equal((envelope["session"] as Record<string, unknown>)?.["title"], null);
+    assert.equal((envelope["session"] as Record<string, unknown>)["mode"], "new");
+    assert.equal((envelope["session"] as Record<string, unknown>)["title"], null);
 
     const sidecar = new MailSidecarStoreManager(accountId);
     const meta = sidecar.getMessageMeta(result.transportMessageId ?? "");
     assert.equal(meta?.deliveryState, "sent");
-    assert.equal(meta?.metadata?.["direction"], "outbound");
-    assert.equal(meta?.metadata?.["localSessionId"], result.localSessionId);
+    assert.equal(meta.metadata?.["direction"], "outbound");
+    assert.equal(meta.metadata["localSessionId"], result.localSessionId);
 
     const db = new Database(Paths.getAccountDbPath(remoteAccountId), { readonly: true });
     const conversation = db
@@ -87,7 +87,7 @@ void test("US1 conversation service sends outbound mail and projects archive met
     assert.equal(conversation?.title, "Sohbet 001");
     assert.equal(messages.length, 1);
     assert.equal(messages[0]?.role, "user");
-    assert.equal(messages[0]?.content, "Outbound hello");
+    assert.equal(messages[0].content, "Outbound hello");
     assert.equal(attachments.length, 1);
     assert.equal(attachments[0]?.original_name, "note.txt");
   } finally {
@@ -120,8 +120,8 @@ void test("US1 conversation service resolves provider credentials server-side fo
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountIdA = buildRemoteEmailAccountId("alpha@example.com");
@@ -147,7 +147,7 @@ void test("US1 conversation service resolves provider credentials server-side fo
   }
 });
 
-test(
+void test(
   "US1 conversation service rejects foreign remote users outside the owner-scoped bindings",
   { concurrency: false },
   async () => {
@@ -175,8 +175,8 @@ test(
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -212,8 +212,8 @@ void test("US1 conversation service ignores forged client session ids and mints 
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -247,8 +247,8 @@ void test("US1 conversation service starts explicit new sessions as fresh mail t
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
@@ -264,10 +264,10 @@ void test("US1 conversation service starts explicit new sessions as fresh mail t
     assert.equal(typeof firstResult.localSessionId, "string");
     assert.equal(transportStub.sentMessages.length, 1);
     assert.equal(transportStub.sentMessages[0]?.threadMessageId, null);
-    assert.equal(transportStub.sentMessages[0]?.inReplyTo, null);
-    assert.equal(transportStub.sentMessages[0]?.references, undefined);
+    assert.equal(transportStub.sentMessages[0].inReplyTo, null);
+    assert.equal(transportStub.sentMessages[0].references, undefined);
     const firstEnvelope = extractConversationEnvelope(transportStub.sentMessages[0]);
-    assert.equal((firstEnvelope["session"] as Record<string, unknown>)?.["mode"], "new");
+    assert.equal((firstEnvelope["session"] as Record<string, unknown>)["mode"], "new");
 
     const secondParams: Parameters<typeof service.sendMessage>[0] = { text: "Fresh follow up" };
     if (firstResult.localSessionId !== undefined) {
@@ -284,7 +284,7 @@ void test("US1 conversation service starts explicit new sessions as fresh mail t
       firstResult.transportMessageId,
     ]);
     const secondEnvelope = extractConversationEnvelope(transportStub.sentMessages[1]);
-    assert.equal((secondEnvelope["session"] as Record<string, unknown>)?.["mode"], "reply");
+    assert.equal((secondEnvelope["session"] as Record<string, unknown>)["mode"], "reply");
 
     const sidecar = new MailSidecarStoreManager(accountId);
     const mapping = sidecar.getSessionMapping("remote@example.com", firstResult.localSessionId ?? "");
@@ -305,8 +305,8 @@ void test("US1 conversation service retries are idempotent with the same clientR
     transport: transportStub.transport,
     archiveFactory: createArchiveFactory(),
     settingsStore: {
-      loadSettings: async () => store.loadSettings(),
-      saveSettings: async (settings) => store.saveSettings(settings),
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
     },
   });
   const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");

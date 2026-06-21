@@ -62,10 +62,8 @@ void test("repair-room host message normalization covers context and capture ing
     },
   });
   assert.equal(context?.type, "host-context");
-  if (context?.type === "host-context") {
-    assert.equal(context.locale, "tr");
-    assert.deepEqual(context.translations, { operatorProfile: { tabTools: "Araçlar" } });
-  }
+  assert.equal(context.locale, "tr");
+  assert.deepEqual(context.translations, { operatorProfile: { tabTools: "Araçlar" } });
 
   const media = normalizeRepairHostMessage({
     type: "capture-media-ingress",
@@ -84,10 +82,8 @@ void test("repair-room host message normalization covers context and capture ing
     },
   });
   assert.equal(media?.type, "capture-media-ingress");
-  if (media?.type === "capture-media-ingress") {
-    assert.equal(media.asset.path, "/tmp/frame.jpg");
-    assert.equal(media.metadata?.["route"], "camera");
-  }
+  assert.equal(media.asset.path, "/tmp/frame.jpg");
+  assert.equal(media.metadata?.["route"], "camera");
 
   const transcript = normalizeRepairHostMessage({
     type: "transcript-ingress",
@@ -102,10 +98,8 @@ void test("repair-room host message normalization covers context and capture ing
     },
   });
   assert.equal(transcript?.type, "transcript-ingress");
-  if (transcript?.type === "transcript-ingress") {
-    assert.equal(transcript.text, "Measure U14 VCC");
-    assert.equal(transcript.isFinal, true);
-  }
+  assert.equal(transcript.text, "Measure U14 VCC");
+  assert.equal(transcript.isFinal, true);
 });
 
 void test("repair-room operator profile panel emits behavior-ready update actions", () => {

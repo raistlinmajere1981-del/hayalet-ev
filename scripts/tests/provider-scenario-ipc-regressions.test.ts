@@ -99,7 +99,7 @@ void test("provider tester resolves webview-test from provider config scenario d
   const fakeWebview = {
     getURL: () => "https://chatgpt.com/c/test",
     loadURL: async () => {},
-    executeJavaScript: async () => null,
+    executeJavaScript: () => null,
     addEventListener: () => {},
   };
 
@@ -161,42 +161,52 @@ void test("provider tester resolves webview-test from provider config scenario d
   const testerOverrides = tester as unknown as Record<string, () => Promise<unknown>>;
 
   testerOverrides["runResetDefaultPageStep"] = async () => {
+    await Promise.resolve();
     executed.push("navigate-default");
     return { status: "pass", message: "reset ok" };
   };
   testerOverrides["runDisabledSendStep"] = async () => {
+    await Promise.resolve();
     executed.push("unexpected-disabled-send");
     return { status: "pass", message: "unexpected" };
   };
   testerOverrides["runDragDropStep"] = async () => {
+    await Promise.resolve();
     executed.push("unexpected-drag-drop");
     return { status: "pass", message: "unexpected" };
   };
   testerOverrides["runInjectMessageStep"] = async () => {
+    await Promise.resolve();
     executed.push("unexpected-inject-message");
     return { status: "pass", message: "unexpected" };
   };
   testerOverrides["runEnabledSendStep"] = async () => {
+    await Promise.resolve();
     executed.push("unexpected-enabled-send");
     return { status: "pass", message: "unexpected" };
   };
   testerOverrides["runAttachFileStep"] = async () => {
+    await Promise.resolve();
     executed.push("unexpected-attach-file");
     return { status: "pass", message: "unexpected" };
   };
   testerOverrides["runSendThinkingStep"] = async () => {
+    await Promise.resolve();
     executed.push("unexpected-send-thinking");
     return { status: "pass", message: "unexpected" };
   };
   testerOverrides["runFinalBubblesStep"] = async () => {
+    await Promise.resolve();
     executed.push("unexpected-final-bubbles");
     return { status: "pass", message: "unexpected" };
   };
   testerOverrides["runScrollStep"] = async () => {
+    await Promise.resolve();
     executed.push("unexpected-scroll-behavior");
     return { status: "pass", message: "unexpected" };
   };
   testerOverrides["runProviderCapabilitiesStep"] = async () => {
+    await Promise.resolve();
     executed.push("assert-provider-capabilities");
     return { status: "warning", message: "capabilities warning" };
   };
@@ -204,7 +214,6 @@ void test("provider tester resolves webview-test from provider config scenario d
   const result = await tester.runScenario("webview-test");
 
   assert.deepEqual(executed, ["navigate-default", "assert-provider-capabilities"]);
-  assert.ok(result.commands != null);
   assert.deepEqual(
     result.commands.map((command) => [command.id, command.name, command.status]),
     [
@@ -219,7 +228,7 @@ void test("provider tester dispatches generated image archive scenario actions",
   const fakeWebview = {
     getURL: () => "https://chatgpt.com/c/test",
     loadURL: async () => {},
-    executeJavaScript: async () => null,
+    executeJavaScript: () => null,
     addEventListener: () => {},
   };
 
@@ -275,6 +284,7 @@ void test("provider tester dispatches generated image archive scenario actions",
   const tester = new ProviderTester(fakeWebview as unknown as WebviewTag, config as never, "ai1");
   const testerOverrides = tester as unknown as Record<string, () => Promise<unknown>>;
   testerOverrides["runGeneratedImageArchiveStep"] = async () => {
+    await Promise.resolve();
     executed.push("assert-generated-image-archive");
     return { status: "pass", message: "archive ok" };
   };
@@ -283,7 +293,7 @@ void test("provider tester dispatches generated image archive scenario actions",
 
   assert.deepEqual(executed, ["assert-generated-image-archive"]);
   assert.deepEqual(
-    result.commands?.map((command) => [command.id, command.status]),
+    result.commands.map((command) => [command.id, command.status]),
     [["generated-image-archive", "pass"]]
   );
 });
@@ -292,10 +302,10 @@ void test("provider tester uses default URL override for opencode-ui reset step"
   const loadedUrls: string[] = [];
   const fakeWebview = {
     getURL: () => "/pages/opencode-ui.html?port=4096&resumeSessionId=session-42",
-    loadURL: async (url: string) => {
+    loadURL: (url: string) => {
       loadedUrls.push(url);
     },
-    executeJavaScript: async () => null,
+    executeJavaScript: () => null,
     addEventListener: () => {},
   };
 
@@ -349,7 +359,10 @@ void test("provider tester uses default URL override for opencode-ui reset step"
     observeLoadingIndicatorAfterNavigation: () => Promise<"busy" | "idle" | "missing">;
     runResetDefaultPageStep: () => Promise<{ status: string; message: string }>;
   };
-  testerOverrides.observeLoadingIndicatorAfterNavigation = async () => "idle";
+  testerOverrides.observeLoadingIndicatorAfterNavigation = async () => {
+    await Promise.resolve();
+    return "idle" as const;
+  };
 
   const result = await testerOverrides.runResetDefaultPageStep();
 
@@ -367,11 +380,11 @@ void test("provider tester runs webview-sync sidebar collection actions from pro
 
   const fakeWebview = {
     getURL: () => currentUrl,
-    loadURL: async (url: string) => {
+    loadURL: (url: string) => {
       loadedUrls.push(url);
       currentUrl = url;
     },
-    executeJavaScript: async (script: string) => {
+    executeJavaScript: (script: string) => {
       if (script.includes("syncSidebarProbe")) {
         const wasOpen = sidebarOpen;
         sidebarOpen = true;
@@ -536,20 +549,21 @@ void test("provider tester runs webview-sync sidebar collection actions from pro
     }) => Promise<{ status: string; message: string }>;
   };
   testerOverrides.observeLoadingIndicatorAfterNavigation = async () => {
+    await Promise.resolve();
     loadingObservations.push("busy");
-    return "busy";
+    return "busy" as const;
   };
   testerOverrides.runSoftSyncForSession = async (session) => {
+    await Promise.resolve();
     syncCalls.push(`soft:${session.url}`);
     return { status: "pass", message: "soft ok" };
   };
   testerOverrides.runFullSyncForSession = async (session) => {
+    await Promise.resolve();
     syncCalls.push(`full:${session.url}`);
     return { status: "pass", message: "full ok" };
   };
   const result = await tester.runScenario("webview-sync");
-
-  assert.ok(result.commands != null);
   assert.deepEqual(
     result.commands.map((command) => [command.id, command.status]),
     [
@@ -611,14 +625,14 @@ void test("provider tester runs webview-sync sidebar collection actions from pro
       { title: "Second chat", url: "https://chatgpt.com/c/def" },
     ],
   });
-  assert.equal(result.commands?.length, 11);
+  assert.equal(result.commands.length, 11);
 });
 
 void test("provider tester waits for navigation settle delay after loading becomes idle", async () => {
   const fakeWebview = {
-    getURL: () => "https://chatgpt.com/c/current",
-    loadURL: async () => {},
-    executeJavaScript: async () => null,
+    getURL: () => "https://chatgpt.com/c/test",
+    loadURL: () => {},
+    executeJavaScript: () => null,
     addEventListener: () => {},
   };
 
@@ -671,7 +685,10 @@ void test("provider tester waits for navigation settle delay after loading becom
     readShellIndicator: () => Promise<"busy" | "idle" | "missing">;
   };
   const states: Array<"busy" | "idle"> = ["busy", "idle"];
-  testerOverrides.readShellIndicator = async () => states.shift() ?? "idle";
+  testerOverrides.readShellIndicator = async () => {
+    await Promise.resolve();
+    return states.shift() ?? "idle";
+  };
 
   const startedAt = Date.now();
   const state = await testerOverrides.observeLoadingIndicatorAfterNavigation();
@@ -685,7 +702,7 @@ void test("provider tester rejects webview-sync for estimated provider configs",
   const fakeWebview = {
     getURL: () => "https://gemini.google.com/app/test",
     loadURL: async () => {},
-    executeJavaScript: async () => null,
+    executeJavaScript: () => null,
     addEventListener: () => {},
   };
 
@@ -765,10 +782,10 @@ void test("provider tester runs the selected sync mode after opening each sessio
 
   const fakeWebview = {
     getURL: () => currentUrl,
-    loadURL: async (url: string) => {
+    loadURL: (url: string) => {
       currentUrl = url;
     },
-    executeJavaScript: async (script: string) => {
+    executeJavaScript: (script: string) => {
       if (script.includes("syncSidebarProbe")) {
         const wasOpen = sidebarOpen;
         sidebarOpen = true;
@@ -928,16 +945,22 @@ void test("provider tester runs the selected sync mode after opening each sessio
       url: string;
     }) => Promise<{ status: string; message: string }>;
   };
-  testerOverrides.observeLoadingIndicatorAfterNavigation = async () => "idle";
+  testerOverrides.observeLoadingIndicatorAfterNavigation = async () => {
+    await Promise.resolve();
+    return "idle" as const;
+  };
   testerOverrides.runSoftSyncForSession = async (session) => {
+    await Promise.resolve();
     syncCalls.push(`soft:${session.url}`);
     return { status: "pass", message: "soft ok" };
   };
   testerOverrides.runFullSyncForSession = async (session) => {
+    await Promise.resolve();
     syncCalls.push(`full:${session.url}`);
     return { status: "pass", message: "full ok" };
   };
   testerOverrides.runCleanSyncForSession = async (session) => {
+    await Promise.resolve();
     syncCalls.push(`clean:${session.url}`);
     return { status: "pass", message: "clean ok" };
   };
@@ -981,7 +1004,7 @@ void test("provider tester skips navigation entirely during soft sync", async ()
         }, 10);
       });
     },
-    executeJavaScript: async (script: string) => {
+    executeJavaScript: (script: string) => {
       if (script.includes("syncSidebarProbe")) {
         const wasOpen = sidebarOpen;
         sidebarOpen = true;
@@ -1132,6 +1155,7 @@ void test("provider tester skips navigation entirely during soft sync", async ()
     }) => Promise<{ status: string; message: string }>;
   };
   testerOverrides.runSoftSyncForSession = async () => {
+    await Promise.resolve();
     callOrder.push("soft-sync");
     return { status: "pass", message: "soft ok" };
   };
@@ -1149,10 +1173,10 @@ void test("provider tester refreshes metadata without changing the current page 
 
   const fakeWebview = {
     getURL: () => currentUrl,
-    loadURL: async (url: string) => {
+    loadURL: (url: string) => {
       currentUrl = url;
     },
-    executeJavaScript: async (script: string) => {
+    executeJavaScript: (script: string) => {
       if (script.includes("syncSidebarProbe")) {
         const wasOpen = sidebarOpen;
         sidebarOpen = true;
@@ -1303,6 +1327,7 @@ void test("provider tester refreshes metadata without changing the current page 
     }) => Promise<{ status: string; message: string }>;
   };
   testerOverrides.runSoftSyncForSession = async (session) => {
+    await Promise.resolve();
     syncCalls.push(session.url);
     return { status: "pass", message: "soft ok" };
   };
@@ -1311,7 +1336,6 @@ void test("provider tester refreshes metadata without changing the current page 
 
   assert.deepEqual(syncCalls, ["https://chatgpt.com/c/abc"]);
   assert.equal(currentUrl, "https://chatgpt.com/c/current");
-  assert.ok(result.commands != null);
   assert.equal(result.commands[4]?.status, "pass");
   assert.equal(result.results[4]?.message, "soft ok");
   assert.match(

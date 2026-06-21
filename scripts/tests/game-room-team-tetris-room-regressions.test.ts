@@ -51,21 +51,21 @@ void test("game-room workspace keeps the required Team Tetris package files", ()
 });
 
 void test("game-room manifest exposes Team Tetris as a second feature with scene metadata", () => {
-  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<string, unknown>;
   const validation = validateRoomManifest(manifest);
 
   assert.equal(validation.valid, true);
   const feature = validation.manifest?.features.find((entry) => entry.id === "team-tetris");
 
   assert.ok(feature);
-  assert.equal(feature?.scene?.hotspot.id, "game-room-team-tetris");
-  assert.equal(feature?.scene?.view.id, "team-tetris-closeup");
+  assert.equal(feature.scene?.hotspot.id, "game-room-team-tetris");
+  assert.equal(feature.scene.view.id, "team-tetris-closeup");
   assert.equal(
-    feature?.scene?.view.backgroundSrc,
+    feature.scene.view.backgroundSrc,
     "main-functions/team-tetris/assets/team-tetris-view.webp"
   );
   assert.deepEqual(
-    feature?.commandSpecs?.map((entry) => entry.name),
+    feature.commandSpecs?.map((entry) => entry.name),
     [
       "GameRoomTeamTetrisStart",
       "GameRoomTeamTetrisReset",
@@ -75,7 +75,7 @@ void test("game-room manifest exposes Team Tetris as a second feature with scene
     ]
   );
   assert.deepEqual(
-    feature?.protocolSpecs?.map((entry) => entry.key),
+    feature.protocolSpecs?.map((entry) => entry.key),
     [
       "game-room-team-tetris-ai-opening",
       "game-room-team-tetris-ai-followup",
