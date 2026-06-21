@@ -220,6 +220,10 @@ void test("room package manager keeps installed room record building in a dedica
     scripts["rooms:lint"],
     "node scripts/run-with-env.mjs NODE_OPTIONS=--max-old-space-size=4096 -- eslint --cache --cache-location node_modules/.cache/eslint \"rooms/**/*.{js,ts}\""
   );
+  assert.equal(
+    scripts["rooms:check"],
+    "npm run rooms:typecheck && npm run rooms:lint:strict && npm run rooms:test:core"
+  );
   assert.ok(scripts["rooms:lint"].includes('"rooms/**/*.{js,ts}"'));
   assert.match(rendererRegistrySource, /async prepareStartupSnapshot\(/);
   assert.match(rendererRegistrySource, /roomsSyncLinkedStartup/);
@@ -230,7 +234,7 @@ void test("room package manager keeps installed room record building in a dedica
   assert.match(eslintConfigSource, /"rooms\/\*\*\/ui\/\*\*\/\*\.ts"/);
   assert.match(eslintConfigSource, /"rooms\/\*\*\/main-functions\/\*\*\/host\/\*\*\/\*\.ts"/);
   assert.match(eslintConfigSource, /project:\s*"\.\/rooms\/tsconfig\.rooms\.json"/);
-  assert.equal(scripts["check"], "npm run lint && npm run check-types && npm run rooms:test:core");
+  assert.equal(scripts["check"], "npm run lint:strict && npm run check-types && npm run rooms:test:core");
   assert.ok(scripts["typecheck"]?.includes("rooms/tsconfig.rooms.json") === true);
 });
 

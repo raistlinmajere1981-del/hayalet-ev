@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* global console, process, Buffer, fetch, setTimeout */
 
 /**
  * CDP Tabanlı Smoke Test Script'i

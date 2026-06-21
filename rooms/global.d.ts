@@ -7,11 +7,11 @@ interface RoomApiBridge {
 }
 
 interface Window {
-  GameRoomUiFactories?: Record<string, any>;
-  GameRoomUiContextRuntime?: Record<string, any>;
-  GameRoomUiFeatureContract?: Record<string, any>;
-  GameRoomUiScrollRuntime?: Record<string, any>;
-  GameRoomUiRuntime?: Record<string, any>;
+  GameRoomUiFactories?: GameRoomUiFactoriesRegistry;
+  GameRoomUiContextRuntime?: GameRoomUiContextRuntimeRegistry;
+  GameRoomUiFeatureContract?: GameRoomUiFeatureContractLike;
+  GameRoomUiScrollRuntime?: GameRoomUiScrollRuntimeRegistry;
+  GameRoomUiRuntime?: GameRoomUiRuntimeRegistry;
   __gameRoomTeamTetrisTest__?: Record<string, unknown>;
   roomAPI?: RoomApiBridge;
   electronAPI?: Record<string, unknown>;

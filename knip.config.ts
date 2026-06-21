@@ -1,134 +1,88 @@
 import type { KnipConfig } from "knip";
 
 /**
- * Knip Configuration - Unused Code Detection
- * 
- * Optimized: 2026-02-05
- * - Moved MCP paths from src/mcp-server to mcp-server
- * - Added all MCP dependencies to ignoreDependencies
- * - Cleaned up duplicate type paths (removed src/js/types)
- * - Comprehensive ignore patterns for dynamic modules
- * 
- * Known False Positives (can be ignored):
- * - Configuration hints about MCP dependencies: They ARE used via dynamic imports
- * - Duplicate exports: Intentional for backward compatibility
+ * Knip Configuration - unused code/dependency detection.
+ *
+ * Keep this map close to the repo's real execution surfaces:
+ * Electron bundles, Vite page entries, MCP package entries, Ghost Agent,
+ * dynamic room packages, scripts, tests, and shared TypeScript modules.
  */
 const config: KnipConfig = {
-  // Entry points - uygulamanın başlangıç noktaları
   entry: [
-    // Electron
+    // Ghost Agent tooling entry
+    "ghost-agent/vite.config.js",
+
+    // Electron runtime and packaged wrapper entries
     "electron/main.ts",
     "electron/preload.cjs",
     "electron/webview-preload.cjs",
-    
-    // Renderer
+    "electron/room-webview-preload.cjs",
+    "electron/packaged-wrapper-main.ts",
+    "electron/packaged-wrapper-cli.ts",
+    "electron/native/better-sqlite3-runtime.js",
+
+    // Renderer entries loaded from HTML/preload and page shell routes
     "src/js/app.ts",
     "src/js/pages/*.ts",
-    "src/js/modules/commands/*.ts",  // Dinamik command handler'lar
-    
-    // MCP Server
+    "src/js/pages/*/app.ts",
+    "src/js/modules/commands/*.ts",
+
+    // MCP runtime entries
     "mcp-server/index.ts",
+    "mcp-server/standalone.ts",
+
+    // Ghost Agent entries
+    "ghost-agent/electron/main.ts",
+    "ghost-agent/electron/preload.cjs",
+    "ghost-agent/src/renderer/index.ts",
+
+    // Room package convention entries loaded through manifests/registries
+    "rooms/*/host/index.ts",
+    "rooms/*/host/runtime.ts",
+    "rooms/*/ui/index.ts",
+    "rooms/*/ui/bootstrap.ts",
+    "rooms/*/scripts/*.ts",
+
+    // Test runner discovers these dynamically
+    "scripts/tests/**/*.test.ts",
+    "scripts/tests/**/*.helpers.ts",
   ],
 
-  // Project files - analiz edilecek dosyalar
   project: [
-    "electron/**/*.{ts,cjs}",
-    "src/js/**/*.ts",
-    "mcp-server/**/*.ts",
+    "electron/**/*.{ts,cjs,js}",
+    "src/js/**/*.{js,ts,d.ts}",
+    "src/types/**/*.ts",
+    "shared/**/*.ts",
+    "mcp-server/**/*.{js,ts}",
+    "ghost-agent/**/*.{js,cjs,ts,d.ts}",
+    "rooms/**/*.{js,ts,d.ts}",
+    "scripts/**/*.{js,mjs,ts}",
+    "*.config.{js,cjs,ts}",
   ],
 
-  // Ignore patterns - hariç tutulacaklar
-  ignore: [
-    // Type definitions
-    "src/js/global.d.ts",
-    "src/js/vite-env.d.ts",
-    
-    // Dev/test scripts
-    ".rovo/**/*",
-    
-    // Type barrel exports (public API için gerekli)
-    "src/types/**/*",
-    "electron/types/**/*",
-    
-    // Barrel export dosyaları (re-exports)
-    "src/js/modules/database/index.ts",
-    "src/js/modules/relay/index.ts",
-    "src/js/modules/slot/index.ts",
-    "src/js/modules/webview/index.ts",
-    "src/js/ui/index.ts",
-    
-    // Gelecek kullanım için tutulan modüller
-    "src/js/ui/animation-controller.ts",
-    "src/js/ui/audio-manager.ts",
-    "src/js/ui/canvas-manager.ts",
-    "src/js/ui/modal-manager.ts",
-    "src/js/modules/ipc-client.ts",
-    
-    // IPC üzerinden dinamik çağrılan (main.ts'de handler via console-logger)
-    "electron/server-commands.ts",
-    
-    // Database store'lar (gelecek kullanım için hazır)
-    "src/js/modules/database/conversation-store.ts",
-    "src/js/modules/database/message-store.ts",
-    
-    // Shared helpers (referans olarak tutuluyor)
-    "src/js/modules/webview/providers/shared/scraper-helpers.ts",
-    
-    // Console logger submodules - main.ts'de indirect import edilir
-    "electron/logger/**/*",
-    
-    // MCP server tool modules - dinamik olarak handler registry'den kullanılır
-    "mcp-server/tools/fs/**/*",
-    "mcp-server/tools/log/**/*",
-    "mcp-server/tools/dev/batch-type-fix.ts",
-    "mcp-server/tools/dev/error-clustering.ts",
-    "mcp-server/tools/dev/typescript-context-fixer.ts",
-    "mcp-server/tools/debug-tools.ts",  // Dinamik handler'lar
-    "mcp-server/tools/filesystem-tools.ts",  // Dinamik handler'lar
-    "mcp-server/core/index.ts",  // Re-export barrel
-    "mcp-server/core/handler-registry.ts",  // Public API
-    "mcp-server/core/handlers.ts",  // Handler utilities
-    "mcp-server/utils/edit-safety-helpers.ts",  // Utility helpers
-    "mcp-server/utils/git-utils.ts",  // Utility helpers
-    "mcp-server/utils/ast-transformer.ts",  // Public utilities
-    "mcp-server/utils/diff-utils.ts",  // Public utilities
-    "mcp-server/utils/progress.ts",  // Public utilities
-    "mcp-server/utils/timeouts.ts",  // Public utilities
-    "mcp-server/utils/web-scraper.ts",  // Public utilities
-    "mcp-server/utils/provider-config.ts",  // Type definitions
-    
-    // Logger ve provider factory - internal utilities
-    "src/js/modules/logger/Logger.ts",  // Public API default export
-    "src/js/modules/webview/provider-factory.ts",  // Private methods (_prefixed)
-  ],
-
-  // Ignore dependencies - build/CI araçları ve özel kullanımlar
   ignoreDependencies: [
-    "electron-builder",   // build script
-    "depcheck",           // manual check tool
-    "gsap",               // animasyon kütüphanesi (gelecek kullanım)
-    "@eslint/js",         // eslint peer dependency
-    "eslint-formatter-compact",  // eslint config'de kullanılıyor
-    "cheerio",            // web-scraper.ts
-    "@babel/parser",      // scope-validator.ts, structure-visualizer.ts
+    "depcheck", // manual dependency audit fallback
+    "eslint-formatter-compact", // kept for ad-hoc ESLint formatter runs
+    "@electron/rebuild", // invoked via node_modules path from better-sqlite3 runtime helper
   ],
 
-  // npx ile çalıştırılan binary'ler
-  ignoreBinaries: [
-    "npm-check-updates",  // npx ile çalıştırılıyor
-    "tail",               // manual debugging tool
-  ],
-
-  // Ignore exports - barrel exports ve public API'ler
+  // Barrel exports and room/MCP public APIs often re-export symbols for dynamic registries.
   ignoreExportsUsedInFile: true,
 
-  // Plugin configurations
   eslint: {
     config: ["eslint.config.cjs"],
   },
 
   typescript: {
-    config: ["src/tsconfig.json", "electron/tsconfig.electron.json", "mcp-server/tsconfig.mcp.json"],
+    config: [
+      "src/tsconfig.json",
+      "electron/tsconfig.electron.json",
+      "mcp-server/tsconfig.mcp.json",
+      "ghost-agent/tsconfig.json",
+      "ghost-agent/tsconfig.electron.json",
+      "rooms/tsconfig.rooms.json",
+      "scripts/tsconfig.json",
+    ],
   },
 };
 

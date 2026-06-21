@@ -73,18 +73,18 @@ const sharedTsBaseRules = {
   ],
 
   // Tip güvenliği
-  "@typescript-eslint/no-unnecessary-type-assertion": "warn",
-  "@typescript-eslint/no-unnecessary-condition": "warn",
+  "@typescript-eslint/no-unnecessary-type-assertion": "error",
+  "@typescript-eslint/no-unnecessary-condition": "error",
   "@typescript-eslint/no-unnecessary-type-parameters": "error",
 
   // Genel kurallar
   "no-unused-vars": "off", // TS versiyonu kullanılıyor
   "no-empty": ["error", { allowEmptyCatch: true }],
-  // Proje geneli: warn + allow list (tüm bölümler için standart)
-  "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+  // Proje geneli: error + allow list (tüm bölümler için standart)
+  "no-console": ["error", { allow: ["warn", "error", "info"] }],
   "prefer-const": "error",
   "no-undef": "off", // TypeScript hallediyor
-  "no-await-in-loop": "warn",
+  "no-await-in-loop": "error",
 };
 
 /**
@@ -105,7 +105,7 @@ const sharedTypeAwareRules = {
 
   // Template expression güvenliği
   "@typescript-eslint/restrict-template-expressions": [
-    "warn",
+    "error",
     {
       allowNumber: true,
       allowBoolean: false,
@@ -174,22 +174,21 @@ const importCycleRules = {
   // ile proje genelinde zaten kontrol ediliyor, harici plugin gerektirmez
 };
 
-// NOTE: Room TypeScript — phased strictness alignment with main app.
-// Phase 1a: strictNullChecks + noUnusedLocals/noUnusedParameters (TS side)
-// Phase 1b: no-unsafe-* rules enabled after noImplicitAny is applied (Phase 2)
+// NOTE: Room TypeScript — strict contract aligned with main app.
+// Room-specific escape hatches below remain explicit `off` overrides.
 const roomTsContractRules = {
   ...sharedTsBaseRules,
   ...sharedTypeAwareRules,
   ...namingConventionRule,
   ...importCycleRules,
-  "@typescript-eslint/no-explicit-any": "warn",
-  "@typescript-eslint/no-unsafe-assignment": "warn",
-  "@typescript-eslint/no-unsafe-member-access": "warn",
-  "@typescript-eslint/no-unsafe-call": "warn",
-  "@typescript-eslint/no-unsafe-return": "warn",
-  "@typescript-eslint/no-unsafe-argument": "warn",
-  "@typescript-eslint/no-unnecessary-type-assertion": "warn",
-  "@typescript-eslint/no-unnecessary-condition": "warn",
+  "@typescript-eslint/no-explicit-any": "error",
+  "@typescript-eslint/no-unsafe-assignment": "error",
+  "@typescript-eslint/no-unsafe-member-access": "error",
+  "@typescript-eslint/no-unsafe-call": "error",
+  "@typescript-eslint/no-unsafe-return": "error",
+  "@typescript-eslint/no-unsafe-argument": "error",
+  "@typescript-eslint/no-unnecessary-type-assertion": "error",
+  "@typescript-eslint/no-unnecessary-condition": "error",
   "@typescript-eslint/prefer-nullish-coalescing": "off",
   "@typescript-eslint/prefer-optional-chain": "off",
   "@typescript-eslint/strict-boolean-expressions": "off",
@@ -231,6 +230,13 @@ function makePathRules(message_cwd, message_path) {
 // ============================================================
 
 module.exports = tseslint.config(
+  // === Global Linter Options ===
+  {
+    linterOptions: {
+      reportUnusedDisableDirectives: "error",
+    },
+  },
+
   // === Global Ignores ===
   {
     ignores: [
@@ -261,7 +267,7 @@ module.exports = tseslint.config(
 
   // === Node Utility Scripts ===
   {
-    files: ["scripts/**/*.mjs"],
+    files: ["scripts/**/*.{js,mjs}"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
@@ -285,7 +291,7 @@ module.exports = tseslint.config(
       },
     },
     rules: {
-      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "no-console": ["error", { allow: ["log", "warn", "error", "info"] }],
       "no-empty": ["error", { allowEmptyCatch: true }],
       "no-undef": "error",
       "no-unused-vars": [
@@ -423,10 +429,10 @@ module.exports = tseslint.config(
 
       "no-unused-vars": "off",
       "no-empty": ["error", { allowEmptyCatch: true }],
-      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "no-console": ["error", { allow: ["warn", "error", "info"] }],
       "prefer-const": "error",
       "no-undef": "off",
-      "no-await-in-loop": "warn",
+      "no-await-in-loop": "error",
     },
   },
 
@@ -469,10 +475,10 @@ module.exports = tseslint.config(
       "no-unused-vars": "off",
       "no-redeclare": "off",
       "no-empty": ["error", { allowEmptyCatch: true }],
-      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "no-console": ["error", { allow: ["warn", "error", "info"] }],
       "prefer-const": "error",
       "no-undef": "off",
-      "no-await-in-loop": "warn",
+      "no-await-in-loop": "error",
     },
   },
 
@@ -506,10 +512,10 @@ module.exports = tseslint.config(
     rules: {
       "no-unused-vars": "off",
       "no-empty": ["error", { allowEmptyCatch: true }],
-      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "no-console": ["error", { allow: ["warn", "error", "info"] }],
       "prefer-const": "error",
       "no-undef": "off",
-      "no-await-in-loop": "warn",
+      "no-await-in-loop": "error",
     },
   },
 
@@ -601,6 +607,76 @@ module.exports = tseslint.config(
     },
   },
 
+  // === Room Host TypeScript Files - strict host boundary ===
+  {
+    files: [
+      "rooms/**/host/**/*.ts",
+      "rooms/**/shared/host/**/*.ts",
+      "rooms/**/main-functions/**/host/**/*.ts",
+    ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unsafe-assignment": "error",
+      "@typescript-eslint/no-unsafe-member-access": "error",
+      "@typescript-eslint/no-unsafe-call": "error",
+      "@typescript-eslint/no-unsafe-return": "error",
+      "@typescript-eslint/no-unsafe-argument": "error",
+    },
+  },
+
+  // === Room Shared TypeScript Type Files - strict type boundary ===
+  {
+    files: ["rooms/**/shared/types/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unsafe-assignment": "error",
+      "@typescript-eslint/no-unsafe-member-access": "error",
+      "@typescript-eslint/no-unsafe-call": "error",
+      "@typescript-eslint/no-unsafe-return": "error",
+      "@typescript-eslint/no-unsafe-argument": "error",
+    },
+  },
+
+  // === Room UI TypeScript Files - strict UI boundary ===
+  {
+    files: [
+      "rooms/**/ui/**/*.ts",
+      "rooms/**/shared/ui/**/*.ts",
+      "rooms/**/main-functions/**/ui/**/*.ts",
+    ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unsafe-assignment": "error",
+      "@typescript-eslint/no-unsafe-member-access": "error",
+      "@typescript-eslint/no-unsafe-call": "error",
+      "@typescript-eslint/no-unsafe-return": "error",
+      "@typescript-eslint/no-unsafe-argument": "error",
+    },
+  },
+
+  // === Room Type Declaration Files ===
+  {
+    files: ["rooms/**/*.d.ts"],
+    extends: [...tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      parserOptions: {
+        project: "./rooms/tsconfig.rooms.json",
+        tsconfigRootDir: __dirname,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-require-imports": "error",
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        { prefer: "type-imports", fixStyle: "separate-type-imports" },
+      ],
+      "no-undef": "off",
+    },
+  },
+
   // === TypeScript Regression Tests (scripts/tests) ===
   // Test files use mocks that need `async` without `await` and assertions with `!`.
   {
@@ -662,7 +738,7 @@ module.exports = tseslint.config(
       "@typescript-eslint/no-base-to-string": "off",
       "no-unused-vars": "off",
       "no-empty": ["error", { allowEmptyCatch: true }],
-      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "no-console": ["error", { allow: ["warn", "error", "info"] }],
       "no-undef": "off",
       "no-await-in-loop": "off",
     },
@@ -794,10 +870,10 @@ module.exports = tseslint.config(
         },
       ],
       "no-empty": ["error", { allowEmptyCatch: true }],
-      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "no-console": ["error", { allow: ["warn", "error", "info"] }],
       "prefer-const": "error",
       "no-undef": "error",
-      "no-await-in-loop": "warn",
+      "no-await-in-loop": "error",
     },
   },
 
@@ -871,7 +947,7 @@ module.exports = tseslint.config(
         },
       ],
       "no-empty": ["error", { allowEmptyCatch: true }],
-      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "no-console": ["error", { allow: ["warn", "error", "info"] }],
       "prefer-const": "error",
       "no-undef": "error",
     },
@@ -1125,7 +1201,7 @@ module.exports = tseslint.config(
         },
       ],
       "no-empty": ["error", { allowEmptyCatch: true }],
-      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "no-console": ["error", { allow: ["warn", "error", "info"] }],
       "prefer-const": "error",
       "no-undef": "error",
     },

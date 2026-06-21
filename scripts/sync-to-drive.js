@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* global console, process */
 
 import { createHash } from "crypto";
 import {

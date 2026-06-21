@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* global console, process */
 
 /**
  * Pre-commit Hook Script
@@ -125,7 +124,7 @@ function checkLint(files) {
   }
 
   try {
-    execSync(`npx eslint ${lintableFiles.join(" ")}`, {
+    execSync(`npx eslint --max-warnings 0 ${lintableFiles.join(" ")}`, {
       cwd: PROJECT_ROOT,
       stdio: "pipe",
       timeout: 180000, // 3 dakika
@@ -135,9 +134,11 @@ function checkLint(files) {
   } catch (error) {
     const _output = error.stdout?.toString() || error.stderr?.toString() || "";
 
-    // Hata sayısını kontrol et (✖ X problems (Y errors, Z warnings) formatında)
+    // Hata/uyarı sayısını kontrol et (✖ X problems (Y errors, Z warnings) formatında)
     const errorMatch = _output.match(/\((\d+) error/);
+    const warningMatch = _output.match(/,\s*(\d+) warning/);
     const errorCount = errorMatch ? parseInt(errorMatch[1], 10) : 0;
+    const warningCount = warningMatch ? parseInt(warningMatch[1], 10) : 0;
 
     if (errorCount > 0) {
       console.log(colors.red(`   ❌ ${errorCount} lint hatası var`));
@@ -145,8 +146,15 @@ function checkLint(files) {
       return { success: false, errors: ["ESLint hataları mevcut (staged dosyalarda)."] };
     }
 
-    console.log(colors.green("   ✅ Lint kontrolü başarılı (sadece uyarılar)"));
-    return { success: true, errors: [] };
+    if (warningCount > 0) {
+      console.log(colors.red(`   ❌ ${warningCount} lint uyarısı var`));
+      console.log(colors.gray("   Sadece staged dosyalarda kontrol edildi."));
+      return { success: false, errors: ["ESLint uyarıları mevcut (staged dosyalarda)."] };
+    }
+
+    console.log(colors.red("   ❌ ESLint kontrolü başarısız"));
+    console.log(colors.gray("   Detay için staged dosyaları npx eslint --max-warnings 0 ile kontrol edin."));
+    return { success: false, errors: ["ESLint kontrolü başarısız (staged dosyalarda)."] };
   }
 }
 
