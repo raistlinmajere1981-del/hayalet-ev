@@ -1,5 +1,6 @@
 @import "./tokens.css";
 @import "./styles/base.css";
+@import "./styles/animations.css";
 @import "./styles/shell.css";
 @import "./styles/statusbar.css";
 @import "./styles/workspace.css";
@@ -17,7 +18,7 @@
 @import "./styles/repair-settings.css";
 @import "./styles/settings-overlay.css";
 @import "./styles/room-sync.css";
-@import "./styles/chat-measurement-sync.css";
+@import "./styles/chat.css";
 @import "./styles/measurement.css";
 @import "./styles/forensic-interactions.css";
 @import "./styles/legend.css";

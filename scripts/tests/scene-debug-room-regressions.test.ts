@@ -42,7 +42,7 @@ void test("scene debug room registry includes all unified scene rooms", () => {
   assert.match(roomRegistrySource, /rooms:\s*"sideNav\.roomsLabel"/);
   assert.match(roomRegistrySource, /settings:\s*"settingsHub\.openButton"/);
   assert.match(roomRegistrySource, /export const SCENE_DEBUG_ROOMS/);
-  assert.match(roomRegistrySource, /export const SCENE_EDITOR_ROOMS/);
+  assert.doesNotMatch(roomRegistrySource, /export const SCENE_EDITOR_ROOMS/);
   assert.match(roomRegistrySource, /SCENE_ROOM_IDS\.map/);
   assert.match(roomRegistrySource, /export function getSceneDebugRoomOptions/);
   assert.match(roomRegistrySource, /export function getSceneEditorRoomOptions/);

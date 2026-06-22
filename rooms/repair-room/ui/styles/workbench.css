@@ -1,4 +1,3 @@
-/* ── Workbench Stage ─────────────────────────────────────────────── */
 .repair-workbench-header {
   display: flex;
   align-items: center;
@@ -128,7 +127,6 @@
 
 .repair-guidance-strip {
   display: grid;
-  /* SAY column (3rd) hidden by default; shown when data-show-say="true" */
   grid-template-columns: auto minmax(0, 2fr) 0 auto;
   align-items: center;
   gap: var(--repair-sp-2);
@@ -151,7 +149,6 @@
 }
 
 .repair-guidance-strip__recovery {
-  /* Hidden by default; revealed when parent data-show-say="true" */
   overflow: hidden;
 }
 
@@ -333,10 +330,6 @@
   border-bottom: var(--repair-px-1) solid var(--repair-border-muted);
 }
 
-/* Row separator line element (inside .repair-toolbar) */
-.repair-toolbar__row-sep {
-  display: none; /* row border handled by --tools border-bottom */
-}
 
 .repair-toolbar__btn {
   display: inline-flex;

@@ -47,6 +47,7 @@ function readRepairUiRuntimeText(): string {
   const uiRoot = join(process.cwd(), "rooms/repair-room/ui");
   return [
     "repair-room-ui-runtime.ts",
+    "runtime/actions.ts",
     "runtime/capture-status-handlers.ts",
     "runtime/dictation-composer.ts",
     "runtime/measurement-dom.ts",

@@ -35,6 +35,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     max-height: var(--repair-px-300);
   }
+
+  .repair-workspace:has(> .repair-panel--session-rail.repair-panel--collapsed) {
+    grid-template-columns: minmax(var(--repair-px-44), var(--repair-px-44)) minmax(0, 1fr);
+  }
 }
 
 @media (--repair-bp-max-680) {
@@ -81,15 +85,7 @@
     grid-template-columns: 1fr;
     max-height: none;
   }
-}
 
-@media (--repair-bp-max-980) {
-  .repair-workspace:has(> .repair-panel--session-rail.repair-panel--collapsed) {
-    grid-template-columns: minmax(var(--repair-px-44), var(--repair-px-44)) minmax(0, 1fr);
-  }
-}
-
-@media (--repair-bp-max-680) {
   .repair-workspace:has(> .repair-panel--session-rail.repair-panel--collapsed) {
     grid-template-columns: 1fr;
   }

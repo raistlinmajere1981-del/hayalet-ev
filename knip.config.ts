@@ -26,6 +26,7 @@ const config: KnipConfig = {
     "src/js/pages/*.ts",
     "src/js/pages/*/app.ts",
     "src/js/modules/commands/*.ts",
+    "src/js/ui/index.ts",
 
     // MCP runtime entries
     "mcp-server/index.ts",
@@ -42,6 +43,24 @@ const config: KnipConfig = {
     "rooms/*/ui/index.ts",
     "rooms/*/ui/bootstrap.ts",
     "rooms/*/scripts/*.ts",
+
+    // Script entries invoked by package scripts, Electron hooks, or child processes
+    "scripts/backup-cli.mjs",
+    "scripts/dev-restart-helper.mjs",
+    "scripts/electron-builder-after-pack.mjs",
+    "scripts/sync-mcp-dist.mjs",
+    "scripts/rooms/build-room-bundle.mjs",
+    "scripts/rooms/build-workspace-rooms.ts",
+    "scripts/rooms/clean-generated-room-artifacts.ts",
+    "scripts/rooms/report-room-paths.ts",
+    "scripts/tests/register-asset-loader.mjs",
+    "scripts/tests/run-all-tests.mjs",
+
+    // Game room IIFE modules are loaded through HTML script tags
+    "rooms/game-room/ui/*.ts",
+    "rooms/game-room/shared/ui/*.ts",
+    "rooms/game-room/shared/vendor/konva.min.js",
+    "rooms/game-room/main-functions/*/ui/*.ts",
 
     // Test runner discovers these dynamically
     "scripts/tests/**/*.test.ts",
@@ -60,6 +79,14 @@ const config: KnipConfig = {
     "*.config.{js,cjs,ts}",
   ],
 
+  ignoreFiles: [
+    "electron/native/node-abi.d.ts",
+    "ghost-agent/src/renderer/global.d.ts",
+    "rooms/global.d.ts",
+    "src/js/global.d.ts",
+    "src/js/vite-env.d.ts",
+  ],
+
   ignoreDependencies: [
     "depcheck", // manual dependency audit fallback
     "eslint-formatter-compact", // kept for ad-hoc ESLint formatter runs
@@ -68,6 +95,12 @@ const config: KnipConfig = {
 
   // Barrel exports and room/MCP public APIs often re-export symbols for dynamic registries.
   ignoreExportsUsedInFile: true,
+
+  // Public API/type surface findings stay visible without breaking strict dependency/file gates.
+  rules: {
+    exports: "warn",
+    types: "warn",
+  },
 
   eslint: {
     config: ["eslint.config.cjs"],

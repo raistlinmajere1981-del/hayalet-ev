@@ -124,8 +124,6 @@ export function setActiveSceneEditorRoomId(roomId: SceneEditorRoomId | null): vo
   setActiveSceneDebugRoomId(roomId);
 }
 
-export const SCENE_EDITOR_ROOMS = SCENE_DEBUG_ROOMS;
-
 export function getSceneEditorRoomOptions(
   translate: (key: string) => string
 ): Array<{ id: SceneEditorRoomId; label: string }> {
