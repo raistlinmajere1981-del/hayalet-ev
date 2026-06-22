@@ -1351,7 +1351,6 @@ export function createRepairRoomUiRuntime() {
     void overlayRuntime.syncOverlay(persistentShell.root);
   }
 
-
   function getWorkbenchViewportMode(): string {
     if (
       state.workbench.investigationModeEnabled ||

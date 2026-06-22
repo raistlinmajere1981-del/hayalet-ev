@@ -133,7 +133,9 @@ export function bindRepairRoomActions(params: RepairRoomActionRuntimeParams): vo
         requestRuntime.setVoiceGuidance({
           handsBusyMode: enabled,
           ambientListeningState: enabled ? "listening" : "idle",
-          spokenGuidanceMode: enabled ? "step-by-step" : state.layout.voiceGuidance.spokenGuidanceMode,
+          spokenGuidanceMode: enabled
+            ? "step-by-step"
+            : state.layout.voiceGuidance.spokenGuidanceMode,
         });
         if (enabled) {
           requestRuntime.startAmbientListener();
@@ -228,7 +230,9 @@ export function bindRepairRoomActions(params: RepairRoomActionRuntimeParams): vo
         break;
       }
       case "toggle-investigation-mode":
-        requestRuntime.toggleInvestigationMode({ enabled: !state.workbench.investigationModeEnabled });
+        requestRuntime.toggleInvestigationMode({
+          enabled: !state.workbench.investigationModeEnabled,
+        });
         break;
       case "jump-to-event": {
         const eventId = el.dataset["eventId"];
@@ -315,7 +319,9 @@ export function bindRepairRoomActions(params: RepairRoomActionRuntimeParams): vo
           const rawValue = el.dataset["preferenceValue"];
           if (key && rawValue !== undefined) {
             requestRuntime.updateOperatorProfile({
-              preferences: { [key]: key === "annotationDefaultStrokeWidth" ? Number(rawValue) : rawValue },
+              preferences: {
+                [key]: key === "annotationDefaultStrokeWidth" ? Number(rawValue) : rawValue,
+              },
             });
           }
         }
@@ -445,7 +451,9 @@ export function bindRepairRoomActions(params: RepairRoomActionRuntimeParams): vo
         );
         const symptom = input?.value.trim() ?? "";
         if (symptom === "") break;
-        const primarySymptoms = Array.from(new Set([...state.wizard.draft.primarySymptoms, symptom]));
+        const primarySymptoms = Array.from(
+          new Set([...state.wizard.draft.primarySymptoms, symptom])
+        );
         const customSymptoms = Array.from(new Set([...state.wizard.draft.customSymptoms, symptom]));
         requestRuntime.updateSession({ wizardDraft: { primarySymptoms, customSymptoms } });
         if (input) input.value = "";
@@ -464,7 +472,9 @@ export function bindRepairRoomActions(params: RepairRoomActionRuntimeParams): vo
       }
       case "start-wizard-research": {
         flushWizardFields(root);
-        const select = root.querySelector<HTMLSelectElement>("[data-repair-action='set-ai-target-slot']");
+        const select = root.querySelector<HTMLSelectElement>(
+          "[data-repair-action='set-ai-target-slot']"
+        );
         const targetSlot = readAiTargetSlot(select?.value);
         requestRuntime.startKnowledgeResearch(targetSlot === null ? {} : { targetSlot });
         break;
@@ -486,7 +496,10 @@ export function bindRepairRoomActions(params: RepairRoomActionRuntimeParams): vo
       case "timeline-zoom": {
         const direction = el.dataset["direction"] === "out" ? -1 : 1;
         requestRuntime.updateTimeline({
-          timelineZoom: Math.min(4, Math.max(0.25, state.workbench.timeline.zoom + direction * 0.25)),
+          timelineZoom: Math.min(
+            4,
+            Math.max(0.25, state.workbench.timeline.zoom + direction * 0.25)
+          ),
         });
         break;
       }
@@ -508,7 +521,10 @@ export function bindRepairRoomActions(params: RepairRoomActionRuntimeParams): vo
         requestRuntime.focusLiveEdge();
         break;
       case "timeline-speed": {
-        const nextSpeed = state.workbench.timeline.replaySpeed >= 4 ? 0.5 : state.workbench.timeline.replaySpeed * 2;
+        const nextSpeed =
+          state.workbench.timeline.replaySpeed >= 4
+            ? 0.5
+            : state.workbench.timeline.replaySpeed * 2;
         requestRuntime.updateTimeline({ replaySpeed: nextSpeed });
         break;
       }
@@ -533,7 +549,13 @@ export function bindRepairRoomActions(params: RepairRoomActionRuntimeParams): vo
 
   root.addEventListener("change", (event) => {
     const el = findActionElement(event.target);
-    if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)) {
+    if (
+      !(
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLSelectElement
+      )
+    ) {
       return;
     }
     if (el.dataset["repairAction"] === "wizard-field" && el instanceof HTMLSelectElement) {
@@ -557,11 +579,13 @@ export function bindRepairRoomActions(params: RepairRoomActionRuntimeParams): vo
       const field = el.dataset["field"];
       if (profileKind === "tool") {
         const id = el.dataset["toolId"];
-        if (id && field) requestRuntime.updateOperatorProfile({ tools: [{ id, [field]: el.value }] });
+        if (id && field)
+          requestRuntime.updateOperatorProfile({ tools: [{ id, [field]: el.value }] });
       }
       if (profileKind === "skill") {
         const id = el.dataset["skillId"];
-        if (id && field) requestRuntime.updateOperatorProfile({ skills: [{ id, [field]: el.value }] });
+        if (id && field)
+          requestRuntime.updateOperatorProfile({ skills: [{ id, [field]: el.value }] });
       }
       if (profileKind === "preference") {
         const key = el.dataset["preferenceKey"];

@@ -330,7 +330,6 @@
   border-bottom: var(--repair-px-1) solid var(--repair-border-muted);
 }
 
-
 .repair-toolbar__btn {
   display: inline-flex;
   align-items: center;
