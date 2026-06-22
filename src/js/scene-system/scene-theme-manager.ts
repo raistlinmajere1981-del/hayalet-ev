@@ -289,4 +289,4 @@ export class SceneThemeManagerClass {
 
 const sceneThemeManager = new SceneThemeManagerClass();
 
-export { sceneThemeManager, sceneThemeManager as SceneThemeManager };
+export { sceneThemeManager as SceneThemeManager };

@@ -4,7 +4,6 @@ import type {
   SceneCharacterPlacementNodeDefinition,
   SceneCharacterSlot,
   SceneObjectNodeDefinition,
-  SceneObjectAction,
   SceneLayoutDefinition,
   SceneNodeDefinition,
   SceneNodeKind,
@@ -12,13 +11,10 @@ import type {
   SceneRoomId,
 } from "../schema.js";
 import { SCENE_LABEL_FONT_PRESETS } from "../schema.js";
-import { getSceneRoomLayout } from "../../scene-system/scene-layout-registry.js";
 
 export const SCENE_LAYOUT_LABEL_FONT_PRESETS = SCENE_LABEL_FONT_PRESETS;
 
 export type SceneLayoutLabelFontPreset = (typeof SCENE_LAYOUT_LABEL_FONT_PRESETS)[number];
-export type SceneObjectConfigAction = SceneObjectAction;
-
 export type SceneObjectConfig = SceneObjectNodeDefinition;
 
 export type SceneBackConfig = SceneBackNodeDefinition;
@@ -46,10 +42,6 @@ export interface SceneDebugNodeListEntry {
   id: string;
   label: string;
   viewId?: string | null;
-}
-
-export function getSceneLayoutForRoom(roomId: SceneRoomId): SceneLayoutConfig {
-  return getSceneRoomLayout(roomId);
 }
 
 export function getSceneObjectNodesForView(
@@ -162,20 +154,6 @@ export function isSceneDebugSelectionForObject(
   sceneObject: SceneObjectConfig
 ): boolean {
   return selection?.kind === "object" && selection.id === sceneObject.id;
-}
-
-export function isSceneDebugSelectionForBack(
-  selection: SceneDebugNodeSelection,
-  back: SceneBackConfig
-): boolean {
-  return selection?.kind === "back" && selection.id === back.id;
-}
-
-export function isSceneDebugSelectionForCharacter(
-  selection: SceneDebugNodeSelection,
-  character: Pick<SceneCharacterPlacementConfig, "id">
-): boolean {
-  return selection?.kind === "character" && selection.id === character.id;
 }
 
 export function buildSceneRoomDefinition(

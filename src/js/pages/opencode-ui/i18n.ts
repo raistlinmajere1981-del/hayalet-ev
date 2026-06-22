@@ -5,7 +5,6 @@ import { resolveIntlLocale } from "../../../../shared/i18n/locale.js";
 const OPENCODE_UI_KEY_PREFIX = "opencodeUi";
 
 let hasBootstrapped = false;
-let removeListener: (() => void) | null = null;
 
 function resolveScopedKey(key: string): string {
   const normalized = key.trim();
@@ -58,17 +57,11 @@ export async function bootstrapOpencodeUiI18n(): Promise<void> {
     return;
   }
 
-  removeListener = AppI18n.subscribe((_pack: LoadedLanguagePack) => {
+  AppI18n.subscribe((_pack: LoadedLanguagePack) => {
     applyStaticTranslations();
   });
   hasBootstrapped = true;
   applyStaticTranslations();
-}
-
-export function disposeOpencodeUiI18n(): void {
-  removeListener?.();
-  removeListener = null;
-  hasBootstrapped = false;
 }
 
 export function t(key: string, params?: TranslationParams): string {

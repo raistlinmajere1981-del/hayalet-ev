@@ -270,10 +270,6 @@ export function normalizeSessionId(payload: unknown): string {
   return "";
 }
 
-export function extractTextFromPart(part: unknown): string {
-  return flattenAssistantBlock(buildAssistantBlockFromPart(part) ?? { kind: "markdown", text: "" });
-}
-
 export function extractAssistantBlocks(payload: unknown): OpencodeUiMessageBlock[] {
   if (payload == null) {
     return [];
@@ -333,10 +329,6 @@ export function extractAssistantMessageContent(payload: unknown): {
       .trim(),
     blocks,
   };
-}
-
-export function extractAssistantText(payload: unknown): string {
-  return extractAssistantMessageContent(payload).text;
 }
 
 export function extractLatestAssistantTextPart(payload: unknown): string {

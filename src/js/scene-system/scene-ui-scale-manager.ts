@@ -120,4 +120,4 @@ export class SceneUiScaleManagerClass {
 
 const sceneUiScaleManager = new SceneUiScaleManagerClass();
 
-export { sceneUiScaleManager, sceneUiScaleManager as SceneUiScaleManager };
+export { sceneUiScaleManager as SceneUiScaleManager };

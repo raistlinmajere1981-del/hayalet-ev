@@ -1,6 +1,5 @@
 import type { TranslationParams } from "@shared/i18n.js";
 import { AppI18n } from "../../modules/i18n/index.js";
-import { resolveIntlLocale } from "../../../../shared/i18n/locale.js";
 
 const ENTRANCE_KEY_PREFIX = "entrance";
 
@@ -47,35 +46,4 @@ export function applyEntranceStaticTranslations(root: ParentNode = document): vo
 
 export function t(key: string, params?: TranslationParams): string {
   return AppI18n.t(resolveScopedKey(key), params);
-}
-
-export function getIntlLocale(): string {
-  return resolveIntlLocale(AppI18n.getLocale());
-}
-
-export function formatTime(value: Date | number): string {
-  const date = value instanceof Date ? value : new Date(value);
-  if (!Number.isFinite(date.getTime())) {
-    return "--";
-  }
-
-  return new Intl.DateTimeFormat(getIntlLocale(), {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
-export function formatDateTime(value: Date | number): string {
-  const date = value instanceof Date ? value : new Date(value);
-  if (!Number.isFinite(date.getTime())) {
-    return "--";
-  }
-
-  return new Intl.DateTimeFormat(getIntlLocale(), {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
 }

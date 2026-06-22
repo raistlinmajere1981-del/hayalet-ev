@@ -14,15 +14,6 @@ export interface SceneAlphaWindowFrameInsets {
   bottom: number;
 }
 
-export interface SceneAlphaWindowFrameControllerOptions {
-  image: HTMLImageElement;
-  container: HTMLElement;
-  target: HTMLElement;
-  variablePrefix: string;
-  alphaThreshold?: number;
-}
-
-const DEFAULT_ALPHA_THRESHOLD = 24;
 const MIN_WIDTH_COVERAGE = 0.18;
 const MIN_HEIGHT_COVERAGE = 0.14;
 const MAX_COVERAGE = 0.98;
@@ -32,20 +23,6 @@ const alphaWindowBoundsCache = new Map<string, Promise<SceneAlphaWindowBounds | 
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-function getImageSource(image: HTMLImageElement): string {
-  const currentSrc = image.currentSrc.trim();
-  if (currentSrc !== "") {
-    return currentSrc;
-  }
-
-  const imageSrc = image.src.trim();
-  if (imageSrc !== "") {
-    return imageSrc;
-  }
-
-  return image.getAttribute("src")?.trim() ?? "";
 }
 
 export function clearSceneAlphaWindowFrameVariables(target: HTMLElement, prefix: string): void {
@@ -255,85 +232,4 @@ export function applySceneAlphaWindowBoundsToTarget(options: {
   }
 
   applyFrameVariables(target, variablePrefix, frame);
-}
-
-export class SceneAlphaWindowFrameController {
-  private image: HTMLImageElement;
-  private container: HTMLElement;
-  private target: HTMLElement;
-  private variablePrefix: string;
-  private alphaThreshold: number;
-  private resizeObserver: ResizeObserver | null;
-  private rafId: number;
-  private refreshToken: number;
-
-  constructor(options: SceneAlphaWindowFrameControllerOptions) {
-    this.image = options.image;
-    this.container = options.container;
-    this.target = options.target;
-    this.variablePrefix = options.variablePrefix;
-    this.alphaThreshold = options.alphaThreshold ?? DEFAULT_ALPHA_THRESHOLD;
-    this.resizeObserver = null;
-    this.rafId = 0;
-    this.refreshToken = 0;
-
-    this.image.addEventListener("load", this.handleImageLoad);
-
-    if (typeof ResizeObserver !== "undefined") {
-      this.resizeObserver = new ResizeObserver(() => {
-        this.refresh();
-      });
-      this.resizeObserver.observe(this.container);
-    }
-  }
-
-  refresh(): void {
-    if (this.rafId !== 0) {
-      return;
-    }
-
-    this.rafId = window.requestAnimationFrame(() => {
-      this.rafId = 0;
-      void this.sync();
-    });
-  }
-
-  clear(): void {
-    clearSceneAlphaWindowFrameVariables(this.target, this.variablePrefix);
-  }
-
-  disconnect(): void {
-    this.image.removeEventListener("load", this.handleImageLoad);
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = null;
-    if (this.rafId !== 0) {
-      window.cancelAnimationFrame(this.rafId);
-      this.rafId = 0;
-    }
-  }
-
-  private handleImageLoad = (): void => {
-    this.refresh();
-  };
-
-  private async sync(): Promise<void> {
-    const src = getImageSource(this.image);
-    if (src === "") {
-      this.clear();
-      return;
-    }
-
-    const token = ++this.refreshToken;
-    const bounds = await detectSceneAlphaWindowBounds(src, this.alphaThreshold);
-    if (token !== this.refreshToken) {
-      return;
-    }
-
-    applySceneAlphaWindowBoundsToTarget({
-      bounds,
-      container: this.container,
-      target: this.target,
-      variablePrefix: this.variablePrefix,
-    });
-  }
 }

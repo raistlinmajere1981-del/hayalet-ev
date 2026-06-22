@@ -75,10 +75,6 @@ export type {
   StartupRoomsSyncResult,
 } from "./room-installed-types.js";
 
-export function isValidRoomFeatureId(value: string): boolean {
-  return isValidRoomId(value);
-}
-
 export function validateRoomManifest(candidate: unknown): RoomManifestValidationResult {
   return validateRoomManifestCandidate(candidate, ROOM_SCHEMA_VERSION);
 }

@@ -545,7 +545,7 @@ export function getBackupStorageDir() {
   return backupDir;
 }
 
-function getProjectRoot() {
+export function getProjectRoot() {
   return projectRoot;
 }
 

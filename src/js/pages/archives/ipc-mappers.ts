@@ -50,10 +50,6 @@ export function unwrapIpcData(value: unknown): unknown {
   return record["data"];
 }
 
-export function toRecordArrayFromIpc(value: unknown): Record<string, unknown>[] {
-  return toRecordArray(unwrapIpcData(value));
-}
-
 export function mapMessageResult(record: Record<string, unknown>): MessageResult {
   const conversationId = readString(record, "conversationId", "conversation_id");
   const conversationTitle = readString(record, "conversationTitle", "conversation_title");

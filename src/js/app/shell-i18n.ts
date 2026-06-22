@@ -4,7 +4,6 @@ import { AppI18n } from "../modules/i18n/index.js";
 const ROOT_NAMESPACES = new Set(["app", "shell", "entrance", "opencodeUi"]);
 
 let hasBootstrapped = false;
-let removeListener: (() => void) | null = null;
 
 function resolveShellKey(key: string): string {
   const normalized = key.trim();
@@ -54,17 +53,11 @@ export function bootstrapShellI18n(): void {
     return;
   }
 
-  removeListener = AppI18n.subscribe((_pack: LoadedLanguagePack) => {
+  AppI18n.subscribe((_pack: LoadedLanguagePack) => {
     applyShellStaticTranslations();
   });
   hasBootstrapped = true;
   applyShellStaticTranslations();
-}
-
-export function disposeShellI18n(): void {
-  removeListener?.();
-  removeListener = null;
-  hasBootstrapped = false;
 }
 
 export function shellT(key: string, params?: TranslationParams): string {

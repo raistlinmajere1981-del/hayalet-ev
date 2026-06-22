@@ -10,7 +10,7 @@ import {
 import { resolveInstallableArtifact } from "../android-companion-utils.mjs";
 
 void test("android companion bootstrap parses command-line tools version from the numeric capture group", async () => {
-  const source = await readFile("scripts/lib/android-companion-installers.mjs", "utf8");
+  const source = await readFile("scripts/android-companion-utils.mjs", "utf8");
 
   assert.match(source, /full: match\[1\] \?\? null/);
   assert.match(source, /version: Number\.parseInt\(match\[2\] \?\? "", 10\)/);

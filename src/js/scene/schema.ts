@@ -17,10 +17,6 @@ export function isSceneRoomId(value: string | null | undefined): value is SceneR
 export const SCENE_NODE_KINDS = ["object", "back", "character"] as const;
 export type SceneNodeKind = (typeof SCENE_NODE_KINDS)[number];
 
-export function isSceneNodeKind(value: string | null | undefined): value is SceneNodeKind {
-  return value !== null && value !== undefined && SCENE_NODE_KINDS.includes(value as SceneNodeKind);
-}
-
 export const SCENE_LABEL_FONT_PRESETS = [
   "display",
   "inscription",
@@ -245,18 +241,4 @@ export interface SceneRoomThemeDefinition {
   backgroundSrc: string;
   panels?: Record<string, string>;
   views?: Record<string, SceneThemeViewDefinition>;
-}
-
-export interface SceneDebugThemeDefinition {
-  defaultRoomId: SceneDebugEditableRoomId;
-  editableRoomIds: readonly SceneDebugEditableRoomId[];
-  draftStorageKeys: Record<SceneDebugEditableRoomId, string>;
-}
-
-export interface SceneThemePack {
-  themeId: string;
-  loading: SceneLoadingThemeDefinition;
-  characters: SceneCharacterThemeDefinition;
-  rooms: Record<SceneRoomId, SceneRoomThemeDefinition>;
-  clickableDefaults: SceneClickableThemeDefinition;
 }

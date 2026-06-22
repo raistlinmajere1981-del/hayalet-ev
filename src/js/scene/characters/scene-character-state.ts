@@ -26,7 +26,3 @@ export function getSceneCharacterState(slot: SceneCharacterSlot | null): SceneCh
 
   return AppState.isConnected(slot) ? "connected" : "inactive";
 }
-
-export function getSceneCharacterStateClass(slot: SceneCharacterSlot | null): string {
-  return `is-${getSceneCharacterState(slot)}`;
-}

@@ -1,3 +1,4 @@
+/* ── Panel (generic card) ────────────────────────────────────────── */
 .repair-panel {
   display: flex;
   flex-direction: column;
@@ -54,6 +55,9 @@
 }
 .repair-panel__status-dot--amber {
   background: var(--repair-amber);
+}
+.repair-panel__status-dot--idle {
+  background: var(--repair-text-dim);
 }
 
 .repair-panel__eyebrow {

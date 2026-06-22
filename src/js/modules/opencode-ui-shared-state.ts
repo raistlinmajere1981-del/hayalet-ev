@@ -110,12 +110,6 @@ export async function readOpencodeUiSharedState(): Promise<OpencodeUiSharedState
   return cloneSharedState(await ensureSharedStateCache());
 }
 
-export async function writeOpencodeUiSharedState(
-  state: OpencodeUiSharedState
-): Promise<OpencodeUiSharedState> {
-  return await enqueueSharedStateMutation(() => normalizeOpencodeUiSharedState(state));
-}
-
 export async function patchOpencodeUiSharedState(
   updater:
     | Partial<OpencodeUiSharedState>

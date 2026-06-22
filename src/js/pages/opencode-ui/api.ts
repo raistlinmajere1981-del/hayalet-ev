@@ -11,10 +11,6 @@ export function setApiBaseUrl(baseUrl: string): void {
   }
 }
 
-export function getApiBaseUrl(): string {
-  return opencodeUiBaseUrl;
-}
-
 export function extractApiTextPayload(data: unknown): string {
   if (typeof data === "string") {
     return data;

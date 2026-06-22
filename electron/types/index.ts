@@ -1,4 +1,4 @@
-import type { IpcMainInvokeEvent, BrowserWindow } from "electron";
+import type { IpcMainInvokeEvent } from "electron";
 import type { LogLevel } from "@shared/index.js";
 import type { TranslationParams } from "@shared/i18n.js";
 
@@ -40,18 +40,6 @@ export interface Message {
   dom_id: string | null;
   content_hash: string | null;
   provider_message_id?: string | null;
-  created_at: number;
-}
-
-export interface Attachment {
-  id: string;
-  message_id: string;
-  conversation_id: string;
-  original_name: string;
-  stored_name: string;
-  stored_path: string;
-  mime_type: string | null;
-  size: number;
   created_at: number;
 }
 
@@ -202,33 +190,6 @@ export interface StructuredLogEntry {
   aiHint?: Record<string, unknown>;
 }
 
-export interface SlotSettings {
-  provider: string;
-  url: string;
-  account?: string;
-}
-
-export interface AppSettings {
-  slots: {
-    AI1: SlotSettings;
-    AI2: SlotSettings;
-  };
-  whisper?: {
-    enabled: boolean;
-    model?: string;
-  };
-  googleDrive?: {
-    enabled: boolean;
-    syncInterval?: number;
-  };
-  [key: string]: unknown;
-}
-
-export interface WindowRef {
-  mainWindow: BrowserWindow | null;
-  isQuitting: boolean;
-}
-
 export interface ProviderConfig {
   id: string;
   name: string;
@@ -247,19 +208,6 @@ export interface ProviderConfig {
   scrollerSelectors?: string[];
   filters?: Record<string, unknown> | null;
   telemetry?: Record<string, unknown> | null;
-}
-
-export interface FileOperationResult {
-  success: boolean;
-  path?: string;
-  error?: string;
-}
-
-export interface CommandDefinition {
-  name: string;
-  description: string;
-  usage?: string;
-  handler: (args: string[]) => Promise<string> | string;
 }
 
 export type { IpcMainInvokeEvent, BrowserWindow } from "electron";

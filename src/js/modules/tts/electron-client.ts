@@ -2,7 +2,6 @@ import type { OperationCapability, OperationOwner } from "../../../types/operati
 import type {
   TtsInstallModelResult,
   TtsManagedModelId,
-  TtsManagedModelStatus,
   TtsMode,
   TtsRequest,
   TtsRuntimeStatus,
@@ -123,20 +122,6 @@ function normalizeStopResult(value: unknown, requestId: string): TtsStopResult {
     status: createFallbackStatus(requestId),
     runtime: FALLBACK_RUNTIME_STATUS,
   };
-}
-
-function normalizeModelStatus(value: unknown): TtsManagedModelStatus | null {
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "modelId" in value &&
-    "label" in value &&
-    "installed" in value
-  ) {
-    return value as TtsManagedModelStatus;
-  }
-
-  return null;
 }
 
 function createFallbackStatus(requestId: string): TtsStatus {
@@ -456,22 +441,6 @@ async function playLocalAudio(status: TtsStatus): Promise<void> {
     }
     await context.close().catch(() => undefined);
   }
-}
-
-export async function listTtsModels(): Promise<TtsManagedModelStatus[]> {
-  const api = getElectronApi();
-  if (typeof api?.["ttsListModels"] !== "function") {
-    return [];
-  }
-
-  const value = await api["ttsListModels"]();
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map((entry) => normalizeModelStatus(entry))
-    .filter((entry): entry is TtsManagedModelStatus => entry !== null);
 }
 
 export async function installTtsModel(

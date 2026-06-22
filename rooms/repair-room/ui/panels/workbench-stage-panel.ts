@@ -662,6 +662,11 @@ export function renderWorkbenchStagePanel(
   }
   toolbar.append(toolsRow);
 
+  // Separator between rows
+  const rowSep = documentRef.createElement("div");
+  rowSep.className = "repair-toolbar__row-sep";
+  toolbar.append(rowSep);
+
   // Row 2: overlay layer toggle buttons
   const layersRow = documentRef.createElement("div");
   layersRow.className = "repair-toolbar-row repair-toolbar-row--layers";

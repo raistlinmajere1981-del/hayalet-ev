@@ -36,10 +36,6 @@ function syncWorkspaceToolDocumentState(): void {
   document.documentElement.dataset["activeWorkspaceTool"] = activeWorkspaceTool;
 }
 
-export function isWorkspaceToolName(value: string | null | undefined): value is WorkspaceToolName {
-  return WORKSPACE_TOOL_NAMES.includes(value as WorkspaceToolName);
-}
-
 export function getActiveWorkspaceTool(): WorkspaceToolName | null {
   return activeWorkspaceTool;
 }

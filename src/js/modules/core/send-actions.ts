@@ -214,17 +214,3 @@ export async function sendMessageWithContext(
     context
   );
 }
-
-export async function sendToTargetsWithContext(
-  payload: { targets?: string[]; text?: string; page?: string } | null,
-  context: SendBatchContext
-): Promise<{ success: boolean; message?: string }> {
-  return await sendBatchWithContext(
-    {
-      targets: payload?.targets ?? [],
-      text: payload?.text ?? "",
-      page: payload?.page ?? "generic",
-    },
-    context
-  );
-}

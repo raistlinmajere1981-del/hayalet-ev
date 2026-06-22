@@ -1,3 +1,4 @@
+/* ── Focus Mode Overlay ──────────────────────────────────────────── */
 .repair-shell--focus-mode .repair-panel:not(.repair-panel--workbench-stage) {
   opacity: 0.38;
   transition: opacity var(--repair-dur-focus) var(--repair-ease);

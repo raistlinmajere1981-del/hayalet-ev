@@ -97,28 +97,6 @@ export function updateServerStatusView(
   elements.statusDot?.classList.add("is-inactive");
 }
 
-export function updateOverlayView(
-  overlayEl: HTMLElement | null,
-  stateClass: string,
-  title: string,
-  subtitle: string
-): void {
-  if (overlayEl == null) {
-    return;
-  }
-
-  overlayEl.className = `webview-overlay ${stateClass}`;
-  const titleEl = overlayEl.querySelector(".overlay-title");
-  const subtitleEl = overlayEl.querySelector(".overlay-subtitle");
-
-  if (titleEl != null) {
-    titleEl.textContent = title;
-  }
-  if (subtitleEl != null) {
-    subtitleEl.textContent = subtitle;
-  }
-}
-
 export function updateTrafficStatusView(
   trafficState: AssistantTrafficState,
   elements: {

@@ -96,10 +96,85 @@ const config: KnipConfig = {
   // Barrel exports and room/MCP public APIs often re-export symbols for dynamic registries.
   ignoreExportsUsedInFile: true,
 
-  // Public API/type surface findings stay visible without breaking strict dependency/file gates.
+  // Intentional false positives — exports/types that look unused but are consumed dynamically.
+  ignoreIssues: {
+    // SceneEditor aliases (SceneDebug API wrapper for future use)
+    "src/js/scene-editor/scene-debug-room-registry.ts": ["exports", "types"],
+    "src/js/scene-editor/scene-debug-runtime-session.ts": ["exports"],
+    // isHtmlDocumentPayload — used by regression test via source string-match
+    "src/js/pages/opencode-ui/api.ts": ["exports"],
+
+    // Dynamic MCP tool registration — every tool/module is registered via framework, not direct import
+    "mcp-server/**/*.ts": ["exports", "types"],
+
+    // Room packages — dynamically registered via manifest/registry pattern
+    "rooms/**/*.ts": ["exports", "types"],
+
+    // Shared constants and utilities — consumed by bundler, not direct importer analysis
+    "shared/**/*.ts": ["exports", "types"],
+
+    // Script helpers — shared library files for the script CLI system
+    "scripts/**/*.{js,mjs}": ["exports", "types"],
+
+    // Electron internals — logger/capture/provider-tester used dynamically via IPC, CDP, or packaging
+    "electron/**/*.{ts,cjs}": ["exports", "types"],
+
+    // Ghost Agent — IPC bridge exports consumed by Electron main process
+    "ghost-agent/**/*.ts": ["exports", "types"],
+
+    // Module singletons — dynamic getter pattern: consumers call getXxx() on import
+    "src/js/modules/catch-manager.ts": ["exports"],
+    "src/js/modules/conversation-list-manager.ts": ["exports"],
+    "src/js/modules/protocol-handler.ts": ["exports"],
+    "src/js/modules/relay-manager.ts": ["exports"],
+    "src/js/modules/settings-manager.ts": ["exports"],
+    "src/js/modules/slot-presence-store.ts": ["exports"],
+    "src/js/modules/upload-manager.ts": ["exports"],
+    "src/js/modules/webview-manager.ts": ["exports"],
+    "src/js/modules/logger/Logger.ts": ["exports"],
+
+    // Webview provider method files — dynamically registered via opencodeUiProvider map
+    "src/js/modules/webview/**/*.ts": ["exports"],
+
+    // Barrel re-exports — consumed by importing the barrel, not the leaf file
+    "src/js/scene-system/scene-clickable-theme.ts": ["exports"],
+    "src/js/app/ui-mode/state.ts": ["exports"],
+
+    // Room manifest helpers and type guards — used dynamically by room loader/registry
+    "src/types/room-manifest-helpers.ts": ["exports", "types"],
+    "src/types/room-manifest-readers.ts": ["exports", "types"],
+    "src/types/room-manifest-validation.ts": ["exports", "types"],
+    "src/types/room-scene-guards.ts": ["exports", "types"],
+    "src/types/room-scene-readers.ts": ["exports", "types"],
+    "src/types/room-validation-primitives.ts": ["exports", "types"],
+
+    // Type definitions — exported as public API surface, consumed by downstream packages
+    "src/types/commands.ts": ["exports", "types"],
+    "src/types/common.ts": ["types"],
+    "src/types/database.ts": ["types"],
+    "src/types/ipc-channels.ts": ["types"],
+    "src/types/logging-core.ts": ["types"],
+    "src/types/provider.ts": ["types"],
+    "src/types/relay.ts": ["types"],
+    "src/types/settings.ts": ["types"],
+    "src/types/traffic.ts": ["types"],
+    "src/types/transcript.ts": ["types"],
+    "src/types/us1-mail.ts": ["types"],
+    "src/types/room-schema-version.ts": ["types"],
+
+    // Page-level type exports — part of page API surface
+    "src/js/pages/entrance/scene/scene-connect-actions.ts": ["types"],
+    "src/js/pages/opencode-ui/types.ts": ["types"],
+
+    // Outbound bridge metadata — dynamic consumer resolution
+    "src/js/modules/webview/outbound-bridge-metadata.ts": ["exports"],
+  },
+
+  // Public API/type/enum surface findings stay visible without breaking strict gates.
   rules: {
     exports: "warn",
     types: "warn",
+    enumMembers: "warn",
   },
 
   eslint: {

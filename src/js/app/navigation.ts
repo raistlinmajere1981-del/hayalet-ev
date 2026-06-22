@@ -411,20 +411,7 @@ export function setupReportPanel(): void {
   // NOTE: Kept for backward compatibility.
 }
 
-export function getLastPrimaryPage(): string {
-  return lastPrimaryPage;
-}
-
 export function closeSpecialPage(pageName: string): void {
   const fallbackPage = specialPageReturnTargets[pageName] ?? lastPrimaryPage;
   showPage(fallbackPage === pageName ? lastPrimaryPage : fallbackPage, false);
-}
-
-export function toggleSpecialPage(pageName: string): void {
-  if (currentPage === pageName) {
-    closeSpecialPage(pageName);
-    return;
-  }
-
-  showPage(pageName);
 }

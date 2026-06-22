@@ -63,15 +63,3 @@ export function resolveSceneAiConnectSlot(
     mode: "unavailable",
   };
 }
-
-export function resolveSceneUs1ConnectTarget(): SceneUs1ConnectResolution {
-  const us1Presence = AppState.getEntityPresence("us1");
-  const selectedAccountId = normalizeAccountId(us1Presence.accountId);
-  const selectedRemoteUserId = normalizeAccountId(us1Presence.remoteUserId);
-
-  return {
-    slot: "us1",
-    selectedAccountId: selectedAccountId !== "" ? selectedAccountId : null,
-    selectedRemoteUserId: selectedRemoteUserId !== "" ? selectedRemoteUserId : null,
-  };
-}

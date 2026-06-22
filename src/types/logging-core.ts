@@ -192,22 +192,3 @@ export interface LogExportResult {
   fileSize: number;
   duration: number;
 }
-
-export const isLogEntry = (obj: unknown): obj is LogEntry => {
-  return (
-    typeof obj === "object" &&
-    obj !== null &&
-    "timestamp" in obj &&
-    "level" in obj &&
-    "category" in obj &&
-    "message" in obj
-  );
-};
-
-export const isValidLogLevel = (level: string): level is LogLevel => {
-  return Object.values(LogLevel).includes(level as LogLevel);
-};
-
-export const isValidVisibility = (vis: number): vis is LogVisibility => {
-  return vis === 1 || vis === 2 || vis === 3;
-};

@@ -10,12 +10,6 @@ import type {
 } from "../../../types/provider.ts";
 import { AppI18n } from "../../modules/i18n/index.js";
 
-export interface ProviderTestOverlaySurface {
-  kind: "overlay" | "side-panel";
-  hostSlot: ProviderTestSlot;
-  testedSlot: ProviderTestSlot;
-}
-
 export interface ProviderTestOverlayHost {
   kind: "overlay";
   hostSlot: "ai1" | "ai2";
@@ -29,12 +23,6 @@ export interface ProviderTestSidePanelHost {
 }
 
 export type ProviderTestSurface = ProviderTestOverlayHost | ProviderTestSidePanelHost;
-
-export interface ProviderTestSurfaceLegacy {
-  kind: "overlay" | "side-panel";
-  hostSlot: ProviderTestSlot;
-  testedSlot: ProviderTestSlot;
-}
 
 export interface ScenarioProgressSummary {
   title: string;

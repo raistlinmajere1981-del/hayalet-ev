@@ -257,7 +257,7 @@ export const RUNTIME_PAGE_STYLE_ENTRYPOINT = {
   expectedLazyStyleKeys: ["archives", "whisper"],
 };
 
-const CLASSIC_CSS_OWNERSHIP = [
+export const CLASSIC_CSS_OWNERSHIP = [
   {
     stylesheet: "src/styles/main.css",
     ownership: ["shared shell", "standalone page"],
@@ -375,7 +375,7 @@ export const RUNTIME_SELECTOR_CONTRACTS = [
   },
 ];
 
-const TARGET_TOKEN_TAXONOMY = [
+export const TARGET_TOKEN_TAXONOMY = [
   {
     layer: "primitive",
     owner: "src/styles/design-system/tokens/*.css",

@@ -30,14 +30,6 @@ export interface OpenPathResult {
   message?: string;
 }
 
-export function isMessageItem(value: unknown): value is MessageItem {
-  return normalizeMessageItem(value) !== null;
-}
-
-export function isAttachmentData(value: unknown): value is AttachmentData {
-  return normalizeAttachmentData(value) !== null;
-}
-
 function readStringField(value: Record<string, unknown>, ...keys: string[]): string | undefined {
   for (const key of keys) {
     const candidate = value[key];

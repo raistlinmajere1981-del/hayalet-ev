@@ -50,6 +50,16 @@
   animation: repair-rail-breath 4s ease-in-out infinite;
 }
 
+@keyframes repair-rail-breath {
+  0%,
+  100% {
+    border-left-color: var(--repair-cyan);
+  }
+  50% {
+    border-left-color: var(--repair-cyan-half);
+  }
+}
+
 .repair-session-card--archived {
   opacity: 0.6;
 }

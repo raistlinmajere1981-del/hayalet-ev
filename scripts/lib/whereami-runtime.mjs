@@ -1,6 +1,6 @@
 import { normalizeControl } from "./ghost-wrapper-runtime.mjs";
 
-const WHEREAMI_MODES = Object.freeze([
+export const WHEREAMI_MODES = Object.freeze([
   "terminal",
   "app",
   "ghost-agent",

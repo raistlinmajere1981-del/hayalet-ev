@@ -1,3 +1,4 @@
+/* ── Workspace Grid ──────────────────────────────────────────────── */
 .repair-workspace {
   flex: 1;
   display: grid;
@@ -11,6 +12,7 @@
   overflow: hidden;
 }
 
+/* Area assignments */
 .repair-panel--session-rail {
   grid-column: 1;
   grid-row: 1 / 2;
@@ -64,14 +66,16 @@
   display: none;
 }
 
-/* Repair Feed collapsed: Workbench expands. */
+/* ── Panel collapse — column reclaim ——————————————————————— */
+
+/* col3 (Repair Feed) collapsed — Workbench expands */
 .repair-workspace:has(> .repair-panel--tactical-feed.repair-panel--collapsed) {
   grid-template-columns:
     minmax(var(--repair-px-320), 0.95fr) minmax(0, 2.47fr)
     0 minmax(var(--repair-px-280), 0.9fr);
 }
 
-/* Knowledge stack collapsed: Workbench and Feed expand. */
+/* col4 (wizard-pack-stack) collapsed — Workbench + Feed expand */
 .repair-workspace:has(
   > .repair-panel--wizard-pack-stack > .repair-panel--knowledge-pack.repair-panel--collapsed
 ) {
@@ -80,7 +84,7 @@
     minmax(var(--repair-px-260), 0.82fr) 0;
 }
 
-/* Feed and Knowledge stack collapsed: Workbench takes maximum width. */
+/* Both col3 and col4 collapsed — Workbench takes maximum */
 .repair-workspace:has(> .repair-panel--tactical-feed.repair-panel--collapsed):has(
     > .repair-panel--wizard-pack-stack > .repair-panel--knowledge-pack.repair-panel--collapsed
   ) {
