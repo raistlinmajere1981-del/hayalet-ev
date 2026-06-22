@@ -105,7 +105,7 @@ void test("scene runtime files resolve theme assets through scene-system and avo
   assert.match(settingsSource, /scene-system\/index\.js/);
   assert.match(entranceSource, /scene-system\/index\.js/);
   assert.match(splashSource, /scene-system\/index\.js/);
-  assert.doesNotMatch(layoutStateSource, /scene-layout-registry\.js/);
+  assert.match(layoutStateSource, /scene-layout-registry\.js/);
   assert.match(layoutRegistrySource, /SceneThemeManager/);
   assert.match(layoutRegistrySource, /scene-clickable-defaults\.ts/);
   assert.equal(existsSync("src/js/scene/layout/scene-layout-state.ts"), false);
