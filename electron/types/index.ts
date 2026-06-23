@@ -141,7 +141,7 @@ export interface SessionListItem {
   stats: SessionSummary["stats"] | null;
 }
 
-export type LogSessionAppId = "app" | "mcp-server" | "ghost-agent";
+export type LogSessionAppId = "app" | "mcp-server" | "ghost-agent" | "android-companion";
 
 export interface LogSessionCleanupAppResult {
   app: LogSessionAppId;

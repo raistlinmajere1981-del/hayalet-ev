@@ -952,7 +952,7 @@ declare global {
         deletedCount: number;
         preservedCount: number;
         apps: Array<{
-          app: "app" | "mcp-server" | "ghost-agent";
+          app: "app" | "mcp-server" | "ghost-agent" | "android-companion";
           latestSessionId: string | null;
           activeSessionId: string | null;
           deletedSessionIds: string[];

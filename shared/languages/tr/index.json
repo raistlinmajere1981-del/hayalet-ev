@@ -4807,7 +4807,7 @@
           "readLogs": {
             "description": "Electron console ve error loglarını oku. Source, level, içerik ve correlation ID ile filtreleme destekler.",
             "type": "Log tipi",
-            "app": "Session logları okunacak uygulama (varsayılan: app)",
+            "app": "Session logları okunacak uygulama (app, mcp-server, ghost-agent, android-companion)",
             "tail": "Gösterilecek son satır sayısı (varsayılan: 50)",
             "source": "Kaynak filtresi: MAIN, RENDERER, WEBVIEW-AI1, WEBVIEW-AI2, WEBVIEW-* (glob destekli)",
             "level": "Log seviyesi filtresi",
@@ -4824,7 +4824,7 @@
           "listLogSessions": {
             "description": "Mevcut log session'larını listele. Her session bir uygulama çalıştırmasını temsil eder.",
             "limit": "Gösterilecek maksimum session sayısı (varsayılan: 10)",
-            "app": "Session listesi alınacak uygulama (varsayılan: app)",
+            "app": "Session listesi alınacak uygulama (app, mcp-server, ghost-agent, android-companion)",
             "useCases": {
               "viewSessions": "Geçmiş session'ları görüntüleme",
               "findSessionId": "Belirli bir session ID bulma"
@@ -4845,7 +4845,7 @@
           "getSessionSummary": {
             "description": "Belirli bir session'ın özet bilgilerini al (hata sayısı, süre, son durum).",
             "sessionId": "Session ID (varsayılan: en son session)",
-            "app": "Özet alınacak uygulama (varsayılan: app)",
+            "app": "Özet alınacak uygulama (app, mcp-server, ghost-agent, android-companion)",
             "useCases": {
               "healthCheck": "Session sağlık kontrolü",
               "errorStats": "Hata istatistiklerini görme",

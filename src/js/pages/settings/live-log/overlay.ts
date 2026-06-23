@@ -427,12 +427,15 @@ export function setupLiveLogOverlay({
         state.entriesByApp.app = [];
         state.entriesByApp["mcp-server"] = [];
         state.entriesByApp["ghost-agent"] = [];
+        state.entriesByApp["android-companion"] = [];
         state.sessionsByApp.app = [];
         state.sessionsByApp["mcp-server"] = [];
         state.sessionsByApp["ghost-agent"] = [];
+        state.sessionsByApp["android-companion"] = [];
         state.lastFingerprintByApp.app = "";
         state.lastFingerprintByApp["mcp-server"] = "";
         state.lastFingerprintByApp["ghost-agent"] = "";
+        state.lastFingerprintByApp["android-companion"] = "";
         state.selectedEntryId = "";
 
         await refreshActiveApp(true);

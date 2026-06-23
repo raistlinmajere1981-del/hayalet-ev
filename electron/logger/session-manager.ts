@@ -30,7 +30,12 @@ let SESSION_START_TIME: string | null = null;
 
 let appStateSnapshot: AppState = {};
 
-const LOG_SESSION_APP_IDS: LogSessionAppId[] = ["app", "mcp-server", "ghost-agent"];
+const LOG_SESSION_APP_IDS: LogSessionAppId[] = [
+  "app",
+  "mcp-server",
+  "ghost-agent",
+  "android-companion",
+];
 // NOTE: Some log producers do not emit summary.json, so a recent write window is treated as potentially active.
 const RECENT_ACTIVE_SESSION_WINDOW_MS = 10 * 60 * 1000;
 

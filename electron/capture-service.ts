@@ -127,6 +127,7 @@ import {
   normalizeCompanionDiagnosticsShadowSnapshot,
   writeCompanionDiagnosticsShadowSnapshot,
 } from "./capture/diagnostics-helper.ts";
+import { companionSessionManager } from "./capture/companion-session-manager.ts";
 
 export const CAPTURE_MEDIA_INGRESS_CHANNEL = "capture:media-ingress";
 export const CAPTURE_AMBIENT_STATUS_CHANNEL = "capture:ambient-status";
@@ -233,6 +234,7 @@ class CaptureService {
   }
 
   async shutdown(): Promise<void> {
+    await companionSessionManager.shutdownAll();
     await this.scrcpyHub.stopSession();
     await this.closeBridgeServer();
     this.bridgeSessions.clear();
@@ -1681,6 +1683,7 @@ class CaptureService {
           port: artifact.bridgePort,
           lastError: null,
         };
+        companionSessionManager.startTimeoutChecker();
         resolvePromise();
       });
     });
@@ -2011,6 +2014,7 @@ class CaptureService {
         }
 
         const written = await writeCompanionDiagnosticsShadowSnapshot(snapshot);
+        void companionSessionManager.handleSnapshot(snapshot);
         this.sendJson(response, 200, {
           ok: true,
           shadowPath: written.textPath,

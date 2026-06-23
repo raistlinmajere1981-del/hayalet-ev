@@ -5,9 +5,9 @@ import { createMcpTranslatorSync } from "./i18n/index.js";
 
 const logUtilsT = createMcpTranslatorSync();
 const MAIN_APP_LOG_DIR_CANDIDATES = ["app"] as const;
-const KNOWN_LOG_APPS = new Set(["app", "mcp-server", "ghost-agent"]);
+const KNOWN_LOG_APPS = new Set(["app", "mcp-server", "ghost-agent", "android-companion"]);
 
-export type LogAppId = "app" | "mcp-server" | "ghost-agent";
+export type LogAppId = "app" | "mcp-server" | "ghost-agent" | "android-companion";
 
 interface LogFilters {
   source?: string;

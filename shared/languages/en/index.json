@@ -4807,7 +4807,7 @@
           "readLogs": {
             "description": "Read Electron console and error logs. Supports filtering by source, level, content, and correlation ID.",
             "type": "Log type",
-            "app": "Application whose session logs should be read (default: app)",
+            "app": "Application whose session logs should be read (app, mcp-server, ghost-agent, android-companion)",
             "tail": "Number of last lines to show (default: 50)",
             "source": "Source filter: MAIN, RENDERER, WEBVIEW-AI1, WEBVIEW-AI2, WEBVIEW-* (glob supported)",
             "level": "Log level filter",
@@ -4824,7 +4824,7 @@
           "listLogSessions": {
             "description": "List available log sessions. Each session represents one application run.",
             "limit": "Maximum number of sessions to show (default: 10)",
-            "app": "Application whose sessions should be listed (default: app)",
+            "app": "Application whose sessions should be listed (app, mcp-server, ghost-agent, android-companion)",
             "useCases": {
               "viewSessions": "Viewing historical sessions",
               "findSessionId": "Finding a specific session ID"
@@ -4845,7 +4845,7 @@
           "getSessionSummary": {
             "description": "Get summary information for a specific session (error count, duration, final state).",
             "sessionId": "Session ID (default: latest session)",
-            "app": "Application whose summary should be read (default: app)",
+            "app": "Application whose summary should be read (app, mcp-server, ghost-agent, android-companion)",
             "useCases": {
               "healthCheck": "Session health checks",
               "errorStats": "Viewing error statistics",

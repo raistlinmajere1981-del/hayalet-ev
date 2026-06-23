@@ -156,7 +156,7 @@ export function createElectronTools(context: ToolContext): ToolEntry[] {
             },
             app: {
               type: "string",
-              enum: ["app", "mcp-server", "ghost-agent"],
+              enum: ["app", "mcp-server", "ghost-agent", "android-companion"],
               description: electronToolT("readLogs.app"),
               default: "app",
             },
@@ -223,7 +223,7 @@ export function createElectronTools(context: ToolContext): ToolEntry[] {
             },
             app: {
               type: "string",
-              enum: ["app", "mcp-server", "ghost-agent"],
+              enum: ["app", "mcp-server", "ghost-agent", "android-companion"],
               description: electronToolT("listLogSessions.app"),
               default: "app",
             },
@@ -301,7 +301,7 @@ export function createElectronTools(context: ToolContext): ToolEntry[] {
             },
             app: {
               type: "string",
-              enum: ["app", "mcp-server", "ghost-agent"],
+              enum: ["app", "mcp-server", "ghost-agent", "android-companion"],
               description: electronToolT("getSessionSummary.app"),
               default: "app",
             },
