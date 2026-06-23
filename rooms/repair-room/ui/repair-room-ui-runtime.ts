@@ -69,7 +69,6 @@ import {
   getCameraStatusChipTitle,
   getRouteLabel,
 } from "./runtime/status-helpers.js";
-import { getGuidanceSurfaceForPanel } from "./runtime/guidance-helpers.js";
 import { createRepairKeyboardController } from "./runtime/keyboard.js";
 import { createRepairMeasurementDomRuntime } from "./runtime/measurement-dom.js";
 import { createRepairDictationComposer } from "./runtime/dictation-composer.js";
@@ -514,33 +513,9 @@ export function createRepairRoomUiRuntime() {
     });
   }
 
-  function applyPanelGuidanceChrome(panel: HTMLElement, panelId: RepairPanelId): void {
-    const visibility = state.guidance.panelVisibility.panels[panelId];
-    const guidanceSurface = getGuidanceSurfaceForPanel(panelId);
-    const corridorPassive =
-      state.guidance.focusCorridor.active &&
-      guidanceSurface !== "none" &&
-      !state.guidance.focusCorridor.allowedSurfaces.includes(guidanceSurface);
-    setDatasetIfChanged(panel, "visibility", visibility);
+  function applyPanelGuidanceChrome(panel: HTMLElement, _panelId: RepairPanelId): void {
     setDatasetIfChanged(panel, "primarySurface", state.guidance.panelVisibility.primarySurface);
     setDatasetIfChanged(panel, "operationalProfile", state.guidance.operationalProfile);
-    setDatasetIfChanged(panel, "corridor", corridorPassive ? "passive" : "allowed");
-    if (panelId === "tactical-feed") {
-      setDatasetIfChanged(panel, "feedDensity", state.guidance.panelVisibility.tacticalFeedDensity);
-    }
-    panel.classList.toggle(
-      "repair-panel--dominant",
-      panelId === state.guidance.panelVisibility.primarySurface
-    );
-    panel.classList.toggle(
-      "repair-panel--subdued",
-      state.guidance.panelVisibility.subduedPanelIds.includes(panelId)
-    );
-    panel.classList.toggle("repair-panel--hidden-policy", visibility === "hidden");
-    panel.classList.toggle("repair-panel--compact-policy", visibility === "compact");
-    panel.classList.toggle("repair-panel--contextual-policy", visibility === "contextual");
-    panel.classList.toggle("repair-panel--expanded-policy", visibility === "expanded");
-    panel.classList.toggle("repair-panel--corridor-passive", corridorPassive);
   }
 
   function updatePanelChrome(panel: HTMLElement, panelId: RepairPanelId): void {
@@ -603,10 +578,10 @@ export function createRepairRoomUiRuntime() {
   });
 
   function syncDockLayout(dock: HTMLElement): void {
-    const dockLayout = getRepairDockLayoutProjection(state.guidance.panelVisibility.panels);
+    const dockLayout = getRepairDockLayoutProjection();
     const visiblePanelCount = dockLayout.visiblePanelIds.length;
     if (dock.hidden !== (visiblePanelCount === 0)) {
-      dock.hidden = visiblePanelCount === 0;
+      dock.hidden = false;
     }
     setDatasetIfChanged(dock, "visiblePanelCount", String(visiblePanelCount));
     setStyleIfChanged(dock, "gridTemplateColumns", dockLayout.gridTemplateColumns);
@@ -1271,9 +1246,7 @@ export function createRepairRoomUiRuntime() {
       persistentShell.root,
       `repair-shell repair-shell--profile-${state.guidance.operationalProfile} repair-shell--calm-${primarySurfaceClass}${
         state.guidance.focusCorridor.active ? " repair-shell--corridor-active" : ""
-      } repair-shell--rhythm-${rhythmPhaseClass}${
-        state.layout.focusMode ? " repair-shell--focus-mode" : ""
-      }`
+      } repair-shell--rhythm-${rhythmPhaseClass}`
     );
     setTextIfChanged(
       persistentShell.clock,

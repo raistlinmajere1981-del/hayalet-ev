@@ -16,7 +16,6 @@ import type {
   RepairOperationalProfile,
   RepairOperationalMode,
   RepairOverlayEntityRef,
-  RepairPanelId,
   RepairSession,
 } from "../../shared/types/index.js";
 import type {
@@ -29,7 +28,6 @@ import type {
   RepairKnowledgeRegionProjection,
   RepairMeasurementRelationship,
   RepairOperationsProjection,
-  RepairPanelVisibilityMode,
   RepairReplayProjection,
   RepairSpatialFocusState,
   RepairTacticalFeedItem,
@@ -299,32 +297,6 @@ function getOperationalMode(
   return state.workbench.timeline.autoFollowLive ? "live" : "replay";
 }
 
-const GUIDANCE_PANEL_IDS: RepairPanelId[] = [
-  "session-rail",
-  "workbench-stage",
-  "tactical-feed",
-  "session-wizard",
-  "knowledge-pack",
-  "visual-timeline",
-  "operator-profile",
-  "repair-settings",
-  "chat",
-  "measurement",
-  "room-sync",
-];
-
-function buildPanelVisibilityMap(
-  defaultMode: RepairPanelVisibilityMode
-): Record<RepairPanelId, RepairPanelVisibilityMode> {
-  return GUIDANCE_PANEL_IDS.reduce<Record<RepairPanelId, RepairPanelVisibilityMode>>(
-    (panels, panelId) => {
-      panels[panelId] = defaultMode;
-      return panels;
-    },
-    {} as Record<RepairPanelId, RepairPanelVisibilityMode>
-  );
-}
-
 function getLatestEvent(events: RepairEvent[]): RepairEvent | null {
   return events.at(-1) ?? null;
 }
@@ -572,79 +544,27 @@ function buildOperationalRhythm(params: {
   };
 }
 
-function buildPanelVisibility(params: {
-  operationalProfile: RepairOperationalProfile;
-  phase: RepairInvestigationPhase;
-  primarySurface: RepairGuidanceSurface;
-  hasKnowledgePack: boolean;
-  replayMode: RepairReplayProjection["replayMode"];
-  isPlaying: boolean;
-  unresolvedCriticalItems: number;
-  focusCorridorActive: boolean;
-}): RepairGuidanceProjection["panelVisibility"] {
-  const panels = buildPanelVisibilityMap("compact");
-  panels["workbench-stage"] = "expanded";
-  panels["session-rail"] = params.operationalProfile === "advanced" ? "contextual" : "compact";
-  panels["visual-timeline"] =
-    params.replayMode !== "live" || params.operationalProfile === "advanced"
-      ? "contextual"
-      : "compact";
-  panels["operator-profile"] = params.operationalProfile === "advanced" ? "contextual" : "compact";
-  panels["repair-settings"] = "compact";
-  panels["chat"] = params.operationalProfile === "advanced" ? "compact" : "hidden";
-  panels["room-sync"] = params.operationalProfile === "advanced" ? "compact" : "hidden";
-  panels["knowledge-pack"] = "compact";
-  panels["session-wizard"] = "hidden";
-  panels["tactical-feed"] = params.unresolvedCriticalItems > 0 ? "contextual" : "compact";
-  panels.measurement =
-    params.phase === "measure" || params.phase === "verify" ? "contextual" : "compact";
-
-  if (params.focusCorridorActive && params.operationalProfile === "novice") {
-    panels["visual-timeline"] = "compact";
-    panels["operator-profile"] = "compact";
-    panels["repair-settings"] = "compact";
-    panels.chat = "hidden";
-    panels["room-sync"] = "hidden";
-  }
-
-  if (params.primarySurface === "session-wizard") {
-    panels["session-wizard"] = "expanded";
-    panels["tactical-feed"] = "compact";
-  } else if (params.primarySurface === "tactical-feed") {
-    panels["tactical-feed"] = "expanded";
-    panels["session-wizard"] = "hidden";
-  } else if (params.primarySurface === "measurement") {
-    panels.measurement = "expanded";
-    panels["tactical-feed"] = "compact";
-    panels["session-wizard"] = "hidden";
-  }
-
-  if (params.primarySurface === "workbench" && params.hasKnowledgePack) {
-    panels["knowledge-pack"] = params.operationalProfile === "advanced" ? "contextual" : "compact";
-  }
-
-  const tacticalFeedDensity: RepairGuidanceProjection["panelVisibility"]["tacticalFeedDensity"] =
-    params.primarySurface === "tactical-feed"
-      ? "expanded"
-      : params.primarySurface === "measurement" || params.primarySurface === "session-wizard"
-        ? "minimal"
-        : params.replayMode !== "live" && params.isPlaying === false
-          ? "compact"
-          : params.unresolvedCriticalItems > 0
-            ? "compact"
-            : "minimal";
-  const subduedPanelIds = GUIDANCE_PANEL_IDS.filter((panelId) => {
-    if (panelId === "workbench-stage") return false;
-    if (params.primarySurface === "none") return true;
-    return panelId !== params.primarySurface;
-  });
-
+function buildStaticPanelVisibility(
+  primarySurface: RepairGuidanceSurface
+): RepairGuidanceProjection["panelVisibility"] {
   return {
-    primarySurface: params.primarySurface,
-    panels,
-    tacticalFeedDensity,
-    subduedPanelIds,
-    dimSecondaryControls: params.operationalProfile === "novice",
+    primarySurface,
+    panels: {
+      "session-rail": "compact",
+      "workbench-stage": "expanded",
+      "tactical-feed": "compact",
+      "session-wizard": "compact",
+      "knowledge-pack": "compact",
+      "visual-timeline": "compact",
+      "operator-profile": "compact",
+      "repair-settings": "compact",
+      chat: "compact",
+      measurement: "compact",
+      "room-sync": "compact",
+    },
+    tacticalFeedDensity: "compact",
+    subduedPanelIds: [],
+    dimSecondaryControls: false,
   };
 }
 
@@ -973,16 +893,7 @@ function buildRepairGuidanceProjection(params: {
       confidence,
       urgency,
     })),
-    panelVisibility: buildPanelVisibility({
-      operationalProfile,
-      phase: investigationPhase,
-      primarySurface,
-      hasKnowledgePack: params.session.knowledgePack !== null,
-      replayMode: params.state.workbench.timeline.replayMode,
-      isPlaying: params.state.workbench.timeline.isPlaying,
-      unresolvedCriticalItems,
-      focusCorridorActive: focusCorridor.active,
-    }),
+    panelVisibility: buildStaticPanelVisibility(primarySurface),
     aiInterruption: {
       confidence,
       urgency,

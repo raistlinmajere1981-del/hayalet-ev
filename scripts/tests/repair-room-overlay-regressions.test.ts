@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { REPAIR_UI_COMMANDS } from "../../rooms/repair-room/shared/repair-constants.ts";
-import { createRepairDefaultGuidanceProjection } from "../../rooms/repair-room/shared/ui/state.ts";
 import { createInitialRepairRuntimeState } from "../../rooms/repair-room/host/state/repair-runtime-state.ts";
 import { createRepairUiSnapshot } from "../../rooms/repair-room/host/state/repair-selectors.ts";
 import { resolveRepairAssetUrl } from "../../rooms/repair-room/ui/repair-asset-url.ts";
@@ -28,11 +27,6 @@ import {
   getRepairSnapAssist,
   repairImageRectsIntersect,
 } from "../../rooms/repair-room/ui/overlay/overlay-geometry.ts";
-
-function countGridTemplateTracks(template: string): number {
-  if (template === "none") return 0;
-  return template.trim().split(/\s+/).filter(Boolean).length;
-}
 
 function readRepairUiStyleText(): string {
   const uiRoot = join(process.cwd(), "rooms/repair-room/ui");
@@ -212,27 +206,10 @@ void test("repair-room resolves runtime assets from the UI entry directory", () 
   );
 });
 
-void test("repair-room dock grid tracks match visible Phase 3 dock panels", () => {
-  const cases = [
-    ["measurement"],
-    ["measurement", "chat"],
-    ["measurement", "chat", "room-sync"],
-  ] as const;
-
-  for (const visibleDockPanelIds of cases) {
-    const panels = { ...createRepairDefaultGuidanceProjection("advanced").panelVisibility.panels };
-    for (const panelId of REPAIR_DOCK_PANEL_IDS) {
-      panels[panelId] = (visibleDockPanelIds as readonly string[]).includes(panelId) ? "compact" : "hidden";
-    }
-
-    const dockLayout = getRepairDockLayoutProjection(panels);
-    assert.deepEqual(dockLayout.visiblePanelIds, [...visibleDockPanelIds]);
-    assert.equal(
-      countGridTemplateTracks(dockLayout.gridTemplateColumns),
-      visibleDockPanelIds.length
-    );
-    assert.equal(dockLayout.gridTemplateColumns, visibleDockPanelIds.map(() => "1fr").join(" "));
-  }
+void test("repair-room dock always shows all panels", () => {
+  const dockLayout = getRepairDockLayoutProjection();
+  assert.deepEqual(dockLayout.visiblePanelIds, [...REPAIR_DOCK_PANEL_IDS]);
+  assert.equal(dockLayout.gridTemplateColumns, "1fr 1fr 1fr");
 
   assert.deepEqual([...REPAIR_DOCK_PANEL_IDS], ["measurement", "chat", "room-sync"]);
 });

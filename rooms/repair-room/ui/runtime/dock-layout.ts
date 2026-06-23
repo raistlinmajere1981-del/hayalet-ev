@@ -1,5 +1,4 @@
 import type { RepairPanelId } from "../../shared/types/index.js";
-import type { RepairGuidanceProjection } from "../../shared/ui/state.js";
 
 export const REPAIR_DOCK_PANEL_IDS = [
   "measurement",
@@ -13,10 +12,9 @@ export interface RepairDockLayoutProjection {
 }
 
 export function getRepairVisibleDockPanelIds(
-  panels: RepairGuidanceProjection["panelVisibility"]["panels"],
   dockPanelIds: readonly RepairPanelId[] = REPAIR_DOCK_PANEL_IDS
 ): RepairPanelId[] {
-  return dockPanelIds.filter((panelId) => panels[panelId] !== "hidden");
+  return [...dockPanelIds];
 }
 
 export function getRepairDockGridTemplateColumns(visiblePanelCount: number): string {
@@ -27,10 +25,9 @@ export function getRepairDockGridTemplateColumns(visiblePanelCount: number): str
 }
 
 export function getRepairDockLayoutProjection(
-  panels: RepairGuidanceProjection["panelVisibility"]["panels"],
   dockPanelIds: readonly RepairPanelId[] = REPAIR_DOCK_PANEL_IDS
 ): RepairDockLayoutProjection {
-  const visiblePanelIds = getRepairVisibleDockPanelIds(panels, dockPanelIds);
+  const visiblePanelIds = getRepairVisibleDockPanelIds(dockPanelIds);
   return {
     visiblePanelIds,
     gridTemplateColumns: getRepairDockGridTemplateColumns(visiblePanelIds.length),

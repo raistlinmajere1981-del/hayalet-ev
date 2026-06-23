@@ -112,14 +112,6 @@
   border-bottom-color: var(--repair-border-strong);
 }
 
-.repair-panel--subdued:not(:hover):not(:focus-within) {
-  opacity: 0.58;
-}
-
-.repair-panel--corridor-passive:not(:hover):not(:focus-within) {
-  opacity: 0.42;
-}
-
 .repair-panel--hidden-policy {
   display: none;
 }

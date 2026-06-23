@@ -261,12 +261,12 @@ void test("repair-room host exports room-page lifecycle hooks and command regist
   assert.equal(normalized.snapshot.sessions.activeId, TEST_REPAIR_ACTIVE_SESSION_ID);
   assert.equal(normalized.snapshot.sessions.list.length, 1);
   assert.ok(normalized.snapshot.sessions.detail?.pcbImage);
-  assert.equal(normalized.snapshot.tacticalFeed.length, 2);
+  assert.equal(normalized.snapshot.tacticalFeed.length, 3);
   assert.equal(normalized.snapshot.guidance.operationalProfile, "novice");
   assert.equal(normalized.snapshot.guidance.panelVisibility.primarySurface, "measurement");
-  assert.equal(normalized.snapshot.guidance.panelVisibility.tacticalFeedDensity, "minimal");
-  assert.equal(normalized.snapshot.guidance.panelVisibility.panels.measurement, "expanded");
-  assert.equal(normalized.snapshot.guidance.panelVisibility.panels["session-wizard"], "hidden");
+  assert.equal(normalized.snapshot.guidance.panelVisibility.tacticalFeedDensity, "compact");
+  assert.equal(normalized.snapshot.guidance.panelVisibility.panels.measurement, "compact");
+  assert.equal(normalized.snapshot.guidance.panelVisibility.panels["session-wizard"], "compact");
   assert.equal(normalized.snapshot.guidance.overlaySaturation.maxVisibleRelationships, 4);
   assert.equal(normalized.snapshot.guidance.overlaySaturation.maxVisibleRegions, 5);
   assert.equal(normalized.snapshot.guidance.overlaySaturation.labelMode, "simplified");
@@ -1211,10 +1211,10 @@ void test("repair-room Phase 3 arbitrates one calm guidance surface per profile"
   let projection = createRepairReplayProjection(state, session);
   assert.equal(projection.guidance.operationalProfile, "novice");
   assert.equal(projection.guidance.panelVisibility.primarySurface, "measurement");
-  assert.equal(projection.guidance.panelVisibility.panels.measurement, "expanded");
+  assert.equal(projection.guidance.panelVisibility.panels.measurement, "compact");
   assert.equal(projection.guidance.panelVisibility.panels["tactical-feed"], "compact");
-  assert.equal(projection.guidance.panelVisibility.panels["session-wizard"], "hidden");
-  assert.equal(projection.guidance.panelVisibility.tacticalFeedDensity, "minimal");
+  assert.equal(projection.guidance.panelVisibility.panels["session-wizard"], "compact");
+  assert.equal(projection.guidance.panelVisibility.tacticalFeedDensity, "compact");
 
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.setOperationalProfile, { profile: "advanced" })
@@ -1229,6 +1229,7 @@ void test("repair-room Phase 3 arbitrates one calm guidance surface per profile"
   assert.equal(projection.guidance.overlaySaturation.maxVisibleRelationships, 12);
   assert.equal(projection.guidance.overlaySaturation.labelMode, "full");
   assert.equal(projection.guidance.panelVisibility.panels.chat, "compact");
+  assert.equal(projection.guidance.panelVisibility.panels["session-wizard"], "compact");
 
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "device-info" }).success,
@@ -1239,7 +1240,7 @@ void test("repair-room Phase 3 arbitrates one calm guidance surface per profile"
   assert.ok(session);
   projection = createRepairReplayProjection(state, session);
   assert.equal(projection.guidance.panelVisibility.primarySurface, "session-wizard");
-  assert.equal(projection.guidance.panelVisibility.panels["session-wizard"], "expanded");
+  assert.equal(projection.guidance.panelVisibility.panels["session-wizard"], "compact");
   assert.equal(projection.guidance.panelVisibility.panels["tactical-feed"], "compact");
 
   runtime.dispose();

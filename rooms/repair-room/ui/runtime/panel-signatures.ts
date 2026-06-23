@@ -13,7 +13,6 @@ export function buildRepairPanelSignature(params: {
     : 0;
   const layoutShape = {
     collapsed: state.layout.collapsedPanels[panelId],
-    visibility: state.guidance.panelVisibility.panels[panelId],
     primarySurface: state.guidance.panelVisibility.primarySurface,
     operationalProfile: state.guidance.operationalProfile,
     interactionSettings: state.layout.interactionSettings,
@@ -28,7 +27,6 @@ export function buildRepairPanelSignature(params: {
     focusCorridor: state.guidance.focusCorridor,
     rhythm: state.guidance.rhythm,
     voice: state.guidance.voice,
-    feedDensity: state.guidance.panelVisibility.tacticalFeedDensity,
   };
   switch (panelId) {
     case "session-rail":

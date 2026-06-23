@@ -334,20 +334,6 @@ export const REPAIR_INVESTIGATION_LIFECYCLE: RepairInvestigationPhase[] = [
   "conclude",
 ];
 
-const REPAIR_GUIDANCE_PANEL_IDS: RepairPanelId[] = [
-  "session-rail",
-  "workbench-stage",
-  "tactical-feed",
-  "session-wizard",
-  "knowledge-pack",
-  "visual-timeline",
-  "operator-profile",
-  "repair-settings",
-  "chat",
-  "measurement",
-  "room-sync",
-];
-
 function createRepairGuidancePanelMap(
   mode: RepairPanelVisibilityMode
 ): Record<RepairPanelId, RepairPanelVisibilityMode> {
@@ -374,8 +360,6 @@ export function createRepairDefaultGuidanceProjection(
   panels["session-wizard"] = "contextual";
   panels["knowledge-pack"] = "compact";
   panels["repair-settings"] = "compact";
-  panels.chat = operationalProfile === "advanced" ? "compact" : "hidden";
-  panels["room-sync"] = operationalProfile === "advanced" ? "compact" : "hidden";
 
   const lifecycle = [...REPAIR_INVESTIGATION_LIFECYCLE];
   return {
@@ -394,9 +378,9 @@ export function createRepairDefaultGuidanceProjection(
     panelVisibility: {
       primarySurface: "workbench",
       panels,
-      tacticalFeedDensity: "minimal",
-      subduedPanelIds: REPAIR_GUIDANCE_PANEL_IDS.filter((panelId) => panelId !== "workbench-stage"),
-      dimSecondaryControls: operationalProfile === "novice",
+      tacticalFeedDensity: "compact",
+      subduedPanelIds: [],
+      dimSecondaryControls: false,
     },
     aiInterruption: {
       confidence: "medium",
