@@ -126,8 +126,8 @@ void test("scene layout defaults now resolve from shared theme json maps instead
   const layoutSource = readFileSync("src/js/scene/layout/index.ts", "utf8");
   const layoutRegistrySource = readFileSync("src/js/scene-system/scene-layout-registry.ts", "utf8");
 
-  assert.match(layoutStateSource, /getSceneRoomLayout/);
-  assert.match(layoutStateSource, /getSceneLayoutForRoom/);
+  assert.doesNotMatch(layoutStateSource, /getSceneRoomLayout/);
+  assert.doesNotMatch(layoutStateSource, /getSceneLayoutForRoom/);
   assert.doesNotMatch(layoutStateSource, /@theme-source\/castle\/maps\/analyze\.scene\.json/);
   assert.doesNotMatch(layoutStateSource, /DEFAULT_SCENE_LAYOUTS/);
   assert.doesNotMatch(layoutStateSource, /draftStorageKeys/);

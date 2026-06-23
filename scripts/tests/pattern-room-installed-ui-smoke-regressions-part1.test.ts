@@ -1,0 +1,378 @@
+import type { FakeElement } from "./forge-room-ui-smoke.helpers.ts";
+import {
+  assert,
+  createMinimalForgeUiEnvironment,
+  createRoomInstalledCopy,
+  fireEvent,
+  pathToFileURL,
+  readTreeText,
+  resolve,
+  test
+} from "./forge-room-ui-smoke.helpers.ts";
+import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
+import { createSnapshot } from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
+import type { PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
+import { PATTERN_ROOM_LOADED_EVENT, PATTERN_ROOM_SAVE_COMMAND } from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
+
+const PATTERN_FOCUSED_VIEWS = ["board", "desk", "archive", "tenth-man", "report"] as const;
+type PatternFocusedViewId = (typeof PATTERN_FOCUSED_VIEWS)[number];
+type PatternRoomFakeApp = FakeElement;
+
+function assertTextIncludes(text: string, expectedValues: string[]): void {
+  expectedValues.forEach((expectedValue) => {
+    assert.match(text, new RegExp(expectedValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  });
+}
+
+function openFocusedView(
+  app: PatternRoomFakeApp,
+  viewId: PatternFocusedViewId
+): void {
+  const hotspot = app.querySelector(`[data-pattern-hotspot='${viewId}']`);
+  assert.ok(hotspot);
+  fireEvent(hotspot, "click");
+  assert.ok(app.querySelector(`[data-pattern-view='${viewId}']`));
+}
+
+function returnToOverview(app: PatternRoomFakeApp): void {
+  const backButton = app.querySelector("[data-pattern-back='true']");
+  assert.ok(backButton);
+  fireEvent(backButton, "click");
+  assert.ok(app.querySelector("[data-pattern-view='overview']"));
+}
+
+function installFormReset(form: FakeElement): void {
+  (form as FakeElement & { reset: () => void }).reset = () => {};
+}
+
+function submitForm(form: {
+  eventListeners: Map<string, Array<(event?: Record<string, unknown>) => void>>;
+  reset?: () => void;
+}): void {
+  let defaultPrevented = false;
+  const handlers = form.eventListeners.get("submit") ?? [];
+
+  handlers.forEach((handler) => {
+    handler({
+      preventDefault() {
+        defaultPrevented = true;
+      },
+    });
+  });
+
+  assert.equal(defaultPrevented, true);
+}
+
+function submitBoardLocalNode(
+  app: PatternRoomFakeApp,
+  labelText: string,
+  contentText: string,
+  nodeTypeValue: "claim" | "inspiration" | "uncertainty" = "claim"
+): void {
+  const nodeForm = app.querySelector("[data-pattern-author-node-form='true']");
+  const nodeType = app.querySelector("[data-pattern-author-node-type='true']");
+  const labelInput = app.querySelector("[data-pattern-author-node-label='true']");
+  const contentInput = app.querySelector("[data-pattern-author-node-content='true']");
+  assert.ok(nodeForm);
+  assert.ok(nodeType);
+  assert.ok(labelInput);
+  assert.ok(contentInput);
+
+  installFormReset(nodeForm);
+  nodeType.value = nodeTypeValue;
+  labelInput.value = labelText;
+  contentInput.value = contentText;
+  submitForm(nodeForm);
+}
+
+function createHostLoadedSnapshot(
+  activeView: PatternFocusedViewId | "overview",
+  noteText: string
+): PatternRoomSessionSnapshot {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  localState.addLocalNote(noteText);
+  return createSnapshot(localState, activeView);
+}
+
+function readLatestSavePayload(
+  environment: ReturnType<typeof createMinimalForgeUiEnvironment>
+): Record<string, unknown> {
+  const event = environment.sentEvents[environment.sentEvents.length - 1];
+  assert.ok(event);
+  assert.equal(event.command, PATTERN_ROOM_SAVE_COMMAND);
+  return event.payload;
+}
+
+function assertSavePayloadIncludesLocalNode(
+  payload: Record<string, unknown>,
+  labelText: string
+): PatternRoomSessionSnapshot {
+  const snapshot = payload["snapshot"] as PatternRoomSessionSnapshot;
+  assert.equal(snapshot.roomId, "pattern-room");
+  assert.equal(
+    snapshot.overlay.localAuthoredNodes.some((node) => node.label === labelText),
+    true
+  );
+  return snapshot;
+}
+
+void test("pattern-room installed UI renders overview hotspots and returns from focused views", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?smoke=${Date.now()}`
+    );
+
+    assert.equal(environment.readyPayload()?.["roomId"], "pattern-room");
+    assert.equal(environment.readyPayload()?.["featureId"], "pattern-workbench");
+    assert.ok(environment.app.querySelector("[data-pattern-view='overview']"));
+    assert.match(readTreeText(environment.app), /Dünya’nın Şekli/);
+    assert.match(readTreeText(environment.app), /İz Sürme Odası/);
+    assert.match(readTreeText(environment.app), /Pattern Room/);
+
+    const hotspots = environment.app.querySelectorAll("[data-pattern-hotspot]");
+    assert.equal(hotspots.length, PATTERN_FOCUSED_VIEWS.length);
+
+    for (const viewId of PATTERN_FOCUSED_VIEWS) {
+      const hotspot = environment.app.querySelector(`[data-pattern-hotspot='${viewId}']`);
+      assert.ok(hotspot);
+      fireEvent(hotspot, "click");
+      assert.ok(environment.app.querySelector(`[data-pattern-view='${viewId}']`));
+      const focusedText = readTreeText(environment.app);
+
+      if (viewId === "board") {
+        assertTextIncludes(focusedText, [
+          "Kanıt",
+          "Analiz",
+          "Yorum",
+          "Belirsizlik",
+          "Bağlantılar Rapor panelinde Yerel Bağlantılar bölümünde listelenir.",
+        ]);
+      }
+
+      if (viewId === "archive") {
+        assertTextIncludes(focusedText, [
+          "Kitap / Metin",
+          "Görsel kaynak",
+          "Kişisel not",
+          "Belirsiz kaynak",
+        ]);
+      }
+
+      if (viewId === "tenth-man") {
+        assertTextIncludes(focusedText, [
+          "AI0 — Araştırmacı",
+          "AI1 — Savunucu",
+          "AI2 — 10. Adam / Karşıt",
+          "US1 — Hakem / Uzak kullanıcı",
+          "Yerel Simülasyon",
+          "0 / 8",
+        ]);
+      }
+
+      if (viewId === "report") {
+        assertTextIncludes(focusedText, [
+          "Kaynak Özeti",
+          "Kanıt Notları",
+          "Pano Notları",
+          "Yerel Bağlantılar",
+          "10. Adam İzleri",
+          "Sonraki Araştırma Notları",
+        ]);
+      }
+
+      const backButton = environment.app.querySelector("[data-pattern-back='true']");
+      assert.ok(backButton);
+      fireEvent(backButton, "click");
+      assert.ok(environment.app.querySelector("[data-pattern-view='overview']"));
+    }
+
+    assert.deepEqual(environment.sentCommands, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI restores a loaded host snapshot", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const snapshot = createHostLoadedSnapshot("report", "Restored host snapshot note");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?loaded=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+
+    assert.ok(environment.app.querySelector("[data-pattern-view='report']"));
+    assertTextIncludes(readTreeText(environment.app), [
+      "Sonraki Araştırma Notları",
+      "Restored host snapshot note",
+    ]);
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI keeps the default state for a null loaded snapshot", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?loaded-null=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+
+    assert.ok(environment.app.querySelector("[data-pattern-view='overview']"));
+    assert.match(readTreeText(environment.app), /Pattern Room/);
+    assert.doesNotMatch(readTreeText(environment.app), /Restored host snapshot note/);
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI rejects an invalid loaded snapshot without breaking state", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?loaded-invalid=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: {
+        snapshot: {
+          activeView: "report",
+          roomId: "pattern-room",
+          schemaVersion: -1,
+          topicId: PATTERN_ROOM_DOMAIN_MOCK.topic.id,
+        },
+      },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+
+    assert.ok(environment.app.querySelector("[data-pattern-view='overview']"));
+    assert.match(readTreeText(environment.app), /Pattern Room/);
+    assert.doesNotMatch(readTreeText(environment.app), /Restored host snapshot note/);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI does not autosave local mutations before host load completes", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-gate=${Date.now()}`
+    );
+
+    openFocusedView(environment.app, "board");
+    submitBoardLocalNode(environment.app, "Mutation before loaded event", "Pano mutation");
+    environment.runPendingTimers(2000);
+
+    assert.equal(environment.pendingTimerCount(), 0);
+    assert.deepEqual(environment.sentCommands, []);
+    assert.deepEqual(environment.sentEvents, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI debounces autosave after a null host load", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-null=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    openFocusedView(environment.app, "board");
+    submitBoardLocalNode(environment.app, "Autosaved after null load", "Pano autosave");
+
+    assert.equal(environment.pendingTimerCount(), 1);
+    environment.runPendingTimers(1999);
+    assert.deepEqual(environment.sentCommands, []);
+
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+    const payload = readLatestSavePayload(environment);
+    assert.equal(payload["flush"], undefined);
+    assertSavePayloadIncludesLocalNode(payload, "Autosaved after null load");
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI autosaves only user mutations after restoring a snapshot", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const snapshot = createHostLoadedSnapshot("report", "Restored snapshot suppresses autosave");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-restore=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      payload: { snapshot },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+    environment.runPendingTimers(2000);
+    assert.deepEqual(environment.sentCommands, []);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "board");
+    submitBoardLocalNode(
+      environment.app,
+      "Mutation after restored snapshot",
+      "Pano restored mutation"
+    );
+    environment.runPendingTimers(2000);
+
+    assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
+    const payload = readLatestSavePayload(environment);
+    const savedSnapshot = assertSavePayloadIncludesLocalNode(
+      payload,
+      "Mutation after restored snapshot"
+    );
+    assert.equal(savedSnapshot.activeView, "board");
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
