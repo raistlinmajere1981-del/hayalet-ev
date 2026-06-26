@@ -95,7 +95,6 @@ function findRepairFakeElements(
   return matches;
 }
 
-
 void test("repair-room overlay coordinate mapping round-trips image and stage space", () => {
   const frame = getContainedImageFrame(1000, 600, 1600, 900);
   assert.equal(frame.widthPx, 1000);
@@ -419,6 +418,13 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(wizardPanel, /remove-wizard-symptom/);
   assert.match(wizardPanel, /skip-wizard-research/);
   assert.match(wizardPanel, /evidence-selection/);
+  assert.match(wizardPanel, /add-manual-knowledge-resource/);
+  assert.match(wizardPanel, /add-manual-knowledge-failure/);
+  assert.match(wizardPanel, /add-manual-knowledge-test-point/);
+  assert.match(wizardPanel, /add-manual-knowledge-note/);
+  assert.match(wizardPanel, /remove-knowledge-evidence/);
+  assert.match(wizardPanel, /open-evidence-source/);
+  assert.match(wizardPanel, /pick-manual-resource-file/);
   assert.match(wizardPanel, /Tamiri başlat/);
   assert.match(wizardPanel, /"Cihaz"/);
   assert.match(wizardPanel, /"Semptom"/);

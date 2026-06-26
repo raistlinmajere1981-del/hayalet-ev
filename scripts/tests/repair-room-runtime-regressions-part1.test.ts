@@ -660,9 +660,54 @@ void test("repair-room research uses selected AI slot for live knowledge-pack di
     }).success,
     true
   );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addKnowledgeFailure, {
+      label: "Input MLCC short",
+      affectedPart: "Main input rail",
+      recommendedAction: "Lift suspect capacitor and retest rail resistance.",
+      rationale: "Operator found a low resistance main rail during review.",
+    }).success,
+    true
+  );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addKnowledgeTestPoint, {
+      label: "Main rail to ground",
+      rail: "19V_PBUS",
+      expectedValue: 19,
+      unit: "V",
+    }).success,
+    true
+  );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addKnowledgeNote, {
+      text: "Board has prior rework near DC-in.",
+      source: "operator bench note",
+    }).success,
+    true
+  );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.removeKnowledgeEvidence, {
+      kind: "resource",
+      id: "candidate-schematic",
+    }).success,
+    true
+  );
+
   const manualState = runtime.getStateSnapshot().state;
   assert.equal(
     manualState.knowledgePack.pack?.resources.some(
+      (resource) => resource.id === "manual-schematic-manual-boardview-mirror"
+    ),
+    false
+  );
+  assert.equal(
+    manualState.knowledgePack.pack?.resources.some(
+      (resource) => resource.id === "candidate-schematic"
+    ),
+    true
+  );
+  assert.equal(
+    manualState.wizard.draft.manualEvidence.resources.some(
       (resource) =>
         resource.label === "Manual boardview mirror" &&
         resource.addedBy === "operator" &&
@@ -671,10 +716,31 @@ void test("repair-room research uses selected AI slot for live knowledge-pack di
     true
   );
   assert.equal(
+    manualState.wizard.draft.manualEvidence.failures.some(
+      (failure) => failure.id === "manual-failure-input-mlcc-short"
+    ),
+    true
+  );
+  assert.equal(
+    manualState.wizard.draft.manualEvidence.testPoints.some(
+      (point) => point.id === "manual-test-point-main-rail-to-ground"
+    ),
+    true
+  );
+  assert.equal(manualState.wizard.draft.manualEvidence.notes.length, 1);
+  assert.equal(
+    manualState.wizard.draft.manualEvidence.removedResourceIds.includes("candidate-schematic"),
+    true
+  );
+  assert.equal(
     manualState.wizard.draft.selectedEvidenceResourceIds.includes(
       "manual-schematic-manual-boardview-mirror"
     ),
     true
+  );
+  assert.equal(
+    manualState.wizard.draft.selectedEvidenceResourceIds.includes("candidate-schematic"),
+    false
   );
 
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard).success, true);
@@ -687,6 +753,28 @@ void test("repair-room research uses selected AI slot for live knowledge-pack di
     activeSession.knowledgePack?.resources.some(
       (resource) => resource.id === "manual-schematic-manual-boardview-mirror"
     ),
+    true
+  );
+  assert.equal(
+    activeSession.knowledgePack?.resources.some(
+      (resource) => resource.id === "candidate-schematic"
+    ),
+    false
+  );
+  assert.equal(
+    activeSession.knowledgePack?.commonFailures.some(
+      (failure) => failure.id === "manual-failure-input-mlcc-short"
+    ),
+    true
+  );
+  assert.equal(
+    activeSession.knowledgePack?.testPoints.some(
+      (point) => point.id === "manual-test-point-main-rail-to-ground"
+    ),
+    true
+  );
+  assert.equal(
+    activeSession.knowledgePack?.notes.includes("Board has prior rework near DC-in."),
     true
   );
 
@@ -777,6 +865,12 @@ void test("repair-room wizard v2 gates tabs, accepts unknown fields, and skips f
   );
   assert.equal(
     manualReview.knowledgePack.pack?.resources.some(
+      (resource) => resource.id === "manual-schematic-manual-boardview-mirror"
+    ),
+    false
+  );
+  assert.equal(
+    manualReview.wizard.draft.manualEvidence.resources.some(
       (resource) => resource.id === "manual-schematic-manual-boardview-mirror"
     ),
     true

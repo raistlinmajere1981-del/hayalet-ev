@@ -83,4 +83,10 @@ void test("room webview preload delays the fallback room-ready signal when runti
   assert.match(preloadSource, /clearPendingAutoRoomReady\(\);/);
   assert.match(preloadSource, /pendingAutoRoomReadyTimer = globalThis\.setTimeout\(/);
   assert.match(preloadSource, /if \(explicitRoomReadySent\) \{\s*return;\s*\}/);
+  assert.match(preloadSource, /exposeInMainWorld\("electronAPI"/);
+  assert.match(
+    preloadSource,
+    /showOpenDialog: \(options\) => ipcRenderer\.invoke\("show-open-dialog", options\)/
+  );
+  assert.match(preloadSource, /openPath: \(path\) => ipcRenderer\.invoke\("open-path", path\)/);
 });

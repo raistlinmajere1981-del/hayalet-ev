@@ -1,4 +1,9 @@
-import type { RepairKnowledgePackProgress } from "./repair-knowledge-pack.js";
+import type {
+  RepairCommonFailure,
+  RepairKnowledgePackProgress,
+  RepairKnowledgePackResource,
+  RepairTestPoint,
+} from "./repair-knowledge-pack.js";
 
 export type RepairWizardStepId =
   | "device-info"
@@ -8,6 +13,24 @@ export type RepairWizardStepId =
   | "ready";
 
 export type RepairWizardResearchStatus = "idle" | "running" | "succeeded" | "failed" | "skipped";
+
+export interface RepairWizardManualNote {
+  id: string;
+  text: string;
+  source: string;
+  confidence: number;
+}
+
+export interface RepairWizardManualEvidenceDraft {
+  resources: RepairKnowledgePackResource[];
+  failures: RepairCommonFailure[];
+  testPoints: RepairTestPoint[];
+  notes: RepairWizardManualNote[];
+  removedResourceIds: string[];
+  removedFailureIds: string[];
+  removedTestPointIds: string[];
+  removedNoteIds: string[];
+}
 
 export interface RepairWizardDraft {
   deviceType: string;
@@ -22,6 +45,7 @@ export interface RepairWizardDraft {
   selectedEvidenceResourceIds: string[];
   selectedFailureIds: string[];
   selectedTestPointIds: string[];
+  manualEvidence: RepairWizardManualEvidenceDraft;
   researchSkipped: boolean;
   researchStatus: RepairWizardResearchStatus;
   researchMessage: string | null;

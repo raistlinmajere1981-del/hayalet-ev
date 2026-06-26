@@ -349,9 +349,56 @@ textarea.repair-wizard-field__input {
   text-transform: uppercase;
 }
 
+.repair-evidence-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-2);
+  padding: var(--repair-sp-2);
+  border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-whisper);
+}
+
+.repair-evidence-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--repair-sp-2);
+}
+
+.repair-evidence-panel__header h3 {
+  margin: 0;
+  font-family: var(--repair-mono);
+  font-size: var(--repair-px-10);
+  color: var(--repair-text-dim);
+  text-transform: uppercase;
+}
+
+.repair-evidence-panel__count {
+  min-width: var(--repair-px-22);
+  padding: var(--repair-px-2) var(--repair-px-6);
+  border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-radius: var(--repair-radius-sm);
+  color: var(--repair-text-muted);
+  font: 700 var(--repair-px-10) var(--repair-mono);
+  text-align: center;
+}
+
+.repair-evidence-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-1);
+}
+
+.repair-evidence-panel__empty {
+  padding: var(--repair-px-4) 0;
+  color: var(--repair-text-dim);
+  font: var(--repair-px-11) var(--repair-body);
+}
+
 .repair-evidence-option {
   display: grid;
-  grid-template-columns: var(--repair-px-16) 1fr;
+  grid-template-columns: var(--repair-px-16) minmax(0, 1fr) auto;
   gap: var(--repair-sp-2);
   align-items: start;
   padding: var(--repair-px-4) 0;
@@ -360,12 +407,20 @@ textarea.repair-wizard-field__input {
 }
 
 .repair-evidence-option--resource {
-  grid-template-columns: var(--repair-px-16) minmax(0, 1fr) auto;
+  grid-template-columns: var(--repair-px-16) minmax(0, 1fr) auto auto;
 }
 
 .repair-evidence-option input {
   margin-top: var(--repair-px-2);
   accent-color: var(--repair-cyan);
+}
+
+.repair-evidence-option__marker {
+  width: var(--repair-px-6);
+  height: var(--repair-px-6);
+  margin-top: var(--repair-px-6);
+  border-radius: 50%;
+  background: var(--repair-border-strong);
 }
 
 .repair-evidence-option__body {
@@ -378,6 +433,11 @@ textarea.repair-wizard-field__input {
 .repair-evidence-option__body strong {
   color: var(--repair-text);
   font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.repair-evidence-option__body span {
+  overflow-wrap: anywhere;
 }
 
 .repair-evidence-option__actions {
@@ -387,24 +447,57 @@ textarea.repair-wizard-field__input {
   gap: var(--repair-sp-1);
 }
 
-.repair-evidence-option__link {
+.repair-evidence-option__link,
+.repair-evidence-option__remove {
+  min-height: var(--repair-px-24);
   padding: var(--repair-px-3) var(--repair-px-6);
   border: var(--repair-px-1) solid var(--repair-border);
   border-radius: var(--repair-radius-sm);
+  background: transparent;
   color: var(--repair-cyan);
   font: 700 var(--repair-px-10) var(--repair-mono);
   text-decoration: none;
+  cursor: pointer;
 }
 
-.repair-evidence-option__link:hover {
+.repair-evidence-option__remove {
+  color: var(--repair-text-dim);
+}
+
+.repair-evidence-option__link:hover,
+.repair-evidence-option__remove:hover {
   border-color: var(--repair-cyan-half);
   background: var(--repair-cyan-panel);
+  color: var(--repair-cyan);
 }
 
-.repair-manual-resource__grid {
+.repair-manual-evidence-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--repair-sp-1);
+  margin-top: var(--repair-sp-1);
+  padding-top: var(--repair-sp-2);
+  border-top: var(--repair-px-1) solid var(--repair-border-muted);
+}
+
+.repair-manual-evidence-form__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--repair-px-120), 1fr));
-  gap: var(--repair-sp-2);
+  grid-template-columns: repeat(auto-fit, minmax(var(--repair-px-112), 1fr));
+  gap: var(--repair-sp-1);
+}
+
+.repair-manual-evidence-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--repair-sp-1);
+}
+
+.repair-manual-evidence-form .repair-wizard-field__input {
+  min-height: var(--repair-px-26);
+}
+
+.repair-manual-evidence-form textarea.repair-wizard-field__input {
+  min-height: var(--repair-px-56);
 }
 
 .repair-wizard-summary-row {

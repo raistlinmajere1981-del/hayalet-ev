@@ -10,6 +10,7 @@ import {
 } from "../../shared/data/index.js";
 import type {
   RepairChatTurn,
+  RepairCommonFailure,
   RepairEvent,
   RepairInteractionSettingsState,
   RepairKnowledgePack,
@@ -17,7 +18,11 @@ import type {
   RepairKnowledgePackResourceKind,
   RepairOverlayEntityRef,
   RepairSession,
+  RepairTestPoint,
   RepairVoiceGuidanceState,
+  RepairWizardDraft,
+  RepairWizardManualEvidenceDraft,
+  RepairWizardManualNote,
   RepairWizardState,
 } from "../../shared/types/index.js";
 import type { ReplayRuntimeController } from "../repair-replay-runtime.js";
@@ -201,8 +206,13 @@ export function createRepairCommandRouter(params: {
     }
     try {
       const url = new URL(trimmed);
-      return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+      return url.protocol === "https:" || url.protocol === "http:" || url.protocol === "file:"
+        ? url.toString()
+        : null;
     } catch {
+      if (trimmed.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(trimmed)) {
+        return trimmed;
+      }
       return null;
     }
   }
@@ -261,21 +271,118 @@ export function createRepairCommandRouter(params: {
     };
   }
 
-  function createKnowledgePackWithResource(
+  function createManualFailureId(
+    label: string,
     pack: RepairKnowledgePack,
-    resource: RepairKnowledgePackResource
+    manualEvidence: RepairWizardManualEvidenceDraft
+  ): string {
+    const existing = new Set([
+      ...pack.commonFailures.map((failure) => failure.id),
+      ...manualEvidence.failures.map((failure) => failure.id),
+    ]);
+    const base = `manual-failure-${slugifyKnowledgeResourceId(label, "finding")}`;
+    if (!existing.has(base)) return base;
+    let index = 2;
+    while (existing.has(`${base}-${index}`)) index += 1;
+    return `${base}-${index}`;
+  }
+
+  function createManualTestPointId(
+    label: string,
+    pack: RepairKnowledgePack,
+    manualEvidence: RepairWizardManualEvidenceDraft
+  ): string {
+    const existing = new Set([
+      ...pack.testPoints.map((point) => point.id),
+      ...manualEvidence.testPoints.map((point) => point.id),
+    ]);
+    const base = `manual-test-point-${slugifyKnowledgeResourceId(label, "point")}`;
+    if (!existing.has(base)) return base;
+    let index = 2;
+    while (existing.has(`${base}-${index}`)) index += 1;
+    return `${base}-${index}`;
+  }
+
+  function createManualNoteId(
+    text: string,
+    manualEvidence: RepairWizardManualEvidenceDraft
+  ): string {
+    const existing = new Set(manualEvidence.notes.map((note) => note.id));
+    const base = `manual-note-${slugifyKnowledgeResourceId(text.slice(0, 48), "note")}`;
+    if (!existing.has(base)) return base;
+    let index = 2;
+    while (existing.has(`${base}-${index}`)) index += 1;
+    return `${base}-${index}`;
+  }
+
+  function createPackNoteId(index: number): string {
+    return `note-ai-${index + 1}`;
+  }
+
+  function addUniqueId(values: string[], id: string): string[] {
+    return values.includes(id) ? values : [...values, id];
+  }
+
+  function removeId(values: string[], id: string): string[] {
+    return values.filter((value) => value !== id);
+  }
+
+  function parseNumericField(value: unknown, fallback: number): number {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return fallback;
+  }
+
+  function createKnowledgePackStats(
+    resources: RepairKnowledgePackResource[],
+    failures: RepairCommonFailure[],
+    testPoints: RepairTestPoint[],
+    notes: string[]
+  ): RepairKnowledgePack["stats"] {
+    return {
+      schematics: resources.filter((item) => item.kind === "schematic").length,
+      boardImages: resources.filter((item) => item.kind === "board-image").length,
+      commonFailures: failures.length,
+      repairNotes: notes.length + resources.filter((item) => item.kind === "note").length,
+      testPoints: testPoints.length,
+    };
+  }
+
+  function createKnowledgePackFromReviewDraft(
+    pack: RepairKnowledgePack,
+    draft: RepairWizardDraft
   ): RepairKnowledgePack {
-    const resources = [...pack.resources, resource];
+    const manualEvidence = draft.manualEvidence;
+    const removedResourceIds = new Set(manualEvidence.removedResourceIds);
+    const removedFailureIds = new Set(manualEvidence.removedFailureIds);
+    const removedTestPointIds = new Set(manualEvidence.removedTestPointIds);
+    const removedNoteIds = new Set(manualEvidence.removedNoteIds);
+    const resources = [
+      ...pack.resources.filter((resource) => !removedResourceIds.has(resource.id)),
+      ...manualEvidence.resources,
+    ];
+    const commonFailures = [
+      ...pack.commonFailures.filter((failure) => !removedFailureIds.has(failure.id)),
+      ...manualEvidence.failures,
+    ];
+    const testPoints = [
+      ...pack.testPoints.filter((point) => !removedTestPointIds.has(point.id)),
+      ...manualEvidence.testPoints,
+    ];
+    const notes = [
+      ...pack.notes.filter((_note, index) => !removedNoteIds.has(createPackNoteId(index))),
+      ...manualEvidence.notes.map((note) => note.text),
+    ];
     return {
       ...pack,
-      stats: {
-        schematics: resources.filter((item) => item.kind === "schematic").length,
-        boardImages: resources.filter((item) => item.kind === "board-image").length,
-        commonFailures: pack.commonFailures.length,
-        repairNotes: pack.notes.length + resources.filter((item) => item.kind === "note").length,
-        testPoints: pack.testPoints.length,
-      },
+      commonFailures,
+      notes,
       resources,
+      stats: createKnowledgePackStats(resources, commonFailures, testPoints, notes),
+      testPoints,
     };
   }
 
@@ -331,16 +438,20 @@ export function createRepairCommandRouter(params: {
         if (!canEnterWizardStep(wizard, "ready")) {
           return { success: false, message: "repair intake is not ready" };
         }
-        const generatedPack = aiController.readGeneratedKnowledgePack();
-        if (generatedPack !== null && !wizard.evidenceReviewed) {
+        const baseKnowledgePack = aiController.readGeneratedKnowledgePack();
+        if (baseKnowledgePack !== null && !wizard.evidenceReviewed) {
           return { success: false, message: "evidence review is required before creating session" };
         }
+        const sessionKnowledgePack =
+          baseKnowledgePack === null
+            ? null
+            : createKnowledgePackFromReviewDraft(baseKnowledgePack, wizard.draft);
         const draftSession = createDraftSession(state, iso);
         const session: RepairSession = {
           ...draftSession,
           status: "in-progress",
-          knowledgePackId: generatedPack?.id ?? null,
-          knowledgePack: generatedPack,
+          knowledgePackId: sessionKnowledgePack?.id ?? null,
+          knowledgePack: sessionKnowledgePack,
           updatedAt: iso,
         };
         if (storageController.isReady()) {
@@ -575,10 +686,12 @@ export function createRepairCommandRouter(params: {
       }
       case REPAIR_UI_COMMANDS.addKnowledgeResource: {
         const state = store.getState();
-        const pack = state.knowledgePack.pack;
+        const pack = aiController.readGeneratedKnowledgePack() ?? state.knowledgePack.pack;
         if (pack === null) {
           return { success: false, message: "knowledge pack is required" };
         }
+        const wizard = state.wizard;
+        const manualEvidence = wizard.draft.manualEvidence;
         const label = safeString(flat["label"] ?? flat["title"]);
         const url = normalizeKnowledgeResourceUrl(
           flat["url"] ?? flat["src"] ?? flat["sourceUrl"] ?? flat["downloadUrl"]
@@ -588,7 +701,10 @@ export function createRepairCommandRouter(params: {
         }
         const kind = isKnowledgeResourceKind(flat["kind"]) ? flat["kind"] : "schematic";
         const resource: RepairKnowledgePackResource = {
-          id: createManualKnowledgeResourceId(kind, label, pack.resources),
+          id: createManualKnowledgeResourceId(kind, label, [
+            ...pack.resources,
+            ...manualEvidence.resources,
+          ]),
           label,
           kind,
           src: url,
@@ -599,10 +715,9 @@ export function createRepairCommandRouter(params: {
           pages: null,
           confidence: 1,
         };
-        const nextPack = createKnowledgePackWithResource(pack, resource);
-        const wizard = state.wizard;
-        const selectedEvidenceResourceIds = Array.from(
-          new Set([...wizard.draft.selectedEvidenceResourceIds, resource.id])
+        const selectedEvidenceResourceIds = addUniqueId(
+          wizard.draft.selectedEvidenceResourceIds,
+          resource.id
         );
         const foundResources = wizard.foundResources.some((item) => item.id === resource.id)
           ? wizard.foundResources
@@ -610,48 +725,196 @@ export function createRepairCommandRouter(params: {
               ...wizard.foundResources,
               { id: resource.id, label: resource.label, kind: resource.kind },
             ];
-        const activeSession =
-          state.activeSessionId === null ? null : (state.sessions[state.activeSessionId] ?? null);
-        const shouldPatchActiveSession =
-          activeSession !== null &&
-          state.knowledgePack.attachedToSessionId === activeSession.id &&
-          activeSession.knowledgePackId === pack.id;
-        const iso = nowIso();
-        aiController.upsertKnowledgePack(nextPack, {
-          cacheByBoardCode: !wizard.draft.researchSkipped,
-        });
-        store.batch(() => {
-          store.dispatch({
-            type: "knowledge-pack/set",
-            pack: nextPack,
-            attachedToSessionId: state.knowledgePack.attachedToSessionId,
-          });
-          store.dispatch({
-            type: "wizard/set",
-            wizard: {
-              ...wizard,
-              draft: {
-                ...wizard.draft,
-                selectedEvidenceResourceIds,
-                researchMessage: `${resource.label} added to research results.`,
-                researchSkipped: wizard.draft.researchSkipped,
-                researchStatus: wizard.draft.researchSkipped ? "skipped" : "succeeded",
+        store.dispatch({
+          type: "wizard/set",
+          wizard: {
+            ...wizard,
+            draft: {
+              ...wizard.draft,
+              manualEvidence: {
+                ...manualEvidence,
+                resources: [...manualEvidence.resources, resource],
+                removedResourceIds: removeId(manualEvidence.removedResourceIds, resource.id),
               },
-              foundResources,
-              generatedKnowledgePackId: nextPack.id,
-              evidenceReviewed: false,
+              selectedEvidenceResourceIds,
+              researchMessage: `${resource.label} staged for the repair session.`,
             },
-          });
-          if (activeSession !== null && shouldPatchActiveSession) {
-            sessionController.setSessionAndList(
-              {
-                ...activeSession,
-                knowledgePack: nextPack,
-                updatedAt: iso,
+            evidenceReviewed: false,
+            foundResources,
+          },
+        });
+        return { success: true };
+      }
+      case REPAIR_UI_COMMANDS.addKnowledgeFailure: {
+        const state = store.getState();
+        const pack = aiController.readGeneratedKnowledgePack() ?? state.knowledgePack.pack;
+        if (pack === null) return { success: false, message: "knowledge pack is required" };
+        const wizard = state.wizard;
+        const manualEvidence = wizard.draft.manualEvidence;
+        const label = safeString(flat["label"]);
+        if (label === null) return { success: false, message: "failure label is required" };
+        const failure: RepairCommonFailure = {
+          id: createManualFailureId(label, pack, manualEvidence),
+          label,
+          rationale: safeString(flat["rationale"]) ?? "Operator added during manual review.",
+          affectedPart: safeString(flat["affectedPart"]),
+          recommendedAction:
+            safeString(flat["recommendedAction"]) ?? "Inspect and verify manually.",
+          confidence: 1,
+        };
+        store.dispatch({
+          type: "wizard/set",
+          wizard: {
+            ...wizard,
+            draft: {
+              ...wizard.draft,
+              manualEvidence: {
+                ...manualEvidence,
+                failures: [...manualEvidence.failures, failure],
+                removedFailureIds: removeId(manualEvidence.removedFailureIds, failure.id),
               },
-              { skipTransitionCheck: true }
-            );
-          }
+              selectedFailureIds: addUniqueId(wizard.draft.selectedFailureIds, failure.id),
+              researchMessage: `${failure.label} staged for the repair session.`,
+            },
+            evidenceReviewed: false,
+          },
+        });
+        return { success: true };
+      }
+      case REPAIR_UI_COMMANDS.addKnowledgeTestPoint: {
+        const state = store.getState();
+        const pack = aiController.readGeneratedKnowledgePack() ?? state.knowledgePack.pack;
+        if (pack === null) return { success: false, message: "knowledge pack is required" };
+        const wizard = state.wizard;
+        const manualEvidence = wizard.draft.manualEvidence;
+        const label = safeString(flat["label"]);
+        const rail = safeString(flat["rail"]);
+        if (label === null || rail === null) {
+          return { success: false, message: "test point label and rail are required" };
+        }
+        const point: RepairTestPoint = {
+          id: createManualTestPointId(label, pack, manualEvidence),
+          label,
+          rail,
+          expectedValue: parseNumericField(flat["expectedValue"], 0),
+          unit: safeString(flat["unit"]) ?? "V",
+          tolerance:
+            flat["tolerance"] === undefined ? null : parseNumericField(flat["tolerance"], 0),
+          pinAt: null,
+        };
+        store.dispatch({
+          type: "wizard/set",
+          wizard: {
+            ...wizard,
+            draft: {
+              ...wizard.draft,
+              manualEvidence: {
+                ...manualEvidence,
+                removedTestPointIds: removeId(manualEvidence.removedTestPointIds, point.id),
+                testPoints: [...manualEvidence.testPoints, point],
+              },
+              selectedTestPointIds: addUniqueId(wizard.draft.selectedTestPointIds, point.id),
+              researchMessage: `${point.label} staged for the repair session.`,
+            },
+            evidenceReviewed: false,
+          },
+        });
+        return { success: true };
+      }
+      case REPAIR_UI_COMMANDS.addKnowledgeNote: {
+        const state = store.getState();
+        const wizard = state.wizard;
+        const manualEvidence = wizard.draft.manualEvidence;
+        const textValue = safeString(flat["text"] ?? flat["note"]);
+        if (textValue === null) return { success: false, message: "note text is required" };
+        const note: RepairWizardManualNote = {
+          id: createManualNoteId(textValue, manualEvidence),
+          text: textValue,
+          source: safeString(flat["source"]) ?? "Operator note",
+          confidence: 1,
+        };
+        store.dispatch({
+          type: "wizard/set",
+          wizard: {
+            ...wizard,
+            draft: {
+              ...wizard.draft,
+              manualEvidence: {
+                ...manualEvidence,
+                notes: [...manualEvidence.notes, note],
+                removedNoteIds: removeId(manualEvidence.removedNoteIds, note.id),
+              },
+              researchMessage: "Manual note staged for the repair session.",
+            },
+            evidenceReviewed: false,
+          },
+        });
+        return { success: true };
+      }
+      case REPAIR_UI_COMMANDS.removeKnowledgeEvidence: {
+        const state = store.getState();
+        const wizard = state.wizard;
+        const manualEvidence = wizard.draft.manualEvidence;
+        const kind = safeString(flat["kind"] ?? flat["itemKind"]);
+        const id = safeString(flat["id"] ?? flat["evidenceId"]);
+        if (kind === null || id === null) {
+          return { success: false, message: "evidence kind and id are required" };
+        }
+        let nextManualEvidence: RepairWizardManualEvidenceDraft = manualEvidence;
+        let selectedEvidenceResourceIds = wizard.draft.selectedEvidenceResourceIds;
+        let selectedFailureIds = wizard.draft.selectedFailureIds;
+        let selectedTestPointIds = wizard.draft.selectedTestPointIds;
+        let foundResources = wizard.foundResources;
+        if (kind === "resource") {
+          const resources = manualEvidence.resources.filter((resource) => resource.id !== id);
+          const removedResourceIds =
+            resources.length === manualEvidence.resources.length
+              ? addUniqueId(manualEvidence.removedResourceIds, id)
+              : manualEvidence.removedResourceIds;
+          nextManualEvidence = { ...manualEvidence, removedResourceIds, resources };
+          selectedEvidenceResourceIds = removeId(selectedEvidenceResourceIds, id);
+          foundResources = foundResources.filter((resource) => resource.id !== id);
+        } else if (kind === "failure") {
+          const failures = manualEvidence.failures.filter((failure) => failure.id !== id);
+          const removedFailureIds =
+            failures.length === manualEvidence.failures.length
+              ? addUniqueId(manualEvidence.removedFailureIds, id)
+              : manualEvidence.removedFailureIds;
+          nextManualEvidence = { ...manualEvidence, failures, removedFailureIds };
+          selectedFailureIds = removeId(selectedFailureIds, id);
+        } else if (kind === "test-point") {
+          const testPoints = manualEvidence.testPoints.filter((point) => point.id !== id);
+          const removedTestPointIds =
+            testPoints.length === manualEvidence.testPoints.length
+              ? addUniqueId(manualEvidence.removedTestPointIds, id)
+              : manualEvidence.removedTestPointIds;
+          nextManualEvidence = { ...manualEvidence, removedTestPointIds, testPoints };
+          selectedTestPointIds = removeId(selectedTestPointIds, id);
+        } else if (kind === "note") {
+          const notes = manualEvidence.notes.filter((note) => note.id !== id);
+          const removedNoteIds =
+            notes.length === manualEvidence.notes.length
+              ? addUniqueId(manualEvidence.removedNoteIds, id)
+              : manualEvidence.removedNoteIds;
+          nextManualEvidence = { ...manualEvidence, notes, removedNoteIds };
+        } else {
+          return { success: false, message: "valid evidence kind is required" };
+        }
+        store.dispatch({
+          type: "wizard/set",
+          wizard: {
+            ...wizard,
+            draft: {
+              ...wizard.draft,
+              manualEvidence: nextManualEvidence,
+              selectedEvidenceResourceIds,
+              selectedFailureIds,
+              selectedTestPointIds,
+              researchMessage: "Evidence change staged for the repair session.",
+            },
+            evidenceReviewed: false,
+            foundResources,
+          },
         });
         return { success: true };
       }

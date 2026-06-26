@@ -88,6 +88,30 @@
           "exposure": "internal"
         },
         {
+          "name": "RepairRoomAddKnowledgeFailure",
+          "description": "Stage an operator-provided common failure in the wizard evidence review.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomAddKnowledgeTestPoint",
+          "description": "Stage an operator-provided rail or probe point in the wizard evidence review.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomAddKnowledgeNote",
+          "description": "Stage an operator-provided repair note in the wizard evidence review.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "RepairRoomRemoveKnowledgeEvidence",
+          "description": "Stage removal of a resource, failure, test point, or note from the wizard evidence review.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "RepairRoomAttachKnowledgePack",
           "description": "Attach a generated knowledge pack to the active session.",
           "scope": "room-ui",

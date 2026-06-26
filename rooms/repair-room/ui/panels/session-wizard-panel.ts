@@ -5,7 +5,14 @@ import {
   REPAIR_SYMPTOM_OPTIONS,
   REPAIR_UNKNOWN_VALUE,
 } from "../../shared/data/index.js";
-import type { RepairKnowledgePack, RepairKnowledgePackResource } from "../../shared/types/index.js";
+import type {
+  RepairCommonFailure,
+  RepairKnowledgePack,
+  RepairKnowledgePackResource,
+  RepairKnowledgePackResourceKind,
+  RepairTestPoint,
+  RepairWizardManualNote,
+} from "../../shared/types/index.js";
 import type { RepairUiState } from "../../shared/ui/state.js";
 import { resolveRepairAssetUrl } from "../repair-asset-url.js";
 import { createRepairPanel } from "./panel-shell.js";
@@ -415,45 +422,164 @@ function appendProgressList(
   parent.append(resList);
 }
 
-function appendEvidenceCheckbox(params: {
-  checked: boolean;
+type EvidenceSelectionKind = "resource" | "failure" | "test-point";
+type EvidenceRemovalKind = EvidenceSelectionKind | "note";
+type ManualEvidenceDraft = RepairUiState["wizard"]["draft"]["manualEvidence"];
+
+interface EvidenceResourcePanelConfig {
+  kind: RepairKnowledgePackResourceKind;
+  title: string;
+  addLabel: string;
+  urlPlaceholder: string;
+}
+
+const RESOURCE_PANEL_CONFIGS: EvidenceResourcePanelConfig[] = [
+  {
+    kind: "schematic",
+    title: "Şemalar",
+    addLabel: "Şema ekle",
+    urlPlaceholder: "https://... veya /dosya/yolu.pdf",
+  },
+  {
+    kind: "board-image",
+    title: "Kart görselleri",
+    addLabel: "Görsel ekle",
+    urlPlaceholder: "https://... veya /dosya/yolu.png",
+  },
+  {
+    kind: "datasheet",
+    title: "Datasheet / doküman",
+    addLabel: "Doküman ekle",
+    urlPlaceholder: "https://... veya /dosya/yolu.pdf",
+  },
+  {
+    kind: "thread",
+    title: "Forum / link",
+    addLabel: "Link ekle",
+    urlPlaceholder: "https://forum...",
+  },
+  {
+    kind: "note",
+    title: "Kaynak notları",
+    addLabel: "Kaynak ekle",
+    urlPlaceholder: "https://... veya /dosya/yolu.txt",
+  },
+];
+
+function formatEvidenceConfidence(confidence: number): string {
+  return `${Math.round(confidence * 100)}%`;
+}
+
+function joinEvidenceMeta(parts: Array<string | null | undefined | false>): string {
+  return parts
+    .filter((part): part is string => typeof part === "string" && part.trim() !== "")
+    .join(" - ");
+}
+
+function appendEvidencePanel(
+  documentRef: Document,
+  parent: HTMLElement,
+  title: string,
+  count: number
+): HTMLElement {
+  const panel = documentRef.createElement("section");
+  panel.className = "repair-evidence-panel";
+
+  const header = documentRef.createElement("div");
+  header.className = "repair-evidence-panel__header";
+  const heading = documentRef.createElement("h3");
+  heading.textContent = title;
+  const countEl = documentRef.createElement("span");
+  countEl.className = "repair-evidence-panel__count";
+  countEl.textContent = String(count);
+  header.append(heading, countEl);
+
+  const list = documentRef.createElement("div");
+  list.className = "repair-evidence-panel__list";
+  panel.append(header, list);
+  parent.append(panel);
+  return list;
+}
+
+function appendEmptyEvidenceMessage(documentRef: Document, parent: HTMLElement): void {
+  const empty = documentRef.createElement("div");
+  empty.className = "repair-evidence-panel__empty";
+  empty.textContent = "Kayıt yok";
+  parent.append(empty);
+}
+
+function appendEvidenceEntry(params: {
+  checked?: boolean;
   documentRef: Document;
   id: string;
-  kind: "resource" | "failure" | "test-point";
   label: string;
   meta: string;
   parent: HTMLElement;
+  removalKind: EvidenceRemovalKind;
   resource?: RepairKnowledgePackResource;
-  text?: TextFn;
+  selectionKind?: EvidenceSelectionKind;
+  text: TextFn;
 }): void {
   const row = params.documentRef.createElement("div");
-  row.className = `repair-evidence-option${params.resource !== undefined ? " repair-evidence-option--resource" : ""}`;
+  row.className = [
+    "repair-evidence-option",
+    params.resource !== undefined ? "repair-evidence-option--resource" : "",
+    params.selectionKind === undefined ? "repair-evidence-option--static" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
-  const checkbox = params.documentRef.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.checked = params.checked;
-  checkbox.dataset["repairAction"] = "evidence-selection";
-  checkbox.dataset["evidenceKind"] = params.kind;
-  checkbox.dataset["evidenceId"] = params.id;
-  row.append(checkbox);
+  if (params.selectionKind !== undefined) {
+    const checkbox = params.documentRef.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = params.checked === true;
+    checkbox.dataset["repairAction"] = "evidence-selection";
+    checkbox.dataset["evidenceKind"] = params.selectionKind;
+    checkbox.dataset["evidenceId"] = params.id;
+    row.append(checkbox);
+  } else {
+    const marker = params.documentRef.createElement("span");
+    marker.className = "repair-evidence-option__marker";
+    row.append(marker);
+  }
 
   const body = params.documentRef.createElement("span");
   body.className = "repair-evidence-option__body";
   const title = params.documentRef.createElement("strong");
   title.textContent = params.label;
-  const meta = params.documentRef.createElement("span");
-  meta.textContent = params.meta;
-  body.append(title, meta);
+  body.append(title);
+  if (params.meta.trim() !== "") {
+    const meta = params.documentRef.createElement("span");
+    meta.textContent = params.meta;
+    body.append(meta);
+  }
   row.append(body);
-  if (params.resource !== undefined && params.text !== undefined) {
+
+  if (params.resource !== undefined) {
     appendEvidenceResourceActions(params.documentRef, row, params.resource, params.text);
   }
+
+  const remove = params.documentRef.createElement("button");
+  remove.className = "repair-evidence-option__remove";
+  remove.type = "button";
+  remove.textContent = params.text(["wizard", "evidenceReview", "remove"], "Kaldır");
+  remove.dataset["repairAction"] = "remove-knowledge-evidence";
+  remove.dataset["evidenceKind"] = params.removalKind;
+  remove.dataset["evidenceId"] = params.id;
+  row.append(remove);
 
   params.parent.append(row);
 }
 
 function getEvidenceResourceUrl(resource: RepairKnowledgePackResource): string | null {
   return resource.sourceUrl ?? resource.downloadUrl ?? resource.src;
+}
+
+function toEvidenceHref(source: string): string {
+  const resolved = resolveRepairAssetUrl(source) ?? source;
+  if (/^[a-zA-Z]:[\\/]/.test(resolved)) return `file:///${resolved.replace(/\\/g, "/")}`;
+  if (resolved.startsWith("/")) return `file://${resolved}`;
+  return resolved;
 }
 
 function appendEvidenceResourceActions(
@@ -468,18 +594,18 @@ function appendEvidenceResourceActions(
   const actions = documentRef.createElement("div");
   actions.className = "repair-evidence-option__actions";
 
-  const preview = documentRef.createElement("a");
+  const preview = documentRef.createElement("button");
   preview.className = "repair-evidence-option__link";
-  preview.href = resolvedUrl;
-  preview.target = "_blank";
-  preview.rel = "noopener noreferrer";
+  preview.type = "button";
   preview.textContent = text(["wizard", "evidenceReview", "preview"], "Önizle");
+  preview.dataset["repairAction"] = "open-evidence-source";
+  preview.dataset["sourceUrl"] = resolvedUrl;
   actions.append(preview);
 
   const downloadUrl = resource.downloadUrl ?? url;
   const download = documentRef.createElement("a");
   download.className = "repair-evidence-option__link";
-  download.href = resolveRepairAssetUrl(downloadUrl) ?? downloadUrl;
+  download.href = toEvidenceHref(downloadUrl);
   download.target = "_blank";
   download.rel = "noopener noreferrer";
   download.download = "";
@@ -488,72 +614,254 @@ function appendEvidenceResourceActions(
   row.append(actions);
 }
 
-function appendEvidenceGroup(
-  documentRef: Document,
-  parent: HTMLElement,
-  title: string
-): HTMLElement {
-  const group = documentRef.createElement("div");
-  group.className = "repair-evidence-group";
-  const heading = documentRef.createElement("h3");
-  heading.textContent = title;
-  group.append(heading);
-  parent.append(group);
-  return group;
+function appendManualInput(params: {
+  dataset?: Record<string, string>;
+  documentRef: Document;
+  inputMode?: string;
+  name: string;
+  parent: HTMLElement;
+  placeholder: string;
+  type?: string;
+}): HTMLInputElement {
+  const input = params.documentRef.createElement("input");
+  input.className = "repair-wizard-field__input";
+  input.placeholder = params.placeholder;
+  input.dataset["repairInput"] = params.name;
+  input.type = params.type ?? "text";
+  if (params.inputMode !== undefined) input.inputMode = params.inputMode;
+  Object.entries(params.dataset ?? {}).forEach(([key, value]) => {
+    input.dataset[key] = value;
+  });
+  params.parent.append(input);
+  return input;
 }
 
-function appendManualResourceForm(documentRef: Document, parent: HTMLElement, text: TextFn): void {
-  const group = appendEvidenceGroup(
-    documentRef,
-    parent,
-    text(["wizard", "evidenceReview", "manualTitle"], "Manuel şema ekle")
-  );
-  group.classList.add("repair-manual-resource");
-
-  const grid = documentRef.createElement("div");
-  grid.className = "repair-manual-resource__grid";
-
-  const kind = documentRef.createElement("select");
-  kind.className = "repair-wizard-field__input";
-  kind.dataset["repairInput"] = "manual-resource-kind";
-  const kindOptions: Array<{ label: string; value: string }> = [
-    { value: "schematic", label: "Schematic" },
-    { value: "board-image", label: "Board image" },
-    { value: "datasheet", label: "Datasheet" },
-    { value: "thread", label: "Thread" },
-    { value: "note", label: "Note" },
-  ];
-  kindOptions.forEach(({ value, label }) => {
-    const option = documentRef.createElement("option");
-    option.value = value;
-    option.textContent = label;
-    kind.append(option);
+function appendManualTextarea(params: {
+  dataset?: Record<string, string>;
+  documentRef: Document;
+  name: string;
+  parent: HTMLElement;
+  placeholder: string;
+}): HTMLTextAreaElement {
+  const textarea = params.documentRef.createElement("textarea");
+  textarea.className = "repair-wizard-field__input";
+  textarea.placeholder = params.placeholder;
+  textarea.dataset["repairInput"] = params.name;
+  Object.entries(params.dataset ?? {}).forEach(([key, value]) => {
+    textarea.dataset[key] = value;
   });
-  grid.append(kind);
+  params.parent.append(textarea);
+  return textarea;
+}
 
-  const label = documentRef.createElement("input");
-  label.className = "repair-wizard-field__input";
-  label.placeholder = text(["wizard", "evidenceReview", "manualLabel"], "Kaynak adı");
-  label.dataset["repairInput"] = "manual-resource-label";
-  grid.append(label);
+function appendManualEvidenceFormActions(
+  documentRef: Document,
+  parent: HTMLElement,
+  label: string,
+  action: string,
+  dataset: Record<string, string> = {}
+): void {
+  const actions = documentRef.createElement("div");
+  actions.className = "repair-manual-evidence-form__actions";
+  const add = appendActionButton(documentRef, actions, label, action, "repair-secondary-btn");
+  Object.entries(dataset).forEach(([key, value]) => {
+    add.dataset[key] = value;
+  });
+  parent.append(actions);
+}
 
-  const url = documentRef.createElement("input");
-  url.className = "repair-wizard-field__input";
-  url.placeholder = text(
-    ["wizard", "evidenceReview", "manualUrl"],
-    "https:// veya shared/assets/..."
-  );
-  url.dataset["repairInput"] = "manual-resource-url";
-  grid.append(url);
+function appendManualResourceForm(
+  documentRef: Document,
+  parent: HTMLElement,
+  config: EvidenceResourcePanelConfig,
+  text: TextFn
+): void {
+  const form = documentRef.createElement("div");
+  form.className = "repair-manual-evidence-form repair-manual-evidence-form--resource";
+  const dataset = { resourceKind: config.kind };
+  const grid = documentRef.createElement("div");
+  grid.className = "repair-manual-evidence-form__grid";
 
-  group.append(grid);
-  appendActionButton(
+  appendManualInput({
+    dataset,
     documentRef,
-    group,
-    text(["wizard", "evidenceReview", "manualAdd"], "Şemayı ekle"),
-    "add-manual-knowledge-resource",
+    name: "manual-resource-label",
+    parent: grid,
+    placeholder: text(["wizard", "evidenceReview", "manualLabel"], "Kaynak adı"),
+  });
+  appendManualInput({
+    dataset,
+    documentRef,
+    name: "manual-resource-url",
+    parent: grid,
+    placeholder: config.urlPlaceholder,
+  });
+
+  const pick = appendActionButton(
+    documentRef,
+    grid,
+    "Dosya",
+    "pick-manual-resource-file",
     "repair-secondary-btn"
   );
+  pick.dataset["resourceKind"] = config.kind;
+  form.append(grid);
+  appendManualEvidenceFormActions(
+    documentRef,
+    form,
+    text(["wizard", "evidenceReview", "manualAdd"], config.addLabel),
+    "add-manual-knowledge-resource",
+    dataset
+  );
+  parent.append(form);
+}
+
+function appendManualFailureForm(documentRef: Document, parent: HTMLElement): void {
+  const form = documentRef.createElement("div");
+  form.className = "repair-manual-evidence-form";
+  const grid = documentRef.createElement("div");
+  grid.className = "repair-manual-evidence-form__grid";
+  appendManualInput({
+    documentRef,
+    name: "manual-failure-label",
+    parent: grid,
+    placeholder: "Arıza adı",
+  });
+  appendManualInput({
+    documentRef,
+    name: "manual-failure-part",
+    parent: grid,
+    placeholder: "Parça / bölge",
+  });
+  appendManualInput({
+    documentRef,
+    name: "manual-failure-action",
+    parent: grid,
+    placeholder: "Önerilen işlem",
+  });
+  form.append(grid);
+  appendManualTextarea({
+    documentRef,
+    name: "manual-failure-rationale",
+    parent: form,
+    placeholder: "Gerekçe / gözlem",
+  });
+  appendManualEvidenceFormActions(documentRef, form, "Arıza ekle", "add-manual-knowledge-failure");
+  parent.append(form);
+}
+
+function appendManualTestPointForm(documentRef: Document, parent: HTMLElement): void {
+  const form = documentRef.createElement("div");
+  form.className = "repair-manual-evidence-form";
+  const grid = documentRef.createElement("div");
+  grid.className = "repair-manual-evidence-form__grid";
+  appendManualInput({
+    documentRef,
+    name: "manual-test-label",
+    parent: grid,
+    placeholder: "Test noktası",
+  });
+  appendManualInput({ documentRef, name: "manual-test-rail", parent: grid, placeholder: "Rail" });
+  appendManualInput({
+    documentRef,
+    inputMode: "decimal",
+    name: "manual-test-expected",
+    parent: grid,
+    placeholder: "Beklenen değer",
+  });
+  appendManualInput({ documentRef, name: "manual-test-unit", parent: grid, placeholder: "Birim" });
+  appendManualInput({
+    documentRef,
+    inputMode: "decimal",
+    name: "manual-test-tolerance",
+    parent: grid,
+    placeholder: "Tolerans",
+  });
+  form.append(grid);
+  appendManualEvidenceFormActions(
+    documentRef,
+    form,
+    "Test noktası ekle",
+    "add-manual-knowledge-test-point"
+  );
+  parent.append(form);
+}
+
+function appendManualNoteForm(documentRef: Document, parent: HTMLElement): void {
+  const form = documentRef.createElement("div");
+  form.className = "repair-manual-evidence-form";
+  appendManualTextarea({
+    documentRef,
+    name: "manual-note-text",
+    parent: form,
+    placeholder: "Not",
+  });
+  appendManualInput({
+    documentRef,
+    name: "manual-note-source",
+    parent: form,
+    placeholder: "Kaynak",
+  });
+  appendManualEvidenceFormActions(documentRef, form, "Not ekle", "add-manual-knowledge-note");
+  parent.append(form);
+}
+
+function getReviewResources(
+  pack: RepairKnowledgePack,
+  manualEvidence: ManualEvidenceDraft,
+  kind: RepairKnowledgePackResourceKind
+): RepairKnowledgePackResource[] {
+  const removedResourceIds = new Set(manualEvidence.removedResourceIds);
+  return [
+    ...pack.resources.filter(
+      (resource) => resource.kind === kind && !removedResourceIds.has(resource.id)
+    ),
+    ...manualEvidence.resources.filter((resource) => resource.kind === kind),
+  ];
+}
+
+function getReviewFailures(
+  pack: RepairKnowledgePack,
+  manualEvidence: ManualEvidenceDraft
+): RepairCommonFailure[] {
+  const removedFailureIds = new Set(manualEvidence.removedFailureIds);
+  return [
+    ...pack.commonFailures.filter((failure) => !removedFailureIds.has(failure.id)),
+    ...manualEvidence.failures,
+  ];
+}
+
+function getReviewTestPoints(
+  pack: RepairKnowledgePack,
+  manualEvidence: ManualEvidenceDraft
+): RepairTestPoint[] {
+  const removedTestPointIds = new Set(manualEvidence.removedTestPointIds);
+  return [
+    ...pack.testPoints.filter((point) => !removedTestPointIds.has(point.id)),
+    ...manualEvidence.testPoints,
+  ];
+}
+
+function createPackNoteId(index: number): string {
+  return `note-ai-${index + 1}`;
+}
+
+function getReviewNotes(
+  pack: RepairKnowledgePack,
+  manualEvidence: ManualEvidenceDraft
+): RepairWizardManualNote[] {
+  const removedNoteIds = new Set(manualEvidence.removedNoteIds);
+  return [
+    ...pack.notes
+      .map<RepairWizardManualNote>((note, index) => ({
+        id: createPackNoteId(index),
+        text: note,
+        source: "AI araştırması",
+        confidence: 1,
+      }))
+      .filter((note) => !removedNoteIds.has(note.id)),
+    ...manualEvidence.notes,
+  ];
 }
 
 function renderDeviceStep(documentRef: Document, state: RepairUiState): HTMLElement {
@@ -690,6 +998,8 @@ function renderEvidenceReviewStep(
   const review = documentRef.createElement("div");
   review.className = "repair-wizard-form";
   const pack: RepairKnowledgePack | null = state.knowledgePack.pack;
+  const draft = state.wizard.draft;
+  const manualEvidence = draft.manualEvidence;
 
   if (pack === null) {
     const summary = documentRef.createElement("div");
@@ -702,58 +1012,95 @@ function renderEvidenceReviewStep(
     return review;
   }
 
-  const resourceGroup = appendEvidenceGroup(documentRef, review, "Kaynaklar");
-  pack.resources.forEach((resource) => {
-    appendEvidenceCheckbox({
-      checked: state.wizard.draft.selectedEvidenceResourceIds.includes(resource.id),
+  RESOURCE_PANEL_CONFIGS.forEach((config) => {
+    const resources = getReviewResources(pack, manualEvidence, config.kind);
+    const panel = appendEvidencePanel(documentRef, review, config.title, resources.length);
+    if (resources.length === 0) appendEmptyEvidenceMessage(documentRef, panel);
+    resources.forEach((resource) => {
+      appendEvidenceEntry({
+        checked: draft.selectedEvidenceResourceIds.includes(resource.id),
+        documentRef,
+        id: resource.id,
+        label: resource.label,
+        meta: joinEvidenceMeta([
+          resource.addedBy === "operator" ? "Manuel" : resource.source,
+          formatEvidenceConfidence(resource.confidence),
+          resource.pages === null ? null : `${resource.pages} sayfa`,
+        ]),
+        parent: panel,
+        removalKind: "resource",
+        resource,
+        selectionKind: "resource",
+        text,
+      });
+    });
+    appendManualResourceForm(documentRef, panel, config, text);
+  });
+
+  const failures = getReviewFailures(pack, manualEvidence);
+  const failurePanel = appendEvidencePanel(documentRef, review, "Arızalar", failures.length);
+  if (failures.length === 0) appendEmptyEvidenceMessage(documentRef, failurePanel);
+  failures.forEach((failure) => {
+    appendEvidenceEntry({
+      checked: draft.selectedFailureIds.includes(failure.id),
       documentRef,
-      id: resource.id,
-      kind: "resource",
-      label: resource.label,
-      meta: `${resource.kind} - ${resource.source} - ${Math.round(resource.confidence * 100)}%`,
-      parent: resourceGroup,
-      resource,
+      id: failure.id,
+      label: failure.label,
+      meta: joinEvidenceMeta([
+        failure.affectedPart,
+        failure.recommendedAction,
+        formatEvidenceConfidence(failure.confidence),
+      ]),
+      parent: failurePanel,
+      removalKind: "failure",
+      selectionKind: "failure",
       text,
     });
   });
+  appendManualFailureForm(documentRef, failurePanel);
 
-  appendManualResourceForm(documentRef, review, text);
-
-  const failureGroup = appendEvidenceGroup(documentRef, review, "Arızalar");
-  pack.commonFailures.forEach((failure) => {
-    appendEvidenceCheckbox({
-      checked: state.wizard.draft.selectedFailureIds.includes(failure.id),
-      documentRef,
-      id: failure.id,
-      kind: "failure",
-      label: failure.label,
-      meta: `${failure.recommendedAction} - ${Math.round(failure.confidence * 100)}%`,
-      parent: failureGroup,
-    });
-  });
-
-  const testPointGroup = appendEvidenceGroup(documentRef, review, "Test noktaları");
-  pack.testPoints.forEach((point) => {
-    appendEvidenceCheckbox({
-      checked: state.wizard.draft.selectedTestPointIds.includes(point.id),
+  const testPoints = getReviewTestPoints(pack, manualEvidence);
+  const testPointPanel = appendEvidencePanel(
+    documentRef,
+    review,
+    "Test noktaları",
+    testPoints.length
+  );
+  if (testPoints.length === 0) appendEmptyEvidenceMessage(documentRef, testPointPanel);
+  testPoints.forEach((point) => {
+    appendEvidenceEntry({
+      checked: draft.selectedTestPointIds.includes(point.id),
       documentRef,
       id: point.id,
-      kind: "test-point",
       label: point.label,
-      meta: `${point.rail} ${point.expectedValue}${point.unit}`,
-      parent: testPointGroup,
+      meta: joinEvidenceMeta([
+        point.rail,
+        `${point.expectedValue}${point.unit}`,
+        point.tolerance === null ? null : `+/-${point.tolerance}${point.unit}`,
+      ]),
+      parent: testPointPanel,
+      removalKind: "test-point",
+      selectionKind: "test-point",
+      text,
     });
   });
+  appendManualTestPointForm(documentRef, testPointPanel);
 
-  if (pack.notes.length > 0) {
-    const notes = appendEvidenceGroup(documentRef, review, "Notlar");
-    pack.notes.slice(0, 3).forEach((note) => {
-      const row = documentRef.createElement("div");
-      row.className = "repair-research-item";
-      row.textContent = note;
-      notes.append(row);
+  const notes = getReviewNotes(pack, manualEvidence);
+  const notePanel = appendEvidencePanel(documentRef, review, "Notlar", notes.length);
+  if (notes.length === 0) appendEmptyEvidenceMessage(documentRef, notePanel);
+  notes.forEach((note) => {
+    appendEvidenceEntry({
+      documentRef,
+      id: note.id,
+      label: note.text,
+      meta: joinEvidenceMeta([note.source, formatEvidenceConfidence(note.confidence)]),
+      parent: notePanel,
+      removalKind: "note",
+      text,
     });
-  }
+  });
+  appendManualNoteForm(documentRef, notePanel);
 
   return review;
 }

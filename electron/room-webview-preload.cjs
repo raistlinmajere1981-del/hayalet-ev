@@ -93,6 +93,11 @@ ipcRenderer.on(ROOM_HOST_MESSAGE_CHANNEL, (_event, payload) => {
   }
 });
 
+contextBridge.exposeInMainWorld("electronAPI", {
+  showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
+  openPath: (path) => ipcRenderer.invoke("open-path", path),
+});
+
 contextBridge.exposeInMainWorld("roomAPI", {
   ready: (payload = {}) => {
     explicitRoomReadySent = true;

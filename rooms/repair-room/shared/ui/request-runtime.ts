@@ -65,6 +65,18 @@ export function createRepairUiRequestRuntime() {
     addKnowledgeResource(payload: { kind?: string; label: string; url: string }) {
       return sendCommand(REPAIR_UI_COMMANDS.addKnowledgeResource, payload);
     },
+    addKnowledgeFailure(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.addKnowledgeFailure, payload);
+    },
+    addKnowledgeTestPoint(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.addKnowledgeTestPoint, payload);
+    },
+    addKnowledgeNote(payload: Record<string, unknown>) {
+      return sendCommand(REPAIR_UI_COMMANDS.addKnowledgeNote, payload);
+    },
+    removeKnowledgeEvidence(payload: { kind: string; id: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.removeKnowledgeEvidence, payload);
+    },
     attachKnowledgePack(payload: { packId: string }) {
       return sendCommand(REPAIR_UI_COMMANDS.attachKnowledgePack, payload);
     },

@@ -87,7 +87,20 @@ export {
   type RepairDockLayoutProjection,
 };
 
+type RepairOpenDialogResult = { canceled?: boolean; filePaths?: string[] };
+
+type RepairOpenDialogOptions = {
+  properties?: string[];
+  filters?: Array<{ name: string; extensions: string[] }>;
+};
+
 interface RepairUiWindow {
+  electronAPI?: {
+    openPath?: (path: string) => Promise<unknown> | unknown;
+    showOpenDialog?: (
+      options?: RepairOpenDialogOptions
+    ) => Promise<RepairOpenDialogResult> | RepairOpenDialogResult;
+  };
   roomAPI?: {
     close?: () => boolean;
     ready: (payload?: Record<string, unknown>) => boolean;
@@ -357,6 +370,83 @@ export function createRepairRoomUiRuntime() {
       }
     }
     return typeof node === "string" ? node : fallback;
+  }
+
+  function getManualEvidenceInput<
+    T extends HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
+  >(root: HTMLElement, name: string, resourceKind?: string): T | null {
+    const scope = resourceKind === undefined ? "" : `[data-resource-kind='${resourceKind}']`;
+    return root.querySelector<T>(`[data-repair-input='${name}']${scope}`);
+  }
+
+  function getManualEvidenceValue(root: HTMLElement, name: string, resourceKind?: string): string {
+    return getManualEvidenceInput(root, name, resourceKind)?.value.trim() ?? "";
+  }
+
+  function clearManualEvidenceValues(
+    root: HTMLElement,
+    names: string[],
+    resourceKind?: string
+  ): void {
+    names.forEach((name) => {
+      const input = getManualEvidenceInput(root, name, resourceKind);
+      if (input !== null) input.value = "";
+    });
+  }
+
+  function getFileNameFromPath(path: string): string {
+    const normalized = path.replace(/\\/g, "/");
+    return normalized.split("/").filter(Boolean).at(-1) ?? path;
+  }
+
+  function getSystemOpenTarget(source: string): string {
+    const resolved = resolveRepairAssetUrl(source) ?? source;
+    if (!resolved.startsWith("file:")) return resolved;
+    try {
+      return decodeURIComponent(new URL(resolved).pathname);
+    } catch {
+      return source;
+    }
+  }
+
+  function getBrowserOpenHref(source: string): string {
+    const resolved = resolveRepairAssetUrl(source) ?? source;
+    if (/^[a-zA-Z]:[\\/]/.test(resolved)) return `file:///${resolved.replace(/\\/g, "/")}`;
+    if (resolved.startsWith("/")) return `file://${resolved}`;
+    return resolved;
+  }
+
+  async function openEvidenceSource(source: string): Promise<void> {
+    const target = getSystemOpenTarget(source).trim();
+    if (target === "") return;
+    const openPath = windowRef.electronAPI?.openPath;
+    if (typeof openPath === "function") {
+      await openPath(target);
+      return;
+    }
+    window.open(getBrowserOpenHref(target), "_blank", "noopener");
+  }
+
+  async function pickManualResourceFile(root: HTMLElement, resourceKind: string): Promise<void> {
+    const showOpenDialog = windowRef.electronAPI?.showOpenDialog;
+    if (typeof showOpenDialog !== "function") return;
+    const result = await showOpenDialog({ properties: ["openFile"] });
+    const filePath = result.canceled === true ? "" : (result.filePaths?.[0]?.trim() ?? "");
+    if (filePath === "") return;
+    const urlInput = getManualEvidenceInput<HTMLInputElement>(
+      root,
+      "manual-resource-url",
+      resourceKind
+    );
+    const labelInput = getManualEvidenceInput<HTMLInputElement>(
+      root,
+      "manual-resource-label",
+      resourceKind
+    );
+    if (urlInput !== null) urlInput.value = filePath;
+    if (labelInput !== null && labelInput.value.trim() === "") {
+      labelInput.value = getFileNameFromPath(filePath);
+    }
   }
 
   function createWorkbenchEmptyState(): HTMLElement {
@@ -1790,26 +1880,90 @@ export function createRepairRoomUiRuntime() {
           flushWizardFields(root);
           requestRuntime.createSession();
           break;
+        case "open-evidence-source": {
+          const sourceUrl = el.dataset["sourceUrl"];
+          if (sourceUrl !== undefined) void openEvidenceSource(sourceUrl);
+          break;
+        }
+        case "pick-manual-resource-file": {
+          const resourceKind = el.dataset["resourceKind"];
+          if (resourceKind !== undefined) void pickManualResourceFile(root, resourceKind);
+          break;
+        }
         case "add-manual-knowledge-resource": {
-          const kind = root.querySelector<HTMLSelectElement>(
-            "[data-repair-input='manual-resource-kind']"
-          );
-          const label = root.querySelector<HTMLInputElement>(
-            "[data-repair-input='manual-resource-label']"
-          );
-          const url = root.querySelector<HTMLInputElement>(
-            "[data-repair-input='manual-resource-url']"
-          );
-          const resourceLabel = label?.value.trim() ?? "";
-          const resourceUrl = url?.value.trim() ?? "";
+          const resourceKind = el.dataset["resourceKind"] ?? "schematic";
+          const resourceLabel = getManualEvidenceValue(root, "manual-resource-label", resourceKind);
+          const resourceUrl = getManualEvidenceValue(root, "manual-resource-url", resourceKind);
           if (resourceLabel === "" || resourceUrl === "") break;
           requestRuntime.addKnowledgeResource({
-            ...(kind?.value === undefined ? {} : { kind: kind.value }),
+            kind: resourceKind,
             label: resourceLabel,
             url: resourceUrl,
           });
-          if (label) label.value = "";
-          if (url) url.value = "";
+          clearManualEvidenceValues(
+            root,
+            ["manual-resource-label", "manual-resource-url"],
+            resourceKind
+          );
+          break;
+        }
+        case "add-manual-knowledge-failure": {
+          const label = getManualEvidenceValue(root, "manual-failure-label");
+          if (label === "") break;
+          const affectedPart = getManualEvidenceValue(root, "manual-failure-part");
+          const recommendedAction = getManualEvidenceValue(root, "manual-failure-action");
+          const rationale = getManualEvidenceValue(root, "manual-failure-rationale");
+          requestRuntime.addKnowledgeFailure({
+            label,
+            ...(affectedPart === "" ? {} : { affectedPart }),
+            ...(recommendedAction === "" ? {} : { recommendedAction }),
+            ...(rationale === "" ? {} : { rationale }),
+          });
+          clearManualEvidenceValues(root, [
+            "manual-failure-label",
+            "manual-failure-part",
+            "manual-failure-action",
+            "manual-failure-rationale",
+          ]);
+          break;
+        }
+        case "add-manual-knowledge-test-point": {
+          const label = getManualEvidenceValue(root, "manual-test-label");
+          const rail = getManualEvidenceValue(root, "manual-test-rail");
+          if (label === "" || rail === "") break;
+          const expectedValue = getManualEvidenceValue(root, "manual-test-expected");
+          const unit = getManualEvidenceValue(root, "manual-test-unit");
+          const tolerance = getManualEvidenceValue(root, "manual-test-tolerance");
+          requestRuntime.addKnowledgeTestPoint({
+            label,
+            rail,
+            ...(expectedValue === "" ? {} : { expectedValue }),
+            ...(unit === "" ? {} : { unit }),
+            ...(tolerance === "" ? {} : { tolerance }),
+          });
+          clearManualEvidenceValues(root, [
+            "manual-test-label",
+            "manual-test-rail",
+            "manual-test-expected",
+            "manual-test-unit",
+            "manual-test-tolerance",
+          ]);
+          break;
+        }
+        case "add-manual-knowledge-note": {
+          const note = getManualEvidenceValue(root, "manual-note-text");
+          if (note === "") break;
+          const source = getManualEvidenceValue(root, "manual-note-source");
+          requestRuntime.addKnowledgeNote({ text: note, ...(source === "" ? {} : { source }) });
+          clearManualEvidenceValues(root, ["manual-note-text", "manual-note-source"]);
+          break;
+        }
+        case "remove-knowledge-evidence": {
+          const kind = el.dataset["evidenceKind"];
+          const id = el.dataset["evidenceId"];
+          if (kind !== undefined && id !== undefined) {
+            requestRuntime.removeKnowledgeEvidence({ kind, id });
+          }
           break;
         }
         case "timeline-zoom": {
