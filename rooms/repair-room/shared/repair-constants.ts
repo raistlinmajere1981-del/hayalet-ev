@@ -35,6 +35,7 @@ export const REPAIR_UI_COMMANDS = {
   startKnowledgeResearch: "RepairRoomStartKnowledgeResearch",
   skipKnowledgeResearch: "RepairRoomSkipKnowledgeResearch",
   updateEvidenceSelection: "RepairRoomUpdateEvidenceSelection",
+  addKnowledgeResource: "RepairRoomAddKnowledgeResource",
   attachKnowledgePack: "RepairRoomAttachKnowledgePack",
   setActiveTool: "RepairRoomSetActiveTool",
   toggleFreezeFrame: "RepairRoomToggleFreezeFrame",

@@ -132,11 +132,16 @@ function createMemoryRepairIo() {
   return {
     callRoomTools: async (_request: Record<string, unknown>) => ({ success: true }),
     ensureRuntimeDirectory: async (_dirPath: string, _requestId?: string | null) => {},
-    deleteRuntimePath: async (_targetPath: string, _options?: { recursive?: boolean; requestId?: string | null }) => {},
+    deleteRuntimePath: async (
+      _targetPath: string,
+      _options?: { recursive?: boolean; requestId?: string | null }
+    ) => {},
     getElectronApi: () => null,
     listDirectory: async (_dirPath: string) => [],
     readJsonFile: async (_filePath: string) => null,
-    resolveRuntimePaths: async (_requestId?: string | null) => ({ storageDir: "/tmp/repair-room-test" }),
+    resolveRuntimePaths: async (_requestId?: string | null) => ({
+      storageDir: "/tmp/repair-room-test",
+    }),
     writeJsonFile: async (_filePath: string, _value: unknown) => {},
   };
 }
@@ -559,6 +564,7 @@ void test("repair-room research uses selected AI slot for live knowledge-pack di
                   id: "candidate-schematic",
                   label: "Candidate service manual",
                   kind: "schematic",
+                  url: "https://example.test/bn44-00932a-service-manual.pdf",
                   source: "AI research candidate",
                   pages: 12,
                   confidence: 0.74,
@@ -631,6 +637,14 @@ void test("repair-room research uses selected AI slot for live knowledge-pack di
   assert.equal(state.wizard.generatedKnowledgePackId, "ai-bn44-00932a");
   assert.equal(state.wizard.foundResources[0]?.id, "candidate-schematic");
   assert.equal(
+    state.knowledgePack.pack?.resources[0]?.sourceUrl,
+    "https://example.test/bn44-00932a-service-manual.pdf"
+  );
+  assert.equal(
+    state.knowledgePack.pack?.resources[0]?.downloadUrl,
+    state.knowledgePack.pack?.resources[0]?.sourceUrl
+  );
+  assert.equal(
     state.wizard.researchProgress.every((item) => item.completed),
     true
   );
@@ -638,12 +652,43 @@ void test("repair-room research uses selected AI slot for live knowledge-pack di
   assert.deepEqual(state.wizard.draft.selectedFailureIds, ["startup-resistor-open"]);
   assert.deepEqual(state.wizard.draft.selectedTestPointIds, ["tp-5v-stby-ai"]);
 
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addKnowledgeResource, {
+      kind: "schematic",
+      label: "Manual boardview mirror",
+      url: "https://example.test/manual-boardview.pdf",
+    }).success,
+    true
+  );
+  const manualState = runtime.getStateSnapshot().state;
+  assert.equal(
+    manualState.knowledgePack.pack?.resources.some(
+      (resource) =>
+        resource.label === "Manual boardview mirror" &&
+        resource.addedBy === "operator" &&
+        resource.sourceUrl === "https://example.test/manual-boardview.pdf"
+    ),
+    true
+  );
+  assert.equal(
+    manualState.wizard.draft.selectedEvidenceResourceIds.includes(
+      "manual-schematic-manual-boardview-mirror"
+    ),
+    true
+  );
+
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard).success, true);
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, true);
   const nextState = runtime.getStateSnapshot().state;
   const activeSession = nextState.sessions[nextState.activeSessionId ?? ""];
   assert.equal(activeSession?.knowledgePackId, "ai-bn44-00932a");
   assert.equal(activeSession.knowledgePack?.testPoints[0]?.label, "5V_STBY");
+  assert.equal(
+    activeSession.knowledgePack?.resources.some(
+      (resource) => resource.id === "manual-schematic-manual-boardview-mirror"
+    ),
+    true
+  );
 
   runtime.dispose();
 });
@@ -703,10 +748,40 @@ void test("repair-room wizard v2 gates tabs, accepts unknown fields, and skips f
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, false);
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.skipKnowledgeResearch).success, true);
 
-  const skipped = runtime.getStateSnapshot().state.wizard;
-  assert.equal(skipped.currentStep, "ready");
+  const skippedState = runtime.getStateSnapshot().state;
+  const skipped = skippedState.wizard;
+  assert.equal(skipped.currentStep, "evidence-review");
   assert.equal(skipped.draft.researchSkipped, true);
+  assert.equal(skipped.evidenceReviewed, false);
+  assert.equal(skipped.generatedKnowledgePackId, "manual-bilinmiyor");
+  assert.equal(skippedState.knowledgePack.pack?.id, "manual-bilinmiyor");
+  assert.equal(skippedState.knowledgePack.pack?.resources.length, 0);
   assert.equal(runtime.getStateSnapshot().state.phase, "wizard-active");
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, false);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addKnowledgeResource, {
+      kind: "schematic",
+      label: "Manual boardview mirror",
+      url: "https://example.test/manual-boardview.pdf",
+    }).success,
+    true
+  );
+  const manualReview = runtime.getStateSnapshot().state;
+  assert.equal(manualReview.wizard.currentStep, "evidence-review");
+  assert.equal(manualReview.wizard.draft.researchSkipped, true);
+  assert.equal(
+    manualReview.wizard.draft.selectedEvidenceResourceIds.includes(
+      "manual-schematic-manual-boardview-mirror"
+    ),
+    true
+  );
+  assert.equal(
+    manualReview.knowledgePack.pack?.resources.some(
+      (resource) => resource.id === "manual-schematic-manual-boardview-mirror"
+    ),
+    true
+  );
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.createSession).success, false);
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.advanceWizard, { step: "ready" }).success,
     true
@@ -717,7 +792,13 @@ void test("repair-room wizard v2 gates tabs, accepts unknown fields, and skips f
   const nextState = runtime.getStateSnapshot().state;
   const activeSession = nextState.sessions[nextState.activeSessionId ?? ""];
   assert.equal(activeSession?.status, "in-progress");
-  assert.equal(activeSession.knowledgePack, null);
+  assert.equal(activeSession.knowledgePackId, "manual-bilinmiyor");
+  assert.equal(
+    activeSession.knowledgePack?.resources.some(
+      (resource) => resource.id === "manual-schematic-manual-boardview-mirror"
+    ),
+    true
+  );
   assert.equal(activeSession.deviceInfo.deviceType, "Bilinmiyor");
   assert.deepEqual(activeSession.symptoms.primarySymptoms, ["Intermittent short"]);
 
@@ -735,6 +816,11 @@ void test("repair-room persists selected evidence separately from the v2 session
   const storage = createMemoryRepairStorage([createStoredRepairRecord(storedSession)]);
   const runtime = createRepairRoomHostRuntime({
     autoHydrateStorage: false,
+    initialSeed: {
+      activeSessionId: storedSession.id,
+      sessionList: [toStoredSessionListItem(storedSession)],
+      sessions: { [storedSession.id]: storedSession },
+    },
     io: createMemoryRepairIo(),
     storage,
   }).activate({
@@ -879,11 +965,12 @@ void test("repair-room hydrate ignores legacy v1 room-local session records", as
 
   const state = runtime.getStateSnapshot().state;
   assert.equal(state.storage.sessionCount, 1);
-  assert.equal(state.activeSessionId, "repair-v2-session");
-  assert.equal(
-    state.sessionList.some((session) => session.id === "repair-v1-session"),
-    false
-  );
+  assert.equal(state.activeSessionId, null);
+  assert.equal(state.sessionList.length, 1);
+  assert.equal(state.sessionList[0]?.id, "repair-v2-session");
+  assert.equal(state.sessions["repair-v2-session"]?.title, "Persisted v2 repair session");
+  assert.equal(state.sessions["repair-v1-session"], undefined);
+  assert.equal(state.chat.turns.length, 0);
 
   runtime.dispose();
 });
@@ -927,7 +1014,7 @@ void test("repair-room hydrate keeps a clean fallback when storage has no v2 ses
   runtime.dispose();
 });
 
-void test("repair-room hydrates room-local stored session records when storage is available", async () => {
+void test("repair-room hydrates room-local storage without opening saved sessions", async () => {
   const storedSession: RepairSession = {
     ...cloneJson(createTestRepairSession()),
     id: "repair-persisted-session",
@@ -958,8 +1045,11 @@ void test("repair-room hydrates room-local stored session records when storage i
   const runtimeState = runtime.getStateSnapshot().state;
   assert.equal(runtimeState.storage.status, "ready");
   assert.equal(runtimeState.storage.sessionCount, 1);
-  assert.equal(runtimeState.activeSessionId, storedSession.id);
-  assert.equal(runtimeState.chat.turns[0]?.text, "Stored repair context");
+  assert.equal(runtimeState.activeSessionId, null);
+  assert.equal(runtimeState.sessionList.length, 1);
+  assert.equal(runtimeState.sessionList[0]?.id, storedSession.id);
+  assert.equal(runtimeState.sessions[storedSession.id]?.title, "Persisted repair session");
+  assert.equal(runtimeState.chat.turns.length, 0);
 
   const rows = Object.fromEntries(
     getRepairRoomSyncRows(
@@ -969,6 +1059,15 @@ void test("repair-room hydrates room-local stored session records when storage i
     )
   );
   assert.equal(rows["Storage"], "Repair history ready, 1 session");
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.activateSession, { sessionId: storedSession.id })
+      .success,
+    true
+  );
+  const activatedState = runtime.getStateSnapshot().state;
+  assert.equal(activatedState.activeSessionId, storedSession.id);
+  assert.equal(activatedState.chat.turns[0]?.text, "Stored repair context");
 
   runtime.dispose();
 });
@@ -983,6 +1082,11 @@ void test("repair-room persists session event and chat updates to room-local ses
   const storage = createMemoryRepairStorage([createStoredRepairRecord(storedSession)]);
   const runtime = createRepairRoomHostRuntime({
     autoHydrateStorage: false,
+    initialSeed: {
+      activeSessionId: storedSession.id,
+      sessionList: [toStoredSessionListItem(storedSession)],
+      sessions: { [storedSession.id]: storedSession },
+    },
     io: createMemoryRepairIo(),
     storage,
   }).activate({

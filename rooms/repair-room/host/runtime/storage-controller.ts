@@ -47,6 +47,7 @@ export function createRepairStorageController(params: {
   let storageReady = false;
   let storageRuntimePaths: unknown = null;
   const storedChatTurnsBySessionId = new Map<string, RepairChatTurn[]>();
+  const storedSessionIds = new Set<string>();
 
   function createRoomStorageState(
     status: RepairStorageState["status"],
@@ -60,7 +61,7 @@ export function createRepairStorageController(params: {
       mode: status === "ready" || status === "hydrating" ? "room-storage" : "mock",
       status,
       storageDir: stateParams.storageDir ?? null,
-      sessionCount: stateParams.sessionCount ?? store.getState().sessionList.length,
+      sessionCount: stateParams.sessionCount ?? storedSessionIds.size,
       message: stateParams.message ?? null,
     };
   }
@@ -75,7 +76,7 @@ export function createRepairStorageController(params: {
     });
   }
 
-  function updateReadyStorageState(sessionCount = store.getState().sessionList.length): void {
+  function updateReadyStorageState(sessionCount = storedSessionIds.size): void {
     if (storageRuntimePaths === null) return;
     store.dispatch({
       type: "storage/set",
@@ -115,6 +116,7 @@ export function createRepairStorageController(params: {
       .then(async () => {
         await sessionStorage.saveSessionRecord(runtimePaths, { session, chatTurns });
         if (isDisposed()) return;
+        storedSessionIds.add(session.id);
         updateReadyStorageState();
       })
       .catch((error: unknown) => {
@@ -201,32 +203,31 @@ export function createRepairStorageController(params: {
         storageRuntimePaths = runtimePaths;
         storageReady = true;
         storedChatTurnsBySessionId.clear();
+        storedSessionIds.clear();
         records.forEach((record) => {
           storedChatTurnsBySessionId.set(record.session.id, record.chatTurns);
+          storedSessionIds.add(record.session.id);
         });
-
-        const sessions = Object.fromEntries(
-          records.map((record) => [record.session.id, record.session])
+        const sessions: Record<string, RepairSession> = Object.fromEntries(
+          records.map((record) => [record.session.id, record.session] as const)
         );
-        const sessionList = buildSessionList(sessions);
-        const activeSession = records[0]?.session ?? null;
+        const activeSessionId = store.getState().activeSessionId;
+        const activeSession = activeSessionId === null ? null : (sessions[activeSessionId] ?? null);
+
         store.batch(() => {
-          if (records.length > 0) {
-            store.dispatch({
-              type: "session/hydrate",
-              activeSessionId: activeSession?.id ?? null,
-              sessions,
-              sessionList,
-            });
-            store.dispatch({
-              type: "chat/set-turns",
-              turns:
-                activeSession === null
-                  ? []
-                  : (storedChatTurnsBySessionId.get(activeSession.id) ?? []),
-            });
-            onHydratedActiveSession(activeSession);
-          }
+          store.dispatch({
+            type: "session/hydrate",
+            activeSessionId: activeSession?.id ?? null,
+            sessions,
+            sessionList: buildSessionList(sessions),
+          });
+          store.dispatch({
+            type: "chat/set-turns",
+            turns:
+              activeSession === null
+                ? []
+                : (storedChatTurnsBySessionId.get(activeSession.id) ?? []),
+          });
           if (storedOperatorProfile !== null) {
             store.dispatch({
               type: "operator-profile/set",
@@ -238,11 +239,12 @@ export function createRepairStorageController(params: {
             type: "storage/set",
             storage: createRoomStorageState("ready", {
               message: "Room storage ready",
-              sessionCount: sessionList.length,
+              sessionCount: storedSessionIds.size,
               storageDir: readRepairRoomStorageDir(runtimePaths),
             }),
           });
         });
+        onHydratedActiveSession(activeSession);
       } catch (error: unknown) {
         storageReady = false;
         storageRuntimePaths = null;
@@ -272,6 +274,8 @@ export function createRepairStorageController(params: {
       .then(async () => {
         await sessionStorage.deleteSessionRecord(runtimePaths, sessionId);
         if (isDisposed()) return;
+        storedSessionIds.delete(sessionId);
+        storedChatTurnsBySessionId.delete(sessionId);
         updateReadyStorageState();
       })
       .catch((error: unknown) => {

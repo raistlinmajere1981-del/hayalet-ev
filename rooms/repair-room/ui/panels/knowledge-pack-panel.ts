@@ -1,8 +1,28 @@
 import type { RepairUiState } from "../../shared/ui/state.js";
+import type { RepairKnowledgePackResource } from "../../shared/types/index.js";
 import { resolveRepairAssetUrl } from "../repair-asset-url.js";
 import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
+
+function getResourceUrl(resource: RepairKnowledgePackResource): string | null {
+  return resource.sourceUrl ?? resource.downloadUrl ?? resource.src;
+}
+
+function isPreviewableImageResource(resource: RepairKnowledgePackResource): boolean {
+  const src = resource.src ?? getResourceUrl(resource);
+  if (src === null) return false;
+  if (resource.kind === "board-image") return true;
+  return /(?:^data:image\/|[.](?:apng|avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$)/i.test(src);
+}
+
+function getResourceKindLabel(resource: RepairKnowledgePackResource): string {
+  if (resource.kind === "board-image") return "Board image";
+  if (resource.kind === "datasheet") return "Datasheet";
+  if (resource.kind === "schematic") return "Schematic";
+  if (resource.kind === "thread") return "Thread";
+  return "Note";
+}
 
 function createKnowledgeEmptyState(documentRef: Document, text: TextFn): HTMLElement {
   const empty = documentRef.createElement("div");
@@ -138,14 +158,11 @@ export function renderKnowledgePackPanel(
     appendPreviewImage(
       documentRef,
       preview,
-      resources[0]?.src ?? null,
-      resources[0]?.label ?? "Schematic preview"
+      resources.find(isPreviewableImageResource) ?? null,
+      "Schematic preview"
     );
     resources.forEach((resource) => {
-      const row = documentRef.createElement("div");
-      row.className = "repair-pack-preview__row";
-      row.textContent = `${resource.label} • ${Math.round(resource.confidence * 100)}%`;
-      preview.append(row);
+      appendResourcePreviewRow(documentRef, preview, resource, text);
     });
   } else if (kp.previewTabId === "board-view") {
     const resources = pack.resources
@@ -154,14 +171,11 @@ export function renderKnowledgePackPanel(
     appendPreviewImage(
       documentRef,
       preview,
-      resources[0]?.src ?? null,
-      resources[0]?.label ?? "Board preview"
+      resources.find(isPreviewableImageResource) ?? null,
+      "Board preview"
     );
     resources.forEach((resource) => {
-      const row = documentRef.createElement("div");
-      row.className = "repair-pack-preview__row";
-      row.textContent = `${resource.label} • ${resource.source}`;
-      preview.append(row);
+      appendResourcePreviewRow(documentRef, preview, resource, text);
     });
   } else {
     pack.notes.slice(0, 4).forEach((note) => {
@@ -232,13 +246,68 @@ export function renderKnowledgePackPanel(
 function appendPreviewImage(
   documentRef: Document,
   preview: HTMLElement,
-  src: string | null,
+  resource: RepairKnowledgePackResource | null,
   alt: string
 ): void {
+  const src = resource === null ? null : resource.src;
   if (src === null) return;
+  if (resource !== null && !isPreviewableImageResource(resource)) return;
+  const resolvedSrc = resolveRepairAssetUrl(src) ?? src;
   const image = documentRef.createElement("img");
   image.className = "repair-pack-preview__image";
-  image.src = resolveRepairAssetUrl(src) ?? src;
-  image.alt = alt;
+  image.src = resolvedSrc;
+  image.alt = resource?.label ?? alt;
   preview.append(image);
+}
+
+function appendResourcePreviewRow(
+  documentRef: Document,
+  preview: HTMLElement,
+  resource: RepairKnowledgePackResource,
+  text: TextFn
+): void {
+  const row = documentRef.createElement("div");
+  row.className = "repair-pack-preview__row repair-pack-preview__row--resource";
+
+  const body = documentRef.createElement("div");
+  body.className = "repair-pack-preview__resource-body";
+
+  const title = documentRef.createElement("strong");
+  title.textContent = resource.label;
+  body.append(title);
+
+  const meta = documentRef.createElement("span");
+  meta.textContent = `${getResourceKindLabel(resource)} • ${resource.source} • ${Math.round(
+    resource.confidence * 100
+  )}%`;
+  body.append(meta);
+  row.append(body);
+
+  const url = getResourceUrl(resource);
+  if (url !== null) {
+    const actions = documentRef.createElement("div");
+    actions.className = "repair-pack-preview__actions";
+
+    const previewLink = documentRef.createElement("a");
+    previewLink.className = "repair-pack-preview__link";
+    previewLink.href = resolveRepairAssetUrl(url) ?? url;
+    previewLink.target = "_blank";
+    previewLink.rel = "noopener noreferrer";
+    previewLink.textContent = text(["knowledgePack", "preview"], "Preview");
+    actions.append(previewLink);
+
+    const downloadUrl = resource.downloadUrl ?? url;
+    const downloadLink = documentRef.createElement("a");
+    downloadLink.className = "repair-pack-preview__link";
+    downloadLink.href = resolveRepairAssetUrl(downloadUrl) ?? downloadUrl;
+    downloadLink.target = "_blank";
+    downloadLink.rel = "noopener noreferrer";
+    downloadLink.download = "";
+    downloadLink.textContent = text(["knowledgePack", "download"], "Download");
+    actions.append(downloadLink);
+
+    row.append(actions);
+  }
+
+  preview.append(row);
 }

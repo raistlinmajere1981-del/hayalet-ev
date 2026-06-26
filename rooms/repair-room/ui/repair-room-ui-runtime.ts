@@ -1790,6 +1790,28 @@ export function createRepairRoomUiRuntime() {
           flushWizardFields(root);
           requestRuntime.createSession();
           break;
+        case "add-manual-knowledge-resource": {
+          const kind = root.querySelector<HTMLSelectElement>(
+            "[data-repair-input='manual-resource-kind']"
+          );
+          const label = root.querySelector<HTMLInputElement>(
+            "[data-repair-input='manual-resource-label']"
+          );
+          const url = root.querySelector<HTMLInputElement>(
+            "[data-repair-input='manual-resource-url']"
+          );
+          const resourceLabel = label?.value.trim() ?? "";
+          const resourceUrl = url?.value.trim() ?? "";
+          if (resourceLabel === "" || resourceUrl === "") break;
+          requestRuntime.addKnowledgeResource({
+            ...(kind?.value === undefined ? {} : { kind: kind.value }),
+            label: resourceLabel,
+            url: resourceUrl,
+          });
+          if (label) label.value = "";
+          if (url) url.value = "";
+          break;
+        }
         case "timeline-zoom": {
           const direction = el.dataset["direction"] === "out" ? -1 : 1;
           requestRuntime.updateTimeline({

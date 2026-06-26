@@ -82,6 +82,12 @@
           "exposure": "internal"
         },
         {
+          "name": "RepairRoomAddKnowledgeResource",
+          "description": "Add an operator-provided schematic, board image, datasheet, thread, or note to the current knowledge pack.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "RepairRoomAttachKnowledgePack",
           "description": "Attach a generated knowledge pack to the active session.",
           "scope": "room-ui",

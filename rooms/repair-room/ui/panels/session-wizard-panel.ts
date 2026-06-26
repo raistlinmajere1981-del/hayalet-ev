@@ -5,8 +5,9 @@ import {
   REPAIR_SYMPTOM_OPTIONS,
   REPAIR_UNKNOWN_VALUE,
 } from "../../shared/data/index.js";
-import type { RepairKnowledgePack } from "../../shared/types/index.js";
+import type { RepairKnowledgePack, RepairKnowledgePackResource } from "../../shared/types/index.js";
 import type { RepairUiState } from "../../shared/ui/state.js";
+import { resolveRepairAssetUrl } from "../repair-asset-url.js";
 import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
@@ -174,11 +175,7 @@ export function canEnterRepairWizardStep(state: RepairUiState, stepId: WizardSte
   if (stepId === "symptoms") return isDeviceComplete(state);
   if (stepId === "ai-research") return isDeviceComplete(state) && hasSymptoms(state);
   if (stepId === "evidence-review") {
-    return (
-      isDeviceComplete(state) &&
-      hasSymptoms(state) &&
-      state.wizard.generatedKnowledgePackId !== null
-    );
+    return isDeviceComplete(state) && hasSymptoms(state) && hasResearchResult(state);
   }
   return isDeviceComplete(state) && hasSymptoms(state) && hasResearchResult(state);
 }
@@ -187,8 +184,7 @@ export function isRepairWizardStepComplete(state: RepairUiState, stepId: WizardS
   if (stepId === "device-info") return isDeviceComplete(state);
   if (stepId === "symptoms") return hasSymptoms(state);
   if (stepId === "ai-research") return hasResearchResult(state);
-  if (stepId === "evidence-review")
-    return state.wizard.evidenceReviewed || state.wizard.draft.researchSkipped;
+  if (stepId === "evidence-review") return state.wizard.evidenceReviewed;
   return state.phase === "session-active" || canEnterRepairWizardStep(state, "ready");
 }
 
@@ -427,9 +423,11 @@ function appendEvidenceCheckbox(params: {
   label: string;
   meta: string;
   parent: HTMLElement;
+  resource?: RepairKnowledgePackResource;
+  text?: TextFn;
 }): void {
-  const row = params.documentRef.createElement("label");
-  row.className = "repair-evidence-option";
+  const row = params.documentRef.createElement("div");
+  row.className = `repair-evidence-option${params.resource !== undefined ? " repair-evidence-option--resource" : ""}`;
 
   const checkbox = params.documentRef.createElement("input");
   checkbox.type = "checkbox";
@@ -447,8 +445,47 @@ function appendEvidenceCheckbox(params: {
   meta.textContent = params.meta;
   body.append(title, meta);
   row.append(body);
+  if (params.resource !== undefined && params.text !== undefined) {
+    appendEvidenceResourceActions(params.documentRef, row, params.resource, params.text);
+  }
 
   params.parent.append(row);
+}
+
+function getEvidenceResourceUrl(resource: RepairKnowledgePackResource): string | null {
+  return resource.sourceUrl ?? resource.downloadUrl ?? resource.src;
+}
+
+function appendEvidenceResourceActions(
+  documentRef: Document,
+  row: HTMLElement,
+  resource: RepairKnowledgePackResource,
+  text: TextFn
+): void {
+  const url = getEvidenceResourceUrl(resource);
+  if (url === null) return;
+  const resolvedUrl = resolveRepairAssetUrl(url) ?? url;
+  const actions = documentRef.createElement("div");
+  actions.className = "repair-evidence-option__actions";
+
+  const preview = documentRef.createElement("a");
+  preview.className = "repair-evidence-option__link";
+  preview.href = resolvedUrl;
+  preview.target = "_blank";
+  preview.rel = "noopener noreferrer";
+  preview.textContent = text(["wizard", "evidenceReview", "preview"], "Önizle");
+  actions.append(preview);
+
+  const downloadUrl = resource.downloadUrl ?? url;
+  const download = documentRef.createElement("a");
+  download.className = "repair-evidence-option__link";
+  download.href = resolveRepairAssetUrl(downloadUrl) ?? downloadUrl;
+  download.target = "_blank";
+  download.rel = "noopener noreferrer";
+  download.download = "";
+  download.textContent = text(["wizard", "evidenceReview", "download"], "İndir");
+  actions.append(download);
+  row.append(actions);
 }
 
 function appendEvidenceGroup(
@@ -463,6 +500,60 @@ function appendEvidenceGroup(
   group.append(heading);
   parent.append(group);
   return group;
+}
+
+function appendManualResourceForm(documentRef: Document, parent: HTMLElement, text: TextFn): void {
+  const group = appendEvidenceGroup(
+    documentRef,
+    parent,
+    text(["wizard", "evidenceReview", "manualTitle"], "Manuel şema ekle")
+  );
+  group.classList.add("repair-manual-resource");
+
+  const grid = documentRef.createElement("div");
+  grid.className = "repair-manual-resource__grid";
+
+  const kind = documentRef.createElement("select");
+  kind.className = "repair-wizard-field__input";
+  kind.dataset["repairInput"] = "manual-resource-kind";
+  const kindOptions: Array<{ label: string; value: string }> = [
+    { value: "schematic", label: "Schematic" },
+    { value: "board-image", label: "Board image" },
+    { value: "datasheet", label: "Datasheet" },
+    { value: "thread", label: "Thread" },
+    { value: "note", label: "Note" },
+  ];
+  kindOptions.forEach(({ value, label }) => {
+    const option = documentRef.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    kind.append(option);
+  });
+  grid.append(kind);
+
+  const label = documentRef.createElement("input");
+  label.className = "repair-wizard-field__input";
+  label.placeholder = text(["wizard", "evidenceReview", "manualLabel"], "Kaynak adı");
+  label.dataset["repairInput"] = "manual-resource-label";
+  grid.append(label);
+
+  const url = documentRef.createElement("input");
+  url.className = "repair-wizard-field__input";
+  url.placeholder = text(
+    ["wizard", "evidenceReview", "manualUrl"],
+    "https:// veya shared/assets/..."
+  );
+  url.dataset["repairInput"] = "manual-resource-url";
+  grid.append(url);
+
+  group.append(grid);
+  appendActionButton(
+    documentRef,
+    group,
+    text(["wizard", "evidenceReview", "manualAdd"], "Şemayı ekle"),
+    "add-manual-knowledge-resource",
+    "repair-secondary-btn"
+  );
 }
 
 function renderDeviceStep(documentRef: Document, state: RepairUiState): HTMLElement {
@@ -619,10 +710,14 @@ function renderEvidenceReviewStep(
       id: resource.id,
       kind: "resource",
       label: resource.label,
-      meta: `${resource.kind} - ${Math.round(resource.confidence * 100)}%`,
+      meta: `${resource.kind} - ${resource.source} - ${Math.round(resource.confidence * 100)}%`,
       parent: resourceGroup,
+      resource,
+      text,
     });
   });
+
+  appendManualResourceForm(documentRef, review, text);
 
   const failureGroup = appendEvidenceGroup(documentRef, review, "Arızalar");
   pack.commonFailures.forEach((failure) => {

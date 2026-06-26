@@ -1,4 +1,5 @@
 import {
+  REPAIR_KNOWLEDGE_PACK_SCHEMA_VERSION,
   REPAIR_ROOM_ID,
   REPAIR_UI_COLORS,
   REPAIR_UI_COMMANDS,
@@ -11,6 +12,9 @@ import type {
   RepairChatTurn,
   RepairEvent,
   RepairInteractionSettingsState,
+  RepairKnowledgePack,
+  RepairKnowledgePackResource,
+  RepairKnowledgePackResourceKind,
   RepairOverlayEntityRef,
   RepairSession,
   RepairVoiceGuidanceState,
@@ -95,6 +99,7 @@ const WIZARD_STEP_ORDER: RepairWizardState["currentStep"][] = [
   "evidence-review",
   "ready",
 ];
+const LOCAL_KNOWLEDGE_RESOURCE_PREFIXES = ["shared/assets/", "main-functions/", "i18n/"];
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -176,6 +181,104 @@ export function createRepairCommandRouter(params: {
       : null;
   }
 
+  function isKnowledgeResourceKind(value: unknown): value is RepairKnowledgePackResourceKind {
+    return (
+      value === "schematic" ||
+      value === "board-image" ||
+      value === "thread" ||
+      value === "datasheet" ||
+      value === "note"
+    );
+  }
+
+  function normalizeKnowledgeResourceUrl(value: unknown): string | null {
+    const raw = safeString(value);
+    if (raw === null) return null;
+    const trimmed = raw.trim();
+    if (trimmed === "") return null;
+    if (LOCAL_KNOWLEDGE_RESOURCE_PREFIXES.some((prefix) => trimmed.startsWith(prefix))) {
+      return trimmed;
+    }
+    try {
+      const url = new URL(trimmed);
+      return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function slugifyKnowledgeResourceId(value: string, fallback: string): string {
+    const slug = value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return slug === "" ? fallback : slug;
+  }
+
+  function createManualKnowledgeResourceId(
+    kind: RepairKnowledgePackResourceKind,
+    label: string,
+    resources: RepairKnowledgePackResource[]
+  ): string {
+    const existing = new Set(resources.map((resource) => resource.id));
+    const base = `manual-${kind}-${slugifyKnowledgeResourceId(label, "resource")}`;
+    if (!existing.has(base)) return base;
+    let index = 2;
+    while (existing.has(`${base}-${index}`)) {
+      index += 1;
+    }
+    return `${base}-${index}`;
+  }
+
+  function createManualKnowledgePack(
+    wizard: RepairWizardState,
+    createdAt: string
+  ): RepairKnowledgePack {
+    const draft = wizard.draft;
+    const modelNumber = draft.boardCode.trim() || draft.model.trim() || "Manual intake";
+    const deviceLabel = [draft.manufacturer, draft.model]
+      .map((value) => value.trim())
+      .filter((value) => value !== "")
+      .join(" / ");
+    return {
+      schemaVersion: REPAIR_KNOWLEDGE_PACK_SCHEMA_VERSION,
+      id: `manual-${slugifyKnowledgeResourceId(modelNumber, "intake")}`,
+      modelNumber,
+      deviceLabel: deviceLabel || modelNumber,
+      stats: {
+        schematics: 0,
+        boardImages: 0,
+        commonFailures: 0,
+        repairNotes: 0,
+        testPoints: 0,
+      },
+      resources: [],
+      commonFailures: [],
+      testPoints: [],
+      notes: [],
+      createdAt,
+    };
+  }
+
+  function createKnowledgePackWithResource(
+    pack: RepairKnowledgePack,
+    resource: RepairKnowledgePackResource
+  ): RepairKnowledgePack {
+    const resources = [...pack.resources, resource];
+    return {
+      ...pack,
+      stats: {
+        schematics: resources.filter((item) => item.kind === "schematic").length,
+        boardImages: resources.filter((item) => item.kind === "board-image").length,
+        commonFailures: pack.commonFailures.length,
+        repairNotes: pack.notes.length + resources.filter((item) => item.kind === "note").length,
+        testPoints: pack.testPoints.length,
+      },
+      resources,
+    };
+  }
+
   function handleCommand(
     command: string,
     payload: RepairCommandPayload = {}
@@ -197,12 +300,16 @@ export function createRepairCommandRouter(params: {
       case REPAIR_UI_COMMANDS.activateSession: {
         const sessionId = safeString(flat["sessionId"]);
         const session = sessionId === null ? null : (store.getState().sessions[sessionId] ?? null);
+        const chatTurns =
+          storageController.isReady() && session !== null
+            ? storageController.getSessionChatTurns(session.id)
+            : [];
         store.batch(() => {
           store.dispatch({ type: "session/activate", sessionId: session?.id ?? null });
           if (storageController.isReady()) {
             store.dispatch({
               type: "chat/set-turns",
-              turns: session === null ? [] : storageController.getSessionChatTurns(session.id),
+              turns: chatTurns,
             });
           }
           setActiveSessionDerivedState(session);
@@ -401,29 +508,31 @@ export function createRepairCommandRouter(params: {
         if (!hasWizardSymptoms(wizard.draft)) {
           return { success: false, message: "at least one symptom is required" };
         }
+        const manualPack = createManualKnowledgePack(wizard, nowIso());
+        aiController.upsertKnowledgePack(manualPack, { cacheByBoardCode: false });
         store.dispatchMany([
           {
             type: "knowledge-pack/set",
-            pack: null,
+            pack: manualPack,
             attachedToSessionId: null,
           },
           {
             type: "wizard/set",
             wizard: {
               ...wizard,
-              currentStep: "ready",
+              currentStep: "evidence-review",
               draft: {
                 ...wizard.draft,
-                researchMessage: "AI research was skipped for this intake.",
+                researchMessage: "AI research was skipped. Add evidence manually in review.",
                 researchSkipped: true,
                 researchStatus: "skipped",
                 selectedEvidenceResourceIds: [],
                 selectedFailureIds: [],
                 selectedTestPointIds: [],
               },
-              evidenceReviewed: true,
+              evidenceReviewed: false,
               foundResources: [],
-              generatedKnowledgePackId: null,
+              generatedKnowledgePackId: manualPack.id,
               researchProgress: [],
             },
           },
@@ -462,6 +571,88 @@ export function createRepairCommandRouter(params: {
           },
         };
         store.dispatch({ type: "wizard/set", wizard: nextWizard });
+        return { success: true };
+      }
+      case REPAIR_UI_COMMANDS.addKnowledgeResource: {
+        const state = store.getState();
+        const pack = state.knowledgePack.pack;
+        if (pack === null) {
+          return { success: false, message: "knowledge pack is required" };
+        }
+        const label = safeString(flat["label"] ?? flat["title"]);
+        const url = normalizeKnowledgeResourceUrl(
+          flat["url"] ?? flat["src"] ?? flat["sourceUrl"] ?? flat["downloadUrl"]
+        );
+        if (label === null || url === null) {
+          return { success: false, message: "resource label and valid url are required" };
+        }
+        const kind = isKnowledgeResourceKind(flat["kind"]) ? flat["kind"] : "schematic";
+        const resource: RepairKnowledgePackResource = {
+          id: createManualKnowledgeResourceId(kind, label, pack.resources),
+          label,
+          kind,
+          src: url,
+          sourceUrl: url,
+          downloadUrl: url,
+          addedBy: "operator",
+          source: "Operator added",
+          pages: null,
+          confidence: 1,
+        };
+        const nextPack = createKnowledgePackWithResource(pack, resource);
+        const wizard = state.wizard;
+        const selectedEvidenceResourceIds = Array.from(
+          new Set([...wizard.draft.selectedEvidenceResourceIds, resource.id])
+        );
+        const foundResources = wizard.foundResources.some((item) => item.id === resource.id)
+          ? wizard.foundResources
+          : [
+              ...wizard.foundResources,
+              { id: resource.id, label: resource.label, kind: resource.kind },
+            ];
+        const activeSession =
+          state.activeSessionId === null ? null : (state.sessions[state.activeSessionId] ?? null);
+        const shouldPatchActiveSession =
+          activeSession !== null &&
+          state.knowledgePack.attachedToSessionId === activeSession.id &&
+          activeSession.knowledgePackId === pack.id;
+        const iso = nowIso();
+        aiController.upsertKnowledgePack(nextPack, {
+          cacheByBoardCode: !wizard.draft.researchSkipped,
+        });
+        store.batch(() => {
+          store.dispatch({
+            type: "knowledge-pack/set",
+            pack: nextPack,
+            attachedToSessionId: state.knowledgePack.attachedToSessionId,
+          });
+          store.dispatch({
+            type: "wizard/set",
+            wizard: {
+              ...wizard,
+              draft: {
+                ...wizard.draft,
+                selectedEvidenceResourceIds,
+                researchMessage: `${resource.label} added to research results.`,
+                researchSkipped: wizard.draft.researchSkipped,
+                researchStatus: wizard.draft.researchSkipped ? "skipped" : "succeeded",
+              },
+              foundResources,
+              generatedKnowledgePackId: nextPack.id,
+              evidenceReviewed: false,
+            },
+          });
+          if (activeSession !== null && shouldPatchActiveSession) {
+            sessionController.setSessionAndList(
+              {
+                ...activeSession,
+                knowledgePack: nextPack,
+                updatedAt: iso,
+              },
+              { skipTransitionCheck: true }
+            );
+          }
+        });
         return { success: true };
       }
       case REPAIR_UI_COMMANDS.attachKnowledgePack: {

@@ -62,6 +62,9 @@ export function createRepairUiRequestRuntime() {
     }) {
       return sendCommand(REPAIR_UI_COMMANDS.updateEvidenceSelection, payload);
     },
+    addKnowledgeResource(payload: { kind?: string; label: string; url: string }) {
+      return sendCommand(REPAIR_UI_COMMANDS.addKnowledgeResource, payload);
+    },
     attachKnowledgePack(payload: { packId: string }) {
       return sendCommand(REPAIR_UI_COMMANDS.attachKnowledgePack, payload);
     },

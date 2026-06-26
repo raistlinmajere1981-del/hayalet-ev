@@ -195,11 +195,28 @@ function isValidLocalAssetSrc(src: string): boolean {
   );
 }
 
+function isValidExternalResourceUrl(src: string): boolean {
+  try {
+    const url = new URL(src);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 function validateResourceSrc(src: string | null): string | null {
   if (src === null) return null;
   const trimmed = src.trim();
   if (trimmed === "") return null;
-  if (isValidLocalAssetSrc(trimmed)) return trimmed;
+  if (isValidLocalAssetSrc(trimmed) || isValidExternalResourceUrl(trimmed)) return trimmed;
+  return null;
+}
+
+function validateResourceUrl(src: string | null): string | null {
+  if (src === null) return null;
+  const trimmed = src.trim();
+  if (trimmed === "") return null;
+  if (isValidLocalAssetSrc(trimmed) || isValidExternalResourceUrl(trimmed)) return trimmed;
   return null;
 }
 
@@ -307,8 +324,14 @@ function readKnowledgeResources(value: unknown): RepairKnowledgePackResource[] {
       `${asResourceKind(record["kind"])}-${slugifyRepairId(label, String(index + 1))}`;
     if (seenIds.has(id)) return [];
     seenIds.add(id);
-    const rawSrc = asNonEmptyString(record["src"]) ?? asNonEmptyString(record["url"]);
+    const rawUrl =
+      asNonEmptyString(record["url"]) ??
+      asNonEmptyString(record["sourceUrl"]) ??
+      asNonEmptyString(record["href"]);
+    const rawSrc = asNonEmptyString(record["src"]) ?? rawUrl;
     const validatedSrc = validateResourceSrc(rawSrc);
+    const sourceUrl = validateResourceUrl(rawUrl ?? rawSrc);
+    const downloadUrl = validateResourceUrl(asNonEmptyString(record["downloadUrl"]) ?? sourceUrl);
     const spatialRefs = readSpatialRefs(record["spatialRefs"]);
     return [
       {
@@ -316,6 +339,9 @@ function readKnowledgeResources(value: unknown): RepairKnowledgePackResource[] {
         label,
         kind: asResourceKind(record["kind"] ?? record["type"]),
         src: validatedSrc,
+        ...(sourceUrl === null ? {} : { sourceUrl }),
+        ...(downloadUrl === null ? {} : { downloadUrl }),
+        addedBy: "ai",
         source: asNonEmptyString(record["source"]) ?? "AI research",
         pages: asNullableInteger(record["pages"]),
         confidence: asConfidence(record["confidence"]),
@@ -565,7 +591,7 @@ function parseRepairAiKnowledgePack(rawText: string): RepairKnowledgePack | null
       schematics: resources.filter((resource) => resource.kind === "schematic").length,
       boardImages: resources.filter((resource) => resource.kind === "board-image").length,
       commonFailures: commonFailures.length,
-      repairNotes: notes.length,
+      repairNotes: notes.length + resources.filter((resource) => resource.kind === "note").length,
       testPoints: testPoints.length,
     },
     resources,

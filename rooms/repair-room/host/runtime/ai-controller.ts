@@ -63,6 +63,10 @@ export interface RepairAiController {
     params?: { message?: string | null; contextRefs?: string[] }
   ) => void;
   startKnowledgeResearch: (params?: { targetSlot?: RepairAiTargetSlot }) => Promise<void>;
+  upsertKnowledgePack: (
+    pack: RepairKnowledgePack,
+    options?: { cacheByBoardCode?: boolean }
+  ) => void;
 }
 
 export function isRepairAiTargetSlot(value: unknown): value is RepairAiTargetSlot {
@@ -153,6 +157,17 @@ export function createRepairAiController(params: {
   function readGeneratedKnowledgePack(): RepairKnowledgePack | null {
     const packId = store.getState().wizard.generatedKnowledgePackId;
     return packId === null ? null : getKnowledgePack(packId);
+  }
+
+  function upsertKnowledgePack(
+    pack: RepairKnowledgePack,
+    options: { cacheByBoardCode?: boolean } = {}
+  ): void {
+    generatedKnowledgePacks.set(pack.id, pack);
+    const boardCode = store.getState().wizard.draft.boardCode.trim().toLowerCase();
+    if (options.cacheByBoardCode !== false && boardCode !== "") {
+      boardCodeCache.set(boardCode, pack);
+    }
   }
 
   async function startKnowledgeResearch(
@@ -744,5 +759,6 @@ export function createRepairAiController(params: {
     requestSessionRiskDetection,
     setAiDispatchStatus,
     startKnowledgeResearch,
+    upsertKnowledgePack,
   };
 }
