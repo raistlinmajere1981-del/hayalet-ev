@@ -123,6 +123,7 @@ export function renderTacticalFeedPanel(
     title: text(["tacticalFeed", "title"], "Repair Feed"),
     statusDot: hasRisk ? "risk" : "live",
     collapsed: state.layout.collapsedPanels["tactical-feed"],
+    noPanelControls: true,
     body,
   });
 }

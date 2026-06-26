@@ -124,6 +124,7 @@ export function renderChatPanel(
     title: text(["chat", "title"], "Repair Chat"),
     statusDot: state.chat.pendingReplyId !== null ? "amber" : "idle",
     collapsed: state.layout.collapsedPanels["chat"],
+    noPanelControls: true,
     body,
   });
 }

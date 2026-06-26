@@ -73,6 +73,7 @@ export function renderKnowledgePackPanel(
       title: text(["knowledgePack", "title"], "Evidence Pack"),
       statusDot: "idle",
       collapsed: state.layout.collapsedPanels["knowledge-pack"],
+      noPanelControls: true,
       body,
     });
   }
@@ -239,6 +240,7 @@ export function renderKnowledgePackPanel(
     title: text(["knowledgePack", "title"], "Evidence Pack"),
     statusDot: kp.attachedToSessionId !== null ? "live" : "idle",
     collapsed: state.layout.collapsedPanels["knowledge-pack"],
+    noPanelControls: true,
     body,
   });
 }

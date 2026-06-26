@@ -1225,6 +1225,7 @@ export function renderSessionWizardPanel(
     statusDot: wizard.draft.researchStatus === "failed" ? "amber" : "idle",
     collapsed: options.embedded === true ? false : state.layout.collapsedPanels["session-wizard"],
     noPanelHeader: options.embedded === true,
+    noPanelControls: true,
     body,
   });
 }

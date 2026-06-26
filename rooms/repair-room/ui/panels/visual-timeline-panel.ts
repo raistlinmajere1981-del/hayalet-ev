@@ -252,6 +252,7 @@ export function renderVisualTimelinePanel(
     title: text(["timeline", "title"], "Timeline"),
     statusDot: state.phase === "session-active" ? "live" : "idle",
     collapsed: state.layout.collapsedPanels["visual-timeline"],
+    noPanelControls: true,
     body,
   });
 }

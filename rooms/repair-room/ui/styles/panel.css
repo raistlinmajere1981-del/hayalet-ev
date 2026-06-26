@@ -159,64 +159,6 @@
   display: none;
 }
 
-/* col3 (Repair Feed) collapsed: hide overflow so grid column can reach 0 */
-.repair-panel--tactical-feed.repair-panel--collapsed {
-  overflow: hidden;
-  min-width: 0;
-  max-width: 0;
-  padding: 0;
-  border: none;
-}
-
-/* col4 (Knowledge Pack) collapsed: same treatment */
-.repair-panel--knowledge-pack.repair-panel--collapsed {
-  overflow: hidden;
-  min-width: 0;
-  max-width: 0;
-  padding: 0;
-  border: none;
-}
-
-.repair-workspace:has(> .repair-panel--session-rail.repair-panel--collapsed) {
-  grid-template-columns:
-    minmax(var(--repair-px-44), var(--repair-px-44)) minmax(0, 2.08fr)
-    minmax(var(--repair-px-260), 0.82fr) minmax(var(--repair-px-280), 0.9fr);
-}
-
-.repair-panel--session-rail.repair-panel--collapsed {
-  height: 100%;
-  max-height: none;
-  min-height: 0;
-}
-
-.repair-panel--session-rail.repair-panel--collapsed > .repair-panel__header {
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  width: var(--repair-px-44);
-  height: 100%;
-  min-height: 0;
-  padding: var(--repair-sp-2) var(--repair-px-4);
-  border-right: var(--repair-px-1) solid var(--repair-border);
-  border-bottom: 0;
-}
-
-.repair-panel--session-rail.repair-panel--collapsed .repair-panel__eyebrow {
+.repair-panel[hidden] {
   display: none;
-}
-
-.repair-panel--session-rail.repair-panel--collapsed .repair-panel__title {
-  max-height: var(--repair-session-rail-title-max-h);
-  transform: rotate(180deg);
-  white-space: nowrap;
-  writing-mode: vertical-rl;
-}
-
-.repair-panel--session-rail.repair-panel--collapsed .repair-panel__header-spacer {
-  flex: 1;
-}
-
-.repair-panel--session-rail.repair-panel--collapsed .repair-panel__icon-btn {
-  width: var(--repair-px-28);
-  min-width: var(--repair-px-28);
 }

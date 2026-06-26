@@ -213,6 +213,7 @@ export function renderRepairSettingsPanel(
     title: text(["settings", "title"], "Repair Controls"),
     statusDot: handsFreeEnabled ? "live" : "idle",
     collapsed: state.layout.collapsedPanels["repair-settings"],
+    noPanelControls: true,
     body,
   });
 }

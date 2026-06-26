@@ -87,6 +87,7 @@ export function renderOperatorProfilePanel(
     title: text(["settings", "operatorOverlayTitle"], "setup"),
     statusDot: "idle",
     collapsed: state.layout.collapsedPanels["operator-profile"],
+    noPanelControls: true,
     body,
   });
 }

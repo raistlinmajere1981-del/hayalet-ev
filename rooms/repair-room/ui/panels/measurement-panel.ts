@@ -143,6 +143,7 @@ export function renderMeasurementPanel(
     title: text(["measurement", "title"], "Measurement"),
     statusDot: meas.current.hold ? "amber" : "live",
     collapsed: state.layout.collapsedPanels["measurement"],
+    noPanelControls: true,
     body,
   });
 }

@@ -205,12 +205,28 @@ void test("repair-room resolves runtime assets from the UI entry directory", () 
   );
 });
 
-void test("repair-room dock always shows all panels", () => {
+void test("repair-room dock projects only visible chip-controlled panels", () => {
   const dockLayout = getRepairDockLayoutProjection();
   assert.deepEqual(dockLayout.visiblePanelIds, [...REPAIR_DOCK_PANEL_IDS]);
   assert.equal(dockLayout.gridTemplateColumns, "1fr 1fr 1fr");
 
-  assert.deepEqual([...REPAIR_DOCK_PANEL_IDS], ["measurement", "chat", "room-sync"]);
+  assert.deepEqual([...REPAIR_DOCK_PANEL_IDS], ["chat", "measurement", "room-sync"]);
+
+  const partialLayout = getRepairDockLayoutProjection({
+    chat: true,
+    measurement: false,
+    "room-sync": true,
+  });
+  assert.deepEqual(partialLayout.visiblePanelIds, ["measurement"]);
+  assert.equal(partialLayout.gridTemplateColumns, "1fr");
+
+  const hiddenLayout = getRepairDockLayoutProjection({
+    chat: true,
+    measurement: true,
+    "room-sync": true,
+  });
+  assert.deepEqual(hiddenLayout.visiblePanelIds, []);
+  assert.equal(hiddenLayout.gridTemplateColumns, "none");
 });
 
 void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync controls", () => {
@@ -222,6 +238,7 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   const settingsPanel = readFileSync(join(uiRoot, "panels/repair-settings-panel.ts"), "utf8");
   const workbenchPanel = readFileSync(join(uiRoot, "panels/workbench-stage-panel.ts"), "utf8");
   const chatPanel = readFileSync(join(uiRoot, "panels/chat-panel.ts"), "utf8");
+  const measurementPanel = readFileSync(join(uiRoot, "panels/measurement-panel.ts"), "utf8");
   const wizardPanel = readFileSync(join(uiRoot, "panels/session-wizard-panel.ts"), "utf8");
   const symptomCatalog = readFileSync(
     join(process.cwd(), "rooms/repair-room/shared/data/repair-symptom-catalog.ts"),
@@ -281,6 +298,11 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /timelineShape/);
   assert.match(runtime, /ensurePersistentShell/);
   assert.match(runtime, /createPanelLifecycle/);
+  assert.match(runtime, /repair-workspace-chip-rail/);
+  assert.match(runtime, /repair-bottom-cluster/);
+  assert.match(runtime, /toggle-panel-chip/);
+  assert.match(runtime, /toggle-bottom-cluster/);
+  assert.match(runtime, /aria-pressed/);
   assert.match(runtime, /updateWorkbenchPanelDom/);
   assert.match(runtime, /updateTacticalFeedPanelDom/);
   assert.match(runtime, /updateVisualTimelinePanelDom/);
@@ -374,6 +396,16 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /repair-annotation-inspector__links/);
   assert.match(roomSyncPanel, /repair-sync-focus__actions/);
   assert.match(roomSyncPanel, /ai-mark-state/);
+  assert.match(style, /repair-panel-chip/);
+  assert.match(style, /repair-bottom-cluster__header/);
+  assert.match(sessionRailPanel, /noPanelHeader: true/);
+  assert.match(feedPanel, /noPanelControls: true/);
+  assert.match(knowledgePanel, /noPanelControls: true/);
+  assert.match(timelinePanel, /noPanelControls: true/);
+  assert.match(chatPanel, /noPanelControls: true/);
+  assert.match(measurementPanel, /noPanelControls: true/);
+  assert.match(roomSyncPanel, /noPanelControls: true/);
+  assert.match(wizardPanel, /noPanelControls: true/);
   assert.match(replayProjection, /visibleAiMarkIds/);
   assert.doesNotMatch(
     overlayStage,

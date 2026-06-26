@@ -1,10 +1,12 @@
 import type { RepairPanelId } from "../../shared/types/index.js";
 
 export const REPAIR_DOCK_PANEL_IDS = [
-  "measurement",
   "chat",
+  "measurement",
   "room-sync",
 ] as const satisfies readonly RepairPanelId[];
+
+type RepairDockCollapsedPanels = Partial<Record<RepairPanelId, boolean>>;
 
 export interface RepairDockLayoutProjection {
   visiblePanelIds: RepairPanelId[];
@@ -12,9 +14,10 @@ export interface RepairDockLayoutProjection {
 }
 
 export function getRepairVisibleDockPanelIds(
+  collapsedPanels: RepairDockCollapsedPanels = {},
   dockPanelIds: readonly RepairPanelId[] = REPAIR_DOCK_PANEL_IDS
 ): RepairPanelId[] {
-  return [...dockPanelIds];
+  return dockPanelIds.filter((panelId) => collapsedPanels[panelId] !== true);
 }
 
 export function getRepairDockGridTemplateColumns(visiblePanelCount: number): string {
@@ -25,9 +28,10 @@ export function getRepairDockGridTemplateColumns(visiblePanelCount: number): str
 }
 
 export function getRepairDockLayoutProjection(
+  collapsedPanels: RepairDockCollapsedPanels = {},
   dockPanelIds: readonly RepairPanelId[] = REPAIR_DOCK_PANEL_IDS
 ): RepairDockLayoutProjection {
-  const visiblePanelIds = getRepairVisibleDockPanelIds(dockPanelIds);
+  const visiblePanelIds = getRepairVisibleDockPanelIds(collapsedPanels, dockPanelIds);
   return {
     visiblePanelIds,
     gridTemplateColumns: getRepairDockGridTemplateColumns(visiblePanelIds.length),

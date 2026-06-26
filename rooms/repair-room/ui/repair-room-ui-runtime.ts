@@ -130,7 +130,11 @@ interface RepairPersistentShell {
   root: HTMLElement;
   clock: HTMLElement;
   workspace: HTMLElement;
+  workspaceChipRail: HTMLElement;
   rightStack: HTMLElement;
+  bottomCluster: HTMLElement;
+  bottomClusterHeader: HTMLElement;
+  bottomClusterBody: HTMLElement;
   dock: HTMLElement;
   settingsOverlay: HTMLElement;
   settingsOverlayBody: HTMLElement;
@@ -138,6 +142,30 @@ interface RepairPersistentShell {
   panelElements: Map<RepairPanelId, HTMLElement>;
   panelSignatures: Map<RepairPanelId, string>;
 }
+
+interface RepairPanelChipConfig {
+  panelId: RepairPanelId;
+  label: string;
+  title: string;
+}
+
+const REPAIR_TOP_PANEL_CHIPS = [
+  { panelId: "session-rail", label: "Session", title: "session panel" },
+  { panelId: "tactical-feed", label: "Feed", title: "repair feed" },
+  { panelId: "knowledge-pack", label: "AIO", title: "AIO results panel" },
+] as const satisfies readonly RepairPanelChipConfig[];
+
+const REPAIR_BOTTOM_PANEL_CHIPS = [
+  { panelId: "visual-timeline", label: "Timeline", title: "timeline panel" },
+  { panelId: "chat", label: "Chat", title: "chat panel" },
+  { panelId: "measurement", label: "Measure", title: "measurement panel" },
+  { panelId: "room-sync", label: "State", title: "state panel" },
+] as const satisfies readonly RepairPanelChipConfig[];
+
+const REPAIR_CHIP_CONTROLLED_PANEL_IDS = [
+  ...REPAIR_TOP_PANEL_CHIPS.map((chip) => chip.panelId),
+  ...REPAIR_BOTTOM_PANEL_CHIPS.map((chip) => chip.panelId),
+] as const satisfies readonly RepairPanelId[];
 
 const WIZARD_DEVICE_CASCADE_FIELDS = ["deviceType", "manufacturer", "model", "boardCode"] as const;
 
@@ -184,6 +212,38 @@ function setWizardFieldDomValue(
 ): void {
   const fieldElement = getWizardFieldElement(root, field);
   if (fieldElement !== null) fieldElement.value = value;
+}
+
+function isRepairChipControlledPanel(panelId: RepairPanelId): boolean {
+  return (REPAIR_CHIP_CONTROLLED_PANEL_IDS as readonly RepairPanelId[]).includes(panelId);
+}
+
+function createRepairPanelChip(
+  documentRef: Document,
+  config: RepairPanelChipConfig,
+  extraClassName = ""
+): HTMLButtonElement {
+  const chip = documentRef.createElement("button");
+  chip.className = `repair-panel-chip${extraClassName === "" ? "" : ` ${extraClassName}`}`;
+  chip.type = "button";
+  chip.textContent = config.label;
+  chip.dataset["repairAction"] = "toggle-panel-chip";
+  chip.dataset["panelId"] = config.panelId;
+  chip.dataset["active"] = "true";
+  chip.setAttribute("aria-pressed", "true");
+  return chip;
+}
+
+function createRepairPanelChipGroup(
+  documentRef: Document,
+  configs: readonly RepairPanelChipConfig[]
+): HTMLElement {
+  const group = documentRef.createElement("div");
+  group.className = "repair-panel-chip-group";
+  configs.forEach((config) => {
+    group.append(createRepairPanelChip(documentRef, config));
+  });
+  return group;
 }
 
 function replaceWizardSuggestionMenu(
@@ -608,10 +668,22 @@ export function createRepairRoomUiRuntime() {
     setDatasetIfChanged(panel, "operationalProfile", state.guidance.operationalProfile);
   }
 
+  function isPanelVisible(panelId: RepairPanelId): boolean {
+    return state.layout.collapsedPanels[panelId] !== true;
+  }
+
+  function getBottomVisiblePanelCount(): number {
+    return REPAIR_BOTTOM_PANEL_CHIPS.filter((chip) => isPanelVisible(chip.panelId)).length;
+  }
+
   function updatePanelChrome(panel: HTMLElement, panelId: RepairPanelId): void {
     applyPanelGuidanceChrome(panel, panelId);
     const collapsed = state.layout.collapsedPanels[panelId];
     panel.classList.toggle("repair-panel--collapsed", collapsed);
+    if (isRepairChipControlledPanel(panelId)) {
+      panel.hidden = collapsed;
+      setDatasetIfChanged(panel, "chipVisible", String(!collapsed));
+    }
 
     const collapse = panel.querySelector<HTMLElement>(
       "[data-repair-action='toggle-panel-collapse']"
@@ -668,13 +740,85 @@ export function createRepairRoomUiRuntime() {
   });
 
   function syncDockLayout(dock: HTMLElement): void {
-    const dockLayout = getRepairDockLayoutProjection();
+    const dockLayout = getRepairDockLayoutProjection(state.layout.collapsedPanels);
     const visiblePanelCount = dockLayout.visiblePanelIds.length;
-    if (dock.hidden !== (visiblePanelCount === 0)) {
-      dock.hidden = false;
-    }
+    dock.hidden = visiblePanelCount === 0;
     setDatasetIfChanged(dock, "visiblePanelCount", String(visiblePanelCount));
     setStyleIfChanged(dock, "gridTemplateColumns", dockLayout.gridTemplateColumns);
+  }
+
+  function syncPanelChip(root: HTMLElement, config: RepairPanelChipConfig): void {
+    const chip = root.querySelector<HTMLElement>(
+      `[data-repair-action='toggle-panel-chip'][data-panel-id='${config.panelId}']`
+    );
+    if (chip === null) return;
+    const visible = isPanelVisible(config.panelId);
+    setClassNameIfChanged(
+      chip,
+      `repair-panel-chip${visible ? " repair-panel-chip--active" : ""}`
+    );
+    setDatasetIfChanged(chip, "active", String(visible));
+    setDatasetIfChanged(chip, "collapsed", String(!visible));
+    chip.setAttribute("aria-pressed", String(visible));
+    const nextTitle = `${visible ? "Hide" : "Show"} ${config.title}`;
+    if (chip.title !== nextTitle) chip.title = nextTitle;
+  }
+
+  function syncPanelChipGroup(
+    root: HTMLElement,
+    configs: readonly RepairPanelChipConfig[]
+  ): void {
+    configs.forEach((config) => {
+      syncPanelChip(root, config);
+    });
+  }
+
+  function syncWorkspacePanelVisibility(persistentShell: RepairPersistentShell): void {
+    const sessionVisible = isPanelVisible("session-rail");
+    const feedVisible = isPanelVisible("tactical-feed");
+    const knowledgeVisible = isPanelVisible("knowledge-pack");
+    setDatasetIfChanged(persistentShell.workspace, "sessionVisible", String(sessionVisible));
+    setDatasetIfChanged(persistentShell.workspace, "feedVisible", String(feedVisible));
+    setDatasetIfChanged(persistentShell.workspace, "knowledgeVisible", String(knowledgeVisible));
+    persistentShell.rightStack.hidden = !knowledgeVisible;
+    syncPanelChipGroup(persistentShell.workspaceChipRail, REPAIR_TOP_PANEL_CHIPS);
+  }
+
+  function syncBottomCluster(persistentShell: RepairPersistentShell): void {
+    const timelineVisible = isPanelVisible("visual-timeline");
+    const visibleDockPanelIds = getRepairVisibleDockPanelIds(state.layout.collapsedPanels);
+    const visiblePanelCount = getBottomVisiblePanelCount();
+    const bodyVisible = visiblePanelCount > 0;
+    persistentShell.bottomClusterBody.hidden = !bodyVisible;
+    setDatasetIfChanged(persistentShell.bottomCluster, "timelineVisible", String(timelineVisible));
+    setDatasetIfChanged(
+      persistentShell.bottomCluster,
+      "lowerVisiblePanelCount",
+      String(visibleDockPanelIds.length)
+    );
+    setDatasetIfChanged(
+      persistentShell.bottomCluster,
+      "visiblePanelCount",
+      String(visiblePanelCount)
+    );
+    syncPanelChipGroup(persistentShell.bottomClusterHeader, REPAIR_BOTTOM_PANEL_CHIPS);
+
+    const master = persistentShell.bottomClusterHeader.querySelector<HTMLElement>(
+      "[data-repair-action='toggle-bottom-cluster']"
+    );
+    if (master !== null) {
+      const anyVisible = visiblePanelCount > 0;
+      setClassNameIfChanged(
+        master,
+        `repair-panel-chip repair-panel-chip--master${
+          anyVisible ? " repair-panel-chip--active" : ""
+        }`
+      );
+      setDatasetIfChanged(master, "active", String(anyVisible));
+      master.setAttribute("aria-pressed", String(anyVisible));
+      const nextTitle = anyVisible ? "Hide bottom panels" : "Show bottom panels";
+      if (master.title !== nextTitle) master.title = nextTitle;
+    }
   }
 
   function syncCoordHudLabels(hud: HTMLElement, labels: string[]): void {
@@ -1049,7 +1193,7 @@ export function createRepairRoomUiRuntime() {
     const current = persistentShell.panelElements.get(lifecycle.panelId);
     if (current === undefined) {
       const mounted = lifecycle.mount(parent);
-      applyPanelGuidanceChrome(mounted, lifecycle.panelId);
+      updatePanelChrome(mounted, lifecycle.panelId);
       persistentShell.panelElements.set(lifecycle.panelId, mounted);
       persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
       return;
@@ -1065,7 +1209,7 @@ export function createRepairRoomUiRuntime() {
       ) {
         lifecycle.update(current);
       }
-      applyPanelGuidanceChrome(current, lifecycle.panelId);
+      updatePanelChrome(current, lifecycle.panelId);
       return;
     }
 
@@ -1075,13 +1219,13 @@ export function createRepairRoomUiRuntime() {
     ) {
       // Host echoes draft updates on every keystroke; remounting here drops focus and selection.
       if (lifecycle.panelId === "session-rail") syncSessionWizardStepperDom(current, state);
-      applyPanelGuidanceChrome(current, lifecycle.panelId);
+      updatePanelChrome(current, lifecycle.panelId);
       persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
       return;
     }
 
     const updated = lifecycle.update(current);
-    applyPanelGuidanceChrome(updated, lifecycle.panelId);
+    updatePanelChrome(updated, lifecycle.panelId);
     persistentShell.panelElements.set(lifecycle.panelId, updated);
     persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
   }
@@ -1209,6 +1353,47 @@ export function createRepairRoomUiRuntime() {
     if (shell !== null) shell.settingsOverlaySignature = signature;
   }
 
+  function createWorkspaceChipRail(): HTMLElement {
+    const rail = documentRef.createElement("div");
+    rail.className = "repair-workspace-chip-rail";
+    rail.dataset["chipRail"] = "workspace";
+    rail.append(createRepairPanelChipGroup(documentRef, REPAIR_TOP_PANEL_CHIPS));
+    return rail;
+  }
+
+  function createBottomClusterShell(): {
+    cluster: HTMLElement;
+    header: HTMLElement;
+    body: HTMLElement;
+    dock: HTMLElement;
+  } {
+    const cluster = documentRef.createElement("div");
+    cluster.className = "repair-bottom-cluster";
+
+    const header = documentRef.createElement("header");
+    header.className = "repair-bottom-cluster__header";
+
+    const master = documentRef.createElement("button");
+    master.className = "repair-panel-chip repair-panel-chip--master repair-panel-chip--active";
+    master.type = "button";
+    master.textContent = "All";
+    master.title = "Hide bottom panels";
+    master.dataset["repairAction"] = "toggle-bottom-cluster";
+    master.dataset["active"] = "true";
+    master.setAttribute("aria-pressed", "true");
+    header.append(master, createRepairPanelChipGroup(documentRef, REPAIR_BOTTOM_PANEL_CHIPS));
+
+    const body = documentRef.createElement("div");
+    body.className = "repair-bottom-cluster__body";
+
+    const dock = documentRef.createElement("div");
+    dock.className = "repair-bottom-dock";
+    body.append(dock);
+    cluster.append(header, body);
+
+    return { cluster, header, body, dock };
+  }
+
   function updateWizardField(root: HTMLElement, field: string, value: string): void {
     if (isWizardDeviceCascadeField(field)) {
       const patch = createWizardDeviceCascadePatch(field, value);
@@ -1298,10 +1483,11 @@ export function createRepairRoomUiRuntime() {
 
     const workspace = documentRef.createElement("div");
     workspace.className = "repair-workspace";
+    const workspaceChipRail = createWorkspaceChipRail();
+    workspace.append(workspaceChipRail);
     const rightStack = documentRef.createElement("div");
     rightStack.className = "repair-panel--wizard-pack-stack";
-    const dock = documentRef.createElement("div");
-    dock.className = "repair-bottom-dock";
+    const bottomClusterShell = createBottomClusterShell();
     const settingsOverlayShell = createSettingsOverlayShell();
     root.append(workspace, createLegendBar(), settingsOverlayShell.overlay);
 
@@ -1309,8 +1495,12 @@ export function createRepairRoomUiRuntime() {
       root,
       clock,
       workspace,
+      workspaceChipRail,
       rightStack,
-      dock,
+      bottomCluster: bottomClusterShell.cluster,
+      bottomClusterHeader: bottomClusterShell.header,
+      bottomClusterBody: bottomClusterShell.body,
+      dock: bottomClusterShell.dock,
       settingsOverlay: settingsOverlayShell.overlay,
       settingsOverlayBody: settingsOverlayShell.body,
       settingsOverlaySignature: "",
@@ -1348,7 +1538,11 @@ export function createRepairRoomUiRuntime() {
           })
         : "--:--:--"
     );
+    syncWorkspacePanelVisibility(persistentShell);
 
+    if (!persistentShell.workspace.contains(persistentShell.workspaceChipRail)) {
+      persistentShell.workspace.prepend(persistentShell.workspaceChipRail);
+    }
     syncPanel(
       persistentShell,
       persistentShell.workspace,
@@ -1367,6 +1561,7 @@ export function createRepairRoomUiRuntime() {
       createPanelLifecycle("tactical-feed", () => renderTacticalFeedPanel(documentRef, state, text))
     );
 
+    persistentShell.rightStack.hidden = !isPanelVisible("knowledge-pack");
     if (!persistentShell.workspace.contains(persistentShell.rightStack)) {
       persistentShell.workspace.append(persistentShell.rightStack);
     }
@@ -1378,18 +1573,18 @@ export function createRepairRoomUiRuntime() {
       )
     );
 
+    if (!persistentShell.workspace.contains(persistentShell.bottomCluster)) {
+      persistentShell.workspace.append(persistentShell.bottomCluster);
+    }
     syncPanel(
       persistentShell,
-      persistentShell.workspace,
+      persistentShell.bottomClusterBody,
       createPanelLifecycle("visual-timeline", () =>
         renderVisualTimelinePanel(documentRef, state, meta, text)
       )
     );
 
     syncDockLayout(persistentShell.dock);
-    if (!persistentShell.workspace.contains(persistentShell.dock)) {
-      persistentShell.workspace.append(persistentShell.dock);
-    }
     syncPanel(
       persistentShell,
       persistentShell.dock,
@@ -1405,6 +1600,7 @@ export function createRepairRoomUiRuntime() {
       persistentShell.dock,
       createPanelLifecycle("room-sync", () => renderRoomSyncPanel(documentRef, state, meta, text))
     );
+    syncBottomCluster(persistentShell);
 
     syncSettingsOverlay(persistentShell.settingsOverlay, persistentShell.settingsOverlayBody);
     applyLiveSnapshotUpdates();
@@ -1754,6 +1950,20 @@ export function createRepairRoomUiRuntime() {
           const panelId = el.dataset["panelId"];
           const collapsed = el.dataset["collapsed"] === "true";
           if (panelId) requestRuntime.updatePanelLayout({ panelId, collapsed });
+          break;
+        }
+        case "toggle-panel-chip": {
+          const panelId = el.dataset["panelId"] as RepairPanelId | undefined;
+          if (panelId && isRepairChipControlledPanel(panelId)) {
+            requestRuntime.updatePanelLayout({ panelId, collapsed: isPanelVisible(panelId) });
+          }
+          break;
+        }
+        case "toggle-bottom-cluster": {
+          const collapse = getBottomVisiblePanelCount() > 0;
+          REPAIR_BOTTOM_PANEL_CHIPS.forEach((chip) => {
+            requestRuntime.updatePanelLayout({ panelId: chip.panelId, collapsed: collapse });
+          });
           break;
         }
         case "toggle-say-column": {
