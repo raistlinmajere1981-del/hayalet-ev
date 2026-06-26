@@ -134,13 +134,45 @@
   opacity: 1;
 }
 
-/* Workbench panel header: title centered, no pin/hide controls */
+/* Workbench panel header: title centered with panel toggles on both sides */
 .repair-panel--workbench-stage > .repair-panel__header {
+  position: relative;
   justify-content: center;
+  padding-inline: max(var(--repair-sp-3), var(--repair-px-96));
 }
 
 .repair-panel--workbench-stage > .repair-panel__header .repair-panel__header-spacer {
   display: none;
+}
+
+.repair-workbench-panel-toggles {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  gap: var(--repair-sp-1);
+  max-width: min(36%, var(--repair-px-180));
+  overflow-x: auto;
+  scrollbar-width: none;
+  transform: translateY(-50%);
+}
+
+.repair-workbench-panel-toggles::-webkit-scrollbar {
+  display: none;
+}
+
+.repair-workbench-panel-toggles--left {
+  left: var(--repair-sp-3);
+  justify-content: flex-start;
+}
+
+.repair-workbench-panel-toggles--right {
+  right: var(--repair-sp-3);
+  justify-content: flex-end;
+}
+
+.repair-workbench-panel-toggles .repair-panel-chip {
+  flex: 0 0 auto;
 }
 
 /* Active panel header glow */

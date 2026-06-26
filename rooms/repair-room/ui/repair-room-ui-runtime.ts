@@ -62,13 +62,6 @@ import { createInitialRepairUiState } from "./runtime/state.js";
 import { createSpatialFocusTween, type RepairSpatialFocusTween } from "./runtime/spatial-focus.js";
 // Spatial focus animation remains requestAnimationFrame/cancelAnimationFrame-backed in runtime/spatial-focus.ts.
 // Keyboard navigation keeps case "Home" and case "End" handling in runtime/keyboard.ts.
-import {
-  getAssistanceProfileLabel,
-  getCameraStatusChipState,
-  getCameraStatusChipText,
-  getCameraStatusChipTitle,
-  getRouteLabel,
-} from "./runtime/status-helpers.js";
 import { createRepairKeyboardController } from "./runtime/keyboard.js";
 import { createRepairMeasurementDomRuntime } from "./runtime/measurement-dom.js";
 import { createRepairDictationComposer } from "./runtime/dictation-composer.js";
@@ -130,7 +123,6 @@ interface RepairPersistentShell {
   root: HTMLElement;
   clock: HTMLElement;
   workspace: HTMLElement;
-  workspaceChipRail: HTMLElement;
   rightStack: HTMLElement;
   bottomCluster: HTMLElement;
   bottomClusterHeader: HTMLElement;
@@ -153,6 +145,15 @@ const REPAIR_TOP_PANEL_CHIPS = [
   { panelId: "session-rail", label: "Session", title: "session panel" },
   { panelId: "tactical-feed", label: "Feed", title: "repair feed" },
   { panelId: "knowledge-pack", label: "AIO", title: "AIO results panel" },
+] as const satisfies readonly RepairPanelChipConfig[];
+
+const REPAIR_WORKBENCH_LEFT_PANEL_CHIPS = [
+  REPAIR_TOP_PANEL_CHIPS[0],
+] as const satisfies readonly RepairPanelChipConfig[];
+
+const REPAIR_WORKBENCH_RIGHT_PANEL_CHIPS = [
+  REPAIR_TOP_PANEL_CHIPS[1],
+  REPAIR_TOP_PANEL_CHIPS[2],
 ] as const satisfies readonly RepairPanelChipConfig[];
 
 const REPAIR_BOTTOM_PANEL_CHIPS = [
@@ -243,6 +244,21 @@ function createRepairPanelChipGroup(
   configs.forEach((config) => {
     group.append(createRepairPanelChip(documentRef, config));
   });
+  return group;
+}
+
+function createWorkbenchPanelChipGroup(
+  documentRef: Document,
+  position: "left" | "right"
+): HTMLElement {
+  const group = createRepairPanelChipGroup(
+    documentRef,
+    position === "left" ? REPAIR_WORKBENCH_LEFT_PANEL_CHIPS : REPAIR_WORKBENCH_RIGHT_PANEL_CHIPS
+  );
+  group.classList.add(
+    "repair-workbench-panel-toggles",
+    `repair-workbench-panel-toggles--${position}`
+  );
   return group;
 }
 
@@ -432,11 +448,15 @@ export function createRepairRoomUiRuntime() {
     return typeof node === "string" ? node : fallback;
   }
 
-  function getManualEvidenceInput<
-    T extends HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
-  >(root: HTMLElement, name: string, resourceKind?: string): T | null {
+  function getManualEvidenceInput(
+    root: HTMLElement,
+    name: string,
+    resourceKind?: string
+  ): HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null {
     const scope = resourceKind === undefined ? "" : `[data-resource-kind='${resourceKind}']`;
-    return root.querySelector<T>(`[data-repair-input='${name}']${scope}`);
+    return root.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+      `[data-repair-input='${name}']${scope}`
+    );
   }
 
   function getManualEvidenceValue(root: HTMLElement, name: string, resourceKind?: string): string {
@@ -493,16 +513,8 @@ export function createRepairRoomUiRuntime() {
     const result = await showOpenDialog({ properties: ["openFile"] });
     const filePath = result.canceled === true ? "" : (result.filePaths?.[0]?.trim() ?? "");
     if (filePath === "") return;
-    const urlInput = getManualEvidenceInput<HTMLInputElement>(
-      root,
-      "manual-resource-url",
-      resourceKind
-    );
-    const labelInput = getManualEvidenceInput<HTMLInputElement>(
-      root,
-      "manual-resource-label",
-      resourceKind
-    );
+    const urlInput = getManualEvidenceInput(root, "manual-resource-url", resourceKind);
+    const labelInput = getManualEvidenceInput(root, "manual-resource-label", resourceKind);
     if (urlInput !== null) urlInput.value = filePath;
     if (labelInput !== null && labelInput.value.trim() === "") {
       labelInput.value = getFileNameFromPath(filePath);
@@ -773,6 +785,19 @@ export function createRepairRoomUiRuntime() {
     });
   }
 
+  function syncWorkbenchHeaderPanelChips(panel: HTMLElement): void {
+    const header = panel.querySelector<HTMLElement>(".repair-panel__header");
+    if (header === null) return;
+
+    if (header.querySelector(".repair-workbench-panel-toggles--left") === null) {
+      header.prepend(createWorkbenchPanelChipGroup(documentRef, "left"));
+    }
+    if (header.querySelector(".repair-workbench-panel-toggles--right") === null) {
+      header.append(createWorkbenchPanelChipGroup(documentRef, "right"));
+    }
+    syncPanelChipGroup(header, REPAIR_TOP_PANEL_CHIPS);
+  }
+
   function syncWorkspacePanelVisibility(persistentShell: RepairPersistentShell): void {
     const sessionVisible = isPanelVisible("session-rail");
     const feedVisible = isPanelVisible("tactical-feed");
@@ -781,7 +806,6 @@ export function createRepairRoomUiRuntime() {
     setDatasetIfChanged(persistentShell.workspace, "feedVisible", String(feedVisible));
     setDatasetIfChanged(persistentShell.workspace, "knowledgeVisible", String(knowledgeVisible));
     persistentShell.rightStack.hidden = !knowledgeVisible;
-    syncPanelChipGroup(persistentShell.workspaceChipRail, REPAIR_TOP_PANEL_CHIPS);
   }
 
   function syncBottomCluster(persistentShell: RepairPersistentShell): void {
@@ -838,6 +862,7 @@ export function createRepairRoomUiRuntime() {
 
   function updateWorkbenchPanelDom(panel: HTMLElement): void {
     updatePanelChrome(panel, "workbench-stage");
+    syncWorkbenchHeaderPanelChips(panel);
 
     const dot = panel.querySelector<HTMLElement>(".repair-panel__status-dot");
     if (dot !== null) {
@@ -847,29 +872,6 @@ export function createRepairRoomUiRuntime() {
           state.workbench.isFrozen ? "amber" : "live"
         }`
       );
-    }
-
-    const liveChip = panel.querySelector<HTMLElement>(".repair-live-chip");
-    if (liveChip !== null) {
-      if (state.workbench.isFrozen) {
-        setClassNameIfChanged(liveChip, "repair-live-chip repair-live-chip--frozen");
-        const frozenTime = state.workbench.frozenAt
-          ? new Date(state.workbench.frozenAt).toLocaleTimeString("en-GB", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })
-          : "--:--:--";
-        setTextIfChanged(liveChip, `FROZEN — ${frozenTime}`);
-      } else {
-        setClassNameIfChanged(liveChip, "repair-live-chip");
-        setTextIfChanged(liveChip, "LIVE");
-      }
-    }
-
-    const zoomInfo = panel.querySelector<HTMLElement>(".repair-workbench-header__info");
-    if (zoomInfo !== null) {
-      setTextIfChanged(zoomInfo, `${state.workbench.viewport.zoom.toFixed(1)}x`);
     }
 
     const viewport = panel.querySelector<HTMLElement>(".repair-viewport");
@@ -970,129 +972,6 @@ export function createRepairRoomUiRuntime() {
           state.workbench.investigationModeEnabled
         );
       });
-
-    const voice = state.layout.voiceGuidance;
-    const interaction = state.layout.interactionSettings;
-    const voiceListening = voice.ambientListeningState === "listening";
-    const ambientActive = state.operationsAvailable && state.operations.ambientActive;
-    const dictationActive =
-      state.operationsAvailable &&
-      (state.operations.localMicActive || state.operations.androidMicActive) &&
-      !state.operations.ambientActive;
-    const cameraActive =
-      state.operationsAvailable &&
-      (state.operations.cameraActive || state.operations.liveFeedActive);
-    const ttsActive = state.operationsAvailable && state.operations.ttsActive;
-    const handsFreeEnabled = voice.handsBusyMode && (voiceListening || ambientActive);
-    const handsFreeButton = panel.querySelector<HTMLElement>("[data-repair-control='hands-free']");
-    if (handsFreeButton !== null) {
-      handsFreeButton.classList.toggle("repair-guidance-control--active", handsFreeEnabled);
-      setTextIfChanged(handsFreeButton, handsFreeEnabled ? "Guiding" : "Guide me");
-      const nextTitle = handsFreeEnabled
-        ? "Disable hands-free repair guidance"
-        : "Enable ambient listening and step-by-step repair guidance";
-      if (handsFreeButton.title !== nextTitle) handsFreeButton.title = nextTitle;
-      setDatasetIfChanged(handsFreeButton, "repairAction", "set-hands-free-mode");
-      setDatasetIfChanged(handsFreeButton, "enabled", String(!handsFreeEnabled));
-    }
-
-    const ambientButton = panel.querySelector<HTMLElement>("[data-repair-control='ambient']");
-    if (ambientButton !== null) {
-      ambientButton.classList.toggle("repair-guidance-control--active", ambientActive);
-      setTextIfChanged(ambientButton, ambientActive ? "Listening" : "Listen");
-      const nextTitle = ambientActive
-        ? "Stop listening for repair commands"
-        : "Listen for repair commands";
-      if (ambientButton.title !== nextTitle) ambientButton.title = nextTitle;
-      setDatasetIfChanged(ambientButton, "repairAction", "toggle-ambient-listener");
-      setDatasetIfChanged(ambientButton, "active", String(ambientActive));
-    }
-
-    const dictationButton = panel.querySelector<HTMLElement>(
-      "[data-repair-control='dictation-route']"
-    );
-    if (dictationButton !== null) {
-      const dictationRoute = getRouteLabel(interaction.dictationRoute);
-      setTextIfChanged(dictationButton, dictationActive ? "Recording" : "Speak");
-      dictationButton.classList.toggle("repair-guidance-control--active", dictationActive);
-      const nextTitle = dictationActive
-        ? "Stop voice note recording"
-        : `Speak a note or question using the ${dictationRoute} microphone`;
-      if (dictationButton.title !== nextTitle) dictationButton.title = nextTitle;
-      setDatasetIfChanged(dictationButton, "repairAction", "toggle-dictation");
-      setDatasetIfChanged(dictationButton, "active", String(dictationActive));
-    }
-
-    const cameraButton = panel.querySelector<HTMLElement>("[data-repair-control='camera-feed']");
-    if (cameraButton !== null) {
-      cameraButton.classList.toggle("repair-guidance-control--active", cameraActive);
-      setTextIfChanged(cameraButton, cameraActive ? "Camera live" : "Camera");
-      const nextTitle = cameraActive ? "Stop the camera feed" : "Start the camera feed";
-      if (cameraButton.title !== nextTitle) cameraButton.title = nextTitle;
-      setDatasetIfChanged(cameraButton, "repairAction", "toggle-camera-feed");
-      setDatasetIfChanged(cameraButton, "active", String(cameraActive));
-    }
-
-    const cameraChip = panel.querySelector<HTMLElement>("[data-repair-camera-status='true']");
-    if (cameraChip !== null) {
-      setTextIfChanged(cameraChip, getCameraStatusChipText(state, cameraActive));
-      const chipTitle = getCameraStatusChipTitle(state, cameraActive);
-      if (cameraChip.title !== chipTitle) cameraChip.title = chipTitle;
-      setDatasetIfChanged(cameraChip, "state", getCameraStatusChipState(state, cameraActive));
-    }
-
-    const ttsButton = panel.querySelector<HTMLElement>("[data-repair-control='tts-route']");
-    if (ttsButton !== null) {
-      ttsButton.classList.toggle("repair-guidance-control--active", ttsActive);
-      const ttsRoute = getRouteLabel(interaction.ttsRoute);
-      setTextIfChanged(ttsButton, ttsActive ? "Reading" : "Read");
-      const nextTitle = ttsActive
-        ? "Stop spoken guidance"
-        : `Read current guidance aloud on ${ttsRoute}`;
-      if (ttsButton.title !== nextTitle) ttsButton.title = nextTitle;
-      setDatasetIfChanged(ttsButton, "repairAction", "toggle-tts");
-      setDatasetIfChanged(ttsButton, "active", String(ttsActive));
-    }
-
-    const budgetButton = panel.querySelector<HTMLElement>(
-      "[data-repair-action='set-attention-budget']"
-    );
-    if (budgetButton !== null) {
-      const currentMax = state.guidance.aiInterruption.attentionBudget.maxAiInterruptions;
-      const nextMax = currentMax >= 3 ? 1 : currentMax + 1;
-      setTextIfChanged(budgetButton, getAssistanceProfileLabel(currentMax));
-      budgetButton.title = `Cycle assistance profile (${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions}/${currentMax} interruptions left)`;
-      setDatasetIfChanged(budgetButton, "maxAiInterruptions", String(nextMax));
-      setDatasetIfChanged(
-        budgetButton,
-        "windowMs",
-        String(state.guidance.aiInterruption.attentionBudget.windowMs)
-      );
-    }
-
-    const operatorOverlayButton = panel.querySelector<HTMLElement>(
-      "[data-repair-action='set-settings-overlay'][data-tab-id='bench-operator']"
-    );
-    if (operatorOverlayButton !== null) {
-      operatorOverlayButton.classList.toggle(
-        "repair-profile-toggle__btn--active",
-        state.layout.settingsOverlayOpen && state.layout.settingsOverlayTabId === "bench-operator"
-      );
-      setDatasetIfChanged(operatorOverlayButton, "open", "true");
-      setDatasetIfChanged(operatorOverlayButton, "tabId", "bench-operator");
-    }
-
-    const settingsOverlayButton = panel.querySelector<HTMLElement>(
-      "[data-repair-action='set-settings-overlay'][data-tab-id='repair-controls']"
-    );
-    if (settingsOverlayButton !== null) {
-      settingsOverlayButton.classList.toggle(
-        "repair-guidance-control--active",
-        state.layout.settingsOverlayOpen && state.layout.settingsOverlayTabId === "repair-controls"
-      );
-      setDatasetIfChanged(settingsOverlayButton, "open", "true");
-      setDatasetIfChanged(settingsOverlayButton, "tabId", "repair-controls");
-    }
   }
 
   function replacePanelElement(current: HTMLElement, next: HTMLElement): HTMLElement {
@@ -1194,6 +1073,9 @@ export function createRepairRoomUiRuntime() {
     if (current === undefined) {
       const mounted = lifecycle.mount(parent);
       updatePanelChrome(mounted, lifecycle.panelId);
+      if (lifecycle.panelId === "workbench-stage") {
+        lifecycle.update(mounted);
+      }
       persistentShell.panelElements.set(lifecycle.panelId, mounted);
       persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
       return;
@@ -1353,14 +1235,6 @@ export function createRepairRoomUiRuntime() {
     if (shell !== null) shell.settingsOverlaySignature = signature;
   }
 
-  function createWorkspaceChipRail(): HTMLElement {
-    const rail = documentRef.createElement("div");
-    rail.className = "repair-workspace-chip-rail";
-    rail.dataset["chipRail"] = "workspace";
-    rail.append(createRepairPanelChipGroup(documentRef, REPAIR_TOP_PANEL_CHIPS));
-    return rail;
-  }
-
   function createBottomClusterShell(): {
     cluster: HTMLElement;
     header: HTMLElement;
@@ -1483,8 +1357,6 @@ export function createRepairRoomUiRuntime() {
 
     const workspace = documentRef.createElement("div");
     workspace.className = "repair-workspace";
-    const workspaceChipRail = createWorkspaceChipRail();
-    workspace.append(workspaceChipRail);
     const rightStack = documentRef.createElement("div");
     rightStack.className = "repair-panel--wizard-pack-stack";
     const bottomClusterShell = createBottomClusterShell();
@@ -1495,7 +1367,6 @@ export function createRepairRoomUiRuntime() {
       root,
       clock,
       workspace,
-      workspaceChipRail,
       rightStack,
       bottomCluster: bottomClusterShell.cluster,
       bottomClusterHeader: bottomClusterShell.header,
@@ -1540,9 +1411,6 @@ export function createRepairRoomUiRuntime() {
     );
     syncWorkspacePanelVisibility(persistentShell);
 
-    if (!persistentShell.workspace.contains(persistentShell.workspaceChipRail)) {
-      persistentShell.workspace.prepend(persistentShell.workspaceChipRail);
-    }
     syncPanel(
       persistentShell,
       persistentShell.workspace,
@@ -1972,7 +1840,6 @@ export function createRepairRoomUiRuntime() {
           if (strip) {
             const current = strip.dataset["showSay"] === "true";
             strip.dataset["showSay"] = String(!current);
-            el.classList.toggle("repair-guidance-control--active", !current);
           }
           break;
         }

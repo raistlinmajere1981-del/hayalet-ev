@@ -4,27 +4,22 @@
     --repair-workbench-column: minmax(0, 1.6fr);
 
     grid-template-columns: var(--repair-session-column) var(--repair-workbench-column);
-    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
-  }
-
-  .repair-workspace-chip-rail {
-    grid-column: 1 / -1;
-    grid-row: 1;
+    grid-template-rows: minmax(0, 1fr) auto auto auto;
   }
 
   .repair-panel--session-rail {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 1;
   }
 
   .repair-panel--workbench-stage {
     grid-column: 2;
-    grid-row: 2;
+    grid-row: 1;
   }
 
   .repair-panel--tactical-feed {
     grid-column: 1 / -1;
-    grid-row: 3;
+    grid-row: 2;
     max-height: var(--repair-px-180);
   }
 
@@ -34,11 +29,11 @@
   }
 
   .repair-panel--wizard-pack-stack {
-    grid-row: 4;
+    grid-row: 3;
   }
 
   .repair-bottom-cluster {
-    grid-row: 5;
+    grid-row: 4;
   }
 
   .repair-bottom-dock {
@@ -57,10 +52,9 @@
 
   .repair-workspace {
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(var(--repair-px-360), 1fr) repeat(4, auto);
+    grid-template-rows: minmax(var(--repair-px-360), 1fr) repeat(4, auto);
   }
 
-  .repair-workspace-chip-rail,
   .repair-panel--session-rail,
   .repair-panel--tactical-feed,
   .repair-panel--wizard-pack-stack,
@@ -68,7 +62,6 @@
     grid-column: 1;
   }
 
-  .repair-workspace-chip-rail,
   .repair-bottom-cluster__header {
     justify-content: flex-start;
     overflow-x: auto;
@@ -76,24 +69,24 @@
 
   .repair-panel--workbench-stage {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 1;
     min-height: var(--repair-px-360);
   }
 
   .repair-panel--session-rail {
-    grid-row: 3;
+    grid-row: 2;
   }
 
   .repair-panel--tactical-feed {
-    grid-row: 4;
+    grid-row: 3;
   }
 
   .repair-panel--wizard-pack-stack {
-    grid-row: 5;
+    grid-row: 4;
   }
 
   .repair-bottom-cluster {
-    grid-row: 6;
+    grid-row: 5;
   }
 
   .repair-bottom-dock {
