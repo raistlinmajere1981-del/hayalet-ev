@@ -860,7 +860,7 @@ export function createRepairCommandRouter(params: {
         if (kind === null || id === null) {
           return { success: false, message: "evidence kind and id are required" };
         }
-        let nextManualEvidence: RepairWizardManualEvidenceDraft = manualEvidence;
+        let nextManualEvidence: RepairWizardManualEvidenceDraft;
         let selectedEvidenceResourceIds = wizard.draft.selectedEvidenceResourceIds;
         let selectedFailureIds = wizard.draft.selectedFailureIds;
         let selectedTestPointIds = wizard.draft.selectedTestPointIds;

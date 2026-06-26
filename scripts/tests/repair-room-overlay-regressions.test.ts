@@ -298,7 +298,7 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /timelineShape/);
   assert.match(runtime, /ensurePersistentShell/);
   assert.match(runtime, /createPanelLifecycle/);
-  assert.match(runtime, /repair-workspace-chip-rail/);
+  assert.match(runtime, /repair-panel-chip-group/);
   assert.match(runtime, /repair-bottom-cluster/);
   assert.match(runtime, /toggle-panel-chip/);
   assert.match(runtime, /toggle-bottom-cluster/);
@@ -469,12 +469,13 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.doesNotMatch(sessionRailPanel, /Session Rail/);
   assert.match(sessionRailPanel, /noPanelHeader: true/);
   assert.match(chatPanel, /composerDraft/);
-  assert.match(workbenchPanel, /set-hands-free-mode/);
-  assert.match(workbenchPanel, /toggle-ambient-listener/);
-  assert.match(workbenchPanel, /toggle-dictation/);
-  assert.match(workbenchPanel, /toggle-camera-feed/);
-  assert.match(workbenchPanel, /toggle-tts/);
-  assert.match(workbenchPanel, /set-attention-budget/);
+  assert.doesNotMatch(workbenchPanel, /repairControl/);
+  assert.match(runtime, /set-hands-free-mode/);
+  assert.match(runtime, /toggle-ambient-listener/);
+  assert.match(runtime, /toggle-dictation/);
+  assert.match(runtime, /toggle-camera-feed/);
+  assert.match(runtime, /toggle-tts/);
+  assert.match(runtime, /set-attention-budget/);
   assert.match(runtime, /setVoiceGuidance/);
   assert.match(runtime, /setInteractionSettings/);
   assert.match(runtime, /setChatComposer/);
@@ -519,6 +520,59 @@ void test("repair-room manifest command specs stay aligned with UI constants", (
   Object.values(REPAIR_UI_COMMANDS).forEach((commandName) => {
     assert.equal(commandNames.has(commandName), true, commandName);
   });
+});
+
+void test("repair-room workbench toolbar renders grouped controls inside the viewport", () => {
+  const renderText = (_path: string[], fallback: string): string => fallback;
+  const documentRef = new RepairFakeDocument() as unknown as Document;
+  const panel = renderWorkbenchStagePanel(
+    documentRef,
+    createRepairUiSnapshot(createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z")),
+    renderText
+  ) as unknown as RepairFakeElement;
+
+  const viewport = findRepairFakeElements(panel, (element) =>
+    element.className.split(" ").includes("repair-viewport")
+  )[0];
+  assert.ok(viewport);
+
+  const toolbar = findRepairFakeElements(
+    panel,
+    (element) => element.dataset["repairWorkbenchToolbar"] === "viewport"
+  )[0];
+  assert.ok(toolbar);
+  assert.equal(toolbar.parentElement, viewport);
+
+  assert.deepEqual(
+    findRepairFakeElements(
+      toolbar,
+      (element) => typeof element.dataset["toolbarGroup"] === "string"
+    ).map((element) => element.dataset["toolbarGroup"]),
+    ["tools", "layers", "zoom"]
+  );
+
+  const toolIds = findRepairFakeElements(
+    toolbar,
+    (element) => element.dataset["repairAction"] === "set-tool"
+  ).map((element) => element.dataset["tool"]);
+  assert.equal(toolIds.includes("select"), true);
+  assert.equal(toolIds.includes("zoom-out"), true);
+  assert.equal(toolIds.includes("zoom-in"), true);
+
+  const layerIds = findRepairFakeElements(
+    toolbar,
+    (element) => element.dataset["repairAction"] === "toggle-overlay-layer"
+  ).map((element) => element.dataset["layerId"]);
+  assert.equal(layerIds.includes("grid"), true);
+  assert.equal(layerIds.includes("ai-marks"), true);
+  assert.equal(layerIds.includes("measurements"), true);
+  assert.equal(
+    findRepairFakeElements(
+      toolbar,
+      (element) => element.dataset["repairAction"] === "toggle-investigation-mode"
+    ).length,
+    1
+  );
 });
 
 void test("repair-room hands-free controls stay action-oriented without duplicating topbar status", () => {
@@ -594,7 +648,7 @@ void test("repair-room hands-free controls stay action-oriented without duplicat
       activePanel,
       (element) => typeof element.dataset["repairControl"] === "string"
     ).map((element) => element.dataset["repairControl"]),
-    ["hands-free", "ambient", "dictation-route", "camera-feed", "tts-route"]
+    []
   );
 
   const settingsSurface = renderRepairSettingsPanel(
@@ -674,12 +728,12 @@ void test("repair-room hands-free controls stay action-oriented without duplicat
   );
   assert.equal(chatInputs[0]?.value, "Measure U14 VCC");
 
-  assert.match(workbenchPanel, /repairControl/);
-  assert.match(workbenchPanel, /set-hands-free-mode/);
-  assert.match(workbenchPanel, /toggle-ambient-listener/);
-  assert.match(workbenchPanel, /toggle-dictation/);
-  assert.match(workbenchPanel, /toggle-camera-feed/);
-  assert.match(workbenchPanel, /toggle-tts/);
+  assert.doesNotMatch(workbenchPanel, /repairControl/);
+  assert.doesNotMatch(workbenchPanel, /set-hands-free-mode/);
+  assert.doesNotMatch(workbenchPanel, /toggle-ambient-listener/);
+  assert.doesNotMatch(workbenchPanel, /toggle-dictation/);
+  assert.doesNotMatch(workbenchPanel, /toggle-camera-feed/);
+  assert.doesNotMatch(workbenchPanel, /toggle-tts/);
   assert.doesNotMatch(workbenchPanel, /set-settings-overlay/);
   assert.doesNotMatch(workbenchPanel, /bench-operator/);
   assert.doesNotMatch(workbenchPanel, /repair-controls/);

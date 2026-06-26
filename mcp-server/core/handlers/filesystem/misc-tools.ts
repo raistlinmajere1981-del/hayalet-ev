@@ -93,11 +93,10 @@ export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
       definition: BASH_EXECUTOR_TOOL,
       handler: async (args): Promise<unknown> => {
         const t = await createMcpTranslator();
-        const result = await executeBash(
-          (args as { command: string }).command,
-          projectRoot,
-          (args as { timeout?: number }).timeout
-        );
+        const timeout = (args as { timeout?: number }).timeout;
+        const result = await executeBash((args as { command: string }).command, projectRoot, timeout, {
+          detachLongRunning: timeout === undefined,
+        });
         let output = "";
         if (typeof result.stdout === "string" && result.stdout.length > 0) output += result.stdout;
         if (typeof result.stderr === "string" && result.stderr.length > 0) {

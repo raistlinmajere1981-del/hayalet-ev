@@ -1,4 +1,4 @@
-import type { RepairEvent } from "../../shared/types/index.js";
+import type { RepairEvent, RepairWorkbenchTool } from "../../shared/types/index.js";
 import type { RepairUiState } from "../../shared/ui/state.js";
 import { REPAIR_OVERLAY_TOOLS } from "../overlay/overlay-tools.js";
 import { resolveRepairAssetUrl } from "../repair-asset-url.js";
@@ -135,6 +135,99 @@ function getRepairCommandHints(state: RepairUiState): string {
     : ["freeze camera", "repeat guidance", "record measurement"];
   if (state.guidance.unresolvedCriticalItems > 0) hints.unshift("show risks");
   return hints.slice(0, 3).join(" / ");
+}
+
+const REPAIR_TOOL_ICONS: Record<RepairWorkbenchTool, string> = {
+  select: "V",
+  pan: "+",
+  "zoom-in": "+",
+  "zoom-out": "-",
+  rect: "[]",
+  circle: "O",
+  freehand: "~",
+  text: "T",
+  "measurement-link": "L",
+  "measurement-pin": "P",
+  arrow: ">",
+  ruler: "|",
+  "freeze-frame": "F",
+  snapshot: "S",
+};
+
+const REPAIR_TOOLBAR_LAYER_BUTTONS: Array<{
+  id: keyof RepairUiState["workbench"]["visibleLayers"];
+  label: string;
+  title: string;
+}> = [
+  { id: "grid", label: "Grid", title: "Toggle grid overlay" },
+  { id: "ai-marks", label: "AI Marks", title: "Toggle AI mark overlay" },
+  { id: "operator-annotations", label: "Operator Notes", title: "Toggle operator annotations" },
+  { id: "ai-annotations", label: "AI Notes", title: "Toggle AI annotations" },
+  { id: "measurements", label: "Measure", title: "Toggle measurement overlay" },
+  { id: "risks", label: "Risks", title: "Toggle risk overlay" },
+  { id: "notes", label: "Notes", title: "Toggle repair notes" },
+  { id: "knowledge", label: "Evidence", title: "Toggle knowledge evidence" },
+];
+
+function appendButtonLabel(
+  documentRef: Document,
+  button: HTMLElement,
+  icon: string,
+  label: string
+): void {
+  const iconEl = documentRef.createElement("span");
+  iconEl.className = "repair-toolbar__icon";
+  iconEl.textContent = icon;
+  button.append(iconEl);
+
+  const labelEl = documentRef.createElement("span");
+  labelEl.className = "repair-toolbar__label";
+  labelEl.textContent = label;
+  button.append(labelEl);
+}
+
+function createToolButton(
+  documentRef: Document,
+  state: RepairUiState,
+  tool: (typeof REPAIR_OVERLAY_TOOLS)[number]
+): HTMLElement {
+  const btn = documentRef.createElement("button");
+  btn.type = "button";
+  btn.className = `repair-toolbar__btn repair-toolbar__btn--tool repair-toolbar__btn--text${
+    state.workbench.activeTool === tool.id ? " repair-toolbar__btn--active" : ""
+  }`;
+  btn.title = tool.title;
+  btn.dataset["repairAction"] = "set-tool";
+  btn.dataset["tool"] = tool.id;
+  appendButtonLabel(documentRef, btn, REPAIR_TOOL_ICONS[tool.id], tool.label);
+  return btn;
+}
+
+function createLayerButton(
+  documentRef: Document,
+  state: RepairUiState,
+  layer: (typeof REPAIR_TOOLBAR_LAYER_BUTTONS)[number]
+): HTMLElement {
+  const btn = documentRef.createElement("button");
+  const isVisible = state.workbench.visibleLayers[layer.id];
+  btn.type = "button";
+  btn.className = `repair-toolbar__btn repair-toolbar__btn--layer repair-toolbar__btn--text${
+    isVisible ? " repair-toolbar__btn--active" : ""
+  }`;
+  btn.title = layer.title;
+  btn.dataset["repairAction"] = "toggle-overlay-layer";
+  btn.dataset["layerId"] = layer.id;
+  btn.dataset["visible"] = String(!isVisible);
+
+  const check = documentRef.createElement("span");
+  check.className = "repair-toolbar__check";
+  btn.append(check);
+
+  const label = documentRef.createElement("span");
+  label.className = "repair-toolbar__label";
+  label.textContent = layer.label;
+  btn.append(label);
+  return btn;
 }
 
 function appendCopilotCell(
@@ -314,80 +407,63 @@ export function renderWorkbenchStagePanel(
     viewport.append(inspector);
   }
 
-  body.append(viewport);
-
-  // -- Toolbar: two rows — tools row + layers row
+  // -- Toolbar: viewport chrome
   const toolbar = documentRef.createElement("div");
   toolbar.className = "repair-toolbar";
+  toolbar.dataset["repairWorkbenchToolbar"] = "viewport";
 
-  // Row 1: tool selection buttons
-  const toolsRow = documentRef.createElement("div");
-  toolsRow.className = "repair-toolbar-row repair-toolbar-row--tools";
+  const toolsGroup = documentRef.createElement("div");
+  toolsGroup.className = "repair-toolbar-group repair-toolbar-group--tools";
+  toolsGroup.dataset["toolbarGroup"] = "tools";
 
   for (const tool of REPAIR_OVERLAY_TOOLS) {
-    const btn = documentRef.createElement("button");
-    btn.className = `repair-toolbar__btn repair-toolbar__btn--text${state.workbench.activeTool === tool.id ? " repair-toolbar__btn--active" : ""}`;
-    btn.textContent = tool.label;
-    btn.title = tool.title;
-    btn.dataset["repairAction"] = "set-tool";
-    btn.dataset["tool"] = tool.id;
-    toolsRow.append(btn);
+    if (tool.id === "zoom-in" || tool.id === "zoom-out") continue;
+    toolsGroup.append(createToolButton(documentRef, state, tool));
 
-    if (tool.id === "zoom-out" || tool.id === "arrow") {
+    if (tool.id === "pan" || tool.id === "text" || tool.id === "arrow") {
       const sep = documentRef.createElement("span");
       sep.className = "repair-toolbar__sep";
-      toolsRow.append(sep);
+      toolsGroup.append(sep);
     }
   }
-  toolbar.append(toolsRow);
 
-  // Separator between rows
-  const rowSep = documentRef.createElement("div");
-  rowSep.className = "repair-toolbar__row-sep";
-  toolbar.append(rowSep);
+  toolbar.append(toolsGroup);
 
-  // Row 2: overlay layer toggle buttons
-  const layersRow = documentRef.createElement("div");
-  layersRow.className = "repair-toolbar-row repair-toolbar-row--layers";
+  const layersGroup = documentRef.createElement("div");
+  layersGroup.className = "repair-toolbar-group repair-toolbar-group--layers";
+  layersGroup.dataset["toolbarGroup"] = "layers";
 
-  const layerButtons: Array<{
-    id: keyof RepairUiState["workbench"]["visibleLayers"];
-    label: string;
-    title: string;
-  }> = [
-    { id: "grid", label: "Grid", title: "Toggle grid overlay" },
-    { id: "ai-marks", label: "AI marks", title: "Toggle AI mark overlay" },
-    { id: "operator-annotations", label: "Operator", title: "Toggle operator annotations" },
-    { id: "ai-annotations", label: "AI notes", title: "Toggle AI annotations" },
-    { id: "measurements", label: "Measure", title: "Toggle measurement overlay" },
-    { id: "risks", label: "Risks", title: "Toggle risk overlay" },
-    { id: "notes", label: "Notes", title: "Toggle repair notes" },
-    { id: "knowledge", label: "Evidence", title: "Toggle knowledge evidence" },
-  ];
-  for (const layer of layerButtons) {
-    const btn = documentRef.createElement("button");
-    const isVisible = state.workbench.visibleLayers[layer.id];
-    btn.className = `repair-toolbar__btn repair-toolbar__btn--text${isVisible ? " repair-toolbar__btn--active" : ""}`;
-    btn.textContent = layer.label;
-    btn.title = layer.title;
-    btn.dataset["repairAction"] = "toggle-overlay-layer";
-    btn.dataset["layerId"] = layer.id;
-    btn.dataset["visible"] = String(!isVisible);
-    layersRow.append(btn);
+  for (const layer of REPAIR_TOOLBAR_LAYER_BUTTONS) {
+    layersGroup.append(createLayerButton(documentRef, state, layer));
   }
 
   const investigation = documentRef.createElement("button");
-  investigation.className = `repair-toolbar__btn repair-toolbar__btn--text${
+  investigation.type = "button";
+  investigation.className = `repair-toolbar__btn repair-toolbar__btn--layer repair-toolbar__btn--text${
     state.workbench.investigationModeEnabled ? " repair-toolbar__btn--active" : ""
   }`;
-  investigation.textContent = "Inspect";
   investigation.title = "Toggle investigation mode";
   investigation.dataset["repairAction"] = "toggle-investigation-mode";
-  layersRow.append(investigation);
+  appendButtonLabel(documentRef, investigation, "i", "Inspect");
+  layersGroup.append(investigation);
 
-  toolbar.append(layersRow);
+  toolbar.append(layersGroup);
 
-  body.append(toolbar);
+  const zoomGroup = documentRef.createElement("div");
+  zoomGroup.className = "repair-toolbar-group repair-toolbar-group--zoom";
+  zoomGroup.dataset["toolbarGroup"] = "zoom";
+  const zoomOut = REPAIR_OVERLAY_TOOLS.find((tool) => tool.id === "zoom-out");
+  const zoomIn = REPAIR_OVERLAY_TOOLS.find((tool) => tool.id === "zoom-in");
+  if (zoomOut !== undefined) zoomGroup.append(createToolButton(documentRef, state, zoomOut));
+  const zoomValue = documentRef.createElement("span");
+  zoomValue.className = "repair-toolbar__zoom-value";
+  zoomValue.textContent = `${Math.round(state.workbench.viewport.zoom * 100)}%`;
+  zoomGroup.append(zoomValue);
+  if (zoomIn !== undefined) zoomGroup.append(createToolButton(documentRef, state, zoomIn));
+  toolbar.append(zoomGroup);
+
+  viewport.append(toolbar);
+  body.append(viewport);
 
   return createRepairPanel(documentRef, {
     panelId: "workbench-stage",

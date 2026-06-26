@@ -105,7 +105,6 @@
   z-index: 2;
 }
 
-
 .repair-viewport--frozen {
   border: var(--repair-px-2) solid var(--repair-amber);
 }
@@ -145,48 +144,67 @@
 }
 
 .repair-toolbar {
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-  border-top: var(--repair-px-1) solid var(--repair-border);
-  gap: 0;
+  position: absolute;
+  inset: var(--repair-sp-3);
+  z-index: 5;
+  pointer-events: none;
 }
 
-/* Each toolbar row: tools row or layers row */
-.repair-toolbar-row {
+.repair-toolbar-group {
+  position: absolute;
   display: flex;
-  align-items: center;
-  gap: var(--repair-px-2);
-  padding: var(--repair-px-3) var(--repair-sp-3);
-  min-height: var(--repair-px-34);
-  overflow-x: auto;
-  flex-wrap: nowrap;
-  /* Hide scrollbar but allow scrolling on overflow */
+  gap: var(--repair-px-4);
+  padding: var(--repair-px-6);
+  border: var(--repair-px-1) solid var(--repair-border-strong);
+  border-radius: var(--repair-radius-inner);
+  background: var(--repair-scrim-strong);
+  box-shadow:
+    0 var(--repair-px-8) var(--repair-px-18) var(--repair-scrim-strong),
+    inset 0 0 0 var(--repair-px-1) var(--repair-border-muted);
+  pointer-events: auto;
   scrollbar-width: none;
 }
-.repair-toolbar-row::-webkit-scrollbar {
+
+.repair-toolbar-group::-webkit-scrollbar {
   display: none;
 }
 
-.repair-toolbar-row--tools {
-  border-bottom: var(--repair-px-1) solid var(--repair-border-muted);
+.repair-toolbar-group--tools {
+  top: 0;
+  left: 0;
+  bottom: var(--repair-px-40);
+  flex-direction: column;
+  align-items: stretch;
+  max-height: calc(100% - var(--repair-px-40));
+  overflow-y: auto;
 }
 
-/* Row separator line element (inside .repair-toolbar) */
-.repair-toolbar__row-sep {
-  display: none; /* row border handled by --tools border-bottom */
+.repair-toolbar-group--layers {
+  top: 0;
+  right: 0;
+  flex-direction: column;
+  min-width: min(var(--repair-px-200), 36%);
+  max-width: min(var(--repair-px-220), 46%);
+}
+
+.repair-toolbar-group--zoom {
+  right: 0;
+  bottom: 0;
+  align-items: center;
+  min-height: var(--repair-px-36);
 }
 
 .repair-toolbar__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--repair-px-30);
-  height: var(--repair-px-30);
+  min-width: var(--repair-px-30);
+  min-height: var(--repair-px-30);
   flex-shrink: 0;
-  border: var(--repair-px-1) solid transparent;
+  gap: var(--repair-px-5);
+  border: var(--repair-px-1) solid var(--repair-border-muted);
   border-radius: var(--repair-radius-sm);
-  background: transparent;
+  background: var(--repair-surface-control);
   color: var(--repair-text-muted);
   font-family: var(--repair-mono);
   font-size: var(--repair-px-11);
@@ -197,10 +215,24 @@
 .repair-toolbar__btn--text {
   width: auto;
   min-width: var(--repair-px-30);
-  padding: 0 var(--repair-px-8);
+  padding: var(--repair-px-4) var(--repair-px-8);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.repair-toolbar__btn--tool {
+  flex-direction: column;
+  width: calc(var(--repair-px-28) * 2);
+  min-height: calc(var(--repair-px-24) * 2);
+  padding-inline: var(--repair-px-5);
+}
+
+.repair-toolbar__btn--layer {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: var(--repair-px-28);
+  padding-block: var(--repair-px-4);
 }
 
 .repair-toolbar__btn:hover {
@@ -214,6 +246,59 @@
   background: var(--repair-cyan-soft);
 }
 
+.repair-toolbar__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--repair-px-20);
+  height: var(--repair-px-18);
+  color: var(--repair-text);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.repair-toolbar__label {
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repair-toolbar__check {
+  position: relative;
+  width: var(--repair-px-12);
+  height: var(--repair-px-12);
+  flex: 0 0 var(--repair-px-12);
+  border: var(--repair-px-1) solid var(--repair-border-strong);
+  border-radius: var(--repair-px-2);
+  background: var(--repair-surface-control);
+}
+
+.repair-toolbar__btn--active .repair-toolbar__check {
+  border-color: var(--repair-cyan);
+  background: var(--repair-cyan);
+}
+
+.repair-toolbar__btn--active .repair-toolbar__check::after {
+  content: "";
+  position: absolute;
+  left: var(--repair-px-3);
+  top: var(--repair-px-1);
+  width: var(--repair-px-4);
+  height: var(--repair-px-7);
+  border: solid var(--repair-stage);
+  border-width: 0 var(--repair-px-2) var(--repair-px-2) 0;
+  transform: rotate(45deg);
+}
+
+.repair-toolbar__zoom-value {
+  min-width: var(--repair-px-44);
+  color: var(--repair-text);
+  font: 700 var(--repair-px-10) var(--repair-mono);
+  text-align: center;
+}
+
 .repair-toolbar__btn:disabled,
 .repair-chat-composer__send:disabled {
   opacity: 0.55;
@@ -225,4 +310,28 @@
   height: var(--repair-px-18);
   background: var(--repair-border);
   margin: 0 var(--repair-px-4);
+}
+
+@media (--repair-bp-max-680) {
+  .repair-toolbar {
+    inset: var(--repair-sp-2);
+  }
+
+  .repair-toolbar-group--tools {
+    right: 0;
+    bottom: auto;
+    flex-direction: row;
+    max-height: none;
+    overflow-x: auto;
+  }
+
+  .repair-toolbar-group--layers {
+    top: auto;
+    bottom: var(--repair-px-44);
+    max-width: min(var(--repair-px-220), 52%);
+  }
+
+  .repair-toolbar__btn--tool {
+    width: calc(var(--repair-px-24) * 2);
+  }
 }

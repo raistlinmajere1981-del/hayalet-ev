@@ -16,6 +16,11 @@ interface BashResult {
   success?: boolean;
 }
 
+interface BashExecutionOptions {
+  detachLongRunning?: boolean;
+  foregroundWaitMs?: number;
+}
+
 type McpTranslator = (key: string, params?: TranslationParams) => string;
 
 const bashToolDefinitionTranslator = createMcpTranslatorSync();
@@ -81,7 +86,8 @@ function resolveShellInvocation(command: string): { command: string; args: strin
 export async function executeBash(
   command: string | number,
   workspacePath: string,
-  timeout: number = FS_TIMEOUTS.BASH_DEFAULT
+  timeout: number = FS_TIMEOUTS.BASH_DEFAULT,
+  options: BashExecutionOptions = {}
 ): Promise<BashResult> {
   const t = await createMcpTranslator();
   return await new Promise((resolve) => {
@@ -131,7 +137,9 @@ export async function executeBash(
     let timedOut = false;
     let settled = false;
     const maxOutput = 50000;
-    const foregroundWaitMs = Math.min(Math.max(timeout - 1_000, 1_000), 8_000);
+    const detachLongRunning = options.detachLongRunning ?? true;
+    const foregroundWaitMs =
+      options.foregroundWaitMs ?? Math.min(Math.max(timeout - 1_000, 1_000), 8_000);
 
     function appendOutput(current: string, data: unknown): string {
       const next = current + chunkToString(data);
@@ -142,7 +150,7 @@ export async function executeBash(
       if (settled) return;
       settled = true;
       clearTimeout(timeoutId);
-      clearTimeout(foregroundWaitId);
+      if (foregroundWaitId !== null) clearTimeout(foregroundWaitId);
       resolve(result);
     }
 
@@ -151,22 +159,25 @@ export async function executeBash(
       child.kill("SIGTERM");
     }, timeout);
 
-    const foregroundWaitId = setTimeout(() => {
-      if (isBackground) return;
-      child.stdout.pause();
-      child.stderr.pause();
-      child.unref();
-      resolveOnce({
-        stdout:
-          `${bashT(t, "backgroundStarted")}\n` +
-          `PID: ${child.pid ?? "unknown"}\n` +
-          "Command is still running; use a normal terminal for long foreground output.",
-        stderr,
-        exitCode: 0,
-        ...(typeof child.pid === "number" ? { pid: child.pid } : {}),
-        success: true,
-      });
-    }, foregroundWaitMs);
+    const foregroundWaitId =
+      detachLongRunning === true
+        ? setTimeout(() => {
+            if (isBackground) return;
+            child.stdout.pause();
+            child.stderr.pause();
+            child.unref();
+            resolveOnce({
+              stdout:
+                `${bashT(t, "backgroundStarted")}\n` +
+                `PID: ${child.pid ?? "unknown"}\n` +
+                "Command is still running; use a normal terminal for long foreground output.",
+              stderr,
+              exitCode: 0,
+              ...(typeof child.pid === "number" ? { pid: child.pid } : {}),
+              success: true,
+            });
+          }, foregroundWaitMs)
+        : null;
 
     child.stdout.on("data", (data: unknown) => {
       stdout = appendOutput(stdout, data);

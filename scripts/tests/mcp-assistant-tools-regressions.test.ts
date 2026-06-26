@@ -93,3 +93,28 @@ void test("assistant verify completion can report explicit evidence as json with
   assert.deepEqual((report["verification"] as { candidateFiles: string[] }).candidateFiles, []);
   assert.deepEqual((report["verification"] as { checkedFiles: string[] }).checkedFiles, []);
 });
+
+void test("assistant verify completion type-checks script tests with scripts tsconfig", async () => {
+  const verifyEntry = createAssistantTools(process.cwd()).find(
+    (entry) => (entry.definition as { name: string }).name === "hev_assistant_verify_completion"
+  );
+  assert.ok(verifyEntry);
+
+  const report = parseToolText(
+    await verifyEntry.handler({
+      changed_files: ["scripts/tests/repair-room-overlay-regressions.test.ts"],
+      evidence: ["script test tsconfig regression"],
+      run_syntax: true,
+      check_ts: true,
+      response_format: "json",
+      max_files: 1,
+    })
+  );
+
+  assert.equal(report["success"], true);
+  assert.equal(report["readyToReport"], true);
+  assert.equal(report["status"], "verified");
+  assert.deepEqual((report["verification"] as { checkedFiles: string[] }).checkedFiles, [
+    "scripts/tests/repair-room-overlay-regressions.test.ts",
+  ]);
+});

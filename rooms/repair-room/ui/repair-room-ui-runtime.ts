@@ -765,10 +765,7 @@ export function createRepairRoomUiRuntime() {
     );
     if (chip === null) return;
     const visible = isPanelVisible(config.panelId);
-    setClassNameIfChanged(
-      chip,
-      `repair-panel-chip${visible ? " repair-panel-chip--active" : ""}`
-    );
+    setClassNameIfChanged(chip, `repair-panel-chip${visible ? " repair-panel-chip--active" : ""}`);
     setDatasetIfChanged(chip, "active", String(visible));
     setDatasetIfChanged(chip, "collapsed", String(!visible));
     chip.setAttribute("aria-pressed", String(visible));
@@ -776,10 +773,7 @@ export function createRepairRoomUiRuntime() {
     if (chip.title !== nextTitle) chip.title = nextTitle;
   }
 
-  function syncPanelChipGroup(
-    root: HTMLElement,
-    configs: readonly RepairPanelChipConfig[]
-  ): void {
+  function syncPanelChipGroup(root: HTMLElement, configs: readonly RepairPanelChipConfig[]): void {
     configs.forEach((config) => {
       syncPanelChip(root, config);
     });
@@ -953,6 +947,11 @@ export function createRepairRoomUiRuntime() {
         button.dataset["tool"] === state.workbench.activeTool
       );
     });
+
+    const zoomValue = panel.querySelector<HTMLElement>(".repair-toolbar__zoom-value");
+    if (zoomValue !== null) {
+      setTextIfChanged(zoomValue, `${Math.round(state.workbench.viewport.zoom * 100)}%`);
+    }
 
     panel
       .querySelectorAll<HTMLElement>("[data-repair-action='toggle-overlay-layer']")

@@ -23,6 +23,7 @@ function resolveTsconfigForFile(filePath: string): string | null {
   const normalizedPath = filePath.replaceAll("\\", "/").replace(/^\.?\//, "");
 
   if (normalizedPath.startsWith("mcp-server/")) return "mcp-server/tsconfig.mcp.json";
+  if (normalizedPath.startsWith("scripts/")) return "scripts/tsconfig.json";
   if (normalizedPath.startsWith("electron/")) return "electron/tsconfig.electron.json";
   if (normalizedPath.startsWith("ghost-agent/electron/"))
     return "ghost-agent/tsconfig.electron.json";

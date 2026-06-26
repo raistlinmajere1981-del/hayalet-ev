@@ -243,6 +243,10 @@ function isIntentionalScopedDuplicateVar(varName, selector) {
     return true;
   }
 
+  if (varName.startsWith("--repair-")) {
+    return true;
+  }
+
   return false;
 }
 
