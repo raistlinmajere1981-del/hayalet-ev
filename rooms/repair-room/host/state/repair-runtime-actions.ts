@@ -7,6 +7,7 @@ import type {
   RepairInteractionSettingsState,
   RepairKnowledgePack,
   RepairLivePreviewState,
+  RepairMultimeterMode,
   RepairMultimeterReading,
   RepairOperationalProfile,
   RepairOperatorProfile,
@@ -174,6 +175,10 @@ export type RepairRuntimeAction =
       type: "measurement/set-display";
       display: string;
       value: number | null;
+      unit: string;
+      range: string;
+      mode: RepairMultimeterMode;
+      label: string;
       hold: boolean;
     }
   | {

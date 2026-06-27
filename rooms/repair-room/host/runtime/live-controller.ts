@@ -2,19 +2,11 @@ import {
   REPAIR_AMBIENT_CLOCK_INTERVAL_MS,
   REPAIR_FEED_EVENT_MAX_DELAY_MS,
   REPAIR_FEED_EVENT_MIN_DELAY_MS,
-  REPAIR_MEASUREMENT_DRIFT_INTERVAL_MS,
 } from "../../shared/repair-constants.js";
 import { buildMockTacticalFeed } from "../../shared/data/index.js";
 import type { RepairSession } from "../../shared/types/index.js";
 import type { RepairRuntimeStore } from "../state/repair-runtime-store.js";
-import { createMeasurementReading } from "./event-factory.js";
 import { getActiveSession, getSessionTimelineMs } from "./session-helpers.js";
-
-const MEASUREMENT_DRIFT_SEQUENCE = ["0.000", "0.001", "0.002", "0.001", "0.000", "OL"];
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
 
 function unrefTimer(timer: ReturnType<typeof setInterval> | ReturnType<typeof setTimeout>): void {
   if (typeof timer === "object" && typeof timer.unref === "function") {
@@ -38,8 +30,6 @@ export function createRepairLiveController(params: {
   const { store } = params;
   const feedTimeouts = new Set<ReturnType<typeof setTimeout>>();
   let clockInterval: ReturnType<typeof setInterval> | null = null;
-  let measurementInterval: ReturnType<typeof setInterval> | null = null;
-  let measurementTick = 0;
   let liveTimelineSessionId = store.getState().activeSessionId;
   let liveTimelineAnchorAtMs = Date.now();
   let liveTimelineBaseMs = getSessionTimelineMs(getActiveSession(store.getState()));
@@ -135,35 +125,6 @@ export function createRepairLiveController(params: {
       unrefTimer(clockInterval);
     }
 
-    if (measurementInterval === null) {
-      measurementInterval = setInterval(() => {
-        const state = store.getState();
-        const session = getActiveSession(state);
-        if (session?.status !== "in-progress" || state.workbench.isFrozen) return;
-        const display =
-          MEASUREMENT_DRIFT_SEQUENCE[measurementTick % MEASUREMENT_DRIFT_SEQUENCE.length] ??
-          "0.000";
-        measurementTick += 1;
-        const reading = createMeasurementReading(nowIso(), {
-          rawDisplay: display,
-          range: state.measurement.current.range,
-          channel: "COM/VΩ",
-          unit: state.measurement.current.unit || "V",
-          reference: "Live drift sample",
-        });
-        store.dispatchMany([
-          { type: "measurement/append-reading", reading },
-          {
-            type: "measurement/set-display",
-            display,
-            value: display === "OL" ? null : Number(display),
-            hold: false,
-          },
-        ]);
-      }, REPAIR_MEASUREMENT_DRIFT_INTERVAL_MS);
-      unrefTimer(measurementInterval);
-    }
-
     scheduleFeedStream();
   }
 
@@ -172,10 +133,6 @@ export function createRepairLiveController(params: {
     if (clockInterval !== null) {
       clearInterval(clockInterval);
       clockInterval = null;
-    }
-    if (measurementInterval !== null) {
-      clearInterval(measurementInterval);
-      measurementInterval = null;
     }
   }
 

@@ -1116,6 +1116,10 @@ export function createRepairCommandRouter(params: {
             type: "measurement/set-display",
             display: reading.rawDisplay,
             value: reading.value,
+            unit: reading.unit,
+            range: reading.range,
+            mode: reading.mode,
+            label: reading.reference ?? reading.channel,
             hold: false,
           });
         });

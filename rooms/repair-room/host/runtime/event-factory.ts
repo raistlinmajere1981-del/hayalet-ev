@@ -7,6 +7,7 @@ import type {
   RepairInvestigationRegionStatus,
   RepairInvestigationRegionUpdatedEvent,
   RepairMeasurementEvent,
+  RepairMultimeterMode,
   RepairMultimeterReading,
   RepairOverlayEntityRef,
   RepairSession,
@@ -18,10 +19,26 @@ export function createEventId(prefix: string, _iso: string): string {
   return `${prefix}-${globalThis.crypto.randomUUID()}`;
 }
 
+const REPAIR_MULTIMETER_MODES: ReadonlySet<string> = new Set([
+  "dc-voltage",
+  "ac-voltage",
+  "resistance",
+  "continuity",
+  "diode",
+  "capacitance",
+  "frequency",
+]);
+
 function getAnnotationMetaTool(tool: RepairWorkbenchDrawTool): RepairAnnotationTool {
   if (tool === "measurement-pin") return "measurement-link";
   if (tool === "circle") return "rect";
   return tool;
+}
+
+function readMeasurementMode(value: unknown): RepairMultimeterMode {
+  return typeof value === "string" && REPAIR_MULTIMETER_MODES.has(value)
+    ? (value as RepairMultimeterMode)
+    : "dc-voltage";
 }
 
 export function createSnapshotEvent(
@@ -84,14 +101,14 @@ export function createMeasurementReading(
   iso: string,
   payload: Record<string, unknown>
 ): RepairMultimeterReading {
-  const rawDisplay = safeString(payload["rawDisplay"]) ?? "0.002";
+  const rawDisplay = safeString(payload["rawDisplay"]) ?? "0.000";
   const value = rawDisplay === "OL" ? null : (safeNumber(payload["value"]) ?? Number(rawDisplay));
   return {
     id: createEventId("reading", iso),
     occurredAt: iso,
-    mode: "dc-voltage",
-    range: safeString(payload["range"]) ?? "20 V",
-    channel: safeString(payload["channel"]) ?? "COM/VΩ",
+    mode: readMeasurementMode(payload["mode"]),
+    range: safeString(payload["range"]) ?? "Auto V",
+    channel: safeString(payload["channel"]) ?? "COM/V",
     rawDisplay,
     value: Number.isFinite(value) ? value : null,
     unit: safeString(payload["unit"]) ?? "V",
@@ -112,9 +129,9 @@ export function createMeasurementEvent(
     occurredAt: iso,
     source: "instrument",
     linkedEventIds: [],
-    instrumentId: "multimeter-fnirsi-dmt99",
+    instrumentId: safeString(payload["instrumentId"]) ?? "manual-meter",
     channel: reading.channel,
-    mode: "DCV",
+    mode: reading.mode,
     range: reading.range,
     value: reading.value,
     rawDisplay: reading.rawDisplay,

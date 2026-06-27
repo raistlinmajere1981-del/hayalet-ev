@@ -1,7 +1,105 @@
+import type { RepairMultimeterMode } from "../../shared/types/index.js";
 import type { RepairUiState } from "../../shared/ui/state.js";
 import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
+
+const MEASUREMENT_MODE_OPTIONS: Array<{ value: RepairMultimeterMode; label: string }> = [
+  { value: "dc-voltage", label: "DC V" },
+  { value: "ac-voltage", label: "AC V" },
+  { value: "resistance", label: "Ohm" },
+  { value: "continuity", label: "Continuity" },
+  { value: "diode", label: "Diode" },
+  { value: "capacitance", label: "Cap" },
+  { value: "frequency", label: "Hz" },
+];
+
+const MEASUREMENT_UNIT_OPTIONS = [
+  "V",
+  "mV",
+  "A",
+  "mA",
+  "Ohm",
+  "kOhm",
+  "MOhm",
+  "F",
+  "uF",
+  "nF",
+  "Hz",
+];
+
+function createFieldShell(documentRef: Document, labelText: string): HTMLLabelElement {
+  const field = documentRef.createElement("label");
+  field.className = "repair-measurement-field";
+
+  const label = documentRef.createElement("span");
+  label.className = "repair-measurement-field__label";
+  label.textContent = labelText;
+  field.append(label);
+
+  return field;
+}
+
+function appendTextInput(
+  documentRef: Document,
+  parent: HTMLElement,
+  options: {
+    label: string;
+    inputName: string;
+    placeholder: string;
+    value?: string;
+    inputMode?: "decimal" | "text";
+    required?: boolean;
+  }
+): HTMLInputElement {
+  const field = createFieldShell(documentRef, options.label);
+  const input = documentRef.createElement("input");
+  input.className = "repair-measurement-field__control";
+  input.type = "text";
+  input.placeholder = options.placeholder;
+  input.value = options.value ?? "";
+  input.dataset["repairInput"] = options.inputName;
+  if (options.inputMode !== undefined) input.inputMode = options.inputMode;
+  if (options.required === true) input.required = true;
+  field.append(input);
+  parent.append(field);
+  return input;
+}
+
+function appendSelectInput(
+  documentRef: Document,
+  parent: HTMLElement,
+  options: {
+    label: string;
+    inputName: string;
+    selected: string;
+    items: Array<{ value: string; label: string }>;
+  }
+): HTMLSelectElement {
+  const field = createFieldShell(documentRef, options.label);
+  const select = documentRef.createElement("select");
+  select.className = "repair-measurement-field__control";
+  select.dataset["repairInput"] = options.inputName;
+
+  options.items.forEach((item) => {
+    const option = documentRef.createElement("option");
+    option.value = item.value;
+    option.textContent = item.label;
+    option.selected = item.value === options.selected;
+    select.append(option);
+  });
+
+  field.append(select);
+  parent.append(field);
+  return select;
+}
+
+function appendReadingsEmptyState(documentRef: Document, list: HTMLElement): void {
+  const empty = documentRef.createElement("div");
+  empty.className = "repair-readings-empty";
+  empty.textContent = "No manual readings yet";
+  list.append(empty);
+}
 
 export function renderMeasurementPanel(
   documentRef: Document,
@@ -13,6 +111,7 @@ export function renderMeasurementPanel(
 
   const meas = state.measurement;
   const evidence = state.workbench.measurementEvidence;
+  const hasActiveSession = state.sessions.activeId !== null;
 
   // -- Tabs
   const tabs = documentRef.createElement("div");
@@ -61,6 +160,62 @@ export function renderMeasurementPanel(
 
   body.append(display);
 
+  const formHeader = documentRef.createElement("div");
+  formHeader.className = "repair-section-label";
+  formHeader.textContent = text(["measurement", "manualEntry"], "Manual Reading");
+  body.append(formHeader);
+
+  const form = documentRef.createElement("div");
+  form.className = "repair-measurement-form";
+
+  appendTextInput(documentRef, form, {
+    label: text(["measurement", "reference"], "Reference"),
+    inputName: "measurement-reference",
+    placeholder: "TP1 / U14 VCC",
+  });
+  appendTextInput(documentRef, form, {
+    label: text(["measurement", "value"], "Value"),
+    inputName: "measurement-raw-display",
+    placeholder: "0.000 / OL",
+    inputMode: "decimal",
+    required: true,
+  });
+  appendSelectInput(documentRef, form, {
+    label: text(["measurement", "mode"], "Mode"),
+    inputName: "measurement-mode",
+    selected: meas.current.mode,
+    items: MEASUREMENT_MODE_OPTIONS,
+  });
+  appendSelectInput(documentRef, form, {
+    label: text(["measurement", "unit"], "Unit"),
+    inputName: "measurement-unit",
+    selected: meas.current.unit || "V",
+    items: MEASUREMENT_UNIT_OPTIONS.map((unit) => ({ value: unit, label: unit })),
+  });
+  appendTextInput(documentRef, form, {
+    label: text(["measurement", "range"], "Range"),
+    inputName: "measurement-range",
+    placeholder: meas.current.range === "-" ? "20 V" : meas.current.range,
+  });
+  appendTextInput(documentRef, form, {
+    label: text(["measurement", "channel"], "Channel"),
+    inputName: "measurement-channel",
+    placeholder: "COM/V",
+    value: "COM/V",
+  });
+
+  const record = documentRef.createElement("button");
+  record.className = "repair-measurement-form__action";
+  record.type = "button";
+  record.textContent = text(["measurement", "record"], "Record");
+  record.dataset["repairAction"] = "add-manual-measurement";
+  record.disabled = hasActiveSession === false;
+  record.title = hasActiveSession
+    ? text(["measurement", "recordTitle"], "Record manual measurement")
+    : text(["measurement", "recordDisabled"], "Open a repair session first");
+  form.append(record);
+  body.append(form);
+
   // -- Recent readings
   const readingsHeader = documentRef.createElement("div");
   readingsHeader.className = "repair-section-label";
@@ -69,6 +224,10 @@ export function renderMeasurementPanel(
 
   const readingsList = documentRef.createElement("div");
   readingsList.className = "repair-readings-list";
+
+  if (meas.recent.length === 0) {
+    appendReadingsEmptyState(documentRef, readingsList);
+  }
 
   for (const reading of meas.recent) {
     const row = documentRef.createElement("div");
@@ -119,7 +278,7 @@ export function renderMeasurementPanel(
       value.textContent =
         entry.previousDisplay === null
           ? entry.currentDisplay
-          : `${entry.previousDisplay} → ${entry.currentDisplay}`;
+          : `${entry.previousDisplay} -> ${entry.currentDisplay}`;
       card.append(value);
 
       const spark = documentRef.createElement("span");

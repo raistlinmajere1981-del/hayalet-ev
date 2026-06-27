@@ -610,26 +610,40 @@ void test("repair-room live playhead advances from room activation instead of mo
   t.mock.timers.reset();
 });
 
-void test("repair-room runtime drifts live readings into recent instrument history", (t) => {
-  t.mock.timers.enable({
-    apis: ["Date", "setInterval", "setTimeout"],
-    now: new Date("2026-05-11T09:00:00.000Z"),
-  });
+void test("repair-room runtime records manual readings into recent instrument history", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
   });
   const before = runtime.getStateSnapshot().state.measurement.recent.length;
 
-  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.uiReady).success, true);
-  t.mock.timers.tick(1100);
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addMeasurement, {
+      rawDisplay: "3.300",
+      value: 3.3,
+      unit: "V",
+      mode: "dc-voltage",
+      range: "20 V",
+      channel: "COM/V",
+      reference: "TP1 VCC",
+    }).success,
+    true
+  );
 
   const measurement = runtime.getStateSnapshot().state.measurement;
   assert.equal(measurement.recent.length, before + 1);
-  assert.equal(measurement.recent[0]?.reference, "Live drift sample");
-  assert.equal(measurement.current.display, "0.000");
-  t.mock.timers.reset();
+  assert.equal(measurement.recent[0]?.reference, "TP1 VCC");
+  assert.equal(measurement.recent[0]?.rawDisplay, "3.300");
+  assert.equal(measurement.recent[0]?.unit, "V");
+  assert.equal(measurement.current.display, "3.300");
+  assert.equal(measurement.current.value, 3.3);
+  assert.equal(measurement.current.unit, "V");
+  assert.equal(measurement.current.range, "20 V");
+  assert.equal(measurement.current.mode, "dc-voltage");
+  assert.equal(measurement.current.label, "TP1 VCC");
+  runtime.dispose();
 });
+
 
 void test("repair-room P3.5 keeps operations projection optional for standalone room runs", () => {
   const runtime = createRepairRoomHostRuntime().activate({

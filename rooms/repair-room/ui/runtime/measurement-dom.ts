@@ -34,6 +34,13 @@ export function createRepairMeasurementDomRuntime(params: {
     list.append(row);
   }
 
+  function appendMeasurementEmptyState(list: HTMLElement): void {
+    const empty = documentRef.createElement("div");
+    empty.className = "repair-readings-empty";
+    empty.textContent = "No manual readings yet";
+    list.append(empty);
+  }
+
   function updateMeasurementLiveDom(root: Document | HTMLElement = documentRef): void {
     const current = state.measurement.current;
     const value = root.querySelector<HTMLElement>(".repair-measurement-display__value");
@@ -54,6 +61,10 @@ export function createRepairMeasurementDomRuntime(params: {
     if (readingsList.dataset["fingerprint"] === fingerprint) return;
     readingsList.dataset["fingerprint"] = fingerprint;
     readingsList.replaceChildren();
+    if (state.measurement.recent.length === 0) {
+      appendMeasurementEmptyState(readingsList);
+      return;
+    }
     state.measurement.recent.forEach((reading) => {
       appendMeasurementReadingRow(readingsList, reading);
     });

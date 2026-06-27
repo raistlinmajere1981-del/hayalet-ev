@@ -1,5 +1,6 @@
 import type {
   RepairImageRect,
+  RepairMultimeterMode,
   RepairPanelId,
   RepairSettingsOverlayTabId,
   RepairWizardDraft,
@@ -167,6 +168,90 @@ const REPAIR_CHIP_CONTROLLED_PANEL_IDS = [
   ...REPAIR_TOP_PANEL_CHIPS.map((chip) => chip.panelId),
   ...REPAIR_BOTTOM_PANEL_CHIPS.map((chip) => chip.panelId),
 ] as const satisfies readonly RepairPanelId[];
+const REPAIR_MULTIMETER_MODES: ReadonlySet<string> = new Set([
+  "dc-voltage",
+  "ac-voltage",
+  "resistance",
+  "continuity",
+  "diode",
+  "capacitance",
+  "frequency",
+]);
+
+type ManualMeasurementInput = HTMLInputElement | HTMLSelectElement;
+
+function isRepairMultimeterMode(value: unknown): value is RepairMultimeterMode {
+  return typeof value === "string" && REPAIR_MULTIMETER_MODES.has(value);
+}
+
+function readRepairMultimeterMode(value: unknown): RepairMultimeterMode {
+  return isRepairMultimeterMode(value) ? value : "dc-voltage";
+}
+
+function getDefaultMeasurementRange(mode: RepairMultimeterMode): string {
+  if (mode === "resistance") return "Auto Ohm";
+  if (mode === "continuity") return "Continuity";
+  if (mode === "diode") return "Diode";
+  if (mode === "capacitance") return "Auto F";
+  if (mode === "frequency") return "Auto Hz";
+  return "Auto V";
+}
+
+function getManualMeasurementInput(root: HTMLElement, name: string): ManualMeasurementInput | null {
+  return root.querySelector<ManualMeasurementInput>(`[data-repair-input='${name}']`);
+}
+
+function getManualMeasurementValue(root: HTMLElement, name: string): string {
+  return getManualMeasurementInput(root, name)?.value.trim() ?? "";
+}
+
+function parseManualMeasurementValue(rawDisplay: string): number | null {
+  const normalized = rawDisplay.replace(",", ".");
+  if (normalized.toUpperCase() === "OL") return null;
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : null;
+}
+
+function collectManualMeasurementPayload(
+  root: HTMLElement,
+  state: RepairUiState
+): Record<string, unknown> | null {
+  const rawDisplayInput = getManualMeasurementInput(root, "measurement-raw-display");
+  const rawDisplay = rawDisplayInput?.value.trim() ?? "";
+  if (rawDisplay === "") {
+    if (rawDisplayInput !== null) {
+      rawDisplayInput.dataset["invalid"] = "true";
+      rawDisplayInput.focus();
+    }
+    return null;
+  }
+  if (rawDisplayInput !== null) delete rawDisplayInput.dataset["invalid"];
+
+  const mode = readRepairMultimeterMode(getManualMeasurementValue(root, "measurement-mode"));
+  const reference = getManualMeasurementValue(root, "measurement-reference");
+  const range =
+    getManualMeasurementValue(root, "measurement-range") || getDefaultMeasurementRange(mode);
+  const channel = getManualMeasurementValue(root, "measurement-channel") || "COM/V";
+  const unit = getManualMeasurementValue(root, "measurement-unit") || "V";
+
+  return {
+    rawDisplay,
+    value: parseManualMeasurementValue(rawDisplay),
+    unit,
+    mode,
+    range,
+    channel,
+    reference: reference === "" ? null : reference,
+    instrumentId: state.measurement.activeInstrumentKind,
+  };
+}
+
+function clearManualMeasurementDraft(root: HTMLElement): void {
+  const rawDisplayInput = getManualMeasurementInput(root, "measurement-raw-display");
+  const referenceInput = getManualMeasurementInput(root, "measurement-reference");
+  if (rawDisplayInput !== null) rawDisplayInput.value = "";
+  if (referenceInput !== null) referenceInput.value = "";
+}
 
 const WIZARD_DEVICE_CASCADE_FIELDS = ["deviceType", "manufacturer", "model", "boardCode"] as const;
 
@@ -1707,6 +1792,15 @@ export function createRepairRoomUiRuntime() {
           }
           break;
         }
+        case "add-manual-measurement": {
+          if (state.sessions.activeId === null) break;
+          const payload = collectManualMeasurementPayload(root, state);
+          if (payload !== null) {
+            requestRuntime.addMeasurement(payload);
+            clearManualMeasurementDraft(root);
+          }
+          break;
+        }
         case "set-instrument": {
           const instrumentKind = el.dataset["instrumentKind"];
           if (instrumentKind) requestRuntime.updatePanelTab({ instrumentKind });
@@ -2223,11 +2317,13 @@ export function createRepairRoomUiRuntime() {
         break;
       }
       case "repair-measurement-reading": {
+        const mode = readRepairMultimeterMode(msg.reading.mode);
+        const label = msg.reading.reference ?? msg.reading.channel;
         state.measurement.recent = [
           {
             id: msg.reading.id,
             occurredAt: msg.reading.occurredAt,
-            mode: "dc-voltage" as const,
+            mode,
             range: msg.reading.range,
             channel: msg.reading.channel,
             rawDisplay: msg.reading.rawDisplay,
@@ -2240,6 +2336,9 @@ export function createRepairRoomUiRuntime() {
         state.measurement.current.display = msg.reading.rawDisplay;
         state.measurement.current.value = msg.reading.value;
         state.measurement.current.unit = msg.reading.unit;
+        state.measurement.current.range = msg.reading.range;
+        state.measurement.current.mode = mode;
+        state.measurement.current.label = label;
         render();
         break;
       }
