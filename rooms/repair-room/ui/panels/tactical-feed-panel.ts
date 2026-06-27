@@ -110,7 +110,7 @@ export function renderTacticalFeedPanel(
   const composerButton = documentRef.createElement("button");
   composerButton.className = "repair-feed-composer__send";
   composerButton.type = "button";
-  composerButton.textContent = "Ask";
+  composerButton.textContent = text(["feed", "send"], "Ask");
   composerButton.dataset["repairAction"] = "send-feed-question";
   composer.append(composerButton);
   body.append(composer);

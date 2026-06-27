@@ -113,7 +113,7 @@ export function renderVisualTimelinePanel(
   const play = documentRef.createElement("button");
   play.className = "repair-timeline__control-btn";
   play.type = "button";
-  play.textContent = state.workbench.timeline.isPlaying ? "Pause" : "Play";
+  play.textContent = state.workbench.timeline.isPlaying ? text(["timeline", "pause"], "Pause") : text(["timeline", "play"], "Play");
   play.dataset["repairAction"] = state.workbench.timeline.isPlaying
     ? "timeline-pause"
     : "timeline-play";
@@ -124,7 +124,7 @@ export function renderVisualTimelinePanel(
     state.workbench.timeline.autoFollowLive ? " repair-timeline__control-btn--active" : ""
   }`;
   live.type = "button";
-  live.textContent = "Follow live";
+  live.textContent = text(["timeline", "followLive"], "Follow live");
   live.dataset["repairAction"] = "timeline-live";
   controls.append(live);
 
@@ -138,7 +138,7 @@ export function renderVisualTimelinePanel(
   const zoomOut = documentRef.createElement("button");
   zoomOut.className = "repair-timeline__control-btn";
   zoomOut.type = "button";
-  zoomOut.textContent = "Zoom out";
+  zoomOut.textContent = text(["timeline", "zoomOut"], "Zoom out");
   zoomOut.dataset["repairAction"] = "timeline-zoom";
   zoomOut.dataset["direction"] = "out";
   controls.append(zoomOut);
@@ -146,7 +146,7 @@ export function renderVisualTimelinePanel(
   const zoomIn = documentRef.createElement("button");
   zoomIn.className = "repair-timeline__control-btn";
   zoomIn.type = "button";
-  zoomIn.textContent = "Zoom in";
+  zoomIn.textContent = text(["timeline", "zoomIn"], "Zoom in");
   zoomIn.dataset["repairAction"] = "timeline-zoom";
   zoomIn.dataset["direction"] = "in";
   controls.append(zoomIn);
@@ -154,7 +154,7 @@ export function renderVisualTimelinePanel(
   const rangeButton = documentRef.createElement("button");
   rangeButton.className = "repair-timeline__control-btn";
   rangeButton.type = "button";
-  rangeButton.textContent = "Mark range";
+  rangeButton.textContent = text(["timeline", "markRange"], "Mark range");
   rangeButton.dataset["repairAction"] = "timeline-range";
   controls.append(rangeButton);
   timeline.append(controls);

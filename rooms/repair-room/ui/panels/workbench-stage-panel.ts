@@ -371,7 +371,10 @@ export function renderWorkbenchStagePanel(
   const xLabel = cursor !== null ? cursor.xPx.toString() : "—";
   const yLabel = cursor !== null ? cursor.yPx.toString() : "—";
   const gridLabel = cursor !== null ? `${cursor.gridX}x${cursor.gridY}` : "—";
-  hud.innerHTML = `<span>X ${xLabel}</span><span>Y ${yLabel}</span><span>GRID ${gridLabel}</span>`;
+  const xKey = text(["workbench", "coordX"], "X");
+  const yKey = text(["workbench", "coordY"], "Y");
+  const gridKey = text(["workbench", "coordGrid"], "GRID");
+  hud.innerHTML = `<span>${xKey} ${xLabel}</span><span>${yKey} ${yLabel}</span><span>${gridKey} ${gridLabel}</span>`;
   viewport.append(hud);
 
   const inspectorEvent = getFocusedForensicEvent(state);

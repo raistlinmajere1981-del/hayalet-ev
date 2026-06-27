@@ -203,13 +203,13 @@ export function isRepairWizardStepIncomplete(state: RepairUiState, stepId: Wizar
 }
 
 function getWizardStepLabel(stepId: WizardStepId, text: TextFn): string {
-  if (stepId === "device-info") return text(["wizard", "steps", "deviceInfo"], "Cihaz");
-  if (stepId === "symptoms") return text(["wizard", "steps", "symptoms"], "Semptom");
-  if (stepId === "ai-research") return text(["wizard", "steps", "aiResearch"], "Araştırma");
+  if (stepId === "device-info") return text(["wizard", "steps", "deviceInfo"], "Device");
+  if (stepId === "symptoms") return text(["wizard", "steps", "symptoms"], "Symptom");
+  if (stepId === "ai-research") return text(["wizard", "steps", "aiResearch"], "Research");
   if (stepId === "evidence-review") {
-    return text(["wizard", "steps", "evidenceReview"], "İnceleme");
+    return text(["wizard", "steps", "evidenceReview"], "Review");
   }
-  return text(["wizard", "steps", "ready"], "Hazır");
+  return text(["wizard", "steps", "ready"], "Ready");
 }
 
 function getWizardHint(step: WizardStepId, text: TextFn): string {
@@ -306,13 +306,14 @@ function appendField(
 function appendDeviceTypeSelect(
   documentRef: Document,
   parent: HTMLElement,
-  state: RepairUiState
+  state: RepairUiState,
+  text: TextFn
 ): void {
   const wrapper = documentRef.createElement("label");
   wrapper.className = "repair-wizard-field repair-wizard-field--required";
 
   const label = documentRef.createElement("span");
-  label.textContent = "Cihaz türü";
+  label.textContent = text(["wizard", "labels", "deviceType"], "Device type");
   wrapper.append(label);
 
   const select = documentRef.createElement("select");
@@ -322,7 +323,7 @@ function appendDeviceTypeSelect(
 
   const placeholder = documentRef.createElement("option");
   placeholder.value = "";
-  placeholder.textContent = "Seç";
+  placeholder.textContent = text(["wizard", "labels", "select"], "Select");
   select.append(placeholder);
 
   DEVICE_TYPE_OPTIONS.forEach((option) => {
@@ -339,13 +340,14 @@ function appendDeviceTypeSelect(
 function appendAiTargetSelect(
   documentRef: Document,
   parent: HTMLElement,
-  state: RepairUiState
+  state: RepairUiState,
+  text: TextFn
 ): void {
   const wrapper = documentRef.createElement("label");
   wrapper.className = "repair-wizard-field";
 
   const label = documentRef.createElement("span");
-  label.textContent = "AI slot";
+  label.textContent = text(["wizard", "labels", "aiSlot"], "AI slot");
   wrapper.append(label);
 
   const select = documentRef.createElement("select");
@@ -428,43 +430,21 @@ type ManualEvidenceDraft = RepairUiState["wizard"]["draft"]["manualEvidence"];
 
 interface EvidenceResourcePanelConfig {
   kind: RepairKnowledgePackResourceKind;
-  title: string;
-  addLabel: string;
   urlPlaceholder: string;
 }
 
 const RESOURCE_PANEL_CONFIGS: EvidenceResourcePanelConfig[] = [
-  {
-    kind: "schematic",
-    title: "Şemalar",
-    addLabel: "Şema ekle",
-    urlPlaceholder: "https://... veya /dosya/yolu.pdf",
-  },
-  {
-    kind: "board-image",
-    title: "Kart görselleri",
-    addLabel: "Görsel ekle",
-    urlPlaceholder: "https://... veya /dosya/yolu.png",
-  },
-  {
-    kind: "datasheet",
-    title: "Datasheet / doküman",
-    addLabel: "Doküman ekle",
-    urlPlaceholder: "https://... veya /dosya/yolu.pdf",
-  },
-  {
-    kind: "thread",
-    title: "Forum / link",
-    addLabel: "Link ekle",
-    urlPlaceholder: "https://forum...",
-  },
-  {
-    kind: "note",
-    title: "Kaynak notları",
-    addLabel: "Kaynak ekle",
-    urlPlaceholder: "https://... veya /dosya/yolu.txt",
-  },
+  { kind: "schematic", urlPlaceholder: "https://... or /path/to.pdf" },
+  { kind: "board-image", urlPlaceholder: "https://... or /path/to.png" },
+  { kind: "datasheet", urlPlaceholder: "https://... or /path/to.pdf" },
+  { kind: "thread", urlPlaceholder: "https://forum..." },
+  { kind: "note", urlPlaceholder: "https://... or /path/to.txt" },
 ];
+
+function getResourcePanelTitle(kind: RepairKnowledgePackResourceKind, text: TextFn): string {
+  const key = kind.replace(/-/g, "") + "Title";
+  return text(["wizard", "resourcePanel", key], "");
+}
 
 function formatEvidenceConfidence(confidence: number): string {
   return `${Math.round(confidence * 100)}%`;
@@ -501,10 +481,10 @@ function appendEvidencePanel(
   return list;
 }
 
-function appendEmptyEvidenceMessage(documentRef: Document, parent: HTMLElement): void {
+function appendEmptyEvidenceMessage(documentRef: Document, parent: HTMLElement, text: TextFn): void {
   const empty = documentRef.createElement("div");
   empty.className = "repair-evidence-panel__empty";
-  empty.textContent = "Kayıt yok";
+  empty.textContent = text(["wizard", "noRecords"], "No records");
   parent.append(empty);
 }
 
@@ -562,7 +542,7 @@ function appendEvidenceEntry(params: {
   const remove = params.documentRef.createElement("button");
   remove.className = "repair-evidence-option__remove";
   remove.type = "button";
-  remove.textContent = params.text(["wizard", "evidenceReview", "remove"], "Kaldır");
+  remove.textContent = params.text(["wizard", "evidenceReview", "remove"], "Remove");
   remove.dataset["repairAction"] = "remove-knowledge-evidence";
   remove.dataset["evidenceKind"] = params.removalKind;
   remove.dataset["evidenceId"] = params.id;
@@ -597,7 +577,7 @@ function appendEvidenceResourceActions(
   const preview = documentRef.createElement("button");
   preview.className = "repair-evidence-option__link";
   preview.type = "button";
-  preview.textContent = text(["wizard", "evidenceReview", "preview"], "Önizle");
+  preview.textContent = text(["wizard", "evidenceReview", "preview"], "Preview");
   preview.dataset["repairAction"] = "open-evidence-source";
   preview.dataset["sourceUrl"] = resolvedUrl;
   actions.append(preview);
@@ -609,7 +589,7 @@ function appendEvidenceResourceActions(
   download.target = "_blank";
   download.rel = "noopener noreferrer";
   download.download = "";
-  download.textContent = text(["wizard", "evidenceReview", "download"], "İndir");
+  download.textContent = text(["wizard", "evidenceReview", "download"], "Download");
   actions.append(download);
   row.append(actions);
 }
@@ -687,7 +667,7 @@ function appendManualResourceForm(
     documentRef,
     name: "manual-resource-label",
     parent: grid,
-    placeholder: text(["wizard", "evidenceReview", "manualLabel"], "Kaynak adı"),
+    placeholder: text(["wizard", "evidenceReview", "manualLabel"], "Source name"),
   });
   appendManualInput({
     dataset,
@@ -700,23 +680,24 @@ function appendManualResourceForm(
   const pick = appendActionButton(
     documentRef,
     grid,
-    "Dosya",
+    text(["wizard", "manual", "resourceFile"], "File"),
     "pick-manual-resource-file",
     "repair-secondary-btn"
   );
   pick.dataset["resourceKind"] = config.kind;
   form.append(grid);
+  const addKey = config.kind.replace(/-/g, "") + "Add";
   appendManualEvidenceFormActions(
     documentRef,
     form,
-    text(["wizard", "evidenceReview", "manualAdd"], config.addLabel),
+    text(["wizard", "resourcePanel", addKey], ""),
     "add-manual-knowledge-resource",
     dataset
   );
   parent.append(form);
 }
 
-function appendManualFailureForm(documentRef: Document, parent: HTMLElement): void {
+function appendManualFailureForm(documentRef: Document, parent: HTMLElement, text: TextFn): void {
   const form = documentRef.createElement("div");
   form.className = "repair-manual-evidence-form";
   const grid = documentRef.createElement("div");
@@ -725,32 +706,32 @@ function appendManualFailureForm(documentRef: Document, parent: HTMLElement): vo
     documentRef,
     name: "manual-failure-label",
     parent: grid,
-    placeholder: "Arıza adı",
+    placeholder: text(["wizard", "manual", "failureName"], "Failure name"),
   });
   appendManualInput({
     documentRef,
     name: "manual-failure-part",
     parent: grid,
-    placeholder: "Parça / bölge",
+    placeholder: text(["wizard", "manual", "failurePart"], "Part / area"),
   });
   appendManualInput({
     documentRef,
     name: "manual-failure-action",
     parent: grid,
-    placeholder: "Önerilen işlem",
+    placeholder: text(["wizard", "manual", "failureAction"], "Suggested action"),
   });
   form.append(grid);
   appendManualTextarea({
     documentRef,
     name: "manual-failure-rationale",
     parent: form,
-    placeholder: "Gerekçe / gözlem",
+    placeholder: text(["wizard", "manual", "failureRationale"], "Rationale / observation"),
   });
-  appendManualEvidenceFormActions(documentRef, form, "Arıza ekle", "add-manual-knowledge-failure");
+  appendManualEvidenceFormActions(documentRef, form, text(["wizard", "manual", "failureAdd"], "Add failure"), "add-manual-knowledge-failure");
   parent.append(form);
 }
 
-function appendManualTestPointForm(documentRef: Document, parent: HTMLElement): void {
+function appendManualTestPointForm(documentRef: Document, parent: HTMLElement, text: TextFn): void {
   const form = documentRef.createElement("div");
   form.className = "repair-manual-evidence-form";
   const grid = documentRef.createElement("div");
@@ -759,50 +740,50 @@ function appendManualTestPointForm(documentRef: Document, parent: HTMLElement): 
     documentRef,
     name: "manual-test-label",
     parent: grid,
-    placeholder: "Test noktası",
+    placeholder: text(["wizard", "manual", "testPointName"], "Test point"),
   });
-  appendManualInput({ documentRef, name: "manual-test-rail", parent: grid, placeholder: "Rail" });
+  appendManualInput({ documentRef, name: "manual-test-rail", parent: grid, placeholder: text(["wizard", "manual", "rail"], "Rail") });
   appendManualInput({
     documentRef,
     inputMode: "decimal",
     name: "manual-test-expected",
     parent: grid,
-    placeholder: "Beklenen değer",
+    placeholder: text(["wizard", "manual", "testPointExpected"], "Expected value"),
   });
-  appendManualInput({ documentRef, name: "manual-test-unit", parent: grid, placeholder: "Birim" });
+  appendManualInput({ documentRef, name: "manual-test-unit", parent: grid, placeholder: text(["wizard", "manual", "testPointUnit"], "Unit") });
   appendManualInput({
     documentRef,
     inputMode: "decimal",
     name: "manual-test-tolerance",
     parent: grid,
-    placeholder: "Tolerans",
+    placeholder: text(["wizard", "manual", "testPointTolerance"], "Tolerance"),
   });
   form.append(grid);
   appendManualEvidenceFormActions(
     documentRef,
     form,
-    "Test noktası ekle",
+    text(["wizard", "manual", "testPointAdd"], "Add test point"),
     "add-manual-knowledge-test-point"
   );
   parent.append(form);
 }
 
-function appendManualNoteForm(documentRef: Document, parent: HTMLElement): void {
+function appendManualNoteForm(documentRef: Document, parent: HTMLElement, text: TextFn): void {
   const form = documentRef.createElement("div");
   form.className = "repair-manual-evidence-form";
   appendManualTextarea({
     documentRef,
     name: "manual-note-text",
     parent: form,
-    placeholder: "Not",
+    placeholder: text(["wizard", "manual", "notePlaceholder"], "Note"),
   });
   appendManualInput({
     documentRef,
     name: "manual-note-source",
     parent: form,
-    placeholder: "Kaynak",
+    placeholder: text(["wizard", "manual", "noteSource"], "Source"),
   });
-  appendManualEvidenceFormActions(documentRef, form, "Not ekle", "add-manual-knowledge-note");
+  appendManualEvidenceFormActions(documentRef, form, text(["wizard", "manual", "noteAdd"], "Add note"), "add-manual-knowledge-note");
   parent.append(form);
 }
 
@@ -864,36 +845,36 @@ function getReviewNotes(
   ];
 }
 
-function renderDeviceStep(documentRef: Document, state: RepairUiState): HTMLElement {
+function renderDeviceStep(documentRef: Document, state: RepairUiState, text: TextFn): HTMLElement {
   const form = documentRef.createElement("div");
   form.className = "repair-wizard-form";
   const draft = state.wizard.draft;
-  appendDeviceTypeSelect(documentRef, form, state);
-  appendField(documentRef, form, "Marka", "manufacturer", draft.manufacturer, {
+  appendDeviceTypeSelect(documentRef, form, state, text);
+  appendField(documentRef, form, text(["wizard", "labels", "manufacturer"], "Manufacturer"), "manufacturer", draft.manufacturer, {
     datalist: getManufacturerSuggestions(draft.deviceType),
     required: true,
   });
-  appendField(documentRef, form, "Model", "model", draft.model, {
+  appendField(documentRef, form, text(["wizard", "labels", "model"], "Model"), "model", draft.model, {
     datalist: getModelSuggestions(draft.deviceType, draft.manufacturer),
     required: true,
   });
-  appendField(documentRef, form, "Kart kodu", "boardCode", draft.boardCode, {
+  appendField(documentRef, form, text(["wizard", "labels", "boardCode"], "Board code"), "boardCode", draft.boardCode, {
     datalist: getBoardCodeSuggestions(draft.deviceType, draft.manufacturer, draft.model),
     required: true,
   });
-  appendField(documentRef, form, "Seri / iş no", "serialNumber", draft.serialNumber);
-  appendField(documentRef, form, "Tezgah notu", "intakeNotes", draft.intakeNotes, {
+  appendField(documentRef, form, text(["wizard", "labels", "serialNumber"], "Serial / job no"), "serialNumber", draft.serialNumber);
+  appendField(documentRef, form, text(["wizard", "labels", "intakeNotes"], "Bench note"), "intakeNotes", draft.intakeNotes, {
     multiline: true,
   });
   return form;
 }
 
-function renderSymptomsStep(documentRef: Document, state: RepairUiState): HTMLElement {
+function renderSymptomsStep(documentRef: Document, state: RepairUiState, text: TextFn): HTMLElement {
   const form = documentRef.createElement("div");
   form.className = "repair-wizard-form";
   const draft = state.wizard.draft;
 
-  const availableGroup = appendSymptomGroup(documentRef, form, "Önerilen semptomlar", "available");
+  const availableGroup = appendSymptomGroup(documentRef, form, text(["wizard", "labels", "symptomGroupAvailable"], "Suggested symptoms"), "available");
   const chipRow = documentRef.createElement("div");
   chipRow.className = "repair-wizard-symptoms";
   const symptomOptions = getSymptomOptionsForWizardDraft(draft);
@@ -910,7 +891,7 @@ function renderSymptomsStep(documentRef: Document, state: RepairUiState): HTMLEl
   availableGroup.append(chipRow);
 
   if (selectedSymptoms.length > 0) {
-    const selectedGroup = appendSymptomGroup(documentRef, form, "Seçili semptomlar", "selected");
+    const selectedGroup = appendSymptomGroup(documentRef, form, text(["wizard", "labels", "symptomGroupSelected"], "Selected symptoms"), "selected");
     const selectedRow = documentRef.createElement("div");
     selectedRow.className = "repair-wizard-selected-symptoms";
     selectedSymptoms.forEach((symptom) => {
@@ -929,13 +910,13 @@ function renderSymptomsStep(documentRef: Document, state: RepairUiState): HTMLEl
   customRow.className = "repair-wizard-inline-add";
   const customInput = documentRef.createElement("input");
   customInput.className = "repair-wizard-field__input";
-  customInput.placeholder = "Özel semptom";
+  customInput.placeholder = text(["wizard", "labels", "customSymptom"], "Custom symptom");
   customInput.dataset["repairInput"] = "wizard-custom-symptom";
   customRow.append(customInput);
-  appendActionButton(documentRef, customRow, "Ekle", "add-custom-symptom", "repair-secondary-btn");
+  appendActionButton(documentRef, customRow, text(["wizard", "labels", "add"], "Add"), "add-custom-symptom", "repair-secondary-btn");
   form.append(customRow);
 
-  appendField(documentRef, form, "Gözlem notu", "symptomFreeText", draft.symptomFreeText, {
+  appendField(documentRef, form, text(["wizard", "labels", "observationNote"], "Observation note"), "symptomFreeText", draft.symptomFreeText, {
     multiline: true,
   });
   return form;
@@ -948,7 +929,7 @@ function renderResearchStep(
 ): HTMLElement {
   const form = documentRef.createElement("div");
   form.className = "repair-wizard-form";
-  appendAiTargetSelect(documentRef, form, state);
+  appendAiTargetSelect(documentRef, form, state, text);
 
   const message = state.wizard.draft.researchMessage ?? state.aiDispatch.research.message;
   if (message !== null && message.trim() !== "") {
@@ -963,7 +944,7 @@ function renderResearchStep(
     warning.className = "repair-wizard-warning";
     warning.textContent = text(
       ["wizard", "research", "bridgeWarning"],
-      "AI bridge çalışmadı veya sonuç dönmedi. Tekrar dene ya da AI olmadan devam et."
+      "The AI bridge did not return a result. Retry or continue without AI."
     );
     form.append(warning);
   }
@@ -975,13 +956,13 @@ function renderResearchStep(
   appendActionButton(
     documentRef,
     actions,
-    state.wizard.draft.researchStatus === "failed" ? "Tekrar dene" : "Araştırmayı başlat",
+    state.wizard.draft.researchStatus === "failed" ? text(["wizard", "research", "retry"], "Retry") : text(["wizard", "research", "start"], "Start research"),
     "start-wizard-research"
   );
   appendActionButton(
     documentRef,
     actions,
-    "AI olmadan devam et",
+    text(["wizard", "research", "skip"], "Continue without AI"),
     "skip-wizard-research",
     "repair-secondary-btn"
   );
@@ -1014,8 +995,9 @@ function renderEvidenceReviewStep(
 
   RESOURCE_PANEL_CONFIGS.forEach((config) => {
     const resources = getReviewResources(pack, manualEvidence, config.kind);
-    const panel = appendEvidencePanel(documentRef, review, config.title, resources.length);
-    if (resources.length === 0) appendEmptyEvidenceMessage(documentRef, panel);
+    const title = getResourcePanelTitle(config.kind, text);
+    const panel = appendEvidencePanel(documentRef, review, title, resources.length);
+    if (resources.length === 0) appendEmptyEvidenceMessage(documentRef, panel, text);
     resources.forEach((resource) => {
       appendEvidenceEntry({
         checked: draft.selectedEvidenceResourceIds.includes(resource.id),
@@ -1023,9 +1005,9 @@ function renderEvidenceReviewStep(
         id: resource.id,
         label: resource.label,
         meta: joinEvidenceMeta([
-          resource.addedBy === "operator" ? "Manuel" : resource.source,
+          resource.addedBy === "operator" ? text(["wizard", "evidenceReview", "manualAddedBy"], "Manual") : resource.source,
           formatEvidenceConfidence(resource.confidence),
-          resource.pages === null ? null : `${resource.pages} sayfa`,
+          resource.pages === null ? null : `${resource.pages} ${text(["knowledgePack", "stats", "pages"], "pages")}`,
         ]),
         parent: panel,
         removalKind: "resource",
@@ -1034,12 +1016,12 @@ function renderEvidenceReviewStep(
         text,
       });
     });
-    appendManualResourceForm(documentRef, panel, config, text);
+    appendManualResourceForm(documentRef, panel, { kind: config.kind, urlPlaceholder: config.urlPlaceholder }, text);
   });
 
   const failures = getReviewFailures(pack, manualEvidence);
-  const failurePanel = appendEvidencePanel(documentRef, review, "Arızalar", failures.length);
-  if (failures.length === 0) appendEmptyEvidenceMessage(documentRef, failurePanel);
+  const failurePanel = appendEvidencePanel(documentRef, review, text(["wizard", "failures"], "Failures"), failures.length);
+  if (failures.length === 0) appendEmptyEvidenceMessage(documentRef, failurePanel, text);
   failures.forEach((failure) => {
     appendEvidenceEntry({
       checked: draft.selectedFailureIds.includes(failure.id),
@@ -1057,16 +1039,16 @@ function renderEvidenceReviewStep(
       text,
     });
   });
-  appendManualFailureForm(documentRef, failurePanel);
+  appendManualFailureForm(documentRef, failurePanel, text);
 
   const testPoints = getReviewTestPoints(pack, manualEvidence);
   const testPointPanel = appendEvidencePanel(
     documentRef,
     review,
-    "Test noktaları",
+    text(["wizard", "testPoints"], "Test points"),
     testPoints.length
   );
-  if (testPoints.length === 0) appendEmptyEvidenceMessage(documentRef, testPointPanel);
+  if (testPoints.length === 0) appendEmptyEvidenceMessage(documentRef, testPointPanel, text);
   testPoints.forEach((point) => {
     appendEvidenceEntry({
       checked: draft.selectedTestPointIds.includes(point.id),
@@ -1084,11 +1066,11 @@ function renderEvidenceReviewStep(
       text,
     });
   });
-  appendManualTestPointForm(documentRef, testPointPanel);
+  appendManualTestPointForm(documentRef, testPointPanel, text);
 
   const notes = getReviewNotes(pack, manualEvidence);
-  const notePanel = appendEvidencePanel(documentRef, review, "Notlar", notes.length);
-  if (notes.length === 0) appendEmptyEvidenceMessage(documentRef, notePanel);
+  const notePanel = appendEvidencePanel(documentRef, review, text(["wizard", "notes"], "Notes"), notes.length);
+  if (notes.length === 0) appendEmptyEvidenceMessage(documentRef, notePanel, text);
   notes.forEach((note) => {
     appendEvidenceEntry({
       documentRef,
@@ -1100,43 +1082,43 @@ function renderEvidenceReviewStep(
       text,
     });
   });
-  appendManualNoteForm(documentRef, notePanel);
+  appendManualNoteForm(documentRef, notePanel, text);
 
   return review;
 }
 
-function renderReadyStep(documentRef: Document, state: RepairUiState): HTMLElement {
+function renderReadyStep(documentRef: Document, state: RepairUiState, text: TextFn): HTMLElement {
   const ready = documentRef.createElement("div");
   ready.className = "repair-wizard-form";
   const draft = state.wizard.draft;
-  appendSummaryRow(documentRef, ready, "Cihaz", `${draft.deviceType} / ${draft.manufacturer}`);
-  appendSummaryRow(documentRef, ready, "Model", `${draft.model} / ${draft.boardCode}`);
+  appendSummaryRow(documentRef, ready, text(["wizard", "summary", "device"], "Device"), `${draft.deviceType} / ${draft.manufacturer}`);
+  appendSummaryRow(documentRef, ready, text(["wizard", "summary", "model"], "Model"), `${draft.model} / ${draft.boardCode}`);
   appendSummaryRow(
     documentRef,
     ready,
-    "Semptom",
+    text(["wizard", "summary", "symptom"], "Symptom"),
     uniqueList([...draft.primarySymptoms, ...draft.customSymptoms]).join(", ") || UNKNOWN_VALUE
   );
   appendSummaryRow(
     documentRef,
     ready,
-    "Araştırma",
+    text(["wizard", "summary", "research"], "Research"),
     draft.researchSkipped
-      ? "AI olmadan"
+      ? text(["wizard", "research", "noAi"], "Without AI")
       : state.wizard.generatedKnowledgePackId !== null
-        ? "Evidence pack hazır"
-        : "Bekliyor"
+        ? text(["wizard", "research", "packReady"], "Evidence pack ready")
+        : text(["wizard", "research", "pending"], "Pending")
   );
   appendSummaryRow(
     documentRef,
     ready,
-    "Evidence",
-    `${draft.selectedEvidenceResourceIds.length} kaynak, ${draft.selectedFailureIds.length} arıza, ${draft.selectedTestPointIds.length} test noktası`
+    text(["wizard", "summary", "evidence"], "Evidence"),
+    `${draft.selectedEvidenceResourceIds.length} resource, ${draft.selectedFailureIds.length} failure, ${draft.selectedTestPointIds.length} test point`
   );
 
   const actions = documentRef.createElement("div");
   actions.className = "repair-wizard-inline-actions";
-  const start = appendActionButton(documentRef, actions, "Tamiri başlat", "create-session");
+  const start = appendActionButton(documentRef, actions, text(["wizard", "actions", "startRepair"], "Start repair"), "create-session");
   start.disabled = !canEnterRepairWizardStep(state, "ready");
   ready.append(actions);
   return ready;
@@ -1198,10 +1180,10 @@ export function renderSessionWizardPanel(
   body.append(hint);
 
   if (wizard.currentStep === "device-info") {
-    body.append(renderDeviceStep(documentRef, state));
+    body.append(renderDeviceStep(documentRef, state, text));
   }
   if (wizard.currentStep === "symptoms") {
-    body.append(renderSymptomsStep(documentRef, state));
+    body.append(renderSymptomsStep(documentRef, state, text));
   }
   if (wizard.currentStep === "ai-research") {
     body.append(renderResearchStep(documentRef, state, text));
@@ -1210,7 +1192,7 @@ export function renderSessionWizardPanel(
     body.append(renderEvidenceReviewStep(documentRef, state, text));
   }
   if (wizard.currentStep === "ready") {
-    body.append(renderReadyStep(documentRef, state));
+    body.append(renderReadyStep(documentRef, state, text));
   }
 
   const panelId =
@@ -1220,8 +1202,8 @@ export function renderSessionWizardPanel(
 
   return createRepairPanel(documentRef, {
     panelId,
-    eyebrow: options.embedded === true ? "" : text(["wizard", "eyebrow"], "TAMİR"),
-    title: options.embedded === true ? "" : text(["wizard", "title"], "Tamir Alımı"),
+    eyebrow: options.embedded === true ? "" : text(["wizard", "eyebrow"], "REPAIR"),
+    title: options.embedded === true ? "" : text(["wizard", "title"], "Repair Intake"),
     statusDot: wizard.draft.researchStatus === "failed" ? "amber" : "idle",
     collapsed: options.embedded === true ? false : state.layout.collapsedPanels["session-wizard"],
     noPanelHeader: options.embedded === true,

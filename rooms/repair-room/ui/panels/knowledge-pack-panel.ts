@@ -219,7 +219,7 @@ export function renderKnowledgePackPanel(
     promote.type = "button";
     promote.dataset["repairAction"] = "knowledge-spatial-promote";
     promote.dataset["spatialRefId"] = kp.focusedSpatialRefId;
-    promote.textContent = "Pin this area to workbench";
+    promote.textContent = text(["knowledgePack", "pinToWorkbench"], "Pin this area to workbench");
     spatialList.append(promote);
   }
   body.append(spatialList);

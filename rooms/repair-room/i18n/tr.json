@@ -7,7 +7,15 @@
     "live": "CANLI",
     "frozen": "DONUK",
     "buffering": "TAMPONLAMA",
-    "noFeed": "AKIŞ YOK"
+    "noFeed": "AKIŞ YOK",
+    "noImage": "Kart görseli gerekli",
+    "noImageHelp": "Overlay, ölçüm ve rehberli onarım adımlarını kullanmak için Android kamerayı başlat veya bir kart görseli ekle.",
+    "coordX": "X",
+    "coordY": "Y",
+    "coordGrid": "IZGARA",
+    "emptyStateStep1": "Kamerayı başlat",
+    "emptyStateStep2": "Kartı çerçevele",
+    "emptyStateStep3": "Hazır olunca dondur"
   },
   "session": {
     "rail": {
@@ -47,6 +55,7 @@
     "eyebrow": "ASİSTAN",
     "title": "AİÖ Taktik Akışı",
     "composerPlaceholder": "AİÖ'ye sor…",
+    "send": "Sor",
     "severity": {
       "risk": "RİSK",
       "suggestion": "ÖNERİ",
@@ -83,28 +92,114 @@
       "empty": "Evidence pack yok. Araştırmayı tekrar çalıştır veya AI olmadan devam et.",
       "summary": "{resources} kaynak, {failures} arıza notu, {testPoints} test noktası.",
       "failurePrefix": "Arıza",
-      "probePrefix": "Prob"
+      "probePrefix": "Prob",
+      "remove": "Kaldır",
+      "preview": "Önizle",
+      "download": "İndir",
+      "manualLabel": "Kaynak adı",
+      "manualAddedBy": "Manuel"
     },
     "research": {
-      "bridgeWarning": "AI bridge çalışmadı veya sonuç dönmedi. Tekrar dene ya da AI olmadan devam et."
+      "bridgeWarning": "AI bridge çalışmadı veya sonuç dönmedi. Tekrar dene ya da AI olmadan devam et.",
+      "retry": "Tekrar dene",
+      "start": "Araştırmayı başlat",
+      "skip": "AI olmadan devam et",
+      "noAi": "AI olmadan",
+      "packReady": "Evidence pack hazır",
+      "pending": "Bekliyor"
+    },
+    "labels": {
+      "deviceType": "Cihaz türü",
+      "select": "Seç",
+      "manufacturer": "Marka",
+      "model": "Model",
+      "boardCode": "Kart kodu",
+      "serialNumber": "Seri / iş no",
+      "intakeNotes": "Tezgah notu",
+      "aiSlot": "AI slot",
+      "symptomGroupAvailable": "Önerilen semptomlar",
+      "symptomGroupSelected": "Seçili semptomlar",
+      "customSymptom": "Özel semptom",
+      "add": "Ekle",
+      "observationNote": "Gözlem notu"
+    },
+    "summary": {
+      "device": "Cihaz",
+      "model": "Model",
+      "symptom": "Semptom",
+      "research": "Araştırma",
+      "evidence": "Evidence"
+    },
+    "noRecords": "Kayıt yok",
+    "remove": "Kaldır",
+    "failures": "Arızalar",
+    "testPoints": "Test noktaları",
+    "notes": "Notlar",
+    "manual": {
+      "failureName": "Arıza adı",
+      "failurePart": "Parça / bölge",
+      "failureAction": "Önerilen işlem",
+      "failureRationale": "Gerekçe / gözlem",
+      "failureAdd": "Arıza ekle",
+      "testPointName": "Test noktası",
+      "testPointExpected": "Beklenen değer",
+      "testPointUnit": "Birim",
+      "testPointTolerance": "Tolerans",
+      "testPointAdd": "Test noktası ekle",
+      "notePlaceholder": "Not",
+      "noteSource": "Kaynak",
+      "noteAdd": "Not ekle",
+      "resourceFile": "Dosya",
+      "rail": "Rail"
+    },
+    "resourcePanel": {
+      "schematicTitle": "Şemalar",
+      "schematicAdd": "Şema ekle",
+      "schematicUrl": "https://... veya /dosya/yolu.pdf",
+      "boardImageTitle": "Kart görselleri",
+      "boardImageAdd": "Görsel ekle",
+      "boardImageUrl": "https://... veya /dosya/yolu.png",
+      "datasheetTitle": "Datasheet / doküman",
+      "datasheetAdd": "Doküman ekle",
+      "datasheetUrl": "https://... veya /dosya/yolu.pdf",
+      "threadTitle": "Forum / link",
+      "threadAdd": "Link ekle",
+      "threadUrl": "https://forum...",
+      "noteTitle": "Kaynak notları",
+      "noteAdd": "Kaynak ekle",
+      "noteUrl": "https://... veya /dosya/yolu.txt"
     }
   },
   "knowledgePack": {
     "eyebrow": "BİLGİ PAKETİ",
     "title": "AİÖ Sonuç",
+    "empty": "Henüz evidence pack yok",
+    "emptyHelp": "Şemalar, kart fotoğrafları, arıza notları ve test noktaları eklemek için tamir alımından kanıt araştırması çalıştır.",
     "tabs": {
       "schematicPreview": "Şema Önizleme",
       "boardView": "Kart Görünümü",
       "notes": "Notlar"
     },
+    "tabSchematic": "Şema",
+    "tabBoard": "Kart fotoğrafları",
+    "tabNotes": "Onarım notları",
+    "schematics": "Şemalar",
+    "boardImages": "Kart Görselleri",
+    "commonFailures": "Yaygın Arızalar",
+    "repairNotes": "Onarım Notları",
+    "testPoints": "Test Noktaları",
     "stats": {
       "schematics": "Şemalar",
       "boardImages": "Kart Görselleri",
       "commonFailures": "Yaygın Arızalar",
       "repairNotes": "Onarım Notları",
-      "testPoints": "Test Noktaları"
+      "testPoints": "Test Noktaları",
+      "pages": "sayfa"
     },
-    "addToSession": "Oturuma Ekle"
+    "addToSession": "Oturuma Ekle",
+    "pinToWorkbench": "Bu alanı tezgaha sabitle",
+    "preview": "Önizle",
+    "download": "İndir"
   },
   "timeline": {
     "eyebrow": "ZAMAN TÜNELİ",
@@ -117,7 +212,13 @@
       "risk": "Risk Bayrağı",
       "freezeFrame": "Donuk Kare",
       "sessionStart": "Oturum Başlangıcı"
-    }
+    },
+    "play": "Oynat",
+    "pause": "Duraklat",
+    "followLive": "Canlı takip",
+    "zoomOut": "Uzaklaş",
+    "zoomIn": "Yakınlaş",
+    "markRange": "Aralık işaretle"
   },
   "operator": {
     "eyebrow": "OPERATÖR PROFİLİ",
@@ -159,6 +260,21 @@
   "measurement": {
     "eyebrow": "ÖLÇÜM PANELİ",
     "title": "Multimetre",
+    "tabMultimeter": "Multimetre",
+    "tabPsu": "Güç Kaynağı",
+    "tabSigGen": "Sinyal Üretici",
+    "manualEntry": "Manuel Okuma",
+    "reference": "Referans",
+    "value": "Değer",
+    "mode": "Mod",
+    "unit": "Birim",
+    "range": "Aralık",
+    "channel": "Kanal",
+    "record": "Kaydet",
+    "recordTitle": "Manuel ölçüm kaydet",
+    "recordDisabled": "Önce bir tamir oturumu aç",
+    "recent": "Son Okumalar",
+    "evidence": "Konumsal Kanıt",
     "tabs": {
       "multimeter": "Multimetre",
       "powerSupply": "Güç Kaynağı",
@@ -176,13 +292,17 @@
       "range": "Aralık",
       "hold": "Tut",
       "recentReadings": "Son Okumalar",
-      "addToTimeline": "Zaman Tüneline Ekle"
+      "addToTimeline": "Zaman Tüneline Ekle",
+      "noReadings": "Henüz manuel ölçüm yok"
     }
   },
   "chat": {
     "eyebrow": "AİÖ SOHBET — OTURUM ÖZELİ",
     "title": "AİÖ",
     "subtitle": "Onarım Asistanı",
+    "placeholder": "Bir onarım notu yaz veya dikte et...",
+    "send": "Gönder",
+    "clear": "Sil",
     "viewKnowledgePack": "Bilgi Paketini Aç",
     "composerPlaceholder": "AİÖ'ye bir şey sor…"
   },
@@ -234,7 +354,8 @@
     "camera": "Kamera",
     "cameraManual": "Manuel",
     "cameraAndroid": "Android feed",
-    "budget": "Bütçe"
+    "budget": "Bütçe",
+    "close": "KAPAT"
   },
   "legend": {
     "snapshot": "Kare",
@@ -246,5 +367,54 @@
     "version": "Tamir Odası v1.0.0",
     "roomSync": "Oda Eşitleme",
     "storage": "Depolama"
+  },
+  "status": {
+    "cameraNotConnected": "Kamera bağlı değil",
+    "cameraLive": "canlı",
+    "cameraConnected": "bağlı",
+    "cameraReady": "hazır",
+    "manualBoardImage": "Manuel kart görseli",
+    "cameraSourceAndroid": "Android kamera",
+    "cameraSourceSnapshot": "Kare",
+    "cameraSourceImage": "Kart görseli",
+    "cameraSourceManual": "Manuel görsel",
+    "cameraTitleNotConnected": "Kamera akışı isteğe bağlıdır. Eşlikçi erişimi için tamir kontrollerini aç.",
+    "cameraTitleLive": "Kamera akışı canlı. Dar alanları yoklamadan önce kareyi dondur.",
+    "cameraTitleConnected": "Kamera bağlı ancak canlı olarak işaretlenmedi.",
+    "cameraTitleReady": "Kamera kaynağı gerektiğinde hazır.",
+    "cameraTitleManual": "Manuel bir kart görseli kullan veya gerektiğinde Android kamerayı başlat.",
+    "routeLocal": "Yerel",
+    "routeAndroid": "Android",
+    "profileQuiet": "Sessiz",
+    "profileBalanced": "Dengeli",
+    "profileProactive": "Proaktif"
+  },
+  "statusbar": {
+    "version": "Tamir Odası v0.1.0",
+    "setup": "Kurulum",
+    "setupTitle": "Tezgah kurulumunu aç",
+    "returnHome": "Ana sayfaya dön"
+  },
+  "sessionRail": {
+    "archive": "Arşiv",
+    "delete": "Sil",
+    "deleteTitle": "Kayıtlı oturumu ve verileri sil"
+  },
+  "bottomCluster": {
+    "all": "Tümü",
+    "hidePanels": "Alt panelleri gizle"
+  },
+  "tacticalFeed": {
+    "eyebrow": "ASİSTAN",
+    "title": "Tamir Akışı",
+    "composer": "Tamir asistanına sor...",
+    "send": "Sor",
+    "slotLabel": "Asistan {slot}",
+    "statusChecking": "{slot} son ölçümü kontrol ediyor.",
+    "statusAddedNote": "{slot} bir onarım notu ekledi.",
+    "statusFailed": "{slot} bir onarım notu ekleyemedi.",
+    "researchGathering": "{slot} bu cihaz için kanıt topluyor.",
+    "researchPrepared": "{slot} bir evidence pack hazırladı.",
+    "researchFailed": "{slot} bir evidence pack hazırlayamadı."
   }
 }

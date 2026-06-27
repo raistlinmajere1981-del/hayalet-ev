@@ -625,7 +625,7 @@ export function createRepairRoomUiRuntime() {
 
     const steps = documentRef.createElement("div");
     steps.className = "repair-empty-state__steps";
-    ["Start camera", "Frame board", "Freeze when ready"].forEach((step) => {
+    [text(["workbench", "emptyStateStep1"], "Start camera"), text(["workbench", "emptyStateStep2"], "Frame board"), text(["workbench", "emptyStateStep3"], "Freeze when ready")].forEach((step) => {
       const item = documentRef.createElement("span");
       item.textContent = step;
       steps.append(item);
@@ -1201,11 +1201,11 @@ export function createRepairRoomUiRuntime() {
     legendBar.className = "repair-legendbar";
 
     const legends: Array<[string, string]> = [
-      ["Snapshot", "var(--repair-cyan)"],
-      ["Assistant mark", "var(--repair-amber)"],
-      ["Reading", "var(--repair-text)"],
-      ["Note", "var(--repair-info)"],
-      ["Risk", "var(--repair-risk)"],
+      [text(["legend", "snapshot"], "Snapshot"), "var(--repair-cyan)"],
+      [text(["legend", "aiMark"], "Assistant mark"), "var(--repair-amber)"],
+      [text(["legend", "measurement"], "Reading"), "var(--repair-text)"],
+      [text(["legend", "note"], "Note"), "var(--repair-info)"],
+      [text(["legend", "risk"], "Risk"), "var(--repair-risk)"],
     ];
 
     for (const [lbl, color] of legends) {
@@ -1240,7 +1240,7 @@ export function createRepairRoomUiRuntime() {
     const backdrop = documentRef.createElement("button");
     backdrop.type = "button";
     backdrop.className = "repair-settings-overlay__backdrop";
-    backdrop.title = "Close settings";
+    backdrop.title = text(["settings", "close"], "Close settings");
     backdrop.dataset["repairAction"] = "set-settings-overlay";
     backdrop.dataset["open"] = "false";
 
@@ -1267,8 +1267,8 @@ export function createRepairRoomUiRuntime() {
     const close = documentRef.createElement("button");
     close.type = "button";
     close.className = "repair-settings-overlay__close";
-    close.title = "Close settings";
-    close.textContent = "CLOSE";
+    close.title = text(["settings", "close"], "Close settings");
+    close.textContent = text(["settings", "close"], "CLOSE");
     close.dataset["repairAction"] = "set-settings-overlay";
     close.dataset["open"] = "false";
     header.append(close);
@@ -1334,8 +1334,8 @@ export function createRepairRoomUiRuntime() {
     const master = documentRef.createElement("button");
     master.className = "repair-panel-chip repair-panel-chip--master repair-panel-chip--active";
     master.type = "button";
-    master.textContent = "All";
-    master.title = "Hide bottom panels";
+    master.textContent = text(["bottomCluster", "all"], "All");
+    master.title = text(["bottomCluster", "hidePanels"], "Hide bottom panels");
     master.dataset["repairAction"] = "toggle-bottom-cluster";
     master.dataset["active"] = "true";
     master.setAttribute("aria-pressed", "true");
@@ -1408,13 +1408,13 @@ export function createRepairRoomUiRuntime() {
 
     const label = documentRef.createElement("span");
     label.className = "repair-statusbar__label";
-    label.textContent = "Repair Room v0.1.0";
+    label.textContent = text(["statusbar", "version"], "Repair Room v0.1.0");
 
     const setupButton = documentRef.createElement("button");
     setupButton.className = "repair-statusbar__setup";
     setupButton.type = "button";
-    setupButton.textContent = "Setup";
-    setupButton.title = "Open bench setup";
+    setupButton.textContent = text(["statusbar", "setup"], "Setup");
+    setupButton.title = text(["statusbar", "setupTitle"], "Open bench setup");
     setupButton.dataset["repairAction"] = "set-settings-overlay";
     setupButton.dataset["open"] = "true";
     setupButton.dataset["tabId"] = "bench-operator";
@@ -1428,8 +1428,8 @@ export function createRepairRoomUiRuntime() {
     closeButton.className = "repair-statusbar__close";
     closeButton.type = "button";
     closeButton.dataset["repairAction"] = "room-close";
-    closeButton.title = "Return to home";
-    closeButton.setAttribute("aria-label", "Return to home");
+    closeButton.title = text(["statusbar", "returnHome"], "Return to home");
+    closeButton.setAttribute("aria-label", text(["statusbar", "returnHome"], "Return to home"));
     closeButton.textContent = "×";
 
     const clock = documentRef.createElement("span");

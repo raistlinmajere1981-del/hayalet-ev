@@ -94,10 +94,10 @@ function appendSelectInput(
   return select;
 }
 
-function appendReadingsEmptyState(documentRef: Document, list: HTMLElement): void {
+function appendReadingsEmptyState(documentRef: Document, list: HTMLElement, text: TextFn): void {
   const empty = documentRef.createElement("div");
   empty.className = "repair-readings-empty";
-  empty.textContent = "No manual readings yet";
+  empty.textContent = text(["measurement", "labels", "noReadings"], "No manual readings yet");
   list.append(empty);
 }
 
@@ -226,7 +226,7 @@ export function renderMeasurementPanel(
   readingsList.className = "repair-readings-list";
 
   if (meas.recent.length === 0) {
-    appendReadingsEmptyState(documentRef, readingsList);
+    appendReadingsEmptyState(documentRef, readingsList, text);
   }
 
   for (const reading of meas.recent) {

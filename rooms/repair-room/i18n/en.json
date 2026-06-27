@@ -7,7 +7,15 @@
     "live": "LIVE",
     "frozen": "FROZEN",
     "buffering": "BUFFERING",
-    "noFeed": "NO FEED"
+    "noFeed": "NO FEED",
+    "noImage": "Board image required",
+    "noImageHelp": "Start the Android camera or attach a board image to unlock overlays, measurements, and guided repair steps.",
+    "coordX": "X",
+    "coordY": "Y",
+    "coordGrid": "GRID",
+    "emptyStateStep1": "Start camera",
+    "emptyStateStep2": "Frame board",
+    "emptyStateStep3": "Freeze when ready"
   },
   "session": {
     "rail": {
@@ -47,6 +55,7 @@
     "eyebrow": "ASSISTANT",
     "title": "AİÖ Tactical Feed",
     "composerPlaceholder": "Ask AİÖ…",
+    "send": "Ask",
     "severity": {
       "risk": "RISK",
       "suggestion": "SUGGESTION",
@@ -83,28 +92,114 @@
       "empty": "No evidence pack is available. Run research again or continue without AI.",
       "summary": "{resources} resources, {failures} failure notes, {testPoints} test points.",
       "failurePrefix": "Failure",
-      "probePrefix": "Probe"
+      "probePrefix": "Probe",
+      "remove": "Remove",
+      "preview": "Preview",
+      "download": "Download",
+      "manualLabel": "Source name",
+      "manualAddedBy": "Manual"
     },
     "research": {
-      "bridgeWarning": "The AI bridge did not return a result. Retry or continue without AI."
+      "bridgeWarning": "The AI bridge did not return a result. Retry or continue without AI.",
+      "retry": "Retry",
+      "start": "Start research",
+      "skip": "Continue without AI",
+      "noAi": "Without AI",
+      "packReady": "Evidence pack ready",
+      "pending": "Pending"
+    },
+    "labels": {
+      "deviceType": "Device type",
+      "select": "Select",
+      "manufacturer": "Manufacturer",
+      "model": "Model",
+      "boardCode": "Board code",
+      "serialNumber": "Serial / job no",
+      "intakeNotes": "Bench note",
+      "aiSlot": "AI slot",
+      "symptomGroupAvailable": "Suggested symptoms",
+      "symptomGroupSelected": "Selected symptoms",
+      "customSymptom": "Custom symptom",
+      "add": "Add",
+      "observationNote": "Observation note"
+    },
+    "summary": {
+      "device": "Device",
+      "model": "Model",
+      "symptom": "Symptom",
+      "research": "Research",
+      "evidence": "Evidence"
+    },
+    "noRecords": "No records",
+    "remove": "Remove",
+    "failures": "Failures",
+    "testPoints": "Test points",
+    "notes": "Notes",
+    "manual": {
+      "failureName": "Failure name",
+      "failurePart": "Part / area",
+      "failureAction": "Suggested action",
+      "failureRationale": "Rationale / observation",
+      "failureAdd": "Add failure",
+      "testPointName": "Test point",
+      "testPointExpected": "Expected value",
+      "testPointUnit": "Unit",
+      "testPointTolerance": "Tolerance",
+      "testPointAdd": "Add test point",
+      "notePlaceholder": "Note",
+      "noteSource": "Source",
+      "noteAdd": "Add note",
+      "resourceFile": "File",
+      "rail": "Rail"
+    },
+    "resourcePanel": {
+      "schematicTitle": "Schematics",
+      "schematicAdd": "Add schematic",
+      "schematicUrl": "https://... or /path/to.pdf",
+      "boardImageTitle": "Board images",
+      "boardImageAdd": "Add image",
+      "boardImageUrl": "https://... or /path/to.png",
+      "datasheetTitle": "Datasheet / document",
+      "datasheetAdd": "Add document",
+      "datasheetUrl": "https://... or /path/to.pdf",
+      "threadTitle": "Forum / link",
+      "threadAdd": "Add link",
+      "threadUrl": "https://forum...",
+      "noteTitle": "Resource notes",
+      "noteAdd": "Add resource",
+      "noteUrl": "https://... or /path/to.txt"
     }
   },
   "knowledgePack": {
     "eyebrow": "KNOWLEDGE PACK",
     "title": "AİÖ Result",
+    "empty": "No evidence pack yet",
+    "emptyHelp": "Run evidence search from the repair intake to attach schematics, board photos, failure notes, and test points.",
     "tabs": {
       "schematicPreview": "Schematic Preview",
       "boardView": "Board View",
       "notes": "Notes"
     },
+    "tabSchematic": "Schematic",
+    "tabBoard": "Board photos",
+    "tabNotes": "Repair notes",
+    "schematics": "Schematics",
+    "boardImages": "Board Images",
+    "commonFailures": "Common Failures",
+    "repairNotes": "Repair Notes",
+    "testPoints": "Test Points",
     "stats": {
       "schematics": "Schematics",
       "boardImages": "Board Images",
       "commonFailures": "Common Failures",
       "repairNotes": "Repair Notes",
-      "testPoints": "Test Points"
+      "testPoints": "Test Points",
+      "pages": "pages"
     },
-    "addToSession": "Add to Session"
+    "addToSession": "Add to Session",
+    "pinToWorkbench": "Pin this area to workbench",
+    "preview": "Preview",
+    "download": "Download"
   },
   "timeline": {
     "eyebrow": "TIMELINE",
@@ -117,7 +212,13 @@
       "risk": "Risk Flag",
       "freezeFrame": "Freeze Frame",
       "sessionStart": "Session Start"
-    }
+    },
+    "play": "Play",
+    "pause": "Pause",
+    "followLive": "Follow live",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "markRange": "Mark range"
   },
   "operator": {
     "eyebrow": "OPERATOR PROFILE",
@@ -159,6 +260,21 @@
   "measurement": {
     "eyebrow": "MEASUREMENT PANEL",
     "title": "Multimeter",
+    "tabMultimeter": "Multimeter",
+    "tabPsu": "Power Supply",
+    "tabSigGen": "Signal Gen",
+    "manualEntry": "Manual Reading",
+    "reference": "Reference",
+    "value": "Value",
+    "mode": "Mode",
+    "unit": "Unit",
+    "range": "Range",
+    "channel": "Channel",
+    "record": "Record",
+    "recordTitle": "Record manual measurement",
+    "recordDisabled": "Open a repair session first",
+    "recent": "Recent Readings",
+    "evidence": "Spatial Evidence",
     "tabs": {
       "multimeter": "Multimeter",
       "powerSupply": "Power Supply",
@@ -176,13 +292,17 @@
       "range": "Range",
       "hold": "Hold",
       "recentReadings": "Recent Readings",
-      "addToTimeline": "Add to Timeline"
+      "addToTimeline": "Add to Timeline",
+      "noReadings": "No manual readings yet"
     }
   },
   "chat": {
     "eyebrow": "AİÖ CHAT — SESSION CONTEXT",
     "title": "AİÖ",
     "subtitle": "Repair Assistant",
+    "placeholder": "Ask or dictate a repair note...",
+    "send": "Send",
+    "clear": "Discard",
     "viewKnowledgePack": "View Knowledge Pack",
     "composerPlaceholder": "Ask AİÖ something…"
   },
@@ -234,7 +354,8 @@
     "camera": "Camera",
     "cameraManual": "Manual",
     "cameraAndroid": "Android feed",
-    "budget": "Budget"
+    "budget": "Budget",
+    "close": "CLOSE"
   },
   "legend": {
     "snapshot": "Snapshot",
@@ -246,5 +367,54 @@
     "version": "Repair Room v1.0.0",
     "roomSync": "Room Sync",
     "storage": "Storage"
+  },
+  "status": {
+    "cameraNotConnected": "Camera not connected",
+    "cameraLive": "live",
+    "cameraConnected": "connected",
+    "cameraReady": "ready",
+    "manualBoardImage": "Manual board image",
+    "cameraSourceAndroid": "Android camera",
+    "cameraSourceSnapshot": "Snapshot",
+    "cameraSourceImage": "Board image",
+    "cameraSourceManual": "Manual image",
+    "cameraTitleNotConnected": "Camera feed is optional. Open repair controls if you need companion access.",
+    "cameraTitleLive": "Camera feed is live. Freeze the frame before probing tight areas.",
+    "cameraTitleConnected": "Camera is connected but not marked live.",
+    "cameraTitleReady": "Camera source is ready when needed.",
+    "cameraTitleManual": "Use a manual board image or start the Android camera when needed.",
+    "routeLocal": "Local",
+    "routeAndroid": "Android",
+    "profileQuiet": "Quiet",
+    "profileBalanced": "Balanced",
+    "profileProactive": "Proactive"
+  },
+  "statusbar": {
+    "version": "Repair Room v0.1.0",
+    "setup": "Setup",
+    "setupTitle": "Open bench setup",
+    "returnHome": "Return to home"
+  },
+  "sessionRail": {
+    "archive": "Archive",
+    "delete": "Delete",
+    "deleteTitle": "Delete saved session and data"
+  },
+  "bottomCluster": {
+    "all": "All",
+    "hidePanels": "Hide bottom panels"
+  },
+  "tacticalFeed": {
+    "eyebrow": "ASSIST",
+    "title": "Repair Feed",
+    "composer": "Ask the repair assistant...",
+    "send": "Ask",
+    "slotLabel": "Assistant {slot}",
+    "statusChecking": "{slot} is checking the latest measurement.",
+    "statusAddedNote": "{slot} added a repair note.",
+    "statusFailed": "{slot} could not add a repair note.",
+    "researchGathering": "{slot} is gathering evidence for this device.",
+    "researchPrepared": "{slot} prepared an evidence pack.",
+    "researchFailed": "{slot} could not prepare an evidence pack."
   }
 }
