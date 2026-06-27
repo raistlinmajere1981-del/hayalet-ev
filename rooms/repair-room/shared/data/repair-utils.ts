@@ -1,13 +1,26 @@
+import {
+  REPAIR_OPERATOR_PROFILE_SCHEMA_VERSION,
+  REPAIR_UI_COLORS,
+} from "../repair-constants.js";
 import type {
-  RepairAiMarkLifecycleEvent,
+  RepairAiAdaptationHints,
+  RepairMeasurementSnapshot,
+  RepairMeasurementState,
+  RepairOperatorProfile,
+  RepairWizardDraft,
+  RepairWizardManualEvidenceDraft,
+  RepairWizardState,
+} from "../types/index.js";
+import type {
   RepairAiMarkEvent,
+  RepairAiMarkLifecycleEvent,
   RepairEvent,
   RepairInvestigationRegionCreatedEvent,
   RepairInvestigationRegionUpdatedEvent,
   RepairNoteEvent,
   RepairRiskFlagEvent,
   RepairSnapshotEvent,
-} from "../types/index.js";
+} from "../types/repair-event.js";
 import type { RepairTacticalFeedItem } from "../ui/state.js";
 
 function formatRelative(originIso: string, occurredIso: string): string {
@@ -121,11 +134,115 @@ export function repairEventToTacticalFeedItem(
   }
 }
 
-export function buildMockTacticalFeed(
+export function buildTacticalFeedItems(
   events: RepairEvent[],
   sessionStartIso: string
 ): RepairTacticalFeedItem[] {
   return events
     .map((event) => repairEventToTacticalFeedItem(event, sessionStartIso))
     .filter((item): item is RepairTacticalFeedItem => item !== null);
+}
+
+export function buildRepairAiAdaptation(
+  profile: RepairOperatorProfile
+): RepairAiAdaptationHints {
+  const has = (id: string): boolean =>
+    profile.bench.tools.some((tool) => tool.id === id && tool.available);
+  return {
+    hasOscilloscope: has("oscilloscope"),
+    hasBenchPsu: has("bench-psu"),
+    hasThermalCamera: has("thermal-camera"),
+    hasHotAirStation: has("hot-air-quick861d"),
+    hasMicroscope: has("microscope-relife-rl-m3t"),
+    preferMultimeterFallbacks: has("oscilloscope") === false,
+  };
+}
+
+function createEmptyManualEvidenceDraft(): RepairWizardManualEvidenceDraft {
+  return {
+    resources: [],
+    failures: [],
+    testPoints: [],
+    notes: [],
+    removedResourceIds: [],
+    removedFailureIds: [],
+    removedTestPointIds: [],
+    removedNoteIds: [],
+  };
+}
+
+function createEmptyWizardDraft(): RepairWizardDraft {
+  return {
+    deviceType: "",
+    manufacturer: "",
+    model: "",
+    boardCode: "",
+    serialNumber: "",
+    intakeNotes: "",
+    primarySymptoms: [],
+    customSymptoms: [],
+    symptomFreeText: "",
+    selectedEvidenceResourceIds: [],
+    selectedFailureIds: [],
+    selectedTestPointIds: [],
+    manualEvidence: createEmptyManualEvidenceDraft(),
+    researchSkipped: false,
+    researchStatus: "idle",
+    researchMessage: null,
+  };
+}
+
+export function createDefaultWizardState(): RepairWizardState {
+  return {
+    currentStep: "device-info",
+    draft: createEmptyWizardDraft(),
+    researchProgress: [],
+    foundResources: [],
+    generatedKnowledgePackId: null,
+    evidenceReviewed: false,
+  };
+}
+
+export function createDefaultMeasurementState(): RepairMeasurementState {
+  const emptySnapshot: RepairMeasurementSnapshot = {
+    instrumentId: "manual-entry",
+    kind: "multimeter",
+    label: "Manual entry",
+    mode: "dc-voltage",
+    range: "-",
+    display: "-",
+    value: null,
+    unit: "",
+    hold: false,
+    driftAmplitude: 0,
+  };
+  return {
+    activeInstrumentKind: "multimeter",
+    current: emptySnapshot,
+    recent: [],
+    evidence: [],
+    comparisonEventId: null,
+  };
+}
+
+export function createDefaultOperatorProfile(): RepairOperatorProfile {
+  return {
+    schemaVersion: REPAIR_OPERATOR_PROFILE_SCHEMA_VERSION,
+    profileId: "operator-default",
+    displayName: "Bench Operator",
+    bench: {
+      tools: [],
+      consumables: [],
+      safety: [],
+    },
+    skills: [],
+    preferences: {
+      measurementSystem: "metric",
+      annotationDefaultColor: REPAIR_UI_COLORS.cyan,
+      annotationDefaultStrokeWidth: 2,
+      riskTolerance: "medium",
+      aiVerbosity: "standard",
+    },
+    updatedAt: new Date(0).toISOString(),
+  };
 }

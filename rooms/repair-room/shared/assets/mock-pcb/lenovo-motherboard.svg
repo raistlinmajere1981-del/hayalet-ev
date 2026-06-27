@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
-  <rect width="1280" height="720" fill="#0a0a0d" rx="8"/>
-  <rect x="40" y="40" width="1200" height="640" fill="#10101a" stroke="#1a1a2a" stroke-width="1" rx="4"/>
-  <text x="640" y="360" text-anchor="middle" fill="#3a3a5a" font-family="monospace" font-size="14">LENOVO T14 GEN2 — NM-D461 — MOTHERBOARD</text>
-  <rect x="400" y="260" width="140" height="100" fill="none" stroke="#1a1a2a" stroke-width="0.5"/>
-  <text x="470" y="314" text-anchor="middle" fill="#1a1a2a" font-family="monospace" font-size="9">PCH AREA</text>
-</svg>

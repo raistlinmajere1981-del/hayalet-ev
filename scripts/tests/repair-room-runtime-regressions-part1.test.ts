@@ -8,17 +8,9 @@ import {
 } from "../../rooms/repair-room/host/state/repair-selectors.ts";
 import { getRepairRoomSyncRows } from "../../rooms/repair-room/ui/panels/room-sync-panel.ts";
 import {
-  REPAIR_LOCAL_OWNER_SCOPE_ID,
   REPAIR_ROOM_ID,
-  REPAIR_SESSION_SCHEMA_VERSION,
   REPAIR_UI_COMMANDS,
 } from "../../rooms/repair-room/shared/repair-constants.ts";
-import {
-  MOCK_REPAIR_CHAT_TURNS,
-  MOCK_REPAIR_EVENTS,
-  MOCK_REPAIR_KNOWLEDGE_PACKS,
-  MOCK_REPAIR_PCB_IMAGES,
-} from "../../rooms/repair-room/shared/data/index.ts";
 import { normalizeRepairHostMessage } from "../../rooms/repair-room/shared/ui/host-messages.ts";
 import type {
   RepairStoredEvidenceSelectionRecord,
@@ -28,91 +20,14 @@ import type {
 import type {
   RepairChatTurn,
   RepairSession,
-  RepairSessionListItem,
 } from "../../rooms/repair-room/shared/types/index.ts";
-
-function cloneJson<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
-function toStoredSessionListItem(session: RepairSession): RepairSessionListItem {
-  return {
-    id: session.id,
-    title: session.title,
-    deviceLabel: session.deviceInfo.deviceLabel,
-    boardCode: session.deviceInfo.boardCode,
-    serialNumber: session.deviceInfo.serialNumber,
-    status: session.status,
-    riskLevel: session.riskLevel,
-    updatedAt: session.updatedAt,
-    isArchived: session.status === "archived",
-  };
-}
-
-const TEST_REPAIR_ACTIVE_SESSION_ID = "psu-2025-0510";
-
-type TestRepairSessionOverrides = Partial<Omit<RepairSession, "deviceInfo" | "symptoms">> & {
-  deviceInfo?: Partial<RepairSession["deviceInfo"]>;
-  symptoms?: Partial<RepairSession["symptoms"]>;
-};
-
-function createTestRepairSession(overrides: TestRepairSessionOverrides = {}): RepairSession {
-  const base: RepairSession = {
-    schemaVersion: REPAIR_SESSION_SCHEMA_VERSION,
-    id: TEST_REPAIR_ACTIVE_SESSION_ID,
-    roomId: REPAIR_ROOM_ID,
-    ownerScopeId: REPAIR_LOCAL_OWNER_SCOPE_ID,
-    title: "PSU-2025-0510",
-    status: "in-progress",
-    riskLevel: "medium",
-    deviceInfo: {
-      deviceType: "TV guc karti / PSU",
-      deviceLabel: "ATX Power Supply",
-      manufacturer: "Samsung",
-      model: "BN44-00932A",
-      boardCode: "BN44-00932A",
-      serialNumber: "R21Z14CSN100123",
-      intakeNotes: "No power. Bulk cap discharged before intake.",
-    },
-    symptoms: {
-      primarySymptoms: ["No Power"],
-      freeText: "Dead board. Confirms no 5V_STBY at output connector pin 9.",
-      reportedAt: "2026-05-10T10:14:48.000Z",
-    },
-    pcbImage: cloneJson(MOCK_REPAIR_PCB_IMAGES[TEST_REPAIR_ACTIVE_SESSION_ID] ?? null),
-    knowledgePackId: "bn44-00932a",
-    knowledgePack: cloneJson(MOCK_REPAIR_KNOWLEDGE_PACKS["bn44-00932a"] ?? null),
-    events: cloneJson(MOCK_REPAIR_EVENTS[TEST_REPAIR_ACTIVE_SESSION_ID] ?? []),
-    sessionNotes:
-      "Bulk cap reads 0 V, R201 open, U14 gate flatlined. Plan: replace R201, retest 5V_STBY, then probe gate drive.",
-    startedAt: "2026-05-10T10:18:00.000Z",
-    updatedAt: "2026-05-10T10:42:11.000Z",
-    archivedAt: null,
-  };
-
-  return {
-    ...base,
-    ...overrides,
-    deviceInfo: {
-      ...base.deviceInfo,
-      ...(overrides.deviceInfo ?? {}),
-    },
-    symptoms: {
-      ...base.symptoms,
-      ...(overrides.symptoms ?? {}),
-    },
-  };
-}
-
-function createTestRepairRuntimeSeed() {
-  const session = createTestRepairSession();
-  return {
-    activeSessionId: session.id,
-    chatTurns: cloneJson(MOCK_REPAIR_CHAT_TURNS),
-    sessionList: [toStoredSessionListItem(session)],
-    sessions: { [session.id]: session },
-  };
-}
+import {
+  cloneJson,
+  createTestRepairRuntimeSeed,
+  TEST_REPAIR_ACTIVE_SESSION_ID,
+  toStoredSessionListItem,
+  createTestRepairSession,
+} from "./helpers/repair-test-data.ts";
 
 type RepairRoomHostRuntimeOptions = NonNullable<
   Parameters<typeof createRepairRoomHostRuntimeBase>[0]

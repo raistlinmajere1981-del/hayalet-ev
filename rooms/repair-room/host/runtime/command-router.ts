@@ -4,10 +4,7 @@ import {
   REPAIR_UI_COLORS,
   REPAIR_UI_COMMANDS,
 } from "../../shared/repair-constants.js";
-import {
-  MOCK_REPAIR_WIZARD_INITIAL,
-  buildMockRepairAiAdaptation,
-} from "../../shared/data/index.js";
+import { buildRepairAiAdaptation, createDefaultWizardState } from "../../shared/data/index.js";
 import type {
   RepairChatTurn,
   RepairCommonFailure,
@@ -166,9 +163,9 @@ export function createRepairCommandRouter(params: {
 
   function createResetWizardState(): RepairWizardState {
     return {
-      ...MOCK_REPAIR_WIZARD_INITIAL,
+      ...createDefaultWizardState(),
       draft: {
-        ...MOCK_REPAIR_WIZARD_INITIAL.draft,
+        ...createDefaultWizardState().draft,
         customSymptoms: [],
         primarySymptoms: [],
         selectedEvidenceResourceIds: [],
@@ -1241,7 +1238,7 @@ export function createRepairCommandRouter(params: {
         };
         store.dispatch({
           type: "operator-profile/set",
-          adaptation: buildMockRepairAiAdaptation(nextProfile),
+          adaptation: buildRepairAiAdaptation(nextProfile),
           profile: nextProfile,
         });
         storageController.queuePersistActiveSessionChat();

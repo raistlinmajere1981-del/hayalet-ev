@@ -10,7 +10,7 @@ import {
   createRepairSessionStorage,
   type RepairSessionStorageRuntime,
 } from "./repair-session-storage.js";
-import { buildMockTacticalFeed } from "../shared/data/index.js";
+import { buildTacticalFeedItems } from "../shared/data/index.js";
 import type { RepairSession } from "../shared/types/index.js";
 import { createReplayRuntimeController } from "./repair-replay-runtime.js";
 import {
@@ -105,7 +105,7 @@ function setActiveSessionDerivedState(
       items:
         session === null
           ? []
-          : buildMockTacticalFeed(session.events, session.startedAt).slice(
+          : buildTacticalFeedItems(session.events, session.startedAt).slice(
               0,
               FEED_INITIAL_VISIBLE_COUNT
             ),

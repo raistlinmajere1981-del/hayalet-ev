@@ -1,5 +1,4 @@
 import { REPAIR_PROTOCOL_KEYS, REPAIR_ROOM_ID } from "../../shared/repair-constants.js";
-import { MOCK_REPAIR_KNOWLEDGE_PACKS } from "../../shared/data/index.js";
 import type {
   RepairChatTurn,
   RepairEvent,
@@ -146,12 +145,7 @@ export function createRepairAiController(params: {
   }
 
   function getKnowledgePack(packId: string): RepairKnowledgePack | null {
-    return (
-      generatedKnowledgePacks.get(packId) ??
-      boardCodeCache.get(packId) ??
-      MOCK_REPAIR_KNOWLEDGE_PACKS[packId] ??
-      null
-    );
+    return generatedKnowledgePacks.get(packId) ?? boardCodeCache.get(packId) ?? null;
   }
 
   function readGeneratedKnowledgePack(): RepairKnowledgePack | null {

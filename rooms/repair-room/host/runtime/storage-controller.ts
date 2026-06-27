@@ -1,5 +1,5 @@
 import { REPAIR_ROOM_ID } from "../../shared/repair-constants.js";
-import { buildMockRepairAiAdaptation } from "../../shared/data/index.js";
+import { buildRepairAiAdaptation } from "../../shared/data/index.js";
 import type { RepairHostIoRuntime } from "../../shared/host/io-runtime.js";
 import { readRepairRoomStorageDir } from "../../shared/host/repair-paths.js";
 import type {
@@ -231,7 +231,7 @@ export function createRepairStorageController(params: {
           if (storedOperatorProfile !== null) {
             store.dispatch({
               type: "operator-profile/set",
-              adaptation: buildMockRepairAiAdaptation(storedOperatorProfile.profile),
+              adaptation: buildRepairAiAdaptation(storedOperatorProfile.profile),
               profile: storedOperatorProfile.profile,
             });
           }

@@ -1,14 +1,10 @@
 import { REPAIR_ROOM_ID } from "../../shared/repair-constants.js";
 import {
-  MOCK_REPAIR_ACTIVE_SESSION_ID,
-  MOCK_REPAIR_MEASUREMENT_STATE,
-  MOCK_REPAIR_SESSIONS,
-  MOCK_REPAIR_SESSION_LIST,
-  MOCK_REPAIR_CHAT_TURNS,
-  MOCK_REPAIR_OPERATOR_PROFILE,
-  MOCK_REPAIR_WIZARD_INITIAL,
-  buildMockRepairAiAdaptation,
-  buildMockTacticalFeed,
+  buildRepairAiAdaptation,
+  buildTacticalFeedItems,
+  createDefaultMeasurementState,
+  createDefaultOperatorProfile,
+  createDefaultWizardState,
 } from "../../shared/data/index.js";
 import type {
   RepairAiAdaptationHints,
@@ -102,9 +98,9 @@ function createVisibleLayersMap(): Record<RepairOverlayLayerId, boolean> {
 export function createInitialRepairRuntimeState(
   nowIso: string,
   seed: RepairRuntimeSeedData = {
-    activeSessionId: MOCK_REPAIR_ACTIVE_SESSION_ID,
-    sessionList: MOCK_REPAIR_SESSION_LIST,
-    sessions: MOCK_REPAIR_SESSIONS,
+    activeSessionId: null,
+    sessionList: [],
+    sessions: {},
   }
 ): RepairRuntimeState {
   const activeSession =
@@ -116,7 +112,9 @@ export function createInitialRepairRuntimeState(
   const tacticalFeed =
     activeSession === null
       ? []
-      : buildMockTacticalFeed(activeSession.events, activeSession.startedAt).slice(0, 3);
+      : buildTacticalFeedItems(activeSession.events, activeSession.startedAt).slice(0, 3);
+
+  const defaultProfile = createDefaultOperatorProfile();
 
   return {
     roomId: REPAIR_ROOM_ID,
@@ -163,18 +161,18 @@ export function createInitialRepairRuntimeState(
       investigationModeEnabled: false,
     },
     tacticalFeed,
-    wizard: MOCK_REPAIR_WIZARD_INITIAL,
+    wizard: createDefaultWizardState(),
     knowledgePack: {
       pack: activeSession?.knowledgePack ?? null,
       attachedToSessionId: activeSession?.id ?? null,
       previewTabId: "schematic-preview",
       focusedSpatialRefId: null,
     },
-    operatorProfile: MOCK_REPAIR_OPERATOR_PROFILE,
-    operatorAdaptation: buildMockRepairAiAdaptation(MOCK_REPAIR_OPERATOR_PROFILE),
-    measurement: MOCK_REPAIR_MEASUREMENT_STATE,
+    operatorProfile: defaultProfile,
+    operatorAdaptation: buildRepairAiAdaptation(defaultProfile),
+    measurement: createDefaultMeasurementState(),
     chat: {
-      turns: activeSession === null ? [] : (seed.chatTurns ?? MOCK_REPAIR_CHAT_TURNS),
+      turns: activeSession === null ? [] : (seed.chatTurns ?? []),
       composerDraft: "",
       pendingReplyId: null,
     },

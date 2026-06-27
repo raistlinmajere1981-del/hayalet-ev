@@ -257,12 +257,8 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
     join(process.cwd(), "rooms/repair-room/host/state/repair-replay-projection.ts"),
     "utf8"
   );
-  const mockEvents = readFileSync(
-    join(process.cwd(), "rooms/repair-room/shared/data/mock-events.ts"),
-    "utf8"
-  );
-  const mockKnowledge = readFileSync(
-    join(process.cwd(), "rooms/repair-room/shared/data/mock-knowledge-packs.ts"),
+  const testData = readFileSync(
+    join(process.cwd(), "scripts/tests/helpers/repair-test-data.ts"),
     "utf8"
   );
 
@@ -424,10 +420,10 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(overlayStage, /resize: \(\) => void/);
   assert.match(overlayStage, /ResizeObserver/);
   assert.match(overlayStage, /listening\(false\)/);
-  assert.match(mockEvents, /thumbnailSrc: "shared\/assets\/mock-pcb\/atx-psu-top\.svg"/);
-  assert.match(mockKnowledge, /bn44-00932a-schematic-preview\.svg/);
-  assert.match(mockKnowledge, /spatialRef/);
-  assert.match(mockEvents, /lifecycleState/);
+  assert.match(testData, /shared\/assets\/mock-pcb\/atx-psu-top\.svg/);
+  assert.match(testData, /bn44-00932a-schematic-preview\.svg/);
+  assert.match(testData, /spatialRef/);
+  assert.match(testData, /lifecycleState/);
   assert.match(wizardPanel, /repair-wizard-field__input/);
   assert.match(wizardPanel, /repair-wizard-suggestions/);
   assert.match(wizardPanel, /wizard-suggestion/);

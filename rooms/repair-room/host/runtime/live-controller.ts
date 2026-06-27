@@ -3,7 +3,7 @@ import {
   REPAIR_FEED_EVENT_MAX_DELAY_MS,
   REPAIR_FEED_EVENT_MIN_DELAY_MS,
 } from "../../shared/repair-constants.js";
-import { buildMockTacticalFeed } from "../../shared/data/index.js";
+import { buildTacticalFeedItems } from "../../shared/data/index.js";
 import type { RepairSession } from "../../shared/types/index.js";
 import type { RepairRuntimeStore } from "../state/repair-runtime-store.js";
 import { getActiveSession, getSessionTimelineMs } from "./session-helpers.js";
@@ -72,7 +72,7 @@ export function createRepairLiveController(params: {
     if (session === null || session.status !== "in-progress") return;
 
     const visibleIds = new Set(state.tacticalFeed.map((item) => item.eventId));
-    const pending = buildMockTacticalFeed(session.events, session.startedAt).filter(
+    const pending = buildTacticalFeedItems(session.events, session.startedAt).filter(
       (item) => !visibleIds.has(item.eventId)
     );
 

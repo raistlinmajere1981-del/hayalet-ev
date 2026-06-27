@@ -3,7 +3,7 @@ import {
   REPAIR_ROOM_ID,
   REPAIR_SESSION_SCHEMA_VERSION,
 } from "../../shared/repair-constants.js";
-import { MOCK_REPAIR_PCB_IMAGES } from "../../shared/data/index.js";
+
 import type {
   RepairEvidenceSelection,
   RepairSession,
@@ -231,7 +231,7 @@ export function createDraftSession(state: RepairRuntimeState, iso: string): Repa
       freeText: draft.symptomFreeText.trim() || "Symptoms pending.",
       reportedAt: iso,
     },
-    pcbImage: MOCK_REPAIR_PCB_IMAGES["psu-2025-0510"] ?? null,
+    pcbImage: null,
     knowledgePackId: null,
     knowledgePack: null,
     events: [
