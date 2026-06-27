@@ -6,7 +6,7 @@ export const REPAIR_OPERATOR_PROFILE_SCHEMA_VERSION = 1;
 export const REPAIR_LOCAL_OWNER_SCOPE_ID = "repair-room:local-owner";
 
 // NOTE: Tactical-feed cadence is intentionally calibrated to feel like a live observation stream
-// rather than a synchronous batch. Phase 1 mocks honor these timings for perceived realism.
+// rather than a synchronous batch.
 export const REPAIR_FEED_EVENT_MIN_DELAY_MS = 1200;
 export const REPAIR_FEED_EVENT_MAX_DELAY_MS = 3000;
 export const REPAIR_MEASUREMENT_DRIFT_INTERVAL_MS = 1100;

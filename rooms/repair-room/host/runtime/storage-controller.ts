@@ -58,7 +58,7 @@ export function createRepairStorageController(params: {
     } = {}
   ): RepairStorageState {
     return {
-      mode: status === "ready" || status === "hydrating" ? "room-storage" : "mock",
+      mode: status === "ready" || status === "hydrating" ? "room-storage" : "standalone",
       status,
       storageDir: stateParams.storageDir ?? null,
       sessionCount: stateParams.sessionCount ?? storedSessionIds.size,

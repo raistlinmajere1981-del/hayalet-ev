@@ -114,14 +114,12 @@ function setActiveSessionDerivedState(
 }
 
 /**
- * Phase 1 Repair Room host runtime.
+ * Repair Room host runtime.
  *
- * Responsibilities at this phase:
- *  - hydrate the runtime store from room-local session storage when available
- *  - push state snapshots to the UI via api.notifyRoom("repair-state", …)
- *  - accept UI commands and update the store deterministically
- *
- * A clean idle state remains the fallback when Electron room storage is unavailable.
+ * Hydrates the runtime store from room-local session storage when available,
+ * pushes state snapshots to the UI via api.notifyRoom("repair-state", …),
+ * and accepts UI commands to update the store deterministically.
+ * A clean idle state remains the fallback when room storage is unavailable.
  */
 export default function createRepairRoomHostRuntime(options: RepairRoomHostRuntimeOptions = {}) {
   const ioRuntime = options.io ?? createRepairHostIoRuntime({ roomId: REPAIR_ROOM_ID });

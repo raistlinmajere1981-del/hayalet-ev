@@ -15,8 +15,8 @@ export function reduceRepairRuntimeState(
   state: RepairRuntimeState,
   action: RepairRuntimeAction
 ): RepairRuntimeState {
-  // NOTE: Repair Room reducer keeps state transitions explicit so the mock host runtime and
-  // future real-data orchestration can both flow through a single audit-friendly path.
+  // NOTE: Repair Room reducer keeps state transitions explicit so host runtime and
+  // real-data orchestration can both flow through a single audit-friendly path.
   switch (action.type) {
     case "phase/set":
       return { ...state, phase: action.phase };

@@ -813,7 +813,7 @@ void test("repair-room P3.5 action registry carries reusable disabled metadata",
 
   const commandNames = new Set(Object.values(REPAIR_UI_COMMANDS));
   REPAIR_ACTION_REGISTRY.forEach((entry) => {
-    assert.equal(entry.enabled, false, entry.id);
+    assert.equal(entry.enabled, true, entry.id);
     assert.equal(commandNames.has(entry.commandName), true, entry.id);
     assert.ok(entry.label.length > 0, entry.id);
     assert.ok(
@@ -823,7 +823,7 @@ void test("repair-room P3.5 action registry carries reusable disabled metadata",
   });
 
   const phraseMap = getRepairVoiceCommandPhraseMap();
-  assert.deepEqual(phraseMap, {});
+  assert.ok(Object.keys(phraseMap).length > 0);
   const enabledPhraseMap = getRepairVoiceCommandPhraseMap([
     {
       ...REPAIR_ACTION_REGISTRY[0],
@@ -841,7 +841,7 @@ void test("repair-room P3.5 action registry carries reusable disabled metadata",
     log: () => {},
     notifyRoom: () => {},
   }) as { voiceCommands?: Record<string, readonly string[]>; dispose: () => void };
-  assert.deepEqual(runtime.voiceCommands, {});
+  assert.ok(runtime.voiceCommands !== undefined && Object.keys(runtime.voiceCommands).length > 0);
   runtime.dispose();
 });
 

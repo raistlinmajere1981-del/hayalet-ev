@@ -138,7 +138,7 @@ export type RepairAiDispatchStatus = "idle" | "pending" | "succeeded" | "failed"
 
 export type RepairAiTargetSlot = "ai0" | "ai1" | "ai2";
 
-export type RepairStorageMode = "mock" | "room-storage";
+export type RepairStorageMode = "standalone" | "room-storage";
 
 export type RepairStorageStatus = "unavailable" | "hydrating" | "ready" | "fallback" | "error";
 
@@ -493,7 +493,7 @@ export function createRepairDefaultStorageState(
   message = "Repair history not connected"
 ): RepairStorageState {
   return {
-    mode: "mock",
+    mode: "standalone",
     status: "unavailable",
     storageDir: null,
     sessionCount,
