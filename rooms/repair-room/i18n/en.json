@@ -15,7 +15,49 @@
     "coordGrid": "GRID",
     "emptyStateStep1": "Start camera",
     "emptyStateStep2": "Frame board",
-    "emptyStateStep3": "Freeze when ready"
+    "emptyStateStep3": "Freeze when ready",
+    "toolbar": {
+      "grid": "Grid",
+      "gridTitle": "Toggle grid overlay",
+      "aiMarks": "AI Marks",
+      "aiMarksTitle": "Toggle AI mark overlay",
+      "operatorNotes": "Operator Notes",
+      "operatorNotesTitle": "Toggle operator annotations",
+      "aiNotes": "AI Notes",
+      "aiNotesTitle": "Toggle AI annotations",
+      "measure": "Measure",
+      "measureTitle": "Toggle measurement overlay",
+      "risks": "Risks",
+      "risksTitle": "Toggle risk overlay",
+      "notes": "Notes",
+      "notesTitle": "Toggle repair notes",
+      "evidence": "Evidence",
+      "evidenceTitle": "Toggle knowledge evidence",
+      "inspect": "Inspect",
+      "inspectTitle": "Toggle investigation mode"
+    },
+    "guidance": {
+      "ai": "AI",
+      "next": "Next",
+      "say": "Say",
+      "risk": "Risk",
+      "fullBoard": "full board",
+      "noPending": "no pending measurement",
+      "linkedEvents": "linked events",
+      "selected": "selected",
+      "critical": "critical",
+      "calm": "calm",
+      "pending": "pending",
+      "focusCorridor": "focus corridor",
+      "noLinked": "No linked forensic records",
+      "hintResume": "resume live",
+      "hintReadAgain": "read this again",
+      "hintSaveNote": "save note",
+      "hintFreeze": "freeze camera",
+      "hintRepeat": "repeat guidance",
+      "hintMeasure": "record measurement",
+      "hintShowRisks": "show risks"
+    }
   },
   "session": {
     "rail": {
@@ -199,7 +241,23 @@
     "addToSession": "Add to Session",
     "pinToWorkbench": "Pin this area to workbench",
     "preview": "Preview",
-    "download": "Download"
+    "download": "Download",
+    "emptySteps": {
+      "identifyBoard": "Identify board",
+      "findEvidence": "Find evidence",
+      "attachPack": "Attach pack"
+    },
+    "resourceKinds": {
+      "boardImage": "Board image",
+      "datasheet": "Datasheet",
+      "schematic": "Schematic",
+      "thread": "Thread",
+      "note": "Note"
+    },
+    "spatial": {
+      "likelyFault": "Likely fault",
+      "probe": "Probe"
+    }
   },
   "timeline": {
     "eyebrow": "TIMELINE",
@@ -294,6 +352,11 @@
       "recentReadings": "Recent Readings",
       "addToTimeline": "Add to Timeline",
       "noReadings": "No manual readings yet"
+    },
+    "options": {
+      "continuity": "Continuity",
+      "diode": "Diode",
+      "cap": "Cap"
     }
   },
   "chat": {
@@ -304,7 +367,21 @@
     "send": "Send",
     "clear": "Discard",
     "viewKnowledgePack": "View Knowledge Pack",
-    "composerPlaceholder": "Ask AİÖ something…"
+    "composerPlaceholder": "Ask AİÖ something…",
+    "dictationReview": "Voice note staged. Say send, press Send, or clear and dictate again.",
+    "status": {
+      "dictationReview": "Voice note waiting for confirmation",
+      "assistantPreparing": "Assistant is preparing a reply",
+      "handsFreeSend": "Hands-free mode: say send or clear after dictation",
+      "handsFreeComposer": "Hands-free mode: dictated notes stay in the composer",
+      "readAloud": "Replies can be read aloud from repair controls",
+      "textOnly": "Text replies only",
+      "waiting": "Waiting"
+    },
+    "roles": {
+      "assistant": "Assistant",
+      "you": "You"
+    }
   },
   "sync": {
     "eyebrow": "SYNC",
@@ -318,7 +395,33 @@
     "aiTarget": "AI Target",
     "chatDispatch": "Chat AI",
     "researchDispatch": "Research AI",
-    "tacticalDispatch": "Tactical AI"
+    "tacticalDispatch": "Tactical AI",
+    "status": {
+      "storageLoading": "Repair history loading",
+      "storageReady": "Repair history ready, {count}",
+      "storageError": "Repair history error",
+      "storageFallback": "Repair history limited to current session",
+      "storageNotConnected": "Repair history not connected",
+      "workspaceReady": "Workspace ready",
+      "noRepairOpen": "No repair open",
+      "dispatchIdle": "{slot} idle",
+      "dispatchChecking": "{slot} checking",
+      "dispatchRefs": ", {count} refs",
+      "dispatchReady": "{slot} ready",
+      "dispatchFailed": "{slot} failed",
+      "notStarted": "not started",
+      "unknownTime": "unknown time",
+      "repairRecords": "repair record(s)",
+      "liveEdge": "Live edge",
+      "awaitingEvent": "Awaiting workbench event."
+    },
+    "lifecycleActions": {
+      "acknowledged": "Noted",
+      "investigating": "Checking",
+      "resolved": "Fixed",
+      "dismissed": "Ignore",
+      "markTitle": "Mark observation as {label}"
+    }
   },
   "settings": {
     "eyebrow": "SETTINGS",
@@ -397,6 +500,7 @@
   },
   "sessionRail": {
     "archive": "Archive",
+    "serialPrefix": "S/N",
     "delete": "Delete",
     "deleteTitle": "Delete saved session and data"
   },
@@ -415,6 +519,32 @@
     "statusFailed": "{slot} could not add a repair note.",
     "researchGathering": "{slot} is gathering evidence for this device.",
     "researchPrepared": "{slot} prepared an evidence pack.",
-    "researchFailed": "{slot} could not prepare an evidence pack."
+    "researchFailed": "{slot} could not prepare an evidence pack.",
+    "chatDrafting": "{slot} is drafting a reply.",
+    "chatReady": "{slot} reply is ready.",
+    "chatFailed": "{slot} could not draft a reply.",
+    "quietMode": "Quiet mode: waiting for a meaningful change. {remaining} assistant prompts left."
+  },
+  "panelChips": {
+    "session": "Session",
+    "sessionTitle": "session panel",
+    "feed": "Feed",
+    "feedTitle": "repair feed",
+    "aio": "AIO",
+    "aioTitle": "AIO results panel",
+    "timeline": "Timeline",
+    "timelineTitle": "timeline panel",
+    "chat": "Chat",
+    "chatTitle": "chat panel",
+    "measure": "Measure",
+    "measureTitle": "measurement panel",
+    "state": "State",
+    "stateTitle": "state panel"
+  },
+  "panelControls": {
+    "expand": "Expand panel",
+    "collapse": "Collapse panel",
+    "show": "Show",
+    "hide": "Hide"
   }
 }

@@ -16,7 +16,14 @@ function isPreviewableImageResource(resource: RepairKnowledgePackResource): bool
   return /(?:^data:image\/|[.](?:apng|avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$)/i.test(src);
 }
 
-function getResourceKindLabel(resource: RepairKnowledgePackResource): string {
+function getResourceKindLabel(resource: RepairKnowledgePackResource, text?: TextFn): string {
+  if (text !== undefined) {
+    if (resource.kind === "board-image") return text(["knowledgePack", "resourceKinds", "boardImage"], "Kart görseli");
+    if (resource.kind === "datasheet") return text(["knowledgePack", "resourceKinds", "datasheet"], "Veri sayfası");
+    if (resource.kind === "schematic") return text(["knowledgePack", "resourceKinds", "schematic"], "Şema");
+    if (resource.kind === "thread") return text(["knowledgePack", "resourceKinds", "thread"], "Konu");
+    return text(["knowledgePack", "resourceKinds", "note"], "Not");
+  }
   if (resource.kind === "board-image") return "Board image";
   if (resource.kind === "datasheet") return "Datasheet";
   if (resource.kind === "schematic") return "Schematic";
@@ -43,7 +50,7 @@ function createKnowledgeEmptyState(documentRef: Document, text: TextFn): HTMLEle
 
   const steps = documentRef.createElement("div");
   steps.className = "repair-empty-state__steps";
-  ["Identify board", "Find evidence", "Attach pack"].forEach((step) => {
+  [text(["knowledgePack", "emptySteps", "identifyBoard"], "Kartı tanımla"), text(["knowledgePack", "emptySteps", "findEvidence"], "Kanıt bul"), text(["knowledgePack", "emptySteps", "attachPack"], "Paket ekle")].forEach((step) => {
     const item = documentRef.createElement("span");
     item.textContent = step;
     steps.append(item);
@@ -160,7 +167,7 @@ export function renderKnowledgePackPanel(
       documentRef,
       preview,
       resources.find(isPreviewableImageResource) ?? null,
-      "Schematic preview"
+      text(["knowledgePack", "tabSchematic"], "Şema")
     );
     resources.forEach((resource) => {
       appendResourcePreviewRow(documentRef, preview, resource, text);
@@ -173,7 +180,7 @@ export function renderKnowledgePackPanel(
       documentRef,
       preview,
       resources.find(isPreviewableImageResource) ?? null,
-      "Board preview"
+      text(["knowledgePack", "tabBoard"], "Kart fotoğrafları")
     );
     resources.forEach((resource) => {
       appendResourcePreviewRow(documentRef, preview, resource, text);
@@ -199,7 +206,7 @@ export function renderKnowledgePackPanel(
     card.type = "button";
     card.dataset["repairAction"] = "knowledge-spatial-focus";
     card.dataset["spatialRefId"] = failure.id;
-    card.textContent = `Likely fault: ${failure.label}`;
+    card.textContent = `${text(["knowledgePack", "spatial", "likelyFault"], "Muhtemel arıza")}: ${failure.label}`;
     spatialList.append(card);
   });
   pack.testPoints.slice(0, 4).forEach((point) => {
@@ -210,7 +217,7 @@ export function renderKnowledgePackPanel(
     card.type = "button";
     card.dataset["repairAction"] = "knowledge-spatial-focus";
     card.dataset["spatialRefId"] = point.id;
-    card.textContent = `Probe: ${point.label} • ${point.expectedValue}${point.unit}`;
+    card.textContent = `${text(["knowledgePack", "spatial", "probe"], "Prob")}: ${point.label} • ${point.expectedValue}${point.unit}`;
     spatialList.append(card);
   });
   if (kp.focusedSpatialRefId !== null) {
@@ -279,7 +286,7 @@ function appendResourcePreviewRow(
   body.append(title);
 
   const meta = documentRef.createElement("span");
-  meta.textContent = `${getResourceKindLabel(resource)} • ${resource.source} • ${Math.round(
+  meta.textContent = `${getResourceKindLabel(resource, text)} • ${resource.source} • ${Math.round(
     resource.confidence * 100
   )}%`;
   body.append(meta);

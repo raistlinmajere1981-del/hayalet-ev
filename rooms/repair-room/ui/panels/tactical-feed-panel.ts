@@ -1,54 +1,64 @@
 import type { RepairUiState } from "../../shared/ui/state.js";
 import { createRepairPanel } from "./panel-shell.js";
 
-type TextFn = (path: string[], fallback: string) => string;
+type TextFn = (
+  path: string[],
+  fallback: string,
+  params?: Record<string, string | number>
+) => string;
 
-function formatAssistantSlot(slot: string): string {
+function formatAssistantSlot(slot: string, text?: TextFn): string {
+  if (text !== undefined) {
+    if (slot.toLowerCase() === "ai0") return text(["tacticalFeed", "slotLabel"], "Assistant {slot}").replace("{slot}", "0");
+    if (slot.toLowerCase() === "ai1") return text(["tacticalFeed", "slotLabel"], "Assistant {slot}").replace("{slot}", "1");
+    if (slot.toLowerCase() === "ai2") return text(["tacticalFeed", "slotLabel"], "Assistant {slot}").replace("{slot}", "2");
+    return slot.toUpperCase();
+  }
   if (slot.toLowerCase() === "ai0") return "Assistant 0";
   if (slot.toLowerCase() === "ai1") return "Assistant 1";
   if (slot.toLowerCase() === "ai2") return "Assistant 2";
   return slot.toUpperCase();
 }
 
-export function formatRepairTacticalFeedStatusLine(state: RepairUiState): string {
+export function formatRepairTacticalFeedStatusLine(state: RepairUiState, text?: TextFn): string {
   const tactical = state.aiDispatch.tactical;
-  const tacticalSlot = formatAssistantSlot(tactical.targetSlot);
+  const tacticalSlot = text !== undefined ? formatAssistantSlot(tactical.targetSlot, text) : formatAssistantSlot(tactical.targetSlot);
   if (tactical.status === "pending") {
-    return `${tacticalSlot} is checking the latest measurement.`;
+    return text !== undefined ? text(["tacticalFeed", "statusChecking"], "{slot} son ölçümü kontrol ediyor.", { slot: tacticalSlot }) : `${tacticalSlot} is checking the latest measurement.`;
   }
   if (tactical.status === "succeeded") {
-    return tactical.message ?? `${tacticalSlot} added a repair note.`;
+    return tactical.message ?? (text !== undefined ? text(["tacticalFeed", "statusAddedNote"], "{slot} bir onarım notu ekledi.", { slot: tacticalSlot }) : `${tacticalSlot} added a repair note.`);
   }
   if (tactical.status === "failed") {
-    return tactical.message ?? `${tacticalSlot} could not add a repair note.`;
+    return tactical.message ?? (text !== undefined ? text(["tacticalFeed", "statusFailed"], "{slot} bir onarım notu ekleyemedi.", { slot: tacticalSlot }) : `${tacticalSlot} could not add a repair note.`);
   }
 
   const research = state.aiDispatch.research;
-  const researchSlot = formatAssistantSlot(research.targetSlot);
+  const researchSlot = text !== undefined ? formatAssistantSlot(research.targetSlot, text) : formatAssistantSlot(research.targetSlot);
   if (research.status === "pending") {
-    return `${researchSlot} is gathering evidence for this device.`;
+    return text !== undefined ? text(["tacticalFeed", "researchGathering"], "{slot} bu cihaz için kanıt topluyor.", { slot: researchSlot }) : `${researchSlot} is gathering evidence for this device.`;
   }
   if (research.status === "succeeded") {
-    return research.message ?? `${researchSlot} prepared an evidence pack.`;
+    return research.message ?? (text !== undefined ? text(["tacticalFeed", "researchPrepared"], "{slot} bir kanıt paketi hazırladı.", { slot: researchSlot }) : `${researchSlot} prepared an evidence pack.`);
   }
   if (research.status === "failed") {
-    return research.message ?? `${researchSlot} could not prepare an evidence pack.`;
+    return research.message ?? (text !== undefined ? text(["tacticalFeed", "researchFailed"], "{slot} bir kanıt paketi hazırlayamadı.", { slot: researchSlot }) : `${researchSlot} could not prepare an evidence pack.`);
   }
 
   const chat = state.aiDispatch.chat;
-  const chatSlot = formatAssistantSlot(chat.targetSlot);
+  const chatSlot = text !== undefined ? formatAssistantSlot(chat.targetSlot, text) : formatAssistantSlot(chat.targetSlot);
   if (chat.status === "pending") {
-    return `${chatSlot} is drafting a reply.`;
+    return text !== undefined ? text(["tacticalFeed", "chatDrafting"], "{slot} bir cevap taslaklıyor.", { slot: chatSlot }) : `${chatSlot} is drafting a reply.`;
   }
   if (chat.status === "succeeded") {
-    return chat.message ?? `${chatSlot} reply is ready.`;
+    return chat.message ?? (text !== undefined ? text(["tacticalFeed", "chatReady"], "{slot} cevap hazır.", { slot: chatSlot }) : `${chatSlot} reply is ready.`);
   }
   if (chat.status === "failed") {
-    return chat.message ?? `${chatSlot} could not draft a reply.`;
+    return chat.message ?? (text !== undefined ? text(["tacticalFeed", "chatFailed"], "{slot} bir cevap taslaklayamadı.", { slot: chatSlot }) : `${chatSlot} could not draft a reply.`);
   }
 
   return state.guidance.aiInterruption.shouldSpeak === false
-    ? `Quiet mode: waiting for a meaningful change. ${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions} assistant prompts left.`
+    ? text !== undefined ? text(["tacticalFeed", "quietMode"], "Sessiz mod: anlamlı bir değişiklik bekleniyor. {remaining} asistan uyarısı kaldı.", { remaining: state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions }) : `Quiet mode: waiting for a meaningful change. ${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions} assistant prompts left.`
     : state.guidance.aiInterruption.toneLine;
 }
 
@@ -62,7 +72,7 @@ export function renderTacticalFeedPanel(
 
   const calmLine = documentRef.createElement("div");
   calmLine.className = "repair-feed-calmline";
-  calmLine.textContent = formatRepairTacticalFeedStatusLine(state);
+  calmLine.textContent = formatRepairTacticalFeedStatusLine(state, text);
   body.append(calmLine);
 
   const list = documentRef.createElement("div");

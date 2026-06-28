@@ -10,6 +10,7 @@ export function createRepairPanel(
     panelId: string;
     statusDot?: "live" | "risk" | "amber" | "idle";
     title: string;
+    text?: (path: string[], fallback: string) => string;
   }
 ): HTMLElement {
   const panelClasses = options.panelId
@@ -48,8 +49,9 @@ export function createRepairPanel(
       const collapse = documentRef.createElement("button");
       collapse.className = "repair-panel__icon-btn";
       collapse.type = "button";
-      collapse.title = options.collapsed === true ? "Expand panel" : "Collapse panel";
-      collapse.textContent = options.collapsed === true ? "Show" : "Hide";
+      const textFn = options.text || ((_: string[], fallback: string) => fallback);
+      collapse.title = options.collapsed === true ? textFn(["panelControls", "expand"], "Expand panel") : textFn(["panelControls", "collapse"], "Collapse panel");
+      collapse.textContent = options.collapsed === true ? textFn(["panelControls", "show"], "Show") : textFn(["panelControls", "hide"], "Hide");
       collapse.dataset["repairAction"] = "toggle-panel-collapse";
       collapse.dataset["panelId"] = options.panelId;
       collapse.dataset["collapsed"] = String(options.collapsed !== true);

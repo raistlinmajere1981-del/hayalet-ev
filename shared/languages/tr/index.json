@@ -62,6 +62,12 @@
         "subtitle": "Bu koridor, Hayalet Ev'e eklenen odalar için sabit scene merkezi olacak.",
         "panelTitle": "Mevcut Aşama",
         "panelDescription": "Kurulu odalar burada scene modda kapı hedefi, classic modda ise açılış kartı olarak gösterilir."
+      },
+      "repairRoom": {
+        "name": "Tamir Odası",
+        "workbench": {
+          "name": "Onarım Tezgahı"
+        }
       }
     },
     "analyze": {

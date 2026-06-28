@@ -6,54 +6,66 @@ import type {
 } from "../../shared/ui/state.js";
 import { createRepairPanel } from "./panel-shell.js";
 
-type TextFn = (path: string[], fallback: string) => string;
+type TextFn = (
+  path: string[],
+  fallback: string,
+  params?: Record<string, string | number>
+) => string;
 export type RepairRoomSyncRow = [string, string];
 
-const AI_LIFECYCLE_ACTIONS = [
-  ["acknowledged", "Noted"],
-  ["investigating", "Checking"],
-  ["resolved", "Fixed"],
-  ["dismissed", "Ignore"],
-] as const;
+function getAiLifecycleActions(text: TextFn): ReadonlyArray<readonly [string, string]> {
+  return [
+    ["acknowledged", text(["sync", "lifecycleActions", "acknowledged"], "Kaydedildi")],
+    ["investigating", text(["sync", "lifecycleActions", "investigating"], "Kontrol")],
+    ["resolved", text(["sync", "lifecycleActions", "resolved"], "Düzeltildi")],
+    ["dismissed", text(["sync", "lifecycleActions", "dismissed"], "Yoksay")],
+  ] as const;
+}
 
-function formatAssistantSlot(slot: string): string {
+function formatAssistantSlot(slot: string, text?: TextFn): string {
+  if (text !== undefined) {
+    if (slot.toLowerCase() === "ai0") return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "0" });
+    if (slot.toLowerCase() === "ai1") return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "1" });
+    if (slot.toLowerCase() === "ai2") return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "2" });
+    return slot.toUpperCase();
+  }
   if (slot.toLowerCase() === "ai0") return "Assistant 0";
   if (slot.toLowerCase() === "ai1") return "Assistant 1";
   if (slot.toLowerCase() === "ai2") return "Assistant 2";
   return slot.toUpperCase();
 }
 
-function formatTime(iso: string | null): string {
-  if (iso === null) return "not started";
+function formatTime(iso: string | null, text?: TextFn): string {
+  if (iso === null) return text !== undefined ? text(["sync", "status", "notStarted"], "başlatılmadı") : "not started";
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "unknown time";
+  if (Number.isNaN(date.getTime())) return text !== undefined ? text(["sync", "status", "unknownTime"], "bilinmeyen zaman") : "unknown time";
   return date.toLocaleTimeString("en-GB");
 }
 
-export function formatRepairAiDispatchSummary(channel: RepairAiDispatchChannelState): string {
-  const slot = formatAssistantSlot(channel.targetSlot);
-  if (channel.status === "idle") return `${slot} idle`;
+export function formatRepairAiDispatchSummary(channel: RepairAiDispatchChannelState, text?: TextFn): string {
+  const slot = formatAssistantSlot(channel.targetSlot, text);
+  if (channel.status === "idle") return text !== undefined ? text(["sync", "status", "dispatchIdle"], "{slot} boşta", { slot }) : `${slot} idle`;
   if (channel.status === "pending")
-    return `${slot} checking since ${formatTime(channel.startedAt)}`;
+    return text !== undefined ? text(["sync", "status", "dispatchChecking"], "{slot} kontrol ediyor", { slot }) : `${slot} checking since ${formatTime(channel.startedAt, text)}`;
   if (channel.status === "succeeded") {
-    const context = channel.contextRefs.length > 0 ? `, ${channel.contextRefs.length} refs` : "";
-    return `${slot} ready at ${formatTime(channel.completedAt)}${context}`;
+    const context = channel.contextRefs.length > 0 ? text !== undefined ? text(["sync", "status", "dispatchRefs"], ", {count} başvuru", { count: channel.contextRefs.length }) : `, ${channel.contextRefs.length} refs` : "";
+    return text !== undefined ? text(["sync", "status", "dispatchReady"], "{slot} hazır", { slot }) + context : `${slot} ready at ${formatTime(channel.completedAt, text)}${context}`;
   }
-  return `${slot} failed at ${formatTime(channel.completedAt)}`;
+  return text !== undefined ? text(["sync", "status", "dispatchFailed"], "{slot} başarısız", { slot }) : `${slot} failed at ${formatTime(channel.completedAt, text)}`;
 }
 
-export function formatRepairStorageSummary(storage: RepairStorageState): string {
-  if (storage.status === "hydrating") return "Repair history loading";
+export function formatRepairStorageSummary(storage: RepairStorageState, text?: TextFn): string {
+  if (storage.status === "hydrating") return text !== undefined ? text(["sync", "status", "storageLoading"], "Onarım geçmişi yükleniyor") : "Repair history loading";
   if (storage.status === "ready") {
-    const count = `${storage.sessionCount} session${storage.sessionCount === 1 ? "" : "s"}`;
-    return `Repair history ready, ${count}`;
+    const count = `${storage.sessionCount}`;
+    return text !== undefined ? text(["sync", "status", "storageReady"], "Onarım geçmişi hazır, {count}", { count }) : `Repair history ready, ${storage.sessionCount} session${storage.sessionCount === 1 ? "" : "s"}`;
   }
   if (storage.message !== null && storage.message.trim() !== "") {
     return storage.message;
   }
-  if (storage.status === "error") return "Repair history error";
-  if (storage.status === "fallback") return "Repair history limited to current session";
-  return "Repair history not connected";
+  if (storage.status === "error") return text !== undefined ? text(["sync", "status", "storageError"], "Onarım geçmişi hatası") : "Repair history error";
+  if (storage.status === "fallback") return text !== undefined ? text(["sync", "status", "storageFallback"], "Onarım geçmişi yalnızca mevcut oturumla sınırlı") : "Repair history limited to current session";
+  return text !== undefined ? text(["sync", "status", "storageNotConnected"], "Onarım geçmişi bağlı değil") : "Repair history not connected";
 }
 
 export function getRepairRoomSyncRows(
@@ -66,27 +78,27 @@ export function getRepairRoomSyncRows(
     state.aiDispatch.chat.targetSlot,
     state.aiDispatch.research.targetSlot,
     state.aiDispatch.tactical.targetSlot,
-  ].map(formatAssistantSlot);
+  ].map((slot) => formatAssistantSlot(slot, text));
   const firstSlot = slots[0] ?? "Assistant 2";
   const targetSlot = slots.every((slot) => slot === firstSlot) ? firstSlot : slots.join("/");
   return [
-    [text(["sync", "storage"], "Storage"), formatRepairStorageSummary(state.storage)],
-    [text(["sync", "registry"], "Room status"), "Workspace ready"],
-    [text(["sync", "events"], "Timeline"), `${meta.events.length} repair records`],
-    [text(["sync", "session"], "Repair"), session?.title ?? "No repair open"],
+    [text(["sync", "storage"], "Storage"), formatRepairStorageSummary(state.storage, text)],
+    [text(["sync", "registry"], "Eşitleme"), text(["sync", "status", "workspaceReady"], "Çalışma alanı hazır")],
+    [text(["sync", "events"], "Olaylar"), `${meta.events.length} ${text(["sync", "status", "repairRecords"], "onarım kaydı")}`],
+    [text(["sync", "session"], "Oturum"), session?.title ?? text(["sync", "status", "noRepairOpen"], "Açık onarım yok")],
     [
       text(["sync", "playhead"], "Playhead"),
       `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`,
     ],
     [text(["sync", "aiTarget"], "Assistant route"), targetSlot],
-    [text(["sync", "chatDispatch"], "Chat"), formatRepairAiDispatchSummary(state.aiDispatch.chat)],
+    [text(["sync", "chatDispatch"], "Sohbet AI"), formatRepairAiDispatchSummary(state.aiDispatch.chat, text)],
     [
-      text(["sync", "researchDispatch"], "Evidence search"),
-      formatRepairAiDispatchSummary(state.aiDispatch.research),
+      text(["sync", "researchDispatch"], "Araştırma AI"),
+      formatRepairAiDispatchSummary(state.aiDispatch.research, text),
     ],
     [
-      text(["sync", "tacticalDispatch"], "Repair watch"),
-      formatRepairAiDispatchSummary(state.aiDispatch.tactical),
+      text(["sync", "tacticalDispatch"], "Taktik AI"),
+      formatRepairAiDispatchSummary(state.aiDispatch.tactical, text),
     ],
   ];
 }
@@ -138,7 +150,7 @@ export function renderRoomSyncPanel(
   (["ai0", "ai1", "ai2"] as const).forEach((slot) => {
     const option = documentRef.createElement("option");
     option.value = slot;
-    option.textContent = formatAssistantSlot(slot);
+    option.textContent = formatAssistantSlot(slot, text);
     option.selected = currentTarget === slot;
     select.append(option);
   });
@@ -149,14 +161,14 @@ export function renderRoomSyncPanel(
   focusCard.className = "repair-sync-focus";
   const title = documentRef.createElement("div");
   title.className = "repair-sync-focus__title";
-  title.textContent = focused === null ? "Live edge" : focused.kind.toUpperCase();
+  title.textContent = focused === null ? text(["sync", "status", "liveEdge"], "Canlı kenar") : focused.kind.toUpperCase();
   focusCard.append(title);
 
   const detail = documentRef.createElement("div");
   detail.className = "repair-sync-focus__detail";
   detail.textContent =
     focused === null
-      ? "Awaiting workbench event."
+      ? text(["sync", "status", "awaitingEvent"], "Tezgah olayı bekleniyor.")
       : focused.kind === "measurement"
         ? `${focused.reference ?? focused.channel} ${focused.rawDisplay} ${focused.unit}`
         : focused.kind === "ai-mark"
@@ -183,12 +195,12 @@ export function renderRoomSyncPanel(
   if (focused?.kind === "ai-mark") {
     const actions = documentRef.createElement("div");
     actions.className = "repair-sync-focus__actions";
-    AI_LIFECYCLE_ACTIONS.forEach(([stateId, label]) => {
+    getAiLifecycleActions(text).forEach(([stateId, label]) => {
       const button = documentRef.createElement("button");
       button.type = "button";
       button.className = "repair-sync-focus__action";
       button.textContent = label;
-      button.title = `Mark observation as ${label.toLowerCase()}`;
+      button.title = text(["sync", "lifecycleActions", "markTitle"], `Gözlemi işaretle: ${label.toLowerCase()}`);
       button.dataset["repairAction"] = "ai-mark-state";
       button.dataset["eventId"] = focused.id;
       button.dataset["aiState"] = stateId;

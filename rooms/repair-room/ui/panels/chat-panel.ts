@@ -11,19 +11,19 @@ function isDictationReviewActive(state: RepairUiState): boolean {
   );
 }
 
-function getChatModeText(state: RepairUiState): string {
+function getChatModeText(state: RepairUiState, text?: TextFn): string {
   const voice = state.layout.voiceGuidance;
   const settings = state.layout.interactionSettings;
-  if (isDictationReviewActive(state)) return "Voice note waiting for confirmation";
-  if (state.chat.pendingReplyId !== null) return "Assistant is preparing a reply";
+  if (isDictationReviewActive(state)) return text !== undefined ? text(["chat", "status", "dictationReview"], "Sesli not onay bekliyor") : "Voice note waiting for confirmation";
+  if (state.chat.pendingReplyId !== null) return text !== undefined ? text(["chat", "status", "assistantPreparing"], "Asistan bir cevap hazırlıyor") : "Assistant is preparing a reply";
   if (voice.handsBusyMode && voice.ambientListeningState === "listening") {
     return settings.dictationSubmitMode === "send"
-      ? "Hands-free mode: say send or clear after dictation"
-      : "Hands-free mode: dictated notes stay in the composer";
+      ? text !== undefined ? text(["chat", "status", "handsFreeSend"], "Eller serbest: dikte ettikten sonra gönder veya sil de de") : "Hands-free mode: say send or clear after dictation"
+      : text !== undefined ? text(["chat", "status", "handsFreeComposer"], "Eller serbest: dikte edilen notlar taslakta kalır") : "Hands-free mode: dictated notes stay in the composer";
   }
   return settings.autoReadAiReplies
-    ? "Replies can be read aloud from repair controls"
-    : "Text replies only";
+    ? text !== undefined ? text(["chat", "status", "readAloud"], "Cevaplar tamir kontrollerinden sesli okunabilir") : "Replies can be read aloud from repair controls"
+    : text !== undefined ? text(["chat", "status", "textOnly"], "Yazılı cevaplar") : "Text replies only";
 }
 
 export function renderChatPanel(
@@ -47,7 +47,7 @@ export function renderChatPanel(
 
     const role = documentRef.createElement("span");
     role.className = `repair-chat-turn__role repair-chat-turn__role--${turn.role}`;
-    role.textContent = turn.role === "ai" ? "Assistant" : "You";
+    role.textContent = turn.role === "ai" ? text(["chat", "roles", "assistant"], "Asistan") : text(["chat", "roles", "you"], "Sen");
     header.append(role);
 
     const time = documentRef.createElement("span");
@@ -73,7 +73,7 @@ export function renderChatPanel(
 
   const mode = documentRef.createElement("div");
   mode.className = "repair-chat-mode";
-  mode.textContent = getChatModeText(state);
+  mode.textContent = getChatModeText(state, text);
   body.append(mode);
 
   // -- Composer
@@ -102,7 +102,7 @@ export function renderChatPanel(
   const sendBtn = documentRef.createElement("button");
   sendBtn.className = "repair-chat-composer__send";
   sendBtn.textContent =
-    state.chat.pendingReplyId === null ? text(["chat", "send"], "Send") : "Waiting";
+    state.chat.pendingReplyId === null ? text(["chat", "send"], "Gönder") : text(["chat", "status", "waiting"], "Bekliyor");
   sendBtn.disabled = state.chat.pendingReplyId !== null;
   sendBtn.dataset["repairAction"] = "send-chat";
   composer.append(sendBtn);

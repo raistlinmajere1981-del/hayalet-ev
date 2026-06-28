@@ -4,15 +4,17 @@ import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
 
-const MEASUREMENT_MODE_OPTIONS: Array<{ value: RepairMultimeterMode; label: string }> = [
-  { value: "dc-voltage", label: "DC V" },
-  { value: "ac-voltage", label: "AC V" },
-  { value: "resistance", label: "Ohm" },
-  { value: "continuity", label: "Continuity" },
-  { value: "diode", label: "Diode" },
-  { value: "capacitance", label: "Cap" },
-  { value: "frequency", label: "Hz" },
-];
+function getMeasurementModeOptions(text: TextFn): Array<{ value: RepairMultimeterMode; label: string }> {
+  return [
+    { value: "dc-voltage", label: text(["measurement", "labels", "dcVoltage"], "DC Voltage") },
+    { value: "ac-voltage", label: text(["measurement", "labels", "acVoltage"], "AC Voltage") },
+    { value: "resistance", label: text(["measurement", "labels", "resistance"], "Resistance") },
+    { value: "continuity", label: text(["measurement", "labels", "continuity"], "Continuity") },
+    { value: "diode", label: text(["measurement", "labels", "diode"], "Diode") },
+    { value: "capacitance", label: text(["measurement", "labels", "capacitance"], "Capacitance") },
+    { value: "frequency", label: text(["measurement", "labels", "frequency"], "Frequency") },
+  ];
+}
 
 const MEASUREMENT_UNIT_OPTIONS = [
   "V",
@@ -184,7 +186,7 @@ export function renderMeasurementPanel(
     label: text(["measurement", "mode"], "Mode"),
     inputName: "measurement-mode",
     selected: meas.current.mode,
-    items: MEASUREMENT_MODE_OPTIONS,
+    items: getMeasurementModeOptions(text),
   });
   appendSelectInput(documentRef, form, {
     label: text(["measurement", "unit"], "Unit"),

@@ -15,7 +15,49 @@
     "coordGrid": "IZGARA",
     "emptyStateStep1": "Kamerayı başlat",
     "emptyStateStep2": "Kartı çerçevele",
-    "emptyStateStep3": "Hazır olunca dondur"
+    "emptyStateStep3": "Hazır olunca dondur",
+    "toolbar": {
+      "grid": "Izgara",
+      "gridTitle": "Izgara katmanını aç/kapat",
+      "aiMarks": "AI İşaretleri",
+      "aiMarksTitle": "AI işaret katmanını aç/kapat",
+      "operatorNotes": "Operatör Notları",
+      "operatorNotesTitle": "Operatör notlarını aç/kapat",
+      "aiNotes": "AI Notları",
+      "aiNotesTitle": "AI notlarını aç/kapat",
+      "measure": "Ölçüm",
+      "measureTitle": "Ölçüm katmanını aç/kapat",
+      "risks": "Riskler",
+      "risksTitle": "Risk katmanını aç/kapat",
+      "notes": "Notlar",
+      "notesTitle": "Onarım notlarını aç/kapat",
+      "evidence": "Kanıt",
+      "evidenceTitle": "Bilgi kanıtını aç/kapat",
+      "inspect": "İncele",
+      "inspectTitle": "İnceleme modunu aç/kapat"
+    },
+    "guidance": {
+      "ai": "AI",
+      "next": "Sıradaki",
+      "say": "Söyle",
+      "risk": "Risk",
+      "fullBoard": "tam kart",
+      "noPending": "bekleyen ölçüm yok",
+      "linkedEvents": "bağlı olaylar",
+      "selected": "seçili",
+      "critical": "kritik",
+      "calm": "sakin",
+      "pending": "bekleyen",
+      "focusCorridor": "odak koridoru",
+      "noLinked": "Bağlı kayıt yok",
+      "hintResume": "canlıya dön",
+      "hintReadAgain": "tekrar oku",
+      "hintSaveNote": "not kaydet",
+      "hintFreeze": "kamerayı dondur",
+      "hintRepeat": "rehberi tekrarla",
+      "hintMeasure": "ölçüm kaydet",
+      "hintShowRisks": "riskleri göster"
+    }
   },
   "session": {
     "rail": {
@@ -76,7 +118,7 @@
     "hints": {
       "deviceInfo": "Cihaz türü, marka, model ve kart kodunu tamamla; bilinmeyenler için Bilinmiyor seç.",
       "symptoms": "Varsayılan semptomları seç veya kendi semptomunu ekle.",
-      "aiResearch": "AI slotunu seç, araştırmayı başlat veya evidence pack olmadan devam et.",
+      "aiResearch": "AI slotunu seç, araştırmayı başlat veya kanıt paketi olmadan devam et.",
       "evidenceReview": "Oturum arşivine alınacak kaynakları, arızaları ve test noktalarını seç.",
       "ready": "Cihaz, semptom ve araştırma özetini kontrol edip tamiri başlat."
     },
@@ -89,7 +131,7 @@
       "startRepair": "Tamiri başlat"
     },
     "evidenceReview": {
-      "empty": "Evidence pack yok. Araştırmayı tekrar çalıştır veya AI olmadan devam et.",
+      "empty": "Kanıt paketi yok. Araştırmayı tekrar çalıştır veya AI olmadan devam et.",
       "summary": "{resources} kaynak, {failures} arıza notu, {testPoints} test noktası.",
       "failurePrefix": "Arıza",
       "probePrefix": "Prob",
@@ -100,12 +142,12 @@
       "manualAddedBy": "Manuel"
     },
     "research": {
-      "bridgeWarning": "AI bridge çalışmadı veya sonuç dönmedi. Tekrar dene ya da AI olmadan devam et.",
+      "bridgeWarning": "AI köprüsü çalışmadı veya sonuç dönmedi. Tekrar dene ya da AI olmadan devam et.",
       "retry": "Tekrar dene",
       "start": "Araştırmayı başlat",
       "skip": "AI olmadan devam et",
       "noAi": "AI olmadan",
-      "packReady": "Evidence pack hazır",
+      "packReady": "Kanıt paketi hazır",
       "pending": "Bekliyor"
     },
     "labels": {
@@ -128,7 +170,7 @@
       "model": "Model",
       "symptom": "Semptom",
       "research": "Araştırma",
-      "evidence": "Evidence"
+      "evidence": "Kanıt"
     },
     "noRecords": "Kayıt yok",
     "remove": "Kaldır",
@@ -150,7 +192,7 @@
       "noteSource": "Kaynak",
       "noteAdd": "Not ekle",
       "resourceFile": "Dosya",
-      "rail": "Rail"
+      "rail": "Hat"
     },
     "resourcePanel": {
       "schematicTitle": "Şemalar",
@@ -159,8 +201,8 @@
       "boardImageTitle": "Kart görselleri",
       "boardImageAdd": "Görsel ekle",
       "boardImageUrl": "https://... veya /dosya/yolu.png",
-      "datasheetTitle": "Datasheet / doküman",
-      "datasheetAdd": "Doküman ekle",
+      "datasheetTitle": "Veri sayfası / doküman",
+      "datasheetAdd": "Veri sayfası ekle",
       "datasheetUrl": "https://... veya /dosya/yolu.pdf",
       "threadTitle": "Forum / link",
       "threadAdd": "Link ekle",
@@ -173,7 +215,7 @@
   "knowledgePack": {
     "eyebrow": "BİLGİ PAKETİ",
     "title": "AİÖ Sonuç",
-    "empty": "Henüz evidence pack yok",
+    "empty": "Henüz kanıt paketi yok",
     "emptyHelp": "Şemalar, kart fotoğrafları, arıza notları ve test noktaları eklemek için tamir alımından kanıt araştırması çalıştır.",
     "tabs": {
       "schematicPreview": "Şema Önizleme",
@@ -199,7 +241,23 @@
     "addToSession": "Oturuma Ekle",
     "pinToWorkbench": "Bu alanı tezgaha sabitle",
     "preview": "Önizle",
-    "download": "İndir"
+    "download": "İndir",
+    "emptySteps": {
+      "identifyBoard": "Kartı tanımla",
+      "findEvidence": "Kanıt bul",
+      "attachPack": "Paket ekle"
+    },
+    "resourceKinds": {
+      "boardImage": "Kart görseli",
+      "datasheet": "Veri sayfası",
+      "schematic": "Şema",
+      "thread": "Konu",
+      "note": "Not"
+    },
+    "spatial": {
+      "likelyFault": "Muhtemel arıza",
+      "probe": "Prob"
+    }
   },
   "timeline": {
     "eyebrow": "ZAMAN TÜNELİ",
@@ -294,6 +352,11 @@
       "recentReadings": "Son Okumalar",
       "addToTimeline": "Zaman Tüneline Ekle",
       "noReadings": "Henüz manuel ölçüm yok"
+    },
+    "options": {
+      "continuity": "Süreklilik",
+      "diode": "Diyot",
+      "cap": "Kap."
     }
   },
   "chat": {
@@ -304,7 +367,21 @@
     "send": "Gönder",
     "clear": "Sil",
     "viewKnowledgePack": "Bilgi Paketini Aç",
-    "composerPlaceholder": "AİÖ'ye bir şey sor…"
+    "composerPlaceholder": "AİÖ'ye bir şey sor…",
+    "dictationReview": "Sesli not hazır. Gönder de, Gönder'e bas veya sil ve tekrar dikte et.",
+    "status": {
+      "dictationReview": "Sesli not onay bekliyor",
+      "assistantPreparing": "Asistan bir cevap hazırlıyor",
+      "handsFreeSend": "Eller serbest: dikte ettikten sonra gönder veya sil de de",
+      "handsFreeComposer": "Eller serbest: dikte edilen notlar taslakta kalır",
+      "readAloud": "Cevaplar tamir kontrollerinden sesli okunabilir",
+      "textOnly": "Yazılı cevaplar",
+      "waiting": "Bekliyor"
+    },
+    "roles": {
+      "assistant": "Asistan",
+      "you": "Sen"
+    }
   },
   "sync": {
     "eyebrow": "EŞİTLEME",
@@ -318,14 +395,40 @@
     "aiTarget": "AI Hedefi",
     "chatDispatch": "Sohbet AI",
     "researchDispatch": "Araştırma AI",
-    "tacticalDispatch": "Taktik AI"
+    "tacticalDispatch": "Taktik AI",
+    "status": {
+      "storageLoading": "Onarım geçmişi yükleniyor",
+      "storageReady": "Onarım geçmişi hazır, {count}",
+      "storageError": "Onarım geçmişi hatası",
+      "storageFallback": "Onarım geçmişi yalnızca mevcut oturumla sınırlı",
+      "storageNotConnected": "Onarım geçmişi bağlı değil",
+      "workspaceReady": "Çalışma alanı hazır",
+      "noRepairOpen": "Açık onarım yok",
+      "dispatchIdle": "{slot} boşta",
+      "dispatchChecking": "{slot} kontrol ediyor",
+      "dispatchRefs": ", {count} başvuru",
+      "dispatchReady": "{slot} hazır",
+      "dispatchFailed": "{slot} başarısız",
+      "notStarted": "başlatılmadı",
+      "unknownTime": "bilinmeyen zaman",
+      "repairRecords": "onarım kaydı",
+      "liveEdge": "Canlı kenar",
+      "awaitingEvent": "Tezgah olayı bekleniyor."
+    },
+    "lifecycleActions": {
+      "acknowledged": "Kaydedildi",
+      "investigating": "Kontrol",
+      "resolved": "Düzeltildi",
+      "dismissed": "Yoksay",
+      "markTitle": "Gözlemi işaretle: {label}"
+    }
   },
   "settings": {
     "eyebrow": "AYARLAR",
     "title": "Tamir Kontrolleri",
     "operatorOverlayTitle": "Kurulum",
     "handsFreeTitle": "Eller serbest tamir",
-    "handsFreeSubtitle": "Sesli rehberliği, ambient dinlemeyi ve AI cevap okuma davranışını yönetir.",
+    "handsFreeSubtitle": "Sesli rehberliği, ortam dinlemeyi ve AI cevap okuma davranışını yönetir.",
     "companionTitle": "Android eşlikçi",
     "companionSubtitle": "Analyze companion rotaları için Tamir Odası tercihleri.",
     "attentionTitle": "AI dikkati",
@@ -333,7 +436,7 @@
     "mode": "Mod",
     "handsFree": "Eller serbest",
     "readReplies": "Cevapları oku",
-    "ambient": "Ambient",
+    "ambient": "Ortam dinleme",
     "ambientIdle": "Boşta",
     "ambientListening": "Dinle",
     "ambientMuted": "Sessiz",
@@ -353,7 +456,7 @@
     "android": "Android",
     "camera": "Kamera",
     "cameraManual": "Manuel",
-    "cameraAndroid": "Android feed",
+    "cameraAndroid": "Android akışı",
     "budget": "Bütçe",
     "close": "KAPAT"
   },
@@ -397,6 +500,7 @@
   },
   "sessionRail": {
     "archive": "Arşiv",
+    "serialPrefix": "S/N",
     "delete": "Sil",
     "deleteTitle": "Kayıtlı oturumu ve verileri sil"
   },
@@ -414,7 +518,33 @@
     "statusAddedNote": "{slot} bir onarım notu ekledi.",
     "statusFailed": "{slot} bir onarım notu ekleyemedi.",
     "researchGathering": "{slot} bu cihaz için kanıt topluyor.",
-    "researchPrepared": "{slot} bir evidence pack hazırladı.",
-    "researchFailed": "{slot} bir evidence pack hazırlayamadı."
+    "researchPrepared": "{slot} bir kanıt paketi hazırladı.",
+    "researchFailed": "{slot} bir kanıt paketi hazırlayamadı.",
+    "chatDrafting": "{slot} bir cevap taslaklıyor.",
+    "chatReady": "{slot} cevap hazır.",
+    "chatFailed": "{slot} bir cevap taslaklayamadı.",
+    "quietMode": "Sessiz mod: anlamlı bir değişiklik bekleniyor. {remaining} asistan uyarısı kaldı."
+  },
+  "panelChips": {
+    "session": "Oturum",
+    "sessionTitle": "oturum paneli",
+    "feed": "Akış",
+    "feedTitle": "onarım akışı",
+    "aio": "AİÖ",
+    "aioTitle": "AİÖ sonuçları paneli",
+    "timeline": "Zaman Tüneli",
+    "timelineTitle": "zaman tüneli paneli",
+    "chat": "Sohbet",
+    "chatTitle": "sohbet paneli",
+    "measure": "Ölçüm",
+    "measureTitle": "ölçüm paneli",
+    "state": "Durum",
+    "stateTitle": "durum paneli"
+  },
+  "panelControls": {
+    "expand": "Paneli aç",
+    "collapse": "Paneli kapat",
+    "show": "Göster",
+    "hide": "Gizle"
   }
 }

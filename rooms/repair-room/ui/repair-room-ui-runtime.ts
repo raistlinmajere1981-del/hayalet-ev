@@ -142,10 +142,16 @@ interface RepairPanelChipConfig {
   title: string;
 }
 
+type RepairTextFn = (
+  path: string[],
+  fallback: string,
+  params?: Record<string, string | number>
+) => string;
+
 const REPAIR_TOP_PANEL_CHIPS = [
-  { panelId: "session-rail", label: "Session", title: "session panel" },
-  { panelId: "tactical-feed", label: "Feed", title: "repair feed" },
-  { panelId: "knowledge-pack", label: "AIO", title: "AIO results panel" },
+  { panelId: "session-rail", label: "", title: "" },
+  { panelId: "tactical-feed", label: "", title: "" },
+  { panelId: "knowledge-pack", label: "", title: "" },
 ] as const satisfies readonly RepairPanelChipConfig[];
 
 const REPAIR_WORKBENCH_LEFT_PANEL_CHIPS = [
@@ -158,10 +164,10 @@ const REPAIR_WORKBENCH_RIGHT_PANEL_CHIPS = [
 ] as const satisfies readonly RepairPanelChipConfig[];
 
 const REPAIR_BOTTOM_PANEL_CHIPS = [
-  { panelId: "visual-timeline", label: "Timeline", title: "timeline panel" },
-  { panelId: "chat", label: "Chat", title: "chat panel" },
-  { panelId: "measurement", label: "Measure", title: "measurement panel" },
-  { panelId: "room-sync", label: "State", title: "state panel" },
+  { panelId: "visual-timeline", label: "", title: "" },
+  { panelId: "chat", label: "", title: "" },
+  { panelId: "measurement", label: "", title: "" },
+  { panelId: "room-sync", label: "", title: "" },
 ] as const satisfies readonly RepairPanelChipConfig[];
 
 const REPAIR_CHIP_CONTROLLED_PANEL_IDS = [
@@ -307,12 +313,16 @@ function isRepairChipControlledPanel(panelId: RepairPanelId): boolean {
 function createRepairPanelChip(
   documentRef: Document,
   config: RepairPanelChipConfig,
+  text: RepairTextFn,
   extraClassName = ""
 ): HTMLButtonElement {
   const chip = documentRef.createElement("button");
   chip.className = `repair-panel-chip${extraClassName === "" ? "" : ` ${extraClassName}`}`;
   chip.type = "button";
-  chip.textContent = config.label;
+  const labelKey = config.panelId === "session-rail" ? "session" : config.panelId === "tactical-feed" ? "feed" : config.panelId === "knowledge-pack" ? "aio" : config.panelId === "visual-timeline" ? "timeline" : config.panelId === "chat" ? "chat" : config.panelId === "measurement" ? "measure" : "state";
+  const titleKey = `${labelKey}Title`;
+  chip.textContent = text(["panelChips", labelKey], config.label || labelKey);
+  chip.title = text(["panelChips", titleKey], config.title || `${labelKey} panel`);
   chip.dataset["repairAction"] = "toggle-panel-chip";
   chip.dataset["panelId"] = config.panelId;
   chip.dataset["active"] = "true";
@@ -322,23 +332,26 @@ function createRepairPanelChip(
 
 function createRepairPanelChipGroup(
   documentRef: Document,
-  configs: readonly RepairPanelChipConfig[]
+  configs: readonly RepairPanelChipConfig[],
+  text: RepairTextFn
 ): HTMLElement {
   const group = documentRef.createElement("div");
   group.className = "repair-panel-chip-group";
   configs.forEach((config) => {
-    group.append(createRepairPanelChip(documentRef, config));
+    group.append(createRepairPanelChip(documentRef, config, text));
   });
   return group;
 }
 
 function createWorkbenchPanelChipGroup(
   documentRef: Document,
-  position: "left" | "right"
+  position: "left" | "right",
+  text: RepairTextFn
 ): HTMLElement {
   const group = createRepairPanelChipGroup(
     documentRef,
-    position === "left" ? REPAIR_WORKBENCH_LEFT_PANEL_CHIPS : REPAIR_WORKBENCH_RIGHT_PANEL_CHIPS
+    position === "left" ? REPAIR_WORKBENCH_LEFT_PANEL_CHIPS : REPAIR_WORKBENCH_RIGHT_PANEL_CHIPS,
+    text
   );
   group.classList.add(
     "repair-workbench-panel-toggles",
@@ -521,7 +534,7 @@ export function createRepairRoomUiRuntime() {
   });
 
   // -- i18n helper
-  function text(path: string[], fallback: string): string {
+  function text(path: string[], fallback: string, params?: Record<string, string | number>): string {
     let node: unknown = context.translations;
     for (const key of path) {
       if (typeof node === "object" && node !== null && key in (node as Record<string, unknown>)) {
@@ -530,7 +543,13 @@ export function createRepairRoomUiRuntime() {
         return fallback;
       }
     }
-    return typeof node === "string" ? node : fallback;
+    let result = typeof node === "string" ? node : fallback;
+    if (params !== undefined) {
+      for (const [key, value] of Object.entries(params)) {
+        result = result.replace(new RegExp(`\\{${key}\\}`, "g"), String(value));
+      }
+    }
+    return result;
   }
 
   function getManualEvidenceInput(
@@ -786,8 +805,8 @@ export function createRepairRoomUiRuntime() {
       "[data-repair-action='toggle-panel-collapse']"
     );
     if (collapse !== null) {
-      const nextTitle = collapsed ? "Expand panel" : "Collapse panel";
-      const nextText = collapsed ? "Show" : "Hide";
+      const nextTitle = collapsed ? text(["panelControls", "expand"], "Paneli aç") : text(["panelControls", "collapse"], "Paneli kapat");
+      const nextText = collapsed ? text(["panelControls", "show"], "Göster") : text(["panelControls", "hide"], "Gizle");
       if (collapse.title !== nextTitle) collapse.title = nextTitle;
       setTextIfChanged(collapse, nextText);
       setDatasetIfChanged(collapse, "collapsed", String(!collapsed));
@@ -854,7 +873,11 @@ export function createRepairRoomUiRuntime() {
     setDatasetIfChanged(chip, "active", String(visible));
     setDatasetIfChanged(chip, "collapsed", String(!visible));
     chip.setAttribute("aria-pressed", String(visible));
-    const nextTitle = `${visible ? "Hide" : "Show"} ${config.title}`;
+    const labelKey = config.panelId === "session-rail" ? "session" : config.panelId === "tactical-feed" ? "feed" : config.panelId === "knowledge-pack" ? "aio" : config.panelId === "visual-timeline" ? "timeline" : config.panelId === "chat" ? "chat" : config.panelId === "measurement" ? "measure" : "state";
+    const titleKey = `${labelKey}Title`;
+    const prefix = visible ? text(["panelControls", "hide"], "Gizle") : text(["panelControls", "show"], "Göster");
+    const chipTitle = text(["panelChips", titleKey], config.title || `${labelKey} panel`);
+    const nextTitle = `${prefix} ${chipTitle}`;
     if (chip.title !== nextTitle) chip.title = nextTitle;
   }
 
@@ -869,10 +892,10 @@ export function createRepairRoomUiRuntime() {
     if (header === null) return;
 
     if (header.querySelector(".repair-workbench-panel-toggles--left") === null) {
-      header.prepend(createWorkbenchPanelChipGroup(documentRef, "left"));
+      header.prepend(createWorkbenchPanelChipGroup(documentRef, "left", text));
     }
     if (header.querySelector(".repair-workbench-panel-toggles--right") === null) {
-      header.append(createWorkbenchPanelChipGroup(documentRef, "right"));
+      header.append(createWorkbenchPanelChipGroup(documentRef, "right", text));
     }
     syncPanelChipGroup(header, REPAIR_TOP_PANEL_CHIPS);
   }
@@ -919,7 +942,7 @@ export function createRepairRoomUiRuntime() {
       );
       setDatasetIfChanged(master, "active", String(anyVisible));
       master.setAttribute("aria-pressed", String(anyVisible));
-      const nextTitle = anyVisible ? "Hide bottom panels" : "Show bottom panels";
+      const nextTitle = anyVisible ? text(["bottomCluster", "hidePanels"], "Alt panelleri gizle") : text(["bottomCluster", "all"], "Tümü");
       if (master.title !== nextTitle) master.title = nextTitle;
     }
   }
@@ -980,7 +1003,7 @@ export function createRepairRoomUiRuntime() {
         const liveFrame = existingLiveFrame ?? documentRef.createElement("img");
         setClassNameIfChanged(liveFrame, "repair-viewport__live-frame");
         if (liveFrame.getAttribute("src") !== liveStreamUrl) liveFrame.src = liveStreamUrl;
-        liveFrame.alt = livePreview?.label ?? "Android camera live feed";
+        liveFrame.alt = livePreview?.label ?? text(["status", "cameraSourceAndroid"], "Android kamera");
         if (liveFrame.draggable) liveFrame.draggable = false;
         existingImage?.remove();
         existingPlaceholder?.remove();
@@ -1022,7 +1045,7 @@ export function createRepairRoomUiRuntime() {
     } else {
       const hud = panel.querySelector<HTMLElement>(".repair-coord-hud");
       if (hud !== null) {
-        syncCoordHudLabels(hud, ["X —", "Y —", "GRID —"]);
+        syncCoordHudLabels(hud, [`${text(["workbench", "coordX"], "X")} —`, `${text(["workbench", "coordY"], "Y")} —`, `${text(["workbench", "coordGrid"], "IZGARA")} —`]);
       }
     }
 
@@ -1339,7 +1362,7 @@ export function createRepairRoomUiRuntime() {
     master.dataset["repairAction"] = "toggle-bottom-cluster";
     master.dataset["active"] = "true";
     master.setAttribute("aria-pressed", "true");
-    header.append(master, createRepairPanelChipGroup(documentRef, REPAIR_BOTTOM_PANEL_CHIPS));
+    header.append(master, createRepairPanelChipGroup(documentRef, REPAIR_BOTTOM_PANEL_CHIPS, text));
 
     const body = documentRef.createElement("div");
     body.className = "repair-bottom-cluster__body";

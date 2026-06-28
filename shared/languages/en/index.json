@@ -62,6 +62,12 @@
         "subtitle": "This corridor will become the fixed scene hub for installed Ghost House rooms.",
         "panelTitle": "Current Stage",
         "panelDescription": "Installed rooms are projected here as door targets in scene mode and as launch cards in classic mode."
+      },
+      "repairRoom": {
+        "name": "Repair Room",
+        "workbench": {
+          "name": "Repair Workbench"
+        }
       }
     },
     "analyze": {

@@ -100,7 +100,7 @@ function buildSessionCard(
 
   const serial = documentRef.createElement("span");
   serial.className = "repair-session-card__serial";
-  serial.textContent = `S/N ${session.serialNumber}`;
+  serial.textContent = `${text(["sessionRail", "serialPrefix"], "S/N")} ${session.serialNumber}`;
   meta.append(serial);
 
   card.append(meta);
