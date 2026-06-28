@@ -1,71 +1,10 @@
 import type { RepairEvent } from "../../shared/types/index.js";
 import type { RepairUiSnapshotMeta, RepairUiState } from "../../shared/ui/state.js";
 import { resolveRepairAssetUrl } from "../repair-asset-url.js";
+import { formatOffset, getEventKindLabel, getEventLabel } from "../runtime/timeline-helpers.js";
 import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
-
-function formatOffset(ms: number): string {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-  return `+${minutes}:${seconds}`;
-}
-
-function formatTimelineText(value: string): string {
-  return value
-    .split("-")
-    .filter((part) => part.length > 0)
-    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-    .join(" ")
-    .trim();
-}
-
-function formatEventToolLabel(tool: string): string {
-  switch (tool) {
-    case "rect":
-      return "Box";
-    case "freehand":
-      return "Draw";
-    case "measurement-pin":
-      return "Probe";
-    case "freeze-frame":
-      return "Freeze";
-    default:
-      return formatTimelineText(tool);
-  }
-}
-
-function getEventLabel(event: RepairEvent): string {
-  switch (event.kind) {
-    case "ai-mark":
-      return formatTimelineText(event.severity);
-    case "measurement":
-      return event.reference ?? event.channel;
-    case "risk-flag":
-      return "Risk";
-    case "snapshot":
-      return "Snapshot";
-    case "annotation":
-      return formatEventToolLabel(event.tool);
-    case "freeze-frame":
-      return "Freeze";
-    case "note":
-      return "Note";
-    case "session-start":
-      return "Start";
-    case "ai-mark-lifecycle":
-      return "Assistant state";
-    case "investigation-region-created":
-      return "Area";
-    case "investigation-region-updated":
-      return "Area";
-    default:
-      return "Event";
-  }
-}
 
 function getEventThumbnailSrc(event: RepairEvent, state: RepairUiState): string | null {
   if (event.kind === "snapshot" && event.thumbnailSrc !== null) {
@@ -113,7 +52,9 @@ export function renderVisualTimelinePanel(
   const play = documentRef.createElement("button");
   play.className = "repair-timeline__control-btn";
   play.type = "button";
-  play.textContent = state.workbench.timeline.isPlaying ? text(["timeline", "pause"], "Pause") : text(["timeline", "play"], "Play");
+  play.textContent = state.workbench.timeline.isPlaying
+    ? text(["timeline", "pause"], "Duraklat")
+    : text(["timeline", "play"], "Oynat");
   play.dataset["repairAction"] = state.workbench.timeline.isPlaying
     ? "timeline-pause"
     : "timeline-play";
@@ -124,7 +65,7 @@ export function renderVisualTimelinePanel(
     state.workbench.timeline.autoFollowLive ? " repair-timeline__control-btn--active" : ""
   }`;
   live.type = "button";
-  live.textContent = text(["timeline", "followLive"], "Follow live");
+  live.textContent = text(["timeline", "followLive"], "Canlı takip");
   live.dataset["repairAction"] = "timeline-live";
   controls.append(live);
 
@@ -138,7 +79,7 @@ export function renderVisualTimelinePanel(
   const zoomOut = documentRef.createElement("button");
   zoomOut.className = "repair-timeline__control-btn";
   zoomOut.type = "button";
-  zoomOut.textContent = text(["timeline", "zoomOut"], "Zoom out");
+  zoomOut.textContent = text(["timeline", "zoomOut"], "Uzaklaş");
   zoomOut.dataset["repairAction"] = "timeline-zoom";
   zoomOut.dataset["direction"] = "out";
   controls.append(zoomOut);
@@ -146,7 +87,7 @@ export function renderVisualTimelinePanel(
   const zoomIn = documentRef.createElement("button");
   zoomIn.className = "repair-timeline__control-btn";
   zoomIn.type = "button";
-  zoomIn.textContent = text(["timeline", "zoomIn"], "Zoom in");
+  zoomIn.textContent = text(["timeline", "zoomIn"], "Yakınlaş");
   zoomIn.dataset["repairAction"] = "timeline-zoom";
   zoomIn.dataset["direction"] = "in";
   controls.append(zoomIn);
@@ -154,7 +95,7 @@ export function renderVisualTimelinePanel(
   const rangeButton = documentRef.createElement("button");
   rangeButton.className = "repair-timeline__control-btn";
   rangeButton.type = "button";
-  rangeButton.textContent = text(["timeline", "markRange"], "Mark range");
+  rangeButton.textContent = text(["timeline", "markRange"], "Aralık işaretle");
   rangeButton.dataset["repairAction"] = "timeline-range";
   controls.append(rangeButton);
   timeline.append(controls);
@@ -203,7 +144,7 @@ export function renderVisualTimelinePanel(
     const chip = documentRef.createElement("button");
     chip.className = `repair-timeline__chip repair-timeline__chip--${event.kind}${state.workbench.focusedEventId === event.id ? " repair-timeline__chip--active" : ""}`;
     chip.type = "button";
-    chip.title = `${event.kind} — ${event.occurredAt}`;
+    chip.title = `${getEventKindLabel(event, text)} — ${event.occurredAt}`;
     chip.style.left = `${(delta / totalMs) * 100}%`;
     const density =
       meta.replay.timelineDensity.find(
@@ -224,7 +165,7 @@ export function renderVisualTimelinePanel(
       }
       const thumbLabel = documentRef.createElement("span");
       thumbLabel.className = "repair-timeline__thumb-label";
-      thumbLabel.textContent = getEventLabel(event);
+      thumbLabel.textContent = getEventLabel(event, text);
       thumb.append(thumbLabel);
       chip.append(thumb);
     }
@@ -249,7 +190,7 @@ export function renderVisualTimelinePanel(
 
   return createRepairPanel(documentRef, {
     panelId: "visual-timeline",
-    title: text(["timeline", "title"], "Timeline"),
+    title: text(["timeline", "title"], "Görsel Zaman Tüneli"),
     statusDot: state.phase === "session-active" ? "live" : "idle",
     collapsed: state.layout.collapsedPanels["visual-timeline"],
     noPanelControls: true,

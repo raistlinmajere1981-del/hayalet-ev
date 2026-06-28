@@ -20,6 +20,13 @@ function collectKeyPaths(obj: Record<string, unknown>, prefix: string[] = []): S
   return paths;
 }
 
+function getPathValue(obj: Record<string, unknown>, path: string): unknown {
+  return path.split(".").reduce<unknown>((node, key) => {
+    if (typeof node !== "object" || node === null) return undefined;
+    return (node as Record<string, unknown>)[key];
+  }, obj);
+}
+
 void test("repair-room i18n catalog parity: en.json and tr.json share identical key paths", () => {
   const en = JSON.parse(readFileSync(join(I18N_DIR, "en.json"), "utf8")) as Record<string, unknown>;
   const tr = JSON.parse(readFileSync(join(I18N_DIR, "tr.json"), "utf8")) as Record<string, unknown>;
@@ -29,7 +36,6 @@ void test("repair-room i18n catalog parity: en.json and tr.json share identical 
 
   const missingInTr = [...enKeys].filter((k) => !trKeys.has(k));
   const missingInEn = [...trKeys].filter((k) => !enKeys.has(k));
-  const extras = [...enKeys].filter((k) => !trKeys.has(k) || !enKeys.has(k));
 
   assert.equal(
     missingInTr.length,
@@ -42,4 +48,62 @@ void test("repair-room i18n catalog parity: en.json and tr.json share identical 
     `Keys present in tr.json but missing in en.json (${missingInEn.length}):\n  ${missingInEn.join("\n  ")}`
   );
   assert.equal(enKeys.size, trKeys.size, `Key count mismatch: en=${enKeys.size} tr=${trKeys.size}`);
+});
+
+void test("repair-room Turkish catalog covers visible Repair Room chrome", () => {
+  const tr = JSON.parse(readFileSync(join(I18N_DIR, "tr.json"), "utf8")) as Record<string, unknown>;
+  const expected = new Map<string, string>([
+    ["statusbar.version", "Tamir Odası v0.1.0"],
+    ["statusbar.setup", "Kurulum"],
+    ["workbench.noImage", "Kart görseli gerekli"],
+    ["workbench.tools.select.label", "Seç"],
+    ["workbench.tools.pan.label", "Kaydır"],
+    ["workbench.tools.rect.label", "Kutu"],
+    ["workbench.tools.freehand.label", "Çiz"],
+    ["workbench.tools.text.label", "Metin"],
+    ["workbench.toolbar.aiMarks", "AI İşaretleri"],
+    ["workbench.guidance.benchReady", "Tezgah hazır."],
+    ["workbench.guidance.openRepairSession", "Bir tamir oturumu aç."],
+    ["workbench.guidance.phase.observe", "gözlem"],
+    ["timeline.pause", "Duraklat"],
+    ["timeline.followLive", "Canlı takip"],
+    ["timeline.labels.assistantState", "Asistan durumu"],
+    ["sync.title", "Oda Eşitleme"],
+    ["sync.status.liveEdge", "Canlı kenar"],
+    ["sync.inspector.selected", "seçili"],
+    ["tacticalFeed.title", "Tamir Akışı"],
+    ["tacticalFeed.send", "Sor"],
+    ["measurement.manualEntry", "Manuel Okuma"],
+    ["chat.placeholder", "Bir onarım notu yaz veya dikte et..."],
+    ["panelChips.state", "Durum"],
+  ]);
+
+  for (const [path, value] of expected) {
+    assert.equal(getPathValue(tr, path), value, path);
+  }
+});
+
+void test("repair-room persistent UI chrome refreshes when host locale context changes", () => {
+  const runtimeSource = readFileSync(
+    join(process.cwd(), "rooms/repair-room/ui/repair-room-ui-runtime.ts"),
+    "utf8"
+  );
+
+  assert.match(runtimeSource, /translationRevision/);
+  assert.match(runtimeSource, /syncPersistentShellText/);
+  assert.match(runtimeSource, /found = false/);
+  assert.match(runtimeSource, /panelElements\.clear\(\)/);
+  assert.match(runtimeSource, /panelSignatures\.clear\(\)/);
+  assert.match(runtimeSource, /buildRepairPanelSignature\(\{ meta, panelId, state \}\)/);
+});
+
+void test("repair-room workbench layer toolbar labels come from i18n", () => {
+  const workbenchSource = readFileSync(
+    join(process.cwd(), "rooms/repair-room/ui/panels/workbench-stage-panel.ts"),
+    "utf8"
+  );
+
+  assert.match(workbenchSource, /labelKey: "aiMarks"/);
+  assert.match(workbenchSource, /text\(\["workbench", "toolbar", layer\.labelKey\]/);
+  assert.match(workbenchSource, /createLayerButton\(documentRef, state, layer, text\)/);
 });

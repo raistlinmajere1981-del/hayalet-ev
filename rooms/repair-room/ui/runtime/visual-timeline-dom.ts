@@ -7,16 +7,22 @@ import {
   setStyleIfChanged,
   setTextIfChanged,
 } from "./dom-utils.js";
-import { formatOffset, getEventLabel } from "./timeline-helpers.js";
+import {
+  formatOffset,
+  getEventKindLabel,
+  getEventLabel,
+  type RepairTimelineTextFn,
+} from "./timeline-helpers.js";
 
 export function createRepairVisualTimelineDomRuntime(params: {
   applyLiveSnapshotUpdates: () => void;
   documentRef: Document;
   meta: RepairUiSnapshotMeta;
   state: RepairUiState;
+  text: RepairTimelineTextFn;
   updatePanelChrome: (panel: HTMLElement, panelId: RepairPanelId) => void;
 }) {
-  const { applyLiveSnapshotUpdates, documentRef, meta, state, updatePanelChrome } = params;
+  const { applyLiveSnapshotUpdates, documentRef, meta, state, text, updatePanelChrome } = params;
 
   function getTimelineModel(): {
     contentWidthPx: number;
@@ -142,7 +148,7 @@ export function createRepairVisualTimelineDomRuntime(params: {
       state.workbench.focusedEventId === event.id ? " repair-timeline__chip--active" : ""
     }`;
     chip.setAttribute("type", "button");
-    chip.title = `${event.kind} — ${event.occurredAt}`;
+    chip.title = `${getEventKindLabel(event, text)} — ${event.occurredAt}`;
     chip.style.left = `${(deltaMs / totalMs) * 100}%`;
     const density =
       meta.replay.timelineDensity.find(
@@ -177,7 +183,7 @@ export function createRepairVisualTimelineDomRuntime(params: {
       thumbLabel.className = "repair-timeline__thumb-label";
       thumb.append(thumbLabel);
     }
-    thumbLabel.textContent = getEventLabel(event);
+    thumbLabel.textContent = getEventLabel(event, text);
     return chip;
   }
 
@@ -268,7 +274,12 @@ export function createRepairVisualTimelineDomRuntime(params: {
     if (playButton !== null) {
       const nextAction = state.workbench.timeline.isPlaying ? "timeline-pause" : "timeline-play";
       setDatasetIfChanged(playButton, "repairAction", nextAction);
-      setTextIfChanged(playButton, state.workbench.timeline.isPlaying ? "Pause" : "Play");
+      setTextIfChanged(
+        playButton,
+        state.workbench.timeline.isPlaying
+          ? text(["timeline", "pause"], "Duraklat")
+          : text(["timeline", "play"], "Oynat")
+      );
     }
     const liveButton = panel.querySelector<HTMLElement>("[data-repair-action='timeline-live']");
     liveButton?.classList.toggle(

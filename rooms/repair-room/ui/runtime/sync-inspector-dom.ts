@@ -1,20 +1,16 @@
 import type { RepairEvent, RepairPanelId } from "../../shared/types/index.js";
 import type { RepairUiSnapshotMeta, RepairUiState } from "../../shared/ui/state.js";
-import { getRepairRoomSyncRows } from "../panels/room-sync-panel.js";
+import { REPAIR_ROOM_SYNC_ROW_KEYS, getRepairRoomSyncRows } from "../panels/room-sync-panel.js";
 import { setClassNameIfChanged, setDatasetIfChanged, setTextIfChanged } from "./dom-utils.js";
+import { getEventKindLabel, type RepairTimelineTextFn } from "./timeline-helpers.js";
 
-const AI_LIFECYCLE_ACTIONS = [
-  ["acknowledged", "Noted"],
-  ["investigating", "Checking"],
-  ["resolved", "Fixed"],
-  ["dismissed", "Ignore"],
-] as const;
+const AI_LIFECYCLE_ACTIONS = ["acknowledged", "investigating", "resolved", "dismissed"] as const;
 
 export function createRepairSyncInspectorDomRuntime(params: {
   documentRef: Document;
   meta: RepairUiSnapshotMeta;
   state: RepairUiState;
-  text: (path: string[], fallback: string) => string;
+  text: RepairTimelineTextFn;
   updatePanelChrome: (panel: HTMLElement, panelId: RepairPanelId) => void;
 }) {
   const { documentRef, meta, state, text, updatePanelChrome } = params;
@@ -28,7 +24,8 @@ export function createRepairSyncInspectorDomRuntime(params: {
   }
 
   function getSyncFocusedDetail(event: RepairEvent | null): string {
-    if (event === null) return "Awaiting workbench event.";
+    if (event === null)
+      return text(["sync", "status", "awaitingEvent"], "Awaiting workbench event.");
     switch (event.kind) {
       case "measurement":
         return `${event.reference ?? event.channel} ${event.rawDisplay} ${event.unit}`;
@@ -62,7 +59,7 @@ export function createRepairSyncInspectorDomRuntime(params: {
   function getEventBrief(eventId: string): string {
     const event = meta.events.find((candidate) => candidate.id === eventId);
     if (event === undefined) return eventId;
-    return `${event.kind.toUpperCase()} ${new Date(event.occurredAt).toLocaleTimeString("en-GB")}`;
+    return `${getEventKindLabel(event, text).toUpperCase()} ${new Date(event.occurredAt).toLocaleTimeString("en-GB")}`;
   }
 
   function getLinkedInspectorText(event: RepairEvent): string {
@@ -85,11 +82,15 @@ export function createRepairSyncInspectorDomRuntime(params: {
           : event.linkedEventIds;
     const parts = [
       linkedMeasurements.length > 0
-        ? `MEASURE ${linkedMeasurements.map(getEventBrief).join(", ")}`
+        ? `${text(["sync", "inspector", "measurePrefix"], "MEASURE")} ${linkedMeasurements.map(getEventBrief).join(", ")}`
         : null,
-      linkedAiMarks.length > 0 ? `AI ${linkedAiMarks.map(getEventBrief).join(", ")}` : null,
+      linkedAiMarks.length > 0
+        ? `${text(["sync", "inspector", "aiPrefix"], "AI")} ${linkedAiMarks.map(getEventBrief).join(", ")}`
+        : null,
     ].filter((part): part is string => part !== null);
-    return parts.length > 0 ? parts.join(" • ") : "No linked forensic records";
+    return parts.length > 0
+      ? parts.join(" • ")
+      : text(["sync", "inspector", "noLinked"], "No linked forensic records");
   }
 
   function getInspectorMetaText(event: RepairEvent): string {
@@ -113,15 +114,13 @@ export function createRepairSyncInspectorDomRuntime(params: {
     if (event.kind === "investigation-region-updated") {
       return `${base} • ${(event.status ?? "updated").toUpperCase()} • ${event.regionId}`;
     }
-    return `${base} • ${event.linkedEventIds.length} linked events`;
+    return `${base} • ${event.linkedEventIds.length} ${text(["sync", "inspector", "linkedEvents"], "linked events")}`;
   }
 
   function updateSyncLiveDom(root: Document | HTMLElement = documentRef): void {
     root.querySelectorAll<HTMLElement>(".repair-sync-row").forEach((row) => {
-      const labelElement = row.querySelector<HTMLElement>(".repair-sync-row__label");
-      const label = labelElement === null ? "" : labelElement.textContent.trim().toLowerCase();
       const value = row.querySelector<HTMLElement>(".repair-sync-row__value");
-      if (value !== null && label === "playhead") {
+      if (value !== null && row.dataset["syncRow"] === "playhead") {
         setTextIfChanged(value, `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`);
       }
     });
@@ -152,7 +151,7 @@ export function createRepairSyncInspectorDomRuntime(params: {
       title.className = "repair-annotation-inspector__title";
       inspector.append(title);
     }
-    setTextIfChanged(title, focused.kind.toUpperCase());
+    setTextIfChanged(title, getEventKindLabel(focused, text).toUpperCase());
 
     let detail = inspector.querySelector<HTMLElement>(".repair-annotation-inspector__detail");
     if (detail === null) {
@@ -186,9 +185,9 @@ export function createRepairSyncInspectorDomRuntime(params: {
     }
     setTextIfChanged(
       selection,
-      `${state.workbench.selection.selectedEventIds.length} selected • hover ${
+      `${state.workbench.selection.selectedEventIds.length} ${text(["sync", "inspector", "selected"], "selected")} • ${text(["sync", "inspector", "hover"], "hover")} ${
         state.workbench.selection.hoveredEventId === null
-          ? "none"
+          ? text(["sync", "inspector", "none"], "none")
           : getEventBrief(state.workbench.selection.hoveredEventId)
       }`
     );
@@ -233,6 +232,7 @@ export function createRepairSyncInspectorDomRuntime(params: {
           body?.append(row);
         }
       }
+      setDatasetIfChanged(row, "syncRow", REPAIR_ROOM_SYNC_ROW_KEYS[index] ?? `row-${index}`);
       const labelEl = row.querySelector<HTMLElement>(".repair-sync-row__label");
       if (labelEl !== null) setTextIfChanged(labelEl, label);
       const valueEl = row.querySelector<HTMLElement>(".repair-sync-row__value");
@@ -251,7 +251,12 @@ export function createRepairSyncInspectorDomRuntime(params: {
     const focused = getSyncFocusedEvent();
     const title = panel.querySelector<HTMLElement>(".repair-sync-focus__title");
     if (title !== null)
-      setTextIfChanged(title, focused === null ? "Live edge" : focused.kind.toUpperCase());
+      setTextIfChanged(
+        title,
+        focused === null
+          ? text(["sync", "status", "liveEdge"], "Live edge")
+          : getEventKindLabel(focused, text).toUpperCase()
+      );
     const detail = panel.querySelector<HTMLElement>(".repair-sync-focus__detail");
     if (detail !== null) setTextIfChanged(detail, getSyncFocusedDetail(focused));
     if (focusCard !== null) {
@@ -266,7 +271,8 @@ export function createRepairSyncInspectorDomRuntime(params: {
         focusCard.append(actions);
       }
       const activeKeys = new Set<string>();
-      AI_LIFECYCLE_ACTIONS.forEach(([stateId, label]) => {
+      AI_LIFECYCLE_ACTIONS.forEach((stateId) => {
+        const label = text(["sync", "lifecycleActions", stateId], stateId);
         activeKeys.add(stateId);
         let button = actions.querySelector<HTMLButtonElement>(
           `.repair-sync-focus__action[data-ai-state="${stateId}"]`
@@ -281,7 +287,13 @@ export function createRepairSyncInspectorDomRuntime(params: {
         }
         setTextIfChanged(button, label);
         setDatasetIfChanged(button, "eventId", focused.id);
-        button.title = `Mark observation as ${label.toLowerCase()}`;
+        button.title = text(
+          ["sync", "lifecycleActions", "markTitle"],
+          "Mark observation as {label}",
+          {
+            label: label.toLowerCase(),
+          }
+        );
       });
       actions.querySelectorAll<HTMLElement>(".repair-sync-focus__action").forEach((button) => {
         const stateId = button.dataset["aiState"];

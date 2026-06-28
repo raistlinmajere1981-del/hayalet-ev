@@ -185,6 +185,8 @@
   flex-direction: column;
   min-width: min(var(--repair-px-200), 36%);
   max-width: min(var(--repair-px-220), 46%);
+  max-height: calc(100% - var(--repair-px-72));
+  overflow-y: auto;
 }
 
 .repair-toolbar-group--zoom {
@@ -233,6 +235,11 @@
   width: 100%;
   min-height: var(--repair-px-28);
   padding-block: var(--repair-px-4);
+}
+
+.repair-toolbar__btn--layer .repair-toolbar__label {
+  flex: 1 1 auto;
+  text-align: left;
 }
 
 .repair-toolbar__btn:hover {

@@ -203,13 +203,13 @@ export function isRepairWizardStepIncomplete(state: RepairUiState, stepId: Wizar
 }
 
 function getWizardStepLabel(stepId: WizardStepId, text: TextFn): string {
-  if (stepId === "device-info") return text(["wizard", "steps", "deviceInfo"], "Device");
-  if (stepId === "symptoms") return text(["wizard", "steps", "symptoms"], "Symptom");
-  if (stepId === "ai-research") return text(["wizard", "steps", "aiResearch"], "Research");
+  if (stepId === "device-info") return text(["wizard", "steps", "deviceInfo"], "Cihaz");
+  if (stepId === "symptoms") return text(["wizard", "steps", "symptoms"], "Semptom");
+  if (stepId === "ai-research") return text(["wizard", "steps", "aiResearch"], "Araştırma");
   if (stepId === "evidence-review") {
-    return text(["wizard", "steps", "evidenceReview"], "Review");
+    return text(["wizard", "steps", "evidenceReview"], "İnceleme");
   }
-  return text(["wizard", "steps", "ready"], "Ready");
+  return text(["wizard", "steps", "ready"], "Hazır");
 }
 
 function getWizardHint(step: WizardStepId, text: TextFn): string {
@@ -313,7 +313,7 @@ function appendDeviceTypeSelect(
   wrapper.className = "repair-wizard-field repair-wizard-field--required";
 
   const label = documentRef.createElement("span");
-  label.textContent = text(["wizard", "labels", "deviceType"], "Device type");
+  label.textContent = text(["wizard", "labels", "deviceType"], "Cihaz türü");
   wrapper.append(label);
 
   const select = documentRef.createElement("select");
@@ -323,7 +323,7 @@ function appendDeviceTypeSelect(
 
   const placeholder = documentRef.createElement("option");
   placeholder.value = "";
-  placeholder.textContent = text(["wizard", "labels", "select"], "Select");
+  placeholder.textContent = text(["wizard", "labels", "select"], "Seç");
   select.append(placeholder);
 
   DEVICE_TYPE_OPTIONS.forEach((option) => {
@@ -481,10 +481,14 @@ function appendEvidencePanel(
   return list;
 }
 
-function appendEmptyEvidenceMessage(documentRef: Document, parent: HTMLElement, text: TextFn): void {
+function appendEmptyEvidenceMessage(
+  documentRef: Document,
+  parent: HTMLElement,
+  text: TextFn
+): void {
   const empty = documentRef.createElement("div");
   empty.className = "repair-evidence-panel__empty";
-  empty.textContent = text(["wizard", "noRecords"], "No records");
+  empty.textContent = text(["wizard", "noRecords"], "Kayıt yok");
   parent.append(empty);
 }
 
@@ -727,7 +731,12 @@ function appendManualFailureForm(documentRef: Document, parent: HTMLElement, tex
     parent: form,
     placeholder: text(["wizard", "manual", "failureRationale"], "Rationale / observation"),
   });
-  appendManualEvidenceFormActions(documentRef, form, text(["wizard", "manual", "failureAdd"], "Add failure"), "add-manual-knowledge-failure");
+  appendManualEvidenceFormActions(
+    documentRef,
+    form,
+    text(["wizard", "manual", "failureAdd"], "Add failure"),
+    "add-manual-knowledge-failure"
+  );
   parent.append(form);
 }
 
@@ -742,7 +751,12 @@ function appendManualTestPointForm(documentRef: Document, parent: HTMLElement, t
     parent: grid,
     placeholder: text(["wizard", "manual", "testPointName"], "Test point"),
   });
-  appendManualInput({ documentRef, name: "manual-test-rail", parent: grid, placeholder: text(["wizard", "manual", "rail"], "Rail") });
+  appendManualInput({
+    documentRef,
+    name: "manual-test-rail",
+    parent: grid,
+    placeholder: text(["wizard", "manual", "rail"], "Rail"),
+  });
   appendManualInput({
     documentRef,
     inputMode: "decimal",
@@ -750,7 +764,12 @@ function appendManualTestPointForm(documentRef: Document, parent: HTMLElement, t
     parent: grid,
     placeholder: text(["wizard", "manual", "testPointExpected"], "Expected value"),
   });
-  appendManualInput({ documentRef, name: "manual-test-unit", parent: grid, placeholder: text(["wizard", "manual", "testPointUnit"], "Unit") });
+  appendManualInput({
+    documentRef,
+    name: "manual-test-unit",
+    parent: grid,
+    placeholder: text(["wizard", "manual", "testPointUnit"], "Unit"),
+  });
   appendManualInput({
     documentRef,
     inputMode: "decimal",
@@ -783,7 +802,12 @@ function appendManualNoteForm(documentRef: Document, parent: HTMLElement, text: 
     parent: form,
     placeholder: text(["wizard", "manual", "noteSource"], "Source"),
   });
-  appendManualEvidenceFormActions(documentRef, form, text(["wizard", "manual", "noteAdd"], "Add note"), "add-manual-knowledge-note");
+  appendManualEvidenceFormActions(
+    documentRef,
+    form,
+    text(["wizard", "manual", "noteAdd"], "Add note"),
+    "add-manual-knowledge-note"
+  );
   parent.append(form);
 }
 
@@ -850,31 +874,74 @@ function renderDeviceStep(documentRef: Document, state: RepairUiState, text: Tex
   form.className = "repair-wizard-form";
   const draft = state.wizard.draft;
   appendDeviceTypeSelect(documentRef, form, state, text);
-  appendField(documentRef, form, text(["wizard", "labels", "manufacturer"], "Manufacturer"), "manufacturer", draft.manufacturer, {
-    datalist: getManufacturerSuggestions(draft.deviceType),
-    required: true,
-  });
-  appendField(documentRef, form, text(["wizard", "labels", "model"], "Model"), "model", draft.model, {
-    datalist: getModelSuggestions(draft.deviceType, draft.manufacturer),
-    required: true,
-  });
-  appendField(documentRef, form, text(["wizard", "labels", "boardCode"], "Board code"), "boardCode", draft.boardCode, {
-    datalist: getBoardCodeSuggestions(draft.deviceType, draft.manufacturer, draft.model),
-    required: true,
-  });
-  appendField(documentRef, form, text(["wizard", "labels", "serialNumber"], "Serial / job no"), "serialNumber", draft.serialNumber);
-  appendField(documentRef, form, text(["wizard", "labels", "intakeNotes"], "Bench note"), "intakeNotes", draft.intakeNotes, {
-    multiline: true,
-  });
+  appendField(
+    documentRef,
+    form,
+    text(["wizard", "labels", "manufacturer"], "Marka"),
+    "manufacturer",
+    draft.manufacturer,
+    {
+      datalist: getManufacturerSuggestions(draft.deviceType),
+      required: true,
+    }
+  );
+  appendField(
+    documentRef,
+    form,
+    text(["wizard", "labels", "model"], "Model"),
+    "model",
+    draft.model,
+    {
+      datalist: getModelSuggestions(draft.deviceType, draft.manufacturer),
+      required: true,
+    }
+  );
+  appendField(
+    documentRef,
+    form,
+    text(["wizard", "labels", "boardCode"], "Kart kodu"),
+    "boardCode",
+    draft.boardCode,
+    {
+      datalist: getBoardCodeSuggestions(draft.deviceType, draft.manufacturer, draft.model),
+      required: true,
+    }
+  );
+  appendField(
+    documentRef,
+    form,
+    text(["wizard", "labels", "serialNumber"], "Seri / iş no"),
+    "serialNumber",
+    draft.serialNumber
+  );
+  appendField(
+    documentRef,
+    form,
+    text(["wizard", "labels", "intakeNotes"], "Tezgah notu"),
+    "intakeNotes",
+    draft.intakeNotes,
+    {
+      multiline: true,
+    }
+  );
   return form;
 }
 
-function renderSymptomsStep(documentRef: Document, state: RepairUiState, text: TextFn): HTMLElement {
+function renderSymptomsStep(
+  documentRef: Document,
+  state: RepairUiState,
+  text: TextFn
+): HTMLElement {
   const form = documentRef.createElement("div");
   form.className = "repair-wizard-form";
   const draft = state.wizard.draft;
 
-  const availableGroup = appendSymptomGroup(documentRef, form, text(["wizard", "labels", "symptomGroupAvailable"], "Suggested symptoms"), "available");
+  const availableGroup = appendSymptomGroup(
+    documentRef,
+    form,
+    text(["wizard", "labels", "symptomGroupAvailable"], "Suggested symptoms"),
+    "available"
+  );
   const chipRow = documentRef.createElement("div");
   chipRow.className = "repair-wizard-symptoms";
   const symptomOptions = getSymptomOptionsForWizardDraft(draft);
@@ -891,7 +958,12 @@ function renderSymptomsStep(documentRef: Document, state: RepairUiState, text: T
   availableGroup.append(chipRow);
 
   if (selectedSymptoms.length > 0) {
-    const selectedGroup = appendSymptomGroup(documentRef, form, text(["wizard", "labels", "symptomGroupSelected"], "Selected symptoms"), "selected");
+    const selectedGroup = appendSymptomGroup(
+      documentRef,
+      form,
+      text(["wizard", "labels", "symptomGroupSelected"], "Selected symptoms"),
+      "selected"
+    );
     const selectedRow = documentRef.createElement("div");
     selectedRow.className = "repair-wizard-selected-symptoms";
     selectedSymptoms.forEach((symptom) => {
@@ -913,12 +985,25 @@ function renderSymptomsStep(documentRef: Document, state: RepairUiState, text: T
   customInput.placeholder = text(["wizard", "labels", "customSymptom"], "Custom symptom");
   customInput.dataset["repairInput"] = "wizard-custom-symptom";
   customRow.append(customInput);
-  appendActionButton(documentRef, customRow, text(["wizard", "labels", "add"], "Add"), "add-custom-symptom", "repair-secondary-btn");
+  appendActionButton(
+    documentRef,
+    customRow,
+    text(["wizard", "labels", "add"], "Add"),
+    "add-custom-symptom",
+    "repair-secondary-btn"
+  );
   form.append(customRow);
 
-  appendField(documentRef, form, text(["wizard", "labels", "observationNote"], "Observation note"), "symptomFreeText", draft.symptomFreeText, {
-    multiline: true,
-  });
+  appendField(
+    documentRef,
+    form,
+    text(["wizard", "labels", "observationNote"], "Observation note"),
+    "symptomFreeText",
+    draft.symptomFreeText,
+    {
+      multiline: true,
+    }
+  );
   return form;
 }
 
@@ -956,7 +1041,9 @@ function renderResearchStep(
   appendActionButton(
     documentRef,
     actions,
-    state.wizard.draft.researchStatus === "failed" ? text(["wizard", "research", "retry"], "Retry") : text(["wizard", "research", "start"], "Start research"),
+    state.wizard.draft.researchStatus === "failed"
+      ? text(["wizard", "research", "retry"], "Retry")
+      : text(["wizard", "research", "start"], "Start research"),
     "start-wizard-research"
   );
   appendActionButton(
@@ -1005,9 +1092,13 @@ function renderEvidenceReviewStep(
         id: resource.id,
         label: resource.label,
         meta: joinEvidenceMeta([
-          resource.addedBy === "operator" ? text(["wizard", "evidenceReview", "manualAddedBy"], "Manual") : resource.source,
+          resource.addedBy === "operator"
+            ? text(["wizard", "evidenceReview", "manualAddedBy"], "Manual")
+            : resource.source,
           formatEvidenceConfidence(resource.confidence),
-          resource.pages === null ? null : `${resource.pages} ${text(["knowledgePack", "stats", "pages"], "pages")}`,
+          resource.pages === null
+            ? null
+            : `${resource.pages} ${text(["knowledgePack", "stats", "pages"], "pages")}`,
         ]),
         parent: panel,
         removalKind: "resource",
@@ -1016,11 +1107,21 @@ function renderEvidenceReviewStep(
         text,
       });
     });
-    appendManualResourceForm(documentRef, panel, { kind: config.kind, urlPlaceholder: config.urlPlaceholder }, text);
+    appendManualResourceForm(
+      documentRef,
+      panel,
+      { kind: config.kind, urlPlaceholder: config.urlPlaceholder },
+      text
+    );
   });
 
   const failures = getReviewFailures(pack, manualEvidence);
-  const failurePanel = appendEvidencePanel(documentRef, review, text(["wizard", "failures"], "Failures"), failures.length);
+  const failurePanel = appendEvidencePanel(
+    documentRef,
+    review,
+    text(["wizard", "failures"], "Failures"),
+    failures.length
+  );
   if (failures.length === 0) appendEmptyEvidenceMessage(documentRef, failurePanel, text);
   failures.forEach((failure) => {
     appendEvidenceEntry({
@@ -1069,7 +1170,12 @@ function renderEvidenceReviewStep(
   appendManualTestPointForm(documentRef, testPointPanel, text);
 
   const notes = getReviewNotes(pack, manualEvidence);
-  const notePanel = appendEvidencePanel(documentRef, review, text(["wizard", "notes"], "Notes"), notes.length);
+  const notePanel = appendEvidencePanel(
+    documentRef,
+    review,
+    text(["wizard", "notes"], "Notes"),
+    notes.length
+  );
   if (notes.length === 0) appendEmptyEvidenceMessage(documentRef, notePanel, text);
   notes.forEach((note) => {
     appendEvidenceEntry({
@@ -1091,8 +1197,18 @@ function renderReadyStep(documentRef: Document, state: RepairUiState, text: Text
   const ready = documentRef.createElement("div");
   ready.className = "repair-wizard-form";
   const draft = state.wizard.draft;
-  appendSummaryRow(documentRef, ready, text(["wizard", "summary", "device"], "Device"), `${draft.deviceType} / ${draft.manufacturer}`);
-  appendSummaryRow(documentRef, ready, text(["wizard", "summary", "model"], "Model"), `${draft.model} / ${draft.boardCode}`);
+  appendSummaryRow(
+    documentRef,
+    ready,
+    text(["wizard", "summary", "device"], "Device"),
+    `${draft.deviceType} / ${draft.manufacturer}`
+  );
+  appendSummaryRow(
+    documentRef,
+    ready,
+    text(["wizard", "summary", "model"], "Model"),
+    `${draft.model} / ${draft.boardCode}`
+  );
   appendSummaryRow(
     documentRef,
     ready,
@@ -1118,7 +1234,12 @@ function renderReadyStep(documentRef: Document, state: RepairUiState, text: Text
 
   const actions = documentRef.createElement("div");
   actions.className = "repair-wizard-inline-actions";
-  const start = appendActionButton(documentRef, actions, text(["wizard", "actions", "startRepair"], "Start repair"), "create-session");
+  const start = appendActionButton(
+    documentRef,
+    actions,
+    text(["wizard", "actions", "startRepair"], "Tamiri başlat"),
+    "create-session"
+  );
   start.disabled = !canEnterRepairWizardStep(state, "ready");
   ready.append(actions);
   return ready;

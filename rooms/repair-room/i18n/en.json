@@ -36,6 +36,56 @@
       "inspect": "Inspect",
       "inspectTitle": "Toggle investigation mode"
     },
+    "tools": {
+      "select": {
+        "label": "Select",
+        "title": "Select a board mark"
+      },
+      "pan": {
+        "label": "Pan",
+        "title": "Move the board view"
+      },
+      "zoom-in": {
+        "label": "Zoom in",
+        "title": "Zoom in on the board"
+      },
+      "zoom-out": {
+        "label": "Zoom out",
+        "title": "Zoom out from the board"
+      },
+      "rect": {
+        "label": "Box",
+        "title": "Draw a box around an area"
+      },
+      "freehand": {
+        "label": "Draw",
+        "title": "Draw a freehand board note"
+      },
+      "text": {
+        "label": "Text",
+        "title": "Add a text note"
+      },
+      "measurement-pin": {
+        "label": "Probe",
+        "title": "Add a measurement point"
+      },
+      "arrow": {
+        "label": "Arrow",
+        "title": "Point to a board detail"
+      },
+      "ruler": {
+        "label": "Ruler",
+        "title": "Measure board distance"
+      },
+      "freeze-frame": {
+        "label": "Freeze",
+        "title": "Freeze the current frame"
+      },
+      "snapshot": {
+        "label": "Snapshot",
+        "title": "Capture a board snapshot"
+      }
+    },
     "guidance": {
       "ai": "AI",
       "next": "Next",
@@ -56,7 +106,18 @@
       "hintFreeze": "freeze camera",
       "hintRepeat": "repeat guidance",
       "hintMeasure": "record measurement",
-      "hintShowRisks": "show risks"
+      "hintShowRisks": "show risks",
+      "benchReady": "The bench is ready.",
+      "openRepairSession": "Open a repair session.",
+      "progress": "{phase} {current}/{total}",
+      "phase": {
+        "observe": "observe",
+        "inspect": "inspect",
+        "measure": "measure",
+        "compare": "compare",
+        "verify": "verify",
+        "conclude": "conclude"
+      }
     }
   },
   "session": {
@@ -269,7 +330,21 @@
       "note": "Note",
       "risk": "Risk Flag",
       "freezeFrame": "Freeze Frame",
-      "sessionStart": "Session Start"
+      "sessionStart": "Session Start",
+      "annotation": "Annotation",
+      "aiMarkLifecycle": "Assistant State",
+      "area": "Area",
+      "event": "Event"
+    },
+    "labels": {
+      "risk": "Risk",
+      "snapshot": "Snapshot",
+      "freezeFrame": "Freeze",
+      "note": "Note",
+      "sessionStart": "Start",
+      "assistantState": "Assistant state",
+      "area": "Area",
+      "event": "Event"
     },
     "play": "Play",
     "pause": "Pause",
@@ -421,6 +496,15 @@
       "resolved": "Fixed",
       "dismissed": "Ignore",
       "markTitle": "Mark observation as {label}"
+    },
+    "inspector": {
+      "noLinked": "No linked forensic records",
+      "linkedEvents": "linked events",
+      "selected": "selected",
+      "hover": "hover",
+      "none": "none",
+      "measurePrefix": "MEASURE",
+      "aiPrefix": "AI"
     }
   },
   "settings": {

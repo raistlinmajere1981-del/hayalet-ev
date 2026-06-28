@@ -319,7 +319,20 @@ function createRepairPanelChip(
   const chip = documentRef.createElement("button");
   chip.className = `repair-panel-chip${extraClassName === "" ? "" : ` ${extraClassName}`}`;
   chip.type = "button";
-  const labelKey = config.panelId === "session-rail" ? "session" : config.panelId === "tactical-feed" ? "feed" : config.panelId === "knowledge-pack" ? "aio" : config.panelId === "visual-timeline" ? "timeline" : config.panelId === "chat" ? "chat" : config.panelId === "measurement" ? "measure" : "state";
+  const labelKey =
+    config.panelId === "session-rail"
+      ? "session"
+      : config.panelId === "tactical-feed"
+        ? "feed"
+        : config.panelId === "knowledge-pack"
+          ? "aio"
+          : config.panelId === "visual-timeline"
+            ? "timeline"
+            : config.panelId === "chat"
+              ? "chat"
+              : config.panelId === "measurement"
+                ? "measure"
+                : "state";
   const titleKey = `${labelKey}Title`;
   chip.textContent = text(["panelChips", labelKey], config.label || labelKey);
   chip.title = text(["panelChips", titleKey], config.title || `${labelKey} panel`);
@@ -526,6 +539,7 @@ export function createRepairRoomUiRuntime() {
   let spatialFocusTween: RepairSpatialFocusTween | null = null;
   let spatialFocusTweenToken = 0;
   let lastSpatialFocusKey: string | null = null;
+  let translationRevision = 0;
   const keyboardController = createRepairKeyboardController({
     cancelSpatialFocusTween,
     meta,
@@ -534,16 +548,22 @@ export function createRepairRoomUiRuntime() {
   });
 
   // -- i18n helper
-  function text(path: string[], fallback: string, params?: Record<string, string | number>): string {
+  function text(
+    path: string[],
+    fallback: string,
+    params?: Record<string, string | number>
+  ): string {
     let node: unknown = context.translations;
+    let found = true;
     for (const key of path) {
       if (typeof node === "object" && node !== null && key in (node as Record<string, unknown>)) {
         node = (node as Record<string, unknown>)[key];
       } else {
-        return fallback;
+        found = false;
+        break;
       }
     }
-    let result = typeof node === "string" ? node : fallback;
+    let result = found && typeof node === "string" ? node : fallback;
     if (params !== undefined) {
       for (const [key, value] of Object.entries(params)) {
         result = result.replace(new RegExp(`\\{${key}\\}`, "g"), String(value));
@@ -631,20 +651,24 @@ export function createRepairRoomUiRuntime() {
 
     const title = documentRef.createElement("div");
     title.className = "repair-empty-state__title";
-    title.textContent = text(["workbench", "noImage"], "Board image required");
+    title.textContent = text(["workbench", "noImage"], "Kart görseli gerekli");
     placeholder.append(title);
 
     const copy = documentRef.createElement("div");
     copy.className = "repair-empty-state__copy";
     copy.textContent = text(
       ["workbench", "noImageHelp"],
-      "Start the Android camera or attach a board image to unlock overlays, measurements, and guided repair steps."
+      "Overlay, ölçüm ve rehberli onarım adımlarını kullanmak için Android kamerayı başlat veya bir kart görseli ekle."
     );
     placeholder.append(copy);
 
     const steps = documentRef.createElement("div");
     steps.className = "repair-empty-state__steps";
-    [text(["workbench", "emptyStateStep1"], "Start camera"), text(["workbench", "emptyStateStep2"], "Frame board"), text(["workbench", "emptyStateStep3"], "Freeze when ready")].forEach((step) => {
+    [
+      text(["workbench", "emptyStateStep1"], "Kamerayı başlat"),
+      text(["workbench", "emptyStateStep2"], "Kartı çerçevele"),
+      text(["workbench", "emptyStateStep3"], "Hazır olunca dondur"),
+    ].forEach((step) => {
       const item = documentRef.createElement("span");
       item.textContent = step;
       steps.append(item);
@@ -655,7 +679,7 @@ export function createRepairRoomUiRuntime() {
   }
 
   function buildPanelSignature(panelId: RepairPanelId): string {
-    return buildRepairPanelSignature({ meta, panelId, state });
+    return `${context.locale}:${translationRevision}:${buildRepairPanelSignature({ meta, panelId, state })}`;
   }
 
   function applyLiveSnapshotUpdates(): void {
@@ -805,8 +829,12 @@ export function createRepairRoomUiRuntime() {
       "[data-repair-action='toggle-panel-collapse']"
     );
     if (collapse !== null) {
-      const nextTitle = collapsed ? text(["panelControls", "expand"], "Paneli aç") : text(["panelControls", "collapse"], "Paneli kapat");
-      const nextText = collapsed ? text(["panelControls", "show"], "Göster") : text(["panelControls", "hide"], "Gizle");
+      const nextTitle = collapsed
+        ? text(["panelControls", "expand"], "Paneli aç")
+        : text(["panelControls", "collapse"], "Paneli kapat");
+      const nextText = collapsed
+        ? text(["panelControls", "show"], "Göster")
+        : text(["panelControls", "hide"], "Gizle");
       if (collapse.title !== nextTitle) collapse.title = nextTitle;
       setTextIfChanged(collapse, nextText);
       setDatasetIfChanged(collapse, "collapsed", String(!collapsed));
@@ -816,6 +844,7 @@ export function createRepairRoomUiRuntime() {
   const measurementDom = createRepairMeasurementDomRuntime({
     documentRef,
     state,
+    text,
     updatePanelChrome,
   });
   const visualTimelineDom = createRepairVisualTimelineDomRuntime({
@@ -823,11 +852,13 @@ export function createRepairRoomUiRuntime() {
     documentRef,
     meta,
     state,
+    text,
     updatePanelChrome,
   });
   const tacticalFeedDom = createRepairTacticalFeedDomRuntime({
     documentRef,
     state,
+    text,
     updatePanelChrome,
   });
   const syncInspectorDom = createRepairSyncInspectorDomRuntime({
@@ -873,9 +904,25 @@ export function createRepairRoomUiRuntime() {
     setDatasetIfChanged(chip, "active", String(visible));
     setDatasetIfChanged(chip, "collapsed", String(!visible));
     chip.setAttribute("aria-pressed", String(visible));
-    const labelKey = config.panelId === "session-rail" ? "session" : config.panelId === "tactical-feed" ? "feed" : config.panelId === "knowledge-pack" ? "aio" : config.panelId === "visual-timeline" ? "timeline" : config.panelId === "chat" ? "chat" : config.panelId === "measurement" ? "measure" : "state";
+    const labelKey =
+      config.panelId === "session-rail"
+        ? "session"
+        : config.panelId === "tactical-feed"
+          ? "feed"
+          : config.panelId === "knowledge-pack"
+            ? "aio"
+            : config.panelId === "visual-timeline"
+              ? "timeline"
+              : config.panelId === "chat"
+                ? "chat"
+                : config.panelId === "measurement"
+                  ? "measure"
+                  : "state";
     const titleKey = `${labelKey}Title`;
-    const prefix = visible ? text(["panelControls", "hide"], "Gizle") : text(["panelControls", "show"], "Göster");
+    setTextIfChanged(chip, text(["panelChips", labelKey], config.label || labelKey));
+    const prefix = visible
+      ? text(["panelControls", "hide"], "Gizle")
+      : text(["panelControls", "show"], "Göster");
     const chipTitle = text(["panelChips", titleKey], config.title || `${labelKey} panel`);
     const nextTitle = `${prefix} ${chipTitle}`;
     if (chip.title !== nextTitle) chip.title = nextTitle;
@@ -942,7 +989,9 @@ export function createRepairRoomUiRuntime() {
       );
       setDatasetIfChanged(master, "active", String(anyVisible));
       master.setAttribute("aria-pressed", String(anyVisible));
-      const nextTitle = anyVisible ? text(["bottomCluster", "hidePanels"], "Alt panelleri gizle") : text(["bottomCluster", "all"], "Tümü");
+      const nextTitle = anyVisible
+        ? text(["bottomCluster", "hidePanels"], "Alt panelleri gizle")
+        : text(["bottomCluster", "all"], "Tümü");
       if (master.title !== nextTitle) master.title = nextTitle;
     }
   }
@@ -1003,7 +1052,8 @@ export function createRepairRoomUiRuntime() {
         const liveFrame = existingLiveFrame ?? documentRef.createElement("img");
         setClassNameIfChanged(liveFrame, "repair-viewport__live-frame");
         if (liveFrame.getAttribute("src") !== liveStreamUrl) liveFrame.src = liveStreamUrl;
-        liveFrame.alt = livePreview?.label ?? text(["status", "cameraSourceAndroid"], "Android kamera");
+        liveFrame.alt =
+          livePreview?.label ?? text(["status", "cameraSourceAndroid"], "Android kamera");
         if (liveFrame.draggable) liveFrame.draggable = false;
         existingImage?.remove();
         existingPlaceholder?.remove();
@@ -1045,7 +1095,11 @@ export function createRepairRoomUiRuntime() {
     } else {
       const hud = panel.querySelector<HTMLElement>(".repair-coord-hud");
       if (hud !== null) {
-        syncCoordHudLabels(hud, [`${text(["workbench", "coordX"], "X")} —`, `${text(["workbench", "coordY"], "Y")} —`, `${text(["workbench", "coordGrid"], "IZGARA")} —`]);
+        syncCoordHudLabels(hud, [
+          `${text(["workbench", "coordX"], "X")} —`,
+          `${text(["workbench", "coordY"], "Y")} —`,
+          `${text(["workbench", "coordGrid"], "IZGARA")} —`,
+        ]);
       }
     }
 
@@ -1171,6 +1225,10 @@ export function createRepairRoomUiRuntime() {
     return true;
   }
 
+  function isPanelSignatureOnCurrentLocale(signature: string | undefined): boolean {
+    return signature?.startsWith(`${context.locale}:${translationRevision}:`) === true;
+  }
+
   function syncPanel(
     persistentShell: RepairPersistentShell,
     parent: HTMLElement,
@@ -1203,8 +1261,9 @@ export function createRepairRoomUiRuntime() {
     }
 
     if (
-      consumeSessionRailDraftEchoGuard(lifecycle.panelId) ||
-      shouldKeepSessionRailDomForActiveInteraction(lifecycle.panelId, current)
+      isPanelSignatureOnCurrentLocale(previousSignature) &&
+      (consumeSessionRailDraftEchoGuard(lifecycle.panelId) ||
+        shouldKeepSessionRailDomForActiveInteraction(lifecycle.panelId, current))
     ) {
       // Host echoes draft updates on every keystroke; remounting here drops focus and selection.
       if (lifecycle.panelId === "session-rail") syncSessionWizardStepperDom(current, state);
@@ -1223,11 +1282,13 @@ export function createRepairRoomUiRuntime() {
     const legendBar = documentRef.createElement("div");
     legendBar.className = "repair-legendbar";
 
+    legendBar.dataset["repairLegendbar"] = "true";
+
     const legends: Array<[string, string]> = [
-      [text(["legend", "snapshot"], "Snapshot"), "var(--repair-cyan)"],
-      [text(["legend", "aiMark"], "Assistant mark"), "var(--repair-amber)"],
-      [text(["legend", "measurement"], "Reading"), "var(--repair-text)"],
-      [text(["legend", "note"], "Note"), "var(--repair-info)"],
+      [text(["legend", "snapshot"], "Kare"), "var(--repair-cyan)"],
+      [text(["legend", "aiMark"], "AI İşareti"), "var(--repair-amber)"],
+      [text(["legend", "measurement"], "Ölçüm"), "var(--repair-text)"],
+      [text(["legend", "note"], "Not"), "var(--repair-info)"],
       [text(["legend", "risk"], "Risk"), "var(--repair-risk)"],
     ];
 
@@ -1248,6 +1309,42 @@ export function createRepairRoomUiRuntime() {
     }
 
     return legendBar;
+  }
+
+  function syncPersistentShellText(persistentShell: RepairPersistentShell): void {
+    const statusVersion = persistentShell.root.querySelector<HTMLElement>(
+      "[data-repair-statusbar-version='true']"
+    );
+    if (statusVersion !== null) {
+      setTextIfChanged(statusVersion, text(["statusbar", "version"], "Tamir Odası v0.1.0"));
+    }
+
+    const setupButton = persistentShell.root.querySelector<HTMLElement>(".repair-statusbar__setup");
+    if (setupButton !== null) {
+      setTextIfChanged(setupButton, text(["statusbar", "setup"], "Kurulum"));
+      setupButton.title = text(["statusbar", "setupTitle"], "Tezgah kurulumunu aç");
+    }
+
+    const closeButton = persistentShell.root.querySelector<HTMLElement>(".repair-statusbar__close");
+    if (closeButton !== null) {
+      const returnHome = text(["statusbar", "returnHome"], "Ana sayfaya dön");
+      closeButton.title = returnHome;
+      closeButton.setAttribute("aria-label", returnHome);
+    }
+
+    const legend = persistentShell.root.querySelector<HTMLElement>(
+      "[data-repair-legendbar='true']"
+    );
+    if (legend !== null) {
+      legend.replaceWith(createLegendBar());
+    }
+
+    const master = persistentShell.bottomClusterHeader.querySelector<HTMLElement>(
+      "[data-repair-action='toggle-bottom-cluster']"
+    );
+    if (master !== null) {
+      setTextIfChanged(master, text(["bottomCluster", "all"], "Tümü"));
+    }
   }
 
   function getSettingsOverlayTitle(_tabId: RepairSettingsOverlayTabId): string {
@@ -1357,8 +1454,8 @@ export function createRepairRoomUiRuntime() {
     const master = documentRef.createElement("button");
     master.className = "repair-panel-chip repair-panel-chip--master repair-panel-chip--active";
     master.type = "button";
-    master.textContent = text(["bottomCluster", "all"], "All");
-    master.title = text(["bottomCluster", "hidePanels"], "Hide bottom panels");
+    master.textContent = text(["bottomCluster", "all"], "Tümü");
+    master.title = text(["bottomCluster", "hidePanels"], "Alt panelleri gizle");
     master.dataset["repairAction"] = "toggle-bottom-cluster";
     master.dataset["active"] = "true";
     master.setAttribute("aria-pressed", "true");
@@ -1431,13 +1528,16 @@ export function createRepairRoomUiRuntime() {
 
     const label = documentRef.createElement("span");
     label.className = "repair-statusbar__label";
-    label.textContent = text(["statusbar", "version"], "Repair Room v0.1.0");
+    const labelText = documentRef.createElement("span");
+    labelText.dataset["repairStatusbarVersion"] = "true";
+    labelText.textContent = text(["statusbar", "version"], "Tamir Odası v0.1.0");
+    label.append(labelText);
 
     const setupButton = documentRef.createElement("button");
     setupButton.className = "repair-statusbar__setup";
     setupButton.type = "button";
-    setupButton.textContent = text(["statusbar", "setup"], "Setup");
-    setupButton.title = text(["statusbar", "setupTitle"], "Open bench setup");
+    setupButton.textContent = text(["statusbar", "setup"], "Kurulum");
+    setupButton.title = text(["statusbar", "setupTitle"], "Tezgah kurulumunu aç");
     setupButton.dataset["repairAction"] = "set-settings-overlay";
     setupButton.dataset["open"] = "true";
     setupButton.dataset["tabId"] = "bench-operator";
@@ -1451,8 +1551,8 @@ export function createRepairRoomUiRuntime() {
     closeButton.className = "repair-statusbar__close";
     closeButton.type = "button";
     closeButton.dataset["repairAction"] = "room-close";
-    closeButton.title = text(["statusbar", "returnHome"], "Return to home");
-    closeButton.setAttribute("aria-label", text(["statusbar", "returnHome"], "Return to home"));
+    closeButton.title = text(["statusbar", "returnHome"], "Ana sayfaya dön");
+    closeButton.setAttribute("aria-label", text(["statusbar", "returnHome"], "Ana sayfaya dön"));
     closeButton.textContent = "×";
 
     const clock = documentRef.createElement("span");
@@ -1495,6 +1595,7 @@ export function createRepairRoomUiRuntime() {
     const mount = documentRef.getElementById("app");
     if (mount === null) return;
     const persistentShell = ensurePersistentShell(mount);
+    syncPersistentShellText(persistentShell);
     const primarySurfaceClass = state.guidance.panelVisibility.primarySurface.replace(
       /[^a-z-]/g,
       "-"
@@ -2287,8 +2388,18 @@ export function createRepairRoomUiRuntime() {
 
     switch (msg.type) {
       case "host-context": {
+        const localeChanged = context.locale !== msg.locale;
+        const translationsChanged = context.translations !== msg.translations;
         context.locale = msg.locale;
         context.translations = msg.translations;
+        if (localeChanged || translationsChanged) {
+          translationRevision += 1;
+          shell?.panelElements.forEach((element) => {
+            element.remove();
+          });
+          shell?.panelElements.clear();
+          shell?.panelSignatures.clear();
+        }
         documentRef.documentElement.lang = context.locale;
         render();
         break;

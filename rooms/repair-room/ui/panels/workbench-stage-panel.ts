@@ -1,10 +1,15 @@
 import type { RepairEvent, RepairWorkbenchTool } from "../../shared/types/index.js";
-import type { RepairUiState } from "../../shared/ui/state.js";
+import type { RepairInvestigationPhase, RepairUiState } from "../../shared/ui/state.js";
 import { REPAIR_OVERLAY_TOOLS } from "../overlay/overlay-tools.js";
 import { resolveRepairAssetUrl } from "../repair-asset-url.js";
+import { getEventKindLabel } from "../runtime/timeline-helpers.js";
 import { createRepairPanel } from "./panel-shell.js";
 
-type TextFn = (path: string[], fallback: string) => string;
+type TextFn = (
+  path: string[],
+  fallback: string,
+  params?: Record<string, string | number>
+) => string;
 
 function getFocusedForensicEvent(state: RepairUiState): RepairEvent | null {
   const focusedId = state.workbench.selection.inspectorEventId ?? state.workbench.focusedEventId;
@@ -43,7 +48,7 @@ function getForensicEventDetail(event: RepairEvent): string {
   }
 }
 
-function getForensicEventMeta(event: RepairEvent): string {
+function getForensicEventMeta(event: RepairEvent, text: TextFn): string {
   const time = new Date(event.occurredAt).toLocaleTimeString("en-GB");
   if (event.kind === "annotation") {
     return `${time} • ${(event.meta?.author ?? event.source).toUpperCase()} • ${(
@@ -65,7 +70,7 @@ function getForensicEventMeta(event: RepairEvent): string {
     const status = event.status ?? "updated";
     return `${time} • ${status.toUpperCase()} • ${event.regionId}`;
   }
-  return `${time} • ${event.linkedEventIds.length} linked events`;
+  return `${time} • ${event.linkedEventIds.length} ${text(["workbench", "guidance", "linkedEvents"], "bağlı olaylar")}`;
 }
 
 function getForensicLinkedText(state: RepairUiState, event: RepairEvent, text: TextFn): string {
@@ -97,19 +102,52 @@ function getForensicLinkedText(state: RepairUiState, event: RepairEvent, text: T
     measurementIds.length > 0 ? `MEASURE ${measurementIds.map(brief).join(", ")}` : null,
     aiIds.length > 0 ? `AI ${aiIds.map(brief).join(", ")}` : null,
   ].filter((part): part is string => part !== null);
-  return parts.length > 0 ? parts.join(" • ") : text(["workbench", "guidance", "noLinked"], "Bağlı kayıt yok");
+  return parts.length > 0
+    ? parts.join(" • ")
+    : text(["workbench", "guidance", "noLinked"], "Bağlı kayıt yok");
 }
 
 function getGuidanceMetaText(state: RepairUiState, text: TextFn): string {
   const unresolved = state.guidance.unresolvedCriticalItems;
   const pending = state.guidance.pendingMeasurements.length;
   const parts = [
-    state.guidance.rhythm.progressLabel.toUpperCase(),
-    unresolved > 0 ? `${unresolved} ${text(["workbench", "guidance", "critical"], "kritik")}` : text(["workbench", "guidance", "calm"], "sakin"),
-    pending > 0 ? `${pending} ${text(["workbench", "guidance", "pending"], "bekleyen")}` : text(["workbench", "guidance", "noPending"], "bekleyen ölçüm yok"),
-    state.guidance.focusCorridor.active ? text(["workbench", "guidance", "focusCorridor"], "odak koridoru") : text(["workbench", "guidance", "fullBoard"], "tam kart"),
+    getGuidanceProgressText(state, text).toUpperCase(),
+    unresolved > 0
+      ? `${unresolved} ${text(["workbench", "guidance", "critical"], "kritik")}`
+      : text(["workbench", "guidance", "calm"], "sakin"),
+    pending > 0
+      ? `${pending} ${text(["workbench", "guidance", "pending"], "bekleyen")}`
+      : text(["workbench", "guidance", "noPending"], "bekleyen ölçüm yok"),
+    state.guidance.focusCorridor.active
+      ? text(["workbench", "guidance", "focusCorridor"], "odak koridoru")
+      : text(["workbench", "guidance", "fullBoard"], "tam kart"),
   ];
   return parts.join(" / ");
+}
+
+function getGuidancePhaseLabel(phase: RepairInvestigationPhase, text: TextFn): string {
+  return text(["workbench", "guidance", "phase", phase], phase);
+}
+
+function getGuidanceProgressText(state: RepairUiState, text: TextFn): string {
+  const rhythm = state.guidance.rhythm;
+  const phase = rhythm.lifecycle[rhythm.currentIndex] ?? state.guidance.investigationPhase;
+  return text(["workbench", "guidance", "progress"], "{phase} {current}/{total}", {
+    current: rhythm.currentIndex + 1,
+    phase: getGuidancePhaseLabel(phase, text),
+    total: rhythm.lifecycle.length,
+  });
+}
+
+function localizeGuidanceLine(value: string, text: TextFn): string {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "the bench is ready.") {
+    return text(["workbench", "guidance", "benchReady"], "Tezgah hazır.");
+  }
+  if (normalized === "open a repair session.") {
+    return text(["workbench", "guidance", "openRepairSession"], "Bir tamir oturumu aç.");
+  }
+  return value;
 }
 
 function getViewportMode(state: RepairUiState): "live" | "replay" | "freeze" | "investigation" {
@@ -131,9 +169,18 @@ function getViewportMode(state: RepairUiState): "live" | "replay" | "freeze" | "
 
 function getRepairCommandHints(state: RepairUiState, text: TextFn): string {
   const hints = state.workbench.isFrozen
-    ? [text(["workbench", "guidance", "hintResume"], "canlıya dön"), text(["workbench", "guidance", "hintReadAgain"], "tekrar oku"), text(["workbench", "guidance", "hintSaveNote"], "not kaydet")]
-    : [text(["workbench", "guidance", "hintFreeze"], "kamerayı dondur"), text(["workbench", "guidance", "hintRepeat"], "rehberi tekrarla"), text(["workbench", "guidance", "hintMeasure"], "ölçüm kaydet")];
-  if (state.guidance.unresolvedCriticalItems > 0) hints.unshift(text(["workbench", "guidance", "hintShowRisks"], "riskleri göster"));
+    ? [
+        text(["workbench", "guidance", "hintResume"], "canlıya dön"),
+        text(["workbench", "guidance", "hintReadAgain"], "tekrar oku"),
+        text(["workbench", "guidance", "hintSaveNote"], "not kaydet"),
+      ]
+    : [
+        text(["workbench", "guidance", "hintFreeze"], "kamerayı dondur"),
+        text(["workbench", "guidance", "hintRepeat"], "rehberi tekrarla"),
+        text(["workbench", "guidance", "hintMeasure"], "ölçüm kaydet"),
+      ];
+  if (state.guidance.unresolvedCriticalItems > 0)
+    hints.unshift(text(["workbench", "guidance", "hintShowRisks"], "riskleri göster"));
   return hints.slice(0, 3).join(" / ");
 }
 
@@ -156,17 +203,67 @@ const REPAIR_TOOL_ICONS: Record<RepairWorkbenchTool, string> = {
 
 const REPAIR_TOOLBAR_LAYER_BUTTONS: Array<{
   id: keyof RepairUiState["workbench"]["visibleLayers"];
-  label: string;
-  title: string;
+  labelKey: string;
+  labelFallback: string;
+  titleKey: string;
+  titleFallback: string;
 }> = [
-  { id: "grid", label: "", title: "" },
-  { id: "ai-marks", label: "", title: "" },
-  { id: "operator-annotations", label: "", title: "" },
-  { id: "ai-annotations", label: "", title: "" },
-  { id: "measurements", label: "", title: "" },
-  { id: "risks", label: "", title: "" },
-  { id: "notes", label: "", title: "" },
-  { id: "knowledge", label: "", title: "" },
+  {
+    id: "grid",
+    labelKey: "grid",
+    labelFallback: "Izgara",
+    titleKey: "gridTitle",
+    titleFallback: "Izgara katmanını aç/kapat",
+  },
+  {
+    id: "ai-marks",
+    labelKey: "aiMarks",
+    labelFallback: "AI İşaretleri",
+    titleKey: "aiMarksTitle",
+    titleFallback: "AI işaret katmanını aç/kapat",
+  },
+  {
+    id: "operator-annotations",
+    labelKey: "operatorNotes",
+    labelFallback: "Operatör Notları",
+    titleKey: "operatorNotesTitle",
+    titleFallback: "Operatör notlarını aç/kapat",
+  },
+  {
+    id: "ai-annotations",
+    labelKey: "aiNotes",
+    labelFallback: "AI Notları",
+    titleKey: "aiNotesTitle",
+    titleFallback: "AI notlarını aç/kapat",
+  },
+  {
+    id: "measurements",
+    labelKey: "measure",
+    labelFallback: "Ölçüm",
+    titleKey: "measureTitle",
+    titleFallback: "Ölçüm katmanını aç/kapat",
+  },
+  {
+    id: "risks",
+    labelKey: "risks",
+    labelFallback: "Riskler",
+    titleKey: "risksTitle",
+    titleFallback: "Risk katmanını aç/kapat",
+  },
+  {
+    id: "notes",
+    labelKey: "notes",
+    labelFallback: "Notlar",
+    titleKey: "notesTitle",
+    titleFallback: "Onarım notlarını aç/kapat",
+  },
+  {
+    id: "knowledge",
+    labelKey: "evidence",
+    labelFallback: "Kanıt",
+    titleKey: "evidenceTitle",
+    titleFallback: "Bilgi kanıtını aç/kapat",
+  },
 ];
 
 function appendButtonLabel(
@@ -189,24 +286,31 @@ function appendButtonLabel(
 function createToolButton(
   documentRef: Document,
   state: RepairUiState,
-  tool: (typeof REPAIR_OVERLAY_TOOLS)[number]
+  tool: (typeof REPAIR_OVERLAY_TOOLS)[number],
+  text: TextFn
 ): HTMLElement {
   const btn = documentRef.createElement("button");
   btn.type = "button";
   btn.className = `repair-toolbar__btn repair-toolbar__btn--tool repair-toolbar__btn--text${
     state.workbench.activeTool === tool.id ? " repair-toolbar__btn--active" : ""
   }`;
-  btn.title = tool.title;
+  btn.title = text(["workbench", "tools", tool.id, "title"], tool.title);
   btn.dataset["repairAction"] = "set-tool";
   btn.dataset["tool"] = tool.id;
-  appendButtonLabel(documentRef, btn, REPAIR_TOOL_ICONS[tool.id], tool.label);
+  appendButtonLabel(
+    documentRef,
+    btn,
+    REPAIR_TOOL_ICONS[tool.id],
+    text(["workbench", "tools", tool.id, "label"], tool.label)
+  );
   return btn;
 }
 
 function createLayerButton(
   documentRef: Document,
   state: RepairUiState,
-  layer: (typeof REPAIR_TOOLBAR_LAYER_BUTTONS)[number]
+  layer: (typeof REPAIR_TOOLBAR_LAYER_BUTTONS)[number],
+  text: TextFn
 ): HTMLElement {
   const btn = documentRef.createElement("button");
   const isVisible = state.workbench.visibleLayers[layer.id];
@@ -214,7 +318,7 @@ function createLayerButton(
   btn.className = `repair-toolbar__btn repair-toolbar__btn--layer repair-toolbar__btn--text${
     isVisible ? " repair-toolbar__btn--active" : ""
   }`;
-  btn.title = layer.title;
+  btn.title = text(["workbench", "toolbar", layer.titleKey], layer.titleFallback);
   btn.dataset["repairAction"] = "toggle-overlay-layer";
   btn.dataset["layerId"] = layer.id;
   btn.dataset["visible"] = String(!isVisible);
@@ -225,7 +329,7 @@ function createLayerButton(
 
   const label = documentRef.createElement("span");
   label.className = "repair-toolbar__label";
-  label.textContent = layer.label;
+  label.textContent = text(["workbench", "toolbar", layer.labelKey], layer.labelFallback);
   btn.append(label);
   return btn;
 }
@@ -273,14 +377,14 @@ export function renderWorkbenchStagePanel(
     guidance,
     "repair-guidance-strip__phase",
     text(["workbench", "guidance", "ai"], "AI"),
-    state.guidance.aiInterruption.toneLine
+    localizeGuidanceLine(state.guidance.aiInterruption.toneLine, text)
   );
   appendCopilotCell(
     documentRef,
     guidance,
     "repair-guidance-strip__action",
     text(["workbench", "guidance", "next"], "Sıradaki"),
-    state.guidance.nextBestAction.text
+    localizeGuidanceLine(state.guidance.nextBestAction.text, text)
   );
   appendCopilotCell(
     documentRef,
@@ -336,20 +440,24 @@ export function renderWorkbenchStagePanel(
     placeholder.className = "repair-empty-state";
     const placeholderTitle = documentRef.createElement("div");
     placeholderTitle.className = "repair-empty-state__title";
-    placeholderTitle.textContent = text(["workbench", "noImage"], "Board image required");
+    placeholderTitle.textContent = text(["workbench", "noImage"], "Kart görseli gerekli");
     placeholder.append(placeholderTitle);
 
     const placeholderCopy = documentRef.createElement("div");
     placeholderCopy.className = "repair-empty-state__copy";
     placeholderCopy.textContent = text(
       ["workbench", "noImageHelp"],
-      "Start the Android camera or attach a board image to unlock overlays, measurements, and guided repair steps."
+      "Overlay, ölçüm ve rehberli onarım adımlarını kullanmak için Android kamerayı başlat veya bir kart görseli ekle."
     );
     placeholder.append(placeholderCopy);
 
     const placeholderSteps = documentRef.createElement("div");
     placeholderSteps.className = "repair-empty-state__steps";
-    [text(["workbench", "emptyStateStep1"], "Kamerayı başlat"), text(["workbench", "emptyStateStep2"], "Kartı çerçevele"), text(["workbench", "emptyStateStep3"], "Hazır olunca dondur")].forEach((step) => {
+    [
+      text(["workbench", "emptyStateStep1"], "Kamerayı başlat"),
+      text(["workbench", "emptyStateStep2"], "Kartı çerçevele"),
+      text(["workbench", "emptyStateStep3"], "Hazır olunca dondur"),
+    ].forEach((step) => {
       const item = documentRef.createElement("span");
       item.textContent = step;
       placeholderSteps.append(item);
@@ -385,7 +493,7 @@ export function renderWorkbenchStagePanel(
 
     const title = documentRef.createElement("div");
     title.className = "repair-annotation-inspector__title";
-    title.textContent = inspectorEvent.kind.toUpperCase();
+    title.textContent = getEventKindLabel(inspectorEvent, text).toUpperCase();
     inspector.append(title);
 
     const detail = documentRef.createElement("div");
@@ -395,7 +503,7 @@ export function renderWorkbenchStagePanel(
 
     const meta = documentRef.createElement("div");
     meta.className = "repair-annotation-inspector__meta";
-    meta.textContent = getForensicEventMeta(inspectorEvent);
+    meta.textContent = getForensicEventMeta(inspectorEvent, text);
     inspector.append(meta);
 
     const links = documentRef.createElement("div");
@@ -421,7 +529,7 @@ export function renderWorkbenchStagePanel(
 
   for (const tool of REPAIR_OVERLAY_TOOLS) {
     if (tool.id === "zoom-in" || tool.id === "zoom-out") continue;
-    toolsGroup.append(createToolButton(documentRef, state, tool));
+    toolsGroup.append(createToolButton(documentRef, state, tool, text));
 
     if (tool.id === "pan" || tool.id === "text" || tool.id === "arrow") {
       const sep = documentRef.createElement("span");
@@ -437,7 +545,7 @@ export function renderWorkbenchStagePanel(
   layersGroup.dataset["toolbarGroup"] = "layers";
 
   for (const layer of REPAIR_TOOLBAR_LAYER_BUTTONS) {
-    layersGroup.append(createLayerButton(documentRef, state, layer));
+    layersGroup.append(createLayerButton(documentRef, state, layer, text));
   }
 
   const investigation = documentRef.createElement("button");
@@ -447,7 +555,12 @@ export function renderWorkbenchStagePanel(
   }`;
   investigation.title = text(["workbench", "toolbar", "inspectTitle"], "İnceleme modunu aç/kapat");
   investigation.dataset["repairAction"] = "toggle-investigation-mode";
-  appendButtonLabel(documentRef, investigation, "i", text(["workbench", "toolbar", "inspect"], "İncele"));
+  appendButtonLabel(
+    documentRef,
+    investigation,
+    "i",
+    text(["workbench", "toolbar", "inspect"], "İncele")
+  );
   layersGroup.append(investigation);
 
   toolbar.append(layersGroup);
@@ -457,12 +570,12 @@ export function renderWorkbenchStagePanel(
   zoomGroup.dataset["toolbarGroup"] = "zoom";
   const zoomOut = REPAIR_OVERLAY_TOOLS.find((tool) => tool.id === "zoom-out");
   const zoomIn = REPAIR_OVERLAY_TOOLS.find((tool) => tool.id === "zoom-in");
-  if (zoomOut !== undefined) zoomGroup.append(createToolButton(documentRef, state, zoomOut));
+  if (zoomOut !== undefined) zoomGroup.append(createToolButton(documentRef, state, zoomOut, text));
   const zoomValue = documentRef.createElement("span");
   zoomValue.className = "repair-toolbar__zoom-value";
   zoomValue.textContent = `${Math.round(state.workbench.viewport.zoom * 100)}%`;
   zoomGroup.append(zoomValue);
-  if (zoomIn !== undefined) zoomGroup.append(createToolButton(documentRef, state, zoomIn));
+  if (zoomIn !== undefined) zoomGroup.append(createToolButton(documentRef, state, zoomIn, text));
   toolbar.append(zoomGroup);
 
   viewport.append(toolbar);
@@ -470,7 +583,7 @@ export function renderWorkbenchStagePanel(
 
   return createRepairPanel(documentRef, {
     panelId: "workbench-stage",
-    title: text(["workbench", "title"], "WORKBENCH"),
+    title: text(["workbench", "title"], "Onarım Tezgâhı"),
     statusDot: state.workbench.isFrozen ? "amber" : "live",
     collapsed: state.layout.collapsedPanels["workbench-stage"],
     noPanelControls: true,

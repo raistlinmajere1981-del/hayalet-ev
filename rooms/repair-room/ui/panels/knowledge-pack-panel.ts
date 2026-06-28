@@ -18,10 +18,14 @@ function isPreviewableImageResource(resource: RepairKnowledgePackResource): bool
 
 function getResourceKindLabel(resource: RepairKnowledgePackResource, text?: TextFn): string {
   if (text !== undefined) {
-    if (resource.kind === "board-image") return text(["knowledgePack", "resourceKinds", "boardImage"], "Kart görseli");
-    if (resource.kind === "datasheet") return text(["knowledgePack", "resourceKinds", "datasheet"], "Veri sayfası");
-    if (resource.kind === "schematic") return text(["knowledgePack", "resourceKinds", "schematic"], "Şema");
-    if (resource.kind === "thread") return text(["knowledgePack", "resourceKinds", "thread"], "Konu");
+    if (resource.kind === "board-image")
+      return text(["knowledgePack", "resourceKinds", "boardImage"], "Kart görseli");
+    if (resource.kind === "datasheet")
+      return text(["knowledgePack", "resourceKinds", "datasheet"], "Veri sayfası");
+    if (resource.kind === "schematic")
+      return text(["knowledgePack", "resourceKinds", "schematic"], "Şema");
+    if (resource.kind === "thread")
+      return text(["knowledgePack", "resourceKinds", "thread"], "Konu");
     return text(["knowledgePack", "resourceKinds", "note"], "Not");
   }
   if (resource.kind === "board-image") return "Board image";
@@ -37,20 +41,24 @@ function createKnowledgeEmptyState(documentRef: Document, text: TextFn): HTMLEle
 
   const title = documentRef.createElement("div");
   title.className = "repair-empty-state__title";
-  title.textContent = text(["knowledgePack", "empty"], "No evidence pack yet");
+  title.textContent = text(["knowledgePack", "empty"], "Henüz kanıt paketi yok");
   empty.append(title);
 
   const copy = documentRef.createElement("div");
   copy.className = "repair-empty-state__copy";
   copy.textContent = text(
     ["knowledgePack", "emptyHelp"],
-    "Run evidence search from the repair intake to attach schematics, board photos, failure notes, and test points."
+    "Şemalar, kart fotoğrafları, arıza notları ve test noktalarını eklemek için tamir alımından kanıt araştırması çalıştır."
   );
   empty.append(copy);
 
   const steps = documentRef.createElement("div");
   steps.className = "repair-empty-state__steps";
-  [text(["knowledgePack", "emptySteps", "identifyBoard"], "Kartı tanımla"), text(["knowledgePack", "emptySteps", "findEvidence"], "Kanıt bul"), text(["knowledgePack", "emptySteps", "attachPack"], "Paket ekle")].forEach((step) => {
+  [
+    text(["knowledgePack", "emptySteps", "identifyBoard"], "Kartı tanımla"),
+    text(["knowledgePack", "emptySteps", "findEvidence"], "Kanıt bul"),
+    text(["knowledgePack", "emptySteps", "attachPack"], "Paket ekle"),
+  ].forEach((step) => {
     const item = documentRef.createElement("span");
     item.textContent = step;
     steps.append(item);
@@ -76,8 +84,8 @@ export function renderKnowledgePackPanel(
 
     return createRepairPanel(documentRef, {
       panelId: "knowledge-pack",
-      eyebrow: text(["knowledgePack", "eyebrow"], "EVIDENCE"),
-      title: text(["knowledgePack", "title"], "Evidence Pack"),
+      eyebrow: text(["knowledgePack", "eyebrow"], "BİLGİ PAKETİ"),
+      title: text(["knowledgePack", "title"], "AİÖ Sonuç"),
       statusDot: "idle",
       collapsed: state.layout.collapsedPanels["knowledge-pack"],
       noPanelControls: true,
@@ -108,11 +116,11 @@ export function renderKnowledgePackPanel(
   stats.className = "repair-pack-stats";
 
   const statEntries: Array<[string, number]> = [
-    [text(["knowledgePack", "schematics"], "Schematics"), pack.stats.schematics],
-    [text(["knowledgePack", "boardImages"], "Board Images"), pack.stats.boardImages],
-    [text(["knowledgePack", "commonFailures"], "Common Failures"), pack.stats.commonFailures],
-    [text(["knowledgePack", "repairNotes"], "Repair Notes"), pack.stats.repairNotes],
-    [text(["knowledgePack", "testPoints"], "Test Points"), pack.stats.testPoints],
+    [text(["knowledgePack", "schematics"], "Şemalar"), pack.stats.schematics],
+    [text(["knowledgePack", "boardImages"], "Kart Görselleri"), pack.stats.boardImages],
+    [text(["knowledgePack", "commonFailures"], "Yaygın Arızalar"), pack.stats.commonFailures],
+    [text(["knowledgePack", "repairNotes"], "Onarım Notları"), pack.stats.repairNotes],
+    [text(["knowledgePack", "testPoints"], "Test Noktaları"), pack.stats.testPoints],
   ];
 
   for (const [label, value] of statEntries) {
@@ -140,10 +148,10 @@ export function renderKnowledgePackPanel(
   const tabItems = [
     {
       id: "schematic-preview",
-      label: text(["knowledgePack", "tabSchematic"], "Schematic"),
+      label: text(["knowledgePack", "tabSchematic"], "Şema"),
     },
-    { id: "board-view", label: text(["knowledgePack", "tabBoard"], "Board photos") },
-    { id: "notes", label: text(["knowledgePack", "tabNotes"], "Repair notes") },
+    { id: "board-view", label: text(["knowledgePack", "tabBoard"], "Kart fotoğrafları") },
+    { id: "notes", label: text(["knowledgePack", "tabNotes"], "Onarım notları") },
   ];
 
   for (const tab of tabItems) {
@@ -226,7 +234,7 @@ export function renderKnowledgePackPanel(
     promote.type = "button";
     promote.dataset["repairAction"] = "knowledge-spatial-promote";
     promote.dataset["spatialRefId"] = kp.focusedSpatialRefId;
-    promote.textContent = text(["knowledgePack", "pinToWorkbench"], "Pin this area to workbench");
+    promote.textContent = text(["knowledgePack", "pinToWorkbench"], "Bu alanı tezgâha sabitle");
     spatialList.append(promote);
   }
   body.append(spatialList);
@@ -235,7 +243,7 @@ export function renderKnowledgePackPanel(
   if (kp.attachedToSessionId === null) {
     const cta = documentRef.createElement("button");
     cta.className = "repair-cta-btn";
-    cta.textContent = text(["knowledgePack", "addToSession"], "Use in this repair");
+    cta.textContent = text(["knowledgePack", "addToSession"], "Bu tamirde kullan");
     cta.dataset["repairAction"] = "attach-knowledge-pack";
     cta.dataset["packId"] = pack.id;
     body.append(cta);
@@ -243,8 +251,8 @@ export function renderKnowledgePackPanel(
 
   return createRepairPanel(documentRef, {
     panelId: "knowledge-pack",
-    eyebrow: text(["knowledgePack", "eyebrow"], "EVIDENCE"),
-    title: text(["knowledgePack", "title"], "Evidence Pack"),
+    eyebrow: text(["knowledgePack", "eyebrow"], "BİLGİ PAKETİ"),
+    title: text(["knowledgePack", "title"], "AİÖ Sonuç"),
     statusDot: kp.attachedToSessionId !== null ? "live" : "idle",
     collapsed: state.layout.collapsedPanels["knowledge-pack"],
     noPanelControls: true,

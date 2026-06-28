@@ -1,20 +1,12 @@
-import type { RepairMultimeterMode } from "../../shared/types/index.js";
 import type { RepairUiState } from "../../shared/ui/state.js";
+import {
+  getMeasurementDisplayLabel,
+  getMeasurementModeOptions,
+  getMeasurementModeRangeText,
+} from "../runtime/measurement-labels.js";
 import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
-
-function getMeasurementModeOptions(text: TextFn): Array<{ value: RepairMultimeterMode; label: string }> {
-  return [
-    { value: "dc-voltage", label: text(["measurement", "labels", "dcVoltage"], "DC Voltage") },
-    { value: "ac-voltage", label: text(["measurement", "labels", "acVoltage"], "AC Voltage") },
-    { value: "resistance", label: text(["measurement", "labels", "resistance"], "Resistance") },
-    { value: "continuity", label: text(["measurement", "labels", "continuity"], "Continuity") },
-    { value: "diode", label: text(["measurement", "labels", "diode"], "Diode") },
-    { value: "capacitance", label: text(["measurement", "labels", "capacitance"], "Capacitance") },
-    { value: "frequency", label: text(["measurement", "labels", "frequency"], "Frequency") },
-  ];
-}
 
 const MEASUREMENT_UNIT_OPTIONS = [
   "V",
@@ -99,7 +91,7 @@ function appendSelectInput(
 function appendReadingsEmptyState(documentRef: Document, list: HTMLElement, text: TextFn): void {
   const empty = documentRef.createElement("div");
   empty.className = "repair-readings-empty";
-  empty.textContent = text(["measurement", "labels", "noReadings"], "No manual readings yet");
+  empty.textContent = text(["measurement", "labels", "noReadings"], "Henüz manuel ölçüm yok");
   list.append(empty);
 }
 
@@ -120,9 +112,9 @@ export function renderMeasurementPanel(
   tabs.className = "repair-tabs";
 
   const tabItems = [
-    { id: "multimeter", label: text(["measurement", "tabMultimeter"], "Multimeter") },
-    { id: "power-supply", label: text(["measurement", "tabPsu"], "Power Supply") },
-    { id: "signal-gen", label: text(["measurement", "tabSigGen"], "Signal Gen") },
+    { id: "multimeter", label: text(["measurement", "tabMultimeter"], "Multimetre") },
+    { id: "power-supply", label: text(["measurement", "tabPsu"], "Güç Kaynağı") },
+    { id: "signal-gen", label: text(["measurement", "tabSigGen"], "Sinyal Üretici") },
   ];
 
   for (const tab of tabItems) {
@@ -152,55 +144,55 @@ export function renderMeasurementPanel(
 
   const labelEl = documentRef.createElement("div");
   labelEl.className = "repair-measurement-display__label";
-  labelEl.textContent = meas.current.label;
+  labelEl.textContent = getMeasurementDisplayLabel(meas.current.label, text);
   display.append(labelEl);
 
   const modeEl = documentRef.createElement("div");
   modeEl.className = "repair-measurement-display__mode";
-  modeEl.textContent = `${meas.current.mode.replace(/-/g, " ")} / ${meas.current.range}`;
+  modeEl.textContent = getMeasurementModeRangeText(meas.current.mode, meas.current.range, text);
   display.append(modeEl);
 
   body.append(display);
 
   const formHeader = documentRef.createElement("div");
   formHeader.className = "repair-section-label";
-  formHeader.textContent = text(["measurement", "manualEntry"], "Manual Reading");
+  formHeader.textContent = text(["measurement", "manualEntry"], "Manuel Okuma");
   body.append(formHeader);
 
   const form = documentRef.createElement("div");
   form.className = "repair-measurement-form";
 
   appendTextInput(documentRef, form, {
-    label: text(["measurement", "reference"], "Reference"),
+    label: text(["measurement", "reference"], "Referans"),
     inputName: "measurement-reference",
     placeholder: "TP1 / U14 VCC",
   });
   appendTextInput(documentRef, form, {
-    label: text(["measurement", "value"], "Value"),
+    label: text(["measurement", "value"], "Değer"),
     inputName: "measurement-raw-display",
     placeholder: "0.000 / OL",
     inputMode: "decimal",
     required: true,
   });
   appendSelectInput(documentRef, form, {
-    label: text(["measurement", "mode"], "Mode"),
+    label: text(["measurement", "mode"], "Mod"),
     inputName: "measurement-mode",
     selected: meas.current.mode,
     items: getMeasurementModeOptions(text),
   });
   appendSelectInput(documentRef, form, {
-    label: text(["measurement", "unit"], "Unit"),
+    label: text(["measurement", "unit"], "Birim"),
     inputName: "measurement-unit",
     selected: meas.current.unit || "V",
     items: MEASUREMENT_UNIT_OPTIONS.map((unit) => ({ value: unit, label: unit })),
   });
   appendTextInput(documentRef, form, {
-    label: text(["measurement", "range"], "Range"),
+    label: text(["measurement", "range"], "Aralık"),
     inputName: "measurement-range",
     placeholder: meas.current.range === "-" ? "20 V" : meas.current.range,
   });
   appendTextInput(documentRef, form, {
-    label: text(["measurement", "channel"], "Channel"),
+    label: text(["measurement", "channel"], "Kanal"),
     inputName: "measurement-channel",
     placeholder: "COM/V",
     value: "COM/V",
@@ -209,19 +201,19 @@ export function renderMeasurementPanel(
   const record = documentRef.createElement("button");
   record.className = "repair-measurement-form__action";
   record.type = "button";
-  record.textContent = text(["measurement", "record"], "Record");
+  record.textContent = text(["measurement", "record"], "Kaydet");
   record.dataset["repairAction"] = "add-manual-measurement";
   record.disabled = hasActiveSession === false;
   record.title = hasActiveSession
-    ? text(["measurement", "recordTitle"], "Record manual measurement")
-    : text(["measurement", "recordDisabled"], "Open a repair session first");
+    ? text(["measurement", "recordTitle"], "Manuel ölçüm kaydet")
+    : text(["measurement", "recordDisabled"], "Önce bir tamir oturumu aç");
   form.append(record);
   body.append(form);
 
   // -- Recent readings
   const readingsHeader = documentRef.createElement("div");
   readingsHeader.className = "repair-section-label";
-  readingsHeader.textContent = text(["measurement", "recent"], "Recent Readings");
+  readingsHeader.textContent = text(["measurement", "recent"], "Son Okumalar");
   body.append(readingsHeader);
 
   const readingsList = documentRef.createElement("div");
@@ -258,7 +250,7 @@ export function renderMeasurementPanel(
   if (evidence.length > 0) {
     const evidenceHeader = documentRef.createElement("div");
     evidenceHeader.className = "repair-section-label";
-    evidenceHeader.textContent = text(["measurement", "evidence"], "Spatial Evidence");
+    evidenceHeader.textContent = text(["measurement", "evidence"], "Konumsal Kanıt");
     body.append(evidenceHeader);
 
     const evidenceList = documentRef.createElement("div");
@@ -300,8 +292,8 @@ export function renderMeasurementPanel(
 
   return createRepairPanel(documentRef, {
     panelId: "measurement",
-    eyebrow: text(["measurement", "eyebrow"], "INSTRUMENTS"),
-    title: text(["measurement", "title"], "Measurement"),
+    eyebrow: text(["measurement", "eyebrow"], "ÖLÇÜM PANELİ"),
+    title: text(["measurement", "title"], "Multimetre"),
     statusDot: meas.current.hold ? "amber" : "live",
     collapsed: state.layout.collapsedPanels["measurement"],
     noPanelControls: true,

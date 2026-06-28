@@ -50,8 +50,14 @@ export function createRepairPanel(
       collapse.className = "repair-panel__icon-btn";
       collapse.type = "button";
       const textFn = options.text || ((_: string[], fallback: string) => fallback);
-      collapse.title = options.collapsed === true ? textFn(["panelControls", "expand"], "Expand panel") : textFn(["panelControls", "collapse"], "Collapse panel");
-      collapse.textContent = options.collapsed === true ? textFn(["panelControls", "show"], "Show") : textFn(["panelControls", "hide"], "Hide");
+      collapse.title =
+        options.collapsed === true
+          ? textFn(["panelControls", "expand"], "Expand panel")
+          : textFn(["panelControls", "collapse"], "Collapse panel");
+      collapse.textContent =
+        options.collapsed === true
+          ? textFn(["panelControls", "show"], "Show")
+          : textFn(["panelControls", "hide"], "Hide");
       collapse.dataset["repairAction"] = "toggle-panel-collapse";
       collapse.dataset["panelId"] = options.panelId;
       collapse.dataset["collapsed"] = String(options.collapsed !== true);

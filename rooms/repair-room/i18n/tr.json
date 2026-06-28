@@ -36,6 +36,56 @@
       "inspect": "İncele",
       "inspectTitle": "İnceleme modunu aç/kapat"
     },
+    "tools": {
+      "select": {
+        "label": "Seç",
+        "title": "Kart işaretini seç"
+      },
+      "pan": {
+        "label": "Kaydır",
+        "title": "Kart görünümünü kaydır"
+      },
+      "zoom-in": {
+        "label": "Yakınlaş",
+        "title": "Kartı yakınlaştır"
+      },
+      "zoom-out": {
+        "label": "Uzaklaş",
+        "title": "Karttan uzaklaş"
+      },
+      "rect": {
+        "label": "Kutu",
+        "title": "Bir alanın çevresine kutu çiz"
+      },
+      "freehand": {
+        "label": "Çiz",
+        "title": "Serbest kart notu çiz"
+      },
+      "text": {
+        "label": "Metin",
+        "title": "Metin notu ekle"
+      },
+      "measurement-pin": {
+        "label": "Prob",
+        "title": "Ölçüm noktası ekle"
+      },
+      "arrow": {
+        "label": "Ok",
+        "title": "Kart detayını işaret et"
+      },
+      "ruler": {
+        "label": "Cetvel",
+        "title": "Kart mesafesini ölç"
+      },
+      "freeze-frame": {
+        "label": "Dondur",
+        "title": "Geçerli kareyi dondur"
+      },
+      "snapshot": {
+        "label": "Kare",
+        "title": "Kart karesi al"
+      }
+    },
     "guidance": {
       "ai": "AI",
       "next": "Sıradaki",
@@ -56,7 +106,18 @@
       "hintFreeze": "kamerayı dondur",
       "hintRepeat": "rehberi tekrarla",
       "hintMeasure": "ölçüm kaydet",
-      "hintShowRisks": "riskleri göster"
+      "hintShowRisks": "riskleri göster",
+      "benchReady": "Tezgah hazır.",
+      "openRepairSession": "Bir tamir oturumu aç.",
+      "progress": "{phase} {current}/{total}",
+      "phase": {
+        "observe": "gözlem",
+        "inspect": "incele",
+        "measure": "ölç",
+        "compare": "karşılaştır",
+        "verify": "doğrula",
+        "conclude": "sonuçlandır"
+      }
     }
   },
   "session": {
@@ -269,7 +330,21 @@
       "note": "Not",
       "risk": "Risk Bayrağı",
       "freezeFrame": "Donuk Kare",
-      "sessionStart": "Oturum Başlangıcı"
+      "sessionStart": "Oturum Başlangıcı",
+      "annotation": "Anotasyon",
+      "aiMarkLifecycle": "Asistan Durumu",
+      "area": "Alan",
+      "event": "Olay"
+    },
+    "labels": {
+      "risk": "Risk",
+      "snapshot": "Kare",
+      "freezeFrame": "Dondur",
+      "note": "Not",
+      "sessionStart": "Başlangıç",
+      "assistantState": "Asistan durumu",
+      "area": "Alan",
+      "event": "Olay"
     },
     "play": "Oynat",
     "pause": "Duraklat",
@@ -421,6 +496,15 @@
       "resolved": "Düzeltildi",
       "dismissed": "Yoksay",
       "markTitle": "Gözlemi işaretle: {label}"
+    },
+    "inspector": {
+      "noLinked": "Bağlı kayıt yok",
+      "linkedEvents": "bağlı olay",
+      "selected": "seçili",
+      "hover": "üzerinde",
+      "none": "yok",
+      "measurePrefix": "ÖLÇÜM",
+      "aiPrefix": "AI"
     }
   },
   "settings": {

@@ -3,12 +3,19 @@ import type { RepairUiState } from "../../shared/ui/state.js";
 import { formatRepairTacticalFeedStatusLine } from "../panels/tactical-feed-panel.js";
 import { setClassNameIfChanged, setDatasetIfChanged, setTextIfChanged } from "./dom-utils.js";
 
+type TextFn = (
+  path: string[],
+  fallback: string,
+  params?: Record<string, string | number>
+) => string;
+
 export function createRepairTacticalFeedDomRuntime(params: {
   documentRef: Document;
   state: RepairUiState;
+  text: TextFn;
   updatePanelChrome: (panel: HTMLElement, panelId: RepairPanelId) => void;
 }) {
-  const { documentRef, state, updatePanelChrome } = params;
+  const { documentRef, state, text, updatePanelChrome } = params;
 
   function createTacticalFeedEntry(): HTMLElement {
     const entry = documentRef.createElement("div");
@@ -94,7 +101,7 @@ export function createRepairTacticalFeedDomRuntime(params: {
 
     const calmLine = panel.querySelector<HTMLElement>(".repair-feed-calmline");
     if (calmLine !== null) {
-      setTextIfChanged(calmLine, formatRepairTacticalFeedStatusLine(state));
+      setTextIfChanged(calmLine, formatRepairTacticalFeedStatusLine(state, text));
     }
 
     const list = panel.querySelector<HTMLElement>(".repair-feed-list");

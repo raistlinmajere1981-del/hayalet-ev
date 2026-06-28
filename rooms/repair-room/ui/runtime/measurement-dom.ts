@@ -1,13 +1,19 @@
 import type { RepairPanelId } from "../../shared/types/index.js";
 import type { RepairUiState } from "../../shared/ui/state.js";
 import { setClassNameIfChanged, setTextIfChanged } from "./dom-utils.js";
+import {
+  getMeasurementDisplayLabel,
+  getMeasurementModeRangeText,
+  type RepairMeasurementTextFn,
+} from "./measurement-labels.js";
 
 export function createRepairMeasurementDomRuntime(params: {
   documentRef: Document;
   state: RepairUiState;
+  text: RepairMeasurementTextFn;
   updatePanelChrome: (panel: HTMLElement, panelId: RepairPanelId) => void;
 }) {
-  const { documentRef, state, updatePanelChrome } = params;
+  const { documentRef, state, text, updatePanelChrome } = params;
 
   function appendMeasurementReadingRow(
     list: HTMLElement,
@@ -37,7 +43,7 @@ export function createRepairMeasurementDomRuntime(params: {
   function appendMeasurementEmptyState(list: HTMLElement): void {
     const empty = documentRef.createElement("div");
     empty.className = "repair-readings-empty";
-    empty.textContent = "No manual readings yet";
+    empty.textContent = text(["measurement", "labels", "noReadings"], "Henüz manuel ölçüm yok");
     list.append(empty);
   }
 
@@ -48,10 +54,10 @@ export function createRepairMeasurementDomRuntime(params: {
     const unit = root.querySelector<HTMLElement>(".repair-measurement-display__unit");
     if (unit !== null) setTextIfChanged(unit, current.unit);
     const label = root.querySelector<HTMLElement>(".repair-measurement-display__label");
-    if (label !== null) setTextIfChanged(label, current.label);
+    if (label !== null) setTextIfChanged(label, getMeasurementDisplayLabel(current.label, text));
     const mode = root.querySelector<HTMLElement>(".repair-measurement-display__mode");
     if (mode !== null)
-      setTextIfChanged(mode, `${current.mode.replace(/-/g, " ")} / ${current.range}`);
+      setTextIfChanged(mode, getMeasurementModeRangeText(current.mode, current.range, text));
 
     const readingsList = root.querySelector<HTMLElement>(".repair-readings-list");
     if (readingsList === null) return;

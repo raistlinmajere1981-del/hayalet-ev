@@ -4,6 +4,7 @@ import type {
   RepairUiState,
   RepairUiSnapshotMeta,
 } from "../../shared/ui/state.js";
+import { getEventKindLabel } from "../runtime/timeline-helpers.js";
 import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (
@@ -12,6 +13,17 @@ type TextFn = (
   params?: Record<string, string | number>
 ) => string;
 export type RepairRoomSyncRow = [string, string];
+export const REPAIR_ROOM_SYNC_ROW_KEYS = [
+  "storage",
+  "registry",
+  "events",
+  "session",
+  "playhead",
+  "ai-target",
+  "chat-dispatch",
+  "research-dispatch",
+  "tactical-dispatch",
+] as const;
 
 function getAiLifecycleActions(text: TextFn): ReadonlyArray<readonly [string, string]> {
   return [
@@ -24,9 +36,12 @@ function getAiLifecycleActions(text: TextFn): ReadonlyArray<readonly [string, st
 
 function formatAssistantSlot(slot: string, text?: TextFn): string {
   if (text !== undefined) {
-    if (slot.toLowerCase() === "ai0") return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "0" });
-    if (slot.toLowerCase() === "ai1") return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "1" });
-    if (slot.toLowerCase() === "ai2") return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "2" });
+    if (slot.toLowerCase() === "ai0")
+      return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "0" });
+    if (slot.toLowerCase() === "ai1")
+      return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "1" });
+    if (slot.toLowerCase() === "ai2")
+      return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "2" });
     return slot.toUpperCase();
   }
   if (slot.toLowerCase() === "ai0") return "Assistant 0";
@@ -36,36 +51,77 @@ function formatAssistantSlot(slot: string, text?: TextFn): string {
 }
 
 function formatTime(iso: string | null, text?: TextFn): string {
-  if (iso === null) return text !== undefined ? text(["sync", "status", "notStarted"], "başlatılmadı") : "not started";
+  if (iso === null)
+    return text !== undefined
+      ? text(["sync", "status", "notStarted"], "başlatılmadı")
+      : "not started";
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return text !== undefined ? text(["sync", "status", "unknownTime"], "bilinmeyen zaman") : "unknown time";
+  if (Number.isNaN(date.getTime()))
+    return text !== undefined
+      ? text(["sync", "status", "unknownTime"], "bilinmeyen zaman")
+      : "unknown time";
   return date.toLocaleTimeString("en-GB");
 }
 
-export function formatRepairAiDispatchSummary(channel: RepairAiDispatchChannelState, text?: TextFn): string {
+export function formatRepairAiDispatchSummary(
+  channel: RepairAiDispatchChannelState,
+  text?: TextFn
+): string {
   const slot = formatAssistantSlot(channel.targetSlot, text);
-  if (channel.status === "idle") return text !== undefined ? text(["sync", "status", "dispatchIdle"], "{slot} boşta", { slot }) : `${slot} idle`;
+  if (channel.status === "idle")
+    return text !== undefined
+      ? text(["sync", "status", "dispatchIdle"], "{slot} boşta", { slot })
+      : `${slot} idle`;
   if (channel.status === "pending")
-    return text !== undefined ? text(["sync", "status", "dispatchChecking"], "{slot} kontrol ediyor", { slot }) : `${slot} checking since ${formatTime(channel.startedAt, text)}`;
+    return text !== undefined
+      ? text(["sync", "status", "dispatchChecking"], "{slot} kontrol ediyor", { slot })
+      : `${slot} checking since ${formatTime(channel.startedAt, text)}`;
   if (channel.status === "succeeded") {
-    const context = channel.contextRefs.length > 0 ? text !== undefined ? text(["sync", "status", "dispatchRefs"], ", {count} başvuru", { count: channel.contextRefs.length }) : `, ${channel.contextRefs.length} refs` : "";
-    return text !== undefined ? text(["sync", "status", "dispatchReady"], "{slot} hazır", { slot }) + context : `${slot} ready at ${formatTime(channel.completedAt, text)}${context}`;
+    const context =
+      channel.contextRefs.length > 0
+        ? text !== undefined
+          ? text(["sync", "status", "dispatchRefs"], ", {count} başvuru", {
+              count: channel.contextRefs.length,
+            })
+          : `, ${channel.contextRefs.length} refs`
+        : "";
+    return text !== undefined
+      ? text(["sync", "status", "dispatchReady"], "{slot} hazır", { slot }) + context
+      : `${slot} ready at ${formatTime(channel.completedAt, text)}${context}`;
   }
-  return text !== undefined ? text(["sync", "status", "dispatchFailed"], "{slot} başarısız", { slot }) : `${slot} failed at ${formatTime(channel.completedAt, text)}`;
+  return text !== undefined
+    ? text(["sync", "status", "dispatchFailed"], "{slot} başarısız", { slot })
+    : `${slot} failed at ${formatTime(channel.completedAt, text)}`;
 }
 
 export function formatRepairStorageSummary(storage: RepairStorageState, text?: TextFn): string {
-  if (storage.status === "hydrating") return text !== undefined ? text(["sync", "status", "storageLoading"], "Onarım geçmişi yükleniyor") : "Repair history loading";
+  if (storage.status === "hydrating")
+    return text !== undefined
+      ? text(["sync", "status", "storageLoading"], "Onarım geçmişi yükleniyor")
+      : "Repair history loading";
   if (storage.status === "ready") {
     const count = `${storage.sessionCount}`;
-    return text !== undefined ? text(["sync", "status", "storageReady"], "Onarım geçmişi hazır, {count}", { count }) : `Repair history ready, ${storage.sessionCount} session${storage.sessionCount === 1 ? "" : "s"}`;
+    return text !== undefined
+      ? text(["sync", "status", "storageReady"], "Onarım geçmişi hazır, {count}", { count })
+      : `Repair history ready, ${storage.sessionCount} session${storage.sessionCount === 1 ? "" : "s"}`;
   }
   if (storage.message !== null && storage.message.trim() !== "") {
     return storage.message;
   }
-  if (storage.status === "error") return text !== undefined ? text(["sync", "status", "storageError"], "Onarım geçmişi hatası") : "Repair history error";
-  if (storage.status === "fallback") return text !== undefined ? text(["sync", "status", "storageFallback"], "Onarım geçmişi yalnızca mevcut oturumla sınırlı") : "Repair history limited to current session";
-  return text !== undefined ? text(["sync", "status", "storageNotConnected"], "Onarım geçmişi bağlı değil") : "Repair history not connected";
+  if (storage.status === "error")
+    return text !== undefined
+      ? text(["sync", "status", "storageError"], "Onarım geçmişi hatası")
+      : "Repair history error";
+  if (storage.status === "fallback")
+    return text !== undefined
+      ? text(
+          ["sync", "status", "storageFallback"],
+          "Onarım geçmişi yalnızca mevcut oturumla sınırlı"
+        )
+      : "Repair history limited to current session";
+  return text !== undefined
+    ? text(["sync", "status", "storageNotConnected"], "Onarım geçmişi bağlı değil")
+    : "Repair history not connected";
 }
 
 export function getRepairRoomSyncRows(
@@ -82,16 +138,28 @@ export function getRepairRoomSyncRows(
   const firstSlot = slots[0] ?? "Assistant 2";
   const targetSlot = slots.every((slot) => slot === firstSlot) ? firstSlot : slots.join("/");
   return [
-    [text(["sync", "storage"], "Storage"), formatRepairStorageSummary(state.storage, text)],
-    [text(["sync", "registry"], "Eşitleme"), text(["sync", "status", "workspaceReady"], "Çalışma alanı hazır")],
-    [text(["sync", "events"], "Olaylar"), `${meta.events.length} ${text(["sync", "status", "repairRecords"], "onarım kaydı")}`],
-    [text(["sync", "session"], "Oturum"), session?.title ?? text(["sync", "status", "noRepairOpen"], "Açık onarım yok")],
+    [text(["sync", "storage"], "Depolama"), formatRepairStorageSummary(state.storage, text)],
     [
-      text(["sync", "playhead"], "Playhead"),
+      text(["sync", "registry"], "Eşitleme"),
+      text(["sync", "status", "workspaceReady"], "Çalışma alanı hazır"),
+    ],
+    [
+      text(["sync", "events"], "Olaylar"),
+      `${meta.events.length} ${text(["sync", "status", "repairRecords"], "onarım kaydı")}`,
+    ],
+    [
+      text(["sync", "session"], "Oturum"),
+      session?.title ?? text(["sync", "status", "noRepairOpen"], "Açık onarım yok"),
+    ],
+    [
+      text(["sync", "playhead"], "Oynatma Konumu"),
       `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`,
     ],
-    [text(["sync", "aiTarget"], "Assistant route"), targetSlot],
-    [text(["sync", "chatDispatch"], "Sohbet AI"), formatRepairAiDispatchSummary(state.aiDispatch.chat, text)],
+    [text(["sync", "aiTarget"], "AI Hedefi"), targetSlot],
+    [
+      text(["sync", "chatDispatch"], "Sohbet AI"),
+      formatRepairAiDispatchSummary(state.aiDispatch.chat, text),
+    ],
     [
       text(["sync", "researchDispatch"], "Araştırma AI"),
       formatRepairAiDispatchSummary(state.aiDispatch.research, text),
@@ -118,9 +186,10 @@ export function renderRoomSyncPanel(
     null;
   const rows = getRepairRoomSyncRows(state, meta, text);
 
-  rows.forEach(([label, value]) => {
+  rows.forEach(([label, value], index) => {
     const row = documentRef.createElement("div");
     row.className = "repair-sync-row";
+    row.dataset["syncRow"] = REPAIR_ROOM_SYNC_ROW_KEYS[index] ?? `row-${index}`;
 
     const labelEl = documentRef.createElement("span");
     labelEl.className = "repair-sync-row__label";
@@ -140,7 +209,7 @@ export function renderRoomSyncPanel(
 
   const selectorLabel = documentRef.createElement("span");
   selectorLabel.className = "repair-sync-row__label";
-  selectorLabel.textContent = text(["sync", "aiSlot"], "Route");
+  selectorLabel.textContent = text(["sync", "aiSlot"], "AI Slotu");
   selector.append(selectorLabel);
 
   const select = documentRef.createElement("select");
@@ -161,7 +230,10 @@ export function renderRoomSyncPanel(
   focusCard.className = "repair-sync-focus";
   const title = documentRef.createElement("div");
   title.className = "repair-sync-focus__title";
-  title.textContent = focused === null ? text(["sync", "status", "liveEdge"], "Canlı kenar") : focused.kind.toUpperCase();
+  title.textContent =
+    focused === null
+      ? text(["sync", "status", "liveEdge"], "Canlı kenar")
+      : getEventKindLabel(focused, text).toUpperCase();
   focusCard.append(title);
 
   const detail = documentRef.createElement("div");
@@ -200,7 +272,9 @@ export function renderRoomSyncPanel(
       button.type = "button";
       button.className = "repair-sync-focus__action";
       button.textContent = label;
-      button.title = text(["sync", "lifecycleActions", "markTitle"], `Gözlemi işaretle: ${label.toLowerCase()}`);
+      button.title = text(["sync", "lifecycleActions", "markTitle"], "Gözlemi işaretle: {label}", {
+        label: label.toLowerCase(),
+      });
       button.dataset["repairAction"] = "ai-mark-state";
       button.dataset["eventId"] = focused.id;
       button.dataset["aiState"] = stateId;
@@ -212,8 +286,8 @@ export function renderRoomSyncPanel(
 
   return createRepairPanel(documentRef, {
     panelId: "room-sync",
-    eyebrow: text(["sync", "eyebrow"], "STATE"),
-    title: text(["sync", "title"], "Repair State"),
+    eyebrow: text(["sync", "eyebrow"], "EŞİTLEME"),
+    title: text(["sync", "title"], "Oda Eşitleme"),
     statusDot: state.phase === "session-active" ? "live" : "idle",
     collapsed: state.layout.collapsedPanels["room-sync"],
     noPanelControls: true,

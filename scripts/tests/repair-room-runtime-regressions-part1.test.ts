@@ -33,6 +33,18 @@ type RepairRoomHostRuntimeOptions = NonNullable<
   Parameters<typeof createRepairRoomHostRuntimeBase>[0]
 >;
 
+function testT(
+  _path: string[],
+  fallback: string,
+  params?: Record<string, string | number>
+): string {
+  if (params === undefined) return fallback;
+  return Object.entries(params).reduce(
+    (acc, [key, val]) => acc.replace(new RegExp(`\\{${key}\\}`, "g"), String(val)),
+    fallback
+  );
+}
+
 function createRepairRoomHostRuntime(options: RepairRoomHostRuntimeOptions = {}) {
   const usesCallerState =
     options.initialSeed !== undefined || options.io !== undefined || options.storage !== undefined;
@@ -439,14 +451,13 @@ void test("repair-room sync panel rows expose AI2 dispatch status", async () => 
   const state = createRepairUiSnapshot(runtimeState);
   const meta = createRepairUiSnapshotMeta(runtimeState);
   const rows = Object.fromEntries(
-    getRepairRoomSyncRows(state, meta, (_path, fallback) => fallback)
+    getRepairRoomSyncRows(state, meta, testT)
   );
 
-  assert.equal(rows["Assistant route"], "Assistant 2");
-  assert.match(rows["Chat"] ?? "", /^Assistant 2 ready/);
-  assert.match(rows["Chat"] ?? "", /\d+ refs/);
-  assert.equal(rows["Evidence search"], "Assistant 2 idle");
-  assert.equal(rows["Repair watch"], "Assistant 2 idle");
+  assert.equal(rows["AI Hedefi"], "Asistan 2");
+  assert.equal(rows["Sohbet AI"], "Asistan 2 hazır, 3 başvuru");
+  assert.equal(rows["Araştırma AI"], "Asistan 2 boşta");
+  assert.equal(rows["Taktik AI"], "Asistan 2 boşta");
 
   runtime.dispose();
 });
@@ -1064,10 +1075,10 @@ void test("repair-room hydrates room-local storage without opening saved session
     getRepairRoomSyncRows(
       createRepairUiSnapshot(runtimeState),
       createRepairUiSnapshotMeta(runtimeState),
-      (_path, fallback) => fallback
+      testT
     )
   );
-  assert.equal(rows["Storage"], "Repair history ready, 1 session");
+  assert.equal(rows["Depolama"], "Onarım geçmişi hazır, 1");
 
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.activateSession, { sessionId: storedSession.id })
