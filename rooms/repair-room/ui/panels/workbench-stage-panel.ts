@@ -266,6 +266,55 @@ const REPAIR_TOOLBAR_LAYER_BUTTONS: Array<{
   },
 ];
 
+type RepairWorkbenchQuickActionId = "camera-feed" | "dictation" | "tts" | "ambient";
+
+const REPAIR_WORKBENCH_QUICK_ACTIONS: Array<{
+  id: RepairWorkbenchQuickActionId;
+  action: string;
+  icon: string;
+  labelKey: string;
+  labelFallback: string;
+  titleKey: string;
+  titleFallback: string;
+}> = [
+  {
+    id: "camera-feed",
+    action: "toggle-camera-feed",
+    icon: "C",
+    labelKey: "camera",
+    labelFallback: "Kamera",
+    titleKey: "cameraTitle",
+    titleFallback: "Kamera feed'ini başlat veya durdur",
+  },
+  {
+    id: "dictation",
+    action: "toggle-dictation",
+    icon: "D",
+    labelKey: "dictate",
+    labelFallback: "Dikte",
+    titleKey: "dictateTitle",
+    titleFallback: "Dikteyi başlat veya durdur",
+  },
+  {
+    id: "tts",
+    action: "toggle-tts",
+    icon: "T",
+    labelKey: "tts",
+    labelFallback: "TTS",
+    titleKey: "ttsTitle",
+    titleFallback: "Sesli okumayı başlat veya durdur",
+  },
+  {
+    id: "ambient",
+    action: "toggle-ambient-listener",
+    icon: "A",
+    labelKey: "ambient",
+    labelFallback: "Ortam",
+    titleKey: "ambientTitle",
+    titleFallback: "Ortam dinlemeyi başlat veya durdur",
+  },
+];
+
 function appendButtonLabel(
   documentRef: Document,
   button: HTMLElement,
@@ -334,6 +383,62 @@ function createLayerButton(
   return btn;
 }
 
+function isQuickActionActive(state: RepairUiState, id: RepairWorkbenchQuickActionId): boolean {
+  switch (id) {
+    case "camera-feed":
+      return (
+        state.operations.cameraActive ||
+        state.operations.liveFeedActive ||
+        state.workbench.liveSource.connected
+      );
+    case "dictation":
+      return (
+        state.operations.localMicActive ||
+        (state.operations.androidMicActive && !state.operations.ambientActive)
+      );
+    case "tts":
+      return state.operations.ttsActive;
+    case "ambient":
+      return (
+        state.operations.ambientActive ||
+        state.layout.voiceGuidance.ambientListeningState === "listening"
+      );
+    default: {
+      const exhaustiveId: never = id;
+      return exhaustiveId;
+    }
+  }
+}
+
+function createQuickActionButton(
+  documentRef: Document,
+  state: RepairUiState,
+  action: (typeof REPAIR_WORKBENCH_QUICK_ACTIONS)[number],
+  text: TextFn
+): HTMLElement {
+  const active = isQuickActionActive(state, action.id);
+  const btn = documentRef.createElement("button");
+  btn.type = "button";
+  btn.className = `repair-workbench-actionbar__button${
+    active ? " repair-workbench-actionbar__button--active" : ""
+  }`;
+  btn.title = text(["workbench", "quickActions", action.titleKey], action.titleFallback);
+  btn.dataset["repairAction"] = action.action;
+  btn.dataset["repairQuickAction"] = action.id;
+  btn.dataset["active"] = String(active);
+
+  const icon = documentRef.createElement("span");
+  icon.className = "repair-workbench-actionbar__icon";
+  icon.textContent = action.icon;
+  btn.append(icon);
+
+  const label = documentRef.createElement("span");
+  label.className = "repair-workbench-actionbar__label";
+  label.textContent = text(["workbench", "quickActions", action.labelKey], action.labelFallback);
+  btn.append(label);
+  return btn;
+}
+
 function appendCopilotCell(
   documentRef: Document,
   parent: HTMLElement,
@@ -364,6 +469,14 @@ export function renderWorkbenchStagePanel(
 ): HTMLElement {
   const body = documentRef.createElement("div");
   body.className = "repair-panel__body repair-panel__body--no-padding";
+
+  const quickbar = documentRef.createElement("div");
+  quickbar.className = "repair-workbench-actionbar";
+  quickbar.dataset["repairWorkbenchActionbar"] = "media";
+  for (const action of REPAIR_WORKBENCH_QUICK_ACTIONS) {
+    quickbar.append(createQuickActionButton(documentRef, state, action, text));
+  }
+  body.append(quickbar);
 
   const guidance = documentRef.createElement("div");
   guidance.className = "repair-guidance-strip";

@@ -539,6 +539,19 @@ void test("repair-room workbench toolbar renders grouped controls inside the vie
   assert.ok(toolbar);
   assert.equal(toolbar.parentElement, viewport);
 
+  const actionbar = findRepairFakeElements(
+    panel,
+    (element) => element.dataset["repairWorkbenchActionbar"] === "media"
+  )[0];
+  assert.ok(actionbar);
+  assert.deepEqual(
+    findRepairFakeElements(
+      actionbar,
+      (element) => typeof element.dataset["repairQuickAction"] === "string"
+    ).map((element) => element.dataset["repairQuickAction"]),
+    ["camera-feed", "dictation", "tts", "ambient"]
+  );
+
   assert.deepEqual(
     findRepairFakeElements(
       toolbar,
@@ -571,7 +584,7 @@ void test("repair-room workbench toolbar renders grouped controls inside the vie
   );
 });
 
-void test("repair-room hands-free controls stay action-oriented without duplicating topbar status", () => {
+void test("repair-room workbench quick actions do not duplicate topbar status", () => {
   const workbenchPanel = readFileSync(
     join(process.cwd(), "rooms/repair-room/ui/panels/workbench-stage-panel.ts"),
     "utf8"
@@ -599,34 +612,21 @@ void test("repair-room hands-free controls stay action-oriented without duplicat
     0
   );
 
-  const activeState = createRepairUiSnapshot({
-    ...createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z"),
-    operationsStatus: {
-      updatedAt: 2,
-      records: [
-        {
-          capability: "local-microphone",
-          owner: { id: "repair-room", label: "Repair Room" },
-          startedAt: 1,
-        },
-        {
-          capability: "android-camera",
-          owner: { id: "repair-room", label: "Repair Room" },
-          startedAt: 2,
-        },
-        {
-          capability: "live-feed",
-          owner: { id: "repair-room", label: "Repair Room" },
-          startedAt: 3,
-        },
-        {
-          capability: "ambient-listening",
-          owner: { id: "repair-room", label: "Repair Room" },
-          startedAt: 4,
-        },
-      ],
-    },
-  });
+  const activeState = createRepairUiSnapshot(
+    createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z")
+  );
+  activeState.operations = {
+    ...activeState.operations,
+    localMicActive: true,
+    cameraActive: true,
+    liveFeedActive: true,
+    ambientActive: true,
+    activeCapabilities: ["local-microphone", "android-camera", "live-feed", "ambient-listening"],
+  };
+  activeState.layout.voiceGuidance = {
+    ...activeState.layout.voiceGuidance,
+    ambientListeningState: "listening",
+  };
   const activePanel = renderWorkbenchStagePanel(
     documentRef,
     activeState,
@@ -646,6 +646,17 @@ void test("repair-room hands-free controls stay action-oriented without duplicat
     ).map((element) => element.dataset["repairControl"]),
     []
   );
+
+  const quickActions = new Map(
+    findRepairFakeElements(
+      activePanel,
+      (element) => typeof element.dataset["repairQuickAction"] === "string"
+    ).map((element) => [element.dataset["repairQuickAction"], element])
+  );
+  assert.equal(quickActions.get("camera-feed")?.dataset["active"], "true");
+  assert.equal(quickActions.get("dictation")?.dataset["active"], "true");
+  assert.equal(quickActions.get("ambient")?.dataset["active"], "true");
+  assert.equal(quickActions.get("tts")?.dataset["active"], "false");
 
   const settingsSurface = renderRepairSettingsPanel(
     documentRef,
@@ -726,10 +737,11 @@ void test("repair-room hands-free controls stay action-oriented without duplicat
 
   assert.doesNotMatch(workbenchPanel, /repairControl/);
   assert.doesNotMatch(workbenchPanel, /set-hands-free-mode/);
-  assert.doesNotMatch(workbenchPanel, /toggle-ambient-listener/);
-  assert.doesNotMatch(workbenchPanel, /toggle-dictation/);
-  assert.doesNotMatch(workbenchPanel, /toggle-camera-feed/);
-  assert.doesNotMatch(workbenchPanel, /toggle-tts/);
+  assert.match(workbenchPanel, /repair-workbench-actionbar/);
+  assert.match(workbenchPanel, /toggle-ambient-listener/);
+  assert.match(workbenchPanel, /toggle-dictation/);
+  assert.match(workbenchPanel, /toggle-camera-feed/);
+  assert.match(workbenchPanel, /toggle-tts/);
   assert.doesNotMatch(workbenchPanel, /set-settings-overlay/);
   assert.doesNotMatch(workbenchPanel, /bench-operator/);
   assert.doesNotMatch(workbenchPanel, /repair-controls/);
