@@ -44,6 +44,7 @@ function appendTextInput(
     value?: string;
     inputMode?: "decimal" | "text";
     required?: boolean;
+    disabled?: boolean;
   }
 ): HTMLInputElement {
   const field = createFieldShell(documentRef, options.label);
@@ -53,6 +54,8 @@ function appendTextInput(
   input.placeholder = options.placeholder;
   input.value = options.value ?? "";
   input.dataset["repairInput"] = options.inputName;
+  input.dataset["sessionLocked"] = String(options.disabled === true);
+  input.disabled = options.disabled === true;
   if (options.inputMode !== undefined) input.inputMode = options.inputMode;
   if (options.required === true) input.required = true;
   field.append(input);
@@ -68,12 +71,15 @@ function appendSelectInput(
     inputName: string;
     selected: string;
     items: Array<{ value: string; label: string }>;
+    disabled?: boolean;
   }
 ): HTMLSelectElement {
   const field = createFieldShell(documentRef, options.label);
   const select = documentRef.createElement("select");
   select.className = "repair-measurement-field__control";
   select.dataset["repairInput"] = options.inputName;
+  select.dataset["sessionLocked"] = String(options.disabled === true);
+  select.disabled = options.disabled === true;
 
   options.items.forEach((item) => {
     const option = documentRef.createElement("option");
@@ -105,7 +111,7 @@ export function renderMeasurementPanel(
 
   const meas = state.measurement;
   const evidence = state.workbench.measurementEvidence;
-  const hasActiveSession = state.sessions.activeId !== null;
+  const hasActiveSession = state.sessions.activeId !== null && state.sessions.detail !== null;
 
   // -- Tabs
   const tabs = documentRef.createElement("div");
@@ -119,10 +125,17 @@ export function renderMeasurementPanel(
 
   for (const tab of tabItems) {
     const tabEl = documentRef.createElement("div");
-    tabEl.className = `repair-tab${meas.activeInstrumentKind === tab.id ? " repair-tab--active" : ""}`;
+    tabEl.className = `repair-tab${
+      hasActiveSession && meas.activeInstrumentKind === tab.id ? " repair-tab--active" : ""
+    }`;
     tabEl.textContent = tab.label;
     tabEl.dataset["repairAction"] = "set-instrument";
     tabEl.dataset["instrumentKind"] = tab.id;
+    tabEl.dataset["sessionLocked"] = String(!hasActiveSession);
+    if (!hasActiveSession) {
+      tabEl.style.opacity = "0.45";
+      tabEl.style.cursor = "not-allowed";
+    }
     tabs.append(tabEl);
   }
 
@@ -161,11 +174,13 @@ export function renderMeasurementPanel(
 
   const form = documentRef.createElement("div");
   form.className = "repair-measurement-form";
+  form.dataset["sessionLocked"] = String(!hasActiveSession);
 
   appendTextInput(documentRef, form, {
     label: text(["measurement", "reference"], "Referans"),
     inputName: "measurement-reference",
     placeholder: "TP1 / U14 VCC",
+    disabled: !hasActiveSession,
   });
   appendTextInput(documentRef, form, {
     label: text(["measurement", "value"], "Değer"),
@@ -173,29 +188,34 @@ export function renderMeasurementPanel(
     placeholder: "0.000 / OL",
     inputMode: "decimal",
     required: true,
+    disabled: !hasActiveSession,
   });
   appendSelectInput(documentRef, form, {
     label: text(["measurement", "mode"], "Mod"),
     inputName: "measurement-mode",
     selected: meas.current.mode,
     items: getMeasurementModeOptions(text),
+    disabled: !hasActiveSession,
   });
   appendSelectInput(documentRef, form, {
     label: text(["measurement", "unit"], "Birim"),
     inputName: "measurement-unit",
     selected: meas.current.unit || "V",
     items: MEASUREMENT_UNIT_OPTIONS.map((unit) => ({ value: unit, label: unit })),
+    disabled: !hasActiveSession,
   });
   appendTextInput(documentRef, form, {
     label: text(["measurement", "range"], "Aralık"),
     inputName: "measurement-range",
     placeholder: meas.current.range === "-" ? "20 V" : meas.current.range,
+    disabled: !hasActiveSession,
   });
   appendTextInput(documentRef, form, {
     label: text(["measurement", "channel"], "Kanal"),
     inputName: "measurement-channel",
     placeholder: "COM/V",
     value: "COM/V",
+    disabled: !hasActiveSession,
   });
 
   const record = documentRef.createElement("button");
@@ -204,6 +224,7 @@ export function renderMeasurementPanel(
   record.textContent = text(["measurement", "record"], "Kaydet");
   record.dataset["repairAction"] = "add-manual-measurement";
   record.disabled = hasActiveSession === false;
+  record.dataset["sessionLocked"] = String(!hasActiveSession);
   record.title = hasActiveSession
     ? text(["measurement", "recordTitle"], "Manuel ölçüm kaydet")
     : text(["measurement", "recordDisabled"], "Önce bir tamir oturumu aç");

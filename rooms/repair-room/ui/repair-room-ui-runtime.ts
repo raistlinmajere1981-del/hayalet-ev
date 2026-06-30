@@ -1011,9 +1011,98 @@ export function createRepairRoomUiRuntime() {
     }
   }
 
+  function hasActiveRepairSession(): boolean {
+    return state.sessions.activeId !== null && state.sessions.detail !== null;
+  }
+
+  function hasActiveWorkbenchCameraFeed(): boolean {
+    const livePreview = state.workbench.liveSource.preview;
+    const hasVisibleStream =
+      livePreview?.source === "mjpeg-stream" &&
+      typeof livePreview.streamUrl === "string" &&
+      livePreview.streamUrl.trim() !== "";
+    return (
+      state.operations.cameraActive ||
+      state.operations.liveFeedActive ||
+      state.workbench.liveSource.connected ||
+      hasVisibleStream
+    );
+  }
+
+  function isWorkbenchQuickActionActive(actionId: string): boolean {
+    if (!hasActiveRepairSession()) return false;
+    switch (actionId) {
+      case "camera-feed":
+        return hasActiveWorkbenchCameraFeed();
+      case "camera-torch":
+        return state.operations.activeCapabilities.includes("android-torch");
+      case "dictation":
+        return (
+          state.operations.localMicActive ||
+          (state.operations.androidMicActive && !state.operations.ambientActive)
+        );
+      case "tts":
+        return state.operations.ttsActive;
+      case "ambient":
+        return (
+          state.operations.ambientActive ||
+          state.layout.voiceGuidance.ambientListeningState === "listening"
+        );
+      default:
+        return false;
+    }
+  }
+
+  function isWorkbenchQuickActionDisabled(actionId: string): boolean {
+    if (!hasActiveRepairSession()) return true;
+    if (actionId !== "capture-photo") return false;
+    return !hasActiveWorkbenchCameraFeed();
+  }
+
+  function syncSessionLockedControl(element: HTMLElement, locked: boolean): void {
+    if (
+      element instanceof HTMLButtonElement ||
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLSelectElement ||
+      element instanceof HTMLTextAreaElement
+    ) {
+      element.disabled = locked;
+    }
+    setDatasetIfChanged(element, "sessionLocked", String(locked));
+  }
+
+  function isSessionLockedActionElement(element: HTMLElement): boolean {
+    if (element.dataset["sessionLocked"] === "true") return true;
+    return (
+      (element instanceof HTMLButtonElement ||
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLSelectElement ||
+        element instanceof HTMLTextAreaElement) &&
+      element.disabled
+    );
+  }
+
+  function syncWorkbenchQuickActions(panel: HTMLElement): void {
+    panel.querySelectorAll<HTMLButtonElement>("[data-repair-quick-action]").forEach((button) => {
+      const actionId = button.dataset["repairQuickAction"] ?? "";
+      const active = isWorkbenchQuickActionActive(actionId);
+      const disabled = isWorkbenchQuickActionDisabled(actionId);
+      setClassNameIfChanged(
+        button,
+        `repair-workbench-actionbar__button${
+          active ? " repair-workbench-actionbar__button--active" : ""
+        }${disabled ? " repair-workbench-actionbar__button--disabled" : ""}`
+      );
+      syncSessionLockedControl(button, disabled);
+      setDatasetIfChanged(button, "active", String(active));
+      setDatasetIfChanged(button, "disabled", String(disabled));
+    });
+  }
+
   function updateWorkbenchPanelDom(panel: HTMLElement): void {
     updatePanelChrome(panel, "workbench-stage");
     syncWorkbenchHeaderPanelChips(panel);
+    syncWorkbenchQuickActions(panel);
 
     const dot = panel.querySelector<HTMLElement>(".repair-panel__status-dot");
     if (dot !== null) {
@@ -1103,11 +1192,13 @@ export function createRepairRoomUiRuntime() {
       }
     }
 
+    const hasSession = hasActiveRepairSession();
     panel.querySelectorAll<HTMLElement>("[data-repair-action='set-tool']").forEach((button) => {
       button.classList.toggle(
         "repair-toolbar__btn--active",
-        button.dataset["tool"] === state.workbench.activeTool
+        hasSession && button.dataset["tool"] === state.workbench.activeTool
       );
+      syncSessionLockedControl(button, !hasSession);
     });
 
     const zoomValue = panel.querySelector<HTMLElement>(".repair-toolbar__zoom-value");
@@ -1122,16 +1213,18 @@ export function createRepairRoomUiRuntime() {
         const visible =
           layerId !== undefined &&
           state.workbench.visibleLayers[layerId as keyof typeof state.workbench.visibleLayers];
-        button.classList.toggle("repair-toolbar__btn--active", visible === true);
+        button.classList.toggle("repair-toolbar__btn--active", hasSession && visible === true);
         setDatasetIfChanged(button, "visible", String(visible !== true));
+        syncSessionLockedControl(button, !hasSession);
       });
     panel
       .querySelectorAll<HTMLElement>("[data-repair-action='toggle-investigation-mode']")
       .forEach((button) => {
         button.classList.toggle(
           "repair-toolbar__btn--active",
-          state.workbench.investigationModeEnabled
+          hasSession && state.workbench.investigationModeEnabled
         );
+        syncSessionLockedControl(button, !hasSession);
       });
   }
 
@@ -1701,6 +1794,11 @@ export function createRepairRoomUiRuntime() {
       if (el === null) return;
       const action = el.dataset["repairAction"];
       if (action === undefined) return;
+      if (isSessionLockedActionElement(el)) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       if (
         [
           "activate-session",
@@ -1815,6 +1913,10 @@ export function createRepairRoomUiRuntime() {
           }
           break;
         }
+        case "capture-photo": {
+          requestRuntime.capturePhoto();
+          break;
+        }
         case "toggle-camera-torch": {
           requestRuntime.setCameraTorch({ enabled: el.dataset["active"] !== "true" });
           break;
@@ -1921,7 +2023,7 @@ export function createRepairRoomUiRuntime() {
           break;
         }
         case "add-manual-measurement": {
-          if (state.sessions.activeId === null) break;
+          if (!hasActiveRepairSession()) break;
           const payload = collectManualMeasurementPayload(root, state);
           if (payload !== null) {
             requestRuntime.addMeasurement(payload);
@@ -1930,6 +2032,7 @@ export function createRepairRoomUiRuntime() {
           break;
         }
         case "set-instrument": {
+          if (!hasActiveRepairSession()) break;
           const instrumentKind = el.dataset["instrumentKind"];
           if (instrumentKind) requestRuntime.updatePanelTab({ instrumentKind });
           break;
@@ -2065,6 +2168,7 @@ export function createRepairRoomUiRuntime() {
           break;
         }
         case "send-chat": {
+          if (!hasActiveRepairSession()) break;
           const input = root.querySelector<HTMLInputElement>("[data-repair-input='chat-composer']");
           if (input && input.value.trim() !== "") {
             requestRuntime.sendChatTurn({ text: input.value.trim() });
@@ -2078,6 +2182,7 @@ export function createRepairRoomUiRuntime() {
           break;
         }
         case "send-feed-question": {
+          if (!hasActiveRepairSession()) break;
           const input = root.querySelector<HTMLInputElement>("[data-repair-input='feed-composer']");
           if (input && input.value.trim() !== "") {
             requestRuntime.sendChatTurn({ text: input.value.trim() });
@@ -2304,7 +2409,7 @@ export function createRepairRoomUiRuntime() {
 
     root.addEventListener("input", (event) => {
       const el = findActionElement(event.target);
-      if (el === null) return;
+      if (el === null || isSessionLockedActionElement(el)) return;
       if (el.dataset["repairAction"] === "timeline-scrub" && el instanceof HTMLInputElement) {
         cancelSpatialFocusTween();
         requestRuntime.scrubTimeline({ positionMs: Number(el.value) });
@@ -2325,7 +2430,8 @@ export function createRepairRoomUiRuntime() {
           el instanceof HTMLInputElement ||
           el instanceof HTMLTextAreaElement ||
           el instanceof HTMLSelectElement
-        )
+        ) ||
+        isSessionLockedActionElement(el)
       ) {
         return;
       }

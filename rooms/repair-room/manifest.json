@@ -286,6 +286,12 @@
           "exposure": "internal"
         },
         {
+          "name": "RepairRoomCapturePhoto",
+          "description": "Capture the current Android camera frame and attach it as the active board image.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "RepairRoomSetCameraTorch",
           "description": "Toggle the Android companion torch for the Repair Room workbench camera.",
           "scope": "room-ui",

@@ -337,6 +337,11 @@ void test("repair-room bridges hands-free capture and TTS commands through RoomH
         calls.push(`stop-camera:${requestId}`);
         return { requestId, outcome: { ok: true } };
       },
+      capturePhoto: async (requestId = "") => {
+        activeRequestIds["photo"] = requestId;
+        calls.push(`capture-photo:${requestId}`);
+        return { ok: true };
+      },
     },
     tts: {
       speak: async (text, options) => {
@@ -357,6 +362,7 @@ void test("repair-room bridges hands-free capture and TTS commands through RoomH
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startDictation).success, true);
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startAmbientListener).success, true);
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startCameraFeed).success, true);
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.capturePhoto).success, true);
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.setInteractionSettings, { ttsRoute: "android" })
       .success,
@@ -374,12 +380,14 @@ void test("repair-room bridges hands-free capture and TTS commands through RoomH
   assert.match(activeRequestIds["dictation"] ?? "", /^repair-room:dictation:/);
   assert.match(activeRequestIds["ambient"] ?? "", /^repair-room:ambient:/);
   assert.match(activeRequestIds["camera"] ?? "", /^repair-room:camera:/);
+  assert.match(activeRequestIds["photo"] ?? "", /^repair-room:photo:/);
   assert.equal(runtime.getStateSnapshot().state.livePreview?.source, "mjpeg-stream");
   assert.equal(
     runtime.getStateSnapshot().state.livePreview?.streamUrl,
     "http://127.0.0.1:4765/api/v1/live/camera/stream?target=room%3Arepair-room"
   );
   assert.match(activeRequestIds["tts"] ?? "", /^repair-room:tts:/);
+  assert.ok(calls.some((call) => call.startsWith("capture-photo:repair-room:photo:")));
   assert.ok(calls.some((call) => call.startsWith("speak:android:tr:Bir sonraki adimi oku.")));
 
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.stopDictation).success, true);
@@ -403,7 +411,42 @@ void test("repair-room bridges hands-free capture and TTS commands through RoomH
     true
   );
   assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.startCameraFeed).success, false);
+  assert.equal(runtime.handleCommand(REPAIR_UI_COMMANDS.capturePhoto).success, false);
   assert.equal(calls.length, beforeDisabledCaptureCallCount);
+
+  runtime.dispose();
+});
+
+void test("repair-room promotes captured companion snapshots to the active board image", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addTimelineEvent, {
+      kind: "snapshot",
+      caption: "Captured board frame.",
+      thumbnailSrc: "/tmp/repair-captured-board.jpg",
+      useAsBoardImage: true,
+      boardImageLabel: "repair-captured-board.jpg",
+      widthPx: 1280,
+      heightPx: 720,
+    }).success,
+    true
+  );
+
+  const snapshot = runtime.getStateSnapshot().state;
+  const activeSession = snapshot.sessions[snapshot.activeSessionId ?? ""];
+  const capturedEvent = activeSession?.events.find(
+    (event) => event.kind === "snapshot" && event.thumbnailSrc === "/tmp/repair-captured-board.jpg"
+  );
+
+  assert.equal(capturedEvent?.kind, "snapshot");
+  assert.equal(activeSession?.pcbImage?.src, "/tmp/repair-captured-board.jpg");
+  assert.equal(activeSession?.pcbImage?.label, "repair-captured-board.jpg");
+  assert.equal(activeSession?.pcbImage?.widthPx, 1280);
+  assert.equal(activeSession?.pcbImage?.heightPx, 720);
 
   runtime.dispose();
 });

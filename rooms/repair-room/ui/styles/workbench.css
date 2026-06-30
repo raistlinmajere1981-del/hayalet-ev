@@ -49,6 +49,19 @@
   color: var(--repair-cyan);
 }
 
+.repair-workbench-actionbar__button:disabled,
+.repair-workbench-actionbar__button--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.repair-workbench-actionbar__button:disabled:hover,
+.repair-workbench-actionbar__button--disabled:hover {
+  border-color: var(--repair-border-muted);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-muted);
+}
+
 .repair-workbench-actionbar__icon {
   display: inline-flex;
   align-items: center;

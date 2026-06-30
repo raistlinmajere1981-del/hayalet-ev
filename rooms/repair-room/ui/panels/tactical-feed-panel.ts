@@ -130,11 +130,16 @@ export function formatRepairTacticalFeedStatusLine(state: RepairUiState, text?: 
     : state.guidance.aiInterruption.toneLine;
 }
 
+function hasActiveRepairSession(state: RepairUiState): boolean {
+  return state.sessions.activeId !== null && state.sessions.detail !== null;
+}
+
 export function renderTacticalFeedPanel(
   documentRef: Document,
   state: RepairUiState,
   text: TextFn
 ): HTMLElement {
+  const hasSession = hasActiveRepairSession(state);
   const body = documentRef.createElement("div");
   body.className = "repair-panel__body";
 
@@ -179,17 +184,24 @@ export function renderTacticalFeedPanel(
 
   const composer = documentRef.createElement("div");
   composer.className = "repair-feed-composer";
+  composer.dataset["sessionLocked"] = String(!hasSession);
   const composerInput = documentRef.createElement("input");
   composerInput.className = "repair-feed-composer__input";
   composerInput.type = "text";
-  composerInput.placeholder = text(["tacticalFeed", "composer"], "Tamir asistanına sor...");
+  composerInput.placeholder = hasSession
+    ? text(["tacticalFeed", "composer"], "Tamir asistanına sor...")
+    : text(["tacticalFeed", "sessionRequiredPlaceholder"], "Önce bir tamir oturumu aç");
   composerInput.dataset["repairInput"] = "feed-composer";
+  composerInput.dataset["sessionLocked"] = String(!hasSession);
+  composerInput.disabled = !hasSession;
   composer.append(composerInput);
   const composerButton = documentRef.createElement("button");
   composerButton.className = "repair-feed-composer__send";
   composerButton.type = "button";
   composerButton.textContent = text(["tacticalFeed", "send"], "Sor");
   composerButton.dataset["repairAction"] = "send-feed-question";
+  composerButton.dataset["sessionLocked"] = String(!hasSession);
+  composerButton.disabled = !hasSession;
   composer.append(composerButton);
   body.append(composer);
 

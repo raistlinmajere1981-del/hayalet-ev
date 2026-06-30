@@ -1,6 +1,6 @@
 import type { RepairPanelId } from "../../shared/types/index.js";
 import type { RepairUiState } from "../../shared/ui/state.js";
-import { setClassNameIfChanged, setTextIfChanged } from "./dom-utils.js";
+import { setClassNameIfChanged, setDatasetIfChanged, setTextIfChanged } from "./dom-utils.js";
 import {
   getMeasurementDisplayLabel,
   getMeasurementModeRangeText,
@@ -45,6 +45,44 @@ export function createRepairMeasurementDomRuntime(params: {
     empty.className = "repair-readings-empty";
     empty.textContent = text(["measurement", "labels", "noReadings"], "Henüz manuel ölçüm yok");
     list.append(empty);
+  }
+
+  function hasActiveRepairSession(): boolean {
+    return state.sessions.activeId !== null && state.sessions.detail !== null;
+  }
+
+  function syncMeasurementSessionLock(panel: HTMLElement): void {
+    const locked = !hasActiveRepairSession();
+    const form = panel.querySelector<HTMLElement>(".repair-measurement-form");
+    if (form !== null) setDatasetIfChanged(form, "sessionLocked", String(locked));
+
+    panel.querySelectorAll<HTMLElement>("[data-repair-action='set-instrument']").forEach((tab) => {
+      tab.classList.toggle(
+        "repair-tab--active",
+        !locked && tab.dataset["instrumentKind"] === state.measurement.activeInstrumentKind
+      );
+      setDatasetIfChanged(tab, "sessionLocked", String(locked));
+      tab.style.opacity = locked ? "0.45" : "";
+      tab.style.cursor = locked ? "not-allowed" : "";
+    });
+
+    panel
+      .querySelectorAll<
+        HTMLInputElement | HTMLSelectElement | HTMLButtonElement
+      >(".repair-measurement-form input, .repair-measurement-form select, .repair-measurement-form button")
+      .forEach((control) => {
+        control.disabled = locked;
+        setDatasetIfChanged(control, "sessionLocked", String(locked));
+      });
+
+    const record = panel.querySelector<HTMLButtonElement>(
+      "[data-repair-action='add-manual-measurement']"
+    );
+    if (record !== null) {
+      record.title = locked
+        ? text(["measurement", "recordDisabled"], "Önce bir tamir oturumu aç")
+        : text(["measurement", "recordTitle"], "Manuel ölçüm kaydet");
+    }
   }
 
   function updateMeasurementLiveDom(root: Document | HTMLElement = documentRef): void {
@@ -132,12 +170,7 @@ export function createRepairMeasurementDomRuntime(params: {
       );
     }
 
-    panel.querySelectorAll<HTMLElement>("[data-repair-action='set-instrument']").forEach((tab) => {
-      tab.classList.toggle(
-        "repair-tab--active",
-        tab.dataset["instrumentKind"] === state.measurement.activeInstrumentKind
-      );
-    });
+    syncMeasurementSessionLock(panel);
 
     updateMeasurementLiveDom(panel);
     updateMeasurementEvidenceDom(panel);

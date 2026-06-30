@@ -69,6 +69,7 @@ export const REPAIR_UI_COMMANDS = {
   stopAmbientListener: "RepairRoomStopAmbientListener",
   startCameraFeed: "RepairRoomStartCameraFeed",
   stopCameraFeed: "RepairRoomStopCameraFeed",
+  capturePhoto: "RepairRoomCapturePhoto",
   setCameraTorch: "RepairRoomSetCameraTorch",
   speakGuidance: "RepairRoomSpeakGuidance",
   stopSpeech: "RepairRoomStopSpeech",

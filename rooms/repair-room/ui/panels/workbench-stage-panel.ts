@@ -266,7 +266,13 @@ const REPAIR_TOOLBAR_LAYER_BUTTONS: Array<{
   },
 ];
 
-type RepairWorkbenchQuickActionId = "camera-feed" | "camera-torch" | "dictation" | "tts" | "ambient";
+type RepairWorkbenchQuickActionId =
+  | "camera-feed"
+  | "capture-photo"
+  | "camera-torch"
+  | "dictation"
+  | "tts"
+  | "ambient";
 
 const REPAIR_WORKBENCH_QUICK_ACTIONS: Array<{
   id: RepairWorkbenchQuickActionId;
@@ -285,6 +291,15 @@ const REPAIR_WORKBENCH_QUICK_ACTIONS: Array<{
     labelFallback: "Kamera",
     titleKey: "cameraTitle",
     titleFallback: "Kamera feed'ini başlat veya durdur",
+  },
+  {
+    id: "capture-photo",
+    action: "capture-photo",
+    icon: "K",
+    labelKey: "capturePhoto",
+    labelFallback: "Kare al",
+    titleKey: "capturePhotoTitle",
+    titleFallback: "Aktif kamera feed'inden fotoğraf çek ve kart görseli olarak kullan",
   },
   {
     id: "camera-torch",
@@ -341,20 +356,27 @@ function appendButtonLabel(
   button.append(labelEl);
 }
 
+function hasActiveRepairSession(state: RepairUiState): boolean {
+  return state.sessions.activeId !== null && state.sessions.detail !== null;
+}
+
 function createToolButton(
   documentRef: Document,
   state: RepairUiState,
   tool: (typeof REPAIR_OVERLAY_TOOLS)[number],
   text: TextFn
 ): HTMLElement {
+  const hasSession = hasActiveRepairSession(state);
   const btn = documentRef.createElement("button");
   btn.type = "button";
   btn.className = `repair-toolbar__btn repair-toolbar__btn--tool repair-toolbar__btn--text${
-    state.workbench.activeTool === tool.id ? " repair-toolbar__btn--active" : ""
+    hasSession && state.workbench.activeTool === tool.id ? " repair-toolbar__btn--active" : ""
   }`;
+  btn.disabled = !hasSession;
   btn.title = text(["workbench", "tools", tool.id, "title"], tool.title);
   btn.dataset["repairAction"] = "set-tool";
   btn.dataset["tool"] = tool.id;
+  btn.dataset["sessionLocked"] = String(!hasSession);
   appendButtonLabel(
     documentRef,
     btn,
@@ -371,15 +393,18 @@ function createLayerButton(
   text: TextFn
 ): HTMLElement {
   const btn = documentRef.createElement("button");
+  const hasSession = hasActiveRepairSession(state);
   const isVisible = state.workbench.visibleLayers[layer.id];
   btn.type = "button";
   btn.className = `repair-toolbar__btn repair-toolbar__btn--layer repair-toolbar__btn--text${
-    isVisible ? " repair-toolbar__btn--active" : ""
+    hasSession && isVisible ? " repair-toolbar__btn--active" : ""
   }`;
+  btn.disabled = !hasSession;
   btn.title = text(["workbench", "toolbar", layer.titleKey], layer.titleFallback);
   btn.dataset["repairAction"] = "toggle-overlay-layer";
   btn.dataset["layerId"] = layer.id;
   btn.dataset["visible"] = String(!isVisible);
+  btn.dataset["sessionLocked"] = String(!hasSession);
 
   const check = documentRef.createElement("span");
   check.className = "repair-toolbar__check";
@@ -392,14 +417,27 @@ function createLayerButton(
   return btn;
 }
 
+function hasActiveWorkbenchCameraFeed(state: RepairUiState): boolean {
+  const livePreview = state.workbench.liveSource.preview;
+  const hasVisibleStream =
+    livePreview?.source === "mjpeg-stream" &&
+    typeof livePreview.streamUrl === "string" &&
+    livePreview.streamUrl.trim() !== "";
+  return (
+    state.operations.cameraActive ||
+    state.operations.liveFeedActive ||
+    state.workbench.liveSource.connected ||
+    hasVisibleStream
+  );
+}
+
 function isQuickActionActive(state: RepairUiState, id: RepairWorkbenchQuickActionId): boolean {
+  if (!hasActiveRepairSession(state)) return false;
   switch (id) {
     case "camera-feed":
-      return (
-        state.operations.cameraActive ||
-        state.operations.liveFeedActive ||
-        state.workbench.liveSource.connected
-      );
+      return hasActiveWorkbenchCameraFeed(state);
+    case "capture-photo":
+      return false;
     case "camera-torch":
       return state.operations.activeCapabilities.includes("android-torch");
     case "dictation":
@@ -421,6 +459,12 @@ function isQuickActionActive(state: RepairUiState, id: RepairWorkbenchQuickActio
   }
 }
 
+function isQuickActionDisabled(state: RepairUiState, id: RepairWorkbenchQuickActionId): boolean {
+  if (!hasActiveRepairSession(state)) return true;
+  if (id !== "capture-photo") return false;
+  return !hasActiveWorkbenchCameraFeed(state);
+}
+
 function createQuickActionButton(
   documentRef: Document,
   state: RepairUiState,
@@ -428,15 +472,19 @@ function createQuickActionButton(
   text: TextFn
 ): HTMLElement {
   const active = isQuickActionActive(state, action.id);
+  const disabled = isQuickActionDisabled(state, action.id);
   const btn = documentRef.createElement("button");
   btn.type = "button";
   btn.className = `repair-workbench-actionbar__button${
     active ? " repair-workbench-actionbar__button--active" : ""
-  }`;
+  }${disabled ? " repair-workbench-actionbar__button--disabled" : ""}`;
+  btn.disabled = disabled;
   btn.title = text(["workbench", "quickActions", action.titleKey], action.titleFallback);
   btn.dataset["repairAction"] = action.action;
   btn.dataset["repairQuickAction"] = action.id;
   btn.dataset["active"] = String(active);
+  btn.dataset["disabled"] = String(disabled);
+  btn.dataset["sessionLocked"] = String(disabled);
 
   const icon = documentRef.createElement("span");
   icon.className = "repair-workbench-actionbar__icon";
@@ -673,12 +721,15 @@ export function renderWorkbenchStagePanel(
   }
 
   const investigation = documentRef.createElement("button");
+  const hasSession = hasActiveRepairSession(state);
   investigation.type = "button";
   investigation.className = `repair-toolbar__btn repair-toolbar__btn--layer repair-toolbar__btn--text${
-    state.workbench.investigationModeEnabled ? " repair-toolbar__btn--active" : ""
+    hasSession && state.workbench.investigationModeEnabled ? " repair-toolbar__btn--active" : ""
   }`;
+  investigation.disabled = !hasSession;
   investigation.title = text(["workbench", "toolbar", "inspectTitle"], "İnceleme modunu aç/kapat");
   investigation.dataset["repairAction"] = "toggle-investigation-mode";
+  investigation.dataset["sessionLocked"] = String(!hasSession);
   appendButtonLabel(
     documentRef,
     investigation,

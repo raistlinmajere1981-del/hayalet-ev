@@ -175,6 +175,9 @@ export function createRepairUiRequestRuntime() {
     stopCameraFeed() {
       return sendCommand(REPAIR_UI_COMMANDS.stopCameraFeed);
     },
+    capturePhoto() {
+      return sendCommand(REPAIR_UI_COMMANDS.capturePhoto);
+    },
     setCameraTorch(payload: { enabled: boolean }) {
       return sendCommand(REPAIR_UI_COMMANDS.setCameraTorch, payload);
     },

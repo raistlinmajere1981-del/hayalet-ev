@@ -4,7 +4,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { REPAIR_UI_COMMANDS } from "../../rooms/repair-room/shared/repair-constants.ts";
 import { createInitialRepairRuntimeState } from "../../rooms/repair-room/host/state/repair-runtime-state.ts";
-import { createRepairUiSnapshot } from "../../rooms/repair-room/host/state/repair-selectors.ts";
+import {
+  createRepairUiSnapshot,
+  createRepairUiSnapshotMeta,
+} from "../../rooms/repair-room/host/state/repair-selectors.ts";
 import { resolveRepairAssetUrl } from "../../rooms/repair-room/ui/repair-asset-url.ts";
 import {
   REPAIR_DOCK_PANEL_IDS,
@@ -12,6 +15,11 @@ import {
 } from "../../rooms/repair-room/ui/repair-room-ui-runtime.ts";
 import { renderRepairSettingsPanel } from "../../rooms/repair-room/ui/panels/repair-settings-panel.ts";
 import { renderChatPanel } from "../../rooms/repair-room/ui/panels/chat-panel.ts";
+import { renderKnowledgePackPanel } from "../../rooms/repair-room/ui/panels/knowledge-pack-panel.ts";
+import { renderMeasurementPanel } from "../../rooms/repair-room/ui/panels/measurement-panel.ts";
+import { renderRoomSyncPanel } from "../../rooms/repair-room/ui/panels/room-sync-panel.ts";
+import { renderTacticalFeedPanel } from "../../rooms/repair-room/ui/panels/tactical-feed-panel.ts";
+import { renderVisualTimelinePanel } from "../../rooms/repair-room/ui/panels/visual-timeline-panel.ts";
 import { renderWorkbenchStagePanel } from "../../rooms/repair-room/ui/panels/workbench-stage-panel.ts";
 import { renderOperatorProfilePanel } from "../../rooms/repair-room/ui/panels/operator-profile-panel.ts";
 import {
@@ -27,6 +35,7 @@ import {
   getRepairSnapAssist,
   repairImageRectsIntersect,
 } from "../../rooms/repair-room/ui/overlay/overlay-geometry.ts";
+import { createTestRepairRuntimeSeed } from "./helpers/repair-test-data.ts";
 
 function readRepairUiStyleText(): string {
   const uiRoot = join(process.cwd(), "rooms/repair-room/ui");
@@ -64,6 +73,8 @@ class RepairFakeElement {
   type = "";
   title = "";
   value = "";
+  placeholder = "";
+  disabled = false;
   draggable = true;
   style: Record<string, string> = {};
 
@@ -93,6 +104,10 @@ function findRepairFakeElements(
     matches.push(...findRepairFakeElements(child, predicate));
   });
   return matches;
+}
+
+function isLockedFakeControl(element: RepairFakeElement): boolean {
+  return element.disabled === true && element.dataset["sessionLocked"] === "true";
 }
 
 void test("repair-room overlay coordinate mapping round-trips image and stage space", () => {
@@ -248,7 +263,20 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   const feedPanel = readFileSync(join(uiRoot, "panels/tactical-feed-panel.ts"), "utf8");
   const roomSyncPanel = readFileSync(join(uiRoot, "panels/room-sync-panel.ts"), "utf8");
   const overlayStage = readFileSync(join(uiRoot, "overlay/overlay-stage.ts"), "utf8");
+  const captureHandlers = readFileSync(join(uiRoot, "runtime/capture-status-handlers.ts"), "utf8");
   const style = readRepairUiStyleText();
+  const requestRuntime = readFileSync(
+    join(process.cwd(), "rooms/repair-room/shared/ui/request-runtime.ts"),
+    "utf8"
+  );
+  const commandRouter = readFileSync(
+    join(process.cwd(), "rooms/repair-room/host/runtime/command-router.ts"),
+    "utf8"
+  );
+  const operationsController = readFileSync(
+    join(process.cwd(), "rooms/repair-room/host/runtime/operations-controller.ts"),
+    "utf8"
+  );
   const hostMessages = readFileSync(
     join(process.cwd(), "rooms/repair-room/shared/ui/host-messages.ts"),
     "utf8"
@@ -273,8 +301,22 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /handleCaptureDictationStatus/);
   assert.match(runtime, /handleCaptureAmbientStatus/);
   assert.match(runtime, /handleCaptureMediaIngress/);
+  assert.match(runtime, /case "capture-photo"/);
+  assert.match(runtime, /requestRuntime\.capturePhoto\(\)/);
   assert.match(runtime, /requestRuntime\.addTimelineEvent\(\{\s*kind: "snapshot"/);
   assert.match(runtime, /thumbnailSrc: msg\.asset\.path/);
+  assert.match(captureHandlers, /useAsBoardImage: true/);
+  assert.match(captureHandlers, /boardImageLabel: msg\.asset\.originalName/);
+  assert.match(requestRuntime, /capturePhoto\(\)/);
+  assert.match(commandRouter, /capturePhotoRequest\(\)/);
+  assert.match(commandRouter, /pcbImage: boardImage/);
+  assert.match(operationsController, /capturePhotoRequest/);
+  assert.match(workbenchPanel, /id: "capture-photo"/);
+  assert.match(workbenchPanel, /labelFallback: "Kare al"/);
+  assert.match(workbenchPanel, /isQuickActionDisabled/);
+  assert.match(workbenchPanel, /hasActiveWorkbenchCameraFeed/);
+  assert.match(workbenchPanel, /livePreview\?\.source === "mjpeg-stream"/);
+  assert.match(workbenchPanel, /livePreview\.streamUrl\.trim\(\) !== ""/);
   assert.match(runtime, /handleTtsStatus/);
   assert.match(runtime, /context\.translations = msg\.translations/);
   assert.match(runtime, /documentRef\.documentElement\.lang = context\.locale/);
@@ -300,6 +342,18 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /toggle-bottom-cluster/);
   assert.match(runtime, /aria-pressed/);
   assert.match(runtime, /updateWorkbenchPanelDom/);
+  assert.match(runtime, /syncWorkbenchQuickActions/);
+  assert.match(runtime, /\[data-repair-quick-action\]/);
+  assert.match(runtime, /syncSessionLockedControl\(button, disabled\)/);
+  assert.match(runtime, /isSessionLockedActionElement/);
+  assert.match(workbenchPanel, /hasActiveRepairSession/);
+  assert.match(workbenchPanel, /sessionLocked/);
+  assert.match(feedPanel, /sessionRequiredPlaceholder/);
+  assert.match(chatPanel, /sessionRequiredPlaceholder/);
+  assert.match(measurementPanel, /form\.dataset\["sessionLocked"\]/);
+  assert.match(timelinePanel, /sessionLocked/);
+  assert.match(knowledgePanel, /sessionLocked/);
+  assert.match(roomSyncPanel, /select\.disabled = !hasSession/);
   assert.match(runtime, /updateTacticalFeedPanelDom/);
   assert.match(runtime, /updateVisualTimelinePanelDom/);
   assert.match(runtime, /updateMeasurementPanelDom/);
@@ -551,7 +605,7 @@ void test("repair-room workbench toolbar renders grouped controls inside the vie
       actionbar,
       (element) => typeof element.dataset["repairQuickAction"] === "string"
     ).map((element) => element.dataset["repairQuickAction"]),
-    ["camera-feed", "camera-torch", "dictation", "tts", "ambient"]
+    ["camera-feed", "capture-photo", "camera-torch", "dictation", "tts", "ambient"]
   );
 
   assert.deepEqual(
@@ -584,6 +638,121 @@ void test("repair-room workbench toolbar renders grouped controls inside the vie
     ).length,
     1
   );
+
+  const lockedWorkbenchControls = findRepairFakeElements(toolbar, (element) =>
+    ["set-tool", "toggle-overlay-layer", "toggle-investigation-mode"].includes(
+      element.dataset["repairAction"] ?? ""
+    )
+  );
+  assert.ok(lockedWorkbenchControls.length > 0);
+  assert.equal(lockedWorkbenchControls.every(isLockedFakeControl), true);
+});
+
+void test("repair-room empty sessions lock workbench-dependent panel controls", () => {
+  const renderText = (_path: string[], fallback: string): string => fallback;
+  const documentRef = new RepairFakeDocument() as unknown as Document;
+  const runtimeState = createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z");
+  const state = createRepairUiSnapshot(runtimeState);
+  const meta = createRepairUiSnapshotMeta(runtimeState);
+
+  const workbench = renderWorkbenchStagePanel(documentRef, state, renderText) as unknown as RepairFakeElement;
+  const quickActions = findRepairFakeElements(
+    workbench,
+    (element) => typeof element.dataset["repairQuickAction"] === "string"
+  );
+  assert.equal(quickActions.length, 6);
+  assert.equal(quickActions.every(isLockedFakeControl), true);
+
+  const chat = renderChatPanel(documentRef, state, renderText) as unknown as RepairFakeElement;
+  assert.equal(
+    findRepairFakeElements(chat, (element) => element.dataset["repairInput"] === "chat-composer").every(
+      isLockedFakeControl
+    ),
+    true
+  );
+  assert.equal(
+    findRepairFakeElements(chat, (element) => element.dataset["repairAction"] === "send-chat").every(
+      isLockedFakeControl
+    ),
+    true
+  );
+
+  const feed = renderTacticalFeedPanel(documentRef, state, renderText) as unknown as RepairFakeElement;
+  assert.equal(
+    findRepairFakeElements(feed, (element) => element.dataset["repairInput"] === "feed-composer").every(
+      isLockedFakeControl
+    ),
+    true
+  );
+  assert.equal(
+    findRepairFakeElements(feed, (element) => element.dataset["repairAction"] === "send-feed-question").every(
+      isLockedFakeControl
+    ),
+    true
+  );
+
+  const measurement = renderMeasurementPanel(documentRef, state, renderText) as unknown as RepairFakeElement;
+  const measurementControls = findRepairFakeElements(
+    measurement,
+    (element) =>
+      element.className.split(" ").includes("repair-measurement-field__control") ||
+      element.dataset["repairAction"] === "add-manual-measurement"
+  );
+  assert.ok(measurementControls.length >= 6);
+  assert.equal(measurementControls.every(isLockedFakeControl), true);
+  assert.equal(
+    findRepairFakeElements(measurement, (element) => element.dataset["repairAction"] === "set-instrument").every(
+      (element) => element.dataset["sessionLocked"] === "true"
+    ),
+    true
+  );
+
+  const timeline = renderVisualTimelinePanel(
+    documentRef,
+    state,
+    meta,
+    renderText
+  ) as unknown as RepairFakeElement;
+  const timelineControls = findRepairFakeElements(timeline, (element) =>
+    (element.dataset["repairAction"] ?? "").startsWith("timeline-")
+  );
+  assert.ok(timelineControls.length >= 6);
+  assert.equal(timelineControls.every(isLockedFakeControl), true);
+
+  const syncPanel = renderRoomSyncPanel(documentRef, state, meta, renderText) as unknown as RepairFakeElement;
+  assert.equal(
+    findRepairFakeElements(syncPanel, (element) => element.dataset["repairAction"] === "set-ai-target-slot").every(
+      isLockedFakeControl
+    ),
+    true
+  );
+
+  const knowledgeState = createRepairUiSnapshot(
+    createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z", createTestRepairRuntimeSeed())
+  );
+  knowledgeState.sessions.activeId = null;
+  knowledgeState.sessions.detail = null;
+  const knowledge = renderKnowledgePackPanel(
+    documentRef,
+    knowledgeState,
+    renderText
+  ) as unknown as RepairFakeElement;
+  const knowledgeActions = findRepairFakeElements(knowledge, (element) =>
+    ["knowledge-pack-tab", "knowledge-spatial-focus", "knowledge-spatial-promote", "attach-knowledge-pack"].includes(
+      element.dataset["repairAction"] ?? ""
+    )
+  );
+  assert.ok(knowledgeActions.length > 0);
+  assert.equal(
+    knowledgeActions.every((element) => element.dataset["sessionLocked"] === "true"),
+    true
+  );
+  assert.equal(
+    knowledgeActions
+      .filter((element) => element.tagName === "button")
+      .every((element) => element.disabled === true),
+    true
+  );
 });
 
 void test("repair-room workbench quick actions do not duplicate topbar status", () => {
@@ -615,7 +784,7 @@ void test("repair-room workbench quick actions do not duplicate topbar status", 
   );
 
   const activeState = createRepairUiSnapshot(
-    createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z")
+    createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z", createTestRepairRuntimeSeed())
   );
   activeState.operations = {
     ...activeState.operations,

@@ -185,6 +185,7 @@ export function renderRoomSyncPanel(
     meta.events.at(-1) ??
     null;
   const rows = getRepairRoomSyncRows(state, meta, text);
+  const hasSession = state.sessions.activeId !== null && state.sessions.detail !== null;
 
   rows.forEach(([label, value], index) => {
     const row = documentRef.createElement("div");
@@ -206,6 +207,7 @@ export function renderRoomSyncPanel(
 
   const selector = documentRef.createElement("label");
   selector.className = "repair-sync-row repair-sync-row--control";
+  selector.dataset["sessionLocked"] = String(!hasSession);
 
   const selectorLabel = documentRef.createElement("span");
   selectorLabel.className = "repair-sync-row__label";
@@ -215,6 +217,8 @@ export function renderRoomSyncPanel(
   const select = documentRef.createElement("select");
   select.className = "repair-sync-row__select";
   select.dataset["repairAction"] = "set-ai-target-slot";
+  select.dataset["sessionLocked"] = String(!hasSession);
+  select.disabled = !hasSession;
   const currentTarget = state.aiDispatch.chat.targetSlot;
   (["ai0", "ai1", "ai2"] as const).forEach((slot) => {
     const option = documentRef.createElement("option");
@@ -278,6 +282,8 @@ export function renderRoomSyncPanel(
       button.dataset["repairAction"] = "ai-mark-state";
       button.dataset["eventId"] = focused.id;
       button.dataset["aiState"] = stateId;
+      button.dataset["sessionLocked"] = String(!hasSession);
+      button.disabled = !hasSession;
       actions.append(button);
     });
     focusCard.append(actions);

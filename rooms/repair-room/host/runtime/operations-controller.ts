@@ -42,6 +42,7 @@ export interface RepairOperationsApi {
     stopAmbientListener?: (requestId: string) => Promise<RepairCaptureActionOutcome>;
     startCameraFeed?: (requestId?: string) => Promise<RepairCaptureActionResult>;
     stopCameraFeed?: (requestId?: string) => Promise<RepairCaptureActionResult>;
+    capturePhoto?: (requestId?: string) => Promise<RepairCaptureActionOutcome>;
     setTorch?: (enabled: boolean, requestId?: string) => Promise<RepairCaptureActionResult>;
   };
   tts?: {
@@ -61,6 +62,7 @@ export interface RepairOperationsController {
   startAmbientRequest: () => { success: boolean; message?: string };
   stopAmbientRequest: () => { success: boolean; message?: string };
   startCameraFeedRequest: () => { success: boolean; message?: string };
+  capturePhotoRequest: () => { success: boolean; message?: string };
   setCameraTorchRequest: (enabled: boolean) => { success: boolean; message?: string };
   stopCameraFeedRequest: () => { success: boolean; message?: string };
   speakGuidanceRequest: (textOverride: string | null) => { success: boolean; message?: string };
@@ -359,6 +361,35 @@ export function createRepairOperationsController(params: {
     return { success: true };
   }
 
+  function capturePhotoRequest(): { success: boolean; message?: string } {
+    if (typeof api.capture?.capturePhoto !== "function") {
+      return { success: false, message: "capture photo API is unavailable" };
+    }
+    if (store.getState().layout.interactionSettings.androidCompanionEnabled !== true) {
+      return { success: false, message: "Android companion is disabled for Repair Room" };
+    }
+    if (store.getState().activeSessionId === null) {
+      return { success: false, message: "active repair session is required" };
+    }
+    const requestId = createOperationRequestId("photo");
+    void api.capture
+      .capturePhoto(requestId)
+      .then((outcome) => {
+        if (outcome.ok !== true) {
+          logOperationFailure("capture photo", outcome.message ?? "unknown error");
+        }
+        pushState();
+      })
+      .catch((error: unknown) => {
+        logOperationFailure(
+          "capture photo",
+          error instanceof Error ? error.message : String(error)
+        );
+        pushState();
+      });
+    return { success: true };
+  }
+
   function setCameraTorchRequest(enabled: boolean): { success: boolean; message?: string } {
     if (typeof api.capture?.setTorch !== "function") {
       return { success: false, message: "capture torch API is unavailable" };
@@ -466,6 +497,7 @@ export function createRepairOperationsController(params: {
     startAmbientRequest,
     stopAmbientRequest,
     startCameraFeedRequest,
+    capturePhotoRequest,
     stopCameraFeedRequest,
     setCameraTorchRequest,
     speakGuidanceRequest,

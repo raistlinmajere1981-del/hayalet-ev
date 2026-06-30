@@ -126,6 +126,7 @@ export function createRepairCaptureStatusHandlers(params: {
     createdAt: string;
   }): void {
     state.operationsAvailable = true;
+    const preview = state.workbench.liveSource.preview;
     state.workbench.liveSource = {
       ...state.workbench.liveSource,
       available: true,
@@ -138,6 +139,10 @@ export function createRepairCaptureStatusHandlers(params: {
         caption: `Captured ${msg.asset.originalName} from Android companion.`,
         thumbnailSrc: msg.asset.path,
         assetPath: msg.asset.path,
+        useAsBoardImage: true,
+        boardImageLabel: msg.asset.originalName,
+        widthPx: preview?.width ?? 1280,
+        heightPx: preview?.height ?? 720,
         capturedAt: msg.createdAt,
       });
     }

@@ -28,6 +28,10 @@ export function buildRepairPanelSignature(params: {
     rhythm: state.guidance.rhythm,
     voice: state.guidance.voice,
   };
+  const sessionShape = {
+    activeId: state.sessions.activeId,
+    active: state.sessions.activeId !== null && state.sessions.detail !== null,
+  };
   switch (panelId) {
     case "session-rail":
       return JSON.stringify({
@@ -38,6 +42,7 @@ export function buildRepairPanelSignature(params: {
       });
     case "workbench-stage":
       return JSON.stringify({
+        sessionShape,
         sessionImage: state.sessions.detail?.pcbImage?.src ?? null,
         sessionImageLabel: state.sessions.detail?.pcbImage?.label ?? null,
         tool: state.workbench.activeTool,
@@ -58,6 +63,7 @@ export function buildRepairPanelSignature(params: {
       });
     case "tactical-feed":
       return JSON.stringify({
+        sessionShape,
         aiDispatch: state.aiDispatch,
         feed: state.tacticalFeed.map((item) => [
           item.eventId,
@@ -74,9 +80,15 @@ export function buildRepairPanelSignature(params: {
     case "session-wizard":
       return JSON.stringify({ wizard: state.wizard, guidanceShape, layoutShape });
     case "knowledge-pack":
-      return JSON.stringify({ knowledgePack: state.knowledgePack, guidanceShape, layoutShape });
+      return JSON.stringify({
+        sessionShape,
+        knowledgePack: state.knowledgePack,
+        guidanceShape,
+        layoutShape,
+      });
     case "visual-timeline":
       return JSON.stringify({
+        sessionShape,
         phase: state.phase,
         focusedEventId: state.workbench.focusedEventId,
         timelineShape: {
@@ -112,9 +124,10 @@ export function buildRepairPanelSignature(params: {
         layoutShape,
       });
     case "chat":
-      return JSON.stringify({ chat: state.chat, guidanceShape, layoutShape });
+      return JSON.stringify({ sessionShape, chat: state.chat, guidanceShape, layoutShape });
     case "measurement":
       return JSON.stringify({
+        sessionShape,
         measurementShape: {
           activeInstrumentKind: state.measurement.activeInstrumentKind,
           instrumentId: state.measurement.current.instrumentId,
@@ -129,6 +142,7 @@ export function buildRepairPanelSignature(params: {
       });
     case "room-sync":
       return JSON.stringify({
+        sessionShape,
         phase: state.phase,
         activeId: state.sessions.activeId,
         aiDispatch: state.aiDispatch,

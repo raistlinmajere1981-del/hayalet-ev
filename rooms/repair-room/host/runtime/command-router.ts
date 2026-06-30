@@ -14,6 +14,7 @@ import type {
   RepairKnowledgePackResource,
   RepairKnowledgePackResourceKind,
   RepairOverlayEntityRef,
+  RepairPcbImageRef,
   RepairSession,
   RepairTestPoint,
   RepairVoiceGuidanceState,
@@ -345,6 +346,44 @@ export function createRepairCommandRouter(params: {
       commonFailures: failures.length,
       repairNotes: notes.length + resources.filter((item) => item.kind === "note").length,
       testPoints: testPoints.length,
+    };
+  }
+
+  function createCapturedBoardImageRef(
+    session: RepairSession,
+    eventId: string,
+    payload: Record<string, unknown>,
+    fallbackIso: string
+  ): RepairPcbImageRef | null {
+    const src = safeString(payload["thumbnailSrc"] ?? payload["assetPath"] ?? payload["src"]);
+    if (src === null) return null;
+    const preview = store.getState().livePreview;
+    const widthPx = Math.max(
+      1,
+      Math.round(
+        parseNumericField(payload["widthPx"], preview?.width ?? session.pcbImage?.widthPx ?? 1280)
+      )
+    );
+    const heightPx = Math.max(
+      1,
+      Math.round(
+        parseNumericField(payload["heightPx"], preview?.height ?? session.pcbImage?.heightPx ?? 720)
+      )
+    );
+    const pixelsPerMm = Math.max(
+      0.1,
+      parseNumericField(payload["pixelsPerMm"], session.pcbImage?.pixelsPerMm ?? 8)
+    );
+    return {
+      id: `pcb-capture-${eventId}`,
+      label:
+        safeString(payload["boardImageLabel"]) ??
+        safeString(payload["caption"]) ??
+        `Captured board image ${fallbackIso}`,
+      src,
+      pixelsPerMm,
+      widthPx,
+      heightPx,
     };
   }
 
@@ -1053,7 +1092,22 @@ export function createRepairCommandRouter(params: {
                 isAnnotationTool(flat["tool"]) ? flat["tool"] : "rect",
                 flat
               );
-        return { success: sessionController.appendEventToActiveSession(event) };
+        const success = sessionController.appendEventToActiveSession(event);
+        if (success && kind === "snapshot" && flat["useAsBoardImage"] === true) {
+          const nextSession = getActiveSession(store.getState());
+          const boardImage = createCapturedBoardImageRef(session, event.id, flat, iso);
+          if (nextSession !== null && boardImage !== null) {
+            sessionController.setSessionAndList(
+              {
+                ...nextSession,
+                pcbImage: boardImage,
+                updatedAt: iso,
+              },
+              { skipTransitionCheck: true }
+            );
+          }
+        }
+        return { success };
       }
       case REPAIR_UI_COMMANDS.jumpToEvent: {
         const eventId = safeString(flat["eventId"]);
@@ -1381,6 +1435,8 @@ export function createRepairCommandRouter(params: {
         return operationsController.startCameraFeedRequest();
       case REPAIR_UI_COMMANDS.stopCameraFeed:
         return operationsController.stopCameraFeedRequest();
+      case REPAIR_UI_COMMANDS.capturePhoto:
+        return operationsController.capturePhotoRequest();
       case REPAIR_UI_COMMANDS.setCameraTorch: {
         const enabled = flat["enabled"];
         if (typeof enabled !== "boolean") {

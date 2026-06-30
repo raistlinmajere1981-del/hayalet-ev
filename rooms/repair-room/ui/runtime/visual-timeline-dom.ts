@@ -59,6 +59,23 @@ export function createRepairVisualTimelineDomRuntime(params: {
     return state.sessions.detail?.pcbImage?.src ?? null;
   }
 
+  function hasActiveRepairSession(): boolean {
+    return state.sessions.activeId !== null && state.sessions.detail !== null;
+  }
+
+  function syncTimelineSessionLock(panel: HTMLElement): void {
+    const locked = !hasActiveRepairSession();
+    panel.querySelectorAll<HTMLButtonElement>(".repair-timeline__control-btn").forEach((button) => {
+      button.disabled = locked;
+      setDatasetIfChanged(button, "sessionLocked", String(locked));
+    });
+    const scrub = panel.querySelector<HTMLInputElement>(".repair-timeline__scrub");
+    if (scrub !== null) {
+      scrub.disabled = locked;
+      setDatasetIfChanged(scrub, "sessionLocked", String(locked));
+    }
+  }
+
   function updateTimelineLiveDom(): void {
     const timeline = documentRef.querySelector<HTMLElement>(".repair-timeline");
     if (timeline === null) return;
@@ -248,6 +265,7 @@ export function createRepairVisualTimelineDomRuntime(params: {
     const track = panel.querySelector<HTMLElement>(".repair-timeline__track");
     const scrub = panel.querySelector<HTMLInputElement>(".repair-timeline__scrub");
     if (timeline === null || track === null || scrub === null) return;
+    syncTimelineSessionLock(panel);
 
     const previousScrollLeft =
       panel.querySelector<HTMLElement>(".repair-timeline__scroller")?.scrollLeft ?? 0;
