@@ -470,6 +470,8 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /toggle-ambient-listener/);
   assert.match(runtime, /toggle-dictation/);
   assert.match(runtime, /toggle-camera-feed/);
+  assert.match(runtime, /toggle-camera-torch/);
+  assert.match(runtime, /setCameraTorch/);
   assert.match(runtime, /toggle-tts/);
   assert.match(runtime, /set-attention-budget/);
   assert.match(runtime, /setVoiceGuidance/);
@@ -549,7 +551,7 @@ void test("repair-room workbench toolbar renders grouped controls inside the vie
       actionbar,
       (element) => typeof element.dataset["repairQuickAction"] === "string"
     ).map((element) => element.dataset["repairQuickAction"]),
-    ["camera-feed", "dictation", "tts", "ambient"]
+    ["camera-feed", "camera-torch", "dictation", "tts", "ambient"]
   );
 
   assert.deepEqual(
@@ -621,7 +623,13 @@ void test("repair-room workbench quick actions do not duplicate topbar status", 
     cameraActive: true,
     liveFeedActive: true,
     ambientActive: true,
-    activeCapabilities: ["local-microphone", "android-camera", "live-feed", "ambient-listening"],
+    activeCapabilities: [
+      "local-microphone",
+      "android-camera",
+      "live-feed",
+      "ambient-listening",
+      "android-torch",
+    ],
   };
   activeState.layout.voiceGuidance = {
     ...activeState.layout.voiceGuidance,
@@ -654,6 +662,7 @@ void test("repair-room workbench quick actions do not duplicate topbar status", 
     ).map((element) => [element.dataset["repairQuickAction"], element])
   );
   assert.equal(quickActions.get("camera-feed")?.dataset["active"], "true");
+  assert.equal(quickActions.get("camera-torch")?.dataset["active"], "true");
   assert.equal(quickActions.get("dictation")?.dataset["active"], "true");
   assert.equal(quickActions.get("ambient")?.dataset["active"], "true");
   assert.equal(quickActions.get("tts")?.dataset["active"], "false");
@@ -741,6 +750,7 @@ void test("repair-room workbench quick actions do not duplicate topbar status", 
   assert.match(workbenchPanel, /toggle-ambient-listener/);
   assert.match(workbenchPanel, /toggle-dictation/);
   assert.match(workbenchPanel, /toggle-camera-feed/);
+  assert.match(workbenchPanel, /toggle-camera-torch/);
   assert.match(workbenchPanel, /toggle-tts/);
   assert.doesNotMatch(workbenchPanel, /set-settings-overlay/);
   assert.doesNotMatch(workbenchPanel, /bench-operator/);

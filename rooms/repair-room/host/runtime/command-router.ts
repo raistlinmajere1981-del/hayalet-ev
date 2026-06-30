@@ -1381,6 +1381,13 @@ export function createRepairCommandRouter(params: {
         return operationsController.startCameraFeedRequest();
       case REPAIR_UI_COMMANDS.stopCameraFeed:
         return operationsController.stopCameraFeedRequest();
+      case REPAIR_UI_COMMANDS.setCameraTorch: {
+        const enabled = flat["enabled"];
+        if (typeof enabled !== "boolean") {
+          return { success: false, message: "camera torch enabled flag is required" };
+        }
+        return operationsController.setCameraTorchRequest(enabled);
+      }
       case REPAIR_UI_COMMANDS.speakGuidance: {
         return operationsController.speakGuidanceRequest(safeString(flat["text"]));
       }

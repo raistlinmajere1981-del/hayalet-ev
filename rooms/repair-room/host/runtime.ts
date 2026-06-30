@@ -53,6 +53,7 @@ interface RepairRoomApi {
     stopAmbientListener?: (requestId: string) => Promise<RepairCaptureActionOutcome>;
     startCameraFeed?: (requestId?: string) => Promise<RepairCaptureActionResult>;
     stopCameraFeed?: (requestId?: string) => Promise<RepairCaptureActionResult>;
+    setTorch?: (enabled: boolean, requestId?: string) => Promise<RepairCaptureActionResult>;
   };
   tts?: {
     speak?: (

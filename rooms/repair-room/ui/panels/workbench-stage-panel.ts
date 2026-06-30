@@ -266,7 +266,7 @@ const REPAIR_TOOLBAR_LAYER_BUTTONS: Array<{
   },
 ];
 
-type RepairWorkbenchQuickActionId = "camera-feed" | "dictation" | "tts" | "ambient";
+type RepairWorkbenchQuickActionId = "camera-feed" | "camera-torch" | "dictation" | "tts" | "ambient";
 
 const REPAIR_WORKBENCH_QUICK_ACTIONS: Array<{
   id: RepairWorkbenchQuickActionId;
@@ -285,6 +285,15 @@ const REPAIR_WORKBENCH_QUICK_ACTIONS: Array<{
     labelFallback: "Kamera",
     titleKey: "cameraTitle",
     titleFallback: "Kamera feed'ini başlat veya durdur",
+  },
+  {
+    id: "camera-torch",
+    action: "toggle-camera-torch",
+    icon: "F",
+    labelKey: "torch",
+    labelFallback: "Fener",
+    titleKey: "torchTitle",
+    titleFallback: "Telefon fenerini aç veya kapat",
   },
   {
     id: "dictation",
@@ -391,6 +400,8 @@ function isQuickActionActive(state: RepairUiState, id: RepairWorkbenchQuickActio
         state.operations.liveFeedActive ||
         state.workbench.liveSource.connected
       );
+    case "camera-torch":
+      return state.operations.activeCapabilities.includes("android-torch");
     case "dictation":
       return (
         state.operations.localMicActive ||

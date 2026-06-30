@@ -286,6 +286,12 @@
           "exposure": "internal"
         },
         {
+          "name": "RepairRoomSetCameraTorch",
+          "description": "Toggle the Android companion torch for the Repair Room workbench camera.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "RepairRoomSpeakGuidance",
           "description": "Read the current Repair Room guidance line through the central TTS runtime.",
           "scope": "room-ui",

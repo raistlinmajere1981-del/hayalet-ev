@@ -55,6 +55,7 @@
     "android:deps:update": "node scripts/update-android-companion-deps.mjs",
     "android:open": "node scripts/open-android-companion.mjs",
     "capture:v4l2:setup": "node scripts/setup-scrcpy-v4l2loopback.mjs",
+    "cdp:eval": "node scripts/cdp-eval.mjs",
     "ghost:dev": "npm run ghost:build:all && node scripts/run-with-env.mjs CDP_PORT=9222 -- electron ./dist/ghost-agent/electron/main.js --no-sandbox",
     "ghost:start": "npm run ghost:build:all && electron ./dist/ghost-agent/electron/main.js --no-sandbox",
     "ghost:handoff": "npm run ghost:build:all && npm run electron:build && node scripts/ghost-agent-wrapper.mjs",

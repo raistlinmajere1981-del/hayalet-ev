@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import { execFile, spawn } from "child_process";
 import { existsSync } from "fs";
 import { delimiter, extname, join } from "path";
 import { logToolError as _logToolError } from "../../utils/mcp-logger.js";
@@ -24,6 +24,22 @@ interface BashExecutionOptions {
 type McpTranslator = (key: string, params?: TranslationParams) => string;
 
 const bashToolDefinitionTranslator = createMcpTranslatorSync();
+const MCP_TRANSPORT_TIMEOUT_GUARD_MS = 5_000;
+const MCP_TOOL_FOREGROUND_TIMEOUT_CEILING_MS = 300_000 - MCP_TRANSPORT_TIMEOUT_GUARD_MS;
+const TIMEOUT_FORCE_KILL_GRACE_MS = 2_000;
+const DEFAULT_FOREGROUND_COMMAND_PREFIXES = [
+  "npm run scripts:typecheck",
+  "npm run typecheck",
+  "npm run check-types",
+  "npm run mcp:build",
+  "npm run mcp:check",
+  "npm run mcp:test",
+  "npm run rooms:typecheck",
+  "npm run rooms:check",
+  "npm run rooms:test",
+  "npx tsc",
+  "tsc",
+] as const;
 
 function bashT(t: McpTranslator, key: string, params?: TranslationParams): string {
   return t(`mcpServer.fs.bash.${key}`, params);
@@ -83,10 +99,55 @@ function resolveShellInvocation(command: string): { command: string; args: strin
   return { command: process.env["ComSpec"] ?? "cmd.exe", args: ["/d", "/s", "/c", command] };
 }
 
+function normalizeTimeout(timeout: number): number {
+  if (Number.isFinite(timeout) === false || timeout <= 0) {
+    return FS_TIMEOUTS.BASH_DEFAULT;
+  }
+  return Math.floor(timeout);
+}
+
+export function shouldKeepCommandForegroundByDefault(command: string): boolean {
+  const normalizedCommand = command.trim().replace(/\s+/g, " ");
+  return DEFAULT_FOREGROUND_COMMAND_PREFIXES.some(
+    (prefix) => normalizedCommand === prefix || normalizedCommand.startsWith(`${prefix} `)
+  );
+}
+
+function resolveEffectiveTimeout(timeout: number, detachLongRunning: boolean): number {
+  const normalizedTimeout = normalizeTimeout(timeout);
+  if (detachLongRunning) {
+    return normalizedTimeout;
+  }
+  return Math.min(normalizedTimeout, MCP_TOOL_FOREGROUND_TIMEOUT_CEILING_MS);
+}
+
+function terminateProcessTree(pid: number | undefined, signal: NodeJS.Signals): void {
+  if (typeof pid !== "number") return;
+
+  if (process.platform === "win32") {
+    const args = ["/PID", String(pid), "/T"];
+    if (signal === "SIGKILL") {
+      args.push("/F");
+    }
+    execFile("taskkill.exe", args, { windowsHide: true }, () => undefined);
+    return;
+  }
+
+  try {
+    process.kill(-pid, signal);
+  } catch {
+    try {
+      process.kill(pid, signal);
+    } catch {
+      // Process already exited.
+    }
+  }
+}
+
 export async function executeBash(
   command: string | number,
   workspacePath: string,
-  timeout: number = FS_TIMEOUTS.BASH_DEFAULT,
+  timeout?: number,
   options: BashExecutionOptions = {}
 ): Promise<BashResult> {
   const t = await createMcpTranslator();
@@ -125,21 +186,27 @@ export async function executeBash(
       }
     }
 
-    const shellInvocation = resolveShellInvocation(actualCommand);
-    const child = spawn(shellInvocation.command, shellInvocation.args, {
-      cwd: workspacePath,
-      env: { ...process.env },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
     let stdout = "";
     let stderr = "";
     let timedOut = false;
     let settled = false;
     const maxOutput = 50000;
-    const detachLongRunning = options.detachLongRunning ?? true;
+    const keepForegroundByDefault = shouldKeepCommandForegroundByDefault(actualCommand);
+    const detachLongRunning = options.detachLongRunning ?? !keepForegroundByDefault;
+    const requestedTimeout =
+      timeout ?? (detachLongRunning ? FS_TIMEOUTS.BASH_DEFAULT : MCP_TOOL_FOREGROUND_TIMEOUT_CEILING_MS);
+    const effectiveTimeout = resolveEffectiveTimeout(requestedTimeout, detachLongRunning);
     const foregroundWaitMs =
-      options.foregroundWaitMs ?? Math.min(Math.max(timeout - 1_000, 1_000), 8_000);
+      options.foregroundWaitMs ?? Math.min(Math.max(effectiveTimeout - 1_000, 1_000), 8_000);
+    let forceKillTimeoutId: NodeJS.Timeout | null = null;
+
+    const shellInvocation = resolveShellInvocation(actualCommand);
+    const child = spawn(shellInvocation.command, shellInvocation.args, {
+      cwd: workspacePath,
+      detached: process.platform !== "win32",
+      env: { ...process.env },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
     function appendOutput(current: string, data: unknown): string {
       const next = current + chunkToString(data);
@@ -150,14 +217,18 @@ export async function executeBash(
       if (settled) return;
       settled = true;
       clearTimeout(timeoutId);
+      if (forceKillTimeoutId !== null) clearTimeout(forceKillTimeoutId);
       if (foregroundWaitId !== null) clearTimeout(foregroundWaitId);
       resolve(result);
     }
 
     const timeoutId = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGTERM");
-    }, timeout);
+      terminateProcessTree(child.pid, "SIGTERM");
+      forceKillTimeoutId = setTimeout(() => {
+        terminateProcessTree(child.pid, "SIGKILL");
+      }, TIMEOUT_FORCE_KILL_GRACE_MS);
+    }, effectiveTimeout);
 
     const foregroundWaitId =
       detachLongRunning === true
@@ -200,7 +271,7 @@ export async function executeBash(
       resolveOnce({
         stdout: truncatedStdout,
         stderr: truncatedStderr,
-        exitCode: code ?? (timedOut ? 124 : 1),
+        exitCode: timedOut ? 124 : (code ?? 1),
         ...(typeof child.pid === "number" ? { pid: child.pid } : {}),
         timedOut,
       });
@@ -216,6 +287,9 @@ export async function executeBash(
 
     if (isBackground) {
       setTimeout(() => {
+        child.stdout.pause();
+        child.stderr.pause();
+        child.unref();
         resolveOnce({
           stdout: bashT(t, "backgroundStarted"),
           stderr: "",

@@ -1815,6 +1815,10 @@ export function createRepairRoomUiRuntime() {
           }
           break;
         }
+        case "toggle-camera-torch": {
+          requestRuntime.setCameraTorch({ enabled: el.dataset["active"] !== "true" });
+          break;
+        }
         case "toggle-tts": {
           if (el.dataset["active"] === "true") {
             requestRuntime.stopSpeech();

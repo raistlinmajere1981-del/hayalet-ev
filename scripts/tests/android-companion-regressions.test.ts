@@ -137,6 +137,11 @@ void test("android companion keeps openWake ambient, Vosk dictation, and live ca
   assert.match(cameraControllerSource, /CameraPreviewFrame/);
   assert.match(cameraControllerSource, /compressToJpeg/);
   assert.match(cameraControllerSource, /LIVE_PREVIEW_FRAME_INTERVAL_MS/);
+  assert.match(cameraControllerSource, /private var activeCamera: Camera\? = null/);
+  assert.match(cameraControllerSource, /fun setTorchOnBoundCamera\(enabled: Boolean\): Boolean/);
+  assert.match(cameraControllerSource, /camera\.cameraControl\.enableTorch\(enabled\)/);
+  assert.match(sessionSource, /cameraController\.setTorchOnBoundCamera\(enabled\)/);
+  assert.match(sessionSource, /cameraManager\.setTorchMode\(cameraId, enabled\)/);
 
   assert.match(recorderSource, /MediaRecorder\.AudioSource\.MIC/);
   assert.match(recorderSource, /android-dictation-/);

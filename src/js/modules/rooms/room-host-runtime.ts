@@ -113,6 +113,10 @@ interface RoomHostApi {
     stopCameraFeed: (
       requestId?: string
     ) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
+    setTorch: (
+      enabled: boolean,
+      requestId?: string
+    ) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
     startInteractiveMirror: (
       requestId?: string
     ) => Promise<{ requestId: string; outcome: CaptureActionOutcome }>;
@@ -1139,6 +1143,17 @@ class RoomHostRuntimeClass {
             await this.releaseTrackedOperationCapabilities(registration, requestId);
           }
           notifyCaptureFeedStatus(requestId, "camera-feed", outcome);
+          return { requestId, outcome };
+        },
+        setTorch: async (
+          enabled,
+          requestId = crypto.randomUUID()
+        ): Promise<{ requestId: string; outcome: CaptureActionOutcome }> => {
+          const outcome = await runCaptureAction("set-torch", {
+            target: transcriptTarget,
+            requestId,
+            enabled,
+          });
           return { requestId, outcome };
         },
         startInteractiveMirror: async (

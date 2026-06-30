@@ -5,6 +5,7 @@ import android.graphics.Rect
 import android.graphics.YuvImage
 import android.os.SystemClock
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture.FLASH_MODE_AUTO
 import androidx.camera.core.ImageCapture.FLASH_MODE_OFF
@@ -67,6 +68,7 @@ class CameraSessionController(
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageCapture: ImageCapture? = null
     private var imageAnalysis: ImageAnalysis? = null
+    private var activeCamera: Camera? = null
     private var currentConfig: CameraSessionConfig? = null
     private var livePreviewFrameSink: ((CameraPreviewFrame) -> Unit)? = null
     private var liveAnalysisEnabled = false
@@ -74,6 +76,15 @@ class CameraSessionController(
     private val analysisExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
     fun isPreviewBound(): Boolean = imageCapture != null
+
+    fun setTorchOnBoundCamera(enabled: Boolean): Boolean {
+        val camera = activeCamera ?: return false
+        if (!camera.cameraInfo.hasFlashUnit()) {
+            return false
+        }
+        camera.cameraControl.enableTorch(enabled)
+        return true
+    }
 
     fun setLivePreviewFrameSink(sink: ((CameraPreviewFrame) -> Unit)?) {
         livePreviewFrameSink = sink
@@ -142,7 +153,7 @@ class CameraSessionController(
                             } else {
                                 arrayOf<UseCase>(preview, nextImageCapture)
                             }
-                        resolvedProvider.bindToLifecycle(
+                        val boundCamera = resolvedProvider.bindToLifecycle(
                             activity,
                             if (config.lens == CaptureLens.FRONT) {
                                 CameraSelector.DEFAULT_FRONT_CAMERA
@@ -154,6 +165,7 @@ class CameraSessionController(
 
                         cameraProvider = resolvedProvider
                         imageCapture = nextImageCapture
+                        activeCamera = boundCamera
                         imageAnalysis = nextImageAnalysis
                         currentConfig = config
                         liveAnalysisEnabled = nextImageAnalysis != null
@@ -182,6 +194,7 @@ class CameraSessionController(
         cameraProvider?.unbindAll()
         imageCapture = null
         imageAnalysis = null
+        activeCamera = null
         currentConfig = null
         liveAnalysisEnabled = false
         livePreviewFrameSink = null

@@ -1031,9 +1031,15 @@ class CompanionSessionCoordinator(
     }
 
     private fun setTorch(enabled: Boolean) {
-        val cameraId = resolveTorchCameraId()
-            ?: throw IllegalStateException(appContext.getString(R.string.torch_error_unavailable))
-        cameraManager.setTorchMode(cameraId, enabled)
+        val source =
+            if (cameraController.setTorchOnBoundCamera(enabled)) {
+                "cameraX"
+            } else {
+                val cameraId = resolveTorchCameraId()
+                    ?: throw IllegalStateException(appContext.getString(R.string.torch_error_unavailable))
+                cameraManager.setTorchMode(cameraId, enabled)
+                "cameraId=$cameraId"
+            }
         torchEnabled = enabled
         CompanionDiagnostics.setState(
             "Torch",
@@ -1042,7 +1048,7 @@ class CompanionSessionCoordinator(
         CompanionDiagnostics.i(
             "torch",
             if (enabled) "Phone torch enabled." else "Phone torch disabled.",
-            "cameraId=$cameraId",
+            source,
         )
     }
 
