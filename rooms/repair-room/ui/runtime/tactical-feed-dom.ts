@@ -17,31 +17,6 @@ export function createRepairTacticalFeedDomRuntime(params: {
 }) {
   const { documentRef, state, text, updatePanelChrome } = params;
 
-  function hasActiveRepairSession(): boolean {
-    return state.sessions.activeId !== null && state.sessions.detail !== null;
-  }
-
-  function syncTacticalFeedSessionLock(panel: HTMLElement): void {
-    const locked = !hasActiveRepairSession();
-    const composer = panel.querySelector<HTMLElement>(".repair-feed-composer");
-    if (composer !== null) setDatasetIfChanged(composer, "sessionLocked", String(locked));
-    const input = panel.querySelector<HTMLInputElement>("[data-repair-input='feed-composer']");
-    if (input !== null) {
-      input.disabled = locked;
-      input.placeholder = locked
-        ? text(["tacticalFeed", "sessionRequiredPlaceholder"], "Önce bir tamir oturumu aç")
-        : text(["tacticalFeed", "composer"], "Tamir asistanına sor...");
-      setDatasetIfChanged(input, "sessionLocked", String(locked));
-    }
-    const sendButton = panel.querySelector<HTMLButtonElement>(
-      "[data-repair-action='send-feed-question']"
-    );
-    if (sendButton !== null) {
-      sendButton.disabled = locked;
-      setDatasetIfChanged(sendButton, "sessionLocked", String(locked));
-    }
-  }
-
   function createTacticalFeedEntry(): HTMLElement {
     const entry = documentRef.createElement("div");
     entry.dataset["repairAction"] = "jump-to-event";
@@ -128,8 +103,6 @@ export function createRepairTacticalFeedDomRuntime(params: {
     if (calmLine !== null) {
       setTextIfChanged(calmLine, formatRepairTacticalFeedStatusLine(state, text));
     }
-    syncTacticalFeedSessionLock(panel);
-
     const list = panel.querySelector<HTMLElement>(".repair-feed-list");
     if (list === null) return;
 

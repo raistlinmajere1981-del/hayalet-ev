@@ -15,10 +15,6 @@ export function createRepairSyncInspectorDomRuntime(params: {
 }) {
   const { documentRef, meta, state, text, updatePanelChrome } = params;
 
-  function hasActiveRepairSession(): boolean {
-    return state.sessions.activeId !== null && state.sessions.detail !== null;
-  }
-
   function getSyncFocusedEvent(): RepairEvent | null {
     return (
       meta.events.find((event) => event.id === state.workbench.focusedEventId) ??
@@ -211,7 +207,6 @@ export function createRepairSyncInspectorDomRuntime(params: {
     }
 
     const rows = getRepairRoomSyncRows(state, meta, text);
-    const locked = !hasActiveRepairSession();
     const body = panel.querySelector<HTMLElement>(".repair-sync-panel");
     const focusCard = panel.querySelector<HTMLElement>(".repair-sync-focus");
     const rowElements = Array.from(
@@ -253,10 +248,6 @@ export function createRepairSyncInspectorDomRuntime(params: {
       if (targetSelect.value !== state.aiDispatch.chat.targetSlot) {
         targetSelect.value = state.aiDispatch.chat.targetSlot;
       }
-      targetSelect.disabled = locked;
-      setDatasetIfChanged(targetSelect, "sessionLocked", String(locked));
-      const selector = targetSelect.closest<HTMLElement>(".repair-sync-row--control");
-      if (selector !== null) setDatasetIfChanged(selector, "sessionLocked", String(locked));
     }
 
     const focused = getSyncFocusedEvent();
@@ -298,8 +289,6 @@ export function createRepairSyncInspectorDomRuntime(params: {
         }
         setTextIfChanged(button, label);
         setDatasetIfChanged(button, "eventId", focused.id);
-        setDatasetIfChanged(button, "sessionLocked", String(locked));
-        button.disabled = locked;
         button.title = text(
           ["sync", "lifecycleActions", "markTitle"],
           "Mark observation as {label}",

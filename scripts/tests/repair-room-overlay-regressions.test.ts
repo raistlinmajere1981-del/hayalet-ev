@@ -4,10 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { REPAIR_UI_COMMANDS } from "../../rooms/repair-room/shared/repair-constants.ts";
 import { createInitialRepairRuntimeState } from "../../rooms/repair-room/host/state/repair-runtime-state.ts";
-import {
-  createRepairUiSnapshot,
-  createRepairUiSnapshotMeta,
-} from "../../rooms/repair-room/host/state/repair-selectors.ts";
+import { createRepairUiSnapshot } from "../../rooms/repair-room/host/state/repair-selectors.ts";
 import { resolveRepairAssetUrl } from "../../rooms/repair-room/ui/repair-asset-url.ts";
 import {
   REPAIR_DOCK_PANEL_IDS,
@@ -15,11 +12,6 @@ import {
 } from "../../rooms/repair-room/ui/repair-room-ui-runtime.ts";
 import { renderRepairSettingsPanel } from "../../rooms/repair-room/ui/panels/repair-settings-panel.ts";
 import { renderChatPanel } from "../../rooms/repair-room/ui/panels/chat-panel.ts";
-import { renderKnowledgePackPanel } from "../../rooms/repair-room/ui/panels/knowledge-pack-panel.ts";
-import { renderMeasurementPanel } from "../../rooms/repair-room/ui/panels/measurement-panel.ts";
-import { renderRoomSyncPanel } from "../../rooms/repair-room/ui/panels/room-sync-panel.ts";
-import { renderTacticalFeedPanel } from "../../rooms/repair-room/ui/panels/tactical-feed-panel.ts";
-import { renderVisualTimelinePanel } from "../../rooms/repair-room/ui/panels/visual-timeline-panel.ts";
 import { renderWorkbenchStagePanel } from "../../rooms/repair-room/ui/panels/workbench-stage-panel.ts";
 import { renderOperatorProfilePanel } from "../../rooms/repair-room/ui/panels/operator-profile-panel.ts";
 import {
@@ -104,10 +96,6 @@ function findRepairFakeElements(
     matches.push(...findRepairFakeElements(child, predicate));
   });
   return matches;
-}
-
-function isLockedFakeControl(element: RepairFakeElement): boolean {
-  return element.disabled === true && element.dataset["sessionLocked"] === "true";
 }
 
 void test("repair-room overlay coordinate mapping round-trips image and stage space", () => {
@@ -344,16 +332,21 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /updateWorkbenchPanelDom/);
   assert.match(runtime, /syncWorkbenchQuickActions/);
   assert.match(runtime, /\[data-repair-quick-action\]/);
-  assert.match(runtime, /syncSessionLockedControl\(button, disabled\)/);
+  assert.match(runtime, /REPAIR_SESSION_REQUIRED_PANEL_IDS/);
+  assert.match(runtime, /syncPanelSessionLock/);
+  assert.match(runtime, /repair-panel__body--session-locked/);
+  assert.match(runtime, /\.repair-panel__body\[data-session-locked='true'\]/);
+  assert.match(runtime, /button, input, select, textarea/);
+  assert.match(runtime, /sessionLockWasDisabled/);
   assert.match(runtime, /isSessionLockedActionElement/);
   assert.match(workbenchPanel, /hasActiveRepairSession/);
-  assert.match(workbenchPanel, /sessionLocked/);
+  assert.doesNotMatch(workbenchPanel, /sessionLocked/);
   assert.match(feedPanel, /sessionRequiredPlaceholder/);
   assert.match(chatPanel, /sessionRequiredPlaceholder/);
-  assert.match(measurementPanel, /form\.dataset\["sessionLocked"\]/);
-  assert.match(timelinePanel, /sessionLocked/);
-  assert.match(knowledgePanel, /sessionLocked/);
-  assert.match(roomSyncPanel, /select\.disabled = !hasSession/);
+  assert.doesNotMatch(measurementPanel, /sessionLocked/);
+  assert.doesNotMatch(timelinePanel, /sessionLocked/);
+  assert.doesNotMatch(knowledgePanel, /sessionLocked/);
+  assert.doesNotMatch(roomSyncPanel, /sessionLocked|select\.disabled = !hasSession/);
   assert.match(runtime, /updateTacticalFeedPanelDom/);
   assert.match(runtime, /updateVisualTimelinePanelDom/);
   assert.match(runtime, /updateMeasurementPanelDom/);
@@ -639,120 +632,46 @@ void test("repair-room workbench toolbar renders grouped controls inside the vie
     1
   );
 
-  const lockedWorkbenchControls = findRepairFakeElements(toolbar, (element) =>
+  const toolbarControls = findRepairFakeElements(toolbar, (element) =>
     ["set-tool", "toggle-overlay-layer", "toggle-investigation-mode"].includes(
       element.dataset["repairAction"] ?? ""
     )
   );
-  assert.ok(lockedWorkbenchControls.length > 0);
-  assert.equal(lockedWorkbenchControls.every(isLockedFakeControl), true);
+  assert.ok(toolbarControls.length > 0);
+  const quickActions = new Map(
+    findRepairFakeElements(
+      actionbar,
+      (element) => typeof element.dataset["repairQuickAction"] === "string"
+    ).map((element) => [element.dataset["repairQuickAction"], element])
+  );
+  assert.equal(quickActions.get("capture-photo")?.disabled, true);
+  assert.equal(quickActions.get("camera-feed")?.disabled, false);
 });
 
-void test("repair-room empty sessions lock workbench-dependent panel controls", () => {
-  const renderText = (_path: string[], fallback: string): string => fallback;
-  const documentRef = new RepairFakeDocument() as unknown as Document;
-  const runtimeState = createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z");
-  const state = createRepairUiSnapshot(runtimeState);
-  const meta = createRepairUiSnapshotMeta(runtimeState);
+void test("repair-room empty sessions lock session-bound panel bodies centrally", () => {
+  const runtime = readRepairUiRuntimeText();
+  const style = readRepairUiStyleText();
 
-  const workbench = renderWorkbenchStagePanel(documentRef, state, renderText) as unknown as RepairFakeElement;
-  const quickActions = findRepairFakeElements(
-    workbench,
-    (element) => typeof element.dataset["repairQuickAction"] === "string"
-  );
-  assert.equal(quickActions.length, 6);
-  assert.equal(quickActions.every(isLockedFakeControl), true);
-
-  const chat = renderChatPanel(documentRef, state, renderText) as unknown as RepairFakeElement;
-  assert.equal(
-    findRepairFakeElements(chat, (element) => element.dataset["repairInput"] === "chat-composer").every(
-      isLockedFakeControl
-    ),
-    true
-  );
-  assert.equal(
-    findRepairFakeElements(chat, (element) => element.dataset["repairAction"] === "send-chat").every(
-      isLockedFakeControl
-    ),
-    true
-  );
-
-  const feed = renderTacticalFeedPanel(documentRef, state, renderText) as unknown as RepairFakeElement;
-  assert.equal(
-    findRepairFakeElements(feed, (element) => element.dataset["repairInput"] === "feed-composer").every(
-      isLockedFakeControl
-    ),
-    true
-  );
-  assert.equal(
-    findRepairFakeElements(feed, (element) => element.dataset["repairAction"] === "send-feed-question").every(
-      isLockedFakeControl
-    ),
-    true
-  );
-
-  const measurement = renderMeasurementPanel(documentRef, state, renderText) as unknown as RepairFakeElement;
-  const measurementControls = findRepairFakeElements(
-    measurement,
-    (element) =>
-      element.className.split(" ").includes("repair-measurement-field__control") ||
-      element.dataset["repairAction"] === "add-manual-measurement"
-  );
-  assert.ok(measurementControls.length >= 6);
-  assert.equal(measurementControls.every(isLockedFakeControl), true);
-  assert.equal(
-    findRepairFakeElements(measurement, (element) => element.dataset["repairAction"] === "set-instrument").every(
-      (element) => element.dataset["sessionLocked"] === "true"
-    ),
-    true
-  );
-
-  const timeline = renderVisualTimelinePanel(
-    documentRef,
-    state,
-    meta,
-    renderText
-  ) as unknown as RepairFakeElement;
-  const timelineControls = findRepairFakeElements(timeline, (element) =>
-    (element.dataset["repairAction"] ?? "").startsWith("timeline-")
-  );
-  assert.ok(timelineControls.length >= 6);
-  assert.equal(timelineControls.every(isLockedFakeControl), true);
-
-  const syncPanel = renderRoomSyncPanel(documentRef, state, meta, renderText) as unknown as RepairFakeElement;
-  assert.equal(
-    findRepairFakeElements(syncPanel, (element) => element.dataset["repairAction"] === "set-ai-target-slot").every(
-      isLockedFakeControl
-    ),
-    true
-  );
-
-  const knowledgeState = createRepairUiSnapshot(
-    createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z", createTestRepairRuntimeSeed())
-  );
-  knowledgeState.sessions.activeId = null;
-  knowledgeState.sessions.detail = null;
-  const knowledge = renderKnowledgePackPanel(
-    documentRef,
-    knowledgeState,
-    renderText
-  ) as unknown as RepairFakeElement;
-  const knowledgeActions = findRepairFakeElements(knowledge, (element) =>
-    ["knowledge-pack-tab", "knowledge-spatial-focus", "knowledge-spatial-promote", "attach-knowledge-pack"].includes(
-      element.dataset["repairAction"] ?? ""
-    )
-  );
-  assert.ok(knowledgeActions.length > 0);
-  assert.equal(
-    knowledgeActions.every((element) => element.dataset["sessionLocked"] === "true"),
-    true
-  );
-  assert.equal(
-    knowledgeActions
-      .filter((element) => element.tagName === "button")
-      .every((element) => element.disabled === true),
-    true
-  );
+  assert.match(runtime, /REPAIR_SESSION_REQUIRED_PANEL_IDS: ReadonlySet<RepairPanelId>/);
+  [
+    "workbench-stage",
+    "tactical-feed",
+    "knowledge-pack",
+    "visual-timeline",
+    "chat",
+    "measurement",
+    "room-sync",
+  ].forEach((panelId) => {
+    assert.match(runtime, new RegExp(`"${panelId}"`));
+  });
+  assert.match(runtime, /syncPanelSessionLock\(mounted, lifecycle\.panelId\)/);
+  assert.match(runtime, /syncPanelSessionLock\(current, lifecycle\.panelId\)/);
+  assert.match(runtime, /syncPanelSessionLock\(updated, lifecycle\.panelId\)/);
+  assert.match(runtime, /body\.classList\.toggle\("repair-panel__body--session-locked", locked\)/);
+  assert.match(runtime, /body\.setAttribute\("aria-disabled", String\(locked\)\)/);
+  assert.match(runtime, /\.inert = locked/);
+  assert.match(runtime, /body\.querySelectorAll<HTMLElement>\("button, input, select, textarea"\)/);
+  assert.match(style, /\.repair-panel__body--session-locked/);
 });
 
 void test("repair-room workbench quick actions do not duplicate topbar status", () => {

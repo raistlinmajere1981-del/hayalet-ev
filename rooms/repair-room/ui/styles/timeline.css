@@ -1,20 +1,48 @@
 /* ── Visual Timeline ─────────────────────────────────────────────── */
+.repair-panel--visual-timeline {
+  position: relative;
+}
+
+.repair-panel--visual-timeline > .repair-panel__header {
+  padding-right: min(54vw, calc(var(--repair-px-320) + var(--repair-px-180)));
+}
+
+.repair-panel--visual-timeline > .repair-panel__body {
+  overflow: visible;
+}
+
 .repair-timeline {
   display: flex;
   flex-direction: column;
-  min-height: var(--repair-px-112);
-  max-height: var(--repair-px-140);
+  min-height: calc(var(--repair-px-72) + var(--repair-px-8));
+  max-height: var(--repair-px-96);
 }
 
 .repair-timeline__controls {
+  position: absolute;
+  top: var(--repair-sp-1);
+  right: var(--repair-sp-2);
+  z-index: 2;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--repair-sp-1) var(--repair-sp-2);
-  padding: var(--repair-sp-2) var(--repair-sp-3) var(--repair-sp-1);
+  width: auto;
+  max-width: min(68%, calc(var(--repair-px-320) + var(--repair-px-200)));
+  height: var(--repair-px-26);
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.repair-timeline__controls::-webkit-scrollbar {
+  display: none;
 }
 
 .repair-timeline__readout {
+  flex: 0 0 auto;
   min-width: max-content;
   margin-right: auto;
   font: 700 var(--repair-px-10) var(--repair-mono);
@@ -23,6 +51,7 @@
 }
 
 .repair-timeline__control-btn {
+  flex: 0 0 auto;
   width: auto;
   max-width: calc(var(--repair-px-72) * 1.55);
   height: var(--repair-px-22);
@@ -52,7 +81,7 @@
 
 .repair-timeline__scrub {
   width: calc(100% - var(--repair-sp-6));
-  height: var(--repair-px-18);
+  height: var(--repair-px-14);
   margin: 0 var(--repair-sp-3);
   accent-color: var(--repair-cyan);
 }
@@ -68,7 +97,7 @@
 
 .repair-timeline__track {
   position: relative;
-  height: var(--repair-px-72);
+  height: var(--repair-px-56);
   min-width: 100%;
   padding: 0 var(--repair-sp-3);
 }
@@ -83,7 +112,7 @@
 
 .repair-timeline__tick span {
   position: absolute;
-  top: var(--repair-px-5);
+  top: var(--repair-px-4);
   left: var(--repair-px-5);
   font: var(--repair-px-9) var(--repair-mono);
   color: var(--repair-text-dim);
@@ -92,8 +121,8 @@
 
 .repair-timeline__range {
   position: absolute;
-  top: var(--repair-px-22);
-  height: var(--repair-px-36);
+  top: var(--repair-px-20);
+  height: var(--repair-px-28);
   border: var(--repair-px-1) solid var(--repair-amber-border);
   background: var(--repair-amber-wash);
   border-radius: var(--repair-radius-sm);
@@ -102,12 +131,12 @@
 
 .repair-timeline__chip {
   position: absolute;
-  top: var(--repair-px-38);
+  top: var(--repair-px-34);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--repair-px-12);
-  height: var(--repair-px-12);
+  width: var(--repair-px-10);
+  height: var(--repair-px-10);
   border: 0;
   border-radius: 50%;
   transform: translateX(-50%);
@@ -171,13 +200,13 @@
 
 .repair-timeline__thumb {
   position: absolute;
-  bottom: var(--repair-px-15);
+  bottom: var(--repair-px-12);
   left: 50%;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  width: var(--repair-px-64);
-  height: var(--repair-px-40);
+  width: var(--repair-px-56);
+  height: var(--repair-px-32);
   padding: var(--repair-px-3) var(--repair-px-4);
   border: var(--repair-px-1) solid var(--repair-border);
   border-radius: var(--repair-radius-sm);
@@ -202,7 +231,7 @@
 
 .repair-timeline__playhead {
   position: absolute;
-  top: var(--repair-px-14);
+  top: var(--repair-px-10);
   bottom: var(--repair-px-4);
   width: var(--repair-px-2);
   background: var(--repair-text);
@@ -212,12 +241,36 @@
 
 .repair-timeline__live-edge {
   position: absolute;
-  top: var(--repair-px-12);
+  top: var(--repair-px-10);
   bottom: var(--repair-px-4);
   width: var(--repair-px-2);
   background: var(--repair-cyan);
   animation: repair-live-pulse 1.6s ease-in-out infinite;
   pointer-events: none;
+}
+
+@media (--repair-bp-max-680) {
+  .repair-panel--visual-timeline > .repair-panel__header {
+    padding-right: var(--repair-sp-3);
+  }
+
+  .repair-timeline {
+    min-height: var(--repair-px-112);
+    max-height: var(--repair-px-140);
+  }
+
+  .repair-timeline__controls {
+    position: static;
+    justify-content: flex-start;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    padding: var(--repair-sp-1) var(--repair-sp-3) 0;
+  }
+
+  .repair-timeline__readout {
+    margin-right: var(--repair-sp-2);
+  }
 }
 
 .repair-shell--profile-novice .repair-live-chip,

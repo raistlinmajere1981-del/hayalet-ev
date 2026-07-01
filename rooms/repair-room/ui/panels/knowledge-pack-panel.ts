@@ -163,11 +163,6 @@ export function renderKnowledgePackPanel(
     tabEl.textContent = tab.label;
     tabEl.dataset["repairAction"] = "knowledge-pack-tab";
     tabEl.dataset["tabId"] = tab.id;
-    tabEl.dataset["sessionLocked"] = String(!hasSession);
-    if (!hasSession) {
-      tabEl.style.opacity = "0.45";
-      tabEl.style.cursor = "not-allowed";
-    }
     tabs.append(tabEl);
   }
 
@@ -220,10 +215,8 @@ export function renderKnowledgePackPanel(
       hasSession && kp.focusedSpatialRefId === failure.id ? " repair-knowledge-spatial--active" : ""
     }`;
     card.type = "button";
-    card.disabled = !hasSession;
     card.dataset["repairAction"] = "knowledge-spatial-focus";
     card.dataset["spatialRefId"] = failure.id;
-    card.dataset["sessionLocked"] = String(!hasSession);
     card.textContent = `${text(["knowledgePack", "spatial", "likelyFault"], "Muhtemel arıza")}: ${failure.label}`;
     spatialList.append(card);
   });
@@ -233,10 +226,8 @@ export function renderKnowledgePackPanel(
       hasSession && kp.focusedSpatialRefId === point.id ? " repair-knowledge-spatial--active" : ""
     }`;
     card.type = "button";
-    card.disabled = !hasSession;
     card.dataset["repairAction"] = "knowledge-spatial-focus";
     card.dataset["spatialRefId"] = point.id;
-    card.dataset["sessionLocked"] = String(!hasSession);
     card.textContent = `${text(["knowledgePack", "spatial", "probe"], "Prob")}: ${point.label} • ${point.expectedValue}${point.unit}`;
     spatialList.append(card);
   });
@@ -244,10 +235,8 @@ export function renderKnowledgePackPanel(
     const promote = documentRef.createElement("button");
     promote.className = "repair-knowledge-spatial repair-knowledge-spatial--promote";
     promote.type = "button";
-    promote.disabled = !hasSession;
     promote.dataset["repairAction"] = "knowledge-spatial-promote";
     promote.dataset["spatialRefId"] = kp.focusedSpatialRefId;
-    promote.dataset["sessionLocked"] = String(!hasSession);
     promote.textContent = text(["knowledgePack", "pinToWorkbench"], "Bu alanı tezgâha sabitle");
     spatialList.append(promote);
   }
@@ -258,11 +247,9 @@ export function renderKnowledgePackPanel(
     const cta = documentRef.createElement("button");
     cta.className = "repair-cta-btn";
     cta.type = "button";
-    cta.disabled = !hasSession;
     cta.textContent = text(["knowledgePack", "addToSession"], "Bu tamirde kullan");
     cta.dataset["repairAction"] = "attach-knowledge-pack";
     cta.dataset["packId"] = pack.id;
-    cta.dataset["sessionLocked"] = String(!hasSession);
     body.append(cta);
   }
 

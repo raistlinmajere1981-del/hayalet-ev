@@ -24,7 +24,6 @@ export function renderVisualTimelinePanel(
   body.style.padding = "0";
 
   const session = state.sessions.detail;
-  const hasActiveSession = state.sessions.activeId !== null && session !== null;
   const sessionStartMs = session === null ? 0 : Date.parse(session.startedAt);
   const eventDeltas = meta.events.map((event) =>
     Math.max(0, Date.parse(event.occurredAt) - sessionStartMs)
@@ -59,8 +58,6 @@ export function renderVisualTimelinePanel(
   play.dataset["repairAction"] = state.workbench.timeline.isPlaying
     ? "timeline-pause"
     : "timeline-play";
-  play.disabled = !hasActiveSession;
-  play.dataset["sessionLocked"] = String(!hasActiveSession);
   controls.append(play);
 
   const live = documentRef.createElement("button");
@@ -70,8 +67,6 @@ export function renderVisualTimelinePanel(
   live.type = "button";
   live.textContent = text(["timeline", "followLive"], "Canlı takip");
   live.dataset["repairAction"] = "timeline-live";
-  live.disabled = !hasActiveSession;
-  live.dataset["sessionLocked"] = String(!hasActiveSession);
   controls.append(live);
 
   const speed = documentRef.createElement("button");
@@ -79,8 +74,6 @@ export function renderVisualTimelinePanel(
   speed.type = "button";
   speed.textContent = `${state.workbench.timeline.replaySpeed.toFixed(1)}x`;
   speed.dataset["repairAction"] = "timeline-speed";
-  speed.disabled = !hasActiveSession;
-  speed.dataset["sessionLocked"] = String(!hasActiveSession);
   controls.append(speed);
 
   const zoomOut = documentRef.createElement("button");
@@ -89,8 +82,6 @@ export function renderVisualTimelinePanel(
   zoomOut.textContent = text(["timeline", "zoomOut"], "Uzaklaş");
   zoomOut.dataset["repairAction"] = "timeline-zoom";
   zoomOut.dataset["direction"] = "out";
-  zoomOut.disabled = !hasActiveSession;
-  zoomOut.dataset["sessionLocked"] = String(!hasActiveSession);
   controls.append(zoomOut);
 
   const zoomIn = documentRef.createElement("button");
@@ -99,8 +90,6 @@ export function renderVisualTimelinePanel(
   zoomIn.textContent = text(["timeline", "zoomIn"], "Yakınlaş");
   zoomIn.dataset["repairAction"] = "timeline-zoom";
   zoomIn.dataset["direction"] = "in";
-  zoomIn.disabled = !hasActiveSession;
-  zoomIn.dataset["sessionLocked"] = String(!hasActiveSession);
   controls.append(zoomIn);
 
   const rangeButton = documentRef.createElement("button");
@@ -108,8 +97,6 @@ export function renderVisualTimelinePanel(
   rangeButton.type = "button";
   rangeButton.textContent = text(["timeline", "markRange"], "Aralık işaretle");
   rangeButton.dataset["repairAction"] = "timeline-range";
-  rangeButton.disabled = !hasActiveSession;
-  rangeButton.dataset["sessionLocked"] = String(!hasActiveSession);
   controls.append(rangeButton);
   timeline.append(controls);
 
@@ -121,8 +108,6 @@ export function renderVisualTimelinePanel(
   scrub.step = "1000";
   scrub.value = String(Math.min(totalMs, Math.max(0, state.workbench.timeline.playheadMs)));
   scrub.dataset["repairAction"] = "timeline-scrub";
-  scrub.disabled = !hasActiveSession;
-  scrub.dataset["sessionLocked"] = String(!hasActiveSession);
   timeline.append(scrub);
 
   const scroller = documentRef.createElement("div");

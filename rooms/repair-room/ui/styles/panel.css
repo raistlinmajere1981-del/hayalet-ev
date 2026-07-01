@@ -97,6 +97,15 @@
   min-height: 0;
 }
 
+.repair-panel__body--session-locked {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.repair-panel__body--session-locked :is(button, input, select, textarea, [data-repair-action]) {
+  cursor: not-allowed;
+}
+
 .repair-panel__body::-webkit-scrollbar {
   width: var(--repair-px-4);
 }

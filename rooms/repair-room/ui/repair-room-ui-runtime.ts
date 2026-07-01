@@ -174,6 +174,15 @@ const REPAIR_CHIP_CONTROLLED_PANEL_IDS = [
   ...REPAIR_TOP_PANEL_CHIPS.map((chip) => chip.panelId),
   ...REPAIR_BOTTOM_PANEL_CHIPS.map((chip) => chip.panelId),
 ] as const satisfies readonly RepairPanelId[];
+const REPAIR_SESSION_REQUIRED_PANEL_IDS: ReadonlySet<RepairPanelId> = new Set([
+  "workbench-stage",
+  "tactical-feed",
+  "knowledge-pack",
+  "visual-timeline",
+  "chat",
+  "measurement",
+  "room-sync",
+]);
 const REPAIR_MULTIMETER_MODES: ReadonlySet<string> = new Set([
   "dc-voltage",
   "ac-voltage",
@@ -1054,32 +1063,66 @@ export function createRepairRoomUiRuntime() {
   }
 
   function isWorkbenchQuickActionDisabled(actionId: string): boolean {
-    if (!hasActiveRepairSession()) return true;
     if (actionId !== "capture-photo") return false;
     return !hasActiveWorkbenchCameraFeed();
   }
 
-  function syncSessionLockedControl(element: HTMLElement, locked: boolean): void {
-    if (
+  function isNativeSessionLockControl(
+    element: HTMLElement
+  ): element is HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement {
+    return (
       element instanceof HTMLButtonElement ||
       element instanceof HTMLInputElement ||
       element instanceof HTMLSelectElement ||
       element instanceof HTMLTextAreaElement
-    ) {
-      element.disabled = locked;
+    );
+  }
+
+  function syncSessionLockedControl(element: HTMLElement, locked: boolean): void {
+    if (isNativeSessionLockControl(element)) {
+      if (locked) {
+        if (element.dataset["sessionLockWasDisabled"] === undefined) {
+          setDatasetIfChanged(element, "sessionLockWasDisabled", String(element.disabled));
+        }
+        element.disabled = true;
+      } else {
+        const previousDisabled = element.dataset["sessionLockWasDisabled"];
+        if (previousDisabled !== undefined) {
+          element.disabled = previousDisabled === "true";
+          delete element.dataset["sessionLockWasDisabled"];
+        }
+      }
     }
     setDatasetIfChanged(element, "sessionLocked", String(locked));
   }
 
+  function syncPanelSessionLock(panel: HTMLElement, panelId: RepairPanelId): void {
+    const locked = REPAIR_SESSION_REQUIRED_PANEL_IDS.has(panelId) && !hasActiveRepairSession();
+    setDatasetIfChanged(panel, "sessionLocked", String(locked));
+    const body = panel.querySelector<HTMLElement>(".repair-panel__body");
+    if (body === null) return;
+
+    setDatasetIfChanged(body, "sessionLocked", String(locked));
+    body.classList.toggle("repair-panel__body--session-locked", locked);
+    body.setAttribute("aria-disabled", String(locked));
+    (body as HTMLElement & { inert: boolean }).inert = locked;
+
+    body.querySelectorAll<HTMLElement>("button, input, select, textarea").forEach((control) => {
+      syncSessionLockedControl(control, locked);
+    });
+    body.querySelectorAll<HTMLElement>("[data-repair-action]").forEach((actionElement) => {
+      if (!isNativeSessionLockControl(actionElement)) {
+        setDatasetIfChanged(actionElement, "sessionLocked", String(locked));
+      }
+    });
+  }
+
   function isSessionLockedActionElement(element: HTMLElement): boolean {
+    if (element.closest<HTMLElement>(".repair-panel__body[data-session-locked='true']") !== null) {
+      return true;
+    }
     if (element.dataset["sessionLocked"] === "true") return true;
-    return (
-      (element instanceof HTMLButtonElement ||
-        element instanceof HTMLInputElement ||
-        element instanceof HTMLSelectElement ||
-        element instanceof HTMLTextAreaElement) &&
-      element.disabled
-    );
+    return isNativeSessionLockControl(element) && element.disabled;
   }
 
   function syncWorkbenchQuickActions(panel: HTMLElement): void {
@@ -1093,7 +1136,7 @@ export function createRepairRoomUiRuntime() {
           active ? " repair-workbench-actionbar__button--active" : ""
         }${disabled ? " repair-workbench-actionbar__button--disabled" : ""}`
       );
-      syncSessionLockedControl(button, disabled);
+      button.disabled = disabled;
       setDatasetIfChanged(button, "active", String(active));
       setDatasetIfChanged(button, "disabled", String(disabled));
     });
@@ -1198,7 +1241,6 @@ export function createRepairRoomUiRuntime() {
         "repair-toolbar__btn--active",
         hasSession && button.dataset["tool"] === state.workbench.activeTool
       );
-      syncSessionLockedControl(button, !hasSession);
     });
 
     const zoomValue = panel.querySelector<HTMLElement>(".repair-toolbar__zoom-value");
@@ -1215,7 +1257,6 @@ export function createRepairRoomUiRuntime() {
           state.workbench.visibleLayers[layerId as keyof typeof state.workbench.visibleLayers];
         button.classList.toggle("repair-toolbar__btn--active", hasSession && visible === true);
         setDatasetIfChanged(button, "visible", String(visible !== true));
-        syncSessionLockedControl(button, !hasSession);
       });
     panel
       .querySelectorAll<HTMLElement>("[data-repair-action='toggle-investigation-mode']")
@@ -1224,7 +1265,6 @@ export function createRepairRoomUiRuntime() {
           "repair-toolbar__btn--active",
           hasSession && state.workbench.investigationModeEnabled
         );
-        syncSessionLockedControl(button, !hasSession);
       });
   }
 
@@ -1334,6 +1374,7 @@ export function createRepairRoomUiRuntime() {
       if (lifecycle.panelId === "workbench-stage") {
         lifecycle.update(mounted);
       }
+      syncPanelSessionLock(mounted, lifecycle.panelId);
       persistentShell.panelElements.set(lifecycle.panelId, mounted);
       persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
       return;
@@ -1350,6 +1391,7 @@ export function createRepairRoomUiRuntime() {
         lifecycle.update(current);
       }
       updatePanelChrome(current, lifecycle.panelId);
+      syncPanelSessionLock(current, lifecycle.panelId);
       return;
     }
 
@@ -1361,12 +1403,14 @@ export function createRepairRoomUiRuntime() {
       // Host echoes draft updates on every keystroke; remounting here drops focus and selection.
       if (lifecycle.panelId === "session-rail") syncSessionWizardStepperDom(current, state);
       updatePanelChrome(current, lifecycle.panelId);
+      syncPanelSessionLock(current, lifecycle.panelId);
       persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
       return;
     }
 
     const updated = lifecycle.update(current);
     updatePanelChrome(updated, lifecycle.panelId);
+    syncPanelSessionLock(updated, lifecycle.panelId);
     persistentShell.panelElements.set(lifecycle.panelId, updated);
     persistentShell.panelSignatures.set(lifecycle.panelId, lifecycle.signature);
   }

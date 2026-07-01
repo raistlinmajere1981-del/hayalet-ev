@@ -372,11 +372,9 @@ function createToolButton(
   btn.className = `repair-toolbar__btn repair-toolbar__btn--tool repair-toolbar__btn--text${
     hasSession && state.workbench.activeTool === tool.id ? " repair-toolbar__btn--active" : ""
   }`;
-  btn.disabled = !hasSession;
   btn.title = text(["workbench", "tools", tool.id, "title"], tool.title);
   btn.dataset["repairAction"] = "set-tool";
   btn.dataset["tool"] = tool.id;
-  btn.dataset["sessionLocked"] = String(!hasSession);
   appendButtonLabel(
     documentRef,
     btn,
@@ -399,12 +397,10 @@ function createLayerButton(
   btn.className = `repair-toolbar__btn repair-toolbar__btn--layer repair-toolbar__btn--text${
     hasSession && isVisible ? " repair-toolbar__btn--active" : ""
   }`;
-  btn.disabled = !hasSession;
   btn.title = text(["workbench", "toolbar", layer.titleKey], layer.titleFallback);
   btn.dataset["repairAction"] = "toggle-overlay-layer";
   btn.dataset["layerId"] = layer.id;
   btn.dataset["visible"] = String(!isVisible);
-  btn.dataset["sessionLocked"] = String(!hasSession);
 
   const check = documentRef.createElement("span");
   check.className = "repair-toolbar__check";
@@ -460,7 +456,6 @@ function isQuickActionActive(state: RepairUiState, id: RepairWorkbenchQuickActio
 }
 
 function isQuickActionDisabled(state: RepairUiState, id: RepairWorkbenchQuickActionId): boolean {
-  if (!hasActiveRepairSession(state)) return true;
   if (id !== "capture-photo") return false;
   return !hasActiveWorkbenchCameraFeed(state);
 }
@@ -484,7 +479,6 @@ function createQuickActionButton(
   btn.dataset["repairQuickAction"] = action.id;
   btn.dataset["active"] = String(active);
   btn.dataset["disabled"] = String(disabled);
-  btn.dataset["sessionLocked"] = String(disabled);
 
   const icon = documentRef.createElement("span");
   icon.className = "repair-workbench-actionbar__icon";
@@ -726,10 +720,8 @@ export function renderWorkbenchStagePanel(
   investigation.className = `repair-toolbar__btn repair-toolbar__btn--layer repair-toolbar__btn--text${
     hasSession && state.workbench.investigationModeEnabled ? " repair-toolbar__btn--active" : ""
   }`;
-  investigation.disabled = !hasSession;
   investigation.title = text(["workbench", "toolbar", "inspectTitle"], "İnceleme modunu aç/kapat");
   investigation.dataset["repairAction"] = "toggle-investigation-mode";
-  investigation.dataset["sessionLocked"] = String(!hasSession);
   appendButtonLabel(
     documentRef,
     investigation,

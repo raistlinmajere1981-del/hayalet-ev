@@ -113,7 +113,6 @@ export function renderChatPanel(
   const composer = documentRef.createElement("div");
   composer.className = "repair-chat-composer";
   composer.dataset["reviewState"] = isDictationReviewActive(state) ? "dictation-review" : "idle";
-  composer.dataset["sessionLocked"] = String(!hasSession);
 
   if (isDictationReviewActive(state)) {
     const review = documentRef.createElement("div");
@@ -132,9 +131,7 @@ export function renderChatPanel(
     ? text(["chat", "placeholder"], "Bir onarım notu yaz veya dikte et...")
     : text(["chat", "sessionRequiredPlaceholder"], "Önce bir tamir oturumu aç");
   input.value = state.chat.composerDraft;
-  input.disabled = !hasSession;
   input.dataset["repairInput"] = "chat-composer";
-  input.dataset["sessionLocked"] = String(!hasSession);
   composer.append(input);
 
   const sendBtn = documentRef.createElement("button");
@@ -143,9 +140,8 @@ export function renderChatPanel(
     state.chat.pendingReplyId === null
       ? text(["chat", "send"], "Gönder")
       : text(["chat", "status", "waiting"], "Bekliyor");
-  sendBtn.disabled = !hasSession || state.chat.pendingReplyId !== null;
+  sendBtn.disabled = state.chat.pendingReplyId !== null;
   sendBtn.dataset["repairAction"] = "send-chat";
-  sendBtn.dataset["sessionLocked"] = String(!hasSession);
   composer.append(sendBtn);
 
   if (state.chat.composerDraft.trim() !== "") {
@@ -153,9 +149,7 @@ export function renderChatPanel(
     clearBtn.className = "repair-chat-composer__clear";
     clearBtn.type = "button";
     clearBtn.textContent = text(["chat", "clear"], "Sil");
-    clearBtn.disabled = !hasSession;
     clearBtn.dataset["repairAction"] = "clear-chat-composer";
-    clearBtn.dataset["sessionLocked"] = String(!hasSession);
     composer.append(clearBtn);
   }
 
