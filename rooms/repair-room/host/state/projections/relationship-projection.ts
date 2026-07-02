@@ -136,6 +136,16 @@ export function buildMeasurementRelationships(
   return [...relationships.values()];
 }
 
+function getTimelineDensitySignal(bucket: RepairTimelineDensityBucket): number {
+  return (
+    bucket.eventCount +
+    bucket.spatialEventCount +
+    bucket.measurementCount +
+    bucket.aiMarkCount +
+    bucket.regionCount
+  );
+}
+
 export function buildTimelineDensity(
   session: RepairSession,
   events: RepairEvent[],
@@ -176,26 +186,13 @@ export function buildTimelineDensity(
     if (bucket !== undefined) bucket.regionCount += 1;
   });
 
-  const maxSignal = Math.max(
-    1,
-    ...buckets.map(
-      (bucket) =>
-        bucket.eventCount +
-        bucket.spatialEventCount +
-        bucket.measurementCount +
-        bucket.aiMarkCount +
-        bucket.regionCount
-    )
-  );
+  let maxSignal = 1;
+  buckets.forEach((bucket) => {
+    maxSignal = Math.max(maxSignal, getTimelineDensitySignal(bucket));
+  });
 
   return buckets.map((bucket) => ({
     ...bucket,
-    density:
-      (bucket.eventCount +
-        bucket.spatialEventCount +
-        bucket.measurementCount +
-        bucket.aiMarkCount +
-        bucket.regionCount) /
-      maxSignal,
+    density: getTimelineDensitySignal(bucket) / maxSignal,
   }));
 }

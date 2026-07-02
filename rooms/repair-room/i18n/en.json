@@ -321,8 +321,8 @@
     }
   },
   "timeline": {
-    "eyebrow": "TIMELINE",
-    "title": "Visual Timeline",
+    "eyebrow": "REPAIR MOMENTS",
+    "title": "Repair Moments",
     "kinds": {
       "snapshot": "Snapshot",
       "aiMark": "AI Mark",
@@ -351,7 +351,15 @@
     "followLive": "Follow live",
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",
-    "markRange": "Mark range"
+    "markRange": "Mark range",
+    "previous": "Previous",
+    "next": "Next",
+    "latest": "Latest",
+    "focusMoment": "Focus this moment",
+    "returnLive": "Return to live",
+    "cleanSnapshot": "Take clean snapshot",
+    "empty": "No repair moments yet",
+    "pageReadout": "Page {page}/{pageCount}"
   },
   "operator": {
     "eyebrow": "OPERATOR PROFILE",
@@ -425,7 +433,7 @@
       "range": "Range",
       "hold": "Hold",
       "recentReadings": "Recent Readings",
-      "addToTimeline": "Add to Timeline",
+      "addToTimeline": "Add to Repair Moments",
       "noReadings": "No manual readings yet"
     },
     "options": {
@@ -616,8 +624,8 @@
     "feedTitle": "repair feed",
     "aio": "AIO",
     "aioTitle": "AIO results panel",
-    "timeline": "Timeline",
-    "timelineTitle": "timeline panel",
+    "timeline": "Repair Moments",
+    "timelineTitle": "repair moments panel",
     "chat": "Chat",
     "chatTitle": "chat panel",
     "measure": "Measure",

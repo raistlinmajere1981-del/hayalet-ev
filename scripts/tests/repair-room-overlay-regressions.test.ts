@@ -4,15 +4,26 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { REPAIR_UI_COMMANDS } from "../../rooms/repair-room/shared/repair-constants.ts";
 import { createInitialRepairRuntimeState } from "../../rooms/repair-room/host/state/repair-runtime-state.ts";
-import { createRepairUiSnapshot } from "../../rooms/repair-room/host/state/repair-selectors.ts";
+import {
+  createRepairUiSnapshot,
+  createRepairUiSnapshotMeta,
+} from "../../rooms/repair-room/host/state/repair-selectors.ts";
 import { resolveRepairAssetUrl } from "../../rooms/repair-room/ui/repair-asset-url.ts";
 import {
   REPAIR_DOCK_PANEL_IDS,
   getRepairDockLayoutProjection,
 } from "../../rooms/repair-room/ui/repair-room-ui-runtime.ts";
+import {
+  REPAIR_TIMELINE_PAGE_SIZE,
+  getRepairMomentLastPageIndex,
+  getRepairMomentOrderedEvents,
+  getRepairMomentPageEvents,
+  normalizeRepairMomentPageSize,
+} from "../../rooms/repair-room/ui/runtime/timeline-helpers.ts";
 import { renderRepairSettingsPanel } from "../../rooms/repair-room/ui/panels/repair-settings-panel.ts";
 import { renderChatPanel } from "../../rooms/repair-room/ui/panels/chat-panel.ts";
 import { renderWorkbenchStagePanel } from "../../rooms/repair-room/ui/panels/workbench-stage-panel.ts";
+import { renderVisualTimelinePanel } from "../../rooms/repair-room/ui/panels/visual-timeline-panel.ts";
 import { renderOperatorProfilePanel } from "../../rooms/repair-room/ui/panels/operator-profile-panel.ts";
 import {
   getContainedImageFrame,
@@ -32,10 +43,18 @@ import { createTestRepairRuntimeSeed } from "./helpers/repair-test-data.ts";
 function readRepairUiStyleText(): string {
   const uiRoot = join(process.cwd(), "rooms/repair-room/ui");
   const entry = readFileSync(join(uiRoot, "style.css"), "utf8");
-  const imported = [...entry.matchAll(/@import "\.\/styles\/([^"]+)";/g)]
-    .map((match) => readFileSync(join(uiRoot, "styles", match[1] ?? ""), "utf8"))
+  const imported = [...entry.matchAll(/@import "\.\/([^"]+)";/g)]
+    .map((match) => readFileSync(join(uiRoot, match[1] ?? ""), "utf8"))
     .join("\n");
   return `${entry}\n${imported}`;
+}
+
+function collectDefinedCssCustomProperties(source: string): Set<string> {
+  return new Set([...source.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gim)].map((match) => match[1] ?? ""));
+}
+
+function collectUsedCssCustomProperties(source: string): Set<string> {
+  return new Set([...source.matchAll(/var\((--[a-z0-9-]+)/gim)].map((match) => match[1] ?? ""));
 }
 
 function readRepairUiRuntimeText(): string {
@@ -319,8 +338,9 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.doesNotMatch(runtime, /repair-settings-overlay__tabs/);
   assert.match(operatorPanel, /\["operator", "tabs", "controls"\]/);
   assert.match(operatorPanel, /renderRepairSettingsPanelBody/);
-  assert.match(runtime, /timeline-scrub/);
-  assert.match(runtime, /applyLiveSnapshotUpdates/);
+  assert.match(runtime, /timeline-page/);
+  assert.match(runtime, /timeline-clean-snapshot/);
+  assert.match(runtime, /hydrateTimelineDetailImage/);
   assert.match(runtime, /timelineShape/);
   assert.match(runtime, /ensurePersistentShell/);
   assert.match(runtime, /createPanelLifecycle/);
@@ -371,11 +391,12 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /onComplete/);
   assert.match(runtime, /requestRuntime\.focusLiveEdge/);
   assert.match(runtime, /requestRuntime\.updateTimeline/);
+  assert.match(runtime, /requestRuntime\.addTimelineEvent\(\{\s*kind: "snapshot"/);
   assert.match(runtime, /requestRuntime\.updatePanelLayout/);
   assert.match(runtime, /requestRuntime\.updatePanelTab/);
   assert.match(runtime, /requestRuntime\.updateFocus/);
   assert.match(runtime, /meta\.replay\.overlayEvents/);
-  assert.match(runtime, /timeline-play/);
+  assert.match(runtime, /case "timeline-page"/);
   assert.match(runtime, /knowledge-spatial-focus/);
   assert.doesNotMatch(runtime, /requestRuntime\.updateLayout/);
   assert.doesNotMatch(runtime, /destroyOverlays/);
@@ -397,11 +418,17 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /el instanceof HTMLSelectElement/);
   assert.match(runtime, /armSessionRailDraftEchoGuard/);
   assert.match(runtime, /consumeSessionRailDraftEchoGuard/);
-  assert.match(timelinePanel, /repair-timeline__playhead/);
-  assert.match(timelinePanel, /repair-timeline__tick/);
-  assert.match(timelinePanel, /repair-timeline__thumb/);
-  assert.match(timelinePanel, /backgroundImage/);
+  assert.match(timelinePanel, /getRepairMomentPageEvents/);
+  assert.match(runtime, /resolveTimelinePageSize/);
+  assert.match(runtime, /--repair-timeline-page-size/);
+  assert.match(runtime, /window\.addEventListener\("resize", handleViewportResize\)/);
+  assert.match(timelinePanel, /repair-timeline__moment/);
+  assert.match(timelinePanel, /repair-timeline__detail/);
+  assert.match(timelinePanel, /dataset\["imageSrc"\]/);
+  assert.match(timelinePanel, /timeline-page/);
+  assert.match(timelinePanel, /timeline-clean-snapshot/);
   assert.match(timelinePanel, /resolveRepairAssetUrl/);
+  assert.doesNotMatch(timelinePanel, /timeline-play|timeline-scrub|timeline-zoom|timeline-range/);
   assert.match(knowledgePanel, /repair-pack-preview__image/);
   assert.match(knowledgePanel, /resolveRepairAssetUrl/);
   assert.match(operatorPanel, /repair-profile-manager/);
@@ -549,6 +576,172 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(style, /\.repair-wizard-step--disabled[\s\S]*color: var\(--repair-text-dim\)/);
   assert.doesNotMatch(style, /\.repair-wizard-step--done \{\s*color: var\(--repair-success\)/);
 });
+
+void test("repair-room repair moments render latest page and keep measurements ungrouped", () => {
+  const runtimeState = createInitialRepairRuntimeState(
+    "2026-05-10T10:45:00.000Z",
+    createTestRepairRuntimeSeed()
+  );
+  const uiState = createRepairUiSnapshot(runtimeState);
+  const meta = createRepairUiSnapshotMeta(runtimeState);
+  const panel = renderVisualTimelinePanel(
+    new RepairFakeDocument() as unknown as Document,
+    uiState,
+    meta,
+    (_path, fallback) => fallback
+  ) as unknown as RepairFakeElement;
+
+  const timeline = findRepairFakeElements(panel, (element) =>
+    element.className.split(" ").includes("repair-timeline")
+  )[0];
+  assert.ok(timeline);
+  assert.equal(timeline.dataset["pageIndex"], "1");
+  assert.equal(timeline.dataset["pageCount"], "2");
+  assert.equal(timeline.dataset["autoPage"], "latest");
+
+  const chips = findRepairFakeElements(
+    panel,
+    (element) =>
+      element.dataset["repairAction"] === "jump-to-event" &&
+      element.className.split(" ").includes("repair-timeline__chip")
+  );
+  assert.equal(chips.length, meta.events.length - REPAIR_TIMELINE_PAGE_SIZE);
+  assert.equal(
+    chips.filter((chip) => chip.className.includes("repair-timeline__chip--measurement")).length,
+    3
+  );
+  assert.equal(
+    findRepairFakeElements(panel, (element) =>
+      /repair-timeline__(label|value|time)/.test(element.className)
+    ).length,
+    0
+  );
+
+  const ordered = getRepairMomentOrderedEvents(meta.events);
+  assert.equal(normalizeRepairMomentPageSize(99), 48);
+  assert.equal(getRepairMomentLastPageIndex(49, 48), 1);
+  assert.equal(getRepairMomentPageEvents(ordered, 0, 48).length, ordered.length);
+  const allPagedEvents = [
+    ...getRepairMomentPageEvents(ordered, 0),
+    ...getRepairMomentPageEvents(ordered, 1),
+  ];
+  assert.deepEqual(
+    allPagedEvents.filter((event) => event.kind === "measurement").map((event) => event.id),
+    [
+      "evt-psu-meas-1",
+      "evt-psu-meas-2",
+      "evt-psu-meas-3",
+      "evt-psu-meas-4",
+      "evt-psu-meas-5",
+    ]
+  );
+
+  const pageControls = findRepairFakeElements(
+    panel,
+    (element) => element.dataset["repairAction"] === "timeline-page"
+  );
+  assert.deepEqual(
+    pageControls.map((control) => control.dataset["direction"]),
+    ["previous", "next", "latest"]
+  );
+  assert.equal(
+    pageControls.find((control) => control.dataset["direction"] === "next")?.disabled,
+    true
+  );
+  assert.equal(
+    findRepairFakeElements(
+      panel,
+      (element) => element.dataset["repairAction"] === "timeline-clean-snapshot"
+    ).length,
+    chips.length
+  );
+});
+
+void test("repair-room repair moments CSS keeps the compact strip sizing contract", () => {
+  const uiRoot = join(process.cwd(), "rooms/repair-room/ui");
+  const allStyle = readRepairUiStyleText();
+  const timelineStyle = readFileSync(join(uiRoot, "styles/timeline.css"), "utf8");
+  const workspaceStyle = readFileSync(join(uiRoot, "styles/workspace.css"), "utf8");
+  const responsiveStyle = readFileSync(join(uiRoot, "styles/responsive.css"), "utf8");
+  const forensicStyle = readFileSync(join(uiRoot, "styles/forensic-interactions.css"), "utf8");
+  const usedStripTokens = collectUsedCssCustomProperties(
+    `${timelineStyle}\n${workspaceStyle}\n${responsiveStyle}\n${forensicStyle}`
+  );
+  const definedTokens = collectDefinedCssCustomProperties(allStyle);
+  const missingTokens = [...usedStripTokens].filter((token) => !definedTokens.has(token)).sort();
+
+  assert.deepEqual(missingTokens, []);
+  assert.match(
+    workspaceStyle,
+    /--repair-session-column:\s*minmax\(\s*var\(--repair-px-320\),\s*calc\(var\(--repair-px-360\) \+ var\(--repair-px-64\)\)\s*\);/
+  );
+  assert.match(
+    responsiveStyle,
+    /--repair-session-column:\s*minmax\(var\(--repair-px-180\), var\(--repair-px-260\)\);/
+  );
+  assert.match(
+    forensicStyle,
+    /\.repair-annotation-inspector\s*\{[\s\S]*left:\s*calc\(var\(--repair-sp-3\) \+ var\(--repair-px-80\)\);[\s\S]*z-index:\s*6;/
+  );
+  assert.match(
+    timelineStyle,
+    /\.repair-timeline__track\s*\{[\s\S]*grid-template-columns:\s*repeat\(var\(--repair-timeline-page-size, 12\), var\(--repair-px-56\)\);/
+  );
+  assert.doesNotMatch(timelineStyle, /grid-template-columns:\s*repeat\(2,/);
+  assert.match(
+    workspaceStyle,
+    /grid-template-rows:\s*minmax\(var\(--repair-px-72\), var\(--repair-px-96\)\)/
+  );
+  assert.match(
+    workspaceStyle,
+    /\.repair-bottom-cluster\s*\{[\s\S]*position:\s*relative;[\s\S]*z-index:\s*20;/
+  );
+  assert.match(
+    workspaceStyle,
+    /\.repair-bottom-cluster\[data-lower-visible-panel-count="0"\] \.repair-bottom-cluster__body\s*\{[\s\S]*grid-template-rows:\s*max-content;/
+  );
+  assert.doesNotMatch(
+    workspaceStyle,
+    /\.repair-bottom-cluster\[data-lower-visible-panel-count="0"\] \.repair-bottom-cluster__body\s*\{[\s\S]*grid-template-rows:\s*minmax\(var\(--repair-px-180\), auto\);/
+  );
+  assert.match(
+    timelineStyle,
+    /\.repair-panel--visual-timeline\s*\{[\s\S]*z-index:\s*30;[\s\S]*overflow:\s*visible;/
+  );
+  assert.match(
+    timelineStyle,
+    /\.repair-timeline__scroller\s*\{[\s\S]*min-height:\s*var\(--repair-px-56\);[\s\S]*overflow:\s*visible;/
+  );
+  assert.match(
+    timelineStyle,
+    /\.repair-timeline__controls\s*\{[\s\S]*left:\s*50%;[\s\S]*justify-content:\s*center;/
+  );
+  assert.match(
+    timelineStyle,
+    /\.repair-timeline__chip\s*\{[\s\S]*width:\s*var\(--repair-px-48\);[\s\S]*height:\s*var\(--repair-px-48\);/
+  );
+  assert.match(
+    timelineStyle,
+    /\.repair-timeline__icon\s*\{[\s\S]*width:\s*var\(--repair-px-44\);[\s\S]*height:\s*var\(--repair-px-44\);/
+  );
+  assert.match(
+    timelineStyle,
+    /\.repair-timeline__icon svg\s*\{[\s\S]*width:\s*var\(--repair-px-32\);[\s\S]*height:\s*var\(--repair-px-32\);/
+  );
+  assert.match(
+    timelineStyle,
+    /\.repair-timeline__detail\s*\{[\s\S]*grid-template-columns:\s*minmax\(var\(--repair-px-160\), var\(--repair-px-200\)\) minmax\(0, 1fr\);[\s\S]*width:\s*min\(calc\(var\(--repair-px-320\) \* 2\), calc\(100vw - var\(--repair-sp-6\)\)\);/
+  );
+  assert.match(
+    timelineStyle,
+    /\.repair-timeline__detail-image\s*\{[\s\S]*min-height:\s*var\(--repair-px-160\);/
+  );
+  assert.match(
+    timelineStyle,
+    /\.repair-timeline__track:has\(\.repair-timeline__moment:hover\)[\s\S]*\.repair-timeline__moment--active:not\(:hover\)[\s\S]*opacity:\s*0;/
+  );
+});
+
 
 void test("repair-room manifest command specs stay aligned with UI constants", () => {
   const manifest = JSON.parse(

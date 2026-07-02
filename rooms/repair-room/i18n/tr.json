@@ -321,8 +321,8 @@
     }
   },
   "timeline": {
-    "eyebrow": "ZAMAN TÜNELİ",
-    "title": "Görsel Zaman Tüneli",
+    "eyebrow": "ONARIM ANLARI",
+    "title": "Onarım Anları",
     "kinds": {
       "snapshot": "Kare",
       "aiMark": "AI İşareti",
@@ -351,7 +351,15 @@
     "followLive": "Canlı takip",
     "zoomOut": "Uzaklaş",
     "zoomIn": "Yakınlaş",
-    "markRange": "Aralık işaretle"
+    "markRange": "Aralık işaretle",
+    "previous": "Önceki",
+    "next": "Sonraki",
+    "latest": "Son kayıt",
+    "focusMoment": "Bu ana odaklan",
+    "returnLive": "Canlı ana dön",
+    "cleanSnapshot": "Temiz snapshot al",
+    "empty": "Henüz onarım anı yok",
+    "pageReadout": "Sayfa {page}/{pageCount}"
   },
   "operator": {
     "eyebrow": "OPERATÖR PROFİLİ",
@@ -425,7 +433,7 @@
       "range": "Aralık",
       "hold": "Tut",
       "recentReadings": "Son Okumalar",
-      "addToTimeline": "Zaman Tüneline Ekle",
+      "addToTimeline": "Onarım Anlarına Ekle",
       "noReadings": "Henüz manuel ölçüm yok"
     },
     "options": {
@@ -616,8 +624,8 @@
     "feedTitle": "onarım akışı",
     "aio": "AİÖ",
     "aioTitle": "AİÖ sonuçları paneli",
-    "timeline": "Zaman Tüneli",
-    "timelineTitle": "zaman tüneli paneli",
+    "timeline": "Onarım Anları",
+    "timelineTitle": "onarım anları paneli",
     "chat": "Sohbet",
     "chatTitle": "sohbet paneli",
     "measure": "Ölçüm",

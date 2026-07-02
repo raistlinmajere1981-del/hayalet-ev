@@ -1,6 +1,6 @@
 @media (--repair-bp-max-980) {
   .repair-workspace {
-    --repair-session-column: minmax(var(--repair-px-180), 0.78fr);
+    --repair-session-column: minmax(var(--repair-px-180), var(--repair-px-260));
     --repair-workbench-column: minmax(0, 1.6fr);
 
     grid-template-columns: var(--repair-session-column) var(--repair-workbench-column);

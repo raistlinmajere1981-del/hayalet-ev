@@ -1,6 +1,9 @@
 /* ── Workspace Grid ──────────────────────────────────────────────── */
 .repair-workspace {
-  --repair-session-column: minmax(var(--repair-px-320), 0.95fr);
+  --repair-session-column: minmax(
+    var(--repair-px-320),
+    calc(var(--repair-px-360) + var(--repair-px-64))
+  );
   --repair-workbench-column: minmax(0, 1.65fr);
   --repair-feed-column: minmax(var(--repair-px-260), 0.82fr);
   --repair-knowledge-column: minmax(var(--repair-px-280), 0.9fr);
@@ -101,6 +104,8 @@
 }
 
 .repair-bottom-cluster {
+  position: relative;
+  z-index: 20;
   grid-column: 1 / -1;
   grid-row: 2;
   display: flex;
@@ -124,7 +129,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows:
-    minmax(var(--repair-px-96), auto)
+    minmax(var(--repair-px-72), var(--repair-px-96))
     minmax(calc(var(--repair-px-180) * 0.82), var(--repair-px-180));
   gap: var(--repair-px-1);
   min-height: 0;
@@ -144,11 +149,11 @@
 }
 
 .repair-bottom-cluster[data-lower-visible-panel-count="0"] .repair-bottom-cluster__body {
-  grid-template-rows: minmax(var(--repair-px-180), auto);
+  grid-template-rows: max-content;
 }
 
 .repair-bottom-cluster[data-lower-visible-panel-count="0"] .repair-panel--visual-timeline {
-  min-height: var(--repair-px-180);
+  min-height: var(--repair-px-96);
 }
 
 .repair-bottom-dock {

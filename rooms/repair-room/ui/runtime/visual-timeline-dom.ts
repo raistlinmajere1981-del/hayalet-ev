@@ -1,16 +1,20 @@
 import type { RepairEvent, RepairPanelId } from "../../shared/types/index.js";
 import type { RepairUiSnapshotMeta, RepairUiState } from "../../shared/ui/state.js";
 import { resolveRepairAssetUrl } from "../repair-asset-url.js";
+import { setClassNameIfChanged, setDatasetIfChanged, setTextIfChanged } from "./dom-utils.js";
 import {
-  setClassNameIfChanged,
-  setDatasetIfChanged,
-  setStyleIfChanged,
-  setTextIfChanged,
-} from "./dom-utils.js";
-import {
-  formatOffset,
+  REPAIR_TIMELINE_PAGE_SIZE,
+  formatRepairMomentDateTime,
   getEventKindLabel,
-  getEventLabel,
+  getRepairMomentIconSvg,
+  getRepairMomentImageSrc,
+  getRepairMomentLastPageIndex,
+  getRepairMomentOrderedEvents,
+  getRepairMomentPageEvents,
+  getRepairMomentPageLabel,
+  getRepairMomentSummary,
+  getRepairMomentValue,
+  normalizeRepairMomentPageSize,
   type RepairTimelineTextFn,
 } from "./timeline-helpers.js";
 
@@ -22,214 +26,197 @@ export function createRepairVisualTimelineDomRuntime(params: {
   text: RepairTimelineTextFn;
   updatePanelChrome: (panel: HTMLElement, panelId: RepairPanelId) => void;
 }) {
-  const { applyLiveSnapshotUpdates, documentRef, meta, state, text, updatePanelChrome } = params;
+  const { documentRef, meta, state, text, updatePanelChrome } = params;
+  let lockedPageIndex: number | null = null;
+  let currentPageSize = REPAIR_TIMELINE_PAGE_SIZE;
 
-  function getTimelineModel(): {
-    contentWidthPx: number;
-    eventDeltas: number[];
-    latestEventMs: number;
-    totalMs: number;
-    zoom: number;
-  } {
-    const session = state.sessions.detail;
-    const sessionStartMs = session === null ? 0 : Date.parse(session.startedAt);
-    const eventDeltas = meta.events.map((event) =>
-      Math.max(0, Date.parse(event.occurredAt) - sessionStartMs)
-    );
-    const latestEventMs = eventDeltas.length === 0 ? 0 : Math.max(...eventDeltas);
-    const totalMs = Math.max(
-      60000,
-      latestEventMs + 10000,
-      state.workbench.timeline.playheadMs + 10000
-    );
-    const zoom = state.workbench.timeline.zoom;
-    return {
-      contentWidthPx: Math.max(860, Math.round((totalMs / 1000) * 12 * zoom)),
-      eventDeltas,
-      latestEventMs,
-      totalMs,
-      zoom,
-    };
+  function getResolvedPageIndex(eventCount: number, pageSize = currentPageSize): number {
+    const lastPageIndex = getRepairMomentLastPageIndex(eventCount, pageSize);
+    if (lockedPageIndex === null) return lastPageIndex;
+    return Math.min(lastPageIndex, Math.max(0, lockedPageIndex));
   }
 
-  function getEventThumbnailSrc(event: RepairEvent): string | null {
-    if (event.kind === "snapshot" && event.thumbnailSrc !== null) {
-      return event.thumbnailSrc;
+  function resolveTimelinePageSize(timeline: HTMLElement): number {
+    const scroller = timeline.querySelector<HTMLElement>(".repair-timeline__scroller");
+    const availableWidth = scroller?.clientWidth ?? timeline.clientWidth;
+    if (!Number.isFinite(availableWidth) || availableWidth <= 0) return currentPageSize;
+    const horizontalPaddingPx = 24;
+    const itemWidthPx = 56;
+    const gapPx = 6;
+    const nextPageSize = Math.floor(
+      Math.max(0, availableWidth - horizontalPaddingPx + gapPx) / (itemWidthPx + gapPx)
+    );
+    return normalizeRepairMomentPageSize(nextPageSize);
+  }
+
+  function resolveMomentImageSrc(event: RepairEvent, orderedEvents: RepairEvent[]): string | null {
+    const src = getRepairMomentImageSrc(
+      event,
+      orderedEvents,
+      state.sessions.detail?.pcbImage?.src ?? null
+    );
+    return src === null ? null : (resolveRepairAssetUrl(src) ?? src);
+  }
+
+  function appendTimelineMomentDetail(
+    parent: HTMLElement,
+    event: RepairEvent,
+    orderedEvents: RepairEvent[]
+  ): void {
+    const detail = documentRef.createElement("div");
+    detail.className = "repair-timeline__detail";
+    detail.dataset["eventId"] = event.id;
+
+    const imageWrap = documentRef.createElement("div");
+    imageWrap.className = "repair-timeline__detail-image";
+    const image = documentRef.createElement("img");
+    const imageSrc = resolveMomentImageSrc(event, orderedEvents);
+    image.alt = getEventKindLabel(event, text);
+    if (imageSrc !== null) {
+      image.dataset["imageSrc"] = imageSrc;
     }
-    return state.sessions.detail?.pcbImage?.src ?? null;
+    imageWrap.append(image);
+    detail.append(imageWrap);
+
+    const copy = documentRef.createElement("div");
+    copy.className = "repair-timeline__detail-copy";
+
+    const kind = documentRef.createElement("strong");
+    kind.className = "repair-timeline__detail-kind";
+    kind.textContent = getEventKindLabel(event, text);
+    copy.append(kind);
+
+    const date = documentRef.createElement("span");
+    date.className = "repair-timeline__detail-date";
+    date.textContent = formatRepairMomentDateTime(event.occurredAt);
+    copy.append(date);
+
+    const summary = documentRef.createElement("span");
+    summary.className = "repair-timeline__detail-summary";
+    summary.textContent = getRepairMomentSummary(event, text);
+    copy.append(summary);
+
+    const value = getRepairMomentValue(event);
+    if (value !== null) {
+      const valueEl = documentRef.createElement("span");
+      valueEl.className = "repair-timeline__detail-value";
+      valueEl.textContent = value;
+      copy.append(valueEl);
+    }
+
+    detail.append(copy);
+
+    const actions = documentRef.createElement("div");
+    actions.className = "repair-timeline__detail-actions";
+
+    const focus = documentRef.createElement("button");
+    focus.type = "button";
+    focus.className = "repair-timeline__control-btn";
+    focus.textContent = text(["timeline", "focusMoment"], "Bu ana odaklan");
+    focus.dataset["repairAction"] = "jump-to-event";
+    focus.dataset["eventId"] = event.id;
+    actions.append(focus);
+
+    if (
+      state.workbench.focusedEventId !== null ||
+      state.workbench.timeline.replayMode === "replay" ||
+      state.workbench.timeline.replayMode === "paused"
+    ) {
+      const live = documentRef.createElement("button");
+      live.type = "button";
+      live.className = "repair-timeline__control-btn";
+      live.textContent = text(["timeline", "returnLive"], "Canlı ana dön");
+      live.dataset["repairAction"] = "timeline-live";
+      actions.append(live);
+    }
+
+    const snapshot = documentRef.createElement("button");
+    snapshot.type = "button";
+    snapshot.className = "repair-timeline__control-btn repair-timeline__control-btn--primary";
+    snapshot.textContent = text(["timeline", "cleanSnapshot"], "Temiz snapshot al");
+    snapshot.dataset["repairAction"] = "timeline-clean-snapshot";
+    actions.append(snapshot);
+
+    detail.append(actions);
+    parent.append(detail);
   }
 
-  function updateTimelineLiveDom(): void {
-    const timeline = documentRef.querySelector<HTMLElement>(".repair-timeline");
-    if (timeline === null) return;
-    const totalMs = Math.max(1000, Number(timeline.dataset["totalMs"] ?? "60000") || 60000);
-    const playheadMs = Math.max(0, state.workbench.timeline.playheadMs);
-    const clampedPlayheadMs = Math.min(totalMs, playheadMs);
+  function createTimelineMoment(event: RepairEvent, orderedEvents: RepairEvent[]): HTMLElement {
+    const moment = documentRef.createElement("article");
+    moment.className = `repair-timeline__moment repair-timeline__moment--${event.kind}${
+      state.workbench.focusedEventId === event.id ? " repair-timeline__moment--active" : ""
+    }`;
+    moment.dataset["eventId"] = event.id;
+    moment.dataset["eventKind"] = event.kind;
+
+    const chip = documentRef.createElement("button");
+    chip.className = `repair-timeline__chip repair-timeline__chip--${event.kind}`;
+    chip.type = "button";
+    chip.title = `${getEventKindLabel(event, text)} - ${formatRepairMomentDateTime(event.occurredAt)}`;
+    chip.dataset["repairAction"] = "jump-to-event";
+    chip.dataset["eventId"] = event.id;
+
+    const icon = documentRef.createElement("span");
+    icon.className = "repair-timeline__icon";
+    icon.innerHTML = getRepairMomentIconSvg(event.kind);
+    chip.append(icon);
+
+    moment.append(chip);
+    appendTimelineMomentDetail(moment, event, orderedEvents);
+    return moment;
+  }
+
+  function syncTimelineControls(
+    timeline: HTMLElement,
+    pageIndex: number,
+    eventCount: number,
+    lastPageIndex: number,
+    pageSize: number
+  ): void {
+    setDatasetIfChanged(timeline, "pageIndex", String(pageIndex));
+    setDatasetIfChanged(timeline, "pageCount", String(lastPageIndex + 1));
+    setDatasetIfChanged(timeline, "pageSize", String(pageSize));
+    setDatasetIfChanged(timeline, "autoPage", lockedPageIndex === null ? "latest" : "locked");
+    timeline.style.setProperty("--repair-timeline-page-size", String(pageSize));
+
     const readout = timeline.querySelector<HTMLElement>(".repair-timeline__readout");
     if (readout !== null) {
-      setTextIfChanged(readout, `${formatOffset(playheadMs)} / ${formatOffset(totalMs)}`);
-    }
-    const scrub = timeline.querySelector<HTMLInputElement>(".repair-timeline__scrub");
-    if (scrub !== null && documentRef.activeElement !== scrub) {
-      const nextValue = String(clampedPlayheadMs);
-      if (scrub.value !== nextValue) scrub.value = nextValue;
-    }
-    const playhead = timeline.querySelector<HTMLElement>(".repair-timeline__playhead");
-    if (playhead !== null) {
-      setStyleIfChanged(playhead, "left", `${(clampedPlayheadMs / totalMs) * 100}%`);
-    }
-  }
-
-  function syncTimelineTicks(track: HTMLElement, totalMs: number): void {
-    const tickCount = Math.max(6, Math.ceil(totalMs / 10000));
-    const activeTickKeys = new Set<string>();
-    for (let i = 0; i <= tickCount; i += 1) {
-      const tickMs = Math.min(totalMs, i * 10000);
-      const key = String(tickMs);
-      activeTickKeys.add(key);
-      let tick = track.querySelector<HTMLElement>(`.repair-timeline__tick[data-tick-ms="${key}"]`);
-      if (tick === null) {
-        tick = documentRef.createElement("div");
-        tick.className = "repair-timeline__tick";
-        tick.dataset["tickMs"] = key;
-        const label = documentRef.createElement("span");
-        tick.append(label);
-      }
-      tick.style.left = `${(tickMs / totalMs) * 100}%`;
-      const label = tick.querySelector<HTMLElement>("span");
-      if (label !== null) {
-        label.textContent = formatOffset(tickMs);
-      }
-      track.append(tick);
+      setTextIfChanged(readout, getRepairMomentPageLabel(pageIndex, eventCount, text, pageSize));
     }
 
-    track.querySelectorAll<HTMLElement>(".repair-timeline__tick").forEach((tick) => {
-      const key = tick.dataset["tickMs"];
-      if (key === undefined || !activeTickKeys.has(key)) {
-        tick.remove();
-      }
-    });
-  }
+    const previous = timeline.querySelector<HTMLButtonElement>(
+      "[data-repair-action='timeline-page'][data-direction='previous']"
+    );
+    if (previous !== null) previous.disabled = pageIndex <= 0;
 
-  function syncTimelineRange(track: HTMLElement, totalMs: number): void {
-    const rangeStart = state.workbench.timeline.rangeStartMs;
-    const rangeEnd = state.workbench.timeline.rangeEndMs;
-    let range = track.querySelector<HTMLElement>(".repair-timeline__range");
-    if (rangeStart === null || rangeEnd === null) {
-      range?.remove();
-      return;
-    }
-    if (range === null) {
-      range = documentRef.createElement("div");
-      range.className = "repair-timeline__range";
-    }
-    range.style.left = `${(Math.min(rangeStart, rangeEnd) / totalMs) * 100}%`;
-    range.style.width = `${(Math.abs(rangeEnd - rangeStart) / totalMs) * 100}%`;
-    track.append(range);
-  }
+    const next = timeline.querySelector<HTMLButtonElement>(
+      "[data-repair-action='timeline-page'][data-direction='next']"
+    );
+    if (next !== null) next.disabled = pageIndex >= lastPageIndex;
 
-  function syncTimelineChip(
-    track: HTMLElement,
-    event: RepairEvent,
-    deltaMs: number,
-    totalMs: number,
-    zoom: number
-  ): HTMLElement {
-    let chip =
-      Array.from(track.querySelectorAll<HTMLElement>(".repair-timeline__chip")).find(
-        (candidate) => candidate.dataset["eventId"] === event.id
-      ) ?? null;
-    if (chip === null) {
-      chip = documentRef.createElement("button");
-      chip.dataset["repairAction"] = "jump-to-event";
-      chip.dataset["eventId"] = event.id;
-    }
-    chip.className = `repair-timeline__chip repair-timeline__chip--${event.kind}${
-      state.workbench.focusedEventId === event.id ? " repair-timeline__chip--active" : ""
-    }`;
-    chip.setAttribute("type", "button");
-    chip.title = `${getEventKindLabel(event, text)} — ${event.occurredAt}`;
-    chip.style.left = `${(deltaMs / totalMs) * 100}%`;
-    const density =
-      meta.replay.timelineDensity.find(
-        (bucket) => deltaMs >= bucket.bucketStartMs && deltaMs < bucket.bucketEndMs
-      )?.density ?? 0;
-    chip.style.setProperty("--repair-chip-density", density.toFixed(2));
-    chip.dataset["spatialDensity"] = density.toFixed(2);
-
-    if (zoom < 0.6) {
-      chip.replaceChildren();
-      return chip;
-    }
-
-    let thumb = chip.querySelector<HTMLElement>(".repair-timeline__thumb");
-    if (thumb === null) {
-      thumb = documentRef.createElement("span");
-      thumb.className = "repair-timeline__thumb";
-      chip.replaceChildren(thumb);
-    }
-
-    const thumbnailSrc = getEventThumbnailSrc(event);
-    if (thumbnailSrc !== null) {
-      const resolvedSrc = resolveRepairAssetUrl(thumbnailSrc) ?? thumbnailSrc;
-      thumb.style.backgroundImage = `linear-gradient(180deg, rgba(5, 8, 12, 0.06), rgba(5, 8, 12, 0.72)), url("${resolvedSrc.replace(/"/g, '\\"')}")`;
-    } else {
-      thumb.style.removeProperty("background-image");
-    }
-
-    let thumbLabel = thumb.querySelector<HTMLElement>(".repair-timeline__thumb-label");
-    if (thumbLabel === null) {
-      thumbLabel = documentRef.createElement("span");
-      thumbLabel.className = "repair-timeline__thumb-label";
-      thumb.append(thumbLabel);
-    }
-    thumbLabel.textContent = getEventLabel(event, text);
-    return chip;
+    const latest = timeline.querySelector<HTMLElement>(
+      "[data-repair-action='timeline-page'][data-direction='latest']"
+    );
+    latest?.classList.toggle("repair-timeline__control-btn--active", lockedPageIndex === null);
   }
 
   function syncTimelineChips(
     track: HTMLElement,
-    eventDeltas: number[],
-    totalMs: number,
-    zoom: number
+    events: RepairEvent[],
+    orderedEvents: RepairEvent[]
   ): void {
-    const activeEventIds = new Set(meta.events.map((event) => event.id));
-    meta.events.forEach((event, index) => {
-      track.append(syncTimelineChip(track, event, eventDeltas[index] ?? 0, totalMs, zoom));
-    });
-
-    track.querySelectorAll<HTMLElement>(".repair-timeline__chip").forEach((chip) => {
-      const eventId = chip.dataset["eventId"];
-      if (eventId === undefined || !activeEventIds.has(eventId)) {
-        chip.remove();
-      }
-    });
-  }
-
-  function syncTimelinePlayhead(track: HTMLElement, totalMs: number): void {
-    let playhead = track.querySelector<HTMLElement>(".repair-timeline__playhead");
-    if (playhead === null) {
-      playhead = documentRef.createElement("div");
-      playhead.className = "repair-timeline__playhead";
-    }
-    playhead.style.left = `${
-      (Math.min(totalMs, state.workbench.timeline.playheadMs) / totalMs) * 100
-    }%`;
-    track.append(playhead);
-  }
-
-  function syncTimelineLiveEdge(track: HTMLElement, totalMs: number, latestEventMs: number): void {
-    let liveEdge = track.querySelector<HTMLElement>(".repair-timeline__live-edge");
-    if (state.phase !== "session-active") {
-      liveEdge?.remove();
+    track.replaceChildren();
+    if (events.length === 0) {
+      const empty = documentRef.createElement("div");
+      empty.className = "repair-timeline__empty";
+      empty.textContent = text(["timeline", "empty"], "Kayıt yok");
+      track.append(empty);
       return;
     }
-    if (liveEdge === null) {
-      liveEdge = documentRef.createElement("div");
-      liveEdge.className = "repair-timeline__live-edge";
-    }
-    liveEdge.style.left = `${(latestEventMs / totalMs) * 100}%`;
-    track.append(liveEdge);
+
+    events.forEach((event) => {
+      track.append(createTimelineMoment(event, orderedEvents));
+    });
   }
 
   function updateVisualTimelinePanelDom(panel: HTMLElement): void {
@@ -246,57 +233,70 @@ export function createRepairVisualTimelineDomRuntime(params: {
 
     const timeline = panel.querySelector<HTMLElement>(".repair-timeline");
     const track = panel.querySelector<HTMLElement>(".repair-timeline__track");
-    const scrub = panel.querySelector<HTMLInputElement>(".repair-timeline__scrub");
-    if (timeline === null || track === null || scrub === null) return;
-    const previousScrollLeft =
-      panel.querySelector<HTMLElement>(".repair-timeline__scroller")?.scrollLeft ?? 0;
-    const model = getTimelineModel();
-    setDatasetIfChanged(timeline, "totalMs", String(model.totalMs));
-    setStyleIfChanged(track, "width", `${model.contentWidthPx}px`);
-    const scrubMax = String(model.totalMs);
-    if (scrub.max !== scrubMax) scrub.max = scrubMax;
-    const scrubValue = String(
-      Math.min(model.totalMs, Math.max(0, state.workbench.timeline.playheadMs))
-    );
-    if (scrub.value !== scrubValue) scrub.value = scrubValue;
+    if (timeline === null || track === null) return;
 
-    syncTimelineTicks(track, model.totalMs);
-    syncTimelineRange(track, model.totalMs);
-    syncTimelineChips(track, model.eventDeltas, model.totalMs, model.zoom);
-    syncTimelinePlayhead(track, model.totalMs);
-    syncTimelineLiveEdge(track, model.totalMs, model.latestEventMs);
-    applyLiveSnapshotUpdates();
-
-    const playButton = panel.querySelector<HTMLElement>(
-      "[data-repair-action='timeline-play'], [data-repair-action='timeline-pause']"
-    );
-    if (playButton !== null) {
-      const nextAction = state.workbench.timeline.isPlaying ? "timeline-pause" : "timeline-play";
-      setDatasetIfChanged(playButton, "repairAction", nextAction);
-      setTextIfChanged(
-        playButton,
-        state.workbench.timeline.isPlaying
-          ? text(["timeline", "pause"], "Duraklat")
-          : text(["timeline", "play"], "Oynat")
-      );
-    }
-    const liveButton = panel.querySelector<HTMLElement>("[data-repair-action='timeline-live']");
-    liveButton?.classList.toggle(
-      "repair-timeline__control-btn--active",
-      state.workbench.timeline.autoFollowLive
-    );
-    const speedButton = panel.querySelector<HTMLElement>("[data-repair-action='timeline-speed']");
-    if (speedButton !== null) {
-      setTextIfChanged(speedButton, `${state.workbench.timeline.replaySpeed.toFixed(1)}x`);
+    const orderedEvents = getRepairMomentOrderedEvents(meta.events);
+    currentPageSize = resolveTimelinePageSize(timeline);
+    const lastPageIndex = getRepairMomentLastPageIndex(orderedEvents.length, currentPageSize);
+    const pageIndex = getResolvedPageIndex(orderedEvents.length, currentPageSize);
+    if (lockedPageIndex !== null && lockedPageIndex > lastPageIndex) {
+      lockedPageIndex = pageIndex === lastPageIndex ? null : pageIndex;
     }
 
-    const scroller = panel.querySelector<HTMLElement>(".repair-timeline__scroller");
-    if (scroller !== null) {
-      scroller.scrollLeft = previousScrollLeft;
+    syncTimelineControls(timeline, pageIndex, orderedEvents.length, lastPageIndex, currentPageSize);
+    syncTimelineChips(
+      track,
+      getRepairMomentPageEvents(orderedEvents, pageIndex, currentPageSize),
+      orderedEvents
+    );
+  }
+
+  function setTimelinePage(direction: "previous" | "next" | "latest"): void {
+    const orderedEvents = getRepairMomentOrderedEvents(meta.events);
+    const panel = documentRef.querySelector<HTMLElement>(".repair-panel--visual-timeline");
+    const timeline = panel?.querySelector<HTMLElement>(".repair-timeline") ?? null;
+    if (timeline !== null) currentPageSize = resolveTimelinePageSize(timeline);
+    const lastPageIndex = getRepairMomentLastPageIndex(orderedEvents.length, currentPageSize);
+    const currentPageIndex = getResolvedPageIndex(orderedEvents.length, currentPageSize);
+
+    if (direction === "latest") {
+      lockedPageIndex = null;
+    } else if (direction === "previous") {
+      lockedPageIndex = Math.max(0, currentPageIndex - 1);
+    } else {
+      const nextPageIndex = Math.min(lastPageIndex, currentPageIndex + 1);
+      lockedPageIndex = nextPageIndex >= lastPageIndex ? null : nextPageIndex;
     }
+
+    if (panel !== null) updateVisualTimelinePanelDom(panel);
+  }
+
+  function hydrateTimelineDetailImage(target: EventTarget | null): void {
+    if (!(target instanceof Element)) return;
+    const moment = target.closest<HTMLElement>(".repair-timeline__moment");
+    if (moment === null) return;
+    const image = moment.querySelector<HTMLImageElement>(".repair-timeline__detail-image img");
+    const imageSrc = image?.dataset["imageSrc"];
+    if (image === null || imageSrc === undefined || imageSrc.trim() === "") return;
+    if (image.getAttribute("src") !== imageSrc) {
+      image.setAttribute("src", imageSrc);
+    }
+    setDatasetIfChanged(moment, "detailHydrated", "true");
+  }
+
+  function refreshTimelinePageSize(): void {
+    const panel = documentRef.querySelector<HTMLElement>(".repair-panel--visual-timeline");
+    if (panel !== null) updateVisualTimelinePanelDom(panel);
+  }
+
+  function updateTimelineLiveDom(): void {
+    // Repair Moments is event-driven; no per-tick playhead DOM mutation is needed.
   }
 
   return {
+    hydrateTimelineDetailImage,
+    refreshTimelinePageSize,
+    setTimelinePage,
     updateTimelineLiveDom,
     updateVisualTimelinePanelDom,
   };

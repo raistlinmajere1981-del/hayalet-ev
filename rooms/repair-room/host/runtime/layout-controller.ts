@@ -59,6 +59,28 @@ export function createRepairLayoutController(params: {
 }): RepairLayoutController {
   const { liveController, replayController, sessionController, store } = params;
 
+  function getLatestSnapshotEventId(session: RepairSession, iso: string): string | null {
+    const occurredAtMs = Date.parse(iso);
+    for (let index = session.events.length - 1; index >= 0; index -= 1) {
+      const event = session.events[index];
+      if (event?.kind !== "snapshot") continue;
+      const eventAtMs = Date.parse(event.occurredAt);
+      if (!Number.isFinite(occurredAtMs) || eventAtMs <= occurredAtMs) return event.id;
+    }
+    return null;
+  }
+
+  function appendLatestSnapshotLink(
+    session: RepairSession,
+    iso: string,
+    linkedEventIds: string[]
+  ): string[] {
+    const snapshotEventId = getLatestSnapshotEventId(session, iso);
+    return [
+      ...new Set([...linkedEventIds, ...(snapshotEventId === null ? [] : [snapshotEventId])]),
+    ];
+  }
+
   function applyViewportUpdate(flat: Record<string, unknown>): {
     success: boolean;
     message?: string;
@@ -313,7 +335,7 @@ export function createRepairLayoutController(params: {
         createInvestigationRegionUpdatedEvent(session, iso, {
           regionId: region.regionId,
           region: moveSessionRect(session, region.region, delta),
-          linkedEventIds: region.linkage.eventIds,
+          linkedEventIds: appendLatestSnapshotLink(session, iso, region.linkage.eventIds),
           measurementEventIds: region.linkage.measurementEventIds,
           annotationEventIds: region.linkage.annotationEventIds,
           aiMarkEventIds: region.linkage.aiMarkEventIds,

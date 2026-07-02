@@ -201,6 +201,13 @@ const REPAIR_TOOL_ICONS: Record<RepairWorkbenchTool, string> = {
   snapshot: "S",
 };
 
+const REPAIR_HISTORY_REVIEW_SAFE_TOOLS = new Set<RepairWorkbenchTool>([
+  "select",
+  "pan",
+  "zoom-in",
+  "zoom-out",
+]);
+
 const REPAIR_TOOLBAR_LAYER_BUTTONS: Array<{
   id: keyof RepairUiState["workbench"]["visibleLayers"];
   labelKey: string;
@@ -356,6 +363,17 @@ function appendButtonLabel(
   button.append(labelEl);
 }
 
+function isHistoryReviewMode(state: RepairUiState): boolean {
+  return (
+    state.workbench.focusedEventId !== null ||
+    state.workbench.timeline.replayMode === "replay" ||
+    state.workbench.timeline.replayMode === "paused"
+  );
+}
+
+function isWorkbenchToolDisabled(state: RepairUiState, tool: RepairWorkbenchTool): boolean {
+  return isHistoryReviewMode(state) && !REPAIR_HISTORY_REVIEW_SAFE_TOOLS.has(tool);
+}
 function hasActiveRepairSession(state: RepairUiState): boolean {
   return state.sessions.activeId !== null && state.sessions.detail !== null;
 }
@@ -367,14 +385,17 @@ function createToolButton(
   text: TextFn
 ): HTMLElement {
   const hasSession = hasActiveRepairSession(state);
+  const disabled = isWorkbenchToolDisabled(state, tool.id);
   const btn = documentRef.createElement("button");
   btn.type = "button";
   btn.className = `repair-toolbar__btn repair-toolbar__btn--tool repair-toolbar__btn--text${
     hasSession && state.workbench.activeTool === tool.id ? " repair-toolbar__btn--active" : ""
-  }`;
+  }${disabled ? " repair-toolbar__btn--disabled" : ""}`;
+  btn.disabled = disabled;
   btn.title = text(["workbench", "tools", tool.id, "title"], tool.title);
   btn.dataset["repairAction"] = "set-tool";
   btn.dataset["tool"] = tool.id;
+  btn.dataset["historyLocked"] = String(disabled);
   appendButtonLabel(
     documentRef,
     btn,
@@ -456,6 +477,7 @@ function isQuickActionActive(state: RepairUiState, id: RepairWorkbenchQuickActio
 }
 
 function isQuickActionDisabled(state: RepairUiState, id: RepairWorkbenchQuickActionId): boolean {
+  if (isHistoryReviewMode(state)) return true;
   if (id !== "capture-photo") return false;
   return !hasActiveWorkbenchCameraFeed(state);
 }

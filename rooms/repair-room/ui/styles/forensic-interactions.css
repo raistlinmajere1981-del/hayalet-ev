@@ -28,15 +28,25 @@
 
 .repair-annotation-inspector {
   position: absolute;
-  right: var(--repair-sp-3);
+  left: calc(var(--repair-sp-3) + var(--repair-px-80));
   top: var(--repair-sp-3);
-  width: min(var(--repair-px-280), calc(100% - var(--repair-sp-6)));
+  width: min(var(--repair-px-280), calc(100% - var(--repair-px-104)));
   padding: var(--repair-sp-3);
   border: var(--repair-px-1) solid var(--repair-border-strong);
   border-radius: var(--repair-radius-inner);
   background: var(--repair-popover-bg);
   backdrop-filter: blur(var(--repair-px-8));
   pointer-events: none;
+  z-index: 6;
+}
+
+@media (--repair-bp-max-680) {
+  .repair-annotation-inspector {
+    left: var(--repair-sp-2);
+    right: var(--repair-sp-2);
+    top: calc(var(--repair-sp-2) + var(--repair-px-56));
+    width: auto;
+  }
 }
 
 .repair-annotation-inspector__title {

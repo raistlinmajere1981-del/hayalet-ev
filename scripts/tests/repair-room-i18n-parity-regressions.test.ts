@@ -65,8 +65,9 @@ void test("repair-room Turkish catalog covers visible Repair Room chrome", () =>
     ["workbench.guidance.benchReady", "Tezgah hazır."],
     ["workbench.guidance.openRepairSession", "Bir tamir oturumu aç."],
     ["workbench.guidance.phase.observe", "gözlem"],
-    ["timeline.pause", "Duraklat"],
-    ["timeline.followLive", "Canlı takip"],
+    ["timeline.title", "Onarım Anları"],
+    ["timeline.latest", "Son kayıt"],
+    ["timeline.cleanSnapshot", "Temiz snapshot al"],
     ["timeline.labels.assistantState", "Asistan durumu"],
     ["sync.title", "Oda Eşitleme"],
     ["sync.status.liveEdge", "Canlı kenar"],
@@ -75,6 +76,7 @@ void test("repair-room Turkish catalog covers visible Repair Room chrome", () =>
     ["tacticalFeed.send", "Sor"],
     ["measurement.manualEntry", "Manuel Okuma"],
     ["chat.placeholder", "Bir onarım notu yaz veya dikte et..."],
+    ["panelChips.timeline", "Onarım Anları"],
     ["panelChips.state", "Durum"],
   ]);
 

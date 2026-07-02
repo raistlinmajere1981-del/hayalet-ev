@@ -422,6 +422,101 @@ export function createRepairCommandRouter(params: {
     };
   }
 
+  function uniqueStringList(values: string[]): string[] {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    values.forEach((value) => {
+      const trimmed = value.trim();
+      if (trimmed === "" || seen.has(trimmed)) return;
+      seen.add(trimmed);
+      result.push(trimmed);
+    });
+    return result;
+  }
+
+  function isHistoricalReviewState(): boolean {
+    const workbench = store.getState().workbench;
+    return (
+      workbench.timeline.replayMode === "replay" ||
+      workbench.timeline.replayMode === "paused" ||
+      workbench.focusedEventId !== null ||
+      workbench.investigationModeEnabled ||
+      workbench.selection.selectedEventIds.length > 0 ||
+      workbench.selection.selectedEntityRefs.length > 0 ||
+      workbench.selection.inspectorEventId !== null ||
+      workbench.selection.inspectorEntityRef !== null
+    );
+  }
+
+  function clearHistoricalReviewForNewEvidence(): void {
+    if (!isHistoricalReviewState()) return;
+    replayController.followLive();
+    store.dispatchMany([
+      { type: "workbench/set-investigation-mode", enabled: false },
+      { type: "knowledge-pack/set-spatial-focus", spatialRefId: null },
+      { type: "workbench/focus-entity", ref: null, eventId: null },
+      {
+        type: "workbench/set-selection",
+        focusedEventId: null,
+        selection: {
+          hoveredEventId: null,
+          hoveredEntityRef: null,
+          selectedEventIds: [],
+          selectedEntityRefs: [],
+          inspectorEventId: null,
+          inspectorEntityRef: null,
+          focusJumpEventId: null,
+          focusJumpEntityRef: null,
+        },
+      },
+    ]);
+  }
+
+  function readLinkedEventIds(payload: Record<string, unknown>): string[] {
+    const linkedEventId = safeString(payload["linkedEventId"]);
+    const linkedEventIds = Array.isArray(payload["linkedEventIds"])
+      ? payload["linkedEventIds"].filter(
+          (value): value is string => typeof value === "string" && value.trim() !== ""
+        )
+      : [];
+    return uniqueStringList([
+      ...linkedEventIds,
+      ...(linkedEventId === null ? [] : [linkedEventId]),
+    ]);
+  }
+
+  function getLatestSnapshotEventId(session: RepairSession, iso: string): string | null {
+    const occurredAtMs = Date.parse(iso);
+    for (let index = session.events.length - 1; index >= 0; index -= 1) {
+      const event = session.events[index];
+      if (event?.kind !== "snapshot") continue;
+      const eventAtMs = Date.parse(event.occurredAt);
+      if (!Number.isFinite(occurredAtMs) || eventAtMs <= occurredAtMs) return event.id;
+    }
+    return null;
+  }
+
+  function linkEventToActiveSnapshot<T extends RepairEvent>(
+    event: T,
+    session: RepairSession,
+    payload: Record<string, unknown>
+  ): T {
+    if (event.kind === "snapshot" || event.kind === "session-start") return event;
+    const snapshotEventId = getLatestSnapshotEventId(session, event.occurredAt);
+    const linkedEventIds = uniqueStringList([
+      ...event.linkedEventIds,
+      ...readLinkedEventIds(payload),
+      ...(snapshotEventId === null ? [] : [snapshotEventId]),
+    ]);
+    if (
+      linkedEventIds.length === event.linkedEventIds.length &&
+      linkedEventIds.every((eventId, index) => eventId === event.linkedEventIds[index])
+    ) {
+      return event;
+    }
+    return { ...event, linkedEventIds };
+  }
+
   function handleCommand(
     command: string,
     payload: RepairCommandPayload = {}
@@ -1003,6 +1098,7 @@ export function createRepairCommandRouter(params: {
           });
         }
         if (tool === "snapshot") {
+          clearHistoricalReviewForNewEvidence();
           const session = getActiveSession(store.getState());
           if (session === null) return { success: false, message: "active session is required" };
           return {
@@ -1022,9 +1118,13 @@ export function createRepairCommandRouter(params: {
         return { success: true };
       }
       case REPAIR_UI_COMMANDS.toggleFreezeFrame: {
-        const state = store.getState();
-        const session = getActiveSession(state);
+        let state = store.getState();
         const next = state.workbench.isFrozen === false;
+        if (next) {
+          clearHistoricalReviewForNewEvidence();
+          state = store.getState();
+        }
+        const session = getActiveSession(state);
         const iso = session === null ? nowIso() : liveController.createLiveSessionIso(session);
         let success = true;
         store.batch(() => {
@@ -1044,16 +1144,22 @@ export function createRepairCommandRouter(params: {
             isPlaying: next === false && state.workbench.timeline.isPlaying,
           });
           if (next && session !== null) {
-            success = sessionController.appendEventToActiveSession({
-              kind: "freeze-frame",
-              id: createEventId("evt-freeze", iso),
-              sessionId: session.id,
-              occurredAt: iso,
-              source: "operator",
-              linkedEventIds: [],
-              durationMs: 0,
-              reason: "Operator froze the live workbench frame.",
-            });
+            success = sessionController.appendEventToActiveSession(
+              linkEventToActiveSnapshot(
+                {
+                  kind: "freeze-frame",
+                  id: createEventId("evt-freeze", iso),
+                  sessionId: session.id,
+                  occurredAt: iso,
+                  source: "operator",
+                  linkedEventIds: [],
+                  durationMs: 0,
+                  reason: "Operator froze the live workbench frame.",
+                },
+                session,
+                flat
+              )
+            );
           }
         });
         return { success };
@@ -1074,6 +1180,7 @@ export function createRepairCommandRouter(params: {
         return { success: true };
       }
       case REPAIR_UI_COMMANDS.addTimelineEvent: {
+        clearHistoricalReviewForNewEvidence();
         const session = getActiveSession(store.getState());
         if (session === null) return { success: false, message: "active session is required" };
         const iso = liveController.createLiveSessionIso(session);
@@ -1086,10 +1193,14 @@ export function createRepairCommandRouter(params: {
                 safeString(flat["caption"]) ?? "Snapshot captured.",
                 safeString(flat["thumbnailSrc"] ?? flat["assetPath"] ?? flat["src"])
               )
-            : createAnnotationEvent(
-                session.id,
-                iso,
-                isAnnotationTool(flat["tool"]) ? flat["tool"] : "rect",
+            : linkEventToActiveSnapshot(
+                createAnnotationEvent(
+                  session.id,
+                  iso,
+                  isAnnotationTool(flat["tool"]) ? flat["tool"] : "rect",
+                  flat
+                ),
+                session,
                 flat
               );
         const success = sessionController.appendEventToActiveSession(event);
@@ -1133,10 +1244,11 @@ export function createRepairCommandRouter(params: {
         return { success: true };
       }
       case REPAIR_UI_COMMANDS.addMeasurement: {
+        const existingEventId = safeString(flat["eventId"]);
+        if (existingEventId === null) clearHistoricalReviewForNewEvidence();
         const session = getActiveSession(store.getState());
         if (session === null) return { success: false, message: "active session is required" };
         const iso = liveController.createLiveSessionIso(session);
-        const existingEventId = safeString(flat["eventId"]);
         if (existingEventId !== null) {
           const nextSession: RepairSession = {
             ...session,
@@ -1160,7 +1272,11 @@ export function createRepairCommandRouter(params: {
           return { success: true };
         }
         const reading = createMeasurementReading(iso, flat);
-        const event = createMeasurementEvent(session.id, iso, reading, flat);
+        const event = linkEventToActiveSnapshot(
+          createMeasurementEvent(session.id, iso, reading, flat),
+          session,
+          flat
+        );
         store.batch(() => {
           store.dispatch({ type: "measurement/append-reading", reading });
           store.dispatch({
@@ -1568,19 +1684,23 @@ export function createRepairCommandRouter(params: {
           knowledgeRegion.linkedEventIds
         );
         const iso = liveController.createLiveSessionIso(session);
-        const event = createInvestigationRegionCreatedEvent(session, iso, {
-          label: safeString(flat["label"]) ?? knowledgeRegion.label,
-          region: safeImageRect(flat["region"]) ?? knowledgeRegion.region,
-          status: isInvestigationRegionStatus(flat["status"]) ? flat["status"] : "active",
-          color: safeString(flat["color"]) ?? REPAIR_UI_COLORS.cyan,
-          sourceRef: { kind: "knowledge-region", id: spatialRefId },
-          knowledgeSpatialRefId: spatialRefId,
-          promotedFromTemporaryRegionId: `tmp-knowledge-${spatialRefId}`,
-          linkedEventIds: linkage.linkedEventIds,
-          measurementEventIds: linkage.measurementEventIds,
-          annotationEventIds: linkage.annotationEventIds,
-          aiMarkEventIds: linkage.aiMarkEventIds,
-        });
+        const event = linkEventToActiveSnapshot(
+          createInvestigationRegionCreatedEvent(session, iso, {
+            label: safeString(flat["label"]) ?? knowledgeRegion.label,
+            region: safeImageRect(flat["region"]) ?? knowledgeRegion.region,
+            status: isInvestigationRegionStatus(flat["status"]) ? flat["status"] : "active",
+            color: safeString(flat["color"]) ?? REPAIR_UI_COLORS.cyan,
+            sourceRef: { kind: "knowledge-region", id: spatialRefId },
+            knowledgeSpatialRefId: spatialRefId,
+            promotedFromTemporaryRegionId: `tmp-knowledge-${spatialRefId}`,
+            linkedEventIds: linkage.linkedEventIds,
+            measurementEventIds: linkage.measurementEventIds,
+            annotationEventIds: linkage.annotationEventIds,
+            aiMarkEventIds: linkage.aiMarkEventIds,
+          }),
+          session,
+          flat
+        );
         let success = false;
         store.batch(() => {
           success = sessionController.appendEventToActiveSession(event);
@@ -1608,6 +1728,7 @@ export function createRepairCommandRouter(params: {
       case REPAIR_UI_COMMANDS.focusLiveEdge: {
         replayController.followLive();
         store.dispatchMany([
+          { type: "workbench/set-investigation-mode", enabled: false },
           { type: "workbench/focus-entity", ref: null, eventId: null },
           { type: "knowledge-pack/set-spatial-focus", spatialRefId: null },
           {

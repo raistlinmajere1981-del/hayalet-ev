@@ -224,6 +224,7 @@ void test("repair-room Phase 2.8 focuses investigation regions, relationships, a
   projection = createRepairReplayProjection(state, session);
   assert.equal(state.workbench.timeline.replayMode, "live");
   assert.equal(state.workbench.timeline.autoFollowLive, true);
+  assert.equal(state.workbench.investigationModeEnabled, false);
   assert.equal(state.workbench.selection.inspectorEntityRef, null);
   assert.equal(projection.activeSpatialFocus, null);
   assert.equal(projection.guidance.focusCorridor.active, false);
@@ -497,7 +498,7 @@ void test("repair-room opens the existing active session without replaying resea
   t.mock.timers.reset();
 });
 
-void test("repair-room live playhead advances from room activation instead of mock wall-clock age", (t) => {
+void test("repair-room live ambient tick does not advance the moment strip playhead", (t) => {
   t.mock.timers.enable({
     apis: ["Date", "setInterval", "setTimeout"],
     now: new Date("2026-05-11T09:00:00.000Z"),
@@ -512,9 +513,7 @@ void test("repair-room live playhead advances from room activation instead of mo
   t.mock.timers.tick(1100);
 
   const after = runtime.getStateSnapshot().state.workbench.timeline.playheadMs;
-  assert.ok(after >= before);
-  assert.ok(after - before <= 1200, `playhead drifted too far: ${after - before}ms`);
-  assert.ok(after < 2_000_000, `playhead should stay near mock session edge, got ${after}ms`);
+  assert.equal(after, before);
 
   runtime.dispose();
   t.mock.timers.reset();
@@ -553,6 +552,55 @@ void test("repair-room runtime records manual readings into recent instrument hi
   assert.equal(measurement.current.label, "TP1 VCC");
   runtime.dispose();
 });
+
+void test("repair-room new evidence exits history review and links to the latest snapshot", (t) => {
+  t.mock.timers.enable({
+    apis: ["Date"],
+    now: new Date("2026-05-11T09:05:00.000Z"),
+  });
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.jumpToEvent, { eventId: "evt-psu-meas-2" }).success,
+    true
+  );
+  assert.equal(runtime.getStateSnapshot().state.workbench.timeline.autoFollowLive, false);
+  assert.equal(runtime.getStateSnapshot().state.workbench.investigationModeEnabled, true);
+
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addMeasurement, {
+      rawDisplay: "1.240",
+      value: 1.24,
+      unit: "V",
+      mode: "dc-voltage",
+      range: "20 V",
+      channel: "COM/V",
+      reference: "Live TP after history review",
+    }).success,
+    true
+  );
+
+  const state = runtime.getStateSnapshot().state;
+  const session = state.sessions[state.activeSessionId ?? ""];
+  assert.ok(session);
+  const event = session.events.at(-1);
+  assert.equal(event?.kind, "measurement");
+  assert.equal(event?.occurredAt, "2026-05-11T09:05:00.000Z");
+  assert.equal(state.workbench.timeline.autoFollowLive, true);
+  assert.equal(state.workbench.timeline.replayMode, "live");
+  assert.equal(state.workbench.focusedEventId, null);
+  assert.equal(state.workbench.investigationModeEnabled, false);
+  assert.deepEqual(state.workbench.selection.selectedEventIds, []);
+  assert.deepEqual(state.workbench.selection.selectedEntityRefs, []);
+  assert.ok(event?.linkedEventIds.includes("evt-psu-snap-2"));
+
+  runtime.dispose();
+  t.mock.timers.reset();
+});
+
 
 
 void test("repair-room P3.5 keeps operations projection optional for standalone room runs", () => {

@@ -31,31 +31,20 @@ export function createRepairLiveController(params: {
   const feedTimeouts = new Set<ReturnType<typeof setTimeout>>();
   let clockInterval: ReturnType<typeof setInterval> | null = null;
   let liveTimelineSessionId = store.getState().activeSessionId;
-  let liveTimelineAnchorAtMs = Date.now();
-  let liveTimelineBaseMs = getSessionTimelineMs(getActiveSession(store.getState()));
 
   function resetTimelineAnchor(session: RepairSession | null): void {
     liveTimelineSessionId = session?.id ?? null;
-    liveTimelineAnchorAtMs = Date.now();
-    liveTimelineBaseMs = getSessionTimelineMs(session);
   }
 
-  function getLiveTimelinePlayheadMs(session: RepairSession, nowMs = Date.now()): number {
+  function getLiveTimelinePlayheadMs(session: RepairSession, _nowMs = Date.now()): number {
     if (liveTimelineSessionId !== session.id) {
       resetTimelineAnchor(session);
     }
-    return Math.max(
-      getSessionTimelineMs(session),
-      liveTimelineBaseMs + Math.max(0, nowMs - liveTimelineAnchorAtMs)
-    );
+    return getSessionTimelineMs(session);
   }
 
-  function createLiveSessionIso(session: RepairSession): string {
-    const playheadMs = Math.max(
-      getSessionTimelineMs(session) + 1000,
-      getLiveTimelinePlayheadMs(session)
-    );
-    return new Date(Date.parse(session.startedAt) + playheadMs).toISOString();
+  function createLiveSessionIso(_session: RepairSession): string {
+    return new Date().toISOString();
   }
 
   function clearFeedStream(): void {
@@ -100,27 +89,8 @@ export function createRepairLiveController(params: {
   function startLiveLoops(): void {
     if (clockInterval === null) {
       clockInterval = setInterval(() => {
-        const nowMs = Date.now();
-        const iso = new Date(nowMs).toISOString();
-        store.batch(() => {
-          store.dispatch({ type: "ambient/tick", nowIso: iso });
-          const state = store.getState();
-          const session = getActiveSession(state);
-          const timeline = state.workbench.timeline;
-          if (session?.status === "in-progress" && timeline.autoFollowLive) {
-            store.dispatch({
-              type: "workbench/set-timeline",
-              playheadMs: getLiveTimelinePlayheadMs(session, nowMs),
-              zoom: timeline.zoom,
-              rangeStartMs: timeline.rangeStartMs,
-              rangeEndMs: timeline.rangeEndMs,
-              autoFollowLive: true,
-              replayMode: "live",
-              isPlaying: true,
-              liveEdgeMs: getSessionTimelineMs(session),
-            });
-          }
-        });
+        const iso = new Date().toISOString();
+        store.dispatch({ type: "ambient/tick", nowIso: iso });
       }, REPAIR_AMBIENT_CLOCK_INTERVAL_MS);
       unrefTimer(clockInterval);
     }

@@ -386,9 +386,17 @@
 }
 
 .repair-toolbar__btn:disabled,
+.repair-toolbar__btn--disabled,
 .repair-chat-composer__send:disabled {
   opacity: 0.55;
-  cursor: wait;
+  cursor: not-allowed;
+}
+
+.repair-toolbar__btn:disabled:hover,
+.repair-toolbar__btn--disabled:hover {
+  border-color: var(--repair-border-muted);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-muted);
 }
 
 .repair-toolbar__sep {

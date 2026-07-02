@@ -183,6 +183,12 @@ const REPAIR_SESSION_REQUIRED_PANEL_IDS: ReadonlySet<RepairPanelId> = new Set([
   "measurement",
   "room-sync",
 ]);
+const REPAIR_HISTORY_REVIEW_SAFE_TOOL_IDS: ReadonlySet<string> = new Set([
+  "select",
+  "pan",
+  "zoom-in",
+  "zoom-out",
+]);
 const REPAIR_MULTIMETER_MODES: ReadonlySet<string> = new Set([
   "dc-voltage",
   "ac-voltage",
@@ -1024,6 +1030,18 @@ export function createRepairRoomUiRuntime() {
     return state.sessions.activeId !== null && state.sessions.detail !== null;
   }
 
+  function isHistoryReviewMode(): boolean {
+    return (
+      state.workbench.focusedEventId !== null ||
+      state.workbench.timeline.replayMode === "replay" ||
+      state.workbench.timeline.replayMode === "paused"
+    );
+  }
+
+  function isWorkbenchToolHistoryLocked(tool: string): boolean {
+    return isHistoryReviewMode() && !REPAIR_HISTORY_REVIEW_SAFE_TOOL_IDS.has(tool);
+  }
+
   function hasActiveWorkbenchCameraFeed(): boolean {
     const livePreview = state.workbench.liveSource.preview;
     const hasVisibleStream =
@@ -1063,6 +1081,7 @@ export function createRepairRoomUiRuntime() {
   }
 
   function isWorkbenchQuickActionDisabled(actionId: string): boolean {
+    if (isHistoryReviewMode()) return true;
     if (actionId !== "capture-photo") return false;
     return !hasActiveWorkbenchCameraFeed();
   }
@@ -1237,10 +1256,15 @@ export function createRepairRoomUiRuntime() {
 
     const hasSession = hasActiveRepairSession();
     panel.querySelectorAll<HTMLElement>("[data-repair-action='set-tool']").forEach((button) => {
+      const tool = button.dataset["tool"] ?? "";
+      const historyLocked = isWorkbenchToolHistoryLocked(tool);
       button.classList.toggle(
         "repair-toolbar__btn--active",
-        hasSession && button.dataset["tool"] === state.workbench.activeTool
+        hasSession && tool === state.workbench.activeTool
       );
+      button.classList.toggle("repair-toolbar__btn--disabled", historyLocked);
+      if (button instanceof HTMLButtonElement) button.disabled = historyLocked;
+      setDatasetIfChanged(button, "historyLocked", String(historyLocked));
     });
 
     const zoomValue = panel.querySelector<HTMLElement>(".repair-toolbar__zoom-value");
@@ -1850,6 +1874,8 @@ export function createRepairRoomUiRuntime() {
           "jump-to-event",
           "knowledge-spatial-focus",
           "knowledge-spatial-promote",
+          "timeline-page",
+          "timeline-clean-snapshot",
           "timeline-zoom",
           "timeline-range",
           "timeline-play",
@@ -2032,6 +2058,20 @@ export function createRepairRoomUiRuntime() {
         case "jump-to-event": {
           const eventId = el.dataset["eventId"];
           if (eventId) requestRuntime.jumpToEvent({ eventId });
+          break;
+        }
+        case "timeline-page": {
+          const direction = el.dataset["direction"];
+          if (direction === "previous" || direction === "next" || direction === "latest") {
+            visualTimelineDom.setTimelinePage(direction);
+          }
+          break;
+        }
+        case "timeline-clean-snapshot": {
+          requestRuntime.addTimelineEvent({
+            kind: "snapshot",
+            caption: "Clean repair moment snapshot captured.",
+          });
           break;
         }
         case "attach-knowledge-pack": {
@@ -2451,6 +2491,14 @@ export function createRepairRoomUiRuntime() {
       }
     });
 
+    root.addEventListener("pointerover", (event) => {
+      visualTimelineDom.hydrateTimelineDetailImage(event.target);
+    });
+
+    root.addEventListener("focusin", (event) => {
+      visualTimelineDom.hydrateTimelineDetailImage(event.target);
+    });
+
     root.addEventListener("input", (event) => {
       const el = findActionElement(event.target);
       if (el === null || isSessionLockedActionElement(el)) return;
@@ -2693,6 +2741,10 @@ export function createRepairRoomUiRuntime() {
     }, 1000);
   }
 
+  function handleViewportResize(): void {
+    visualTimelineDom.refreshTimelinePageSize();
+  }
+
   // -- Start
   function start(): void {
     if (windowRef.roomAPI && typeof windowRef.roomAPI.onHostMessage === "function") {
@@ -2701,8 +2753,10 @@ export function createRepairRoomUiRuntime() {
 
     documentRef.documentElement.lang = context.locale;
     documentRef.addEventListener("keydown", keyboardController.handleKeydown);
+    window.addEventListener("resize", handleViewportResize);
     startClock();
     render();
+    visualTimelineDom.refreshTimelinePageSize();
     requestRuntime.notifyUiReady();
 
     if (windowRef.roomAPI && typeof windowRef.roomAPI.ready === "function") {

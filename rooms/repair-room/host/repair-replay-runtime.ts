@@ -91,6 +91,7 @@ export function createReplayRuntimeController(
       const playheadMs =
         event === null || session === null ? 0 : getSessionEventOffsetMs(session, event);
       store.dispatchMany([
+        { type: "workbench/set-investigation-mode", enabled: eventId !== null },
         { type: "workbench/set-focus-event", eventId },
         {
           type: "workbench/set-timeline",

@@ -599,6 +599,7 @@ void test("repair-room runtime turns timeline jumps and layout controls into sta
     true
   );
   assert.equal(runtime.getStateSnapshot().state.workbench.focusedEventId, firstEvent.id);
+  assert.equal(runtime.getStateSnapshot().state.workbench.investigationModeEnabled, true);
 
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.updatePanelLayout, {
