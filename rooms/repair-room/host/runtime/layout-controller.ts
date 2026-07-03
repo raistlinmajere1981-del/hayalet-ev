@@ -1,8 +1,13 @@
 import { repairEventToTacticalFeedItem } from "../../shared/data/index.js";
-import type {
-  RepairImagePoint,
-  RepairOverlayEntityRef,
-  RepairSession,
+import {
+  REPAIR_DOCK_LAYOUT_PANEL_IDS,
+  REPAIR_MAIN_LAYOUT_PANEL_IDS,
+  type RepairDockLayoutPanelId,
+  type RepairImagePoint,
+  type RepairMainLayoutPanelId,
+  type RepairOverlayEntityRef,
+  type RepairPanelSizePatch,
+  type RepairSession,
 } from "../../shared/types/index.js";
 import type { ReplayRuntimeController } from "../repair-replay-runtime.js";
 import type { RepairRuntimeStore } from "../state/repair-runtime-store.js";
@@ -158,17 +163,62 @@ export function createRepairLayoutController(params: {
     return { success: true };
   }
 
+  function isRecordValue(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+  }
+
+  function readPanelSizeRecord<PanelId extends string>(
+    source: Record<string, unknown> | null,
+    panelIds: readonly PanelId[]
+  ): Partial<Record<PanelId, number>> | undefined {
+    if (source === null) return undefined;
+    const result: Partial<Record<PanelId, number>> = {};
+    panelIds.forEach((panelId) => {
+      const value = safeNumber(source[panelId]);
+      if (value !== null) result[panelId] = value;
+    });
+    return Object.keys(result).length > 0 ? result : undefined;
+  }
+
+  function readRepairPanelSizePatch(flat: Record<string, unknown>): RepairPanelSizePatch | null {
+    const source = isRecordValue(flat["panelSizes"]) ? flat["panelSizes"] : flat;
+    const mainColumns = readPanelSizeRecord<RepairMainLayoutPanelId>(
+      isRecordValue(source["mainColumns"]) ? source["mainColumns"] : null,
+      REPAIR_MAIN_LAYOUT_PANEL_IDS
+    );
+    const dockColumns = readPanelSizeRecord<RepairDockLayoutPanelId>(
+      isRecordValue(source["dockColumns"]) ? source["dockColumns"] : null,
+      REPAIR_DOCK_LAYOUT_PANEL_IDS
+    );
+    const bottomClusterHeightPx = safeNumber(
+      source["bottomClusterHeightPx"] ?? source["bottomHeightPx"]
+    );
+    const panelSizes: RepairPanelSizePatch = {};
+    if (mainColumns !== undefined) panelSizes.mainColumns = mainColumns;
+    if (dockColumns !== undefined) panelSizes.dockColumns = dockColumns;
+    if (bottomClusterHeightPx !== null) panelSizes.bottomClusterHeightPx = bottomClusterHeightPx;
+    return Object.keys(panelSizes).length > 0 ? panelSizes : null;
+  }
+
   function applyPanelLayoutUpdate(flat: Record<string, unknown>): {
     success: boolean;
     message?: string;
   } {
     const panelId = flat["panelId"];
     const collapsed = flat["collapsed"];
+    let changed = false;
     if (isPanelId(panelId) && typeof collapsed === "boolean") {
       store.dispatch({ type: "layout/collapse-panel", panelId, collapsed });
-      return { success: true };
+      changed = true;
     }
-    return { success: false, message: "panel layout payload is empty" };
+    const panelSizes = readRepairPanelSizePatch(flat);
+    if (panelSizes !== null) {
+      store.dispatch({ type: "layout/set-panel-sizes", panelSizes });
+      changed = true;
+    }
+    return changed
+      ? { success: true }
+      : { success: false, message: "panel layout payload is empty" };
   }
 
   function applyPanelTabUpdate(flat: Record<string, unknown>): {

@@ -1,10 +1,16 @@
-import type {
-  RepairImageRect,
-  RepairMultimeterMode,
-  RepairPanelId,
-  RepairSettingsOverlayTabId,
-  RepairWizardDraft,
-  RepairWorkbenchViewport,
+import {
+  REPAIR_DOCK_LAYOUT_PANEL_IDS,
+  REPAIR_MAIN_LAYOUT_PANEL_IDS,
+  normalizeRepairPanelSizes,
+  type RepairDockLayoutPanelId,
+  type RepairImageRect,
+  type RepairMainLayoutPanelId,
+  type RepairMultimeterMode,
+  type RepairPanelId,
+  type RepairPanelSizeState,
+  type RepairSettingsOverlayTabId,
+  type RepairWizardDraft,
+  type RepairWorkbenchViewport,
 } from "../shared/types/index.js";
 import type {
   RepairAiTargetSlot,
@@ -50,6 +56,7 @@ import {
   REPAIR_DOCK_PANEL_IDS,
   getRepairDockGridTemplateColumns,
   getRepairDockLayoutProjection,
+  getRepairMainGridTemplateColumns,
   getRepairVisibleDockPanelIds,
   type RepairDockLayoutProjection,
 } from "./runtime/dock-layout.js";
@@ -135,6 +142,41 @@ interface RepairPersistentShell {
   panelElements: Map<RepairPanelId, HTMLElement>;
   panelSignatures: Map<RepairPanelId, string>;
 }
+
+interface RepairColumnResizeDragBase {
+  pointerId: number;
+  startX: number;
+  startBeforeWidthPx: number;
+  startAfterWidthPx: number;
+  startBeforeWeight: number;
+  startAfterWeight: number;
+  minPanelWidthPx: number;
+}
+
+interface RepairMainColumnResizeDrag extends RepairColumnResizeDragBase {
+  group: "main-columns";
+  beforeId: RepairMainLayoutPanelId;
+  afterId: RepairMainLayoutPanelId;
+}
+
+interface RepairDockColumnResizeDrag extends RepairColumnResizeDragBase {
+  group: "dock-columns";
+  beforeId: RepairDockLayoutPanelId;
+  afterId: RepairDockLayoutPanelId;
+}
+
+interface RepairBottomResizeDrag {
+  group: "bottom-cluster";
+  pointerId: number;
+  startY: number;
+  startHeightPx: number;
+  maxHeightPx: number;
+}
+
+type RepairLayoutResizeDrag =
+  | RepairMainColumnResizeDrag
+  | RepairDockColumnResizeDrag
+  | RepairBottomResizeDrag;
 
 interface RepairPanelChipConfig {
   panelId: RepairPanelId;
@@ -554,6 +596,8 @@ export function createRepairRoomUiRuntime() {
   let spatialFocusTween: RepairSpatialFocusTween | null = null;
   let spatialFocusTweenToken = 0;
   let lastSpatialFocusKey: string | null = null;
+  let layoutResizeDrag: RepairLayoutResizeDrag | null = null;
+
   let translationRevision = 0;
   const keyboardController = createRepairKeyboardController({
     cancelSpatialFocusTween,
@@ -831,6 +875,423 @@ export function createRepairRoomUiRuntime() {
     return REPAIR_BOTTOM_PANEL_CHIPS.filter((chip) => isPanelVisible(chip.panelId)).length;
   }
 
+  function isDesktopRepairResizableLayout(): boolean {
+    return window.matchMedia("(max-width: 980px)").matches === false;
+  }
+
+  function ensureRepairPanelSizes(): RepairPanelSizeState {
+    const current = (state.layout as { panelSizes?: RepairPanelSizeState }).panelSizes;
+    const panelSizes = normalizeRepairPanelSizes(current ?? {});
+    state.layout.panelSizes = panelSizes;
+    return panelSizes;
+  }
+
+  function setCustomPropertyIfChanged(element: HTMLElement, property: string, value: string): void {
+    if (element.style.getPropertyValue(property) !== value) {
+      element.style.setProperty(property, value);
+    }
+  }
+
+  function removeCustomPropertyIfPresent(element: HTMLElement, property: string): void {
+    if (element.style.getPropertyValue(property) !== "") {
+      element.style.removeProperty(property);
+    }
+  }
+
+  function syncWorkspaceGridSizing(persistentShell: RepairPersistentShell): void {
+    if (!isDesktopRepairResizableLayout()) {
+      setStyleIfChanged(persistentShell.workspace, "gridTemplateColumns", "");
+      removeCustomPropertyIfPresent(persistentShell.workspace, "--repair-bottom-cluster-height");
+      return;
+    }
+
+    const panelSizes = ensureRepairPanelSizes();
+    setStyleIfChanged(
+      persistentShell.workspace,
+      "gridTemplateColumns",
+      getRepairMainGridTemplateColumns(state.layout.collapsedPanels, panelSizes.mainColumns)
+    );
+    if (getBottomVisiblePanelCount() > 0) {
+      setCustomPropertyIfChanged(
+        persistentShell.workspace,
+        "--repair-bottom-cluster-height",
+        `${panelSizes.bottomClusterHeightPx}px`
+      );
+    } else {
+      removeCustomPropertyIfPresent(persistentShell.workspace, "--repair-bottom-cluster-height");
+    }
+  }
+
+  function setResizerPxStyle(
+    element: HTMLElement,
+    property: "left" | "top" | "width" | "height",
+    value: number
+  ): void {
+    const nextValue = `${Math.round(value)}px`;
+    if (element.style[property] !== nextValue) element.style[property] = nextValue;
+  }
+
+  function isRepairMainLayoutPanelId(value: string | undefined): value is RepairMainLayoutPanelId {
+    return (
+      value !== undefined && (REPAIR_MAIN_LAYOUT_PANEL_IDS as readonly string[]).includes(value)
+    );
+  }
+
+  function isRepairDockLayoutPanelId(value: string | undefined): value is RepairDockLayoutPanelId {
+    return (
+      value !== undefined && (REPAIR_DOCK_LAYOUT_PANEL_IDS as readonly string[]).includes(value)
+    );
+  }
+
+  function getLayoutResizerId(group: string, beforeId: string, afterId: string): string {
+    return `${group}:${beforeId}:${afterId}`;
+  }
+
+  function ensureLayoutResizer(params: {
+    afterId: string;
+    beforeId: string;
+    group: string;
+    orientation: "horizontal" | "vertical";
+    workspace: HTMLElement;
+  }): HTMLElement {
+    const resizerId = getLayoutResizerId(params.group, params.beforeId, params.afterId);
+    const selector = `[data-repair-layout-resizer-id='${resizerId}']`;
+    const existing = params.workspace.querySelector<HTMLElement>(selector);
+    if (existing !== null) return existing;
+
+    const resizer = documentRef.createElement("div");
+    resizer.className = `repair-layout-resizer repair-layout-resizer--${params.orientation}`;
+    resizer.dataset["repairLayoutResizer"] = "true";
+    resizer.dataset["repairLayoutResizerId"] = resizerId;
+    resizer.dataset["resizeGroup"] = params.group;
+    resizer.dataset["beforePanelId"] = params.beforeId;
+    resizer.dataset["afterPanelId"] = params.afterId;
+    resizer.setAttribute("role", "separator");
+    resizer.setAttribute("aria-orientation", params.orientation);
+    resizer.tabIndex = 0;
+    params.workspace.append(resizer);
+    return resizer;
+  }
+
+  function positionVerticalLayoutResizer(
+    resizer: HTMLElement,
+    workspaceRect: DOMRect,
+    beforeRect: DOMRect,
+    afterRect: DOMRect
+  ): void {
+    const top = Math.min(beforeRect.top, afterRect.top) - workspaceRect.top;
+    const bottom = Math.max(beforeRect.bottom, afterRect.bottom) - workspaceRect.top;
+    setResizerPxStyle(resizer, "left", beforeRect.right - workspaceRect.left);
+    setResizerPxStyle(resizer, "top", top);
+    setResizerPxStyle(resizer, "height", Math.max(0, bottom - top));
+    resizer.hidden = false;
+  }
+
+  function positionHorizontalLayoutResizer(
+    resizer: HTMLElement,
+    workspaceRect: DOMRect,
+    targetRect: DOMRect
+  ): void {
+    setResizerPxStyle(resizer, "left", 0);
+    setResizerPxStyle(resizer, "top", targetRect.top - workspaceRect.top);
+    setResizerPxStyle(resizer, "width", workspaceRect.width);
+    resizer.hidden = false;
+  }
+
+  function syncLayoutResizers(persistentShell: RepairPersistentShell): void {
+    const resizers = persistentShell.workspace.querySelectorAll<HTMLElement>(
+      "[data-repair-layout-resizer='true']"
+    );
+    if (!isDesktopRepairResizableLayout()) {
+      resizers.forEach((resizer) => resizer.remove());
+      return;
+    }
+
+    const workspaceRect = persistentShell.workspace.getBoundingClientRect();
+    const activeResizerIds = new Set<string>();
+    const visibleMainPanelIds = REPAIR_MAIN_LAYOUT_PANEL_IDS.filter((panelId) =>
+      isPanelVisible(panelId)
+    );
+    for (let index = 0; index < visibleMainPanelIds.length - 1; index += 1) {
+      const beforeId = visibleMainPanelIds[index];
+      const afterId = visibleMainPanelIds[index + 1];
+      if (beforeId === undefined || afterId === undefined) continue;
+      const beforeElement = persistentShell.panelElements.get(beforeId);
+      const afterElement = persistentShell.panelElements.get(afterId);
+      if (beforeElement === undefined || afterElement === undefined) continue;
+      const resizer = ensureLayoutResizer({
+        afterId,
+        beforeId,
+        group: "main-columns",
+        orientation: "vertical",
+        workspace: persistentShell.workspace,
+      });
+      activeResizerIds.add(resizer.dataset["repairLayoutResizerId"] ?? "");
+      positionVerticalLayoutResizer(
+        resizer,
+        workspaceRect,
+        beforeElement.getBoundingClientRect(),
+        afterElement.getBoundingClientRect()
+      );
+    }
+
+    if (getBottomVisiblePanelCount() > 0) {
+      const resizer = ensureLayoutResizer({
+        afterId: "bottom-cluster",
+        beforeId: "main-workspace",
+        group: "bottom-cluster",
+        orientation: "horizontal",
+        workspace: persistentShell.workspace,
+      });
+      activeResizerIds.add(resizer.dataset["repairLayoutResizerId"] ?? "");
+      positionHorizontalLayoutResizer(
+        resizer,
+        workspaceRect,
+        persistentShell.bottomCluster.getBoundingClientRect()
+      );
+    }
+
+    const visibleDockPanelIds = getRepairVisibleDockPanelIds(state.layout.collapsedPanels);
+    for (let index = 0; index < visibleDockPanelIds.length - 1; index += 1) {
+      const beforeId = visibleDockPanelIds[index];
+      const afterId = visibleDockPanelIds[index + 1];
+      if (beforeId === undefined || afterId === undefined) continue;
+      const beforeElement = persistentShell.panelElements.get(beforeId);
+      const afterElement = persistentShell.panelElements.get(afterId);
+      if (beforeElement === undefined || afterElement === undefined) continue;
+      const resizer = ensureLayoutResizer({
+        afterId,
+        beforeId,
+        group: "dock-columns",
+        orientation: "vertical",
+        workspace: persistentShell.workspace,
+      });
+      activeResizerIds.add(resizer.dataset["repairLayoutResizerId"] ?? "");
+      positionVerticalLayoutResizer(
+        resizer,
+        workspaceRect,
+        beforeElement.getBoundingClientRect(),
+        afterElement.getBoundingClientRect()
+      );
+    }
+
+    resizers.forEach((resizer) => {
+      if (!activeResizerIds.has(resizer.dataset["repairLayoutResizerId"] ?? "")) {
+        resizer.remove();
+      }
+    });
+  }
+
+  function syncLayoutResizersSoon(persistentShell: RepairPersistentShell): void {
+    syncLayoutResizers(persistentShell);
+    window.requestAnimationFrame(() => {
+      if (shell === persistentShell) syncLayoutResizers(persistentShell);
+    });
+  }
+
+  function clampLayoutNumber(value: number, min: number, max: number): number {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function applyColumnResizeDrag(
+    drag: RepairMainColumnResizeDrag | RepairDockColumnResizeDrag,
+    clientX: number
+  ): void {
+    const totalWidthPx = drag.startBeforeWidthPx + drag.startAfterWidthPx;
+    if (totalWidthPx <= 0) return;
+    const minPanelWidthPx = Math.min(drag.minPanelWidthPx, Math.max(48, (totalWidthPx - 48) / 2));
+    const nextBeforeWidthPx = clampLayoutNumber(
+      drag.startBeforeWidthPx + clientX - drag.startX,
+      minPanelWidthPx,
+      totalWidthPx - minPanelWidthPx
+    );
+    const totalWeight = drag.startBeforeWeight + drag.startAfterWeight;
+    const nextBeforeWeight = (nextBeforeWidthPx / totalWidthPx) * totalWeight;
+    const nextAfterWeight = totalWeight - nextBeforeWeight;
+    const panelSizes = ensureRepairPanelSizes();
+    if (drag.group === "main-columns") {
+      state.layout.panelSizes = normalizeRepairPanelSizes({
+        ...panelSizes,
+        mainColumns: {
+          ...panelSizes.mainColumns,
+          [drag.beforeId]: nextBeforeWeight,
+          [drag.afterId]: nextAfterWeight,
+        },
+      });
+    } else {
+      state.layout.panelSizes = normalizeRepairPanelSizes({
+        ...panelSizes,
+        dockColumns: {
+          ...panelSizes.dockColumns,
+          [drag.beforeId]: nextBeforeWeight,
+          [drag.afterId]: nextAfterWeight,
+        },
+      });
+    }
+    if (shell !== null) {
+      syncWorkspaceGridSizing(shell);
+      syncDockLayout(shell.dock);
+      syncLayoutResizers(shell);
+    }
+  }
+
+  function applyBottomResizeDrag(drag: RepairBottomResizeDrag, clientY: number): void {
+    const nextHeightPx = clampLayoutNumber(
+      drag.startHeightPx - (clientY - drag.startY),
+      180,
+      drag.maxHeightPx
+    );
+    const panelSizes = ensureRepairPanelSizes();
+    state.layout.panelSizes = normalizeRepairPanelSizes({
+      ...panelSizes,
+      bottomClusterHeightPx: nextHeightPx,
+    });
+    if (shell !== null) {
+      syncWorkspaceGridSizing(shell);
+      syncLayoutResizers(shell);
+    }
+  }
+
+  function handleLayoutResizePointerMove(event: PointerEvent): void {
+    if (layoutResizeDrag === null || event.pointerId !== layoutResizeDrag.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (layoutResizeDrag.group === "bottom-cluster") {
+      applyBottomResizeDrag(layoutResizeDrag, event.clientY);
+    } else {
+      applyColumnResizeDrag(layoutResizeDrag, event.clientX);
+    }
+  }
+
+  function finishLayoutResize(event: PointerEvent): void {
+    if (layoutResizeDrag === null || event.pointerId !== layoutResizeDrag.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    documentRef.removeEventListener("pointermove", handleLayoutResizePointerMove, true);
+    documentRef.removeEventListener("pointerup", finishLayoutResize, true);
+    documentRef.removeEventListener("pointercancel", finishLayoutResize, true);
+    shell?.root.classList.remove(
+      "repair-shell--resizing",
+      "repair-shell--resizing-horizontal",
+      "repair-shell--resizing-vertical"
+    );
+    requestRuntime.updatePanelLayout({ panelSizes: ensureRepairPanelSizes() });
+    layoutResizeDrag = null;
+  }
+
+  function createColumnResizeDrag(params: {
+    afterId: RepairMainLayoutPanelId;
+    beforeId: RepairMainLayoutPanelId;
+    group: "main-columns";
+    minPanelWidthPx: number;
+    pointerId: number;
+    startX: number;
+  }): RepairMainColumnResizeDrag | null;
+  function createColumnResizeDrag(params: {
+    afterId: RepairDockLayoutPanelId;
+    beforeId: RepairDockLayoutPanelId;
+    group: "dock-columns";
+    minPanelWidthPx: number;
+    pointerId: number;
+    startX: number;
+  }): RepairDockColumnResizeDrag | null;
+  function createColumnResizeDrag(params: {
+    afterId: RepairDockLayoutPanelId | RepairMainLayoutPanelId;
+    beforeId: RepairDockLayoutPanelId | RepairMainLayoutPanelId;
+    group: "dock-columns" | "main-columns";
+    minPanelWidthPx: number;
+    pointerId: number;
+    startX: number;
+  }): RepairDockColumnResizeDrag | RepairMainColumnResizeDrag | null {
+    const beforeElement = shell?.panelElements.get(params.beforeId);
+    const afterElement = shell?.panelElements.get(params.afterId);
+    if (beforeElement === undefined || afterElement === undefined) return null;
+    const beforeRect = beforeElement.getBoundingClientRect();
+    const afterRect = afterElement.getBoundingClientRect();
+    if (beforeRect.width <= 0 || afterRect.width <= 0) return null;
+    const panelSizes = ensureRepairPanelSizes();
+    if (params.group === "main-columns") {
+      return {
+        ...params,
+        startAfterWeight: panelSizes.mainColumns[params.afterId as RepairMainLayoutPanelId],
+        startAfterWidthPx: afterRect.width,
+        startBeforeWeight: panelSizes.mainColumns[params.beforeId as RepairMainLayoutPanelId],
+        startBeforeWidthPx: beforeRect.width,
+      } as RepairMainColumnResizeDrag;
+    }
+    return {
+      ...params,
+      startAfterWeight: panelSizes.dockColumns[params.afterId as RepairDockLayoutPanelId],
+      startAfterWidthPx: afterRect.width,
+      startBeforeWeight: panelSizes.dockColumns[params.beforeId as RepairDockLayoutPanelId],
+      startBeforeWidthPx: beforeRect.width,
+    } as RepairDockColumnResizeDrag;
+  }
+
+  function startLayoutResize(event: PointerEvent, resizer: HTMLElement): void {
+    if (shell === null || !isDesktopRepairResizableLayout()) return;
+    const group = resizer.dataset["resizeGroup"];
+    const beforeId = resizer.dataset["beforePanelId"];
+    const afterId = resizer.dataset["afterPanelId"];
+    event.preventDefault();
+    cancelSpatialFocusTween();
+
+    if (group === "bottom-cluster") {
+      const workspaceRect = shell.workspace.getBoundingClientRect();
+      const clusterRect = shell.bottomCluster.getBoundingClientRect();
+      layoutResizeDrag = {
+        group: "bottom-cluster",
+        maxHeightPx: Math.min(560, Math.max(180, workspaceRect.height * 0.72)),
+        pointerId: event.pointerId,
+        startHeightPx: clusterRect.height,
+        startY: event.clientY,
+      };
+    } else if (
+      group === "main-columns" &&
+      isRepairMainLayoutPanelId(beforeId) &&
+      isRepairMainLayoutPanelId(afterId)
+    ) {
+      layoutResizeDrag = createColumnResizeDrag({
+        afterId,
+        beforeId,
+        group: "main-columns",
+        minPanelWidthPx: 160,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+      });
+    } else if (
+      group === "dock-columns" &&
+      isRepairDockLayoutPanelId(beforeId) &&
+      isRepairDockLayoutPanelId(afterId)
+    ) {
+      layoutResizeDrag = createColumnResizeDrag({
+        afterId,
+        beforeId,
+        group: "dock-columns",
+        minPanelWidthPx: 140,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+      });
+    }
+
+    if (layoutResizeDrag === null) return;
+    shell.root.classList.add(
+      "repair-shell--resizing",
+      layoutResizeDrag.group === "bottom-cluster"
+        ? "repair-shell--resizing-horizontal"
+        : "repair-shell--resizing-vertical"
+    );
+    documentRef.addEventListener("pointermove", handleLayoutResizePointerMove, true);
+    documentRef.addEventListener("pointerup", finishLayoutResize, true);
+    documentRef.addEventListener("pointercancel", finishLayoutResize, true);
+  }
+
+  function findLayoutResizerElement(target: EventTarget | null): HTMLElement | null {
+    return target instanceof Element
+      ? target.closest<HTMLElement>("[data-repair-layout-resizer='true']")
+      : null;
+  }
+
   function updatePanelChrome(panel: HTMLElement, panelId: RepairPanelId): void {
     applyPanelGuidanceChrome(panel, panelId);
     const collapsed = state.layout.collapsedPanels[panelId];
@@ -902,11 +1363,19 @@ export function createRepairRoomUiRuntime() {
   });
 
   function syncDockLayout(dock: HTMLElement): void {
-    const dockLayout = getRepairDockLayoutProjection(state.layout.collapsedPanels);
+    const dockLayout = getRepairDockLayoutProjection(
+      state.layout.collapsedPanels,
+      REPAIR_DOCK_PANEL_IDS,
+      ensureRepairPanelSizes().dockColumns
+    );
     const visiblePanelCount = dockLayout.visiblePanelIds.length;
     dock.hidden = visiblePanelCount === 0;
     setDatasetIfChanged(dock, "visiblePanelCount", String(visiblePanelCount));
-    setStyleIfChanged(dock, "gridTemplateColumns", dockLayout.gridTemplateColumns);
+    setStyleIfChanged(
+      dock,
+      "gridTemplateColumns",
+      isDesktopRepairResizableLayout() ? dockLayout.gridTemplateColumns : ""
+    );
   }
 
   function syncPanelChip(root: HTMLElement, config: RepairPanelChipConfig): void {
@@ -970,6 +1439,7 @@ export function createRepairRoomUiRuntime() {
     setDatasetIfChanged(persistentShell.workspace, "feedVisible", String(feedVisible));
     setDatasetIfChanged(persistentShell.workspace, "knowledgeVisible", String(knowledgeVisible));
     persistentShell.rightStack.hidden = !knowledgeVisible;
+    syncWorkspaceGridSizing(persistentShell);
   }
 
   function syncBottomCluster(persistentShell: RepairPersistentShell): void {
@@ -1766,7 +2236,13 @@ export function createRepairRoomUiRuntime() {
       persistentShell.root,
       `repair-shell repair-shell--profile-${state.guidance.operationalProfile} repair-shell--calm-${primarySurfaceClass}${
         state.guidance.focusCorridor.active ? " repair-shell--corridor-active" : ""
-      } repair-shell--rhythm-${rhythmPhaseClass}`
+      } repair-shell--rhythm-${rhythmPhaseClass}${
+        layoutResizeDrag !== null
+          ? ` repair-shell--resizing repair-shell--resizing-${
+              layoutResizeDrag.group === "bottom-cluster" ? "horizontal" : "vertical"
+            }`
+          : ""
+      }`
     );
     setTextIfChanged(
       persistentShell.clock,
@@ -1838,6 +2314,7 @@ export function createRepairRoomUiRuntime() {
       createPanelLifecycle("room-sync", () => renderRoomSyncPanel(documentRef, state, meta, text))
     );
     syncBottomCluster(persistentShell);
+    syncLayoutResizersSoon(persistentShell);
 
     syncSettingsOverlay(persistentShell.settingsOverlay, persistentShell.settingsOverlayBody);
     applyLiveSnapshotUpdates();
@@ -1856,6 +2333,17 @@ export function createRepairRoomUiRuntime() {
     function readAiTargetSlot(value: unknown): RepairAiTargetSlot | null {
       return value === "ai0" || value === "ai1" || value === "ai2" ? value : null;
     }
+
+    root.addEventListener("pointerdown", (event) => {
+      const resizer = findLayoutResizerElement(event.target);
+      if (resizer !== null) startLayoutResize(event, resizer);
+    });
+    root.addEventListener("pointermove", handleLayoutResizePointerMove, true);
+    root.addEventListener("pointerup", finishLayoutResize, true);
+    root.addEventListener("pointercancel", finishLayoutResize, true);
+    window.addEventListener("pointermove", handleLayoutResizePointerMove, true);
+    window.addEventListener("pointerup", finishLayoutResize, true);
+    window.addEventListener("pointercancel", finishLayoutResize, true);
 
     root.addEventListener("click", (event) => {
       const el = findActionElement(event.target);
@@ -2608,7 +3096,9 @@ export function createRepairRoomUiRuntime() {
       }
       case "repair-state": {
         const nextMeta: RepairUiSnapshotMeta = msg.meta;
+        const activeLayoutPanelSizes = layoutResizeDrag === null ? null : ensureRepairPanelSizes();
         Object.assign(state, msg.snapshot);
+        if (activeLayoutPanelSizes !== null) state.layout.panelSizes = activeLayoutPanelSizes;
         meta.schemaVersion = nextMeta.schemaVersion;
         meta.generatedAt = nextMeta.generatedAt;
         meta.events = nextMeta.events;
@@ -2743,6 +3233,11 @@ export function createRepairRoomUiRuntime() {
 
   function handleViewportResize(): void {
     visualTimelineDom.refreshTimelinePageSize();
+    if (shell !== null) {
+      syncWorkspaceGridSizing(shell);
+      syncDockLayout(shell.dock);
+      syncLayoutResizersSoon(shell);
+    }
   }
 
   // -- Start

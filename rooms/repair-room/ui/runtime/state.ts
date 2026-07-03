@@ -1,4 +1,5 @@
 import { REPAIR_UI_COLORS } from "../../shared/repair-constants.js";
+import { createRepairDefaultPanelSizes } from "../../shared/types/index.js";
 import type { RepairUiState } from "../../shared/ui/state.js";
 import {
   createRepairDefaultAiDispatchState,
@@ -164,6 +165,7 @@ export function createInitialRepairUiState(): RepairUiState {
         measurement: false,
         "room-sync": false,
       },
+      panelSizes: createRepairDefaultPanelSizes(),
       operationalProfile: "novice",
       voiceGuidance: {
         ambientListeningState: "idle",

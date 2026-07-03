@@ -230,7 +230,10 @@ void test("repair-room resolves runtime assets from the UI entry directory", () 
 void test("repair-room dock projects only visible chip-controlled panels", () => {
   const dockLayout = getRepairDockLayoutProjection();
   assert.deepEqual(dockLayout.visiblePanelIds, [...REPAIR_DOCK_PANEL_IDS]);
-  assert.equal(dockLayout.gridTemplateColumns, "1fr 1fr 1fr");
+  assert.equal(
+    dockLayout.gridTemplateColumns,
+    "minmax(var(--repair-px-220), 1fr) minmax(var(--repair-px-220), 1fr) minmax(var(--repair-px-220), 1fr)"
+  );
 
   assert.deepEqual([...REPAIR_DOCK_PANEL_IDS], ["chat", "measurement", "room-sync"]);
 
@@ -240,7 +243,17 @@ void test("repair-room dock projects only visible chip-controlled panels", () =>
     "room-sync": true,
   });
   assert.deepEqual(partialLayout.visiblePanelIds, ["measurement"]);
-  assert.equal(partialLayout.gridTemplateColumns, "1fr");
+  assert.equal(partialLayout.gridTemplateColumns, "minmax(var(--repair-px-220), 1fr)");
+
+  const sizedLayout = getRepairDockLayoutProjection({}, REPAIR_DOCK_PANEL_IDS, {
+    chat: 1.2,
+    measurement: 0.8,
+    "room-sync": 1,
+  });
+  assert.equal(
+    sizedLayout.gridTemplateColumns,
+    "minmax(var(--repair-px-220), 1.2fr) minmax(var(--repair-px-220), 0.8fr) minmax(var(--repair-px-220), 1fr)"
+  );
 
   const hiddenLayout = getRepairDockLayoutProjection({
     chat: true,
@@ -393,6 +406,12 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /requestRuntime\.updateTimeline/);
   assert.match(runtime, /requestRuntime\.addTimelineEvent\(\{\s*kind: "snapshot"/);
   assert.match(runtime, /requestRuntime\.updatePanelLayout/);
+  assert.match(runtime, /panelSizes: ensureRepairPanelSizes\(\)/);
+  assert.match(runtime, /data-repair-layout-resizer/);
+  assert.match(runtime, /startLayoutResize/);
+  assert.match(runtime, /syncLayoutResizersSoon/);
+  assert.match(style, /\.repair-layout-resizer/);
+  assert.match(style, /--repair-bottom-cluster-height/);
   assert.match(runtime, /requestRuntime\.updatePanelTab/);
   assert.match(runtime, /requestRuntime\.updateFocus/);
   assert.match(runtime, /meta\.replay\.overlayEvents/);
@@ -690,11 +709,19 @@ void test("repair-room repair moments CSS keeps the compact strip sizing contrac
   assert.doesNotMatch(timelineStyle, /grid-template-columns:\s*repeat\(2,/);
   assert.match(
     workspaceStyle,
-    /grid-template-rows:\s*minmax\(var\(--repair-px-72\), var\(--repair-px-96\)\)/
+    /grid-template-rows:\s*[\s\S]*minmax\(var\(--repair-px-72\), 0\.44fr\)[\s\S]*minmax\(calc\(var\(--repair-px-180\) \* 0\.82\), 1fr\)/
   );
   assert.match(
     workspaceStyle,
     /\.repair-bottom-cluster\s*\{[\s\S]*position:\s*relative;[\s\S]*z-index:\s*20;/
+  );
+  assert.match(
+    workspaceStyle,
+    /\.repair-bottom-cluster\s*\{[\s\S]*grid-column:\s*1\s*\/\s*5;/
+  );
+  assert.match(
+    workspaceStyle,
+    /\.repair-workspace > \.repair-panel,[\s\S]*\.repair-bottom-dock > \.repair-panel\s*\{[\s\S]*min-width:\s*0;/
   );
   assert.match(
     workspaceStyle,

@@ -1,3 +1,4 @@
+import { normalizeRepairPanelSizes } from "../../shared/types/index.js";
 import type { RepairRuntimeAction } from "./repair-runtime-actions.js";
 import type { RepairRuntimeState } from "./repair-runtime-state.js";
 
@@ -370,6 +371,25 @@ export function reduceRepairRuntimeState(
             ...state.layout.collapsedPanels,
             [action.panelId]: action.collapsed,
           },
+        },
+      };
+    case "layout/set-panel-sizes":
+      return {
+        ...state,
+        layout: {
+          ...state.layout,
+          panelSizes: normalizeRepairPanelSizes({
+            ...state.layout.panelSizes,
+            ...action.panelSizes,
+            mainColumns: {
+              ...state.layout.panelSizes.mainColumns,
+              ...action.panelSizes.mainColumns,
+            },
+            dockColumns: {
+              ...state.layout.panelSizes.dockColumns,
+              ...action.panelSizes.dockColumns,
+            },
+          }),
         },
       };
     case "layout/set-focus-mode":

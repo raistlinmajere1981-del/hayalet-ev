@@ -11,6 +11,14 @@ export type RepairPanelId =
   | "measurement"
   | "room-sync";
 
+export type RepairMainLayoutPanelId =
+  | "session-rail"
+  | "workbench-stage"
+  | "tactical-feed"
+  | "knowledge-pack";
+
+export type RepairDockLayoutPanelId = "chat" | "measurement" | "room-sync";
+
 export type RepairOperatorProfileTabId = "tools" | "skills" | "preferences" | "controls";
 
 export type RepairSettingsOverlayTabId = "repair-controls" | "bench-operator";
@@ -28,6 +36,26 @@ export type RepairTtsRoute = "local" | "android";
 export type RepairCameraFeedPreference = "manual" | "android-feed";
 
 export type RepairDictationSubmitMode = "composer" | "send";
+
+export const REPAIR_MAIN_LAYOUT_PANEL_IDS = [
+  "session-rail",
+  "workbench-stage",
+  "tactical-feed",
+  "knowledge-pack",
+] as const satisfies readonly RepairMainLayoutPanelId[];
+
+export const REPAIR_DOCK_LAYOUT_PANEL_IDS = [
+  "chat",
+  "measurement",
+  "room-sync",
+] as const satisfies readonly RepairDockLayoutPanelId[];
+
+export const REPAIR_PANEL_SIZE_LIMITS = {
+  minWeight: 0.35,
+  maxWeight: 4,
+  minBottomClusterHeightPx: 180,
+  maxBottomClusterHeightPx: 560,
+} as const;
 
 export interface RepairVoiceGuidanceState {
   ambientListeningState: RepairAmbientListeningState;
@@ -49,8 +77,21 @@ export interface RepairAttentionBudgetState {
   maxAiInterruptions: number;
 }
 
+export interface RepairPanelSizeState {
+  mainColumns: Record<RepairMainLayoutPanelId, number>;
+  dockColumns: Record<RepairDockLayoutPanelId, number>;
+  bottomClusterHeightPx: number;
+}
+
+export interface RepairPanelSizePatch {
+  mainColumns?: Partial<Record<RepairMainLayoutPanelId, number>>;
+  dockColumns?: Partial<Record<RepairDockLayoutPanelId, number>>;
+  bottomClusterHeightPx?: number;
+}
+
 export interface RepairLayoutState {
   collapsedPanels: Record<RepairPanelId, boolean>;
+  panelSizes: RepairPanelSizeState;
   operationalProfile: RepairOperationalProfile;
   voiceGuidance: RepairVoiceGuidanceState;
   interactionSettings: RepairInteractionSettingsState;
@@ -60,4 +101,78 @@ export interface RepairLayoutState {
   settingsOverlayTabId: RepairSettingsOverlayTabId;
   focusMode: boolean;
   ambientClock: string;
+}
+
+function clampRepairPanelSize(value: unknown, fallback: number): number {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(
+    REPAIR_PANEL_SIZE_LIMITS.maxWeight,
+    Math.max(REPAIR_PANEL_SIZE_LIMITS.minWeight, numeric)
+  );
+}
+
+function clampRepairBottomClusterHeight(value: unknown, fallback: number): number {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(
+    REPAIR_PANEL_SIZE_LIMITS.maxBottomClusterHeightPx,
+    Math.max(REPAIR_PANEL_SIZE_LIMITS.minBottomClusterHeightPx, numeric)
+  );
+}
+
+export function createRepairDefaultPanelSizes(): RepairPanelSizeState {
+  return {
+    mainColumns: {
+      "session-rail": 1,
+      "workbench-stage": 1.65,
+      "tactical-feed": 0.82,
+      "knowledge-pack": 0.9,
+    },
+    dockColumns: {
+      chat: 1,
+      measurement: 1,
+      "room-sync": 1,
+    },
+    bottomClusterHeightPx: 300,
+  };
+}
+
+export function normalizeRepairPanelSizes(patch: RepairPanelSizePatch = {}): RepairPanelSizeState {
+  const defaults = createRepairDefaultPanelSizes();
+  return {
+    mainColumns: {
+      "session-rail": clampRepairPanelSize(
+        patch.mainColumns?.["session-rail"],
+        defaults.mainColumns["session-rail"]
+      ),
+      "workbench-stage": clampRepairPanelSize(
+        patch.mainColumns?.["workbench-stage"],
+        defaults.mainColumns["workbench-stage"]
+      ),
+      "tactical-feed": clampRepairPanelSize(
+        patch.mainColumns?.["tactical-feed"],
+        defaults.mainColumns["tactical-feed"]
+      ),
+      "knowledge-pack": clampRepairPanelSize(
+        patch.mainColumns?.["knowledge-pack"],
+        defaults.mainColumns["knowledge-pack"]
+      ),
+    },
+    dockColumns: {
+      chat: clampRepairPanelSize(patch.dockColumns?.chat, defaults.dockColumns.chat),
+      measurement: clampRepairPanelSize(
+        patch.dockColumns?.measurement,
+        defaults.dockColumns.measurement
+      ),
+      "room-sync": clampRepairPanelSize(
+        patch.dockColumns?.["room-sync"],
+        defaults.dockColumns["room-sync"]
+      ),
+    },
+    bottomClusterHeightPx: clampRepairBottomClusterHeight(
+      patch.bottomClusterHeightPx,
+      defaults.bottomClusterHeightPx
+    ),
+  };
 }

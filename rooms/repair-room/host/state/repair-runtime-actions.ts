@@ -16,6 +16,7 @@ import type {
   RepairOverlayLayerId,
   RepairOverlaySelectionState,
   RepairPanelId,
+  RepairPanelSizePatch,
   RepairReplayMode,
   RepairSettingsOverlayTabId,
   RepairSession,
@@ -201,6 +202,10 @@ export type RepairRuntimeAction =
       type: "layout/collapse-panel";
       panelId: RepairPanelId;
       collapsed: boolean;
+    }
+  | {
+      type: "layout/set-panel-sizes";
+      panelSizes: RepairPanelSizePatch;
     }
   | {
       type: "layout/set-focus-mode";

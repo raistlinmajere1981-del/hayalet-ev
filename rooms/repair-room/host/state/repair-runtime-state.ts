@@ -6,20 +6,21 @@ import {
   createDefaultOperatorProfile,
   createDefaultWizardState,
 } from "../../shared/data/index.js";
-import type {
-  RepairAiAdaptationHints,
-  RepairChatState,
-  RepairChatTurn,
-  RepairLayoutState,
-  RepairMeasurementState,
-  RepairOperatorProfile,
-  RepairOverlayLayerId,
-  RepairPanelId,
-  RepairLivePreviewState,
-  RepairSession,
-  RepairSessionListItem,
-  RepairWizardState,
-  RepairWorkbenchState,
+import {
+  createRepairDefaultPanelSizes,
+  type RepairAiAdaptationHints,
+  type RepairChatState,
+  type RepairChatTurn,
+  type RepairLayoutState,
+  type RepairMeasurementState,
+  type RepairOperatorProfile,
+  type RepairOverlayLayerId,
+  type RepairPanelId,
+  type RepairLivePreviewState,
+  type RepairSession,
+  type RepairSessionListItem,
+  type RepairWizardState,
+  type RepairWorkbenchState,
 } from "../../shared/types/index.js";
 import type {
   RepairAiDispatchState,
@@ -178,6 +179,7 @@ export function createInitialRepairRuntimeState(
     },
     layout: {
       collapsedPanels: createCollapsedPanelMap(),
+      panelSizes: createRepairDefaultPanelSizes(),
       operationalProfile: "novice",
       voiceGuidance: {
         ambientListeningState: "idle",
