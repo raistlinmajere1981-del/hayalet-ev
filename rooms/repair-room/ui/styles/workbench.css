@@ -207,7 +207,7 @@
 
 .repair-coord-hud {
   position: absolute;
-  bottom: var(--repair-sp-2);
+  top: var(--repair-sp-2);
   left: var(--repair-sp-2);
   display: flex;
   gap: var(--repair-sp-3);
@@ -249,13 +249,16 @@
 }
 
 .repair-toolbar-group--tools {
-  top: 0;
+  top: auto;
+  right: auto;
+  bottom: 0;
   left: 0;
-  bottom: var(--repair-px-40);
-  flex-direction: column;
-  align-items: stretch;
-  max-height: calc(100% - var(--repair-px-40));
-  overflow-y: auto;
+  flex-direction: row;
+  align-items: center;
+  max-width: calc(100% - var(--repair-px-176));
+  max-height: var(--repair-px-64);
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .repair-toolbar-group--layers {
@@ -338,9 +341,20 @@
   justify-content: center;
   width: var(--repair-px-20);
   height: var(--repair-px-18);
-  color: var(--repair-text);
+  color: inherit;
   font-weight: 700;
   line-height: 1;
+}
+
+.repair-toolbar__icon svg {
+  display: block;
+  width: var(--repair-px-18);
+  height: var(--repair-px-18);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .repair-toolbar__label {
@@ -412,11 +426,7 @@
   }
 
   .repair-toolbar-group--tools {
-    right: 0;
-    bottom: auto;
-    flex-direction: row;
-    max-height: none;
-    overflow-x: auto;
+    max-width: calc(100% - var(--repair-px-128));
   }
 
   .repair-toolbar-group--layers {

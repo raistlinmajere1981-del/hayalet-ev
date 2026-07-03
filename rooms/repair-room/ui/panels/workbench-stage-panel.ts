@@ -184,22 +184,26 @@ function getRepairCommandHints(state: RepairUiState, text: TextFn): string {
   return hints.slice(0, 3).join(" / ");
 }
 
-const REPAIR_TOOL_ICONS: Record<RepairWorkbenchTool, string> = {
-  select: "V",
-  pan: "+",
-  "zoom-in": "+",
-  "zoom-out": "-",
-  rect: "[]",
-  circle: "O",
-  freehand: "~",
-  text: "T",
-  "measurement-link": "L",
-  "measurement-pin": "P",
-  arrow: ">",
-  ruler: "|",
-  "freeze-frame": "F",
-  snapshot: "S",
+const REPAIR_TOOL_ICON_PATHS: Record<RepairWorkbenchTool, string> = {
+  select: '<path d="M5 4 18 12 12.5 13.5 10 19z" /><path d="M12.5 13.5 17 19" />',
+  pan: '<path d="M12 3v18M3 12h18" /><path d="M8 7l4-4 4 4M16 17l-4 4-4-4M7 8l-4 4 4 4M17 16l4-4-4-4" />',
+  "zoom-in": '<circle cx="10.5" cy="10.5" r="6.5" /><path d="M16 16l5 5M10.5 7.5v6M7.5 10.5h6" />',
+  "zoom-out": '<circle cx="10.5" cy="10.5" r="6.5" /><path d="M16 16l5 5M7.5 10.5h6" />',
+  rect: '<rect x="5" y="5" width="14" height="14" rx="2" /><path d="M9 5v14M15 5v14" />',
+  circle: '<circle cx="12" cy="12" r="7" />',
+  freehand: '<path d="M4 16c3-8 5 5 8-2s4-8 8-2" />',
+  text: '<path d="M5 6h14M12 6v12M9 18h6" />',
+  "measurement-link": '<path d="M8 12h8" /><path d="M7 8a4 4 0 0 0 0 8h3M17 8a4 4 0 0 1 0 8h-3" />',
+  "measurement-pin": '<path d="M12 21s6-5 6-11a6 6 0 0 0-12 0c0 6 6 11 6 11z" /><circle cx="12" cy="10" r="2" />',
+  arrow: '<path d="M5 19 19 5M11 5h8v8" />',
+  ruler: '<path d="M4 17 17 4l3 3L7 20z" /><path d="M14 7l3 3M11 10l2 2M8 13l3 3" />',
+  "freeze-frame": '<rect x="5" y="4" width="14" height="16" rx="2" /><path d="M9 8v8M15 8v8" />',
+  snapshot: '<path d="M4 8h4l2-2h4l2 2h4v11H4z" /><circle cx="12" cy="13" r="3" />',
 };
+
+function getRepairToolIconSvg(tool: RepairWorkbenchTool): string {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${REPAIR_TOOL_ICON_PATHS[tool]}</svg>`;
+}
 
 const REPAIR_HISTORY_REVIEW_SAFE_TOOLS = new Set<RepairWorkbenchTool>([
   "select",
@@ -349,12 +353,12 @@ const REPAIR_WORKBENCH_QUICK_ACTIONS: Array<{
 function appendButtonLabel(
   documentRef: Document,
   button: HTMLElement,
-  icon: string,
+  iconMarkup: string,
   label: string
 ): void {
   const iconEl = documentRef.createElement("span");
   iconEl.className = "repair-toolbar__icon";
-  iconEl.textContent = icon;
+  iconEl.innerHTML = iconMarkup;
   button.append(iconEl);
 
   const labelEl = documentRef.createElement("span");
@@ -399,7 +403,7 @@ function createToolButton(
   appendButtonLabel(
     documentRef,
     btn,
-    REPAIR_TOOL_ICONS[tool.id],
+    getRepairToolIconSvg(tool.id),
     text(["workbench", "tools", tool.id, "label"], tool.label)
   );
   return btn;

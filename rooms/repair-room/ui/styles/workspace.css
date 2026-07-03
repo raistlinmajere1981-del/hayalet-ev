@@ -113,6 +113,8 @@
 }
 
 .repair-bottom-cluster {
+  --repair-bottom-timeline-height: var(--repair-px-120);
+
   position: relative;
   z-index: 20;
   grid-column: 1 / 5;
@@ -138,9 +140,7 @@
   display: grid;
   flex: 1 1 auto;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows:
-    minmax(var(--repair-px-72), 0.44fr)
-    minmax(calc(var(--repair-px-180) * 0.82), 1fr);
+  grid-template-rows: var(--repair-bottom-timeline-height) minmax(0, 1fr);
   gap: var(--repair-px-1);
   min-height: 0;
 }
@@ -155,15 +155,15 @@
 }
 
 .repair-bottom-cluster[data-timeline-visible="false"] .repair-bottom-cluster__body {
-  grid-template-rows: minmax(calc(var(--repair-px-180) * 0.82), 1fr);
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .repair-bottom-cluster[data-lower-visible-panel-count="0"] .repair-bottom-cluster__body {
-  grid-template-rows: max-content;
+  grid-template-rows: var(--repair-bottom-timeline-height);
 }
 
 .repair-bottom-cluster[data-lower-visible-panel-count="0"] .repair-panel--visual-timeline {
-  min-height: var(--repair-px-96);
+  min-height: var(--repair-bottom-timeline-height);
 }
 
 .repair-bottom-dock {
@@ -172,7 +172,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--repair-px-1);
-  min-height: calc(var(--repair-px-180) * 0.82);
+  min-height: 0;
   max-height: none;
 }
 
