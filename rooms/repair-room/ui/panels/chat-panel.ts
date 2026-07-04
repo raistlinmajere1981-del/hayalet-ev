@@ -157,8 +157,8 @@ export function renderChatPanel(
 
   return createRepairPanel(documentRef, {
     panelId: "chat",
-    eyebrow: text(["chat", "eyebrow"], "AİÖ SOHBET — OTURUM ÖZELİ"),
-    title: text(["chat", "title"], "AİÖ"),
+    eyebrow: text(["chat", "eyebrow"], "OTURUM SOHBET GEÇMİŞİ"),
+    title: text(["chat", "title"], "AI sohbet geçmişi"),
     statusDot: state.chat.pendingReplyId !== null ? "amber" : "idle",
     collapsed: state.layout.collapsedPanels["chat"],
     noPanelControls: true,

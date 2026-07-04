@@ -36,9 +36,9 @@ export const REPAIR_WIZARD_STEP_ORDER = [
 const DEVICE_TYPE_OPTIONS = REPAIR_DEVICE_TYPE_OPTIONS;
 
 const AI_TARGET_OPTIONS = [
-  { targetSlot: "ai0", label: "AI 0" },
-  { targetSlot: "ai1", label: "AI 1" },
-  { targetSlot: "ai2", label: "AI 2" },
+  { targetSlot: "ai0", label: "Asistan AI 0" },
+  { targetSlot: "ai1", label: "Asistan AI 1" },
+  { targetSlot: "ai2", label: "Asistan AI 2" },
 ] as const;
 
 function uniqueList(values: string[]): string[] {
@@ -228,7 +228,7 @@ function getWizardHint(step: WizardStepId, text: TextFn): string {
   if (step === "ai-research") {
     return text(
       ["wizard", "hints", "aiResearch"],
-      "AI slotunu seç, araştırmayı başlat veya evidence pack olmadan devam et."
+      "Araştırmayı başlat veya evidence pack olmadan devam et."
     );
   }
   if (step === "evidence-review") {
@@ -343,17 +343,19 @@ function appendAiTargetSelect(
   state: RepairUiState,
   text: TextFn
 ): void {
+  if (state.sessions.activeId !== null || state.phase === "session-active") return;
+
   const wrapper = documentRef.createElement("label");
   wrapper.className = "repair-wizard-field";
 
   const label = documentRef.createElement("span");
-  label.textContent = text(["wizard", "labels", "aiSlot"], "AI slot");
+  label.textContent = text(["wizard", "labels", "aiSlot"], "Asistan AI");
   wrapper.append(label);
 
   const select = documentRef.createElement("select");
   select.className = "repair-wizard-field__input";
   select.dataset["repairAction"] = "set-ai-target-slot";
-  select.value = state.aiDispatch.research.targetSlot;
+  select.value = state.aiDispatch.chat.targetSlot;
   AI_TARGET_OPTIONS.forEach((option) => {
     const optionEl = documentRef.createElement("option");
     optionEl.value = option.targetSlot;
@@ -873,6 +875,7 @@ function renderDeviceStep(documentRef: Document, state: RepairUiState, text: Tex
   const form = documentRef.createElement("div");
   form.className = "repair-wizard-form";
   const draft = state.wizard.draft;
+  appendAiTargetSelect(documentRef, form, state, text);
   appendDeviceTypeSelect(documentRef, form, state, text);
   appendField(
     documentRef,
@@ -1014,7 +1017,6 @@ function renderResearchStep(
 ): HTMLElement {
   const form = documentRef.createElement("div");
   form.className = "repair-wizard-form";
-  appendAiTargetSelect(documentRef, form, state, text);
 
   const message = state.wizard.draft.researchMessage ?? state.aiDispatch.research.message;
   if (message !== null && message.trim() !== "") {

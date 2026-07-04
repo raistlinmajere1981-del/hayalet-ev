@@ -19,10 +19,7 @@ export const REPAIR_ROOM_SYNC_ROW_KEYS = [
   "events",
   "session",
   "playhead",
-  "ai-target",
-  "chat-dispatch",
-  "research-dispatch",
-  "tactical-dispatch",
+  "ai-session",
 ] as const;
 
 function getAiLifecycleActions(text: TextFn): ReadonlyArray<readonly [string, string]> {
@@ -124,19 +121,22 @@ export function formatRepairStorageSummary(storage: RepairStorageState, text?: T
     : "Repair history not connected";
 }
 
+function getUnifiedAiDispatchChannel(state: RepairUiState): RepairAiDispatchChannelState {
+  const channels = [state.aiDispatch.chat, state.aiDispatch.research, state.aiDispatch.tactical];
+  return (
+    channels.find((channel) => channel.status === "pending") ??
+    channels.find((channel) => channel.status === "failed") ??
+    channels.find((channel) => channel.status === "succeeded") ??
+    state.aiDispatch.chat
+  );
+}
+
 export function getRepairRoomSyncRows(
   state: RepairUiState,
   meta: RepairUiSnapshotMeta,
   text: TextFn
 ): RepairRoomSyncRow[] {
   const session = state.sessions.detail;
-  const slots = [
-    state.aiDispatch.chat.targetSlot,
-    state.aiDispatch.research.targetSlot,
-    state.aiDispatch.tactical.targetSlot,
-  ].map((slot) => formatAssistantSlot(slot, text));
-  const firstSlot = slots[0] ?? "Assistant 2";
-  const targetSlot = slots.every((slot) => slot === firstSlot) ? firstSlot : slots.join("/");
   return [
     [text(["sync", "storage"], "Depolama"), formatRepairStorageSummary(state.storage, text)],
     [
@@ -155,18 +155,9 @@ export function getRepairRoomSyncRows(
       text(["sync", "playhead"], "Oynatma Konumu"),
       `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`,
     ],
-    [text(["sync", "aiTarget"], "AI Hedefi"), targetSlot],
     [
-      text(["sync", "chatDispatch"], "Sohbet AI"),
-      formatRepairAiDispatchSummary(state.aiDispatch.chat, text),
-    ],
-    [
-      text(["sync", "researchDispatch"], "Araştırma AI"),
-      formatRepairAiDispatchSummary(state.aiDispatch.research, text),
-    ],
-    [
-      text(["sync", "tacticalDispatch"], "Taktik AI"),
-      formatRepairAiDispatchSummary(state.aiDispatch.tactical, text),
+      text(["sync", "aiSession"], "AI Oturumu"),
+      formatRepairAiDispatchSummary(getUnifiedAiDispatchChannel(state), text),
     ],
   ];
 }
@@ -204,26 +195,6 @@ export function renderRoomSyncPanel(
     body.append(row);
   });
 
-  const selector = documentRef.createElement("label");
-  selector.className = "repair-sync-row repair-sync-row--control";
-  const selectorLabel = documentRef.createElement("span");
-  selectorLabel.className = "repair-sync-row__label";
-  selectorLabel.textContent = text(["sync", "aiSlot"], "AI Slotu");
-  selector.append(selectorLabel);
-
-  const select = documentRef.createElement("select");
-  select.className = "repair-sync-row__select";
-  select.dataset["repairAction"] = "set-ai-target-slot";
-  const currentTarget = state.aiDispatch.chat.targetSlot;
-  (["ai0", "ai1", "ai2"] as const).forEach((slot) => {
-    const option = documentRef.createElement("option");
-    option.value = slot;
-    option.textContent = formatAssistantSlot(slot, text);
-    option.selected = currentTarget === slot;
-    select.append(option);
-  });
-  selector.append(select);
-  body.append(selector);
 
   const focusCard = documentRef.createElement("div");
   focusCard.className = "repair-sync-focus";

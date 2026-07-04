@@ -48,7 +48,6 @@ import {
 } from "./panels/operator-profile-panel.js";
 import { renderChatPanel } from "./panels/chat-panel.js";
 import { renderMeasurementPanel } from "./panels/measurement-panel.js";
-import { renderRoomSyncPanel } from "./panels/room-sync-panel.js";
 import { getContainedImageFrame } from "./overlay/overlay-coords.js";
 import { getRepairFocusFrame } from "./overlay/overlay-geometry.js";
 import { resolveRepairAssetUrl } from "./repair-asset-url.js";
@@ -76,7 +75,6 @@ import { createRepairDictationComposer } from "./runtime/dictation-composer.js";
 import { createRepairCaptureStatusHandlers } from "./runtime/capture-status-handlers.js";
 import { createRepairVisualTimelineDomRuntime } from "./runtime/visual-timeline-dom.js";
 import { createRepairTacticalFeedDomRuntime } from "./runtime/tactical-feed-dom.js";
-import { createRepairSyncInspectorDomRuntime } from "./runtime/sync-inspector-dom.js";
 import { buildRepairPanelSignature } from "./runtime/panel-signatures.js";
 import { createRepairOverlayRuntime } from "./runtime/overlay-runtime.js";
 
@@ -209,7 +207,6 @@ const REPAIR_BOTTOM_PANEL_CHIPS = [
   { panelId: "visual-timeline", label: "", title: "" },
   { panelId: "chat", label: "", title: "" },
   { panelId: "measurement", label: "", title: "" },
-  { panelId: "room-sync", label: "", title: "" },
 ] as const satisfies readonly RepairPanelChipConfig[];
 
 const REPAIR_CHIP_CONTROLLED_PANEL_IDS = [
@@ -223,7 +220,6 @@ const REPAIR_SESSION_REQUIRED_PANEL_IDS: ReadonlySet<RepairPanelId> = new Set([
   "visual-timeline",
   "chat",
   "measurement",
-  "room-sync",
 ]);
 const REPAIR_HISTORY_REVIEW_SAFE_TOOL_IDS: ReadonlySet<string> = new Set([
   "select",
@@ -744,7 +740,6 @@ export function createRepairRoomUiRuntime() {
   function applyLiveSnapshotUpdates(): void {
     visualTimelineDom.updateTimelineLiveDom();
     measurementDom.updateMeasurementLiveDom();
-    syncInspectorDom.updateSyncLiveDom();
   }
 
   function updateCursorHud(point: { xPx: number; yPx: number }): void {
@@ -1337,13 +1332,6 @@ export function createRepairRoomUiRuntime() {
     text,
     updatePanelChrome,
   });
-  const syncInspectorDom = createRepairSyncInspectorDomRuntime({
-    documentRef,
-    meta,
-    state,
-    text,
-    updatePanelChrome,
-  });
   const overlayRuntime = createRepairOverlayRuntime({
     cancelSpatialFocusTween,
     meta,
@@ -1707,7 +1695,6 @@ export function createRepairRoomUiRuntime() {
           viewport.insertBefore(placeholder, overlayHost ?? viewport.firstChild);
         }
       }
-      syncInspectorDom.syncWorkbenchInspector(viewport);
     }
 
     const cursor = state.workbench.cursor;
@@ -1806,10 +1793,6 @@ export function createRepairRoomUiRuntime() {
           measurementDom.updateMeasurementPanelDom(element);
           return element;
         }
-        if (panelId === "room-sync") {
-          syncInspectorDom.updateRoomSyncPanelDom(element);
-          return element;
-        }
         return replacePanelElement(element, renderer());
       },
       dispose: (element) => {
@@ -1879,8 +1862,7 @@ export function createRepairRoomUiRuntime() {
       if (
         lifecycle.panelId === "workbench-stage" ||
         lifecycle.panelId === "tactical-feed" ||
-        lifecycle.panelId === "measurement" ||
-        lifecycle.panelId === "room-sync"
+        lifecycle.panelId === "measurement"
       ) {
         lifecycle.update(current);
       }
@@ -2307,11 +2289,6 @@ export function createRepairRoomUiRuntime() {
       persistentShell,
       persistentShell.dock,
       createPanelLifecycle("measurement", () => renderMeasurementPanel(documentRef, state, text))
-    );
-    syncPanel(
-      persistentShell,
-      persistentShell.dock,
-      createPanelLifecycle("room-sync", () => renderRoomSyncPanel(documentRef, state, meta, text))
     );
     syncBottomCluster(persistentShell);
     syncLayoutResizersSoon(persistentShell);

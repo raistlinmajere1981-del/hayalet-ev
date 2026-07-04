@@ -42,6 +42,8 @@ export interface SlotBridgeProjectRef {
   projectId?: string | null;
   roomId?: string | null;
   title?: string | null;
+  aliases?: SlotBridgeProjectRef[] | null;
+  aliasProjectIds?: string[] | null;
 }
 
 export interface SlotBridgeAttachmentDescriptor {

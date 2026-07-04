@@ -179,7 +179,7 @@
     "hints": {
       "deviceInfo": "Complete device type, maker, model, and board code; choose Unknown when needed.",
       "symptoms": "Pick default symptoms or add your own symptom.",
-      "aiResearch": "Choose an AI slot, start research, or continue without an evidence pack.",
+      "aiResearch": "Start research or continue without an evidence pack.",
       "evidenceReview": "Choose the resources, failures, and test points saved to the session archive.",
       "ready": "Check the device, symptom, and research summary before starting repair."
     },
@@ -219,7 +219,7 @@
       "boardCode": "Board code",
       "serialNumber": "Serial / job no",
       "intakeNotes": "Bench note",
-      "aiSlot": "AI slot",
+      "aiSlot": "Assistant AI",
       "symptomGroupAvailable": "Suggested symptoms",
       "symptomGroupSelected": "Selected symptoms",
       "customSymptom": "Custom symptom",
@@ -443,8 +443,8 @@
     }
   },
   "chat": {
-    "eyebrow": "AİÖ CHAT — SESSION CONTEXT",
-    "title": "AİÖ",
+    "eyebrow": "SESSION CHAT HISTORY",
+    "title": "AI chat history",
     "subtitle": "Repair Assistant",
     "placeholder": "Ask or dictate a repair note...",
     "send": "Send",
@@ -474,8 +474,9 @@
     "events": "Events",
     "session": "Session",
     "playhead": "Playhead",
-    "aiSlot": "AI Slot",
+    "aiSlot": "Assistant AI",
     "aiTarget": "AI Target",
+    "aiSession": "AI Session",
     "chatDispatch": "Chat AI",
     "researchDispatch": "Research AI",
     "tacticalDispatch": "Tactical AI",

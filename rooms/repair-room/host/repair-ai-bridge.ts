@@ -649,14 +649,51 @@ function summarizeOperatorProfile(profile: RepairOperatorProfile): Record<string
   };
 }
 
+interface RepairAiProjectSeed {
+  boardCode: string;
+  deviceType: string;
+  manufacturer: string;
+  model: string;
+}
+
+function buildRepairDraftProjectId(seed: RepairAiProjectSeed): string {
+  const boardCode = seed.boardCode.trim();
+  const fallbackId = [seed.deviceType, seed.manufacturer, seed.model]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join("/");
+  return boardCode !== "" ? boardCode : fallbackId;
+}
+
+function buildRepairDraftProjectRefFromSeed(
+  seed: RepairAiProjectSeed
+): Record<string, unknown> | null {
+  const projectId = buildRepairDraftProjectId(seed);
+  if (projectId === "") return null;
+  const title = [seed.manufacturer, seed.model, seed.boardCode]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(" ");
+  return {
+    roomId: REPAIR_ROOM_ID,
+    projectId: `draft:${projectId}`,
+    ...(title !== "" ? { title } : {}),
+  };
+}
+
 function buildRepairProjectRef(session: RepairSession | null): Record<string, unknown> | null {
-  return session === null
-    ? null
-    : {
-        roomId: REPAIR_ROOM_ID,
-        projectId: session.id,
-        title: session.title,
-      };
+  if (session === null) return null;
+  const draftProjectRef = buildRepairDraftProjectRefFromSeed(session.deviceInfo);
+  return {
+    roomId: REPAIR_ROOM_ID,
+    projectId: session.id,
+    title: session.title,
+    ...(draftProjectRef !== null ? { aliases: [draftProjectRef] } : {}),
+  };
+}
+
+function buildRepairDraftProjectRef(draft: RepairWizardDraft): Record<string, unknown> | null {
+  return buildRepairDraftProjectRefFromSeed(draft);
 }
 
 function isTransientAiError(message: string | undefined): boolean {
@@ -946,12 +983,14 @@ export async function requestRepairAiKnowledgeResearch(
 
   const dispatchBridge = request.dispatchBridge;
   const targetSlot = request.targetSlot ?? REPAIR_AI_TARGET_SLOT;
+  const projectRef = buildRepairDraftProjectRef(request.draft);
   const bridgeResult = toRecord(
     await retryAiDispatch(async () =>
       dispatchBridge({
         action: "message.sendWait",
         timeoutMs: 120000,
         toSlot: targetSlot,
+        ...(projectRef !== null ? { projectRef } : {}),
         payload: {
           page: "repair-room:knowledge-research",
           text: buildRepairAiKnowledgeResearchPrompt(request),

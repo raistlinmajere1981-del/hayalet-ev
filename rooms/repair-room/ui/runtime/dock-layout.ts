@@ -14,7 +14,6 @@ type RepairPanelWeightMap<PanelId extends string> = Partial<Record<PanelId, numb
 const REPAIR_DOCK_PANEL_MIN_TRACKS: Record<RepairDockLayoutPanelId, string> = {
   chat: "var(--repair-px-220)",
   measurement: "var(--repair-px-220)",
-  "room-sync": "var(--repair-px-220)",
 };
 
 export interface RepairDockLayoutProjection {

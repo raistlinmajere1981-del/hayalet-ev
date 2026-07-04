@@ -104,6 +104,35 @@ export function readSlotBridgeProjectRef(value: unknown): SlotBridgeProjectRef |
   };
 }
 
+function readProjectRefAliases(value: unknown): SlotBridgeProjectRef[] {
+  if (!isRecord(value)) {
+    return [];
+  }
+
+  const aliases: SlotBridgeProjectRef[] = [];
+  const aliasRefs = value["aliases"] ?? value["aliasRefs"] ?? value["projectAliases"];
+  if (Array.isArray(aliasRefs)) {
+    aliasRefs.forEach((item) => {
+      const alias = readSlotBridgeProjectRef(item);
+      if (alias !== null) {
+        aliases.push(alias);
+      }
+    });
+  }
+
+  const aliasProjectIds = value["aliasProjectIds"];
+  if (Array.isArray(aliasProjectIds)) {
+    aliasProjectIds.forEach((item) => {
+      const projectId = readString(item);
+      if (projectId !== "") {
+        aliases.push({ projectId });
+      }
+    });
+  }
+
+  return aliases;
+}
+
 function normalizeProjectRef(
   projectRef: SlotBridgeProjectRef | null | undefined
 ): SlotBridgeProjectSessionContext["projectRef"] | null {
@@ -197,6 +226,19 @@ export function findProjectAiSessionBinding(
   );
 }
 
+function findProjectAiSessionAliasBinding(
+  projectRef: SlotBridgeProjectRef | null | undefined,
+  settings: AppSettings | null
+): ProjectAiSessionBinding | null {
+  for (const alias of readProjectRefAliases(projectRef)) {
+    const binding = findProjectAiSessionBinding(alias, settings);
+    if (binding !== null) {
+      return binding;
+    }
+  }
+  return null;
+}
+
 function getAssignedAccount(slot: SlotId): {
   accountId: string;
   providerId: string | null;
@@ -282,7 +324,10 @@ export function prepareSlotBridgeProjectSessionEnvelope(envelope: SlotBridgeEnve
     return { context: null, envelope };
   }
 
-  const binding = findProjectAiSessionBinding(projectRef);
+  const settings = SettingsManager.getSnapshot();
+  const binding =
+    findProjectAiSessionBinding(projectRef, settings) ??
+    findProjectAiSessionAliasBinding(envelope.projectRef, settings);
   const warning =
     binding !== null && targetSlot !== null
       ? buildProjectSessionWarning(binding, targetSlot)
@@ -427,9 +472,11 @@ export function shouldReturnProjectSessionWarningOnly(
 ): boolean {
   return (
     context !== null &&
-    envelope.action === "session.switch" &&
     context.warning !== null &&
     context.binding !== null &&
-    hasSessionRefValue(envelope.sessionRef) !== true
+    hasSessionRefValue(envelope.sessionRef) !== true &&
+    (envelope.action === "session.switch" ||
+      envelope.action === "message.send" ||
+      envelope.action === "message.sendWait")
   );
 }

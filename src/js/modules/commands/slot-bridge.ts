@@ -3022,13 +3022,45 @@ async function runSessionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridg
       );
 }
 
+function isProjectMessageAction(envelope: SlotBridgeEnvelope): boolean {
+  return envelope.action === "message.send" || envelope.action === "message.sendWait";
+}
+
+function isProjectSessionActive(context: SlotBridgeProjectSessionContext): boolean {
+  const targetSlot = context.targetSlot;
+  const sessionRef = context.binding?.sessionRef ?? null;
+  if (targetSlot === null || sessionRef === null) return false;
+  const activeConversation = AppState.getState().activeConversations[targetSlot] ?? null;
+  if (activeConversation === null || activeConversation === "") return false;
+  return [sessionRef.conversationId, sessionRef.id].some(
+    (value) => typeof value === "string" && value.trim() !== "" && value.trim() === activeConversation
+  );
+}
+
+function confirmProjectSessionSwitch(context: SlotBridgeProjectSessionContext): boolean {
+  const targetSlot = context.targetSlot ?? context.binding?.slot ?? null;
+  const sessionRef = context.binding?.sessionRef ?? null;
+  const sessionLabel =
+    sessionRef?.conversationId?.trim() ??
+    sessionRef?.id?.trim() ??
+    context.binding?.webUrl ??
+    context.projectRef.projectId;
+  const slotLabel = targetSlot === null ? "AI" : targetSlot.toUpperCase();
+  return window.confirm(
+    `Bu onarım kayıtlı AI oturumuyla devam edecek.\n${slotLabel} üzerinde ${sessionLabel} oturumuna geçilsin mi?`
+  );
+}
+
 function shouldActivateProjectSessionBeforeAction(
   envelope: SlotBridgeEnvelope,
   context: SlotBridgeProjectSessionContext | null
 ): boolean {
   return (
-    context?.restored === true &&
-    (envelope.action === "message.send" || envelope.action === "message.sendWait")
+    context !== null &&
+    isProjectMessageAction(envelope) &&
+    context.warning === null &&
+    context.targetSlot !== null &&
+    (context.binding === null || context.restored === true)
   );
 }
 
@@ -3036,8 +3068,40 @@ async function activateProjectSessionBeforeAction(
   envelope: SlotBridgeEnvelope,
   context: SlotBridgeProjectSessionContext | null
 ): Promise<SlotBridgeResult | null> {
-  if (!shouldActivateProjectSessionBeforeAction(envelope, context)) {
+  if (!shouldActivateProjectSessionBeforeAction(envelope, context) || context === null) {
     return null;
+  }
+
+  if (context.binding === null) {
+    const openResult = await runSessionAction({
+      ...envelope,
+      action: "session.open",
+      payload: {
+        ...(isRecord(envelope.payload) ? envelope.payload : {}),
+        title: context.projectRef.title ?? `Repair Room ${context.projectRef.projectId}`,
+      },
+      sessionRef: null,
+      wait: false,
+    });
+    if (openResult.success === true) {
+      envelope.sessionRef = openResult.session ?? null;
+      return null;
+    }
+    return buildErrorResult(
+      envelope,
+      "PROJECT_SESSION_OPEN_FAILED",
+      openResult.message ?? "Project AI session could not be opened",
+      openResult.error
+    );
+  }
+
+  if (isProjectSessionActive(context)) return null;
+  if (!confirmProjectSessionSwitch(context)) {
+    return buildErrorResult(
+      envelope,
+      "PROJECT_SESSION_CONFIRMATION_REQUIRED",
+      "Kayıtlı AI oturumuna geçiş onaylanmadı."
+    );
   }
 
   const switchResult = await runSessionAction({
@@ -3046,6 +3110,7 @@ async function activateProjectSessionBeforeAction(
     wait: false,
   });
   if (switchResult.success === true) {
+    envelope.sessionRef = switchResult.session ?? envelope.sessionRef ?? null;
     return null;
   }
 
@@ -3076,11 +3141,14 @@ export async function slotBridgeHandler(payload: CommandPayload = {}): Promise<S
     }
 
     if (shouldReturnProjectSessionWarningOnly(envelope, projectSessionContext)) {
-      result = buildResult(envelope, {
-        data: {
-          projectSessionSkipped: true,
-        },
-      });
+      const warning = projectSessionContext?.warning ?? null;
+      result = isProjectMessageAction(envelope) && warning !== null
+        ? buildErrorResult(envelope, warning.code, warning.message)
+        : buildResult(envelope, {
+            data: {
+              projectSessionSkipped: true,
+            },
+          });
       return await finalizeSlotBridgeProjectSessionResult(envelope, result, projectSessionContext);
     }
 

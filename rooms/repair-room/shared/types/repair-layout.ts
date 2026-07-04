@@ -17,7 +17,7 @@ export type RepairMainLayoutPanelId =
   | "tactical-feed"
   | "knowledge-pack";
 
-export type RepairDockLayoutPanelId = "chat" | "measurement" | "room-sync";
+export type RepairDockLayoutPanelId = "chat" | "measurement";
 
 export type RepairOperatorProfileTabId = "tools" | "skills" | "preferences" | "controls";
 
@@ -47,7 +47,6 @@ export const REPAIR_MAIN_LAYOUT_PANEL_IDS = [
 export const REPAIR_DOCK_LAYOUT_PANEL_IDS = [
   "chat",
   "measurement",
-  "room-sync",
 ] as const satisfies readonly RepairDockLayoutPanelId[];
 
 export const REPAIR_PANEL_SIZE_LIMITS = {
@@ -132,7 +131,6 @@ export function createRepairDefaultPanelSizes(): RepairPanelSizeState {
     dockColumns: {
       chat: 1,
       measurement: 1,
-      "room-sync": 1,
     },
     bottomClusterHeightPx: 300,
   };
@@ -164,10 +162,6 @@ export function normalizeRepairPanelSizes(patch: RepairPanelSizePatch = {}): Rep
       measurement: clampRepairPanelSize(
         patch.dockColumns?.measurement,
         defaults.dockColumns.measurement
-      ),
-      "room-sync": clampRepairPanelSize(
-        patch.dockColumns?.["room-sync"],
-        defaults.dockColumns["room-sync"]
       ),
     },
     bottomClusterHeightPx: clampRepairBottomClusterHeight(

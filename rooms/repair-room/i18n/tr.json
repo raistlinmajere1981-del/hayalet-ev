@@ -179,7 +179,7 @@
     "hints": {
       "deviceInfo": "Cihaz türü, marka, model ve kart kodunu tamamla; bilinmeyenler için Bilinmiyor seç.",
       "symptoms": "Varsayılan semptomları seç veya kendi semptomunu ekle.",
-      "aiResearch": "AI slotunu seç, araştırmayı başlat veya kanıt paketi olmadan devam et.",
+      "aiResearch": "Araştırmayı başlat veya kanıt paketi olmadan devam et.",
       "evidenceReview": "Oturum arşivine alınacak kaynakları, arızaları ve test noktalarını seç.",
       "ready": "Cihaz, semptom ve araştırma özetini kontrol edip tamiri başlat."
     },
@@ -219,7 +219,7 @@
       "boardCode": "Kart kodu",
       "serialNumber": "Seri / iş no",
       "intakeNotes": "Tezgah notu",
-      "aiSlot": "AI slot",
+      "aiSlot": "Asistan AI",
       "symptomGroupAvailable": "Önerilen semptomlar",
       "symptomGroupSelected": "Seçili semptomlar",
       "customSymptom": "Özel semptom",
@@ -443,8 +443,8 @@
     }
   },
   "chat": {
-    "eyebrow": "AİÖ SOHBET — OTURUM ÖZELİ",
-    "title": "AİÖ",
+    "eyebrow": "OTURUM SOHBET GEÇMİŞİ",
+    "title": "AI sohbet geçmişi",
     "subtitle": "Onarım Asistanı",
     "placeholder": "Bir onarım notu yaz veya dikte et...",
     "send": "Gönder",
@@ -474,8 +474,9 @@
     "events": "Olaylar",
     "session": "Oturum",
     "playhead": "Oynatma Konumu",
-    "aiSlot": "AI Slotu",
+    "aiSlot": "Asistan AI",
     "aiTarget": "AI Hedefi",
+    "aiSession": "AI Oturumu",
     "chatDispatch": "Sohbet AI",
     "researchDispatch": "Araştırma AI",
     "tacticalDispatch": "Taktik AI",
