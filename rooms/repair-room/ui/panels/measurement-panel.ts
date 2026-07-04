@@ -8,6 +8,11 @@ import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
 
+interface RepairMeasurementEntryOptions {
+  className?: string;
+  showReadings?: boolean;
+}
+
 const MEASUREMENT_UNIT_OPTIONS = [
   "V",
   "mV",
@@ -95,13 +100,15 @@ function appendReadingsEmptyState(documentRef: Document, list: HTMLElement, text
   list.append(empty);
 }
 
-export function renderMeasurementPanel(
+export function renderMeasurementEntrySurface(
   documentRef: Document,
   state: RepairUiState,
-  text: TextFn
+  text: TextFn,
+  options: RepairMeasurementEntryOptions = {}
 ): HTMLElement {
   const body = documentRef.createElement("div");
-  body.className = "repair-panel__body repair-measurement-panel-body";
+  body.className = options.className ?? "repair-measurement-entry";
+  const showReadings = options.showReadings === true;
 
   const meas = state.measurement;
   const hasActiveSession = state.sessions.activeId !== null && state.sessions.detail !== null;
@@ -216,11 +223,14 @@ export function renderMeasurementPanel(
   record.type = "button";
   record.textContent = text(["measurement", "record"], "Kaydet");
   record.dataset["repairAction"] = "add-manual-measurement";
+  record.disabled = !hasActiveSession;
   record.title = hasActiveSession
     ? text(["measurement", "recordTitle"], "Manuel ölçüm kaydet")
     : text(["measurement", "recordDisabled"], "Önce bir tamir oturumu aç");
   form.append(record);
   body.append(form);
+
+  if (!showReadings) return body;
 
   // -- Recent readings
   const readingsHeader = documentRef.createElement("div");
@@ -259,6 +269,19 @@ export function renderMeasurementPanel(
 
   body.append(readingsList);
 
+  return body;
+}
+
+export function renderMeasurementPanel(
+  documentRef: Document,
+  state: RepairUiState,
+  text: TextFn
+): HTMLElement {
+  const meas = state.measurement;
+  const body = renderMeasurementEntrySurface(documentRef, state, text, {
+    className: "repair-panel__body repair-measurement-panel-body repair-measurement-entry",
+    showReadings: true,
+  });
   return createRepairPanel(documentRef, {
     panelId: "measurement",
     eyebrow: text(["measurement", "eyebrow"], "ÖLÇÜM PANELİ"),

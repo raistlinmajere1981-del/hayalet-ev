@@ -226,34 +226,25 @@ void test("repair-room resolves runtime assets from the UI entry directory", () 
   );
 });
 
-void test("repair-room dock projects only visible chip-controlled panels", () => {
+void test("repair-room legacy dock projection keeps measurement layout compatibility", () => {
   const dockLayout = getRepairDockLayoutProjection();
   assert.deepEqual(dockLayout.visiblePanelIds, [...REPAIR_DOCK_PANEL_IDS]);
-  assert.equal(
-    dockLayout.gridTemplateColumns,
-    "minmax(var(--repair-px-220), 1fr) minmax(var(--repair-px-220), 1fr)"
-  );
+  assert.equal(dockLayout.gridTemplateColumns, "minmax(var(--repair-px-220), 1fr)");
 
-  assert.deepEqual([...REPAIR_DOCK_PANEL_IDS], ["chat", "measurement"]);
+  assert.deepEqual([...REPAIR_DOCK_PANEL_IDS], ["measurement"]);
 
   const partialLayout = getRepairDockLayoutProjection({
-    chat: true,
     measurement: false,
   });
   assert.deepEqual(partialLayout.visiblePanelIds, ["measurement"]);
   assert.equal(partialLayout.gridTemplateColumns, "minmax(var(--repair-px-220), 1fr)");
 
   const sizedLayout = getRepairDockLayoutProjection({}, REPAIR_DOCK_PANEL_IDS, {
-    chat: 1.2,
     measurement: 0.8,
   });
-  assert.equal(
-    sizedLayout.gridTemplateColumns,
-    "minmax(var(--repair-px-220), 1.2fr) minmax(var(--repair-px-220), 0.8fr)"
-  );
+  assert.equal(sizedLayout.gridTemplateColumns, "minmax(var(--repair-px-220), 0.8fr)");
 
   const hiddenLayout = getRepairDockLayoutProjection({
-    chat: true,
     measurement: true,
   });
   assert.deepEqual(hiddenLayout.visiblePanelIds, []);
@@ -355,6 +346,8 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /repair-bottom-cluster/);
   assert.match(runtime, /toggle-panel-chip/);
   assert.match(runtime, /toggle-bottom-cluster/);
+  assert.doesNotMatch(runtime, /repair-panel-chip--master/);
+  assert.doesNotMatch(style, /repair-panel-chip--master/);
   assert.match(runtime, /aria-pressed/);
   assert.match(runtime, /updateWorkbenchPanelDom/);
   assert.match(runtime, /syncWorkbenchQuickActions/);
@@ -665,6 +658,7 @@ void test("repair-room repair moments render latest page and keep measurements u
 
 void test("repair-room repair moments CSS keeps the compact strip sizing contract", () => {
   const uiRoot = join(process.cwd(), "rooms/repair-room/ui");
+  const runtime = readRepairUiRuntimeText();
   const allStyle = readRepairUiStyleText();
   const timelineStyle = readFileSync(join(uiRoot, "styles/timeline.css"), "utf8");
   const workspaceStyle = readFileSync(join(uiRoot, "styles/workspace.css"), "utf8");
@@ -714,6 +708,8 @@ void test("repair-room repair moments CSS keeps the compact strip sizing contrac
     workspaceStyle,
     /\.repair-bottom-cluster\[data-lower-visible-panel-count="0"\] \.repair-bottom-cluster__body\s*\{[\s\S]*grid-template-rows:\s*var\(--repair-bottom-timeline-height\);/
   );
+  assert.match(runtime, /shouldUseBottomClusterLayoutHeight/);
+  assert.match(runtime, /getBottomVisiblePanelCount\(\) > 1/);
   assert.doesNotMatch(
     workspaceStyle,
     /\.repair-bottom-cluster\[data-lower-visible-panel-count="0"\] \.repair-bottom-cluster__body\s*\{[\s\S]*grid-template-rows:\s*minmax\(var\(--repair-px-180\), auto\);/
@@ -805,7 +801,15 @@ void test("repair-room workbench toolbar renders grouped controls inside the vie
       actionbar,
       (element) => typeof element.dataset["repairQuickAction"] === "string"
     ).map((element) => element.dataset["repairQuickAction"]),
-    ["camera-feed", "capture-photo", "camera-torch", "dictation", "tts", "ambient"]
+    [
+      "camera-feed",
+      "capture-photo",
+      "camera-torch",
+      "measurement-overlay",
+      "dictation",
+      "tts",
+      "ambient",
+    ]
   );
 
   assert.deepEqual(
@@ -853,6 +857,8 @@ void test("repair-room workbench toolbar renders grouped controls inside the vie
   );
   assert.equal(quickActions.get("capture-photo")?.disabled, true);
   assert.equal(quickActions.get("camera-feed")?.disabled, false);
+  assert.equal(quickActions.get("measurement-overlay")?.disabled, true);
+  assert.equal(quickActions.get("measurement-overlay")?.dataset["active"], "false");
 });
 
 void test("repair-room empty sessions lock session-bound panel bodies centrally", () => {
@@ -961,6 +967,7 @@ void test("repair-room workbench quick actions do not duplicate topbar status", 
   assert.equal(quickActions.get("dictation")?.dataset["active"], "true");
   assert.equal(quickActions.get("ambient")?.dataset["active"], "true");
   assert.equal(quickActions.get("tts")?.dataset["active"], "false");
+  assert.equal(quickActions.get("measurement-overlay")?.dataset["active"], "false");
 
   const settingsSurface = renderRepairSettingsPanel(
     documentRef,

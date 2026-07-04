@@ -16,6 +16,10 @@
     "emptyStateStep1": "Start camera",
     "emptyStateStep2": "Frame board",
     "emptyStateStep3": "Freeze when ready",
+    "quickActions": {
+      "measurement": "Measure",
+      "measurementTitle": "Open measurement entry"
+    },
     "toolbar": {
       "grid": "Grid",
       "gridTitle": "Toggle grid overlay",
@@ -412,6 +416,8 @@
     "tabPsu": "Power Supply",
     "tabSigGen": "Signal Gen",
     "manualEntry": "Manual Reading",
+    "overlayTitle": "Measurement Entry",
+    "closeOverlay": "Close measurement entry",
     "reference": "Reference",
     "value": "Value",
     "mode": "Mode",
@@ -449,30 +455,7 @@
       "cap": "Cap"
     }
   },
-  "chat": {
-    "eyebrow": "SESSION CHAT HISTORY",
-    "title": "Assistant AI chat history",
-    "subtitle": "Repair Assistant",
-    "placeholder": "Ask or dictate a repair note...",
-    "send": "Send",
-    "clear": "Discard",
-    "viewKnowledgePack": "View Knowledge Pack",
-    "composerPlaceholder": "Ask Assistant AI something…",
-    "dictationReview": "Voice note staged. Say send, press Send, or clear and dictate again.",
-    "status": {
-      "dictationReview": "Voice note waiting for confirmation",
-      "assistantPreparing": "Assistant is preparing a reply",
-      "handsFreeSend": "Hands-free mode: say send or clear after dictation",
-      "handsFreeComposer": "Hands-free mode: dictated notes stay in the composer",
-      "readAloud": "Replies can be read aloud from repair controls",
-      "textOnly": "Text replies only",
-      "waiting": "Waiting"
-    },
-    "roles": {
-      "assistant": "Assistant",
-      "you": "You"
-    }
-  },
+
   "sync": {
     "eyebrow": "SYNC",
     "title": "Room Sync",
@@ -609,7 +592,10 @@
     "eyebrow": "ASSIST",
     "title": "Repair Feed",
     "composer": "Ask the repair assistant...",
-    "send": "Ask",
+    "send": "Send",
+    "clear": "Discard",
+    "sessionRequiredPlaceholder": "Open a repair session first",
+    "dictationReview": "Voice note staged. Say send, press Send, or clear and dictate again.",
     "slotLabel": "Assistant AI {slot}",
     "statusChecking": "{slot} is checking the latest measurement.",
     "statusAddedNote": "{slot} added a repair note.",
@@ -620,7 +606,21 @@
     "chatDrafting": "{slot} is drafting a reply.",
     "chatReady": "{slot} reply is ready.",
     "chatFailed": "{slot} could not draft a reply.",
-    "quietMode": "Quiet mode: waiting for a meaningful change. {remaining} assistant prompts left."
+    "quietMode": "Quiet mode: waiting for a meaningful change. {remaining} assistant prompts left.",
+    "chatStatus": {
+      "sessionRequired": "Open a repair session first",
+      "dictationReview": "Voice note waiting for confirmation",
+      "assistantPreparing": "Assistant is preparing a reply",
+      "handsFreeSend": "Hands-free mode: say send or clear after dictation",
+      "handsFreeComposer": "Hands-free mode: dictated notes stay in the composer",
+      "readAloud": "Replies can be read aloud from repair controls",
+      "textOnly": "Text replies only",
+      "waiting": "Waiting"
+    },
+    "chatRoles": {
+      "assistant": "Assistant",
+      "you": "You"
+    }
   },
   "panelChips": {
     "session": "Session",
@@ -631,8 +631,6 @@
     "aioTitle": "Assistant AI results panel",
     "timeline": "Repair Moments",
     "timelineTitle": "repair moments panel",
-    "chat": "Chat",
-    "chatTitle": "chat panel",
     "measure": "Measure",
     "measureTitle": "measurement panel",
     "state": "State",

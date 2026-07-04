@@ -73,9 +73,9 @@ void test("repair-room Turkish catalog covers visible Repair Room chrome", () =>
     ["sync.status.liveEdge", "Canlı kenar"],
     ["sync.inspector.selected", "seçili"],
     ["tacticalFeed.title", "Tamir Akışı"],
-    ["tacticalFeed.send", "Sor"],
+    ["tacticalFeed.composer", "Tamir asistanına sor..."],
+    ["tacticalFeed.send", "Gönder"],
     ["measurement.manualEntry", "Manuel Okuma"],
-    ["chat.placeholder", "Bir onarım notu yaz veya dikte et..."],
     ["panelChips.timeline", "Onarım Anları"],
     ["panelChips.state", "Durum"],
   ]);

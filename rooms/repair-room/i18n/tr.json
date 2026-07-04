@@ -16,6 +16,10 @@
     "emptyStateStep1": "Kamerayı başlat",
     "emptyStateStep2": "Kartı çerçevele",
     "emptyStateStep3": "Hazır olunca dondur",
+    "quickActions": {
+      "measurement": "Ölçüm",
+      "measurementTitle": "Ölçüm girişini aç"
+    },
     "toolbar": {
       "grid": "Izgara",
       "gridTitle": "Izgara katmanını aç/kapat",
@@ -412,6 +416,8 @@
     "tabPsu": "Güç Kaynağı",
     "tabSigGen": "Sinyal Üretici",
     "manualEntry": "Manuel Okuma",
+    "overlayTitle": "Ölçüm Girişi",
+    "closeOverlay": "Ölçüm girişini kapat",
     "reference": "Referans",
     "value": "Değer",
     "mode": "Mod",
@@ -449,30 +455,7 @@
       "cap": "Kap."
     }
   },
-  "chat": {
-    "eyebrow": "OTURUM SOHBET GEÇMİŞİ",
-    "title": "Asistan AI sohbet geçmişi",
-    "subtitle": "Onarım Asistanı",
-    "placeholder": "Bir onarım notu yaz veya dikte et...",
-    "send": "Gönder",
-    "clear": "Sil",
-    "viewKnowledgePack": "Bilgi Paketini Aç",
-    "composerPlaceholder": "Asistan AI'ye bir şey sor…",
-    "dictationReview": "Sesli not hazır. Gönder de, Gönder'e bas veya sil ve tekrar dikte et.",
-    "status": {
-      "dictationReview": "Sesli not onay bekliyor",
-      "assistantPreparing": "Asistan bir cevap hazırlıyor",
-      "handsFreeSend": "Eller serbest: dikte ettikten sonra gönder veya sil de de",
-      "handsFreeComposer": "Eller serbest: dikte edilen notlar taslakta kalır",
-      "readAloud": "Cevaplar tamir kontrollerinden sesli okunabilir",
-      "textOnly": "Yazılı cevaplar",
-      "waiting": "Bekliyor"
-    },
-    "roles": {
-      "assistant": "Asistan",
-      "you": "Sen"
-    }
-  },
+
   "sync": {
     "eyebrow": "EŞİTLEME",
     "title": "Oda Eşitleme",
@@ -609,7 +592,10 @@
     "eyebrow": "ASİSTAN",
     "title": "Tamir Akışı",
     "composer": "Tamir asistanına sor...",
-    "send": "Sor",
+    "send": "Gönder",
+    "clear": "Sil",
+    "sessionRequiredPlaceholder": "Önce bir tamir oturumu aç",
+    "dictationReview": "Sesli not hazır. Gönder de, Gönder'e bas veya sil ve tekrar dikte et.",
     "slotLabel": "Asistan AI {slot}",
     "statusChecking": "{slot} son ölçümü kontrol ediyor.",
     "statusAddedNote": "{slot} bir onarım notu ekledi.",
@@ -620,7 +606,21 @@
     "chatDrafting": "{slot} bir cevap taslaklıyor.",
     "chatReady": "{slot} cevap hazır.",
     "chatFailed": "{slot} bir cevap taslaklayamadı.",
-    "quietMode": "Sessiz mod: anlamlı bir değişiklik bekleniyor. {remaining} asistan uyarısı kaldı."
+    "quietMode": "Sessiz mod: anlamlı bir değişiklik bekleniyor. {remaining} asistan uyarısı kaldı.",
+    "chatStatus": {
+      "sessionRequired": "Önce bir tamir oturumu aç",
+      "dictationReview": "Sesli not onay bekliyor",
+      "assistantPreparing": "Asistan bir cevap hazırlıyor",
+      "handsFreeSend": "Eller serbest: dikte ettikten sonra gönder veya sil de de",
+      "handsFreeComposer": "Eller serbest: dikte edilen notlar taslakta kalır",
+      "readAloud": "Cevaplar tamir kontrollerinden sesli okunabilir",
+      "textOnly": "Yazılı cevaplar",
+      "waiting": "Bekliyor"
+    },
+    "chatRoles": {
+      "assistant": "Asistan",
+      "you": "Sen"
+    }
   },
   "panelChips": {
     "session": "Oturum",
@@ -631,8 +631,6 @@
     "aioTitle": "Asistan AI sonuçları paneli",
     "timeline": "Onarım Anları",
     "timelineTitle": "onarım anları paneli",
-    "chat": "Sohbet",
-    "chatTitle": "sohbet paneli",
     "measure": "Ölçüm",
     "measureTitle": "ölçüm paneli",
     "state": "Durum",

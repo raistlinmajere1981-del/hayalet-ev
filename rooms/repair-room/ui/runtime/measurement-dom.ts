@@ -113,7 +113,13 @@ export function createRepairMeasurementDomRuntime(params: {
     updateMeasurementLiveDom(panel);
   }
 
+  function updateMeasurementEntryDom(root: HTMLElement): void {
+    syncMeasurementInstrumentTabs(root);
+    updateMeasurementLiveDom(root);
+  }
+
   return {
+    updateMeasurementEntryDom,
     updateMeasurementLiveDom,
     updateMeasurementPanelDom,
   };

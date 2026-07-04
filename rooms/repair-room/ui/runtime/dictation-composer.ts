@@ -11,7 +11,7 @@ export function createRepairDictationComposer(params: {
   const { documentRef, requestRuntime, state } = params;
 
   function getChatComposerInput(): HTMLInputElement | null {
-    return documentRef.querySelector<HTMLInputElement>("[data-repair-input='chat-composer']");
+    return documentRef.querySelector<HTMLInputElement>("[data-repair-input='feed-composer']");
   }
 
   function mergeComposerDraft(currentDraft: string, transcriptText: string): string {

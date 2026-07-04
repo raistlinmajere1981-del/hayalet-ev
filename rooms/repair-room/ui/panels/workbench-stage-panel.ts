@@ -272,6 +272,7 @@ type RepairWorkbenchQuickActionId =
   | "camera-feed"
   | "capture-photo"
   | "camera-torch"
+  | "measurement-overlay"
   | "dictation"
   | "tts"
   | "ambient";
@@ -311,6 +312,15 @@ const REPAIR_WORKBENCH_QUICK_ACTIONS: Array<{
     labelFallback: "Fener",
     titleKey: "torchTitle",
     titleFallback: "Telefon fenerini aç veya kapat",
+  },
+  {
+    id: "measurement-overlay",
+    action: "toggle-measurement-overlay",
+    icon: "M",
+    labelKey: "measurement",
+    labelFallback: "Ölçüm",
+    titleKey: "measurementTitle",
+    titleFallback: "Ölçüm girişini aç",
   },
   {
     id: "dictation",
@@ -452,6 +462,8 @@ function isQuickActionActive(state: RepairUiState, id: RepairWorkbenchQuickActio
       return false;
     case "camera-torch":
       return state.operations.activeCapabilities.includes("android-torch");
+    case "measurement-overlay":
+      return false;
     case "dictation":
       return (
         state.operations.localMicActive ||
@@ -473,6 +485,7 @@ function isQuickActionActive(state: RepairUiState, id: RepairWorkbenchQuickActio
 
 function isQuickActionDisabled(state: RepairUiState, id: RepairWorkbenchQuickActionId): boolean {
   if (isHistoryReviewMode(state)) return true;
+  if (id === "measurement-overlay") return !hasActiveRepairSession(state);
   if (id !== "capture-photo") return false;
   return !hasActiveWorkbenchCameraFeed(state);
 }

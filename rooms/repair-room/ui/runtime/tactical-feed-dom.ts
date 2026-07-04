@@ -87,16 +87,84 @@ export function createRepairTacticalFeedDomRuntime(params: {
     setTextIfChanged(bodyText, item.body);
   }
 
+  function createChatTurnElement(): HTMLElement {
+    const turnEl = documentRef.createElement("div");
+    turnEl.className = "repair-chat-turn";
+
+    const header = documentRef.createElement("div");
+    header.className = "repair-chat-turn__header";
+
+    const role = documentRef.createElement("span");
+    role.className = "repair-chat-turn__role";
+    header.append(role);
+
+    const time = documentRef.createElement("span");
+    time.className = "repair-chat-turn__time";
+    header.append(time);
+
+    const bodyText = documentRef.createElement("div");
+    bodyText.className = "repair-chat-turn__body";
+
+    turnEl.append(header, bodyText);
+    return turnEl;
+  }
+
+  function syncChatTurnElement(
+    turnEl: HTMLElement,
+    turn: RepairUiState["chat"]["turns"][number]
+  ): void {
+    setClassNameIfChanged(turnEl, "repair-chat-turn");
+    setDatasetIfChanged(turnEl, "turnId", turn.id);
+
+    let header = turnEl.querySelector<HTMLElement>(".repair-chat-turn__header");
+    if (header === null) {
+      header = documentRef.createElement("div");
+      header.className = "repair-chat-turn__header";
+      turnEl.prepend(header);
+    }
+
+    let role = header.querySelector<HTMLElement>(".repair-chat-turn__role");
+    if (role === null) {
+      role = documentRef.createElement("span");
+      header.prepend(role);
+    }
+    setClassNameIfChanged(role, `repair-chat-turn__role repair-chat-turn__role--${turn.role}`);
+    const roleLabel =
+      turn.role === "ai"
+        ? text(["tacticalFeed", "chatRoles", "assistant"], "Asistan")
+        : text(["tacticalFeed", "chatRoles", "you"], "Sen");
+    setTextIfChanged(role, roleLabel);
+
+    let time = header.querySelector<HTMLElement>(".repair-chat-turn__time");
+    if (time === null) {
+      time = documentRef.createElement("span");
+      time.className = "repair-chat-turn__time";
+      header.append(time);
+    }
+    const timeStr = new Date(turn.occurredAt).toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    setTextIfChanged(time, timeStr);
+
+    let bodyText = turnEl.querySelector<HTMLElement>(".repair-chat-turn__body");
+    if (bodyText === null) {
+      bodyText = documentRef.createElement("div");
+      bodyText.className = "repair-chat-turn__body";
+      turnEl.append(bodyText);
+    }
+    setTextIfChanged(bodyText, turn.text);
+  }
+
   function updateTacticalFeedPanelDom(panel: HTMLElement): void {
     updatePanelChrome(panel, "tactical-feed");
 
     const hasRisk = state.tacticalFeed.some((item) => item.severity === "risk");
     const dot = panel.querySelector<HTMLElement>(".repair-panel__status-dot");
     if (dot !== null) {
-      setClassNameIfChanged(
-        dot,
-        `repair-panel__status-dot repair-panel__status-dot--${hasRisk ? "risk" : "live"}`
-      );
+      const dotStatus = hasRisk ? "risk" : state.chat.pendingReplyId !== null ? "amber" : "live";
+      setClassNameIfChanged(dot, `repair-panel__status-dot repair-panel__status-dot--${dotStatus}`);
     }
 
     const calmLine = panel.querySelector<HTMLElement>(".repair-feed-calmline");
@@ -107,6 +175,8 @@ export function createRepairTacticalFeedDomRuntime(params: {
     if (list === null) return;
 
     const previousScrollTop = list.scrollTop;
+
+    // --- Sync feed entries ---
     const activeEventIds = new Set(state.tacticalFeed.map((item) => item.eventId));
     for (const item of state.tacticalFeed) {
       const existing =
@@ -124,6 +194,29 @@ export function createRepairTacticalFeedDomRuntime(params: {
         entry.remove();
       }
     });
+
+    // --- Sync chat turns ---
+    const activeTurnIds = new Set(state.chat.turns.map((turn) => turn.id));
+    for (const turn of state.chat.turns) {
+      const existing =
+        Array.from(list.querySelectorAll<HTMLElement>(".repair-chat-turn")).find(
+          (candidate) => candidate.dataset["turnId"] === turn.id
+        ) ?? null;
+      const turnEl = existing ?? createChatTurnElement();
+      syncChatTurnElement(turnEl, turn);
+      list.append(turnEl);
+    }
+
+    list.querySelectorAll<HTMLElement>(".repair-chat-turn").forEach((turnEl) => {
+      const turnId = turnEl.dataset["turnId"];
+      if (turnId === undefined || !activeTurnIds.has(turnId)) {
+        turnEl.remove();
+      }
+    });
+
+    // Re-sort all children by data-occurred-at would be ideal but we keep append-order
+    // to match the initial render's sort by occurredAt
+
     list.scrollTop = previousScrollTop;
   }
 

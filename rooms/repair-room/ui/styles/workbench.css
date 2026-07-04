@@ -184,6 +184,61 @@
   z-index: 2;
 }
 
+.repair-measurement-overlay {
+  position: absolute;
+  left: var(--repair-sp-3);
+  bottom: calc(var(--repair-px-64) + var(--repair-sp-4));
+  z-index: 6;
+  width: min(calc(var(--repair-px-260) + var(--repair-px-260)), calc(100% - var(--repair-px-260)));
+  max-height: calc(100% - var(--repair-px-112));
+  overflow: auto;
+  border: var(--repair-px-1) solid var(--repair-cyan);
+  border-radius: var(--repair-radius-inner);
+  background: var(--repair-scrim-strong);
+  box-shadow:
+    0 var(--repair-px-8) var(--repair-px-18) var(--repair-scrim-strong),
+    inset 0 0 0 var(--repair-px-1) var(--repair-border-muted);
+}
+
+.repair-measurement-overlay__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--repair-sp-2);
+  min-height: var(--repair-px-32);
+  padding: var(--repair-px-6) var(--repair-px-8);
+  border-bottom: var(--repair-px-1) solid var(--repair-border-muted);
+}
+
+.repair-measurement-overlay__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--repair-cyan);
+  font: 700 var(--repair-px-10) var(--repair-mono);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.repair-measurement-overlay__close {
+  width: var(--repair-px-24);
+  height: var(--repair-px-24);
+  flex: 0 0 auto;
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-muted);
+  cursor: pointer;
+  font: 700 var(--repair-px-14) var(--repair-mono);
+  line-height: 1;
+}
+
+.repair-measurement-overlay__close:hover {
+  border-color: var(--repair-border-strong);
+  background: var(--repair-surface-raised);
+  color: var(--repair-text);
+}
+
 .repair-viewport--frozen {
   border: var(--repair-px-2) solid var(--repair-amber);
 }
@@ -401,7 +456,7 @@
 
 .repair-toolbar__btn:disabled,
 .repair-toolbar__btn--disabled,
-.repair-chat-composer__send:disabled {
+.repair-feed-composer__send:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -421,6 +476,14 @@
 }
 
 @media (--repair-bp-max-680) {
+  .repair-measurement-overlay {
+    right: var(--repair-sp-2);
+    left: var(--repair-sp-2);
+    bottom: calc(var(--repair-px-96) + var(--repair-sp-2));
+    width: auto;
+    max-height: calc(100% - var(--repair-px-120));
+  }
+
   .repair-toolbar {
     inset: var(--repair-sp-2);
   }

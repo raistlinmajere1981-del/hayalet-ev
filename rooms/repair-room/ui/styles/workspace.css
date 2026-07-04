@@ -62,10 +62,6 @@
   background: var(--repair-panel);
 }
 
-.repair-panel-chip--master {
-  min-width: var(--repair-px-34);
-}
-
 /* Area assignments */
 .repair-workspace > .repair-panel,
 .repair-workspace > .repair-panel--wizard-pack-stack,

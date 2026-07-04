@@ -618,7 +618,6 @@ void test("repair-room runtime turns timeline jumps and layout controls into sta
           "workbench-stage": 1.4,
         },
         dockColumns: {
-          chat: 1.35,
           measurement: 0.65,
         },
         bottomClusterHeightPx: 340,
@@ -628,7 +627,6 @@ void test("repair-room runtime turns timeline jumps and layout controls into sta
   );
   assert.equal(runtime.getStateSnapshot().state.layout.panelSizes.mainColumns["session-rail"], 1.25);
   assert.equal(runtime.getStateSnapshot().state.layout.panelSizes.mainColumns["workbench-stage"], 1.4);
-  assert.equal(runtime.getStateSnapshot().state.layout.panelSizes.dockColumns.chat, 1.35);
   assert.equal(runtime.getStateSnapshot().state.layout.panelSizes.dockColumns.measurement, 0.65);
   assert.equal(runtime.getStateSnapshot().state.layout.panelSizes.bottomClusterHeightPx, 340);
 
