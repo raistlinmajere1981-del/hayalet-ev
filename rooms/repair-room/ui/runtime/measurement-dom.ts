@@ -50,7 +50,9 @@ export function createRepairMeasurementDomRuntime(params: {
   function syncMeasurementInstrumentTabs(panel: HTMLElement): void {
     const hasActiveSession = state.sessions.activeId !== null && state.sessions.detail !== null;
     panel.querySelectorAll<HTMLElement>("[data-repair-action='set-instrument']").forEach((tab) => {
-      const active = hasActiveSession && tab.dataset["instrumentKind"] === state.measurement.activeInstrumentKind;
+      const active =
+        hasActiveSession &&
+        tab.dataset["instrumentKind"] === state.measurement.activeInstrumentKind;
       tab.classList.toggle("repair-tab--active", active);
       tab.setAttribute("aria-pressed", String(active));
       if (tab instanceof HTMLButtonElement) tab.disabled = !hasActiveSession;
@@ -71,9 +73,11 @@ export function createRepairMeasurementDomRuntime(params: {
 
     const readingsList = root.querySelector<HTMLElement>(".repair-readings-list");
     if (readingsList === null) return;
+    const latestReading = state.measurement.recent.at(0);
     const previousReadings =
-      state.measurement.recent[0]?.rawDisplay === current.display &&
-      state.measurement.recent[0]?.unit === current.unit
+      latestReading !== undefined &&
+      latestReading.rawDisplay === current.display &&
+      latestReading.unit === current.unit
         ? state.measurement.recent.slice(1)
         : state.measurement.recent;
     const fingerprint = previousReadings

@@ -86,7 +86,7 @@ export function renderKnowledgePackPanel(
     return createRepairPanel(documentRef, {
       panelId: "knowledge-pack",
       eyebrow: text(["knowledgePack", "eyebrow"], "BİLGİ PAKETİ"),
-      title: text(["knowledgePack", "title"], "AİÖ Sonuç"),
+      title: text(["knowledgePack", "title"], "Asistan AI Sonuçları"),
       statusDot: "idle",
       collapsed: state.layout.collapsedPanels["knowledge-pack"],
       noPanelControls: true,
@@ -256,7 +256,7 @@ export function renderKnowledgePackPanel(
   return createRepairPanel(documentRef, {
     panelId: "knowledge-pack",
     eyebrow: text(["knowledgePack", "eyebrow"], "BİLGİ PAKETİ"),
-    title: text(["knowledgePack", "title"], "AİÖ Sonuç"),
+    title: text(["knowledgePack", "title"], "Asistan AI Sonuçları"),
     statusDot: kp.attachedToSessionId !== null ? "live" : "idle",
     collapsed: state.layout.collapsedPanels["knowledge-pack"],
     noPanelControls: true,

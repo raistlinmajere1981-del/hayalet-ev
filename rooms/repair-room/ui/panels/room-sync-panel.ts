@@ -34,16 +34,16 @@ function getAiLifecycleActions(text: TextFn): ReadonlyArray<readonly [string, st
 function formatAssistantSlot(slot: string, text?: TextFn): string {
   if (text !== undefined) {
     if (slot.toLowerCase() === "ai0")
-      return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "0" });
+      return text(["tacticalFeed", "slotLabel"], "Asistan AI {slot}", { slot: "0" });
     if (slot.toLowerCase() === "ai1")
-      return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "1" });
+      return text(["tacticalFeed", "slotLabel"], "Asistan AI {slot}", { slot: "1" });
     if (slot.toLowerCase() === "ai2")
-      return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "2" });
+      return text(["tacticalFeed", "slotLabel"], "Asistan AI {slot}", { slot: "2" });
     return slot.toUpperCase();
   }
-  if (slot.toLowerCase() === "ai0") return "Assistant 0";
-  if (slot.toLowerCase() === "ai1") return "Assistant 1";
-  if (slot.toLowerCase() === "ai2") return "Assistant 2";
+  if (slot.toLowerCase() === "ai0") return "Assistant AI 0";
+  if (slot.toLowerCase() === "ai1") return "Assistant AI 1";
+  if (slot.toLowerCase() === "ai2") return "Assistant AI 2";
   return slot.toUpperCase();
 }
 
@@ -121,12 +121,28 @@ export function formatRepairStorageSummary(storage: RepairStorageState, text?: T
     : "Repair history not connected";
 }
 
+function getDispatchSortTime(channel: RepairAiDispatchChannelState): number {
+  const iso =
+    channel.status === "pending" ? channel.startedAt : (channel.completedAt ?? channel.startedAt);
+  if (iso === null) return Number.NEGATIVE_INFINITY;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? ms : Number.NEGATIVE_INFINITY;
+}
+
 function getUnifiedAiDispatchChannel(state: RepairUiState): RepairAiDispatchChannelState {
   const channels = [state.aiDispatch.chat, state.aiDispatch.research, state.aiDispatch.tactical];
+  const selectNewest = (
+    candidates: RepairAiDispatchChannelState[]
+  ): RepairAiDispatchChannelState | null =>
+    candidates.reduce<RepairAiDispatchChannelState | null>((selected, channel) => {
+      if (selected === null) return channel;
+      return getDispatchSortTime(channel) >= getDispatchSortTime(selected) ? channel : selected;
+    }, null);
+
   return (
-    channels.find((channel) => channel.status === "pending") ??
-    channels.find((channel) => channel.status === "failed") ??
-    channels.find((channel) => channel.status === "succeeded") ??
+    selectNewest(channels.filter((channel) => channel.status === "pending")) ??
+    selectNewest(channels.filter((channel) => channel.status === "failed")) ??
+    selectNewest(channels.filter((channel) => channel.status === "succeeded")) ??
     state.aiDispatch.chat
   );
 }
@@ -156,7 +172,7 @@ export function getRepairRoomSyncRows(
       `+${Math.round(state.workbench.timeline.playheadMs / 1000)}s`,
     ],
     [
-      text(["sync", "aiSession"], "AI Oturumu"),
+      text(["sync", "aiSession"], "Asistan AI"),
       formatRepairAiDispatchSummary(getUnifiedAiDispatchChannel(state), text),
     ],
   ];
@@ -194,7 +210,6 @@ export function renderRoomSyncPanel(
 
     body.append(row);
   });
-
 
   const focusCard = documentRef.createElement("div");
   focusCard.className = "repair-sync-focus";

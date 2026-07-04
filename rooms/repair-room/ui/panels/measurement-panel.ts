@@ -105,8 +105,11 @@ export function renderMeasurementPanel(
 
   const meas = state.measurement;
   const hasActiveSession = state.sessions.activeId !== null && state.sessions.detail !== null;
+  const latestReading = meas.recent.at(0);
   const previousReadings =
-    meas.recent[0]?.rawDisplay === meas.current.display && meas.recent[0]?.unit === meas.current.unit
+    latestReading !== undefined &&
+    latestReading.rawDisplay === meas.current.display &&
+    latestReading.unit === meas.current.unit
       ? meas.recent.slice(1)
       : meas.recent;
 

@@ -2,6 +2,7 @@ import type { RepairEvent, RepairWorkbenchTool } from "../../shared/types/index.
 import type { RepairInvestigationPhase, RepairUiState } from "../../shared/ui/state.js";
 import { REPAIR_OVERLAY_TOOLS } from "../overlay/overlay-tools.js";
 import { resolveRepairAssetUrl } from "../repair-asset-url.js";
+import { localizeRepairGuidanceLine } from "../runtime/guidance-text.js";
 import { getEventKindLabel } from "../runtime/timeline-helpers.js";
 import { createRepairPanel } from "./panel-shell.js";
 
@@ -56,7 +57,7 @@ function getForensicEventMeta(event: RepairEvent, text: TextFn): string {
     ).toUpperCase()}`;
   }
   if (event.kind === "ai-mark") {
-    return `${time} • AI • ${(event.lifecycleState ?? "detected").toUpperCase()}`;
+    return `${time} • Asistan AI • ${(event.lifecycleState ?? "detected").toUpperCase()}`;
   }
   if (event.kind === "measurement") {
     const group =
@@ -100,7 +101,7 @@ function getForensicLinkedText(state: RepairUiState, event: RepairEvent, text: T
         : event.linkedEventIds;
   const parts = [
     measurementIds.length > 0 ? `MEASURE ${measurementIds.map(brief).join(", ")}` : null,
-    aiIds.length > 0 ? `AI ${aiIds.map(brief).join(", ")}` : null,
+    aiIds.length > 0 ? `Asistan AI ${aiIds.map(brief).join(", ")}` : null,
   ].filter((part): part is string => part !== null);
   return parts.length > 0
     ? parts.join(" • ")
@@ -137,17 +138,6 @@ function getGuidanceProgressText(state: RepairUiState, text: TextFn): string {
     phase: getGuidancePhaseLabel(phase, text),
     total: rhythm.lifecycle.length,
   });
-}
-
-function localizeGuidanceLine(value: string, text: TextFn): string {
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "the bench is ready.") {
-    return text(["workbench", "guidance", "benchReady"], "Tezgah hazır.");
-  }
-  if (normalized === "open a repair session.") {
-    return text(["workbench", "guidance", "openRepairSession"], "Bir tamir oturumu aç.");
-  }
-  return value;
 }
 
 function getViewportMode(state: RepairUiState): "live" | "replay" | "freeze" | "investigation" {
@@ -194,7 +184,8 @@ const REPAIR_TOOL_ICON_PATHS: Record<RepairWorkbenchTool, string> = {
   freehand: '<path d="M4 16c3-8 5 5 8-2s4-8 8-2" />',
   text: '<path d="M5 6h14M12 6v12M9 18h6" />',
   "measurement-link": '<path d="M8 12h8" /><path d="M7 8a4 4 0 0 0 0 8h3M17 8a4 4 0 0 1 0 8h-3" />',
-  "measurement-pin": '<path d="M12 21s6-5 6-11a6 6 0 0 0-12 0c0 6 6 11 6 11z" /><circle cx="12" cy="10" r="2" />',
+  "measurement-pin":
+    '<path d="M12 21s6-5 6-11a6 6 0 0 0-12 0c0 6 6 11 6 11z" /><circle cx="12" cy="10" r="2" />',
   arrow: '<path d="M5 19 19 5M11 5h8v8" />',
   ruler: '<path d="M4 17 17 4l3 3L7 20z" /><path d="M14 7l3 3M11 10l2 2M8 13l3 3" />',
   "freeze-frame": '<rect x="5" y="4" width="14" height="16" rx="2" /><path d="M9 8v8M15 8v8" />',
@@ -229,9 +220,9 @@ const REPAIR_TOOLBAR_LAYER_BUTTONS: Array<{
   {
     id: "ai-marks",
     labelKey: "aiMarks",
-    labelFallback: "AI İşaretleri",
+    labelFallback: "Asistan AI İşaretleri",
     titleKey: "aiMarksTitle",
-    titleFallback: "AI işaret katmanını aç/kapat",
+    titleFallback: "Asistan AI işaret katmanını aç/kapat",
   },
   {
     id: "operator-annotations",
@@ -243,9 +234,9 @@ const REPAIR_TOOLBAR_LAYER_BUTTONS: Array<{
   {
     id: "ai-annotations",
     labelKey: "aiNotes",
-    labelFallback: "AI Notları",
+    labelFallback: "Asistan AI Notları",
     titleKey: "aiNotesTitle",
-    titleFallback: "AI notlarını aç/kapat",
+    titleFallback: "Asistan AI notlarını aç/kapat",
   },
   {
     id: "measurements",
@@ -568,15 +559,15 @@ export function renderWorkbenchStagePanel(
     documentRef,
     guidance,
     "repair-guidance-strip__phase",
-    text(["workbench", "guidance", "ai"], "AI"),
-    localizeGuidanceLine(state.guidance.aiInterruption.toneLine, text)
+    text(["workbench", "guidance", "ai"], "Asistan AI"),
+    localizeRepairGuidanceLine(state.guidance.aiInterruption.toneLine, text)
   );
   appendCopilotCell(
     documentRef,
     guidance,
     "repair-guidance-strip__action",
     text(["workbench", "guidance", "next"], "Sıradaki"),
-    localizeGuidanceLine(state.guidance.nextBestAction.text, text)
+    localizeRepairGuidanceLine(state.guidance.nextBestAction.text, text)
   );
   appendCopilotCell(
     documentRef,

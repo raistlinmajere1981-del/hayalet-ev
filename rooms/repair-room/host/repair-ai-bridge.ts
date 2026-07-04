@@ -342,7 +342,7 @@ function readKnowledgeResources(value: unknown): RepairKnowledgePackResource[] {
         ...(sourceUrl === null ? {} : { sourceUrl }),
         ...(downloadUrl === null ? {} : { downloadUrl }),
         addedBy: "ai",
-        source: asNonEmptyString(record["source"]) ?? "AI research",
+        source: asNonEmptyString(record["source"]) ?? "Asistan AI kanıt araştırması",
         pages: asNullableInteger(record["pages"]),
         confidence: asConfidence(record["confidence"]),
         ...(spatialRefs.length === 0 ? {} : { spatialRefs }),
@@ -369,7 +369,7 @@ function readCommonFailures(value: unknown): RepairCommonFailure[] {
         id:
           asNonEmptyString(record["id"]) ?? `failure-${slugifyRepairId(label, String(index + 1))}`,
         label,
-        rationale: asNonEmptyString(record["rationale"]) ?? "AI research correlation.",
+        rationale: asNonEmptyString(record["rationale"]) ?? "Asistan AI kanıt eşleşmesi.",
         affectedPart:
           asNonEmptyString(record["affectedPart"]) ?? asNonEmptyString(record["component"]),
         recommendedAction,
@@ -729,7 +729,7 @@ function buildRepairAiChatPrompt(request: RepairAiChatReplyRequest): string {
   return JSON.stringify(
     {
       schemaVersion: 1,
-      task: "repair-room-chat-guidance",
+      task: "repair-room-assistant-chat",
       locale: request.locale,
       outputSchema: {
         replyText: "short operator-facing guidance text",
@@ -764,7 +764,7 @@ function buildRepairAiTacticalPrompt(request: RepairAiTacticalObservationRequest
   return JSON.stringify(
     {
       schemaVersion: 1,
-      task: "repair-room-tactical-observation",
+      task: "repair-room-assistant-observation",
       locale: request.locale,
       outputSchema: {
         observations: [
@@ -798,7 +798,7 @@ function buildRepairAiKnowledgeResearchPrompt(request: RepairAiKnowledgeResearch
   return JSON.stringify(
     {
       schemaVersion: 1,
-      task: "repair-room-knowledge-research",
+      task: "repair-room-assistant-evidence",
       locale: request.locale,
       outputSchema: {
         knowledgePack: {
@@ -857,7 +857,7 @@ function buildRepairAiRiskDetectionPrompt(request: RepairAiRiskDetectionRequest)
   return JSON.stringify(
     {
       schemaVersion: 1,
-      task: "repair-room-risk-detection",
+      task: "repair-room-assistant-risk-scan",
       locale: request.locale,
       outputSchema: {
         risks: [
@@ -896,7 +896,7 @@ export async function requestRepairAiChatReply(
       contextRefs: [],
       rejectedRoomCommandCount: 0,
       roomCommands: [],
-      message: "Repair AI dispatch bridge is unavailable.",
+      message: "Asistan AI dispatch bridge is unavailable.",
     };
   }
 
@@ -911,12 +911,12 @@ export async function requestRepairAiChatReply(
         toSlot: targetSlot,
         ...(projectRef !== null ? { projectRef } : {}),
         payload: {
-          page: "repair-room:chat",
+          page: "repair-room:assistant-chat",
           text: buildRepairAiChatPrompt(request),
           protocol: {
             room: REPAIR_ROOM_ID,
-            scenario: REPAIR_PROTOCOL_SCENARIOS.measurementCoach,
-            protocolKey: REPAIR_PROTOCOL_KEYS.measurementCoach,
+            scenario: REPAIR_PROTOCOL_SCENARIOS.assistantChat,
+            protocolKey: REPAIR_PROTOCOL_KEYS.assistantChat,
           },
         },
       })
@@ -933,7 +933,7 @@ export async function requestRepairAiChatReply(
       contextRefs: [],
       rejectedRoomCommandCount: 0,
       roomCommands: [],
-      message: asNonEmptyString(bridgeResult["message"]) ?? "Repair AI dispatch failed.",
+      message: asNonEmptyString(bridgeResult["message"]) ?? "Asistan AI dispatch failed.",
     };
   }
 
@@ -945,7 +945,7 @@ export async function requestRepairAiChatReply(
       contextRefs: [],
       rejectedRoomCommandCount: 0,
       roomCommands: [],
-      message: "Repair AI dispatch did not return readable text.",
+      message: "Asistan AI dispatch did not return readable text.",
     };
   }
 
@@ -977,7 +977,7 @@ export async function requestRepairAiKnowledgeResearch(
       success: false,
       pack: null,
       contextRefs: [],
-      message: "Repair AI dispatch bridge is unavailable.",
+      message: "Asistan AI dispatch bridge is unavailable.",
     };
   }
 
@@ -992,12 +992,12 @@ export async function requestRepairAiKnowledgeResearch(
         toSlot: targetSlot,
         ...(projectRef !== null ? { projectRef } : {}),
         payload: {
-          page: "repair-room:knowledge-research",
+          page: "repair-room:assistant-evidence",
           text: buildRepairAiKnowledgeResearchPrompt(request),
           protocol: {
             room: REPAIR_ROOM_ID,
-            scenario: REPAIR_PROTOCOL_SCENARIOS.knowledgeResearch,
-            protocolKey: REPAIR_PROTOCOL_KEYS.knowledgeResearch,
+            scenario: REPAIR_PROTOCOL_SCENARIOS.assistantEvidence,
+            protocolKey: REPAIR_PROTOCOL_KEYS.assistantEvidence,
           },
         },
       })
@@ -1012,7 +1012,8 @@ export async function requestRepairAiKnowledgeResearch(
       success: false,
       pack: null,
       contextRefs: [],
-      message: asNonEmptyString(bridgeResult["message"]) ?? "Repair AI research dispatch failed.",
+      message:
+        asNonEmptyString(bridgeResult["message"]) ?? "Asistan AI kanıt araştırması gönderilemedi.",
     };
   }
 
@@ -1022,7 +1023,7 @@ export async function requestRepairAiKnowledgeResearch(
       success: false,
       pack: null,
       contextRefs: [],
-      message: "Repair AI research did not return readable text.",
+      message: "Asistan AI kanıt araştırması okunabilir metin döndürmedi.",
     };
   }
 
@@ -1033,7 +1034,7 @@ export async function requestRepairAiKnowledgeResearch(
       success: false,
       pack: null,
       contextRefs: asStringArray(parsed["contextRefs"]),
-      message: "Repair AI research did not return a usable knowledge pack.",
+      message: "Asistan AI kullanılabilir kanıt paketi döndürmedi.",
     };
   }
 
@@ -1051,7 +1052,7 @@ export async function requestRepairAiTacticalObservations(
     return {
       success: false,
       observations: [],
-      message: "Repair AI dispatch bridge is unavailable.",
+      message: "Asistan AI dispatch bridge is unavailable.",
     };
   }
 
@@ -1066,12 +1067,12 @@ export async function requestRepairAiTacticalObservations(
         toSlot: targetSlot,
         ...(projectRef !== null ? { projectRef } : {}),
         payload: {
-          page: "repair-room:tactical-observer",
+          page: "repair-room:assistant-observation",
           text: buildRepairAiTacticalPrompt(request),
           protocol: {
             room: REPAIR_ROOM_ID,
-            scenario: REPAIR_PROTOCOL_SCENARIOS.tacticalObserver,
-            protocolKey: REPAIR_PROTOCOL_KEYS.tacticalObserver,
+            scenario: REPAIR_PROTOCOL_SCENARIOS.assistantObservation,
+            protocolKey: REPAIR_PROTOCOL_KEYS.assistantObservation,
           },
         },
       })
@@ -1085,7 +1086,7 @@ export async function requestRepairAiTacticalObservations(
     return {
       success: false,
       observations: [],
-      message: asNonEmptyString(bridgeResult["message"]) ?? "Repair AI dispatch failed.",
+      message: asNonEmptyString(bridgeResult["message"]) ?? "Asistan AI dispatch failed.",
     };
   }
 
@@ -1094,7 +1095,7 @@ export async function requestRepairAiTacticalObservations(
     return {
       success: false,
       observations: [],
-      message: "Repair AI dispatch did not return readable text.",
+      message: "Asistan AI dispatch did not return readable text.",
     };
   }
 
@@ -1103,7 +1104,7 @@ export async function requestRepairAiTacticalObservations(
     return {
       success: false,
       observations: [],
-      message: "Repair AI tactical reply did not contain observations.",
+      message: "Asistan AI cevabı gözlem içermiyor.",
     };
   }
 
@@ -1166,7 +1167,7 @@ export async function requestRepairAiRiskDetection(
     return {
       success: false,
       risks: [],
-      message: "Repair AI dispatch bridge is unavailable.",
+      message: "Asistan AI dispatch bridge is unavailable.",
     };
   }
 
@@ -1181,12 +1182,12 @@ export async function requestRepairAiRiskDetection(
         toSlot: targetSlot,
         ...(projectRef !== null ? { projectRef } : {}),
         payload: {
-          page: "repair-room:risk-detector",
+          page: "repair-room:assistant-risk-scan",
           text: buildRepairAiRiskDetectionPrompt(request),
           protocol: {
             room: REPAIR_ROOM_ID,
-            scenario: REPAIR_PROTOCOL_SCENARIOS.riskDetector,
-            protocolKey: REPAIR_PROTOCOL_KEYS.riskDetector,
+            scenario: REPAIR_PROTOCOL_SCENARIOS.assistantRiskScan,
+            protocolKey: REPAIR_PROTOCOL_KEYS.assistantRiskScan,
           },
         },
       })
@@ -1200,7 +1201,7 @@ export async function requestRepairAiRiskDetection(
     return {
       success: false,
       risks: [],
-      message: asNonEmptyString(bridgeResult["message"]) ?? "Repair AI risk detection failed.",
+      message: asNonEmptyString(bridgeResult["message"]) ?? "Asistan AI risk scan failed.",
     };
   }
 
@@ -1209,7 +1210,7 @@ export async function requestRepairAiRiskDetection(
     return {
       success: false,
       risks: [],
-      message: "Repair AI risk detection did not return readable text.",
+      message: "Asistan AI risk scan did not return readable text.",
     };
   }
 
@@ -1224,7 +1225,7 @@ export async function requestRepairAiRiskDetection(
     return {
       success: false,
       risks: [],
-      message: "Repair AI risk detection did not return observations.",
+      message: "Asistan AI risk scan did not return observations.",
     };
   }
 

@@ -3033,7 +3033,8 @@ function isProjectSessionActive(context: SlotBridgeProjectSessionContext): boole
   const activeConversation = AppState.getState().activeConversations[targetSlot] ?? null;
   if (activeConversation === null || activeConversation === "") return false;
   return [sessionRef.conversationId, sessionRef.id].some(
-    (value) => typeof value === "string" && value.trim() !== "" && value.trim() === activeConversation
+    (value) =>
+      typeof value === "string" && value.trim() !== "" && value.trim() === activeConversation
   );
 }
 
@@ -3142,13 +3143,14 @@ export async function slotBridgeHandler(payload: CommandPayload = {}): Promise<S
 
     if (shouldReturnProjectSessionWarningOnly(envelope, projectSessionContext)) {
       const warning = projectSessionContext?.warning ?? null;
-      result = isProjectMessageAction(envelope) && warning !== null
-        ? buildErrorResult(envelope, warning.code, warning.message)
-        : buildResult(envelope, {
-            data: {
-              projectSessionSkipped: true,
-            },
-          });
+      result =
+        isProjectMessageAction(envelope) && warning !== null
+          ? buildErrorResult(envelope, warning.code, warning.message)
+          : buildResult(envelope, {
+              data: {
+                projectSessionSkipped: true,
+              },
+            });
       return await finalizeSlotBridgeProjectSessionResult(envelope, result, projectSessionContext);
     }
 

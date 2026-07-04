@@ -471,8 +471,7 @@ export function shouldReturnProjectSessionWarningOnly(
   context: SlotBridgeProjectSessionContext | null
 ): boolean {
   return (
-    context !== null &&
-    context.warning !== null &&
+    context?.warning != null &&
     context.binding !== null &&
     hasSessionRefValue(envelope.sessionRef) !== true &&
     (envelope.action === "session.switch" ||

@@ -345,9 +345,9 @@ void test("repair-room chat uses live protocol bridge guidance", async () => {
   assert.equal(dispatchCalls[0]["toSlot"], "ai2");
   const payload = dispatchCalls[0]["payload"] as Record<string, unknown> | undefined;
   const protocol = payload?.["protocol"] as Record<string, unknown> | undefined;
-  assert.equal(payload?.["page"], "repair-room:chat");
-  assert.equal(protocol?.["protocolKey"], "repair-room-measurement-coach");
-  assert.match(String(payload["text"]), /repair-room-chat-guidance/);
+  assert.equal(payload?.["page"], "repair-room:assistant-chat");
+  assert.equal(protocol?.["protocolKey"], "repair-room-assistant-chat");
+  assert.match(String(payload["text"]), /repair-room-assistant-chat/);
 
   const chatState = runtime.getStateSnapshot().state.chat;
   assert.equal(chatState.pendingReplyId, null);
@@ -454,11 +454,47 @@ void test("repair-room sync panel rows expose AI2 dispatch status", async () => 
     getRepairRoomSyncRows(state, meta, testT)
   );
 
-  assert.equal(rows["AI Hedefi"], "Asistan 2");
-  assert.equal(rows["Sohbet AI"], "Asistan 2 hazır, 3 başvuru");
-  assert.equal(rows["Araştırma AI"], "Asistan 2 boşta");
-  assert.equal(rows["Taktik AI"], "Asistan 2 boşta");
+  assert.equal(rows["Asistan AI"], "Asistan AI 2 hazır, 3 başvuru");
 
+  runtime.dispose();
+});
+
+void test("repair-room sync panel shows the latest unified Assistant AI dispatch", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  const runtimeState = runtime.getStateSnapshot().state;
+  const state = createRepairUiSnapshot(runtimeState);
+  const meta = createRepairUiSnapshotMeta(runtimeState);
+  const rows = Object.fromEntries(
+    getRepairRoomSyncRows(
+      {
+        ...state,
+        aiDispatch: {
+          chat: {
+            ...state.aiDispatch.chat,
+            status: "succeeded",
+            targetSlot: "ai2",
+            completedAt: "2026-05-10T10:30:00.000Z",
+            contextRefs: ["chat-old"],
+          },
+          research: {
+            ...state.aiDispatch.research,
+            status: "succeeded",
+            targetSlot: "ai0",
+            completedAt: "2026-05-10T10:31:00.000Z",
+            contextRefs: ["evidence-new", "bn44-00932a"],
+          },
+          tactical: state.aiDispatch.tactical,
+        },
+      },
+      meta,
+      testT
+    )
+  );
+
+  assert.equal(rows["Asistan AI"], "Asistan AI 0 hazır, 2 başvuru");
   runtime.dispose();
 });
 
@@ -470,7 +506,7 @@ void test("repair-room research uses selected AI slot for live knowledge-pack di
     dispatchBridge: (payload: Record<string, unknown>) => {
       dispatchCalls.push(payload);
       const page = (payload["payload"] as Record<string, unknown> | undefined)?.["page"];
-      if (page === "repair-room:risk-detector") {
+      if (page === "repair-room:assistant-risk-scan") {
         return {
           success: true,
           reply: { text: JSON.stringify({ risks: [] }) },
@@ -491,7 +527,7 @@ void test("repair-room research uses selected AI slot for live knowledge-pack di
                   label: "Candidate service manual",
                   kind: "schematic",
                   url: "https://example.test/bn44-00932a-service-manual.pdf",
-                  source: "AI research candidate",
+                  source: "Assistant AI evidence candidate",
                   pages: 12,
                   confidence: 0.74,
                 },
@@ -553,8 +589,8 @@ void test("repair-room research uses selected AI slot for live knowledge-pack di
   assert.equal(dispatchCalls[0]["toSlot"], "ai0");
   const payload = dispatchCalls[0]["payload"] as Record<string, unknown> | undefined;
   const protocol = payload?.["protocol"] as Record<string, unknown> | undefined;
-  assert.equal(payload?.["page"], "repair-room:knowledge-research");
-  assert.equal(protocol?.["protocolKey"], "repair-room-knowledge-research");
+  assert.equal(payload?.["page"], "repair-room:assistant-evidence");
+  assert.equal(protocol?.["protocolKey"], "repair-room-assistant-evidence");
 
   const state = runtime.getStateSnapshot().state;
   assert.equal(state.aiDispatch.research.targetSlot, "ai0");
@@ -1167,7 +1203,7 @@ void test("repair-room persists session event and chat updates to room-local ses
   runtime.dispose();
 });
 
-void test("repair-room measurements can promote AI tactical observations into canonical events", async () => {
+void test("repair-room measurements can promote Assistant AI observations into canonical events", async () => {
   const dispatchCalls: Record<string, unknown>[] = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
@@ -1175,7 +1211,7 @@ void test("repair-room measurements can promote AI tactical observations into ca
     dispatchBridge: (payload: Record<string, unknown>) => {
       dispatchCalls.push(payload);
       const page = (payload["payload"] as Record<string, unknown> | undefined)?.["page"];
-      if (page === "repair-room:risk-detector") {
+      if (page === "repair-room:assistant-risk-scan") {
         return {
           success: true,
           reply: { text: JSON.stringify({ risks: [] }) },
@@ -1223,9 +1259,9 @@ void test("repair-room measurements can promote AI tactical observations into ca
   assert.equal(dispatchCalls[0]["toSlot"], "ai2");
   const payload = dispatchCalls[0]["payload"] as Record<string, unknown> | undefined;
   const protocol = payload?.["protocol"] as Record<string, unknown> | undefined;
-  assert.equal(payload?.["page"], "repair-room:tactical-observer");
-  assert.equal(protocol?.["protocolKey"], "repair-room-tactical-observer");
-  assert.match(String(payload["text"]), /repair-room-tactical-observation/);
+  assert.equal(payload?.["page"], "repair-room:assistant-observation");
+  assert.equal(protocol?.["protocolKey"], "repair-room-assistant-observation");
+  assert.match(String(payload["text"]), /repair-room-assistant-observation/);
 
   const state = runtime.getStateSnapshot().state;
   const session = state.sessions[state.activeSessionId ?? ""];
@@ -1249,7 +1285,7 @@ void test("repair-room measurements can promote AI tactical observations into ca
   if (generatedRisk.kind === "risk-flag" && generatedMark.kind === "ai-mark") {
     assert.equal(generatedRisk.linkedMeasurementIds?.includes(measurement.id), true);
     assert.equal(generatedMark.linkedMeasurementIds?.includes(measurement.id), true);
-    assert.equal(generatedMark.protocolKey, "repair-room-tactical-observer");
+    assert.equal(generatedMark.protocolKey, "repair-room-assistant-observation");
   }
   assert.equal(
     state.tacticalFeed.some((item) => item.eventId === generatedRisk.id),
@@ -1269,7 +1305,7 @@ void test("repair-room tactical bridge accepts content-backed top-level observat
     dispatchBridge: (payload: Record<string, unknown>) => {
       dispatchCalls.push(payload);
       const page = (payload["payload"] as Record<string, unknown> | undefined)?.["page"];
-      if (page === "repair-room:risk-detector") {
+      if (page === "repair-room:assistant-risk-scan") {
         return {
           success: true,
           reply: { text: JSON.stringify({ risks: [] }) },

@@ -66,7 +66,6 @@ function readRepairUiRuntimeText(): string {
     "runtime/measurement-dom.ts",
     "runtime/overlay-runtime.ts",
     "runtime/panel-signatures.ts",
-    "runtime/sync-inspector-dom.ts",
     "runtime/tactical-feed-dom.ts",
     "runtime/visual-timeline-dom.ts",
   ]
@@ -232,15 +231,14 @@ void test("repair-room dock projects only visible chip-controlled panels", () =>
   assert.deepEqual(dockLayout.visiblePanelIds, [...REPAIR_DOCK_PANEL_IDS]);
   assert.equal(
     dockLayout.gridTemplateColumns,
-    "minmax(var(--repair-px-220), 1fr) minmax(var(--repair-px-220), 1fr) minmax(var(--repair-px-220), 1fr)"
+    "minmax(var(--repair-px-220), 1fr) minmax(var(--repair-px-220), 1fr)"
   );
 
-  assert.deepEqual([...REPAIR_DOCK_PANEL_IDS], ["chat", "measurement", "room-sync"]);
+  assert.deepEqual([...REPAIR_DOCK_PANEL_IDS], ["chat", "measurement"]);
 
   const partialLayout = getRepairDockLayoutProjection({
     chat: true,
     measurement: false,
-    "room-sync": true,
   });
   assert.deepEqual(partialLayout.visiblePanelIds, ["measurement"]);
   assert.equal(partialLayout.gridTemplateColumns, "minmax(var(--repair-px-220), 1fr)");
@@ -248,17 +246,15 @@ void test("repair-room dock projects only visible chip-controlled panels", () =>
   const sizedLayout = getRepairDockLayoutProjection({}, REPAIR_DOCK_PANEL_IDS, {
     chat: 1.2,
     measurement: 0.8,
-    "room-sync": 1,
   });
   assert.equal(
     sizedLayout.gridTemplateColumns,
-    "minmax(var(--repair-px-220), 1.2fr) minmax(var(--repair-px-220), 0.8fr) minmax(var(--repair-px-220), 1fr)"
+    "minmax(var(--repair-px-220), 1.2fr) minmax(var(--repair-px-220), 0.8fr)"
   );
 
   const hiddenLayout = getRepairDockLayoutProjection({
     chat: true,
     measurement: true,
-    "room-sync": true,
   });
   assert.deepEqual(hiddenLayout.visiblePanelIds, []);
   assert.equal(hiddenLayout.gridTemplateColumns, "none");
@@ -281,7 +277,6 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   );
   const sessionRailPanel = readFileSync(join(uiRoot, "panels/session-rail-panel.ts"), "utf8");
   const feedPanel = readFileSync(join(uiRoot, "panels/tactical-feed-panel.ts"), "utf8");
-  const roomSyncPanel = readFileSync(join(uiRoot, "panels/room-sync-panel.ts"), "utf8");
   const overlayStage = readFileSync(join(uiRoot, "overlay/overlay-stage.ts"), "utf8");
   const captureHandlers = readFileSync(join(uiRoot, "runtime/capture-status-handlers.ts"), "utf8");
   const style = readRepairUiStyleText();
@@ -342,7 +337,6 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /documentRef\.documentElement\.lang = context\.locale/);
   assert.match(runtime, /flushWizardFields/);
   assert.match(runtime, /data-repair-action='wizard-field'/);
-  assert.match(runtime, /renderRoomSyncPanel/);
   assert.match(runtime, /renderOperatorProfilePanel/);
   assert.doesNotMatch(runtime, /renderRepairSettingsPanel\(/);
   assert.match(runtime, /repair-settings-overlay/);
@@ -379,17 +373,14 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.doesNotMatch(measurementPanel, /sessionLocked/);
   assert.doesNotMatch(timelinePanel, /sessionLocked/);
   assert.doesNotMatch(knowledgePanel, /sessionLocked/);
-  assert.doesNotMatch(roomSyncPanel, /sessionLocked|select\.disabled = !hasSession/);
   assert.match(runtime, /updateTacticalFeedPanelDom/);
   assert.match(runtime, /updateVisualTimelinePanelDom/);
   assert.match(runtime, /updateMeasurementPanelDom/);
-  assert.match(runtime, /updateRoomSyncPanelDom/);
   assert.match(runtime, /syncTimelineChips/);
   assert.match(runtime, /syncTacticalFeedEntry/);
   assert.match(runtime, /panelId === "visual-timeline"/);
   assert.match(runtime, /panelId === "tactical-feed"/);
   assert.match(runtime, /panelId === "measurement"/);
-  assert.match(runtime, /panelId === "room-sync"/);
   assert.match(runtime, /setClassNameIfChanged/);
   assert.match(runtime, /overlayMountVersion/);
   assert.match(runtime, /currentConfig === null/);
@@ -482,9 +473,6 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /updateOperatorProfile/);
   assert.match(runtime, /selectionMode/);
   assert.match(runtime, /ai-mark-state/);
-  assert.match(runtime, /repair-annotation-inspector__links/);
-  assert.match(roomSyncPanel, /repair-sync-focus__actions/);
-  assert.match(roomSyncPanel, /ai-mark-state/);
   assert.match(style, /repair-panel-chip/);
   assert.match(style, /repair-bottom-cluster__header/);
   assert.match(sessionRailPanel, /noPanelHeader: true/);
@@ -493,7 +481,6 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(timelinePanel, /noPanelControls: true/);
   assert.match(chatPanel, /noPanelControls: true/);
   assert.match(measurementPanel, /noPanelControls: true/);
-  assert.match(roomSyncPanel, /noPanelControls: true/);
   assert.match(wizardPanel, /noPanelControls: true/);
   assert.match(replayProjection, /visibleAiMarkIds/);
   assert.doesNotMatch(
@@ -709,7 +696,7 @@ void test("repair-room repair moments CSS keeps the compact strip sizing contrac
   assert.doesNotMatch(timelineStyle, /grid-template-columns:\s*repeat\(2,/);
   assert.match(
     workspaceStyle,
-    /grid-template-rows:\s*[\s\S]*minmax\(var\(--repair-px-72\), 0\.44fr\)[\s\S]*minmax\(calc\(var\(--repair-px-180\) \* 0\.82\), 1fr\)/
+    /grid-template-columns:\s*var\(--repair-session-column\) var\(--repair-workbench-column\) var\(--repair-feed-column\)\s*var\(--repair-knowledge-column\)/
   );
   assert.match(
     workspaceStyle,
@@ -725,7 +712,7 @@ void test("repair-room repair moments CSS keeps the compact strip sizing contrac
   );
   assert.match(
     workspaceStyle,
-    /\.repair-bottom-cluster\[data-lower-visible-panel-count="0"\] \.repair-bottom-cluster__body\s*\{[\s\S]*grid-template-rows:\s*max-content;/
+    /\.repair-bottom-cluster\[data-lower-visible-panel-count="0"\] \.repair-bottom-cluster__body\s*\{[\s\S]*grid-template-rows:\s*var\(--repair-bottom-timeline-height\);/
   );
   assert.doesNotMatch(
     workspaceStyle,

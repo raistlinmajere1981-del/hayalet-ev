@@ -113,8 +113,8 @@ export function renderRepairSettingsPanelBody(
   appendSettingsButton(documentRef, handsGroup.buttons, {
     label: text(["settings", "readReplies"], "Read replies aloud"),
     title: settings.autoReadAiReplies
-      ? "Disable automatic AI reply reading"
-      : "Read AI replies aloud",
+      ? "Disable automatic Assistant AI reply reading"
+      : "Read Assistant AI replies aloud",
     action: "set-interaction-settings",
     active: settings.autoReadAiReplies,
     dataset: { autoReadAiReplies: String(!settings.autoReadAiReplies) },
@@ -186,7 +186,7 @@ export function renderRepairSettingsPanelBody(
       title:
         dictationSubmitMode === "composer"
           ? "Place dictated text in the composer"
-          : "Send dictated text to AI when accepted",
+          : "Send dictated text to Assistant AI when accepted",
       action: "set-interaction-settings",
       active: settings.dictationSubmitMode === dictationSubmitMode,
       dataset: { dictationSubmitMode },

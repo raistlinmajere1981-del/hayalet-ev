@@ -191,7 +191,7 @@ export function createRepairAiController(params: {
             draft: {
               ...currentWizard.draft,
               ...createKnowledgePackSelectionPatch(cachedPack),
-              researchMessage: "AI research loaded from cache.",
+              researchMessage: "Asistan AI kanıt paketi önbellekten yüklendi.",
               researchSkipped: false,
               researchStatus: "succeeded",
             },
@@ -211,7 +211,7 @@ export function createRepairAiController(params: {
         store.dispatch({ type: "phase/set", phase: "wizard-active" });
         store.dispatch({ type: "ai-dispatch/set-target-slot", targetSlot });
         setAiDispatchStatus("research", "succeeded", {
-          message: "AI research loaded from cache.",
+          message: "Asistan AI kanıt paketi önbellekten yüklendi.",
           contextRefs: [boardCode],
         });
       });
@@ -234,7 +234,7 @@ export function createRepairAiController(params: {
           currentStep: "ai-research",
           draft: {
             ...currentWizard.draft,
-            researchMessage: "AI research is preparing the knowledge pack.",
+            researchMessage: "Asistan AI kanıt paketini hazırlıyor.",
             researchSkipped: false,
             researchStatus: "running",
             selectedEvidenceResourceIds: [],
@@ -250,7 +250,7 @@ export function createRepairAiController(params: {
       store.dispatch({ type: "phase/set", phase: "wizard-active" });
       store.dispatch({ type: "ai-dispatch/set-target-slot", targetSlot });
       setAiDispatchStatus("research", "pending", {
-        message: "AI research is preparing the knowledge pack.",
+        message: "Asistan AI kanıt paketini hazırlıyor.",
         contextRefs: [
           currentWizard.draft.boardCode,
           currentWizard.draft.model,
@@ -304,10 +304,10 @@ export function createRepairAiController(params: {
     if (result.success !== true || researchedPack === null) {
       api.log(
         "debug",
-        `[${REPAIR_ROOM_ID}] AI knowledge research failed: ${result.message ?? "unknown error"}`
+        `[${REPAIR_ROOM_ID}] Asistan AI evidence research failed: ${result.message ?? "unknown error"}`
       );
       setAiDispatchStatus("research", "failed", {
-        message: result.message ?? "AI research did not return a knowledge pack.",
+        message: result.message ?? "Asistan AI kanıt paketi döndürmedi.",
         contextRefs: result.contextRefs,
       });
       const wizard = store.getState().wizard;
@@ -318,7 +318,7 @@ export function createRepairAiController(params: {
           currentStep: "ai-research",
           draft: {
             ...wizard.draft,
-            researchMessage: result.message ?? "AI research did not return a knowledge pack.",
+            researchMessage: result.message ?? "Asistan AI kanıt paketi döndürmedi.",
             researchSkipped: false,
             researchStatus: "failed",
           },
@@ -346,7 +346,7 @@ export function createRepairAiController(params: {
           draft: {
             ...store.getState().wizard.draft,
             ...createKnowledgePackSelectionPatch(researchedPack),
-            researchMessage: "AI research prepared a knowledge pack.",
+            researchMessage: "Asistan AI kanıt paketi hazırladı.",
             researchSkipped: false,
             researchStatus: "succeeded",
           },
@@ -365,7 +365,7 @@ export function createRepairAiController(params: {
         phase: getActiveSession(store.getState()) === null ? "wizard-active" : "session-active",
       });
       setAiDispatchStatus("research", "succeeded", {
-        message: "AI research prepared a knowledge pack.",
+        message: "Asistan AI kanıt paketi hazırladı.",
         contextRefs: result.contextRefs,
       });
     });
@@ -414,7 +414,7 @@ export function createRepairAiController(params: {
         severity: observation.kind,
         region: observation.region,
         rationale: observation.text,
-        protocolKey: REPAIR_PROTOCOL_KEYS.tacticalObserver,
+        protocolKey: REPAIR_PROTOCOL_KEYS.assistantObservation,
         dismissed: false,
         lifecycleState: "detected",
         linkedMeasurementIds,
@@ -444,7 +444,7 @@ export function createRepairAiController(params: {
     }
 
     setAiDispatchStatus("tactical", "pending", {
-      message: `AI tactical observer is reviewing ${measurementEvent.reference}.`,
+      message: `Asistan AI son ölçümü kontrol ediyor: ${measurementEvent.reference}.`,
       contextRefs: measurementRefs,
     });
 
@@ -464,12 +464,12 @@ export function createRepairAiController(params: {
     if (aiResult.success !== true) {
       api.log(
         "debug",
-        `[${REPAIR_ROOM_ID}] AI tactical observation skipped: ${
+        `[${REPAIR_ROOM_ID}] Asistan AI measurement observation skipped: ${
           aiResult.message ?? "unknown error"
         }`
       );
       setAiDispatchStatus("tactical", "failed", {
-        message: aiResult.message ?? "AI tactical observer did not return observations.",
+        message: aiResult.message ?? "Asistan AI ölçüm gözlemi döndürmedi.",
         contextRefs: measurementRefs,
       });
       return;
@@ -497,9 +497,7 @@ export function createRepairAiController(params: {
       })
     );
     setAiDispatchStatus("tactical", "succeeded", {
-      message: `AI tactical observer added ${aiResult.observations.length} observation${
-        aiResult.observations.length === 1 ? "" : "s"
-      }.`,
+      message: `Asistan AI ${aiResult.observations.length} gözlem ekledi.`,
       contextRefs: uniqueStringList([
         ...measurementRefs,
         ...aiResult.observations.flatMap((observation) => observation.contextRefs),
@@ -544,7 +542,7 @@ export function createRepairAiController(params: {
     const sessionRefs = uniqueStringList([session.id, session.deviceInfo.boardCode]);
 
     setAiDispatchStatus("tactical", "pending", {
-      message: "AI risk detector is scanning the session.",
+      message: "Asistan AI oturum risklerini tarıyor.",
       contextRefs: sessionRefs,
     });
 
@@ -563,10 +561,10 @@ export function createRepairAiController(params: {
     if (aiResult.success !== true) {
       api.log(
         "debug",
-        `[${REPAIR_ROOM_ID}] AI risk detection skipped: ${aiResult.message ?? "unknown error"}`
+        `[${REPAIR_ROOM_ID}] Asistan AI risk scan skipped: ${aiResult.message ?? "unknown error"}`
       );
       setAiDispatchStatus("tactical", "failed", {
-        message: aiResult.message ?? "AI risk detector did not return observations.",
+        message: aiResult.message ?? "Asistan AI risk gözlemi döndürmedi.",
         contextRefs: sessionRefs,
       });
       return;
@@ -589,9 +587,7 @@ export function createRepairAiController(params: {
       })
     );
     setAiDispatchStatus("tactical", "succeeded", {
-      message: `AI risk detector found ${aiResult.risks.length} risk${
-        aiResult.risks.length === 1 ? "" : "s"
-      }.`,
+      message: `Asistan AI ${aiResult.risks.length} risk buldu.`,
       contextRefs: uniqueStringList([
         ...sessionRefs,
         ...aiResult.risks.flatMap((risk) => risk.contextRefs),
@@ -707,22 +703,18 @@ export function createRepairAiController(params: {
     if (aiResult.success !== true) {
       api.log(
         "debug",
-        `[${REPAIR_ROOM_ID}] AI chat failed: ${aiResult.message ?? "unknown error"}`
+        `[${REPAIR_ROOM_ID}] Asistan AI reply failed: ${aiResult.message ?? "unknown error"}`
       );
       failChatReply(
         operatorTurn,
-        aiResult.message ?? "AI chat guidance did not return a reply.",
+        aiResult.message ?? "Asistan AI cevap döndürmedi.",
         uniqueStringList([...baseContextRefs, operatorTurn.id])
       );
       return;
     }
     const chatContextRefs = uniqueStringList([...baseContextRefs, ...aiResult.contextRefs]);
     if (aiResult.text === null) {
-      failChatReply(
-        operatorTurn,
-        "AI chat guidance did not return readable text.",
-        chatContextRefs
-      );
+      failChatReply(operatorTurn, "Asistan AI okunabilir cevap döndürmedi.", chatContextRefs);
       return;
     }
     const commandSummary = applyRepairAiRoomCommands(aiResult.roomCommands);
@@ -738,8 +730,8 @@ export function createRepairAiController(params: {
     setAiDispatchStatus("chat", commandSummary.failed > 0 ? "failed" : "succeeded", {
       message:
         commandMessageParts.length === 0
-          ? "AI chat guidance returned a reply."
-          : `AI chat guidance returned a reply; ${commandMessageParts.join(", ")}.`,
+          ? "Asistan AI cevap döndürdü."
+          : `Asistan AI cevap döndürdü; ${commandMessageParts.join(", ")}.`,
       contextRefs: chatContextRefs,
     });
     appendChatReply(operatorTurn, aiResult.text, chatContextRefs);

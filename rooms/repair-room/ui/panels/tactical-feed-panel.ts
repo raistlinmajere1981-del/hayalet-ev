@@ -1,4 +1,5 @@
 import type { RepairUiState } from "../../shared/ui/state.js";
+import { localizeRepairGuidanceLine } from "../runtime/guidance-text.js";
 import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (
@@ -10,16 +11,16 @@ type TextFn = (
 function formatAssistantSlot(slot: string, text?: TextFn): string {
   if (text !== undefined) {
     if (slot.toLowerCase() === "ai0")
-      return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "0" });
+      return text(["tacticalFeed", "slotLabel"], "Asistan AI {slot}", { slot: "0" });
     if (slot.toLowerCase() === "ai1")
-      return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "1" });
+      return text(["tacticalFeed", "slotLabel"], "Asistan AI {slot}", { slot: "1" });
     if (slot.toLowerCase() === "ai2")
-      return text(["tacticalFeed", "slotLabel"], "Asistan {slot}", { slot: "2" });
+      return text(["tacticalFeed", "slotLabel"], "Asistan AI {slot}", { slot: "2" });
     return slot.toUpperCase();
   }
-  if (slot.toLowerCase() === "ai0") return "Assistant 0";
-  if (slot.toLowerCase() === "ai1") return "Assistant 1";
-  if (slot.toLowerCase() === "ai2") return "Assistant 2";
+  if (slot.toLowerCase() === "ai0") return "Assistant AI 0";
+  if (slot.toLowerCase() === "ai1") return "Assistant AI 1";
+  if (slot.toLowerCase() === "ai2") return "Assistant AI 2";
   return slot.toUpperCase();
 }
 
@@ -127,7 +128,9 @@ export function formatRepairTacticalFeedStatusLine(state: RepairUiState, text?: 
           { remaining: state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions }
         )
       : `Quiet mode: waiting for a meaningful change. ${state.guidance.aiInterruption.attentionBudget.remainingAiInterruptions} assistant prompts left.`
-    : state.guidance.aiInterruption.toneLine;
+    : text !== undefined
+      ? localizeRepairGuidanceLine(state.guidance.aiInterruption.toneLine, text)
+      : state.guidance.aiInterruption.toneLine;
 }
 
 function hasActiveRepairSession(state: RepairUiState): boolean {

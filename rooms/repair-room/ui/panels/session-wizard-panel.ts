@@ -863,7 +863,7 @@ function getReviewNotes(
       .map<RepairWizardManualNote>((note, index) => ({
         id: createPackNoteId(index),
         text: note,
-        source: "AI araştırması",
+        source: "Asistan AI araştırması",
         confidence: 1,
       }))
       .filter((note) => !removedNoteIds.has(note.id)),
@@ -1031,7 +1031,7 @@ function renderResearchStep(
     warning.className = "repair-wizard-warning";
     warning.textContent = text(
       ["wizard", "research", "bridgeWarning"],
-      "The AI bridge did not return a result. Retry or continue without AI."
+      "Asistan AI köprüsü sonuç döndürmedi. Tekrar dene ya da Asistan AI olmadan devam et."
     );
     form.append(warning);
   }
@@ -1051,7 +1051,7 @@ function renderResearchStep(
   appendActionButton(
     documentRef,
     actions,
-    text(["wizard", "research", "skip"], "Continue without AI"),
+    text(["wizard", "research", "skip"], "Asistan AI olmadan devam et"),
     "skip-wizard-research",
     "repair-secondary-btn"
   );
@@ -1076,7 +1076,7 @@ function renderEvidenceReviewStep(
     summary.className = "repair-wizard-guidance";
     summary.textContent = text(
       ["wizard", "evidenceReview", "empty"],
-      "Evidence pack yok. Araştırmayı tekrar çalıştır veya AI olmadan devam et."
+      "Kanıt paketi yok. Araştırmayı tekrar çalıştır veya Asistan AI olmadan devam et."
     );
     review.append(summary);
     return review;
@@ -1222,7 +1222,7 @@ function renderReadyStep(documentRef: Document, state: RepairUiState, text: Text
     ready,
     text(["wizard", "summary", "research"], "Research"),
     draft.researchSkipped
-      ? text(["wizard", "research", "noAi"], "Without AI")
+      ? text(["wizard", "research", "noAi"], "Asistan AI olmadan")
       : state.wizard.generatedKnowledgePackId !== null
         ? text(["wizard", "research", "packReady"], "Evidence pack ready")
         : text(["wizard", "research", "pending"], "Pending")

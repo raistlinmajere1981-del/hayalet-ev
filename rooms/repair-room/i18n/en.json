@@ -1,9 +1,9 @@
 {
   "title": "Repair Room",
-  "subtitle": "An electronics repair workstation combining a live PCB workbench, AİÖ tactical feed, knowledge pack research, and operator-aware diagnostic guidance.",
+  "subtitle": "An electronics repair workstation combining a live PCB workbench, Assistant AI flow, knowledge pack research, and operator-aware diagnostic guidance.",
   "workbench": {
     "title": "Repair Workbench",
-    "subtitle": "Live PCB stage with overlay annotations, AI tactical feed, measurement panel, knowledge pack viewer, and operator profile awareness.",
+    "subtitle": "Live PCB stage with overlay annotations, Assistant AI flow, measurement panel, knowledge pack viewer, and operator profile awareness.",
     "live": "LIVE",
     "frozen": "FROZEN",
     "buffering": "BUFFERING",
@@ -19,12 +19,12 @@
     "toolbar": {
       "grid": "Grid",
       "gridTitle": "Toggle grid overlay",
-      "aiMarks": "AI Marks",
-      "aiMarksTitle": "Toggle AI mark overlay",
+      "aiMarks": "Assistant AI Marks",
+      "aiMarksTitle": "Toggle Assistant AI mark overlay",
       "operatorNotes": "Operator Notes",
       "operatorNotesTitle": "Toggle operator annotations",
-      "aiNotes": "AI Notes",
-      "aiNotesTitle": "Toggle AI annotations",
+      "aiNotes": "Assistant AI Notes",
+      "aiNotesTitle": "Toggle Assistant AI annotations",
       "measure": "Measure",
       "measureTitle": "Toggle measurement overlay",
       "risks": "Risks",
@@ -87,7 +87,7 @@
       }
     },
     "guidance": {
-      "ai": "AI",
+      "ai": "Assistant AI",
       "next": "Next",
       "say": "Say",
       "risk": "Risk",
@@ -109,6 +109,13 @@
       "hintShowRisks": "show risks",
       "benchReady": "The bench is ready.",
       "openRepairSession": "Open a repair session.",
+      "addSymptomsStartAssistant": "Add the symptoms, then start Assistant AI evidence research.",
+      "measurementVerificationWaiting": "Measurement verification is waiting.",
+      "focusedBehaviorMatchesFailure": "Focused behavior matches a failure pattern.",
+      "observeBoardNarrowCheck": "Observe the board and keep the next check narrow.",
+      "primaryRailMatchesFailure": "Primary rail behavior matches the failure pattern.",
+      "regionEvidenceInspectCalmly": "This region has enough evidence to inspect calmly.",
+      "regionMayMatchEarlierPattern": "This region may match an earlier pattern.",
       "progress": "{phase} {current}/{total}",
       "phase": {
         "observe": "observe",
@@ -156,8 +163,8 @@
   },
   "feed": {
     "eyebrow": "ASSISTANT",
-    "title": "AİÖ Tactical Feed",
-    "composerPlaceholder": "Ask AİÖ…",
+    "title": "Assistant AI Flow",
+    "composerPlaceholder": "Ask Assistant AI…",
     "send": "Ask",
     "severity": {
       "risk": "RISK",
@@ -192,7 +199,7 @@
       "startRepair": "Start repair"
     },
     "evidenceReview": {
-      "empty": "No evidence pack is available. Run research again or continue without AI.",
+      "empty": "No evidence pack is available. Run research again or continue without Assistant AI.",
       "summary": "{resources} resources, {failures} failure notes, {testPoints} test points.",
       "failurePrefix": "Failure",
       "probePrefix": "Probe",
@@ -203,11 +210,11 @@
       "manualAddedBy": "Manual"
     },
     "research": {
-      "bridgeWarning": "The AI bridge did not return a result. Retry or continue without AI.",
+      "bridgeWarning": "The Assistant AI bridge did not return a result. Retry or continue without Assistant AI.",
       "retry": "Retry",
       "start": "Start research",
-      "skip": "Continue without AI",
-      "noAi": "Without AI",
+      "skip": "Continue without Assistant AI",
+      "noAi": "Without Assistant AI",
       "packReady": "Evidence pack ready",
       "pending": "Pending"
     },
@@ -275,7 +282,7 @@
   },
   "knowledgePack": {
     "eyebrow": "KNOWLEDGE PACK",
-    "title": "AİÖ Result",
+    "title": "Assistant AI Results",
     "empty": "No evidence pack yet",
     "emptyHelp": "Run evidence search from the repair intake to attach schematics, board photos, failure notes, and test points.",
     "tabs": {
@@ -383,7 +390,7 @@
     "toolsHint": "Add the equipment you actually have on your bench.",
     "toolsEmpty": "No tools saved yet. Add one below.",
     "skillsTitle": "Your skills",
-    "skillsHint": "Track repair skills you want AIO to account for.",
+    "skillsHint": "Track repair skills you want Assistant AI to account for.",
     "skillsEmpty": "No skills saved yet. Add one below.",
     "available": "Available",
     "unavailable": "Unavailable",
@@ -396,7 +403,7 @@
     "measurement": "Measurement",
     "annotation": "Annotation",
     "risk": "Risk",
-    "ai": "AI"
+    "ai": "Assistant AI"
   },
   "measurement": {
     "eyebrow": "MEASUREMENT PANEL",
@@ -444,13 +451,13 @@
   },
   "chat": {
     "eyebrow": "SESSION CHAT HISTORY",
-    "title": "AI chat history",
+    "title": "Assistant AI chat history",
     "subtitle": "Repair Assistant",
     "placeholder": "Ask or dictate a repair note...",
     "send": "Send",
     "clear": "Discard",
     "viewKnowledgePack": "View Knowledge Pack",
-    "composerPlaceholder": "Ask AİÖ something…",
+    "composerPlaceholder": "Ask Assistant AI something…",
     "dictationReview": "Voice note staged. Say send, press Send, or clear and dictate again.",
     "status": {
       "dictationReview": "Voice note waiting for confirmation",
@@ -475,11 +482,8 @@
     "session": "Session",
     "playhead": "Playhead",
     "aiSlot": "Assistant AI",
-    "aiTarget": "AI Target",
-    "aiSession": "AI Session",
-    "chatDispatch": "Chat AI",
-    "researchDispatch": "Research AI",
-    "tacticalDispatch": "Tactical AI",
+    "aiTarget": "Assistant AI Target",
+    "aiSession": "Assistant AI",
     "status": {
       "storageLoading": "Repair history loading",
       "storageReady": "Repair history ready, {count}",
@@ -513,7 +517,7 @@
       "hover": "hover",
       "none": "none",
       "measurePrefix": "MEASURE",
-      "aiPrefix": "AI"
+      "aiPrefix": "Assistant AI"
     }
   },
   "settings": {
@@ -521,11 +525,11 @@
     "title": "Repair Controls",
     "operatorOverlayTitle": "setup",
     "handsFreeTitle": "Hands-free repair",
-    "handsFreeSubtitle": "Controls spoken guidance, ambient listening, and AI reply handling.",
+    "handsFreeSubtitle": "Controls spoken guidance, ambient listening, and Assistant AI reply handling.",
     "companionTitle": "Android companion",
     "companionSubtitle": "Repair Room preferences for Analyze companion routes.",
-    "attentionTitle": "AI attention",
-    "attentionSubtitle": "Limits how often AİÖ interrupts the repair flow.",
+    "attentionTitle": "Assistant AI attention",
+    "attentionSubtitle": "Limits how often Assistant AI interrupts the repair flow.",
     "mode": "Mode",
     "handsFree": "Hands-free",
     "readReplies": "Read replies",
@@ -606,7 +610,7 @@
     "title": "Repair Feed",
     "composer": "Ask the repair assistant...",
     "send": "Ask",
-    "slotLabel": "Assistant {slot}",
+    "slotLabel": "Assistant AI {slot}",
     "statusChecking": "{slot} is checking the latest measurement.",
     "statusAddedNote": "{slot} added a repair note.",
     "statusFailed": "{slot} could not add a repair note.",
@@ -623,8 +627,8 @@
     "sessionTitle": "session panel",
     "feed": "Feed",
     "feedTitle": "repair feed",
-    "aio": "AIO",
-    "aioTitle": "AIO results panel",
+    "aio": "Assistant AI",
+    "aioTitle": "Assistant AI results panel",
     "timeline": "Repair Moments",
     "timelineTitle": "repair moments panel",
     "chat": "Chat",

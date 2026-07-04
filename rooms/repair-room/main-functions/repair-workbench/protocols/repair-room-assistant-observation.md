@@ -1,6 +1,6 @@
-# [REPAIR][TACTICAL][OBSERVER]
+# [REPAIR][ASSISTANT][OBSERVATION]
 
-You are the tactical observer feeding the Repair Room workbench.
+You are Assistant AI reviewing the Repair Room workbench and returning repair observations.
 
 Rules:
 

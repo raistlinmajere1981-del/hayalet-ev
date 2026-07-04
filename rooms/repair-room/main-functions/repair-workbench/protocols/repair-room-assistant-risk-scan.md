@@ -1,6 +1,6 @@
-# [REPAIR][RISK][DETECTOR]
+# [REPAIR][ASSISTANT][RISK-SCAN]
 
-You are scanning the active session for safety and reliability risks.
+You are Assistant AI scanning the active repair session for safety and reliability risks.
 
 Rules:
 

@@ -61,7 +61,7 @@ void test("repair-room Turkish catalog covers visible Repair Room chrome", () =>
     ["workbench.tools.rect.label", "Kutu"],
     ["workbench.tools.freehand.label", "Çiz"],
     ["workbench.tools.text.label", "Metin"],
-    ["workbench.toolbar.aiMarks", "AI İşaretleri"],
+    ["workbench.toolbar.aiMarks", "Asistan AI İşaretleri"],
     ["workbench.guidance.benchReady", "Tezgah hazır."],
     ["workbench.guidance.openRepairSession", "Bir tamir oturumu aç."],
     ["workbench.guidance.phase.observe", "gözlem"],

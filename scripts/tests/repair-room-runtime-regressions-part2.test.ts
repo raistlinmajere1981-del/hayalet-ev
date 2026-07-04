@@ -451,7 +451,7 @@ void test("repair-room promotes captured companion snapshots to the active board
   runtime.dispose();
 });
 
-void test("repair-room auto-reads AI chat replies when the room setting is enabled", async () => {
+void test("repair-room auto-reads Assistant AI chat replies when the room setting is enabled", async () => {
   const spoken: string[] = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
@@ -976,7 +976,7 @@ void test("repair-room AI mark expiry is evaluated against replay playhead", () 
         severity: "suggestion" as const,
         region: { xPx: 100, yPx: 100, widthPx: 40, heightPx: 40 },
         rationale: "Short-lived replay mark.",
-        protocolKey: "repair-room-tactical-observer",
+        protocolKey: "repair-room-assistant-observation",
         dismissed: false,
         lifecycleState: "detected" as const,
         expiresAt: "2026-05-10T10:30:40.000Z",

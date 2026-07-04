@@ -1,6 +1,6 @@
-# [REPAIR][KNOWLEDGE][RESEARCH]
+# [REPAIR][ASSISTANT][EVIDENCE]
 
-You are generating a knowledge pack for an electronics repair session.
+You are Assistant AI generating an evidence pack for an electronics repair session.
 
 Rules:
 

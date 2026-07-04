@@ -86,17 +86,17 @@ export const REPAIR_UI_COMMANDS = {
 export type RepairUiCommandName = (typeof REPAIR_UI_COMMANDS)[keyof typeof REPAIR_UI_COMMANDS];
 
 export const REPAIR_PROTOCOL_KEYS = {
-  knowledgeResearch: "repair-room-knowledge-research",
-  tacticalObserver: "repair-room-tactical-observer",
-  measurementCoach: "repair-room-measurement-coach",
-  riskDetector: "repair-room-risk-detector",
+  assistantChat: "repair-room-assistant-chat",
+  assistantEvidence: "repair-room-assistant-evidence",
+  assistantObservation: "repair-room-assistant-observation",
+  assistantRiskScan: "repair-room-assistant-risk-scan",
 } as const;
 
 export const REPAIR_PROTOCOL_SCENARIOS = {
-  knowledgeResearch: "repair-workbench-knowledge-research",
-  tacticalObserver: "repair-workbench-tactical-observer",
-  measurementCoach: "repair-workbench-measurement-coach",
-  riskDetector: "repair-workbench-risk-detector",
+  assistantChat: "repair-workbench-assistant-chat",
+  assistantEvidence: "repair-workbench-assistant-evidence",
+  assistantObservation: "repair-workbench-assistant-observation",
+  assistantRiskScan: "repair-workbench-assistant-risk-scan",
 } as const;
 
 export const REPAIR_HOST_MESSAGES = {

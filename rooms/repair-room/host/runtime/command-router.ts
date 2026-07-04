@@ -737,7 +737,7 @@ export function createRepairCommandRouter(params: {
         }
         const targetSlot = flat["targetSlot"];
         if (targetSlot !== undefined && !isRepairAiTargetSlot(targetSlot)) {
-          return { success: false, message: "valid AI target slot is required" };
+          return { success: false, message: "valid Assistant AI target slot is required" };
         }
         void aiController.startKnowledgeResearch(targetSlot === undefined ? {} : { targetSlot });
         return { success: true };
@@ -765,7 +765,8 @@ export function createRepairCommandRouter(params: {
               currentStep: "evidence-review",
               draft: {
                 ...wizard.draft,
-                researchMessage: "AI research was skipped. Add evidence manually in review.",
+                researchMessage:
+                  "Asistan AI kanıt araştırması atlandı. Kanıtları incelemede manuel ekle.",
                 researchSkipped: true,
                 researchStatus: "skipped",
                 selectedEvidenceResourceIds: [],
@@ -781,7 +782,7 @@ export function createRepairCommandRouter(params: {
           { type: "phase/set", phase: "wizard-active" },
         ]);
         aiController.setAiDispatchStatus("research", "idle", {
-          message: "AI research skipped; repair can start without a knowledge pack.",
+          message: "Asistan AI kanıt araştırması atlandı; tamir kanıt paketi olmadan başlayabilir.",
           contextRefs: [wizard.draft.boardCode, wizard.draft.model].filter(
             (value) => value.trim() !== ""
           ),
@@ -1317,14 +1318,15 @@ export function createRepairCommandRouter(params: {
           linkedEventIds: [target.id],
           targetEventId: target.id,
           state: lifecycleState,
-          reason: safeString(flat["reason"]) ?? `Operator moved AI mark to ${lifecycleState}.`,
+          reason:
+            safeString(flat["reason"]) ?? `Operator moved Assistant AI mark to ${lifecycleState}.`,
         };
         return { success: sessionController.appendEventToActiveSession(lifecycleEvent) };
       }
       case REPAIR_UI_COMMANDS.setAiTargetSlot: {
         const targetSlot = flat["targetSlot"];
         if (!isRepairAiTargetSlot(targetSlot)) {
-          return { success: false, message: "valid AI target slot is required" };
+          return { success: false, message: "valid Assistant AI target slot is required" };
         }
         store.dispatch({ type: "ai-dispatch/set-target-slot", targetSlot });
         return { success: true };
@@ -1347,7 +1349,7 @@ export function createRepairCommandRouter(params: {
           store.dispatch({ type: "chat/set-composer", draft: "" });
           store.dispatch({ type: "chat/set-pending", turnId: turn.id });
           aiController.setAiDispatchStatus("chat", "pending", {
-            message: "AI chat guidance is drafting a reply.",
+            message: "Asistan AI cevap hazırlıyor.",
             contextRefs: Array.from(
               new Set([
                 ...(session === null ? [] : [session.id, session.deviceInfo.boardCode]),

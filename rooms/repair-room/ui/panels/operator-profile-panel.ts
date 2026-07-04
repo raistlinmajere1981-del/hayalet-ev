@@ -215,7 +215,7 @@ function renderSkillManager(
     renderManagerHeader(
       documentRef,
       text(["operator", "skillsTitle"], "Your skills"),
-      text(["operator", "skillsHint"], "Track repair skills you want AIO to account for.")
+      text(["operator", "skillsHint"], "Track repair skills you want Assistant AI to account for.")
     )
   );
 
@@ -361,7 +361,7 @@ function renderPreferences(
   prefs.append(
     renderPreferenceChipRow(
       documentRef,
-      text(["operator", "ai"], "AI"),
+      text(["operator", "ai"], "Asistan AI"),
       "aiVerbosity",
       AI_OPTIONS,
       preferences.aiVerbosity

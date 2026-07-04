@@ -761,6 +761,7 @@ void test(
         callOrder.push(`send:${selectedConversationId}`);
         return { success: true };
       };
+      (harness.windowRef as any).confirm = () => true;
 
       const result = await slotBridgeHandler({
         action: "message.send",
