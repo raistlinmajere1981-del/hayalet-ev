@@ -1,46 +1,121 @@
 /* -- Measurement Panel ---------------------------------------------------- */
-.repair-measurement-display {
+.repair-measurement-panel-body {
   display: flex;
   flex-direction: column;
+  gap: var(--repair-sp-2);
+  padding: var(--repair-sp-2);
+}
+
+.repair-measurement-panel-body .repair-tabs {
+  flex: 0 0 auto;
+  gap: var(--repair-px-4);
+  border-bottom: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.repair-measurement-panel-body .repair-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.repair-measurement-tab {
+  height: var(--repair-px-26);
+  padding: 0 var(--repair-px-10);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-control);
+  color: var(--repair-text-dim);
+  font: var(--repair-px-11) var(--repair-mono);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.repair-measurement-tab:hover:not(:disabled) {
+  border-color: var(--repair-border-strong);
+  color: var(--repair-text);
+}
+
+.repair-measurement-tab:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.repair-measurement-tab.repair-tab--active {
+  border-color: var(--repair-cyan);
+  background: var(--repair-cyan-soft);
+  color: var(--repair-cyan);
+}
+
+.repair-measurement-display {
+  display: grid;
+  grid-template-columns: minmax(var(--repair-px-112), auto) minmax(0, 1fr);
   align-items: center;
-  gap: var(--repair-sp-1);
-  padding: var(--repair-sp-3) 0;
+  gap: var(--repair-sp-2);
+  padding: var(--repair-px-8) var(--repair-sp-2);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-surface-whisper);
+}
+
+.repair-measurement-display__primary {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--repair-px-6);
+  min-width: 0;
 }
 
 .repair-measurement-display__value {
   font-family: var(--repair-mono);
-  font-size: var(--repair-px-28);
+  font-size: var(--repair-px-26);
   font-weight: 700;
+  line-height: 1;
   color: var(--repair-cyan);
   font-variant-numeric: tabular-nums;
-  letter-spacing: var(--repair-em-0-02);
 }
 
 .repair-measurement-display__unit {
-  min-height: var(--repair-px-14);
+  min-width: var(--repair-px-18);
   font-family: var(--repair-mono);
-  font-size: var(--repair-px-14);
+  font-size: var(--repair-px-12);
   color: var(--repair-text-muted);
 }
 
+.repair-measurement-display__meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--repair-px-4) var(--repair-sp-2);
+}
+
 .repair-measurement-display__label {
-  font-size: var(--repair-px-11);
+  min-width: 0;
+  overflow: hidden;
   color: var(--repair-text-dim);
+  font-size: var(--repair-px-11);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .repair-measurement-display__mode {
+  flex: 0 0 auto;
+  padding: var(--repair-px-2) var(--repair-px-6);
+  border: var(--repair-px-1) solid var(--repair-border);
+  border-radius: var(--repair-radius-sm);
+  background: var(--repair-input-bg);
+  color: var(--repair-text-muted);
   font-family: var(--repair-mono);
-  font-size: var(--repair-px-10);
-  color: var(--repair-text-dim);
+  font-size: var(--repair-px-9);
   text-transform: uppercase;
 }
 
 .repair-measurement-form {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--repair-px-96), 1fr));
-  gap: var(--repair-sp-2);
+  grid-template-columns: repeat(auto-fit, minmax(var(--repair-px-72), 1fr));
+  gap: var(--repair-px-6);
   align-items: end;
-  padding: var(--repair-sp-2);
+  padding: var(--repair-px-8);
   border: var(--repair-px-1) solid var(--repair-border-strong);
   border-radius: var(--repair-radius-sm);
   background: var(--repair-cyan-panel);
@@ -50,9 +125,9 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: var(--repair-px-3);
+  gap: var(--repair-px-2);
   font-family: var(--repair-mono);
-  font-size: var(--repair-px-10);
+  font-size: var(--repair-px-9);
   color: var(--repair-text-dim);
 }
 
@@ -65,14 +140,14 @@
 .repair-measurement-field__control {
   width: 100%;
   min-width: 0;
-  height: var(--repair-px-28);
-  padding: 0 var(--repair-sp-2);
+  height: var(--repair-px-26);
+  padding: 0 var(--repair-px-7);
   border: var(--repair-px-1) solid var(--repair-border);
   border-radius: var(--repair-radius-sm);
   background: var(--repair-input-bg);
   color: var(--repair-text);
   color-scheme: dark;
-  font: var(--repair-px-11) var(--repair-mono);
+  font: var(--repair-px-10) var(--repair-mono);
 }
 
 .repair-measurement-field__control:focus {
@@ -90,8 +165,8 @@ select.repair-measurement-field__control option {
 }
 
 .repair-measurement-form__action {
-  min-width: var(--repair-px-64);
-  height: var(--repair-px-28);
+  min-width: var(--repair-px-72);
+  height: var(--repair-px-26);
   padding: 0 var(--repair-sp-2);
   border: var(--repair-px-1) solid var(--repair-cyan);
   border-radius: var(--repair-radius-sm);
@@ -113,10 +188,14 @@ select.repair-measurement-field__control option {
   cursor: not-allowed;
 }
 
+.repair-measurement-section-label {
+  margin-top: var(--repair-px-2);
+}
+
 .repair-readings-list {
   display: flex;
   flex-direction: column;
-  gap: var(--repair-sp-1);
+  gap: var(--repair-px-1);
 }
 
 .repair-readings-empty {
@@ -132,7 +211,7 @@ select.repair-measurement-field__control option {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(var(--repair-px-32), auto);
   gap: var(--repair-sp-2);
-  padding: var(--repair-sp-1) 0;
+  padding: var(--repair-px-3) 0;
   font-size: var(--repair-px-11);
   border-bottom: var(--repair-px-1) solid var(--repair-border);
 }
@@ -158,6 +237,14 @@ select.repair-measurement-field__control option {
 }
 
 @media (--repair-bp-max-760) {
+  .repair-measurement-display {
+    grid-template-columns: 1fr;
+  }
+
+  .repair-measurement-display__primary {
+    justify-content: flex-start;
+  }
+
   .repair-measurement-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

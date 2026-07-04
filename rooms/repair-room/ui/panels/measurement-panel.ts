@@ -91,7 +91,7 @@ function appendSelectInput(
 function appendReadingsEmptyState(documentRef: Document, list: HTMLElement, text: TextFn): void {
   const empty = documentRef.createElement("div");
   empty.className = "repair-readings-empty";
-  empty.textContent = text(["measurement", "labels", "noReadings"], "Henüz manuel ölçüm yok");
+  empty.textContent = text(["measurement", "labels", "noPreviousReadings"], "Önceki ölçüm yok");
   list.append(empty);
 }
 
@@ -101,11 +101,14 @@ export function renderMeasurementPanel(
   text: TextFn
 ): HTMLElement {
   const body = documentRef.createElement("div");
-  body.className = "repair-panel__body";
+  body.className = "repair-panel__body repair-measurement-panel-body";
 
   const meas = state.measurement;
-  const evidence = state.workbench.measurementEvidence;
   const hasActiveSession = state.sessions.activeId !== null && state.sessions.detail !== null;
+  const previousReadings =
+    meas.recent[0]?.rawDisplay === meas.current.display && meas.recent[0]?.unit === meas.current.unit
+      ? meas.recent.slice(1)
+      : meas.recent;
 
   // -- Tabs
   const tabs = documentRef.createElement("div");
@@ -118,11 +121,13 @@ export function renderMeasurementPanel(
   ];
 
   for (const tab of tabItems) {
-    const tabEl = documentRef.createElement("div");
-    tabEl.className = `repair-tab${
-      hasActiveSession && meas.activeInstrumentKind === tab.id ? " repair-tab--active" : ""
-    }`;
+    const isActive = hasActiveSession && meas.activeInstrumentKind === tab.id;
+    const tabEl = documentRef.createElement("button");
+    tabEl.type = "button";
+    tabEl.className = `repair-tab repair-measurement-tab${isActive ? " repair-tab--active" : ""}`;
     tabEl.textContent = tab.label;
+    tabEl.disabled = !hasActiveSession;
+    tabEl.setAttribute("aria-pressed", String(isActive));
     tabEl.dataset["repairAction"] = "set-instrument";
     tabEl.dataset["instrumentKind"] = tab.id;
     tabs.append(tabEl);
@@ -134,32 +139,35 @@ export function renderMeasurementPanel(
   const display = documentRef.createElement("div");
   display.className = "repair-measurement-display";
 
+  const primary = documentRef.createElement("div");
+  primary.className = "repair-measurement-display__primary";
+
   const valueEl = documentRef.createElement("div");
   valueEl.className = "repair-measurement-display__value";
   valueEl.textContent = meas.current.display;
-  display.append(valueEl);
+  primary.append(valueEl);
 
   const unitEl = documentRef.createElement("div");
   unitEl.className = "repair-measurement-display__unit";
   unitEl.textContent = meas.current.unit;
-  display.append(unitEl);
+  primary.append(unitEl);
+  display.append(primary);
+
+  const meta = documentRef.createElement("div");
+  meta.className = "repair-measurement-display__meta";
 
   const labelEl = documentRef.createElement("div");
   labelEl.className = "repair-measurement-display__label";
   labelEl.textContent = getMeasurementDisplayLabel(meas.current.label, text);
-  display.append(labelEl);
+  meta.append(labelEl);
 
   const modeEl = documentRef.createElement("div");
   modeEl.className = "repair-measurement-display__mode";
   modeEl.textContent = getMeasurementModeRangeText(meas.current.mode, meas.current.range, text);
-  display.append(modeEl);
+  meta.append(modeEl);
+  display.append(meta);
 
   body.append(display);
-
-  const formHeader = documentRef.createElement("div");
-  formHeader.className = "repair-section-label";
-  formHeader.textContent = text(["measurement", "manualEntry"], "Manuel Okuma");
-  body.append(formHeader);
 
   const form = documentRef.createElement("div");
   form.className = "repair-measurement-form";
@@ -213,18 +221,18 @@ export function renderMeasurementPanel(
 
   // -- Recent readings
   const readingsHeader = documentRef.createElement("div");
-  readingsHeader.className = "repair-section-label";
-  readingsHeader.textContent = text(["measurement", "recent"], "Son Okumalar");
+  readingsHeader.className = "repair-section-label repair-measurement-section-label";
+  readingsHeader.textContent = text(["measurement", "previous"], "Önceki Okumalar");
   body.append(readingsHeader);
 
   const readingsList = documentRef.createElement("div");
   readingsList.className = "repair-readings-list";
 
-  if (meas.recent.length === 0) {
+  if (previousReadings.length === 0) {
     appendReadingsEmptyState(documentRef, readingsList, text);
   }
 
-  for (const reading of meas.recent) {
+  for (const reading of previousReadings) {
     const row = documentRef.createElement("div");
     row.className = "repair-reading-row";
 
@@ -247,49 +255,6 @@ export function renderMeasurementPanel(
   }
 
   body.append(readingsList);
-
-  if (evidence.length > 0) {
-    const evidenceHeader = documentRef.createElement("div");
-    evidenceHeader.className = "repair-section-label";
-    evidenceHeader.textContent = text(["measurement", "evidence"], "Konumsal Kanıt");
-    body.append(evidenceHeader);
-
-    const evidenceList = documentRef.createElement("div");
-    evidenceList.className = "repair-measurement-evidence-list";
-    evidence.slice(0, 4).forEach((entry) => {
-      const card = documentRef.createElement("button");
-      card.className = "repair-measurement-evidence";
-      card.type = "button";
-      card.dataset["repairAction"] = "jump-to-event";
-      card.dataset["eventId"] = entry.eventId;
-
-      const label = documentRef.createElement("span");
-      label.className = "repair-measurement-evidence__label";
-      label.textContent = entry.reference;
-      card.append(label);
-
-      const value = documentRef.createElement("span");
-      value.className = "repair-measurement-evidence__value";
-      value.textContent =
-        entry.previousDisplay === null
-          ? entry.currentDisplay
-          : `${entry.previousDisplay} -> ${entry.currentDisplay}`;
-      card.append(value);
-
-      const spark = documentRef.createElement("span");
-      spark.className = "repair-measurement-evidence__spark";
-      entry.history.slice(-6).forEach((reading, index) => {
-        const bar = documentRef.createElement("i");
-        bar.style.height = `${Math.max(3, Math.min(16, 4 + index * 2))}px`;
-        bar.title = reading;
-        spark.append(bar);
-      });
-      card.append(spark);
-
-      evidenceList.append(card);
-    });
-    body.append(evidenceList);
-  }
 
   return createRepairPanel(documentRef, {
     panelId: "measurement",

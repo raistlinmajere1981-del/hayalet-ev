@@ -43,16 +43,17 @@ export function createRepairMeasurementDomRuntime(params: {
   function appendMeasurementEmptyState(list: HTMLElement): void {
     const empty = documentRef.createElement("div");
     empty.className = "repair-readings-empty";
-    empty.textContent = text(["measurement", "labels", "noReadings"], "Henüz manuel ölçüm yok");
+    empty.textContent = text(["measurement", "labels", "noPreviousReadings"], "Önceki ölçüm yok");
     list.append(empty);
   }
 
   function syncMeasurementInstrumentTabs(panel: HTMLElement): void {
+    const hasActiveSession = state.sessions.activeId !== null && state.sessions.detail !== null;
     panel.querySelectorAll<HTMLElement>("[data-repair-action='set-instrument']").forEach((tab) => {
-      tab.classList.toggle(
-        "repair-tab--active",
-        tab.dataset["instrumentKind"] === state.measurement.activeInstrumentKind
-      );
+      const active = hasActiveSession && tab.dataset["instrumentKind"] === state.measurement.activeInstrumentKind;
+      tab.classList.toggle("repair-tab--active", active);
+      tab.setAttribute("aria-pressed", String(active));
+      if (tab instanceof HTMLButtonElement) tab.disabled = !hasActiveSession;
     });
   }
 
@@ -70,61 +71,23 @@ export function createRepairMeasurementDomRuntime(params: {
 
     const readingsList = root.querySelector<HTMLElement>(".repair-readings-list");
     if (readingsList === null) return;
-    const fingerprint = state.measurement.recent
+    const previousReadings =
+      state.measurement.recent[0]?.rawDisplay === current.display &&
+      state.measurement.recent[0]?.unit === current.unit
+        ? state.measurement.recent.slice(1)
+        : state.measurement.recent;
+    const fingerprint = previousReadings
       .map((reading) => `${reading.id}:${reading.rawDisplay}`)
       .join("|");
     if (readingsList.dataset["fingerprint"] === fingerprint) return;
     readingsList.dataset["fingerprint"] = fingerprint;
     readingsList.replaceChildren();
-    if (state.measurement.recent.length === 0) {
+    if (previousReadings.length === 0) {
       appendMeasurementEmptyState(readingsList);
       return;
     }
-    state.measurement.recent.forEach((reading) => {
+    previousReadings.forEach((reading) => {
       appendMeasurementReadingRow(readingsList, reading);
-    });
-  }
-
-  function updateMeasurementEvidenceDom(root: Document | HTMLElement = documentRef): void {
-    const list = root.querySelector<HTMLElement>(".repair-measurement-evidence-list");
-    if (list === null) return;
-    const fingerprint = state.workbench.measurementEvidence
-      .map((entry) => `${entry.eventId}:${entry.currentDisplay}:${entry.history.join(">")}`)
-      .join("|");
-    if (list.dataset["fingerprint"] === fingerprint) return;
-    list.dataset["fingerprint"] = fingerprint;
-    list.replaceChildren();
-    state.workbench.measurementEvidence.slice(0, 4).forEach((entry) => {
-      const card = documentRef.createElement("button");
-      card.className = "repair-measurement-evidence";
-      card.type = "button";
-      card.dataset["repairAction"] = "jump-to-event";
-      card.dataset["eventId"] = entry.eventId;
-
-      const label = documentRef.createElement("span");
-      label.className = "repair-measurement-evidence__label";
-      label.textContent = entry.reference;
-      card.append(label);
-
-      const value = documentRef.createElement("span");
-      value.className = "repair-measurement-evidence__value";
-      value.textContent =
-        entry.previousDisplay === null
-          ? entry.currentDisplay
-          : `${entry.previousDisplay} → ${entry.currentDisplay}`;
-      card.append(value);
-
-      const spark = documentRef.createElement("span");
-      spark.className = "repair-measurement-evidence__spark";
-      entry.history.slice(-6).forEach((reading, index) => {
-        const bar = documentRef.createElement("i");
-        bar.style.height = `${Math.max(3, Math.min(16, 4 + index * 2))}px`;
-        bar.title = reading;
-        spark.append(bar);
-      });
-      card.append(spark);
-
-      list.append(card);
     });
   }
 
@@ -144,11 +107,9 @@ export function createRepairMeasurementDomRuntime(params: {
     syncMeasurementInstrumentTabs(panel);
 
     updateMeasurementLiveDom(panel);
-    updateMeasurementEvidenceDom(panel);
   }
 
   return {
-    updateMeasurementEvidenceDom,
     updateMeasurementLiveDom,
     updateMeasurementPanelDom,
   };
