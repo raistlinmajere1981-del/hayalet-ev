@@ -58,7 +58,6 @@ export const REPAIR_UI_COMMANDS = {
   updatePanelLayout: "RepairRoomUpdatePanelLayout",
   updatePanelTab: "RepairRoomUpdatePanelTab",
   updateFocus: "RepairRoomUpdateFocus",
-  updateLayout: "RepairRoomUpdateLayout",
   setOperationalProfile: "RepairRoomSetOperationalProfile",
   setVoiceGuidance: "RepairRoomSetVoiceGuidance",
   setInteractionSettings: "RepairRoomSetInteractionSettings",

@@ -220,12 +220,6 @@
           "exposure": "internal"
         },
         {
-          "name": "RepairRoomUpdateLayout",
-          "description": "Compatibility adapter for legacy Repair Room layout updates.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
           "name": "RepairRoomSetOperationalProfile",
           "description": "Switch Repair Room between novice and advanced operational density profiles.",
           "scope": "room-ui",

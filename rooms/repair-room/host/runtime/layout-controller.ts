@@ -1,8 +1,6 @@
 import { repairEventToTacticalFeedItem } from "../../shared/data/index.js";
 import {
-  REPAIR_DOCK_LAYOUT_PANEL_IDS,
   REPAIR_MAIN_LAYOUT_PANEL_IDS,
-  type RepairDockLayoutPanelId,
   type RepairImagePoint,
   type RepairMainLayoutPanelId,
   type RepairOverlayEntityRef,
@@ -40,10 +38,6 @@ import { getActiveSession } from "./session-helpers.js";
 
 export interface RepairLayoutController {
   applyFocusUpdate: (flat: Record<string, unknown>) => { success: boolean; message?: string };
-  applyLayoutCompatibilityUpdate: (flat: Record<string, unknown>) => {
-    success: boolean;
-    message?: string;
-  };
   applyOverlayEntitySelection: (params: {
     refs: RepairOverlayEntityRef[];
     mode: string | null;
@@ -186,17 +180,8 @@ export function createRepairLayoutController(params: {
       isRecordValue(source["mainColumns"]) ? source["mainColumns"] : null,
       REPAIR_MAIN_LAYOUT_PANEL_IDS
     );
-    const dockColumns = readPanelSizeRecord<RepairDockLayoutPanelId>(
-      isRecordValue(source["dockColumns"]) ? source["dockColumns"] : null,
-      REPAIR_DOCK_LAYOUT_PANEL_IDS
-    );
-    const bottomClusterHeightPx = safeNumber(
-      source["bottomClusterHeightPx"] ?? source["bottomHeightPx"]
-    );
     const panelSizes: RepairPanelSizePatch = {};
     if (mainColumns !== undefined) panelSizes.mainColumns = mainColumns;
-    if (dockColumns !== undefined) panelSizes.dockColumns = dockColumns;
-    if (bottomClusterHeightPx !== null) panelSizes.bottomClusterHeightPx = bottomClusterHeightPx;
     return Object.keys(panelSizes).length > 0 ? panelSizes : null;
   }
 
@@ -563,26 +548,8 @@ export function createRepairLayoutController(params: {
     return handled ? { success: true } : { success: false, message: "focus payload is empty" };
   }
 
-  function applyLayoutCompatibilityUpdate(flat: Record<string, unknown>): {
-    success: boolean;
-    message?: string;
-  } {
-    const panelResult = applyPanelLayoutUpdate(flat);
-    if (panelResult.success) return panelResult;
-    const focusResult = applyFocusUpdate(flat);
-    if (focusResult.success) return focusResult;
-    const tabResult = applyPanelTabUpdate(flat);
-    if (tabResult.success) return tabResult;
-    const viewportResult = applyViewportUpdate(flat);
-    if (viewportResult.success) return viewportResult;
-    const timelineResult = applyTimelineUpdate(flat);
-    if (timelineResult.success) return timelineResult;
-    return { success: false, message: "layout payload is empty" };
-  }
-
   return {
     applyFocusUpdate,
-    applyLayoutCompatibilityUpdate,
     applyOverlayEntitySelection,
     applyPanelLayoutUpdate,
     applyPanelTabUpdate,

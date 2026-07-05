@@ -73,10 +73,6 @@ function createCollapsedPanelMap(): Record<RepairPanelId, boolean> {
     "knowledge-pack": false,
     "visual-timeline": false,
     "operator-profile": false,
-    "repair-settings": false,
-    chat: false,
-    measurement: false,
-    "room-sync": false,
   };
 }
 

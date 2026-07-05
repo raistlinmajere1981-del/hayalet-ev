@@ -1,6 +1,4 @@
-/* -- Measurement Panel ---------------------------------------------------- */
-.repair-measurement-entry,
-.repair-measurement-panel-body {
+.repair-measurement-entry {
   display: flex;
   flex-direction: column;
   gap: var(--repair-sp-2);

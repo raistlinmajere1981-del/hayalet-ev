@@ -1,5 +1,4 @@
 import type { RepairUiState } from "../../shared/ui/state.js";
-import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
 
@@ -196,24 +195,4 @@ export function renderRepairSettingsPanelBody(
   body.append(handsFree);
 
   return body;
-}
-
-export function renderRepairSettingsPanel(
-  documentRef: Document,
-  state: RepairUiState,
-  text: TextFn
-): HTMLElement {
-  const voice = state.layout.voiceGuidance;
-  const handsFreeEnabled = voice.handsBusyMode && voice.ambientListeningState === "listening";
-  const body = renderRepairSettingsPanelBody(documentRef, state, text);
-
-  return createRepairPanel(documentRef, {
-    panelId: "repair-settings",
-    eyebrow: text(["settings", "eyebrow"], "SETTINGS"),
-    title: text(["settings", "title"], "Repair Controls"),
-    statusDot: handsFreeEnabled ? "live" : "idle",
-    collapsed: state.layout.collapsedPanels["repair-settings"],
-    noPanelControls: true,
-    body,
-  });
 }

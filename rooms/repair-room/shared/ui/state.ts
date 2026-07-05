@@ -132,9 +132,14 @@ export type RepairAiUrgency = "low" | "medium" | "high";
 
 export type RepairEvidenceDepth = "thin" | "supported" | "strong";
 
-export type RepairAiDispatchChannel = "chat" | "research" | "tactical";
-
 export type RepairAiDispatchStatus = "idle" | "pending" | "succeeded" | "failed";
+
+export type RepairAiDispatchActivity =
+  | "idle"
+  | "chat-reply"
+  | "evidence-research"
+  | "measurement-observation"
+  | "risk-scan";
 
 export type RepairAiTargetSlot = "ai0" | "ai1" | "ai2";
 
@@ -150,19 +155,14 @@ export interface RepairStorageState {
   message: string | null;
 }
 
-export interface RepairAiDispatchChannelState {
+export interface RepairAiDispatchState {
   status: RepairAiDispatchStatus;
   targetSlot: RepairAiTargetSlot;
   startedAt: string | null;
   completedAt: string | null;
   message: string | null;
   contextRefs: string[];
-}
-
-export interface RepairAiDispatchState {
-  chat: RepairAiDispatchChannelState;
-  research: RepairAiDispatchChannelState;
-  tactical: RepairAiDispatchChannelState;
+  activity: RepairAiDispatchActivity;
 }
 
 export interface RepairSuggestedActionProjection {
@@ -345,10 +345,6 @@ function createRepairGuidancePanelMap(
     "knowledge-pack": mode,
     "visual-timeline": mode,
     "operator-profile": mode,
-    "repair-settings": mode,
-    chat: mode,
-    measurement: mode,
-    "room-sync": mode,
   };
 }
 
@@ -359,7 +355,6 @@ export function createRepairDefaultGuidanceProjection(
   panels["workbench-stage"] = "expanded";
   panels["session-wizard"] = "contextual";
   panels["knowledge-pack"] = "compact";
-  panels["repair-settings"] = "compact";
 
   const lifecycle = [...REPAIR_INVESTIGATION_LIFECYCLE];
   return {
@@ -473,18 +468,14 @@ export function createRepairDefaultContinuityProjection(): RepairContinuityProje
 export function createRepairDefaultAiDispatchState(
   targetSlot: RepairAiTargetSlot = "ai2"
 ): RepairAiDispatchState {
-  const channel = (): RepairAiDispatchChannelState => ({
+  return {
     status: "idle",
     targetSlot,
     startedAt: null,
     completedAt: null,
     message: null,
     contextRefs: [],
-  });
-  return {
-    chat: channel(),
-    research: channel(),
-    tactical: channel(),
+    activity: "idle",
   };
 }
 

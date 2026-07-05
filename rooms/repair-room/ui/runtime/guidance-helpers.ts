@@ -9,10 +9,6 @@ export function getGuidanceSurfaceForPanel(
   if (panelId === "session-wizard") return "session-wizard";
   if (panelId === "knowledge-pack") return "knowledge-pack";
   if (panelId === "visual-timeline") return "visual-timeline";
-  if (panelId === "repair-settings") return "none";
-  if (panelId === "measurement") return "measurement";
-  if (panelId === "chat") return "chat";
-  if (panelId === "room-sync") return "room-sync";
   return "none";
 }
 

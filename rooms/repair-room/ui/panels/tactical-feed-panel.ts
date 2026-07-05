@@ -26,98 +26,69 @@ function formatAssistantSlot(slot: string, text?: TextFn): string {
 }
 
 export function formatRepairTacticalFeedStatusLine(state: RepairUiState, text?: TextFn): string {
-  const tactical = state.aiDispatch.tactical;
-  const tacticalSlot =
+  const dispatch = state.aiDispatch;
+  const slot =
     text !== undefined
-      ? formatAssistantSlot(tactical.targetSlot, text)
-      : formatAssistantSlot(tactical.targetSlot);
-  if (tactical.status === "pending") {
+      ? formatAssistantSlot(dispatch.targetSlot, text)
+      : formatAssistantSlot(dispatch.targetSlot);
+  if (dispatch.status === "pending") {
+    if (dispatch.activity === "evidence-research") {
+      return text !== undefined
+        ? text(["tacticalFeed", "researchGathering"], "{slot} bu cihaz için kanıt topluyor.", {
+            slot,
+          })
+        : `${slot} is gathering evidence for this device.`;
+    }
+    if (dispatch.activity === "chat-reply") {
+      return text !== undefined
+        ? text(["tacticalFeed", "chatDrafting"], "{slot} bir cevap taslaklıyor.", { slot })
+        : `${slot} is drafting a reply.`;
+    }
+    if (dispatch.activity === "risk-scan") {
+      return dispatch.message ?? `${slot} is scanning session risks.`;
+    }
     return text !== undefined
-      ? text(["tacticalFeed", "statusChecking"], "{slot} son ölçümü kontrol ediyor.", {
-          slot: tacticalSlot,
-        })
-      : `${tacticalSlot} is checking the latest measurement.`;
+      ? text(["tacticalFeed", "statusChecking"], "{slot} son ölçümü kontrol ediyor.", { slot })
+      : `${slot} is checking the latest measurement.`;
   }
-  if (tactical.status === "succeeded") {
+  if (dispatch.status === "succeeded") {
     return (
-      tactical.message ??
-      (text !== undefined
-        ? text(["tacticalFeed", "statusAddedNote"], "{slot} bir onarım notu ekledi.", {
-            slot: tacticalSlot,
-          })
-        : `${tacticalSlot} added a repair note.`)
+      dispatch.message ??
+      (dispatch.activity === "evidence-research"
+        ? text !== undefined
+          ? text(["tacticalFeed", "researchPrepared"], "{slot} bir kanıt paketi hazırladı.", {
+              slot,
+            })
+          : `${slot} prepared an evidence pack.`
+        : dispatch.activity === "chat-reply"
+          ? text !== undefined
+            ? text(["tacticalFeed", "chatReady"], "{slot} cevap hazır.", { slot })
+            : `${slot} reply is ready.`
+          : text !== undefined
+            ? text(["tacticalFeed", "statusAddedNote"], "{slot} bir onarım notu ekledi.", {
+                slot,
+              })
+            : `${slot} added a repair note.`)
     );
   }
-  if (tactical.status === "failed") {
+  if (dispatch.status === "failed") {
     return (
-      tactical.message ??
-      (text !== undefined
-        ? text(["tacticalFeed", "statusFailed"], "{slot} bir onarım notu ekleyemedi.", {
-            slot: tacticalSlot,
-          })
-        : `${tacticalSlot} could not add a repair note.`)
-    );
-  }
-
-  const research = state.aiDispatch.research;
-  const researchSlot =
-    text !== undefined
-      ? formatAssistantSlot(research.targetSlot, text)
-      : formatAssistantSlot(research.targetSlot);
-  if (research.status === "pending") {
-    return text !== undefined
-      ? text(["tacticalFeed", "researchGathering"], "{slot} bu cihaz için kanıt topluyor.", {
-          slot: researchSlot,
-        })
-      : `${researchSlot} is gathering evidence for this device.`;
-  }
-  if (research.status === "succeeded") {
-    return (
-      research.message ??
-      (text !== undefined
-        ? text(["tacticalFeed", "researchPrepared"], "{slot} bir kanıt paketi hazırladı.", {
-            slot: researchSlot,
-          })
-        : `${researchSlot} prepared an evidence pack.`)
-    );
-  }
-  if (research.status === "failed") {
-    return (
-      research.message ??
-      (text !== undefined
-        ? text(["tacticalFeed", "researchFailed"], "{slot} bir kanıt paketi hazırlayamadı.", {
-            slot: researchSlot,
-          })
-        : `${researchSlot} could not prepare an evidence pack.`)
-    );
-  }
-
-  const chat = state.aiDispatch.chat;
-  const chatSlot =
-    text !== undefined
-      ? formatAssistantSlot(chat.targetSlot, text)
-      : formatAssistantSlot(chat.targetSlot);
-  if (chat.status === "pending") {
-    return text !== undefined
-      ? text(["tacticalFeed", "chatDrafting"], "{slot} bir cevap taslaklıyor.", { slot: chatSlot })
-      : `${chatSlot} is drafting a reply.`;
-  }
-  if (chat.status === "succeeded") {
-    return (
-      chat.message ??
-      (text !== undefined
-        ? text(["tacticalFeed", "chatReady"], "{slot} cevap hazır.", { slot: chatSlot })
-        : `${chatSlot} reply is ready.`)
-    );
-  }
-  if (chat.status === "failed") {
-    return (
-      chat.message ??
-      (text !== undefined
-        ? text(["tacticalFeed", "chatFailed"], "{slot} bir cevap taslaklayamadı.", {
-            slot: chatSlot,
-          })
-        : `${chatSlot} could not draft a reply.`)
+      dispatch.message ??
+      (dispatch.activity === "evidence-research"
+        ? text !== undefined
+          ? text(["tacticalFeed", "researchFailed"], "{slot} bir kanıt paketi hazırlayamadı.", {
+              slot,
+            })
+          : `${slot} could not prepare an evidence pack.`
+        : dispatch.activity === "chat-reply"
+          ? text !== undefined
+            ? text(["tacticalFeed", "chatFailed"], "{slot} bir cevap taslaklayamadı.", { slot })
+            : `${slot} could not draft a reply.`
+          : text !== undefined
+            ? text(["tacticalFeed", "statusFailed"], "{slot} bir onarım notu ekleyemedi.", {
+                slot,
+              })
+            : `${slot} could not add a repair note.`)
     );
   }
 

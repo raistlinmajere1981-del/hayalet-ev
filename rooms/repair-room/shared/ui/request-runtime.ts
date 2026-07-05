@@ -131,9 +131,6 @@ export function createRepairUiRequestRuntime() {
     updateFocus(payload: Record<string, unknown>) {
       return sendCommand(REPAIR_UI_COMMANDS.updateFocus, payload);
     },
-    updateLayout(payload: Record<string, unknown>) {
-      return sendCommand(REPAIR_UI_COMMANDS.updateLayout, payload);
-    },
     setOperationalProfile(payload: { profile: "novice" | "advanced" }) {
       return sendCommand(REPAIR_UI_COMMANDS.setOperationalProfile, payload);
     },

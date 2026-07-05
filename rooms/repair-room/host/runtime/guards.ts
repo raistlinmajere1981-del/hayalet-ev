@@ -79,10 +79,6 @@ const PANEL_IDS: ReadonlySet<string> = new Set([
   "knowledge-pack",
   "visual-timeline",
   "operator-profile",
-  "repair-settings",
-  "chat",
-  "measurement",
-  "room-sync",
 ]);
 const INSTRUMENT_KINDS: ReadonlySet<string> = new Set(["multimeter", "power-supply", "signal-gen"]);
 const OPERATOR_PROFILE_TABS: ReadonlySet<string> = new Set([

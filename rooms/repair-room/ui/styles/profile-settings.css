@@ -115,6 +115,30 @@
   padding-top: var(--repair-sp-2);
 }
 
+.repair-sync-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--repair-sp-3);
+  padding-bottom: var(--repair-sp-1);
+  border-bottom: var(--repair-px-1) solid var(--repair-border-muted);
+  font-size: var(--repair-px-11);
+}
+
+.repair-sync-row__label {
+  color: var(--repair-text-dim);
+}
+
+.repair-sync-row__value {
+  min-width: 0;
+  color: var(--repair-text-muted);
+  font-family: var(--repair-mono);
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .repair-profile-preference-row {
   align-items: center;
 }

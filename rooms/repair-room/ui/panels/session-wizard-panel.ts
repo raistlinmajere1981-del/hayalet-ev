@@ -355,7 +355,7 @@ function appendAiTargetSelect(
   const select = documentRef.createElement("select");
   select.className = "repair-wizard-field__input";
   select.dataset["repairAction"] = "set-ai-target-slot";
-  select.value = state.aiDispatch.chat.targetSlot;
+  select.value = state.aiDispatch.targetSlot;
   AI_TARGET_OPTIONS.forEach((option) => {
     const optionEl = documentRef.createElement("option");
     optionEl.value = option.targetSlot;
@@ -1018,7 +1018,7 @@ function renderResearchStep(
   const form = documentRef.createElement("div");
   form.className = "repair-wizard-form";
 
-  const message = state.wizard.draft.researchMessage ?? state.aiDispatch.research.message;
+  const message = state.wizard.draft.researchMessage ?? state.aiDispatch.message;
   if (message !== null && message.trim() !== "") {
     const status = documentRef.createElement("div");
     status.className = `repair-wizard-status repair-wizard-status--${state.wizard.draft.researchStatus}`;

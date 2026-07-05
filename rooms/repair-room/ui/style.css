@@ -4,7 +4,6 @@
 @import "./styles/statusbar.css";
 @import "./styles/workspace.css";
 @import "./styles/panel.css";
-@import "./styles/live-chip.css";
 @import "./styles/session-rail.css";
 @import "./styles/workbench.css";
 @import "./styles/tactical-feed.css";
@@ -16,10 +15,7 @@
 @import "./styles/profile-settings.css";
 @import "./styles/repair-settings.css";
 @import "./styles/settings-overlay.css";
-@import "./styles/room-sync.css";
-@import "./styles/chat-measurement-sync.css";
 @import "./styles/measurement.css";
 @import "./styles/forensic-interactions.css";
 @import "./styles/legend.css";
 @import "./styles/mount-cascade.css";
-@import "./styles/utility.css";

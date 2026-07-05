@@ -617,18 +617,12 @@ void test("repair-room runtime turns timeline jumps and layout controls into sta
           "session-rail": 1.25,
           "workbench-stage": 1.4,
         },
-        dockColumns: {
-          measurement: 0.65,
-        },
-        bottomClusterHeightPx: 340,
       },
     }).success,
     true
   );
   assert.equal(runtime.getStateSnapshot().state.layout.panelSizes.mainColumns["session-rail"], 1.25);
   assert.equal(runtime.getStateSnapshot().state.layout.panelSizes.mainColumns["workbench-stage"], 1.4);
-  assert.equal(runtime.getStateSnapshot().state.layout.panelSizes.dockColumns.measurement, 0.65);
-  assert.equal(runtime.getStateSnapshot().state.layout.panelSizes.bottomClusterHeightPx, 340);
 
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.updatePanelTab, {
@@ -655,13 +649,41 @@ void test("repair-room runtime turns timeline jumps and layout controls into sta
   assert.equal(runtime.getStateSnapshot().state.layout.focusMode, true);
 
   assert.equal(
-    runtime.handleCommand(REPAIR_UI_COMMANDS.updateLayout, {
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updatePanelLayout, {
       panelId: "tactical-feed",
       collapsed: false,
     }).success,
     true
   );
   assert.equal(runtime.getStateSnapshot().state.layout.collapsedPanels["tactical-feed"], false);
+});
+
+void test("repair-room updatePanelLayout rejects retired panel ids", () => {
+  const runtime = createRepairRoomHostRuntime().activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  const retiredPanelIds = ["chat", "measurement", "repair-settings", "room-sync"] as const;
+
+  retiredPanelIds.forEach((panelId) => {
+    const result = runtime.handleCommand(REPAIR_UI_COMMANDS.updatePanelLayout, {
+      panelId,
+      collapsed: true,
+    });
+
+    assert.equal(result.success, false);
+    assert.match(result.message ?? "", /panel layout payload is empty/);
+  });
+
+  const collapsedPanels = runtime.getStateSnapshot().state.layout.collapsedPanels as Record<
+    string,
+    boolean | undefined
+  >;
+  retiredPanelIds.forEach((panelId) => {
+    assert.equal(Object.prototype.hasOwnProperty.call(collapsedPanels, panelId), false);
+  });
+
+  runtime.dispose();
 });
 
 void test("repair-room runtime keeps event log canonical while feed remains a visibility projection", () => {

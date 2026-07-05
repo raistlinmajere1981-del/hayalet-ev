@@ -27,8 +27,7 @@ import type {
   RepairWorkbenchTool,
 } from "../../shared/types/index.js";
 import type {
-  RepairAiDispatchChannel,
-  RepairAiDispatchChannelState,
+  RepairAiDispatchState,
   RepairAiTargetSlot,
   RepairOperationsSnapshot,
   RepairStorageState,
@@ -250,8 +249,7 @@ export type RepairRuntimeAction =
     }
   | {
       type: "ai-dispatch/set";
-      channel: RepairAiDispatchChannel;
-      state: RepairAiDispatchChannelState;
+      state: RepairAiDispatchState;
     }
   | {
       type: "ai-dispatch/set-target-slot";

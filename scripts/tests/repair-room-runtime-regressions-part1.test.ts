@@ -3,11 +3,6 @@ import assert from "node:assert/strict";
 import createRepairRoomHostRuntimeBase from "../../rooms/repair-room/host/runtime.ts";
 import { createRepairReplayProjection } from "../../rooms/repair-room/host/state/repair-replay-projection.ts";
 import {
-  createRepairUiSnapshot,
-  createRepairUiSnapshotMeta,
-} from "../../rooms/repair-room/host/state/repair-selectors.ts";
-import { getRepairRoomSyncRows } from "../../rooms/repair-room/ui/panels/room-sync-panel.ts";
-import {
   REPAIR_ROOM_ID,
   REPAIR_UI_COMMANDS,
 } from "../../rooms/repair-room/shared/repair-constants.ts";
@@ -32,18 +27,6 @@ import {
 type RepairRoomHostRuntimeOptions = NonNullable<
   Parameters<typeof createRepairRoomHostRuntimeBase>[0]
 >;
-
-function testT(
-  _path: string[],
-  fallback: string,
-  params?: Record<string, string | number>
-): string {
-  if (params === undefined) return fallback;
-  return Object.entries(params).reduce(
-    (acc, [key, val]) => acc.replace(new RegExp(`\\{${key}\\}`, "g"), String(val)),
-    fallback
-  );
-}
 
 function createRepairRoomHostRuntime(options: RepairRoomHostRuntimeOptions = {}) {
   const usesCallerState =
@@ -197,7 +180,7 @@ void test("repair-room host exports room-page lifecycle hooks and command regist
   assert.equal(normalized.snapshot.guidance.operationalProfile, "novice");
   assert.equal(normalized.snapshot.guidance.panelVisibility.primarySurface, "measurement");
   assert.equal(normalized.snapshot.guidance.panelVisibility.tacticalFeedDensity, "compact");
-  assert.equal(normalized.snapshot.guidance.panelVisibility.panels.measurement, "compact");
+  assert.equal(normalized.snapshot.guidance.panelVisibility.panels["tactical-feed"], "compact");
   assert.equal(normalized.snapshot.guidance.panelVisibility.panels["session-wizard"], "compact");
   assert.equal(normalized.snapshot.guidance.overlaySaturation.maxVisibleRelationships, 4);
   assert.equal(normalized.snapshot.guidance.overlaySaturation.maxVisibleRegions, 5);
@@ -304,7 +287,8 @@ void test("repair-room runtime handles the advertised interactive Phase 1 comman
   chatState = runtime.getStateSnapshot().state.chat;
   assert.equal(chatState.pendingReplyId, null);
   assert.equal(chatState.turns.at(-1)?.role, "operator");
-  assert.equal(runtime.getStateSnapshot().state.aiDispatch.chat.status, "failed");
+  assert.equal(runtime.getStateSnapshot().state.aiDispatch.status, "failed");
+  assert.equal(runtime.getStateSnapshot().state.aiDispatch.activity, "chat-reply");
 
   assert.ok(notifications.some((entry) => entry.type === "repair-state"));
   runtime.dispose();
@@ -352,8 +336,9 @@ void test("repair-room chat uses live protocol bridge guidance", async () => {
   const chatState = runtime.getStateSnapshot().state.chat;
   assert.equal(chatState.pendingReplyId, null);
   assert.equal(chatState.turns.at(-1)?.role, "ai");
-  assert.equal(runtime.getStateSnapshot().state.aiDispatch.chat.status, "succeeded");
-  assert.equal(runtime.getStateSnapshot().state.aiDispatch.chat.targetSlot, "ai2");
+  assert.equal(runtime.getStateSnapshot().state.aiDispatch.status, "succeeded");
+  assert.equal(runtime.getStateSnapshot().state.aiDispatch.activity, "chat-reply");
+  assert.equal(runtime.getStateSnapshot().state.aiDispatch.targetSlot, "ai2");
   assert.equal(
     chatState.turns.at(-1)?.text,
     "Measure 5V_STBY first, then compare it with the knowledge-pack expected rail."
@@ -416,14 +401,15 @@ void test("repair-room chat can apply safe AI room commands and reject malformed
     ),
     true
   );
-  assert.equal(state.aiDispatch.chat.status, "succeeded");
-  assert.match(state.aiDispatch.chat.message ?? "", /1\/1 room command applied/);
-  assert.match(state.aiDispatch.chat.message ?? "", /1 malformed room command ignored/);
+  assert.equal(state.aiDispatch.status, "succeeded");
+  assert.equal(state.aiDispatch.activity, "chat-reply");
+  assert.match(state.aiDispatch.message ?? "", /1\/1 room command applied/);
+  assert.match(state.aiDispatch.message ?? "", /1 malformed room command ignored/);
 
   runtime.dispose();
 });
 
-void test("repair-room sync panel rows expose AI2 dispatch status", async () => {
+void test("repair-room chat reply exposes AI2 dispatch state", async () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
@@ -447,54 +433,38 @@ void test("repair-room sync panel rows expose AI2 dispatch status", async () => 
     setImmediate(resolve);
   });
 
-  const runtimeState = runtime.getStateSnapshot().state;
-  const state = createRepairUiSnapshot(runtimeState);
-  const meta = createRepairUiSnapshotMeta(runtimeState);
-  const rows = Object.fromEntries(
-    getRepairRoomSyncRows(state, meta, testT)
-  );
-
-  assert.equal(rows["Asistan AI"], "Asistan AI 2 hazır, 3 başvuru");
+  const { aiDispatch } = runtime.getStateSnapshot().state;
+  assert.equal(aiDispatch.status, "succeeded");
+  assert.equal(aiDispatch.activity, "chat-reply");
+  assert.equal(aiDispatch.targetSlot, "ai2");
+  assert.equal(aiDispatch.contextRefs.length, 3);
+  assert.equal(aiDispatch.contextRefs.includes("tp-5v-stby"), true);
 
   runtime.dispose();
 });
 
-void test("repair-room sync panel shows the latest unified Assistant AI dispatch", () => {
+void test("repair-room state exposes one Assistant AI dispatch contract", () => {
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
     notifyRoom: () => {},
   });
-  const runtimeState = runtime.getStateSnapshot().state;
-  const state = createRepairUiSnapshot(runtimeState);
-  const meta = createRepairUiSnapshotMeta(runtimeState);
-  const rows = Object.fromEntries(
-    getRepairRoomSyncRows(
-      {
-        ...state,
-        aiDispatch: {
-          chat: {
-            ...state.aiDispatch.chat,
-            status: "succeeded",
-            targetSlot: "ai2",
-            completedAt: "2026-05-10T10:30:00.000Z",
-            contextRefs: ["chat-old"],
-          },
-          research: {
-            ...state.aiDispatch.research,
-            status: "succeeded",
-            targetSlot: "ai0",
-            completedAt: "2026-05-10T10:31:00.000Z",
-            contextRefs: ["evidence-new", "bn44-00932a"],
-          },
-          tactical: state.aiDispatch.tactical,
-        },
-      },
-      meta,
-      testT
-    )
-  );
+  const dispatch = runtime.getStateSnapshot().state.aiDispatch as Record<string, unknown>;
 
-  assert.equal(rows["Asistan AI"], "Asistan AI 0 hazır, 2 başvuru");
+  assert.deepEqual(Object.keys(dispatch).sort(), [
+    "activity",
+    "completedAt",
+    "contextRefs",
+    "message",
+    "startedAt",
+    "status",
+    "targetSlot",
+  ]);
+  assert.equal(dispatch["activity"], "idle");
+  assert.equal(dispatch["status"], "idle");
+  assert.equal(Object.prototype.hasOwnProperty.call(dispatch, "chat"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(dispatch, "research"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(dispatch, "tactical"), false);
+
   runtime.dispose();
 });
 
@@ -578,7 +548,8 @@ void test("repair-room research uses selected AI slot for live knowledge-pack di
     runtime.handleCommand(REPAIR_UI_COMMANDS.startKnowledgeResearch, { targetSlot: "ai0" }).success,
     true
   );
-  assert.equal(runtime.getStateSnapshot().state.aiDispatch.research.status, "pending");
+  assert.equal(runtime.getStateSnapshot().state.aiDispatch.status, "pending");
+  assert.equal(runtime.getStateSnapshot().state.aiDispatch.activity, "evidence-research");
 
   await new Promise<void>((resolve) => {
     setImmediate(resolve);
@@ -593,8 +564,9 @@ void test("repair-room research uses selected AI slot for live knowledge-pack di
   assert.equal(protocol?.["protocolKey"], "repair-room-assistant-evidence");
 
   const state = runtime.getStateSnapshot().state;
-  assert.equal(state.aiDispatch.research.targetSlot, "ai0");
-  assert.equal(state.aiDispatch.research.status, "succeeded");
+  assert.equal(state.aiDispatch.targetSlot, "ai0");
+  assert.equal(state.aiDispatch.activity, "evidence-research");
+  assert.equal(state.aiDispatch.status, "succeeded");
   assert.equal(state.wizard.currentStep, "evidence-review");
   assert.equal(state.wizard.generatedKnowledgePackId, "ai-bn44-00932a");
   assert.equal(state.wizard.foundResources[0]?.id, "candidate-schematic");
@@ -1107,15 +1079,6 @@ void test("repair-room hydrates room-local storage without opening saved session
   assert.equal(runtimeState.sessions[storedSession.id]?.title, "Persisted repair session");
   assert.equal(runtimeState.chat.turns.length, 0);
 
-  const rows = Object.fromEntries(
-    getRepairRoomSyncRows(
-      createRepairUiSnapshot(runtimeState),
-      createRepairUiSnapshotMeta(runtimeState),
-      testT
-    )
-  );
-  assert.equal(rows["Depolama"], "Onarım geçmişi hazır, 1");
-
   assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.activateSession, { sessionId: storedSession.id })
       .success,
@@ -1291,8 +1254,9 @@ void test("repair-room measurements can promote Assistant AI observations into c
     state.tacticalFeed.some((item) => item.eventId === generatedRisk.id),
     true
   );
-  assert.equal(state.aiDispatch.tactical.status, "succeeded");
-  assert.equal(state.aiDispatch.tactical.targetSlot, "ai2");
+  assert.equal(state.aiDispatch.status, "succeeded");
+  assert.equal(state.aiDispatch.activity, "risk-scan");
+  assert.equal(state.aiDispatch.targetSlot, "ai2");
 
   runtime.dispose();
 });
@@ -1354,7 +1318,8 @@ void test("repair-room tactical bridge accepts content-backed top-level observat
   if (generatedRisk.kind === "risk-flag") {
     assert.equal(generatedRisk.linkedMeasurementIds?.includes(measurement.id), true);
   }
-  assert.equal(state.aiDispatch.tactical.status, "succeeded");
+  assert.equal(state.aiDispatch.status, "succeeded");
+  assert.equal(state.aiDispatch.activity, "risk-scan");
 
   runtime.dispose();
 });
@@ -1371,7 +1336,6 @@ void test("repair-room Phase 3 arbitrates one calm guidance surface per profile"
   let projection = createRepairReplayProjection(state, session);
   assert.equal(projection.guidance.operationalProfile, "novice");
   assert.equal(projection.guidance.panelVisibility.primarySurface, "measurement");
-  assert.equal(projection.guidance.panelVisibility.panels.measurement, "compact");
   assert.equal(projection.guidance.panelVisibility.panels["tactical-feed"], "compact");
   assert.equal(projection.guidance.panelVisibility.panels["session-wizard"], "compact");
   assert.equal(projection.guidance.panelVisibility.tacticalFeedDensity, "compact");
@@ -1388,7 +1352,7 @@ void test("repair-room Phase 3 arbitrates one calm guidance surface per profile"
   assert.equal(projection.guidance.operationalProfile, "advanced");
   assert.equal(projection.guidance.overlaySaturation.maxVisibleRelationships, 12);
   assert.equal(projection.guidance.overlaySaturation.labelMode, "full");
-  assert.equal(projection.guidance.panelVisibility.panels.chat, "compact");
+  assert.equal(projection.guidance.panelVisibility.panels["tactical-feed"], "compact");
   assert.equal(projection.guidance.panelVisibility.panels["session-wizard"], "compact");
 
   assert.equal(

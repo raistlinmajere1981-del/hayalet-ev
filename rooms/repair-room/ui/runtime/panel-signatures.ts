@@ -8,9 +8,6 @@ export function buildRepairPanelSignature(params: {
 }): string {
   const { meta, panelId, state } = params;
   const timelineShape = state.workbench.timeline;
-  const timelineLiveWindow = timelineShape.autoFollowLive
-    ? Math.floor((timelineShape.playheadMs + 10000) / 10000)
-    : 0;
   const layoutShape = {
     collapsed: state.layout.collapsedPanels[panelId],
     primarySurface: state.guidance.panelVisibility.primarySurface,
@@ -104,49 +101,6 @@ export function buildRepairPanelSignature(params: {
       return JSON.stringify({
         profile: state.operatorProfile,
         operatorProfileTabId: state.layout.operatorProfileTabId,
-        layoutShape,
-      });
-    case "repair-settings":
-      return JSON.stringify({
-        voiceGuidance: state.layout.voiceGuidance,
-        interactionSettings: state.layout.interactionSettings,
-        attentionBudget: state.layout.attentionBudget,
-        operationsAvailable: state.operationsAvailable,
-        operations: state.operations,
-        voiceReadiness: state.voiceReadiness,
-        guidanceShape,
-        layoutShape,
-      });
-    case "chat":
-      return JSON.stringify({ sessionShape, chat: state.chat, guidanceShape, layoutShape });
-    case "measurement":
-      return JSON.stringify({
-        sessionShape,
-        measurementShape: {
-          activeInstrumentKind: state.measurement.activeInstrumentKind,
-          instrumentId: state.measurement.current.instrumentId,
-          kind: state.measurement.current.kind,
-          label: state.measurement.current.label,
-          mode: state.measurement.current.mode,
-          range: state.measurement.current.range,
-          hold: state.measurement.current.hold,
-        },
-        guidanceShape,
-        layoutShape,
-      });
-    case "room-sync":
-      return JSON.stringify({
-        sessionShape,
-        phase: state.phase,
-        activeId: state.sessions.activeId,
-        aiDispatch: state.aiDispatch,
-        focusedEventId: state.workbench.focusedEventId,
-        timelineShape: {
-          liveWindow: timelineLiveWindow,
-        },
-        events: meta.events.length,
-        latestEventId: meta.events.at(-1)?.id ?? null,
-        guidanceShape,
         layoutShape,
       });
     default: {

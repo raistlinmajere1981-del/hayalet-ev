@@ -5,19 +5,13 @@ export type RepairPanelId =
   | "session-wizard"
   | "knowledge-pack"
   | "visual-timeline"
-  | "operator-profile"
-  | "repair-settings"
-  | "chat"
-  | "measurement"
-  | "room-sync";
+  | "operator-profile";
 
 export type RepairMainLayoutPanelId =
   | "session-rail"
   | "workbench-stage"
   | "tactical-feed"
   | "knowledge-pack";
-
-export type RepairDockLayoutPanelId = "measurement";
 
 export type RepairOperatorProfileTabId = "tools" | "skills" | "preferences" | "controls";
 
@@ -44,15 +38,9 @@ export const REPAIR_MAIN_LAYOUT_PANEL_IDS = [
   "knowledge-pack",
 ] as const satisfies readonly RepairMainLayoutPanelId[];
 
-export const REPAIR_DOCK_LAYOUT_PANEL_IDS = [
-  "measurement",
-] as const satisfies readonly RepairDockLayoutPanelId[];
-
 export const REPAIR_PANEL_SIZE_LIMITS = {
   minWeight: 0.35,
   maxWeight: 4,
-  minBottomClusterHeightPx: 180,
-  maxBottomClusterHeightPx: 560,
 } as const;
 
 export interface RepairVoiceGuidanceState {
@@ -77,14 +65,10 @@ export interface RepairAttentionBudgetState {
 
 export interface RepairPanelSizeState {
   mainColumns: Record<RepairMainLayoutPanelId, number>;
-  dockColumns: Record<RepairDockLayoutPanelId, number>;
-  bottomClusterHeightPx: number;
 }
 
 export interface RepairPanelSizePatch {
   mainColumns?: Partial<Record<RepairMainLayoutPanelId, number>>;
-  dockColumns?: Partial<Record<RepairDockLayoutPanelId, number>>;
-  bottomClusterHeightPx?: number;
 }
 
 export interface RepairLayoutState {
@@ -110,15 +94,6 @@ function clampRepairPanelSize(value: unknown, fallback: number): number {
   );
 }
 
-function clampRepairBottomClusterHeight(value: unknown, fallback: number): number {
-  const numeric = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(numeric)) return fallback;
-  return Math.min(
-    REPAIR_PANEL_SIZE_LIMITS.maxBottomClusterHeightPx,
-    Math.max(REPAIR_PANEL_SIZE_LIMITS.minBottomClusterHeightPx, numeric)
-  );
-}
-
 export function createRepairDefaultPanelSizes(): RepairPanelSizeState {
   return {
     mainColumns: {
@@ -127,10 +102,6 @@ export function createRepairDefaultPanelSizes(): RepairPanelSizeState {
       "tactical-feed": 0.82,
       "knowledge-pack": 0.9,
     },
-    dockColumns: {
-      measurement: 1,
-    },
-    bottomClusterHeightPx: 300,
   };
 }
 
@@ -155,15 +126,5 @@ export function normalizeRepairPanelSizes(patch: RepairPanelSizePatch = {}): Rep
         defaults.mainColumns["knowledge-pack"]
       ),
     },
-    dockColumns: {
-      measurement: clampRepairPanelSize(
-        patch.dockColumns?.measurement,
-        defaults.dockColumns.measurement
-      ),
-    },
-    bottomClusterHeightPx: clampRepairBottomClusterHeight(
-      patch.bottomClusterHeightPx,
-      defaults.bottomClusterHeightPx
-    ),
   };
 }

@@ -1,6 +1,5 @@
-import type { RepairPanelId } from "../../shared/types/index.js";
 import type { RepairUiState } from "../../shared/ui/state.js";
-import { setClassNameIfChanged, setTextIfChanged } from "./dom-utils.js";
+import { setTextIfChanged } from "./dom-utils.js";
 import {
   getMeasurementDisplayLabel,
   getMeasurementModeRangeText,
@@ -11,9 +10,8 @@ export function createRepairMeasurementDomRuntime(params: {
   documentRef: Document;
   state: RepairUiState;
   text: RepairMeasurementTextFn;
-  updatePanelChrome: (panel: HTMLElement, panelId: RepairPanelId) => void;
 }) {
-  const { documentRef, state, text, updatePanelChrome } = params;
+  const { documentRef, state, text } = params;
 
   function appendMeasurementReadingRow(
     list: HTMLElement,
@@ -95,24 +93,6 @@ export function createRepairMeasurementDomRuntime(params: {
     });
   }
 
-  function updateMeasurementPanelDom(panel: HTMLElement): void {
-    updatePanelChrome(panel, "measurement");
-
-    const dot = panel.querySelector<HTMLElement>(".repair-panel__status-dot");
-    if (dot !== null) {
-      setClassNameIfChanged(
-        dot,
-        `repair-panel__status-dot repair-panel__status-dot--${
-          state.measurement.current.hold ? "amber" : "live"
-        }`
-      );
-    }
-
-    syncMeasurementInstrumentTabs(panel);
-
-    updateMeasurementLiveDom(panel);
-  }
-
   function updateMeasurementEntryDom(root: HTMLElement): void {
     syncMeasurementInstrumentTabs(root);
     updateMeasurementLiveDom(root);
@@ -121,6 +101,5 @@ export function createRepairMeasurementDomRuntime(params: {
   return {
     updateMeasurementEntryDom,
     updateMeasurementLiveDom,
-    updateMeasurementPanelDom,
   };
 }

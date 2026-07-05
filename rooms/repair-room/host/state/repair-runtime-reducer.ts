@@ -348,18 +348,14 @@ export function reduceRepairRuntimeState(
     case "ai-dispatch/set":
       return {
         ...state,
-        aiDispatch: {
-          ...state.aiDispatch,
-          [action.channel]: action.state,
-        },
+        aiDispatch: action.state,
       };
     case "ai-dispatch/set-target-slot":
       return {
         ...state,
         aiDispatch: {
-          chat: { ...state.aiDispatch.chat, targetSlot: action.targetSlot },
-          research: { ...state.aiDispatch.research, targetSlot: action.targetSlot },
-          tactical: { ...state.aiDispatch.tactical, targetSlot: action.targetSlot },
+          ...state.aiDispatch,
+          targetSlot: action.targetSlot,
         },
       };
     case "layout/collapse-panel":
@@ -384,10 +380,6 @@ export function reduceRepairRuntimeState(
             mainColumns: {
               ...state.layout.panelSizes.mainColumns,
               ...action.panelSizes.mainColumns,
-            },
-            dockColumns: {
-              ...state.layout.panelSizes.dockColumns,
-              ...action.panelSizes.dockColumns,
             },
           }),
         },

@@ -781,7 +781,7 @@ export function createRepairCommandRouter(params: {
           },
           { type: "phase/set", phase: "wizard-active" },
         ]);
-        aiController.setAiDispatchStatus("research", "idle", {
+        aiController.setAiDispatchStatus("idle", "idle", {
           message: "Asistan AI kanıt araştırması atlandı; tamir kanıt paketi olmadan başlayabilir.",
           contextRefs: [wizard.draft.boardCode, wizard.draft.model].filter(
             (value) => value.trim() !== ""
@@ -1348,7 +1348,7 @@ export function createRepairCommandRouter(params: {
           store.dispatch({ type: "chat/append-turn", turn });
           store.dispatch({ type: "chat/set-composer", draft: "" });
           store.dispatch({ type: "chat/set-pending", turnId: turn.id });
-          aiController.setAiDispatchStatus("chat", "pending", {
+          aiController.setAiDispatchStatus("chat-reply", "pending", {
             message: "Asistan AI cevap hazırlıyor.",
             contextRefs: Array.from(
               new Set([
@@ -1427,8 +1427,6 @@ export function createRepairCommandRouter(params: {
         return layoutController.applyPanelTabUpdate(flat);
       case REPAIR_UI_COMMANDS.updateFocus:
         return layoutController.applyFocusUpdate(flat);
-      case REPAIR_UI_COMMANDS.updateLayout:
-        return layoutController.applyLayoutCompatibilityUpdate(flat);
       case REPAIR_UI_COMMANDS.setOperationalProfile: {
         const profile = flat["profile"] ?? flat["operationalProfile"];
         if (!isOperationalProfile(profile)) {

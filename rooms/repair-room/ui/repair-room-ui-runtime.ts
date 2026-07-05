@@ -69,14 +69,6 @@ import { createRepairTacticalFeedDomRuntime } from "./runtime/tactical-feed-dom.
 import { buildRepairPanelSignature } from "./runtime/panel-signatures.js";
 import { createRepairOverlayRuntime } from "./runtime/overlay-runtime.js";
 
-export {
-  REPAIR_DOCK_PANEL_IDS,
-  getRepairDockGridTemplateColumns,
-  getRepairDockLayoutProjection,
-  getRepairVisibleDockPanelIds,
-  type RepairDockLayoutProjection,
-} from "./runtime/dock-layout.js";
-
 type RepairOpenDialogResult = { canceled?: boolean; filePaths?: string[] };
 
 type RepairOpenDialogOptions = {
@@ -124,7 +116,6 @@ interface RepairPersistentShell {
   bottomCluster: HTMLElement;
   bottomClusterHeader: HTMLElement;
   bottomClusterBody: HTMLElement;
-  dock: HTMLElement;
   settingsOverlay: HTMLElement;
   settingsOverlayBody: HTMLElement;
   settingsOverlaySignature: string;
@@ -148,15 +139,7 @@ interface RepairMainColumnResizeDrag extends RepairColumnResizeDragBase {
   afterId: RepairMainLayoutPanelId;
 }
 
-interface RepairBottomResizeDrag {
-  group: "bottom-cluster";
-  pointerId: number;
-  startY: number;
-  startHeightPx: number;
-  maxHeightPx: number;
-}
-
-type RepairLayoutResizeDrag = RepairMainColumnResizeDrag | RepairBottomResizeDrag;
+type RepairLayoutResizeDrag = RepairMainColumnResizeDrag;
 
 interface RepairPanelChipConfig {
   panelId: RepairPanelId;
@@ -198,7 +181,6 @@ const REPAIR_SESSION_REQUIRED_PANEL_IDS: ReadonlySet<RepairPanelId> = new Set([
   "tactical-feed",
   "knowledge-pack",
   "visual-timeline",
-  "measurement",
 ]);
 const REPAIR_HISTORY_REVIEW_SAFE_TOOL_IDS: ReadonlySet<string> = new Set([
   "select",
@@ -360,11 +342,7 @@ function createRepairPanelChip(
           ? "aio"
           : config.panelId === "visual-timeline"
             ? "timeline"
-            : config.panelId === "chat"
-              ? "chat"
-              : config.panelId === "measurement"
-                ? "measure"
-                : "state";
+            : "state";
   const titleKey = `${labelKey}Title`;
   chip.textContent = text(["panelChips", labelKey], config.label || labelKey);
   chip.title = text(["panelChips", titleKey], config.title || `${labelKey} panel`);
@@ -846,14 +824,6 @@ export function createRepairRoomUiRuntime() {
     return state.layout.collapsedPanels[panelId] !== true;
   }
 
-  function getBottomVisiblePanelCount(): number {
-    return REPAIR_BOTTOM_PANEL_CHIPS.filter((chip) => isPanelVisible(chip.panelId)).length;
-  }
-
-  function shouldUseBottomClusterLayoutHeight(): boolean {
-    return getBottomVisiblePanelCount() > 1;
-  }
-
   function isDesktopRepairResizableLayout(): boolean {
     return window.matchMedia("(max-width: 980px)").matches === false;
   }
@@ -865,22 +835,9 @@ export function createRepairRoomUiRuntime() {
     return panelSizes;
   }
 
-  function setCustomPropertyIfChanged(element: HTMLElement, property: string, value: string): void {
-    if (element.style.getPropertyValue(property) !== value) {
-      element.style.setProperty(property, value);
-    }
-  }
-
-  function removeCustomPropertyIfPresent(element: HTMLElement, property: string): void {
-    if (element.style.getPropertyValue(property) !== "") {
-      element.style.removeProperty(property);
-    }
-  }
-
   function syncWorkspaceGridSizing(persistentShell: RepairPersistentShell): void {
     if (!isDesktopRepairResizableLayout()) {
       setStyleIfChanged(persistentShell.workspace, "gridTemplateColumns", "");
-      removeCustomPropertyIfPresent(persistentShell.workspace, "--repair-bottom-cluster-height");
       return;
     }
 
@@ -890,15 +847,6 @@ export function createRepairRoomUiRuntime() {
       "gridTemplateColumns",
       getRepairMainGridTemplateColumns(state.layout.collapsedPanels, panelSizes.mainColumns)
     );
-    if (shouldUseBottomClusterLayoutHeight()) {
-      setCustomPropertyIfChanged(
-        persistentShell.workspace,
-        "--repair-bottom-cluster-height",
-        `${panelSizes.bottomClusterHeightPx}px`
-      );
-    } else {
-      removeCustomPropertyIfPresent(persistentShell.workspace, "--repair-bottom-cluster-height");
-    }
   }
 
   function setResizerPxStyle(
@@ -960,17 +908,6 @@ export function createRepairRoomUiRuntime() {
     resizer.hidden = false;
   }
 
-  function positionHorizontalLayoutResizer(
-    resizer: HTMLElement,
-    workspaceRect: DOMRect,
-    targetRect: DOMRect
-  ): void {
-    setResizerPxStyle(resizer, "left", 0);
-    setResizerPxStyle(resizer, "top", targetRect.top - workspaceRect.top);
-    setResizerPxStyle(resizer, "width", workspaceRect.width);
-    resizer.hidden = false;
-  }
-
   function syncLayoutResizers(persistentShell: RepairPersistentShell): void {
     const resizers = persistentShell.workspace.querySelectorAll<HTMLElement>(
       "[data-repair-layout-resizer='true']"
@@ -1005,22 +942,6 @@ export function createRepairRoomUiRuntime() {
         workspaceRect,
         beforeElement.getBoundingClientRect(),
         afterElement.getBoundingClientRect()
-      );
-    }
-
-    if (shouldUseBottomClusterLayoutHeight()) {
-      const resizer = ensureLayoutResizer({
-        afterId: "bottom-cluster",
-        beforeId: "main-workspace",
-        group: "bottom-cluster",
-        orientation: "horizontal",
-        workspace: persistentShell.workspace,
-      });
-      activeResizerIds.add(resizer.dataset["repairLayoutResizerId"] ?? "");
-      positionHorizontalLayoutResizer(
-        resizer,
-        workspaceRect,
-        persistentShell.bottomCluster.getBoundingClientRect()
       );
     }
 
@@ -1065,24 +986,6 @@ export function createRepairRoomUiRuntime() {
     });
     if (shell !== null) {
       syncWorkspaceGridSizing(shell);
-      syncDockLayout(shell.dock);
-      syncLayoutResizers(shell);
-    }
-  }
-
-  function applyBottomResizeDrag(drag: RepairBottomResizeDrag, clientY: number): void {
-    const nextHeightPx = clampLayoutNumber(
-      drag.startHeightPx - (clientY - drag.startY),
-      180,
-      drag.maxHeightPx
-    );
-    const panelSizes = ensureRepairPanelSizes();
-    state.layout.panelSizes = normalizeRepairPanelSizes({
-      ...panelSizes,
-      bottomClusterHeightPx: nextHeightPx,
-    });
-    if (shell !== null) {
-      syncWorkspaceGridSizing(shell);
       syncLayoutResizers(shell);
     }
   }
@@ -1091,11 +994,7 @@ export function createRepairRoomUiRuntime() {
     if (layoutResizeDrag === null || event.pointerId !== layoutResizeDrag.pointerId) return;
     event.preventDefault();
     event.stopPropagation();
-    if (layoutResizeDrag.group === "bottom-cluster") {
-      applyBottomResizeDrag(layoutResizeDrag, event.clientY);
-    } else {
-      applyColumnResizeDrag(layoutResizeDrag, event.clientX);
-    }
+    applyColumnResizeDrag(layoutResizeDrag, event.clientX);
   }
 
   function finishLayoutResize(event: PointerEvent): void {
@@ -1105,11 +1004,7 @@ export function createRepairRoomUiRuntime() {
     documentRef.removeEventListener("pointermove", handleLayoutResizePointerMove, true);
     documentRef.removeEventListener("pointerup", finishLayoutResize, true);
     documentRef.removeEventListener("pointercancel", finishLayoutResize, true);
-    shell?.root.classList.remove(
-      "repair-shell--resizing",
-      "repair-shell--resizing-horizontal",
-      "repair-shell--resizing-vertical"
-    );
+    shell?.root.classList.remove("repair-shell--resizing", "repair-shell--resizing-vertical");
     requestRuntime.updatePanelLayout({ panelSizes: ensureRepairPanelSizes() });
     layoutResizeDrag = null;
   }
@@ -1146,17 +1041,7 @@ export function createRepairRoomUiRuntime() {
     event.preventDefault();
     cancelSpatialFocusTween();
 
-    if (group === "bottom-cluster" && shouldUseBottomClusterLayoutHeight()) {
-      const workspaceRect = shell.workspace.getBoundingClientRect();
-      const clusterRect = shell.bottomCluster.getBoundingClientRect();
-      layoutResizeDrag = {
-        group: "bottom-cluster",
-        maxHeightPx: Math.min(560, Math.max(180, workspaceRect.height * 0.72)),
-        pointerId: event.pointerId,
-        startHeightPx: clusterRect.height,
-        startY: event.clientY,
-      };
-    } else if (
+    if (
       group === "main-columns" &&
       isRepairMainLayoutPanelId(beforeId) &&
       isRepairMainLayoutPanelId(afterId)
@@ -1172,12 +1057,7 @@ export function createRepairRoomUiRuntime() {
     }
 
     if (layoutResizeDrag === null) return;
-    shell.root.classList.add(
-      "repair-shell--resizing",
-      layoutResizeDrag.group === "bottom-cluster"
-        ? "repair-shell--resizing-horizontal"
-        : "repair-shell--resizing-vertical"
-    );
+    shell.root.classList.add("repair-shell--resizing", "repair-shell--resizing-vertical");
     documentRef.addEventListener("pointermove", handleLayoutResizePointerMove, true);
     documentRef.addEventListener("pointerup", finishLayoutResize, true);
     documentRef.addEventListener("pointercancel", finishLayoutResize, true);
@@ -1218,7 +1098,6 @@ export function createRepairRoomUiRuntime() {
     documentRef,
     state,
     text,
-    updatePanelChrome,
   });
   const visualTimelineDom = createRepairVisualTimelineDomRuntime({
     applyLiveSnapshotUpdates,
@@ -1252,12 +1131,6 @@ export function createRepairRoomUiRuntime() {
     state,
   });
 
-  function syncDockLayout(dock: HTMLElement): void {
-    dock.hidden = true;
-    setDatasetIfChanged(dock, "visiblePanelCount", "0");
-    setStyleIfChanged(dock, "gridTemplateColumns", "none");
-  }
-
   function syncPanelChip(root: HTMLElement, config: RepairPanelChipConfig): void {
     const chip = root.querySelector<HTMLElement>(
       `[data-repair-action='toggle-panel-chip'][data-panel-id='${config.panelId}']`
@@ -1277,9 +1150,7 @@ export function createRepairRoomUiRuntime() {
             ? "aio"
             : config.panelId === "visual-timeline"
               ? "timeline"
-              : config.panelId === "measurement"
-                ? "measure"
-                : "state";
+              : "state";
     const titleKey = `${labelKey}Title`;
     setTextIfChanged(chip, text(["panelChips", labelKey], config.label || labelKey));
     const prefix = visible
@@ -1322,15 +1193,12 @@ export function createRepairRoomUiRuntime() {
 
   function syncBottomCluster(persistentShell: RepairPersistentShell): void {
     const timelineVisible = isPanelVisible("visual-timeline");
-    const visiblePanelCount = getBottomVisiblePanelCount();
-    const bodyVisible = visiblePanelCount > 0;
-    persistentShell.bottomClusterBody.hidden = !bodyVisible;
+    persistentShell.bottomClusterBody.hidden = !timelineVisible;
     setDatasetIfChanged(persistentShell.bottomCluster, "timelineVisible", String(timelineVisible));
-    setDatasetIfChanged(persistentShell.bottomCluster, "lowerVisiblePanelCount", "0");
     setDatasetIfChanged(
       persistentShell.bottomCluster,
       "visiblePanelCount",
-      String(visiblePanelCount)
+      timelineVisible ? "1" : "0"
     );
     syncPanelChipGroup(persistentShell.bottomClusterHeader, REPAIR_BOTTOM_PANEL_CHIPS);
   }
@@ -1958,7 +1826,6 @@ export function createRepairRoomUiRuntime() {
     cluster: HTMLElement;
     header: HTMLElement;
     body: HTMLElement;
-    dock: HTMLElement;
   } {
     const cluster = documentRef.createElement("div");
     cluster.className = "repair-bottom-cluster";
@@ -1971,13 +1838,9 @@ export function createRepairRoomUiRuntime() {
     const body = documentRef.createElement("div");
     body.className = "repair-bottom-cluster__body";
 
-    const dock = documentRef.createElement("div");
-    dock.className = "repair-bottom-dock";
-    dock.hidden = true;
-    body.append(dock);
     cluster.append(header, body);
 
-    return { cluster, header, body, dock };
+    return { cluster, header, body };
   }
 
   function updateWizardField(root: HTMLElement, field: string, value: string): void {
@@ -2086,7 +1949,6 @@ export function createRepairRoomUiRuntime() {
       bottomCluster: bottomClusterShell.cluster,
       bottomClusterHeader: bottomClusterShell.header,
       bottomClusterBody: bottomClusterShell.body,
-      dock: bottomClusterShell.dock,
       settingsOverlay: settingsOverlayShell.overlay,
       settingsOverlayBody: settingsOverlayShell.body,
       settingsOverlaySignature: "",
@@ -2114,11 +1976,7 @@ export function createRepairRoomUiRuntime() {
       `repair-shell repair-shell--profile-${state.guidance.operationalProfile} repair-shell--calm-${primarySurfaceClass}${
         state.guidance.focusCorridor.active ? " repair-shell--corridor-active" : ""
       } repair-shell--rhythm-${rhythmPhaseClass}${
-        layoutResizeDrag !== null
-          ? ` repair-shell--resizing repair-shell--resizing-${
-              layoutResizeDrag.group === "bottom-cluster" ? "horizontal" : "vertical"
-            }`
-          : ""
+        layoutResizeDrag !== null ? " repair-shell--resizing repair-shell--resizing-vertical" : ""
       }`
     );
     setTextIfChanged(
@@ -2174,7 +2032,6 @@ export function createRepairRoomUiRuntime() {
       )
     );
 
-    syncDockLayout(persistentShell.dock);
     syncBottomCluster(persistentShell);
     syncLayoutResizersSoon(persistentShell);
 
@@ -2599,7 +2456,7 @@ export function createRepairRoomUiRuntime() {
           break;
         }
         case "toggle-bottom-cluster": {
-          const collapse = getBottomVisiblePanelCount() > 0;
+          const collapse = isPanelVisible("visual-timeline");
           REPAIR_BOTTOM_PANEL_CHIPS.forEach((chip) => {
             requestRuntime.updatePanelLayout({ panelId: chip.panelId, collapsed: collapse });
           });
@@ -2891,9 +2748,7 @@ export function createRepairRoomUiRuntime() {
       if (el.dataset["repairAction"] === "set-ai-target-slot") {
         const targetSlot = readAiTargetSlot(el.value);
         if (targetSlot !== null) {
-          state.aiDispatch.chat.targetSlot = targetSlot;
-          state.aiDispatch.research.targetSlot = targetSlot;
-          state.aiDispatch.tactical.targetSlot = targetSlot;
+          state.aiDispatch.targetSlot = targetSlot;
           requestRuntime.setAiTargetSlot({ targetSlot });
         }
       }
@@ -3101,7 +2956,6 @@ export function createRepairRoomUiRuntime() {
     visualTimelineDom.refreshTimelinePageSize();
     if (shell !== null) {
       syncWorkspaceGridSizing(shell);
-      syncDockLayout(shell.dock);
       syncLayoutResizersSoon(shell);
     }
   }

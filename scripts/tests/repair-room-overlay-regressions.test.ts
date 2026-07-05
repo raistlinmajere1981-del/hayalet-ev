@@ -10,18 +10,14 @@ import {
 } from "../../rooms/repair-room/host/state/repair-selectors.ts";
 import { resolveRepairAssetUrl } from "../../rooms/repair-room/ui/repair-asset-url.ts";
 import {
-  REPAIR_DOCK_PANEL_IDS,
-  getRepairDockLayoutProjection,
-} from "../../rooms/repair-room/ui/repair-room-ui-runtime.ts";
-import {
   REPAIR_TIMELINE_PAGE_SIZE,
   getRepairMomentLastPageIndex,
   getRepairMomentOrderedEvents,
   getRepairMomentPageEvents,
   normalizeRepairMomentPageSize,
 } from "../../rooms/repair-room/ui/runtime/timeline-helpers.ts";
-import { renderRepairSettingsPanel } from "../../rooms/repair-room/ui/panels/repair-settings-panel.ts";
-import { renderChatPanel } from "../../rooms/repair-room/ui/panels/chat-panel.ts";
+import { renderRepairSettingsPanelBody } from "../../rooms/repair-room/ui/panels/repair-settings-panel.ts";
+import { renderTacticalFeedPanel } from "../../rooms/repair-room/ui/panels/tactical-feed-panel.ts";
 import { renderWorkbenchStagePanel } from "../../rooms/repair-room/ui/panels/workbench-stage-panel.ts";
 import { renderVisualTimelinePanel } from "../../rooms/repair-room/ui/panels/visual-timeline-panel.ts";
 import { renderOperatorProfilePanel } from "../../rooms/repair-room/ui/panels/operator-profile-panel.ts";
@@ -226,31 +222,6 @@ void test("repair-room resolves runtime assets from the UI entry directory", () 
   );
 });
 
-void test("repair-room legacy dock projection keeps measurement layout compatibility", () => {
-  const dockLayout = getRepairDockLayoutProjection();
-  assert.deepEqual(dockLayout.visiblePanelIds, [...REPAIR_DOCK_PANEL_IDS]);
-  assert.equal(dockLayout.gridTemplateColumns, "minmax(var(--repair-px-220), 1fr)");
-
-  assert.deepEqual([...REPAIR_DOCK_PANEL_IDS], ["measurement"]);
-
-  const partialLayout = getRepairDockLayoutProjection({
-    measurement: false,
-  });
-  assert.deepEqual(partialLayout.visiblePanelIds, ["measurement"]);
-  assert.equal(partialLayout.gridTemplateColumns, "minmax(var(--repair-px-220), 1fr)");
-
-  const sizedLayout = getRepairDockLayoutProjection({}, REPAIR_DOCK_PANEL_IDS, {
-    measurement: 0.8,
-  });
-  assert.equal(sizedLayout.gridTemplateColumns, "minmax(var(--repair-px-220), 0.8fr)");
-
-  const hiddenLayout = getRepairDockLayoutProjection({
-    measurement: true,
-  });
-  assert.deepEqual(hiddenLayout.visiblePanelIds, []);
-  assert.equal(hiddenLayout.gridTemplateColumns, "none");
-});
-
 void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync controls", () => {
   const uiRoot = join(process.cwd(), "rooms/repair-room/ui");
   const runtime = readRepairUiRuntimeText();
@@ -259,7 +230,6 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   const operatorPanel = readFileSync(join(uiRoot, "panels/operator-profile-panel.ts"), "utf8");
   const settingsPanel = readFileSync(join(uiRoot, "panels/repair-settings-panel.ts"), "utf8");
   const workbenchPanel = readFileSync(join(uiRoot, "panels/workbench-stage-panel.ts"), "utf8");
-  const chatPanel = readFileSync(join(uiRoot, "panels/chat-panel.ts"), "utf8");
   const measurementPanel = readFileSync(join(uiRoot, "panels/measurement-panel.ts"), "utf8");
   const wizardPanel = readFileSync(join(uiRoot, "panels/session-wizard-panel.ts"), "utf8");
   const symptomCatalog = readFileSync(
@@ -362,18 +332,17 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(workbenchPanel, /hasActiveRepairSession/);
   assert.doesNotMatch(workbenchPanel, /sessionLocked/);
   assert.match(feedPanel, /sessionRequiredPlaceholder/);
-  assert.match(chatPanel, /sessionRequiredPlaceholder/);
   assert.doesNotMatch(measurementPanel, /sessionLocked/);
   assert.doesNotMatch(timelinePanel, /sessionLocked/);
   assert.doesNotMatch(knowledgePanel, /sessionLocked/);
   assert.match(runtime, /updateTacticalFeedPanelDom/);
   assert.match(runtime, /updateVisualTimelinePanelDom/);
-  assert.match(runtime, /updateMeasurementPanelDom/);
+  assert.match(runtime, /updateMeasurementEntryDom/);
   assert.match(runtime, /syncTimelineChips/);
   assert.match(runtime, /syncTacticalFeedEntry/);
   assert.match(runtime, /panelId === "visual-timeline"/);
   assert.match(runtime, /panelId === "tactical-feed"/);
-  assert.match(runtime, /panelId === "measurement"/);
+  assert.doesNotMatch(runtime, /panelId === "measurement"/);
   assert.match(runtime, /setClassNameIfChanged/);
   assert.match(runtime, /overlayMountVersion/);
   assert.match(runtime, /currentConfig === null/);
@@ -395,7 +364,7 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /startLayoutResize/);
   assert.match(runtime, /syncLayoutResizersSoon/);
   assert.match(style, /\.repair-layout-resizer/);
-  assert.match(style, /--repair-bottom-cluster-height/);
+  assert.doesNotMatch(style, /--repair-bottom-cluster-height/);
   assert.match(runtime, /requestRuntime\.updatePanelTab/);
   assert.match(runtime, /requestRuntime\.updateFocus/);
   assert.match(runtime, /meta\.replay\.overlayEvents/);
@@ -472,8 +441,7 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(feedPanel, /noPanelControls: true/);
   assert.match(knowledgePanel, /noPanelControls: true/);
   assert.match(timelinePanel, /noPanelControls: true/);
-  assert.match(chatPanel, /noPanelControls: true/);
-  assert.match(measurementPanel, /noPanelControls: true/);
+  assert.doesNotMatch(measurementPanel, /renderMeasurementPanel/);
   assert.match(wizardPanel, /noPanelControls: true/);
   assert.match(replayProjection, /visibleAiMarkIds/);
   assert.doesNotMatch(
@@ -537,7 +505,7 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.doesNotMatch(wizardPanel, /Yeni Oturum|New Session/);
   assert.doesNotMatch(sessionRailPanel, /Session Rail/);
   assert.match(sessionRailPanel, /noPanelHeader: true/);
-  assert.match(chatPanel, /composerDraft/);
+  assert.match(feedPanel, /composerDraft/);
   assert.doesNotMatch(workbenchPanel, /repairControl/);
   assert.match(runtime, /set-hands-free-mode/);
   assert.match(runtime, /toggle-ambient-listener/);
@@ -562,7 +530,8 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.doesNotMatch(settingsPanel, /cameraFeedPreference/);
   assert.doesNotMatch(settingsPanel, /set-attention-budget/);
   assert.match(feedPanel, /repair-feed-composer__input/);
-  assert.match(style, /\.repair-sync-panel/);
+  assert.doesNotMatch(style, /\.repair-sync-panel/);
+  assert.match(style, /\.repair-sync-row/);
   assert.match(style, /\.repair-settings-panel/);
   assert.match(style, /\.repair-settings-overlay/);
   assert.match(style, /\.repair-settings-overlay__content > \.repair-panel/);
@@ -702,18 +671,16 @@ void test("repair-room repair moments CSS keeps the compact strip sizing contrac
   );
   assert.match(
     workspaceStyle,
-    /\.repair-workspace > \.repair-panel,[\s\S]*\.repair-bottom-dock > \.repair-panel\s*\{[\s\S]*min-width:\s*0;/
+    /\.repair-workspace > \.repair-panel,[\s\S]*\.repair-workspace > \.repair-bottom-cluster\s*\{[\s\S]*min-width:\s*0;/
   );
   assert.match(
     workspaceStyle,
-    /\.repair-bottom-cluster\[data-lower-visible-panel-count="0"\] \.repair-bottom-cluster__body\s*\{[\s\S]*grid-template-rows:\s*var\(--repair-bottom-timeline-height\);/
+    /\.repair-bottom-cluster__body\s*\{[\s\S]*grid-template-rows:\s*var\(--repair-bottom-timeline-height\);/
   );
-  assert.match(runtime, /shouldUseBottomClusterLayoutHeight/);
-  assert.match(runtime, /getBottomVisiblePanelCount\(\) > 1/);
-  assert.doesNotMatch(
-    workspaceStyle,
-    /\.repair-bottom-cluster\[data-lower-visible-panel-count="0"\] \.repair-bottom-cluster__body\s*\{[\s\S]*grid-template-rows:\s*minmax\(var\(--repair-px-180\), auto\);/
-  );
+  assert.doesNotMatch(runtime, /shouldUseBottomClusterLayoutHeight/);
+  assert.doesNotMatch(runtime, /getBottomVisiblePanelCount/);
+  assert.doesNotMatch(workspaceStyle, /repair-bottom-dock/);
+  assert.doesNotMatch(workspaceStyle, /data-lower-visible-panel-count/);
   assert.match(
     timelineStyle,
     /\.repair-panel--visual-timeline\s*\{[\s\S]*z-index:\s*30;[\s\S]*overflow:\s*visible;/
@@ -871,11 +838,14 @@ void test("repair-room empty sessions lock session-bound panel bodies centrally"
     "tactical-feed",
     "knowledge-pack",
     "visual-timeline",
-    "chat",
-    "measurement",
-    "room-sync",
   ].forEach((panelId) => {
     assert.match(runtime, new RegExp(`"${panelId}"`));
+  });
+  ["chat", "measurement", "room-sync"].forEach((panelId) => {
+    assert.doesNotMatch(
+      runtime,
+      new RegExp(`REPAIR_SESSION_REQUIRED_PANEL_IDS[\\\\s\\\\S]{0,180}"${panelId}"`)
+    );
   });
   assert.match(runtime, /syncPanelSessionLock\(mounted, lifecycle\.panelId\)/);
   assert.match(runtime, /syncPanelSessionLock\(current, lifecycle\.panelId\)/);
@@ -969,7 +939,7 @@ void test("repair-room workbench quick actions do not duplicate topbar status", 
   assert.equal(quickActions.get("tts")?.dataset["active"], "false");
   assert.equal(quickActions.get("measurement-overlay")?.dataset["active"], "false");
 
-  const settingsSurface = renderRepairSettingsPanel(
+  const settingsSurface = renderRepairSettingsPanelBody(
     documentRef,
     activeState,
     renderText
@@ -1029,7 +999,7 @@ void test("repair-room workbench quick actions do not duplicate topbar status", 
     ).length,
     0
   );
-  const chatSurface = renderChatPanel(
+  const chatSurface = renderTacticalFeedPanel(
     documentRef,
     createRepairUiSnapshot({
       ...createInitialRepairRuntimeState("2026-06-12T09:00:00.000Z"),
@@ -1042,7 +1012,7 @@ void test("repair-room workbench quick actions do not duplicate topbar status", 
   ) as unknown as RepairFakeElement;
   const chatInputs = findRepairFakeElements(
     chatSurface,
-    (element) => element.dataset["repairInput"] === "chat-composer"
+    (element) => element.dataset["repairInput"] === "feed-composer"
   );
   assert.equal(chatInputs[0]?.value, "Measure U14 VCC");
 

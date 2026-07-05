@@ -4,7 +4,6 @@ import {
   getMeasurementModeOptions,
   getMeasurementModeRangeText,
 } from "../runtime/measurement-labels.js";
-import { createRepairPanel } from "./panel-shell.js";
 
 type TextFn = (path: string[], fallback: string) => string;
 
@@ -270,25 +269,4 @@ export function renderMeasurementEntrySurface(
   body.append(readingsList);
 
   return body;
-}
-
-export function renderMeasurementPanel(
-  documentRef: Document,
-  state: RepairUiState,
-  text: TextFn
-): HTMLElement {
-  const meas = state.measurement;
-  const body = renderMeasurementEntrySurface(documentRef, state, text, {
-    className: "repair-panel__body repair-measurement-panel-body repair-measurement-entry",
-    showReadings: true,
-  });
-  return createRepairPanel(documentRef, {
-    panelId: "measurement",
-    eyebrow: text(["measurement", "eyebrow"], "ÖLÇÜM PANELİ"),
-    title: text(["measurement", "title"], "Multimetre"),
-    statusDot: meas.current.hold ? "amber" : "live",
-    collapsed: state.layout.collapsedPanels["measurement"],
-    noPanelControls: true,
-    body,
-  });
 }

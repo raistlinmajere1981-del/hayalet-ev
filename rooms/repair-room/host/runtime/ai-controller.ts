@@ -9,7 +9,7 @@ import type {
   RepairWizardDraft,
 } from "../../shared/types/index.js";
 import type {
-  RepairAiDispatchChannel,
+  RepairAiDispatchActivity,
   RepairAiDispatchStatus,
   RepairAiTargetSlot,
 } from "../../shared/ui/state.js";
@@ -57,7 +57,7 @@ export interface RepairAiController {
   requestMeasurementAiObservation: (measurementEvent: RepairMeasurementEvent) => Promise<void>;
   requestSessionRiskDetection: () => Promise<void>;
   setAiDispatchStatus: (
-    channel: RepairAiDispatchChannel,
+    activity: RepairAiDispatchActivity,
     status: RepairAiDispatchStatus,
     params?: { message?: string | null; contextRefs?: string[] }
   ) => void;
@@ -123,15 +123,14 @@ export function createRepairAiController(params: {
   const pendingChatReplies = new Map<number, { turnId: string; resolved: boolean }>();
 
   function setAiDispatchStatus(
-    channel: RepairAiDispatchChannel,
+    activity: RepairAiDispatchActivity,
     status: RepairAiDispatchStatus,
     dispatchParams: { message?: string | null; contextRefs?: string[] } = {}
   ): void {
-    const previous = store.getState().aiDispatch[channel];
+    const previous = store.getState().aiDispatch;
     const iso = nowIso();
     store.dispatch({
       type: "ai-dispatch/set",
-      channel,
       state: {
         ...previous,
         status,
@@ -140,6 +139,7 @@ export function createRepairAiController(params: {
         completedAt: status === "pending" ? null : iso,
         message: dispatchParams.message ?? null,
         contextRefs: dispatchParams.contextRefs ?? previous.contextRefs,
+        activity,
       },
     });
   }
@@ -170,7 +170,7 @@ export function createRepairAiController(params: {
     const currentWizard = store.getState().wizard;
     const boardCode = currentWizard.draft.boardCode.trim().toLowerCase();
     const targetSlot = normalizeRepairAiTargetSlot(
-      researchParams.targetSlot ?? store.getState().aiDispatch.research.targetSlot
+      researchParams.targetSlot ?? store.getState().aiDispatch.targetSlot
     );
 
     const cachedPack = boardCode === "" ? undefined : boardCodeCache.get(boardCode);
@@ -210,7 +210,7 @@ export function createRepairAiController(params: {
         });
         store.dispatch({ type: "phase/set", phase: "wizard-active" });
         store.dispatch({ type: "ai-dispatch/set-target-slot", targetSlot });
-        setAiDispatchStatus("research", "succeeded", {
+        setAiDispatchStatus("evidence-research", "succeeded", {
           message: "Asistan AI kanıt paketi önbellekten yüklendi.",
           contextRefs: [boardCode],
         });
@@ -249,7 +249,7 @@ export function createRepairAiController(params: {
       });
       store.dispatch({ type: "phase/set", phase: "wizard-active" });
       store.dispatch({ type: "ai-dispatch/set-target-slot", targetSlot });
-      setAiDispatchStatus("research", "pending", {
+      setAiDispatchStatus("evidence-research", "pending", {
         message: "Asistan AI kanıt paketini hazırlıyor.",
         contextRefs: [
           currentWizard.draft.boardCode,
@@ -306,7 +306,7 @@ export function createRepairAiController(params: {
         "debug",
         `[${REPAIR_ROOM_ID}] Asistan AI evidence research failed: ${result.message ?? "unknown error"}`
       );
-      setAiDispatchStatus("research", "failed", {
+      setAiDispatchStatus("evidence-research", "failed", {
         message: result.message ?? "Asistan AI kanıt paketi döndürmedi.",
         contextRefs: result.contextRefs,
       });
@@ -364,7 +364,7 @@ export function createRepairAiController(params: {
         type: "phase/set",
         phase: getActiveSession(store.getState()) === null ? "wizard-active" : "session-active",
       });
-      setAiDispatchStatus("research", "succeeded", {
+      setAiDispatchStatus("evidence-research", "succeeded", {
         message: "Asistan AI kanıt paketi hazırladı.",
         contextRefs: result.contextRefs,
       });
@@ -432,7 +432,7 @@ export function createRepairAiController(params: {
     const session = state.sessions[measurementEvent.sessionId];
     const dispatchBridge = api.dispatchBridge;
     if (session === undefined) return;
-    const targetSlot = normalizeRepairAiTargetSlot(state.aiDispatch.tactical.targetSlot);
+    const targetSlot = normalizeRepairAiTargetSlot(state.aiDispatch.targetSlot);
     const measurementRefs = uniqueStringList([
       measurementEvent.id,
       ...(measurementEvent.reference === null ? [] : [measurementEvent.reference]),
@@ -443,7 +443,7 @@ export function createRepairAiController(params: {
       return;
     }
 
-    setAiDispatchStatus("tactical", "pending", {
+    setAiDispatchStatus("measurement-observation", "pending", {
       message: `Asistan AI son ölçümü kontrol ediyor: ${measurementEvent.reference}.`,
       contextRefs: measurementRefs,
     });
@@ -468,7 +468,7 @@ export function createRepairAiController(params: {
           aiResult.message ?? "unknown error"
         }`
       );
-      setAiDispatchStatus("tactical", "failed", {
+      setAiDispatchStatus("measurement-observation", "failed", {
         message: aiResult.message ?? "Asistan AI ölçüm gözlemi döndürmedi.",
         contextRefs: measurementRefs,
       });
@@ -496,7 +496,7 @@ export function createRepairAiController(params: {
         session: currentSession,
       })
     );
-    setAiDispatchStatus("tactical", "succeeded", {
+    setAiDispatchStatus("measurement-observation", "succeeded", {
       message: `Asistan AI ${aiResult.observations.length} gözlem ekledi.`,
       contextRefs: uniqueStringList([
         ...measurementRefs,
@@ -538,10 +538,10 @@ export function createRepairAiController(params: {
     const dispatchBridge = api.dispatchBridge;
     if (typeof dispatchBridge !== "function") return;
 
-    const targetSlot = normalizeRepairAiTargetSlot(state.aiDispatch.tactical.targetSlot);
+    const targetSlot = normalizeRepairAiTargetSlot(state.aiDispatch.targetSlot);
     const sessionRefs = uniqueStringList([session.id, session.deviceInfo.boardCode]);
 
-    setAiDispatchStatus("tactical", "pending", {
+    setAiDispatchStatus("risk-scan", "pending", {
       message: "Asistan AI oturum risklerini tarıyor.",
       contextRefs: sessionRefs,
     });
@@ -563,7 +563,7 @@ export function createRepairAiController(params: {
         "debug",
         `[${REPAIR_ROOM_ID}] Asistan AI risk scan skipped: ${aiResult.message ?? "unknown error"}`
       );
-      setAiDispatchStatus("tactical", "failed", {
+      setAiDispatchStatus("risk-scan", "failed", {
         message: aiResult.message ?? "Asistan AI risk gözlemi döndürmedi.",
         contextRefs: sessionRefs,
       });
@@ -586,7 +586,7 @@ export function createRepairAiController(params: {
         session: currentSession,
       })
     );
-    setAiDispatchStatus("tactical", "succeeded", {
+    setAiDispatchStatus("risk-scan", "succeeded", {
       message: `Asistan AI ${aiResult.risks.length} risk buldu.`,
       contextRefs: uniqueStringList([
         ...sessionRefs,
@@ -639,7 +639,7 @@ export function createRepairAiController(params: {
     if (pendingTurnIds.size === 0) {
       store.dispatch({ type: "chat/set-pending", turnId: null });
     }
-    setAiDispatchStatus("chat", "failed", {
+    setAiDispatchStatus("chat-reply", "failed", {
       message,
       contextRefs,
     });
@@ -676,7 +676,7 @@ export function createRepairAiController(params: {
     pendingChatReplies.set(sequenceId, { turnId: operatorTurn.id, resolved: false });
     const state = store.getState();
     const session = getActiveSession(state);
-    const targetSlot = normalizeRepairAiTargetSlot(state.aiDispatch.chat.targetSlot);
+    const targetSlot = normalizeRepairAiTargetSlot(state.aiDispatch.targetSlot);
     const baseContextRefs = session === null ? [] : [session.id, session.deviceInfo.boardCode];
     const dispatchBridge = api.dispatchBridge;
     const aiResult = await requestRepairAiChatReply({
@@ -727,7 +727,7 @@ export function createRepairAiController(params: {
         : null,
       commandSummary.failed > 0 ? `${commandSummary.failed} room command failed` : null,
     ].filter((part): part is string => part !== null);
-    setAiDispatchStatus("chat", commandSummary.failed > 0 ? "failed" : "succeeded", {
+    setAiDispatchStatus("chat-reply", commandSummary.failed > 0 ? "failed" : "succeeded", {
       message:
         commandMessageParts.length === 0
           ? "Asistan AI cevap döndürdü."
