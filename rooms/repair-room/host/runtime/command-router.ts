@@ -1421,8 +1421,11 @@ export function createRepairCommandRouter(params: {
         return layoutController.applyViewportUpdate(flat);
       case REPAIR_UI_COMMANDS.updateTimeline:
         return layoutController.applyTimelineUpdate(flat);
-      case REPAIR_UI_COMMANDS.updatePanelLayout:
-        return layoutController.applyPanelLayoutUpdate(flat);
+      case REPAIR_UI_COMMANDS.updatePanelLayout: {
+        const result = layoutController.applyPanelLayoutUpdate(flat);
+        if (result.success) storageController.queuePersistLayout();
+        return result;
+      }
       case REPAIR_UI_COMMANDS.updatePanelTab:
         return layoutController.applyPanelTabUpdate(flat);
       case REPAIR_UI_COMMANDS.updateFocus:

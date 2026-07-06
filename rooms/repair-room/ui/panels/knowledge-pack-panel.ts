@@ -35,39 +35,6 @@ function getResourceKindLabel(resource: RepairKnowledgePackResource, text?: Text
   return "Note";
 }
 
-function createKnowledgeEmptyState(documentRef: Document, text: TextFn): HTMLElement {
-  const empty = documentRef.createElement("div");
-  empty.className = "repair-empty-state";
-
-  const title = documentRef.createElement("div");
-  title.className = "repair-empty-state__title";
-  title.textContent = text(["knowledgePack", "empty"], "Henüz kanıt paketi yok");
-  empty.append(title);
-
-  const copy = documentRef.createElement("div");
-  copy.className = "repair-empty-state__copy";
-  copy.textContent = text(
-    ["knowledgePack", "emptyHelp"],
-    "Şemalar, kart fotoğrafları, arıza notları ve test noktalarını eklemek için tamir alımından kanıt araştırması çalıştır."
-  );
-  empty.append(copy);
-
-  const steps = documentRef.createElement("div");
-  steps.className = "repair-empty-state__steps";
-  [
-    text(["knowledgePack", "emptySteps", "identifyBoard"], "Kartı tanımla"),
-    text(["knowledgePack", "emptySteps", "findEvidence"], "Kanıt bul"),
-    text(["knowledgePack", "emptySteps", "attachPack"], "Paket ekle"),
-  ].forEach((step) => {
-    const item = documentRef.createElement("span");
-    item.textContent = step;
-    steps.append(item);
-  });
-  empty.append(steps);
-
-  return empty;
-}
-
 export function renderKnowledgePackPanel(
   documentRef: Document,
   state: RepairUiState,
@@ -80,9 +47,6 @@ export function renderKnowledgePackPanel(
   const hasSession = state.sessions.activeId !== null && state.sessions.detail !== null;
 
   if (kp.pack === null) {
-    const empty = createKnowledgeEmptyState(documentRef, text);
-    body.append(empty);
-
     return createRepairPanel(documentRef, {
       panelId: "knowledge-pack",
       eyebrow: text(["knowledgePack", "eyebrow"], "BİLGİ PAKETİ"),

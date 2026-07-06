@@ -1,4 +1,5 @@
 import { REPAIR_ROOM_ID } from "../shared/repair-constants.js";
+import { normalizeRepairPanelSizes } from "../shared/types/index.js";
 import {
   createRepairRoomPaths,
   createRepairStoragePaths,
@@ -8,6 +9,7 @@ import type {
   RepairChatTurn,
   RepairEvidenceSelection,
   RepairOperatorProfile,
+  RepairPanelSizeState,
   RepairSession,
   RepairSessionListItem,
 } from "../shared/types/index.js";
@@ -44,6 +46,13 @@ export interface RepairStoredEvidenceSelectionRecord {
 
 export interface RepairStoredOperatorProfileRecord {
   profile: RepairOperatorProfile;
+  roomId: string;
+  savedAt: string;
+  schemaVersion: 1;
+}
+
+export interface RepairStoredLayoutRecord {
+  panelSizes: RepairPanelSizeState;
   roomId: string;
   savedAt: string;
   schemaVersion: 1;
@@ -115,6 +124,28 @@ function asStoredOperatorProfileRecord(value: unknown): RepairStoredOperatorProf
     profile,
     roomId: REPAIR_ROOM_ID,
     savedAt: typeof record?.["savedAt"] === "string" ? record["savedAt"] : profile.updatedAt,
+    schemaVersion: 1,
+  };
+}
+
+function asStoredLayoutRecord(value: unknown): RepairStoredLayoutRecord | null {
+  const record = asRecord(value);
+  if (record === null) return null;
+
+  const panelSizesSource = asRecord(record["panelSizes"]) ?? asRecord(value);
+  if (panelSizesSource === null || asRecord(panelSizesSource["mainColumns"]) === null) {
+    return null;
+  }
+  if (record["panelSizes"] !== undefined) {
+    if (record["schemaVersion"] !== 1 || record["roomId"] !== REPAIR_ROOM_ID) return null;
+  }
+
+  return {
+    panelSizes: normalizeRepairPanelSizes({
+      mainColumns: asRecord(panelSizesSource["mainColumns"]) as RepairPanelSizeState["mainColumns"],
+    }),
+    roomId: REPAIR_ROOM_ID,
+    savedAt: typeof record["savedAt"] === "string" ? record["savedAt"] : new Date(0).toISOString(),
     schemaVersion: 1,
   };
 }
@@ -276,6 +307,27 @@ export function createRepairSessionStorage(deps: RepairSessionStorageDeps) {
     return asStoredOperatorProfileRecord(await readJsonFile(paths.operatorProfileFilePath));
   }
 
+  async function loadLayoutRecord(runtimePaths: unknown): Promise<RepairStoredLayoutRecord | null> {
+    const paths = createRepairRoomPaths(runtimePaths);
+    return asStoredLayoutRecord(await readJsonFile(paths.layoutFilePath));
+  }
+
+  async function saveLayoutRecord(
+    runtimePaths: unknown,
+    panelSizes: RepairPanelSizeState
+  ): Promise<RepairStoredLayoutRecord> {
+    const paths = createRepairRoomPaths(runtimePaths);
+    const nextRecord: RepairStoredLayoutRecord = {
+      panelSizes: normalizeRepairPanelSizes(panelSizes),
+      roomId: REPAIR_ROOM_ID,
+      savedAt: new Date().toISOString(),
+      schemaVersion: 1,
+    };
+    await ensureRuntimeDirectory(paths.roomStorageDir);
+    await writeJsonFile(paths.layoutFilePath, nextRecord);
+    return nextRecord;
+  }
+
   async function saveOperatorProfileRecord(
     runtimePaths: unknown,
     profile: RepairOperatorProfile
@@ -355,10 +407,12 @@ export function createRepairSessionStorage(deps: RepairSessionStorageDeps) {
     listSessions,
     loadEvidenceSelectionRecord,
     loadOperatorProfileRecord,
+    loadLayoutRecord,
     loadLatestSessionRecord,
     loadSessionRecord,
     saveEvidenceSelectionRecord,
     saveOperatorProfileRecord,
+    saveLayoutRecord,
     saveSessionRecord,
   };
 }

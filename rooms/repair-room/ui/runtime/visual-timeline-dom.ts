@@ -181,7 +181,10 @@ export function createRepairVisualTimelineDomRuntime(params: {
 
     const readout = timeline.querySelector<HTMLElement>(".repair-timeline__readout");
     if (readout !== null) {
-      setTextIfChanged(readout, getRepairMomentPageLabel(pageIndex, eventCount, text, pageSize));
+      setTextIfChanged(
+        readout,
+        eventCount === 0 ? "" : getRepairMomentPageLabel(pageIndex, eventCount, text, pageSize)
+      );
     }
 
     const previous = timeline.querySelector<HTMLButtonElement>(

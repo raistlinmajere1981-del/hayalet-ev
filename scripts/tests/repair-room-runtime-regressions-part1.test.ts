@@ -9,6 +9,7 @@ import {
 import { normalizeRepairHostMessage } from "../../rooms/repair-room/shared/ui/host-messages.ts";
 import type {
   RepairStoredEvidenceSelectionRecord,
+  RepairStoredLayoutRecord,
   RepairStoredOperatorProfileRecord,
   RepairStoredSessionRecord,
 } from "../../rooms/repair-room/host/repair-session-storage.ts";
@@ -73,6 +74,7 @@ function createStoredRepairRecord(
 function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] = []) {
   const records = new Map<string, RepairStoredSessionRecord>();
   const evidenceSelectionRecords = new Map<string, RepairStoredEvidenceSelectionRecord>();
+  let layoutRecord: RepairStoredLayoutRecord | null = null;
   let operatorProfileRecord: RepairStoredOperatorProfileRecord | null = null;
   initialRecords.forEach((record) => {
     records.set(record.session.id, cloneJson(record));
@@ -93,6 +95,7 @@ function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] =
     listSessions: async (_runtimePaths: unknown) =>
       listRecords().map((record) => toStoredSessionListItem(record.session)),
     loadOperatorProfileRecord: async (_runtimePaths: unknown) => cloneJson(operatorProfileRecord),
+    loadLayoutRecord: async (_runtimePaths: unknown) => cloneJson(layoutRecord),
     loadLatestSessionRecord: async (_runtimePaths: unknown) => cloneJson(listRecords()[0] ?? null),
     loadSessionRecord: async (_runtimePaths: unknown, sessionId: string) =>
       cloneJson(records.get(sessionId) ?? null),
@@ -134,6 +137,18 @@ function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] =
         schemaVersion: 1,
       };
       return cloneJson(operatorProfileRecord);
+    },
+    saveLayoutRecord: async (
+      _runtimePaths: unknown,
+      panelSizes: RepairStoredLayoutRecord["panelSizes"]
+    ) => {
+      layoutRecord = {
+        panelSizes: cloneJson(panelSizes),
+        roomId: REPAIR_ROOM_ID,
+        savedAt: new Date().toISOString(),
+        schemaVersion: 1,
+      };
+      return cloneJson(layoutRecord);
     },
     readOperatorProfileRecord(): unknown {
       return cloneJson(operatorProfileRecord);
@@ -448,7 +463,7 @@ void test("repair-room state exposes one Assistant AI dispatch contract", () => 
     log: () => {},
     notifyRoom: () => {},
   });
-  const dispatch = runtime.getStateSnapshot().state.aiDispatch as Record<string, unknown>;
+  const dispatch = runtime.getStateSnapshot().state.aiDispatch as unknown as Record<string, unknown>;
 
   assert.deepEqual(Object.keys(dispatch).sort(), [
     "activity",

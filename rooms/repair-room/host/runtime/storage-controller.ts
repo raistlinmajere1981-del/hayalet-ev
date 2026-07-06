@@ -27,6 +27,7 @@ export interface RepairStorageController {
   queuePersistEvidenceSelection: (selection: RepairEvidenceSelection) => void;
   queuePersistActiveSessionChat: () => void;
   queuePersistOperatorProfile: () => void;
+  queuePersistLayout: () => void;
   queuePersistSession: (session: RepairSession) => void;
   setSessionChatTurns: (sessionId: string, chatTurns: RepairChatTurn[]) => void;
   updateReadyStorageState: (sessionCount?: number) => void;
@@ -179,6 +180,27 @@ export function createRepairStorageController(params: {
       });
   }
 
+  function queuePersistLayout(): void {
+    if (storageReady === false || storageRuntimePaths === null) return;
+    const runtimePaths = storageRuntimePaths;
+    const panelSizes = store.getState().layout.panelSizes;
+    storagePersistQueue = storagePersistQueue
+      .then(async () => {
+        await sessionStorage.saveLayoutRecord(runtimePaths, panelSizes);
+        if (isDisposed()) return;
+        updateReadyStorageState();
+      })
+      .catch((error: unknown) => {
+        api.log(
+          "warn",
+          `[${REPAIR_ROOM_ID}] layout storage save failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        setStorageUnavailable("Room storage error; using in-memory layout state.");
+      });
+  }
+
   function hydrateStorage(): Promise<void> {
     if (storageHydratePromise !== null) {
       return storageHydratePromise;
@@ -194,9 +216,10 @@ export function createRepairStorageController(params: {
 
       try {
         const runtimePaths = await ioRuntime.resolveRuntimePaths();
-        const [records, storedOperatorProfile] = await Promise.all([
+        const [records, storedOperatorProfile, storedLayout] = await Promise.all([
           sessionStorage.listSessionRecords(runtimePaths),
           sessionStorage.loadOperatorProfileRecord(runtimePaths),
+          sessionStorage.loadLayoutRecord(runtimePaths),
         ]);
         if (isDisposed()) return;
 
@@ -234,6 +257,9 @@ export function createRepairStorageController(params: {
               adaptation: buildRepairAiAdaptation(storedOperatorProfile.profile),
               profile: storedOperatorProfile.profile,
             });
+          }
+          if (storedLayout !== null) {
+            store.dispatch({ type: "layout/set-panel-sizes", panelSizes: storedLayout.panelSizes });
           }
           store.dispatch({
             type: "storage/set",
@@ -305,6 +331,7 @@ export function createRepairStorageController(params: {
     queuePersistEvidenceSelection,
     queuePersistActiveSessionChat,
     queuePersistOperatorProfile,
+    queuePersistLayout,
     queuePersistSession,
     setSessionChatTurns,
     updateReadyStorageState,

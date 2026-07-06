@@ -128,7 +128,7 @@ function addGridLayer(
     layer.add(
       new Konva.Line({
         points: [x, startY, x, endY],
-        stroke: "rgba(86, 200, 222, 0.16)",
+        stroke: "rgba(86, 200, 222, 0.055)",
         strokeWidth: 1,
       })
     );
@@ -137,7 +137,7 @@ function addGridLayer(
     layer.add(
       new Konva.Line({
         points: [startX, y, endX, y],
-        stroke: "rgba(86, 200, 222, 0.12)",
+        stroke: "rgba(86, 200, 222, 0.045)",
         strokeWidth: 1,
       })
     );
@@ -150,7 +150,7 @@ function addGridLayer(
       text: "10mm",
       fontFamily: "IBM Plex Mono, JetBrains Mono, monospace",
       fontSize: 10,
-      fill: "rgba(226, 232, 240, 0.62)",
+      fill: "rgba(226, 232, 240, 0.38)",
     })
   );
 }

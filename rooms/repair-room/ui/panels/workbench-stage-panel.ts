@@ -108,6 +108,13 @@ function getForensicLinkedText(state: RepairUiState, event: RepairEvent, text: T
     : text(["workbench", "guidance", "noLinked"], "Bağlı kayıt yok");
 }
 
+type GuidanceBadgeTone = "neutral" | "calm" | "risk" | "pending" | "focus";
+
+interface GuidanceBadge {
+  label: string;
+  tone: GuidanceBadgeTone;
+}
+
 function getGuidanceMetaText(state: RepairUiState, text: TextFn): string {
   const unresolved = state.guidance.unresolvedCriticalItems;
   const pending = state.guidance.pendingMeasurements.length;
@@ -116,14 +123,43 @@ function getGuidanceMetaText(state: RepairUiState, text: TextFn): string {
     unresolved > 0
       ? `${unresolved} ${text(["workbench", "guidance", "critical"], "kritik")}`
       : text(["workbench", "guidance", "calm"], "sakin"),
-    pending > 0
-      ? `${pending} ${text(["workbench", "guidance", "pending"], "bekleyen")}`
-      : text(["workbench", "guidance", "noPending"], "bekleyen ölçüm yok"),
+    pending > 0 ? `${pending} ${text(["workbench", "guidance", "pending"], "bekleyen")}` : null,
     state.guidance.focusCorridor.active
       ? text(["workbench", "guidance", "focusCorridor"], "odak koridoru")
       : text(["workbench", "guidance", "fullBoard"], "tam kart"),
-  ];
+  ].filter((part): part is string => part !== null);
   return parts.join(" / ");
+}
+
+function getGuidanceMetaBadges(state: RepairUiState, text: TextFn): GuidanceBadge[] {
+  const unresolved = state.guidance.unresolvedCriticalItems;
+  const pending = state.guidance.pendingMeasurements.length;
+  const badges: GuidanceBadge[] = [
+    { label: getGuidanceProgressText(state, text), tone: "neutral" },
+    {
+      label:
+        unresolved > 0
+          ? `${unresolved} ${text(["workbench", "guidance", "critical"], "kritik")}`
+          : text(["workbench", "guidance", "calm"], "sakin"),
+      tone: unresolved > 0 ? "risk" : "calm",
+    },
+  ];
+
+  if (pending > 0) {
+    badges.push({
+      label: `${pending} ${text(["workbench", "guidance", "pending"], "bekleyen")}`,
+      tone: "pending",
+    });
+  }
+
+  badges.push({
+    label: state.guidance.focusCorridor.active
+      ? text(["workbench", "guidance", "focusCorridor"], "odak koridoru")
+      : text(["workbench", "guidance", "fullBoard"], "tam kart"),
+    tone: state.guidance.focusCorridor.active ? "focus" : "neutral",
+  });
+
+  return badges;
 }
 
 function getGuidancePhaseLabel(phase: RepairInvestigationPhase, text: TextFn): string {
@@ -172,6 +208,16 @@ function getRepairCommandHints(state: RepairUiState, text: TextFn): string {
   if (state.guidance.unresolvedCriticalItems > 0)
     hints.unshift(text(["workbench", "guidance", "hintShowRisks"], "riskleri göster"));
   return hints.slice(0, 3).join(" / ");
+}
+
+function shouldShowAiGuidanceCell(state: RepairUiState): boolean {
+  const interruption = state.guidance.aiInterruption;
+  return (
+    interruption.shouldSpeak ||
+    interruption.urgency === "high" ||
+    interruption.confidence === "high" ||
+    state.guidance.unresolvedCriticalItems > 0
+  );
 }
 
 const REPAIR_TOOL_ICON_PATHS: Record<RepairWorkbenchTool, string> = {
@@ -545,6 +591,29 @@ function appendCopilotCell(
   parent.append(cell);
 }
 
+function appendGuidanceBadgeCell(
+  documentRef: Document,
+  parent: HTMLElement,
+  state: RepairUiState,
+  text: TextFn
+): void {
+  const cell = documentRef.createElement("span");
+  cell.className = "repair-guidance-strip__meta repair-guidance-strip__meta--badges";
+
+  const summary = getGuidanceMetaText(state, text);
+  cell.title = summary;
+  cell.ariaLabel = `${text(["workbench", "guidance", "risk"], "Risk")}: ${summary}`;
+
+  getGuidanceMetaBadges(state, text).forEach((badge) => {
+    const badgeEl = documentRef.createElement("span");
+    badgeEl.className = `repair-guidance-badge repair-guidance-badge--${badge.tone}`;
+    badgeEl.textContent = badge.label;
+    cell.append(badgeEl);
+  });
+
+  parent.append(cell);
+}
+
 export function renderWorkbenchStagePanel(
   documentRef: Document,
   state: RepairUiState,
@@ -561,20 +630,25 @@ export function renderWorkbenchStagePanel(
   }
   body.append(quickbar);
 
+  const showAiGuidance = shouldShowAiGuidanceCell(state);
   const guidance = documentRef.createElement("div");
   guidance.className = "repair-guidance-strip";
   guidance.dataset["confidence"] = state.guidance.nextBestAction.confidence;
   guidance.dataset["urgency"] = state.guidance.nextBestAction.urgency;
+  guidance.dataset["hasAi"] = String(showAiGuidance);
   // Command hints stay hidden unless a room action toggles them.
   guidance.dataset["showSay"] = "false";
 
-  appendCopilotCell(
-    documentRef,
-    guidance,
-    "repair-guidance-strip__phase",
-    text(["workbench", "guidance", "ai"], "Asistan AI"),
-    localizeRepairGuidanceLine(state.guidance.aiInterruption.toneLine, text)
-  );
+  if (showAiGuidance) {
+    appendCopilotCell(
+      documentRef,
+      guidance,
+      "repair-guidance-strip__phase",
+      text(["workbench", "guidance", "ai"], "Asistan AI"),
+      localizeRepairGuidanceLine(state.guidance.aiInterruption.toneLine, text)
+    );
+  }
+
   appendCopilotCell(
     documentRef,
     guidance,
@@ -589,13 +663,7 @@ export function renderWorkbenchStagePanel(
     text(["workbench", "guidance", "say"], "Söyle"),
     getRepairCommandHints(state, text)
   );
-  appendCopilotCell(
-    documentRef,
-    guidance,
-    "repair-guidance-strip__meta",
-    text(["workbench", "guidance", "risk"], "Risk"),
-    getGuidanceMetaText(state, text)
-  );
+  appendGuidanceBadgeCell(documentRef, guidance, state, text);
 
   body.append(guidance);
 

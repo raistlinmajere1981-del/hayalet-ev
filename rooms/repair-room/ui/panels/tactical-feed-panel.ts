@@ -274,10 +274,12 @@ export function renderTacticalFeedPanel(
   body.append(list);
 
   // -- Mode line (from chat panel)
-  const mode = documentRef.createElement("div");
-  mode.className = "repair-chat-mode";
-  mode.textContent = getChatModeText(state, text);
-  body.append(mode);
+  if (hasSession) {
+    const mode = documentRef.createElement("div");
+    mode.className = "repair-chat-mode";
+    mode.textContent = getChatModeText(state, text);
+    body.append(mode);
+  }
 
   // -- Rich composer (from chat panel)
   const composer = documentRef.createElement("div");
@@ -299,7 +301,7 @@ export function renderTacticalFeedPanel(
   composerInput.type = "text";
   composerInput.placeholder = hasSession
     ? text(["tacticalFeed", "composer"], "Tamir asistanına sor...")
-    : text(["tacticalFeed", "sessionRequiredPlaceholder"], "Önce bir tamir oturumu aç");
+    : "";
   composerInput.value = state.chat.composerDraft;
   composerInput.dataset["repairInput"] = "feed-composer";
   composer.append(composerInput);

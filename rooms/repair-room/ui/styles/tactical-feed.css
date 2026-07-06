@@ -2,7 +2,7 @@
 .repair-feed-list {
   display: flex;
   flex-direction: column;
-  gap: var(--repair-sp-1);
+  gap: var(--repair-sp-2);
 }
 
 .repair-feed-list--scroll {
@@ -11,12 +11,15 @@
 }
 
 .repair-feed-calmline {
-  margin-bottom: var(--repair-sp-2);
-  padding: var(--repair-sp-2);
+  margin-bottom: var(--repair-sp-3);
+  padding: var(--repair-sp-3);
   border: var(--repair-px-1) solid var(--repair-border-muted);
+  border-left-color: var(--repair-info);
   border-radius: var(--repair-radius-sm);
-  color: var(--repair-text-dim);
+  background: var(--repair-surface-whisper);
+  color: var(--repair-text-muted);
   font-size: var(--repair-px-11);
+  line-height: 1.4;
 }
 
 .repair-panel--tactical-feed[data-feed-density="minimal"]
@@ -35,20 +38,27 @@
 .repair-feed-entry {
   display: flex;
   flex-direction: column;
-  gap: var(--repair-px-2);
+  gap: var(--repair-px-4);
   padding: var(--repair-sp-2) var(--repair-sp-3);
+  border: var(--repair-px-1) solid transparent;
   border-left: var(--repair-px-3) solid var(--repair-border);
   border-radius: 0 var(--repair-radius-sm) var(--repair-radius-sm) 0;
+  background: var(--repair-surface-trace);
   cursor: pointer;
-  transition: background var(--repair-dur-hover) var(--repair-ease);
+  transition:
+    background var(--repair-dur-hover) var(--repair-ease),
+    border-color var(--repair-dur-hover) var(--repair-ease),
+    box-shadow var(--repair-dur-hover) var(--repair-ease);
 }
 
 .repair-feed-entry--active {
-  box-shadow: inset 0 0 0 var(--repair-px-1) var(--repair-border-strong);
+  border-color: var(--repair-border-strong);
+  box-shadow: inset 0 0 0 var(--repair-px-1) var(--repair-cyan-soft);
 }
 
 .repair-feed-entry:hover {
   background: var(--repair-surface-faint);
+  border-color: var(--repair-border-panel-hover);
 }
 
 .repair-feed-entry--risk {
@@ -77,6 +87,7 @@
   text-transform: uppercase;
   letter-spacing: var(--repair-em-0-06);
   padding: var(--repair-px-1) var(--repair-px-6);
+  border: var(--repair-px-1) solid currentColor;
   border-radius: var(--repair-radius-sm);
 }
 
@@ -107,15 +118,16 @@
 .repair-feed-entry__body {
   font-size: var(--repair-px-12);
   color: var(--repair-text-muted);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 /* ── Chat turns (interleaved) ────────────────────────────────────── */
 .repair-feed-list .repair-chat-turn {
   display: flex;
   flex-direction: column;
-  gap: var(--repair-px-2);
+  gap: var(--repair-px-4);
   padding: var(--repair-sp-2) var(--repair-sp-3);
+  border: var(--repair-px-1) solid var(--repair-border-muted);
   border-left: var(--repair-px-3) solid var(--repair-border-muted);
   border-radius: 0 var(--repair-radius-sm) var(--repair-radius-sm) 0;
   background: var(--repair-surface-whisper);
@@ -156,14 +168,14 @@
 
 /* ── Chat mode line ──────────────────────────────────────────────── */
 .repair-panel--tactical-feed .repair-chat-mode {
-  margin-top: var(--repair-sp-2);
+  margin-top: var(--repair-sp-3);
   padding: var(--repair-sp-2) var(--repair-sp-3);
   border: var(--repair-px-1) solid var(--repair-border-muted);
   border-radius: var(--repair-radius-sm);
   background: var(--repair-surface-whisper);
   color: var(--repair-text-muted);
   font-size: var(--repair-px-11);
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 /* ── Composer ────────────────────────────────────────────────────── */
@@ -172,8 +184,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--repair-sp-2);
-  padding: var(--repair-sp-2) var(--repair-sp-3);
-  border-top: var(--repair-px-1) solid var(--repair-border);
+  padding: var(--repair-sp-3);
+  border-top: var(--repair-px-1) solid var(--repair-border-muted);
   font-size: var(--repair-px-12);
   color: var(--repair-text-dim);
 }

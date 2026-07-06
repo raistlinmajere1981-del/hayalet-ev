@@ -331,7 +331,8 @@ void test("repair-room P1 UI exposes concrete wizard, feed, timeline, and sync c
   assert.match(runtime, /isSessionLockedActionElement/);
   assert.match(workbenchPanel, /hasActiveRepairSession/);
   assert.doesNotMatch(workbenchPanel, /sessionLocked/);
-  assert.match(feedPanel, /sessionRequiredPlaceholder/);
+  assert.match(feedPanel, /composerInput\.placeholder = hasSession/);
+  assert.match(feedPanel, /: "";/);
   assert.doesNotMatch(measurementPanel, /sessionLocked/);
   assert.doesNotMatch(timelinePanel, /sessionLocked/);
   assert.doesNotMatch(knowledgePanel, /sessionLocked/);

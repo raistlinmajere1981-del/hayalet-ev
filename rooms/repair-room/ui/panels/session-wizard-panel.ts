@@ -212,37 +212,6 @@ function getWizardStepLabel(stepId: WizardStepId, text: TextFn): string {
   return text(["wizard", "steps", "ready"], "Hazır");
 }
 
-function getWizardHint(step: WizardStepId, text: TextFn): string {
-  if (step === "device-info") {
-    return text(
-      ["wizard", "hints", "deviceInfo"],
-      "Cihaz türü, marka, model ve kart kodunu tamamla; bilinmeyenler için Bilinmiyor seç."
-    );
-  }
-  if (step === "symptoms") {
-    return text(
-      ["wizard", "hints", "symptoms"],
-      "Varsayılan semptomları seç veya kendi semptomunu ekle."
-    );
-  }
-  if (step === "ai-research") {
-    return text(
-      ["wizard", "hints", "aiResearch"],
-      "Araştırmayı başlat veya evidence pack olmadan devam et."
-    );
-  }
-  if (step === "evidence-review") {
-    return text(
-      ["wizard", "hints", "evidenceReview"],
-      "Oturum arşivine alınacak kaynakları, arızaları ve test noktalarını seç."
-    );
-  }
-  return text(
-    ["wizard", "hints", "ready"],
-    "Cihaz, semptom ve araştırma özetini kontrol edip tamiri başlat."
-  );
-}
-
 function appendSuggestionMenu(
   documentRef: Document,
   parent: HTMLElement,
@@ -343,8 +312,6 @@ function appendAiTargetSelect(
   state: RepairUiState,
   text: TextFn
 ): void {
-  if (state.sessions.activeId !== null || state.phase === "session-active") return;
-
   const wrapper = documentRef.createElement("label");
   wrapper.className = "repair-wizard-field";
 
@@ -1296,11 +1263,6 @@ export function renderSessionWizardPanel(
   }
 
   body.append(stepper);
-
-  const hint = documentRef.createElement("div");
-  hint.className = "repair-wizard-guidance";
-  hint.textContent = getWizardHint(wizard.currentStep, text);
-  body.append(hint);
 
   if (wizard.currentStep === "device-info") {
     body.append(renderDeviceStep(documentRef, state, text));

@@ -50,6 +50,7 @@ import { getContainedImageFrame } from "./overlay/overlay-coords.js";
 import { getRepairFocusFrame } from "./overlay/overlay-geometry.js";
 import { resolveRepairAssetUrl } from "./repair-asset-url.js";
 import { getRepairMainGridTemplateColumns } from "./runtime/dock-layout.js";
+import { getGuidanceSurfaceForPanel } from "./runtime/guidance-helpers.js";
 import {
   setClassNameIfChanged,
   setDatasetIfChanged,
@@ -815,9 +816,15 @@ export function createRepairRoomUiRuntime() {
     });
   }
 
-  function applyPanelGuidanceChrome(panel: HTMLElement, _panelId: RepairPanelId): void {
-    setDatasetIfChanged(panel, "primarySurface", state.guidance.panelVisibility.primarySurface);
+  function applyPanelGuidanceChrome(panel: HTMLElement, panelId: RepairPanelId): void {
+    const primarySurface = state.guidance.panelVisibility.primarySurface;
+    const panelSurface = getGuidanceSurfaceForPanel(panelId);
+    const active =
+      (panelSurface !== "none" && primarySurface === panelSurface) ||
+      (panelId === "session-rail" && primarySurface === "session-wizard");
+    setDatasetIfChanged(panel, "primarySurface", primarySurface);
     setDatasetIfChanged(panel, "operationalProfile", state.guidance.operationalProfile);
+    panel.classList.toggle("repair-panel--active", active);
   }
 
   function isPanelVisible(panelId: RepairPanelId): boolean {

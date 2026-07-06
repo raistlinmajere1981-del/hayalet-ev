@@ -2,7 +2,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--repair-sp-1);
-  padding: var(--repair-sp-2) 0;
+  padding: var(--repair-sp-2) 0 var(--repair-sp-3);
 }
 
 .repair-wizard-step {
@@ -71,8 +71,8 @@
 .repair-wizard-form {
   display: flex;
   flex-direction: column;
-  gap: var(--repair-sp-2);
-  padding: var(--repair-sp-2) 0;
+  gap: var(--repair-sp-3);
+  padding: var(--repair-sp-3) 0;
 }
 
 .repair-wizard-field--required > .repair-wizard-field__label::after {
@@ -82,36 +82,36 @@
 
 .repair-wizard-guidance {
   margin-top: var(--repair-sp-1);
-  padding: var(--repair-sp-2);
+  padding: var(--repair-sp-3);
   border: var(--repair-px-1) solid var(--repair-border-muted);
   border-radius: var(--repair-radius-sm);
   background: var(--repair-surface-whisper);
   color: var(--repair-text-muted);
   font-size: var(--repair-px-11);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .repair-wizard-field {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--repair-px-3);
+  gap: var(--repair-px-5);
   font-family: var(--repair-mono);
   font-size: var(--repair-px-10);
   color: var(--repair-text-dim);
 }
 
 .repair-wizard-field__label {
-  color: var(--repair-text-dim);
+  color: var(--repair-text-muted);
 }
 
 .repair-wizard-field__input {
   width: 100%;
-  min-height: var(--repair-px-28);
-  padding: var(--repair-px-6) var(--repair-px-8);
-  border: var(--repair-px-1) solid var(--repair-border);
+  min-height: var(--repair-px-32);
+  padding: var(--repair-px-7) var(--repair-px-10);
+  border: var(--repair-px-1) solid var(--repair-border-panel);
   border-radius: var(--repair-radius-sm);
-  background: var(--repair-input-bg);
+  background: var(--repair-input-bg-strong);
   color: var(--repair-text);
   color-scheme: dark;
   font: var(--repair-px-11) var(--repair-body);
@@ -173,13 +173,14 @@ select.repair-wizard-field__input option:hover {
 }
 
 textarea.repair-wizard-field__input {
-  min-height: var(--repair-px-64);
-  line-height: 1.4;
+  min-height: var(--repair-px-72);
+  line-height: 1.45;
 }
 
 .repair-wizard-field__input:focus {
   outline: none;
   border-color: var(--repair-border-strong);
+  box-shadow: 0 0 0 var(--repair-px-2) var(--repair-cyan-ring-soft);
 }
 
 .repair-wizard-symptom-group {

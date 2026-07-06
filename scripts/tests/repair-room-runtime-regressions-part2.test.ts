@@ -12,6 +12,7 @@ import {
 import { createRepairDefaultGuidanceProjection } from "../../rooms/repair-room/shared/ui/state.ts";
 import type {
   RepairStoredEvidenceSelectionRecord,
+  RepairStoredLayoutRecord,
   RepairStoredOperatorProfileRecord,
   RepairStoredSessionRecord,
 } from "../../rooms/repair-room/host/repair-session-storage.ts";
@@ -69,6 +70,7 @@ function createStoredRepairRecord(
 function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] = []) {
   const records = new Map<string, RepairStoredSessionRecord>();
   const evidenceSelectionRecords = new Map<string, RepairStoredEvidenceSelectionRecord>();
+  let layoutRecord: RepairStoredLayoutRecord | null = null;
   let operatorProfileRecord: RepairStoredOperatorProfileRecord | null = null;
   initialRecords.forEach((record) => {
     records.set(record.session.id, cloneJson(record));
@@ -89,6 +91,7 @@ function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] =
     listSessions: async (_runtimePaths: unknown) =>
       listRecords().map((record) => toStoredSessionListItem(record.session)),
     loadOperatorProfileRecord: async (_runtimePaths: unknown) => cloneJson(operatorProfileRecord),
+    loadLayoutRecord: async (_runtimePaths: unknown) => cloneJson(layoutRecord),
     loadLatestSessionRecord: async (_runtimePaths: unknown) => cloneJson(listRecords()[0] ?? null),
     loadSessionRecord: async (_runtimePaths: unknown, sessionId: string) =>
       cloneJson(records.get(sessionId) ?? null),
@@ -131,8 +134,23 @@ function createMemoryRepairStorage(initialRecords: RepairStoredSessionRecord[] =
       };
       return cloneJson(operatorProfileRecord);
     },
+    saveLayoutRecord: async (
+      _runtimePaths: unknown,
+      panelSizes: RepairStoredLayoutRecord["panelSizes"]
+    ) => {
+      layoutRecord = {
+        panelSizes: cloneJson(panelSizes),
+        roomId: REPAIR_ROOM_ID,
+        savedAt: new Date().toISOString(),
+        schemaVersion: 1,
+      };
+      return cloneJson(layoutRecord);
+    },
     readOperatorProfileRecord(): unknown {
       return cloneJson(operatorProfileRecord);
+    },
+    readLayoutRecord(): RepairStoredLayoutRecord | null {
+      return cloneJson(layoutRecord);
     },
     readRecord(sessionId: string): RepairStoredSessionRecord | null {
       return cloneJson(records.get(sessionId) ?? null);
@@ -236,6 +254,57 @@ void test("repair-room persists operator profile to room-local storage and hydra
     "Persisted Bench"
   );
   assert.equal(hydratedRuntime.getStateSnapshot().state.operatorAdaptation.hasBenchPsu, false);
+  hydratedRuntime.dispose();
+});
+
+void test("repair-room persists panel sizes to room-local storage and hydrates them", async () => {
+  const storage = createMemoryRepairStorage();
+  const runtime = createRepairRoomHostRuntime({
+    autoHydrateStorage: false,
+    io: createMemoryRepairIo(),
+    storage,
+  }).activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+
+  await runtime.hydrateStorage();
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.updatePanelLayout, {
+      panelSizes: {
+        mainColumns: {
+          "session-rail": 1.35,
+          "workbench-stage": 1.25,
+          "tactical-feed": 0.7,
+          "knowledge-pack": 1.1,
+        },
+      },
+    }).success,
+    true
+  );
+  await runtime.flushStorage();
+
+  assert.equal(storage.readLayoutRecord()?.panelSizes.mainColumns["session-rail"], 1.35);
+  assert.equal(storage.readLayoutRecord()?.panelSizes.mainColumns["workbench-stage"], 1.25);
+  runtime.dispose();
+
+  const hydratedRuntime = createRepairRoomHostRuntime({
+    autoHydrateStorage: false,
+    io: createMemoryRepairIo(),
+    storage,
+  }).activate({
+    log: () => {},
+    notifyRoom: () => {},
+  });
+  await hydratedRuntime.hydrateStorage();
+
+  assert.equal(hydratedRuntime.getStateSnapshot().state.layout.panelSizes.mainColumns["session-rail"], 1.35);
+  assert.equal(
+    hydratedRuntime.getStateSnapshot().state.layout.panelSizes.mainColumns["workbench-stage"],
+    1.25
+  );
+  assert.equal(hydratedRuntime.getStateSnapshot().state.layout.panelSizes.mainColumns["tactical-feed"], 0.7);
+  assert.equal(hydratedRuntime.getStateSnapshot().state.layout.panelSizes.mainColumns["knowledge-pack"], 1.1);
   hydratedRuntime.dispose();
 });
 

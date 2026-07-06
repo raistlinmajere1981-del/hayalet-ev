@@ -175,12 +175,10 @@ export function renderVisualTimelinePanel(
 
   const readout = documentRef.createElement("span");
   readout.className = "repair-timeline__readout";
-  readout.textContent = getRepairMomentPageLabel(
-    lastPageIndex,
-    orderedEvents.length,
-    text,
-    pageSize
-  );
+  readout.textContent =
+    orderedEvents.length === 0
+      ? ""
+      : getRepairMomentPageLabel(lastPageIndex, orderedEvents.length, text, pageSize);
   controls.append(readout);
 
   const previous = documentRef.createElement("button");
