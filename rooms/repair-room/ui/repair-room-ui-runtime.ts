@@ -154,6 +154,14 @@ type RepairTextFn = (
   params?: Record<string, string | number>
 ) => string;
 
+type RepairThemeMode = "dark" | "light";
+
+const REPAIR_THEME_STORAGE_KEY = "repair-room-theme";
+
+function isRepairThemeMode(value: unknown): value is RepairThemeMode {
+  return value === "dark" || value === "light";
+}
+
 const REPAIR_TOP_PANEL_CHIPS = [
   { panelId: "session-rail", label: "", title: "" },
   { panelId: "tactical-feed", label: "", title: "" },
@@ -545,6 +553,7 @@ export function createRepairRoomUiRuntime() {
   let pendingSessionRailDraftEcho = false;
   let pendingSessionRailDraftEchoTimer: ReturnType<typeof setTimeout> | null = null;
 
+  let repairTheme: RepairThemeMode = readStoredRepairTheme();
   let shell: RepairPersistentShell | null = null;
   let clockInterval: ReturnType<typeof setInterval> | null = null;
   let spatialFocusTween: RepairSpatialFocusTween | null = null;
@@ -584,6 +593,54 @@ export function createRepairRoomUiRuntime() {
       }
     }
     return result;
+  }
+
+  function readStoredRepairTheme(): RepairThemeMode {
+    try {
+      const stored = window.localStorage.getItem(REPAIR_THEME_STORAGE_KEY);
+      return isRepairThemeMode(stored) ? stored : "dark";
+    } catch {
+      return "dark";
+    }
+  }
+
+  function persistRepairTheme(theme: RepairThemeMode): void {
+    try {
+      window.localStorage.setItem(REPAIR_THEME_STORAGE_KEY, theme);
+    } catch {
+      // Ignore storage failures; the current room session still updates immediately.
+    }
+  }
+
+  function applyRepairTheme(theme: RepairThemeMode): void {
+    documentRef.documentElement.dataset["repairTheme"] = theme;
+  }
+
+  function syncRepairThemeButton(root: HTMLElement): void {
+    const button = root.querySelector<HTMLElement>("[data-repair-action='toggle-theme']");
+    if (button === null) return;
+
+    const nextTheme: RepairThemeMode = repairTheme === "dark" ? "light" : "dark";
+    const label =
+      nextTheme === "light"
+        ? text(["statusbar", "themeLight"], "Acik")
+        : text(["statusbar", "themeDark"], "Koyu");
+    const title =
+      nextTheme === "light"
+        ? text(["statusbar", "themeLightTitle"], "Acik temaya gec")
+        : text(["statusbar", "themeDarkTitle"], "Koyu temaya gec");
+
+    setTextIfChanged(button, label);
+    button.title = title;
+    button.setAttribute("aria-label", title);
+    button.dataset["repairThemeMode"] = repairTheme;
+  }
+
+  function setRepairTheme(theme: RepairThemeMode): void {
+    repairTheme = theme;
+    persistRepairTheme(theme);
+    applyRepairTheme(theme);
+    if (shell !== null) syncRepairThemeButton(shell.root);
   }
 
   function getManualEvidenceInput(
@@ -1722,6 +1779,8 @@ export function createRepairRoomUiRuntime() {
       setupButton.title = text(["statusbar", "setupTitle"], "Tezgah kurulumunu aç");
     }
 
+    syncRepairThemeButton(persistentShell.root);
+
     const closeButton = persistentShell.root.querySelector<HTMLElement>(".repair-statusbar__close");
     if (closeButton !== null) {
       const returnHome = text(["statusbar", "returnHome"], "Ana sayfaya dön");
@@ -1925,6 +1984,11 @@ export function createRepairRoomUiRuntime() {
     const statusActions = documentRef.createElement("div");
     statusActions.className = "repair-statusbar__actions";
 
+    const themeButton = documentRef.createElement("button");
+    themeButton.className = "repair-statusbar__theme";
+    themeButton.type = "button";
+    themeButton.dataset["repairAction"] = "toggle-theme";
+
     const closeButton = documentRef.createElement("button");
     closeButton.className = "repair-statusbar__close";
     closeButton.type = "button";
@@ -1936,7 +2000,7 @@ export function createRepairRoomUiRuntime() {
     const clock = documentRef.createElement("span");
     clock.className = "repair-statusbar__clock";
     clock.textContent = "--:--:--";
-    statusActions.append(closeButton, clock);
+    statusActions.append(themeButton, closeButton, clock);
     statusBar.append(statusActions);
     root.append(statusBar);
 
@@ -2103,6 +2167,9 @@ export function createRepairRoomUiRuntime() {
       switch (action) {
         case "room-close":
           windowRef.roomAPI?.close?.();
+          break;
+        case "toggle-theme":
+          setRepairTheme(repairTheme === "dark" ? "light" : "dark");
           break;
         case "activate-session": {
           const sessionId = el.dataset["sessionId"];
@@ -2974,6 +3041,7 @@ export function createRepairRoomUiRuntime() {
     }
 
     documentRef.documentElement.lang = context.locale;
+    applyRepairTheme(repairTheme);
     documentRef.addEventListener("keydown", keyboardController.handleKeydown);
     window.addEventListener("resize", handleViewportResize);
     startClock();

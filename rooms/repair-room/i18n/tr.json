@@ -576,6 +576,10 @@
     "version": "Tamir Odası v0.1.0",
     "setup": "Kurulum",
     "setupTitle": "Tezgah kurulumunu aç",
+    "themeLight": "Açık",
+    "themeLightTitle": "Açık temaya geç",
+    "themeDark": "Koyu",
+    "themeDarkTitle": "Koyu temaya geç",
     "returnHome": "Ana sayfaya dön"
   },
   "sessionRail": {

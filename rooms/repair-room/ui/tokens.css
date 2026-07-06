@@ -164,3 +164,78 @@
   --repair-dur-focus: 420ms;
   --repair-dur-mount: 680ms;
 }
+
+:root[data-repair-theme="light"] {
+  color-scheme: light;
+
+  --repair-bg: #f4f8fb;
+  --repair-bg-strong: #e6edf3;
+  --repair-panel: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(238, 244, 249, 0.98));
+  --repair-panel-alt: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(232, 240, 247, 0.98));
+  --repair-panel-focus: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(226, 237, 246, 0.99));
+  --repair-stage: #eaf3f7;
+
+  --repair-border: rgba(43, 62, 79, 0.18);
+  --repair-border-muted: rgba(43, 62, 79, 0.12);
+  --repair-border-panel: rgba(43, 62, 79, 0.2);
+  --repair-border-panel-hover: rgba(43, 62, 79, 0.34);
+  --repair-border-active: rgba(173, 106, 28, 0.62);
+  --repair-border-strong: rgba(4, 124, 150, 0.36);
+  --repair-text: #17212b;
+  --repair-text-muted: #526274;
+  --repair-text-dim: #7a8796;
+
+  --repair-cyan: #047c96;
+  --repair-cyan-soft: rgba(4, 124, 150, 0.14);
+  --repair-cyan-hover: rgba(4, 124, 150, 0.22);
+  --repair-cyan-half: rgba(4, 124, 150, 0.5);
+  --repair-cyan-wash: rgba(4, 124, 150, 0.07);
+  --repair-cyan-glow-soft: rgba(4, 124, 150, 0.08);
+  --repair-cyan-shadow: rgba(4, 124, 150, 0.24);
+  --repair-cyan-panel: rgba(4, 124, 150, 0.08);
+  --repair-cyan-ring-soft: rgba(4, 124, 150, 0.08);
+  --repair-cyan-active-border: rgba(4, 124, 150, 0.38);
+  --repair-cyan-active-inset: rgba(4, 124, 150, 0.14);
+  --repair-cyan-active-glow: rgba(4, 124, 150, 0.12);
+  --repair-cyan-active-glow-soft: rgba(4, 124, 150, 0.08);
+  --repair-cyan-toolbar-border: rgba(4, 124, 150, 0.24);
+  --repair-cyan-toolbar-border-soft: rgba(4, 124, 150, 0.15);
+  --repair-amber: #a7651f;
+  --repair-amber-soft: rgba(167, 101, 31, 0.14);
+  --repair-amber-border: rgba(167, 101, 31, 0.34);
+  --repair-amber-wash: rgba(167, 101, 31, 0.08);
+  --repair-amber-active-inset: rgba(167, 101, 31, 0.12);
+  --repair-risk: #b14f5f;
+  --repair-risk-soft: rgba(177, 79, 95, 0.12);
+  --repair-critical: #c33642;
+  --repair-critical-soft: rgba(195, 54, 66, 0.14);
+  --repair-success: #3b8a67;
+  --repair-success-soft: rgba(59, 138, 103, 0.13);
+  --repair-info: #536d8b;
+  --repair-info-soft: rgba(83, 109, 139, 0.12);
+
+  --repair-surface-control: rgba(36, 52, 68, 0.045);
+  --repair-surface-hover: rgba(36, 52, 68, 0.075);
+  --repair-surface-raised: rgba(36, 52, 68, 0.1);
+  --repair-surface-faint: rgba(36, 52, 68, 0.035);
+  --repair-surface-whisper: rgba(36, 52, 68, 0.025);
+  --repair-surface-trace: rgba(36, 52, 68, 0.02);
+  --repair-surface-hairline: rgba(36, 52, 68, 0.06);
+  --repair-input-bg: rgba(255, 255, 255, 0.72);
+  --repair-input-bg-strong: rgba(255, 255, 255, 0.86);
+  --repair-guidance-bg: rgba(255, 255, 255, 0.62);
+  --repair-scrim-strong: rgba(23, 33, 43, 0.38);
+  --repair-scrim-inset: rgba(23, 33, 43, 0.14);
+  --repair-shadow-panel: rgba(33, 49, 64, 0.16);
+  --repair-shadow-stage: rgba(33, 49, 64, 0.2);
+  --repair-timeline-bg: rgba(36, 52, 68, 0.06);
+  --repair-settings-dialog-shadow-color: rgba(33, 49, 64, 0.32);
+  --repair-thumb-ring: rgba(255, 255, 255, 0.9);
+  --repair-thumb-bg: rgba(255, 255, 255, 0.86);
+  --repair-action-bg: rgba(255, 255, 255, 0.58);
+  --repair-toolbar-bg: rgba(255, 255, 255, 0.82);
+  --repair-toolbar-bg-soft: rgba(255, 255, 255, 0.7);
+  --repair-popover-bg: rgba(255, 255, 255, 0.94);
+  --repair-text-shadow-strong: rgba(255, 255, 255, 0.88);
+  --repair-text-glow: rgba(4, 124, 150, 0.18);
+}

@@ -576,6 +576,10 @@
     "version": "Repair Room v0.1.0",
     "setup": "Setup",
     "setupTitle": "Open bench setup",
+    "themeLight": "Light",
+    "themeLightTitle": "Switch to light theme",
+    "themeDark": "Dark",
+    "themeDarkTitle": "Switch to dark theme",
     "returnHome": "Return to home"
   },
   "sessionRail": {
