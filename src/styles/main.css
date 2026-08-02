@@ -336,6 +336,10 @@ body.is-scroll-locked {
   gap: var(--space-4);
 }
 
+.room-manager-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .room-manager-section {
   display: flex;
   flex-direction: column;
@@ -378,6 +382,41 @@ body.is-scroll-locked {
   border-radius: var(--radius-lg);
   border: var(--border-1) solid var(--border-glass);
   background: var(--bg-glass);
+}
+
+.room-manager-card--row {
+  display: grid;
+  grid-template-columns: minmax(11rem, 0.8fr) minmax(14rem, 1.4fr) auto auto;
+  align-items: center;
+  column-gap: var(--space-4);
+  row-gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.room-manager-card--row .room-manager-title-wrap {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.room-manager-card--row .room-manager-path {
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-manager-card--row .room-manager-state-badge {
+  grid-column: 3;
+}
+
+.room-manager-card--row .room-manager-actions {
+  grid-column: 4;
+  justify-content: flex-end;
+}
+
+.room-manager-card--row .room-manager-errors {
+  grid-column: 1 / -1;
 }
 
 .room-manager-card-head {
@@ -482,7 +521,8 @@ body.is-scroll-locked {
 }
 
 .room-manager-state-badge[data-state="ready"],
-.room-manager-state-badge[data-state="linked"] {
+.room-manager-state-badge[data-state="linked"],
+.room-manager-state-badge[data-state="installed"] {
   color: var(--color-success);
 }
 
@@ -651,6 +691,35 @@ body.is-scroll-locked {
 @media (--breakpoint-max-900) {
   .room-manager-grid {
     grid-template-columns: 1fr;
+  }
+
+  .room-manager-card--row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .room-manager-card--row .room-manager-title-wrap {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .room-manager-card--row .room-manager-state-badge {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .room-manager-card--row .room-manager-path {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .room-manager-card--row .room-manager-actions {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-content: flex-start;
+  }
+
+  .room-manager-card--row .room-manager-errors {
+    grid-row: 4;
   }
 
   .backup-preview-grid {
@@ -2113,6 +2182,17 @@ body.is-scroll-locked {
   background: color-mix(in srgb, var(--bg-surface-3) 72%, transparent);
 }
 
+.settings-hub-panel[data-settings-panel="rooms"] .room-manager-card--installed {
+  border-color: color-mix(in srgb, var(--color-success) 48%, var(--settings-workbench-border));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-success) 14%, transparent),
+      transparent 58%
+    ),
+    color-mix(in srgb, var(--bg-surface-3) 82%, transparent);
+}
+
 .settings-hub-panel--live-log .live-log-toolbar {
   grid-template-columns:
     auto auto auto minmax(var(--layout-live-log-search-min), var(--layout-live-log-search-max))
@@ -2345,6 +2425,39 @@ body.is-scroll-locked {
 
   .settings-panel-scroll {
     padding-bottom: var(--space-4);
+  }
+
+  .room-manager-card--row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .room-manager-card--row .room-manager-title-wrap,
+  .room-manager-card--row .room-manager-state-badge,
+  .room-manager-card--row .room-manager-path,
+  .room-manager-card--row .room-manager-actions,
+  .room-manager-card--row .room-manager-errors {
+    grid-column: 1;
+  }
+
+  .room-manager-card--row .room-manager-title-wrap {
+    grid-row: 1;
+  }
+
+  .room-manager-card--row .room-manager-state-badge {
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .room-manager-card--row .room-manager-path {
+    grid-row: 3;
+  }
+
+  .room-manager-card--row .room-manager-actions {
+    grid-row: 4;
+  }
+
+  .room-manager-card--row .room-manager-errors {
+    grid-row: 5;
   }
 
   .settings-hub-panel--live-log .live-log-toolbar {

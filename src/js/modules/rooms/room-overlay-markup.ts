@@ -2,6 +2,17 @@ import type { InstalledRoomRecord, RoomWorkspaceEntry } from "@shared/index.js";
 import { AppI18n } from "../i18n/index.js";
 import { resolveRoomShellName } from "./room-shell-presentation.js";
 
+interface RoomListEntry {
+  id: string;
+  workspace: RoomWorkspaceEntry | null;
+  installed: InstalledRoomRecord | null;
+}
+
+interface RoomListState {
+  label: string;
+  value: "installed" | "ready" | "invalid";
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -19,19 +30,119 @@ function getVisibleInstalledRooms(installedRooms: InstalledRoomRecord[]): Instal
   return installedRooms.filter((room) => room.isWorkspaceFallback !== true);
 }
 
-function buildWorkspaceStateLabel(room: RoomWorkspaceEntry, installedIds: Set<string>): string {
-  if (room.valid !== true) {
-    return roomOverlayText("states.invalid");
-  }
-  return installedIds.has(room.manifest?.id ?? "")
-    ? roomOverlayText("states.installed")
-    : roomOverlayText("states.ready");
+function getWorkspaceRoomId(room: RoomWorkspaceEntry): string {
+  return room.manifest?.id ?? room.dirName;
 }
 
-function buildInstalledStateLabel(roomId: string, workspaceIds: Set<string>): string {
-  return workspaceIds.has(roomId)
-    ? roomOverlayText("states.workspaceLinked")
-    : roomOverlayText("states.standalone");
+function getRoomListName(entry: RoomListEntry): string {
+  const fallbackName =
+    entry.workspace?.manifest?.name ??
+    entry.workspace?.dirName ??
+    entry.installed?.name ??
+    entry.id;
+  return resolveRoomShellName(entry.id, fallbackName);
+}
+
+function buildRoomListEntries(
+  workspaceRooms: RoomWorkspaceEntry[],
+  installedRooms: InstalledRoomRecord[]
+): RoomListEntry[] {
+  const entriesById = new Map<string, RoomListEntry>();
+
+  for (const workspace of workspaceRooms) {
+    const id = getWorkspaceRoomId(workspace);
+    const current = entriesById.get(id);
+    if (current === undefined) {
+      entriesById.set(id, { id, workspace, installed: null });
+    } else {
+      current.workspace = workspace;
+    }
+  }
+
+  for (const installed of getVisibleInstalledRooms(installedRooms)) {
+    const current = entriesById.get(installed.id);
+    if (current === undefined) {
+      entriesById.set(installed.id, { id: installed.id, workspace: null, installed });
+    } else {
+      current.installed = installed;
+    }
+  }
+
+  return [...entriesById.values()].sort((left, right) => {
+    const installedOrder = Number(right.installed !== null) - Number(left.installed !== null);
+    if (installedOrder !== 0) {
+      return installedOrder;
+    }
+
+    return getRoomListName(left).localeCompare(getRoomListName(right), undefined, {
+      sensitivity: "base",
+    });
+  });
+}
+
+function buildRoomListState(entry: RoomListEntry): RoomListState {
+  if (entry.installed !== null) {
+    return {
+      label: roomOverlayText("states.installed"),
+      value: "installed",
+    };
+  }
+
+  if (entry.workspace?.valid === true) {
+    return {
+      label: roomOverlayText("states.ready"),
+      value: "ready",
+    };
+  }
+
+  return {
+    label: roomOverlayText("states.invalid"),
+    value: "invalid",
+  };
+}
+
+function buildRoomActions(entry: RoomListEntry): string {
+  const actions: string[] = [];
+  const workspace = entry.workspace;
+  const installed = entry.installed;
+
+  if (workspace !== null) {
+    const workspaceEnabled = workspace.valid === true;
+    const disabledAttribute = workspaceEnabled ? "" : " disabled";
+    const installLabel =
+      installed === null ? roomOverlayText("actions.install") : roomOverlayText("actions.update");
+
+    actions.push(
+      `<button class="btn btn-primary btn-sm" data-room-action="install" data-room-id="${escapeHtml(
+        entry.id
+      )}"${disabledAttribute}>${escapeHtml(installLabel)}</button>`
+    );
+    actions.push(
+      `<button class="btn btn-ghost btn-sm" data-room-action="package" data-room-id="${escapeHtml(
+        entry.id
+      )}"${disabledAttribute}>${escapeHtml(roomOverlayText("actions.package"))}</button>`
+    );
+
+    if (installed === null) {
+      const deleteDisabledAttribute =
+        workspace.readOnly === true || workspace.valid !== true ? " disabled" : "";
+      actions.push(
+        `<button class="btn btn-danger btn-sm" data-room-action="delete" data-room-id="${escapeHtml(
+          entry.id
+        )}"${deleteDisabledAttribute}>${escapeHtml(roomOverlayText("actions.delete"))}</button>`
+      );
+    }
+  }
+
+  if (installed !== null) {
+    actions.push(
+      `<button class="btn btn-danger btn-sm" data-room-action="remove" data-room-id="${escapeHtml(
+        entry.id
+      )}">${escapeHtml(roomOverlayText("actions.remove"))}</button>`
+    );
+  }
+
+  return actions.join("");
 }
 
 export function buildRoomOverlaySummary(
@@ -54,106 +165,50 @@ export function buildRoomOverlaySummary(
   ].join("");
 }
 
-export function buildWorkspaceRoomListMarkup(
+export function buildRoomListMarkup(
   workspaceRooms: RoomWorkspaceEntry[],
   installedRooms: InstalledRoomRecord[]
 ): string {
-  if (workspaceRooms.length === 0) {
-    return `<div class="room-manager-empty">${escapeHtml(roomOverlayText("emptyWorkspace"))}</div>`;
+  const entries = buildRoomListEntries(workspaceRooms, installedRooms);
+  if (entries.length === 0) {
+    return `<div class="room-manager-empty">${escapeHtml(roomOverlayText("emptyList"))}</div>`;
   }
 
-  const installedIds = new Set(getVisibleInstalledRooms(installedRooms).map((room) => room.id));
-
-  return workspaceRooms
-    .map((room) => {
-      const roomId = room.manifest?.id ?? room.dirName;
-      const roomName = resolveRoomShellName(roomId, room.manifest?.name ?? room.dirName);
-      const roomVersion = room.manifest?.version ?? "-";
-      const stateLabel = buildWorkspaceStateLabel(room, installedIds);
-      const isLinked = installedIds.has(roomId);
-      const isDeleteDisabled = isLinked || room.readOnly === true;
-      const actionLabel = installedIds.has(roomId)
-        ? roomOverlayText("actions.update")
-        : roomOverlayText("actions.install");
+  return entries
+    .map((entry) => {
+      const state = buildRoomListState(entry);
+      const roomName = getRoomListName(entry);
+      const roomVersion = entry.workspace?.manifest?.version ?? entry.installed?.version ?? "-";
+      const roomPath = entry.workspace?.dirPath ?? entry.installed?.installedDir ?? "";
       const errorsMarkup =
-        room.valid === true || room.errors.length === 0
-          ? ""
-          : `<div class="room-manager-errors">${room.errors
+        entry.workspace?.valid === false && entry.workspace.errors.length > 0
+          ? `<div class="room-manager-errors">${entry.workspace.errors
               .map((error) => `<div>${escapeHtml(error)}</div>`)
-              .join("")}</div>`;
+              .join("")}</div>`
+          : "";
+      const classes = ["room-manager-card", "room-manager-card--row"];
+      if (entry.installed !== null) {
+        classes.push("room-manager-card--installed");
+      }
 
       return [
-        '<article class="room-manager-card">',
-        '  <div class="room-manager-card-head">',
-        `    <div class="room-manager-title-wrap"><div class="room-manager-title">${escapeHtml(
-          roomName
-        )}</div><div class="room-manager-subtitle">${escapeHtml(roomId)} • ${escapeHtml(
+        `<article class="${classes.join(" ")}" data-room-id="${escapeHtml(
+          entry.id
+        )}" data-room-status="${state.value}">`,
+        '  <div class="room-manager-title-wrap">',
+        `    <div class="room-manager-title">${escapeHtml(roomName)}</div>`,
+        `    <div class="room-manager-subtitle">${escapeHtml(entry.id)} • ${escapeHtml(
           roomVersion
-        )}</div></div>`,
-        `    <span class="room-manager-state-badge" data-state="${
-          room.valid === true ? "ready" : "invalid"
-        }">${escapeHtml(stateLabel)}</span>`,
+        )}</div>`,
         "  </div>",
-        `  <div class="room-manager-path">${escapeHtml(room.dirPath)}</div>`,
+        `  <div class="room-manager-path" title="${escapeHtml(roomPath)}">${escapeHtml(
+          roomPath
+        )}</div>`,
+        `  <span class="room-manager-state-badge" data-state="${state.value}">${escapeHtml(
+          state.label
+        )}</span>`,
+        `  <div class="room-manager-actions">${buildRoomActions(entry)}</div>`,
         errorsMarkup,
-        '  <div class="room-manager-actions">',
-        `    <button class="btn btn-primary btn-sm" data-room-action="install" data-room-id="${escapeHtml(
-          roomId
-        )}" ${room.valid === true ? "" : "disabled"}>${escapeHtml(actionLabel)}</button>`,
-        `    <button class="btn btn-ghost btn-sm" data-room-action="package" data-room-id="${escapeHtml(
-          roomId
-        )}" ${room.valid === true ? "" : "disabled"}>${escapeHtml(
-          roomOverlayText("actions.package")
-        )}</button>`,
-        `    <button class="btn btn-danger btn-sm" data-room-action="delete" data-room-id="${escapeHtml(
-          roomId
-        )}" ${isDeleteDisabled ? "disabled" : ""}>${escapeHtml(roomOverlayText("actions.delete"))}</button>`,
-        "  </div>",
-        "</article>",
-      ].join("");
-    })
-    .join("");
-}
-
-export function buildInstalledRoomListMarkup(
-  installedRooms: InstalledRoomRecord[],
-  workspaceRooms: RoomWorkspaceEntry[]
-): string {
-  const visibleInstalledRooms = getVisibleInstalledRooms(installedRooms);
-  if (visibleInstalledRooms.length === 0) {
-    return `<div class="room-manager-empty">${escapeHtml(roomOverlayText("emptyInstalled"))}</div>`;
-  }
-
-  const workspaceIds = new Set(
-    workspaceRooms
-      .filter((room) => room.valid === true && room.manifest !== undefined)
-      .map((room) => room.manifest?.id ?? room.dirName)
-  );
-
-  return visibleInstalledRooms
-    .map((room) => {
-      const roomName = resolveRoomShellName(room.id, room.name);
-      const stateLabel = buildInstalledStateLabel(room.id, workspaceIds);
-      const hasWorkspace = workspaceIds.has(room.id);
-
-      return [
-        '<article class="room-manager-card">',
-        '  <div class="room-manager-card-head">',
-        `    <div class="room-manager-title-wrap"><div class="room-manager-title">${escapeHtml(
-          roomName
-        )}</div><div class="room-manager-subtitle">${escapeHtml(room.id)} • ${escapeHtml(
-          room.version
-        )}</div></div>`,
-        `    <span class="room-manager-state-badge" data-state="${
-          hasWorkspace ? "linked" : "standalone"
-        }">${escapeHtml(stateLabel)}</span>`,
-        "  </div>",
-        `  <div class="room-manager-path">${escapeHtml(room.installedDir)}</div>`,
-        '  <div class="room-manager-actions">',
-        `    <button class="btn btn-danger btn-sm" data-room-action="remove" data-room-id="${escapeHtml(
-          room.id
-        )}">${escapeHtml(roomOverlayText("actions.remove"))}</button>`,
-        "  </div>",
         "</article>",
       ].join("");
     })

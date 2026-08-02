@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import type { InstalledRoomRecord, RoomWorkspaceEntry } from "../../src/types/rooms.ts";
 import {
-  buildInstalledRoomListMarkup,
+  buildRoomListMarkup,
   buildRoomOverlaySummary,
-  buildWorkspaceRoomListMarkup,
 } from "../../src/js/modules/rooms/room-overlay-markup.ts";
 
 const workspaceRooms: RoomWorkspaceEntry[] = [
@@ -98,6 +97,16 @@ const installedRooms: InstalledRoomRecord[] = [
   },
 ];
 
+function getRoomCardMarkup(markup: string, roomId: string): string {
+  const match = markup.match(
+    new RegExp(`<article[^>]*data-room-id="${roomId}"[^>]*>[\\s\\S]*?</article>`)
+  );
+  if (match === null) {
+    assert.fail(`Room card not found: ${roomId}`);
+  }
+  return match[0];
+}
+
 void test("room overlay summary reports workspace and installed counts", () => {
   const markup = buildRoomOverlaySummary(workspaceRooms, installedRooms);
 
@@ -106,30 +115,47 @@ void test("room overlay summary reports workspace and installed counts", () => {
   assert.match(markup, /Yüklü: <strong>2<\/strong>/);
 });
 
-void test("workspace room list renders install and package actions", () => {
-  const markup = buildWorkspaceRoomListMarkup(workspaceRooms, installedRooms);
+void test("unified room list renders each room once with installed rooms first", () => {
+  const markup = buildRoomListMarkup(workspaceRooms, installedRooms);
+  const roomCards = [...markup.matchAll(/<article class="room-manager-card[^>]*>/g)];
 
-  assert.match(markup, /data-room-action="install"/);
-  assert.match(markup, /data-room-action="package"/);
-  assert.match(markup, /data-room-action="delete"/);
-  assert.match(markup, /data-room-action="delete" data-room-id="game-room" disabled/);
-  assert.match(markup, /data-room-action="delete" data-room-id="observatory" disabled/);
-  assert.match(markup, /Güncelle/);
-  assert.match(markup, /Workshop/);
-  assert.match(markup, /Observatory/);
-  assert.match(markup, /manifest\.json missing/);
+  assert.equal(roomCards.length, 4);
+  assert.equal([...markup.matchAll(/room-manager-card--installed/g)].length, 2);
+
+  const lastInstalledIndex = markup.lastIndexOf('data-room-status="installed"');
+  const firstReadyIndex = markup.indexOf('data-room-status="ready"');
+  const firstInvalidIndex = markup.indexOf('data-room-status="invalid"');
+  assert.ok(lastInstalledIndex >= 0);
+  assert.ok(firstReadyIndex > lastInstalledIndex);
+  assert.ok(firstInvalidIndex > lastInstalledIndex);
+
+  const gameRoomCard = getRoomCardMarkup(markup, "game-room");
+  assert.match(gameRoomCard, /Güncelle/);
+  assert.match(gameRoomCard, /data-room-action="package"/);
+  assert.match(gameRoomCard, /data-room-action="remove"/);
+  assert.doesNotMatch(gameRoomCard, /data-room-action="delete"/);
+
+  const observatoryCard = getRoomCardMarkup(markup, "observatory");
+  assert.match(observatoryCard, /data-room-action="install"/);
+  assert.match(observatoryCard, /data-room-action="delete" data-room-id="observatory" disabled/);
+
+  const brokenRoomCard = getRoomCardMarkup(markup, "broken-room");
+  assert.match(brokenRoomCard, /data-room-status="invalid"/);
+  assert.match(brokenRoomCard, /manifest\.json missing/);
 });
 
-void test("installed room list renders remove action without export", () => {
-  const markup = buildInstalledRoomListMarkup(installedRooms, workspaceRooms);
+void test("installed-only room remains a single removable installed row", () => {
+  const markup = buildRoomListMarkup([], installedRooms.slice(0, 1));
+  const gameRoomCard = getRoomCardMarkup(markup, "game-room");
 
-  assert.match(markup, /data-room-action="remove"/);
-  assert.doesNotMatch(markup, /data-room-action="export"/);
-  assert.match(markup, /Workspace bağlı/);
-  assert.match(markup, /Workshop/);
+  assert.match(gameRoomCard, /room-manager-card--installed/);
+  assert.match(gameRoomCard, /data-room-status="installed"/);
+  assert.match(gameRoomCard, /data-room-action="remove"/);
+  assert.doesNotMatch(gameRoomCard, /data-room-action="install"/);
+  assert.doesNotMatch(gameRoomCard, /data-room-action="package"/);
 });
 
-void test("workspace fallback entries stay out of installed summary and list markup", () => {
+void test("workspace fallback entries stay out of installed summary and unified list state", () => {
   const fallbackInstalledRooms: InstalledRoomRecord[] = [
     {
       id: "fallback-room",
@@ -149,19 +175,14 @@ void test("workspace fallback entries stay out of installed summary and list mar
   ];
 
   const summaryMarkup = buildRoomOverlaySummary([], fallbackInstalledRooms);
-  const installedMarkup = buildInstalledRoomListMarkup(fallbackInstalledRooms, []);
-  const workspaceMarkup = buildWorkspaceRoomListMarkup(
-    workspaceRooms.slice(0, 1),
-    fallbackInstalledRooms
-  );
+  const roomMarkup = buildRoomListMarkup(workspaceRooms.slice(0, 1), fallbackInstalledRooms);
+  const gameRoomCard = getRoomCardMarkup(roomMarkup, "game-room");
 
   assert.match(summaryMarkup, /Yüklü: <strong>0<\/strong>/);
-  assert.match(installedMarkup, /room-manager-empty/);
-  assert.doesNotMatch(workspaceMarkup, /Güncelle/);
-  assert.doesNotMatch(
-    workspaceMarkup,
-    /data-room-action="delete" data-room-id="game-room" disabled/
-  );
+  assert.doesNotMatch(gameRoomCard, /room-manager-card--installed/);
+  assert.doesNotMatch(gameRoomCard, /Güncelle/);
+  assert.match(gameRoomCard, /data-room-status="ready"/);
+  assert.doesNotMatch(gameRoomCard, /data-room-action="delete" data-room-id="game-room" disabled/);
 });
 
 void test("room confirmation copy keeps remove and delete actions distinct", () => {

@@ -4,9 +4,8 @@ import { AppI18n } from "../../../modules/i18n/index.js";
 import { RoomRegistry } from "../../../modules/rooms/room-registry.js";
 import { resolveIpcErrorMessage } from "../../../modules/ipc-errors.js";
 import {
-  buildInstalledRoomListMarkup,
+  buildRoomListMarkup,
   buildRoomOverlaySummary,
-  buildWorkspaceRoomListMarkup,
 } from "../../../modules/rooms/room-overlay-markup.js";
 import { resolveRoomShellName } from "../../../modules/rooms/room-shell-presentation.js";
 import { shellT } from "../../../app/shell-i18n.js";
@@ -17,8 +16,7 @@ interface RoomOverlayRefs {
   importButton: HTMLButtonElement | null;
   refreshButton: HTMLButtonElement | null;
   summary: HTMLElement | null;
-  workspaceList: HTMLElement | null;
-  installedList: HTMLElement | null;
+  roomList: HTMLElement | null;
 }
 
 interface RoomOverlayState {
@@ -144,8 +142,7 @@ function getRefs(): RoomOverlayRefs {
     importButton: document.getElementById("rooms-overlay-import") as HTMLButtonElement | null,
     refreshButton: document.getElementById("rooms-overlay-refresh") as HTMLButtonElement | null,
     summary: document.getElementById("rooms-overlay-summary"),
-    workspaceList: document.getElementById("rooms-workspace-list"),
-    installedList: document.getElementById("rooms-installed-list"),
+    roomList: document.getElementById("rooms-list"),
   };
 }
 
@@ -155,18 +152,8 @@ function render(refs: RoomOverlayRefs, state: RoomOverlayState): void {
     refs.summary.innerHTML = buildRoomOverlaySummary(state.workspaceRooms, state.installedRooms);
   }
 
-  if (refs.workspaceList !== null) {
-    refs.workspaceList.innerHTML = buildWorkspaceRoomListMarkup(
-      state.workspaceRooms,
-      state.installedRooms
-    );
-  }
-
-  if (refs.installedList !== null) {
-    refs.installedList.innerHTML = buildInstalledRoomListMarkup(
-      state.installedRooms,
-      state.workspaceRooms
-    );
+  if (refs.roomList !== null) {
+    refs.roomList.innerHTML = buildRoomListMarkup(state.workspaceRooms, state.installedRooms);
   }
 }
 
@@ -182,8 +169,7 @@ export function setupSettingsRoomsPanel(): void {
     refs.importButton === null ||
     refs.refreshButton === null ||
     refs.summary === null ||
-    refs.workspaceList === null ||
-    refs.installedList === null
+    refs.roomList === null
   ) {
     return;
   }
@@ -273,7 +259,7 @@ export function setupSettingsRoomsPanel(): void {
     void refresh();
   });
 
-  refs.workspaceList.addEventListener("click", (event) => {
+  refs.roomList.addEventListener("click", (event) => {
     const target = event.target as Element | null;
     const button = target?.closest("[data-room-action]");
     if (!(button instanceof HTMLButtonElement)) {
@@ -403,19 +389,6 @@ export function setupSettingsRoomsPanel(): void {
           Toast.error(roomText("toasts.deleteError"), resolveIpcErrorMessage(result) ?? roomId);
         }
       })();
-    }
-  });
-
-  refs.installedList.addEventListener("click", (event) => {
-    const target = event.target as Element | null;
-    const button = target?.closest("[data-room-action]");
-    if (!(button instanceof HTMLButtonElement)) {
-      return;
-    }
-
-    const action = button.dataset["roomAction"] ?? "";
-    const roomId = button.dataset["roomId"] ?? "";
-    if (roomId === "") {
       return;
     }
 

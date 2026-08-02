@@ -1172,10 +1172,8 @@
       "openTitle": "Oda yönetimi",
       "title": "Oda Yönetimi",
       "importButton": "Paket Seç",
-      "workspaceSectionTitle": "Workspace Odaları",
-      "workspaceSectionNote": "rooms/ altındaki odalar",
-      "installedSectionTitle": "Yüklü Odalar",
-      "installedSectionNote": "Menüye eklenen odalar",
+      "listSectionTitle": "Tüm Odalar",
+      "listSectionNote": "Yüklü odalar üstte; her oda ve işlemleri tek satırda",
       "summary": {
         "workspace": "Workspace",
         "ready": "Hazır",
@@ -1188,7 +1186,7 @@
         "workspaceLinked": "Workspace bağlı",
         "standalone": "Yalnızca kurulu"
       },
-      "emptyWorkspace": "Workspace oda bulunamadı.",
+      "emptyList": "Oda bulunamadı.",
       "emptyInstalled": "Yüklü oda bulunamadı.",
       "actions": {
         "update": "Güncelle",

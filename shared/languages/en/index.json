@@ -1172,10 +1172,8 @@
       "openTitle": "Room management",
       "title": "Room Management",
       "importButton": "Select Bundle",
-      "workspaceSectionTitle": "Workspace Rooms",
-      "workspaceSectionNote": "Rooms under rooms/",
-      "installedSectionTitle": "Installed Rooms",
-      "installedSectionNote": "Rooms added to the menu",
+      "listSectionTitle": "All Rooms",
+      "listSectionNote": "Installed rooms first; one row per room with its actions",
       "summary": {
         "workspace": "Workspace",
         "ready": "Ready",
@@ -1188,7 +1186,7 @@
         "workspaceLinked": "Workspace linked",
         "standalone": "Installed only"
       },
-      "emptyWorkspace": "No workspace rooms found.",
+      "emptyList": "No rooms found.",
       "emptyInstalled": "No installed rooms found.",
       "actions": {
         "update": "Update",
