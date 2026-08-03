@@ -1,23 +1,7 @@
 import type {
   DebateRole,
-  DebateSession,
-  EvidenceItem,
-  PatternEdge,
-  PatternNode,
-  ReportTrace,
-  SourceItem,
-  Topic,
+  PatternRoomDomainData,
 } from "../types/pattern-room-domain.js";
-
-export type PatternRoomDomainData = {
-  topic: Topic;
-  nodes: PatternNode[];
-  edges: PatternEdge[];
-  sources: SourceItem[];
-  evidence: EvidenceItem[];
-  debateSession: DebateSession;
-  reportTrace: ReportTrace[];
-};
 
 const EMPTY_CASE_TIMESTAMP = "1970-01-01T00:00:00.000Z";
 const EMPTY_CASE_TOPIC_ID = "pattern-room-local-case";
