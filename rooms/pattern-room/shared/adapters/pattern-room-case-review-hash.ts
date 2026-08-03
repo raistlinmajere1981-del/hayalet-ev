@@ -9,11 +9,7 @@ function normalizeCanonicalString(value: string): string {
 }
 
 function isUnsupportedValue(value: unknown): boolean {
-  return (
-    value === undefined ||
-    typeof value === "function" ||
-    typeof value === "symbol"
-  );
+  return value === undefined || typeof value === "function" || typeof value === "symbol";
 }
 
 function canonicalizeValue(value: unknown, ancestors: Set<object>): string {

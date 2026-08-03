@@ -3,11 +3,7 @@
 
 :root {
   color-scheme: dark;
-  font-family:
-    "Source Serif 4",
-    Georgia,
-    "Times New Roman",
-    serif;
+  font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
   background: var(--pattern-surface);
   color: var(--pattern-text);
 }
@@ -216,8 +212,7 @@ p {
   border: var(--pattern-px-2) solid rgba(160, 100, 40, 0.45);
   border-radius: var(--pattern-px-4);
   background:
-    var(--pattern-gradient-cork-grain),
-    var(--pattern-gradient-board-cork),
+    var(--pattern-gradient-cork-grain), var(--pattern-gradient-board-cork),
     var(--pattern-surface-board-cork-alpha-84);
   box-shadow:
     0 var(--pattern-px-24) var(--pattern-px-54) var(--pattern-black-alpha-40),
@@ -233,7 +228,13 @@ p {
   right: var(--pattern-px-30);
   left: var(--pattern-px-30);
   height: var(--pattern-px-1);
-  background: linear-gradient(90deg, transparent, rgba(192, 64, 64, 0.5) 20%, rgba(192, 64, 64, 0.5) 80%, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(192, 64, 64, 0.5) 20%,
+    rgba(192, 64, 64, 0.5) 80%,
+    transparent
+  );
   transform: rotate(-5deg);
   content: "";
 }
@@ -244,7 +245,13 @@ p {
   bottom: var(--pattern-px-36);
   left: 52%;
   width: var(--pattern-px-1);
-  background: linear-gradient(180deg, transparent, rgba(192, 64, 64, 0.4) 20%, rgba(192, 64, 64, 0.4) 80%, transparent);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(192, 64, 64, 0.4) 20%,
+    rgba(192, 64, 64, 0.4) 80%,
+    transparent
+  );
   transform: rotate(8deg);
   content: "";
 }
@@ -314,8 +321,7 @@ p {
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-28);
   border-radius: var(--pattern-px-8);
   background:
-    var(--pattern-gradient-desk-grain),
-    var(--pattern-gradient-desk-surface),
+    var(--pattern-gradient-desk-grain), var(--pattern-gradient-desk-surface),
     var(--pattern-surface-desk);
   color: var(--pattern-accent-amber);
   text-align: center;
@@ -366,8 +372,7 @@ p {
   border: var(--pattern-px-1) solid var(--pattern-border-cabinet-alpha-50);
   border-radius: var(--pattern-px-3);
   background:
-    var(--pattern-gradient-cabinet-centerline),
-    var(--pattern-gradient-cabinet-drawers),
+    var(--pattern-gradient-cabinet-centerline), var(--pattern-gradient-cabinet-drawers),
     var(--pattern-surface-cabinet-alpha-88);
   box-shadow:
     0 var(--pattern-px-20) var(--pattern-px-44) var(--pattern-black-alpha-32),
@@ -687,7 +692,13 @@ p {
   right: 10%;
   left: 8%;
   height: var(--pattern-px-1);
-  background: linear-gradient(90deg, transparent, rgba(192, 64, 64, 0.35) 20%, rgba(192, 64, 64, 0.35) 80%, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(192, 64, 64, 0.35) 20%,
+    rgba(192, 64, 64, 0.35) 80%,
+    transparent
+  );
   transform: rotate(-4deg);
 }
 
@@ -696,7 +707,13 @@ p {
   bottom: 12%;
   left: 51%;
   width: var(--pattern-px-1);
-  background: linear-gradient(180deg, transparent, rgba(200, 145, 58, 0.3) 20%, rgba(200, 145, 58, 0.3) 80%, transparent);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(200, 145, 58, 0.3) 20%,
+    rgba(200, 145, 58, 0.3) 80%,
+    transparent
+  );
   transform: rotate(7deg);
 }
 
@@ -864,7 +881,9 @@ p {
   font-family: "IBM Plex Mono", monospace;
   font-size: var(--pattern-rem-0-82);
   text-align: left;
-  transition: border-color 120ms, box-shadow 120ms;
+  transition:
+    border-color 120ms,
+    box-shadow 120ms;
 }
 
 .pattern-room-board-node::before {
@@ -927,7 +946,9 @@ p {
   font-family: "IBM Plex Mono", monospace;
   font-size: var(--pattern-rem-0-82);
   font-weight: 700;
-  transition: border-color 120ms, box-shadow 120ms;
+  transition:
+    border-color 120ms,
+    box-shadow 120ms;
 }
 
 .pattern-room-action-button:disabled {
@@ -993,8 +1014,7 @@ p {
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-28);
   border-radius: var(--pattern-px-8);
   background:
-    var(--pattern-gradient-desk-grain),
-    var(--pattern-gradient-desk-surface),
+    var(--pattern-gradient-desk-grain), var(--pattern-gradient-desk-surface),
     var(--pattern-surface-desk);
   box-shadow:
     0 var(--pattern-px-22) var(--pattern-px-58) var(--pattern-black-alpha-28),
@@ -1016,7 +1036,12 @@ p {
   right: 0;
   left: 0;
   height: var(--pattern-px-3);
-  background: linear-gradient(90deg, transparent, var(--pattern-accent-amber-alpha-34), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--pattern-accent-amber-alpha-34),
+    transparent
+  );
 }
 
 .pattern-room-desk-surface::after {
@@ -1024,7 +1049,12 @@ p {
   bottom: 0;
   left: 0;
   height: var(--pattern-px-1);
-  background: linear-gradient(90deg, transparent, var(--pattern-accent-amber-alpha-22), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--pattern-accent-amber-alpha-22),
+    transparent
+  );
 }
 
 .pattern-room-desk-header,

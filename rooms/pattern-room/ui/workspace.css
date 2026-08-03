@@ -113,8 +113,13 @@ body,
 }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }
 
 /* ─────────────────────────────────────────
@@ -151,7 +156,11 @@ body,
   color: var(--pattern-text-muted);
   cursor: pointer;
   text-align: left;
-  transition: border-color 140ms, background 140ms, color 140ms, box-shadow 140ms;
+  transition:
+    border-color 140ms,
+    background 140ms,
+    color 140ms,
+    box-shadow 140ms;
 }
 
 .pattern-room-workspace-nav-button:hover,
@@ -221,7 +230,7 @@ body,
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
   border-radius: var(--pattern-px-6);
   background: var(--pattern-gradient-report-sheen), var(--pattern-surface-inset-alpha-62);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .pattern-room-workspace-case-card .pattern-room-kicker {
@@ -744,7 +753,10 @@ body,
   text-align: left;
   font-family: "IBM Plex Mono", monospace;
   font-size: var(--pattern-rem-0-82);
-  transition: border-color 120ms, background 120ms, color 120ms;
+  transition:
+    border-color 120ms,
+    background 120ms,
+    color 120ms;
 }
 
 .pattern-room-report-outline-button:hover,

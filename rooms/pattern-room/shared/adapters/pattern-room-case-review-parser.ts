@@ -364,9 +364,7 @@ export function parsePatternRoomCaseReviewResult(rawReply: string): PatternRoomC
     items,
     warnings: Object.freeze(warnings),
     confidence: Object.freeze(sections.confidenceNotes.items.map((item) => item.text)),
-    missingEvidence: Object.freeze(
-      sections.missingInformation.items.map((item) => item.text)
-    ),
+    missingEvidence: Object.freeze(sections.missingInformation.items.map((item) => item.text)),
     suggestedConnections: Object.freeze(connections),
     openQuestions: Object.freeze(sections.openQuestions.items.map((item) => item.text)),
     summary: readSummary(sections),

@@ -151,11 +151,9 @@ export function createPatternRoomCaseReviewMessage(
     casePacket: createCasePacketSection(input.casePacket, maxCasePacketChars, warnings),
     taskPrompt: createTaskPromptSection(input.taskPrompt),
   };
-  const dispatchText = [
-    sections.roleInstructions,
-    sections.casePacket,
-    sections.taskPrompt,
-  ].join("\n\n---\n\n");
+  const dispatchText = [sections.roleInstructions, sections.casePacket, sections.taskPrompt].join(
+    "\n\n---\n\n"
+  );
 
   return {
     messageVersion: PATTERN_ROOM_CASE_REVIEW_MESSAGE_VERSION,

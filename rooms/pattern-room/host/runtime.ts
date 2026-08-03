@@ -424,11 +424,9 @@ function readCaseReviewReply(
 
   return {
     brokerMessageId:
-      asNonEmptyString(result.reply["brokerMessageId"]) ??
-      asNonEmptyString(result.brokerMessageId),
+      asNonEmptyString(result.reply["brokerMessageId"]) ?? asNonEmptyString(result.brokerMessageId),
     clientRequestId:
-      asNonEmptyString(result.reply["clientRequestId"]) ??
-      asNonEmptyString(result.clientRequestId),
+      asNonEmptyString(result.reply["clientRequestId"]) ?? asNonEmptyString(result.clientRequestId),
     messageId: asNonEmptyString(result.reply["messageId"]),
     receivedAt,
     responseHash: createPatternRoomCaseReviewHash(text),
@@ -558,8 +556,7 @@ function reconstructCaseReviewLastEvent(
         return null;
       }
       return {
-        occurredAt:
-          session.completedAt ?? session.reply?.receivedAt ?? session.startedAt,
+        occurredAt: session.completedAt ?? session.reply?.receivedAt ?? session.startedAt,
         requestId,
         result: session.result,
         sessionId: session.sessionId,
@@ -714,12 +711,17 @@ function isCaseReviewApplySummary(
   }
 
   return (
-    ["boardNotesAdded", "evidenceAdded", "openQuestionsAdded", "uncertaintyAdded", "connectionsAdded", "skipped"].every(
-      (key) => {
-        const count = value[key];
-        return typeof count === "number" && Number.isInteger(count) && count >= 0;
-      }
-    ) &&
+    [
+      "boardNotesAdded",
+      "evidenceAdded",
+      "openQuestionsAdded",
+      "uncertaintyAdded",
+      "connectionsAdded",
+      "skipped",
+    ].every((key) => {
+      const count = value[key];
+      return typeof count === "number" && Number.isInteger(count) && count >= 0;
+    }) &&
     Array.isArray(value["warnings"]) &&
     value["warnings"].every((warning) => typeof warning === "string")
   );
@@ -777,10 +779,11 @@ export default function createPatternRoomHostRuntime(
         sessionId: string;
       }> = [];
       const storedReviewState = api.getState?.(PATTERN_ROOM_CASE_REVIEW_RUNTIME_STATE_KEY);
-      let reviewState: PatternRoomCaseReviewRuntimeState =
-        isPatternRoomCaseReviewRuntimeState(storedReviewState)
-          ? storedReviewState
-          : createPatternRoomCaseReviewRuntimeState();
+      let reviewState: PatternRoomCaseReviewRuntimeState = isPatternRoomCaseReviewRuntimeState(
+        storedReviewState
+      )
+        ? storedReviewState
+        : createPatternRoomCaseReviewRuntimeState();
       api.setState?.(PATTERN_ROOM_CASE_REVIEW_RUNTIME_STATE_KEY, reviewState);
 
       async function getStorageAdapter(): Promise<PatternRoomStorageAdapter> {
@@ -1162,7 +1165,9 @@ export default function createPatternRoomHostRuntime(
 
           let result: ReturnType<typeof parsePatternRoomCaseReviewResult>;
           try {
-            result = (options.parseCaseReviewResult ?? parsePatternRoomCaseReviewResult)(reply.text);
+            result = (options.parseCaseReviewResult ?? parsePatternRoomCaseReviewResult)(
+              reply.text
+            );
           } catch (error) {
             return finishCaseReviewFailure(
               request,

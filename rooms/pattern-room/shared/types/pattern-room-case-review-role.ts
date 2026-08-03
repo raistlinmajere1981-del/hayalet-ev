@@ -46,8 +46,7 @@ export const PATTERN_ROOM_CASE_REVIEW_ROLE_PROFILES: Readonly<
     targetSlot: "us1",
     roleLabel: "US1 hakem / son gözden geçiren",
     reviewLabel: "Hakem İncelemesi",
-    instructions:
-      "Bulguları, çelişkileri ve karar öncesi açık seçenekleri insan odağında toparla.",
+    instructions: "Bulguları, çelişkileri ve karar öncesi açık seçenekleri insan odağında toparla.",
   },
 };
 
