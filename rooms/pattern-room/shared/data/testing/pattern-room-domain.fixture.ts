@@ -5,11 +5,11 @@ import type {
   EvidenceItem,
   PatternEdge,
   PatternNode,
+  PatternRoomDomainData,
   ReportTrace,
   SourceItem,
   Topic,
 } from "../../types/pattern-room-domain.js";
-import type { PatternRoomDomainData } from "../pattern-room-domain.js";
 
 const topicId = "topic-earth-shape-mock";
 const debateSessionId = "debate-earth-shape-mock";
