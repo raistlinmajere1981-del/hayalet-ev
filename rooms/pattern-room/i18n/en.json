@@ -2,5 +2,84 @@
   "room": {
     "name": "Pattern Room",
     "feature": "Pattern Workbench"
+  },
+  "review": {
+    "kicker": "AI case review",
+    "title": "Case Review Preview",
+    "intro": "Inspect the research packet before it is sent to AI. Preparing a preview or receiving a reply never writes data to the board.",
+    "previewEmpty": "The preview has not been prepared yet.",
+    "roleLabel": "Review role",
+    "targetLabel": "Target",
+    "protocolLabel": "Protocol",
+    "roles": {
+      "AI0": "AI0 — Researcher",
+      "AI1": "AI1 — Advocate",
+      "AI2": "AI2 — Tenth Man",
+      "US1": "US1 — Arbiter"
+    },
+    "actions": {
+      "prepare": "Prepare Preview",
+      "send": "Send Review",
+      "cancel": "Cancel",
+      "retry": "Retry",
+      "resend": "Resend",
+      "applyAll": "Apply to Board",
+      "applyOpenQuestions": "Add Open Questions Only",
+      "applyEvidenceSuggestions": "Add Evidence Suggestions Only"
+    },
+    "apply": {
+      "reviewPrefix": "AI Review",
+      "evidenceSuggestionLabel": "Evidence Suggestion",
+      "openQuestionLabel": "Open Question",
+      "userAppliedSuggestion": "User-applied AI suggestion; not independently verified."
+    },
+    "statuses": {
+      "idle": "Review not started",
+      "running": "Review Running",
+      "waiting": "Waiting AI",
+      "ready": "Review Ready",
+      "error": "Reply Error",
+      "cancelled": "Cancelled",
+      "timeout": "Reply Timed Out",
+      "applied": "Review Applied"
+    },
+    "messages": {
+      "confirmDispatch": "Send the case review for the %role% role?",
+      "dispatched": "Sent to the %role% role.",
+      "dispatchFailed": "Dispatch failed.",
+      "controlFailed": "The review action could not be sent.",
+      "applyFailed": "The review could not be applied to the board.",
+      "applied": "The selected review items were added to the board.",
+      "noResult": "There is no ready review result to apply.",
+      "historyEmpty": "No review history yet.",
+      "resultEmpty": "The AI reply is not ready yet.",
+      "fallbackWarning": "The reply did not fully follow the expected heading format; its raw content was parsed cautiously."
+    },
+    "sections": {
+      "observation": "Observation",
+      "evidence": "Evidence",
+      "analysis": "Analysis",
+      "counterArgument": "Counter Argument",
+      "missingInformation": "Missing Information",
+      "openQuestions": "Open Questions",
+      "confidenceNotes": "Confidence Notes"
+    },
+    "result": {
+      "title": "Structured Review",
+      "summary": "Summary",
+      "warnings": "Warnings",
+      "confidence": "Confidence",
+      "missingEvidence": "Missing Evidence",
+      "suggestedConnections": "Suggested Connections",
+      "openQuestions": "Open Questions"
+    },
+    "history": {
+      "title": "Review History",
+      "timestamp": "Timestamp",
+      "role": "Role",
+      "packetHash": "Packet hash",
+      "responseHash": "Response hash",
+      "state": "State"
+    }
   }
 }

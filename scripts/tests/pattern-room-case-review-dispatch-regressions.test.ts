@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { createPatternRoomCaseReviewDispatchDraft } from "../../rooms/pattern-room/shared/adapters/pattern-room-case-review-dispatch-adapter.ts";
+import { createPatternRoomCaseReviewDispatchDraft as createDispatchDraftFromMessage } from "../../rooms/pattern-room/shared/adapters/pattern-room-case-review-dispatch-adapter.ts";
+import { createPatternRoomCaseReviewMessage } from "../../rooms/pattern-room/shared/adapters/pattern-room-case-review-message-adapter.ts";
 import type { PatternRoomCasePacket } from "../../rooms/pattern-room/shared/types/pattern-room-case-packet.ts";
 import type {
   PatternRoomCaseReviewDispatchRoleSlot,
@@ -87,6 +88,30 @@ function createCasePacketFixture(extraText = ""): PatternRoomCasePacket {
   };
 }
 
+function createPatternRoomCaseReviewDispatchDraft(input: {
+  readonly casePacket: PatternRoomCasePacket;
+  readonly roleSlot: PatternRoomCaseReviewDispatchRoleSlot;
+  readonly taskPrompt?: string | null;
+  readonly options?: {
+    readonly page?: string | null;
+    readonly maxCasePacketChars?: number;
+  };
+}) {
+  const maxCasePacketChars = input.options?.maxCasePacketChars;
+  const page = input.options?.page;
+  const reviewMessage = createPatternRoomCaseReviewMessage({
+    casePacket: input.casePacket,
+    roleSlot: input.roleSlot,
+    ...(input.taskPrompt === undefined ? {} : { taskPrompt: input.taskPrompt }),
+    ...(maxCasePacketChars === undefined ? {} : { options: { maxCasePacketChars } }),
+  });
+
+  return createDispatchDraftFromMessage({
+    reviewMessage,
+    ...(page === undefined ? {} : { options: { page } }),
+  });
+}
+
 function readPatternRoomManifest(): RoomManifest {
   const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as unknown;
   const result = validateRoomManifest(manifest);
@@ -150,7 +175,7 @@ void test("pattern-room case review dispatch draft creates a SlotBridge payload 
     options: { page: "ui/index.html" },
   });
 
-  assert.equal(draft.payload.action, "message.send");
+  assert.equal(draft.payload.action, "message.sendWait");
   assert.equal(draft.payload.connectPolicy, "ensure");
   assert.deepEqual(draft.payload.payload.protocol, {
     room: "pattern-room",
@@ -195,7 +220,7 @@ void test("pattern-room case review dispatch draft uses a safe default task and 
   });
 
   assert.equal(draft.warnings.length, 1);
-  assert.match(draft.warnings[0] ?? "", /120 karakterlik dispatch sınırına kırpıldı/);
+  assert.match(draft.warnings[0] ?? "", /120 karakterlik mesaj sınırına kırpıldı/);
   assert.match(draft.payload.payload.text, /\.\.\.\n\n---\n\n\[Task Prompt\]/);
   assert.match(draft.payload.payload.text, /Bu vaka paketini temkinli biçimde gözden geçir/);
   assert.match(draft.payload.payload.text, /hüküm dili üretmeden/);

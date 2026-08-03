@@ -1,21 +1,24 @@
 import { createPatternRoomCasePacket } from "../shared/adapters/pattern-room-case-packet-adapter.js";
 import { createPatternRoomCaseReviewDispatchDraft } from "../shared/adapters/pattern-room-case-review-dispatch-adapter.js";
+import { createPatternRoomCaseReviewMessage } from "../shared/adapters/pattern-room-case-review-message-adapter.js";
 import type { PatternRoomMockData } from "../shared/types/pattern-room.js";
 import type {
   PatternRoomCaseReviewDispatchDraft,
   PatternRoomCaseReviewDispatchProtocol,
   PatternRoomCaseReviewTargetSlot,
 } from "../shared/types/pattern-room-case-review-dispatch.js";
+import type { PatternRoomCaseReviewRoleSlot } from "../shared/types/pattern-room-case-review-role.js";
 
-const CASE_REVIEW_PREVIEW_ROLE_SLOT = "AI2";
+export const PATTERN_CASE_REVIEW_DEFAULT_ROLE_SLOT: PatternRoomCaseReviewRoleSlot = "AI2";
 const CASE_REVIEW_PREVIEW_TASK_PROMPT =
-  "Bu vaka paketini 10. Adam rolüyle incele; varsayımları, zayıf noktaları, çelişkileri ve sonraki araştırma sorularını çıkar. Kesin hüküm üretme.";
+  "Bu vaka paketini seçilen inceleme rolüne göre değerlendir; önemli izleri, zayıf noktaları, çelişkileri ve sonraki araştırma sorularını çıkar. Kesin hüküm üretme.";
 
 export type PatternCaseReviewPreviewDraft = {
   dispatchDraft: PatternRoomCaseReviewDispatchDraft;
-  roleSlot: typeof CASE_REVIEW_PREVIEW_ROLE_SLOT;
+  roleSlot: PatternRoomCaseReviewRoleSlot;
   targetSlot: PatternRoomCaseReviewTargetSlot;
   protocol: PatternRoomCaseReviewDispatchProtocol;
+  reviewLabel: string;
   text: string;
   warnings: readonly string[];
 };
@@ -28,21 +31,26 @@ export type PatternCaseReviewDispatchStatus = {
 };
 
 export function createPatternCaseReviewPreviewDraft(
-  data: PatternRoomMockData
+  data: PatternRoomMockData,
+  roleSlot: PatternRoomCaseReviewRoleSlot = PATTERN_CASE_REVIEW_DEFAULT_ROLE_SLOT
 ): PatternCaseReviewPreviewDraft {
   const casePacket = createPatternRoomCasePacket(data);
-  const draft = createPatternRoomCaseReviewDispatchDraft({
+  const reviewMessage = createPatternRoomCaseReviewMessage({
     casePacket,
-    roleSlot: CASE_REVIEW_PREVIEW_ROLE_SLOT,
+    roleSlot,
     taskPrompt: CASE_REVIEW_PREVIEW_TASK_PROMPT,
+  });
+  const draft = createPatternRoomCaseReviewDispatchDraft({
+    reviewMessage,
   });
 
   return {
     dispatchDraft: draft,
-    roleSlot: CASE_REVIEW_PREVIEW_ROLE_SLOT,
+    roleSlot,
     targetSlot: draft.targetSlot,
     protocol: draft.payload.payload.protocol,
-    text: draft.payload.payload.text,
+    reviewLabel: reviewMessage.reviewLabel,
+    text: reviewMessage.previewText,
     warnings: draft.warnings,
   };
 }

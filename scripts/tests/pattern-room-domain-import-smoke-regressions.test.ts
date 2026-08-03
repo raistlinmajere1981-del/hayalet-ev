@@ -5,7 +5,10 @@ import { join, relative, resolve } from "node:path";
 
 import createPatternRoomHostRuntime from "../../rooms/pattern-room/host/runtime.ts";
 import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
-import { PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND } from "../../rooms/pattern-room/shared/types/pattern-room-case-review-dispatch.ts";
+import {
+  PATTERN_ROOM_CASE_REVIEW_CONTROL_COMMAND,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
+} from "../../rooms/pattern-room/shared/types/pattern-room-case-review-dispatch.ts";
 import {
   PATTERN_ROOM_LOAD_COMMAND,
   PATTERN_ROOM_SAVE_COMMAND,
@@ -206,6 +209,7 @@ void test("pattern-room phase 3B panels do not import domain types or domain moc
 void test("pattern-room host runtime keeps domain mock usage scoped to ready-load persistence", async () => {
   const activation = createPatternRoomHostRuntime().activate({});
   assert.deepEqual(Object.keys(activation.commands).sort(), [
+    PATTERN_ROOM_CASE_REVIEW_CONTROL_COMMAND,
     PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
     PATTERN_ROOM_LOAD_COMMAND,
     PATTERN_ROOM_SAVE_COMMAND,

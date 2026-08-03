@@ -1,5 +1,14 @@
+import {
+  applyPatternRoomCaseReview,
+  previewPatternRoomCaseReviewApply,
+  type PatternRoomCaseReviewApplyOptions,
+} from "../shared/adapters/pattern-room-case-review-apply.js";
 import { adaptDomainToViewModels } from "../shared/adapters/pattern-room-view-adapters.js";
 import { PATTERN_ROOM_DOMAIN_MOCK } from "../shared/data/pattern-room-domain.mock.js";
+import {
+  createPatternRoomCaseReviewRuntimeState,
+  isPatternRoomCaseReviewRuntimeState,
+} from "../shared/state/pattern-room-case-review-state.js";
 import { createLocalState } from "../shared/state/pattern-room-local-state.js";
 import { createSnapshot, restoreFromSnapshot } from "../shared/state/pattern-room-snapshot.js";
 import {
@@ -9,10 +18,28 @@ import {
   PATTERN_ROOM_SAVE_FAILED_EVENT,
 } from "../shared/types/pattern-room-persistence.js";
 import {
+  PATTERN_ROOM_CASE_REVIEW_CONTROL_COMMAND,
   PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
   PATTERN_ROOM_CASE_REVIEW_DISPATCH_FAILED_EVENT,
   PATTERN_ROOM_CASE_REVIEW_DISPATCHED_EVENT,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_ACTION,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_CONNECT_POLICY,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_PROTOCOL,
+  type PatternRoomCaseReviewControlCommandPayload,
+  type PatternRoomCaseReviewDispatchCommandPayload,
+  type PatternRoomCaseReviewDispatchDraft,
 } from "../shared/types/pattern-room-case-review-dispatch.js";
+import {
+  getPatternRoomCaseReviewRoleProfile,
+  isPatternRoomCaseReviewRoleSlot,
+  type PatternRoomCaseReviewRoleSlot,
+} from "../shared/types/pattern-room-case-review-role.js";
+import {
+  PATTERN_ROOM_CASE_REVIEW_EVENT,
+  type PatternRoomCaseReviewApplyMode,
+  type PatternRoomCaseReviewEvent,
+  type PatternRoomCaseReviewEventPayload,
+} from "../shared/types/pattern-room-case-review-session.js";
 import type {
   PatternLongTextSourceImportInput,
   PatternLongTextSourceImportStatus,
@@ -37,17 +64,33 @@ import { createDeskPanel } from "./panels/pattern-desk-panel.js";
 import { createOverviewPanel } from "./panels/pattern-overview-panel.js";
 import { createReportPanel } from "./panels/pattern-report-panel.js";
 import { createTenthManPanel } from "./panels/pattern-tenth-man-panel.js";
-import type {
-  PatternCaseReviewDispatchStatus,
-  PatternCaseReviewPreviewDraft,
+import type { PatternCaseReviewApplyFeedback } from "./panels/pattern-case-review-runtime-view.js";
+import { createPatternCaseReviewTranslator } from "./pattern-case-review-i18n.js";
+import {
+  PATTERN_CASE_REVIEW_DEFAULT_ROLE_SLOT,
+  type PatternCaseReviewDispatchStatus,
+  type PatternCaseReviewPreviewDraft,
 } from "./pattern-case-review-preview.js";
 import { importSampleSourcePackage } from "./pattern-source-import-demo.js";
 
 type FocusedPatternViewId = Exclude<PatternViewId, "overview">;
 type HostMessageUnsubscribe = () => void;
 const AUTOSAVE_DEBOUNCE_MS = 2000;
-const CASE_REVIEW_DISPATCH_CONFIRM_MESSAGE =
-  "Bu vaka inceleme paketi AI2 / 10. Adam rolüne gönderilecek. Mesaj gönderildikten sonra yanıt bu aşamada otomatik olarak odaya işlenmez. Devam edilsin mi?";
+const CASE_REVIEW_EVENT_TYPES: readonly PatternRoomCaseReviewEvent["type"][] = [
+  "preview-created",
+  "dispatch-started",
+  "dispatch-sent",
+  "waiting-reply",
+  "reply-received",
+  "parsed",
+  "review-ready",
+  "review-applied",
+  "dispatch-failed",
+  "timeout",
+  "reply-invalid",
+  "parse-failed",
+  "cancelled",
+];
 const CASE_REVIEW_IDLE_STATUS: PatternCaseReviewDispatchStatus = {
   kind: "idle",
   message: null,
@@ -66,6 +109,60 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isHostMessageUnsubscribe(value: unknown): value is HostMessageUnsubscribe {
   return typeof value === "function";
+}
+
+function readCaseReviewDispatchDraft(value: unknown): PatternRoomCaseReviewDispatchDraft | null {
+  if (
+    !isRecord(value) ||
+    !isPatternRoomCaseReviewRoleSlot(value["roleSlot"]) ||
+    typeof value["packetHash"] !== "string" ||
+    value["packetHash"].trim() === "" ||
+    !Array.isArray(value["warnings"]) ||
+    !value["warnings"].every((warning) => typeof warning === "string") ||
+    !isRecord(value["payload"])
+  ) {
+    return null;
+  }
+
+  const targetSlot = getPatternRoomCaseReviewRoleProfile(value["roleSlot"]).targetSlot;
+  const bridgePayload = value["payload"];
+  const payload = bridgePayload["payload"];
+  if (
+    value["targetSlot"] !== targetSlot ||
+    bridgePayload["action"] !== PATTERN_ROOM_CASE_REVIEW_DISPATCH_ACTION ||
+    bridgePayload["toSlot"] !== targetSlot ||
+    bridgePayload["connectPolicy"] !== PATTERN_ROOM_CASE_REVIEW_DISPATCH_CONNECT_POLICY ||
+    typeof bridgePayload["timeoutMs"] !== "number" ||
+    !Number.isInteger(bridgePayload["timeoutMs"]) ||
+    bridgePayload["timeoutMs"] <= 0 ||
+    !isRecord(payload) ||
+    typeof payload["text"] !== "string" ||
+    payload["text"].trim() === "" ||
+    !isRecord(payload["protocol"]) ||
+    payload["protocol"]["room"] !== PATTERN_ROOM_CASE_REVIEW_DISPATCH_PROTOCOL.room ||
+    payload["protocol"]["scenario"] !== PATTERN_ROOM_CASE_REVIEW_DISPATCH_PROTOCOL.scenario ||
+    payload["protocol"]["protocolKey"] !==
+      PATTERN_ROOM_CASE_REVIEW_DISPATCH_PROTOCOL.protocolKey
+  ) {
+    return null;
+  }
+
+  return value as PatternRoomCaseReviewDispatchDraft;
+}
+
+function createRecoveredCaseReviewPreview(
+  draft: PatternRoomCaseReviewDispatchDraft,
+  reviewLabel: string
+): PatternCaseReviewPreviewDraft {
+  return {
+    dispatchDraft: draft,
+    roleSlot: draft.roleSlot,
+    targetSlot: draft.targetSlot,
+    protocol: draft.payload.payload.protocol,
+    reviewLabel,
+    text: draft.payload.payload.text,
+    warnings: draft.warnings,
+  };
 }
 
 function resolveRoot(): HTMLElement {
@@ -103,6 +200,15 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   let longTextSourceImportStatus: PatternLongTextSourceImportStatus | null = null;
   let caseReviewPreviewDraft: PatternCaseReviewPreviewDraft | null = null;
   let caseReviewDispatchStatus: PatternCaseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;
+  let caseReviewRuntimeState = createPatternRoomCaseReviewRuntimeState();
+  let selectedCaseReviewRole: PatternRoomCaseReviewRoleSlot =
+    PATTERN_CASE_REVIEW_DEFAULT_ROLE_SLOT;
+  let caseReviewApplyFeedback: PatternCaseReviewApplyFeedback | null = null;
+  let caseReviewLocale = "tr";
+  let caseReviewTranslations: unknown = null;
+  let caseReviewIdSequence = 0;
+  const caseReviewDraftsBySessionId = new Map<string, PatternRoomCaseReviewDispatchDraft>();
+  const locallyAppliedCaseReviewSessions = new Set<string>();
   const importedUserTextPackageIds = new Set<string>();
   const importedLongTextPackageIds = new Set<string>();
 
@@ -315,9 +421,52 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     archiveEvidenceCaptureStatus = message;
   }
 
+  function getCaseReviewText() {
+    return createPatternCaseReviewTranslator(caseReviewLocale, caseReviewTranslations);
+  }
+
+  function createCaseReviewApplyOptions(
+    mode: PatternRoomCaseReviewApplyMode
+  ): PatternRoomCaseReviewApplyOptions {
+    const text = getCaseReviewText();
+    return {
+      mode,
+      copy: {
+        reviewPrefix: text("apply.reviewPrefix"),
+        evidenceSuggestionLabel: text("apply.evidenceSuggestionLabel"),
+        openQuestionLabel: text("apply.openQuestionLabel"),
+        userAppliedSuggestion: text("apply.userAppliedSuggestion"),
+        sectionLabels: {
+          observation: text("sections.observation"),
+          evidence: text("sections.evidence"),
+          analysis: text("sections.analysis"),
+          counterArgument: text("sections.counterArgument"),
+          missingInformation: text("sections.missingInformation"),
+          openQuestions: text("sections.openQuestions"),
+          confidenceNotes: text("sections.confidenceNotes"),
+        },
+      },
+    };
+  }
+
+  function createCaseReviewId(kind: "session" | "request"): string {
+    caseReviewIdSequence += 1;
+    return `pattern-review-${kind}-${Date.now().toString(36)}-${caseReviewIdSequence.toString(36)}`;
+  }
+
+  function selectCaseReviewRole(role: PatternRoomCaseReviewRoleSlot): void {
+    selectedCaseReviewRole = role;
+    caseReviewPreviewDraft = null;
+    caseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;
+    caseReviewApplyFeedback = null;
+    render();
+  }
+
   function prepareCaseReviewPreview(draft: PatternCaseReviewPreviewDraft): void {
     caseReviewPreviewDraft = draft;
+    selectedCaseReviewRole = draft.roleSlot;
     caseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;
+    caseReviewApplyFeedback = null;
     render();
   }
 
@@ -326,33 +475,238 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     render();
   }
 
-  function dispatchCaseReviewPreview(): void {
-    if (caseReviewPreviewDraft === null) {
-      return;
-    }
-
-    if (window.confirm(CASE_REVIEW_DISPATCH_CONFIRM_MESSAGE) !== true) {
-      return;
-    }
-
+  function sendCaseReviewDispatch(
+    payload: PatternRoomCaseReviewDispatchCommandPayload,
+    draft: PatternRoomCaseReviewDispatchDraft
+  ): boolean {
     const sendCommand = window.roomAPI?.sendCommand;
     if (typeof sendCommand !== "function") {
-      setCaseReviewDispatchStatus({ kind: "failed", message: "Gönderim başarısız." });
+      setCaseReviewDispatchStatus({
+        kind: "failed",
+        message: getCaseReviewText()("messages.dispatchFailed"),
+      });
+      return false;
+    }
+
+    caseReviewDraftsBySessionId.set(payload.sessionId, draft);
+    caseReviewApplyFeedback = null;
+    setCaseReviewDispatchStatus({
+      kind: "sending",
+      message: getCaseReviewText()("statuses.running"),
+    });
+    try {
+      if (!sendCommand(PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND, payload)) {
+        setCaseReviewDispatchStatus({
+          kind: "failed",
+          message: getCaseReviewText()("messages.dispatchFailed"),
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.warn("Pattern Room case review dispatch command failed.", error);
+      setCaseReviewDispatchStatus({
+        kind: "failed",
+        message: getCaseReviewText()("messages.dispatchFailed"),
+      });
+      return false;
+    }
+  }
+
+  function dispatchCaseReviewPreview(): void {
+    const preview = caseReviewPreviewDraft;
+    if (preview === null) {
       return;
     }
 
-    setCaseReviewDispatchStatus({ kind: "sending", message: "Gönderiliyor..." });
+    const text = getCaseReviewText();
+    if (
+      window.confirm(
+        text("messages.confirmDispatch", {
+          role: preview.roleSlot,
+        })
+      ) !== true
+    ) {
+      return;
+    }
+
+    const sessionId = createCaseReviewId("session");
+    sendCaseReviewDispatch(
+      {
+        sessionId,
+        requestId: createCaseReviewId("request"),
+        operation: "start",
+        parentSessionId: null,
+        attempt: 1,
+        draft: preview.dispatchDraft,
+      },
+      preview.dispatchDraft
+    );
+  }
+
+  function retryCaseReview(): void {
+    const session = caseReviewRuntimeState.activeSession;
+    if (session === null) {
+      return;
+    }
+    const draft = caseReviewDraftsBySessionId.get(session.sessionId);
+    if (draft === undefined) {
+      caseReviewApplyFeedback = {
+        tone: "error",
+        message: getCaseReviewText()("messages.controlFailed"),
+      };
+      render();
+      return;
+    }
+
+    sendCaseReviewDispatch(
+      {
+        sessionId: session.sessionId,
+        requestId: createCaseReviewId("request"),
+        operation: "retry",
+        parentSessionId: session.parentSessionId,
+        attempt: session.attempt + 1,
+        draft,
+      },
+      draft
+    );
+  }
+
+  function resendCaseReview(): void {
+    const session = caseReviewRuntimeState.activeSession;
+    if (session === null) {
+      return;
+    }
+    const draft = caseReviewDraftsBySessionId.get(session.sessionId);
+    if (draft === undefined) {
+      caseReviewApplyFeedback = {
+        tone: "error",
+        message: getCaseReviewText()("messages.controlFailed"),
+      };
+      render();
+      return;
+    }
+
+    const sessionId = createCaseReviewId("session");
+    sendCaseReviewDispatch(
+      {
+        sessionId,
+        requestId: createCaseReviewId("request"),
+        operation: "resend",
+        parentSessionId: session.sessionId,
+        attempt: 1,
+        draft,
+      },
+      draft
+    );
+  }
+
+  function sendCaseReviewControl(payload: PatternRoomCaseReviewControlCommandPayload): boolean {
+    const sendCommand = window.roomAPI?.sendCommand;
+    if (typeof sendCommand !== "function") {
+      caseReviewApplyFeedback = {
+        tone: "error",
+        message: getCaseReviewText()("messages.controlFailed"),
+      };
+      render();
+      return false;
+    }
+
     try {
+      if (!sendCommand(PATTERN_ROOM_CASE_REVIEW_CONTROL_COMMAND, payload)) {
+        caseReviewApplyFeedback = {
+          tone: "error",
+          message: getCaseReviewText()("messages.controlFailed"),
+        };
+        render();
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.warn("Pattern Room case review control command failed.", error);
+      caseReviewApplyFeedback = {
+        tone: "error",
+        message: getCaseReviewText()("messages.controlFailed"),
+      };
+      render();
+      return false;
+    }
+  }
+
+  function cancelCaseReview(): void {
+    const session = caseReviewRuntimeState.activeSession;
+    if (session === null || session.requestId === null) {
+      return;
+    }
+    caseReviewApplyFeedback = null;
+    sendCaseReviewControl({
+      action: "cancel",
+      sessionId: session.sessionId,
+      requestId: session.requestId,
+    });
+  }
+
+  function applyCaseReview(mode: PatternRoomCaseReviewApplyMode): void {
+    const session = caseReviewRuntimeState.activeSession;
+    if (
+      session?.status !== "ready" ||
+      session.result === null ||
+      session.requestId === null ||
+      locallyAppliedCaseReviewSessions.has(session.sessionId)
+    ) {
+      caseReviewApplyFeedback = {
+        tone: "error",
+        message: getCaseReviewText()("messages.noResult"),
+      };
+      render();
+      return;
+    }
+
+    if (typeof window.roomAPI?.sendCommand !== "function") {
+      caseReviewApplyFeedback = {
+        tone: "error",
+        message: getCaseReviewText()("messages.controlFailed"),
+      };
+      render();
+      return;
+    }
+
+    try {
+      const applyOptions = createCaseReviewApplyOptions(mode);
+      const summary = previewPatternRoomCaseReviewApply(
+        session.result,
+        localState,
+        applyOptions
+      );
+      locallyAppliedCaseReviewSessions.add(session.sessionId);
       if (
-        !sendCommand(PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND, {
-          draft: caseReviewPreviewDraft.dispatchDraft,
+        !sendCaseReviewControl({
+          action: "apply",
+          sessionId: session.sessionId,
+          requestId: session.requestId,
+          mode,
+          summary,
         })
       ) {
-        setCaseReviewDispatchStatus({ kind: "failed", message: "Gönderim başarısız." });
+        locallyAppliedCaseReviewSessions.delete(session.sessionId);
+        render();
+        return;
       }
+
+      applyPatternRoomCaseReview(session.result, localState, applyOptions);
+      caseReviewApplyFeedback = {
+        tone: "success",
+        message: getCaseReviewText()("messages.applied"),
+      };
+      render();
     } catch (error) {
-      console.warn("Pattern Room case review dispatch command failed.", error);
-      setCaseReviewDispatchStatus({ kind: "failed", message: "Gönderim başarısız." });
+      locallyAppliedCaseReviewSessions.delete(session.sessionId);
+      console.warn("Pattern Room case review apply failed.", error);
+      caseReviewApplyFeedback = {
+        tone: "error",
+        message: getCaseReviewText()("messages.applyFailed"),
+      };
+      render();
     }
   }
 
@@ -582,10 +936,23 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
       report: () => createReportPanel(viewModels, actions, onBack),
       "tenth-man": () =>
         createTenthManPanel(viewModels, actions, onBack, {
+          applyDisabled:
+            caseReviewRuntimeState.activeSession !== null &&
+            locallyAppliedCaseReviewSessions.has(caseReviewRuntimeState.activeSession.sessionId),
+          applyFeedback: caseReviewApplyFeedback,
           dispatchStatus: caseReviewDispatchStatus,
+          history: caseReviewRuntimeState.history,
+          onApply: applyCaseReview,
+          onCancel: cancelCaseReview,
           onPrepare: prepareCaseReviewPreview,
+          onResend: resendCaseReview,
+          onRetry: retryCaseReview,
+          onRoleChange: selectCaseReviewRole,
           onSend: dispatchCaseReviewPreview,
           preview: caseReviewPreviewDraft,
+          selectedRole: selectedCaseReviewRole,
+          session: caseReviewRuntimeState.activeSession,
+          text: getCaseReviewText(),
         }),
     };
     return panelFactories[viewId]();
@@ -641,16 +1008,98 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     console.warn(message);
   }
 
+  function readCaseReviewEventPayload(value: unknown): PatternRoomCaseReviewEventPayload | null {
+    if (!isRecord(value) || !isRecord(value["event"])) {
+      return null;
+    }
+    const event = value["event"];
+    if (
+      typeof event["type"] !== "string" ||
+      !CASE_REVIEW_EVENT_TYPES.includes(event["type"] as PatternRoomCaseReviewEvent["type"]) ||
+      typeof event["sessionId"] !== "string" ||
+      typeof event["occurredAt"] !== "string" ||
+      !isPatternRoomCaseReviewRuntimeState(value["state"])
+    ) {
+      return null;
+    }
+    return {
+      event: event as PatternRoomCaseReviewEvent,
+      state: value["state"],
+    };
+  }
+
+  function handleCaseReviewEventPayload(payload: unknown): void {
+    const parsed = readCaseReviewEventPayload(payload);
+    if (parsed === null) {
+      return;
+    }
+
+    caseReviewRuntimeState = parsed.state;
+    caseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;
+    const activeSession = parsed.state.activeSession;
+    if (activeSession !== null) {
+      selectedCaseReviewRole = activeSession.role;
+      for (const sessionId of caseReviewDraftsBySessionId.keys()) {
+        if (sessionId !== activeSession.sessionId) {
+          caseReviewDraftsBySessionId.delete(sessionId);
+        }
+      }
+      if (!caseReviewDraftsBySessionId.has(activeSession.sessionId)) {
+        const recoveredDraft = readCaseReviewDispatchDraft(
+          activeSession.metadata["dispatchDraft"]
+        );
+        if (recoveredDraft !== null) {
+          caseReviewDraftsBySessionId.set(activeSession.sessionId, recoveredDraft);
+          caseReviewPreviewDraft = createRecoveredCaseReviewPreview(
+            recoveredDraft,
+            activeSession.reviewLabel
+          );
+        }
+      }
+    }
+    caseReviewApplyFeedback =
+      parsed.event.type === "review-applied"
+        ? {
+            tone: "success",
+            message: getCaseReviewText()("messages.applied"),
+          }
+        : null;
+    render();
+  }
+
+  function handleHostContext(message: Record<string, unknown>): void {
+    const source = isRecord(message["payload"]) ? message["payload"] : message;
+    if (typeof source["locale"] === "string" && source["locale"].trim() !== "") {
+      caseReviewLocale = source["locale"].trim();
+      document.documentElement.lang = caseReviewLocale;
+    }
+    if (isRecord(source["translations"])) {
+      caseReviewTranslations = source["translations"];
+    }
+    render();
+  }
+
   function handleCaseReviewDispatchedPayload(): void {
-    setCaseReviewDispatchStatus({ kind: "sent", message: "AI2’ye gönderildi." });
+    setCaseReviewDispatchStatus({
+      kind: "sent",
+      message: getCaseReviewText()("messages.dispatched", { role: selectedCaseReviewRole }),
+    });
   }
 
   function handleCaseReviewDispatchFailedPayload(): void {
-    setCaseReviewDispatchStatus({ kind: "failed", message: "Gönderim başarısız." });
+    setCaseReviewDispatchStatus({
+      kind: "failed",
+      message: getCaseReviewText()("messages.dispatchFailed"),
+    });
   }
 
   function handleHostMessage(message: unknown): void {
     if (!isRecord(message)) {
+      return;
+    }
+
+    if (message["type"] === "host-context") {
+      handleHostContext(message);
       return;
     }
 
@@ -665,6 +1114,11 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
 
     if (message["type"] === PATTERN_ROOM_SAVE_FAILED_EVENT) {
       handleSaveFailedPayload(message["payload"]);
+      return;
+    }
+
+    if (message["type"] === PATTERN_ROOM_CASE_REVIEW_EVENT) {
+      handleCaseReviewEventPayload(message["payload"]);
       return;
     }
 

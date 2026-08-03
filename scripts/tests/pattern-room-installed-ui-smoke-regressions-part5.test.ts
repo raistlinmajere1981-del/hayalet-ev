@@ -697,8 +697,8 @@ void test("pattern-room installed UI prepares a local AI2 case review dry-run pr
     const previewText = previewTextElement.textContent;
 
     assertTextIncludes(fullText, [
-      "Target: AI2 / ai2",
-      "Protocol: pattern-room-case-review",
+      "Hedef: AI2 / ai2",
+      "Protokol: pattern-room-case-review",
       "Bu paket kullanıcı tarafından eklenen",
     ]);
     assert.match(previewText, /\[Case Packet\]/);
@@ -736,8 +736,7 @@ void test("pattern-room installed UI dispatches the AI2 case review only after p
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const confirmMessages: string[] = [];
-  const confirmMessage =
-    "Bu vaka inceleme paketi AI2 / 10. Adam rolüne gönderilecek. Mesaj gönderildikten sonra yanıt bu aşamada otomatik olarak odaya işlenmez. Devam edilsin mi?";
+  const confirmMessage = "AI2 rolü için vaka incelemesi gönderilecek. Devam edilsin mi?";
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
   let confirmResult = false;
 
@@ -775,8 +774,8 @@ void test("pattern-room installed UI dispatches the AI2 case review only after p
     assert.ok(enabledSend);
     assert.equal(enabledSend.disabled, false);
     assertTextIncludes(readTreeText(environment.app), [
-      "Target: AI2 / ai2",
-      "Protocol: pattern-room-case-review",
+      "Hedef: AI2 / ai2",
+      "Protokol: pattern-room-case-review",
     ]);
 
     const snapshotBeforeSend = runtime.createSnapshot();
@@ -788,7 +787,7 @@ void test("pattern-room installed UI dispatches the AI2 case review only after p
     fireEvent(enabledSend, "click");
     assert.deepEqual(confirmMessages, [confirmMessage, confirmMessage]);
     assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND]);
-    assertTextIncludes(readTreeText(environment.app), ["Gönderiliyor..."]);
+    assertTextIncludes(readTreeText(environment.app), ["İnceleme Çalışıyor"]);
 
     const dispatchEvent = environment.sentEvents[0];
     assert.ok(dispatchEvent);
@@ -815,7 +814,7 @@ void test("pattern-room installed UI dispatches the AI2 case review only after p
       },
       type: PATTERN_ROOM_CASE_REVIEW_DISPATCHED_EVENT,
     });
-    assertTextIncludes(readTreeText(environment.app), ["AI2’ye gönderildi."]);
+    assertTextIncludes(readTreeText(environment.app), ["AI2 rolüne gönderildi."]);
     assertSnapshotLocalStateUnchanged(snapshotBeforeSend, runtime.createSnapshot());
 
     environment.emitHostMessage({

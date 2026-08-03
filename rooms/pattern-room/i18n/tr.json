@@ -2,5 +2,84 @@
   "room": {
     "name": "Pattern Room",
     "feature": "Pattern Workbench"
+  },
+  "review": {
+    "kicker": "AI vaka incelemesi",
+    "title": "Vaka İnceleme Önizlemesi",
+    "intro": "AI'ya gönderilecek araştırma paketini inceleyin. Bu aşamada hiçbir mesaj gönderilmez. Önizleme veya yanıt panoya otomatik uygulanmaz.",
+    "previewEmpty": "Önizleme henüz hazırlanmadı.",
+    "roleLabel": "İnceleme rolü",
+    "targetLabel": "Hedef",
+    "protocolLabel": "Protokol",
+    "roles": {
+      "AI0": "AI0 — Araştırmacı",
+      "AI1": "AI1 — Savunucu",
+      "AI2": "AI2 — 10. Adam",
+      "US1": "US1 — Hakem"
+    },
+    "actions": {
+      "prepare": "Önizleme Hazırla",
+      "send": "İncelemeyi Gönder",
+      "cancel": "İptal",
+      "retry": "Tekrar Dene",
+      "resend": "Yeniden Gönder",
+      "applyAll": "Panoya Uygula",
+      "applyOpenQuestions": "Yalnız Açık Soruları Ekle",
+      "applyEvidenceSuggestions": "Yalnız Kanıt Önerilerini Ekle"
+    },
+    "apply": {
+      "reviewPrefix": "AI İncelemesi",
+      "evidenceSuggestionLabel": "Kanıt Önerisi",
+      "openQuestionLabel": "Açık Soru",
+      "userAppliedSuggestion": "Kullanıcı tarafından uygulanmış AI önerisi; bağımsız olarak doğrulanmamıştır."
+    },
+    "statuses": {
+      "idle": "İnceleme hazır değil",
+      "running": "İnceleme Çalışıyor",
+      "waiting": "AI Yanıtı Bekleniyor",
+      "ready": "İnceleme Hazır",
+      "error": "Yanıt Hatası",
+      "cancelled": "İnceleme İptal Edildi",
+      "timeout": "Yanıt Zaman Aşımına Uğradı",
+      "applied": "İnceleme Panoya Uygulandı"
+    },
+    "messages": {
+      "confirmDispatch": "%role% rolü için vaka incelemesi gönderilecek. Devam edilsin mi?",
+      "dispatched": "%role% rolüne gönderildi.",
+      "dispatchFailed": "Gönderim başarısız.",
+      "controlFailed": "İnceleme işlemi gönderilemedi.",
+      "applyFailed": "İnceleme panoya uygulanamadı.",
+      "applied": "Seçilen inceleme öğeleri panoya eklendi.",
+      "noResult": "Uygulanabilecek hazır bir inceleme sonucu yok.",
+      "historyEmpty": "Henüz inceleme geçmişi yok.",
+      "resultEmpty": "AI yanıtı henüz hazır değil.",
+      "fallbackWarning": "Yanıt beklenen başlık biçimini tam olarak izlemedi; ham içerik temkinli biçimde ayrıştırıldı."
+    },
+    "sections": {
+      "observation": "Gözlem",
+      "evidence": "Kanıt",
+      "analysis": "Analiz",
+      "counterArgument": "Karşı Argüman",
+      "missingInformation": "Eksik Bilgi",
+      "openQuestions": "Açık Sorular",
+      "confidenceNotes": "Güven Notları"
+    },
+    "result": {
+      "title": "Yapılandırılmış İnceleme",
+      "summary": "Özet",
+      "warnings": "Uyarılar",
+      "confidence": "Güven",
+      "missingEvidence": "Eksik Kanıt",
+      "suggestedConnections": "Önerilen Bağlantılar",
+      "openQuestions": "Açık Sorular"
+    },
+    "history": {
+      "title": "İnceleme Geçmişi",
+      "timestamp": "Zaman",
+      "role": "Rol",
+      "packetHash": "Paket özeti",
+      "responseHash": "Yanıt özeti",
+      "state": "Durum"
+    }
   }
 }

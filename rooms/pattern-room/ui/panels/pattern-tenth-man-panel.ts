@@ -9,17 +9,32 @@ import type {
   DebateLocalTurn,
 } from "../../shared/state/pattern-room-local-state.js";
 import {
+  PATTERN_ROOM_CASE_REVIEW_ROLE_SLOTS,
+  isPatternRoomCaseReviewRoleSlot,
+  type PatternRoomCaseReviewRoleSlot,
+} from "../../shared/types/pattern-room-case-review-role.js";
+import {
   createPatternCaseReviewPreviewDraft,
   type PatternCaseReviewDispatchStatus,
   type PatternCaseReviewPreviewDraft,
 } from "../pattern-case-review-preview.js";
+import type {
+  PatternCaseReviewTextKey,
+  PatternCaseReviewTranslator,
+} from "../pattern-case-review-i18n.js";
+import {
+  createPatternCaseReviewRuntimeView,
+  type PatternCaseReviewRuntimePanelState,
+} from "./pattern-case-review-runtime-view.js";
 import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
 
-export type PatternCaseReviewPreviewPanelState = {
-  preview: PatternCaseReviewPreviewDraft | null;
-  dispatchStatus: PatternCaseReviewDispatchStatus;
-  onPrepare: (preview: PatternCaseReviewPreviewDraft) => void;
-  onSend: () => void;
+export type PatternCaseReviewPreviewPanelState = PatternCaseReviewRuntimePanelState & {
+  readonly preview: PatternCaseReviewPreviewDraft | null;
+  readonly dispatchStatus: PatternCaseReviewDispatchStatus;
+  readonly selectedRole: PatternRoomCaseReviewRoleSlot;
+  readonly onRoleChange: (role: PatternRoomCaseReviewRoleSlot) => void;
+  readonly onPrepare: (preview: PatternCaseReviewPreviewDraft) => void;
+  readonly onSend: () => void;
 };
 
 const PHASE_LABELS: Record<DebateLocalPhase, string> = {
@@ -178,21 +193,31 @@ function appendPreviewWarnings(container: HTMLElement, warnings: readonly string
   container.append(warningList);
 }
 
+const ROLE_TEXT_KEYS: Readonly<
+  Record<PatternRoomCaseReviewRoleSlot, PatternCaseReviewTextKey>
+> = {
+  AI0: "roles.AI0",
+  AI1: "roles.AI1",
+  AI2: "roles.AI2",
+  US1: "roles.US1",
+};
+
 function renderCaseReviewPreview(
   container: HTMLElement,
-  preview: PatternCaseReviewPreviewDraft
+  preview: PatternCaseReviewPreviewDraft,
+  text: PatternCaseReviewTranslator
 ): void {
   const meta = createElement("div", "pattern-room-case-review-preview-meta");
   meta.append(
     createElement(
       "span",
       "pattern-room-device-status pattern-room-device-status-secondary",
-      `Target: ${preview.roleSlot} / ${preview.targetSlot}`
+      `${text("targetLabel")}: ${preview.roleSlot} / ${preview.targetSlot}`
     ),
     createElement(
       "span",
       "pattern-room-device-status pattern-room-device-status-secondary",
-      `Protocol: ${preview.protocol.protocolKey}`
+      `${text("protocolLabel")}: ${preview.protocol.protocolKey}`
     )
   );
 
@@ -221,6 +246,35 @@ function appendDispatchStatus(
   container.append(statusLine);
 }
 
+function isCaseReviewActive(state: PatternCaseReviewPreviewPanelState): boolean {
+  return (
+    state.session?.status === "preview" ||
+    state.session?.status === "dispatching" ||
+    state.session?.status === "waiting-reply" ||
+    state.dispatchStatus.kind === "sending"
+  );
+}
+
+function createRoleField(state: PatternCaseReviewPreviewPanelState): HTMLElement {
+  const field = createElement("label", "pattern-room-case-review-role-field");
+  const select = createElement("select");
+  select.dataset["patternCaseReviewRole"] = "true";
+  PATTERN_ROOM_CASE_REVIEW_ROLE_SLOTS.forEach((role) => {
+    const option = createElement("option", undefined, state.text(ROLE_TEXT_KEYS[role]));
+    option.value = role;
+    select.append(option);
+  });
+  select.value = state.selectedRole;
+  select.disabled = isCaseReviewActive(state);
+  select.addEventListener("change", () => {
+    if (isPatternRoomCaseReviewRoleSlot(select.value)) {
+      state.onRoleChange(select.value);
+    }
+  });
+  field.append(createElement("span", undefined, state.text("roleLabel")), select);
+  return field;
+}
+
 function appendCaseReviewPreview(
   device: HTMLElement,
   data: PatternRoomMockData,
@@ -231,36 +285,40 @@ function appendCaseReviewPreview(
   const previewResult = createElement("div", "pattern-room-case-review-preview-result");
   if (previewState.preview === null) {
     previewResult.append(
-      createElement("p", "pattern-room-empty-state", "Önizleme henüz hazırlanmadı.")
+      createElement("p", "pattern-room-empty-state", previewState.text("previewEmpty"))
     );
   } else {
-    renderCaseReviewPreview(previewResult, previewState.preview);
+    renderCaseReviewPreview(previewResult, previewState.preview, previewState.text);
   }
 
-  const prepareButton = createActionButton("Önizleme Hazırla", () => {
-    previewState.onPrepare(createPatternCaseReviewPreviewDraft(data));
+  const prepareButton = createActionButton(previewState.text("actions.prepare"), () => {
+    previewState.onPrepare(createPatternCaseReviewPreviewDraft(data, previewState.selectedRole));
   });
   prepareButton.dataset["patternCaseReviewPreviewPrepare"] = "true";
+  prepareButton.disabled = isCaseReviewActive(previewState);
 
-  const sendButton = createActionButton("AI2’ye İnceleme Gönder", previewState.onSend);
+  const sendButton = createActionButton(previewState.text("actions.send"), previewState.onSend);
   sendButton.dataset["patternCaseReviewDispatchSend"] = "true";
-  sendButton.disabled =
-    previewState.preview === null || previewState.dispatchStatus.kind === "sending";
+  sendButton.disabled = previewState.preview === null || isCaseReviewActive(previewState);
 
-  const actionRow = createElement("div", "pattern-room-action-row");
-  actionRow.append(prepareButton, sendButton);
+  const actionRow = createElement(
+    "div",
+    "pattern-room-action-row pattern-room-case-review-controls"
+  );
+  actionRow.append(createRoleField(previewState), prepareButton, sendButton);
   appendDispatchStatus(previewResult, previewState.dispatchStatus);
 
   previewSection.append(
-    createElement("span", "pattern-room-kicker", "Dry-run"),
-    createElement("h2", undefined, "AI2 Vaka İnceleme Önizlemesi"),
+    createElement("span", "pattern-room-kicker", previewState.text("kicker")),
     createElement(
-      "p",
+      "h2",
       undefined,
-      "Bu önizleme AI’ya gönderilecek araştırma paketinin taslağını gösterir. Bu aşamada hiçbir mesaj gönderilmez."
+      `${previewState.selectedRole} ${previewState.text("title")}`
     ),
+    createElement("p", undefined, previewState.text("intro")),
     actionRow,
-    previewResult
+    previewResult,
+    createPatternCaseReviewRuntimeView(previewState)
   );
   device.append(previewSection);
 }

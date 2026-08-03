@@ -1541,6 +1541,165 @@ textarea.pattern-room-inline-input {
   color: var(--pattern-success);
 }
 
+.pattern-room-case-review-controls,
+.pattern-room-case-review-runtime-actions,
+.pattern-room-case-review-apply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--pattern-px-10);
+}
+
+.pattern-room-case-review-role-field {
+  display: grid;
+  min-width: var(--pattern-px-120);
+  gap: var(--pattern-px-6);
+  color: var(--pattern-text-muted);
+  font-size: var(--pattern-rem-0-82);
+  font-weight: 700;
+}
+
+.pattern-room-case-review-role-field select {
+  width: 100%;
+  min-height: var(--pattern-px-40);
+  padding: var(--pattern-px-8) var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-16);
+  border-radius: var(--pattern-px-8);
+  background: var(--pattern-surface-inset-alpha-78);
+  color: var(--pattern-text);
+  font: inherit;
+}
+
+.pattern-room-case-review-runtime {
+  display: grid;
+  gap: var(--pattern-px-14);
+  padding-top: var(--pattern-px-4);
+}
+
+.pattern-room-case-review-runtime-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pattern-px-8);
+}
+
+.pattern-room-case-review-status {
+  display: inline-flex;
+  width: fit-content;
+  padding: var(--pattern-px-4) var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-16);
+  border-radius: var(--pattern-px-999);
+  color: var(--pattern-text-warm);
+  font-size: var(--pattern-rem-0-82);
+  font-weight: 800;
+}
+
+.pattern-room-case-review-status.running,
+.pattern-room-case-review-status.waiting {
+  border-color: var(--pattern-accent-amber-alpha-24);
+  color: var(--pattern-accent-amber);
+}
+
+.pattern-room-case-review-status.ready,
+.pattern-room-case-review-status.applied {
+  color: var(--pattern-success);
+}
+
+.pattern-room-case-review-status.error,
+.pattern-room-case-review-status.cancelled,
+.pattern-room-case-review-status.timeout {
+  border-color: var(--pattern-danger-alpha-28);
+  color: var(--pattern-danger-text);
+}
+
+.pattern-room-case-review-result {
+  display: grid;
+  gap: var(--pattern-px-12);
+}
+
+.pattern-room-case-review-section,
+.pattern-room-case-review-result-summary,
+.pattern-room-case-review-history-item {
+  padding: var(--pattern-px-12);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-16);
+  border-radius: var(--pattern-px-8);
+  background: var(--pattern-surface-inset-alpha-62);
+}
+
+.pattern-room-case-review-section h4,
+.pattern-room-case-review-result-summary h3,
+.pattern-room-case-review-history h3 {
+  margin: 0;
+}
+
+.pattern-room-case-review-section ul,
+.pattern-room-case-review-result-list {
+  display: grid;
+  gap: var(--pattern-px-6);
+  margin: var(--pattern-px-8) 0 0;
+  padding-left: var(--pattern-px-20);
+}
+
+.pattern-room-case-review-result-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--pattern-px-120), 1fr));
+  gap: var(--pattern-px-10);
+}
+
+.pattern-room-case-review-result-meta article {
+  padding: var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-24);
+  border-radius: var(--pattern-px-8);
+}
+
+.pattern-room-case-review-result-meta p,
+.pattern-room-case-review-history-item p {
+  margin: var(--pattern-px-4) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.pattern-room-case-review-history {
+  display: grid;
+  gap: var(--pattern-px-10);
+  padding-top: var(--pattern-px-6);
+}
+
+.pattern-room-case-review-history-list {
+  display: grid;
+  gap: var(--pattern-px-8);
+}
+
+.pattern-room-case-review-history-item {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--pattern-px-120), 1fr));
+  gap: var(--pattern-px-10);
+}
+
+.pattern-room-case-review-history-item span {
+  color: var(--pattern-text-muted);
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+}
+
+.pattern-room-case-review-history-item code {
+  color: var(--pattern-text);
+  overflow-wrap: anywhere;
+}
+
+.pattern-room-case-review-apply-feedback {
+  color: var(--pattern-text-warm);
+  font-size: var(--pattern-rem-0-88);
+  font-weight: 700;
+}
+
+.pattern-room-case-review-apply-feedback.success {
+  color: var(--pattern-success);
+}
+
+.pattern-room-case-review-apply-feedback.error {
+  color: var(--pattern-danger-text);
+}
+
 .pattern-room-empty-state {
   color: var(--pattern-text-muted);
 }

@@ -134,7 +134,7 @@ function assertForbiddenTermsStayInAvoidanceContext(value: string): void {
   });
 }
 
-void test("pattern-room case review dry-run composer creates an AI0 message", () => {
+void test("pattern-room case review message composer creates an AI0 message", () => {
   const packet = createCasePacketFixture();
   const message = createPatternRoomCaseReviewMessage({
     protocolText: readProtocolText(),
@@ -156,8 +156,8 @@ void test("pattern-room case review dry-run composer creates an AI0 message", ()
   assert.deepEqual(message.warnings, []);
 });
 
-void test("pattern-room case review dry-run composer keeps role instructions distinct", () => {
-  const protocolText = "Pattern Room protokol dry-run metni.";
+void test("pattern-room case review message composer keeps role instructions distinct", () => {
+  const protocolText = "Pattern Room protokol metni.";
   const packet = createCasePacketFixture();
   const messages = ["AI1", "AI2", "US1"].map((roleSlot) => {
     return createPatternRoomCaseReviewMessage({
@@ -174,7 +174,7 @@ void test("pattern-room case review dry-run composer keeps role instructions dis
   assert.match(messages[2]?.sections.roleInstructions ?? "", /hakem/);
 });
 
-void test("pattern-room case review dry-run preview preserves protocol role packet task order", () => {
+void test("pattern-room case review preview preserves protocol role packet task order", () => {
   const message = createPatternRoomCaseReviewMessage({
     protocolText: readProtocolText(),
     casePacket: createCasePacketFixture(),
@@ -187,9 +187,9 @@ void test("pattern-room case review dry-run preview preserves protocol role pack
   assert.match(message.previewText, /Bu paket kullanıcı tarafından eklenen/);
 });
 
-void test("pattern-room case review dry-run composer uses a safe default task prompt", () => {
+void test("pattern-room case review message composer uses a safe default task prompt", () => {
   const message = createPatternRoomCaseReviewMessage({
-    protocolText: "Pattern Room protokol dry-run metni.",
+    protocolText: "Pattern Room protokol metni.",
     casePacket: createCasePacketFixture(),
     roleSlot: "US1",
     taskPrompt: "   ",
@@ -200,9 +200,9 @@ void test("pattern-room case review dry-run composer uses a safe default task pr
   assert.doesNotMatch(message.sections.taskPrompt, /kanıtlandı|kesin|doğrulandı|nihai sonuç/i);
 });
 
-void test("pattern-room case review dry-run composer truncates case packet text with warnings", () => {
+void test("pattern-room case review message composer truncates case packet text with warnings", () => {
   const message = createPatternRoomCaseReviewMessage({
-    protocolText: "Pattern Room protokol dry-run metni.",
+    protocolText: "Pattern Room protokol metni.",
     casePacket: createCasePacketFixture("Uzun ek bağlam. ".repeat(40)),
     roleSlot: "AI0",
     taskPrompt: null,
@@ -210,12 +210,12 @@ void test("pattern-room case review dry-run composer truncates case packet text 
   });
 
   assert.equal(message.warnings.length, 1);
-  assert.match(message.warnings[0] ?? "", /120 karakterlik dry-run sınırına kırpıldı/);
+  assert.match(message.warnings[0] ?? "", /120 karakterlik mesaj sınırına kırpıldı/);
   assert.match(message.sections.casePacket, /\.\.\.$/);
   assert.match(message.sections.taskPrompt, /hüküm dili üretmeden/);
 });
 
-void test("pattern-room case review dry-run composer does not mutate inputs", () => {
+void test("pattern-room case review message composer does not mutate inputs", () => {
   const packet = createCasePacketFixture();
   const beforePacket = JSON.stringify(packet);
   const protocolText = readProtocolText();
@@ -238,7 +238,7 @@ void test("pattern-room case review dry-run composer does not mutate inputs", ()
   assert.equal(JSON.stringify(packet), beforePacket);
 });
 
-void test("pattern-room case review dry-run composer stays independent from transport and manifest changes", () => {
+void test("pattern-room case review message composer stays independent from transport and manifest changes", () => {
   const adapterSource = readFileSync(
     resolve("rooms/pattern-room/shared/adapters/pattern-room-case-review-message-adapter.ts"),
     "utf8"
@@ -276,7 +276,7 @@ void test("pattern-room case review dry-run composer stays independent from tran
   );
 });
 
-void test("pattern-room case review dry-run composer does not generate verdict wording", () => {
+void test("pattern-room case review message composer does not generate verdict wording", () => {
   const message = createPatternRoomCaseReviewMessage({
     protocolText: readProtocolText(),
     casePacket: createCasePacketFixture(),

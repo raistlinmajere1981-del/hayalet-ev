@@ -104,6 +104,26 @@ void test("pattern-room case review protocol markdown documents cautious room se
   assert.match(markdown, /Kaçınılacak dil/);
   assert.match(markdown, /Yeni veri uydurma/);
   assertForbiddenTermsStayInAvoidanceContext(markdown);
+
+  const expectedResponseHeadings = [
+    "## Observation",
+    "## Evidence",
+    "## Analysis",
+    "## Counter Argument",
+    "## Missing Information",
+    "## Open Questions",
+    "## Confidence Notes",
+  ];
+  assert.deepEqual(
+    markdown
+      .split(/\r?\n/)
+      .filter((line) => expectedResponseHeadings.includes(line)),
+    expectedResponseHeadings
+  );
+  assert.match(
+    markdown,
+    /\[connection\] source=<sourceId>; type=<edgeType>; target=<targetId>; note=<optional note>/
+  );
 });
 
 void test("pattern-room protocol spec resolves through the existing room protocol registry", async () => {

@@ -14,7 +14,10 @@ import {
   PATTERN_ROOM_SNAPSHOT_VERSION,
   type PatternRoomSessionSnapshot,
 } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
-import { PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND } from "../../rooms/pattern-room/shared/types/pattern-room-case-review-dispatch.ts";
+import {
+  PATTERN_ROOM_CASE_REVIEW_CONTROL_COMMAND,
+  PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
+} from "../../rooms/pattern-room/shared/types/pattern-room-case-review-dispatch.ts";
 import {
   PATTERN_ROOM_LOAD_COMMAND,
   PATTERN_ROOM_SAVE_COMMAND,
@@ -708,6 +711,7 @@ void test("pattern-room phase 6B snapshot and UI layer stay free of storage and 
 
   const activation = createPatternRoomHostRuntime().activate({});
   assert.deepEqual(Object.keys(activation.commands).sort(), [
+    PATTERN_ROOM_CASE_REVIEW_CONTROL_COMMAND,
     PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
     PATTERN_ROOM_LOAD_COMMAND,
     PATTERN_ROOM_SAVE_COMMAND,
