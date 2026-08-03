@@ -1,7 +1,9 @@
 import type {
   DebateRole,
-  PatternRoomDomainData,
+  PatternRoomDomainData as PatternRoomDomainDataContract,
 } from "../types/pattern-room-domain.js";
+
+export type PatternRoomDomainData = PatternRoomDomainDataContract;
 
 const EMPTY_CASE_TIMESTAMP = "1970-01-01T00:00:00.000Z";
 const EMPTY_CASE_TOPIC_ID = "pattern-room-local-case";
