@@ -1,22 +1,53 @@
 import type { PatternRoomMockData, PatternViewId } from "../../shared/types/pattern-room.js";
+import {
+  createPatternWorkspaceTranslator,
+  type PatternWorkspaceTextKey,
+  type PatternWorkspaceTranslator,
+} from "../pattern-room-workspace-i18n.js";
 import { createElement, createMetric } from "./pattern-panel-utils.js";
 
 const HOTSPOTS: Array<{
   id: Exclude<PatternViewId, "overview">;
-  label: string;
-  meta: string;
+  labelKey: PatternWorkspaceTextKey;
+  descriptionKey: PatternWorkspaceTextKey;
   iconClass: string;
 }> = [
-  { id: "board", label: "Dedektif Panosu", meta: "4 kategori", iconClass: "board" },
-  { id: "desk", label: "Holografik Masa", meta: "İddia yüzeyi", iconClass: "desk" },
-  { id: "archive", label: "Arşiv Dolabı", meta: "Kaynak türleri", iconClass: "archive" },
-  { id: "tenth-man", label: "10. Adam Cihazı", meta: "Rol slotları", iconClass: "tenth-man" },
-  { id: "report", label: "Rapor Terminali", meta: "Temkinli not", iconClass: "report" },
+  {
+    id: "board",
+    labelKey: "nav.board.label",
+    descriptionKey: "nav.board.description",
+    iconClass: "board",
+  },
+  {
+    id: "desk",
+    labelKey: "nav.connections.label",
+    descriptionKey: "nav.connections.description",
+    iconClass: "desk",
+  },
+  {
+    id: "archive",
+    labelKey: "nav.archive.label",
+    descriptionKey: "nav.archive.description",
+    iconClass: "archive",
+  },
+  {
+    id: "tenth-man",
+    labelKey: "nav.review.label",
+    descriptionKey: "nav.review.description",
+    iconClass: "tenth-man",
+  },
+  {
+    id: "report",
+    labelKey: "nav.report.label",
+    descriptionKey: "nav.report.description",
+    iconClass: "report",
+  },
 ];
 
 export function createOverviewPanel(
   data: PatternRoomMockData,
-  onOpenView: (viewId: Exclude<PatternViewId, "overview">) => void
+  onOpenView: (viewId: Exclude<PatternViewId, "overview">) => void,
+  text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)
 ): HTMLElement {
   const shell = createElement("section", "pattern-room-overview");
   shell.dataset["patternView"] = "overview";
@@ -67,14 +98,17 @@ export function createOverviewPanel(
 
   const hotspotLayer = createElement("div", "pattern-room-hotspots");
   HOTSPOTS.forEach((hotspot) => {
+    const label = text(hotspot.labelKey);
+    const description = text(hotspot.descriptionKey);
     const button = createElement("button", `pattern-room-hotspot ${hotspot.id}`);
     button.type = "button";
     button.dataset["patternHotspot"] = hotspot.id;
-    button.ariaLabel = hotspot.label;
+    button.ariaLabel = label;
+    button.title = description;
     const textWrap = createElement("span", "pattern-room-hotspot-copy");
     textWrap.append(
-      createElement("strong", undefined, hotspot.label),
-      createElement("span", undefined, hotspot.meta)
+      createElement("strong", undefined, label),
+      createElement("span", undefined, description)
     );
     button.append(createElement("span", `pattern-room-object-icon ${hotspot.iconClass}`), textWrap);
     button.addEventListener("click", () => {
@@ -84,6 +118,14 @@ export function createOverviewPanel(
   });
 
   stage.append(board, archive, table, tenthManDevice, reportTerminal, hotspotLayer);
-  shell.append(header, stage);
+
+  const activity = createElement("aside", "pattern-room-overview-activity");
+  activity.append(
+    createElement("span", "pattern-room-kicker", text("overview.activityLabel")),
+    createElement("strong", undefined, text("overview.activityTitle")),
+    createElement("p", undefined, text("overview.activityCopy"))
+  );
+
+  shell.append(header, activity, stage);
   return shell;
 }

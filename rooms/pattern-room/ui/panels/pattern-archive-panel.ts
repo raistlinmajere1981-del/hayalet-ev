@@ -8,6 +8,10 @@ import type {
   PatternSourceSegment,
   PatternUserTextSourceImportStatus,
 } from "../../shared/types/pattern-room.js";
+import {
+  createPatternWorkspaceTranslator,
+  type PatternWorkspaceTranslator,
+} from "../pattern-room-workspace-i18n.js";
 import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
 
 const REMOVE_LOCAL_SOURCE_CONFIRMATION = "Bu yerel kaynak odadan kaldırılacak. Devam edilsin mi?";
@@ -21,6 +25,10 @@ type PatternArchivePanelSelection = {
   onSelectSource: (sourceId: string | null) => void;
   evidenceCaptureStatus: string | null;
   onEvidenceCaptureStatusChange: (message: string | null) => void;
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
+  sourceTypeFilter?: string;
+  onSourceTypeFilterChange?: (sourceType: string) => void;
 };
 
 type SourceEvidenceCaptureForm = {
@@ -38,6 +46,10 @@ const DEFAULT_ARCHIVE_PANEL_SELECTION: PatternArchivePanelSelection = {
   onSelectSource: () => {},
   evidenceCaptureStatus: null,
   onEvidenceCaptureStatusChange: () => {},
+  searchQuery: "",
+  onSearchQueryChange: () => {},
+  sourceTypeFilter: "all",
+  onSourceTypeFilterChange: () => {},
 };
 
 const LONG_TEXT_SOURCE_KIND_OPTIONS = [
@@ -707,13 +719,59 @@ export function createArchivePanel(
   userTextSourceImportStatus: PatternUserTextSourceImportStatus | null = null,
   longTextSourceImportStatus: PatternLongTextSourceImportStatus | null = null,
   sourceImportStatus: PatternSampleSourceImportStatus | null = null,
-  selection: PatternArchivePanelSelection = DEFAULT_ARCHIVE_PANEL_SELECTION
+  selection: PatternArchivePanelSelection = DEFAULT_ARCHIVE_PANEL_SELECTION,
+  text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)
 ): HTMLElement {
-  const shell = createPanelShell("archive", "Arşiv", onBack);
+  const shell = createPanelShell("archive", text("nav.archive.label"), onBack);
+  const workspace = createElement("div", "pattern-room-archive-workspace");
+  const browser = createElement("section", "pattern-room-archive-browser");
+  browser.ariaLabel = text("archive.browserLabel");
+  const browserHeader = createElement("header", "pattern-room-workspace-section-header");
+  browserHeader.append(
+    createElement("span", "pattern-room-kicker", text("archive.browserLabel")),
+    createElement("strong", undefined, data.subject)
+  );
+
+  const toolbar = createElement("div", "pattern-room-archive-toolbar");
+  const searchField = createElement("label", "pattern-room-archive-toolbar-field");
+  const search = createTextInput("archiveSearch", text("archive.searchPlaceholder"));
+  search.value = selection.searchQuery ?? "";
+  search.ariaLabel = text("archive.searchLabel");
+  search.dataset["patternArchiveSearch"] = "true";
+  searchField.append(createElement("span", undefined, text("archive.searchLabel")), search);
+
+  const filterField = createElement("label", "pattern-room-archive-toolbar-field");
+  const filter = createElement("select", "pattern-room-inline-input");
+  filter.ariaLabel = text("archive.filterLabel");
+  filter.dataset["patternArchiveTypeFilter"] = "true";
+  const allOption = createElement("option", undefined, text("archive.allSources"));
+  allOption.value = "all";
+  filter.append(allOption);
+  const sourceTypes = Array.from(
+    new Set(data.sources.map((source) => source.sourceTypeLabel))
+  ).sort((left, right) => {
+    return left.localeCompare(right, document.documentElement.lang || "tr");
+  });
+  sourceTypes.forEach((sourceType) => {
+    const option = createElement("option", undefined, sourceType);
+    option.value = sourceType;
+    filter.append(option);
+  });
+  const requestedFilter = selection.sourceTypeFilter ?? "all";
+  filter.value = sourceTypes.includes(requestedFilter) ? requestedFilter : "all";
+  filterField.append(createElement("span", undefined, text("archive.filterLabel")), filter);
+  toolbar.append(searchField, filterField);
+
+  const count = createElement("p", "pattern-room-archive-result-count");
+  count.dataset["patternArchiveVisibleCount"] = "true";
+  count.ariaLive = "polite";
+  const empty = createElement("p", "pattern-room-empty-state", text("archive.empty"));
+  empty.dataset["patternArchiveEmpty"] = "true";
   const list = createElement("div", "pattern-room-archive-list");
   const selectedSource = data.sources.find((source) => {
     return source.id === selection.selectedSourceId;
   });
+  const sourceCards: Array<{ readonly source: PatternSource; readonly card: HTMLElement }> = [];
 
   data.sources.forEach((source) => {
     const toneClass =
@@ -725,6 +783,8 @@ export function createArchivePanel(
     );
     card.dataset["patternArchiveSource"] = source.id;
     card.dataset["patternArchiveSourceSelected"] = isSelected ? "true" : "false";
+    card.dataset["patternArchiveSourceType"] = source.sourceTypeLabel;
+    card.ariaLabel = source.label;
     const drawer = createElement("span", "pattern-room-archive-drawer", source.origin);
     const tag = createElement(
       "span",
@@ -738,7 +798,7 @@ export function createArchivePanel(
     );
     preview.dataset["patternArchiveSourcePreview"] = source.id;
     const actionsRow = createElement("div", "pattern-room-action-row");
-    const sourceStatus = createElement("small", undefined, source.status);
+    const sourceStatus = createElement("small", "pattern-room-source-status", source.status);
     const metadata =
       source.metadataLine === undefined || source.metadataLine.trim() === ""
         ? null
@@ -752,7 +812,12 @@ export function createArchivePanel(
       selection.onSelectSource(source.id);
     });
     inspectButton.dataset["patternInspectSource"] = source.id;
-    actionsRow.append(inspectButton);
+    inspectButton.ariaPressed = isSelected ? "true" : "false";
+    const evidenceButton = createActionButton("Kanıt Notu Oluştur", () => {
+      selection.onSelectSource(source.id);
+    });
+    evidenceButton.dataset["patternQuickEvidenceSource"] = source.id;
+    actionsRow.append(inspectButton, evidenceButton);
 
     if (source.isLocal !== true) {
       const pinButton = createActionButton("Panoya İliştir", () => {
@@ -790,10 +855,70 @@ export function createArchivePanel(
       sourceStatus,
       actionsRow
     );
+    sourceCards.push({ source, card });
     list.append(card);
   });
 
-  shell.append(
+  const applyArchiveFilter = (): void => {
+    const query = normalizeSourceSearchQuery(search.value);
+    const selectedType = filter.value;
+    let visibleCount = 0;
+    sourceCards.forEach(({ source, card }) => {
+      const searchable = normalizeSourceSearchText(
+        [
+          source.label,
+          source.sourceTypeLabel,
+          source.origin,
+          source.note,
+          source.metadataLine ?? "",
+        ].join(" ")
+      );
+      const matchesQuery = query === "" || searchable.includes(query);
+      const matchesType = selectedType === "all" || source.sourceTypeLabel === selectedType;
+      const isVisible = matchesQuery && matchesType;
+      card.hidden = !isVisible;
+      card.ariaHidden = isVisible ? "false" : "true";
+      if (isVisible) {
+        visibleCount += 1;
+      }
+    });
+    count.textContent = text("archive.visibleCount", {
+      visible: String(visibleCount),
+      total: String(sourceCards.length),
+    });
+    empty.hidden = visibleCount !== 0;
+  };
+
+  search.addEventListener("input", () => {
+    selection.onSearchQueryChange?.(search.value);
+    applyArchiveFilter();
+  });
+  filter.addEventListener("change", () => {
+    selection.onSourceTypeFilterChange?.(filter.value);
+    applyArchiveFilter();
+  });
+  applyArchiveFilter();
+  browser.append(browserHeader, toolbar, count, list, empty);
+
+  const inspector = createElement(
+    "aside",
+    "pattern-room-context-inspector pattern-room-archive-inspector"
+  );
+  inspector.ariaLabel = text("archive.inspectorLabel");
+  const inspectorLabel = createElement(
+    "span",
+    "pattern-room-context-inspector-label",
+    text("archive.inspectorLabel")
+  );
+  const tools = createElement("details", "pattern-room-archive-tools");
+  tools.dataset["patternArchiveTools"] = "true";
+  const toolsSummary = createElement(
+    "summary",
+    "pattern-room-inline-summary",
+    text("archive.toolsLabel")
+  );
+  const toolsBody = createElement("div", "pattern-room-archive-tools-body");
+  toolsBody.append(
     createSourceWorkbenchDemo(
       actions,
       userTextSourceImportStatus,
@@ -801,9 +926,16 @@ export function createArchivePanel(
       sourceImportStatus
     ),
     createSourceAuthoringForm(actions),
-    createLocalSessionResetSection(actions),
-    createArchiveSourceDetail(selectedSource, selection.selectedSourceId, actions, selection),
-    list
+    createLocalSessionResetSection(actions)
   );
+  tools.append(toolsSummary, toolsBody);
+  inspector.append(
+    inspectorLabel,
+    createArchiveSourceDetail(selectedSource, selection.selectedSourceId, actions, selection),
+    tools
+  );
+
+  workspace.append(browser, inspector);
+  shell.append(workspace);
   return shell;
 }

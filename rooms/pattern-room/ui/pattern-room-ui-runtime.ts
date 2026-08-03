@@ -66,6 +66,12 @@ import { createReportPanel } from "./panels/pattern-report-panel.js";
 import { createTenthManPanel } from "./panels/pattern-tenth-man-panel.js";
 import type { PatternCaseReviewApplyFeedback } from "./panels/pattern-case-review-runtime-view.js";
 import { createPatternCaseReviewTranslator } from "./pattern-case-review-i18n.js";
+import { createPatternWorkspaceTranslator } from "./pattern-room-workspace-i18n.js";
+import {
+  createPatternWorkspaceShell,
+  type PatternWorkspaceSection,
+  type PatternWorkspaceShell,
+} from "./panels/pattern-workspace-shell.js";
 import {
   PATTERN_CASE_REVIEW_DEFAULT_ROLE_SLOT,
   type PatternCaseReviewDispatchStatus,
@@ -141,8 +147,7 @@ function readCaseReviewDispatchDraft(value: unknown): PatternRoomCaseReviewDispa
     !isRecord(payload["protocol"]) ||
     payload["protocol"]["room"] !== PATTERN_ROOM_CASE_REVIEW_DISPATCH_PROTOCOL.room ||
     payload["protocol"]["scenario"] !== PATTERN_ROOM_CASE_REVIEW_DISPATCH_PROTOCOL.scenario ||
-    payload["protocol"]["protocolKey"] !==
-      PATTERN_ROOM_CASE_REVIEW_DISPATCH_PROTOCOL.protocolKey
+    payload["protocol"]["protocolKey"] !== PATTERN_ROOM_CASE_REVIEW_DISPATCH_PROTOCOL.protocolKey
   ) {
     return null;
   }
@@ -181,9 +186,16 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   const root = resolveRoot();
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
   let activeView: PatternViewId = "overview";
+  let activeWorkspaceSection: PatternWorkspaceSection = "default";
   let selectedNodeId: string | null = null;
   let selectedArchiveSourceId: string | null = null;
   let archiveEvidenceCaptureStatus: string | null = null;
+  let archiveSearchQuery = "";
+  let archiveSourceTypeFilter = "all";
+  let workspaceShell: PatternWorkspaceShell | null = null;
+  let renderedView: PatternViewId | null = null;
+  const workspacePanelCache = new Map<PatternViewId, HTMLElement>();
+  const workspaceScrollOffsets = new Map<PatternViewId, number>();
   let viewModels: PatternRoomMockData = adaptDomainToViewModels(
     PATTERN_ROOM_DOMAIN_MOCK,
     localState.getOverlay()
@@ -201,8 +213,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   let caseReviewPreviewDraft: PatternCaseReviewPreviewDraft | null = null;
   let caseReviewDispatchStatus: PatternCaseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;
   let caseReviewRuntimeState = createPatternRoomCaseReviewRuntimeState();
-  let selectedCaseReviewRole: PatternRoomCaseReviewRoleSlot =
-    PATTERN_CASE_REVIEW_DEFAULT_ROLE_SLOT;
+  let selectedCaseReviewRole: PatternRoomCaseReviewRoleSlot = PATTERN_CASE_REVIEW_DEFAULT_ROLE_SLOT;
   let caseReviewApplyFeedback: PatternCaseReviewApplyFeedback | null = null;
   let caseReviewLocale = "tr";
   let caseReviewTranslations: unknown = null;
@@ -421,8 +432,20 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     archiveEvidenceCaptureStatus = message;
   }
 
+  function setArchiveSearchQuery(query: string): void {
+    archiveSearchQuery = query;
+  }
+
+  function setArchiveSourceTypeFilter(sourceType: string): void {
+    archiveSourceTypeFilter = sourceType;
+  }
+
   function getCaseReviewText() {
     return createPatternCaseReviewTranslator(caseReviewLocale, caseReviewTranslations);
+  }
+
+  function getWorkspaceText() {
+    return createPatternWorkspaceTranslator(caseReviewLocale, caseReviewTranslations);
   }
 
   function createCaseReviewApplyOptions(
@@ -673,11 +696,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
 
     try {
       const applyOptions = createCaseReviewApplyOptions(mode);
-      const summary = previewPatternRoomCaseReviewApply(
-        session.result,
-        localState,
-        applyOptions
-      );
+      const summary = previewPatternRoomCaseReviewApply(session.result, localState, applyOptions);
       locallyAppliedCaseReviewSessions.add(session.sessionId);
       if (
         !sendCaseReviewControl({
@@ -906,15 +925,20 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     flushPendingSave();
   }
 
-  function setActiveView(viewId: PatternViewId): void {
+  function setActiveView(
+    viewId: PatternViewId,
+    section: PatternWorkspaceSection = "default"
+  ): void {
     activeView = viewId;
-    render();
+    activeWorkspaceSection = section;
+    render(true);
   }
 
   function renderFocusedView(viewId: FocusedPatternViewId): HTMLElement {
     const onBack = (): void => {
       setActiveView("overview");
     };
+    const workspaceText = getWorkspaceText();
     const panelFactories: Record<FocusedPatternViewId, () => HTMLElement> = {
       archive: () =>
         createArchivePanel(
@@ -929,41 +953,112 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
             onSelectSource: selectArchiveSource,
             evidenceCaptureStatus: archiveEvidenceCaptureStatus,
             onEvidenceCaptureStatusChange: setArchiveEvidenceCaptureStatus,
-          }
+            searchQuery: archiveSearchQuery,
+            onSearchQueryChange: setArchiveSearchQuery,
+            sourceTypeFilter: archiveSourceTypeFilter,
+            onSourceTypeFilterChange: setArchiveSourceTypeFilter,
+          },
+          workspaceText
         ),
-      board: () => createBoardPanel(viewModels, actions, onBack),
-      desk: () => createDeskPanel(viewModels, actions, onBack),
-      report: () => createReportPanel(viewModels, actions, onBack),
+      board: () => createBoardPanel(viewModels, actions, onBack, workspaceText),
+      desk: () => createDeskPanel(viewModels, actions, onBack, workspaceText),
+      report: () => createReportPanel(viewModels, actions, onBack, workspaceText),
       "tenth-man": () =>
-        createTenthManPanel(viewModels, actions, onBack, {
-          applyDisabled:
-            caseReviewRuntimeState.activeSession !== null &&
-            locallyAppliedCaseReviewSessions.has(caseReviewRuntimeState.activeSession.sessionId),
-          applyFeedback: caseReviewApplyFeedback,
-          dispatchStatus: caseReviewDispatchStatus,
-          history: caseReviewRuntimeState.history,
-          onApply: applyCaseReview,
-          onCancel: cancelCaseReview,
-          onPrepare: prepareCaseReviewPreview,
-          onResend: resendCaseReview,
-          onRetry: retryCaseReview,
-          onRoleChange: selectCaseReviewRole,
-          onSend: dispatchCaseReviewPreview,
-          preview: caseReviewPreviewDraft,
-          selectedRole: selectedCaseReviewRole,
-          session: caseReviewRuntimeState.activeSession,
-          text: getCaseReviewText(),
-        }),
+        createTenthManPanel(
+          viewModels,
+          actions,
+          onBack,
+          {
+            applyDisabled:
+              caseReviewRuntimeState.activeSession !== null &&
+              locallyAppliedCaseReviewSessions.has(caseReviewRuntimeState.activeSession.sessionId),
+            applyFeedback: caseReviewApplyFeedback,
+            dispatchStatus: caseReviewDispatchStatus,
+            history: caseReviewRuntimeState.history,
+            onApply: applyCaseReview,
+            onCancel: cancelCaseReview,
+            onPrepare: prepareCaseReviewPreview,
+            onResend: resendCaseReview,
+            onRetry: retryCaseReview,
+            onRoleChange: selectCaseReviewRole,
+            onSend: dispatchCaseReviewPreview,
+            preview: caseReviewPreviewDraft,
+            selectedRole: selectedCaseReviewRole,
+            session: caseReviewRuntimeState.activeSession,
+            text: getCaseReviewText(),
+          },
+          workspaceText
+        ),
     };
     return panelFactories[viewId]();
   }
 
-  function render(): void {
-    const content =
-      activeView === "overview"
-        ? createOverviewPanel(viewModels, setActiveView)
-        : renderFocusedView(activeView);
-    root.replaceChildren(content);
+  function createWorkspaceSummary() {
+    return {
+      subject: viewModels.subject,
+      pinCount: viewModels.boardCategories.reduce((count, category) => {
+        return count + category.pins.length;
+      }, 0),
+      sourceCount: viewModels.sources.length,
+      reviewCount: caseReviewRuntimeState.history.length,
+    };
+  }
+
+  function ensureWorkspaceShell(): PatternWorkspaceShell {
+    if (workspaceShell !== null) {
+      return workspaceShell;
+    }
+
+    workspaceShell = createPatternWorkspaceShell(
+      getWorkspaceText(),
+      createWorkspaceSummary(),
+      setActiveView
+    );
+    root.replaceChildren(workspaceShell.element);
+    renderedView = null;
+    return workspaceShell;
+  }
+
+  function focusActiveWorkspaceSection(shell: PatternWorkspaceShell): void {
+    if (activeWorkspaceSection !== "review-history") {
+      return;
+    }
+
+    const target = shell.outlet.querySelector<HTMLElement>(
+      "[data-pattern-case-review-history='true']"
+    );
+    if (target === null) {
+      return;
+    }
+    target.tabIndex = -1;
+    target.focus();
+    target.scrollIntoView({ block: "start" });
+  }
+
+  function render(preserveWorkspace = false): void {
+    const shell = ensureWorkspaceShell();
+    if (renderedView !== null) {
+      workspaceScrollOffsets.set(renderedView, shell.outlet.scrollTop);
+    }
+    if (!preserveWorkspace) {
+      workspacePanelCache.clear();
+    }
+
+    let content = preserveWorkspace ? workspacePanelCache.get(activeView) : undefined;
+    if (content === undefined) {
+      content =
+        activeView === "overview"
+          ? createOverviewPanel(viewModels, setActiveView, getWorkspaceText())
+          : renderFocusedView(activeView);
+      workspacePanelCache.set(activeView, content);
+    }
+
+    shell.outlet.replaceChildren(content);
+    shell.outlet.scrollTop = workspaceScrollOffsets.get(activeView) ?? 0;
+    renderedView = activeView;
+    shell.updateSummary(createWorkspaceSummary());
+    shell.updateActiveView(activeView, activeWorkspaceSection);
+    focusActiveWorkspaceSection(shell);
   }
 
   function restoreSnapshot(snapshot: unknown): boolean {
@@ -975,6 +1070,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     isRestoring = true;
     try {
       activeView = restoredState.activeView;
+      activeWorkspaceSection = "default";
       selectedArchiveSourceId = null;
       archiveEvidenceCaptureStatus = null;
       localState.restoreOverlay(restoredState.overlay, restoredState.guards);
@@ -1045,9 +1141,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
         }
       }
       if (!caseReviewDraftsBySessionId.has(activeSession.sessionId)) {
-        const recoveredDraft = readCaseReviewDispatchDraft(
-          activeSession.metadata["dispatchDraft"]
-        );
+        const recoveredDraft = readCaseReviewDispatchDraft(activeSession.metadata["dispatchDraft"]);
         if (recoveredDraft !== null) {
           caseReviewDraftsBySessionId.set(activeSession.sessionId, recoveredDraft);
           caseReviewPreviewDraft = createRecoveredCaseReviewPreview(
@@ -1076,6 +1170,9 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     if (isRecord(source["translations"])) {
       caseReviewTranslations = source["translations"];
     }
+    workspaceShell = null;
+    renderedView = null;
+    workspacePanelCache.clear();
     render();
   }
 

@@ -3,6 +3,86 @@
     "name": "Pattern Room",
     "feature": "Pattern Workbench"
   },
+  "workspace": {
+    "shell": {
+      "kicker": "Investigation system",
+      "title": "Pattern Room",
+      "status": "Local case active",
+      "navigationLabel": "Workspaces",
+      "caseLabel": "Active case",
+      "sourceMetric": "%count% sources",
+      "pinMetric": "%count% leads",
+      "reviewMetric": "%count% reviews",
+      "keyboardHint": "Use the arrow keys to move between workspaces."
+    },
+    "nav": {
+      "overview": {
+        "label": "Case Hub",
+        "description": "Case overview"
+      },
+      "board": {
+        "label": "Detective Board",
+        "description": "Leads and notes"
+      },
+      "archive": {
+        "label": "Archive",
+        "description": "Source research"
+      },
+      "connections": {
+        "label": "Connections",
+        "description": "Relationship map"
+      },
+      "review": {
+        "label": "Case Review",
+        "description": "Tenth Man and AI"
+      },
+      "report": {
+        "label": "Report",
+        "description": "Read-only brief"
+      },
+      "reviewHistory": {
+        "label": "Review History",
+        "description": "Previous sessions"
+      }
+    },
+    "overview": {
+      "activityLabel": "Case activity",
+      "activityTitle": "Investigation desk ready",
+      "activityCopy": "Open every major tool directly from the navigation."
+    },
+    "board": {
+      "canvasLabel": "Board workspace",
+      "inspectorLabel": "Board inspector",
+      "toolsLabel": "Quick authoring tools"
+    },
+    "archive": {
+      "browserLabel": "Source browser",
+      "inspectorLabel": "Source inspector",
+      "toolsLabel": "Archive tools",
+      "searchLabel": "Search archive",
+      "searchPlaceholder": "Search title, type, origin, or content",
+      "filterLabel": "Source type",
+      "allSources": "All sources",
+      "visibleCount": "%visible% / %total% sources",
+      "empty": "No sources match this search."
+    },
+    "connections": {
+      "kicker": "Relationship map",
+      "title": "Connections",
+      "intro": "Compare claims, sources, and evidence on one relationship surface.",
+      "entitiesLabel": "Connectable items",
+      "composerLabel": "New connection"
+    },
+    "report": {
+      "outlineLabel": "Document outline",
+      "documentLabel": "Case report",
+      "jumpLabel": "Jump to %section%"
+    },
+    "review": {
+      "workspaceLabel": "Case review workspace",
+      "debateInspectorLabel": "Tenth Man session"
+    }
+  },
   "review": {
     "kicker": "AI case review",
     "title": "Case Review Preview",
@@ -72,6 +152,18 @@
       "missingEvidence": "Missing Evidence",
       "suggestedConnections": "Suggested Connections",
       "openQuestions": "Open Questions"
+    },
+    "workspace": {
+      "request": "Sent request",
+      "response": "Received response",
+      "parsed": "Parsed sections",
+      "applyPreview": "Apply preview",
+      "applyResult": "Apply result",
+      "history": "Review history",
+      "responseEmpty": "The AI response has not arrived yet.",
+      "applyEmpty": "No review result has been applied.",
+      "boardNotes": "Board notes",
+      "skipped": "Skipped"
     },
     "history": {
       "title": "Review History",

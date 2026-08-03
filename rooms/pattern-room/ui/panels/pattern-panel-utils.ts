@@ -25,6 +25,8 @@ export function createBackButton(onBack: () => void): HTMLButtonElement {
   const button = createElement("button", "pattern-room-back", "Genel oda");
   button.type = "button";
   button.dataset["patternBack"] = "true";
+  button.ariaLabel = "Genel oda görünümüne dön";
+  button.title = "Genel oda";
   button.addEventListener("click", onBack);
   return button;
 }
@@ -39,6 +41,8 @@ export function createActionButton(label: string, onClick: () => void): HTMLButt
 export function createPanelShell(viewId: string, title: string, onBack: () => void): HTMLElement {
   const shell = createElement("section", "pattern-room-panel");
   shell.dataset["patternView"] = viewId;
+  shell.ariaLabel = title;
+  shell.tabIndex = -1;
 
   const header = createElement("header", "pattern-room-panel-header");
   const titleWrap = createElement("div", "pattern-room-panel-title");

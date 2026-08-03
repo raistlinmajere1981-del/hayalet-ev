@@ -7,13 +7,16 @@ import {
   pathToFileURL,
   readTreeText,
   resolve,
-  test
+  test,
 } from "./forge-room-ui-smoke.helpers.ts";
 import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
 import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
 import { createSnapshot } from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
 import type { PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
-import { PATTERN_ROOM_LOADED_EVENT, PATTERN_ROOM_SAVE_COMMAND } from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
+import {
+  PATTERN_ROOM_LOADED_EVENT,
+  PATTERN_ROOM_SAVE_COMMAND,
+} from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
 
 const PATTERN_FOCUSED_VIEWS = ["board", "desk", "archive", "tenth-man", "report"] as const;
 type PatternFocusedViewId = (typeof PATTERN_FOCUSED_VIEWS)[number];
@@ -25,10 +28,7 @@ function assertTextIncludes(text: string, expectedValues: string[]): void {
   });
 }
 
-function openFocusedView(
-  app: PatternRoomFakeApp,
-  viewId: PatternFocusedViewId
-): void {
+function openFocusedView(app: PatternRoomFakeApp, viewId: PatternFocusedViewId): void {
   const hotspot = app.querySelector(`[data-pattern-hotspot='${viewId}']`);
   assert.ok(hotspot);
   fireEvent(hotspot, "click");
@@ -190,6 +190,62 @@ void test("pattern-room installed UI renders overview hotspots and returns from 
       assert.ok(environment.app.querySelector("[data-pattern-view='overview']"));
     }
 
+    assert.deepEqual(environment.sentCommands, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI keeps workspace navigation persistent and preserves archive search", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?workspace-shell=${Date.now()}`
+    );
+
+    const shell = environment.app.querySelector("[data-pattern-workspace-shell='true']");
+    const outlet = environment.app.querySelector("[data-pattern-workspace-outlet='true']");
+    const navigationItems = environment.app.querySelectorAll("[data-pattern-workspace-nav]");
+    assert.ok(shell);
+    assert.ok(outlet);
+    assert.equal(navigationItems.length, 7);
+    assert.equal(
+      environment.app.querySelector("[data-pattern-workspace-nav='overview']")?.dataset[
+        "patternWorkspaceNavActive"
+      ],
+      "true"
+    );
+
+    const archiveNavigation = environment.app.querySelector(
+      "[data-pattern-workspace-nav='archive']"
+    );
+    assert.ok(archiveNavigation);
+    fireEvent(archiveNavigation, "click");
+    assert.equal(environment.app.querySelector("[data-pattern-workspace-shell='true']"), shell);
+    assert.equal(environment.app.querySelector("[data-pattern-workspace-outlet='true']"), outlet);
+    assert.ok(environment.app.querySelector("[data-pattern-view='archive']"));
+
+    const archiveSearch = environment.app.querySelector("[data-pattern-archive-search='true']");
+    assert.ok(archiveSearch);
+    archiveSearch.value = "harita";
+    fireEvent(archiveSearch, "input");
+
+    const reportNavigation = environment.app.querySelector("[data-pattern-workspace-nav='report']");
+    assert.ok(reportNavigation);
+    fireEvent(reportNavigation, "click");
+    assert.ok(environment.app.querySelector("[data-pattern-view='report']"));
+
+    fireEvent(archiveNavigation, "click");
+    assert.ok(environment.app.querySelector("[data-pattern-view='archive']"));
+    assert.equal(
+      environment.app.querySelector("[data-pattern-archive-search='true']")?.value,
+      "harita"
+    );
+    assert.equal(environment.app.querySelectorAll("[data-pattern-view]").length, 1);
+    assert.equal(archiveNavigation.dataset["patternWorkspaceNavActive"], "true");
     assert.deepEqual(environment.sentCommands, []);
   } finally {
     environment.restore();
@@ -375,4 +431,3 @@ void test("pattern-room installed UI autosaves only user mutations after restori
     await installedCopy.cleanup();
   }
 });
-

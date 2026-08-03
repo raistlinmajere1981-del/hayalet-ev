@@ -1,3 +1,5 @@
+@custom-media --pattern-bp-min-1440 (min-width: 1440px);
+@custom-media --pattern-bp-max-1100 (max-width: 1100px);
 @custom-media --pattern-bp-max-820 (max-width: 820px);
 
 :root {
@@ -305,6 +307,8 @@
   --pattern-px-920: 920px;
   --pattern-px-999: 999px;
   --pattern-px-1180: 1180px;
+  --pattern-em-0-04: 0.04em;
+  --pattern-em-0-08: 0.08em;
   --pattern-rem-0-72: 0.72rem;
   --pattern-rem-0-74: 0.74rem;
   --pattern-rem-0-76: 0.76rem;

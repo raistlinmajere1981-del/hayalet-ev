@@ -4,6 +4,10 @@ import type {
   PatternReportSection,
   PatternRoomMockData,
 } from "../../shared/types/pattern-room.js";
+import {
+  createPatternWorkspaceTranslator,
+  type PatternWorkspaceTranslator,
+} from "../pattern-room-workspace-i18n.js";
 import { createElement, createPanelShell } from "./pattern-panel-utils.js";
 
 const REPORT_META_SEPARATOR = " · ";
@@ -44,11 +48,25 @@ function appendReportSectionContent(card: HTMLElement, section: PatternReportSec
 export function createReportPanel(
   data: PatternRoomMockData,
   _actions: PatternPanelActions,
-  onBack: () => void
+  onBack: () => void,
+  text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)
 ): HTMLElement {
-  const shell = createPanelShell("report", "Rapor", onBack);
-  const report = createElement("article", "pattern-room-report");
-  report.append(
+  const shell = createPanelShell("report", text("nav.report.label"), onBack);
+  const workspace = createElement("div", "pattern-room-report-workspace");
+  const outline = createElement("aside", "pattern-room-report-outline");
+  outline.dataset["patternReportOutline"] = "true";
+  outline.ariaLabel = text("report.outlineLabel");
+  outline.append(
+    createElement("span", "pattern-room-context-inspector-label", text("report.outlineLabel"))
+  );
+  const outlineNavigation = createElement("nav", "pattern-room-report-outline-navigation");
+  outlineNavigation.ariaLabel = text("report.outlineLabel");
+  const outlineButtons: HTMLButtonElement[] = [];
+
+  const report = createElement("article", "pattern-room-report pattern-room-report-document");
+  report.ariaLabel = text("report.documentLabel");
+  const reportHeader = createElement("header", "pattern-room-report-document-header");
+  reportHeader.append(
     createElement("span", "pattern-room-kicker", "Taslak / Yerel iz"),
     createElement("h2", undefined, data.reportSummary.label),
     createElement(
@@ -57,20 +75,54 @@ export function createReportPanel(
       "Taslak rapor; kullanıcı tarafından eklenen ve henüz doğrulanmamış yerel izlerden deterministik görünüm hazırlar."
     )
   );
+  report.append(reportHeader);
 
   const list = createElement("div", "pattern-room-report-list");
-  data.reportSummary.sections.forEach((section) => {
+  data.reportSummary.sections.forEach((section, index) => {
     const item = createElement("section", `pattern-room-report-card ${section.tone}`);
     item.dataset["patternReportSection"] = section.id;
-    item.append(
+    item.tabIndex = -1;
+    const sectionHeader = createElement("header", "pattern-room-report-section-header");
+    sectionHeader.append(
       createElement("span", "pattern-room-list-eyebrow", "Taslak bölümü"),
+      createElement("span", "pattern-room-report-section-count", String(section.items.length)),
       createElement("h3", undefined, section.label),
       createElement("p", undefined, section.note)
     );
+    item.append(sectionHeader);
     appendReportSectionContent(item, section);
     list.append(item);
+
+    const jump = createElement("button", "pattern-room-report-outline-button");
+    jump.type = "button";
+    jump.dataset["patternReportJump"] = section.id;
+    jump.ariaLabel = text("report.jumpLabel", { section: section.label });
+    jump.append(
+      createElement("span", "pattern-room-report-outline-index", String(index + 1)),
+      createElement("span", undefined, section.label),
+      createElement("small", undefined, String(section.items.length))
+    );
+    jump.addEventListener("click", () => {
+      outlineButtons.forEach((button) => {
+        button.classList.remove("active");
+        button.ariaCurrent = null;
+      });
+      jump.classList.add("active");
+      jump.ariaCurrent = "location";
+      item.focus();
+      item.scrollIntoView({ block: "start" });
+    });
+    outlineButtons.push(jump);
+    outlineNavigation.append(jump);
   });
+
+  outlineButtons[0]?.classList.add("active");
+  if (outlineButtons[0] !== undefined) {
+    outlineButtons[0].ariaCurrent = "location";
+  }
+  outline.append(outlineNavigation);
   report.append(list);
-  shell.append(report);
+  workspace.append(outline, report);
+  shell.append(workspace);
   return shell;
 }

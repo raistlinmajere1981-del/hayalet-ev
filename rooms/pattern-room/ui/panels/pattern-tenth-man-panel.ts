@@ -23,6 +23,10 @@ import type {
   PatternCaseReviewTranslator,
 } from "../pattern-case-review-i18n.js";
 import {
+  createPatternWorkspaceTranslator,
+  type PatternWorkspaceTranslator,
+} from "../pattern-room-workspace-i18n.js";
+import {
   createPatternCaseReviewRuntimeView,
   type PatternCaseReviewRuntimePanelState,
 } from "./pattern-case-review-runtime-view.js";
@@ -193,9 +197,7 @@ function appendPreviewWarnings(container: HTMLElement, warnings: readonly string
   container.append(warningList);
 }
 
-const ROLE_TEXT_KEYS: Readonly<
-  Record<PatternRoomCaseReviewRoleSlot, PatternCaseReviewTextKey>
-> = {
+const ROLE_TEXT_KEYS: Readonly<Record<PatternRoomCaseReviewRoleSlot, PatternCaseReviewTextKey>> = {
   AI0: "roles.AI0",
   AI1: "roles.AI1",
   AI2: "roles.AI2",
@@ -282,6 +284,7 @@ function appendCaseReviewPreview(
 ): void {
   const previewSection = createElement("section", "pattern-room-case-review-preview");
   previewSection.dataset["patternCaseReviewPreview"] = "true";
+  previewSection.ariaLabel = previewState.text("title");
   const previewResult = createElement("div", "pattern-room-case-review-preview-result");
   if (previewState.preview === null) {
     previewResult.append(
@@ -308,18 +311,29 @@ function appendCaseReviewPreview(
   actionRow.append(createRoleField(previewState), prepareButton, sendButton);
   appendDispatchStatus(previewResult, previewState.dispatchStatus);
 
+  const request = createElement(
+    "section",
+    "pattern-room-case-review-workspace-card pattern-room-case-review-request"
+  );
+  request.dataset["patternCaseReviewRequest"] = "true";
+  request.append(
+    createElement(
+      "span",
+      "pattern-room-context-inspector-label",
+      previewState.text("workspace.request")
+    ),
+    previewResult
+  );
+
   previewSection.append(
     createElement("span", "pattern-room-kicker", previewState.text("kicker")),
-    createElement(
-      "h2",
-      undefined,
-      `${previewState.selectedRole} ${previewState.text("title")}`
-    ),
+    createElement("h2", undefined, `${previewState.selectedRole} ${previewState.text("title")}`),
     createElement("p", undefined, previewState.text("intro")),
-    actionRow,
-    previewResult,
-    createPatternCaseReviewRuntimeView(previewState)
+    actionRow
   );
+  const workspace = createElement("div", "pattern-room-case-review-workspace");
+  workspace.append(request, createPatternCaseReviewRuntimeView(previewState));
+  previewSection.append(workspace);
   device.append(previewSection);
 }
 
@@ -388,12 +402,27 @@ export function createTenthManPanel(
   data: PatternRoomMockData,
   actions: PatternPanelActions,
   onBack: () => void,
-  caseReviewPreviewState: PatternCaseReviewPreviewPanelState
+  caseReviewPreviewState: PatternCaseReviewPreviewPanelState,
+  workspaceText: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)
 ): HTMLElement {
-  const shell = createPanelShell("tenth-man", "10. Adam", onBack);
+  const shell = createPanelShell("tenth-man", workspaceText("nav.review.label"), onBack);
   const session = data.tenthManSession;
   const phase = session.phase ?? "idle";
-  const device = createElement("div", "pattern-room-device pattern-room-slot-device");
+  const workspace = createElement("div", "pattern-room-review-workspace");
+  const reviewSurface = createElement("section", "pattern-room-review-surface");
+  reviewSurface.ariaLabel = workspaceText("review.workspaceLabel");
+  const device = createElement(
+    "aside",
+    "pattern-room-device pattern-room-slot-device pattern-room-review-inspector"
+  );
+  device.ariaLabel = workspaceText("review.debateInspectorLabel");
+  device.append(
+    createElement(
+      "span",
+      "pattern-room-context-inspector-label",
+      workspaceText("review.debateInspectorLabel")
+    )
+  );
   const statusRow = createElement("div", "pattern-room-device-status-row");
   statusRow.append(
     createElement(
@@ -421,12 +450,13 @@ export function createTenthManPanel(
   });
   device.append(slots);
 
+  appendPhaseAction(device, session, actions);
   appendReferences(device, session);
   appendTurnList(device, session.turns ?? []);
   appendVerdict(device, session.verdict);
-  appendCaseReviewPreview(device, data, caseReviewPreviewState);
-  appendPhaseAction(device, session, actions);
+  appendCaseReviewPreview(reviewSurface, data, caseReviewPreviewState);
 
-  shell.append(device);
+  workspace.append(reviewSurface, device);
+  shell.append(workspace);
   return shell;
 }

@@ -45,9 +45,7 @@ const STATUS_TEXT_KEYS: Readonly<
   applied: "statuses.applied",
 };
 
-const STATUS_CLASS_NAMES: Readonly<
-  Record<PatternRoomCaseReviewSessionStatus, string>
-> = {
+const STATUS_CLASS_NAMES: Readonly<Record<PatternRoomCaseReviewSessionStatus, string>> = {
   preview: "idle",
   dispatching: "running",
   "waiting-reply": "waiting",
@@ -142,7 +140,12 @@ function createReviewResult(
   });
 
   const meta = createElement("div", "pattern-room-case-review-result-meta");
-  appendResultMetaList(meta, text("result.confidence"), result.confidence, "patternCaseReviewConfidence");
+  appendResultMetaList(
+    meta,
+    text("result.confidence"),
+    result.confidence,
+    "patternCaseReviewConfidence"
+  );
   appendResultMetaList(
     meta,
     text("result.missingEvidence"),
@@ -226,9 +229,7 @@ function createHistory(
   section.append(createElement("h3", undefined, text("history.title")));
 
   if (history.length === 0) {
-    section.append(
-      createElement("p", "pattern-room-empty-state", text("messages.historyEmpty"))
-    );
+    section.append(createElement("p", "pattern-room-empty-state", text("messages.historyEmpty")));
     return section;
   }
 
@@ -262,9 +263,7 @@ function createRuntimeActions(
   const actions = createElement("div", "pattern-room-case-review-runtime-actions");
   const isActive = session.status === "dispatching" || session.status === "waiting-reply";
   const canRetry =
-    session.status === "failed" ||
-    session.status === "timed-out" ||
-    session.status === "cancelled";
+    session.status === "failed" || session.status === "timed-out" || session.status === "cancelled";
   const canResend =
     session.status === "ready" ||
     session.status === "applied" ||
@@ -319,50 +318,80 @@ function createApplyActions(state: PatternCaseReviewRuntimePanelState): HTMLElem
   return actions;
 }
 
-export function createPatternCaseReviewRuntimeView(
-  state: PatternCaseReviewRuntimePanelState
-): HTMLElement {
-  const runtime = createElement("section", "pattern-room-case-review-runtime");
-  runtime.dataset["patternCaseReviewRuntime"] = "true";
-
-  if (state.session === null) {
-    runtime.append(createHistory(state.history, state.text));
-    return runtime;
-  }
-
-  const statusRow = createElement("div", "pattern-room-case-review-runtime-status");
-  const statusClass = STATUS_CLASS_NAMES[state.session.status];
-  const status = createElement(
-    "span",
-    `pattern-room-case-review-status ${statusClass}`,
-    state.text(STATUS_TEXT_KEYS[state.session.status])
+function createReviewMetric(label: string, value: number): HTMLElement {
+  const metric = createElement("div", "pattern-room-case-review-workspace-metric");
+  metric.append(
+    createElement("span", undefined, label),
+    createElement("strong", undefined, String(value))
   );
-  status.dataset["patternCaseReviewState"] = state.session.status;
-  statusRow.append(status);
-  if (state.session.error !== null) {
-    const error = createElement("p", "pattern-room-case-review-preview-status failed");
-    error.dataset["patternCaseReviewError"] = state.session.error.code;
-    error.textContent = state.session.error.message;
-    statusRow.append(error);
-  }
-  runtime.append(statusRow);
+  return metric;
+}
 
-  const runtimeActions = createRuntimeActions(state, state.session);
-  if (runtimeActions !== null) {
-    runtime.append(runtimeActions);
-  }
+function createRawResponse(
+  session: PatternRoomCaseReviewSession | null,
+  text: PatternCaseReviewTranslator
+): HTMLElement {
+  const response = createElement(
+    "section",
+    "pattern-room-case-review-workspace-card pattern-room-case-review-response"
+  );
+  response.dataset["patternCaseReviewReply"] = "true";
+  response.append(
+    createElement("span", "pattern-room-context-inspector-label", text("workspace.response"))
+  );
 
-  if (state.session.result !== null) {
-    runtime.append(createReviewResult(state.session.result, state.text));
-  } else if (state.session.status === "waiting-reply" || state.session.status === "dispatching") {
-    runtime.append(
-      createElement("p", "pattern-room-empty-state", state.text("messages.resultEmpty"))
+  if (session?.reply === null || session?.reply === undefined) {
+    response.append(
+      createElement("p", "pattern-room-empty-state", text("workspace.responseEmpty"))
     );
+    return response;
+  }
+
+  const meta = createElement("div", "pattern-room-case-review-response-meta");
+  meta.append(
+    createElement("span", undefined, formatHistoryTimestamp(session.reply.receivedAt)),
+    createElement("code", undefined, shortenHash(session.reply.responseHash))
+  );
+  const raw = createElement("pre", "pattern-room-case-review-response-text", session.reply.text);
+  raw.dataset["patternCaseReviewReplyText"] = "true";
+  response.append(meta, raw);
+  return response;
+}
+
+function createApplyWorkspace(state: PatternCaseReviewRuntimePanelState): HTMLElement {
+  const apply = createElement(
+    "section",
+    "pattern-room-case-review-workspace-card pattern-room-case-review-apply-workspace"
+  );
+  apply.dataset["patternCaseReviewApplyWorkspace"] = "true";
+  apply.append(
+    createElement(
+      "span",
+      "pattern-room-context-inspector-label",
+      state.text("workspace.applyPreview")
+    )
+  );
+
+  const result = state.session?.result ?? null;
+  if (result === null) {
+    apply.append(createElement("p", "pattern-room-empty-state", state.text("messages.noResult")));
+  } else {
+    const previewMetrics = createElement("div", "pattern-room-case-review-workspace-metrics");
+    previewMetrics.append(
+      createReviewMetric(state.text("workspace.boardNotes"), result.items.length),
+      createReviewMetric(state.text("result.missingEvidence"), result.missingEvidence.length),
+      createReviewMetric(state.text("result.openQuestions"), result.openQuestions.length),
+      createReviewMetric(
+        state.text("result.suggestedConnections"),
+        result.suggestedConnections.length
+      )
+    );
+    apply.append(previewMetrics);
   }
 
   const applyActions = createApplyActions(state);
   if (applyActions !== null) {
-    runtime.append(applyActions);
+    apply.append(applyActions);
   }
   if (state.applyFeedback !== null) {
     const feedback = createElement(
@@ -371,9 +400,97 @@ export function createPatternCaseReviewRuntimeView(
       state.applyFeedback.message
     );
     feedback.dataset["patternCaseReviewApplyFeedback"] = state.applyFeedback.tone;
-    runtime.append(feedback);
+    apply.append(feedback);
   }
 
-  runtime.append(createHistory(state.history, state.text));
+  const applyResult = createElement("div", "pattern-room-case-review-apply-result");
+  applyResult.append(
+    createElement(
+      "span",
+      "pattern-room-context-inspector-label",
+      state.text("workspace.applyResult")
+    )
+  );
+  const summary = state.session?.applySummary ?? null;
+  if (summary === null) {
+    applyResult.append(
+      createElement("p", "pattern-room-empty-state", state.text("workspace.applyEmpty"))
+    );
+  } else {
+    const resultMetrics = createElement("div", "pattern-room-case-review-workspace-metrics");
+    resultMetrics.append(
+      createReviewMetric(state.text("workspace.boardNotes"), summary.boardNotesAdded),
+      createReviewMetric(state.text("sections.evidence"), summary.evidenceAdded),
+      createReviewMetric(state.text("result.openQuestions"), summary.openQuestionsAdded),
+      createReviewMetric(state.text("result.suggestedConnections"), summary.connectionsAdded),
+      createReviewMetric(state.text("workspace.skipped"), summary.skipped)
+    );
+    applyResult.append(resultMetrics);
+  }
+  apply.append(applyResult);
+  return apply;
+}
+
+export function createPatternCaseReviewRuntimeView(
+  state: PatternCaseReviewRuntimePanelState
+): HTMLElement {
+  const runtime = createElement("section", "pattern-room-case-review-runtime");
+  runtime.dataset["patternCaseReviewRuntime"] = "true";
+
+  const statusRow = createElement(
+    "section",
+    "pattern-room-case-review-runtime-status pattern-room-case-review-workspace-card"
+  );
+  const statusClass = state.session === null ? "idle" : STATUS_CLASS_NAMES[state.session.status];
+  const statusKey =
+    state.session === null ? "statuses.idle" : STATUS_TEXT_KEYS[state.session.status];
+  const status = createElement(
+    "span",
+    `pattern-room-case-review-status ${statusClass}`,
+    state.text(statusKey)
+  );
+  if (state.session !== null) {
+    status.dataset["patternCaseReviewState"] = state.session.status;
+  }
+  statusRow.append(status);
+
+  if (state.session?.error !== null && state.session?.error !== undefined) {
+    const error = createElement("p", "pattern-room-case-review-preview-status failed");
+    error.dataset["patternCaseReviewError"] = state.session.error.code;
+    error.textContent = state.session.error.message;
+    statusRow.append(error);
+  }
+  if (state.session !== null) {
+    const runtimeActions = createRuntimeActions(state, state.session);
+    if (runtimeActions !== null) {
+      statusRow.append(runtimeActions);
+    }
+  }
+  runtime.append(statusRow);
+
+  const workspace = createElement("div", "pattern-room-case-review-runtime-workspace");
+  workspace.append(createRawResponse(state.session, state.text));
+
+  const parsed = createElement(
+    "section",
+    "pattern-room-case-review-workspace-card pattern-room-case-review-parsed"
+  );
+  parsed.append(
+    createElement("span", "pattern-room-context-inspector-label", state.text("workspace.parsed"))
+  );
+  if (state.session?.result !== null && state.session?.result !== undefined) {
+    parsed.append(createReviewResult(state.session.result, state.text));
+  } else {
+    parsed.append(
+      createElement("p", "pattern-room-empty-state", state.text("messages.resultEmpty"))
+    );
+  }
+  workspace.append(parsed, createApplyWorkspace(state));
+
+  const history = createHistory(state.history, state.text);
+  history.classList.add("pattern-room-case-review-workspace-card");
+  history.dataset["patternCaseReviewWorkspaceHistory"] = "true";
+  workspace.append(history);
+  runtime.append(workspace);
   return runtime;
 }

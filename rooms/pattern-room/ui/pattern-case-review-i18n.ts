@@ -54,6 +54,16 @@ export type PatternCaseReviewTextKey =
   | "result.missingEvidence"
   | "result.suggestedConnections"
   | "result.openQuestions"
+  | "workspace.request"
+  | "workspace.response"
+  | "workspace.parsed"
+  | "workspace.applyPreview"
+  | "workspace.applyResult"
+  | "workspace.history"
+  | "workspace.responseEmpty"
+  | "workspace.applyEmpty"
+  | "workspace.boardNotes"
+  | "workspace.skipped"
   | "history.title"
   | "history.timestamp"
   | "history.role"
@@ -125,6 +135,16 @@ const FALLBACK_TR: Readonly<Record<PatternCaseReviewTextKey, string>> = {
   "result.missingEvidence": "Eksik Kanıt",
   "result.suggestedConnections": "Önerilen Bağlantılar",
   "result.openQuestions": "Açık Sorular",
+  "workspace.request": "Gönderilecek istek",
+  "workspace.response": "Alınan yanıt",
+  "workspace.parsed": "Ayrıştırılmış bölümler",
+  "workspace.applyPreview": "Uygulama önizlemesi",
+  "workspace.applyResult": "Uygulama sonucu",
+  "workspace.history": "İnceleme geçmişi",
+  "workspace.responseEmpty": "AI yanıtı henüz alınmadı.",
+  "workspace.applyEmpty": "Uygulanmış bir inceleme sonucu yok.",
+  "workspace.boardNotes": "Pano notları",
+  "workspace.skipped": "Atlanan",
   "history.title": "İnceleme Geçmişi",
   "history.timestamp": "Zaman",
   "history.role": "Rol",
@@ -191,6 +211,16 @@ const FALLBACK_EN: Readonly<Record<PatternCaseReviewTextKey, string>> = {
   "result.missingEvidence": "Missing Evidence",
   "result.suggestedConnections": "Suggested Connections",
   "result.openQuestions": "Open Questions",
+  "workspace.request": "Sent request",
+  "workspace.response": "Received response",
+  "workspace.parsed": "Parsed sections",
+  "workspace.applyPreview": "Apply preview",
+  "workspace.applyResult": "Apply result",
+  "workspace.history": "Review history",
+  "workspace.responseEmpty": "The AI response has not arrived yet.",
+  "workspace.applyEmpty": "No review result has been applied.",
+  "workspace.boardNotes": "Board notes",
+  "workspace.skipped": "Skipped",
   "history.title": "Review History",
   "history.timestamp": "Timestamp",
   "history.role": "Role",

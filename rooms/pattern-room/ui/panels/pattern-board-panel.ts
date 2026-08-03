@@ -4,23 +4,14 @@ import type {
   PatternPanelActions,
   PatternRoomMockData,
 } from "../../shared/types/pattern-room.js";
+import {
+  createPatternWorkspaceTranslator,
+  type PatternWorkspaceTranslator,
+} from "../pattern-room-workspace-i18n.js";
+import { createConnectionAuthoringForm } from "./pattern-connection-composer.js";
 import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
 
 type AuthoredBoardNodeType = "claim" | "inspiration" | "uncertainty";
-type AuthoredConnectionEdgeType = Parameters<PatternPanelActions["addAuthoredEdge"]>[0];
-
-const CONNECTION_EDGE_TYPE_OPTIONS: Array<{
-  value: AuthoredConnectionEdgeType;
-  label: string;
-}> = [
-  { value: "supports", label: "destekliyor" },
-  { value: "contradicts", label: "çelişiyor" },
-  { value: "references", label: "referans veriyor" },
-  { value: "derived_from", label: "türetildi" },
-  { value: "inspired_by", label: "ilham aldı" },
-  { value: "questions", label: "sorguluyor" },
-  { value: "needs_review", label: "inceleme gerekiyor" },
-];
 const REMOVE_BOARD_ITEM_CONFIRM_MESSAGE =
   "Bu yerel pano öğesi odadan kaldırılacak. Bağlı yerel bağlantılar da temizlenir. Devam edilsin mi?";
 
@@ -55,109 +46,6 @@ function createNodeTypeOption(value: AuthoredBoardNodeType, label: string): HTML
   const option = createElement("option", undefined, label);
   option.value = value;
   return option;
-}
-
-function createConnectionEntityOption(optionValue: PatternConnectionOption): HTMLOptionElement {
-  const kindLabel =
-    optionValue.kind === "evidence" ? "Kanıt" : optionValue.kind === "source" ? "Kaynak" : "Öğe";
-  const scopeLabel = optionValue.isLocal ? "Yerel" : "Domain";
-  const option = createElement(
-    "option",
-    undefined,
-    `${scopeLabel} ${kindLabel}: ${optionValue.label}`
-  );
-  option.value = optionValue.id;
-  return option;
-}
-
-function createEdgeTypeOption(value: AuthoredConnectionEdgeType, label: string): HTMLOptionElement {
-  const option = createElement("option", undefined, label);
-  option.value = value;
-  return option;
-}
-
-function resetConnectionFormDefaults(
-  sourceSelect: HTMLSelectElement,
-  edgeTypeSelect: HTMLSelectElement,
-  targetSelect: HTMLSelectElement,
-  connectionOptions: readonly PatternConnectionOption[]
-): void {
-  sourceSelect.value = connectionOptions[0]?.id ?? "";
-  edgeTypeSelect.value = "supports";
-  targetSelect.value = connectionOptions[1]?.id ?? connectionOptions[0]?.id ?? "";
-}
-
-function createConnectionAuthoringForm(
-  actions: PatternPanelActions,
-  connectionOptions: readonly PatternConnectionOption[]
-): HTMLFormElement {
-  const connectionForm = createElement("form", "pattern-room-inline-form");
-  connectionForm.dataset["patternAuthorEdgeForm"] = "true";
-
-  const sourceSelect = createElement("select", "pattern-room-inline-input");
-  sourceSelect.name = "sourceId";
-  sourceSelect.dataset["patternAuthorEdgeSource"] = "true";
-  sourceSelect.append(...connectionOptions.map(createConnectionEntityOption));
-
-  const edgeTypeSelect = createElement("select", "pattern-room-inline-input");
-  edgeTypeSelect.name = "edgeType";
-  edgeTypeSelect.dataset["patternAuthorEdgeType"] = "true";
-  edgeTypeSelect.append(
-    ...CONNECTION_EDGE_TYPE_OPTIONS.map((option) => {
-      return createEdgeTypeOption(option.value, option.label);
-    })
-  );
-
-  const targetSelect = createElement("select", "pattern-room-inline-input");
-  targetSelect.name = "targetId";
-  targetSelect.dataset["patternAuthorEdgeTarget"] = "true";
-  targetSelect.append(...connectionOptions.map(createConnectionEntityOption));
-
-  const note = createTextInput("note", "Not (opsiyonel)");
-  note.dataset["patternAuthorEdgeNote"] = "true";
-
-  const submit = createSubmitButton("Bağla");
-  const hasEnoughOptions = connectionOptions.length >= 2;
-  sourceSelect.disabled = !hasEnoughOptions;
-  edgeTypeSelect.disabled = !hasEnoughOptions;
-  targetSelect.disabled = !hasEnoughOptions;
-  note.disabled = !hasEnoughOptions;
-  submit.disabled = !hasEnoughOptions;
-  resetConnectionFormDefaults(sourceSelect, edgeTypeSelect, targetSelect, connectionOptions);
-
-  connectionForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    if (
-      sourceSelect.value === "" ||
-      targetSelect.value === "" ||
-      sourceSelect.value === targetSelect.value
-    ) {
-      return;
-    }
-
-    actions.addAuthoredEdge(
-      edgeTypeSelect.value as AuthoredConnectionEdgeType,
-      sourceSelect.value,
-      targetSelect.value,
-      note.value
-    );
-    connectionForm.reset();
-    resetConnectionFormDefaults(sourceSelect, edgeTypeSelect, targetSelect, connectionOptions);
-  });
-
-  connectionForm.append(
-    createElement(
-      "p",
-      "pattern-room-inline-note",
-      "Bağlantılar Rapor panelinde Yerel Bağlantılar bölümünde listelenir."
-    ),
-    sourceSelect,
-    edgeTypeSelect,
-    targetSelect,
-    note,
-    submit
-  );
-  return connectionForm;
 }
 
 function createBoardAuthoringPanel(
@@ -350,18 +238,42 @@ function renderSelectedPinDetail(
 export function createBoardPanel(
   data: PatternRoomMockData,
   actions: PatternPanelActions,
-  onBack: () => void
+  onBack: () => void,
+  text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)
 ): HTMLElement {
-  const shell = createPanelShell("board", "Dedektif Panosu", onBack);
+  const shell = createPanelShell("board", text("nav.board.label"), onBack);
+  const workspace = createElement("div", "pattern-room-board-workspace");
+  const canvas = createElement("section", "pattern-room-board-canvas");
+  canvas.ariaLabel = text("board.canvasLabel");
+  const canvasHeader = createElement("header", "pattern-room-workspace-section-header");
+  const pinCount = data.boardCategories.reduce((count, category) => {
+    return count + category.pins.length;
+  }, 0);
+  canvasHeader.append(
+    createElement("span", "pattern-room-kicker", text("board.canvasLabel")),
+    createElement("strong", undefined, `${String(pinCount)} · ${data.subject}`)
+  );
   const boardScene = createElement("div", "pattern-room-board-scene");
   const grid = createElement("div", "pattern-room-board-grid");
-  const detail = createElement("aside", "pattern-room-board-detail");
+  const inspector = createElement(
+    "aside",
+    "pattern-room-context-inspector pattern-room-board-inspector"
+  );
+  inspector.ariaLabel = text("board.inspectorLabel");
+  const inspectorHeader = createElement(
+    "span",
+    "pattern-room-context-inspector-label",
+    text("board.inspectorLabel")
+  );
+  const detail = createElement("section", "pattern-room-board-detail");
+  detail.ariaLive = "polite";
   const pinButtons: HTMLButtonElement[] = [];
 
   function markSelectedPin(pinId: string | null): void {
     pinButtons.forEach((button) => {
       const isSelected = button.dataset["patternBoardPin"] === pinId;
       button.dataset["patternBoardPinSelected"] = isSelected ? "true" : "false";
+      button.ariaPressed = isSelected ? "true" : "false";
       if (isSelected) {
         button.classList.add("selected");
         return;
@@ -375,18 +287,23 @@ export function createBoardPanel(
     const laneHeader = createElement("header", "pattern-room-board-lane-header");
     laneHeader.append(
       createElement("span", "pattern-room-board-lane-label", "Pano kategorisi"),
+      createElement("span", "pattern-room-board-lane-count", String(category.pins.length)),
       createElement("h2", undefined, category.label),
       createElement("p", undefined, category.summary)
     );
 
     const pinList = createElement("div", "pattern-room-board-pins");
     category.pins.forEach((pinItem) => {
-      const pin = createElement(
-        "button",
-        `pattern-room-board-node ${category.tone}`,
-        pinItem.label
-      );
+      const pin = createElement("button", `pattern-room-board-node ${category.tone}`);
       pin.type = "button";
+      pin.append(
+        createElement("span", "pattern-room-board-node-copy", pinItem.label),
+        createElement(
+          "small",
+          "pattern-room-board-node-meta",
+          `${pinItem.layerLabel} · ${pinItem.confidenceLabel}`
+        )
+      );
       pin.dataset["patternBoardPin"] = pinItem.id;
       pin.dataset["patternBoardPinKind"] = pinItem.kind;
       pin.addEventListener("click", () => {
@@ -405,7 +322,16 @@ export function createBoardPanel(
   const selectedPinId = actions.getSelectedNodeId();
   markSelectedPin(selectedPinId);
   renderSelectedPinDetail(detail, data, actions, selectedPinId);
-  boardScene.append(grid, detail);
-  shell.append(createBoardAuthoringPanel(actions, data.connectionOptions), boardScene);
+  boardScene.append(grid);
+  canvas.append(canvasHeader, boardScene);
+
+  const tools = createElement("section", "pattern-room-board-inspector-tools");
+  tools.append(
+    createElement("span", "pattern-room-context-inspector-label", text("board.toolsLabel")),
+    createBoardAuthoringPanel(actions, data.connectionOptions)
+  );
+  inspector.append(inspectorHeader, detail, tools);
+  workspace.append(canvas, inspector);
+  shell.append(workspace);
   return shell;
 }
