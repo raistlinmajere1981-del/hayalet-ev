@@ -9,16 +9,22 @@ body,
   display: none !important;
 }
 
+/* ─────────────────────────────────────────
+   APP SHELL — iki sütunlu ana iskelet
+───────────────────────────────────────── */
 .pattern-room-app-shell {
   display: grid;
   grid-template-columns: var(--pattern-px-260) minmax(0, 1fr);
   height: 100dvh;
   min-height: 0;
   background:
-    radial-gradient(circle at 78% 10%, var(--pattern-accent-cyan-alpha-08), transparent 34%),
+    radial-gradient(ellipse at 18% 0%, rgba(200, 145, 58, 0.06), transparent 42%),
     var(--pattern-gradient-body-depth), var(--pattern-surface);
 }
 
+/* ─────────────────────────────────────────
+   SOL RAY (NAV RAIL) — koyu deri panel
+───────────────────────────────────────── */
 .pattern-room-workspace-rail {
   position: relative;
   z-index: 20;
@@ -28,13 +34,16 @@ body,
   gap: var(--pattern-px-18);
   overflow: auto;
   padding: var(--pattern-px-20) var(--pattern-px-16);
-  border-right: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+  border-right: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
   background:
-    linear-gradient(180deg, var(--pattern-accent-cyan-alpha-08), transparent 28%),
+    linear-gradient(180deg, rgba(200, 145, 58, 0.06), transparent 28%),
     var(--pattern-surface-depth-alpha-96);
   box-shadow: var(--pattern-px-18) 0 var(--pattern-px-48) var(--pattern-black-alpha-24);
 }
 
+/* ─────────────────────────────────────────
+   BRAND LOGO — PR rozeti + başlık
+───────────────────────────────────────── */
 .pattern-room-workspace-brand {
   display: flex;
   gap: var(--pattern-px-12);
@@ -50,25 +59,34 @@ body,
 }
 
 .pattern-room-workspace-brand strong {
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-warm);
+  font-size: var(--pattern-rem-0-88);
   letter-spacing: var(--pattern-em-0-04);
 }
 
+/* Metal rozet — köşeli, pirinç kenarlık */
 .pattern-room-workspace-brand-mark {
   display: grid;
   width: var(--pattern-px-44);
   height: var(--pattern-px-44);
   flex: 0 0 auto;
   place-items: center;
-  border: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-42);
-  border-radius: var(--pattern-px-10);
-  background: var(--pattern-gradient-cyan-card-sheen), var(--pattern-surface-inset-alpha-78);
-  color: var(--pattern-accent-cyan);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-42);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-gradient-amber-card-sheen), var(--pattern-surface-inset-alpha-78);
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--pattern-accent-amber);
   font-size: var(--pattern-rem-0-78);
   font-weight: 900;
-  box-shadow: inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-04);
+  box-shadow:
+    inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-04),
+    0 2px 8px var(--pattern-black-alpha-32);
 }
 
+/* ─────────────────────────────────────────
+   DURUM GÖSTERGESI — "Yerel vaka aktif"
+───────────────────────────────────────── */
 .pattern-room-workspace-status {
   display: flex;
   gap: var(--pattern-px-8);
@@ -77,28 +95,41 @@ body,
   border: var(--pattern-px-1) solid var(--pattern-success-alpha-46);
   border-radius: var(--pattern-px-999);
   color: var(--pattern-success);
-  font-size: var(--pattern-rem-0-76);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
   font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
+/* Canlı nokta — pulsar efekti */
 .pattern-room-workspace-status-dot {
   width: var(--pattern-px-7);
   height: var(--pattern-px-7);
   flex: 0 0 auto;
   border-radius: 50%;
   background: currentColor;
-  box-shadow: 0 0 var(--pattern-px-12) currentColor;
+  box-shadow: 0 0 var(--pattern-px-10) currentColor;
+  animation: pulse-dot 2.4s ease-in-out infinite;
 }
 
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* ─────────────────────────────────────────
+   NAVİGASYON — sol menü öğeleri
+───────────────────────────────────────── */
 .pattern-room-workspace-navigation {
   display: grid;
-  gap: var(--pattern-px-6);
+  gap: var(--pattern-px-4);
 }
 
 .pattern-room-workspace-navigation-label,
 .pattern-room-context-inspector-label {
   display: block;
-  margin-bottom: var(--pattern-px-6);
+  margin-bottom: var(--pattern-px-8);
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-subtle);
   font-size: var(--pattern-rem-0-72);
   font-weight: 800;
@@ -106,6 +137,7 @@ body,
   text-transform: uppercase;
 }
 
+/* Nav butonu — default */
 .pattern-room-workspace-nav-button {
   display: grid;
   grid-template-columns: var(--pattern-px-34) minmax(0, 1fr);
@@ -114,39 +146,45 @@ body,
   min-height: var(--pattern-px-54);
   padding: var(--pattern-px-8) var(--pattern-px-10);
   border: var(--pattern-px-1) solid transparent;
-  border-radius: var(--pattern-px-10);
+  border-radius: var(--pattern-px-6);
   background: transparent;
   color: var(--pattern-text-muted);
   cursor: pointer;
   text-align: left;
+  transition: border-color 140ms, background 140ms, color 140ms, box-shadow 140ms;
 }
 
 .pattern-room-workspace-nav-button:hover,
 .pattern-room-workspace-nav-button:focus-visible {
-  border-color: var(--pattern-text-alpha-16);
-  background: var(--pattern-white-alpha-05);
+  border-color: var(--pattern-accent-amber-alpha-18);
+  background: var(--pattern-accent-amber-alpha-06);
   color: var(--pattern-text);
   outline: none;
 }
 
+/* Nav butonu — aktif */
 .pattern-room-workspace-nav-button.active {
-  border-color: var(--pattern-accent-cyan-alpha-42);
-  background: var(--pattern-gradient-cyan-card-sheen), var(--pattern-accent-cyan-deep-alpha-08);
+  border-color: var(--pattern-accent-amber-alpha-38);
+  background: var(--pattern-gradient-amber-card-sheen), var(--pattern-accent-amber-deep-alpha-08);
   color: var(--pattern-text-warm);
-  box-shadow: inset var(--pattern-px-3) 0 0 var(--pattern-accent-cyan);
+  box-shadow: inset var(--pattern-px-3) 0 0 var(--pattern-accent-amber);
 }
 
+/* Nav ikon kutusu */
 .pattern-room-workspace-nav-icon {
   display: grid;
   width: var(--pattern-px-32);
   height: var(--pattern-px-32);
   place-items: center;
-  border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
-  border-radius: var(--pattern-px-8);
-  color: var(--pattern-accent-cyan);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-18);
+  border-radius: var(--pattern-px-4);
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--pattern-accent-amber);
   font-weight: 900;
+  font-size: var(--pattern-rem-0-88);
 }
 
+/* Nav metin kopyası */
 .pattern-room-workspace-nav-copy {
   display: grid;
   min-width: 0;
@@ -161,22 +199,29 @@ body,
 }
 
 .pattern-room-workspace-nav-copy strong {
-  font-size: var(--pattern-rem-0-88);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-82);
+  font-weight: 700;
 }
 
 .pattern-room-workspace-nav-copy small {
   color: var(--pattern-text-subtle);
+  font-family: "IBM Plex Mono", monospace;
   font-size: var(--pattern-rem-0-72);
 }
 
+/* ─────────────────────────────────────────
+   VAKA KARTI — sol altta sabit
+───────────────────────────────────────── */
 .pattern-room-workspace-case-card {
   display: grid;
   gap: var(--pattern-px-8);
   margin-top: auto;
   padding: var(--pattern-px-14);
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
-  border-radius: var(--pattern-px-10);
+  border-radius: var(--pattern-px-6);
   background: var(--pattern-gradient-report-sheen), var(--pattern-surface-inset-alpha-62);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
 }
 
 .pattern-room-workspace-case-card .pattern-room-kicker {
@@ -185,7 +230,9 @@ body,
 }
 
 .pattern-room-workspace-case-subject {
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-warm);
+  font-size: var(--pattern-rem-0-88);
   line-height: 1.35;
 }
 
@@ -204,18 +251,24 @@ body,
   padding: var(--pattern-px-4) var(--pattern-px-8);
   border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
   border-radius: var(--pattern-px-999);
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-subtle);
   font-size: var(--pattern-rem-0-72);
   font-weight: 700;
 }
 
+/* Klavye ipucu */
 .pattern-room-workspace-keyboard-hint {
   margin: 0;
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-subtle);
   font-size: var(--pattern-rem-0-72);
   line-height: 1.45;
 }
 
+/* ─────────────────────────────────────────
+   WORKSPACE MAIN AREA
+───────────────────────────────────────── */
 .pattern-room-workspace,
 .pattern-room-workspace-outlet {
   min-width: 0;
@@ -230,10 +283,11 @@ body,
   height: 100%;
   overflow: auto;
   overscroll-behavior: contain;
-  scrollbar-color: var(--pattern-accent-cyan-alpha-42) transparent;
+  scrollbar-color: var(--pattern-accent-amber-alpha-28) transparent;
   scrollbar-width: thin;
 }
 
+/* Panel/overview override (workspace modunda) */
 .pattern-room-overview,
 .pattern-room-panel {
   width: 100%;
@@ -243,6 +297,7 @@ body,
   padding: var(--pattern-px-20) var(--pattern-px-24) var(--pattern-px-28);
 }
 
+/* Yapışkan panel başlığı */
 .pattern-room-panel-header,
 .pattern-room-overview-header {
   position: sticky;
@@ -273,6 +328,9 @@ body,
   min-height: var(--pattern-px-38);
 }
 
+/* ─────────────────────────────────────────
+   SECTION HEADER — bölüm başlığı
+───────────────────────────────────────── */
 .pattern-room-workspace-section-header {
   display: flex;
   gap: var(--pattern-px-12);
@@ -288,25 +346,32 @@ body,
 
 .pattern-room-workspace-section-header strong {
   overflow: hidden;
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-warm);
   font-size: var(--pattern-rem-0-88);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* ─────────────────────────────────────────
+   CONTEXT INSPECTOR — sağ kenar panel
+───────────────────────────────────────── */
 .pattern-room-context-inspector {
   min-width: 0;
   min-height: 0;
   overflow: auto;
   padding: var(--pattern-px-14);
-  border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
-  border-radius: var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
+  border-radius: var(--pattern-px-8);
   background: var(--pattern-surface-panel-alpha-86);
   box-shadow: 0 var(--pattern-px-18) var(--pattern-px-48) var(--pattern-black-alpha-24);
-  scrollbar-color: var(--pattern-accent-cyan-alpha-42) transparent;
+  scrollbar-color: var(--pattern-accent-amber-alpha-22) transparent;
   scrollbar-width: thin;
 }
 
+/* ─────────────────────────────────────────
+   OVERVIEW AKTİVİTE ÇUBUĞU
+───────────────────────────────────────── */
 .pattern-room-overview {
   position: relative;
 }
@@ -319,7 +384,7 @@ body,
   margin-bottom: var(--pattern-px-12);
   padding: var(--pattern-px-10) var(--pattern-px-14);
   border: var(--pattern-px-1) solid var(--pattern-success-alpha-46);
-  border-radius: var(--pattern-px-10);
+  border-radius: var(--pattern-px-6);
   background: var(--pattern-success-alpha-05);
 }
 
@@ -329,6 +394,7 @@ body,
 }
 
 .pattern-room-overview-activity strong {
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-warm);
 }
 
@@ -342,6 +408,9 @@ body,
   min-height: min(var(--pattern-px-640), calc(100dvh - var(--pattern-px-210)));
 }
 
+/* ─────────────────────────────────────────
+   ÇALIŞMA ALANI LAYOUT'LARI
+───────────────────────────────────────── */
 .pattern-room-board-workspace,
 .pattern-room-archive-workspace,
 .pattern-room-connections-workspace,
@@ -362,6 +431,7 @@ body,
   min-height: 0;
 }
 
+/* Board sahne — workspace override */
 .pattern-room-board-scene {
   height: calc(100% - var(--pattern-px-54));
   min-height: var(--pattern-px-472);
@@ -408,10 +478,12 @@ body,
 }
 
 .pattern-room-board-node-meta {
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-subtle);
   font-size: var(--pattern-rem-0-72);
 }
 
+/* Board detail — workspace override */
 .pattern-room-board-detail {
   margin: 0;
   padding: var(--pattern-px-12);
@@ -437,6 +509,9 @@ body,
   grid-template-columns: 1fr;
 }
 
+/* ─────────────────────────────────────────
+   ARŞİV WORKSPACE
+───────────────────────────────────────── */
 .pattern-room-archive-workspace {
   grid-template-columns: minmax(var(--pattern-px-320), 0.88fr) minmax(var(--pattern-px-360), 1.12fr);
 }
@@ -457,6 +532,7 @@ body,
 .pattern-room-archive-toolbar-field {
   display: grid;
   gap: var(--pattern-px-5);
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-subtle);
   font-size: var(--pattern-rem-0-72);
   font-weight: 700;
@@ -464,6 +540,7 @@ body,
 
 .pattern-room-archive-result-count {
   margin: 0 0 var(--pattern-px-8);
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-subtle);
   font-size: var(--pattern-rem-0-76);
 }
@@ -521,8 +598,8 @@ body,
 .pattern-room-archive-tools {
   flex: 0 0 auto;
   margin-top: var(--pattern-px-10);
-  border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
-  border-radius: var(--pattern-px-8);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
+  border-radius: var(--pattern-px-6);
   background: var(--pattern-surface-inset-alpha-62);
 }
 
@@ -539,6 +616,9 @@ body,
   margin: 0;
 }
 
+/* ─────────────────────────────────────────
+   BAĞLANTILAR WORKSPACE
+───────────────────────────────────────── */
 .pattern-room-connections-workspace {
   grid-template-columns: minmax(0, 1fr) minmax(var(--pattern-px-292), var(--pattern-px-330));
 }
@@ -547,7 +627,7 @@ body,
   min-height: 0;
   height: 100%;
   padding: var(--pattern-px-20);
-  border-radius: var(--pattern-px-10);
+  border-radius: var(--pattern-px-8);
 }
 
 .pattern-room-connection-map {
@@ -563,6 +643,7 @@ body,
   height: 100%;
 }
 
+/* Bağlantı ekseni — soruşturma sicimi */
 .pattern-room-connection-axis {
   position: absolute;
   z-index: 1;
@@ -570,14 +651,15 @@ body,
   right: 18%;
   left: 18%;
   height: var(--pattern-px-2);
-  background: linear-gradient(90deg, var(--pattern-success), var(--pattern-danger));
-  box-shadow: 0 0 var(--pattern-px-18) var(--pattern-accent-cyan-alpha-42);
+  background: linear-gradient(90deg, var(--pattern-success), var(--pattern-accent-red));
+  box-shadow: 0 0 var(--pattern-px-12) var(--pattern-accent-amber-alpha-22);
 }
 
 .pattern-room-connection-node-index {
   position: absolute;
   top: var(--pattern-px-10);
   right: var(--pattern-px-10);
+  font-family: "IBM Plex Mono", monospace;
   color: currentColor;
   font-size: var(--pattern-rem-0-72);
   font-weight: 900;
@@ -608,7 +690,7 @@ body,
   gap: var(--pattern-px-4) var(--pattern-px-8);
   padding: var(--pattern-px-8);
   border: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
-  border-radius: var(--pattern-px-8);
+  border-radius: var(--pattern-px-6);
   background: var(--pattern-white-alpha-05);
 }
 
@@ -618,9 +700,14 @@ body,
 }
 
 .pattern-room-connection-scope {
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-72);
 }
 
+/* ─────────────────────────────────────────
+   RAPOR WORKSPACE
+───────────────────────────────────────── */
 .pattern-room-report-workspace {
   display: grid;
   grid-template-columns: var(--pattern-px-238) minmax(0, 1fr);
@@ -633,8 +720,8 @@ body,
   max-height: calc(100dvh - var(--pattern-px-132));
   overflow: auto;
   padding: var(--pattern-px-12);
-  border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
-  border-radius: var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
+  border-radius: var(--pattern-px-8);
   background: var(--pattern-surface-panel-alpha-86);
 }
 
@@ -650,11 +737,14 @@ body,
   align-items: center;
   padding: var(--pattern-px-8);
   border: var(--pattern-px-1) solid transparent;
-  border-radius: var(--pattern-px-8);
+  border-radius: var(--pattern-px-6);
   background: transparent;
   color: var(--pattern-text-muted);
   cursor: pointer;
   text-align: left;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-82);
+  transition: border-color 120ms, background 120ms, color 120ms;
 }
 
 .pattern-room-report-outline-button:hover,
@@ -671,8 +761,9 @@ body,
   width: var(--pattern-px-26);
   height: var(--pattern-px-26);
   place-items: center;
-  border-radius: var(--pattern-px-7);
-  background: var(--pattern-white-alpha-06);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-accent-amber-alpha-09);
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-accent-amber);
   font-size: var(--pattern-rem-0-72);
   font-weight: 900;
@@ -687,7 +778,7 @@ body,
 
 .pattern-room-report-document-header {
   padding-bottom: var(--pattern-px-14);
-  border-bottom: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+  border-bottom: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
 }
 
 .pattern-room-report-list {
@@ -705,6 +796,9 @@ body,
   position: relative;
 }
 
+/* ─────────────────────────────────────────
+   İNCELEME WORKSPACE (10. Adam)
+───────────────────────────────────────── */
 .pattern-room-review-workspace {
   grid-template-columns: minmax(0, 1fr) minmax(var(--pattern-px-292), var(--pattern-px-330));
 }
@@ -760,8 +854,8 @@ body,
 .pattern-room-case-review-workspace-card {
   min-width: 0;
   padding: var(--pattern-px-12);
-  border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
-  border-radius: var(--pattern-px-8);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
+  border-radius: var(--pattern-px-6);
   background: var(--pattern-surface-inset-alpha-62);
 }
 
@@ -791,10 +885,10 @@ body,
   margin: var(--pattern-px-8) 0 0;
   padding: var(--pattern-px-10);
   border: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
-  border-radius: var(--pattern-px-8);
+  border-radius: var(--pattern-px-6);
   background: var(--pattern-surface-inset-alpha-78);
   color: var(--pattern-text-muted);
-  font: inherit;
+  font-family: "IBM Plex Mono", monospace;
   font-size: var(--pattern-rem-0-82);
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -805,6 +899,7 @@ body,
   display: flex;
   flex-wrap: wrap;
   gap: var(--pattern-px-8);
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-subtle);
   font-size: var(--pattern-rem-0-72);
 }
@@ -818,8 +913,8 @@ body,
 
 .pattern-room-case-review-workspace-metric {
   padding: var(--pattern-px-8);
-  border: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
-  border-radius: var(--pattern-px-7);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
+  border-radius: var(--pattern-px-6);
   background: var(--pattern-white-alpha-05);
 }
 
@@ -829,12 +924,17 @@ body,
 }
 
 .pattern-room-case-review-workspace-metric span {
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-subtle);
   font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .pattern-room-case-review-workspace-metric strong {
   margin-top: var(--pattern-px-2);
+  font-family: "IBM Plex Mono", monospace;
   color: var(--pattern-text-warm);
   font-size: var(--pattern-rem-1-2);
 }
@@ -861,15 +961,21 @@ body,
   overflow: auto;
 }
 
+/* ─────────────────────────────────────────
+   FOCUS OUTLINE — erişilebilirlik
+───────────────────────────────────────── */
 .pattern-room-action-button:focus-visible,
 .pattern-room-inline-input:focus-visible,
 .pattern-room-inline-summary:focus-visible,
 .pattern-room-report-card:focus-visible,
 .pattern-room-panel:focus-visible {
-  outline: var(--pattern-px-2) solid var(--pattern-accent-cyan);
+  outline: var(--pattern-px-2) solid var(--pattern-accent-amber);
   outline-offset: var(--pattern-px-2);
 }
 
+/* ─────────────────────────────────────────
+   RESPONSIVE — geniş ekranlar (≥1440px)
+───────────────────────────────────────── */
 @media (--pattern-bp-min-1440) {
   .pattern-room-overview,
   .pattern-room-panel {
@@ -888,6 +994,9 @@ body,
   }
 }
 
+/* ─────────────────────────────────────────
+   RESPONSIVE — orta ekranlar (≤1100px)
+───────────────────────────────────────── */
 @media (--pattern-bp-max-1100) {
   .pattern-room-app-shell {
     grid-template-columns: var(--pattern-px-84) minmax(0, 1fr);
@@ -934,6 +1043,9 @@ body,
   }
 }
 
+/* ─────────────────────────────────────────
+   RESPONSIVE — küçük ekranlar (≤820px)
+───────────────────────────────────────── */
 @media (--pattern-bp-max-820) {
   .pattern-room-app-shell {
     grid-template-columns: 1fr;
@@ -947,7 +1059,7 @@ body,
     overflow-x: auto;
     padding: var(--pattern-px-8) var(--pattern-px-10);
     border-right: 0;
-    border-bottom: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+    border-bottom: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
   }
 
   .pattern-room-workspace-brand,
@@ -1008,10 +1120,14 @@ body,
   }
 }
 
+/* ─────────────────────────────────────────
+   REDUCED MOTION
+───────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
   }
 }
