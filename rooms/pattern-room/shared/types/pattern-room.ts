@@ -121,7 +121,7 @@ export type PatternReportSummary = {
   sections: PatternReportSection[];
 };
 
-export type PatternRoomMockData = {
+export type PatternRoomWorkspaceModel = {
   roomTitle: string;
   roomLabel: string;
   roomSummary: string;
@@ -133,6 +133,12 @@ export type PatternRoomMockData = {
   tenthManSession: PatternTenthManSession;
   reportSummary: PatternReportSummary;
 };
+
+/**
+ * @deprecated Use PatternRoomWorkspaceModel. Kept temporarily while panels and regression tests
+ * migrate mechanically during Pattern Room V2 Phase 1.
+ */
+export type PatternRoomMockData = PatternRoomWorkspaceModel;
 
 export type PatternSampleSourceImportStatus = {
   packageId: string;
