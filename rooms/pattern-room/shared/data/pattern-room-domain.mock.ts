@@ -1,5 +1,6 @@
-import { PATTERN_ROOM_DOMAIN, type PatternRoomDomainData } from "./pattern-room-domain.js";
+import { PATTERN_ROOM_DOMAIN } from "./pattern-room-domain.js";
 import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "./testing/pattern-room-domain.fixture.js";
+import type { PatternRoomDomainData } from "../types/pattern-room-domain.js";
 
 /**
  * Temporary compatibility export for the current Pattern Room runtime and regression suites.
