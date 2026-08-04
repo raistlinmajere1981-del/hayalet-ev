@@ -62,7 +62,7 @@ export function createInvestigationPanel(
 
   const modeControls = createElement("div", "pattern-room-investigation-mode-controls");
   modeControls.ariaLabel = text("connections.kicker");
-  const boardButton = createModeButton("board", text("nav.board.label"));
+  const boardButton = createModeButton("board", text("board.canvasLabel"));
   const graphButton = createModeButton("graph", text("nav.connections.label"));
   modeControls.append(boardButton, graphButton);
   toolbar.append(toolbarCopy, modeControls);
