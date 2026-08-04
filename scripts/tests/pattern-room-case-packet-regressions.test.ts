@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { createPatternRoomCasePacket } from "../../rooms/pattern-room/shared/adapters/pattern-room-case-packet-adapter.ts";
-import { adaptDomainToViewModels } from "../../rooms/pattern-room/shared/adapters/pattern-room-view-adapters.ts";
+import { createPatternRoomCasePacketFromProjection } from "../../rooms/pattern-room/shared/adapters/pattern-room-case-packet-projection.ts";
 import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
-import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
+import {
+  createLocalState,
+  type PatternRoomLocalOverlay,
+} from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
 import { PATTERN_ROOM_SNAPSHOT_VERSION } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
-import type { PatternRoomLocalOverlay } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
-import type { PatternRoomWorkspaceModel } from "../../rooms/pattern-room/shared/types/pattern-room.ts";
 
 function createLongText(label: string): string {
   return Array.from({ length: 24 }, (_value, index) => {
@@ -19,7 +19,7 @@ function createLongText(label: string): string {
 
 function createCasePacketFixture(): {
   beforeDomain: string;
-  viewModels: PatternRoomWorkspaceModel;
+  overlay: PatternRoomLocalOverlay;
 } {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
@@ -56,22 +56,20 @@ function createCasePacketFixture(): {
   const firstSource = baseOverlay.localAuthoredSources[0];
   assert.ok(firstSource);
 
-  const overlay: PatternRoomLocalOverlay = {
-    ...baseOverlay,
-    localAuthoredSources: [
-      {
-        ...firstSource,
-        segments: [
-          { id: "segment-001", label: "Segment 1", order: 0, text: "İlk segment." },
-          { id: "segment-002", label: "Segment 2", order: 1, text: "İkinci segment." },
-        ],
-      },
-    ],
-  };
-
   return {
     beforeDomain,
-    viewModels: adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_TEST_FIXTURE, overlay),
+    overlay: {
+      ...baseOverlay,
+      localAuthoredSources: [
+        {
+          ...firstSource,
+          segments: [
+            { id: "segment-001", label: "Segment 1", order: 0, text: "İlk segment." },
+            { id: "segment-002", label: "Segment 2", order: 1, text: "İkinci segment." },
+          ],
+        },
+      ],
+    },
   };
 }
 
@@ -79,66 +77,61 @@ function flattenPacketText(value: unknown): string {
   return JSON.stringify(value);
 }
 
-void test("pattern-room phase 15B case packet is deterministic and read-only", () => {
-  const { beforeDomain, viewModels } = createCasePacketFixture();
-  const beforeViewModels = JSON.stringify(viewModels);
+void test("pattern-room structured case packet is deterministic and read-only", () => {
+  const { beforeDomain, overlay } = createCasePacketFixture();
+  const beforeOverlay = JSON.stringify(overlay);
+  const input = { domain: PATTERN_ROOM_DOMAIN_TEST_FIXTURE, overlay };
 
-  const firstPacket = createPatternRoomCasePacket(viewModels);
-  const secondPacket = createPatternRoomCasePacket(viewModels);
+  const firstPacket = createPatternRoomCasePacketFromProjection(input);
+  const secondPacket = createPatternRoomCasePacketFromProjection(input);
 
   assert.deepEqual(firstPacket, secondPacket);
   assert.equal(firstPacket.packetVersion, 1);
   assert.equal(firstPacket.roomId, "pattern-room");
   assert.equal(firstPacket.generatedFrom, "local-view-model");
-  assert.equal(JSON.stringify(viewModels), beforeViewModels);
+  assert.equal(JSON.stringify(overlay), beforeOverlay);
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
 });
 
-void test("pattern-room phase 15B case packet carries local sources, evidence, notes, connections, and debate previews", () => {
-  const { viewModels } = createCasePacketFixture();
-  const packet = createPatternRoomCasePacket(viewModels);
-
-  assert.ok(
-    packet.sources.some((source) => {
-      return source.label === "Seyir defteri";
-    })
-  );
-  const longSource = packet.sources.find((source) => {
-    return source.label === "Uzun kaynak başlığı";
+void test("pattern-room structured case packet carries sources, evidence, notes, connections, and debate previews", () => {
+  const { overlay } = createCasePacketFixture();
+  const packet = createPatternRoomCasePacketFromProjection({
+    domain: PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    overlay,
   });
+
+  assert.ok(packet.sources.some((source) => source.label === "Seyir defteri"));
+  const longSource = packet.sources.find((source) => source.label === "Uzun kaynak başlığı");
   assert.ok(longSource);
   assert.equal(longSource.segmentCount, 2);
-  assert.equal(longSource.typeLabel, "Yerel Kaynak");
+  assert.equal(longSource.typeLabel, "Uzun metin");
 
-  const evidence = packet.evidence.find((item) => {
-    return item.label === "Kaynaklı kanıt";
-  });
+  const evidence = packet.evidence.find((item) => item.label === "Kaynaklı kanıt");
   assert.ok(evidence);
   assert.equal(evidence.sourceLabel, "Uzun kaynak başlığı");
   assert.match(evidence.excerptPreview, /^Alıntı 1:/);
   assert.equal(evidence.interpretationPreview, "Kullanıcı yorumu ayrı kalır.");
-  assert.equal(evidence.layer, "Kanıt");
+  assert.equal(evidence.layer, "evidence");
 
   assert.deepEqual(
-    packet.boardNotes.map((note) => {
-      return { type: note.type, layer: note.layer };
-    }),
+    packet.boardNotes
+      .filter((note) => note.id.startsWith("local-node-"))
+      .map((note) => ({ type: note.type, layer: note.layer })),
     [
-      { type: "İddia", layer: "interpretation" },
-      { type: "İlham", layer: "analysis" },
-      { type: "Belirsizlik", layer: "uncertainty" },
+      { type: "claim", layer: "interpretation" },
+      { type: "inspiration", layer: "analysis" },
+      { type: "uncertainty", layer: "uncertainty" },
     ]
   );
 
-  const connection = packet.connections[0];
+  const connection = packet.connections.find((item) => item.id === "local-edge-001");
   assert.ok(connection);
-  assert.equal(connection.id, "local-edge-001");
   assert.equal(connection.sourceLabel, "Yerel iddia");
   assert.equal(connection.edgeTypeLabel, "destekliyor");
   assert.equal(connection.targetLabel, "Kaynaklı kanıt");
   assert.match(connection.notePreview ?? "", /^Bağ 1:/);
   assert.equal((connection.notePreview ?? "").length <= 500, true);
-  assert.match(connection.notePreview ?? "", /(?:\.\.\.|…)$/);
+  assert.match(connection.notePreview ?? "", /\.\.\.$/);
 
   assert.equal(packet.debate.referenceCount, 1);
   assert.equal(packet.debate.turnCount, 5);
@@ -149,24 +142,32 @@ void test("pattern-room phase 15B case packet carries local sources, evidence, n
   assert.ok(packet.openQuestions.some((question) => question.includes("Kullanıcı takip notu.")));
 });
 
-void test("pattern-room phase 15B case packet limits long previews without verdict wording", () => {
-  const { viewModels } = createCasePacketFixture();
-  const packet = createPatternRoomCasePacket(viewModels, {
-    maxSources: 1,
-    maxEvidence: 1,
-    maxBoardNotes: 1,
-    maxConnections: 1,
-    excerptMaxLength: 80,
-  });
+void test("pattern-room structured case packet enforces limits and cautious preview language", () => {
+  const { overlay } = createCasePacketFixture();
+  const packet = createPatternRoomCasePacketFromProjection(
+    { domain: PATTERN_ROOM_DOMAIN_TEST_FIXTURE, overlay },
+    {
+      maxSources: 1,
+      maxEvidence: 30,
+      maxBoardNotes: 1,
+      maxConnections: 30,
+      excerptMaxLength: 80,
+    }
+  );
 
   assert.equal(packet.sources.length, 1);
-  assert.equal(packet.evidence.length, 1);
   assert.equal(packet.boardNotes.length, 1);
-  assert.equal(packet.connections.length, 1);
   assert.equal(packet.limits.excerptMaxLength, 80);
-  assert.equal(packet.evidence[0]?.excerptPreview.length, 80);
-  assert.match(packet.evidence[0].excerptPreview, /\.\.\.$/);
-  assert.equal((packet.connections[0]?.notePreview ?? "").length, 80);
+
+  const evidence = packet.evidence.find((item) => item.label === "Kaynaklı kanıt");
+  assert.ok(evidence);
+  assert.equal(evidence.excerptPreview.length, 80);
+  assert.match(evidence.excerptPreview, /\.\.\.$/);
+
+  const connection = packet.connections.find((item) => item.id === "local-edge-001");
+  assert.ok(connection);
+  assert.equal((connection.notePreview ?? "").length, 80);
+  assert.match(connection.notePreview ?? "", /\.\.\.$/);
 
   assert.doesNotMatch(
     flattenPacketText(packet),
@@ -174,9 +175,9 @@ void test("pattern-room phase 15B case packet limits long previews without verdi
   );
 });
 
-void test("pattern-room phase 15B case packet adapter stays independent from UI, host, transport, and snapshot contracts", () => {
-  const adapterSource = readFileSync(
-    resolve("rooms/pattern-room/shared/adapters/pattern-room-case-packet-adapter.ts"),
+void test("pattern-room structured case packet projection is independent from report rendering and transport", () => {
+  const projectionSource = readFileSync(
+    resolve("rooms/pattern-room/shared/adapters/pattern-room-case-packet-projection.ts"),
     "utf8"
   );
   const typeSource = readFileSync(
@@ -184,10 +185,11 @@ void test("pattern-room phase 15B case packet adapter stays independent from UI,
     "utf8"
   );
 
-  assert.doesNotMatch(adapterSource, /from\s+["'][^"']*(?:host|ui|pattern-report-panel)/i);
-  assert.doesNotMatch(adapterSource, /ipcRenderer|ipcMain|roomAPI|autosave|SourcePackage/i);
-  assert.doesNotMatch(adapterSource, /from\s+["'][^"']*(?:ai|provider|relay)/i);
-  assert.doesNotMatch(adapterSource, /PatternRoomLocalOverlay/);
+  assert.doesNotMatch(projectionSource, /PatternReportItem|PatternReportSection|PatternRoomWorkspaceModel/);
+  assert.doesNotMatch(projectionSource, /readReportSection|readMetaValue|parseConnectionBody/);
+  assert.doesNotMatch(projectionSource, /from\s+["'][^"']*(?:host|ui|pattern-report-panel)/i);
+  assert.doesNotMatch(projectionSource, /ipcRenderer|ipcMain|roomAPI|autosave|SourcePackage/i);
+  assert.doesNotMatch(projectionSource, /from\s+["'][^"']*(?:ai|provider|relay)/i);
   assert.doesNotMatch(typeSource, /PatternRoomLocalOverlay|SourcePackage|ipcRenderer|roomAPI/);
   assert.equal(PATTERN_ROOM_SNAPSHOT_VERSION, 1);
 });
