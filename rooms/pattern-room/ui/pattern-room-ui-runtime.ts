@@ -60,6 +60,7 @@ import {
 import type { PatternRoomSessionSnapshot } from "../shared/types/pattern-room-snapshot.js";
 import type { PatternRoomEvidenceCandidatePromotionInput } from "../shared/types/pattern-room-evidence-candidate.js";
 import { createArchivePanel } from "./panels/pattern-archive-panel.js";
+import { createInvestigationInspectorContent } from "./panels/pattern-investigation-inspector.js";
 import {
   createInvestigationPanel,
   type PatternInvestigationCanvasMode,
@@ -779,6 +780,9 @@ export function createPatternRoomUiRuntime(
     },
     selectNode(nodeId: string | null): void {
       selectedNodeId = nodeId;
+      if (workspaceShell !== null && (activeView === "board" || activeView === "desk")) {
+        renderWorkspaceInspector(workspaceShell);
+      }
     },
     sendNodeToDesk(nodeId: string): void {
       localState.sendToDesk(nodeId);
@@ -1001,6 +1005,9 @@ export function createPatternRoomUiRuntime(
             activeView = mode === "graph" ? "desk" : "board";
             renderedView = activeView;
             workspacePanelCache.clear();
+            const shell = ensureWorkspaceShell();
+            shell.updateActiveView(activeView, activeWorkspaceSection);
+            renderWorkspaceInspector(shell);
           },
         },
         workspaceText
@@ -1092,6 +1099,24 @@ export function createPatternRoomUiRuntime(
     return workspaceShell;
   }
 
+  function renderWorkspaceInspector(shell: PatternWorkspaceShell = ensureWorkspaceShell()): void {
+    if (activeView !== "board" && activeView !== "desk") {
+      shell.setInspectorContent(null);
+      return;
+    }
+
+    const mode: PatternInvestigationCanvasMode = activeView === "desk" ? "graph" : "board";
+    shell.setInspectorContent(
+      createInvestigationInspectorContent(
+        mode,
+        viewModels,
+        actions,
+        selectedNodeId,
+        getWorkspaceText()
+      )
+    );
+  }
+
   function focusActiveWorkspaceSection(shell: PatternWorkspaceShell): void {
     if (activeWorkspaceSection !== "review-history") {
       return;
@@ -1131,6 +1156,7 @@ export function createPatternRoomUiRuntime(
     renderedView = activeView;
     shell.updateSummary(createWorkspaceSummary());
     shell.updateActiveView(activeView, activeWorkspaceSection);
+    renderWorkspaceInspector(shell);
     focusActiveWorkspaceSection(shell);
   }
 

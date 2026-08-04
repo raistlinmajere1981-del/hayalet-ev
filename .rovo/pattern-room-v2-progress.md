@@ -102,7 +102,15 @@ The following checks passed after the production/test-domain migration:
 - Switching canvas modes does not mutate investigation data and keeps the Board navigation item active.
 - Installed UI regressions cover board/graph mode switching, one active view and compatibility entry points.
 
+## Completed: persistent Investigation Inspector ownership
+
+- Board selections render source, evidence and node details in the shell-level right inspector.
+- Board authoring and graph connection tools now live in the same persistent inspector instead of panel-local sidebars.
+- Switching Board and Graph modes refreshes inspector content without remounting the workspace shell.
+- Center canvas surfaces no longer allocate a second local inspector column.
+- Installed UI regressions verify inspector identity, selection details, authoring tools and graph composer ownership.
+
 ## Next implementation steps
 
-1. Move selection-specific source, node and evidence details into the persistent right context inspector.
-2. Remove the temporary panel-local inspectors after the context inspector owns selection details.
+1. Add explicit edge selection and edge-detail editing to the persistent inspector.
+2. Persist Investigation Canvas presentation state separately from case truth.

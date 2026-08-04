@@ -501,3 +501,57 @@ void test("pattern-room installed UI switches board and graph inside one investi
     await installedCopy.cleanup();
   }
 });
+
+void test("pattern-room installed UI moves investigation details and tools into the persistent inspector", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+
+    const inspector = environment.app.querySelector("[data-pattern-workspace-inspector='true']");
+    const canvas = environment.app.querySelector("[data-pattern-workspace-canvas='true']");
+    const boardNavigation = environment.app.querySelector("[data-pattern-workspace-nav='board']");
+    assert.ok(inspector);
+    assert.ok(canvas);
+    assert.ok(boardNavigation);
+
+    fireEvent(boardNavigation, "click");
+    const boardPin = environment.app.querySelector(
+      "[data-pattern-board-pin='node-navigation-source']"
+    );
+    assert.ok(boardPin);
+    fireEvent(boardPin, "click");
+
+    assert.equal(
+      environment.app.querySelector("[data-pattern-workspace-inspector='true']"),
+      inspector
+    );
+    assert.ok(inspector.querySelector("[data-pattern-board-detail='true']"));
+    assert.ok(inspector.querySelector("[data-pattern-send-to-desk='node-navigation-source']"));
+    assert.ok(inspector.querySelector("[data-pattern-author-node-form='true']"));
+    assert.equal(canvas.querySelector("[data-pattern-board-detail='true']"), null);
+    assert.equal(canvas.querySelector("[data-pattern-author-node-form='true']"), null);
+
+    const graphMode = environment.app.querySelector("[data-pattern-investigation-mode='graph']");
+    assert.ok(graphMode);
+    fireEvent(graphMode, "click");
+
+    assert.equal(
+      environment.app.querySelector("[data-pattern-workspace-inspector='true']"),
+      inspector
+    );
+    assert.equal(
+      inspector.querySelector("[data-pattern-investigation-inspector-mode='graph']")?.dataset[
+        "patternInvestigationInspectorMode"
+      ],
+      "graph"
+    );
+    assert.ok(inspector.querySelector("[data-pattern-author-edge-form='true']"));
+    assert.equal(canvas.querySelector("[data-pattern-author-edge-form='true']"), null);
+    assert.deepEqual(environment.sentCommands, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});

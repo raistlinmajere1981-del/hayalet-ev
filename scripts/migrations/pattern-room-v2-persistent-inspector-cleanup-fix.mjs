@@ -60,9 +60,9 @@ await updateFile("scripts/migrations/pattern-room-v2-persistent-investigation-in
   {
     label: "migration lint initialization",
     search:
-      '  let current = null;\n  try {\n    current = await readRepoFile(path);\n  } catch {\n    current = null;\n  }',
+      "  let current = null;\n  try {\n    current = await readRepoFile(path);\n  } catch {\n    current = null;\n  }",
     replacement:
-      '  let current;\n  try {\n    current = await readRepoFile(path);\n  } catch {\n    current = null;\n  }',
+      "  let current;\n  try {\n    current = await readRepoFile(path);\n  } catch {\n    current = null;\n  }",
   },
 ]);
 

@@ -1351,3 +1351,44 @@ body,
     flex: 1 1 0;
   }
 }
+
+/* ─────────────────────────────────────────
+   PERSISTENT INVESTIGATION INSPECTOR
+───────────────────────────────────────── */
+.pattern-room-workspace-inspector-content {
+  display: grid;
+  min-width: 0;
+  gap: var(--pattern-px-16);
+}
+
+.pattern-room-workspace-inspector-content:empty {
+  display: none;
+}
+
+.pattern-room-investigation-inspector-content {
+  display: grid;
+  min-width: 0;
+  gap: var(--pattern-px-16);
+}
+
+.pattern-room-investigation-inspector-section {
+  display: grid;
+  min-width: 0;
+  gap: var(--pattern-px-10);
+  padding-top: var(--pattern-px-16);
+  border-top: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
+}
+
+.pattern-room-investigation-inspector-section .pattern-room-context-inspector-label {
+  margin: 0;
+}
+
+.pattern-room-board-workspace-canvas-only,
+.pattern-room-connections-canvas-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pattern-room-board-workspace-canvas-only .pattern-room-board-canvas,
+.pattern-room-connections-canvas-only .pattern-room-desk-surface {
+  width: 100%;
+}

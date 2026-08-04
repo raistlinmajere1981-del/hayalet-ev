@@ -18,6 +18,7 @@ export type PatternWorkspaceShell = {
   readonly element: HTMLElement;
   readonly outlet: HTMLElement;
   readonly inspector: HTMLElement;
+  setInspectorContent: (content: HTMLElement | null) => void;
   updateActiveView: (viewId: PatternViewId, section: PatternWorkspaceSection) => void;
   updateSummary: (summary: PatternWorkspaceSummary) => void;
 };
@@ -225,7 +226,9 @@ export function createPatternWorkspaceShell(
   const inspectorReviewMetric = createElement("span");
   inspectorMetrics.append(inspectorSourceMetric, inspectorPinMetric, inspectorReviewMetric);
   inspectorCase.append(inspectorSubject, inspectorMetrics);
-  inspector.append(inspectorHeader, inspectorCase);
+  const inspectorContent = createElement("div", "pattern-room-workspace-inspector-content");
+  inspectorContent.dataset["patternWorkspaceInspectorContent"] = "true";
+  inspector.append(inspectorHeader, inspectorCase, inspectorContent);
 
   shell.append(rail, workspace, inspector);
 
@@ -255,6 +258,12 @@ export function createPatternWorkspaceShell(
     element: shell,
     outlet,
     inspector,
+    setInspectorContent(content): void {
+      inspectorContent.replaceChildren();
+      if (content !== null) {
+        inspectorContent.append(content);
+      }
+    },
     updateActiveView(viewId, section): void {
       const navigationViewId = viewId === "desk" ? "board" : viewId;
       const activeItem = NAVIGATION_ITEMS.find((item) => {

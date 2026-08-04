@@ -719,6 +719,7 @@ void test("pattern-room phase 12G-C cleanup helpers stay scoped to approved UI a
     "rooms/pattern-room/ui/pattern-room-ui-runtime.ts",
     "rooms/pattern-room/ui/panels/pattern-archive-panel.ts",
     "rooms/pattern-room/ui/panels/pattern-board-panel.ts",
+    "rooms/pattern-room/ui/panels/pattern-investigation-inspector.ts",
     "rooms/pattern-room/ui/panels/pattern-report-panel.ts",
   ];
 
@@ -742,8 +743,8 @@ void test("pattern-room phase 12G-C cleanup helpers stay scoped to approved UI a
     resolve("rooms/pattern-room/ui/panels/pattern-archive-panel.ts"),
     "utf8"
   );
-  const boardPanelSource = await readFile(
-    resolve("rooms/pattern-room/ui/panels/pattern-board-panel.ts"),
+  const investigationInspectorSource = await readFile(
+    resolve("rooms/pattern-room/ui/panels/pattern-investigation-inspector.ts"),
     "utf8"
   );
   const hostRuntimeSource = await readFile(resolve("rooms/pattern-room/host/runtime.ts"), "utf8");
@@ -755,7 +756,7 @@ void test("pattern-room phase 12G-C cleanup helpers stay scoped to approved UI a
   assert.equal(uiRuntimeSource.includes("localState.resetOverlayToEmpty();"), true);
   assert.equal(archivePanelSource.includes("patternRemoveLocalSource"), true);
   assert.equal(archivePanelSource.includes("patternResetLocalSession"), true);
-  assert.equal(boardPanelSource.includes("patternRemoveBoardItem"), true);
+  assert.equal(investigationInspectorSource.includes("patternRemoveBoardItem"), true);
   assert.equal(hostRuntimeSource.includes("removeLocalSource"), false);
   assert.equal(hostRuntimeSource.includes("removeLocalNode"), false);
   assert.equal(hostRuntimeSource.includes("removeLocalEvidence"), false);

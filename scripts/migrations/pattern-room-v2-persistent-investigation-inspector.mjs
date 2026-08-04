@@ -13,7 +13,7 @@ async function readRepoFile(path) {
 
 async function writeRepoFile(path, content) {
   const normalized = content.endsWith("\n") ? content : `${content}\n`;
-  let current = null;
+  let current;
   try {
     current = await readRepoFile(path);
   } catch {

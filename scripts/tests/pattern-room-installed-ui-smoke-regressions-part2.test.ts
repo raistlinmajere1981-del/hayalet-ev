@@ -285,8 +285,16 @@ void test("pattern-room installed UI supports phase 4B local interactions withou
     );
     assert.ok(boardNode);
     fireEvent(boardNode, "click");
-    assertTextIncludes(readTreeText(environment.app), [
-      "Pano detayı",
+    const investigationInspector = environment.app.querySelector(
+      "[data-pattern-workspace-inspector='true']"
+    );
+    assert.ok(investigationInspector);
+    assert.equal(investigationInspector.dataset["patternWorkspaceInspectorView"], "board");
+    assert.ok(
+      investigationInspector.querySelector("[data-pattern-investigation-inspector-mode='board']")
+    );
+    assertTextIncludes(readTreeText(investigationInspector), [
+      "Tuval detayı",
       "Seyir defteri kaynagi",
       "Uzun rota gozlemlerini temsil eden arka plan kaynak karti.",
     ]);
