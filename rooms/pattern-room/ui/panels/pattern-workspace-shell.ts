@@ -9,9 +9,18 @@ export type PatternWorkspaceSection = "default" | "review-history";
 
 export type PatternWorkspaceSummary = {
   readonly subject: string;
-  readonly pinCount: number;
   readonly sourceCount: number;
+  readonly evidenceCount: number;
+  readonly boardNoteCount: number;
+  readonly connectionCount: number;
   readonly reviewCount: number;
+};
+
+export type PatternWorkspaceFeedbackTone = "success" | "info" | "warning" | "error";
+
+export type PatternWorkspaceFeedback = {
+  readonly tone: PatternWorkspaceFeedbackTone;
+  readonly message: string;
 };
 
 export type PatternWorkspaceShell = {
@@ -19,6 +28,7 @@ export type PatternWorkspaceShell = {
   readonly outlet: HTMLElement;
   readonly inspector: HTMLElement;
   setInspectorContent: (content: HTMLElement | null) => void;
+  showActionFeedback: (feedback: PatternWorkspaceFeedback | null) => void;
   updateActiveView: (viewId: PatternViewId, section: PatternWorkspaceSection) => void;
   updateSummary: (summary: PatternWorkspaceSummary) => void;
 };
@@ -186,9 +196,11 @@ export function createPatternWorkspaceShell(
   const subject = createElement("strong", "pattern-room-workspace-case-subject");
   const metrics = createElement("div", "pattern-room-workspace-case-metrics");
   const sourceMetric = createElement("span");
-  const pinMetric = createElement("span");
+  const evidenceMetric = createElement("span");
+  const boardNoteMetric = createElement("span");
+  const connectionMetric = createElement("span");
   const reviewMetric = createElement("span");
-  metrics.append(sourceMetric, pinMetric, reviewMetric);
+  metrics.append(sourceMetric, evidenceMetric, boardNoteMetric, connectionMetric, reviewMetric);
   caseCard.append(caseLabel, subject, metrics);
 
   const keyboardHint = createElement(
@@ -222,15 +234,27 @@ export function createPatternWorkspaceShell(
   const inspectorSubject = createElement("strong", "pattern-room-workspace-inspector-subject");
   const inspectorMetrics = createElement("div", "pattern-room-workspace-inspector-metrics");
   const inspectorSourceMetric = createElement("span");
-  const inspectorPinMetric = createElement("span");
+  const inspectorEvidenceMetric = createElement("span");
+  const inspectorBoardNoteMetric = createElement("span");
+  const inspectorConnectionMetric = createElement("span");
   const inspectorReviewMetric = createElement("span");
-  inspectorMetrics.append(inspectorSourceMetric, inspectorPinMetric, inspectorReviewMetric);
+  inspectorMetrics.append(
+    inspectorSourceMetric,
+    inspectorEvidenceMetric,
+    inspectorBoardNoteMetric,
+    inspectorConnectionMetric,
+    inspectorReviewMetric
+  );
   inspectorCase.append(inspectorSubject, inspectorMetrics);
   const inspectorContent = createElement("div", "pattern-room-workspace-inspector-content");
   inspectorContent.dataset["patternWorkspaceInspectorContent"] = "true";
   inspector.append(inspectorHeader, inspectorCase, inspectorContent);
 
-  shell.append(rail, workspace, inspector);
+  const feedbackSlot = createElement("div", "pattern-room-workspace-feedback-slot");
+  feedbackSlot.dataset["patternWorkspaceFeedbackSlot"] = "true";
+  feedbackSlot.ariaLive = "polite";
+
+  shell.append(rail, workspace, inspector, feedbackSlot);
 
   const updateSummary = (summary: PatternWorkspaceSummary): void => {
     subject.textContent = summary.subject;
@@ -238,17 +262,27 @@ export function createPatternWorkspaceShell(
     const sourceText = text("shell.sourceMetric", {
       count: String(summary.sourceCount),
     });
-    const pinText = text("shell.pinMetric", {
-      count: String(summary.pinCount),
+    const evidenceText = text("shell.evidenceMetric", {
+      count: String(summary.evidenceCount),
+    });
+    const boardNoteText = text("shell.boardNoteMetric", {
+      count: String(summary.boardNoteCount),
+    });
+    const connectionText = text("shell.connectionMetric", {
+      count: String(summary.connectionCount),
     });
     const reviewText = text("shell.reviewMetric", {
       count: String(summary.reviewCount),
     });
     sourceMetric.textContent = sourceText;
-    pinMetric.textContent = pinText;
+    evidenceMetric.textContent = evidenceText;
+    boardNoteMetric.textContent = boardNoteText;
+    connectionMetric.textContent = connectionText;
     reviewMetric.textContent = reviewText;
     inspectorSourceMetric.textContent = sourceText;
-    inspectorPinMetric.textContent = pinText;
+    inspectorEvidenceMetric.textContent = evidenceText;
+    inspectorBoardNoteMetric.textContent = boardNoteText;
+    inspectorConnectionMetric.textContent = connectionText;
     inspectorReviewMetric.textContent = reviewText;
   };
 
@@ -263,6 +297,45 @@ export function createPatternWorkspaceShell(
       if (content !== null) {
         inspectorContent.append(content);
       }
+    },
+    showActionFeedback(feedback): void {
+      feedbackSlot.replaceChildren();
+      if (feedback === null) {
+        return;
+      }
+
+      const item = createElement("section", `pattern-room-workspace-feedback ${feedback.tone}`);
+      item.dataset["patternWorkspaceFeedback"] = "true";
+      item.dataset["patternWorkspaceFeedbackTone"] = feedback.tone;
+      item.role = feedback.tone === "error" ? "alert" : "status";
+
+      const icon = createElement(
+        "span",
+        "pattern-room-workspace-feedback-icon",
+        feedback.tone === "success"
+          ? "✓"
+          : feedback.tone === "error"
+            ? "!"
+            : feedback.tone === "warning"
+              ? "△"
+              : "i"
+      );
+      icon.ariaHidden = "true";
+      const message = createElement(
+        "p",
+        "pattern-room-workspace-feedback-message",
+        feedback.message
+      );
+      const dismiss = createElement("button", "pattern-room-workspace-feedback-dismiss", "×");
+      dismiss.type = "button";
+      dismiss.dataset["patternWorkspaceFeedbackDismiss"] = "true";
+      dismiss.ariaLabel = text("feedback.dismiss");
+      dismiss.title = text("feedback.dismiss");
+      dismiss.addEventListener("click", () => {
+        feedbackSlot.replaceChildren();
+      });
+      item.append(icon, message, dismiss);
+      feedbackSlot.append(item);
     },
     updateActiveView(viewId, section): void {
       const navigationViewId = viewId === "desk" ? "board" : viewId;

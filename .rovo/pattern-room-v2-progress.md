@@ -114,3 +114,17 @@ The following checks passed after the production/test-domain migration:
 
 1. Add explicit edge selection and edge-detail editing to the persistent inspector.
 2. Persist Investigation Canvas presentation state separately from case truth.
+
+## Completed: visible action feedback and truthful workspace metrics
+
+- Common local mutations now publish an explicit success, information or error message in a shell-level feedback surface.
+- Feedback survives panel rerenders, remains visible when the right inspector collapses and can be dismissed explicitly.
+- Duplicate desk and Tenth Man reference actions report that the item was already present instead of implying a new mutation.
+- Case summary chips now separate sources, evidence, board notes, connections and review sessions; placeholder cards are not counted as case truth.
+- Installed UI regressions cover feedback replacement, dismissal and truthful fixture metrics.
+
+## Next implementation steps
+
+1. Add editable case identity and research question metadata.
+2. Correct report outline counts and separate Tenth Man references from session turns.
+3. Add sourceId and targetId to projected Case Packet connections and normalize repeated role labels.

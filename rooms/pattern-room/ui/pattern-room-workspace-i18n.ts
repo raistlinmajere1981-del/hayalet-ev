@@ -6,8 +6,27 @@ export type PatternWorkspaceTextKey =
   | "shell.inspectorLabel"
   | "shell.caseLabel"
   | "shell.sourceMetric"
-  | "shell.pinMetric"
+  | "shell.evidenceMetric"
+  | "shell.boardNoteMetric"
+  | "shell.connectionMetric"
   | "shell.reviewMetric"
+  | "feedback.dismiss"
+  | "feedback.sentToDesk"
+  | "feedback.alreadyOnDesk"
+  | "feedback.addedToReview"
+  | "feedback.alreadyInReview"
+  | "feedback.sourcePinned"
+  | "feedback.noteAdded"
+  | "feedback.boardItemAdded"
+  | "feedback.sourceAdded"
+  | "feedback.sourceRemoved"
+  | "feedback.boardItemRemoved"
+  | "feedback.sessionReset"
+  | "feedback.evidenceAdded"
+  | "feedback.connectionAdded"
+  | "feedback.debateUpdated"
+  | "feedback.importSucceeded"
+  | "feedback.importFailed"
   | "shell.keyboardHint"
   | "nav.overview.label"
   | "nav.overview.description"
@@ -62,8 +81,27 @@ const FALLBACK_TR: Readonly<Record<PatternWorkspaceTextKey, string>> = {
   "shell.inspectorLabel": "Bağlam paneli",
   "shell.caseLabel": "Aktif vaka",
   "shell.sourceMetric": "%count% kaynak",
-  "shell.pinMetric": "%count% iz",
+  "shell.evidenceMetric": "%count% kanıt",
+  "shell.boardNoteMetric": "%count% pano notu",
+  "shell.connectionMetric": "%count% bağlantı",
   "shell.reviewMetric": "%count% inceleme",
+  "feedback.dismiss": "Bildirimi kapat",
+  "feedback.sentToDesk": "Öğe çalışma masasına gönderildi.",
+  "feedback.alreadyOnDesk": "Öğe zaten çalışma masasında.",
+  "feedback.addedToReview": "Öğe 10. Adam referanslarına eklendi.",
+  "feedback.alreadyInReview": "Öğe zaten 10. Adam referanslarında.",
+  "feedback.sourcePinned": "Kaynak soruşturma tuvaline sabitlendi.",
+  "feedback.noteAdded": "Yerel not eklendi.",
+  "feedback.boardItemAdded": "Pano öğesi eklendi.",
+  "feedback.sourceAdded": "Kaynak arşive eklendi.",
+  "feedback.sourceRemoved": "Kaynak ve bağlı yerel izler kaldırıldı.",
+  "feedback.boardItemRemoved": "Yerel pano öğesi kaldırıldı.",
+  "feedback.sessionReset": "Yerel oturum temizlendi.",
+  "feedback.evidenceAdded": "Kanıt notu eklendi.",
+  "feedback.connectionAdded": "Bağlantı oluşturuldu.",
+  "feedback.debateUpdated": "10. Adam oturumu güncellendi.",
+  "feedback.importSucceeded": "Kaynak içe aktarıldı.",
+  "feedback.importFailed": "İşlem tamamlanamadı; alanları ve uyarıları kontrol edin.",
   "shell.keyboardHint": "Ok tuşlarıyla çalışma alanları arasında geçiş yap.",
   "nav.overview.label": "Vaka Merkezi",
   "nav.overview.description": "Genel görünüm",
@@ -114,8 +152,27 @@ const FALLBACK_EN: Readonly<Record<PatternWorkspaceTextKey, string>> = {
   "shell.inspectorLabel": "Context inspector",
   "shell.caseLabel": "Active case",
   "shell.sourceMetric": "%count% sources",
-  "shell.pinMetric": "%count% leads",
+  "shell.evidenceMetric": "%count% evidence",
+  "shell.boardNoteMetric": "%count% board notes",
+  "shell.connectionMetric": "%count% connections",
   "shell.reviewMetric": "%count% reviews",
+  "feedback.dismiss": "Dismiss notification",
+  "feedback.sentToDesk": "Item sent to the working desk.",
+  "feedback.alreadyOnDesk": "Item is already on the working desk.",
+  "feedback.addedToReview": "Item added to Tenth Man references.",
+  "feedback.alreadyInReview": "Item is already in Tenth Man references.",
+  "feedback.sourcePinned": "Source pinned to the investigation canvas.",
+  "feedback.noteAdded": "Local note added.",
+  "feedback.boardItemAdded": "Board item added.",
+  "feedback.sourceAdded": "Source added to the archive.",
+  "feedback.sourceRemoved": "Source and linked local traces removed.",
+  "feedback.boardItemRemoved": "Local board item removed.",
+  "feedback.sessionReset": "Local session cleared.",
+  "feedback.evidenceAdded": "Evidence note added.",
+  "feedback.connectionAdded": "Connection created.",
+  "feedback.debateUpdated": "Tenth Man session updated.",
+  "feedback.importSucceeded": "Source imported.",
+  "feedback.importFailed": "The action could not be completed; check the fields and warnings.",
   "shell.keyboardHint": "Use the arrow keys to move between workspaces.",
   "nav.overview.label": "Case Hub",
   "nav.overview.description": "Case overview",

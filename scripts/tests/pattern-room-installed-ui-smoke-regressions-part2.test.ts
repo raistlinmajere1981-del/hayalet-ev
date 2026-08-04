@@ -304,12 +304,28 @@ void test("pattern-room installed UI supports phase 4B local interactions withou
     );
     assert.ok(sendToDesk);
     fireEvent(sendToDesk, "click");
+    const deskFeedback = environment.app.querySelector("[data-pattern-workspace-feedback='true']");
+    assert.ok(deskFeedback);
+    assert.equal(deskFeedback.dataset["patternWorkspaceFeedbackTone"], "success");
+    assertTextIncludes(readTreeText(deskFeedback), ["Öğe çalışma masasına gönderildi."]);
 
     const addBoardNodeToDebate = environment.app.querySelector(
       "[data-pattern-add-node-debate='node-navigation-source']"
     );
     assert.ok(addBoardNodeToDebate);
     fireEvent(addBoardNodeToDebate, "click");
+    const reviewFeedback = environment.app.querySelector(
+      "[data-pattern-workspace-feedback='true']"
+    );
+    assert.ok(reviewFeedback);
+    assert.equal(reviewFeedback.dataset["patternWorkspaceFeedbackTone"], "success");
+    assertTextIncludes(readTreeText(reviewFeedback), ["Öğe 10. Adam referanslarına eklendi."]);
+    const dismissFeedback = reviewFeedback.querySelector(
+      "[data-pattern-workspace-feedback-dismiss='true']"
+    );
+    assert.ok(dismissFeedback);
+    fireEvent(dismissFeedback, "click");
+    assert.equal(environment.app.querySelector("[data-pattern-workspace-feedback='true']"), null);
 
     returnToOverview(environment.app);
     openFocusedView(environment.app, "desk");

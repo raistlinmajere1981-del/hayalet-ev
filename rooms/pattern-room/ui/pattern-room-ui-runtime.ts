@@ -70,9 +70,13 @@ import { createReportPanel } from "./panels/pattern-report-panel.js";
 import { createTenthManPanel } from "./panels/pattern-tenth-man-panel.js";
 import type { PatternCaseReviewApplyFeedback } from "./panels/pattern-case-review-runtime-view.js";
 import { createPatternCaseReviewTranslator } from "./pattern-case-review-i18n.js";
-import { createPatternWorkspaceTranslator } from "./pattern-room-workspace-i18n.js";
+import {
+  createPatternWorkspaceTranslator,
+  type PatternWorkspaceTextKey,
+} from "./pattern-room-workspace-i18n.js";
 import {
   createPatternWorkspaceShell,
+  type PatternWorkspaceFeedbackTone,
   type PatternWorkspaceSection,
   type PatternWorkspaceShell,
 } from "./panels/pattern-workspace-shell.js";
@@ -462,6 +466,16 @@ export function createPatternRoomUiRuntime(
     return createPatternWorkspaceTranslator(caseReviewLocale, caseReviewTranslations);
   }
 
+  function showWorkspaceActionFeedback(
+    key: PatternWorkspaceTextKey,
+    tone: PatternWorkspaceFeedbackTone = "success"
+  ): void {
+    ensureWorkspaceShell().showActionFeedback({
+      tone,
+      message: getWorkspaceText()(key),
+    });
+  }
+
   function createCaseReviewApplyOptions(
     mode: PatternRoomCaseReviewApplyMode,
     sessionId: string
@@ -785,49 +799,96 @@ export function createPatternRoomUiRuntime(
       }
     },
     sendNodeToDesk(nodeId: string): void {
+      const beforeCount = localState.getOverlay().deskNodeIds.length;
       localState.sendToDesk(nodeId);
+      const added = localState.getOverlay().deskNodeIds.length > beforeCount;
+      showWorkspaceActionFeedback(
+        added ? "feedback.sentToDesk" : "feedback.alreadyOnDesk",
+        added ? "success" : "info"
+      );
     },
     addNodeToDebate(nodeId: string): void {
+      const beforeCount = localState.getOverlay().debateReferenceIds.length;
       localState.addToDebate(nodeId);
+      const added = localState.getOverlay().debateReferenceIds.length > beforeCount;
+      showWorkspaceActionFeedback(
+        added ? "feedback.addedToReview" : "feedback.alreadyInReview",
+        added ? "success" : "info"
+      );
     },
     pinSourceToBoard(sourceId: string, layer): void {
       localState.pinSource(sourceId, layer);
+      showWorkspaceActionFeedback("feedback.sourcePinned");
     },
     addSourceToDebate(sourceId: string): void {
+      const beforeCount = localState.getOverlay().debateReferenceIds.length;
       localState.addToDebate(sourceId);
+      const added = localState.getOverlay().debateReferenceIds.length > beforeCount;
+      showWorkspaceActionFeedback(
+        added ? "feedback.addedToReview" : "feedback.alreadyInReview",
+        added ? "success" : "info"
+      );
     },
     addLocalNote(text: string): void {
       localState.addLocalNote(text);
+      showWorkspaceActionFeedback("feedback.noteAdded");
     },
     addAuthoredClaim(label: string, content: string): void {
       localState.addAuthoredClaim(label, content);
+      showWorkspaceActionFeedback("feedback.boardItemAdded");
     },
     addAuthoredInspiration(label: string, content: string): void {
       localState.addAuthoredInspiration(label, content);
+      showWorkspaceActionFeedback("feedback.boardItemAdded");
     },
     addAuthoredUncertainty(label: string, content: string): void {
       localState.addAuthoredUncertainty(label, content);
+      showWorkspaceActionFeedback("feedback.boardItemAdded");
     },
     addAuthoredSource(label: string, origin: string, note: string): void {
       localState.addAuthoredSource(label, origin, note);
+      showWorkspaceActionFeedback("feedback.sourceAdded");
     },
     removeLocalSource(sourceId: string): void {
-      localState.removeLocalSource(sourceId);
+      const summary = localState.removeLocalSource(sourceId);
+      showWorkspaceActionFeedback(
+        summary.sourcesRemoved > 0 ? "feedback.sourceRemoved" : "feedback.importFailed",
+        summary.sourcesRemoved > 0 ? "success" : "error"
+      );
     },
     removeLocalNode(nodeId: string): void {
-      localState.removeLocalNode(nodeId);
+      const summary = localState.removeLocalNode(nodeId);
+      showWorkspaceActionFeedback(
+        summary.nodesRemoved > 0 ? "feedback.boardItemRemoved" : "feedback.importFailed",
+        summary.nodesRemoved > 0 ? "success" : "error"
+      );
     },
     removeLocalEvidence(evidenceId: string): void {
-      localState.removeLocalEvidence(evidenceId);
+      const summary = localState.removeLocalEvidence(evidenceId);
+      showWorkspaceActionFeedback(
+        summary.evidenceRemoved > 0 ? "feedback.boardItemRemoved" : "feedback.importFailed",
+        summary.evidenceRemoved > 0 ? "success" : "error"
+      );
     },
     resetLocalSession(): void {
-      localState.resetOverlayToEmpty();
+      const summary = localState.resetOverlayToEmpty();
+      showWorkspaceActionFeedback(
+        summary.resetPerformed ? "feedback.sessionReset" : "feedback.importFailed",
+        summary.resetPerformed ? "success" : "error"
+      );
     },
     addAuthoredEvidence(label: string, excerpt: string, interpretation, layer, options): void {
       localState.addAuthoredEvidence(label, excerpt, interpretation, layer, options);
+      showWorkspaceActionFeedback("feedback.evidenceAdded");
     },
     addAuthoredEdge(edgeType, sourceId: string, targetId: string, note?: string): void {
+      const beforeCount = localState.getOverlay().localAuthoredEdges.length;
       localState.addAuthoredEdge(edgeType, sourceId, targetId, note);
+      const added = localState.getOverlay().localAuthoredEdges.length > beforeCount;
+      showWorkspaceActionFeedback(
+        added ? "feedback.connectionAdded" : "feedback.importFailed",
+        added ? "success" : "error"
+      );
     },
     importUserTextSource(input: PatternUserTextSourceImportInput) {
       if (input.text.trim() === "") {
@@ -843,6 +904,10 @@ export function createPatternRoomUiRuntime(
       });
       userTextSourceImportStatus = summarizeUserTextImportResult(result);
       render();
+      showWorkspaceActionFeedback(
+        userTextSourceImportStatus.success ? "feedback.importSucceeded" : "feedback.importFailed",
+        userTextSourceImportStatus.success ? "success" : "error"
+      );
       return userTextSourceImportStatus;
     },
     importLongTextSource(input: PatternLongTextSourceImportInput) {
@@ -867,30 +932,50 @@ export function createPatternRoomUiRuntime(
       });
       longTextSourceImportStatus = summarizeLongTextImportResult(result);
       render();
+      showWorkspaceActionFeedback(
+        longTextSourceImportStatus.success ? "feedback.importSucceeded" : "feedback.importFailed",
+        longTextSourceImportStatus.success ? "success" : "error"
+      );
       return longTextSourceImportStatus;
     },
     importSampleSourcePackage(packageId?: string) {
       sourceImportDemoStatus = importSampleSourcePackage(localState, packageId);
       render();
+      const importedCount =
+        sourceImportDemoStatus.sourcesAdded +
+        sourceImportDemoStatus.evidenceAdded +
+        sourceImportDemoStatus.nodesAdded +
+        sourceImportDemoStatus.edgesAdded +
+        sourceImportDemoStatus.notesAdded;
+      showWorkspaceActionFeedback(
+        importedCount > 0 ? "feedback.importSucceeded" : "feedback.importFailed",
+        importedCount > 0 ? "success" : sourceImportDemoStatus.duplicate ? "info" : "error"
+      );
       return sourceImportDemoStatus;
     },
     prepareDebate(): void {
       localState.prepareDebate();
+      showWorkspaceActionFeedback("feedback.debateUpdated");
     },
     assignDebateRoles(): void {
       localState.assignDebateRoles();
+      showWorkspaceActionFeedback("feedback.debateUpdated");
     },
     startDebate(): void {
       localState.startDebate();
+      showWorkspaceActionFeedback("feedback.debateUpdated");
     },
     advanceDebatePhase(): void {
       localState.advanceDebatePhase();
+      showWorkspaceActionFeedback("feedback.debateUpdated");
     },
     completeDebate(): void {
       localState.completeDebate();
+      showWorkspaceActionFeedback("feedback.debateUpdated");
     },
     reflectDebateToReport(): void {
       localState.reflectDebateToReport();
+      showWorkspaceActionFeedback("feedback.debateUpdated");
     },
   };
 
@@ -1074,12 +1159,16 @@ export function createPatternRoomUiRuntime(
   }
 
   function createWorkspaceSummary() {
+    const overlay = localState.getOverlay();
     return {
       subject: viewModels.subject,
-      pinCount: viewModels.boardCategories.reduce((count, category) => {
-        return count + category.pins.length;
-      }, 0),
       sourceCount: viewModels.sources.length,
+      evidenceCount: domain.evidence.length + overlay.localAuthoredEvidence.length,
+      boardNoteCount:
+        domain.nodes.filter((node) => {
+          return node.nodeType !== "source";
+        }).length + overlay.localAuthoredNodes.length,
+      connectionCount: domain.edges.length + overlay.localAuthoredEdges.length,
       reviewCount: caseReviewRuntimeState.history.length,
     };
   }

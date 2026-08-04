@@ -113,7 +113,8 @@ await updateFile("rooms/pattern-room/ui/workspace.css", [
   },
   {
     label: "feedback shadow token",
-    search: "box-shadow: 0 var(--pattern-px-12) var(--pattern-px-36) var(--pattern-black-alpha-48);",
+    search:
+      "box-shadow: 0 var(--pattern-px-12) var(--pattern-px-36) var(--pattern-black-alpha-48);",
     replacement:
       "box-shadow: 0 var(--pattern-px-12) var(--pattern-px-36) var(--pattern-black-alpha-52);",
   },

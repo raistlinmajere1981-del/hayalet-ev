@@ -129,6 +129,14 @@ void test("pattern-room installed UI renders overview hotspots and returns from 
     assert.match(readTreeText(environment.app), /Dünya’nın Şekli/);
     assert.match(readTreeText(environment.app), /İz Sürme Odası/);
     assert.match(readTreeText(environment.app), /Pattern Room/);
+    assertTextIncludes(readTreeText(environment.app), [
+      "4 kaynak",
+      "2 kanıt",
+      "3 pano notu",
+      "3 bağlantı",
+      "0 inceleme",
+    ]);
+    assert.doesNotMatch(readTreeText(environment.app), /4 iz/);
 
     const hotspots = environment.app.querySelectorAll("[data-pattern-hotspot]");
     assert.equal(hotspots.length, PATTERN_FOCUSED_VIEWS.length);

@@ -11,10 +11,31 @@
       "navigationLabel": "Çalışma alanları",
       "caseLabel": "Aktif vaka",
       "sourceMetric": "%count% kaynak",
-      "pinMetric": "%count% iz",
+      "evidenceMetric": "%count% kanıt",
+      "boardNoteMetric": "%count% pano notu",
+      "connectionMetric": "%count% bağlantı",
       "reviewMetric": "%count% inceleme",
       "keyboardHint": "Ok tuşlarıyla çalışma alanları arasında geçiş yap.",
       "inspectorLabel": "Bağlam paneli"
+    },
+    "feedback": {
+      "dismiss": "Bildirimi kapat",
+      "sentToDesk": "Öğe çalışma masasına gönderildi.",
+      "alreadyOnDesk": "Öğe zaten çalışma masasında.",
+      "addedToReview": "Öğe 10. Adam referanslarına eklendi.",
+      "alreadyInReview": "Öğe zaten 10. Adam referanslarında.",
+      "sourcePinned": "Kaynak soruşturma tuvaline sabitlendi.",
+      "noteAdded": "Yerel not eklendi.",
+      "boardItemAdded": "Pano öğesi eklendi.",
+      "sourceAdded": "Kaynak arşive eklendi.",
+      "sourceRemoved": "Kaynak ve bağlı yerel izler kaldırıldı.",
+      "boardItemRemoved": "Yerel pano öğesi kaldırıldı.",
+      "sessionReset": "Yerel oturum temizlendi.",
+      "evidenceAdded": "Kanıt notu eklendi.",
+      "connectionAdded": "Bağlantı oluşturuldu.",
+      "debateUpdated": "10. Adam oturumu güncellendi.",
+      "importSucceeded": "Kaynak içe aktarıldı.",
+      "importFailed": "İşlem tamamlanamadı; alanları ve uyarıları kontrol edin."
     },
     "nav": {
       "overview": {

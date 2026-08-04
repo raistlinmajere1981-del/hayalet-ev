@@ -11,10 +11,31 @@
       "navigationLabel": "Workspaces",
       "caseLabel": "Active case",
       "sourceMetric": "%count% sources",
-      "pinMetric": "%count% leads",
+      "evidenceMetric": "%count% evidence",
+      "boardNoteMetric": "%count% board notes",
+      "connectionMetric": "%count% connections",
       "reviewMetric": "%count% reviews",
       "keyboardHint": "Use the arrow keys to move between workspaces.",
       "inspectorLabel": "Context inspector"
+    },
+    "feedback": {
+      "dismiss": "Dismiss notification",
+      "sentToDesk": "Item sent to the working desk.",
+      "alreadyOnDesk": "Item is already on the working desk.",
+      "addedToReview": "Item added to Tenth Man references.",
+      "alreadyInReview": "Item is already in Tenth Man references.",
+      "sourcePinned": "Source pinned to the investigation canvas.",
+      "noteAdded": "Local note added.",
+      "boardItemAdded": "Board item added.",
+      "sourceAdded": "Source added to the archive.",
+      "sourceRemoved": "Source and linked local traces removed.",
+      "boardItemRemoved": "Local board item removed.",
+      "sessionReset": "Local session cleared.",
+      "evidenceAdded": "Evidence note added.",
+      "connectionAdded": "Connection created.",
+      "debateUpdated": "Tenth Man session updated.",
+      "importSucceeded": "Source imported.",
+      "importFailed": "The action could not be completed; check the fields and warnings."
     },
     "nav": {
       "overview": {
