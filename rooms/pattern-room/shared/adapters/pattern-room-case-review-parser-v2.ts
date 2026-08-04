@@ -370,9 +370,8 @@ function parseCanonicalJson(
       return null;
     }
 
-    buckets[key].push(
-      ...sectionValue.map((entry) => entry.trim()).filter((entry) => entry !== "")
-    );
+    const sectionItems = sectionValue as string[];
+    buckets[key].push(...sectionItems.map((entry) => entry.trim()).filter((entry) => entry !== ""));
   }
 
   const connectionValues = value["suggestedConnections"];
@@ -389,7 +388,8 @@ function parseCanonicalJson(
   }
 
   const connections: PatternRoomCaseReviewConnectionSuggestion[] = [];
-  (connectionValues ?? []).forEach((connectionValue) => {
+  const connectionsToParse = (connectionValues ?? []) as unknown[];
+  connectionsToParse.forEach((connectionValue) => {
     const connection = parseCanonicalConnection(connectionValue, warnings);
     if (connection !== null) {
       connections.push(connection);
@@ -510,7 +510,8 @@ function createResult(
   >;
 
   for (const key of PATTERN_ROOM_CASE_REVIEW_SECTION_KEYS) {
-    const rawItems = options.canonicalItems === true ? [...buckets[key]] : splitSectionItems(buckets[key]);
+    const rawItems =
+      options.canonicalItems === true ? [...buckets[key]] : splitSectionItems(buckets[key]);
     const section = createSection(key, buckets[key], rawItems, warnings, connections);
     sectionsRecord[key] = section;
     if (

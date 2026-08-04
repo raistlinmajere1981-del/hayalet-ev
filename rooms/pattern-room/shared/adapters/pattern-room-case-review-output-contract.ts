@@ -1,5 +1,4 @@
-export const PATTERN_ROOM_CASE_REVIEW_CANONICAL_JSON_FORMAT =
-  "pattern-room-case-review" as const;
+export const PATTERN_ROOM_CASE_REVIEW_CANONICAL_JSON_FORMAT = "pattern-room-case-review" as const;
 export const PATTERN_ROOM_CASE_REVIEW_CANONICAL_JSON_VERSION = 1 as const;
 
 const EDGE_TYPES = [

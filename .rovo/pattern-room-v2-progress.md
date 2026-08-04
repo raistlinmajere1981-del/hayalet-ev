@@ -77,7 +77,16 @@ The following checks passed after the production/test-domain migration:
 - Candidates can be explicitly discarded by the user.
 - Installed UI regressions cover disabled promotion, source selection, excerpt entry and source-linked evidence output.
 
+## Completed: canonical and bilingual Case Review parsing
+
+- Case Review messages request one canonical JSON envelope with seven typed section arrays.
+- The parser accepts plain or fenced canonical JSON and preserves each JSON array entry as a separate suggestion item.
+- Structured connection objects are validated against the existing edge-type allowlist.
+- English and Turkish section headings are accepted as a controlled fallback path.
+- Invalid JSON envelopes are preserved as cautious Analysis fallback content with warnings.
+- Parser-format regressions cover canonical JSON, fenced JSON, Turkish headings and the outbound response contract.
+
 ## Next implementation steps
 
-1. Add canonical JSON and Turkish/English heading parser paths.
-2. Begin the three-region Workspace Shell V2 after the parser boundary is green.
+1. Begin the three-region Workspace Shell V2.
+2. Merge Board and Connections into the Investigation Canvas after the shell boundary is green.

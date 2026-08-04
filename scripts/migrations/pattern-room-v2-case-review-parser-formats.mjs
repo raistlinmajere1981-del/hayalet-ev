@@ -31,8 +31,7 @@ function replaceRequired(content, search, replacement, label) {
 }
 
 async function tightenParserCollectionTypes() {
-  const path =
-    "rooms/pattern-room/shared/adapters/pattern-room-case-review-parser-v2.ts";
+  const path = "rooms/pattern-room/shared/adapters/pattern-room-case-review-parser-v2.ts";
   let source = await readRepoFile(path);
 
   if (!source.includes("const sectionItems = sectionValue as string[];")) {
@@ -59,8 +58,7 @@ async function tightenParserCollectionTypes() {
 async function registerParserFormatRegressions() {
   const path = "scripts/tests/pattern-room-case-review-pipeline-regressions.test.ts";
   let source = await readRepoFile(path);
-  const importLine =
-    'import "./pattern-room-case-review-parser-formats-regressions.test.ts";';
+  const importLine = 'import "./pattern-room-case-review-parser-formats-regressions.test.ts";';
   if (source.includes(importLine)) {
     return;
   }

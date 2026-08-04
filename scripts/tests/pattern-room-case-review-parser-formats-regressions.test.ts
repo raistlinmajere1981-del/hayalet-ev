@@ -111,7 +111,10 @@ void test("pattern-room parser accepts Turkish review headings and keeps section
   assert.equal(result.fallbackUsed, false);
   assert.equal(result.sections.observation.items[0]?.text, "Saat kaydı ile not arasında fark var.");
   assert.equal(result.sections.evidence.items[0]?.text, "Kaynak görseli yeniden açılmalı.");
-  assert.equal(result.sections.counterArgument.items[0]?.text, "Kayıtlar farklı günlerden olabilir.");
+  assert.equal(
+    result.sections.counterArgument.items[0]?.text,
+    "Kayıtlar farklı günlerden olabilir."
+  );
   assert.deepEqual(result.missingEvidence, ["Kamera zaman dilimi bilinmiyor."]);
   assert.deepEqual(result.openQuestions, ["Ham dosya metadata değeri nedir?"]);
   assert.deepEqual(result.confidence, ["Kaynak kontrol edilene kadar güven sınırlı."]);

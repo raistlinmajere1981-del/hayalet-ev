@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import "./pattern-room-case-review-parser-formats-regressions.test.ts";
+
 import {
   applyPatternRoomCaseReview,
   previewPatternRoomCaseReviewApply,
