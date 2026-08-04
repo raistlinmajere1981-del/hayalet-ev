@@ -570,6 +570,7 @@ void test("pattern-room controlled apply is additive and respects all three mode
   const calls = {
     notes: [] as string[],
     evidence: [] as string[],
+    candidates: [] as string[],
     questions: [] as string[],
     edges: [] as string[],
   };
@@ -582,6 +583,14 @@ void test("pattern-room controlled apply is additive and respects all three mode
     },
     addAuthoredEvidence(label: string, excerpt: string, interpretation?: string): void {
       calls.evidence.push(`${label}:${excerpt}:${interpretation ?? ""}`);
+    },
+    addEvidenceCandidate(
+      suggestionId: string,
+      text: string,
+      reviewSessionId?: string | null
+    ): boolean {
+      calls.candidates.push(`${suggestionId}:${text}:${reviewSessionId ?? ""}`);
+      return true;
     },
     addAuthoredEdge(
       edgeType:
@@ -612,17 +621,23 @@ void test("pattern-room controlled apply is additive and respects all three mode
   calls.questions.length = 0;
   const evidenceOnly = applyPatternRoomCaseReview(result, target, {
     mode: "evidence-suggestions-only",
+    sessionId: "session-candidate",
   });
   assert.equal(evidenceOnly.evidenceAdded, 0);
-  assert.equal(evidenceOnly.skipped, 1);
-  assert.equal(evidenceOnly.warnings.length, 1);
+  assert.equal(evidenceOnly.evidenceCandidatesAdded, 1);
+  assert.equal(evidenceOnly.skipped, 0);
+  assert.equal(evidenceOnly.warnings.length, 0);
+  assert.equal(calls.candidates.length, 1);
+  assert.match(calls.candidates[0] ?? "", /session-candidate$/);
   assert.equal(calls.evidence.length, 0);
   assert.equal(calls.notes.length, 0);
 
   calls.evidence.length = 0;
+  calls.candidates.length = 0;
   calls.questions.length = 0;
   const preview = previewPatternRoomCaseReviewApply(result, target, { mode: "all" });
   assert.equal(preview.boardNotesAdded, 3);
+  assert.equal(preview.evidenceCandidatesAdded, 1);
   assert.equal(calls.notes.length, 0);
   assert.equal(calls.evidence.length, 0);
   assert.equal(calls.questions.length, 0);
@@ -631,12 +646,14 @@ void test("pattern-room controlled apply is additive and respects all three mode
   const all = applyPatternRoomCaseReview(result, target, { mode: "all" });
   assert.equal(all.boardNotesAdded, 3);
   assert.equal(all.evidenceAdded, 0);
+  assert.equal(all.evidenceCandidatesAdded, 1);
   assert.equal(all.openQuestionsAdded, 1);
   assert.equal(all.uncertaintyAdded, 2);
   assert.equal(all.connectionsAdded, 1);
-  assert.equal(all.skipped, 2);
-  assert.equal(all.warnings.length, 2);
+  assert.equal(all.skipped, 1);
+  assert.equal(all.warnings.length, 1);
   assert.equal(calls.notes.length, 3);
+  assert.equal(calls.candidates.length, 1);
   assert.match(calls.notes[0] ?? "", /^AI Review Observation 1:/);
   assert.equal(calls.edges[0], "source-001:supports:node-001");
   assert.deepEqual(all, preview);
@@ -664,4 +681,5 @@ void test("pattern-room controlled apply is additive and respects all three mode
     },
   });
   assert.equal(calls.evidence.length, 0);
+  assert.equal(calls.candidates.length, 2);
 });

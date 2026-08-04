@@ -106,6 +106,7 @@ void test("pattern-room phase 12F-A resetOverlayToEmpty clears local overlay wit
     localAuthoredNodes: [],
     localAuthoredSources: [],
     localAuthoredEvidence: [],
+    localEvidenceCandidates: [],
     localAuthoredEdges: [],
   });
   assert.deepEqual(localState.getGuards(), {

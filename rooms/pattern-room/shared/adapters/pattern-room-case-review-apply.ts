@@ -17,6 +17,11 @@ export type PatternRoomCaseReviewApplyTarget = {
     interpretation?: string,
     layer?: PatternLayer
   ) => void;
+  readonly addEvidenceCandidate: (
+    suggestionId: string,
+    text: string,
+    reviewSessionId?: string | null
+  ) => boolean;
   readonly addAuthoredEdge: (
     edgeType: PatternEdgeType,
     sourceId: string,
@@ -36,6 +41,7 @@ export type PatternRoomCaseReviewApplyCopy = {
 
 export type PatternRoomCaseReviewApplyOptions = {
   readonly mode: PatternRoomCaseReviewApplyMode;
+  readonly sessionId?: string | null;
   readonly copy?: PatternRoomCaseReviewApplyCopy;
 };
 
@@ -59,6 +65,7 @@ type MutableApplySummary = {
   mode: PatternRoomCaseReviewApplyMode;
   boardNotesAdded: number;
   evidenceAdded: number;
+  evidenceCandidatesAdded: number;
   openQuestionsAdded: number;
   uncertaintyAdded: number;
   connectionsAdded: number;
@@ -71,6 +78,7 @@ function createSummary(mode: PatternRoomCaseReviewApplyMode): MutableApplySummar
     mode,
     boardNotesAdded: 0,
     evidenceAdded: 0,
+    evidenceCandidatesAdded: 0,
     openQuestionsAdded: 0,
     uncertaintyAdded: 0,
     connectionsAdded: 0,
@@ -111,19 +119,22 @@ function applyBoardNotes(
 
 function retainEvidenceCandidates(
   result: PatternRoomCaseReviewResult,
-  summary: MutableApplySummary
+  target: PatternRoomCaseReviewApplyTarget,
+  summary: MutableApplySummary,
+  reviewSessionId?: string | null
 ): void {
-  const candidateCount = result.suggestions.filter((suggestion) => {
-    return suggestion.kind === "evidence_candidate";
-  }).length;
-  if (candidateCount === 0) {
-    return;
-  }
-
-  summary.skipped += candidateCount;
-  summary.warnings.push(
-    "Evidence suggestions were retained as candidates and were not added as evidence. Link each candidate to a real source and excerpt before promotion."
-  );
+  result.suggestions
+    .filter((suggestion) => suggestion.kind === "evidence_candidate")
+    .forEach((suggestion) => {
+      if (target.addEvidenceCandidate(suggestion.id, suggestion.text, reviewSessionId)) {
+        summary.evidenceCandidatesAdded += 1;
+        return;
+      }
+      summary.skipped += 1;
+      summary.warnings.push(
+        `Evidence candidate was not stored because it was empty or already existed: ${suggestion.id}.`
+      );
+    });
 }
 
 function applyOpenQuestions(
@@ -203,12 +214,12 @@ export function applyPatternRoomCaseReview(
   }
 
   if (options.mode === "evidence-suggestions-only") {
-    retainEvidenceCandidates(result, summary);
+    retainEvidenceCandidates(result, target, summary, options.sessionId);
     return freezeSummary(summary);
   }
 
   applyBoardNotes(result, target, summary, copy);
-  retainEvidenceCandidates(result, summary);
+  retainEvidenceCandidates(result, target, summary, options.sessionId);
   applyOpenQuestions(result, target, summary, copy);
   applyUncertaintyNotes(result, target, summary, copy);
   applyConnections(result, target, summary);
@@ -226,6 +237,7 @@ export function previewPatternRoomCaseReviewApply(
       addAuthoredClaim: () => undefined,
       addAuthoredUncertainty: () => undefined,
       addAuthoredEvidence: () => undefined,
+      addEvidenceCandidate: () => true,
       addAuthoredEdge: () => undefined,
       resolveEntityExists: target.resolveEntityExists,
     },

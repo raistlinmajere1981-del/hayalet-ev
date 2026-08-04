@@ -59,9 +59,17 @@ The following checks passed after the production/test-domain migration:
 - Evidence candidates remain in the structured review result until a source-backed promotion workflow is completed.
 - UI copy and regression expectations distinguish candidates from evidence.
 
+## Completed: persistent evidence candidates and promotion boundary
+
+- Applied AI evidence suggestions are stored as explicit local `candidate` records.
+- Candidate records persist through snapshot save and restore without entering `localAuthoredEvidence`.
+- Candidate provenance retains the originating review session and suggestion id.
+- Promotion rejects missing candidates, unknown sources and empty selected excerpts.
+- Successful promotion creates source-linked evidence, keeps AI text in interpretation and removes the candidate.
+- Older snapshots without the optional candidate collection restore safely with an empty collection.
+
 ## Next implementation steps
 
-1. Add persistent evidence-candidate records to the local overlay.
-2. Add promotion rules that require a real source and excerpt.
-3. Add canonical JSON and Turkish/English heading parser paths.
-4. Begin the three-region Workspace Shell V2 after the promotion boundary is green.
+1. Add the candidate review and promotion controls to the Case Review inspector.
+2. Add canonical JSON and Turkish/English heading parser paths.
+3. Begin the three-region Workspace Shell V2 after the promotion UI and parser boundary are green.

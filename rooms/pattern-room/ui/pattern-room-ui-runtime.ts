@@ -457,11 +457,13 @@ export function createPatternRoomUiRuntime(
   }
 
   function createCaseReviewApplyOptions(
-    mode: PatternRoomCaseReviewApplyMode
+    mode: PatternRoomCaseReviewApplyMode,
+    sessionId: string
   ): PatternRoomCaseReviewApplyOptions {
     const text = getCaseReviewText();
     return {
       mode,
+      sessionId,
       copy: {
         reviewPrefix: text("apply.reviewPrefix"),
         evidenceSuggestionLabel: text("apply.evidenceSuggestionLabel"),
@@ -711,7 +713,7 @@ export function createPatternRoomUiRuntime(
     }
 
     try {
-      const applyOptions = createCaseReviewApplyOptions(mode);
+      const applyOptions = createCaseReviewApplyOptions(mode, session.sessionId);
       const summary = previewPatternRoomCaseReviewApply(session.result, localState, applyOptions);
       locallyAppliedCaseReviewSessions.add(session.sessionId);
       if (

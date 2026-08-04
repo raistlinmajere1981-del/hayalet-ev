@@ -14,6 +14,7 @@ export type PatternRoomCaseReviewApplySummary = {
   readonly mode: PatternRoomCaseReviewApplyMode;
   readonly boardNotesAdded: number;
   readonly evidenceAdded: number;
+  readonly evidenceCandidatesAdded?: number;
   readonly openQuestionsAdded: number;
   readonly uncertaintyAdded: number;
   readonly connectionsAdded: number;

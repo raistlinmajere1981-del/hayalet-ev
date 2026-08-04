@@ -538,6 +538,7 @@ const APPLY_CASES = [
     selector: "[data-pattern-case-review-apply-all='true']",
     notes: 0,
     evidence: 0,
+    candidates: 1,
     nodes: 6,
     edges: 1,
     autosaves: 1,
@@ -547,6 +548,7 @@ const APPLY_CASES = [
     selector: "[data-pattern-case-review-apply-open-questions='true']",
     notes: 0,
     evidence: 0,
+    candidates: 0,
     nodes: 1,
     edges: 0,
     autosaves: 1,
@@ -556,9 +558,10 @@ const APPLY_CASES = [
     selector: "[data-pattern-case-review-apply-evidence-suggestions='true']",
     notes: 0,
     evidence: 0,
+    candidates: 1,
     nodes: 0,
     edges: 0,
-    autosaves: 0,
+    autosaves: 1,
   },
 ] as const;
 
@@ -613,6 +616,11 @@ for (const applyCase of APPLY_CASES) {
         applyCase.evidence
       );
       assert.equal(
+        (snapshotAfterApply.overlay.localEvidenceCandidates ?? []).length -
+          (snapshotBeforeReply.overlay.localEvidenceCandidates ?? []).length,
+        applyCase.candidates
+      );
+      assert.equal(
         snapshotAfterApply.overlay.localAuthoredNodes.length -
           snapshotBeforeReply.overlay.localAuthoredNodes.length,
         applyCase.nodes
@@ -630,6 +638,7 @@ for (const applyCase of APPLY_CASES) {
       if (controlPayload.action === "apply") {
         assert.equal(controlPayload.mode, applyCase.mode);
         assert.equal(controlPayload.summary?.mode, applyCase.mode);
+        assert.equal(controlPayload.summary?.evidenceCandidatesAdded ?? 0, applyCase.candidates);
       }
       [
         "[data-pattern-case-review-apply-all='true']",

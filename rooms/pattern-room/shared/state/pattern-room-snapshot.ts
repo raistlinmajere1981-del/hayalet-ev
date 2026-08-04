@@ -22,6 +22,7 @@ import type {
   PatternRoomLocalOverlay,
   PatternRoomLocalState,
 } from "./pattern-room-local-state.js";
+import type { PatternRoomEvidenceCandidate } from "../types/pattern-room-evidence-candidate.js";
 
 type SnapshotRecord = Record<string, unknown>;
 
@@ -375,6 +376,47 @@ function parseLocalAuthoredEvidence(value: unknown): LocalAuthoredEvidence[] {
   return evidenceItems;
 }
 
+function parseLocalEvidenceCandidates(value: unknown): PatternRoomEvidenceCandidate[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const candidates: PatternRoomEvidenceCandidate[] = [];
+  for (const candidate of value) {
+    const reviewSessionId = isRecord(candidate) ? candidate["reviewSessionId"] : undefined;
+    if (
+      !isRecord(candidate) ||
+      !hasLocalIdFormat(candidate["id"], "local-evidence-candidate") ||
+      typeof candidate["suggestionId"] !== "string" ||
+      typeof candidate["text"] !== "string" ||
+      (reviewSessionId !== null && typeof reviewSessionId !== "string") ||
+      candidate["origin"] !== "ai-case-review" ||
+      candidate["sourceSection"] !== "evidence" ||
+      candidate["status"] !== "candidate" ||
+      typeof candidate["createdAt"] !== "string" ||
+      candidate["suggestionId"].trim() === "" ||
+      candidate["text"].trim() === ""
+    ) {
+      continue;
+    }
+
+    candidates.push({
+      id: candidate["id"],
+      suggestionId: candidate["suggestionId"].trim(),
+      text: candidate["text"].trim(),
+      reviewSessionId:
+        typeof reviewSessionId === "string" && reviewSessionId.trim() !== ""
+          ? reviewSessionId.trim()
+          : null,
+      origin: "ai-case-review",
+      sourceSection: "evidence",
+      status: "candidate",
+      createdAt: candidate["createdAt"],
+    });
+  }
+  return candidates;
+}
+
 function parseLocalAuthoredEdges(value: unknown): LocalAuthoredEdge[] {
   if (!Array.isArray(value)) {
     return [];
@@ -463,6 +505,7 @@ function parseOverlay(value: unknown): PatternRoomLocalOverlay | null {
   const localAuthoredNodes = parseLocalAuthoredNodes(value["localAuthoredNodes"]);
   const localAuthoredSources = parseLocalAuthoredSources(value["localAuthoredSources"]);
   const localAuthoredEvidence = parseLocalAuthoredEvidence(value["localAuthoredEvidence"]);
+  const localEvidenceCandidates = parseLocalEvidenceCandidates(value["localEvidenceCandidates"]);
   const localAuthoredEdges = parseLocalAuthoredEdges(value["localAuthoredEdges"]);
 
   if (
@@ -492,6 +535,7 @@ function parseOverlay(value: unknown): PatternRoomLocalOverlay | null {
     localAuthoredNodes,
     localAuthoredSources,
     localAuthoredEvidence,
+    localEvidenceCandidates,
     localAuthoredEdges,
   };
 }
@@ -648,6 +692,9 @@ function restoreOverlaySnapshot(
   const localAuthoredNodes = filterUniqueRecordsById(snapshotOverlay.localAuthoredNodes);
   const localAuthoredSources = filterUniqueRecordsById(snapshotOverlay.localAuthoredSources);
   const localAuthoredEvidence = filterUniqueRecordsById(snapshotOverlay.localAuthoredEvidence);
+  const localEvidenceCandidates = filterUniqueRecordsById(
+    snapshotOverlay.localEvidenceCandidates ?? []
+  );
   const localNodeIds = new Set(
     localAuthoredNodes.map((node) => {
       return node.id;
@@ -709,6 +756,7 @@ function restoreOverlaySnapshot(
     localAuthoredNodes,
     localAuthoredSources,
     localAuthoredEvidence,
+    localEvidenceCandidates,
     localAuthoredEdges,
   };
 }

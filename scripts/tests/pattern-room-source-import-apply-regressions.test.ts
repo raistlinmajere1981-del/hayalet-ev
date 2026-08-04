@@ -626,6 +626,7 @@ void test("pattern-room phase 11C keeps overlay shape, snapshot version, and imp
     "localAuthoredEvidence",
     "localAuthoredNodes",
     "localAuthoredSources",
+    "localEvidenceCandidates",
     "localNotes",
     "pinnedSourceIds",
     "sourcePinnedLayerById",
