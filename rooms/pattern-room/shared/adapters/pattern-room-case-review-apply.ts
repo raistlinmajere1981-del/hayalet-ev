@@ -109,21 +109,21 @@ function applyBoardNotes(
   });
 }
 
-function applyEvidenceSuggestions(
+function retainEvidenceCandidates(
   result: PatternRoomCaseReviewResult,
-  target: PatternRoomCaseReviewApplyTarget,
-  summary: MutableApplySummary,
-  copy: PatternRoomCaseReviewApplyCopy
+  summary: MutableApplySummary
 ): void {
-  result.sections.evidence.items.forEach((item, index) => {
-    target.addAuthoredEvidence(
-      `${copy.reviewPrefix} ${copy.evidenceSuggestionLabel} ${String(index + 1)}`,
-      item.text,
-      copy.userAppliedSuggestion,
-      "evidence"
-    );
-    summary.evidenceAdded += 1;
-  });
+  const candidateCount = result.suggestions.filter((suggestion) => {
+    return suggestion.kind === "evidence_candidate";
+  }).length;
+  if (candidateCount === 0) {
+    return;
+  }
+
+  summary.skipped += candidateCount;
+  summary.warnings.push(
+    "Evidence suggestions were retained as candidates and were not added as evidence. Link each candidate to a real source and excerpt before promotion."
+  );
 }
 
 function applyOpenQuestions(
@@ -203,12 +203,12 @@ export function applyPatternRoomCaseReview(
   }
 
   if (options.mode === "evidence-suggestions-only") {
-    applyEvidenceSuggestions(result, target, summary, copy);
+    retainEvidenceCandidates(result, summary);
     return freezeSummary(summary);
   }
 
   applyBoardNotes(result, target, summary, copy);
-  applyEvidenceSuggestions(result, target, summary, copy);
+  retainEvidenceCandidates(result, summary);
   applyOpenQuestions(result, target, summary, copy);
   applyUncertaintyNotes(result, target, summary, copy);
   applyConnections(result, target, summary);

@@ -185,6 +185,15 @@ void test("pattern-room parser creates readonly typed sections and exact connect
       "[connection] source=source-001; type=supports; target=node-001; note=Exact id bağlantısı",
   });
   assert.deepEqual(result.openQuestions, ["Ham dosyanın metadata değeri nedir?"]);
+  assert.equal(
+    result.suggestions.filter((suggestion) => suggestion.kind === "evidence_candidate").length,
+    1
+  );
+  assert.equal(
+    result.suggestions.filter((suggestion) => suggestion.kind === "connection_candidate").length,
+    2
+  );
+  assert.equal(Object.isFrozen(result.suggestions), true);
   assert.deepEqual(result.missingEvidence, ["Kamera zaman dilimi bilinmiyor."]);
   assert.deepEqual(result.confidence, ["Orta güven; kaynak metadata eksik."]);
   assert.equal(result.summary, "Kamera saat kaydı ile not arasında fark var.");
@@ -604,8 +613,10 @@ void test("pattern-room controlled apply is additive and respects all three mode
   const evidenceOnly = applyPatternRoomCaseReview(result, target, {
     mode: "evidence-suggestions-only",
   });
-  assert.equal(evidenceOnly.evidenceAdded, 1);
-  assert.equal(calls.evidence.length, 1);
+  assert.equal(evidenceOnly.evidenceAdded, 0);
+  assert.equal(evidenceOnly.skipped, 1);
+  assert.equal(evidenceOnly.warnings.length, 1);
+  assert.equal(calls.evidence.length, 0);
   assert.equal(calls.notes.length, 0);
 
   calls.evidence.length = 0;
@@ -619,12 +630,12 @@ void test("pattern-room controlled apply is additive and respects all three mode
 
   const all = applyPatternRoomCaseReview(result, target, { mode: "all" });
   assert.equal(all.boardNotesAdded, 3);
-  assert.equal(all.evidenceAdded, 1);
+  assert.equal(all.evidenceAdded, 0);
   assert.equal(all.openQuestionsAdded, 1);
   assert.equal(all.uncertaintyAdded, 2);
   assert.equal(all.connectionsAdded, 1);
-  assert.equal(all.skipped, 1);
-  assert.equal(all.warnings.length, 1);
+  assert.equal(all.skipped, 2);
+  assert.equal(all.warnings.length, 2);
   assert.equal(calls.notes.length, 3);
   assert.match(calls.notes[0] ?? "", /^AI Review Observation 1:/);
   assert.equal(calls.edges[0], "source-001:supports:node-001");
@@ -652,6 +663,5 @@ void test("pattern-room controlled apply is additive and respects all three mode
       },
     },
   });
-  assert.match(calls.evidence[0] ?? "", /^AI İncelemesi Kanıt Önerisi 1:/);
-  assert.match(calls.evidence[0] ?? "", /bağımsız olarak doğrulanmamıştır/);
+  assert.equal(calls.evidence.length, 0);
 });

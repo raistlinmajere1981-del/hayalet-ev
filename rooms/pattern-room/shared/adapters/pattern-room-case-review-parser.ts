@@ -6,6 +6,8 @@ import {
   type PatternRoomCaseReviewResultItem,
   type PatternRoomCaseReviewSection,
   type PatternRoomCaseReviewSectionKey,
+  type PatternRoomCaseReviewSuggestion,
+  type PatternRoomCaseReviewSuggestionKind,
   type PatternRoomCaseReviewWarning,
 } from "../types/pattern-room-case-review-result.js";
 import type { PatternEdgeType } from "../types/pattern-room-domain.js";
@@ -30,6 +32,18 @@ const SECTION_KEY_BY_NORMALIZED_LABEL: Readonly<Record<string, PatternRoomCaseRe
   missinginformation: "missingInformation",
   openquestions: "openQuestions",
   confidencenotes: "confidenceNotes",
+};
+
+const SUGGESTION_KIND_BY_SECTION: Readonly<
+  Record<PatternRoomCaseReviewSectionKey, PatternRoomCaseReviewSuggestionKind>
+> = {
+  observation: "review_observation",
+  evidence: "evidence_candidate",
+  analysis: "review_analysis",
+  counterArgument: "review_counter_argument",
+  missingInformation: "uncertainty_note",
+  openQuestions: "open_question",
+  confidenceNotes: "uncertainty_note",
 };
 
 const PATTERN_EDGE_TYPES = new Set<PatternEdgeType>([
@@ -245,6 +259,38 @@ function createSection(
   });
 }
 
+function createSuggestions(
+  sections: Readonly<Record<PatternRoomCaseReviewSectionKey, PatternRoomCaseReviewSection>>,
+  connections: readonly PatternRoomCaseReviewConnectionSuggestion[]
+): readonly PatternRoomCaseReviewSuggestion[] {
+  const sectionSuggestions = PATTERN_ROOM_CASE_REVIEW_SECTION_KEYS.flatMap((sectionKey) => {
+    return sections[sectionKey].items.map((item): PatternRoomCaseReviewSuggestion => {
+      return Object.freeze({
+        id: `suggestion-${item.id}`,
+        kind: SUGGESTION_KIND_BY_SECTION[sectionKey],
+        text: item.text,
+        section: sectionKey,
+        sourceItemId: item.id,
+        connection: null,
+      });
+    });
+  });
+  const connectionSuggestions = connections.map(
+    (connection, index): PatternRoomCaseReviewSuggestion => {
+      const connectionText = `${connection.sourceId} -> ${connection.edgeType} -> ${connection.targetId}`;
+      return Object.freeze({
+        id: `suggestion-connection-${String(index + 1).padStart(3, "0")}`,
+        kind: "connection_candidate",
+        text: connection.note === null ? connectionText : `${connectionText}: ${connection.note}`,
+        section: "analysis",
+        sourceItemId: null,
+        connection,
+      });
+    }
+  );
+  return Object.freeze([...sectionSuggestions, ...connectionSuggestions]);
+}
+
 function readSummary(
   sections: Readonly<Record<PatternRoomCaseReviewSectionKey, PatternRoomCaseReviewSection>>
 ): string {
@@ -357,11 +403,13 @@ export function parsePatternRoomCaseReviewResult(rawReply: string): PatternRoomC
   const items = Object.freeze(
     PATTERN_ROOM_CASE_REVIEW_SECTION_KEYS.flatMap((key) => sections[key].items)
   );
+  const suggestions = createSuggestions(sections, connections);
 
   return Object.freeze({
     resultVersion: PATTERN_ROOM_CASE_REVIEW_RESULT_VERSION,
     sections,
     items,
+    suggestions,
     warnings: Object.freeze(warnings),
     confidence: Object.freeze(sections.confidenceNotes.items.map((item) => item.text)),
     missingEvidence: Object.freeze(sections.missingInformation.items.map((item) => item.text)),

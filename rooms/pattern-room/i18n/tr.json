@@ -105,7 +105,7 @@
       "resend": "Yeniden Gönder",
       "applyAll": "Panoya Uygula",
       "applyOpenQuestions": "Yalnız Açık Soruları Ekle",
-      "applyEvidenceSuggestions": "Yalnız Kanıt Önerilerini Ekle"
+      "applyEvidenceSuggestions": "Yalnız Kanıt Adaylarını Koru"
     },
     "apply": {
       "reviewPrefix": "AI İncelemesi",
@@ -129,7 +129,7 @@
       "dispatchFailed": "Gönderim başarısız.",
       "controlFailed": "İnceleme işlemi gönderilemedi.",
       "applyFailed": "İnceleme panoya uygulanamadı.",
-      "applied": "Seçilen inceleme öğeleri panoya eklendi.",
+      "applied": "Seçilen inceleme işlemi tamamlandı. Kanıt önerileri gerçek bir kaynak ve alıntıyla eşleştirilene kadar aday olarak kalır.",
       "noResult": "Uygulanabilecek hazır bir inceleme sonucu yok.",
       "historyEmpty": "Henüz inceleme geçmişi yok.",
       "resultEmpty": "AI yanıtı henüz hazır değil.",

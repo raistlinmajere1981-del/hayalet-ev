@@ -51,10 +51,17 @@ The following checks passed after the production/test-domain migration:
 - strict lint
 - format check
 
+## Completed: AI suggestion boundary
+
+- Parsed Case Review output now exposes explicit typed suggestion records.
+- Evidence-section output is classified as `evidence_candidate`, not evidence.
+- Applying a review never writes AI evidence suggestions into `localAuthoredEvidence`.
+- Evidence candidates remain in the structured review result until a source-backed promotion workflow is completed.
+- UI copy and regression expectations distinguish candidates from evidence.
+
 ## Next implementation steps
 
-1. Introduce explicit AI suggestion records.
-2. Stop AI `Evidence` section text from becoming evidence automatically.
-3. Add evidence-candidate promotion rules that require a real source and excerpt.
-4. Add canonical JSON and Turkish/English heading parser paths.
-5. Begin the three-region Workspace Shell V2 after the suggestion boundary is green.
+1. Add persistent evidence-candidate records to the local overlay.
+2. Add promotion rules that require a real source and excerpt.
+3. Add canonical JSON and Turkish/English heading parser paths.
+4. Begin the three-region Workspace Shell V2 after the promotion boundary is green.

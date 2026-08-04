@@ -105,7 +105,7 @@
       "resend": "Resend",
       "applyAll": "Apply to Board",
       "applyOpenQuestions": "Add Open Questions Only",
-      "applyEvidenceSuggestions": "Add Evidence Suggestions Only"
+      "applyEvidenceSuggestions": "Retain Evidence Candidates Only"
     },
     "apply": {
       "reviewPrefix": "AI Review",
@@ -129,7 +129,7 @@
       "dispatchFailed": "Dispatch failed.",
       "controlFailed": "The review action could not be sent.",
       "applyFailed": "The review could not be applied to the board.",
-      "applied": "The selected review items were added to the board.",
+      "applied": "The selected review action was completed. Evidence suggestions remain candidates until linked to a real source and excerpt.",
       "noResult": "There is no ready review result to apply.",
       "historyEmpty": "No review history yet.",
       "resultEmpty": "The AI reply is not ready yet.",

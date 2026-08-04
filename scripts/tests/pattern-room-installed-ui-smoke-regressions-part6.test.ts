@@ -537,9 +537,10 @@ const APPLY_CASES = [
     mode: "all",
     selector: "[data-pattern-case-review-apply-all='true']",
     notes: 0,
-    evidence: 1,
+    evidence: 0,
     nodes: 6,
     edges: 1,
+    autosaves: 1,
   },
   {
     mode: "open-questions-only",
@@ -548,19 +549,21 @@ const APPLY_CASES = [
     evidence: 0,
     nodes: 1,
     edges: 0,
+    autosaves: 1,
   },
   {
     mode: "evidence-suggestions-only",
     selector: "[data-pattern-case-review-apply-evidence-suggestions='true']",
     notes: 0,
-    evidence: 1,
+    evidence: 0,
     nodes: 0,
     edges: 0,
+    autosaves: 0,
   },
 ] as const;
 
 for (const applyCase of APPLY_CASES) {
-  void test(`pattern-room installed UI applies ${applyCase.mode} only after click and autosaves additive changes`, async () => {
+  void test(`pattern-room installed UI applies ${applyCase.mode} only after click and autosaves only local mutations`, async () => {
     const environment = createMinimalForgeUiEnvironment();
     const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -651,7 +654,7 @@ for (const applyCase of APPLY_CASES) {
       assert.equal(
         environment.sentCommands.filter((commandName) => commandName === PATTERN_ROOM_SAVE_COMMAND)
           .length,
-        1
+        applyCase.autosaves
       );
 
       const applyEvent: Extract<PatternRoomCaseReviewEvent, { type: "review-applied" }> = {

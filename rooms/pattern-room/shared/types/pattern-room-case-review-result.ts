@@ -15,6 +15,15 @@ export const PATTERN_ROOM_CASE_REVIEW_SECTION_KEYS = [
 export type PatternRoomCaseReviewSectionKey =
   (typeof PATTERN_ROOM_CASE_REVIEW_SECTION_KEYS)[number];
 
+export type PatternRoomCaseReviewSuggestionKind =
+  | "review_observation"
+  | "review_analysis"
+  | "review_counter_argument"
+  | "evidence_candidate"
+  | "connection_candidate"
+  | "open_question"
+  | "uncertainty_note";
+
 export type PatternRoomCaseReviewResultItem = {
   readonly id: string;
   readonly section: PatternRoomCaseReviewSectionKey;
@@ -34,6 +43,15 @@ export type PatternRoomCaseReviewConnectionSuggestion = {
   readonly targetId: string;
   readonly note: string | null;
   readonly rawText: string;
+};
+
+export type PatternRoomCaseReviewSuggestion = {
+  readonly id: string;
+  readonly kind: PatternRoomCaseReviewSuggestionKind;
+  readonly text: string;
+  readonly section: PatternRoomCaseReviewSectionKey;
+  readonly sourceItemId: string | null;
+  readonly connection: PatternRoomCaseReviewConnectionSuggestion | null;
 };
 
 export type PatternRoomCaseReviewWarningCode =
@@ -56,6 +74,7 @@ export type PatternRoomCaseReviewResult = {
     Record<PatternRoomCaseReviewSectionKey, PatternRoomCaseReviewSection>
   >;
   readonly items: readonly PatternRoomCaseReviewResultItem[];
+  readonly suggestions: readonly PatternRoomCaseReviewSuggestion[];
   readonly warnings: readonly PatternRoomCaseReviewWarning[];
   readonly confidence: readonly string[];
   readonly missingEvidence: readonly string[];

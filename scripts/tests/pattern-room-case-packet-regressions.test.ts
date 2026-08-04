@@ -185,7 +185,10 @@ void test("pattern-room structured case packet projection is independent from re
     "utf8"
   );
 
-  assert.doesNotMatch(projectionSource, /PatternReportItem|PatternReportSection|PatternRoomWorkspaceModel/);
+  assert.doesNotMatch(
+    projectionSource,
+    /PatternReportItem|PatternReportSection|PatternRoomWorkspaceModel/
+  );
   assert.doesNotMatch(projectionSource, /readReportSection|readMetaValue|parseConnectionBody/);
   assert.doesNotMatch(projectionSource, /from\s+["'][^"']*(?:host|ui|pattern-report-panel)/i);
   assert.doesNotMatch(projectionSource, /ipcRenderer|ipcMain|roomAPI|autosave|SourcePackage/i);
