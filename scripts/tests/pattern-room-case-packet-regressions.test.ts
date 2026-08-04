@@ -5,11 +5,11 @@ import { resolve } from "node:path";
 
 import { createPatternRoomCasePacket } from "../../rooms/pattern-room/shared/adapters/pattern-room-case-packet-adapter.ts";
 import { adaptDomainToViewModels } from "../../rooms/pattern-room/shared/adapters/pattern-room-view-adapters.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
 import { PATTERN_ROOM_SNAPSHOT_VERSION } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
 import type { PatternRoomLocalOverlay } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
-import type { PatternRoomMockData } from "../../rooms/pattern-room/shared/types/pattern-room.ts";
+import type { PatternRoomWorkspaceModel } from "../../rooms/pattern-room/shared/types/pattern-room.ts";
 
 function createLongText(label: string): string {
   return Array.from({ length: 24 }, (_value, index) => {
@@ -19,10 +19,10 @@ function createLongText(label: string): string {
 
 function createCasePacketFixture(): {
   beforeDomain: string;
-  viewModels: PatternRoomMockData;
+  viewModels: PatternRoomWorkspaceModel;
 } {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   localState.addAuthoredSource("Uzun kaynak başlığı", "Kullanıcı arşivi", createLongText("Kaynak"));
   localState.addAuthoredClaim("Yerel iddia", "Kullanıcı tarafından eklenen iddia.");
@@ -71,7 +71,7 @@ function createCasePacketFixture(): {
 
   return {
     beforeDomain,
-    viewModels: adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, overlay),
+    viewModels: adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_TEST_FIXTURE, overlay),
   };
 }
 
@@ -91,7 +91,7 @@ void test("pattern-room phase 15B case packet is deterministic and read-only", (
   assert.equal(firstPacket.roomId, "pattern-room");
   assert.equal(firstPacket.generatedFrom, "local-view-model");
   assert.equal(JSON.stringify(viewModels), beforeViewModels);
-  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
 });
 
 void test("pattern-room phase 15B case packet carries local sources, evidence, notes, connections, and debate previews", () => {
@@ -165,7 +165,7 @@ void test("pattern-room phase 15B case packet limits long previews without verdi
   assert.equal(packet.connections.length, 1);
   assert.equal(packet.limits.excerptMaxLength, 80);
   assert.equal(packet.evidence[0]?.excerptPreview.length, 80);
-  assert.match(packet.evidence[0].excerptPreview , /\.\.\.$/);
+  assert.match(packet.evidence[0].excerptPreview, /\.\.\.$/);
   assert.equal((packet.connections[0]?.notePreview ?? "").length, 80);
 
   assert.doesNotMatch(

@@ -3,7 +3,7 @@ import type {
   PatternLongTextSourceImportInput,
   PatternLongTextSourceImportStatus,
   PatternPanelActions,
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
   PatternSampleSourceImportStatus,
   PatternSourceSegment,
   PatternUserTextSourceImportStatus,
@@ -713,7 +713,7 @@ function createArchiveSourceDetail(
 }
 
 export function createArchivePanel(
-  data: PatternRoomMockData,
+  data: PatternRoomWorkspaceModel,
   actions: PatternPanelActions,
   onBack: () => void,
   userTextSourceImportStatus: PatternUserTextSourceImportStatus | null = null,

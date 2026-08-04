@@ -110,7 +110,8 @@ function removeUnusedNamedImport(source, name) {
 }
 
 async function migrateInstalledUiTests() {
-  const importPattern = /await import\(\s*`\$\{pathToFileURL\(resolve\(installedCopy\.rootDir,\s*"ui\/index\.js"\)\)\.href\}\?[^`]+`\s*\);/g;
+  const importPattern =
+    /await import\(\s*`\$\{pathToFileURL\(resolve\(installedCopy\.rootDir,\s*"ui\/index\.js"\)\)\.href\}\?[^`]+`\s*\);/g;
 
   for (const path of INSTALLED_UI_TEST_FILES) {
     let source = await readRepoFile(path);

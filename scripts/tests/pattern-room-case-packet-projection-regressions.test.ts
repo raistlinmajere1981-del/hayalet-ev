@@ -33,10 +33,22 @@ void test("structured Case Packet projection reads domain and local overlay with
   });
 
   assert.equal(packet.topicLabel, "Dunya'nin sekli arastirmasi");
-  assert.equal(packet.sources.some((source) => source.label === "Yerel belge"), true);
-  assert.equal(packet.evidence.some((evidence) => evidence.label === "Yerel pasaj"), true);
-  assert.equal(packet.boardNotes.some((note) => note.label === "Yerel iddia"), true);
-  assert.equal(packet.connections.some((connection) => connection.id === "local-edge-001"), true);
+  assert.equal(
+    packet.sources.some((source) => source.label === "Yerel belge"),
+    true
+  );
+  assert.equal(
+    packet.evidence.some((evidence) => evidence.label === "Yerel pasaj"),
+    true
+  );
+  assert.equal(
+    packet.boardNotes.some((note) => note.label === "Yerel iddia"),
+    true
+  );
+  assert.equal(
+    packet.connections.some((connection) => connection.id === "local-edge-001"),
+    true
+  );
   assert.equal(
     packet.openQuestions.some((question) => question.includes("Hangi kaynak")),
     true

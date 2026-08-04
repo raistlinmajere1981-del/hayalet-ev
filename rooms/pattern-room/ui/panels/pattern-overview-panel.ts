@@ -1,4 +1,4 @@
-import type { PatternRoomMockData, PatternViewId } from "../../shared/types/pattern-room.js";
+import type { PatternRoomWorkspaceModel, PatternViewId } from "../../shared/types/pattern-room.js";
 import {
   createPatternWorkspaceTranslator,
   type PatternWorkspaceTextKey,
@@ -45,7 +45,7 @@ const HOTSPOTS: Array<{
 ];
 
 export function createOverviewPanel(
-  data: PatternRoomMockData,
+  data: PatternRoomWorkspaceModel,
   onOpenView: (viewId: Exclude<PatternViewId, "overview">) => void,
   text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)
 ): HTMLElement {

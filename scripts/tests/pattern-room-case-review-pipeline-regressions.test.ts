@@ -170,7 +170,10 @@ void test("pattern-room parser creates readonly typed sections and exact connect
   const result = parsePatternRoomCaseReviewResult(STRUCTURED_REPLY);
 
   assert.equal(result.fallbackUsed, false);
-  assert.equal(result.sections.observation.items[0]?.text, "Kamera saat kaydı ile not arasında fark var.");
+  assert.equal(
+    result.sections.observation.items[0]?.text,
+    "Kamera saat kaydı ile not arasında fark var."
+  );
   assert.equal(result.sections.analysis.items.length, 1);
   assert.equal(result.suggestedConnections.length, 2);
   assert.deepEqual(result.suggestedConnections[0], {
@@ -326,16 +329,9 @@ void test("pattern-room immutable lifecycle completes the required event order",
   assert.equal(applied.activeSession?.status, "applied");
   assert.equal(applied.activeSession?.appliedAt, timestamp(8));
   assert.deepEqual(
-    [
-      preview,
-      started,
-      sent,
-      waiting,
-      received,
-      parsedState,
-      ready,
-      applied,
-    ].map((state) => state.activeSession?.lastEvent),
+    [preview, started, sent, waiting, received, parsedState, ready, applied].map(
+      (state) => state.activeSession?.lastEvent
+    ),
     [
       "preview-created",
       "dispatch-started",
@@ -351,9 +347,7 @@ void test("pattern-room immutable lifecycle completes the required event order",
   assert.equal(Object.isFrozen(applied.activeSession), true);
   assert.equal(Object.isFrozen(applied.activeSession?.applySummary), true);
   assert.equal(Object.isFrozen(applied.activeSession?.applySummary?.warnings), true);
-  assert.deepEqual(applied.activeSession?.applySummary?.warnings, [
-    "Exact-id bağlantısı atlandı.",
-  ]);
+  assert.deepEqual(applied.activeSession?.applySummary?.warnings, ["Exact-id bağlantısı atlandı."]);
   assert.equal(Object.isFrozen(applied.history), true);
   assert.equal(preview.activeSession?.requestId, null);
   assert.notEqual(ready, parsedState);
@@ -577,15 +571,18 @@ void test("pattern-room controlled apply is additive and respects all three mode
     addAuthoredUncertainty(label: string, content: string): void {
       calls.questions.push(`${label}:${content}`);
     },
-    addAuthoredEvidence(
-      label: string,
-      excerpt: string,
-      interpretation?: string
-    ): void {
+    addAuthoredEvidence(label: string, excerpt: string, interpretation?: string): void {
       calls.evidence.push(`${label}:${excerpt}:${interpretation ?? ""}`);
     },
     addAuthoredEdge(
-      edgeType: "supports" | "contradicts" | "references" | "derived_from" | "inspired_by" | "questions" | "needs_review",
+      edgeType:
+        | "supports"
+        | "contradicts"
+        | "references"
+        | "derived_from"
+        | "inspired_by"
+        | "questions"
+        | "needs_review",
       sourceId: string,
       targetId: string
     ): void {

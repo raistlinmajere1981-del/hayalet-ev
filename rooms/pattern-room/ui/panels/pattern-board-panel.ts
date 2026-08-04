@@ -2,7 +2,7 @@ import type {
   PatternBoardPin,
   PatternConnectionOption,
   PatternPanelActions,
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
 } from "../../shared/types/pattern-room.js";
 import {
   createPatternWorkspaceTranslator,
@@ -127,7 +127,10 @@ function createBoardAuthoringPanel(
   return authoring;
 }
 
-function findBoardPin(data: PatternRoomMockData, pinId: string | null): PatternBoardPin | null {
+function findBoardPin(
+  data: PatternRoomWorkspaceModel,
+  pinId: string | null
+): PatternBoardPin | null {
   if (pinId === null) {
     return null;
   }
@@ -150,7 +153,7 @@ function createDetailMetric(label: string, value: string): HTMLElement {
 
 function renderSelectedPinDetail(
   detail: HTMLElement,
-  data: PatternRoomMockData,
+  data: PatternRoomWorkspaceModel,
   actions: PatternPanelActions,
   pinId: string | null
 ): void {
@@ -236,7 +239,7 @@ function renderSelectedPinDetail(
 }
 
 export function createBoardPanel(
-  data: PatternRoomMockData,
+  data: PatternRoomWorkspaceModel,
   actions: PatternPanelActions,
   onBack: () => void,
   text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)

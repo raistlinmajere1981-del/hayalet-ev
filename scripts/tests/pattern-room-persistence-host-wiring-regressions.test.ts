@@ -1,3 +1,4 @@
+import { PATTERN_ROOM_DOMAIN } from "../../rooms/pattern-room/shared/data/pattern-room-domain.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -6,7 +7,7 @@ import { resolve } from "node:path";
 import { RoomCommandRegistry } from "../../src/js/modules/rooms/room-command-registry.ts";
 import type { InstalledRoomRecord } from "../../src/types/rooms.ts";
 import createPatternRoomHostRuntime from "../../rooms/pattern-room/host/runtime.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
 import { createSnapshot } from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
 import {
@@ -16,7 +17,10 @@ import {
   PATTERN_ROOM_SAVED_EVENT,
   PATTERN_ROOM_SAVE_FAILED_EVENT,
 } from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
-import type { PatternRoomSnapshotMeta, PatternRoomStorageAdapter } from "../../rooms/pattern-room/shared/types/pattern-room-storage.ts";
+import type {
+  PatternRoomSnapshotMeta,
+  PatternRoomStorageAdapter,
+} from "../../rooms/pattern-room/shared/types/pattern-room-storage.ts";
 import type { PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
 
 type PatternRoomNotification = {
@@ -41,7 +45,7 @@ const PATTERN_ROOM_RECORD: InstalledRoomRecord = {
 };
 
 function createTestSnapshot(snapshotId: string): PatternRoomSessionSnapshot {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   localState.addLocalNote(`Persistence host note ${snapshotId}`);
   return {
     ...createSnapshot(localState, "archive"),
@@ -366,9 +370,7 @@ void test("pattern-room host default storage uses the preload file bridge", asyn
   await withMockWindow(
     {
       electronAPI: {
-        fmWriteFileAtomic(
-          payload: Record<string, unknown>
-        ): Record<string, unknown> {
+        fmWriteFileAtomic(payload: Record<string, unknown>): Record<string, unknown> {
           const filePath = typeof payload["path"] === "string" ? payload["path"] : "";
           const data = typeof payload["data"] === "string" ? payload["data"] : "";
           fileByPath.set(filePath, data);
@@ -500,7 +502,7 @@ void test("pattern-room host save queue recovers after a failed save", async () 
   );
 });
 
-void test("pattern-room host ready lifecycle best-effort loads the mock topic", async () => {
+void test("pattern-room host ready lifecycle best-effort loads the production topic", async () => {
   const loadedTopicIds: string[] = [];
   const { activation, notifications } = activateWithStore(
     createMockStorageAdapter({
@@ -513,7 +515,7 @@ void test("pattern-room host ready lifecycle best-effort loads the mock topic", 
 
   await activation.onRoomReady();
 
-  assert.deepEqual(loadedTopicIds, [PATTERN_ROOM_DOMAIN_MOCK.topic.id]);
+  assert.deepEqual(loadedTopicIds, [PATTERN_ROOM_DOMAIN.topic.id]);
   assert.deepEqual(notifications, [
     {
       payload: { snapshot: null },

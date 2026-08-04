@@ -1,7 +1,7 @@
 import type {
   PatternConnectionOption,
   PatternPanelActions,
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
 } from "../../shared/types/pattern-room.js";
 import {
   createPatternWorkspaceTranslator,
@@ -28,7 +28,7 @@ function createConnectionEntity(option: PatternConnectionOption): HTMLElement {
 }
 
 export function createDeskPanel(
-  data: PatternRoomMockData,
+  data: PatternRoomWorkspaceModel,
   actions: PatternPanelActions,
   onBack: () => void,
   text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)

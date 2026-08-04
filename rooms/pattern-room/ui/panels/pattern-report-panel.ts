@@ -2,7 +2,7 @@ import type {
   PatternPanelActions,
   PatternReportItem,
   PatternReportSection,
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
 } from "../../shared/types/pattern-room.js";
 import {
   createPatternWorkspaceTranslator,
@@ -46,7 +46,7 @@ function appendReportSectionContent(card: HTMLElement, section: PatternReportSec
 }
 
 export function createReportPanel(
-  data: PatternRoomMockData,
+  data: PatternRoomWorkspaceModel,
   _actions: PatternPanelActions,
   onBack: () => void,
   text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)

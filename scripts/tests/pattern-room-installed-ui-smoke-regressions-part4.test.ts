@@ -1,18 +1,23 @@
+import { startPatternRoomInstalledUi } from "./pattern-room-installed-ui-smoke.helpers.ts";
 import type { FakeElement } from "./forge-room-ui-smoke.helpers.ts";
 import {
   assert,
   createMinimalForgeUiEnvironment,
   createRoomInstalledCopy,
   fireEvent,
-  pathToFileURL,
   readTreeText,
-  resolve,
-  test
+  test,
 } from "./forge-room-ui-smoke.helpers.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import { restoreFromSnapshot } from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
-import { PATTERN_ROOM_LOADED_EVENT, PATTERN_ROOM_SAVE_COMMAND } from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
-import { PATTERN_ROOM_SNAPSHOT_VERSION, type PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
+import {
+  PATTERN_ROOM_LOADED_EVENT,
+  PATTERN_ROOM_SAVE_COMMAND,
+} from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
+import {
+  PATTERN_ROOM_SNAPSHOT_VERSION,
+  type PatternRoomSessionSnapshot,
+} from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
 
 type PatternFocusedViewId = "board" | "desk" | "archive" | "tenth-man" | "report";
 type PatternRoomFakeApp = FakeElement;
@@ -23,10 +28,7 @@ function assertTextIncludes(text: string, expectedValues: string[]): void {
   });
 }
 
-function openFocusedView(
-  app: PatternRoomFakeApp,
-  viewId: PatternFocusedViewId
-): void {
+function openFocusedView(app: PatternRoomFakeApp, viewId: PatternFocusedViewId): void {
   const hotspot = app.querySelector(`[data-pattern-hotspot='${viewId}']`);
   assert.ok(hotspot);
   fireEvent(hotspot, "click");
@@ -205,7 +207,8 @@ function clickBoardPin(app: PatternRoomFakeApp, pinId: string): void {
 }
 
 function setWindowConfirm(handler: (message: string) => boolean): void {
-  (globalThis as unknown as { window: { confirm: (message: string) => boolean } }).window.confirm = handler;
+  (globalThis as unknown as { window: { confirm: (message: string) => boolean } }).window.confirm =
+    handler;
 }
 
 function readLatestSavePayload(
@@ -228,9 +231,7 @@ void test("pattern-room installed UI phase 13F captures manual evidence from sou
   const expectedExcerpt = `${longText.replace(/\s+/g, " ").trim().slice(0, 240).trimEnd()}…`;
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?source-evidence=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -342,7 +343,7 @@ void test("pattern-room installed UI phase 13F captures manual evidence from sou
     assert.deepEqual(captureSnapshot.overlay.localAuthoredNodes, []);
     assert.deepEqual(captureSnapshot.overlay.localAuthoredEdges, []);
     assert.deepEqual(captureSnapshot.overlay.pinnedSourceIds, []);
-    const restored = restoreFromSnapshot(captureSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
+    const restored = restoreFromSnapshot(captureSnapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
     assert.ok(restored);
     assert.equal(restored.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
     assert.equal(restored.overlay.localAuthoredEvidence[0].sourceLabel, "Faz 13F uzun kaynak");
@@ -395,9 +396,7 @@ void test("pattern-room installed UI phase 14B-2 prepares manual evidence from a
   const firstSegmentLabel = firstSegmentText.replace(/\s+/g, " ").trim().slice(0, 80);
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?source-segment-evidence=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -575,7 +574,7 @@ void test("pattern-room installed UI phase 14B-2 prepares manual evidence from a
     assert.deepEqual(evidenceSnapshot.overlay.localAuthoredNodes, []);
     assert.deepEqual(evidenceSnapshot.overlay.localAuthoredEdges, []);
     assert.deepEqual(evidenceSnapshot.overlay.pinnedSourceIds, []);
-    const restored = restoreFromSnapshot(evidenceSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
+    const restored = restoreFromSnapshot(evidenceSnapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
     assert.ok(restored);
     assert.equal(restored.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
     assert.equal(
@@ -600,9 +599,7 @@ void test("pattern-room installed UI phase 14B-3 searches source detail locally"
   const noMatchQuery = "UI_ONLY_QUERY_14B3";
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?source-detail-search=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -800,9 +797,7 @@ void test("pattern-room installed UI phase 15A renders a read-only deterministic
     "Faz 15A ikinci segmenti kaynak metadata sayımı için saklanır.";
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?report-draft=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -935,9 +930,7 @@ void test("pattern-room installed UI phase 13C rejects blank long text fields", 
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?long-text-empty=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -987,15 +980,13 @@ void test("pattern-room installed UI phase 13C rejects blank long text fields", 
 });
 
 void test("pattern-room installed UI phase 12G-A cancels local source removal safely", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const confirmMessages: string[] = [];
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?remove-cancel=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -1031,7 +1022,7 @@ void test("pattern-room installed UI phase 12G-A cancels local source removal sa
     assert.ok(environment.app.querySelector("[data-pattern-archive-source='local-source-001']"));
     assert.equal(environment.pendingTimerCount(), 0);
     assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
   } finally {
     environment.restore();
     await installedCopy.cleanup();
@@ -1039,14 +1030,12 @@ void test("pattern-room installed UI phase 12G-A cancels local source removal sa
 });
 
 void test("pattern-room installed UI phase 11D imports a mock SourcePackage from the archive demo", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?source-import-demo=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -1117,10 +1106,9 @@ void test("pattern-room installed UI phase 11D imports a mock SourcePackage from
       1
     );
 
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
   } finally {
     environment.restore();
     await installedCopy.cleanup();
   }
 });
-

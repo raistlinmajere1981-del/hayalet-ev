@@ -215,8 +215,7 @@ function activateHost(
     async dispatchBridge(payload) {
       dispatchCalls.push(payload);
       const clientRequestId = String(payload["clientRequestId"] ?? "");
-      return await (
-        options.dispatchBridge?.(payload) ??
+      return await (options.dispatchBridge?.(payload) ??
         Promise.resolve({
           clientRequestId,
           reqId: clientRequestId,
@@ -226,8 +225,7 @@ function activateHost(
             text: CASE_REVIEW_REPLY,
           },
           success: true,
-        })
-      );
+        }));
     },
     getState(key) {
       return state.get(key);
@@ -304,7 +302,9 @@ function createSuccessfulBridgeResult(
 }
 
 function readPatternRoomManifest(): RoomManifest {
-  const manifest = JSON.parse(readFileSync(resolve("rooms/pattern-room/manifest.json"), "utf8")) as RoomManifest;
+  const manifest = JSON.parse(
+    readFileSync(resolve("rooms/pattern-room/manifest.json"), "utf8")
+  ) as RoomManifest;
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true, result.errors.join("\n"));
@@ -369,7 +369,6 @@ void test("pattern-room case review commands stay out of manifest command specs"
     false
   );
 });
-
 
 void test("pattern-room case review dispatch rejects non room-ui providers and wrong rooms", async () => {
   RoomCommandRegistry.reset();
@@ -537,7 +536,10 @@ void test("pattern-room case review rejects malformed typed requests before brid
     })
   );
 
-  assert.equal(results.every((result) => result.success === false), true);
+  assert.equal(
+    results.every((result) => result.success === false),
+    true
+  );
   assert.deepEqual(dispatchCalls, []);
   assert.equal(readReviewState(state).revision, 0);
   assert.equal(
@@ -562,9 +564,8 @@ void test("pattern-room maps resolved SlotBridge TARGET_TIMEOUT to timed-out sta
     },
   });
 
-  const result = await activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND](
-    createDispatchRequest()
-  );
+  const result =
+    await activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND](createDispatchRequest());
 
   assert.equal(result.success, false);
   assert.equal(result.success === false ? result.code : null, "TARGET_TIMEOUT");
@@ -625,7 +626,6 @@ void test("pattern-room reports bridge rejection and accepts a new retry request
   assert.equal(readReviewState(state).activeSession?.operation, "retry");
 });
 
-
 void test("pattern-room maps partial and blank replies to reply-invalid", async () => {
   const partialHost = activateHost({
     async dispatchBridge(payload) {
@@ -639,9 +639,10 @@ void test("pattern-room maps partial and blank replies to reply-invalid", async 
       });
     },
   });
-  const partialResult = await partialHost.activation.commands[
-    PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND
-  ](createDispatchRequest());
+  const partialResult =
+    await partialHost.activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND](
+      createDispatchRequest()
+    );
   assert.equal(partialResult.success, false);
   assert.equal(
     readReviewEventPayloads(partialHost.notifications).at(-1)?.event.type,
@@ -654,9 +655,10 @@ void test("pattern-room maps partial and blank replies to reply-invalid", async 
       return await Promise.resolve(createSuccessfulBridgeResult(requestId, { text: "   " }));
     },
   });
-  const blankResult = await blankHost.activation.commands[
-    PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND
-  ](createDispatchRequest());
+  const blankResult =
+    await blankHost.activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND](
+      createDispatchRequest()
+    );
   assert.equal(blankResult.success, false);
   assert.equal(blankResult.success === false ? blankResult.code : null, "REPLY_INVALID");
   assert.equal(readReviewState(blankHost.state).activeSession?.status, "failed");
@@ -670,9 +672,8 @@ void test("pattern-room captures the reply before reporting parser failures", as
     },
   });
 
-  const result = await activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND](
-    createDispatchRequest()
-  );
+  const result =
+    await activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND](createDispatchRequest());
 
   assert.equal(result.success, false);
   assert.equal(result.success === false ? result.code : null, "REPLY_PARSE_FAILED");
@@ -854,7 +855,6 @@ void test("pattern-room supersedes a different active target and ignores its lat
   );
 });
 
-
 void test("pattern-room cancellation releases the target for retry and ignores the late old reply", async () => {
   const firstDeferred = createDeferred<unknown>();
   const { activation, dispatchCalls, notifications, state } = activateHost({
@@ -953,9 +953,8 @@ void test("pattern-room resend creates a new session and request history entry",
 
 void test("pattern-room apply control records typed summary without overwriting the review result", async () => {
   const { activation, notifications, state } = activateHost();
-  const dispatchResult = await activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND](
-    createDispatchRequest()
-  );
+  const dispatchResult =
+    await activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND](createDispatchRequest());
   assert.equal(dispatchResult.success, true);
   const resultBeforeApply = readReviewState(state).activeSession?.result;
 
@@ -1018,9 +1017,8 @@ void test("pattern-room dispose prevents late reply notifications and state comm
       return await deferred.promise;
     },
   });
-  const dispatchPromise = activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND](
-    createDispatchRequest()
-  );
+  const dispatchPromise =
+    activation.commands[PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND](createDispatchRequest());
   const eventCountBeforeDispose = readReviewEventPayloads(notifications).length;
   const revisionBeforeDispose = readReviewState(state).revision;
 
@@ -1040,9 +1038,7 @@ void test("pattern-room host re-publishes surviving review state and immutable d
   const stateBeforeReady = readReviewState(state);
   const activeSession = stateBeforeReady.activeSession;
   assert.ok(activeSession);
-  const storedDraft = activeSession.metadata[
-    "dispatchDraft"
-  ] as PatternRoomCaseReviewDispatchDraft;
+  const storedDraft = activeSession.metadata["dispatchDraft"] as PatternRoomCaseReviewDispatchDraft;
   assert.ok(storedDraft);
   assert.notStrictEqual(storedDraft, draft);
   assert.notStrictEqual(storedDraft.payload, draft.payload);

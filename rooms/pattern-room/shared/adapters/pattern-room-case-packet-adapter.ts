@@ -2,7 +2,7 @@ import type {
   PatternBoardPin,
   PatternReportItem,
   PatternReportSection,
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
 } from "../types/pattern-room.js";
 import {
   PATTERN_ROOM_CASE_PACKET_VERSION,
@@ -18,9 +18,9 @@ import {
 export type PatternRoomCasePacketBuilderOptions = Partial<PatternRoomCasePacketLimits>;
 
 export type PatternRoomCasePacketInput =
-  | PatternRoomMockData
+  | PatternRoomWorkspaceModel
   | {
-      viewModels: PatternRoomMockData;
+      viewModels: PatternRoomWorkspaceModel;
       topicLabel?: string;
     };
 
@@ -46,7 +46,7 @@ const BOARD_NOTE_LAYER_BY_TYPE_LABEL: Readonly<Record<string, string>> = {
 };
 
 function resolveInput(input: PatternRoomCasePacketInput): {
-  viewModels: PatternRoomMockData;
+  viewModels: PatternRoomWorkspaceModel;
   topicLabel: string;
 } {
   if ("viewModels" in input) {
@@ -131,7 +131,7 @@ function stripLabelPrefix(value: string, prefix: string): string {
 }
 
 function readReportSection(
-  viewModels: PatternRoomMockData,
+  viewModels: PatternRoomWorkspaceModel,
   sectionId: string
 ): PatternReportSection | null {
   return (
@@ -154,7 +154,7 @@ function readMetaValue(item: PatternReportItem, label: string): string | null {
   return value === "" ? null : value;
 }
 
-function createBoardPinIndex(viewModels: PatternRoomMockData): Map<string, PatternBoardPin> {
+function createBoardPinIndex(viewModels: PatternRoomWorkspaceModel): Map<string, PatternBoardPin> {
   const pinIndex = new Map<string, PatternBoardPin>();
   for (const category of viewModels.boardCategories) {
     for (const pin of category.pins) {
@@ -165,7 +165,7 @@ function createBoardPinIndex(viewModels: PatternRoomMockData): Map<string, Patte
 }
 
 function createCasePacketSources(
-  viewModels: PatternRoomMockData,
+  viewModels: PatternRoomWorkspaceModel,
   limits: PatternRoomCasePacketLimits
 ): PatternRoomCasePacketSource[] {
   return viewModels.sources.slice(0, limits.maxSources).map((source) => {
@@ -185,7 +185,7 @@ function createCasePacketSources(
 }
 
 function createCasePacketEvidence(
-  viewModels: PatternRoomMockData,
+  viewModels: PatternRoomWorkspaceModel,
   limits: PatternRoomCasePacketLimits
 ): PatternRoomCasePacketEvidence[] {
   const evidenceSection = readReportSection(viewModels, "report-evidence-notes");
@@ -215,7 +215,7 @@ function createCasePacketEvidence(
 }
 
 function createCasePacketBoardNotes(
-  viewModels: PatternRoomMockData,
+  viewModels: PatternRoomWorkspaceModel,
   limits: PatternRoomCasePacketLimits
 ): PatternRoomCasePacketBoardNote[] {
   const boardSection = readReportSection(viewModels, "report-board-notes");
@@ -260,7 +260,7 @@ function parseConnectionBody(body: string): {
 }
 
 function createCasePacketConnections(
-  viewModels: PatternRoomMockData,
+  viewModels: PatternRoomWorkspaceModel,
   limits: PatternRoomCasePacketLimits
 ): PatternRoomCasePacketConnection[] {
   const connectionSection = readReportSection(viewModels, "report-local-connections");
@@ -293,7 +293,7 @@ function createCasePacketConnections(
 }
 
 function createCasePacketDebate(
-  viewModels: PatternRoomMockData,
+  viewModels: PatternRoomWorkspaceModel,
   limits: PatternRoomCasePacketLimits
 ): PatternRoomCasePacketDebate {
   const session = viewModels.tenthManSession;
@@ -314,7 +314,7 @@ function createCasePacketDebate(
 }
 
 function createOpenQuestions(
-  viewModels: PatternRoomMockData,
+  viewModels: PatternRoomWorkspaceModel,
   limits: PatternRoomCasePacketLimits
 ): string[] {
   const nextResearchSection = readReportSection(viewModels, "report-next-research-notes");

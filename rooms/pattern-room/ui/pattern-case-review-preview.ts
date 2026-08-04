@@ -1,7 +1,9 @@
-import { createPatternRoomCasePacket } from "../shared/adapters/pattern-room-case-packet-adapter.js";
+import {
+  createPatternRoomCasePacketFromProjection,
+  type PatternRoomCasePacketProjectionInput,
+} from "../shared/adapters/pattern-room-case-packet-projection.js";
 import { createPatternRoomCaseReviewDispatchDraft } from "../shared/adapters/pattern-room-case-review-dispatch-adapter.js";
 import { createPatternRoomCaseReviewMessage } from "../shared/adapters/pattern-room-case-review-message-adapter.js";
-import type { PatternRoomMockData } from "../shared/types/pattern-room.js";
 import type {
   PatternRoomCaseReviewDispatchDraft,
   PatternRoomCaseReviewDispatchProtocol,
@@ -31,10 +33,10 @@ export type PatternCaseReviewDispatchStatus = {
 };
 
 export function createPatternCaseReviewPreviewDraft(
-  data: PatternRoomMockData,
+  input: PatternRoomCasePacketProjectionInput,
   roleSlot: PatternRoomCaseReviewRoleSlot = PATTERN_CASE_REVIEW_DEFAULT_ROLE_SLOT
 ): PatternCaseReviewPreviewDraft {
-  const casePacket = createPatternRoomCasePacket(data);
+  const casePacket = createPatternRoomCasePacketFromProjection(input);
   const reviewMessage = createPatternRoomCaseReviewMessage({
     casePacket,
     roleSlot,

@@ -22,7 +22,7 @@ import type {
   PatternDebateReference,
   PatternReportItem,
   PatternReportSection,
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
   PatternSource,
 } from "../types/pattern-room.js";
 import type {
@@ -45,22 +45,22 @@ export type PatternRoomDomainViewSource = {
 };
 
 export type PatternOverviewViewModel = Pick<
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
   "roomTitle" | "roomLabel" | "roomSummary" | "subject"
 >;
 
 export type PatternBoardViewModel = Pick<
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
   "boardCategories" | "connectionOptions"
 >;
 
-export type PatternArchiveViewModel = Pick<PatternRoomMockData, "sources">;
+export type PatternArchiveViewModel = Pick<PatternRoomWorkspaceModel, "sources">;
 
-export type PatternDeskViewModel = Pick<PatternRoomMockData, "claims">;
+export type PatternDeskViewModel = Pick<PatternRoomWorkspaceModel, "claims">;
 
-export type PatternTenthManViewModel = Pick<PatternRoomMockData, "tenthManSession">;
+export type PatternTenthManViewModel = Pick<PatternRoomWorkspaceModel, "tenthManSession">;
 
-export type PatternReportViewModel = Pick<PatternRoomMockData, "reportSummary">;
+export type PatternReportViewModel = Pick<PatternRoomWorkspaceModel, "reportSummary">;
 
 type PatternReportSectionId =
   | "report-source-summary"
@@ -979,7 +979,7 @@ export function adaptReportViewModel(
 export function adaptDomainToViewModels(
   domain: PatternRoomDomainViewSource,
   overlay?: PatternRoomLocalOverlay
-): PatternRoomMockData {
+): PatternRoomWorkspaceModel {
   return {
     ...adaptOverviewViewModel(domain),
     ...adaptBoardViewModel(domain, overlay),

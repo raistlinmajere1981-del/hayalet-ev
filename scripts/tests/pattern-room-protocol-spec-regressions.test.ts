@@ -115,9 +115,7 @@ void test("pattern-room case review protocol markdown documents cautious room se
     "## Confidence Notes",
   ];
   assert.deepEqual(
-    markdown
-      .split(/\r?\n/)
-      .filter((line) => expectedResponseHeadings.includes(line)),
+    markdown.split(/\r?\n/).filter((line) => expectedResponseHeadings.includes(line)),
     expectedResponseHeadings
   );
   assert.match(

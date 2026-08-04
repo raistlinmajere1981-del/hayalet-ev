@@ -1,3 +1,4 @@
+import { startPatternRoomInstalledUi } from "./pattern-room-installed-ui-smoke.helpers.ts";
 import type { FakeElement } from "./forge-room-ui-smoke.helpers.ts";
 import {
   assert,
@@ -7,9 +8,9 @@ import {
   pathToFileURL,
   readTreeText,
   resolve,
-  test
+  test,
 } from "./forge-room-ui-smoke.helpers.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import {
   PATTERN_ROOM_LOADED_EVENT,
   PATTERN_ROOM_SAVE_COMMAND,
@@ -30,10 +31,7 @@ function assertTextIncludes(text: string, expectedValues: string[]): void {
   });
 }
 
-function openFocusedView(
-  app: PatternRoomFakeApp,
-  viewId: PatternFocusedViewId
-): void {
+function openFocusedView(app: PatternRoomFakeApp, viewId: PatternFocusedViewId): void {
   const hotspot = app.querySelector(`[data-pattern-hotspot='${viewId}']`);
   assert.ok(hotspot);
   fireEvent(hotspot, "click");
@@ -118,9 +116,7 @@ void test("pattern-room installed UI coalesces fast autosave mutations into one 
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-coalesce=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -154,9 +150,7 @@ void test("pattern-room installed UI flushes a pending autosave before unload", 
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-flush=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -248,9 +242,7 @@ void test("pattern-room installed UI handles save-failed host events without sta
   const warnings: string[] = [];
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?save-failed=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     console.warn = (...args: unknown[]): void => {
       warnings.push(args.map(String).join(" "));
@@ -285,9 +277,7 @@ void test("pattern-room installed UI supports phase 4B local interactions withou
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?local=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     openFocusedView(environment.app, "board");
     const boardNode = environment.app.querySelector(
@@ -380,14 +370,12 @@ void test("pattern-room installed UI supports phase 4B local interactions withou
 });
 
 void test("pattern-room installed UI phase 7C board node authoring form submits claims and guards blanks", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?author-node=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     openFocusedView(environment.app, "board");
 
@@ -445,7 +433,7 @@ void test("pattern-room installed UI phase 7C board node authoring form submits 
       "DOM submit ile eklenen local iddia.",
     ]);
 
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
   } finally {
@@ -455,14 +443,12 @@ void test("pattern-room installed UI phase 7C board node authoring form submits 
 });
 
 void test("pattern-room installed UI phase 7C board evidence form reaches board and report", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?author-evidence=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     openFocusedView(environment.app, "board");
 
@@ -498,7 +484,7 @@ void test("pattern-room installed UI phase 7C board evidence form reaches board 
       "DOM submit ile eklenen local alıntı.",
     ]);
 
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
   } finally {
@@ -506,4 +492,3 @@ void test("pattern-room installed UI phase 7C board evidence form reaches board 
     await installedCopy.cleanup();
   }
 });
-

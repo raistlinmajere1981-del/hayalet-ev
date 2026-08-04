@@ -134,12 +134,6 @@ export type PatternRoomWorkspaceModel = {
   reportSummary: PatternReportSummary;
 };
 
-/**
- * @deprecated Use PatternRoomWorkspaceModel. Kept temporarily while panels and regression tests
- * migrate mechanically during Pattern Room V2 Phase 1.
- */
-export type PatternRoomMockData = PatternRoomWorkspaceModel;
-
 export type PatternSampleSourceImportStatus = {
   packageId: string;
   message: string;

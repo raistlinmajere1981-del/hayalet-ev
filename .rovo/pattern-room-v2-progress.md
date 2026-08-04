@@ -49,17 +49,19 @@ This compatibility boundary is temporary. It will be removed after UI and host i
 - Structured Case Packet projection from domain + overlay.
 - Packet limit preservation.
 
-## Current compatibility debt
+## Phase 1 migration status
 
-The visible UI still imports `PATTERN_ROOM_DOMAIN_MOCK` through the old runtime file. The compatibility module now returns the empty production domain, so sample content is no longer shown, but the import name and test/runtime split remain.
-
-The old Case Packet adapter is still the active UI path. The new structured projection is implemented and tested but not yet wired into preview dispatch.
+- UI and host runtimes now use the production empty domain directly.
+- Regression suites import the isolated fixture explicitly.
+- The compatibility mock-domain module has been removed.
+- Active Case Review preview now builds its packet from structured domain + local overlay data.
+- The old report-string Case Packet adapter remains only for legacy regression coverage and can be retired after those tests move to the structured projection.
 
 ## Next implementation steps
 
-1. Migrate UI runtime and host runtime imports from the compatibility module to `PATTERN_ROOM_DOMAIN`.
-2. Migrate regression tests to explicit `PATTERN_ROOM_DOMAIN_TEST_FIXTURE` imports.
-3. Delete `pattern-room-domain.mock.ts`.
-4. Wire Case Review preview to the structured Case Packet projection.
-5. Remove report-string parsing from the active Case Packet adapter.
-6. Begin the three-region Workspace Shell V2 after the model/projection slice is green.
+1. Move remaining Case Packet regression cases to the structured projection.
+2. Retire the legacy report-string Case Packet adapter.
+3. Introduce explicit AI suggestion records and evidence-candidate promotion rules.
+4. Begin the three-region Workspace Shell V2.
+
+- Direct-runtime Case Review smoke tests now inject the isolated fixture, while the host lifecycle test asserts the production empty topic.

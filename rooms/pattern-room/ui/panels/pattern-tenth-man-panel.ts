@@ -1,7 +1,7 @@
 import type {
   PatternDummyRole,
   PatternPanelActions,
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
   PatternTenthManSession,
 } from "../../shared/types/pattern-room.js";
 import type {
@@ -13,10 +13,9 @@ import {
   isPatternRoomCaseReviewRoleSlot,
   type PatternRoomCaseReviewRoleSlot,
 } from "../../shared/types/pattern-room-case-review-role.js";
-import {
-  createPatternCaseReviewPreviewDraft,
-  type PatternCaseReviewDispatchStatus,
-  type PatternCaseReviewPreviewDraft,
+import type {
+  PatternCaseReviewDispatchStatus,
+  PatternCaseReviewPreviewDraft,
 } from "../pattern-case-review-preview.js";
 import type {
   PatternCaseReviewTextKey,
@@ -37,7 +36,7 @@ export type PatternCaseReviewPreviewPanelState = PatternCaseReviewRuntimePanelSt
   readonly dispatchStatus: PatternCaseReviewDispatchStatus;
   readonly selectedRole: PatternRoomCaseReviewRoleSlot;
   readonly onRoleChange: (role: PatternRoomCaseReviewRoleSlot) => void;
-  readonly onPrepare: (preview: PatternCaseReviewPreviewDraft) => void;
+  readonly onPrepare: () => void;
   readonly onSend: () => void;
 };
 
@@ -279,7 +278,6 @@ function createRoleField(state: PatternCaseReviewPreviewPanelState): HTMLElement
 
 function appendCaseReviewPreview(
   device: HTMLElement,
-  data: PatternRoomMockData,
   previewState: PatternCaseReviewPreviewPanelState
 ): void {
   const previewSection = createElement("section", "pattern-room-case-review-preview");
@@ -294,9 +292,10 @@ function appendCaseReviewPreview(
     renderCaseReviewPreview(previewResult, previewState.preview, previewState.text);
   }
 
-  const prepareButton = createActionButton(previewState.text("actions.prepare"), () => {
-    previewState.onPrepare(createPatternCaseReviewPreviewDraft(data, previewState.selectedRole));
-  });
+  const prepareButton = createActionButton(
+    previewState.text("actions.prepare"),
+    previewState.onPrepare
+  );
   prepareButton.dataset["patternCaseReviewPreviewPrepare"] = "true";
   prepareButton.disabled = isCaseReviewActive(previewState);
 
@@ -399,7 +398,7 @@ function appendPhaseAction(
 }
 
 export function createTenthManPanel(
-  data: PatternRoomMockData,
+  data: PatternRoomWorkspaceModel,
   actions: PatternPanelActions,
   onBack: () => void,
   caseReviewPreviewState: PatternCaseReviewPreviewPanelState,
@@ -454,7 +453,7 @@ export function createTenthManPanel(
   appendReferences(device, session);
   appendTurnList(device, session.turns ?? []);
   appendVerdict(device, session.verdict);
-  appendCaseReviewPreview(reviewSurface, data, caseReviewPreviewState);
+  appendCaseReviewPreview(reviewSurface, caseReviewPreviewState);
 
   workspace.append(reviewSurface, device);
   shell.append(workspace);

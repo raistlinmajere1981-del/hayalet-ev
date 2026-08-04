@@ -1,15 +1,14 @@
+import { startPatternRoomInstalledUi } from "./pattern-room-installed-ui-smoke.helpers.ts";
 import type { FakeElement } from "./forge-room-ui-smoke.helpers.ts";
 import {
   assert,
   createMinimalForgeUiEnvironment,
   createRoomInstalledCopy,
   fireEvent,
-  pathToFileURL,
   readTreeText,
-  resolve,
   test,
 } from "./forge-room-ui-smoke.helpers.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
 import { createSnapshot } from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
 import type { PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
@@ -90,7 +89,7 @@ function createHostLoadedSnapshot(
   activeView: PatternFocusedViewId | "overview",
   noteText: string
 ): PatternRoomSessionSnapshot {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   localState.addLocalNote(noteText);
   return createSnapshot(localState, activeView);
 }
@@ -122,9 +121,7 @@ void test("pattern-room installed UI renders overview hotspots and returns from 
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?smoke=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     assert.equal(environment.readyPayload()?.["roomId"], "pattern-room");
     assert.equal(environment.readyPayload()?.["featureId"], "pattern-workbench");
@@ -202,9 +199,7 @@ void test("pattern-room installed UI keeps workspace navigation persistent and p
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?workspace-shell=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     const shell = environment.app.querySelector("[data-pattern-workspace-shell='true']");
     const outlet = environment.app.querySelector("[data-pattern-workspace-outlet='true']");
@@ -259,9 +254,7 @@ void test("pattern-room installed UI restores a loaded host snapshot", async () 
   const snapshot = createHostLoadedSnapshot("report", "Restored host snapshot note");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?loaded=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot },
@@ -287,9 +280,7 @@ void test("pattern-room installed UI keeps the default state for a null loaded s
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?loaded-null=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -313,9 +304,7 @@ void test("pattern-room installed UI rejects an invalid loaded snapshot without 
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?loaded-invalid=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: {
@@ -323,7 +312,7 @@ void test("pattern-room installed UI rejects an invalid loaded snapshot without 
           activeView: "report",
           roomId: "pattern-room",
           schemaVersion: -1,
-          topicId: PATTERN_ROOM_DOMAIN_MOCK.topic.id,
+          topicId: PATTERN_ROOM_DOMAIN_TEST_FIXTURE.topic.id,
         },
       },
       type: PATTERN_ROOM_LOADED_EVENT,
@@ -345,9 +334,7 @@ void test("pattern-room installed UI does not autosave local mutations before ho
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-gate=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     openFocusedView(environment.app, "board");
     submitBoardLocalNode(environment.app, "Mutation before loaded event", "Pano mutation");
@@ -367,9 +354,7 @@ void test("pattern-room installed UI debounces autosave after a null host load",
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-null=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -399,9 +384,7 @@ void test("pattern-room installed UI autosaves only user mutations after restori
   const snapshot = createHostLoadedSnapshot("report", "Restored snapshot suppresses autosave");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-restore=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot },

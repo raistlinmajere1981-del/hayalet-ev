@@ -4,7 +4,7 @@ import {
   type PatternRoomCaseReviewApplyOptions,
 } from "../shared/adapters/pattern-room-case-review-apply.js";
 import { adaptDomainToViewModels } from "../shared/adapters/pattern-room-view-adapters.js";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../shared/data/pattern-room-domain.mock.js";
+import { PATTERN_ROOM_DOMAIN } from "../shared/data/pattern-room-domain.js";
 import {
   createPatternRoomCaseReviewRuntimeState,
   isPatternRoomCaseReviewRuntimeState,
@@ -44,7 +44,7 @@ import type {
   PatternLongTextSourceImportInput,
   PatternLongTextSourceImportStatus,
   PatternPanelActions,
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
   PatternUserTextSourceImportInput,
   PatternUserTextSourceImportStatus,
   PatternViewId,
@@ -74,6 +74,7 @@ import {
 } from "./panels/pattern-workspace-shell.js";
 import {
   PATTERN_CASE_REVIEW_DEFAULT_ROLE_SLOT,
+  createPatternCaseReviewPreviewDraft,
   type PatternCaseReviewDispatchStatus,
   type PatternCaseReviewPreviewDraft,
 } from "./pattern-case-review-preview.js";
@@ -182,9 +183,16 @@ function resolveRoot(): HTMLElement {
   return root;
 }
 
-export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
+export type PatternRoomUiRuntimeOptions = {
+  readonly domain?: typeof PATTERN_ROOM_DOMAIN;
+};
+
+export function createPatternRoomUiRuntime(
+  options: PatternRoomUiRuntimeOptions = {}
+): PatternRoomUiRuntime {
   const root = resolveRoot();
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const domain = options.domain ?? PATTERN_ROOM_DOMAIN;
+  const localState = createLocalState(domain);
   let activeView: PatternViewId = "overview";
   let activeWorkspaceSection: PatternWorkspaceSection = "default";
   let selectedNodeId: string | null = null;
@@ -196,8 +204,8 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   let renderedView: PatternViewId | null = null;
   const workspacePanelCache = new Map<PatternViewId, HTMLElement>();
   const workspaceScrollOffsets = new Map<PatternViewId, number>();
-  let viewModels: PatternRoomMockData = adaptDomainToViewModels(
-    PATTERN_ROOM_DOMAIN_MOCK,
+  let viewModels: PatternRoomWorkspaceModel = adaptDomainToViewModels(
+    domain,
     localState.getOverlay()
   );
   let hostMessagesConnected = false;
@@ -485,7 +493,15 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     render();
   }
 
-  function prepareCaseReviewPreview(draft: PatternCaseReviewPreviewDraft): void {
+  function prepareCaseReviewPreview(): void {
+    const draft = createPatternCaseReviewPreviewDraft(
+      {
+        domain,
+        overlay: localState.getOverlay(),
+        topicLabel: viewModels.subject,
+      },
+      selectedCaseReviewRole
+    );
     caseReviewPreviewDraft = draft;
     selectedCaseReviewRole = draft.roleSlot;
     caseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;
@@ -847,7 +863,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   };
 
   localState.subscribe(() => {
-    viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+    viewModels = adaptDomainToViewModels(domain, localState.getOverlay());
     if (selectedArchiveSourceId !== null && !archiveSourceExists(selectedArchiveSourceId)) {
       selectedArchiveSourceId = null;
       archiveEvidenceCaptureStatus = null;
@@ -1062,7 +1078,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   }
 
   function restoreSnapshot(snapshot: unknown): boolean {
-    const restoredState = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+    const restoredState = restoreFromSnapshot(snapshot, domain);
     if (restoredState === null) {
       return false;
     }

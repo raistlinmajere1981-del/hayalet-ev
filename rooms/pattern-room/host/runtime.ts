@@ -2,7 +2,7 @@ import type { SlotBridgeEnvelope, SlotBridgeResult } from "../../../src/types/co
 
 import { createPatternRoomCaseReviewHash } from "../shared/adapters/pattern-room-case-review-hash.js";
 import { parsePatternRoomCaseReviewResult } from "../shared/adapters/pattern-room-case-review-parser.js";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../shared/data/pattern-room-domain.mock.js";
+import { PATTERN_ROOM_DOMAIN } from "../shared/data/pattern-room-domain.js";
 import {
   createPatternRoomCaseReviewRuntimeState,
   isPatternRoomCaseReviewRuntimeState,
@@ -1465,7 +1465,7 @@ export default function createPatternRoomHostRuntime(
         },
         async onRoomReady(): Promise<void> {
           await loadSnapshot({
-            topicId: PATTERN_ROOM_DOMAIN_MOCK.topic.id,
+            topicId: PATTERN_ROOM_DOMAIN.topic.id,
           });
           notifyCaseReviewState();
         },
