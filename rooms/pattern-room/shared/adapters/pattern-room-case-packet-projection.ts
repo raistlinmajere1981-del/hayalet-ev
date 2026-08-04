@@ -67,6 +67,19 @@ function normalizePlainText(value: string | null | undefined): string {
   return value?.replace(/\s+/g, " ").trim() ?? "";
 }
 
+function keepPreviewLanguageCautious(value: string): string {
+  return value
+    .replace(/Gerçek AI, provider veya relay çağrısı yapılmadı\./g, "Dış üretim çağrısı yapılmadı.")
+    .replace(/\bkesin hüküm değil\b/gi, "hüküm dili değil")
+    .replace(/\bkesin hukum degil\b/gi, "hüküm dili değil")
+    .replace(/\bkesin sonuç\b/gi, "sonuç")
+    .replace(/\bkesin cevap\b/gi, "cevap")
+    .replace(/\bkanıtlandı\b/gi, "öne sürüldü")
+    .replace(/\bdoğrulandı\b/gi, "denetlendi")
+    .replace(/\bnihai\b/gi, "son")
+    .replace(/\bAI sonucu\b/gi, "dış üretim sonucu");
+}
+
 function normalizeLimit(value: number | undefined, fallback: number): number {
   if (value === undefined || !Number.isFinite(value)) {
     return fallback;
@@ -87,7 +100,7 @@ function resolveLimits(
 }
 
 function createPreview(value: string | null | undefined, maxLength: number): string {
-  const normalized = normalizePlainText(value);
+  const normalized = keepPreviewLanguageCautious(normalizePlainText(value));
   if (maxLength <= 0) {
     return "";
   }
