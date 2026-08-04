@@ -33,13 +33,68 @@ function replaceRequired(source, search, replacement, label) {
   return source.replace(search, replacement);
 }
 
+function replaceOneOfRequired(source, searches, replacement, label) {
+  if (source.includes(replacement)) {
+    return source;
+  }
+  const search = searches.find((candidate) => source.includes(candidate));
+  if (search === undefined) {
+    throw new Error(`Required case identity recovery pattern was not found: ${label}`);
+  }
+  return source.replace(search, replacement);
+}
+
 await updateFile("rooms/pattern-room/shared/state/pattern-room-local-state.ts", (source) => {
-  return replaceRequired(
+  let next = replaceOneOfRequired(
     source,
-    '  readonly topic: Pick<Topic, "id">;',
-    '  readonly topic: Pick<Topic, "id" | "label" | "description">;',
-    "domain reference topic metadata"
+    [
+      '  readonly topic: Pick<Topic, "id">;',
+      '  readonly topic: Pick<Topic, "id" | "label" | "description">;',
+    ],
+    '  readonly topic: Pick<Topic, "id"> & Partial<Pick<Topic, "label" | "description">>;',
+    "domain reference optional topic metadata"
   );
+
+  next = replaceRequired(
+    next,
+    `  const domainRef = domainMock;\n  let caseLabel = domainRef.topic.label;\n  let researchQuestion = domainRef.topic.description;`,
+    `  const domainRef = domainMock;\n  const defaultCaseLabel = domainRef.topic.label?.trim() || "Yeni Araştırma";\n  const defaultResearchQuestion = domainRef.topic.description?.trim() || "";\n  let caseLabel = defaultCaseLabel;\n  let researchQuestion = defaultResearchQuestion;`,
+    "local state identity defaults"
+  );
+
+  next = replaceRequired(
+    next,
+    `        ...(caseLabel === domainRef.topic.label ? {} : { caseLabel }),\n        ...(researchQuestion === domainRef.topic.description ? {} : { researchQuestion }),`,
+    `        ...(caseLabel === defaultCaseLabel ? {} : { caseLabel }),\n        ...(researchQuestion === defaultResearchQuestion ? {} : { researchQuestion }),`,
+    "local overlay default comparisons"
+  );
+
+  next = replaceRequired(
+    next,
+    `      caseLabel = overlay.caseLabel?.trim() || domainRef.topic.label;\n      researchQuestion =\n        overlay.researchQuestion === undefined\n          ? domainRef.topic.description\n          : overlay.researchQuestion.trim();`,
+    `      caseLabel = overlay.caseLabel?.trim() || defaultCaseLabel;\n      researchQuestion =\n        overlay.researchQuestion === undefined\n          ? defaultResearchQuestion\n          : overlay.researchQuestion.trim();`,
+    "local identity restore defaults"
+  );
+
+  return next;
+});
+
+await updateFile("rooms/pattern-room/shared/state/pattern-room-snapshot.ts", (source) => {
+  let next = replaceRequired(
+    source,
+    `    caseLabel: snapshotOverlay.caseLabel?.trim() || domainMock.topic.label,`,
+    `    caseLabel:\n      snapshotOverlay.caseLabel?.trim() ||\n      domainMock.topic.label?.trim() ||\n      "Yeni Araştırma",`,
+    "snapshot case label fallback"
+  );
+
+  next = replaceRequired(
+    next,
+    `      snapshotOverlay.researchQuestion === undefined\n        ? domainMock.topic.description\n        : snapshotOverlay.researchQuestion.trim(),`,
+    `      snapshotOverlay.researchQuestion === undefined\n        ? (domainMock.topic.description?.trim() ?? "")\n        : snapshotOverlay.researchQuestion.trim(),`,
+    "snapshot research question fallback"
+  );
+
+  return next;
 });
 
 await updateFile(
@@ -58,8 +113,8 @@ await updateFile("scripts/tests/pattern-room-case-packet-regressions.test.ts", (
   return replaceRequired(
     source,
     '  assert.doesNotMatch(projectionSource, /from\\s+["\'][^"\']*(?:ai|provider|relay)/i);',
-    '  assert.doesNotMatch(\n    projectionSource,\n    /from\\s+["\'][^"\']*(?:[\\/_-]ai(?:[\\/_.-]|$)|provider|relay)[^"\']*["\']/i\n  );',
-    "transport-boundary import regex"
+    `  const projectionImportSpecifiers = Array.from(\n    projectionSource.matchAll(/from\\s+["']([^"']+)["']/g),\n    (match) => match[1] ?? ""\n  );\n  assert.equal(\n    projectionImportSpecifiers.some((specifier) => {\n      return /(?:^|[\\/_-])(?:ai|provider|relay)(?:$|[\\/_.-])/i.test(specifier);\n    }),\n    false\n  );`,
+    "transport-boundary import check"
   );
 });
 
