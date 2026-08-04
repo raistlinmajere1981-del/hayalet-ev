@@ -1,4 +1,5 @@
 import { createPatternRoomCaseReviewHash } from "./pattern-room-case-review-hash.js";
+import { createPatternRoomCaseReviewOutputContract } from "./pattern-room-case-review-output-contract.js";
 import type { PatternActorId } from "../types/pattern-room-domain.js";
 import type { PatternRoomCasePacket } from "../types/pattern-room-case-packet.js";
 import {
@@ -134,7 +135,12 @@ function createTaskPromptSection(taskPrompt: string | null | undefined): string 
   const resolvedTaskPrompt =
     normalizedTaskPrompt === "" ? DEFAULT_TASK_PROMPT : normalizedTaskPrompt;
 
-  return ["[Task Prompt]", resolvedTaskPrompt].join("\n");
+  return [
+    "[Task Prompt]",
+    resolvedTaskPrompt,
+    "",
+    createPatternRoomCaseReviewOutputContract(),
+  ].join("\n");
 }
 
 export function createPatternRoomCaseReviewMessage(
