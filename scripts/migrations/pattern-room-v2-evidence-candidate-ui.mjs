@@ -270,7 +270,11 @@ async function updateStyle() {
 async function updateInstalledUiRegression() {
   const path = "scripts/tests/pattern-room-installed-ui-smoke-regressions-part6.test.ts";
   let source = await readRepoFile(path);
-  if (source.includes("promotes a retained evidence candidate only after source and excerpt selection")) {
+  if (
+    source.includes(
+      "promotes a retained evidence candidate only after source and excerpt selection"
+    )
+  ) {
     return;
   }
 
@@ -296,7 +300,7 @@ async function updateInstalledUiRegression() {
     "    driveReviewReady(environment, command);",
     "",
     "    const retain = environment.app.querySelector(",
-    '      "[data-pattern-case-review-apply-evidence-suggestions=\'true\']"',
+    "      \"[data-pattern-case-review-apply-evidence-suggestions='true']\"",
     "    );",
     "    assert.ok(retain);",
     '    fireEvent(retain, "click");',
@@ -353,7 +357,7 @@ async function updateInstalledUiRegression() {
     '      "Recheck the original navigation log image."',
     "    );",
     "    assert.ok(",
-    '      environment.app.querySelector("[data-pattern-evidence-candidate-feedback=\'success\']")',
+    "      environment.app.querySelector(\"[data-pattern-evidence-candidate-feedback='success']\")",
     "    );",
     "    runtime.dispose();",
     "  } finally {",

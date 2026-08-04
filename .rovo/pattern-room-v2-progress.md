@@ -68,8 +68,16 @@ The following checks passed after the production/test-domain migration:
 - Successful promotion creates source-linked evidence, keeps AI text in interpretation and removes the candidate.
 - Older snapshots without the optional candidate collection restore safely with an empty collection.
 
+## Completed: evidence candidate promotion UI
+
+- Case Review displays persisted AI evidence candidates as a separate review queue.
+- Promotion controls require the user to select a real source and enter a source excerpt before activation.
+- Promotion delegates to the guarded local-state command and never treats AI text as the excerpt.
+- Successful promotion removes the candidate, creates source-linked evidence and preserves AI text as interpretation.
+- Candidates can be explicitly discarded by the user.
+- Installed UI regressions cover disabled promotion, source selection, excerpt entry and source-linked evidence output.
+
 ## Next implementation steps
 
-1. Add the candidate review and promotion controls to the Case Review inspector.
-2. Add canonical JSON and Turkish/English heading parser paths.
-3. Begin the three-region Workspace Shell V2 after the promotion UI and parser boundary are green.
+1. Add canonical JSON and Turkish/English heading parser paths.
+2. Begin the three-region Workspace Shell V2 after the parser boundary is green.

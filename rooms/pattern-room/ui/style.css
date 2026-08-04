@@ -2111,3 +2111,58 @@ textarea.pattern-room-inline-input {
     gap: var(--pattern-px-10);
   }
 }
+
+/* Evidence candidates — explicit source-backed promotion */
+.pattern-room-evidence-candidate-workspace {
+  display: grid;
+  gap: var(--pattern-px-12);
+}
+
+.pattern-room-evidence-candidate-list {
+  display: grid;
+  gap: var(--pattern-px-12);
+}
+
+.pattern-room-evidence-candidate-card {
+  display: grid;
+  gap: var(--pattern-px-10);
+  padding: var(--pattern-px-14);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
+  border-radius: var(--pattern-px-6);
+  background: var(--pattern-surface-panel-alpha-82);
+}
+
+.pattern-room-evidence-candidate-text {
+  margin: 0;
+  color: var(--pattern-text-warm);
+}
+
+.pattern-room-evidence-candidate-provenance {
+  color: var(--pattern-text-subtle);
+  overflow-wrap: anywhere;
+}
+
+.pattern-room-evidence-candidate-field {
+  display: grid;
+  gap: var(--pattern-px-6);
+  color: var(--pattern-text-muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-76);
+}
+
+.pattern-room-evidence-candidate-field select,
+.pattern-room-evidence-candidate-field textarea {
+  width: 100%;
+  padding: var(--pattern-px-9);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-16);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-surface);
+  color: var(--pattern-text);
+  font: inherit;
+}
+
+.pattern-room-evidence-candidate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pattern-px-8);
+}

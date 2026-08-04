@@ -746,3 +746,89 @@ void test("pattern-room installed UI does not mutate or autosave when apply cont
     await installedCopy.cleanup();
   }
 });
+
+void test("pattern-room installed UI promotes a retained evidence candidate only after source and excerpt selection", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    const runtimeModule = (await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/pattern-room-ui-runtime.js")).href}?candidate-promotion-${Date.now()}`
+    )) as PatternRoomUiRuntimeModule;
+    const runtime = runtimeModule.createPatternRoomUiRuntime({
+      domain: PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    });
+    runtime.start();
+    emitHostContext(environment, "en");
+    openTenthMan(environment.app);
+    setWindowConfirm(() => true);
+    const command = prepareAndSend(environment);
+    const snapshotBeforeReply = runtime.createSnapshot();
+    driveReviewReady(environment, command);
+
+    const retain = environment.app.querySelector(
+      "[data-pattern-case-review-apply-evidence-suggestions='true']"
+    );
+    assert.ok(retain);
+    fireEvent(retain, "click");
+
+    const candidateId = "local-evidence-candidate-001";
+    const candidate = environment.app.querySelector(
+      `[data-pattern-evidence-candidate='${candidateId}']`
+    );
+    assert.ok(candidate);
+    assert.equal(runtime.createSnapshot().overlay.localEvidenceCandidates?.length, 1);
+    assert.equal(
+      runtime.createSnapshot().overlay.localAuthoredEvidence.length,
+      snapshotBeforeReply.overlay.localAuthoredEvidence.length
+    );
+
+    const source = environment.app.querySelector(
+      `[data-pattern-evidence-candidate-source='${candidateId}']`
+    );
+    const excerpt = environment.app.querySelector(
+      `[data-pattern-evidence-candidate-excerpt='${candidateId}']`
+    );
+    const promote = environment.app.querySelector(
+      `[data-pattern-evidence-candidate-promote='${candidateId}']`
+    );
+    assert.ok(source);
+    assert.ok(excerpt);
+    assert.ok(promote);
+    assert.equal(promote.disabled, true);
+
+    source.value = "source-navigation-log";
+    fireEvent(source, "change");
+    excerpt.value = "Selected navigation log passage.";
+    fireEvent(excerpt, "input");
+    assert.equal(promote.disabled, false);
+    fireEvent(promote, "click");
+
+    const snapshotAfterPromotion = runtime.createSnapshot();
+    assert.equal(snapshotAfterPromotion.overlay.localEvidenceCandidates?.length, 0);
+    assert.equal(
+      snapshotAfterPromotion.overlay.localAuthoredEvidence.length -
+        snapshotBeforeReply.overlay.localAuthoredEvidence.length,
+      1
+    );
+    assert.equal(
+      snapshotAfterPromotion.overlay.localAuthoredEvidence.at(-1)?.sourceId,
+      "source-navigation-log"
+    );
+    assert.equal(
+      snapshotAfterPromotion.overlay.localAuthoredEvidence.at(-1)?.excerpt,
+      "Selected navigation log passage."
+    );
+    assert.equal(
+      snapshotAfterPromotion.overlay.localAuthoredEvidence.at(-1)?.interpretation,
+      "Recheck the original navigation log image."
+    );
+    assert.ok(
+      environment.app.querySelector("[data-pattern-evidence-candidate-feedback='success']")
+    );
+    runtime.dispose();
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});

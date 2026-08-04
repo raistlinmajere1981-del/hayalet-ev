@@ -163,7 +163,8 @@
       "responseEmpty": "The AI response has not arrived yet.",
       "applyEmpty": "No review result has been applied.",
       "boardNotes": "Board notes",
-      "skipped": "Skipped"
+      "skipped": "Skipped",
+      "evidenceCandidates": "Evidence candidates"
     },
     "history": {
       "title": "Review History",
@@ -172,6 +173,23 @@
       "packetHash": "Packet hash",
       "responseHash": "Response hash",
       "state": "State"
+    },
+    "candidates": {
+      "title": "Evidence candidates",
+      "intro": "AI suggestions remain candidates here. Promotion requires a real source and an excerpt selected from that source.",
+      "empty": "There are no pending evidence candidates.",
+      "badge": "AI evidence candidate",
+      "provenance": "Session: %session% · Suggestion: %suggestion%",
+      "sourceLabel": "Real source",
+      "sourcePlaceholder": "Select a source",
+      "excerptLabel": "Excerpt selected from source",
+      "excerptPlaceholder": "Paste the passage that actually appears in the selected source.",
+      "promote": "Promote to Evidence",
+      "discard": "Discard Candidate",
+      "promoted": "The candidate was promoted to source-linked evidence.",
+      "promotionFailed": "The evidence candidate could not be promoted.",
+      "discarded": "The evidence candidate was discarded.",
+      "discardFailed": "The evidence candidate could not be discarded."
     }
   }
 }

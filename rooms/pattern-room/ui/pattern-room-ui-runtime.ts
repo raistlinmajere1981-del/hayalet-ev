@@ -58,6 +58,7 @@ import {
   type SourceProducerOrchestrationResult,
 } from "../shared/source-producers/index.js";
 import type { PatternRoomSessionSnapshot } from "../shared/types/pattern-room-snapshot.js";
+import type { PatternRoomEvidenceCandidatePromotionInput } from "../shared/types/pattern-room-evidence-candidate.js";
 import { createArchivePanel } from "./panels/pattern-archive-panel.js";
 import { createBoardPanel } from "./panels/pattern-board-panel.js";
 import { createDeskPanel } from "./panels/pattern-desk-panel.js";
@@ -223,6 +224,7 @@ export function createPatternRoomUiRuntime(
   let caseReviewRuntimeState = createPatternRoomCaseReviewRuntimeState();
   let selectedCaseReviewRole: PatternRoomCaseReviewRoleSlot = PATTERN_CASE_REVIEW_DEFAULT_ROLE_SLOT;
   let caseReviewApplyFeedback: PatternCaseReviewApplyFeedback | null = null;
+  let evidenceCandidateFeedback: PatternCaseReviewApplyFeedback | null = null;
   let caseReviewLocale = "tr";
   let caseReviewTranslations: unknown = null;
   let caseReviewIdSequence = 0;
@@ -747,6 +749,27 @@ export function createPatternRoomUiRuntime(
     }
   }
 
+  function promoteEvidenceCandidateFromReview(
+    input: PatternRoomEvidenceCandidatePromotionInput
+  ): void {
+    const result = localState.promoteEvidenceCandidate(input);
+    evidenceCandidateFeedback = result.promoted
+      ? { tone: "success", message: getCaseReviewText()("candidates.promoted") }
+      : {
+          tone: "error",
+          message: result.warnings.join(" ") || getCaseReviewText()("candidates.promotionFailed"),
+        };
+    render();
+  }
+
+  function removeEvidenceCandidateFromReview(candidateId: string): void {
+    const removed = localState.removeEvidenceCandidate(candidateId);
+    evidenceCandidateFeedback = removed
+      ? { tone: "success", message: getCaseReviewText()("candidates.discarded") }
+      : { tone: "error", message: getCaseReviewText()("candidates.discardFailed") };
+    render();
+  }
+
   const actions: PatternPanelActions = {
     getSelectedNodeId(): string | null {
       return selectedNodeId;
@@ -991,11 +1014,18 @@ export function createPatternRoomUiRuntime(
               caseReviewRuntimeState.activeSession !== null &&
               locallyAppliedCaseReviewSessions.has(caseReviewRuntimeState.activeSession.sessionId),
             applyFeedback: caseReviewApplyFeedback,
+            evidenceCandidateFeedback,
+            evidenceCandidates: localState.getOverlay().localEvidenceCandidates ?? [],
+            evidenceCandidateSources: viewModels.sources.map((source) => {
+              return { id: source.id, label: source.label };
+            }),
             dispatchStatus: caseReviewDispatchStatus,
             history: caseReviewRuntimeState.history,
             onApply: applyCaseReview,
             onCancel: cancelCaseReview,
             onPrepare: prepareCaseReviewPreview,
+            onPromoteEvidenceCandidate: promoteEvidenceCandidateFromReview,
+            onRemoveEvidenceCandidate: removeEvidenceCandidateFromReview,
             onResend: resendCaseReview,
             onRetry: retryCaseReview,
             onRoleChange: selectCaseReviewRole,
@@ -1091,6 +1121,7 @@ export function createPatternRoomUiRuntime(
       activeWorkspaceSection = "default";
       selectedArchiveSourceId = null;
       archiveEvidenceCaptureStatus = null;
+      evidenceCandidateFeedback = null;
       localState.restoreOverlay(restoredState.overlay, restoredState.guards);
       return true;
     } finally {

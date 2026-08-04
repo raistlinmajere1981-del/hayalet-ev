@@ -163,7 +163,8 @@
       "responseEmpty": "AI yanıtı henüz alınmadı.",
       "applyEmpty": "Uygulanmış bir inceleme sonucu yok.",
       "boardNotes": "Pano notları",
-      "skipped": "Atlanan"
+      "skipped": "Atlanan",
+      "evidenceCandidates": "Kanıt adayları"
     },
     "history": {
       "title": "İnceleme Geçmişi",
@@ -172,6 +173,23 @@
       "packetHash": "Paket özeti",
       "responseHash": "Yanıt özeti",
       "state": "Durum"
+    },
+    "candidates": {
+      "title": "Kanıt adayları",
+      "intro": "AI önerileri burada aday olarak kalır. Kanıta yükseltmek için gerçek bir kaynak ve kaynaktan seçilmiş alıntı gerekir.",
+      "empty": "Bekleyen kanıt adayı yok.",
+      "badge": "AI kanıt adayı",
+      "provenance": "Oturum: %session% · Öneri: %suggestion%",
+      "sourceLabel": "Gerçek kaynak",
+      "sourcePlaceholder": "Kaynak seç",
+      "excerptLabel": "Kaynaktan seçilmiş alıntı",
+      "excerptPlaceholder": "Kaynakta gerçekten bulunan bölümü buraya aktarın.",
+      "promote": "Kanıta Yükselt",
+      "discard": "Adayı Sil",
+      "promoted": "Kanıt adayı kaynak ve alıntıyla doğrulanarak kanıta yükseltildi.",
+      "promotionFailed": "Kanıt adayı yükseltilemedi.",
+      "discarded": "Kanıt adayı silindi.",
+      "discardFailed": "Kanıt adayı silinemedi."
     }
   }
 }
