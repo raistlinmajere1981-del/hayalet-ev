@@ -89,7 +89,11 @@ export function createInvestigationPanel(
       button.dataset["patternInvestigationModeActive"] = isActive ? "true" : "false";
       button.ariaPressed = isActive ? "true" : "false";
       button.tabIndex = isActive ? 0 : -1;
-      button.classList.toggle("active", isActive);
+      if (isActive) {
+        button.classList.add("active");
+      } else {
+        button.classList.remove("active");
+      }
     });
 
     if (notify) {
