@@ -509,6 +509,9 @@ body,
   font-size: var(--pattern-rem-1-2);
 }
 
+/* ─────────────────────────────────────────
+   INSPECTOR QUICK TOOLS — single-column authoring
+───────────────────────────────────────── */
 .pattern-room-board-inspector-tools {
   display: grid;
   gap: var(--pattern-px-8);
@@ -517,8 +520,25 @@ body,
   border-top: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
 }
 
-.pattern-room-board-inspector .pattern-room-inline-authoring {
-  grid-template-columns: 1fr;
+.pattern-room-board-inspector-tools .pattern-room-inline-authoring {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.pattern-room-board-inspector-tools .pattern-room-inline-disclosure,
+.pattern-room-board-inspector-tools .pattern-room-inline-form {
+  min-width: 0;
+  width: 100%;
+}
+
+.pattern-room-board-inspector-tools .pattern-room-inline-summary {
+  min-height: var(--pattern-px-42);
+  padding-inline: var(--pattern-px-10);
+}
+
+.pattern-room-board-inspector-tools .pattern-room-inline-form {
+  grid-template-columns: minmax(0, 1fr);
+  padding: var(--pattern-px-10);
 }
 
 /* ─────────────────────────────────────────

@@ -110,6 +110,12 @@ The following checks passed after the production/test-domain migration:
 - Center canvas surfaces no longer allocate a second local inspector column.
 - Installed UI regressions verify inspector identity, selection details, authoring tools and graph composer ownership.
 
+## Completed: persistent inspector quick-tool density
+
+- Board authoring disclosures now stack in a single full-width column inside the persistent right inspector.
+- Node, evidence and connection forms no longer inherit the three-column desktop authoring grid.
+- Inspector form controls keep full available width without horizontal compression.
+
 ## Next implementation steps
 
 1. Add explicit edge selection and edge-detail editing to the persistent inspector.
