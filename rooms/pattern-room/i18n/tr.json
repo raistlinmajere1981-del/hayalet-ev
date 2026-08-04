@@ -22,16 +22,16 @@
         "description": "Genel görünüm"
       },
       "board": {
-        "label": "Dedektif Panosu",
-        "description": "İzler ve notlar"
+        "label": "Soruşturma Tuvali",
+        "description": "Pano ve ilişki görünümleri"
       },
       "archive": {
         "label": "Arşiv",
         "description": "Kaynak araştırması"
       },
       "connections": {
-        "label": "Bağlantılar",
-        "description": "İlişki haritası"
+        "label": "İlişki Görünümü",
+        "description": "Soruşturma tuvalini grafik modunda aç"
       },
       "review": {
         "label": "Vaka İncelemesi",

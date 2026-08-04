@@ -124,17 +124,26 @@ async function updateWorkspaceI18n() {
       '  "nav.board.description": "İzler ve notlar",',
       '  "nav.board.description": "Pano ve ilişki görünümleri",'
     )
-    .replace('  "nav.connections.label": "Bağlantılar",', '  "nav.connections.label": "İlişki Görünümü",')
+    .replace(
+      '  "nav.connections.label": "Bağlantılar",',
+      '  "nav.connections.label": "İlişki Görünümü",'
+    )
     .replace(
       '  "nav.connections.description": "İlişki haritası",',
       '  "nav.connections.description": "Soruşturma tuvalini grafik modunda aç",'
     )
-    .replace('  "nav.board.label": "Detective Board",', '  "nav.board.label": "Investigation Canvas",')
+    .replace(
+      '  "nav.board.label": "Detective Board",',
+      '  "nav.board.label": "Investigation Canvas",'
+    )
     .replace(
       '  "nav.board.description": "Leads and notes",',
       '  "nav.board.description": "Board and relationship views",'
     )
-    .replace('  "nav.connections.label": "Connections",', '  "nav.connections.label": "Graph View",')
+    .replace(
+      '  "nav.connections.label": "Connections",',
+      '  "nav.connections.label": "Graph View",'
+    )
     .replace(
       '  "nav.connections.description": "Relationship map",',
       '  "nav.connections.description": "Open the investigation canvas in graph mode",'
@@ -270,7 +279,10 @@ async function updateWorkspaceStyle() {
 async function updateInstalledUiRegression() {
   const path = "scripts/tests/pattern-room-installed-ui-smoke-regressions-part1.test.ts";
   let source = await readRepoFile(path);
-  source = source.replace("    assert.equal(navigationItems.length, 7);", "    assert.equal(navigationItems.length, 6);");
+  source = source.replace(
+    "    assert.equal(navigationItems.length, 7);",
+    "    assert.equal(navigationItems.length, 6);"
+  );
 
   if (!source.includes("switches board and graph inside one investigation canvas")) {
     source += `

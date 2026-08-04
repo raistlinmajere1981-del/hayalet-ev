@@ -25,10 +25,7 @@ function prepareModeSurface(panel: HTMLElement, mode: PatternInvestigationCanvas
   return panel;
 }
 
-function createModeButton(
-  mode: PatternInvestigationCanvasMode,
-  label: string
-): HTMLButtonElement {
+function createModeButton(mode: PatternInvestigationCanvasMode, label: string): HTMLButtonElement {
   const button = createElement("button", "pattern-room-investigation-mode-button", label);
   button.type = "button";
   button.dataset["patternInvestigationMode"] = mode;

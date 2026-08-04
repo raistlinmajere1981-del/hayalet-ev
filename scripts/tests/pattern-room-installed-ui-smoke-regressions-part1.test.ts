@@ -206,7 +206,7 @@ void test("pattern-room installed UI keeps workspace navigation persistent and p
     const navigationItems = environment.app.querySelectorAll("[data-pattern-workspace-nav]");
     assert.ok(shell);
     assert.ok(outlet);
-    assert.equal(navigationItems.length, 7);
+    assert.equal(navigationItems.length, 6);
     assert.equal(
       environment.app.querySelector("[data-pattern-workspace-nav='overview']")?.dataset[
         "patternWorkspaceNavActive"
@@ -456,6 +456,45 @@ void test("pattern-room installed UI exposes a persistent three-region workspace
     assert.equal(inspector.dataset["patternWorkspaceInspectorView"], "report");
     assert.match(readTreeText(inspector), /Rapor|Report/);
     assert.ok(environment.app.querySelector("[data-pattern-view='report']"));
+    assert.deepEqual(environment.sentCommands, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI switches board and graph inside one investigation canvas", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+
+    const boardNavigation = environment.app.querySelector("[data-pattern-workspace-nav='board']");
+    assert.ok(boardNavigation);
+    fireEvent(boardNavigation, "click");
+
+    const canvas = environment.app.querySelector("[data-pattern-investigation-canvas='true']");
+    const boardMode = environment.app.querySelector("[data-pattern-investigation-mode='board']");
+    const graphMode = environment.app.querySelector("[data-pattern-investigation-mode='graph']");
+    assert.ok(canvas);
+    assert.ok(boardMode);
+    assert.ok(graphMode);
+    assert.equal(canvas.dataset["patternInvestigationActiveMode"], "board");
+    assert.ok(environment.app.querySelector("[data-pattern-view='board']"));
+    assert.ok(environment.app.querySelector("[data-pattern-board-pin]"));
+
+    fireEvent(graphMode, "click");
+    assert.equal(canvas.dataset["patternInvestigationActiveMode"], "graph");
+    assert.ok(environment.app.querySelector("[data-pattern-view='desk']"));
+    assert.ok(environment.app.querySelector("[data-pattern-connection-map='true']"));
+    assert.equal(boardNavigation.dataset["patternWorkspaceNavActive"], "true");
+
+    fireEvent(boardMode, "click");
+    assert.equal(canvas.dataset["patternInvestigationActiveMode"], "board");
+    assert.ok(environment.app.querySelector("[data-pattern-view='board']"));
+    assert.ok(environment.app.querySelector("[data-pattern-board-pin]"));
+    assert.equal(environment.app.querySelectorAll("[data-pattern-view]").length, 1);
     assert.deepEqual(environment.sentCommands, []);
   } finally {
     environment.restore();

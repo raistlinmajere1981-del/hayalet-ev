@@ -60,8 +60,10 @@ import {
 import type { PatternRoomSessionSnapshot } from "../shared/types/pattern-room-snapshot.js";
 import type { PatternRoomEvidenceCandidatePromotionInput } from "../shared/types/pattern-room-evidence-candidate.js";
 import { createArchivePanel } from "./panels/pattern-archive-panel.js";
-import { createBoardPanel } from "./panels/pattern-board-panel.js";
-import { createDeskPanel } from "./panels/pattern-desk-panel.js";
+import {
+  createInvestigationPanel,
+  type PatternInvestigationCanvasMode,
+} from "./panels/pattern-investigation-panel.js";
 import { createOverviewPanel } from "./panels/pattern-overview-panel.js";
 import { createReportPanel } from "./panels/pattern-report-panel.js";
 import { createTenthManPanel } from "./panels/pattern-tenth-man-panel.js";
@@ -201,6 +203,7 @@ export function createPatternRoomUiRuntime(
   let archiveEvidenceCaptureStatus: string | null = null;
   let archiveSearchQuery = "";
   let archiveSourceTypeFilter = "all";
+  let investigationCanvasMode: PatternInvestigationCanvasMode = "board";
   let workspaceShell: PatternWorkspaceShell | null = null;
   let renderedView: PatternViewId | null = null;
   const workspacePanelCache = new Map<PatternViewId, HTMLElement>();
@@ -970,6 +973,12 @@ export function createPatternRoomUiRuntime(
     viewId: PatternViewId,
     section: PatternWorkspaceSection = "default"
   ): void {
+    const previousView = activeView;
+    if (viewId === "desk") {
+      investigationCanvasMode = "graph";
+    } else if (viewId === "board" && previousView !== "board" && previousView !== "desk") {
+      investigationCanvasMode = "board";
+    }
     activeView = viewId;
     activeWorkspaceSection = section;
     render(true);
@@ -980,6 +989,22 @@ export function createPatternRoomUiRuntime(
       setActiveView("overview");
     };
     const workspaceText = getWorkspaceText();
+    const createInvestigationView = (): HTMLElement =>
+      createInvestigationPanel(
+        viewModels,
+        actions,
+        onBack,
+        {
+          initialMode: investigationCanvasMode,
+          onModeChange(mode) {
+            investigationCanvasMode = mode;
+            activeView = mode === "graph" ? "desk" : "board";
+            renderedView = activeView;
+            workspacePanelCache.clear();
+          },
+        },
+        workspaceText
+      );
     const panelFactories: Record<FocusedPatternViewId, () => HTMLElement> = {
       archive: () =>
         createArchivePanel(
@@ -1001,8 +1026,8 @@ export function createPatternRoomUiRuntime(
           },
           workspaceText
         ),
-      board: () => createBoardPanel(viewModels, actions, onBack, workspaceText),
-      desk: () => createDeskPanel(viewModels, actions, onBack, workspaceText),
+      board: createInvestigationView,
+      desk: createInvestigationView,
       report: () => createReportPanel(viewModels, actions, onBack, workspaceText),
       "tenth-man": () =>
         createTenthManPanel(
@@ -1118,6 +1143,7 @@ export function createPatternRoomUiRuntime(
     isRestoring = true;
     try {
       activeView = restoredState.activeView;
+      investigationCanvasMode = activeView === "desk" ? "graph" : "board";
       activeWorkspaceSection = "default";
       selectedArchiveSourceId = null;
       archiveEvidenceCaptureStatus = null;

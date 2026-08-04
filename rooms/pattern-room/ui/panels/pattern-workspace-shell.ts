@@ -57,14 +57,6 @@ const NAVIGATION_ITEMS: readonly PatternWorkspaceNavigationItem[] = [
     icon: "▤",
   },
   {
-    id: "desk",
-    viewId: "desk",
-    section: "default",
-    labelKey: "nav.connections.label",
-    descriptionKey: "nav.connections.description",
-    icon: "⌁",
-  },
-  {
     id: "tenth-man",
     viewId: "tenth-man",
     section: "default",
@@ -264,8 +256,9 @@ export function createPatternWorkspaceShell(
     outlet,
     inspector,
     updateActiveView(viewId, section): void {
+      const navigationViewId = viewId === "desk" ? "board" : viewId;
       const activeItem = NAVIGATION_ITEMS.find((item) => {
-        return item.viewId === viewId && item.section === section;
+        return item.viewId === navigationViewId && item.section === section;
       });
       if (activeItem !== undefined) {
         inspector.dataset["patternWorkspaceInspectorView"] = activeItem.id;
@@ -275,7 +268,7 @@ export function createPatternWorkspaceShell(
 
       buttons.forEach((button, index) => {
         const item = NAVIGATION_ITEMS[index];
-        const isActive = item?.viewId === viewId && item.section === section;
+        const isActive = item?.viewId === navigationViewId && item.section === section;
         button.dataset["patternWorkspaceNavActive"] = isActive ? "true" : "false";
         button.ariaCurrent = isActive ? "page" : null;
         button.tabIndex = isActive ? 0 : -1;

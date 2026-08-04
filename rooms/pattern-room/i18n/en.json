@@ -22,16 +22,16 @@
         "description": "Case overview"
       },
       "board": {
-        "label": "Detective Board",
-        "description": "Leads and notes"
+        "label": "Investigation Canvas",
+        "description": "Board and relationship views"
       },
       "archive": {
         "label": "Archive",
         "description": "Source research"
       },
       "connections": {
-        "label": "Connections",
-        "description": "Relationship map"
+        "label": "Graph View",
+        "description": "Open the investigation canvas in graph mode"
       },
       "review": {
         "label": "Case Review",

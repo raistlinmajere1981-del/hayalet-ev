@@ -94,7 +94,15 @@ The following checks passed after the production/test-domain migration:
 - Desktop layouts use all three regions; narrower layouts collapse the context inspector without changing navigation or data.
 - Installed UI regressions verify region persistence and active-view context updates.
 
+## Completed: unified Investigation Canvas boundary
+
+- Board and Connections now open as board and graph modes of one Investigation Canvas.
+- The persistent workspace navigation exposes one canvas destination instead of separate Board and Connections products.
+- Existing desk snapshots and overview shortcuts remain compatible and open the graph mode.
+- Switching canvas modes does not mutate investigation data and keeps the Board navigation item active.
+- Installed UI regressions cover board/graph mode switching, one active view and compatibility entry points.
+
 ## Next implementation steps
 
-1. Merge Board and Connections into the Investigation Canvas.
-2. Move selection-specific source, node and evidence details into the persistent right context inspector.
+1. Move selection-specific source, node and evidence details into the persistent right context inspector.
+2. Remove the temporary panel-local inspectors after the context inspector owns selection details.
