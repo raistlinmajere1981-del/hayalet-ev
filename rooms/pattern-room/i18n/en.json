@@ -13,7 +13,8 @@
       "sourceMetric": "%count% sources",
       "pinMetric": "%count% leads",
       "reviewMetric": "%count% reviews",
-      "keyboardHint": "Use the arrow keys to move between workspaces."
+      "keyboardHint": "Use the arrow keys to move between workspaces.",
+      "inspectorLabel": "Context inspector"
     },
     "nav": {
       "overview": {

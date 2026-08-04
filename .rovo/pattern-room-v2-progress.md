@@ -86,7 +86,15 @@ The following checks passed after the production/test-domain migration:
 - Invalid JSON envelopes are preserved as cautious Analysis fallback content with warnings.
 - Parser-format regressions cover canonical JSON, fenced JSON, Turkish headings and the outbound response contract.
 
+## Completed: three-region Workspace Shell V2 boundary
+
+- The application shell now exposes a persistent left case/source spine, center workspace canvas and right context inspector.
+- Navigation, center outlet and context inspector remain mounted while focused views change.
+- The right inspector tracks the active workspace and repeats the current case summary without mutating room state.
+- Desktop layouts use all three regions; narrower layouts collapse the context inspector without changing navigation or data.
+- Installed UI regressions verify region persistence and active-view context updates.
+
 ## Next implementation steps
 
-1. Begin the three-region Workspace Shell V2.
-2. Merge Board and Connections into the Investigation Canvas after the shell boundary is green.
+1. Merge Board and Connections into the Investigation Canvas.
+2. Move selection-specific source, node and evidence details into the persistent right context inspector.

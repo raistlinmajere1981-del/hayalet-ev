@@ -13,10 +13,7 @@ const replacements = [
   ["var(--pattern-black-alpha-20)", "var(--pattern-black-alpha-24)"],
   ["var(--pattern-px-230)", "var(--pattern-px-238)"],
   ["var(--pattern-px-220)", "var(--pattern-px-218)"],
-  [
-    "calc(var(--pattern-px-18) * -1)",
-    "calc(0px - var(--pattern-px-18))",
-  ],
+  ["calc(var(--pattern-px-18) * -1)", "calc(0px - var(--pattern-px-18))"],
 ];
 
 let changed = false;

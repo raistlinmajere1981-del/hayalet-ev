@@ -3,6 +3,7 @@ export type PatternWorkspaceTextKey =
   | "shell.title"
   | "shell.status"
   | "shell.navigationLabel"
+  | "shell.inspectorLabel"
   | "shell.caseLabel"
   | "shell.sourceMetric"
   | "shell.pinMetric"
@@ -58,6 +59,7 @@ const FALLBACK_TR: Readonly<Record<PatternWorkspaceTextKey, string>> = {
   "shell.title": "Pattern Room",
   "shell.status": "Yerel vaka aktif",
   "shell.navigationLabel": "Çalışma alanları",
+  "shell.inspectorLabel": "Bağlam paneli",
   "shell.caseLabel": "Aktif vaka",
   "shell.sourceMetric": "%count% kaynak",
   "shell.pinMetric": "%count% iz",
@@ -109,6 +111,7 @@ const FALLBACK_EN: Readonly<Record<PatternWorkspaceTextKey, string>> = {
   "shell.title": "Pattern Room",
   "shell.status": "Local case active",
   "shell.navigationLabel": "Workspaces",
+  "shell.inspectorLabel": "Context inspector",
   "shell.caseLabel": "Active case",
   "shell.sourceMetric": "%count% sources",
   "shell.pinMetric": "%count% leads",

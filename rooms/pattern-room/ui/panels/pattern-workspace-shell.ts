@@ -17,6 +17,7 @@ export type PatternWorkspaceSummary = {
 export type PatternWorkspaceShell = {
   readonly element: HTMLElement;
   readonly outlet: HTMLElement;
+  readonly inspector: HTMLElement;
   updateActiveView: (viewId: PatternViewId, section: PatternWorkspaceSection) => void;
   updateSummary: (summary: PatternWorkspaceSummary) => void;
 };
@@ -157,6 +158,7 @@ export function createPatternWorkspaceShell(
   shell.dataset["patternWorkspaceShell"] = "true";
 
   const rail = createElement("aside", "pattern-room-workspace-rail");
+  rail.dataset["patternWorkspaceSpine"] = "true";
   const brand = createElement("div", "pattern-room-workspace-brand");
   const brandMark = createElement("span", "pattern-room-workspace-brand-mark", "PR");
   brandMark.ariaHidden = "true";
@@ -204,23 +206,55 @@ export function createPatternWorkspaceShell(
   rail.append(brand, status, navigation, caseCard, keyboardHint);
 
   const workspace = createElement("main", "pattern-room-workspace");
+  workspace.dataset["patternWorkspaceCanvas"] = "true";
   const outlet = createElement("div", "pattern-room-workspace-outlet");
   outlet.dataset["patternWorkspaceOutlet"] = "true";
   outlet.tabIndex = -1;
   workspace.append(outlet);
-  shell.append(rail, workspace);
+
+  const inspector = createElement("aside", "pattern-room-workspace-inspector");
+  inspector.dataset["patternWorkspaceInspector"] = "true";
+  inspector.ariaLabel = text("shell.inspectorLabel");
+
+  const inspectorHeader = createElement("header", "pattern-room-workspace-inspector-header");
+  inspectorHeader.append(
+    createElement("span", "pattern-room-context-inspector-label", text("shell.inspectorLabel"))
+  );
+  const inspectorTitle = createElement("strong", "pattern-room-workspace-inspector-title");
+  const inspectorDescription = createElement("p", "pattern-room-workspace-inspector-description");
+  inspectorHeader.append(inspectorTitle, inspectorDescription);
+
+  const inspectorCase = createElement("section", "pattern-room-workspace-inspector-case");
+  inspectorCase.append(createElement("span", "pattern-room-kicker", text("shell.caseLabel")));
+  const inspectorSubject = createElement("strong", "pattern-room-workspace-inspector-subject");
+  const inspectorMetrics = createElement("div", "pattern-room-workspace-inspector-metrics");
+  const inspectorSourceMetric = createElement("span");
+  const inspectorPinMetric = createElement("span");
+  const inspectorReviewMetric = createElement("span");
+  inspectorMetrics.append(inspectorSourceMetric, inspectorPinMetric, inspectorReviewMetric);
+  inspectorCase.append(inspectorSubject, inspectorMetrics);
+  inspector.append(inspectorHeader, inspectorCase);
+
+  shell.append(rail, workspace, inspector);
 
   const updateSummary = (summary: PatternWorkspaceSummary): void => {
     subject.textContent = summary.subject;
-    sourceMetric.textContent = text("shell.sourceMetric", {
+    inspectorSubject.textContent = summary.subject;
+    const sourceText = text("shell.sourceMetric", {
       count: String(summary.sourceCount),
     });
-    pinMetric.textContent = text("shell.pinMetric", {
+    const pinText = text("shell.pinMetric", {
       count: String(summary.pinCount),
     });
-    reviewMetric.textContent = text("shell.reviewMetric", {
+    const reviewText = text("shell.reviewMetric", {
       count: String(summary.reviewCount),
     });
+    sourceMetric.textContent = sourceText;
+    pinMetric.textContent = pinText;
+    reviewMetric.textContent = reviewText;
+    inspectorSourceMetric.textContent = sourceText;
+    inspectorPinMetric.textContent = pinText;
+    inspectorReviewMetric.textContent = reviewText;
   };
 
   updateSummary(initialSummary);
@@ -228,7 +262,17 @@ export function createPatternWorkspaceShell(
   return {
     element: shell,
     outlet,
+    inspector,
     updateActiveView(viewId, section): void {
+      const activeItem = NAVIGATION_ITEMS.find((item) => {
+        return item.viewId === viewId && item.section === section;
+      });
+      if (activeItem !== undefined) {
+        inspector.dataset["patternWorkspaceInspectorView"] = activeItem.id;
+        inspectorTitle.textContent = text(activeItem.labelKey);
+        inspectorDescription.textContent = text(activeItem.descriptionKey);
+      }
+
       buttons.forEach((button, index) => {
         const item = NAVIGATION_ITEMS[index];
         const isActive = item?.viewId === viewId && item.section === section;

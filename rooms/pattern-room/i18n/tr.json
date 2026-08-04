@@ -13,7 +13,8 @@
       "sourceMetric": "%count% kaynak",
       "pinMetric": "%count% iz",
       "reviewMetric": "%count% inceleme",
-      "keyboardHint": "Ok tuşlarıyla çalışma alanları arasında geçiş yap."
+      "keyboardHint": "Ok tuşlarıyla çalışma alanları arasında geçiş yap.",
+      "inspectorLabel": "Bağlam paneli"
     },
     "nav": {
       "overview": {

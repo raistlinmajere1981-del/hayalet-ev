@@ -414,3 +414,51 @@ void test("pattern-room installed UI autosaves only user mutations after restori
     await installedCopy.cleanup();
   }
 });
+
+void test("pattern-room installed UI exposes a persistent three-region workspace shell", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+
+    const shell = environment.app.querySelector("[data-pattern-workspace-shell='true']");
+    const spine = environment.app.querySelector("[data-pattern-workspace-spine='true']");
+    const canvas = environment.app.querySelector("[data-pattern-workspace-canvas='true']");
+    const outlet = environment.app.querySelector("[data-pattern-workspace-outlet='true']");
+    const inspector = environment.app.querySelector("[data-pattern-workspace-inspector='true']");
+    assert.ok(shell);
+    assert.ok(spine);
+    assert.ok(canvas);
+    assert.ok(outlet);
+    assert.ok(inspector);
+    assert.equal(inspector.dataset["patternWorkspaceInspectorView"], "overview");
+    assert.match(readTreeText(inspector), /Vaka Merkezi|Case Hub/);
+
+    const archiveNavigation = environment.app.querySelector(
+      "[data-pattern-workspace-nav='archive']"
+    );
+    assert.ok(archiveNavigation);
+    fireEvent(archiveNavigation, "click");
+    assert.equal(environment.app.querySelector("[data-pattern-workspace-spine='true']"), spine);
+    assert.equal(environment.app.querySelector("[data-pattern-workspace-canvas='true']"), canvas);
+    assert.equal(
+      environment.app.querySelector("[data-pattern-workspace-inspector='true']"),
+      inspector
+    );
+    assert.equal(inspector.dataset["patternWorkspaceInspectorView"], "archive");
+    assert.match(readTreeText(inspector), /Arşiv|Archive/);
+    assert.ok(environment.app.querySelector("[data-pattern-view='archive']"));
+
+    const reportNavigation = environment.app.querySelector("[data-pattern-workspace-nav='report']");
+    assert.ok(reportNavigation);
+    fireEvent(reportNavigation, "click");
+    assert.equal(inspector.dataset["patternWorkspaceInspectorView"], "report");
+    assert.match(readTreeText(inspector), /Rapor|Report/);
+    assert.ok(environment.app.querySelector("[data-pattern-view='report']"));
+    assert.deepEqual(environment.sentCommands, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
