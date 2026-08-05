@@ -152,6 +152,17 @@ function connectKeyboardNavigation(
   });
 }
 
+function resolveEmbeddedInspector(
+  outlet: HTMLElement,
+  inspectorView: string | undefined
+): HTMLElement | null {
+  if (inspectorView !== "archive") {
+    return null;
+  }
+
+  return outlet.querySelector<HTMLElement>(".pattern-room-archive-inspector");
+}
+
 export function createPatternWorkspaceShell(
   text: PatternWorkspaceTranslator,
   initialSummary: PatternWorkspaceSummary,
@@ -293,9 +304,15 @@ export function createPatternWorkspaceShell(
     outlet,
     inspector,
     setInspectorContent(content): void {
+      const resolvedContent =
+        content ??
+        resolveEmbeddedInspector(
+          outlet,
+          inspector.dataset["patternWorkspaceInspectorView"]
+        );
       inspectorContent.replaceChildren();
-      if (content !== null) {
-        inspectorContent.append(content);
+      if (resolvedContent !== null) {
+        inspectorContent.append(resolvedContent);
       }
     },
     showActionFeedback(feedback): void {
