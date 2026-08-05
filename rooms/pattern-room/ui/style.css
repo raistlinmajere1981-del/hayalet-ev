@@ -64,7 +64,7 @@ button {
   color: var(--pattern-accent-amber);
   font-size: var(--pattern-rem-0-76);
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--pattern-em-0-1);
   text-transform: uppercase;
 }
 
@@ -84,7 +84,7 @@ h1 {
   font-family: "IBM Plex Mono", monospace;
   font-size: var(--pattern-rem-3-8);
   font-weight: 900;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--pattern-em-neg-0-02);
   line-height: 1;
   color: var(--pattern-text);
 }
@@ -142,7 +142,7 @@ p {
   color: var(--pattern-text-subtle);
   font-size: var(--pattern-rem-0-72);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--pattern-em-0-06);
   text-transform: uppercase;
 }
 
@@ -164,8 +164,8 @@ p {
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
   border-radius: var(--pattern-px-8);
   background:
-    var(--pattern-gradient-grid-wood) 0 0 / 48px 48px,
-    var(--pattern-gradient-grid-cross) 0 0 / 48px 48px,
+    var(--pattern-gradient-grid-wood) 0 0 / var(--pattern-px-48) var(--pattern-px-48),
+    var(--pattern-gradient-grid-cross) 0 0 / var(--pattern-px-48) var(--pattern-px-48),
     var(--pattern-gradient-office-depth);
 }
 
@@ -209,15 +209,15 @@ p {
   width: min(var(--pattern-px-388), 38vw);
   min-height: var(--pattern-px-292);
   padding: var(--pattern-px-22);
-  border: var(--pattern-px-2) solid rgba(160, 100, 40, 0.45);
+  border: var(--pattern-px-2) solid var(--pattern-border-board-alpha-45);
   border-radius: var(--pattern-px-4);
   background:
     var(--pattern-gradient-cork-grain), var(--pattern-gradient-board-cork),
     var(--pattern-surface-board-cork-alpha-84);
   box-shadow:
     0 var(--pattern-px-24) var(--pattern-px-54) var(--pattern-black-alpha-40),
-    inset 0 0 0 var(--pattern-px-1) rgba(255, 255, 255, 0.04),
-    inset 0 2px 8px rgba(0, 0, 0, 0.3);
+    inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-04),
+    inset 0 var(--pattern-px-2) var(--pattern-px-8) var(--pattern-black-alpha-30);
   gap: var(--pattern-px-10);
 }
 
@@ -231,8 +231,8 @@ p {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(192, 64, 64, 0.5) 20%,
-    rgba(192, 64, 64, 0.5) 80%,
+    var(--pattern-accent-red-alpha-50) 20%,
+    var(--pattern-accent-red-alpha-50) 80%,
     transparent
   );
   transform: rotate(-5deg);
@@ -248,8 +248,8 @@ p {
   background: linear-gradient(
     180deg,
     transparent,
-    rgba(192, 64, 64, 0.4) 20%,
-    rgba(192, 64, 64, 0.4) 80%,
+    var(--pattern-accent-red-alpha-40) 20%,
+    var(--pattern-accent-red-alpha-40) 80%,
     transparent
   );
   transform: rotate(8deg);
@@ -275,7 +275,7 @@ p {
   padding: var(--pattern-px-9) var(--pattern-px-11) var(--pattern-px-9) var(--pattern-px-24);
   border-left: var(--pattern-px-3) solid var(--pattern-success);
   border-radius: var(--pattern-px-2);
-  background: rgba(240, 234, 214, 0.07);
+  background: var(--pattern-text-alpha-07);
   color: var(--pattern-text-warm);
   font-family: "IBM Plex Mono", monospace;
   font-size: var(--pattern-rem-0-82);
@@ -290,7 +290,7 @@ p {
   height: var(--pattern-px-7);
   border-radius: 50%;
   background: currentColor;
-  box-shadow: 0 0 4px currentColor;
+  box-shadow: 0 0 var(--pattern-px-4) currentColor;
   content: "";
 }
 
@@ -299,7 +299,7 @@ p {
 }
 
 .pattern-room-pin.commentary {
-  border-left-color: #d4a857;
+  border-left-color: var(--pattern-accent-amber-light);
 }
 
 .pattern-room-pin.uncertainty {
@@ -328,7 +328,7 @@ p {
   text-transform: uppercase;
   box-shadow:
     0 var(--pattern-px-16) var(--pattern-px-48) var(--pattern-black-alpha-40),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    inset 0 var(--pattern-px-1) 0 var(--pattern-white-alpha-05);
 }
 
 /* Masa kenar çizgileri — köşe aksan */
@@ -376,7 +376,7 @@ p {
     var(--pattern-surface-cabinet-alpha-88);
   box-shadow:
     0 var(--pattern-px-20) var(--pattern-px-44) var(--pattern-black-alpha-32),
-    inset 1px 0 0 rgba(255, 255, 255, 0.04);
+    inset var(--pattern-px-1) 0 0 var(--pattern-white-alpha-04);
 }
 
 /* Çekmece kolları */
@@ -389,7 +389,7 @@ p {
   border-radius: var(--pattern-px-999);
   background: var(--pattern-accent-amber-alpha-58);
   content: "";
-  box-shadow: 0 2px 8px var(--pattern-black-alpha-32);
+  box-shadow: 0 var(--pattern-px-2) var(--pattern-px-8) var(--pattern-black-alpha-32);
 }
 
 .pattern-room-archive-cabinet::before {
@@ -488,13 +488,13 @@ p {
 /* Raptiye noktası */
 .pattern-room-hotspot::before {
   position: absolute;
-  top: -4px;
+  top: var(--pattern-px-neg-4);
   left: 50%;
-  width: 8px;
-  height: 8px;
+  width: var(--pattern-px-8);
+  height: var(--pattern-px-8);
   border-radius: 50%;
   background: var(--pattern-accent-amber);
-  box-shadow: 0 0 6px var(--pattern-accent-amber-alpha-50);
+  box-shadow: 0 0 var(--pattern-px-6) var(--pattern-accent-amber-alpha-50);
   transform: translateX(-50%);
   content: "";
 }
@@ -603,7 +603,7 @@ p {
   background: var(--pattern-accent-amber-deep-alpha-13);
   box-shadow:
     0 0 0 var(--pattern-px-3) var(--pattern-accent-amber-alpha-10),
-    0 8px 24px var(--pattern-black-alpha-32);
+    0 var(--pattern-px-8) var(--pattern-px-24) var(--pattern-black-alpha-32);
   outline: none;
   transform: translateY(var(--pattern-px-neg-1));
 }
@@ -673,7 +673,7 @@ p {
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
   border-radius: var(--pattern-px-6);
   background:
-    var(--pattern-gradient-cork-grain) 0 0 / 14px 14px,
+    var(--pattern-gradient-cork-grain) 0 0 / var(--pattern-px-14) var(--pattern-px-14),
     var(--pattern-gradient-board-scene-depth),
     var(--pattern-surface-board-deep);
   box-shadow: inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-04);
@@ -695,8 +695,8 @@ p {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(192, 64, 64, 0.35) 20%,
-    rgba(192, 64, 64, 0.35) 80%,
+    var(--pattern-accent-red-alpha-35) 20%,
+    var(--pattern-accent-red-alpha-35) 80%,
     transparent
   );
   transform: rotate(-4deg);
@@ -710,8 +710,8 @@ p {
   background: linear-gradient(
     180deg,
     transparent,
-    rgba(200, 145, 58, 0.3) 20%,
-    rgba(200, 145, 58, 0.3) 80%,
+    var(--pattern-accent-amber-alpha-30) 20%,
+    var(--pattern-accent-amber-alpha-30) 80%,
     transparent
   );
   transform: rotate(7deg);
@@ -818,7 +818,7 @@ p {
 .pattern-room-board-lane.commentary,
 .pattern-room-board-node.commentary,
 .pattern-room-report-card.commentary {
-  color: #d4a857;
+  color: var(--pattern-accent-amber-light);
 }
 
 .pattern-room-board-lane.uncertainty,
@@ -854,7 +854,7 @@ p {
   font-family: "IBM Plex Mono", monospace;
   font-size: var(--pattern-rem-0-72);
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--pattern-em-0-06);
   text-transform: uppercase;
 }
 
@@ -906,7 +906,7 @@ p {
 }
 
 .pattern-room-board-node.commentary {
-  color: #d4a857;
+  color: var(--pattern-accent-amber-light);
 }
 
 .pattern-room-board-node.uncertainty {
@@ -971,7 +971,7 @@ p {
   color: var(--pattern-text-subtle);
   font-size: var(--pattern-rem-0-72);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--pattern-em-0-06);
   text-transform: uppercase;
 }
 
@@ -1207,7 +1207,7 @@ p {
   color: var(--pattern-text-subtle);
   font-size: var(--pattern-rem-0-78);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--pattern-em-0-06);
   text-transform: uppercase;
 }
 
@@ -1527,7 +1527,7 @@ p {
   cursor: pointer;
   font-size: var(--pattern-rem-0-88);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--pattern-em-0-04);
 }
 
 .pattern-room-inline-summary:focus-visible {
@@ -1591,7 +1591,7 @@ textarea.pattern-room-inline-input {
   font-family: "IBM Plex Mono", monospace;
   font-size: var(--pattern-rem-0-78);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--pattern-em-0-06);
   text-transform: uppercase;
 }
 

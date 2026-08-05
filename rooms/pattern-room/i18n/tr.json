@@ -35,7 +35,9 @@
       "connectionAdded": "Bağlantı oluşturuldu.",
       "debateUpdated": "10. Adam oturumu güncellendi.",
       "importSucceeded": "Kaynak içe aktarıldı.",
-      "importFailed": "İşlem tamamlanamadı; alanları ve uyarıları kontrol edin."
+      "importFailed": "İşlem tamamlanamadı; alanları ve uyarıları kontrol edin.",
+      "caseIdentityUpdated": "Vaka kimliği güncellendi.",
+      "caseIdentityUnchanged": "Vaka kimliğinde kaydedilecek bir değişiklik yok."
     },
     "nav": {
       "overview": {
@@ -70,7 +72,15 @@
     "overview": {
       "activityLabel": "Vaka faaliyeti",
       "activityTitle": "Araştırma masası hazır",
-      "activityCopy": "Her ana araç soldaki navigasyondan doğrudan açılır."
+      "activityCopy": "Her ana araç soldaki navigasyondan doğrudan açılır.",
+      "identityLabel": "Vaka kimliği",
+      "identityTitle": "Araştırmayı adlandır",
+      "identityCopy": "Vaka adı ve ana araştırma sorusu tüm çalışma alanlarına, rapora ve Case Packet önizlemesine yansır.",
+      "caseNameLabel": "Vaka adı",
+      "caseNamePlaceholder": "Örn. Kuzey Koridoru Sensör Olayı",
+      "researchQuestionLabel": "Ana araştırma sorusu",
+      "researchQuestionPlaceholder": "Bu araştırma hangi soruya yanıt arıyor?",
+      "saveIdentity": "Vaka Kimliğini Kaydet"
     },
     "board": {
       "canvasLabel": "Pano çalışma yüzeyi",

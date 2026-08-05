@@ -34,38 +34,33 @@ function replaceOneOfRequired(source, searches, replacement, label) {
   return source.replace(search, replacement);
 }
 
-await updateFile(
-  "rooms/pattern-room/ui/panels/pattern-case-identity-inspector.ts",
-  (source) => {
-    let next = replaceOneOfRequired(
-      source,
-      [
-        '      caseName.setAttribute("aria-invalid", "true");',
-        '      caseName.ariaInvalid = "true";',
-      ],
+await updateFile("rooms/pattern-room/ui/panels/pattern-case-identity-inspector.ts", (source) => {
+  let next = replaceOneOfRequired(
+    source,
+    [
+      '      caseName.setAttribute("aria-invalid", "true");',
       '      caseName.ariaInvalid = "true";',
-      "invalid case name state"
-    );
+    ],
+    '      caseName.ariaInvalid = "true";',
+    "invalid case name state"
+  );
 
-    next = replaceOneOfRequired(
-      next,
-      [
-        '    caseName.removeAttribute("aria-invalid");',
-        '    caseName.setAttribute("aria-invalid", "false");',
-        '    caseName.ariaInvalid = "false";',
-      ],
+  next = replaceOneOfRequired(
+    next,
+    [
+      '    caseName.removeAttribute("aria-invalid");',
+      '    caseName.setAttribute("aria-invalid", "false");',
       '    caseName.ariaInvalid = "false";',
-      "valid case name state"
-    );
+    ],
+    '    caseName.ariaInvalid = "false";',
+    "valid case name state"
+  );
 
-    return next;
-  }
-);
+  return next;
+});
 
 await updateFile("scripts/tests/pattern-room-case-packet-regressions.test.ts", (source) => {
-  return source
-    .replaceAll("[\\/_-]", "[/_-]")
-    .replaceAll("[\\/_.-]", "[/_.-]");
+  return source.replaceAll("[\\/_-]", "[/_-]").replaceAll("[\\/_.-]", "[/_.-]");
 });
 
 if (changedFiles.length === 0) {

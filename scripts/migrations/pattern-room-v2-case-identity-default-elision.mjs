@@ -28,14 +28,15 @@ if (returnStart < 0 || deskNodeIndex < 0) {
 const currentPrefix = current.slice(returnStart, deskNodeIndex);
 const expectedPrefix = `  return {\n    ...(snapshotOverlay.caseLabel === undefined\n      ? {}\n      : {\n          caseLabel:\n            snapshotOverlay.caseLabel.trim() ||\n            domainMock.topic.label?.trim() ||\n            "Yeni Araştırma",\n        }),\n    ...(snapshotOverlay.researchQuestion === undefined\n      ? {}\n      : { researchQuestion: snapshotOverlay.researchQuestion.trim() }),\n`;
 
-let next = current;
 if (currentPrefix === expectedPrefix) {
   console.log(`Already current: ${path}`);
 } else {
   if (!currentPrefix.includes("caseLabel") || !currentPrefix.includes("researchQuestion")) {
-    throw new Error("The snapshot return prefix did not contain the expected case identity fields.");
+    throw new Error(
+      "The snapshot return prefix did not contain the expected case identity fields."
+    );
   }
-  next = `${current.slice(0, returnStart)}${expectedPrefix}${current.slice(deskNodeIndex)}`;
+  const next = `${current.slice(0, returnStart)}${expectedPrefix}${current.slice(deskNodeIndex)}`;
   if (apply) {
     await writeFile(absolutePath, next.endsWith("\n") ? next : `${next}\n`, "utf8");
     console.log(`Applied: ${path}`);

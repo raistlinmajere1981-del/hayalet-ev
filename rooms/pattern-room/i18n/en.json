@@ -35,7 +35,9 @@
       "connectionAdded": "Connection created.",
       "debateUpdated": "Tenth Man session updated.",
       "importSucceeded": "Source imported.",
-      "importFailed": "The action could not be completed; check the fields and warnings."
+      "importFailed": "The action could not be completed; check the fields and warnings.",
+      "caseIdentityUpdated": "Case identity updated.",
+      "caseIdentityUnchanged": "There are no case identity changes to save."
     },
     "nav": {
       "overview": {
@@ -70,7 +72,15 @@
     "overview": {
       "activityLabel": "Case activity",
       "activityTitle": "Investigation desk ready",
-      "activityCopy": "Open every major tool directly from the navigation."
+      "activityCopy": "Open every major tool directly from the navigation.",
+      "identityLabel": "Case identity",
+      "identityTitle": "Name the investigation",
+      "identityCopy": "The case name and primary research question flow into every workspace, the report, and the Case Packet preview.",
+      "caseNameLabel": "Case name",
+      "caseNamePlaceholder": "Example: North Corridor Sensor Incident",
+      "researchQuestionLabel": "Primary research question",
+      "researchQuestionPlaceholder": "What question is this investigation trying to answer?",
+      "saveIdentity": "Save Case Identity"
     },
     "board": {
       "canvasLabel": "Board workspace",

@@ -37,8 +37,10 @@ export type PatternRoomCasePacketBoardNote = {
 
 export type PatternRoomCasePacketConnection = {
   id: string;
+  sourceId?: string;
   sourceLabel: string;
   edgeTypeLabel: string;
+  targetId?: string;
   targetLabel: string;
   notePreview?: string | null;
 };
@@ -56,6 +58,7 @@ export type PatternRoomCasePacket = {
   packetVersion: typeof PATTERN_ROOM_CASE_PACKET_VERSION;
   roomId: "pattern-room";
   topicLabel: string;
+  researchQuestion?: string | null;
   generatedFrom: "local-view-model";
   caution: string;
   sources: PatternRoomCasePacketSource[];

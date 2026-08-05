@@ -131,6 +131,8 @@ export type DebateLocalTurn = {
 };
 
 export type PatternRoomLocalOverlay = {
+  caseLabel?: string;
+  researchQuestion?: string;
   deskNodeIds: readonly string[];
   pinnedSourceIds: readonly string[];
   sourcePinnedLayerById: Readonly<Record<string, PatternLayer>>;
@@ -153,13 +155,14 @@ export type PatternRoomLocalGuards = {
 };
 
 export type PatternRoomLocalDomainReference = {
-  readonly topic: Pick<Topic, "id">;
+  readonly topic: Pick<Topic, "id"> & Partial<Pick<Topic, "label" | "description">>;
   readonly nodes: readonly PatternNode[];
   readonly sources: readonly SourceItem[];
 };
 
 export type PatternRoomLocalState = {
   getTopicId: () => string;
+  updateCaseIdentity: (caseLabel: string, researchQuestion: string) => boolean;
   sendToDesk: (nodeId: string) => void;
   pinSource: (sourceId: string, layer: PatternLayer) => void;
   addToDebate: (entityId: string) => void;
@@ -419,6 +422,10 @@ export function createLocalState(
   domainMock: PatternRoomLocalDomainReference
 ): PatternRoomLocalState {
   const domainRef = domainMock;
+  const defaultCaseLabel = domainRef.topic.label?.trim() || "Yeni Araştırma";
+  const defaultResearchQuestion = domainRef.topic.description?.trim() || "";
+  let caseLabel = defaultCaseLabel;
+  let researchQuestion = defaultResearchQuestion;
   const deskNodeIds: string[] = [];
   const pinnedSourceIds: string[] = [];
   const sourcePinnedLayerById: Record<string, PatternLayer> = {};
@@ -1348,6 +1355,20 @@ export function createLocalState(
     getTopicId(): string {
       return domainRef.topic.id;
     },
+    updateCaseIdentity(nextCaseLabel: string, nextResearchQuestion: string): boolean {
+      const normalizedLabel = nextCaseLabel.trim();
+      const normalizedQuestion = nextResearchQuestion.trim();
+      if (normalizedLabel === "") {
+        return false;
+      }
+      if (caseLabel === normalizedLabel && researchQuestion === normalizedQuestion) {
+        return false;
+      }
+      caseLabel = normalizedLabel;
+      researchQuestion = normalizedQuestion;
+      notify();
+      return true;
+    },
     sendToDesk(nodeId: string): void {
       if (!hasNode(nodeId)) {
         return;
@@ -1539,6 +1560,8 @@ export function createLocalState(
     },
     getOverlay(): PatternRoomLocalOverlay {
       return {
+        ...(caseLabel === defaultCaseLabel ? {} : { caseLabel }),
+        ...(researchQuestion === defaultResearchQuestion ? {} : { researchQuestion }),
         deskNodeIds: [...deskNodeIds],
         pinnedSourceIds: [...pinnedSourceIds],
         sourcePinnedLayerById: { ...sourcePinnedLayerById },
@@ -1562,6 +1585,11 @@ export function createLocalState(
       };
     },
     restoreOverlay(overlay: PatternRoomLocalOverlay, guards: PatternRoomLocalGuards): void {
+      caseLabel = overlay.caseLabel?.trim() || defaultCaseLabel;
+      researchQuestion =
+        overlay.researchQuestion === undefined
+          ? defaultResearchQuestion
+          : overlay.researchQuestion.trim();
       deskNodeIds.splice(0, deskNodeIds.length, ...overlay.deskNodeIds);
       pinnedSourceIds.splice(0, pinnedSourceIds.length, ...overlay.pinnedSourceIds);
 

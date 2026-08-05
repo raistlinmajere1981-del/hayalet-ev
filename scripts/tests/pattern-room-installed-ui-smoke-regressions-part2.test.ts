@@ -279,6 +279,23 @@ void test("pattern-room installed UI supports phase 4B local interactions withou
   try {
     await startPatternRoomInstalledUi(installedCopy.rootDir);
 
+    const identityForm = environment.app.querySelector("[data-pattern-case-identity-form='true']");
+    const identityName = environment.app.querySelector("[data-pattern-case-identity-name='true']");
+    const identityQuestion = environment.app.querySelector(
+      "[data-pattern-case-identity-question='true']"
+    );
+    assert.ok(identityForm);
+    assert.ok(identityName);
+    assert.ok(identityQuestion);
+    identityName.value = "Kuzey Koridoru Sensör Olayı";
+    identityQuestion.value = "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?";
+    submitForm(identityForm);
+    assertTextIncludes(readTreeText(environment.app), [
+      "Kuzey Koridoru Sensör Olayı",
+      "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?",
+      "Vaka kimliği güncellendi.",
+    ]);
+
     openFocusedView(environment.app, "board");
     const boardNode = environment.app.querySelector(
       "[data-pattern-board-pin='node-navigation-source']"

@@ -24,6 +24,7 @@ function createCasePacketFixture(extraText = ""): PatternRoomCasePacket {
     packetVersion: 1,
     roomId: "pattern-room",
     topicLabel: "Yerel vaka",
+    researchQuestion: "Yerel vaka hangi soruya yanıt arıyor?",
     generatedFrom: "local-view-model",
     caution:
       "Bu paket kullanıcı tarafından eklenen ve henüz dışarıdan denetlenmemiş yerel araştırma izlerinden hazırlanmıştır; sonuç veya doğrulama beyanı içermez.",
@@ -60,8 +61,10 @@ function createCasePacketFixture(extraText = ""): PatternRoomCasePacket {
     connections: [
       {
         id: "edge-001",
+        sourceId: "evidence-001",
         sourceLabel: "Seçili alıntı",
         edgeTypeLabel: "soru doğuruyor",
+        targetId: "note-001",
         targetLabel: "Belirsizlik",
         notePreview: "Yerel ilişki notu.",
       },
@@ -170,7 +173,8 @@ void test("pattern-room case review message composer keeps role instructions dis
 
   assert.equal(new Set(messages.map((message) => message.sections.roleInstructions)).size, 3);
   assert.match(messages[0]?.sections.roleInstructions ?? "", /savunucu/);
-  assert.match(messages[1]?.sections.roleInstructions ?? "", /10\. Adam/);
+  assert.match(messages[1]?.sections.roleInstructions ?? "", /role: AI2 — 10\. Adam/);
+  assert.doesNotMatch(messages[1]?.sections.roleInstructions ?? "", /role: AI2 - AI2/);
   assert.match(messages[2]?.sections.roleInstructions ?? "", /hakem/);
 });
 

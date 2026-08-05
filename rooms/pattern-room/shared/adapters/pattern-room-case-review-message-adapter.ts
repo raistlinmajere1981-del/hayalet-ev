@@ -85,7 +85,7 @@ function createRoleInstructions(roleSlot: PatternRoomCaseReviewRoleSlot): {
     reviewLabel: roleProfile.reviewLabel,
     section: [
       "[Role Instructions]",
-      `role: ${roleSlot} - ${roleProfile.roleLabel}`,
+      `role: ${roleProfile.roleLabel}`,
       roleProfile.instructions,
     ].join("\n"),
   };

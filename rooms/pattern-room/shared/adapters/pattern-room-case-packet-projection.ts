@@ -25,6 +25,7 @@ export type PatternRoomCasePacketProjectionInput = {
   readonly domain: PatternRoomDomainData;
   readonly overlay?: PatternRoomLocalOverlay;
   readonly topicLabel?: string;
+  readonly researchQuestion?: string;
 };
 
 export type PatternRoomCasePacketProjectionOptions = Partial<PatternRoomCasePacketLimits>;
@@ -236,8 +237,10 @@ function createConnection(
   }
   return {
     id: edge.id,
+    sourceId: edge.sourceNodeId,
     sourceLabel: createPreview(sourceLabel, limits.excerptMaxLength),
     edgeTypeLabel: EDGE_TYPE_LABELS[edge.edgeType],
+    targetId: edge.targetNodeId,
     targetLabel: createPreview(targetLabel, limits.excerptMaxLength),
     notePreview: edge.note === null ? null : createPreview(edge.note, limits.excerptMaxLength),
   };
@@ -331,7 +334,13 @@ export function createPatternRoomCasePacketFromProjection(
   return {
     packetVersion: PATTERN_ROOM_CASE_PACKET_VERSION,
     roomId: "pattern-room",
-    topicLabel: normalizePlainText(input.topicLabel ?? input.domain.topic.label),
+    topicLabel: normalizePlainText(
+      input.topicLabel ?? input.overlay?.caseLabel ?? input.domain.topic.label
+    ),
+    researchQuestion:
+      normalizePlainText(
+        input.researchQuestion ?? input.overlay?.researchQuestion ?? input.domain.topic.description
+      ) || null,
     generatedFrom: "local-view-model",
     caution: CASE_PACKET_CAUTION,
     sources: createSources(input.domain, input.overlay, limits),

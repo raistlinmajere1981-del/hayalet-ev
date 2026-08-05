@@ -386,7 +386,12 @@ body.is-scroll-locked {
 
 .room-manager-card--row {
   display: grid;
-  grid-template-columns: minmax(11rem, 0.8fr) minmax(14rem, 1.4fr) auto auto;
+  grid-template-columns:
+    minmax(var(--layout-room-manager-card-col-identity-min-w), 0.8fr) minmax(
+      var(--layout-room-manager-card-col-topic-min-w),
+      1.4fr
+    )
+    auto auto;
   align-items: center;
   column-gap: var(--space-4);
   row-gap: var(--space-2);

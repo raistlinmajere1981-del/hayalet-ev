@@ -126,6 +126,7 @@ export type PatternRoomWorkspaceModel = {
   roomLabel: string;
   roomSummary: string;
   subject: string;
+  researchQuestion: string;
   boardCategories: PatternBoardCategory[];
   connectionOptions: PatternConnectionOption[];
   claims: PatternClaim[];
@@ -183,6 +184,7 @@ export type PatternLongTextSourceImportStatus = PatternUserTextSourceImportStatu
 };
 
 export type PatternPanelActions = {
+  updateCaseIdentity: (caseLabel: string, researchQuestion: string) => void;
   getSelectedNodeId: () => string | null;
   selectNode: (nodeId: string | null) => void;
   sendNodeToDesk: (nodeId: string) => void;

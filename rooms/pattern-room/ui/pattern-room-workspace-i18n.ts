@@ -27,6 +27,8 @@ export type PatternWorkspaceTextKey =
   | "feedback.debateUpdated"
   | "feedback.importSucceeded"
   | "feedback.importFailed"
+  | "feedback.caseIdentityUpdated"
+  | "feedback.caseIdentityUnchanged"
   | "shell.keyboardHint"
   | "nav.overview.label"
   | "nav.overview.description"
@@ -45,6 +47,14 @@ export type PatternWorkspaceTextKey =
   | "overview.activityLabel"
   | "overview.activityTitle"
   | "overview.activityCopy"
+  | "overview.identityLabel"
+  | "overview.identityTitle"
+  | "overview.identityCopy"
+  | "overview.caseNameLabel"
+  | "overview.caseNamePlaceholder"
+  | "overview.researchQuestionLabel"
+  | "overview.researchQuestionPlaceholder"
+  | "overview.saveIdentity"
   | "board.canvasLabel"
   | "board.inspectorLabel"
   | "board.toolsLabel"
@@ -102,6 +112,8 @@ const FALLBACK_TR: Readonly<Record<PatternWorkspaceTextKey, string>> = {
   "feedback.debateUpdated": "10. Adam oturumu güncellendi.",
   "feedback.importSucceeded": "Kaynak içe aktarıldı.",
   "feedback.importFailed": "İşlem tamamlanamadı; alanları ve uyarıları kontrol edin.",
+  "feedback.caseIdentityUpdated": "Vaka kimliği güncellendi.",
+  "feedback.caseIdentityUnchanged": "Vaka kimliğinde kaydedilecek bir değişiklik yok.",
   "shell.keyboardHint": "Ok tuşlarıyla çalışma alanları arasında geçiş yap.",
   "nav.overview.label": "Vaka Merkezi",
   "nav.overview.description": "Genel görünüm",
@@ -120,6 +132,15 @@ const FALLBACK_TR: Readonly<Record<PatternWorkspaceTextKey, string>> = {
   "overview.activityLabel": "Vaka faaliyeti",
   "overview.activityTitle": "Araştırma masası hazır",
   "overview.activityCopy": "Her ana araç soldaki navigasyondan doğrudan açılır.",
+  "overview.identityLabel": "Vaka kimliği",
+  "overview.identityTitle": "Araştırmayı adlandır",
+  "overview.identityCopy":
+    "Vaka adı ve ana araştırma sorusu tüm çalışma alanlarına, rapora ve Case Packet önizlemesine yansır.",
+  "overview.caseNameLabel": "Vaka adı",
+  "overview.caseNamePlaceholder": "Örn. Kuzey Koridoru Sensör Olayı",
+  "overview.researchQuestionLabel": "Ana araştırma sorusu",
+  "overview.researchQuestionPlaceholder": "Bu araştırma hangi soruya yanıt arıyor?",
+  "overview.saveIdentity": "Vaka Kimliğini Kaydet",
   "board.canvasLabel": "Pano çalışma yüzeyi",
   "board.inspectorLabel": "Pano inspector",
   "board.toolsLabel": "Hızlı ekleme araçları",
@@ -173,6 +194,8 @@ const FALLBACK_EN: Readonly<Record<PatternWorkspaceTextKey, string>> = {
   "feedback.debateUpdated": "Tenth Man session updated.",
   "feedback.importSucceeded": "Source imported.",
   "feedback.importFailed": "The action could not be completed; check the fields and warnings.",
+  "feedback.caseIdentityUpdated": "Case identity updated.",
+  "feedback.caseIdentityUnchanged": "There are no case identity changes to save.",
   "shell.keyboardHint": "Use the arrow keys to move between workspaces.",
   "nav.overview.label": "Case Hub",
   "nav.overview.description": "Case overview",
@@ -191,6 +214,15 @@ const FALLBACK_EN: Readonly<Record<PatternWorkspaceTextKey, string>> = {
   "overview.activityLabel": "Case activity",
   "overview.activityTitle": "Investigation desk ready",
   "overview.activityCopy": "Open every major tool directly from the navigation.",
+  "overview.identityLabel": "Case identity",
+  "overview.identityTitle": "Name the investigation",
+  "overview.identityCopy":
+    "The case name and primary research question flow into every workspace, the report, and the Case Packet preview.",
+  "overview.caseNameLabel": "Case name",
+  "overview.caseNamePlaceholder": "Example: North Corridor Sensor Incident",
+  "overview.researchQuestionLabel": "Primary research question",
+  "overview.researchQuestionPlaceholder": "What question is this investigation trying to answer?",
+  "overview.saveIdentity": "Save Case Identity",
   "board.canvasLabel": "Board workspace",
   "board.inspectorLabel": "Board inspector",
   "board.toolsLabel": "Quick authoring tools",

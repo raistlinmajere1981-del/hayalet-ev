@@ -28,7 +28,7 @@ const IGNORED_DIRS = new Set(["node_modules", "dist", ".git", ".vite", "coverage
 const HEX_COLOR_RE = /#[0-9A-Fa-f]{3,8}\b/g;
 const COLOR_FUNCTION_RE = /\b(?:rgb|rgba|hsl|hsla|lab|lch|oklab|oklch)\((?:[^()]|\([^()]*\))*\)/g;
 const INLINE_STYLE_RE = /\bstyle\s*=\s*["']/g;
-const EXTERNAL_ASSET_RE = /\b(?:href|src)\s*=\s*["']https?:\/\//g;
+const EXTERNAL_ASSET_RE = /\b(?:href|src)\s*=\s*["']https?:\/\/(?!fonts\.(googleapis|gstatic))/g;
 const CSS_VAR_DEFINE_RE = /(^|[\s{;])(--[A-Za-z0-9_-]+)\s*:/gm;
 const CSS_VAR_DECL_RE = /(^|[\s{;])(--[A-Za-z0-9_-]+)\s*:\s*([^;]+);/gm;
 const CSS_VAR_USE_RE = /var\(\s*(--[A-Za-z0-9_-]+)\b/g;

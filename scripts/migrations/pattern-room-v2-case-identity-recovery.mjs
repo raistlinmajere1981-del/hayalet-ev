@@ -97,22 +97,19 @@ await updateFile("rooms/pattern-room/shared/state/pattern-room-snapshot.ts", (so
   return next;
 });
 
-await updateFile(
-  "rooms/pattern-room/ui/panels/pattern-case-identity-inspector.ts",
-  (source) => {
-    return replaceRequired(
-      source,
-      '    caseName.removeAttribute("aria-invalid");',
-      '    caseName.setAttribute("aria-invalid", "false");',
-      "installed DOM aria-invalid reset"
-    );
-  }
-);
+await updateFile("rooms/pattern-room/ui/panels/pattern-case-identity-inspector.ts", (source) => {
+  return replaceRequired(
+    source,
+    '    caseName.removeAttribute("aria-invalid");',
+    '    caseName.setAttribute("aria-invalid", "false");',
+    "installed DOM aria-invalid reset"
+  );
+});
 
 await updateFile("scripts/tests/pattern-room-case-packet-regressions.test.ts", (source) => {
   return replaceRequired(
     source,
-    '  assert.doesNotMatch(projectionSource, /from\\s+["\'][^"\']*(?:ai|provider|relay)/i);',
+    "  assert.doesNotMatch(projectionSource, /from\\s+[\"'][^\"']*(?:ai|provider|relay)/i);",
     `  const projectionImportSpecifiers = Array.from(\n    projectionSource.matchAll(/from\\s+["']([^"']+)["']/g),\n    (match) => match[1] ?? ""\n  );\n  assert.equal(\n    projectionImportSpecifiers.some((specifier) => {\n      return /(?:^|[\\/_-])(?:ai|provider|relay)(?:$|[\\/_.-])/i.test(specifier);\n    }),\n    false\n  );`,
     "transport-boundary import check"
   );

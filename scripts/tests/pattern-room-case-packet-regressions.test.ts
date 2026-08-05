@@ -24,6 +24,10 @@ function createCasePacketFixture(): {
   const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
+  localState.updateCaseIdentity(
+    "Kuzey Koridoru Sensör Olayı",
+    "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?"
+  );
   localState.addAuthoredSource("Uzun kaynak başlığı", "Kullanıcı arşivi", createLongText("Kaynak"));
   localState.addAuthoredClaim("Yerel iddia", "Kullanıcı tarafından eklenen iddia.");
   localState.addAuthoredInspiration("Yerel ilham", "Kullanıcı tarafından eklenen ilham.");
@@ -89,6 +93,11 @@ void test("pattern-room structured case packet is deterministic and read-only", 
   assert.equal(firstPacket.packetVersion, 1);
   assert.equal(firstPacket.roomId, "pattern-room");
   assert.equal(firstPacket.generatedFrom, "local-view-model");
+  assert.equal(firstPacket.topicLabel, "Kuzey Koridoru Sensör Olayı");
+  assert.equal(
+    firstPacket.researchQuestion,
+    "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?"
+  );
   assert.equal(JSON.stringify(overlay), beforeOverlay);
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
 });
@@ -126,8 +135,10 @@ void test("pattern-room structured case packet carries sources, evidence, notes,
 
   const connection = packet.connections.find((item) => item.id === "local-edge-001");
   assert.ok(connection);
+  assert.equal(connection.sourceId, "local-node-001");
   assert.equal(connection.sourceLabel, "Yerel iddia");
   assert.equal(connection.edgeTypeLabel, "destekliyor");
+  assert.equal(connection.targetId, "local-evidence-001");
   assert.equal(connection.targetLabel, "Kaynaklı kanıt");
   assert.match(connection.notePreview ?? "", /^Bağ 1:/);
   assert.equal((connection.notePreview ?? "").length <= 500, true);
@@ -192,7 +203,16 @@ void test("pattern-room structured case packet projection is independent from re
   assert.doesNotMatch(projectionSource, /readReportSection|readMetaValue|parseConnectionBody/);
   assert.doesNotMatch(projectionSource, /from\s+["'][^"']*(?:host|ui|pattern-report-panel)/i);
   assert.doesNotMatch(projectionSource, /ipcRenderer|ipcMain|roomAPI|autosave|SourcePackage/i);
-  assert.doesNotMatch(projectionSource, /from\s+["'][^"']*(?:ai|provider|relay)/i);
+  const projectionImportSpecifiers = Array.from(
+    projectionSource.matchAll(/from\s+["']([^"']+)["']/g),
+    (match) => match[1] ?? ""
+  );
+  assert.equal(
+    projectionImportSpecifiers.some((specifier) => {
+      return /(?:^|[/_-])(?:ai|provider|relay)(?:$|[/_.-])/i.test(specifier);
+    }),
+    false
+  );
   assert.doesNotMatch(typeSource, /PatternRoomLocalOverlay|SourcePackage|ipcRenderer|roomAPI/);
   assert.equal(PATTERN_ROOM_SNAPSHOT_VERSION, 1);
 });

@@ -507,6 +507,12 @@ function parseOverlay(value: unknown): PatternRoomLocalOverlay | null {
   const localAuthoredEvidence = parseLocalAuthoredEvidence(value["localAuthoredEvidence"]);
   const localEvidenceCandidates = parseLocalEvidenceCandidates(value["localEvidenceCandidates"]);
   const localAuthoredEdges = parseLocalAuthoredEdges(value["localAuthoredEdges"]);
+  const caseLabel =
+    typeof value["caseLabel"] === "string" && value["caseLabel"].trim() !== ""
+      ? value["caseLabel"].trim()
+      : undefined;
+  const researchQuestion =
+    typeof value["researchQuestion"] === "string" ? value["researchQuestion"].trim() : undefined;
 
   if (
     !isStringArray(value["deskNodeIds"]) ||
@@ -523,6 +529,8 @@ function parseOverlay(value: unknown): PatternRoomLocalOverlay | null {
   }
 
   return {
+    ...(caseLabel === undefined ? {} : { caseLabel }),
+    ...(researchQuestion === undefined ? {} : { researchQuestion }),
     deskNodeIds: value["deskNodeIds"],
     pinnedSourceIds: value["pinnedSourceIds"],
     sourcePinnedLayerById,
@@ -744,6 +752,15 @@ function restoreOverlaySnapshot(
   );
 
   return {
+    ...(snapshotOverlay.caseLabel === undefined
+      ? {}
+      : {
+          caseLabel:
+            snapshotOverlay.caseLabel.trim() || domainMock.topic.label?.trim() || "Yeni Araştırma",
+        }),
+    ...(snapshotOverlay.researchQuestion === undefined
+      ? {}
+      : { researchQuestion: snapshotOverlay.researchQuestion.trim() }),
     deskNodeIds: filterUniqueIds(snapshotOverlay.deskNodeIds, hasNode),
     pinnedSourceIds,
     sourcePinnedLayerById,

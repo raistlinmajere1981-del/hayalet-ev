@@ -116,6 +116,15 @@ The following checks passed after the production/test-domain migration:
 - Node, evidence and connection forms no longer inherit the three-column desktop authoring grid.
 - Inspector form controls keep full available width without horizontal compression.
 
+## Completed: editable case identity and packet identity
+
+- The active case name and primary research question can be edited from the Case Hub inspector.
+- Custom identity persists in the existing version-1 snapshot without changing production defaults or older snapshot compatibility.
+- Workspace summaries, overview copy, graph fallback, report context and Case Review preview use the edited identity.
+- Case Packet connections expose source and target ids alongside labels.
+- Case Review role lines no longer duplicate slot identifiers.
+- Installed UI, snapshot, Case Packet and message regressions cover the new boundary.
+
 ## Next implementation steps
 
 1. Add explicit edge selection and edge-detail editing to the persistent inspector.

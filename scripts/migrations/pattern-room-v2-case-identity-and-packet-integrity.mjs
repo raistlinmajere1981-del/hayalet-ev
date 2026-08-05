@@ -61,7 +61,7 @@ async function updateLocalState() {
   source = replaceRequired(
     source,
     `    getTopicId(): string {\n      return domainRef.topic.id;\n    },\n    sendToDesk(nodeId: string): void {`,
-    `    getTopicId(): string {\n      return domainRef.topic.id;\n    },\n    updateCaseIdentity(nextCaseLabel: string, nextResearchQuestion: string): boolean {\n      const normalizedLabel = nextCaseLabel.trim();\n      const normalizedQuestion = nextResearchQuestion.trim();\n      if (normalizedLabel === \"\") {\n        return false;\n      }\n      if (caseLabel === normalizedLabel && researchQuestion === normalizedQuestion) {\n        return false;\n      }\n      caseLabel = normalizedLabel;\n      researchQuestion = normalizedQuestion;\n      notify();\n      return true;\n    },\n    sendToDesk(nodeId: string): void {`,
+    `    getTopicId(): string {\n      return domainRef.topic.id;\n    },\n    updateCaseIdentity(nextCaseLabel: string, nextResearchQuestion: string): boolean {\n      const normalizedLabel = nextCaseLabel.trim();\n      const normalizedQuestion = nextResearchQuestion.trim();\n      if (normalizedLabel === "") {\n        return false;\n      }\n      if (caseLabel === normalizedLabel && researchQuestion === normalizedQuestion) {\n        return false;\n      }\n      caseLabel = normalizedLabel;\n      researchQuestion = normalizedQuestion;\n      notify();\n      return true;\n    },\n    sendToDesk(nodeId: string): void {`,
     "local state case identity implementation"
   );
 
@@ -88,15 +88,15 @@ async function updateSnapshot() {
 
   source = replaceRequired(
     source,
-    `  const localEvidenceCandidates = parseLocalEvidenceCandidates(value[\"localEvidenceCandidates\"]);\n  const localAuthoredEdges = parseLocalAuthoredEdges(value[\"localAuthoredEdges\"]);`,
-    `  const localEvidenceCandidates = parseLocalEvidenceCandidates(value[\"localEvidenceCandidates\"]);\n  const localAuthoredEdges = parseLocalAuthoredEdges(value[\"localAuthoredEdges\"]);\n  const caseLabel =\n    typeof value[\"caseLabel\"] === \"string\" && value[\"caseLabel\"].trim() !== \"\"\n      ? value[\"caseLabel\"].trim()\n      : undefined;\n  const researchQuestion =\n    typeof value[\"researchQuestion\"] === \"string\"\n      ? value[\"researchQuestion\"].trim()\n      : undefined;`,
+    `  const localEvidenceCandidates = parseLocalEvidenceCandidates(value["localEvidenceCandidates"]);\n  const localAuthoredEdges = parseLocalAuthoredEdges(value["localAuthoredEdges"]);`,
+    `  const localEvidenceCandidates = parseLocalEvidenceCandidates(value["localEvidenceCandidates"]);\n  const localAuthoredEdges = parseLocalAuthoredEdges(value["localAuthoredEdges"]);\n  const caseLabel =\n    typeof value["caseLabel"] === "string" && value["caseLabel"].trim() !== ""\n      ? value["caseLabel"].trim()\n      : undefined;\n  const researchQuestion =\n    typeof value["researchQuestion"] === "string"\n      ? value["researchQuestion"].trim()\n      : undefined;`,
     "snapshot optional case identity parsing"
   );
 
   source = replaceRequired(
     source,
-    `  return {\n    deskNodeIds: value[\"deskNodeIds\"],`,
-    `  return {\n    ...(caseLabel === undefined ? {} : { caseLabel }),\n    ...(researchQuestion === undefined ? {} : { researchQuestion }),\n    deskNodeIds: value[\"deskNodeIds\"],`,
+    `  return {\n    deskNodeIds: value["deskNodeIds"],`,
+    `  return {\n    ...(caseLabel === undefined ? {} : { caseLabel }),\n    ...(researchQuestion === undefined ? {} : { researchQuestion }),\n    deskNodeIds: value["deskNodeIds"],`,
     "snapshot parsed overlay identity"
   );
 
@@ -137,22 +137,22 @@ async function updateViewAdapters() {
 
   source = replaceRequired(
     source,
-    `  \"roomTitle\" | \"roomLabel\" | \"roomSummary\" | \"subject\"\n>;`,
-    `  \"roomTitle\" | \"roomLabel\" | \"roomSummary\" | \"subject\" | \"researchQuestion\"\n>;`,
+    `  "roomTitle" | "roomLabel" | "roomSummary" | "subject"\n>;`,
+    `  "roomTitle" | "roomLabel" | "roomSummary" | "subject" | "researchQuestion"\n>;`,
     "overview research question type"
   );
 
   source = replaceRequired(
     source,
-    `export function adaptOverviewViewModel(\n  domain: PatternRoomDomainViewSource\n): PatternOverviewViewModel {\n  return {\n    roomTitle: \"İz Sürme Odası\",\n    roomLabel: \"Pattern Room\",\n    roomSummary:\n      \"Near-future dedektif ofisinde kanıt panosu, holografik masa ve temkinli rapor terminali.\",\n    subject: adaptSubjectLabel(domain.topic),\n  };\n}`,
-    `export function adaptOverviewViewModel(\n  domain: PatternRoomDomainViewSource,\n  overlay?: PatternRoomLocalOverlay\n): PatternOverviewViewModel {\n  const subject = overlay?.caseLabel?.trim() || adaptSubjectLabel(domain.topic);\n  const researchQuestion =\n    overlay?.researchQuestion === undefined\n      ? domain.topic.description.trim()\n      : overlay.researchQuestion.trim();\n  return {\n    roomTitle: \"İz Sürme Odası\",\n    roomLabel: \"Pattern Room\",\n    roomSummary:\n      researchQuestion === \"\" ? \"Araştırma sorusu henüz tanımlanmadı.\" : researchQuestion,\n    subject,\n    researchQuestion,\n  };\n}`,
+    `export function adaptOverviewViewModel(\n  domain: PatternRoomDomainViewSource\n): PatternOverviewViewModel {\n  return {\n    roomTitle: "İz Sürme Odası",\n    roomLabel: "Pattern Room",\n    roomSummary:\n      "Near-future dedektif ofisinde kanıt panosu, holografik masa ve temkinli rapor terminali.",\n    subject: adaptSubjectLabel(domain.topic),\n  };\n}`,
+    `export function adaptOverviewViewModel(\n  domain: PatternRoomDomainViewSource,\n  overlay?: PatternRoomLocalOverlay\n): PatternOverviewViewModel {\n  const subject = overlay?.caseLabel?.trim() || adaptSubjectLabel(domain.topic);\n  const researchQuestion =\n    overlay?.researchQuestion === undefined\n      ? domain.topic.description.trim()\n      : overlay.researchQuestion.trim();\n  return {\n    roomTitle: "İz Sürme Odası",\n    roomLabel: "Pattern Room",\n    roomSummary:\n      researchQuestion === "" ? "Araştırma sorusu henüz tanımlanmadı." : researchQuestion,\n    subject,\n    researchQuestion,\n  };\n}`,
     "overview identity adapter"
   );
 
   source = replaceRequired(
     source,
-    `  const claims =\n    claimNodes.length > 0\n      ? claimNodes.map(adaptClaimNode)\n      : [\n          {\n            id: \`claim-\${domain.topic.id}\`,\n            label: domain.topic.label,\n            summary: domain.topic.description,\n            stance: \"primary\" as const,\n          },\n        ];`,
-    `  const claims =\n    claimNodes.length > 0\n      ? claimNodes.map(adaptClaimNode)\n      : [\n          {\n            id: \`claim-\${domain.topic.id}\`,\n            label: overlay?.caseLabel?.trim() || domain.topic.label,\n            summary:\n              overlay?.researchQuestion === undefined\n                ? domain.topic.description\n                : overlay.researchQuestion.trim(),\n            stance: \"primary\" as const,\n          },\n        ];`,
+    `  const claims =\n    claimNodes.length > 0\n      ? claimNodes.map(adaptClaimNode)\n      : [\n          {\n            id: \`claim-\${domain.topic.id}\`,\n            label: domain.topic.label,\n            summary: domain.topic.description,\n            stance: "primary" as const,\n          },\n        ];`,
+    `  const claims =\n    claimNodes.length > 0\n      ? claimNodes.map(adaptClaimNode)\n      : [\n          {\n            id: \`claim-\${domain.topic.id}\`,\n            label: overlay?.caseLabel?.trim() || domain.topic.label,\n            summary:\n              overlay?.researchQuestion === undefined\n                ? domain.topic.description\n                : overlay.researchQuestion.trim(),\n            stance: "primary" as const,\n          },\n        ];`,
     "desk identity fallback"
   );
 
@@ -184,8 +184,8 @@ async function updateCasePacket() {
   );
   typeSource = replaceRequired(
     typeSource,
-    `  topicLabel: string;\n  generatedFrom: \"local-view-model\";`,
-    `  topicLabel: string;\n  researchQuestion?: string | null;\n  generatedFrom: \"local-view-model\";`,
+    `  topicLabel: string;\n  generatedFrom: "local-view-model";`,
+    `  topicLabel: string;\n  researchQuestion?: string | null;\n  generatedFrom: "local-view-model";`,
     "case packet research question"
   );
   await writeRepoFile(typePath, typeSource);
@@ -214,8 +214,8 @@ async function updateCasePacket() {
   );
   projectionSource = replaceRequired(
     projectionSource,
-    `    topicLabel: normalizePlainText(input.topicLabel ?? input.domain.topic.label),\n    generatedFrom: \"local-view-model\",`,
-    `    topicLabel: normalizePlainText(\n      input.topicLabel ?? input.overlay?.caseLabel ?? input.domain.topic.label\n    ),\n    researchQuestion:\n      normalizePlainText(\n        input.researchQuestion ??\n          input.overlay?.researchQuestion ??\n          input.domain.topic.description\n      ) || null,\n    generatedFrom: \"local-view-model\",`,
+    `    topicLabel: normalizePlainText(input.topicLabel ?? input.domain.topic.label),\n    generatedFrom: "local-view-model",`,
+    `    topicLabel: normalizePlainText(\n      input.topicLabel ?? input.overlay?.caseLabel ?? input.domain.topic.label\n    ),\n    researchQuestion:\n      normalizePlainText(\n        input.researchQuestion ??\n          input.overlay?.researchQuestion ??\n          input.domain.topic.description\n      ) || null,\n    generatedFrom: "local-view-model",`,
     "case packet identity projection"
   );
   await writeRepoFile(projectionPath, projectionSource);
@@ -227,7 +227,10 @@ async function updateRoleLabels() {
   const roleReplacements = [
     ["AI0 araştırmacı / düzenleyici", "AI0 — araştırmacı / düzenleyici"],
     ["AI1 savunucu / güçlü yorum testçisi", "AI1 — savunucu / güçlü yorum testçisi"],
-    ["AI2 10. Adam / karşı argüman ve boşluk arayıcı", "AI2 — 10. Adam / karşı argüman ve boşluk arayıcı"],
+    [
+      "AI2 10. Adam / karşı argüman ve boşluk arayıcı",
+      "AI2 — 10. Adam / karşı argüman ve boşluk arayıcı",
+    ],
     ["US1 hakem / son gözden geçiren", "US1 — hakem / son gözden geçiren"],
   ];
   for (const [before, after] of roleReplacements) {
@@ -251,73 +254,73 @@ async function createIdentityInspector() {
   const path = "rooms/pattern-room/ui/panels/pattern-case-identity-inspector.ts";
   const content = [
     'import type { PatternPanelActions, PatternRoomWorkspaceModel } from "../../shared/types/pattern-room.js";',
-    'import {',
-    '  createPatternWorkspaceTranslator,',
-    '  type PatternWorkspaceTranslator,',
+    "import {",
+    "  createPatternWorkspaceTranslator,",
+    "  type PatternWorkspaceTranslator,",
     '} from "../pattern-room-workspace-i18n.js";',
     'import { createElement } from "./pattern-panel-utils.js";',
-    '',
-    'export function createPatternCaseIdentityInspector(',
-    '  data: PatternRoomWorkspaceModel,',
-    '  actions: PatternPanelActions,',
+    "",
+    "export function createPatternCaseIdentityInspector(",
+    "  data: PatternRoomWorkspaceModel,",
+    "  actions: PatternPanelActions,",
     '  text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)',
-    '): HTMLElement {',
+    "): HTMLElement {",
     '  const section = createElement("section", "pattern-room-case-identity-inspector");',
     '  section.dataset["patternCaseIdentityInspector"] = "true";',
-    '',
+    "",
     '  const form = createElement("form", "pattern-room-case-identity-form");',
     '  form.dataset["patternCaseIdentityForm"] = "true";',
-    '',
+    "",
     '  const caseNameLabel = createElement("label", "pattern-room-case-identity-field");',
     '  caseNameLabel.append(createElement("span", undefined, text("overview.caseNameLabel")));',
     '  const caseName = createElement("input", "pattern-room-inline-input");',
     '  caseName.name = "caseLabel";',
-    '  caseName.value = data.subject;',
+    "  caseName.value = data.subject;",
     '  caseName.placeholder = text("overview.caseNamePlaceholder");',
     '  caseName.dataset["patternCaseIdentityName"] = "true";',
-    '  caseName.required = true;',
-    '  caseNameLabel.append(caseName);',
-    '',
+    "  caseName.required = true;",
+    "  caseNameLabel.append(caseName);",
+    "",
     '  const questionLabel = createElement("label", "pattern-room-case-identity-field");',
-    '  questionLabel.append(',
+    "  questionLabel.append(",
     '    createElement("span", undefined, text("overview.researchQuestionLabel"))',
-    '  );',
+    "  );",
     '  const question = createElement("textarea", "pattern-room-inline-input");',
     '  question.name = "researchQuestion";',
-    '  question.value = data.researchQuestion;',
+    "  question.value = data.researchQuestion;",
     '  question.placeholder = text("overview.researchQuestionPlaceholder");',
     '  question.dataset["patternCaseIdentityQuestion"] = "true";',
-    '  questionLabel.append(question);',
-    '',
-    '  const submit = createElement(',
+    "  questionLabel.append(question);",
+    "",
+    "  const submit = createElement(",
     '    "button",',
     '    "pattern-room-action-button pattern-room-case-identity-submit",',
     '    text("overview.saveIdentity")',
-    '  );',
+    "  );",
     '  submit.type = "submit";',
     '  submit.dataset["patternCaseIdentitySubmit"] = "true";',
-    '',
+    "",
     '  form.addEventListener("submit", (event) => {',
-    '    event.preventDefault();',
-    '    const normalizedLabel = caseName.value.trim();',
+    "    event.preventDefault();",
+    "    const normalizedLabel = caseName.value.trim();",
     '    if (normalizedLabel === "") {',
     '      caseName.setAttribute("aria-invalid", "true");',
-    '      caseName.focus();',
-    '      return;',
-    '    }',
+    "      caseName.focus();",
+    "      return;",
+    "    }",
     '    caseName.removeAttribute("aria-invalid");',
-    '    actions.updateCaseIdentity(normalizedLabel, question.value);',
-    '  });',
-    '',
-    '  form.append(caseNameLabel, questionLabel, submit);',
-    '  section.append(',
+    "    actions.updateCaseIdentity(normalizedLabel, question.value);",
+    "  });",
+    "",
+    "  form.append(caseNameLabel, questionLabel, submit);",
+    "  section.append(",
     '    createElement("span", "pattern-room-context-inspector-label", text("overview.identityLabel")),',
     '    createElement("h2", undefined, text("overview.identityTitle")),',
     '    createElement("p", undefined, text("overview.identityCopy")),',
-    '    form',
-    '  );',
-    '  return section;',
-    '}',
+    "    form",
+    "  );",
+    "  return section;",
+    "}",
   ].join("\n");
   await writeRepoFile(path, content);
 }
@@ -328,8 +331,8 @@ async function updateRuntime() {
 
   source = replaceRequired(
     source,
-    `import { createArchivePanel } from \"./panels/pattern-archive-panel.js\";`,
-    `import { createArchivePanel } from \"./panels/pattern-archive-panel.js\";\nimport { createPatternCaseIdentityInspector } from \"./panels/pattern-case-identity-inspector.js\";`,
+    `import { createArchivePanel } from "./panels/pattern-archive-panel.js";`,
+    `import { createArchivePanel } from "./panels/pattern-archive-panel.js";\nimport { createPatternCaseIdentityInspector } from "./panels/pattern-case-identity-inspector.js";`,
     "identity inspector import"
   );
 
@@ -343,14 +346,14 @@ async function updateRuntime() {
   source = replaceRequired(
     source,
     `  const actions: PatternPanelActions = {\n    getSelectedNodeId(): string | null {`,
-    `  const actions: PatternPanelActions = {\n    updateCaseIdentity(caseLabel: string, researchQuestion: string): void {\n      const updated = localState.updateCaseIdentity(caseLabel, researchQuestion);\n      if (updated) {\n        caseReviewPreviewDraft = null;\n        caseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;\n        showWorkspaceActionFeedback(\"feedback.caseIdentityUpdated\");\n        render();\n        return;\n      }\n      showWorkspaceActionFeedback(\"feedback.caseIdentityUnchanged\", \"info\");\n    },\n    getSelectedNodeId(): string | null {`,
+    `  const actions: PatternPanelActions = {\n    updateCaseIdentity(caseLabel: string, researchQuestion: string): void {\n      const updated = localState.updateCaseIdentity(caseLabel, researchQuestion);\n      if (updated) {\n        caseReviewPreviewDraft = null;\n        caseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;\n        showWorkspaceActionFeedback("feedback.caseIdentityUpdated");\n        render();\n        return;\n      }\n      showWorkspaceActionFeedback("feedback.caseIdentityUnchanged", "info");\n    },\n    getSelectedNodeId(): string | null {`,
     "runtime identity action"
   );
 
   source = replaceRequired(
     source,
-    `  function renderWorkspaceInspector(shell: PatternWorkspaceShell = ensureWorkspaceShell()): void {\n    if (activeView !== \"board\" && activeView !== \"desk\") {\n      shell.setInspectorContent(null);\n      return;\n    }\n\n    const mode: PatternInvestigationCanvasMode = activeView === \"desk\" ? \"graph\" : \"board\";\n    shell.setInspectorContent(\n      createInvestigationInspectorContent(\n        mode,\n        viewModels,\n        actions,\n        selectedNodeId,\n        getWorkspaceText()\n      )\n    );\n  }`,
-    `  function renderWorkspaceInspector(shell: PatternWorkspaceShell = ensureWorkspaceShell()): void {\n    if (activeView === \"overview\") {\n      shell.setInspectorContent(\n        createPatternCaseIdentityInspector(viewModels, actions, getWorkspaceText())\n      );\n      return;\n    }\n    if (activeView !== \"board\" && activeView !== \"desk\") {\n      shell.setInspectorContent(null);\n      return;\n    }\n\n    const mode: PatternInvestigationCanvasMode = activeView === \"desk\" ? \"graph\" : \"board\";\n    shell.setInspectorContent(\n      createInvestigationInspectorContent(\n        mode,\n        viewModels,\n        actions,\n        selectedNodeId,\n        getWorkspaceText()\n      )\n    );\n  }`,
+    `  function renderWorkspaceInspector(shell: PatternWorkspaceShell = ensureWorkspaceShell()): void {\n    if (activeView !== "board" && activeView !== "desk") {\n      shell.setInspectorContent(null);\n      return;\n    }\n\n    const mode: PatternInvestigationCanvasMode = activeView === "desk" ? "graph" : "board";\n    shell.setInspectorContent(\n      createInvestigationInspectorContent(\n        mode,\n        viewModels,\n        actions,\n        selectedNodeId,\n        getWorkspaceText()\n      )\n    );\n  }`,
+    `  function renderWorkspaceInspector(shell: PatternWorkspaceShell = ensureWorkspaceShell()): void {\n    if (activeView === "overview") {\n      shell.setInspectorContent(\n        createPatternCaseIdentityInspector(viewModels, actions, getWorkspaceText())\n      );\n      return;\n    }\n    if (activeView !== "board" && activeView !== "desk") {\n      shell.setInspectorContent(null);\n      return;\n    }\n\n    const mode: PatternInvestigationCanvasMode = activeView === "desk" ? "graph" : "board";\n    shell.setInspectorContent(\n      createInvestigationInspectorContent(\n        mode,\n        viewModels,\n        actions,\n        selectedNodeId,\n        getWorkspaceText()\n      )\n    );\n  }`,
     "overview identity inspector ownership"
   );
 
@@ -363,40 +366,40 @@ async function updateWorkspaceI18n() {
 
   source = replaceRequired(
     source,
-    `  | \"feedback.importFailed\"\n  | \"shell.keyboardHint\"`,
-    `  | \"feedback.importFailed\"\n  | \"feedback.caseIdentityUpdated\"\n  | \"feedback.caseIdentityUnchanged\"\n  | \"shell.keyboardHint\"`,
+    `  | "feedback.importFailed"\n  | "shell.keyboardHint"`,
+    `  | "feedback.importFailed"\n  | "feedback.caseIdentityUpdated"\n  | "feedback.caseIdentityUnchanged"\n  | "shell.keyboardHint"`,
     "identity feedback keys"
   );
   source = replaceRequired(
     source,
-    `  | \"overview.activityCopy\"\n  | \"board.canvasLabel\"`,
-    `  | \"overview.activityCopy\"\n  | \"overview.identityLabel\"\n  | \"overview.identityTitle\"\n  | \"overview.identityCopy\"\n  | \"overview.caseNameLabel\"\n  | \"overview.caseNamePlaceholder\"\n  | \"overview.researchQuestionLabel\"\n  | \"overview.researchQuestionPlaceholder\"\n  | \"overview.saveIdentity\"\n  | \"board.canvasLabel\"`,
+    `  | "overview.activityCopy"\n  | "board.canvasLabel"`,
+    `  | "overview.activityCopy"\n  | "overview.identityLabel"\n  | "overview.identityTitle"\n  | "overview.identityCopy"\n  | "overview.caseNameLabel"\n  | "overview.caseNamePlaceholder"\n  | "overview.researchQuestionLabel"\n  | "overview.researchQuestionPlaceholder"\n  | "overview.saveIdentity"\n  | "board.canvasLabel"`,
     "identity overview keys"
   );
 
   source = replaceRequired(
     source,
-    `  \"feedback.importFailed\": \"İşlem tamamlanamadı; alanları ve uyarıları kontrol edin.\",\n  \"shell.keyboardHint\":`,
-    `  \"feedback.importFailed\": \"İşlem tamamlanamadı; alanları ve uyarıları kontrol edin.\",\n  \"feedback.caseIdentityUpdated\": \"Vaka kimliği güncellendi.\",\n  \"feedback.caseIdentityUnchanged\": \"Vaka kimliğinde kaydedilecek bir değişiklik yok.\",\n  \"shell.keyboardHint\":`,
+    `  "feedback.importFailed": "İşlem tamamlanamadı; alanları ve uyarıları kontrol edin.",\n  "shell.keyboardHint":`,
+    `  "feedback.importFailed": "İşlem tamamlanamadı; alanları ve uyarıları kontrol edin.",\n  "feedback.caseIdentityUpdated": "Vaka kimliği güncellendi.",\n  "feedback.caseIdentityUnchanged": "Vaka kimliğinde kaydedilecek bir değişiklik yok.",\n  "shell.keyboardHint":`,
     "Turkish identity feedback"
   );
   source = replaceRequired(
     source,
-    `  \"overview.activityCopy\": \"Her ana araç soldaki navigasyondan doğrudan açılır.\",\n  \"board.canvasLabel\":`,
-    `  \"overview.activityCopy\": \"Her ana araç soldaki navigasyondan doğrudan açılır.\",\n  \"overview.identityLabel\": \"Vaka kimliği\",\n  \"overview.identityTitle\": \"Araştırmayı adlandır\",\n  \"overview.identityCopy\": \"Vaka adı ve ana araştırma sorusu tüm çalışma alanlarına, rapora ve Case Packet önizlemesine yansır.\",\n  \"overview.caseNameLabel\": \"Vaka adı\",\n  \"overview.caseNamePlaceholder\": \"Örn. Kuzey Koridoru Sensör Olayı\",\n  \"overview.researchQuestionLabel\": \"Ana araştırma sorusu\",\n  \"overview.researchQuestionPlaceholder\": \"Bu araştırma hangi soruya yanıt arıyor?\",\n  \"overview.saveIdentity\": \"Vaka Kimliğini Kaydet\",\n  \"board.canvasLabel\":`,
+    `  "overview.activityCopy": "Her ana araç soldaki navigasyondan doğrudan açılır.",\n  "board.canvasLabel":`,
+    `  "overview.activityCopy": "Her ana araç soldaki navigasyondan doğrudan açılır.",\n  "overview.identityLabel": "Vaka kimliği",\n  "overview.identityTitle": "Araştırmayı adlandır",\n  "overview.identityCopy": "Vaka adı ve ana araştırma sorusu tüm çalışma alanlarına, rapora ve Case Packet önizlemesine yansır.",\n  "overview.caseNameLabel": "Vaka adı",\n  "overview.caseNamePlaceholder": "Örn. Kuzey Koridoru Sensör Olayı",\n  "overview.researchQuestionLabel": "Ana araştırma sorusu",\n  "overview.researchQuestionPlaceholder": "Bu araştırma hangi soruya yanıt arıyor?",\n  "overview.saveIdentity": "Vaka Kimliğini Kaydet",\n  "board.canvasLabel":`,
     "Turkish identity overview copy"
   );
 
   source = replaceRequired(
     source,
-    `  \"feedback.importFailed\": \"The action could not be completed; check the fields and warnings.\",\n  \"shell.keyboardHint\":`,
-    `  \"feedback.importFailed\": \"The action could not be completed; check the fields and warnings.\",\n  \"feedback.caseIdentityUpdated\": \"Case identity updated.\",\n  \"feedback.caseIdentityUnchanged\": \"There are no case identity changes to save.\",\n  \"shell.keyboardHint\":`,
+    `  "feedback.importFailed": "The action could not be completed; check the fields and warnings.",\n  "shell.keyboardHint":`,
+    `  "feedback.importFailed": "The action could not be completed; check the fields and warnings.",\n  "feedback.caseIdentityUpdated": "Case identity updated.",\n  "feedback.caseIdentityUnchanged": "There are no case identity changes to save.",\n  "shell.keyboardHint":`,
     "English identity feedback"
   );
   source = replaceRequired(
     source,
-    `  \"overview.activityCopy\": \"Open every major tool directly from the navigation.\",\n  \"board.canvasLabel\":`,
-    `  \"overview.activityCopy\": \"Open every major tool directly from the navigation.\",\n  \"overview.identityLabel\": \"Case identity\",\n  \"overview.identityTitle\": \"Name the investigation\",\n  \"overview.identityCopy\": \"The case name and primary research question flow into every workspace, the report, and the Case Packet preview.\",\n  \"overview.caseNameLabel\": \"Case name\",\n  \"overview.caseNamePlaceholder\": \"Example: North Corridor Sensor Incident\",\n  \"overview.researchQuestionLabel\": \"Primary research question\",\n  \"overview.researchQuestionPlaceholder\": \"What question is this investigation trying to answer?\",\n  \"overview.saveIdentity\": \"Save Case Identity\",\n  \"board.canvasLabel\":`,
+    `  "overview.activityCopy": "Open every major tool directly from the navigation.",\n  "board.canvasLabel":`,
+    `  "overview.activityCopy": "Open every major tool directly from the navigation.",\n  "overview.identityLabel": "Case identity",\n  "overview.identityTitle": "Name the investigation",\n  "overview.identityCopy": "The case name and primary research question flow into every workspace, the report, and the Case Packet preview.",\n  "overview.caseNameLabel": "Case name",\n  "overview.caseNamePlaceholder": "Example: North Corridor Sensor Incident",\n  "overview.researchQuestionLabel": "Primary research question",\n  "overview.researchQuestionPlaceholder": "What question is this investigation trying to answer?",\n  "overview.saveIdentity": "Save Case Identity",\n  "board.canvasLabel":`,
     "English identity overview copy"
   );
 
@@ -437,8 +440,7 @@ async function updateCatalog(path, locale) {
           caseNameLabel: "Case name",
           caseNamePlaceholder: "Example: North Corridor Sensor Incident",
           researchQuestionLabel: "Primary research question",
-          researchQuestionPlaceholder:
-            "What question is this investigation trying to answer?",
+          researchQuestionPlaceholder: "What question is this investigation trying to answer?",
           saveIdentity: "Save Case Identity",
         }
   );
@@ -450,7 +452,7 @@ async function updateStyles() {
   const path = "rooms/pattern-room/ui/workspace.css";
   let source = await readRepoFile(path);
   if (!source.includes("CASE IDENTITY INSPECTOR")) {
-    source += `\n\n/* ─────────────────────────────────────────\n   CASE IDENTITY INSPECTOR\n───────────────────────────────────────── */\n.pattern-room-case-identity-inspector {\n  display: grid;\n  gap: var(--pattern-px-10);\n}\n\n.pattern-room-case-identity-inspector h2,\n.pattern-room-case-identity-inspector p {\n  margin: 0;\n}\n\n.pattern-room-case-identity-inspector p {\n  color: var(--pattern-text-muted);\n  font-size: var(--pattern-rem-0-82);\n  line-height: 1.55;\n}\n\n.pattern-room-case-identity-form {\n  display: grid;\n  gap: var(--pattern-px-10);\n  margin-top: var(--pattern-px-4);\n}\n\n.pattern-room-case-identity-field {\n  display: grid;\n  gap: var(--pattern-px-6);\n  min-width: 0;\n  font-family: \"IBM Plex Mono\", monospace;\n  color: var(--pattern-text-subtle);\n  font-size: var(--pattern-rem-0-72);\n  font-weight: 700;\n}\n\n.pattern-room-case-identity-field textarea {\n  min-height: var(--pattern-px-104);\n  resize: vertical;\n}\n\n.pattern-room-case-identity-submit {\n  width: 100%;\n}\n`;
+    source += `\n\n/* ─────────────────────────────────────────\n   CASE IDENTITY INSPECTOR\n───────────────────────────────────────── */\n.pattern-room-case-identity-inspector {\n  display: grid;\n  gap: var(--pattern-px-10);\n}\n\n.pattern-room-case-identity-inspector h2,\n.pattern-room-case-identity-inspector p {\n  margin: 0;\n}\n\n.pattern-room-case-identity-inspector p {\n  color: var(--pattern-text-muted);\n  font-size: var(--pattern-rem-0-82);\n  line-height: 1.55;\n}\n\n.pattern-room-case-identity-form {\n  display: grid;\n  gap: var(--pattern-px-10);\n  margin-top: var(--pattern-px-4);\n}\n\n.pattern-room-case-identity-field {\n  display: grid;\n  gap: var(--pattern-px-6);\n  min-width: 0;\n  font-family: "IBM Plex Mono", monospace;\n  color: var(--pattern-text-subtle);\n  font-size: var(--pattern-rem-0-72);\n  font-weight: 700;\n}\n\n.pattern-room-case-identity-field textarea {\n  min-height: var(--pattern-px-104);\n  resize: vertical;\n}\n\n.pattern-room-case-identity-submit {\n  width: 100%;\n}\n`;
   }
   await writeRepoFile(path, source);
 }
@@ -461,13 +463,13 @@ async function updateTests() {
   snapshotSource = replaceRequired(
     snapshotSource,
     `  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);\n\n  localState.sendToDesk`,
-    `  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);\n\n  localState.updateCaseIdentity(\n    \"Kuzey Koridoru Sensör Olayı\",\n    \"Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?\"\n  );\n  localState.sendToDesk`,
+    `  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);\n\n  localState.updateCaseIdentity(\n    "Kuzey Koridoru Sensör Olayı",\n    "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?"\n  );\n  localState.sendToDesk`,
     "snapshot case identity fixture"
   );
   snapshotSource = replaceRequired(
     snapshotSource,
     `  assert.equal(snapshot.createdAt, snapshot.updatedAt);\n  assert.deepEqual(snapshot.overlay.deskNodeIds,`,
-    `  assert.equal(snapshot.createdAt, snapshot.updatedAt);\n  assert.equal(snapshot.overlay.caseLabel, \"Kuzey Koridoru Sensör Olayı\");\n  assert.equal(\n    snapshot.overlay.researchQuestion,\n    \"Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?\"\n  );\n  assert.deepEqual(snapshot.overlay.deskNodeIds,`,
+    `  assert.equal(snapshot.createdAt, snapshot.updatedAt);\n  assert.equal(snapshot.overlay.caseLabel, "Kuzey Koridoru Sensör Olayı");\n  assert.equal(\n    snapshot.overlay.researchQuestion,\n    "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?"\n  );\n  assert.deepEqual(snapshot.overlay.deskNodeIds,`,
     "snapshot identity assertions"
   );
   await writeRepoFile(snapshotPath, snapshotSource);
@@ -477,19 +479,19 @@ async function updateTests() {
   packetSource = replaceRequired(
     packetSource,
     `  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);\n\n  localState.addAuthoredSource`,
-    `  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);\n\n  localState.updateCaseIdentity(\n    \"Kuzey Koridoru Sensör Olayı\",\n    \"Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?\"\n  );\n  localState.addAuthoredSource`,
+    `  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);\n\n  localState.updateCaseIdentity(\n    "Kuzey Koridoru Sensör Olayı",\n    "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?"\n  );\n  localState.addAuthoredSource`,
     "case packet identity fixture"
   );
   packetSource = replaceRequired(
     packetSource,
-    `  assert.equal(firstPacket.generatedFrom, \"local-view-model\");`,
-    `  assert.equal(firstPacket.generatedFrom, \"local-view-model\");\n  assert.equal(firstPacket.topicLabel, \"Kuzey Koridoru Sensör Olayı\");\n  assert.equal(\n    firstPacket.researchQuestion,\n    \"Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?\"\n  );`,
+    `  assert.equal(firstPacket.generatedFrom, "local-view-model");`,
+    `  assert.equal(firstPacket.generatedFrom, "local-view-model");\n  assert.equal(firstPacket.topicLabel, "Kuzey Koridoru Sensör Olayı");\n  assert.equal(\n    firstPacket.researchQuestion,\n    "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?"\n  );`,
     "case packet identity assertions"
   );
   packetSource = replaceRequired(
     packetSource,
-    `  assert.equal(connection.sourceLabel, \"Yerel iddia\");\n  assert.equal(connection.edgeTypeLabel, \"destekliyor\");\n  assert.equal(connection.targetLabel, \"Kaynaklı kanıt\");`,
-    `  assert.equal(connection.sourceId, \"local-node-001\");\n  assert.equal(connection.sourceLabel, \"Yerel iddia\");\n  assert.equal(connection.edgeTypeLabel, \"destekliyor\");\n  assert.equal(connection.targetId, \"local-evidence-001\");\n  assert.equal(connection.targetLabel, \"Kaynaklı kanıt\");`,
+    `  assert.equal(connection.sourceLabel, "Yerel iddia");\n  assert.equal(connection.edgeTypeLabel, "destekliyor");\n  assert.equal(connection.targetLabel, "Kaynaklı kanıt");`,
+    `  assert.equal(connection.sourceId, "local-node-001");\n  assert.equal(connection.sourceLabel, "Yerel iddia");\n  assert.equal(connection.edgeTypeLabel, "destekliyor");\n  assert.equal(connection.targetId, "local-evidence-001");\n  assert.equal(connection.targetLabel, "Kaynaklı kanıt");`,
     "case packet endpoint id assertions"
   );
   await writeRepoFile(packetPath, packetSource);
@@ -498,26 +500,26 @@ async function updateTests() {
   let messageSource = await readRepoFile(messagePath);
   messageSource = replaceRequired(
     messageSource,
-    `    topicLabel: \"Yerel vaka\",\n    generatedFrom: \"local-view-model\",`,
-    `    topicLabel: \"Yerel vaka\",\n    researchQuestion: \"Yerel vaka hangi soruya yanıt arıyor?\",\n    generatedFrom: \"local-view-model\",`,
+    `    topicLabel: "Yerel vaka",\n    generatedFrom: "local-view-model",`,
+    `    topicLabel: "Yerel vaka",\n    researchQuestion: "Yerel vaka hangi soruya yanıt arıyor?",\n    generatedFrom: "local-view-model",`,
     "message fixture research question"
   );
   messageSource = replaceRequired(
     messageSource,
-    `        id: \"edge-001\",\n        sourceLabel: \"Seçili alıntı\",`,
-    `        id: \"edge-001\",\n        sourceId: \"evidence-001\",\n        sourceLabel: \"Seçili alıntı\",`,
+    `        id: "edge-001",\n        sourceLabel: "Seçili alıntı",`,
+    `        id: "edge-001",\n        sourceId: "evidence-001",\n        sourceLabel: "Seçili alıntı",`,
     "message fixture source id"
   );
   messageSource = replaceRequired(
     messageSource,
-    `        edgeTypeLabel: \"soru doğuruyor\",\n        targetLabel: \"Belirsizlik\",`,
-    `        edgeTypeLabel: \"soru doğuruyor\",\n        targetId: \"note-001\",\n        targetLabel: \"Belirsizlik\",`,
+    `        edgeTypeLabel: "soru doğuruyor",\n        targetLabel: "Belirsizlik",`,
+    `        edgeTypeLabel: "soru doğuruyor",\n        targetId: "note-001",\n        targetLabel: "Belirsizlik",`,
     "message fixture target id"
   );
   messageSource = replaceRequired(
     messageSource,
-    `  assert.match(messages[1]?.sections.roleInstructions ?? \"\", /10\\. Adam/);`,
-    `  assert.match(messages[1]?.sections.roleInstructions ?? \"\", /role: AI2 — 10\\. Adam/);\n  assert.doesNotMatch(messages[1]?.sections.roleInstructions ?? \"\", /role: AI2 - AI2/);`,
+    `  assert.match(messages[1]?.sections.roleInstructions ?? "", /10\\. Adam/);`,
+    `  assert.match(messages[1]?.sections.roleInstructions ?? "", /role: AI2 — 10\\. Adam/);\n  assert.doesNotMatch(messages[1]?.sections.roleInstructions ?? "", /role: AI2 - AI2/);`,
     "role label normalization assertions"
   );
   await writeRepoFile(messagePath, messageSource);
@@ -526,8 +528,8 @@ async function updateTests() {
   let uiSource = await readRepoFile(uiPath);
   uiSource = replaceRequired(
     uiSource,
-    `    await startPatternRoomInstalledUi(installedCopy.rootDir);\n\n    openFocusedView(environment.app, \"board\");`,
-    `    await startPatternRoomInstalledUi(installedCopy.rootDir);\n\n    const identityForm = environment.app.querySelector(\n      \"[data-pattern-case-identity-form='true']\"\n    );\n    const identityName = environment.app.querySelector(\n      \"[data-pattern-case-identity-name='true']\"\n    );\n    const identityQuestion = environment.app.querySelector(\n      \"[data-pattern-case-identity-question='true']\"\n    );\n    assert.ok(identityForm);\n    assert.ok(identityName);\n    assert.ok(identityQuestion);\n    identityName.value = \"Kuzey Koridoru Sensör Olayı\";\n    identityQuestion.value =\n      \"Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?\";\n    submitForm(identityForm);\n    assertTextIncludes(readTreeText(environment.app), [\n      \"Kuzey Koridoru Sensör Olayı\",\n      \"Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?\",\n      \"Vaka kimliği güncellendi.\",\n    ]);\n\n    openFocusedView(environment.app, \"board\");`,
+    `    await startPatternRoomInstalledUi(installedCopy.rootDir);\n\n    openFocusedView(environment.app, "board");`,
+    `    await startPatternRoomInstalledUi(installedCopy.rootDir);\n\n    const identityForm = environment.app.querySelector(\n      "[data-pattern-case-identity-form='true']"\n    );\n    const identityName = environment.app.querySelector(\n      "[data-pattern-case-identity-name='true']"\n    );\n    const identityQuestion = environment.app.querySelector(\n      "[data-pattern-case-identity-question='true']"\n    );\n    assert.ok(identityForm);\n    assert.ok(identityName);\n    assert.ok(identityQuestion);\n    identityName.value = "Kuzey Koridoru Sensör Olayı";\n    identityQuestion.value =\n      "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?";\n    submitForm(identityForm);\n    assertTextIncludes(readTreeText(environment.app), [\n      "Kuzey Koridoru Sensör Olayı",\n      "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?",\n      "Vaka kimliği güncellendi.",\n    ]);\n\n    openFocusedView(environment.app, "board");`,
     "installed UI identity workflow"
   );
   await writeRepoFile(uiPath, uiSource);

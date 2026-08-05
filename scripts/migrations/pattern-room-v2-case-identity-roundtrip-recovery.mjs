@@ -34,17 +34,20 @@ function replaceOneOfRequired(source, searches, replacement, label) {
   return source.replace(search, replacement);
 }
 
-await updateFile("scripts/tests/pattern-room-case-review-dispatch-regressions.test.ts", (source) => {
-  return replaceOneOfRequired(
-    source,
-    [
-      "  assert.match(draft.payload.payload.text, /AI2 10\\. Adam/);",
-      "  assert.match(draft.payload.payload.text, /AI2 — 10\\. Adam/);",
-    ],
-    "  assert.match(draft.payload.payload.text, /role: AI2 — 10\\. Adam/);",
-    "AI2 dispatch role label"
-  );
-});
+await updateFile(
+  "scripts/tests/pattern-room-case-review-dispatch-regressions.test.ts",
+  (source) => {
+    return replaceOneOfRequired(
+      source,
+      [
+        "  assert.match(draft.payload.payload.text, /AI2 10\\. Adam/);",
+        "  assert.match(draft.payload.payload.text, /AI2 — 10\\. Adam/);",
+      ],
+      "  assert.match(draft.payload.payload.text, /role: AI2 — 10\\. Adam/);",
+      "AI2 dispatch role label"
+    );
+  }
+);
 
 await updateFile("rooms/pattern-room/shared/state/pattern-room-snapshot.ts", (source) => {
   return replaceOneOfRequired(

@@ -1,3 +1,4 @@
+@import "./tokens.css";
 html,
 body,
 #app {
@@ -21,7 +22,7 @@ body,
   height: 100dvh;
   min-height: 0;
   background:
-    radial-gradient(ellipse at 18% 0%, rgba(200, 145, 58, 0.06), transparent 42%),
+    radial-gradient(ellipse at 18% 0%, var(--pattern-accent-amber-alpha-06), transparent 42%),
     var(--pattern-gradient-body-depth), var(--pattern-surface);
 }
 
@@ -39,7 +40,7 @@ body,
   padding: var(--pattern-px-20) var(--pattern-px-16);
   border-right: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
   background:
-    linear-gradient(180deg, rgba(200, 145, 58, 0.06), transparent 28%),
+    linear-gradient(180deg, var(--pattern-accent-amber-alpha-06), transparent 28%),
     var(--pattern-surface-depth-alpha-96);
   box-shadow: var(--pattern-px-18) 0 var(--pattern-px-48) var(--pattern-black-alpha-24);
 }
@@ -84,7 +85,7 @@ body,
   font-weight: 900;
   box-shadow:
     inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-04),
-    0 2px 8px var(--pattern-black-alpha-32);
+    0 var(--pattern-px-2) var(--pattern-px-8) var(--pattern-black-alpha-32);
 }
 
 /* ─────────────────────────────────────────
@@ -101,7 +102,7 @@ body,
   font-family: "IBM Plex Mono", monospace;
   font-size: var(--pattern-rem-0-72);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--pattern-em-0-04);
 }
 
 /* Canlı nokta — pulsar efekti */
@@ -233,7 +234,7 @@ body,
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
   border-radius: var(--pattern-px-6);
   background: var(--pattern-gradient-report-sheen), var(--pattern-surface-inset-alpha-62);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);
 }
 
 .pattern-room-workspace-case-card .pattern-room-kicker {
@@ -963,7 +964,7 @@ body,
   color: var(--pattern-text-subtle);
   font-size: var(--pattern-rem-0-72);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--pattern-em-0-04);
   text-transform: uppercase;
 }
 
@@ -1009,7 +1010,7 @@ body,
 }
 
 /* ─────────────────────────────────────────
-   RESPONSIVE — geniş ekranlar (≥1440px)
+   RESPONSIVE — geniş ekranlar
 ───────────────────────────────────────── */
 @media (--pattern-bp-min-1440) {
   .pattern-room-overview,
@@ -1030,7 +1031,7 @@ body,
 }
 
 /* ─────────────────────────────────────────
-   RESPONSIVE — orta ekranlar (≤1100px)
+   RESPONSIVE — orta ekranlar
 ───────────────────────────────────────── */
 @media (--pattern-bp-max-1100) {
   .pattern-room-app-shell {
@@ -1079,7 +1080,7 @@ body,
 }
 
 /* ─────────────────────────────────────────
-   RESPONSIVE — küçük ekranlar (≤820px)
+   RESPONSIVE — küçük ekranlar
 ───────────────────────────────────────── */
 @media (--pattern-bp-max-820) {
   .pattern-room-app-shell {
@@ -1182,9 +1183,9 @@ body,
   padding: var(--pattern-px-20) var(--pattern-px-16);
   border-left: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
   background:
-    linear-gradient(180deg, rgba(84, 174, 196, 0.05), transparent 30%),
+    linear-gradient(180deg, var(--pattern-accent-cyan-alpha-05), transparent 30%),
     var(--pattern-surface-depth-alpha-96);
-  box-shadow: calc(0px - var(--pattern-px-18)) 0 var(--pattern-px-48) var(--pattern-black-alpha-24);
+  box-shadow: calc(0 - var(--pattern-px-18)) 0 var(--pattern-px-48) var(--pattern-black-alpha-24);
   scrollbar-color: var(--pattern-accent-amber-alpha-22) transparent;
   scrollbar-width: thin;
 }
@@ -1253,7 +1254,7 @@ body,
   font-weight: 700;
 }
 
-@media (max-width: 1180px) {
+@media (--pattern-bp-max-1180) {
   .pattern-room-app-shell {
     grid-template-columns:
       var(--pattern-px-238)
@@ -1262,7 +1263,7 @@ body,
   }
 }
 
-@media (max-width: 960px) {
+@media (--pattern-bp-max-960) {
   .pattern-room-app-shell {
     grid-template-columns: var(--pattern-px-218) minmax(0, 1fr);
   }
@@ -1357,7 +1358,7 @@ body,
   padding: 0;
 }
 
-@media (max-width: 820px) {
+@media (--pattern-bp-max-820) {
   .pattern-room-investigation-toolbar {
     align-items: stretch;
     flex-direction: column;
@@ -1503,10 +1504,54 @@ body,
   outline-offset: var(--pattern-px-2);
 }
 
-@media (max-width: 820px) {
+@media (--pattern-bp-max-820) {
   .pattern-room-workspace-feedback-slot {
     top: var(--pattern-px-76);
     right: var(--pattern-px-10);
     width: calc(100vw - var(--pattern-px-20));
   }
+}
+
+/* ─────────────────────────────────────────
+   CASE IDENTITY INSPECTOR
+───────────────────────────────────────── */
+.pattern-room-case-identity-inspector {
+  display: grid;
+  gap: var(--pattern-px-10);
+}
+
+.pattern-room-case-identity-inspector h2,
+.pattern-room-case-identity-inspector p {
+  margin: 0;
+}
+
+.pattern-room-case-identity-inspector p {
+  color: var(--pattern-text-muted);
+  font-size: var(--pattern-rem-0-82);
+  line-height: 1.55;
+}
+
+.pattern-room-case-identity-form {
+  display: grid;
+  gap: var(--pattern-px-10);
+  margin-top: var(--pattern-px-4);
+}
+
+.pattern-room-case-identity-field {
+  display: grid;
+  gap: var(--pattern-px-6);
+  min-width: 0;
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+}
+
+.pattern-room-case-identity-field textarea {
+  min-height: var(--pattern-px-104);
+  resize: vertical;
+}
+
+.pattern-room-case-identity-submit {
+  width: 100%;
 }

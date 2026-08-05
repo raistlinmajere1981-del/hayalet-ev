@@ -60,6 +60,7 @@ import {
 import type { PatternRoomSessionSnapshot } from "../shared/types/pattern-room-snapshot.js";
 import type { PatternRoomEvidenceCandidatePromotionInput } from "../shared/types/pattern-room-evidence-candidate.js";
 import { createArchivePanel } from "./panels/pattern-archive-panel.js";
+import { createPatternCaseIdentityInspector } from "./panels/pattern-case-identity-inspector.js";
 import { createInvestigationInspectorContent } from "./panels/pattern-investigation-inspector.js";
 import {
   createInvestigationPanel,
@@ -521,6 +522,7 @@ export function createPatternRoomUiRuntime(
         domain,
         overlay: localState.getOverlay(),
         topicLabel: viewModels.subject,
+        researchQuestion: viewModels.researchQuestion,
       },
       selectedCaseReviewRole
     );
@@ -789,6 +791,17 @@ export function createPatternRoomUiRuntime(
   }
 
   const actions: PatternPanelActions = {
+    updateCaseIdentity(caseLabel: string, researchQuestion: string): void {
+      const updated = localState.updateCaseIdentity(caseLabel, researchQuestion);
+      if (updated) {
+        caseReviewPreviewDraft = null;
+        caseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;
+        showWorkspaceActionFeedback("feedback.caseIdentityUpdated");
+        render();
+        return;
+      }
+      showWorkspaceActionFeedback("feedback.caseIdentityUnchanged", "info");
+    },
     getSelectedNodeId(): string | null {
       return selectedNodeId;
     },
@@ -1189,6 +1202,12 @@ export function createPatternRoomUiRuntime(
   }
 
   function renderWorkspaceInspector(shell: PatternWorkspaceShell = ensureWorkspaceShell()): void {
+    if (activeView === "overview") {
+      shell.setInspectorContent(
+        createPatternCaseIdentityInspector(viewModels, actions, getWorkspaceText())
+      );
+      return;
+    }
     if (activeView !== "board" && activeView !== "desk") {
       shell.setInspectorContent(null);
       return;

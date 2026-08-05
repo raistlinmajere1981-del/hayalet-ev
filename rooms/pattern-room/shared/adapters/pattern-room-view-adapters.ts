@@ -46,7 +46,7 @@ export type PatternRoomDomainViewSource = {
 
 export type PatternOverviewViewModel = Pick<
   PatternRoomWorkspaceModel,
-  "roomTitle" | "roomLabel" | "roomSummary" | "subject"
+  "roomTitle" | "roomLabel" | "roomSummary" | "subject" | "researchQuestion"
 >;
 
 export type PatternBoardViewModel = Pick<
@@ -521,14 +521,21 @@ function adaptRoleLabel(role: DebateRole): string {
 }
 
 export function adaptOverviewViewModel(
-  domain: PatternRoomDomainViewSource
+  domain: PatternRoomDomainViewSource,
+  overlay?: PatternRoomLocalOverlay
 ): PatternOverviewViewModel {
+  const subject = overlay?.caseLabel?.trim() || adaptSubjectLabel(domain.topic);
+  const researchQuestion =
+    overlay?.researchQuestion === undefined
+      ? domain.topic.description.trim()
+      : overlay.researchQuestion.trim();
   return {
     roomTitle: "İz Sürme Odası",
     roomLabel: "Pattern Room",
     roomSummary:
-      "Near-future dedektif ofisinde kanıt panosu, holografik masa ve temkinli rapor terminali.",
-    subject: adaptSubjectLabel(domain.topic),
+      researchQuestion === "" ? "Araştırma sorusu henüz tanımlanmadı." : researchQuestion,
+    subject,
+    researchQuestion,
   };
 }
 
@@ -632,8 +639,11 @@ export function adaptDeskViewModel(
       : [
           {
             id: `claim-${domain.topic.id}`,
-            label: domain.topic.label,
-            summary: domain.topic.description,
+            label: overlay?.caseLabel?.trim() || domain.topic.label,
+            summary:
+              overlay?.researchQuestion === undefined
+                ? domain.topic.description
+                : overlay.researchQuestion.trim(),
             stance: "primary" as const,
           },
         ];
@@ -981,7 +991,7 @@ export function adaptDomainToViewModels(
   overlay?: PatternRoomLocalOverlay
 ): PatternRoomWorkspaceModel {
   return {
-    ...adaptOverviewViewModel(domain),
+    ...adaptOverviewViewModel(domain, overlay),
     ...adaptBoardViewModel(domain, overlay),
     ...adaptArchiveViewModel(domain, overlay),
     ...adaptDeskViewModel(domain, overlay),

@@ -31,6 +31,10 @@ import {
 function createSnapshotReadyLocalState(): ReturnType<typeof createLocalState> {
   const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
+  localState.updateCaseIdentity(
+    "Kuzey Koridoru Sensör Olayı",
+    "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?"
+  );
   localState.sendToDesk("node-navigation-source");
   localState.pinSource("source-shadow-comparison", "analysis");
   localState.addToDebate("node-shadow-analysis");
@@ -76,6 +80,11 @@ void test("pattern-room phase 6B creates a local session snapshot from local mut
   assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
   assert.equal(snapshot.activeView, "tenth-man");
   assert.equal(snapshot.createdAt, snapshot.updatedAt);
+  assert.equal(snapshot.overlay.caseLabel, "Kuzey Koridoru Sensör Olayı");
+  assert.equal(
+    snapshot.overlay.researchQuestion,
+    "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?"
+  );
   assert.deepEqual(snapshot.overlay.deskNodeIds, ["node-navigation-source"]);
   assert.deepEqual(snapshot.overlay.pinnedSourceIds, ["source-shadow-comparison"]);
   assert.deepEqual(snapshot.overlay.debateReferenceIds, [
