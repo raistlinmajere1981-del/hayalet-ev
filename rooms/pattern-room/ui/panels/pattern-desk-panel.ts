@@ -10,7 +10,7 @@ import { createElement, createPanelShell } from "./pattern-panel-utils.js";
 
 export function createDeskPanel(
   data: PatternRoomWorkspaceModel,
-  _actions: PatternPanelActions,
+  actions: PatternPanelActions,
   onBack: () => void,
   text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)
 ): HTMLElement {
@@ -45,8 +45,55 @@ export function createDeskPanel(
     );
     claimObjects.append(claimCard);
   });
-  const relationship = createElement("div", "pattern-room-connection-axis");
-  relationship.ariaHidden = "true";
+  const relationship = createElement("section", "pattern-room-connection-list");
+  relationship.dataset["patternConnectionList"] = "true";
+  const connectionButtons: HTMLButtonElement[] = [];
+  const updateSelectedConnection = (connectionId: string | null): void => {
+    connectionButtons.forEach((button) => {
+      const isSelected = button.dataset["patternConnectionEdge"] === connectionId;
+      button.ariaPressed = isSelected ? "true" : "false";
+      if (isSelected) {
+        button.classList.add("active");
+      } else {
+        button.classList.remove("active");
+      }
+    });
+  };
+
+  if (data.connections.length === 0) {
+    relationship.append(
+      createElement(
+        "p",
+        "pattern-room-connection-empty",
+        "Henüz seçilebilir bir bağlantı yok. Sağ panelden yeni bağlantı kurabilirsiniz."
+      )
+    );
+  } else {
+    data.connections.forEach((connection, index) => {
+      const button = createElement("button", "pattern-room-connection-card " + connection.scope);
+      button.type = "button";
+      button.dataset["patternConnectionEdge"] = connection.id;
+      button.ariaPressed = "false";
+      button.append(
+        createElement("span", "pattern-room-connection-node-index", String(index + 1)),
+        createElement("strong", undefined, connection.sourceLabel),
+        createElement("span", "pattern-room-connection-edge-label", connection.edgeTypeLabel),
+        createElement("strong", undefined, connection.targetLabel),
+        createElement(
+          "small",
+          undefined,
+          connection.scope === "local" ? "Yerel bağlantı" : "Domain bağlantısı"
+        )
+      );
+      button.addEventListener("click", () => {
+        actions.selectConnection(connection.id);
+        updateSelectedConnection(connection.id);
+      });
+      connectionButtons.push(button);
+      relationship.append(button);
+    });
+  }
+  updateSelectedConnection(actions.getSelectedConnectionId());
   connectionMap.append(claimObjects, relationship);
   workSurface.append(surfaceHeader, connectionMap);
   layout.append(workSurface);

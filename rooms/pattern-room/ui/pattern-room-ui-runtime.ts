@@ -205,6 +205,7 @@ export function createPatternRoomUiRuntime(
   let activeView: PatternViewId = "overview";
   let activeWorkspaceSection: PatternWorkspaceSection = "default";
   let selectedNodeId: string | null = null;
+  let selectedConnectionId: string | null = null;
   let selectedArchiveSourceId: string | null = null;
   let archiveEvidenceCaptureStatus: string | null = null;
   let archiveSearchQuery = "";
@@ -811,6 +812,15 @@ export function createPatternRoomUiRuntime(
         renderWorkspaceInspector(workspaceShell);
       }
     },
+    getSelectedConnectionId(): string | null {
+      return selectedConnectionId;
+    },
+    selectConnection(connectionId: string | null): void {
+      selectedConnectionId = connectionId;
+      if (workspaceShell !== null && (activeView === "board" || activeView === "desk")) {
+        renderWorkspaceInspector(workspaceShell);
+      }
+    },
     sendNodeToDesk(nodeId: string): void {
       const beforeCount = localState.getOverlay().deskNodeIds.length;
       localState.sendToDesk(nodeId);
@@ -901,6 +911,13 @@ export function createPatternRoomUiRuntime(
       showWorkspaceActionFeedback(
         added ? "feedback.connectionAdded" : "feedback.importFailed",
         added ? "success" : "error"
+      );
+    },
+    updateLocalEdge(edgeId, edgeType, note?: string): void {
+      const updated = localState.updateLocalEdge(edgeId, edgeType, note);
+      showWorkspaceActionFeedback(
+        updated ? "feedback.connectionUpdated" : "feedback.connectionUnchanged",
+        updated ? "success" : "info"
       );
     },
     importUserTextSource(input: PatternUserTextSourceImportInput) {
@@ -995,8 +1012,15 @@ export function createPatternRoomUiRuntime(
   localState.subscribe(() => {
     viewModels = adaptDomainToViewModels(domain, localState.getOverlay());
     if (selectedArchiveSourceId !== null && !archiveSourceExists(selectedArchiveSourceId)) {
+      selectedConnectionId = null;
       selectedArchiveSourceId = null;
       archiveEvidenceCaptureStatus = null;
+    }
+    if (
+      selectedConnectionId !== null &&
+      !viewModels.connections.some((connection) => connection.id === selectedConnectionId)
+    ) {
+      selectedConnectionId = null;
     }
     render();
     scheduleAutosave();
@@ -1220,6 +1244,7 @@ export function createPatternRoomUiRuntime(
         viewModels,
         actions,
         selectedNodeId,
+        selectedConnectionId,
         getWorkspaceText()
       )
     );

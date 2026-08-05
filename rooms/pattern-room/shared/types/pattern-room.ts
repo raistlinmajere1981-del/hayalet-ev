@@ -109,6 +109,21 @@ export type PatternConnectionOption = {
   isLocal: boolean;
 };
 
+export type PatternConnectionScope = "domain" | "local";
+
+export type PatternConnection = {
+  id: string;
+  edgeType: PatternEdgeType;
+  edgeTypeLabel: string;
+  sourceId: string;
+  sourceLabel: string;
+  targetId: string;
+  targetLabel: string;
+  note: string | null;
+  scope: PatternConnectionScope;
+  editable: boolean;
+};
+
 export type PatternTenthManSession = {
   id: string;
   label: string;
@@ -136,6 +151,7 @@ export type PatternRoomWorkspaceModel = {
   researchQuestion: string;
   boardCategories: PatternBoardCategory[];
   connectionOptions: PatternConnectionOption[];
+  connections: PatternConnection[];
   claims: PatternClaim[];
   sources: PatternSource[];
   tenthManSession: PatternTenthManSession;
@@ -194,6 +210,8 @@ export type PatternPanelActions = {
   updateCaseIdentity: (caseLabel: string, researchQuestion: string) => void;
   getSelectedNodeId: () => string | null;
   selectNode: (nodeId: string | null) => void;
+  getSelectedConnectionId: () => string | null;
+  selectConnection: (connectionId: string | null) => void;
   sendNodeToDesk: (nodeId: string) => void;
   addNodeToDebate: (nodeId: string) => void;
   pinSourceToBoard: (sourceId: string, layer: PatternBoardLayerId) => void;
@@ -220,6 +238,7 @@ export type PatternPanelActions = {
     targetId: string,
     note?: string
   ) => void;
+  updateLocalEdge: (edgeId: string, edgeType: PatternEdgeType, note?: string) => void;
   importUserTextSource: (
     input: PatternUserTextSourceImportInput
   ) => PatternUserTextSourceImportStatus;

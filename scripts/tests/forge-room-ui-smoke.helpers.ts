@@ -103,6 +103,51 @@ export class FakeElement {
     this.append(...children);
   }
 
+  private attributesStore = new Map<string, string>();
+
+  get attributes(): Array<{ name: string; value: string }> {
+    return Array.from(this.attributesStore.entries()).map(([name, value]) => ({ name, value }));
+  }
+
+  get childNodes(): FakeElement[] {
+    return this.children;
+  }
+
+  removeAttribute(name: string): void {
+    this.attributesStore.delete(name);
+    if (name === "id") this.id = "";
+    if (name === "class") this.className = "";
+  }
+
+  removeChild(child: FakeElement): FakeElement {
+    const index = this.children.indexOf(child);
+    if (index >= 0) {
+      this.children.splice(index, 1);
+      child.parentElement = null;
+    }
+    return child;
+  }
+
+  get ariaPressed(): string | null {
+    return this.attributesStore.get("aria-pressed") ?? null;
+  }
+
+  set ariaPressed(value: string | null) {
+    if (value === null) {
+      this.attributesStore.delete("aria-pressed");
+    } else {
+      this.attributesStore.set("aria-pressed", value);
+    }
+  }
+
+  getAttribute(name: string): string | null {
+    return this.attributesStore.get(name) ?? null;
+  }
+
+  setAttribute(name: string, value: string): void {
+    this.attributesStore.set(name, value);
+  }
+
   addEventListener(type: string, handler: (event?: Record<string, unknown>) => void): void {
     const handlers = this.eventListeners.get(type) ?? [];
     handlers.push(handler);

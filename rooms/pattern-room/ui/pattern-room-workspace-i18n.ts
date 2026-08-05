@@ -24,6 +24,8 @@ export type PatternWorkspaceTextKey =
   | "feedback.sessionReset"
   | "feedback.evidenceAdded"
   | "feedback.connectionAdded"
+  | "feedback.connectionUpdated"
+  | "feedback.connectionUnchanged"
   | "feedback.debateUpdated"
   | "feedback.importSucceeded"
   | "feedback.importFailed"
@@ -109,6 +111,8 @@ const FALLBACK_TR: Readonly<Record<PatternWorkspaceTextKey, string>> = {
   "feedback.sessionReset": "Yerel oturum temizlendi.",
   "feedback.evidenceAdded": "Kanıt notu eklendi.",
   "feedback.connectionAdded": "Bağlantı oluşturuldu.",
+  "feedback.connectionUpdated": "Yerel bağlantı güncellendi.",
+  "feedback.connectionUnchanged": "Bağlantıda kaydedilecek bir değişiklik yok.",
   "feedback.debateUpdated": "10. Adam oturumu güncellendi.",
   "feedback.importSucceeded": "Kaynak içe aktarıldı.",
   "feedback.importFailed": "İşlem tamamlanamadı; alanları ve uyarıları kontrol edin.",
@@ -191,6 +195,8 @@ const FALLBACK_EN: Readonly<Record<PatternWorkspaceTextKey, string>> = {
   "feedback.sessionReset": "Local session cleared.",
   "feedback.evidenceAdded": "Evidence note added.",
   "feedback.connectionAdded": "Connection created.",
+  "feedback.connectionUpdated": "Local connection updated.",
+  "feedback.connectionUnchanged": "There are no connection changes to save.",
   "feedback.debateUpdated": "Tenth Man session updated.",
   "feedback.importSucceeded": "Source imported.",
   "feedback.importFailed": "The action could not be completed; check the fields and warnings.",

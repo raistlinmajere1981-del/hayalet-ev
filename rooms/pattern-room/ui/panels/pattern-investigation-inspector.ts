@@ -1,5 +1,6 @@
 import type {
   PatternBoardPin,
+  PatternConnection,
   PatternConnectionOption,
   PatternPanelActions,
   PatternRoomWorkspaceModel,
@@ -8,7 +9,11 @@ import {
   createPatternWorkspaceTranslator,
   type PatternWorkspaceTranslator,
 } from "../pattern-room-workspace-i18n.js";
-import { createConnectionAuthoringForm } from "./pattern-connection-composer.js";
+import {
+  CONNECTION_EDGE_TYPE_OPTIONS,
+  createConnectionAuthoringForm,
+  type AuthoredConnectionEdgeType,
+} from "./pattern-connection-composer.js";
 import type { PatternInvestigationCanvasMode } from "./pattern-investigation-panel.js";
 import { createActionButton, createElement } from "./pattern-panel-utils.js";
 
@@ -246,6 +251,110 @@ function createSelectedPinDetail(
   return detail;
 }
 
+function findConnection(
+  data: PatternRoomWorkspaceModel,
+  connectionId: string | null
+): PatternConnection | null {
+  if (connectionId === null) {
+    return null;
+  }
+  return data.connections.find((connection) => connection.id === connectionId) ?? null;
+}
+
+function createConnectionEditorOption(
+  value: AuthoredConnectionEdgeType,
+  label: string
+): HTMLOptionElement {
+  const option = createElement("option", undefined, label);
+  option.value = value;
+  return option;
+}
+
+function createSelectedConnectionDetail(
+  data: PatternRoomWorkspaceModel,
+  actions: PatternPanelActions,
+  connectionId: string | null
+): HTMLElement {
+  const detail = createElement("section", "pattern-room-connection-detail");
+  detail.dataset["patternConnectionDetail"] = "true";
+  detail.ariaLive = "polite";
+  const connection = findConnection(data, connectionId);
+  if (connection === null) {
+    detail.append(
+      createElement("span", "pattern-room-kicker", "Bağlantı detayı"),
+      createElement("h2", undefined, "Bir bağlantı seç"),
+      createElement(
+        "p",
+        undefined,
+        "İlişki yüzeyindeki bir bağlantıyı seçtiğinizde kaynak, hedef, tür ve not burada görünür."
+      )
+    );
+    return detail;
+  }
+
+  const metrics = createElement("div", "pattern-room-detail-metrics");
+  metrics.append(
+    createDetailMetric("Kapsam", connection.scope === "local" ? "Yerel" : "Domain"),
+    createDetailMetric("Kaynak", connection.sourceLabel),
+    createDetailMetric("Hedef", connection.targetLabel)
+  );
+  detail.append(
+    createElement("span", "pattern-room-kicker", "Bağlantı detayı"),
+    createElement("h2", undefined, connection.edgeTypeLabel),
+    metrics,
+    createElement(
+      "p",
+      undefined,
+      `${connection.sourceLabel} → ${connection.edgeTypeLabel} → ${connection.targetLabel}`
+    )
+  );
+
+  if (!connection.editable) {
+    detail.append(
+      createElement(
+        "small",
+        undefined,
+        connection.note === null
+          ? "Domain bağlantıları salt okunur; bağlantı notu yok."
+          : `Domain bağlantısı salt okunur. Not: ${connection.note}`
+      )
+    );
+    return detail;
+  }
+
+  const form = createElement("form", "pattern-room-inline-form pattern-room-connection-edit-form");
+  form.dataset["patternEditEdgeForm"] = connection.id;
+  const edgeType = createElement("select", "pattern-room-inline-input");
+  edgeType.dataset["patternEditEdgeType"] = connection.id;
+  edgeType.name = "edgeType";
+  edgeType.append(
+    ...CONNECTION_EDGE_TYPE_OPTIONS.map((option) =>
+      createConnectionEditorOption(option.value, option.label)
+    )
+  );
+  edgeType.value = connection.edgeType;
+  const note = createElement("textarea", "pattern-room-inline-input");
+  note.dataset["patternEditEdgeNote"] = connection.id;
+  note.name = "note";
+  note.placeholder = "Bağlantı notu (opsiyonel)";
+  note.value = connection.note ?? "";
+  const submit = createSubmitButton("Bağlantıyı Güncelle");
+  submit.dataset["patternEditEdgeSubmit"] = connection.id;
+  const feedback = createElement("small", "pattern-room-edit-feedback");
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const submittedType = edgeType.value as AuthoredConnectionEdgeType;
+    const submittedNote = note.value;
+    actions.updateLocalEdge(connection.id, submittedType, submittedNote);
+    edgeType.value = submittedType;
+    note.value = submittedNote;
+    feedback.textContent = submittedNote ? `Not: ${submittedNote}` : "İlişki notu temizlendi.";
+  });
+  form.append(edgeType, note, submit, feedback);
+  detail.append(form);
+  return detail;
+}
+
 function createConnectionEntity(option: PatternConnectionOption): HTMLElement {
   const kindLabel =
     option.kind === "evidence" ? "Kanıt" : option.kind === "source" ? "Kaynak" : "Öğe";
@@ -288,10 +397,12 @@ function createBoardInspectorContent(
 function createGraphInspectorContent(
   data: PatternRoomWorkspaceModel,
   actions: PatternPanelActions,
+  selectedConnectionId: string | null,
   text: PatternWorkspaceTranslator
 ): HTMLElement {
   const content = createElement("div", "pattern-room-investigation-inspector-content");
   content.dataset["patternInvestigationInspectorMode"] = "graph";
+  content.append(createSelectedConnectionDetail(data, actions, selectedConnectionId));
 
   const entitySection = createElement(
     "section",
@@ -326,9 +437,10 @@ export function createInvestigationInspectorContent(
   data: PatternRoomWorkspaceModel,
   actions: PatternPanelActions,
   selectedPinId: string | null,
+  selectedConnectionId: string | null,
   text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)
 ): HTMLElement {
   return mode === "graph"
-    ? createGraphInspectorContent(data, actions, text)
+    ? createGraphInspectorContent(data, actions, selectedConnectionId, text)
     : createBoardInspectorContent(data, actions, selectedPinId, text);
 }

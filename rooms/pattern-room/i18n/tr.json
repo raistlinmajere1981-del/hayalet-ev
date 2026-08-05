@@ -37,7 +37,9 @@
       "importSucceeded": "Kaynak içe aktarıldı.",
       "importFailed": "İşlem tamamlanamadı; alanları ve uyarıları kontrol edin.",
       "caseIdentityUpdated": "Vaka kimliği güncellendi.",
-      "caseIdentityUnchanged": "Vaka kimliğinde kaydedilecek bir değişiklik yok."
+      "caseIdentityUnchanged": "Vaka kimliğinde kaydedilecek bir değişiklik yok.",
+      "connectionUpdated": "Yerel bağlantı güncellendi.",
+      "connectionUnchanged": "Bağlantıda kaydedilecek bir değişiklik yok."
     },
     "nav": {
       "overview": {

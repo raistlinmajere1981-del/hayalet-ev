@@ -1581,3 +1581,91 @@ body,
   text-align: right;
   line-height: 1.35;
 }
+
+/* ─────────────────────────────────────────
+   SELECTABLE CONNECTIONS AND EDGE EDITOR
+───────────────────────────────────────── */
+.pattern-room-connection-list {
+  display: grid;
+  gap: var(--pattern-px-8);
+  align-content: start;
+}
+
+.pattern-room-connection-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--pattern-px-6) var(--pattern-px-10);
+  width: 100%;
+  padding: var(--pattern-px-12);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
+  border-radius: var(--pattern-px-6);
+  background: var(--pattern-surface-panel-alpha-82);
+  color: var(--pattern-text-subtle);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pattern-room-connection-card > :not(.pattern-room-connection-node-index) {
+  grid-column: 2;
+}
+
+.pattern-room-connection-card strong {
+  color: var(--pattern-text-warm);
+}
+
+.pattern-room-connection-card:hover,
+.pattern-room-connection-card:focus-visible,
+.pattern-room-connection-card.active {
+  border-color: var(--pattern-accent-amber-alpha-38);
+  outline: none;
+}
+
+.pattern-room-connection-card.active {
+  box-shadow: var(--pattern-glow-amber-action);
+}
+
+.pattern-room-connection-edge-label,
+.pattern-room-connection-card small {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+}
+
+.pattern-room-connection-edge-label {
+  color: var(--pattern-accent-amber);
+  font-weight: 800;
+}
+
+.pattern-room-connection-empty {
+  margin: 0;
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-82);
+  line-height: 1.5;
+}
+
+.pattern-room-connection-detail {
+  display: grid;
+  gap: var(--pattern-px-10);
+}
+
+.pattern-room-connection-detail h2,
+.pattern-room-connection-detail p,
+.pattern-room-connection-detail small {
+  margin: 0;
+}
+
+.pattern-room-connection-detail p,
+.pattern-room-connection-detail small {
+  color: var(--pattern-text-subtle);
+  line-height: 1.5;
+}
+
+.pattern-room-connection-edit-form {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: var(--pattern-px-4);
+  padding: 0;
+}
+
+.pattern-room-connection-edit-form textarea {
+  min-height: var(--pattern-px-88);
+  resize: vertical;
+}

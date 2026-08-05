@@ -581,3 +581,77 @@ void test("pattern-room archive source card renders compact preview metadata whe
     environment.restore();
   }
 });
+
+void test("pattern-room graph connection selection edits local edge details", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+    openFocusedView(environment.app, "board");
+
+    const edgeForm = environment.app.querySelector("[data-pattern-author-edge-form='true']");
+    const sourceSelect = environment.app.querySelector("[data-pattern-author-edge-source='true']");
+    const edgeTypeSelect = environment.app.querySelector("[data-pattern-author-edge-type='true']");
+    const targetSelect = environment.app.querySelector("[data-pattern-author-edge-target='true']");
+    const noteInput = environment.app.querySelector("[data-pattern-author-edge-note='true']");
+    assert.ok(edgeForm);
+    assert.ok(sourceSelect);
+    assert.ok(edgeTypeSelect);
+    assert.ok(targetSelect);
+    assert.ok(noteInput);
+    installFormReset(edgeForm);
+    sourceSelect.value = "node-navigation-source";
+    edgeTypeSelect.value = "supports";
+    targetSelect.value = "source-shadow-comparison";
+    noteInput.value = "İlk ilişki notu.";
+    submitForm(edgeForm);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "desk");
+    const connectionButton = environment.app.querySelector(
+      "[data-pattern-connection-edge='local-edge-001']"
+    );
+    assert.ok(connectionButton);
+    fireEvent(connectionButton, "click");
+    assert.equal(connectionButton.getAttribute("aria-pressed"), "true");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Bağlantı detayı",
+      "Seyir defteri kaynagi",
+      "destekliyor",
+      "Golge karsilastirma gorseli",
+    ]);
+
+    const editForm = environment.app.querySelector(
+      "[data-pattern-edit-edge-form='local-edge-001']"
+    );
+    const editType = environment.app.querySelector(
+      "[data-pattern-edit-edge-type='local-edge-001']"
+    );
+    const editNote = environment.app.querySelector(
+      "[data-pattern-edit-edge-note='local-edge-001']"
+    );
+    assert.ok(editForm);
+    assert.ok(editType);
+    assert.ok(editNote);
+    editType.value = "contradicts";
+    editNote.value = "Güncellenmiş ilişki notu.";
+    submitForm(editForm);
+
+    assertTextIncludes(readTreeText(environment.app), [
+      "Yerel bağlantı güncellendi.",
+      "çelişiyor",
+    ]);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Yerel Bağlantılar",
+      "çelişiyor",
+      "Not: Güncellenmiş ilişki notu.",
+    ]);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});

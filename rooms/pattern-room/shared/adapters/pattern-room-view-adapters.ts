@@ -18,6 +18,7 @@ import type {
   PatternBoardCategoryTone,
   PatternBoardPin,
   PatternClaim,
+  PatternConnection,
   PatternConnectionOption,
   PatternDebateReference,
   PatternReportItem,
@@ -57,7 +58,7 @@ export type PatternBoardViewModel = Pick<
 
 export type PatternArchiveViewModel = Pick<PatternRoomWorkspaceModel, "sources">;
 
-export type PatternDeskViewModel = Pick<PatternRoomWorkspaceModel, "claims">;
+export type PatternDeskViewModel = Pick<PatternRoomWorkspaceModel, "claims" | "connections">;
 
 export type PatternTenthManViewModel = Pick<PatternRoomWorkspaceModel, "tenthManSession">;
 
@@ -678,7 +679,10 @@ export function adaptDeskViewModel(
       })
       .map(adaptLocalAuthoredClaimNode) ?? [];
 
-  return { claims: [...claims, ...localClaims, ...authoredClaims] };
+  return {
+    claims: [...claims, ...localClaims, ...authoredClaims],
+    connections: adaptConnections(domain, overlay),
+  };
 }
 
 export function adaptTenthManViewModel(
@@ -780,7 +784,7 @@ export function adaptTenthManViewModel(
 
 function resolveConnectionEntityLabel(
   domain: PatternRoomDomainViewSource,
-  overlay: PatternRoomLocalOverlay,
+  overlay: PatternRoomLocalOverlay | undefined,
   entityId: string
 ): string | null {
   const domainNode = domain.nodes.find((node) => node.id === entityId);
@@ -793,18 +797,68 @@ function resolveConnectionEntityLabel(
     return domainSource.label;
   }
 
-  const localNode = overlay.localAuthoredNodes.find((node) => node.id === entityId);
+  const localNode = overlay?.localAuthoredNodes.find((node) => node.id === entityId);
   if (localNode !== undefined) {
     return localNode.label;
   }
 
-  const localSource = overlay.localAuthoredSources.find((source) => source.id === entityId);
+  const localSource = overlay?.localAuthoredSources.find((source) => source.id === entityId);
   if (localSource !== undefined) {
     return localSource.label;
   }
 
-  const localEvidence = overlay.localAuthoredEvidence.find((evidence) => evidence.id === entityId);
+  const localEvidence = overlay?.localAuthoredEvidence.find((evidence) => evidence.id === entityId);
   return localEvidence?.label ?? null;
+}
+
+function adaptConnections(
+  domain: PatternRoomDomainViewSource,
+  overlay?: PatternRoomLocalOverlay
+): PatternConnection[] {
+  const rawDomain = domain.edges.map((edge) => {
+    const sourceLabel = resolveConnectionEntityLabel(domain, overlay, edge.sourceNodeId);
+    const targetLabel = resolveConnectionEntityLabel(domain, overlay, edge.targetNodeId);
+    if (sourceLabel === null || targetLabel === null) {
+      return null;
+    }
+    return {
+      id: edge.id,
+      edgeType: edge.edgeType,
+      edgeTypeLabel: EDGE_TYPE_LABELS[edge.edgeType],
+      sourceId: edge.sourceNodeId,
+      sourceLabel,
+      targetId: edge.targetNodeId,
+      targetLabel,
+      note: edge.note,
+      scope: "domain" as const,
+      editable: false,
+    };
+  });
+  const domainConnections = rawDomain.filter((c) => c !== null) as PatternConnection[];
+
+  const rawLocal =
+    overlay?.localAuthoredEdges.map((edge) => {
+      const sourceLabel = resolveConnectionEntityLabel(domain, overlay, edge.sourceId);
+      const targetLabel = resolveConnectionEntityLabel(domain, overlay, edge.targetId);
+      if (sourceLabel === null || targetLabel === null) {
+        return null;
+      }
+      return {
+        id: edge.id,
+        edgeType: edge.edgeType,
+        edgeTypeLabel: EDGE_TYPE_LABELS[edge.edgeType],
+        sourceId: edge.sourceId,
+        sourceLabel,
+        targetId: edge.targetId,
+        targetLabel,
+        note: edge.note,
+        scope: "local" as const,
+        editable: true,
+      };
+    }) ?? [];
+  const localConnections = rawLocal.filter((c) => c !== null) as PatternConnection[];
+
+  return [...domainConnections, ...localConnections];
 }
 
 function adaptLocalConnectionBullet(

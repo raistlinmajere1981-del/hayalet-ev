@@ -133,6 +133,15 @@ The following checks passed after the production/test-domain migration:
 - Tenth Man references appear as explicit report entries even before a local debate session starts.
 - Report outline and document headers use the same structured metrics.
 
+## Completed: connection selection and local edge editing
+
+- Domain and local connections are projected as explicit selectable graph records.
+- Selecting a connection opens its source, target, type, scope and note in the persistent inspector.
+- Domain connections remain read-only.
+- Local connection type and note can be edited without changing endpoints or enabling deletion.
+- Stale connection selections are cleared after linked local entities are removed.
+- View-model and installed-UI regressions cover projection, selection, editing and report propagation.
+
 ## Next implementation steps
 
 1. Add explicit edge selection and edge-detail editing to the persistent inspector.

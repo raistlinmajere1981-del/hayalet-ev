@@ -693,3 +693,42 @@ void test("pattern-room truthful report metrics separate sources, references, tu
     { id: "summary", label: "özet", value: 1 },
   ]);
 });
+
+void test("pattern-room local connection editing projects selectable graph details", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  localState.addAuthoredEdge(
+    "supports",
+    "node-navigation-source",
+    "source-shadow-comparison",
+    "İlk bağlantı notu."
+  );
+
+  assert.equal(
+    localState.updateLocalEdge("local-edge-001", "contradicts", "Güncel bağlantı notu."),
+    true
+  );
+  assert.equal(
+    localState.updateLocalEdge("local-edge-001", "contradicts", "Güncel bağlantı notu."),
+    false
+  );
+
+  const viewModels = adaptDomainToViewModels(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  );
+  const localConnection = viewModels.connections.find((connection) => {
+    return connection.id === "local-edge-001";
+  });
+  const domainConnection = viewModels.connections.find((connection) => {
+    return connection.scope === "domain";
+  });
+
+  assert.ok(localConnection);
+  assert.equal(localConnection.edgeType, "contradicts");
+  assert.equal(localConnection.edgeTypeLabel, "çelişiyor");
+  assert.equal(localConnection.note, "Güncel bağlantı notu.");
+  assert.equal(localConnection.scope, "local");
+  assert.equal(localConnection.editable, true);
+  assert.ok(domainConnection);
+  assert.equal(domainConnection.editable, false);
+});

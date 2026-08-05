@@ -193,6 +193,7 @@ export type PatternRoomLocalState = {
     targetId: string,
     note?: string
   ) => void;
+  updateLocalEdge: (edgeId: string, edgeType: PatternEdgeType, note?: string) => boolean;
   applySourceImportResult: (
     result: SourceImportResult,
     options?: SourceImportApplyOptions
@@ -1470,6 +1471,26 @@ export function createLocalState(
       if (addAuthoredEdgeRecord(edgeType, sourceId, targetId, note)) {
         notify();
       }
+    },
+    updateLocalEdge(edgeId: string, edgeType: PatternEdgeType, note?: string): boolean {
+      if (!PATTERN_EDGE_TYPES.includes(edgeType)) {
+        return false;
+      }
+      const edgeIndex = localAuthoredEdges.findIndex((edge) => edge.id === edgeId);
+      if (edgeIndex < 0) {
+        return false;
+      }
+      const edge = localAuthoredEdges[edgeIndex];
+      if (edge === undefined) {
+        return false;
+      }
+      const normalizedNote = note?.trim() || null;
+      if (edge.edgeType === edgeType && edge.note === normalizedNote) {
+        return false;
+      }
+      localAuthoredEdges[edgeIndex] = { ...edge, edgeType, note: normalizedNote };
+      notify();
+      return true;
     },
     applySourceImportResult(
       result: SourceImportResult,
