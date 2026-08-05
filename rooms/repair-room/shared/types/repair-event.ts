@@ -3,12 +3,7 @@ export type RepairEventSource = "operator" | "ai" | "instrument" | "system";
 export type RepairAiSeverity = "info" | "suggestion" | "action" | "risk";
 
 export type RepairAiMarkLifecycleState =
-  | "detected"
-  | "acknowledged"
-  | "investigating"
-  | "resolved"
-  | "dismissed"
-  | "expired";
+  "detected" | "acknowledged" | "investigating" | "resolved" | "dismissed" | "expired";
 
 export type RepairAnnotationTool = "rect" | "freehand" | "arrow" | "text" | "measurement-link";
 
@@ -40,11 +35,7 @@ export interface RepairOverlayEntityRef {
 }
 
 export type RepairInvestigationRegionStatus =
-  | "draft"
-  | "active"
-  | "watching"
-  | "resolved"
-  | "dismissed";
+  "draft" | "active" | "watching" | "resolved" | "dismissed";
 
 export interface RepairInvestigationRegionLinkage {
   eventIds: string[];

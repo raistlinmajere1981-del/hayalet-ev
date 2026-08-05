@@ -2228,8 +2228,7 @@ export class AssistantController {
       if (results.refreshedConfig) {
         ProviderRegistry.update(results.refreshedConfig.id, results.refreshedConfig);
         const activeWebview = SlotController.getWebview("ai0") as
-          | (HTMLElement & { send?: (channel: string, ...args: unknown[]) => void })
-          | null;
+          (HTMLElement & { send?: (channel: string, ...args: unknown[]) => void }) | null;
         activeWebview?.send?.("app-set-provider", {
           providerId: results.refreshedConfig.id,
           slot: "ai0",
@@ -2534,8 +2533,7 @@ export class AssistantController {
     }
 
     const slotState = SlotController.getState("ai0") as
-      | (SlotStateInfo & { domReady?: boolean })
-      | null;
+      (SlotStateInfo & { domReady?: boolean }) | null;
     const isDomReady = options.assumeDomReady === true || slotState?.domReady === true;
     if (!isDomReady) {
       return;

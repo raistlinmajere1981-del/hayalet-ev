@@ -41,8 +41,7 @@ export async function resolveSceneAvatarSource(
   }
 
   const readFile = window.electronAPI?.["readFile"] as
-    | ((path: string) => Promise<string | null>)
-    | undefined;
+    ((path: string) => Promise<string | null>) | undefined;
   if (typeof readFile !== "function") {
     avatarCache.set(source, null);
     return null;

@@ -322,10 +322,7 @@ export function createPatternWorkspaceShell(
       restoreAdoptedInspector();
       const resolvedContent =
         content ??
-        resolveEmbeddedInspector(
-          outlet,
-          inspector.dataset["patternWorkspaceInspectorView"]
-        );
+        resolveEmbeddedInspector(outlet, inspector.dataset["patternWorkspaceInspectorView"]);
       inspectorContent.replaceChildren();
       if (resolvedContent !== null) {
         if (content === null) {

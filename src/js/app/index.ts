@@ -200,8 +200,7 @@ async function initApp(): Promise<void> {
     window.ConversationListManager = ConversationListManager;
 
     const entranceController = controllers["entrance"] as
-      | { applyDefaultConnections?: () => void }
-      | undefined;
+      { applyDefaultConnections?: () => void } | undefined;
     entranceController?.applyDefaultConnections?.();
 
     setupNavigation();

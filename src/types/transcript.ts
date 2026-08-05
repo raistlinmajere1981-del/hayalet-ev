@@ -1,20 +1,12 @@
 export type TranscriptRoomTargetId = `room:${string}`;
 export type TranscriptTargetId =
-  | "analyze-compose"
-  | "assistant-opencode-native"
-  | TranscriptRoomTargetId;
+  "analyze-compose" | "assistant-opencode-native" | TranscriptRoomTargetId;
 export type TranscriptDictationBackend = "whisper.cpp" | "vosk";
 export type TranscriptModelArchiveFormat = "file" | "zip-directory";
 export type TranscriptModelVariant = "light" | "full";
 export type TranscriptSupportedLanguage = "tr" | "en";
 export type TranscriptManagedModelId =
-  | "tiny"
-  | "base"
-  | "tiny.en"
-  | "base.en"
-  | "vosk-small-tr"
-  | "vosk-small-en"
-  | "vosk-full-en";
+  "tiny" | "base" | "tiny.en" | "base.en" | "vosk-small-tr" | "vosk-small-en" | "vosk-full-en";
 
 export type TranscriptIngressSource = "pc-mic" | "android-bridge" | "synthetic-test";
 export type TranscriptIngressMetadata = Record<string, unknown>;

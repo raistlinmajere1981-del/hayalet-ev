@@ -76,11 +76,7 @@ export interface LabExecutionAlternative {
   summary: string;
   tradeoff: string;
   relativeAdvantage?:
-    | "higher-precision"
-    | "higher-coverage"
-    | "lower-risk"
-    | "faster"
-    | "more-stable";
+    "higher-precision" | "higher-coverage" | "lower-risk" | "faster" | "more-stable";
 }
 
 export interface LabExecutionAlternatives {

@@ -50,8 +50,7 @@ export function bindAssistantWebviewIpcEvents(options: BindAssistantWebviewIpcEv
 
       if (event.channel === "opencode-ui-tools-ready") {
         const data = event.args?.[0] as
-          | { ready?: boolean; mcpStatus?: string; unresolvedServers?: string[] }
-          | undefined;
+          { ready?: boolean; mcpStatus?: string; unresolvedServers?: string[] } | undefined;
         const selectedProviderId = options.providerSelect?.value ?? options.getActiveProviderId();
         if (selectedProviderId === "opencode-ui") {
           options.setProviderToolsReady(data?.ready === true);

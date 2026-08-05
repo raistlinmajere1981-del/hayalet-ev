@@ -50,12 +50,7 @@ export interface OpencodeUiToolCall {
 }
 
 export type OpencodeUiMessageAttachmentKind =
-  | "image"
-  | "text"
-  | "pdf"
-  | "code"
-  | "archive"
-  | "file";
+  "image" | "text" | "pdf" | "code" | "archive" | "file";
 
 export interface OpencodeUiMessageAttachment {
   id?: string;

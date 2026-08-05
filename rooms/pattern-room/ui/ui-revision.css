@@ -88,8 +88,7 @@
     padding: var(--pattern-px-14) var(--pattern-px-16);
     border-top: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
     border-left: 0;
-    box-shadow: 0 calc(0 - var(--pattern-px-12)) var(--pattern-px-32)
-      var(--pattern-black-alpha-24);
+    box-shadow: 0 calc(0 - var(--pattern-px-12)) var(--pattern-px-32) var(--pattern-black-alpha-24);
   }
 
   .pattern-room-workspace-inspector-header {
@@ -99,8 +98,7 @@
     padding-bottom: var(--pattern-px-10);
   }
 
-  .pattern-room-workspace-inspector-header
-    > .pattern-room-context-inspector-label {
+  .pattern-room-workspace-inspector-header > .pattern-room-context-inspector-label {
     grid-column: 1 / -1;
     margin-bottom: 0;
   }

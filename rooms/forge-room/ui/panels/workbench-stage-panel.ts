@@ -93,8 +93,7 @@ function applyIdentityAvatarSource(
   }
 
   const readFile = window.electronAPI?.["readFile"] as
-    | ((filePath: string) => Promise<string | null>)
-    | undefined;
+    ((filePath: string) => Promise<string | null>) | undefined;
   if (typeof readFile !== "function") {
     image.src = normalizedAvatar;
     return;

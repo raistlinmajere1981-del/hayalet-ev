@@ -6,9 +6,7 @@ export const PATTERN_ROOM_CASE_REVIEW_EVENT = "pattern:case-review-event" as con
 export type PatternRoomCaseReviewDispatchOperation = "start" | "retry" | "resend";
 
 export type PatternRoomCaseReviewApplyMode =
-  | "all"
-  | "open-questions-only"
-  | "evidence-suggestions-only";
+  "all" | "open-questions-only" | "evidence-suggestions-only";
 
 export type PatternRoomCaseReviewApplySummary = {
   readonly mode: PatternRoomCaseReviewApplyMode;

@@ -8,8 +8,7 @@ function minimizeToTaskbar(): void {
 function minimizeToTray(): void {
   try {
     const windowMinimizeToTray = window.electronAPI?.["windowMinimizeToTray"] as
-      | (() => void)
-      | undefined;
+      (() => void) | undefined;
     windowMinimizeToTray?.();
   } catch {}
 }
@@ -17,8 +16,7 @@ function minimizeToTray(): void {
 function toggleFullscreen(): void {
   try {
     const windowToggleFullscreen = window.electronAPI?.["windowToggleFullscreen"] as
-      | (() => void)
-      | undefined;
+      (() => void) | undefined;
     windowToggleFullscreen?.();
   } catch {}
 }

@@ -10,8 +10,7 @@ import type {
 import type { TranscriptTargetId } from "../src/types/transcript.ts";
 
 type ScrcpyV4l2SinkResult =
-  | { ok: true; previewVideo: CaptureScrcpyPreviewVideoStatus }
-  | { ok: false; message: string };
+  { ok: true; previewVideo: CaptureScrcpyPreviewVideoStatus } | { ok: false; message: string };
 
 export interface ScrcpyChildProcess {
   stdout: Pick<EventEmitter, "on">;

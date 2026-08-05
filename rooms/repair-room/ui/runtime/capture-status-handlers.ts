@@ -75,13 +75,7 @@ export function createRepairCaptureStatusHandlers(params: {
 
   function handleCaptureAmbientStatus(msg: {
     status:
-      | "started"
-      | "wake-detected"
-      | "capturing"
-      | "transcribing"
-      | "done"
-      | "stopped"
-      | "failed";
+      "started" | "wake-detected" | "capturing" | "transcribing" | "done" | "stopped" | "failed";
   }): void {
     state.operationsAvailable = true;
     const active =

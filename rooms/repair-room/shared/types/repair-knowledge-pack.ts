@@ -2,11 +2,7 @@ import type { RepairImagePoint, RepairImageRect } from "./repair-event.js";
 
 export type RepairKnowledgeSpatialRefKind = "board-coordinate" | "region" | "component" | "rail";
 export type RepairKnowledgePackResourceKind =
-  | "schematic"
-  | "board-image"
-  | "thread"
-  | "datasheet"
-  | "note";
+  "schematic" | "board-image" | "thread" | "datasheet" | "note";
 
 export interface RepairKnowledgeSpatialRef {
   kind: RepairKnowledgeSpatialRefKind;

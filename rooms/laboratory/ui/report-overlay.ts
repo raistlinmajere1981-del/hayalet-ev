@@ -148,9 +148,7 @@ function renderUserReportFindings(
 
 function renderCorrelationClusters(
   clusters:
-    | LabUserReport["topCorrelationClusters"]
-    | LabAiReport["correlationClusters"]
-    | undefined,
+    LabUserReport["topCorrelationClusters"] | LabAiReport["correlationClusters"] | undefined,
   copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   if (!Array.isArray(clusters) || clusters.length === 0) {

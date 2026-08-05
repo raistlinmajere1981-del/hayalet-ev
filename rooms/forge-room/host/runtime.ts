@@ -2024,17 +2024,16 @@ export default function createForgeRoomHostRuntime() {
           };
         }
 
-        const nextConflicts: ForgeConflict[] = state.conflicts.map(
-          (conflict): ForgeConflict =>
-            conflict.id === conflictId
-              ? {
-                  ...conflict,
-                  status: requestedStatus,
-                  preferredResponseId: nextPreferredResponseId,
-                  resolutionNote:
-                    resolutionNote ?? (requestedStatus === "open" ? null : conflict.resolutionNote),
-                }
-              : conflict
+        const nextConflicts: ForgeConflict[] = state.conflicts.map((conflict): ForgeConflict =>
+          conflict.id === conflictId
+            ? {
+                ...conflict,
+                status: requestedStatus,
+                preferredResponseId: nextPreferredResponseId,
+                resolutionNote:
+                  resolutionNote ?? (requestedStatus === "open" ? null : conflict.resolutionNote),
+              }
+            : conflict
         );
         const nextResponses: ForgeAgentResponse[] = state.responses.map(
           (response): ForgeAgentResponse => {

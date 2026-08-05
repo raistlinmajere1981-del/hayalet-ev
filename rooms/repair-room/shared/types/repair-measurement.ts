@@ -1,13 +1,7 @@
 export type RepairInstrumentKind = "multimeter" | "power-supply" | "signal-gen";
 
 export type RepairMultimeterMode =
-  | "dc-voltage"
-  | "ac-voltage"
-  | "resistance"
-  | "continuity"
-  | "diode"
-  | "capacitance"
-  | "frequency";
+  "dc-voltage" | "ac-voltage" | "resistance" | "continuity" | "diode" | "capacitance" | "frequency";
 
 export interface RepairMultimeterReading {
   id: string;

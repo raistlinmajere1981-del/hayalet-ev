@@ -35,8 +35,7 @@ function readSessionChangeToken(dbPath: string, sessionId: string): string | nul
   });
   try {
     const pragmaRow = db.prepare("PRAGMA data_version").get() as
-      | { data_version?: unknown }
-      | undefined;
+      { data_version?: unknown } | undefined;
     const dataVersion = safeNumber(pragmaRow?.data_version);
 
     const sessionRow = db

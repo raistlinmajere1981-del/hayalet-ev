@@ -19,11 +19,7 @@ type ScenePreferenceKey = "catchCommands" | "resumeLastSession" | "rememberConne
 type SceneMenuTone = "primary" | "secondary" | "ghost";
 
 export type SceneMenuActionId =
-  | "connect"
-  | "manualRefresh"
-  | "providerTest"
-  | "providerSync"
-  | "devtools";
+  "connect" | "manualRefresh" | "providerTest" | "providerSync" | "devtools";
 export type SceneMenuSelectId =
   | "session"
   | "binding"

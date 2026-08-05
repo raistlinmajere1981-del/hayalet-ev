@@ -186,9 +186,7 @@ export interface SceneCharacterPlacementNodeDefinition {
 }
 
 export type SceneNodeDefinition =
-  | SceneObjectNodeDefinition
-  | SceneBackNodeDefinition
-  | SceneCharacterPlacementNodeDefinition;
+  SceneObjectNodeDefinition | SceneBackNodeDefinition | SceneCharacterPlacementNodeDefinition;
 
 export interface SceneRoomDefinition {
   id: SceneRoomId;

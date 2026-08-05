@@ -10,9 +10,7 @@
     count: number;
   };
   type BackgammonLocation =
-    | { type: "bar"; seat: "user" | "ai" }
-    | { type: "off" }
-    | { type: "point"; point: number };
+    { type: "bar"; seat: "user" | "ai" } | { type: "off" } | { type: "point"; point: number };
   type BackgammonSubMove = {
     from: BackgammonLocation;
     to: BackgammonLocation;

@@ -43,8 +43,7 @@ import {
 
 type KonvaNamespace = RepairKonvaNamespace;
 type RepairKonvaContainer =
-  | InstanceType<KonvaNamespace["Layer"]>
-  | InstanceType<KonvaNamespace["Group"]>;
+  InstanceType<KonvaNamespace["Layer"]> | InstanceType<KonvaNamespace["Group"]>;
 
 export type { RepairOverlayEventInteraction } from "./overlay-interaction.js";
 
