@@ -256,6 +256,86 @@ void test("pattern-room installed UI keeps workspace navigation persistent and p
   }
 });
 
+void test("pattern-room installed UI persists canvas mode and contextual selections", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+
+    openFocusedView(environment.app, "board");
+    const boardItem = environment.app.querySelector(
+      "[data-pattern-board-pin='node-shadow-analysis']"
+    );
+    assert.ok(boardItem);
+    fireEvent(boardItem, "click");
+
+    const graphMode = environment.app.querySelector("[data-pattern-investigation-mode='graph']");
+    assert.ok(graphMode);
+    fireEvent(graphMode, "click");
+    const connection = environment.app.querySelector(
+      "[data-pattern-connection-edge='edge-navigation-supports-horizon']"
+    );
+    assert.ok(connection);
+    fireEvent(connection, "click");
+
+    assert.equal(environment.pendingTimerCount(), 1);
+    environment.runPendingTimers(2000);
+    const savedSnapshot = readLatestSavePayload(environment)[
+      "snapshot"
+    ] as PatternRoomSessionSnapshot;
+    assert.deepEqual(savedSnapshot.presentation, {
+      canvasMode: "graph",
+      selectedBoardItemId: "node-shadow-analysis",
+      selectedConnectionId: "edge-navigation-supports-horizon",
+    });
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI restores canvas mode and contextual selections", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  const snapshot = createSnapshot(localState, "desk", {
+    canvasMode: "graph",
+    selectedBoardItemId: "node-shadow-analysis",
+    selectedConnectionId: "edge-navigation-supports-horizon",
+  });
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+    environment.emitHostMessage({
+      payload: { snapshot },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+
+    assert.ok(environment.app.querySelector("[data-pattern-view='desk']"));
+    const inspector = environment.app.querySelector("[data-pattern-workspace-inspector='true']");
+    assert.ok(inspector);
+    assertTextIncludes(readTreeText(inspector), [
+      "Bağlantı detayı",
+      "Seyir defteri kaynagi",
+      "Ufuk iddiasi",
+      "Regression fixture support relation only.",
+    ]);
+
+    const boardMode = environment.app.querySelector("[data-pattern-investigation-mode='board']");
+    assert.ok(boardMode);
+    fireEvent(boardMode, "click");
+    assertTextIncludes(readTreeText(inspector), ["Tuval detayı", "Golge acisi analizi"]);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
 void test("pattern-room installed UI restores a loaded host snapshot", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");

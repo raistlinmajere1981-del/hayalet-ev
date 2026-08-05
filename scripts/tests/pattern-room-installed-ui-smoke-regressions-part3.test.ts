@@ -372,7 +372,7 @@ void test("pattern-room installed UI phase 12D rejects blank pasted user text", 
       environment.app.querySelector("[data-pattern-archive-source='local-source-001']"),
       null
     );
-    assert.equal(environment.pendingTimerCount(), 0);
+    assert.equal(environment.pendingTimerCount(), 1);
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
   } finally {

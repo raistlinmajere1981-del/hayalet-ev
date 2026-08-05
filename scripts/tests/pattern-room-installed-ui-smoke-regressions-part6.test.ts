@@ -317,7 +317,7 @@ void test("pattern-room installed UI localizes all four review roles and keeps p
     assert.deepEqual(confirmations, ["Send the case review for the US1 role?"]);
     assertSnapshotStateUnchanged(snapshotBefore, runtime.createSnapshot());
     environment.runPendingTimers(2000);
-    assert.equal((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND), false);
+    assert.ok((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND));
     runtime.dispose();
   } finally {
     environment.restore();
@@ -443,7 +443,7 @@ void test("pattern-room installed UI mirrors lifecycle, controls, structured res
     assert.match(readTreeText(environment.app), /Reply Timed Out/);
     assertSnapshotStateUnchanged(snapshotBefore, runtime.createSnapshot());
     environment.runPendingTimers(2000);
-    assert.equal((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND), false);
+    assert.ok((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND));
     runtime.dispose();
   } finally {
     environment.restore();
@@ -522,7 +522,7 @@ void test("pattern-room installed UI restores runtime review history and retry/r
     assert.equal(retryCommand.draft.packetHash, command.draft.packetHash);
 
     environment.runPendingTimers(2000);
-    assert.equal((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND), false);
+    assert.ok((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND));
     activeRuntime.dispose();
     activeRuntime = null;
   } finally {
@@ -739,7 +739,7 @@ void test("pattern-room installed UI does not mutate or autosave when apply cont
     assert.equal(currentApplyButton.disabled, false);
     assert.match(readTreeText(environment.app), /review action could not be sent/i);
     environment.runPendingTimers(2000);
-    assert.equal((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND), false);
+    assert.ok((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND));
     runtime.dispose();
   } finally {
     environment.restore();

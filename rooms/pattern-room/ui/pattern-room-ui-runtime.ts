@@ -57,7 +57,10 @@ import {
   type PastedTextInput,
   type SourceProducerOrchestrationResult,
 } from "../shared/source-producers/index.js";
-import type { PatternRoomSessionSnapshot } from "../shared/types/pattern-room-snapshot.js";
+import type {
+  PatternRoomPresentationState,
+  PatternRoomSessionSnapshot,
+} from "../shared/types/pattern-room-snapshot.js";
 import type { PatternRoomEvidenceCandidatePromotionInput } from "../shared/types/pattern-room-evidence-candidate.js";
 import { createArchivePanel } from "./panels/pattern-archive-panel.js";
 import { createPatternCaseIdentityInspector } from "./panels/pattern-case-identity-inspector.js";
@@ -811,6 +814,7 @@ export function createPatternRoomUiRuntime(
       if (workspaceShell !== null && (activeView === "board" || activeView === "desk")) {
         renderWorkspaceInspector(workspaceShell);
       }
+      scheduleAutosave();
     },
     getSelectedConnectionId(): string | null {
       return selectedConnectionId;
@@ -820,6 +824,7 @@ export function createPatternRoomUiRuntime(
       if (workspaceShell !== null && (activeView === "board" || activeView === "desk")) {
         renderWorkspaceInspector(workspaceShell);
       }
+      scheduleAutosave();
     },
     sendNodeToDesk(nodeId: string): void {
       const beforeCount = localState.getOverlay().deskNodeIds.length;
@@ -1017,6 +1022,15 @@ export function createPatternRoomUiRuntime(
       archiveEvidenceCaptureStatus = null;
     }
     if (
+      selectedNodeId !== null &&
+      !viewModels.boardCategories.some((category) =>
+        category.pins.some((pin) => pin.id === selectedNodeId)
+      )
+    ) {
+      selectedNodeId = null;
+    }
+
+    if (
       selectedConnectionId !== null &&
       !viewModels.connections.some((connection) => connection.id === selectedConnectionId)
     ) {
@@ -1027,7 +1041,12 @@ export function createPatternRoomUiRuntime(
   });
 
   function createCurrentSnapshot(): PatternRoomSessionSnapshot {
-    return createSnapshot(localState, activeView);
+    const presentation: PatternRoomPresentationState = {
+      canvasMode: investigationCanvasMode,
+      selectedBoardItemId: selectedNodeId,
+      selectedConnectionId,
+    };
+    return createSnapshot(localState, activeView, presentation);
   }
 
   function clearPendingAutosave(): void {
@@ -1108,6 +1127,7 @@ export function createPatternRoomUiRuntime(
     activeView = viewId;
     activeWorkspaceSection = section;
     render(true);
+    scheduleAutosave();
   }
 
   function renderFocusedView(viewId: FocusedPatternViewId): HTMLElement {
@@ -1130,6 +1150,7 @@ export function createPatternRoomUiRuntime(
             const shell = ensureWorkspaceShell();
             shell.updateActiveView(activeView, activeWorkspaceSection);
             renderWorkspaceInspector(shell);
+            scheduleAutosave();
           },
         },
         workspaceText
@@ -1302,8 +1323,14 @@ export function createPatternRoomUiRuntime(
     isRestoring = true;
     try {
       activeView = restoredState.activeView;
-      investigationCanvasMode = activeView === "desk" ? "graph" : "board";
+      investigationCanvasMode =
+        restoredState.presentation?.canvasMode ?? (activeView === "desk" ? "graph" : "board");
+      if (activeView === "board" || activeView === "desk") {
+        activeView = investigationCanvasMode === "graph" ? "desk" : "board";
+      }
       activeWorkspaceSection = "default";
+      selectedNodeId = restoredState.presentation?.selectedBoardItemId ?? null;
+      selectedConnectionId = restoredState.presentation?.selectedConnectionId ?? null;
       selectedArchiveSourceId = null;
       archiveEvidenceCaptureStatus = null;
       evidenceCandidateFeedback = null;

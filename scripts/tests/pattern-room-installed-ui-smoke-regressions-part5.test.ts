@@ -588,7 +588,7 @@ void test("pattern-room installed UI phase 12G-B resets the local session withou
       "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?",
     ]);
     assert.ok(environment.app.querySelector("[data-pattern-archive-source='local-source-001']"));
-    assert.equal(environment.pendingTimerCount(), 0);
+    assert.equal(environment.pendingTimerCount(), 1);
     assert.deepEqual(environment.sentCommands, [
       PATTERN_ROOM_SAVE_COMMAND,
       PATTERN_ROOM_SAVE_COMMAND,

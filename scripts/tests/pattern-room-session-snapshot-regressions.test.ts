@@ -57,16 +57,19 @@ function assertRestoredSnapshotStateMatches(
   left: {
     overlay: unknown;
     activeView: unknown;
+    presentation?: unknown;
     guards: unknown;
   },
   right: {
     overlay: unknown;
     activeView: unknown;
+    presentation?: unknown;
     guards: unknown;
   }
 ): void {
   assert.deepEqual(left.overlay, right.overlay);
   assert.equal(left.activeView, right.activeView);
+  assert.deepEqual(left.presentation, right.presentation);
   assert.deepEqual(left.guards, right.guards);
 }
 
@@ -98,6 +101,29 @@ void test("pattern-room phase 6B creates a local session snapshot from local mut
     debateReportReflected: true,
     noteIndex: 2,
   });
+});
+
+void test("pattern-room presentation state round-trips separately from case truth", () => {
+  const localState = createSnapshotReadyLocalState();
+  const presentation = {
+    canvasMode: "graph" as const,
+    selectedBoardItemId: "node-shadow-analysis",
+    selectedConnectionId: "edge-navigation-supports-horizon",
+  };
+  const snapshot = createSnapshot(localState, "desk", presentation);
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+
+  assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+  assert.deepEqual(snapshot.presentation, presentation);
+  assert.ok(restored);
+  assert.deepEqual(restored.presentation, presentation);
+  assert.deepEqual(restored.overlay, snapshot.overlay);
+
+  const legacySnapshot: PatternRoomSessionSnapshot = { ...snapshot };
+  delete legacySnapshot.presentation;
+  const restoredLegacy = restoreFromSnapshot(legacySnapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  assert.ok(restoredLegacy);
+  assert.equal(restoredLegacy.presentation, undefined);
 });
 
 void test("pattern-room phase 6B restores valid snapshot pieces and applies them to local state", () => {

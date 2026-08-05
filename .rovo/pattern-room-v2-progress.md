@@ -148,10 +148,18 @@ The following checks passed after the production/test-domain migration:
 - Selectable domain and local connection cards now remain in normal document flow directly below the claim cards.
 - Connection-card index badges are anchored to their own cards instead of the graph surface.
 
+## Completed: separate Investigation Canvas presentation persistence
+
+- Canvas mode and contextual board/connection selections persist in an optional snapshot presentation object.
+- Presentation state remains outside the local case overlay and does not become investigation truth.
+- Older version-1 snapshots without presentation state continue to restore safely.
+- Invalid or stale selections are cleared against the current projected workspace.
+- Installed UI and snapshot regressions cover save, restore and legacy compatibility.
+
 ## Next implementation steps
 
-1. Add explicit edge selection and edge-detail editing to the persistent inspector.
-2. Persist Investigation Canvas presentation state separately from case truth.
+1. Complete functional closure validation and refresh the PR scope.
+2. Start the general UI revision in a separate session.
 
 ## Completed: visible action feedback and truthful workspace metrics
 

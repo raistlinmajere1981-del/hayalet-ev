@@ -510,7 +510,7 @@ void test("pattern-room installed UI phase 14B-2 prepares manual evidence from a
     assert.equal(labelInputAfterBoardCheck.value, firstSegmentLabel);
     assert.equal(excerptInputAfterBoardCheck.value, firstSegmentText);
     assert.equal(interpretationInputAfterBoardCheck.value, "");
-    assert.equal(environment.pendingTimerCount(), 0);
+    assert.equal(environment.pendingTimerCount(), 1);
 
     labelInputAfterBoardCheck.value = "Düzenlenmiş segment kanıtı";
     excerptInputAfterBoardCheck.value = "Kısaltılmış segment pasajı.";
@@ -813,7 +813,7 @@ void test("pattern-room installed UI phase 15A renders a read-only deterministic
       "Henüz 10. Adam tartışması rapora yansıtılmadı.",
     ]);
     assert.deepEqual(environment.sentCommands, []);
-    assert.equal(environment.pendingTimerCount(), 0);
+    assert.equal(environment.pendingTimerCount(), 1);
 
     returnToOverview(environment.app);
     openFocusedView(environment.app, "archive");
@@ -918,7 +918,7 @@ void test("pattern-room installed UI phase 15A renders a read-only deterministic
     assert.deepEqual(environment.sentCommands, commandsBeforeReport);
     assert.equal(JSON.stringify(readLatestSavePayload(environment)), payloadBeforeReport);
     assert.equal(environment.sentEvents.length, eventCountBeforeReport);
-    assert.equal(environment.pendingTimerCount(), 0);
+    assert.equal(environment.pendingTimerCount(), 1);
   } finally {
     environment.restore();
     await installedCopy.cleanup();
@@ -970,7 +970,7 @@ void test("pattern-room installed UI phase 13C rejects blank long text fields", 
       environment.app.querySelector("[data-pattern-archive-source='local-source-001']"),
       null
     );
-    assert.equal(environment.pendingTimerCount(), 0);
+    assert.equal(environment.pendingTimerCount(), 1);
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
   } finally {
