@@ -664,16 +664,18 @@ body,
 }
 
 .pattern-room-connection-map {
-  position: relative;
-  min-height: var(--pattern-px-388);
+  display: grid;
+  min-height: 0;
+  gap: var(--pattern-px-14);
+  align-content: start;
 }
 
 .pattern-room-connection-map .pattern-room-claim-objects {
   position: relative;
   z-index: 2;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: center;
-  height: 100%;
+  align-items: stretch;
+  height: auto;
 }
 
 /* Bağlantı ekseni — soruşturma sicimi */
@@ -1592,6 +1594,7 @@ body,
 }
 
 .pattern-room-connection-card {
+  position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: var(--pattern-px-6) var(--pattern-px-10);

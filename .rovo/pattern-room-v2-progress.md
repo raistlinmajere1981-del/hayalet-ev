@@ -142,6 +142,12 @@ The following checks passed after the production/test-domain migration:
 - Stale connection selections are cleared after linked local entities are removed.
 - View-model and installed-UI regressions cover projection, selection, editing and report propagation.
 
+## Completed: graph connection list viewport correction
+
+- The graph claim area no longer reserves the full connection-map height before selectable edges.
+- Selectable domain and local connection cards now remain in normal document flow directly below the claim cards.
+- Connection-card index badges are anchored to their own cards instead of the graph surface.
+
 ## Next implementation steps
 
 1. Add explicit edge selection and edge-detail editing to the persistent inspector.
