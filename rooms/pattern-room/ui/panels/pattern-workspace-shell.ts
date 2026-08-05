@@ -305,6 +305,7 @@ export function createPatternWorkspaceShell(
 
   const restoreAdoptedInspector = (): void => {
     if (adoptedInspector !== null && adoptedInspectorHome !== null) {
+      adoptedInspector.remove();
       adoptedInspectorHome.append(adoptedInspector);
     }
     adoptedInspector = null;
@@ -330,6 +331,7 @@ export function createPatternWorkspaceShell(
         if (content === null) {
           adoptedInspector = resolvedContent;
           adoptedInspectorHome = resolvedContent.parentElement;
+          resolvedContent.remove();
         }
         inspectorContent.append(resolvedContent);
       }
