@@ -1,7 +1,8 @@
 # Pattern Room V2 Progress
 
 Branch: `feature/pattern-room-v2-workspace`
-Updated: 2026-08-04
+Updated: 2026-08-05
+Status: functional implementation complete; general UI revision deferred to a separate session
 
 ## Locked scope
 
@@ -9,168 +10,129 @@ Updated: 2026-08-04
 - Cross-room integration is out of scope.
 - Production must not open with the former Dünya'nın Şekli sample case.
 - Sample domain data may remain only as an isolated regression-test fixture.
+- Investigation truth, AI suggestions and presentation state remain separate concerns.
 
 ## Completed: production data boundary
 
 - Added `rooms/pattern-room/shared/data/pattern-room-domain.ts`.
-- Production domain starts as an empty local case:
-  - no nodes
-  - no edges
-  - no sources
-  - no evidence
-  - no report traces
-  - pending review session with disconnected role definitions
-- Moved the former sample case into `shared/data/testing/pattern-room-domain.fixture.ts`.
-- UI and host runtimes use the production empty domain directly.
-- Regression suites import the isolated fixture explicitly.
+- Production starts as an empty local case with no nodes, edges, sources, evidence or report traces.
+- The former sample case lives only in `shared/data/testing/pattern-room-domain.fixture.ts`.
+- UI and host runtimes use the production domain directly.
+- Regression suites inject the isolated fixture explicitly.
 - The compatibility mock-domain module has been removed.
-- Installed-UI tests inject the fixture through the runtime factory; production still opens the empty domain.
-- Host lifecycle coverage asserts the production empty topic.
 
-## Completed: workspace model naming
+## Completed: workspace model and structured projections
 
 - `PatternRoomWorkspaceModel` is the canonical active UI projection type.
-- The former `PatternRoomMockData` compatibility alias has been removed.
+- Case Packets are built from structured domain and local overlay data.
+- Report strings, rendered arrows and report-card metadata are not parsed to build Case Packets.
+- Case Packet connections expose source and target identifiers alongside labels.
+- Report generation remains deterministic and read-only.
 
-## Completed: structured Case Packet projection
+## Completed: AI suggestion and evidence-candidate boundary
 
-- Added `pattern-room-case-packet-projection.ts`.
-- Active Case Review preview builds its packet from structured domain + local overlay data.
-- Report cards, report metadata strings and rendered arrow text are not parsed to build a Case Packet.
-- Domain and local sources, evidence, board notes, typed connections, debate state and open questions are projected directly.
-- Packet limits, deterministic behavior and cautious language are covered by regression tests.
-- The legacy report-string Case Packet adapter has been removed.
-
-## Current validation state
-
-The following checks passed after the production/test-domain migration:
-
-- typecheck
-- Pattern Room core regressions
-- room build
-- strict lint
-- format check
-
-## Completed: AI suggestion boundary
-
-- Parsed Case Review output now exposes explicit typed suggestion records.
-- Evidence-section output is classified as `evidence_candidate`, not evidence.
-- Applying a review never writes AI evidence suggestions into `localAuthoredEvidence`.
-- Evidence candidates remain in the structured review result until a source-backed promotion workflow is completed.
-- UI copy and regression expectations distinguish candidates from evidence.
-
-## Completed: persistent evidence candidates and promotion boundary
-
-- Applied AI evidence suggestions are stored as explicit local `candidate` records.
-- Candidate records persist through snapshot save and restore without entering `localAuthoredEvidence`.
-- Candidate provenance retains the originating review session and suggestion id.
-- Promotion rejects missing candidates, unknown sources and empty selected excerpts.
-- Successful promotion creates source-linked evidence, keeps AI text in interpretation and removes the candidate.
-- Older snapshots without the optional candidate collection restore safely with an empty collection.
-
-## Completed: evidence candidate promotion UI
-
-- Case Review displays persisted AI evidence candidates as a separate review queue.
-- Promotion controls require the user to select a real source and enter a source excerpt before activation.
-- Promotion delegates to the guarded local-state command and never treats AI text as the excerpt.
-- Successful promotion removes the candidate, creates source-linked evidence and preserves AI text as interpretation.
-- Candidates can be explicitly discarded by the user.
-- Installed UI regressions cover disabled promotion, source selection, excerpt entry and source-linked evidence output.
+- Parsed Case Review output exposes typed suggestion records.
+- AI evidence suggestions are stored as evidence candidates, never direct evidence.
+- Candidates persist without entering `localAuthoredEvidence`.
+- Promotion requires a real source and a user-selected source excerpt.
+- AI text is preserved as interpretation rather than treated as source material.
+- Candidates can be explicitly promoted or discarded by the user.
 
 ## Completed: canonical and bilingual Case Review parsing
 
 - Case Review messages request one canonical JSON envelope with seven typed section arrays.
-- The parser accepts plain or fenced canonical JSON and preserves each JSON array entry as a separate suggestion item.
-- Structured connection objects are validated against the existing edge-type allowlist.
-- English and Turkish section headings are accepted as a controlled fallback path.
-- Invalid JSON envelopes are preserved as cautious Analysis fallback content with warnings.
-- Parser-format regressions cover canonical JSON, fenced JSON, Turkish headings and the outbound response contract.
+- Plain and fenced canonical JSON are supported.
+- Turkish and English section headings are controlled fallback paths.
+- Invalid output is preserved as cautious Analysis content with warnings.
+- Case Review role lines use normalized, non-duplicated slot labels.
 
-## Completed: three-region Workspace Shell V2 boundary
+## Completed: persistent Workspace Shell V2
 
-- The application shell now exposes a persistent left case/source spine, center workspace canvas and right context inspector.
-- Navigation, center outlet and context inspector remain mounted while focused views change.
-- The right inspector tracks the active workspace and repeats the current case summary without mutating room state.
-- Desktop layouts use all three regions; narrower layouts collapse the context inspector without changing navigation or data.
-- Installed UI regressions verify region persistence and active-view context updates.
-
-## Completed: unified Investigation Canvas boundary
-
-- Board and Connections now open as board and graph modes of one Investigation Canvas.
-- The persistent workspace navigation exposes one canvas destination instead of separate Board and Connections products.
-- Existing desk snapshots and overview shortcuts remain compatible and open the graph mode.
-- Switching canvas modes does not mutate investigation data and keeps the Board navigation item active.
-- Installed UI regressions cover board/graph mode switching, one active view and compatibility entry points.
-
-## Completed: persistent Investigation Inspector ownership
-
-- Board selections render source, evidence and node details in the shell-level right inspector.
-- Board authoring and graph connection tools now live in the same persistent inspector instead of panel-local sidebars.
-- Switching Board and Graph modes refreshes inspector content without remounting the workspace shell.
-- Center canvas surfaces no longer allocate a second local inspector column.
-- Installed UI regressions verify inspector identity, selection details, authoring tools and graph composer ownership.
-
-## Completed: persistent inspector quick-tool density
-
-- Board authoring disclosures now stack in a single full-width column inside the persistent right inspector.
-- Node, evidence and connection forms no longer inherit the three-column desktop authoring grid.
-- Inspector form controls keep full available width without horizontal compression.
-
-## Completed: editable case identity and packet identity
-
-- The active case name and primary research question can be edited from the Case Hub inspector.
-- Custom identity persists in the existing version-1 snapshot without changing production defaults or older snapshot compatibility.
-- Workspace summaries, overview copy, graph fallback, report context and Case Review preview use the edited identity.
-- Case Packet connections expose source and target ids alongside labels.
-- Case Review role lines no longer duplicate slot identifiers.
-- Installed UI, snapshot, Case Packet and message regressions cover the new boundary.
-
-## Completed: truthful report metrics and Tenth Man separation
-
-- Report source counts now represent actual domain and local source entities; aggregate summary cards are no longer counted as sources.
-- Report sections expose structured metrics instead of deriving truth from rendered item-card length.
-- Tenth Man references, local session turns and the optional session summary are counted and rendered separately.
-- Tenth Man references appear as explicit report entries even before a local debate session starts.
-- Report outline and document headers use the same structured metrics.
-
-## Completed: connection selection and local edge editing
-
-- Domain and local connections are projected as explicit selectable graph records.
-- Selecting a connection opens its source, target, type, scope and note in the persistent inspector.
-- Domain connections remain read-only.
-- Local connection type and note can be edited without changing endpoints or enabling deletion.
-- Stale connection selections are cleared after linked local entities are removed.
-- View-model and installed-UI regressions cover projection, selection, editing and report propagation.
-
-## Completed: graph connection list viewport correction
-
-- The graph claim area no longer reserves the full connection-map height before selectable edges.
-- Selectable domain and local connection cards now remain in normal document flow directly below the claim cards.
-- Connection-card index badges are anchored to their own cards instead of the graph surface.
-
-## Completed: separate Investigation Canvas presentation persistence
-
-- Canvas mode and contextual board/connection selections persist in an optional snapshot presentation object.
-- Presentation state remains outside the local case overlay and does not become investigation truth.
-- Older version-1 snapshots without presentation state continue to restore safely.
-- Invalid or stale selections are cleared against the current projected workspace.
-- Installed UI and snapshot regressions cover save, restore and legacy compatibility.
-
-## Next implementation steps
-
-1. Complete functional closure validation and refresh the PR scope.
-2. Start the general UI revision in a separate session.
+- The application uses a persistent left navigation spine, center workspace and right context inspector.
+- Navigation and inspector ownership survive focused-view changes.
+- Board and Connections are modes of one Investigation Canvas.
+- Center surfaces no longer allocate duplicate local inspectors.
+- Right-inspector quick tools use one full-width column.
 
 ## Completed: visible action feedback and truthful workspace metrics
 
-- Common local mutations now publish an explicit success, information or error message in a shell-level feedback surface.
-- Feedback survives panel rerenders, remains visible when the right inspector collapses and can be dismissed explicitly.
-- Duplicate desk and Tenth Man reference actions report that the item was already present instead of implying a new mutation.
-- Case summary chips now separate sources, evidence, board notes, connections and review sessions; placeholder cards are not counted as case truth.
-- Installed UI regressions cover feedback replacement, dismissal and truthful fixture metrics.
+- Common local actions publish explicit success, information or error feedback.
+- Duplicate actions report that the item was already present instead of implying a mutation.
+- Feedback survives panel rerenders and remains dismissible.
+- Case metrics separately count sources, evidence, board notes, connections and reviews.
+- Placeholder cards are not counted as case truth.
 
-## Next implementation steps
+## Completed: editable case identity
 
-1. Add editable case identity and research question metadata.
-2. Correct report outline counts and separate Tenth Man references from session turns.
-3. Add sourceId and targetId to projected Case Packet connections and normalize repeated role labels.
+- The case name and primary research question are editable from Case Hub.
+- Custom identity persists in the existing version-1 snapshot contract.
+- Workspace summaries, graph fallback, report context and Case Review use the edited identity.
+- Older snapshots without custom identity remain compatible.
+
+## Completed: truthful report metrics and Tenth Man separation
+
+- Source counts represent real domain and local source entities.
+- Aggregate report cards are not counted as sources.
+- Tenth Man references, local turns and optional summary are separate metrics.
+- Tenth Man references appear in the report before a local debate session starts.
+- Report outline and document sections use the same structured metrics.
+
+## Completed: connection selection and local edge editing
+
+- Domain and local connections are explicit selectable graph records.
+- The persistent inspector shows source, target, type, scope and note.
+- Domain connections remain read-only.
+- Local connection type and note can be edited without changing endpoints.
+- Connection deletion remains intentionally outside the UI boundary.
+- Stale connection selections are cleared when linked local entities disappear.
+
+## Completed: graph connection-list viewport correction
+
+- Claim cards no longer reserve the full graph surface height.
+- Selectable connection cards remain in normal flow directly below claims.
+- Connection index badges are anchored to their own cards.
+
+## Completed: separate Investigation Canvas presentation persistence
+
+- Canvas mode, selected board item and selected connection persist in an optional snapshot `presentation` object.
+- Presentation state remains outside the local case overlay.
+- Snapshot schema version remains `1`.
+- Older snapshots without presentation state restore safely.
+- Invalid or stale selections are cleared against the current workspace projection.
+
+## Functional closure validation
+
+Latest local validation was reported clean after the presentation-state commit:
+
+- targeted snapshot, persistence, storage and installed-UI regressions
+- Pattern Room core regressions
+- TypeScript checks
+- room build
+- strict lint
+- format check
+- Pattern Room design-system audit
+- manual save, restore, selection and connection-editing checks
+
+## Functional closure decision
+
+The planned Pattern Room V2 functional foundation is complete on this branch. No further feature behavior is required before beginning the general UI revision.
+
+The current boundaries remain intentional:
+
+- no cross-room integration
+- no automatic AI mutation of case truth
+- no connection deletion UI
+- no cloud persistence
+- no general Hayalet Ev shell redesign
+
+## Next session: general UI revision
+
+Start from the existing functional behavior and preserve its tests. The next session should focus on:
+
+1. Move Archive selected-source details and evidence capture into the persistent right inspector.
+2. Simplify Case Review and Tenth Man into clearer focused modes without nested inspector layers.
+3. Replace placeholder and decorative empty states with deliberate product empty states.
+4. Rework report document hierarchy, spacing and navigation readability.
+5. Rework graph node and connection presentation without changing the connection model.
+6. Review panel widths, typography, responsive collapse behavior and inspector density.
+7. Keep case truth, AI suggestions and presentation state visibly distinguishable.
