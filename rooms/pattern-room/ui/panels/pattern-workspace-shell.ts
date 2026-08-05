@@ -300,6 +300,17 @@ export function createPatternWorkspaceShell(
     inspectorReviewMetric.textContent = reviewText;
   };
 
+  let adoptedInspector: HTMLElement | null = null;
+  let adoptedInspectorHome: HTMLElement | null = null;
+
+  const restoreAdoptedInspector = (): void => {
+    if (adoptedInspector !== null && adoptedInspectorHome !== null) {
+      adoptedInspectorHome.append(adoptedInspector);
+    }
+    adoptedInspector = null;
+    adoptedInspectorHome = null;
+  };
+
   updateSummary(initialSummary);
 
   return {
@@ -307,6 +318,7 @@ export function createPatternWorkspaceShell(
     outlet,
     inspector,
     setInspectorContent(content): void {
+      restoreAdoptedInspector();
       const resolvedContent =
         content ??
         resolveEmbeddedInspector(
@@ -315,6 +327,10 @@ export function createPatternWorkspaceShell(
         );
       inspectorContent.replaceChildren();
       if (resolvedContent !== null) {
+        if (content === null) {
+          adoptedInspector = resolvedContent;
+          adoptedInspectorHome = resolvedContent.parentElement;
+        }
         inspectorContent.append(resolvedContent);
       }
     },
