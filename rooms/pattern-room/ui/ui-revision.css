@@ -103,7 +103,7 @@
 @media (max-width: 960px) {
   .pattern-room-app-shell {
     grid-template-columns: var(--pattern-px-84) minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) minmax(var(--pattern-px-220), 40dvh);
+    grid-template-rows: minmax(0, 1fr) minmax(var(--pattern-px-210), 40dvh);
   }
 
   .pattern-room-workspace-rail {
@@ -130,7 +130,7 @@
   }
 
   .pattern-room-workspace-inspector-header {
-    grid-template-columns: minmax(var(--pattern-px-140), 0.4fr) minmax(0, 1fr);
+    grid-template-columns: minmax(var(--pattern-px-150), 0.4fr) minmax(0, 1fr);
     gap: var(--pattern-px-6) var(--pattern-px-12);
     align-items: baseline;
     padding-bottom: var(--pattern-px-10);
@@ -181,7 +181,7 @@
     grid-template-rows:
       auto
       minmax(0, 1fr)
-      minmax(var(--pattern-px-220), 42dvh);
+      minmax(var(--pattern-px-210), 42dvh);
   }
 
   .pattern-room-workspace-rail {
