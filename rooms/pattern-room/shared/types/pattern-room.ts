@@ -72,11 +72,18 @@ export type PatternDebateReference = {
   kind: "node" | "source" | "evidence";
 };
 
+export type PatternReportMetric = {
+  id: string;
+  label: string;
+  value: number;
+};
+
 export type PatternReportSection = {
   id: string;
   label: string;
   tone: PatternBoardCategoryTone;
   note: string;
+  metrics: PatternReportMetric[];
   bullets: string[];
   items: PatternReportItem[];
   emptyMessage: string;

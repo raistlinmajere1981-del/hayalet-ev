@@ -125,6 +125,14 @@ The following checks passed after the production/test-domain migration:
 - Case Review role lines no longer duplicate slot identifiers.
 - Installed UI, snapshot, Case Packet and message regressions cover the new boundary.
 
+## Completed: truthful report metrics and Tenth Man separation
+
+- Report source counts now represent actual domain and local source entities; aggregate summary cards are no longer counted as sources.
+- Report sections expose structured metrics instead of deriving truth from rendered item-card length.
+- Tenth Man references, local session turns and the optional session summary are counted and rendered separately.
+- Tenth Man references appear as explicit report entries even before a local debate session starts.
+- Report outline and document headers use the same structured metrics.
+
 ## Next implementation steps
 
 1. Add explicit edge selection and edge-detail editing to the persistent inspector.

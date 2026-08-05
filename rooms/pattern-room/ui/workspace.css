@@ -1555,3 +1555,29 @@ body,
 .pattern-room-case-identity-submit {
   width: 100%;
 }
+
+/* ─────────────────────────────────────────
+   TRUTHFUL REPORT METRICS
+───────────────────────────────────────── */
+.pattern-room-report-section-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pattern-px-6);
+}
+
+.pattern-room-report-section-metric {
+  display: inline-flex;
+  width: fit-content;
+  padding: var(--pattern-px-4) var(--pattern-px-8);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-14);
+  border-radius: var(--pattern-px-999);
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+}
+
+.pattern-room-report-outline-button small {
+  text-align: right;
+  line-height: 1.35;
+}

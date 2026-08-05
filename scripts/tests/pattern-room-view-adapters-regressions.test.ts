@@ -588,9 +588,9 @@ void test("pattern-room phase 15A report adapter drafts local evidence without v
   });
 
   assert.ok(sourceSection);
-  assert.equal(sourceSection.items[0]?.body, "Archive sayımı: 4 domain kaynak, 1 local kaynak.");
-  assert.equal(sourceSection.items[1]?.label, "Uzun kaynak başlığı");
-  assert.ok(sourceSection.items[1].meta.includes("Segment: 2"));
+  assert.equal(sourceSection.note, "Archive sayımı: 4 domain kaynak, 1 yerel kaynak.");
+  assert.equal(sourceSection.items[4]?.label, "Uzun kaynak başlığı");
+  assert.ok(sourceSection.items[4].meta.includes("Segment: 2"));
 
   assert.ok(evidenceSection);
   assert.equal(evidenceSection.items[0]?.label, "Kaynaklı kanıt");
@@ -627,4 +627,69 @@ void test("pattern-room phase 15A report adapter drafts local evidence without v
     /kesin cevap|kesin sonuç|kanıtlandı|doğrulandı|ispatlandı|AI sonucu|nihai rapor|provider|relay|final verdict|truth score/i
   );
   assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
+});
+
+void test("pattern-room truthful report metrics separate sources, references, turns, and summaries", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  localState.addAuthoredSource("Yerel kaynak A", "Kullanıcı arşivi", "Kaynak A notu.");
+  localState.addAuthoredSource("Yerel kaynak B", "Kullanıcı arşivi", "Kaynak B notu.");
+  localState.addToDebate("local-source-001");
+  localState.addToDebate("local-source-002");
+
+  const beforeSession = adaptReportViewModel(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  ).reportSummary;
+  const sourceSection = beforeSession.sections.find((section) => {
+    return section.id === "report-source-summary";
+  });
+  const tenthManSection = beforeSession.sections.find((section) => {
+    return section.id === "report-tenth-man-traces";
+  });
+
+  assert.ok(sourceSection);
+  assert.equal(sourceSection.items.length, PATTERN_ROOM_DOMAIN_TEST_FIXTURE.sources.length + 2);
+  assert.deepEqual(sourceSection.metrics, [
+    {
+      id: "sources",
+      label: "kaynak",
+      value: PATTERN_ROOM_DOMAIN_TEST_FIXTURE.sources.length + 2,
+    },
+  ]);
+  assert.doesNotMatch(
+    sourceSection.items.map((item) => item.label).join(" "),
+    /Archive kaynak sayımı/
+  );
+  assert.ok(tenthManSection);
+  assert.deepEqual(tenthManSection.metrics, [
+    { id: "references", label: "referans", value: 2 },
+    { id: "turns", label: "tur", value: 0 },
+    { id: "summary", label: "özet", value: 0 },
+  ]);
+  assert.equal(
+    tenthManSection.items.filter((item) => item.id.startsWith("report-tenth-reference-")).length,
+    2
+  );
+
+  localState.prepareDebate();
+  localState.assignDebateRoles();
+  localState.startDebate();
+  localState.advanceDebatePhase();
+  localState.advanceDebatePhase();
+  localState.advanceDebatePhase();
+  localState.advanceDebatePhase();
+  localState.completeDebate();
+
+  const completedSection = adaptReportViewModel(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  ).reportSummary.sections.find((section) => {
+    return section.id === "report-tenth-man-traces";
+  });
+  assert.ok(completedSection);
+  assert.deepEqual(completedSection.metrics, [
+    { id: "references", label: "referans", value: 2 },
+    { id: "turns", label: "tur", value: 5 },
+    { id: "summary", label: "özet", value: 1 },
+  ]);
 });

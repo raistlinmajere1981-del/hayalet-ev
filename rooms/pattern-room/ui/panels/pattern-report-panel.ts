@@ -12,6 +12,31 @@ import { createElement, createPanelShell } from "./pattern-panel-utils.js";
 
 const REPORT_META_SEPARATOR = " · ";
 
+function formatReportMetric(value: number, label: string): string {
+  return `${String(value)} ${label}`;
+}
+
+function createReportMetrics(section: PatternReportSection): HTMLElement {
+  const metrics = createElement("div", "pattern-room-report-section-metrics");
+  metrics.dataset["patternReportMetrics"] = section.id;
+  section.metrics.forEach((metric) => {
+    const item = createElement(
+      "span",
+      "pattern-room-report-section-metric",
+      formatReportMetric(metric.value, metric.label)
+    );
+    item.dataset["patternReportMetric"] = metric.id;
+    metrics.append(item);
+  });
+  return metrics;
+}
+
+function formatReportOutlineMetrics(section: PatternReportSection): string {
+  return section.metrics
+    .map((metric) => formatReportMetric(metric.value, metric.label))
+    .join(REPORT_META_SEPARATOR);
+}
+
 function createReportItem(item: PatternReportItem): HTMLElement {
   const entry = createElement("article", "pattern-room-report-entry");
   entry.dataset["patternReportItem"] = item.id;
@@ -85,7 +110,7 @@ export function createReportPanel(
     const sectionHeader = createElement("header", "pattern-room-report-section-header");
     sectionHeader.append(
       createElement("span", "pattern-room-list-eyebrow", "Taslak bölümü"),
-      createElement("span", "pattern-room-report-section-count", String(section.items.length)),
+      createReportMetrics(section),
       createElement("h3", undefined, section.label),
       createElement("p", undefined, section.note)
     );
@@ -100,7 +125,7 @@ export function createReportPanel(
     jump.append(
       createElement("span", "pattern-room-report-outline-index", String(index + 1)),
       createElement("span", undefined, section.label),
-      createElement("small", undefined, String(section.items.length))
+      createElement("small", undefined, formatReportOutlineMetrics(section))
     );
     jump.addEventListener("click", () => {
       outlineButtons.forEach((button) => {
