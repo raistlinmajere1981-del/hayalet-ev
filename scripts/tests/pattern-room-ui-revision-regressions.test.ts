@@ -17,7 +17,11 @@ void test("pattern-room UI revision keeps archive detail in the persistent inspe
     const archiveNavigation = environment.app.querySelector(
       "[data-pattern-workspace-nav='archive']"
     );
+    const reportNavigation = environment.app.querySelector(
+      "[data-pattern-workspace-nav='report']"
+    );
     assert.ok(archiveNavigation);
+    assert.ok(reportNavigation);
     fireEvent(archiveNavigation, "click");
 
     const inspectorContent = environment.app.querySelector(
@@ -29,6 +33,16 @@ void test("pattern-room UI revision keeps archive detail in the persistent inspe
     assert.ok(inspectorContent);
     assert.ok(initialDetail);
     assert.equal(initialDetail.parentElement?.parentElement, inspectorContent);
+
+    fireEvent(reportNavigation, "click");
+    assert.ok(environment.app.querySelector("[data-pattern-view='report']"));
+    fireEvent(archiveNavigation, "click");
+
+    const restoredDetail = environment.app.querySelector(
+      "[data-pattern-archive-source-detail='true']"
+    );
+    assert.ok(restoredDetail);
+    assert.equal(restoredDetail.parentElement?.parentElement, inspectorContent);
 
     const inspectSource = environment.app.querySelector(
       "[data-pattern-inspect-source='source-shadow-comparison']"
