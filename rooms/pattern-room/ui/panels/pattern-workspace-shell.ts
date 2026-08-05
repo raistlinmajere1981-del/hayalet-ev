@@ -160,7 +160,10 @@ function resolveEmbeddedInspector(
     return null;
   }
 
-  return outlet.querySelector<HTMLElement>(".pattern-room-archive-inspector");
+  const sourceDetail = outlet.querySelector<HTMLElement>(
+    "[data-pattern-archive-source-detail='true']"
+  );
+  return sourceDetail?.parentElement ?? null;
 }
 
 export function createPatternWorkspaceShell(
