@@ -1,0 +1,247 @@
+/* Pattern Room V2 UI revision overrides.
+ * Loaded after workspace.css so breakpoint ownership stays explicit while
+ * the functional styles and selectors remain unchanged.
+ */
+
+/* Archive owns the center canvas; its contextual detail is adopted by the
+ * persistent workspace inspector in pattern-workspace-shell.ts.
+ */
+.pattern-room-archive-workspace {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pattern-room-archive-browser {
+  width: 100%;
+  min-width: 0;
+}
+
+.pattern-room-workspace-inspector-content > .pattern-room-archive-inspector {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pattern-room-workspace-inspector-content
+  > .pattern-room-archive-inspector
+  > .pattern-room-context-inspector-label {
+  display: none;
+}
+
+.pattern-room-workspace-inspector-content .pattern-room-source-detail {
+  min-width: 0;
+}
+
+.pattern-room-workspace-inspector-content .pattern-room-source-detail-text,
+.pattern-room-workspace-inspector-content .pattern-room-source-segment-text,
+.pattern-room-workspace-inspector-content .pattern-room-case-review-preview-text,
+.pattern-room-workspace-inspector-content .pattern-room-case-review-response-text {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Breakpoint order is intentionally broad-to-narrow. These rules are loaded
+ * last and therefore resolve the overlapping legacy media blocks in a single
+ * predictable cascade.
+ */
+@media (max-width: 1180px) {
+  .pattern-room-app-shell {
+    grid-template-columns:
+      var(--pattern-px-218)
+      minmax(0, 1fr)
+      minmax(var(--pattern-px-260), var(--pattern-px-292));
+  }
+}
+
+@media (max-width: 1100px) {
+  .pattern-room-app-shell {
+    grid-template-columns:
+      var(--pattern-px-84)
+      minmax(0, 1fr)
+      minmax(var(--pattern-px-260), var(--pattern-px-292));
+  }
+
+  .pattern-room-workspace-rail {
+    padding-inline: var(--pattern-px-10);
+  }
+
+  .pattern-room-workspace-brand {
+    justify-content: center;
+  }
+
+  .pattern-room-workspace-brand > div,
+  .pattern-room-workspace-nav-copy,
+  .pattern-room-workspace-navigation-label,
+  .pattern-room-workspace-case-card,
+  .pattern-room-workspace-keyboard-hint,
+  .pattern-room-workspace-status span {
+    display: none;
+  }
+
+  .pattern-room-workspace-status,
+  .pattern-room-workspace-nav-button {
+    justify-content: center;
+  }
+
+  .pattern-room-workspace-nav-button {
+    grid-template-columns: var(--pattern-px-34);
+    padding-inline: var(--pattern-px-8);
+  }
+
+  .pattern-room-overview,
+  .pattern-room-panel {
+    max-width: none;
+    padding-inline: var(--pattern-px-18);
+  }
+}
+
+@media (max-width: 960px) {
+  .pattern-room-app-shell {
+    grid-template-columns: var(--pattern-px-84) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(var(--pattern-px-220), 40dvh);
+  }
+
+  .pattern-room-workspace-rail {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+
+  .pattern-room-workspace {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .pattern-room-workspace-inspector {
+    display: flex;
+    grid-column: 2;
+    grid-row: 2;
+    gap: var(--pattern-px-12);
+    max-height: none;
+    padding: var(--pattern-px-14) var(--pattern-px-16);
+    border-top: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
+    border-left: 0;
+    box-shadow: 0 calc(0 - var(--pattern-px-12)) var(--pattern-px-32)
+      var(--pattern-black-alpha-24);
+  }
+
+  .pattern-room-workspace-inspector-header {
+    grid-template-columns: minmax(var(--pattern-px-140), 0.4fr) minmax(0, 1fr);
+    gap: var(--pattern-px-6) var(--pattern-px-12);
+    align-items: baseline;
+    padding-bottom: var(--pattern-px-10);
+  }
+
+  .pattern-room-workspace-inspector-header
+    > .pattern-room-context-inspector-label {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+
+  .pattern-room-workspace-inspector-description {
+    line-height: 1.35;
+  }
+
+  .pattern-room-workspace-inspector-case {
+    display: none;
+  }
+
+  .pattern-room-workspace-inspector-content {
+    gap: var(--pattern-px-12);
+  }
+
+  .pattern-room-source-detail {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--pattern-px-10) var(--pattern-px-14);
+  }
+
+  .pattern-room-source-detail > h2,
+  .pattern-room-source-detail > h3,
+  .pattern-room-source-detail > .pattern-room-source-detail-meta,
+  .pattern-room-source-detail > .pattern-room-source-detail-placeholder,
+  .pattern-room-source-detail > .pattern-room-source-detail-text,
+  .pattern-room-source-detail > .pattern-room-source-segments,
+  .pattern-room-source-detail > .pattern-room-source-evidence-capture {
+    grid-column: 1 / -1;
+  }
+
+  .pattern-room-archive-tools {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 820px) {
+  .pattern-room-app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows:
+      auto
+      minmax(0, 1fr)
+      minmax(var(--pattern-px-220), 42dvh);
+  }
+
+  .pattern-room-workspace-rail {
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: row;
+    gap: var(--pattern-px-8);
+    align-items: center;
+    overflow-x: auto;
+    padding: var(--pattern-px-8) var(--pattern-px-10);
+    border-right: 0;
+    border-bottom: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
+  }
+
+  .pattern-room-workspace {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .pattern-room-workspace-inspector {
+    grid-column: 1;
+    grid-row: 3;
+    padding: var(--pattern-px-12);
+  }
+
+  .pattern-room-workspace-brand,
+  .pattern-room-workspace-status {
+    display: none;
+  }
+
+  .pattern-room-workspace-navigation {
+    display: flex;
+    gap: var(--pattern-px-6);
+  }
+
+  .pattern-room-workspace-nav-button {
+    width: var(--pattern-px-48);
+    min-width: var(--pattern-px-48);
+    min-height: var(--pattern-px-44);
+    padding: var(--pattern-px-5);
+  }
+
+  .pattern-room-overview,
+  .pattern-room-panel {
+    width: 100%;
+    padding: var(--pattern-px-12);
+  }
+
+  .pattern-room-workspace-inspector-header {
+    grid-template-columns: 1fr;
+  }
+
+  .pattern-room-workspace-inspector-header
+    > .pattern-room-context-inspector-label,
+  .pattern-room-workspace-inspector-title,
+  .pattern-room-workspace-inspector-description {
+    grid-column: 1;
+  }
+
+  .pattern-room-source-detail {
+    grid-template-columns: 1fr;
+  }
+}
