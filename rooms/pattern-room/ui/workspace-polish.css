@@ -206,7 +206,7 @@ textarea.pattern-room-inline-input {
 .pattern-room-report-list,
 .pattern-room-case-review-history-list {
   max-height: none;
-  overflow-y: visible;
+  overflow: visible;
 }
 
 .pattern-room-board-scene {
@@ -214,15 +214,11 @@ textarea.pattern-room-inline-input {
   min-height: 0;
 }
 
-.pattern-room-archive-browser {
-  overflow: visible;
-}
-
 .pattern-room-workspace-inspector-content .pattern-room-source-detail,
 .pattern-room-workspace-inspector-content .pattern-room-archive-tools-body,
 .pattern-room-workspace-inspector-content .pattern-room-report-outline {
   max-height: none;
-  overflow-y: visible;
+  overflow: visible;
 }
 
 /* Raw request/reply text and the relationship graph remain intentional local
