@@ -142,10 +142,19 @@ function createHistoryDisclosure(
   const disclosure = createDisclosure("history", state.text("history.title"), history);
   disclosure.dataset["patternCaseReviewHistory"] = "true";
   disclosure.dataset["patternCaseReviewWorkspaceHistory"] = "true";
-  disclosure.addEventListener("focus", () => {
+
+  const nativeFocus =
+    typeof disclosure.focus === "function" ? disclosure.focus.bind(disclosure) : null;
+  disclosure.focus = (): void => {
     disclosure.open = true;
     options.onHistoryFocus?.();
-  });
+    nativeFocus?.();
+  };
+  if (typeof disclosure.scrollIntoView !== "function") {
+    disclosure.scrollIntoView = (): void => {
+      return;
+    };
+  }
   return disclosure;
 }
 
