@@ -8,7 +8,7 @@ import {
   createPatternWorkspaceTranslator,
   type PatternWorkspaceTranslator,
 } from "../pattern-room-workspace-i18n.js";
-import { createElement, createPanelShell } from "./pattern-panel-utils.js";
+import { createElement, createEmptyState, createPanelShell } from "./pattern-panel-utils.js";
 
 const REPORT_META_SEPARATOR = " · ";
 
@@ -59,7 +59,7 @@ function createReportItem(item: PatternReportItem): HTMLElement {
 
 function appendReportSectionContent(card: HTMLElement, section: PatternReportSection): void {
   if (section.items.length === 0) {
-    card.append(createElement("p", "pattern-room-empty-state", section.emptyMessage));
+    card.append(createEmptyState(section.emptyMessage, "complete-empty", { compact: true }));
     return;
   }
 
