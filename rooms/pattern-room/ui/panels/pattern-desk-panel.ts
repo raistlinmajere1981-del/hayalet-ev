@@ -6,7 +6,7 @@ import {
   createPatternWorkspaceTranslator,
   type PatternWorkspaceTranslator,
 } from "../pattern-room-workspace-i18n.js";
-import { createElement, createPanelShell } from "./pattern-panel-utils.js";
+import { createElement, createEmptyState, createPanelShell } from "./pattern-panel-utils.js";
 
 export function createDeskPanel(
   data: PatternRoomWorkspaceModel,
@@ -32,6 +32,11 @@ export function createDeskPanel(
   const connectionMap = createElement("div", "pattern-room-connection-map");
   connectionMap.dataset["patternConnectionMap"] = "true";
   const claimObjects = createElement("div", "pattern-room-claim-objects");
+  if (data.claims.length === 0) {
+    claimObjects.append(
+      createEmptyState("Grafikte gösterilecek iddia veya karşı iz yok.", "data-empty")
+    );
+  }
   data.claims.forEach((claim, index) => {
     const eyebrow = claim.stance === "primary" ? "Ana iz" : "Karşı iz";
     const claimCard = createElement("article", "pattern-room-claim-object " + claim.stance);
@@ -62,10 +67,10 @@ export function createDeskPanel(
 
   if (data.connections.length === 0) {
     relationship.append(
-      createElement(
-        "p",
-        "pattern-room-connection-empty",
-        "Henüz seçilebilir bir bağlantı yok. Sağ panelden yeni bağlantı kurabilirsiniz."
+      createEmptyState(
+        "Henüz seçilebilir bir bağlantı yok. Sağ panelden yeni bağlantı kurabilirsiniz.",
+        "data-empty",
+        { className: "pattern-room-connection-empty" }
       )
     );
   } else {
