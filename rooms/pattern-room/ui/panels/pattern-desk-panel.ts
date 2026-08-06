@@ -181,11 +181,7 @@ function createGraphNode(node: PatternGraphNode, index: number): HTMLElement {
     createElement("span", "pattern-room-connection-node-index", String(index + 1)),
     createElement("h3", undefined, node.label),
     createElement("p", undefined, summary),
-    createElement(
-      "small",
-      undefined,
-      node.isLocal ? "Yerel vaka izi" : "Domain vaka izi"
-    )
+    createElement("small", undefined, node.isLocal ? "Yerel vaka izi" : "Domain vaka izi")
   );
   return card;
 }
@@ -421,8 +417,7 @@ export function createDeskPanel(
   viewport.append(stage);
 
   let zoom = 1;
-  let toolbarElements: ReturnType<typeof createGraphToolbar>;
-  toolbarElements = createGraphToolbar(
+  const toolbarElements = createGraphToolbar(
     graphLayout.nodes.length,
     data.connections.length,
     (direction) => {
