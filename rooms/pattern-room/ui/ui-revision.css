@@ -39,6 +39,129 @@
   overflow-x: auto;
 }
 
+/* Shared empty and placeholder language. The text remains owned by each panel;
+ * the data kind only controls hierarchy and tone.
+ */
+.pattern-room-empty-state,
+.pattern-room-source-detail-placeholder,
+.pattern-room-connection-empty {
+  position: relative;
+  display: grid;
+  gap: var(--pattern-px-6);
+  align-content: center;
+  min-height: var(--pattern-px-88);
+  margin: 0;
+  padding: var(--pattern-px-16);
+  border: var(--pattern-px-1) dashed var(--pattern-border);
+  border-radius: var(--pattern-px-8);
+  background: var(--pattern-surface-inset-alpha-62);
+  color: var(--pattern-text-muted);
+  line-height: 1.5;
+}
+
+.pattern-room-empty-state.compact {
+  min-height: 0;
+  padding: var(--pattern-px-10) var(--pattern-px-12);
+}
+
+.pattern-room-empty-state::before,
+.pattern-room-source-detail-placeholder::before {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+  letter-spacing: var(--pattern-em-0-08);
+  text-transform: uppercase;
+  color: var(--pattern-text-subtle);
+}
+
+.pattern-room-empty-state[data-pattern-empty-state-kind="data-empty"]::before {
+  content: "Henüz veri yok";
+}
+
+.pattern-room-empty-state[data-pattern-empty-state-kind="selection"]::before {
+  content: "Seçim bekleniyor";
+  color: var(--pattern-accent-cyan);
+}
+
+.pattern-room-empty-state[data-pattern-empty-state-kind="filter-empty"]::before {
+  content: "Sonuç bulunamadı";
+  color: var(--pattern-accent-red);
+}
+
+.pattern-room-empty-state[data-pattern-empty-state-kind="pending"]::before {
+  content: "İşlem bekleniyor";
+  color: var(--pattern-accent-amber);
+}
+
+.pattern-room-empty-state[data-pattern-empty-state-kind="complete-empty"]::before {
+  content: "Sonuç yok";
+  color: var(--pattern-accent-green);
+}
+
+.pattern-room-empty-state[data-pattern-empty-state-kind="selection"] {
+  border-color: var(--pattern-accent-cyan-alpha-22);
+  background: var(--pattern-accent-cyan-alpha-05);
+}
+
+.pattern-room-empty-state[data-pattern-empty-state-kind="filter-empty"] {
+  border-color: var(--pattern-accent-red-alpha-28);
+  background: var(--pattern-accent-red-alpha-08);
+}
+
+.pattern-room-empty-state[data-pattern-empty-state-kind="pending"] {
+  border-color: var(--pattern-accent-amber-alpha-28);
+  background: var(--pattern-accent-amber-alpha-06);
+}
+
+.pattern-room-empty-state[data-pattern-empty-state-kind="complete-empty"] {
+  border-color: var(--pattern-accent-green-alpha-22);
+  background: var(--pattern-accent-green-alpha-10);
+}
+
+.pattern-room-board-pins > .pattern-room-empty-state,
+.pattern-room-claim-objects > .pattern-room-empty-state {
+  width: 100%;
+}
+
+.pattern-room-source-detail-placeholder::before {
+  content: "Kaynak seçimi";
+  color: var(--pattern-accent-cyan);
+}
+
+[data-pattern-archive-empty="true"]::before {
+  content: "Arşiv sonucu";
+  color: var(--pattern-accent-red);
+}
+
+[data-pattern-archive-source-search-state="none"] .pattern-room-source-search-status {
+  margin: var(--pattern-px-8) 0 0;
+  padding: var(--pattern-px-8) var(--pattern-px-10);
+  border: var(--pattern-px-1) dashed var(--pattern-accent-red-alpha-28);
+  border-radius: var(--pattern-px-6);
+  background: var(--pattern-accent-red-alpha-08);
+  color: var(--pattern-text-muted);
+}
+
+.pattern-room-board-detail:not(:has(.pattern-room-detail-metrics)),
+.pattern-room-connection-detail:not(:has(.pattern-room-detail-metrics)) {
+  padding: var(--pattern-px-16);
+  border: var(--pattern-px-1) dashed var(--pattern-accent-cyan-alpha-22);
+  border-radius: var(--pattern-px-8);
+  background: var(--pattern-accent-cyan-alpha-05);
+}
+
+.pattern-room-board-detail:not(:has(.pattern-room-detail-metrics)) > h2,
+.pattern-room-connection-detail:not(:has(.pattern-room-detail-metrics)) > h2 {
+  color: var(--pattern-accent-cyan);
+}
+
+.pattern-room-case-review-section-raw {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--pattern-text-muted);
+}
+
 @media (--pattern-bp-max-1180) {
   .pattern-room-app-shell {
     grid-template-columns:
