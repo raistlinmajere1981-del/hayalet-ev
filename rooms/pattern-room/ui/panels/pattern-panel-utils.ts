@@ -1,9 +1,5 @@
 export type PatternEmptyStateKind =
-  | "data-empty"
-  | "selection"
-  | "filter-empty"
-  | "pending"
-  | "complete-empty";
+  "data-empty" | "selection" | "filter-empty" | "pending" | "complete-empty";
 
 export type PatternEmptyStateOptions = {
   readonly className?: string;

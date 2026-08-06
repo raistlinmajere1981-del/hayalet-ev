@@ -262,7 +262,9 @@ function createHistory(
   section.append(createElement("h3", undefined, text("history.title")));
 
   if (history.length === 0) {
-    section.append(createEmptyState(text("messages.historyEmpty"), "data-empty", { compact: true }));
+    section.append(
+      createEmptyState(text("messages.historyEmpty"), "data-empty", { compact: true })
+    );
     return section;
   }
 

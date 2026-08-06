@@ -31,9 +31,10 @@ void test("pattern-room shared empty state preserves message and semantics", () 
 void test("pattern-room UI revision keeps archive detail in the persistent inspector", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
+  let runtime: Awaited<ReturnType<typeof startPatternRoomInstalledUi>> | undefined;
 
   try {
-    await startPatternRoomInstalledUi(installedCopy.rootDir);
+    runtime = await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     const archiveNavigation = environment.app.querySelector(
       "[data-pattern-workspace-nav='archive']"
@@ -83,6 +84,9 @@ void test("pattern-room UI revision keeps archive detail in the persistent inspe
       "archive"
     );
   } finally {
+    runtime?.dispose();
+    environment.runPendingTimers();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     environment.restore();
     await installedCopy.cleanup();
   }
@@ -91,9 +95,10 @@ void test("pattern-room UI revision keeps archive detail in the persistent inspe
 void test("pattern-room case review exposes distinct empty state variants", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
+  let runtime: Awaited<ReturnType<typeof startPatternRoomInstalledUi>> | undefined;
 
   try {
-    await startPatternRoomInstalledUi(installedCopy.rootDir);
+    runtime = await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     const reviewNavigation = environment.app.querySelector(
       "[data-pattern-workspace-nav='tenth-man']"
@@ -105,6 +110,9 @@ void test("pattern-room case review exposes distinct empty state variants", asyn
     assert.ok(environment.app.querySelector("[data-pattern-empty-state-kind='data-empty']"));
     assert.ok(environment.app.querySelector("[data-pattern-empty-state-kind='complete-empty']"));
   } finally {
+    runtime?.dispose();
+    environment.runPendingTimers();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     environment.restore();
     await installedCopy.cleanup();
   }
@@ -113,9 +121,10 @@ void test("pattern-room case review exposes distinct empty state variants", asyn
 void test("pattern-room review task selection survives local debate rerenders", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
+  let runtime: Awaited<ReturnType<typeof startPatternRoomInstalledUi>> | undefined;
 
   try {
-    await startPatternRoomInstalledUi(installedCopy.rootDir);
+    runtime = await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     const archiveNavigation = environment.app.querySelector(
       "[data-pattern-workspace-nav='archive']"
@@ -188,6 +197,9 @@ void test("pattern-room review task selection survives local debate rerenders", 
     assert.equal((historyDisclosure as unknown as { open: boolean }).open, true);
     assert.equal(restoredAiTask.dataset["patternReviewTaskActive"], "true");
   } finally {
+    runtime?.dispose();
+    environment.runPendingTimers();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     environment.restore();
     await installedCopy.cleanup();
   }

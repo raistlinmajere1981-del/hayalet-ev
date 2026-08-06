@@ -657,7 +657,12 @@ export function createTenthManPanel(
     const historyNavigation = appShell?.querySelector<HTMLButtonElement>(
       "[data-pattern-workspace-nav='review-history']"
     );
-    if (appShell === null || appShell === undefined || historyNavigation === null) {
+    if (
+      appShell === null ||
+      appShell === undefined ||
+      historyNavigation === null ||
+      historyNavigation === undefined
+    ) {
       return;
     }
 

@@ -2550,7 +2550,7 @@ body.is-scroll-locked {
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 2px var(--space-3) 4px;
+  padding: var(--space-0-5) var(--space-3) var(--space-1);
   background: var(--bg-glass);
   border-bottom: var(--border-1) solid color-mix(in srgb, var(--border-default) 72%, transparent);
   backdrop-filter: var(--glass-blur);
