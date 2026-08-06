@@ -29,7 +29,12 @@ import {
   createPatternCaseReviewRuntimeView,
   type PatternCaseReviewRuntimePanelState,
 } from "./pattern-case-review-runtime-view.js";
-import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
+import {
+  createActionButton,
+  createElement,
+  createEmptyState,
+  createPanelShell,
+} from "./pattern-panel-utils.js";
 
 export type PatternCaseReviewPreviewPanelState = PatternCaseReviewRuntimePanelState & {
   readonly preview: PatternCaseReviewPreviewDraft | null;
@@ -102,10 +107,10 @@ function appendReferences(device: HTMLElement, session: PatternTenthManSession):
 
   if (session.references.length === 0) {
     references.append(
-      createElement(
-        "p",
-        "pattern-room-empty-state",
-        "Referans eklemek için Pano veya Arşiv üzerinden 10. Adam’a Ekle akışını kullan."
+      createEmptyState(
+        "Referans eklemek için Pano veya Arşiv üzerinden 10. Adam’a Ekle akışını kullan.",
+        "data-empty",
+        { compact: true }
       )
     );
     device.append(references);
@@ -286,7 +291,7 @@ function appendCaseReviewPreview(
   const previewResult = createElement("div", "pattern-room-case-review-preview-result");
   if (previewState.preview === null) {
     previewResult.append(
-      createElement("p", "pattern-room-empty-state", previewState.text("previewEmpty"))
+      createEmptyState(previewState.text("previewEmpty"), "pending", { live: true })
     );
   } else {
     renderCaseReviewPreview(previewResult, previewState.preview, previewState.text);
