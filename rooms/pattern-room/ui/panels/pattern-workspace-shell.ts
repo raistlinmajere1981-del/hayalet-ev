@@ -156,14 +156,18 @@ function resolveEmbeddedInspector(
   outlet: HTMLElement,
   inspectorView: string | undefined
 ): HTMLElement | null {
-  if (inspectorView !== "archive") {
-    return null;
+  if (inspectorView === "archive") {
+    const sourceDetail = outlet.querySelector<HTMLElement>(
+      "[data-pattern-archive-source-detail='true']"
+    );
+    return sourceDetail?.parentElement ?? null;
   }
 
-  const sourceDetail = outlet.querySelector<HTMLElement>(
-    "[data-pattern-archive-source-detail='true']"
-  );
-  return sourceDetail?.parentElement ?? null;
+  if (inspectorView === "report") {
+    return outlet.querySelector<HTMLElement>("[data-pattern-report-outline='true']");
+  }
+
+  return null;
 }
 
 export function createPatternWorkspaceShell(
