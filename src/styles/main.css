@@ -2545,6 +2545,27 @@ body.is-scroll-locked {
   min-width: 0;
 }
 
+.operations-strip-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 2px var(--space-3) 4px;
+  background: var(--bg-glass);
+  border-bottom: var(--border-1) solid color-mix(in srgb, var(--border-default) 72%, transparent);
+  backdrop-filter: var(--glass-blur);
+  box-sizing: border-box;
+}
+
+.operations-strip-bar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: fit-content;
+  max-width: 100%;
+}
+
 .operations-strip-shell {
   display: flex;
   flex-direction: column;
@@ -2559,8 +2580,8 @@ body.is-scroll-locked {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  flex: 0 1 auto;
+  gap: var(--space-3);
+  flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
   padding: var(--space-1) var(--space-2);

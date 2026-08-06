@@ -79,13 +79,7 @@ const config: KnipConfig = {
     "*.config.{js,cjs,ts}",
   ],
 
-  ignoreFiles: [
-    "electron/native/node-abi.d.ts",
-    "ghost-agent/src/renderer/global.d.ts",
-    "rooms/global.d.ts",
-    "src/js/global.d.ts",
-    "src/js/vite-env.d.ts",
-  ],
+  ignoreFiles: [],
 
   ignoreDependencies: [
     "depcheck", // manual dependency audit fallback
@@ -133,12 +127,22 @@ const config: KnipConfig = {
     "src/js/modules/webview-manager.ts": ["exports"],
     "src/js/modules/logger/Logger.ts": ["exports"],
 
+    // Core engine — ServerCommandsRef re-export used as public type surface
+    "src/js/modules/core-engine.ts": ["types"],
+
     // Webview provider method files — dynamically registered via opencodeUiProvider map
     "src/js/modules/webview/**/*.ts": ["exports"],
 
     // Barrel re-exports — consumed by importing the barrel, not the leaf file
     "src/js/scene-system/scene-clickable-theme.ts": ["exports"],
     "src/js/app/ui-mode/state.ts": ["exports"],
+    "src/js/app/ui-mode/index.ts": ["exports", "types"],
+    "src/js/constants/index.ts": ["exports"],
+    "src/js/modules/logger/index.ts": ["exports", "types"],
+    "src/js/scene-system/index.ts": ["exports", "types"],
+    "src/js/pages/opencode-ui/tools-prompts.ts": ["exports", "types"],
+    "src/types/index.ts": ["exports", "types"],
+    "src/types/rooms.ts": ["exports", "types"],
 
     // Room manifest helpers and type guards — used dynamically by room loader/registry
     "src/types/room-manifest-helpers.ts": ["exports", "types"],
