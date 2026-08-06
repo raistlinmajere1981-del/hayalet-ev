@@ -51,6 +51,8 @@ module.exports = {
           "rooms/pattern-room/shared/source-producers/types/producer-contract\\.ts$", // type-only Pattern Room source producer contract
           "rooms/pattern-room/shared/source-producers/types/producer-input\\.ts$", // type-only Pattern Room source producer input contract
           "rooms/pattern-room/shared/source-producers/types/producer-orchestration\\.ts$", // type-only Pattern Room source producer orchestration contract
+          "rooms/pattern-room/shared/types/pattern-room-evidence-candidate\\.ts$", // type-only Pattern Room evidence candidate contract consumed through import type
+          "rooms/pattern-room/shared/data/testing/pattern-room-domain\\.fixture\\.ts$", // test fixture imported from scripts/tests/ (outside depcruise scan scope)
         ],
       },
       to: {},

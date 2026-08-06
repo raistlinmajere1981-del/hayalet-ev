@@ -193,8 +193,7 @@ class FileManagerClass {
     }
     const tempPaths = tempEntries.map((t) => t.tempPath).filter((p): p is string => Boolean(p));
     const cmdCleanupJob = electronApi["commandCleanupJob"] as
-      | ((payload: Record<string, unknown>) => Promise<unknown>)
-      | undefined;
+      ((payload: Record<string, unknown>) => Promise<unknown>) | undefined;
     if (typeof cmdCleanupJob !== "function") return;
     void cmdCleanupJob({ jobId, tempPaths });
   }

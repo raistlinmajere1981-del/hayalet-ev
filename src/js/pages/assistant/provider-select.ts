@@ -36,8 +36,7 @@ export function populateAssistantProviderSelect({
   });
 
   const assistantAccounts = settings?.assistantAccounts as
-    | { id: string; provider?: string }[]
-    | undefined;
+    { id: string; provider?: string }[] | undefined;
   const preferredProviderId = settings?.assistants?.preferred;
   if (
     typeof preferredProviderId === "string" &&

@@ -22,11 +22,7 @@ import type {
 } from "../types/index.js";
 
 export type RepairUiPhase =
-  | "initializing"
-  | "idle"
-  | "wizard-active"
-  | "session-active"
-  | "session-paused";
+  "initializing" | "idle" | "wizard-active" | "session-active" | "session-paused";
 
 export interface RepairTacticalFeedItem {
   eventId: string;
@@ -67,11 +63,7 @@ export interface RepairTemporarySpatialRegion {
 }
 
 export type RepairMeasurementRelationshipKind =
-  | "rail"
-  | "previous-event"
-  | "investigation-group"
-  | "linked-annotation"
-  | "linked-ai-mark";
+  "rail" | "previous-event" | "investigation-group" | "linked-annotation" | "linked-ai-mark";
 
 export interface RepairMeasurementRelationship {
   id: string;
@@ -104,12 +96,7 @@ export interface RepairSpatialFocusState {
 }
 
 export type RepairInvestigationPhase =
-  | "observe"
-  | "inspect"
-  | "measure"
-  | "compare"
-  | "verify"
-  | "conclude";
+  "observe" | "inspect" | "measure" | "compare" | "verify" | "conclude";
 
 export type RepairGuidanceSurface =
   | "workbench"
@@ -135,11 +122,7 @@ export type RepairEvidenceDepth = "thin" | "supported" | "strong";
 export type RepairAiDispatchStatus = "idle" | "pending" | "succeeded" | "failed";
 
 export type RepairAiDispatchActivity =
-  | "idle"
-  | "chat-reply"
-  | "evidence-research"
-  | "measurement-observation"
-  | "risk-scan";
+  "idle" | "chat-reply" | "evidence-research" | "measurement-observation" | "risk-scan";
 
 export type RepairAiTargetSlot = "ai0" | "ai1" | "ai2";
 

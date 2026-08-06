@@ -175,8 +175,7 @@ export function updateIndicatorAvatars(): void {
         conv.disabled = !hasAccount;
         try {
           const btn = document.getElementById(`conversation-refresh-${provider}`) as
-            | (HTMLButtonElement & { __convRefreshHandler?: EventListener })
-            | null;
+            (HTMLButtonElement & { __convRefreshHandler?: EventListener }) | null;
           if (btn) {
             btn.disabled = !hasAccount;
             if (btn.__convRefreshHandler) {

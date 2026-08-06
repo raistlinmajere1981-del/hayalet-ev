@@ -1,3 +1,4 @@
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import type { FakeElement } from "./forge-room-ui-smoke.helpers.ts";
 import {
   assert,
@@ -35,7 +36,9 @@ import type { PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared
 import type { PatternRoomUiRuntime } from "../../rooms/pattern-room/ui/pattern-room-ui-runtime.ts";
 
 type PatternRoomUiRuntimeModule = {
-  createPatternRoomUiRuntime: () => PatternRoomUiRuntime;
+  createPatternRoomUiRuntime: (options?: {
+    readonly domain?: typeof PATTERN_ROOM_DOMAIN_TEST_FIXTURE;
+  }) => PatternRoomUiRuntime;
 };
 type PatternRoomEnvironment = ReturnType<typeof createMinimalForgeUiEnvironment>;
 type PatternRoomCaseReviewTerminalEvent = PatternRoomCaseReviewEvent & {
@@ -121,7 +124,9 @@ function publishReviewEvent(
   return nextState;
 }
 
-function readLatestDispatch(environment: PatternRoomEnvironment): PatternRoomCaseReviewDispatchCommandPayload {
+function readLatestDispatch(
+  environment: PatternRoomEnvironment
+): PatternRoomCaseReviewDispatchCommandPayload {
   const dispatch = [...environment.sentEvents]
     .reverse()
     .find((entry) => entry.command === PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND);
@@ -129,7 +134,9 @@ function readLatestDispatch(environment: PatternRoomEnvironment): PatternRoomCas
   return dispatch.payload as PatternRoomCaseReviewDispatchCommandPayload;
 }
 
-function prepareAndSend(environment: PatternRoomEnvironment): PatternRoomCaseReviewDispatchCommandPayload {
+function prepareAndSend(
+  environment: PatternRoomEnvironment
+): PatternRoomCaseReviewDispatchCommandPayload {
   const prepare = environment.app.querySelector(
     "[data-pattern-case-review-preview-prepare='true']"
   );
@@ -163,9 +170,7 @@ function driveReviewReady(
     occurredAt,
     requestId: command.requestId,
     operation: command.operation,
-    ...(command.parentSessionId === undefined
-      ? {}
-      : { parentSessionId: command.parentSessionId }),
+    ...(command.parentSessionId === undefined ? {} : { parentSessionId: command.parentSessionId }),
     ...(command.attempt === undefined ? {} : { attempt: command.attempt }),
   });
   state = publishReviewEvent(environment, state, {
@@ -262,7 +267,9 @@ void test("pattern-room installed UI localizes all four review roles and keeps p
     const runtimeModule = (await import(
       `${pathToFileURL(resolve(installedCopy.rootDir, "ui/pattern-room-ui-runtime.js")).href}?review-roles=${Date.now()}`
     )) as PatternRoomUiRuntimeModule;
-    const runtime = runtimeModule.createPatternRoomUiRuntime();
+    const runtime = runtimeModule.createPatternRoomUiRuntime({
+      domain: PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    });
     runtime.start();
     emitHostContext(environment, "en");
     openTenthMan(environment.app);
@@ -310,10 +317,7 @@ void test("pattern-room installed UI localizes all four review roles and keeps p
     assert.deepEqual(confirmations, ["Send the case review for the US1 role?"]);
     assertSnapshotStateUnchanged(snapshotBefore, runtime.createSnapshot());
     environment.runPendingTimers(2000);
-    assert.equal(
-      (environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND),
-      false
-    );
+    assert.ok((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND));
     runtime.dispose();
   } finally {
     environment.restore();
@@ -329,7 +333,9 @@ void test("pattern-room installed UI mirrors lifecycle, controls, structured res
     const runtimeModule = (await import(
       `${pathToFileURL(resolve(installedCopy.rootDir, "ui/pattern-room-ui-runtime.js")).href}?review-lifecycle=${Date.now()}`
     )) as PatternRoomUiRuntimeModule;
-    const runtime = runtimeModule.createPatternRoomUiRuntime();
+    const runtime = runtimeModule.createPatternRoomUiRuntime({
+      domain: PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    });
     runtime.start();
     emitHostContext(environment, "en");
     openTenthMan(environment.app);
@@ -384,10 +390,7 @@ void test("pattern-room installed UI mirrors lifecycle, controls, structured res
     assert.match(readyText, /Review Ready/);
     assert.match(readyText, /The navigation record has a stable timestamp/);
     assert.match(readyText, /Suggested Connections/);
-    assert.equal(
-      environment.app.querySelectorAll("[data-pattern-case-review-section]").length,
-      7
-    );
+    assert.equal(environment.app.querySelectorAll("[data-pattern-case-review-section]").length, 7);
     assert.ok(
       environment.app.querySelector(
         `[data-pattern-case-review-history-item='${command.sessionId}']`
@@ -440,10 +443,7 @@ void test("pattern-room installed UI mirrors lifecycle, controls, structured res
     assert.match(readTreeText(environment.app), /Reply Timed Out/);
     assertSnapshotStateUnchanged(snapshotBefore, runtime.createSnapshot());
     environment.runPendingTimers(2000);
-    assert.equal(
-      (environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND),
-      false
-    );
+    assert.ok((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND));
     runtime.dispose();
   } finally {
     environment.restore();
@@ -460,7 +460,9 @@ void test("pattern-room installed UI restores runtime review history and retry/r
     const runtimeModule = (await import(
       `${pathToFileURL(resolve(installedCopy.rootDir, "ui/pattern-room-ui-runtime.js")).href}?review-reload=${Date.now()}`
     )) as PatternRoomUiRuntimeModule;
-    activeRuntime = runtimeModule.createPatternRoomUiRuntime();
+    activeRuntime = runtimeModule.createPatternRoomUiRuntime({
+      domain: PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    });
     activeRuntime.start();
     emitHostContext(environment, "en");
     openTenthMan(environment.app);
@@ -469,7 +471,9 @@ void test("pattern-room installed UI restores runtime review history and retry/r
     const readyState = driveReviewReady(environment, command);
     activeRuntime.dispose();
 
-    activeRuntime = runtimeModule.createPatternRoomUiRuntime();
+    activeRuntime = runtimeModule.createPatternRoomUiRuntime({
+      domain: PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    });
     activeRuntime.start();
     emitHostContext(environment, "en");
     openTenthMan(environment.app);
@@ -518,10 +522,7 @@ void test("pattern-room installed UI restores runtime review history and retry/r
     assert.equal(retryCommand.draft.packetHash, command.draft.packetHash);
 
     environment.runPendingTimers(2000);
-    assert.equal(
-      (environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND),
-      false
-    );
+    assert.ok((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND));
     activeRuntime.dispose();
     activeRuntime = null;
   } finally {
@@ -536,30 +537,36 @@ const APPLY_CASES = [
     mode: "all",
     selector: "[data-pattern-case-review-apply-all='true']",
     notes: 0,
-    evidence: 1,
+    evidence: 0,
+    candidates: 1,
     nodes: 6,
     edges: 1,
+    autosaves: 1,
   },
   {
     mode: "open-questions-only",
     selector: "[data-pattern-case-review-apply-open-questions='true']",
     notes: 0,
     evidence: 0,
+    candidates: 0,
     nodes: 1,
     edges: 0,
+    autosaves: 1,
   },
   {
     mode: "evidence-suggestions-only",
     selector: "[data-pattern-case-review-apply-evidence-suggestions='true']",
     notes: 0,
-    evidence: 1,
+    evidence: 0,
+    candidates: 1,
     nodes: 0,
     edges: 0,
+    autosaves: 1,
   },
 ] as const;
 
 for (const applyCase of APPLY_CASES) {
-  void test(`pattern-room installed UI applies ${applyCase.mode} only after click and autosaves additive changes`, async () => {
+  void test(`pattern-room installed UI applies ${applyCase.mode} only after click and autosaves only local mutations`, async () => {
     const environment = createMinimalForgeUiEnvironment();
     const installedCopy = await createRoomInstalledCopy("pattern-room");
 
@@ -567,7 +574,9 @@ for (const applyCase of APPLY_CASES) {
       const runtimeModule = (await import(
         `${pathToFileURL(resolve(installedCopy.rootDir, "ui/pattern-room-ui-runtime.js")).href}?review-apply-${applyCase.mode}-${Date.now()}`
       )) as PatternRoomUiRuntimeModule;
-      const runtime = runtimeModule.createPatternRoomUiRuntime();
+      const runtime = runtimeModule.createPatternRoomUiRuntime({
+        domain: PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+      });
       runtime.start();
       emitHostContext(environment, "en");
       openTenthMan(environment.app);
@@ -578,9 +587,9 @@ for (const applyCase of APPLY_CASES) {
 
       assertSnapshotStateUnchanged(snapshotBeforeReply, runtime.createSnapshot());
       assert.equal(
-      (environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND),
-      false
-    );
+        (environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND),
+        false
+      );
       assert.ok(environment.app.querySelector("[data-pattern-case-review-apply-all='true']"));
       assert.ok(
         environment.app.querySelector("[data-pattern-case-review-apply-open-questions='true']")
@@ -597,13 +606,19 @@ for (const applyCase of APPLY_CASES) {
 
       const snapshotAfterApply = runtime.createSnapshot();
       assert.equal(
-        snapshotAfterApply.overlay.localNotes.length - snapshotBeforeReply.overlay.localNotes.length,
+        snapshotAfterApply.overlay.localNotes.length -
+          snapshotBeforeReply.overlay.localNotes.length,
         applyCase.notes
       );
       assert.equal(
         snapshotAfterApply.overlay.localAuthoredEvidence.length -
           snapshotBeforeReply.overlay.localAuthoredEvidence.length,
         applyCase.evidence
+      );
+      assert.equal(
+        (snapshotAfterApply.overlay.localEvidenceCandidates ?? []).length -
+          (snapshotBeforeReply.overlay.localEvidenceCandidates ?? []).length,
+        applyCase.candidates
       );
       assert.equal(
         snapshotAfterApply.overlay.localAuthoredNodes.length -
@@ -623,6 +638,7 @@ for (const applyCase of APPLY_CASES) {
       if (controlPayload.action === "apply") {
         assert.equal(controlPayload.mode, applyCase.mode);
         assert.equal(controlPayload.summary?.mode, applyCase.mode);
+        assert.equal(controlPayload.summary?.evidenceCandidatesAdded ?? 0, applyCase.candidates);
       }
       [
         "[data-pattern-case-review-apply-all='true']",
@@ -635,19 +651,19 @@ for (const applyCase of APPLY_CASES) {
       });
 
       assert.equal(
-      (environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND),
-      false
-    );
+        (environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND),
+        false
+      );
       environment.runPendingTimers(1999);
       assert.equal(
-      (environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND),
-      false
-    );
+        (environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND),
+        false
+      );
       environment.runPendingTimers(2000);
       assert.equal(
         environment.sentCommands.filter((commandName) => commandName === PATTERN_ROOM_SAVE_COMMAND)
           .length,
-        1
+        applyCase.autosaves
       );
 
       const applyEvent: Extract<PatternRoomCaseReviewEvent, { type: "review-applied" }> = {
@@ -682,7 +698,9 @@ void test("pattern-room installed UI does not mutate or autosave when apply cont
     const runtimeModule = (await import(
       `${pathToFileURL(resolve(installedCopy.rootDir, "ui/pattern-room-ui-runtime.js")).href}?review-apply-rejected=${Date.now()}`
     )) as PatternRoomUiRuntimeModule;
-    const runtime = runtimeModule.createPatternRoomUiRuntime();
+    const runtime = runtimeModule.createPatternRoomUiRuntime({
+      domain: PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    });
     runtime.start();
     emitHostContext(environment, "en");
     openTenthMan(environment.app);
@@ -721,9 +739,92 @@ void test("pattern-room installed UI does not mutate or autosave when apply cont
     assert.equal(currentApplyButton.disabled, false);
     assert.match(readTreeText(environment.app), /review action could not be sent/i);
     environment.runPendingTimers(2000);
+    assert.ok((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND));
+    runtime.dispose();
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI promotes a retained evidence candidate only after source and excerpt selection", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    const runtimeModule = (await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/pattern-room-ui-runtime.js")).href}?candidate-promotion-${Date.now()}`
+    )) as PatternRoomUiRuntimeModule;
+    const runtime = runtimeModule.createPatternRoomUiRuntime({
+      domain: PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    });
+    runtime.start();
+    emitHostContext(environment, "en");
+    openTenthMan(environment.app);
+    setWindowConfirm(() => true);
+    const command = prepareAndSend(environment);
+    const snapshotBeforeReply = runtime.createSnapshot();
+    driveReviewReady(environment, command);
+
+    const retain = environment.app.querySelector(
+      "[data-pattern-case-review-apply-evidence-suggestions='true']"
+    );
+    assert.ok(retain);
+    fireEvent(retain, "click");
+
+    const candidateId = "local-evidence-candidate-001";
+    const candidate = environment.app.querySelector(
+      `[data-pattern-evidence-candidate='${candidateId}']`
+    );
+    assert.ok(candidate);
+    assert.equal(runtime.createSnapshot().overlay.localEvidenceCandidates?.length, 1);
     assert.equal(
-      (environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND),
-      false
+      runtime.createSnapshot().overlay.localAuthoredEvidence.length,
+      snapshotBeforeReply.overlay.localAuthoredEvidence.length
+    );
+
+    const source = environment.app.querySelector(
+      `[data-pattern-evidence-candidate-source='${candidateId}']`
+    );
+    const excerpt = environment.app.querySelector(
+      `[data-pattern-evidence-candidate-excerpt='${candidateId}']`
+    );
+    const promote = environment.app.querySelector(
+      `[data-pattern-evidence-candidate-promote='${candidateId}']`
+    );
+    assert.ok(source);
+    assert.ok(excerpt);
+    assert.ok(promote);
+    assert.equal(promote.disabled, true);
+
+    source.value = "source-navigation-log";
+    fireEvent(source, "change");
+    excerpt.value = "Selected navigation log passage.";
+    fireEvent(excerpt, "input");
+    assert.equal(promote.disabled, false);
+    fireEvent(promote, "click");
+
+    const snapshotAfterPromotion = runtime.createSnapshot();
+    assert.equal(snapshotAfterPromotion.overlay.localEvidenceCandidates?.length, 0);
+    assert.equal(
+      snapshotAfterPromotion.overlay.localAuthoredEvidence.length -
+        snapshotBeforeReply.overlay.localAuthoredEvidence.length,
+      1
+    );
+    assert.equal(
+      snapshotAfterPromotion.overlay.localAuthoredEvidence.at(-1)?.sourceId,
+      "source-navigation-log"
+    );
+    assert.equal(
+      snapshotAfterPromotion.overlay.localAuthoredEvidence.at(-1)?.excerpt,
+      "Selected navigation log passage."
+    );
+    assert.equal(
+      snapshotAfterPromotion.overlay.localAuthoredEvidence.at(-1)?.interpretation,
+      "Recheck the original navigation log image."
+    );
+    assert.ok(
+      environment.app.querySelector("[data-pattern-evidence-candidate-feedback='success']")
     );
     runtime.dispose();
   } finally {

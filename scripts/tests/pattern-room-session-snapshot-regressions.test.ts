@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import createPatternRoomHostRuntime from "../../rooms/pattern-room/host/runtime.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
 import {
   createSnapshot,
@@ -29,8 +29,12 @@ import {
 } from "../../rooms/pattern-room/shared/source-producers/index.ts";
 
 function createSnapshotReadyLocalState(): ReturnType<typeof createLocalState> {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
+  localState.updateCaseIdentity(
+    "Kuzey Koridoru Sensör Olayı",
+    "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?"
+  );
   localState.sendToDesk("node-navigation-source");
   localState.pinSource("source-shadow-comparison", "analysis");
   localState.addToDebate("node-shadow-analysis");
@@ -53,16 +57,19 @@ function assertRestoredSnapshotStateMatches(
   left: {
     overlay: unknown;
     activeView: unknown;
+    presentation?: unknown;
     guards: unknown;
   },
   right: {
     overlay: unknown;
     activeView: unknown;
+    presentation?: unknown;
     guards: unknown;
   }
 ): void {
   assert.deepEqual(left.overlay, right.overlay);
   assert.equal(left.activeView, right.activeView);
+  assert.deepEqual(left.presentation, right.presentation);
   assert.deepEqual(left.guards, right.guards);
 }
 
@@ -72,10 +79,15 @@ void test("pattern-room phase 6B creates a local session snapshot from local mut
 
   assert.match(snapshot.snapshotId, /^pattern-room-snapshot-topic-earth-shape-mock-/);
   assert.equal(snapshot.roomId, "pattern-room");
-  assert.equal(snapshot.topicId, PATTERN_ROOM_DOMAIN_MOCK.topic.id);
+  assert.equal(snapshot.topicId, PATTERN_ROOM_DOMAIN_TEST_FIXTURE.topic.id);
   assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
   assert.equal(snapshot.activeView, "tenth-man");
   assert.equal(snapshot.createdAt, snapshot.updatedAt);
+  assert.equal(snapshot.overlay.caseLabel, "Kuzey Koridoru Sensör Olayı");
+  assert.equal(
+    snapshot.overlay.researchQuestion,
+    "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?"
+  );
   assert.deepEqual(snapshot.overlay.deskNodeIds, ["node-navigation-source"]);
   assert.deepEqual(snapshot.overlay.pinnedSourceIds, ["source-shadow-comparison"]);
   assert.deepEqual(snapshot.overlay.debateReferenceIds, [
@@ -91,14 +103,37 @@ void test("pattern-room phase 6B creates a local session snapshot from local mut
   });
 });
 
+void test("pattern-room presentation state round-trips separately from case truth", () => {
+  const localState = createSnapshotReadyLocalState();
+  const presentation = {
+    canvasMode: "graph" as const,
+    selectedBoardItemId: "node-shadow-analysis",
+    selectedConnectionId: "edge-navigation-supports-horizon",
+  };
+  const snapshot = createSnapshot(localState, "desk", presentation);
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+
+  assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
+  assert.deepEqual(snapshot.presentation, presentation);
+  assert.ok(restored);
+  assert.deepEqual(restored.presentation, presentation);
+  assert.deepEqual(restored.overlay, snapshot.overlay);
+
+  const legacySnapshot: PatternRoomSessionSnapshot = { ...snapshot };
+  delete legacySnapshot.presentation;
+  const restoredLegacy = restoreFromSnapshot(legacySnapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  assert.ok(restoredLegacy);
+  assert.equal(restoredLegacy.presentation, undefined);
+});
+
 void test("pattern-room phase 6B restores valid snapshot pieces and applies them to local state", () => {
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "report");
-  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   assert.ok(restored);
   assertRestoredSnapshotStateMatches(restored, snapshot);
 
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   let notificationCount = 0;
   const unsubscribe = localState.subscribe(() => {
     notificationCount += 1;
@@ -117,10 +152,10 @@ void test("pattern-room phase 6B restores valid snapshot pieces and applies them
 
 void test("pattern-room phase 6B round-trips snapshot state excluding metadata", () => {
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "board");
-  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   assert.ok(restored);
 
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   localState.restoreOverlay(restored.overlay, restored.guards);
   const roundTripSnapshot = createSnapshot(localState, restored.activeView);
 
@@ -128,7 +163,7 @@ void test("pattern-room phase 6B round-trips snapshot state excluding metadata",
 });
 
 void test("pattern-room phase 7B round-trips local authored overlay entries", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   localState.addAuthoredClaim("Snapshot iddia", "Snapshot içinde kalacak local iddia.");
   localState.addAuthoredSource("Snapshot kaynak", "Local defter", "Snapshot source note.");
@@ -144,7 +179,7 @@ void test("pattern-room phase 7B round-trips local authored overlay entries", ()
   localState.addToDebate("local-evidence-001");
 
   const snapshot = createSnapshot(localState, "board");
-  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   assert.ok(restored);
 
   assert.deepEqual(
@@ -177,14 +212,14 @@ void test("pattern-room phase 7B round-trips local authored overlay entries", ()
     "local-evidence-001",
   ]);
 
-  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   roundTripState.restoreOverlay(restored.overlay, restored.guards);
   const roundTripSnapshot = createSnapshot(roundTripState, restored.activeView);
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
 void test("pattern-room phase 13F round-trips source-linked local evidence without schema bump", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   localState.addAuthoredSource("Snapshot source", "Archive shelf", "Snapshot source note.");
   localState.addAuthoredEvidence(
     "Snapshot linked evidence",
@@ -198,7 +233,7 @@ void test("pattern-room phase 13F round-trips source-linked local evidence witho
   );
 
   const snapshot = createSnapshot(localState, "archive");
-  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
   assert.equal(snapshot.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
@@ -207,14 +242,14 @@ void test("pattern-room phase 13F round-trips source-linked local evidence witho
   assert.equal(restored.overlay.localAuthoredEvidence[0]?.sourceId, "local-source-001");
   assert.equal(restored.overlay.localAuthoredEvidence[0].sourceLabel, "Snapshot source");
 
-  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   roundTripState.restoreOverlay(restored.overlay, restored.guards);
   const roundTripSnapshot = createSnapshot(roundTripState, restored.activeView);
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
 void test("pattern-room phase 12D round-trips user text producer sources", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const producer = createUserTextProducer({ now: () => "2026-05-21T10:00:00.000Z" });
   const orchestrationResult = produceAndImportSource(producer, {
     inputKind: "pasted_text",
@@ -226,7 +261,7 @@ void test("pattern-room phase 12D round-trips user text producer sources", () =>
   localState.applySourceImportResult(importResult);
 
   const snapshot = createSnapshot(localState, "archive");
-  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   assert.ok(restored);
 
   assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
@@ -240,14 +275,14 @@ void test("pattern-room phase 12D round-trips user text producer sources", () =>
     },
   ]);
 
-  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   roundTripState.restoreOverlay(restored.overlay, restored.guards);
   const roundTripSnapshot = createSnapshot(roundTripState, restored.activeView);
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
 void test("pattern-room phase 12F-B round-trips optional import batch ids without schema bump", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const producer = createUserTextProducer({ now: () => "2026-05-21T10:00:00.000Z" });
   const orchestrationResult = produceAndImportSource(producer, {
     inputKind: "pasted_text",
@@ -262,7 +297,7 @@ void test("pattern-room phase 12F-B round-trips optional import batch ids withou
   });
 
   const snapshot = createSnapshot(localState, "archive");
-  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   assert.ok(restored);
 
   assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
@@ -272,14 +307,14 @@ void test("pattern-room phase 12F-B round-trips optional import batch ids withou
     ["source-package-snapshot-001"]
   );
 
-  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   roundTripState.restoreOverlay(restored.overlay, restored.guards);
   const roundTripSnapshot = createSnapshot(roundTripState, restored.activeView);
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
 void test("pattern-room phase 13C round-trips long text producer sources without schema bump", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const producer = createLongTextProducer({ now: () => "2026-05-21T10:00:00.000Z" });
   const text =
     "Birinci uzun metin parçası snapshot içinde kaynak notu olarak kalmalı.\n\n" +
@@ -301,7 +336,7 @@ void test("pattern-room phase 13C round-trips long text producer sources without
   localState.applySourceImportResult(importResult);
 
   const snapshot = createSnapshot(localState, "archive");
-  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   assert.ok(restored);
 
   assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
@@ -327,15 +362,15 @@ void test("pattern-room phase 13C round-trips long text producer sources without
   assert.deepEqual(restored.overlay.pinnedSourceIds, []);
   assert.deepEqual(restored.overlay.sourcePinnedLayerById, {});
 
-  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   roundTripState.restoreOverlay(restored.overlay, restored.guards);
   const roundTripSnapshot = createSnapshot(roundTripState, restored.activeView);
   assertRestoredSnapshotStateMatches(roundTripSnapshot, snapshot);
 });
 
 void test("pattern-room phase 8B local edge authoring validates endpoints and stays overlay-only", () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   let notificationCount = 0;
   const unsubscribe = localState.subscribe(() => {
     notificationCount += 1;
@@ -383,7 +418,7 @@ void test("pattern-room phase 8B local edge authoring validates endpoints and st
 
   assert.equal(localState.getOverlay().localAuthoredEdges.length, 1);
   assert.equal(notificationCount, notificationsBeforeEdge + 1);
-  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
 });
 
 void test("pattern-room phase 7B restores legacy snapshots with missing authored fields", () => {
@@ -394,7 +429,7 @@ void test("pattern-room phase 7B restores legacy snapshots with missing authored
   delete overlay["localAuthoredEvidence"];
   delete overlay["localAuthoredEdges"];
 
-  const restored = restoreFromSnapshot({ ...snapshot, overlay }, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot({ ...snapshot, overlay }, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   assert.ok(restored);
   assert.deepEqual(restored.overlay.localAuthoredNodes, []);
   assert.deepEqual(restored.overlay.localAuthoredSources, []);
@@ -517,7 +552,7 @@ void test("pattern-room phase 7B silently skips invalid restored authored entrie
     },
   };
 
-  const restored = restoreFromSnapshot(pollutedSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot(pollutedSnapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   assert.ok(restored);
   assert.deepEqual(
     restored.overlay.localAuthoredNodes.map((node) => node.id),
@@ -553,8 +588,8 @@ void test("pattern-room phase 6B rejects incompatible snapshot schema or topic",
     topicId: "topic-other",
   };
 
-  assert.equal(restoreFromSnapshot(wrongSchemaSnapshot, PATTERN_ROOM_DOMAIN_MOCK), null);
-  assert.equal(restoreFromSnapshot(wrongTopicSnapshot, PATTERN_ROOM_DOMAIN_MOCK), null);
+  assert.equal(restoreFromSnapshot(wrongSchemaSnapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE), null);
+  assert.equal(restoreFromSnapshot(wrongTopicSnapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE), null);
 });
 
 void test("pattern-room phase 6B rejects malformed runtime snapshot input", () => {
@@ -579,12 +614,12 @@ void test("pattern-room phase 6B rejects malformed runtime snapshot input", () =
   ];
 
   malformedSnapshots.forEach((malformedSnapshot) => {
-    assert.equal(restoreFromSnapshot(malformedSnapshot, PATTERN_ROOM_DOMAIN_MOCK), null);
+    assert.equal(restoreFromSnapshot(malformedSnapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE), null);
   });
 });
 
 void test("pattern-room phase 6B defensively filters stale snapshot ids without mutating domain mock", () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const snapshot = createSnapshot(createSnapshotReadyLocalState(), "tenth-man");
   const firstTurn = snapshot.overlay.debateLocalTurns[0];
   assert.ok(firstTurn);
@@ -612,7 +647,7 @@ void test("pattern-room phase 6B defensively filters stale snapshot ids without 
       noteIndex: 0,
     },
   };
-  const restored = restoreFromSnapshot(pollutedSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot(pollutedSnapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   assert.ok(restored);
   assert.deepEqual(restored.overlay.deskNodeIds, ["node-navigation-source"]);
@@ -636,7 +671,7 @@ void test("pattern-room phase 6B defensively filters stale snapshot ids without 
     true
   );
   assert.equal(restored.guards.noteIndex, restored.overlay.localNotes.length);
-  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
 });
 
 void test("pattern-room phase 6B self-heals advanced debate phase with no turns", () => {
@@ -660,7 +695,7 @@ void test("pattern-room phase 6B self-heals advanced debate phase with no turns"
       noteIndex: 0,
     },
   };
-  const restored = restoreFromSnapshot(inconsistentSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot(inconsistentSnapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   assert.ok(restored);
   assert.equal(restored.overlay.debatePhase, "preparation");

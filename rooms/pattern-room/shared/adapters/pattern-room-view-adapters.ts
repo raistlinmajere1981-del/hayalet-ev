@@ -18,11 +18,13 @@ import type {
   PatternBoardCategoryTone,
   PatternBoardPin,
   PatternClaim,
+  PatternConnection,
   PatternConnectionOption,
   PatternDebateReference,
   PatternReportItem,
+  PatternReportMetric,
   PatternReportSection,
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
   PatternSource,
 } from "../types/pattern-room.js";
 import type {
@@ -45,22 +47,22 @@ export type PatternRoomDomainViewSource = {
 };
 
 export type PatternOverviewViewModel = Pick<
-  PatternRoomMockData,
-  "roomTitle" | "roomLabel" | "roomSummary" | "subject"
+  PatternRoomWorkspaceModel,
+  "roomTitle" | "roomLabel" | "roomSummary" | "subject" | "researchQuestion"
 >;
 
 export type PatternBoardViewModel = Pick<
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
   "boardCategories" | "connectionOptions"
 >;
 
-export type PatternArchiveViewModel = Pick<PatternRoomMockData, "sources">;
+export type PatternArchiveViewModel = Pick<PatternRoomWorkspaceModel, "sources">;
 
-export type PatternDeskViewModel = Pick<PatternRoomMockData, "claims">;
+export type PatternDeskViewModel = Pick<PatternRoomWorkspaceModel, "claims" | "connections">;
 
-export type PatternTenthManViewModel = Pick<PatternRoomMockData, "tenthManSession">;
+export type PatternTenthManViewModel = Pick<PatternRoomWorkspaceModel, "tenthManSession">;
 
-export type PatternReportViewModel = Pick<PatternRoomMockData, "reportSummary">;
+export type PatternReportViewModel = Pick<PatternRoomWorkspaceModel, "reportSummary">;
 
 type PatternReportSectionId =
   | "report-source-summary"
@@ -405,14 +407,17 @@ function formatReportBullet(item: PatternReportItem): string {
 
 function createReportSection(
   id: PatternReportSectionId,
-  items: readonly PatternReportItem[]
+  items: readonly PatternReportItem[],
+  metrics: readonly PatternReportMetric[],
+  note: string = REPORT_SECTION_DEFINITIONS[id].note
 ): PatternReportSection {
   const definition = REPORT_SECTION_DEFINITIONS[id];
   return {
     id,
     label: definition.label,
     tone: definition.tone,
-    note: definition.note,
+    note,
+    metrics: metrics.map((metric) => ({ ...metric })),
     bullets: items.length === 0 ? [definition.emptyMessage] : items.map(formatReportBullet),
     items: [...items],
     emptyMessage: definition.emptyMessage,
@@ -521,14 +526,21 @@ function adaptRoleLabel(role: DebateRole): string {
 }
 
 export function adaptOverviewViewModel(
-  domain: PatternRoomDomainViewSource
+  domain: PatternRoomDomainViewSource,
+  overlay?: PatternRoomLocalOverlay
 ): PatternOverviewViewModel {
+  const subject = overlay?.caseLabel?.trim() || adaptSubjectLabel(domain.topic);
+  const researchQuestion =
+    overlay?.researchQuestion === undefined
+      ? domain.topic.description.trim()
+      : overlay.researchQuestion.trim();
   return {
     roomTitle: "İz Sürme Odası",
     roomLabel: "Pattern Room",
     roomSummary:
-      "Near-future dedektif ofisinde kanıt panosu, holografik masa ve temkinli rapor terminali.",
-    subject: adaptSubjectLabel(domain.topic),
+      researchQuestion === "" ? "Araştırma sorusu henüz tanımlanmadı." : researchQuestion,
+    subject,
+    researchQuestion,
   };
 }
 
@@ -632,8 +644,11 @@ export function adaptDeskViewModel(
       : [
           {
             id: `claim-${domain.topic.id}`,
-            label: domain.topic.label,
-            summary: domain.topic.description,
+            label: overlay?.caseLabel?.trim() || domain.topic.label,
+            summary:
+              overlay?.researchQuestion === undefined
+                ? domain.topic.description
+                : overlay.researchQuestion.trim(),
             stance: "primary" as const,
           },
         ];
@@ -664,7 +679,10 @@ export function adaptDeskViewModel(
       })
       .map(adaptLocalAuthoredClaimNode) ?? [];
 
-  return { claims: [...claims, ...localClaims, ...authoredClaims] };
+  return {
+    claims: [...claims, ...localClaims, ...authoredClaims],
+    connections: adaptConnections(domain, overlay),
+  };
 }
 
 export function adaptTenthManViewModel(
@@ -766,7 +784,7 @@ export function adaptTenthManViewModel(
 
 function resolveConnectionEntityLabel(
   domain: PatternRoomDomainViewSource,
-  overlay: PatternRoomLocalOverlay,
+  overlay: PatternRoomLocalOverlay | undefined,
   entityId: string
 ): string | null {
   const domainNode = domain.nodes.find((node) => node.id === entityId);
@@ -779,18 +797,68 @@ function resolveConnectionEntityLabel(
     return domainSource.label;
   }
 
-  const localNode = overlay.localAuthoredNodes.find((node) => node.id === entityId);
+  const localNode = overlay?.localAuthoredNodes.find((node) => node.id === entityId);
   if (localNode !== undefined) {
     return localNode.label;
   }
 
-  const localSource = overlay.localAuthoredSources.find((source) => source.id === entityId);
+  const localSource = overlay?.localAuthoredSources.find((source) => source.id === entityId);
   if (localSource !== undefined) {
     return localSource.label;
   }
 
-  const localEvidence = overlay.localAuthoredEvidence.find((evidence) => evidence.id === entityId);
+  const localEvidence = overlay?.localAuthoredEvidence.find((evidence) => evidence.id === entityId);
   return localEvidence?.label ?? null;
+}
+
+function adaptConnections(
+  domain: PatternRoomDomainViewSource,
+  overlay?: PatternRoomLocalOverlay
+): PatternConnection[] {
+  const rawDomain = domain.edges.map((edge) => {
+    const sourceLabel = resolveConnectionEntityLabel(domain, overlay, edge.sourceNodeId);
+    const targetLabel = resolveConnectionEntityLabel(domain, overlay, edge.targetNodeId);
+    if (sourceLabel === null || targetLabel === null) {
+      return null;
+    }
+    return {
+      id: edge.id,
+      edgeType: edge.edgeType,
+      edgeTypeLabel: EDGE_TYPE_LABELS[edge.edgeType],
+      sourceId: edge.sourceNodeId,
+      sourceLabel,
+      targetId: edge.targetNodeId,
+      targetLabel,
+      note: edge.note,
+      scope: "domain" as const,
+      editable: false,
+    };
+  });
+  const domainConnections = rawDomain.filter((c) => c !== null) as PatternConnection[];
+
+  const rawLocal =
+    overlay?.localAuthoredEdges.map((edge) => {
+      const sourceLabel = resolveConnectionEntityLabel(domain, overlay, edge.sourceId);
+      const targetLabel = resolveConnectionEntityLabel(domain, overlay, edge.targetId);
+      if (sourceLabel === null || targetLabel === null) {
+        return null;
+      }
+      return {
+        id: edge.id,
+        edgeType: edge.edgeType,
+        edgeTypeLabel: EDGE_TYPE_LABELS[edge.edgeType],
+        sourceId: edge.sourceId,
+        sourceLabel,
+        targetId: edge.targetId,
+        targetLabel,
+        note: edge.note,
+        scope: "local" as const,
+        editable: true,
+      };
+    }) ?? [];
+  const localConnections = rawLocal.filter((c) => c !== null) as PatternConnection[];
+
+  return [...domainConnections, ...localConnections];
 }
 
 function adaptLocalConnectionBullet(
@@ -811,30 +879,21 @@ function createSourceSummaryReportItems(
   domain: PatternRoomDomainViewSource,
   overlay?: PatternRoomLocalOverlay
 ): PatternReportItem[] {
-  const localSources = overlay?.localAuthoredSources ?? [];
-  const items = [
-    createReportItem(
-      "report-source-counts",
-      "Archive kaynak sayımı",
-      `Archive sayımı: ${domain.sources.length} domain kaynak, ${localSources.length} local kaynak.`,
-      ["Taslak", "Yerel iz"]
-    ),
-  ];
-
-  if (localSources.length === 0) {
-    items.push(
-      createReportItem(
-        "report-local-source-empty-note",
-        "Yerel kaynak başlıkları",
-        "Henüz kullanıcı tarafından eklenen yerel kaynak yok.",
-        ["Sonraki araştırma için"]
-      )
+  const domainItems = domain.sources.map((source) => {
+    return createReportItem(
+      `report-domain-source-${source.id}`,
+      source.label,
+      adaptSourceNote(source),
+      [
+        "Domain kaynak",
+        `Tür: ${SOURCE_TYPE_LABELS[source.sourceType]}`,
+        `Köken: ${source.origin}`,
+        `Durum: ${RELIABILITY_LABELS[source.reliability]}`,
+      ]
     );
-    return items;
-  }
-
-  return items.concat(
-    localSources.map((source) => {
+  });
+  const localItems =
+    overlay?.localAuthoredSources.map((source) => {
       const segmentCount = source.segments?.length ?? 0;
       const meta = [
         "Kullanıcı tarafından eklenen",
@@ -843,8 +902,9 @@ function createSourceSummaryReportItems(
       ];
       const body = source.note === "" ? "Kaynak metni için kısa not yok." : source.note;
       return createReportItem(`report-source-${source.id}`, source.label, body, meta);
-    })
-  );
+    }) ?? [];
+
+  return [...domainItems, ...localItems];
 }
 
 function createEvidenceReportItems(overlay?: PatternRoomLocalOverlay): PatternReportItem[] {
@@ -903,30 +963,48 @@ function createLocalConnectionReportItems(
     .filter((item): item is PatternReportItem => item !== null);
 }
 
-function createTenthManReportItems(overlay?: PatternRoomLocalOverlay): PatternReportItem[] {
+function createTenthManReportItems(
+  domain: PatternRoomDomainViewSource,
+  overlay?: PatternRoomLocalOverlay
+): PatternReportItem[] {
+  const session = adaptTenthManViewModel(domain, overlay).tenthManSession;
+  const referenceItems = session.references.map((reference) => {
+    const kindLabel =
+      reference.kind === "source"
+        ? "Kaynak referansı"
+        : reference.kind === "evidence"
+          ? "Kanıt referansı"
+          : "Pano referansı";
+    return createReportItem(
+      `report-tenth-reference-${reference.id}`,
+      reference.label,
+      reference.note,
+      ["10. Adam referansı", kindLabel]
+    );
+  });
   const turnItems =
     overlay?.debateLocalTurns.map((turn) => {
       return createReportItem(
         `report-tenth-turn-${turn.id}`,
         `${DEBATE_ROLE_LABELS[turn.role]} yerel turu`,
         createReportLocalTraceText(turn.content),
-        ["Yerel iz", `Faz: ${DEBATE_PHASE_LABELS[turn.phaseKey]}`]
+        ["Yerel oturum turu", `Faz: ${DEBATE_PHASE_LABELS[turn.phaseKey]}`]
       );
     }) ?? [];
   const verdict = overlay?.debateLocalVerdict ?? null;
+  const verdictItems =
+    verdict === null
+      ? []
+      : [
+          createReportItem(
+            "report-tenth-verdict",
+            "Yerel tartışma özeti",
+            createReportLocalTraceText(verdict),
+            ["Yerel oturum özeti", "Henüz doğrulanmamış"]
+          ),
+        ];
 
-  if (verdict === null) {
-    return turnItems;
-  }
-
-  return turnItems.concat(
-    createReportItem(
-      "report-tenth-verdict",
-      "Yerel tartışma özeti",
-      createReportLocalTraceText(verdict),
-      ["Yerel iz", "Henüz doğrulanmamış"]
-    )
-  );
+  return [...referenceItems, ...turnItems, ...verdictItems];
 }
 
 function createNextResearchReportItems(overlay?: PatternRoomLocalOverlay): PatternReportItem[] {
@@ -954,16 +1032,54 @@ export function adaptReportViewModel(
   domain: PatternRoomDomainViewSource,
   overlay?: PatternRoomLocalOverlay
 ): PatternReportViewModel {
+  const sourceItems = createSourceSummaryReportItems(domain, overlay);
+  const evidenceItems = createEvidenceReportItems(overlay);
+  const boardNoteItems = createBoardNoteReportItems(overlay);
+  const connectionItems = createLocalConnectionReportItems(domain, overlay);
+  const tenthManItems = createTenthManReportItems(domain, overlay);
+  const nextResearchItems = createNextResearchReportItems(overlay);
+  const localSourceCount = overlay?.localAuthoredSources.length ?? 0;
+  const debateReferenceCount = adaptTenthManViewModel(domain, overlay).tenthManSession.references
+    .length;
+  const debateTurnCount = overlay?.debateLocalTurns.length ?? 0;
+  const debateSummaryCount = overlay?.debateLocalVerdict === null || overlay === undefined ? 0 : 1;
+
   const itemsBySection: Record<PatternReportSectionId, PatternReportItem[]> = {
-    "report-source-summary": createSourceSummaryReportItems(domain, overlay),
-    "report-evidence-notes": createEvidenceReportItems(overlay),
-    "report-board-notes": createBoardNoteReportItems(overlay),
-    "report-local-connections": createLocalConnectionReportItems(domain, overlay),
-    "report-tenth-man-traces": createTenthManReportItems(overlay),
-    "report-next-research-notes": createNextResearchReportItems(overlay),
+    "report-source-summary": sourceItems,
+    "report-evidence-notes": evidenceItems,
+    "report-board-notes": boardNoteItems,
+    "report-local-connections": connectionItems,
+    "report-tenth-man-traces": tenthManItems,
+    "report-next-research-notes": nextResearchItems,
+  };
+  const metricsBySection: Record<PatternReportSectionId, PatternReportMetric[]> = {
+    "report-source-summary": [{ id: "sources", label: "kaynak", value: sourceItems.length }],
+    "report-evidence-notes": [{ id: "evidence", label: "kanıt notu", value: evidenceItems.length }],
+    "report-board-notes": [{ id: "board-notes", label: "pano notu", value: boardNoteItems.length }],
+    "report-local-connections": [
+      { id: "connections", label: "bağlantı", value: connectionItems.length },
+    ],
+    "report-tenth-man-traces": [
+      { id: "references", label: "referans", value: debateReferenceCount },
+      { id: "turns", label: "tur", value: debateTurnCount },
+      { id: "summary", label: "özet", value: debateSummaryCount },
+    ],
+    "report-next-research-notes": [
+      { id: "research-notes", label: "araştırma notu", value: nextResearchItems.length },
+    ],
+  };
+  const noteBySection: Partial<Record<PatternReportSectionId, string>> = {
+    "report-source-summary": `Archive sayımı: ${domain.sources.length} domain kaynak, ${localSourceCount} yerel kaynak.`,
+    "report-tenth-man-traces":
+      "Seçilmiş referanslar, yerel oturum turları ve varsa oturum özeti birbirinden ayrı gösterilir.",
   };
   const sections: PatternReportSection[] = REPORT_SECTION_ORDER.map((sectionId) => {
-    return createReportSection(sectionId, itemsBySection[sectionId]);
+    return createReportSection(
+      sectionId,
+      itemsBySection[sectionId],
+      metricsBySection[sectionId],
+      noteBySection[sectionId]
+    );
   });
 
   return {
@@ -979,9 +1095,9 @@ export function adaptReportViewModel(
 export function adaptDomainToViewModels(
   domain: PatternRoomDomainViewSource,
   overlay?: PatternRoomLocalOverlay
-): PatternRoomMockData {
+): PatternRoomWorkspaceModel {
   return {
-    ...adaptOverviewViewModel(domain),
+    ...adaptOverviewViewModel(domain, overlay),
     ...adaptBoardViewModel(domain, overlay),
     ...adaptArchiveViewModel(domain, overlay),
     ...adaptDeskViewModel(domain, overlay),

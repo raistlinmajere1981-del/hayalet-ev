@@ -10,6 +10,11 @@ import type {
   Topic,
 } from "../types/pattern-room-domain.js";
 import type {
+  PatternRoomEvidenceCandidate,
+  PatternRoomEvidenceCandidatePromotionInput,
+  PatternRoomEvidenceCandidatePromotionResult,
+} from "../types/pattern-room-evidence-candidate.js";
+import type {
   SourceImportEvidenceDraft,
   SourceImportResult,
 } from "../source-workbench/types/source-package.js";
@@ -126,6 +131,8 @@ export type DebateLocalTurn = {
 };
 
 export type PatternRoomLocalOverlay = {
+  caseLabel?: string;
+  researchQuestion?: string;
   deskNodeIds: readonly string[];
   pinnedSourceIds: readonly string[];
   sourcePinnedLayerById: Readonly<Record<string, PatternLayer>>;
@@ -138,6 +145,7 @@ export type PatternRoomLocalOverlay = {
   localAuthoredNodes: readonly LocalAuthoredNode[];
   localAuthoredSources: readonly LocalAuthoredSource[];
   localAuthoredEvidence: readonly LocalAuthoredEvidence[];
+  localEvidenceCandidates?: readonly PatternRoomEvidenceCandidate[];
   localAuthoredEdges: readonly LocalAuthoredEdge[];
 };
 
@@ -147,13 +155,14 @@ export type PatternRoomLocalGuards = {
 };
 
 export type PatternRoomLocalDomainReference = {
-  readonly topic: Pick<Topic, "id">;
+  readonly topic: Pick<Topic, "id"> & Partial<Pick<Topic, "label" | "description">>;
   readonly nodes: readonly PatternNode[];
   readonly sources: readonly SourceItem[];
 };
 
 export type PatternRoomLocalState = {
   getTopicId: () => string;
+  updateCaseIdentity: (caseLabel: string, researchQuestion: string) => boolean;
   sendToDesk: (nodeId: string) => void;
   pinSource: (sourceId: string, layer: PatternLayer) => void;
   addToDebate: (entityId: string) => void;
@@ -169,12 +178,22 @@ export type PatternRoomLocalState = {
     layer?: PatternLayer,
     options?: LocalAuthoredEvidenceOptions
   ) => void;
+  addEvidenceCandidate: (
+    suggestionId: string,
+    text: string,
+    reviewSessionId?: string | null
+  ) => boolean;
+  promoteEvidenceCandidate: (
+    input: PatternRoomEvidenceCandidatePromotionInput
+  ) => PatternRoomEvidenceCandidatePromotionResult;
+  removeEvidenceCandidate: (candidateId: string) => boolean;
   addAuthoredEdge: (
     edgeType: PatternEdgeType,
     sourceId: string,
     targetId: string,
     note?: string
   ) => void;
+  updateLocalEdge: (edgeId: string, edgeType: PatternEdgeType, note?: string) => boolean;
   applySourceImportResult: (
     result: SourceImportResult,
     options?: SourceImportApplyOptions
@@ -266,6 +285,14 @@ function cloneAuthoredEvidence(
 ): LocalAuthoredEvidence[] {
   return evidenceItems.map((evidence) => {
     return { ...evidence };
+  });
+}
+
+function cloneEvidenceCandidates(
+  candidates: readonly PatternRoomEvidenceCandidate[]
+): PatternRoomEvidenceCandidate[] {
+  return candidates.map((candidate) => {
+    return { ...candidate };
   });
 }
 
@@ -396,6 +423,10 @@ export function createLocalState(
   domainMock: PatternRoomLocalDomainReference
 ): PatternRoomLocalState {
   const domainRef = domainMock;
+  const defaultCaseLabel = domainRef.topic.label?.trim() || "Yeni Araştırma";
+  const defaultResearchQuestion = domainRef.topic.description?.trim() || "";
+  let caseLabel = defaultCaseLabel;
+  let researchQuestion = defaultResearchQuestion;
   const deskNodeIds: string[] = [];
   const pinnedSourceIds: string[] = [];
   const sourcePinnedLayerById: Record<string, PatternLayer> = {};
@@ -406,6 +437,7 @@ export function createLocalState(
   const localAuthoredNodes: LocalAuthoredNode[] = [];
   const localAuthoredSources: LocalAuthoredSource[] = [];
   const localAuthoredEvidence: LocalAuthoredEvidence[] = [];
+  const localEvidenceCandidates: PatternRoomEvidenceCandidate[] = [];
   const localAuthoredEdges: LocalAuthoredEdge[] = [];
   const listeners = new Set<() => void>();
   let debatePhase: DebateLocalPhase = "idle";
@@ -415,6 +447,7 @@ export function createLocalState(
   let authoredNodeIndex = 0;
   let authoredSourceIndex = 0;
   let authoredEvidenceIndex = 0;
+  let evidenceCandidateIndex = 0;
   let authoredEdgeIndex = 0;
 
   ROLE_CONNECTION_IDS.forEach((roleId) => {
@@ -439,6 +472,18 @@ export function createLocalState(
 
   function hasLocalAuthoredEvidence(evidenceId: string): boolean {
     return localAuthoredEvidence.some((evidence) => evidence.id === evidenceId);
+  }
+
+  function hasSourceEntity(sourceId: string): boolean {
+    return hasSource(sourceId) || hasLocalAuthoredSource(sourceId);
+  }
+
+  function resolveSourceLabel(sourceId: string): string | null {
+    const domainSource = domainRef.sources.find((source) => source.id === sourceId);
+    if (domainSource !== undefined) {
+      return domainSource.label;
+    }
+    return localAuthoredSources.find((source) => source.id === sourceId)?.label ?? null;
   }
 
   function resolveEntityExists(id: string): boolean {
@@ -594,6 +639,125 @@ export function createLocalState(
       ...(importBatchId === undefined ? {} : { importBatchId }),
     });
     return id;
+  }
+
+  function addEvidenceCandidateRecord(
+    suggestionId: string,
+    text: string,
+    reviewSessionId?: string | null,
+    createdAt = new Date().toISOString()
+  ): string | null {
+    const trimmedSuggestionId = suggestionId.trim();
+    const trimmedText = text.trim();
+    const normalizedSessionId = reviewSessionId?.trim() ?? "";
+    if (trimmedSuggestionId === "" || trimmedText === "") {
+      return null;
+    }
+
+    const duplicate = localEvidenceCandidates.some((candidate) => {
+      return (
+        candidate.suggestionId === trimmedSuggestionId &&
+        (candidate.reviewSessionId ?? "") === normalizedSessionId
+      );
+    });
+    if (duplicate) {
+      return null;
+    }
+
+    evidenceCandidateIndex += 1;
+    const id = createLocalId("local-evidence-candidate", evidenceCandidateIndex);
+    localEvidenceCandidates.push({
+      id,
+      suggestionId: trimmedSuggestionId,
+      text: trimmedText,
+      reviewSessionId: normalizedSessionId === "" ? null : normalizedSessionId,
+      origin: "ai-case-review",
+      sourceSection: "evidence",
+      status: "candidate",
+      createdAt,
+    });
+    return id;
+  }
+
+  function createPromotionFailure(
+    candidateId: string,
+    warning: string
+  ): PatternRoomEvidenceCandidatePromotionResult {
+    return {
+      candidateId,
+      promoted: false,
+      evidenceId: null,
+      warnings: [warning],
+    };
+  }
+
+  function promoteEvidenceCandidate(
+    input: PatternRoomEvidenceCandidatePromotionInput
+  ): PatternRoomEvidenceCandidatePromotionResult {
+    const candidateId = input.candidateId.trim();
+    const sourceId = input.sourceId.trim();
+    const excerpt = input.excerpt.trim();
+    const candidateIndex = localEvidenceCandidates.findIndex((candidate) => {
+      return candidate.id === candidateId;
+    });
+    const candidate = localEvidenceCandidates[candidateIndex];
+    if (candidateIndex < 0 || candidate === undefined) {
+      return createPromotionFailure(candidateId, "Evidence candidate was not found.");
+    }
+    if (!hasSourceEntity(sourceId)) {
+      return createPromotionFailure(
+        candidateId,
+        "Evidence promotion requires an existing source id."
+      );
+    }
+    if (excerpt === "") {
+      return createPromotionFailure(
+        candidateId,
+        "Evidence promotion requires a non-empty selected source excerpt."
+      );
+    }
+
+    const sourceLabel = resolveSourceLabel(sourceId);
+    if (sourceLabel === null) {
+      return createPromotionFailure(candidateId, "Evidence source label could not be resolved.");
+    }
+
+    const label = input.label?.trim() || `AI Evidence Candidate ${candidate.id}`;
+    const interpretation = input.interpretation?.trim() || candidate.text;
+    const evidenceId = addAuthoredEvidenceRecord(
+      label,
+      excerpt,
+      interpretation,
+      input.layer ?? "evidence",
+      new Date().toISOString(),
+      undefined,
+      { sourceId, sourceLabel }
+    );
+    if (evidenceId === null) {
+      return createPromotionFailure(candidateId, "Evidence promotion could not create evidence.");
+    }
+
+    localEvidenceCandidates.splice(candidateIndex, 1);
+    notify();
+    return {
+      candidateId,
+      promoted: true,
+      evidenceId,
+      warnings: [],
+    };
+  }
+
+  function removeEvidenceCandidate(candidateId: string): boolean {
+    const trimmedCandidateId = candidateId.trim();
+    const candidateIndex = localEvidenceCandidates.findIndex((candidate) => {
+      return candidate.id === trimmedCandidateId;
+    });
+    if (candidateIndex < 0) {
+      return false;
+    }
+    localEvidenceCandidates.splice(candidateIndex, 1);
+    notify();
+    return true;
   }
 
   function addAuthoredEdgeRecord(
@@ -974,12 +1138,14 @@ export function createLocalState(
     localAuthoredNodes.length = 0;
     localAuthoredSources.length = 0;
     localAuthoredEvidence.length = 0;
+    localEvidenceCandidates.length = 0;
     localAuthoredEdges.length = 0;
     debateReportReflected = false;
     noteIndex = 0;
     authoredNodeIndex = 0;
     authoredSourceIndex = 0;
     authoredEvidenceIndex = 0;
+    evidenceCandidateIndex = 0;
     authoredEdgeIndex = 0;
     notify();
 
@@ -1190,6 +1356,20 @@ export function createLocalState(
     getTopicId(): string {
       return domainRef.topic.id;
     },
+    updateCaseIdentity(nextCaseLabel: string, nextResearchQuestion: string): boolean {
+      const normalizedLabel = nextCaseLabel.trim();
+      const normalizedQuestion = nextResearchQuestion.trim();
+      if (normalizedLabel === "") {
+        return false;
+      }
+      if (caseLabel === normalizedLabel && researchQuestion === normalizedQuestion) {
+        return false;
+      }
+      caseLabel = normalizedLabel;
+      researchQuestion = normalizedQuestion;
+      notify();
+      return true;
+    },
     sendToDesk(nodeId: string): void {
       if (!hasNode(nodeId)) {
         return;
@@ -1263,6 +1443,25 @@ export function createLocalState(
         notify();
       }
     },
+    addEvidenceCandidate(
+      suggestionId: string,
+      text: string,
+      reviewSessionId?: string | null
+    ): boolean {
+      if (addEvidenceCandidateRecord(suggestionId, text, reviewSessionId)) {
+        notify();
+        return true;
+      }
+      return false;
+    },
+    promoteEvidenceCandidate(
+      input: PatternRoomEvidenceCandidatePromotionInput
+    ): PatternRoomEvidenceCandidatePromotionResult {
+      return promoteEvidenceCandidate(input);
+    },
+    removeEvidenceCandidate(candidateId: string): boolean {
+      return removeEvidenceCandidate(candidateId);
+    },
     addAuthoredEdge(
       edgeType: PatternEdgeType,
       sourceId: string,
@@ -1272,6 +1471,26 @@ export function createLocalState(
       if (addAuthoredEdgeRecord(edgeType, sourceId, targetId, note)) {
         notify();
       }
+    },
+    updateLocalEdge(edgeId: string, edgeType: PatternEdgeType, note?: string): boolean {
+      if (!PATTERN_EDGE_TYPES.includes(edgeType)) {
+        return false;
+      }
+      const edgeIndex = localAuthoredEdges.findIndex((edge) => edge.id === edgeId);
+      if (edgeIndex < 0) {
+        return false;
+      }
+      const edge = localAuthoredEdges[edgeIndex];
+      if (edge === undefined) {
+        return false;
+      }
+      const normalizedNote = note?.trim() || null;
+      if (edge.edgeType === edgeType && edge.note === normalizedNote) {
+        return false;
+      }
+      localAuthoredEdges[edgeIndex] = { ...edge, edgeType, note: normalizedNote };
+      notify();
+      return true;
     },
     applySourceImportResult(
       result: SourceImportResult,
@@ -1362,6 +1581,8 @@ export function createLocalState(
     },
     getOverlay(): PatternRoomLocalOverlay {
       return {
+        ...(caseLabel === defaultCaseLabel ? {} : { caseLabel }),
+        ...(researchQuestion === defaultResearchQuestion ? {} : { researchQuestion }),
         deskNodeIds: [...deskNodeIds],
         pinnedSourceIds: [...pinnedSourceIds],
         sourcePinnedLayerById: { ...sourcePinnedLayerById },
@@ -1374,6 +1595,7 @@ export function createLocalState(
         localAuthoredNodes: cloneAuthoredNodes(localAuthoredNodes),
         localAuthoredSources: cloneAuthoredSources(localAuthoredSources),
         localAuthoredEvidence: cloneAuthoredEvidence(localAuthoredEvidence),
+        localEvidenceCandidates: cloneEvidenceCandidates(localEvidenceCandidates),
         localAuthoredEdges: cloneAuthoredEdges(localAuthoredEdges),
       };
     },
@@ -1384,6 +1606,11 @@ export function createLocalState(
       };
     },
     restoreOverlay(overlay: PatternRoomLocalOverlay, guards: PatternRoomLocalGuards): void {
+      caseLabel = overlay.caseLabel?.trim() || defaultCaseLabel;
+      researchQuestion =
+        overlay.researchQuestion === undefined
+          ? defaultResearchQuestion
+          : overlay.researchQuestion.trim();
       deskNodeIds.splice(0, deskNodeIds.length, ...overlay.deskNodeIds);
       pinnedSourceIds.splice(0, pinnedSourceIds.length, ...overlay.pinnedSourceIds);
 
@@ -1415,6 +1642,11 @@ export function createLocalState(
         localAuthoredEvidence.length,
         ...cloneAuthoredEvidence(overlay.localAuthoredEvidence)
       );
+      localEvidenceCandidates.splice(
+        0,
+        localEvidenceCandidates.length,
+        ...cloneEvidenceCandidates(overlay.localEvidenceCandidates ?? [])
+      );
       localAuthoredEdges.splice(
         0,
         localAuthoredEdges.length,
@@ -1427,6 +1659,10 @@ export function createLocalState(
       authoredNodeIndex = getMaxLocalIdIndex(localAuthoredNodes, "local-node");
       authoredSourceIndex = getMaxLocalIdIndex(localAuthoredSources, "local-source");
       authoredEvidenceIndex = getMaxLocalIdIndex(localAuthoredEvidence, "local-evidence");
+      evidenceCandidateIndex = getMaxLocalIdIndex(
+        localEvidenceCandidates,
+        "local-evidence-candidate"
+      );
       authoredEdgeIndex = getMaxLocalIdIndex(localAuthoredEdges, "local-edge");
       notify();
     },

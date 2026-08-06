@@ -7,18 +7,14 @@ import type { LabCounterfactualProjection } from "./lab-adaptive-decision.js";
 import { formatLabI18n, resolveLabI18n, type LabI18nKey, type LabI18nLocale } from "./lab-i18n.js";
 
 export type LabExecutionReadinessSignalAlignment =
-  | "matches-simulation"
-  | "partial"
-  | "deviates"
-  | "none";
+  "matches-simulation" | "partial" | "deviates" | "none";
 
 export type LabExecutionReadinessSignalLevel = "steady" | "guarded" | "strained";
 
 export type LabExecutionReadinessSignalConfidenceBand = "high" | "medium" | "low" | "unknown";
 
 export type LabExecutionReadinessSignalProjectionAlignment =
-  | LabCounterfactualProjection["expectedAlignment"]
-  | "none";
+  LabCounterfactualProjection["expectedAlignment"] | "none";
 
 export type LabExecutionReadinessSignal = {
   level: LabExecutionReadinessSignalLevel;

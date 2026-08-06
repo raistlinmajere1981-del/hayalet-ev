@@ -5,13 +5,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { PatternRoomJsonStore } from "../../rooms/pattern-room/host/pattern-room-json-store.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
 import { createSnapshot } from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
 import type { PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
 
 function createTestSnapshot(): PatternRoomSessionSnapshot {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   localState.addLocalNote("Storage contract smoke note");
   return createSnapshot(localState, "archive");
 }

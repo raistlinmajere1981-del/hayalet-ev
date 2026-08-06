@@ -20,7 +20,7 @@ export const PATTERN_ROOM_CASE_REVIEW_ROLE_PROFILES: Readonly<
   AI0: {
     roleSlot: "AI0",
     targetSlot: "ai0",
-    roleLabel: "AI0 araştırmacı / düzenleyici",
+    roleLabel: "AI0 — araştırmacı / düzenleyici",
     reviewLabel: "Araştırmacı İncelemesi",
     instructions:
       "Kaynakları, kanıt notlarını, bağlantıları ve açık soruları düzenle; eksik bağlamları ayrı tut.",
@@ -28,7 +28,7 @@ export const PATTERN_ROOM_CASE_REVIEW_ROLE_PROFILES: Readonly<
   AI1: {
     roleSlot: "AI1",
     targetSlot: "ai1",
-    roleLabel: "AI1 savunucu / güçlü yorum testçisi",
+    roleLabel: "AI1 — savunucu / güçlü yorum testçisi",
     reviewLabel: "Güçlü Yorum Testi",
     instructions:
       "Mevcut yorumu en güçlü temkinli haliyle sına; dayanakları, karşı işaretleri ve boşlukları ayır.",
@@ -36,7 +36,7 @@ export const PATTERN_ROOM_CASE_REVIEW_ROLE_PROFILES: Readonly<
   AI2: {
     roleSlot: "AI2",
     targetSlot: "ai2",
-    roleLabel: "AI2 10. Adam / karşı argüman ve boşluk arayıcı",
+    roleLabel: "AI2 — 10. Adam / karşı argüman ve boşluk arayıcı",
     reviewLabel: "10. Adam İncelemesi",
     instructions:
       "Varsayımları zorla; zayıf noktaları, alternatif açıklamaları ve görülmeyen araştırma sorularını çıkar.",
@@ -44,10 +44,9 @@ export const PATTERN_ROOM_CASE_REVIEW_ROLE_PROFILES: Readonly<
   US1: {
     roleSlot: "US1",
     targetSlot: "us1",
-    roleLabel: "US1 hakem / son gözden geçiren",
+    roleLabel: "US1 — hakem / son gözden geçiren",
     reviewLabel: "Hakem İncelemesi",
-    instructions:
-      "Bulguları, çelişkileri ve karar öncesi açık seçenekleri insan odağında toparla.",
+    instructions: "Bulguları, çelişkileri ve karar öncesi açık seçenekleri insan odağında toparla.",
   },
 };
 

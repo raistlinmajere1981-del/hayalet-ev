@@ -1,4 +1,5 @@
 import { createPatternRoomCaseReviewHash } from "./pattern-room-case-review-hash.js";
+import { createPatternRoomCaseReviewOutputContract } from "./pattern-room-case-review-output-contract.js";
 import type { PatternActorId } from "../types/pattern-room-domain.js";
 import type { PatternRoomCasePacket } from "../types/pattern-room-case-packet.js";
 import {
@@ -84,7 +85,7 @@ function createRoleInstructions(roleSlot: PatternRoomCaseReviewRoleSlot): {
     reviewLabel: roleProfile.reviewLabel,
     section: [
       "[Role Instructions]",
-      `role: ${roleSlot} - ${roleProfile.roleLabel}`,
+      `role: ${roleProfile.roleLabel}`,
       roleProfile.instructions,
     ].join("\n"),
   };
@@ -134,7 +135,12 @@ function createTaskPromptSection(taskPrompt: string | null | undefined): string 
   const resolvedTaskPrompt =
     normalizedTaskPrompt === "" ? DEFAULT_TASK_PROMPT : normalizedTaskPrompt;
 
-  return ["[Task Prompt]", resolvedTaskPrompt].join("\n");
+  return [
+    "[Task Prompt]",
+    resolvedTaskPrompt,
+    "",
+    createPatternRoomCaseReviewOutputContract(),
+  ].join("\n");
 }
 
 export function createPatternRoomCaseReviewMessage(
@@ -151,11 +157,9 @@ export function createPatternRoomCaseReviewMessage(
     casePacket: createCasePacketSection(input.casePacket, maxCasePacketChars, warnings),
     taskPrompt: createTaskPromptSection(input.taskPrompt),
   };
-  const dispatchText = [
-    sections.roleInstructions,
-    sections.casePacket,
-    sections.taskPrompt,
-  ].join("\n\n---\n\n");
+  const dispatchText = [sections.roleInstructions, sections.casePacket, sections.taskPrompt].join(
+    "\n\n---\n\n"
+  );
 
   return {
     messageVersion: PATTERN_ROOM_CASE_REVIEW_MESSAGE_VERSION,

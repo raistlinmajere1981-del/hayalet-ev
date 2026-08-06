@@ -295,8 +295,7 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       try {
         // NOTE: CSP bypass: run the health check over IPC.
         const healthFn = electronApi["opencodeServeHealth"] as
-          | ((healthUrl: string) => Promise<unknown>)
-          | undefined;
+          ((healthUrl: string) => Promise<unknown>) | undefined;
         const healthCheck = await healthFn?.(`${url}/global/health`);
         if (
           healthCheck !== undefined &&

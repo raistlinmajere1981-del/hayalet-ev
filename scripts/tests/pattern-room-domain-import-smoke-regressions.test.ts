@@ -4,7 +4,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
 import createPatternRoomHostRuntime from "../../rooms/pattern-room/host/runtime.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import {
   PATTERN_ROOM_CASE_REVIEW_CONTROL_COMMAND,
   PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
@@ -90,13 +90,13 @@ void test("pattern-room phase 2B domain literal reference sets stay stable", () 
 });
 
 void test("pattern-room phase 2B domain mock imports with the expected static shape", () => {
-  const topic: Topic = PATTERN_ROOM_DOMAIN_MOCK.topic;
-  const nodes: PatternNode[] = PATTERN_ROOM_DOMAIN_MOCK.nodes;
-  const edges: PatternEdge[] = PATTERN_ROOM_DOMAIN_MOCK.edges;
-  const sources: SourceItem[] = PATTERN_ROOM_DOMAIN_MOCK.sources;
-  const evidence: EvidenceItem[] = PATTERN_ROOM_DOMAIN_MOCK.evidence;
-  const debateSession: DebateSession = PATTERN_ROOM_DOMAIN_MOCK.debateSession;
-  const reportTrace: ReportTrace[] = PATTERN_ROOM_DOMAIN_MOCK.reportTrace;
+  const topic: Topic = PATTERN_ROOM_DOMAIN_TEST_FIXTURE.topic;
+  const nodes: PatternNode[] = PATTERN_ROOM_DOMAIN_TEST_FIXTURE.nodes;
+  const edges: PatternEdge[] = PATTERN_ROOM_DOMAIN_TEST_FIXTURE.edges;
+  const sources: SourceItem[] = PATTERN_ROOM_DOMAIN_TEST_FIXTURE.sources;
+  const evidence: EvidenceItem[] = PATTERN_ROOM_DOMAIN_TEST_FIXTURE.evidence;
+  const debateSession: DebateSession = PATTERN_ROOM_DOMAIN_TEST_FIXTURE.debateSession;
+  const reportTrace: ReportTrace[] = PATTERN_ROOM_DOMAIN_TEST_FIXTURE.reportTrace;
 
   assert.equal(topic.rootNodeId, "node-horizon-claim");
   assert.equal(nodes.length, 4);
@@ -117,7 +117,8 @@ void test("pattern-room phase 2B domain mock imports with the expected static sh
 });
 
 void test("pattern-room phase 2B domain mock cross references point to existing static items", () => {
-  const { topic, nodes, edges, sources, evidence, debateSession } = PATTERN_ROOM_DOMAIN_MOCK;
+  const { topic, nodes, edges, sources, evidence, debateSession } =
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE;
   const nodeIds = new Set(nodes.map((node) => node.id));
   const sourceIds = new Set(sources.map((source) => source.id));
 
@@ -156,7 +157,7 @@ void test("pattern-room phase 2B domain mock cross references point to existing 
 });
 
 void test("pattern-room phase 2B tenth-man debate mock remains disconnected", () => {
-  const { debateSession } = PATTERN_ROOM_DOMAIN_MOCK;
+  const { debateSession } = PATTERN_ROOM_DOMAIN_TEST_FIXTURE;
 
   assert.equal(debateSession.status, "mock");
   assert.deepEqual(
@@ -188,7 +189,7 @@ void test("pattern-room phase 3B domain mock stays limited to the runtime transi
     }
   }
 
-  assert.deepEqual(domainMockConsumers, ["rooms/pattern-room/ui/pattern-room-ui-runtime.ts"]);
+  assert.deepEqual(domainMockConsumers, []);
 });
 
 void test("pattern-room phase 3B panels do not import domain types or domain mock data", async () => {
@@ -233,7 +234,7 @@ void test("pattern-room host runtime keeps domain mock usage scoped to ready-loa
     }
   }
 
-  assert.deepEqual(domainMockConsumers, ["rooms/pattern-room/host/runtime.ts"]);
+  assert.deepEqual(domainMockConsumers, []);
 });
 
 void test("pattern-room host runtime stays free of Node-only storage imports", async () => {

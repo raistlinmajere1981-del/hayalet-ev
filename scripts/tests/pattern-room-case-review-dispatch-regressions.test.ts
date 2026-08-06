@@ -142,7 +142,7 @@ void test("pattern-room case review dispatch draft maps AI2 to the ai2 target", 
   assert.equal(draft.roleSlot, "AI2");
   assert.equal(draft.targetSlot, "ai2");
   assert.equal(draft.payload.toSlot, "ai2");
-  assert.match(draft.payload.payload.text, /AI2 10\. Adam/);
+  assert.match(draft.payload.payload.text, /role: AI2 — 10\. Adam/);
 });
 
 void test("pattern-room case review dispatch draft maps every role to its target slot", () => {

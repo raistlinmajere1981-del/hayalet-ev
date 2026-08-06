@@ -105,20 +105,59 @@ void test("pattern-room case review protocol markdown documents cautious room se
   assert.match(markdown, /Yeni veri uydurma/);
   assertForbiddenTermsStayInAvoidanceContext(markdown);
 
-  const expectedResponseHeadings = [
-    "## Observation",
-    "## Evidence",
-    "## Analysis",
-    "## Counter Argument",
-    "## Missing Information",
-    "## Open Questions",
-    "## Confidence Notes",
+  assert.match(markdown, /"format": "pattern-room-case-review"/);
+  assert.match(markdown, /"version": 1/);
+
+  const expectedCanonicalSectionKeys = [
+    "observation",
+    "evidence",
+    "analysis",
+    "counterArgument",
+    "missingInformation",
+    "openQuestions",
+    "confidenceNotes",
+  ];
+  const canonicalSectionKeys = [
+    ...markdown.matchAll(
+      /^\s+"(observation|evidence|analysis|counterArgument|missingInformation|openQuestions|confidenceNotes)"\s*:\s*\[\],?$/gm
+    ),
+  ].map((match) => match[1]);
+  assert.deepEqual(canonicalSectionKeys, expectedCanonicalSectionKeys);
+
+  const codeTick = String.fromCharCode(96);
+  const expectedFallbackHeadings = [
+    "- " + codeTick + "Observation" + codeTick + " veya " + codeTick + "Gözlem" + codeTick,
+    "- " + codeTick + "Evidence" + codeTick + " veya " + codeTick + "Kanıt" + codeTick,
+    "- " + codeTick + "Analysis" + codeTick + " veya " + codeTick + "Analiz" + codeTick,
+    "- " +
+      codeTick +
+      "Counter Argument" +
+      codeTick +
+      " veya " +
+      codeTick +
+      "Karşı Argüman" +
+      codeTick,
+    "- " +
+      codeTick +
+      "Missing Information" +
+      codeTick +
+      " veya " +
+      codeTick +
+      "Eksik Bilgi" +
+      codeTick,
+    "- " + codeTick + "Open Questions" + codeTick + " veya " + codeTick + "Açık Sorular" + codeTick,
+    "- " +
+      codeTick +
+      "Confidence Notes" +
+      codeTick +
+      " veya " +
+      codeTick +
+      "Güven Notları" +
+      codeTick,
   ];
   assert.deepEqual(
-    markdown
-      .split(/\r?\n/)
-      .filter((line) => expectedResponseHeadings.includes(line)),
-    expectedResponseHeadings
+    markdown.split(/\r?\n/).filter((line) => expectedFallbackHeadings.includes(line)),
+    expectedFallbackHeadings
   );
   assert.match(
     markdown,

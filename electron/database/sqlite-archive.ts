@@ -840,8 +840,7 @@ export class SQLiteArchiveManager {
         `SELECT title, title_source FROM conversations WHERE id = ? AND account_id = ? LIMIT 1`
       );
       const existing = existingStmt.get(conversationId, this.accountId) as
-        | { title: string | null; title_source: ConversationTitleSource | null }
-        | undefined;
+        { title: string | null; title_source: ConversationTitleSource | null } | undefined;
 
       if (existing === undefined) {
         const nextTitle = normalizedTitle !== "" ? normalizedTitle : await this.buildAutoTitle(db);

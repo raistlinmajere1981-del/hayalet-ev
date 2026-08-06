@@ -11,7 +11,7 @@ import {
   adaptTenthManViewModel,
   type PatternRoomDomainViewSource,
 } from "../../rooms/pattern-room/shared/adapters/pattern-room-view-adapters.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import {
   createLocalState,
   type PatternRoomLocalOverlay,
@@ -20,7 +20,7 @@ import {
   PATTERN_SOURCE_TYPES,
   type PatternSourceType,
 } from "../../rooms/pattern-room/shared/types/pattern-room-domain.ts";
-import type { PatternRoomMockData } from "../../rooms/pattern-room/shared/types/pattern-room.ts";
+import type { PatternRoomWorkspaceModel } from "../../rooms/pattern-room/shared/types/pattern-room.ts";
 
 const EXPECTED_SOURCE_TYPE_LABELS: Record<PatternSourceType, string> = {
   book: "Kitap / Metin",
@@ -37,11 +37,11 @@ const EXPECTED_SOURCE_TYPE_LABELS: Record<PatternSourceType, string> = {
 
 function createDomainWithAllSourceTypes(): PatternRoomDomainViewSource {
   return {
-    ...PATTERN_ROOM_DOMAIN_MOCK,
+    ...PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
     sources: PATTERN_SOURCE_TYPES.map((sourceType, index) => {
       return {
         id: `source-${sourceType}`,
-        topicId: PATTERN_ROOM_DOMAIN_MOCK.topic.id,
+        topicId: PATTERN_ROOM_DOMAIN_TEST_FIXTURE.topic.id,
         label: `Source ${index + 1}`,
         sourceType,
         origin: "Synthetic adapter test source",
@@ -54,7 +54,9 @@ function createDomainWithAllSourceTypes(): PatternRoomDomainViewSource {
 }
 
 void test("pattern-room phase 3B adapter returns the existing UI mock shape", () => {
-  const viewModels: PatternRoomMockData = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK);
+  const viewModels: PatternRoomWorkspaceModel = adaptDomainToViewModels(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE
+  );
 
   assert.equal(viewModels.roomTitle, "İz Sürme Odası");
   assert.equal(viewModels.roomLabel, "Pattern Room");
@@ -67,22 +69,25 @@ void test("pattern-room phase 3B adapter returns the existing UI mock shape", ()
 });
 
 void test("pattern-room phase 3B focused adapters keep panel data non-empty", () => {
-  assert.equal(adaptOverviewViewModel(PATTERN_ROOM_DOMAIN_MOCK).subject.length > 0, true);
-  assert.equal(adaptBoardViewModel(PATTERN_ROOM_DOMAIN_MOCK).boardCategories.length > 0, true);
-  assert.equal(adaptArchiveViewModel(PATTERN_ROOM_DOMAIN_MOCK).sources.length > 0, true);
-  assert.equal(adaptDeskViewModel(PATTERN_ROOM_DOMAIN_MOCK).claims.length > 0, true);
+  assert.equal(adaptOverviewViewModel(PATTERN_ROOM_DOMAIN_TEST_FIXTURE).subject.length > 0, true);
   assert.equal(
-    adaptTenthManViewModel(PATTERN_ROOM_DOMAIN_MOCK).tenthManSession.roles.length > 0,
+    adaptBoardViewModel(PATTERN_ROOM_DOMAIN_TEST_FIXTURE).boardCategories.length > 0,
+    true
+  );
+  assert.equal(adaptArchiveViewModel(PATTERN_ROOM_DOMAIN_TEST_FIXTURE).sources.length > 0, true);
+  assert.equal(adaptDeskViewModel(PATTERN_ROOM_DOMAIN_TEST_FIXTURE).claims.length > 0, true);
+  assert.equal(
+    adaptTenthManViewModel(PATTERN_ROOM_DOMAIN_TEST_FIXTURE).tenthManSession.roles.length > 0,
     true
   );
   assert.equal(
-    adaptReportViewModel(PATTERN_ROOM_DOMAIN_MOCK).reportSummary.sections.length > 0,
+    adaptReportViewModel(PATTERN_ROOM_DOMAIN_TEST_FIXTURE).reportSummary.sections.length > 0,
     true
   );
 });
 
 void test("pattern-room phase 3B adapter maps source type labels for archive cards", () => {
-  const labels = adaptArchiveViewModel(PATTERN_ROOM_DOMAIN_MOCK).sources.map((source) => {
+  const labels = adaptArchiveViewModel(PATTERN_ROOM_DOMAIN_TEST_FIXTURE).sources.map((source) => {
     return source.sourceTypeLabel;
   });
 
@@ -90,7 +95,7 @@ void test("pattern-room phase 3B adapter maps source type labels for archive car
 });
 
 void test("pattern-room phase 13D archive source previews stay compact while notes stay intact", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const longNote =
     "Uzun kaynak gövdesi arşiv kartında tam olarak basılmamalı. Bu gövde snapshot ve local state içinde korunur; kart ise kısa bir önizleme gösterir. Böylece uzun kitap, makale veya arşiv metinleri paneli aşağı doğru aşırı büyütmez ve mevcut kaynak kartı davranışı korunur.\n\n" +
     "Bu kuyruk state içinde kalmalı fakat Archive kart metninde görünmemelidir.";
@@ -98,11 +103,14 @@ void test("pattern-room phase 13D archive source previews stay compact while not
 
   localState.addAuthoredSource("Uzun kaynak", "Arşiv", longNote);
 
-  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const viewModels = adaptDomainToViewModels(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  );
   const localSource = viewModels.sources.find((source) => {
     return source.id === "local-source-001";
   });
-  const domainSource = adaptArchiveViewModel(PATTERN_ROOM_DOMAIN_MOCK).sources[0];
+  const domainSource = adaptArchiveViewModel(PATTERN_ROOM_DOMAIN_TEST_FIXTURE).sources[0];
 
   assert.ok(localSource);
   assert.equal(localSource.note, longNote);
@@ -113,8 +121,8 @@ void test("pattern-room phase 13D archive source previews stay compact while not
 });
 
 void test("pattern-room phase 4B adapter applies local overlay without mutating domain mock data", () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   localState.sendToDesk("node-navigation-source");
   localState.pinSource("source-shadow-comparison", "evidence");
@@ -122,7 +130,10 @@ void test("pattern-room phase 4B adapter applies local overlay without mutating 
   localState.addToDebate("source-shadow-comparison");
   localState.addLocalNote("Yerel smoke notu");
 
-  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const viewModels = adaptDomainToViewModels(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  );
   const evidenceCategory = viewModels.boardCategories.find((category) => {
     return category.id === "board-evidence";
   });
@@ -148,7 +159,7 @@ void test("pattern-room phase 4B adapter applies local overlay without mutating 
     nextResearchSection.items.map((item) => item.body),
     ["Yerel smoke notu"]
   );
-  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
 });
 
 void test("pattern-room phase 4B adapter silently skips stale overlay ids", () => {
@@ -179,7 +190,7 @@ void test("pattern-room phase 4B adapter silently skips stale overlay ids", () =
     localAuthoredEdges: [],
   };
 
-  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, overlay);
+  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_TEST_FIXTURE, overlay);
   const flattenedBoardPins = viewModels.boardCategories.flatMap((category) => {
     return category.pins;
   });
@@ -204,8 +215,8 @@ void test("pattern-room phase 4B adapter silently skips stale overlay ids", () =
 });
 
 void test("pattern-room phase 5B local debate state machine stays overlay-only", () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   localState.prepareDebate();
   assert.equal(localState.getOverlay().debatePhase, "idle");
@@ -236,7 +247,10 @@ void test("pattern-room phase 5B local debate state machine stays overlay-only",
   localState.reflectDebateToReport();
   localState.reflectDebateToReport();
 
-  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const viewModels = adaptDomainToViewModels(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  );
   const nextResearchSection = viewModels.reportSummary.sections.find((section) => {
     return section.id === "report-next-research-notes";
   });
@@ -248,12 +262,12 @@ void test("pattern-room phase 5B local debate state machine stays overlay-only",
   assert.ok(nextResearchSection);
   assert.equal(nextResearchSection.items.length, 1);
   assert.match(nextResearchSection.items[0]?.body ?? "", /10\. Adam local oturum özeti/);
-  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
 });
 
 void test("pattern-room phase 7B local authoring appears in board, archive, desk, report, and debate views", () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   localState.addAuthoredClaim("Yerel iddia", "Kullanıcının local iddia notu.");
   localState.addAuthoredInspiration("Yerel ilham", "Analiz katmanına düşen fikir.");
@@ -266,7 +280,10 @@ void test("pattern-room phase 7B local authoring appears in board, archive, desk
   localState.addToDebate("local-evidence-001");
   localState.addToDebate("local-node-999");
 
-  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const viewModels = adaptDomainToViewModels(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  );
   const interpretationCategory = viewModels.boardCategories.find((category) => {
     return category.id === "board-interpretation";
   });
@@ -344,11 +361,11 @@ void test("pattern-room phase 7B local authoring appears in board, archive, desk
     viewModels.tenthManSession.references.map((reference) => reference.kind),
     ["node", "source", "evidence"]
   );
-  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
 });
 
 void test("pattern-room phase 13F local evidence can expose source labels in board and report", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   localState.addAuthoredSource("Kaynaklı arşiv", "Kullanıcı arşivi", "Tam kaynak metni.");
   localState.addAuthoredEvidence(
     "Kaynaklı kanıt",
@@ -361,7 +378,10 @@ void test("pattern-room phase 13F local evidence can expose source labels in boa
     }
   );
 
-  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const viewModels = adaptDomainToViewModels(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  );
   const evidenceCategory = viewModels.boardCategories.find((category) => {
     return category.id === "board-evidence";
   });
@@ -382,13 +402,16 @@ void test("pattern-room phase 13F local evidence can expose source labels in boa
 });
 
 void test("pattern-room phase 8B local authored connections appear only in the report", () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   localState.addAuthoredEdge("supports", "node-navigation-source", "source-shadow-comparison");
   localState.addAuthoredEdge("supports", "node-navigation-source", "node-navigation-source");
 
-  const viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const viewModels = adaptDomainToViewModels(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  );
   const flattenedBoardPins = viewModels.boardCategories.flatMap((category) => {
     return category.pins;
   });
@@ -412,18 +435,21 @@ void test("pattern-room phase 8B local authored connections appear only in the r
     ["Seyir defteri kaynagi → destekliyor → Golge karsilastirma gorseli"]
   );
   assert.equal(localState.getOverlay().localAuthoredEdges.length, 1);
-  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
 });
 
 void test("pattern-room phase 8B board adapter exposes connection options without edge pins", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   localState.addAuthoredClaim("Yerel bağlantı iddiası", "Yerel node seçeneği.");
   localState.addAuthoredSource("Yerel bağlantı kaynağı", "Yerel arşiv", "");
   localState.addAuthoredEvidence("Yerel bağlantı kanıtı", "Yerel alıntı", "");
   localState.addAuthoredEdge("questions", "local-node-001", "local-evidence-001");
 
-  const boardViewModel = adaptBoardViewModel(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+  const boardViewModel = adaptBoardViewModel(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  );
   const connectionOptionIds = boardViewModel.connectionOptions.map((option) => option.id);
   const flattenedBoardPins = boardViewModel.boardCategories.flatMap((category) => {
     return category.pins;
@@ -454,16 +480,16 @@ void test("pattern-room phase 3B adapter maps every source type label", () => {
 });
 
 void test("pattern-room phase 3B adapter maps interpretation layer to commentary tone", () => {
-  const interpretationCategory = adaptBoardViewModel(PATTERN_ROOM_DOMAIN_MOCK).boardCategories.find(
-    (category) => category.label === "Yorum"
-  );
+  const interpretationCategory = adaptBoardViewModel(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE
+  ).boardCategories.find((category) => category.label === "Yorum");
 
   assert.ok(interpretationCategory);
   assert.equal(interpretationCategory.tone, "commentary");
 });
 
 void test("pattern-room phase 3B adapter maps debate roles for the tenth-man panel", () => {
-  const labels = adaptTenthManViewModel(PATTERN_ROOM_DOMAIN_MOCK).tenthManSession.roles.map(
+  const labels = adaptTenthManViewModel(PATTERN_ROOM_DOMAIN_TEST_FIXTURE).tenthManSession.roles.map(
     (role) => role.label
   );
 
@@ -476,7 +502,7 @@ void test("pattern-room phase 3B adapter maps debate roles for the tenth-man pan
 });
 
 void test("pattern-room phase 3B report adapter creates cautious report sections", () => {
-  const reportSummary = adaptReportViewModel(PATTERN_ROOM_DOMAIN_MOCK).reportSummary;
+  const reportSummary = adaptReportViewModel(PATTERN_ROOM_DOMAIN_TEST_FIXTURE).reportSummary;
 
   assert.deepEqual(
     reportSummary.sections.map((section) => section.label),
@@ -496,8 +522,8 @@ void test("pattern-room phase 3B report adapter creates cautious report sections
 });
 
 void test("pattern-room phase 15A report adapter drafts local evidence without verdict language", () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   localState.addAuthoredSource("Uzun kaynak başlığı", "Kullanıcı arşivi", "Uzun kaynak gövdesi.");
   localState.addAuthoredClaim("Yerel iddia", "Kullanıcı tarafından eklenen iddia.");
@@ -538,7 +564,10 @@ void test("pattern-room phase 15A report adapter drafts local evidence without v
     ],
   };
 
-  const reportSummary = adaptReportViewModel(PATTERN_ROOM_DOMAIN_MOCK, overlay).reportSummary;
+  const reportSummary = adaptReportViewModel(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    overlay
+  ).reportSummary;
   const sourceSection = reportSummary.sections.find((section) => {
     return section.id === "report-source-summary";
   });
@@ -559,9 +588,9 @@ void test("pattern-room phase 15A report adapter drafts local evidence without v
   });
 
   assert.ok(sourceSection);
-  assert.equal(sourceSection.items[0]?.body, "Archive sayımı: 4 domain kaynak, 1 local kaynak.");
-  assert.equal(sourceSection.items[1]?.label, "Uzun kaynak başlığı");
-  assert.ok(sourceSection.items[1].meta.includes("Segment: 2"));
+  assert.equal(sourceSection.note, "Archive sayımı: 4 domain kaynak, 1 yerel kaynak.");
+  assert.equal(sourceSection.items[4]?.label, "Uzun kaynak başlığı");
+  assert.ok(sourceSection.items[4].meta.includes("Segment: 2"));
 
   assert.ok(evidenceSection);
   assert.equal(evidenceSection.items[0]?.label, "Kaynaklı kanıt");
@@ -597,5 +626,109 @@ void test("pattern-room phase 15A report adapter drafts local evidence without v
     reportCopy,
     /kesin cevap|kesin sonuç|kanıtlandı|doğrulandı|ispatlandı|AI sonucu|nihai rapor|provider|relay|final verdict|truth score/i
   );
-  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+  assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
+});
+
+void test("pattern-room truthful report metrics separate sources, references, turns, and summaries", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  localState.addAuthoredSource("Yerel kaynak A", "Kullanıcı arşivi", "Kaynak A notu.");
+  localState.addAuthoredSource("Yerel kaynak B", "Kullanıcı arşivi", "Kaynak B notu.");
+  localState.addToDebate("local-source-001");
+  localState.addToDebate("local-source-002");
+
+  const beforeSession = adaptReportViewModel(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  ).reportSummary;
+  const sourceSection = beforeSession.sections.find((section) => {
+    return section.id === "report-source-summary";
+  });
+  const tenthManSection = beforeSession.sections.find((section) => {
+    return section.id === "report-tenth-man-traces";
+  });
+
+  assert.ok(sourceSection);
+  assert.equal(sourceSection.items.length, PATTERN_ROOM_DOMAIN_TEST_FIXTURE.sources.length + 2);
+  assert.deepEqual(sourceSection.metrics, [
+    {
+      id: "sources",
+      label: "kaynak",
+      value: PATTERN_ROOM_DOMAIN_TEST_FIXTURE.sources.length + 2,
+    },
+  ]);
+  assert.doesNotMatch(
+    sourceSection.items.map((item) => item.label).join(" "),
+    /Archive kaynak sayımı/
+  );
+  assert.ok(tenthManSection);
+  assert.deepEqual(tenthManSection.metrics, [
+    { id: "references", label: "referans", value: 2 },
+    { id: "turns", label: "tur", value: 0 },
+    { id: "summary", label: "özet", value: 0 },
+  ]);
+  assert.equal(
+    tenthManSection.items.filter((item) => item.id.startsWith("report-tenth-reference-")).length,
+    2
+  );
+
+  localState.prepareDebate();
+  localState.assignDebateRoles();
+  localState.startDebate();
+  localState.advanceDebatePhase();
+  localState.advanceDebatePhase();
+  localState.advanceDebatePhase();
+  localState.advanceDebatePhase();
+  localState.completeDebate();
+
+  const completedSection = adaptReportViewModel(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  ).reportSummary.sections.find((section) => {
+    return section.id === "report-tenth-man-traces";
+  });
+  assert.ok(completedSection);
+  assert.deepEqual(completedSection.metrics, [
+    { id: "references", label: "referans", value: 2 },
+    { id: "turns", label: "tur", value: 5 },
+    { id: "summary", label: "özet", value: 1 },
+  ]);
+});
+
+void test("pattern-room local connection editing projects selectable graph details", () => {
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  localState.addAuthoredEdge(
+    "supports",
+    "node-navigation-source",
+    "source-shadow-comparison",
+    "İlk bağlantı notu."
+  );
+
+  assert.equal(
+    localState.updateLocalEdge("local-edge-001", "contradicts", "Güncel bağlantı notu."),
+    true
+  );
+  assert.equal(
+    localState.updateLocalEdge("local-edge-001", "contradicts", "Güncel bağlantı notu."),
+    false
+  );
+
+  const viewModels = adaptDomainToViewModels(
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE,
+    localState.getOverlay()
+  );
+  const localConnection = viewModels.connections.find((connection) => {
+    return connection.id === "local-edge-001";
+  });
+  const domainConnection = viewModels.connections.find((connection) => {
+    return connection.scope === "domain";
+  });
+
+  assert.ok(localConnection);
+  assert.equal(localConnection.edgeType, "contradicts");
+  assert.equal(localConnection.edgeTypeLabel, "çelişiyor");
+  assert.equal(localConnection.note, "Güncel bağlantı notu.");
+  assert.equal(localConnection.scope, "local");
+  assert.equal(localConnection.editable, true);
+  assert.ok(domainConnection);
+  assert.equal(domainConnection.editable, false);
 });

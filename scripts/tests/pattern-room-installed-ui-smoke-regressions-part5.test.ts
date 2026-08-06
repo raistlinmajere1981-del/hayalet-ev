@@ -1,3 +1,4 @@
+import { startPatternRoomInstalledUi } from "./pattern-room-installed-ui-smoke.helpers.ts";
 import type { FakeElement } from "./forge-room-ui-smoke.helpers.ts";
 import {
   assert,
@@ -10,16 +11,22 @@ import {
   resolve,
   test,
 } from "./forge-room-ui-smoke.helpers.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import { restoreFromSnapshot } from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
-import { PATTERN_ROOM_LOADED_EVENT, PATTERN_ROOM_SAVE_COMMAND } from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
+import {
+  PATTERN_ROOM_LOADED_EVENT,
+  PATTERN_ROOM_SAVE_COMMAND,
+} from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
 import {
   PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,
   PATTERN_ROOM_CASE_REVIEW_DISPATCH_FAILED_EVENT,
   PATTERN_ROOM_CASE_REVIEW_DISPATCHED_EVENT,
   type PatternRoomCaseReviewDispatchDraft,
 } from "../../rooms/pattern-room/shared/types/pattern-room-case-review-dispatch.ts";
-import { PATTERN_ROOM_SNAPSHOT_VERSION, type PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
+import {
+  PATTERN_ROOM_SNAPSHOT_VERSION,
+  type PatternRoomSessionSnapshot,
+} from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
 import type { PatternRoomUiRuntime } from "../../rooms/pattern-room/ui/pattern-room-ui-runtime.ts";
 
 type PatternRoomUiRuntimeModule = {
@@ -34,10 +41,7 @@ function assertTextIncludes(text: string, expectedValues: string[]): void {
   });
 }
 
-function openFocusedView(
-  app: PatternRoomFakeApp,
-  viewId: PatternFocusedViewId
-): void {
+function openFocusedView(app: PatternRoomFakeApp, viewId: PatternFocusedViewId): void {
   const hotspot = app.querySelector(`[data-pattern-hotspot='${viewId}']`);
   assert.ok(hotspot);
   fireEvent(hotspot, "click");
@@ -168,7 +172,8 @@ function clickBoardPin(app: PatternRoomFakeApp, pinId: string): void {
 }
 
 function setWindowConfirm(handler: (message: string) => boolean): void {
-  (globalThis as unknown as { window: { confirm: (message: string) => boolean } }).window.confirm = handler;
+  (globalThis as unknown as { window: { confirm: (message: string) => boolean } }).window.confirm =
+    handler;
 }
 
 function readLatestSavePayload(
@@ -197,15 +202,13 @@ function assertSnapshotLocalStateUnchanged(
 }
 
 void test("pattern-room installed UI phase 12G-A removes confirmed local sources and cascades source-linked report links", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const confirmMessages: string[] = [];
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?remove-accept=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -295,14 +298,14 @@ void test("pattern-room installed UI phase 12G-A removes confirmed local sources
     assert.equal(savedSnapshot.overlay.localAuthoredEdges.length, 0);
     assert.deepEqual(savedSnapshot.overlay.pinnedSourceIds, []);
     assert.deepEqual(savedSnapshot.overlay.sourcePinnedLayerById, {});
-    const restored = restoreFromSnapshot(savedSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
+    const restored = restoreFromSnapshot(savedSnapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
     assert.ok(restored);
     assert.deepEqual(restored.overlay.localAuthoredSources, []);
 
     returnToOverview(environment.app);
     openFocusedView(environment.app, "report");
     assertTextIncludes(readTreeText(environment.app), ["Henüz yerel bağlantı yok."]);
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
   } finally {
     environment.restore();
     await installedCopy.cleanup();
@@ -310,7 +313,7 @@ void test("pattern-room installed UI phase 12G-A removes confirmed local sources
 });
 
 void test("pattern-room installed UI phase 12G-C removes selected local board nodes and evidence only", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const confirmMessages: string[] = [];
@@ -318,9 +321,7 @@ void test("pattern-room installed UI phase 12G-C removes selected local board no
     "Bu yerel pano öğesi odadan kaldırılacak. Bağlı yerel bağlantılar da temizlenir. Devam edilsin mi?";
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?board-item-remove=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -440,7 +441,7 @@ void test("pattern-room installed UI phase 12G-C removes selected local board no
     );
     const evidenceRemovedRestored = restoreFromSnapshot(
       evidenceRemovedSnapshot,
-      PATTERN_ROOM_DOMAIN_MOCK
+      PATTERN_ROOM_DOMAIN_TEST_FIXTURE
     );
     assert.ok(evidenceRemovedRestored);
     assert.deepEqual(evidenceRemovedRestored.overlay.localAuthoredEvidence, []);
@@ -479,7 +480,10 @@ void test("pattern-room installed UI phase 12G-C removes selected local board no
     assert.deepEqual(nodeRemovedSnapshot.overlay.localAuthoredEvidence, []);
     assert.deepEqual(nodeRemovedSnapshot.overlay.localAuthoredEdges, []);
     assert.equal(nodeRemovedSnapshot.overlay.debateReferenceIds.includes("local-node-001"), false);
-    const nodeRemovedRestored = restoreFromSnapshot(nodeRemovedSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
+    const nodeRemovedRestored = restoreFromSnapshot(
+      nodeRemovedSnapshot,
+      PATTERN_ROOM_DOMAIN_TEST_FIXTURE
+    );
     assert.ok(nodeRemovedRestored);
     assert.deepEqual(nodeRemovedRestored.overlay.localAuthoredNodes, []);
     assert.deepEqual(nodeRemovedRestored.overlay.localAuthoredEvidence, []);
@@ -491,7 +495,7 @@ void test("pattern-room installed UI phase 12G-C removes selected local board no
     assert.doesNotMatch(nodeRemovedDebateText, /Faz 12G-C kanıt/);
 
     assert.deepEqual(confirmMessages, [removeConfirm, removeConfirm, removeConfirm]);
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
   } finally {
     environment.restore();
     await installedCopy.cleanup();
@@ -499,15 +503,13 @@ void test("pattern-room installed UI phase 12G-C removes selected local board no
 });
 
 void test("pattern-room installed UI phase 12G-B resets the local session without touching domain data", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const confirmMessages: string[] = [];
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?local-reset=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -586,7 +588,7 @@ void test("pattern-room installed UI phase 12G-B resets the local session withou
       "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?",
     ]);
     assert.ok(environment.app.querySelector("[data-pattern-archive-source='local-source-001']"));
-    assert.equal(environment.pendingTimerCount(), 0);
+    assert.equal(environment.pendingTimerCount(), 1);
     assert.deepEqual(environment.sentCommands, [
       PATTERN_ROOM_SAVE_COMMAND,
       PATTERN_ROOM_SAVE_COMMAND,
@@ -660,7 +662,7 @@ void test("pattern-room installed UI phase 12G-B resets the local session withou
       "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?",
       "Tüm yerel kaynaklar, notlar ve geçici tartışma izleri temizlenecek. Hazır konu verileri korunur. Devam edilsin mi?",
     ]);
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
   } finally {
     environment.restore();
     await installedCopy.cleanup();
@@ -672,9 +674,7 @@ void test("pattern-room installed UI prepares a local AI2 case review dry-run pr
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?case-review-preview=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     openFocusedView(environment.app, "tenth-man");
     assertTextIncludes(readTreeText(environment.app), [
@@ -708,7 +708,10 @@ void test("pattern-room installed UI prepares a local AI2 case review dry-run pr
 
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
-    assert.equal((environment.sentCommands as string[]).includes("pattern:case-review-dispatch"), false);
+    assert.equal(
+      (environment.sentCommands as string[]).includes("pattern:case-review-dispatch"),
+      false
+    );
 
     const previewSource = readFileSync(
       resolve("rooms/pattern-room/ui/pattern-case-review-preview.ts"),
@@ -737,7 +740,7 @@ void test("pattern-room installed UI dispatches the AI2 case review only after p
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const confirmMessages: string[] = [];
   const confirmMessage = "AI2 rolü için vaka incelemesi gönderilecek. Devam edilsin mi?";
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   let confirmResult = false;
 
   try {
@@ -830,7 +833,7 @@ void test("pattern-room installed UI dispatches the AI2 case review only after p
     environment.runPendingTimers(2000);
     assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND]);
     assert.equal((environment.sentCommands as string[]).includes(PATTERN_ROOM_SAVE_COMMAND), false);
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
     runtime.dispose();
   } finally {
     environment.restore();
@@ -843,9 +846,7 @@ void test("pattern-room installed UI runs phase 5B local tenth-man debate flow",
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?debate=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     openFocusedView(environment.app, "tenth-man");
     const disabledPrepare = environment.app.querySelector("[data-pattern-prepare-debate='true']");

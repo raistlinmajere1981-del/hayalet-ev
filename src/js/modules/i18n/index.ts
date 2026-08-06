@@ -122,8 +122,7 @@ class AppI18nManager {
   async listLanguages(): Promise<LanguageDescriptor[]> {
     const api = window.electronAPI;
     const i18nListLanguages = api?.["i18nListLanguages"] as
-      | (() => Promise<LanguageDescriptor[]>)
-      | undefined;
+      (() => Promise<LanguageDescriptor[]>) | undefined;
     if (typeof i18nListLanguages !== "function") {
       return this.availableLanguages;
     }
@@ -144,8 +143,7 @@ class AppI18nManager {
     const normalized = normalizeAppLanguage(locale);
     const api = window.electronAPI;
     const i18nLoadLanguage = api?.["i18nLoadLanguage"] as
-      | ((locale: string) => Promise<LoadedLanguagePack | null>)
-      | undefined;
+      ((locale: string) => Promise<LoadedLanguagePack | null>) | undefined;
     const previousLocale = this.currentLocale;
     const defaultPackPromise = this.ensureDefaultPack();
     const fallbackLocale = resolveSelectorLanguage(normalized);

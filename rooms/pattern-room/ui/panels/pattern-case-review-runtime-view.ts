@@ -10,14 +10,28 @@ import type {
   PatternRoomCaseReviewSessionStatus,
 } from "../../shared/types/pattern-room-case-review-session.js";
 import type {
+  PatternRoomEvidenceCandidate,
+  PatternRoomEvidenceCandidatePromotionInput,
+} from "../../shared/types/pattern-room-evidence-candidate.js";
+import type {
   PatternCaseReviewTextKey,
   PatternCaseReviewTranslator,
 } from "../pattern-case-review-i18n.js";
-import { createActionButton, createElement } from "./pattern-panel-utils.js";
+import {
+  createActionButton,
+  createElement,
+  createEmptyState,
+  type PatternEmptyStateKind,
+} from "./pattern-panel-utils.js";
 
 export type PatternCaseReviewApplyFeedback = {
   readonly tone: "success" | "error";
   readonly message: string;
+};
+
+export type PatternCaseReviewEvidenceSourceOption = {
+  readonly id: string;
+  readonly label: string;
 };
 
 export type PatternCaseReviewRuntimePanelState = {
@@ -25,11 +39,16 @@ export type PatternCaseReviewRuntimePanelState = {
   readonly history: readonly PatternRoomCaseReviewHistoryEntry[];
   readonly applyFeedback: PatternCaseReviewApplyFeedback | null;
   readonly applyDisabled: boolean;
+  readonly evidenceCandidates: readonly PatternRoomEvidenceCandidate[];
+  readonly evidenceCandidateSources: readonly PatternCaseReviewEvidenceSourceOption[];
+  readonly evidenceCandidateFeedback: PatternCaseReviewApplyFeedback | null;
   readonly text: PatternCaseReviewTranslator;
   readonly onCancel: () => void;
   readonly onRetry: () => void;
   readonly onResend: () => void;
   readonly onApply: (mode: PatternRoomCaseReviewApplyMode) => void;
+  readonly onPromoteEvidenceCandidate: (input: PatternRoomEvidenceCandidatePromotionInput) => void;
+  readonly onRemoveEvidenceCandidate: (candidateId: string) => void;
 };
 
 const STATUS_TEXT_KEYS: Readonly<
@@ -68,6 +87,20 @@ const SECTION_TEXT_KEYS: Readonly<
   confidenceNotes: "sections.confidenceNotes",
 };
 
+function resolveSessionEmptyKind(
+  session: PatternRoomCaseReviewSession | null
+): PatternEmptyStateKind {
+  if (
+    session === null ||
+    session.status === "preview" ||
+    session.status === "dispatching" ||
+    session.status === "waiting-reply"
+  ) {
+    return "pending";
+  }
+  return "complete-empty";
+}
+
 function createTextList(items: readonly string[], className?: string): HTMLUListElement | null {
   if (items.length === 0) {
     return null;
@@ -97,7 +130,7 @@ function appendResultSection(
   if (list !== null) {
     card.append(list);
   } else {
-    card.append(createElement("p", "pattern-room-empty-state", section.rawText));
+    card.append(createElement("p", "pattern-room-case-review-section-raw", section.rawText));
   }
   container.append(card);
 }
@@ -229,7 +262,9 @@ function createHistory(
   section.append(createElement("h3", undefined, text("history.title")));
 
   if (history.length === 0) {
-    section.append(createElement("p", "pattern-room-empty-state", text("messages.historyEmpty")));
+    section.append(
+      createEmptyState(text("messages.historyEmpty"), "data-empty", { compact: true })
+    );
     return section;
   }
 
@@ -342,7 +377,10 @@ function createRawResponse(
 
   if (session?.reply === null || session?.reply === undefined) {
     response.append(
-      createElement("p", "pattern-room-empty-state", text("workspace.responseEmpty"))
+      createEmptyState(text("workspace.responseEmpty"), resolveSessionEmptyKind(session), {
+        compact: true,
+        live: true,
+      })
     );
     return response;
   }
@@ -356,6 +394,105 @@ function createRawResponse(
   raw.dataset["patternCaseReviewReplyText"] = "true";
   response.append(meta, raw);
   return response;
+}
+
+function createEvidenceCandidateWorkspace(state: PatternCaseReviewRuntimePanelState): HTMLElement {
+  const workspace = createElement(
+    "section",
+    "pattern-room-case-review-workspace-card pattern-room-evidence-candidate-workspace"
+  );
+  workspace.dataset["patternEvidenceCandidateWorkspace"] = "true";
+  workspace.append(
+    createElement("span", "pattern-room-context-inspector-label", state.text("candidates.title")),
+    createElement("p", undefined, state.text("candidates.intro"))
+  );
+
+  if (state.evidenceCandidates.length === 0) {
+    workspace.append(
+      createEmptyState(state.text("candidates.empty"), "complete-empty", { compact: true })
+    );
+  } else {
+    const list = createElement("div", "pattern-room-evidence-candidate-list");
+    state.evidenceCandidates.forEach((candidate) => {
+      const card = createElement("article", "pattern-room-evidence-candidate-card");
+      card.dataset["patternEvidenceCandidate"] = candidate.id;
+      card.append(
+        createElement("span", "pattern-room-list-eyebrow", state.text("candidates.badge")),
+        createElement("p", "pattern-room-evidence-candidate-text", candidate.text),
+        createElement(
+          "code",
+          "pattern-room-evidence-candidate-provenance",
+          state.text("candidates.provenance", {
+            session: candidate.reviewSessionId ?? "—",
+            suggestion: candidate.suggestionId,
+          })
+        )
+      );
+
+      const sourceField = createElement("label", "pattern-room-evidence-candidate-field");
+      sourceField.append(createElement("span", undefined, state.text("candidates.sourceLabel")));
+      const sourceSelect = createElement("select");
+      sourceSelect.dataset["patternEvidenceCandidateSource"] = candidate.id;
+      const placeholder = createElement(
+        "option",
+        undefined,
+        state.text("candidates.sourcePlaceholder")
+      );
+      placeholder.value = "";
+      sourceSelect.append(placeholder);
+      state.evidenceCandidateSources.forEach((sourceOption) => {
+        const option = createElement("option", undefined, sourceOption.label);
+        option.value = sourceOption.id;
+        sourceSelect.append(option);
+      });
+      sourceField.append(sourceSelect);
+
+      const excerptField = createElement("label", "pattern-room-evidence-candidate-field");
+      excerptField.append(createElement("span", undefined, state.text("candidates.excerptLabel")));
+      const excerpt = createElement("textarea");
+      excerpt.dataset["patternEvidenceCandidateExcerpt"] = candidate.id;
+      excerpt.rows = 4;
+      excerpt.placeholder = state.text("candidates.excerptPlaceholder");
+      excerptField.append(excerpt);
+
+      const actions = createElement("div", "pattern-room-evidence-candidate-actions");
+      const promote = createActionButton(state.text("candidates.promote"), () => {
+        state.onPromoteEvidenceCandidate({
+          candidateId: candidate.id,
+          sourceId: sourceSelect.value,
+          excerpt: excerpt.value,
+        });
+      });
+      promote.dataset["patternEvidenceCandidatePromote"] = candidate.id;
+      const updatePromoteState = (): void => {
+        promote.disabled = sourceSelect.value.trim() === "" || excerpt.value.trim() === "";
+      };
+      sourceSelect.addEventListener("change", updatePromoteState);
+      excerpt.addEventListener("input", updatePromoteState);
+      updatePromoteState();
+
+      const discard = createActionButton(state.text("candidates.discard"), () => {
+        state.onRemoveEvidenceCandidate(candidate.id);
+      });
+      discard.dataset["patternEvidenceCandidateDiscard"] = candidate.id;
+      actions.append(promote, discard);
+      card.append(sourceField, excerptField, actions);
+      list.append(card);
+    });
+    workspace.append(list);
+  }
+
+  if (state.evidenceCandidateFeedback !== null) {
+    const feedback = createElement(
+      "p",
+      `pattern-room-case-review-apply-feedback ${state.evidenceCandidateFeedback.tone}`,
+      state.evidenceCandidateFeedback.message
+    );
+    feedback.dataset["patternEvidenceCandidateFeedback"] = state.evidenceCandidateFeedback.tone;
+    workspace.append(feedback);
+  }
+
+  return workspace;
 }
 
 function createApplyWorkspace(state: PatternCaseReviewRuntimePanelState): HTMLElement {
@@ -374,7 +511,11 @@ function createApplyWorkspace(state: PatternCaseReviewRuntimePanelState): HTMLEl
 
   const result = state.session?.result ?? null;
   if (result === null) {
-    apply.append(createElement("p", "pattern-room-empty-state", state.text("messages.noResult")));
+    apply.append(
+      createEmptyState(state.text("messages.noResult"), resolveSessionEmptyKind(state.session), {
+        compact: true,
+      })
+    );
   } else {
     const previewMetrics = createElement("div", "pattern-room-case-review-workspace-metrics");
     previewMetrics.append(
@@ -414,13 +555,17 @@ function createApplyWorkspace(state: PatternCaseReviewRuntimePanelState): HTMLEl
   const summary = state.session?.applySummary ?? null;
   if (summary === null) {
     applyResult.append(
-      createElement("p", "pattern-room-empty-state", state.text("workspace.applyEmpty"))
+      createEmptyState(state.text("workspace.applyEmpty"), "complete-empty", { compact: true })
     );
   } else {
     const resultMetrics = createElement("div", "pattern-room-case-review-workspace-metrics");
     resultMetrics.append(
       createReviewMetric(state.text("workspace.boardNotes"), summary.boardNotesAdded),
       createReviewMetric(state.text("sections.evidence"), summary.evidenceAdded),
+      createReviewMetric(
+        state.text("workspace.evidenceCandidates"),
+        summary.evidenceCandidatesAdded ?? 0
+      ),
       createReviewMetric(state.text("result.openQuestions"), summary.openQuestionsAdded),
       createReviewMetric(state.text("result.suggestedConnections"), summary.connectionsAdded),
       createReviewMetric(state.text("workspace.skipped"), summary.skipped)
@@ -482,10 +627,13 @@ export function createPatternCaseReviewRuntimeView(
     parsed.append(createReviewResult(state.session.result, state.text));
   } else {
     parsed.append(
-      createElement("p", "pattern-room-empty-state", state.text("messages.resultEmpty"))
+      createEmptyState(state.text("messages.resultEmpty"), resolveSessionEmptyKind(state.session), {
+        compact: true,
+        live: true,
+      })
     );
   }
-  workspace.append(parsed, createApplyWorkspace(state));
+  workspace.append(parsed, createApplyWorkspace(state), createEvidenceCandidateWorkspace(state));
 
   const history = createHistory(state.history, state.text);
   history.classList.add("pattern-room-case-review-workspace-card");

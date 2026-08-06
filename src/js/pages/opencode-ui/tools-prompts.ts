@@ -102,8 +102,7 @@ function clearLegacyQuickPrompts(): void {
 async function readQuickPromptsFromStore(): Promise<QuickPromptRecord[]> {
   const api = window.electronAPI;
   const quickPromptsRead = api?.["opencodeUiQuickPromptsRead"] as
-    | (() => Promise<QuickPromptStoreResponse>)
-    | undefined;
+    (() => Promise<QuickPromptStoreResponse>) | undefined;
   if (api == null || typeof quickPromptsRead !== "function") {
     return [];
   }
@@ -135,8 +134,7 @@ async function writeQuickPromptsToStore(
   const normalizedPrompts = normalizeQuickPromptRecords(prompts);
   const api = window.electronAPI;
   const quickPromptsWrite = api?.["opencodeUiQuickPromptsWrite"] as
-    | ((prompts: QuickPromptRecord[]) => Promise<QuickPromptStoreResponse>)
-    | undefined;
+    ((prompts: QuickPromptRecord[]) => Promise<QuickPromptStoreResponse>) | undefined;
   if (api == null || typeof quickPromptsWrite !== "function") {
     throw new Error(t("prompt.saveError"));
   }

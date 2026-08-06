@@ -966,8 +966,7 @@ export class AccountPanel {
 
       try {
         const dbDeleteAccount = electronApi["dbDeleteAccount"] as
-          | ((opts: { accountId: string }) => Promise<{ success?: boolean }>)
-          | undefined;
+          ((opts: { accountId: string }) => Promise<{ success?: boolean }>) | undefined;
         if (dbDeleteAccount) {
           await dbDeleteAccount({ accountId: account.id });
         }

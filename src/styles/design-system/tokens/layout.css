@@ -14,6 +14,9 @@
   --layout-room-runtime-webview-min-h: 24rem;
   --layout-room-section-min-h: 26rem;
   --layout-room-list-min-h: 12rem;
+  --layout-room-manager-card-col-identity-min-w: 11rem;
+  --layout-room-manager-card-col-topic-min-w: 14rem;
+
   --layout-archives-bottom-h: clamp(240px, 36vh, 320px);
   --layout-toast-min-w: min(28rem, calc(100vw - var(--space-8)));
   --layout-splash-shell-w: min(var(--splash-max-w), calc(100vw - var(--space-12)));

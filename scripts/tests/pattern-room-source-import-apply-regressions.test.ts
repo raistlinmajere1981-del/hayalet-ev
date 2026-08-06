@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
 import {
   createSnapshot,
@@ -101,7 +101,7 @@ function createRichImportResult(): SourceImportResult {
 }
 
 void test("pattern-room phase 11C applies SourceImportResult drafts to local overlay", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   let notificationCount = 0;
   const unsubscribe = localState.subscribe(() => {
     notificationCount += 1;
@@ -166,14 +166,14 @@ void test("pattern-room phase 11C applies SourceImportResult drafts to local ove
     },
   ]);
   assert.equal("importBatchId" in (overlay.localAuthoredSources[0] ?? {}), false);
-  assert.equal("importBatchId" in (overlay.localAuthoredEvidence[0] ), false);
+  assert.equal("importBatchId" in overlay.localAuthoredEvidence[0], false);
   assert.equal("importBatchId" in (overlay.localAuthoredNodes[0] ?? {}), false);
   assert.equal("importBatchId" in (overlay.localAuthoredEdges[0] ?? {}), false);
   assert.equal("importBatchId" in (overlay.localNotes[0] ?? {}), false);
 });
 
 void test("pattern-room phase 14B-1 applies source segments to local source records only", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   const summary = localState.applySourceImportResult(
     createSourceImportResult({
@@ -227,7 +227,7 @@ void test("pattern-room phase 14B-1 applies source segments to local source reco
 });
 
 void test("pattern-room phase 12F-B applies optional importBatchId to imported overlay entries", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
 
   const summary = localState.applySourceImportResult(createRichImportResult(), {
     importBatchId: "source-package-123",
@@ -267,13 +267,13 @@ void test("pattern-room phase 12F-B applies optional importBatchId to imported o
 });
 
 void test("pattern-room phase 12F-B preserves importBatchId through snapshot round-trip", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   localState.applySourceImportResult(createRichImportResult(), {
     importBatchId: "source-package-round-trip",
   });
 
   const snapshot = createSnapshot(localState, "board");
-  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   assert.ok(restored);
 
   assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
@@ -300,7 +300,7 @@ void test("pattern-room phase 12F-B preserves importBatchId through snapshot rou
 });
 
 void test("pattern-room phase 12D applies user text producer import results through local state", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   let notificationCount = 0;
   const unsubscribe = localState.subscribe(() => {
     notificationCount += 1;
@@ -343,7 +343,7 @@ void test("pattern-room phase 12D applies user text producer import results thro
 });
 
 void test("pattern-room phase 11C continues local ids from restored max indexes", () => {
-  const seedState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const seedState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const restoredSnapshot = restoreFromSnapshot(
     {
       ...createSnapshot(seedState, "board"),
@@ -400,12 +400,12 @@ void test("pattern-room phase 11C continues local ids from restored max indexes"
         noteIndex: 0,
       },
     },
-    PATTERN_ROOM_DOMAIN_MOCK
+    PATTERN_ROOM_DOMAIN_TEST_FIXTURE
   );
   assert.ok(restoredSnapshot);
   assert.equal(restoredSnapshot.guards.noteIndex, 7);
 
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   localState.restoreOverlay(restoredSnapshot.overlay, restoredSnapshot.guards);
 
   const summary = localState.applySourceImportResult(createRichImportResult());
@@ -422,7 +422,7 @@ void test("pattern-room phase 11C continues local ids from restored max indexes"
 });
 
 void test("pattern-room phase 11C direct overlay restore continues note ids from max index", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   localState.restoreOverlay(
     {
       ...localState.getOverlay(),
@@ -485,7 +485,7 @@ void test("pattern-room phase 11C direct overlay restore continues note ids from
 });
 
 void test("pattern-room phase 11C drops unmapped import edges without throwing", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const result = createSourceImportResult({
     nodes: [
       {
@@ -517,7 +517,7 @@ void test("pattern-room phase 11C drops unmapped import edges without throwing",
 });
 
 void test("pattern-room phase 11C skips simple duplicates and drops dependent edges", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   localState.addAuthoredSource("Duplicate source", "manual:duplicate-source", "");
   localState.addAuthoredEvidence("Duplicate evidence", "Duplicate excerpt.", "");
   localState.addAuthoredClaim("Duplicate node", "Duplicate node content.");
@@ -599,14 +599,14 @@ void test("pattern-room phase 11C skips simple duplicates and drops dependent ed
 });
 
 void test("pattern-room phase 11C preserves imported overlay entries through snapshot restore", () => {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   localState.applySourceImportResult(createRichImportResult());
 
   const snapshot = createSnapshot(localState, "board");
-  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+  const restored = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   assert.ok(restored);
 
-  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const roundTripState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   roundTripState.restoreOverlay(restored.overlay, restored.guards);
 
   assert.equal(snapshot.schemaVersion, PATTERN_ROOM_SNAPSHOT_VERSION);
@@ -614,7 +614,7 @@ void test("pattern-room phase 11C preserves imported overlay entries through sna
 });
 
 void test("pattern-room phase 11C keeps overlay shape, snapshot version, and import apply purity", async () => {
-  const overlay = createLocalState(PATTERN_ROOM_DOMAIN_MOCK).getOverlay();
+  const overlay = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE).getOverlay();
   assert.deepEqual(Object.keys(overlay).sort(), [
     "debateLocalTurns",
     "debateLocalVerdict",
@@ -626,6 +626,7 @@ void test("pattern-room phase 11C keeps overlay shape, snapshot version, and imp
     "localAuthoredEvidence",
     "localAuthoredNodes",
     "localAuthoredSources",
+    "localEvidenceCandidates",
     "localNotes",
     "pinnedSourceIds",
     "sourcePinnedLayerById",

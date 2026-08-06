@@ -36,7 +36,8 @@ async function importRoomHostModule(targetPath: string): Promise<PatternRoomHost
 
 function assertPatternRoomHostModule(moduleNamespace: PatternRoomHostModule): void {
   assert.equal(typeof moduleNamespace.default?.activate, "function");
-  const activation = (moduleNamespace.default as NonNullable<typeof moduleNamespace.default>).activate!({});
+  const activation = (moduleNamespace.default as NonNullable<typeof moduleNamespace.default>)
+    .activate!({});
   assert.deepEqual(Object.keys(activation.commands).sort(), [
     PATTERN_ROOM_CASE_REVIEW_CONTROL_COMMAND,
     PATTERN_ROOM_CASE_REVIEW_DISPATCH_COMMAND,

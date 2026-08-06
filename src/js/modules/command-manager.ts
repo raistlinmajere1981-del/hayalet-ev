@@ -273,8 +273,7 @@ class CommandManagerClass {
 
   markDone(id: string): boolean {
     const mover = window.electronAPI?.["commandMove"] as
-      | ((id: string, status: string) => Promise<void>)
-      | undefined;
+      ((id: string, status: string) => Promise<void>) | undefined;
     if (typeof mover === "function") {
       mover(id, "done").catch(() => {});
     }
@@ -284,8 +283,7 @@ class CommandManagerClass {
 
   markFailed(id: string, reason = ""): boolean {
     const mover = window.electronAPI?.["commandMove"] as
-      | ((id: string, status: string) => Promise<void>)
-      | undefined;
+      ((id: string, status: string) => Promise<void>) | undefined;
     if (typeof mover === "function") {
       mover(id, "failed").catch(() => {});
     }
@@ -297,8 +295,7 @@ class CommandManagerClass {
 
   persist(job: CommandJob): void {
     const writer = window.electronAPI?.["commandWrite"] as
-      | ((job: Record<string, unknown>) => Promise<void>)
-      | undefined;
+      ((job: Record<string, unknown>) => Promise<void>) | undefined;
     if (typeof writer === "function") {
       const safeJob = {
         ...job,

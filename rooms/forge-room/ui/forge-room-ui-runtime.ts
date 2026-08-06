@@ -1556,10 +1556,7 @@ export function createForgeRoomUiRuntime() {
 
   function readInputValue(elementId: string): string {
     const input = documentRef.getElementById(elementId) as
-      | HTMLInputElement
-      | HTMLTextAreaElement
-      | HTMLSelectElement
-      | null;
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
     return input?.value ?? "";
   }
 

@@ -74,11 +74,7 @@ export interface SlotSettings {
 }
 
 export type RemoteUserHandshakeState =
-  | "invite_sent"
-  | "handshake_pending"
-  | "active"
-  | "rejected"
-  | "error";
+  "invite_sent" | "handshake_pending" | "active" | "rejected" | "error";
 
 export type Us1SlotConnectionState = "disconnected" | "connected";
 export type Us1CommunicationSystem = "mail" | "relay-e2ee";

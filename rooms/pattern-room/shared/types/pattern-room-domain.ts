@@ -177,3 +177,13 @@ export type ReportTrace = {
   payload: Record<string, unknown>;
   occurredAt: string;
 };
+
+export type PatternRoomDomainData = {
+  topic: Topic;
+  nodes: PatternNode[];
+  edges: PatternEdge[];
+  sources: SourceItem[];
+  evidence: EvidenceItem[];
+  debateSession: DebateSession;
+  reportTrace: ReportTrace[];
+};

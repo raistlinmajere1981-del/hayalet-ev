@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -248,10 +248,32 @@ export function rebuildBetterSqlite3Runtime(target) {
   const normalizedTarget = normalizeTarget(target)
 
   if (normalizedTarget === "electron") {
-    runLocalNodeCommand(
-      [join(projectRoot, "node_modules", "@electron", "rebuild", "lib", "cli.js"), "-f", "-w", "better-sqlite3"],
-      "Electron better-sqlite3 rebuild"
-    )
+    // better-sqlite3 v13 ships prebuilds for Node.js; electron-rebuild skips
+    // building when it detects prebuilds on disk. Temporarily hide them so
+    // node-gyp actually compiles the Electron native addon.
+    const prebuildsDir = join(betterSqlite3Root, "prebuilds")
+    const prebuildsBackup = prebuildsDir + ".bak"
+    let movedPrebuilds = false
+    if (existsSync(prebuildsDir)) {
+      renameSync(prebuildsDir, prebuildsBackup)
+      movedPrebuilds = true
+    }
+    try {
+      runLocalNodeCommand(
+        [
+          join(projectRoot, "node_modules", "@electron", "rebuild", "lib", "cli.js"),
+          "-f",
+          "-w",
+          "better-sqlite3",
+          "--build-from-source",
+        ],
+        "Electron better-sqlite3 rebuild"
+      )
+    } finally {
+      if (movedPrebuilds && existsSync(prebuildsBackup)) {
+        renameSync(prebuildsBackup, prebuildsDir)
+      }
+    }
   } else {
     runLocalNpmCommand(["rebuild", "better-sqlite3"], "Node better-sqlite3 rebuild")
   }

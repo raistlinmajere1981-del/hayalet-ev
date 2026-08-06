@@ -8,10 +8,7 @@ import {
 
 const MAX_SEEN_REPLY_KEYS = 256;
 
-function cloneAndFreezeRuntimeValue(
-  value: unknown,
-  seen: WeakMap<object, unknown>
-): unknown {
+function cloneAndFreezeRuntimeValue(value: unknown, seen: WeakMap<object, unknown>): unknown {
   if (value === null || typeof value !== "object") {
     return value;
   }
@@ -39,10 +36,9 @@ function cloneAndFreezeRuntimeValue(
 function freezeMetadata(
   metadata: Readonly<Record<string, unknown>> | undefined
 ): Readonly<Record<string, unknown>> {
-  return cloneAndFreezeRuntimeValue(
-    metadata ?? {},
-    new WeakMap<object, unknown>()
-  ) as Readonly<Record<string, unknown>>;
+  return cloneAndFreezeRuntimeValue(metadata ?? {}, new WeakMap<object, unknown>()) as Readonly<
+    Record<string, unknown>
+  >;
 }
 
 function createHistoryEntry(
@@ -226,9 +222,7 @@ function reduceDispatchStarted(
       ...active.metadata,
       operation: event.operation,
       attempt,
-      ...(event.parentSessionId === undefined
-        ? {}
-        : { parentSessionId: event.parentSessionId }),
+      ...(event.parentSessionId === undefined ? {} : { parentSessionId: event.parentSessionId }),
     }),
     lastEvent: event.type,
   };
@@ -237,10 +231,7 @@ function reduceDispatchStarted(
 
 function reduceDispatchProgress(
   state: PatternRoomCaseReviewRuntimeState,
-  event: Extract<
-    PatternRoomCaseReviewEvent,
-    { readonly type: "dispatch-sent" | "waiting-reply" }
-  >
+  event: Extract<PatternRoomCaseReviewEvent, { readonly type: "dispatch-sent" | "waiting-reply" }>
 ): PatternRoomCaseReviewRuntimeState {
   if (!matchesActiveSession(state, event)) {
     return state;
@@ -289,8 +280,7 @@ function reduceReplyReceived(
     active.reply !== null ||
     isTerminalStatus(active.status) ||
     state.seenReplyKeys.includes(replyKey) ||
-    (event.reply.clientRequestId !== null &&
-      event.reply.clientRequestId !== event.requestId)
+    (event.reply.clientRequestId !== null && event.reply.clientRequestId !== event.requestId)
   ) {
     return state;
   }
@@ -384,10 +374,7 @@ function reduceCancelled(
     ...active,
     status: "cancelled",
     cancelledAt: event.occurredAt,
-    error:
-      reason === ""
-        ? null
-        : Object.freeze({ code: "cancelled", message: reason }),
+    error: reason === "" ? null : Object.freeze({ code: "cancelled", message: reason }),
     lastEvent: event.type,
   };
   return createState(state, session, event.occurredAt);

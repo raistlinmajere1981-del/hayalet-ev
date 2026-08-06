@@ -390,11 +390,9 @@ class ConversationListManagerClass {
       const us1AccountId = AppState.getUs1ArchiveAccountId();
 
       const listSessionsFn = electronApi["opencodeUiFsListSessions"] as
-        | ((dbPath?: string) => Promise<{ success?: boolean; sessions?: unknown[] }>)
-        | undefined;
+        ((dbPath?: string) => Promise<{ success?: boolean; sessions?: unknown[] }>) | undefined;
       const getConversationsFn = electronApi["dbGetConversations"] as
-        | ((payload: Record<string, unknown>) => Promise<{ data?: unknown[] }>)
-        | undefined;
+        ((payload: Record<string, unknown>) => Promise<{ data?: unknown[] }>) | undefined;
 
       const ai0Result =
         ai0Account?.id !== undefined && ai0Account.id !== "" && typeof listSessionsFn === "function"
@@ -666,8 +664,7 @@ class ConversationListManagerClass {
       return;
     }
     const syncMessagesFn = electronApi["us1SyncMessages"] as
-      | ((params?: Record<string, unknown>) => Promise<unknown>)
-      | undefined;
+      ((params?: Record<string, unknown>) => Promise<unknown>) | undefined;
     if (typeof syncMessagesFn !== "function") {
       return;
     }

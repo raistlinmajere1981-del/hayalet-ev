@@ -1,6 +1,8 @@
 import type { PatternViewId } from "../types/pattern-room.js";
 import {
   PATTERN_ROOM_SNAPSHOT_VERSION,
+  type PatternRoomCanvasMode,
+  type PatternRoomPresentationState,
   type PatternRoomSessionSnapshot,
 } from "../types/pattern-room-snapshot.js";
 import {
@@ -22,16 +24,19 @@ import type {
   PatternRoomLocalOverlay,
   PatternRoomLocalState,
 } from "./pattern-room-local-state.js";
+import type { PatternRoomEvidenceCandidate } from "../types/pattern-room-evidence-candidate.js";
 
 type SnapshotRecord = Record<string, unknown>;
 
 export type PatternRoomSnapshotRestoreResult = {
   overlay: PatternRoomLocalOverlay;
   activeView: PatternViewId;
+  presentation?: PatternRoomPresentationState;
   guards: PatternRoomLocalGuards;
 };
 
 const PATTERN_VIEW_IDS = ["overview", "board", "desk", "archive", "tenth-man", "report"] as const;
+const PATTERN_CANVAS_MODES = ["board", "graph"] as const;
 
 const DEBATE_LOCAL_PHASES = [
   "idle",
@@ -149,6 +154,12 @@ function getMaxLocalIdIndex(values: readonly { id: string }[], prefix: string): 
 
 function isPatternViewId(value: unknown): value is PatternViewId {
   return typeof value === "string" && PATTERN_VIEW_IDS.some((viewId) => viewId === value);
+}
+
+function isPatternCanvasMode(value: unknown): value is PatternRoomCanvasMode {
+  return (
+    typeof value === "string" && PATTERN_CANVAS_MODES.some((canvasMode) => canvasMode === value)
+  );
 }
 
 function isDebateLocalPhase(value: unknown): value is DebateLocalPhase {
@@ -375,6 +386,47 @@ function parseLocalAuthoredEvidence(value: unknown): LocalAuthoredEvidence[] {
   return evidenceItems;
 }
 
+function parseLocalEvidenceCandidates(value: unknown): PatternRoomEvidenceCandidate[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const candidates: PatternRoomEvidenceCandidate[] = [];
+  for (const candidate of value) {
+    const reviewSessionId = isRecord(candidate) ? candidate["reviewSessionId"] : undefined;
+    if (
+      !isRecord(candidate) ||
+      !hasLocalIdFormat(candidate["id"], "local-evidence-candidate") ||
+      typeof candidate["suggestionId"] !== "string" ||
+      typeof candidate["text"] !== "string" ||
+      (reviewSessionId !== null && typeof reviewSessionId !== "string") ||
+      candidate["origin"] !== "ai-case-review" ||
+      candidate["sourceSection"] !== "evidence" ||
+      candidate["status"] !== "candidate" ||
+      typeof candidate["createdAt"] !== "string" ||
+      candidate["suggestionId"].trim() === "" ||
+      candidate["text"].trim() === ""
+    ) {
+      continue;
+    }
+
+    candidates.push({
+      id: candidate["id"],
+      suggestionId: candidate["suggestionId"].trim(),
+      text: candidate["text"].trim(),
+      reviewSessionId:
+        typeof reviewSessionId === "string" && reviewSessionId.trim() !== ""
+          ? reviewSessionId.trim()
+          : null,
+      origin: "ai-case-review",
+      sourceSection: "evidence",
+      status: "candidate",
+      createdAt: candidate["createdAt"],
+    });
+  }
+  return candidates;
+}
+
 function parseLocalAuthoredEdges(value: unknown): LocalAuthoredEdge[] {
   if (!Array.isArray(value)) {
     return [];
@@ -463,7 +515,14 @@ function parseOverlay(value: unknown): PatternRoomLocalOverlay | null {
   const localAuthoredNodes = parseLocalAuthoredNodes(value["localAuthoredNodes"]);
   const localAuthoredSources = parseLocalAuthoredSources(value["localAuthoredSources"]);
   const localAuthoredEvidence = parseLocalAuthoredEvidence(value["localAuthoredEvidence"]);
+  const localEvidenceCandidates = parseLocalEvidenceCandidates(value["localEvidenceCandidates"]);
   const localAuthoredEdges = parseLocalAuthoredEdges(value["localAuthoredEdges"]);
+  const caseLabel =
+    typeof value["caseLabel"] === "string" && value["caseLabel"].trim() !== ""
+      ? value["caseLabel"].trim()
+      : undefined;
+  const researchQuestion =
+    typeof value["researchQuestion"] === "string" ? value["researchQuestion"].trim() : undefined;
 
   if (
     !isStringArray(value["deskNodeIds"]) ||
@@ -480,6 +539,8 @@ function parseOverlay(value: unknown): PatternRoomLocalOverlay | null {
   }
 
   return {
+    ...(caseLabel === undefined ? {} : { caseLabel }),
+    ...(researchQuestion === undefined ? {} : { researchQuestion }),
     deskNodeIds: value["deskNodeIds"],
     pinnedSourceIds: value["pinnedSourceIds"],
     sourcePinnedLayerById,
@@ -492,7 +553,38 @@ function parseOverlay(value: unknown): PatternRoomLocalOverlay | null {
     localAuthoredNodes,
     localAuthoredSources,
     localAuthoredEvidence,
+    localEvidenceCandidates,
     localAuthoredEdges,
+  };
+}
+
+function parsePresentation(value: unknown): PatternRoomPresentationState | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value) || !isPatternCanvasMode(value["canvasMode"])) {
+    return null;
+  }
+
+  const selectedBoardItemId = value["selectedBoardItemId"];
+  const selectedConnectionId = value["selectedConnectionId"];
+  if (
+    (selectedBoardItemId !== null && typeof selectedBoardItemId !== "string") ||
+    (selectedConnectionId !== null && typeof selectedConnectionId !== "string")
+  ) {
+    return null;
+  }
+
+  return {
+    canvasMode: value["canvasMode"],
+    selectedBoardItemId:
+      selectedBoardItemId === null || selectedBoardItemId.trim() === ""
+        ? null
+        : selectedBoardItemId.trim(),
+    selectedConnectionId:
+      selectedConnectionId === null || selectedConnectionId.trim() === ""
+        ? null
+        : selectedConnectionId.trim(),
   };
 }
 
@@ -527,8 +619,9 @@ export function parsePatternRoomSessionSnapshot(value: unknown): PatternRoomSess
   }
 
   const overlay = parseOverlay(value["overlay"]);
+  const presentation = parsePresentation(value["presentation"]);
   const guards = parseGuards(value["guards"]);
-  if (overlay === null || guards === null) {
+  if (overlay === null || presentation === null || guards === null) {
     return null;
   }
 
@@ -541,6 +634,7 @@ export function parsePatternRoomSessionSnapshot(value: unknown): PatternRoomSess
     updatedAt: value["updatedAt"],
     overlay,
     activeView: value["activeView"],
+    ...(presentation === undefined ? {} : { presentation }),
     guards,
   };
 }
@@ -648,6 +742,9 @@ function restoreOverlaySnapshot(
   const localAuthoredNodes = filterUniqueRecordsById(snapshotOverlay.localAuthoredNodes);
   const localAuthoredSources = filterUniqueRecordsById(snapshotOverlay.localAuthoredSources);
   const localAuthoredEvidence = filterUniqueRecordsById(snapshotOverlay.localAuthoredEvidence);
+  const localEvidenceCandidates = filterUniqueRecordsById(
+    snapshotOverlay.localEvidenceCandidates ?? []
+  );
   const localNodeIds = new Set(
     localAuthoredNodes.map((node) => {
       return node.id;
@@ -697,6 +794,15 @@ function restoreOverlaySnapshot(
   );
 
   return {
+    ...(snapshotOverlay.caseLabel === undefined
+      ? {}
+      : {
+          caseLabel:
+            snapshotOverlay.caseLabel.trim() || domainMock.topic.label?.trim() || "Yeni Araştırma",
+        }),
+    ...(snapshotOverlay.researchQuestion === undefined
+      ? {}
+      : { researchQuestion: snapshotOverlay.researchQuestion.trim() }),
     deskNodeIds: filterUniqueIds(snapshotOverlay.deskNodeIds, hasNode),
     pinnedSourceIds,
     sourcePinnedLayerById,
@@ -709,13 +815,15 @@ function restoreOverlaySnapshot(
     localAuthoredNodes,
     localAuthoredSources,
     localAuthoredEvidence,
+    localEvidenceCandidates,
     localAuthoredEdges,
   };
 }
 
 export function createSnapshot(
   localState: PatternRoomLocalState,
-  activeView: PatternViewId
+  activeView: PatternViewId,
+  presentation?: PatternRoomPresentationState
 ): PatternRoomSessionSnapshot {
   const createdAt = new Date().toISOString();
   const topicId = localState.getTopicId();
@@ -729,6 +837,7 @@ export function createSnapshot(
     updatedAt: createdAt,
     overlay: localState.getOverlay(),
     activeView,
+    ...(presentation === undefined ? {} : { presentation: { ...presentation } }),
     guards: localState.getGuards(),
   };
 }
@@ -751,6 +860,9 @@ export function restoreFromSnapshot(
   return {
     overlay,
     activeView: parsedSnapshot.activeView,
+    ...(parsedSnapshot.presentation === undefined
+      ? {}
+      : { presentation: { ...parsedSnapshot.presentation } }),
     guards: healGuards(parsedSnapshot.guards, overlay),
   };
 }

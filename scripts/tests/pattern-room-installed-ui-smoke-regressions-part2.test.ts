@@ -1,3 +1,4 @@
+import { startPatternRoomInstalledUi } from "./pattern-room-installed-ui-smoke.helpers.ts";
 import type { FakeElement } from "./forge-room-ui-smoke.helpers.ts";
 import {
   assert,
@@ -7,9 +8,9 @@ import {
   pathToFileURL,
   readTreeText,
   resolve,
-  test
+  test,
 } from "./forge-room-ui-smoke.helpers.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import {
   PATTERN_ROOM_LOADED_EVENT,
   PATTERN_ROOM_SAVE_COMMAND,
@@ -30,10 +31,7 @@ function assertTextIncludes(text: string, expectedValues: string[]): void {
   });
 }
 
-function openFocusedView(
-  app: PatternRoomFakeApp,
-  viewId: PatternFocusedViewId
-): void {
+function openFocusedView(app: PatternRoomFakeApp, viewId: PatternFocusedViewId): void {
   const hotspot = app.querySelector(`[data-pattern-hotspot='${viewId}']`);
   assert.ok(hotspot);
   fireEvent(hotspot, "click");
@@ -118,9 +116,7 @@ void test("pattern-room installed UI coalesces fast autosave mutations into one 
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-coalesce=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -154,9 +150,7 @@ void test("pattern-room installed UI flushes a pending autosave before unload", 
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-flush=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -248,9 +242,7 @@ void test("pattern-room installed UI handles save-failed host events without sta
   const warnings: string[] = [];
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?save-failed=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     console.warn = (...args: unknown[]): void => {
       warnings.push(args.map(String).join(" "));
@@ -285,9 +277,24 @@ void test("pattern-room installed UI supports phase 4B local interactions withou
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?local=${Date.now()}`
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+
+    const identityForm = environment.app.querySelector("[data-pattern-case-identity-form='true']");
+    const identityName = environment.app.querySelector("[data-pattern-case-identity-name='true']");
+    const identityQuestion = environment.app.querySelector(
+      "[data-pattern-case-identity-question='true']"
     );
+    assert.ok(identityForm);
+    assert.ok(identityName);
+    assert.ok(identityQuestion);
+    identityName.value = "Kuzey Koridoru Sensör Olayı";
+    identityQuestion.value = "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?";
+    submitForm(identityForm);
+    assertTextIncludes(readTreeText(environment.app), [
+      "Kuzey Koridoru Sensör Olayı",
+      "Elektrik kesintisi sırasında koridorda fiziksel hareket oldu mu?",
+      "Vaka kimliği güncellendi.",
+    ]);
 
     openFocusedView(environment.app, "board");
     const boardNode = environment.app.querySelector(
@@ -295,8 +302,16 @@ void test("pattern-room installed UI supports phase 4B local interactions withou
     );
     assert.ok(boardNode);
     fireEvent(boardNode, "click");
-    assertTextIncludes(readTreeText(environment.app), [
-      "Pano detayı",
+    const investigationInspector = environment.app.querySelector(
+      "[data-pattern-workspace-inspector='true']"
+    );
+    assert.ok(investigationInspector);
+    assert.equal(investigationInspector.dataset["patternWorkspaceInspectorView"], "board");
+    assert.ok(
+      investigationInspector.querySelector("[data-pattern-investigation-inspector-mode='board']")
+    );
+    assertTextIncludes(readTreeText(investigationInspector), [
+      "Tuval detayı",
       "Seyir defteri kaynagi",
       "Uzun rota gozlemlerini temsil eden arka plan kaynak karti.",
     ]);
@@ -306,12 +321,28 @@ void test("pattern-room installed UI supports phase 4B local interactions withou
     );
     assert.ok(sendToDesk);
     fireEvent(sendToDesk, "click");
+    const deskFeedback = environment.app.querySelector("[data-pattern-workspace-feedback='true']");
+    assert.ok(deskFeedback);
+    assert.equal(deskFeedback.dataset["patternWorkspaceFeedbackTone"], "success");
+    assertTextIncludes(readTreeText(deskFeedback), ["Öğe çalışma masasına gönderildi."]);
 
     const addBoardNodeToDebate = environment.app.querySelector(
       "[data-pattern-add-node-debate='node-navigation-source']"
     );
     assert.ok(addBoardNodeToDebate);
     fireEvent(addBoardNodeToDebate, "click");
+    const reviewFeedback = environment.app.querySelector(
+      "[data-pattern-workspace-feedback='true']"
+    );
+    assert.ok(reviewFeedback);
+    assert.equal(reviewFeedback.dataset["patternWorkspaceFeedbackTone"], "success");
+    assertTextIncludes(readTreeText(reviewFeedback), ["Öğe 10. Adam referanslarına eklendi."]);
+    const dismissFeedback = reviewFeedback.querySelector(
+      "[data-pattern-workspace-feedback-dismiss='true']"
+    );
+    assert.ok(dismissFeedback);
+    fireEvent(dismissFeedback, "click");
+    assert.equal(environment.app.querySelector("[data-pattern-workspace-feedback='true']"), null);
 
     returnToOverview(environment.app);
     openFocusedView(environment.app, "desk");
@@ -380,14 +411,12 @@ void test("pattern-room installed UI supports phase 4B local interactions withou
 });
 
 void test("pattern-room installed UI phase 7C board node authoring form submits claims and guards blanks", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?author-node=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     openFocusedView(environment.app, "board");
 
@@ -445,7 +474,7 @@ void test("pattern-room installed UI phase 7C board node authoring form submits 
       "DOM submit ile eklenen local iddia.",
     ]);
 
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
   } finally {
@@ -455,14 +484,12 @@ void test("pattern-room installed UI phase 7C board node authoring form submits 
 });
 
 void test("pattern-room installed UI phase 7C board evidence form reaches board and report", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?author-evidence=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     openFocusedView(environment.app, "board");
 
@@ -498,7 +525,7 @@ void test("pattern-room installed UI phase 7C board evidence form reaches board 
       "DOM submit ile eklenen local alıntı.",
     ]);
 
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
   } finally {
@@ -506,4 +533,3 @@ void test("pattern-room installed UI phase 7C board evidence form reaches board 
     await installedCopy.cleanup();
   }
 });
-

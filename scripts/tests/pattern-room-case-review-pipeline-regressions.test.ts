@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import "./pattern-room-case-review-parser-formats-regressions.test.ts";
+
 import {
   applyPatternRoomCaseReview,
   previewPatternRoomCaseReviewApply,
@@ -170,7 +172,10 @@ void test("pattern-room parser creates readonly typed sections and exact connect
   const result = parsePatternRoomCaseReviewResult(STRUCTURED_REPLY);
 
   assert.equal(result.fallbackUsed, false);
-  assert.equal(result.sections.observation.items[0]?.text, "Kamera saat kaydı ile not arasında fark var.");
+  assert.equal(
+    result.sections.observation.items[0]?.text,
+    "Kamera saat kaydı ile not arasında fark var."
+  );
   assert.equal(result.sections.analysis.items.length, 1);
   assert.equal(result.suggestedConnections.length, 2);
   assert.deepEqual(result.suggestedConnections[0], {
@@ -182,6 +187,15 @@ void test("pattern-room parser creates readonly typed sections and exact connect
       "[connection] source=source-001; type=supports; target=node-001; note=Exact id bağlantısı",
   });
   assert.deepEqual(result.openQuestions, ["Ham dosyanın metadata değeri nedir?"]);
+  assert.equal(
+    result.suggestions.filter((suggestion) => suggestion.kind === "evidence_candidate").length,
+    1
+  );
+  assert.equal(
+    result.suggestions.filter((suggestion) => suggestion.kind === "connection_candidate").length,
+    2
+  );
+  assert.equal(Object.isFrozen(result.suggestions), true);
   assert.deepEqual(result.missingEvidence, ["Kamera zaman dilimi bilinmiyor."]);
   assert.deepEqual(result.confidence, ["Orta güven; kaynak metadata eksik."]);
   assert.equal(result.summary, "Kamera saat kaydı ile not arasında fark var.");
@@ -326,16 +340,9 @@ void test("pattern-room immutable lifecycle completes the required event order",
   assert.equal(applied.activeSession?.status, "applied");
   assert.equal(applied.activeSession?.appliedAt, timestamp(8));
   assert.deepEqual(
-    [
-      preview,
-      started,
-      sent,
-      waiting,
-      received,
-      parsedState,
-      ready,
-      applied,
-    ].map((state) => state.activeSession?.lastEvent),
+    [preview, started, sent, waiting, received, parsedState, ready, applied].map(
+      (state) => state.activeSession?.lastEvent
+    ),
     [
       "preview-created",
       "dispatch-started",
@@ -351,9 +358,7 @@ void test("pattern-room immutable lifecycle completes the required event order",
   assert.equal(Object.isFrozen(applied.activeSession), true);
   assert.equal(Object.isFrozen(applied.activeSession?.applySummary), true);
   assert.equal(Object.isFrozen(applied.activeSession?.applySummary?.warnings), true);
-  assert.deepEqual(applied.activeSession?.applySummary?.warnings, [
-    "Exact-id bağlantısı atlandı.",
-  ]);
+  assert.deepEqual(applied.activeSession?.applySummary?.warnings, ["Exact-id bağlantısı atlandı."]);
   assert.equal(Object.isFrozen(applied.history), true);
   assert.equal(preview.activeSession?.requestId, null);
   assert.notEqual(ready, parsedState);
@@ -567,6 +572,7 @@ void test("pattern-room controlled apply is additive and respects all three mode
   const calls = {
     notes: [] as string[],
     evidence: [] as string[],
+    candidates: [] as string[],
     questions: [] as string[],
     edges: [] as string[],
   };
@@ -577,15 +583,26 @@ void test("pattern-room controlled apply is additive and respects all three mode
     addAuthoredUncertainty(label: string, content: string): void {
       calls.questions.push(`${label}:${content}`);
     },
-    addAuthoredEvidence(
-      label: string,
-      excerpt: string,
-      interpretation?: string
-    ): void {
+    addAuthoredEvidence(label: string, excerpt: string, interpretation?: string): void {
       calls.evidence.push(`${label}:${excerpt}:${interpretation ?? ""}`);
     },
+    addEvidenceCandidate(
+      suggestionId: string,
+      text: string,
+      reviewSessionId?: string | null
+    ): boolean {
+      calls.candidates.push(`${suggestionId}:${text}:${reviewSessionId ?? ""}`);
+      return true;
+    },
     addAuthoredEdge(
-      edgeType: "supports" | "contradicts" | "references" | "derived_from" | "inspired_by" | "questions" | "needs_review",
+      edgeType:
+        | "supports"
+        | "contradicts"
+        | "references"
+        | "derived_from"
+        | "inspired_by"
+        | "questions"
+        | "needs_review",
       sourceId: string,
       targetId: string
     ): void {
@@ -606,15 +623,23 @@ void test("pattern-room controlled apply is additive and respects all three mode
   calls.questions.length = 0;
   const evidenceOnly = applyPatternRoomCaseReview(result, target, {
     mode: "evidence-suggestions-only",
+    sessionId: "session-candidate",
   });
-  assert.equal(evidenceOnly.evidenceAdded, 1);
-  assert.equal(calls.evidence.length, 1);
+  assert.equal(evidenceOnly.evidenceAdded, 0);
+  assert.equal(evidenceOnly.evidenceCandidatesAdded, 1);
+  assert.equal(evidenceOnly.skipped, 0);
+  assert.equal(evidenceOnly.warnings.length, 0);
+  assert.equal(calls.candidates.length, 1);
+  assert.match(calls.candidates[0] ?? "", /session-candidate$/);
+  assert.equal(calls.evidence.length, 0);
   assert.equal(calls.notes.length, 0);
 
   calls.evidence.length = 0;
+  calls.candidates.length = 0;
   calls.questions.length = 0;
   const preview = previewPatternRoomCaseReviewApply(result, target, { mode: "all" });
   assert.equal(preview.boardNotesAdded, 3);
+  assert.equal(preview.evidenceCandidatesAdded, 1);
   assert.equal(calls.notes.length, 0);
   assert.equal(calls.evidence.length, 0);
   assert.equal(calls.questions.length, 0);
@@ -622,13 +647,15 @@ void test("pattern-room controlled apply is additive and respects all three mode
 
   const all = applyPatternRoomCaseReview(result, target, { mode: "all" });
   assert.equal(all.boardNotesAdded, 3);
-  assert.equal(all.evidenceAdded, 1);
+  assert.equal(all.evidenceAdded, 0);
+  assert.equal(all.evidenceCandidatesAdded, 1);
   assert.equal(all.openQuestionsAdded, 1);
   assert.equal(all.uncertaintyAdded, 2);
   assert.equal(all.connectionsAdded, 1);
   assert.equal(all.skipped, 1);
   assert.equal(all.warnings.length, 1);
   assert.equal(calls.notes.length, 3);
+  assert.equal(calls.candidates.length, 1);
   assert.match(calls.notes[0] ?? "", /^AI Review Observation 1:/);
   assert.equal(calls.edges[0], "source-001:supports:node-001");
   assert.deepEqual(all, preview);
@@ -655,6 +682,6 @@ void test("pattern-room controlled apply is additive and respects all three mode
       },
     },
   });
-  assert.match(calls.evidence[0] ?? "", /^AI İncelemesi Kanıt Önerisi 1:/);
-  assert.match(calls.evidence[0] ?? "", /bağımsız olarak doğrulanmamıştır/);
+  assert.equal(calls.evidence.length, 0);
+  assert.equal(calls.candidates.length, 2);
 });

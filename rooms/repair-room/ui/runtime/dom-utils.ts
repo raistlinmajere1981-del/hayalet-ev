@@ -1,9 +1,5 @@
 export type RepairMutableStyleProperty =
-  | "gridTemplateColumns"
-  | "left"
-  | "width"
-  | "transform"
-  | "transformOrigin";
+  "gridTemplateColumns" | "left" | "width" | "transform" | "transformOrigin";
 
 export function setClassNameIfChanged(element: HTMLElement, className: string): void {
   if (element.className !== className) element.className = className;

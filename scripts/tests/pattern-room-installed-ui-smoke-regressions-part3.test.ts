@@ -1,19 +1,24 @@
+import { startPatternRoomInstalledUi } from "./pattern-room-installed-ui-smoke.helpers.ts";
 import type { FakeElement } from "./forge-room-ui-smoke.helpers.ts";
 import {
   assert,
   createMinimalForgeUiEnvironment,
   createRoomInstalledCopy,
   fireEvent,
-  pathToFileURL,
   readTreeText,
-  resolve,
-  test
+  test,
 } from "./forge-room-ui-smoke.helpers.ts";
 import { adaptDomainToViewModels } from "../../rooms/pattern-room/shared/adapters/pattern-room-view-adapters.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import { restoreFromSnapshot } from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
-import { PATTERN_ROOM_LOADED_EVENT, PATTERN_ROOM_SAVE_COMMAND } from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
-import { PATTERN_ROOM_SNAPSHOT_VERSION, type PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
+import {
+  PATTERN_ROOM_LOADED_EVENT,
+  PATTERN_ROOM_SAVE_COMMAND,
+} from "../../rooms/pattern-room/shared/types/pattern-room-persistence.ts";
+import {
+  PATTERN_ROOM_SNAPSHOT_VERSION,
+  type PatternRoomSessionSnapshot,
+} from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
 import { createArchivePanel } from "../../rooms/pattern-room/ui/panels/pattern-archive-panel.ts";
 import type { PatternPanelActions } from "../../rooms/pattern-room/shared/types/pattern-room.ts";
 
@@ -26,10 +31,7 @@ function assertTextIncludes(text: string, expectedValues: string[]): void {
   });
 }
 
-function openFocusedView(
-  app: PatternRoomFakeApp,
-  viewId: PatternFocusedViewId
-): void {
+function openFocusedView(app: PatternRoomFakeApp, viewId: PatternFocusedViewId): void {
   const hotspot = app.querySelector(`[data-pattern-hotspot='${viewId}']`);
   assert.ok(hotspot);
   fireEvent(hotspot, "click");
@@ -139,14 +141,12 @@ function readLatestSavePayload(
 }
 
 void test("pattern-room installed UI phase 8B board connection form reaches report only", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?author-edge=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     openFocusedView(environment.app, "board");
 
@@ -191,7 +191,7 @@ void test("pattern-room installed UI phase 8B board connection form reaches repo
       "Golge karsilastirma gorseli",
     ]);
 
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
   } finally {
@@ -201,14 +201,12 @@ void test("pattern-room installed UI phase 8B board connection form reaches repo
 });
 
 void test("pattern-room installed UI phase 7C archive source authoring form submits local sources", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?author-source=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     openFocusedView(environment.app, "archive");
 
@@ -233,7 +231,7 @@ void test("pattern-room installed UI phase 7C archive source authoring form subm
       "Archive formundan eklenen local kaynak.",
     ]);
 
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
   } finally {
@@ -243,14 +241,12 @@ void test("pattern-room installed UI phase 7C archive source authoring form subm
 });
 
 void test("pattern-room installed UI phase 12D imports pasted user text through the source producer", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?user-text-source=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -323,7 +319,7 @@ void test("pattern-room installed UI phase 12D imports pasted user text through 
     assert.equal(environment.pendingTimerCount(), 0);
     assert.deepEqual(environment.sentCommands, [PATTERN_ROOM_SAVE_COMMAND]);
 
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
   } finally {
     environment.restore();
     await installedCopy.cleanup();
@@ -335,9 +331,7 @@ void test("pattern-room installed UI phase 12D derives a source title from untit
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?user-text-title=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     openFocusedView(environment.app, "archive");
     submitUserTextSource(
@@ -364,9 +358,7 @@ void test("pattern-room installed UI phase 12D rejects blank pasted user text", 
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?user-text-empty=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -380,7 +372,7 @@ void test("pattern-room installed UI phase 12D rejects blank pasted user text", 
       environment.app.querySelector("[data-pattern-archive-source='local-source-001']"),
       null
     );
-    assert.equal(environment.pendingTimerCount(), 0);
+    assert.equal(environment.pendingTimerCount(), 1);
     assert.deepEqual(environment.sentCommands, []);
     assert.deepEqual(environment.sentEvents, []);
   } finally {
@@ -390,7 +382,7 @@ void test("pattern-room installed UI phase 12D rejects blank pasted user text", 
 });
 
 void test("pattern-room installed UI phase 13C imports long text as a source only", async () => {
-  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK);
+  const beforeDomain = JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const longText =
@@ -402,9 +394,7 @@ void test("pattern-room installed UI phase 13C imports long text as a source onl
   const expectedExcerpt = `${longText.replace(/\s+/g, " ").trim().slice(0, 240).trimEnd()}…`;
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?long-text-source=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -524,7 +514,7 @@ void test("pattern-room installed UI phase 13C imports long text as a source onl
     assert.deepEqual(savedSnapshot.overlay.localAuthoredEdges, []);
     assert.deepEqual(savedSnapshot.overlay.pinnedSourceIds, []);
     assert.deepEqual(savedSnapshot.overlay.sourcePinnedLayerById, {});
-    const restored = restoreFromSnapshot(savedSnapshot, PATTERN_ROOM_DOMAIN_MOCK);
+    const restored = restoreFromSnapshot(savedSnapshot, PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
     assert.ok(restored);
     assert.equal(restored.overlay.localAuthoredSources[0]?.label, "Faz 13C uzun metin");
 
@@ -545,7 +535,7 @@ void test("pattern-room installed UI phase 13C imports long text as a source onl
       "Henüz yerel kanıt notu yok.",
       "Henüz yerel bağlantı yok.",
     ]);
-    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_MOCK), beforeDomain);
+    assert.equal(JSON.stringify(PATTERN_ROOM_DOMAIN_TEST_FIXTURE), beforeDomain);
   } finally {
     environment.restore();
     await installedCopy.cleanup();
@@ -556,7 +546,7 @@ void test("pattern-room archive source card renders compact preview metadata whe
   const environment = createMinimalForgeUiEnvironment();
 
   try {
-    const data = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK);
+    const data = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
     data.sources = [
       {
         id: "local-source-meta",
@@ -592,3 +582,76 @@ void test("pattern-room archive source card renders compact preview metadata whe
   }
 });
 
+void test("pattern-room graph connection selection edits local edge details", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+    openFocusedView(environment.app, "board");
+
+    const edgeForm = environment.app.querySelector("[data-pattern-author-edge-form='true']");
+    const sourceSelect = environment.app.querySelector("[data-pattern-author-edge-source='true']");
+    const edgeTypeSelect = environment.app.querySelector("[data-pattern-author-edge-type='true']");
+    const targetSelect = environment.app.querySelector("[data-pattern-author-edge-target='true']");
+    const noteInput = environment.app.querySelector("[data-pattern-author-edge-note='true']");
+    assert.ok(edgeForm);
+    assert.ok(sourceSelect);
+    assert.ok(edgeTypeSelect);
+    assert.ok(targetSelect);
+    assert.ok(noteInput);
+    installFormReset(edgeForm);
+    sourceSelect.value = "node-navigation-source";
+    edgeTypeSelect.value = "supports";
+    targetSelect.value = "source-shadow-comparison";
+    noteInput.value = "İlk ilişki notu.";
+    submitForm(edgeForm);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "desk");
+    const connectionButton = environment.app.querySelector(
+      "[data-pattern-connection-edge='local-edge-001']"
+    );
+    assert.ok(connectionButton);
+    fireEvent(connectionButton, "click");
+    assert.equal(connectionButton.getAttribute("aria-pressed"), "true");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Bağlantı detayı",
+      "Seyir defteri kaynagi",
+      "destekliyor",
+      "Golge karsilastirma gorseli",
+    ]);
+
+    const editForm = environment.app.querySelector(
+      "[data-pattern-edit-edge-form='local-edge-001']"
+    );
+    const editType = environment.app.querySelector(
+      "[data-pattern-edit-edge-type='local-edge-001']"
+    );
+    const editNote = environment.app.querySelector(
+      "[data-pattern-edit-edge-note='local-edge-001']"
+    );
+    assert.ok(editForm);
+    assert.ok(editType);
+    assert.ok(editNote);
+    editType.value = "contradicts";
+    editNote.value = "Güncellenmiş ilişki notu.";
+    submitForm(editForm);
+
+    assertTextIncludes(readTreeText(environment.app), [
+      "Yerel bağlantı güncellendi.",
+      "çelişiyor",
+    ]);
+
+    returnToOverview(environment.app);
+    openFocusedView(environment.app, "report");
+    assertTextIncludes(readTreeText(environment.app), [
+      "Yerel Bağlantılar",
+      "çelişiyor",
+      "Not: Güncellenmiş ilişki notu.",
+    ]);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});

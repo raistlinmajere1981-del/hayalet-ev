@@ -160,13 +160,7 @@ type AnalyzeSceneViewId = "table";
 type AnalyzeAmbientStatus = CaptureAmbientStatusPayload["status"] | "idle";
 type AnalyzeAmbientFeedbackKind = "success" | "error" | "warning" | "info";
 type AnalyzeAmbientFeedbackTone =
-  | "started"
-  | "wake"
-  | "capturing"
-  | "transcribing"
-  | "success"
-  | "stopped"
-  | "failed";
+  "started" | "wake" | "capturing" | "transcribing" | "success" | "stopped" | "failed";
 
 interface AnalyzeAmbientDictationIntent {
   explicit: boolean;

@@ -4,7 +4,7 @@ import {
   type PatternRoomCaseReviewApplyOptions,
 } from "../shared/adapters/pattern-room-case-review-apply.js";
 import { adaptDomainToViewModels } from "../shared/adapters/pattern-room-view-adapters.js";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../shared/data/pattern-room-domain.mock.js";
+import { PATTERN_ROOM_DOMAIN } from "../shared/data/pattern-room-domain.js";
 import {
   createPatternRoomCaseReviewRuntimeState,
   isPatternRoomCaseReviewRuntimeState,
@@ -44,7 +44,7 @@ import type {
   PatternLongTextSourceImportInput,
   PatternLongTextSourceImportStatus,
   PatternPanelActions,
-  PatternRoomMockData,
+  PatternRoomWorkspaceModel,
   PatternUserTextSourceImportInput,
   PatternUserTextSourceImportStatus,
   PatternViewId,
@@ -57,23 +57,36 @@ import {
   type PastedTextInput,
   type SourceProducerOrchestrationResult,
 } from "../shared/source-producers/index.js";
-import type { PatternRoomSessionSnapshot } from "../shared/types/pattern-room-snapshot.js";
+import type {
+  PatternRoomPresentationState,
+  PatternRoomSessionSnapshot,
+} from "../shared/types/pattern-room-snapshot.js";
+import type { PatternRoomEvidenceCandidatePromotionInput } from "../shared/types/pattern-room-evidence-candidate.js";
 import { createArchivePanel } from "./panels/pattern-archive-panel.js";
-import { createBoardPanel } from "./panels/pattern-board-panel.js";
-import { createDeskPanel } from "./panels/pattern-desk-panel.js";
+import { createPatternCaseIdentityInspector } from "./panels/pattern-case-identity-inspector.js";
+import { createInvestigationInspectorContent } from "./panels/pattern-investigation-inspector.js";
+import {
+  createInvestigationPanel,
+  type PatternInvestigationCanvasMode,
+} from "./panels/pattern-investigation-panel.js";
 import { createOverviewPanel } from "./panels/pattern-overview-panel.js";
 import { createReportPanel } from "./panels/pattern-report-panel.js";
 import { createTenthManPanel } from "./panels/pattern-tenth-man-panel.js";
 import type { PatternCaseReviewApplyFeedback } from "./panels/pattern-case-review-runtime-view.js";
 import { createPatternCaseReviewTranslator } from "./pattern-case-review-i18n.js";
-import { createPatternWorkspaceTranslator } from "./pattern-room-workspace-i18n.js";
+import {
+  createPatternWorkspaceTranslator,
+  type PatternWorkspaceTextKey,
+} from "./pattern-room-workspace-i18n.js";
 import {
   createPatternWorkspaceShell,
+  type PatternWorkspaceFeedbackTone,
   type PatternWorkspaceSection,
   type PatternWorkspaceShell,
 } from "./panels/pattern-workspace-shell.js";
 import {
   PATTERN_CASE_REVIEW_DEFAULT_ROLE_SLOT,
+  createPatternCaseReviewPreviewDraft,
   type PatternCaseReviewDispatchStatus,
   type PatternCaseReviewPreviewDraft,
 } from "./pattern-case-review-preview.js";
@@ -182,22 +195,31 @@ function resolveRoot(): HTMLElement {
   return root;
 }
 
-export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
+export type PatternRoomUiRuntimeOptions = {
+  readonly domain?: typeof PATTERN_ROOM_DOMAIN;
+};
+
+export function createPatternRoomUiRuntime(
+  options: PatternRoomUiRuntimeOptions = {}
+): PatternRoomUiRuntime {
   const root = resolveRoot();
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const domain = options.domain ?? PATTERN_ROOM_DOMAIN;
+  const localState = createLocalState(domain);
   let activeView: PatternViewId = "overview";
   let activeWorkspaceSection: PatternWorkspaceSection = "default";
   let selectedNodeId: string | null = null;
+  let selectedConnectionId: string | null = null;
   let selectedArchiveSourceId: string | null = null;
   let archiveEvidenceCaptureStatus: string | null = null;
   let archiveSearchQuery = "";
   let archiveSourceTypeFilter = "all";
+  let investigationCanvasMode: PatternInvestigationCanvasMode = "board";
   let workspaceShell: PatternWorkspaceShell | null = null;
   let renderedView: PatternViewId | null = null;
   const workspacePanelCache = new Map<PatternViewId, HTMLElement>();
   const workspaceScrollOffsets = new Map<PatternViewId, number>();
-  let viewModels: PatternRoomMockData = adaptDomainToViewModels(
-    PATTERN_ROOM_DOMAIN_MOCK,
+  let viewModels: PatternRoomWorkspaceModel = adaptDomainToViewModels(
+    domain,
     localState.getOverlay()
   );
   let hostMessagesConnected = false;
@@ -215,6 +237,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   let caseReviewRuntimeState = createPatternRoomCaseReviewRuntimeState();
   let selectedCaseReviewRole: PatternRoomCaseReviewRoleSlot = PATTERN_CASE_REVIEW_DEFAULT_ROLE_SLOT;
   let caseReviewApplyFeedback: PatternCaseReviewApplyFeedback | null = null;
+  let evidenceCandidateFeedback: PatternCaseReviewApplyFeedback | null = null;
   let caseReviewLocale = "tr";
   let caseReviewTranslations: unknown = null;
   let caseReviewIdSequence = 0;
@@ -448,12 +471,24 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     return createPatternWorkspaceTranslator(caseReviewLocale, caseReviewTranslations);
   }
 
+  function showWorkspaceActionFeedback(
+    key: PatternWorkspaceTextKey,
+    tone: PatternWorkspaceFeedbackTone = "success"
+  ): void {
+    ensureWorkspaceShell().showActionFeedback({
+      tone,
+      message: getWorkspaceText()(key),
+    });
+  }
+
   function createCaseReviewApplyOptions(
-    mode: PatternRoomCaseReviewApplyMode
+    mode: PatternRoomCaseReviewApplyMode,
+    sessionId: string
   ): PatternRoomCaseReviewApplyOptions {
     const text = getCaseReviewText();
     return {
       mode,
+      sessionId,
       copy: {
         reviewPrefix: text("apply.reviewPrefix"),
         evidenceSuggestionLabel: text("apply.evidenceSuggestionLabel"),
@@ -485,7 +520,16 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     render();
   }
 
-  function prepareCaseReviewPreview(draft: PatternCaseReviewPreviewDraft): void {
+  function prepareCaseReviewPreview(): void {
+    const draft = createPatternCaseReviewPreviewDraft(
+      {
+        domain,
+        overlay: localState.getOverlay(),
+        topicLabel: viewModels.subject,
+        researchQuestion: viewModels.researchQuestion,
+      },
+      selectedCaseReviewRole
+    );
     caseReviewPreviewDraft = draft;
     selectedCaseReviewRole = draft.roleSlot;
     caseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;
@@ -695,7 +739,7 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     }
 
     try {
-      const applyOptions = createCaseReviewApplyOptions(mode);
+      const applyOptions = createCaseReviewApplyOptions(mode, session.sessionId);
       const summary = previewPatternRoomCaseReviewApply(session.result, localState, applyOptions);
       locallyAppliedCaseReviewSessions.add(session.sessionId);
       if (
@@ -729,57 +773,157 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     }
   }
 
+  function promoteEvidenceCandidateFromReview(
+    input: PatternRoomEvidenceCandidatePromotionInput
+  ): void {
+    const result = localState.promoteEvidenceCandidate(input);
+    evidenceCandidateFeedback = result.promoted
+      ? { tone: "success", message: getCaseReviewText()("candidates.promoted") }
+      : {
+          tone: "error",
+          message: result.warnings.join(" ") || getCaseReviewText()("candidates.promotionFailed"),
+        };
+    render();
+  }
+
+  function removeEvidenceCandidateFromReview(candidateId: string): void {
+    const removed = localState.removeEvidenceCandidate(candidateId);
+    evidenceCandidateFeedback = removed
+      ? { tone: "success", message: getCaseReviewText()("candidates.discarded") }
+      : { tone: "error", message: getCaseReviewText()("candidates.discardFailed") };
+    render();
+  }
+
   const actions: PatternPanelActions = {
+    updateCaseIdentity(caseLabel: string, researchQuestion: string): void {
+      const updated = localState.updateCaseIdentity(caseLabel, researchQuestion);
+      if (updated) {
+        caseReviewPreviewDraft = null;
+        caseReviewDispatchStatus = CASE_REVIEW_IDLE_STATUS;
+        showWorkspaceActionFeedback("feedback.caseIdentityUpdated");
+        render();
+        return;
+      }
+      showWorkspaceActionFeedback("feedback.caseIdentityUnchanged", "info");
+    },
     getSelectedNodeId(): string | null {
       return selectedNodeId;
     },
     selectNode(nodeId: string | null): void {
       selectedNodeId = nodeId;
+      if (workspaceShell !== null && (activeView === "board" || activeView === "desk")) {
+        renderWorkspaceInspector(workspaceShell);
+      }
+      scheduleAutosave();
+    },
+    getSelectedConnectionId(): string | null {
+      return selectedConnectionId;
+    },
+    selectConnection(connectionId: string | null): void {
+      selectedConnectionId = connectionId;
+      if (workspaceShell !== null && (activeView === "board" || activeView === "desk")) {
+        renderWorkspaceInspector(workspaceShell);
+      }
+      scheduleAutosave();
     },
     sendNodeToDesk(nodeId: string): void {
+      const beforeCount = localState.getOverlay().deskNodeIds.length;
       localState.sendToDesk(nodeId);
+      const added = localState.getOverlay().deskNodeIds.length > beforeCount;
+      showWorkspaceActionFeedback(
+        added ? "feedback.sentToDesk" : "feedback.alreadyOnDesk",
+        added ? "success" : "info"
+      );
     },
     addNodeToDebate(nodeId: string): void {
+      const beforeCount = localState.getOverlay().debateReferenceIds.length;
       localState.addToDebate(nodeId);
+      const added = localState.getOverlay().debateReferenceIds.length > beforeCount;
+      showWorkspaceActionFeedback(
+        added ? "feedback.addedToReview" : "feedback.alreadyInReview",
+        added ? "success" : "info"
+      );
     },
     pinSourceToBoard(sourceId: string, layer): void {
       localState.pinSource(sourceId, layer);
+      showWorkspaceActionFeedback("feedback.sourcePinned");
     },
     addSourceToDebate(sourceId: string): void {
+      const beforeCount = localState.getOverlay().debateReferenceIds.length;
       localState.addToDebate(sourceId);
+      const added = localState.getOverlay().debateReferenceIds.length > beforeCount;
+      showWorkspaceActionFeedback(
+        added ? "feedback.addedToReview" : "feedback.alreadyInReview",
+        added ? "success" : "info"
+      );
     },
     addLocalNote(text: string): void {
       localState.addLocalNote(text);
+      showWorkspaceActionFeedback("feedback.noteAdded");
     },
     addAuthoredClaim(label: string, content: string): void {
       localState.addAuthoredClaim(label, content);
+      showWorkspaceActionFeedback("feedback.boardItemAdded");
     },
     addAuthoredInspiration(label: string, content: string): void {
       localState.addAuthoredInspiration(label, content);
+      showWorkspaceActionFeedback("feedback.boardItemAdded");
     },
     addAuthoredUncertainty(label: string, content: string): void {
       localState.addAuthoredUncertainty(label, content);
+      showWorkspaceActionFeedback("feedback.boardItemAdded");
     },
     addAuthoredSource(label: string, origin: string, note: string): void {
       localState.addAuthoredSource(label, origin, note);
+      showWorkspaceActionFeedback("feedback.sourceAdded");
     },
     removeLocalSource(sourceId: string): void {
-      localState.removeLocalSource(sourceId);
+      const summary = localState.removeLocalSource(sourceId);
+      showWorkspaceActionFeedback(
+        summary.sourcesRemoved > 0 ? "feedback.sourceRemoved" : "feedback.importFailed",
+        summary.sourcesRemoved > 0 ? "success" : "error"
+      );
     },
     removeLocalNode(nodeId: string): void {
-      localState.removeLocalNode(nodeId);
+      const summary = localState.removeLocalNode(nodeId);
+      showWorkspaceActionFeedback(
+        summary.nodesRemoved > 0 ? "feedback.boardItemRemoved" : "feedback.importFailed",
+        summary.nodesRemoved > 0 ? "success" : "error"
+      );
     },
     removeLocalEvidence(evidenceId: string): void {
-      localState.removeLocalEvidence(evidenceId);
+      const summary = localState.removeLocalEvidence(evidenceId);
+      showWorkspaceActionFeedback(
+        summary.evidenceRemoved > 0 ? "feedback.boardItemRemoved" : "feedback.importFailed",
+        summary.evidenceRemoved > 0 ? "success" : "error"
+      );
     },
     resetLocalSession(): void {
-      localState.resetOverlayToEmpty();
+      const summary = localState.resetOverlayToEmpty();
+      showWorkspaceActionFeedback(
+        summary.resetPerformed ? "feedback.sessionReset" : "feedback.importFailed",
+        summary.resetPerformed ? "success" : "error"
+      );
     },
     addAuthoredEvidence(label: string, excerpt: string, interpretation, layer, options): void {
       localState.addAuthoredEvidence(label, excerpt, interpretation, layer, options);
+      showWorkspaceActionFeedback("feedback.evidenceAdded");
     },
     addAuthoredEdge(edgeType, sourceId: string, targetId: string, note?: string): void {
+      const beforeCount = localState.getOverlay().localAuthoredEdges.length;
       localState.addAuthoredEdge(edgeType, sourceId, targetId, note);
+      const added = localState.getOverlay().localAuthoredEdges.length > beforeCount;
+      showWorkspaceActionFeedback(
+        added ? "feedback.connectionAdded" : "feedback.importFailed",
+        added ? "success" : "error"
+      );
+    },
+    updateLocalEdge(edgeId, edgeType, note?: string): void {
+      const updated = localState.updateLocalEdge(edgeId, edgeType, note);
+      showWorkspaceActionFeedback(
+        updated ? "feedback.connectionUpdated" : "feedback.connectionUnchanged",
+        updated ? "success" : "info"
+      );
     },
     importUserTextSource(input: PatternUserTextSourceImportInput) {
       if (input.text.trim() === "") {
@@ -795,6 +939,10 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
       });
       userTextSourceImportStatus = summarizeUserTextImportResult(result);
       render();
+      showWorkspaceActionFeedback(
+        userTextSourceImportStatus.success ? "feedback.importSucceeded" : "feedback.importFailed",
+        userTextSourceImportStatus.success ? "success" : "error"
+      );
       return userTextSourceImportStatus;
     },
     importLongTextSource(input: PatternLongTextSourceImportInput) {
@@ -819,45 +967,86 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
       });
       longTextSourceImportStatus = summarizeLongTextImportResult(result);
       render();
+      showWorkspaceActionFeedback(
+        longTextSourceImportStatus.success ? "feedback.importSucceeded" : "feedback.importFailed",
+        longTextSourceImportStatus.success ? "success" : "error"
+      );
       return longTextSourceImportStatus;
     },
     importSampleSourcePackage(packageId?: string) {
       sourceImportDemoStatus = importSampleSourcePackage(localState, packageId);
       render();
+      const importedCount =
+        sourceImportDemoStatus.sourcesAdded +
+        sourceImportDemoStatus.evidenceAdded +
+        sourceImportDemoStatus.nodesAdded +
+        sourceImportDemoStatus.edgesAdded +
+        sourceImportDemoStatus.notesAdded;
+      showWorkspaceActionFeedback(
+        importedCount > 0 ? "feedback.importSucceeded" : "feedback.importFailed",
+        importedCount > 0 ? "success" : sourceImportDemoStatus.duplicate ? "info" : "error"
+      );
       return sourceImportDemoStatus;
     },
     prepareDebate(): void {
       localState.prepareDebate();
+      showWorkspaceActionFeedback("feedback.debateUpdated");
     },
     assignDebateRoles(): void {
       localState.assignDebateRoles();
+      showWorkspaceActionFeedback("feedback.debateUpdated");
     },
     startDebate(): void {
       localState.startDebate();
+      showWorkspaceActionFeedback("feedback.debateUpdated");
     },
     advanceDebatePhase(): void {
       localState.advanceDebatePhase();
+      showWorkspaceActionFeedback("feedback.debateUpdated");
     },
     completeDebate(): void {
       localState.completeDebate();
+      showWorkspaceActionFeedback("feedback.debateUpdated");
     },
     reflectDebateToReport(): void {
       localState.reflectDebateToReport();
+      showWorkspaceActionFeedback("feedback.debateUpdated");
     },
   };
 
   localState.subscribe(() => {
-    viewModels = adaptDomainToViewModels(PATTERN_ROOM_DOMAIN_MOCK, localState.getOverlay());
+    viewModels = adaptDomainToViewModels(domain, localState.getOverlay());
     if (selectedArchiveSourceId !== null && !archiveSourceExists(selectedArchiveSourceId)) {
+      selectedConnectionId = null;
       selectedArchiveSourceId = null;
       archiveEvidenceCaptureStatus = null;
+    }
+    if (
+      selectedNodeId !== null &&
+      !viewModels.boardCategories.some((category) =>
+        category.pins.some((pin) => pin.id === selectedNodeId)
+      )
+    ) {
+      selectedNodeId = null;
+    }
+
+    if (
+      selectedConnectionId !== null &&
+      !viewModels.connections.some((connection) => connection.id === selectedConnectionId)
+    ) {
+      selectedConnectionId = null;
     }
     render();
     scheduleAutosave();
   });
 
   function createCurrentSnapshot(): PatternRoomSessionSnapshot {
-    return createSnapshot(localState, activeView);
+    const presentation: PatternRoomPresentationState = {
+      canvasMode: investigationCanvasMode,
+      selectedBoardItemId: selectedNodeId,
+      selectedConnectionId,
+    };
+    return createSnapshot(localState, activeView, presentation);
   }
 
   function clearPendingAutosave(): void {
@@ -929,9 +1118,16 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     viewId: PatternViewId,
     section: PatternWorkspaceSection = "default"
   ): void {
+    const previousView = activeView;
+    if (viewId === "desk") {
+      investigationCanvasMode = "graph";
+    } else if (viewId === "board" && previousView !== "board" && previousView !== "desk") {
+      investigationCanvasMode = "board";
+    }
     activeView = viewId;
     activeWorkspaceSection = section;
     render(true);
+    scheduleAutosave();
   }
 
   function renderFocusedView(viewId: FocusedPatternViewId): HTMLElement {
@@ -939,6 +1135,26 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
       setActiveView("overview");
     };
     const workspaceText = getWorkspaceText();
+    const createInvestigationView = (): HTMLElement =>
+      createInvestigationPanel(
+        viewModels,
+        actions,
+        onBack,
+        {
+          initialMode: investigationCanvasMode,
+          onModeChange(mode) {
+            investigationCanvasMode = mode;
+            activeView = mode === "graph" ? "desk" : "board";
+            renderedView = activeView;
+            workspacePanelCache.clear();
+            const shell = ensureWorkspaceShell();
+            shell.updateActiveView(activeView, activeWorkspaceSection);
+            renderWorkspaceInspector(shell);
+            scheduleAutosave();
+          },
+        },
+        workspaceText
+      );
     const panelFactories: Record<FocusedPatternViewId, () => HTMLElement> = {
       archive: () =>
         createArchivePanel(
@@ -960,8 +1176,8 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
           },
           workspaceText
         ),
-      board: () => createBoardPanel(viewModels, actions, onBack, workspaceText),
-      desk: () => createDeskPanel(viewModels, actions, onBack, workspaceText),
+      board: createInvestigationView,
+      desk: createInvestigationView,
       report: () => createReportPanel(viewModels, actions, onBack, workspaceText),
       "tenth-man": () =>
         createTenthManPanel(
@@ -973,11 +1189,18 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
               caseReviewRuntimeState.activeSession !== null &&
               locallyAppliedCaseReviewSessions.has(caseReviewRuntimeState.activeSession.sessionId),
             applyFeedback: caseReviewApplyFeedback,
+            evidenceCandidateFeedback,
+            evidenceCandidates: localState.getOverlay().localEvidenceCandidates ?? [],
+            evidenceCandidateSources: viewModels.sources.map((source) => {
+              return { id: source.id, label: source.label };
+            }),
             dispatchStatus: caseReviewDispatchStatus,
             history: caseReviewRuntimeState.history,
             onApply: applyCaseReview,
             onCancel: cancelCaseReview,
             onPrepare: prepareCaseReviewPreview,
+            onPromoteEvidenceCandidate: promoteEvidenceCandidateFromReview,
+            onRemoveEvidenceCandidate: removeEvidenceCandidateFromReview,
             onResend: resendCaseReview,
             onRetry: retryCaseReview,
             onRoleChange: selectCaseReviewRole,
@@ -994,12 +1217,16 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
   }
 
   function createWorkspaceSummary() {
+    const overlay = localState.getOverlay();
     return {
       subject: viewModels.subject,
-      pinCount: viewModels.boardCategories.reduce((count, category) => {
-        return count + category.pins.length;
-      }, 0),
       sourceCount: viewModels.sources.length,
+      evidenceCount: domain.evidence.length + overlay.localAuthoredEvidence.length,
+      boardNoteCount:
+        domain.nodes.filter((node) => {
+          return node.nodeType !== "source";
+        }).length + overlay.localAuthoredNodes.length,
+      connectionCount: domain.edges.length + overlay.localAuthoredEdges.length,
       reviewCount: caseReviewRuntimeState.history.length,
     };
   }
@@ -1017,6 +1244,31 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     root.replaceChildren(workspaceShell.element);
     renderedView = null;
     return workspaceShell;
+  }
+
+  function renderWorkspaceInspector(shell: PatternWorkspaceShell = ensureWorkspaceShell()): void {
+    if (activeView === "overview") {
+      shell.setInspectorContent(
+        createPatternCaseIdentityInspector(viewModels, actions, getWorkspaceText())
+      );
+      return;
+    }
+    if (activeView !== "board" && activeView !== "desk") {
+      shell.setInspectorContent(null);
+      return;
+    }
+
+    const mode: PatternInvestigationCanvasMode = activeView === "desk" ? "graph" : "board";
+    shell.setInspectorContent(
+      createInvestigationInspectorContent(
+        mode,
+        viewModels,
+        actions,
+        selectedNodeId,
+        selectedConnectionId,
+        getWorkspaceText()
+      )
+    );
   }
 
   function focusActiveWorkspaceSection(shell: PatternWorkspaceShell): void {
@@ -1058,11 +1310,12 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     renderedView = activeView;
     shell.updateSummary(createWorkspaceSummary());
     shell.updateActiveView(activeView, activeWorkspaceSection);
+    renderWorkspaceInspector(shell);
     focusActiveWorkspaceSection(shell);
   }
 
   function restoreSnapshot(snapshot: unknown): boolean {
-    const restoredState = restoreFromSnapshot(snapshot, PATTERN_ROOM_DOMAIN_MOCK);
+    const restoredState = restoreFromSnapshot(snapshot, domain);
     if (restoredState === null) {
       return false;
     }
@@ -1070,9 +1323,17 @@ export function createPatternRoomUiRuntime(): PatternRoomUiRuntime {
     isRestoring = true;
     try {
       activeView = restoredState.activeView;
+      investigationCanvasMode =
+        restoredState.presentation?.canvasMode ?? (activeView === "desk" ? "graph" : "board");
+      if (activeView === "board" || activeView === "desk") {
+        activeView = investigationCanvasMode === "graph" ? "desk" : "board";
+      }
       activeWorkspaceSection = "default";
+      selectedNodeId = restoredState.presentation?.selectedBoardItemId ?? null;
+      selectedConnectionId = restoredState.presentation?.selectedConnectionId ?? null;
       selectedArchiveSourceId = null;
       archiveEvidenceCaptureStatus = null;
+      evidenceCandidateFeedback = null;
       localState.restoreOverlay(restoredState.overlay, restoredState.guards);
       return true;
     } finally {

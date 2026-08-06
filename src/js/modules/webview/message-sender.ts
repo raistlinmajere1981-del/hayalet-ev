@@ -105,9 +105,7 @@ class MessageSenderClass {
 
     return resolveSelectorCandidates(
       (matrixSelectors?.["sendButton"] ?? selectors["sendButton"]) as
-        | string
-        | string[]
-        | Record<string, unknown>,
+        string | string[] | Record<string, unknown>,
       this._getSelectorLanguage()
     );
   }
@@ -186,11 +184,9 @@ class MessageSenderClass {
     }
 
     const slots = this._settings?.slots as
-      | Record<string, { messageMethod?: string; fileMethod?: string }>
-      | undefined;
+      Record<string, { messageMethod?: string; fileMethod?: string }> | undefined;
     const assistantSlot = this._settings?.assistantSlot as
-      | { messageMethod?: string; fileMethod?: string }
-      | undefined;
+      { messageMethod?: string; fileMethod?: string } | undefined;
     const slotConfig = provider === "ai0" ? assistantSlot : slots?.[provider];
 
     const messageMethodName = slotConfig?.messageMethod;

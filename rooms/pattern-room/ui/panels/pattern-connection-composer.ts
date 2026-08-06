@@ -4,9 +4,9 @@ import type {
 } from "../../shared/types/pattern-room.js";
 import { createElement } from "./pattern-panel-utils.js";
 
-type AuthoredConnectionEdgeType = Parameters<PatternPanelActions["addAuthoredEdge"]>[0];
+export type AuthoredConnectionEdgeType = Parameters<PatternPanelActions["addAuthoredEdge"]>[0];
 
-const CONNECTION_EDGE_TYPE_OPTIONS: ReadonlyArray<{
+export const CONNECTION_EDGE_TYPE_OPTIONS: ReadonlyArray<{
   readonly value: AuthoredConnectionEdgeType;
   readonly label: string;
 }> = [

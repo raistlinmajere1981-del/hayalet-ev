@@ -415,9 +415,7 @@ class ConversationSyncerClass {
     }
 
     const messages = (await webview.executeJavaScript(`(${scrapeMessagesFn.toString()})();`)) as
-      | ScrapedMessage[]
-      | null
-      | undefined;
+      ScrapedMessage[] | null | undefined;
     return Array.isArray(messages) ? messages : [];
   }
 
@@ -626,8 +624,7 @@ class ConversationSyncerClass {
       normalized = applyPendingOutboundBridgeMetadata(provider, normalized);
 
       const slots = this._settings?.slots as
-        | Record<string, { catchCommands?: boolean }>
-        | undefined;
+        Record<string, { catchCommands?: boolean }> | undefined;
       const catchEnabled = options.catchEnabled ?? slots?.[provider]?.catchCommands ?? true;
 
       const commands = catchEnabled
@@ -654,8 +651,7 @@ class ConversationSyncerClass {
       }
 
       const dbSyncMessages = window.electronAPI?.["dbSyncMessages"] as
-        | ((payload: Record<string, unknown>) => Promise<DbSyncResult>)
-        | undefined;
+        ((payload: Record<string, unknown>) => Promise<DbSyncResult>) | undefined;
       const syncResult = await dbSyncMessages?.({
         accountId: accountInfo.id,
         clientRequestId: buildSyncClientRequestId(provider, webUrl, normalized),
@@ -669,8 +665,7 @@ class ConversationSyncerClass {
       }
 
       const dbGetMessages = window.electronAPI?.["dbGetMessages"] as
-        | ((payload: Record<string, unknown>) => Promise<DbMessagesResult>)
-        | undefined;
+        ((payload: Record<string, unknown>) => Promise<DbMessagesResult>) | undefined;
       const dbMessagesResult = await dbGetMessages?.({
         accountId: accountInfo.id,
         conversationId: syncResult.conversationId,

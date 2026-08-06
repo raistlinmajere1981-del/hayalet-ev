@@ -6,11 +6,7 @@ import type {
 } from "./repair-knowledge-pack.js";
 
 export type RepairWizardStepId =
-  | "device-info"
-  | "symptoms"
-  | "ai-research"
-  | "evidence-review"
-  | "ready";
+  "device-info" | "symptoms" | "ai-research" | "evidence-review" | "ready";
 
 export type RepairWizardResearchStatus = "idle" | "running" | "succeeded" | "failed" | "skipped";
 

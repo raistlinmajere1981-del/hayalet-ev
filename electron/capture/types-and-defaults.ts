@@ -93,8 +93,7 @@ export type DirectCompanionModelDescriptor = CaptureCompanionTranscriptModelProf
 };
 
 export type CompanionTranscriptModelDownloadDescriptor =
-  | WhisperCompanionModelDescriptor
-  | DirectCompanionModelDescriptor;
+  WhisperCompanionModelDescriptor | DirectCompanionModelDescriptor;
 
 export interface CompanionManifestRecord {
   applicationId?: unknown;

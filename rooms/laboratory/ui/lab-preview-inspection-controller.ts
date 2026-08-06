@@ -12,8 +12,7 @@ const FALLBACK_FRAME_DURATION_SECONDS = 1 / 30;
 type QueryCapableElement = Element & {
   getAttribute: (name: string) => string | null;
   getBoundingClientRect: () =>
-    | DOMRect
-    | { height: number; left: number; top: number; width: number };
+    DOMRect | { height: number; left: number; top: number; width: number };
   querySelector: (selector: string) => Element | null;
   setAttribute: (name: string, value: string) => void;
   style?: CSSStyleDeclaration;

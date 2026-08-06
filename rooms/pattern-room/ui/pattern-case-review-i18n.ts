@@ -22,6 +22,21 @@ export type PatternCaseReviewTextKey =
   | "apply.evidenceSuggestionLabel"
   | "apply.openQuestionLabel"
   | "apply.userAppliedSuggestion"
+  | "candidates.title"
+  | "candidates.intro"
+  | "candidates.empty"
+  | "candidates.badge"
+  | "candidates.provenance"
+  | "candidates.sourceLabel"
+  | "candidates.sourcePlaceholder"
+  | "candidates.excerptLabel"
+  | "candidates.excerptPlaceholder"
+  | "candidates.promote"
+  | "candidates.discard"
+  | "candidates.promoted"
+  | "candidates.promotionFailed"
+  | "candidates.discarded"
+  | "candidates.discardFailed"
   | "statuses.idle"
   | "statuses.running"
   | "statuses.waiting"
@@ -63,6 +78,7 @@ export type PatternCaseReviewTextKey =
   | "workspace.responseEmpty"
   | "workspace.applyEmpty"
   | "workspace.boardNotes"
+  | "workspace.evidenceCandidates"
   | "workspace.skipped"
   | "history.title"
   | "history.timestamp"
@@ -102,6 +118,22 @@ const FALLBACK_TR: Readonly<Record<PatternCaseReviewTextKey, string>> = {
   "apply.openQuestionLabel": "Açık Soru",
   "apply.userAppliedSuggestion":
     "Kullanıcı tarafından uygulanmış AI önerisi; bağımsız olarak doğrulanmamıştır.",
+  "candidates.title": "Kanıt adayları",
+  "candidates.intro":
+    "AI önerileri burada aday olarak kalır. Kanıta yükseltmek için gerçek bir kaynak ve kaynaktan seçilmiş alıntı gerekir.",
+  "candidates.empty": "Bekleyen kanıt adayı yok.",
+  "candidates.badge": "AI kanıt adayı",
+  "candidates.provenance": "Oturum: %session% · Öneri: %suggestion%",
+  "candidates.sourceLabel": "Gerçek kaynak",
+  "candidates.sourcePlaceholder": "Kaynak seç",
+  "candidates.excerptLabel": "Kaynaktan seçilmiş alıntı",
+  "candidates.excerptPlaceholder": "Kaynakta gerçekten bulunan bölümü buraya aktarın.",
+  "candidates.promote": "Kanıta Yükselt",
+  "candidates.discard": "Adayı Sil",
+  "candidates.promoted": "Kanıt adayı kaynak ve alıntıyla doğrulanarak kanıta yükseltildi.",
+  "candidates.promotionFailed": "Kanıt adayı yükseltilemedi.",
+  "candidates.discarded": "Kanıt adayı silindi.",
+  "candidates.discardFailed": "Kanıt adayı silinemedi.",
   "statuses.idle": "İnceleme hazır değil",
   "statuses.running": "İnceleme Çalışıyor",
   "statuses.waiting": "AI Yanıtı Bekleniyor",
@@ -144,6 +176,7 @@ const FALLBACK_TR: Readonly<Record<PatternCaseReviewTextKey, string>> = {
   "workspace.responseEmpty": "AI yanıtı henüz alınmadı.",
   "workspace.applyEmpty": "Uygulanmış bir inceleme sonucu yok.",
   "workspace.boardNotes": "Pano notları",
+  "workspace.evidenceCandidates": "Kanıt adayları",
   "workspace.skipped": "Atlanan",
   "history.title": "İnceleme Geçmişi",
   "history.timestamp": "Zaman",
@@ -178,6 +211,23 @@ const FALLBACK_EN: Readonly<Record<PatternCaseReviewTextKey, string>> = {
   "apply.evidenceSuggestionLabel": "Evidence Suggestion",
   "apply.openQuestionLabel": "Open Question",
   "apply.userAppliedSuggestion": "User-applied AI suggestion; not independently verified.",
+  "candidates.title": "Evidence candidates",
+  "candidates.intro":
+    "AI suggestions remain candidates here. Promotion requires a real source and an excerpt selected from that source.",
+  "candidates.empty": "There are no pending evidence candidates.",
+  "candidates.badge": "AI evidence candidate",
+  "candidates.provenance": "Session: %session% · Suggestion: %suggestion%",
+  "candidates.sourceLabel": "Real source",
+  "candidates.sourcePlaceholder": "Select a source",
+  "candidates.excerptLabel": "Excerpt selected from source",
+  "candidates.excerptPlaceholder":
+    "Paste the passage that actually appears in the selected source.",
+  "candidates.promote": "Promote to Evidence",
+  "candidates.discard": "Discard Candidate",
+  "candidates.promoted": "The candidate was promoted to source-linked evidence.",
+  "candidates.promotionFailed": "The evidence candidate could not be promoted.",
+  "candidates.discarded": "The evidence candidate was discarded.",
+  "candidates.discardFailed": "The evidence candidate could not be discarded.",
   "statuses.idle": "Review not started",
   "statuses.running": "Review Running",
   "statuses.waiting": "Waiting AI",
@@ -220,6 +270,7 @@ const FALLBACK_EN: Readonly<Record<PatternCaseReviewTextKey, string>> = {
   "workspace.responseEmpty": "The AI response has not arrived yet.",
   "workspace.applyEmpty": "No review result has been applied.",
   "workspace.boardNotes": "Board notes",
+  "workspace.evidenceCandidates": "Evidence candidates",
   "workspace.skipped": "Skipped",
   "history.title": "Review History",
   "history.timestamp": "Timestamp",

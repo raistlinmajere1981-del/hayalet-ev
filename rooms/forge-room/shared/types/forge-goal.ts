@@ -1,10 +1,5 @@
 export type ForgeGoalStatus =
-  | "draft"
-  | "draft-ready"
-  | "approved"
-  | "in-progress"
-  | "synthesis-ready"
-  | "handoff-ready";
+  "draft" | "draft-ready" | "approved" | "in-progress" | "synthesis-ready" | "handoff-ready";
 
 export interface ForgeGoal {
   id: string;

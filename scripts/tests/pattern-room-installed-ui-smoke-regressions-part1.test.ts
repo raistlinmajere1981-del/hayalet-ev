@@ -1,15 +1,14 @@
+import { startPatternRoomInstalledUi } from "./pattern-room-installed-ui-smoke.helpers.ts";
 import type { FakeElement } from "./forge-room-ui-smoke.helpers.ts";
 import {
   assert,
   createMinimalForgeUiEnvironment,
   createRoomInstalledCopy,
   fireEvent,
-  pathToFileURL,
   readTreeText,
-  resolve,
   test,
 } from "./forge-room-ui-smoke.helpers.ts";
-import { PATTERN_ROOM_DOMAIN_MOCK } from "../../rooms/pattern-room/shared/data/pattern-room-domain.mock.ts";
+import { PATTERN_ROOM_DOMAIN_TEST_FIXTURE } from "../../rooms/pattern-room/shared/data/testing/pattern-room-domain.fixture.ts";
 import { createLocalState } from "../../rooms/pattern-room/shared/state/pattern-room-local-state.ts";
 import { createSnapshot } from "../../rooms/pattern-room/shared/state/pattern-room-snapshot.ts";
 import type { PatternRoomSessionSnapshot } from "../../rooms/pattern-room/shared/types/pattern-room-snapshot.ts";
@@ -90,7 +89,7 @@ function createHostLoadedSnapshot(
   activeView: PatternFocusedViewId | "overview",
   noteText: string
 ): PatternRoomSessionSnapshot {
-  const localState = createLocalState(PATTERN_ROOM_DOMAIN_MOCK);
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
   localState.addLocalNote(noteText);
   return createSnapshot(localState, activeView);
 }
@@ -122,9 +121,7 @@ void test("pattern-room installed UI renders overview hotspots and returns from 
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?smoke=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     assert.equal(environment.readyPayload()?.["roomId"], "pattern-room");
     assert.equal(environment.readyPayload()?.["featureId"], "pattern-workbench");
@@ -132,6 +129,14 @@ void test("pattern-room installed UI renders overview hotspots and returns from 
     assert.match(readTreeText(environment.app), /Dünya’nın Şekli/);
     assert.match(readTreeText(environment.app), /İz Sürme Odası/);
     assert.match(readTreeText(environment.app), /Pattern Room/);
+    assertTextIncludes(readTreeText(environment.app), [
+      "4 kaynak",
+      "2 kanıt",
+      "3 pano notu",
+      "3 bağlantı",
+      "0 inceleme",
+    ]);
+    assert.doesNotMatch(readTreeText(environment.app), /4 iz/);
 
     const hotspots = environment.app.querySelectorAll("[data-pattern-hotspot]");
     assert.equal(hotspots.length, PATTERN_FOCUSED_VIEWS.length);
@@ -202,16 +207,14 @@ void test("pattern-room installed UI keeps workspace navigation persistent and p
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?workspace-shell=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     const shell = environment.app.querySelector("[data-pattern-workspace-shell='true']");
     const outlet = environment.app.querySelector("[data-pattern-workspace-outlet='true']");
     const navigationItems = environment.app.querySelectorAll("[data-pattern-workspace-nav]");
     assert.ok(shell);
     assert.ok(outlet);
-    assert.equal(navigationItems.length, 7);
+    assert.equal(navigationItems.length, 6);
     assert.equal(
       environment.app.querySelector("[data-pattern-workspace-nav='overview']")?.dataset[
         "patternWorkspaceNavActive"
@@ -253,15 +256,93 @@ void test("pattern-room installed UI keeps workspace navigation persistent and p
   }
 });
 
+void test("pattern-room installed UI persists canvas mode and contextual selections", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+    environment.emitHostMessage({
+      payload: { snapshot: null },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+
+    openFocusedView(environment.app, "board");
+    const boardItem = environment.app.querySelector(
+      "[data-pattern-board-pin='node-shadow-analysis']"
+    );
+    assert.ok(boardItem);
+    fireEvent(boardItem, "click");
+
+    const graphMode = environment.app.querySelector("[data-pattern-investigation-mode='graph']");
+    assert.ok(graphMode);
+    fireEvent(graphMode, "click");
+    const connection = environment.app.querySelector(
+      "[data-pattern-connection-edge='edge-navigation-supports-horizon']"
+    );
+    assert.ok(connection);
+    fireEvent(connection, "click");
+
+    assert.equal(environment.pendingTimerCount(), 1);
+    environment.runPendingTimers(2000);
+    const savedSnapshot = readLatestSavePayload(environment)[
+      "snapshot"
+    ] as PatternRoomSessionSnapshot;
+    assert.deepEqual(savedSnapshot.presentation, {
+      canvasMode: "graph",
+      selectedBoardItemId: "node-shadow-analysis",
+      selectedConnectionId: "edge-navigation-supports-horizon",
+    });
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI restores canvas mode and contextual selections", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  const localState = createLocalState(PATTERN_ROOM_DOMAIN_TEST_FIXTURE);
+  const snapshot = createSnapshot(localState, "desk", {
+    canvasMode: "graph",
+    selectedBoardItemId: "node-shadow-analysis",
+    selectedConnectionId: "edge-navigation-supports-horizon",
+  });
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+    environment.emitHostMessage({
+      payload: { snapshot },
+      type: PATTERN_ROOM_LOADED_EVENT,
+    });
+
+    assert.ok(environment.app.querySelector("[data-pattern-view='desk']"));
+    const inspector = environment.app.querySelector("[data-pattern-workspace-inspector='true']");
+    assert.ok(inspector);
+    assertTextIncludes(readTreeText(inspector), [
+      "Bağlantı detayı",
+      "Seyir defteri kaynagi",
+      "Ufuk iddiasi",
+      "Regression fixture support relation only.",
+    ]);
+
+    const boardMode = environment.app.querySelector("[data-pattern-investigation-mode='board']");
+    assert.ok(boardMode);
+    fireEvent(boardMode, "click");
+    assertTextIncludes(readTreeText(inspector), ["Tuval detayı", "Golge acisi analizi"]);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
 void test("pattern-room installed UI restores a loaded host snapshot", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("pattern-room");
   const snapshot = createHostLoadedSnapshot("report", "Restored host snapshot note");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?loaded=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot },
@@ -287,9 +368,7 @@ void test("pattern-room installed UI keeps the default state for a null loaded s
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?loaded-null=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -313,9 +392,7 @@ void test("pattern-room installed UI rejects an invalid loaded snapshot without 
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?loaded-invalid=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: {
@@ -323,7 +400,7 @@ void test("pattern-room installed UI rejects an invalid loaded snapshot without 
           activeView: "report",
           roomId: "pattern-room",
           schemaVersion: -1,
-          topicId: PATTERN_ROOM_DOMAIN_MOCK.topic.id,
+          topicId: PATTERN_ROOM_DOMAIN_TEST_FIXTURE.topic.id,
         },
       },
       type: PATTERN_ROOM_LOADED_EVENT,
@@ -345,9 +422,7 @@ void test("pattern-room installed UI does not autosave local mutations before ho
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-gate=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     openFocusedView(environment.app, "board");
     submitBoardLocalNode(environment.app, "Mutation before loaded event", "Pano mutation");
@@ -367,9 +442,7 @@ void test("pattern-room installed UI debounces autosave after a null host load",
   const installedCopy = await createRoomInstalledCopy("pattern-room");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-null=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot: null },
@@ -399,9 +472,7 @@ void test("pattern-room installed UI autosaves only user mutations after restori
   const snapshot = createHostLoadedSnapshot("report", "Restored snapshot suppresses autosave");
 
   try {
-    await import(
-      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?autosave-restore=${Date.now()}`
-    );
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
 
     environment.emitHostMessage({
       payload: { snapshot },
@@ -426,6 +497,147 @@ void test("pattern-room installed UI autosaves only user mutations after restori
       "Mutation after restored snapshot"
     );
     assert.equal(savedSnapshot.activeView, "board");
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI exposes a persistent three-region workspace shell", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+
+    const shell = environment.app.querySelector("[data-pattern-workspace-shell='true']");
+    const spine = environment.app.querySelector("[data-pattern-workspace-spine='true']");
+    const canvas = environment.app.querySelector("[data-pattern-workspace-canvas='true']");
+    const outlet = environment.app.querySelector("[data-pattern-workspace-outlet='true']");
+    const inspector = environment.app.querySelector("[data-pattern-workspace-inspector='true']");
+    assert.ok(shell);
+    assert.ok(spine);
+    assert.ok(canvas);
+    assert.ok(outlet);
+    assert.ok(inspector);
+    assert.equal(inspector.dataset["patternWorkspaceInspectorView"], "overview");
+    assert.match(readTreeText(inspector), /Vaka Merkezi|Case Hub/);
+
+    const archiveNavigation = environment.app.querySelector(
+      "[data-pattern-workspace-nav='archive']"
+    );
+    assert.ok(archiveNavigation);
+    fireEvent(archiveNavigation, "click");
+    assert.equal(environment.app.querySelector("[data-pattern-workspace-spine='true']"), spine);
+    assert.equal(environment.app.querySelector("[data-pattern-workspace-canvas='true']"), canvas);
+    assert.equal(
+      environment.app.querySelector("[data-pattern-workspace-inspector='true']"),
+      inspector
+    );
+    assert.equal(inspector.dataset["patternWorkspaceInspectorView"], "archive");
+    assert.match(readTreeText(inspector), /Arşiv|Archive/);
+    assert.ok(environment.app.querySelector("[data-pattern-view='archive']"));
+
+    const reportNavigation = environment.app.querySelector("[data-pattern-workspace-nav='report']");
+    assert.ok(reportNavigation);
+    fireEvent(reportNavigation, "click");
+    assert.equal(inspector.dataset["patternWorkspaceInspectorView"], "report");
+    assert.match(readTreeText(inspector), /Rapor|Report/);
+    assert.ok(environment.app.querySelector("[data-pattern-view='report']"));
+    assert.deepEqual(environment.sentCommands, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI switches board and graph inside one investigation canvas", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+
+    const boardNavigation = environment.app.querySelector("[data-pattern-workspace-nav='board']");
+    assert.ok(boardNavigation);
+    fireEvent(boardNavigation, "click");
+
+    const canvas = environment.app.querySelector("[data-pattern-investigation-canvas='true']");
+    const boardMode = environment.app.querySelector("[data-pattern-investigation-mode='board']");
+    const graphMode = environment.app.querySelector("[data-pattern-investigation-mode='graph']");
+    assert.ok(canvas);
+    assert.ok(boardMode);
+    assert.ok(graphMode);
+    assert.equal(canvas.dataset["patternInvestigationActiveMode"], "board");
+    assert.ok(environment.app.querySelector("[data-pattern-view='board']"));
+    assert.ok(environment.app.querySelector("[data-pattern-board-pin]"));
+
+    fireEvent(graphMode, "click");
+    assert.equal(canvas.dataset["patternInvestigationActiveMode"], "graph");
+    assert.ok(environment.app.querySelector("[data-pattern-view='desk']"));
+    assert.ok(environment.app.querySelector("[data-pattern-connection-map='true']"));
+    assert.equal(boardNavigation.dataset["patternWorkspaceNavActive"], "true");
+
+    fireEvent(boardMode, "click");
+    assert.equal(canvas.dataset["patternInvestigationActiveMode"], "board");
+    assert.ok(environment.app.querySelector("[data-pattern-view='board']"));
+    assert.ok(environment.app.querySelector("[data-pattern-board-pin]"));
+    assert.equal(environment.app.querySelectorAll("[data-pattern-view]").length, 1);
+    assert.deepEqual(environment.sentCommands, []);
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room installed UI moves investigation details and tools into the persistent inspector", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+
+    const inspector = environment.app.querySelector("[data-pattern-workspace-inspector='true']");
+    const canvas = environment.app.querySelector("[data-pattern-workspace-canvas='true']");
+    const boardNavigation = environment.app.querySelector("[data-pattern-workspace-nav='board']");
+    assert.ok(inspector);
+    assert.ok(canvas);
+    assert.ok(boardNavigation);
+
+    fireEvent(boardNavigation, "click");
+    const boardPin = environment.app.querySelector(
+      "[data-pattern-board-pin='node-navigation-source']"
+    );
+    assert.ok(boardPin);
+    fireEvent(boardPin, "click");
+
+    assert.equal(
+      environment.app.querySelector("[data-pattern-workspace-inspector='true']"),
+      inspector
+    );
+    assert.ok(inspector.querySelector("[data-pattern-board-detail='true']"));
+    assert.ok(inspector.querySelector("[data-pattern-send-to-desk='node-navigation-source']"));
+    assert.ok(inspector.querySelector("[data-pattern-author-node-form='true']"));
+    assert.equal(canvas.querySelector("[data-pattern-board-detail='true']"), null);
+    assert.equal(canvas.querySelector("[data-pattern-author-node-form='true']"), null);
+
+    const graphMode = environment.app.querySelector("[data-pattern-investigation-mode='graph']");
+    assert.ok(graphMode);
+    fireEvent(graphMode, "click");
+
+    assert.equal(
+      environment.app.querySelector("[data-pattern-workspace-inspector='true']"),
+      inspector
+    );
+    assert.equal(
+      inspector.querySelector("[data-pattern-investigation-inspector-mode='graph']")?.dataset[
+        "patternInvestigationInspectorMode"
+      ],
+      "graph"
+    );
+    assert.ok(inspector.querySelector("[data-pattern-author-edge-form='true']"));
+    assert.equal(canvas.querySelector("[data-pattern-author-edge-form='true']"), null);
+    assert.deepEqual(environment.sentCommands, []);
   } finally {
     environment.restore();
     await installedCopy.cleanup();

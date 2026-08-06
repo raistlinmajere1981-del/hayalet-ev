@@ -56,9 +56,7 @@ export interface TeamTetrisMoveValidationSuccess {
 }
 
 export type TeamTetrisMoveValidationResult =
-  | TeamTetrisMoveValidationSuccess
-  | TeamTetrisReplayFailure
-  | { success: false; reason: string };
+  TeamTetrisMoveValidationSuccess | TeamTetrisReplayFailure | { success: false; reason: string };
 
 export interface TeamTetrisApplyMoveSuccess {
   success: true;
@@ -69,9 +67,7 @@ export interface TeamTetrisApplyMoveSuccess {
 }
 
 export type TeamTetrisApplyMoveResult =
-  | TeamTetrisApplyMoveSuccess
-  | TeamTetrisReplayFailure
-  | { success: false; reason: string };
+  TeamTetrisApplyMoveSuccess | TeamTetrisReplayFailure | { success: false; reason: string };
 
 export interface TeamTetrisPartnerPieceView {
   pieceId: PieceId;

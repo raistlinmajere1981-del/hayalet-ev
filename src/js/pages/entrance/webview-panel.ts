@@ -992,8 +992,7 @@ export class WebviewPanel {
       if (results.refreshedConfig) {
         ProviderRegistry.update(results.refreshedConfig.id, results.refreshedConfig);
         const activeWebview = SlotController.getWebview(slot) as
-          | (HTMLElement & { send?: (channel: string, ...args: unknown[]) => void })
-          | null;
+          (HTMLElement & { send?: (channel: string, ...args: unknown[]) => void }) | null;
         activeWebview?.send?.("app-set-provider", {
           providerId: results.refreshedConfig.id,
           slot,

@@ -11,9 +11,35 @@
       "navigationLabel": "Workspaces",
       "caseLabel": "Active case",
       "sourceMetric": "%count% sources",
-      "pinMetric": "%count% leads",
+      "evidenceMetric": "%count% evidence",
+      "boardNoteMetric": "%count% board notes",
+      "connectionMetric": "%count% connections",
       "reviewMetric": "%count% reviews",
-      "keyboardHint": "Use the arrow keys to move between workspaces."
+      "keyboardHint": "Use the arrow keys to move between workspaces.",
+      "inspectorLabel": "Context inspector"
+    },
+    "feedback": {
+      "dismiss": "Dismiss notification",
+      "sentToDesk": "Item sent to the working desk.",
+      "alreadyOnDesk": "Item is already on the working desk.",
+      "addedToReview": "Item added to Tenth Man references.",
+      "alreadyInReview": "Item is already in Tenth Man references.",
+      "sourcePinned": "Source pinned to the investigation canvas.",
+      "noteAdded": "Local note added.",
+      "boardItemAdded": "Board item added.",
+      "sourceAdded": "Source added to the archive.",
+      "sourceRemoved": "Source and linked local traces removed.",
+      "boardItemRemoved": "Local board item removed.",
+      "sessionReset": "Local session cleared.",
+      "evidenceAdded": "Evidence note added.",
+      "connectionAdded": "Connection created.",
+      "debateUpdated": "Tenth Man session updated.",
+      "importSucceeded": "Source imported.",
+      "importFailed": "The action could not be completed; check the fields and warnings.",
+      "caseIdentityUpdated": "Case identity updated.",
+      "caseIdentityUnchanged": "There are no case identity changes to save.",
+      "connectionUpdated": "Local connection updated.",
+      "connectionUnchanged": "There are no connection changes to save."
     },
     "nav": {
       "overview": {
@@ -21,16 +47,16 @@
         "description": "Case overview"
       },
       "board": {
-        "label": "Detective Board",
-        "description": "Leads and notes"
+        "label": "Investigation Canvas",
+        "description": "Board and relationship views"
       },
       "archive": {
         "label": "Archive",
         "description": "Source research"
       },
       "connections": {
-        "label": "Connections",
-        "description": "Relationship map"
+        "label": "Graph View",
+        "description": "Open the investigation canvas in graph mode"
       },
       "review": {
         "label": "Case Review",
@@ -48,7 +74,15 @@
     "overview": {
       "activityLabel": "Case activity",
       "activityTitle": "Investigation desk ready",
-      "activityCopy": "Open every major tool directly from the navigation."
+      "activityCopy": "Open every major tool directly from the navigation.",
+      "identityLabel": "Case identity",
+      "identityTitle": "Name the investigation",
+      "identityCopy": "The case name and primary research question flow into every workspace, the report, and the Case Packet preview.",
+      "caseNameLabel": "Case name",
+      "caseNamePlaceholder": "Example: North Corridor Sensor Incident",
+      "researchQuestionLabel": "Primary research question",
+      "researchQuestionPlaceholder": "What question is this investigation trying to answer?",
+      "saveIdentity": "Save Case Identity"
     },
     "board": {
       "canvasLabel": "Board workspace",
@@ -105,7 +139,7 @@
       "resend": "Resend",
       "applyAll": "Apply to Board",
       "applyOpenQuestions": "Add Open Questions Only",
-      "applyEvidenceSuggestions": "Add Evidence Suggestions Only"
+      "applyEvidenceSuggestions": "Retain Evidence Candidates Only"
     },
     "apply": {
       "reviewPrefix": "AI Review",
@@ -129,7 +163,7 @@
       "dispatchFailed": "Dispatch failed.",
       "controlFailed": "The review action could not be sent.",
       "applyFailed": "The review could not be applied to the board.",
-      "applied": "The selected review items were added to the board.",
+      "applied": "The selected review action was completed. Evidence suggestions remain candidates until linked to a real source and excerpt.",
       "noResult": "There is no ready review result to apply.",
       "historyEmpty": "No review history yet.",
       "resultEmpty": "The AI reply is not ready yet.",
@@ -163,7 +197,8 @@
       "responseEmpty": "The AI response has not arrived yet.",
       "applyEmpty": "No review result has been applied.",
       "boardNotes": "Board notes",
-      "skipped": "Skipped"
+      "skipped": "Skipped",
+      "evidenceCandidates": "Evidence candidates"
     },
     "history": {
       "title": "Review History",
@@ -172,6 +207,23 @@
       "packetHash": "Packet hash",
       "responseHash": "Response hash",
       "state": "State"
+    },
+    "candidates": {
+      "title": "Evidence candidates",
+      "intro": "AI suggestions remain candidates here. Promotion requires a real source and an excerpt selected from that source.",
+      "empty": "There are no pending evidence candidates.",
+      "badge": "AI evidence candidate",
+      "provenance": "Session: %session% · Suggestion: %suggestion%",
+      "sourceLabel": "Real source",
+      "sourcePlaceholder": "Select a source",
+      "excerptLabel": "Excerpt selected from source",
+      "excerptPlaceholder": "Paste the passage that actually appears in the selected source.",
+      "promote": "Promote to Evidence",
+      "discard": "Discard Candidate",
+      "promoted": "The candidate was promoted to source-linked evidence.",
+      "promotionFailed": "The evidence candidate could not be promoted.",
+      "discarded": "The evidence candidate was discarded.",
+      "discardFailed": "The evidence candidate could not be discarded."
     }
   }
 }

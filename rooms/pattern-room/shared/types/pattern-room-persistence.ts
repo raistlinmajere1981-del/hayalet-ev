@@ -37,6 +37,4 @@ export type PatternRoomSaveFailedEventPayload = {
 export type PatternRoomPersistenceCommand = PatternRoomSaveCommand | PatternRoomLoadCommand;
 
 export type PatternRoomPersistenceEvent =
-  | PatternRoomSavedEvent
-  | PatternRoomLoadedEvent
-  | PatternRoomSaveFailedEvent;
+  PatternRoomSavedEvent | PatternRoomLoadedEvent | PatternRoomSaveFailedEvent;

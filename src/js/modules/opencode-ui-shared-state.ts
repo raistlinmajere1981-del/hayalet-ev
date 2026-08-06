@@ -112,8 +112,7 @@ export async function readOpencodeUiSharedState(): Promise<OpencodeUiSharedState
 
 export async function patchOpencodeUiSharedState(
   updater:
-    | Partial<OpencodeUiSharedState>
-    | ((current: OpencodeUiSharedState) => OpencodeUiSharedState)
+    Partial<OpencodeUiSharedState> | ((current: OpencodeUiSharedState) => OpencodeUiSharedState)
 ): Promise<OpencodeUiSharedState> {
   return await enqueueSharedStateMutation((current) =>
     typeof updater === "function"

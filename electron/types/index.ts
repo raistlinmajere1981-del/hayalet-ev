@@ -79,13 +79,7 @@ export interface SyncMessagesResult {
 }
 
 export type LogSource =
-  | "MAIN"
-  | "RENDERER"
-  | "WEBVIEW"
-  | "WEBVIEW-AI1"
-  | "WEBVIEW-AI2"
-  | "IPC"
-  | "DB";
+  "MAIN" | "RENDERER" | "WEBVIEW" | "WEBVIEW-AI1" | "WEBVIEW-AI2" | "IPC" | "DB";
 
 export interface LogContext {
   correlationId?: string;
@@ -103,12 +97,7 @@ export interface SessionMeta {
 }
 
 export type SessionEndReason =
-  | "normal"
-  | "crash"
-  | "unknown"
-  | "active"
-  | "incomplete"
-  | "from-structured";
+  "normal" | "crash" | "unknown" | "active" | "incomplete" | "from-structured";
 
 export interface SessionStats {
   totalLogs: number;
