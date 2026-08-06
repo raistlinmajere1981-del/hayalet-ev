@@ -170,6 +170,23 @@ void test("pattern-room review task selection survives local debate rerenders", 
     assert.equal(restoredLocalTask.dataset["patternReviewTaskActive"], "true");
     assert.ok(environment.app.querySelector("[data-pattern-review-disclosure='local-roles']"));
     assert.ok(environment.app.querySelector("[data-pattern-review-disclosure='local-references']"));
+
+    const historyNavigation = environment.app.querySelector(
+      "[data-pattern-workspace-nav='review-history']"
+    );
+    assert.ok(historyNavigation);
+    fireEvent(historyNavigation, "click");
+
+    const historyDisclosure = environment.app.querySelector(
+      "[data-pattern-case-review-history='true']"
+    );
+    const restoredAiTask = environment.app.querySelector(
+      "[data-pattern-review-task='ai-review']"
+    );
+    assert.ok(historyDisclosure);
+    assert.ok(restoredAiTask);
+    assert.equal((historyDisclosure as unknown as { open: boolean }).open, true);
+    assert.equal(restoredAiTask.dataset["patternReviewTaskActive"], "true");
   } finally {
     environment.restore();
     await installedCopy.cleanup();
