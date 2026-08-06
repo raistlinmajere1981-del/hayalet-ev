@@ -6,7 +6,7 @@ import {
   createPatternWorkspaceTranslator,
   type PatternWorkspaceTranslator,
 } from "../pattern-room-workspace-i18n.js";
-import { createElement, createPanelShell } from "./pattern-panel-utils.js";
+import { createElement, createEmptyState, createPanelShell } from "./pattern-panel-utils.js";
 
 export function createBoardPanel(
   data: PatternRoomWorkspaceModel,
@@ -57,6 +57,13 @@ export function createBoardPanel(
     );
 
     const pinList = createElement("div", "pattern-room-board-pins");
+    if (category.pins.length === 0) {
+      pinList.append(
+        createEmptyState("Bu kategoride henüz pano öğesi yok.", "data-empty", {
+          compact: true,
+        })
+      );
+    }
     category.pins.forEach((pinItem) => {
       const pin = createElement("button", "pattern-room-board-node " + category.tone);
       pin.type = "button";
