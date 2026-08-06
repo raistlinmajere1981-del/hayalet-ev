@@ -52,11 +52,12 @@ void test("pattern-room relationship graph keeps deterministic layout and presen
     assert.ok(environment.app.querySelectorAll("[data-pattern-graph-node]").length > 0);
 
     const edges = environment.app.querySelectorAll("[data-pattern-connection-edge]");
-    assert.ok(edges.length > 0);
-    const selectedEdgeId = edges[0]?.dataset["patternConnectionEdge"];
+    const selectedEdge = edges[0];
+    assert.ok(selectedEdge);
+    const selectedEdgeId = selectedEdge.dataset["patternConnectionEdge"];
     assert.ok(selectedEdgeId);
-    fireEvent(edges[0], "click");
-    assert.equal(edges[0]?.ariaPressed, "true");
+    fireEvent(selectedEdge, "click");
+    assert.equal(selectedEdge.ariaPressed, "true");
     assert.ok(environment.app.querySelector("[data-pattern-connection-detail='true']"));
     assert.equal(environment.app.querySelector("[data-pattern-remove-connection]"), null);
 
