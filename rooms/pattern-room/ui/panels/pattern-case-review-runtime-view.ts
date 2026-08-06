@@ -17,7 +17,12 @@ import type {
   PatternCaseReviewTextKey,
   PatternCaseReviewTranslator,
 } from "../pattern-case-review-i18n.js";
-import { createActionButton, createElement } from "./pattern-panel-utils.js";
+import {
+  createActionButton,
+  createElement,
+  createEmptyState,
+  type PatternEmptyStateKind,
+} from "./pattern-panel-utils.js";
 
 export type PatternCaseReviewApplyFeedback = {
   readonly tone: "success" | "error";
@@ -82,6 +87,20 @@ const SECTION_TEXT_KEYS: Readonly<
   confidenceNotes: "sections.confidenceNotes",
 };
 
+function resolveSessionEmptyKind(
+  session: PatternRoomCaseReviewSession | null
+): PatternEmptyStateKind {
+  if (
+    session === null ||
+    session.status === "preview" ||
+    session.status === "dispatching" ||
+    session.status === "waiting-reply"
+  ) {
+    return "pending";
+  }
+  return "complete-empty";
+}
+
 function createTextList(items: readonly string[], className?: string): HTMLUListElement | null {
   if (items.length === 0) {
     return null;
@@ -111,7 +130,7 @@ function appendResultSection(
   if (list !== null) {
     card.append(list);
   } else {
-    card.append(createElement("p", "pattern-room-empty-state", section.rawText));
+    card.append(createElement("p", "pattern-room-case-review-section-raw", section.rawText));
   }
   container.append(card);
 }
@@ -243,7 +262,7 @@ function createHistory(
   section.append(createElement("h3", undefined, text("history.title")));
 
   if (history.length === 0) {
-    section.append(createElement("p", "pattern-room-empty-state", text("messages.historyEmpty")));
+    section.append(createEmptyState(text("messages.historyEmpty"), "data-empty", { compact: true }));
     return section;
   }
 
@@ -356,7 +375,10 @@ function createRawResponse(
 
   if (session?.reply === null || session?.reply === undefined) {
     response.append(
-      createElement("p", "pattern-room-empty-state", text("workspace.responseEmpty"))
+      createEmptyState(text("workspace.responseEmpty"), resolveSessionEmptyKind(session), {
+        compact: true,
+        live: true,
+      })
     );
     return response;
   }
@@ -385,7 +407,7 @@ function createEvidenceCandidateWorkspace(state: PatternCaseReviewRuntimePanelSt
 
   if (state.evidenceCandidates.length === 0) {
     workspace.append(
-      createElement("p", "pattern-room-empty-state", state.text("candidates.empty"))
+      createEmptyState(state.text("candidates.empty"), "complete-empty", { compact: true })
     );
   } else {
     const list = createElement("div", "pattern-room-evidence-candidate-list");
@@ -487,7 +509,11 @@ function createApplyWorkspace(state: PatternCaseReviewRuntimePanelState): HTMLEl
 
   const result = state.session?.result ?? null;
   if (result === null) {
-    apply.append(createElement("p", "pattern-room-empty-state", state.text("messages.noResult")));
+    apply.append(
+      createEmptyState(state.text("messages.noResult"), resolveSessionEmptyKind(state.session), {
+        compact: true,
+      })
+    );
   } else {
     const previewMetrics = createElement("div", "pattern-room-case-review-workspace-metrics");
     previewMetrics.append(
@@ -527,7 +553,7 @@ function createApplyWorkspace(state: PatternCaseReviewRuntimePanelState): HTMLEl
   const summary = state.session?.applySummary ?? null;
   if (summary === null) {
     applyResult.append(
-      createElement("p", "pattern-room-empty-state", state.text("workspace.applyEmpty"))
+      createEmptyState(state.text("workspace.applyEmpty"), "complete-empty", { compact: true })
     );
   } else {
     const resultMetrics = createElement("div", "pattern-room-case-review-workspace-metrics");
@@ -599,7 +625,10 @@ export function createPatternCaseReviewRuntimeView(
     parsed.append(createReviewResult(state.session.result, state.text));
   } else {
     parsed.append(
-      createElement("p", "pattern-room-empty-state", state.text("messages.resultEmpty"))
+      createEmptyState(state.text("messages.resultEmpty"), resolveSessionEmptyKind(state.session), {
+        compact: true,
+        live: true,
+      })
     );
   }
   workspace.append(parsed, createApplyWorkspace(state), createEvidenceCandidateWorkspace(state));
