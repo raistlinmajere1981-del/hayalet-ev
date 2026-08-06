@@ -101,15 +101,75 @@ void test("pattern-room case review exposes distinct empty state variants", asyn
     assert.ok(reviewNavigation);
     fireEvent(reviewNavigation, "click");
 
-    assert.ok(
-      environment.app.querySelector("[data-pattern-empty-state-kind='pending']")
+    assert.ok(environment.app.querySelector("[data-pattern-empty-state-kind='pending']"));
+    assert.ok(environment.app.querySelector("[data-pattern-empty-state-kind='data-empty']"));
+    assert.ok(environment.app.querySelector("[data-pattern-empty-state-kind='complete-empty']"));
+  } finally {
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
+
+void test("pattern-room review task selection survives local debate rerenders", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+
+  try {
+    await startPatternRoomInstalledUi(installedCopy.rootDir);
+
+    const archiveNavigation = environment.app.querySelector(
+      "[data-pattern-workspace-nav='archive']"
     );
-    assert.ok(
-      environment.app.querySelector("[data-pattern-empty-state-kind='data-empty']")
+    const reviewNavigation = environment.app.querySelector(
+      "[data-pattern-workspace-nav='tenth-man']"
     );
-    assert.ok(
-      environment.app.querySelector("[data-pattern-empty-state-kind='complete-empty']")
+    assert.ok(archiveNavigation);
+    assert.ok(reviewNavigation);
+    fireEvent(archiveNavigation, "click");
+
+    const addReference = environment.app.querySelector(
+      "[data-pattern-add-source-debate='source-shadow-comparison']"
     );
+    assert.ok(addReference);
+    fireEvent(addReference, "click");
+    fireEvent(reviewNavigation, "click");
+
+    assert.ok(environment.app.querySelector("[data-pattern-review-task-switcher='true']"));
+    const aiTask = environment.app.querySelector("[data-pattern-review-task='ai-review']");
+    assert.ok(aiTask);
+    assert.equal(aiTask.dataset["patternReviewTaskActive"], "true");
+    assert.ok(environment.app.querySelector("[data-pattern-review-disclosure='case-request']"));
+    assert.ok(
+      environment.app.querySelector("[data-pattern-case-review-disclosure='raw-response']")
+    );
+    assert.ok(environment.app.querySelector("[data-pattern-case-review-disclosure='apply']"));
+    assert.ok(
+      environment.app.querySelector("[data-pattern-case-review-disclosure='evidence-candidates']")
+    );
+    assert.ok(environment.app.querySelector("[data-pattern-case-review-disclosure='history']"));
+
+    const localTask = environment.app.querySelector("[data-pattern-review-task='tenth-man']");
+    assert.ok(localTask);
+    fireEvent(localTask, "click");
+    assert.equal(localTask.dataset["patternReviewTaskActive"], "true");
+    const localSurface = environment.app.querySelector(
+      "[data-pattern-review-task-surface='tenth-man']"
+    );
+    assert.ok(localSurface);
+    assert.equal(localSurface.dataset["patternReviewTaskActive"], "true");
+
+    const prepareDebate = environment.app.querySelector("[data-pattern-prepare-debate='true']");
+    assert.ok(prepareDebate);
+    assert.equal(prepareDebate.disabled, false);
+    fireEvent(prepareDebate, "click");
+
+    const restoredLocalTask = environment.app.querySelector(
+      "[data-pattern-review-task='tenth-man']"
+    );
+    assert.ok(restoredLocalTask);
+    assert.equal(restoredLocalTask.dataset["patternReviewTaskActive"], "true");
+    assert.ok(environment.app.querySelector("[data-pattern-review-disclosure='local-roles']"));
+    assert.ok(environment.app.querySelector("[data-pattern-review-disclosure='local-references']"));
   } finally {
     environment.restore();
     await installedCopy.cleanup();
