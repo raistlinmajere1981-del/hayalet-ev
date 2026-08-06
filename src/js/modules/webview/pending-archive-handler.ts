@@ -143,8 +143,7 @@ class PendingArchiveHandlerClass {
         if (filePath === "") return;
 
         const saveAttachment = window.electronAPI?.["dbSaveAttachment"] as
-          | ((payload: Record<string, unknown>) => Promise<unknown>)
-          | undefined;
+          ((payload: Record<string, unknown>) => Promise<unknown>) | undefined;
         if (typeof saveAttachment !== "function") {
           Logger.errorT(
             LogCategory.WEBVIEW,

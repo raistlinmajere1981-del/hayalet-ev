@@ -1923,9 +1923,9 @@ export function createRepairRoomUiRuntime() {
 
   function flushWizardFields(root: HTMLElement): void {
     root
-      .querySelectorAll<
-        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-      >("[data-repair-action='wizard-field']")
+      .querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+        "[data-repair-action='wizard-field']"
+      )
       .forEach((fieldElement) => {
         const field = fieldElement.dataset["wizardField"];
         if (field === undefined || field.trim() === "") return;

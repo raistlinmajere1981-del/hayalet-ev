@@ -245,11 +245,7 @@ export interface LabComparisonInteractiveSettings {
 export type AudioVisualizationMode = "none" | "waveform" | "spectrum";
 export type LabWorkspaceControlTab = "audio" | "visual" | "operations";
 export type LabComparisonViewMode =
-  | "side-by-side"
-  | "stacked"
-  | "split"
-  | "difference"
-  | "roi-detail";
+  "side-by-side" | "stacked" | "split" | "difference" | "roi-detail";
 
 export interface LabParametricEQBand {
   frequency: number;

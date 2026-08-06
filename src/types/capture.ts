@@ -48,10 +48,7 @@ export interface CaptureAndroidDeviceStatus {
 }
 
 export type CaptureAndroidArtifactBuildState =
-  | "missing"
-  | "build-blocked"
-  | "source-ready"
-  | "artifact-ready";
+  "missing" | "build-blocked" | "source-ready" | "artifact-ready";
 
 export interface CaptureAndroidArtifactStatus {
   buildState: CaptureAndroidArtifactBuildState;
@@ -111,13 +108,7 @@ export interface CaptureDictationStatusPayload {
 }
 
 export type CaptureAmbientStatusState =
-  | "started"
-  | "wake-detected"
-  | "capturing"
-  | "transcribing"
-  | "done"
-  | "stopped"
-  | "failed";
+  "started" | "wake-detected" | "capturing" | "transcribing" | "done" | "stopped" | "failed";
 
 export interface CaptureAmbientStatusPayload {
   requestId: string;
@@ -222,12 +213,7 @@ export interface CaptureTorchOptions extends CaptureTargetActionOptions {
 }
 
 export type CaptureAnalyzeSessionState =
-  | "idle"
-  | "pending-launch"
-  | "ready"
-  | "capture-requested"
-  | "result-ready"
-  | "error";
+  "idle" | "pending-launch" | "ready" | "capture-requested" | "result-ready" | "error";
 
 export type CaptureScrcpySessionMode = "camera-feed" | "interactive-mirror";
 

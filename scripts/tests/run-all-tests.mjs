@@ -37,6 +37,7 @@ const result = spawnSync(
   {
     env: {
       ...process.env,
+      TSX_DISABLE_CACHE: "1",
       TSX_TSCONFIG_PATH: process.env.TSX_TSCONFIG_PATH ?? "src/tsconfig.json",
     },
     stdio: "inherit",

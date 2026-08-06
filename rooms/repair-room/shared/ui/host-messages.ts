@@ -85,13 +85,7 @@ export interface RepairCaptureAmbientStatusHostMessage {
   target: string;
   deviceId: string | null;
   status:
-    | "started"
-    | "wake-detected"
-    | "capturing"
-    | "transcribing"
-    | "done"
-    | "stopped"
-    | "failed";
+    "started" | "wake-detected" | "capturing" | "transcribing" | "done" | "stopped" | "failed";
   message: string;
   transcript: string | null;
   metadata: Record<string, unknown> | null;

@@ -17,8 +17,7 @@ interface BootstrapExternalToolPageOptions {
 }
 
 type ExternalPageStartupFlags =
-  | ReturnType<NonNullable<NonNullable<typeof window.electronAPI>["getStartupFlags"]>>
-  | undefined;
+  ReturnType<NonNullable<NonNullable<typeof window.electronAPI>["getStartupFlags"]>> | undefined;
 
 interface ExternalToolBootstrapResult {
   startupFlags: ExternalPageStartupFlags;

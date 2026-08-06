@@ -297,8 +297,7 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
 
       try {
         const healthFn = electronApi["opencodeServeHealth"] as
-          | ((healthUrl: string) => Promise<unknown>)
-          | undefined;
+          ((healthUrl: string) => Promise<unknown>) | undefined;
         const healthCheck = await healthFn?.(`${serverUrl}/global/health`);
         if (
           healthCheck !== undefined &&

@@ -137,8 +137,7 @@ export async function attachFiles(
   })();`;
 
   const result = (await webview.executeJavaScript?.(injectScript)) as
-    | { success?: boolean; message?: string; count?: number }
-    | undefined;
+    { success?: boolean; message?: string; count?: number } | undefined;
   return {
     success: result?.success === true,
     message: result?.message ?? uploadT("injectionAttempted"),

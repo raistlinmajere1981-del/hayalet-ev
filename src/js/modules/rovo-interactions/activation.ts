@@ -106,8 +106,7 @@ export async function loadRovoInteractionActivationSnapshot(
   }
 
   const apiLoadSettings = api["loadSettings"] as
-    | (() => Promise<Record<string, unknown>>)
-    | undefined;
+    (() => Promise<Record<string, unknown>>) | undefined;
   const apiOpencodeServeStatus = api["opencodeServeStatus"] as
     | (() => Promise<{
         running: boolean;
@@ -118,11 +117,9 @@ export async function loadRovoInteractionActivationSnapshot(
       }>)
     | undefined;
   const apiAssistantRuntimeRead = api["assistantRuntimeRead"] as
-    | (() => Promise<{ success: boolean; state?: unknown }>)
-    | undefined;
+    (() => Promise<{ success: boolean; state?: unknown }>) | undefined;
   const apiRovoInteractionContextRead = api["rovoInteractionContextRead"] as
-    | (() => Promise<{ success: boolean; appMode?: string; effectiveMode?: string }>)
-    | undefined;
+    (() => Promise<{ success: boolean; appMode?: string; effectiveMode?: string }>) | undefined;
 
   const [settingsResult, serveStatusResult, runtimeResult, contextResult] =
     await Promise.allSettled([

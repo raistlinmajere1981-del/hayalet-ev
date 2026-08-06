@@ -25,11 +25,14 @@ import {
   createPatternWorkspaceTranslator,
   type PatternWorkspaceTranslator,
 } from "../pattern-room-workspace-i18n.js";
+import { createPatternCaseReviewSimplifiedView } from "./pattern-case-review-simplified-view.js";
+import type { PatternCaseReviewRuntimePanelState } from "./pattern-case-review-runtime-view.js";
 import {
-  createPatternCaseReviewRuntimeView,
-  type PatternCaseReviewRuntimePanelState,
-} from "./pattern-case-review-runtime-view.js";
-import { createActionButton, createElement, createPanelShell } from "./pattern-panel-utils.js";
+  createActionButton,
+  createElement,
+  createEmptyState,
+  createPanelShell,
+} from "./pattern-panel-utils.js";
 
 export type PatternCaseReviewPreviewPanelState = PatternCaseReviewRuntimePanelState & {
   readonly preview: PatternCaseReviewPreviewDraft | null;
@@ -39,6 +42,10 @@ export type PatternCaseReviewPreviewPanelState = PatternCaseReviewRuntimePanelSt
   readonly onPrepare: () => void;
   readonly onSend: () => void;
 };
+
+type PatternReviewTaskMode = "ai-review" | "tenth-man";
+
+const REVIEW_TASK_MODE_DATASET_KEY = "patternReviewTaskMode";
 
 const PHASE_LABELS: Record<DebateLocalPhase, string> = {
   idle: "Beklemede",
@@ -69,6 +76,109 @@ const TURN_ROLE_LABELS: Record<DebateLocalTurn["role"], string> = {
   "tenth-man": "10. Adam / Karşıt",
   arbiter: "Hakem",
 };
+
+function readReviewTaskMode(): PatternReviewTaskMode {
+  return document.documentElement.dataset[REVIEW_TASK_MODE_DATASET_KEY] === "tenth-man"
+    ? "tenth-man"
+    : "ai-review";
+}
+
+function createReviewTaskButton(
+  mode: PatternReviewTaskMode,
+  label: string,
+  description: string
+): HTMLButtonElement {
+  const button = createElement("button", "pattern-room-review-task-button");
+  button.type = "button";
+  button.dataset["patternReviewTask"] = mode;
+  button.ariaPressed = "false";
+  button.append(
+    createElement("strong", undefined, label),
+    createElement("span", undefined, description)
+  );
+  return button;
+}
+
+function applyReviewTaskMode(root: HTMLElement, mode: PatternReviewTaskMode): void {
+  const aiActive = mode === "ai-review";
+  const panel =
+    root.dataset["patternView"] === "tenth-man"
+      ? root
+      : root.querySelector<HTMLElement>("[data-pattern-view='tenth-man']");
+  const aiTaskButton = root.querySelector<HTMLButtonElement>(
+    "[data-pattern-review-task='ai-review']"
+  );
+  const localTaskButton = root.querySelector<HTMLButtonElement>(
+    "[data-pattern-review-task='tenth-man']"
+  );
+  const reviewSurface = root.querySelector<HTMLElement>(
+    "[data-pattern-review-task-surface='ai-review']"
+  );
+  const localSurface = root.querySelector<HTMLElement>(
+    "[data-pattern-review-task-surface='tenth-man']"
+  );
+  if (
+    panel === null ||
+    aiTaskButton === null ||
+    localTaskButton === null ||
+    reviewSurface === null ||
+    localSurface === null
+  ) {
+    return;
+  }
+
+  document.documentElement.dataset[REVIEW_TASK_MODE_DATASET_KEY] = mode;
+  panel.dataset["patternReviewTaskActive"] = mode;
+
+  aiTaskButton.ariaPressed = aiActive ? "true" : "false";
+  aiTaskButton.tabIndex = aiActive ? 0 : -1;
+  aiTaskButton.dataset["patternReviewTaskActive"] = aiActive ? "true" : "false";
+  reviewSurface.hidden = !aiActive;
+  reviewSurface.dataset["patternReviewTaskActive"] = aiActive ? "true" : "false";
+
+  localTaskButton.ariaPressed = aiActive ? "false" : "true";
+  localTaskButton.tabIndex = aiActive ? -1 : 0;
+  localTaskButton.dataset["patternReviewTaskActive"] = aiActive ? "false" : "true";
+  localSurface.hidden = aiActive;
+  localSurface.dataset["patternReviewTaskActive"] = aiActive ? "false" : "true";
+}
+
+function openReviewHistory(root: HTMLElement): void {
+  const history = root.querySelector<HTMLDetailsElement>(
+    "[data-pattern-case-review-history='true']"
+  );
+  if (history === null) {
+    return;
+  }
+  history.open = true;
+  history.tabIndex = -1;
+  if (typeof history.focus === "function") {
+    history.focus();
+  }
+  if (typeof history.scrollIntoView === "function") {
+    history.scrollIntoView({ block: "start" });
+  }
+}
+
+function createReviewDisclosure(
+  id: string,
+  label: string,
+  content: HTMLElement,
+  open = false
+): HTMLDetailsElement {
+  const disclosure = createElement("details", "pattern-room-review-disclosure");
+  disclosure.dataset["patternReviewDisclosure"] = id;
+  disclosure.open = open;
+  const summary = createElement("summary", "pattern-room-review-disclosure-summary");
+  summary.append(
+    createElement("strong", undefined, label),
+    createElement("span", undefined, "Ayrıntılar")
+  );
+  const body = createElement("div", "pattern-room-review-disclosure-body");
+  body.append(content);
+  disclosure.append(summary, body);
+  return disclosure;
+}
 
 function createDebateActionButton(
   label: string,
@@ -102,10 +212,10 @@ function appendReferences(device: HTMLElement, session: PatternTenthManSession):
 
   if (session.references.length === 0) {
     references.append(
-      createElement(
-        "p",
-        "pattern-room-empty-state",
-        "Referans eklemek için Pano veya Arşiv üzerinden 10. Adam’a Ekle akışını kullan."
+      createEmptyState(
+        "Referans eklemek için Pano veya Arşiv üzerinden 10. Adam’a Ekle akışını kullan.",
+        "data-empty",
+        { compact: true }
       )
     );
     device.append(references);
@@ -278,7 +388,8 @@ function createRoleField(state: PatternCaseReviewPreviewPanelState): HTMLElement
 
 function appendCaseReviewPreview(
   device: HTMLElement,
-  previewState: PatternCaseReviewPreviewPanelState
+  previewState: PatternCaseReviewPreviewPanelState,
+  onHistoryFocus: () => void
 ): void {
   const previewSection = createElement("section", "pattern-room-case-review-preview");
   previewSection.dataset["patternCaseReviewPreview"] = "true";
@@ -286,7 +397,7 @@ function appendCaseReviewPreview(
   const previewResult = createElement("div", "pattern-room-case-review-preview-result");
   if (previewState.preview === null) {
     previewResult.append(
-      createElement("p", "pattern-room-empty-state", previewState.text("previewEmpty"))
+      createEmptyState(previewState.text("previewEmpty"), "pending", { live: true })
     );
   } else {
     renderCaseReviewPreview(previewResult, previewState.preview, previewState.text);
@@ -331,7 +442,15 @@ function appendCaseReviewPreview(
     actionRow
   );
   const workspace = createElement("div", "pattern-room-case-review-workspace");
-  workspace.append(request, createPatternCaseReviewRuntimeView(previewState));
+  workspace.append(
+    createReviewDisclosure(
+      "case-request",
+      previewState.text("workspace.request"),
+      request,
+      previewState.preview !== null
+    ),
+    createPatternCaseReviewSimplifiedView(previewState, { onHistoryFocus })
+  );
   previewSection.append(workspace);
   device.append(previewSection);
 }
@@ -405,15 +524,46 @@ export function createTenthManPanel(
   workspaceText: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)
 ): HTMLElement {
   const shell = createPanelShell("tenth-man", workspaceText("nav.review.label"), onBack);
+  shell.classList.add("pattern-room-review-panel");
   const session = data.tenthManSession;
   const phase = session.phase ?? "idle";
+
+  const switcher = createElement("section", "pattern-room-review-task-switcher");
+  switcher.dataset["patternReviewTaskSwitcher"] = "true";
+  const switcherCopy = createElement("div", "pattern-room-review-task-switcher-copy");
+  switcherCopy.append(
+    createElement("span", "pattern-room-kicker", "İnceleme çalışma alanı"),
+    createElement("strong", undefined, "Bir göreve odaklan"),
+    createElement(
+      "p",
+      undefined,
+      "AI incelemesi ile yerel 10. Adam simülasyonu aynı vaka verisini kullanır; sonuçlar otomatik uygulanmaz."
+    )
+  );
+  const taskButtons = createElement("div", "pattern-room-review-task-buttons");
+  const aiTaskButton = createReviewTaskButton(
+    "ai-review",
+    "AI Vaka İncelemesi",
+    "Önizleme, yanıt, sonuç ve uygulama"
+  );
+  const localTaskButton = createReviewTaskButton(
+    "tenth-man",
+    "Yerel 10. Adam",
+    "Referanslar, roller ve tartışma turları"
+  );
+  taskButtons.append(aiTaskButton, localTaskButton);
+  switcher.append(switcherCopy, taskButtons);
+
   const workspace = createElement("div", "pattern-room-review-workspace");
   const reviewSurface = createElement("section", "pattern-room-review-surface");
+  reviewSurface.dataset["patternReviewTaskSurface"] = "ai-review";
   reviewSurface.ariaLabel = workspaceText("review.workspaceLabel");
+
   const device = createElement(
     "aside",
     "pattern-room-device pattern-room-slot-device pattern-room-review-inspector"
   );
+  device.dataset["patternReviewTaskSurface"] = "tenth-man";
   device.ariaLabel = workspaceText("review.debateInspectorLabel");
   device.append(
     createElement(
@@ -422,6 +572,18 @@ export function createTenthManPanel(
       workspaceText("review.debateInspectorLabel")
     )
   );
+
+  const setActiveTask = (mode: PatternReviewTaskMode): void => {
+    applyReviewTaskMode(shell, mode);
+  };
+
+  aiTaskButton.addEventListener("click", () => {
+    setActiveTask("ai-review");
+  });
+  localTaskButton.addEventListener("click", () => {
+    setActiveTask("tenth-man");
+  });
+
   const statusRow = createElement("div", "pattern-room-device-status-row");
   statusRow.append(
     createElement(
@@ -442,20 +604,87 @@ export function createTenthManPanel(
     createElement("h2", undefined, session.label),
     createElement("p", undefined, session.prompt)
   );
+  appendPhaseAction(device, session, actions);
 
   const slots = createElement("div", "pattern-room-device-slots");
   session.roles.forEach((role) => {
     slots.append(createRoleSlot(role));
   });
-  device.append(slots);
+  device.append(
+    createReviewDisclosure(
+      "local-roles",
+      "Roller ve bağlantı durumu",
+      slots,
+      phase === "preparation" || phase === "role_assignment"
+    )
+  );
 
-  appendPhaseAction(device, session, actions);
-  appendReferences(device, session);
-  appendTurnList(device, session.turns ?? []);
-  appendVerdict(device, session.verdict);
-  appendCaseReviewPreview(reviewSurface, caseReviewPreviewState);
+  const references = createElement("div", "pattern-room-review-disclosure-content");
+  appendReferences(references, session);
+  device.append(
+    createReviewDisclosure(
+      "local-references",
+      `Yerel referanslar (${String(session.references.length)})`,
+      references,
+      phase === "idle" && session.references.length > 0
+    )
+  );
+
+  const sessionFlow = createElement("div", "pattern-room-review-disclosure-content");
+  appendTurnList(sessionFlow, session.turns ?? []);
+  appendVerdict(sessionFlow, session.verdict);
+  if (sessionFlow.children.length > 0) {
+    device.append(
+      createReviewDisclosure(
+        "local-flow",
+        `Oturum akışı (${String(session.turns?.length ?? 0)})`,
+        sessionFlow,
+        phase === "completed"
+      )
+    );
+  }
+
+  appendCaseReviewPreview(reviewSurface, caseReviewPreviewState, () => {
+    setActiveTask("ai-review");
+  });
 
   workspace.append(reviewSurface, device);
-  shell.append(workspace);
+  shell.append(switcher, workspace);
+  setActiveTask(readReviewTaskMode());
+
+  queueMicrotask(() => {
+    const appShell = shell.parentElement?.parentElement?.parentElement;
+    const historyNavigation = appShell?.querySelector<HTMLButtonElement>(
+      "[data-pattern-workspace-nav='review-history']"
+    );
+    if (
+      appShell === null ||
+      appShell === undefined ||
+      historyNavigation === null ||
+      historyNavigation === undefined
+    ) {
+      return;
+    }
+
+    if (historyNavigation.dataset["patternReviewHistoryTaskBinding"] !== "true") {
+      historyNavigation.dataset["patternReviewHistoryTaskBinding"] = "true";
+      historyNavigation.addEventListener("click", () => {
+        queueMicrotask(() => {
+          const currentAppShell = historyNavigation.parentElement?.parentElement?.parentElement;
+          if (currentAppShell === null || currentAppShell === undefined) {
+            return;
+          }
+          applyReviewTaskMode(currentAppShell, "ai-review");
+          openReviewHistory(currentAppShell);
+        });
+      });
+    }
+
+    if (historyNavigation.ariaCurrent === "page") {
+      applyReviewTaskMode(appShell, "ai-review");
+      openReviewHistory(appShell);
+    }
+  });
+
   return shell;
 }

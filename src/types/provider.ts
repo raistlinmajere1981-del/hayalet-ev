@@ -215,11 +215,7 @@ export interface OpenCodeUiConfig extends BaseProviderConfig {
 export type AssistantProviderConfig = OpenCodeConfig | OpenCodeUiConfig;
 
 export type ProviderConfig =
-  | ChatGPTConfig
-  | GeminiConfig
-  | GrokConfig
-  | LLMConfig
-  | AssistantProviderConfig;
+  ChatGPTConfig | GeminiConfig | GrokConfig | LLMConfig | AssistantProviderConfig;
 
 export interface ProviderScraper {
   scrapeMessages: (doc: Document) => ScrapedMessage[];
@@ -256,10 +252,7 @@ export type ProviderScenarioId = "webview-test" | "webview-sync" | (string & {})
 export type ProviderTestSlot = "ai0" | "ai1" | "ai2";
 
 export type ProviderScenarioProgressEventType =
-  | "started"
-  | "command-start"
-  | "command-complete"
-  | "completed";
+  "started" | "command-start" | "command-complete" | "completed";
 
 export type ProviderTestProgressEventType = ProviderScenarioProgressEventType;
 export type ProviderScenarioCommandStatus = TestStatus | "running";

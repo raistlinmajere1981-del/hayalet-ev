@@ -154,8 +154,7 @@ interface GameRoomTeamTetrisDraftReplayFailure extends GameRoomUnknownRecord {
 }
 
 type GameRoomTeamTetrisDraftReplayResult =
-  | GameRoomTeamTetrisDraftPreview
-  | GameRoomTeamTetrisDraftReplayFailure;
+  GameRoomTeamTetrisDraftPreview | GameRoomTeamTetrisDraftReplayFailure;
 
 type GameRoomTeamTetrisDraftStage = "positioning" | "route";
 type GameRoomTeamTetrisRouteMode = "straight" | "bend-left" | "bend-right";

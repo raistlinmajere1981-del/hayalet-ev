@@ -126,8 +126,7 @@ class WhisperManagerClass {
       }
 
       const whisperLoad = window.electronAPI?.["whisperLoad"] as
-        | ((params?: Record<string, unknown>) => Promise<unknown>)
-        | undefined;
+        ((params?: Record<string, unknown>) => Promise<unknown>) | undefined;
       if (typeof whisperLoad !== "function") {
         return { pending: [], done: [] };
       }

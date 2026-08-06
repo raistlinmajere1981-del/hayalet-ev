@@ -4,12 +4,7 @@ import type { RepairKnowledgePack } from "./repair-knowledge-pack.js";
 export type RepairRiskLevel = "low" | "medium" | "high" | "critical";
 
 export type RepairSessionStatus =
-  | "draft"
-  | "research"
-  | "ready"
-  | "in-progress"
-  | "paused"
-  | "archived";
+  "draft" | "research" | "ready" | "in-progress" | "paused" | "archived";
 
 export interface RepairDeviceInfo {
   deviceType: string;

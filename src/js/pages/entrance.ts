@@ -289,8 +289,7 @@ export class EntranceHallController {
 
     const electronApi = window.electronAPI;
     const readFile = electronApi?.["readFile"] as
-      | ((path: string) => Promise<string | null>)
-      | undefined;
+      ((path: string) => Promise<string | null>) | undefined;
     if (typeof readFile !== "function") {
       clearAvatar();
       return;

@@ -11,8 +11,7 @@ export async function detectSystemActiveServerStatus(): Promise<SystemActiveServ
 
   try {
     const opencodeServeStatus = electronApi["opencodeServeStatus"] as
-      | (() => Promise<SystemActiveServerStatus>)
-      | undefined;
+      (() => Promise<SystemActiveServerStatus>) | undefined;
     if (typeof opencodeServeStatus === "function") {
       const status = await opencodeServeStatus();
       if (status.running === true) {
@@ -28,8 +27,7 @@ export async function detectSystemActiveServerStatus(): Promise<SystemActiveServ
 
   try {
     const opencodeServeFindRunning = electronApi["opencodeServeFindRunning"] as
-      | (() => Promise<SystemActiveServerStatus>)
-      | undefined;
+      (() => Promise<SystemActiveServerStatus>) | undefined;
     if (typeof opencodeServeFindRunning === "function") {
       const status = await opencodeServeFindRunning();
       if (status.running === true) {

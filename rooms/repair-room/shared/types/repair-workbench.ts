@@ -55,12 +55,7 @@ export interface RepairLiveSourceState {
 }
 
 export type RepairContextualCursor =
-  | "inspect"
-  | "annotate"
-  | "measurement"
-  | "pan"
-  | "ai-focus"
-  | "replay-scrub-lock";
+  "inspect" | "annotate" | "measurement" | "pan" | "ai-focus" | "replay-scrub-lock";
 
 export interface RepairWorkbenchViewport {
   zoom: number;

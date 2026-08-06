@@ -14,10 +14,7 @@ export type SlotBridgeMessageTarget = SlotId | "us1";
 export type SlotBridgeConnectPolicy = "never" | "ensure" | "require-ready";
 export type SlotBridgeDelivery = "sync" | "async";
 export type SlotBridgeArtifactKind =
-  | "attachment-ref"
-  | "filesystem"
-  | "archive-attachment"
-  | "generated-image";
+  "attachment-ref" | "filesystem" | "archive-attachment" | "generated-image";
 export type SlotBridgeProtocolTextPosition = "before" | "after" | "replace";
 
 export interface SlotBridgeProtocolDescriptor {

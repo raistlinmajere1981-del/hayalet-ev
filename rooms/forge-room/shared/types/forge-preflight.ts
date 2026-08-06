@@ -15,14 +15,7 @@ export const FORGE_PREFLIGHT_STEP_IDS = [
 export type ForgePreflightStepId = (typeof FORGE_PREFLIGHT_STEP_IDS)[number];
 export type ForgePreflightStatus = "idle" | "running" | "fresh" | "stale" | "warning";
 export type ForgeCapabilityTag =
-  | "archive"
-  | "camera"
-  | "image"
-  | "protocol"
-  | "relay"
-  | "storage"
-  | "target-room"
-  | "ui";
+  "archive" | "camera" | "image" | "protocol" | "relay" | "storage" | "target-room" | "ui";
 
 export const FORGE_OPERATOR_PREFERENCE_KEYS = ["mode", "riskTolerance"] as const;
 

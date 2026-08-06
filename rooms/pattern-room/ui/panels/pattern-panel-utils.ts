@@ -1,3 +1,12 @@
+export type PatternEmptyStateKind =
+  "data-empty" | "selection" | "filter-empty" | "pending" | "complete-empty";
+
+export type PatternEmptyStateOptions = {
+  readonly className?: string;
+  readonly live?: boolean;
+  readonly compact?: boolean;
+};
+
 export function createElement<K extends keyof HTMLElementTagNameMap>(
   tagName: K,
   className?: string,
@@ -36,6 +45,26 @@ export function createActionButton(label: string, onClick: () => void): HTMLButt
   button.type = "button";
   button.addEventListener("click", onClick);
   return button;
+}
+
+export function createEmptyState(
+  message: string,
+  kind: PatternEmptyStateKind,
+  options: PatternEmptyStateOptions = {}
+): HTMLParagraphElement {
+  const classNames = [
+    "pattern-room-empty-state",
+    options.className,
+    options.compact === true ? "compact" : undefined,
+  ].filter((className): className is string => className !== undefined && className !== "");
+  const emptyState = createElement("p", classNames.join(" "), message);
+  emptyState.dataset["patternEmptyState"] = "true";
+  emptyState.dataset["patternEmptyStateKind"] = kind;
+  if (options.live === true) {
+    emptyState.role = "status";
+    emptyState.ariaLive = "polite";
+  }
+  return emptyState;
 }
 
 export function createPanelShell(viewId: string, title: string, onBack: () => void): HTMLElement {

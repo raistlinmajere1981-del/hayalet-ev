@@ -52,9 +52,7 @@ export function buildProbeScript(provider: string): string {
   const matrixSelectors = cfg.selectorMatrix?.selectors ?? {};
   const sendSel = resolveSelectorCandidates(
     (matrixSelectors["sendButton"] ?? selectors.sendButtonBase ?? selectors.sendButton ?? "") as
-      | string
-      | string[]
-      | Record<string, unknown>,
+      string | string[] | Record<string, unknown>,
     locale
   );
   const stopSel = resolveSelectorCandidates(selectors.stopButton ?? "", locale);

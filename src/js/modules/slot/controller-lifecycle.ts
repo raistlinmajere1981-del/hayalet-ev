@@ -145,8 +145,7 @@ async function stopLlmSlotServer(
 
   const api = window.electronAPI;
   const llmServeStop = api?.["llmServeStop"] as
-    | ((payload: { slot: SlotId }) => Promise<void>)
-    | undefined;
+    ((payload: { slot: SlotId }) => Promise<void>) | undefined;
   if (typeof llmServeStop !== "function") {
     context.log(slot, "warning", "LLM server bridge is unavailable.", { correlationId });
     return;

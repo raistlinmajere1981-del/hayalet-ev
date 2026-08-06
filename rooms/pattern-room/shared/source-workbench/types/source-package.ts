@@ -135,10 +135,7 @@ export type SourceImportEvidenceDraft = {
 };
 
 export type SourceImportNodeOriginKind =
-  | "motif"
-  | "observation"
-  | "uncertainty"
-  | "numeric_pattern";
+  "motif" | "observation" | "uncertainty" | "numeric_pattern";
 
 export type SourceImportNodeDraft = {
   draftId: string;

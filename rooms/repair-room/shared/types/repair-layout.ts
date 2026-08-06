@@ -8,10 +8,7 @@ export type RepairPanelId =
   | "operator-profile";
 
 export type RepairMainLayoutPanelId =
-  | "session-rail"
-  | "workbench-stage"
-  | "tactical-feed"
-  | "knowledge-pack";
+  "session-rail" | "workbench-stage" | "tactical-feed" | "knowledge-pack";
 
 export type RepairOperatorProfileTabId = "tools" | "skills" | "preferences" | "controls";
 

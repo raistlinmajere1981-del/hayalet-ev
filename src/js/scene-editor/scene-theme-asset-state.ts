@@ -121,8 +121,7 @@ async function resolveSceneThemeAssetRuntimeSource(sourcePath: string): Promise<
   }
 
   const readFile = window.electronAPI?.["readFile"] as
-    | ((path: string) => Promise<string | null>)
-    | undefined;
+    ((path: string) => Promise<string | null>) | undefined;
   if (typeof readFile === "function") {
     try {
       const base64 = await readFile(normalizedPath);
@@ -628,8 +627,7 @@ export function subscribeSceneThemeAssetDraft(listener: SceneThemeAssetDraftList
 export async function loadSceneThemeAssetDraft(): Promise<void> {
   let nextSavedDraft = createEmptySceneThemeAssetDraft();
   const readFile = window.electronAPI?.["readFile"] as
-    | ((path: string) => Promise<string | null>)
-    | undefined;
+    ((path: string) => Promise<string | null>) | undefined;
   if (typeof readFile === "function") {
     try {
       const encoded = await readFile(getSceneThemeAssetDraftSourcePath());

@@ -152,6 +152,24 @@ function connectKeyboardNavigation(
   });
 }
 
+function resolveEmbeddedInspector(
+  outlet: HTMLElement,
+  inspectorView: string | undefined
+): HTMLElement | null {
+  if (inspectorView === "archive") {
+    const sourceDetail = outlet.querySelector<HTMLElement>(
+      "[data-pattern-archive-source-detail='true']"
+    );
+    return sourceDetail?.parentElement ?? null;
+  }
+
+  if (inspectorView === "report") {
+    return outlet.querySelector<HTMLElement>("[data-pattern-report-outline='true']");
+  }
+
+  return null;
+}
+
 export function createPatternWorkspaceShell(
   text: PatternWorkspaceTranslator,
   initialSummary: PatternWorkspaceSummary,
@@ -286,6 +304,18 @@ export function createPatternWorkspaceShell(
     inspectorReviewMetric.textContent = reviewText;
   };
 
+  let adoptedInspector: HTMLElement | null = null;
+  let adoptedInspectorHome: HTMLElement | null = null;
+
+  const restoreAdoptedInspector = (): void => {
+    if (adoptedInspector !== null && adoptedInspectorHome !== null) {
+      adoptedInspector.remove();
+      adoptedInspectorHome.append(adoptedInspector);
+    }
+    adoptedInspector = null;
+    adoptedInspectorHome = null;
+  };
+
   updateSummary(initialSummary);
 
   return {
@@ -293,9 +323,18 @@ export function createPatternWorkspaceShell(
     outlet,
     inspector,
     setInspectorContent(content): void {
+      restoreAdoptedInspector();
+      const resolvedContent =
+        content ??
+        resolveEmbeddedInspector(outlet, inspector.dataset["patternWorkspaceInspectorView"]);
       inspectorContent.replaceChildren();
-      if (content !== null) {
-        inspectorContent.append(content);
+      if (resolvedContent !== null) {
+        if (content === null) {
+          adoptedInspector = resolvedContent;
+          adoptedInspectorHome = resolvedContent.parentElement;
+          resolvedContent.remove();
+        }
+        inspectorContent.append(resolvedContent);
       }
     },
     showActionFeedback(feedback): void {

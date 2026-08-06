@@ -1,11 +1,7 @@
 import { REPAIR_UI_COMMANDS, type RepairUiCommandName } from "./repair-constants.js";
 
 export type RepairActionCategory =
-  | "navigation"
-  | "capture"
-  | "measurement"
-  | "verification"
-  | "investigation";
+  "navigation" | "capture" | "measurement" | "verification" | "investigation";
 
 export interface RepairActionRegistryEntry {
   id: string;

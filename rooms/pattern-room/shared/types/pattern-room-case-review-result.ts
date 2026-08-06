@@ -55,11 +55,7 @@ export type PatternRoomCaseReviewSuggestion = {
 };
 
 export type PatternRoomCaseReviewWarningCode =
-  | "empty-reply"
-  | "malformed-format"
-  | "unknown-section"
-  | "empty-section"
-  | "invalid-connection";
+  "empty-reply" | "malformed-format" | "unknown-section" | "empty-section" | "invalid-connection";
 
 export type PatternRoomCaseReviewWarning = {
   readonly code: PatternRoomCaseReviewWarningCode;

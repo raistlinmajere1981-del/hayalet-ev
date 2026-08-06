@@ -256,11 +256,9 @@ class RoomHostRuntimeClass {
     }
 
     const transcriptOnIngress = electronApi["transcriptOnIngress"] as
-      | ((handler: (payload: TranscriptIngressPayload) => void) => void)
-      | undefined;
+      ((handler: (payload: TranscriptIngressPayload) => void) => void) | undefined;
     const transcriptOffIngress = electronApi["transcriptOffIngress"] as
-      | ((handler: (payload: TranscriptIngressPayload) => void) => void)
-      | undefined;
+      ((handler: (payload: TranscriptIngressPayload) => void) => void) | undefined;
     if (typeof transcriptOnIngress === "function" && typeof transcriptOffIngress === "function") {
       transcriptOnIngress(this.handleTranscriptIngress);
     }
@@ -789,8 +787,7 @@ class RoomHostRuntimeClass {
 
   private async loadRoomHost(registration: RoomHostRegistration): Promise<boolean> {
     const readFile = window.electronAPI?.["readFile"] as
-      | ((path: string) => Promise<string | Uint8Array>)
-      | undefined;
+      ((path: string) => Promise<string | Uint8Array>) | undefined;
     let hostModuleCleanup: (() => void) | null = null;
 
     try {
