@@ -204,3 +204,58 @@ void test("pattern-room review task selection survives local debate rerenders", 
     await installedCopy.cleanup();
   }
 });
+
+void test("pattern-room report outline stays in the persistent inspector across cached views", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("pattern-room");
+  let runtime: Awaited<ReturnType<typeof startPatternRoomInstalledUi>> | undefined;
+
+  try {
+    runtime = await startPatternRoomInstalledUi(installedCopy.rootDir);
+
+    const reportNavigation = environment.app.querySelector(
+      "[data-pattern-workspace-nav='report']"
+    );
+    const archiveNavigation = environment.app.querySelector(
+      "[data-pattern-workspace-nav='archive']"
+    );
+    assert.ok(reportNavigation);
+    assert.ok(archiveNavigation);
+    fireEvent(reportNavigation, "click");
+
+    const inspectorContent = environment.app.querySelector(
+      "[data-pattern-workspace-inspector-content='true']"
+    );
+    const reportOutline = environment.app.querySelector("[data-pattern-report-outline='true']");
+    const reportDocument = environment.app.querySelector("[data-pattern-report-document='true']");
+    assert.ok(inspectorContent);
+    assert.ok(reportOutline);
+    assert.ok(reportDocument);
+    assert.equal(reportOutline.parentElement, inspectorContent);
+    assert.notEqual(reportDocument.parentElement, inspectorContent);
+    assert.ok(environment.app.querySelector("[data-pattern-report-summary='true']"));
+    assert.equal(environment.app.querySelectorAll("[data-pattern-report-priority]").length, 3);
+    assert.equal(environment.app.querySelectorAll("[data-pattern-report-section]").length, 6);
+    assert.equal(environment.app.querySelectorAll("[data-pattern-report-jump]").length, 6);
+
+    fireEvent(archiveNavigation, "click");
+    assert.ok(environment.app.querySelector("[data-pattern-view='archive']"));
+    fireEvent(reportNavigation, "click");
+
+    const restoredOutline = environment.app.querySelector("[data-pattern-report-outline='true']");
+    assert.ok(restoredOutline);
+    assert.equal(restoredOutline.parentElement, inspectorContent);
+    assert.equal(
+      environment.app.querySelector("[data-pattern-workspace-inspector='true']")?.dataset[
+        "patternWorkspaceInspectorView"
+      ],
+      "report"
+    );
+  } finally {
+    runtime?.dispose();
+    environment.runPendingTimers();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    environment.restore();
+    await installedCopy.cleanup();
+  }
+});
