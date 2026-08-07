@@ -90,10 +90,21 @@ function updateStringGeometry(
   const offsetX = -Math.sin(radians) * parallelOffset;
   const offsetY = Math.cos(radians) * parallelOffset;
 
-  button.style.left = `${String(sourceX + offsetX)}px`;
-  button.style.top = `${String(sourceY + offsetY)}px`;
-  button.style.width = `${String(length)}px`;
-  button.style.transform = `rotate(${String(angle)}deg)`;
+  button.setAttribute(
+    "style",
+    `left:${String(sourceX + offsetX)}px;top:${String(sourceY + offsetY)}px;width:${String(
+      length
+    )}px;transform:rotate(${String(angle)}deg);`
+  );
+}
+
+function setCardGeometry(card: HTMLButtonElement, position: BoardPosition, tilt: number): void {
+  card.setAttribute(
+    "style",
+    `left:${String(position.x)}px;top:${String(position.y)}px;--pattern-note-tilt:${String(
+      tilt
+    )}deg;`
+  );
 }
 
 export function createBoardPanel(
@@ -219,6 +230,7 @@ export function createBoardPanel(
 
   allPins.forEach(({ category, pin }, index) => {
     const position = positions.get(pin.id) ?? createInitialPosition(index);
+    const tilt = ((index % 5) - 2) * 0.45;
     const card = createElement(
       "button",
       `pattern-room-board-node pattern-room-detective-note ${category.tone}`
@@ -229,9 +241,7 @@ export function createBoardPanel(
     card.dataset["patternBoardTone"] = category.tone;
     card.dataset["patternBoardPinSelected"] = "false";
     card.ariaPressed = "false";
-    card.style.left = `${String(position.x)}px`;
-    card.style.top = `${String(position.y)}px`;
-    card.style.setProperty("--pattern-note-tilt", `${String(((index % 5) - 2) * 0.45)}deg`);
+    setCardGeometry(card, position, tilt);
 
     const pinHead = createElement("span", "pattern-room-detective-note-head");
     pinHead.append(
@@ -287,8 +297,7 @@ export function createBoardPanel(
           y: Math.min(Math.max(0, start.y + deltaY), boardHeight - BOARD_CARD_HEIGHT),
         };
         positions.set(pin.id, nextPosition);
-        card.style.left = `${String(nextPosition.x)}px`;
-        card.style.top = `${String(nextPosition.y)}px`;
+        setCardGeometry(card, nextPosition, tilt);
         redrawConnections();
       };
 
