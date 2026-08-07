@@ -282,7 +282,7 @@ export function createPatternWorkspaceShell(
 
   shell.append(rail, workspace, inspector, feedbackSlot);
 
-  let inspectorOpen = true;
+  let inspectorOpen = false;
   let inspectorEnabled = true;
   let activeNavigationId: PatternWorkspaceNavigationItem["id"] | null = null;
 
@@ -443,7 +443,7 @@ export function createPatternWorkspaceShell(
         if (activeNavigationId !== activeItem.id) {
           inspectorEnabled =
             activeItem.id !== "tenth-man" && activeItem.id !== "review-history";
-          inspectorOpen = activeItem.id === "overview";
+          inspectorOpen = false;
           activeNavigationId = activeItem.id;
           applyInspectorState();
         }
