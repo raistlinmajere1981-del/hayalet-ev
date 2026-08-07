@@ -1,8 +1,8 @@
 /* Small v5 geometry patch after the structural rewrite. */
 
-/* slimmer field rail; case metrics now live in the room/drawer */
+/* slim field rail, but wide enough to keep investigation labels readable */
 .pattern-room-app-shell {
-  grid-template-columns: var(--pattern-px-188) minmax(0, 1fr);
+  grid-template-columns: var(--pattern-px-210) minmax(0, 1fr);
 }
 
 .pattern-room-workspace-rail {
