@@ -33,11 +33,12 @@ type PatternGraphLayout = {
   readonly nodesById: ReadonlyMap<string, PatternGraphNode>;
 };
 
-const GRAPH_LAYOUT_VERSION = "case-map-v2";
+const GRAPH_LAYOUT_VERSION = "case-map-v3";
 const GRAPH_SCENE_WIDTH = 1180;
 const GRAPH_SCENE_HEIGHT = 760;
-const GRAPH_NODE_WIDTH = 220;
+const GRAPH_NODE_WIDTH = 218;
 const GRAPH_NODE_HEIGHT = 96;
+const GRAPH_RING_CAPACITY = 8;
 const GRAPH_ZOOM_MIN = 0.75;
 const GRAPH_ZOOM_MAX = 1.5;
 const GRAPH_ZOOM_STEP = 0.25;
@@ -48,12 +49,10 @@ const GRAPH_NODE_KIND_LABELS: Readonly<Record<PatternGraphNodeKind, string>> = {
   node: "Pano izi",
 };
 
-const GRAPH_KIND_ARCS: Readonly<
-  Record<PatternGraphNodeKind, { readonly start: number; readonly span: number }>
-> = {
-  source: { start: 125, span: 105 },
-  evidence: { start: 220, span: 105 },
-  node: { start: -45, span: 135 },
+const GRAPH_NODE_KIND_ORDER: Readonly<Record<PatternGraphNodeKind, number>> = {
+  source: 0,
+  evidence: 1,
+  node: 2,
 };
 
 function normalizeClaimNodeId(claimId: string): string {
@@ -61,6 +60,10 @@ function normalizeClaimNodeId(claimId: string): string {
 }
 
 function compareGraphNodes(left: PatternGraphNodeDraft, right: PatternGraphNodeDraft): number {
+  const kindComparison = GRAPH_NODE_KIND_ORDER[left.kind] - GRAPH_NODE_KIND_ORDER[right.kind];
+  if (kindComparison !== 0) {
+    return kindComparison;
+  }
   const labelComparison = left.label.localeCompare(right.label, "tr");
   return labelComparison === 0 ? left.id.localeCompare(right.id, "tr") : labelComparison;
 }
@@ -101,43 +104,29 @@ function createGraphNodeDrafts(data: PatternRoomWorkspaceModel): readonly Patter
   data.claims.forEach((claim) => {
     ensureNode(normalizeClaimNodeId(claim.id), claim.label);
   });
-  return [...nodesById.values()];
+  return [...nodesById.values()].sort(compareGraphNodes);
 }
 
 function createGraphLayout(data: PatternRoomWorkspaceModel): PatternGraphLayout {
   const drafts = createGraphNodeDrafts(data);
-  const grouped: Record<PatternGraphNodeKind, PatternGraphNodeDraft[]> = {
-    source: [],
-    evidence: [],
-    node: [],
-  };
-  drafts.forEach((node) => {
-    grouped[node.kind].push(node);
-  });
-  Object.values(grouped).forEach((nodes) => {
-    nodes.sort(compareGraphNodes);
-  });
-
   const centerX = GRAPH_SCENE_WIDTH / 2;
-  const centerY = GRAPH_SCENE_HEIGHT / 2 + 20;
+  const centerY = GRAPH_SCENE_HEIGHT / 2 + 14;
   const nodes: PatternGraphNode[] = [];
 
-  (["source", "evidence", "node"] as const).forEach((kind) => {
-    const group = grouped[kind];
-    const arc = GRAPH_KIND_ARCS[kind];
-    group.forEach((node, index) => {
-      const ring = Math.floor(index / 5);
-      const slot = index % 5;
-      const slotsInRing = Math.min(5, group.length - ring * 5);
-      const angleDegrees = arc.start + arc.span * ((slot + 0.5) / Math.max(slotsInRing, 1));
-      const angle = (angleDegrees * Math.PI) / 180;
-      const radiusX = 430 - ring * 92;
-      const radiusY = 275 - ring * 52;
-      nodes.push({
-        ...node,
-        x: centerX + Math.cos(angle) * radiusX - GRAPH_NODE_WIDTH / 2,
-        y: centerY + Math.sin(angle) * radiusY - GRAPH_NODE_HEIGHT / 2,
-      });
+  drafts.forEach((node, index) => {
+    const ring = Math.floor(index / GRAPH_RING_CAPACITY);
+    const slot = index % GRAPH_RING_CAPACITY;
+    const ringStart = ring * GRAPH_RING_CAPACITY;
+    const ringCount = Math.min(GRAPH_RING_CAPACITY, drafts.length - ringStart);
+    const angleOffset = ring % 2 === 0 ? -90 : -67.5;
+    const angleDegrees = angleOffset + (360 * slot) / Math.max(ringCount, 1);
+    const angle = (angleDegrees * Math.PI) / 180;
+    const radiusX = Math.max(270, 430 - ring * 118);
+    const radiusY = Math.max(184, 270 - ring * 70);
+    nodes.push({
+      ...node,
+      x: centerX + Math.cos(angle) * radiusX - GRAPH_NODE_WIDTH / 2,
+      y: centerY + Math.sin(angle) * radiusY - GRAPH_NODE_HEIGHT / 2,
     });
   });
 
@@ -174,7 +163,10 @@ function createGraphNode(node: PatternGraphNode, index: number): HTMLElement {
   card.dataset["patternGraphNode"] = node.id;
   card.dataset["patternGraphNodeKind"] = node.kind;
   card.dataset["patternGraphNodeScope"] = node.isLocal ? "local" : "domain";
-  card.setAttribute("style", `left:${String(Math.round(node.x))}px;top:${String(Math.round(node.y))}px;`);
+  card.setAttribute(
+    "style",
+    `left:${String(Math.round(node.x))}px;top:${String(Math.round(node.y))}px;`
+  );
   if (node.claim !== null) {
     card.dataset["patternConnectionClaim"] = node.claim.id;
     card.dataset["patternClaimCard"] = node.claim.id;
