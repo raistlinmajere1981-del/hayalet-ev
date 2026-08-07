@@ -239,6 +239,14 @@ export function createPatternWorkspaceShell(
   inspector.dataset["patternWorkspaceInspector"] = "true";
   inspector.ariaLabel = text("shell.inspectorLabel");
 
+  const inspectorHandle = createElement("button", "pattern-room-workspace-inspector-handle");
+  inspectorHandle.type = "button";
+  inspectorHandle.dataset["patternWorkspaceInspectorToggle"] = "true";
+  inspectorHandle.append(
+    createElement("span", "pattern-room-workspace-inspector-handle-icon", "‹"),
+    createElement("span", "pattern-room-workspace-inspector-handle-label", "Detay")
+  );
+
   const inspectorHeader = createElement("header", "pattern-room-workspace-inspector-header");
   inspectorHeader.append(
     createElement("span", "pattern-room-context-inspector-label", text("shell.inspectorLabel"))
@@ -266,13 +274,51 @@ export function createPatternWorkspaceShell(
   inspectorCase.append(inspectorSubject, inspectorMetrics);
   const inspectorContent = createElement("div", "pattern-room-workspace-inspector-content");
   inspectorContent.dataset["patternWorkspaceInspectorContent"] = "true";
-  inspector.append(inspectorHeader, inspectorCase, inspectorContent);
+  inspector.append(inspectorHandle, inspectorHeader, inspectorCase, inspectorContent);
 
   const feedbackSlot = createElement("div", "pattern-room-workspace-feedback-slot");
   feedbackSlot.dataset["patternWorkspaceFeedbackSlot"] = "true";
   feedbackSlot.ariaLive = "polite";
 
   shell.append(rail, workspace, inspector, feedbackSlot);
+
+  let inspectorOpen = true;
+  let inspectorEnabled = true;
+  let activeNavigationId: PatternWorkspaceNavigationItem["id"] | null = null;
+
+  const applyInspectorState = (): void => {
+    shell.dataset["patternInspectorOpen"] = inspectorOpen && inspectorEnabled ? "true" : "false";
+    inspector.dataset["patternInspectorEnabled"] = inspectorEnabled ? "true" : "false";
+    inspectorHandle.ariaExpanded = inspectorOpen && inspectorEnabled ? "true" : "false";
+    inspectorHandle.disabled = !inspectorEnabled;
+    inspectorHandle.ariaLabel = inspectorOpen ? "Detay panelini kapat" : "Detay panelini aç";
+    inspectorHandle.title = inspectorHandle.ariaLabel;
+    const icon = inspectorHandle.querySelector<HTMLElement>(
+      ".pattern-room-workspace-inspector-handle-icon"
+    );
+    if (icon !== null) {
+      icon.textContent = inspectorOpen ? "›" : "‹";
+    }
+  };
+
+  const setInspectorOpen = (open: boolean): void => {
+    inspectorOpen = open;
+    applyInspectorState();
+  };
+
+  inspectorHandle.addEventListener("click", () => {
+    if (!inspectorEnabled) {
+      return;
+    }
+    setInspectorOpen(!inspectorOpen);
+  });
+
+  shell.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && inspectorEnabled && inspectorOpen) {
+      setInspectorOpen(false);
+      outlet.focus();
+    }
+  });
 
   const updateSummary = (summary: PatternWorkspaceSummary): void => {
     subject.textContent = summary.subject;
@@ -317,6 +363,7 @@ export function createPatternWorkspaceShell(
   };
 
   updateSummary(initialSummary);
+  applyInspectorState();
 
   return {
     element: shell,
@@ -335,6 +382,13 @@ export function createPatternWorkspaceShell(
           resolvedContent.remove();
         }
         inspectorContent.append(resolvedContent);
+      }
+
+      if (
+        inspector.dataset["patternWorkspaceInspectorView"] === "archive" &&
+        resolvedContent?.querySelector("[data-pattern-archive-source-detail-id]") !== null
+      ) {
+        setInspectorOpen(true);
       }
     },
     showActionFeedback(feedback): void {
@@ -385,6 +439,14 @@ export function createPatternWorkspaceShell(
         inspector.dataset["patternWorkspaceInspectorView"] = activeItem.id;
         inspectorTitle.textContent = text(activeItem.labelKey);
         inspectorDescription.textContent = text(activeItem.descriptionKey);
+
+        if (activeNavigationId !== activeItem.id) {
+          inspectorEnabled =
+            activeItem.id !== "tenth-man" && activeItem.id !== "review-history";
+          inspectorOpen = activeItem.id === "overview" || activeItem.id === "report";
+          activeNavigationId = activeItem.id;
+          applyInspectorState();
+        }
       }
 
       buttons.forEach((button, index) => {
