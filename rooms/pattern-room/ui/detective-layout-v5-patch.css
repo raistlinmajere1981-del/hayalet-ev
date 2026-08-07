@@ -1,0 +1,124 @@
+/* Small v5 geometry patch after the structural rewrite. */
+
+/* slimmer field rail; case metrics now live in the room/drawer */
+.pattern-room-app-shell {
+  grid-template-columns: var(--pattern-px-188) minmax(0, 1fr);
+}
+
+.pattern-room-workspace-rail {
+  padding-inline: var(--pattern-px-10);
+}
+
+.pattern-room-workspace-case-card,
+.pattern-room-workspace-keyboard-hint,
+.pattern-room-workspace-nav-button[data-pattern-workspace-nav="review-history"] {
+  display: none;
+}
+
+.pattern-room-workspace-navigation {
+  margin-top: var(--pattern-px-6);
+}
+
+.pattern-room-workspace-nav-button {
+  min-height: var(--pattern-px-48);
+  padding: var(--pattern-px-7) var(--pattern-px-8);
+}
+
+.pattern-room-workspace-nav-copy small {
+  display: none;
+}
+
+/* drawer handle names itself from context */
+.pattern-room-workspace-inspector-handle-label {
+  font-size: 0;
+}
+
+.pattern-room-workspace-inspector-handle-label::after {
+  content: "DETAY";
+  font-size: var(--pattern-rem-0-72);
+}
+
+.pattern-room-workspace-inspector[data-pattern-workspace-inspector-view="board"]
+  .pattern-room-workspace-inspector-handle-label::after {
+  content: "İZ";
+}
+
+.pattern-room-workspace-inspector[data-pattern-workspace-inspector-view="archive"]
+  .pattern-room-workspace-inspector-handle-label::after {
+  content: "DOSYA";
+}
+
+.pattern-room-workspace-inspector[data-pattern-workspace-inspector-view="report"]
+  .pattern-room-workspace-inspector-handle-label::after {
+  content: "FİHRİST";
+}
+
+.pattern-room-workspace-inspector[data-pattern-workspace-inspector-view="overview"]
+  .pattern-room-workspace-inspector-handle-label::after {
+  content: "VAKA";
+}
+
+/* stable paper tilts without runtime calc multiplication */
+.pattern-room-case-board-note {
+  transform: rotate(0deg);
+}
+
+.pattern-room-case-board-note:nth-child(1) {
+  transform: rotate(-0.55deg);
+}
+
+.pattern-room-case-board-note:nth-child(2) {
+  transform: rotate(0.35deg);
+}
+
+.pattern-room-case-board-note:nth-child(3) {
+  transform: rotate(-0.25deg);
+}
+
+.pattern-room-case-board-note:nth-child(4) {
+  transform: rotate(0.5deg);
+}
+
+/* the source drawer owns source details only; intake stays on the desk */
+.pattern-room-workspace-inspector-content > .pattern-room-archive-inspector {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pattern-room-workspace-inspector-content
+  > .pattern-room-archive-inspector
+  > .pattern-room-context-inspector-label {
+  display: none;
+}
+
+/* compact empty-state cabinet because intake actions are now visible above it */
+.pattern-room-archive-browser:has(.pattern-room-archive-list:empty)
+  .pattern-room-empty-state[data-pattern-archive-empty="true"] {
+  min-height: var(--pattern-px-292);
+  margin-top: var(--pattern-px-18);
+}
+
+@media (--pattern-bp-max-1100) {
+  .pattern-room-app-shell {
+    grid-template-columns: var(--pattern-px-84) minmax(0, 1fr);
+  }
+
+  .pattern-room-workspace-case-card,
+  .pattern-room-workspace-keyboard-hint {
+    display: none;
+  }
+}
+
+@media (--pattern-bp-max-960) {
+  .pattern-room-app-shell {
+    grid-template-columns: var(--pattern-px-84) minmax(0, 1fr);
+  }
+}
+
+@media (--pattern-bp-max-820) {
+  .pattern-room-app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
