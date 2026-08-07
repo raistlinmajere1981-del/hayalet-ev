@@ -151,18 +151,61 @@ function enhanceTenthManDevice(panel: HTMLElement): void {
   device.dataset["patternTenthManV5Enhanced"] = "true";
 }
 
-function enhanceReviewSurface(panel: HTMLElement): void {
-  if (panel.dataset["patternReviewV5Enhanced"] === "true") {
+function enhanceAiReviewDesk(panel: HTMLElement): void {
+  const surface = panel.querySelector<HTMLElement>("[data-pattern-review-task-surface='ai-review']");
+  if (surface === null || surface.dataset["patternAiReviewV6Enhanced"] === "true") {
     return;
   }
 
-  const aiSurface = panel.querySelector<HTMLElement>("[data-pattern-review-task-surface='ai-review']");
-  if (aiSurface !== null) {
-    aiSurface.dataset["patternReviewDesk"] = "case-analysis";
-    const preview = aiSurface.querySelector<HTMLElement>("[data-pattern-case-review-preview='true']");
-    preview?.classList.add("pattern-room-case-review-dossier");
+  const preview = surface.querySelector<HTMLElement>("[data-pattern-case-review-preview='true']");
+  if (preview === null) {
+    return;
   }
-  panel.dataset["patternReviewV5Enhanced"] = "true";
+
+  const kicker = preview.querySelector<HTMLElement>(":scope > .pattern-room-kicker");
+  const title = preview.querySelector<HTMLElement>(":scope > h2");
+  const intro = preview.querySelector<HTMLElement>(":scope > p");
+  const controls = preview.querySelector<HTMLElement>(":scope > .pattern-room-case-review-controls");
+  const workspace = preview.querySelector<HTMLElement>(":scope > .pattern-room-case-review-workspace");
+  if (title === null || controls === null || workspace === null) {
+    return;
+  }
+
+  const launchpad = createElement("section", "pattern-room-analysis-launchpad");
+  const launchCopy = createElement("div", "pattern-room-analysis-launch-copy");
+  if (kicker !== null) {
+    launchCopy.append(kicker);
+  }
+  launchCopy.append(title);
+  if (intro !== null) {
+    launchCopy.append(intro);
+  }
+  launchpad.append(launchCopy, controls);
+
+  const request = workspace.querySelector<HTMLDetailsElement>(
+    ":scope > [data-pattern-review-disclosure='case-request']"
+  );
+  if (request !== null) {
+    request.classList.add("pattern-room-case-packet-drawer");
+    request.open = false;
+    const summary = request.querySelector<HTMLElement>("summary");
+    if (summary !== null) {
+      const secondary = summary.querySelector<HTMLElement>("span");
+      if (secondary !== null) {
+        secondary.textContent = "Paket";
+      }
+    }
+  }
+
+  workspace.classList.add("pattern-room-analysis-workspace-v6");
+  preview.replaceChildren(launchpad, workspace);
+  surface.dataset["patternReviewDesk"] = "case-analysis";
+  surface.dataset["patternAiReviewV6Enhanced"] = "true";
+}
+
+function enhanceReviewSurface(panel: HTMLElement): void {
+  enhanceAiReviewDesk(panel);
+  enhanceTenthManDevice(panel);
 }
 
 function enhancePatternRoom(root: ParentNode): void {
@@ -170,7 +213,6 @@ function enhancePatternRoom(root: ParentNode): void {
     createArchiveIntakeDesk(panel);
   });
   root.querySelectorAll<HTMLElement>("[data-pattern-view='tenth-man']").forEach((panel) => {
-    enhanceTenthManDevice(panel);
     enhanceReviewSurface(panel);
   });
 }
