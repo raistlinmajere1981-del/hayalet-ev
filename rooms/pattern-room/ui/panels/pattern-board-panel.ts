@@ -21,19 +21,63 @@ type BoardPosition = {
 
 type StoredBoardLayout = Record<string, BoardPosition>;
 
+type BoardMaterial =
+  | "evidence-slip"
+  | "source-file"
+  | "analysis-card"
+  | "postit"
+  | "uncertainty-note"
+  | "placeholder";
+
 const BOARD_WIDTH = 1040;
 const BOARD_MIN_HEIGHT = 620;
 const BOARD_CARD_WIDTH = 248;
-const BOARD_CARD_HEIGHT = 118;
+const BOARD_CARD_HEIGHT = 132;
 const BOARD_PADDING = 48;
 const BOARD_COLUMN_STEP = 312;
-const BOARD_ROW_STEP = 174;
+const BOARD_ROW_STEP = 186;
 const BOARD_JITTER_X = [0, 12, -8, 7, -13, 4] as const;
 const BOARD_JITTER_Y = [0, 8, -5, 11, -9, 4] as const;
 const BOARD_LAYOUT_STORAGE_PREFIX = "pattern-room:detective-board:v5:";
 
 function normalizeBoardNodeId(nodeId: string): string {
   return nodeId.startsWith("claim-") ? nodeId.slice("claim-".length) : nodeId;
+}
+
+function resolveBoardMaterial(pin: PatternBoardPin): BoardMaterial {
+  if (pin.kind === "placeholder") {
+    return "placeholder";
+  }
+  if (pin.kind === "source") {
+    return "source-file";
+  }
+  if (pin.kind === "evidence" || pin.layer === "evidence") {
+    return "evidence-slip";
+  }
+  if (pin.layer === "uncertainty" || pin.tone === "uncertainty") {
+    return "uncertainty-note";
+  }
+  if (pin.layer === "analysis" || pin.tone === "analysis") {
+    return "analysis-card";
+  }
+  return "postit";
+}
+
+function getBoardMaterialLabel(material: BoardMaterial): string {
+  switch (material) {
+    case "evidence-slip":
+      return "KANIT FİŞİ";
+    case "source-file":
+      return "KAYNAK DOSYASI";
+    case "analysis-card":
+      return "ANALİZ KARTI";
+    case "postit":
+      return "SAHA NOTU";
+    case "uncertainty-note":
+      return "AÇIK SORU";
+    case "placeholder":
+      return "BOŞ İZ";
+  }
 }
 
 function createInitialPosition(index: number): BoardPosition {
@@ -50,7 +94,7 @@ function createInitialPosition(index: number): BoardPosition {
 
 function createBoardHeight(pinCount: number): number {
   const rows = Math.max(1, Math.ceil(pinCount / 3));
-  return Math.max(BOARD_MIN_HEIGHT, 128 + rows * BOARD_ROW_STEP);
+  return Math.max(BOARD_MIN_HEIGHT, 140 + rows * BOARD_ROW_STEP);
 }
 
 function createPinAliases(pin: PatternBoardPin): readonly string[] {
@@ -80,7 +124,12 @@ function readStoredBoardLayout(subject: string): StoredBoardLayout {
       }
       const x = (value as Record<string, unknown>)["x"];
       const y = (value as Record<string, unknown>)["y"];
-      if (typeof x === "number" && Number.isFinite(x) && typeof y === "number" && Number.isFinite(y)) {
+      if (
+        typeof x === "number" &&
+        Number.isFinite(x) &&
+        typeof y === "number" &&
+        Number.isFinite(y)
+      ) {
         layout[id] = { x, y };
       }
     });
@@ -102,6 +151,14 @@ function writeStoredBoardLayout(subject: string, positions: ReadonlyMap<string, 
   }
 }
 
+function clearStoredBoardLayout(subject: string): void {
+  try {
+    window.localStorage?.removeItem(createBoardStorageKey(subject));
+  } catch {
+    // Presentation-only state.
+  }
+}
+
 function createBoardString(
   connection: PatternConnection,
   onSelect: (connectionId: string) => void
@@ -112,6 +169,7 @@ function createBoardString(
   button.dataset["patternBoardConnectionScope"] = connection.scope;
   button.dataset["patternBoardConnectionType"] = connection.edgeType;
   button.dataset["patternBoardConnectionSelected"] = "false";
+  button.dataset["patternBoardConnectionRelated"] = "false";
   button.ariaPressed = "false";
   button.ariaLabel = `${connection.sourceLabel} → ${connection.edgeTypeLabel} → ${connection.targetLabel}`;
   button.title = button.ariaLabel;
@@ -125,13 +183,15 @@ function createBoardString(
 function updateStringGeometry(
   button: HTMLButtonElement,
   source: BoardPosition,
+  sourceCard: HTMLElement,
   target: BoardPosition,
+  targetCard: HTMLElement,
   index: number
 ): void {
-  const sourceX = source.x + BOARD_CARD_WIDTH / 2;
-  const sourceY = source.y + BOARD_CARD_HEIGHT / 2;
-  const targetX = target.x + BOARD_CARD_WIDTH / 2;
-  const targetY = target.y + BOARD_CARD_HEIGHT / 2;
+  const sourceX = source.x + sourceCard.offsetWidth / 2;
+  const sourceY = source.y + sourceCard.offsetHeight / 2;
+  const targetX = target.x + targetCard.offsetWidth / 2;
+  const targetY = target.y + targetCard.offsetHeight / 2;
   const deltaX = targetX - sourceX;
   const deltaY = targetY - sourceY;
   const length = Math.max(Math.hypot(deltaX, deltaY), 24);
@@ -190,7 +250,7 @@ export function createBoardPanel(
     createElement(
       "small",
       "pattern-room-detective-board-hint",
-      "Kartları sürükle. İp bağla modunda iki kart seçerek doğrudan ilişki kur."
+      "Kartları sürükle. Bir kart seçince bağlı izler öne çıkar; C ile hızlı ip moduna geç."
     )
   );
 
@@ -211,12 +271,19 @@ export function createBoardPanel(
     edgeType.append(option);
   });
   edgeType.value = "supports";
+
   const connectButton = createElement("button", "pattern-room-board-connect-button", "İp bağla");
   connectButton.type = "button";
   connectButton.dataset["patternBoardConnectMode"] = "false";
+
+  const tidyButton = createElement("button", "pattern-room-board-tidy-button", "Toparla");
+  tidyButton.type = "button";
+  tidyButton.title = "Kartları başlangıç düzenine getir";
+  tidyButton.ariaLabel = tidyButton.title;
+
   const connectionStatus = createElement("span", "pattern-room-board-connect-status", "");
   connectionStatus.ariaLive = "polite";
-  connectionTools.append(edgeType, connectButton, connectionStatus);
+  connectionTools.append(edgeType, connectButton, tidyButton, connectionStatus);
   headerActions.append(headerMetrics, connectionTools);
   canvasHeader.append(headerCopy, headerActions);
 
@@ -263,25 +330,7 @@ export function createBoardPanel(
     return null;
   };
 
-  const updateSelectedCard = (pinId: string | null): void => {
-    cardsById.forEach((card, id) => {
-      const isSelected = id === pinId;
-      card.dataset["patternBoardPinSelected"] = isSelected ? "true" : "false";
-      card.ariaPressed = isSelected ? "true" : "false";
-      card.classList.toggle("selected", isSelected);
-    });
-  };
-
-  const updateSelectedConnection = (connectionId: string | null): void => {
-    connectionButtons.forEach((button, id) => {
-      const isSelected = id === connectionId;
-      button.dataset["patternBoardConnectionSelected"] = isSelected ? "true" : "false";
-      button.ariaPressed = isSelected ? "true" : "false";
-      button.classList.toggle("selected", isSelected);
-    });
-  };
-
-  const redrawConnections = (): void => {
+  const redrawConnections = (changedPinId?: string): void => {
     data.connections.forEach((connection, index) => {
       const button = connectionButtons.get(connection.id);
       const sourcePin = resolvePin(connection.sourceId);
@@ -289,12 +338,84 @@ export function createBoardPanel(
       if (button === undefined || sourcePin === undefined || targetPin === undefined) {
         return;
       }
-      const sourcePosition = positions.get(sourcePin.id);
-      const targetPosition = positions.get(targetPin.id);
-      if (sourcePosition === undefined || targetPosition === undefined) {
+      if (
+        changedPinId !== undefined &&
+        sourcePin.id !== changedPinId &&
+        targetPin.id !== changedPinId
+      ) {
         return;
       }
-      updateStringGeometry(button, sourcePosition, targetPosition, index);
+      const sourcePosition = positions.get(sourcePin.id);
+      const targetPosition = positions.get(targetPin.id);
+      const sourceCard = cardsById.get(sourcePin.id);
+      const targetCard = cardsById.get(targetPin.id);
+      if (
+        sourcePosition === undefined ||
+        targetPosition === undefined ||
+        sourceCard === undefined ||
+        targetCard === undefined
+      ) {
+        return;
+      }
+      updateStringGeometry(button, sourcePosition, sourceCard, targetPosition, targetCard, index);
+    });
+  };
+
+  const updateSelectedCard = (pinId: string | null): void => {
+    const relatedPinIds = new Set<string>();
+    const relatedConnectionIds = new Set<string>();
+    if (pinId !== null) {
+      relatedPinIds.add(pinId);
+      data.connections.forEach((connection) => {
+        const sourcePin = resolvePin(connection.sourceId);
+        const targetPin = resolvePin(connection.targetId);
+        if (sourcePin?.id === pinId || targetPin?.id === pinId) {
+          relatedConnectionIds.add(connection.id);
+          if (sourcePin !== undefined) {
+            relatedPinIds.add(sourcePin.id);
+          }
+          if (targetPin !== undefined) {
+            relatedPinIds.add(targetPin.id);
+          }
+        }
+      });
+    }
+
+    canvas.dataset["patternBoardHasFocus"] = pinId === null ? "false" : "true";
+    cardsById.forEach((card, id) => {
+      const isSelected = id === pinId;
+      const isRelated = pinId !== null && relatedPinIds.has(id);
+      card.dataset["patternBoardPinSelected"] = isSelected ? "true" : "false";
+      card.dataset["patternBoardPinRelated"] = isRelated ? "true" : "false";
+      card.ariaPressed = isSelected ? "true" : "false";
+      card.classList.toggle("selected", isSelected);
+    });
+    connectionButtons.forEach((button, id) => {
+      button.dataset["patternBoardConnectionRelated"] =
+        pinId !== null && relatedConnectionIds.has(id) ? "true" : "false";
+    });
+  };
+
+  const updateSelectedConnection = (connectionId: string | null): void => {
+    let sourcePinId: string | null = null;
+    let targetPinId: string | null = null;
+    if (connectionId !== null) {
+      const selectedConnection = data.connections.find((connection) => connection.id === connectionId);
+      if (selectedConnection !== undefined) {
+        sourcePinId = resolvePin(selectedConnection.sourceId)?.id ?? null;
+        targetPinId = resolvePin(selectedConnection.targetId)?.id ?? null;
+      }
+    }
+
+    connectionButtons.forEach((button, id) => {
+      const isSelected = id === connectionId;
+      button.dataset["patternBoardConnectionSelected"] = isSelected ? "true" : "false";
+      button.ariaPressed = isSelected ? "true" : "false";
+      button.classList.toggle("selected", isSelected);
+    });
+    cardsById.forEach((card, id) => {
+      card.dataset["patternBoardConnectionEndpoint"] =
+        id === sourcePinId || id === targetPinId ? "true" : "false";
     });
   };
 
@@ -305,6 +426,8 @@ export function createBoardPanel(
       return;
     }
     const button = createBoardString(connection, (connectionId) => {
+      actions.selectNode(null);
+      updateSelectedCard(null);
       actions.selectConnection(connectionId);
       updateSelectedConnection(connectionId);
     });
@@ -382,6 +505,29 @@ export function createBoardPanel(
     updateConnectionModeVisuals();
   });
 
+  tidyButton.addEventListener("click", () => {
+    cancelConnectionMode();
+    clearStoredBoardLayout(data.subject);
+    allPins.forEach(({ pin }, index) => {
+      const card = cardsById.get(pin.id);
+      if (card === undefined) {
+        return;
+      }
+      const position = createInitialPosition(index);
+      const width = card.offsetWidth || BOARD_CARD_WIDTH;
+      const height = card.offsetHeight || BOARD_CARD_HEIGHT;
+      const clamped: BoardPosition = {
+        x: Math.min(Math.max(0, position.x), BOARD_WIDTH - width),
+        y: Math.min(Math.max(0, position.y), boardHeight - height),
+      };
+      positions.set(pin.id, clamped);
+      const tilt = ((index % 5) - 2) * 0.45;
+      setCardGeometry(card, clamped, tilt);
+    });
+    redrawConnections();
+    connectionStatus.textContent = "Pano toplandı";
+  });
+
   viewport.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && connectionMode) {
       event.preventDefault();
@@ -392,15 +538,21 @@ export function createBoardPanel(
   allPins.forEach(({ category, pin }, index) => {
     const position = positions.get(pin.id) ?? createInitialPosition(index);
     const tilt = ((index % 5) - 2) * 0.45;
+    const material = resolveBoardMaterial(pin);
     const card = createElement(
       "button",
-      `pattern-room-board-node pattern-room-detective-note ${category.tone}`
+      `pattern-room-board-node pattern-room-detective-note ${category.tone} material-${material}`
     );
     card.type = "button";
     card.dataset["patternBoardPin"] = pin.id;
     card.dataset["patternBoardPinKind"] = pin.kind;
     card.dataset["patternBoardTone"] = category.tone;
+    card.dataset["patternBoardLayer"] = pin.layer;
+    card.dataset["patternBoardMaterial"] = material;
+    card.dataset["patternBoardLocal"] = pin.isLocal ? "true" : "false";
     card.dataset["patternBoardPinSelected"] = "false";
+    card.dataset["patternBoardPinRelated"] = "false";
+    card.dataset["patternBoardConnectionEndpoint"] = "false";
     card.dataset["patternBoardConnectionMode"] = "false";
     card.dataset["patternBoardConnectionSource"] = "false";
     card.ariaPressed = "false";
@@ -409,18 +561,28 @@ export function createBoardPanel(
     const pinHead = createElement("span", "pattern-room-detective-note-head");
     pinHead.append(
       createElement("span", "pattern-room-detective-note-pin"),
-      createElement("span", "pattern-room-detective-note-category", category.label)
-    );
-    card.append(
-      pinHead,
-      createElement("strong", "pattern-room-board-node-copy", pin.label),
-      createElement("span", "pattern-room-detective-note-preview", pin.content),
+      createElement("span", "pattern-room-detective-note-category", category.label),
       createElement(
-        "small",
-        "pattern-room-board-node-meta",
-        `${pin.layerLabel} · ${pin.confidenceLabel}`
+        "span",
+        "pattern-room-detective-note-material-label",
+        getBoardMaterialLabel(material)
       )
     );
+
+    const content = createElement("span", "pattern-room-detective-note-content");
+    content.append(
+      createElement("strong", "pattern-room-board-node-copy", pin.label),
+      createElement("span", "pattern-room-detective-note-preview", pin.content)
+    );
+
+    const meta = createElement("small", "pattern-room-board-node-meta");
+    meta.append(
+      createElement("span", undefined, pin.layerLabel),
+      createElement("span", undefined, pin.confidenceLabel),
+      createElement("span", undefined, pin.isLocal ? "Yerel" : "Hazır")
+    );
+
+    card.append(pinHead, content, meta);
 
     let moved = false;
     card.addEventListener("click", (event) => {
@@ -433,6 +595,8 @@ export function createBoardPanel(
         handleConnectionPin(pin);
         return;
       }
+      actions.selectConnection(null);
+      updateSelectedConnection(null);
       actions.selectNode(pin.id);
       updateSelectedCard(pin.id);
     });
@@ -459,13 +623,15 @@ export function createBoardPanel(
         if (!moved) {
           return;
         }
+        const width = card.offsetWidth || BOARD_CARD_WIDTH;
+        const height = card.offsetHeight || BOARD_CARD_HEIGHT;
         const nextPosition: BoardPosition = {
-          x: Math.min(Math.max(0, start.x + deltaX), BOARD_WIDTH - BOARD_CARD_WIDTH),
-          y: Math.min(Math.max(0, start.y + deltaY), boardHeight - BOARD_CARD_HEIGHT),
+          x: Math.min(Math.max(0, start.x + deltaX), BOARD_WIDTH - width),
+          y: Math.min(Math.max(0, start.y + deltaY), boardHeight - height),
         };
         positions.set(pin.id, nextPosition);
         setCardGeometry(card, nextPosition, tilt);
-        redrawConnections();
+        redrawConnections(pin.id);
       };
 
       const finishDrag = (): void => {
@@ -485,6 +651,20 @@ export function createBoardPanel(
 
     cardsById.set(pin.id, card);
     cardsLayer.append(card);
+  });
+
+  scene.addEventListener("click", (event) => {
+    if (
+      event.target !== scene &&
+      event.target !== cardsLayer &&
+      event.target !== stringLayer
+    ) {
+      return;
+    }
+    actions.selectNode(null);
+    actions.selectConnection(null);
+    updateSelectedCard(null);
+    updateSelectedConnection(null);
   });
 
   updateConnectionModeVisuals();
