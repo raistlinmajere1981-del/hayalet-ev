@@ -52,6 +52,183 @@ function createArchiveIntakeDesk(panel: HTMLElement): void {
   panel.dataset["patternArchiveV5Enhanced"] = "true";
 }
 
+function createArchiveCabinetPlaceholder(): HTMLElement {
+  const cabinet = createElement("div", "pattern-room-archive-vault-empty-cabinet");
+  cabinet.ariaHidden = "true";
+  const plate = createElement("span", "pattern-room-archive-vault-plate", "VAKA ARŞİVİ");
+  const drawers = createElement("div", "pattern-room-archive-vault-drawers");
+  for (let index = 0; index < 4; index += 1) {
+    const drawer = createElement("span", "pattern-room-archive-vault-drawer");
+    drawer.append(
+      createElement("i", "pattern-room-archive-vault-handle"),
+      createElement("small", undefined, `0${String(index + 1)}`)
+    );
+    drawers.append(drawer);
+  }
+  cabinet.append(plate, drawers);
+  return cabinet;
+}
+
+function enhanceArchiveVault(panel: HTMLElement): void {
+  if (panel.dataset["patternArchiveV7Enhanced"] === "true") {
+    return;
+  }
+
+  const browser = panel.querySelector<HTMLElement>(".pattern-room-archive-browser");
+  const browserHeader = browser?.querySelector<HTMLElement>(
+    ":scope > .pattern-room-workspace-section-header"
+  );
+  const toolbar = browser?.querySelector<HTMLElement>(":scope > .pattern-room-archive-toolbar");
+  const count = browser?.querySelector<HTMLElement>(":scope > .pattern-room-archive-result-count");
+  const intake = browser?.querySelector<HTMLElement>(":scope > [data-pattern-archive-intake-desk='true']");
+  const list = browser?.querySelector<HTMLElement>(":scope > .pattern-room-archive-list");
+  const empty = browser?.querySelector<HTMLElement>(":scope > [data-pattern-archive-empty='true']");
+  const typeFilter = toolbar?.querySelector<HTMLSelectElement>("[data-pattern-archive-type-filter='true']");
+  const search = toolbar?.querySelector<HTMLInputElement>("[data-pattern-archive-search='true']");
+  if (
+    browser === null ||
+    browserHeader === null ||
+    toolbar === null ||
+    count === null ||
+    intake === null ||
+    list === null ||
+    empty === null ||
+    typeFilter === null ||
+    search === null
+  ) {
+    return;
+  }
+
+  const sourceCards = Array.from(
+    list.querySelectorAll<HTMLElement>("[data-pattern-archive-source]")
+  );
+  const sourceTypes = Array.from(
+    new Set(
+      sourceCards.map((card) => {
+        return card.dataset["patternArchiveSourceType"] ?? "Diğer";
+      })
+    )
+  );
+  const localCount = sourceCards.filter((card) => card.classList.contains("local-source")).length;
+
+  browser.classList.add("pattern-room-archive-vault-browser");
+  browserHeader.classList.add("pattern-room-archive-vault-header");
+  toolbar.classList.add("pattern-room-archive-index-search");
+  intake.classList.add("pattern-room-archive-vault-intake");
+
+  const indexDesk = createElement("section", "pattern-room-archive-index-desk");
+  const indexHeader = createElement("header", "pattern-room-archive-index-header");
+  const indexCopy = createElement("div", "pattern-room-archive-index-copy");
+  indexCopy.append(
+    createElement("span", "pattern-room-kicker", "Dosya fihristi"),
+    createElement("strong", undefined, "Kaynak kasası"),
+    createElement("small", undefined, "Dosya türüne göre rafı daralt veya arşivin tamamında ara.")
+  );
+  const indexMetrics = createElement("div", "pattern-room-archive-index-metrics");
+  const metricValues: ReadonlyArray<readonly [string, number]> = [
+    ["Dosya", sourceCards.length],
+    ["Raf", sourceTypes.length],
+    ["Yerel", localCount],
+  ];
+  metricValues.forEach(([label, value]) => {
+    const metric = createElement("span", "pattern-room-archive-index-metric");
+    metric.append(createElement("small", undefined, label), createElement("strong", undefined, String(value)));
+    indexMetrics.append(metric);
+  });
+  indexHeader.append(indexCopy, indexMetrics);
+
+  const filterChips = createElement("div", "pattern-room-archive-filter-chips");
+  filterChips.ariaLabel = "Arşiv rafları";
+  const chipButtons = new Map<string, HTMLButtonElement>();
+  const createFilterChip = (value: string, label: string): HTMLButtonElement => {
+    const button = createElement("button", "pattern-room-archive-filter-chip", label);
+    button.type = "button";
+    button.dataset["patternArchiveFilterChip"] = value;
+    button.ariaPressed = "false";
+    button.addEventListener("click", () => {
+      typeFilter.value = value;
+      typeFilter.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    chipButtons.set(value, button);
+    return button;
+  };
+  filterChips.append(createFilterChip("all", "Tüm dosyalar"));
+  sourceTypes.forEach((sourceType) => {
+    filterChips.append(createFilterChip(sourceType, sourceType));
+  });
+
+  const folderGroups = new Map<
+    string,
+    { readonly group: HTMLElement; readonly cards: readonly HTMLElement[] }
+  >();
+
+  if (sourceCards.length === 0) {
+    empty.classList.add("pattern-room-archive-vault-empty-copy");
+    const emptyStage = createElement("section", "pattern-room-archive-vault-empty-stage");
+    emptyStage.append(createArchiveCabinetPlaceholder(), empty);
+    list.replaceChildren(emptyStage);
+  } else {
+    list.replaceChildren();
+    sourceTypes.forEach((sourceType, index) => {
+      const cards = sourceCards.filter((card) => {
+        return card.dataset["patternArchiveSourceType"] === sourceType;
+      });
+      const group = createElement("section", "pattern-room-archive-folder-group");
+      group.dataset["patternArchiveFolderGroup"] = sourceType;
+      const groupHeader = createElement("header", "pattern-room-archive-folder-group-header");
+      groupHeader.append(
+        createElement("span", "pattern-room-archive-folder-index", String(index + 1).padStart(2, "0")),
+        createElement("strong", undefined, sourceType),
+        createElement("small", undefined, `${String(cards.length)} dosya`)
+      );
+      const body = createElement("div", "pattern-room-archive-folder-group-body");
+      cards.forEach((card) => {
+        card.classList.add("pattern-room-archive-file-folder");
+        const inspectButton = card.querySelector<HTMLButtonElement>("[data-pattern-inspect-source]");
+        card.addEventListener("click", (event) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest("button, input, select, textarea, a") !== null) {
+            return;
+          }
+          inspectButton?.click();
+        });
+        body.append(card);
+      });
+      group.append(groupHeader, body);
+      folderGroups.set(sourceType, { group, cards });
+      list.append(group);
+    });
+    list.append(empty);
+  }
+
+  const syncArchiveChrome = (): void => {
+    chipButtons.forEach((button, value) => {
+      const active = typeFilter.value === value;
+      button.dataset["patternArchiveFilterChipActive"] = active ? "true" : "false";
+      button.ariaPressed = active ? "true" : "false";
+      button.classList.toggle("active", active);
+    });
+    folderGroups.forEach(({ group, cards }) => {
+      group.hidden = !cards.some((card) => !card.hidden);
+    });
+  };
+  typeFilter.addEventListener("change", syncArchiveChrome);
+  search.addEventListener("input", syncArchiveChrome);
+  syncArchiveChrome();
+
+  indexDesk.append(indexHeader, toolbar, filterChips, count);
+  const vault = createElement("section", "pattern-room-archive-vault");
+  const vaultLabel = createElement("header", "pattern-room-archive-vault-label");
+  vaultLabel.append(
+    createElement("span", "pattern-room-kicker", "Dosya rafları"),
+    createElement("strong", undefined, sourceCards.length === 0 ? "Kasa boş" : "Açık arşiv")
+  );
+  vault.append(vaultLabel, list);
+
+  browser.replaceChildren(browserHeader, indexDesk, intake, vault);
+  panel.dataset["patternArchiveV7Enhanced"] = "true";
+}
+
 function createSeatPreview(roleSlot: HTMLElement, index: number): HTMLElement {
   const seat = createElement("span", "pattern-room-interrogation-seat");
   seat.dataset["patternInterrogationSeat"] = String(index + 1);
@@ -211,6 +388,7 @@ function enhanceReviewSurface(panel: HTMLElement): void {
 function enhancePatternRoom(root: ParentNode): void {
   root.querySelectorAll<HTMLElement>("[data-pattern-view='archive']").forEach((panel) => {
     createArchiveIntakeDesk(panel);
+    enhanceArchiveVault(panel);
   });
   root.querySelectorAll<HTMLElement>("[data-pattern-view='tenth-man']").forEach((panel) => {
     enhanceReviewSurface(panel);
