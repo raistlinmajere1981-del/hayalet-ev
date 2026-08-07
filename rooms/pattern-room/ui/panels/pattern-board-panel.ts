@@ -39,9 +39,20 @@ function createInitialPosition(index: number): BoardPosition {
   const column = index % 3;
   const row = Math.floor(index / 3);
   return {
-    x: BOARD_PADDING + column * BOARD_COLUMN_STEP + (BOARD_JITTER_X[index % BOARD_JITTER_X.length] ?? 0),
+    x:
+      BOARD_PADDING +
+      column * BOARD_COLUMN_STEP +
+      (BOARD_JITTER_X[index % BOARD_JITTER_X.length] ?? 0),
     y: 74 + row * BOARD_ROW_STEP + (BOARD_JITTER_Y[index % BOARD_JITTER_Y.length] ?? 0),
   };
+}
+
+function isBoardPosition(value: unknown): value is BoardPosition {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const candidate = value as { readonly x?: unknown; readonly y?: unknown };
+  return typeof candidate.x === "number" && typeof candidate.y === "number";
 }
 
 function loadStoredPositions(subject: string): Readonly<Record<string, BoardPosition>> {
@@ -56,16 +67,11 @@ function loadStoredPositions(subject: string): Readonly<Record<string, BoardPosi
     }
 
     const result: Record<string, BoardPosition> = {};
-    Object.entries(parsed).forEach(([id, value]) => {
-      if (
-        typeof value === "object" &&
-        value !== null &&
-        "x" in value &&
-        "y" in value &&
-        typeof value.x === "number" &&
-        typeof value.y === "number"
-      ) {
-        result[id] = { x: value.x, y: value.y };
+    const record = parsed as Record<string, unknown>;
+    Object.keys(record).forEach((id) => {
+      const value = record[id];
+      if (isBoardPosition(value)) {
+        result[id] = value;
       }
     });
     return result;
@@ -355,14 +361,8 @@ export function createBoardPanel(
           return;
         }
         const nextPosition: BoardPosition = {
-          x: Math.min(
-            Math.max(0, start.x + deltaX),
-            BOARD_WIDTH - BOARD_CARD_WIDTH
-          ),
-          y: Math.min(
-            Math.max(0, start.y + deltaY),
-            boardHeight - BOARD_CARD_HEIGHT
-          ),
+          x: Math.min(Math.max(0, start.x + deltaX), BOARD_WIDTH - BOARD_CARD_WIDTH),
+          y: Math.min(Math.max(0, start.y + deltaY), boardHeight - BOARD_CARD_HEIGHT),
         };
         positions.set(pin.id, nextPosition);
         card.style.left = `${String(nextPosition.x)}px`;
@@ -389,7 +389,10 @@ export function createBoardPanel(
 
   if (allPins.length === 0) {
     scene.append(
-      createEmptyState("Panoya iliştirilmiş kayıt yok. Arşivden bir kaynak veya kanıt ekle.", "data-empty")
+      createEmptyState(
+        "Panoya iliştirilmiş kayıt yok. Arşivden bir kaynak veya kanıt ekle.",
+        "data-empty"
+      )
     );
   }
 
