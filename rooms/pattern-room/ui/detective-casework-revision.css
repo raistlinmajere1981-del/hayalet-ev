@@ -1,0 +1,757 @@
+/* Pattern Room detective casework revision.
+ * This layer intentionally prioritizes the investigation-room experience over
+ * the older admin/workbench visual contract. Runtime actions remain wired, but
+ * the surfaces are presented as a case map, field console and physical dossier.
+ */
+
+/* ─────────────────────────────────────────
+   INVESTIGATION MODE BAR
+───────────────────────────────────────── */
+.pattern-room-investigation-panel {
+  gap: var(--pattern-px-12);
+}
+
+.pattern-room-investigation-toolbar {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--pattern-px-16);
+  align-items: center;
+  padding: var(--pattern-px-12) var(--pattern-px-14);
+  overflow: hidden;
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
+  border-radius: var(--pattern-px-5);
+  background:
+    linear-gradient(90deg, var(--pattern-accent-amber-alpha-10), transparent 34%),
+    var(--pattern-gradient-desk-grain),
+    var(--pattern-surface-metal);
+  box-shadow:
+    0 var(--pattern-px-10) var(--pattern-px-24) var(--pattern-black-alpha-28),
+    inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);
+}
+
+.pattern-room-investigation-toolbar::after {
+  position: absolute;
+  right: var(--pattern-px-16);
+  bottom: var(--pattern-px-5);
+  width: var(--pattern-px-84);
+  height: var(--pattern-px-2);
+  border-radius: var(--pattern-px-999);
+  background: var(--pattern-accent-amber-alpha-28);
+  content: "";
+}
+
+.pattern-room-investigation-toolbar-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--pattern-px-3);
+}
+
+.pattern-room-investigation-toolbar-copy > strong {
+  color: var(--pattern-text-warm);
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: var(--pattern-rem-1-2);
+}
+
+.pattern-room-investigation-toolbar-copy > p {
+  display: -webkit-box;
+  max-width: 72ch;
+  margin: 0;
+  overflow: hidden;
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-82);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.pattern-room-investigation-mode-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(var(--pattern-px-104), 1fr));
+  gap: var(--pattern-px-5);
+  padding: var(--pattern-px-4);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+  border-radius: var(--pattern-px-6);
+  background: var(--pattern-surface-depth-alpha-96);
+}
+
+.pattern-room-investigation-mode-button {
+  min-height: var(--pattern-px-34);
+  padding: var(--pattern-px-5) var(--pattern-px-10);
+  border: var(--pattern-px-1) solid transparent;
+  border-radius: var(--pattern-px-4);
+  background: transparent;
+  color: var(--pattern-text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pattern-room-investigation-mode-button:hover,
+.pattern-room-investigation-mode-button:focus-visible {
+  border-color: var(--pattern-accent-amber-alpha-22);
+  color: var(--pattern-text-warm);
+  outline: none;
+}
+
+.pattern-room-investigation-mode-button.active,
+.pattern-room-investigation-mode-button[data-pattern-investigation-mode-active="true"] {
+  border-color: var(--pattern-accent-amber-alpha-34);
+  background:
+    linear-gradient(180deg, var(--pattern-accent-amber-alpha-14), transparent),
+    var(--pattern-surface-control-alpha-74);
+  color: var(--pattern-accent-amber-light);
+  box-shadow: inset 0 var(--pattern-px-2) 0 var(--pattern-accent-amber);
+}
+
+.pattern-room-investigation-surface,
+.pattern-room-investigation-mode-surface {
+  min-width: 0;
+}
+
+/* ─────────────────────────────────────────
+   CONNECTION GRAPH AS A CASE MAP
+───────────────────────────────────────── */
+.pattern-room-connections-canvas-only .pattern-room-desk-surface {
+  gap: var(--pattern-px-12);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pattern-room-desk-header {
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--pattern-px-12);
+  align-items: baseline;
+  padding: 0 var(--pattern-px-3);
+}
+
+.pattern-room-desk-header > .pattern-room-kicker {
+  grid-row: 1 / span 2;
+  align-self: stretch;
+  padding: var(--pattern-px-7) var(--pattern-px-8);
+  border: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-22);
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-accent-cyan-alpha-10);
+}
+
+.pattern-room-desk-header h2 {
+  color: var(--pattern-text-warm);
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: var(--pattern-rem-1-2);
+}
+
+.pattern-room-desk-header p {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-82);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.pattern-room-graph-map {
+  gap: 0;
+  overflow: hidden;
+  border: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-22);
+  border-radius: var(--pattern-px-6);
+  background: var(--pattern-surface-depth-alpha-96);
+  box-shadow:
+    0 var(--pattern-px-18) var(--pattern-px-42) var(--pattern-black-alpha-40),
+    inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);
+}
+
+.pattern-room-graph-toolbar {
+  min-height: var(--pattern-px-58);
+  padding: var(--pattern-px-10) var(--pattern-px-12);
+  border: 0;
+  border-bottom: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-22);
+  border-radius: 0;
+  background:
+    linear-gradient(90deg, var(--pattern-accent-cyan-alpha-10), transparent 34%),
+    var(--pattern-surface-metal);
+}
+
+.pattern-room-graph-metrics span,
+.pattern-room-graph-zoom-value {
+  border-color: var(--pattern-accent-cyan-alpha-22);
+  background: var(--pattern-surface-control-alpha-74);
+}
+
+.pattern-room-graph-metrics span:last-child {
+  border-color: var(--pattern-accent-amber-alpha-22);
+  background: var(--pattern-accent-amber-alpha-06);
+  color: var(--pattern-accent-amber-light);
+}
+
+.pattern-room-graph-zoom-button {
+  border-color: var(--pattern-accent-cyan-alpha-22);
+  background: var(--pattern-accent-cyan-alpha-10);
+  color: var(--pattern-accent-cyan);
+}
+
+.pattern-room-graph-zoom-button:hover,
+.pattern-room-graph-zoom-button:focus-visible {
+  border-color: var(--pattern-accent-cyan-alpha-22);
+  background: var(--pattern-surface-control-alpha-74);
+  box-shadow: 0 0 var(--pattern-px-10) var(--pattern-accent-cyan-alpha-22);
+}
+
+.pattern-room-graph-viewport {
+  min-height: var(--pattern-px-560);
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 48% 18%, var(--pattern-accent-cyan-alpha-10), transparent 28%),
+    linear-gradient(180deg, var(--pattern-white-alpha-03), transparent 18%),
+    var(--pattern-surface-inset-alpha-70);
+  box-shadow: inset 0 var(--pattern-px-10) var(--pattern-px-28) var(--pattern-black-alpha-28);
+}
+
+.pattern-room-graph-scene {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 var(--pattern-px-48),
+      var(--pattern-accent-cyan-alpha-22) var(--pattern-px-48)
+        calc(var(--pattern-px-48) + var(--pattern-px-1))
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 var(--pattern-px-48),
+      var(--pattern-accent-cyan-alpha-22) var(--pattern-px-48)
+        calc(var(--pattern-px-48) + var(--pattern-px-1))
+    );
+}
+
+.pattern-room-graph-column-label {
+  border-bottom-style: dashed;
+  background: linear-gradient(90deg, var(--pattern-surface-depth-alpha-96), transparent);
+}
+
+.pattern-room-graph-node {
+  border-radius: var(--pattern-px-3);
+  background:
+    linear-gradient(180deg, var(--pattern-white-alpha-04), transparent 30%),
+    var(--pattern-surface-paper-alpha-90);
+  box-shadow:
+    0 var(--pattern-px-12) var(--pattern-px-24) var(--pattern-black-alpha-40),
+    inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);
+}
+
+.pattern-room-graph-node::before {
+  position: absolute;
+  top: var(--pattern-px-7);
+  left: 50%;
+  width: var(--pattern-px-9);
+  height: var(--pattern-px-9);
+  border: var(--pattern-px-1) solid var(--pattern-white-alpha-08);
+  border-radius: var(--pattern-px-999);
+  background: currentColor;
+  box-shadow: 0 var(--pattern-px-2) var(--pattern-px-4) var(--pattern-black-alpha-40);
+  content: "";
+  transform: translateX(-50%);
+}
+
+.pattern-room-graph-node.source {
+  color: var(--pattern-accent-green);
+}
+
+.pattern-room-graph-node.evidence {
+  color: var(--pattern-accent-cyan);
+}
+
+.pattern-room-graph-node.node {
+  color: var(--pattern-accent-amber);
+}
+
+.pattern-room-graph-node.counter {
+  color: var(--pattern-accent-red);
+}
+
+.pattern-room-graph-node h3,
+.pattern-room-graph-node p,
+.pattern-room-graph-node small {
+  color: var(--pattern-text);
+}
+
+.pattern-room-graph-node p {
+  color: var(--pattern-text-muted);
+}
+
+.pattern-room-graph-node small {
+  color: var(--pattern-text-subtle);
+}
+
+.pattern-room-graph-edge.pattern-room-connection-card.domain {
+  color: var(--pattern-accent-cyan);
+}
+
+.pattern-room-graph-edge.pattern-room-connection-card.local {
+  color: var(--pattern-accent-red);
+}
+
+.pattern-room-graph-edge-line {
+  opacity: 0.72;
+  box-shadow: 0 0 var(--pattern-px-8) var(--pattern-black-alpha-28);
+}
+
+.pattern-room-graph-edge-label {
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-surface-depth-alpha-96);
+}
+
+.pattern-room-graph-hint {
+  margin: 0;
+  padding: var(--pattern-px-9) var(--pattern-px-12);
+  border-top: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-22);
+  background: var(--pattern-surface-metal);
+}
+
+/* ─────────────────────────────────────────
+   REVIEW TASK SWITCHER AS A FIELD CONSOLE
+───────────────────────────────────────── */
+.pattern-room-review-panel {
+  gap: var(--pattern-px-12);
+}
+
+.pattern-room-review-task-switcher {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) minmax(var(--pattern-px-320), 0.82fr);
+  padding: var(--pattern-px-12) var(--pattern-px-14);
+  overflow: hidden;
+  border-color: var(--pattern-accent-red-alpha-28);
+  border-radius: var(--pattern-px-5);
+  background:
+    linear-gradient(90deg, var(--pattern-accent-red-alpha-08), transparent 34%),
+    var(--pattern-gradient-desk-grain),
+    var(--pattern-surface-metal);
+  box-shadow:
+    0 var(--pattern-px-10) var(--pattern-px-24) var(--pattern-black-alpha-28),
+    inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);
+}
+
+.pattern-room-review-task-switcher::after {
+  position: absolute;
+  top: var(--pattern-px-12);
+  right: var(--pattern-px-12);
+  width: var(--pattern-px-7);
+  height: var(--pattern-px-7);
+  border-radius: var(--pattern-px-999);
+  background: var(--pattern-accent-red);
+  box-shadow: 0 0 var(--pattern-px-10) var(--pattern-accent-red-alpha-50);
+  content: "";
+}
+
+.pattern-room-review-task-switcher-copy > strong {
+  color: var(--pattern-text-warm);
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: var(--pattern-rem-1-2);
+}
+
+.pattern-room-review-task-switcher-copy > p {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-82);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.pattern-room-review-task-buttons {
+  padding: var(--pattern-px-4);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+  border-radius: var(--pattern-px-6);
+  background: var(--pattern-surface-depth-alpha-96);
+}
+
+.pattern-room-review-task-button {
+  min-height: var(--pattern-px-58);
+  border-color: transparent;
+  border-radius: var(--pattern-px-4);
+  background: transparent;
+}
+
+.pattern-room-review-task-button > strong {
+  font-family: "Source Serif 4", Georgia, serif;
+}
+
+.pattern-room-review-task-button[data-pattern-review-task="ai-review"] {
+  box-shadow: inset var(--pattern-px-2) 0 0 var(--pattern-accent-cyan-alpha-22);
+}
+
+.pattern-room-review-task-button[data-pattern-review-task="tenth-man"] {
+  box-shadow: inset var(--pattern-px-2) 0 0 var(--pattern-accent-red-alpha-28);
+}
+
+.pattern-room-review-task-button[data-pattern-review-task-active="true"] {
+  border-color: var(--pattern-accent-amber-alpha-34);
+  background:
+    linear-gradient(180deg, var(--pattern-accent-amber-alpha-14), transparent),
+    var(--pattern-surface-control-alpha-74);
+  color: var(--pattern-text-warm);
+  box-shadow: inset 0 var(--pattern-px-2) 0 var(--pattern-accent-amber);
+}
+
+/* ─────────────────────────────────────────
+   AI REVIEW AS A DOSSIER + TERMINAL
+───────────────────────────────────────── */
+.pattern-room-review-surface {
+  padding: var(--pattern-px-12);
+  border: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-22);
+  border-radius: var(--pattern-px-6);
+  background:
+    radial-gradient(circle at 18% 12%, var(--pattern-accent-cyan-alpha-10), transparent 26%),
+    var(--pattern-surface-depth-alpha-96);
+  box-shadow: 0 var(--pattern-px-16) var(--pattern-px-38) var(--pattern-black-alpha-30);
+}
+
+.pattern-room-case-review-preview > h2 {
+  margin: 0;
+  color: var(--pattern-text-warm);
+  font-family: "Source Serif 4", Georgia, serif;
+}
+
+.pattern-room-case-review-preview > p {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--pattern-text-muted);
+}
+
+.pattern-room-case-review-controls {
+  display: grid;
+  grid-template-columns: minmax(var(--pattern-px-188), 1fr) auto auto;
+  gap: var(--pattern-px-8);
+  padding: var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-22);
+  border-radius: var(--pattern-px-5);
+  background: var(--pattern-surface-metal);
+}
+
+.pattern-room-case-review-role-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--pattern-px-8);
+  align-items: center;
+}
+
+.pattern-room-case-review-role-field > span {
+  color: var(--pattern-text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pattern-room-case-review-role-field select {
+  min-height: var(--pattern-px-34);
+  border-color: var(--pattern-accent-cyan-alpha-22);
+  background: var(--pattern-surface-depth-alpha-96);
+}
+
+.pattern-room-case-review-runtime-status {
+  top: var(--pattern-px-8);
+  display: flex;
+  gap: var(--pattern-px-8);
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--pattern-px-44);
+  margin-bottom: var(--pattern-px-10);
+  padding: var(--pattern-px-8) var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-22);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-surface-metal);
+  box-shadow: 0 var(--pattern-px-8) var(--pattern-px-18) var(--pattern-black-alpha-28);
+}
+
+.pattern-room-case-review-status {
+  position: relative;
+  padding-left: var(--pattern-px-18);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pattern-room-case-review-status::before {
+  position: absolute;
+  top: 50%;
+  left: var(--pattern-px-3);
+  width: var(--pattern-px-7);
+  height: var(--pattern-px-7);
+  border-radius: var(--pattern-px-999);
+  background: currentColor;
+  box-shadow: 0 0 var(--pattern-px-8) currentColor;
+  content: "";
+  transform: translateY(-50%);
+}
+
+.pattern-room-case-review-response,
+.pattern-room-case-review-request {
+  border-color: var(--pattern-accent-cyan-alpha-22);
+  background:
+    linear-gradient(180deg, var(--pattern-accent-cyan-alpha-10), transparent 24%),
+    var(--pattern-surface-inset-alpha-70);
+}
+
+.pattern-room-case-review-response-text,
+.pattern-room-case-review-preview-text {
+  border: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-22);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-surface-depth-alpha-96);
+  color: var(--pattern-accent-cyan);
+  box-shadow: inset 0 0 var(--pattern-px-24) var(--pattern-black-alpha-28);
+}
+
+.pattern-room-case-review-parsed {
+  position: relative;
+  border-color: var(--pattern-accent-amber-alpha-22);
+  background:
+    linear-gradient(90deg, var(--pattern-accent-red-alpha-08), transparent 12%),
+    var(--pattern-surface-paper-alpha-90);
+  box-shadow: 0 var(--pattern-px-12) var(--pattern-px-28) var(--pattern-black-alpha-28);
+}
+
+.pattern-room-case-review-parsed::before {
+  position: absolute;
+  top: var(--pattern-px-12);
+  bottom: var(--pattern-px-12);
+  left: var(--pattern-px-7);
+  width: var(--pattern-px-2);
+  border-radius: var(--pattern-px-2);
+  background: var(--pattern-accent-red-alpha-28);
+  content: "";
+}
+
+.pattern-room-case-review-result-summary {
+  border: var(--pattern-px-1) solid var(--pattern-accent-green-alpha-22);
+  border-left: var(--pattern-px-3) solid var(--pattern-accent-green);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-surface-inset-alpha-62);
+}
+
+.pattern-room-case-review-disclosure,
+.pattern-room-case-review-result-group {
+  border-color: var(--pattern-accent-amber-alpha-18);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-surface-paper-alpha-90);
+}
+
+.pattern-room-case-review-disclosure-summary,
+.pattern-room-case-review-result-group-summary {
+  min-height: var(--pattern-px-44);
+  background: linear-gradient(90deg, var(--pattern-accent-amber-alpha-06), transparent);
+}
+
+.pattern-room-case-review-result-group-body .pattern-room-case-review-section,
+.pattern-room-case-review-result-meta > article {
+  border-color: var(--pattern-accent-amber-alpha-14);
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-surface-inset-alpha-62);
+}
+
+.pattern-room-case-review-apply-workspace,
+.pattern-room-evidence-candidate-workspace {
+  border-color: var(--pattern-accent-amber-alpha-18);
+  background: var(--pattern-surface-paper-alpha-90);
+}
+
+.pattern-room-evidence-candidate-card {
+  position: relative;
+  border-color: var(--pattern-accent-green-alpha-22);
+  border-radius: var(--pattern-px-3);
+  background:
+    linear-gradient(180deg, var(--pattern-accent-green-alpha-10), transparent 32%),
+    var(--pattern-surface-paper-alpha-90);
+  box-shadow: 0 var(--pattern-px-8) var(--pattern-px-18) var(--pattern-black-alpha-28);
+}
+
+.pattern-room-evidence-candidate-card::after {
+  position: absolute;
+  top: var(--pattern-px-8);
+  right: var(--pattern-px-8);
+  width: var(--pattern-px-7);
+  height: var(--pattern-px-7);
+  border-radius: var(--pattern-px-999);
+  background: var(--pattern-accent-green);
+  content: "";
+}
+
+/* ─────────────────────────────────────────
+   LOCAL TENTH MAN AS AN INTERROGATION DEVICE
+───────────────────────────────────────── */
+.pattern-room-review-inspector.pattern-room-device {
+  padding: var(--pattern-px-14);
+  border: var(--pattern-px-1) solid var(--pattern-accent-red-alpha-28);
+  border-radius: var(--pattern-px-6);
+  background:
+    radial-gradient(circle at 82% 12%, var(--pattern-accent-red-alpha-08), transparent 24%),
+    var(--pattern-gradient-desk-grain),
+    var(--pattern-surface-metal);
+  box-shadow:
+    0 var(--pattern-px-18) var(--pattern-px-42) var(--pattern-black-alpha-40),
+    inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);
+}
+
+.pattern-room-review-inspector > h2 {
+  color: var(--pattern-text-warm);
+  font-family: "Source Serif 4", Georgia, serif;
+}
+
+.pattern-room-device-status-row {
+  padding-bottom: var(--pattern-px-10);
+  border-bottom: var(--pattern-px-1) solid var(--pattern-accent-red-alpha-28);
+}
+
+.pattern-room-device-status,
+.pattern-room-phase-step {
+  border-color: var(--pattern-accent-red-alpha-28);
+  background: var(--pattern-surface-depth-alpha-96);
+}
+
+.pattern-room-role-slot {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--pattern-text-alpha-12);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-surface-depth-alpha-96);
+}
+
+.pattern-room-role-slot::before {
+  position: absolute;
+  top: var(--pattern-px-8);
+  right: var(--pattern-px-8);
+  width: var(--pattern-px-7);
+  height: var(--pattern-px-7);
+  border-radius: var(--pattern-px-999);
+  background: var(--pattern-text-subtle);
+  content: "";
+}
+
+.pattern-room-role-slot.connected {
+  border-color: var(--pattern-accent-green-alpha-22);
+}
+
+.pattern-room-role-slot.connected::before {
+  background: var(--pattern-accent-green);
+  box-shadow: 0 0 var(--pattern-px-8) var(--pattern-accent-green-alpha-22);
+}
+
+.pattern-room-debate-turn,
+.pattern-room-reference-item {
+  border-color: var(--pattern-accent-red-alpha-28);
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-surface-inset-alpha-62);
+}
+
+.pattern-room-debate-turn {
+  border-left: var(--pattern-px-3) solid var(--pattern-accent-red);
+}
+
+.pattern-room-debate-verdict {
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-28);
+  border-left: var(--pattern-px-3) solid var(--pattern-accent-amber);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-accent-amber-alpha-06);
+}
+
+.pattern-room-review-disclosure {
+  border-color: var(--pattern-text-alpha-12);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-surface-depth-alpha-96);
+}
+
+.pattern-room-review-disclosure-summary {
+  background: linear-gradient(90deg, var(--pattern-accent-red-alpha-08), transparent);
+}
+
+/* ─────────────────────────────────────────
+   PERSISTENT INSPECTOR AS A SLIM CASE FILE
+───────────────────────────────────────── */
+.pattern-room-workspace-inspector-header {
+  padding-bottom: var(--pattern-px-10);
+  border-bottom: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-18);
+}
+
+.pattern-room-workspace-inspector-title {
+  color: var(--pattern-text-warm);
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: var(--pattern-rem-1-2);
+}
+
+.pattern-room-workspace-inspector-case {
+  position: relative;
+  margin: var(--pattern-px-10) var(--pattern-px-10) 0;
+  padding: var(--pattern-px-12);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
+  border-radius: var(--pattern-px-3);
+  background:
+    linear-gradient(180deg, var(--pattern-accent-amber-alpha-10), transparent 30%),
+    var(--pattern-surface-paper-alpha-90);
+  box-shadow: 0 var(--pattern-px-8) var(--pattern-px-18) var(--pattern-black-alpha-28);
+}
+
+.pattern-room-workspace-inspector-case::before {
+  position: absolute;
+  top: var(--pattern-px-7);
+  left: 50%;
+  width: var(--pattern-px-9);
+  height: var(--pattern-px-9);
+  border-radius: var(--pattern-px-999);
+  background: var(--pattern-accent-amber);
+  box-shadow: 0 var(--pattern-px-2) var(--pattern-px-4) var(--pattern-black-alpha-40);
+  content: "";
+  transform: translateX(-50%);
+}
+
+.pattern-room-workspace-inspector-subject {
+  display: block;
+  margin-top: var(--pattern-px-8);
+  color: var(--pattern-text-warm);
+  font-family: "Source Serif 4", Georgia, serif;
+}
+
+.pattern-room-workspace-inspector-metrics {
+  margin-top: var(--pattern-px-8);
+}
+
+.pattern-room-workspace-inspector-content {
+  padding-top: var(--pattern-px-10);
+}
+
+/* ─────────────────────────────────────────
+   RESPONSIVE / MOTION
+───────────────────────────────────────── */
+@media (--pattern-bp-max-1180) {
+  .pattern-room-review-task-switcher {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (--pattern-bp-max-820) {
+  .pattern-room-investigation-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pattern-room-investigation-mode-controls,
+  .pattern-room-review-task-buttons,
+  .pattern-room-case-review-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pattern-room-case-review-role-field {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pattern-room-investigation-mode-button,
+  .pattern-room-review-task-button,
+  .pattern-room-graph-node,
+  .pattern-room-graph-edge-line,
+  .pattern-room-evidence-candidate-card {
+    transition: none;
+  }
+}
