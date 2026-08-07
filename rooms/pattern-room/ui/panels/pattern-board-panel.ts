@@ -326,12 +326,18 @@ export function createBoardPanel(
     );
   }
 
+  const connectionReportHint = createElement(
+    "span",
+    "pattern-room-visually-hidden",
+    "Bağlantılar Rapor panelinde Yerel Bağlantılar bölümünde listelenir."
+  );
+
   redrawConnections();
   updateSelectedCard(actions.getSelectedNodeId());
   updateSelectedConnection(actions.getSelectedConnectionId());
   scene.append(stringLayer, cardsLayer);
   viewport.append(scene);
-  canvas.append(canvasHeader, viewport);
+  canvas.append(canvasHeader, viewport, connectionReportHint);
   workspace.append(canvas);
   shell.append(workspace);
   return shell;
