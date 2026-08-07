@@ -443,7 +443,7 @@ export function createPatternWorkspaceShell(
         if (activeNavigationId !== activeItem.id) {
           inspectorEnabled =
             activeItem.id !== "tenth-man" && activeItem.id !== "review-history";
-          inspectorOpen = activeItem.id === "overview" || activeItem.id === "report";
+          inspectorOpen = activeItem.id === "overview";
           activeNavigationId = activeItem.id;
           applyInspectorState();
         }
