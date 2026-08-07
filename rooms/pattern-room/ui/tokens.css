@@ -265,6 +265,32 @@
     rgba(200, 145, 58, 0.09),
     transparent 34%
   );
+  /* Paylaşılan fade sheen'ler (tek yön fade overlay) */
+  --pattern-gradient-amber-side-sheen: linear-gradient(
+    90deg,
+    var(--pattern-accent-amber-alpha-10),
+    transparent 34%
+  );
+  --pattern-gradient-amber-side-sheen-strong: linear-gradient(
+    90deg,
+    var(--pattern-accent-amber-alpha-14),
+    transparent
+  );
+  --pattern-gradient-amber-top-sheen: linear-gradient(
+    180deg,
+    var(--pattern-accent-amber-alpha-14),
+    transparent
+  );
+  --pattern-gradient-cyan-top-sheen: linear-gradient(
+    180deg,
+    var(--pattern-accent-cyan-alpha-10),
+    transparent 24%
+  );
+  --pattern-gradient-red-side-sheen: linear-gradient(
+    90deg,
+    var(--pattern-accent-red-alpha-08),
+    transparent 12%
+  );
 
   /* ── Spacing ── */
   --pattern-px-neg-4: -4px;

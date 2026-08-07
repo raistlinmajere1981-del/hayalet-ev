@@ -13,8 +13,7 @@
   align-items: end;
   border-color: var(--pattern-accent-amber-alpha-28);
   background:
-    linear-gradient(90deg, var(--pattern-accent-amber-alpha-10), transparent 34%),
-    var(--pattern-gradient-desk-grain),
+    var(--pattern-gradient-amber-side-sheen), var(--pattern-gradient-desk-grain),
     var(--pattern-surface-metal);
 }
 
@@ -69,9 +68,7 @@
 .pattern-room-source-workbench-demo {
   border-color: var(--pattern-accent-cyan-alpha-22);
   border-radius: var(--pattern-px-5);
-  background:
-    linear-gradient(180deg, var(--pattern-accent-cyan-alpha-10), transparent 24%),
-    var(--pattern-surface-depth-alpha-96);
+  background: var(--pattern-gradient-cyan-top-sheen), var(--pattern-surface-depth-alpha-96);
 }
 
 .pattern-room-source-workbench-form {
@@ -84,7 +81,7 @@
   padding: var(--pattern-px-18) var(--pattern-px-18) var(--pattern-px-20);
   border-radius: var(--pattern-px-4);
   background:
-    linear-gradient(90deg, var(--pattern-accent-red-alpha-08), transparent 12%),
+    var(--pattern-gradient-red-side-sheen),
     linear-gradient(180deg, var(--pattern-white-alpha-04), transparent 24%),
     var(--pattern-surface-paper-alpha-90);
 }
@@ -140,8 +137,7 @@
   padding: var(--pattern-px-14);
   border-radius: var(--pattern-px-5);
   background:
-    linear-gradient(90deg, var(--pattern-accent-red-alpha-08), transparent 12%),
-    var(--pattern-gradient-report-sheen),
+    var(--pattern-gradient-red-side-sheen), var(--pattern-gradient-report-sheen),
     var(--pattern-surface-paper-alpha-90);
 }
 
@@ -340,8 +336,7 @@
 .pattern-room-report-outline-button.active {
   border-color: var(--pattern-accent-amber-alpha-28);
   background:
-    linear-gradient(90deg, var(--pattern-accent-amber-alpha-14), transparent),
-    var(--pattern-surface-control-alpha-74);
+    var(--pattern-gradient-amber-side-sheen-strong), var(--pattern-surface-control-alpha-74);
   box-shadow: inset var(--pattern-px-3) 0 0 var(--pattern-accent-amber);
 }
 

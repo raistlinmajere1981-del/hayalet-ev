@@ -22,8 +22,7 @@
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
   border-radius: var(--pattern-px-5);
   background:
-    linear-gradient(90deg, var(--pattern-accent-amber-alpha-10), transparent 34%),
-    var(--pattern-gradient-desk-grain),
+    var(--pattern-gradient-amber-side-sheen), var(--pattern-gradient-desk-grain),
     var(--pattern-surface-metal);
   box-shadow:
     0 var(--pattern-px-10) var(--pattern-px-24) var(--pattern-black-alpha-28),
@@ -97,9 +96,7 @@
 .pattern-room-investigation-mode-button.active,
 .pattern-room-investigation-mode-button[data-pattern-investigation-mode-active="true"] {
   border-color: var(--pattern-accent-amber-alpha-34);
-  background:
-    linear-gradient(180deg, var(--pattern-accent-amber-alpha-14), transparent),
-    var(--pattern-surface-control-alpha-74);
+  background: var(--pattern-gradient-amber-top-sheen), var(--pattern-surface-control-alpha-74);
   color: var(--pattern-accent-amber-light);
   box-shadow: inset 0 var(--pattern-px-2) 0 var(--pattern-accent-amber);
 }
@@ -326,8 +323,7 @@
   border-radius: var(--pattern-px-5);
   background:
     linear-gradient(90deg, var(--pattern-accent-red-alpha-08), transparent 34%),
-    var(--pattern-gradient-desk-grain),
-    var(--pattern-surface-metal);
+    var(--pattern-gradient-desk-grain), var(--pattern-surface-metal);
   box-shadow:
     0 var(--pattern-px-10) var(--pattern-px-24) var(--pattern-black-alpha-28),
     inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);
@@ -388,9 +384,7 @@
 
 .pattern-room-review-task-button[data-pattern-review-task-active="true"] {
   border-color: var(--pattern-accent-amber-alpha-34);
-  background:
-    linear-gradient(180deg, var(--pattern-accent-amber-alpha-14), transparent),
-    var(--pattern-surface-control-alpha-74);
+  background: var(--pattern-gradient-amber-top-sheen), var(--pattern-surface-control-alpha-74);
   color: var(--pattern-text-warm);
   box-shadow: inset 0 var(--pattern-px-2) 0 var(--pattern-accent-amber);
 }
@@ -491,9 +485,7 @@
 .pattern-room-case-review-response,
 .pattern-room-case-review-request {
   border-color: var(--pattern-accent-cyan-alpha-22);
-  background:
-    linear-gradient(180deg, var(--pattern-accent-cyan-alpha-10), transparent 24%),
-    var(--pattern-surface-inset-alpha-70);
+  background: var(--pattern-gradient-cyan-top-sheen), var(--pattern-surface-inset-alpha-70);
 }
 
 .pattern-room-case-review-response-text,
@@ -508,9 +500,7 @@
 .pattern-room-case-review-parsed {
   position: relative;
   border-color: var(--pattern-accent-amber-alpha-22);
-  background:
-    linear-gradient(90deg, var(--pattern-accent-red-alpha-08), transparent 12%),
-    var(--pattern-surface-paper-alpha-90);
+  background: var(--pattern-gradient-red-side-sheen), var(--pattern-surface-paper-alpha-90);
   box-shadow: 0 var(--pattern-px-12) var(--pattern-px-28) var(--pattern-black-alpha-28);
 }
 
@@ -588,8 +578,7 @@
   border-radius: var(--pattern-px-6);
   background:
     radial-gradient(circle at 82% 12%, var(--pattern-accent-red-alpha-08), transparent 24%),
-    var(--pattern-gradient-desk-grain),
-    var(--pattern-surface-metal);
+    var(--pattern-gradient-desk-grain), var(--pattern-surface-metal);
   box-shadow:
     0 var(--pattern-px-18) var(--pattern-px-42) var(--pattern-black-alpha-40),
     inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);

@@ -39,8 +39,7 @@
 .pattern-room-workspace-nav-button.active {
   border-color: var(--pattern-accent-amber-alpha-34);
   background:
-    linear-gradient(90deg, var(--pattern-accent-amber-alpha-14), transparent),
-    var(--pattern-surface-control-alpha-74);
+    var(--pattern-gradient-amber-side-sheen-strong), var(--pattern-surface-control-alpha-74);
   box-shadow: inset var(--pattern-px-3) 0 0 var(--pattern-accent-amber);
 }
 
@@ -619,9 +618,7 @@
 .pattern-room-report-document {
   position: relative;
   border-color: var(--pattern-accent-amber-alpha-22);
-  background:
-    linear-gradient(90deg, var(--pattern-accent-red-alpha-08), transparent 12%),
-    var(--pattern-surface-paper-alpha-90);
+  background: var(--pattern-gradient-red-side-sheen), var(--pattern-surface-paper-alpha-90);
   box-shadow: 0 var(--pattern-px-18) var(--pattern-px-42) var(--pattern-black-alpha-40);
 }
 
