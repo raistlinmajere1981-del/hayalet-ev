@@ -1,5 +1,6 @@
 import type {
   PatternBoardPin,
+  PatternPanelActions,
   PatternRoomWorkspaceModel,
   PatternViewId,
 } from "../../shared/types/pattern-room.js";
@@ -11,6 +12,7 @@ import { createElement } from "./pattern-panel-utils.js";
 
 type RoomObjectViewId = Exclude<PatternViewId, "overview">;
 type CaseActionTone = "green" | "amber" | "cyan" | "red";
+type QuickCaptureMode = "note" | "question" | "evidence" | "source";
 
 type CaseAction = {
   readonly viewId: RoomObjectViewId;
@@ -19,6 +21,45 @@ type CaseAction = {
   readonly detail: string;
   readonly tone: CaseActionTone;
 };
+
+type QuickCaptureOption = {
+  readonly id: QuickCaptureMode;
+  readonly label: string;
+  readonly titlePlaceholder: string;
+  readonly bodyPlaceholder: string;
+  readonly submitLabel: string;
+};
+
+const QUICK_CAPTURE_OPTIONS: readonly QuickCaptureOption[] = [
+  {
+    id: "note",
+    label: "Saha notu",
+    titlePlaceholder: "Not başlığı",
+    bodyPlaceholder: "Gözlem, yorum veya yeni bir iz yaz…",
+    submitLabel: "Panoya iliştir",
+  },
+  {
+    id: "question",
+    label: "Açık soru",
+    titlePlaceholder: "Sorunun kısa başlığı",
+    bodyPlaceholder: "Doğrulanması veya cevaplanması gereken noktayı yaz…",
+    submitLabel: "Soru olarak iliştir",
+  },
+  {
+    id: "evidence",
+    label: "Kanıt fişi",
+    titlePlaceholder: "Kanıt başlığı",
+    bodyPlaceholder: "Alıntı, gözlem veya kanıt niteliğindeki pasajı yaz…",
+    submitLabel: "Kanıt fişi oluştur",
+  },
+  {
+    id: "source",
+    label: "Kaynak",
+    titlePlaceholder: "Kaynak / dosya adı",
+    bodyPlaceholder: "Kaynağın kısa özeti, içerik notu veya bağlantı bilgisini yaz…",
+    submitLabel: "Arşive kaldır",
+  },
+];
 
 function getAllPins(data: PatternRoomWorkspaceModel): PatternBoardPin[] {
   return data.boardCategories.flatMap((category) => category.pins);
@@ -166,6 +207,119 @@ function buildNextActions(data: PatternRoomWorkspaceModel): CaseAction[] {
     .slice(0, 3);
 }
 
+function createQuickCapture(actions: PatternPanelActions): HTMLElement {
+  const desk = createElement("section", "pattern-room-command-capture");
+  desk.dataset["patternCommandCapture"] = "true";
+
+  const heading = createElement("div", "pattern-room-command-capture-heading");
+  heading.append(
+    createElement("span", "pattern-room-kicker", "Hızlı kayıt"),
+    createElement("strong", undefined, "Aklındaki izi odadan çıkmadan yakala"),
+    createElement("small", undefined, "Kayıt doğrudan ilgili vaka yüzeyine düşer.")
+  );
+
+  const modes = createElement("div", "pattern-room-command-capture-modes");
+  const form = createElement("form", "pattern-room-command-capture-form");
+  const titleInput = createElement("input", "pattern-room-inline-input") as HTMLInputElement;
+  titleInput.type = "text";
+  titleInput.autocomplete = "off";
+  titleInput.maxLength = 120;
+
+  const bodyInput = createElement("textarea", "pattern-room-inline-input") as HTMLTextAreaElement;
+  bodyInput.rows = 2;
+  bodyInput.maxLength = 1400;
+
+  const originInput = createElement("input", "pattern-room-inline-input") as HTMLInputElement;
+  originInput.type = "text";
+  originInput.autocomplete = "off";
+  originInput.placeholder = "Kaynak kökeni / adres / dosya bilgisi (opsiyonel)";
+  originInput.dataset["patternCommandCaptureOrigin"] = "true";
+
+  const submit = createElement("button", "pattern-room-command-capture-submit") as HTMLButtonElement;
+  submit.type = "submit";
+  const status = createElement("span", "pattern-room-command-capture-status", "");
+  status.ariaLive = "polite";
+
+  let activeMode: QuickCaptureMode = "note";
+  const modeButtons = new Map<QuickCaptureMode, HTMLButtonElement>();
+
+  const updateMode = (mode: QuickCaptureMode): void => {
+    activeMode = mode;
+    const option = QUICK_CAPTURE_OPTIONS.find((candidate) => candidate.id === mode);
+    if (option === undefined) {
+      return;
+    }
+    modeButtons.forEach((button, id) => {
+      const active = id === mode;
+      button.dataset["patternCommandCaptureActive"] = active ? "true" : "false";
+      button.ariaPressed = active ? "true" : "false";
+    });
+    titleInput.placeholder = option.titlePlaceholder;
+    bodyInput.placeholder = option.bodyPlaceholder;
+    submit.textContent = option.submitLabel;
+    originInput.hidden = mode !== "source";
+    status.textContent = "";
+  };
+
+  QUICK_CAPTURE_OPTIONS.forEach((option) => {
+    const button = createElement("button", "pattern-room-command-capture-mode", option.label);
+    button.type = "button";
+    button.dataset["patternCommandCaptureMode"] = option.id;
+    button.addEventListener("click", () => {
+      updateMode(option.id);
+      titleInput.focus();
+    });
+    modeButtons.set(option.id, button);
+    modes.append(button);
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const title = titleInput.value.trim();
+    const body = bodyInput.value.trim();
+    const origin = originInput.value.trim();
+    if (body === "") {
+      status.textContent = "Önce kısa bir içerik yaz.";
+      bodyInput.focus();
+      return;
+    }
+
+    const fallbackTitle =
+      activeMode === "question"
+        ? "Yeni açık soru"
+        : activeMode === "evidence"
+          ? "Yeni kanıt"
+          : activeMode === "source"
+            ? "Yeni kaynak"
+            : "Yeni saha notu";
+    const resolvedTitle = title === "" ? fallbackTitle : title;
+
+    titleInput.value = "";
+    bodyInput.value = "";
+    originInput.value = "";
+    status.textContent = "Kaydediliyor…";
+
+    if (activeMode === "question") {
+      actions.addAuthoredUncertainty(resolvedTitle, body);
+    } else if (activeMode === "evidence") {
+      actions.addAuthoredEvidence(resolvedTitle, body);
+    } else if (activeMode === "source") {
+      actions.addAuthoredSource(
+        resolvedTitle,
+        origin === "" ? "Vaka Merkezi hızlı kayıt" : origin,
+        body
+      );
+    } else {
+      actions.addAuthoredInspiration(resolvedTitle, body);
+    }
+  });
+
+  form.append(titleInput, bodyInput, originInput, submit, status);
+  desk.append(heading, modes, form);
+  updateMode(activeMode);
+  return desk;
+}
+
 function createBoardStation(
   data: PatternRoomWorkspaceModel,
   onOpenView: (viewId: RoomObjectViewId) => void,
@@ -283,7 +437,8 @@ function createReviewStation(
   data.tenthManSession.roles.slice(0, 4).forEach((role) => {
     const seat = createElement("i", role.connected === true ? "connected" : "");
     seat.title = role.label;
-    seat.append(createElement("b", undefined, role.id.toUpperCase()));
+    const roleCode = role.label.match(/\b(AI\d+|US\d+)\b/i)?.[1] ?? role.id.replace(/^role-/i, "").split("-")[0] ?? "ROL";
+    seat.append(createElement("b", undefined, roleCode.toUpperCase()));
     surface.append(seat);
   });
   const center = createElement("span", "pattern-room-command-review-center");
@@ -328,7 +483,8 @@ function createReportStation(
 export function createOverviewPanel(
   data: PatternRoomWorkspaceModel,
   onOpenView: (viewId: Exclude<PatternViewId, "overview">) => void,
-  text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)
+  text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null),
+  actions?: PatternPanelActions
 ): HTMLElement {
   const allPins = getAllPins(data);
   const evidencePins = allPins.filter((pin) => pin.kind === "evidence" || pin.layer === "evidence");
@@ -384,7 +540,10 @@ export function createOverviewPanel(
     createElement("span", "pattern-room-kicker", "Sıradaki hareket"),
     createElement("small", undefined, "Vakadaki mevcut boşluklara göre")
   );
-  actionDesk.append(actionHeader, ...nextActions.map((action, index) => createActionButton(action, index, onOpenView)));
+  actionDesk.append(
+    actionHeader,
+    ...nextActions.map((action, index) => createActionButton(action, index, onOpenView))
+  );
   commandDesk.append(caseFocus, actionDesk);
 
   const stationsHeader = createElement("header", "pattern-room-command-stations-head");
@@ -404,6 +563,10 @@ export function createOverviewPanel(
     createReportStation(data, onOpenView, text)
   );
 
-  shell.append(header, commandDesk, stationsHeader, stations);
+  shell.append(header, commandDesk);
+  if (actions !== undefined) {
+    shell.append(createQuickCapture(actions));
+  }
+  shell.append(stationsHeader, stations);
   return shell;
 }
