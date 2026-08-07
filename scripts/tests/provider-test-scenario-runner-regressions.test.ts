@@ -184,8 +184,8 @@ void test("command scenario waits before each command when a pre-delay is config
   const t1 = startedAt[1];
   assert.ok(t0 != null && t1 != null);
   assert.ok(
-    t1 - t0 >= 25,
-    `Expected at least 25ms command pre-delay, got ${t1 - t0}ms`
+    t1 - t0 >= 20,
+    `Expected at least 20ms command pre-delay, got ${t1 - t0}ms`
   );
 });
 

@@ -128,7 +128,7 @@
 .pattern-room-office:has(.pattern-room-hotspot.desk:hover) .pattern-room-holo-table,
 .pattern-room-office:has(.pattern-room-hotspot.tenth-man:hover) .pattern-room-tenth-device,
 .pattern-room-office:has(.pattern-room-hotspot.report:hover) .pattern-room-report-terminal {
-  transform: translateY(calc(0px - var(--pattern-px-3)));
+  transform: translateY(calc(var(--pattern-px-0) - var(--pattern-px-3)));
   filter: brightness(1.12);
 }
 
@@ -489,8 +489,8 @@
 
 .pattern-room-archive-card::before {
   position: absolute;
-  top: calc(0px - var(--pattern-px-12));
-  left: calc(0px - var(--pattern-px-1));
+  top: calc(var(--pattern-px-0) - var(--pattern-px-12));
+  left: calc(var(--pattern-px-0) - var(--pattern-px-1));
   width: 48%;
   height: var(--pattern-px-18);
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
@@ -503,7 +503,7 @@
 .pattern-room-archive-card::after {
   position: absolute;
   right: var(--pattern-px-8);
-  bottom: calc(0px - var(--pattern-px-5));
+  bottom: calc(var(--pattern-px-0) - var(--pattern-px-5));
   left: var(--pattern-px-8);
   z-index: -1;
   height: var(--pattern-px-12);
@@ -518,7 +518,7 @@
 .pattern-room-archive-card.selected-source {
   border-color: var(--pattern-accent-amber-alpha-46);
   box-shadow: 0 var(--pattern-px-16) var(--pattern-px-30) var(--pattern-black-alpha-40);
-  transform: translateY(calc(0px - var(--pattern-px-4)));
+  transform: translateY(calc(var(--pattern-px-0) - var(--pattern-px-4)));
 }
 
 .pattern-room-archive-card.selected-source {
@@ -529,7 +529,7 @@
 
 .pattern-room-archive-drawer {
   position: absolute;
-  top: calc(0px - var(--pattern-px-8));
+  top: calc(var(--pattern-px-0) - var(--pattern-px-8));
   left: var(--pattern-px-10);
   z-index: 2;
   width: 40%;

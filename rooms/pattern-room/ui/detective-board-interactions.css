@@ -49,11 +49,11 @@
 }
 
 .pattern-room-board-string::before {
-  left: calc(0px - var(--pattern-px-3));
+  left: calc(var(--pattern-px-0) - var(--pattern-px-3));
 }
 
 .pattern-room-board-string::after {
-  right: calc(0px - var(--pattern-px-3));
+  right: calc(var(--pattern-px-0) - var(--pattern-px-3));
 }
 
 .pattern-room-board-string.local .pattern-room-board-string-line,

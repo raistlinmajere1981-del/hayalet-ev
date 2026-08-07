@@ -269,6 +269,7 @@
   /* ── Spacing ── */
   --pattern-px-neg-4: -4px;
   --pattern-px-neg-1: -1px;
+  --pattern-px-0: 0px;
   --pattern-px-1: 1px;
   --pattern-px-2: 2px;
   --pattern-px-3: 3px;
@@ -351,6 +352,9 @@
   --pattern-px-920: 920px;
   --pattern-px-999: 999px;
   --pattern-px-1180: 1180px;
+
+  /* ── Dynamic / Runtime-fed ── */
+  --pattern-note-tilt: 0deg;
   --pattern-em-0-04: 0.04em;
   --pattern-em-0-06: 0.06em;
   --pattern-em-0-08: 0.08em;

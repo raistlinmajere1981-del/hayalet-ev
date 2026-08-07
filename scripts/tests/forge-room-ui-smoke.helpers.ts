@@ -15,6 +15,7 @@ export class FakeElement {
     add: (...tokens: string[]) => void;
     remove: (...tokens: string[]) => void;
     contains: (token: string) => boolean;
+    toggle: (token: string, force?: boolean) => boolean;
   };
   children: FakeElement[] = [];
   parentElement: FakeElement | null = null;
@@ -51,6 +52,21 @@ export class FakeElement {
           .join(" ");
       },
       contains: (token: string) => this.className.split(/\s+/).filter(Boolean).includes(token),
+      toggle: (token: string, force?: boolean) => {
+        const current = this.className.split(/\s+/).filter(Boolean).includes(token);
+        const shouldAdd = force === undefined ? !current : force;
+        if (shouldAdd === current) {
+          return shouldAdd;
+        }
+        const next = new Set(this.className.split(/\s+/).filter(Boolean));
+        if (shouldAdd) {
+          next.add(token);
+        } else {
+          next.delete(token);
+        }
+        this.className = Array.from(next).join(" ");
+        return shouldAdd;
+      },
     };
   }
 
