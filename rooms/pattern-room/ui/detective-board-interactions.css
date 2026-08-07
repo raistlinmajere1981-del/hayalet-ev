@@ -1,0 +1,90 @@
+/* Lightweight DOM connection layer for the detective board.
+ * A wide transparent button supplies the hit target while the inner span draws
+ * the string. This keeps the board compatible with the room's DOM test harness.
+ */
+
+.pattern-room-board-string-layer {
+  pointer-events: none;
+}
+
+.pattern-room-board-string {
+  position: absolute;
+  display: block;
+  height: var(--pattern-px-18);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0.68;
+  pointer-events: auto;
+  cursor: pointer;
+  transform-origin: 0 50%;
+  filter: none;
+}
+
+.pattern-room-board-string-line {
+  position: absolute;
+  right: 0;
+  left: 0;
+  top: 50%;
+  height: var(--pattern-px-2);
+  border-radius: var(--pattern-px-2);
+  background: var(--pattern-accent-amber-deep);
+  box-shadow: 0 var(--pattern-px-1) var(--pattern-px-1) var(--pattern-black-alpha-52);
+  transform: translateY(-50%);
+}
+
+.pattern-room-board-string::before,
+.pattern-room-board-string::after {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: var(--pattern-px-7);
+  height: var(--pattern-px-7);
+  border-radius: 50%;
+  background: var(--pattern-accent-amber-deep);
+  box-shadow: 0 var(--pattern-px-1) var(--pattern-px-2) var(--pattern-black-alpha-52);
+  transform: translateY(-50%);
+  content: "";
+}
+
+.pattern-room-board-string::before {
+  left: calc(0px - var(--pattern-px-3));
+}
+
+.pattern-room-board-string::after {
+  right: calc(0px - var(--pattern-px-3));
+}
+
+.pattern-room-board-string.local .pattern-room-board-string-line,
+.pattern-room-board-string.local::before,
+.pattern-room-board-string.local::after {
+  background: var(--pattern-accent-red);
+}
+
+.pattern-room-board-string:hover,
+.pattern-room-board-string:focus-visible,
+.pattern-room-board-string.selected {
+  opacity: 1;
+  outline: none;
+  filter: none;
+}
+
+.pattern-room-board-string:hover .pattern-room-board-string-line,
+.pattern-room-board-string:focus-visible .pattern-room-board-string-line,
+.pattern-room-board-string.selected .pattern-room-board-string-line {
+  height: var(--pattern-px-3);
+  box-shadow: 0 0 var(--pattern-px-5) var(--pattern-accent-amber-alpha-46);
+}
+
+.pattern-room-board-string.local:hover .pattern-room-board-string-line,
+.pattern-room-board-string.local:focus-visible .pattern-room-board-string-line,
+.pattern-room-board-string.local.selected .pattern-room-board-string-line {
+  box-shadow: 0 0 var(--pattern-px-5) var(--pattern-accent-red-alpha-50);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pattern-room-board-string {
+    transition: none;
+  }
+}
