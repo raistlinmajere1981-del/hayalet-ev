@@ -36,6 +36,12 @@ function setDraftGeometry(
   );
 }
 
+function syncStringLabelRotation(string: HTMLButtonElement, label: HTMLElement): void {
+  const match = /rotate\((-?[\d.]+)deg\)/u.exec(string.style.transform);
+  const angle = match === null ? 0 : Number(match[1]);
+  label.style.transform = `translate(-50%, -50%) rotate(${String(-angle)}deg)`;
+}
+
 function enhanceBoard(board: HTMLElement): void {
   if (board.dataset["patternBoardV10Enhanced"] === "true") {
     return;
@@ -68,6 +74,12 @@ function enhanceBoard(board: HTMLElement): void {
     label.className = "pattern-room-board-string-label";
     label.textContent = EDGE_LABELS[type] ?? type;
     string.append(label);
+    syncStringLabelRotation(string, label);
+
+    const stringObserver = new MutationObserver(() => {
+      syncStringLabelRotation(string, label);
+    });
+    stringObserver.observe(string, { attributes: true, attributeFilter: ["style"] });
   });
 
   cards().forEach((card) => {
@@ -107,7 +119,8 @@ function enhanceBoard(board: HTMLElement): void {
     board.dataset["patternBoardThreadMode"] = connectionMode ? "true" : "false";
     modeBadge.hidden = !connectionMode;
     if (badgeCopy !== null) {
-      badgeCopy.textContent = source === null ? "İp modu · başlangıç kartını seç" : "İp modu · hedef kartı seç";
+      badgeCopy.textContent =
+        source === null ? "İp modu · başlangıç kartını seç" : "İp modu · hedef kartı seç";
     }
 
     cards().forEach((card) => {
