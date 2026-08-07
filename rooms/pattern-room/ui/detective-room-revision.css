@@ -22,7 +22,7 @@
 }
 
 .pattern-room-workspace-nav-button {
-  min-height: var(--pattern-px-46);
+  min-height: var(--pattern-px-44);
   grid-template-columns: var(--pattern-px-34) minmax(0, 1fr);
   padding: var(--pattern-px-7) var(--pattern-px-8);
   border-color: transparent;
@@ -282,8 +282,8 @@
 .pattern-room-detective-note {
   position: absolute;
   display: grid;
-  width: 248px;
-  min-height: 118px;
+  width: calc(var(--pattern-px-238) + var(--pattern-px-10));
+  min-height: var(--pattern-px-118);
   gap: var(--pattern-px-5);
   align-content: start;
   padding: var(--pattern-px-14) var(--pattern-px-14) var(--pattern-px-12);
@@ -643,7 +643,7 @@
 ───────────────────────────────────────── */
 @media (--pattern-bp-max-1180) {
   .pattern-room-app-shell {
-    grid-template-columns: var(--pattern-px-196) minmax(0, 1fr) var(--pattern-px-292);
+    grid-template-columns: var(--pattern-px-188) minmax(0, 1fr) var(--pattern-px-292);
   }
 }
 
