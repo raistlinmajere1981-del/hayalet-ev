@@ -8,12 +8,18 @@ import {
   createPatternWorkspaceTranslator,
   type PatternWorkspaceTranslator,
 } from "../pattern-room-workspace-i18n.js";
+import {
+  CONNECTION_EDGE_TYPE_OPTIONS,
+  type AuthoredConnectionEdgeType,
+} from "./pattern-connection-composer.js";
 import { createElement, createEmptyState, createPanelShell } from "./pattern-panel-utils.js";
 
 type BoardPosition = {
   readonly x: number;
   readonly y: number;
 };
+
+type StoredBoardLayout = Record<string, BoardPosition>;
 
 const BOARD_WIDTH = 1040;
 const BOARD_MIN_HEIGHT = 620;
@@ -24,6 +30,7 @@ const BOARD_COLUMN_STEP = 312;
 const BOARD_ROW_STEP = 174;
 const BOARD_JITTER_X = [0, 12, -8, 7, -13, 4] as const;
 const BOARD_JITTER_Y = [0, 8, -5, 11, -9, 4] as const;
+const BOARD_LAYOUT_STORAGE_PREFIX = "pattern-room:detective-board:v5:";
 
 function normalizeBoardNodeId(nodeId: string): string {
   return nodeId.startsWith("claim-") ? nodeId.slice("claim-".length) : nodeId;
@@ -49,6 +56,50 @@ function createBoardHeight(pinCount: number): number {
 function createPinAliases(pin: PatternBoardPin): readonly string[] {
   const normalizedId = normalizeBoardNodeId(pin.id);
   return normalizedId === pin.id ? [pin.id] : [pin.id, normalizedId];
+}
+
+function createBoardStorageKey(subject: string): string {
+  return `${BOARD_LAYOUT_STORAGE_PREFIX}${subject.trim().toLocaleLowerCase("tr")}`;
+}
+
+function readStoredBoardLayout(subject: string): StoredBoardLayout {
+  try {
+    const raw = window.localStorage?.getItem(createBoardStorageKey(subject));
+    if (raw === null || raw === undefined) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return {};
+    }
+
+    const layout: StoredBoardLayout = {};
+    Object.entries(parsed as Record<string, unknown>).forEach(([id, value]) => {
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return;
+      }
+      const x = (value as Record<string, unknown>)["x"];
+      const y = (value as Record<string, unknown>)["y"];
+      if (typeof x === "number" && Number.isFinite(x) && typeof y === "number" && Number.isFinite(y)) {
+        layout[id] = { x, y };
+      }
+    });
+    return layout;
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredBoardLayout(subject: string, positions: ReadonlyMap<string, BoardPosition>): void {
+  try {
+    const layout: StoredBoardLayout = {};
+    positions.forEach((position, id) => {
+      layout[id] = position;
+    });
+    window.localStorage?.setItem(createBoardStorageKey(subject), JSON.stringify(layout));
+  } catch {
+    // Board positioning is presentation-only. Storage failure must not block the room.
+  }
 }
 
 function createBoardString(
@@ -139,15 +190,35 @@ export function createBoardPanel(
     createElement(
       "small",
       "pattern-room-detective-board-hint",
-      "Kartları sürükle. İplere tıklayarak bağlantıyı incele."
+      "Kartları sürükle. İp bağla modunda iki kart seçerek doğrudan ilişki kur."
     )
   );
+
+  const headerActions = createElement("div", "pattern-room-detective-board-header-actions");
   const headerMetrics = createElement("div", "pattern-room-detective-board-metrics");
   headerMetrics.append(
     createElement("span", undefined, `${String(allPins.length)} kart`),
     createElement("span", undefined, `${String(data.connections.length)} bağlantı`)
   );
-  canvasHeader.append(headerCopy, headerMetrics);
+
+  const connectionTools = createElement("div", "pattern-room-board-connection-tools");
+  connectionTools.dataset["patternBoardConnectionTools"] = "true";
+  const edgeType = createElement("select", "pattern-room-board-connection-type");
+  edgeType.ariaLabel = "İp bağlantı türü";
+  CONNECTION_EDGE_TYPE_OPTIONS.forEach((optionValue) => {
+    const option = createElement("option", undefined, optionValue.label);
+    option.value = optionValue.value;
+    edgeType.append(option);
+  });
+  edgeType.value = "supports";
+  const connectButton = createElement("button", "pattern-room-board-connect-button", "İp bağla");
+  connectButton.type = "button";
+  connectButton.dataset["patternBoardConnectMode"] = "false";
+  const connectionStatus = createElement("span", "pattern-room-board-connect-status", "");
+  connectionStatus.ariaLive = "polite";
+  connectionTools.append(edgeType, connectButton, connectionStatus);
+  headerActions.append(headerMetrics, connectionTools);
+  canvasHeader.append(headerCopy, headerActions);
 
   const viewport = createElement("div", "pattern-room-detective-board-viewport");
   viewport.tabIndex = 0;
@@ -162,9 +233,11 @@ export function createBoardPanel(
   const cardsById = new Map<string, HTMLButtonElement>();
   const pinByAlias = new Map<string, PatternBoardPin>();
   const connectionButtons = new Map<string, HTMLButtonElement>();
+  const connectionOptionIds = new Set(data.connectionOptions.map((optionValue) => optionValue.id));
+  const storedLayout = readStoredBoardLayout(data.subject);
 
   allPins.forEach(({ pin }, index) => {
-    const initial = createInitialPosition(index);
+    const initial = storedLayout[pin.id] ?? createInitialPosition(index);
     const clamped: BoardPosition = {
       x: Math.min(Math.max(0, initial.x), BOARD_WIDTH - BOARD_CARD_WIDTH),
       y: Math.min(Math.max(0, initial.y), boardHeight - BOARD_CARD_HEIGHT),
@@ -177,6 +250,17 @@ export function createBoardPanel(
 
   const resolvePin = (nodeId: string): PatternBoardPin | undefined => {
     return pinByAlias.get(nodeId) ?? pinByAlias.get(normalizeBoardNodeId(nodeId));
+  };
+
+  const resolveConnectionEntityId = (pin: PatternBoardPin): string | null => {
+    const alias = createPinAliases(pin).find((candidate) => connectionOptionIds.has(candidate));
+    if (alias !== undefined) {
+      return alias;
+    }
+    if (pin.sourceId !== null && connectionOptionIds.has(pin.sourceId)) {
+      return pin.sourceId;
+    }
+    return null;
   };
 
   const updateSelectedCard = (pinId: string | null): void => {
@@ -228,6 +312,83 @@ export function createBoardPanel(
     stringLayer.append(button);
   });
 
+  let connectionMode = false;
+  let connectionSourcePin: PatternBoardPin | null = null;
+
+  const updateConnectionModeVisuals = (): void => {
+    connectButton.dataset["patternBoardConnectMode"] = connectionMode ? "true" : "false";
+    connectButton.textContent = connectionMode ? "İptal" : "İp bağla";
+    edgeType.disabled = !connectionMode;
+    cardsById.forEach((card, id) => {
+      const isSource = connectionSourcePin?.id === id;
+      card.dataset["patternBoardConnectionSource"] = isSource ? "true" : "false";
+      card.classList.toggle("connection-source", isSource);
+      card.dataset["patternBoardConnectionMode"] = connectionMode ? "true" : "false";
+    });
+    if (!connectionMode) {
+      connectionStatus.textContent = "";
+    } else if (connectionSourcePin === null) {
+      connectionStatus.textContent = "Başlangıç kartını seç";
+    } else {
+      connectionStatus.textContent = "Hedef kartı seç";
+    }
+  };
+
+  const cancelConnectionMode = (): void => {
+    connectionMode = false;
+    connectionSourcePin = null;
+    updateConnectionModeVisuals();
+  };
+
+  const handleConnectionPin = (pin: PatternBoardPin): void => {
+    const entityId = resolveConnectionEntityId(pin);
+    if (entityId === null) {
+      connectionStatus.textContent = "Bu kart bağlantıya uygun değil";
+      return;
+    }
+
+    if (connectionSourcePin === null) {
+      connectionSourcePin = pin;
+      updateConnectionModeVisuals();
+      return;
+    }
+
+    if (connectionSourcePin.id === pin.id) {
+      connectionSourcePin = null;
+      updateConnectionModeVisuals();
+      return;
+    }
+
+    const sourceEntityId = resolveConnectionEntityId(connectionSourcePin);
+    if (sourceEntityId === null || sourceEntityId === entityId) {
+      connectionStatus.textContent = "Farklı bir hedef seç";
+      return;
+    }
+
+    actions.addAuthoredEdge(
+      edgeType.value as AuthoredConnectionEdgeType,
+      sourceEntityId,
+      entityId
+    );
+    connectionStatus.textContent = "İp bağlantısı eklendi";
+    connectionSourcePin = null;
+    connectionMode = false;
+    updateConnectionModeVisuals();
+  };
+
+  connectButton.addEventListener("click", () => {
+    connectionMode = !connectionMode;
+    connectionSourcePin = null;
+    updateConnectionModeVisuals();
+  });
+
+  viewport.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && connectionMode) {
+      event.preventDefault();
+      cancelConnectionMode();
+    }
+  });
+
   allPins.forEach(({ category, pin }, index) => {
     const position = positions.get(pin.id) ?? createInitialPosition(index);
     const tilt = ((index % 5) - 2) * 0.45;
@@ -240,6 +401,8 @@ export function createBoardPanel(
     card.dataset["patternBoardPinKind"] = pin.kind;
     card.dataset["patternBoardTone"] = category.tone;
     card.dataset["patternBoardPinSelected"] = "false";
+    card.dataset["patternBoardConnectionMode"] = "false";
+    card.dataset["patternBoardConnectionSource"] = "false";
     card.ariaPressed = "false";
     setCardGeometry(card, position, tilt);
 
@@ -266,12 +429,16 @@ export function createBoardPanel(
         event.preventDefault();
         return;
       }
+      if (connectionMode) {
+        handleConnectionPin(pin);
+        return;
+      }
       actions.selectNode(pin.id);
       updateSelectedCard(pin.id);
     });
 
     card.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) {
+      if (event.button !== 0 || connectionMode) {
         return;
       }
       const start = positions.get(pin.id) ?? position;
@@ -306,6 +473,9 @@ export function createBoardPanel(
         card.removeEventListener("pointermove", onPointerMove);
         card.removeEventListener("pointerup", finishDrag);
         card.removeEventListener("pointercancel", finishDrag);
+        if (moved) {
+          writeStoredBoardLayout(data.subject, positions);
+        }
       };
 
       card.addEventListener("pointermove", onPointerMove);
@@ -316,6 +486,8 @@ export function createBoardPanel(
     cardsById.set(pin.id, card);
     cardsLayer.append(card);
   });
+
+  updateConnectionModeVisuals();
 
   if (allPins.length === 0) {
     scene.append(
