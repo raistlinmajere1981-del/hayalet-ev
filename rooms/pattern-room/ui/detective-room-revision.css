@@ -211,8 +211,7 @@
   background:
     radial-gradient(circle at 18% 24%, var(--pattern-accent-amber-alpha-10), transparent 20%),
     radial-gradient(circle at 78% 68%, var(--pattern-accent-red-alpha-08), transparent 24%),
-    var(--pattern-gradient-cork-grain),
-    var(--pattern-gradient-board-cork),
+    var(--pattern-gradient-cork-grain), var(--pattern-gradient-board-cork),
     var(--pattern-surface-board-cork-alpha-84);
   box-shadow: inset 0 0 var(--pattern-px-48) var(--pattern-black-alpha-28);
 }
@@ -433,8 +432,7 @@
   border: var(--pattern-px-1) solid var(--pattern-border-cabinet-alpha-50);
   border-radius: var(--pattern-px-6);
   background:
-    var(--pattern-gradient-cabinet-centerline),
-    var(--pattern-gradient-archive-sheen),
+    var(--pattern-gradient-cabinet-centerline), var(--pattern-gradient-archive-sheen),
     var(--pattern-surface-archive-alpha-86);
   box-shadow:
     0 var(--pattern-px-16) var(--pattern-px-38) var(--pattern-black-alpha-30),
