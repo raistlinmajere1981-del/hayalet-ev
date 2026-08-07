@@ -1,0 +1,639 @@
+/* Pattern Room detective layout v4.
+ * Aggressive spatial revision: the fixed context column becomes a case drawer,
+ * review surfaces become two-plane workstations, and empty archive space reads
+ * as a physical filing area rather than an empty admin panel.
+ */
+
+/* ─────────────────────────────────────────
+   DESKTOP SHELL: CONTEXT AS A SLIDE-OUT CASE DRAWER
+───────────────────────────────────────── */
+.pattern-room-app-shell {
+  position: relative;
+  grid-template-columns: var(--pattern-px-218) minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.pattern-room-workspace-rail {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.pattern-room-workspace {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  padding-right: var(--pattern-px-48);
+}
+
+.pattern-room-workspace-inspector {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  width: var(--pattern-px-292);
+  max-height: none;
+  padding-left: var(--pattern-px-58);
+  overflow: auto;
+  border-left: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
+  background:
+    linear-gradient(180deg, var(--pattern-accent-amber-alpha-06), transparent 24%),
+    var(--pattern-gradient-archive-sheen),
+    var(--pattern-surface-metal);
+  box-shadow: calc(0px - var(--pattern-px-18)) 0 var(--pattern-px-42)
+    var(--pattern-black-alpha-30);
+  transform: translateX(calc(100% - var(--pattern-px-48)));
+}
+
+.pattern-room-workspace-inspector::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  display: grid;
+  width: var(--pattern-px-48);
+  min-height: var(--pattern-px-104);
+  place-items: center;
+  border-top: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
+  border-bottom: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
+  background:
+    linear-gradient(180deg, var(--pattern-accent-amber-alpha-14), transparent),
+    var(--pattern-surface-depth-alpha-96);
+  color: var(--pattern-accent-amber-light);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 800;
+  letter-spacing: var(--pattern-em-0-08);
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  content: "DETAY";
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="archive"].active
+  )
+  .pattern-room-workspace-inspector::before {
+  content: "DOSYA";
+}
+
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="board"].active
+  )
+  .pattern-room-workspace-inspector::before {
+  content: "İZ";
+}
+
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="report"].active
+  )
+  .pattern-room-workspace-inspector::before {
+  content: "FİHRİST";
+}
+
+.pattern-room-workspace-inspector > * {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pattern-room-workspace-inspector:hover,
+.pattern-room-workspace-inspector:focus-within,
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="overview"].active
+  )
+  .pattern-room-workspace-inspector,
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="report"].active
+  )
+  .pattern-room-workspace-inspector,
+.pattern-room-app-shell:has([data-pattern-archive-source-detail-id])
+  .pattern-room-workspace-inspector {
+  transform: translateX(0);
+}
+
+.pattern-room-workspace-inspector:hover > *,
+.pattern-room-workspace-inspector:focus-within > *,
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="overview"].active
+  )
+  .pattern-room-workspace-inspector
+  > *,
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="report"].active
+  )
+  .pattern-room-workspace-inspector
+  > *,
+.pattern-room-app-shell:has([data-pattern-archive-source-detail-id])
+  .pattern-room-workspace-inspector
+  > * {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="overview"].active
+  )
+  .pattern-room-workspace,
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="report"].active
+  )
+  .pattern-room-workspace,
+.pattern-room-app-shell:has([data-pattern-archive-source-detail-id]) .pattern-room-workspace {
+  padding-right: var(--pattern-px-292);
+}
+
+.pattern-room-app-shell:not(
+    :has(.pattern-room-workspace-nav-button[data-pattern-workspace-nav="overview"].active)
+  )
+  .pattern-room-workspace-inspector-case {
+  display: none;
+}
+
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="tenth-man"].active
+  )
+  .pattern-room-workspace-inspector,
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="review-history"].active
+  )
+  .pattern-room-workspace-inspector {
+  display: none;
+}
+
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="tenth-man"].active
+  )
+  .pattern-room-workspace,
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="review-history"].active
+  )
+  .pattern-room-workspace {
+  padding-right: 0;
+}
+
+.pattern-room-overview,
+.pattern-room-panel {
+  max-width: none;
+}
+
+/* ─────────────────────────────────────────
+   INVESTIGATION CANVAS: MORE ROOM, LESS CHROME
+───────────────────────────────────────── */
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="board"].active
+  )
+  .pattern-room-panel,
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="tenth-man"].active
+  )
+  .pattern-room-panel,
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="review-history"].active
+  )
+  .pattern-room-panel {
+  padding-right: var(--pattern-px-18);
+  padding-left: var(--pattern-px-18);
+}
+
+.pattern-room-investigation-toolbar {
+  min-height: var(--pattern-px-58);
+  margin-bottom: var(--pattern-px-10);
+  padding-block: var(--pattern-px-8);
+}
+
+.pattern-room-investigation-toolbar-copy > p {
+  -webkit-line-clamp: 1;
+}
+
+.pattern-room-detective-board-viewport {
+  min-height: min(72dvh, var(--pattern-px-720));
+}
+
+.pattern-room-graph-viewport {
+  min-height: min(72dvh, var(--pattern-px-720));
+}
+
+/* ─────────────────────────────────────────
+   EMPTY ARCHIVE: PHYSICAL CABINET INSTEAD OF DEAD SPACE
+───────────────────────────────────────── */
+.pattern-room-archive-browser:has(.pattern-room-archive-list:empty) {
+  min-height: calc(100dvh - var(--pattern-px-188));
+  align-content: start;
+}
+
+.pattern-room-archive-browser:has(.pattern-room-archive-list:empty)
+  .pattern-room-archive-list {
+  display: none;
+}
+
+.pattern-room-archive-browser:has(.pattern-room-archive-list:empty)
+  .pattern-room-empty-state[data-pattern-archive-empty="true"] {
+  position: relative;
+  display: grid;
+  width: min(100%, var(--pattern-px-640));
+  min-height: var(--pattern-px-360);
+  place-items: end center;
+  justify-self: center;
+  margin: var(--pattern-px-36) auto 0;
+  padding: var(--pattern-px-24);
+  overflow: hidden;
+  border: var(--pattern-px-1) solid var(--pattern-border-cabinet-alpha-50);
+  border-radius: var(--pattern-px-6);
+  background:
+    linear-gradient(90deg, transparent 49%, var(--pattern-black-alpha-24) 50%, transparent 51%),
+    repeating-linear-gradient(
+      180deg,
+      var(--pattern-surface-metal) 0,
+      var(--pattern-surface-metal) var(--pattern-px-76),
+      var(--pattern-black-alpha-32) var(--pattern-px-76),
+      var(--pattern-black-alpha-32) var(--pattern-px-78)
+    );
+  color: var(--pattern-text-muted);
+  box-shadow:
+    0 var(--pattern-px-24) var(--pattern-px-42) var(--pattern-black-alpha-40),
+    inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);
+  font-family: "IBM Plex Mono", monospace;
+  text-align: center;
+}
+
+.pattern-room-archive-browser:has(.pattern-room-archive-list:empty)
+  .pattern-room-empty-state[data-pattern-archive-empty="true"]::before {
+  position: absolute;
+  top: var(--pattern-px-24);
+  left: 50%;
+  min-width: var(--pattern-px-150);
+  padding: var(--pattern-px-6) var(--pattern-px-12);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-28);
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-surface-depth-alpha-96);
+  color: var(--pattern-accent-amber-light);
+  font-size: var(--pattern-rem-0-76);
+  font-weight: 900;
+  letter-spacing: var(--pattern-em-0-08);
+  content: "ARŞİV DOLABI";
+  transform: translateX(-50%);
+}
+
+.pattern-room-archive-browser:has(.pattern-room-archive-list:empty)
+  .pattern-room-empty-state[data-pattern-archive-empty="true"]::after {
+  position: absolute;
+  top: var(--pattern-px-118);
+  left: 50%;
+  width: var(--pattern-px-44);
+  height: var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-28);
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-surface-depth-alpha-96);
+  box-shadow:
+    0 var(--pattern-px-78) 0 var(--pattern-surface-depth-alpha-96),
+    0 calc(var(--pattern-px-78) * 2) 0 var(--pattern-surface-depth-alpha-96);
+  content: "";
+  transform: translateX(-50%);
+}
+
+.pattern-room-archive-browser:has(.pattern-room-archive-list:empty)
+  .pattern-room-archive-result-count {
+  justify-self: center;
+}
+
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="archive"].active
+  )
+  .pattern-room-workspace-inspector:not(:hover):not(:focus-within)
+  .pattern-room-archive-tools {
+  opacity: 0;
+}
+
+.pattern-room-archive-tools {
+  border-color: var(--pattern-accent-amber-alpha-22);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-surface-depth-alpha-96);
+}
+
+.pattern-room-archive-tools > summary {
+  min-height: var(--pattern-px-44);
+}
+
+/* ─────────────────────────────────────────
+   AI REVIEW: RESULT DESK + AUXILIARY STACK
+───────────────────────────────────────── */
+.pattern-room-review-task-switcher {
+  grid-template-columns: minmax(0, 0.7fr) minmax(var(--pattern-px-360), 1fr);
+  min-height: var(--pattern-px-84);
+  margin-bottom: var(--pattern-px-10);
+}
+
+.pattern-room-review-task-switcher-copy > p {
+  -webkit-line-clamp: 1;
+}
+
+.pattern-room-review-task-button {
+  min-height: var(--pattern-px-48);
+  padding-block: var(--pattern-px-7);
+}
+
+.pattern-room-review-task-button > span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.pattern-room-review-surface {
+  padding: var(--pattern-px-10);
+}
+
+.pattern-room-case-review-preview {
+  gap: var(--pattern-px-10);
+}
+
+.pattern-room-case-review-preview > h2 {
+  font-size: var(--pattern-rem-1-35);
+}
+
+.pattern-room-case-review-preview > p {
+  max-width: none;
+  font-size: var(--pattern-rem-0-82);
+}
+
+.pattern-room-case-review-controls {
+  grid-template-columns: minmax(var(--pattern-px-260), 1fr) auto auto;
+  padding: var(--pattern-px-8);
+}
+
+.pattern-room-case-review-workspace {
+  gap: var(--pattern-px-10);
+}
+
+.pattern-room-case-review-workspace > .pattern-room-review-disclosure {
+  margin: 0;
+}
+
+.pattern-room-case-review-runtime-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(var(--pattern-px-260), 0.72fr);
+  gap: var(--pattern-px-10);
+  align-items: start;
+}
+
+.pattern-room-case-review-runtime-workspace > :first-child {
+  grid-column: 1;
+  grid-row: 1 / span 5;
+  min-height: var(--pattern-px-320);
+}
+
+.pattern-room-case-review-runtime-workspace > :not(:first-child) {
+  grid-column: 2;
+}
+
+.pattern-room-case-review-parsed {
+  min-height: var(--pattern-px-320);
+}
+
+.pattern-room-case-review-runtime-status {
+  position: static;
+  min-height: var(--pattern-px-38);
+  margin-bottom: var(--pattern-px-8);
+}
+
+.pattern-room-case-review-disclosure,
+.pattern-room-case-review-result-group,
+.pattern-room-review-disclosure {
+  margin-top: 0;
+}
+
+.pattern-room-case-review-disclosure-summary,
+.pattern-room-case-review-result-group-summary,
+.pattern-room-review-disclosure-summary {
+  min-height: var(--pattern-px-38);
+  padding-block: var(--pattern-px-7);
+}
+
+.pattern-room-case-review-response-text,
+.pattern-room-case-review-preview-text {
+  max-height: 34dvh;
+}
+
+/* ─────────────────────────────────────────
+   LOCAL 10TH MAN: INTERROGATION TABLE
+───────────────────────────────────────── */
+.pattern-room-review-inspector.pattern-room-device {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--pattern-px-10) var(--pattern-px-12);
+  align-items: start;
+}
+
+.pattern-room-review-inspector.pattern-room-device
+  > .pattern-room-context-inspector-label,
+.pattern-room-review-inspector.pattern-room-device > .pattern-room-device-status-row,
+.pattern-room-review-inspector.pattern-room-device > h2,
+.pattern-room-review-inspector.pattern-room-device > p,
+.pattern-room-review-inspector.pattern-room-device > .pattern-room-debate-actions {
+  grid-column: 1 / -1;
+}
+
+.pattern-room-review-inspector.pattern-room-device > h2,
+.pattern-room-review-inspector.pattern-room-device > p {
+  margin: 0;
+}
+
+.pattern-room-review-inspector.pattern-room-device
+  > [data-pattern-review-disclosure="local-roles"] {
+  grid-column: 1;
+}
+
+.pattern-room-review-inspector.pattern-room-device
+  > [data-pattern-review-disclosure="local-references"] {
+  grid-column: 2;
+}
+
+.pattern-room-review-inspector.pattern-room-device
+  > [data-pattern-review-disclosure="local-flow"] {
+  grid-column: 1 / -1;
+}
+
+.pattern-room-review-inspector .pattern-room-device-slots {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pattern-room-debate-turns,
+.pattern-room-debate-references {
+  display: grid;
+  gap: var(--pattern-px-8);
+}
+
+/* ─────────────────────────────────────────
+   REPORT: KEEP THE FILE OPEN, REDUCE DISTANCE
+───────────────────────────────────────── */
+.pattern-room-app-shell:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="report"].active
+  )
+  .pattern-room-report-document {
+  max-width: var(--pattern-px-999);
+}
+
+.pattern-room-report-list {
+  gap: var(--pattern-px-12);
+}
+
+.pattern-room-report-priority-group {
+  padding: var(--pattern-px-14);
+}
+
+/* ─────────────────────────────────────────
+   COMPACT DESKTOP
+───────────────────────────────────────── */
+@media (--pattern-bp-max-1100) {
+  .pattern-room-app-shell {
+    grid-template-columns: var(--pattern-px-84) minmax(0, 1fr);
+  }
+
+  .pattern-room-workspace-inspector {
+    width: var(--pattern-px-292);
+  }
+
+  .pattern-room-app-shell:has(
+      .pattern-room-workspace-nav-button[data-pattern-workspace-nav="overview"].active
+    )
+    .pattern-room-workspace,
+  .pattern-room-app-shell:has(
+      .pattern-room-workspace-nav-button[data-pattern-workspace-nav="report"].active
+    )
+    .pattern-room-workspace,
+  .pattern-room-app-shell:has([data-pattern-archive-source-detail-id]) .pattern-room-workspace {
+    padding-right: var(--pattern-px-292);
+  }
+
+  .pattern-room-case-review-runtime-workspace {
+    grid-template-columns: minmax(0, 1.35fr) minmax(var(--pattern-px-238), 0.7fr);
+  }
+}
+
+/* ─────────────────────────────────────────
+   TABLET: RETURN TO THE BOTTOM-DETAIL CONTRACT
+───────────────────────────────────────── */
+@media (--pattern-bp-max-960) {
+  .pattern-room-app-shell {
+    grid-template-columns: var(--pattern-px-84) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(var(--pattern-px-210), 38dvh);
+    overflow: hidden;
+  }
+
+  .pattern-room-workspace-rail {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+
+  .pattern-room-workspace {
+    grid-column: 2;
+    grid-row: 1;
+    padding-right: 0 !important;
+  }
+
+  .pattern-room-workspace-inspector {
+    position: static;
+    display: flex;
+    width: auto;
+    height: auto;
+    grid-column: 2;
+    grid-row: 2;
+    max-height: none;
+    padding: var(--pattern-px-14) var(--pattern-px-16);
+    overflow: auto;
+    border-top: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
+    border-left: 0;
+    box-shadow: 0 calc(0px - var(--pattern-px-12)) var(--pattern-px-32)
+      var(--pattern-black-alpha-24);
+    transform: none;
+  }
+
+  .pattern-room-workspace-inspector::before {
+    display: none;
+  }
+
+  .pattern-room-workspace-inspector > * {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .pattern-room-app-shell:has(
+      .pattern-room-workspace-nav-button[data-pattern-workspace-nav="tenth-man"].active
+    )
+    .pattern-room-workspace-inspector,
+  .pattern-room-app-shell:has(
+      .pattern-room-workspace-nav-button[data-pattern-workspace-nav="review-history"].active
+    )
+    .pattern-room-workspace-inspector {
+    display: none;
+  }
+
+  .pattern-room-app-shell:has(
+      .pattern-room-workspace-nav-button[data-pattern-workspace-nav="tenth-man"].active
+    ),
+  .pattern-room-app-shell:has(
+      .pattern-room-workspace-nav-button[data-pattern-workspace-nav="review-history"].active
+    ) {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .pattern-room-case-review-runtime-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pattern-room-case-review-runtime-workspace > :first-child,
+  .pattern-room-case-review-runtime-workspace > :not(:first-child) {
+    grid-column: 1;
+    grid-row: auto;
+    min-height: 0;
+  }
+
+  .pattern-room-review-inspector.pattern-room-device {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pattern-room-review-inspector.pattern-room-device
+    > [data-pattern-review-disclosure="local-roles"],
+  .pattern-room-review-inspector.pattern-room-device
+    > [data-pattern-review-disclosure="local-references"],
+  .pattern-room-review-inspector.pattern-room-device
+    > [data-pattern-review-disclosure="local-flow"] {
+    grid-column: 1;
+  }
+}
+
+/* ─────────────────────────────────────────
+   MOBILE
+───────────────────────────────────────── */
+@media (--pattern-bp-max-820) {
+  .pattern-room-app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) minmax(var(--pattern-px-210), 42dvh);
+  }
+
+  .pattern-room-workspace-rail {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .pattern-room-workspace {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .pattern-room-workspace-inspector {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .pattern-room-review-task-switcher,
+  .pattern-room-case-review-controls,
+  .pattern-room-review-inspector.pattern-room-device,
+  .pattern-room-review-inspector .pattern-room-device-slots {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pattern-room-archive-browser:has(.pattern-room-archive-list:empty)
+    .pattern-room-empty-state[data-pattern-archive-empty="true"] {
+    min-height: var(--pattern-px-280);
+  }
+}
