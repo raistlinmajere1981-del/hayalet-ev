@@ -62,8 +62,7 @@ function createBoardString(
   button.dataset["patternBoardConnectionType"] = connection.edgeType;
   button.dataset["patternBoardConnectionSelected"] = "false";
   button.ariaPressed = "false";
-  button.ariaLabel =
-    `${connection.sourceLabel} → ${connection.edgeTypeLabel} → ${connection.targetLabel}`;
+  button.ariaLabel = `${connection.sourceLabel} → ${connection.edgeTypeLabel} → ${connection.targetLabel}`;
   button.title = button.ariaLabel;
   button.append(createElement("span", "pattern-room-board-string-line"));
   button.addEventListener("click", () => {
