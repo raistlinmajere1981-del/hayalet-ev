@@ -22,17 +22,11 @@ const BOARD_CARD_HEIGHT = 118;
 const BOARD_PADDING = 48;
 const BOARD_COLUMN_STEP = 312;
 const BOARD_ROW_STEP = 174;
-const BOARD_POSITION_STORAGE_PREFIX = "pattern-room:detective-board:v3:";
 const BOARD_JITTER_X = [0, 12, -8, 7, -13, 4] as const;
 const BOARD_JITTER_Y = [0, 8, -5, 11, -9, 4] as const;
-const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 function normalizeBoardNodeId(nodeId: string): string {
   return nodeId.startsWith("claim-") ? nodeId.slice("claim-".length) : nodeId;
-}
-
-function createPositionStorageKey(subject: string): string {
-  return `${BOARD_POSITION_STORAGE_PREFIX}${subject.trim().toLocaleLowerCase("tr")}`;
 }
 
 function createInitialPosition(index: number): BoardPosition {
@@ -45,48 +39,6 @@ function createInitialPosition(index: number): BoardPosition {
       (BOARD_JITTER_X[index % BOARD_JITTER_X.length] ?? 0),
     y: 74 + row * BOARD_ROW_STEP + (BOARD_JITTER_Y[index % BOARD_JITTER_Y.length] ?? 0),
   };
-}
-
-function isBoardPosition(value: unknown): value is BoardPosition {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const candidate = value as { readonly x?: unknown; readonly y?: unknown };
-  return typeof candidate.x === "number" && typeof candidate.y === "number";
-}
-
-function loadStoredPositions(subject: string): Readonly<Record<string, BoardPosition>> {
-  try {
-    const stored = window.localStorage.getItem(createPositionStorageKey(subject));
-    if (stored === null) {
-      return {};
-    }
-    const parsed: unknown = JSON.parse(stored);
-    if (typeof parsed !== "object" || parsed === null) {
-      return {};
-    }
-
-    const result: Record<string, BoardPosition> = {};
-    const record = parsed as Record<string, unknown>;
-    Object.keys(record).forEach((id) => {
-      const value = record[id];
-      if (isBoardPosition(value)) {
-        result[id] = value;
-      }
-    });
-    return result;
-  } catch {
-    return {};
-  }
-}
-
-function saveStoredPositions(subject: string, positions: ReadonlyMap<string, BoardPosition>): void {
-  try {
-    const serialized = Object.fromEntries(positions.entries());
-    window.localStorage.setItem(createPositionStorageKey(subject), JSON.stringify(serialized));
-  } catch {
-    // The board remains fully usable when storage is unavailable.
-  }
 }
 
 function createBoardHeight(pinCount: number): number {
@@ -102,42 +54,26 @@ function createPinAliases(pin: PatternBoardPin): readonly string[] {
 function createBoardString(
   connection: PatternConnection,
   onSelect: (connectionId: string) => void
-): SVGPathElement {
-  const path = document.createElementNS(SVG_NAMESPACE, "path");
-  path.classList.add("pattern-room-board-string", connection.scope);
-  path.dataset["patternBoardConnection"] = connection.id;
-  path.dataset["patternBoardConnectionScope"] = connection.scope;
-  path.dataset["patternBoardConnectionType"] = connection.edgeType;
-  path.setAttribute("fill", "none");
-  path.setAttribute("tabindex", "0");
-  path.setAttribute("role", "button");
-  path.setAttribute(
-    "aria-label",
-    `${connection.sourceLabel} → ${connection.edgeTypeLabel} → ${connection.targetLabel}`
-  );
-
-  const title = document.createElementNS(SVG_NAMESPACE, "title");
-  title.textContent = `${connection.sourceLabel} → ${connection.edgeTypeLabel} → ${connection.targetLabel}`;
-  path.append(title);
-
-  const select = (): void => {
+): HTMLButtonElement {
+  const button = createElement("button", `pattern-room-board-string ${connection.scope}`);
+  button.type = "button";
+  button.dataset["patternBoardConnection"] = connection.id;
+  button.dataset["patternBoardConnectionScope"] = connection.scope;
+  button.dataset["patternBoardConnectionType"] = connection.edgeType;
+  button.dataset["patternBoardConnectionSelected"] = "false";
+  button.ariaPressed = "false";
+  button.ariaLabel =
+    `${connection.sourceLabel} → ${connection.edgeTypeLabel} → ${connection.targetLabel}`;
+  button.title = button.ariaLabel;
+  button.append(createElement("span", "pattern-room-board-string-line"));
+  button.addEventListener("click", () => {
     onSelect(connection.id);
-  };
-  path.addEventListener("click", (event) => {
-    event.stopPropagation();
-    select();
   });
-  path.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      select();
-    }
-  });
-  return path;
+  return button;
 }
 
-function updateStringPath(
-  path: SVGPathElement,
+function updateStringGeometry(
+  button: HTMLButtonElement,
   source: BoardPosition,
   target: BoardPosition,
   index: number
@@ -148,18 +84,17 @@ function updateStringPath(
   const targetY = target.y + BOARD_CARD_HEIGHT / 2;
   const deltaX = targetX - sourceX;
   const deltaY = targetY - sourceY;
-  const length = Math.max(Math.hypot(deltaX, deltaY), 1);
-  const normalX = -deltaY / length;
-  const normalY = deltaX / length;
-  const bend = ((index % 3) - 1) * 18 + Math.min(38, length * 0.045);
-  const controlX = (sourceX + targetX) / 2 + normalX * bend;
-  const controlY = (sourceY + targetY) / 2 + normalY * bend;
-  path.setAttribute(
-    "d",
-    `M ${String(sourceX)} ${String(sourceY)} Q ${String(controlX)} ${String(controlY)} ${String(
-      targetX
-    )} ${String(targetY)}`
-  );
+  const length = Math.max(Math.hypot(deltaX, deltaY), 24);
+  const angle = (Math.atan2(deltaY, deltaX) * 180) / Math.PI;
+  const parallelOffset = ((index % 3) - 1) * 8;
+  const radians = (angle * Math.PI) / 180;
+  const offsetX = -Math.sin(radians) * parallelOffset;
+  const offsetY = Math.cos(radians) * parallelOffset;
+
+  button.style.left = `${String(sourceX + offsetX)}px`;
+  button.style.top = `${String(sourceY + offsetY)}px`;
+  button.style.width = `${String(length)}px`;
+  button.style.transform = `rotate(${String(angle)}deg)`;
 }
 
 export function createBoardPanel(
@@ -210,20 +145,16 @@ export function createBoardPanel(
   const scene = createElement("div", "pattern-room-board-scene pattern-room-detective-board-scene");
   scene.setAttribute("style", `width:${String(BOARD_WIDTH)}px;height:${String(boardHeight)}px;`);
 
-  const stringLayer = document.createElementNS(SVG_NAMESPACE, "svg");
-  stringLayer.classList.add("pattern-room-board-string-layer");
-  stringLayer.setAttribute("viewBox", `0 0 ${String(BOARD_WIDTH)} ${String(boardHeight)}`);
-  stringLayer.setAttribute("aria-label", "Pano bağlantıları");
-
+  const stringLayer = createElement("div", "pattern-room-board-string-layer");
+  stringLayer.ariaLabel = "Pano bağlantıları";
   const cardsLayer = createElement("div", "pattern-room-board-card-layer");
-  const storedPositions = loadStoredPositions(data.subject);
   const positions = new Map<string, BoardPosition>();
   const cardsById = new Map<string, HTMLButtonElement>();
   const pinByAlias = new Map<string, PatternBoardPin>();
-  const connectionPaths = new Map<string, SVGPathElement>();
+  const connectionButtons = new Map<string, HTMLButtonElement>();
 
   allPins.forEach(({ pin }, index) => {
-    const initial = storedPositions[pin.id] ?? createInitialPosition(index);
+    const initial = createInitialPosition(index);
     const clamped: BoardPosition = {
       x: Math.min(Math.max(0, initial.x), BOARD_WIDTH - BOARD_CARD_WIDTH),
       y: Math.min(Math.max(0, initial.y), boardHeight - BOARD_CARD_HEIGHT),
@@ -248,19 +179,20 @@ export function createBoardPanel(
   };
 
   const updateSelectedConnection = (connectionId: string | null): void => {
-    connectionPaths.forEach((path, id) => {
+    connectionButtons.forEach((button, id) => {
       const isSelected = id === connectionId;
-      path.dataset["patternBoardConnectionSelected"] = isSelected ? "true" : "false";
-      path.classList.toggle("selected", isSelected);
+      button.dataset["patternBoardConnectionSelected"] = isSelected ? "true" : "false";
+      button.ariaPressed = isSelected ? "true" : "false";
+      button.classList.toggle("selected", isSelected);
     });
   };
 
   const redrawConnections = (): void => {
     data.connections.forEach((connection, index) => {
-      const path = connectionPaths.get(connection.id);
+      const button = connectionButtons.get(connection.id);
       const sourcePin = resolvePin(connection.sourceId);
       const targetPin = resolvePin(connection.targetId);
-      if (path === undefined || sourcePin === undefined || targetPin === undefined) {
+      if (button === undefined || sourcePin === undefined || targetPin === undefined) {
         return;
       }
       const sourcePosition = positions.get(sourcePin.id);
@@ -268,7 +200,7 @@ export function createBoardPanel(
       if (sourcePosition === undefined || targetPosition === undefined) {
         return;
       }
-      updateStringPath(path, sourcePosition, targetPosition, index);
+      updateStringGeometry(button, sourcePosition, targetPosition, index);
     });
   };
 
@@ -278,24 +210,13 @@ export function createBoardPanel(
     if (sourcePin === undefined || targetPin === undefined || sourcePin.id === targetPin.id) {
       return;
     }
-    const path = createBoardString(connection, (connectionId) => {
+    const button = createBoardString(connection, (connectionId) => {
       actions.selectConnection(connectionId);
       updateSelectedConnection(connectionId);
     });
-    connectionPaths.set(connection.id, path);
-    stringLayer.append(path);
+    connectionButtons.set(connection.id, button);
+    stringLayer.append(button);
   });
-
-  let redrawFrame: number | null = null;
-  const scheduleRedraw = (): void => {
-    if (redrawFrame !== null) {
-      return;
-    }
-    redrawFrame = window.requestAnimationFrame(() => {
-      redrawFrame = null;
-      redrawConnections();
-    });
-  };
 
   allPins.forEach(({ category, pin }, index) => {
     const position = positions.get(pin.id) ?? createInitialPosition(index);
@@ -349,7 +270,9 @@ export function createBoardPanel(
       const startClientY = event.clientY;
       moved = false;
       card.classList.add("dragging");
-      card.setPointerCapture(event.pointerId);
+      if (typeof card.setPointerCapture === "function") {
+        card.setPointerCapture(event.pointerId);
+      }
 
       const onPointerMove = (moveEvent: PointerEvent): void => {
         const deltaX = moveEvent.clientX - startClientX;
@@ -367,7 +290,7 @@ export function createBoardPanel(
         positions.set(pin.id, nextPosition);
         card.style.left = `${String(nextPosition.x)}px`;
         card.style.top = `${String(nextPosition.y)}px`;
-        scheduleRedraw();
+        redrawConnections();
       };
 
       const finishDrag = (): void => {
@@ -375,7 +298,6 @@ export function createBoardPanel(
         card.removeEventListener("pointermove", onPointerMove);
         card.removeEventListener("pointerup", finishDrag);
         card.removeEventListener("pointercancel", finishDrag);
-        saveStoredPositions(data.subject, positions);
       };
 
       card.addEventListener("pointermove", onPointerMove);
