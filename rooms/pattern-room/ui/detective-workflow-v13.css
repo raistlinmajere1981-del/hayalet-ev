@@ -1,0 +1,248 @@
+/* Pattern Room V13 — workflow pass.
+ * The command room gains a fast capture tray, the case drawer becomes truly
+ * opt-in, and the case file uses the entire available desk when the drawer is shut.
+ */
+
+/* ─────────────────────────────────────────
+   DRAWER STATE IS OWNED BY RUNTIME DATA
+───────────────────────────────────────── */
+.pattern-room-app-shell[data-pattern-inspector-open="false"] .pattern-room-workspace-inspector {
+  transform: translateX(calc(100% - var(--pattern-px-48))) !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="false"] .pattern-room-workspace-inspector > * {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="false"]
+  .pattern-room-workspace-inspector
+  > .pattern-room-workspace-inspector-handle {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="false"] .pattern-room-workspace {
+  padding-right: var(--pattern-px-48) !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="true"] .pattern-room-workspace-inspector {
+  transform: translateX(0) !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="true"] .pattern-room-workspace-inspector > * {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="true"] .pattern-room-workspace {
+  padding-right: var(--pattern-px-292) !important;
+}
+
+/* Old V4 :has() rules forced overview/report drawers open. Runtime state wins now. */
+.pattern-room-app-shell[data-pattern-inspector-open="false"]:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="overview"].active
+  )
+  .pattern-room-workspace-inspector,
+.pattern-room-app-shell[data-pattern-inspector-open="false"]:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="report"].active
+  )
+  .pattern-room-workspace-inspector {
+  transform: translateX(calc(100% - var(--pattern-px-48))) !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="false"]:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="overview"].active
+  )
+  .pattern-room-workspace,
+.pattern-room-app-shell[data-pattern-inspector-open="false"]:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="report"].active
+  )
+  .pattern-room-workspace {
+  padding-right: var(--pattern-px-48) !important;
+}
+
+/* ─────────────────────────────────────────
+   REPORT: FULL-WIDTH OPEN CASE FILE
+───────────────────────────────────────── */
+.pattern-room-casefile-panel,
+.pattern-room-casefile-panel .pattern-room-panel-header,
+.pattern-room-casefile-workspace,
+.pattern-room-casefile-document {
+  width: 100%;
+  max-width: none;
+}
+
+.pattern-room-casefile-document {
+  margin-inline: 0;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="false"]
+  .pattern-room-casefile-panel
+  .pattern-room-casefile-workspace {
+  width: 100%;
+}
+
+.pattern-room-casefile-body {
+  min-width: 0;
+}
+
+.pattern-room-casefile-sheet-stack,
+.pattern-room-casefile-sheet {
+  min-width: 0;
+}
+
+/* ─────────────────────────────────────────
+   QUICK CAPTURE TRAY
+───────────────────────────────────────── */
+.pattern-room-command-capture {
+  display: grid;
+  grid-template-columns: minmax(var(--pattern-px-218), 0.72fr) minmax(0, 1.28fr);
+  gap: var(--pattern-px-10) var(--pattern-px-14);
+  align-items: center;
+  padding: var(--pattern-px-10) var(--pattern-px-12);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
+  border-radius: var(--pattern-px-4);
+  background:
+    linear-gradient(90deg, var(--pattern-accent-amber-alpha-08), transparent 42%),
+    var(--pattern-surface-metal);
+  box-shadow: 0 var(--pattern-px-8) var(--pattern-px-18) var(--pattern-black-alpha-28);
+}
+
+.pattern-room-command-capture-heading {
+  display: grid;
+  min-width: 0;
+  gap: var(--pattern-px-3);
+}
+
+.pattern-room-command-capture-heading .pattern-room-kicker {
+  margin: 0;
+}
+
+.pattern-room-command-capture-heading > strong {
+  overflow: hidden;
+  color: var(--pattern-text-warm);
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: var(--pattern-rem-1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pattern-room-command-capture-heading > small {
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-72);
+}
+
+.pattern-room-command-capture-modes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--pattern-px-4);
+}
+
+.pattern-room-command-capture-mode {
+  min-height: var(--pattern-px-34);
+  padding: var(--pattern-px-5) var(--pattern-px-8);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-surface-control-alpha-74);
+  color: var(--pattern-text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pattern-room-command-capture-mode:hover,
+.pattern-room-command-capture-mode:focus-visible,
+.pattern-room-command-capture-mode[data-pattern-command-capture-active="true"] {
+  border-color: var(--pattern-accent-amber-alpha-46);
+  background: var(--pattern-accent-amber-alpha-10);
+  color: var(--pattern-accent-amber-light);
+  outline: none;
+}
+
+.pattern-room-command-capture-mode[data-pattern-command-capture-active="true"] {
+  box-shadow: inset 0 var(--pattern-px-2) 0 var(--pattern-accent-amber);
+}
+
+.pattern-room-command-capture-form {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(var(--pattern-px-218), 0.72fr) minmax(0, 1.4fr) auto;
+  gap: var(--pattern-px-6);
+  align-items: stretch;
+}
+
+.pattern-room-command-capture-form .pattern-room-inline-input {
+  min-width: 0;
+  min-height: var(--pattern-px-38);
+  margin: 0;
+}
+
+.pattern-room-command-capture-form textarea.pattern-room-inline-input {
+  min-height: var(--pattern-px-38);
+  max-height: var(--pattern-px-84);
+  resize: vertical;
+}
+
+.pattern-room-command-capture-form [data-pattern-command-capture-origin="true"] {
+  grid-column: 1 / 3;
+}
+
+.pattern-room-command-capture-submit {
+  min-width: var(--pattern-px-132);
+  min-height: var(--pattern-px-38);
+  padding: var(--pattern-px-6) var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-34);
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-accent-amber-alpha-10);
+  color: var(--pattern-text-warm);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pattern-room-command-capture-submit:hover,
+.pattern-room-command-capture-submit:focus-visible {
+  border-color: var(--pattern-accent-amber-alpha-58);
+  background: var(--pattern-accent-amber-alpha-18);
+  outline: none;
+}
+
+.pattern-room-command-capture-status {
+  grid-column: 1 / -1;
+  min-height: var(--pattern-px-16);
+  color: var(--pattern-text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+}
+
+/* Keep the live 10th-man preview readable; technical role ids were too long. */
+.pattern-room-command-review-table > i b {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (--pattern-bp-max-1100) {
+  .pattern-room-command-capture {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pattern-room-command-capture-modes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (--pattern-bp-max-820) {
+  .pattern-room-command-capture-form,
+  .pattern-room-command-capture-modes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pattern-room-command-capture-form [data-pattern-command-capture-origin="true"] {
+    grid-column: 1;
+  }
+}
