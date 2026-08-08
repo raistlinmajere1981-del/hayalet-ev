@@ -36,9 +36,7 @@ function hasAppliedReview(root: HTMLElement): boolean {
     return true;
   }
   return (
-    root.querySelector<HTMLElement>(
-      '[data-pattern-case-review-apply-feedback="success"]'
-    ) !== null
+    root.querySelector<HTMLElement>('[data-pattern-case-review-apply-feedback="success"]') !== null
   );
 }
 
@@ -72,21 +70,16 @@ function createAiHandoff(reviewSurface: HTMLElement): HTMLElement {
   const state = resolveReviewState(reviewSurface);
   const applied = hasAppliedReview(reviewSurface);
   const ready = state === "ready";
-  const resultExists =
-    reviewSurface.querySelector("[data-pattern-case-review-result='true']") !== null;
-
   const title = applied
     ? "İnceleme vakaya işlendi"
     : ready
       ? "Sonuç hazır, karar sende"
-      : resultExists
-        ? "Bulgular masada"
-        : "İnceleme hattı açık";
+      : "Bulgular masada";
   const detail = applied
     ? "Yeni notları panoda doğrula veya vaka dosyasına geç."
     : ready
       ? "Uygulanacak bölümü seç; hiçbir bulgu onaysız vakaya eklenmez."
-      : "AI çıktısından sonra pano, arşiv ve rapor arasında tek adımda devam et.";
+      : "AI çıktısını panoda, arşivde veya vaka dosyasında takip edebilirsin.";
   const handoff = createHandoffShell("Devam hattı", title, detail);
   handoff.shell.dataset["patternReviewHandoffKind"] = "ai";
   handoff.shell.dataset["patternReviewHandoffState"] = applied ? "applied" : state;
@@ -97,7 +90,10 @@ function createAiHandoff(reviewSurface: HTMLElement): HTMLElement {
     handoff.actions.append(apply);
   }
 
-  const board = createButton(applied ? "Panoda sonucu kontrol et" : "Panoyu aç", applied ? "primary" : "quiet");
+  const board = createButton(
+    applied ? "Panoda sonucu kontrol et" : "Panoyu aç",
+    applied ? "primary" : "quiet"
+  );
   board.addEventListener("click", () => openView("board"));
   const archive = createButton("Arşive dön");
   archive.addEventListener("click", () => openView("archive"));
@@ -151,8 +147,12 @@ function enhanceReviewHandoffs(): void {
   const reviewSurface = panel.querySelector<HTMLElement>(
     '[data-pattern-review-task-surface="ai-review"]'
   );
+  const hasAiResult =
+    reviewSurface?.querySelector("[data-pattern-case-review-result='true']") !== null &&
+    reviewSurface !== null;
   if (
     reviewSurface !== null &&
+    hasAiResult &&
     reviewSurface.querySelector('[data-pattern-review-handoff-kind="ai"]') === null
   ) {
     reviewSurface.append(createAiHandoff(reviewSurface));
