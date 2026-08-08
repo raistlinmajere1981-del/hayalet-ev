@@ -158,12 +158,13 @@
   border: var(--pattern-px-1) solid currentColor;
   border-radius: var(--pattern-px-3);
   background: var(--pattern-surface-depth-alpha-96);
+  box-shadow: 0 var(--pattern-px-2) var(--pattern-px-6) var(--pattern-black-alpha-40);
   color: currentColor;
   font-family: "IBM Plex Mono", monospace;
   font-size: var(--pattern-rem-0-72);
   font-weight: 700;
   line-height: 1.2;
-  opacity: 0;
+  opacity: 0.82;
   pointer-events: none;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -173,6 +174,9 @@
 .pattern-room-board-string:focus-visible .pattern-room-board-string-label,
 .pattern-room-board-string.selected .pattern-room-board-string-label {
   opacity: 1;
+  box-shadow:
+    0 var(--pattern-px-3) var(--pattern-px-8) var(--pattern-black-alpha-52),
+    0 0 var(--pattern-px-5) currentColor;
 }
 
 .pattern-room-board-string:hover .pattern-room-board-string-line,
