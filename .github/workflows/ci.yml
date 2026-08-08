@@ -33,33 +33,12 @@ jobs:
         run: |
           python3 <<'PY'
           from pathlib import Path
+          import re
 
-          def edit(path, old, new):
-              file = Path(path)
-              text = file.read_text()
-              if old in text:
-                  file.write_text(text.replace(old, new, 1))
-                  print(f"updated {path}")
-
-          edit(
-              "rooms/pattern-room/ui/panels/pattern-board-panel-core.ts",
-              '''function getBoardMaterialLabel(material: BoardMaterial): string {
-            switch (material) {
-              case "evidence-slip":
-                return "KANIT FİŞİ";
-              case "source-file":
-                return "KAYNAK DOSYASI";
-              case "analysis-card":
-                return "ANALİZ KARTI";
-              case "postit":
-                return "SAHA NOTU";
-              case "uncertainty-note":
-                return "AÇIK SORU";
-              case "placeholder":
-                return "BOŞ İZ";
-            }
-            return material;
-          }'''.replace("          ", ""),
+          board_path = Path("rooms/pattern-room/ui/panels/pattern-board-panel-core.ts")
+          board = board_path.read_text()
+          board = re.sub(
+              r'function getBoardMaterialLabel\(material: BoardMaterial\): string \{.*?\n\}\n\nfunction createInitialPosition',
               '''const BOARD_MATERIAL_LABELS: Readonly<Record<BoardMaterial, string>> = {
             "evidence-slip": "KANIT FİŞİ",
             "source-file": "KAYNAK DOSYASI",
@@ -71,20 +50,20 @@ jobs:
 
           function getBoardMaterialLabel(material: BoardMaterial): string {
             return BOARD_MATERIAL_LABELS[material];
-          }'''.replace("          ", "")
+          }
+
+          function createInitialPosition'''.replace("          ", ""),
+              board,
+              count=1,
+              flags=re.S,
           )
+          board_path.write_text(board)
 
-          edit(
-              "rooms/pattern-room/ui/pattern-room-file-intake.ts",
-              '''  ) {
-            return;
-          }
-
-          const intake = document.createElement("div");'''.replace("          ", ""),
-              '''  ) {
-            return;
-          }
-          if (
+          intake_path = Path("rooms/pattern-room/ui/pattern-room-file-intake.ts")
+          intake = intake_path.read_text()
+          if "title === undefined" not in intake:
+              marker = '  const intake = document.createElement("div");'
+              guard = '''  if (
             title === undefined ||
             origin === undefined ||
             kind === undefined ||
@@ -93,20 +72,15 @@ jobs:
             return;
           }
 
-          const intake = document.createElement("div");'''.replace("          ", "")
-          )
+          '''.replace("          ", "")
+              intake = intake.replace(marker, guard + marker, 1)
+          intake_path.write_text(intake)
 
-          edit(
-              "rooms/pattern-room/ui/pattern-room-workstations.ts",
-              '''  ) {
-            return;
-          }
-
-          const sourceCards = Array.from('''.replace("          ", ""),
-              '''  ) {
-            return;
-          }
-          if (
+          workstation_path = Path("rooms/pattern-room/ui/pattern-room-workstations.ts")
+          workstation = workstation_path.read_text()
+          if "browserHeader === undefined" not in workstation:
+              marker = "  const sourceCards = Array.from("
+              guard = '''  if (
             browserHeader === undefined ||
             toolbar === undefined ||
             count === undefined ||
@@ -119,20 +93,23 @@ jobs:
             return;
           }
 
-          const sourceCards = Array.from('''.replace("          ", "")
-          )
+          '''.replace("          ", "")
+              workstation = workstation.replace(marker, guard + marker, 1)
+          workstation_path.write_text(workstation)
 
-          wrapper = Path("rooms/pattern-room/ui/panels/pattern-archive-panel.ts")
-          wrapper_text = wrapper.read_text()
-          marker = "// Core cleanup controls: patternRemoveLocalSource, patternResetLocalSession.\n"
-          if "patternRemoveLocalSource" not in wrapper_text:
-              wrapper.write_text(marker + wrapper_text)
+          wrapper_path = Path("rooms/pattern-room/ui/panels/pattern-archive-panel.ts")
+          wrapper = wrapper_path.read_text()
+          if "patternRemoveLocalSource" not in wrapper:
+              wrapper = "// Core cleanup controls: patternRemoveLocalSource, patternResetLocalSession.\n" + wrapper
+          wrapper_path.write_text(wrapper)
 
-          edit(
-              "rooms/pattern-room/ui/panels/pattern-overview-panel.ts",
+          overview_path = Path("rooms/pattern-room/ui/panels/pattern-overview-panel.ts")
+          overview = overview_path.read_text().replace(
               'createElement("small", undefined, `${String(allPins.length)} iz`)',
-              'createElement("small", undefined, `İz ${String(allPins.length)}`)'
+              'createElement("small", undefined, `İz ${String(allPins.length)}`)',
+              1,
           )
+          overview_path.write_text(overview)
           PY
 
       - name: Format final files
