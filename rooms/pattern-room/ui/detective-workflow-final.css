@@ -1,7 +1,332 @@
-/* Pattern Room — consolidated workflow layer.
- * Focus controls, review handoff and AI review preparation live here so the
- * final interaction pass has a single cascade owner.
+/* Pattern Room — final consolidated workflow and shell layer.
+ * Drawer state, quick capture, compact rail compatibility, focus tools,
+ * review handoff and AI review preparation share one final cascade owner.
  */
+
+/* ─────────────────────────────────────────
+   DRAWER STATE IS OWNED BY RUNTIME DATA
+───────────────────────────────────────── */
+.pattern-room-app-shell[data-pattern-inspector-open="false"] .pattern-room-workspace-inspector {
+  transform: translateX(calc(100% - var(--pattern-px-48))) !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="false"] .pattern-room-workspace-inspector > * {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="false"]
+  .pattern-room-workspace-inspector
+  > .pattern-room-workspace-inspector-handle {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="false"] .pattern-room-workspace {
+  padding-right: var(--pattern-px-48) !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="true"] .pattern-room-workspace-inspector {
+  transform: translateX(0) !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="true"] .pattern-room-workspace-inspector > * {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="true"] .pattern-room-workspace {
+  padding-right: var(--pattern-px-292) !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="false"]:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="overview"].active
+  )
+  .pattern-room-workspace-inspector,
+.pattern-room-app-shell[data-pattern-inspector-open="false"]:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="report"].active
+  )
+  .pattern-room-workspace-inspector {
+  transform: translateX(calc(100% - var(--pattern-px-48))) !important;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="false"]:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="overview"].active
+  )
+  .pattern-room-workspace,
+.pattern-room-app-shell[data-pattern-inspector-open="false"]:has(
+    .pattern-room-workspace-nav-button[data-pattern-workspace-nav="report"].active
+  )
+  .pattern-room-workspace {
+  padding-right: var(--pattern-px-48) !important;
+}
+
+/* ─────────────────────────────────────────
+   REPORT: FULL-WIDTH OPEN CASE FILE
+───────────────────────────────────────── */
+.pattern-room-casefile-panel,
+.pattern-room-casefile-panel .pattern-room-panel-header,
+.pattern-room-casefile-workspace,
+.pattern-room-casefile-document {
+  width: 100%;
+  max-width: none;
+}
+
+.pattern-room-casefile-document {
+  margin-inline: 0;
+}
+
+.pattern-room-app-shell[data-pattern-inspector-open="false"]
+  .pattern-room-casefile-panel
+  .pattern-room-casefile-workspace {
+  width: 100%;
+}
+
+.pattern-room-casefile-body {
+  min-width: 0;
+}
+
+.pattern-room-casefile-sheet-stack,
+.pattern-room-casefile-sheet {
+  min-width: 0;
+}
+
+/* ─────────────────────────────────────────
+   QUICK CAPTURE TRAY
+───────────────────────────────────────── */
+.pattern-room-command-capture {
+  display: grid;
+  grid-template-columns: minmax(var(--pattern-px-218), 0.72fr) minmax(0, 1.28fr);
+  gap: var(--pattern-px-10) var(--pattern-px-14);
+  align-items: center;
+  padding: var(--pattern-px-10) var(--pattern-px-12);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
+  border-radius: var(--pattern-px-4);
+  background:
+    linear-gradient(90deg, var(--pattern-accent-amber-alpha-08), transparent 42%),
+    var(--pattern-surface-metal);
+  box-shadow: 0 var(--pattern-px-8) var(--pattern-px-18) var(--pattern-black-alpha-28);
+}
+
+.pattern-room-command-capture-heading {
+  display: grid;
+  min-width: 0;
+  gap: var(--pattern-px-3);
+}
+
+.pattern-room-command-capture-heading .pattern-room-kicker {
+  margin: 0;
+}
+
+.pattern-room-command-capture-heading > strong {
+  overflow: hidden;
+  color: var(--pattern-text-warm);
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: var(--pattern-rem-1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pattern-room-command-capture-heading > small {
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-72);
+}
+
+.pattern-room-command-capture-modes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--pattern-px-4);
+}
+
+.pattern-room-command-capture-mode {
+  min-height: var(--pattern-px-34);
+  padding: var(--pattern-px-5) var(--pattern-px-8);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-surface-control-alpha-74);
+  color: var(--pattern-text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pattern-room-command-capture-mode:hover,
+.pattern-room-command-capture-mode:focus-visible,
+.pattern-room-command-capture-mode[data-pattern-command-capture-active="true"] {
+  border-color: var(--pattern-accent-amber-alpha-46);
+  background: var(--pattern-accent-amber-alpha-10);
+  color: var(--pattern-accent-amber-light);
+  outline: none;
+}
+
+.pattern-room-command-capture-mode[data-pattern-command-capture-active="true"] {
+  box-shadow: inset 0 var(--pattern-px-2) 0 var(--pattern-accent-amber);
+}
+
+.pattern-room-command-capture-form {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(var(--pattern-px-218), 0.72fr) minmax(0, 1.4fr) auto;
+  gap: var(--pattern-px-6);
+  align-items: stretch;
+}
+
+.pattern-room-command-capture-form .pattern-room-inline-input {
+  min-width: 0;
+  min-height: var(--pattern-px-38);
+  margin: 0;
+}
+
+.pattern-room-command-capture-form textarea.pattern-room-inline-input {
+  min-height: var(--pattern-px-38);
+  max-height: var(--pattern-px-84);
+  resize: vertical;
+}
+
+.pattern-room-command-capture-form [data-pattern-command-capture-origin="true"] {
+  grid-column: 1 / 3;
+}
+
+.pattern-room-command-capture-submit {
+  min-width: var(--pattern-px-132);
+  min-height: var(--pattern-px-38);
+  padding: var(--pattern-px-6) var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-34);
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-accent-amber-alpha-10);
+  color: var(--pattern-text-warm);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pattern-room-command-capture-submit:hover,
+.pattern-room-command-capture-submit:focus-visible {
+  border-color: var(--pattern-accent-amber-alpha-58);
+  background: var(--pattern-accent-amber-alpha-18);
+  outline: none;
+}
+
+.pattern-room-command-capture-status {
+  grid-column: 1 / -1;
+  min-height: var(--pattern-px-16);
+  color: var(--pattern-text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+}
+
+.pattern-room-command-review-table > i b {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─────────────────────────────────────────
+   FINAL SHELL COMPATIBILITY
+───────────────────────────────────────── */
+.pattern-room-workspace-rail {
+  padding-inline: var(--pattern-px-10);
+}
+
+.pattern-room-workspace-case-card,
+.pattern-room-workspace-keyboard-hint,
+.pattern-room-workspace-nav-button[data-pattern-workspace-nav="review-history"] {
+  display: none;
+}
+
+.pattern-room-workspace-navigation {
+  margin-top: var(--pattern-px-6);
+}
+
+.pattern-room-workspace-nav-button {
+  min-height: var(--pattern-px-48);
+  padding: var(--pattern-px-7) var(--pattern-px-8);
+}
+
+.pattern-room-workspace-nav-copy small {
+  display: none;
+}
+
+.pattern-room-workspace-inspector-handle-label {
+  font-size: 0;
+}
+
+.pattern-room-workspace-inspector-handle-label::after {
+  content: "DETAY";
+  font-size: var(--pattern-rem-0-72);
+}
+
+.pattern-room-workspace-inspector[data-pattern-workspace-inspector-view="board"]
+  .pattern-room-workspace-inspector-handle-label::after {
+  content: "İZ";
+}
+
+.pattern-room-workspace-inspector[data-pattern-workspace-inspector-view="archive"]
+  .pattern-room-workspace-inspector-handle-label::after {
+  content: "DOSYA";
+}
+
+.pattern-room-workspace-inspector[data-pattern-workspace-inspector-view="report"]
+  .pattern-room-workspace-inspector-handle-label::after {
+  content: "FİHRİST";
+}
+
+.pattern-room-workspace-inspector[data-pattern-workspace-inspector-view="overview"]
+  .pattern-room-workspace-inspector-handle-label::after {
+  content: "VAKA";
+}
+
+.pattern-room-case-object.board {
+  background:
+    linear-gradient(145deg, var(--pattern-accent-amber-alpha-10), transparent 46%),
+    var(--pattern-surface-board-alpha-92);
+}
+
+.pattern-room-case-board-surface {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      var(--pattern-accent-amber-alpha-06) 0 var(--pattern-px-8),
+      transparent var(--pattern-px-8) var(--pattern-px-16)
+    ),
+    var(--pattern-surface-board-alpha-92);
+}
+
+.pattern-room-case-board-note {
+  transform: rotate(0deg);
+}
+
+.pattern-room-case-board-note:nth-child(1) {
+  transform: rotate(-0.55deg);
+}
+
+.pattern-room-case-board-note:nth-child(2) {
+  transform: rotate(0.35deg);
+}
+
+.pattern-room-case-board-note:nth-child(3) {
+  transform: rotate(-0.25deg);
+}
+
+.pattern-room-case-board-note:nth-child(4) {
+  transform: rotate(0.5deg);
+}
+
+.pattern-room-workspace-inspector-content > .pattern-room-archive-inspector {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pattern-room-workspace-inspector-content
+  > .pattern-room-archive-inspector
+  > .pattern-room-context-inspector-label {
+  display: none;
+}
 
 /* ─────────────────────────────────────────
    FLOW TOOLS + FOCUS MODE
@@ -411,7 +736,6 @@
   box-shadow: inset 0 var(--pattern-px-2) 0 var(--pattern-accent-amber);
 }
 
-/* No result yet: use the whole desk for preparation instead of showing a dead tray. */
 .pattern-room-review-surface:not(:has([data-pattern-case-review-result="true"]))
   .pattern-room-analysis-desk {
   grid-template-columns: minmax(0, 1fr);
@@ -436,16 +760,21 @@
    RESPONSIVE
 ───────────────────────────────────────── */
 @media (--pattern-bp-max-1100) {
+  .pattern-room-command-capture {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pattern-room-command-capture-modes,
+  .pattern-room-review-prep-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .pattern-room-review-handoff {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .pattern-room-review-handoff-actions {
     justify-content: flex-start;
-  }
-
-  .pattern-room-review-prep-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -461,6 +790,19 @@
 }
 
 @media (--pattern-bp-max-820) {
+  .pattern-room-command-capture-form,
+  .pattern-room-command-capture-modes,
+  .pattern-room-review-handoff-actions,
+  .pattern-room-review-prep-actions,
+  .pattern-room-review-prep-metrics {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pattern-room-command-capture-form [data-pattern-command-capture-origin="true"] {
+    grid-column: 1;
+  }
+
   .pattern-room-flow-tool {
     min-width: var(--pattern-px-34);
   }
@@ -471,13 +813,6 @@
 
   .pattern-room-flow-tool kbd {
     font-size: var(--pattern-rem-0-58);
-  }
-
-  .pattern-room-review-handoff-actions,
-  .pattern-room-review-prep-actions,
-  .pattern-room-review-prep-metrics {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .pattern-room-review-handoff-action,
