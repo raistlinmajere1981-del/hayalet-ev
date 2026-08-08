@@ -33,24 +33,11 @@ jobs:
         run: |
           python3 <<'PY'
           from pathlib import Path
+          import re
 
           path = Path("electron/window-manager.ts")
           text = path.read_text()
 
-          current_restore = '''function restoreWindowedBounds(win: BrowserWindow): void {
-            const bounds = win.getBounds();
-            const { workArea } = screen.getDisplayMatching(bounds);
-            const visibleWorkArea = resolveVisibleWorkArea(workArea);
-
-            if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
-              win.setResizable(true);
-              win.setBounds(visibleWorkArea);
-              return;
-            }
-
-            win.setResizable(false);
-            win.setBounds(visibleWorkArea);
-          }'''.replace("          ", "")
           expected_restore = '''function restoreWindowedBounds(win: BrowserWindow): void {
             if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
               win.setResizable(true);
@@ -63,13 +50,14 @@ jobs:
             const { workArea } = screen.getDisplayMatching(win.getBounds());
             win.setBounds(workArea);
           }'''.replace("          ", "")
-          if current_restore in text:
-              text = text.replace(current_restore, expected_restore, 1)
+          text, restore_count = re.subn(
+              r'function restoreWindowedBounds\(win: BrowserWindow\): void \{.*?\n\}\n\nexport function initTray',
+              expected_restore + '\n\nexport function initTray',
+              text,
+              count=1,
+              flags=re.S,
+          )
 
-          current_ready = '''  win.once("ready-to-show", () => {
-            restoreWindowedBounds(win);
-            win.show();
-          });'''.replace("          ", "")
           expected_ready = '''  win.once("ready-to-show", () => {
             if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
               restoreWindowedBounds(win);
@@ -81,11 +69,16 @@ jobs:
               }, 0);
             }
           });'''.replace("          ", "")
-          if current_ready in text:
-              text = text.replace(current_ready, expected_ready, 1)
+          text, ready_count = re.subn(
+              r'  win\.once\("ready-to-show", \(\) => \{.*?\n  \}\);',
+              expected_ready,
+              text,
+              count=1,
+              flags=re.S,
+          )
 
-          if expected_restore not in text or expected_ready not in text:
-              raise SystemExit("Expected Linux window restore contract could not be established")
+          if restore_count != 1 or ready_count != 1:
+              raise SystemExit(f"Linux window blocks not found: restore={restore_count}, ready={ready_count}")
           path.write_text(text)
           PY
 
