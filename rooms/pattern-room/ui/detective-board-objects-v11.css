@@ -43,6 +43,11 @@
   gap: var(--pattern-px-6);
   min-height: var(--pattern-px-132);
   overflow: visible;
+  box-shadow:
+    0 0 0 var(--pattern-px-1) var(--pattern-black-alpha-28),
+    0 var(--pattern-px-14) var(--pattern-px-28) var(--pattern-black-alpha-52),
+    inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-05);
+  filter: brightness(1.06);
 }
 
 .pattern-room-detective-note-head {
@@ -56,7 +61,7 @@
   font-size: var(--pattern-rem-0-72);
   font-weight: 800;
   letter-spacing: var(--pattern-em-0-06);
-  opacity: 0.48;
+  opacity: 0.58;
   white-space: nowrap;
 }
 
@@ -64,6 +69,18 @@
   display: grid;
   gap: var(--pattern-px-4);
   min-width: 0;
+}
+
+.pattern-room-detective-note .pattern-room-detective-note-category {
+  color: var(--pattern-text-muted);
+}
+
+.pattern-room-detective-note .pattern-room-board-node-copy {
+  color: var(--pattern-text);
+}
+
+.pattern-room-detective-note .pattern-room-detective-note-preview {
+  color: var(--pattern-text-muted);
 }
 
 .pattern-room-detective-note .pattern-room-board-node-meta {
@@ -105,7 +122,7 @@
   width: var(--pattern-px-260);
   min-height: var(--pattern-px-136);
   padding-top: var(--pattern-px-18);
-  border-color: var(--pattern-accent-green-alpha-22);
+  border-color: var(--pattern-accent-green-alpha-42);
   border-left: var(--pattern-px-3) solid var(--pattern-accent-green);
   border-radius: var(--pattern-px-1);
   background:
@@ -115,7 +132,7 @@
       transparent 0 var(--pattern-px-21),
       var(--pattern-white-alpha-03) var(--pattern-px-21) var(--pattern-px-22)
     ),
-    var(--pattern-surface-paper-alpha-90);
+    var(--pattern-surface-paper);
 }
 
 .pattern-room-detective-note[data-pattern-board-material="evidence-slip"]::before {
@@ -144,11 +161,11 @@
   width: var(--pattern-px-260);
   min-height: var(--pattern-px-136);
   padding-top: var(--pattern-px-20);
-  border-color: var(--pattern-accent-cyan-alpha-22);
+  border-color: var(--pattern-accent-cyan-alpha-34);
   border-radius: var(--pattern-px-2) var(--pattern-px-5) var(--pattern-px-3) var(--pattern-px-3);
   background:
     linear-gradient(90deg, var(--pattern-accent-cyan-alpha-10), transparent 38%),
-    var(--pattern-surface-paper-alpha-90);
+    var(--pattern-surface-paper);
 }
 
 .pattern-room-detective-note[data-pattern-board-material="source-file"]::before {
@@ -160,7 +177,7 @@
   border: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-22);
   border-bottom: 0;
   border-radius: var(--pattern-px-3) var(--pattern-px-3) 0 0;
-  background: var(--pattern-surface-paper-alpha-90);
+  background: var(--pattern-surface-paper);
   content: "";
 }
 
@@ -176,7 +193,7 @@
   width: var(--pattern-px-238);
   min-height: var(--pattern-px-132);
   border-top: var(--pattern-px-3) solid var(--pattern-accent-amber);
-  border-left: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-28);
+  border-left: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-42);
   background:
     repeating-linear-gradient(
       0deg,
@@ -184,7 +201,7 @@
       var(--pattern-accent-cyan-alpha-22) var(--pattern-px-26) var(--pattern-px-28)
     ),
     linear-gradient(90deg, var(--pattern-accent-amber-alpha-06), transparent 42%),
-    var(--pattern-surface-paper-alpha-90);
+    var(--pattern-surface-paper);
 }
 
 .pattern-room-detective-note[data-pattern-board-material="analysis-card"]
@@ -199,10 +216,10 @@
   width: var(--pattern-px-218);
   min-height: var(--pattern-px-156);
   padding: var(--pattern-px-16);
-  border-color: var(--pattern-accent-amber-alpha-34);
+  border-color: var(--pattern-accent-amber-alpha-46);
   background:
-    linear-gradient(135deg, var(--pattern-white-alpha-04), transparent 30%),
-    var(--pattern-accent-amber-alpha-10), var(--pattern-surface-paper-alpha-90);
+    linear-gradient(135deg, var(--pattern-white-alpha-05), transparent 30%),
+    var(--pattern-accent-amber-alpha-10), var(--pattern-surface-paper);
   clip-path: polygon(0 0, 100% 0, 100% 92%, 92% 100%, 0 100%);
 }
 
@@ -226,7 +243,7 @@
 .pattern-room-detective-note[data-pattern-board-material="uncertainty-note"] {
   width: var(--pattern-px-238);
   min-height: var(--pattern-px-150);
-  border-color: var(--pattern-accent-red-alpha-28);
+  border-color: var(--pattern-accent-red-alpha-38);
   border-left: var(--pattern-px-3) solid var(--pattern-accent-red);
   background:
     linear-gradient(90deg, var(--pattern-accent-red-alpha-10), transparent 44%),
@@ -235,7 +252,7 @@
       transparent 0 var(--pattern-px-18),
       var(--pattern-accent-red-alpha-08) var(--pattern-px-18) var(--pattern-px-20)
     ),
-    var(--pattern-surface-paper-alpha-90);
+    var(--pattern-surface-paper);
   clip-path: polygon(
     0 0,
     100% 0,
@@ -262,7 +279,7 @@
 }
 
 .pattern-room-detective-note[data-pattern-board-material="placeholder"] {
-  opacity: 0.58;
+  opacity: 0.64;
   border-style: dashed;
   background: var(--pattern-surface-control-alpha-74);
 }
@@ -273,32 +290,39 @@
 ───────────────────────────────────────── */
 .pattern-room-detective-board[data-pattern-board-has-focus="true"]
   .pattern-room-detective-note[data-pattern-board-pin-related="false"] {
-  opacity: 0.34;
-  filter: saturate(0.55) brightness(0.72);
+  opacity: 0.58;
+  filter: saturate(0.72) brightness(0.88);
 }
 
 .pattern-room-detective-board[data-pattern-board-has-focus="true"]
   .pattern-room-board-string[data-pattern-board-connection-related="false"] {
-  opacity: 0.16;
+  opacity: 0.28;
 }
 
 .pattern-room-detective-note[data-pattern-board-pin-related="true"] {
   z-index: 4;
+  opacity: 0.94;
+  filter: saturate(0.96) brightness(1.08);
 }
 
 .pattern-room-detective-note[data-pattern-board-pin-selected="true"] {
   z-index: 7;
-  border-color: var(--pattern-accent-amber-alpha-58);
+  opacity: 1;
+  border-color: var(--pattern-accent-amber-alpha-72);
   box-shadow:
     0 var(--pattern-px-16) var(--pattern-px-30) var(--pattern-black-alpha-52),
-    0 0 0 var(--pattern-px-2) var(--pattern-accent-amber-alpha-18);
+    0 0 0 var(--pattern-px-2) var(--pattern-accent-amber-alpha-34),
+    inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-07);
+  filter: saturate(1.05) brightness(1.16);
 }
 
 .pattern-room-detective-note[data-pattern-board-connection-endpoint="true"] {
   z-index: 5;
+  opacity: 1;
   box-shadow:
-    0 var(--pattern-px-12) var(--pattern-px-24) var(--pattern-black-alpha-46),
-    0 0 0 var(--pattern-px-2) var(--pattern-accent-red-alpha-16);
+    0 var(--pattern-px-14) var(--pattern-px-28) var(--pattern-black-alpha-52),
+    0 0 0 var(--pattern-px-2) var(--pattern-accent-red-alpha-28);
+  filter: saturate(1.02) brightness(1.1);
 }
 
 .pattern-room-detective-note[data-pattern-board-connection-endpoint="true"]
