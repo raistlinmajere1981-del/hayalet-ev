@@ -1,2 +1,2 @@
-import "./pattern-room-workflow-enhancements.js";
+import "./pattern-room-workflow.js";
 import "./index.js";
