@@ -54,8 +54,8 @@
   border-bottom: 0;
   border-radius: var(--pattern-px-6) var(--pattern-px-6) 0 0;
   background:
-    linear-gradient(135deg, var(--pattern-accent-amber-alpha-10), transparent 42%),
-    var(--pattern-gradient-desk-grain), var(--pattern-surface-metal);
+    var(--pattern-gradient-amber-card-sheen), var(--pattern-gradient-desk-grain),
+    var(--pattern-surface-metal);
   box-shadow: 0 var(--pattern-px-18) var(--pattern-px-38) var(--pattern-black-alpha-30);
 }
 
@@ -406,9 +406,7 @@
   padding: var(--pattern-px-12) var(--pattern-px-14);
   border: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
   border-radius: var(--pattern-px-3);
-  background:
-    linear-gradient(180deg, var(--pattern-white-alpha-03), transparent 32%),
-    var(--pattern-surface-inset-alpha-62);
+  background: var(--pattern-gradient-white-top-fade-32), var(--pattern-surface-inset-alpha-62);
 }
 
 .pattern-room-casefile-entry-index {

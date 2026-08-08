@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 
-void test("linux launch path restores windowed bounds via maximize and clamps overflow", () => {
+void test("linux launch path restores windowed bounds and clamps overflow", () => {
   const source = readFileSync("electron/window-manager.ts", "utf8");
 
   assert.match(
@@ -18,7 +18,7 @@ void test("linux launch path restores windowed bounds via maximize and clamps ov
   assert.match(source, /intersectWorkAreas\(workArea, ewmhWorkArea\)/);
   assert.match(
     source,
-    /if \(SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE\) \{\s*win\.setResizable\(true\);\s*win\.maximize\(\);\s*constrainWindowToVisibleWorkArea\(win\);/s
+    /if \(SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE\) \{\s*win\.setResizable\(true\);\s*win\.setBounds\(visibleWorkArea\);\s*return;/s
   );
   assert.match(source, /resizable: SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE,/);
   assert.match(source, /maximizable: SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE,/);

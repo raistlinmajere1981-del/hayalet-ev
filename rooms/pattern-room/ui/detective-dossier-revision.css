@@ -81,8 +81,7 @@
   padding: var(--pattern-px-18) var(--pattern-px-18) var(--pattern-px-20);
   border-radius: var(--pattern-px-4);
   background:
-    var(--pattern-gradient-red-side-sheen),
-    linear-gradient(180deg, var(--pattern-white-alpha-04), transparent 24%),
+    var(--pattern-gradient-red-side-sheen), var(--pattern-gradient-white-top-fade-24),
     var(--pattern-surface-paper-alpha-90);
 }
 
@@ -147,9 +146,7 @@
   overflow: hidden;
   border-color: var(--pattern-accent-amber-alpha-28);
   border-radius: var(--pattern-px-4);
-  background:
-    linear-gradient(135deg, var(--pattern-accent-amber-alpha-10), transparent 42%),
-    var(--pattern-surface-inset-alpha-62);
+  background: var(--pattern-gradient-amber-card-sheen), var(--pattern-surface-inset-alpha-62);
 }
 
 .pattern-room-report-document-header::after {

@@ -14,8 +14,8 @@
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
   border-radius: var(--pattern-px-4);
   background:
-    linear-gradient(90deg, var(--pattern-accent-amber-alpha-06), transparent 38%),
-    var(--pattern-gradient-desk-grain), var(--pattern-surface-metal);
+    var(--pattern-gradient-amber-left-fade-38), var(--pattern-gradient-desk-grain),
+    var(--pattern-surface-metal);
   box-shadow:
     0 var(--pattern-px-10) var(--pattern-px-24) var(--pattern-black-alpha-28),
     inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);
@@ -125,15 +125,13 @@
   min-height: var(--pattern-px-210);
   overflow: visible;
   border-radius: var(--pattern-px-3);
-  background:
-    linear-gradient(180deg, var(--pattern-white-alpha-04), transparent 24%),
-    var(--pattern-surface-paper-alpha-90);
+  background: var(--pattern-gradient-white-top-fade-24), var(--pattern-surface-paper-alpha-90);
   box-shadow: 0 var(--pattern-px-10) var(--pattern-px-22) var(--pattern-black-alpha-28);
 }
 
 .pattern-room-archive-card::before {
   position: absolute;
-  top: calc(0px - var(--pattern-px-12));
+  top: calc(var(--pattern-px-0) - var(--pattern-px-12));
   left: var(--pattern-px-12);
   width: var(--pattern-px-104);
   height: var(--pattern-px-14);

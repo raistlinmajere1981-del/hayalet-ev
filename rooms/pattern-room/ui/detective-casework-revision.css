@@ -322,8 +322,8 @@
   border-color: var(--pattern-accent-red-alpha-28);
   border-radius: var(--pattern-px-5);
   background:
-    linear-gradient(90deg, var(--pattern-accent-red-alpha-08), transparent 34%),
-    var(--pattern-gradient-desk-grain), var(--pattern-surface-metal);
+    var(--pattern-gradient-red-left-fade-34), var(--pattern-gradient-desk-grain),
+    var(--pattern-surface-metal);
   box-shadow:
     0 var(--pattern-px-10) var(--pattern-px-24) var(--pattern-black-alpha-28),
     inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);

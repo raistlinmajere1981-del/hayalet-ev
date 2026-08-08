@@ -8,9 +8,7 @@
   padding: var(--pattern-px-10);
   border: var(--pattern-px-1) dashed var(--pattern-accent-green-alpha-22);
   border-radius: var(--pattern-px-4);
-  background:
-    linear-gradient(90deg, var(--pattern-accent-green-alpha-10), transparent 42%),
-    var(--pattern-surface-inset-alpha-62);
+  background: var(--pattern-gradient-green-left-fade-42), var(--pattern-surface-inset-alpha-62);
   transition:
     border-color 120ms ease-out,
     background 120ms ease-out,

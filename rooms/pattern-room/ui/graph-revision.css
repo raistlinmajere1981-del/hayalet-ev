@@ -117,9 +117,7 @@
   overflow: auto;
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-18);
   border-radius: var(--pattern-px-8);
-  background:
-    linear-gradient(180deg, var(--pattern-accent-amber-alpha-06), transparent 24%),
-    var(--pattern-surface-inset-alpha-70);
+  background: var(--pattern-gradient-amber-top-fade-24), var(--pattern-surface-inset-alpha-70);
   scrollbar-color: var(--pattern-accent-amber-alpha-28) transparent;
   scrollbar-width: thin;
   overscroll-behavior: contain;

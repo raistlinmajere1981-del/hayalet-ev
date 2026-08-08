@@ -57,9 +57,10 @@
   overflow: auto;
   border-left: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
   background:
-    linear-gradient(180deg, var(--pattern-accent-amber-alpha-06), transparent 24%),
-    var(--pattern-gradient-archive-sheen), var(--pattern-surface-metal);
-  box-shadow: calc(0px - var(--pattern-px-18)) 0 var(--pattern-px-42) var(--pattern-black-alpha-30);
+    var(--pattern-gradient-amber-top-fade-24), var(--pattern-gradient-archive-sheen),
+    var(--pattern-surface-metal);
+  box-shadow: calc(var(--pattern-px-0) - var(--pattern-px-18)) 0 var(--pattern-px-42)
+    var(--pattern-black-alpha-30);
   transform: translateX(calc(100% - var(--pattern-px-48)));
   transition: transform 180ms ease-out;
 }
@@ -411,7 +412,7 @@
     overflow: auto;
     border-top: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
     border-left: 0;
-    box-shadow: 0 calc(0px - var(--pattern-px-12)) var(--pattern-px-32)
+    box-shadow: 0 calc(var(--pattern-px-0) - var(--pattern-px-12)) var(--pattern-px-32)
       var(--pattern-black-alpha-24);
     transform: none !important;
     transition: none;

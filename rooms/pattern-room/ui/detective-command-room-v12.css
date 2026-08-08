@@ -19,9 +19,7 @@
   align-items: end;
   padding: var(--pattern-px-10) var(--pattern-px-12) var(--pattern-px-12);
   border-bottom: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-18);
-  background:
-    linear-gradient(90deg, var(--pattern-accent-amber-alpha-06), transparent 38%),
-    var(--pattern-surface-depth-alpha-96);
+  background: var(--pattern-gradient-amber-left-fade-38), var(--pattern-surface-depth-alpha-96);
 }
 
 .pattern-room-command-masthead .pattern-room-title-block {

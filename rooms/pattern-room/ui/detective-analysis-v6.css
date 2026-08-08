@@ -135,9 +135,7 @@
 .pattern-room-case-packet-drawer > summary {
   min-height: var(--pattern-px-36);
   padding: var(--pattern-px-6) var(--pattern-px-10);
-  background:
-    linear-gradient(90deg, var(--pattern-accent-red-alpha-08), transparent 34%),
-    var(--pattern-surface-control-alpha-74);
+  background: var(--pattern-gradient-red-left-fade-34), var(--pattern-surface-control-alpha-74);
 }
 
 .pattern-room-case-packet-drawer > summary strong {
@@ -314,9 +312,7 @@
   padding: var(--pattern-px-12) var(--pattern-px-14);
   border: var(--pattern-px-1) solid var(--pattern-accent-green-alpha-22);
   border-left: var(--pattern-px-3) solid var(--pattern-accent-green);
-  background:
-    linear-gradient(90deg, var(--pattern-accent-green-alpha-10), transparent 42%),
-    var(--pattern-surface-inset-alpha-62);
+  background: var(--pattern-gradient-green-left-fade-42), var(--pattern-surface-inset-alpha-62);
 }
 
 .pattern-room-case-review-result-summary > h3,

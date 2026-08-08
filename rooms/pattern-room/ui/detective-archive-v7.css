@@ -1,7 +1,7 @@
 /* Pattern Room v7 — indexed evidence vault. */
 
 /* The labels should fit without giving the rail back its old dashboard weight. */
-@media (min-width: 1101px) {
+@media (--pattern-bp-min-1101) {
   .pattern-room-app-shell {
     grid-template-columns: var(--pattern-px-228) minmax(0, 1fr);
   }
@@ -38,8 +38,8 @@
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
   border-radius: var(--pattern-px-5);
   background:
-    linear-gradient(180deg, var(--pattern-white-alpha-03), transparent 32%),
-    var(--pattern-gradient-desk-grain), var(--pattern-surface-metal);
+    var(--pattern-gradient-white-top-fade-32), var(--pattern-gradient-desk-grain),
+    var(--pattern-surface-metal);
   box-shadow:
     0 var(--pattern-px-10) var(--pattern-px-24) var(--pattern-black-alpha-30),
     inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);

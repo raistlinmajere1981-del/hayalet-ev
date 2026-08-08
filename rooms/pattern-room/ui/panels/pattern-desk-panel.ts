@@ -304,14 +304,17 @@ function createGraphToolbar(
   const zoomOut = createElement("button", "pattern-room-graph-zoom-button", "−");
   zoomOut.type = "button";
   zoomOut.ariaLabel = "Uzaklaştır";
+  zoomOut.dataset["patternGraphZoom"] = "out";
   const zoomValue = createElement("span", "pattern-room-graph-zoom-value", "100%");
   zoomValue.dataset["patternGraphZoomValue"] = "true";
   const reset = createElement("button", "pattern-room-graph-zoom-button reset", "Ortala");
   reset.type = "button";
   reset.ariaLabel = "Haritayı ortala";
+  reset.dataset["patternGraphZoom"] = "reset";
   const zoomIn = createElement("button", "pattern-room-graph-zoom-button", "+");
   zoomIn.type = "button";
   zoomIn.ariaLabel = "Yakınlaştır";
+  zoomIn.dataset["patternGraphZoom"] = "in";
   zoomOut.addEventListener("click", () => onZoomChange("out"));
   reset.addEventListener("click", () => onZoomChange("reset"));
   zoomIn.addEventListener("click", () => onZoomChange("in"));
