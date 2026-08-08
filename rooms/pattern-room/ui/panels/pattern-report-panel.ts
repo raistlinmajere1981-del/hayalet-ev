@@ -99,10 +99,7 @@ function createReportItem(item: PatternReportItem, index: number): HTMLElement {
 function createSectionSheet(section: PatternReportSection): HTMLElement {
   const priority = resolveReportPriority(section.id);
   const definition = REPORT_PRIORITY_DEFINITIONS[priority];
-  const sheet = createElement(
-    "section",
-    `pattern-room-casefile-sheet ${priority} ${section.tone}`
-  );
+  const sheet = createElement("section", `pattern-room-casefile-sheet ${priority} ${section.tone}`);
   sheet.dataset["patternReportSection"] = section.id;
   sheet.dataset["patternCasefilePriority"] = priority;
   sheet.tabIndex = -1;
@@ -219,7 +216,10 @@ export function createReportPanel(
   const shell = createPanelShell("report", text("nav.report.label"), onBack);
   shell.classList.add("pattern-room-report-panel", "pattern-room-casefile-panel");
 
-  const workspace = createElement("div", "pattern-room-report-workspace pattern-room-casefile-workspace");
+  const workspace = createElement(
+    "div",
+    "pattern-room-report-workspace pattern-room-casefile-workspace"
+  );
   const outline = createElement("aside", "pattern-room-report-outline");
   outline.dataset["patternReportOutline"] = "true";
   outline.ariaLabel = text("report.outlineLabel");

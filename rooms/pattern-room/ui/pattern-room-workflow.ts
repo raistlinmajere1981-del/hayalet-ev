@@ -73,9 +73,7 @@ function toggleFocusMode(): void {
 }
 
 function openWorkspaceView(viewId: WorkflowViewId): void {
-  document
-    .querySelector<HTMLButtonElement>(`[data-pattern-workspace-nav="${viewId}"]`)
-    ?.click();
+  document.querySelector<HTMLButtonElement>(`[data-pattern-workspace-nav="${viewId}"]`)?.click();
 }
 
 function findSelectedReviewAction(): HTMLButtonElement | null {
@@ -138,7 +136,7 @@ function createToolButton(label: string, shortcut: string): HTMLButtonElement {
 function ensureFlowTools(): void {
   const panel = document.querySelector<HTMLElement>(PANEL_SELECTOR);
   const header = panel?.querySelector<HTMLElement>(HEADER_SELECTOR);
-  if (panel === null || panel === undefined || header === null || header === undefined) {
+  if (panel === null || header === null || header === undefined) {
     return;
   }
 
@@ -186,9 +184,7 @@ function ensureFlowTools(): void {
 
 function syncFlowTools(): void {
   const activeNavigationId = getActiveNavigationId();
-  const focusButton = document.querySelector<HTMLButtonElement>(
-    "[data-pattern-flow-focus='true']"
-  );
+  const focusButton = document.querySelector<HTMLButtonElement>("[data-pattern-flow-focus='true']");
   const detailButton = document.querySelector<HTMLButtonElement>(
     "[data-pattern-flow-detail='true']"
   );
@@ -429,7 +425,8 @@ function enhanceReviewHandoffs(): void {
   );
   if (localSurface !== null) {
     const phaseCompleted =
-      localSurface.querySelector<HTMLButtonElement>("[data-pattern-reflect-debate='true']") !== null;
+      localSurface.querySelector<HTMLButtonElement>("[data-pattern-reflect-debate='true']") !==
+      null;
     const referenceCount = localSurface.querySelectorAll("[data-pattern-debate-reference]").length;
     const expectedSignature = `${phaseCompleted ? "completed" : "working"}:${String(
       referenceCount
@@ -480,12 +477,7 @@ function createPrepMetric(label: string, value: number, ready: boolean): HTMLEle
   return metric;
 }
 
-function createPrepStep(
-  index: string,
-  label: string,
-  detail: string,
-  ready: boolean
-): HTMLElement {
+function createPrepStep(index: string, label: string, detail: string, ready: boolean): HTMLElement {
   const step = document.createElement("article");
   step.className = "pattern-room-review-prep-step";
   step.dataset["patternReviewPrepReady"] = ready ? "true" : "false";
@@ -506,11 +498,7 @@ function createPrepStep(
   return step;
 }
 
-function createPrepAction(
-  label: string,
-  primary: boolean,
-  onClick: () => void
-): HTMLButtonElement {
+function createPrepAction(label: string, primary: boolean, onClick: () => void): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = `pattern-room-review-prep-action${primary ? " primary" : ""}`;

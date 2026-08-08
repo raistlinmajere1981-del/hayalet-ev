@@ -441,8 +441,7 @@ export function createPatternWorkspaceShell(
         inspectorDescription.textContent = text(activeItem.descriptionKey);
 
         if (activeNavigationId !== activeItem.id) {
-          inspectorEnabled =
-            activeItem.id !== "tenth-man" && activeItem.id !== "review-history";
+          inspectorEnabled = activeItem.id !== "tenth-man" && activeItem.id !== "review-history";
           inspectorOpen = false;
           activeNavigationId = activeItem.id;
           applyInspectorState();

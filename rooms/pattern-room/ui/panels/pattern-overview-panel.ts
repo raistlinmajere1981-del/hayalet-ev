@@ -116,7 +116,9 @@ function buildNextActions(data: PatternRoomWorkspaceModel): CaseAction[] {
   const uncertaintyPins = allPins.filter(
     (pin) => pin.layer === "uncertainty" || pin.tone === "uncertainty"
   );
-  const connectedRoles = data.tenthManSession.roles.filter((role) => role.connected === true).length;
+  const connectedRoles = data.tenthManSession.roles.filter(
+    (role) => role.connected === true
+  ).length;
   const reportEntries = data.reportSummary.sections.reduce((total, section) => {
     return total + section.items.length + section.bullets.length;
   }, 0);
@@ -149,7 +151,10 @@ function buildNextActions(data: PatternRoomWorkspaceModel): CaseAction[] {
       tone: "red",
     });
   }
-  if (allPins.length >= 2 && data.connections.length < Math.max(2, Math.floor(allPins.length / 2))) {
+  if (
+    allPins.length >= 2 &&
+    data.connections.length < Math.max(2, Math.floor(allPins.length / 2))
+  ) {
     actions.push({
       viewId: "desk",
       eyebrow: "Bağlantı açığı",
@@ -158,7 +163,10 @@ function buildNextActions(data: PatternRoomWorkspaceModel): CaseAction[] {
       tone: "cyan",
     });
   }
-  if (data.tenthManSession.references.length === 0 && (evidencePins.length > 0 || data.sources.length > 0)) {
+  if (
+    data.tenthManSession.references.length === 0 &&
+    (evidencePins.length > 0 || data.sources.length > 0)
+  ) {
     actions.push({
       viewId: "tenth-man",
       eyebrow: "Karşıt inceleme",
@@ -190,7 +198,8 @@ function buildNextActions(data: PatternRoomWorkspaceModel): CaseAction[] {
       viewId: "board",
       eyebrow: "Serbest çalışma",
       label: "Soruşturma tuvalini aç",
-      detail: "Vaka yüzeyleri hazır. Yeni bir iz ekleyebilir veya mevcut ilişkileri yeniden düzenleyebilirsin.",
+      detail:
+        "Vaka yüzeyleri hazır. Yeni bir iz ekleyebilir veya mevcut ilişkileri yeniden düzenleyebilirsin.",
       tone: "amber",
     });
   }
@@ -220,22 +229,22 @@ function createQuickCapture(actions: PatternPanelActions): HTMLElement {
 
   const modes = createElement("div", "pattern-room-command-capture-modes");
   const form = createElement("form", "pattern-room-command-capture-form");
-  const titleInput = createElement("input", "pattern-room-inline-input") as HTMLInputElement;
+  const titleInput = createElement("input", "pattern-room-inline-input");
   titleInput.type = "text";
   titleInput.autocomplete = "off";
   titleInput.maxLength = 120;
 
-  const bodyInput = createElement("textarea", "pattern-room-inline-input") as HTMLTextAreaElement;
+  const bodyInput = createElement("textarea", "pattern-room-inline-input");
   bodyInput.rows = 2;
   bodyInput.maxLength = 1400;
 
-  const originInput = createElement("input", "pattern-room-inline-input") as HTMLInputElement;
+  const originInput = createElement("input", "pattern-room-inline-input");
   originInput.type = "text";
   originInput.autocomplete = "off";
   originInput.placeholder = "Kaynak kökeni / adres / dosya bilgisi (opsiyonel)";
   originInput.dataset["patternCommandCaptureOrigin"] = "true";
 
-  const submit = createElement("button", "pattern-room-command-capture-submit") as HTMLButtonElement;
+  const submit = createElement("button", "pattern-room-command-capture-submit");
   submit.type = "submit";
   const status = createElement("span", "pattern-room-command-capture-status", "");
   status.ariaLive = "polite";
@@ -346,7 +355,11 @@ function createBoardStation(
     );
     surface.append(item);
   });
-  button.append(header, surface, createElement("span", "pattern-room-command-station-cta", "Panoyu aç →"));
+  button.append(
+    header,
+    surface,
+    createElement("span", "pattern-room-command-station-cta", "Panoyu aç →")
+  );
   return button;
 }
 
@@ -380,7 +393,11 @@ function createConnectionStation(
       surface.append(row);
     });
   }
-  button.append(header, surface, createElement("span", "pattern-room-command-station-cta", "Haritayı aç →"));
+  button.append(
+    header,
+    surface,
+    createElement("span", "pattern-room-command-station-cta", "Haritayı aç →")
+  );
   return button;
 }
 
@@ -405,7 +422,7 @@ function createArchiveStation(
   } else {
     data.sources.slice(-4).forEach((source, index) => {
       const file = createElement("i", "pattern-room-command-file");
-      file.style.setProperty("--pattern-command-file-index", String(index));
+      file.setAttribute("style", `--pattern-command-file-index:${String(index)}`);
       file.append(
         createElement("small", undefined, source.sourceTypeLabel),
         createElement("b", undefined, source.label)
@@ -413,7 +430,11 @@ function createArchiveStation(
       surface.append(file);
     });
   }
-  button.append(header, surface, createElement("span", "pattern-room-command-station-cta", "Arşivi aç →"));
+  button.append(
+    header,
+    surface,
+    createElement("span", "pattern-room-command-station-cta", "Arşivi aç →")
+  );
   return button;
 }
 
@@ -422,7 +443,9 @@ function createReviewStation(
   onOpenView: (viewId: RoomObjectViewId) => void,
   text: PatternWorkspaceTranslator
 ): HTMLButtonElement {
-  const connectedRoles = data.tenthManSession.roles.filter((role) => role.connected === true).length;
+  const connectedRoles = data.tenthManSession.roles.filter(
+    (role) => role.connected === true
+  ).length;
   const button = createElement("button", "pattern-room-command-station review");
   button.type = "button";
   button.dataset["patternHotspot"] = "tenth-man";
@@ -437,17 +460,28 @@ function createReviewStation(
   data.tenthManSession.roles.slice(0, 4).forEach((role) => {
     const seat = createElement("i", role.connected === true ? "connected" : "");
     seat.title = role.label;
-    const roleCode = role.label.match(/\b(AI\d+|US\d+)\b/i)?.[1] ?? role.id.replace(/^role-/i, "").split("-")[0] ?? "ROL";
+    const roleCode =
+      role.label.match(/\b(AI\d+|US\d+)\b/i)?.[1] ??
+      role.id.replace(/^role-/i, "").split("-")[0] ??
+      "ROL";
     seat.append(createElement("b", undefined, roleCode.toUpperCase()));
     surface.append(seat);
   });
   const center = createElement("span", "pattern-room-command-review-center");
   center.append(
-    createElement("strong", undefined, `${String(connectedRoles)}/${String(data.tenthManSession.roles.length)}`),
+    createElement(
+      "strong",
+      undefined,
+      `${String(connectedRoles)}/${String(data.tenthManSession.roles.length)}`
+    ),
     createElement("small", undefined, "rol bağlı")
   );
   surface.append(center);
-  button.append(header, surface, createElement("span", "pattern-room-command-station-cta", "İncelemeyi aç →"));
+  button.append(
+    header,
+    surface,
+    createElement("span", "pattern-room-command-station-cta", "İncelemeyi aç →")
+  );
   return button;
 }
 
@@ -467,16 +501,27 @@ function createReportStation(
   header.append(
     createElement("span", "pattern-room-command-station-index", "05"),
     createElement("span", "pattern-room-object-label", text("nav.report.label")),
-    createElement("small", undefined, `${String(filledSections)}/${String(data.reportSummary.sections.length)} dolu`)
+    createElement(
+      "small",
+      undefined,
+      `${String(filledSections)}/${String(data.reportSummary.sections.length)} dolu`
+    )
   );
   const surface = createElement("span", "pattern-room-command-report-folios");
   data.reportSummary.sections.slice(0, 6).forEach((section, index) => {
-    const folio = createElement("i", section.items.length > 0 || section.bullets.length > 0 ? "filled" : "");
-    folio.style.setProperty("--pattern-command-folio-index", String(index));
+    const folio = createElement(
+      "i",
+      section.items.length > 0 || section.bullets.length > 0 ? "filled" : ""
+    );
+    folio.setAttribute("style", `--pattern-command-folio-index:${String(index)}`);
     folio.append(createElement("small", undefined, String(index + 1).padStart(2, "0")));
     surface.append(folio);
   });
-  button.append(header, surface, createElement("span", "pattern-room-command-station-cta", "Dosyayı aç →"));
+  button.append(
+    header,
+    surface,
+    createElement("span", "pattern-room-command-station-cta", "Dosyayı aç →")
+  );
   return button;
 }
 
@@ -503,7 +548,10 @@ export function createOverviewPanel(
   const shell = createElement("section", "pattern-room-overview pattern-room-command-room");
   shell.dataset["patternView"] = "overview";
 
-  const header = createElement("header", "pattern-room-overview-header pattern-room-command-masthead");
+  const header = createElement(
+    "header",
+    "pattern-room-overview-header pattern-room-command-masthead"
+  );
   const titleWrap = createElement("div", "pattern-room-title-block");
   titleWrap.append(
     createElement("span", "pattern-room-kicker", data.roomLabel),

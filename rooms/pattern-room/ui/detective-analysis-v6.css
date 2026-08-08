@@ -67,8 +67,7 @@
   border-radius: var(--pattern-px-5);
   background:
     linear-gradient(90deg, var(--pattern-accent-cyan-alpha-10), transparent 36%),
-    var(--pattern-gradient-desk-grain),
-    var(--pattern-surface-metal);
+    var(--pattern-gradient-desk-grain), var(--pattern-surface-metal);
   box-shadow:
     0 var(--pattern-px-10) var(--pattern-px-24) var(--pattern-black-alpha-28),
     inset 0 0 0 var(--pattern-px-1) var(--pattern-white-alpha-03);
@@ -168,7 +167,10 @@
 
 .pattern-room-analysis-command-strip {
   display: grid;
-  grid-template-columns: minmax(var(--pattern-px-210), 0.72fr) auto minmax(var(--pattern-px-260), 0.76fr);
+  grid-template-columns: minmax(var(--pattern-px-210), 0.72fr) auto minmax(
+      var(--pattern-px-260),
+      0.76fr
+    );
   gap: var(--pattern-px-10);
   align-items: center;
   padding: var(--pattern-px-8) var(--pattern-px-10);
@@ -254,8 +256,7 @@
   border: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-22);
   background:
     linear-gradient(90deg, var(--pattern-accent-red-alpha-08), transparent 9%),
-    var(--pattern-gradient-report-sheen),
-    var(--pattern-surface-paper-alpha-90);
+    var(--pattern-gradient-report-sheen), var(--pattern-surface-paper-alpha-90);
 }
 
 .pattern-room-analysis-findings-header {
@@ -298,7 +299,9 @@
   box-shadow: none;
 }
 
-.pattern-room-analysis-findings > .pattern-room-case-review-parsed > .pattern-room-context-inspector-label {
+.pattern-room-analysis-findings
+  > .pattern-room-case-review-parsed
+  > .pattern-room-context-inspector-label {
   display: none;
 }
 
@@ -560,8 +563,11 @@
   padding: var(--pattern-px-18) var(--pattern-px-10);
   border: var(--pattern-px-1) solid var(--pattern-accent-red-alpha-16);
   border-radius: var(--pattern-px-999);
-  background:
-    radial-gradient(circle, var(--pattern-surface-paper) 0 34%, var(--pattern-surface-depth-alpha-96) 36% 100%);
+  background: radial-gradient(
+    circle,
+    var(--pattern-surface-paper) 0 34%,
+    var(--pattern-surface-depth-alpha-96) 36% 100%
+  );
 }
 
 .pattern-room-interrogation-seat {

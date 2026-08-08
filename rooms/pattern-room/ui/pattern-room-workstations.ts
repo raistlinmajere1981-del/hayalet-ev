@@ -20,7 +20,11 @@ function createArchiveIntakeDesk(panel: HTMLElement): void {
   const copy = createElement("div", "pattern-room-archive-intake-copy");
   copy.append(
     createElement("span", "pattern-room-kicker", "Dosya kabul masası"),
-    createElement("strong", undefined, sourceCount === 0 ? "İlk kaynağı içeri al" : "Yeni kaynak ekle"),
+    createElement(
+      "strong",
+      undefined,
+      sourceCount === 0 ? "İlk kaynağı içeri al" : "Yeni kaynak ekle"
+    ),
     createElement(
       "small",
       undefined,
@@ -80,10 +84,14 @@ function enhanceArchiveVault(panel: HTMLElement): void {
   );
   const toolbar = browser?.querySelector<HTMLElement>(":scope > .pattern-room-archive-toolbar");
   const count = browser?.querySelector<HTMLElement>(":scope > .pattern-room-archive-result-count");
-  const intake = browser?.querySelector<HTMLElement>(":scope > [data-pattern-archive-intake-desk='true']");
+  const intake = browser?.querySelector<HTMLElement>(
+    ":scope > [data-pattern-archive-intake-desk='true']"
+  );
   const list = browser?.querySelector<HTMLElement>(":scope > .pattern-room-archive-list");
   const empty = browser?.querySelector<HTMLElement>(":scope > [data-pattern-archive-empty='true']");
-  const typeFilter = toolbar?.querySelector<HTMLSelectElement>("[data-pattern-archive-type-filter='true']");
+  const typeFilter = toolbar?.querySelector<HTMLSelectElement>(
+    "[data-pattern-archive-type-filter='true']"
+  );
   const search = toolbar?.querySelector<HTMLInputElement>("[data-pattern-archive-search='true']");
   if (
     browser === null ||
@@ -132,7 +140,10 @@ function enhanceArchiveVault(panel: HTMLElement): void {
   ];
   metricValues.forEach(([label, value]) => {
     const metric = createElement("span", "pattern-room-archive-index-metric");
-    metric.append(createElement("small", undefined, label), createElement("strong", undefined, String(value)));
+    metric.append(
+      createElement("small", undefined, label),
+      createElement("strong", undefined, String(value))
+    );
     indexMetrics.append(metric);
   });
   indexHeader.append(indexCopy, indexMetrics);
@@ -177,14 +188,20 @@ function enhanceArchiveVault(panel: HTMLElement): void {
       group.dataset["patternArchiveFolderGroup"] = sourceType;
       const groupHeader = createElement("header", "pattern-room-archive-folder-group-header");
       groupHeader.append(
-        createElement("span", "pattern-room-archive-folder-index", String(index + 1).padStart(2, "0")),
+        createElement(
+          "span",
+          "pattern-room-archive-folder-index",
+          String(index + 1).padStart(2, "0")
+        ),
         createElement("strong", undefined, sourceType),
         createElement("small", undefined, `${String(cards.length)} dosya`)
       );
       const body = createElement("div", "pattern-room-archive-folder-group-body");
       cards.forEach((card) => {
         card.classList.add("pattern-room-archive-file-folder");
-        const inspectButton = card.querySelector<HTMLButtonElement>("[data-pattern-inspect-source]");
+        const inspectButton = card.querySelector<HTMLButtonElement>(
+          "[data-pattern-inspect-source]"
+        );
         card.addEventListener("click", (event) => {
           const target = event.target as HTMLElement | null;
           if (target?.closest("button, input, select, textarea, a") !== null) {
@@ -235,11 +252,15 @@ function createSeatPreview(roleSlot: HTMLElement, index: number): HTMLElement {
   const connected = roleSlot.dataset["patternRoleConnected"] === "true";
   seat.dataset["patternInterrogationSeatConnected"] = connected ? "true" : "false";
 
-  const id = roleSlot.querySelector<HTMLElement>(".pattern-room-role-id")?.textContent?.trim();
-  const label = roleSlot.querySelector<HTMLElement>("strong")?.textContent?.trim();
+  const id = roleSlot.querySelector<HTMLElement>(".pattern-room-role-id")?.textContent.trim();
+  const label = roleSlot.querySelector<HTMLElement>("strong")?.textContent.trim();
   seat.append(
     createElement("i", "pattern-room-interrogation-seat-light"),
-    createElement("strong", undefined, id === undefined || id === "" ? `R${String(index + 1)}` : id),
+    createElement(
+      "strong",
+      undefined,
+      id === undefined || id === "" ? `R${String(index + 1)}` : id
+    ),
     createElement("small", undefined, label === undefined || label === "" ? "Rol" : label)
   );
   return seat;
@@ -299,11 +320,7 @@ function enhanceTenthManDevice(panel: HTMLElement): void {
   chamber.append(table);
 
   const briefing = createElement("div", "pattern-room-interrogation-briefing");
-  briefing.append(
-    createElement("span", "pattern-room-kicker", "Oturum brifingi"),
-    title,
-    prompt
-  );
+  briefing.append(createElement("span", "pattern-room-kicker", "Oturum brifingi"), title, prompt);
   if (actions !== null) {
     briefing.append(actions);
   }
@@ -329,7 +346,9 @@ function enhanceTenthManDevice(panel: HTMLElement): void {
 }
 
 function enhanceAiReviewDesk(panel: HTMLElement): void {
-  const surface = panel.querySelector<HTMLElement>("[data-pattern-review-task-surface='ai-review']");
+  const surface = panel.querySelector<HTMLElement>(
+    "[data-pattern-review-task-surface='ai-review']"
+  );
   if (surface === null || surface.dataset["patternAiReviewV6Enhanced"] === "true") {
     return;
   }
@@ -342,8 +361,12 @@ function enhanceAiReviewDesk(panel: HTMLElement): void {
   const kicker = preview.querySelector<HTMLElement>(":scope > .pattern-room-kicker");
   const title = preview.querySelector<HTMLElement>(":scope > h2");
   const intro = preview.querySelector<HTMLElement>(":scope > p");
-  const controls = preview.querySelector<HTMLElement>(":scope > .pattern-room-case-review-controls");
-  const workspace = preview.querySelector<HTMLElement>(":scope > .pattern-room-case-review-workspace");
+  const controls = preview.querySelector<HTMLElement>(
+    ":scope > .pattern-room-case-review-controls"
+  );
+  const workspace = preview.querySelector<HTMLElement>(
+    ":scope > .pattern-room-case-review-workspace"
+  );
   if (title === null || controls === null || workspace === null) {
     return;
   }
@@ -388,8 +411,11 @@ function enhanceReviewSurface(panel: HTMLElement): void {
 function collectViewPanels(root: ParentNode, viewId: "archive" | "tenth-man"): HTMLElement[] {
   const selector = `[data-pattern-view='${viewId}']`;
   const panels = Array.from(root.querySelectorAll<HTMLElement>(selector));
-  if (root instanceof HTMLElement && root.matches(selector)) {
-    panels.unshift(root);
+  const rootPanel = root as ParentNode & {
+    dataset?: Record<string, string | undefined>;
+  };
+  if (rootPanel.dataset?.["patternView"] === viewId) {
+    panels.unshift(rootPanel as HTMLElement);
   }
   return panels;
 }

@@ -9,11 +9,16 @@ const EDGE_LABELS: Readonly<Record<string, string>> = {
 };
 
 function isTypingTarget(target: EventTarget | null): boolean {
+  if (target === null) {
+    return false;
+  }
+  const element = target as EventTarget & {
+    isContentEditable?: boolean;
+    matches?: (selector: string) => boolean;
+  };
   return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement ||
-    (target instanceof HTMLElement && target.isContentEditable)
+    element.isContentEditable === true ||
+    (typeof element.matches === "function" && element.matches("input, textarea, select"))
   );
 }
 
@@ -37,9 +42,10 @@ function setDraftGeometry(
 }
 
 function syncStringLabelRotation(string: HTMLButtonElement, label: HTMLElement): void {
-  const match = /rotate\((-?[\d.]+)deg\)/u.exec(string.style.transform);
+  const styleText = string.getAttribute("style") ?? "";
+  const match = /rotate\((-?[\d.]+)deg\)/u.exec(styleText);
   const angle = match === null ? 0 : Number(match[1]);
-  label.style.transform = `translate(-50%, -50%) rotate(${String(-angle)}deg)`;
+  label.setAttribute("style", `transform:translate(-50%, -50%) rotate(${String(-angle)}deg);`);
 }
 
 function enhanceBoard(board: HTMLElement): void {
@@ -200,8 +206,5 @@ function enhanceBoard(board: HTMLElement): void {
 }
 
 export function enhancePatternBoardInteractions(root: ParentNode): void {
-  if (root instanceof HTMLElement && root.matches(".pattern-room-detective-board")) {
-    enhanceBoard(root);
-  }
   root.querySelectorAll<HTMLElement>(".pattern-room-detective-board").forEach(enhanceBoard);
 }

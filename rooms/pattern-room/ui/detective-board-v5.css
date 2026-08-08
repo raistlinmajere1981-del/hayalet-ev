@@ -12,7 +12,10 @@
 
 .pattern-room-board-connection-tools {
   display: grid;
-  grid-template-columns: minmax(var(--pattern-px-150), auto) auto minmax(var(--pattern-px-110), auto);
+  grid-template-columns: minmax(var(--pattern-px-150), auto) auto minmax(
+      var(--pattern-px-110),
+      auto
+    );
   gap: var(--pattern-px-6);
   align-items: center;
   min-height: var(--pattern-px-38);
@@ -107,7 +110,10 @@
   }
 
   .pattern-room-board-connection-tools {
-    grid-template-columns: minmax(var(--pattern-px-150), 1fr) auto minmax(var(--pattern-px-110), auto);
+    grid-template-columns: minmax(var(--pattern-px-150), 1fr) auto minmax(
+        var(--pattern-px-110),
+        auto
+      );
   }
 }
 

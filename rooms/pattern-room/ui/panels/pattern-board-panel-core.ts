@@ -22,12 +22,7 @@ type BoardPosition = {
 type StoredBoardLayout = Record<string, BoardPosition>;
 
 type BoardMaterial =
-  | "evidence-slip"
-  | "source-file"
-  | "analysis-card"
-  | "postit"
-  | "uncertainty-note"
-  | "placeholder";
+  "evidence-slip" | "source-file" | "analysis-card" | "postit" | "uncertainty-note" | "placeholder";
 
 const BOARD_WIDTH = 1040;
 const BOARD_MIN_HEIGHT = 620;
@@ -78,6 +73,7 @@ function getBoardMaterialLabel(material: BoardMaterial): string {
     case "placeholder":
       return "BOŞ İZ";
   }
+  return material;
 }
 
 function createInitialPosition(index: number): BoardPosition {
@@ -108,8 +104,8 @@ function createBoardStorageKey(subject: string): string {
 
 function readStoredBoardLayout(subject: string): StoredBoardLayout {
   try {
-    const raw = window.localStorage?.getItem(createBoardStorageKey(subject));
-    if (raw === null || raw === undefined) {
+    const raw = window.localStorage.getItem(createBoardStorageKey(subject));
+    if (raw === null) {
       return {};
     }
     const parsed = JSON.parse(raw) as unknown;
@@ -139,13 +135,16 @@ function readStoredBoardLayout(subject: string): StoredBoardLayout {
   }
 }
 
-function writeStoredBoardLayout(subject: string, positions: ReadonlyMap<string, BoardPosition>): void {
+function writeStoredBoardLayout(
+  subject: string,
+  positions: ReadonlyMap<string, BoardPosition>
+): void {
   try {
     const layout: StoredBoardLayout = {};
     positions.forEach((position, id) => {
       layout[id] = position;
     });
-    window.localStorage?.setItem(createBoardStorageKey(subject), JSON.stringify(layout));
+    window.localStorage.setItem(createBoardStorageKey(subject), JSON.stringify(layout));
   } catch {
     // Board positioning is presentation-only. Storage failure must not block the room.
   }
@@ -153,7 +152,7 @@ function writeStoredBoardLayout(subject: string, positions: ReadonlyMap<string, 
 
 function clearStoredBoardLayout(subject: string): void {
   try {
-    window.localStorage?.removeItem(createBoardStorageKey(subject));
+    window.localStorage.removeItem(createBoardStorageKey(subject));
   } catch {
     // Presentation-only state.
   }
@@ -400,7 +399,9 @@ export function createBoardPanel(
     let sourcePinId: string | null = null;
     let targetPinId: string | null = null;
     if (connectionId !== null) {
-      const selectedConnection = data.connections.find((connection) => connection.id === connectionId);
+      const selectedConnection = data.connections.find(
+        (connection) => connection.id === connectionId
+      );
       if (selectedConnection !== undefined) {
         sourcePinId = resolvePin(selectedConnection.sourceId)?.id ?? null;
         targetPinId = resolvePin(selectedConnection.targetId)?.id ?? null;
@@ -488,11 +489,7 @@ export function createBoardPanel(
       return;
     }
 
-    actions.addAuthoredEdge(
-      edgeType.value as AuthoredConnectionEdgeType,
-      sourceEntityId,
-      entityId
-    );
+    actions.addAuthoredEdge(edgeType.value as AuthoredConnectionEdgeType, sourceEntityId, entityId);
     connectionStatus.textContent = "İp bağlantısı eklendi";
     connectionSourcePin = null;
     connectionMode = false;
@@ -654,11 +651,7 @@ export function createBoardPanel(
   });
 
   scene.addEventListener("click", (event) => {
-    if (
-      event.target !== scene &&
-      event.target !== cardsLayer &&
-      event.target !== stringLayer
-    ) {
+    if (event.target !== scene && event.target !== cardsLayer && event.target !== stringLayer) {
       return;
     }
     actions.selectNode(null);

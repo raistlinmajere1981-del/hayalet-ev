@@ -292,7 +292,10 @@ function createGraphToolbar(
   const legend = createElement("div", "pattern-room-case-map-legend");
   (["source", "evidence", "node"] as const).forEach((kind) => {
     const item = createElement("span", kind);
-    item.append(createElement("i"), createElement("small", undefined, GRAPH_NODE_KIND_LABELS[kind]));
+    item.append(
+      createElement("i"),
+      createElement("small", undefined, GRAPH_NODE_KIND_LABELS[kind])
+    );
     legend.append(item);
   });
 
@@ -332,11 +335,18 @@ export function createDeskPanel(
 
   const workSurface = createElement("section", "pattern-room-desk-surface");
   workSurface.ariaLabel = text("connections.title");
-  const surfaceHeader = createElement("header", "pattern-room-desk-header pattern-room-case-map-header");
+  const surfaceHeader = createElement(
+    "header",
+    "pattern-room-desk-header pattern-room-case-map-header"
+  );
   surfaceHeader.append(
     createElement("span", "pattern-room-kicker", "Bağlantı masası"),
     createElement("h2", undefined, data.subject),
-    createElement("p", undefined, "Kaynak, kanıt ve pano izlerini vaka odağının çevresinde karşılaştır.")
+    createElement(
+      "p",
+      undefined,
+      "Kaynak, kanıt ve pano izlerini vaka odağının çevresinde karşılaştır."
+    )
   );
 
   const connectionMap = createElement("div", "pattern-room-connection-map pattern-room-graph-map");
@@ -348,7 +358,10 @@ export function createDeskPanel(
   scene.dataset["patternGraphScene"] = "true";
   scene.dataset["patternGraphLayout"] = GRAPH_LAYOUT_VERSION;
 
-  const relationship = createElement("div", "pattern-room-connection-list pattern-room-graph-edges");
+  const relationship = createElement(
+    "div",
+    "pattern-room-connection-list pattern-room-graph-edges"
+  );
   relationship.dataset["patternConnectionList"] = "true";
   const graphNodes = createElement("div", "pattern-room-claim-objects pattern-room-graph-nodes");
   const connectionButtons: HTMLButtonElement[] = [];
@@ -426,10 +439,14 @@ export function createDeskPanel(
     connectionMap.append(createEmptyState("Haritaya yerleştirilecek vaka izi yok.", "data-empty"));
   } else if (data.connections.length === 0) {
     connectionMap.append(
-      createEmptyState("Henüz ilişki kurulmadı. Sağdaki İZ çekmecesinden iki öğeyi bağla.", "data-empty", {
-        compact: true,
-        className: "pattern-room-connection-empty",
-      })
+      createEmptyState(
+        "Henüz ilişki kurulmadı. Sağdaki İZ çekmecesinden iki öğeyi bağla.",
+        "data-empty",
+        {
+          compact: true,
+          className: "pattern-room-connection-empty",
+        }
+      )
     );
   }
 

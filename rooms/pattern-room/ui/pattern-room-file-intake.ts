@@ -33,7 +33,8 @@ function hasDraggedFiles(event: DragEvent): boolean {
 function createFileInput(): HTMLInputElement {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = ".txt,.md,.markdown,.csv,.json,.log,text/plain,text/markdown,text/csv,application/json";
+  input.accept =
+    ".txt,.md,.markdown,.csv,.json,.log,text/plain,text/markdown,text/csv,application/json";
   input.hidden = true;
   input.dataset["patternArchiveFileInput"] = "true";
   return input;
@@ -55,7 +56,9 @@ export function enhanceArchiveFileIntake(panel: HTMLElement): void {
   }
 
   const workbench = panel.querySelector<HTMLElement>("[data-pattern-source-workbench-demo='true']");
-  const longTextForm = panel.querySelector<HTMLFormElement>("[data-pattern-long-text-source-form='true']");
+  const longTextForm = panel.querySelector<HTMLFormElement>(
+    "[data-pattern-long-text-source-form='true']"
+  );
   const title = longTextForm?.querySelector<HTMLInputElement>(
     "[data-pattern-long-text-source-title='true']"
   );
@@ -95,7 +98,8 @@ export function enhanceArchiveFileIntake(panel: HTMLElement): void {
 
   const ingestFile = async (file: File): Promise<void> => {
     if (!isSupportedTextFile(file)) {
-      status.textContent = "Bu dosya türü desteklenmiyor. TXT, Markdown, CSV, JSON veya LOG kullan.";
+      status.textContent =
+        "Bu dosya türü desteklenmiyor. TXT, Markdown, CSV, JSON veya LOG kullan.";
       return;
     }
     if (file.size > MAX_LOCAL_TEXT_FILE_BYTES) {

@@ -141,8 +141,7 @@
   color: var(--pattern-accent-cyan);
 }
 
-.pattern-room-board-string[data-pattern-board-connection-type]
-  .pattern-room-board-string-line,
+.pattern-room-board-string[data-pattern-board-connection-type] .pattern-room-board-string-line,
 .pattern-room-board-string[data-pattern-board-connection-type]::before,
 .pattern-room-board-string[data-pattern-board-connection-type]::after {
   background: currentColor;
@@ -209,12 +208,11 @@
    REPORT — let the folio use the complete
    investigation canvas when the drawer is shut.
 ───────────────────────────────────────── */
+.pattern-room-app-shell[data-pattern-inspector-open="false"] .pattern-room-casefile-panel,
+.pattern-room-app-shell[data-pattern-inspector-open="false"] .pattern-room-casefile-workspace,
 .pattern-room-app-shell[data-pattern-inspector-open="false"]
-  .pattern-room-casefile-panel,
-.pattern-room-app-shell[data-pattern-inspector-open="false"]
-  .pattern-room-casefile-workspace,
-.pattern-room-app-shell[data-pattern-inspector-open="false"]
-  .pattern-room-casefile-panel .pattern-room-panel-header {
+  .pattern-room-casefile-panel
+  .pattern-room-panel-header {
   width: 100%;
   max-width: none;
 }

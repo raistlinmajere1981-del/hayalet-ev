@@ -54,7 +54,10 @@ function findResultMeta(result: HTMLElement): HTMLElement | null {
   return null;
 }
 
-function createResultGroup(group: PatternCaseReviewResultGroup, body: HTMLElement): HTMLElement | null {
+function createResultGroup(
+  group: PatternCaseReviewResultGroup,
+  body: HTMLElement
+): HTMLElement | null {
   if (body.children.length === 0) {
     return null;
   }
@@ -113,7 +116,10 @@ function groupReviewResultSections(parsed: HTMLElement): void {
 
 function createMetric(label: string, value: string): HTMLElement {
   const metric = createElement("span", "pattern-room-analysis-desk-metric");
-  metric.append(createElement("small", undefined, label), createElement("strong", undefined, value));
+  metric.append(
+    createElement("small", undefined, label),
+    createElement("strong", undefined, value)
+  );
   return metric;
 }
 
@@ -225,7 +231,11 @@ export function createPatternCaseReviewSimplifiedView(
   > = [
     ["apply", apply, result === null ? "—" : "hazır"],
     ["candidates", candidates, String(state.evidenceCandidates.length)],
-    ["raw-response", response, state.session?.reply === null || state.session?.reply === undefined ? "0" : "1"],
+    [
+      "raw-response",
+      response,
+      state.session?.reply === null || state.session?.reply === undefined ? "0" : "1",
+    ],
     ["history", history, String(state.history.length)],
   ];
 

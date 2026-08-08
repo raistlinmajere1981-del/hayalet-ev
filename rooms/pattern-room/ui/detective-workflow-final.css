@@ -752,8 +752,7 @@
   min-height: 0;
   background:
     linear-gradient(90deg, var(--pattern-accent-cyan-alpha-05), transparent 18%),
-    var(--pattern-gradient-report-sheen),
-    var(--pattern-surface-paper-alpha-90);
+    var(--pattern-gradient-report-sheen), var(--pattern-surface-paper-alpha-90);
 }
 
 /* ─────────────────────────────────────────

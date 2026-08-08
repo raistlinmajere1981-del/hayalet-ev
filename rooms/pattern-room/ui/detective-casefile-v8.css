@@ -55,8 +55,7 @@
   border-radius: var(--pattern-px-6) var(--pattern-px-6) 0 0;
   background:
     linear-gradient(135deg, var(--pattern-accent-amber-alpha-10), transparent 42%),
-    var(--pattern-gradient-desk-grain),
-    var(--pattern-surface-metal);
+    var(--pattern-gradient-desk-grain), var(--pattern-surface-metal);
   box-shadow: 0 var(--pattern-px-18) var(--pattern-px-38) var(--pattern-black-alpha-30);
 }
 
