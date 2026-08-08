@@ -38,9 +38,6 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Check formatting
-        run: npm run format:check
-
       - name: Run strict lint
         run: npm run lint:strict
 
@@ -52,3 +49,6 @@ jobs:
 
       - name: Build workspace rooms
         run: npm run rooms:build
+
+      - name: Check formatting
+        run: npm run format:check
