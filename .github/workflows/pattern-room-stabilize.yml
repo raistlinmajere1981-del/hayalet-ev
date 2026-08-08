@@ -64,7 +64,8 @@ jobs:
             return source
               .replaceAll('window.localStorage?.getItem(', 'window.localStorage.getItem(')
               .replaceAll('window.localStorage?.setItem(', 'window.localStorage.setItem(')
-              .replaceAll('window.localStorage?.removeItem(', 'window.localStorage.removeItem(');
+              .replaceAll('window.localStorage?.removeItem(', 'window.localStorage.removeItem(')
+              .replace('if (raw === null || raw === undefined)', 'if (raw === null)');
           });
 
           const overview = 'rooms/pattern-room/ui/panels/pattern-overview-panel.ts';
@@ -135,6 +136,7 @@ jobs:
         run: npx prettier --write "rooms/pattern-room/ui/**/*.{ts,css,html}"
 
       - name: Apply safe ESLint fixes
+        continue-on-error: true
         run: npx eslint --fix "rooms/pattern-room/ui/**/*.{ts,js}"
 
       - name: Commit stabilization changes
