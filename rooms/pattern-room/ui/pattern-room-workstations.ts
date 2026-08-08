@@ -385,39 +385,21 @@ function enhanceReviewSurface(panel: HTMLElement): void {
   enhanceTenthManDevice(panel);
 }
 
-function enhancePatternRoom(root: ParentNode): void {
-  root.querySelectorAll<HTMLElement>("[data-pattern-view='archive']").forEach((panel) => {
+function collectViewPanels(root: ParentNode, viewId: "archive" | "tenth-man"): HTMLElement[] {
+  const selector = `[data-pattern-view='${viewId}']`;
+  const panels = Array.from(root.querySelectorAll<HTMLElement>(selector));
+  if (root instanceof HTMLElement && root.matches(selector)) {
+    panels.unshift(root);
+  }
+  return panels;
+}
+
+export function enhancePatternRoomWorkstations(root: ParentNode): void {
+  collectViewPanels(root, "archive").forEach((panel) => {
     createArchiveIntakeDesk(panel);
     enhanceArchiveVault(panel);
   });
-  root.querySelectorAll<HTMLElement>("[data-pattern-view='tenth-man']").forEach((panel) => {
+  collectViewPanels(root, "tenth-man").forEach((panel) => {
     enhanceReviewSurface(panel);
   });
 }
-
-function installEnhancements(): void {
-  const app = document.getElementById("app");
-  if (app === null) {
-    window.setTimeout(installEnhancements, 0);
-    return;
-  }
-
-  let scheduled = false;
-  const run = (): void => {
-    scheduled = false;
-    enhancePatternRoom(app);
-  };
-  const schedule = (): void => {
-    if (scheduled) {
-      return;
-    }
-    scheduled = true;
-    queueMicrotask(run);
-  };
-
-  const observer = new MutationObserver(schedule);
-  observer.observe(app, { childList: true, subtree: true });
-  schedule();
-}
-
-installEnhancements();
