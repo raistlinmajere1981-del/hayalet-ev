@@ -26,6 +26,10 @@ function isSupportedTextFile(file: File): boolean {
   return file.type.startsWith("text/") || file.type === "application/json";
 }
 
+function hasDraggedFiles(event: DragEvent): boolean {
+  return event.dataTransfer?.types.includes("Files") === true;
+}
+
 function createFileInput(): HTMLInputElement {
   const input = document.createElement("input");
   input.type = "file";
@@ -78,6 +82,8 @@ export function enhanceArchiveFileIntake(panel: HTMLElement): void {
   const intake = document.createElement("div");
   intake.className = "pattern-room-source-workbench-example";
   intake.dataset["patternArchiveFileIntake"] = "true";
+  intake.dataset["patternArchiveFileDropActive"] = "false";
+  intake.ariaLabel = "Yerel metin dosyası kabul alanı";
 
   const button = createFileButton();
   const input = createFileInput();
@@ -85,26 +91,15 @@ export function enhanceArchiveFileIntake(panel: HTMLElement): void {
   status.className = "pattern-room-source-workbench-status";
   status.dataset["patternArchiveFileStatus"] = "true";
   status.ariaLive = "polite";
-  status.textContent = "Yerel metin dosyasını doğrudan vaka arşivine al.";
+  status.textContent = "Dosya seç veya TXT, Markdown, CSV, JSON ya da LOG dosyasını buraya bırak.";
 
-  button.addEventListener("click", () => {
-    input.click();
-  });
-
-  input.addEventListener("change", async () => {
-    const file = input.files?.item(0) ?? null;
-    if (file === null) {
-      return;
-    }
-
+  const ingestFile = async (file: File): Promise<void> => {
     if (!isSupportedTextFile(file)) {
       status.textContent = "Bu dosya türü desteklenmiyor. TXT, Markdown, CSV, JSON veya LOG kullan.";
-      input.value = "";
       return;
     }
     if (file.size > MAX_LOCAL_TEXT_FILE_BYTES) {
       status.textContent = "Dosya 8 MB sınırını aşıyor. Büyük belgeleri bölümleyerek ekle.";
-      input.value = "";
       return;
     }
 
@@ -113,7 +108,6 @@ export function enhanceArchiveFileIntake(panel: HTMLElement): void {
       const fileText = await file.text();
       if (fileText.trim() === "") {
         status.textContent = "Dosya boş; arşive eklenmedi.";
-        input.value = "";
         return;
       }
 
@@ -132,8 +126,58 @@ export function enhanceArchiveFileIntake(panel: HTMLElement): void {
     } catch (error) {
       console.warn("Pattern Room local file intake failed.", error);
       status.textContent = "Dosya okunamadı. Dosyanın yerel metin biçiminde olduğunu kontrol et.";
-    } finally {
-      input.value = "";
+    }
+  };
+
+  button.addEventListener("click", () => {
+    input.click();
+  });
+
+  input.addEventListener("change", () => {
+    const file = input.files?.item(0) ?? null;
+    input.value = "";
+    if (file !== null) {
+      void ingestFile(file);
+    }
+  });
+
+  intake.addEventListener("dragenter", (event) => {
+    if (!hasDraggedFiles(event)) {
+      return;
+    }
+    event.preventDefault();
+    intake.dataset["patternArchiveFileDropActive"] = "true";
+    status.textContent = "Dosyayı bırak; içerik yalnızca bu cihazda okunacak.";
+  });
+
+  intake.addEventListener("dragover", (event) => {
+    if (!hasDraggedFiles(event)) {
+      return;
+    }
+    event.preventDefault();
+    if (event.dataTransfer !== null) {
+      event.dataTransfer.dropEffect = "copy";
+    }
+    intake.dataset["patternArchiveFileDropActive"] = "true";
+  });
+
+  intake.addEventListener("dragleave", (event) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && intake.contains(nextTarget)) {
+      return;
+    }
+    intake.dataset["patternArchiveFileDropActive"] = "false";
+  });
+
+  intake.addEventListener("drop", (event) => {
+    if (!hasDraggedFiles(event)) {
+      return;
+    }
+    event.preventDefault();
+    intake.dataset["patternArchiveFileDropActive"] = "false";
+    const file = event.dataTransfer?.files.item(0) ?? null;
+    if (file !== null) {
+      void ingestFile(file);
     }
   });
 
