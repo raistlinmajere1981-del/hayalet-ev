@@ -1,0 +1,110 @@
+/* Pattern Room — consolidated shell compatibility layer.
+ * This replaces the small V4/V5 patch files with only the rules that still
+ * belong to the final detective-room shell. Superseded archive geometry and
+ * old responsive grid overrides are intentionally not carried forward.
+ */
+
+/* Compact field rail: keep the labels readable without restoring dashboard copy. */
+.pattern-room-workspace-rail {
+  padding-inline: var(--pattern-px-10);
+}
+
+.pattern-room-workspace-case-card,
+.pattern-room-workspace-keyboard-hint,
+.pattern-room-workspace-nav-button[data-pattern-workspace-nav="review-history"] {
+  display: none;
+}
+
+.pattern-room-workspace-navigation {
+  margin-top: var(--pattern-px-6);
+}
+
+.pattern-room-workspace-nav-button {
+  min-height: var(--pattern-px-48);
+  padding: var(--pattern-px-7) var(--pattern-px-8);
+}
+
+.pattern-room-workspace-nav-copy small {
+  display: none;
+}
+
+/* The drawer handle names itself from the current work surface. */
+.pattern-room-workspace-inspector-handle-label {
+  font-size: 0;
+}
+
+.pattern-room-workspace-inspector-handle-label::after {
+  content: "DETAY";
+  font-size: var(--pattern-rem-0-72);
+}
+
+.pattern-room-workspace-inspector[data-pattern-workspace-inspector-view="board"]
+  .pattern-room-workspace-inspector-handle-label::after {
+  content: "İZ";
+}
+
+.pattern-room-workspace-inspector[data-pattern-workspace-inspector-view="archive"]
+  .pattern-room-workspace-inspector-handle-label::after {
+  content: "DOSYA";
+}
+
+.pattern-room-workspace-inspector[data-pattern-workspace-inspector-view="report"]
+  .pattern-room-workspace-inspector-handle-label::after {
+  content: "FİHRİST";
+}
+
+.pattern-room-workspace-inspector[data-pattern-workspace-inspector-view="overview"]
+  .pattern-room-workspace-inspector-handle-label::after {
+  content: "VAKA";
+}
+
+/* Preserve the physical board fallback used by older overview markup. */
+.pattern-room-case-object.board {
+  background:
+    linear-gradient(145deg, var(--pattern-accent-amber-alpha-10), transparent 46%),
+    var(--pattern-surface-board-alpha-92);
+}
+
+.pattern-room-case-board-surface {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      var(--pattern-accent-amber-alpha-06) 0 var(--pattern-px-8),
+      transparent var(--pattern-px-8) var(--pattern-px-16)
+    ),
+    var(--pattern-surface-board-alpha-92);
+}
+
+.pattern-room-case-board-note {
+  transform: rotate(0deg);
+}
+
+.pattern-room-case-board-note:nth-child(1) {
+  transform: rotate(-0.55deg);
+}
+
+.pattern-room-case-board-note:nth-child(2) {
+  transform: rotate(0.35deg);
+}
+
+.pattern-room-case-board-note:nth-child(3) {
+  transform: rotate(-0.25deg);
+}
+
+.pattern-room-case-board-note:nth-child(4) {
+  transform: rotate(0.5deg);
+}
+
+/* The archive drawer owns source detail; intake belongs on the archive desk. */
+.pattern-room-workspace-inspector-content > .pattern-room-archive-inspector {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pattern-room-workspace-inspector-content
+  > .pattern-room-archive-inspector
+  > .pattern-room-context-inspector-label {
+  display: none;
+}
