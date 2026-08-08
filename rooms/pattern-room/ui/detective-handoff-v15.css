@@ -1,0 +1,125 @@
+/* Pattern Room V15 — review handoff pass.
+ * Close the loop from AI / 10th-man review back into the working case surfaces.
+ */
+
+.pattern-room-review-handoff {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--pattern-px-10) var(--pattern-px-14);
+  align-items: center;
+  margin-top: var(--pattern-px-10);
+  padding: var(--pattern-px-10) var(--pattern-px-12);
+  border: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-22);
+  border-radius: var(--pattern-px-4);
+  background:
+    linear-gradient(90deg, var(--pattern-accent-cyan-alpha-08), transparent 48%),
+    var(--pattern-surface-control-alpha-74);
+  box-shadow: inset var(--pattern-px-2) 0 0 var(--pattern-accent-cyan-alpha-34);
+}
+
+.pattern-room-review-handoff[data-pattern-review-handoff-state="applied"],
+.pattern-room-review-handoff[data-pattern-review-handoff-state="completed"] {
+  border-color: var(--pattern-accent-green-alpha-28);
+  background:
+    linear-gradient(90deg, var(--pattern-accent-green-alpha-08), transparent 48%),
+    var(--pattern-surface-control-alpha-74);
+  box-shadow: inset var(--pattern-px-2) 0 0 var(--pattern-accent-green-alpha-42);
+}
+
+.pattern-room-review-handoff-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--pattern-px-3);
+}
+
+.pattern-room-review-handoff-copy .pattern-room-kicker {
+  margin: 0;
+}
+
+.pattern-room-review-handoff-copy > strong {
+  color: var(--pattern-text-warm);
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: var(--pattern-rem-1);
+}
+
+.pattern-room-review-handoff-copy > small {
+  max-width: 68ch;
+  color: var(--pattern-text-subtle);
+  font-size: var(--pattern-rem-0-72);
+  line-height: 1.45;
+}
+
+.pattern-room-review-handoff-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--pattern-px-5);
+}
+
+.pattern-room-review-handoff-action {
+  min-height: var(--pattern-px-34);
+  padding: var(--pattern-px-5) var(--pattern-px-9);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-surface-control-alpha-74);
+  color: var(--pattern-text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pattern-room-review-handoff-action:hover,
+.pattern-room-review-handoff-action:focus-visible {
+  border-color: var(--pattern-accent-amber-alpha-46);
+  color: var(--pattern-text-warm);
+  outline: none;
+}
+
+.pattern-room-review-handoff-action.primary {
+  border-color: var(--pattern-accent-amber-alpha-42);
+  background: var(--pattern-accent-amber-alpha-12);
+  color: var(--pattern-accent-amber-light);
+  box-shadow: inset 0 var(--pattern-px-2) 0 var(--pattern-accent-amber-alpha-48);
+}
+
+.pattern-room-review-handoff[data-pattern-review-handoff-state="applied"]
+  .pattern-room-review-handoff-action.primary,
+.pattern-room-review-handoff[data-pattern-review-handoff-state="completed"]
+  .pattern-room-review-handoff-action.primary {
+  border-color: var(--pattern-accent-green-alpha-42);
+  background: var(--pattern-accent-green-alpha-10);
+  color: var(--pattern-accent-green-light);
+  box-shadow: inset 0 var(--pattern-px-2) 0 var(--pattern-accent-green-alpha-46);
+}
+
+.pattern-room-analysis-desk-runtime + .pattern-room-review-handoff {
+  margin-inline: var(--pattern-px-12);
+  margin-bottom: var(--pattern-px-12);
+}
+
+.pattern-room-device[data-pattern-review-task-surface="tenth-man"] > .pattern-room-review-handoff {
+  margin-inline: 0;
+  margin-bottom: 0;
+}
+
+@media (--pattern-bp-max-1100) {
+  .pattern-room-review-handoff {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pattern-room-review-handoff-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (--pattern-bp-max-820) {
+  .pattern-room-review-handoff-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pattern-room-review-handoff-action {
+    width: 100%;
+  }
+}
