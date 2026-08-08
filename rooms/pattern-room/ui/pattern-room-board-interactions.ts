@@ -51,6 +51,7 @@ function enhanceBoard(board: HTMLElement): void {
   const stringLayer = board.querySelector<HTMLElement>(".pattern-room-board-string-layer");
   const viewport = board.querySelector<HTMLElement>(".pattern-room-detective-board-viewport");
   const connectButton = board.querySelector<HTMLButtonElement>("[data-pattern-board-connect-mode]");
+  const tidyButton = board.querySelector<HTMLButtonElement>(".pattern-room-board-tidy-button");
   if (scene === null || stringLayer === null || viewport === null || connectButton === null) {
     return;
   }
@@ -65,22 +66,36 @@ function enhanceBoard(board: HTMLElement): void {
     ...board.querySelectorAll<HTMLButtonElement>("[data-pattern-board-connection]"),
   ];
 
-  strings().forEach((string) => {
-    if (string.querySelector(".pattern-room-board-string-label") !== null) {
-      return;
-    }
-    const type = string.dataset["patternBoardConnectionType"] ?? "";
-    const label = document.createElement("span");
-    label.className = "pattern-room-board-string-label";
-    label.textContent = EDGE_LABELS[type] ?? type;
-    string.append(label);
-    syncStringLabelRotation(string, label);
-
-    const stringObserver = new MutationObserver(() => {
+  const ensureStringLabels = (): void => {
+    strings().forEach((string) => {
+      let label = string.querySelector<HTMLElement>(".pattern-room-board-string-label");
+      if (label === null) {
+        const type = string.dataset["patternBoardConnectionType"] ?? "";
+        label = document.createElement("span");
+        label.className = "pattern-room-board-string-label";
+        label.textContent = EDGE_LABELS[type] ?? type;
+        string.append(label);
+      }
       syncStringLabelRotation(string, label);
     });
-    stringObserver.observe(string, { attributes: true, attributeFilter: ["style"] });
-  });
+  };
+
+  let labelSyncScheduled = false;
+  const scheduleStringLabelSync = (): void => {
+    if (labelSyncScheduled) {
+      return;
+    }
+    labelSyncScheduled = true;
+    const run = (): void => {
+      labelSyncScheduled = false;
+      ensureStringLabels();
+    };
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(run);
+    } else {
+      queueMicrotask(run);
+    }
+  };
 
   cards().forEach((card) => {
     if (card.querySelector(".pattern-room-detective-note-eyelet") === null) {
@@ -133,17 +148,18 @@ function enhanceBoard(board: HTMLElement): void {
     }
   };
 
-  const observer = new MutationObserver(syncMode);
-  observer.observe(board, {
-    subtree: true,
-    attributes: true,
-    attributeFilter: [
-      "data-pattern-board-connect-mode",
-      "data-pattern-board-connection-source",
-    ],
+  connectButton.addEventListener("click", () => {
+    queueMicrotask(syncMode);
   });
+  cards().forEach((card) => {
+    card.addEventListener("click", () => {
+      queueMicrotask(syncMode);
+    });
+  });
+  tidyButton?.addEventListener("click", scheduleStringLabelSync);
 
   scene.addEventListener("pointermove", (event) => {
+    scheduleStringLabelSync();
     if (connectButton.dataset["patternBoardConnectMode"] !== "true") {
       draft.hidden = true;
       return;
@@ -179,6 +195,7 @@ function enhanceBoard(board: HTMLElement): void {
     }
   });
 
+  ensureStringLabels();
   syncMode();
 }
 
