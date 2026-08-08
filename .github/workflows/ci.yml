@@ -4,21 +4,46 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  stabilize:
-    name: Stabilize Pattern Room
+  validate:
+    name: Validate / ${{ matrix.name }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: strict lint
+            command: npm run lint:strict
+          - name: TypeScript
+            command: npm run check-types
+          - name: rooms TypeScript
+            command: npx tsc --noEmit -p rooms/tsconfig.rooms.json
+          - name: room regressions
+            command: npm run rooms:test:core
+          - name: room build
+            command: npm run rooms:build
+          - name: formatting
+            command: npm run format:check
+    env:
+      CI: true
+      NODE_OPTIONS: --max-old-space-size=4096
+
     steps:
-      - name: Checkout Pattern Room branch
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: pattern-room-detective-ui-v3
-          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -29,105 +54,5 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Apply final compatibility fixes
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-          import re
-
-          board_path = Path("rooms/pattern-room/ui/panels/pattern-board-panel-core.ts")
-          board = board_path.read_text()
-          board = re.sub(
-              r'function getBoardMaterialLabel\(material: BoardMaterial\): string \{.*?\n\}\n\nfunction createInitialPosition',
-              '''const BOARD_MATERIAL_LABELS: Readonly<Record<BoardMaterial, string>> = {
-            "evidence-slip": "KANIT FİŞİ",
-            "source-file": "KAYNAK DOSYASI",
-            "analysis-card": "ANALİZ KARTI",
-            postit: "SAHA NOTU",
-            "uncertainty-note": "AÇIK SORU",
-            placeholder: "BOŞ İZ",
-          };
-
-          function getBoardMaterialLabel(material: BoardMaterial): string {
-            return BOARD_MATERIAL_LABELS[material];
-          }
-
-          function createInitialPosition'''.replace("          ", ""),
-              board,
-              count=1,
-              flags=re.S,
-          )
-          board_path.write_text(board)
-
-          intake_path = Path("rooms/pattern-room/ui/pattern-room-file-intake.ts")
-          intake = intake_path.read_text()
-          if "title === undefined" not in intake:
-              marker = '  const intake = document.createElement("div");'
-              guard = '''  if (
-            title === undefined ||
-            origin === undefined ||
-            kind === undefined ||
-            text === undefined
-          ) {
-            return;
-          }
-
-          '''.replace("          ", "")
-              intake = intake.replace(marker, guard + marker, 1)
-          intake_path.write_text(intake)
-
-          workstation_path = Path("rooms/pattern-room/ui/pattern-room-workstations.ts")
-          workstation = workstation_path.read_text()
-          if "browserHeader === undefined" not in workstation:
-              marker = "  const sourceCards = Array.from("
-              guard = '''  if (
-            browserHeader === undefined ||
-            toolbar === undefined ||
-            count === undefined ||
-            intake === undefined ||
-            list === undefined ||
-            empty === undefined ||
-            typeFilter === undefined ||
-            search === undefined
-          ) {
-            return;
-          }
-
-          '''.replace("          ", "")
-              workstation = workstation.replace(marker, guard + marker, 1)
-          workstation_path.write_text(workstation)
-
-          wrapper_path = Path("rooms/pattern-room/ui/panels/pattern-archive-panel.ts")
-          wrapper = wrapper_path.read_text()
-          if "patternRemoveLocalSource" not in wrapper:
-              wrapper = "// Core cleanup controls: patternRemoveLocalSource, patternResetLocalSession.\n" + wrapper
-          wrapper_path.write_text(wrapper)
-
-          overview_path = Path("rooms/pattern-room/ui/panels/pattern-overview-panel.ts")
-          overview = overview_path.read_text().replace(
-              'createElement("small", undefined, `${String(allPins.length)} iz`)',
-              'createElement("small", undefined, `İz ${String(allPins.length)}`)',
-              1,
-          )
-          overview_path.write_text(overview)
-          PY
-
-      - name: Format final files
-        run: npx prettier --write rooms/pattern-room/ui/panels/pattern-board-panel-core.ts rooms/pattern-room/ui/pattern-room-file-intake.ts rooms/pattern-room/ui/pattern-room-workstations.ts rooms/pattern-room/ui/panels/pattern-archive-panel.ts rooms/pattern-room/ui/panels/pattern-overview-panel.ts
-
-      - name: Validate final files
-        run: |
-          npx eslint rooms/pattern-room/ui/panels/pattern-board-panel-core.ts rooms/pattern-room/ui/pattern-room-file-intake.ts rooms/pattern-room/ui/pattern-room-workstations.ts rooms/pattern-room/ui/panels/pattern-archive-panel.ts rooms/pattern-room/ui/panels/pattern-overview-panel.ts
-          npx tsc --noEmit -p rooms/tsconfig.rooms.json
-
-      - name: Commit fixes
-        run: |
-          if git diff --quiet -- rooms/pattern-room/ui; then
-            echo "No stabilization changes needed."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add rooms/pattern-room/ui
-          git commit -m "Finish Pattern Room stabilization [pattern-room-finalize]"
-          git push origin HEAD:pattern-room-detective-ui-v3
+      - name: Run ${{ matrix.name }}
+        run: ${{ matrix.command }}
