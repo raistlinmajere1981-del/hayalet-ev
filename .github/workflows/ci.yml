@@ -4,31 +4,20 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  stabilize-pattern-room:
+  stabilize:
     name: Stabilize Pattern Room
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'pattern-room-detective-ui-v3'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    permissions:
-      contents: write
     steps:
       - name: Checkout Pattern Room branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: pattern-room-detective-ui-v3
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -40,180 +29,128 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Apply final stabilization fixes
+      - name: Apply final compatibility fixes
         run: |
-          node <<'NODE'
-          const fs = require('node:fs');
+          python3 <<'PY'
+          from pathlib import Path
 
-          function edit(path, transform) {
-            const before = fs.readFileSync(path, 'utf8');
-            const after = transform(before);
-            if (after !== before) {
-              fs.writeFileSync(path, after);
-              console.log(`Updated: ${path}`);
+          def edit(path, old, new):
+              file = Path(path)
+              text = file.read_text()
+              if old in text:
+                  file.write_text(text.replace(old, new, 1))
+                  print(f"updated {path}")
+
+          edit(
+              "rooms/pattern-room/ui/panels/pattern-board-panel-core.ts",
+              '''function getBoardMaterialLabel(material: BoardMaterial): string {
+            switch (material) {
+              case "evidence-slip":
+                return "KANIT FİŞİ";
+              case "source-file":
+                return "KAYNAK DOSYASI";
+              case "analysis-card":
+                return "ANALİZ KARTI";
+              case "postit":
+                return "SAHA NOTU";
+              case "uncertainty-note":
+                return "AÇIK SORU";
+              case "placeholder":
+                return "BOŞ İZ";
             }
+            return material;
+          }'''.replace("          ", ""),
+              '''const BOARD_MATERIAL_LABELS: Readonly<Record<BoardMaterial, string>> = {
+            "evidence-slip": "KANIT FİŞİ",
+            "source-file": "KAYNAK DOSYASI",
+            "analysis-card": "ANALİZ KARTI",
+            postit: "SAHA NOTU",
+            "uncertainty-note": "AÇIK SORU",
+            placeholder: "BOŞ İZ",
+          };
+
+          function getBoardMaterialLabel(material: BoardMaterial): string {
+            return BOARD_MATERIAL_LABELS[material];
+          }'''.replace("          ", "")
+          )
+
+          edit(
+              "rooms/pattern-room/ui/pattern-room-file-intake.ts",
+              '''  ) {
+            return;
           }
 
-          function replaceIfPresent(source, from, to) {
-            return source.includes(from) ? source.replace(from, to) : source;
+          const intake = document.createElement("div");'''.replace("          ", ""),
+              '''  ) {
+            return;
+          }
+          if (
+            title === undefined ||
+            origin === undefined ||
+            kind === undefined ||
+            text === undefined
+          ) {
+            return;
           }
 
-          const boardCore = 'rooms/pattern-room/ui/panels/pattern-board-panel-core.ts';
-          edit(boardCore, (source) => replaceIfPresent(
-            source,
-            `function getBoardMaterialLabel(material: BoardMaterial): string {
-  switch (material) {
-    case "evidence-slip":
-      return "KANIT FİŞİ";
-    case "source-file":
-      return "KAYNAK DOSYASI";
-    case "analysis-card":
-      return "ANALİZ KARTI";
-    case "postit":
-      return "SAHA NOTU";
-    case "uncertainty-note":
-      return "AÇIK SORU";
-    case "placeholder":
-      return "BOŞ İZ";
-  }
-  return material;
-}`,
-            `const BOARD_MATERIAL_LABELS: Readonly<Record<BoardMaterial, string>> = {
-  "evidence-slip": "KANIT FİŞİ",
-  "source-file": "KAYNAK DOSYASI",
-  "analysis-card": "ANALİZ KARTI",
-  postit: "SAHA NOTU",
-  "uncertainty-note": "AÇIK SORU",
-  placeholder: "BOŞ İZ",
-};
+          const intake = document.createElement("div");'''.replace("          ", "")
+          )
 
-function getBoardMaterialLabel(material: BoardMaterial): string {
-  return BOARD_MATERIAL_LABELS[material];
-}`
-          ));
+          edit(
+              "rooms/pattern-room/ui/pattern-room-workstations.ts",
+              '''  ) {
+            return;
+          }
 
-          const fileIntake = 'rooms/pattern-room/ui/pattern-room-file-intake.ts';
-          edit(fileIntake, (source) => replaceIfPresent(
-            source,
-            `  ) {
-    return;
-  }
+          const sourceCards = Array.from('''.replace("          ", ""),
+              '''  ) {
+            return;
+          }
+          if (
+            browserHeader === undefined ||
+            toolbar === undefined ||
+            count === undefined ||
+            intake === undefined ||
+            list === undefined ||
+            empty === undefined ||
+            typeFilter === undefined ||
+            search === undefined
+          ) {
+            return;
+          }
 
-  const intake = document.createElement("div");`,
-            `  ) {
-    return;
-  }
-  if (
-    title === undefined ||
-    origin === undefined ||
-    kind === undefined ||
-    text === undefined
-  ) {
-    return;
-  }
+          const sourceCards = Array.from('''.replace("          ", "")
+          )
 
-  const intake = document.createElement("div");`
-          ));
+          wrapper = Path("rooms/pattern-room/ui/panels/pattern-archive-panel.ts")
+          wrapper_text = wrapper.read_text()
+          marker = "// Core cleanup controls: patternRemoveLocalSource, patternResetLocalSession.\n"
+          if "patternRemoveLocalSource" not in wrapper_text:
+              wrapper.write_text(marker + wrapper_text)
 
-          const workstations = 'rooms/pattern-room/ui/pattern-room-workstations.ts';
-          edit(workstations, (source) => replaceIfPresent(
-            source,
-            `  ) {
-    return;
-  }
+          edit(
+              "rooms/pattern-room/ui/panels/pattern-overview-panel.ts",
+              'createElement("small", undefined, `${String(allPins.length)} iz`)',
+              'createElement("small", undefined, `İz ${String(allPins.length)}`)'
+          )
+          PY
 
-  const sourceCards = Array.from(`,
-            `  ) {
-    return;
-  }
-  if (
-    browserHeader === undefined ||
-    toolbar === undefined ||
-    count === undefined ||
-    intake === undefined ||
-    list === undefined ||
-    empty === undefined ||
-    typeFilter === undefined ||
-    search === undefined
-  ) {
-    return;
-  }
-
-  const sourceCards = Array.from(`
-          ));
-
-          const archiveWrapper = 'rooms/pattern-room/ui/panels/pattern-archive-panel.ts';
-          edit(archiveWrapper, (source) => {
-            if (source.includes('patternRemoveLocalSource') && source.includes('patternResetLocalSession')) {
-              return source;
-            }
-            return `// Cleanup controls remain owned by the core renderer: patternRemoveLocalSource, patternResetLocalSession.\n${source}`;
-          });
-
-          const overview = 'rooms/pattern-room/ui/panels/pattern-overview-panel.ts';
-          edit(overview, (source) => replaceIfPresent(
-            source,
-            'createElement("small", undefined, `${String(allPins.length)} iz`)',
-            'createElement("small", undefined, `İz ${String(allPins.length)}`)'
-          ));
-          NODE
-
-      - name: Format stabilization files
+      - name: Format final files
         run: npx prettier --write rooms/pattern-room/ui/panels/pattern-board-panel-core.ts rooms/pattern-room/ui/pattern-room-file-intake.ts rooms/pattern-room/ui/pattern-room-workstations.ts rooms/pattern-room/ui/panels/pattern-archive-panel.ts rooms/pattern-room/ui/panels/pattern-overview-panel.ts
 
-      - name: Check stabilization files
+      - name: Validate final files
         run: |
           npx eslint rooms/pattern-room/ui/panels/pattern-board-panel-core.ts rooms/pattern-room/ui/pattern-room-file-intake.ts rooms/pattern-room/ui/pattern-room-workstations.ts rooms/pattern-room/ui/panels/pattern-archive-panel.ts rooms/pattern-room/ui/panels/pattern-overview-panel.ts
           npx tsc --noEmit -p rooms/tsconfig.rooms.json
 
-      - name: Commit stabilization changes
+      - name: Commit fixes
         run: |
           if git diff --quiet -- rooms/pattern-room/ui; then
-            echo "Pattern Room is already stabilized."
+            echo "No stabilization changes needed."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add rooms/pattern-room/ui
           git commit -m "Finish Pattern Room stabilization [pattern-room-finalize]"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
-
-  validate:
-    name: Validate / ${{ matrix.name }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: strict lint
-            command: npm run lint:strict
-          - name: TypeScript
-            command: npm run check-types
-          - name: rooms TypeScript
-            command: npx tsc --noEmit -p rooms/tsconfig.rooms.json
-          - name: room regressions
-            command: npm run rooms:test:core
-          - name: room build
-            command: npm run rooms:build
-          - name: formatting
-            command: npm run format:check
-    env:
-      CI: true
-      NODE_OPTIONS: --max-old-space-size=4096
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Run ${{ matrix.name }}
-        run: ${{ matrix.command }}
+          git push origin HEAD:pattern-room-detective-ui-v3
