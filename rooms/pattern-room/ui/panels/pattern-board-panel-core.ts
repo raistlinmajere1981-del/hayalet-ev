@@ -58,22 +58,17 @@ function resolveBoardMaterial(pin: PatternBoardPin): BoardMaterial {
   return "postit";
 }
 
+const BOARD_MATERIAL_LABELS: Readonly<Record<BoardMaterial, string>> = {
+  "evidence-slip": "KANIT FİŞİ",
+  "source-file": "KAYNAK DOSYASI",
+  "analysis-card": "ANALİZ KARTI",
+  postit: "SAHA NOTU",
+  "uncertainty-note": "AÇIK SORU",
+  placeholder: "BOŞ İZ",
+};
+
 function getBoardMaterialLabel(material: BoardMaterial): string {
-  switch (material) {
-    case "evidence-slip":
-      return "KANIT FİŞİ";
-    case "source-file":
-      return "KAYNAK DOSYASI";
-    case "analysis-card":
-      return "ANALİZ KARTI";
-    case "postit":
-      return "SAHA NOTU";
-    case "uncertainty-note":
-      return "AÇIK SORU";
-    case "placeholder":
-      return "BOŞ İZ";
-  }
-  return material;
+  return BOARD_MATERIAL_LABELS[material];
 }
 
 function createInitialPosition(index: number): BoardPosition {

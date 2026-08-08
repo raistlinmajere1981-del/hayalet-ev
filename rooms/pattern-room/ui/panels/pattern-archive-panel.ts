@@ -1,3 +1,4 @@
+// Core cleanup controls: patternRemoveLocalSource, patternResetLocalSession.
 import { enhanceArchiveFileIntake } from "../pattern-room-file-intake.js";
 import { enhancePatternRoomWorkstations } from "../pattern-room-workstations.js";
 import { createArchivePanel as createArchivePanelCore } from "./pattern-archive-panel-core.js";

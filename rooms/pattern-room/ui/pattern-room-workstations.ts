@@ -107,6 +107,19 @@ function enhanceArchiveVault(panel: HTMLElement): void {
     return;
   }
 
+  if (
+    browserHeader === undefined ||
+    toolbar === undefined ||
+    count === undefined ||
+    intake === undefined ||
+    list === undefined ||
+    empty === undefined ||
+    typeFilter === undefined ||
+    search === undefined
+  ) {
+    return;
+  }
+
   const sourceCards = Array.from(
     list.querySelectorAll<HTMLElement>("[data-pattern-archive-source]")
   );

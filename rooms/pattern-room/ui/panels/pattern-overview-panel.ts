@@ -344,7 +344,7 @@ function createBoardStation(
   header.append(
     createElement("span", "pattern-room-command-station-index", "01"),
     createElement("span", "pattern-room-object-label", text("nav.board.label")),
-    createElement("small", undefined, `${String(allPins.length)} iz`)
+    createElement("small", undefined, `İz ${String(allPins.length)}`)
   );
   const surface = createElement("span", "pattern-room-command-board-preview");
   data.boardCategories.slice(0, 4).forEach((category) => {

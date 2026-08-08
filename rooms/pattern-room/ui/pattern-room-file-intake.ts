@@ -82,6 +82,10 @@ export function enhanceArchiveFileIntake(panel: HTMLElement): void {
     return;
   }
 
+  if (title === undefined || origin === undefined || kind === undefined || text === undefined) {
+    return;
+  }
+
   const intake = document.createElement("div");
   intake.className = "pattern-room-source-workbench-example";
   intake.dataset["patternArchiveFileIntake"] = "true";
