@@ -1,5 +1,5 @@
 /* global console */
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 const ROOM_HOST_MESSAGE_CHANNEL = "room-host-message";
 const hostMessageHandlers = new Set();
@@ -96,6 +96,18 @@ ipcRenderer.on(ROOM_HOST_MESSAGE_CHANNEL, (_event, payload) => {
 contextBridge.exposeInMainWorld("electronAPI", {
   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
   openPath: (path) => ipcRenderer.invoke("open-path", path),
+  patternRoomArchiveFile: (file, payload = {}) => {
+    const sourcePath = webUtils.getPathForFile(file);
+    return ipcRenderer.invoke("pattern-room-archive-file", {
+      ...payload,
+      sourcePath,
+    });
+  },
+  patternRoomListArchiveFiles: () => ipcRenderer.invoke("pattern-room-list-archive-files"),
+  patternRoomOpenArchiveFile: (fileId) =>
+    ipcRenderer.invoke("pattern-room-open-archive-file", fileId),
+  patternRoomRevealArchiveFile: (fileId) =>
+    ipcRenderer.invoke("pattern-room-reveal-archive-file", fileId),
 });
 
 contextBridge.exposeInMainWorld("roomAPI", {

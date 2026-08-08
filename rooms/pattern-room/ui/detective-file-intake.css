@@ -15,9 +15,33 @@
     box-shadow 120ms ease-out;
 }
 
+.pattern-room-file-intake-heading,
+.pattern-room-file-archive-list {
+  grid-column: 1 / -1;
+}
+
+.pattern-room-file-intake-heading {
+  display: grid;
+  gap: var(--pattern-px-4);
+}
+
+.pattern-room-file-intake-heading h3,
+.pattern-room-file-intake-heading p,
 .pattern-room-source-workbench-example[data-pattern-archive-file-intake="true"]
   .pattern-room-source-workbench-status {
   margin: 0;
+}
+
+.pattern-room-file-intake-status[data-pattern-archive-file-status-tone="success"] {
+  color: var(--pattern-success);
+}
+
+.pattern-room-file-intake-status[data-pattern-archive-file-status-tone="error"] {
+  color: var(--pattern-danger-text);
+}
+
+.pattern-room-file-intake-status[data-pattern-archive-file-status-tone="pending"] {
+  color: var(--pattern-accent-amber-light);
 }
 
 .pattern-room-source-workbench-example[data-pattern-archive-file-drop-active="true"] {
@@ -30,13 +54,113 @@
     0 0 var(--pattern-px-18) var(--pattern-accent-green-alpha-10);
 }
 
+.pattern-room-file-archive-list {
+  display: grid;
+  gap: var(--pattern-px-10);
+  padding-top: var(--pattern-px-4);
+  border-top: var(--pattern-px-1) solid var(--pattern-border);
+}
+
+.pattern-room-file-archive-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--pattern-px-10);
+  align-items: center;
+  padding: var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-border);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-surface-control-alpha-74);
+}
+
+.pattern-room-file-archive-row[data-pattern-archive-file-linked="false"] {
+  border-style: dashed;
+}
+
+.pattern-room-file-kind,
+.pattern-room-file-attachment-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: var(--pattern-px-4) var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-accent-cyan-alpha-22);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-accent-cyan-alpha-08);
+  color: var(--pattern-accent-cyan);
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pattern-room-file-body,
+.pattern-room-file-attachment-item > div:first-child {
+  display: grid;
+  gap: var(--pattern-px-4);
+  min-width: 0;
+}
+
+.pattern-room-file-name {
+  overflow: hidden;
+  color: var(--pattern-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pattern-room-file-meta,
+.pattern-room-file-attachment-item small {
+  color: var(--pattern-text-subtle);
+}
+
+.pattern-room-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pattern-px-4);
+  justify-content: flex-end;
+}
+
+.pattern-room-file-attachment-badge {
+  border-color: var(--pattern-accent-green-alpha-22);
+  background: var(--pattern-accent-green-alpha-08);
+  color: var(--pattern-accent-green-light);
+}
+
+.pattern-room-file-attachment-detail {
+  display: grid;
+  gap: var(--pattern-px-10);
+  padding-top: var(--pattern-px-10);
+  border-top: var(--pattern-px-1) solid var(--pattern-border);
+}
+
+.pattern-room-file-attachment-detail h3 {
+  margin: 0;
+}
+
+.pattern-room-file-attachment-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--pattern-px-10);
+  align-items: center;
+  padding: var(--pattern-px-10);
+  border: var(--pattern-px-1) solid var(--pattern-border);
+  border-radius: var(--pattern-px-4);
+  background: var(--pattern-surface-inset-alpha-62);
+}
+
 @media (--pattern-bp-max-820) {
-  .pattern-room-source-workbench-example[data-pattern-archive-file-intake="true"] {
+  .pattern-room-source-workbench-example[data-pattern-archive-file-intake="true"],
+  .pattern-room-file-archive-row,
+  .pattern-room-file-attachment-item {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .pattern-room-source-workbench-example[data-pattern-archive-file-intake="true"]
-    .pattern-room-action-button {
+    .pattern-room-action-button,
+  .pattern-room-file-actions {
+    justify-self: start;
+  }
+
+  .pattern-room-file-kind {
     justify-self: start;
   }
 }

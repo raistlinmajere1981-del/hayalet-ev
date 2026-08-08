@@ -8,6 +8,6 @@ export function createArchivePanel(
 ): ReturnType<typeof createArchivePanelCore> {
   const panel = createArchivePanelCore(...args);
   enhancePatternRoomWorkstations(panel);
-  enhanceArchiveFileIntake(panel);
+  enhanceArchiveFileIntake(panel, args[0], args[1]);
   return panel;
 }
