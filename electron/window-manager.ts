@@ -180,18 +180,16 @@ function allowLocalVideoCapture(targetSession: Electron.Session): void {
 }
 
 function restoreWindowedBounds(win: BrowserWindow): void {
-  const bounds = win.getBounds();
-  const { workArea } = screen.getDisplayMatching(bounds);
-  const visibleWorkArea = resolveVisibleWorkArea(workArea);
-
   if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
     win.setResizable(true);
-    win.setBounds(visibleWorkArea);
+    win.maximize();
+    constrainWindowToVisibleWorkArea(win);
     return;
   }
 
   win.setResizable(false);
-  win.setBounds(visibleWorkArea);
+  const { workArea } = screen.getDisplayMatching(win.getBounds());
+  win.setBounds(workArea);
 }
 
 export function initTray(iconPath: string): void {
@@ -511,8 +509,15 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
   }
 
   win.once("ready-to-show", () => {
-    restoreWindowedBounds(win);
+    if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
+      restoreWindowedBounds(win);
+    }
     win.show();
+    if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
+      setTimeout(() => {
+        constrainWindowToVisibleWorkArea(win);
+      }, 0);
+    }
   });
 
   return win;

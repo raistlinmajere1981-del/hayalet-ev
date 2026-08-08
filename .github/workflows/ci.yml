@@ -1,24 +1,33 @@
 name: CI
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
+  workflow_dispatch:
+
+concurrency:
+  group: ci-CI-refs/heads/main
+  cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair-linux-window-restore:
-    name: Repair Linux window restore
+  validate:
+    name: Validate repository
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
+    env:
+      CI: true
+      NODE_OPTIONS: --max-old-space-size=4096
+
     steps:
-      - name: Checkout main
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -29,129 +38,17 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Restore tested Linux window path
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-          import re
+      - name: Check formatting
+        run: npm run format:check
 
-          path = Path("electron/window-manager.ts")
-          text = path.read_text()
+      - name: Run strict lint
+        run: npm run lint:strict
 
-          expected_restore = '''function restoreWindowedBounds(win: BrowserWindow): void {
-            if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
-              win.setResizable(true);
-              win.maximize();
-              constrainWindowToVisibleWorkArea(win);
-              return;
-            }
+      - name: Run TypeScript checks
+        run: npm run check-types
 
-            win.setResizable(false);
-            const { workArea } = screen.getDisplayMatching(win.getBounds());
-            win.setBounds(workArea);
-          }'''.replace("          ", "")
-          text, restore_count = re.subn(
-              r'function restoreWindowedBounds\(win: BrowserWindow\): void \{.*?\n\}\n\nexport function initTray',
-              expected_restore + '\n\nexport function initTray',
-              text,
-              count=1,
-              flags=re.S,
-          )
+      - name: Run room core regressions
+        run: npm run rooms:test:core
 
-          expected_ready = '''  win.once("ready-to-show", () => {
-            if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
-              restoreWindowedBounds(win);
-            }
-            win.show();
-            if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
-              setTimeout(() => {
-                constrainWindowToVisibleWorkArea(win);
-              }, 0);
-            }
-          });'''.replace("          ", "")
-          text, ready_count = re.subn(
-              r'  win\.once\("ready-to-show", \(\) => \{.*?\n  \}\);',
-              expected_ready,
-              text,
-              count=1,
-              flags=re.S,
-          )
-
-          if restore_count != 1 or ready_count != 1:
-              raise SystemExit(f"Linux window blocks not found: restore={restore_count}, ready={ready_count}")
-          path.write_text(text)
-          PY
-
-      - name: Validate Electron regression fix
-        run: |
-          npx prettier --write electron/window-manager.ts
-          npx eslint electron/window-manager.ts
-          npx tsc --noEmit -p electron/tsconfig.electron.json
-          node --import tsx --test scripts/tests/window-manager-linux-launch-regressions.test.ts
-
-      - name: Restore normal CI workflow
-        run: |
-          cat > .github/workflows/ci.yml <<'YAML'
-          name: CI
-
-          on:
-            pull_request:
-              branches:
-                - main
-            push:
-              branches:
-                - main
-            workflow_dispatch:
-
-          concurrency:
-            group: ci-${{ github.workflow }}-${{ github.ref }}
-            cancel-in-progress: true
-
-          permissions:
-            contents: read
-
-          jobs:
-            validate:
-              name: Validate repository
-              runs-on: ubuntu-latest
-              timeout-minutes: 45
-              env:
-                CI: true
-                NODE_OPTIONS: --max-old-space-size=4096
-
-              steps:
-                - name: Checkout repository
-                  uses: actions/checkout@v4
-
-                - name: Set up Node.js
-                  uses: actions/setup-node@v4
-                  with:
-                    node-version: 22
-                    cache: npm
-
-                - name: Install dependencies
-                  run: npm ci --ignore-scripts
-
-                - name: Check formatting
-                  run: npm run format:check
-
-                - name: Run strict lint
-                  run: npm run lint:strict
-
-                - name: Run TypeScript checks
-                  run: npm run check-types
-
-                - name: Run room core regressions
-                  run: npm run rooms:test:core
-
-                - name: Build workspace rooms
-                  run: npm run rooms:build
-          YAML
-
-      - name: Commit repaired main
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add electron/window-manager.ts .github/workflows/ci.yml
-          git commit -m "Fix Linux visible work-area restore path"
-          git push origin HEAD:main
+      - name: Build workspace rooms
+        run: npm run rooms:build
