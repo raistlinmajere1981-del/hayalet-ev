@@ -18,9 +18,23 @@ permissions:
 
 jobs:
   validate:
-    name: Validate repository
+    name: Validate / ${{ matrix.name }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: strict lint
+            command: npm run lint:strict
+          - name: TypeScript
+            command: npm run check-types
+          - name: room regressions
+            command: npm run rooms:test:core
+          - name: room build
+            command: npm run rooms:build
+          - name: formatting
+            command: npm run format:check
     env:
       CI: true
       NODE_OPTIONS: --max-old-space-size=4096
@@ -38,17 +52,5 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Run strict lint
-        run: npm run lint:strict
-
-      - name: Run TypeScript checks
-        run: npm run check-types
-
-      - name: Run room core regressions
-        run: npm run rooms:test:core
-
-      - name: Build workspace rooms
-        run: npm run rooms:build
-
-      - name: Check formatting
-        run: npm run format:check
+      - name: Run ${{ matrix.name }}
+        run: ${{ matrix.command }}
