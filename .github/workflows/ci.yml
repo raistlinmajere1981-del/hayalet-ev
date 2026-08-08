@@ -36,7 +36,8 @@ jobs:
 
           path = Path("electron/window-manager.ts")
           text = path.read_text()
-          current = '''function restoreWindowedBounds(win: BrowserWindow): void {
+
+          current_restore = '''function restoreWindowedBounds(win: BrowserWindow): void {
             const bounds = win.getBounds();
             const { workArea } = screen.getDisplayMatching(bounds);
             const visibleWorkArea = resolveVisibleWorkArea(workArea);
@@ -50,7 +51,7 @@ jobs:
             win.setResizable(false);
             win.setBounds(visibleWorkArea);
           }'''.replace("          ", "")
-          expected = '''function restoreWindowedBounds(win: BrowserWindow): void {
+          expected_restore = '''function restoreWindowedBounds(win: BrowserWindow): void {
             if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
               win.setResizable(true);
               win.maximize();
@@ -62,9 +63,30 @@ jobs:
             const { workArea } = screen.getDisplayMatching(win.getBounds());
             win.setBounds(workArea);
           }'''.replace("          ", "")
-          if current not in text:
-              raise SystemExit("Expected main restoreWindowedBounds implementation was not found")
-          path.write_text(text.replace(current, expected, 1))
+          if current_restore in text:
+              text = text.replace(current_restore, expected_restore, 1)
+
+          current_ready = '''  win.once("ready-to-show", () => {
+            restoreWindowedBounds(win);
+            win.show();
+          });'''.replace("          ", "")
+          expected_ready = '''  win.once("ready-to-show", () => {
+            if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
+              restoreWindowedBounds(win);
+            }
+            win.show();
+            if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
+              setTimeout(() => {
+                constrainWindowToVisibleWorkArea(win);
+              }, 0);
+            }
+          });'''.replace("          ", "")
+          if current_ready in text:
+              text = text.replace(current_ready, expected_ready, 1)
+
+          if expected_restore not in text or expected_ready not in text:
+              raise SystemExit("Expected Linux window restore contract could not be established")
+          path.write_text(text)
           PY
 
       - name: Validate Electron regression fix
