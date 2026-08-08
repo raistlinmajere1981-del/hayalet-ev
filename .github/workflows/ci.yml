@@ -29,6 +29,8 @@ jobs:
             command: npm run lint:strict
           - name: TypeScript
             command: npm run check-types
+          - name: rooms TypeScript
+            command: npx tsc --noEmit -p rooms/tsconfig.rooms.json
           - name: room regressions
             command: npm run rooms:test:core
           - name: room build
