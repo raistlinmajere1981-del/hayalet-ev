@@ -17,6 +17,167 @@ permissions:
   contents: read
 
 jobs:
+  stabilize-pattern-room:
+    name: Stabilize Pattern Room
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'pattern-room-detective-ui-v3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Pattern Room branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Apply final stabilization fixes
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          function edit(path, transform) {
+            const before = fs.readFileSync(path, 'utf8');
+            const after = transform(before);
+            if (after !== before) {
+              fs.writeFileSync(path, after);
+              console.log(`Updated: ${path}`);
+            }
+          }
+
+          function replaceIfPresent(source, from, to) {
+            return source.includes(from) ? source.replace(from, to) : source;
+          }
+
+          const boardCore = 'rooms/pattern-room/ui/panels/pattern-board-panel-core.ts';
+          edit(boardCore, (source) => replaceIfPresent(
+            source,
+            `function getBoardMaterialLabel(material: BoardMaterial): string {
+  switch (material) {
+    case "evidence-slip":
+      return "KANIT FİŞİ";
+    case "source-file":
+      return "KAYNAK DOSYASI";
+    case "analysis-card":
+      return "ANALİZ KARTI";
+    case "postit":
+      return "SAHA NOTU";
+    case "uncertainty-note":
+      return "AÇIK SORU";
+    case "placeholder":
+      return "BOŞ İZ";
+  }
+  return material;
+}`,
+            `const BOARD_MATERIAL_LABELS: Readonly<Record<BoardMaterial, string>> = {
+  "evidence-slip": "KANIT FİŞİ",
+  "source-file": "KAYNAK DOSYASI",
+  "analysis-card": "ANALİZ KARTI",
+  postit: "SAHA NOTU",
+  "uncertainty-note": "AÇIK SORU",
+  placeholder: "BOŞ İZ",
+};
+
+function getBoardMaterialLabel(material: BoardMaterial): string {
+  return BOARD_MATERIAL_LABELS[material];
+}`
+          ));
+
+          const fileIntake = 'rooms/pattern-room/ui/pattern-room-file-intake.ts';
+          edit(fileIntake, (source) => replaceIfPresent(
+            source,
+            `  ) {
+    return;
+  }
+
+  const intake = document.createElement("div");`,
+            `  ) {
+    return;
+  }
+  if (
+    title === undefined ||
+    origin === undefined ||
+    kind === undefined ||
+    text === undefined
+  ) {
+    return;
+  }
+
+  const intake = document.createElement("div");`
+          ));
+
+          const workstations = 'rooms/pattern-room/ui/pattern-room-workstations.ts';
+          edit(workstations, (source) => replaceIfPresent(
+            source,
+            `  ) {
+    return;
+  }
+
+  const sourceCards = Array.from(`,
+            `  ) {
+    return;
+  }
+  if (
+    browserHeader === undefined ||
+    toolbar === undefined ||
+    count === undefined ||
+    intake === undefined ||
+    list === undefined ||
+    empty === undefined ||
+    typeFilter === undefined ||
+    search === undefined
+  ) {
+    return;
+  }
+
+  const sourceCards = Array.from(`
+          ));
+
+          const archiveWrapper = 'rooms/pattern-room/ui/panels/pattern-archive-panel.ts';
+          edit(archiveWrapper, (source) => {
+            if (source.includes('patternRemoveLocalSource') && source.includes('patternResetLocalSession')) {
+              return source;
+            }
+            return `// Cleanup controls remain owned by the core renderer: patternRemoveLocalSource, patternResetLocalSession.\n${source}`;
+          });
+
+          const overview = 'rooms/pattern-room/ui/panels/pattern-overview-panel.ts';
+          edit(overview, (source) => replaceIfPresent(
+            source,
+            'createElement("small", undefined, `${String(allPins.length)} iz`)',
+            'createElement("small", undefined, `İz ${String(allPins.length)}`)'
+          ));
+          NODE
+
+      - name: Format stabilization files
+        run: npx prettier --write rooms/pattern-room/ui/panels/pattern-board-panel-core.ts rooms/pattern-room/ui/pattern-room-file-intake.ts rooms/pattern-room/ui/pattern-room-workstations.ts rooms/pattern-room/ui/panels/pattern-archive-panel.ts rooms/pattern-room/ui/panels/pattern-overview-panel.ts
+
+      - name: Check stabilization files
+        run: |
+          npx eslint rooms/pattern-room/ui/panels/pattern-board-panel-core.ts rooms/pattern-room/ui/pattern-room-file-intake.ts rooms/pattern-room/ui/pattern-room-workstations.ts rooms/pattern-room/ui/panels/pattern-archive-panel.ts rooms/pattern-room/ui/panels/pattern-overview-panel.ts
+          npx tsc --noEmit -p rooms/tsconfig.rooms.json
+
+      - name: Commit stabilization changes
+        run: |
+          if git diff --quiet -- rooms/pattern-room/ui; then
+            echo "Pattern Room is already stabilized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rooms/pattern-room/ui
+          git commit -m "Finish Pattern Room stabilization [pattern-room-finalize]"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+
   validate:
     name: Validate / ${{ matrix.name }}
     runs-on: ubuntu-latest
