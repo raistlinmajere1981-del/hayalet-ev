@@ -375,10 +375,10 @@ void test("laboratory mounted shell coalesces store side effects into one animat
     assert.ok(clickListener);
 
     clickListener({
-      target: new MountedActionElement("analysis-prep-group-drawer-toggle", "audio-signal"),
+      target: new MountedActionElement("workspace-controls-drawer-toggle"),
     } as unknown as Event);
     clickListener({
-      target: new MountedActionElement("analysis-prep-group-drawer-toggle", "audio-signal"),
+      target: new MountedActionElement("drawer-collapsed-toggled"),
     } as unknown as Event);
 
     assert.equal(environment.animationFrameCount(), 1);

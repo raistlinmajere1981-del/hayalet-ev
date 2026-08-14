@@ -339,8 +339,7 @@ textarea.pattern-room-inline-input {
     padding: var(--pattern-px-14) var(--pattern-px-16);
     border-top: var(--pattern-px-1) solid var(--pattern-accent-amber-alpha-14);
     border-left: 0;
-    box-shadow: 0 calc(0 - var(--pattern-px-12)) var(--pattern-px-32)
-      var(--pattern-black-alpha-24);
+    box-shadow: 0 calc(0 - var(--pattern-px-12)) var(--pattern-px-32) var(--pattern-black-alpha-24);
   }
 
   .pattern-room-workspace-inspector-header {
