@@ -51,8 +51,25 @@ function createDecodeSafeWindowRef(
 }
 
 export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVisualizerDeps) {
-  return createBaseLabWaveformTimelineVisualizer({
+  const visualizer = createBaseLabWaveformTimelineVisualizer({
     ...deps,
     windowRef: createDecodeSafeWindowRef(deps),
   });
+  let externalSyncBlocked = false;
+
+  function sync() {
+    if (externalSyncBlocked) {
+      return;
+    }
+    externalSyncBlocked = true;
+    queueMicrotask(function () {
+      externalSyncBlocked = false;
+    });
+    visualizer.sync();
+  }
+
+  return {
+    ...visualizer,
+    sync,
+  };
 }
