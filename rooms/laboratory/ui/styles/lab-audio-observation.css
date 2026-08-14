@@ -32,6 +32,16 @@
   height: 100%;
 }
 
+/* Keep the enlarged waveform at the top, but anchor the transport/selection
+ * controls to the lower edge of the observation area. The flexible space then
+ * sits between the waveform and controls instead of below the controls.
+ */
+.labx-media-workbench
+  > .labx-timeline[data-audio-observation-layout="expanded"]
+  .labx-timeline__controls {
+  margin-top: auto;
+}
+
 .labx-timeline__observation-toggle[aria-pressed="true"] {
   border-color: var(--lab-border-accent);
   background: var(--lab-accent-bg-strong);
