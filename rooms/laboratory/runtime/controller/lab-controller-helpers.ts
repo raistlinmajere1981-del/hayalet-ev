@@ -5,13 +5,6 @@ export function toStringValue(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-export function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
-}
-
 export function pad2(value: number): string {
   return String(value).padStart(2, "0");
 }
