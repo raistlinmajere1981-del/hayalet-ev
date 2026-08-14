@@ -166,7 +166,7 @@ export function syncWorkspaceSelectionWithRange(
   };
 }
 
-export function createDefaultWorkspaceSelectionForSource(options: {
+function createDefaultWorkspaceSelectionForSource(options: {
   durationMs: number;
   sourceKind: string;
 }): LabSelection | null {
