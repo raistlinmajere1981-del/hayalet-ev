@@ -1,7 +1,4 @@
-import type {
-  LabWaveformTimelineModel,
-  LabWaveformTimelineVisualizerDeps,
-} from "./lab-waveform-timeline-types.js";
+import type { LabWaveformTimelineVisualizerDeps } from "./lab-waveform-timeline-types.js";
 import { createLabWaveformTimelineVisualizer as createBaseLabWaveformTimelineVisualizer } from "./lab-waveform-timeline-visualizer.js";
 
 export type {
