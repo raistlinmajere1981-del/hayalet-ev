@@ -1,6 +1,6 @@
 import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
-import { createLabI18n } from "../../ui/lab-i18n.js";
-import { formatSourceRetryBlockReason } from "../../ui/lab-source-retry-copy.js";
+import { createLabI18n } from "../lab-context-i18n.js";
+import { formatSourceRetryBlockReason } from "../lab-source-retry-copy.js";
 import {
   getSourceMode,
   getSourceRetryBlockReason,

@@ -1,6 +1,6 @@
 import { asLabRecord, asNonEmptyString, asNumber } from "../../domain/lab-types.js";
 import type { LabFocusLayer } from "../../domain/lab-types.js";
-import { createLabI18n } from "../../ui/lab-i18n.js";
+import { createLabI18n } from "../lab-context-i18n.js";
 import { getPreviewVolume, getWorkspaceLockState } from "../lab-selectors.js";
 import type { createLabStore } from "../lab-store.js";
 import { getWorkspaceSourceSelectionResetKey } from "../lab-workspace-selection.js";
@@ -12,6 +12,7 @@ import {
   isMediaLikeElement,
 } from "./lab-timeline-controller-helpers.js";
 import type { LabTimelineMediaLikeElement } from "./lab-timeline-controller-helpers.js";
+import { createLabTimelineRangeDispatcher } from "./lab-timeline-range-dispatcher.js";
 
 type LabTimelinePlaybackControllerDeps = {
   dispatch: (event: Parameters<ReturnType<typeof createLabStore>["dispatch"]>[0]) => void;
@@ -23,6 +24,16 @@ type LabTimelinePlaybackControllerDeps = {
 export function createLabTimelinePlaybackController(deps: LabTimelinePlaybackControllerDeps) {
   const dispatch = deps.dispatch;
   const setLabFocusLayer = deps.setLabFocusLayer;
+  const timelineRangeDispatcher = createLabTimelineRangeDispatcher(
+    function (range) {
+      dispatch({
+        type: "workspace-timeline-updated",
+        startMs: range.startMs,
+        endMs: range.endMs,
+      });
+    },
+    deps.documentRef.defaultView ?? globalThis
+  );
 
   type RangeLikeElement = {
     value: string;
@@ -658,6 +669,7 @@ export function createLabTimelinePlaybackController(deps: LabTimelinePlaybackCon
   function handleTimelineMouseMove(event: MouseEvent) {
     if (timelineDragMode === "none" || !timelineDragTrack) return;
     if (isWorkspaceMutationLocked("timeline")) {
+      timelineRangeDispatcher.cancel();
       timelineDragMode = "none";
       timelineDragTrack = null;
       timelineDragTrackGeometry = null;
@@ -680,15 +692,15 @@ export function createLabTimelinePlaybackController(deps: LabTimelinePlaybackCon
       const startMs = Math.min(timelineDragAnchorMs, ms);
       const endMs = Math.max(timelineDragAnchorMs, ms);
       timelineDragFinalMs = ms;
-      dispatch({ type: "workspace-timeline-updated", startMs, endMs });
+      timelineRangeDispatcher.queue(startMs, endMs);
     } else if (timelineDragMode === "start") {
       const currentEnd = state.ui.workspace.timelineEndMs ?? timelineDragDurationMs;
       const nextStart = Math.max(0, Math.min(ms, currentEnd));
-      dispatch({ type: "workspace-timeline-updated", startMs: nextStart, endMs: currentEnd });
+      timelineRangeDispatcher.queue(nextStart, currentEnd);
     } else if (timelineDragMode === "end") {
       const currentStart = state.ui.workspace.timelineStartMs ?? 0;
       const nextEnd = Math.max(currentStart, Math.min(ms, timelineDragDurationMs));
-      dispatch({ type: "workspace-timeline-updated", startMs: currentStart, endMs: nextEnd });
+      timelineRangeDispatcher.queue(currentStart, nextEnd);
     } else if (timelineDragMode === "body") {
       const rangeWidth = timelineDragBodyOffsetEnd - timelineDragBodyOffsetStart;
       const newStart = Math.max(
@@ -696,18 +708,20 @@ export function createLabTimelinePlaybackController(deps: LabTimelinePlaybackCon
         Math.min(ms - timelineDragBodyPointerOffsetMs, timelineDragDurationMs - rangeWidth)
       );
       const newEnd = newStart + rangeWidth;
-      dispatch({ type: "workspace-timeline-updated", startMs: newStart, endMs: newEnd });
+      timelineRangeDispatcher.queue(newStart, newEnd);
     }
   }
 
   function handleTimelineMouseUp() {
     if (timelineDragMode === "none") return;
     if (isWorkspaceMutationLocked("timeline")) {
+      timelineRangeDispatcher.cancel();
       timelineDragMode = "none";
       timelineDragTrack = null;
       timelineDragTrackGeometry = null;
       return;
     }
+    timelineRangeDispatcher.flush();
     if (timelineDragMode === "pending-seek") {
       if (timelinePendingShiftKey === true) {
         extendTimelineSelectionToMs(timelineDragAnchorMs);
