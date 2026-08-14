@@ -24,16 +24,13 @@ type LabTimelinePlaybackControllerDeps = {
 export function createLabTimelinePlaybackController(deps: LabTimelinePlaybackControllerDeps) {
   const dispatch = deps.dispatch;
   const setLabFocusLayer = deps.setLabFocusLayer;
-  const timelineRangeDispatcher = createLabTimelineRangeDispatcher(
-    function (range) {
-      dispatch({
-        type: "workspace-timeline-updated",
-        startMs: range.startMs,
-        endMs: range.endMs,
-      });
-    },
-    deps.documentRef.defaultView ?? globalThis
-  );
+  const timelineRangeDispatcher = createLabTimelineRangeDispatcher(function (range) {
+    dispatch({
+      type: "workspace-timeline-updated",
+      startMs: range.startMs,
+      endMs: range.endMs,
+    });
+  }, deps.documentRef.defaultView ?? globalThis);
 
   type RangeLikeElement = {
     value: string;

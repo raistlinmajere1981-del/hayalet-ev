@@ -6,6 +6,12 @@ void test("laboratory timeline range dispatcher coalesces drag updates per anima
   const ranges: Array<{ startMs: number; endMs: number }> = [];
   let scheduledCallback: ((timestamp: number) => void) | null = null;
   let frameRequests = 0;
+
+  function runScheduledCallback() {
+    const callback = scheduledCallback;
+    assert.ok(callback);
+    callback(0);
+  }
   const dispatcher = createLabTimelineRangeDispatcher(
     function (range) {
       ranges.push(range);
@@ -24,8 +30,7 @@ void test("laboratory timeline range dispatcher coalesces drag updates per anima
 
   assert.equal(frameRequests, 1);
   assert.deepEqual(ranges, []);
-  assert.ok(scheduledCallback);
-  scheduledCallback(0);
+  runScheduledCallback();
   assert.deepEqual(ranges, [{ startMs: 30, endMs: 40 }]);
 
   dispatcher.queue(50, 60);
@@ -37,8 +42,7 @@ void test("laboratory timeline range dispatcher coalesces drag updates per anima
 
   dispatcher.queue(70, 80);
   dispatcher.cancel();
-  assert.ok(scheduledCallback);
-  scheduledCallback(0);
+  runScheduledCallback();
   assert.deepEqual(ranges, [
     { startMs: 30, endMs: 40 },
     { startMs: 50, endMs: 60 },
