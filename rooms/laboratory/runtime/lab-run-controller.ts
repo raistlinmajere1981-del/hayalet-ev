@@ -1,9 +1,4 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-  CAPABILITY_FAMILIES,
-  escapeHtml,
-} from "../domain/lab-types.js";
+import { asLabRecord, asNonEmptyString, CAPABILITY_FAMILIES } from "../domain/lab-types.js";
 import type {
   CapabilityFamilyId,
   LabAsset,
@@ -15,7 +10,6 @@ import type {
   LabStoreState,
   LabStoreEvent,
 } from "../domain/lab-types.js";
-import { createLabWaveformTimelineVisualizer } from "../ui/lab-waveform-timeline.js";
 import {
   getAnalysisActionBlockReason,
   getCurrentRun,
@@ -23,7 +17,6 @@ import {
   getReadySelectedAnalysisCapabilityIds,
   getSourceReady,
   getToolLifecycleStage,
-  getWaveformTimelineModel,
   getWorkbench,
   hasReportPayload,
   isAnyHeavyWorkActive,
@@ -52,7 +45,6 @@ import { createLabWorkspaceSettingsController } from "./controller/lab-workspace
 import { createLabSourceActionController } from "./controller/lab-source-action-controller.js";
 import { createLabWorkspaceOperationController } from "./controller/lab-workspace-operation-controller.js";
 import {
-  formatTimelineTimeMs,
   isTimelineAction,
   normalizeWorkspaceControlTab,
 } from "./controller/lab-timeline-controller-helpers.js";
@@ -73,11 +65,44 @@ type ControllerWindow = Window & {
 
 type ReportOverlayExportFormat = "json" | "pdf";
 
+type LabAnalysisScopeOverlayModel = {
+  endMs: number | null;
+  hasRoi: boolean;
+  hasTimeRange: boolean;
+  startMs: number | null;
+};
+
+type LabAnalysisScopeOverlayPort = {
+  hide: () => void;
+  isOpen: () => boolean;
+  show: (model: LabAnalysisScopeOverlayModel) => boolean;
+};
+
+type LabWorkspaceAudioVisualizerPort = {
+  sync: () => void;
+};
+
 type LabRunControllerDeps = {
+  analysisScopeOverlay?: LabAnalysisScopeOverlayPort;
   documentRef: Document;
   eventBus: ReturnType<typeof createLabEventBus>;
   store: ReturnType<typeof createLabStore>;
   windowRef: ControllerWindow;
+  workspaceAudioVisualizer?: LabWorkspaceAudioVisualizerPort;
+};
+
+const NOOP_ANALYSIS_SCOPE_OVERLAY: LabAnalysisScopeOverlayPort = {
+  hide() {},
+  isOpen() {
+    return false;
+  },
+  show() {
+    return false;
+  },
+};
+
+const NOOP_WORKSPACE_AUDIO_VISUALIZER: LabWorkspaceAudioVisualizerPort = {
+  sync() {},
 };
 
 export function createLabRunController(deps: LabRunControllerDeps) {
@@ -86,13 +111,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   type LabControllerState = ReturnType<typeof deps.store.getState>;
 
   let attached = false;
-  let analysisScopeOverlay: HTMLElement | null = null;
-  const getWorkspaceWaveformTimelineModel = () => getWaveformTimelineModel(deps.store.getState());
-  const workspaceAudioVisualizer = createLabWaveformTimelineVisualizer({
-    documentRef: deps.documentRef,
-    getTimelineModel: getWorkspaceWaveformTimelineModel,
-    windowRef: deps.windowRef,
-  });
+  const analysisScopeOverlay = deps.analysisScopeOverlay ?? NOOP_ANALYSIS_SCOPE_OVERLAY;
+  const workspaceAudioVisualizer =
+    deps.workspaceAudioVisualizer ?? NOOP_WORKSPACE_AUDIO_VISUALIZER;
 
   function dispatch(event: Parameters<ReturnType<typeof createLabStore>["dispatch"]>[0]) {
     deps.eventBus.emit(event);
@@ -692,67 +713,17 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   }
 
   function removeAnalysisScopeOverlay() {
-    analysisScopeOverlay?.remove();
-    analysisScopeOverlay = null;
-  }
-
-  function formatAnalysisSelectionSummary(state: LabControllerState) {
-    const selection = getWorkspaceAnalysisSelection(state);
-    const details: string[] = [];
-    if (selection.hasTimeRange) {
-      details.push(
-        `${formatTimelineTimeMs(selection.startMs ?? 0)} - ${formatTimelineTimeMs(
-          selection.endMs ?? 0
-        )}`
-      );
-    }
-    if (selection.hasRoi) {
-      details.push("ROI");
-    }
-    return details.length > 0 ? details.join(" + ") : "Seçili kapsam";
+    analysisScopeOverlay.hide();
   }
 
   function showAnalysisScopeOverlay(state: LabControllerState) {
-    const body = deps.documentRef.body;
-    if (!body || typeof body.appendChild !== "function") {
-      return false;
-    }
-    removeAnalysisScopeOverlay();
-    const overlay = deps.documentRef.createElement("div");
-    overlay.className = "labx-analysis-scope-overlay";
-    overlay.setAttribute("data-lab-analysis-scope-overlay", "true");
-    overlay.setAttribute("data-open", "true");
-    overlay.innerHTML = `
-      <button class="labx-analysis-scope-overlay__backdrop" type="button" data-lab-action="analysis-scope-cancel" aria-label="Kapsam onayini kapat"></button>
-      <section class="labx-analysis-scope-confirm" role="dialog" aria-modal="true" aria-label="Analiz kapsamı onayı">
-        <div class="labx-analysis-scope-confirm__head">
-          <span>Analiz kapsamı</span>
-          <h3>Seçili alanla mı başlayalım?</h3>
-          <p>${escapeHtml(formatAnalysisSelectionSummary(state))} için ayrı bir kapsam seçili.</p>
-        </div>
-        <div class="labx-analysis-scope-confirm__body">
-          <button class="labx-analysis-scope-confirm__choice" type="button" data-lab-action="analysis-scope-choice" data-lab-value="selected">
-            <strong>Seçili alan</strong>
-            <span>Zaman aralığı veya ROI ile sınırlı analiz başlat.</span>
-          </button>
-          <button class="labx-analysis-scope-confirm__choice" type="button" data-lab-action="analysis-scope-choice" data-lab-value="full">
-            <strong>Tamamı</strong>
-            <span>Seçimi yok sayıp tüm kaynak üzerinde çalıştır.</span>
-          </button>
-        </div>
-        <div class="labx-analysis-scope-confirm__actions">
-          <button class="labx-inline-action" type="button" data-lab-action="analysis-scope-cancel">İptal</button>
-        </div>
-      </section>
-    `;
-    body.appendChild(overlay);
-    analysisScopeOverlay = overlay;
-    overlay
-      .querySelector<HTMLElement>(
-        "[data-lab-action='analysis-scope-choice'][data-lab-value='selected']"
-      )
-      ?.focus();
-    return true;
+    const selection = getWorkspaceAnalysisSelection(state);
+    return analysisScopeOverlay.show({
+      endMs: selection.endMs,
+      hasRoi: selection.hasRoi,
+      hasTimeRange: selection.hasTimeRange,
+      startMs: selection.startMs,
+    });
   }
 
   function cancelAnalysisScopeOverlay() {
@@ -1112,7 +1083,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   }
 
   function handleKeyDown(event: KeyboardEvent) {
-    if (event.key === "Escape" && analysisScopeOverlay !== null) {
+    if (event.key === "Escape" && analysisScopeOverlay.isOpen()) {
       event.preventDefault();
       cancelAnalysisScopeOverlay();
       return;

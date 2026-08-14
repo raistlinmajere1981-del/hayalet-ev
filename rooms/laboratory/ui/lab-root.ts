@@ -10,10 +10,12 @@ import { renderLabDrawer } from "./lab-drawer.js";
 import { renderLabProcessStrip } from "./lab-process-strip.js";
 import { renderLabTopBar } from "./lab-top-bar.js";
 import { renderLabSourcePanel } from "./lab-source-panel.js";
+import { createLabAnalysisScopeOverlay } from "./lab-analysis-scope-overlay.js";
 import { bindLabPreviewInspectionInteractions } from "./lab-preview-inspection-binder.js";
 import { createLabPreviewInspectionController } from "./lab-preview-inspection-controller.js";
 import { bindLabSelectionRoiInteractions } from "./lab-selection-roi-binder.js";
 import { bindLabSelectionSuggestionClicks } from "./lab-selection-suggestion-binder.js";
+import { createLabWaveformTimelineVisualizer } from "./lab-waveform-timeline.js";
 import { renderWorkspaceSurface } from "./workspace-surface.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
@@ -173,11 +175,21 @@ export function startLaboratoryLabRoot() {
       return getActiveSuggestionPreviewId(store.getState());
     },
   });
+  const analysisScopeOverlay = createLabAnalysisScopeOverlay({ documentRef });
+  const workspaceAudioVisualizer = createLabWaveformTimelineVisualizer({
+    documentRef,
+    getTimelineModel() {
+      return getWaveformTimelineModel(store.getState());
+    },
+    windowRef,
+  });
   const controller = createLabRunController({
+    analysisScopeOverlay,
     documentRef,
     eventBus,
     store,
-    windowRef: window,
+    windowRef,
+    workspaceAudioVisualizer,
   });
   const hostBridge = createLabHostBridge({
     emit: eventBus.emit,
@@ -411,6 +423,7 @@ export function startLaboratoryLabRoot() {
   function handleBeforeUnload() {
     flushStoreSideEffects();
     stopProcessStripHeartbeat();
+    workspaceAudioVisualizer.dispose();
   }
 
   if (typeof windowRef.addEventListener === "function") {

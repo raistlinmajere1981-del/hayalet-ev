@@ -13,7 +13,7 @@ function listTypeScriptFiles(directory: string): string[] {
   });
 }
 
-void test("laboratory runtime keeps only the run controller as a temporary UI dependency", () => {
+void test("laboratory runtime has no direct UI dependencies", () => {
   const repoRoot = process.cwd();
   const laboratoryRoot = resolve(repoRoot, "rooms/laboratory");
   const runtimeRoot = resolve(laboratoryRoot, "runtime");
@@ -36,5 +36,5 @@ void test("laboratory runtime keeps only the run controller as a temporary UI de
     }
   }
 
-  assert.deepEqual(offenders.sort(), ["rooms/laboratory/runtime/lab-run-controller.ts"]);
+  assert.deepEqual(offenders.sort(), []);
 });

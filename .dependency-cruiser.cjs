@@ -71,16 +71,10 @@ module.exports = {
     },
     {
       name: "laboratory-runtime-ui-boundary",
-      comment:
-        "Do not add new runtime-to-UI dependencies. The listed coordinators are temporary migration exceptions.",
+      comment: "Laboratory runtime must not import UI implementation modules.",
       severity: "error",
       from: {
         path: "^rooms/laboratory/runtime/",
-        pathNot: [
-          "^rooms/laboratory/runtime/lab-run-controller\\.ts$",
-          "^rooms/laboratory/runtime/controller/lab-source-action-controller\\.ts$",
-          "^rooms/laboratory/runtime/controller/lab-timeline-playback-controller\\.ts$",
-        ],
       },
       to: {
         path: "^rooms/laboratory/ui/",
