@@ -1,3 +1,4 @@
+import { createAdvancedAudioForensicsRunners } from "./process-advanced-forensics-runners.js";
 import { createAudioAnalysisLocalProcessRunners } from "./process-local-runners.js";
 import { createAudioAnalysisModelProcessRunners } from "./process-model-runners.js";
 import { createAudioAnalysisProcessRunnerSupport } from "./process-runner-support.js";
@@ -13,16 +14,14 @@ type AudioAnalysisProcessRunnerSupportRuntime = ReturnType<
 >;
 type AudioAnalysisLocalProcessRuntime = ReturnType<typeof createAudioAnalysisLocalProcessRunners>;
 type AudioAnalysisModelProcessRuntime = ReturnType<typeof createAudioAnalysisModelProcessRunners>;
+type AudioAnalysisModuleRunner =
+  | AudioAnalysisLocalProcessRuntime[keyof AudioAnalysisLocalProcessRuntime]
+  | AudioAnalysisModelProcessRuntime[keyof AudioAnalysisModelProcessRuntime];
 
 type AudioAnalysisProcessRuntime = {
   generateProcessSpectrogram: AudioAnalysisProcessRunnerSupportRuntime["generateProcessSpectrogram"];
   getModuleProcessDir: AudioAnalysisProcessRunnerSupportRuntime["getModuleProcessDir"];
-  getModuleRunner: (
-    moduleId: string
-  ) =>
-    | AudioAnalysisLocalProcessRuntime[keyof AudioAnalysisLocalProcessRuntime]
-    | AudioAnalysisModelProcessRuntime[keyof AudioAnalysisModelProcessRuntime]
-    | null;
+  getModuleRunner: (moduleId: string) => AudioAnalysisModuleRunner | null;
 };
 
 export function createAudioAnalysisProcessRuntime(
@@ -54,19 +53,27 @@ export function createAudioAnalysisProcessRuntime(
     ...deps,
     ...processRunnerSupport,
   });
+  const advancedAudioForensics = createAdvancedAudioForensicsRunners({
+    ...deps,
+    ...processRunnerSupport,
+  });
+  const runAdvancedSpectralArtifactsAudioAnalyzer =
+    advancedAudioForensics.augmentSpectralArtifacts(runSpectralArtifactsAudioAnalyzer);
+  const runAdvancedFrequencyShiftReversalAudioAnalyzer =
+    advancedAudioForensics.augmentFrequencyShiftReversal(runFrequencyShiftReversalAudioAnalyzer);
+  const runAdvancedSpectrogramGuidedRecoveryAudioAnalyzer =
+    advancedAudioForensics.augmentSpectrogramGuidedRecovery(
+      runSpectrogramGuidedRecoveryAudioAnalyzer
+    );
 
   function getModuleRunner(moduleId: string) {
-    const runners: Record<
-      string,
-      | AudioAnalysisLocalProcessRuntime[keyof AudioAnalysisLocalProcessRuntime]
-      | AudioAnalysisModelProcessRuntime[keyof AudioAnalysisModelProcessRuntime]
-    > = {
+    const runners: Record<string, AudioAnalysisModuleRunner> = {
       "signal-health": runSignalHealthAudioAnalyzer,
       "signal-recovery": runSignalRecoveryAudioAnalyzer,
-      "spectral-artifacts": runSpectralArtifactsAudioAnalyzer,
-      "frequency-shift-reversal": runFrequencyShiftReversalAudioAnalyzer,
+      "spectral-artifacts": runAdvancedSpectralArtifactsAudioAnalyzer,
+      "frequency-shift-reversal": runAdvancedFrequencyShiftReversalAudioAnalyzer,
       "band-pass-exploration": runBandPassExplorationAudioAnalyzer,
-      "spectrogram-guided-recovery": runSpectrogramGuidedRecoveryAudioAnalyzer,
+      "spectrogram-guided-recovery": runAdvancedSpectrogramGuidedRecoveryAudioAnalyzer,
       "hidden-pattern-extraction": runHiddenPatternExtractionAudioAnalyzer,
       "phase-recovery-experiment": runPhaseRecoveryExperimentAudioAnalyzer,
       transcription: runTranscriptionAudioAnalyzer,
@@ -83,6 +90,6 @@ export function createAudioAnalysisProcessRuntime(
   return {
     generateProcessSpectrogram: processRunnerSupport.generateProcessSpectrogram,
     getModuleProcessDir: processRunnerSupport.getModuleProcessDir,
-    getModuleRunner: getModuleRunner,
+    getModuleRunner,
   };
 }
