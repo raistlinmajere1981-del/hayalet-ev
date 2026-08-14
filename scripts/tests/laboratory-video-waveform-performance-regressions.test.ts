@@ -59,3 +59,31 @@ void test("video waveform visualization never fetches the raw video container fo
 
   visualizer.dispose();
 });
+
+void test("workspace waveform visualizer coalesces repeated external sync calls in one task", () => {
+  FakeVisualizerAudioContext.constructed = [];
+  const videoPreview = new FakeMediaElement();
+  videoPreview.currentSrc = "file:///tmp/bootstrap-video.mp4";
+  videoPreview.src = videoPreview.currentSrc;
+  const canvas = new FakeCanvasElement();
+  const documentRef = new FakeVisualizerDocument(videoPreview, null, canvas);
+  const windowRef = new FakeVisualizerWindow();
+  const visualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getTimelineModel: createVideoTimelineModel,
+    windowRef: windowRef as unknown as Window,
+  });
+
+  visualizer.sync();
+  const clearRectCallsAfterFirstSync = canvas.context.clearRectCalls;
+  const audioContextCountAfterFirstSync = FakeVisualizerAudioContext.constructed.length;
+
+  for (let index = 0; index < 40; index += 1) {
+    visualizer.sync();
+  }
+
+  assert.equal(canvas.context.clearRectCalls, clearRectCallsAfterFirstSync);
+  assert.equal(FakeVisualizerAudioContext.constructed.length, audioContextCountAfterFirstSync);
+
+  visualizer.dispose();
+});
