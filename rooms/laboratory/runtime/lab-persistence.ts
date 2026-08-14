@@ -8,6 +8,9 @@ const LAB_LEGACY_PERSISTENCE_KEYS = [
 
 type PersistenceWindow = Window & typeof globalThis;
 
+let lastPersistedStorage: Storage | null = null;
+let lastPersistedSerializedValue: string | null = null;
+
 function getStorage(windowRef: PersistenceWindow | undefined) {
   try {
     return windowRef?.localStorage ?? null;
@@ -33,9 +36,12 @@ export function loadLabPersistedState(windowRef: PersistenceWindow | undefined) 
         schemaVersion?: unknown;
       };
       const migrated = migratePersistedState(parsed);
+      const serialized = JSON.stringify(migrated);
       if (key !== LAB_PERSISTENCE_KEY) {
-        storage.setItem(LAB_PERSISTENCE_KEY, JSON.stringify(migrated));
+        storage.setItem(LAB_PERSISTENCE_KEY, serialized);
       }
+      lastPersistedStorage = storage;
+      lastPersistedSerializedValue = serialized;
       return migrated;
     }
     return null;
@@ -54,7 +60,17 @@ export function saveLabPersistedState(
   }
 
   try {
-    storage.setItem(LAB_PERSISTENCE_KEY, JSON.stringify(state));
+    const persistedForBoot = sanitizeBootPersistedState({
+      ...state,
+      schemaVersion: 4,
+    });
+    const serialized = JSON.stringify(persistedForBoot);
+    if (lastPersistedStorage === storage && lastPersistedSerializedValue === serialized) {
+      return;
+    }
+    storage.setItem(LAB_PERSISTENCE_KEY, serialized);
+    lastPersistedStorage = storage;
+    lastPersistedSerializedValue = serialized;
   } catch {
     // NOTE: Persistence is best-effort only.
   }

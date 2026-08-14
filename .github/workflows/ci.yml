@@ -47,6 +47,9 @@ jobs:
       - name: Run TypeScript checks
         run: npm run check-types
 
+      - name: Run Laboratory hardening gate
+        run: node rooms/laboratory/scripts/laboratory-check.mjs --ci
+
       - name: Run room core regressions
         run: npm run rooms:test:core
 

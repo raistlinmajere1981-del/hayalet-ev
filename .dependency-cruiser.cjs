@@ -58,6 +58,58 @@ module.exports = {
       to: {},
     },
     {
+      name: "laboratory-domain-boundary",
+      comment:
+        "Laboratory domain code must stay independent from host, feature, browser runtime, services, and UI implementation layers.",
+      severity: "error",
+      from: {
+        path: "^rooms/laboratory/domain/",
+      },
+      to: {
+        path: "^rooms/laboratory/(features|host|runtime|services|ui)/",
+      },
+    },
+    {
+      name: "laboratory-runtime-ui-boundary",
+      comment:
+        "Do not add new runtime-to-UI dependencies. The listed coordinators are temporary migration exceptions.",
+      severity: "error",
+      from: {
+        path: "^rooms/laboratory/runtime/",
+        pathNot: [
+          "^rooms/laboratory/runtime/lab-run-controller\\.ts$",
+          "^rooms/laboratory/runtime/controller/lab-source-action-controller\\.ts$",
+          "^rooms/laboratory/runtime/controller/lab-timeline-playback-controller\\.ts$",
+        ],
+      },
+      to: {
+        path: "^rooms/laboratory/ui/",
+      },
+    },
+    {
+      name: "laboratory-ui-host-boundary",
+      comment:
+        "Laboratory browser UI must communicate through runtime bridges instead of importing host implementations.",
+      severity: "error",
+      from: {
+        path: "^rooms/laboratory/ui/",
+      },
+      to: {
+        path: "^rooms/laboratory/(host/|features/[^/]+/host/)",
+      },
+    },
+    {
+      name: "laboratory-feature-host-browser-boundary",
+      comment: "Feature host implementations must not depend on browser runtime or UI modules.",
+      severity: "error",
+      from: {
+        path: "^rooms/laboratory/features/[^/]+/host/",
+      },
+      to: {
+        path: "^rooms/laboratory/(runtime|ui)/",
+      },
+    },
+    {
       name: "no-deprecated-core",
       comment: "These core modules are deprecated - find an alternative.",
       severity: "warn",
