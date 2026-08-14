@@ -1,6 +1,14 @@
 import type { LabAudioFocusSettings } from "../domain/lab-types.js";
+import {
+  DEFAULT_LAB_AUDIO_OBSERVATION_LAYOUT,
+  normalizeLabAudioObservationLayout,
+} from "../domain/lab-audio-observation.js";
+import type { LabAudioObservationLayout } from "../domain/lab-audio-observation.js";
 
 type AudioFocusEqBand = LabAudioFocusSettings["eqBands"][number];
+type AudioFocusWithObservationLayout = LabAudioFocusSettings & {
+  observationLayout: LabAudioObservationLayout;
+};
 
 const DEFAULT_AUDIO_FOCUS_EQ_BANDS: AudioFocusEqBand[] = [
   { frequency: 60, gain: 0, Q: 1.0, type: "lowshelf" },
@@ -10,7 +18,7 @@ const DEFAULT_AUDIO_FOCUS_EQ_BANDS: AudioFocusEqBand[] = [
   { frequency: 12000, gain: 0, Q: 1.0, type: "highshelf" },
 ];
 
-export const DEFAULT_AUDIO_FOCUS_SETTINGS: LabAudioFocusSettings = {
+export const DEFAULT_AUDIO_FOCUS_SETTINGS: AudioFocusWithObservationLayout = {
   gain: 1,
   filterType: "none",
   filterFrequency: 1000,
@@ -18,6 +26,7 @@ export const DEFAULT_AUDIO_FOCUS_SETTINGS: LabAudioFocusSettings = {
   playbackRate: 1,
   preservePitch: true,
   visualizationMode: "waveform",
+  observationLayout: DEFAULT_LAB_AUDIO_OBSERVATION_LAYOUT,
   eqBands: DEFAULT_AUDIO_FOCUS_EQ_BANDS,
 };
 
@@ -58,7 +67,8 @@ export function normalizeAudioFocusSettings(
   fallback: LabAudioFocusSettings = DEFAULT_AUDIO_FOCUS_SETTINGS
 ): LabAudioFocusSettings {
   const source = { ...fallback, ...(audioFocus || {}) };
-  return {
+  const sourceRecord = source as unknown as Record<string, unknown>;
+  const normalized: AudioFocusWithObservationLayout = {
     gain: clampNumber(source.gain, 0, 3, fallback.gain),
     filterType:
       source.filterType === "lowpass" ||
@@ -71,6 +81,7 @@ export function normalizeAudioFocusSettings(
     playbackRate: clampNumber(source.playbackRate, 0.25, 2, fallback.playbackRate),
     preservePitch: source.preservePitch !== false,
     visualizationMode: source.visualizationMode === "spectrum" ? "spectrum" : "waveform",
+    observationLayout: normalizeLabAudioObservationLayout(sourceRecord["observationLayout"]),
     eqBands: DEFAULT_AUDIO_FOCUS_EQ_BANDS.map(function (fallbackBand, index) {
       const candidateBand = Array.isArray(audioFocus?.eqBands)
         ? audioFocus.eqBands[index]
@@ -78,6 +89,7 @@ export function normalizeAudioFocusSettings(
       return normalizeEqBand(candidateBand, fallbackBand);
     }),
   };
+  return normalized;
 }
 
 export function normalizeAudioFocusPatch(
