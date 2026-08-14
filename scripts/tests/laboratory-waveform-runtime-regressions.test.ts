@@ -536,6 +536,14 @@ void test("laboratory run controller renders decoded waveform peaks before play 
   const store = createLabStore();
   const windowRef = new FakeVisualizerWindow();
 
+  store.dispatch({
+    type: "source-config-patched",
+    patch: {
+      kind: "audio",
+      mode: "local",
+      storedPath: "/tmp/controller-waveform-source.wav",
+    },
+  });
   eventBus.subscribe(function (event) {
     store.dispatch(event);
   });
