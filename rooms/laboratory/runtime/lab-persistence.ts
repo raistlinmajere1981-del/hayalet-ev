@@ -10,6 +10,10 @@ type PersistenceWindow = Window & typeof globalThis;
 
 let lastPersistedStorage: Storage | null = null;
 let lastPersistedSerializedValue: string | null = null;
+let pendingPersistWindow: PersistenceWindow | null = null;
+let pendingPersistState: LabPersistedState | null = null;
+let pendingPersistIdleCallback: number | null = null;
+let persistenceUnloadWindow: PersistenceWindow | null = null;
 
 function getStorage(windowRef: PersistenceWindow | undefined) {
   try {
@@ -17,6 +21,63 @@ function getStorage(windowRef: PersistenceWindow | undefined) {
   } catch {
     return null;
   }
+}
+
+function persistLabStateNow(windowRef: PersistenceWindow | undefined, state: LabPersistedState) {
+  const storage = getStorage(windowRef);
+  if (!storage) {
+    return;
+  }
+
+  try {
+    const persistedForBoot = sanitizeBootPersistedState({
+      ...state,
+      schemaVersion: 4,
+    });
+    const serialized = JSON.stringify(persistedForBoot);
+    if (lastPersistedStorage === storage && lastPersistedSerializedValue === serialized) {
+      return;
+    }
+    storage.setItem(LAB_PERSISTENCE_KEY, serialized);
+    lastPersistedStorage = storage;
+    lastPersistedSerializedValue = serialized;
+  } catch {
+    // NOTE: Persistence is best-effort only.
+  }
+}
+
+function clearPendingIdleCallback(windowRef: PersistenceWindow | null) {
+  if (pendingPersistIdleCallback === null) {
+    return;
+  }
+  if (windowRef && typeof windowRef.cancelIdleCallback === "function") {
+    windowRef.cancelIdleCallback(pendingPersistIdleCallback);
+  }
+  pendingPersistIdleCallback = null;
+}
+
+function flushPendingPersistence() {
+  const windowRef = pendingPersistWindow;
+  const state = pendingPersistState;
+  clearPendingIdleCallback(windowRef);
+  pendingPersistWindow = null;
+  pendingPersistState = null;
+  if (windowRef === null || state === null) {
+    return;
+  }
+  persistLabStateNow(windowRef, state);
+}
+
+function bindPersistenceUnloadFlush(windowRef: PersistenceWindow) {
+  if (persistenceUnloadWindow === windowRef || typeof windowRef.addEventListener !== "function") {
+    return;
+  }
+  persistenceUnloadWindow = windowRef;
+  windowRef.addEventListener("beforeunload", flushPendingPersistence);
+}
+
+function canDeferPersistence(windowRef: PersistenceWindow | undefined): windowRef is PersistenceWindow {
+  return Boolean(windowRef && typeof windowRef.requestIdleCallback === "function");
 }
 
 export function loadLabPersistedState(windowRef: PersistenceWindow | undefined) {
@@ -54,26 +115,27 @@ export function saveLabPersistedState(
   windowRef: PersistenceWindow | undefined,
   state: LabPersistedState
 ) {
-  const storage = getStorage(windowRef);
-  if (!storage) {
+  if (!canDeferPersistence(windowRef)) {
+    persistLabStateNow(windowRef, state);
     return;
   }
 
-  try {
-    const persistedForBoot = sanitizeBootPersistedState({
-      ...state,
-      schemaVersion: 4,
-    });
-    const serialized = JSON.stringify(persistedForBoot);
-    if (lastPersistedStorage === storage && lastPersistedSerializedValue === serialized) {
-      return;
-    }
-    storage.setItem(LAB_PERSISTENCE_KEY, serialized);
-    lastPersistedStorage = storage;
-    lastPersistedSerializedValue = serialized;
-  } catch {
-    // NOTE: Persistence is best-effort only.
+  if (pendingPersistWindow !== null && pendingPersistWindow !== windowRef) {
+    flushPendingPersistence();
   }
+  pendingPersistWindow = windowRef;
+  pendingPersistState = state;
+  bindPersistenceUnloadFlush(windowRef);
+  if (pendingPersistIdleCallback !== null) {
+    return;
+  }
+  pendingPersistIdleCallback = windowRef.requestIdleCallback(
+    function () {
+      pendingPersistIdleCallback = null;
+      flushPendingPersistence();
+    },
+    { timeout: 1200 }
+  );
 }
 
 function migratePersistedState(
