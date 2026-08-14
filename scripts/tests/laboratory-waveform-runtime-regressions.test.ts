@@ -490,11 +490,19 @@ void test("laboratory run controller renders loadable audio visualization artifa
     },
   });
 
+  const workspaceAudioVisualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getTimelineModel() {
+      return getWaveformTimelineModel(store.getState());
+    },
+    windowRef: windowRef as unknown as Window,
+  });
   const controller = createLabRunController({
     documentRef: documentRef as unknown as Document,
     eventBus,
     store,
     windowRef: windowRef as unknown as Window,
+    workspaceAudioVisualizer,
   });
 
   controller.attach();
@@ -532,11 +540,19 @@ void test("laboratory run controller renders decoded waveform peaks before play 
     store.dispatch(event);
   });
 
+  const workspaceAudioVisualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getTimelineModel() {
+      return getWaveformTimelineModel(store.getState());
+    },
+    windowRef: windowRef as unknown as Window,
+  });
   const controller = createLabRunController({
     documentRef: documentRef as unknown as Document,
     eventBus,
     store,
     windowRef: windowRef as unknown as Window,
+    workspaceAudioVisualizer,
   });
 
   controller.attach();
@@ -576,11 +592,19 @@ void test("laboratory run controller keeps live spectrum rendering when a loadab
   });
 
   audioPreview.paused = false;
+  const workspaceAudioVisualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getTimelineModel() {
+      return getWaveformTimelineModel(store.getState());
+    },
+    windowRef: windowRef as unknown as Window,
+  });
   const controller = createLabRunController({
     documentRef: documentRef as unknown as Document,
     eventBus,
     store,
     windowRef: windowRef as unknown as Window,
+    workspaceAudioVisualizer,
   });
 
   controller.attach();
@@ -662,11 +686,19 @@ void test("laboratory run controller pauses realtime rendering while hidden and 
   });
 
   audioPreview.paused = false;
+  const workspaceAudioVisualizer = createLabWaveformTimelineVisualizer({
+    documentRef: documentRef as unknown as Document,
+    getTimelineModel() {
+      return getWaveformTimelineModel(store.getState());
+    },
+    windowRef: windowRef as unknown as Window,
+  });
   const controller = createLabRunController({
     documentRef: documentRef as unknown as Document,
     eventBus,
     store,
     windowRef: windowRef as unknown as Window,
+    workspaceAudioVisualizer,
   });
 
   controller.attach();

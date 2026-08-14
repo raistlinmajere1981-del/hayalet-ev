@@ -17,6 +17,7 @@ import {
   test
 } from "./laboratory-runtime-truth.helpers.ts";
 import { resolveDrawerMode } from "../../rooms/laboratory/runtime/lab-selectors.ts";
+import { createLabAnalysisScopeOverlay } from "../../rooms/laboratory/ui/lab-analysis-scope-overlay.ts";
 
 void test("laboratory run controller sends project import draft fields without mutating committed source", () => {
   const originalElement = globalThis.Element;
@@ -842,6 +843,9 @@ void test("laboratory run controller opens an in-room scope overlay for selected
     });
 
     const controller = createLabRunController({
+      analysisScopeOverlay: createLabAnalysisScopeOverlay({
+        documentRef: documentRef as unknown as Document,
+      }),
       documentRef: documentRef as unknown as Document,
       eventBus,
       store,
