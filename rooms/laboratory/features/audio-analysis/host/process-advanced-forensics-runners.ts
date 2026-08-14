@@ -1,3 +1,14 @@
+import { normalizeLabAnalysisModuleSettings } from "../../../domain/lab-types.js";
+import type { LabSettingsRecord } from "../../../domain/lab-types.js";
+import { ensureAdvancedAudioAnalysisSettingsRegistered } from "../../../domain/lab-advanced-audio-settings.js";
+import {
+  readBooleanSetting,
+  readNumberSetting,
+  readStringSetting,
+} from "../../../shared/host/settings-readers.js";
+
+ensureAdvancedAudioAnalysisSettingsRegistered();
+
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryAudioProcessRuntime = LaboratoryRecord;
@@ -88,29 +99,44 @@ type OptionalArtifactResult = {
   warning: string | null;
 };
 
-const SLOW_PLAYBACK_VARIANTS = [
+type SlowPlaybackVariant = {
+  filterGraph: string;
+  label: string;
+  mode: string;
+  scale: number;
+  suffix: string;
+};
+
+const SLOW_PLAYBACK_VARIANTS: SlowPlaybackVariant[] = [
   {
     filterGraph: "atempo=0.5,atempo=0.5,atempo=0.5,atempo=0.8",
     label: "Slow Playback 0.1x",
+    mode: "slow-0-1",
     scale: 0.1,
     suffix: "slow-0_1x",
   },
   {
     filterGraph: "atempo=0.5,atempo=0.5",
     label: "Slow Playback 0.25x",
+    mode: "slow-0-25",
     scale: 0.25,
     suffix: "slow-0_25x",
   },
   {
     filterGraph: "atempo=0.5",
     label: "Slow Playback 0.5x",
+    mode: "slow-0-5",
     scale: 0.5,
     suffix: "slow-0_5x",
   },
-] as const;
+];
 
-const PITCH_SHIFT_SEMITONES = [-12, -6, 6, 12] as const;
+const PITCH_SHIFT_LADDER = [-12, -6, 6, 12] as const;
 const PITCH_REFERENCE_SAMPLE_RATE = 48_000;
+const EMPTY_OPTIONAL_ARTIFACT: OptionalArtifactResult = {
+  artifact: null,
+  warning: null,
+};
 
 function asNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
@@ -131,6 +157,26 @@ function appendSummary(baseSummary: string, suffix: string) {
   return normalizedBase === "" ? suffix : `${normalizedBase} ${suffix}`;
 }
 
+function fixedFilterNumber(value: number) {
+  return Number(value.toFixed(6)).toString();
+}
+
+function buildAtempoFilters(tempo: number) {
+  const filters: string[] = [];
+  let remaining = Math.max(0.01, tempo);
+
+  while (remaining < 0.5 - 0.000001) {
+    filters.push("atempo=0.5");
+    remaining /= 0.5;
+  }
+  while (remaining > 2 + 0.000001) {
+    filters.push("atempo=2");
+    remaining /= 2;
+  }
+  filters.push(`atempo=${fixedFilterNumber(remaining)}`);
+  return filters;
+}
+
 function buildPitchShiftFilter(semitones: number) {
   const pitchFactor = Math.pow(2, semitones / 12);
   const shiftedSampleRate = Math.max(8_000, Math.round(PITCH_REFERENCE_SAMPLE_RATE * pitchFactor));
@@ -139,8 +185,12 @@ function buildPitchShiftFilter(semitones: number) {
     `aresample=${PITCH_REFERENCE_SAMPLE_RATE}`,
     `asetrate=${shiftedSampleRate}`,
     `aresample=${PITCH_REFERENCE_SAMPLE_RATE}`,
-    `atempo=${Number(compensationTempo.toFixed(6)).toString()}`,
+    ...buildAtempoFilters(compensationTempo),
   ].join(",");
+}
+
+function formatSemitone(value: number) {
+  return `${value > 0 ? "+" : ""}${String(value)}`;
 }
 
 export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensicsDeps) {
@@ -157,12 +207,46 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
     return toRecord(value);
   }
 
+  function getModuleSettings(
+    project: LaboratoryProjectRecord,
+    moduleId: string
+  ): LabSettingsRecord {
+    const workbench = toRecord(project["workbench"]);
+    const analysisSettings = toRecord(workbench["analysisSettings"]);
+    const moduleSettings = toRecord(analysisSettings["modules"]);
+    return normalizeLabAnalysisModuleSettings(moduleId, moduleSettings[moduleId]);
+  }
+
   function requireTargetPath(target: LaboratoryAudioTargetRecord) {
     const targetPath = asNonEmptyString(target.path);
     if (targetPath === null) {
       throw new Error("Audio analysis target path is required for advanced forensic artifacts.");
     }
     return targetPath;
+  }
+
+  function getSlowPlaybackVariants(settings: LabSettingsRecord) {
+    const mode = readStringSetting(settings, "slowPlaybackMode", "all");
+    if (mode === "off") {
+      return [];
+    }
+    if (mode === "all") {
+      return SLOW_PLAYBACK_VARIANTS.slice();
+    }
+    const selected = SLOW_PLAYBACK_VARIANTS.find((variant) => variant.mode === mode);
+    return selected ? [selected] : SLOW_PLAYBACK_VARIANTS.slice();
+  }
+
+  function getPitchShiftTargets(settings: LabSettingsRecord) {
+    const mode = readStringSetting(settings, "pitchShiftMode", "ladder");
+    if (mode === "off") {
+      return [];
+    }
+    if (mode === "single") {
+      const requested = readNumberSetting(settings, "pitchSemitones", 6);
+      return [Math.max(-24, Math.min(24, Math.round(requested)))];
+    }
+    return PITCH_SHIFT_LADDER.slice();
   }
 
   async function generateSpectrumMap(
@@ -309,53 +393,62 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
         moduleOutputDir,
         moduleId
       );
-      const subsonic = await trySpectrumMap(
-        runtime,
-        project,
-        requestId,
-        jobId,
-        target,
-        artifactBase,
-        moduleOutputDir,
-        moduleId,
-        {
-          artifactKind: "subsonic-energy-map",
-          filterGraph:
-            "showspectrumpic=s=1600x440:legend=1:fscale=lin:scale=log:start=0:stop=20:drange=120",
-          label: "Subsonic Energy Map 0-20 Hz",
-          metadata: {
-            bandHz: [0, 20],
-            analysisType: "subsonic-energy-map",
-          },
-          suffix: "subsonic-0-20hz",
-        }
-      );
-      const inverseSpectrum = await trySpectrumMap(
-        runtime,
-        project,
-        requestId,
-        jobId,
-        target,
-        artifactBase,
-        moduleOutputDir,
-        moduleId,
-        {
-          artifactKind: "inverse-spectrum-map",
-          filterGraph: "showspectrumpic=s=1600x440:legend=1:fscale=lin:scale=log,vflip",
-          label: "Inverse Spectrum Map",
-          metadata: {
-            analysisType: "frequency-axis-inversion",
-            audioResynthesis: false,
-          },
-          suffix: "inverse-spectrum",
-        }
-      );
+      const settings = getModuleSettings(project, moduleId);
+      const subsonicEnabled = readBooleanSetting(settings, "subsonicMap", true);
+      const inverseSpectrumEnabled = readBooleanSetting(settings, "inverseSpectrumMap", true);
+      const subsonic = subsonicEnabled
+        ? await trySpectrumMap(
+            runtime,
+            project,
+            requestId,
+            jobId,
+            target,
+            artifactBase,
+            moduleOutputDir,
+            moduleId,
+            {
+              artifactKind: "subsonic-energy-map",
+              filterGraph:
+                "showspectrumpic=s=1600x440:legend=1:fscale=lin:scale=log:start=0:stop=20:drange=120",
+              label: "Subsonic Energy Map 0-20 Hz",
+              metadata: {
+                analysisType: "subsonic-energy-map",
+                bandHz: [0, 20],
+                settingsUsed: settings,
+              },
+              suffix: "subsonic-0-20hz",
+            }
+          )
+        : EMPTY_OPTIONAL_ARTIFACT;
+      const inverseSpectrum = inverseSpectrumEnabled
+        ? await trySpectrumMap(
+            runtime,
+            project,
+            requestId,
+            jobId,
+            target,
+            artifactBase,
+            moduleOutputDir,
+            moduleId,
+            {
+              artifactKind: "inverse-spectrum-map",
+              filterGraph: "showspectrumpic=s=1600x440:legend=1:fscale=lin:scale=log,vflip",
+              label: "Inverse Spectrum Map",
+              metadata: {
+                analysisType: "frequency-axis-inversion",
+                audioResynthesis: false,
+                settingsUsed: settings,
+              },
+              suffix: "inverse-spectrum",
+            }
+          )
+        : EMPTY_OPTIONAL_ARTIFACT;
       const extraArtifacts = [subsonic.artifact, inverseSpectrum.artifact].filter(
         (artifact): artifact is LaboratoryProcessArtifactRecord => artifact !== null
       );
-      const artifactIds = compactArtifactIds([subsonic.artifact, inverseSpectrum.artifact]);
       const findings = baseResult.findings.slice();
-      if (subsonic.artifact !== null) {
+      const subsonicId = getArtifactId(subsonic.artifact);
+      if (subsonicId !== null) {
         findings.push(
           createProcessFinding(
             moduleId,
@@ -365,11 +458,12 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
             "Subsonic 0-20 Hz energy map generated",
             "A dedicated linear-frequency spectrogram was generated for the 0-20 Hz band so very-low-frequency energy can be inspected independently from the audible spectrum.",
             1,
-            [getArtifactId(subsonic.artifact) || ""]
+            [subsonicId]
           )
         );
       }
-      if (inverseSpectrum.artifact !== null) {
+      const inverseId = getArtifactId(inverseSpectrum.artifact);
+      if (inverseId !== null) {
         findings.push(
           createProcessFinding(
             moduleId,
@@ -379,16 +473,23 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
             "Inverse spectrum view generated",
             "The frequency axis was inverted as a visualization aid. This does not resynthesize or decode spectrally inverted audio.",
             1,
-            [getArtifactId(inverseSpectrum.artifact) || ""]
+            [inverseId]
           )
         );
       }
+      const requestedCount = Number(subsonicEnabled) + Number(inverseSpectrumEnabled);
       const warnings = baseResult.warnings
-        .concat([subsonic.warning, inverseSpectrum.warning].filter((value): value is string => value !== null))
+        .concat(
+          [subsonic.warning, inverseSpectrum.warning].filter(
+            (value): value is string => value !== null
+          )
+        )
         .concat(
           inverseSpectrum.artifact === null
             ? []
-            : ["Inverse Spectrum Map is a visualization transform only; it is not an audio restoration result."]
+            : [
+                "Inverse Spectrum Map is a visualization transform only; it is not an audio restoration result.",
+              ]
         );
       return {
         ...baseResult,
@@ -396,9 +497,11 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
         findings,
         summary: appendSummary(
           baseResult.summary,
-          artifactIds.length > 0
-            ? "Subsonic and inverse-spectrum inspection artifacts were added."
-            : "Advanced spectrum artifacts were requested but no extra map was produced."
+          requestedCount === 0
+            ? "Advanced spectrum inspection maps were disabled by module settings."
+            : extraArtifacts.length > 0
+              ? `${String(extraArtifacts.length)} advanced spectrum inspection artifact(s) were added.`
+              : "Advanced spectrum artifacts were requested but no extra map was produced."
         ),
         warnings,
       };
@@ -426,9 +529,13 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
         moduleOutputDir,
         moduleId
       );
-      await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
+      const settings = getModuleSettings(project, moduleId);
+      const variants = getSlowPlaybackVariants(settings);
       const slowResults: OptionalArtifactResult[] = [];
-      for (const variant of SLOW_PLAYBACK_VARIANTS) {
+      if (variants.length > 0) {
+        await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
+      }
+      for (const variant of variants) {
         slowResults.push(
           await tryFilteredAudio(
             runtime,
@@ -444,8 +551,9 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
               label: variant.label,
               metadata: {
                 analysisType: "slow-playback",
-                tempoScale: variant.scale,
                 pitchPreserved: true,
+                settingsUsed: settings,
+                tempoScale: variant.scale,
               },
               suffix: variant.suffix,
             }
@@ -457,6 +565,7 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
         .filter((artifact): artifact is LaboratoryProcessArtifactRecord => artifact !== null);
       const artifactIds = compactArtifactIds(slowResults.map((result) => result.artifact));
       const findings = baseResult.findings.slice();
+      const variantLabel = variants.map((variant) => `${String(variant.scale)}x`).join(", ");
       if (artifactIds.length > 0) {
         findings.push(
           createProcessFinding(
@@ -464,8 +573,8 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
             "derived",
             "low",
             "medium",
-            "Slow-playback inspection ladder generated",
-            "Pitch-preserving 0.1x, 0.25x, and 0.5x listening variants were generated for transient and low-level event inspection.",
+            "Slow-playback inspection variants generated",
+            `Pitch-preserving ${variantLabel} listening variant(s) were generated for transient and low-level event inspection.`,
             artifactIds.length,
             artifactIds
           )
@@ -477,9 +586,11 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
         findings,
         summary: appendSummary(
           baseResult.summary,
-          artifactIds.length > 0
-            ? "Pitch-preserving 0.1x, 0.25x, and 0.5x review variants were added."
-            : "Slow-playback variants were requested but could not be produced."
+          variants.length === 0
+            ? "Slow-playback review variants were disabled by module settings."
+            : artifactIds.length > 0
+              ? `Pitch-preserving ${variantLabel} review variant(s) were added.`
+              : "Slow-playback variants were requested but could not be produced."
         ),
         warnings: baseResult.warnings
           .concat(
@@ -489,7 +600,9 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
           )
           .concat(
             artifactIds.length > 0
-              ? ["Extreme tempo reduction can introduce WSOLA time-stretch artifacts; compare against the original source."]
+              ? [
+                  "Extreme tempo reduction can introduce WSOLA time-stretch artifacts; compare against the original source.",
+                ]
               : []
           ),
       };
@@ -517,10 +630,14 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
         moduleOutputDir,
         moduleId
       );
-      await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
+      const settings = getModuleSettings(project, moduleId);
+      const pitchTargets = getPitchShiftTargets(settings);
       const pitchResults: OptionalArtifactResult[] = [];
-      for (const semitones of PITCH_SHIFT_SEMITONES) {
-        const direction = semitones < 0 ? "down" : "up";
+      if (pitchTargets.length > 0) {
+        await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
+      }
+      for (const semitones of pitchTargets) {
+        const direction = semitones < 0 ? "down" : semitones > 0 ? "up" : "neutral";
         const magnitude = Math.abs(semitones);
         pitchResults.push(
           await tryFilteredAudio(
@@ -534,11 +651,12 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
             moduleId,
             {
               filterGraph: buildPitchShiftFilter(semitones),
-              label: `Pitch Shift ${semitones > 0 ? "+" : ""}${semitones} st`,
+              label: `Pitch Shift ${formatSemitone(semitones)} st`,
               metadata: {
                 analysisType: "pitch-shift",
                 referenceSampleRate: PITCH_REFERENCE_SAMPLE_RATE,
                 semitones,
+                settingsUsed: settings,
                 tempoCompensated: true,
               },
               suffix: `pitch-${direction}-${magnitude}st`,
@@ -551,6 +669,7 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
         .filter((artifact): artifact is LaboratoryProcessArtifactRecord => artifact !== null);
       const artifactIds = compactArtifactIds(pitchResults.map((result) => result.artifact));
       const findings = baseResult.findings.slice();
+      const pitchLabel = pitchTargets.map(formatSemitone).join(", ");
       if (artifactIds.length > 0) {
         findings.push(
           createProcessFinding(
@@ -558,8 +677,8 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
             "derived",
             "low",
             "medium",
-            "Pitch-shift exploration ladder generated",
-            "Tempo-compensated pitch variants at -12, -6, +6, and +12 semitones were generated alongside the existing frequency-shift reversal output.",
+            "Pitch-shift exploration variants generated",
+            `Tempo-compensated pitch variants at ${pitchLabel} semitone(s) were generated alongside the existing frequency-shift reversal output.`,
             artifactIds.length,
             artifactIds
           )
@@ -571,9 +690,11 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
         findings,
         summary: appendSummary(
           baseResult.summary,
-          artifactIds.length > 0
-            ? "True pitch-shift review variants were added at -12, -6, +6, and +12 semitones."
-            : "Pitch-shift variants were requested but could not be produced."
+          pitchTargets.length === 0
+            ? "Pitch-shift review variants were disabled by module settings."
+            : artifactIds.length > 0
+              ? `True pitch-shift review variants were added at ${pitchLabel} semitone(s).`
+              : "Pitch-shift variants were requested but could not be produced."
         ),
         warnings: baseResult.warnings
           .concat(
@@ -583,7 +704,9 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
           )
           .concat(
             artifactIds.length > 0
-              ? ["Pitch-shift variants use resampling plus tempo compensation and are exploratory listening aids, not source-faithful restorations."]
+              ? [
+                  "Pitch-shift variants use resampling plus tempo compensation and are exploratory listening aids, not source-faithful restorations.",
+                ]
               : []
           ),
       };

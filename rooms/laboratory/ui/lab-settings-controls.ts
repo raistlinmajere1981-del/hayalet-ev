@@ -1,5 +1,8 @@
 import { escapeHtml } from "../domain/lab-types.js";
 import type { LabSettingsFieldMeta, LabSettingsRecord } from "../domain/lab-types.js";
+import { ensureAdvancedAudioAnalysisSettingsRegistered } from "../domain/lab-advanced-audio-settings.js";
+
+ensureAdvancedAudioAnalysisSettingsRegistered();
 
 type LabSettingsTranslate = (
   key: string,
