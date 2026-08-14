@@ -95,6 +95,96 @@ function renderEQBand(band: LabAudioFocusSettings["eqBands"][0], index: number) 
   `;
 }
 
+function formatPlaybackRate(value: number) {
+  return `${String(Number(value.toFixed(2)))}x`;
+}
+
+function formatTapePitchSemitones(playbackRate: number) {
+  if (!Number.isFinite(playbackRate) || playbackRate <= 0) {
+    return "0";
+  }
+  const semitones = 12 * Math.log2(playbackRate);
+  const rounded = Math.abs(semitones) < 0.05 ? 0 : Number(semitones.toFixed(1));
+  return `${rounded > 0 ? "+" : ""}${String(rounded)}`;
+}
+
+function renderPlaybackPresetButton(label: string, rate: number, currentRate: number) {
+  const active = Math.abs(currentRate - rate) < 0.0005;
+  return `<button
+    class="labx-inline-action"
+    type="button"
+    data-lab-action="workspace-setting-adjust"
+    data-lab-field="workspace.audioFocus.playbackRate"
+    data-lab-reset="true"
+    data-lab-reset-value="${String(rate)}"
+    aria-pressed="${active ? "true" : "false"}"
+    data-active="${active ? "true" : "false"}"
+  >${escapeHtml(label)}</button>`;
+}
+
+function renderTemporalAudition(
+  audioFocus: LabAudioFocusSettings,
+  temporalAudioFocus: LabAudioFocusSettings,
+  copy: LabI18n
+) {
+  const playbackRate = temporalAudioFocus.playbackRate;
+  const preservePitch = temporalAudioFocus.preservePitch;
+  const speedLabel = copy.t("mediaAnalysis.timeline.playbackSpeed", "Hız");
+  const pitchStatus = preservePitch
+    ? copy.t(
+        "mediaAnalysis.audioFocus.pitchPreservedStatus",
+        "Pitch korunuyor · hız değişse de ses perdesi sabit tutulur."
+      )
+    : copy.t(
+        "mediaAnalysis.audioFocus.tapePitchStatus",
+        `Tape pitch aktif · yaklaşık ${formatTapePitchSemitones(playbackRate)} st`
+      );
+  const speedPresets = [0.25, 0.5, 0.75, 1, 1.5, 2];
+  const tapePitchPresets = [
+    { label: "-12 st", rate: 0.5 },
+    { label: "-6 st", rate: 0.707107 },
+    { label: "0 st", rate: 1 },
+    { label: "+6 st", rate: 1.414214 },
+    { label: "+12 st", rate: 2 },
+  ];
+
+  return `
+    <div class="labx-audio-focus__eq" data-lab-live-audio-audition="true">
+      <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.audioFocus.liveAuditionTitle", "CANLI DİNLEME"))}</p>
+      ${renderAudioSlider(speedLabel, "playbackRate", playbackRate, 0.25, 2, 0.05, "x", 1)}
+      <div class="labx-controls-actions" aria-label="${escapeHtml(copy.t("mediaAnalysis.audioFocus.speedPresets", "Hız presetleri"))}">
+        ${speedPresets
+          .map(function (rate) {
+            return renderPlaybackPresetButton(formatPlaybackRate(rate), rate, playbackRate);
+          })
+          .join("")}
+      </div>
+      <label class="labx-control-toggle">
+        <input
+          type="checkbox"
+          ${audioFocus.preservePitch ? "checked" : ""}
+          data-lab-field="workspace.audioFocus.preservePitch"
+        />
+        <span>${escapeHtml(copy.t("mediaAnalysis.audioFocus.preservePitch", "Pitch'i koru"))}</span>
+      </label>
+      <p class="labx-operation-card__reason">${escapeHtml(pitchStatus)}</p>
+      ${
+        preservePitch
+          ? ""
+          : `
+            <div class="labx-controls-actions" aria-label="${escapeHtml(copy.t("mediaAnalysis.audioFocus.tapePitchPresets", "Tape pitch presetleri"))}">
+              ${tapePitchPresets
+                .map(function (preset) {
+                  return renderPlaybackPresetButton(preset.label, preset.rate, playbackRate);
+                })
+                .join("")}
+            </div>
+          `
+      }
+    </div>
+  `;
+}
+
 type WorkspaceAudioFocusRenderOptions = {
   previewTarget?: "audio" | "video";
   temporalAudioFocus?: Pick<LabAudioFocusSettings, "playbackRate" | "preservePitch">;
@@ -102,10 +192,14 @@ type WorkspaceAudioFocusRenderOptions = {
 
 export function renderWorkspaceAudioFocus(
   audioFocus: LabAudioFocusSettings,
-  _options: WorkspaceAudioFocusRenderOptions = {},
+  options: WorkspaceAudioFocusRenderOptions = {},
   copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const showFilterControls = audioFocus.filterType !== "none";
+  const temporalAudioFocus: LabAudioFocusSettings = {
+    ...audioFocus,
+    ...(options.temporalAudioFocus || {}),
+  };
   return `
     <section class="labx-audio-focus labx-workspace-focus-row__panel" id="lab-audio-focus">
       <div class="labx-audio-focus__controls">
@@ -133,6 +227,7 @@ export function renderWorkspaceAudioFocus(
             : ""
         }
       </div>
+      ${renderTemporalAudition(audioFocus, temporalAudioFocus, copy)}
       <div class="labx-audio-focus__eq">
         <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.audioFocus.eqTitle", "PARAMETRIC EQ"))}</p>
         ${audioFocus.eqBands

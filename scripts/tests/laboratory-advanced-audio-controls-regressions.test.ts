@@ -5,18 +5,13 @@ import test from "node:test";
 import {
   LAB_ANALYSIS_MODULE_SETTINGS_DEFAULTS,
   LAB_ANALYSIS_MODULE_SETTINGS_FIELDS,
-  normalizeLabAnalysisModuleSettings,
 } from "../../rooms/laboratory/domain/lab-capabilities.ts";
 import { ensureAdvancedAudioAnalysisSettingsRegistered } from "../../rooms/laboratory/domain/lab-advanced-audio-settings.ts";
+import type { LabAudioFocusSettings } from "../../rooms/laboratory/domain/lab-types.ts";
 import { createAdvancedAudioForensicsRunners } from "../../rooms/laboratory/features/audio-analysis/host/process-advanced-forensics-runners.ts";
+import { renderWorkspaceAudioFocus } from "../../rooms/laboratory/ui/workspace-audio-focus.ts";
 
 type TestRecord = Record<string, unknown>;
-
-type FilteredAudioCall = {
-  filterGraph: string;
-  label: string;
-  metadata: TestRecord;
-};
 
 type ProfileToolCall = {
   args: string[];
@@ -36,8 +31,7 @@ function createProject(moduleId: string, settings: TestRecord): TestRecord {
   };
 }
 
-function createHarness() {
-  const filteredAudioCalls: FilteredAudioCall[] = [];
+function createSpectralHarness() {
   const profileToolCalls: ProfileToolCall[] = [];
   let artifactCounter = 0;
   const runners = createAdvancedAudioForensicsRunners({
@@ -76,30 +70,8 @@ function createHarness() {
     async ensureProcessRuntimeDirectories() {
       await Promise.resolve();
     },
-    async generateFilteredAudioArtifact(
-      _runtime,
-      _project,
-      _requestId,
-      _jobId,
-      _target,
-      artifactBase,
-      _outputDir,
-      moduleId,
-      filterGraph,
-      label,
-      metadata,
-      outputExtension
-    ) {
-      filteredAudioCalls.push({ filterGraph, label, metadata });
-      artifactCounter += 1;
-      return {
-        id: `artifact-${artifactCounter}`,
-        moduleId,
-        kind: "audio-variant",
-        path: `/tmp/${artifactBase}.${outputExtension ?? "wav"}`,
-        label,
-        metadata,
-      };
+    async generateFilteredAudioArtifact() {
+      throw new Error("Audition-only audio variants must not be needed for spectral-map tests.");
     },
     async runProfileTool(_runtime, request) {
       profileToolCalls.push({ args: request.args.slice() });
@@ -137,13 +109,32 @@ function createHarness() {
   return {
     baseRunner,
     createArgs,
-    filteredAudioCalls,
     profileToolCalls,
     runners,
   };
 }
 
-test("advanced audio settings register into the existing analysis settings UI contract", function () {
+function createAudioFocus(overrides: Partial<LabAudioFocusSettings> = {}): LabAudioFocusSettings {
+  return {
+    gain: 1,
+    filterType: "none",
+    filterFrequency: 1000,
+    filterQ: 1,
+    playbackRate: 1,
+    preservePitch: true,
+    visualizationMode: "waveform",
+    eqBands: [
+      { frequency: 60, gain: 0, Q: 1, type: "lowshelf" },
+      { frequency: 250, gain: 0, Q: 1, type: "peaking" },
+      { frequency: 1000, gain: 0, Q: 1, type: "peaking" },
+      { frequency: 4000, gain: 0, Q: 1, type: "peaking" },
+      { frequency: 12000, gain: 0, Q: 1, type: "highshelf" },
+    ],
+    ...overrides,
+  };
+}
+
+test("advanced analysis settings keep only evidence-producing spectral controls", function () {
   assert.equal(LAB_ANALYSIS_MODULE_SETTINGS_DEFAULTS["spectral-artifacts"]?.["subsonicMap"], true);
   assert.equal(
     LAB_ANALYSIS_MODULE_SETTINGS_DEFAULTS["spectral-artifacts"]?.["inverseSpectrumMap"],
@@ -153,11 +144,11 @@ test("advanced audio settings register into the existing analysis settings UI co
     LAB_ANALYSIS_MODULE_SETTINGS_DEFAULTS["spectrogram-guided-recovery"]?.[
       "slowPlaybackMode"
     ],
-    "all"
+    undefined
   );
   assert.equal(
     LAB_ANALYSIS_MODULE_SETTINGS_DEFAULTS["frequency-shift-reversal"]?.["pitchShiftMode"],
-    "ladder"
+    undefined
   );
 
   const spectralFieldIds = (LAB_ANALYSIS_MODULE_SETTINGS_FIELDS["spectral-artifacts"] || []).map(
@@ -169,19 +160,12 @@ test("advanced audio settings register into the existing analysis settings UI co
   const pitchFieldIds = (
     LAB_ANALYSIS_MODULE_SETTINGS_FIELDS["frequency-shift-reversal"] || []
   ).map((field) => field.id);
-  assert.equal(pitchFieldIds.includes("pitchShiftMode"), true);
-  assert.equal(pitchFieldIds.includes("pitchSemitones"), true);
-
-  const normalized = normalizeLabAnalysisModuleSettings("frequency-shift-reversal", {
-    pitchShiftMode: "single",
-    pitchSemitones: -3,
-  });
-  assert.equal(normalized["pitchShiftMode"], "single");
-  assert.equal(normalized["pitchSemitones"], -3);
+  assert.equal(pitchFieldIds.includes("pitchShiftMode"), false);
+  assert.equal(pitchFieldIds.includes("pitchSemitones"), false);
 });
 
 test("spectral inspection maps can be disabled independently from the base spectral analysis", async () => {
-  const harness = createHarness();
+  const harness = createSpectralHarness();
   const runner = harness.runners.augmentSpectralArtifacts(harness.baseRunner);
   const project = createProject("spectral-artifacts", {
     subsonicMap: false,
@@ -195,36 +179,51 @@ test("spectral inspection maps can be disabled independently from the base spect
   assert.match(result.summary, /disabled by module settings/);
 });
 
-test("slow playback settings can request only the 0.25x forensic listening variant", async () => {
-  const harness = createHarness();
-  const runner = harness.runners.augmentSpectrogramGuidedRecovery(harness.baseRunner);
-  const project = createProject("spectrogram-guided-recovery", {
-    slowPlaybackMode: "slow-0-25",
-  });
+test("analysis runtime no longer wires slow-playback or pitch ladders into report modules", function () {
+  const source = readFileSync(
+    new URL(
+      "../../rooms/laboratory/features/audio-analysis/host/process-runners.ts",
+      import.meta.url
+    ),
+    "utf8"
+  );
 
-  const result = await runner(...harness.createArgs(project), "spectrogram-guided-recovery");
-
-  assert.equal(harness.filteredAudioCalls.length, 1);
-  assert.equal(harness.filteredAudioCalls[0]?.filterGraph, "atempo=0.5,atempo=0.5");
-  assert.equal(harness.filteredAudioCalls[0]?.metadata["tempoScale"], 0.25);
-  assert.equal(result.artifacts.length, 2);
+  assert.match(source, /augmentSpectralArtifacts\(runSpectralArtifactsAudioAnalyzer\)/);
+  assert.doesNotMatch(source, /augmentFrequencyShiftReversal\(/);
+  assert.doesNotMatch(source, /augmentSpectrogramGuidedRecovery\(/);
+  assert.match(source, /"frequency-shift-reversal": runFrequencyShiftReversalAudioAnalyzer/);
+  assert.match(source, /"spectrogram-guided-recovery": runSpectrogramGuidedRecoveryAudioAnalyzer/);
 });
 
-test("pitch shift settings support a single custom semitone target and clamp extreme values", async () => {
-  const harness = createHarness();
-  const runner = harness.runners.augmentFrequencyShiftReversal(harness.baseRunner);
-  const project = createProject("frequency-shift-reversal", {
-    pitchShiftMode: "single",
-    pitchSemitones: 99,
+test("audio focus exposes live speed and pitch-lock audition controls in the icon-rail panel", function () {
+  const audioFocus = createAudioFocus({ playbackRate: 0.5, preservePitch: false });
+  const markup = renderWorkspaceAudioFocus(audioFocus, {
+    previewTarget: "video",
+    temporalAudioFocus: audioFocus,
   });
 
-  const result = await runner(...harness.createArgs(project), "frequency-shift-reversal");
+  assert.match(markup, /data-lab-live-audio-audition="true"/);
+  assert.match(markup, /data-lab-field="workspace\.audioFocus\.playbackRate"/);
+  assert.match(markup, /data-lab-field="workspace\.audioFocus\.preservePitch"/);
+  assert.match(markup, /data-lab-reset-value="0\.25"/);
+  assert.match(markup, /data-lab-reset-value="0\.707107"/);
+  assert.match(markup, /data-lab-reset-value="1\.414214"/);
+  assert.match(markup, /-12 st/);
+  assert.match(markup, /\+12 st/);
+  assert.match(markup, /Tape pitch/);
+});
 
-  assert.equal(harness.filteredAudioCalls.length, 1);
-  assert.equal(harness.filteredAudioCalls[0]?.metadata["semitones"], 24);
-  assert.match(harness.filteredAudioCalls[0]?.filterGraph ?? "", /asetrate=192000/);
-  assert.match(harness.filteredAudioCalls[0]?.filterGraph ?? "", /atempo=0\.5,atempo=0\.5/);
-  assert.equal(result.artifacts.length, 2);
+test("pitch-preserved live audition hides tape-pitch presets but keeps speed controls", function () {
+  const audioFocus = createAudioFocus({ playbackRate: 0.5, preservePitch: true });
+  const markup = renderWorkspaceAudioFocus(audioFocus, {
+    previewTarget: "video",
+    temporalAudioFocus: audioFocus,
+  });
+
+  assert.match(markup, /data-lab-field="workspace\.audioFocus\.playbackRate"/);
+  assert.match(markup, /data-lab-field="workspace\.audioFocus\.preservePitch"/);
+  assert.doesNotMatch(markup, /-12 st/);
+  assert.match(markup, /Pitch korunuyor/);
 });
 
 test("expanded observation view keeps the tall waveform but releases excess control height", function () {

@@ -59,21 +59,15 @@ export function createAudioAnalysisProcessRuntime(
   });
   const runAdvancedSpectralArtifactsAudioAnalyzer =
     advancedAudioForensics.augmentSpectralArtifacts(runSpectralArtifactsAudioAnalyzer);
-  const runAdvancedFrequencyShiftReversalAudioAnalyzer =
-    advancedAudioForensics.augmentFrequencyShiftReversal(runFrequencyShiftReversalAudioAnalyzer);
-  const runAdvancedSpectrogramGuidedRecoveryAudioAnalyzer =
-    advancedAudioForensics.augmentSpectrogramGuidedRecovery(
-      runSpectrogramGuidedRecoveryAudioAnalyzer
-    );
 
   function getModuleRunner(moduleId: string) {
     const runners: Record<string, AudioAnalysisModuleRunner> = {
       "signal-health": runSignalHealthAudioAnalyzer,
       "signal-recovery": runSignalRecoveryAudioAnalyzer,
       "spectral-artifacts": runAdvancedSpectralArtifactsAudioAnalyzer,
-      "frequency-shift-reversal": runAdvancedFrequencyShiftReversalAudioAnalyzer,
+      "frequency-shift-reversal": runFrequencyShiftReversalAudioAnalyzer,
       "band-pass-exploration": runBandPassExplorationAudioAnalyzer,
-      "spectrogram-guided-recovery": runAdvancedSpectrogramGuidedRecoveryAudioAnalyzer,
+      "spectrogram-guided-recovery": runSpectrogramGuidedRecoveryAudioAnalyzer,
       "hidden-pattern-extraction": runHiddenPatternExtractionAudioAnalyzer,
       "phase-recovery-experiment": runPhaseRecoveryExperimentAudioAnalyzer,
       transcription: runTranscriptionAudioAnalyzer,
