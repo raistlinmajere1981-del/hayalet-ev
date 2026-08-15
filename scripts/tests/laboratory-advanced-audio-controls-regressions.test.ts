@@ -195,7 +195,7 @@ test("analysis runtime no longer wires slow-playback or pitch ladders into repor
   assert.match(source, /"spectrogram-guided-recovery": runSpectrogramGuidedRecoveryAudioAnalyzer/);
 });
 
-test("audio focus exposes live speed and pitch-lock audition controls in the icon-rail panel", function () {
+test("audio focus keeps live pitch audition while leaving speed presets to the unified timeline", function () {
   const audioFocus = createAudioFocus({ playbackRate: 0.5, preservePitch: false });
   const markup = renderWorkspaceAudioFocus(audioFocus, {
     previewTarget: "video",
@@ -205,7 +205,8 @@ test("audio focus exposes live speed and pitch-lock audition controls in the ico
   assert.match(markup, /data-lab-live-audio-audition="true"/);
   assert.match(markup, /data-lab-field="workspace\.audioFocus\.playbackRate"/);
   assert.match(markup, /data-lab-field="workspace\.audioFocus\.preservePitch"/);
-  assert.match(markup, /data-lab-reset-value="0\.25"/);
+  assert.doesNotMatch(markup, /Hız presetleri/);
+  assert.match(markup, /data-lab-tape-pitch-presets="true"/);
   assert.match(markup, /data-lab-reset-value="0\.707107"/);
   assert.match(markup, /data-lab-reset-value="1\.414214"/);
   assert.match(markup, /-12 st/);
@@ -222,8 +223,24 @@ test("pitch-preserved live audition hides tape-pitch presets but keeps speed con
 
   assert.match(markup, /data-lab-field="workspace\.audioFocus\.playbackRate"/);
   assert.match(markup, /data-lab-field="workspace\.audioFocus\.preservePitch"/);
+  assert.doesNotMatch(markup, /data-lab-tape-pitch-presets="true"/);
   assert.doesNotMatch(markup, /-12 st/);
   assert.match(markup, /Pitch korunuyor/);
+});
+
+test("live audio popover uses the wider pinned-width token for pitch controls", function () {
+  const css = readFileSync(
+    new URL("../../rooms/laboratory/ui/styles/lab-audio-tools.css", import.meta.url),
+    "utf8"
+  );
+  const theme = readFileSync(
+    new URL("../../rooms/laboratory/ui/lab-theme.css", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(css, /data-content="audio-focus"[\s\S]*width:\s*var\(--lab-rail-width-pinned\)/);
+  assert.match(css, /data-lab-tape-pitch-presets="true"[\s\S]*flex-wrap:\s*nowrap/);
+  assert.match(theme, /lab-audio-tools\.css/);
 });
 
 test("expanded observation view keeps the tall waveform but releases excess control height", function () {
