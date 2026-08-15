@@ -396,8 +396,7 @@
             "heightPx": 320
           },
           "label": {
-            "text": "Repair Workbench",
-            "textKey": "app.rooms.repairRoom.workbench.name"
+            "text": "Repair Workbench"
           }
         },
         "view": {
@@ -437,8 +436,7 @@
         "heightPx": 332
       },
       "label": {
-        "text": "Repair Room",
-        "textKey": "app.rooms.repairRoom.name"
+        "text": "Repair Room"
       }
     },
     "backHotspot": {
