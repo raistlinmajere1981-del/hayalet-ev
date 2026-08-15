@@ -1,6 +1,6 @@
 import { escapeHtml } from "../domain/lab-types.js";
 import type { LabAudioFocusSettings } from "../domain/lab-types.js";
-import { getLivePitchShiftSemitones } from "../runtime/lab-live-audio-pitch.js";
+import { getLivePitchShiftSemitones } from "../domain/lab-live-audio-settings.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
