@@ -78,6 +78,28 @@ function isRoomAlias(specifier: string): boolean {
   );
 }
 
+function collectTextKeys(value: unknown, result: string[] = []): string[] {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectTextKeys(item, result);
+    }
+    return result;
+  }
+
+  if (value === null || typeof value !== "object") {
+    return result;
+  }
+
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    if (key === "textKey" && typeof child === "string" && child.trim() !== "") {
+      result.push(child.trim());
+      continue;
+    }
+    collectTextKeys(child, result);
+  }
+  return result;
+}
+
 void test("room source modules stay inside their own room boundary", async () => {
   const roomEntries = (await readdir(ROOMS_ROOT, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory() && entry.name !== ".build")
@@ -152,5 +174,31 @@ void test("core production modules do not import concrete room implementations",
     findings,
     [],
     `Core-to-room boundary violations:\n${findings.map((finding) => `  - ${finding}`).join("\n")}`
+  );
+});
+
+void test("room manifest scene translations stay in the room-local i18n namespace", async () => {
+  const roomEntries = (await readdir(ROOMS_ROOT, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory() && entry.name !== ".build")
+    .sort((left, right) => left.name.localeCompare(right.name));
+  const findings: string[] = [];
+
+  for (const roomEntry of roomEntries) {
+    const manifestPath = join(ROOMS_ROOT, roomEntry.name, "manifest.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as Record<string, unknown>;
+    const roomId = typeof manifest["id"] === "string" ? manifest["id"].trim() : roomEntry.name;
+    const expectedPrefix = `rooms.${roomId}.`;
+
+    for (const textKey of collectTextKeys(manifest)) {
+      if (!textKey.startsWith(expectedPrefix)) {
+        findings.push(`${roomEntry.name}/manifest.json uses non-room textKey ${textKey}`);
+      }
+    }
+  }
+
+  assert.deepEqual(
+    findings,
+    [],
+    `Room manifest i18n boundary violations:\n${findings.map((finding) => `  - ${finding}`).join("\n")}`
   );
 });
