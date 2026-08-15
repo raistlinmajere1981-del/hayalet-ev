@@ -1,6 +1,8 @@
 import type { LabAudioFocusSettings } from "../domain/lab-types.js";
-import {
-  getLivePitchShiftRatio,
+import { getLivePitchShiftRatio } from "../domain/lab-live-audio-settings.js";
+export {
+  attachLivePitchShiftSemitones,
+  getLivePitchShiftSemitones,
 } from "../domain/lab-live-audio-settings.js";
 
 export const LAB_LIVE_PITCH_PROCESSOR_NAME = "lab-live-pitch-shifter";
