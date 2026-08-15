@@ -58,6 +58,30 @@ module.exports = {
       to: {},
     },
     {
+      name: "room-source-no-core-imports",
+      comment:
+        "Room source modules must remain portable and may not import Ghost House src/electron implementations.",
+      severity: "error",
+      from: {
+        path: "^rooms/(?!\\.build/)",
+      },
+      to: {
+        path: "^(src|electron)/",
+      },
+    },
+    {
+      name: "core-no-concrete-room-imports",
+      comment:
+        "Core production modules must discover rooms through room contracts instead of importing concrete room implementations.",
+      severity: "error",
+      from: {
+        path: "^(src|electron)/",
+      },
+      to: {
+        path: "^rooms/(?!\\.build/)",
+      },
+    },
+    {
       name: "laboratory-domain-boundary",
       comment:
         "Laboratory domain code must stay independent from host, feature, browser runtime, services, and UI implementation layers.",
