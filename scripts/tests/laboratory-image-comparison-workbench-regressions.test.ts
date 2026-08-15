@@ -25,17 +25,15 @@ test("image comparison settings expose independent A/B geometry and half-face co
     referenceScaleX: 1.2,
     referenceScaleY: 0.8,
     compositeMode: "reference-left-primary-right",
-    manipulationMode: "resize",
     showImageFrames: false,
   });
   const geometry = readImageComparisonGeometry(settings);
 
   assert.equal(geometry.compositeMode, "reference-left-primary-right");
-  assert.equal(settings.manipulationMode, "resize");
   assert.equal(settings.showImageFrames, false);
   assert.equal(geometry.transforms.primary.aspectLocked, true);
   assert.equal(geometry.transforms.reference.aspectLocked, false);
-  assert.match(buildImageComparisonTransformCss(geometry.transforms.primary), /scale\(2, 2\)/);
+  assert.match(buildImageComparisonTransformCss(geometry.transforms.primary), /scale\(6, 6\)/);
   assert.match(buildImageComparisonTransformCss(geometry.transforms.primary), /translate\(12%, -8%\)/);
   assert.match(buildImageComparisonTransformCss(geometry.transforms.primary), /rotate\(4deg\)/);
   assert.match(buildImageComparisonTransformCss(geometry.transforms.reference), /scale\(1\.5, 1\)/);
@@ -66,46 +64,30 @@ test("manual comparison markers produce normalized geometry without identity sco
   assert.equal(metrics.reference.count, 0);
 });
 
-test("comparison settings split precise move and resize controls into icon tools", function () {
-  const moveSettings = normalizeLabOperationSettings("image-comparison", {
-    manipulationMode: "move",
+test("comparison settings expose separate precision blocks for move resize and zoom", function () {
+  const settings = normalizeLabOperationSettings("image-comparison", {
     showImageFrames: false,
   });
-  const moveMarkup = renderLabSettingsFields({
+  const markup = renderLabSettingsFields({
     fields: LAB_OPERATION_SETTINGS_FIELDS["image-comparison"],
     prefix: "operationSettings.image-comparison",
     resetAction: "operation-settings-reset",
     resetValue: "image-comparison",
-    settings: moveSettings,
+    settings,
     title: "Settings",
     variant: "inline",
   });
 
-  assert.match(moveMarkup, /data-lab-image-comparison-toolbox="true"/);
-  assert.match(moveMarkup, /data-lab-comparison-tool-mode="true"/);
-  assert.match(moveMarkup, /value="move"[^>]*checked/);
-  assert.match(moveMarkup, /primaryOffsetX/);
-  assert.doesNotMatch(moveMarkup, /primaryZoom/);
-  assert.match(moveMarkup, /showImageFrames/);
-  assert.doesNotMatch(moveMarkup, /showImageFrames"[^>]*checked/);
-
-  const resizeSettings = normalizeLabOperationSettings("image-comparison", {
-    manipulationMode: "resize",
-  });
-  const resizeMarkup = renderLabSettingsFields({
-    fields: LAB_OPERATION_SETTINGS_FIELDS["image-comparison"],
-    prefix: "operationSettings.image-comparison",
-    resetAction: "operation-settings-reset",
-    resetValue: "image-comparison",
-    settings: resizeSettings,
-    title: "Settings",
-    variant: "inline",
-  });
-
-  assert.match(resizeMarkup, /value="resize"[^>]*checked/);
-  assert.match(resizeMarkup, /primaryZoom/);
-  assert.match(resizeMarkup, /referenceScaleY/);
-  assert.doesNotMatch(resizeMarkup, /primaryOffsetX/);
+  assert.match(markup, /data-comparison-tool-panel="move"/);
+  assert.match(markup, /data-comparison-tool-panel="resize"/);
+  assert.match(markup, /data-comparison-tool-panel="zoom"/);
+  assert.match(markup, /primaryOffsetX/);
+  assert.match(markup, /referenceScaleY/);
+  assert.match(markup, /primaryZoom/);
+  assert.match(markup, /referenceZoom/);
+  assert.match(markup, /showImageFrames/);
+  assert.doesNotMatch(markup, /showImageFrames"[^>]*checked/);
+  assert.doesNotMatch(markup, /data-lab-comparison-tool-mode/);
 });
 
 test("comparison renderer applies transform, composite clipping, guides and markers in the workspace", function () {
@@ -132,6 +114,10 @@ test("comparison renderer applies transform, composite clipping, guides and mark
     new URL("../../rooms/laboratory/ui/lab-image-comparison-mouse-tools.ts", import.meta.url),
     "utf8"
   );
+  const toolbar = readFileSync(
+    new URL("../../rooms/laboratory/ui/lab-image-comparison-toolbar.ts", import.meta.url),
+    "utf8"
+  );
 
   assert.match(surface, /buildImageComparisonTransformCss/);
   assert.match(surface, /data-composite-mode=/);
@@ -148,11 +134,19 @@ test("comparison renderer applies transform, composite clipping, guides and mark
   assert.match(styles, /labx-workspace-comparison__center-guide/);
   assert.match(styles, /labx-operation-card__geometry-metrics/);
   assert.match(styles, /showImageFrames/);
-  assert.match(styles, /data-lab-comparison-tool-mode/);
+  assert.match(styles, /data-comparison-tool="move"/);
+  assert.match(styles, /data-comparison-tool="resize"/);
+  assert.match(styles, /data-comparison-tool="zoom"/);
   assert.match(controls, /data-lab-comparison-manual-metrics/);
   assert.match(controls, /kimlik doğrulama skoru değildir/);
-  assert.match(mouseTools, /stopImmediatePropagation/);
+  assert.match(mouseTools, /getActiveLabImageComparisonToolbarTool/);
+  assert.match(mouseTools, /handleWheel/);
   assert.match(mouseTools, /initialOffsetX/);
   assert.match(mouseTools, /initialScaleX/);
   assert.match(mouseTools, /initialZoom/);
+  assert.match(toolbar, /label: "Taşı"/);
+  assert.match(toolbar, /label: "Boyutlandır"/);
+  assert.match(toolbar, /label: "Yakınlaştır"/);
+  assert.match(toolbar, /data-lab-comparison-toolbar-tool/);
+  assert.match(toolbar, /<circle cx="11" cy="11" r="7"/);
 });
