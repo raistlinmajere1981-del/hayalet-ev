@@ -16,16 +16,11 @@ interface GameRoomBootstrapDependencies {
   defaultStarter: string;
   saveTeamTetrisState: (api: GameRoomHostApi, value: unknown) => void;
   createInitialTeamTetrisState: (locale: string) => unknown;
-  resetFateKnotsState: (api: GameRoomHostApi, phase: string) => void;
   ensureUs1SyncLoop: (api: GameRoomHostApi) => void;
 }
 
 interface GameRoomLifecycleDependencies {
   pushActiveFeatureState: (api: GameRoomHostApi) => void;
-  getActiveFeatureId: (context: unknown) => string;
-  loadContext: (api: GameRoomHostApi) => unknown;
-  fateKnotsFeatureId: string;
-  dispatchPendingFateKnotsWork: (api: GameRoomHostApi) => Promise<unknown>;
   syncUs1Mailbox: (api: GameRoomHostApi, reason: string) => Promise<unknown>;
   syncFromContext: (api: GameRoomHostApi, payload: unknown) => void;
   clearUs1SyncLoop: (api: GameRoomHostApi) => void;
@@ -44,7 +39,6 @@ export function bootstrapGameRoomHostState(
     deps.createInitialBackgammonState(deps.readLocale(api), deps.defaultTarget, deps.defaultStarter)
   );
   deps.saveTeamTetrisState(api, deps.createInitialTeamTetrisState(deps.readLocale(api)));
-  deps.resetFateKnotsState(api, "blank-slate");
   deps.ensureUs1SyncLoop(api);
 }
 
@@ -59,9 +53,6 @@ export function createGameRoomHostLifecycle(
   return {
     onRoomReady() {
       deps.pushActiveFeatureState(api);
-      if (deps.getActiveFeatureId(deps.loadContext(api)) === deps.fateKnotsFeatureId) {
-        void deps.dispatchPendingFateKnotsWork(api);
-      }
       void deps.syncUs1Mailbox(api, "room-ready");
     },
     onRoomEvent(payload: unknown) {
