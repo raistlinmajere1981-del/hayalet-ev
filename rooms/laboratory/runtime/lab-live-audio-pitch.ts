@@ -5,7 +5,7 @@ export {
   getLivePitchShiftSemitones,
 } from "../domain/lab-live-audio-settings.js";
 
-export const LAB_LIVE_PITCH_PROCESSOR_NAME = "lab-live-pitch-shifter";
+const LAB_LIVE_PITCH_PROCESSOR_NAME = "lab-live-pitch-shifter";
 
 const LIVE_PITCH_WORKLET_LOADS = new WeakMap<AudioContext, Promise<boolean>>();
 
