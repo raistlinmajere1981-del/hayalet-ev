@@ -13,7 +13,6 @@ import {
   resetTeamTetrisState,
 } from "../../team-tetris/host/runtime.js";
 import { loadTeamTetrisState } from "../../team-tetris/host/state.js";
-import { syncFromContext as fateKnotsSyncFromContext } from "../../fate-knots/host/runtime.js";
 import { getOpponentInfo, loadState, saveState } from "./state.js";
 import { blockMatch, isBlocked } from "./runtime-match.js";
 
@@ -47,11 +46,6 @@ export function syncFromContext(api: BackgammonRuntimeSyncApi, payload: unknown)
   const previousActiveFeatureId = getActiveFeatureId(previousContext);
   const context = saveContext(api, payload);
   const activeFeatureId = getActiveFeatureId(context);
-  fateKnotsSyncFromContext(api, {
-    context,
-    previousActiveFeatureId,
-    activeFeatureId,
-  });
 
   const state = loadState(api);
   const teamTetrisState = loadTeamTetrisState(api);
