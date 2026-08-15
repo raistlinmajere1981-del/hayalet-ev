@@ -27,7 +27,6 @@ const TOOL_CONFIGS: readonly ToolConfig[] = [
 let activeTool: LabImageComparisonToolbarTool | null = null;
 let bound = false;
 let forwardingBaseSlotClick = false;
-let observer: MutationObserver | null = null;
 let syncQueued = false;
 
 function getToolConfig(tool: LabImageComparisonToolbarTool) {
@@ -102,8 +101,9 @@ function syncPopoverPresentation(baseButton: HTMLButtonElement) {
   }
   popover.dataset["comparisonTool"] = activeTool;
   const title = popover.querySelector<HTMLElement>(".labx-icon-rail-popover__title");
-  if (title !== null) {
-    title.textContent = getToolConfig(activeTool).label;
+  const nextTitle = getToolConfig(activeTool).label;
+  if (title !== null && title.textContent !== nextTitle) {
+    title.textContent = nextTitle;
   }
 }
 
@@ -178,7 +178,9 @@ export function ensureLabImageComparisonToolbarBound() {
   }
   bound = true;
   document.addEventListener("click", handleClick, true);
-  observer = new MutationObserver(queueSync);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  new MutationObserver(queueSync).observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
   queueSync();
 }
