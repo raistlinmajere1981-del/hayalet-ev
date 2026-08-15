@@ -12,7 +12,6 @@
     backgammonStage: ".backgammon-stage",
     teamTetrisRail: ".tt-rail",
     teamTetrisStage: ".tt-stage",
-    fateKnotsSurface: ".fk-shell",
   };
 
   function isRecord(value: unknown): value is Record<string, unknown> {
