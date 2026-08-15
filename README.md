@@ -198,6 +198,14 @@ Hayalet Ev’in uzun vadeli amacı:
 
 ---
 
+## 📄 Lisans
+
+Hayalet Ev kaynak kodu [MIT Lisansı](LICENSE) altında sunulur. Kullanabilir, değiştirebilir, dağıtabilir ve kendi projelerinde değerlendirebilirsin; MIT lisans ve telif bildirimlerinin korunması gerekir.
+
+Projede kullanılan üçüncü taraf bağımlılıklar, modeller, ikonlar, fontlar veya diğer harici varlıklar varsa bunlar kendi lisans ve kaynak bildirimlerine tabidir. İlgili dosyalardaki lisans/kaynak notları bu kapsamda korunmalıdır.
+
+---
+
 ## 🧠 Son Söz
 
 Hayalet Ev’i bir uygulama gibi kullanabilirsin.
