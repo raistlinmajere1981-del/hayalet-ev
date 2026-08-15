@@ -16,7 +16,6 @@ const room: InstalledRoomRecord = {
   features: [
     { id: "backgammon", name: "Tavla" },
     { id: "team-tetris", name: "Team Tetris" },
-    { id: "fate-knots", name: "Fate Knots" },
   ],
   protocolSpecs: [
     {
