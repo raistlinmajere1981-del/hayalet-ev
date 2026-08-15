@@ -1,9 +1,8 @@
 import type { LabAudioFocusSettings } from "../domain/lab-types.js";
+import {
+  getLivePitchShiftRatio,
+} from "../domain/lab-live-audio-settings.js";
 
-export const LAB_LIVE_PITCH_SHIFT_FIELD = "livePitchSemitones";
-export const LAB_LIVE_PITCH_SHIFT_MIN = -12;
-export const LAB_LIVE_PITCH_SHIFT_MAX = 12;
-export const LAB_LIVE_PITCH_SHIFT_DEFAULT = 0;
 export const LAB_LIVE_PITCH_PROCESSOR_NAME = "lab-live-pitch-shifter";
 
 const LIVE_PITCH_WORKLET_LOADS = new WeakMap<AudioContext, Promise<boolean>>();
@@ -97,31 +96,6 @@ class LabLivePitchShiftProcessor extends AudioWorkletProcessor {
 
 registerProcessor("${LAB_LIVE_PITCH_PROCESSOR_NAME}", LabLivePitchShiftProcessor);
 `;
-
-function clampLivePitchShiftSemitones(value: number) {
-  if (!Number.isFinite(value)) {
-    return LAB_LIVE_PITCH_SHIFT_DEFAULT;
-  }
-  return Math.max(LAB_LIVE_PITCH_SHIFT_MIN, Math.min(LAB_LIVE_PITCH_SHIFT_MAX, value));
-}
-
-export function getLivePitchShiftSemitones(audioFocus: unknown) {
-  if (audioFocus === null || typeof audioFocus !== "object" || Array.isArray(audioFocus)) {
-    return LAB_LIVE_PITCH_SHIFT_DEFAULT;
-  }
-  const value = (audioFocus as Record<string, unknown>)[LAB_LIVE_PITCH_SHIFT_FIELD];
-  return clampLivePitchShiftSemitones(typeof value === "number" ? value : Number(value));
-}
-
-export function attachLivePitchShiftSemitones<T extends object>(target: T, source: unknown): T {
-  (target as Record<string, unknown>)[LAB_LIVE_PITCH_SHIFT_FIELD] =
-    getLivePitchShiftSemitones(source);
-  return target;
-}
-
-export function getLivePitchShiftRatio(audioFocus: unknown) {
-  return Math.pow(2, getLivePitchShiftSemitones(audioFocus) / 12);
-}
 
 type PitchWorkletWindow = Window & typeof globalThis;
 
