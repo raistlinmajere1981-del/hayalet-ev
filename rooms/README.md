@@ -38,7 +38,7 @@ The repository ships first-party rooms both as product features and as examples 
 | `laboratory`   | Implemented            | Media/audio project intake, readiness/tooling, processing, comparison and inspection, annotation/export, analysis and reporting.               | [Laboratory](../LABORATORY.md), [room ownership](laboratory/README.md) |
 | `forge-room`   | Implemented            | Goal/preflight workflow, task drafting, AI assignments, conflict review, synthesis and handoff packages.                                       | [Forge Room](../FORGEROOM.md)                                          |
 | `repair-room`  | Implemented            | Electronics repair sessions, evidence/knowledge packs, board/camera workbench, measurements, timeline/overlays, AI and hands-free interaction. | [Repair Room](repair-room/README.md)                                   |
-| `game-room`    | Implemented / evolving | Tavla, four-seat Team Tetris, and a Fate Knots placeholder reserved for a later game design.                                                   | [Backgammon](../BACKGAMMON.md), [Team Tetris](../TEAM-TETRIS.md)       |
+| `game-room`    | Implemented / evolving | Tavla and four-seat Team Tetris with AI/US1 participation and room transport.                                                                  | [Backgammon](../BACKGAMMON.md), [Team Tetris](../TEAM-TETRIS.md)       |
 | `pattern-room` | Prototype              | Phase-one local-only research-pattern surface with overview, board, desk, archive, dissent and report views.                                   | `pattern-room/manifest.json`                                           |
 
 Status labels describe the current repository surface, not a compatibility or long-term support guarantee.
@@ -65,11 +65,10 @@ Repair Room owns electronics-repair state and interaction inside the room bounda
 
 ### Game Room
 
-Game Room currently contains two functioning game systems and one placeholder:
+Game Room currently contains two functioning game systems:
 
 - Tavla can target AI1, AI2 or connected US1.
 - Team Tetris uses four seats: `user`, `ai1`, `ai2`, `us1`.
-- Fate Knots is intentionally a placeholder for a future game pass.
 
 ### Pattern Room
 
