@@ -101,58 +101,6 @@
   background: color-mix(in srgb, var(--lab-surface-1) 86%, transparent);
 }
 
-.labx-comparison-tool-switch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--lab-space-1);
-}
-
-.labx-comparison-tool-switch__item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--lab-space-1);
-  padding: var(--lab-space-1) var(--lab-space-2);
-  border: var(--lab-workspace-px-1) solid var(--lab-border-default);
-  border-radius: var(--lab-radius-sm);
-  background: var(--lab-surface-0);
-  color: var(--lab-text-soft);
-  cursor: pointer;
-  font-size: var(--lab-workspace-rem-0-64);
-  font-weight: 700;
-}
-
-.labx-comparison-tool-switch__item[data-active="true"] {
-  border-color: var(--lab-accent);
-  background: var(--lab-accent-bg-strong);
-  color: var(--lab-text-strong);
-  box-shadow: 0 0 0 var(--lab-workspace-px-1) var(--lab-accent-soft);
-}
-
-.labx-comparison-tool-switch__item input {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.labx-comparison-tool-switch__icon {
-  display: inline-grid;
-  place-items: center;
-}
-
-.labx-comparison-tool-switch__icon svg {
-  width: var(--lab-space-3);
-  height: var(--lab-space-3);
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
 .labx-comparison-toolbox__hint {
   margin: 0;
   color: var(--lab-text-dim);
@@ -181,19 +129,67 @@
   margin-bottom: var(--lab-space-2);
 }
 
-.labx-shell:has(.labx-icon-rail-popover[data-slot="image-comparison"] [data-lab-comparison-tool-mode="true"][value="move"]:checked)
+/* The transform controls live in the same comparison capability settings,
+ * but only the selected transient rail tool exposes its matching block. */
+.labx-icon-rail-popover[data-slot="image-comparison"] [data-comparison-tool-panel] {
+  display: none;
+}
+
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="move"]
+  [data-comparison-tool-panel="move"],
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="resize"]
+  [data-comparison-tool-panel="resize"],
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="zoom"]
+  [data-comparison-tool-panel="zoom"] {
+  display: grid;
+}
+
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
+  .labx-operation-card__main,
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
+  .labx-operation-card__meta,
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
+  .labx-operation-card__reason,
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
+  .labx-operation-card__action-state,
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
+  .labx-operation-card__scope,
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
+  .labx-image-comparison-settings__general-toolbar,
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
+  .labx-settings-grid--comparison-base,
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
+  .labx-image-comparison-settings__frame-toggle,
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
+  .labx-image-comparison-settings__markers,
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
+  .labx-operation-card__comparison,
+.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
+  .labx-operation-card > .labx-operation-card__action {
+  display: none;
+}
+
+.labx-shell:has(.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="move"])
   .labx-workspace-comparison__media-stage,
-.labx-shell:has(.labx-icon-rail-popover[data-slot="image-comparison"] [data-lab-comparison-tool-mode="true"][value="move"]:checked)
+.labx-shell:has(.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="move"])
   .labx-workspace-comparison__split {
   cursor: grab;
   user-select: none;
 }
 
-.labx-shell:has(.labx-icon-rail-popover[data-slot="image-comparison"] [data-lab-comparison-tool-mode="true"][value="resize"]:checked)
+.labx-shell:has(.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="resize"])
   .labx-workspace-comparison__media-stage,
-.labx-shell:has(.labx-icon-rail-popover[data-slot="image-comparison"] [data-lab-comparison-tool-mode="true"][value="resize"]:checked)
+.labx-shell:has(.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="resize"])
   .labx-workspace-comparison__split {
   cursor: nwse-resize;
+  user-select: none;
+}
+
+.labx-shell:has(.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="zoom"])
+  .labx-workspace-comparison__media-stage,
+.labx-shell:has(.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="zoom"])
+  .labx-workspace-comparison__split {
+  cursor: zoom-in;
   user-select: none;
 }
 
