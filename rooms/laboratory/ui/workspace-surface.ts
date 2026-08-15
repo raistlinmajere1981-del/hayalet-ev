@@ -1,4 +1,10 @@
-import { asLabRecord, asNonEmptyString, escapeHtml, ICON_RAIL_SLOTS } from "../domain/lab-types.js";
+import {
+  asLabRecord,
+  asNonEmptyString,
+  escapeHtml,
+  ICON_RAIL_SLOTS,
+  normalizeLabOperationSettings,
+} from "../domain/lab-types.js";
 import type {
   LabWorkspaceSurface,
   LabAsset,
@@ -11,7 +17,12 @@ import type {
   LabIconRailSlotId,
   LabComparisonRoiState,
   LabComparisonSide,
+  LabSettingsRecord,
 } from "../domain/lab-types.js";
+import {
+  buildImageComparisonTransformCss,
+  readImageComparisonGeometry,
+} from "../domain/lab-image-comparison-workbench.js";
 import {
   getActiveSelection,
   getAudioFocusSettings,
@@ -257,11 +268,15 @@ function renderComparisonPreview(input: {
   referenceLabel: string;
   referenceUrl: string;
   settings: Record<LabComparisonSide, LabInteractiveSettings>;
+  toolSettings: LabSettingsRecord;
   roiFocusActive: boolean;
   splitPercent: number;
 }) {
   const split = Math.max(5, Math.min(95, Math.round(input.splitPercent)));
-  const mode = input.mode === "stacked" ? "stacked" : input.mode === "split" ? "split" : "paired";
+  const geometry = readImageComparisonGeometry(input.toolSettings);
+  const requestedMode =
+    input.mode === "stacked" ? "stacked" : input.mode === "split" ? "split" : "paired";
+  const mode = geometry.compositeMode === "none" ? requestedMode : "split";
   const filterStateBySide: Record<LabComparisonSide, ReturnType<typeof buildPreviewFilterState>> = {
     primary: buildPreviewFilterState(input.settings.primary, {
       filterId: "labx-ch-isolate-primary",
@@ -274,8 +289,24 @@ function renderComparisonPreview(input: {
     return input.activeSide === side ? "true" : "false";
   }
   function getImageStyle(side: LabComparisonSide) {
-    const filterCss = filterStateBySide[side].filterCss;
-    return filterCss !== "" ? ` style="${filterCss}"` : "";
+    const filterCss = filterStateBySide[side].filterCss.trim();
+    const transformCss = buildImageComparisonTransformCss(geometry.transforms[side]);
+    return ` style="${filterCss === "" ? "" : `${filterCss};`}transform:${transformCss};transform-origin:center center;"`;
+  }
+  function renderMarkers(side: LabComparisonSide) {
+    return geometry.markers
+      .filter(function (marker) {
+        return marker.enabled && marker.side === side;
+      })
+      .map(function (marker) {
+        return `<span class="labx-workspace-comparison__marker" data-marker-id="${String(marker.id)}" data-marker-side="${side}" style="left:${String(marker.x)}%;top:${String(marker.y)}%"><span>${String(marker.id)}</span></span>`;
+      })
+      .join("");
+  }
+  function renderCenterGuide() {
+    return geometry.centerGuide
+      ? `<span class="labx-workspace-comparison__center-guide" aria-hidden="true"></span>`
+      : "";
   }
   function renderComparisonOverlay(side: LabComparisonSide) {
     return renderWorkspaceROIOverlay(
@@ -308,16 +339,24 @@ function renderComparisonPreview(input: {
       >
         <span class="labx-workspace-comparison__media-frame" data-lab-selection-roi-frame="true">
           <img class="${imageClassName}" data-lab-preserve-media="workspace-comparison-${side}" src="${escapeHtml(url)}" alt="${escapeHtml(label)}"${getImageStyle(side)} />
+          ${renderCenterGuide()}
+          ${renderMarkers(side)}
           ${renderComparisonOverlay(side)}
         </span>
       </div>
     `;
   }
 
+  const leftSide: LabComparisonSide =
+    geometry.compositeMode === "reference-left-primary-right" ? "reference" : "primary";
+  const splitPrimaryClass =
+    leftSide === "primary" ? " labx-workspace-comparison__image--left" : "";
+  const splitReferenceClass =
+    leftSide === "reference" ? " labx-workspace-comparison__image--left" : "";
   const comparisonMarkup =
     mode === "split"
       ? `
-      <div class="labx-workspace-comparison" data-mode="split" style="--lab-comparison-split:${String(split)}%">
+      <div class="labx-workspace-comparison" data-mode="split" data-composite-mode="${escapeHtml(geometry.compositeMode)}" style="--lab-comparison-split:${String(split)}%">
         <div
           class="labx-workspace-comparison__split"
           data-lab-selection-roi-stage="true"
@@ -325,9 +364,11 @@ function renderComparisonPreview(input: {
           data-lab-comparison-roi-side="${input.activeSide}"
           data-active-side="${input.activeSide}"
         >
-          <img class="labx-workspace-comparison__image" data-lab-preserve-media="workspace-comparison-reference" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}"${getImageStyle("reference")} />
-          <img class="labx-workspace-comparison__image labx-workspace-comparison__image--primary" data-lab-preserve-media="workspace-comparison-primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}"${getImageStyle("primary")} />
-          <span class="labx-workspace-comparison__divider" aria-hidden="true"></span>
+          <img class="labx-workspace-comparison__image${splitReferenceClass}" data-lab-preserve-media="workspace-comparison-reference" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}"${getImageStyle("reference")} />
+          <img class="labx-workspace-comparison__image${splitPrimaryClass}" data-lab-preserve-media="workspace-comparison-primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}"${getImageStyle("primary")} />
+          ${geometry.centerGuide ? `<span class="labx-workspace-comparison__divider" aria-hidden="true"></span>` : ""}
+          ${renderMarkers("primary")}
+          ${renderMarkers("reference")}
           ${renderComparisonOverlay(input.activeSide)}
         </div>
         <div class="labx-workspace-comparison__labels">
@@ -337,7 +378,7 @@ function renderComparisonPreview(input: {
       </div>
     `
       : `
-    <div class="labx-workspace-comparison" data-mode="${escapeHtml(mode)}">
+    <div class="labx-workspace-comparison" data-mode="${escapeHtml(mode)}" data-composite-mode="none">
       <figure class="labx-workspace-comparison__pane" data-side="primary" data-active="${getActiveFlag("primary")}">
         ${renderMediaStage("primary", input.primaryLabel, input.primaryUrl)}
         <figcaption>A ${escapeHtml(input.primaryLabel)}</figcaption>
@@ -503,10 +544,6 @@ function renderWorkspaceAssetContent(
   `;
 }
 
-// ---------------------------------------------------------------------------
-// V4B Icon Rail
-// ---------------------------------------------------------------------------
-
 const ICON_RAIL_SVGS: Record<LabIconRailSlotId, string> = {
   "roi-select": `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8V5a3 3 0 0 1 3-3h3"/><path d="M16 2h3a3 3 0 0 1 3 3v3"/><path d="M22 16v3a3 3 0 0 1-3 3h-3"/><path d="M8 22H5a3 3 0 0 1-3-3v-3"/></svg>`,
   "audio-focus": `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`,
@@ -647,7 +684,6 @@ function renderIconRailPopoverBody(
     return renderWorkspaceInteractiveControls(content.interactiveSettings, copy);
   }
 
-  // operation
   if (slot.capabilityId === null) {
     return "";
   }
@@ -689,7 +725,7 @@ function renderIconRailPopover(input: {
           type="button"
           data-lab-action="inspector-pin-toggle"
           aria-label="${escapeHtml(copy.t("mediaAnalysis.iconRail.pin", pinned ? "Sabitlemeyi kaldır" : "Sabitle"))}"
-          data-pinned="${pinned ? "true" : "false"}"
+          data-pinned="${pinned ? "true" : "false"}
         >${
           pinned
             ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>`
@@ -836,6 +872,11 @@ export function renderWorkspaceSurface(
   );
   const settings = getInteractiveSettings(state);
   const comparisonSettings = getComparisonInteractiveSettings(state);
+  const operationSettings = asLabRecord(asLabRecord(state.workbench)["operationSettings"]);
+  const imageComparisonSettings = normalizeLabOperationSettings(
+    "image-comparison",
+    operationSettings["image-comparison"]
+  );
   const audioFocus = getAudioFocusSettings(state);
   const effectivePreviewAudioFocus = getEffectivePreviewAudioFocusSettings(state);
   const roiRegions = getROIRegions(state);
@@ -1002,6 +1043,7 @@ export function renderWorkspaceSurface(
           copy.t("mediaAnalysis.operations.comparison.referenceFallback", "Referans"),
         referenceUrl: comparisonReferencePreviewUrl,
         settings: comparisonSettings,
+        toolSettings: imageComparisonSettings,
         roiFocusActive,
         splitPercent: state.ui.workspace.comparisonSplitPercent,
       })
