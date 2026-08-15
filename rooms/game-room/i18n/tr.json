@@ -3,8 +3,7 @@
   "subtitle": "Canli AI slotlari veya bagli US1 uzak kullanicisi ile dogrudan maclar icin odakli masa oyunu odasi.",
   "features": {
     "backgammon": "Tavla",
-    "team-tetris": "Takim Tetris",
-    "fate-knots": "Fate Knots"
+    "team-tetris": "Takim Tetris"
   },
   "backgammon": {
     "heroBadge": "Oyun Odasi",
@@ -161,7 +160,6 @@
       "idle": "Takim Tetris baslamadan once AI1, AI2 ve US1 bekleniyor.",
       "ready": "Gerekli tum koltuklar hazir. Takim Tetris acilis turu tohumlanabilir.",
       "activeFeatureReset": "Takim Tetris ozelliginden cikmak aktif Takim Tetris macini sifirlar.",
-      "notImplemented": "Takim Tetris host shell'i hazir. Oynanis turleri sonraki sprintte acilacak.",
       "blocked": "Bu Takim Tetris maci bloke oldu. Toparlamak icin sifirla.",
       "yourTurn": "Sira sende. Parcayi dondur, tahmin ettigin yolu ciz ve hamleyi gonder.",
       "partnerTurnHidden": "Takim arkadasin oynuyor, ama gizli es modu kimligini simdilik sakliyor.",
@@ -228,20 +226,6 @@
       "horizontalCollision": "Cizilen yol gorunen tahtada yana kayarken dolu bir hucreye carpisiyor.",
       "downwardCollision": "Cizilen yol gorunen tahtada asagi inerken dolu bir hucreye carpisiyor.",
       "incompletePath": "Yol burada biterse parca kalan mesafeyi duz asagi kendi tamamlar."
-    }
-  },
-  "fateKnots": {
-    "heroBadge": "Temiz Zemin",
-    "heroTitle": "Fate Knots",
-    "heroSubtitle": "Eski Fate Knots dilimi temizlendi; yeni sistem ve UI buradan sifirdan baslayabilir.",
-    "controls": {
-      "start": "Shell'i Ac",
-      "reset": "Shell'i Sifirla"
-    },
-    "status": {
-      "label": "Tasarim Durumu",
-      "idle": "Eski kosu yuklu degil.",
-      "ready": "Siradaki Fate Knots sistemi icin hazir."
     }
   }
 }
