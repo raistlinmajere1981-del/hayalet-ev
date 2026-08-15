@@ -5,6 +5,7 @@ import type {
   LabSelectionROI,
   LabSettingsRecord,
 } from "../domain/lab-types.js";
+import { getImageComparisonMarkerMetrics } from "../domain/lab-image-comparison-workbench.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 import { renderLabSettingsFields } from "./lab-settings-controls.js";
@@ -152,8 +153,44 @@ function renderComparisonRoiStatus(comparison: LabOperationComparisonState, copy
   `;
 }
 
+function formatMarkerDistance(value: number | null) {
+  return value === null ? "—" : `${value.toFixed(2)}%`;
+}
+
+function formatMarkerDelta(primary: number | null, reference: number | null) {
+  if (primary === null || reference === null) {
+    return "—";
+  }
+  return `${Math.abs(primary - reference).toFixed(2)}%`;
+}
+
+function renderManualGeometryMetrics(settings: LabSettingsRecord) {
+  const metrics = getImageComparisonMarkerMetrics(settings);
+  if (metrics.primary.count < 2 && metrics.reference.count < 2) {
+    return "";
+  }
+  const rows = [
+    { label: "1–2", primary: metrics.primary.d12, reference: metrics.reference.d12 },
+    { label: "2–3", primary: metrics.primary.d23, reference: metrics.reference.d23 },
+    { label: "1–3", primary: metrics.primary.d13, reference: metrics.reference.d13 },
+  ];
+  return `
+    <div class="labx-operation-card__geometry-metrics" data-lab-comparison-manual-metrics="true">
+      <p class="labx-card__eyebrow">Manuel geometri</p>
+      <div class="labx-operation-card__geometry-head"><span>Ölçü</span><span>A</span><span>B</span><span>|Δ|</span></div>
+      ${rows
+        .map(function (row) {
+          return `<div class="labx-operation-card__geometry-row"><strong>${row.label}</strong><span>${formatMarkerDistance(row.primary)}</span><span>${formatMarkerDistance(row.reference)}</span><span>${formatMarkerDelta(row.primary, row.reference)}</span></div>`;
+        })
+        .join("")}
+      <p class="labx-operation-card__reason">Değerler görüntü alanının normalize yüzdesidir; kimlik doğrulama skoru değildir.</p>
+    </div>
+  `;
+}
+
 function renderImageComparisonCaptureControls(
   comparison: LabOperationComparisonState | null,
+  settings: LabSettingsRecord,
   copy: LabI18n
 ) {
   if (comparison === null) {
@@ -185,6 +222,7 @@ function renderImageComparisonCaptureControls(
         <span>${escapeHtml(copy.t("mediaAnalysis.operations.comparison.split", "Split"))}</span>
         <input type="number" min="5" max="95" step="1" value="${escapeHtml(String(Math.round(comparison.splitPercent)))}" data-lab-field="workspace.comparison.splitPercent" />
       </label>
+      ${renderManualGeometryMetrics(settings)}
       <label class="labx-operation-card__comparison-note">
         <span>${escapeHtml(copy.t("mediaAnalysis.operations.comparison.note", "Bulgu notu"))}</span>
         <textarea rows="3" maxlength="1000" data-lab-field="workspace.comparison.findingNote">${escapeHtml(comparison.findingNote)}</textarea>
@@ -342,7 +380,7 @@ export function renderCapabilityCard(
       })}
       ${
         capability.id === "image-comparison"
-          ? renderImageComparisonCaptureControls(comparison, copy)
+          ? renderImageComparisonCaptureControls(comparison, settings, copy)
           : ""
       }
       ${renderOperationButton(capability, copy)}
