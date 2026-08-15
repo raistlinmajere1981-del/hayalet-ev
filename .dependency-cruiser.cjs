@@ -48,6 +48,7 @@ module.exports = {
           "rooms/laboratory/runtime/lab-decision-priority\\.ts$", // regression-covered decision ordering helper
           "rooms/pattern-room/shared/types/pattern-room\\.ts$", // room UI model contract consumed through import type
           "rooms/pattern-room/shared/types/pattern-room-storage\\.ts$", // type-only Pattern Room storage contract consumed through import type
+          "rooms/pattern-room/shared/types/pattern-room-slot-bridge\\.ts$", // type-only room-local bridge contract consumed through import type
           "rooms/pattern-room/shared/source-producers/types/producer-contract\\.ts$", // type-only Pattern Room source producer contract
           "rooms/pattern-room/shared/source-producers/types/producer-input\\.ts$", // type-only Pattern Room source producer input contract
           "rooms/pattern-room/shared/source-producers/types/producer-orchestration\\.ts$", // type-only Pattern Room source producer orchestration contract
