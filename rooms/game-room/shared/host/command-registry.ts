@@ -12,9 +12,6 @@ interface GameRoomCommandRegistryDependencies {
   handleTeamTetrisStart: CommandHandler;
   handleTeamTetrisReset: (api: unknown) => unknown;
   handleTeamTetrisMove: CommandHandler;
-  fateKnotsCommandNames: Record<string, string>;
-  handleFateKnotsStart: CommandHandler;
-  handleFateKnotsReset: (api: unknown) => unknown;
 }
 
 export function createGameRoomCommandRegistry(
@@ -29,10 +26,6 @@ export function createGameRoomCommandRegistry(
     remoteMove: deps.backgammonCommandNames["remoteMove"] || "GameRoomBackgammonRemoteMove",
     acceptInvite: deps.backgammonCommandNames["acceptInvite"] || "GameRoomBackgammonAcceptInvite",
     rejectInvite: deps.backgammonCommandNames["rejectInvite"] || "GameRoomBackgammonRejectInvite",
-  };
-  const fateKnotsCommands = {
-    start: deps.fateKnotsCommandNames["start"] || "GameRoomFateKnotsStart",
-    reset: deps.fateKnotsCommandNames["reset"] || "GameRoomFateKnotsReset",
   };
 
   const registry: Record<string, (payload?: unknown) => unknown> = {
@@ -71,12 +64,6 @@ export function createGameRoomCommandRegistry(
     },
     GameRoomTeamTetrisRemoteMove: function (payload?: unknown) {
       return deps.handleTeamTetrisMove(api, payload || {});
-    },
-    [fateKnotsCommands.start]: function (payload?: unknown) {
-      return deps.handleFateKnotsStart(api, payload || {});
-    },
-    [fateKnotsCommands.reset]: function () {
-      return deps.handleFateKnotsReset(api);
     },
   };
 
