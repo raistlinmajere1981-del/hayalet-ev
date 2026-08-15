@@ -221,7 +221,8 @@ test("comparison renderer keeps transforms declarative and shares them with face
   assert.match(toolbar, /label: "Yakınlaştır"/);
   assert.match(toolbar, /label: "Yüz Landmark"/);
   assert.match(toolbar, /data-lab-comparison-toolbar-tool/);
-  assert.match(toolbar, /workspace-image-comparison-export/);
+  assert.match(toolbar, /workspace-comparison-moment-capture/);
+  assert.doesNotMatch(toolbar, /workspace-image-comparison-export/);
   assert.match(toolbar, /Yan Yana Dışa Aktar/);
   assert.match(toolbar, /single-image/);
   assert.match(toolbar, /WORKSPACE_TIMELINE_SELECTOR/);

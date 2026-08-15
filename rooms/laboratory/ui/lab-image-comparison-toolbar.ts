@@ -80,7 +80,7 @@ function createComparisonExportButton() {
   button.className =
     "labx-icon-rail__btn labx-image-comparison-toolbar__btn labx-image-comparison-toolbar__btn--export";
   button.type = "button";
-  button.dataset["labAction"] = "workspace-image-comparison-export";
+  button.dataset["labAction"] = "workspace-comparison-moment-capture";
   button.dataset["labComparisonExport"] = "side-by-side";
   button.dataset["active"] = "false";
   button.setAttribute("aria-label", "Yan Yana Dışa Aktar");
