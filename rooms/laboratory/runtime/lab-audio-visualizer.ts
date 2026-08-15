@@ -5,11 +5,18 @@ import {
   getDefaultAudioFocusEqBand,
   normalizeAudioFocusSettings,
 } from "./lab-audio-focus-normalization.js";
+import {
+  applyLivePitchShift,
+  attachLivePitchShiftSemitones,
+  createLivePitchShiftNode,
+  getLivePitchShiftSemitones,
+} from "./lab-live-audio-pitch.js";
 
 type AudioVisualizationMode = LabAudioFocusSettings["visualizationMode"];
 type EffectiveAudioVisualizationMode = "none" | "waveform" | "spectrum";
 type VisualizerWindow = Window & {
   AudioContext?: typeof AudioContext;
+  AudioWorkletNode?: typeof AudioWorkletNode;
   cancelAnimationFrame: (handle: number) => void;
   devicePixelRatio?: number;
   getComputedStyle: (element: Element) => CSSStyleDeclaration;
@@ -30,6 +37,9 @@ type SharedAudioGraph = {
   gainNode: GainNode | null;
   lastAppliedAudioFocusSignature: string | null;
   lastAppliedPlaybackSignature: string | null;
+  pitchBypassed: boolean | null;
+  pitchNode: AudioWorkletNode | null;
+  pitchNodeStatus: "idle" | "ready" | "unavailable";
   sourceNode: MediaElementAudioSourceNode | null;
   sourceRoute: "analyser" | "destination" | null;
   timeDomainData: Uint8Array<ArrayBuffer> | null;
@@ -85,6 +95,9 @@ function getSharedAudioGraph(mediaElement: HTMLMediaElement) {
     gainNode: null,
     lastAppliedAudioFocusSignature: null,
     lastAppliedPlaybackSignature: null,
+    pitchBypassed: null,
+    pitchNode: null,
+    pitchNodeStatus: "idle",
     sourceNode: null,
     sourceRoute: null,
     timeDomainData: null,
@@ -131,6 +144,9 @@ async function ensureSharedAudioGraph(
     graph.frequencyData = createByteBuffer(graph.analyser.frequencyBinCount);
     graph.lastAppliedAudioFocusSignature = null;
     graph.lastAppliedPlaybackSignature = null;
+    graph.pitchBypassed = null;
+    graph.pitchNode = null;
+    graph.pitchNodeStatus = "idle";
     graph.sourceNode = null;
     graph.sourceRoute = null;
   }
@@ -160,6 +176,23 @@ async function ensureSharedAudioGraph(
     }
   }
 
+  return true;
+}
+
+async function ensureLivePitchNode(graph: SharedAudioGraph, windowRef: VisualizerWindow) {
+  if (graph.pitchNode !== null) {
+    return true;
+  }
+  if (graph.pitchNodeStatus === "unavailable" || graph.audioContext === null) {
+    return false;
+  }
+  const pitchNode = await createLivePitchShiftNode(graph.audioContext, windowRef);
+  if (pitchNode === null) {
+    graph.pitchNodeStatus = "unavailable";
+    return false;
+  }
+  graph.pitchNode = pitchNode;
+  graph.pitchNodeStatus = "ready";
   return true;
 }
 
@@ -230,25 +263,42 @@ function disconnectProcessingChain(graph: SharedAudioGraph) {
       // Disconnect can overlap with route swaps during sync.
     }
   });
+  if (graph.pitchNode) {
+    try {
+      graph.pitchNode.disconnect();
+    } catch {
+      // Disconnect can overlap with route swaps during sync.
+    }
+  }
   disconnectAnalyser(graph);
 }
 
-function routeSourceToAnalyser(graph: SharedAudioGraph, bypassFilter = false) {
+function routeSourceToAnalyser(
+  graph: SharedAudioGraph,
+  bypassFilter = false,
+  bypassPitch = true
+) {
   const context = graph.audioContext;
   const analyser = graph.analyser;
   const filterNode = graph.filterNode;
   const gainNode = graph.gainNode;
+  const pitchNode = graph.pitchNode;
   const sourceNode = graph.sourceNode;
   if (
     context === null ||
     analyser === null ||
     filterNode === null ||
     gainNode === null ||
-    sourceNode === null
+    sourceNode === null ||
+    (bypassPitch !== true && pitchNode === null)
   ) {
     return false;
   }
-  if (graph.sourceRoute === "analyser" && graph.filterBypassed === bypassFilter) {
+  if (
+    graph.sourceRoute === "analyser" &&
+    graph.filterBypassed === bypassFilter &&
+    graph.pitchBypassed === bypassPitch
+  ) {
     return true;
   }
   if (graph.sourceRoute !== null) {
@@ -271,13 +321,19 @@ function routeSourceToAnalyser(graph: SharedAudioGraph, bypassFilter = false) {
       previousNode.connect(node);
       previousNode = node;
     });
+    if (bypassPitch !== true && pitchNode !== null) {
+      previousNode.connect(pitchNode);
+      previousNode = pitchNode;
+    }
     previousNode.connect(analyser);
     graph.sourceRoute = "analyser";
     graph.filterBypassed = bypassFilter;
+    graph.pitchBypassed = bypassPitch;
     return true;
   } catch {
     graph.sourceRoute = null;
     graph.filterBypassed = null;
+    graph.pitchBypassed = null;
     return false;
   }
 }
@@ -303,10 +359,12 @@ function routeSourceToDestination(graph: SharedAudioGraph) {
     sourceNode.connect(context.destination);
     graph.sourceRoute = "destination";
     graph.filterBypassed = null;
+    graph.pitchBypassed = null;
     return true;
   } catch {
     graph.sourceRoute = null;
     graph.filterBypassed = null;
+    graph.pitchBypassed = null;
     return false;
   }
 }
@@ -329,6 +387,9 @@ function prepareCanvas(canvasElement: HTMLCanvasElement, windowRef: VisualizerWi
   return {
     context,
     height,
+    scale,
+    scaledHeight,
+    scaledWidth,
     width,
   };
 }
@@ -347,11 +408,18 @@ function readVisualizerColors(canvasElement: HTMLCanvasElement, windowRef: Visua
   };
 }
 
+function markNonSpectrogramFrame(canvasElement: HTMLCanvasElement) {
+  if (canvasElement.dataset) {
+    delete canvasElement.dataset["labSpectrogramActive"];
+  }
+}
+
 function drawIdleFrame(canvasElement: HTMLCanvasElement, windowRef: VisualizerWindow) {
   const preparedCanvas = prepareCanvas(canvasElement, windowRef);
   if (preparedCanvas === null) {
     return;
   }
+  markNonSpectrogramFrame(canvasElement);
   const { context, height, width } = preparedCanvas;
   const colors = readVisualizerColors(canvasElement, windowRef);
   const midline = height / 2;
@@ -385,6 +453,7 @@ function drawWaveformFrame(
   if (preparedCanvas === null) {
     return;
   }
+  markNonSpectrogramFrame(canvasElement);
   const { context, height, width } = preparedCanvas;
   const colors = readVisualizerColors(canvasElement, windowRef);
   const midline = height / 2;
@@ -415,7 +484,7 @@ function drawWaveformFrame(
   context.stroke();
 }
 
-function drawSpectrumFrame(
+function drawSpectrogramFrame(
   canvasElement: HTMLCanvasElement,
   windowRef: VisualizerWindow,
   buffer: Uint8Array<ArrayBuffer>
@@ -424,37 +493,53 @@ function drawSpectrumFrame(
   if (preparedCanvas === null) {
     return;
   }
-  const { context, height, width } = preparedCanvas;
+  const { context, scale, scaledHeight, scaledWidth } = preparedCanvas;
   const colors = readVisualizerColors(canvasElement, windowRef);
-  const bucketCount = Math.max(24, Math.min(96, Math.round(width / 6)));
-  const bucketWidth = Math.max(1, width / bucketCount);
-  const bucketSpan = Math.max(1, Math.floor(buffer.length / bucketCount));
+  const stripWidth = Math.max(1, Math.round(2 * scale));
+  const spectrogramActive = canvasElement.dataset?.["labSpectrogramActive"] === "true";
+  const canScroll = typeof context.drawImage === "function";
 
-  context.clearRect(0, 0, width, height);
-  for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex += 1) {
-    const start = bucketIndex * bucketSpan;
-    const end =
-      bucketIndex === bucketCount - 1 ? buffer.length : Math.min(buffer.length, start + bucketSpan);
-    let peak = 0;
-    for (let sampleIndex = start; sampleIndex < end; sampleIndex += 1) {
-      peak = Math.max(peak, buffer[sampleIndex] ?? 0);
-    }
-    const intensity = Math.max(0, Math.min(1, peak / 255));
-    const barHeight = Math.max(height * 0.06, intensity * height);
-    const x = bucketIndex * bucketWidth;
-    const y = height - barHeight;
-
-    context.fillStyle =
-      intensity > 0.72 ? colors.accent : intensity > 0.38 ? colors.accentAlt : colors.textDim;
-    context.fillRect(x, y, Math.max(1, bucketWidth - 1), barHeight);
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  if (spectrogramActive !== true || canScroll !== true || scaledWidth <= stripWidth) {
+    context.clearRect(0, 0, scaledWidth, scaledHeight);
+  } else {
+    context.drawImage(
+      canvasElement,
+      stripWidth,
+      0,
+      scaledWidth - stripWidth,
+      scaledHeight,
+      0,
+      0,
+      scaledWidth - stripWidth,
+      scaledHeight
+    );
   }
 
-  context.lineWidth = 1;
-  context.strokeStyle = colors.border;
-  context.beginPath();
-  context.moveTo(0, height - 0.5);
-  context.lineTo(width, height - 0.5);
-  context.stroke();
+  const bandCount = Math.max(24, Math.min(160, Math.round(scaledHeight / 2)));
+  const bandHeight = Math.max(1, scaledHeight / bandCount);
+  for (let bandIndex = 0; bandIndex < bandCount; bandIndex += 1) {
+    const normalizedFromTop = bandIndex / Math.max(1, bandCount - 1);
+    const highToLow = 1 - normalizedFromTop;
+    const logFrequencyRatio = (Math.pow(10, highToLow) - 1) / 9;
+    const sampleIndex = Math.max(
+      0,
+      Math.min(buffer.length - 1, Math.round(logFrequencyRatio * (buffer.length - 1)))
+    );
+    const intensity = Math.max(0, Math.min(1, (buffer[sampleIndex] ?? 0) / 255));
+    context.fillStyle =
+      intensity > 0.72 ? colors.accent : intensity > 0.34 ? colors.accentAlt : colors.textDim;
+    context.fillRect(
+      scaledWidth - stripWidth,
+      Math.floor(bandIndex * bandHeight),
+      stripWidth,
+      Math.ceil(bandHeight)
+    );
+  }
+  context.setTransform(scale, 0, 0, scale, 0, 0);
+  if (canvasElement.dataset) {
+    canvasElement.dataset["labSpectrogramActive"] = "true";
+  }
 }
 
 export function createAudioVisualizer(
@@ -492,11 +577,14 @@ export function createAudioVisualizer(
   function getAudioFocus() {
     const normalizedSettings = normalizeAudioFocusSettings(options.getAudioFocus?.());
     if (options.getTemporalAudioEnabled?.() === false) {
-      return {
-        ...normalizedSettings,
-        playbackRate: DEFAULT_AUDIO_FOCUS_SETTINGS.playbackRate,
-        preservePitch: DEFAULT_AUDIO_FOCUS_SETTINGS.preservePitch,
-      };
+      return attachLivePitchShiftSemitones(
+        {
+          ...normalizedSettings,
+          playbackRate: DEFAULT_AUDIO_FOCUS_SETTINGS.playbackRate,
+          preservePitch: DEFAULT_AUDIO_FOCUS_SETTINGS.preservePitch,
+        },
+        null
+      );
     }
     return normalizedSettings;
   }
@@ -528,6 +616,7 @@ export function createAudioVisualizer(
       setSmoothedAudioParam(node.Q, band.Q, currentTime);
       setSmoothedAudioParam(node.gain, band.gain, currentTime);
     });
+    applyLivePitchShift(sharedGraph.pitchNode, audioFocus, currentTime);
 
     sharedGraph.lastAppliedAudioFocusSignature = signature;
     return true;
@@ -541,7 +630,13 @@ export function createAudioVisualizer(
     if ((await ensureSharedAudioGraph(sharedGraph, mediaElement, windowRef)) !== true) {
       return false;
     }
-    if (routeSourceToAnalyser(sharedGraph, audioFocus.filterType === "none") !== true) {
+    const livePitchEnabled = Math.abs(getLivePitchShiftSemitones(audioFocus)) > 0.0005;
+    const pitchAvailable =
+      livePitchEnabled !== true || (await ensureLivePitchNode(sharedGraph, windowRef));
+    const bypassPitch = livePitchEnabled !== true || pitchAvailable !== true;
+    if (
+      routeSourceToAnalyser(sharedGraph, audioFocus.filterType === "none", bypassPitch) !== true
+    ) {
       return false;
     }
     return applyAudioFocusSettings(audioFocus, forceParamApply);
@@ -605,7 +700,7 @@ export function createAudioVisualizer(
           sharedGraph.frequencyData = createByteBuffer(sharedGraph.analyser.frequencyBinCount);
         }
         sharedGraph.analyser.getByteFrequencyData(sharedGraph.frequencyData);
-        drawSpectrumFrame(canvasElement, windowRef, sharedGraph.frequencyData);
+        drawSpectrogramFrame(canvasElement, windowRef, sharedGraph.frequencyData);
       } else {
         if (
           sharedGraph.timeDomainData === null ||
