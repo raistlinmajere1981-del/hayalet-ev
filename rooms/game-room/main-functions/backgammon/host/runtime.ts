@@ -37,7 +37,6 @@ import type {
   GameRoomSlotState,
 } from "../../../shared/types/room-shell-contracts.js";
 import {
-  FATE_KNOTS_FEATURE_ID,
   FEATURE_ID,
   ROOM_ID,
   TEAM_TETRIS_FEATURE_ID,
@@ -81,7 +80,6 @@ const BACKGAMMON_COMMAND_NAMES = {
 const backgammonUs1Runtime = createGameRoomBackgammonUs1Runtime({
   DEFAULT_STARTER: DEFAULT_STARTER,
   FEATURE_ID: FEATURE_ID,
-  FATE_KNOTS_FEATURE_ID: FATE_KNOTS_FEATURE_ID,
   ROOM_ID: ROOM_ID,
   TEAM_TETRIS_FEATURE_ID: TEAM_TETRIS_FEATURE_ID,
   buildInviteId: buildInviteId,
@@ -223,7 +221,7 @@ async function dispatchUs1BridgeMessage(
     bridgeResult["session"] !== null &&
     typeof bridgeResult["session"] === "object" &&
     Array.isArray(bridgeResult["session"]) === false
-      ? (bridgeResult["session"] as Record<string, unknown>)
+      ? (bridgeResultRaw as Record<string, unknown>)["session"] as Record<string, unknown>
       : {};
   return {
     success: true,
