@@ -19,7 +19,7 @@ Important implemented workbench behaviors include:
 - single-image and two-image inspection,
 - zoom/pan and selection/ROI-oriented inspection helpers,
 - comparison capture/export,
-- pen and circle/elipse drawing annotations with configurable color/width and clear controls,
+- pen and circle/ellipse drawing annotations with configurable color/width and clear controls,
 - annotation-aware PNG comparison export,
 - audio analysis runners including advanced forensic, music/rhythm, sound-event and source-separation paths,
 - report/result surfaces that can feed later AI-assisted interpretation.

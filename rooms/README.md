@@ -27,19 +27,19 @@ A portable room should therefore:
 - keep mutable project/runtime data out of the source tree,
 - remain packageable as a `.hevroom` when its dependencies permit it.
 
-See [../CONTRIBUTING.md](../CONTRIBUTING.md) for contribution rules and `.rovo/slot-bridge-contract.md` for the SlotBridge contract.
+See [../CONTRIBUTING.md](../CONTRIBUTING.md) for contribution rules and [../.rovo/slot-bridge-contract.md](../.rovo/slot-bridge-contract.md) for the SlotBridge contract.
 
 ## Built-in Rooms
 
 The repository ships first-party rooms both as product features and as examples of the room architecture.
 
-| Room | Status | Current scope | Documentation |
-| --- | --- | --- | --- |
-| `laboratory` | Implemented | Media/audio project intake, readiness/tooling, processing, comparison and inspection, annotation/export, analysis and reporting. | [Laboratory](../LABORATORY.md), [room ownership](laboratory/README.md) |
-| `forge-room` | Implemented | Goal/preflight workflow, task drafting, AI assignments, conflict review, synthesis and handoff packages. | [Forge Room](../FORGEROOM.md) |
-| `repair-room` | Implemented | Electronics repair sessions, evidence/knowledge packs, board/camera workbench, measurements, timeline/overlays, AI and hands-free interaction. | [Repair Room](repair-room/README.md) |
-| `game-room` | Implemented / evolving | Tavla, four-seat Team Tetris, and a Fate Knots placeholder reserved for a later game design. | [Backgammon](../BACKGAMMON.md), [Team Tetris](../TEAM-TETRIS.md) |
-| `pattern-room` | Prototype | Phase-one local-only research-pattern surface with overview, board, desk, archive, dissent and report views. | `pattern-room/manifest.json` |
+| Room           | Status                 | Current scope                                                                                                                                  | Documentation                                                          |
+| -------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `laboratory`   | Implemented            | Media/audio project intake, readiness/tooling, processing, comparison and inspection, annotation/export, analysis and reporting.               | [Laboratory](../LABORATORY.md), [room ownership](laboratory/README.md) |
+| `forge-room`   | Implemented            | Goal/preflight workflow, task drafting, AI assignments, conflict review, synthesis and handoff packages.                                       | [Forge Room](../FORGEROOM.md)                                          |
+| `repair-room`  | Implemented            | Electronics repair sessions, evidence/knowledge packs, board/camera workbench, measurements, timeline/overlays, AI and hands-free interaction. | [Repair Room](repair-room/README.md)                                   |
+| `game-room`    | Implemented / evolving | Tavla, four-seat Team Tetris, and a Fate Knots placeholder reserved for a later game design.                                                   | [Backgammon](../BACKGAMMON.md), [Team Tetris](../TEAM-TETRIS.md)       |
+| `pattern-room` | Prototype              | Phase-one local-only research-pattern surface with overview, board, desk, archive, dissent and report views.                                   | `pattern-room/manifest.json`                                           |
 
 Status labels describe the current repository surface, not a compatibility or long-term support guarantee.
 
