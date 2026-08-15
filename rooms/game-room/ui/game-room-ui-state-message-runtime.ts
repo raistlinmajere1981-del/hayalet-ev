@@ -13,16 +13,12 @@
       | "syncTeamTetrisDraftFromState"
     >
   >;
-  type FateKnotsStateMessageModule = Required<
-    Pick<GameRoomFateKnotsUiModule, "sanitizeFateKnotsState">
-  >;
   type StateMessageRuntimeOptions = {
     stateRef: {
       current: GameRoomUiState | null;
     };
     backgammonUi: BackgammonStateMessageModule;
     teamTetrisUi: TeamTetrisStateMessageModule;
-    fateKnotsUi: FateKnotsStateMessageModule;
     render: () => void;
     scheduleRender?: () => void;
   };
@@ -58,7 +54,6 @@
     const stateRef = runtimeOptions.stateRef;
     const backgammonUi = runtimeOptions.backgammonUi;
     const teamTetrisUi = runtimeOptions.teamTetrisUi;
-    const fateKnotsUi = runtimeOptions.fateKnotsUi;
     const render = runtimeOptions.render;
     const scheduleRender =
       typeof runtimeOptions.scheduleRender === "function" ? runtimeOptions.scheduleRender : render;
@@ -97,17 +92,6 @@
       render();
     }
 
-    function handleFateKnotsState(message: unknown): void {
-      const state = getState();
-      if (state === null) {
-        return;
-      }
-      const payload = readPayload(message);
-      state.fateKnots = fateKnotsUi.sanitizeFateKnotsState(payload["state"]);
-      state.lastCommandMessage = "";
-      render();
-    }
-
     function handleCommandResult(message: unknown): void {
       const state = getState();
       if (state === null) {
@@ -129,7 +113,6 @@
     return {
       handleBackgammonState: handleBackgammonState,
       handleTeamTetrisState: handleTeamTetrisState,
-      handleFateKnotsState: handleFateKnotsState,
       handleCommandResult: handleCommandResult,
     };
   };
