@@ -113,7 +113,6 @@
   align-items: center;
   justify-content: center;
   gap: var(--lab-space-1);
-  min-height: var(--lab-workspace-rem-2-2);
   padding: var(--lab-space-1) var(--lab-space-2);
   border: var(--lab-workspace-px-1) solid var(--lab-border-default);
   border-radius: var(--lab-radius-sm);
