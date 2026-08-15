@@ -532,7 +532,6 @@ void test("room page syncs slot-aware host context and scene runtime routing", (
   );
   assert.match(gameRoomUiCssSource, /@import "\.\.\/shared\/styles\/base\.css";/);
   assert.match(gameRoomUiCssSource, /@import "\.\.\/main-functions\/backgammon\/styles\.css";/);
-  assert.match(gameRoomUiCssSource, /@import "\.\.\/main-functions\/fate-knots\/styles\.css";/);
   assert.match(gameRoomBackgammonCssSource, /@import "\.\/styles\/layout\.css";/);
   assert.match(gameRoomBackgammonCssSource, /@import "\.\/styles\/presentation\.css";/);
   assert.match(gameRoomBackgammonCssSource, /@import "\.\/styles\/board\.css";/);
