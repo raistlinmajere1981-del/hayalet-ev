@@ -277,7 +277,7 @@
 }
 
 .labx-face-landmark-panel__status[data-state="error"] {
-  color: var(--lab-danger);
+  color: var(--lab-error);
 }
 
 .labx-face-landmark-panel__controls {
