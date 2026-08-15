@@ -9,6 +9,8 @@ import {
 import { ensureAdvancedAudioAnalysisSettingsRegistered } from "../../rooms/laboratory/domain/lab-advanced-audio-settings.ts";
 import type { LabAudioFocusSettings } from "../../rooms/laboratory/domain/lab-types.ts";
 import { createAdvancedAudioForensicsRunners } from "../../rooms/laboratory/features/audio-analysis/host/process-advanced-forensics-runners.ts";
+import { normalizeAudioFocusSettings } from "../../rooms/laboratory/runtime/lab-audio-focus-normalization.ts";
+import { getLivePitchShiftSemitones } from "../../rooms/laboratory/runtime/lab-live-audio-pitch.ts";
 import { renderWorkspaceAudioFocus } from "../../rooms/laboratory/ui/workspace-audio-focus.ts";
 
 type TestRecord = Record<string, unknown>;
@@ -195,8 +197,21 @@ test("analysis runtime no longer wires slow-playback or pitch ladders into repor
   assert.match(source, /"spectrogram-guided-recovery": runSpectrogramGuidedRecoveryAudioAnalyzer/);
 });
 
-test("audio focus keeps live pitch audition while leaving speed presets to the unified timeline", function () {
+test("deep live audio normalization supports 0.1x and clamps independent pitch", function () {
+  const audioFocus = createAudioFocus({ playbackRate: 0.1 });
+  (audioFocus as unknown as TestRecord)["livePitchSemitones"] = 99;
+  const normalized = normalizeAudioFocusSettings(audioFocus);
+
+  assert.equal(normalized.playbackRate, 0.1);
+  assert.equal(getLivePitchShiftSemitones(normalized), 12);
+
+  const tooSlow = normalizeAudioFocusSettings(createAudioFocus({ playbackRate: 0.01 }));
+  assert.equal(tooSlow.playbackRate, 0.1);
+});
+
+test("audio focus exposes independent pitch and live spectrogram controls", function () {
   const audioFocus = createAudioFocus({ playbackRate: 0.5, preservePitch: false });
+  (audioFocus as unknown as TestRecord)["livePitchSemitones"] = -6;
   const markup = renderWorkspaceAudioFocus(audioFocus, {
     previewTarget: "video",
     temporalAudioFocus: audioFocus,
@@ -204,28 +219,54 @@ test("audio focus keeps live pitch audition while leaving speed presets to the u
 
   assert.match(markup, /data-lab-live-audio-audition="true"/);
   assert.match(markup, /data-lab-field="workspace\.audioFocus\.playbackRate"/);
+  assert.match(markup, /min="0\.1"/);
   assert.match(markup, /data-lab-field="workspace\.audioFocus\.preservePitch"/);
-  assert.doesNotMatch(markup, /Hız presetleri/);
-  assert.match(markup, /data-lab-tape-pitch-presets="true"/);
-  assert.match(markup, /data-lab-reset-value="0\.707107"/);
-  assert.match(markup, /data-lab-reset-value="1\.414214"/);
+  assert.match(markup, /data-lab-field="workspace\.audioFocus\.livePitchSemitones"/);
+  assert.match(markup, /data-lab-live-pitch-presets="true"/);
   assert.match(markup, /-12 st/);
   assert.match(markup, /\+12 st/);
-  assert.match(markup, /Tape pitch/);
+  assert.match(markup, /Bağımsız pitch/);
+  assert.doesNotMatch(markup, /Tape pitch|data-lab-tape-pitch-presets/);
+  assert.match(markup, /data-lab-field="workspace\.audioFocus\.visualizationMode"/);
+  assert.match(markup, /value="spectrum"[\s\S]*Spektrogram/);
 });
 
-test("pitch-preserved live audition hides tape-pitch presets but keeps speed controls", function () {
+test("independent pitch stays available when playback pitch preservation is enabled", function () {
   const audioFocus = createAudioFocus({ playbackRate: 0.5, preservePitch: true });
   const markup = renderWorkspaceAudioFocus(audioFocus, {
     previewTarget: "video",
     temporalAudioFocus: audioFocus,
   });
 
-  assert.match(markup, /data-lab-field="workspace\.audioFocus\.playbackRate"/);
   assert.match(markup, /data-lab-field="workspace\.audioFocus\.preservePitch"/);
-  assert.doesNotMatch(markup, /data-lab-tape-pitch-presets="true"/);
-  assert.doesNotMatch(markup, /-12 st/);
-  assert.match(markup, /Pitch korunuyor/);
+  assert.match(markup, /data-lab-live-pitch-presets="true"/);
+  assert.match(markup, /Hız değişiminde pitch korunur/);
+  assert.match(markup, /Bağımsız pitch/);
+});
+
+test("live pitch runtime uses an AudioWorklet granular shifter and spectrum draws spectrogram frames", function () {
+  const pitchSource = readFileSync(
+    new URL("../../rooms/laboratory/runtime/lab-live-audio-pitch.ts", import.meta.url),
+    "utf8"
+  );
+  const visualizerSource = readFileSync(
+    new URL("../../rooms/laboratory/runtime/lab-audio-visualizer.ts", import.meta.url),
+    "utf8"
+  );
+  const timelineSource = readFileSync(
+    new URL("../../rooms/laboratory/ui/lab-waveform-timeline-render.ts", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(pitchSource, /class LabLivePitchShiftProcessor extends AudioWorkletProcessor/);
+  assert.match(pitchSource, /phaseStep = \(1 - ratio\) \/ this\.grainSize/);
+  assert.match(pitchSource, /pitchRatio/);
+  assert.match(visualizerSource, /createLivePitchShiftNode/);
+  assert.match(visualizerSource, /bypassPitch/);
+  assert.match(visualizerSource, /drawSpectrogramFrame/);
+  assert.match(visualizerSource, /context\.drawImage/);
+  assert.match(timelineSource, /min="0\.1"/);
+  assert.match(timelineSource, /Math\.max\(0\.1, Math\.min\(2, model\.audioFocus\?\.playbackRate/);
 });
 
 test("live audio popover uses the wider pinned-width token for pitch controls", function () {
@@ -239,7 +280,7 @@ test("live audio popover uses the wider pinned-width token for pitch controls", 
   );
 
   assert.match(css, /data-content="audio-focus"[\s\S]*width:\s*var\(--lab-rail-width-pinned\)/);
-  assert.match(css, /data-lab-tape-pitch-presets="true"[\s\S]*flex-wrap:\s*nowrap/);
+  assert.match(css, /data-lab-live-pitch-presets="true"[\s\S]*flex-wrap:\s*nowrap/);
   assert.match(theme, /lab-audio-tools\.css/);
 });
 
