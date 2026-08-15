@@ -69,7 +69,7 @@ void test("linux visible terminal launch still requires a desktop session", () =
 void test("windows launchers open a visible cmd wrapper and preserve user flags", () => {
   const executablePath = String.raw`C:\Portable Apps\Hayalet Ev\Hayalet Ev.exe`;
   const rootDir = String.raw`C:\Portable Apps\Hayalet Ev`;
-  const resourcesPath = String.raw`C:\Users\raistlin\AppData\Local\Temp\hayalet-ev\resources`;
+  const resourcesPath = String.raw`C:\Users\test-user\AppData\Local\Temp\hayalet-ev\resources`;
 
   const launchers = createVisibleTerminalLaunchers({
     platform: "win32",
@@ -97,7 +97,7 @@ void test("windows launchers open a visible cmd wrapper and preserve user flags"
   ]);
   assert.match(
     launchers[0].args[7] ?? "",
-    /cd \/d "C:\\Portable Apps\\Hayalet Ev" && set ELECTRON_RUN_AS_NODE=1 && "C:\\Portable Apps\\Hayalet Ev\\Hayalet Ev\.exe" C:\\Users\\raistlin\\AppData\\Local\\Temp\\hayalet-ev\\resources\\app\.asar\\dist\\electron\\packaged-wrapper-cli\.js --start-page=assistant --auto-connect/
+    /cd \/d "C:\\Portable Apps\\Hayalet Ev" && set ELECTRON_RUN_AS_NODE=1 && "C:\\Portable Apps\\Hayalet Ev\\Hayalet Ev\.exe" C:\\Users\\test-user\\AppData\\Local\\Temp\\hayalet-ev\\resources\\app\.asar\\dist\\electron\\packaged-wrapper-cli\.js --start-page=assistant --auto-connect/
   );
   assert.doesNotMatch(launchers[0].args[7] ?? "", /--packaged-surface=wrapper/);
 });

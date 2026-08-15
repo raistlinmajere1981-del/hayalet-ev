@@ -40,6 +40,9 @@ data/*
 # Generated room runtime artifacts
 rooms/.build/
 
+# Generated assistant intelligence cache
+.rovo/cache.json
+
 # Assets allowlist
 # (disabled to allow versioning assets under src/assets)
 
@@ -56,6 +59,12 @@ settings.json
 # Google Drive credentials
 googledrive-credentials.json
 token.json
+
+# Local certificates and private keys
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Screenshots
 screenshots/
