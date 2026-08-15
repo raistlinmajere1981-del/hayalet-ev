@@ -59,7 +59,7 @@ async function sanitizeRelayTlsFixture() {
   }
 
   const runtimePrivateKeyPattern =
-    /const TEST_TLS_PRIVATE_KEY = createPrivateKey\(\{\n  key: Buffer\.from\(TEST_TLS_PRIVATE_KEY_DER_BASE64, "base64"\),\n  format: "der",\n  type: "pkcs8",\n\}\);/;
+    /const TEST_TLS_PRIVATE_KEY = createPrivateKey\(\{\n {2}key: Buffer\.from\(TEST_TLS_PRIVATE_KEY_DER_BASE64, "base64"\),\n {2}format: "der",\n {2}type: "pkcs8",\n\}\);/;
 
   if (
     next.includes("TEST_TLS_PRIVATE_KEY_DER_BASE64") &&
