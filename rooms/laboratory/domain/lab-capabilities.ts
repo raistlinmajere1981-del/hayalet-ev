@@ -19,6 +19,8 @@ function normalizeImageComparisonSettings(value: unknown): LabSettingsRecord {
   const source = asLabRecord(record["image-comparison"] ?? record);
   return {
     ...normalizeCoreLabOperationSettings("image-comparison", source),
+    manipulationMode: pickOption(source["manipulationMode"], ["move", "resize"], "move"),
+    showImageFrames: pickBoolean(source["showImageFrames"], true),
     primaryZoom: pickNumber(source["primaryZoom"], Number(defaults["primaryZoom"]), 0.25, 4, 0.05),
     primaryAspectLock: pickBoolean(
       source["primaryAspectLock"],
@@ -43,14 +45,14 @@ function normalizeImageComparisonSettings(value: unknown): LabSettingsRecord {
       Number(defaults["primaryOffsetX"]),
       -100,
       100,
-      1
+      0.1
     ),
     primaryOffsetY: pickNumber(
       source["primaryOffsetY"],
       Number(defaults["primaryOffsetY"]),
       -100,
       100,
-      1
+      0.1
     ),
     primaryRotation: pickNumber(
       source["primaryRotation"],
@@ -89,14 +91,14 @@ function normalizeImageComparisonSettings(value: unknown): LabSettingsRecord {
       Number(defaults["referenceOffsetX"]),
       -100,
       100,
-      1
+      0.1
     ),
     referenceOffsetY: pickNumber(
       source["referenceOffsetY"],
       Number(defaults["referenceOffsetY"]),
       -100,
       100,
-      1
+      0.1
     ),
     referenceRotation: pickNumber(
       source["referenceRotation"],
