@@ -19,7 +19,6 @@ function normalizeImageComparisonSettings(value: unknown): LabSettingsRecord {
   const source = asLabRecord(record["image-comparison"] ?? record);
   return {
     ...normalizeCoreLabOperationSettings("image-comparison", source),
-    manipulationMode: pickOption(source["manipulationMode"], ["move", "resize"], "move"),
     showImageFrames: pickBoolean(source["showImageFrames"], true),
     primaryZoom: pickNumber(source["primaryZoom"], Number(defaults["primaryZoom"]), 0.25, 4, 0.05),
     primaryAspectLock: pickBoolean(
