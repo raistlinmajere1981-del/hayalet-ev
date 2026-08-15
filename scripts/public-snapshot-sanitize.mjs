@@ -52,17 +52,40 @@ async function sanitizeRelayTlsFixture() {
 
     const chunks = base64Der.match(/.{1,88}/g) ?? [];
     const expression = chunks.map((chunk) => `  "${chunk}"`).join(" +\n");
-    const replacement = `const TEST_TLS_PRIVATE_KEY_DER_BASE64 =\n${expression};\n\nconst TEST_TLS_PRIVATE_KEY = createPrivateKey({\n  key: Buffer.from(TEST_TLS_PRIVATE_KEY_DER_BASE64, "base64"),\n  format: "der",\n  type: "pkcs8",\n});`;
+    const replacement = `const TEST_TLS_PRIVATE_KEY_DER_BASE64 =\n${expression};\n\nconst TEST_TLS_PRIVATE_KEY = createPrivateKey({\n  key: Buffer.from(TEST_TLS_PRIVATE_KEY_DER_BASE64, "base64"),\n  format: "der",\n  type: "pkcs8",\n});\n\nconst TEST_TLS_PRIVATE_KEY_PEM = TEST_TLS_PRIVATE_KEY.export({\n  format: "pem",\n  type: "pkcs8",\n}).toString();`;
 
     next = next.replace(privateKeyPattern, replacement);
-    next = next.replace("key: TEST_TLS_KEY_PEM,", "key: TEST_TLS_PRIVATE_KEY,");
+    next = next.replace("key: TEST_TLS_KEY_PEM,", "key: TEST_TLS_PRIVATE_KEY_PEM,");
   }
+
+  const runtimePrivateKeyPattern =
+    /const TEST_TLS_PRIVATE_KEY = createPrivateKey\(\{\n  key: Buffer\.from\(TEST_TLS_PRIVATE_KEY_DER_BASE64, "base64"\),\n  format: "der",\n  type: "pkcs8",\n\}\);/;
+
+  if (
+    next.includes("TEST_TLS_PRIVATE_KEY_DER_BASE64") &&
+    !next.includes("const TEST_TLS_PRIVATE_KEY_PEM =")
+  ) {
+    const runtimePrivateKeyMatch = next.match(runtimePrivateKeyPattern);
+    if (runtimePrivateKeyMatch === null) {
+      throw new Error("Unable to locate the sanitized TLS test private key fixture");
+    }
+
+    next = next.replace(
+      runtimePrivateKeyPattern,
+      `${runtimePrivateKeyMatch[0]}\n\nconst TEST_TLS_PRIVATE_KEY_PEM = TEST_TLS_PRIVATE_KEY.export({\n  format: "pem",\n  type: "pkcs8",\n}).toString();`
+    );
+  }
+
+  next = next.replace("key: TEST_TLS_PRIVATE_KEY,", "key: TEST_TLS_PRIVATE_KEY_PEM,");
 
   if (next.includes("-----BEGIN PRIVATE KEY-----")) {
     throw new Error(`${relativePath} still contains a PEM private-key marker`);
   }
   if (next.includes("TEST_TLS_KEY_PEM")) {
     throw new Error(`${relativePath} still references TEST_TLS_KEY_PEM`);
+  }
+  if (next.includes("key: TEST_TLS_PRIVATE_KEY,")) {
+    throw new Error(`${relativePath} still passes a KeyObject directly to createHttpsServer`);
   }
 
   if (next !== source) {
