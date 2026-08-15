@@ -204,6 +204,10 @@ test("comparison renderer applies transform tools and MediaPipe face landmark ru
   assert.match(mouseTools, /getActiveLabImageComparisonToolbarTool/);
   assert.match(mouseTools, /handleWheel/);
   assert.match(mouseTools, /activeTool !== "move"/);
+  assert.match(mouseTools, /data-comparison-transform/);
+  assert.match(mouseTools, /image\.style\.transform/);
+  assert.match(mouseTools, /labx-face-landmark-overlay/);
+  assert.match(mouseTools, /MutationObserver/);
   assert.match(toolbar, /label: "Taşı"/);
   assert.match(toolbar, /label: "Boyutlandır"/);
   assert.match(toolbar, /label: "Yakınlaştır"/);
