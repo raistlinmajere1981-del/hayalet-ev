@@ -6,7 +6,6 @@
 
   const FEATURE_ID = "backgammon";
   const TEAM_TETRIS_FEATURE_ID = "team-tetris";
-  const FATE_KNOTS_FEATURE_ID = "fate-knots";
 
   const FEATURE_RECORDS: GameRoomFeatureRecord[] = [
     {
@@ -17,11 +16,6 @@
     {
       id: TEAM_TETRIS_FEATURE_ID,
       name: "Team Tetris",
-      description: "",
-    },
-    {
-      id: FATE_KNOTS_FEATURE_ID,
-      name: "Fate Knots",
       description: "",
     },
   ];
@@ -59,7 +53,6 @@
   registry.ROOM_ID = "game-room";
   registry.FEATURE_ID = FEATURE_ID;
   registry.TEAM_TETRIS_FEATURE_ID = TEAM_TETRIS_FEATURE_ID;
-  registry.FATE_KNOTS_FEATURE_ID = FATE_KNOTS_FEATURE_ID;
   registry.getFeatureRecords = function getFeatureRecords() {
     return cloneFeatureRecords();
   };
