@@ -209,7 +209,7 @@ test("deep live audio normalization supports 0.1x and clamps independent pitch",
   assert.equal(tooSlow.playbackRate, 0.1);
 });
 
-test("audio focus exposes independent pitch and live spectrogram controls", function () {
+test("audio focus exposes independent pitch and live spectrogram without duplicating playback speed", function () {
   const audioFocus = createAudioFocus({ playbackRate: 0.5, preservePitch: false });
   (audioFocus as unknown as TestRecord)["livePitchSemitones"] = -6;
   const markup = renderWorkspaceAudioFocus(audioFocus, {
@@ -218,8 +218,7 @@ test("audio focus exposes independent pitch and live spectrogram controls", func
   });
 
   assert.match(markup, /data-lab-live-audio-audition="true"/);
-  assert.match(markup, /data-lab-field="workspace\.audioFocus\.playbackRate"/);
-  assert.match(markup, /min="0\.1"/);
+  assert.doesNotMatch(markup, /data-lab-field="workspace\.audioFocus\.playbackRate"/);
   assert.match(markup, /data-lab-field="workspace\.audioFocus\.preservePitch"/);
   assert.match(markup, /data-lab-field="workspace\.audioFocus\.livePitchSemitones"/);
   assert.match(markup, /data-lab-live-pitch-presets="true"/);
