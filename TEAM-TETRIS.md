@@ -1,138 +1,211 @@
-TEAM TETRIS
-Bir yerleştirme oyunu değil, bir anlama oyunu
+# Team Tetris
 
-Team Tetris, klasik Tetris mantığının üzerine kurulu gibi görünür. Parçalar düşer, boşluklar doldurulur, satırlar temizlenir.
+Team Tetris, Game Room içinde USER, AI1, AI2 ve bağlı US1'i aynı maçta buluşturan dört koltuklu, tur tabanlı bir Tetris varyantıdır.
 
-Ama aslında oyun bununla ilgili değildir.
+Bu belge iki şeyi birbirinden ayırır:
 
-Bu oyunda asıl mesele şudur:
-Senin görmediğini, başkasının ne yapmış olabileceğini hissetmek.
+1. **Güncel implementasyon** — motor ve transport katmanında bugün gerçekten çalışan kurallar.
+2. **Tasarım yönü** — bu mekaniklerin neden var olduğu ve ileride nasıl derinleştirilebileceği.
 
-Eksik bilgiyle düşünmek
+Bu ayrım özellikle önemlidir; tasarım fikri, uygulanmış oyun kuralı gibi belgelenmemelidir.
 
-Team Tetris’te hiçbir oyuncu tahtanın tamamını bilmez.
+---
 
-Bazı parçalar görünür.
-Bazıları ise tamamen senin çıkarımına kalır.
+## Güncel Implementasyon
 
-Bu yüzden her hamle, yalnızca bir yerleştirme değil, aynı zamanda bir sorudur:
+### Dört koltuk
 
-“Eşim bunu buraya koymuş olabilir mi?”
-“Eğer öyle yaptıysa, ben ne yapmalıyım?”
-“Emin değilsem, ne kadar risk alabilirim?”
+Motor dört seat tanımlar:
 
-Bu oyun kesinlik üzerinden değil, olasılık üzerinden oynanır.
+- `user`
+- `ai1`
+- `ai2`
+- `us1`
 
-Eşini okumak
+Maç başlamadan önce gerekli AI/US1 koltuklarının hazır olması beklenir.
 
-Takım oyunu olmasına rağmen, Team Tetris’te doğrudan iletişim yoktur.
+Game Room manifesti kullanıcı, AI1, AI2 ve bağlı US1 için dört-seat turn-based Team Tetris akışını aktif özellik olarak tanımlar.
 
-Konuşamazsın.
-İşaret veremezsin.
-Açıklama yapamazsın.
+### İki takım, opener ve followup
 
-Sadece oynarsın.
+Her takım iki seat taşır ve iki rol kullanır:
 
-Ama her hamle bir şey söyler:
+- `opener`
+- `followup`
 
-bıraktığın boşluklar
-seçtiğin taraf
-risk alıp almaman
-güvenli mi yoksa agresif mi oynadığın
+Tur döngüsü takım A opener → takım B opener → takım A followup → takım B followup düzenini izler.
 
-Bunların hepsi birer sinyaldir.
+Kullanıcının partneri maç başlamadan önce seçilebilir. Motor partner/team eşleşmesini match state içinde tutar.
 
-Ve eşin seni buradan okumaya çalışır.
+### Hidden pairs
 
-Düşüş yolu = niyet
+Hidden partner/pair davranışı yalnızca gelecek fikri değildir; mevcut match state'in parçasıdır.
 
-Bu oyunda önemli olan sadece parçayı nereye koyduğun değildir.
-Nasıl indirdiğin de önemlidir.
+Motor şu alanları taşır:
 
-Parçanın düşüş yolu, senin düşünce sürecinin bir yansımasıdır.
+- `hiddenPairs`
+- `revealPairsOnFinish`
+- `revealedPairs`
 
-sola mı kaydın?
-ortada mı tuttun?
-son anda mı karar değiştirdin?
+Varsayılan state hidden pair davranışını açık tutar ve eşleşmelerin maç sonunda açılmasını destekler.
 
-Bunların hepsi, eşine gönderdiğin sessiz mesajlardır.
+Bu özellik takım bilgisinin UI/protocol tarafında ne kadar görünür olacağını belirleyen oyun durumunun parçasıdır.
 
-Bu yüzden Team Tetris’te hamleler sonuç değil, niyet taşır.
+### Tahta ve parçalar
 
-Risk ve güven
+Motor klasik 10×20 Tetris tahtası kullanır.
 
-Her turda iki seçenek arasında kalırsın:
+Desteklenen tetromino seti:
 
-Eşinin doğru hamleyi yaptığını varsayıp onunla uyumlu oynamak
-Ya da emin olmayıp en güvenli yolu seçmek
+- I
+- O
+- T
+- S
+- Z
+- J
+- L
 
-İlk seçenek seni yükseltebilir.
-Ama yanlışsa sistemi bozabilir.
+Rotation ve legal placement kuralları host engine tarafından doğrulanır; seat kimliği istemci cevabına güvenilerek değil host tarafından aktif turdan türetilir.
 
-İkinci seçenek seni korur.
-Ama takım uyumunu zayıflatır.
+### Path tabanlı hamle
 
-Bu denge, oyunun kalbidir.
+Team Tetris hamlesi yalnızca “son x koordinatı” şeklinde taşınmaz.
 
-Gizli eş modu
+Move schema path bilgisini `rowShifts` biçiminde kodlar:
 
-Bazı oyunlarda en büyük bilinmez, taşların nerede olduğu değildir.
+- satır sırası top-to-bottom,
+- her satır adımı için `-1`, `0`, `1` shift,
+- rotation bilgisi,
+- host tarafından doğrulanan aktif turn/seat bağlamı.
 
-Eşinin kim olduğudur.
+Bu nedenle düşüş yolu gerçek implementasyonda veri kontratının parçasıdır.
 
-Gizli eş modunda:
+Ancak “düşüş yolu oyuncunun psikolojik niyetini kesin olarak ifade eder” yorumu bir **oyun tasarımı fikridir**; motor bunu semantik iletişim kuralı olarak zorunlu kılmaz.
 
-kiminle aynı takımda olduğunu bilmezsin
-herkesin hamlesini izlersin
-davranışları analiz edersin
+### AI ve US1 turları
 
-Zamanla şunu düşünmeye başlarsın:
+Manifest/runtime katmanında ayrı hamle yolları bulunur:
 
-“Bu oyuncu benim gibi mi oynuyor?”
-“Bu hamle bana mı ait olabilir?”
-“Benim bıraktığım boşluğu kim değerlendirdi?”
+- local user move,
+- AI1/AI2 move,
+- remote US1 move.
 
-Ve bir noktada artık sadece tahtayı değil, oyuncuları da oynamaya başlarsın.
+AI turları açılış ve follow-up protokolleri üzerinden çalışabilir. US1 hamleleri Game Room'un room transport akışı üzerinden gelir.
 
-Şans değil, düşünce
+Stale veya duplicate remote move'lar ile yanlış seat'ten gelen provider cevapları host tarafında ele alınır.
 
-Team Tetris’te amaç şansı azaltmaktır.
+### Maç durumu
 
-Aynı takım içindeki oyuncular aynı parçaları alır.
-Böylece farkı yaratan şey parça değil, karardır.
+Match state temel olarak şunları taşır:
 
-kim nasıl yorumladı
-kim neyi varsaydı
-kim ne kadar risk aldı
+- match/seed bilgisi,
+- hidden pair durumu,
+- team/seat map,
+- her takımın board ve bag state'i,
+- aktif turn,
+- son yerleştirilen parça,
+- top-out bilgisi,
+- sonuç: pending / team-a-win / team-b-win / draw.
 
-Oyun burada şekillenir.
+Bir gerekli seat bağlantıdan düşerse veya geçersiz/iletilemeyen hamle maçı güvenli biçimde sürdürülemez hale getirirse state blocked duruma alınabilir ve reset istenebilir.
 
-Tahta bir dil haline gelir
+---
 
-Zamanla fark edersin:
+## Oyunun Tasarım Fikri
 
-Bu oyun aslında bir iletişim biçimidir.
+Team Tetris'in ilginç tarafı dört oyuncunun sırayla Tetris oynaması değil, sınırlı bilgi altında takım uyumu üretme potansiyelidir.
 
-Ama kelimelerle değil.
+Aşağıdaki maddeler motorun ham veri yapısından çok oyunun **tasarım yönünü** anlatır.
 
-boşluklarla
-hizalamalarla
-gecikmelerle
-kararlarla
+### Eksik bilgiyle düşünmek
 
-Tahta, iki zihin arasında kurulan sessiz bir köprüye dönüşür.
+Hidden pair yapısı oyuncunun yalnızca tahtaya değil diğer oyuncuların kararlarına da dikkat etmesini mümkün kılar.
 
-Sonuç
+Amaç şu soruları doğurabilecek bir oyun alanıdır:
 
-Team Tetris’te amaç en iyi hamleyi yapmak değildir.
+- Hangi oyuncu benim partnerim olabilir?
+- Bir önceki hamle hangi planı hazırlıyor olabilir?
+- Güvenli oynayıp tahtayı mı korumalıyım, yoksa gördüğüm plana güvenip risk mi almalıyım?
 
-Amaç şudur:
+Bu çıkarımlar motor tarafından “doğru cevap” olarak hesaplanmaz; oyun davranışından doğması beklenen stratejik katmandır.
 
-görünmeyeni hissetmek
-eşinin zihnine yaklaşmak
-belirsizlik içinde uyum kurmak
+### Tahta bir iletişim yüzeyi olabilir
 
-Bu oyunda parçalar düşer.
+Path encoding, boşluk bırakma, hizalama ve riskli yerleşim gibi kararlar oyuncular arasında dolaylı sinyal haline gelebilir.
 
-Ama asıl hareket eden şey,
-oyuncuların birbirini anlama çabasıdır.
+Bu nedenle Team Tetris'in uzun vadeli fikri doğrudan sohbetten çok **oyun davranışı üzerinden koordinasyon** kurmaktır.
+
+Ancak bugün belgelenmesi gereken kesin kontrat şudur: motor path'i hamlenin bir parçası olarak taşır ve doğrular. Path'e yüklenen sosyal/stratejik anlam oyuncuların ve gelecekteki oyun tasarımının alanıdır.
+
+### Risk ve güven
+
+İki kişilik takımlarda sıradaki oyuncu önceki yerleşimin devamını getirebilir veya tahtayı daha güvenli bir duruma çekebilir.
+
+Bu seçim Team Tetris'in hedeflediği temel gerilimdir:
+
+- uyumlu ama riskli devam,
+- daha bağımsız ama güvenli hamle.
+
+Motor bu tercihi özel bir “risk puanı” kuralıyla zorunlu kılmaz; bu, Tetris durumu ve oyuncu davranışından doğan oyun dinamiğidir.
+
+---
+
+## Henüz Garanti Edilmeyen / Gelecek Tasarım Alanları
+
+Aşağıdaki fikirler Team Tetris'in doğal genişleme alanlarıdır ancak güncel motor kontratının zorunlu parçası olarak kabul edilmemelidir:
+
+- path davranışından otomatik niyet/partner çıkarımı,
+- oyuncular arası gelişmiş sinyal skorları,
+- özel risk/güven metrikleri,
+- alternatif hidden-information modları,
+- maç sonrası davranış analizi veya açıklanabilir takım uyumu raporu.
+
+Bu özelliklerden biri uygulandığında önce engine/runtime/test karşılığı oluşturulmalı, ardından bu belge “güncel implementasyon” bölümünde güncellenmelidir.
+
+---
+
+## Kaynak Yapısı
+
+Team Tetris Game Room içinde yaşar:
+
+`rooms/game-room/main-functions/team-tetris/`
+
+Önemli alanlar:
+
+- `host/engine-schema.ts` — board, seat, piece ve move schema sabitleri
+- `host/engine-board.ts` — board/placement kuralları
+- `host/engine-match.ts` — team, partner, turn ve match state
+- `host/runtime*.ts` — AI/US1 turn ve transport davranışları
+- `ui/` — oyun yüzeyi ve path seçimi
+- `protocols/` — AI opening/follow-up ve US1 transport protokolleri
+
+Game Room feature kontratı: `rooms/game-room/manifest.json`.
+
+---
+
+## Doğrulama
+
+Game Room veya Team Tetris değişikliklerinden sonra ilgili regressions ile birlikte repository kalite kapısı çalıştırılmalıdır:
+
+```bash
+npm run check:all
+```
+
+Room odaklı kontroller için:
+
+```bash
+npm run rooms:typecheck
+npm run rooms:test
+```
+
+---
+
+## Sonuç
+
+Team Tetris'in bugün çalışan çekirdeği nettir:
+
+> dört seat + iki takım + hidden pair state + tur sırası + path tabanlı doğrulanmış Tetris hamleleri + AI/US1 transport.
+
+Bunun üzerine kurulmak istenen daha büyük fikir ise oyuncuların yalnızca parçaları değil, birbirlerinin kararlarını da okumaya çalıştığı bir takım oyunudur.
+
+Bu iki katmanı ayrı tutmak, oyunun mevcut durumunu dürüstçe belgelemeye ve tasarım alanını kaybetmeden geliştirmeye izin verir.

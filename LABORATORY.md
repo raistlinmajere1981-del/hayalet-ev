@@ -3,167 +3,239 @@
 Laboratory bir araç ekranı değil.
 Bir çalışma tezgâhı.
 
-Burada amaç
-bir medya dosyasına bakmak değil,
-onu hazırlamak,
-anlamak,
-işlemek
-ve sonunda ne gördüğünü gerçekten ortaya koymaktır.
+Buradaki amaç bir medya dosyasına yalnızca bakmak değil; kaynağı projeye almak, gerekli araçları hazırlamak, ayrıntıyı incelemek, analiz etmek, bulguyu kaydetmek ve gerektiğinde AI ile devam edilebilecek bir rapora dönüştürmektir.
 
 ---
 
-## 🔬 Nedir?
+## 🔬 Bugünkü Laboratory
 
-Laboratory:
+Güncel Laboratory iki ana özellik yüzeyini tek guided workbench altında toplar:
 
-- medya ile çalışır
-- ses ile çalışır
-- resim ile çalışır
+- **Media Analysis** — görüntü/video intake, hazırlık, inceleme, karşılaştırma, işleme ve raporlama
+- **Audio Analysis** — ses odaklı hazırlık, sinyal/speech/forensic/model analizleri ve raporlama
 
-Ama bunları ayrı dünya gibi kurmaz.
+Bu yüzden Laboratory yalnızca bir player, editör veya rapor ekranı değildir.
 
-👉 tek bir akışta toplar
+> Kaynak → Hazırlık → İnceleme → Analiz → Karşılaştırma/Annotation → Rapor/Export → AI ile devam
 
-Bu yüzden Laboratory:
-
-- bir player değildir
-- bir editör değildir
-- sadece bir rapor ekranı değildir
-
-👉 bunların arasındaki geçiş alanıdır
+akışının tamamını aynı proje içinde tutmaya çalışır.
 
 ---
 
-## 🧠 Temel Fikir
+## 📥 Kaynak ve Proje Intake
 
-Bir analizin en zor kısmı
-çoğu zaman analiz değildir.
+Laboratory çalışma durumunu tek seferlik bir prompt gibi bırakmaz; proje olarak saklar.
 
-Öncesidir.
+Mevcut source katmanı yerel medya kaynaklarının yanında URL/YouTube gibi intake akışlarını da destekleyecek şekilde ayrılmıştır. Proje katmanı kaynak, türetilen varlıklar, analiz durumu, rapor ve export kayıtlarını aynı çalışma bağlamında tutar.
 
-- kaynak hazır mı?
-- gerekli araçlar var mı?
-- model eksik mi?
-- bu koşu gerçekten başlayabilir mi?
+Bu yaklaşımın amacı:
 
-Laboratory önce buna bakar.
-
-Yani:
-
-> “çalıştır” demeden önce
-> koşulların ne durumda olduğunu gösterir.
+- aynı kaynağa tekrar dönebilmek,
+- analiz adımlarını kaybetmemek,
+- türetilen dosyaları kaynakla ilişkilendirmek,
+- raporu yalnızca son çıktı değil çalışma geçmişinin özeti haline getirmektir.
 
 ---
 
-## 🪜 Akış
+## 🧰 Readiness, Araçlar ve Modeller
 
-Laboratory bir projeyi şu sırayla düşünür:
+Laboratory bir işlem başlatmadan önce arka plandaki zemini görünür kılar.
 
-1. kaynak alınır
-2. hazırlık kontrol edilir
-3. işlem başlatılır
-4. sonuçlar toplanır
-5. rapor oluşur
+Room-local toolchain ve readiness akışları:
 
-Bu akış önemli.
+- hangi aracın gerekli olduğunu,
+- aracın sistemde hazır olup olmadığını,
+- hangi model veya runtime'ın eksik olduğunu,
+- hangi bileşenin otomatik hazırlanabildiğini,
+- hangi adımın sistem bağımlılığı nedeniyle kullanıcı müdahalesi istediğini
 
-Çünkü burada işler
-tek seferlik prompt gibi kaybolmaz.
+göstermek için kullanılır.
 
-Bir proje olarak kalır.
+Bu yüzden “çalıştır” düğmesi tek başına sihirli bir kara kutu değildir. Hazırlık durumu projenin parçasıdır.
+
+---
+
+## 🖼️ Görüntü ve Video İnceleme
+
+Media Analysis çalışma alanı medya oynatma/inceleme ile proje araçlarını aynı yüzeyde birleştirir.
+
+Güncel görüntü çalışma akışında desteklenen başlıca yetenekler:
+
+- tek görsel inceleme,
+- iki görseli karşılaştırma çalışma alanı,
+- görseli çalışma alanı içinde taşıma ve yakınlaştırma,
+- karşılaştırma tarafları arasında aktif taraf/seçim yönetimi,
+- ROI/seçim tabanlı ayrıntı inceleme,
+- detay/geometri odaklı yardımcı inceleme yüzeyleri,
+- karşılaştırma anını capture/export etme,
+- iki görseli yan yana tek PNG çıktısı olarak dışa aktarma.
+
+Video kaynakları aynı proje ve timeline altyapısı içinde incelenebilir; medya kontrolleri ve türetilen analiz sonuçları proje durumuyla birlikte yönetilir.
+
+---
+
+## ✏️ Annotation / Çizim Katmanı
+
+Görüntü karşılaştırma çalışma alanında room-local bir annotation katmanı bulunur.
+
+Mevcut çizim araçları:
+
+- serbest kalem,
+- daire/elips işaretleme,
+- çizgi kalınlığı,
+- çizgi rengi,
+- temizleme/sıfırlama.
+
+Annotation işaretleri kaynak dosyayı kalıcı olarak değiştirmez. Primary/reference tarafına bağlı çalışma işaretleri olarak tutulur ve ekrandaki transform ile birlikte hizalanır.
+
+Capture/export sırasında annotation katmanı PNG overlay olarak kompozit çıktıya yansıtılabilir. Böylece kullanıcı ekranda işaretlediği bölgeleri kaydedilen karşılaştırma görselinde de koruyabilir.
+
+---
+
+## 🔊 Audio Analysis
+
+Audio Analysis, Laboratory'nin ayrı bir uygulaması değil aynı proje/araç/raporlama mantığını kullanan ses odaklı yüzeyidir.
+
+Kaynak ağacındaki mevcut analiz pipeline'ları temel/local analizlerin yanında gelişmiş forensic ve model tabanlı runner'lar içerir. Bunlar arasında örneğin:
+
+- sinyal ve yerel analiz/probe akışları,
+- speech/transcript ile ilişkili hazırlıklar,
+- gelişmiş forensic analiz runner'ları,
+- music/rhythm model analizi,
+- sound-event model analizi,
+- source-separation model akışı
+
+bulunur.
+
+Bu modüllerin kullanılabilirliği gerekli yerel araç/model durumuna bağlıdır; readiness katmanı bu nedenle Laboratory'nin temel parçalarından biridir.
+
+---
+
+## 📈 Timeline, Sonuçlar ve Keşif
+
+Laboratory sonuçları yalnızca “başarılı/başarısız” şeklinde göstermez.
+
+Çalışma alanı ve drawer katmanları:
+
+- türetilen varlıkları,
+- analiz sonuçlarını,
+- zaman/timeline bağlamını,
+- seçili kapsam ve bölgeleri,
+- sonuç keşif yüzeylerini
+
+aynı proje içinde tekrar açılabilir halde tutar.
+
+Amaç ham çıktı dosyalarının arasından elle anlam çıkarmak yerine, bulguyu kaynak ve çalışma bağlamıyla birlikte görünür kılmaktır.
 
 ---
 
 ## ⚙️ Process
 
-İşlem başladıktan sonra Laboratory
-sadece bekleyen bir ekran olmaz.
+Bir analiz koşusu başladığında Laboratory süreci proje durumuna bağlar.
 
-Yapılan işi takip eder.
+Kullanıcı için önemli olan yalnızca “bitti” mesajı değildir:
 
-- hangi aşama çalışıyor
-- ne üretildi
-- ne takıldı
-- ne yarım kaldı
+- hangi aşamanın çalıştığı,
+- hangi varlığın üretildiği,
+- hangi aracın kullanıldığı,
+- neyin eksik kaldığı,
+- hangi adımın tekrar denenebileceği
 
-görünür olur.
+gibi bilgiler mümkün olduğunca görünür tutulur.
 
-Burada önemli olan şey hız değil.
-
-Şeffaflık.
-
-Çünkü analiz süreci,
-sonucu kadar
-nasıl ilerlediğiyle de anlam kazanır.
+Bu, özellikle ağır medya ve model işlemlerinde sonucu yeniden üretilebilir ve yorumlanabilir hale getirir.
 
 ---
 
-## 🛠️ Araçlar ve Modeller
+## 📊 Rapor ve AI Handoff
 
-Laboratory yalnızca “çıktı üretmek” ile ilgilenmez.
+Laboratory raporu, işlem bittikten sonra eklenen dekoratif bir özet değildir.
 
-Arkadaki zemini de görünür kılar.
+Rapor katmanı:
 
-- hangi araç ne için gerekli
-- hangisi otomatik kurulabilir
-- hangisi sistem bağımlıdır
-- hangi model hangi işte kullanılır
+- neyin bulunduğunu,
+- neyin eksik veya belirsiz kaldığını,
+- hangi koşullarda çalışıldığını,
+- kullanıcı için okunabilir özeti,
+- AI'nin tekrar yorumlayabileceği teknik bağlamı
 
-Böylece oda,
-sadece sonuç alanı olmaz.
+taşımayı hedefler.
 
-Aynı zamanda
-bir operasyon merkezi haline gelir.
+Desteklenen akışlarda rapor veya seçili çalışma bağlamı AI slotuna aktarılabilir. Böylece analiz sonucu ayrı bir sohbet başlatmak yerine mevcut proje bağlamının devamı olur.
 
 ---
 
-## 📊 Report
+## 💾 Export
 
-Laboratory’de rapor,
-iş bittikten sonra oluşan bir ek değildir.
+Laboratory'de export yalnızca ham kaynak kopyalamak değildir.
 
-Burada rapor:
+Güncel görüntü akışında:
 
-- ne bulunduğunu söyler
-- neyin eksik kaldığını söyler
-- hangi koşullarda üretildiğini taşır
-- bu verileri hem kullanıcının anlayacağı düzeyde bir rapor ve
-  bir AI'nin yorumlayacağı şekilde teknik rapor olarak sunulur
-- Rapor istendiğinde AI'ye otomatik iletilebilir,
+- tek çalışma anı,
+- iki görsel karşılaştırması,
+- annotation katmanı uygulanmış karşılaştırma çıktısı
 
-Yani sadece “çıktı” vermez.
+PNG artifact olarak üretilebilir.
 
-Bağlam verir.
+Export edilen dosya çalışma projesinin bir sonucu olarak ele alınır; kaynak dosyanın kendisini destructive biçimde değiştirmek hedeflenmez.
 
-Bu yüzden iyi bir Laboratory raporu,
-ham sonuçtan daha değerlidir.
+---
+
+## 🧭 Çalışma İlkeleri
+
+Laboratory geliştirilirken birkaç sınır özellikle korunur:
+
+1. **Kaynak dosya ile çalışma durumu ayrıdır.** İnceleme/annotation kaynak medyayı sessizce değiştirmemelidir.
+2. **Araç/model hazırlığı görünürdür.** Eksik dependency başarısız analize dönüşmeden önce anlaşılmalıdır.
+3. **Sonuç proje içinde yaşar.** Analiz, export ve rapor birbirinden kopuk geçici dosyalar olmamalıdır.
+4. **UI, runtime ve host katmanları ayrıdır.** Room ownership sınırları yeni özelliklerde korunmalıdır.
+5. **Deneysel araç uygulanmış özellik gibi belgelenmez.** Bu dosya güncel `main` üzerinde karşılığı bulunan çalışma yüzeylerini tarif eder.
+
+---
+
+## 🧱 Kaynak Yapısı
+
+Laboratory'nin editable source of truth'u `rooms/laboratory` altındadır.
+
+Önemli katmanlar:
+
+- `features/media-analysis/` — medya source/process/export ve ilgili host davranışları
+- `features/audio-analysis/` — ses analiz pipeline'ları
+- `shared/host/` — ortak IO, project, process, report ve yardımcı host katmanı
+- `runtime/` — browser-side state, event ve execution koordinasyonu
+- `ui/` — workbench UI, renderer, binder, overlay ve drawing davranışları
+- `tools/` — room-local toolchain metadata ve dinamik tool payload'ları
+
+Ayrıntılı ownership ve cleanup kuralları: [rooms/laboratory/README.md](rooms/laboratory/README.md).
+
+---
+
+## ✅ Doğrulama
+
+Laboratory değişiklikleri için tam room gate:
+
+```bash
+node rooms/laboratory/scripts/laboratory-check.mjs
+```
+
+Tüm repository kalite kapısı:
+
+```bash
+npm run check:all
+```
 
 ---
 
 ## 🎯 Amaç
 
-Amaç sadece bir analizi tamamlamak değil.
+Laboratory'nin amacı yalnızca bir analiz işlemini tamamlamak değildir.
 
-- neyin çalışabildiğini görmek
-- neyin neden çalışmadığını anlamak
-- elde edilen sonucu güvenilir hale getirmek
+Amaç:
 
----
+- kaynağın nereden geldiğini bilmek,
+- analize hazır olup olmadığını görmek,
+- ayrıntıyı gerektiğinde insan gözüyle incelemek ve işaretlemek,
+- otomatik analizleri aynı bağlama eklemek,
+- sonucu tekrar açılabilir, export edilebilir ve AI ile tartışılabilir hale getirmektir.
 
-## 🧪 Son Söz
-
-Laboratory’nin adı buradan gelir:
-
-Çünkü burada dosyalar sadece açılmaz.
-
-Hazırlanır.
-test edilir.
-işlenir.
-yorumlanır.
-
-Ve sonunda:
-
-> ham veri,
-> çalışılmış bir bulguya dönüşür.
-
----
+> Ham veri burada yalnızca açılmaz; hazırlanır, incelenir, işlenir, işaretlenir ve bağlamlı bir bulguya dönüşür.
