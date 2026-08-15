@@ -212,12 +212,20 @@ async function ensureImageDecoded(image: HTMLImageElement) {
     return;
   }
   await new Promise<void>(function (resolve, reject) {
-    image.addEventListener("load", function () {
-      resolve();
-    }, { once: true });
-    image.addEventListener("error", function () {
-      reject(new Error("Görsel yüklenemedi."));
-    }, { once: true });
+    image.addEventListener(
+      "load",
+      function () {
+        resolve();
+      },
+      { once: true }
+    );
+    image.addEventListener(
+      "error",
+      function () {
+        reject(new Error("Görsel yüklenemedi."));
+      },
+      { once: true }
+    );
   });
 }
 
@@ -399,7 +407,11 @@ function appendPoint(
   }
 }
 
-function renderOverlay(side: LabFaceLandmarkSide, image: HTMLImageElement, record: CachedFaceRecord) {
+function renderOverlay(
+  side: LabFaceLandmarkSide,
+  image: HTMLImageElement,
+  record: CachedFaceRecord
+) {
   const host = getOverlayHost(image);
   if (host === null) {
     return;
@@ -447,7 +459,7 @@ function renderOverlay(side: LabFaceLandmarkSide, image: HTMLImageElement, recor
 
   if (settings.viewMode === "points") {
     record.landmarks.forEach(function (point) {
-      appendPoint(svg!, point, contained, {});
+      appendPoint(svg, point, contained, {});
     });
   } else if (settings.viewMode === "contours" || settings.viewMode === "mesh") {
     appendConnections(svg, record.landmarks, getConnectionSet(settings.viewMode), contained);
@@ -456,13 +468,13 @@ function renderOverlay(side: LabFaceLandmarkSide, image: HTMLImageElement, recor
   KEYPOINTS.forEach(function (entry) {
     const point = record.landmarks[entry.index];
     if (point !== undefined) {
-      appendPoint(svg!, point, contained, { label: entry.label, prominent: true });
+      appendPoint(svg, point, contained, { label: entry.label, prominent: true });
     }
   });
 }
 
 function removeOverlays() {
-  document.querySelectorAll<HTMLElement>(".labx-face-landmark-overlay").forEach(function (overlay) {
+  document.querySelectorAll<SVGSVGElement>(".labx-face-landmark-overlay").forEach(function (overlay) {
     overlay.remove();
   });
 }
@@ -542,17 +554,33 @@ function createPanel() {
 
 function syncPanelControls(panel: HTMLElement) {
   const enabled = panel.querySelector<HTMLInputElement>('[data-lab-face-landmark-setting="enabled"]');
-  const autoDetect = panel.querySelector<HTMLInputElement>('[data-lab-face-landmark-setting="autoDetect"]');
-  const viewMode = panel.querySelector<HTMLSelectElement>('[data-lab-face-landmark-setting="viewMode"]');
+  const autoDetect = panel.querySelector<HTMLInputElement>(
+    '[data-lab-face-landmark-setting="autoDetect"]'
+  );
+  const viewMode = panel.querySelector<HTMLSelectElement>(
+    '[data-lab-face-landmark-setting="viewMode"]'
+  );
   const opacity = panel.querySelector<HTMLInputElement>('[data-lab-face-landmark-setting="opacity"]');
-  const pointScale = panel.querySelector<HTMLInputElement>('[data-lab-face-landmark-setting="pointScale"]');
-  const showLabels = panel.querySelector<HTMLInputElement>('[data-lab-face-landmark-setting="showLabels"]');
+  const pointScale = panel.querySelector<HTMLInputElement>(
+    '[data-lab-face-landmark-setting="pointScale"]'
+  );
+  const showLabels = panel.querySelector<HTMLInputElement>(
+    '[data-lab-face-landmark-setting="showLabels"]'
+  );
   if (enabled !== null && enabled.checked !== settings.enabled) enabled.checked = settings.enabled;
-  if (autoDetect !== null && autoDetect.checked !== settings.autoDetect) autoDetect.checked = settings.autoDetect;
+  if (autoDetect !== null && autoDetect.checked !== settings.autoDetect) {
+    autoDetect.checked = settings.autoDetect;
+  }
   if (viewMode !== null && viewMode.value !== settings.viewMode) viewMode.value = settings.viewMode;
-  if (opacity !== null && opacity.value !== String(settings.opacity)) opacity.value = String(settings.opacity);
-  if (pointScale !== null && pointScale.value !== String(settings.pointScale)) pointScale.value = String(settings.pointScale);
-  if (showLabels !== null && showLabels.checked !== settings.showLabels) showLabels.checked = settings.showLabels;
+  if (opacity !== null && opacity.value !== String(settings.opacity)) {
+    opacity.value = String(settings.opacity);
+  }
+  if (pointScale !== null && pointScale.value !== String(settings.pointScale)) {
+    pointScale.value = String(settings.pointScale);
+  }
+  if (showLabels !== null && showLabels.checked !== settings.showLabels) {
+    showLabels.checked = settings.showLabels;
+  }
 }
 
 function ensurePanel() {
@@ -580,8 +608,14 @@ function updatePanel() {
   }
   const status = panel.querySelector<HTMLElement>('[data-lab-face-landmark-status="true"]');
   if (status !== null) {
-    status.dataset["state"] = lastError !== null ? "error" : detectionRunning ? "loading" : "ready";
-    status.textContent = lastError === null ? lastInfo : `${lastInfo} ${lastError}`;
+    const nextState = lastError !== null ? "error" : detectionRunning ? "loading" : "ready";
+    const nextText = lastError === null ? lastInfo : `${lastInfo} ${lastError}`;
+    if (status.dataset["state"] !== nextState) {
+      status.dataset["state"] = nextState;
+    }
+    if (status.textContent !== nextText) {
+      status.textContent = nextText;
+    }
   }
   const metrics = panel.querySelector<HTMLElement>('[data-lab-face-landmark-metrics="true"]');
   if (metrics !== null) {
@@ -691,7 +725,12 @@ function updateSetting(target: HTMLInputElement | HTMLSelectElement) {
     settings.showLabels = target.checked;
   } else if (key === "viewMode" && target instanceof HTMLSelectElement) {
     const value = target.value;
-    if (value === "keypoints" || value === "points" || value === "contours" || value === "mesh") {
+    if (
+      value === "keypoints" ||
+      value === "points" ||
+      value === "contours" ||
+      value === "mesh"
+    ) {
       settings.viewMode = value;
     }
   } else if (key === "opacity" && target instanceof HTMLInputElement) {
@@ -699,8 +738,8 @@ function updateSetting(target: HTMLInputElement | HTMLSelectElement) {
   } else if (key === "pointScale" && target instanceof HTMLInputElement) {
     settings.pointScale = clamp(Number(target.value) || settings.pointScale, 0.5, 2.5);
   }
-  document.querySelectorAll<HTMLElement>(".labx-face-landmark-overlay").forEach(function (overlay) {
-    delete overlay.dataset["renderSignature"];
+  document.querySelectorAll<SVGSVGElement>(".labx-face-landmark-overlay").forEach(function (overlay) {
+    overlay.removeAttribute("data-render-signature");
   });
   queueSync();
 }
@@ -770,7 +809,12 @@ function queueSync() {
 }
 
 export function ensureLabFaceLandmarkRuntimeBound() {
-  if (bound || typeof document === "undefined" || typeof MutationObserver === "undefined") {
+  if (
+    bound ||
+    typeof document === "undefined" ||
+    typeof window === "undefined" ||
+    typeof MutationObserver === "undefined"
+  ) {
     return;
   }
   bound = true;
