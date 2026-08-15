@@ -1,6 +1,6 @@
 import { ensureLabFaceLandmarkRuntimeBound } from "./lab-face-landmark-runtime.js";
 
-export type LabImageComparisonToolbarTool = "move" | "resize" | "zoom" | "face-landmarks";
+type LabImageComparisonToolbarTool = "move" | "resize" | "zoom" | "face-landmarks";
 
 type ToolConfig = {
   id: LabImageComparisonToolbarTool;
