@@ -17,7 +17,6 @@ const room: InstalledRoomRecord = {
   features: [
     { id: "backgammon", name: "Tavla" },
     { id: "team-tetris", name: "Team Tetris" },
-    { id: "fate-knots", name: "Fate Knots" },
   ],
   commandSpecs: [
     {
@@ -49,16 +48,6 @@ const room: InstalledRoomRecord = {
       name: "GameRoomTeamTetrisRemoteMove",
       description: "Apply Team Tetris remote move from US1",
       scope: "us1",
-    },
-    {
-      name: "GameRoomFateKnotsStart",
-      description: "Start Fate Knots from room UI",
-      scope: "room-ui",
-    },
-    {
-      name: "GameRoomFateKnotsReset",
-      description: "Reset the Fate Knots placeholder",
-      scope: "room-ui",
     },
     {
       name: "GameRoomInternalBridgeOnly",
@@ -110,8 +99,6 @@ void test("RoomCommandRegistry syncs manifest command metadata into catalog", ()
   assert.deepEqual(RoomCommandRegistry.listCommands("ai1-ai2"), [
     "GameRoomBackgammonAiMove",
     "GameRoomBackgammonUserMove",
-    "GameRoomFateKnotsReset",
-    "GameRoomFateKnotsStart",
     "GameRoomInternalBridgeOnly",
     "GameRoomTeamTetrisAiMove",
     "GameRoomTeamTetrisStart",
