@@ -90,14 +90,13 @@ function distancePixels(
 }
 
 function midpoint(first: LabFaceLandmarkPoint, second: LabFaceLandmarkPoint): LabFaceLandmarkPoint {
-  return {
+  const base = {
     x: (first.x + second.x) / 2,
     y: (first.y + second.y) / 2,
-    z:
-      typeof first.z === "number" && typeof second.z === "number"
-        ? (first.z + second.z) / 2
-        : undefined,
   };
+  return typeof first.z === "number" && typeof second.z === "number"
+    ? { ...base, z: (first.z + second.z) / 2 }
+    : base;
 }
 
 function angleDegrees(
