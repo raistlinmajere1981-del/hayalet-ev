@@ -1,4 +1,6 @@
-type LabImageComparisonManipulationMode = "move" | "resize";
+import { getActiveLabImageComparisonToolbarTool } from "./lab-image-comparison-toolbar.js";
+
+type LabImageComparisonManipulationMode = "move" | "resize" | "zoom";
 type LabImageComparisonSide = "primary" | "reference";
 
 type ComparisonDragState = {
@@ -18,8 +20,8 @@ type ComparisonDragState = {
 };
 
 const COMPARISON_FIELD_PREFIX = "operationSettings.image-comparison.";
-const ACTIVE_TOOLBOX_SELECTOR =
-  '.labx-icon-rail-popover[data-slot="image-comparison"] [data-lab-image-comparison-toolbox="true"]';
+const SETTINGS_ROOT_SELECTOR =
+  '.labx-icon-rail-popover[data-slot="image-comparison"] .labx-image-comparison-settings';
 
 let bound = false;
 let dragState: ComparisonDragState | null = null;
@@ -32,18 +34,11 @@ function roundForControl(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-function getActiveToolbox() {
+function getSettingsRoot() {
   if (typeof document === "undefined") {
     return null;
   }
-  return document.querySelector<HTMLElement>(ACTIVE_TOOLBOX_SELECTOR);
-}
-
-function getActiveMode(toolbox: HTMLElement): LabImageComparisonManipulationMode | null {
-  const checked = toolbox.querySelector<HTMLInputElement>(
-    '[data-lab-comparison-tool-mode="true"]:checked'
-  );
-  return checked?.value === "move" || checked?.value === "resize" ? checked.value : null;
+  return document.querySelector<HTMLElement>(SETTINGS_ROOT_SELECTOR);
 }
 
 function getComparisonStage(target: EventTarget | null) {
@@ -60,14 +55,14 @@ function getComparisonSide(stage: HTMLElement): LabImageComparisonSide | null {
   return side === "primary" || side === "reference" ? side : null;
 }
 
-function queryField(toolbox: HTMLElement, key: string) {
-  return toolbox.querySelector<HTMLInputElement>(
+function queryField(root: HTMLElement, key: string) {
+  return root.querySelector<HTMLInputElement>(
     `[data-lab-field="${COMPARISON_FIELD_PREFIX}${key}"]`
   );
 }
 
-function readNumberField(toolbox: HTMLElement, key: string, fallback: number) {
-  const field = queryField(toolbox, key);
+function readNumberField(root: HTMLElement, key: string, fallback: number) {
+  const field = queryField(root, key);
   if (field === null) {
     return fallback;
   }
@@ -75,13 +70,13 @@ function readNumberField(toolbox: HTMLElement, key: string, fallback: number) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-function readBooleanField(toolbox: HTMLElement, key: string, fallback: boolean) {
-  const field = queryField(toolbox, key);
+function readBooleanField(root: HTMLElement, key: string, fallback: boolean) {
+  const field = queryField(root, key);
   return field === null ? fallback : field.checked;
 }
 
-function writeNumberField(toolbox: HTMLElement, key: string, value: number) {
-  const field = queryField(toolbox, key);
+function writeNumberField(root: HTMLElement, key: string, value: number) {
+  const field = queryField(root, key);
   if (field === null) {
     return;
   }
@@ -93,7 +88,7 @@ function writeNumberField(toolbox: HTMLElement, key: string, value: number) {
   field.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-function stopComparisonGesture(event: MouseEvent) {
+function stopComparisonGesture(event: Event) {
   event.preventDefault();
   event.stopImmediatePropagation();
 }
@@ -102,12 +97,12 @@ function handleMouseDown(event: MouseEvent) {
   if (event.button !== 0) {
     return;
   }
-  const toolbox = getActiveToolbox();
-  if (toolbox === null) {
+  const mode = getActiveLabImageComparisonToolbarTool();
+  if (mode === null) {
     return;
   }
-  const mode = getActiveMode(toolbox);
-  if (mode === null) {
+  const root = getSettingsRoot();
+  if (root === null) {
     return;
   }
   const stage = getComparisonStage(event.target);
@@ -125,12 +120,12 @@ function handleMouseDown(event: MouseEvent) {
   const prefix = side === "primary" ? "primary" : "reference";
   stopComparisonGesture(event);
   dragState = {
-    aspectLocked: readBooleanField(toolbox, `${prefix}AspectLock`, true),
-    initialOffsetX: readNumberField(toolbox, `${prefix}OffsetX`, 0),
-    initialOffsetY: readNumberField(toolbox, `${prefix}OffsetY`, 0),
-    initialScaleX: readNumberField(toolbox, `${prefix}ScaleX`, 1),
-    initialScaleY: readNumberField(toolbox, `${prefix}ScaleY`, 1),
-    initialZoom: readNumberField(toolbox, `${prefix}Zoom`, 1),
+    aspectLocked: readBooleanField(root, `${prefix}AspectLock`, true),
+    initialOffsetX: readNumberField(root, `${prefix}OffsetX`, 0),
+    initialOffsetY: readNumberField(root, `${prefix}OffsetY`, 0),
+    initialScaleX: readNumberField(root, `${prefix}ScaleX`, 1),
+    initialScaleY: readNumberField(root, `${prefix}ScaleY`, 1),
+    initialZoom: readNumberField(root, `${prefix}Zoom`, 1),
     lastSignature: null,
     mode,
     rectHeight: rect.height,
@@ -146,8 +141,8 @@ function handleMouseMove(event: MouseEvent) {
   if (drag === null) {
     return;
   }
-  const toolbox = getActiveToolbox();
-  if (toolbox === null) {
+  const root = getSettingsRoot();
+  if (root === null) {
     dragState = null;
     return;
   }
@@ -164,21 +159,35 @@ function handleMouseMove(event: MouseEvent) {
       return;
     }
     drag.lastSignature = signature;
-    writeNumberField(toolbox, `${prefix}OffsetX`, nextX);
-    writeNumberField(toolbox, `${prefix}OffsetY`, nextY);
+    writeNumberField(root, `${prefix}OffsetX`, nextX);
+    writeNumberField(root, `${prefix}OffsetY`, nextY);
+    return;
+  }
+
+  if (drag.mode === "zoom") {
+    const normalizedDelta = deltaX / drag.rectWidth - deltaY / drag.rectHeight;
+    const nextZoom = clamp(drag.initialZoom * Math.exp(normalizedDelta * 1.5), 0.25, 4);
+    const signature = String(roundForControl(nextZoom));
+    if (signature === drag.lastSignature) {
+      return;
+    }
+    drag.lastSignature = signature;
+    writeNumberField(root, `${prefix}Zoom`, nextZoom);
     return;
   }
 
   if (drag.aspectLocked) {
     const normalizedDelta =
       ((deltaX / drag.rectWidth + deltaY / drag.rectHeight) / 2) * 2;
-    const nextZoom = clamp(drag.initialZoom + normalizedDelta, 0.25, 4);
-    const signature = String(roundForControl(nextZoom));
+    const initialScale = (drag.initialScaleX + drag.initialScaleY) / 2;
+    const nextScale = clamp(initialScale + normalizedDelta, 0.25, 4);
+    const signature = String(roundForControl(nextScale));
     if (signature === drag.lastSignature) {
       return;
     }
     drag.lastSignature = signature;
-    writeNumberField(toolbox, `${prefix}Zoom`, nextZoom);
+    writeNumberField(root, `${prefix}ScaleX`, nextScale);
+    writeNumberField(root, `${prefix}ScaleY`, nextScale);
     return;
   }
 
@@ -189,8 +198,28 @@ function handleMouseMove(event: MouseEvent) {
     return;
   }
   drag.lastSignature = signature;
-  writeNumberField(toolbox, `${prefix}ScaleX`, nextScaleX);
-  writeNumberField(toolbox, `${prefix}ScaleY`, nextScaleY);
+  writeNumberField(root, `${prefix}ScaleX`, nextScaleX);
+  writeNumberField(root, `${prefix}ScaleY`, nextScaleY);
+}
+
+function handleWheel(event: WheelEvent) {
+  if (getActiveLabImageComparisonToolbarTool() !== "zoom") {
+    return;
+  }
+  const root = getSettingsRoot();
+  const stage = getComparisonStage(event.target);
+  if (root === null || stage === null) {
+    return;
+  }
+  const side = getComparisonSide(stage);
+  if (side === null) {
+    return;
+  }
+  const prefix = side === "primary" ? "primary" : "reference";
+  const currentZoom = readNumberField(root, `${prefix}Zoom`, 1);
+  const nextZoom = clamp(currentZoom * Math.exp(-event.deltaY * 0.0015), 0.25, 4);
+  stopComparisonGesture(event);
+  writeNumberField(root, `${prefix}Zoom`, nextZoom);
 }
 
 function clearDragState() {
@@ -211,6 +240,7 @@ export function ensureLabImageComparisonMouseToolsBound() {
   }
   bound = true;
   document.addEventListener("mousedown", handleMouseDown, true);
+  document.addEventListener("wheel", handleWheel, { capture: true, passive: false });
   window.addEventListener("mousemove", handleMouseMove, true);
   window.addEventListener("mouseup", clearDragState, true);
   window.addEventListener("blur", clearDragState);
