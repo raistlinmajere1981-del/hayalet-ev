@@ -7,7 +7,7 @@ import type { LabAudioObservationLayout } from "../domain/lab-audio-observation.
 import {
   attachLivePitchShiftSemitones,
   getLivePitchShiftSemitones,
-} from "./lab-live-audio-pitch.js";
+} from "../domain/lab-live-audio-settings.js";
 
 type AudioFocusEqBand = LabAudioFocusSettings["eqBands"][number];
 type AudioFocusWithObservationLayout = LabAudioFocusSettings & {
