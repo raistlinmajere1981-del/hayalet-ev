@@ -39,13 +39,11 @@
     });
     const roomId = bootstrapRuntime.roomId;
     const teamTetrisFeatureId = bootstrapRuntime.teamTetrisFeatureId;
-    const fateKnotsFeatureId = bootstrapRuntime.fateKnotsFeatureId;
     const contextRuntime = bootstrapRuntime.contextRuntime;
     const scrollRuntime = bootstrapRuntime.scrollRuntime;
     const getState = bootstrapRuntime.getState;
     const backgammonUi = bootstrapRuntime.backgammonUi;
     const teamTetrisUi = bootstrapRuntime.teamTetrisUi;
-    const fateKnotsUi = bootstrapRuntime.fateKnotsUi;
     const bootstrapText = bootstrapRuntime.bootstrapText;
     const applyPresentationMode = bootstrapRuntime.applyPresentationMode;
     const applyLocale = bootstrapRuntime.applyLocale;
@@ -58,7 +56,6 @@
       stateRef: bootstrapRuntime.stateRef,
       backgammonUi: backgammonUi,
       teamTetrisUi: teamTetrisUi,
-      fateKnotsUi: fateKnotsUi,
       render: render,
       scheduleRender: scheduleRender,
     });
@@ -167,12 +164,6 @@
 
         if (getActiveFeatureId() === teamTetrisFeatureId) {
           teamTetrisUi.renderTeamTetris(root);
-          syncRoomCloseControl(root);
-          return;
-        }
-
-        if (getActiveFeatureId() === fateKnotsFeatureId) {
-          fateKnotsUi.renderFateKnots(root);
           syncRoomCloseControl(root);
           return;
         }
@@ -299,11 +290,6 @@
 
       if (messageType === "team-tetris-state") {
         stateMessageRuntime.handleTeamTetrisState(messageRecord);
-        return;
-      }
-
-      if (messageType === "fate-knots-state") {
-        stateMessageRuntime.handleFateKnotsState(messageRecord);
         return;
       }
 
