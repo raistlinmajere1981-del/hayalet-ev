@@ -1,5 +1,6 @@
 import { escapeHtml } from "../domain/lab-types.js";
 import type { LabAudioFocusSettings } from "../domain/lab-types.js";
+import { getLivePitchShiftSemitones } from "../runtime/lab-live-audio-pitch.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
@@ -95,24 +96,20 @@ function renderEQBand(band: LabAudioFocusSettings["eqBands"][0], index: number) 
   `;
 }
 
-function formatTapePitchSemitones(playbackRate: number) {
-  if (!Number.isFinite(playbackRate) || playbackRate <= 0) {
-    return "0";
-  }
-  const semitones = 12 * Math.log2(playbackRate);
-  const rounded = Math.abs(semitones) < 0.05 ? 0 : Number(semitones.toFixed(1));
+function formatSemitones(value: number) {
+  const rounded = Number(value.toFixed(1));
   return `${rounded > 0 ? "+" : ""}${String(rounded)}`;
 }
 
-function renderPlaybackPresetButton(label: string, rate: number, currentRate: number) {
-  const active = Math.abs(currentRate - rate) < 0.0005;
+function renderPitchPresetButton(label: string, semitones: number, currentSemitones: number) {
+  const active = Math.abs(currentSemitones - semitones) < 0.0005;
   return `<button
     class="labx-inline-action"
     type="button"
     data-lab-action="workspace-setting-adjust"
-    data-lab-field="workspace.audioFocus.playbackRate"
+    data-lab-field="workspace.audioFocus.livePitchSemitones"
     data-lab-reset="true"
-    data-lab-reset-value="${String(rate)}"
+    data-lab-reset-value="${String(semitones)}"
     aria-pressed="${active ? "true" : "false"}"
     data-active="${active ? "true" : "false"}"
   >${escapeHtml(label)}</button>`;
@@ -124,50 +121,59 @@ function renderTemporalAudition(
 ) {
   const playbackRate = temporalAudioFocus.playbackRate;
   const preservePitch = temporalAudioFocus.preservePitch;
+  const livePitchSemitones = getLivePitchShiftSemitones(temporalAudioFocus);
   const speedLabel = copy.t("mediaAnalysis.timeline.playbackSpeed", "Hız");
-  const pitchStatus = preservePitch
+  const pitchLabel = copy.t("mediaAnalysis.audioFocus.independentPitch", "Pitch");
+  const transportPitchStatus = preservePitch
     ? copy.t(
         "mediaAnalysis.audioFocus.pitchPreservedStatus",
-        "Pitch korunuyor · hız değişse de ses perdesi sabit tutulur."
+        "Hız değişiminde pitch korunur."
       )
     : copy.t(
-        "mediaAnalysis.audioFocus.tapePitchStatus",
-        `Tape pitch aktif · yaklaşık ${formatTapePitchSemitones(playbackRate)} st`
+        "mediaAnalysis.audioFocus.naturalPitchStatus",
+        "Hız değişimi doğal pitch'i de etkiler."
       );
-  const tapePitchPresets = [
-    { label: "-12 st", rate: 0.5 },
-    { label: "-6 st", rate: 0.707107 },
-    { label: "0 st", rate: 1 },
-    { label: "+6 st", rate: 1.414214 },
-    { label: "+12 st", rate: 2 },
-  ];
+  const independentPitchStatus = copy.t(
+    "mediaAnalysis.audioFocus.independentPitchStatus",
+    `Bağımsız pitch: ${formatSemitones(livePitchSemitones)} st · oynatma hızını değiştirmez.`
+  );
+  const pitchPresets = [-12, -6, 0, 6, 12] as const;
 
   return `
     <div class="labx-audio-focus__eq" data-lab-live-audio-audition="true">
       <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.audioFocus.liveAuditionTitle", "CANLI DİNLEME"))}</p>
-      ${renderAudioSlider(speedLabel, "playbackRate", playbackRate, 0.25, 2, 0.05, "x", 1)}
+      ${renderAudioSlider(speedLabel, "playbackRate", playbackRate, 0.1, 2, 0.05, "x", 1)}
       <label class="labx-control-toggle">
         <input
           type="checkbox"
           ${preservePitch ? "checked" : ""}
           data-lab-field="workspace.audioFocus.preservePitch"
         />
-        <span>${escapeHtml(copy.t("mediaAnalysis.audioFocus.preservePitch", "Pitch'i koru"))}</span>
+        <span>${escapeHtml(copy.t("mediaAnalysis.audioFocus.preservePitch", "Hız değişirken pitch korunsun"))}</span>
       </label>
-      <p class="labx-operation-card__reason">${escapeHtml(pitchStatus)}</p>
-      ${
-        preservePitch
-          ? ""
-          : `
-            <div class="labx-controls-actions" data-lab-tape-pitch-presets="true" aria-label="${escapeHtml(copy.t("mediaAnalysis.audioFocus.tapePitchPresets", "Tape pitch presetleri"))}">
-              ${tapePitchPresets
-                .map(function (preset) {
-                  return renderPlaybackPresetButton(preset.label, preset.rate, playbackRate);
-                })
-                .join("")}
-            </div>
-          `
-      }
+      <p class="labx-operation-card__reason">${escapeHtml(transportPitchStatus)}</p>
+      ${renderAudioSlider(
+        pitchLabel,
+        "livePitchSemitones",
+        livePitchSemitones,
+        -12,
+        12,
+        1,
+        " st",
+        0
+      )}
+      <div class="labx-controls-actions" data-lab-live-pitch-presets="true" aria-label="${escapeHtml(copy.t("mediaAnalysis.audioFocus.pitchPresets", "Pitch presetleri"))}">
+        ${pitchPresets
+          .map(function (semitones) {
+            return renderPitchPresetButton(
+              `${semitones > 0 ? "+" : ""}${String(semitones)} st`,
+              semitones,
+              livePitchSemitones
+            );
+          })
+          .join("")}
+      </div>
+      <p class="labx-operation-card__reason">${escapeHtml(independentPitchStatus)}</p>
     </div>
   `;
 }
