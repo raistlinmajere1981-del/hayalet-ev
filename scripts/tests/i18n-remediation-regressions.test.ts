@@ -321,7 +321,6 @@ function createGameRoomUiRuntime(initialLanguage = "en-US"): {
     "rooms/game-room/main-functions/team-tetris/ui/module-card-runtime.ts",
     "rooms/game-room/main-functions/team-tetris/ui/module-shell-runtime.ts",
     "rooms/game-room/main-functions/team-tetris/ui/module.ts",
-    "rooms/game-room/main-functions/fate-knots/ui/module.ts",
     "rooms/game-room/ui/game-room-ui-bootstrap.ts",
     "rooms/game-room/ui/game-room-ui-state-message-runtime.ts",
     "rooms/game-room/ui/game-room-ui-runtime.ts",
