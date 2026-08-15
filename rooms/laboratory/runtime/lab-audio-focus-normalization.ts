@@ -4,6 +4,10 @@ import {
   normalizeLabAudioObservationLayout,
 } from "../domain/lab-audio-observation.js";
 import type { LabAudioObservationLayout } from "../domain/lab-audio-observation.js";
+import {
+  attachLivePitchShiftSemitones,
+  getLivePitchShiftSemitones,
+} from "./lab-live-audio-pitch.js";
 
 type AudioFocusEqBand = LabAudioFocusSettings["eqBands"][number];
 type AudioFocusWithObservationLayout = LabAudioFocusSettings & {
@@ -18,17 +22,21 @@ const DEFAULT_AUDIO_FOCUS_EQ_BANDS: AudioFocusEqBand[] = [
   { frequency: 12000, gain: 0, Q: 1.0, type: "highshelf" },
 ];
 
-export const DEFAULT_AUDIO_FOCUS_SETTINGS: AudioFocusWithObservationLayout = {
-  gain: 1,
-  filterType: "none",
-  filterFrequency: 1000,
-  filterQ: 1,
-  playbackRate: 1,
-  preservePitch: true,
-  visualizationMode: "waveform",
-  observationLayout: DEFAULT_LAB_AUDIO_OBSERVATION_LAYOUT,
-  eqBands: DEFAULT_AUDIO_FOCUS_EQ_BANDS,
-};
+export const DEFAULT_AUDIO_FOCUS_SETTINGS: AudioFocusWithObservationLayout =
+  attachLivePitchShiftSemitones(
+    {
+      gain: 1,
+      filterType: "none",
+      filterFrequency: 1000,
+      filterQ: 1,
+      playbackRate: 1,
+      preservePitch: true,
+      visualizationMode: "waveform",
+      observationLayout: DEFAULT_LAB_AUDIO_OBSERVATION_LAYOUT,
+      eqBands: DEFAULT_AUDIO_FOCUS_EQ_BANDS,
+    },
+    null
+  );
 
 function clampNumber(value: number, min: number, max: number, fallback: number) {
   if (!Number.isFinite(value)) {
@@ -78,7 +86,7 @@ export function normalizeAudioFocusSettings(
         : "none",
     filterFrequency: clampNumber(source.filterFrequency, 20, 20_000, fallback.filterFrequency),
     filterQ: clampNumber(source.filterQ, 0.1, 20, fallback.filterQ),
-    playbackRate: clampNumber(source.playbackRate, 0.25, 2, fallback.playbackRate),
+    playbackRate: clampNumber(source.playbackRate, 0.1, 2, fallback.playbackRate),
     preservePitch: source.preservePitch !== false,
     visualizationMode: source.visualizationMode === "spectrum" ? "spectrum" : "waveform",
     observationLayout: normalizeLabAudioObservationLayout(sourceRecord["observationLayout"]),
@@ -89,7 +97,7 @@ export function normalizeAudioFocusSettings(
       return normalizeEqBand(candidateBand, fallbackBand);
     }),
   };
-  return normalized;
+  return attachLivePitchShiftSemitones(normalized, sourceRecord);
 }
 
 export function normalizeAudioFocusPatch(
@@ -115,6 +123,7 @@ export function createAudioFocusSignature(audioFocus: LabAudioFocusSettings) {
     filterFrequency: Number(audioFocus.filterFrequency.toFixed(2)),
     filterQ: Number(audioFocus.filterQ.toFixed(4)),
     filterType: audioFocus.filterType,
+    livePitchSemitones: getLivePitchShiftSemitones(audioFocus),
     eqBands: audioFocus.eqBands.map(function (band) {
       return {
         frequency: Number(band.frequency.toFixed(2)),
