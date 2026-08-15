@@ -11,6 +11,16 @@ type GameRoomUiGetState = () => GameRoomUiState;
 type GameRoomFeatureRecord = { id: string; name: string; description: string };
 type GameRoomBootstrapCopy = Record<string, Record<string, string>>;
 
+interface GameRoomSlotRecord extends GameRoomUnknownRecord {
+  label?: string;
+  nickname?: string;
+  avatar?: string | null;
+  providerId?: string | null;
+  accountId?: string | null;
+  remoteUserId?: string;
+  connected?: boolean;
+}
+
 interface GameRoomUiContextState extends GameRoomUnknownRecord {
   activeFeature?: {
     id?: unknown;
@@ -23,7 +33,7 @@ interface GameRoomUiContextState extends GameRoomUnknownRecord {
     nickname?: unknown;
     avatar?: unknown;
   };
-  slots?: Record<string, GameRoomFateKnotsSlotRecord | GameRoomUnknownRecord>;
+  slots?: Record<string, GameRoomSlotRecord | GameRoomUnknownRecord>;
 }
 
 type GameRoomTeamTetrisRotationCell = [number, number];
@@ -203,7 +213,6 @@ interface GameRoomUiState extends GameRoomUnknownRecord {
   game?: unknown;
   teamTetris: GameRoomTeamTetrisState;
   teamTetrisDraft: GameRoomTeamTetrisDraftState;
-  fateKnots: GameRoomFateKnotsState;
   presentation: GameRoomUnknownRecord & {
     mode?: string;
     uiScale?: number;
@@ -238,7 +247,6 @@ interface GameRoomUiFeatureContractLike {
   ROOM_ID?: unknown;
   FEATURE_ID?: unknown;
   TEAM_TETRIS_FEATURE_ID?: unknown;
-  FATE_KNOTS_FEATURE_ID?: unknown;
   getBootstrapCopy?(): GameRoomBootstrapCopy;
   getFeatureRecords?(): GameRoomFeatureRecord[];
 }
@@ -518,37 +526,6 @@ interface GameRoomTeamTetrisUiTestBridge {
   getSpawnPosition(pieceId: string, rotation: number): GameRoomTeamTetrisCell;
 }
 
-interface GameRoomFateKnotsState extends GameRoomUnknownRecord {
-  active: boolean;
-  phase: string;
-  revision: number;
-}
-
-interface GameRoomFateKnotsSlotRecord extends GameRoomUnknownRecord {
-  label?: string;
-  nickname?: string;
-  avatar?: string | null;
-  providerId?: string | null;
-  accountId?: string | null;
-  remoteUserId?: string;
-  connected?: boolean;
-}
-
-interface GameRoomFateKnotsUiModule {
-  createFateKnotsState(): GameRoomFateKnotsState;
-  sanitizeFateKnotsState(candidate: unknown): GameRoomFateKnotsState;
-  renderFateKnots(root: HTMLElement): void;
-}
-
-interface GameRoomFateKnotsUiModuleDeps {
-  getState: GameRoomUiGetState;
-  featureId: string;
-  createElement: GameRoomCreateElement;
-  sendRoomCommand: GameRoomSendRoomCommand;
-  getFeatureLabel(featureId: string): string;
-  text: GameRoomTextResolver;
-}
-
 interface GameRoomUiBootstrapRuntimeOptions {
   document?: Document;
   navigator?: Navigator;
@@ -559,7 +536,6 @@ interface GameRoomUiBootstrapRuntime {
   roomId: string;
   featureId: string;
   teamTetrisFeatureId: string;
-  fateKnotsFeatureId: string;
   contextRuntime: GameRoomUiContextRuntimeLike;
   scrollRuntime: GameRoomUiScrollRuntimeLike;
   stateRef: {
@@ -568,7 +544,6 @@ interface GameRoomUiBootstrapRuntime {
   getState: GameRoomUiGetState;
   backgammonUi: GameRoomBackgammonUiModule;
   teamTetrisUi: GameRoomTeamTetrisUiModule;
-  fateKnotsUi: GameRoomFateKnotsUiModule;
   bootstrapText(key: string): string;
   applyPresentationMode(presentation: unknown): void;
   applyLocale(locale: unknown): void;
@@ -579,7 +554,6 @@ interface GameRoomUiBootstrapRuntime {
 interface GameRoomUiStateMessageRuntime {
   handleBackgammonState(message: unknown): void;
   handleTeamTetrisState(message: unknown): void;
-  handleFateKnotsState(message: unknown): void;
   handleCommandResult(message: unknown): void;
 }
 
@@ -611,7 +585,6 @@ interface GameRoomUiStateMessageRuntimeRegistry {
     };
     backgammonUi: GameRoomBackgammonUiModule;
     teamTetrisUi: GameRoomTeamTetrisUiModule;
-    fateKnotsUi: GameRoomFateKnotsUiModule;
     render: () => void;
     scheduleRender?: () => void;
   }) => GameRoomUiStateMessageRuntime;
@@ -648,7 +621,6 @@ interface GameRoomUiFactoriesRegistry {
     deps: GameRoomTeamTetrisUiModuleShellRuntimeDeps
   ) => GameRoomTeamTetrisUiModuleShellRuntime;
   createTeamTetrisUiModule?: (deps: GameRoomTeamTetrisUiModuleDeps) => GameRoomTeamTetrisUiModule;
-  createFateKnotsUiModule?: (deps: GameRoomFateKnotsUiModuleDeps) => GameRoomFateKnotsUiModule;
 }
 
 interface GameRoomUiGlobal {
