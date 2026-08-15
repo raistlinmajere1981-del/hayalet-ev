@@ -222,7 +222,6 @@ function buildHostContext(translations: Record<string, unknown>) {
     features: [
       { id: "backgammon", name: "Tavla" },
       { id: "team-tetris", name: "Team Tetris" },
-      { id: "fate-knots", name: "Fate Knots" },
     ],
     activeFeature: {
       id: "team-tetris",
@@ -481,7 +480,6 @@ function createUiRuntime() {
     "rooms/game-room/main-functions/team-tetris/ui/module-card-runtime.ts",
     "rooms/game-room/main-functions/team-tetris/ui/module-shell-runtime.ts",
     "rooms/game-room/main-functions/team-tetris/ui/module.ts",
-    "rooms/game-room/main-functions/fate-knots/ui/module.ts",
     "rooms/game-room/ui/game-room-ui-bootstrap.ts",
     "rooms/game-room/ui/game-room-ui-state-message-runtime.ts",
     "rooms/game-room/ui/game-room-ui-runtime.ts",
@@ -704,10 +702,7 @@ void test("Team Tetris UI rotates a piece, draws a path, and submits the canonic
   assert.equal(moveCmd.command, "GameRoomTeamTetrisUserMove");
   assert.equal(moveCmd.payload["pieceId"], "T");
   assert.equal(moveCmd.payload["rotation"], 1);
-  assert.deepEqual(
-    Array.from((moveCmd.payload["rowShifts"] ?? []) as number[]),
-    []
-  );
+  assert.deepEqual(Array.from((moveCmd.payload["rowShifts"] ?? []) as number[]), []);
 });
 
 void test("Team Tetris UI renders the route as one straight drop line plus a single bottom turn cell", () => {
