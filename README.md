@@ -77,7 +77,7 @@ Bazı özellikler FFmpeg, model dosyaları, Android/ADB veya harici AI sağlayı
 | **Laboratory** | Uygulanmış | Proje/source intake, hazırlık ve tool/model kontrolleri, medya ve ses analizi, tek/çift görsel inceleme, zoom/pan, ROI, geometrik/yüz detay inceleme, annotation ve export, rapor üretimi. |
 | **Forge Room** | Uygulanmış | Hedef, preflight, görev taslağı, çoklu-AI assignment, yanıt/çelişki inceleme, sentez ve başka bir odaya handoff paketi. |
 | **Repair Room** | Uygulanmış | Onarım oturumları, Assistant evidence araştırması, knowledge pack, PCB/kamera çalışma alanı, ölçüm, overlay/timeline, AI chat, dictation/TTS ve Android kamera akışları. |
-| **Game Room** | Uygulanmış / gelişiyor | Tavla: AI1, AI2 veya bağlı US1 rakibi. Team Tetris: USER + AI1 + AI2 + US1 dört koltuklu tur tabanlı oyun. Fate Knots şu anda placeholder. |
+| **Game Room** | Uygulanmış / gelişiyor | Tavla: AI1, AI2 veya bağlı US1 rakibi. Team Tetris: USER + AI1 + AI2 + US1 dört koltuklu tur tabanlı oyun. |
 | **Pattern Room** | Prototip | Kaynak, iddia, çelişki ve rapor düzeni için local-only phase-one araştırma yüzeyi. |
 
 Ayrıntılar: [rooms/README.md](rooms/README.md).
@@ -122,7 +122,6 @@ Game Room farklı insan/AI kombinasyonlarını oyun kuralları içinde aynı mas
 
 - **Tavla:** kullanıcı AI1, AI2 veya bağlı US1 ile oynayabilir.
 - **Team Tetris:** USER, AI1, AI2 ve US1 için dört koltuklu tur tabanlı ortak oyun motoru kullanır.
-- **Fate Knots:** yeni oyun tasarımı için ayrılmış placeholder yüzeyidir.
 
 Detaylar: [BACKGAMMON.md](BACKGAMMON.md) ve [TEAM-TETRIS.md](TEAM-TETRIS.md).
 
