@@ -95,10 +95,6 @@ function renderEQBand(band: LabAudioFocusSettings["eqBands"][0], index: number) 
   `;
 }
 
-function formatPlaybackRate(value: number) {
-  return `${String(Number(value.toFixed(2)))}x`;
-}
-
 function formatTapePitchSemitones(playbackRate: number) {
   if (!Number.isFinite(playbackRate) || playbackRate <= 0) {
     return "0";
@@ -138,7 +134,6 @@ function renderTemporalAudition(
         "mediaAnalysis.audioFocus.tapePitchStatus",
         `Tape pitch aktif · yaklaşık ${formatTapePitchSemitones(playbackRate)} st`
       );
-  const speedPresets = [0.25, 0.5, 0.75, 1, 1.5, 2];
   const tapePitchPresets = [
     { label: "-12 st", rate: 0.5 },
     { label: "-6 st", rate: 0.707107 },
@@ -151,13 +146,6 @@ function renderTemporalAudition(
     <div class="labx-audio-focus__eq" data-lab-live-audio-audition="true">
       <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.audioFocus.liveAuditionTitle", "CANLI DİNLEME"))}</p>
       ${renderAudioSlider(speedLabel, "playbackRate", playbackRate, 0.25, 2, 0.05, "x", 1)}
-      <div class="labx-controls-actions" aria-label="${escapeHtml(copy.t("mediaAnalysis.audioFocus.speedPresets", "Hız presetleri"))}">
-        ${speedPresets
-          .map(function (rate) {
-            return renderPlaybackPresetButton(formatPlaybackRate(rate), rate, playbackRate);
-          })
-          .join("")}
-      </div>
       <label class="labx-control-toggle">
         <input
           type="checkbox"
@@ -171,7 +159,7 @@ function renderTemporalAudition(
         preservePitch
           ? ""
           : `
-            <div class="labx-controls-actions" aria-label="${escapeHtml(copy.t("mediaAnalysis.audioFocus.tapePitchPresets", "Tape pitch presetleri"))}">
+            <div class="labx-controls-actions" data-lab-tape-pitch-presets="true" aria-label="${escapeHtml(copy.t("mediaAnalysis.audioFocus.tapePitchPresets", "Tape pitch presetleri"))}">
               ${tapePitchPresets
                 .map(function (preset) {
                   return renderPlaybackPresetButton(preset.label, preset.rate, playbackRate);
