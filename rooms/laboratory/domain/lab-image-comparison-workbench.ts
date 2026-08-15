@@ -1,12 +1,12 @@
 import type { LabSettingsRecord } from "./lab-capabilities.js";
 
-export type LabImageComparisonSide = "primary" | "reference";
-export type LabImageComparisonCompositeMode =
+type LabImageComparisonSide = "primary" | "reference";
+type LabImageComparisonCompositeMode =
   | "none"
   | "primary-left-reference-right"
   | "reference-left-primary-right";
 
-export type LabImageComparisonTransform = {
+type LabImageComparisonTransform = {
   aspectLocked: boolean;
   offsetX: number;
   offsetY: number;
@@ -16,7 +16,7 @@ export type LabImageComparisonTransform = {
   zoom: number;
 };
 
-export type LabImageComparisonMarker = {
+type LabImageComparisonMarker = {
   enabled: boolean;
   id: 1 | 2 | 3;
   side: LabImageComparisonSide;
@@ -24,7 +24,7 @@ export type LabImageComparisonMarker = {
   y: number;
 };
 
-export type LabImageComparisonGeometry = {
+type LabImageComparisonGeometry = {
   compositeMode: LabImageComparisonCompositeMode;
   centerGuide: boolean;
   markers: LabImageComparisonMarker[];
