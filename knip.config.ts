@@ -48,6 +48,7 @@ const config: KnipConfig = {
     "scripts/backup-cli.mjs",
     "scripts/dev-restart-helper.mjs",
     "scripts/electron-builder-after-pack.mjs",
+    "scripts/public-snapshot-sanitize.mjs",
     "scripts/sync-mcp-dist.mjs",
     "scripts/rooms/build-room-bundle.mjs",
     "scripts/rooms/build-workspace-rooms.ts",
