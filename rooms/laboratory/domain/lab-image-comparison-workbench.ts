@@ -86,8 +86,9 @@ export function readImageComparisonGeometry(settings: LabSettingsRecord): LabIma
 }
 
 export function buildImageComparisonTransformCss(transform: LabImageComparisonTransform) {
-  const scaleX = transform.zoom * (transform.aspectLocked ? 1 : transform.scaleX);
-  const scaleY = transform.zoom * (transform.aspectLocked ? 1 : transform.scaleY);
+  const effectiveScaleY = transform.aspectLocked ? transform.scaleX : transform.scaleY;
+  const scaleX = transform.zoom * transform.scaleX;
+  const scaleY = transform.zoom * effectiveScaleY;
   return [
     `translate(${String(transform.offsetX)}%, ${String(transform.offsetY)}%)`,
     `rotate(${String(transform.rotationDeg)}deg)`,
