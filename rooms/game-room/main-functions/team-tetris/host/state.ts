@@ -20,10 +20,6 @@ export const TEAM_TETRIS_STATUS_COPY = {
     en: "Leaving the Team Tetris feature resets the active Team Tetris match.",
     tr: "Takim Tetris ozelliginden cikmak aktif Takim Tetris macini sifirlar.",
   },
-  notImplemented: {
-    en: "The Team Tetris host shell is online. Gameplay turns unlock in the next sprint.",
-    tr: "Takim Tetris host shell'i hazir. Oynanis turleri sonraki sprintte acilacak.",
-  },
   blockedOpponent: {
     en: "A required seat disconnected during Team Tetris. Reset to start again.",
     tr: "Gerekli bir koltuk Takim Tetris sirasinda baglantidan dustu. Yeniden baslamak icin sifirla.",
@@ -54,10 +50,6 @@ export const TEAM_TETRIS_COMMAND_COPY = {
   needPartnerSelection: {
     en: "Select the local user's partner before starting Team Tetris.",
     tr: "Takim Tetris baslamadan once yerel kullanicinin esini sec.",
-  },
-  notImplemented: {
-    en: "Team Tetris turn execution is not available in this sprint yet.",
-    tr: "Takim Tetris tur yurutme bu sprintte henuz aktif degil.",
   },
   noActiveGame: {
     en: "There is no active Team Tetris match.",
