@@ -919,7 +919,7 @@ void test(
       const result = await slotBridgeHandler({
         action: "room.command",
         fromSlot: "us1",
-        remoteUserId: "raistlin.majere.1981@gmail.com",
+        remoteUserId: "remote-user@example.test",
         localSessionId: "us1-session-1",
         transportMessageId: "<remote-move@example.test>",
         payload: {
@@ -935,7 +935,7 @@ void test(
       assert.equal(result.success, true);
       assert.equal(runCalls.length, 1);
       assert.equal(runCalls[0]?.commandName, "GameRoomBackgammonRemoteMove");
-      assert.equal(runCalls[0].payload["remoteUserId"], "raistlin.majere.1981@gmail.com");
+      assert.equal(runCalls[0].payload["remoteUserId"], "remote-user@example.test");
       assert.equal(runCalls[0].payload["localSessionId"], "us1-session-1");
       assert.equal(runCalls[0].payload["transportMessageId"], "<remote-move@example.test>");
       assert.deepEqual(runCalls[0].payload["roomPayload"], {

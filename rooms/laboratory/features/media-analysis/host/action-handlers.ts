@@ -59,7 +59,7 @@ type MediaActionRuntimeDeps = MediaSourceActionRuntimeDeps &
 
 type MediaActionRuntime = ReturnType<typeof createMediaSourceActionRuntime> &
   ReturnType<typeof createMediaEditActionRuntime> &
-  ReturnType<typeof createMediaExportActionRuntime> &
+  Omit<ReturnType<typeof createMediaExportActionRuntime>, "captureComparisonMoment"> &
   ReturnType<typeof createMediaAnnotationExportActionRuntime> &
   ReturnType<typeof createMediaProfileActionRuntime> &
   ReturnType<typeof createMediaProjectActionRuntime>;

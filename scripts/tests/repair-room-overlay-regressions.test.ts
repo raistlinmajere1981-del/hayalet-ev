@@ -203,18 +203,18 @@ void test("repair-room keeps Konva pinned and isolated to the overlay module", (
 
 void test("repair-room resolves runtime assets from the UI entry directory", () => {
   const baseHref =
-    "file:///home/raistlin/hayalet-ev/rooms/.build/repair-room/runtime/ui/index.html";
+    "file:///home/test-user/hayalet-ev/rooms/.build/repair-room/runtime/ui/index.html";
 
   assert.equal(
     resolveRepairAssetUrl("shared/assets/mock-pcb/atx-psu-top.svg", baseHref),
-    "file:///home/raistlin/hayalet-ev/rooms/.build/repair-room/runtime/shared/assets/mock-pcb/atx-psu-top.svg"
+    "file:///home/test-user/hayalet-ev/rooms/.build/repair-room/runtime/shared/assets/mock-pcb/atx-psu-top.svg"
   );
   assert.equal(
     resolveRepairAssetUrl(
       "main-functions/repair-workbench/assets/repair-workbench-view.svg",
       baseHref
     ),
-    "file:///home/raistlin/hayalet-ev/rooms/.build/repair-room/runtime/main-functions/repair-workbench/assets/repair-workbench-view.svg"
+    "file:///home/test-user/hayalet-ev/rooms/.build/repair-room/runtime/main-functions/repair-workbench/assets/repair-workbench-view.svg"
   );
   assert.equal(
     resolveRepairAssetUrl("https://example.test/pcb.svg", baseHref),

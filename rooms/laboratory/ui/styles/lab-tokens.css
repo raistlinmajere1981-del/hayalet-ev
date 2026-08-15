@@ -54,6 +54,11 @@
   --lab-error: rgb(var(--lab-error-rgb));
   --lab-error-soft: rgba(var(--lab-error-rgb), 0.14);
 
+  /* Drawing / annotation default color (iOS red). */
+  --lab-drawing-rgb: 255, 59, 48;
+  --lab-drawing: rgb(var(--lab-drawing-rgb));
+  --lab-drawing-soft: rgba(var(--lab-drawing-rgb), 0.14);
+
   --lab-info-rgb: 106, 166, 235;
   --lab-info: rgb(var(--lab-info-rgb));
   --lab-info-soft: rgba(var(--lab-info-rgb), 0.14);

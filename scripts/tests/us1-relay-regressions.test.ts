@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHash, generateKeyPairSync, type KeyObject } from "node:crypto";
+import { createHash, createPrivateKey, generateKeyPairSync, type KeyObject } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createServer as createHttpsServer } from "node:https";
 import { join } from "node:path";
@@ -51,35 +51,37 @@ RAMBAU6BT0C5E62Ty+L7oL0+TQlhpKg5JRRuzv3XngDEGvgCqFmmbPLczSSFML2+
 -----END CERTIFICATE-----
 `;
 
-const TEST_TLS_KEY_PEM = `-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCnNFDY5OgGGI2N
-9o6GR2ZS+rMLLMlejKFbPnIOJTfcQHOpvk3FIOkAHc94kmhSyyY+HRtxguRf8TDa
-QzJbucFQdB0gwXUU1GuSJ5AA9N2u4iur5wRhqVZjkAQ0B02018VGWtx8SUBQ3Fa7
-mjZ0dfVm2Rk7GebznKKX0CGLFWpMQPbR2Xptg7dpDUtQgSspS5591S9mpxlpqOtc
-BxnRba4m19fz3VrlK2YH69upBIXOlqPQXvID4wTRWFY+QTMHuN9k+laPHPONDlQy
-UZM7DDKqDasgkBxEOpsj8UsM3TL8KFwEunM8v45m97scR164J8RAII6b04Wh5IO2
-gjp6PTafAgMBAAECggEAJ3VXJvhOMTIWJcxrshCjey2ilx6InwF9CrVf4SqzVgz3
-vrUkUUME+XwPfBrA99jtO3dPBKipEGMw7jExbygVENF2FkbRRIskn6cqeq9OqXjC
-aZzpEcsOkgxokYavtd+9tG643bPDs9FrvnYUJ8O2mADfzWy9bfwm+sCpSdNR9JB2
-hB4+TG/buUvWWoTCEJxXFLE+DwmHNDt50DIoL0o5fDUSmUb5c3E7W/IzfBD9VYkN
-nawdhnmCy+FDNniCvxlVIQUS3qdxfsx1JWe1JtJskbtJ8k1X4PRInPKqToFZf8ny
-IhJTPUea8l5gnK9jZQkQWpS9WvC8JAT24eibNEGKAQKBgQDS0jiW8MXW6TWuGZsY
-xLQlYCEgkGHJkcTBdzuMSZKxe7tBh+lW6ktn4m6j1Z0JGGwSMTBQpJiFRhT8A4oP
-8U9GHnrKDd/FPRDj0Xe/hkt0tAZFthxzn7fzGo1M9QDQrwvohllG+YdNmdFCyF4G
-TyXN3UPGhZEGec3WoyNgkH8PgQKBgQDLCT/Z8RpNmAyWdIWHQ3rooRdcMs5DRHbI
-zXTpPYc4BK8poh6s+TVbYiUAxJk4eUeunBMiLGy9oC805DeH3YEABu77T7V7Rvx6
-13wQk8Edw5RUNUOWZZvBzhQfcYw0M0xr4Rc6Xy3rsG0qcpENpwFo5t3XjV6eMky4
-rlfIDiVWHwKBgEw51lw9EktyZwZcG8gI11nsOA4eJj1Lh2isQ8uljnS92CcJjUTv
-0fPt2zNBuVXgjrLFNkLyQHNvs4argO/iwFcKDjugaJhYTBMTWcjWNdIshVgPUJo9
-1bUAlLaOn4zUvemFKiKPdmyIgTE0YUrGs1SL/EV7ZcSBpftFYTU5CbgBAoGASZDm
-Y89qWmcXWISLxUD8DcIgtrVp6xGpgISBMemrTu7TkOA/ASmi3aOoCKkzYzT+dhPz
-EtTJ6cNal22BeWcW0K2ydbih5zMHVHMzbsY6mNA+tGxAOwRB9Wz3+ZSo2lkj/Yqn
-Ye0OtHFOfKzaRfoXFq1gADQm7mcHSXtSLxiBCr0CgYEAxCPAHG1iV0DgDnl6rJiP
-JMCmVUT1bLHgJYzk4sW52LHLrpPlfyTh4TDWMNDH3XIUr/xBkkn83e4ghx2rIxaj
-xumKPhMV29KZQ7FOvGrLsGhX2776DLXb9NHYsTY26l8nCp/aUL3ZKDzD/8YWGAfv
-UNRgpeop1YrFs4vtNVsfRoc=
------END PRIVATE KEY-----
-`;
+const TEST_TLS_PRIVATE_KEY_DER_BASE64 =
+  "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCnNFDY5OgGGI2N9o6GR2ZS+rMLLMlejKFbPnIO" +
+  "JTfcQHOpvk3FIOkAHc94kmhSyyY+HRtxguRf8TDaQzJbucFQdB0gwXUU1GuSJ5AA9N2u4iur5wRhqVZjkAQ0B020" +
+  "18VGWtx8SUBQ3Fa7mjZ0dfVm2Rk7GebznKKX0CGLFWpMQPbR2Xptg7dpDUtQgSspS5591S9mpxlpqOtcBxnRba4m" +
+  "19fz3VrlK2YH69upBIXOlqPQXvID4wTRWFY+QTMHuN9k+laPHPONDlQyUZM7DDKqDasgkBxEOpsj8UsM3TL8KFwE" +
+  "unM8v45m97scR164J8RAII6b04Wh5IO2gjp6PTafAgMBAAECggEAJ3VXJvhOMTIWJcxrshCjey2ilx6InwF9CrVf" +
+  "4SqzVgz3vrUkUUME+XwPfBrA99jtO3dPBKipEGMw7jExbygVENF2FkbRRIskn6cqeq9OqXjCaZzpEcsOkgxokYav" +
+  "td+9tG643bPDs9FrvnYUJ8O2mADfzWy9bfwm+sCpSdNR9JB2hB4+TG/buUvWWoTCEJxXFLE+DwmHNDt50DIoL0o5" +
+  "fDUSmUb5c3E7W/IzfBD9VYkNnawdhnmCy+FDNniCvxlVIQUS3qdxfsx1JWe1JtJskbtJ8k1X4PRInPKqToFZf8ny" +
+  "IhJTPUea8l5gnK9jZQkQWpS9WvC8JAT24eibNEGKAQKBgQDS0jiW8MXW6TWuGZsYxLQlYCEgkGHJkcTBdzuMSZKx" +
+  "e7tBh+lW6ktn4m6j1Z0JGGwSMTBQpJiFRhT8A4oP8U9GHnrKDd/FPRDj0Xe/hkt0tAZFthxzn7fzGo1M9QDQrwvo" +
+  "hllG+YdNmdFCyF4GTyXN3UPGhZEGec3WoyNgkH8PgQKBgQDLCT/Z8RpNmAyWdIWHQ3rooRdcMs5DRHbIzXTpPYc4" +
+  "BK8poh6s+TVbYiUAxJk4eUeunBMiLGy9oC805DeH3YEABu77T7V7Rvx613wQk8Edw5RUNUOWZZvBzhQfcYw0M0xr" +
+  "4Rc6Xy3rsG0qcpENpwFo5t3XjV6eMky4rlfIDiVWHwKBgEw51lw9EktyZwZcG8gI11nsOA4eJj1Lh2isQ8uljnS9" +
+  "2CcJjUTv0fPt2zNBuVXgjrLFNkLyQHNvs4argO/iwFcKDjugaJhYTBMTWcjWNdIshVgPUJo91bUAlLaOn4zUvemF" +
+  "KiKPdmyIgTE0YUrGs1SL/EV7ZcSBpftFYTU5CbgBAoGASZDmY89qWmcXWISLxUD8DcIgtrVp6xGpgISBMemrTu7T" +
+  "kOA/ASmi3aOoCKkzYzT+dhPzEtTJ6cNal22BeWcW0K2ydbih5zMHVHMzbsY6mNA+tGxAOwRB9Wz3+ZSo2lkj/Yqn" +
+  "Ye0OtHFOfKzaRfoXFq1gADQm7mcHSXtSLxiBCr0CgYEAxCPAHG1iV0DgDnl6rJiPJMCmVUT1bLHgJYzk4sW52LHL" +
+  "rpPlfyTh4TDWMNDH3XIUr/xBkkn83e4ghx2rIxajxumKPhMV29KZQ7FOvGrLsGhX2776DLXb9NHYsTY26l8nCp/a" +
+  "UL3ZKDzD/8YWGAfvUNRgpeop1YrFs4vtNVsfRoc=";
+
+const TEST_TLS_PRIVATE_KEY = createPrivateKey({
+  key: Buffer.from(TEST_TLS_PRIVATE_KEY_DER_BASE64, "base64"),
+  format: "der",
+  type: "pkcs8",
+});
+
+const TEST_TLS_PRIVATE_KEY_PEM = TEST_TLS_PRIVATE_KEY.export({
+  format: "pem",
+  type: "pkcs8",
+}).toString();
 
 function exportPublicKeyBase64(key: KeyObject): string {
   return Buffer.from(key.export({ type: "spki", format: "der" })).toString("base64");
@@ -385,7 +387,7 @@ void test("US1 relay server stores, downloads, decrypts, and cleans up encrypted
 void test("US1 relay client pins the HTTPS relay certificate fingerprint", async () => {
   const listener = createHttpsServer(
     {
-      key: TEST_TLS_KEY_PEM,
+      key: TEST_TLS_PRIVATE_KEY_PEM,
       cert: TEST_TLS_CERT_PEM,
     },
     (_req, res) => {

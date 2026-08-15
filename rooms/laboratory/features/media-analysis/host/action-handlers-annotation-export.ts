@@ -230,9 +230,7 @@ export function createMediaAnnotationExportActionRuntime(deps: MediaAnnotationEx
         "[0:v]scale=720:720:force_original_aspect_ratio=decrease,pad=720:720:(ow-iw)/2:(oh-ih)/2,setsar=1[p0]",
         "[1:v]scale=720:720:force_original_aspect_ratio=decrease,pad=720:720:(ow-iw)/2:(oh-ih)/2,setsar=1[p1]",
         "[p0][p1]hstack=inputs=2[base]",
-        annotationTempPath === null
-          ? "[base]null[out]"
-          : "[base][2:v]overlay=0:0:format=auto[out]",
+        annotationTempPath === null ? "[base]null[out]" : "[base][2:v]overlay=0:0:format=auto[out]",
       ];
       const args = ["-y", "-i", primaryPath, "-i", reference.localPath];
       if (annotationTempPath !== null) {
