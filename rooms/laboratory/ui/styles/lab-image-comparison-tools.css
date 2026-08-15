@@ -5,6 +5,14 @@
   will-change: transform;
 }
 
+.labx-workspace-comparison__image[data-lab-preserve-media="workspace-comparison-primary"] {
+  transform: var(--lab-comparison-primary-transform, none);
+}
+
+.labx-workspace-comparison__image[data-lab-preserve-media="workspace-comparison-reference"] {
+  transform: var(--lab-comparison-reference-transform, none);
+}
+
 .labx-workspace-comparison__image--left {
   clip-path: inset(0 calc(100% - var(--lab-comparison-split, 50%)) 0 0);
 }
@@ -209,11 +217,17 @@
   pointer-events: none;
   z-index: 7;
   color: var(--lab-accent);
+  transform-origin: center center;
   will-change: transform;
+}
+
+.labx-face-landmark-overlay[data-side="primary"] {
+  transform: var(--lab-comparison-primary-transform, none);
 }
 
 .labx-face-landmark-overlay[data-side="reference"] {
   color: var(--lab-info);
+  transform: var(--lab-comparison-reference-transform, none);
 }
 
 .labx-face-landmark-overlay__line {

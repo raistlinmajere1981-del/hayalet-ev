@@ -429,7 +429,6 @@ function renderOverlay(
     settings.opacity,
     settings.pointScale,
     settings.showLabels,
-    image.style.transform,
     host.clientWidth,
     host.clientHeight,
   ].join("|");
@@ -450,8 +449,6 @@ function renderOverlay(
   svg.setAttribute("viewBox", `0 0 ${String(host.clientWidth)} ${String(host.clientHeight)}`);
   svg.setAttribute("preserveAspectRatio", "none");
   svg.style.opacity = String(settings.opacity);
-  svg.style.transform = image.style.transform;
-  svg.style.transformOrigin = image.style.transformOrigin || "center center";
   const clipPath = getComputedStyle(image).clipPath;
   svg.style.clipPath = clipPath === "none" ? "" : clipPath;
 

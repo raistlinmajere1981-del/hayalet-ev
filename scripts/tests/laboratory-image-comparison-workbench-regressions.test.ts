@@ -146,7 +146,7 @@ test("comparison settings expose separate precision blocks for move resize and z
   assert.doesNotMatch(markup, /data-lab-comparison-tool-mode/);
 });
 
-test("comparison renderer applies transform tools and MediaPipe face landmark runtime", function () {
+test("comparison renderer keeps transforms declarative and shares them with face overlays", function () {
   const surface = readFileSync(
     new URL("../../rooms/laboratory/ui/workspace-surface.ts", import.meta.url),
     "utf8"
@@ -180,10 +180,13 @@ test("comparison renderer applies transform tools and MediaPipe face landmark ru
   );
 
   assert.match(surface, /buildImageComparisonTransformCss/);
+  assert.match(surface, /--lab-comparison-primary-transform/);
+  assert.match(surface, /--lab-comparison-reference-transform/);
   assert.match(surface, /data-composite-mode=/);
   assert.match(surface, /labx-workspace-comparison__image--left/);
   assert.match(surface, /labx-workspace-comparison__marker/);
   assert.match(surface, /toolSettings: imageComparisonSettings/);
+  assert.doesNotMatch(surface, /data-comparison-transform/);
   assert.match(operationSettings, /primaryAspectLock/);
   assert.match(operationSettings, /referenceAspectLock/);
   assert.match(operationSettings, /primaryOffsetX/);
@@ -198,16 +201,21 @@ test("comparison renderer applies transform tools and MediaPipe face landmark ru
   assert.match(styles, /data-comparison-tool="resize"/);
   assert.match(styles, /data-comparison-tool="zoom"/);
   assert.match(styles, /data-comparison-tool="face-landmarks"/);
-  assert.match(styles, /labx-face-landmark-overlay/);
+  assert.match(styles, /workspace-comparison-primary/);
+  assert.match(styles, /workspace-comparison-reference/);
+  assert.match(styles, /var\(--lab-comparison-primary-transform, none\)/);
+  assert.match(styles, /var\(--lab-comparison-reference-transform, none\)/);
+  assert.match(styles, /labx-face-landmark-overlay\[data-side="primary"\]/);
+  assert.match(styles, /labx-face-landmark-overlay\[data-side="reference"\]/);
   assert.match(controls, /data-lab-comparison-manual-metrics/);
   assert.match(controls, /kimlik doğrulama skoru değildir/);
   assert.match(mouseTools, /getActiveLabImageComparisonToolbarTool/);
   assert.match(mouseTools, /handleWheel/);
   assert.match(mouseTools, /activeTool !== "move"/);
-  assert.match(mouseTools, /data-comparison-transform/);
-  assert.match(mouseTools, /image\.style\.transform/);
-  assert.match(mouseTools, /labx-face-landmark-overlay/);
-  assert.match(mouseTools, /MutationObserver/);
+  assert.doesNotMatch(mouseTools, /data-comparison-transform/);
+  assert.doesNotMatch(mouseTools, /image\.style\.transform/);
+  assert.doesNotMatch(mouseTools, /labx-face-landmark-overlay/);
+  assert.doesNotMatch(mouseTools, /MutationObserver/);
   assert.match(toolbar, /label: "Taşı"/);
   assert.match(toolbar, /label: "Boyutlandır"/);
   assert.match(toolbar, /label: "Yakınlaştır"/);
@@ -219,4 +227,5 @@ test("comparison renderer applies transform tools and MediaPipe face landmark ru
   assert.match(faceRuntime, /numFaces: 1/);
   assert.match(faceRuntime, /data-lab-face-landmark-action="align-eyes"/);
   assert.match(faceRuntime, /kimlik doğrulama veya “aynı kişi” skoru değildir/);
+  assert.doesNotMatch(faceRuntime, /svg\.style\.transform\s*=/);
 });

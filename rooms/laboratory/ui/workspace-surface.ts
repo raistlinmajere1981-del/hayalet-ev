@@ -285,6 +285,11 @@ function renderComparisonPreview(input: {
       filterId: "labx-ch-isolate-reference",
     }),
   };
+  const transformCssBySide: Record<LabComparisonSide, string> = {
+    primary: buildImageComparisonTransformCss(geometry.transforms.primary),
+    reference: buildImageComparisonTransformCss(geometry.transforms.reference),
+  };
+  const comparisonTransformStyle = `--lab-comparison-primary-transform:${transformCssBySide.primary};--lab-comparison-reference-transform:${transformCssBySide.reference};`;
   function getActiveFlag(side: LabComparisonSide) {
     return input.activeSide === side ? "true" : "false";
   }
@@ -298,10 +303,6 @@ function renderComparisonPreview(input: {
     }
     const normalized = filterCss.endsWith(";") ? filterCss : `${filterCss};`;
     return ` style="${normalized}"`;
-  }
-  function getImageTransform(side: LabComparisonSide) {
-    const transformCss = buildImageComparisonTransformCss(geometry.transforms[side]);
-    return transformCss ? ` data-comparison-transform="${transformCss}"` : "";
   }
   function renderMarkers(side: LabComparisonSide) {
     return geometry.markers
@@ -348,7 +349,7 @@ function renderComparisonPreview(input: {
         data-active="${getActiveFlag(side)}"
       >
         <span class="labx-workspace-comparison__media-frame" data-lab-selection-roi-frame="true">
-          <img class="${imageClassName}" data-lab-preserve-media="workspace-comparison-${side}" src="${escapeHtml(url)}" alt="${escapeHtml(label)}"${getImageStyle(side)}${getImageTransform(side)} />
+          <img class="${imageClassName}" data-lab-preserve-media="workspace-comparison-${side}" src="${escapeHtml(url)}" alt="${escapeHtml(label)}"${getImageStyle(side)} />
           ${renderCenterGuide()}
           ${renderMarkers(side)}
           ${renderComparisonOverlay(side)}
@@ -365,7 +366,7 @@ function renderComparisonPreview(input: {
   const comparisonMarkup =
     mode === "split"
       ? `
-      <div class="labx-workspace-comparison" data-mode="split" data-composite-mode="${escapeHtml(geometry.compositeMode)}" style="--lab-comparison-split:${String(split)}%">
+      <div class="labx-workspace-comparison" data-mode="split" data-composite-mode="${escapeHtml(geometry.compositeMode)}" style="${comparisonTransformStyle}--lab-comparison-split:${String(split)}%">
         <div
           class="labx-workspace-comparison__split"
           data-lab-selection-roi-stage="true"
@@ -373,8 +374,8 @@ function renderComparisonPreview(input: {
           data-lab-comparison-roi-side="${input.activeSide}"
           data-active-side="${input.activeSide}"
         >
-          <img class="labx-workspace-comparison__image${splitReferenceClass}" data-lab-preserve-media="workspace-comparison-reference" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}"${getImageStyle("reference")}${getImageTransform("reference")} />
-          <img class="labx-workspace-comparison__image${splitPrimaryClass}" data-lab-preserve-media="workspace-comparison-primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}"${getImageStyle("primary")}${getImageTransform("primary")} />
+          <img class="labx-workspace-comparison__image${splitReferenceClass}" data-lab-preserve-media="workspace-comparison-reference" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}"${getImageStyle("reference")} />
+          <img class="labx-workspace-comparison__image${splitPrimaryClass}" data-lab-preserve-media="workspace-comparison-primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}"${getImageStyle("primary")} />
           ${geometry.centerGuide ? `<span class="labx-workspace-comparison__divider" aria-hidden="true"></span>` : ""}
           ${renderMarkers("primary")}
           ${renderMarkers("reference")}
@@ -387,7 +388,7 @@ function renderComparisonPreview(input: {
       </div>
     `
       : `
-    <div class="labx-workspace-comparison" data-mode="${escapeHtml(mode)}" data-composite-mode="none">
+    <div class="labx-workspace-comparison" data-mode="${escapeHtml(mode)}" data-composite-mode="none" style="${comparisonTransformStyle}">
       <figure class="labx-workspace-comparison__pane" data-side="primary" data-active="${getActiveFlag("primary")}">
         ${renderMediaStage("primary", input.primaryLabel, input.primaryUrl)}
         <figcaption>A ${escapeHtml(input.primaryLabel)}</figcaption>
@@ -734,7 +735,7 @@ function renderIconRailPopover(input: {
           type="button"
           data-lab-action="inspector-pin-toggle"
           aria-label="${escapeHtml(copy.t("mediaAnalysis.iconRail.pin", pinned ? "Sabitlemeyi kaldır" : "Sabitle"))}"
-          data-pinned="${pinned ? "true" : "false"}
+          data-pinned="${pinned ? "true" : "false"}"
         >${
           pinned
             ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>`

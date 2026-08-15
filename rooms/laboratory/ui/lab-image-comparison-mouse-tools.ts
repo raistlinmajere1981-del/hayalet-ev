@@ -22,13 +22,9 @@ type ComparisonDragState = {
 const COMPARISON_FIELD_PREFIX = "operationSettings.image-comparison.";
 const SETTINGS_ROOT_SELECTOR =
   '.labx-icon-rail-popover[data-slot="image-comparison"] .labx-image-comparison-settings';
-const COMPARISON_IMAGE_SELECTOR =
-  ".labx-workspace-comparison__image[data-comparison-transform]";
-const COMPARISON_PREVIEW_SELECTOR = ".labx-workspace-preview";
 
 let bound = false;
 let dragState: ComparisonDragState | null = null;
-let transformSyncQueued = false;
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -57,70 +53,6 @@ function getComparisonStage(target: EventTarget | null) {
 function getComparisonSide(stage: HTMLElement): LabImageComparisonSide | null {
   const side = stage.dataset["labComparisonRoiSide"];
   return side === "primary" || side === "reference" ? side : null;
-}
-
-function getComparisonImageSide(image: HTMLImageElement): LabImageComparisonSide | null {
-  const preserveKey = image.dataset["labPreserveMedia"] || "";
-  if (preserveKey.endsWith("-primary")) {
-    return "primary";
-  }
-  if (preserveKey.endsWith("-reference")) {
-    return "reference";
-  }
-  return null;
-}
-
-function syncComparisonTransformFollowers(side: LabImageComparisonSide, transform: string) {
-  document
-    .querySelectorAll<SVGSVGElement>(`.labx-face-landmark-overlay[data-side="${side}"]`)
-    .forEach(function (overlay) {
-      if (overlay.style.transform !== transform) {
-        overlay.style.transform = transform;
-      }
-    });
-}
-
-function syncComparisonImageTransforms() {
-  document.querySelectorAll<HTMLImageElement>(COMPARISON_IMAGE_SELECTOR).forEach(function (image) {
-    const transform = image.dataset["comparisonTransform"]?.trim() || "";
-    if (image.style.transform !== transform) {
-      image.style.transform = transform;
-    }
-    const side = getComparisonImageSide(image);
-    if (side !== null) {
-      syncComparisonTransformFollowers(side, transform);
-    }
-  });
-}
-
-function queueComparisonTransformSync() {
-  if (transformSyncQueued) {
-    return;
-  }
-  transformSyncQueued = true;
-  queueMicrotask(function () {
-    transformSyncQueued = false;
-    syncComparisonImageTransforms();
-  });
-}
-
-function bindComparisonTransformSync() {
-  if (typeof MutationObserver === "undefined") {
-    syncComparisonImageTransforms();
-    return;
-  }
-  const previewRoot = document.querySelector<HTMLElement>(COMPARISON_PREVIEW_SELECTOR);
-  if (previewRoot === null) {
-    syncComparisonImageTransforms();
-    return;
-  }
-  new MutationObserver(queueComparisonTransformSync).observe(previewRoot, {
-    attributeFilter: ["data-comparison-transform", "style"],
-    attributes: true,
-    childList: true,
-    subtree: true,
-  });
-  syncComparisonImageTransforms();
 }
 
 function queryField(root: HTMLElement, key: string) {
@@ -154,7 +86,6 @@ function writeNumberField(root: HTMLElement, key: string, value: number) {
   }
   field.value = nextValue;
   field.dispatchEvent(new Event("input", { bubbles: true }));
-  queueComparisonTransformSync();
 }
 
 function stopComparisonGesture(event: Event) {
@@ -308,7 +239,6 @@ export function ensureLabImageComparisonMouseToolsBound() {
     return;
   }
   bound = true;
-  bindComparisonTransformSync();
   document.addEventListener("mousedown", handleMouseDown, true);
   document.addEventListener("wheel", handleWheel, { capture: true, passive: false });
   window.addEventListener("mousemove", handleMouseMove, true);
