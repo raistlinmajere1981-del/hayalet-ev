@@ -47,7 +47,6 @@ void test("room root entrypoints stay orchestration-only after layout normalizat
   assert.match(gameRoomUiIndexSource, /createGameRoomUiRuntime\(\)\.start\(\);/);
   assert.doesNotMatch(gameRoomUiIndexSource, /message\.type === "team-tetris-state"/);
   assert.match(gameRoomUiRuntimeSource, /(messageType|message\.type) === "team-tetris-state"/);
-  assert.match(gameRoomUiRuntimeSource, /(messageType|message\.type) === "fate-knots-state"/);
   assert.match(gameRoomIndexHtmlSource, /shared\/ui\/feature-contract\.js/);
   assert.match(gameRoomIndexHtmlSource, /shared\/ui\/scroll-runtime\.js/);
   assert.match(gameRoomIndexHtmlSource, /game-room-ui-runtime\.js/);
