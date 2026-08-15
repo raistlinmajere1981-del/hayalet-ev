@@ -72,14 +72,14 @@ function renderTimelinePlaybackSpeedControl(copy: LabI18n, playbackRate: number,
       <input
         class="labx-range"
         type="range"
-        min="0.25"
+        min="0.1"
         max="2"
         step="0.05"
         value="${String(playbackRate)}"
         data-lab-field="${field}"${disabledAttr}
       />
       <span class="labx-timeline__speed-value">${escapeHtml(formatPlaybackRateValue(playbackRate))}</span>
-      ${renderTimelineSettingStepper(label, field, 0.25, 2, 0.05, 1, locked)}
+      ${renderTimelineSettingStepper(label, field, 0.1, 2, 0.05, 1, locked)}
     </label>
   `;
 }
@@ -296,7 +296,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const selectionCenterPct = hasSelection ? startPct + (endPct - startPct) / 2 : 0;
   const selectionDurationMs = hasSelection ? Math.max(0, endMs - startMs) : 0;
   const transportVolume = Math.max(0, Math.min(1, model.transportVolume ?? 1));
-  const playbackRate = Math.max(0.25, Math.min(2, model.audioFocus?.playbackRate ?? 1));
+  const playbackRate = Math.max(0.1, Math.min(2, model.audioFocus?.playbackRate ?? 1));
   const selectionLoopEnabled = hasSelection === true && model.selectionLoopEnabled === true;
   const selectionDisabledAttr =
     timelineLocked || hasSelection !== true ? 'disabled aria-disabled="true"' : "";
