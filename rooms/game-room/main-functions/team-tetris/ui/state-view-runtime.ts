@@ -3,9 +3,9 @@
     return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
   }
 
-  function readSlotRecord(value: unknown): GameRoomFateKnotsSlotRecord | null {
+  function readSlotRecord(value: unknown): GameRoomSlotRecord | null {
     return value && typeof value === "object" && Array.isArray(value) === false
-      ? (value as GameRoomFateKnotsSlotRecord)
+      ? (value as GameRoomSlotRecord)
       : null;
   }
 
