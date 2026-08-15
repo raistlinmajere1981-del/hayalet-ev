@@ -14,6 +14,7 @@ const PACKAGED_WORKSPACE_SEED_PATHS = [
   "PACKAGING.md",
   "README.md",
   "THIRD_PARTY_NOTICES.md",
+  "third-party-licenses",
   "config/backup-scopes.json",
   "data/protocols.json",
   "dist",

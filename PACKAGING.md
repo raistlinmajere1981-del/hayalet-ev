@@ -42,6 +42,7 @@ The release root for Windows and Linux includes the tracked workspace surface be
 - `PACKAGING.md`
 - `README.md`
 - `THIRD_PARTY_NOTICES.md`
+- `third-party-licenses/**/*`
 - `android-companion/**/*`
 - `config/backup-scopes.json`
 - `data/protocols.json`
@@ -68,7 +69,7 @@ The release root for Windows and Linux includes the tracked workspace surface be
 - `.prettierignore`
 - `.prettierrc`
 
-`LICENSE` and `THIRD_PARTY_NOTICES.md` are intentionally mirrored into distributed desktop artifacts so the project license and bundled third-party attribution travel with the application.
+`LICENSE`, `THIRD_PARTY_NOTICES.md`, and `third-party-licenses/` are intentionally mirrored into distributed desktop artifacts so the project license and bundled third-party attribution travel with the application.
 
 Local/user-generated workspace metadata is not part of the release seed.
 
@@ -88,7 +89,7 @@ Local/user-generated workspace metadata is not part of the release seed.
 4. Verify the main window opens.
 5. Verify settings can be created and persisted.
 6. Verify SQLite-backed flows open without runtime module errors.
-7. Verify `LICENSE` and `THIRD_PARTY_NOTICES.md` exist in the release root.
+7. Verify `LICENSE`, `THIRD_PARTY_NOTICES.md`, and `third-party-licenses/` exist in the release root.
 
 ## Known follow-up items
 

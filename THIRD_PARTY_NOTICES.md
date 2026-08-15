@@ -4,6 +4,8 @@ Hayalet Ev'in kendi kaynak kodu kökteki `LICENSE` dosyasındaki MIT License alt
 
 `package.json`, `package-lock.json`, Android/Gradle yapılandırması ve diğer bağımlılık manifestleri üzerinden indirilen paketler kendi upstream lisanslarına tabidir; bu dosya transitive dependency lisanslarının yerine geçmez.
 
+Gömülü materyaller için doğrulanmış upstream lisans kopyaları `third-party-licenses/` altında tutulur ve masaüstü dağıtımlarına dahil edilir.
+
 ## Lucide Icons
 
 Kullanım:
@@ -20,7 +22,9 @@ Yerel kaynak notları:
 - `src/assets/nav-icons/README.md`
 - `rooms/ICON-SOURCES.md`
 
-Bu ikonları yeniden dağıtırken ilgili upstream copyright ve lisans bildirimleri korunmalıdır.
+Upstream lisans kopyası:
+
+- `third-party-licenses/LUCIDE.txt`
 
 ## Konva 10.3.0
 
@@ -35,6 +39,10 @@ Lisans: MIT.
 
 Vendored dosyanın kendi header'ı Konva sürümünü ve MIT lisansını belirtir. `package.json` içinde kullanılan `konva` paketi de aynı upstream projenin bağımlılığıdır.
 
+Upstream lisans kopyası:
+
+- `third-party-licenses/KONVA.txt`
+
 ## openWakeWord ONNX modelleri
 
 Dosyalar:
@@ -47,6 +55,10 @@ Kaynak ve ayrıntılar: `android-companion/app/src/main/assets/OPENWAKEWORD-MODE
 
 Lisans: Apache License 2.0.
 
+Lisans metni:
+
+- `third-party-licenses/APACHE-2.0.txt`
+
 ## Vosk Turkish small model
 
 Dosya:
@@ -58,6 +70,10 @@ Kaynak: Alpha Cephei Vosk model kataloğundaki `vosk-model-small-tr-0.3`.
 Lisans: Apache License 2.0.
 
 Yerel kaynak notu: `android-companion/app/src/main/assets/VOSK-MODEL.md`.
+
+Lisans metni:
+
+- `third-party-licenses/APACHE-2.0.txt`
 
 ## Tencent ncnn Piper / SimpleG2P kaynakları
 
@@ -72,6 +88,10 @@ Kaynak: Tencent ncnn projesindeki ilgili Android/Piper örnek kaynakları ve bu 
 
 Lisans: BSD 3-Clause. İlgili dosyaların başındaki upstream copyright ve lisans header'ları korunmuştur.
 
+Upstream ncnn lisans kopyası:
+
+- `third-party-licenses/NCNN.txt`
+
 ## Yeni üçüncü taraf materyal eklerken
 
-Kaynak ağacına yeni bir model, ikon, font, ses, görsel, vendored kütüphane veya başka bir üçüncü taraf materyal eklenirse kaynak ve yeniden dağıtım lisansı doğrulanmalı; gerekli attribution/lisans metinleri korunmalı ve bu dosya güncellenmelidir.
+Kaynak ağacına yeni bir model, ikon, font, ses, görsel, vendored kütüphane veya başka bir üçüncü taraf materyal eklenirse kaynak ve yeniden dağıtım lisansı doğrulanmalı; gerekli attribution/lisans metinleri korunmalı, uygun upstream lisans kopyası eklenmeli ve bu dosya güncellenmelidir.

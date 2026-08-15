@@ -10,6 +10,7 @@ files:
   - .rovo/**/*
   - LICENSE
   - THIRD_PARTY_NOTICES.md
+  - third-party-licenses/**/*
   - package.json
   - config/backup-scopes.json
   - data/protocols.json

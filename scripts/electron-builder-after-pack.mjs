@@ -23,6 +23,7 @@ const packagedWorkspaceMirrorPaths = [
   "PACKAGING.md",
   "README.md",
   "THIRD_PARTY_NOTICES.md",
+  "third-party-licenses",
   "android-companion",
   "config/backup-scopes.json",
   "data/protocols.json",
