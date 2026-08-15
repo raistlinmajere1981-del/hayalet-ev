@@ -135,7 +135,8 @@ function openTool(tool: LabImageComparisonToolbarTool, event: Event) {
   event.stopImmediatePropagation();
   activeTool = tool;
   const baseButton = getBaseComparisonButton();
-  if (baseButton !== null && baseButton.dataset["active"] !== "true") {
+  const comparisonPopoverAlreadyOpen = getComparisonPopover() !== null;
+  if (baseButton !== null && !comparisonPopoverAlreadyOpen) {
     forwardingBaseSlotClick = true;
     baseButton.click();
     forwardingBaseSlotClick = false;
