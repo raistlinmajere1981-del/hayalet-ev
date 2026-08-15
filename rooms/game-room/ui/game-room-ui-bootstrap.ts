@@ -42,7 +42,6 @@
     const roomId = readString(featureContract.ROOM_ID, "game-room");
     const featureId = readString(featureContract.FEATURE_ID, "backgammon");
     const teamTetrisFeatureId = readString(featureContract.TEAM_TETRIS_FEATURE_ID, "team-tetris");
-    const fateKnotsFeatureId = readString(featureContract.FATE_KNOTS_FEATURE_ID, "fate-knots");
     const bootstrapCopy: GameRoomBootstrapCopy =
       typeof featureContract.getBootstrapCopy === "function"
         ? featureContract.getBootstrapCopy()
@@ -70,7 +69,6 @@
         : [
             { id: featureId, name: "Tavla", description: "" },
             { id: teamTetrisFeatureId, name: "Team Tetris", description: "" },
-            { id: fateKnotsFeatureId, name: "Fate Knots", description: "" },
           ];
 
     const contextRuntimeFactory = (global.GameRoomUiContextRuntime || {})
@@ -215,16 +213,12 @@
     const factories = global.GameRoomUiFactories || {};
     const createBackgammonUiModule = factories.createBackgammonUiModule;
     const createTeamTetrisUiModule = factories.createTeamTetrisUiModule;
-    const createFateKnotsUiModule = factories.createFateKnotsUiModule;
 
     if (typeof createBackgammonUiModule !== "function") {
       throw new Error("Tavla UI module is unavailable.");
     }
     if (typeof createTeamTetrisUiModule !== "function") {
       throw new Error("Team Tetris UI module is unavailable.");
-    }
-    if (typeof createFateKnotsUiModule !== "function") {
-      throw new Error("Fate Knots UI module is unavailable.");
     }
 
     const backgammonUi = createBackgammonUiModule({
@@ -253,14 +247,6 @@
       sendRoomCommand: sendRoomCommand,
       getFeatureLabel: getFeatureLabel,
     });
-    const fateKnotsUi = createFateKnotsUiModule({
-      getState: getState,
-      featureId: fateKnotsFeatureId,
-      createElement: contextRuntime.createElement,
-      sendRoomCommand: sendRoomCommand,
-      getFeatureLabel: getFeatureLabel,
-      text: text,
-    });
 
     const documentLocale = documentRef.documentElement.lang;
 
@@ -271,7 +257,6 @@
       game: backgammonUi.createGameState(),
       teamTetris: teamTetrisUi.createTeamTetrisState(),
       teamTetrisDraft: teamTetrisUi.createTeamTetrisDraft(),
-      fateKnots: fateKnotsUi.createFateKnotsState(),
       presentation: {
         mode: "classic",
         uiScale: 100,
@@ -290,14 +275,12 @@
       roomId: roomId,
       featureId: featureId,
       teamTetrisFeatureId: teamTetrisFeatureId,
-      fateKnotsFeatureId: fateKnotsFeatureId,
       contextRuntime: contextRuntime,
       scrollRuntime: scrollRuntime,
       stateRef: stateRef,
       getState: getState,
       backgammonUi: backgammonUi,
       teamTetrisUi: teamTetrisUi,
-      fateKnotsUi: fateKnotsUi,
       bootstrapText: bootstrapText,
       applyPresentationMode: applyPresentationMode,
       applyLocale: applyLocale,
