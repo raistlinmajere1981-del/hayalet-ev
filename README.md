@@ -122,6 +122,8 @@ Her oda:
 
 bir sistemdir.
 
+Oda kaynakları `rooms/<room-id>` altında bağımsız tutulur. Dağıtılabilir oda paketi `.hevroom` biçimidir; oda kodunun core iç ayrıntılarına bağlanmaması mimari sözleşmenin parçasıdır.
+
 ---
 
 ## 🤖 Assistant (AI0)
@@ -168,6 +170,41 @@ Ama bunlar sadece altyapıdır.
 
 ---
 
+## 🚀 Geliştirici Başlangıcı
+
+Gereksinimler:
+
+* Node.js 22+
+* npm 10+
+
+Depoyu klonladıktan sonra:
+
+```bash
+npm ci
+npm run electron:dev
+```
+
+Tam kalite kapısı:
+
+```bash
+npm run check:all
+```
+
+Bazı medya, otomasyon ve paketleme özellikleri ek sistem araçları isteyebilir. Ayrıntılar için [PACKAGING.md](PACKAGING.md) ve katkı akışı için [CONTRIBUTING.md](CONTRIBUTING.md) dosyalarına bak.
+
+---
+
+## 📚 Belgeler
+
+* [ONBOARDING.md](ONBOARDING.md) — uygulamayı ilk kez kullananlar için kısa giriş
+* [CONTRIBUTING.md](CONTRIBUTING.md) — geliştirme ve katkı kuralları
+* [PACKAGING.md](PACKAGING.md) — Windows/Linux paketleme akışı
+* [SECURITY.md](SECURITY.md) — güvenlik açığı bildirme yöntemi
+* [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) — kaynak ağacına gömülü üçüncü taraf bileşen ve varlıklar
+* `AGENTS.md` ve `.rovo/` — proje mimarisi ve AI destekli geliştirme sözleşmeleri
+
+---
+
 ## 🧬 Çalışma Biçimi
 
 Hayalet Ev bir kod deposu değil, bir çalışma biçimi içerir.
@@ -202,7 +239,7 @@ Hayalet Ev’in uzun vadeli amacı:
 
 Hayalet Ev kaynak kodu [MIT Lisansı](LICENSE) altında sunulur. Kullanabilir, değiştirebilir, dağıtabilir ve kendi projelerinde değerlendirebilirsin; MIT lisans ve telif bildirimlerinin korunması gerekir.
 
-Projede kullanılan üçüncü taraf bağımlılıklar, modeller, ikonlar, fontlar veya diğer harici varlıklar varsa bunlar kendi lisans ve kaynak bildirimlerine tabidir. İlgili dosyalardaki lisans/kaynak notları bu kapsamda korunmalıdır.
+Projede kullanılan üçüncü taraf bağımlılıklar, modeller, ikonlar veya diğer harici varlıklar kendi lisans ve kaynak bildirimlerine tabidir. Kaynak ağacına gömülü bilinen üçüncü taraf materyaller [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) dosyasında listelenir.
 
 ---
 

@@ -2,7 +2,7 @@
 
 This project ships with two first-class desktop artifacts:
 
-- Windows: portable executable
+- Windows: portable executable / zip
 - Linux: AppImage
 
 ## Commands
@@ -17,42 +17,43 @@ Artifacts are written to the `release/` directory.
 
 ## Build flow
 
-Each distribution command runs `npm run build:all` first, then invokes `electron-builder` with
-`electron-builder.yml`.
+Each distribution command runs `npm run build:all` first, prepares the required native runtime pieces, then invokes `electron-builder` with `electron-builder.yml`.
 
 ## Current targets
 
 - Windows `portable`
+- Windows `zip`
 - Linux `AppImage`
 
 ## Included runtime content
 
-Packaging now has two layers:
+Packaging has two layers:
 
 - `app.asar` keeps the runtime-focused bundle used by Electron boot paths.
-- The release root also mirrors the GitHub workspace surface that packaged tools resolve against.
+- The release root also mirrors the tracked workspace surface that packaged tools resolve against.
 
 ## Release root mirror
 
-The release root for Windows and Linux now includes the tracked workspace surface below in
-addition to Electron's platform binaries:
+The release root for Windows and Linux includes the tracked workspace surface below in addition to Electron's platform binaries:
 
 - `.rovo/**/*`
 - `AGENTS.md`
+- `LICENSE`
 - `PACKAGING.md`
 - `README.md`
+- `THIRD_PARTY_NOTICES.md`
+- `android-companion/**/*`
 - `config/backup-scopes.json`
-- `config/rooms.json`
 - `data/protocols.json`
 - `dist/**/*`
 - `electron/**/*`
 - `ghost-agent/**/*`
+- `mcp-server/**/*`
 - `rooms/**/*`
 - `scripts/**/*`
 - `shared/**/*`
 - `src/**/*`
 - `package.json`
-- `metadata.json`
 - `electron-builder.yml`
 - `eslint.config.cjs`
 - `knip.config.ts`
@@ -67,6 +68,10 @@ addition to Electron's platform binaries:
 - `.prettierignore`
 - `.prettierrc`
 
+`LICENSE` and `THIRD_PARTY_NOTICES.md` are intentionally mirrored into distributed desktop artifacts so the project license and bundled third-party attribution travel with the application.
+
+Local/user-generated workspace metadata is not part of the release seed.
+
 ## Native and external dependencies
 
 - `better-sqlite3` is unpacked from ASAR because it is a native module.
@@ -77,11 +82,13 @@ addition to Electron's platform binaries:
 
 ## Validation checklist
 
-1. Build the target artifact.
-2. Launch the packaged app.
-3. Verify the main window opens.
-4. Verify settings can be created and persisted.
-5. Verify SQLite-backed flows open without runtime module errors.
+1. Run `npm run check:all` on the source tree.
+2. Build the target artifact.
+3. Launch the packaged app.
+4. Verify the main window opens.
+5. Verify settings can be created and persisted.
+6. Verify SQLite-backed flows open without runtime module errors.
+7. Verify `LICENSE` and `THIRD_PARTY_NOTICES.md` exist in the release root.
 
 ## Known follow-up items
 

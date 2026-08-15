@@ -44,6 +44,9 @@ rooms/.build/
 # Generated assistant intelligence cache
 .rovo/cache.json
 
+# Local/generated workspace metadata
+metadata.json
+
 # Assets allowlist
 # (disabled to allow versioning assets under src/assets)
 
