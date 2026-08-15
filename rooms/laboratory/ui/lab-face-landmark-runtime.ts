@@ -473,14 +473,18 @@ function renderOverlay(
   });
 }
 
-function removeOverlays() {
-  document.querySelectorAll<SVGSVGElement>(".labx-face-landmark-overlay").forEach(function (overlay) {
+function removeOverlays(side?: LabFaceLandmarkSide) {
+  const selector =
+    side === undefined
+      ? ".labx-face-landmark-overlay"
+      : `.labx-face-landmark-overlay[data-side="${side}"]`;
+  document.querySelectorAll<SVGSVGElement>(selector).forEach(function (overlay) {
     overlay.remove();
   });
 }
 
 function renderOverlays() {
-  if (!isFaceToolActive() || !settings.enabled) {
+  if (!settings.enabled) {
     removeOverlays();
     return;
   }
@@ -489,6 +493,8 @@ function renderOverlays() {
     const record = getCachedRecord(side);
     if (image !== null && record !== null) {
       renderOverlay(side, image, record);
+    } else {
+      removeOverlays(side);
     }
   });
 }
@@ -782,11 +788,10 @@ function handleClick(event: Event) {
 function syncRuntime() {
   syncQueued = false;
   updatePanel();
+  renderOverlays();
   if (!isFaceToolActive()) {
-    removeOverlays();
     return;
   }
-  renderOverlays();
   if (!detectionRunning && settings.autoDetect) {
     const primary = getComparisonImage("primary");
     const reference = getComparisonImage("reference");
