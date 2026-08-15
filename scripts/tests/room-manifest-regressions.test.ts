@@ -216,9 +216,7 @@ void test("protocol specs support explicit safe relative paths", () => {
     "main-functions/primary/protocols/primary-start.md"
   );
   assert.equal(
-    resolveRoomProtocolFilePath(
-      result.manifest.features[0].protocolSpecs[0]
-    ),
+    resolveRoomProtocolFilePath(result.manifest.features[0].protocolSpecs[0]),
     "main-functions/primary/protocols/primary-start.md"
   );
 });
@@ -276,20 +274,15 @@ void test("game-room manifest documents the Team Tetris AI and US1 contracts", (
   );
 });
 
-void test("game-room manifest keeps Fate Knots as a blank scene placeholder", () => {
+void test("game-room manifest contains only the implemented Tavla and Team Tetris features", () => {
   const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<string, unknown>;
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true);
-  const fateKnotsFeature = result.manifest?.features.find((feature) => feature.id === "fate-knots");
-  assert.ok(fateKnotsFeature);
-  assert.deepEqual(fateKnotsFeature.protocolSpecs, []);
   assert.deepEqual(
-    fateKnotsFeature.commandSpecs?.map((spec) => spec.name),
-    ["GameRoomFateKnotsStart", "GameRoomFateKnotsReset"]
+    result.manifest?.features.map((feature) => feature.id),
+    ["backgammon", "team-tetris"]
   );
-  assert.equal(fateKnotsFeature.scene?.hotspot.id, "game-room-fate-knots");
-  assert.equal(fateKnotsFeature.scene.view.id, "fate-knots-closeup");
 });
 
 void test("room manifest readers stay split from the main room contract module", () => {
