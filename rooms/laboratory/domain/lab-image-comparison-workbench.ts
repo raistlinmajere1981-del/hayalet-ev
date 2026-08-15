@@ -2,9 +2,7 @@ import type { LabSettingsRecord } from "./lab-capabilities.js";
 
 type LabImageComparisonSide = "primary" | "reference";
 type LabImageComparisonCompositeMode =
-  | "none"
-  | "primary-left-reference-right"
-  | "reference-left-primary-right";
+  "none" | "primary-left-reference-right" | "reference-left-primary-right";
 
 type LabImageComparisonTransform = {
   aspectLocked: boolean;
@@ -73,7 +71,9 @@ function readMarker(settings: LabSettingsRecord, id: 1 | 2 | 3): LabImageCompari
   };
 }
 
-export function readImageComparisonGeometry(settings: LabSettingsRecord): LabImageComparisonGeometry {
+export function readImageComparisonGeometry(
+  settings: LabSettingsRecord
+): LabImageComparisonGeometry {
   return {
     centerGuide: readBoolean(settings["centerGuide"], true),
     compositeMode: readCompositeMode(settings["compositeMode"]),

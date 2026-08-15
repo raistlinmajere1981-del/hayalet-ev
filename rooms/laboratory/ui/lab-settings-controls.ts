@@ -254,7 +254,9 @@ function renderImageComparisonSettings(params: RenderLabSettingsFieldsParams) {
     return IMAGE_COMPARISON_MARKER_FIELD_IDS.has(field.id);
   });
   const baseFields = params.fields.filter(function (field) {
-    return !isImageComparisonTransformField(field.id) && !IMAGE_COMPARISON_MARKER_FIELD_IDS.has(field.id);
+    return (
+      !isImageComparisonTransformField(field.id) && !IMAGE_COMPARISON_MARKER_FIELD_IDS.has(field.id)
+    );
   });
   const resetLabel = params.resetLabel || "Reset";
 

@@ -68,7 +68,7 @@ test("image comparison settings expose independent A/B geometry and half-face co
   const geometry = readImageComparisonGeometry(settings);
 
   assert.equal(geometry.compositeMode, "reference-left-primary-right");
-  assert.equal(settings.showImageFrames, false);
+  assert.equal(settings["showImageFrames"], false);
   assert.equal(geometry.transforms.primary.aspectLocked, true);
   assert.equal(geometry.transforms.reference.aspectLocked, false);
   assert.match(buildImageComparisonTransformCss(geometry.transforms.primary), /scale\(6, 6\)/);

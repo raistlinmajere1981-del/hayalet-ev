@@ -112,8 +112,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
   let attached = false;
   const analysisScopeOverlay = deps.analysisScopeOverlay ?? NOOP_ANALYSIS_SCOPE_OVERLAY;
-  const workspaceAudioVisualizer =
-    deps.workspaceAudioVisualizer ?? NOOP_WORKSPACE_AUDIO_VISUALIZER;
+  const workspaceAudioVisualizer = deps.workspaceAudioVisualizer ?? NOOP_WORKSPACE_AUDIO_VISUALIZER;
 
   function dispatch(event: Parameters<ReturnType<typeof createLabStore>["dispatch"]>[0]) {
     deps.eventBus.emit(event);

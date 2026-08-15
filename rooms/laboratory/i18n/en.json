@@ -658,7 +658,10 @@
         "low": "Low",
         "medium": "Medium",
         "high": "High"
-      }
+      },
+      "audioObservationMode": "Observe",
+      "audioObservationStandardTitle": "Return to the standard player layout.",
+      "audioObservationExpandedTitle": "Expand audio observation and reduce the video preview."
     },
     "stageNav": {
       "previous": "Previous",
@@ -801,7 +804,35 @@
         "platformFingerprint": "Platform fingerprint",
         "metricSet": "Metrics",
         "referenceSource": "Reference",
-        "minDelta": "Min delta"
+        "minDelta": "Min delta",
+        "primaryZoom": "Primary zoom",
+        "primaryAspectLock": "Primary aspect",
+        "primaryScaleX": "Primary scale X",
+        "primaryScaleY": "Primary scale Y",
+        "primaryOffsetX": "Primary offset X",
+        "primaryOffsetY": "Primary offset Y",
+        "primaryRotation": "Primary rotation",
+        "referenceZoom": "Reference zoom",
+        "referenceAspectLock": "Reference aspect",
+        "referenceScaleX": "Reference scale X",
+        "referenceScaleY": "Reference scale Y",
+        "referenceOffsetX": "Reference offset X",
+        "referenceOffsetY": "Reference offset Y",
+        "referenceRotation": "Reference rotation",
+        "compositeMode": "Composite",
+        "centerGuide": "Center guide",
+        "marker1Enabled": "Marker 1",
+        "marker1Side": "Marker 1 side",
+        "marker1X": "Marker 1 X",
+        "marker1Y": "Marker 1 Y",
+        "marker2Enabled": "Marker 2",
+        "marker2Side": "Marker 2 side",
+        "marker2X": "Marker 2 X",
+        "marker2Y": "Marker 2 Y",
+        "marker3Enabled": "Marker 3",
+        "marker3Side": "Marker 3 side",
+        "marker3X": "Marker 3 X",
+        "marker3Y": "Marker 3 Y"
       },
       "options": {
         "enabled": "On",
@@ -912,7 +943,11 @@
         "ssim-vmaf": "SSIM + VMAF",
         "pre-upload": "Pre-upload",
         "comparison-reference": "Comparison reference",
-        "active-reference": "Active reference"
+        "active-reference": "Active reference",
+        "none": "None",
+        "reference-left-primary-right": "Reference left / primary right",
+        "primary": "Primary",
+        "reference": "Reference"
       },
       "closeAction": "Close",
       "installAction": "Install",
@@ -2076,7 +2111,18 @@
         "lowpass": "Lowpass",
         "highpass": "Highpass",
         "bandpass": "Bandpass"
-      }
+      },
+      "visualization": "View",
+      "visualizations": {
+        "waveform": "Waveform",
+        "spectrum": "Spectrogram"
+      },
+      "independentPitch": "Independent pitch",
+      "pitchPreservedStatus": "Pitch preserved during speed changes.",
+      "naturalPitchStatus": "Speed changes affect natural pitch too.",
+      "independentPitchStatus": "Independent pitch: {value} st · does not change playback speed.",
+      "liveAuditionTitle": "LIVE AUDITION",
+      "pitchPresets": "Pitch presets"
     },
     "hypothesis": {
       "label": "Hypothesis",

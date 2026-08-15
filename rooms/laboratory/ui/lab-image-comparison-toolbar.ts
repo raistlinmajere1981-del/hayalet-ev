@@ -37,9 +37,13 @@ let forwardingBaseSlotClick = false;
 let syncQueued = false;
 
 function getToolConfig(tool: LabImageComparisonToolbarTool) {
-  return TOOL_CONFIGS.find(function (config) {
-    return config.id === tool;
-  })!;
+  const config = TOOL_CONFIGS.find(function (candidate) {
+    return candidate.id === tool;
+  });
+  if (!config) {
+    throw new Error(`Unknown lab image comparison tool: ${tool}`);
+  }
+  return config;
 }
 
 function getBaseComparisonButton() {
@@ -98,7 +102,8 @@ function ensureToolButtons(baseButton: HTMLButtonElement) {
 function syncPopoverPresentation(baseButton: HTMLButtonElement) {
   const popover = getComparisonPopover();
   if (activeTool === null) {
-    baseButton.dataset["active"] = popover === null ? baseButton.dataset["active"] || "false" : "true";
+    baseButton.dataset["active"] =
+      popover === null ? baseButton.dataset["active"] || "false" : "true";
     popover?.removeAttribute("data-comparison-tool");
     return;
   }

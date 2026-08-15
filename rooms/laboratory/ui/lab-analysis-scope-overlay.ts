@@ -38,11 +38,6 @@ export function createLabAnalysisScopeOverlay(deps: LabAnalysisScopeOverlayDeps)
   }
 
   function show(model: LabAnalysisScopeOverlayModel) {
-    const body = deps.documentRef.body;
-    if (!body || typeof body.appendChild !== "function") {
-      return false;
-    }
-
     hide();
     const nextOverlay = deps.documentRef.createElement("div");
     nextOverlay.className = "labx-analysis-scope-overlay";
@@ -71,7 +66,7 @@ export function createLabAnalysisScopeOverlay(deps: LabAnalysisScopeOverlayDeps)
         </div>
       </section>
     `;
-    body.appendChild(nextOverlay);
+    deps.documentRef.body.appendChild(nextOverlay);
     overlay = nextOverlay;
     nextOverlay
       .querySelector<HTMLElement>(

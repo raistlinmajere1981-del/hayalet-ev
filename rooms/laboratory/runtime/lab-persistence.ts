@@ -76,7 +76,9 @@ function bindPersistenceUnloadFlush(windowRef: PersistenceWindow) {
   windowRef.addEventListener("beforeunload", flushPendingPersistence);
 }
 
-function canDeferPersistence(windowRef: PersistenceWindow | undefined): windowRef is PersistenceWindow {
+function canDeferPersistence(
+  windowRef: PersistenceWindow | undefined
+): windowRef is PersistenceWindow {
   return Boolean(windowRef && typeof windowRef.requestIdleCallback === "function");
 }
 

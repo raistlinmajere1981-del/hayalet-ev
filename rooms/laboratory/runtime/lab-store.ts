@@ -4,17 +4,11 @@ import {
   syncWorkspaceSelectionWithRange,
 } from "./lab-workspace-selection.js";
 import { createLabStore as createCoreLabStore } from "./lab-store-core.js";
-import {
-  clearExecutionIntent,
-  clearSuggestionPreview,
-} from "./store/lab-store-execution-state.js";
+import { clearExecutionIntent, clearSuggestionPreview } from "./store/lab-store-execution-state.js";
 import { isRunMutationLocked } from "./store/lab-store-run-sync.js";
 import { clearInspectionDepth } from "./store/lab-store-workspace-state.js";
 
-type LabTimelineUpdatedEvent = Extract<
-  LabStoreEvent,
-  { type: "workspace-timeline-updated" }
->;
+type LabTimelineUpdatedEvent = Extract<LabStoreEvent, { type: "workspace-timeline-updated" }>;
 
 function reduceTimelineUpdateWithStructuralSharing(
   state: LabStoreState,
@@ -39,10 +33,7 @@ function reduceTimelineUpdateWithStructuralSharing(
     clearSuggestionPreview(nextState);
     clearInspectionDepth(nextState);
   }
-  nextState.ui.workspace = syncWorkspaceSelectionWithRange(
-    state.ui.workspace,
-    nextTimelineRange
-  );
+  nextState.ui.workspace = syncWorkspaceSelectionWithRange(state.ui.workspace, nextTimelineRange);
   return nextState;
 }
 

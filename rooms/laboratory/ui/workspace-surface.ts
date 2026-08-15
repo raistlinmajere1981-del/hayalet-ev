@@ -289,9 +289,19 @@ function renderComparisonPreview(input: {
     return input.activeSide === side ? "true" : "false";
   }
   function getImageStyle(side: LabComparisonSide) {
+    if (input.activeSide !== side) {
+      return "";
+    }
     const filterCss = filterStateBySide[side].filterCss.trim();
+    if (filterCss === "") {
+      return "";
+    }
+    const normalized = filterCss.endsWith(";") ? filterCss : `${filterCss};`;
+    return ` style="${normalized}"`;
+  }
+  function getImageTransform(side: LabComparisonSide) {
     const transformCss = buildImageComparisonTransformCss(geometry.transforms[side]);
-    return ` style="${filterCss === "" ? "" : `${filterCss};`}transform:${transformCss};transform-origin:center center;"`;
+    return transformCss ? ` data-comparison-transform="${transformCss}"` : "";
   }
   function renderMarkers(side: LabComparisonSide) {
     return geometry.markers
@@ -338,7 +348,7 @@ function renderComparisonPreview(input: {
         data-active="${getActiveFlag(side)}"
       >
         <span class="labx-workspace-comparison__media-frame" data-lab-selection-roi-frame="true">
-          <img class="${imageClassName}" data-lab-preserve-media="workspace-comparison-${side}" src="${escapeHtml(url)}" alt="${escapeHtml(label)}"${getImageStyle(side)} />
+          <img class="${imageClassName}" data-lab-preserve-media="workspace-comparison-${side}" src="${escapeHtml(url)}" alt="${escapeHtml(label)}"${getImageStyle(side)}${getImageTransform(side)} />
           ${renderCenterGuide()}
           ${renderMarkers(side)}
           ${renderComparisonOverlay(side)}
@@ -349,8 +359,7 @@ function renderComparisonPreview(input: {
 
   const leftSide: LabComparisonSide =
     geometry.compositeMode === "reference-left-primary-right" ? "reference" : "primary";
-  const splitPrimaryClass =
-    leftSide === "primary" ? " labx-workspace-comparison__image--left" : "";
+  const splitPrimaryClass = leftSide === "primary" ? " labx-workspace-comparison__image--left" : "";
   const splitReferenceClass =
     leftSide === "reference" ? " labx-workspace-comparison__image--left" : "";
   const comparisonMarkup =
@@ -364,8 +373,8 @@ function renderComparisonPreview(input: {
           data-lab-comparison-roi-side="${input.activeSide}"
           data-active-side="${input.activeSide}"
         >
-          <img class="labx-workspace-comparison__image${splitReferenceClass}" data-lab-preserve-media="workspace-comparison-reference" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}"${getImageStyle("reference")} />
-          <img class="labx-workspace-comparison__image${splitPrimaryClass}" data-lab-preserve-media="workspace-comparison-primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}"${getImageStyle("primary")} />
+          <img class="labx-workspace-comparison__image${splitReferenceClass}" data-lab-preserve-media="workspace-comparison-reference" src="${escapeHtml(input.referenceUrl)}" alt="${escapeHtml(input.referenceLabel)}"${getImageStyle("reference")}${getImageTransform("reference")} />
+          <img class="labx-workspace-comparison__image${splitPrimaryClass}" data-lab-preserve-media="workspace-comparison-primary" src="${escapeHtml(input.primaryUrl)}" alt="${escapeHtml(input.primaryLabel)}"${getImageStyle("primary")}${getImageTransform("primary")} />
           ${geometry.centerGuide ? `<span class="labx-workspace-comparison__divider" aria-hidden="true"></span>` : ""}
           ${renderMarkers("primary")}
           ${renderMarkers("reference")}

@@ -158,9 +158,7 @@ async function loadFaceLandmarker() {
     return faceLandmarkerPromise;
   }
   faceLandmarkerPromise = (async function () {
-    const importedModule = (await import(
-      /* @vite-ignore */ MEDIAPIPE_MODULE_URL
-    )) as unknown;
+    const importedModule = (await import(/* @vite-ignore */ MEDIAPIPE_MODULE_URL)) as unknown;
     const vision = resolveVisionModule(importedModule);
     const fileset = await vision.FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_URL);
     faceLandmarkerFactory = vision.FaceLandmarker;
@@ -559,14 +557,18 @@ function createPanel() {
 }
 
 function syncPanelControls(panel: HTMLElement) {
-  const enabled = panel.querySelector<HTMLInputElement>('[data-lab-face-landmark-setting="enabled"]');
+  const enabled = panel.querySelector<HTMLInputElement>(
+    '[data-lab-face-landmark-setting="enabled"]'
+  );
   const autoDetect = panel.querySelector<HTMLInputElement>(
     '[data-lab-face-landmark-setting="autoDetect"]'
   );
   const viewMode = panel.querySelector<HTMLSelectElement>(
     '[data-lab-face-landmark-setting="viewMode"]'
   );
-  const opacity = panel.querySelector<HTMLInputElement>('[data-lab-face-landmark-setting="opacity"]');
+  const opacity = panel.querySelector<HTMLInputElement>(
+    '[data-lab-face-landmark-setting="opacity"]'
+  );
   const pointScale = panel.querySelector<HTMLInputElement>(
     '[data-lab-face-landmark-setting="pointScale"]'
   );
@@ -731,12 +733,7 @@ function updateSetting(target: HTMLInputElement | HTMLSelectElement) {
     settings.showLabels = target.checked;
   } else if (key === "viewMode" && target instanceof HTMLSelectElement) {
     const value = target.value;
-    if (
-      value === "keypoints" ||
-      value === "points" ||
-      value === "contours" ||
-      value === "mesh"
-    ) {
+    if (value === "keypoints" || value === "points" || value === "contours" || value === "mesh") {
       settings.viewMode = value;
     }
   } else if (key === "opacity" && target instanceof HTMLInputElement) {
@@ -744,9 +741,11 @@ function updateSetting(target: HTMLInputElement | HTMLSelectElement) {
   } else if (key === "pointScale" && target instanceof HTMLInputElement) {
     settings.pointScale = clamp(Number(target.value) || settings.pointScale, 0.5, 2.5);
   }
-  document.querySelectorAll<SVGSVGElement>(".labx-face-landmark-overlay").forEach(function (overlay) {
-    overlay.removeAttribute("data-render-signature");
-  });
+  document
+    .querySelectorAll<SVGSVGElement>(".labx-face-landmark-overlay")
+    .forEach(function (overlay) {
+      overlay.removeAttribute("data-render-signature");
+    });
   queueSync();
 }
 

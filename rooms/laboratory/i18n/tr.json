@@ -658,7 +658,10 @@
         "low": "Dusuk",
         "medium": "Orta",
         "high": "Yuksek"
-      }
+      },
+      "audioObservationMode": "Gözlem",
+      "audioObservationStandardTitle": "Standart oynatıcı görünümüne dön.",
+      "audioObservationExpandedTitle": "Ses görselleştirmesini büyüt, video önizlemesini daralt."
     },
     "stageNav": {
       "previous": "Onceki",
@@ -801,7 +804,35 @@
         "platformFingerprint": "Platform izi",
         "metricSet": "Metrikler",
         "referenceSource": "Referans",
-        "minDelta": "Min delta"
+        "minDelta": "Min delta",
+        "primaryZoom": "Birincil yakınlaştırma",
+        "primaryAspectLock": "Birincil en-boy",
+        "primaryScaleX": "Birincil ölçek X",
+        "primaryScaleY": "Birincil ölçek Y",
+        "primaryOffsetX": "Birincil kaydırma X",
+        "primaryOffsetY": "Birincil kaydırma Y",
+        "primaryRotation": "Birincil döndürme",
+        "referenceZoom": "Referans yakınlaştırma",
+        "referenceAspectLock": "Referans en-boy",
+        "referenceScaleX": "Referans ölçek X",
+        "referenceScaleY": "Referans ölçek Y",
+        "referenceOffsetX": "Referans kaydırma X",
+        "referenceOffsetY": "Referans kaydırma Y",
+        "referenceRotation": "Referans döndürme",
+        "compositeMode": "Bileşik",
+        "centerGuide": "Merkez kılavuzu",
+        "marker1Enabled": "İşaret 1",
+        "marker1Side": "İşaret 1 tarafı",
+        "marker1X": "İşaret 1 X",
+        "marker1Y": "İşaret 1 Y",
+        "marker2Enabled": "İşaret 2",
+        "marker2Side": "İşaret 2 tarafı",
+        "marker2X": "İşaret 2 X",
+        "marker2Y": "İşaret 2 Y",
+        "marker3Enabled": "İşaret 3",
+        "marker3Side": "İşaret 3 tarafı",
+        "marker3X": "İşaret 3 X",
+        "marker3Y": "İşaret 3 Y"
       },
       "options": {
         "enabled": "Acik",
@@ -912,7 +943,11 @@
         "ssim-vmaf": "SSIM + VMAF",
         "pre-upload": "Yukleme oncesi",
         "comparison-reference": "Karsilastirma referansi",
-        "active-reference": "Aktif referans"
+        "active-reference": "Aktif referans",
+        "none": "Yok",
+        "reference-left-primary-right": "Referans solda / birincil sağda",
+        "primary": "Birincil",
+        "reference": "Referans"
       },
       "closeAction": "Kapat",
       "installAction": "Kur",
@@ -2076,7 +2111,18 @@
         "lowpass": "Alçak geçiren",
         "highpass": "Yüksek geçiren",
         "bandpass": "Bant geçiren"
-      }
+      },
+      "visualization": "Görünüm",
+      "visualizations": {
+        "waveform": "Dalga",
+        "spectrum": "Spektrogram"
+      },
+      "independentPitch": "Bağımsız pitch",
+      "pitchPreservedStatus": "Hız değişiminde pitch korunur.",
+      "naturalPitchStatus": "Hız değişimi doğal pitch'i de etkiler.",
+      "independentPitchStatus": "Bağımsız pitch: {value} st · oynatma hızını değiştirmez.",
+      "liveAuditionTitle": "CANLI DİNLEME",
+      "pitchPresets": "Pitch presetleri"
     },
     "hypothesis": {
       "label": "Hipotez",

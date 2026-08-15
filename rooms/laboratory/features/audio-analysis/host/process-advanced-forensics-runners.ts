@@ -274,16 +274,7 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
       jobId,
       toolId: "ffmpeg",
       cwd: moduleOutputDir,
-      args: [
-        "-y",
-        "-i",
-        targetPath,
-        "-lavfi",
-        options.filterGraph,
-        "-frames:v",
-        "1",
-        outputPath,
-      ],
+      args: ["-y", "-i", targetPath, "-lavfi", options.filterGraph, "-frames:v", "1", outputPath],
       timeoutMs: 90_000,
     });
     return createProcessArtifact(moduleId, options.artifactKind, outputPath, options.label, {
@@ -537,6 +528,7 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
       }
       for (const variant of variants) {
         slowResults.push(
+          // eslint-disable-next-line no-await-in-loop -- sequential audio processing variants must run in order
           await tryFilteredAudio(
             runtime,
             project,
@@ -640,6 +632,7 @@ export function createAdvancedAudioForensicsRunners(deps: AdvancedAudioForensics
         const direction = semitones < 0 ? "down" : semitones > 0 ? "up" : "neutral";
         const magnitude = Math.abs(semitones);
         pitchResults.push(
+          // eslint-disable-next-line no-await-in-loop -- sequential pitch shift targets must run in order
           await tryFilteredAudio(
             runtime,
             project,

@@ -130,18 +130,12 @@ function renderPitchPresetButton(label: string, semitones: number, currentSemito
   >${escapeHtml(label)}</button>`;
 }
 
-function renderTemporalAudition(
-  temporalAudioFocus: LabAudioFocusSettings,
-  copy: LabI18n
-) {
+function renderTemporalAudition(temporalAudioFocus: LabAudioFocusSettings, copy: LabI18n) {
   const preservePitch = temporalAudioFocus.preservePitch;
   const livePitchSemitones = getLivePitchShiftSemitones(temporalAudioFocus);
   const pitchLabel = copy.t("mediaAnalysis.audioFocus.independentPitch", "Pitch");
   const transportPitchStatus = preservePitch
-    ? copy.t(
-        "mediaAnalysis.audioFocus.pitchPreservedStatus",
-        "Hız değişiminde pitch korunur."
-      )
+    ? copy.t("mediaAnalysis.audioFocus.pitchPreservedStatus", "Hız değişiminde pitch korunur.")
     : copy.t(
         "mediaAnalysis.audioFocus.naturalPitchStatus",
         "Hız değişimi doğal pitch'i de etkiler."

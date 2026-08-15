@@ -112,10 +112,7 @@ function normalizeImageComparisonSettings(value: unknown): LabSettingsRecord {
       String(defaults["compositeMode"])
     ),
     centerGuide: pickBoolean(source["centerGuide"], Boolean(defaults["centerGuide"])),
-    marker1Enabled: pickBoolean(
-      source["marker1Enabled"],
-      Boolean(defaults["marker1Enabled"])
-    ),
+    marker1Enabled: pickBoolean(source["marker1Enabled"], Boolean(defaults["marker1Enabled"])),
     marker1Side: pickOption(
       source["marker1Side"],
       ["primary", "reference"],
@@ -123,10 +120,7 @@ function normalizeImageComparisonSettings(value: unknown): LabSettingsRecord {
     ),
     marker1X: pickNumber(source["marker1X"], Number(defaults["marker1X"]), 0, 100, 0.5),
     marker1Y: pickNumber(source["marker1Y"], Number(defaults["marker1Y"]), 0, 100, 0.5),
-    marker2Enabled: pickBoolean(
-      source["marker2Enabled"],
-      Boolean(defaults["marker2Enabled"])
-    ),
+    marker2Enabled: pickBoolean(source["marker2Enabled"], Boolean(defaults["marker2Enabled"])),
     marker2Side: pickOption(
       source["marker2Side"],
       ["primary", "reference"],
@@ -134,10 +128,7 @@ function normalizeImageComparisonSettings(value: unknown): LabSettingsRecord {
     ),
     marker2X: pickNumber(source["marker2X"], Number(defaults["marker2X"]), 0, 100, 0.5),
     marker2Y: pickNumber(source["marker2Y"], Number(defaults["marker2Y"]), 0, 100, 0.5),
-    marker3Enabled: pickBoolean(
-      source["marker3Enabled"],
-      Boolean(defaults["marker3Enabled"])
-    ),
+    marker3Enabled: pickBoolean(source["marker3Enabled"], Boolean(defaults["marker3Enabled"])),
     marker3Side: pickOption(
       source["marker3Side"],
       ["primary", "reference"],

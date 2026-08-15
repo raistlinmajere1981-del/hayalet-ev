@@ -178,8 +178,7 @@ function handleMouseMove(event: MouseEvent) {
   }
 
   if (drag.aspectLocked) {
-    const normalizedDelta =
-      ((deltaX / drag.rectWidth + deltaY / drag.rectHeight) / 2) * 2;
+    const normalizedDelta = ((deltaX / drag.rectWidth + deltaY / drag.rectHeight) / 2) * 2;
     const initialScale = (drag.initialScaleX + drag.initialScaleY) / 2;
     const nextScale = clamp(initialScale + normalizedDelta, 0.25, 4);
     const signature = String(roundForControl(nextScale));

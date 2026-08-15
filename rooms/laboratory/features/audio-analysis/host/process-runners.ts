@@ -57,8 +57,9 @@ export function createAudioAnalysisProcessRuntime(
     ...deps,
     ...processRunnerSupport,
   });
-  const runAdvancedSpectralArtifactsAudioAnalyzer =
-    advancedAudioForensics.augmentSpectralArtifacts(runSpectralArtifactsAudioAnalyzer);
+  const runAdvancedSpectralArtifactsAudioAnalyzer = advancedAudioForensics.augmentSpectralArtifacts(
+    runSpectralArtifactsAudioAnalyzer
+  );
 
   function getModuleRunner(moduleId: string) {
     const runners: Record<string, AudioAnalysisModuleRunner> = {

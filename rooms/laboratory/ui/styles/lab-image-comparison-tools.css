@@ -167,7 +167,8 @@
 .labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
   .labx-operation-card__comparison,
 .labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool]
-  .labx-operation-card > .labx-operation-card__action {
+  .labx-operation-card
+  > .labx-operation-card__action {
   display: none;
 }
 
@@ -179,9 +180,13 @@
   user-select: none;
 }
 
-.labx-shell:has(.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="resize"])
+.labx-shell:has(
+    .labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="resize"]
+  )
   .labx-workspace-comparison__media-stage,
-.labx-shell:has(.labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="resize"])
+.labx-shell:has(
+    .labx-icon-rail-popover[data-slot="image-comparison"][data-comparison-tool="resize"]
+  )
   .labx-workspace-comparison__split {
   cursor: nwse-resize;
   user-select: none;
@@ -351,34 +356,48 @@
   font-weight: 600;
 }
 
-.labx-shell:has(input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked))
+.labx-shell:has(
+    input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked)
+  )
   .labx-workspace-comparison {
   gap: 0;
   padding: 0;
 }
 
-.labx-shell:has(input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked))
+.labx-shell:has(
+    input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked)
+  )
   .labx-workspace-comparison__pane,
-.labx-shell:has(input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked))
+.labx-shell:has(
+    input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked)
+  )
   .labx-workspace-comparison__pane[data-active="true"] {
   border-color: transparent;
   box-shadow: none;
 }
 
-.labx-shell:has(input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked))
+.labx-shell:has(
+    input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked)
+  )
   .labx-workspace-comparison__media-stage,
-.labx-shell:has(input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked))
+.labx-shell:has(
+    input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked)
+  )
   .labx-workspace-comparison__media-stage[data-active="true"] {
   outline-color: transparent;
 }
 
-.labx-shell:has(input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked))
+.labx-shell:has(
+    input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked)
+  )
   .labx-workspace-comparison__split {
   border-color: transparent;
   box-shadow: none;
 }
 
-.labx-shell:has(input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked))
+.labx-shell:has(
+    input[data-lab-field="operationSettings.image-comparison.showImageFrames"]:not(:checked)
+  )
   .labx-workspace-comparison__divider {
   display: none;
 }

@@ -95,18 +95,18 @@ function createDecodeSafeWindowRef(
       if (property === "fetch") {
         return guardedFetch;
       }
-      const value = Reflect.get(target, property, target);
+      const value = Reflect.get(target, property, target) as unknown;
       if (
         typeof value === "function" &&
         property !== "AudioContext" &&
         property !== "webkitAudioContext" &&
         property !== "Image"
       ) {
-        return value.bind(target);
+        return (value as (...args: unknown[]) => unknown).bind(target);
       }
       return value;
     },
-  }) as LabWaveformTimelineVisualizerDeps["windowRef"];
+  });
 }
 
 export function createLabWaveformTimelineVisualizer(deps: LabWaveformTimelineVisualizerDeps) {

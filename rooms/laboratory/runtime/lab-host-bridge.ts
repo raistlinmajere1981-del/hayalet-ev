@@ -11,10 +11,7 @@ function getSnapshotPayload(payload: Record<string, unknown>) {
     : payload;
 }
 
-function getSnapshotPairKey(
-  envelope: Record<string, unknown>,
-  snapshot: Record<string, unknown>
-) {
+function getSnapshotPairKey(envelope: Record<string, unknown>, snapshot: Record<string, unknown>) {
   const activeProject = asLabRecord(snapshot["activeProject"]);
   const source = asLabRecord(activeProject["source"]);
   const requestId = asNonEmptyString(envelope["requestId"]);

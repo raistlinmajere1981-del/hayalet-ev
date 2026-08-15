@@ -190,7 +190,7 @@ test("analysis runtime no longer wires slow-playback or pitch ladders into repor
     "utf8"
   );
 
-  assert.match(source, /augmentSpectralArtifacts\(runSpectralArtifactsAudioAnalyzer\)/);
+  assert.match(source, /augmentSpectralArtifacts\(\s*runSpectralArtifactsAudioAnalyzer\s*\)/);
   assert.doesNotMatch(source, /augmentFrequencyShiftReversal\(/);
   assert.doesNotMatch(source, /augmentSpectrogramGuidedRecovery\(/);
   assert.match(source, /"frequency-shift-reversal": runFrequencyShiftReversalAudioAnalyzer/);

@@ -273,11 +273,7 @@ function disconnectProcessingChain(graph: SharedAudioGraph) {
   disconnectAnalyser(graph);
 }
 
-function routeSourceToAnalyser(
-  graph: SharedAudioGraph,
-  bypassFilter = false,
-  bypassPitch = true
-) {
+function routeSourceToAnalyser(graph: SharedAudioGraph, bypassFilter = false, bypassPitch = true) {
   const context = graph.audioContext;
   const analyser = graph.analyser;
   const filterNode = graph.filterNode;

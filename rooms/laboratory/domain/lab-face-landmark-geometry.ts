@@ -130,7 +130,9 @@ function roundMetric(value: number) {
 }
 
 function requiredPoints(points: readonly LabFaceLandmarkPoint[]) {
-  const entries = Object.entries(FACE_INDEX).map(([key, index]) => [key, getPoint(points, index)] as const);
+  const entries = Object.entries(FACE_INDEX).map(
+    ([key, index]) => [key, getPoint(points, index)] as const
+  );
   if (entries.some(([, point]) => point === null)) {
     return null;
   }
