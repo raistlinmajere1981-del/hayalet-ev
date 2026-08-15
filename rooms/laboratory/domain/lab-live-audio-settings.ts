@@ -1,7 +1,7 @@
-export const LAB_LIVE_PITCH_SHIFT_FIELD = "livePitchSemitones";
-export const LAB_LIVE_PITCH_SHIFT_MIN = -12;
-export const LAB_LIVE_PITCH_SHIFT_MAX = 12;
-export const LAB_LIVE_PITCH_SHIFT_DEFAULT = 0;
+const LAB_LIVE_PITCH_SHIFT_FIELD = "livePitchSemitones";
+const LAB_LIVE_PITCH_SHIFT_MIN = -12;
+const LAB_LIVE_PITCH_SHIFT_MAX = 12;
+const LAB_LIVE_PITCH_SHIFT_DEFAULT = 0;
 
 function clampLivePitchShiftSemitones(value: number) {
   if (!Number.isFinite(value)) {
