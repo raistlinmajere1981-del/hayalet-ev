@@ -1,4 +1,6 @@
-type LabImageComparisonToolbarTool = "move" | "resize" | "zoom";
+import { ensureLabFaceLandmarkRuntimeBound } from "./lab-face-landmark-runtime.js";
+
+export type LabImageComparisonToolbarTool = "move" | "resize" | "zoom" | "face-landmarks";
 
 type ToolConfig = {
   id: LabImageComparisonToolbarTool;
@@ -21,6 +23,11 @@ const TOOL_CONFIGS: readonly ToolConfig[] = [
     id: "zoom",
     label: "Yakınlaştır",
     svg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>`,
+  },
+  {
+    id: "face-landmarks",
+    label: "Yüz Landmark",
+    svg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H6a3 3 0 0 0-3 3v2"/><path d="M16 3h2a3 3 0 0 1 3 3v2"/><path d="M8 21H6a3 3 0 0 1-3-3v-2"/><path d="M16 21h2a3 3 0 0 0 3-3v-2"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/><circle cx="12" cy="13" r="1"/><path d="M9 16c1.8 1.2 4.2 1.2 6 0"/></svg>`,
   },
 ];
 
@@ -130,6 +137,10 @@ function queueSync() {
   queueMicrotask(syncToolbar);
 }
 
+function isToolbarTool(value: string | undefined): value is LabImageComparisonToolbarTool {
+  return value === "move" || value === "resize" || value === "zoom" || value === "face-landmarks";
+}
+
 function openTool(tool: LabImageComparisonToolbarTool, event: Event) {
   event.preventDefault();
   event.stopImmediatePropagation();
@@ -153,7 +164,7 @@ function handleClick(event: Event) {
   const toolButton = target.closest<HTMLElement>("[data-lab-comparison-toolbar-tool]");
   if (toolButton !== null) {
     const tool = toolButton.dataset["labComparisonToolbarTool"];
-    if (tool === "move" || tool === "resize" || tool === "zoom") {
+    if (isToolbarTool(tool)) {
       openTool(tool, event);
     }
     return;
@@ -178,6 +189,7 @@ export function ensureLabImageComparisonToolbarBound() {
     return;
   }
   bound = true;
+  ensureLabFaceLandmarkRuntimeBound();
   document.addEventListener("click", handleClick, true);
   new MutationObserver(queueSync).observe(document.documentElement, {
     childList: true,
