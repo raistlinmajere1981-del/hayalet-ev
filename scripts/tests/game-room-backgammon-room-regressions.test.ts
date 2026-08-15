@@ -506,7 +506,6 @@ function createGameRoomUiCoalescingHarness(
     },
     game: {} as Record<string, unknown>,
     teamTetris: {},
-    fateKnots: {},
     lastCommandMessage: "",
   };
   const stateRef = { current: state };
@@ -544,7 +543,6 @@ function createGameRoomUiCoalescingHarness(
         roomId: "game-room",
         featureId: "backgammon",
         teamTetrisFeatureId: "team-tetris",
-        fateKnotsFeatureId: "fate-knots",
         contextRuntime: {
           normalizeContext: () => state.context,
         },
@@ -575,10 +573,6 @@ function createGameRoomUiCoalescingHarness(
           syncTeamTetrisPreferencesFromState: () => undefined,
           syncTeamTetrisDraftFromState: () => undefined,
           renderTeamTetris: () => undefined,
-        },
-        fateKnotsUi: {
-          sanitizeFateKnotsState: () => ({}),
-          renderFateKnots: () => undefined,
         },
         bootstrapText: (key: string) => key,
         applyPresentationMode: () => undefined,
@@ -647,7 +641,7 @@ void test("game-room manifest validates with the Tavla-first room contract", () 
   assert.equal(validation.manifest.defaultFeatureId, "backgammon");
   assert.deepEqual(
     validation.manifest.features.map((feature) => feature.id),
-    ["backgammon", "team-tetris", "fate-knots"]
+    ["backgammon", "team-tetris"]
   );
   assert.equal(validation.manifest.runtime.uiEntry, "ui/index.html");
   assert.equal(validation.manifest.runtime.hostEntry, "host/index.js");
