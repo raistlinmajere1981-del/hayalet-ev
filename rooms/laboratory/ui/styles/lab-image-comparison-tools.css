@@ -129,9 +129,9 @@
   margin-bottom: var(--lab-space-2);
 }
 
-/* The transform controls live in the same comparison capability settings,
- * but only the selected transient rail tool exposes its matching block. */
-.labx-icon-rail-popover[data-slot="image-comparison"] [data-comparison-tool-panel] {
+/* Precision transform controls stay out of the generic operation card and
+ * surface only when their transient comparison rail tool is selected. */
+.labx-image-comparison-settings [data-comparison-tool-panel] {
   display: none;
 }
 
