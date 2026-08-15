@@ -4,6 +4,6 @@
   width: var(--lab-rail-width-pinned);
 }
 
-.labx-icon-rail-popover[data-content="audio-focus"] [data-lab-tape-pitch-presets="true"] {
+.labx-icon-rail-popover[data-content="audio-focus"] [data-lab-live-pitch-presets="true"] {
   flex-wrap: nowrap;
 }
