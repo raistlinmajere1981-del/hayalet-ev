@@ -1,6 +1,11 @@
 import { ensureLabFaceLandmarkRuntimeBound } from "./lab-face-landmark-runtime.js";
+import {
+  createLabImageComparisonAnnotationOverlayDataUrl,
+  ensureLabImageComparisonDrawingBound,
+  syncLabImageComparisonDrawingUi,
+} from "./lab-image-comparison-drawing.js";
 
-type LabImageComparisonToolbarTool = "move" | "resize" | "zoom" | "face-landmarks";
+type LabImageComparisonToolbarTool = "move" | "resize" | "zoom" | "face-landmarks" | "draw";
 
 type ToolConfig = {
   id: LabImageComparisonToolbarTool;
@@ -12,7 +17,7 @@ const TOOL_CONFIGS: readonly ToolConfig[] = [
   {
     id: "move",
     label: "Taşı",
-    svg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M2 12h20"/><path d="m12 2-3 3"/><path d="m12 2 3 3"/><path d="m12 22-3-3"/><path d="m12 22 3-3"/><path d="m2 12 3-3"/><path d="m2 12 3 3"/><path d="m22 12-3-3"/><path d="m22 12-3 3"/></svg>`,
+    svg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M2 12h20"/><path d="m12 2-3 3"/><path d="m12 2 3 3"/><path d="m12 22-3-3"/><path d="m12 22 3-3"/><path d="m2 12 3-3"/><path d="m2 12 3 3"/><path d="m22 12-3-3"/><path d="m22 12 3 3"/></svg>`,
   },
   {
     id: "resize",
@@ -29,11 +34,18 @@ const TOOL_CONFIGS: readonly ToolConfig[] = [
     label: "Yüz Landmark",
     svg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H6a3 3 0 0 0-3 3v2"/><path d="M16 3h2a3 3 0 0 1 3 3v2"/><path d="M8 21H6a3 3 0 0 1-3-3v-2"/><path d="M16 21h2a3 3 0 0 0 3-3v-2"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/><circle cx="12" cy="13" r="1"/><path d="M9 16c1.8 1.2 4.2 1.2 6 0"/></svg>`,
   },
+  {
+    id: "draw",
+    label: "Çizim",
+    svg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m13.5 8 3 3"/><path d="M4 20h6"/></svg>`,
+  },
 ];
 
 const COMPARISON_EXPORT_SELECTOR = '[data-lab-comparison-export="side-by-side"]';
 const SINGLE_IMAGE_STAGE_SELECTOR = '[data-lab-preview-inspection-topology="single-image"]';
 const WORKSPACE_TIMELINE_SELECTOR = ".labx-media-workbench > .labx-timeline";
+const QUICK_EXPORT_FLAG_FIELD = "operationSettings.image-comparison.drawingQuickExport";
+const QUICK_EXPORT_OVERLAY_FIELD = "operationSettings.image-comparison.annotationOverlayDataUrl";
 
 let activeTool: LabImageComparisonToolbarTool | null = null;
 let bound = false;
@@ -89,6 +101,49 @@ function createComparisonExportButton() {
   return button;
 }
 
+function ensureQuickExportStateFields(group: HTMLElement) {
+  let flag = group.querySelector<HTMLInputElement>(`[data-lab-field="${QUICK_EXPORT_FLAG_FIELD}"]`);
+  if (flag === null) {
+    flag = document.createElement("input");
+    flag.type = "checkbox";
+    flag.hidden = true;
+    flag.dataset["labField"] = QUICK_EXPORT_FLAG_FIELD;
+    group.append(flag);
+  }
+  let overlay = group.querySelector<HTMLInputElement>(
+    `[data-lab-field="${QUICK_EXPORT_OVERLAY_FIELD}"]`
+  );
+  if (overlay === null) {
+    overlay = document.createElement("input");
+    overlay.type = "hidden";
+    overlay.dataset["labField"] = QUICK_EXPORT_OVERLAY_FIELD;
+    group.append(overlay);
+  }
+  return { flag, overlay };
+}
+
+function setQuickExportState(group: HTMLElement, active: boolean, overlayDataUrl: string) {
+  const fields = ensureQuickExportStateFields(group);
+  fields.flag.checked = active;
+  fields.flag.dispatchEvent(new Event("input", { bubbles: true }));
+  fields.overlay.value = overlayDataUrl;
+  fields.overlay.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function prepareComparisonExport(button: HTMLElement) {
+  const group = button.parentElement;
+  if (group === null) {
+    return;
+  }
+  const overlayDataUrl = createLabImageComparisonAnnotationOverlayDataUrl() || "";
+  setQuickExportState(group, true, overlayDataUrl);
+  queueMicrotask(function () {
+    if (group.isConnected) {
+      setQuickExportState(group, false, "");
+    }
+  });
+}
+
 function removeToolbarButtons() {
   document
     .querySelectorAll<HTMLElement>(
@@ -104,6 +159,7 @@ function ensureToolButtons(baseButton: HTMLButtonElement) {
   if (group === null) {
     return;
   }
+  ensureQuickExportStateFields(group);
   let anchor: Element = baseButton;
   TOOL_CONFIGS.forEach(function (config) {
     let button = group.querySelector<HTMLButtonElement>(
@@ -186,10 +242,12 @@ function syncToolbar() {
   if (baseButton === null || baseButton.disabled || baseButton.dataset["disabled"] === "true") {
     removeToolbarButtons();
     activeTool = null;
+    syncLabImageComparisonDrawingUi(false);
     return;
   }
   ensureToolButtons(baseButton);
   syncPopoverPresentation(baseButton);
+  syncLabImageComparisonDrawingUi(activeTool === "draw");
 }
 
 function queueSync() {
@@ -204,7 +262,13 @@ function queueSync() {
 }
 
 function isToolbarTool(value: string | undefined): value is LabImageComparisonToolbarTool {
-  return value === "move" || value === "resize" || value === "zoom" || value === "face-landmarks";
+  return (
+    value === "move" ||
+    value === "resize" ||
+    value === "zoom" ||
+    value === "face-landmarks" ||
+    value === "draw"
+  );
 }
 
 function openTool(tool: LabImageComparisonToolbarTool, event: Event) {
@@ -235,6 +299,13 @@ function handleClick(event: Event) {
     }
     return;
   }
+  const exportButton = target.closest<HTMLElement>(COMPARISON_EXPORT_SELECTOR);
+  if (exportButton !== null) {
+    prepareComparisonExport(exportButton);
+    activeTool = null;
+    queueSync();
+    return;
+  }
   if (forwardingBaseSlotClick) {
     return;
   }
@@ -256,6 +327,7 @@ export function ensureLabImageComparisonToolbarBound() {
   }
   bound = true;
   ensureLabFaceLandmarkRuntimeBound();
+  ensureLabImageComparisonDrawingBound();
   document.addEventListener("click", handleClick, true);
   new MutationObserver(queueSync).observe(document.documentElement, {
     attributeFilter: ["data-lab-preview-inspection-topology", "hidden"],

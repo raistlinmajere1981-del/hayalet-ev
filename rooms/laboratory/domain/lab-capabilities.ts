@@ -13,6 +13,14 @@ import { pickBoolean, pickNumber, pickOption } from "./lab-settings-normalizatio
 
 export * from "./lab-capabilities-core.js";
 
+function readTransientPngDataUrl(value: unknown) {
+  return typeof value === "string" &&
+    value.length <= 4_000_000 &&
+    /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value)
+    ? value
+    : "";
+}
+
 function normalizeImageComparisonSettings(value: unknown): LabSettingsRecord {
   const defaults = LAB_OPERATION_SETTINGS_DEFAULTS["image-comparison"];
   const record = asLabRecord(value);
@@ -136,6 +144,8 @@ function normalizeImageComparisonSettings(value: unknown): LabSettingsRecord {
     ),
     marker3X: pickNumber(source["marker3X"], Number(defaults["marker3X"]), 0, 100, 0.5),
     marker3Y: pickNumber(source["marker3Y"], Number(defaults["marker3Y"]), 0, 100, 0.5),
+    drawingQuickExport: source["drawingQuickExport"] === true,
+    annotationOverlayDataUrl: readTransientPngDataUrl(source["annotationOverlayDataUrl"]),
   };
 }
 

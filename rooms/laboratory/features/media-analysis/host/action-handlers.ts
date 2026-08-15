@@ -1,5 +1,6 @@
 import { createMediaEditActionRuntime } from "./action-handlers-edit.js";
 import { createMediaExportActionRuntime } from "./action-handlers-export.js";
+import { createMediaAnnotationExportActionRuntime } from "./action-handlers-annotation-export.js";
 import { createMediaProfileActionRuntime } from "./action-handlers-profile.js";
 import { createMediaProjectActionRuntime } from "./action-handlers-project.js";
 import { createMediaSourceActionRuntime } from "./action-handlers-source.js";
@@ -59,6 +60,7 @@ type MediaActionRuntimeDeps = MediaSourceActionRuntimeDeps &
 type MediaActionRuntime = ReturnType<typeof createMediaSourceActionRuntime> &
   ReturnType<typeof createMediaEditActionRuntime> &
   ReturnType<typeof createMediaExportActionRuntime> &
+  ReturnType<typeof createMediaAnnotationExportActionRuntime> &
   ReturnType<typeof createMediaProfileActionRuntime> &
   ReturnType<typeof createMediaProjectActionRuntime>;
 
@@ -122,6 +124,20 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     toRecord: deps.toRecord,
   });
 
+  const mediaAnnotationExportActionRuntime = createMediaAnnotationExportActionRuntime({
+    asNonEmptyString: deps.asNonEmptyString,
+    asNumber: deps.asNumber,
+    callRoomTools: deps.callRoomTools,
+    getActiveProject: deps.getActiveProject,
+    getProjectEditOutputDir: deps.getProjectEditOutputDir,
+    patchActiveProject: deps.patchActiveProject,
+    pushJobState: deps.pushJobState,
+    registerJob: deps.registerJob,
+    clearJob: deps.clearJob,
+    toRecord: deps.toRecord,
+    fallbackCaptureComparisonMoment: mediaExportActionRuntime.captureComparisonMoment,
+  });
+
   const mediaProjectActionRuntime = createMediaProjectActionRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     cancelJobById: deps.cancelJobById,
@@ -146,6 +162,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     ...mediaSourceActionRuntime,
     ...mediaEditActionRuntime,
     ...mediaExportActionRuntime,
+    ...mediaAnnotationExportActionRuntime,
     ...mediaProfileActionRuntime,
     ...mediaProjectActionRuntime,
   };
