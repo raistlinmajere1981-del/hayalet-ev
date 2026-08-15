@@ -3,11 +3,13 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { normalizeLabOperationSettings } from "../../rooms/laboratory/domain/lab-capabilities.ts";
+import { LAB_OPERATION_SETTINGS_FIELDS } from "../../rooms/laboratory/domain/lab-operation-settings.ts";
 import {
   buildImageComparisonTransformCss,
   getImageComparisonMarkerMetrics,
   readImageComparisonGeometry,
 } from "../../rooms/laboratory/domain/lab-image-comparison-workbench.ts";
+import { renderLabSettingsFields } from "../../rooms/laboratory/ui/lab-settings-controls.ts";
 
 test("image comparison settings expose independent A/B geometry and half-face composition", function () {
   const settings = normalizeLabOperationSettings("image-comparison", {
@@ -23,10 +25,14 @@ test("image comparison settings expose independent A/B geometry and half-face co
     referenceScaleX: 1.2,
     referenceScaleY: 0.8,
     compositeMode: "reference-left-primary-right",
+    manipulationMode: "resize",
+    showImageFrames: false,
   });
   const geometry = readImageComparisonGeometry(settings);
 
   assert.equal(geometry.compositeMode, "reference-left-primary-right");
+  assert.equal(settings.manipulationMode, "resize");
+  assert.equal(settings.showImageFrames, false);
   assert.equal(geometry.transforms.primary.aspectLocked, true);
   assert.equal(geometry.transforms.reference.aspectLocked, false);
   assert.match(buildImageComparisonTransformCss(geometry.transforms.primary), /scale\(2, 2\)/);
@@ -60,6 +66,48 @@ test("manual comparison markers produce normalized geometry without identity sco
   assert.equal(metrics.reference.count, 0);
 });
 
+test("comparison settings split precise move and resize controls into icon tools", function () {
+  const moveSettings = normalizeLabOperationSettings("image-comparison", {
+    manipulationMode: "move",
+    showImageFrames: false,
+  });
+  const moveMarkup = renderLabSettingsFields({
+    fields: LAB_OPERATION_SETTINGS_FIELDS["image-comparison"],
+    prefix: "operationSettings.image-comparison",
+    resetAction: "operation-settings-reset",
+    resetValue: "image-comparison",
+    settings: moveSettings,
+    title: "Settings",
+    variant: "inline",
+  });
+
+  assert.match(moveMarkup, /data-lab-image-comparison-toolbox="true"/);
+  assert.match(moveMarkup, /data-lab-comparison-tool-mode="true"/);
+  assert.match(moveMarkup, /value="move"[^>]*checked/);
+  assert.match(moveMarkup, /primaryOffsetX/);
+  assert.doesNotMatch(moveMarkup, /primaryZoom/);
+  assert.match(moveMarkup, /showImageFrames/);
+  assert.doesNotMatch(moveMarkup, /showImageFrames"[^>]*checked/);
+
+  const resizeSettings = normalizeLabOperationSettings("image-comparison", {
+    manipulationMode: "resize",
+  });
+  const resizeMarkup = renderLabSettingsFields({
+    fields: LAB_OPERATION_SETTINGS_FIELDS["image-comparison"],
+    prefix: "operationSettings.image-comparison",
+    resetAction: "operation-settings-reset",
+    resetValue: "image-comparison",
+    settings: resizeSettings,
+    title: "Settings",
+    variant: "inline",
+  });
+
+  assert.match(resizeMarkup, /value="resize"[^>]*checked/);
+  assert.match(resizeMarkup, /primaryZoom/);
+  assert.match(resizeMarkup, /referenceScaleY/);
+  assert.doesNotMatch(resizeMarkup, /primaryOffsetX/);
+});
+
 test("comparison renderer applies transform, composite clipping, guides and markers in the workspace", function () {
   const surface = readFileSync(
     new URL("../../rooms/laboratory/ui/workspace-surface.ts", import.meta.url),
@@ -80,6 +128,10 @@ test("comparison renderer applies transform, composite clipping, guides and mark
     new URL("../../rooms/laboratory/ui/workspace-operation-controls.ts", import.meta.url),
     "utf8"
   );
+  const mouseTools = readFileSync(
+    new URL("../../rooms/laboratory/ui/lab-image-comparison-mouse-tools.ts", import.meta.url),
+    "utf8"
+  );
 
   assert.match(surface, /buildImageComparisonTransformCss/);
   assert.match(surface, /data-composite-mode=/);
@@ -95,6 +147,12 @@ test("comparison renderer applies transform, composite clipping, guides and mark
   assert.match(settings, /marker3Y/);
   assert.match(styles, /labx-workspace-comparison__center-guide/);
   assert.match(styles, /labx-operation-card__geometry-metrics/);
+  assert.match(styles, /showImageFrames/);
+  assert.match(styles, /data-lab-comparison-tool-mode/);
   assert.match(controls, /data-lab-comparison-manual-metrics/);
   assert.match(controls, /kimlik doğrulama skoru değildir/);
+  assert.match(mouseTools, /stopImmediatePropagation/);
+  assert.match(mouseTools, /initialOffsetX/);
+  assert.match(mouseTools, /initialScaleX/);
+  assert.match(mouseTools, /initialZoom/);
 });
