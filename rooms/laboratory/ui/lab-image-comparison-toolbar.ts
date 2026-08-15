@@ -31,10 +31,15 @@ const TOOL_CONFIGS: readonly ToolConfig[] = [
   },
 ];
 
+const COMPARISON_EXPORT_SELECTOR = '[data-lab-comparison-export="side-by-side"]';
+const SINGLE_IMAGE_STAGE_SELECTOR = '[data-lab-preview-inspection-topology="single-image"]';
+const WORKSPACE_TIMELINE_SELECTOR = ".labx-media-workbench > .labx-timeline";
+
 let activeTool: LabImageComparisonToolbarTool | null = null;
 let bound = false;
 let forwardingBaseSlotClick = false;
 let syncQueued = false;
+const singleImageSuppressedTimelines = new WeakSet<HTMLElement>();
 
 function getToolConfig(tool: LabImageComparisonToolbarTool) {
   const config = TOOL_CONFIGS.find(function (candidate) {
@@ -70,9 +75,25 @@ function createToolButton(config: ToolConfig) {
   return button;
 }
 
-function removeToolButtons() {
+function createComparisonExportButton() {
+  const button = document.createElement("button");
+  button.className =
+    "labx-icon-rail__btn labx-image-comparison-toolbar__btn labx-image-comparison-toolbar__btn--export";
+  button.type = "button";
+  button.dataset["labAction"] = "workspace-image-comparison-export";
+  button.dataset["labComparisonExport"] = "side-by-side";
+  button.dataset["active"] = "false";
+  button.setAttribute("aria-label", "Yan Yana Dışa Aktar");
+  button.title = "Yan Yana Dışa Aktar";
+  button.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/><rect x="3" y="4" width="5" height="5" rx="1"/><rect x="16" y="4" width="5" height="5" rx="1"/></svg>`;
+  return button;
+}
+
+function removeToolbarButtons() {
   document
-    .querySelectorAll<HTMLElement>("[data-lab-comparison-toolbar-tool]")
+    .querySelectorAll<HTMLElement>(
+      `[data-lab-comparison-toolbar-tool], ${COMPARISON_EXPORT_SELECTOR}`
+    )
     .forEach(function (button) {
       button.remove();
     });
@@ -97,6 +118,45 @@ function ensureToolButtons(baseButton: HTMLButtonElement) {
     button.dataset["active"] = activeTool === config.id ? "true" : "false";
     anchor = button;
   });
+
+  let exportButton = group.querySelector<HTMLButtonElement>(COMPARISON_EXPORT_SELECTOR);
+  if (exportButton === null) {
+    exportButton = createComparisonExportButton();
+    anchor.insertAdjacentElement("afterend", exportButton);
+  } else if (exportButton.previousElementSibling !== anchor) {
+    anchor.insertAdjacentElement("afterend", exportButton);
+  }
+}
+
+function syncSingleImageTimelineVisibility() {
+  const timeline = document.querySelector<HTMLElement>(WORKSPACE_TIMELINE_SELECTOR);
+  if (timeline === null) {
+    return;
+  }
+  const singleImageActive = document.querySelector(SINGLE_IMAGE_STAGE_SELECTOR) !== null;
+  if (singleImageActive) {
+    singleImageSuppressedTimelines.add(timeline);
+    if (!timeline.hidden) {
+      timeline.hidden = true;
+    }
+    if (timeline.getAttribute("aria-hidden") !== "true") {
+      timeline.setAttribute("aria-hidden", "true");
+    }
+    return;
+  }
+  if (!singleImageSuppressedTimelines.has(timeline)) {
+    return;
+  }
+  singleImageSuppressedTimelines.delete(timeline);
+  const naturallyHidden =
+    timeline.dataset["timelineEmpty"] === "true" ||
+    timeline.classList.contains("labx-timeline-area--empty");
+  timeline.hidden = naturallyHidden;
+  if (naturallyHidden) {
+    timeline.setAttribute("aria-hidden", "true");
+  } else {
+    timeline.removeAttribute("aria-hidden");
+  }
 }
 
 function syncPopoverPresentation(baseButton: HTMLButtonElement) {
@@ -121,9 +181,10 @@ function syncPopoverPresentation(baseButton: HTMLButtonElement) {
 
 function syncToolbar() {
   syncQueued = false;
+  syncSingleImageTimelineVisibility();
   const baseButton = getBaseComparisonButton();
   if (baseButton === null || baseButton.disabled || baseButton.dataset["disabled"] === "true") {
-    removeToolButtons();
+    removeToolbarButtons();
     activeTool = null;
     return;
   }
@@ -197,6 +258,8 @@ export function ensureLabImageComparisonToolbarBound() {
   ensureLabFaceLandmarkRuntimeBound();
   document.addEventListener("click", handleClick, true);
   new MutationObserver(queueSync).observe(document.documentElement, {
+    attributeFilter: ["data-lab-preview-inspection-topology", "hidden"],
+    attributes: true,
     childList: true,
     subtree: true,
   });
