@@ -202,54 +202,9 @@
           }
         }
       }
-    },
-    {
-      "id": "fate-knots",
-      "name": "Fate Knots",
-      "description": "A clean Fate Knots placeholder kept ready for a new game system and UI design.",
-      "icon": "FK",
-      "commandSpecs": [
-        {
-          "name": "GameRoomFateKnotsStart",
-          "description": "Activate the Fate Knots placeholder from the room UI.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        },
-        {
-          "name": "GameRoomFateKnotsReset",
-          "description": "Reset the Fate Knots placeholder state.",
-          "scope": "room-ui",
-          "exposure": "internal"
-        }
-      ],
-      "protocolSpecs": [],
-      "scene": {
-        "hotspot": {
-          "id": "game-room-fate-knots",
-          "rect": {
-            "leftPx": 632,
-            "topPx": 268,
-            "widthPx": 304,
-            "heightPx": 216
-          },
-          "label": {
-            "text": "Fate Knots"
-          }
-        },
-        "view": {
-          "id": "fate-knots-closeup",
-          "backgroundSrc": "main-functions/fate-knots/assets/fate-knots-view.webp",
-          "transparentWindow": {
-            "leftPct": 17.5,
-            "topPct": 14.2,
-            "widthPct": 65.4,
-            "heightPct": 67.6
-          }
-        }
-      }
     }
   ],
-  "description": "A focused board-game room for Tavla matches, four-seat Team Tetris matches, and a clean Fate Knots placeholder for the next design pass.",
+  "description": "A focused board-game room for Tavla matches and four-seat Team Tetris matches.",
   "scene": {
     "referenceSize": {
       "width": 1600,
