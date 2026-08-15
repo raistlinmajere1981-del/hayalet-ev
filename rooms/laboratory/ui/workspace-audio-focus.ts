@@ -123,7 +123,6 @@ function renderPlaybackPresetButton(label: string, rate: number, currentRate: nu
 }
 
 function renderTemporalAudition(
-  audioFocus: LabAudioFocusSettings,
   temporalAudioFocus: LabAudioFocusSettings,
   copy: LabI18n
 ) {
@@ -162,7 +161,7 @@ function renderTemporalAudition(
       <label class="labx-control-toggle">
         <input
           type="checkbox"
-          ${audioFocus.preservePitch ? "checked" : ""}
+          ${preservePitch ? "checked" : ""}
           data-lab-field="workspace.audioFocus.preservePitch"
         />
         <span>${escapeHtml(copy.t("mediaAnalysis.audioFocus.preservePitch", "Pitch'i koru"))}</span>
@@ -196,10 +195,13 @@ export function renderWorkspaceAudioFocus(
   copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const showFilterControls = audioFocus.filterType !== "none";
-  const temporalAudioFocus: LabAudioFocusSettings = {
-    ...audioFocus,
-    ...(options.temporalAudioFocus || {}),
-  };
+  const temporalAudioFocus: LabAudioFocusSettings | null =
+    options.temporalAudioFocus === undefined
+      ? null
+      : {
+          ...audioFocus,
+          ...options.temporalAudioFocus,
+        };
   return `
     <section class="labx-audio-focus labx-workspace-focus-row__panel" id="lab-audio-focus">
       <div class="labx-audio-focus__controls">
@@ -227,7 +229,7 @@ export function renderWorkspaceAudioFocus(
             : ""
         }
       </div>
-      ${renderTemporalAudition(audioFocus, temporalAudioFocus, copy)}
+      ${temporalAudioFocus === null ? "" : renderTemporalAudition(temporalAudioFocus, copy)}
       <div class="labx-audio-focus__eq">
         <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.audioFocus.eqTitle", "PARAMETRIC EQ"))}</p>
         ${audioFocus.eqBands
