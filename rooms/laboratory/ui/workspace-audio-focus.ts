@@ -134,10 +134,8 @@ function renderTemporalAudition(
   temporalAudioFocus: LabAudioFocusSettings,
   copy: LabI18n
 ) {
-  const playbackRate = temporalAudioFocus.playbackRate;
   const preservePitch = temporalAudioFocus.preservePitch;
   const livePitchSemitones = getLivePitchShiftSemitones(temporalAudioFocus);
-  const speedLabel = copy.t("mediaAnalysis.timeline.playbackSpeed", "Hız");
   const pitchLabel = copy.t("mediaAnalysis.audioFocus.independentPitch", "Pitch");
   const transportPitchStatus = preservePitch
     ? copy.t(
@@ -157,7 +155,6 @@ function renderTemporalAudition(
   return `
     <div class="labx-audio-focus__eq" data-lab-live-audio-audition="true">
       <p class="labx-card__eyebrow">${escapeHtml(copy.t("mediaAnalysis.audioFocus.liveAuditionTitle", "CANLI DİNLEME"))}</p>
-      ${renderAudioSlider(speedLabel, "playbackRate", playbackRate, 0.1, 2, 0.05, "x", 1)}
       <label class="labx-control-toggle">
         <input
           type="checkbox"
