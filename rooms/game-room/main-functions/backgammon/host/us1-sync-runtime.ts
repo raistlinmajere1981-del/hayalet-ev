@@ -96,7 +96,6 @@ export interface BackgammonUs1SyncApi {
 export interface BackgammonUs1SyncRuntimeDeps {
   DEFAULT_STARTER: string;
   FEATURE_ID: string;
-  FATE_KNOTS_FEATURE_ID: string;
   ROOM_ID: string;
   TEAM_TETRIS_FEATURE_ID: string;
   commandMessage: (locale: unknown, key: string, params?: Record<string, unknown>) => string;
@@ -276,8 +275,7 @@ function shouldProcessRoomCommand(
   command: BackgammonRoomCommand,
   roomId: string,
   featureId: string,
-  teamTetrisFeatureId: string,
-  fateKnotsFeatureId: string
+  teamTetrisFeatureId: string
 ): boolean {
   if (command.roomId !== roomId) {
     return false;
@@ -286,8 +284,7 @@ function shouldProcessRoomCommand(
   return (
     command.featureId === "" ||
     command.featureId === featureId ||
-    command.featureId === teamTetrisFeatureId ||
-    command.featureId === fateKnotsFeatureId
+    command.featureId === teamTetrisFeatureId
   );
 }
 
@@ -357,7 +354,6 @@ export function createGameRoomBackgammonUs1SyncRuntime(deps: BackgammonUs1SyncRu
   const {
     DEFAULT_STARTER,
     FEATURE_ID,
-    FATE_KNOTS_FEATURE_ID,
     ROOM_ID,
     TEAM_TETRIS_FEATURE_ID,
     commandMessage,
@@ -389,13 +385,7 @@ export function createGameRoomBackgammonUs1SyncRuntime(deps: BackgammonUs1SyncRu
     await roomCommands.reduce<Promise<void>>(async (previous, command) => {
       await previous;
       if (
-        shouldProcessRoomCommand(
-          command,
-          ROOM_ID,
-          FEATURE_ID,
-          TEAM_TETRIS_FEATURE_ID,
-          FATE_KNOTS_FEATURE_ID
-        ) === false
+        shouldProcessRoomCommand(command, ROOM_ID, FEATURE_ID, TEAM_TETRIS_FEATURE_ID) === false
       ) {
         return;
       }
