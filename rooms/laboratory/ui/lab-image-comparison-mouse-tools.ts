@@ -97,10 +97,11 @@ function handleMouseDown(event: MouseEvent) {
   if (event.button !== 0) {
     return;
   }
-  const mode = getActiveLabImageComparisonToolbarTool();
-  if (mode === null) {
+  const activeTool = getActiveLabImageComparisonToolbarTool();
+  if (activeTool !== "move" && activeTool !== "resize" && activeTool !== "zoom") {
     return;
   }
+  const mode: LabImageComparisonManipulationMode = activeTool;
   const root = getSettingsRoot();
   if (root === null) {
     return;
