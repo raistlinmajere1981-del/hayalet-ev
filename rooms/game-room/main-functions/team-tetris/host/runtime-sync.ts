@@ -20,14 +20,9 @@ import {
   type TeamTetrisStatusKey,
 } from "./state.js";
 import { getActiveFeatureId, loadContext, readLocale } from "../../../shared/host/context-state.js";
-import {
-  FATE_KNOTS_FEATURE_ID,
-  ROOM_ID,
-  TEAM_TETRIS_FEATURE_ID,
-} from "../../../shared/host/feature-meta.js";
+import { ROOM_ID, TEAM_TETRIS_FEATURE_ID } from "../../../shared/host/feature-meta.js";
 import { translate } from "../../../shared/host/text.js";
 import { loadState, pushRoomState } from "../../backgammon/host/state.js";
-import { loadFateKnotsState, pushFateKnotsState } from "../../fate-knots/host/state.js";
 
 type TeamTetrisRequiredSeatId = Exclude<TeamTetrisSeatId, "user">;
 type TeamTetrisSeatReadiness = Record<TeamTetrisRequiredSeatId, boolean>;
@@ -251,9 +246,6 @@ function pushActiveFeatureState(api: TeamTetrisRuntimeSyncApi): unknown {
   const context = loadContext(api);
   if (getActiveFeatureId(context) === TEAM_TETRIS_FEATURE_ID) {
     return pushTeamTetrisState(api, loadTeamTetrisState(api));
-  }
-  if (getActiveFeatureId(context) === FATE_KNOTS_FEATURE_ID) {
-    return pushFateKnotsState(api, loadFateKnotsState(api));
   }
   return pushRoomState(api, loadState(api));
 }
