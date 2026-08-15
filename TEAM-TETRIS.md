@@ -191,12 +191,14 @@ Game Room veya Team Tetris değişikliklerinden sonra ilgili regressions ile bir
 npm run check:all
 ```
 
-Room odaklı kontroller için:
+Room odaklı doğrulama için:
 
 ```bash
 npm run rooms:typecheck
-npm run rooms:test
+npm run rooms:test:core
 ```
+
+Feature'a özel regressions için `npm run rooms:test:file -- <test files>` kullanılabilir; tüm regression seti `npm run test:all` ile çalıştırılabilir.
 
 ---
 

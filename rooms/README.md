@@ -95,7 +95,7 @@ Useful room-focused checks include:
 
 ```bash
 npm run rooms:typecheck
-npm run rooms:test
+npm run rooms:test:core
 ```
 
-For Laboratory-specific changes prefer its complete room gate shown above.
+For feature-specific room regressions use `npm run rooms:test:file -- <test files>`. For Laboratory-specific changes prefer its complete room gate shown above.

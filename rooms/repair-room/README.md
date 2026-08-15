@@ -154,13 +154,15 @@ Core, Repair Room'un iş mantığını sahiplenmemelidir. Oda core ile desteklen
 
 ## Doğrulama
 
-Room değişikliklerinden sonra en azından room typecheck/test yüzeylerini ve tam repository kalite kapısını çalıştırın:
+Room değişikliklerinden sonra room typecheck'i ve tam test/kalite kapılarını çalıştırın:
 
 ```bash
 npm run rooms:typecheck
-npm run rooms:test
+npm run test:all
 npm run check:all
 ```
+
+Feature'a özel bir regression üzerinde çalışırken `npm run rooms:test:file -- <test files>` kullanılabilir.
 
 ## Amaç
 
