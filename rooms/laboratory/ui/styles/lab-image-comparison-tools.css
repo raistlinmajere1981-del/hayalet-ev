@@ -1,0 +1,83 @@
+/* Interactive image comparison workbench. */
+
+.labx-workspace-comparison__image {
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.labx-workspace-comparison__image--left {
+  clip-path: inset(0 calc(100% - var(--lab-comparison-split, 50%)) 0 0);
+}
+
+.labx-workspace-comparison__center-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: var(--lab-workspace-px-1);
+  pointer-events: none;
+  background: color-mix(in srgb, var(--lab-info) 60%, transparent);
+  box-shadow: 0 0 0 var(--lab-workspace-px-1) color-mix(in srgb, var(--lab-info) 18%, transparent);
+  z-index: 4;
+}
+
+.labx-workspace-comparison__marker {
+  position: absolute;
+  width: var(--lab-space-3);
+  height: var(--lab-space-3);
+  border: var(--lab-workspace-px-1) solid var(--lab-text-strong);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  translate: -50% -50%;
+  pointer-events: none;
+  z-index: 8;
+  background: var(--lab-accent);
+  box-shadow: 0 0 0 var(--lab-workspace-px-2) color-mix(in srgb, var(--lab-accent) 30%, transparent);
+  color: var(--lab-surface-0);
+  font-size: var(--lab-workspace-rem-0-55);
+  font-weight: 800;
+}
+
+.labx-workspace-comparison__marker[data-marker-side="reference"] {
+  background: var(--lab-info);
+  box-shadow: 0 0 0 var(--lab-workspace-px-2) color-mix(in srgb, var(--lab-info) 30%, transparent);
+}
+
+.labx-operation-card__geometry-metrics {
+  display: grid;
+  gap: var(--lab-space-1);
+  padding: var(--lab-space-2);
+  border: var(--lab-workspace-px-1) solid var(--lab-border-subtle);
+  border-radius: var(--lab-radius-md);
+  background: color-mix(in srgb, var(--lab-surface-1) 84%, transparent);
+}
+
+.labx-operation-card__geometry-head,
+.labx-operation-card__geometry-row {
+  display: grid;
+  grid-template-columns: minmax(2.2rem, 0.7fr) repeat(3, minmax(2.7rem, 1fr));
+  gap: var(--lab-space-1);
+  align-items: center;
+  font-size: var(--lab-workspace-rem-0-62);
+}
+
+.labx-operation-card__geometry-head {
+  color: var(--lab-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.labx-operation-card__geometry-row {
+  color: var(--lab-text-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.labx-operation-card__geometry-row strong {
+  color: var(--lab-text-strong);
+}
+
+.labx-workspace-comparison[data-composite-mode="primary-left-reference-right"],
+.labx-workspace-comparison[data-composite-mode="reference-left-primary-right"] {
+  gap: 0;
+}
