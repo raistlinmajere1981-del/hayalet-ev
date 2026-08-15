@@ -34,7 +34,7 @@
   width: var(--lab-space-3);
   height: var(--lab-space-3);
   border: var(--lab-workspace-px-1) solid var(--lab-text-strong);
-  border-radius: 999px;
+  border-radius: var(--lab-radius-pill);
   display: grid;
   place-items: center;
   translate: -50% -50%;
@@ -64,7 +64,10 @@
 .labx-operation-card__geometry-head,
 .labx-operation-card__geometry-row {
   display: grid;
-  grid-template-columns: minmax(2.2rem, 0.7fr) repeat(3, minmax(2.7rem, 1fr));
+  grid-template-columns: minmax(var(--lab-workspace-rem-2-2), 0.7fr) repeat(
+      3,
+      minmax(var(--lab-workspace-rem-2-7), 1fr)
+    );
   gap: var(--lab-space-1);
   align-items: center;
   font-size: var(--lab-workspace-rem-0-62);
@@ -73,7 +76,7 @@
 .labx-operation-card__geometry-head {
   color: var(--lab-text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--lab-workspace-em-0-04);
 }
 
 .labx-operation-card__geometry-row {
@@ -252,7 +255,7 @@
   stroke: var(--lab-surface-0);
   stroke-width: 2.5;
   paint-order: stroke fill;
-  font-size: 10px;
+  font-size: var(--lab-workspace-px-10);
   font-weight: 700;
 }
 
@@ -308,7 +311,7 @@
 
 .labx-face-landmark-panel__controls > label {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(5.2rem, 0.7fr);
+  grid-template-columns: minmax(0, 1fr) minmax(var(--lab-workspace-rem-5-2), 0.7fr);
   gap: var(--lab-space-2);
   align-items: center;
   color: var(--lab-text-soft);
@@ -343,7 +346,10 @@
 .labx-face-landmark-metrics__head,
 .labx-face-landmark-metrics__row {
   display: grid;
-  grid-template-columns: minmax(6.5rem, 1.7fr) repeat(3, minmax(2.6rem, 0.7fr));
+  grid-template-columns: minmax(var(--lab-workspace-rem-6-5), 1.7fr) repeat(
+      3,
+      minmax(var(--lab-workspace-rem-2-6), 0.7fr)
+    );
   gap: var(--lab-space-1);
   align-items: center;
   font-size: var(--lab-workspace-rem-0-58);
@@ -358,7 +364,7 @@
   background: var(--lab-surface-1);
   color: var(--lab-text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: var(--lab-workspace-em-0-03);
 }
 
 .labx-face-landmark-metrics__row {

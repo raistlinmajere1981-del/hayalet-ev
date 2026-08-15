@@ -4,8 +4,8 @@
  */
 
 .labx-media-workbench > .labx-timeline[data-audio-observation-layout="expanded"] {
-  height: clamp(13rem, 28vh, 20rem);
-  min-height: 13rem;
+  height: clamp(var(--lab-workspace-rem-13), 28vh, var(--lab-workspace-rem-20));
+  min-height: var(--lab-workspace-rem-13);
   box-sizing: border-box;
   border-top: var(--lab-workspace-px-1) solid var(--lab-border-accent);
   background: var(--lab-workspace-color-05);
@@ -14,8 +14,8 @@
 .labx-media-workbench
   > .labx-timeline[data-audio-observation-layout="expanded"]
   .labx-timeline__track {
-  height: clamp(8rem, 18vh, 12rem);
-  min-height: 8rem;
+  height: clamp(var(--lab-workspace-rem-8), 18vh, var(--lab-workspace-rem-12));
+  min-height: var(--lab-workspace-rem-8);
 }
 
 .labx-media-workbench
@@ -67,14 +67,14 @@
 
 @media (--lab-bp-max-960) {
   .labx-media-workbench > .labx-timeline[data-audio-observation-layout="expanded"] {
-    height: clamp(12rem, 30vh, 18rem);
-    min-height: 12rem;
+    height: clamp(var(--lab-workspace-rem-12), 30vh, var(--lab-workspace-rem-18));
+    min-height: var(--lab-workspace-rem-12);
   }
 
   .labx-media-workbench
     > .labx-timeline[data-audio-observation-layout="expanded"]
     .labx-timeline__track {
-    height: clamp(7rem, 16vh, 10rem);
-    min-height: 7rem;
+    height: clamp(var(--lab-workspace-rem-7), 16vh, var(--lab-workspace-rem-10));
+    min-height: var(--lab-workspace-rem-7);
   }
 }

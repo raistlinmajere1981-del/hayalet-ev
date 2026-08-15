@@ -988,6 +988,7 @@
   --lab-workspace-color-61: rgba(var(--lab-selection-accent-rgb), 0.3);
   --lab-workspace-color-62: rgba(var(--lab-selection-accent-rgb), 0.44);
   --lab-workspace-color-63: rgba(255, 255, 255, 0.98);
+  --lab-workspace-em-0-03: 0.03em;
   --lab-workspace-em-0-04: 0.04em;
   --lab-workspace-em-0-08: 0.08em;
   --lab-workspace-em-0-1: 0.1em;
@@ -1047,7 +1048,20 @@
   --lab-workspace-rem-42: 42rem;
   --lab-workspace-rem-5-6: 5.6rem;
   --lab-workspace-rem-neg-0-55: -0.55rem;
+  --lab-workspace-rem-2-2: 2.2rem;
+  --lab-workspace-rem-2-6: 2.6rem;
+  --lab-workspace-rem-2-7: 2.7rem;
+  --lab-workspace-rem-5-2: 5.2rem;
+  --lab-workspace-rem-6-5: 6.5rem;
+  --lab-workspace-rem-7: 7rem;
+  --lab-workspace-rem-8: 8rem;
+  --lab-workspace-rem-10: 10rem;
+  --lab-workspace-rem-12: 12rem;
+  --lab-workspace-rem-13: 13rem;
+  --lab-workspace-rem-20: 20rem;
   --lab-comparison-split: 50%;
+  --lab-comparison-primary-transform: none;
+  --lab-comparison-reference-transform: none;
 }
 
 /* Honor reduced-motion preferences. */

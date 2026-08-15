@@ -292,8 +292,14 @@ test("expanded observation view keeps the tall waveform but releases excess cont
     "utf8"
   );
 
-  assert.match(css, /height:\s*clamp\(13rem, 28vh, 20rem\)/);
-  assert.match(css, /\.labx-timeline__track[\s\S]*height:\s*clamp\(8rem, 18vh, 12rem\)/);
+  assert.match(
+    css,
+    /height:\s*clamp\(var\(--lab-workspace-rem-13\), 28vh, var\(--lab-workspace-rem-20\)\)/
+  );
+  assert.match(
+    css,
+    /\.labx-timeline__track[\s\S]*height:\s*clamp\(var\(--lab-workspace-rem-8\), 18vh, var\(--lab-workspace-rem-12\)\)/
+  );
   assert.match(css, /\.labx-timeline__controls[\s\S]*min-height:\s*0/);
   assert.match(css, /\.labx-timeline__controls-row[\s\S]*min-height:\s*0/);
 });
