@@ -3,8 +3,7 @@
   "subtitle": "Focused table game room for direct matches with live AI slots or the connected US1 remote user.",
   "features": {
     "backgammon": "Tavla",
-    "team-tetris": "Team Tetris",
-    "fate-knots": "Fate Knots"
+    "team-tetris": "Team Tetris"
   },
   "backgammon": {
     "heroBadge": "Game Room",
@@ -161,7 +160,6 @@
       "idle": "Waiting for AI1, AI2, and US1 before Team Tetris can start.",
       "ready": "All required seats are ready. The Team Tetris opener can be seeded.",
       "activeFeatureReset": "Leaving the Team Tetris feature resets the active Team Tetris match.",
-      "notImplemented": "The Team Tetris host shell is online. Gameplay turns are enabled in the next sprint.",
       "blocked": "This Team Tetris match is blocked. Reset to recover.",
       "yourTurn": "Your turn. Rotate the piece, draw the route you expect, and submit the move.",
       "partnerTurnHidden": "Your teammate is acting, but the hidden pairing keeps their identity concealed for now.",
@@ -228,20 +226,6 @@
       "horizontalCollision": "The drafted route hits a filled cell on the visible board while shifting sideways.",
       "downwardCollision": "The drafted route hits a filled cell on the visible board while moving down.",
       "incompletePath": "If the route ends here, the piece finishes the remaining fall straight down."
-    }
-  },
-  "fateKnots": {
-    "heroBadge": "Blank Slate",
-    "heroTitle": "Fate Knots",
-    "heroSubtitle": "The previous Fate Knots slice has been cleared so the next system and UI can start fresh.",
-    "controls": {
-      "start": "Activate Shell",
-      "reset": "Reset Shell"
-    },
-    "status": {
-      "label": "Design Status",
-      "idle": "No legacy run is loaded.",
-      "ready": "Ready for the next Fate Knots system."
     }
   }
 }
