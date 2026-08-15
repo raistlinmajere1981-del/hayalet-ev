@@ -11,13 +11,7 @@ import {
   saveState,
   clearPendingInvite,
 } from "../main-functions/backgammon/host/state.js";
-import {
-  getActiveFeatureId,
-  loadContext,
-  readLocale,
-  saveContext,
-} from "../shared/host/context-state.js";
-import { FATE_KNOTS_FEATURE_ID } from "../shared/host/feature-meta.js";
+import { readLocale, saveContext } from "../shared/host/context-state.js";
 import {
   handleTeamTetrisMove,
   handleTeamTetrisReset,
@@ -38,13 +32,6 @@ import {
   syncFromContext as backgammonSyncFromContext,
   syncUs1Mailbox as backgammonSyncUs1Mailbox,
 } from "../main-functions/backgammon/host/runtime.js";
-import {
-  dispatchPendingWork as dispatchPendingFateKnotsWork,
-  handleReset as fateKnotsHandleReset,
-  handleStart as fateKnotsHandleStart,
-} from "../main-functions/fate-knots/host/runtime.js";
-import { resetFateKnotsState } from "../main-functions/fate-knots/host/state.js";
-import { FATE_KNOTS_COMMAND_NAMES } from "../main-functions/fate-knots/host/constants.js";
 import {
   bootstrapGameRoomHostState,
   createGameRoomHostLifecycle,
@@ -85,26 +72,14 @@ export default function createGameRoomHostRuntime() {
         saveTeamTetrisState(handlerApi, value as Parameters<typeof saveTeamTetrisState>[1]);
       }
 
-      function resetFateKnotsStateCompat(handlerApi: GameRoomHostApi, phase: string): void {
-        void resetFateKnotsState(handlerApi, phase);
-      }
-
       function ensureUs1SyncLoopCompat(handlerApi: GameRoomHostApi): void {
         backgammonEnsureUs1SyncLoop(
           handlerApi as unknown as Parameters<typeof backgammonEnsureUs1SyncLoop>[0]
         );
       }
 
-      function getActiveFeatureIdCompat(context: unknown): string {
-        return getActiveFeatureId(context as Parameters<typeof getActiveFeatureId>[0]);
-      }
-
       function pushActiveFeatureStateCompat(handlerApi: GameRoomHostApi): void {
         pushActiveFeatureState(handlerApi);
-      }
-
-      function dispatchPendingFateKnotsWorkCompat(handlerApi: GameRoomHostApi): Promise<unknown> {
-        return dispatchPendingFateKnotsWork(handlerApi);
       }
 
       function syncUs1MailboxCompat(handlerApi: GameRoomHostApi, reason: string): Promise<unknown> {
@@ -130,7 +105,6 @@ export default function createGameRoomHostRuntime() {
         defaultTarget: DEFAULT_TARGET,
         ensureUs1SyncLoop: ensureUs1SyncLoopCompat,
         readLocale: readLocale,
-        resetFateKnotsState: resetFateKnotsStateCompat,
         saveContext: saveContext,
         saveInviteInbox: saveInviteInboxCompat,
         saveTeamTetrisState: saveTeamTetrisStateCompat,
@@ -139,9 +113,6 @@ export default function createGameRoomHostRuntime() {
 
       return {
         commands: createGameRoomCommandRegistry(api, {
-          fateKnotsCommandNames: FATE_KNOTS_COMMAND_NAMES,
-          handleFateKnotsReset: asNoPayloadHandler(fateKnotsHandleReset),
-          handleFateKnotsStart: asCommandHandler(fateKnotsHandleStart),
           handleTeamTetrisMove: asCommandHandler(handleTeamTetrisMove),
           handleTeamTetrisReset: asNoPayloadHandler(handleTeamTetrisReset),
           handleTeamTetrisStart: asCommandHandler(handleTeamTetrisStart),
@@ -170,10 +141,6 @@ export default function createGameRoomHostRuntime() {
         }),
         ...createGameRoomHostLifecycle(api, {
           clearUs1SyncLoop: clearUs1SyncLoopCompat,
-          dispatchPendingFateKnotsWork: dispatchPendingFateKnotsWorkCompat,
-          fateKnotsFeatureId: FATE_KNOTS_FEATURE_ID,
-          getActiveFeatureId: getActiveFeatureIdCompat,
-          loadContext: loadContext,
           pushActiveFeatureState: pushActiveFeatureStateCompat,
           syncFromContext: syncFromContextCompat,
           syncUs1Mailbox: syncUs1MailboxCompat,
