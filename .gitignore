@@ -72,9 +72,6 @@ token.json
 
 # Screenshots
 screenshots/
-*.png
-*.jpg
-*.jpeg
 !android-companion/
 !android-companion/**
 !screenshots/
