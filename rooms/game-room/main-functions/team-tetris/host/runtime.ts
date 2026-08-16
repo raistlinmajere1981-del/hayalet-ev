@@ -65,6 +65,7 @@ interface TeamTetrisMessageRequest {
 
 interface TeamTetrisDispatchResult {
   success?: boolean;
+  message?: string;
   localSessionId?: unknown;
   remoteUserId?: unknown;
   reply?: unknown;
@@ -304,25 +305,17 @@ function buildTeamTetrisAi0TurnPrompt(state: TeamTetrisHostState): string {
   if (!packet) {
     return "";
   }
-  const responseShape = {
-    schemaVersion: packet.schemaVersion,
-    matchId: packet.matchId,
-    turnIndex: packet.turnIndex,
-    turnToken: packet.turnToken,
-    pieceId: packet.currentPiece,
-    rotation: "<legal rotation>",
-    rowShifts: ["-1, 0, or 1 for each intended downward step"],
-  };
   return [
     "You are AI0 playing the fourth seat in Hayalet Ev Team Tetris.",
     "Choose one legal move for the supplied turn packet.",
-    "Return JSON only. Do not use markdown, prose, or SlotBridge commands.",
-    `Response schema: ${JSON.stringify(responseShape)}`,
-    "Copy schemaVersion, matchId, turnIndex, turnToken, and pieceId exactly.",
-    "Use pieceGeometryCatalog as the authoritative tetromino geometry reference.",
-    "Choose one legal rotation and compute rowShifts from the private board snapshot.",
-    "rowShifts may contain only -1, 0, or 1 and encode sideways movement per planned downward advance.",
-    "After the explicit route ends, the host drops the piece straight down until it locks.",
+    "Return exactly one JSON object and nothing else. Do not use markdown, prose, code fences, or SlotBridge commands.",
+    "The JSON object must contain exactly these move fields: schemaVersion, matchId, turnIndex, turnToken, pieceId, rotation, rowShifts.",
+    "Copy schemaVersion, matchId, turnIndex, turnToken, and pieceId exactly from the turn packet.",
+    "rotation must be an integer chosen from legalRotations.",
+    "rowShifts must be an array of integers containing only -1, 0, or 1; each entry is the sideways shift for one planned downward advance.",
+    "Use pieceGeometryCatalog as the authoritative tetromino geometry reference instead of memory.",
+    "Compute the move from the private board snapshot supplied in the packet.",
+    "After the explicit rowShifts route ends, the host drops the piece straight down until it locks.",
     packet.partnerLastPiece
       ? "partnerLastPiece hides the latest partner lock from the visible board; infer that occupancy before choosing the route."
       : "No partner lock is hidden from the current private board.",
@@ -331,6 +324,18 @@ function buildTeamTetrisAi0TurnPrompt(state: TeamTetrisHostState): string {
     "Turn packet JSON:",
     JSON.stringify(packet, null, 2),
   ].join("\n");
+}
+
+function adaptTeamTetrisMessageForFourthSeat(
+  message: string,
+  state: TeamTetrisHostState,
+  context: ReturnType<typeof loadContext>
+): string {
+  if (state.fourthSeatSource !== "ai0") {
+    return message;
+  }
+  const nickname = context.assistant.nickname.trim() || "AI0";
+  return message.replace(/\bUS1\b/g, nickname);
 }
 
 async function sendBridgeMessageSafe(
@@ -399,7 +404,11 @@ async function sendTeamTetrisStartAnnouncements(
   const readyTargets = targets.filter(function (seatId) {
     return context.slots[seatId].dispatchable === true;
   });
-  const message = buildTeamTetrisAiStartMessage(state.match, options);
+  const message = adaptTeamTetrisMessageForFourthSeat(
+    buildTeamTetrisAiStartMessage(state.match, options),
+    state,
+    context
+  );
   const results = await Promise.all(
     readyTargets.map(function (seatId) {
       return sendBridgeMessageSafe(api, {
@@ -489,7 +498,11 @@ async function dispatchNextTeamTetrisTurn(
   const messageResult = await sendBridgeMessageSafe(api, {
     provider: currentTurn.seatId,
     page: TEAM_TETRIS_PAGE_ID,
-    text: buildTeamTetrisAiTurnMessage(state.match, currentTurn.seatId),
+    text: adaptTeamTetrisMessageForFourthSeat(
+      buildTeamTetrisAiTurnMessage(state.match, currentTurn.seatId),
+      state,
+      context
+    ),
     protocol: {
       room: ROOM_ID,
       scenario: buildTeamTetrisProtocolScenario(state.match),
