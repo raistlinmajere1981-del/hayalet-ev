@@ -23,6 +23,8 @@ Burada farklı AI slotları, insan kullanıcı ve desteklenen uzak kullanıcıla
 
 Slotların amacı belirli bir AI ürününü merkeze koymak değildir. Amaç, farklı zihinlerin aynı bağlam üzerinde çalışabilmesini sağlamaktır.
 
+AI slotları; kullanıcının erişebildiği web tabanlı AI oturumlarını, desteklenen harici AI servislerini ve yerel yardımcı/model katmanlarını aynı oda ve çalışma kontratlarına bağlayabilecek şekilde tasarlanır. Bağlantının nereden geldiği değişebilir; Hayalet Ev'in oda, hafıza ve katılımcı modeli aynı kalır.
+
 ## 🌒 Neden Var?
 
 Klasik AI kullanımı çoğunlukla şöyle çalışır:
@@ -75,6 +77,7 @@ Güncel `main` dalında Hayalet Ev yalnızca çoklu-AI sohbeti değildir.
 Ana çalışma yüzeyleri:
 
 - AI1, AI2, AI0 ve desteklenen US1 akışları arasında slot tabanlı çalışma,
+- kullanıcının mevcut AI oturumlarını ortak slot kontratına taşıyan web tabanlı bağlantı katmanı,
 - kalıcı konuşma ve çalışma bağlamları için Archive sistemi,
 - bağımsız geliştirilebilen ve `.hevroom` olarak paketlenebilen Room mimarisi,
 - medya, görüntü ve ses inceleme/analizi için Laboratory,
