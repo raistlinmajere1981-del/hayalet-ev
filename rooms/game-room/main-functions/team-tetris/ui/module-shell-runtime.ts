@@ -68,7 +68,10 @@
     }
 
     function getTeamTetrisNeutralSeatLabel(seatId: string): string {
-      return seatId.trim() !== "" ? seatId.trim().toUpperCase() : "???";
+      if (seatId === "user") {
+        return "USER";
+      }
+      return seatId.trim() !== "" ? getTeamTetrisSeatDisplayLabel(seatId) : "???";
     }
 
     function buildTeamTetrisSelectionPreview(selectedPartnerSeatId: string): string[] {
