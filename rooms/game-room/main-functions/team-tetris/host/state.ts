@@ -9,8 +9,8 @@ import {
 
 export const TEAM_TETRIS_STATUS_COPY = {
   idle: {
-    en: "Waiting for AI1, AI2, and either AI0 or US1 before Team Tetris can start.",
-    tr: "Takim Tetris baslamadan once AI1, AI2 ve AI0 veya US1 bekleniyor.",
+    en: "Waiting for AI1, AI2, and US1 (or AI0 in place of US1) before Team Tetris can start.",
+    tr: "Takim Tetris baslamadan once AI1, AI2 ve US1 (veya US1 yerine AI0) bekleniyor.",
   },
   ready: {
     en: "All required seats are ready. The Team Tetris opener can be seeded.",
@@ -44,8 +44,8 @@ export const TEAM_TETRIS_COMMAND_COPY = {
     tr: "Takim Tetris durumu sifirlandi.",
   },
   needReadySeats: {
-    en: "AI1 and AI2 plus either AI0 or US1 must be ready before Team Tetris can start.",
-    tr: "Takim Tetris baslamadan once AI1 ve AI2 ile birlikte AI0 veya US1 hazir olmali.",
+    en: "AI1, AI2, and US1 (or AI0 in place of US1) must be ready before Team Tetris can start.",
+    tr: "Takim Tetris baslamadan once AI1, AI2 ve US1 (veya US1 yerine AI0) hazir olmali.",
   },
   needPartnerSelection: {
     en: "Select the local user's partner before starting Team Tetris.",
