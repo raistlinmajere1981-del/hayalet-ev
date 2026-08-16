@@ -51,6 +51,7 @@ let activeTool: LabImageComparisonToolbarTool | null = null;
 let bound = false;
 let forwardingBaseSlotClick = false;
 let syncQueued = false;
+let comparisonObserver: MutationObserver | null = null;
 const singleImageSuppressedTimelines = new WeakSet<HTMLElement>();
 
 function getToolConfig(tool: LabImageComparisonToolbarTool) {
@@ -237,17 +238,23 @@ function syncPopoverPresentation(baseButton: HTMLButtonElement) {
 
 function syncToolbar() {
   syncQueued = false;
-  syncSingleImageTimelineVisibility();
-  const baseButton = getBaseComparisonButton();
-  if (baseButton === null || baseButton.disabled || baseButton.dataset["disabled"] === "true") {
-    removeToolbarButtons();
-    activeTool = null;
-    syncLabImageComparisonDrawingUi(false);
-    return;
+  // NOTE: sync writes its own DOM (toolbar buttons, drawing panel, overlays); discard those
+  // records so the document-wide MutationObserver does not re-enter an endless sync loop.
+  try {
+    syncSingleImageTimelineVisibility();
+    const baseButton = getBaseComparisonButton();
+    if (baseButton === null || baseButton.disabled || baseButton.dataset["disabled"] === "true") {
+      removeToolbarButtons();
+      activeTool = null;
+      syncLabImageComparisonDrawingUi(false);
+      return;
+    }
+    ensureToolButtons(baseButton);
+    syncPopoverPresentation(baseButton);
+    syncLabImageComparisonDrawingUi(activeTool === "draw");
+  } finally {
+    comparisonObserver?.takeRecords();
   }
-  ensureToolButtons(baseButton);
-  syncPopoverPresentation(baseButton);
-  syncLabImageComparisonDrawingUi(activeTool === "draw");
 }
 
 function queueSync() {
@@ -329,7 +336,8 @@ export function ensureLabImageComparisonToolbarBound() {
   ensureLabFaceLandmarkRuntimeBound();
   ensureLabImageComparisonDrawingBound();
   document.addEventListener("click", handleClick, true);
-  new MutationObserver(queueSync).observe(document.documentElement, {
+  comparisonObserver = new MutationObserver(queueSync);
+  comparisonObserver.observe(document.documentElement, {
     attributeFilter: ["data-lab-preview-inspection-topology", "hidden"],
     attributes: true,
     childList: true,

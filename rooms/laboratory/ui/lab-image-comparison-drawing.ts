@@ -284,10 +284,11 @@ function syncPanelState() {
     }
   });
   const value = panel.querySelector<HTMLElement>("[data-lab-drawing-width-value]");
-  if (value) value.textContent = String(width);
+  const nextWidth = String(width);
+  if (value && value.textContent !== nextWidth) value.textContent = nextWidth;
   const status = panel.querySelector<HTMLElement>("[data-lab-drawing-status]");
-  if (status)
-    status.textContent = `A: ${marks.primary.length} işaret · B: ${marks.reference.length} işaret`;
+  const nextStatus = `A: ${marks.primary.length} işaret · B: ${marks.reference.length} işaret`;
+  if (status && status.textContent !== nextStatus) status.textContent = nextStatus;
 }
 function syncPanel() {
   const popover = document.querySelector<HTMLElement>(
