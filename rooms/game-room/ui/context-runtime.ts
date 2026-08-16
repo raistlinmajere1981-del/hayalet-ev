@@ -43,6 +43,7 @@
       nickname: string;
       avatar: string | null;
     };
+    assistant: SlotState;
     slots: {
       ai1: SlotState;
       ai2: SlotState;
@@ -189,6 +190,7 @@
           ),
           avatar: null,
         },
+        assistant: createSlot("ai0"),
         slots: {
           ai1: createSlot("ai1"),
           ai2: createSlot("ai2"),
@@ -259,6 +261,11 @@
         : isRecord(source["slots"])
           ? source["slots"]
           : {};
+      const assistantSource = isRecord(presenceSource["assistant"])
+        ? presenceSource["assistant"]
+        : isRecord(source["assistant"])
+          ? source["assistant"]
+          : {};
       const roomSource = isRecord(source["room"]) ? source["room"] : {};
       const userSource = isRecord(presenceSource["user"])
         ? presenceSource["user"]
@@ -305,6 +312,7 @@
           ),
           avatar: readString(userSource["avatar"], "") || null,
         },
+        assistant: normalizeSlot(assistantSource, "ai0"),
         slots: {
           ai1: normalizeSlot(slotsSource["ai1"], "ai1"),
           ai2: normalizeSlot(slotsSource["ai2"], "ai2"),
