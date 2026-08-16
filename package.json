@@ -146,10 +146,10 @@
   "keywords": [
     "electron",
     "ai",
-    "chatgpt",
-    "grok"
+    "multi-agent",
+    "local-first"
   ],
-  "author": "Raistlin, Nexa, Gök",
+  "author": "Hayalet Ev contributors",
   "license": "MIT",
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
