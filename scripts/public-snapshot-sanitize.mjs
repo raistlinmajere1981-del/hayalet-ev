@@ -17,19 +17,6 @@ async function writeRepoFile(relativePath, content) {
   changedFiles.push(relativePath);
 }
 
-async function replaceExact(relativePath, replacements) {
-  const source = await readRepoFile(relativePath);
-  let next = source;
-
-  for (const [from, to] of replacements) {
-    next = next.split(from).join(to);
-  }
-
-  if (next !== source) {
-    await writeRepoFile(relativePath, next);
-  }
-}
-
 async function sanitizeRelayTlsFixture() {
   const relativePath = "scripts/tests/us1-relay-regressions.test.ts";
   const source = await readRepoFile(relativePath);
@@ -93,14 +80,6 @@ async function sanitizeRelayTlsFixture() {
   }
 }
 
-await replaceExact("scripts/tests/repair-room-overlay-regressions.test.ts", [
-  ["/home/raistlin/hayalet-ev", "/home/test-user/hayalet-ev"],
-]);
-
-await replaceExact("scripts/tests/slot-bridge-regressions-part2.test.ts", [
-  ["raistlin.majere.1981@gmail.com", "remote-user@example.test"],
-]);
-
 await sanitizeRelayTlsFixture();
 
 const verificationTargets = [
@@ -108,18 +87,22 @@ const verificationTargets = [
   "scripts/tests/slot-bridge-regressions-part2.test.ts",
   "scripts/tests/us1-relay-regressions.test.ts",
 ];
-const forbiddenMarkers = [
-  "/home/raistlin",
-  "raistlin.majere.1981@gmail.com",
-  "-----BEGIN PRIVATE KEY-----",
-];
+
+const userHomePattern = /\/home\/(?!test-user(?:\/|$))[^/\s"']+\/hayalet-ev\b/;
+const nonExampleEmailPattern =
+  /\b[A-Z0-9._%+-]+@(?!example\.test\b)[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
 
 for (const relativePath of verificationTargets) {
   const source = await readRepoFile(relativePath);
-  for (const marker of forbiddenMarkers) {
-    if (source.includes(marker)) {
-      throw new Error(`${relativePath} still contains forbidden public-snapshot marker: ${marker}`);
-    }
+
+  if (userHomePattern.test(source)) {
+    throw new Error(`${relativePath} still contains a user-specific home path`);
+  }
+  if (nonExampleEmailPattern.test(source)) {
+    throw new Error(`${relativePath} still contains a non-example email address`);
+  }
+  if (source.includes("-----BEGIN PRIVATE KEY-----")) {
+    throw new Error(`${relativePath} still contains a PEM private-key marker`);
   }
 }
 
