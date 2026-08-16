@@ -111,7 +111,7 @@
   "teamTetris": {
     "heroBadge": "Oyun Odasi",
     "heroTitle": "Takim Tetris Masasi",
-    "heroSubtitle": "Kullanici, AI1, AI2 ve bagli US1 uzak kullanicisi icin dort kisilik, sirali ve tahmin odakli Tetris maci.",
+    "heroSubtitle": "Kullanici, AI1, AI2 ve AI0 ya da bagli US1 uzak kullanicisi icin dort kisilik, sirali ve tahmin odakli Tetris maci.",
     "controls": {
       "featureLabel": "Ana Fonksiyon",
       "requirementsLabel": "Baslangic Kapisi",
@@ -124,7 +124,7 @@
       "partnerHint": "Secilen koltuk USER ile ayni takima gecer. Kalan iki koltuk diger takim olur.",
       "start": "Maci Baslat",
       "reset": "Maci Sifirla",
-      "startHint": "Mac ancak AI1, AI2 ve US1 hazir oldugunda baslar. Esler bastan acik olacaksa once yerel es secilmelidir.",
+      "startHint": "Mac AI1, AI2 ve AI0 ya da US1 hazir oldugunda baslar. Esler bastan acik olacaksa once yerel es secilmelidir.",
       "requirementReady": "Hazir",
       "requirementWaiting": "Bekleniyor",
       "awaitingTurn": "Yerel kullanicinin tur paketi bekleniyor.",
@@ -157,7 +157,7 @@
     "status": {
       "roomApiUnavailable": "Room API koprusu bagli degil.",
       "commandSendFailed": "Komut oda host'una gonderilemedi.",
-      "idle": "Takim Tetris baslamadan once AI1, AI2 ve US1 bekleniyor.",
+      "idle": "Takim Tetris baslamadan once AI1, AI2 ve AI0 ya da US1 bekleniyor.",
       "ready": "Gerekli tum koltuklar hazir. Takim Tetris acilis turu tohumlanabilir.",
       "activeFeatureReset": "Takim Tetris ozelliginden cikmak aktif Takim Tetris macini sifirlar.",
       "blocked": "Bu Takim Tetris maci bloke oldu. Toparlamak icin sifirla.",
