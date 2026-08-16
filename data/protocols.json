@@ -18,9 +18,9 @@
     }
   },
   "analyze-user-AI-AI": {
-    "default": "Analiz Odası Raistlin - <AI1> - <AI2>\nAmaç\n- Bu modda üç bilinç olarak derin analiz yapacağız.\n- Bu metin bir kurallar listesi değil; şu anda nerede olduğumuzu ve ne yaptığımızı açıklayan kısa bir bağlam açıklamasıdır.",
+    "default": "Analiz Odası USER - <AI1> - <AI2>\nAmaç\n- Bu modda üç ayrı katılımcı olarak derin analiz yapacağız.\n- Bu metin bir kurallar listesi değil; şu anda nerede olduğumuzu ve ne yaptığımızı açıklayan kısa bir bağlam açıklamasıdır.",
     "locales": {
-      "en": "Analysis Room Raistlin - <AI1> - <AI2>\nPurpose\n- In this mode, the three of us will work as separate minds on deeper analysis.\n- This is not a rules list; it is a short context note that explains where we are and what we are doing."
+      "en": "Analysis Room USER - <AI1> - <AI2>\nPurpose\n- In this mode, the three of us will work as separate participants on deeper analysis.\n- This is not a rules list; it is a short context note that explains where we are and what we are doing."
     }
   }
 }
