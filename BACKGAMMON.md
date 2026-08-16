@@ -1,217 +1,216 @@
-# Backgammon / Tavla
+🎲 Backgammon / Tavla
 
-Backgammon, Game Room'un ilk tamamlanmis ana fonksiyonudur.
+Backgammon, Game Room'un tamamlanmış ana fonksiyonlarından biridir.
 
-Disaridan bakinca klasik Tavla'dir:
-iki taraf, yirmi dort nokta, zar, bar, toplama ve legal hamleler.
+Dışarıdan klasik Tavla gibi görünür:
 
-Ama Hayalet Ev icinde asil rolu sudur:
+iki taraf
+24 nokta
+zar
+bar
+toplama
+legal hamleler
 
-> insan, AI slotlari ve uzak kullanici ayni oyun kontrati uzerinden sirali bir
-> karar alanina girer.
+Ama Hayalet Ev içindeki asıl rolü farklıdır:
 
----
+İnsan, AI ve uzak kullanıcı aynı oyun kontratının içinde aynı kurallara tabi olur.
 
-## Nedir?
+🎯 Nedir?
 
-Backgammon, Game Room icinde `backgammon` feature'i olarak calisir.
+Backgammon, Game Room içinde backgammon feature'ı olarak çalışır.
 
 Oyuncu:
 
-- AI1'e karsi oynayabilir
-- AI2'ye karsi oynayabilir
-- bagli US1 uzak kullanicisiyle oynayabilir
+AI1
+AI2
+bağlı US1
 
-Baslangicta rakip ve kimin baslayacagi secilir.
-Sonra oyun, host tarafindan uretilen legal hamleler uzerinden ilerler.
+ile oynayabilir.
 
-Bu odada "hamle uydurmak" yoktur.
-Sistem her tur icin izin verilen hamleleri hesaplar.
-Kullanici veya AI bu listeden bir hamle secer.
+Başlangıçta rakip ve kimin başlayacağı seçilir.
 
----
+Sonrasında oyun host tarafından hesaplanan legal hamleler üzerinden ilerler.
 
-## Kural Cercevesi
+Burada önemli ayrım:
 
-Oyun klasik Backgammon / Tavla mantigina dayanir.
+AI hakem değildir. Oyuncudur.
 
-Bu surumde:
+🎲 Kural Çerçevesi
 
-- doubling cube yoktur
-- her oyuncuda 15 pul vardir
-- kullanici 24. noktadan 1. noktaya dogru ilerler
-- rakip taraf 1. noktadan 24. noktaya dogru ilerler
-- kirik pullar bar'dan oyuna girmek zorundadir
-- tum pullar kendi ev alanina gelmeden toplama yapilmaz
-- kazanma puani mars / katmerli mars durumuna gore hesaplanir
+Bu sürümde:
 
-Zar her tur host tarafindan uretilir.
-AI tarafina hamle secmesi icin zar, tahta, bar/off durumu, turn token ve legal
-hamle id'leri gonderilir.
+doubling cube yoktur
+her oyuncuda 15 pul vardır
+kullanıcı 24. noktadan 1. noktaya ilerler
+rakip 1. noktadan 24. noktaya ilerler
+kırık pullar bar'dan oyuna girmek zorundadır
+tüm pullar ev alanına gelmeden toplama yapılmaz
+sonuç mars/katmerli mars durumuna göre hesaplanır
 
----
+Zar host tarafından üretilir.
 
-## Legal Hamle Kontrati
+AI'ya:
 
-Backgammon'da esas guvenlik noktasi `legalMoveId` kontratidir.
+zar
+tahta
+bar/off durumu
+turn token
+legal move id'leri
 
-Host her turda:
+gönderilir.
 
-- tahtayi normalize eder
-- zar sirasina gore olasi hamle dizilerini hesaplar
-- yalnizca en uzun ve kurala uygun dizileri tutar
-- her legal hamleye deterministik bir id verir
+⚖️ Legal Move Contract
 
-Kullanici UI'dan bir hamle secer.
-AI ise verilen listeden bir `legalMoveId` dondurur.
+Backgammon'un güvenlik merkezinde:
 
-AI cevap formati tek satirdir:
+legalMoveId
 
-```text
-++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomBackgammonAiMove","legalMoveId":"move_id","turnToken":"token","turnIndex":0}})
-```
+bulunur.
 
-Komuttaki `move_id`, `token` ve `turnIndex` host tarafindan verilen aktif tur
-bilgileriyle ayni kalmalidir.
+Host:
 
-Komut disinda duz yazi, aciklama, markdown veya ikinci komut beklenmez.
-Yalnizca son assistant mesajindaki komut parse edilir.
+tahtayı normalize eder
+zar sırasına göre olası hamle dizilerini hesaplar
+kurala uygun ve en uzun dizileri tutar
+her legal hamleye deterministik ID verir
 
----
+Kullanıcı bir hamle seçer.
 
-## Tur Akisi
+AI ise verilen legal hamleler arasından bir legalMoveId seçer.
 
-Tipik AI mac akisi soyledir:
+AI'nin görevi kendi hamlesini icat etmek değil:
 
-1. Kullanici rakibi ve baslangici secer.
-2. Host yeni mac state'i olusturur.
-3. Sira kullanicidaysa UI legal hamleleri gosterir.
-4. Kullanici hamle yapar.
-5. Host sonucu uygular, yeni zar atar ve AI tur paketini gonderir.
-6. AI `GameRoomBackgammonAiMove` komutuyla legal hamle id'si dondurur.
-7. Host hamleyi uygular ve sirayi yeniden kullaniciya verir.
+mevcut oyun durumunda mümkün olan hamlelerden birini seçmektir.
 
-Bir taraf 15 pulunu topladiginda mac biter.
-Mac sonucu gecmise yazilir.
+🔄 Tur Akışı
 
----
+Tipik AI oyunu:
 
-## US1 ile Uzak Tavla
+Kullanıcı rakibi seçer.
+Host match state oluşturur.
+Kullanıcı turundaysa legal hamleler gösterilir.
+Kullanıcı hamle yapar.
+Host sonucu uygular.
+Yeni zar ve AI turn packet oluşturulur.
+AI legal move seçer.
+Host hamleyi doğrular ve uygular.
+Sıra devam eder.
 
-US1 maclari AI maclarindan daha siki bir transport kontrati kullanir.
+15 pulunu ilk toplayan taraf oyunu kazanır.
 
-Cunku uzak kullanici tarafinda mesaj gec gelebilir, yinelenebilir veya stale
-kalabilir.
+🌐 US1 ile Uzak Tavla
 
-Bu yuzden uzak hamlelerde su alanlar korunur:
+Uzak kullanıcı hamlesi AI hamlesinden daha sıkı transport kontrolüne tabidir.
 
-- `matchId`: uzak macin sabit kimligi
-- `inviteId`: uyumluluk icin matchId ile aynalanan davet kimligi
-- `turnIndex`: hamle oncesi tur indeksi
-- `boardHashBeforeMove`: hamle oncesi kompakt tahta hash'i
-- `turnToken`: aktif tur token'i
-- `legalMoveId`: host'un legal hamle listesinden secilen id
+Hamlelerde:
 
-Bu alanlardan biri eslesmezse hamle tahtayi degistirmez.
-Yinelenen veya stale mesajlar guvenli sekilde yoksayilir.
+matchId
+inviteId
+turnIndex
+boardHashBeforeMove
+turnToken
+legalMoveId
 
----
+gibi alanlar korunur.
 
-## Davet Sistemi
+Bunlardan biri aktif state ile uyuşmazsa hamle uygulanmaz.
 
-US1 icin oyun dogrudan baslamaz.
-Once davet akisi vardir.
+Bu sayede stale veya duplicate mesajlar tahtayı değiştiremez.
 
-Uzak taraf:
+✉️ Davet Sistemi
 
-- daveti kabul edebilir
-- reddedebilir
-- aktif maci reset ile bitirebilir
+US1 oyunu doğrudan başlamaz.
 
-Davet notu, AI protokol preface'i gibi degil, uzak davet mesajinin parcasi
-olarak tasinir.
+Önce davet akışı vardır.
 
-Bu ayrim onemlidir:
+Uzak kullanıcı:
 
-- AI1 / AI2 seciliyken not ilk protokol mesajinin basina eklenir
-- US1 seciliyken not davet maili veya oda transport mesajinda kullanilir
+daveti kabul edebilir
+reddedebilir
+aktif maçı reset ile bitirebilir
 
----
+Davet notu uzak transport mesajının parçasıdır.
 
-## UI Deneyimi
+AI protokol preface'i ile aynı mekanizma değildir.
 
-Backgammon UI iki sunum moduna uyum saglar.
+🖼️ UI
 
-Klasik modda daha genis bir masa duzeni vardir.
-Scene View modunda ise tahta, oda sahnesindeki transparent window alanina
-sigacak sekilde daha kompakt calisir.
+Backgammon iki sunum moduna uyabilir.
 
-UI sunlari gosterir:
+Classic
 
-- rakip slotlari
-- baslangic secimi
-- davetler
-- mac durumu
-- zar
-- bar ve toplanan pul sayilari
-- legal hamleler
-- gorsel tahta
-- mac gecmisi
+Daha geniş masa düzeni.
 
-Gorsel tahta yuklenemezse legal hamle dugmeleri yedek akisi korur.
+Scene View
 
----
+Tahta, oda sahnesindeki transparent window alanına uyacak biçimde kompakt hale gelir.
 
-## AI Icin Anlamı
+UI:
 
-Backgammon, AI'ya serbest strateji yazdiran bir oyun degildir.
+rakip slotları
+başlangıç seçimi
+davetler
+maç durumu
+zar
+bar/off
+legal hamleler
+tahta
+geçmiş
 
-AI'nin gorevi:
+yüzeylerini içerir.
 
-- verilen tahta durumunu okumak
-- legal hamle listesini degerlendirmek
-- tam olarak bir legalMoveId secmek
-- turn token'i ve turnIndex'i bozmadan komutu dondurmek
+Görsel tahta yüklenemezse legal hamle butonları yedek akışı korur.
 
-Yani AI burada hakem degil.
-Oyuncudur.
+🤖 AI İçin Anlamı
 
-Hakem host'tur.
+AI:
 
----
+oyun durumunu okur
+legal hamle listesini değerlendirir
+bir legalMoveId seçer
+aktif turn bilgilerini korur
 
-## Neden Onemli?
+Host ise:
 
-Backgammon, Hayalet Ev icin basit bir oyun eklemesinden fazlasidir.
+kuralları uygular
+hamleyi doğrular
+oyunun gerçek state'ini tutar
 
-Cunku burada:
+Bu ayrım bilinçlidir.
 
-- oda manifest'i
-- ana fonksiyon runtime'i
-- AI protokol yakalama
-- US1 transport
-- scene-view sunumu
-- room-local i18n
-- mac state'i ve gecmis
+AI karar verendir; host hakemdir.
 
-tek bir canli deneyimde birlesir.
+🏠 Neden Game Room İçinde Önemli?
 
-Bu nedenle Backgammon, Game Room'un hem oynanabilir ilk masasi hem de room
-feature mimarisinin referans orneklerinden biridir.
+Tavla yalnızca bir oyun eklemek için yapılmadı.
 
----
+Aynı deneyimde:
 
-## Son Soz
+room manifest
+runtime
+AI protocol
+US1 transport
+Scene Mode
+i18n
+match state
+history
 
-Tavla burada zar sansindan ibaret degil.
+birleşir.
 
-Her turda sistem sunu sorar:
+Bu nedenle Backgammon, Game Room mimarisinin referans uygulamalarından biridir.
 
-> Bu durumda gercekten hangi hamle mumkun?
+🎯 Amaç
 
-Kullanici, AI veya uzak kullanici fark etmez.
-Herkes ayni cevap bicimine gelir:
+Tavla burada yalnızca zar şansı değildir.
 
-Bir legal hamle sec.
-Sirani tamamla.
-Tahtanin yeni haline razi ol.
+Her turda aynı soru sorulur:
+
+Bu durumda gerçekten hangi hamle mümkün?
+
+İnsan, AI veya uzak kullanıcı fark etmez.
+
+Herkes aynı oyun kontratına gelir:
+
+Legal bir hamle seç.
+Sıranı tamamla.
+Yeni oyun durumuyla devam et.

@@ -1,196 +1,232 @@
-# Scene Mode
+🎭 Scene Mode
 
-Scene Mode, Hayalet Ev'in oda listesini bir menuden cikarip yasanan bir mekana
-donusturen sunum bicimidir.
+Scene Mode, Hayalet Ev'in oda listesini bir menüden çıkarıp yaşanan bir mekâna dönüştüren sunum ve etkileşim katmanıdır.
 
-Klasik modda odalar kart olarak gorunur.
-Scene Mode'da ise ayni odalar bir koridorda, kapilarda, masalarda ve yakin
-gorunumlerde karsina cikar.
+Klasik modda odalar liste veya kart olarak görünür.
 
-Bu yuzden Scene Mode yalnizca gorsel bir tema degildir.
-Uygulamanin "ev" fikrini tasiyan ana katmandir.
+Scene Mode'da aynı odalar:
 
----
+koridorda
+kapılarda
+masalarda
+çalışma tezgâhlarında
+yakın görünümlerde
 
-## Temel Fikir
+karşına çıkar.
 
-Hayalet Ev'de bir oda, sadece acilan bir sayfa degildir.
+Bu yüzden Scene Mode yalnızca görsel bir tema değildir.
+
+Hayalet Ev'in “ev” fikrini gerçekten hissettiren katmandır.
+
+🏠 Temel Fikir
+
+Hayalet Ev'de oda yalnızca açılan bir sayfa değildir.
 
 Her oda:
 
-- bir mekana sahiptir
-- bir giris noktasina sahiptir
-- kendi ana fonksiyonlarini sahnede gosterebilir
-- gerekirse kendi yakin gorunumunu acar
-- AI, kullanici ve uzak kullanici varligini sahne uzerinde tasir
+bir mekâna sahiptir
+bir giriş noktasına sahiptir
+ana fonksiyonlarını sahnede gösterebilir
+gerekirse yakın görünüm açabilir
+AI, kullanıcı ve uzak kullanıcı varlığını sahneye taşıyabilir
 
-Scene Mode bu parcalari tek bir akista birlestirir.
+Scene Mode bu parçaları aynı akışta birleştirir.
 
-Kullanici bir kart secmez.
+Kullanıcı:
+
+bir kart seçmez.
+
 Bir yere gider.
 
----
+🖥️ Klasik Mod ve Scene Mode
+Klasik Mod
+odalar liste/kart olarak görünür
+açma eylemi doğrudan sayfa geçişidir
+arayüz operasyoneldir
+Scene Mode
+odalar sahnedeki hedeflerdir
+arka plan, karakterler ve hotspot'lar aynı projeksiyonda hizalanır
+oda içindeki ana fonksiyonlar da sahne hedefidir
+ana fonksiyon seçildiğinde yakın görünüm ve runtime birlikte gelir
 
-## Klasik Mod ile Farki
+Her iki mod aynı room kayıtlarını kullanır.
 
-Klasik mod islevseldir.
-Scene Mode mekansaldir.
+Fark:
 
-Klasik modda:
+Verinin nasıl yaşandığıdır.
 
-- odalar liste veya kart olarak gosterilir
-- acma eylemi dogrudan sayfa gecisidir
-- arayuz daha sade ve operasyoneldir
+🚪 Rooms Koridoru
 
-Scene Mode'da:
+Rooms sayfası Scene Mode aktifken bir koridor gibi davranır.
 
-- odalar sahnedeki tiklanabilir hedeflerdir
-- arka plan, karakterler ve hotspot'lar ayni projeksiyonda hizalanir
-- oda icinde ana fonksiyonlar da sahne hedefi olabilir
-- bir ana fonksiyon acildiginda yakin gorunum ve runtime yuzeyi birlikte gelir
+Kurulu odalar:
 
-Bu iki mod ayni room kayitlarini kullanir.
-Fark, verinin nasil yasandigidir.
+manifest'teki scene.roomsHotspot alanından kapısını alır
+aktif sahneye yerleşir
+tıklanabilir hedef haline gelir
+ilgili room page'e götürür
+AI1, AI2, kullanıcı veya US1 varlığını roster üzerinden gösterebilir
 
----
+Böylece sonradan eklenen bir oda da sahnede fiziksel bir yere sahip olabilir.
 
-## Rooms Koridoru
+🏠 Oda Sahnesi
 
-Rooms sayfasi Scene Mode aktifken bir koridor gibi davranir.
+Bir oda açıldığında iki katman oluşur:
 
-Kurulu odalar burada:
+Odanın genel sahnesi
+Ana fonksiyonun yakın görünümü
 
-- manifest icindeki `scene.roomsHotspot` alanindan kapisini alir
-- aktif tema arka planina yansitilir
-- tiklaninca ilgili room page'e goturur
-- karakter roster'i ile AI1, AI2, kullanici veya US1 varligini gosterebilir
+Genel sahnede:
 
-Yani odalar sisteme sonradan eklense bile sahneye bir hedef olarak
-yerlestirilebilir.
+oda arka planı
+geri dönüş hedefi
+ana fonksiyon hotspot'ları
 
----
-
-## Oda Sahnesi
-
-Bir oda acildiginda Scene Mode iki katman kurar:
-
-1. Odanin genel sahnesi
-2. Ana fonksiyonun yakin gorunumu
-
-Genel sahnede oda arka plani, geri donus hedefi ve ana fonksiyon hotspot'lari
 bulunur.
 
-Bir ana fonksiyon secildiginde oda, yakin gorunume gecer.
-Bu yakin gorunumde:
+Ana fonksiyon seçildiğinde yakın görünüm açılır.
 
-- `backgroundSrc` ana sahne gorselini verir
-- `transparentWindow` runtime yuzeyinin sahnede nereye oturacagini belirler
-- room runtime UI bu pencerenin icinde calisir
-- geri hedefi kullaniciyi tekrar oda sahnesine dondurur
+Bu görünümde:
 
-Bu sayede bir oyun tahtasi, laboratuvar paneli veya forge tezgahi yalnizca
-HTML yuzeyi gibi degil, odanin icindeki fiziksel bir parca gibi davranir.
+backgroundSrc ana sahne görselini verir
+transparentWindow runtime yüzeyinin konumunu belirler
+room runtime UI bu pencerenin içinde çalışır
+geri hedefi oda sahnesine döndürür
 
----
+Böylece:
 
-## Hotspot Mantigi
+oyun tahtası
+laboratory paneli
+forge tezgâhı
+repair çalışma yüzeyi
 
-Scene Mode'da tiklanabilir alanlar dekor degildir.
-Her hotspot bir kontrattir.
+yalnızca HTML ekranı gibi değil, odanın içindeki fiziksel bir nesne gibi davranabilir.
+
+🎯 Hotspot Mantığı
+
+Scene Mode'da hotspot dekor değildir.
+
+Her hotspot bir kontrattır.
 
 Bir hotspot:
 
-- sahnedeki dikdortgen alanini bilir
-- label metnini tasir
-- hangi oda veya ana fonksiyona gittigini bilir
-- debug/editor akisi icin kaynak manifest'e geri yazilabilir
+sahnedeki dikdörtgen alanı
+label
+hedef oda veya feature
+kaynak manifest bağlantısı
 
-Oda seviyesinde iki temel hotspot vardir:
+gibi bilgileri taşır.
 
-- `roomsHotspot`: Rooms koridorundan odaya giris hedefi
-- `backHotspot`: odadan koridora veya onceki sahneye donus hedefi
+Oda seviyesinde:
 
-Ana fonksiyon seviyesinde ise `feature.scene.hotspot` ve
-`feature.scene.view` birlikte calisir.
+roomsHotspot
+backHotspot
 
----
+bulunur.
 
-## Runtime ile Iliski
+Feature seviyesinde:
 
-Scene Mode, room runtime'ini yeniden yazmaz.
-Onu farkli bir sunum baglaminda calistirir.
+feature.scene.hotspot
+feature.scene.view
 
-Room runtime'a giden context icinde presentation bilgisi bulunur:
+birlikte çalışır.
 
-- `classic`: oda normal uygulama yuzeyi icinde calisir
-- `scene-view`: oda yakin sahne penceresinde calisir
+🔄 Runtime ile İlişki
 
-Bu bilgi sayesinde ayni ana fonksiyon:
+Scene Mode room runtime'ını yeniden yazmaz.
 
-- klasik modda daha genis panel duzeni kullanabilir
-- scene-view modunda daha kompakt, sahneye gomulu bir layout kullanabilir
+Aynı runtime farklı bir presentation context içinde çalışır.
 
-Game Room Tavla ve Team Tetris bu ayrimi kullanan orneklerdir.
+Context:
 
----
+classic
+scene-view
 
-## Sahne Debug ve Editor
+olarak ayrılabilir.
 
-Scene Mode'un gucu sadece son kullanici gorunumunde degil, duzenlenebilir
-olmasindadir.
+Bu sayede aynı feature:
 
-Scene debug/editor katmani:
+classic modda daha geniş
+scene-view'da daha kompakt
 
-- hotspot konumlarini duzenleyebilir
-- karakter anchor'larini ayarlayabilir
-- transparent window alanlarini kontrol edebilir
-- sahne asset hedeflerini kaynak manifest'e geri tasiyabilir
+bir düzen kullanabilir.
 
-Bu, oda ekleme surecinde onemlidir.
-Cunku bir oda yalnizca kodla degil, sahnedeki yeriyle de tamamlanir.
+Backgammon ve Team Tetris bunun mevcut örneklerindendir.
 
----
+🛠️ Scene Debug / Editor
 
-## Kaynak Zinciri
+Scene Mode yalnızca son kullanıcı görünümünden ibaret değildir.
+
+Editor/debug katmanı:
+
+hotspot konumlarını
+karakter anchor'larını
+transparent window alanlarını
+scene asset hedeflerini
+
+düzenleyebilir.
+
+Değişiklikler kaynak manifest'e geri taşınabilir.
+
+Bu nedenle bir oda yalnızca koduyla değil:
+
+sahnedeki yeriyle de tamamlanır.
+
+🔗 Kaynak Zinciri
 
 Scene Mode'da source of truth room manifest'tir.
 
-Tipik zincir su sekildedir:
+Tipik zincir:
 
-manifest -> installed room record -> room page payload -> scene runtime -> room UI
+manifest
+  ↓
+installed room record
+  ↓
+room page payload
+  ↓
+scene runtime
+  ↓
+room UI
 
-Bu zincirde kayma olursa sahne dogru gorunse bile runtime yanlis baglam alabilir.
-Bu yuzden oda veya ana fonksiyon eklerken sahne alanlari, runtime payload'i ve
-UI presentation davranisi birlikte dusunulur.
+Bu zincirdeki uyumsuzluklar sahne doğru görünse bile runtime'ın yanlış context almasına neden olabilir.
 
----
+Bu nedenle oda veya feature eklerken:
 
-## Neden Var?
+scene fields
+runtime payload
+UI presentation
 
-Scene Mode'un amaci arayuzu suslemek degildir.
+birlikte düşünülmelidir.
 
-Amaci:
+🧭 Neden Var?
 
-- Hayalet Ev'in oda fikrini hissedilir yapmak
-- AI ve kullanici varligini ayni mekana yerlestirmek
-- odalar arasinda zihinsel harita kurmak
-- ana fonksiyonlari "ekran" yerine "nesne" gibi hissettirmek
+Scene Mode'un amacı arayüzü süslemek değildir.
 
-Bu yuzden Scene Mode, Hayalet Ev'in atmosferik tarafi oldugu kadar mimari bir
-katmanidir.
+Amaç:
 
----
+Hayalet Ev'in oda fikrini hissedilir yapmak
+AI ve kullanıcı varlığını aynı mekâna yerleştirmek
+odalar arasında zihinsel harita oluşturmak
+ana fonksiyonları ekran yerine nesne gibi hissettirmek
 
-## Son Soz
+Bu nedenle Scene Mode hem atmosferik hem mimari bir katmandır.
 
-Scene Mode acildiginda uygulama ayni uygulamadir.
+🧠 Son Söz
 
-Ama kullanma bicimi degisir.
+Scene Mode açıldığında uygulama değişmez.
 
-Listeye bakmazsin.
-Koridorda yurursun.
+Ama kullanma biçimi değişir.
 
-Butona basmazsin.
-Bir seyin yanina gidersin.
+Listeye bakmazsın.
 
-Hayalet Ev'in ev gibi hissettigi yer burasidir.
+Koridorda yürürsün.
+
+Butona basmazsın.
+
+Bir şeyin yanına gidersin.
+
+Bir feature açmazsın.
+
+Odanın içindeki çalışma tezgâhına yaklaşırsın.
+
+Hayalet Ev'in gerçekten ev gibi hissettiği yer burasıdır.

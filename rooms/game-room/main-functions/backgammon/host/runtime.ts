@@ -36,11 +36,7 @@ import type {
   GameRoomContextState,
   GameRoomSlotState,
 } from "../../../shared/types/room-shell-contracts.js";
-import {
-  FEATURE_ID,
-  ROOM_ID,
-  TEAM_TETRIS_FEATURE_ID,
-} from "../../../shared/host/feature-meta.js";
+import { FEATURE_ID, ROOM_ID, TEAM_TETRIS_FEATURE_ID } from "../../../shared/host/feature-meta.js";
 import {
   dispatchNextTeamTetrisTurn,
   parseTeamTetrisStartEventNote,
@@ -221,7 +217,7 @@ async function dispatchUs1BridgeMessage(
     bridgeResult["session"] !== null &&
     typeof bridgeResult["session"] === "object" &&
     Array.isArray(bridgeResult["session"]) === false
-      ? (bridgeResultRaw as Record<string, unknown>)["session"] as Record<string, unknown>
+      ? ((bridgeResultRaw as Record<string, unknown>)["session"] as Record<string, unknown>)
       : {};
   return {
     success: true,

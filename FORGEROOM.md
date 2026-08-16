@@ -1,312 +1,268 @@
-# Forge Room
+🔥 Forge Room
 
-Forge Room, Hayalet Ev icinde fikirleri uygulanabilir is paketlerine donusturen
-uretim odasidir.
+Forge Room, Hayalet Ev içinde ham fikirleri uygulanabilir işlere dönüştüren üretim odasıdır.
 
-Bir hedefi alip onu dogrudan "yap" komutuna cevirmek yerine once sekillendirir:
+Bir hedefi doğrudan “yap” komutuna çevirmek yerine önce onun ne olduğunu anlamaya, parçalamaya ve farklı zihinlerin değerlendirmesine açar.
 
-- hedefi kaydeder
-- baglami kontrol eder
-- gorev taslagi uretir
-- rollere dagitir
-- cevaplari toplar
-- celiskileri gorunur kilar
-- tek bir senteze indirir
-- gerekirse hedef odaya devir paketi uretir
+Temel akış:
 
-Bu yuzden Forge Room bir chat ekrani degildir.
-Bir karar ve uretim tezgahidir.
+Hedef
+ ↓
+Preflight
+ ↓
+Görev taslağı
+ ↓
+Assignment
+ ↓
+Yanıtlar
+ ↓
+Çelişkiler
+ ↓
+Sentez
+ ↓
+Handoff
 
----
+Forge Room'un temel fikri:
 
-## Temel Fikir
+Birden fazla AI'ya cevap sordurmak yeterli değildir. Onları aynı işin farklı parçalarına yerleştirmek gerekir.
 
-Bir iste en zor kisim her zaman yapmak degildir.
-Bazen asil zorluk, neyin yapilacagini dogru parcalara ayirmaktir.
+🧱 Forge Workbench
 
-Forge Room bu ara bolge icin vardir.
+Ana özellik:
 
-Kullanicinin elindeki hedef henuz belirsiz olabilir.
-AI'lar farkli yaklasimlar onerebilir.
-Hangi cevap daha iyi, hangi risk gercek, hangi adim once gelmeli sorulari
-hemen net olmayabilir.
+forge-workbench
 
-Forge bu belirsizligi tek bir akisa sokar.
+Workbench bir koordinasyon yüzeyidir.
 
----
+Temel akış:
 
-## Forge Workbench
+oturum oluştur veya yükle
+hedefi tanımla
+operator bağlamını seç
+preflight çalıştır
+görev taslağı oluştur
+taslağı düzenle
+onayla
+görevleri slotlara dağıt
+yanıtları incele
+çelişkileri ele al
+sentez oluştur
+handoff üret
 
-Odanin ana fonksiyonu `forge-workbench`tir.
+Bu akış gerektiğinde geri dönülebilir bir çalışma zinciri olarak ele alınır.
 
-Workbench, koordinatorden bakar.
-Yani amaci her seyi tek AI'ya yaptirmak degil, isi yonetilebilir hale
-getirmektir.
+🧠 Oturum
 
-Temel akisi:
+Forge her çalışmayı bir session olarak saklar.
 
-1. oturum olustur veya yukle
-2. hedefi tanimla
-3. operator baglamini sec
-4. preflight calistir
-5. taslak gorev dagilimi uret
-6. taslagi duzenle ve onayla
-7. gorevleri slotlara dagit
-8. yanitlari ve celiskileri incele
-9. sentez uret
-10. devir paketini disari aktar
+Session içinde:
 
-Bu akis lineer gibi gorunur, ama her adim onceki karari koruyarak ilerler.
+hedef
+brief
+kısıtlar
+kabul kriterleri
+görevler
+assignments
+AI yanıtları
+çelişkiler
+sentezler
+seçili sentez
+export
+karar izi
+preflight durumu
 
----
+tutulabilir.
 
-## Oturum Mantigi
+Böylece üretim bir mesaj dizisi olarak kaybolmaz.
 
-Forge Room her calismayi bir oturum olarak saklar.
+🎯 Hedef
 
-Oturum icinde:
+Hedef yalnızca başlık değildir.
 
-- hedef
-- taslak gorevler
-- onayli gorevler
-- assignment kayitlari
-- AI yanitlari
-- celiskiler
-- sentezler
-- secili sentez
-- export kayitlari
-- karar izi
-- preflight durumu
+Hedef:
 
-birlikte tutulur.
+kısa özet
+detaylı brief
+kısıtlar
+kabul kriterleri
+hedef room id
 
-Bu sayede uretim bir mesaj dizisi olarak kaybolmaz.
-Kaydedilebilir, yuklenebilir ve kaldigi yerden surdurulebilir bir is parcasina
-donusur.
+gibi bilgiler taşıyabilir.
 
----
+Hedef room id, üretilen çalışmanın daha sonra başka bir odaya aktarılabilmesini sağlar.
 
-## Hedef
+👤 Operator Context
 
-Forge hedefi yalnizca bir baslik degildir.
+Forge kullanıcının gerçek çalışma koşullarını hesaba katabilir.
 
-Hedefte su bilgiler beklenir:
+Örneğin:
 
-- kisa ozet
-- detayli brief
-- kisitlar
-- kabul kriterleri
-- hedef room id
+beceri seviyesi
+mevcut ekipman
+çalışma tercihi
+risk toleransı
+geçici koşullar
+run-local notlar
 
-Hedef room id onemlidir.
-Cunku Forge'un urettigi sonuc bazen baska bir odaya devredilecek sekilde
-paketlenir.
+AI'ya giden bağlamı etkileyebilir.
 
-Ornegin bir fikir Game Room, Laboratory veya Repair Room icin hazirlanabilir.
+Amaç teorik olarak kusursuz bir plan değil:
 
----
+uygulanabilir bir plan üretmektir.
 
-## Operator Baglami
+🔎 Preflight
 
-Forge, kullaniciyi bos bir soyut aktor gibi varsaymaz.
+Preflight plan değildir.
 
-Operator profili ve run-local secimler ile sunlari hesaba katabilir:
+Bir hedefin çalışılabilir durumunu anlamaya yarayan erken kontrol aşamasıdır.
 
-- kullanicinin beceri seviyesi
-- mevcut ekipman
-- calisma tercihi
-- risk toleransi
-- gecici kosullar
-- bu calismaya ozel notlar
+Şunları inceleyebilir:
 
-Bu bilgiler her zaman zorunlu degildir.
-Ama secildiginde AI'ya giden baglami etkiler.
+operator context
+kısıtlar
+hedef oda
+run signature
+context digest
+eksik bilgi
+bağlam riskleri
 
-Amac, "mukemmel teorik plan" yerine uygulanabilir plan uretmektir.
+Hedef veya çalışma bağlamı değişirse eski preflight stale hale gelebilir.
 
----
+Bu sayede sonraki aşamalar eski bağlama körü körüne devam etmez.
 
-## Preflight
+🧩 Görev Taslağı
 
-Preflight, Forge'un ilk ciddi kontrol noktasidir.
+Forge hedefi 3–7 arasında top-level göreve ayırabilir.
 
-Bir hedef kaydedildikten sonra sistem:
+Görevler:
 
-- operator baglamina bakar
-- kisitlari okur
-- hedef oda baglamini toplar
-- run signature ve context digest uretir
-- gerekirse AI0 pre-analysis isteyebilir
+uygulanabilir
+kabul kriterleriyle ilişkili
+hedef room'a uygun
+gerektiğinde alt adımlara bölünebilir
 
-Preflight bir plan degildir.
-Bir gozlemdir.
+olmalıdır.
 
-Eksik bilgi, uyari veya baglam riski varsa bunlari erken gorunur yapar.
+Taslak AI tarafından üretilebilir.
 
-Forge'da preflight tazelik bilgisi onemlidir.
-Hedef, operator profili veya run override degisirse eski preflight stale hale
-gelebilir.
-Bu durumda sonraki AI asamalari eski baglamla devam etmez.
+Ama kullanıcı tarafından düzenlenebilir.
 
----
+Bu ayrım Forge için önemlidir:
 
-## Taslak Gorev Dagilimi
+AI taslak üretir; işin ne olduğuna insan karar verir.
 
-Draft asamasinda Forge, hedefi 3 ile 7 arasinda top-level goreve boler.
+🪑 Assignment
 
-Bu taslak:
+Onaylanan görevler assignment'lara dönüşür.
 
-- uygulanabilir gorevler icermelidir
-- gerekirse checklist alt adimlari tasiyabilir
-- hedef room'a devir icin fazla genislememelidir
-- kabul kriterleriyle uyumlu olmalidir
+Bir görev:
 
-Taslak AI tarafindan uretilebilir.
-Ama kullanici tarafindan duzenlenebilir.
+tek seat'e
+karşılaştırma için birden fazla seat'e
+belirli role/persona bilgisiyle
+daraltılmış context capsule ile
 
-Forge burada AI ciktisini kutsal kabul etmez.
-Dogru is paketine gelene kadar taslak elle temizlenebilir.
+gönderilebilir.
 
----
+Böylece farklı AI katılımcıları aynı hedefe farklı açılardan yaklaşabilir.
 
-## Onay ve Dagitim
+⚖️ Yanıtlar ve Çelişkiler
 
-Taslak onaylandiginda gorevler assignment kuyruguna donusur.
+Assignment cevapları yapılandırılmış biçimde yakalanır.
 
-Her gorev:
+Birden fazla cevap geldiğinde Forge bunlar arasındaki farklılıkları görünür hale getirebilir:
 
-- tek bir seat'e verilebilir
-- karsilastirma modunda birden fazla seat'e gonderilebilir
-- role ve persona bilgisiyle zenginlestirilebilir
-- context capsule ile daha dar baglam alabilir
+yaklaşım
+kapsam
+risk
+sıra/öncelik
 
-Seat'ler AI1, AI2 veya ileride uygun olan diger slotlar olabilir.
+çelişkileri.
 
-Burada Forge'un gucu ortaya cikar:
-ayni hedef farkli zihinlerden cevap alabilir.
+Forge için çelişki hata değildir.
 
----
+Çelişki, karar verilmesi gereken yerdir.
 
-## Yanitlar ve Celiskiler
+🧠 Sentez
 
-Assignment cevaplari JSON kontratiyla yakalanir.
+Sentez, artık aşağı akış için daha dar bir sonuç gerektiğinde oluşturulur.
 
-Her cevap:
+Sentez:
 
-- ozet
-- govde
-- artifact referanslari
-- archive ref
-- gorev baglantisi
+tamamlanan yanıtları
+çözülmüş çelişkileri
+seçilmiş cevapları
+kabul kriterlerini
+gerekli açık soruları
 
-tasir.
+birlikte değerlendirir.
 
-Birden fazla cevap ayni goreve geldiginde Forge celiskileri gruplayabilir:
+Sentez bütün cevapların mekanik birleşimi değildir.
 
-- yaklasim celiskisi
-- kapsam celiskisi
-- risk celiskisi
-- sira / oncelik celiskisi
+Bir sonraki aşama için en kullanışlı sonuç adayıdır.
 
-Celiski hata degildir.
-Forge icin celiski, karar verilmesi gereken yerdir.
+📦 Handoff
 
-Kullanici veya koordinasyon katmani bir cevabi tercih edebilir, not ekleyebilir
-ve celiskiyi cozulmus hale getirebilir.
+Forge'un önemli çıktılarından biri handoff paketidir.
 
----
+Paket:
 
-## Sentez
+hedef özeti
+brief
+kısıtlar
+görev grafiği
+seçili sentez
+çelişkiler
+açık sorular
+kabul kriterleri
+repo referansları
+artifact referansları
+karar izi
+preflight uyarıları
 
-Sentez, Forge'un "artik tek cevap gerekiyor" dedigi asamadir.
+taşıyabilir.
 
-Sentez uretimi:
+Böylece bir odada yapılan çalışma başka bir odaya yalnızca metin olarak değil, bağlamıyla aktarılabilir.
 
-- tamamlanan yanitlari okur
-- cozulmus celiskileri dikkate alir
-- secili cevaplari one alir
-- kabul kriterlerini netlestirir
-- acik sorulari sadece deger katiyorsa tutar
+🎭 Roller
 
-Sentez, tum cevaplarin ham birlestirmesi degildir.
-Asagi akisa en uygun tek sonuc adayidir.
+Forge içinde roller üretim sorumluluğunu temsil eder:
 
-Bir sentez secildiginde export icin aday hale gelir.
+Architect — ilk görev dağılımını kurar
+Challenger — varsayımları zorlar
+External Perspective — farklı bakış getirir
+Coordinator — akışı ve karar izini toparlar
 
----
+Bunlar insan karakterleri değil, çalışma rolleridir.
 
-## Handoff / Devir Paketi
+🧭 Neden Var?
 
-Forge Room'un en onemli cikislarindan biri handoff paketidir.
+Birden fazla AI'nın aynı ortamda bulunması tek başına işbirliği yaratmaz.
 
-Bu paket hedef odaya veya sonraki calisma akisine sunlari tasir:
+AI'lar:
 
-- hedef ozeti
-- brief
-- kisitlar
-- gorev grafigi
-- secili sentez
-- celiski kayitlari
-- acik sorular
-- kabul kriterleri
-- repo referanslari
-- artifact referanslari
-- karar izi
-- preflight uyarilari
+aynı şeyi tekrar edebilir
+farklı yönlere dağılabilir
+uygulanamaz çözümler önerebilir
+karar yükünü kullanıcıya geri bırakabilir
 
-Boylece Forge'da uretilen is, baska bir odaya yalnizca metin olarak degil,
-baglamli bir paket olarak devredilir.
+Forge Room bu dağınıklığı bir üretim akışına dönüştürmek için vardır.
 
----
+🎯 Amaç
 
-## Roller
+Forge'un sorusu:
 
-Forge Room icinde roller isi daha okunur hale getirir.
+“Bunu hangi AI yapacak?”
 
-Baslica roller:
+değildir.
 
-- Architect: ilk gorev dagilimini kurar
-- Challenger: varsayimlari zorlar
-- External Perspective: dis bakis getirir
-- Coordinator: akisi, karar izini ve cikisi toparlar
+Önce şunu sorar:
 
-Bu roller insan karakteri gibi degil, uretim sorumlulugu gibi dusunulur.
+“Bu iş gerçekte hangi parçalardan oluşuyor?”
 
----
+Sonra farklı zihinleri o parçaların etrafına yerleştirir.
 
-## Neden Var?
-
-Hayalet Ev'de birden fazla AI olmasi tek basina yeterli degildir.
-
-Birden fazla AI:
-
-- ayni seyi tekrarlayabilir
-- farkli yonlere dagilabilir
-- guzel ama uygulanamaz cevaplar uretebilir
-- karar yukunu kullaniciya geri yikabilir
-
-Forge Room bu daginikligi islenebilir hale getirmek icin vardir.
-
-AI cevaplarini bir fikir yagmuru olarak degil, bir uretim hattinin parcasi
-olarak ele alir.
-
----
-
-## Son Soz
-
-Forge Room'un sorusu "bunu kim yapacak?" degildir.
-
-Daha once sunu sorar:
-
-> Bu is gercekte hangi parcalardan olusuyor?
-
-Sonra cevaplari toplar.
-Celiskileri yuzeye cikarir.
-Karari daraltir.
-Ve sonunda isi baska bir yere tasinabilir hale getirir.
-
-Forge'un adi buradan gelir:
-
-ham fikir burada isinir,
-sekil alir,
-ve elde tutulabilir bir is paketine donusur.
+Cevapları toplar.
+Çelişkileri gösterir.
+Sentezler.
+Ve işi başka bir yere taşınabilir hale getirir.

@@ -1,213 +1,242 @@
-# Team Tetris
+🧩 Team Tetris
 
 Team Tetris, Game Room içinde USER, AI1, AI2 ve bağlı US1'i aynı maçta buluşturan dört koltuklu, tur tabanlı bir Tetris varyantıdır.
 
-Bu belge iki şeyi birbirinden ayırır:
+Oyunun iki ayrı katmanı vardır:
 
-1. **Güncel implementasyon** — motor ve transport katmanında bugün gerçekten çalışan kurallar.
-2. **Tasarım yönü** — bu mekaniklerin neden var olduğu ve ileride nasıl derinleştirilebileceği.
+Bugün gerçekten çalışan motor ve transport kuralları
+Bu mekaniklerin üzerine kurulabilecek tasarım fikri
 
-Bu ayrım özellikle önemlidir; tasarım fikri, uygulanmış oyun kuralı gibi belgelenmemelidir.
+Bu ayrım bilinçli olarak korunur.
 
----
-
-## Güncel Implementasyon
-
-### Dört koltuk
+🎮 Güncel Implementasyon
+Dört Koltuk
 
 Motor dört seat tanımlar:
 
-- `user`
-- `ai1`
-- `ai2`
-- `us1`
+user
+ai1
+ai2
+us1
 
 Maç başlamadan önce gerekli AI/US1 koltuklarının hazır olması beklenir.
 
-Game Room manifesti kullanıcı, AI1, AI2 ve bağlı US1 için dört-seat turn-based Team Tetris akışını aktif özellik olarak tanımlar.
+👥 İki Takım
 
-### İki takım, opener ve followup
+Her takım iki seat taşır.
 
-Her takım iki seat taşır ve iki rol kullanır:
+Roller:
 
-- `opener`
-- `followup`
+opener
+followup
 
-Tur döngüsü takım A opener → takım B opener → takım A followup → takım B followup düzenini izler.
+Tur düzeni:
 
-Kullanıcının partneri maç başlamadan önce seçilebilir. Motor partner/team eşleşmesini match state içinde tutar.
+Team A opener
+→ Team B opener
+→ Team A followup
+→ Team B followup
 
-### Hidden pairs
+Kullanıcının partneri maç başlamadan önce seçilebilir.
 
-Hidden partner/pair davranışı yalnızca gelecek fikri değildir; mevcut match state'in parçasıdır.
+🕵️ Hidden Pairs
 
-Motor şu alanları taşır:
+Hidden partner/pair davranışı mevcut match state'in parçasıdır.
 
-- `hiddenPairs`
-- `revealPairsOnFinish`
-- `revealedPairs`
+State:
 
-Varsayılan state hidden pair davranışını açık tutar ve eşleşmelerin maç sonunda açılmasını destekler.
+hiddenPairs
+revealPairsOnFinish
+revealedPairs
 
-Bu özellik takım bilgisinin UI/protocol tarafında ne kadar görünür olacağını belirleyen oyun durumunun parçasıdır.
+alanlarını taşır.
 
-### Tahta ve parçalar
+Varsayılan yapı pair bilgisinin maç sonuna kadar gizli kalmasını destekler.
 
-Motor klasik 10×20 Tetris tahtası kullanır.
+🧱 Tahta ve Parçalar
 
-Desteklenen tetromino seti:
+Klasik:
 
-- I
-- O
-- T
-- S
-- Z
-- J
-- L
+10 × 20
 
-Rotation ve legal placement kuralları host engine tarafından doğrulanır; seat kimliği istemci cevabına güvenilerek değil host tarafından aktif turdan türetilir.
+Tetris tahtası kullanılır.
 
-### Path tabanlı hamle
+Tetromino seti:
 
-Team Tetris hamlesi yalnızca “son x koordinatı” şeklinde taşınmaz.
+I
+O
+T
+S
+Z
+J
+L
 
-Move schema path bilgisini `rowShifts` biçiminde kodlar:
+Rotation ve legal placement host engine tarafından doğrulanır.
 
-- satır sırası top-to-bottom,
-- her satır adımı için `-1`, `0`, `1` shift,
-- rotation bilgisi,
-- host tarafından doğrulanan aktif turn/seat bağlamı.
+Aktif seat istemcinin söylediği değerden değil host state'ten belirlenir.
 
-Bu nedenle düşüş yolu gerçek implementasyonda veri kontratının parçasıdır.
+🛤️ Path Tabanlı Hamle
 
-Ancak “düşüş yolu oyuncunun psikolojik niyetini kesin olarak ifade eder” yorumu bir **oyun tasarımı fikridir**; motor bunu semantik iletişim kuralı olarak zorunlu kılmaz.
+Team Tetris hamlesi yalnızca son koordinatı taşımaz.
 
-### AI ve US1 turları
+Move schema:
 
-Manifest/runtime katmanında ayrı hamle yolları bulunur:
+rowShifts
+rotation
 
-- local user move,
-- AI1/AI2 move,
-- remote US1 move.
+bilgilerini içerir.
 
-AI turları açılış ve follow-up protokolleri üzerinden çalışabilir. US1 hamleleri Game Room'un room transport akışı üzerinden gelir.
+rowShifts:
 
-Stale veya duplicate remote move'lar ile yanlış seat'ten gelen provider cevapları host tarafında ele alınır.
+top-to-bottom sıra
+her satır için -1, 0, 1
 
-### Maç durumu
+shift değerleri taşır.
 
-Match state temel olarak şunları taşır:
+Bu nedenle taşın düşüş yolu gerçek oyun kontratının parçasıdır.
 
-- match/seed bilgisi,
-- hidden pair durumu,
-- team/seat map,
-- her takımın board ve bag state'i,
-- aktif turn,
-- son yerleştirilen parça,
-- top-out bilgisi,
-- sonuç: pending / team-a-win / team-b-win / draw.
+Ancak önemli ayrım:
 
-Bir gerekli seat bağlantıdan düşerse veya geçersiz/iletilemeyen hamle maçı güvenli biçimde sürdürülemez hale getirirse state blocked duruma alınabilir ve reset istenebilir.
+Path'in oyuncunun psikolojik niyetini kesin olarak ifade ettiği motor tarafından garanti edilmez.
 
----
+Path bir oyun verisidir.
 
-## Oyunun Tasarım Fikri
+Onun iletişim veya stratejik anlamı oyun tasarımının daha üst katmanındadır.
 
-Team Tetris'in ilginç tarafı dört oyuncunun sırayla Tetris oynaması değil, sınırlı bilgi altında takım uyumu üretme potansiyelidir.
+🤖 AI ve US1 Turları
 
-Aşağıdaki maddeler motorun ham veri yapısından çok oyunun **tasarım yönünü** anlatır.
+Runtime farklı hamle yollarını destekler:
 
-### Eksik bilgiyle düşünmek
+local user move
+AI1/AI2 move
+remote US1 move
 
-Hidden pair yapısı oyuncunun yalnızca tahtaya değil diğer oyuncuların kararlarına da dikkat etmesini mümkün kılar.
+AI turları opening/follow-up protokolleri üzerinden çalışabilir.
 
-Amaç şu soruları doğurabilecek bir oyun alanıdır:
+US1 hamleleri Game Room transport üzerinden gelir.
 
-- Hangi oyuncu benim partnerim olabilir?
-- Bir önceki hamle hangi planı hazırlıyor olabilir?
-- Güvenli oynayıp tahtayı mı korumalıyım, yoksa gördüğüm plana güvenip risk mi almalıyım?
+Stale veya duplicate remote move'lar host tarafından ele alınır.
 
-Bu çıkarımlar motor tarafından “doğru cevap” olarak hesaplanmaz; oyun davranışından doğması beklenen stratejik katmandır.
+🧠 Match State
 
-### Tahta bir iletişim yüzeyi olabilir
+Match state temel olarak:
 
-Path encoding, boşluk bırakma, hizalama ve riskli yerleşim gibi kararlar oyuncular arasında dolaylı sinyal haline gelebilir.
+match/seed
+hidden pair state
+team/seat map
+board state
+bag state
+active turn
+last placed piece
+top-out
+sonuç
 
-Bu nedenle Team Tetris'in uzun vadeli fikri doğrudan sohbetten çok **oyun davranışı üzerinden koordinasyon** kurmaktır.
+bilgilerini taşır.
 
-Ancak bugün belgelenmesi gereken kesin kontrat şudur: motor path'i hamlenin bir parçası olarak taşır ve doğrular. Path'e yüklenen sosyal/stratejik anlam oyuncuların ve gelecekteki oyun tasarımının alanıdır.
+Sonuç:
 
-### Risk ve güven
+pending
+team-a-win
+team-b-win
+draw
 
-İki kişilik takımlarda sıradaki oyuncu önceki yerleşimin devamını getirebilir veya tahtayı daha güvenli bir duruma çekebilir.
+olabilir.
 
-Bu seçim Team Tetris'in hedeflediği temel gerilimdir:
+Gerekli bir seat bağlantıdan düşer veya oyun güvenli biçimde sürdürülemez hale gelirse state blocked olabilir ve reset istenebilir.
 
-- uyumlu ama riskli devam,
-- daha bağımsız ama güvenli hamle.
+🧠 Oyunun Tasarım Fikri
 
-Motor bu tercihi özel bir “risk puanı” kuralıyla zorunlu kılmaz; bu, Tetris durumu ve oyuncu davranışından doğan oyun dinamiğidir.
+Team Tetris'in ilginç tarafı dört kişinin sırayla Tetris oynaması değildir.
 
----
+Asıl fikir:
 
-## Henüz Garanti Edilmeyen / Gelecek Tasarım Alanları
+Oyuncuların yalnızca tahtayı değil, birbirlerinin kararlarını da okumaya çalışması.
 
-Aşağıdaki fikirler Team Tetris'in doğal genişleme alanlarıdır ancak güncel motor kontratının zorunlu parçası olarak kabul edilmemelidir:
+🕵️ Eksik Bilgiyle Düşünmek
 
-- path davranışından otomatik niyet/partner çıkarımı,
-- oyuncular arası gelişmiş sinyal skorları,
-- özel risk/güven metrikleri,
-- alternatif hidden-information modları,
-- maç sonrası davranış analizi veya açıklanabilir takım uyumu raporu.
+Hidden pair yapısı oyuncuyu yalnızca kendi tahtasına değil diğer oyuncuların davranışlarına da dikkat etmeye iter.
 
-Bu özelliklerden biri uygulandığında önce engine/runtime/test karşılığı oluşturulmalı, ardından bu belge “güncel implementasyon” bölümünde güncellenmelidir.
+Sorular:
 
----
+Partnerim kim olabilir?
+Önceki hamle ne hazırlıyor olabilir?
+Tahtayı güvenli mi bırakmalıyım?
+Bir sonraki oyuncunun planına güvenmeli miyim?
 
-## Kaynak Yapısı
+Motor bunların cevaplarını vermez.
 
-Team Tetris Game Room içinde yaşar:
+Bunlar oyuncu davranışından doğması beklenen stratejik katmandır.
 
-`rooms/game-room/main-functions/team-tetris/`
+🗣️ Tahta Bir İletişim Yüzeyi Olabilir
+
+Path encoding, boşluk bırakma, hizalama veya riskli yerleşim gibi kararlar başka oyuncular tarafından sinyal olarak yorumlanabilir.
+
+Bu nedenle Team Tetris'in uzun vadeli fikri:
+
+Doğrudan konuşmadan koordinasyon kurabilmek.
+
+Ancak mevcut engine yalnızca path'i veri olarak doğrular.
+
+Path'e yüklenen sosyal anlam bir motor kuralı değildir.
+
+⚠️ Risk ve Güven
+
+Takım oyuncusu önceki yerleşimi devam ettirebilir veya tahtayı daha güvenli hale getirebilir.
+
+Temel gerilim:
+
+uyumlu ama riskli devam
+        ↕
+bağımsız ama güvenli hamle
+
+Motor bunu ayrı bir risk puanı ile zorunlu kılmaz.
+
+Gerilim Tetris state'i ve oyuncu davranışından doğar.
+
+🔮 Henüz Garanti Edilmeyen Alanlar
+
+Aşağıdakiler tasarım yönüdür; mevcut motor kontratı olarak değerlendirilmemelidir:
+
+path'ten otomatik partner/niyet çıkarımı
+gelişmiş sinyal skorları
+risk/güven metrikleri
+alternatif hidden-information modları
+maç sonrası davranış analizi
+açıklanabilir takım uyumu raporu
+
+Bunlardan biri uygulanırsa önce engine/runtime/test karşılığı oluşturulmalı, sonra bu belge güncellenmelidir.
+
+🧱 Kaynak Yapısı
+rooms/game-room/main-functions/team-tetris/
 
 Önemli alanlar:
 
-- `host/engine-schema.ts` — board, seat, piece ve move schema sabitleri
-- `host/engine-board.ts` — board/placement kuralları
-- `host/engine-match.ts` — team, partner, turn ve match state
-- `host/runtime*.ts` — AI/US1 turn ve transport davranışları
-- `ui/` — oyun yüzeyi ve path seçimi
-- `protocols/` — AI opening/follow-up ve US1 transport protokolleri
+host/engine-schema.ts
+host/engine-board.ts
+host/engine-match.ts
+host/runtime*.ts
+ui/
+protocols/
 
-Game Room feature kontratı: `rooms/game-room/manifest.json`.
+Game Room feature kontratı:
 
----
-
-## Doğrulama
-
-Game Room veya Team Tetris değişikliklerinden sonra ilgili regressions ile birlikte repository kalite kapısı çalıştırılmalıdır:
-
-```bash
+rooms/game-room/manifest.json
+✅ Doğrulama
 npm run check:all
-```
-
-Room odaklı doğrulama için:
-
-```bash
 npm run rooms:typecheck
 npm run rooms:test:core
-```
 
-Feature'a özel regressions için `npm run rooms:test:file -- <test files>` kullanılabilir; tüm regression seti `npm run test:all` ile çalıştırılabilir.
+Feature regression:
 
----
+npm run rooms:test:file -- <test files>
+🎯 Sonuç
 
-## Sonuç
+Team Tetris'in bugünkü çekirdeği:
 
-Team Tetris'in bugün çalışan çekirdeği nettir:
+dört seat + iki takım + hidden pair state + tur sırası + path tabanlı doğrulanmış Tetris hamleleri + AI/US1 transport
 
-> dört seat + iki takım + hidden pair state + tur sırası + path tabanlı doğrulanmış Tetris hamleleri + AI/US1 transport.
+Bunun üzerine kurulan daha büyük fikir ise:
 
-Bunun üzerine kurulmak istenen daha büyük fikir ise oyuncuların yalnızca parçaları değil, birbirlerinin kararlarını da okumaya çalıştığı bir takım oyunudur.
+Oyuncuların yalnızca parçaları değil, birbirlerinin kararlarını da okumaya çalıştığı bir takım oyunu.
 
-Bu iki katmanı ayrı tutmak, oyunun mevcut durumunu dürüstçe belgelemeye ve tasarım alanını kaybetmeden geliştirmeye izin verir.
+Bu iki katmanı ayrı tutmak oyunun bugünkü durumunu dürüstçe anlatırken gelecekteki tasarım alanını da açık bırakır.
