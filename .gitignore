@@ -72,6 +72,13 @@ token.json
 
 # Screenshots
 screenshots/
+*.png
+*.jpg
+*.jpeg
+!mainhall.png
+!laboratory.png
+!repair.png
+!scene.png
 !android-companion/
 !android-companion/**
 !screenshots/
