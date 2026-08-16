@@ -31,6 +31,11 @@ type TeamTetrisSeatReadiness = {
   ai2: boolean;
   us1: boolean;
 };
+type TeamTetrisSerializedSeatReadiness = {
+  ai1: boolean;
+  ai2: boolean;
+  us1: boolean;
+};
 type TeamTetrisContext = ReturnType<typeof loadContext>;
 
 interface TeamTetrisRuntimeSyncApi extends TeamTetrisStateApi {
@@ -61,7 +66,7 @@ interface TeamTetrisSerializedState {
   lastRemoteTurnIndex: number | null;
   fourthSeatSource: TeamTetrisFourthSeatSource | null;
   canStart: boolean;
-  requiredSlots: TeamTetrisSeatReadiness;
+  requiredSlots: TeamTetrisSerializedSeatReadiness;
   board: {
     width: number;
     height: number;
@@ -151,6 +156,11 @@ function serializeTeamTetrisState(
   const userView = savedState.match ? buildTeamTetrisSeatView(savedState.match, localSeatId) : null;
   const fourthSeatSource =
     savedState.fourthSeatSource || resolveTeamTetrisFourthSeatSource(context, null);
+  const serializedReadiness: TeamTetrisSerializedSeatReadiness = {
+    ai1: readiness.ai1,
+    ai2: readiness.ai2,
+    us1: fourthSeatSource === "ai0" ? readiness.ai0 : readiness.us1,
+  };
   const boardSnapshots: TeamTetrisBoardSnapshot[] =
     userView !== null
       ? [
@@ -208,7 +218,7 @@ function serializeTeamTetrisState(
     lastRemoteTurnIndex: savedState.lastRemoteTurnIndex,
     fourthSeatSource,
     canStart,
-    requiredSlots: readiness,
+    requiredSlots: serializedReadiness,
     board: {
       width: TEAM_TETRIS_BOARD_WIDTH,
       height: TEAM_TETRIS_BOARD_HEIGHT,
