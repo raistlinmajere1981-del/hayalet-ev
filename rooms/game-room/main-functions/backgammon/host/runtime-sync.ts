@@ -17,6 +17,7 @@ import { getOpponentInfo, loadState, saveState } from "./state.js";
 import { blockMatch, isBlocked } from "./runtime-match.js";
 
 type TeamTetrisSeatReadiness = {
+  ai0: boolean;
   ai1: boolean;
   ai2: boolean;
   us1: boolean;
@@ -28,6 +29,7 @@ interface BackgammonRuntimeSyncApi extends TeamTetrisStateApi {
 
 function readTeamTetrisSeatReadiness(context: GameRoomContextState): TeamTetrisSeatReadiness {
   return {
+    ai0: context.assistant.dispatchable === true,
     ai1: context.slots.ai1.dispatchable === true,
     ai2: context.slots.ai2.dispatchable === true,
     us1: context.slots.us1.dispatchable === true,
@@ -73,7 +75,9 @@ export function syncFromContext(api: BackgammonRuntimeSyncApi, payload: unknown)
   saveState(api, state);
   if (teamTetrisState.match && teamTetrisState.result !== "blocked") {
     const readiness = readTeamTetrisSeatReadiness(context);
-    if (readiness.ai1 !== true || readiness.ai2 !== true || readiness.us1 !== true) {
+    const fourthSeatReady =
+      teamTetrisState.fourthSeatSource === "ai0" ? readiness.ai0 : readiness.us1;
+    if (readiness.ai1 !== true || readiness.ai2 !== true || fourthSeatReady !== true) {
       blockTeamTetrisMatch(api, teamTetrisState, "blockedOpponent", "required-seat-unavailable");
       return;
     }
