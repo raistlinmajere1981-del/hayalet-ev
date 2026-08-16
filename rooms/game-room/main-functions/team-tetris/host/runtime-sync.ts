@@ -15,6 +15,7 @@ import {
   createInitialTeamTetrisState,
   loadTeamTetrisState,
   saveTeamTetrisState,
+  type TeamTetrisFourthSeatSource,
   type TeamTetrisHostState,
   type TeamTetrisStateApi,
   type TeamTetrisStatusKey,
@@ -24,8 +25,12 @@ import { ROOM_ID, TEAM_TETRIS_FEATURE_ID } from "../../../shared/host/feature-me
 import { translate } from "../../../shared/host/text.js";
 import { loadState, pushRoomState } from "../../backgammon/host/state.js";
 
-type TeamTetrisRequiredSeatId = Exclude<TeamTetrisSeatId, "user">;
-type TeamTetrisSeatReadiness = Record<TeamTetrisRequiredSeatId, boolean>;
+type TeamTetrisSeatReadiness = {
+  ai0: boolean;
+  ai1: boolean;
+  ai2: boolean;
+  us1: boolean;
+};
 type TeamTetrisContext = ReturnType<typeof loadContext>;
 
 interface TeamTetrisRuntimeSyncApi extends TeamTetrisStateApi {
@@ -54,6 +59,7 @@ interface TeamTetrisSerializedState {
   remoteUserId: string | null;
   lastRemoteTransportMessageId: string | null;
   lastRemoteTurnIndex: number | null;
+  fourthSeatSource: TeamTetrisFourthSeatSource | null;
   canStart: boolean;
   requiredSlots: TeamTetrisSeatReadiness;
   board: {
@@ -86,10 +92,28 @@ function isTeamTetrisBlocked(state: TeamTetrisHostState): boolean {
 
 function getTeamTetrisReadiness(context: TeamTetrisContext): TeamTetrisSeatReadiness {
   return {
+    ai0: context.assistant.dispatchable === true,
     ai1: context.slots.ai1.dispatchable === true,
     ai2: context.slots.ai2.dispatchable === true,
     us1: context.slots.us1.dispatchable === true,
   };
+}
+
+function resolveTeamTetrisFourthSeatSource(
+  context: TeamTetrisContext,
+  preferred: TeamTetrisFourthSeatSource | null = null
+): TeamTetrisFourthSeatSource | null {
+  const readiness = getTeamTetrisReadiness(context);
+  if (preferred === "us1" && readiness.us1) {
+    return "us1";
+  }
+  if (preferred === "ai0" && readiness.ai0) {
+    return "ai0";
+  }
+  if (readiness.us1) {
+    return "us1";
+  }
+  return readiness.ai0 ? "ai0" : null;
 }
 
 function buildEmptyTeamTetrisRows(): string[] {
@@ -109,7 +133,7 @@ function resolveTeamTetrisStatusText(
     return "";
   }
   const readiness = getTeamTetrisReadiness(context);
-  const canStart = readiness.ai1 && readiness.ai2 && readiness.us1;
+  const canStart = readiness.ai1 && readiness.ai2 && (readiness.us1 || readiness.ai0);
   const statusKey: TeamTetrisStatusKey =
     canStart && state.statusKey === "idle" ? "ready" : state.statusKey;
   return translate(state.locale, TEAM_TETRIS_STATUS_COPY, statusKey);
@@ -121,10 +145,12 @@ function serializeTeamTetrisState(
   context: TeamTetrisContext
 ): TeamTetrisSerializedState {
   const readiness = getTeamTetrisReadiness(context);
-  const canStart = readiness.ai1 && readiness.ai2 && readiness.us1;
+  const canStart = readiness.ai1 && readiness.ai2 && (readiness.us1 || readiness.ai0);
   const savedState = saveTeamTetrisState(api, state);
   const localSeatId = resolveTeamTetrisLocalSeatId(savedState);
   const userView = savedState.match ? buildTeamTetrisSeatView(savedState.match, localSeatId) : null;
+  const fourthSeatSource =
+    savedState.fourthSeatSource || resolveTeamTetrisFourthSeatSource(context, null);
   const boardSnapshots: TeamTetrisBoardSnapshot[] =
     userView !== null
       ? [
@@ -180,6 +206,7 @@ function serializeTeamTetrisState(
     remoteUserId: savedState.remoteUserId,
     lastRemoteTransportMessageId: savedState.lastRemoteTransportMessageId,
     lastRemoteTurnIndex: savedState.lastRemoteTurnIndex,
+    fourthSeatSource,
     canStart,
     requiredSlots: readiness,
     board: {
@@ -258,6 +285,7 @@ export {
   pushActiveFeatureState,
   pushTeamTetrisState,
   resetTeamTetrisState,
+  resolveTeamTetrisFourthSeatSource,
   resolveTeamTetrisStatusText,
   serializeTeamTetrisState,
 };
