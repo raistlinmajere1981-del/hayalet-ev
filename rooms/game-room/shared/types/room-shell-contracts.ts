@@ -34,6 +34,7 @@ export interface GameRoomUserState {
 
 export interface GameRoomPresenceState {
   user: GameRoomUserState;
+  assistant: GameRoomSlotState;
   slots: {
     ai1: GameRoomSlotState;
     ai2: GameRoomSlotState;
@@ -46,6 +47,7 @@ export interface GameRoomContextState {
   features: GameRoomFeatureRecord[];
   activeFeature: GameRoomFeatureRecord;
   user: GameRoomUserState;
+  assistant: GameRoomSlotState;
   slots: GameRoomPresenceState["slots"];
   presence: GameRoomPresenceState;
 }
@@ -102,6 +104,7 @@ export function createGameRoomContextState(): GameRoomContextState {
     nickname: "User",
     avatar: null,
   };
+  const assistant = createGameRoomSlotState("ai0");
   const slots: GameRoomPresenceState["slots"] = {
     ai1: createGameRoomSlotState("ai1"),
     ai2: createGameRoomSlotState("ai2"),
@@ -116,9 +119,11 @@ export function createGameRoomContextState(): GameRoomContextState {
     features: featureRecords,
     activeFeature,
     user,
+    assistant,
     slots,
     presence: {
       user,
+      assistant: { ...assistant },
       slots: {
         ai1: { ...slots.ai1 },
         ai2: { ...slots.ai2 },
