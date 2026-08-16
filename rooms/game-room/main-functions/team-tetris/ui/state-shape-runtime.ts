@@ -72,7 +72,6 @@
   };
 
   type TeamTetrisRequiredSlotsInputRecord = {
-    ai0?: unknown;
     ai1?: unknown;
     ai2?: unknown;
     us1?: unknown;
@@ -176,7 +175,6 @@
           fourthSeatSource: null,
           canStart: false,
           requiredSlots: {
-            ai0: false,
             ai1: false,
             ai2: false,
             us1: false,
@@ -408,7 +406,6 @@
         if (isRecord(source.requiredSlots)) {
           const requiredSlots = source.requiredSlots as TeamTetrisRequiredSlotsInputRecord;
           next.requiredSlots = {
-            ai0: requiredSlots.ai0 === true,
             ai1: requiredSlots.ai1 === true,
             ai2: requiredSlots.ai2 === true,
             us1: requiredSlots.us1 === true,
