@@ -72,6 +72,7 @@
   };
 
   type TeamTetrisRequiredSlotsInputRecord = {
+    ai0?: unknown;
     ai1?: unknown;
     ai2?: unknown;
     us1?: unknown;
@@ -90,6 +91,7 @@
     boards?: unknown;
     canStart?: unknown;
     currentTurn?: unknown;
+    fourthSeatSource?: unknown;
     hiddenPairs?: unknown;
     matchId?: unknown;
     requiredSlots?: unknown;
@@ -171,8 +173,10 @@
           revealPairsOnFinish: true,
           blockedReason: "",
           matchId: null,
+          fourthSeatSource: null,
           canStart: false,
           requiredSlots: {
+            ai0: false,
             ai1: false,
             ai2: false,
             us1: false,
@@ -395,11 +399,16 @@
           typeof source.matchId === "string" && source.matchId.trim() !== ""
             ? source.matchId.trim()
             : null;
+        next["fourthSeatSource"] =
+          source.fourthSeatSource === "ai0" || source.fourthSeatSource === "us1"
+            ? source.fourthSeatSource
+            : null;
         next.canStart = source.canStart === true;
 
         if (isRecord(source.requiredSlots)) {
           const requiredSlots = source.requiredSlots as TeamTetrisRequiredSlotsInputRecord;
           next.requiredSlots = {
+            ai0: requiredSlots.ai0 === true,
             ai1: requiredSlots.ai1 === true,
             ai2: requiredSlots.ai2 === true,
             us1: requiredSlots.us1 === true,
