@@ -10,6 +10,8 @@ Hayalet Ev'in temel fikri basit:
 
 Bu fikir, uygulamanın yalnızca sohbet ekranını değil; odalarını, hafızasını, oyunlarını, araştırma akışlarını ve mimarisini belirler.
 
+![Hayalet Ev ana çalışma alanı](mainhall.png)
+
 ## 🧠 Hayalet Ev Nedir?
 
 Hayalet Ev, local-first çalışan çok-ajanlı bir çalışma ortamıdır.
@@ -24,6 +26,12 @@ Burada farklı AI slotları, insan kullanıcı ve desteklenen uzak kullanıcıla
 Slotların amacı belirli bir AI ürününü merkeze koymak değildir. Amaç, farklı zihinlerin aynı bağlam üzerinde çalışabilmesini sağlamaktır.
 
 AI slotları; kullanıcının erişebildiği web tabanlı AI oturumlarını, desteklenen harici AI servislerini ve yerel yardımcı/model katmanlarını aynı oda ve çalışma kontratlarına bağlayabilecek şekilde tasarlanır. Bağlantının nereden geldiği değişebilir; Hayalet Ev'in oda, hafıza ve katılımcı modeli aynı kalır.
+
+## 🚧 Proje Durumu
+
+Hayalet Ev aktif geliştirme aşamasındadır. Günlük kullanımda çalışan birçok akış bulunmasına rağmen eksikler, platforma bağlı sorunlar ve henüz keşfedilmemiş hatalar olabilir.
+
+Proje tamamlanmış veya kusursuz bir ürün iddiasıyla değil; kullanılabilen, incelenebilen, değiştirilebilen ve geliştirilmeye açık bir çalışma ortamı olarak paylaşılmaktadır. Kullanırken bulunan sorunların düzeltilmesi, yeni kullanım biçimlerinin denenmesi ve katkılar projenin doğal devamının parçasıdır.
 
 ## 🌒 Neden Var?
 
@@ -138,6 +146,8 @@ Rapor / Export
 AI ile devam
 ```
 
+![Laboratory çalışma alanı](laboratory.png)
+
 Detay: [LABORATORY.md](LABORATORY.md).
 
 ## 🔥 Forge Room
@@ -155,6 +165,8 @@ Repair Room elektronik onarım için proje tabanlı bir çalışma tezgâhıdır
 Cihaz bilgisi, semptomlar, riskler, evidence, schematic/datasheet kaynakları, PCB görüntüsü, ölçümler, annotation, timeline, AI sohbeti ve kamera akışları aynı repair session içinde tutulabilir.
 
 > AI önerir, ölçüm doğrular, operatör karar verir; session bütün izi saklar.
+
+![Repair Room çalışma alanı](repair.png)
 
 Detay: [REPAIRROOM.md](REPAIRROOM.md).
 
@@ -196,6 +208,8 @@ Detay: [PATTERNROOM.md](PATTERNROOM.md).
 Scene Mode, odaları menü veya kart listesinden çıkarıp Hayalet Ev'in fiziksel mekânına yerleştirir.
 
 Klasik modda bir oda açılır; Scene Mode'da bir odaya gidilir. Koridorlar, kapılar, masalar, hotspot'lar ve yakın görünümler aynı sahne içinde çalışır.
+
+![Hayalet Ev Scene Mode](scene.png)
 
 Detay: [SCENEMODE.md](SCENEMODE.md).
 
