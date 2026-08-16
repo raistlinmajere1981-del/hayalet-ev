@@ -33,13 +33,13 @@ See [../CONTRIBUTING.md](../CONTRIBUTING.md) for contribution rules and [../.rov
 
 The repository ships first-party rooms both as product features and as examples of the room architecture.
 
-| Room           | Status                 | Current scope                                                                                                                                  | Documentation                                                          |
-| -------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `laboratory`   | Implemented            | Media/audio project intake, readiness/tooling, processing, comparison and inspection, annotation/export, analysis and reporting.               | [Laboratory](../LABORATORY.md), [room ownership](laboratory/README.md) |
-| `forge-room`   | Implemented            | Goal/preflight workflow, task drafting, AI assignments, conflict review, synthesis and handoff packages.                                       | [Forge Room](../FORGEROOM.md)                                          |
-| `repair-room`  | Implemented            | Electronics repair sessions, evidence/knowledge packs, board/camera workbench, measurements, timeline/overlays, AI and hands-free interaction. | [Repair Room](repair-room/README.md)                                   |
-| `game-room`    | Implemented / evolving | Tavla and four-seat Team Tetris with AI/US1 participation and room transport.                                                                  | [Backgammon](../BACKGAMMON.md), [Team Tetris](../TEAM-TETRIS.md)       |
-| `pattern-room` | Prototype              | Phase-one local-only research-pattern surface with overview, board, desk, archive, dissent and report views.                                   | `pattern-room/manifest.json`                                           |
+| Room | Status | Current scope | Documentation |
+| --- | --- | --- | --- |
+| `laboratory` | Implemented | Media/audio project intake, readiness/tooling, processing, comparison and inspection, annotation/export, analysis and reporting. | [Laboratory](../LABORATORY.md), [room ownership](laboratory/README.md) |
+| `forge-room` | Implemented | Goal/preflight workflow, task drafting, AI assignments, conflict review, synthesis and handoff packages. | [Forge Room](../FORGEROOM.md) |
+| `repair-room` | Implemented | Electronics repair sessions, evidence/knowledge packs, board/camera workbench, measurements, timeline/overlays, AI and hands-free interaction. | [Repair Room](../REPAIRROOM.md) |
+| `game-room` | Implemented / evolving | Tavla and four-seat Team Tetris with AI/US1 participation and room transport. | [Backgammon](../BACKGAMMON.md), [Team Tetris](../TEAM-TETRIS.md) |
+| `pattern-room` | Prototype / evolving | Layered research workspace with sources, evidence, relationships, Case Review, persistence and reporting. | [Pattern Room](../PATTERNROOM.md) |
 
 Status labels describe the current repository surface, not a compatibility or long-term support guarantee.
 
@@ -72,7 +72,9 @@ Game Room currently contains two functioning game systems:
 
 ### Pattern Room
 
-Pattern Room is intentionally marked as a prototype. Its manifest describes a phase-one dummy/local-only surface; it should not be presented as a finished investigation product yet.
+Pattern Room is still marked as prototype/evolving, but its current implementation goes beyond the early phase-one surface. It includes layered research data, source/evidence handling, relationships, Case Review roles and lifecycle, snapshot persistence, review history and reporting surfaces.
+
+It should still not be presented as a finished or independent verification product; the room is designed to keep evidence, analysis, interpretation and uncertainty distinct while preserving the research trace.
 
 ## Packaging
 
@@ -97,4 +99,10 @@ npm run rooms:typecheck
 npm run rooms:test:core
 ```
 
-For feature-specific room regressions use `npm run rooms:test:file -- <test files>`. For Laboratory-specific changes prefer its complete room gate shown above.
+For feature-specific room regressions use:
+
+```bash
+npm run rooms:test:file -- <test files>
+```
+
+For Laboratory-specific changes prefer its complete room gate shown above.

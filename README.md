@@ -1,52 +1,43 @@
-👻 Hayalet Ev
+# 👻 Hayalet Ev
 
-Hayalet Ev bir uygulama değil.
-
-Bir masa, bir alan, bir akış.
+Hayalet Ev bir uygulama değil; bir masa, bir alan, bir akış.
 
 İnsan ve yapay zekânın yalnızca konuştuğu değil; birlikte düşündüğü, tartıştığı, araştırdığı, ürettiği, onardığı ve oyun kurduğu yerel bir dijital ortam.
 
 Hayalet Ev'in temel fikri basit:
 
-AI'lar yalnızca kullanılan araçlar değil, aynı çalışma alanını paylaşan katılımcılardır.
+> **AI'lar yalnızca kullanılan araçlar değil, aynı çalışma alanını paylaşan katılımcılardır.**
 
 Bu fikir, uygulamanın yalnızca sohbet ekranını değil; odalarını, hafızasını, oyunlarını, araştırma akışlarını ve mimarisini belirler.
 
-🧠 Hayalet Ev Nedir?
+## 🧠 Hayalet Ev Nedir?
 
 Hayalet Ev, local-first çalışan çok-ajanlı bir çalışma ortamıdır.
 
 Burada farklı AI slotları, insan kullanıcı ve desteklenen uzak kullanıcılar aynı çalışma bağlamının parçaları olabilir.
 
-AI1 / AI2 — aynı probleme farklı zihinlerden bakabilen AI katılımcıları
-AI0 — yerel araçlara, hafızaya ve çalışma akışlarına erişebilen yardımcı katman
-US1 — desteklenen akışlarda başka bir Hayalet Ev kullanıcısına açılan uzak katılımcı
-USER — sistemin dışında duran bir operatör değil, çalışma ortamının doğrudan katılımcısı
+- **AI1 / AI2** — aynı probleme farklı zihinlerden bakabilen AI katılımcıları.
+- **AI0** — yerel araçlara, hafızaya ve çalışma akışlarına erişebilen yardımcı katman.
+- **US1** — desteklenen akışlarda başka bir Hayalet Ev kullanıcısına açılan uzak katılımcı.
+- **USER** — sistemin dışında duran bir operatör değil, çalışma ortamının doğrudan katılımcısı.
 
-Slotların amacı belirli bir AI ürününü merkeze koymak değildir.
+Slotların amacı belirli bir AI ürününü merkeze koymak değildir. Amaç, farklı zihinlerin aynı bağlam üzerinde çalışabilmesini sağlamaktır.
 
-Amaç, farklı zihinlerin aynı bağlam üzerinde çalışabilmesini sağlamaktır.
-
-🌒 Neden Var?
+## 🌒 Neden Var?
 
 Klasik AI kullanımı çoğunlukla şöyle çalışır:
 
+```text
 insan → prompt → AI → cevap
+```
 
 Hayalet Ev bu akışın yeterli olmadığı düşüncesinden doğdu.
 
-Gerçek bir çalışma çoğu zaman tek bir cevaptan oluşmaz.
-
-Bir fikir ortaya çıkar.
-Bir başkası onu sorgular.
-Başka bir kaynak bulunur.
-Bir ölçüm yapılır.
-Bir çelişki ortaya çıkar.
-Bir karar verilir.
-Sonuç başka bir çalışmaya aktarılır.
+Gerçek bir çalışma çoğu zaman tek bir cevaptan oluşmaz: bir fikir ortaya çıkar, biri onu sorgular, başka bir kaynak bulunur, ölçüm yapılır, çelişki çıkar, karar verilir ve sonuç başka bir çalışmaya aktarılır.
 
 Hayalet Ev bu süreci tek tek sohbet pencerelerine bölmek yerine aynı ortamda tutmaya çalışır.
 
+```text
 insan
   ↕
 AI1 ↔ AI2
@@ -54,77 +45,81 @@ AI1 ↔ AI2
 çalışma alanı
   ↕
 kaynaklar / ölçümler / oyunlar / araçlar / hafıza
+```
 
-Bu yüzden Hayalet Ev'in asıl ürünü bir chatbot değildir.
+Bu yüzden Hayalet Ev'in asıl ürünü bir chatbot değil, **çalışma ortamıdır**.
 
-Çalışma ortamıdır.
+## 🏠 Ev Fikri
 
-🏠 Ev Fikri
+“Hayalet Ev” yalnızca görsel bir metafor değildir. Uygulamanın yapısı gerçekten bir ev fikrini takip eder:
 
-“Hayalet Ev” yalnızca görsel bir metafor değildir.
+- **Entrance** — giriş,
+- **Analyze** — ortak masa,
+- **Rooms** — uzmanlaşmış çalışma alanları,
+- **Archives** — hafıza.
 
-Uygulamanın yapısı gerçekten bir ev fikrini takip eder:
+Odalar yalnızca uygulama sayfaları değildir; her biri belirli bir iş için kurulmuş çalışma alanıdır.
 
-Entrance — giriş
-Analyze — ortak masa
-Rooms — uzmanlaşmış çalışma alanları
-Archives — hafıza
-
-Odalar yalnızca uygulama sayfaları değildir.
-
-Her biri belirli bir iş için kurulmuş çalışma alanıdır.
-
-Laboratory'de medya incelenir.
-Forge Room'da fikirler iş paketlerine dönüştürülür.
-Repair Room'da fiziksel cihazlarla çalışılır.
-Pattern Room'da araştırma ve belirsizlikler düzenlenir.
-Game Room'da insanlar ve AI'lar aynı oyun kurallarına girer.
+- Laboratory'de medya incelenir.
+- Forge Room'da fikirler iş paketlerine dönüştürülür.
+- Repair Room'da fiziksel cihazlarla çalışılır.
+- Pattern Room'da araştırma ve belirsizlikler düzenlenir.
+- Game Room'da insanlar ve AI'lar aynı oyun kurallarına girer.
 
 Scene Mode ise bu odaları gerçekten bir mekânın parçaları gibi yaşatır.
 
-Listeye bakmak yerine evin içinde dolaşabilirsin.
+## ✨ Bugün Neler Yapabiliyor?
 
-✨ Bugün Neler Yapabiliyor?
-
-Güncel main dalında Hayalet Ev yalnızca çoklu-AI sohbeti değildir.
+Güncel `main` dalında Hayalet Ev yalnızca çoklu-AI sohbeti değildir.
 
 Ana çalışma yüzeyleri:
 
-AI1, AI2, AI0 ve desteklenen US1 akışları arasında slot tabanlı çalışma
-kalıcı konuşma ve çalışma bağlamları için Archive sistemi
-bağımsız geliştirilebilen ve .hevroom olarak paketlenebilen Room mimarisi
-medya, görüntü ve ses inceleme/analizi için Laboratory
-fikirleri görev, cevap, çelişki ve sentez akışına dönüştüren Forge Room
-elektronik onarım oturumlarını evidence, ölçüm, kamera ve AI desteğiyle birleştiren Repair Room
-AI ve uzak kullanıcılarla oynanabilen Game Room
-araştırma materyalini evidence, analysis, interpretation ve uncertainty katmanlarında düzenleyen Pattern Room
-odaları fiziksel bir mekân gibi sunan Scene Mode
-kamera, capture ve yerel konuşma özellikleri için Android Companion
-yerel araçlara ve masaüstü iş akışlarına erişim sağlayan MCP tabanlı yardımcı servisler
+- AI1, AI2, AI0 ve desteklenen US1 akışları arasında slot tabanlı çalışma,
+- kalıcı konuşma ve çalışma bağlamları için Archive sistemi,
+- bağımsız geliştirilebilen ve `.hevroom` olarak paketlenebilen Room mimarisi,
+- medya, görüntü ve ses inceleme/analizi için Laboratory,
+- fikirleri görev, cevap, çelişki ve sentez akışına dönüştüren Forge Room,
+- elektronik onarım oturumlarını evidence, ölçüm, kamera ve AI desteğiyle birleştiren Repair Room,
+- AI ve uzak kullanıcılarla oynanabilen Game Room,
+- araştırma materyalini evidence, analysis, interpretation ve uncertainty katmanlarında düzenleyen Pattern Room,
+- odaları fiziksel bir mekân gibi sunan Scene Mode,
+- kamera, capture ve yerel konuşma özellikleri için Android Companion,
+- yerel araçlara ve masaüstü iş akışlarına erişim sağlayan MCP tabanlı yardımcı servisler.
 
 Bazı özellikler FFmpeg, model dosyaları, Android/ADB veya harici AI servisleri gibi ek sistem bileşenleri gerektirebilir.
 
-README uygulanmış çalışma yüzeyini özetler; özelliklerin ayrıntılı sınırları ilgili oda belgelerinde bulunur.
+## 📚 Dokümantasyon
 
-🚪 Yerleşik Odalar
+| Alan | Belge |
+| --- | --- |
+| Oda mimarisi ve paketleme | [rooms/README.md](rooms/README.md) |
+| Laboratory | [LABORATORY.md](LABORATORY.md) |
+| Forge Room | [FORGEROOM.md](FORGEROOM.md) |
+| Repair Room | [REPAIRROOM.md](REPAIRROOM.md) |
+| Pattern Room | [PATTERNROOM.md](PATTERNROOM.md) |
+| Backgammon / Tavla | [BACKGAMMON.md](BACKGAMMON.md) |
+| Team Tetris | [TEAM-TETRIS.md](TEAM-TETRIS.md) |
+| Scene Mode | [SCENEMODE.md](SCENEMODE.md) |
+| Android Companion | [ANDROIDCOMPANION.md](ANDROIDCOMPANION.md) |
+| Güvenlik | [SECURITY.md](SECURITY.md) |
 
-Oda	Durum	Rolü
-Laboratory	Uygulanmış	Medya ve ses kaynaklarını hazırlamak, incelemek, analiz etmek ve bulguları raporlamak
-Forge Room	Uygulanmış	Belirsiz hedefleri uygulanabilir iş paketlerine dönüştürmek
-Repair Room	Uygulanmış	Fiziksel elektronik onarım sürecini AI, evidence ve gerçek ölçümlerle aynı oturumda tutmak
-Game Room	Uygulanmış / gelişiyor	İnsan, AI ve uzak kullanıcıları ortak oyun kurallarında buluşturmak
-Pattern Room	Prototip / gelişiyor	Kaynak, kanıt, yorum, çelişki ve belirsizlikleri araştırma bağlamında düzenlemek
+## 🚪 Yerleşik Odalar
 
-Ayrıntılar: rooms/README.md.
+| Oda | Durum | Rolü |
+| --- | --- | --- |
+| Laboratory | Uygulanmış | Medya ve ses kaynaklarını hazırlamak, incelemek, analiz etmek ve bulguları raporlamak |
+| Forge Room | Uygulanmış | Belirsiz hedefleri uygulanabilir iş paketlerine dönüştürmek |
+| Repair Room | Uygulanmış | Fiziksel elektronik onarım sürecini AI, evidence ve gerçek ölçümlerle aynı oturumda tutmak |
+| Game Room | Uygulanmış / gelişiyor | İnsan, AI ve uzak kullanıcıları ortak oyun kurallarında buluşturmak |
+| Pattern Room | Prototip / gelişiyor | Kaynak, kanıt, yorum, çelişki ve belirsizlikleri araştırma bağlamında düzenlemek |
 
-🧪 Laboratory
+Ayrıntılar: [rooms/README.md](rooms/README.md).
 
-Laboratory bir medya oynatıcı değildir.
+## 🧪 Laboratory
 
-Bir çalışma kaynağını projeye alır, gerekli araçları ve modelleri kontrol eder, medya veya sesi işler, insan incelemesine açar, annotation ve karşılaştırma imkânı sağlar ve sonuçları tekrar kullanılabilir bir çalışma bağlamında tutar.
+Laboratory bir medya oynatıcı değildir. Bir çalışma kaynağını projeye alır, gerekli araçları ve modelleri kontrol eder, medya veya sesi işler, insan incelemesine açar, annotation ve karşılaştırma imkânı sağlar ve sonuçları tekrar kullanılabilir bir çalışma bağlamında tutar.
 
-Temel akış:
-
+```text
 Kaynak
   ↓
 Hazırlık
@@ -138,318 +133,161 @@ Karşılaştırma / Annotation
 Rapor / Export
   ↓
 AI ile devam
+```
 
-Detay: LABORATORY.md.
+Detay: [LABORATORY.md](LABORATORY.md).
 
-🔥 Forge Room
+## 🔥 Forge Room
 
-Forge Room bir chat ekranı değildir.
-
-Belirsiz bir hedefi alır ve onu:
-
-hedef
-  ↓
-preflight
-  ↓
-görev taslağı
-  ↓
-AI assignment
-  ↓
-yanıtlar
-  ↓
-çelişkiler
-  ↓
-sentez
-  ↓
-handoff
-
-akışına dönüştürür.
+Forge Room bir chat ekranı değildir. Belirsiz bir hedefi hedef → preflight → görev taslağı → AI assignment → yanıtlar → çelişkiler → sentez → handoff akışına dönüştürür.
 
 AI cevaplarını nihai karar olarak değil, üretim sürecinin parçaları olarak ele alır.
 
-Detay: FORGEROOM.md.
+Detay: [FORGEROOM.md](FORGEROOM.md).
 
-🔧 Repair Room
+## 🔧 Repair Room
 
 Repair Room elektronik onarım için proje tabanlı bir çalışma tezgâhıdır.
 
 Cihaz bilgisi, semptomlar, riskler, evidence, schematic/datasheet kaynakları, PCB görüntüsü, ölçümler, annotation, timeline, AI sohbeti ve kamera akışları aynı repair session içinde tutulabilir.
 
-Temel ilke:
+> AI önerir, ölçüm doğrular, operatör karar verir; session bütün izi saklar.
 
-AI önerir, ölçüm doğrular, operatör karar verir; session bütün izi saklar.
+Detay: [REPAIRROOM.md](REPAIRROOM.md).
 
-Detay: rooms/repair-room/README.md.
-
-🎮 Game Room
+## 🎮 Game Room
 
 Game Room AI'yı yalnızca oyun hakkında konuşan bir yardımcı olmaktan çıkarıp oyunun kurallarına tabi bir katılımcı haline getirir.
 
-Tavla
+### Tavla
 
-Kullanıcı AI1, AI2 veya desteklenen US1 uzak kullanıcısıyla oynayabilir.
+Kullanıcı AI1, AI2 veya desteklenen US1 uzak kullanıcısıyla oynayabilir. Legal hamleler host tarafından hesaplanır. AI kendi hamlesini icat etmez; geçerli hamleler arasından seçim yapar.
 
-Legal hamleler host tarafından hesaplanır. AI kendi hamlesini icat etmez; geçerli hamleler arasından seçim yapar.
+Detay: [BACKGAMMON.md](BACKGAMMON.md).
 
-Team Tetris
+### Team Tetris
 
-USER, AI1, AI2 ve US1 dört koltuklu bir takım oyununda aynı motorun içinde yer alabilir.
+USER, AI1, AI2 ve US1 dört koltuklu bir takım oyununda aynı motorun içinde yer alabilir. Hidden pair yapısı ve path tabanlı hamleler oyunun mevcut çekirdeğinin parçasıdır.
 
-Hidden pair yapısı ve path tabanlı hamleler oyunun mevcut çekirdeğinin parçasıdır.
+Detay: [TEAM-TETRIS.md](TEAM-TETRIS.md).
 
-Detaylar:
-
-FORGEROOM.md
-
-🧩 Pattern Room
+## 🧩 Pattern Room
 
 Pattern Room araştırmayı tek bir “doğru cevap” üretme sürecine indirgemez.
 
 Araştırma materyalini:
 
-Evidence
-Analysis
-Interpretation
-Uncertainty
+- Evidence,
+- Analysis,
+- Interpretation,
+- Uncertainty
 
 katmanlarına ayırır.
 
-Bir yorum kanıt değildir.
-Bir bağlantı doğrulama değildir.
-Bir confidence değeri doğruluk puanı değildir.
-Bir AI cevabı nihai karar değildir.
+Bir yorum kanıt değildir. Bir bağlantı doğrulama değildir. Bir confidence değeri doğruluk puanı değildir. Bir AI cevabı nihai karar değildir.
 
-Pattern Room'un amacı araştırmayı kesinleştirmekten önce araştırmanın nasıl yapıldığını görünür tutmaktır.
+Detay: [PATTERNROOM.md](PATTERNROOM.md).
 
-Detay: PATTERNROOM.md.
-
-🎭 Scene Mode
+## 🎭 Scene Mode
 
 Scene Mode, odaları menü veya kart listesinden çıkarıp Hayalet Ev'in fiziksel mekânına yerleştirir.
 
-Klasik modda bir oda açılır.
+Klasik modda bir oda açılır; Scene Mode'da bir odaya gidilir. Koridorlar, kapılar, masalar, hotspot'lar ve yakın görünümler aynı sahne içinde çalışır.
 
-Scene Mode'da ise:
+Detay: [SCENEMODE.md](SCENEMODE.md).
 
-Bir odaya gidilir.
+## 🧩 Slot Sistemi
 
-Koridorlar, kapılar, masalar, hotspot'lar ve yakın görünümler aynı sahne içinde çalışır.
+Evde herkesin bir yeri vardır:
 
-Bir oda açıldığında ana fonksiyonları da sahnedeki fiziksel nesneler gibi konumlandırılabilir.
-
-Scene Mode yalnızca görsel bir tema değildir.
-
-Hayalet Ev'in “ev” fikrini kullanıcı deneyimine taşıyan katmandır.
-
-Detay: SCENEMODE.md.
-
-🧩 Slot Sistemi
-
-Evde herkesin bir yeri vardır.
-
-AI1 / AI2 — farklı AI katılımcıları
-AI0 — yerel yardımcı katman
-US1 — uzak kullanıcı
-USER — çalışma ortamının insan katılımcısı
+- **AI1 / AI2** — farklı AI katılımcıları,
+- **AI0** — yerel yardımcı katman,
+- **US1** — uzak kullanıcı,
+- **USER** — çalışma ortamının insan katılımcısı.
 
 Slot sistemi belirli bir AI sağlayıcısına bağımlı olmak için değil, katılımcıları çalışma akışlarından ayırmak için kullanılır.
 
-Böylece bir oda:
-
-“Şu AI ile konuş”
-
-demek yerine:
-
-“Bu rolü bu katılımcıya ver”
-
-diyebilir.
-
-🔄 Akış
+## 🔄 Akış
 
 Hayalet Ev'de konuşma tek başına son ürün değildir.
 
-Bir konuşma başka bir şeye dönüşebilir:
-
+```text
 konuşma → analiz → karar
 fikir → görevler → sentez
 medya → inceleme → rapor
 onarım → evidence → ölçüm → bulgu
 oyun → hamle → durum → sonuç
 mesaj → relay → yeni bağlam
+```
 
-Bu nedenle çalışma nesneleri ve session'lar önemlidir.
+Bu nedenle çalışma nesneleri ve session'lar önemlidir. Bir iş yalnızca ekranda görünür olduğu sürece değil, tekrar açılabildiği ve bağlamıyla birlikte devam ettirilebildiği sürece yaşar.
 
-Bir iş yalnızca ekranda görünür olduğu sürece değil, tekrar açılabildiği ve bağlamıyla birlikte devam ettirilebildiği sürece yaşar.
+## 🧠 Hafıza
 
-🧠 Hafıza
+Archive sistemi konuşmaları ve çalışma bağlamlarını saklar. Amaç yalnızca log tutmak değil, bir çalışmanın geçmişte ne söylendiğini, hangi bağlamdan geldiğini ve gerektiğinde nereden devam edilebileceğini korumaktır.
 
-Archive sistemi konuşmaları ve çalışma bağlamlarını saklar.
+## 📱 Android Companion
 
-Amaç yalnızca log tutmak değildir.
+`android-companion/`, masaüstü Hayalet Ev ile birlikte çalışan yerel Android yardımcı uygulamasıdır.
 
-Bir çalışmanın geçmişte ne söylendiğini, hangi bağlamdan geldiğini ve gerektiğinde nereden devam edilebileceğini korumaktır.
+Güncel akışlarda kamera preview, masaüstünden capture/command, yerel wake-word algılama, çevrimdışı transcription, desteklenen Analyze/Repair akışlarına fotoğraf ve transcript aktarımı ve companion install/update kontrolü kullanılabilir.
 
-Hafıza, geçmiş mesajların deposundan çok biriken çalışma alanıdır.
+Detay: [ANDROIDCOMPANION.md](ANDROIDCOMPANION.md).
 
-📱 Android Companion
+## 🧱 Room Mimarisi
 
-android-companion/, masaüstü Hayalet Ev ile birlikte çalışan yerel Android yardımcı uygulamasıdır.
-
-Güncel akışlarda:
-
-kamera preview
-masaüstünden capture/command
-yerel wake-word algılama
-çevrimdışı transcription
-desteklenen Analyze/Repair akışlarına fotoğraf ve transcript aktarımı
-companion install/update kontrolü
-
-kullanılabilir.
-
-Detay: ANDROIDCOMPANION.md.
-
-🧱 Room Mimarisi
-
-Oda kaynakları rooms/<room-id> altında kendi:
-
-manifest
-UI
-host runtime
-protocol
-i18n
-asset
-
-katmanlarıyla yaşar.
+Oda kaynakları `rooms/<room-id>` altında kendi manifest, UI, host runtime, protocol, i18n ve asset katmanlarıyla yaşar.
 
 Temel kural:
 
-Core odaları keşfeder ve çalıştırır; oda kendi iş alanını sahiplenir.
+> **Core odaları keşfeder ve çalıştırır; oda kendi iş alanını sahiplenir.**
 
-Room kodu mümkün olduğunca core implementasyon ayrıntılarına bağlanmaz.
+Dağıtılabilir oda formatı `.hevroom`'dur.
 
-Dağıtılabilir oda formatı .hevroom'dur.
+Kaynak/runtime/storage ayrımı için: [rooms/README.md](rooms/README.md).
 
-Kaynak/runtime/storage ayrımı için rooms/README.md.
+## 🤖 Assistant / AI0
 
-🤖 Assistant / AI0
+AI0, Hayalet Ev'in yerel yardımcı katmanıdır. Araçlara erişebilir, oda protokollerinde görev alabilir ve gerektiğinde çalışma bağlamı veya hafıza üzerinden devreye girebilir.
 
-AI0, Hayalet Ev'in yerel yardımcı katmanıdır.
+## 🌐 US1
 
-Araçlara erişebilir, oda protokollerinde görev alabilir ve gerektiğinde çalışma bağlamı veya hafıza üzerinden devreye girebilir.
-
-AI0 her zaman konuşmaz; gerektiğinde hazırdır.
-
-🌐 US1
-
-US1 başka bir Hayalet Ev kullanıcısına açılan bağlantıdır.
-
-Desteklenen akışlarda uzak kullanıcı:
-
-mesajlaşabilir,
-oyunlara katılabilir,
-ortak çalışma bağlamının bir parçası olabilir.
+US1 başka bir Hayalet Ev kullanıcısına açılan bağlantıdır. Desteklenen akışlarda uzak kullanıcı mesajlaşabilir, oyunlara katılabilir ve ortak çalışma bağlamının bir parçası olabilir.
 
 Game Room'daki Tavla ve Team Tetris bunun doğrudan örnekleridir.
 
-Bağlantı ve güvenlik davranışları SECURITY.md kapsamında ele alınır.
+Bağlantı ve güvenlik davranışları [SECURITY.md](SECURITY.md) kapsamında ele alınır.
 
-⚙️ Mimari
+## ⚙️ Mimari
 
 Hayalet Ev'in temel teknik yapısı:
 
-Electron
-Vite
-TypeScript
-local-first veri yapısı
-slot tabanlı AI bağlantısı
-MCP araçları
-Room tabanlı genişleme mimarisi
-Android Companion
-oda sınırlarında yönetilen medya/model/tool bağımlılıkları
+- Electron,
+- Vite,
+- TypeScript,
+- local-first veri yapısı,
+- slot tabanlı AI bağlantısı,
+- MCP araçları,
+- Room tabanlı genişleme mimarisi,
+- Android Companion,
+- oda sınırlarında yönetilen medya/model/tool bağımlılıkları.
 
-Mimari ayrıntılar rooms/README.md ve geliştirme belgelerinde açıklanır.
-
-🚀 Geliştirici Başlangıcı
+## 🚀 Geliştirici Başlangıcı
 
 Gereksinimler:
 
-Node.js 22+
-npm 10+
+- Node.js 22+
+- npm 10+
+
+```bash
 npm ci
 npm run electron:dev
+```
 
 Tam kalite kapısı:
 
+```bash
 npm run check:all
+```
 
-Bazı medya, otomasyon, Android ve paketleme özellikleri ek sistem araçları gerektirebilir.
-
-📚 Belgeler
-
-ONBOARDING.md — ilk kullanım
-LABORATORY.md — Laboratory
-FORGEROOM.md — Forge Room
-BACKGAMMON.md — Tavla
-TEAM-TETRIS.md — Team Tetris
-PATTERNROOM.md — Pattern Room
-SCENEMODE.md — Scene Mode
-rooms/README.md — Room mimarisi
-rooms/repair-room/README.md — Repair Room
-android-companion/README.md — Android Companion
-CONTRIBUTING.md — katkı kuralları
-PACKAGING.md — paketleme
-SECURITY.md — güvenlik
-THIRD_PARTY_NOTICES.md — üçüncü taraf materyaller
-
-🧬 Çalışma Biçimi
-
-Hayalet Ev yalnızca kod deposu değildir.
-
-AGENTS.md ve .rovo/ belgeleri mimari sınırları, geliştirme yöntemlerini ve AI destekli çalışma sırasında korunacak kararları tanımlar.
-
-Bu belgeler projenin nasıl geliştirileceğini anlatır.
-
-README ise neden böyle bir şey yapıldığını anlatır.
-
-🎯 Amaç
-
-Hayalet Ev'in uzun vadeli amacı:
-
-tek bir AI sağlayıcısına bağımlı olmayan,
-farklı AI'ların aynı çalışma alanında birlikte bulunabilmesini sağlayan,
-yerel araçlarla çalışabilen,
-geliştirilebilir ve paylaşılabilir,
-insan, AI ve uzak katılımcıları ortak çalışma akışlarında buluşturan
-
-açık bir dijital çalışma ortamı oluşturmaktır.
-
-📄 Lisans
-
-Hayalet Ev kaynak kodu MIT Lisansı altında sunulur.
-
-Kullanabilir, değiştirebilir, dağıtabilir ve kendi projelerinde değerlendirebilirsin; MIT lisans ve telif bildirimlerinin korunması gerekir.
-
-Projede kullanılan üçüncü taraf bağımlılıklar, modeller, ikonlar veya diğer harici varlıklar kendi lisans ve kaynak bildirimlerine tabidir.
-
-🧠 Son Söz
-
-Hayalet Ev'i bir uygulama gibi kullanabilirsin.
-
-Ama fikir biraz daha farklıdır.
-
-Bir konu geldiğinde konuşursun.
-Bir sorun çıktığında doğru odaya götürürsün.
-Bir araştırma gerektiğinde kaynakları masaya koyarsın.
-Bir iş yapılacaksa parçalara ayırırsın.
-Bir cihaz bozulduğunda ölçer ve kaydedersin.
-Bir oyun açıldığında aynı kurallara girersin.
-
-AI cevap verir.
-
-Başka bir AI itiraz eder.
-
-İnsan ölçer, seçer, değiştirir veya reddeder.
-
-Ve bütün bunlar aynı yerde kalır.
-
-Hayalet Ev, AI kullanmak için yapılmış bir uygulama değil; insan ve AI'ların birlikte çalışabileceği bir dijital ortam denemesidir.
+Bazı medya, otomasyon, Android ve model özellikleri ek sistem bağımlılıkları gerektirebilir.

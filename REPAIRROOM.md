@@ -1,214 +1,190 @@
-🔧 Repair Room
+# 🔧 Repair Room
 
 Repair Room, Hayalet Ev içinde elektronik onarım çalışmalarını tek bir session altında tutan dijital çalışma tezgâhıdır.
 
-Amaç yalnızca PCB görüntüsüne bakmak veya AI'ya soru sormak değildir.
+Amaç yalnızca PCB görüntüsüne bakmak veya AI'ya soru sormak değildir. Cihaz bilgisi, semptomlar, evidence, kaynaklar, ölçümler, görsel işaretler, riskler, konuşma geçmişi ve onarım zaman çizgisi aynı çalışma bağlamında tutulabilir.
 
-Cihaz bilgisi, semptomlar, evidence, kaynaklar, ölçümler, görsel işaretler, riskler, konuşma geçmişi ve onarım zaman çizgisi aynı çalışma bağlamında tutulabilir.
+> **AI önerir, ölçüm doğrular, operatör karar verir; session bütün izi saklar.**
 
-Temel ilke:
+## 🧰 Repair Workbench
 
-AI önerir, ölçüm doğrular, operatör karar verir; session bütün izi saklar.
+Güncel `repair-workbench` yüzeyi şunları aynı çalışma alanında birleştirir:
 
-🧰 Repair Workbench
-
-Güncel repair-workbench yüzeyi:
-
-repair session oluşturma
-session seçme
-güncelleme
-arşivleme
-silme
-cihaz bilgisi
-semptom
-risk seviyesi
-evidence araştırması
-knowledge kaynakları
-PCB/kamera çalışma alanı
-annotation
-measurement
-timeline
-AI chat
-operator profile
-hands-free kullanım
-Android Companion kamera
-
-gibi parçaları aynı çalışma alanında birleştirir.
+- repair session oluşturma,
+- session seçme,
+- güncelleme,
+- arşivleme,
+- silme,
+- cihaz bilgisi,
+- semptom,
+- risk seviyesi,
+- evidence araştırması,
+- knowledge kaynakları,
+- PCB/kamera çalışma alanı,
+- annotation,
+- measurement,
+- timeline,
+- AI chat,
+- operator profile,
+- hands-free kullanım,
+- Android Companion kamera.
 
 Bazı özellikler bağlı AI slotu, Android Companion veya merkezi capture/TTS runtime gerektirir.
 
-🔧 Repair Session
+## 🔧 Repair Session
 
 Her onarım bir session olarak ele alınır.
 
 Session içinde örneğin:
 
-cihaz/board kimliği
-semptom
-risk
-evidence
-knowledge pack
-ölçümler
-annotation
-AI mark
-timeline
-sohbet bağlamı
-operator tercihleri
+- cihaz/board kimliği,
+- semptom,
+- risk,
+- evidence,
+- knowledge pack,
+- ölçümler,
+- annotation,
+- AI mark,
+- timeline,
+- sohbet bağlamı,
+- operator tercihleri
 
 korunabilir.
 
 Amaç onarımı birbirinden kopuk ekran görüntülerine veya sohbet mesajlarına bölmemektir.
 
-📚 Evidence ve Knowledge
+## 📚 Evidence ve Knowledge
 
 Yeni session Assistant AI ile evidence araştırması başlatabilir veya bu adımı atlayabilir.
 
 Knowledge katmanı:
 
-schematic
-board image
-datasheet
-forum/thread
-operator note
-common failure
-rail
-probe/test point
+- schematic,
+- board image,
+- datasheet,
+- forum/thread,
+- operator note,
+- common failure,
+- rail,
+- probe/test point
 
 gibi kaynakları session'a bağlayabilir.
 
 Kullanıcı hangi parçaların çalışma arşivine gireceğini seçebilir.
 
-Buradaki önemli ayrım:
-
 AI araştırması kararın kendisi değildir; evidence paketinin bir parçasıdır.
 
-🖼️ PCB / Kamera Workbench
+## 🖼️ PCB / Kamera Workbench
 
 Workbench canlı veya freeze-frame board görüntüsü üzerinde çalışabilir.
 
 Komut yüzeyleri arasında:
 
-aktif araç
-freeze-frame
-grid
-AI mark
-annotation
-pin
-zoom/pan
-investigation region
-live edge'e dönüş
+- aktif araç,
+- freeze-frame,
+- grid,
+- AI mark,
+- annotation,
+- pin,
+- zoom/pan,
+- investigation region,
+- live edge'e dönüş
 
 bulunur.
 
 Android Companion bağlı olduğunda telefon kamerası Repair Room için capture kaynağı olabilir.
 
-📏 Measurement ve Timeline
+## 📏 Measurement ve Timeline
 
-Ölçüm yalnızca ekranda görünen geçici bir sayı değildir.
-
-Session'a kayıt olarak eklenebilir.
+Ölçüm yalnızca ekranda görünen geçici bir sayı değildir; session'a kayıt olarak eklenebilir.
 
 Timeline:
 
-annotation
-measurement
-note
-AI mark
-risk flag
+- annotation,
+- measurement,
+- note,
+- AI mark,
+- risk flag
 
 gibi olayları taşıyabilir.
 
-Böylece daha sonra:
+Böylece daha sonra “Bu ölçüm hangi anda ve hangi görsel bağlamda alındı?” sorusuna dönmek mümkün olur.
 
-“Bu ölçüm hangi anda ve hangi görsel bağlamda alındı?”
-
-sorusuna dönmek mümkün olur.
-
-🤖 Assistant AI
+## 🤖 Assistant AI
 
 Repair Room Assistant farklı görevler için ayrılmış protokoller kullanır:
 
-repair-room-assistant-evidence
-repair-room-assistant-observation
-repair-room-assistant-chat
-repair-room-assistant-risk-scan
+- `repair-room-assistant-evidence`
+- `repair-room-assistant-observation`
+- `repair-room-assistant-chat`
+- `repair-room-assistant-risk-scan`
 
-AI çıktısı ölçümün veya operatör kararının yerine geçmez.
+AI çıktısı ölçümün veya operatör kararının yerine geçmez; çalışma alanına yardımcı bir katman ekler.
 
-AI çalışma alanına yardımcı bir katman ekler.
-
-🎙️ Hands-free
+## 🎙️ Hands-free
 
 Repair Room ellerin meşgul olduğu çalışma koşullarını da hesaba katabilir.
 
 Desteklenen kontrol yüzeyleri:
 
-dictation
-ambient listener
-TTS guidance
-camera feed
-photo capture
-camera torch
+- dictation,
+- ambient listener,
+- TTS guidance,
+- camera feed,
+- photo capture,
+- camera torch.
 
 Room ayrıca AI interruption/attention budget gibi rehberlik tercihlerini taşıyabilir.
 
-👤 Operator Profile
-
-Her kullanıcı aynı ekipmana veya deneyime sahip değildir.
+## 👤 Operator Profile
 
 Operator profile:
 
-araçlar
-beceriler
-çalışma tercihleri
-novice/advanced yoğunluğu
-hands-free tercihleri
+- araçlar,
+- beceriler,
+- çalışma tercihleri,
+- novice/advanced yoğunluğu,
+- hands-free tercihleri
 
 gibi bilgileri workbench davranışına bağlayabilir.
 
-🧭 Spatial Investigation
+## 🧭 Spatial Investigation
 
 Investigation mode, board üzerindeki anlamlı entity ve region'ların knowledge ile ilişkilendirilmesini sağlar.
 
 Bir knowledge referansı geçici olarak odaklanabilir veya canonical investigation event haline getirilebilir.
 
-Amaç:
+Amaç bilgi kartı ile fiziksel board bölgesi arasındaki ilişkiyi kaybetmemektir.
 
-Bilgi kartı ile fiziksel board bölgesi arasındaki ilişkiyi kaybetmemek.
+## 🧱 Room Boundary
 
-🧱 Room Boundary
+Repair Room'un source of truth'u `rooms/repair-room` altındadır.
 
-Repair Room'un source of truth'u:
+- `manifest.json` feature, command ve protocol kontratlarını tanımlar.
+- `host/` runtime'ı taşır.
+- `main-functions/` domain ve protokol parçalarını taşır.
+- `shared/` room-local ortak katmandır.
+- `ui/` kullanıcı yüzeyidir.
+- `i18n/` çevirileri taşır.
 
-rooms/repair-room
+Core, Repair Room'un iş mantığını sahiplenmemelidir. Room core ile desteklenen room/SlotBridge/command sınırları üzerinden konuşur.
 
-altındadır.
+## ✅ Doğrulama
 
-manifest.json feature, command ve protocol kontratlarını tanımlar.
-host/ runtime'ı taşır.
-main-functions/ domain ve protokol parçalarını taşır.
-shared/ room-local ortak katmandır.
-ui/ kullanıcı yüzeyidir.
-i18n/ çevirileri taşır.
-
-Core, Repair Room'un iş mantığını sahiplenmemelidir.
-
-Room core ile desteklenen room/SlotBridge/command sınırları üzerinden konuşur.
-
-✅ Doğrulama
+```bash
 npm run rooms:typecheck
 npm run test:all
 npm run check:all
+```
 
 Feature-specific regression için:
 
+```bash
 npm run rooms:test:file -- <test files>
-🎯 Amaç
+```
 
-Repair Room'un hedefi:
+## 🎯 Amaç
 
-“AI ile cihaz tamir etmek” değildir.
+Repair Room'un hedefi “AI ile cihaz tamir etmek” değildir.
 
-Hedef;
-
-insanın gözlemini, gerçek ölçümleri, kaynak bilgisini ve AI desteğini birbirinin yerine koymadan aynı onarım günlüğünde birleştirmektir.
+Hedef; insanın gözlemini, gerçek ölçümleri, kaynak bilgisini ve AI desteğini birbirinin yerine koymadan aynı onarım günlüğünde birleştirmektir.
