@@ -13,7 +13,7 @@ interface TeamTetrisEngine {
 }
 
 function getEngine(): TeamTetrisEngine {
-  return gameRoomHostModule.teamTetrisEngine as TeamTetrisEngine;
+  return gameRoomHostModule.teamTetrisEngine as unknown as TeamTetrisEngine;
 }
 
 function findSeedForFirstSeat(targetSeatId: string): string {
