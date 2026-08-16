@@ -111,7 +111,7 @@
   "teamTetris": {
     "heroBadge": "Game Room",
     "heroTitle": "Team Tetris Table",
-    "heroSubtitle": "A four-seat, turn-based deduction Tetris match for the local user, AI1, AI2, and the connected US1 remote user.",
+    "heroSubtitle": "A four-seat, turn-based deduction Tetris match for the local user, AI1, AI2, and either AI0 or the connected US1 remote user.",
     "controls": {
       "featureLabel": "Main Function",
       "requirementsLabel": "Start Gate",
@@ -124,7 +124,7 @@
       "partnerHint": "The chosen seat joins USER. The remaining two seats become the other team.",
       "start": "Start Match",
       "reset": "Reset Match",
-      "startHint": "The match starts only when AI1, AI2, and US1 are ready. If pairs are visible from the start, the local partner must be selected first.",
+      "startHint": "The match starts when AI1, AI2, and either AI0 or US1 are ready. If pairs are visible from the start, the local partner must be selected first.",
       "requirementReady": "Ready",
       "requirementWaiting": "Waiting",
       "awaitingTurn": "Waiting for the local user's turn packet.",
@@ -157,7 +157,7 @@
     "status": {
       "roomApiUnavailable": "Room API bridge is not connected.",
       "commandSendFailed": "The command could not be sent to the room host.",
-      "idle": "Waiting for AI1, AI2, and US1 before Team Tetris can start.",
+      "idle": "Waiting for AI1, AI2, and either AI0 or US1 before Team Tetris can start.",
       "ready": "All required seats are ready. The Team Tetris opener can be seeded.",
       "activeFeatureReset": "Leaving the Team Tetris feature resets the active Team Tetris match.",
       "blocked": "This Team Tetris match is blocked. Reset to recover.",
