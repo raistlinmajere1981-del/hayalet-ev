@@ -1,5 +1,5 @@
 {
-  "name": "app",
+  "name": "hayalet-ev",
   "version": "5.4.0",
   "description": "Hayalet Ev - İnsan ve AI arasında kolektif zihin platformu",
   "main": "dist/electron/main.js",
