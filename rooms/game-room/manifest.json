@@ -250,6 +250,24 @@
           "exposure": "internal"
         }
       ],
+      "protocolSpecs": [
+        {
+          "key": "game-room-yahtzee-ai-turn",
+          "room": "game-room",
+          "scenario": "yahtzee-ai-turn",
+          "title": "[TURN][GAME-ROOM][YAHTZEE][AI]",
+          "editable": true,
+          "path": "main-functions/yahtzee/protocols/game-room-yahtzee-ai-turn.md"
+        },
+        {
+          "key": "game-room-yahtzee-us1-transport",
+          "room": "game-room",
+          "scenario": "yahtzee-us1-transport",
+          "title": "[INFO][GAME-ROOM][YAHTZEE][US1-TRANSPORT]",
+          "editable": false,
+          "path": "main-functions/yahtzee/protocols/game-room-yahtzee-us1-transport.md"
+        }
+      ],
       "scene": {
         "hotspot": {
           "id": "game-room-yahtzee",
