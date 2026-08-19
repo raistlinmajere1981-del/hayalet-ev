@@ -171,9 +171,11 @@ function createPlayersForMode(
 }
 
 function determineWinner(players: YahtzeePlayerState[]): YahtzeeSeatId | null {
-  if (players.length < 2 || players.some((player) => player.complete !== true)) return null;
-  if (players[0].total === players[1].total) return null;
-  return players[0].total > players[1].total ? players[0].seatId : players[1].seatId;
+  const first = players[0];
+  const second = players[1];
+  if (!first || !second || players.some((player) => player.complete !== true)) return null;
+  if (first.total === second.total) return null;
+  return first.total > second.total ? first.seatId : second.seatId;
 }
 
 export function createYahtzeeTurnToken(turnIndex: number, revision: number): string {
@@ -193,7 +195,7 @@ export function createInitialYahtzeeState(
   labels: Partial<Record<YahtzeeSeatId, string>> = {}
 ): YahtzeeHostState {
   const players = createPlayersForMode(mode, labels);
-  const activePlayer = players[0];
+  const activePlayer = players[0]!;
   return {
     schemaVersion: YAHTZEE_SCHEMA_VERSION,
     mode,
@@ -239,7 +241,13 @@ export function createYahtzeeMatchState(
 }
 
 export function getActiveYahtzeePlayer(state: YahtzeeHostState): YahtzeePlayerState {
-  return state.players[state.activePlayerIndex] || state.players[0];
+  const activePlayer = state.players[state.activePlayerIndex] ?? state.players[0];
+  if (activePlayer) return activePlayer;
+  const fallback = createPlayer("user", "Player 1");
+  state.players = [fallback];
+  state.activePlayerIndex = 0;
+  state.activeSeatId = "user";
+  return fallback;
 }
 
 export function isYahtzeeSeatLocallyControlled(state: YahtzeeHostState): boolean {
@@ -300,17 +308,20 @@ export function normalizeYahtzeeState(candidate: unknown): YahtzeeHostState {
   let players: YahtzeePlayerState[];
 
   if (rawPlayers.length > 0) {
-    players = [sanitizePlayer(rawPlayers[0], "user")];
+    const localPlayer = sanitizePlayer(rawPlayers[0], "user");
+    localPlayer.seatId = "user";
+    players = [localPlayer];
     if (opponentSeatId !== null) {
-      players.push(sanitizePlayer(rawPlayers[1], opponentSeatId));
-      players[1].seatId = opponentSeatId;
+      const opponent = sanitizePlayer(rawPlayers[1], opponentSeatId);
+      opponent.seatId = opponentSeatId;
+      players.push(opponent);
     }
-    players[0].seatId = "user";
   } else {
     players = createPlayersForMode(mode);
     if (isRecord(source["card"])) {
-      players[0].card = sanitizeCard(source["card"]);
-      refreshPlayer(players[0]);
+      const localPlayer = players[0]!;
+      localPlayer.card = sanitizeCard(source["card"]);
+      refreshPlayer(localPlayer);
     }
   }
 
@@ -320,7 +331,7 @@ export function normalizeYahtzeeState(candidate: unknown): YahtzeeHostState {
       ? source["activePlayerIndex"]
       : 0;
   const activePlayerIndex = Math.max(0, Math.min(rawActivePlayerIndex, players.length - 1));
-  const activePlayer = players[activePlayerIndex] || players[0];
+  const activePlayer = players[activePlayerIndex] ?? players[0]!;
   const revision =
     typeof source["revision"] === "number" && Number.isInteger(source["revision"]) && source["revision"] >= 0
       ? source["revision"]
