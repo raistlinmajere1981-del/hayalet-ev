@@ -14,6 +14,7 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
         id?: string;
         scene?: unknown;
         commandSpecs?: Array<{ name?: string; scope?: string }>;
+        protocolSpecs?: Array<{ key?: string; path?: string }>;
       }>;
     };
     assert.equal(manifest.version, "2.7.0");
@@ -35,6 +36,17 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
         "GameRoomYahtzeeRemoteStart",
         "GameRoomYahtzeeRemoteSync",
         "GameRoomYahtzeeRemoteReset",
+      ]
+    );
+    assert.deepEqual(
+      yahtzeeFeature?.protocolSpecs?.map((entry) => entry.key),
+      ["game-room-yahtzee-ai-turn", "game-room-yahtzee-us1-transport"]
+    );
+    assert.deepEqual(
+      yahtzeeFeature?.protocolSpecs?.map((entry) => entry.path),
+      [
+        "main-functions/yahtzee/protocols/game-room-yahtzee-ai-turn.md",
+        "main-functions/yahtzee/protocols/game-room-yahtzee-us1-transport.md",
       ]
     );
 
@@ -62,6 +74,8 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/babylon-scene.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/runtime.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/bridge.js`,
+      `${installedCopy.rootDir}/main-functions/yahtzee/protocols/game-room-yahtzee-ai-turn.md`,
+      `${installedCopy.rootDir}/main-functions/yahtzee/protocols/game-room-yahtzee-us1-transport.md`,
     ].forEach((filePath) => {
       assert.equal(existsSync(filePath), true, filePath);
     });
