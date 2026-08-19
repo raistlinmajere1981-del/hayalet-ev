@@ -49,13 +49,13 @@
   let state = createState();
   let selectedMode = "solo";
   let audioEnabled = true;
-  let audioContext = null;
-  let ambienceNode = null;
+  let audioRuntime = null;
   let babylonHandle = null;
   let mountedRoot = null;
   let mountedShell = null;
   let mountedOverlay = null;
   let pendingRollAnimation = false;
+  let localRollAnimationStartedAt = 0;
 
   function createPlayer(seatId, label) {
     return {
@@ -143,60 +143,53 @@
     return state.activeSeatId === (state.localSeatId || "user");
   }
 
-  function getAudioContext() {
-    if (!audioEnabled) return null;
-    if (audioContext) return audioContext;
-    const AudioContextCtor = global.AudioContext || global.webkitAudioContext;
-    if (typeof AudioContextCtor !== "function") return null;
-    audioContext = new AudioContextCtor();
-    return audioContext;
+  function getAudioRuntime() {
+    if (audioRuntime) return audioRuntime;
+    const registry = global.GameRoomYahtzeeAudioRuntime;
+    if (!registry || typeof registry.create !== "function") return null;
+    audioRuntime = registry.create();
+    if (audioRuntime && typeof audioRuntime.setEnabled === "function") {
+      audioRuntime.setEnabled(audioEnabled);
+    }
+    return audioRuntime;
   }
 
   function playWoodClick(frequency) {
-    const context = getAudioContext();
-    if (!context) return;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = "triangle";
-    oscillator.frequency.value = frequency || 150;
-    gain.gain.setValueAtTime(0.08, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.09);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.1);
+    const audio = getAudioRuntime();
+    if (audio && typeof audio.playWoodClick === "function") {
+      audio.playWoodClick(frequency);
+    }
   }
 
   function playDiceSound() {
-    const context = getAudioContext();
-    if (!context) return;
-    for (let index = 0; index < 5; index += 1) {
-      global.setTimeout(function () {
-        playWoodClick(115 + Math.random() * 95);
-      }, index * 34);
+    const audio = getAudioRuntime();
+    if (audio && typeof audio.playDice === "function") {
+      audio.playDice();
     }
   }
 
   function ensureAmbience() {
-    const context = getAudioContext();
-    if (!context || ambienceNode) return;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.value = 43;
-    gain.gain.value = 0.006;
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start();
-    ambienceNode = { oscillator: oscillator, gain: gain };
+    if (!audioEnabled) return;
+    const audio = getAudioRuntime();
+    if (audio && typeof audio.startAmbience === "function") {
+      audio.startAmbience();
+    }
   }
 
   function stopAmbience() {
-    if (!ambienceNode) return;
-    try {
-      ambienceNode.oscillator.stop();
-    } catch (_error) {
-      /* already stopped */
+    if (audioRuntime && typeof audioRuntime.stopAmbience === "function") {
+      audioRuntime.stopAmbience();
     }
-    ambienceNode = null;
+  }
+
+  function disposeAudio() {
+    if (!audioRuntime) return;
+    try {
+      if (typeof audioRuntime.dispose === "function") audioRuntime.dispose();
+    } catch (_error) {
+      /* best effort */
+    }
+    audioRuntime = null;
   }
 
   function disposeBabylon() {
@@ -218,12 +211,18 @@
     };
   }
 
-  function didRoll(previousTurn, nextTurn) {
-    if (!nextTurn || typeof nextTurn !== "object") return false;
-    const previousCount =
-      previousTurn && typeof previousTurn === "object" ? Number(previousTurn.rollCount) || 0 : 0;
+  function didRoll(previousState, nextState) {
+    if (!nextState || typeof nextState !== "object") return false;
+    const previousTurn =
+      previousState && previousState.turn && typeof previousState.turn === "object"
+        ? previousState.turn
+        : {};
+    const nextTurn = nextState.turn && typeof nextState.turn === "object" ? nextState.turn : {};
+    const previousCount = Number(previousTurn.rollCount) || 0;
     const nextCount = Number(nextTurn.rollCount) || 0;
-    return nextCount > previousCount;
+    const previousTurnIndex = Number(previousState && previousState.turnIndex) || 0;
+    const nextTurnIndex = Number(nextState.turnIndex) || 0;
+    return nextCount > previousCount || (nextTurnIndex !== previousTurnIndex && nextCount > 0);
   }
 
   function mountBabylon(canvas) {
@@ -428,6 +427,7 @@
       playDiceSound();
       if (babylonHandle && typeof babylonHandle.beginRoll === "function") {
         babylonHandle.beginRoll();
+        localRollAnimationStartedAt = Date.now();
       }
       command("GameRoomYahtzeeRoll", {});
     });
@@ -438,6 +438,8 @@
     sound.textContent = t("sound") + ": " + (audioEnabled ? t("soundOn") : t("soundOff"));
     sound.addEventListener("click", function () {
       audioEnabled = !audioEnabled;
+      const audio = getAudioRuntime();
+      if (audio && typeof audio.setEnabled === "function") audio.setEnabled(audioEnabled);
       if (audioEnabled) ensureAmbience();
       else stopAmbience();
       render(root);
@@ -488,7 +490,14 @@
         ? message.payload
         : {};
     if (payload.state && typeof payload.state === "object") {
-      pendingRollAnimation = didRoll(state.turn, payload.state.turn);
+      const rolled = didRoll(state, payload.state);
+      const localAnimationIsFresh =
+        localRollAnimationStartedAt > 0 && Date.now() - localRollAnimationStartedAt < 1200;
+      pendingRollAnimation = rolled && !localAnimationIsFresh;
+      if (rolled && localAnimationIsFresh) localRollAnimationStartedAt = 0;
+      if (localRollAnimationStartedAt > 0 && Date.now() - localRollAnimationStartedAt >= 1600) {
+        localRollAnimationStartedAt = 0;
+      }
       state = payload.state;
       if (!state.active && !state.complete && MODES.includes(state.mode)) {
         selectedMode = state.mode;
@@ -506,11 +515,13 @@
     dispose: function () {
       disposeBabylon();
       stopAmbience();
+      disposeAudio();
       if (mountedRoot) mountedRoot.classList.remove("yahtzee-root");
       mountedRoot = null;
       mountedShell = null;
       mountedOverlay = null;
       pendingRollAnimation = false;
+      localRollAnimationStartedAt = 0;
     },
   };
 })(window);
