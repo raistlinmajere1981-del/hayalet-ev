@@ -26,6 +26,10 @@ import {
 } from "../main-functions/team-tetris/host/runtime.js";
 import {
   YAHTZEE_COMMAND_NAMES,
+  handleYahtzeeAiAction,
+  handleYahtzeeRemoteReset,
+  handleYahtzeeRemoteStart,
+  handleYahtzeeRemoteSync,
   handleYahtzeeReset,
   handleYahtzeeRoll,
   handleYahtzeeScore,
@@ -161,8 +165,8 @@ export default function createGameRoomHostRuntime() {
         backgammonCommandNames: BACKGAMMON_COMMAND_NAMES,
       });
 
-      commands[YAHTZEE_COMMAND_NAMES.start] = function () {
-        return handleYahtzeeStart(api);
+      commands[YAHTZEE_COMMAND_NAMES.start] = function (payload?: unknown) {
+        return handleYahtzeeStart(api, payload ?? {});
       };
       commands[YAHTZEE_COMMAND_NAMES.reset] = function () {
         return handleYahtzeeReset(api);
@@ -175,6 +179,18 @@ export default function createGameRoomHostRuntime() {
       };
       commands[YAHTZEE_COMMAND_NAMES.score] = function (payload?: unknown) {
         return handleYahtzeeScore(api, payload ?? {});
+      };
+      commands[YAHTZEE_COMMAND_NAMES.aiAction] = function (payload?: unknown) {
+        return handleYahtzeeAiAction(api, payload ?? {});
+      };
+      commands[YAHTZEE_COMMAND_NAMES.remoteStart] = function (payload?: unknown) {
+        return handleYahtzeeRemoteStart(api, payload ?? {});
+      };
+      commands[YAHTZEE_COMMAND_NAMES.remoteSync] = function (payload?: unknown) {
+        return handleYahtzeeRemoteSync(api, payload ?? {});
+      };
+      commands[YAHTZEE_COMMAND_NAMES.remoteReset] = function (payload?: unknown) {
+        return handleYahtzeeRemoteReset(api, payload ?? {});
       };
 
       return {
