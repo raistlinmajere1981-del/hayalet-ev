@@ -52,6 +52,10 @@
   let audioContext = null;
   let ambienceNode = null;
   let babylonHandle = null;
+  let mountedRoot = null;
+  let mountedShell = null;
+  let mountedOverlay = null;
+  let pendingRollAnimation = false;
 
   function createPlayer(seatId, label) {
     return {
@@ -109,7 +113,7 @@
 
   function command(name, roomArgs) {
     if (!global.roomAPI || typeof global.roomAPI.sendCommand !== "function") return;
-    global.roomAPI.sendCommand(name, { roomArgs: roomArgs || {} });
+    global.roomAPI.sendCommand(name, roomArgs || {});
   }
 
   function getPlayers() {
@@ -198,126 +202,35 @@
   function disposeBabylon() {
     if (!babylonHandle) return;
     try {
-      global.removeEventListener("resize", babylonHandle.resize);
-      babylonHandle.engine.dispose();
+      babylonHandle.dispose();
     } catch (_error) {
       /* best effort */
     }
     babylonHandle = null;
   }
 
-  function createPirate(B, scene, x, z, scale, material) {
-    const body = B.MeshBuilder.CreateCylinder(
-      "pirate-body",
-      {
-        height: 1.7 * scale,
-        diameterTop: 0.62 * scale,
-        diameterBottom: 0.78 * scale,
-        tessellation: 8,
-      },
-      scene
-    );
-    body.position = new B.Vector3(x, 1.15 * scale, z);
-    body.material = material;
-    const head = B.MeshBuilder.CreateSphere(
-      "pirate-head",
-      { diameter: 0.58 * scale, segments: 8 },
-      scene
-    );
-    head.position = new B.Vector3(x, 2.18 * scale, z);
-    head.material = material;
-    const hat = B.MeshBuilder.CreateCylinder(
-      "pirate-hat",
-      { height: 0.18 * scale, diameter: 0.9 * scale, tessellation: 3 },
-      scene
-    );
-    hat.position = new B.Vector3(x, 2.53 * scale, z);
-    hat.rotation.y = Math.PI / 2;
-    hat.material = material;
+  function turnVisualState() {
+    const turn = state.turn && typeof state.turn === "object" ? state.turn : {};
+    return {
+      dice: Array.isArray(turn.dice) ? turn.dice : [1, 1, 1, 1, 1],
+      held: Array.isArray(turn.held) ? turn.held : [false, false, false, false, false],
+      rollCount: Number(turn.rollCount) || 0,
+    };
+  }
+
+  function didRoll(previousTurn, nextTurn) {
+    if (!nextTurn || typeof nextTurn !== "object") return false;
+    const previousCount =
+      previousTurn && typeof previousTurn === "object" ? Number(previousTurn.rollCount) || 0 : 0;
+    const nextCount = Number(nextTurn.rollCount) || 0;
+    return nextCount > previousCount;
   }
 
   function mountBabylon(canvas) {
-    const B = global.BABYLON;
-    if (!B || typeof B.Engine !== "function" || typeof B.Scene !== "function") return false;
-
-    disposeBabylon();
-    const engine = new B.Engine(canvas, true, { preserveDrawingBuffer: false, stencil: true });
-    const scene = new B.Scene(engine);
-    scene.clearColor = new B.Color4(0.008, 0.012, 0.028, 1);
-    const camera = new B.ArcRotateCamera(
-      "camera",
-      -Math.PI / 2,
-      1.08,
-      12.2,
-      new B.Vector3(0, 0.65, 0),
-      scene
-    );
-    camera.lowerRadiusLimit = 9.5;
-    camera.upperRadiusLimit = 14;
-    camera.attachControl(canvas, true);
-
-    const moon = new B.HemisphericLight("moon", new B.Vector3(0, 1, -0.3), scene);
-    moon.intensity = 0.22;
-    const candle = new B.PointLight("candle", new B.Vector3(0, 3.2, -0.2), scene);
-    candle.diffuse = new B.Color3(1, 0.56, 0.2);
-    candle.intensity = 1.9;
-    candle.range = 13;
-
-    const wood = new B.StandardMaterial("wood", scene);
-    wood.diffuseColor = new B.Color3(0.19, 0.075, 0.027);
-    wood.specularColor = new B.Color3(0.08, 0.05, 0.03);
-    const darkWood = new B.StandardMaterial("dark-wood", scene);
-    darkWood.diffuseColor = new B.Color3(0.07, 0.025, 0.014);
-    const pirateMat = new B.StandardMaterial("pirate", scene);
-    pirateMat.diffuseColor = new B.Color3(0.12, 0.09, 0.07);
-
-    const deck = B.MeshBuilder.CreateGround(
-      "deck",
-      { width: 18, height: 13, subdivisions: 1 },
-      scene
-    );
-    deck.material = wood;
-    const table = B.MeshBuilder.CreateBox("table", { width: 7.3, depth: 4.3, height: 0.42 }, scene);
-    table.position.y = 0.66;
-    table.material = darkWood;
-
-    for (let index = 0; index < 5; index += 1) {
-      const die = B.MeshBuilder.CreateBox("die-" + index, { size: 0.72 }, scene);
-      die.position = new B.Vector3(-2.15 + index * 1.08, 1.24, 0.15 + (index % 2) * 0.16);
-      const dieMat = new B.StandardMaterial("die-mat-" + index, scene);
-      dieMat.diffuseColor = new B.Color3(0.35, 0.18, 0.07);
-      die.material = dieMat;
-    }
-
-    createPirate(B, scene, -4.2, 1.8, 0.86, pirateMat);
-    createPirate(B, scene, 4.25, 1.95, 0.92, pirateMat);
-    createPirate(B, scene, -2.8, 3.7, 0.72, pirateMat);
-    createPirate(B, scene, 2.75, 3.85, 0.76, pirateMat);
-
-    const mast = B.MeshBuilder.CreateCylinder(
-      "mast",
-      { height: 8, diameter: 0.5, tessellation: 12 },
-      scene
-    );
-    mast.position = new B.Vector3(6.8, 3.4, 2.6);
-    mast.material = darkWood;
-
-    let sway = 0;
-    scene.onBeforeRenderObservable.add(function () {
-      sway += engine.getDeltaTime() * 0.00035;
-      camera.target.y = 0.65 + Math.sin(sway) * 0.035;
-      candle.intensity = 1.72 + Math.sin(sway * 17) * 0.16 + Math.sin(sway * 7) * 0.08;
-    });
-
-    engine.runRenderLoop(function () {
-      scene.render();
-    });
-    const resize = function () {
-      engine.resize();
-    };
-    global.addEventListener("resize", resize);
-    babylonHandle = { engine: engine, scene: scene, resize: resize };
-    return true;
+    const sceneRuntime = global.GameRoomYahtzeeBabylonScene;
+    if (!sceneRuntime || typeof sceneRuntime.mount !== "function") return false;
+    babylonHandle = sceneRuntime.mount(canvas, turnVisualState());
+    return Boolean(babylonHandle);
   }
 
   function renderDice(container) {
@@ -332,6 +245,8 @@
       button.type = "button";
       button.className = "yahtzee-die" + (held[index] ? " is-held" : "");
       button.disabled = !localTurn || state.turn.rollCount >= 3;
+      button.setAttribute("aria-pressed", held[index] ? "true" : "false");
+      button.dataset.dieIndex = String(index);
       button.innerHTML =
         '<span class="yahtzee-die-value">' +
         String(value) +
@@ -413,11 +328,9 @@
     return base + " · " + t("turn") + ": " + (current ? current.label : state.activeSeatId);
   }
 
-  function render(root) {
+  function createSceneShell(root) {
     disposeBabylon();
     root.innerHTML = "";
-    root.classList.add("yahtzee-root");
-
     const shell = document.createElement("section");
     shell.className = "yahtzee-shell";
     shell.innerHTML =
@@ -425,6 +338,39 @@
 
     const overlay = document.createElement("div");
     overlay.className = "yahtzee-overlay";
+    shell.append(overlay);
+
+    const note = document.createElement("div");
+    note.className = "yahtzee-runtime-note";
+    shell.append(note);
+
+    root.append(shell);
+    mountedRoot = root;
+    mountedShell = shell;
+    mountedOverlay = overlay;
+
+    const canvas = shell.querySelector(".yahtzee-babylon-canvas");
+    const fallback = shell.querySelector(".yahtzee-fallback-art");
+    const babylonActive = Boolean(canvas && mountBabylon(canvas));
+    shell.classList.toggle("is-babylon-active", babylonActive);
+    if (canvas) canvas.hidden = !babylonActive;
+    if (fallback) fallback.hidden = babylonActive;
+    note.hidden = babylonActive;
+  }
+
+  function ensureSceneShell(root) {
+    if (mountedRoot !== root || !mountedShell || !mountedOverlay || !root.contains(mountedShell)) {
+      createSceneShell(root);
+    }
+  }
+
+  function render(root) {
+    ensureSceneShell(root);
+    root.classList.add("yahtzee-root");
+    const shell = mountedShell;
+    const overlay = mountedOverlay;
+    if (!shell || !overlay) return;
+
     overlay.innerHTML =
       '<header class="yahtzee-header"><div><span class="yahtzee-kicker">' +
       t("kicker") +
@@ -480,6 +426,9 @@
     roll.addEventListener("click", function () {
       ensureAmbience();
       playDiceSound();
+      if (babylonHandle && typeof babylonHandle.beginRoll === "function") {
+        babylonHandle.beginRoll();
+      }
       command("GameRoomYahtzeeRoll", {});
     });
     controls.append(roll);
@@ -522,19 +471,12 @@
     playArea.append(scoreStack);
     overlay.append(playArea);
 
-    shell.append(overlay);
-    root.append(shell);
-
-    const canvas = shell.querySelector(".yahtzee-babylon-canvas");
-    const fallback = shell.querySelector(".yahtzee-fallback-art");
-    if (canvas && mountBabylon(canvas)) {
-      fallback.hidden = true;
-    } else {
-      const note = document.createElement("div");
-      note.className = "yahtzee-runtime-note";
-      note.textContent = t("babylonMissing");
-      shell.append(note);
+    const note = shell.querySelector(".yahtzee-runtime-note");
+    if (note) note.textContent = t("babylonMissing");
+    if (babylonHandle && typeof babylonHandle.update === "function") {
+      babylonHandle.update(turnVisualState(), { animate: pendingRollAnimation });
     }
+    pendingRollAnimation = false;
   }
 
   function handleState(message) {
@@ -546,6 +488,7 @@
         ? message.payload
         : {};
     if (payload.state && typeof payload.state === "object") {
+      pendingRollAnimation = didRoll(state.turn, payload.state.turn);
       state = payload.state;
       if (!state.active && !state.complete && MODES.includes(state.mode)) {
         selectedMode = state.mode;
@@ -563,6 +506,11 @@
     dispose: function () {
       disposeBabylon();
       stopAmbience();
+      if (mountedRoot) mountedRoot.classList.remove("yahtzee-root");
+      mountedRoot = null;
+      mountedShell = null;
+      mountedOverlay = null;
+      pendingRollAnimation = false;
     },
   };
 })(window);
