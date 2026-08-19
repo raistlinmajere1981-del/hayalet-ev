@@ -3,6 +3,8 @@ export const PAGE_ID = "room:game-room:backgammon";
 export const FEATURE_ID = "backgammon";
 export const TEAM_TETRIS_FEATURE_ID = "team-tetris";
 export const TEAM_TETRIS_PAGE_ID = "room:game-room:team-tetris";
+export const YAHTZEE_FEATURE_ID = "yahtzee";
+export const YAHTZEE_PAGE_ID = "room:game-room:yahtzee";
 
 interface FeatureCatalogEntry {
   id: string;
@@ -18,6 +20,10 @@ const FEATURE_CATALOG: FeatureCatalogEntry[] = [
   {
     id: TEAM_TETRIS_FEATURE_ID,
     name: "Team Tetris",
+  },
+  {
+    id: YAHTZEE_FEATURE_ID,
+    name: "Yahtzee",
   },
 ];
 
