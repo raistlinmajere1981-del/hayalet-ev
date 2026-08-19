@@ -36,6 +36,14 @@
   opacity: 0.62;
 }
 
+.yahtzee-controls button:focus-visible,
+.yahtzee-die:focus-visible,
+.yahtzee-score-row button:focus-visible,
+.yahtzee-mode-select select:focus-visible {
+  outline: 2px solid #f0bc6a;
+  outline-offset: 2px;
+}
+
 .yahtzee-play-area {
   grid-template-columns: minmax(340px, 1fr) minmax(360px, 720px);
 }
@@ -72,6 +80,16 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yahtzee-babylon-canvas,
+  .yahtzee-candle::before,
+  .yahtzee-die,
+  .yahtzee-score-card {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 @media (max-width: 1180px) {
