@@ -2,7 +2,6 @@ import {
   YAHTZEE_CATEGORIES,
   buildYahtzeeLegalActionIds,
   createEmptyTurn,
-  isYahtzeeComplete,
   parseYahtzeeHoldMask,
   rollYahtzeeDice,
   scoreYahtzeeCategory,
@@ -25,7 +24,12 @@ import {
   type YahtzeeStateApi,
 } from "./state.js";
 import { loadContext } from "../../../shared/host/context-state.js";
-import { readArgs, readRemoteUserId, readTurnIndex, readTurnToken } from "../../../shared/host/command-args.js";
+import {
+  readArgs,
+  readRemoteUserId,
+  readTurnIndex,
+  readTurnToken,
+} from "../../../shared/host/command-args.js";
 import {
   sendYahtzeeAiTurn,
   sendYahtzeeUs1Reset,
@@ -140,7 +144,10 @@ function readPlayerLabels(state: YahtzeeHostState): Partial<Record<YahtzeeSeatId
   return labels;
 }
 
-function getModeLabels(api: YahtzeeRuntimeApi, mode: YahtzeeMode): Partial<Record<YahtzeeSeatId, string>> {
+function getModeLabels(
+  api: YahtzeeRuntimeApi,
+  mode: YahtzeeMode
+): Partial<Record<YahtzeeSeatId, string>> {
   const context = loadContext(api);
   const labels: Partial<Record<YahtzeeSeatId, string>> = {
     user: context.user.nickname || "Player 1",
@@ -164,10 +171,7 @@ function prepareFirstRoll(state: YahtzeeHostState, status = "firstRoll"): Yahtze
   return refreshYahtzeeDerivedState(state);
 }
 
-async function syncUs1State(
-  api: YahtzeeRuntimeApi,
-  state: YahtzeeHostState
-): Promise<boolean> {
+async function syncUs1State(api: YahtzeeRuntimeApi, state: YahtzeeHostState): Promise<boolean> {
   if (state.mode !== "us1") return true;
   const sendResult = await sendYahtzeeUs1Sync(api, state);
   if (sendResult.success !== true) {
@@ -215,7 +219,8 @@ function finishScoringTurn(state: YahtzeeHostState): YahtzeeHostState {
 
   advanceYahtzeePlayer(state);
   state.turn = rollYahtzeeDice(createEmptyTurn());
-  state.status = state.activeSeatId === "ai1" || state.activeSeatId === "ai2" ? "aiThinking" : "newTurn";
+  state.status =
+    state.activeSeatId === "ai1" || state.activeSeatId === "ai2" ? "aiThinking" : "newTurn";
   bumpYahtzeeRevision(state);
   return refreshYahtzeeDerivedState(state);
 }
@@ -259,7 +264,10 @@ export async function handleYahtzeeStart(
   }
 
   pushState(api, state);
-  return result(true, mode === "solo" ? "Yahtzee game started." : "Two-player Yahtzee match started.");
+  return result(
+    true,
+    mode === "solo" ? "Yahtzee game started." : "Two-player Yahtzee match started."
+  );
 }
 
 export async function handleYahtzeeReset(api: YahtzeeRuntimeApi): Promise<unknown> {
@@ -269,15 +277,25 @@ export async function handleYahtzeeReset(api: YahtzeeRuntimeApi): Promise<unknow
   if (current.mode === "us1" && current.matchId) {
     remoteResetSuccess = (await sendYahtzeeUs1Reset(api, current)).success === true;
   }
-  const reset = createInitialYahtzeeState(current.mode, current.localSeatId, readPlayerLabels(current));
+  const reset = createInitialYahtzeeState(
+    current.mode,
+    current.localSeatId,
+    readPlayerLabels(current)
+  );
   pushState(api, reset);
-  return result(remoteResetSuccess, remoteResetSuccess ? "Yahtzee game reset." : "Yahtzee reset locally; US1 reset delivery failed.");
+  return result(
+    remoteResetSuccess,
+    remoteResetSuccess
+      ? "Yahtzee game reset."
+      : "Yahtzee reset locally; US1 reset delivery failed."
+  );
 }
 
 export async function handleYahtzeeRoll(api: YahtzeeRuntimeApi): Promise<unknown> {
   const state = loadYahtzeeState(api);
   if (!state.active || state.complete) return result(false, "There is no active Yahtzee turn.");
-  if (!isYahtzeeSeatLocallyControlled(state)) return result(false, "Wait for the other Yahtzee player.");
+  if (!isYahtzeeSeatLocallyControlled(state))
+    return result(false, "Wait for the other Yahtzee player.");
   if (state.turn.rollCount >= 3) return result(false, "No rerolls remain for this turn.");
   state.turn = rollYahtzeeDice(state.turn);
   state.status = state.turn.rollCount >= 3 ? "finalRoll" : "chooseDiceOrScore";
@@ -295,16 +313,22 @@ export async function handleYahtzeeToggleHold(
   const index = readIndex(payload);
   if (!state.active || state.complete || state.turn.rollCount === 0)
     return result(false, "Roll before holding dice.");
-  if (!isYahtzeeSeatLocallyControlled(state)) return result(false, "Wait for the other Yahtzee player.");
+  if (!isYahtzeeSeatLocallyControlled(state))
+    return result(false, "Wait for the other Yahtzee player.");
   if (index === null) return result(false, "Invalid die index.");
-  if (state.turn.rollCount >= 3) return result(false, "The final roll is already complete.");
+  if (state.turn.rollCount >= 3)
+    return result(false, "The final roll is already complete.");
   state.turn.held[index] = !state.turn.held[index];
   bumpYahtzeeRevision(state);
   const saved = pushState(api, state);
   const synced = await syncUs1State(api, saved);
   return result(
     synced,
-    synced ? (state.turn.held[index] ? "Die held." : "Die released.") : "Hold changed locally, but US1 sync failed."
+    synced
+      ? state.turn.held[index]
+        ? "Die held."
+        : "Die released."
+      : "Hold changed locally, but US1 sync failed."
   );
 }
 
@@ -316,7 +340,8 @@ export async function handleYahtzeeScore(
   const category = readCategory(payload);
   if (!state.active || state.complete || state.turn.rollCount === 0)
     return result(false, "Roll before scoring.");
-  if (!isYahtzeeSeatLocallyControlled(state)) return result(false, "Wait for the other Yahtzee player.");
+  if (!isYahtzeeSeatLocallyControlled(state))
+    return result(false, "Wait for the other Yahtzee player.");
   if (category === null) return result(false, "Unknown Yahtzee category.");
 
   const player = getActiveYahtzeePlayer(state);
@@ -335,7 +360,7 @@ export async function handleYahtzeeScore(
       type: "success",
       message:
         saved.players.length === 1
-          ? `Yahtzee complete: ${saved.players[0].total} points.`
+          ? `Yahtzee complete: ${saved.players[0]?.total ?? saved.total} points.`
           : saved.winnerSeatId
             ? `${saved.players.find((entry) => entry.seatId === saved.winnerSeatId)?.label || saved.winnerSeatId} wins Yahtzee.`
             : "Yahtzee match ended in a draw.",
@@ -345,12 +370,18 @@ export async function handleYahtzeeScore(
 
   if (saved.mode === "us1") {
     const synced = await syncUs1State(api, saved);
-    return result(synced, synced ? `Scored ${category}.` : "Score saved locally, but US1 sync failed.");
+    return result(
+      synced,
+      synced ? `Scored ${category}.` : "Score saved locally, but US1 sync failed."
+    );
   }
 
   if (saved.activeSeatId === "ai1" || saved.activeSeatId === "ai2") {
     const dispatched = await dispatchAiTurnIfNeeded(api, saved);
-    return result(dispatched, dispatched ? `Scored ${category}. AI turn dispatched.` : "Score saved, but AI dispatch failed.");
+    return result(
+      dispatched,
+      dispatched ? `Scored ${category}. AI turn dispatched.` : "Score saved, but AI dispatch failed."
+    );
   }
 
   return result(true, `Scored ${category}.`);
@@ -368,7 +399,8 @@ export async function handleYahtzeeAiAction(
 
   if (!state.active || (state.activeSeatId !== "ai1" && state.activeSeatId !== "ai2"))
     return result(false, "There is no active Yahtzee AI turn.");
-  if (provider && provider !== state.activeSeatId) return result(false, "Yahtzee AI provider mismatch.");
+  if (provider && provider !== state.activeSeatId)
+    return result(false, "Yahtzee AI provider mismatch.");
   if (turnToken !== state.turnToken || turnIndex !== state.turnIndex)
     return result(false, "Stale Yahtzee AI action.");
 
@@ -387,11 +419,15 @@ export async function handleYahtzeeAiAction(
     bumpYahtzeeRevision(state);
     const saved = pushState(api, state);
     const dispatched = await dispatchAiTurnIfNeeded(api, saved);
-    return result(dispatched, dispatched ? "AI reroll applied." : "AI reroll applied, but next dispatch failed.");
+    return result(
+      dispatched,
+      dispatched ? "AI reroll applied." : "AI reroll applied, but next dispatch failed."
+    );
   }
 
   const category = legalActionId.slice("score:".length) as YahtzeeCategory;
-  if (!YAHTZEE_CATEGORIES.includes(category)) return result(false, "Invalid Yahtzee score action.");
+  if (!YAHTZEE_CATEGORIES.includes(category))
+    return result(false, "Invalid Yahtzee score action.");
   player.card.scores[category] = scoreYahtzeeCategory(category, state.turn.dice);
   state.turnIndex += 1;
   finishScoringTurn(state);
@@ -444,7 +480,11 @@ export function handleYahtzeeRemoteSync(api: YahtzeeRuntimeApi, payload: unknown
     return result(false, "Stale remote Yahtzee synchronization.");
 
   const incomingRemoteUserId = readRemoteUserId(payload);
-  if (current.remoteUserId && incomingRemoteUserId && current.remoteUserId !== incomingRemoteUserId)
+  if (
+    current.remoteUserId &&
+    incomingRemoteUserId &&
+    current.remoteUserId !== incomingRemoteUserId
+  )
     return result(false, "Remote Yahtzee user mismatch.");
 
   const mirrored = normalizeYahtzeeState({
@@ -456,7 +496,8 @@ export function handleYahtzeeRemoteSync(api: YahtzeeRuntimeApi, payload: unknown
     localSessionId: current.localSessionId,
   });
   if (!mirrored.complete) {
-    mirrored.status = mirrored.activeSeatId === mirrored.localSeatId ? mirrored.status : "waitOpponent";
+    mirrored.status =
+      mirrored.activeSeatId === mirrored.localSeatId ? mirrored.status : "waitOpponent";
   }
   pushState(api, mirrored);
   return result(true, "Remote Yahtzee state synchronized.");
@@ -472,6 +513,9 @@ export function handleYahtzeeRemoteReset(api: YahtzeeRuntimeApi, payload: unknow
   reset.remoteUserId = current.remoteUserId;
   reset.localSessionId = current.localSessionId;
   pushState(api, reset);
-  api.showToast?.({ type: "info", message: "US1 Yahtzee match was reset by the remote player." });
+  api.showToast?.({
+    type: "info",
+    message: "US1 Yahtzee match was reset by the remote player.",
+  });
   return result(true, "Remote Yahtzee match reset.");
 }
