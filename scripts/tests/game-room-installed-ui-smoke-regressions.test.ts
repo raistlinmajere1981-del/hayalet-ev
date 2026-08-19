@@ -55,15 +55,18 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
     assert.match(indexHtml, /main-functions\/yahtzee\/multiplayer\.css/);
     assert.match(indexHtml, /main-functions\/yahtzee\/vendor\/babylon\.min\.js/);
     assert.match(indexHtml, /main-functions\/yahtzee\/ui\/babylon-scene\.js/);
+    assert.match(indexHtml, /main-functions\/yahtzee\/ui\/audio-runtime\.js/);
     assert.match(indexHtml, /main-functions\/yahtzee\/ui\/runtime\.js/);
     assert.match(indexHtml, /main-functions\/yahtzee\/ui\/bridge\.js/);
     const babylonRuntimeIndex = indexHtml.indexOf(
       "../main-functions/yahtzee/vendor/babylon.min.js"
     );
     const babylonSceneIndex = indexHtml.indexOf("../main-functions/yahtzee/ui/babylon-scene.js");
+    const audioRuntimeIndex = indexHtml.indexOf("../main-functions/yahtzee/ui/audio-runtime.js");
     const yahtzeeRuntimeIndex = indexHtml.indexOf("../main-functions/yahtzee/ui/runtime.js");
     assert.ok(babylonRuntimeIndex >= 0 && babylonRuntimeIndex < babylonSceneIndex);
-    assert.ok(babylonSceneIndex < yahtzeeRuntimeIndex);
+    assert.ok(babylonSceneIndex < audioRuntimeIndex);
+    assert.ok(audioRuntimeIndex < yahtzeeRuntimeIndex);
 
     [
       `${installedCopy.rootDir}/main-functions/yahtzee/styles.css`,
@@ -72,6 +75,7 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
       `${installedCopy.rootDir}/main-functions/yahtzee/vendor/LICENSE.babylonjs.md`,
       `${installedCopy.rootDir}/main-functions/yahtzee/vendor/NOTICE.babylonjs.md`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/babylon-scene.js`,
+      `${installedCopy.rootDir}/main-functions/yahtzee/ui/audio-runtime.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/runtime.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/bridge.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/protocols/game-room-yahtzee-ai-turn.md`,
@@ -99,11 +103,24 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
     assert.match(runtimeSource, /mode: selectedMode/);
     assert.match(runtimeSource, /yahtzee-score-stack/);
     assert.match(runtimeSource, /GameRoomYahtzeeBabylonScene/);
+    assert.match(runtimeSource, /GameRoomYahtzeeAudioRuntime/);
     assert.match(runtimeSource, /babylonHandle\.beginRoll\(\)/);
+    assert.match(runtimeSource, /localRollAnimationStartedAt/);
+    assert.match(runtimeSource, /nextTurnIndex !== previousTurnIndex/);
     assert.match(runtimeSource, /babylonHandle\.update\(turnVisualState\(\)/);
     assert.match(runtimeSource, /sendCommand\(name, roomArgs \|\| \{\}\)/);
     assert.doesNotMatch(runtimeSource, /sendCommand\(name, \{ roomArgs:/);
     assert.doesNotMatch(runtimeSource, /new B\.Engine/);
+
+    const audioSource = readFileSync(
+      `${installedCopy.rootDir}/main-functions/yahtzee/ui/audio-runtime.js`,
+      "utf8"
+    );
+    assert.match(audioSource, /GameRoomYahtzeeAudioRuntime/);
+    assert.match(audioSource, /createNoiseLayer/);
+    assert.match(audioSource, /scheduleCreak/);
+    assert.match(audioSource, /visibilitychange/);
+    assert.match(audioSource, /playDice/);
 
     const sceneSource = readFileSync(
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/babylon-scene.js`,
