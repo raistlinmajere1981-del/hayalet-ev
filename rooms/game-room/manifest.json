@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "id": "game-room",
   "name": "Game Room",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "menu": {
     "label": "Game Room",
     "icon": "🎮",
@@ -192,37 +192,61 @@
     {
       "id": "yahtzee",
       "name": "Yahtzee",
-      "description": "A candlelit solo Yahtzee table on a pirate ship deck, with carved dice, ambient sound, and spectator pirates.",
+      "description": "A candlelit pirate-deck Yahtzee table for solo play, two local players, AI1, AI2, or the connected US1 remote user.",
       "icon": "YZ",
       "commandSpecs": [
         {
           "name": "GameRoomYahtzeeStart",
-          "description": "Start a new solo Yahtzee score card.",
+          "description": "Start a solo or two-player Yahtzee match from the room UI.",
           "scope": "room-ui",
           "exposure": "internal"
         },
         {
           "name": "GameRoomYahtzeeReset",
-          "description": "Reset the active Yahtzee game.",
+          "description": "Reset the active Yahtzee game or match.",
           "scope": "room-ui",
           "exposure": "internal"
         },
         {
           "name": "GameRoomYahtzeeRoll",
-          "description": "Roll all non-held Yahtzee dice using host-owned randomness.",
+          "description": "Roll all non-held Yahtzee dice for the locally controlled seat using host-owned randomness.",
           "scope": "room-ui",
           "exposure": "internal"
         },
         {
           "name": "GameRoomYahtzeeToggleHold",
-          "description": "Toggle one die between held and rerollable state.",
+          "description": "Toggle one die between held and rerollable state for the locally controlled seat.",
           "scope": "room-ui",
           "exposure": "internal"
         },
         {
           "name": "GameRoomYahtzeeScore",
-          "description": "Commit the current dice to one unused Yahtzee score category.",
+          "description": "Commit the current dice to one unused Yahtzee score category for the locally controlled seat.",
           "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomYahtzeeAiAction",
+          "description": "Apply a host-validated Yahtzee legalActionId returned by AI1 or AI2.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomYahtzeeRemoteStart",
+          "description": "Create the mirrored side of an incoming US1 Yahtzee match.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomYahtzeeRemoteSync",
+          "description": "Apply a newer synchronized US1 Yahtzee match revision.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomYahtzeeRemoteReset",
+          "description": "Reset the mirrored US1 Yahtzee match.",
+          "scope": "us1",
           "exposure": "internal"
         }
       ],
@@ -245,7 +269,7 @@
       }
     }
   ],
-  "description": "A focused Game Room for Tavla, four-seat Team Tetris, and atmospheric pirate-deck Yahtzee.",
+  "description": "A focused Game Room for Tavla, four-seat Team Tetris, and solo or multiplayer pirate-deck Yahtzee.",
   "scene": {
     "referenceSize": { "width": 1600, "height": 900 },
     "roomBackgroundSrc": "shared/assets/room-background.webp",
