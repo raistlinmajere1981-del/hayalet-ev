@@ -11,13 +11,29 @@ import {
   saveState,
   clearPendingInvite,
 } from "../main-functions/backgammon/host/state.js";
-import { readLocale, saveContext } from "../shared/host/context-state.js";
+import {
+  getActiveFeatureId,
+  loadContext,
+  readLocale,
+  saveContext,
+} from "../shared/host/context-state.js";
+import { YAHTZEE_FEATURE_ID } from "../shared/host/feature-meta.js";
 import {
   handleTeamTetrisMove,
   handleTeamTetrisReset,
   handleTeamTetrisStart,
   pushActiveFeatureState,
 } from "../main-functions/team-tetris/host/runtime.js";
+import {
+  YAHTZEE_COMMAND_NAMES,
+  handleYahtzeeReset,
+  handleYahtzeeRoll,
+  handleYahtzeeScore,
+  handleYahtzeeStart,
+  handleYahtzeeToggleHold,
+  initializeYahtzeeState,
+  pushYahtzeeState,
+} from "../main-functions/yahtzee/host/runtime.js";
 import {
   clearUs1SyncLoop as backgammonClearUs1SyncLoop,
   ensureUs1SyncLoop as backgammonEnsureUs1SyncLoop,
@@ -79,6 +95,11 @@ export default function createGameRoomHostRuntime() {
       }
 
       function pushActiveFeatureStateCompat(handlerApi: GameRoomHostApi): void {
+        const context = loadContext(handlerApi);
+        if (getActiveFeatureId(context) === YAHTZEE_FEATURE_ID) {
+          pushYahtzeeState(handlerApi);
+          return;
+        }
         pushActiveFeatureState(handlerApi);
       }
 
@@ -110,35 +131,54 @@ export default function createGameRoomHostRuntime() {
         saveTeamTetrisState: saveTeamTetrisStateCompat,
         saveBackgammonState: saveBackgammonStateCompat,
       });
+      initializeYahtzeeState(api);
+
+      const commands = createGameRoomCommandRegistry(api, {
+        handleTeamTetrisMove: asCommandHandler(handleTeamTetrisMove),
+        handleTeamTetrisReset: asNoPayloadHandler(handleTeamTetrisReset),
+        handleTeamTetrisStart: asCommandHandler(handleTeamTetrisStart),
+        handleBackgammonAcceptInvite: asCommandHandler(
+          backgammonHandleAcceptInvite as unknown as BridgeCommandHandler
+        ),
+        handleBackgammonAiMove: asCommandHandler(
+          backgammonHandleAiMove as unknown as BridgeCommandHandler
+        ),
+        handleBackgammonRejectInvite: asCommandHandler(
+          backgammonHandleRejectInvite as unknown as BridgeCommandHandler
+        ),
+        handleBackgammonRemoteMove: asCommandHandler(
+          backgammonHandleRemoteMove as unknown as BridgeCommandHandler
+        ),
+        handleBackgammonReset: asNoPayloadHandler(
+          backgammonHandleReset as unknown as BridgeNoPayloadHandler
+        ),
+        handleBackgammonStart: asCommandHandler(
+          backgammonHandleStart as unknown as BridgeCommandHandler
+        ),
+        handleBackgammonUserMove: asCommandHandler(
+          backgammonHandleUserMove as unknown as BridgeCommandHandler
+        ),
+        backgammonCommandNames: BACKGAMMON_COMMAND_NAMES,
+      });
+
+      commands[YAHTZEE_COMMAND_NAMES.start] = function () {
+        return handleYahtzeeStart(api);
+      };
+      commands[YAHTZEE_COMMAND_NAMES.reset] = function () {
+        return handleYahtzeeReset(api);
+      };
+      commands[YAHTZEE_COMMAND_NAMES.roll] = function () {
+        return handleYahtzeeRoll(api);
+      };
+      commands[YAHTZEE_COMMAND_NAMES.toggleHold] = function (payload?: unknown) {
+        return handleYahtzeeToggleHold(api, payload ?? {});
+      };
+      commands[YAHTZEE_COMMAND_NAMES.score] = function (payload?: unknown) {
+        return handleYahtzeeScore(api, payload ?? {});
+      };
 
       return {
-        commands: createGameRoomCommandRegistry(api, {
-          handleTeamTetrisMove: asCommandHandler(handleTeamTetrisMove),
-          handleTeamTetrisReset: asNoPayloadHandler(handleTeamTetrisReset),
-          handleTeamTetrisStart: asCommandHandler(handleTeamTetrisStart),
-          handleBackgammonAcceptInvite: asCommandHandler(
-            backgammonHandleAcceptInvite as unknown as BridgeCommandHandler
-          ),
-          handleBackgammonAiMove: asCommandHandler(
-            backgammonHandleAiMove as unknown as BridgeCommandHandler
-          ),
-          handleBackgammonRejectInvite: asCommandHandler(
-            backgammonHandleRejectInvite as unknown as BridgeCommandHandler
-          ),
-          handleBackgammonRemoteMove: asCommandHandler(
-            backgammonHandleRemoteMove as unknown as BridgeCommandHandler
-          ),
-          handleBackgammonReset: asNoPayloadHandler(
-            backgammonHandleReset as unknown as BridgeNoPayloadHandler
-          ),
-          handleBackgammonStart: asCommandHandler(
-            backgammonHandleStart as unknown as BridgeCommandHandler
-          ),
-          handleBackgammonUserMove: asCommandHandler(
-            backgammonHandleUserMove as unknown as BridgeCommandHandler
-          ),
-          backgammonCommandNames: BACKGAMMON_COMMAND_NAMES,
-        }),
+        commands,
         ...createGameRoomHostLifecycle(api, {
           clearUs1SyncLoop: clearUs1SyncLoopCompat,
           pushActiveFeatureState: pushActiveFeatureStateCompat,
