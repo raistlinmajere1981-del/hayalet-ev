@@ -1,4 +1,4 @@
-export const YAHTZEE_SCHEMA_VERSION = 1;
+export const YAHTZEE_SCHEMA_VERSION = 2;
 export const YAHTZEE_DICE_COUNT = 5;
 export const YAHTZEE_MAX_ROLLS_PER_TURN = 3;
 
@@ -142,4 +142,37 @@ export function getYahtzeeTotal(card: YahtzeeScoreCard): number {
 
 export function isYahtzeeComplete(card: YahtzeeScoreCard): boolean {
   return YAHTZEE_CATEGORIES.every((category) => typeof card.scores[category] === "number");
+}
+
+export function buildYahtzeeHoldMask(held: boolean[]): string {
+  return Array.from({ length: YAHTZEE_DICE_COUNT }, (_, index) => (held[index] === true ? "1" : "0")).join(
+    ""
+  );
+}
+
+export function parseYahtzeeHoldMask(mask: string): boolean[] | null {
+  if (!/^[01]{5}$/.test(mask)) return null;
+  return mask.split("").map((value) => value === "1");
+}
+
+export function buildYahtzeeLegalActionIds(
+  turn: YahtzeeTurn,
+  card: YahtzeeScoreCard
+): string[] {
+  if (turn.rollCount <= 0) return [];
+  const actions: string[] = [];
+
+  if (turn.rollCount < YAHTZEE_MAX_ROLLS_PER_TURN) {
+    for (let mask = 0; mask < 1 << YAHTZEE_DICE_COUNT; mask += 1) {
+      actions.push(`reroll:${mask.toString(2).padStart(YAHTZEE_DICE_COUNT, "0")}`);
+    }
+  }
+
+  for (const category of YAHTZEE_CATEGORIES) {
+    if (typeof card.scores[category] !== "number") {
+      actions.push(`score:${category}`);
+    }
+  }
+
+  return actions;
 }
