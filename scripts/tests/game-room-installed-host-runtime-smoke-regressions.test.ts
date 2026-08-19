@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import {
+  buildYahtzeeLegalActionIds,
   rollYahtzeeDice,
   scoreYahtzeeCategory,
   type YahtzeeTurn,
@@ -21,6 +22,8 @@ type InstalledGameRoomHostModule = {
   };
 };
 
+type ReadySeatId = "ai1" | "ai2" | "us1";
+
 async function importRoomHostModule(targetPath: string): Promise<InstalledGameRoomHostModule> {
   const absolutePath = resolve(targetPath);
   const moduleUrl = await buildRoomHostModuleDataUrl(absolutePath, async (filePath) => {
@@ -31,18 +34,34 @@ async function importRoomHostModule(targetPath: string): Promise<InstalledGameRo
   ) as InstalledGameRoomHostModule;
 }
 
-function createInstalledHostRuntime(installedModule: InstalledGameRoomHostModule) {
+function createInstalledHostRuntime(options: { readySeats?: ReadySeatId[] } = {}) {
   const state = new Map<string, unknown>();
   const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
+  const dispatchCalls: Array<Record<string, unknown>> = [];
+  const readySeats = new Set(options.readySeats ?? []);
 
   const api = {
     notifyRoom(type: string, payload: Record<string, unknown> = {}) {
       notifications.push({ type, payload });
     },
-    dispatchBridge: () => ({ success: true }),
+    dispatchBridge: (payload: Record<string, unknown>) => {
+      dispatchCalls.push(payload);
+      const target = typeof payload["toSlot"] === "string" ? payload["toSlot"] : "";
+      if (target === "us1") {
+        return {
+          success: true,
+          session: { id: "us1-session" },
+          data: { remoteUserId: "remote-us1" },
+        };
+      }
+      return { success: true };
+    },
     dispatchRoomCommand: () => ({ success: false }),
-    getUs1Identity: () => null,
-    isUs1Connected: () => false,
+    getUs1Identity: () =>
+      readySeats.has("us1")
+        ? { remoteUserId: "remote-us1", nickname: "Remote Player", email: "remote@example.com" }
+        : null,
+    isUs1Connected: () => readySeats.has("us1"),
     showToast: () => undefined,
     getLocale: () => "en",
     getState: (key: string) => state.get(key),
@@ -58,7 +77,23 @@ function createInstalledHostRuntime(installedModule: InstalledGameRoomHostModule
 
   return {
     exported,
+    state,
+    dispatchCalls,
     emitHostContext() {
+      function slotState(slotId: ReadySeatId) {
+        const ready = readySeats.has(slotId);
+        return {
+          slotId,
+          nickname:
+            slotId === "ai1" ? "Nexa" : slotId === "ai2" ? "Gök" : "Remote Player",
+          assigned: ready,
+          connected: ready,
+          ready,
+          dispatchable: ready,
+          ...(slotId === "us1" && ready ? { remoteUserId: "remote-us1" } : {}),
+        };
+      }
+
       exported.onRoomEvent({
         type: "host-context",
         locale: "en",
@@ -71,9 +106,9 @@ function createInstalledHostRuntime(installedModule: InstalledGameRoomHostModule
         activeFeature: { id: "yahtzee", name: "Yahtzee" },
         user: { nickname: "Raistlin" },
         slots: {
-          ai1: { slotId: "ai1", assigned: false, connected: false, ready: false },
-          ai2: { slotId: "ai2", assigned: false, connected: false, ready: false },
-          us1: { slotId: "us1", assigned: false, connected: false, ready: false },
+          ai1: slotState("ai1"),
+          ai2: slotState("ai2"),
+          us1: slotState("us1"),
         },
       });
     },
@@ -84,6 +119,8 @@ function createInstalledHostRuntime(installedModule: InstalledGameRoomHostModule
     },
   };
 }
+
+let installedModule: InstalledGameRoomHostModule;
 
 void test("Yahtzee scoring covers core combinations", () => {
   assert.equal(scoreYahtzeeCategory("full-house", [2, 2, 3, 3, 3]), 25);
@@ -105,18 +142,38 @@ void test("Yahtzee rerolls preserve held dice", () => {
   assert.equal(rerolled.rollCount, 2);
 });
 
-void test("game-room installed host exposes a playable Yahtzee flow", async () => {
+void test("Yahtzee legal action ids cover host-owned rerolls and unused scores", () => {
+  const firstRoll: YahtzeeTurn = {
+    dice: [1, 2, 3, 4, 5],
+    held: [false, false, false, false, false],
+    rollCount: 1,
+  };
+  const actions = buildYahtzeeLegalActionIds(firstRoll, { scores: {} });
+  assert.equal(actions.filter((action) => action.startsWith("reroll:")).length, 32);
+  assert.equal(actions.filter((action) => action.startsWith("score:")).length, 13);
+  assert.ok(actions.includes("reroll:10101"));
+  assert.ok(actions.includes("score:yahtzee"));
+
+  const finalRoll = { ...firstRoll, rollCount: 3 };
+  const finalActions = buildYahtzeeLegalActionIds(finalRoll, { scores: { chance: 16 } });
+  assert.equal(finalActions.some((action) => action.startsWith("reroll:")), false);
+  assert.equal(finalActions.includes("score:chance"), false);
+  assert.equal(finalActions.filter((action) => action.startsWith("score:")).length, 12);
+});
+
+void test("game-room installed host exposes the solo Yahtzee flow", async () => {
   const installedCopy = await createRoomInstalledCopy("game-room");
 
   try {
-    const installedModule = await importRoomHostModule(join(installedCopy.rootDir, "host/index.js"));
-    const runtime = createInstalledHostRuntime(installedModule);
+    installedModule = await importRoomHostModule(join(installedCopy.rootDir, "host/index.js"));
+    const runtime = createInstalledHostRuntime();
 
     runtime.emitHostContext();
 
     const startResult = await runtime.exported.commands["GameRoomYahtzeeStart"]?.();
     assert.equal((startResult as { success?: unknown } | undefined)?.success, true);
     assert.equal(runtime.latestYahtzeeState()?.["active"], true);
+    assert.equal(runtime.latestYahtzeeState()?.["mode"], "solo");
     assert.equal(
       (runtime.latestYahtzeeState()?.["turn"] as Record<string, unknown> | undefined)?.[
         "rollCount"
@@ -142,6 +199,136 @@ void test("game-room installed host exposes a playable Yahtzee flow", async () =
     const resetResult = await runtime.exported.commands["GameRoomYahtzeeReset"]?.();
     assert.equal((resetResult as { success?: unknown } | undefined)?.success, true);
     assert.equal(runtime.latestYahtzeeState()?.["active"], false);
+
+    runtime.exported.dispose?.();
+  } finally {
+    await installedCopy.cleanup();
+  }
+});
+
+void test("Yahtzee local two-player mode alternates two score cards on one host", async () => {
+  const installedCopy = await createRoomInstalledCopy("game-room");
+
+  try {
+    installedModule = await importRoomHostModule(join(installedCopy.rootDir, "host/index.js"));
+    const runtime = createInstalledHostRuntime();
+    runtime.emitHostContext();
+
+    const startResult = await runtime.exported.commands["GameRoomYahtzeeStart"]?.({
+      roomArgs: { mode: "local2" },
+    });
+    assert.equal((startResult as { success?: unknown } | undefined)?.success, true);
+    assert.equal(runtime.latestYahtzeeState()?.["mode"], "local2");
+    assert.deepEqual(
+      (runtime.latestYahtzeeState()?.["players"] as Array<Record<string, unknown>>).map(
+        (player) => player["seatId"]
+      ),
+      ["user", "local2"]
+    );
+    assert.equal(runtime.latestYahtzeeState()?.["activeSeatId"], "user");
+
+    await runtime.exported.commands["GameRoomYahtzeeScore"]?.({
+      roomArgs: { category: "chance" },
+    });
+    assert.equal(runtime.latestYahtzeeState()?.["activeSeatId"], "local2");
+    assert.equal(
+      (runtime.latestYahtzeeState()?.["turn"] as Record<string, unknown>)["rollCount"],
+      1
+    );
+
+    const secondScore = await runtime.exported.commands["GameRoomYahtzeeScore"]?.({
+      roomArgs: { category: "chance" },
+    });
+    assert.equal((secondScore as { success?: unknown } | undefined)?.success, true);
+    assert.equal(runtime.latestYahtzeeState()?.["activeSeatId"], "user");
+
+    runtime.exported.dispose?.();
+  } finally {
+    await installedCopy.cleanup();
+  }
+});
+
+void test("Yahtzee AI mode dispatches legal action ids and accepts only current AI turn", async () => {
+  const installedCopy = await createRoomInstalledCopy("game-room");
+
+  try {
+    installedModule = await importRoomHostModule(join(installedCopy.rootDir, "host/index.js"));
+    const runtime = createInstalledHostRuntime({ readySeats: ["ai1"] });
+    runtime.emitHostContext();
+
+    const startResult = await runtime.exported.commands["GameRoomYahtzeeStart"]?.({
+      roomArgs: { mode: "ai1" },
+    });
+    assert.equal((startResult as { success?: unknown } | undefined)?.success, true);
+
+    const scoreResult = await runtime.exported.commands["GameRoomYahtzeeScore"]?.({
+      roomArgs: { category: "chance" },
+    });
+    assert.equal((scoreResult as { success?: unknown } | undefined)?.success, true);
+    const aiState = runtime.latestYahtzeeState();
+    assert.equal(aiState?.["activeSeatId"], "ai1");
+    assert.equal(
+      (runtime.state.get("room.expectedCommandCapture") as Record<string, unknown> | undefined)?.[
+        "commandName"
+      ],
+      "GameRoomYahtzeeAiAction"
+    );
+
+    const aiDispatch = runtime.dispatchCalls.find((call) => call["toSlot"] === "ai1");
+    const aiPayload = aiDispatch?.["payload"] as Record<string, unknown> | undefined;
+    assert.match(String(aiPayload?.["text"] ?? ""), /GameRoomYahtzeeAiAction/);
+    assert.match(String(aiPayload?.["text"] ?? ""), /score:chance/);
+
+    const aiActionResult = await runtime.exported.commands["GameRoomYahtzeeAiAction"]?.({
+      provider: "ai1",
+      roomArgs: {
+        legalActionId: "score:chance",
+        turnToken: aiState?.["turnToken"],
+        turnIndex: aiState?.["turnIndex"],
+      },
+    });
+    assert.equal((aiActionResult as { success?: unknown } | undefined)?.success, true);
+    assert.equal(runtime.latestYahtzeeState()?.["activeSeatId"], "user");
+
+    runtime.exported.dispose?.();
+  } finally {
+    await installedCopy.cleanup();
+  }
+});
+
+void test("Yahtzee US1 mode sends remote start and synchronized turn snapshots", async () => {
+  const installedCopy = await createRoomInstalledCopy("game-room");
+
+  try {
+    installedModule = await importRoomHostModule(join(installedCopy.rootDir, "host/index.js"));
+    const runtime = createInstalledHostRuntime({ readySeats: ["us1"] });
+    runtime.emitHostContext();
+
+    const startResult = await runtime.exported.commands["GameRoomYahtzeeStart"]?.({
+      roomArgs: { mode: "us1" },
+    });
+    assert.equal((startResult as { success?: unknown } | undefined)?.success, true);
+    assert.equal(runtime.latestYahtzeeState()?.["mode"], "us1");
+    assert.equal(runtime.latestYahtzeeState()?.["remoteUserId"], "remote-us1");
+
+    const startCall = runtime.dispatchCalls.find((call) => {
+      const payload = call["payload"] as Record<string, unknown> | undefined;
+      const roomCommand = payload?.["roomCommand"] as Record<string, unknown> | undefined;
+      return roomCommand?.["commandName"] === "GameRoomYahtzeeRemoteStart";
+    });
+    assert.ok(startCall);
+
+    await runtime.exported.commands["GameRoomYahtzeeScore"]?.({
+      roomArgs: { category: "chance" },
+    });
+    assert.equal(runtime.latestYahtzeeState()?.["activeSeatId"], "us1");
+
+    const syncCall = runtime.dispatchCalls.find((call) => {
+      const payload = call["payload"] as Record<string, unknown> | undefined;
+      const roomCommand = payload?.["roomCommand"] as Record<string, unknown> | undefined;
+      return roomCommand?.["commandName"] === "GameRoomYahtzeeRemoteSync";
+    });
+    assert.ok(syncCall);
 
     runtime.exported.dispose?.();
   } finally {
