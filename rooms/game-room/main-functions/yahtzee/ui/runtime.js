@@ -17,32 +17,71 @@
     "chance",
   ];
 
+  const MODES = ["solo", "local2", "ai1", "ai2", "us1"];
+
   const FALLBACK_LABELS = {
     title: "Yahtzee",
     start: "Start",
     reset: "Reset",
     roll: "Roll",
     score: "Score",
-    status: { ready: "Ready." },
+    mode: "Game",
+    turn: "Turn",
+    winner: "Winner",
+    draw: "Draw",
+    modes: {
+      solo: "Solo",
+      local2: "2 players local",
+      ai1: "vs AI1",
+      ai2: "vs AI2",
+      us1: "vs US1 online",
+    },
+    status: {
+      ready: "Ready.",
+      waitOpponent: "Waiting for the other player.",
+      aiThinking: "AI is choosing an action.",
+      blockedOpponent: "Opponent is unavailable.",
+      syncFailed: "Remote synchronization failed.",
+    },
   };
 
   let translations = null;
   let state = createState();
+  let selectedMode = "solo";
   let audioEnabled = true;
   let audioContext = null;
   let ambienceNode = null;
   let babylonHandle = null;
 
-  function createState() {
+  function createPlayer(seatId, label) {
     return {
-      active: false,
-      complete: false,
-      turnIndex: 0,
-      turn: { dice: [1, 1, 1, 1, 1], held: [false, false, false, false, false], rollCount: 0 },
+      seatId: seatId,
+      label: label,
       card: { scores: {} },
       upperSubtotal: 0,
       upperBonus: 0,
       total: 0,
+      complete: false,
+    };
+  }
+
+  function createState() {
+    const player = createPlayer("user", "Player 1");
+    return {
+      mode: "solo",
+      localSeatId: "user",
+      active: false,
+      complete: false,
+      players: [player],
+      activePlayerIndex: 0,
+      activeSeatId: "user",
+      turnIndex: 0,
+      turn: { dice: [1, 1, 1, 1, 1], held: [false, false, false, false, false], rollCount: 0 },
+      card: player.card,
+      upperSubtotal: 0,
+      upperBonus: 0,
+      total: 0,
+      winnerSeatId: null,
       status: "ready",
     };
   }
@@ -71,6 +110,33 @@
   function command(name, roomArgs) {
     if (!global.roomAPI || typeof global.roomAPI.sendCommand !== "function") return;
     global.roomAPI.sendCommand(name, { roomArgs: roomArgs || {} });
+  }
+
+  function getPlayers() {
+    return Array.isArray(state.players) && state.players.length > 0
+      ? state.players
+      : [
+          {
+            seatId: "user",
+            label: "Player 1",
+            card: state.card || { scores: {} },
+            upperBonus: state.upperBonus || 0,
+            total: state.total || 0,
+          },
+        ];
+  }
+
+  function activePlayer() {
+    const players = getPlayers();
+    return players[state.activePlayerIndex] || players[0];
+  }
+
+  function isLocalTurn() {
+    if (!state.active || state.complete) return false;
+    if (state.mode === "local2") {
+      return state.activeSeatId === "user" || state.activeSeatId === "local2";
+    }
+    return state.activeSeatId === (state.localSeatId || "user");
   }
 
   function getAudioContext() {
@@ -132,6 +198,7 @@
   function disposeBabylon() {
     if (!babylonHandle) return;
     try {
+      global.removeEventListener("resize", babylonHandle.resize);
       babylonHandle.engine.dispose();
     } catch (_error) {
       /* best effort */
@@ -259,11 +326,12 @@
       state.turn && Array.isArray(state.turn.held)
         ? state.turn.held
         : [false, false, false, false, false];
+    const localTurn = isLocalTurn();
     dice.forEach(function (value, index) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "yahtzee-die" + (held[index] ? " is-held" : "");
-      button.disabled = !state.active || state.turn.rollCount >= 3;
+      button.disabled = !localTurn || state.turn.rollCount >= 3;
       button.innerHTML =
         '<span class="yahtzee-die-value">' +
         String(value) +
@@ -278,15 +346,16 @@
     });
   }
 
-  function renderScores(container) {
-    const scores = state.card && state.card.scores ? state.card.scores : {};
+  function renderScores(container, player, isActive) {
+    const scores = player && player.card && player.card.scores ? player.card.scores : {};
+    const localTurn = isLocalTurn();
     CATEGORIES.forEach(function (category) {
       const row = document.createElement("div");
       row.className = "yahtzee-score-row";
       const used = typeof scores[category] === "number";
       const value = used ? String(scores[category]) : "—";
       row.innerHTML = "<span>" + t(category) + "</span><strong>" + value + "</strong>";
-      if (!used && state.active && state.turn.rollCount > 0) {
+      if (!used && isActive && localTurn && state.turn.rollCount > 0) {
         const scoreButton = document.createElement("button");
         scoreButton.type = "button";
         scoreButton.textContent = t("score");
@@ -298,6 +367,50 @@
       }
       container.append(row);
     });
+  }
+
+  function renderScoreCard(player, index) {
+    const card = document.createElement("aside");
+    const isActive = index === state.activePlayerIndex && state.active;
+    card.className = "yahtzee-score-card" + (isActive ? " is-active" : "");
+    const cardTitle = document.createElement("h2");
+    cardTitle.textContent = player.label || player.seatId || t("scoreCard");
+    card.append(cardTitle);
+    if (isActive) {
+      const turnBadge = document.createElement("div");
+      turnBadge.className = "yahtzee-turn-badge";
+      turnBadge.textContent = t("turn");
+      card.append(turnBadge);
+    }
+    renderScores(card, player, isActive);
+    const totals = document.createElement("div");
+    totals.className = "yahtzee-score-totals";
+    totals.innerHTML =
+      "<span>" +
+      t("upperBonus") +
+      " <strong>" +
+      String(player.upperBonus || 0) +
+      "</strong></span><span>" +
+      t("total") +
+      " <strong>" +
+      String(player.total || 0) +
+      "</strong></span>";
+    card.append(totals);
+    return card;
+  }
+
+  function statusText() {
+    if (state.complete && getPlayers().length > 1) {
+      if (!state.winnerSeatId) return t("draw");
+      const winner = getPlayers().find(function (player) {
+        return player.seatId === state.winnerSeatId;
+      });
+      return t("winner") + ": " + (winner ? winner.label : state.winnerSeatId);
+    }
+    const base = t("status." + (state.status || "ready"));
+    if (!state.active) return base;
+    const current = activePlayer();
+    return base + " · " + t("turn") + ": " + (current ? current.label : state.activeSeatId);
   }
 
   function render(root) {
@@ -323,13 +436,38 @@
 
     const controls = document.createElement("div");
     controls.className = "yahtzee-controls";
+
+    const modeWrap = document.createElement("label");
+    modeWrap.className = "yahtzee-mode-select";
+    const modeLabel = document.createElement("span");
+    modeLabel.textContent = t("mode");
+    const modeSelect = document.createElement("select");
+    MODES.forEach(function (mode) {
+      const option = document.createElement("option");
+      option.value = mode;
+      option.textContent = t("modes." + mode);
+      modeSelect.append(option);
+    });
+    const effectiveMode = state.active || state.complete ? state.mode || selectedMode : selectedMode;
+    modeSelect.value = MODES.includes(effectiveMode) ? effectiveMode : "solo";
+    modeSelect.disabled = state.active || state.complete;
+    modeSelect.addEventListener("change", function () {
+      selectedMode = MODES.includes(modeSelect.value) ? modeSelect.value : "solo";
+    });
+    modeWrap.append(modeLabel, modeSelect);
+    controls.append(modeWrap);
+
     const start = document.createElement("button");
     start.type = "button";
     start.textContent = state.active || state.complete ? t("reset") : t("start");
     start.addEventListener("click", function () {
       ensureAmbience();
       playWoodClick(135);
-      command(state.active || state.complete ? "GameRoomYahtzeeReset" : "GameRoomYahtzeeStart", {});
+      if (state.active || state.complete) {
+        command("GameRoomYahtzeeReset", {});
+      } else {
+        command("GameRoomYahtzeeStart", { mode: selectedMode });
+      }
     });
     controls.append(start);
 
@@ -337,7 +475,7 @@
     roll.type = "button";
     roll.className = "primary";
     roll.textContent = t("roll");
-    roll.disabled = !state.active || state.turn.rollCount >= 3;
+    roll.disabled = !isLocalTurn() || state.turn.rollCount >= 3;
     roll.addEventListener("click", function () {
       ensureAmbience();
       playDiceSound();
@@ -363,7 +501,7 @@
     dicePanel.className = "yahtzee-dice-panel";
     const status = document.createElement("div");
     status.className = "yahtzee-status";
-    status.textContent = t("status." + (state.status || "ready"));
+    status.textContent = statusText();
     dicePanel.append(status);
     const diceRow = document.createElement("div");
     diceRow.className = "yahtzee-dice-row";
@@ -375,26 +513,12 @@
     dicePanel.append(rollMeta);
     playArea.append(dicePanel);
 
-    const card = document.createElement("aside");
-    card.className = "yahtzee-score-card";
-    const cardTitle = document.createElement("h2");
-    cardTitle.textContent = t("scoreCard");
-    card.append(cardTitle);
-    renderScores(card);
-    const totals = document.createElement("div");
-    totals.className = "yahtzee-score-totals";
-    totals.innerHTML =
-      "<span>" +
-      t("upperBonus") +
-      " <strong>" +
-      String(state.upperBonus || 0) +
-      "</strong></span><span>" +
-      t("total") +
-      " <strong>" +
-      String(state.total || 0) +
-      "</strong></span>";
-    card.append(totals);
-    playArea.append(card);
+    const scoreStack = document.createElement("div");
+    scoreStack.className = "yahtzee-score-stack";
+    getPlayers().forEach(function (player, index) {
+      scoreStack.append(renderScoreCard(player, index));
+    });
+    playArea.append(scoreStack);
     overlay.append(playArea);
 
     shell.append(overlay);
@@ -420,7 +544,12 @@
       typeof message.payload === "object"
         ? message.payload
         : {};
-    if (payload.state && typeof payload.state === "object") state = payload.state;
+    if (payload.state && typeof payload.state === "object") {
+      state = payload.state;
+      if (!state.active && !state.complete && MODES.includes(state.mode)) {
+        selectedMode = state.mode;
+      }
+    }
   }
 
   global.GameRoomYahtzeeUi = {
