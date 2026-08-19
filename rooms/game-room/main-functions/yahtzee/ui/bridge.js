@@ -10,11 +10,20 @@
 
     function isYahtzeeActive() {
       const state = typeof base.getState === "function" ? base.getState() : null;
-      return Boolean(state && state.context && state.context.activeFeature && state.context.activeFeature.id === "yahtzee");
+      return Boolean(
+        state &&
+          state.context &&
+          state.context.activeFeature &&
+          state.context.activeFeature.id === "yahtzee"
+      );
     }
 
     function render() {
-      if (isYahtzeeActive() && global.GameRoomYahtzeeUi && typeof global.GameRoomYahtzeeUi.render === "function") {
+      if (
+        isYahtzeeActive() &&
+        global.GameRoomYahtzeeUi &&
+        typeof global.GameRoomYahtzeeUi.render === "function"
+      ) {
         const root = document.getElementById("app");
         if (root) global.GameRoomYahtzeeUi.render(root);
         return;
@@ -24,7 +33,10 @@
 
     function handleHostMessage(message) {
       if (message && typeof message === "object" && message.type === "yahtzee-state") {
-        if (global.GameRoomYahtzeeUi && typeof global.GameRoomYahtzeeUi.handleState === "function") {
+        if (
+          global.GameRoomYahtzeeUi &&
+          typeof global.GameRoomYahtzeeUi.handleState === "function"
+        ) {
           global.GameRoomYahtzeeUi.handleState(message);
         }
         render();
@@ -36,7 +48,22 @@
     }
 
     function start() {
-      base.start();
+      const roomApi = global.roomAPI;
+      const originalOnHostMessage =
+        roomApi && typeof roomApi.onHostMessage === "function" ? roomApi.onHostMessage : null;
+
+      if (originalOnHostMessage) {
+        roomApi.onHostMessage = function registerYahtzeeAwareHandler() {
+          return originalOnHostMessage.call(roomApi, handleHostMessage);
+        };
+      }
+
+      try {
+        base.start();
+      } finally {
+        if (originalOnHostMessage) roomApi.onHostMessage = originalOnHostMessage;
+      }
+
       if (isYahtzeeActive()) render();
     }
 
