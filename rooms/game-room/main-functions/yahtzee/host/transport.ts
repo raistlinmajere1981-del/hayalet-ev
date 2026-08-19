@@ -1,9 +1,5 @@
 import { loadContext } from "../../../shared/host/context-state.js";
-import {
-  ROOM_ID,
-  YAHTZEE_FEATURE_ID,
-  YAHTZEE_PAGE_ID,
-} from "../../../shared/host/feature-meta.js";
+import { ROOM_ID, YAHTZEE_FEATURE_ID, YAHTZEE_PAGE_ID } from "../../../shared/host/feature-meta.js";
 import { buildUs1RoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
 import type { YahtzeeHostState, YahtzeeStateApi } from "./state.js";
 import {

@@ -294,6 +294,10 @@ void test("game-room manifest registers Tavla, Team Tetris, and Yahtzee", () => 
       "GameRoomYahtzeeRoll",
       "GameRoomYahtzeeToggleHold",
       "GameRoomYahtzeeScore",
+      "GameRoomYahtzeeAiAction",
+      "GameRoomYahtzeeRemoteStart",
+      "GameRoomYahtzeeRemoteSync",
+      "GameRoomYahtzeeRemoteReset",
     ]
   );
 });

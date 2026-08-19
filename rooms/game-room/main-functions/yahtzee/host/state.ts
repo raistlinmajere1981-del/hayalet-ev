@@ -165,9 +165,19 @@ function createPlayersForMode(
   const players = [createPlayer("user", labels.user || "Player 1")];
   const opponentSeatId = opponentSeatForMode(mode);
   if (opponentSeatId !== null) {
-    players.push(createPlayer(opponentSeatId, labels[opponentSeatId] || opponentSeatId.toUpperCase()));
+    players.push(
+      createPlayer(opponentSeatId, labels[opponentSeatId] || opponentSeatId.toUpperCase())
+    );
   }
   return players;
+}
+
+function requireFirstPlayer(players: readonly YahtzeePlayerState[]): YahtzeePlayerState {
+  const firstPlayer = players[0];
+  if (!firstPlayer) {
+    throw new Error("Yahtzee state requires at least one player.");
+  }
+  return firstPlayer;
 }
 
 function determineWinner(players: YahtzeePlayerState[]): YahtzeeSeatId | null {
@@ -195,7 +205,7 @@ export function createInitialYahtzeeState(
   labels: Partial<Record<YahtzeeSeatId, string>> = {}
 ): YahtzeeHostState {
   const players = createPlayersForMode(mode, labels);
-  const activePlayer = players[0]!;
+  const activePlayer = requireFirstPlayer(players);
   return {
     schemaVersion: YAHTZEE_SCHEMA_VERSION,
     mode,
@@ -231,7 +241,11 @@ export function createYahtzeeMatchState(
     matchId?: string | null;
   } = {}
 ): YahtzeeHostState {
-  const state = createInitialYahtzeeState(mode, options.localSeatId || "user", options.labels || {});
+  const state = createInitialYahtzeeState(
+    mode,
+    options.localSeatId || "user",
+    options.labels || {}
+  );
   state.matchId = options.matchId || createYahtzeeMatchId();
   state.active = true;
   state.result = "pending";
@@ -262,7 +276,10 @@ export function refreshYahtzeeDerivedState(state: YahtzeeHostState): YahtzeeHost
   if (state.players.length === 0) {
     state.players = createPlayersForMode(state.mode);
   }
-  state.activePlayerIndex = Math.max(0, Math.min(state.activePlayerIndex, state.players.length - 1));
+  state.activePlayerIndex = Math.max(
+    0,
+    Math.min(state.activePlayerIndex, state.players.length - 1)
+  );
   const activePlayer = getActiveYahtzeePlayer(state);
   state.activeSeatId = activePlayer.seatId;
   state.card = activePlayer.card;
@@ -319,7 +336,7 @@ export function normalizeYahtzeeState(candidate: unknown): YahtzeeHostState {
   } else {
     players = createPlayersForMode(mode);
     if (isRecord(source["card"])) {
-      const localPlayer = players[0]!;
+      const localPlayer = requireFirstPlayer(players);
       localPlayer.card = sanitizeCard(source["card"]);
       refreshPlayer(localPlayer);
     }
@@ -331,13 +348,17 @@ export function normalizeYahtzeeState(candidate: unknown): YahtzeeHostState {
       ? source["activePlayerIndex"]
       : 0;
   const activePlayerIndex = Math.max(0, Math.min(rawActivePlayerIndex, players.length - 1));
-  const activePlayer = players[activePlayerIndex] ?? players[0]!;
+  const activePlayer = players[activePlayerIndex] ?? requireFirstPlayer(players);
   const revision =
-    typeof source["revision"] === "number" && Number.isInteger(source["revision"]) && source["revision"] >= 0
+    typeof source["revision"] === "number" &&
+    Number.isInteger(source["revision"]) &&
+    source["revision"] >= 0
       ? source["revision"]
       : 0;
   const turnIndex =
-    typeof source["turnIndex"] === "number" && Number.isInteger(source["turnIndex"]) && source["turnIndex"] >= 0
+    typeof source["turnIndex"] === "number" &&
+    Number.isInteger(source["turnIndex"]) &&
+    source["turnIndex"] >= 0
       ? source["turnIndex"]
       : 0;
   const localSeatId = source["localSeatId"] === "us1" ? "us1" : "user";

@@ -145,9 +145,9 @@ export function isYahtzeeComplete(card: YahtzeeScoreCard): boolean {
 }
 
 export function buildYahtzeeHoldMask(held: boolean[]): string {
-  return Array.from({ length: YAHTZEE_DICE_COUNT }, (_, index) => (held[index] === true ? "1" : "0")).join(
-    ""
-  );
+  return Array.from({ length: YAHTZEE_DICE_COUNT }, (_, index) =>
+    held[index] === true ? "1" : "0"
+  ).join("");
 }
 
 export function parseYahtzeeHoldMask(mask: string): boolean[] | null {
@@ -155,10 +155,7 @@ export function parseYahtzeeHoldMask(mask: string): boolean[] | null {
   return mask.split("").map((value) => value === "1");
 }
 
-export function buildYahtzeeLegalActionIds(
-  turn: YahtzeeTurn,
-  card: YahtzeeScoreCard
-): string[] {
+export function buildYahtzeeLegalActionIds(turn: YahtzeeTurn, card: YahtzeeScoreCard): string[] {
   if (turn.rollCount <= 0) return [];
   const actions: string[] = [];
 

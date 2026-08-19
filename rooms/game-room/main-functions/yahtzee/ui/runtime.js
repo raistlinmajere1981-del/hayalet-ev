@@ -448,7 +448,8 @@
       option.textContent = t("modes." + mode);
       modeSelect.append(option);
     });
-    const effectiveMode = state.active || state.complete ? state.mode || selectedMode : selectedMode;
+    const effectiveMode =
+      state.active || state.complete ? state.mode || selectedMode : selectedMode;
     modeSelect.value = MODES.includes(effectiveMode) ? effectiveMode : "solo";
     modeSelect.disabled = state.active || state.complete;
     modeSelect.addEventListener("change", function () {

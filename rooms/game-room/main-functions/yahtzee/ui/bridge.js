@@ -34,7 +34,8 @@
           ...(yahtzee.status && typeof yahtzee.status === "object" ? yahtzee.status : {}),
           waitOpponent: yahtzee.status?.waitOpponent || "Diğer oyuncunun sırası bekleniyor.",
           aiThinking: yahtzee.status?.aiThinking || "AI hamlesini seçiyor.",
-          blockedOpponent: yahtzee.status?.blockedOpponent || "Seçilen rakip şu anda kullanılamıyor.",
+          blockedOpponent:
+            yahtzee.status?.blockedOpponent || "Seçilen rakip şu anda kullanılamıyor.",
           syncFailed: yahtzee.status?.syncFailed || "Uzak oyun eşitlemesi başarısız oldu.",
         },
       },
@@ -48,9 +49,9 @@
       const state = typeof base.getState === "function" ? base.getState() : null;
       return Boolean(
         state &&
-          state.context &&
-          state.context.activeFeature &&
-          state.context.activeFeature.id === "yahtzee"
+        state.context &&
+        state.context.activeFeature &&
+        state.context.activeFeature.id === "yahtzee"
       );
     }
 

@@ -285,9 +285,7 @@ export async function handleYahtzeeReset(api: YahtzeeRuntimeApi): Promise<unknow
   pushState(api, reset);
   return result(
     remoteResetSuccess,
-    remoteResetSuccess
-      ? "Yahtzee game reset."
-      : "Yahtzee reset locally; US1 reset delivery failed."
+    remoteResetSuccess ? "Yahtzee game reset." : "Yahtzee reset locally; US1 reset delivery failed."
   );
 }
 
@@ -316,8 +314,7 @@ export async function handleYahtzeeToggleHold(
   if (!isYahtzeeSeatLocallyControlled(state))
     return result(false, "Wait for the other Yahtzee player.");
   if (index === null) return result(false, "Invalid die index.");
-  if (state.turn.rollCount >= 3)
-    return result(false, "The final roll is already complete.");
+  if (state.turn.rollCount >= 3) return result(false, "The final roll is already complete.");
   state.turn.held[index] = !state.turn.held[index];
   bumpYahtzeeRevision(state);
   const saved = pushState(api, state);
@@ -380,7 +377,9 @@ export async function handleYahtzeeScore(
     const dispatched = await dispatchAiTurnIfNeeded(api, saved);
     return result(
       dispatched,
-      dispatched ? `Scored ${category}. AI turn dispatched.` : "Score saved, but AI dispatch failed."
+      dispatched
+        ? `Scored ${category}. AI turn dispatched.`
+        : "Score saved, but AI dispatch failed."
     );
   }
 
@@ -426,8 +425,7 @@ export async function handleYahtzeeAiAction(
   }
 
   const category = legalActionId.slice("score:".length) as YahtzeeCategory;
-  if (!YAHTZEE_CATEGORIES.includes(category))
-    return result(false, "Invalid Yahtzee score action.");
+  if (!YAHTZEE_CATEGORIES.includes(category)) return result(false, "Invalid Yahtzee score action.");
   player.card.scores[category] = scoreYahtzeeCategory(category, state.turn.dice);
   state.turnIndex += 1;
   finishScoringTurn(state);
@@ -480,11 +478,7 @@ export function handleYahtzeeRemoteSync(api: YahtzeeRuntimeApi, payload: unknown
     return result(false, "Stale remote Yahtzee synchronization.");
 
   const incomingRemoteUserId = readRemoteUserId(payload);
-  if (
-    current.remoteUserId &&
-    incomingRemoteUserId &&
-    current.remoteUserId !== incomingRemoteUserId
-  )
+  if (current.remoteUserId && incomingRemoteUserId && current.remoteUserId !== incomingRemoteUserId)
     return result(false, "Remote Yahtzee user mismatch.");
 
   const mirrored = normalizeYahtzeeState({
