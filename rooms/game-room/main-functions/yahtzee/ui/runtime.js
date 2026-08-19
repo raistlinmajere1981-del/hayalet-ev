@@ -17,51 +17,16 @@
     "chance",
   ];
 
-  const LABELS = {
-    en: {
-      title: "Pirate Deck Yahtzee",
-      subtitle: "Five carved dice, thirteen choices, one candlelit score card.",
-      start: "Start Game",
-      reset: "Reset",
-      roll: "Roll Dice",
-      hold: "Hold",
-      held: "Held",
-      score: "Score",
-      scoreCard: "Carved Score Card",
-      total: "Total",
-      upperBonus: "Upper Bonus",
-      rolls: "Rolls",
-      sound: "Sound",
-      soundOn: "On",
-      soundOff: "Off",
-      babylonMissing: "Babylon runtime not bundled yet — atmospheric fallback active.",
-      ones: "Ones", twos: "Twos", threes: "Threes", fours: "Fours", fives: "Fives", sixes: "Sixes",
-      "three-kind": "Three of a Kind", "four-kind": "Four of a Kind", "full-house": "Full House",
-      "small-straight": "Small Straight", "large-straight": "Large Straight", yahtzee: "Yahtzee", chance: "Chance",
-    },
-    tr: {
-      title: "Korsan Güvertesi Yahtzee",
-      subtitle: "Beş oyma zar, on üç seçim, mum ışığında tek skor parşömeni.",
-      start: "Oyunu Başlat",
-      reset: "Sıfırla",
-      roll: "Zarları At",
-      hold: "Tut",
-      held: "Tutuldu",
-      score: "Yaz",
-      scoreCard: "Oyma Skor Kartı",
-      total: "Toplam",
-      upperBonus: "Üst Bonus",
-      rolls: "Atış",
-      sound: "Ses",
-      soundOn: "Açık",
-      soundOff: "Kapalı",
-      babylonMissing: "Babylon runtime henüz paketli değil — atmosferik yedek sahne aktif.",
-      ones: "Birler", twos: "İkiler", threes: "Üçler", fours: "Dörtler", fives: "Beşler", sixes: "Altılar",
-      "three-kind": "Üçlü", "four-kind": "Dörtlü", "full-house": "Full House",
-      "small-straight": "Küçük Kent", "large-straight": "Büyük Kent", yahtzee: "Yahtzee", chance: "Şans",
-    },
+  const FALLBACK_LABELS = {
+    title: "Yahtzee",
+    start: "Start",
+    reset: "Reset",
+    roll: "Roll",
+    score: "Score",
+    status: { ready: "Ready." },
   };
 
+  let translations = null;
   let state = createState();
   let audioEnabled = true;
   let audioContext = null;
@@ -78,16 +43,29 @@
       upperSubtotal: 0,
       upperBonus: 0,
       total: 0,
-      status: "",
+      status: "ready",
     };
   }
 
-  function locale() {
-    return document.documentElement.lang === "tr" ? "tr" : "en";
+  function readPath(source, path) {
+    let current = source;
+    for (const segment of path) {
+      if (!current || typeof current !== "object") return "";
+      current = current[segment];
+    }
+    return typeof current === "string" && current.trim() !== "" ? current : "";
   }
 
   function t(key) {
-    return LABELS[locale()][key] || LABELS.en[key] || key;
+    const path = String(key).split(".");
+    return (
+      readPath(translations && translations.yahtzee, path) || readPath(FALLBACK_LABELS, path) || key
+    );
+  }
+
+  function setTranslations(nextTranslations) {
+    translations =
+      nextTranslations && typeof nextTranslations === "object" ? nextTranslations : null;
   }
 
   function command(name, roomArgs) {
@@ -143,24 +121,49 @@
 
   function stopAmbience() {
     if (!ambienceNode) return;
-    try { ambienceNode.oscillator.stop(); } catch (_error) { /* already stopped */ }
+    try {
+      ambienceNode.oscillator.stop();
+    } catch (_error) {
+      /* already stopped */
+    }
     ambienceNode = null;
   }
 
   function disposeBabylon() {
     if (!babylonHandle) return;
-    try { babylonHandle.engine.dispose(); } catch (_error) { /* best effort */ }
+    try {
+      babylonHandle.engine.dispose();
+    } catch (_error) {
+      /* best effort */
+    }
     babylonHandle = null;
   }
 
   function createPirate(B, scene, x, z, scale, material) {
-    const body = B.MeshBuilder.CreateCylinder("pirate-body", { height: 1.7 * scale, diameterTop: 0.62 * scale, diameterBottom: 0.78 * scale, tessellation: 8 }, scene);
+    const body = B.MeshBuilder.CreateCylinder(
+      "pirate-body",
+      {
+        height: 1.7 * scale,
+        diameterTop: 0.62 * scale,
+        diameterBottom: 0.78 * scale,
+        tessellation: 8,
+      },
+      scene
+    );
     body.position = new B.Vector3(x, 1.15 * scale, z);
     body.material = material;
-    const head = B.MeshBuilder.CreateSphere("pirate-head", { diameter: 0.58 * scale, segments: 8 }, scene);
+    const head = B.MeshBuilder.CreateSphere(
+      "pirate-head",
+      { diameter: 0.58 * scale, segments: 8 },
+      scene
+    );
     head.position = new B.Vector3(x, 2.18 * scale, z);
     head.material = material;
-    const hat = B.MeshBuilder.CreateCylinder("pirate-hat", { height: 0.18 * scale, diameter: 0.9 * scale, tessellation: 3 }, scene);
+    const hat = B.MeshBuilder.CreateCylinder(
+      "pirate-hat",
+      { height: 0.18 * scale, diameter: 0.9 * scale, tessellation: 3 },
+      scene
+    );
     hat.position = new B.Vector3(x, 2.53 * scale, z);
     hat.rotation.y = Math.PI / 2;
     hat.material = material;
@@ -174,7 +177,14 @@
     const engine = new B.Engine(canvas, true, { preserveDrawingBuffer: false, stencil: true });
     const scene = new B.Scene(engine);
     scene.clearColor = new B.Color4(0.008, 0.012, 0.028, 1);
-    const camera = new B.ArcRotateCamera("camera", -Math.PI / 2, 1.08, 12.2, new B.Vector3(0, 0.65, 0), scene);
+    const camera = new B.ArcRotateCamera(
+      "camera",
+      -Math.PI / 2,
+      1.08,
+      12.2,
+      new B.Vector3(0, 0.65, 0),
+      scene
+    );
     camera.lowerRadiusLimit = 9.5;
     camera.upperRadiusLimit = 14;
     camera.attachControl(canvas, true);
@@ -194,7 +204,11 @@
     const pirateMat = new B.StandardMaterial("pirate", scene);
     pirateMat.diffuseColor = new B.Color3(0.12, 0.09, 0.07);
 
-    const deck = B.MeshBuilder.CreateGround("deck", { width: 18, height: 13, subdivisions: 1 }, scene);
+    const deck = B.MeshBuilder.CreateGround(
+      "deck",
+      { width: 18, height: 13, subdivisions: 1 },
+      scene
+    );
     deck.material = wood;
     const table = B.MeshBuilder.CreateBox("table", { width: 7.3, depth: 4.3, height: 0.42 }, scene);
     table.position.y = 0.66;
@@ -213,7 +227,11 @@
     createPirate(B, scene, -2.8, 3.7, 0.72, pirateMat);
     createPirate(B, scene, 2.75, 3.85, 0.76, pirateMat);
 
-    const mast = B.MeshBuilder.CreateCylinder("mast", { height: 8, diameter: 0.5, tessellation: 12 }, scene);
+    const mast = B.MeshBuilder.CreateCylinder(
+      "mast",
+      { height: 8, diameter: 0.5, tessellation: 12 },
+      scene
+    );
     mast.position = new B.Vector3(6.8, 3.4, 2.6);
     mast.material = darkWood;
 
@@ -224,8 +242,12 @@
       candle.intensity = 1.72 + Math.sin(sway * 17) * 0.16 + Math.sin(sway * 7) * 0.08;
     });
 
-    engine.runRenderLoop(function () { scene.render(); });
-    const resize = function () { engine.resize(); };
+    engine.runRenderLoop(function () {
+      scene.render();
+    });
+    const resize = function () {
+      engine.resize();
+    };
     global.addEventListener("resize", resize);
     babylonHandle = { engine: engine, scene: scene, resize: resize };
     return true;
@@ -233,13 +255,21 @@
 
   function renderDice(container) {
     const dice = state.turn && Array.isArray(state.turn.dice) ? state.turn.dice : [1, 1, 1, 1, 1];
-    const held = state.turn && Array.isArray(state.turn.held) ? state.turn.held : [false, false, false, false, false];
+    const held =
+      state.turn && Array.isArray(state.turn.held)
+        ? state.turn.held
+        : [false, false, false, false, false];
     dice.forEach(function (value, index) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "yahtzee-die" + (held[index] ? " is-held" : "");
       button.disabled = !state.active || state.turn.rollCount >= 3;
-      button.innerHTML = '<span class="yahtzee-die-value">' + String(value) + '</span><span class="yahtzee-die-hold">' + (held[index] ? t("held") : t("hold")) + '</span>';
+      button.innerHTML =
+        '<span class="yahtzee-die-value">' +
+        String(value) +
+        '</span><span class="yahtzee-die-hold">' +
+        (held[index] ? t("held") : t("hold")) +
+        "</span>";
       button.addEventListener("click", function () {
         playWoodClick(190);
         command("GameRoomYahtzeeToggleHold", { index: index });
@@ -255,7 +285,7 @@
       row.className = "yahtzee-score-row";
       const used = typeof scores[category] === "number";
       const value = used ? String(scores[category]) : "—";
-      row.innerHTML = '<span>' + t(category) + '</span><strong>' + value + '</strong>';
+      row.innerHTML = "<span>" + t(category) + "</span><strong>" + value + "</strong>";
       if (!used && state.active && state.turn.rollCount > 0) {
         const scoreButton = document.createElement("button");
         scoreButton.type = "button";
@@ -277,11 +307,19 @@
 
     const shell = document.createElement("section");
     shell.className = "yahtzee-shell";
-    shell.innerHTML = '<div class="yahtzee-scene"><canvas class="yahtzee-babylon-canvas"></canvas><div class="yahtzee-fallback-art"><div class="yahtzee-moon"></div><div class="yahtzee-mast"></div><div class="yahtzee-pirate p1"></div><div class="yahtzee-pirate p2"></div><div class="yahtzee-pirate p3"></div><div class="yahtzee-pirate p4"></div><div class="yahtzee-table"></div><div class="yahtzee-candle"></div></div><div class="yahtzee-vignette"></div></div>';
+    shell.innerHTML =
+      '<div class="yahtzee-scene"><canvas class="yahtzee-babylon-canvas"></canvas><div class="yahtzee-fallback-art"><div class="yahtzee-moon"></div><div class="yahtzee-mast"></div><div class="yahtzee-pirate p1"></div><div class="yahtzee-pirate p2"></div><div class="yahtzee-pirate p3"></div><div class="yahtzee-pirate p4"></div><div class="yahtzee-table"></div><div class="yahtzee-candle"></div></div><div class="yahtzee-vignette"></div></div>';
 
     const overlay = document.createElement("div");
     overlay.className = "yahtzee-overlay";
-    overlay.innerHTML = '<header class="yahtzee-header"><div><span class="yahtzee-kicker">GAME ROOM · NIGHT WATCH</span><h1>' + t("title") + '</h1><p>' + t("subtitle") + '</p></div></header>';
+    overlay.innerHTML =
+      '<header class="yahtzee-header"><div><span class="yahtzee-kicker">' +
+      t("kicker") +
+      "</span><h1>" +
+      t("title") +
+      "</h1><p>" +
+      t("subtitle") +
+      "</p></div></header>";
 
     const controls = document.createElement("div");
     controls.className = "yahtzee-controls";
@@ -312,7 +350,8 @@
     sound.textContent = t("sound") + ": " + (audioEnabled ? t("soundOn") : t("soundOff"));
     sound.addEventListener("click", function () {
       audioEnabled = !audioEnabled;
-      if (audioEnabled) ensureAmbience(); else stopAmbience();
+      if (audioEnabled) ensureAmbience();
+      else stopAmbience();
       render(root);
     });
     controls.append(sound);
@@ -324,7 +363,7 @@
     dicePanel.className = "yahtzee-dice-panel";
     const status = document.createElement("div");
     status.className = "yahtzee-status";
-    status.textContent = state.status || (state.active ? "" : t("subtitle"));
+    status.textContent = t("status." + (state.status || "ready"));
     dicePanel.append(status);
     const diceRow = document.createElement("div");
     diceRow.className = "yahtzee-dice-row";
@@ -344,7 +383,16 @@
     renderScores(card);
     const totals = document.createElement("div");
     totals.className = "yahtzee-score-totals";
-    totals.innerHTML = '<span>' + t("upperBonus") + ' <strong>' + String(state.upperBonus || 0) + '</strong></span><span>' + t("total") + ' <strong>' + String(state.total || 0) + '</strong></span>';
+    totals.innerHTML =
+      "<span>" +
+      t("upperBonus") +
+      " <strong>" +
+      String(state.upperBonus || 0) +
+      "</strong></span><span>" +
+      t("total") +
+      " <strong>" +
+      String(state.total || 0) +
+      "</strong></span>";
     card.append(totals);
     playArea.append(card);
     overlay.append(playArea);
@@ -365,14 +413,26 @@
   }
 
   function handleState(message) {
-    const payload = message && typeof message === "object" && message.payload && typeof message.payload === "object" ? message.payload : {};
+    const payload =
+      message &&
+      typeof message === "object" &&
+      message.payload &&
+      typeof message.payload === "object"
+        ? message.payload
+        : {};
     if (payload.state && typeof payload.state === "object") state = payload.state;
   }
 
   global.GameRoomYahtzeeUi = {
     render: render,
     handleState: handleState,
-    getState: function () { return state; },
-    dispose: function () { disposeBabylon(); stopAmbience(); },
+    setTranslations: setTranslations,
+    getState: function () {
+      return state;
+    },
+    dispose: function () {
+      disposeBabylon();
+      stopAmbience();
+    },
   };
 })(window);

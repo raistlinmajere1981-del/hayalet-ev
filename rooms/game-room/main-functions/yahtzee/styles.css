@@ -77,7 +77,9 @@
   border-radius: 48% 48% 7% 7% / 18% 18% 8% 8%;
   background: radial-gradient(ellipse at 50% 25%, #6e3417, #321507 55%, #130805 100%);
   border: 4px solid #140805;
-  box-shadow: 0 45px 65px rgba(0, 0, 0, 0.64), inset 0 2px rgba(255, 209, 128, 0.13);
+  box-shadow:
+    0 45px 65px rgba(0, 0, 0, 0.64),
+    inset 0 2px rgba(255, 209, 128, 0.13);
 }
 
 .yahtzee-candle {
@@ -105,8 +107,12 @@
 }
 
 @keyframes yahtzee-flame {
-  from { transform: rotate(-3deg) scaleY(0.94); }
-  to { transform: rotate(4deg) scaleY(1.08); }
+  from {
+    transform: rotate(-3deg) scaleY(0.94);
+  }
+  to {
+    transform: rotate(4deg) scaleY(1.08);
+  }
 }
 
 .yahtzee-pirate {
@@ -130,14 +136,37 @@
   clip-path: polygon(0 100%, 18% 0, 82% 0, 100% 100%, 50% 65%);
 }
 
-.yahtzee-pirate.p1 { left: 11%; bottom: 33%; transform: rotate(4deg) scale(1.05); }
-.yahtzee-pirate.p2 { right: 10%; bottom: 30%; transform: rotate(-5deg) scale(1.12); }
-.yahtzee-pirate.p3 { left: 29%; bottom: 43%; transform: scale(0.82); opacity: 0.64; }
-.yahtzee-pirate.p4 { right: 28%; bottom: 44%; transform: scale(0.76); opacity: 0.59; }
+.yahtzee-pirate.p1 {
+  left: 11%;
+  bottom: 33%;
+  transform: rotate(4deg) scale(1.05);
+}
+.yahtzee-pirate.p2 {
+  right: 10%;
+  bottom: 30%;
+  transform: rotate(-5deg) scale(1.12);
+}
+.yahtzee-pirate.p3 {
+  left: 29%;
+  bottom: 43%;
+  transform: scale(0.82);
+  opacity: 0.64;
+}
+.yahtzee-pirate.p4 {
+  right: 28%;
+  bottom: 44%;
+  transform: scale(0.76);
+  opacity: 0.59;
+}
 
 .yahtzee-vignette {
   pointer-events: none;
-  background: radial-gradient(circle at 50% 49%, transparent 16%, rgba(0, 0, 0, 0.2) 58%, rgba(0, 0, 0, 0.82) 100%);
+  background: radial-gradient(
+    circle at 50% 49%,
+    transparent 16%,
+    rgba(0, 0, 0, 0.2) 58%,
+    rgba(0, 0, 0, 0.82) 100%
+  );
 }
 
 .yahtzee-overlay {
@@ -170,7 +199,9 @@
 
 .yahtzee-header h1 {
   margin: 7px 0 5px;
-  font: 700 clamp(30px, 4vw, 56px)/0.98 Georgia, serif;
+  font:
+    700 clamp(30px, 4vw, 56px)/0.98 Georgia,
+    serif;
   color: #f4d9a4;
 }
 
@@ -229,7 +260,9 @@
 .yahtzee-dice-panel,
 .yahtzee-score-card {
   border: 1px solid rgba(196, 143, 76, 0.34);
-  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.52), inset 0 1px rgba(255, 224, 169, 0.08);
+  box-shadow:
+    0 22px 48px rgba(0, 0, 0, 0.52),
+    inset 0 1px rgba(255, 224, 169, 0.08);
   backdrop-filter: blur(8px);
 }
 
@@ -258,17 +291,23 @@
   display: grid;
   place-items: center;
   padding: 8px;
-  box-shadow: inset 0 0 0 3px rgba(255, 226, 173, 0.035), 0 8px 15px rgba(0, 0, 0, 0.34);
+  box-shadow:
+    inset 0 0 0 3px rgba(255, 226, 173, 0.035),
+    0 8px 15px rgba(0, 0, 0, 0.34);
 }
 
 .yahtzee-die.is-held {
   transform: translateY(-8px);
   border-color: #d69445;
-  box-shadow: 0 0 22px rgba(226, 139, 49, 0.2), inset 0 0 0 2px rgba(255, 199, 111, 0.1);
+  box-shadow:
+    0 0 22px rgba(226, 139, 49, 0.2),
+    inset 0 0 0 2px rgba(255, 199, 111, 0.1);
 }
 
 .yahtzee-die-value {
-  font: 700 34px/1 Georgia, serif;
+  font:
+    700 34px/1 Georgia,
+    serif;
 }
 
 .yahtzee-die-hold {
@@ -299,7 +338,9 @@
 
 .yahtzee-score-card h2 {
   margin: 0 0 9px;
-  font: 700 22px/1.1 Georgia, serif;
+  font:
+    700 22px/1.1 Georgia,
+    serif;
 }
 
 .yahtzee-score-row {
@@ -329,7 +370,9 @@
   margin-top: 12px;
   padding-top: 10px;
   border-top: 2px solid rgba(69, 38, 14, 0.34);
-  font: 700 14px Georgia, serif;
+  font:
+    700 14px Georgia,
+    serif;
 }
 
 .yahtzee-runtime-note {

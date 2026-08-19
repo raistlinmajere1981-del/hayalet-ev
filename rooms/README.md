@@ -33,13 +33,13 @@ See [../CONTRIBUTING.md](../CONTRIBUTING.md) for contribution rules and [../.rov
 
 The repository ships first-party rooms both as product features and as examples of the room architecture.
 
-| Room | Status | Current scope | Documentation |
-| --- | --- | --- | --- |
-| `laboratory` | Implemented | Media/audio project intake, readiness/tooling, processing, comparison and inspection, annotation/export, analysis and reporting. | [Laboratory](../LABORATORY.md), [room ownership](laboratory/README.md) |
-| `forge-room` | Implemented | Goal/preflight workflow, task drafting, AI assignments, conflict review, synthesis and handoff packages. | [Forge Room](../FORGEROOM.md) |
-| `repair-room` | Implemented | Electronics repair sessions, evidence/knowledge packs, board/camera workbench, measurements, timeline/overlays, AI and hands-free interaction. | [Repair Room](../REPAIRROOM.md) |
-| `game-room` | Implemented / evolving | Tavla and four-seat Team Tetris with AI/US1 participation and room transport. | [Backgammon](../BACKGAMMON.md), [Team Tetris](../TEAM-TETRIS.md) |
-| `pattern-room` | Prototype / evolving | Layered research workspace with sources, evidence, relationships, Case Review, persistence and reporting. | [Pattern Room](../PATTERNROOM.md) |
+| Room           | Status                 | Current scope                                                                                                                                  | Documentation                                                          |
+| -------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `laboratory`   | Implemented            | Media/audio project intake, readiness/tooling, processing, comparison and inspection, annotation/export, analysis and reporting.               | [Laboratory](../LABORATORY.md), [room ownership](laboratory/README.md) |
+| `forge-room`   | Implemented            | Goal/preflight workflow, task drafting, AI assignments, conflict review, synthesis and handoff packages.                                       | [Forge Room](../FORGEROOM.md)                                          |
+| `repair-room`  | Implemented            | Electronics repair sessions, evidence/knowledge packs, board/camera workbench, measurements, timeline/overlays, AI and hands-free interaction. | [Repair Room](../REPAIRROOM.md)                                        |
+| `game-room`    | Implemented / evolving | Tavla and four-seat Team Tetris with AI/US1 participation and room transport.                                                                  | [Backgammon](../BACKGAMMON.md), [Team Tetris](../TEAM-TETRIS.md)       |
+| `pattern-room` | Prototype / evolving   | Layered research workspace with sources, evidence, relationships, Case Review, persistence and reporting.                                      | [Pattern Room](../PATTERNROOM.md)                                      |
 
 Status labels describe the current repository surface, not a compatibility or long-term support guarantee.
 

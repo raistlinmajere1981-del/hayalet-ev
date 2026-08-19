@@ -37,8 +37,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function sanitizeTurn(candidate: unknown): YahtzeeTurn {
   const source = isRecord(candidate) ? candidate : {};
-  const rawDice = Array.isArray(source["dice"]) ? source["dice"] : [];
-  const rawHeld = Array.isArray(source["held"]) ? source["held"] : [];
+  const rawDice: unknown[] = Array.isArray(source["dice"]) ? source["dice"] : [];
+  const rawHeld: unknown[] = Array.isArray(source["held"]) ? source["held"] : [];
   const fallback = createEmptyTurn();
   return {
     dice: fallback.dice.map((fallbackDie, index) => {
@@ -82,7 +82,7 @@ export function createInitialYahtzeeState(): YahtzeeHostState {
     upperSubtotal: 0,
     upperBonus: 0,
     total: 0,
-    status: "Ready on the pirate deck.",
+    status: "ready",
   };
 }
 
@@ -95,7 +95,9 @@ export function normalizeYahtzeeState(candidate: unknown): YahtzeeHostState {
     active: source["active"] === true && complete === false,
     complete,
     turnIndex:
-      typeof source["turnIndex"] === "number" && Number.isInteger(source["turnIndex"]) && source["turnIndex"] >= 0
+      typeof source["turnIndex"] === "number" &&
+      Number.isInteger(source["turnIndex"]) &&
+      source["turnIndex"] >= 0
         ? Math.min(source["turnIndex"], YAHTZEE_CATEGORIES.length)
         : 0,
     turn: sanitizeTurn(source["turn"]),

@@ -33,7 +33,7 @@ export interface YahtzeeScoreCard {
 
 function countDice(dice: YahtzeeDie[]): number[] {
   const counts = Array.from({ length: 7 }, () => 0);
-  for (const die of dice) counts[die] += 1;
+  for (const die of dice) counts[die] = (counts[die] ?? 0) + 1;
   return counts;
 }
 
@@ -45,7 +45,9 @@ function hasStraight(dice: YahtzeeDie[], length: number): boolean {
   const unique = Array.from(new Set(dice)).sort((a, b) => a - b);
   let run = 1;
   for (let index = 1; index < unique.length; index += 1) {
-    if (unique[index] === unique[index - 1] + 1) {
+    const current = unique[index];
+    const previous = unique[index - 1];
+    if (current !== undefined && previous !== undefined && current === previous + 1) {
       run += 1;
       if (run >= length) return true;
     } else {
@@ -67,7 +69,8 @@ export function rollYahtzeeDice(
   turn: YahtzeeTurn,
   random: () => number = Math.random
 ): YahtzeeTurn {
-  if (turn.rollCount >= YAHTZEE_MAX_ROLLS_PER_TURN) return { ...turn, dice: turn.dice.slice(), held: turn.held.slice() };
+  if (turn.rollCount >= YAHTZEE_MAX_ROLLS_PER_TURN)
+    return { ...turn, dice: turn.dice.slice(), held: turn.held.slice() };
 
   const dice = turn.dice.map((die, index) => {
     if (turn.rollCount > 0 && turn.held[index]) return die;
@@ -87,19 +90,34 @@ export function scoreYahtzeeCategory(category: YahtzeeCategory, dice: YahtzeeDie
   const total = sumDice(dice);
 
   switch (category) {
-    case "ones": return counts[1] * 1;
-    case "twos": return counts[2] * 2;
-    case "threes": return counts[3] * 3;
-    case "fours": return counts[4] * 4;
-    case "fives": return counts[5] * 5;
-    case "sixes": return counts[6] * 6;
-    case "three-kind": return counts.some((count) => count >= 3) ? total : 0;
-    case "four-kind": return counts.some((count) => count >= 4) ? total : 0;
-    case "full-house": return counts.includes(3) && counts.includes(2) ? 25 : 0;
-    case "small-straight": return hasStraight(dice, 4) ? 30 : 0;
-    case "large-straight": return hasStraight(dice, 5) ? 40 : 0;
-    case "yahtzee": return counts.includes(5) ? 50 : 0;
-    case "chance": return total;
+    case "ones":
+      return (counts[1] ?? 0) * 1;
+    case "twos":
+      return (counts[2] ?? 0) * 2;
+    case "threes":
+      return (counts[3] ?? 0) * 3;
+    case "fours":
+      return (counts[4] ?? 0) * 4;
+    case "fives":
+      return (counts[5] ?? 0) * 5;
+    case "sixes":
+      return (counts[6] ?? 0) * 6;
+    case "three-kind":
+      return counts.some((count) => count >= 3) ? total : 0;
+    case "four-kind":
+      return counts.some((count) => count >= 4) ? total : 0;
+    case "full-house":
+      return counts.includes(3) && counts.includes(2) ? 25 : 0;
+    case "small-straight":
+      return hasStraight(dice, 4) ? 30 : 0;
+    case "large-straight":
+      return hasStraight(dice, 5) ? 40 : 0;
+    case "yahtzee":
+      return counts.includes(5) ? 50 : 0;
+    case "chance":
+      return total;
+    default:
+      return 0;
   }
 }
 
@@ -115,7 +133,10 @@ export function getYahtzeeUpperBonus(card: YahtzeeScoreCard): number {
 }
 
 export function getYahtzeeTotal(card: YahtzeeScoreCard): number {
-  const categoryTotal = YAHTZEE_CATEGORIES.reduce((sum, category) => sum + (card.scores[category] ?? 0), 0);
+  const categoryTotal = YAHTZEE_CATEGORIES.reduce(
+    (sum, category) => sum + (card.scores[category] ?? 0),
+    0
+  );
   return categoryTotal + getYahtzeeUpperBonus(card);
 }
 

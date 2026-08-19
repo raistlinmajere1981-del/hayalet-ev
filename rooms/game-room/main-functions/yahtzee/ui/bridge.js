@@ -12,9 +12,9 @@
       const state = typeof base.getState === "function" ? base.getState() : null;
       return Boolean(
         state &&
-          state.context &&
-          state.context.activeFeature &&
-          state.context.activeFeature.id === "yahtzee"
+        state.context &&
+        state.context.activeFeature &&
+        state.context.activeFeature.id === "yahtzee"
       );
     }
 
@@ -25,8 +25,17 @@
         typeof global.GameRoomYahtzeeUi.render === "function"
       ) {
         const root = document.getElementById("app");
+        const baseState = typeof base.getState === "function" ? base.getState() : null;
+        if (typeof global.GameRoomYahtzeeUi.setTranslations === "function") {
+          global.GameRoomYahtzeeUi.setTranslations(baseState && baseState.translations);
+        }
         if (root) global.GameRoomYahtzeeUi.render(root);
         return;
+      }
+      const root = document.getElementById("app");
+      if (root) root.classList.remove("yahtzee-root");
+      if (global.GameRoomYahtzeeUi && typeof global.GameRoomYahtzeeUi.dispose === "function") {
+        global.GameRoomYahtzeeUi.dispose();
       }
       base.render();
     }
@@ -49,19 +58,14 @@
 
     function start() {
       const roomApi = global.roomAPI;
-      const originalOnHostMessage =
-        roomApi && typeof roomApi.onHostMessage === "function" ? roomApi.onHostMessage : null;
 
-      if (originalOnHostMessage) {
-        roomApi.onHostMessage = function registerYahtzeeAwareHandler() {
-          return originalOnHostMessage.call(roomApi, handleHostMessage);
-        };
-      }
+      base.start();
 
-      try {
-        base.start();
-      } finally {
-        if (originalOnHostMessage) roomApi.onHostMessage = originalOnHostMessage;
+      if (roomApi && typeof roomApi.onHostMessage === "function") {
+        if (typeof roomApi.offHostMessage === "function") {
+          roomApi.offHostMessage(base.handleHostMessage);
+        }
+        roomApi.onHostMessage(handleHostMessage);
       }
 
       if (isYahtzeeActive()) render();

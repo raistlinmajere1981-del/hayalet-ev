@@ -274,14 +274,27 @@ void test("game-room manifest documents the Team Tetris AI and US1 contracts", (
   );
 });
 
-void test("game-room manifest contains only the implemented Tavla and Team Tetris features", () => {
+void test("game-room manifest registers Tavla, Team Tetris, and Yahtzee", () => {
   const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<string, unknown>;
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true);
   assert.deepEqual(
     result.manifest?.features.map((feature) => feature.id),
-    ["backgammon", "team-tetris"]
+    ["backgammon", "team-tetris", "yahtzee"]
+  );
+
+  const yahtzeeFeature = result.manifest?.features.find((feature) => feature.id === "yahtzee");
+  assert.ok(yahtzeeFeature?.scene);
+  assert.deepEqual(
+    yahtzeeFeature.commandSpecs?.map((command) => command.name),
+    [
+      "GameRoomYahtzeeStart",
+      "GameRoomYahtzeeReset",
+      "GameRoomYahtzeeRoll",
+      "GameRoomYahtzeeToggleHold",
+      "GameRoomYahtzeeScore",
+    ]
   );
 });
 
