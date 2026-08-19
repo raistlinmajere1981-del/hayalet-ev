@@ -1,0 +1,362 @@
+.yahtzee-root {
+  min-height: 100%;
+  background: #050811;
+  color: #f3e4bf;
+}
+
+.yahtzee-shell {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, #263142 0, #0a1020 42%, #03050b 100%);
+}
+
+.yahtzee-scene,
+.yahtzee-babylon-canvas,
+.yahtzee-fallback-art,
+.yahtzee-vignette {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.yahtzee-babylon-canvas {
+  display: block;
+  outline: none;
+}
+
+.yahtzee-fallback-art {
+  overflow: hidden;
+  background:
+    linear-gradient(to bottom, rgba(4, 8, 22, 0.15), rgba(2, 4, 8, 0.88)),
+    repeating-linear-gradient(91deg, #2a130a 0 68px, #180b06 69px 73px);
+}
+
+.yahtzee-fallback-art::before {
+  content: "";
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  bottom: 38%;
+  height: 34%;
+  background: linear-gradient(to bottom, rgba(12, 25, 48, 0.3), rgba(2, 8, 18, 0.82));
+  transform: perspective(760px) rotateX(64deg);
+  transform-origin: bottom;
+  border-top: 1px solid rgba(164, 192, 219, 0.16);
+}
+
+.yahtzee-moon {
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  top: 7%;
+  right: 12%;
+  background: #d6dfd8;
+  box-shadow: 0 0 75px rgba(190, 211, 219, 0.34);
+  opacity: 0.75;
+}
+
+.yahtzee-mast {
+  position: absolute;
+  width: 26px;
+  height: 88%;
+  right: 18%;
+  top: -8%;
+  background: linear-gradient(90deg, #1a0c07, #6a3217 48%, #170a05);
+  box-shadow: 20px 0 38px rgba(0, 0, 0, 0.6);
+}
+
+.yahtzee-table {
+  position: absolute;
+  left: 21%;
+  right: 21%;
+  bottom: 16%;
+  height: 31%;
+  border-radius: 48% 48% 7% 7% / 18% 18% 8% 8%;
+  background: radial-gradient(ellipse at 50% 25%, #6e3417, #321507 55%, #130805 100%);
+  border: 4px solid #140805;
+  box-shadow: 0 45px 65px rgba(0, 0, 0, 0.64), inset 0 2px rgba(255, 209, 128, 0.13);
+}
+
+.yahtzee-candle {
+  position: absolute;
+  left: 50%;
+  bottom: 41%;
+  width: 22px;
+  height: 76px;
+  border-radius: 7px;
+  background: #d6b979;
+  box-shadow: 0 0 70px 25px rgba(255, 145, 42, 0.2);
+}
+
+.yahtzee-candle::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: -30px;
+  width: 14px;
+  height: 32px;
+  border-radius: 52% 48% 45% 55%;
+  background: #ffbf54;
+  box-shadow: 0 0 26px 9px rgba(255, 139, 25, 0.46);
+  animation: yahtzee-flame 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes yahtzee-flame {
+  from { transform: rotate(-3deg) scaleY(0.94); }
+  to { transform: rotate(4deg) scaleY(1.08); }
+}
+
+.yahtzee-pirate {
+  position: absolute;
+  width: 58px;
+  height: 170px;
+  border-radius: 38% 38% 18% 18%;
+  background: linear-gradient(#0c0b0b 0 22%, #21140e 23% 100%);
+  opacity: 0.84;
+  filter: drop-shadow(0 10px 13px rgba(0, 0, 0, 0.6));
+}
+
+.yahtzee-pirate::before {
+  content: "";
+  position: absolute;
+  width: 78px;
+  height: 25px;
+  left: -10px;
+  top: 8px;
+  background: #090909;
+  clip-path: polygon(0 100%, 18% 0, 82% 0, 100% 100%, 50% 65%);
+}
+
+.yahtzee-pirate.p1 { left: 11%; bottom: 33%; transform: rotate(4deg) scale(1.05); }
+.yahtzee-pirate.p2 { right: 10%; bottom: 30%; transform: rotate(-5deg) scale(1.12); }
+.yahtzee-pirate.p3 { left: 29%; bottom: 43%; transform: scale(0.82); opacity: 0.64; }
+.yahtzee-pirate.p4 { right: 28%; bottom: 44%; transform: scale(0.76); opacity: 0.59; }
+
+.yahtzee-vignette {
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 49%, transparent 16%, rgba(0, 0, 0, 0.2) 58%, rgba(0, 0, 0, 0.82) 100%);
+}
+
+.yahtzee-overlay {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  min-height: 100vh;
+  padding: clamp(22px, 3vw, 48px);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.yahtzee-overlay button,
+.yahtzee-overlay .yahtzee-score-card,
+.yahtzee-overlay .yahtzee-dice-panel {
+  pointer-events: auto;
+}
+
+.yahtzee-header {
+  max-width: 650px;
+  text-shadow: 0 2px 18px #000;
+}
+
+.yahtzee-kicker {
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  color: #d8aa68;
+}
+
+.yahtzee-header h1 {
+  margin: 7px 0 5px;
+  font: 700 clamp(30px, 4vw, 56px)/0.98 Georgia, serif;
+  color: #f4d9a4;
+}
+
+.yahtzee-header p {
+  margin: 0;
+  color: #baa887;
+  max-width: 560px;
+}
+
+.yahtzee-controls {
+  display: flex;
+  gap: 9px;
+  margin-top: 18px;
+  width: fit-content;
+  padding: 8px;
+  border: 1px solid rgba(199, 151, 86, 0.25);
+  border-radius: 14px;
+  background: rgba(17, 10, 8, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.yahtzee-controls button,
+.yahtzee-score-row button,
+.yahtzee-die {
+  border: 1px solid #72502d;
+  color: #ead5ad;
+  background: linear-gradient(#3a2417, #1f120c);
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.yahtzee-controls button {
+  padding: 9px 13px;
+}
+
+.yahtzee-controls button.primary {
+  background: linear-gradient(#7c451c, #44220d);
+  border-color: #ac7137;
+}
+
+.yahtzee-controls button:disabled,
+.yahtzee-die:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.yahtzee-play-area {
+  display: grid;
+  grid-template-columns: minmax(380px, 1fr) minmax(280px, 390px);
+  align-items: end;
+  gap: clamp(18px, 4vw, 55px);
+  margin-top: auto;
+  padding-top: 22vh;
+}
+
+.yahtzee-dice-panel,
+.yahtzee-score-card {
+  border: 1px solid rgba(196, 143, 76, 0.34);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.52), inset 0 1px rgba(255, 224, 169, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.yahtzee-dice-panel {
+  justify-self: center;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(29, 14, 8, 0.75);
+}
+
+.yahtzee-status {
+  min-height: 20px;
+  margin-bottom: 12px;
+  text-align: center;
+  color: #cfb88e;
+}
+
+.yahtzee-dice-row {
+  display: flex;
+  gap: 11px;
+}
+
+.yahtzee-die {
+  width: 76px;
+  height: 82px;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  box-shadow: inset 0 0 0 3px rgba(255, 226, 173, 0.035), 0 8px 15px rgba(0, 0, 0, 0.34);
+}
+
+.yahtzee-die.is-held {
+  transform: translateY(-8px);
+  border-color: #d69445;
+  box-shadow: 0 0 22px rgba(226, 139, 49, 0.2), inset 0 0 0 2px rgba(255, 199, 111, 0.1);
+}
+
+.yahtzee-die-value {
+  font: 700 34px/1 Georgia, serif;
+}
+
+.yahtzee-die-hold {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #b9976c;
+}
+
+.yahtzee-roll-meta {
+  margin-top: 10px;
+  text-align: right;
+  font-size: 11px;
+  color: #8f7a5d;
+}
+
+.yahtzee-score-card {
+  align-self: end;
+  max-height: 70vh;
+  overflow: auto;
+  padding: 17px;
+  border-radius: 16px;
+  color: #33220f;
+  background:
+    linear-gradient(rgba(232, 201, 143, 0.91), rgba(194, 153, 94, 0.92)),
+    repeating-linear-gradient(0deg, transparent 0 25px, rgba(73, 44, 17, 0.09) 26px 27px);
+}
+
+.yahtzee-score-card h2 {
+  margin: 0 0 9px;
+  font: 700 22px/1.1 Georgia, serif;
+}
+
+.yahtzee-score-row {
+  display: grid;
+  grid-template-columns: 1fr 42px 56px;
+  align-items: center;
+  gap: 7px;
+  min-height: 31px;
+  padding: 0 4px;
+  border-bottom: 1px solid rgba(71, 43, 17, 0.18);
+  font-size: 13px;
+}
+
+.yahtzee-score-row strong {
+  text-align: right;
+}
+
+.yahtzee-score-row button {
+  padding: 4px 7px;
+  font-size: 11px;
+}
+
+.yahtzee-score-totals {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 2px solid rgba(69, 38, 14, 0.34);
+  font: 700 14px Georgia, serif;
+}
+
+.yahtzee-runtime-note {
+  position: absolute;
+  z-index: 3;
+  right: 20px;
+  top: 18px;
+  max-width: 330px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  color: #a98e68;
+  background: rgba(7, 7, 8, 0.6);
+  font-size: 10px;
+}
+
+@media (max-width: 900px) {
+  .yahtzee-play-area {
+    grid-template-columns: 1fr;
+    padding-top: 12vh;
+  }
+
+  .yahtzee-score-card {
+    max-height: 42vh;
+  }
+
+  .yahtzee-die {
+    width: 58px;
+    height: 65px;
+  }
+}
