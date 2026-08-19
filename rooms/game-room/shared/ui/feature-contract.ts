@@ -6,6 +6,7 @@
 
   const FEATURE_ID = "backgammon";
   const TEAM_TETRIS_FEATURE_ID = "team-tetris";
+  const YAHTZEE_FEATURE_ID = "yahtzee";
 
   const FEATURE_RECORDS: GameRoomFeatureRecord[] = [
     {
@@ -16,6 +17,11 @@
     {
       id: TEAM_TETRIS_FEATURE_ID,
       name: "Team Tetris",
+      description: "",
+    },
+    {
+      id: YAHTZEE_FEATURE_ID,
+      name: "Yahtzee",
       description: "",
     },
   ];
