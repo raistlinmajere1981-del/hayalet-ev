@@ -1,0 +1,97 @@
+.yahtzee-overlay .yahtzee-mode-select,
+.yahtzee-overlay .yahtzee-mode-select select,
+.yahtzee-overlay .yahtzee-score-stack {
+  pointer-events: auto;
+}
+
+.yahtzee-controls {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.yahtzee-mode-select {
+  display: grid;
+  gap: 3px;
+  padding: 0 4px;
+  color: #b9976c;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.yahtzee-mode-select select {
+  min-width: 150px;
+  padding: 7px 28px 7px 9px;
+  border: 1px solid #72502d;
+  border-radius: 8px;
+  color: #ead5ad;
+  background: #24150e;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.yahtzee-mode-select select:disabled {
+  opacity: 0.62;
+}
+
+.yahtzee-play-area {
+  grid-template-columns: minmax(340px, 1fr) minmax(360px, 720px);
+}
+
+.yahtzee-score-stack {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: end;
+  gap: 12px;
+  min-width: 0;
+}
+
+.yahtzee-score-stack .yahtzee-score-card {
+  min-width: 0;
+}
+
+.yahtzee-score-card.is-active {
+  border-color: rgba(255, 190, 89, 0.8);
+  box-shadow:
+    0 22px 48px rgba(0, 0, 0, 0.52),
+    0 0 0 2px rgba(255, 176, 67, 0.17),
+    inset 0 1px rgba(255, 244, 211, 0.18);
+}
+
+.yahtzee-turn-badge {
+  display: inline-block;
+  margin: -3px 0 8px;
+  padding: 3px 7px;
+  border: 1px solid rgba(79, 42, 14, 0.34);
+  border-radius: 999px;
+  color: #5b3515;
+  background: rgba(255, 235, 190, 0.28);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 1180px) {
+  .yahtzee-play-area {
+    grid-template-columns: 1fr;
+    padding-top: 13vh;
+  }
+
+  .yahtzee-score-stack {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+}
+
+@media (max-width: 650px) {
+  .yahtzee-score-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .yahtzee-mode-select,
+  .yahtzee-mode-select select {
+    width: 100%;
+  }
+}
