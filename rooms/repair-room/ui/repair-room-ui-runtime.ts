@@ -2298,6 +2298,7 @@ export function createRepairRoomUiRuntime() {
           const dictationSubmitMode = el.dataset["dictationSubmitMode"];
           const androidCompanionEnabled = el.dataset["androidCompanionEnabled"];
           const autoReadAiReplies = el.dataset["autoReadAiReplies"];
+          const measurementAiCallCount = Number(el.dataset["measurementAiCallCount"]);
           requestRuntime.setInteractionSettings({
             ...(androidCompanionEnabled === undefined
               ? {}
@@ -2315,6 +2316,9 @@ export function createRepairRoomUiRuntime() {
             ...(autoReadAiReplies === undefined
               ? {}
               : { autoReadAiReplies: autoReadAiReplies === "true" }),
+            ...(measurementAiCallCount === 1 || measurementAiCallCount === 2
+              ? { measurementAiCallCount }
+              : {}),
           });
           break;
         }

@@ -867,6 +867,7 @@ void test("repair-room workbench quick actions do not duplicate topbar status", 
     join(process.cwd(), "rooms/repair-room/ui/panels/repair-settings-panel.ts"),
     "utf8"
   );
+  const runtime = readRepairUiRuntimeText();
   const style = readRepairUiStyleText();
   const renderText = (_path: string[], fallback: string): string => fallback;
   const documentRef = new RepairFakeDocument() as unknown as Document;
@@ -950,6 +951,20 @@ void test("repair-room workbench quick actions do not duplicate topbar status", 
     (element) => element.dataset["repairAction"] === "set-interaction-settings"
   );
   assert.ok(settingsActions.length >= 3);
+  const measurementAiButtons = findRepairFakeElements(
+    settingsSurface,
+    (element) => element.dataset["measurementAiCallCount"] !== undefined
+  );
+  assert.deepEqual(
+    measurementAiButtons.map((element) => element.dataset["measurementAiCallCount"]),
+    ["1", "2"]
+  );
+  assert.deepEqual(
+    measurementAiButtons
+      .filter((element) => element.className.includes("repair-settings-button--active"))
+      .map((element) => element.dataset["measurementAiCallCount"]),
+    ["1"]
+  );
   assert.equal(
     findRepairFakeElements(
       settingsSurface,
@@ -985,6 +1000,13 @@ void test("repair-room workbench quick actions do not duplicate topbar status", 
       setupControlsSurface,
       (element) => element.dataset["repairAction"] === "set-interaction-settings"
     ).length >= 3
+  );
+  assert.deepEqual(
+    findRepairFakeElements(
+      setupControlsSurface,
+      (element) => element.dataset["measurementAiCallCount"] !== undefined
+    ).map((element) => element.dataset["measurementAiCallCount"]),
+    ["1", "2"]
   );
   assert.equal(
     findRepairFakeElements(
@@ -1032,6 +1054,8 @@ void test("repair-room workbench quick actions do not duplicate topbar status", 
   assert.doesNotMatch(workbenchPanel, /repairOperationStatus/);
   assert.match(settingsPanel, /autoReadAiReplies/);
   assert.match(settingsPanel, /dictationSubmitMode/);
+  assert.match(settingsPanel, /measurementAiCallCount/);
+  assert.match(runtime, /Number\(el\.dataset\["measurementAiCallCount"\]\)/);
   assert.doesNotMatch(style, /\.repair-operation-status/);
   assert.match(style, /\.repair-settings-button/);
 });

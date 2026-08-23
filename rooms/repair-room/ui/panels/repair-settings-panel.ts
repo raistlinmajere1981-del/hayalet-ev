@@ -192,7 +192,42 @@ export function renderRepairSettingsPanelBody(
     });
   });
   handsFree.append(submitGroup.group);
-  body.append(handsFree);
+
+  const measurementAi = createSettingsSection(
+    documentRef,
+    text(["settings", "measurementAiTitle"], "AI analysis per measurement"),
+    text(
+      ["settings", "measurementAiSubtitle"],
+      "Choose one tactical observation or add a separate risk scan for every new measurement."
+    )
+  );
+  const measurementAiGroup = createButtonGroup(
+    documentRef,
+    text(["settings", "measurementAiCalls"], "AI calls")
+  );
+  ([1, 2] as const).forEach((measurementAiCallCount) => {
+    appendSettingsButton(documentRef, measurementAiGroup.buttons, {
+      label:
+        measurementAiCallCount === 1
+          ? text(["settings", "measurementAiSingle"], "1 call")
+          : text(["settings", "measurementAiDual"], "2 calls"),
+      title:
+        measurementAiCallCount === 1
+          ? text(
+              ["settings", "measurementAiSingleTitle"],
+              "Run one tactical observation for each measurement"
+            )
+          : text(
+              ["settings", "measurementAiDualTitle"],
+              "Run a tactical observation plus a separate risk scan for each measurement"
+            ),
+      action: "set-interaction-settings",
+      active: settings.measurementAiCallCount === measurementAiCallCount,
+      dataset: { measurementAiCallCount: String(measurementAiCallCount) },
+    });
+  });
+  measurementAi.append(measurementAiGroup.group);
+  body.append(handsFree, measurementAi);
 
   return body;
 }

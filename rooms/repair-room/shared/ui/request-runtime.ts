@@ -6,6 +6,7 @@ import type {
   RepairDictationRoute,
   RepairDictationSubmitMode,
   RepairImageRect,
+  RepairMeasurementAiCallCount,
   RepairOverlayEntityRef,
   RepairSettingsOverlayTabId,
   RepairSpokenGuidanceMode,
@@ -148,6 +149,7 @@ export function createRepairUiRequestRuntime() {
       cameraFeedPreference?: RepairCameraFeedPreference;
       dictationSubmitMode?: RepairDictationSubmitMode;
       autoReadAiReplies?: boolean;
+      measurementAiCallCount?: RepairMeasurementAiCallCount;
     }) {
       return sendCommand(REPAIR_UI_COMMANDS.setInteractionSettings, payload);
     },

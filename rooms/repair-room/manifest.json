@@ -233,7 +233,7 @@
         },
         {
           "name": "RepairRoomSetInteractionSettings",
-          "description": "Update Repair Room hands-free route preferences for dictation, TTS, camera feed, and companion access.",
+          "description": "Update Repair Room interaction preferences for measurement AI calls, dictation, TTS, camera feed, and companion access.",
           "scope": "room-ui",
           "exposure": "internal"
         },
