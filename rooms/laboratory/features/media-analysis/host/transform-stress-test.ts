@@ -75,16 +75,19 @@ function normalizeStages(value: unknown): LaboratoryTransformStage[] {
     .filter((entry): entry is LaboratoryTransformStage => entry !== null);
 }
 
+function getRecipe(project: LaboratoryRecord) {
+  return toRecord(toRecord(project["edit"])["recipe"]);
+}
+
 function getVisualStages(project: LaboratoryRecord) {
   const sourceKind = asNonEmptyString(toRecord(project["source"])["kind"]);
-  const recipe = toRecord(toRecord(project["edit"])["recipe"]);
+  const recipe = getRecipe(project);
   const section = sourceKind === "image" ? toRecord(recipe["image"]) : toRecord(recipe["video"]);
   return normalizeStages(section["transformStages"]);
 }
 
 function getAudioStages(project: LaboratoryRecord) {
-  const recipe = toRecord(toRecord(project["edit"])["recipe"]);
-  return normalizeStages(toRecord(recipe["audio"])["transformStages"]);
+  return normalizeStages(toRecord(getRecipe(project)["audio"])["transformStages"]);
 }
 
 function compileVisualStage(stage: LaboratoryTransformStage): string[] {
@@ -141,7 +144,8 @@ function compileAudioStage(stage: LaboratoryTransformStage): string[] {
       return [`lowpass=f=${formatNumber(clamp(params["hz"], 1, 24000, 8000))}`];
     case "band-pass": {
       const lowHz = clamp(params["lowHz"], 1, 20000, 80);
-      const highHz = Math.max(lowHz + 1, clamp(params["highHz"], 2, 24000, 8000));
+      const requestedHighHz = clamp(params["highHz"], 2, 24000, 8000);
+      const highHz = Math.min(24000, Math.max(lowHz + 1, requestedHighHz));
       return [
         `highpass=f=${formatNumber(lowHz)}`,
         `lowpass=f=${formatNumber(highHz)}`,
@@ -187,12 +191,13 @@ export function extendEditCommandWithTransformStressTest(
   const project = toRecord(projectValue);
   const sourceKind = asNonEmptyString(toRecord(project["source"])["kind"]);
   const compiled = compileTransformStressTestFilters(project);
+  const videoIncludesAudio = toRecord(getRecipe(project)["video"])["includeAudio"] === true;
 
   let command = [...commandValue];
   if (sourceKind === "video" || sourceKind === "image") {
     command = appendFilterChain(command, "-vf", compiled.video);
   }
-  if (sourceKind === "video" || sourceKind === "audio") {
+  if (sourceKind === "audio" || (sourceKind === "video" && videoIncludesAudio)) {
     command = appendFilterChain(command, "-af", compiled.audio);
   }
   return command;
