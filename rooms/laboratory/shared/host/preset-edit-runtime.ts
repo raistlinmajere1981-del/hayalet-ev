@@ -107,6 +107,7 @@ type LaboratoryEditRecipeVideo = LaboratoryRecord & {
   frameGrabCount: number;
   includeAudio: boolean;
   resizePreset: string;
+  transformStages: LaboratoryRecord[];
   trimEnabled: boolean;
   trimEndSeconds: number;
   trimStartSeconds: number;
@@ -120,6 +121,7 @@ type LaboratoryEditRecipeAudio = LaboratoryRecord & {
   normalizeTargetDb: number;
   silenceTrim: boolean;
   spectrogram: boolean;
+  transformStages: LaboratoryRecord[];
   trimEnabled: boolean;
   trimEndSeconds: number;
   trimStartSeconds: number;
@@ -134,6 +136,7 @@ type LaboratoryEditRecipeImage = LaboratoryRecord & {
   resizePreset: string;
   rotateDegrees: number;
   sharpen: number;
+  transformStages: LaboratoryRecord[];
 };
 
 type LaboratoryEditRecipe = {
@@ -266,6 +269,7 @@ export function createLaboratoryPresetEditRuntime(deps: LaboratoryPresetEditRunt
           includeAudio: true,
           blurFocusOutside: false,
           frameGrabCount: 0,
+          transformStages: [],
         },
         audio: {
           trimEnabled: false,
@@ -278,6 +282,7 @@ export function createLaboratoryPresetEditRuntime(deps: LaboratoryPresetEditRunt
           spectrogram: false,
           highpassHz: 0,
           lowpassHz: 0,
+          transformStages: [],
         },
         image: {
           rotateDegrees: 0,
@@ -288,6 +293,7 @@ export function createLaboratoryPresetEditRuntime(deps: LaboratoryPresetEditRunt
           contrast: 1,
           sharpen: 0,
           blurStrength: 0,
+          transformStages: [],
         },
       },
       outputs: [],
