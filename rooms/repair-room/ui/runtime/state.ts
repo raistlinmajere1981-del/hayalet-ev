@@ -175,6 +175,7 @@ export function createInitialRepairUiState(): RepairUiState {
         cameraFeedPreference: "manual",
         dictationSubmitMode: "composer",
         autoReadAiReplies: true,
+        measurementAiCallCount: 1,
       },
       attentionBudget: {
         windowMs: 180000,

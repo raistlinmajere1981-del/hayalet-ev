@@ -1294,7 +1294,9 @@ export function createRepairCommandRouter(params: {
         const success = sessionController.appendEventToActiveSession(event);
         if (success) {
           void aiController.requestMeasurementAiObservation(event);
-          void aiController.requestSessionRiskDetection();
+          if (store.getState().layout.interactionSettings.measurementAiCallCount === 2) {
+            void aiController.requestSessionRiskDetection();
+          }
         }
         return { success };
       }
@@ -1477,6 +1479,7 @@ export function createRepairCommandRouter(params: {
         const cameraFeedPreference = flat["cameraFeedPreference"];
         const dictationSubmitMode = flat["dictationSubmitMode"];
         const autoReadAiReplies = flat["autoReadAiReplies"];
+        const measurementAiCallCount = safeNumber(flat["measurementAiCallCount"]);
         if (androidCompanionEnabled !== undefined && typeof androidCompanionEnabled !== "boolean") {
           return { success: false, message: "androidCompanionEnabled must be boolean" };
         }
@@ -1494,6 +1497,13 @@ export function createRepairCommandRouter(params: {
         }
         if (autoReadAiReplies !== undefined && typeof autoReadAiReplies !== "boolean") {
           return { success: false, message: "autoReadAiReplies must be boolean" };
+        }
+        if (
+          flat["measurementAiCallCount"] !== undefined &&
+          measurementAiCallCount !== 1 &&
+          measurementAiCallCount !== 2
+        ) {
+          return { success: false, message: "measurementAiCallCount must be 1 or 2" };
         }
         const interactionSettings: Partial<RepairInteractionSettingsState> = {};
         if (typeof androidCompanionEnabled === "boolean") {
@@ -1513,6 +1523,9 @@ export function createRepairCommandRouter(params: {
         }
         if (typeof autoReadAiReplies === "boolean") {
           interactionSettings.autoReadAiReplies = autoReadAiReplies;
+        }
+        if (measurementAiCallCount === 1 || measurementAiCallCount === 2) {
+          interactionSettings.measurementAiCallCount = measurementAiCallCount;
         }
         if (Object.keys(interactionSettings).length === 0) {
           return { success: false, message: "interaction settings update is required" };
