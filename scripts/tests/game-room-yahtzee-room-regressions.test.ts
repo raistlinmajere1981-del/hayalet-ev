@@ -77,8 +77,14 @@ void test("Yahtzee browser runtime loads the vendored Babylon subset before the 
   const runtimeIndex = html.indexOf("main-functions/yahtzee/ui/runtime.js");
 
   assert.ok(vendorIndex >= 0, "Babylon vendor script is missing from Game Room UI");
-  assert.ok(sceneIndex > vendorIndex, "Babylon scene adapter must load after Babylon vendor runtime");
-  assert.ok(runtimeIndex > sceneIndex, "Yahtzee UI runtime must load after the Babylon scene adapter");
+  assert.ok(
+    sceneIndex > vendorIndex,
+    "Babylon scene adapter must load after Babylon vendor runtime"
+  );
+  assert.ok(
+    runtimeIndex > sceneIndex,
+    "Yahtzee UI runtime must load after the Babylon scene adapter"
+  );
 });
 
 void test("Yahtzee Babylon vendor build stays reproducible and licensed", () => {

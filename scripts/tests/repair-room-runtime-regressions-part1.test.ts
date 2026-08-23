@@ -309,7 +309,7 @@ void test("repair-room runtime handles the advertised interactive Phase 1 comman
   runtime.dispose();
 });
 
-void test("repair-room chat uses live protocol bridge guidance", async () => {
+void test("repair-room chat uses live protocol bridge guidance and repair image attachments", async () => {
   const dispatchCalls: Record<string, unknown>[] = [];
   const runtime = createRepairRoomHostRuntime().activate({
     log: () => {},
@@ -331,6 +331,18 @@ void test("repair-room chat uses live protocol bridge guidance", async () => {
   });
 
   assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addTimelineEvent, {
+      kind: "snapshot",
+      caption: "Chat board capture",
+      thumbnailSrc: "/tmp/repair-room-chat-capture.png",
+      useAsBoardImage: true,
+      boardImageLabel: "repair-room-chat-capture.png",
+      widthPx: 1280,
+      heightPx: 720,
+    }).success,
+    true
+  );
+  assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.sendChatTurn, { text: "What should I check next?" })
       .success,
     true
@@ -342,6 +354,13 @@ void test("repair-room chat uses live protocol bridge guidance", async () => {
   assert.equal(dispatchCalls.length, 1);
   assert.equal(dispatchCalls[0]?.["action"], "message.sendWait");
   assert.equal(dispatchCalls[0]["toSlot"], "ai2");
+  assert.deepEqual(dispatchCalls[0]["attachments"], [
+    {
+      kind: "filesystem",
+      name: "repair-room-chat-capture.png",
+      path: "/tmp/repair-room-chat-capture.png",
+    },
+  ]);
   const payload = dispatchCalls[0]["payload"] as Record<string, unknown> | undefined;
   const protocol = payload?.["protocol"] as Record<string, unknown> | undefined;
   assert.equal(payload?.["page"], "repair-room:assistant-chat");
@@ -1220,6 +1239,18 @@ void test("repair-room measurements can promote Assistant AI observations into c
   });
 
   assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addTimelineEvent, {
+      kind: "snapshot",
+      caption: "Captured board",
+      thumbnailSrc: "/tmp/repair-room-capture.png",
+      useAsBoardImage: true,
+      boardImageLabel: "repair-room-capture.png",
+      widthPx: 1280,
+      heightPx: 720,
+    }).success,
+    true
+  );
+  assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.addMeasurement, {
       xPx: 712,
       yPx: 304,
@@ -1232,14 +1263,22 @@ void test("repair-room measurements can promote Assistant AI observations into c
     setImmediate(resolve);
   });
 
-  assert.equal(dispatchCalls.length, 2);
+  assert.equal(dispatchCalls.length, 1);
   assert.equal(dispatchCalls[0]?.["action"], "message.sendWait");
   assert.equal(dispatchCalls[0]["toSlot"], "ai2");
+  assert.deepEqual(dispatchCalls[0]["attachments"], [
+    {
+      kind: "filesystem",
+      name: "repair-room-capture.png",
+      path: "/tmp/repair-room-capture.png",
+    },
+  ]);
   const payload = dispatchCalls[0]["payload"] as Record<string, unknown> | undefined;
   const protocol = payload?.["protocol"] as Record<string, unknown> | undefined;
   assert.equal(payload?.["page"], "repair-room:assistant-observation");
   assert.equal(protocol?.["protocolKey"], "repair-room-assistant-observation");
   assert.match(String(payload["text"]), /repair-room-assistant-observation/);
+  assert.match(String(payload["text"]), /repair-room-capture\.png/);
 
   const state = runtime.getStateSnapshot().state;
   const session = state.sessions[state.activeSessionId ?? ""];
@@ -1270,7 +1309,7 @@ void test("repair-room measurements can promote Assistant AI observations into c
     true
   );
   assert.equal(state.aiDispatch.status, "succeeded");
-  assert.equal(state.aiDispatch.activity, "risk-scan");
+  assert.equal(state.aiDispatch.activity, "measurement-observation");
   assert.equal(state.aiDispatch.targetSlot, "ai2");
 
   runtime.dispose();
@@ -1301,6 +1340,24 @@ void test("repair-room tactical bridge accepts content-backed top-level observat
   });
 
   assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.setInteractionSettings, {
+      measurementAiCallCount: 2,
+    }).success,
+    true
+  );
+  assert.equal(
+    runtime.handleCommand(REPAIR_UI_COMMANDS.addTimelineEvent, {
+      kind: "snapshot",
+      caption: "Dual-call board capture",
+      thumbnailSrc: "/tmp/repair-room-dual-capture.jpg",
+      useAsBoardImage: true,
+      boardImageLabel: "repair-room-dual-capture.jpg",
+      widthPx: 1280,
+      heightPx: 720,
+    }).success,
+    true
+  );
+  assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.addMeasurement, {
       xPx: 618,
       yPx: 286,
@@ -1316,6 +1373,19 @@ void test("repair-room tactical bridge accepts content-backed top-level observat
 
   assert.equal(dispatchCalls.length, 2);
   assert.equal(dispatchCalls[0]?.["toSlot"], "ai2");
+  assert.deepEqual(
+    dispatchCalls.map((call) => (call["payload"] as Record<string, unknown> | undefined)?.["page"]),
+    ["repair-room:assistant-observation", "repair-room:assistant-risk-scan"]
+  );
+  dispatchCalls.forEach((call) => {
+    assert.deepEqual(call["attachments"], [
+      {
+        kind: "filesystem",
+        name: "repair-room-dual-capture.jpg",
+        path: "/tmp/repair-room-dual-capture.jpg",
+      },
+    ]);
+  });
 
   const state = runtime.getStateSnapshot().state;
   const session = state.sessions[state.activeSessionId ?? ""];
@@ -1459,7 +1529,12 @@ void test("repair-room updates room-local hands-free interaction settings", () =
   });
 
   assert.equal(
+    runtime.getStateSnapshot().state.layout.interactionSettings.measurementAiCallCount,
+    1
+  );
+  assert.equal(
     runtime.handleCommand(REPAIR_UI_COMMANDS.setInteractionSettings, {
+      measurementAiCallCount: 2,
       androidCompanionEnabled: false,
       dictationRoute: "android",
       ttsRoute: "android",
@@ -1470,6 +1545,7 @@ void test("repair-room updates room-local hands-free interaction settings", () =
     true
   );
   assert.deepEqual(runtime.getStateSnapshot().state.layout.interactionSettings, {
+    measurementAiCallCount: 2,
     androidCompanionEnabled: false,
     dictationRoute: "android",
     ttsRoute: "android",
@@ -1477,6 +1553,16 @@ void test("repair-room updates room-local hands-free interaction settings", () =
     dictationSubmitMode: "send",
     autoReadAiReplies: false,
   });
+
+  const invalidMeasurementAiCallCount = runtime.handleCommand(
+    REPAIR_UI_COMMANDS.setInteractionSettings,
+    { measurementAiCallCount: 3 }
+  );
+  assert.equal(invalidMeasurementAiCallCount.success, false);
+  assert.equal(
+    runtime.getStateSnapshot().state.layout.interactionSettings.measurementAiCallCount,
+    2
+  );
 
   const invalid = runtime.handleCommand(REPAIR_UI_COMMANDS.setInteractionSettings, {
     dictationRoute: "cloud",

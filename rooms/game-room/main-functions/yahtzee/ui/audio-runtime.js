@@ -109,7 +109,10 @@
       const gain = ctx.createGain();
       oscillator.type = "triangle";
       oscillator.frequency.setValueAtTime(78 + Math.random() * 24, ctx.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(38 + Math.random() * 12, ctx.currentTime + 0.62);
+      oscillator.frequency.exponentialRampToValueAtTime(
+        38 + Math.random() * 12,
+        ctx.currentTime + 0.62
+      );
       filter.type = "lowpass";
       filter.frequency.value = 320;
       gain.gain.setValueAtTime(0.0001, ctx.currentTime);
@@ -123,11 +126,14 @@
     function scheduleCreak() {
       if (!ambience || !enabled) return;
       if (creakTimer !== null) global.clearTimeout(creakTimer);
-      creakTimer = global.setTimeout(function () {
-        creakTimer = null;
-        playCreak();
-        scheduleCreak();
-      }, 4200 + Math.random() * 5200);
+      creakTimer = global.setTimeout(
+        function () {
+          creakTimer = null;
+          playCreak();
+          scheduleCreak();
+        },
+        4200 + Math.random() * 5200
+      );
     }
 
     function startAmbience() {
@@ -206,10 +212,13 @@
       if (!ctx) return;
       resumeContext(ctx);
       for (let index = 0; index < 5; index += 1) {
-        const timer = global.setTimeout(function () {
-          interactionTimers.delete(timer);
-          playWoodClick(112 + Math.random() * 88, 0.045 + Math.random() * 0.018);
-        }, index * 31 + Math.floor(Math.random() * 16));
+        const timer = global.setTimeout(
+          function () {
+            interactionTimers.delete(timer);
+            playWoodClick(112 + Math.random() * 88, 0.045 + Math.random() * 0.018);
+          },
+          index * 31 + Math.floor(Math.random() * 16)
+        );
         interactionTimers.add(timer);
       }
     }

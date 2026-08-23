@@ -126,6 +126,14 @@ export interface RepairAiRiskDetectionResult {
   message?: string;
 }
 
+interface RepairAiImageAttachment {
+  kind: "filesystem";
+  name: string;
+  path: string;
+}
+
+const REPAIR_AI_MAX_IMAGE_ATTACHMENTS = 3;
+
 function toRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && Array.isArray(value) === false
     ? (value as Record<string, unknown>)
@@ -602,6 +610,82 @@ function parseRepairAiKnowledgePack(rawText: string): RepairKnowledgePack | null
   };
 }
 
+function normalizeRepairAiImagePath(value: unknown): string | null {
+  const source = asNonEmptyString(value);
+  if (source === null) return null;
+
+  if (source.startsWith("file:")) {
+    try {
+      const fileUrl = new URL(source);
+      if (fileUrl.protocol !== "file:") return null;
+      const decodedPath = decodeURIComponent(fileUrl.pathname);
+      return /^\/[a-zA-Z]:\//.test(decodedPath) ? decodedPath.slice(1) : decodedPath;
+    } catch {
+      return null;
+    }
+  }
+
+  if (source.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(source) || source.startsWith("\\\\")) {
+    return source;
+  }
+
+  return null;
+}
+
+function getRepairAiImageAttachmentName(imagePath: string, fallback: string): string {
+  const pathParts = imagePath.split(/[\\/]/).filter(Boolean);
+  const fileName = pathParts[pathParts.length - 1]?.trim();
+  return fileName !== undefined && fileName !== "" ? fileName : fallback;
+}
+
+function buildRepairAiImageAttachments(
+  session: RepairSession | null,
+  preferredSnapshotIds: string[] = []
+): RepairAiImageAttachment[] {
+  if (session === null) return [];
+
+  const preferredIds = new Set(preferredSnapshotIds);
+  const snapshotEvents = session.events.flatMap((event) =>
+    event.kind === "snapshot" ? [event] : []
+  );
+  const newestSnapshots = [...snapshotEvents].reverse();
+  const candidates: Array<{ label: string; src: unknown }> = [
+    ...newestSnapshots
+      .filter((event) => preferredIds.has(event.id))
+      .map((event) => ({ label: event.caption, src: event.thumbnailSrc })),
+    ...(session.pcbImage === null
+      ? []
+      : [{ label: session.pcbImage.label, src: session.pcbImage.src }]),
+    ...newestSnapshots.map((event) => ({ label: event.caption, src: event.thumbnailSrc })),
+  ];
+
+  const attachments: RepairAiImageAttachment[] = [];
+  const attachedPaths = new Set<string>();
+  for (const candidate of candidates) {
+    const imagePath = normalizeRepairAiImagePath(candidate.src);
+    if (imagePath === null || attachedPaths.has(imagePath)) continue;
+    attachments.push({
+      kind: "filesystem",
+      name: getRepairAiImageAttachmentName(imagePath, candidate.label || "repair-room-image"),
+      path: imagePath,
+    });
+    attachedPaths.add(imagePath);
+    if (attachments.length >= REPAIR_AI_MAX_IMAGE_ATTACHMENTS) break;
+  }
+
+  return attachments;
+}
+
+function summarizeRepairAiImageAttachments(
+  session: RepairSession | null,
+  preferredSnapshotIds: string[] = []
+): Array<{ name: string; order: number }> {
+  return buildRepairAiImageAttachments(session, preferredSnapshotIds).map((attachment, index) => ({
+    name: attachment.name,
+    order: index + 1,
+  }));
+}
+
 function summarizeSession(session: RepairSession | null): Record<string, unknown> {
   if (session === null) {
     return {
@@ -617,6 +701,16 @@ function summarizeSession(session: RepairSession | null): Record<string, unknown
     riskLevel: session.riskLevel,
     deviceInfo: session.deviceInfo,
     symptoms: session.symptoms,
+    pcbImage:
+      session.pcbImage === null
+        ? null
+        : {
+            id: session.pcbImage.id,
+            label: session.pcbImage.label,
+            pixelsPerMm: session.pcbImage.pixelsPerMm,
+            widthPx: session.pcbImage.widthPx,
+            heightPx: session.pcbImage.heightPx,
+          },
     knowledgePackId: session.knowledgePackId,
     recentEvents: session.events.slice(-8).map((event) => ({
       id: event.id,
@@ -628,6 +722,9 @@ function summarizeSession(session: RepairSession | null): Record<string, unknown
       reference: "reference" in event ? event.reference : undefined,
       rawDisplay: "rawDisplay" in event ? event.rawDisplay : undefined,
       unit: "unit" in event ? event.unit : undefined,
+      caption: "caption" in event ? event.caption : undefined,
+      hasAttachedImage:
+        event.kind === "snapshot" && normalizeRepairAiImagePath(event.thumbnailSrc) !== null,
     })),
   };
 }
@@ -749,7 +846,9 @@ function buildRepairAiChatPrompt(request: RepairAiChatReplyRequest): string {
         "Keep replyText concise enough for a hands-busy repair bench.",
         "Only include roomCommands when the command can be executed safely from visible context.",
         "Use only commandName values listed in outputSchema.roomCommands; never emit ++cmd text.",
+        "Inspect attached repair images before making visual or spatial claims; do not claim details that are not visible.",
       ],
+      attachedImages: summarizeRepairAiImageAttachments(request.session),
       operatorTurn: request.operatorTurn,
       recentTurns: request.recentTurns.slice(-8),
       session: summarizeSession(request.session),
@@ -784,7 +883,12 @@ function buildRepairAiTacticalPrompt(request: RepairAiTacticalObservationRequest
         "Each observation text must be 140 characters or shorter.",
         "Return at most 3 observations.",
         "Use kind=risk only for immediate operator safety or equipment reliability risk.",
+        "Inspect attached measurement-linked repair images before making visual or spatial claims; do not claim details that are not visible.",
       ],
+      attachedImages: summarizeRepairAiImageAttachments(
+        request.session,
+        request.triggeringEvent.linkedEventIds
+      ),
       triggeringEvent: request.triggeringEvent,
       session: summarizeSession(request.session),
       operatorProfile: summarizeOperatorProfile(request.operatorProfile),
@@ -877,7 +981,9 @@ function buildRepairAiRiskDetectionPrompt(request: RepairAiRiskDetectionRequest)
         "Never suppress critical risks even if they appear redundant.",
         "Recommend the minimum operator action required to make the bench safe.",
         "Anchor risks to PCB regions when applicable.",
+        "Inspect attached repair images before making visual or spatial risk claims; do not claim details that are not visible.",
       ],
+      attachedImages: summarizeRepairAiImageAttachments(request.session),
       session: summarizeSession(request.session),
       operatorProfile: summarizeOperatorProfile(request.operatorProfile),
     },
@@ -903,6 +1009,7 @@ export async function requestRepairAiChatReply(
   const dispatchBridge = request.dispatchBridge;
   const targetSlot = request.targetSlot ?? REPAIR_AI_TARGET_SLOT;
   const projectRef = buildRepairProjectRef(request.session);
+  const imageAttachments = buildRepairAiImageAttachments(request.session);
   const bridgeResult = toRecord(
     await retryAiDispatch(async () =>
       dispatchBridge({
@@ -910,6 +1017,7 @@ export async function requestRepairAiChatReply(
         timeoutMs: 120000,
         toSlot: targetSlot,
         ...(projectRef !== null ? { projectRef } : {}),
+        ...(imageAttachments.length > 0 ? { attachments: imageAttachments } : {}),
         payload: {
           page: "repair-room:assistant-chat",
           text: buildRepairAiChatPrompt(request),
@@ -1059,6 +1167,10 @@ export async function requestRepairAiTacticalObservations(
   const dispatchBridge = request.dispatchBridge;
   const targetSlot = request.targetSlot ?? REPAIR_AI_TARGET_SLOT;
   const projectRef = buildRepairProjectRef(request.session);
+  const imageAttachments = buildRepairAiImageAttachments(
+    request.session,
+    request.triggeringEvent.linkedEventIds
+  );
   const bridgeResult = toRecord(
     await retryAiDispatch(async () =>
       dispatchBridge({
@@ -1066,6 +1178,7 @@ export async function requestRepairAiTacticalObservations(
         timeoutMs: 120000,
         toSlot: targetSlot,
         ...(projectRef !== null ? { projectRef } : {}),
+        ...(imageAttachments.length > 0 ? { attachments: imageAttachments } : {}),
         payload: {
           page: "repair-room:assistant-observation",
           text: buildRepairAiTacticalPrompt(request),
@@ -1174,6 +1287,7 @@ export async function requestRepairAiRiskDetection(
   const dispatchBridge = request.dispatchBridge;
   const targetSlot = request.targetSlot ?? REPAIR_AI_TARGET_SLOT;
   const projectRef = buildRepairProjectRef(request.session);
+  const imageAttachments = buildRepairAiImageAttachments(request.session);
   const bridgeResult = toRecord(
     await retryAiDispatch(async () =>
       dispatchBridge({
@@ -1181,6 +1295,7 @@ export async function requestRepairAiRiskDetection(
         timeoutMs: 120000,
         toSlot: targetSlot,
         ...(projectRef !== null ? { projectRef } : {}),
+        ...(imageAttachments.length > 0 ? { attachments: imageAttachments } : {}),
         payload: {
           page: "repair-room:assistant-risk-scan",
           text: buildRepairAiRiskDetectionPrompt(request),
