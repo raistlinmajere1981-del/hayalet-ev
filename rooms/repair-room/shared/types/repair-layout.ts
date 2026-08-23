@@ -28,6 +28,8 @@ export type RepairCameraFeedPreference = "manual" | "android-feed";
 
 export type RepairDictationSubmitMode = "composer" | "send";
 
+export type RepairMeasurementAiCallCount = 1 | 2;
+
 export const REPAIR_MAIN_LAYOUT_PANEL_IDS = [
   "session-rail",
   "workbench-stage",
@@ -53,6 +55,7 @@ export interface RepairInteractionSettingsState {
   cameraFeedPreference: RepairCameraFeedPreference;
   dictationSubmitMode: RepairDictationSubmitMode;
   autoReadAiReplies: boolean;
+  measurementAiCallCount: RepairMeasurementAiCallCount;
 }
 
 export interface RepairAttentionBudgetState {
