@@ -1,3 +1,5 @@
+import { normalizeLaboratoryTemporalStressTestRequest } from "../../shared/temporal-stress-test-model.js";
+import type { LaboratoryTemporalStressTestRequest } from "../../shared/temporal-stress-test-model.js";
 import {
   isLaboratoryTransformStageKind,
   mutateLaboratoryTransformStages,
@@ -29,6 +31,7 @@ type TransformStackRootState = {
   recipeSection: TransformStackRecipeSection;
   scope: LaboratoryTransformStageScope;
   stages: ReturnType<typeof normalizeLaboratoryTransformStages>;
+  temporalRequest: LaboratoryTemporalStressTestRequest | null;
 };
 
 let attached = false;
@@ -41,24 +44,32 @@ function asRecipeSection(value: string | null): TransformStackRecipeSection | nu
   return value === "video" || value === "audio" || value === "image" ? value : null;
 }
 
+function parseJsonAttribute(value: string | null, fallback: unknown) {
+  try {
+    return JSON.parse(value || "") as unknown;
+  } catch {
+    return fallback;
+  }
+}
+
 function readRootState(root: HTMLElement): TransformStackRootState | null {
   const scope = asScope(root.getAttribute("data-lab-transform-stack"));
   const recipeSection = asRecipeSection(root.getAttribute("data-lab-transform-recipe-section"));
   if (scope === null || recipeSection === null) {
     return null;
   }
-  let rawStages: unknown = [];
-  try {
-    rawStages = JSON.parse(root.getAttribute("data-lab-transform-stages-json") || "[]");
-  } catch {
-    rawStages = [];
-  }
+  const rawStages = parseJsonAttribute(root.getAttribute("data-lab-transform-stages-json"), []);
+  const rawTemporalRequest = parseJsonAttribute(
+    root.getAttribute("data-lab-temporal-request-json"),
+    null
+  );
   return {
     featureId: root.getAttribute("data-lab-transform-feature-id") || "media-analysis",
     locked: root.getAttribute("data-lab-transform-locked") === "true",
     recipeSection,
     scope,
     stages: normalizeLaboratoryTransformStages(rawStages, scope),
+    temporalRequest: normalizeLaboratoryTemporalStressTestRequest(rawTemporalRequest),
   };
 }
 
@@ -145,6 +156,17 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
     if (action === "workspace-transform-preview") {
       event.preventDefault();
       sendMediaAction(deps.windowRef, state, "edit-preview");
+      return;
+    }
+
+    if (action === "workspace-transform-temporal-scan") {
+      if (state.scope !== "visual" || state.temporalRequest === null) {
+        return;
+      }
+      event.preventDefault();
+      sendMediaAction(deps.windowRef, state, "edit-temporal-stress-test", {
+        request: state.temporalRequest,
+      });
       return;
     }
 
