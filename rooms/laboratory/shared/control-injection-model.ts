@@ -21,7 +21,7 @@ const CONTROL_INJECTION_DEFINITIONS: LaboratoryControlInjectionDefinition[] = [
   {
     kind: "noise",
     label: "Noise",
-    params: { strength: 12 },
+    params: { strength: 12, seed: 4242 },
   },
   {
     kind: "blur",
@@ -36,7 +36,13 @@ const CONTROL_INJECTION_DEFINITIONS: LaboratoryControlInjectionDefinition[] = [
   {
     kind: "low-light",
     label: "Low-light",
-    params: { brightness: -0.25, contrast: 1.05, saturation: 0.9, noiseStrength: 8 },
+    params: {
+      brightness: -0.25,
+      contrast: 1.05,
+      saturation: 0.9,
+      noiseStrength: 8,
+      noiseSeed: 4242,
+    },
   },
 ];
 
