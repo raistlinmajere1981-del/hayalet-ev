@@ -109,9 +109,9 @@ New summaries therefore store:
 - `spatialEdgePersistenceRatio`
 - `edgePersistenceMethod: "adjacent-edge-map-iou"`
 
-The old `edgePersistenceRatio` remains in stored records as a legacy edge-presence proxy. Interpretation prefers `spatialEdgePersistenceRatio` when present and falls back to the legacy field for older records.
+The old `edgePersistenceRatio` remains in stored records as a legacy edge-presence proxy. Interpretation and technical result surfaces prefer `spatialEdgePersistenceRatio` when present and fall back to the legacy field for older records.
 
-A temporal scan now uses four FFmpeg measurement passes: signal, frame difference, edge map, and edge-map difference.
+A temporal scan uses four FFmpeg measurement passes: signal, frame difference, edge map, and edge-map difference.
 
 Optical flow is intentionally deferred. Spatial edge persistence measures overlap of edge structure across adjacent frames; it does not claim object identity, motion vectors or tracked morphology.
 
@@ -119,29 +119,45 @@ The newest twenty temporal measurements persist under `edit.temporalStressTests`
 
 ## Destruction controls
 
-The first canonical controls are fixed and reproducible:
+The canonical controls are fixed and reproducible:
 
 - Noise: strength 12, seed 4242
 - Blur: radius 2
 - Sharpen: amount 1.25
 - Low-light: brightness -0.25, contrast 1.05, saturation 0.9, noise strength 8, seed 4242
+- Recompression: baseline CRF 18, injected CRF 36
 
 Payload parameter overrides are ignored for these canonical presets.
 
-Each control run creates two derived clips from the same selected interval and ROI:
+### Filter controls
+
+Noise, Blur, Sharpen and Low-light each create two derived clips from the same selected interval and ROI:
 
 - paired re-encoded baseline
 - injected control clip
 
-Both sides use the same H.264/libx264, veryfast, CRF 18, yuv420p, no-audio encode profile. Only the injected side receives the requested control filter.
+Both sides use H.264/libx264, veryfast, CRF 18, yuv420p, no audio. Only the injected side receives the requested visual control filter.
 
-Both clips are then measured independently with the same four-pass temporal metric stack. A complete control run therefore consists of two encode passes plus four baseline metric passes plus four injected metric passes: ten FFmpeg passes total.
+### Matched recompression control
+
+Recompression is not represented as a visual filter. Both outputs come directly from the same prepared source and use the same trim, ROI, H.264/libx264 codec, `veryfast` preset, yuv420p pixel format, no audio, and exactly one additional encode generation.
+
+The controlled difference is encode quality:
+
+- baseline: CRF 18
+- injected: CRF 36
+
+This keeps codec family, geometry, timing and generation count matched while asking how a much more aggressive recompression changes temporal activity, luminance/chroma behavior and spatial edge persistence.
+
+The result persists `comparisonMethod: "paired-encode-quality-baseline"`, both encode profiles and a `null` control filter. Filter controls retain `comparisonMethod: "paired-reencode-baseline"`.
+
+All paired outputs are measured independently with the same four-pass temporal metric stack. A complete control run therefore remains two encode passes plus four baseline metric passes plus four injected metric passes: ten FFmpeg passes total.
 
 The record stores:
 
-- exact control filter
+- exact control filter when applicable
 - canonical parameters
-- encode profile
+- baseline/injected encode profiles
 - paired baseline/injected paths
 - complete baseline/injected metrics
 - injected-minus-baseline deltas, including spatial edge persistence
@@ -149,7 +165,7 @@ The record stores:
 
 Control results share `edit.temporalStressTests` with `kind: "control-injection"` so baseline and control runs remain one experiment family.
 
-Reduced-bitrate/recompression and chromatic-aberration controls are still pending because each needs matched-control semantics rather than a generic visual filter.
+Chromatic-aberration remains pending. It should be added only if real experiments show a concrete reason to test color-channel displacement rather than simply increasing the control catalog.
 
 ## Readable interpretation layer
 
@@ -186,7 +202,7 @@ The lower surface contains:
 - Source / Transform / Difference preview
 - latest Temporal Scan interpretation and technical values
 - latest Destruction Control interpretation and technical values
-- same-selection comparison of Noise, Blur, Sharpen and Low-light
+- same-selection comparison of Noise, Blur, Sharpen, Low-light and Recompression
 
 When a full analysis run is active, the same lower area switches back to Analysis Summary + Raw Log.
 
@@ -231,7 +247,7 @@ Every completed run should retain enough information to reproduce it:
 - ROI
 - ordered stage list and parameters
 - generated artifact ids/paths
-- exact control/filter settings where relevant
+- exact control/filter or encode-quality settings where relevant
 - optional subtitle target interval/text
 - operator notes where relevant
 - run timestamp
@@ -250,14 +266,14 @@ Completed foundation:
 6. readable interpretation layer
 7. shared lower live-result surface
 8. spatial adjacent-edge-map persistence
+9. matched CRF 18 → CRF 36 recompression control
 
 Next useful steps:
 
-1. validate spatial persistence on several real ROI selections
-2. add matched reduced-bitrate/recompression control
-3. add chromatic-aberration control if still useful
-4. add subtitle-aligned audio reconstruction
-5. add restrained automatic report/classification only after enough real experiments exist
-6. consider optical flow only if spatial overlap leaves a concrete unanswered question
+1. validate spatial persistence and recompression on several real ROI selections
+2. add chromatic-aberration only if the data gives us a reason
+3. add subtitle-aligned audio reconstruction
+4. add restrained automatic report/classification only after enough real experiments exist
+5. consider optical flow only if spatial overlap leaves a concrete unanswered question
 
 This sequencing deliberately keeps the system FFmpeg-first and simple before introducing heavier motion-analysis dependencies.
