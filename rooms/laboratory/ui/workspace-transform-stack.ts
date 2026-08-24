@@ -43,11 +43,12 @@ function getScopeRecipeSection(input: WorkspaceTransformStackInput) {
 
 function renderParameterControl(
   stage: LaboratoryTransformStage,
-  parameter: LaboratoryTransformStageParameter
+  parameter: LaboratoryTransformStageParameter,
+  scope: LaboratoryTransformStageScope
 ) {
   const rawValue = stage.params[parameter.id] ?? parameter.defaultValue;
   const commonAttributes = [
-    `data-lab-transform-scope="${escapeHtml(getLaboratoryTransformStageDefinition(stage.kind).scope)}"`,
+    `data-lab-transform-scope="${escapeHtml(scope)}"`,
     `data-lab-transform-stage-id="${escapeHtml(stage.id)}"`,
     `data-lab-transform-parameter-id="${escapeHtml(parameter.id)}"`,
   ].join(" ");
@@ -91,6 +92,9 @@ function renderStageRow(
   scope: LaboratoryTransformStageScope
 ) {
   const definition = getLaboratoryTransformStageDefinition(stage.kind);
+  if (definition === undefined) {
+    return "";
+  }
   return `
     <article
       class="labx-card labx-transform-stage"
@@ -140,7 +144,9 @@ function renderStageRow(
             >×</button>
           </div>
         </div>
-        ${definition.parameters.map((parameter) => renderParameterControl(stage, parameter)).join("")}
+        ${definition.parameters
+          .map((parameter) => renderParameterControl(stage, parameter, scope))
+          .join("")}
       </div>
     </article>
   `;
