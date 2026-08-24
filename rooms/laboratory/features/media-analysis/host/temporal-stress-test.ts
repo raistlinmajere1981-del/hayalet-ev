@@ -157,7 +157,7 @@ function parseSignalStatsText(text: string): LaboratorySignalStatsFrame[] {
     if (existing !== undefined) {
       return existing;
     }
-    const created = { timeSeconds, values: {} } satisfies LaboratorySignalStatsFrame;
+    const created: LaboratorySignalStatsFrame = { timeSeconds, values: {} };
     framesByTime.set(key, created);
     return created;
   }
