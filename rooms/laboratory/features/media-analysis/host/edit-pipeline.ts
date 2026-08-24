@@ -1,6 +1,12 @@
+import {
+  buildLaboratoryTransformStackProvenanceFromRecipe,
+  cloneLaboratoryEditRecipeSnapshot,
+} from "../../../shared/transform-stress-test-provenance.js";
+
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryEditPipelineMode = "apply" | "preview";
+type LaboratoryTransformSourceKind = "video" | "audio" | "image";
 
 type LaboratoryMediaEditPipelineRuntime = LaboratoryRecord;
 
@@ -23,12 +29,15 @@ type LaboratoryProjectEditRecord = LaboratoryRecord & {
   lastError?: unknown;
   outputs?: unknown;
   preview?: unknown;
+  recipe?: unknown;
 };
 
 type LaboratoryPreviewRecord = LaboratoryRecord & {
   path?: unknown;
   recipeSignature?: unknown;
+  recipeSnapshot?: unknown;
   status?: unknown;
+  transformStackProvenance?: unknown;
 };
 
 type LaboratoryRunPayloadRecord = LaboratoryRecord & {
@@ -39,6 +48,8 @@ type LaboratoryRunPayloadRecord = LaboratoryRecord & {
 
 type LaboratoryEditOutputRecord = LaboratoryRecord & {
   id?: unknown;
+  recipeSnapshot?: unknown;
+  transformStackProvenance?: unknown;
 };
 
 type LaboratoryDerivedMetadataResult = {
@@ -169,8 +180,9 @@ export function createMediaEditPipelineRuntime(deps: LaboratoryEditPipelineDeps)
     return toString(project.id) || "unknown-project";
   }
 
-  function getSourceKind(project: LaboratoryProjectRecord): string {
-    return toString(toProjectSourceRecord(project.source).kind) || "video";
+  function getSourceKind(project: LaboratoryProjectRecord): LaboratoryTransformSourceKind {
+    const sourceKind = toString(toProjectSourceRecord(project.source).kind);
+    return sourceKind === "audio" || sourceKind === "image" ? sourceKind : "video";
   }
 
   async function runEditPipeline(
@@ -192,8 +204,16 @@ export function createMediaEditPipelineRuntime(deps: LaboratoryEditPipelineDeps)
     ensureEditJobSlotAvailable(runtime, projectId, action);
     const jobId = `room-edit-${mode}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const targetPath = buildEditTargetPath(runtime, project, mode);
-    const mimeType = getDerivedMimeType(getSourceKind(project));
+    const sourceKind = getSourceKind(project);
+    const mimeType = getDerivedMimeType(sourceKind);
     const recipeSignature = getEditRecipeSignature(project);
+    const recipeSnapshot = cloneLaboratoryEditRecipeSnapshot(
+      toProjectEditRecord(project.edit).recipe
+    );
+    const transformStackProvenance = buildLaboratoryTransformStackProvenanceFromRecipe(
+      recipeSnapshot,
+      sourceKind
+    );
     const artifactBaseName = (targetPath.split(/[\\/]/).pop() || "artifact").replace(
       /\.[^.]+$/,
       ""
@@ -291,8 +311,10 @@ export function createMediaEditPipelineRuntime(deps: LaboratoryEditPipelineDeps)
             outputId: "preview",
             path: targetPath,
             recipeSignature: recipeSignature,
+            recipeSnapshot: recipeSnapshot,
             requestId: requestId,
             status: "ready",
+            transformStackProvenance: transformStackProvenance,
             updatedAt: createdAt,
           };
           return nextProject;
@@ -306,13 +328,15 @@ export function createMediaEditPipelineRuntime(deps: LaboratoryEditPipelineDeps)
             fileName: targetFileName,
             id: outputId,
             jobId: jobId,
-            kind: getSourceKind(project),
+            kind: sourceKind,
             label: buildEditOutputLabel(project, mode),
             metadata: metadataResult.metadata,
             mimeType: mimeType,
             path: targetPath,
             recipeSignature: recipeSignature,
+            recipeSnapshot: recipeSnapshot,
             sourcePath: getPreparedSourcePath(project),
+            transformStackProvenance: transformStackProvenance,
           })
         );
         const existingOutputs = Array.isArray(nextEdit.outputs) ? nextEdit.outputs : [];
@@ -351,6 +375,8 @@ export function createMediaEditPipelineRuntime(deps: LaboratoryEditPipelineDeps)
         fileName: targetFileName,
         metadata: metadataResult.metadata,
         path: targetPath,
+        recipeSignature,
+        transformStackProvenance,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
