@@ -83,56 +83,34 @@ The current FFmpeg-only measurements are:
 - edge energy (`edgedetect` + `signalstats`)
 - an initial edge-persistence ratio derived from the edge-energy series
 
-The runtime prints only the required metadata keys, merges repeated metadata blocks by frame timestamp, normalizes 8-bit signal metrics to 0–1, and stores the newest twenty temporal experiment records under `edit.temporalStressTests`. These records remain inside the normalized project state across reload/restart; a separate exported artifact file is intentionally deferred to the later report/export layer. The visual inspector shows the latest numeric summary rather than introducing a heavy chart/statistics subsystem in this first slice.
+The runtime prints only the required metadata keys, merges repeated metadata blocks by frame timestamp, normalizes 8-bit signal metrics to 0–1, and stores the newest twenty temporal measurements under `edit.temporalStressTests`. These records remain inside the normalized project state across reload/restart; a separate exported artifact file is intentionally deferred to the later report/export layer. The visual inspector shows the latest numeric summary rather than introducing a heavy chart/statistics subsystem in this first slice.
 
 Optical flow is intentionally deferred until these simpler measurements are validated against real clips.
 
-## Control injection / destruction controls
+## Control injection
 
-The first destruction-control slice is video-only and requires the same real timeline selection used by Temporal Scan. The selected interval is still capped at six seconds and the selected normalized ROI is used when present.
+Known artifact families should be injectable into a clean/control segment using the same pipeline. The first implemented controls are fixed canonical presets:
 
-The initial controls are fixed canonical presets rather than free-form sliders:
+- Noise: strength 12 with deterministic seed 4242
+- Blur: radius 2
+- Sharpen: amount 1.25
+- Low-light: brightness -0.25, contrast 1.05, saturation 0.9, noise strength 8 with deterministic seed 4242
 
-- `noise`: strength `12`, deterministic seed `4242`
-- `blur`: radius `2`
-- `sharpen`: unsharp amount `1.25`
-- `low-light`: brightness `-0.25`, contrast `1.05`, saturation `0.9`, noise strength `8`, deterministic noise seed `4242`
+Each control run produces two derived clips from the same selected interval and ROI: a paired re-encoded baseline and an injected clip. Both use the same H.264/libx264, veryfast, CRF 18, yuv420p, no-audio encode profile. Only the injected side receives the requested control filter. The same temporal metrics are then measured independently on both clips and stored together with injected-minus-baseline deltas, the exact filter string, encode profile, canonical parameters, and paired paths.
 
-Payload-supplied parameter overrides are deliberately ignored in this first slice. The canonical parameters are copied into each stored request, so an experiment remains interpretable if preset defaults change later.
+Control results share `edit.temporalStressTests` with `kind: "control-injection"` so temporal baseline and destruction-control runs remain one short-time experiment family instead of creating a second history/state source.
 
-A control run does **not** compare an injected re-encoded clip directly with the original temporal measurement. That would mix the requested control effect with codec/re-encode effects. Instead every run produces a paired set:
+The question is whether a known transform family can measurably alter or reproduce morphology comparable to the observed target under similar scene conditions. Recompression and chromatic-aberration controls remain pending because they need their own matched-control semantics.
 
-1. `control baseline`: selected trim/ROI, no control filter
-2. `injected`: the same selected trim/ROI plus exactly one canonical control filter
+## Readable interpretation layer
 
-Both sides use the same encode profile:
+Raw frame-difference, edge, luma, and chroma values remain the primary evidence. The UI also provides a versioned human-readable interpretation so an operator does not need to decode normalized metrics during an experiment.
 
-- H.264 / `libx264`
-- `veryfast` preset
-- CRF `18`
-- `yuv420p`
-- no audio
+New temporal and control records persist `interpretation.schemaVersion: 1`. The interpretation converts only measured behavior into restrained language such as low/high frame activity, weak/persistent edge structure, stable/variable light-color distribution, or negligible/small/moderate/strong control impact. Existing records without an interpretation snapshot are interpreted from their stored raw metrics when rendered.
 
-The injected side is the only side that receives the control filter. Noise-based controls use fixed seeds so repeated runs do not silently change their synthetic noise realization.
+The interpretation layer has explicit sample-quality guards. A run with no usable frame, frame-difference, or edge samples is reported as insufficient rather than being mistaken for a perfectly stable zero-valued result.
 
-After generation, the existing Temporal Scan metric stack measures both paired clips independently. The stored result contains:
-
-- control kind and exact canonical params
-- original time range and ROI
-- exact FFmpeg control-filter string
-- paired encode profile
-- baseline and injected clip paths
-- complete baseline and injected temporal metrics
-- injected-minus-baseline deltas for frame-difference, edge, persistence, luma, and chroma summaries
-- `comparisonMethod: "paired-reencode-baseline"`
-
-Control results are written into the same persistent `edit.temporalStressTests` experiment history with `kind: "control-injection"`. This avoids a second history/state source; the UI filters the shared history into the latest raw Temporal Scan and latest Destruction Control summaries. The twenty-record cap currently applies to the combined temporal experiment history.
-
-The present question is therefore narrower than "does this look similar?":
-
-> When a known ordinary degradation is introduced while codec/trim/ROI are held constant against a paired control, how do the temporal and structural measurements change?
-
-Reduced-bitrate/recompression and chromatic-aberration controls remain later additions because they need their own carefully matched control semantics rather than being folded into these first four filters.
+No interpretation is allowed to claim that a target anomaly was destroyed, reproduced, explained, real, fake, or paranormal. The current metrics do not establish those propositions. Technical values stay visible below the readable summary so later analysis can audit the wording against the underlying measurements.
 
 ## Audio reconstruction workbench
 
@@ -192,11 +170,10 @@ The original source must remain immutable. Stress-test outputs are derived artif
 2. Add ordered transform-stage persistence and stable recipe signatures.
 3. Add Source / Transform / Difference preview mode for a selected ROI and short interval.
 4. Add the first temporal baseline metrics: luma/chroma trajectory, frame-difference energy, and edge persistence.
-5. Add paired destruction-control presets with matched re-encode baselines.
-6. Add audio loop + subtitle target interval.
-7. Add recompression/chromatic-aberration controls and heavier persistence metrics such as optical flow only if the simpler baseline proves useful.
-8. Add the restrained result categories above.
-
-The first four steps have passed local Laboratory validation. Step 5 is implemented on the current branch and requires its targeted local regression/typecheck pass before it is treated as a clean checkpoint.
+5. Add audio loop + subtitle target interval.
+6. Add control-injection presets.
+7. Add a readable, versioned interpretation layer above the technical metrics.
+8. Add heavier persistence metrics such as optical flow only if the simpler baseline proves useful.
+9. Add the restrained result categories above.
 
 This sequencing deliberately reuses the existing FFmpeg preview/apply pipeline before adding heavier temporal tracking or OpenCV dependencies.
