@@ -92,6 +92,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     markCloseoutAsStale: deps.markCloseoutAsStale,
     markProfileAsStale: deps.markProfileAsStale,
     patchActiveProject: deps.patchActiveProject,
+    readBinaryFileBytes: deps.readBinaryFileBytes,
     roomId: deps.roomId,
     runEditPipeline: deps.runEditPipeline,
     toRecord: deps.toRecord,
