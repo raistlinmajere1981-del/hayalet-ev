@@ -37,22 +37,35 @@ function createTemporalHelpers() {
   });
 }
 
-function metricText(kind: "signal" | "difference" | "edge", injected: boolean) {
+type MetricKind = "signal" | "difference" | "edge" | "edge-difference";
+
+function metricText(kind: MetricKind, injected: boolean) {
   if (kind === "signal") {
     const firstY = injected ? 102 : 127.5;
-    const secondY = injected ? 153 : 153;
     return `
 frame:0 pts:0 pts_time:0
 lavfi.signalstats.YAVG=${firstY}
 lavfi.signalstats.UAVG=96
 lavfi.signalstats.VAVG=160
 frame:1 pts:1 pts_time:0.2
-lavfi.signalstats.YAVG=${secondY}
+lavfi.signalstats.YAVG=153
 lavfi.signalstats.UAVG=128
 lavfi.signalstats.VAVG=128
 `;
   }
-  const value = kind === "difference" ? (injected ? 51 : 25.5) : injected ? 76.5 : 51;
+
+  const value =
+    kind === "edge"
+      ? injected
+        ? 76.5
+        : 51
+      : kind === "edge-difference"
+        ? injected
+          ? 51
+          : 25.5
+        : injected
+          ? 51
+          : 25.5;
   return `
 frame:0 pts:0 pts_time:0
 lavfi.signalstats.YAVG=${value}
@@ -134,7 +147,7 @@ void test("paired control commands keep trim ROI and codec equal while injection
   assert.match(injectedText, /-c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p/);
 });
 
-void test("destruction control run generates paired clips, measures both sides, and persists a typed temporal record", async () => {
+void test("destruction control measures spatial edge persistence on both sides and persists the paired result", async () => {
   const calls: Array<Record<string, unknown>> = [];
   let project: Record<string, unknown> = {
     source: {
@@ -158,11 +171,15 @@ void test("destruction control run generates paired clips, measures both sides, 
       const inputIndex = args.indexOf("-i");
       const inputPath = inputIndex >= 0 ? args[inputIndex + 1] || "" : "";
       const injected = inputPath.includes("-injected.mp4");
-      const kind = joined.includes("tblend=all_mode=difference")
-        ? "difference"
-        : joined.includes("edgedetect=low=0.1:high=0.4")
+      const hasEdge = joined.includes("edgedetect=low=0.1:high=0.4");
+      const hasDifference = joined.includes("tblend=all_mode=difference");
+      const kind: MetricKind = hasEdge && hasDifference
+        ? "edge-difference"
+        : hasEdge
           ? "edge"
-          : "signal";
+          : hasDifference
+            ? "difference"
+            : "signal";
       return { run: { exitCode: 0, stderr: metricText(kind, injected) } };
     },
     getActiveProject() {
@@ -193,11 +210,14 @@ void test("destruction control run generates paired clips, measures both sides, 
     },
   });
 
-  assert.equal(calls.length, 8);
+  assert.equal(calls.length, 10);
   assert.equal(result.kind, "control-injection");
   assert.equal(result.request.kind, "blur");
   assert.equal(result.comparisonMethod, "paired-reencode-baseline");
   assert.ok(Number(result.delta["meanFrameDifferenceEnergy"]) > 0);
+  assert.ok(Number(result.delta["spatialEdgePersistenceRatio"]) < 0);
+  assert.equal(result.metrics.baseline.summary.edgePersistenceMethod, "adjacent-edge-map-iou");
+  assert.equal(result.metrics.injected.summary.edgePersistenceMethod, "adjacent-edge-map-iou");
   assert.equal(result.interpretation.schemaVersion, 1);
   assert.equal(result.interpretation.kind, "control-injection");
   assert.equal(result.interpretation.dataQuality, "sufficient");
@@ -232,7 +252,10 @@ void test("temporal history normalizer preserves typed destruction-control recor
           kind: "control-injection",
           id: "control-one",
           comparisonMethod: "paired-reencode-baseline",
-          delta: { meanFrameDifferenceEnergy: 0.1 },
+          delta: {
+            meanFrameDifferenceEnergy: 0.1,
+            spatialEdgePersistenceRatio: -0.2,
+          },
           interpretation: {
             schemaVersion: 1,
             kind: "control-injection",
@@ -247,6 +270,10 @@ void test("temporal history normalizer preserves typed destruction-control recor
   );
   assert.equal(normalized.temporalStressTests[0]?.["kind"], "control-injection");
   assert.equal(toRecord(normalized.temporalStressTests[0]?.["delta"])["meanFrameDifferenceEnergy"], 0.1);
+  assert.equal(
+    toRecord(normalized.temporalStressTests[0]?.["delta"])["spatialEdgePersistenceRatio"],
+    -0.2
+  );
   assert.equal(
     toRecord(normalized.temporalStressTests[0]?.["interpretation"])["dataQuality"],
     "sufficient"
