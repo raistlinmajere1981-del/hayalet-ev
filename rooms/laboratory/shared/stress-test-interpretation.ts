@@ -2,6 +2,7 @@ type LaboratoryRecord = Record<string, unknown>;
 
 export type LaboratoryChangeMagnitude = "negligible" | "small" | "moderate" | "strong";
 export type LaboratoryChangeDirection = "decrease" | "stable" | "increase";
+export type LaboratoryInterpretationDataQuality = "sufficient" | "insufficient" | "unknown";
 
 export type LaboratoryMetricChangeInterpretation = {
   direction: LaboratoryChangeDirection;
@@ -12,6 +13,7 @@ export type LaboratoryMetricChangeInterpretation = {
 export type LaboratoryTemporalSummaryInterpretation = {
   schemaVersion: 1;
   kind: "temporal-baseline";
+  dataQuality: "sufficient" | "insufficient";
   frameActivity: "very-low" | "low" | "moderate" | "high";
   edgePersistence: "low" | "intermittent" | "persistent";
   luminanceVariation: "stable" | "mild" | "variable";
@@ -21,12 +23,18 @@ export type LaboratoryTemporalSummaryInterpretation = {
 export type LaboratoryControlSummaryInterpretation = {
   schemaVersion: 1;
   kind: "control-injection";
+  dataQuality: LaboratoryInterpretationDataQuality;
   overallImpact: LaboratoryChangeMagnitude;
   frameDifference: LaboratoryMetricChangeInterpretation;
   edgePersistence: LaboratoryMetricChangeInterpretation;
   edgeEnergy: LaboratoryMetricChangeInterpretation;
   luminanceRange: LaboratoryMetricChangeInterpretation;
   chromaRange: LaboratoryMetricChangeInterpretation;
+};
+
+export type LaboratoryControlInterpretationEvidence = {
+  baselineSummary?: unknown;
+  injectedSummary?: unknown;
 };
 
 function toRecord(value: unknown): LaboratoryRecord {
@@ -38,6 +46,15 @@ function toRecord(value: unknown): LaboratoryRecord {
 function readFiniteNumber(record: LaboratoryRecord, key: string): number | null {
   const value = record[key];
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function hasTemporalSamples(value: unknown) {
+  const summary = toRecord(value);
+  return (
+    (readFiniteNumber(summary, "sampleCount") ?? 0) > 0 &&
+    (readFiniteNumber(summary, "frameDifferenceSampleCount") ?? 0) > 0 &&
+    (readFiniteNumber(summary, "edgeSampleCount") ?? 0) > 0
+  );
 }
 
 function rankMagnitude(value: LaboratoryChangeMagnitude) {
@@ -98,6 +115,7 @@ export function interpretLaboratoryTemporalSummary(
   return {
     schemaVersion: 1,
     kind: "temporal-baseline",
+    dataQuality: hasTemporalSamples(summary) ? "sufficient" : "insufficient",
     frameActivity:
       meanFrameDifference < 0.003
         ? "very-low"
@@ -118,7 +136,8 @@ export function interpretLaboratoryTemporalSummary(
 }
 
 export function interpretLaboratoryControlDelta(
-  value: unknown
+  value: unknown,
+  evidence?: LaboratoryControlInterpretationEvidence
 ): LaboratoryControlSummaryInterpretation {
   const delta = toRecord(value);
   const frameDifference = interpretDelta(readFiniteNumber(delta, "meanFrameDifferenceEnergy"), [
@@ -155,10 +174,17 @@ export function interpretLaboratoryControlDelta(
       rankMagnitude(chromaRange.magnitude)
     )
   );
+  const dataQuality: LaboratoryInterpretationDataQuality =
+    evidence === undefined
+      ? "unknown"
+      : hasTemporalSamples(evidence.baselineSummary) && hasTemporalSamples(evidence.injectedSummary)
+        ? "sufficient"
+        : "insufficient";
 
   return {
     schemaVersion: 1,
     kind: "control-injection",
+    dataQuality,
     overallImpact,
     frameDifference,
     edgePersistence,
