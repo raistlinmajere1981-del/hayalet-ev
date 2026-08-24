@@ -1,4 +1,5 @@
 import type { LabEditConfig, LabFeatureId } from "../domain/lab-types.js";
+import type { LaboratoryTemporalStressTestRequest } from "./temporal-stress-test-model.js";
 
 export type LaboratoryTransformStackSourceKind = "video" | "audio" | "image";
 export type LaboratoryTransformPreviewMode = "source" | "transform" | "difference";
@@ -12,6 +13,7 @@ export type LaboratoryTransformStackRenderContext = {
   previewStatus?: string | undefined;
   sourceKind: LaboratoryTransformStackSourceKind | null;
   sourcePreviewUrl?: string | null | undefined;
+  temporalRequest?: LaboratoryTemporalStressTestRequest | null | undefined;
   transformPreviewMode?: LaboratoryTransformPreviewMode | undefined;
   transformPreviewUrl?: string | null | undefined;
 };
