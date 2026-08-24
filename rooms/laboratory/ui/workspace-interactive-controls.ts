@@ -79,6 +79,9 @@ export function renderWorkspaceInteractiveControls(
             ...(transformContext.sourcePreviewUrl === undefined
               ? {}
               : { sourcePreviewUrl: transformContext.sourcePreviewUrl }),
+            ...(transformContext.temporalRequest === undefined
+              ? {}
+              : { temporalRequest: transformContext.temporalRequest }),
             ...(transformContext.transformPreviewMode === undefined
               ? {}
               : { transformPreviewMode: transformContext.transformPreviewMode }),
