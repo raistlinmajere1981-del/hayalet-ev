@@ -59,34 +59,33 @@ The first useful set can be implemented with FFmpeg/OpenCV-compatible operations
 - temporal median/reference-frame comparison
 - crop/ROI and scale
 
-The workbench should provide three views for the same timestamp/ROI:
+The workbench provides three aligned views for the same edit recipe:
 
-1. source
+1. source baseline
 2. transformed
-3. absolute/source difference
+3. true pixel difference
 
-The current Phase 1 implementation makes the comparison geometry explicit. When a visual Transform Stack preview is generated, Laboratory first renders a `transform-source-baseline` artifact through the same base edit recipe (trim/crop/resize and other pre-existing edit steps) but without the stress-transform stages. The normal preview is the transformed artifact. A `transform-difference` artifact is then generated with FFmpeg `blend=all_mode=difference` from those two aligned outputs.
-
-This matters because comparing the immutable raw source directly with a cropped, resized, or trimmed transformed preview would create large differences that come from geometry/timing rather than from the tested transform stages. The immutable original still remains the project source; the baseline is only a derived comparison control.
-
-If there is no enabled visual stress-transform stage, Laboratory does not generate a Difference artifact. A stale preview is also not treated as a current Transform/Difference result.
+The source baseline is a derived comparison control generated through the same base trim/crop/resize recipe but without stress-transform stages. Difference is computed from this aligned baseline and the transformed preview with FFmpeg `blend=all_mode=difference`. The immutable original source is never replaced.
 
 The useful output is not "looks real". It is a persistence record describing which independent transformations preserve recognizable geometry and temporal continuity.
 
 ## Temporal ROI test
 
-A selected ROI should be traceable over a short interval, initially ±3 seconds around the marked event.
+The first temporal slice operates on the prepared original video source so that later transformed/control-injection runs can be compared against an unmodified temporal baseline.
 
-Useful measurements:
+A real timeline selection is required. The selected range is capped at six seconds, centered when a longer range is supplied. Sampling defaults to 5 fps and is bounded to 1–10 fps. If the selection carries an ROI, only that normalized ROI is measured; otherwise the full frame is used.
 
-- edge persistence
-- local luminance trajectory
-- local chroma trajectory
-- inter-frame difference energy
-- optical-flow consistency when available
-- appearance/disappearance timestamps
+The current FFmpeg-only measurements are:
 
-This distinguishes a single-frame impression from a feature that behaves consistently through time.
+- luma trajectory (`signalstats.YAVG`)
+- chroma U/V trajectory (`signalstats.UAVG` / `VAVG`)
+- inter-frame difference energy (`tblend=all_mode=difference` + `signalstats`)
+- edge energy (`edgedetect` + `signalstats`)
+- an initial edge-persistence ratio derived from the edge-energy series
+
+The runtime prints only the required metadata keys, merges repeated metadata blocks by frame timestamp, normalizes 8-bit signal metrics to 0–1, and stores the newest twenty temporal measurements under `edit.temporalStressTests`. The visual inspector shows the latest summary rather than introducing a heavy chart/statistics subsystem in this first slice.
+
+Optical flow is intentionally deferred until these simpler measurements are validated against real clips.
 
 ## Control injection
 
@@ -159,8 +158,10 @@ The original source must remain immutable. Stress-test outputs are derived artif
 1. Extend the existing media edit recipe with video photometric controls (brightness/contrast/gamma/saturation, blur/sharpen) and audio band-pass/gain controls.
 2. Add ordered transform-stage persistence and stable recipe signatures.
 3. Add Source / Transform / Difference preview mode for a selected ROI and short interval.
-4. Add audio loop + subtitle target interval.
-5. Add control-injection presets.
-6. Add persistence metrics and the restrained result categories above.
+4. Add the first temporal baseline metrics: luma/chroma trajectory, frame-difference energy, and edge persistence.
+5. Add audio loop + subtitle target interval.
+6. Add control-injection presets.
+7. Add heavier persistence metrics such as optical flow only if the simpler baseline proves useful.
+8. Add the restrained result categories above.
 
 This sequencing deliberately reuses the existing FFmpeg preview/apply pipeline before adding heavier temporal tracking or OpenCV dependencies.
