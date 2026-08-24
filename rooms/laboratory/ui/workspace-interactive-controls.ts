@@ -65,6 +65,17 @@ function formatPercent(value: number | null) {
   return value === null ? "—" : `${Math.round(value * 100)}%`;
 }
 
+function formatSignedMetric(value: number | null) {
+  if (value === null) return "—";
+  return `${value >= 0 ? "+" : ""}${value.toFixed(3)}`;
+}
+
+function formatSignedPercent(value: number | null) {
+  if (value === null) return "—";
+  const percent = Math.round(value * 100);
+  return `${percent >= 0 ? "+" : ""}${percent}%`;
+}
+
 function renderLatestTemporalStressSummary(editConfig: LabEditConfig | null, copy: LabI18n) {
   const edit = asLabRecord(editConfig);
   const history = Array.isArray(edit["temporalStressTests"]) ? edit["temporalStressTests"] : [];
@@ -100,6 +111,55 @@ function renderLatestTemporalStressSummary(editConfig: LabEditConfig | null, cop
           <div class="labx-control-row"><span class="labx-control-row__label">Luma range</span><span class="labx-control-row__value">${escapeHtml(formatMetric(lumaRange))}</span></div>
           <div class="labx-control-row"><span class="labx-control-row__label">Chroma U / V range</span><span class="labx-control-row__value">${escapeHtml(`${formatMetric(chromaURange)} / ${formatMetric(chromaVRange)}`)}</span></div>
         </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderLatestControlInjectionSummary(editConfig: LabEditConfig | null, copy: LabI18n) {
+  const edit = asLabRecord(editConfig);
+  const history = Array.isArray(edit["controlInjectionRuns"]) ? edit["controlInjectionRuns"] : [];
+  const latest = asLabRecord(history[0]);
+  if (Object.keys(latest).length === 0) {
+    return "";
+  }
+  const request = asLabRecord(latest["request"]);
+  const temporalRequest = asLabRecord(request["temporalRequest"]);
+  const params = asLabRecord(request["params"]);
+  const delta = asLabRecord(latest["delta"]);
+  const kind = typeof request["kind"] === "string" ? request["kind"] : "control";
+  const startSeconds = readFiniteMetric(temporalRequest, "startSeconds");
+  const endSeconds = readFiniteMetric(temporalRequest, "endSeconds");
+  const windowLabel =
+    startSeconds === null || endSeconds === null
+      ? "—"
+      : `${startSeconds.toFixed(2)}–${endSeconds.toFixed(2)} s`;
+  const meanDifferenceDelta = readFiniteMetric(delta, "meanFrameDifferenceEnergy");
+  const peakDifferenceDelta = readFiniteMetric(delta, "peakFrameDifferenceEnergy");
+  const edgePersistenceDelta = readFiniteMetric(delta, "edgePersistenceRatio");
+  const edgeEnergyDelta = readFiniteMetric(delta, "meanEdgeEnergy");
+  const lumaRangeDelta = readFiniteMetric(delta, "lumaRange");
+  const chromaURangeDelta = readFiniteMetric(delta, "chromaURange");
+  const chromaVRangeDelta = readFiniteMetric(delta, "chromaVRange");
+  const title = copy.locale === "tr" ? "Son Destruction Control" : "Latest Destruction Control";
+  const methodHint =
+    copy.locale === "tr"
+      ? "Δ = aynı trim/ROI/codec ile üretilen paired baseline → injected değişimi."
+      : "Δ = paired baseline → injected change with identical trim/ROI/codec.";
+
+  return `
+    <section class="labx-card labx-controls-card" data-lab-control-injection-summary="true">
+      <div class="labx-card__body">
+        <p class="labx-card__eyebrow">${escapeHtml(title)}</p>
+        <p class="labx-card__meta">${escapeHtml(`${kind} · ${windowLabel} · ${JSON.stringify(params)}`)}</p>
+        <div class="labx-controls-stack">
+          <div class="labx-control-row"><span class="labx-control-row__label">Δ Frame mean / peak</span><span class="labx-control-row__value">${escapeHtml(`${formatSignedMetric(meanDifferenceDelta)} / ${formatSignedMetric(peakDifferenceDelta)}`)}</span></div>
+          <div class="labx-control-row"><span class="labx-control-row__label">Δ Edge persistence</span><span class="labx-control-row__value">${escapeHtml(formatSignedPercent(edgePersistenceDelta))}</span></div>
+          <div class="labx-control-row"><span class="labx-control-row__label">Δ Edge energy</span><span class="labx-control-row__value">${escapeHtml(formatSignedMetric(edgeEnergyDelta))}</span></div>
+          <div class="labx-control-row"><span class="labx-control-row__label">Δ Luma range</span><span class="labx-control-row__value">${escapeHtml(formatSignedMetric(lumaRangeDelta))}</span></div>
+          <div class="labx-control-row"><span class="labx-control-row__label">Δ Chroma U / V</span><span class="labx-control-row__value">${escapeHtml(`${formatSignedMetric(chromaURangeDelta)} / ${formatSignedMetric(chromaVRangeDelta)}`)}</span></div>
+        </div>
+        <p class="labx-card__meta">${escapeHtml(methodHint)}</p>
       </div>
     </section>
   `;
@@ -149,6 +209,10 @@ export function renderWorkspaceInteractiveControls(
     transformContext?.sourceKind === "video"
       ? renderLatestTemporalStressSummary(transformContext.editConfig, copy)
       : "";
+  const controlSummaryMarkup =
+    transformContext?.sourceKind === "video"
+      ? renderLatestControlInjectionSummary(transformContext.editConfig, copy)
+      : "";
 
   return `
     <section class="labx-card labx-controls-card labx-workspace-focus-row__panel" data-tone="accent">
@@ -184,5 +248,6 @@ export function renderWorkspaceInteractiveControls(
     </section>
     ${transformStackMarkup}
     ${temporalSummaryMarkup}
+    ${controlSummaryMarkup}
   `;
 }
