@@ -62,7 +62,8 @@ void test("image stack reads image recipe instead of video recipe", () => {
 
   assert.match(markup, /RGB isolation/);
   assert.match(markup, /value="blue" selected/);
-  assert.doesNotMatch(markup, /Gamma/);
+  assert.doesNotMatch(markup, /data-lab-transform-stage="gamma-1"/);
+  assert.doesNotMatch(markup, />1\. Gamma</);
   assert.match(markup, /data-lab-transform-recipe-section="image"/);
 });
 
