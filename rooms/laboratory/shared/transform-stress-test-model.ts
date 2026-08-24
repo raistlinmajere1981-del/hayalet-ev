@@ -214,10 +214,11 @@ export function isLaboratoryTransformStageKind(
 export function getLaboratoryTransformStageDefinition(
   kind: LaboratoryTransformStageKind
 ): LaboratoryTransformStageDefinition {
-  return (
-    LAB_TRANSFORM_STAGE_DEFINITIONS.find((definition) => definition.kind === kind) ||
-    LAB_TRANSFORM_STAGE_DEFINITIONS[0]
-  );
+  const definition = LAB_TRANSFORM_STAGE_DEFINITIONS.find((entry) => entry.kind === kind);
+  if (definition === undefined) {
+    throw new Error(`Unknown Laboratory transform stage kind: ${kind}`);
+  }
+  return definition;
 }
 
 export function getLaboratoryTransformStageDefinitions(scope: LaboratoryTransformStageScope) {
@@ -306,6 +307,10 @@ export function mutateLaboratoryTransformStages(
   if (index < 0) {
     return stages;
   }
+  const currentStage = stages[index];
+  if (currentStage === undefined) {
+    return stages;
+  }
 
   if (mutation.type === "remove") {
     stages.splice(index, 1);
@@ -317,20 +322,20 @@ export function mutateLaboratoryTransformStages(
     if (targetIndex < 0 || targetIndex >= stages.length) {
       return stages;
     }
-    const [stage] = stages.splice(index, 1);
-    stages.splice(targetIndex, 0, stage);
+    stages.splice(index, 1);
+    stages.splice(targetIndex, 0, currentStage);
     return stages;
   }
 
   if (mutation.type === "enabled") {
-    stages[index] = { ...stages[index], enabled: mutation.enabled };
+    stages[index] = { ...currentStage, enabled: mutation.enabled };
     return stages;
   }
 
   stages[index] = {
-    ...stages[index],
+    ...currentStage,
     params: {
-      ...stages[index].params,
+      ...currentStage.params,
       [mutation.parameterId]: mutation.value,
     },
   };
