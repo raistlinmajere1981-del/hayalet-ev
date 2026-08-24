@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { createLaboratoryTemporalStressTestRuntime } from "../../rooms/laboratory/features/media-analysis/host/temporal-stress-test.ts";
@@ -6,6 +7,8 @@ import {
   buildLaboratoryTemporalStressTestRequestFromWorkspaceSelection,
   normalizeLaboratoryTemporalStressTestRequest,
 } from "../../rooms/laboratory/shared/temporal-stress-test-model.ts";
+import { attachLaboratoryTransformStackRenderContext } from "../../rooms/laboratory/shared/transform-stack-render-context.ts";
+import { renderWorkspaceInteractiveControls } from "../../rooms/laboratory/ui/workspace-interactive-controls.ts";
 
 function createTemporalRuntime() {
   return createLaboratoryTemporalStressTestRuntime({
@@ -157,4 +160,121 @@ void test("temporal result exposes normalized luma chroma difference and edge pe
   assertNear(result.summary.meanEdgeEnergy, 0.1);
   assert.ok(result.summary.edgePersistenceRatio > 0);
   assert.ok(result.summary.edgePersistenceRatio <= 1);
+});
+
+void test("temporal scan runs three FFmpeg passes and persists the measured result", async () => {
+  const project: Record<string, unknown> = {
+    source: {
+      kind: "video",
+      storedPath: "/source/input.mp4",
+      metadata: { durationSeconds: 30 },
+    },
+    edit: { temporalStressTests: [] },
+  };
+  const commands: string[][] = [];
+  const signalText = `frame:0 pts:0 pts_time:0\nlavfi.signalstats.YAVG=128\nframe:0 pts:0 pts_time:0\nlavfi.signalstats.UAVG=128\nframe:0 pts:0 pts_time:0\nlavfi.signalstats.VAVG=128`;
+  const yOnlyText = `frame:0 pts:0 pts_time:0\nlavfi.signalstats.YAVG=25.5`;
+  const runtime = createLaboratoryTemporalStressTestRuntime({
+    async callRoomTools(payload) {
+      const args = payload["args"] as string[];
+      commands.push(args);
+      return {
+        run: {
+          exitCode: 0,
+          stderr: args.join(" ").includes("metadata=mode=print:key=lavfi.signalstats.UAVG")
+            ? signalText
+            : yOnlyText,
+        },
+      };
+    },
+    async ensureProjectDirectories() {},
+    getActiveProject() {
+      return project;
+    },
+    getPreparedSourcePath() {
+      return "/source/input.mp4";
+    },
+    getProjectEditOutputDir() {
+      return "/project/edit/output";
+    },
+    async patchActiveProject(_runtime, patcher) {
+      patcher(project);
+    },
+    roomId: "laboratory",
+    toRecord(value: unknown) {
+      return value && typeof value === "object" && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+  });
+
+  const result = await runtime.runTemporalStressTest({}, "req-temporal", {
+    startSeconds: 4,
+    endSeconds: 6,
+    sampleFps: 5,
+    roi: null,
+  });
+
+  assert.equal(commands.length, 3);
+  assert.match(commands[1]?.join(" ") ?? "", /tblend=all_mode=difference/);
+  assert.match(commands[2]?.join(" ") ?? "", /edgedetect=/);
+  const history = (project["edit"] as Record<string, unknown>)["temporalStressTests"] as unknown[];
+  assert.equal(history.length, 1);
+  assert.equal(history[0], result);
+  assert.equal(result.metrics.summary.sampleCount, 1);
+});
+
+void test("video transform inspector exposes Temporal Scan only for a valid selection request", () => {
+  const settings = attachLaboratoryTransformStackRenderContext(
+    {
+      brightness: 100,
+      contrast: 100,
+      gamma: 1,
+      saturation: 100,
+      hueRotate: 0,
+      sharpness: 100,
+      channelR: true,
+      channelG: true,
+      channelB: true,
+      edgeHighlight: false,
+      invert: false,
+    },
+    {
+      editConfig: { recipe: { video: { transformStages: [] } } },
+      featureId: "media-analysis",
+      locked: false,
+      sourceKind: "video",
+      temporalRequest: {
+        startSeconds: 3,
+        endSeconds: 6,
+        sampleFps: 5,
+        roi: null,
+      },
+    }
+  );
+  const markup = renderWorkspaceInteractiveControls(settings, {
+    locale: "en",
+    t(_key: string, fallback = "") {
+      return fallback;
+    },
+  } as never);
+  assert.match(markup, /data-lab-action="workspace-transform-temporal-scan"/);
+  assert.match(markup, /data-lab-temporal-request-json=/);
+  assert.match(markup, /3\.00–6\.00 s/);
+  assert.doesNotMatch(
+    markup.match(/data-lab-action="workspace-transform-temporal-scan"[^>]*>/)?.[0] ?? "",
+    /disabled/
+  );
+});
+
+void test("temporal action is wired from live controller through the host action router", async () => {
+  const liveController = await readFile(
+    "rooms/laboratory/runtime/controller/lab-transform-stack-live-controller.ts",
+    "utf8"
+  );
+  const actionRouter = await readFile("rooms/laboratory/shared/host/action-router.ts", "utf8");
+  assert.match(liveController, /edit-temporal-stress-test/);
+  assert.match(liveController, /request: state\.temporalRequest/);
+  assert.match(actionRouter, /case "edit-temporal-stress-test"/);
+  assert.match(actionRouter, /runTemporalStressTest/);
 });
