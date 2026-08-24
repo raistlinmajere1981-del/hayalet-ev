@@ -447,7 +447,7 @@ void test("laboratory process strip renders recent action history from user acti
   assert.doesNotMatch(collapsedStripHtml, /class="labx-strip-expand"/);
   assert.doesNotMatch(collapsedStripHtml, /class="labx-strip-cancel"/);
 
-  store.dispatch({ type: "workspace-process-view-toggled", force: true });
+  store.dispatch({ type: "run-started", action: "process-run" });
   const stripHtml = renderLabProcessStrip(store.getState());
   assert.match(stripHtml, /data-process-view="expanded"/);
   assert.match(stripHtml, /data-lab-process-expanded="true"/);
@@ -507,7 +507,7 @@ void test("laboratory process strip renders multi-output action summaries with o
   const surface = renderWorkspaceSurface(state);
 
   assert.doesNotMatch(surface.main, /report-user\.md \+1/);
-  store.dispatch({ type: "workspace-process-view-toggled", force: true });
+  store.dispatch({ type: "run-started", action: "process-run" });
   const stripHtml = renderLabProcessStrip(store.getState());
   assert.match(stripHtml, /report-user\.md, report-ai\.json/);
 });
