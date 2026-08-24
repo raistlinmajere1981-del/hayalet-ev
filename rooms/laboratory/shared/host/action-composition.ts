@@ -58,6 +58,7 @@ type LaboratoryMediaActionRuntimeDeps = {
   removeProfileModel: UnknownFn;
   resetEditForCurrentSource: UnknownFn;
   resetProfileForCurrentSource: UnknownFn;
+  roomId: string;
   runEditPipeline: UnknownFn;
   runFeatureProcess: UnknownFn;
   runProfilePreflight: UnknownFn;
@@ -149,6 +150,7 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     removeProfileModel: deps.removeProfileModel,
     resetEditForCurrentSource: deps.resetEditForCurrentSource,
     resetProfileForCurrentSource: deps.resetProfileForCurrentSource,
+    roomId: deps.roomId,
     runFeatureProcess: deps.runFeatureProcess,
     runEditPipeline: deps.runEditPipeline,
     runProfilePreflight: deps.runProfilePreflight,
