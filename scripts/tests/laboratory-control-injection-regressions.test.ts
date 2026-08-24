@@ -77,7 +77,7 @@ lavfi.signalstats.YAVG=${value}
 void test("destruction control definitions are fixed and canonical payload params cannot override them", () => {
   assert.deepEqual(
     getLaboratoryControlInjectionDefinitions().map((entry) => entry.kind),
-    ["noise", "blur", "sharpen", "low-light"]
+    ["noise", "blur", "sharpen", "low-light", "recompression"]
   );
   const normalized = normalizeLaboratoryControlInjectionRequest({
     kind: "noise",
@@ -89,11 +89,23 @@ void test("destruction control definitions are fixed and canonical payload param
       roi: null,
     },
   });
+  const recompression = normalizeLaboratoryControlInjectionRequest({
+    kind: "recompression",
+    params: { baselineCrf: 1, injectedCrf: 51 },
+    temporalRequest: {
+      startSeconds: 2,
+      endSeconds: 4,
+      sampleFps: 5,
+      roi: null,
+    },
+  });
   assert.equal(normalized?.params["strength"], 12);
   assert.equal(normalized?.temporalRequest.startSeconds, 2);
+  assert.equal(recompression?.params["baselineCrf"], 18);
+  assert.equal(recompression?.params["injectedCrf"], 36);
 });
 
-void test("paired control commands keep trim ROI and codec equal while injection exists only on the injected side", () => {
+void test("paired filter controls keep trim ROI and codec equal while injection exists only on the injected side", () => {
   const runtime = createLaboratoryControlInjectionRuntime({
     async callRoomTools() {
       return { run: { exitCode: 0, stderr: "" } };
@@ -145,6 +157,54 @@ void test("paired control commands keep trim ROI and codec equal while injection
   assert.match(injectedText, /noise=alls=12:allf=t\+u:all_seed=4242/);
   assert.match(baselineText, /-c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p/);
   assert.match(injectedText, /-c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p/);
+});
+
+void test("recompression control changes only encode quality between paired outputs", () => {
+  const runtime = createLaboratoryControlInjectionRuntime({
+    async callRoomTools() {
+      return { run: { exitCode: 0, stderr: "" } };
+    },
+    getActiveProject() {
+      return null;
+    },
+    getPreparedSourcePath() {
+      return "/source/input.mp4";
+    },
+    getProjectEditOutputDir() {
+      return "/project/edit/output";
+    },
+    async patchActiveProject() {},
+    roomId: "laboratory",
+    temporalRuntime: createTemporalHelpers(),
+    toRecord,
+  });
+  const request = normalizeLaboratoryControlInjectionRequest({
+    kind: "recompression",
+    temporalRequest: {
+      startSeconds: 10,
+      endSeconds: 14,
+      sampleFps: 5,
+      roi: { x: 0.2, y: 0.25, width: 0.4, height: 0.5 },
+    },
+  });
+  assert.notEqual(request, null);
+
+  const baselineText = runtime
+    .buildPairCommand("/source/input.mp4", "/out/baseline.mp4", request!, false)
+    .join(" ");
+  const injectedText = runtime
+    .buildPairCommand("/source/input.mp4", "/out/injected.mp4", request!, true)
+    .join(" ");
+
+  assert.match(baselineText, /-ss 10 -t 4 -i \/source\/input\.mp4/);
+  assert.match(injectedText, /-ss 10 -t 4 -i \/source\/input\.mp4/);
+  assert.match(baselineText, /crop=trunc\(iw\*0\.4\/2\)\*2:trunc\(ih\*0\.5\/2\)\*2/);
+  assert.match(injectedText, /crop=trunc\(iw\*0\.4\/2\)\*2:trunc\(ih\*0\.5\/2\)\*2/);
+  assert.match(baselineText, /-c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p/);
+  assert.match(injectedText, /-c:v libx264 -preset veryfast -crf 36 -pix_fmt yuv420p/);
+  assert.equal(runtime.buildControlFilter(request!), null);
+  assert.equal(runtime.buildEncodeProfile(request!, false).crf, 18);
+  assert.equal(runtime.buildEncodeProfile(request!, true).crf, 36);
 });
 
 void test("destruction control measures spatial edge persistence on both sides and persists the paired result", async () => {
@@ -218,6 +278,8 @@ void test("destruction control measures spatial edge persistence on both sides a
   assert.ok(Number(result.delta["spatialEdgePersistenceRatio"]) < 0);
   assert.equal(result.metrics.baseline.summary.edgePersistenceMethod, "adjacent-edge-map-iou");
   assert.equal(result.metrics.injected.summary.edgePersistenceMethod, "adjacent-edge-map-iou");
+  assert.equal(result.encodeProfiles.baseline.crf, 18);
+  assert.equal(result.encodeProfiles.injected.crf, 18);
   assert.equal(result.interpretation.schemaVersion, 1);
   assert.equal(result.interpretation.kind, "control-injection");
   assert.equal(result.interpretation.dataQuality, "sufficient");
@@ -299,6 +361,7 @@ void test("video transform inspector exposes destruction controls only when a re
   assert.match(markup, /workspace-control-injection-run/);
   assert.match(markup, /value="noise"/);
   assert.match(markup, /value="low-light"/);
+  assert.match(markup, /value="recompression"/);
 
   const disabledMarkup = renderWorkspaceTransformStack({
     editConfig: { recipe: { video: { transformStages: [] } } },
