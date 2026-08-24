@@ -1,5 +1,7 @@
 import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import type { LabAsset, LabComparisonSide, LabStoreState } from "../../domain/lab-types.js";
+import { attachLaboratoryTransformStackRenderContext } from "../../shared/transform-stack-render-context.js";
+import type { LaboratoryTransformStackSourceKind } from "../../shared/transform-stack-render-context.js";
 import { normalizeAudioFocusSettings } from "../lab-audio-focus-normalization.js";
 import {
   createLabComparisonInteractiveSettings,
@@ -7,6 +9,21 @@ import {
 } from "../lab-workspace-defaults.js";
 import { getWorkspaceSourceSelectionResetKey } from "../lab-workspace-selection.js";
 import { getCurrentSourceAsset, getLinkedAudioAssets } from "./lab-source-selectors.js";
+
+function getTransformStackRenderContext(state: LabStoreState) {
+  const rawSourceKind = asNonEmptyString(asLabRecord(state.source)["kind"]);
+  const sourceKind: LaboratoryTransformStackSourceKind | null =
+    rawSourceKind === "video" || rawSourceKind === "audio" || rawSourceKind === "image"
+      ? rawSourceKind
+      : null;
+  const runState = state.run?.state;
+  return {
+    editConfig: state.editConfig,
+    featureId: state.featureId,
+    locked: runState === "running" || runState === "queued",
+    sourceKind,
+  };
+}
 
 export function getROIRegions(state: LabStoreState) {
   return state.ui.workspace.roiRegions;
@@ -44,11 +61,17 @@ export function getInteractiveSettingsForComparisonSide(
 }
 
 export function getInteractiveSettings(state: LabStoreState) {
-  return getInteractiveSettingsForComparisonSide(state);
+  return attachLaboratoryTransformStackRenderContext(
+    getInteractiveSettingsForComparisonSide(state),
+    getTransformStackRenderContext(state)
+  );
 }
 
 export function getAudioFocusSettings(state: LabStoreState) {
-  return normalizeAudioFocusSettings(state.ui.workspace.audioFocus);
+  return attachLaboratoryTransformStackRenderContext(
+    normalizeAudioFocusSettings(state.ui.workspace.audioFocus),
+    getTransformStackRenderContext(state)
+  );
 }
 
 export function getEffectivePreviewAudioFocusSettings(state: LabStoreState) {
