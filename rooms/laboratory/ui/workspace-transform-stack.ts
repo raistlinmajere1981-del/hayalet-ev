@@ -313,6 +313,54 @@ function renderTemporalScanControl(input: WorkspaceTransformStackInput, copy: La
   `;
 }
 
+function renderMotionImpactPanel(input: WorkspaceTransformStackInput, copy: LabI18n) {
+  if (input.scope !== "visual" || input.sourceKind !== "video") {
+    return "";
+  }
+  const request = input.temporalRequest ?? null;
+  const disabled = input.locked === true || request === null;
+  const referenceDisabled = disabled || request?.roi === null;
+  const hint =
+    request === null
+      ? copy.locale === "tr"
+        ? "Motion testi için önce timeline aralığı seçin. Referans kilidi için ayrıca sabit bir ROI seçin."
+        : "Select a timeline range for motion testing. Lock a stable ROI to compensate camera motion."
+      : copy.locale === "tr"
+        ? "Referans ROI kamera hareketini tahmin eder. Motion hedef−referans göreli vektörünü; Impact ise seçim orta noktasının ±500 ms pencerelerini karşılaştırır."
+        : "The reference ROI estimates camera motion. Motion reports target-minus-reference motion; Impact compares ±500 ms around the selection midpoint.";
+  return `
+    <section class="labx-card labx-transform-motion-impact" data-lab-motion-impact="true">
+      <div class="labx-card__body">
+        <p class="labx-card__eyebrow">Motion / Impact</p>
+        <div class="labx-controls-actions">
+          <button
+            class="labx-inline-action labx-transform-action"
+            type="button"
+            data-lab-action="workspace-motion-reference-lock"
+            ${renderActionFeedbackAttributes(copy)}
+            ${referenceDisabled ? "disabled" : ""}
+          >${escapeHtml(copy.locale === "tr" ? "Referans ROI Kilitle" : "Lock Reference ROI")}</button>
+          <button
+            class="labx-inline-action labx-transform-action"
+            type="button"
+            data-lab-action="workspace-motion-probe"
+            ${renderActionFeedbackAttributes(copy)}
+            ${disabled ? "disabled" : ""}
+          >Motion Probe</button>
+          <button
+            class="labx-inline-action labx-transform-action"
+            type="button"
+            data-lab-action="workspace-impact-window-compare"
+            ${renderActionFeedbackAttributes(copy)}
+            ${disabled ? "disabled" : ""}
+          >Impact ±500 ms</button>
+        </div>
+        <p class="labx-card__meta">${escapeHtml(hint)}</p>
+      </div>
+    </section>
+  `;
+}
+
 function getLocalizedControlLabel(kind: LaboratoryControlInjectionKind, copy: LabI18n) {
   if (copy.locale !== "tr") {
     return (
@@ -414,6 +462,7 @@ export function renderWorkspaceTransformStack(
 
         ${input.showPreview === false ? "" : renderTransformComparisonPreview(input, enabledCount, copy)}
         ${renderTemporalScanControl(input, copy)}
+        ${renderMotionImpactPanel(input, copy)}
         ${renderControlInjectionPanel(input, copy)}
 
         <div class="labx-controls-stack" data-lab-transform-stage-list="${escapeHtml(input.scope)}">
