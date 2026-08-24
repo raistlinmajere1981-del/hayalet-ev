@@ -3,7 +3,6 @@ import type { LabInteractiveSettings } from "../domain/lab-types.js";
 import { readLaboratoryTransformStackRenderContext } from "../shared/transform-stack-render-context.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
-import { renderWorkspaceStressTestSummaries } from "./workspace-stress-test-summary.js";
 import { renderWorkspaceTransformStack } from "./workspace-transform-stack.js";
 
 function renderSlider(
@@ -66,6 +65,7 @@ export function renderWorkspaceInteractiveControls(
             editConfig: transformContext.editConfig,
             featureId: transformContext.featureId,
             locked: transformContext.locked,
+            showPreview: false,
             sourceKind: transformContext.sourceKind,
             scope: "visual",
             ...(transformContext.baselinePreviewUrl === undefined
@@ -92,10 +92,6 @@ export function renderWorkspaceInteractiveControls(
           },
           copy
         )
-      : "";
-  const stressSummaryMarkup =
-    transformContext?.sourceKind === "video"
-      ? renderWorkspaceStressTestSummaries(transformContext.editConfig, copy)
       : "";
 
   return `
@@ -131,6 +127,5 @@ export function renderWorkspaceInteractiveControls(
       </div>
     </section>
     ${transformStackMarkup}
-    ${stressSummaryMarkup}
   `;
 }
