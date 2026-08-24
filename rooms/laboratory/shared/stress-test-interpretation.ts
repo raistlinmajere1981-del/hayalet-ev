@@ -1,8 +1,12 @@
 type LaboratoryRecord = Record<string, unknown>;
+type LaboratoryChangeMagnitude = "negligible" | "small" | "moderate" | "strong";
+type LaboratoryChangeDirection = "decrease" | "stable" | "increase";
+type LaboratoryInterpretationDataQuality = "sufficient" | "insufficient" | "unknown";
 
-export type LaboratoryChangeMagnitude = "negligible" | "small" | "moderate" | "strong";
-export type LaboratoryChangeDirection = "decrease" | "stable" | "increase";
-export type LaboratoryInterpretationDataQuality = "sufficient" | "insufficient" | "unknown";
+type LaboratoryControlInterpretationEvidence = {
+  baselineSummary?: unknown;
+  injectedSummary?: unknown;
+};
 
 export type LaboratoryMetricChangeInterpretation = {
   direction: LaboratoryChangeDirection;
@@ -30,11 +34,6 @@ export type LaboratoryControlSummaryInterpretation = {
   edgeEnergy: LaboratoryMetricChangeInterpretation;
   luminanceRange: LaboratoryMetricChangeInterpretation;
   chromaRange: LaboratoryMetricChangeInterpretation;
-};
-
-export type LaboratoryControlInterpretationEvidence = {
-  baselineSummary?: unknown;
-  injectedSummary?: unknown;
 };
 
 function toRecord(value: unknown): LaboratoryRecord {
