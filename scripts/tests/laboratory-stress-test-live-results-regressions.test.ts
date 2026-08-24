@@ -4,6 +4,14 @@ import test from "node:test";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { renderLabProcessStrip } from "../../rooms/laboratory/ui/lab-process-strip.ts";
 
+function createStableMetric(value: number | null = 0) {
+  return {
+    direction: "stable",
+    magnitude: "negligible",
+    value,
+  } as const;
+}
+
 function seedStressTestState() {
   const store = createLabStore();
   const state = store.getState();
@@ -51,14 +59,31 @@ function seedStressTestState() {
           chromaVRange: 0,
         },
         metrics: {
-          baseline: { summary: { sampleCount: 30, frameDifferenceSampleCount: 29, edgeSampleCount: 30 } },
-          injected: { summary: { sampleCount: 30, frameDifferenceSampleCount: 29, edgeSampleCount: 30 } },
+          baseline: {
+            summary: { sampleCount: 30, frameDifferenceSampleCount: 29, edgeSampleCount: 30 },
+          },
+          injected: {
+            summary: { sampleCount: 30, frameDifferenceSampleCount: 29, edgeSampleCount: 30 },
+          },
         },
         interpretation: {
           schemaVersion: 1,
           kind: "control-injection",
           dataQuality: "sufficient",
           overallImpact: "moderate",
+          frameDifference: {
+            direction: "decrease",
+            magnitude: "small",
+            value: -0.005,
+          },
+          edgePersistence: createStableMetric(),
+          edgeEnergy: createStableMetric(),
+          luminanceRange: {
+            direction: "decrease",
+            magnitude: "small",
+            value: -0.013,
+          },
+          chromaRange: createStableMetric(),
         },
       },
       {
@@ -84,14 +109,27 @@ function seedStressTestState() {
           chromaVRange: 0,
         },
         metrics: {
-          baseline: { summary: { sampleCount: 30, frameDifferenceSampleCount: 29, edgeSampleCount: 30 } },
-          injected: { summary: { sampleCount: 30, frameDifferenceSampleCount: 29, edgeSampleCount: 30 } },
+          baseline: {
+            summary: { sampleCount: 30, frameDifferenceSampleCount: 29, edgeSampleCount: 30 },
+          },
+          injected: {
+            summary: { sampleCount: 30, frameDifferenceSampleCount: 29, edgeSampleCount: 30 },
+          },
         },
         interpretation: {
           schemaVersion: 1,
           kind: "control-injection",
           dataQuality: "sufficient",
           overallImpact: "moderate",
+          frameDifference: {
+            direction: "increase",
+            magnitude: "moderate",
+            value: 0.011,
+          },
+          edgePersistence: createStableMetric(),
+          edgeEnergy: createStableMetric(),
+          luminanceRange: createStableMetric(),
+          chromaRange: createStableMetric(),
         },
       },
       {
