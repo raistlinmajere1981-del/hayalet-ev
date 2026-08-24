@@ -1,7 +1,9 @@
 import { escapeHtml } from "../domain/lab-types.js";
 import type { LabInteractiveSettings } from "../domain/lab-types.js";
+import { readLaboratoryTransformStackRenderContext } from "../shared/transform-stack-render-context.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
+import { renderWorkspaceTransformStack } from "./workspace-transform-stack.js";
 
 function renderSlider(
   label: string,
@@ -54,9 +56,31 @@ export function renderWorkspaceInteractiveControls(
   settings: LabInteractiveSettings,
   copy: LabI18n = LAB_FALLBACK_I18N
 ) {
+  const transformContext = readLaboratoryTransformStackRenderContext(settings);
+  const transformStackMarkup =
+    transformContext !== null &&
+    (transformContext.sourceKind === "video" || transformContext.sourceKind === "image")
+      ? renderWorkspaceTransformStack(
+          {
+            editConfig: transformContext.editConfig,
+            featureId: transformContext.featureId,
+            locked: transformContext.locked,
+            sourceKind: transformContext.sourceKind,
+            scope: "visual",
+          },
+          copy
+        )
+      : "";
+
   return `
     <section class="labx-card labx-controls-card labx-workspace-focus-row__panel" data-tone="accent">
       <div class="labx-card__body">
+        <p class="labx-card__meta">${escapeHtml(
+          copy.t(
+            "mediaAnalysis.transformStressTest.liveControlsHint",
+            "Live controls affect only the workspace view. Transform Stack below is the reproducible recipe."
+          )
+        )}</p>
         <div class="labx-controls-stack">
           ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.brightness", "Brightness"), "brightness", settings.brightness, 0, 200, 1, "%", 100)}
           ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.contrast", "Contrast"), "contrast", settings.contrast, 0, 200, 1, "%", 100)}
@@ -80,5 +104,6 @@ export function renderWorkspaceInteractiveControls(
         </div>
       </div>
     </section>
+    ${transformStackMarkup}
   `;
 }
