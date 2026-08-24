@@ -83,23 +83,56 @@ The current FFmpeg-only measurements are:
 - edge energy (`edgedetect` + `signalstats`)
 - an initial edge-persistence ratio derived from the edge-energy series
 
-The runtime prints only the required metadata keys, merges repeated metadata blocks by frame timestamp, normalizes 8-bit signal metrics to 0–1, and stores the newest twenty temporal measurements under `edit.temporalStressTests`. These records remain inside the normalized project state across reload/restart; a separate exported artifact file is intentionally deferred to the later report/export layer. The visual inspector shows the latest numeric summary rather than introducing a heavy chart/statistics subsystem in this first slice.
+The runtime prints only the required metadata keys, merges repeated metadata blocks by frame timestamp, normalizes 8-bit signal metrics to 0–1, and stores the newest twenty temporal experiment records under `edit.temporalStressTests`. These records remain inside the normalized project state across reload/restart; a separate exported artifact file is intentionally deferred to the later report/export layer. The visual inspector shows the latest numeric summary rather than introducing a heavy chart/statistics subsystem in this first slice.
 
 Optical flow is intentionally deferred until these simpler measurements are validated against real clips.
 
-## Control injection
+## Control injection / destruction controls
 
-Known artifact families should be injectable into a clean/control segment using the same pipeline:
+The first destruction-control slice is video-only and requires the same real timeline selection used by Temporal Scan. The selected interval is still capped at six seconds and the selected normalized ROI is used when present.
 
-- Gaussian/noise injection
-- low-light amplification
-- blur
-- sharpening halos
-- chromatic aberration approximation
-- reduced bitrate / recompression
-- block/noise stress
+The initial controls are fixed canonical presets rather than free-form sliders:
 
-The question is whether a known transform family can produce a morphology comparable to the observed target under similar scene conditions.
+- `noise`: strength `12`, deterministic seed `4242`
+- `blur`: radius `2`
+- `sharpen`: unsharp amount `1.25`
+- `low-light`: brightness `-0.25`, contrast `1.05`, saturation `0.9`, noise strength `8`, deterministic noise seed `4242`
+
+Payload-supplied parameter overrides are deliberately ignored in this first slice. The canonical parameters are copied into each stored request, so an experiment remains interpretable if preset defaults change later.
+
+A control run does **not** compare an injected re-encoded clip directly with the original temporal measurement. That would mix the requested control effect with codec/re-encode effects. Instead every run produces a paired set:
+
+1. `control baseline`: selected trim/ROI, no control filter
+2. `injected`: the same selected trim/ROI plus exactly one canonical control filter
+
+Both sides use the same encode profile:
+
+- H.264 / `libx264`
+- `veryfast` preset
+- CRF `18`
+- `yuv420p`
+- no audio
+
+The injected side is the only side that receives the control filter. Noise-based controls use fixed seeds so repeated runs do not silently change their synthetic noise realization.
+
+After generation, the existing Temporal Scan metric stack measures both paired clips independently. The stored result contains:
+
+- control kind and exact canonical params
+- original time range and ROI
+- exact FFmpeg control-filter string
+- paired encode profile
+- baseline and injected clip paths
+- complete baseline and injected temporal metrics
+- injected-minus-baseline deltas for frame-difference, edge, persistence, luma, and chroma summaries
+- `comparisonMethod: "paired-reencode-baseline"`
+
+Control results are written into the same persistent `edit.temporalStressTests` experiment history with `kind: "control-injection"`. This avoids a second history/state source; the UI filters the shared history into the latest raw Temporal Scan and latest Destruction Control summaries. The twenty-record cap currently applies to the combined temporal experiment history.
+
+The present question is therefore narrower than "does this look similar?":
+
+> When a known ordinary degradation is introduced while codec/trim/ROI are held constant against a paired control, how do the temporal and structural measurements change?
+
+Reduced-bitrate/recompression and chromatic-aberration controls remain later additions because they need their own carefully matched control semantics rather than being folded into these first four filters.
 
 ## Audio reconstruction workbench
 
@@ -159,9 +192,11 @@ The original source must remain immutable. Stress-test outputs are derived artif
 2. Add ordered transform-stage persistence and stable recipe signatures.
 3. Add Source / Transform / Difference preview mode for a selected ROI and short interval.
 4. Add the first temporal baseline metrics: luma/chroma trajectory, frame-difference energy, and edge persistence.
-5. Add audio loop + subtitle target interval.
-6. Add control-injection presets.
-7. Add heavier persistence metrics such as optical flow only if the simpler baseline proves useful.
+5. Add paired destruction-control presets with matched re-encode baselines.
+6. Add audio loop + subtitle target interval.
+7. Add recompression/chromatic-aberration controls and heavier persistence metrics such as optical flow only if the simpler baseline proves useful.
 8. Add the restrained result categories above.
+
+The first four steps have passed local Laboratory validation. Step 5 is implemented on the current branch and requires its targeted local regression/typecheck pass before it is treated as a clean checkpoint.
 
 This sequencing deliberately reuses the existing FFmpeg preview/apply pipeline before adding heavier temporal tracking or OpenCV dependencies.
