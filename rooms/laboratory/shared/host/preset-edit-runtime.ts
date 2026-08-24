@@ -42,6 +42,7 @@ type LaboratoryRecord = Record<string, unknown> & {
   resizePresets?: LaboratoryRecord;
   sourcePath?: unknown;
   status?: unknown;
+  temporalStressTests?: unknown[];
   transformStackProvenance?: unknown;
   updatedAt?: unknown;
   video?: LaboratoryRecord;
@@ -163,6 +164,7 @@ type LaboratoryEditState = {
   outputs: LaboratoryEditOutput[];
   preview: LaboratoryEditPreview;
   recipe: LaboratoryEditRecipe;
+  temporalStressTests: LaboratoryRecord[];
 };
 
 type LaboratoryPresetEditRuntimeDeps = {
@@ -305,6 +307,7 @@ export function createLaboratoryPresetEditRuntime(deps: LaboratoryPresetEditRunt
         },
       },
       outputs: [],
+      temporalStressTests: [],
     };
 
     const presetId = asNonEmptyString(editState.activePresetId);
@@ -460,6 +463,9 @@ export function createLaboratoryPresetEditRuntime(deps: LaboratoryPresetEditRunt
         },
       },
       outputs: outputs,
+      temporalStressTests: Array.isArray(source.temporalStressTests)
+        ? source.temporalStressTests.map(toRecord).slice(0, 20)
+        : [],
     };
   }
 
