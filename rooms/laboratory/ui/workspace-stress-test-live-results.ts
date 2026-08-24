@@ -10,7 +10,12 @@ const CONTROL_KINDS = ["noise", "blur", "sharpen", "low-light"] as const;
 
 function readHistory(state: LabStoreState): StressTestRecord[] {
   const history = asLabRecord(state.editConfig)["temporalStressTests"];
-  return Array.isArray(history) ? history.map(asLabRecord) : [];
+  if (!Array.isArray(history)) {
+    return [];
+  }
+  return history.map(function (entry: unknown) {
+    return asLabRecord(entry);
+  });
 }
 
 function readFiniteNumber(record: StressTestRecord, key: string): number | null {
