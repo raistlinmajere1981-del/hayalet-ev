@@ -35,9 +35,10 @@ function formatSignedPercent(value: number | null) {
   return `${percent >= 0 ? "+" : ""}${percent}%`;
 }
 
-function getTemporalHistory(editConfig: LabEditConfig | null) {
+function getTemporalHistory(editConfig: LabEditConfig | null): Array<Record<string, unknown>> {
   const edit = asLabRecord(editConfig);
-  return Array.isArray(edit["temporalStressTests"]) ? edit["temporalStressTests"] : [];
+  const history = edit["temporalStressTests"];
+  return Array.isArray(history) ? history.map(asLabRecord) : [];
 }
 
 function readTemporalInterpretation(
