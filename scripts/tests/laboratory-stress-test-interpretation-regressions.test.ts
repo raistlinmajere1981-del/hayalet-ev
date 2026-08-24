@@ -20,11 +20,13 @@ const sufficientSummary = {
   edgeSampleCount: 30,
 };
 
-void test("temporal interpretation describes a quiet stable interval without overstating it", () => {
+void test("temporal interpretation prefers spatial edge persistence when both persistence metrics exist", () => {
   const interpretation = interpretLaboratoryTemporalSummary({
     ...sufficientSummary,
+    edgePersistenceSampleCount: 29,
     meanFrameDifferenceEnergy: 0.002,
     edgePersistenceRatio: 0,
+    spatialEdgePersistenceRatio: 0.8,
     lumaRange: 0.003,
     chromaURange: 0.001,
     chromaVRange: 0.001,
@@ -32,18 +34,34 @@ void test("temporal interpretation describes a quiet stable interval without ove
 
   assert.equal(interpretation.dataQuality, "sufficient");
   assert.equal(interpretation.frameActivity, "very-low");
-  assert.equal(interpretation.edgePersistence, "low");
+  assert.equal(interpretation.edgePersistence, "persistent");
   assert.equal(interpretation.luminanceVariation, "stable");
   assert.equal(interpretation.chromaVariation, "stable");
 });
 
-void test("temporal interpretation refuses to infer stability from empty samples", () => {
+void test("temporal interpretation keeps legacy edge persistence as a fallback for older records", () => {
   const interpretation = interpretLaboratoryTemporalSummary({
-    sampleCount: 0,
-    frameDifferenceSampleCount: 0,
-    edgeSampleCount: 0,
+    ...sufficientSummary,
+    meanFrameDifferenceEnergy: 0.002,
+    edgePersistenceRatio: 0.2,
+    lumaRange: 0.003,
+    chromaURange: 0.001,
+    chromaVRange: 0.001,
+  });
+
+  assert.equal(interpretation.dataQuality, "sufficient");
+  assert.equal(interpretation.edgePersistence, "intermittent");
+});
+
+void test("temporal interpretation refuses to infer stability from empty or unusable spatial samples", () => {
+  const interpretation = interpretLaboratoryTemporalSummary({
+    sampleCount: 2,
+    frameDifferenceSampleCount: 1,
+    edgeSampleCount: 2,
+    edgePersistenceSampleCount: 0,
     meanFrameDifferenceEnergy: 0,
-    edgePersistenceRatio: 0,
+    edgePersistenceRatio: 1,
+    spatialEdgePersistenceRatio: 0,
   });
 
   assert.equal(interpretation.dataQuality, "insufficient");
@@ -73,25 +91,32 @@ void test("control interpretation maps a +0.011 frame delta to a clear measurabl
   assert.equal(interpretation.edgePersistence.magnitude, "negligible");
 });
 
-void test("control interpretation preserves the direction of destructive metric changes", () => {
+void test("control interpretation prefers the spatial persistence delta and preserves destructive direction", () => {
+  const spatialSummary = {
+    ...sufficientSummary,
+    edgePersistenceSampleCount: 29,
+  };
   const interpretation = interpretLaboratoryControlDelta(
     {
       meanFrameDifferenceEnergy: 0,
       meanEdgeEnergy: 0,
-      edgePersistenceRatio: -0.2,
+      edgePersistenceRatio: 0.4,
+      spatialEdgePersistenceRatio: -0.2,
       lumaRange: 0,
       chromaURange: 0,
       chromaVRange: 0,
     },
     {
-      baselineSummary: sufficientSummary,
-      injectedSummary: sufficientSummary,
+      baselineSummary: spatialSummary,
+      injectedSummary: spatialSummary,
     }
   );
 
+  assert.equal(interpretation.dataQuality, "sufficient");
   assert.equal(interpretation.overallImpact, "moderate");
   assert.equal(interpretation.edgePersistence.magnitude, "moderate");
   assert.equal(interpretation.edgePersistence.direction, "decrease");
+  assert.equal(interpretation.edgePersistence.value, -0.2);
 });
 
 void test("control interpretation refuses a semantic result when paired measurements have no samples", () => {
