@@ -38,7 +38,7 @@ export function getLaboratoryTransformRecipeSection(
   return sourceKind === "image" ? "image" : "video";
 }
 
-export function readLaboratoryTransformRecipeStages(
+function readLaboratoryTransformRecipeStages(
   editConfig: LabEditConfig | null,
   sourceKind: LaboratoryTransformSourceKind,
   scope: LaboratoryTransformStageScope
