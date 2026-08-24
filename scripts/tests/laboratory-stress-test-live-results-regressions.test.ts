@@ -53,6 +53,7 @@ function seedStressTestState() {
           meanFrameDifferenceEnergy: -0.005,
           peakFrameDifferenceEnergy: -0.008,
           edgePersistenceRatio: 0,
+          spatialEdgePersistenceRatio: -0.12,
           meanEdgeEnergy: 0,
           lumaRange: -0.013,
           chromaURange: 0,
@@ -76,7 +77,11 @@ function seedStressTestState() {
             magnitude: "small",
             value: -0.005,
           },
-          edgePersistence: createStableMetric(),
+          edgePersistence: {
+            direction: "decrease",
+            magnitude: "moderate",
+            value: -0.12,
+          },
           edgeEnergy: createStableMetric(),
           luminanceRange: {
             direction: "decrease",
@@ -103,6 +108,7 @@ function seedStressTestState() {
           meanFrameDifferenceEnergy: 0.011,
           peakFrameDifferenceEnergy: 0.01,
           edgePersistenceRatio: 0,
+          spatialEdgePersistenceRatio: 0.08,
           meanEdgeEnergy: 0,
           lumaRange: 0,
           chromaURange: 0,
@@ -126,7 +132,11 @@ function seedStressTestState() {
             magnitude: "moderate",
             value: 0.011,
           },
-          edgePersistence: createStableMetric(),
+          edgePersistence: {
+            direction: "increase",
+            magnitude: "small",
+            value: 0.08,
+          },
           edgeEnergy: createStableMetric(),
           luminanceRange: createStableMetric(),
           chromaRange: createStableMetric(),
@@ -146,9 +156,11 @@ function seedStressTestState() {
             sampleCount: 30,
             frameDifferenceSampleCount: 29,
             edgeSampleCount: 30,
+            edgePersistenceSampleCount: 29,
             meanFrameDifferenceEnergy: 0.005,
             peakFrameDifferenceEnergy: 0.008,
             edgePersistenceRatio: 0,
+            spatialEdgePersistenceRatio: 0.67,
             lumaRange: 0.012,
             chromaURange: 0.001,
             chromaVRange: 0,
@@ -159,7 +171,7 @@ function seedStressTestState() {
           kind: "temporal-baseline",
           dataQuality: "sufficient",
           frameActivity: "low",
-          edgePersistence: "low",
+          edgePersistence: "persistent",
           luminanceVariation: "mild",
           chromaVariation: "stable",
         },
@@ -183,8 +195,11 @@ void test("expanded idle process strip becomes the live stress-test result surfa
   assert.match(markup, /data-control-kind="noise" data-status="ready"/);
   assert.match(markup, /data-control-kind="low-light" data-status="ready"/);
   assert.match(markup, /data-control-kind="blur" data-status="missing"/);
+  assert.match(markup, /data-control-kind="recompression" data-status="missing"/);
   assert.match(markup, /\+0\.011/);
+  assert.match(markup, /\+8%/);
   assert.match(markup, /-0\.013/);
+  assert.match(markup, /67%/);
 });
 
 void test("active analysis keeps the process strip on analysis summary and raw log", () => {
