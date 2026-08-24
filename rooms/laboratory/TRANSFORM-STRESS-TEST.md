@@ -83,7 +83,9 @@ The current FFmpeg-only measurements are:
 - edge energy (`edgedetect` + `signalstats`)
 - an initial edge-persistence ratio derived from the edge-energy series
 
-The runtime prints only the required metadata keys, merges repeated metadata blocks by frame timestamp, normalizes 8-bit signal metrics to 0–1, and stores the newest twenty temporal measurements under `edit.temporalStressTests`. These records remain inside the normalized project state across reload/restart; a separate exported artifact file is intentionally deferred to the later report/export layer. The visual inspector shows the latest numeric summary rather than introducing a heavy chart/statistics subsystem in this first slice.
+The runtime prints only the required metadata keys, merges repeated metadata blocks by frame timestamp, normalizes 8-bit signal metrics to 0–1, and stores the newest twenty temporal measurements under `edit.temporalStressTests`. These records remain inside the normalized project state across reload/restart; a separate exported artifact file is intentionally deferred to the later report/export layer. The lower live-result surface shows the latest numeric summary rather than introducing a heavy chart/statistics subsystem in this first slice.
+
+Real-video testing showed that the current mean-edge persistence proxy can report zero even when a large silhouette is visually obvious inside a broad ROI. That metric therefore remains provisional. The next persistence refinement should measure spatial edge overlap across frames rather than only average edge energy.
 
 Optical flow is intentionally deferred until these simpler measurements are validated against real clips.
 
@@ -111,6 +113,23 @@ New temporal and control records persist `interpretation.schemaVersion: 1`. The 
 The interpretation layer has explicit sample-quality guards. A run with no usable frame, frame-difference, or edge samples is reported as insufficient rather than being mistaken for a perfectly stable zero-valued result.
 
 No interpretation is allowed to claim that a target anomaly was destroyed, reproduced, explained, real, fake, or paranormal. The current metrics do not establish those propositions. Technical values stay visible below the readable summary so later analysis can audit the wording against the underlying measurements.
+
+## Live result surface
+
+Manual stress-test work reuses the expandable process-strip area as a live result surface whenever a full analysis run is not active.
+
+The workspace inspector stays action-focused: live visual controls, ordered Transform Stack stages, Temporal Scan, and Destruction Control triggers remain on the right. Source / Transform / Difference preview and result summaries move to the wider lower surface.
+
+The lower live surface contains:
+
+- Source / Transform / Difference preview
+- latest Temporal Scan interpretation and technical values
+- latest Destruction Control interpretation and technical values
+- a same-selection comparison table for Noise, Blur, Sharpen, and Low-light
+
+The comparison table only groups control runs that share the same normalized timeline interval and ROI. Missing controls remain explicitly empty rather than being inferred.
+
+When a full analysis run is active, the same process-strip expansion switches back to the existing Analysis Summary + Raw Log panels. This keeps manual real-time experiments and full analysis reporting on one shared workspace region without adding another persistent panel.
 
 ## Audio reconstruction workbench
 
@@ -173,7 +192,9 @@ The original source must remain immutable. Stress-test outputs are derived artif
 5. Add audio loop + subtitle target interval.
 6. Add control-injection presets.
 7. Add a readable, versioned interpretation layer above the technical metrics.
-8. Add heavier persistence metrics such as optical flow only if the simpler baseline proves useful.
-9. Add the restrained result categories above.
+8. Move manual preview/results into the shared lower live-result surface and compare same-selection controls there.
+9. Replace/refine mean-edge persistence with a spatial overlap metric before adding heavier motion tracking.
+10. Add heavier persistence metrics such as optical flow only if the simpler baseline proves useful.
+11. Add the restrained result categories above.
 
 This sequencing deliberately reuses the existing FFmpeg preview/apply pipeline before adding heavier temporal tracking or OpenCV dependencies.
