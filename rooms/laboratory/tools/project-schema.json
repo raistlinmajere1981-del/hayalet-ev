@@ -135,7 +135,7 @@
             "includeAudio",
             "blurFocusOutside"
           ],
-          "optional": ["frameGrabCount"]
+          "optional": ["frameGrabCount", "transformStages"]
         },
         "audio": {
           "required": [
@@ -149,7 +149,8 @@
             "spectrogram",
             "highpassHz",
             "lowpassHz"
-          ]
+          ],
+          "optional": ["transformStages"]
         },
         "image": {
           "required": [
@@ -161,7 +162,8 @@
             "contrast",
             "sharpen",
             "blurStrength"
-          ]
+          ],
+          "optional": ["transformStages"]
         }
       },
       "outputs": {
@@ -506,7 +508,7 @@
         "processDir": "artifacts/media-analysis/process",
         "processManifest": "artifacts/media-analysis/process/manifest.json",
         "reportDir": "reports/media-analysis",
-        "reportManifest": "reports/media-analysis/manifest.json"
+        "reportManifest": "reports/media-analysis/report/manifest.json"
       },
       "audio-analysis": {
         "rootDir": "artifacts/audio-analysis",
