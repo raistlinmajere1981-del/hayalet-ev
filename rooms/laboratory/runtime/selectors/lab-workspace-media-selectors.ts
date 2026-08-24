@@ -13,7 +13,10 @@ import {
   createLabComparisonInteractiveSettings,
   normalizeLabInteractiveSettings,
 } from "../lab-workspace-defaults.js";
-import { getWorkspaceSourceSelectionResetKey } from "../lab-workspace-selection.js";
+import {
+  getWorkspaceSourceSelectionResetKey,
+  isFullSourceWorkspaceSelection,
+} from "../lab-workspace-selection.js";
 import { getCurrentSourceAsset, getLinkedAudioAssets } from "./lab-source-selectors.js";
 
 function findPreviewArtifactUrl(preview: Record<string, unknown>, kind: string) {
@@ -60,10 +63,13 @@ function getTransformStackRenderContext(state: LabStoreState) {
   const preview = asLabRecord(asLabRecord(state.editConfig)["preview"]);
   const previewStatus = asNonEmptyString(preview["status"]) || "idle";
   const previewReady = previewStatus === "ready";
+  const activeSelection = state.ui.workspace.activeSelection;
   const temporalRequest =
-    sourceKind === "video"
+    sourceKind === "video" &&
+    activeSelection !== null &&
+    isFullSourceWorkspaceSelection(activeSelection) !== true
       ? buildLaboratoryTemporalStressTestRequestFromWorkspaceSelection(
-          state.ui.workspace.activeSelection,
+          activeSelection,
           getSourceDurationSeconds(source)
         )
       : null;
