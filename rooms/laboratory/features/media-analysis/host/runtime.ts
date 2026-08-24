@@ -18,7 +18,7 @@ type LaboratoryToolReadyRuntime = LaboratoryRecord & {
 };
 
 type LaboratoryMediaAnalysisHostRuntimeDeps = MediaEditSupportRuntimeDeps &
-  MediaEditArtifactRuntimeDeps &
+  Omit<MediaEditArtifactRuntimeDeps, "buildBaselineEditCommand"> &
   Omit<
     MediaEditPipelineRuntimeDeps,
     | "buildAuxiliaryArtifacts"
