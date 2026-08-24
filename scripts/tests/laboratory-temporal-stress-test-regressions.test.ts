@@ -82,7 +82,7 @@ void test("temporal request clamps ROI and sample rate without accepting an inva
   );
 });
 
-void test("temporal FFmpeg command set uses ROI and only requested signalstats keys", () => {
+void test("temporal FFmpeg command set uses ROI and isolates spatial edge difference", () => {
   const runtime = createTemporalRuntime();
   const request = normalizeLaboratoryTemporalStressTestRequest({
     startSeconds: 10,
@@ -99,9 +99,11 @@ void test("temporal FFmpeg command set uses ROI and only requested signalstats k
   assert.match(commands.signal.join(" "), /lavfi\.signalstats\.UAVG/);
   assert.match(commands.signal.join(" "), /lavfi\.signalstats\.VAVG/);
   assert.match(commands.frameDifference.join(" "), /tblend=all_mode=difference/);
-  assert.match(commands.frameDifference.join(" "), /lavfi\.signalstats\.YAVG/);
   assert.doesNotMatch(commands.frameDifference.join(" "), /lavfi\.signalstats\.UAVG/);
   assert.match(commands.edge.join(" "), /edgedetect=low=0\.1:high=0\.4/);
+  assert.doesNotMatch(commands.edge.join(" "), /tblend=all_mode=difference/);
+  assert.match(commands.edgeDifference.join(" "), /edgedetect=low=0\.1:high=0\.4/);
+  assert.match(commands.edgeDifference.join(" "), /tblend=all_mode=difference/);
 });
 
 void test("signalstats parser merges repeated metadata blocks at the same timestamp", () => {
@@ -127,7 +129,7 @@ lavfi.signalstats.VAVG=128
   ]);
 });
 
-void test("temporal result exposes normalized luma chroma difference and edge persistence metrics", () => {
+void test("temporal result exposes weighted adjacent edge-map IoU persistence", () => {
   const runtime = createTemporalRuntime();
   const request = normalizeLaboratoryTemporalStressTestRequest({
     startSeconds: 20,
@@ -147,8 +149,12 @@ void test("temporal result exposes normalized luma chroma difference and edge pe
       { timeSeconds: 0.4, values: { YAVG: 51 } },
     ],
     [
-      { timeSeconds: 0, values: { YAVG: 25.5 } },
-      { timeSeconds: 0.2, values: { YAVG: 51 } },
+      { timeSeconds: 0, values: { YAVG: 51 } },
+      { timeSeconds: 0.2, values: { YAVG: 76.5 } },
+      { timeSeconds: 0.4, values: { YAVG: 76.5 } },
+    ],
+    [
+      { timeSeconds: 0.2, values: { YAVG: 25.5 } },
       { timeSeconds: 0.4, values: { YAVG: 0 } },
     ]
   );
@@ -158,12 +164,41 @@ void test("temporal result exposes normalized luma chroma difference and edge pe
   assert.equal(result.frameDifference[0]?.energy, 0.1);
   assertNear(result.summary.meanFrameDifferenceEnergy, 0.15);
   assert.equal(result.summary.peakFrameDifferenceEnergy, 0.2);
-  assertNear(result.summary.meanEdgeEnergy, 0.1);
-  assert.ok(result.summary.edgePersistenceRatio > 0);
-  assert.ok(result.summary.edgePersistenceRatio <= 1);
+  assertNear(result.summary.meanEdgeEnergy, 0.26666666666666666);
+  assert.equal(result.summary.edgePersistenceMethod, "adjacent-edge-map-iou");
+  assert.equal(result.summary.edgePersistenceSampleCount, 2);
+  assert.equal(result.edgeOverlap.length, 2);
+  assertNear(result.edgeOverlap[0]?.iou ?? -1, 2 / 3);
+  assertNear(result.edgeOverlap[1]?.iou ?? -1, 1);
+  assertNear(result.summary.spatialEdgePersistenceRatio, 5 / 6);
+  assert.equal(result.summary.edgePresenceRatio, result.summary.edgePersistenceRatio);
 });
 
-void test("temporal scan runs three FFmpeg passes and persists the measured result", async () => {
+void test("spatial edge persistence excludes empty-edge pairs instead of calling them stable", () => {
+  const runtime = createTemporalRuntime();
+  const request = normalizeLaboratoryTemporalStressTestRequest({
+    startSeconds: 2,
+    endSeconds: 3,
+    sampleFps: 5,
+    roi: null,
+  });
+  assert.notEqual(request, null);
+  const result = runtime.buildTemporalResult(
+    request!,
+    [],
+    [],
+    [
+      { timeSeconds: 0, values: { YAVG: 0 } },
+      { timeSeconds: 0.2, values: { YAVG: 0 } },
+    ],
+    [{ timeSeconds: 0.2, values: { YAVG: 0 } }]
+  );
+  assert.equal(result.summary.edgePersistenceSampleCount, 0);
+  assert.equal(result.summary.spatialEdgePersistenceRatio, 0);
+  assert.equal(result.edgeOverlap[0]?.iou, null);
+});
+
+void test("temporal scan runs four FFmpeg passes and persists the measured result", async () => {
   const project: Record<string, unknown> = {
     source: {
       kind: "video",
@@ -216,9 +251,10 @@ void test("temporal scan runs three FFmpeg passes and persists the measured resu
     roi: null,
   });
 
-  assert.equal(commands.length, 3);
+  assert.equal(commands.length, 4);
   assert.match(commands[1]?.join(" ") ?? "", /tblend=all_mode=difference/);
   assert.match(commands[2]?.join(" ") ?? "", /edgedetect=/);
+  assert.match(commands[3]?.join(" ") ?? "", /edgedetect=.*tblend=all_mode=difference/);
   const history = (project["edit"] as Record<string, unknown>)["temporalStressTests"] as unknown[];
   assert.equal(history.length, 1);
   assert.equal(history[0], result);
