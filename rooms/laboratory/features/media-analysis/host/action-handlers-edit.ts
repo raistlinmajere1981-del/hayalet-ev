@@ -104,7 +104,7 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
       // Prepared Laboratory projects already own the edit/output directory tree.
     },
     getActiveProject(runtime) {
-      return getActiveProject(runtime) as MediaEditProjectRecord | null;
+      return getActiveProject(runtime);
     },
     getPreparedSourcePath(project) {
       return asNonEmptyString(toRecord(project.source)["storedPath"]);
@@ -124,7 +124,7 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
   const controlInjectionRuntime = createLaboratoryControlInjectionRuntime({
     callRoomTools,
     getActiveProject(runtime) {
-      return getActiveProject(runtime) as MediaEditProjectRecord | null;
+      return getActiveProject(runtime);
     },
     getPreparedSourcePath(project) {
       return asNonEmptyString(toRecord(project.source)["storedPath"]);
