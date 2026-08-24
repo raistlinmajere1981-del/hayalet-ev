@@ -151,7 +151,11 @@ function readSummaryNumber(summary: LaboratoryRecord, key: string) {
   return asFiniteNumber(summary[key]) ?? 0;
 }
 
-function buildSummaryDelta(baselineMetrics: unknown, injectedMetrics: unknown, toRecord: (value: unknown) => LaboratoryRecord) {
+function buildSummaryDelta(
+  baselineMetrics: unknown,
+  injectedMetrics: unknown,
+  toRecord: (value: unknown) => LaboratoryRecord
+) {
   const baseline = toRecord(toRecord(baselineMetrics)["summary"]);
   const injected = toRecord(toRecord(injectedMetrics)["summary"]);
   const keys = [
@@ -256,7 +260,9 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
     const sourceDurationSeconds = asFiniteNumber(metadata["durationSeconds"]);
     const request = normalizeLaboratoryControlInjectionRequest(rawRequest, sourceDurationSeconds);
     if (request === null) {
-      throw new Error("Select a valid control type and video time range before running a destruction control.");
+      throw new Error(
+        "Select a valid control type and video time range before running a destruction control."
+      );
     }
 
     const createdAt = new Date().toISOString();
@@ -291,6 +297,7 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
     );
     const result = {
       schemaVersion: 1,
+      kind: "control-injection",
       id: `control-injection-${request.kind}-${timestampToken}`,
       createdAt,
       sourceKind: "video",
@@ -308,12 +315,12 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
 
     await patchActiveProject(runtime, function (nextProject) {
       const edit = toRecord(nextProject.edit);
-      const existing = Array.isArray(edit["controlInjectionRuns"])
-        ? (edit["controlInjectionRuns"] as unknown[])
+      const existing = Array.isArray(edit["temporalStressTests"])
+        ? (edit["temporalStressTests"] as unknown[])
         : [];
       nextProject.edit = {
         ...edit,
-        controlInjectionRuns: [result, ...existing].slice(0, 20),
+        temporalStressTests: [result, ...existing].slice(0, 20),
         lastActionAt: createdAt,
         lastError: null,
       };
