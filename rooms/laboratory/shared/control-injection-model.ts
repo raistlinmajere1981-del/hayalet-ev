@@ -1,7 +1,12 @@
 import { normalizeLaboratoryTemporalStressTestRequest } from "./temporal-stress-test-model.js";
 import type { LaboratoryTemporalStressTestRequest } from "./temporal-stress-test-model.js";
 
-export type LaboratoryControlInjectionKind = "noise" | "blur" | "sharpen" | "low-light";
+export type LaboratoryControlInjectionKind =
+  | "noise"
+  | "blur"
+  | "sharpen"
+  | "low-light"
+  | "recompression";
 
 export type LaboratoryControlInjectionDefinition = {
   kind: LaboratoryControlInjectionKind;
@@ -40,6 +45,14 @@ const CONTROL_INJECTION_DEFINITIONS: LaboratoryControlInjectionDefinition[] = [
       saturation: 0.9,
       noiseStrength: 8,
       noiseSeed: 4242,
+    },
+  },
+  {
+    kind: "recompression",
+    label: "Recompression",
+    params: {
+      baselineCrf: 18,
+      injectedCrf: 36,
     },
   },
 ];
