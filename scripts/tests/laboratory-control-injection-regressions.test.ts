@@ -40,7 +40,7 @@ function createTemporalHelpers() {
 function metricText(kind: "signal" | "difference" | "edge", injected: boolean) {
   if (kind === "signal") {
     const firstY = injected ? 102 : 127.5;
-    const secondY = injected ? 153 : 153;
+    const secondY = 153;
     return `
 frame:0 pts:0 pts_time:0
 lavfi.signalstats.YAVG=${firstY}
@@ -68,7 +68,7 @@ void test("destruction control definitions are fixed and canonical payload param
   );
   const normalized = normalizeLaboratoryControlInjectionRequest({
     kind: "noise",
-    params: { strength: 99 },
+    params: { strength: 99, seed: 1 },
     temporalRequest: {
       startSeconds: 2,
       endSeconds: 4,
@@ -77,6 +77,7 @@ void test("destruction control definitions are fixed and canonical payload param
     },
   });
   assert.equal(normalized?.params["strength"], 12);
+  assert.equal(normalized?.params["seed"], 4242);
   assert.equal(normalized?.temporalRequest.startSeconds, 2);
 });
 
@@ -129,7 +130,7 @@ void test("paired control commands keep trim ROI and codec equal while injection
   assert.match(baselineText, /crop=trunc\(iw\*0\.4\/2\)\*2:trunc\(ih\*0\.5\/2\)\*2/);
   assert.match(injectedText, /crop=trunc\(iw\*0\.4\/2\)\*2:trunc\(ih\*0\.5\/2\)\*2/);
   assert.doesNotMatch(baselineText, /noise=alls=12/);
-  assert.match(injectedText, /noise=alls=12:allf=t\+u/);
+  assert.match(injectedText, /noise=alls=12:allf=t\+u:all_seed=4242/);
   assert.match(baselineText, /-c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p/);
   assert.match(injectedText, /-c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p/);
 });
@@ -197,7 +198,10 @@ void test("destruction control run generates paired clips, measures both sides, 
   assert.equal(result.kind, "control-injection");
   assert.equal(result.request.kind, "blur");
   assert.equal(result.comparisonMethod, "paired-reencode-baseline");
-  assert.ok(result.delta.meanFrameDifferenceEnergy > 0);
+  assert.equal(result.encodeProfile.videoCodec, "libx264");
+  const meanDifferenceDelta = toRecord(result.delta)["meanFrameDifferenceEnergy"];
+  assert.equal(typeof meanDifferenceDelta, "number");
+  assert.ok((meanDifferenceDelta as number) > 0);
   const history = toRecord(project["edit"])["temporalStressTests"] as unknown[];
   assert.equal(toRecord(history[0])["kind"], "control-injection");
   assert.equal(toRecord(history[1])["id"], "older-baseline");
@@ -236,7 +240,10 @@ void test("temporal history normalizer preserves typed destruction-control recor
     "video"
   );
   assert.equal(normalized.temporalStressTests[0]?.["kind"], "control-injection");
-  assert.equal(toRecord(normalized.temporalStressTests[0]?.["delta"])["meanFrameDifferenceEnergy"], 0.1);
+  assert.equal(
+    toRecord(normalized.temporalStressTests[0]?.["delta"])["meanFrameDifferenceEnergy"],
+    0.1
+  );
 });
 
 void test("video transform inspector exposes destruction controls only when a real temporal request exists", () => {
@@ -267,5 +274,8 @@ void test("video transform inspector exposes destruction controls only when a re
     scope: "visual",
     temporalRequest: null,
   });
-  assert.match(disabledMarkup, /data-lab-action="workspace-control-injection-run"[\s\S]*?disabled/);
+  assert.match(
+    disabledMarkup,
+    /data-lab-action="workspace-control-injection-run"[\s\S]*?disabled/
+  );
 });
