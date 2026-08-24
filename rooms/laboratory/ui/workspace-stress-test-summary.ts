@@ -48,6 +48,7 @@ function readTemporalInterpretation(
   if (
     persisted["schemaVersion"] === 1 &&
     persisted["kind"] === "temporal-baseline" &&
+    (persisted["dataQuality"] === "sufficient" || persisted["dataQuality"] === "insufficient") &&
     (persisted["frameActivity"] === "very-low" ||
       persisted["frameActivity"] === "low" ||
       persisted["frameActivity"] === "moderate" ||
@@ -60,12 +61,14 @@ function readTemporalInterpretation(
 
 function readControlInterpretation(
   latest: Record<string, unknown>,
-  delta: Record<string, unknown>
+  delta: Record<string, unknown>,
+  metrics: Record<string, unknown>
 ): LaboratoryControlSummaryInterpretation {
   const persisted = asLabRecord(latest["interpretation"]);
   if (
     persisted["schemaVersion"] === 1 &&
     persisted["kind"] === "control-injection" &&
+    (persisted["dataQuality"] === "sufficient" || persisted["dataQuality"] === "insufficient") &&
     (persisted["overallImpact"] === "negligible" ||
       persisted["overallImpact"] === "small" ||
       persisted["overallImpact"] === "moderate" ||
@@ -73,7 +76,10 @@ function readControlInterpretation(
   ) {
     return persisted as unknown as LaboratoryControlSummaryInterpretation;
   }
-  return interpretLaboratoryControlDelta(delta);
+  return interpretLaboratoryControlDelta(delta, {
+    baselineSummary: asLabRecord(asLabRecord(metrics["baseline"])["summary"]),
+    injectedSummary: asLabRecord(asLabRecord(metrics["injected"])["summary"]),
+  });
 }
 
 function describeTemporalInterpretation(
@@ -81,6 +87,11 @@ function describeTemporalInterpretation(
   locale: string
 ) {
   const tr = locale === "tr";
+  if (interpretation.dataQuality !== "sufficient") {
+    return tr
+      ? "Bu taramada anlamlı yorum üretmek için yeterli kare örneği oluşmadı. Teknik sayıları sonuç olarak yorumlamayın."
+      : "This scan did not produce enough frame samples for a meaningful interpretation. Do not treat the technical values as a result.";
+  }
   const activity =
     interpretation.frameActivity === "very-low"
       ? tr
@@ -163,27 +174,47 @@ function describeControlInterpretation(
   locale: string
 ) {
   const tr = locale === "tr";
+  if (interpretation.dataQuality !== "sufficient") {
+    return tr
+      ? "Bu control koşusunda karşılaştırmalı yorum için yeterli kare örneği oluşmadı. Δ değerlerini sonuç olarak yorumlamayın."
+      : "This control run did not produce enough paired frame samples for interpretation. Do not treat the delta values as a result.";
+  }
   const opening =
     interpretation.overallImpact === "negligible"
       ? tr
-        ? "Bu control, ölçülen temporal özelliklerde belirgin bir değişiklik oluşturmadı."
-        : "This control produced no clear change in the measured temporal features."
+        ? "Bu control, ölçülen temporal metriklerde belirgin bir değişiklik oluşturmadı."
+        : "This control produced no clear change in the measured temporal metrics."
       : interpretation.overallImpact === "small"
         ? tr
-          ? "Bu control küçük ama ölçülebilir bir değişiklik oluşturdu."
-          : "This control produced a small but measurable change."
+          ? "Bu control ölçülen metriklerde küçük ama ölçülebilir bir değişiklik oluşturdu."
+          : "This control produced a small but measurable change in the measured metrics."
         : interpretation.overallImpact === "moderate"
           ? tr
-            ? "Bu control ölçülen yapıyı belirgin biçimde değiştirdi."
-            : "This control clearly changed the measured structure."
+            ? "Bu control ölçülen metriklerde belirgin bir değişiklik oluşturdu."
+            : "This control produced a clear change in the measured metrics."
           : tr
-            ? "Bu control ölçülen yapıyı güçlü biçimde değiştirdi."
-            : "This control strongly changed the measured structure.";
+            ? "Bu control ölçülen metriklerde güçlü bir değişiklik oluşturdu."
+            : "This control produced a strong change in the measured metrics.";
   const details = [
-    metricChangeSentence("Kareler arası değişim", "Frame-to-frame change", interpretation.frameDifference, locale),
-    metricChangeSentence("Kenar sürekliliği", "Edge persistence", interpretation.edgePersistence, locale),
+    metricChangeSentence(
+      "Kareler arası değişim",
+      "Frame-to-frame change",
+      interpretation.frameDifference,
+      locale
+    ),
+    metricChangeSentence(
+      "Kenar sürekliliği",
+      "Edge persistence",
+      interpretation.edgePersistence,
+      locale
+    ),
     metricChangeSentence("Kenar enerjisi", "Edge energy", interpretation.edgeEnergy, locale),
-    metricChangeSentence("Parlaklık aralığı", "Luminance range", interpretation.luminanceRange, locale),
+    metricChangeSentence(
+      "Parlaklık aralığı",
+      "Luminance range",
+      interpretation.luminanceRange,
+      locale
+    ),
     metricChangeSentence("Renk aralığı", "Color range", interpretation.chromaRange, locale),
   ].filter((entry): entry is string => entry !== null);
   const stable =
@@ -268,7 +299,8 @@ function renderLatestControlInjectionSummary(editConfig: LabEditConfig | null, c
   const temporalRequest = asLabRecord(request["temporalRequest"]);
   const params = asLabRecord(request["params"]);
   const delta = asLabRecord(latest["delta"]);
-  const interpretation = readControlInterpretation(latest, delta);
+  const metrics = asLabRecord(latest["metrics"]);
+  const interpretation = readControlInterpretation(latest, delta, metrics);
   const kind = typeof request["kind"] === "string" ? request["kind"] : "control";
   const startSeconds = readFiniteMetric(temporalRequest, "startSeconds");
   const endSeconds = readFiniteMetric(temporalRequest, "endSeconds");
