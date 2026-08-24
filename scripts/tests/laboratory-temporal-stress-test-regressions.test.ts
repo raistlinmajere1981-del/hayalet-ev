@@ -267,6 +267,59 @@ void test("video transform inspector exposes Temporal Scan only for a valid sele
   );
 });
 
+void test("latest temporal measurement is rendered as a compact numeric inspector summary", () => {
+  const settings = attachLaboratoryTransformStackRenderContext(
+    {
+      brightness: 100,
+      contrast: 100,
+      gamma: 1,
+      saturation: 100,
+      hueRotate: 0,
+      sharpness: 100,
+      channelR: true,
+      channelG: true,
+      channelB: true,
+      edgeHighlight: false,
+      invert: false,
+    },
+    {
+      editConfig: {
+        recipe: { video: { transformStages: [] } },
+        temporalStressTests: [
+          {
+            request: { startSeconds: 2, endSeconds: 5, sampleFps: 5, roi: null },
+            metrics: {
+              summary: {
+                meanFrameDifferenceEnergy: 0.125,
+                peakFrameDifferenceEnergy: 0.4,
+                edgePersistenceRatio: 0.75,
+                lumaRange: 0.2,
+                chromaURange: 0.1,
+                chromaVRange: 0.08,
+              },
+            },
+          },
+        ],
+      },
+      featureId: "media-analysis",
+      locked: false,
+      sourceKind: "video",
+      temporalRequest: null,
+    }
+  );
+  const markup = renderWorkspaceInteractiveControls(settings, {
+    locale: "en",
+    t(_key: string, fallback = "") {
+      return fallback;
+    },
+  } as never);
+  assert.match(markup, /data-lab-temporal-stress-summary="true"/);
+  assert.match(markup, /Frame Δ mean \/ peak/);
+  assert.match(markup, /0\.125 \/ 0\.400/);
+  assert.match(markup, /75%/);
+  assert.match(markup, /0\.100 \/ 0\.080/);
+});
+
 void test("temporal action is wired from live controller through the host action router", async () => {
   const liveController = await readFile(
     "rooms/laboratory/runtime/controller/lab-transform-stack-live-controller.ts",
