@@ -109,6 +109,8 @@
           "artifacts",
           "error",
           "recipeSignature",
+          "recipeSnapshot",
+          "transformStackProvenance",
           "updatedAt"
         ]
       },
@@ -178,7 +180,14 @@
             "recipeSignature",
             "metadata"
           ],
-          "optional": ["label", "jobId", "sourcePath", "artifacts"]
+          "optional": [
+            "label",
+            "jobId",
+            "sourcePath",
+            "artifacts",
+            "recipeSnapshot",
+            "transformStackProvenance"
+          ]
         }
       }
     },
