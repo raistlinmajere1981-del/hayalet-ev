@@ -61,6 +61,20 @@ void test("noise and low-light controls use fixed seeds for reproducible synthet
 
   assert.equal(noise?.params["seed"], 4242);
   assert.equal(lowLight?.params["noiseSeed"], 4242);
-  assert.match(runtime.buildControlFilter(noise!), /all_seed=4242/);
-  assert.match(runtime.buildControlFilter(lowLight!), /all_seed=4242/);
+  assert.match(runtime.buildControlFilter(noise!) ?? "", /all_seed=4242/);
+  assert.match(runtime.buildControlFilter(lowLight!) ?? "", /all_seed=4242/);
+});
+
+void test("recompression control has fixed encode quality and no filter graph mutation", () => {
+  const recompression = normalizeLaboratoryControlInjectionRequest({
+    kind: "recompression",
+    params: { baselineCrf: 0, injectedCrf: 51 },
+    temporalRequest: { startSeconds: 1, endSeconds: 2, sampleFps: 5, roi: null },
+  });
+
+  assert.equal(recompression?.params["baselineCrf"], 18);
+  assert.equal(recompression?.params["injectedCrf"], 36);
+  assert.equal(runtime.buildControlFilter(recompression!), null);
+  assert.equal(runtime.buildEncodeProfile(recompression!, false).crf, 18);
+  assert.equal(runtime.buildEncodeProfile(recompression!, true).crf, 36);
 });
