@@ -1,5 +1,6 @@
 import { asLabRecord, escapeHtml } from "../domain/lab-types.js";
 import type { LabEditConfig, LabFeatureId } from "../domain/lab-types.js";
+import type { LaboratoryTemporalStressTestRequest } from "../shared/temporal-stress-test-model.js";
 import {
   getLaboratoryTransformStageDefinition,
   getLaboratoryTransformStageDefinitions,
@@ -27,6 +28,7 @@ type WorkspaceTransformStackInput = {
   sourceKind: LaboratoryTransformStackSourceKind;
   sourcePreviewUrl?: string | null;
   scope: LaboratoryTransformStageScope;
+  temporalRequest?: LaboratoryTemporalStressTestRequest | null;
   transformPreviewMode?: LaboratoryTransformPreviewMode;
   transformPreviewUrl?: string | null;
 };
@@ -257,6 +259,33 @@ function renderTransformComparisonPreview(
   `;
 }
 
+function renderTemporalScanControl(input: WorkspaceTransformStackInput, copy: LabI18n) {
+  if (input.scope !== "visual" || input.sourceKind !== "video") {
+    return "";
+  }
+  const request = input.temporalRequest ?? null;
+  const disabled = input.locked === true || request === null;
+  const hint =
+    request === null
+      ? copy.locale === "tr"
+        ? "Önce timeline üzerinde bir zaman aralığı seçin. Tarama en fazla 6 saniyeyi ve varsa seçili ROI'yi ölçer."
+        : "Select a timeline range first. The scan measures at most six seconds and uses the selected ROI when present."
+      : copy.locale === "tr"
+        ? `${request.startSeconds.toFixed(2)}–${request.endSeconds.toFixed(2)} sn · ${request.roi === null ? "tam kare" : "ROI"} · ${request.sampleFps} fps`
+        : `${request.startSeconds.toFixed(2)}–${request.endSeconds.toFixed(2)} s · ${request.roi === null ? "full frame" : "ROI"} · ${request.sampleFps} fps`;
+  return `
+    <div class="labx-transform-stack__temporal" data-lab-temporal-scan="true">
+      <button
+        class="labx-inline-action"
+        type="button"
+        data-lab-action="workspace-transform-temporal-scan"
+        ${disabled ? "disabled" : ""}
+      >Temporal Scan</button>
+      <p class="labx-card__meta">${escapeHtml(hint)}</p>
+    </div>
+  `;
+}
+
 export function renderWorkspaceTransformStack(
   input: WorkspaceTransformStackInput,
   copy: LabI18n = LAB_FALLBACK_I18N
@@ -280,6 +309,7 @@ export function renderWorkspaceTransformStack(
       data-lab-transform-feature-id="${escapeHtml(input.featureId || "media-analysis")}"
       data-lab-transform-locked="${locked ? "true" : "false"}"
       data-lab-transform-stages-json="${escapeHtml(JSON.stringify(stages))}"
+      data-lab-temporal-request-json="${escapeHtml(JSON.stringify(input.temporalRequest ?? null))}"
     >
       <div class="labx-card__body">
         <div class="labx-transform-stack__header">
@@ -296,6 +326,7 @@ export function renderWorkspaceTransformStack(
         </div>
 
         ${renderTransformComparisonPreview(input, enabledCount, copy)}
+        ${renderTemporalScanControl(input, copy)}
 
         <div class="labx-controls-stack" data-lab-transform-stage-list="${escapeHtml(input.scope)}">
           ${
