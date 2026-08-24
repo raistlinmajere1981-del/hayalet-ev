@@ -65,6 +65,12 @@ The workbench should provide three views for the same timestamp/ROI:
 2. transformed
 3. absolute/source difference
 
+The current Phase 1 implementation makes the comparison geometry explicit. When a visual Transform Stack preview is generated, Laboratory first renders a `transform-source-baseline` artifact through the same base edit recipe (trim/crop/resize and other pre-existing edit steps) but without the stress-transform stages. The normal preview is the transformed artifact. A `transform-difference` artifact is then generated with FFmpeg `blend=all_mode=difference` from those two aligned outputs.
+
+This matters because comparing the immutable raw source directly with a cropped, resized, or trimmed transformed preview would create large differences that come from geometry/timing rather than from the tested transform stages. The immutable original still remains the project source; the baseline is only a derived comparison control.
+
+If there is no enabled visual stress-transform stage, Laboratory does not generate a Difference artifact. A stale preview is also not treated as a current Transform/Difference result.
+
 The useful output is not "looks real". It is a persistence record describing which independent transformations preserve recognizable geometry and temporal continuity.
 
 ## Temporal ROI test
