@@ -23,7 +23,8 @@ export function buildLaboratoryTransformStackProvenanceFromRecipe(
   sourceKind: LaboratoryTransformSourceKind
 ) {
   const recipe = toRecord(recipeValue);
-  const visualSection = sourceKind === "image" ? toRecord(recipe["image"]) : toRecord(recipe["video"]);
+  const visualSection =
+    sourceKind === "image" ? toRecord(recipe["image"]) : toRecord(recipe["video"]);
   const audioSection = toRecord(recipe["audio"]);
   const visual =
     sourceKind === "audio"

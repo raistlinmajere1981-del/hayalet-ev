@@ -126,7 +126,8 @@ function describeTemporalInterpretation(
       ? tr
         ? "Parlaklık ve renk dağılımı büyük ölçüde sabit."
         : "Brightness and color distribution are largely stable."
-      : interpretation.luminanceVariation === "variable" || interpretation.chromaVariation === "variable"
+      : interpretation.luminanceVariation === "variable" ||
+          interpretation.chromaVariation === "variable"
         ? tr
           ? "Parlaklık veya renk dağılımında belirgin değişkenlik var."
           : "Brightness or color distribution shows clear variability."
@@ -348,6 +349,9 @@ function renderLatestControlInjectionSummary(editConfig: LabEditConfig | null, c
   `;
 }
 
-export function renderWorkspaceStressTestSummaries(editConfig: LabEditConfig | null, copy: LabI18n) {
+export function renderWorkspaceStressTestSummaries(
+  editConfig: LabEditConfig | null,
+  copy: LabI18n
+) {
   return `${renderLatestTemporalStressSummary(editConfig, copy)}${renderLatestControlInjectionSummary(editConfig, copy)}`;
 }

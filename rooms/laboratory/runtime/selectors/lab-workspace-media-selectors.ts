@@ -1,8 +1,6 @@
 import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import type { LabAsset, LabComparisonSide, LabStoreState } from "../../domain/lab-types.js";
-import {
-  buildLaboratoryTemporalStressTestRequestFromWorkspaceSelection,
-} from "../../shared/temporal-stress-test-model.js";
+import { buildLaboratoryTemporalStressTestRequestFromWorkspaceSelection } from "../../shared/temporal-stress-test-model.js";
 import { attachLaboratoryTransformStackRenderContext } from "../../shared/transform-stack-render-context.js";
 import type {
   LaboratoryTransformPreviewMode,
@@ -52,8 +50,7 @@ function getSourceDurationSeconds(source: Record<string, unknown>) {
 function getTransformStackRenderContext(state: LabStoreState) {
   const source = asLabRecord(state.source);
   const rawSourceKind = asNonEmptyString(source["kind"]);
-  const comparisonActive =
-    asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId) !== null;
+  const comparisonActive = asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId) !== null;
   const sourceKind: LaboratoryTransformStackSourceKind | null =
     comparisonActive !== true &&
     (rawSourceKind === "video" || rawSourceKind === "audio" || rawSourceKind === "image")

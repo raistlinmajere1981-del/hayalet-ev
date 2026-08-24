@@ -1,8 +1,6 @@
 import { asLabRecord, escapeHtml } from "../domain/lab-types.js";
 import type { LabEditConfig, LabFeatureId } from "../domain/lab-types.js";
-import {
-  getLaboratoryControlInjectionDefinitions,
-} from "../shared/control-injection-model.js";
+import { getLaboratoryControlInjectionDefinitions } from "../shared/control-injection-model.js";
 import type { LaboratoryControlInjectionKind } from "../shared/control-injection-model.js";
 import type { LaboratoryTemporalStressTestRequest } from "../shared/temporal-stress-test-model.js";
 import {
@@ -254,7 +252,11 @@ function renderTransformComparisonPreview(
               : renderTransformPreviewMedia(
                   input.sourceKind,
                   modeUrl,
-                  mode === "source" ? sourceLabel : mode === "difference" ? differenceLabel : transformLabel
+                  mode === "source"
+                    ? sourceLabel
+                    : mode === "difference"
+                      ? differenceLabel
+                      : transformLabel
                 )
           }
         </div>
@@ -292,7 +294,9 @@ function renderTemporalScanControl(input: WorkspaceTransformStackInput, copy: La
 
 function getLocalizedControlLabel(kind: LaboratoryControlInjectionKind, copy: LabI18n) {
   if (copy.locale !== "tr") {
-    return getLaboratoryControlInjectionDefinitions().find((entry) => entry.kind === kind)?.label || kind;
+    return (
+      getLaboratoryControlInjectionDefinitions().find((entry) => entry.kind === kind)?.label || kind
+    );
   }
   if (kind === "noise") return "Gürültü";
   if (kind === "blur") return "Bulanıklık";

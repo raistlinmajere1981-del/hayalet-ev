@@ -54,7 +54,10 @@ type EditDeps = {
     presetId: string | null
   ) => Record<string, unknown> | null;
   getActiveProject: (runtime: MediaEditRuntimeRecord) => MediaEditProjectIdentity | null;
-  getProjectEditOutputDir: (runtime: MediaEditRuntimeRecord, project: MediaEditProjectRecord) => string;
+  getProjectEditOutputDir: (
+    runtime: MediaEditRuntimeRecord,
+    project: MediaEditProjectRecord
+  ) => string;
   markCloseoutAsStale: (
     project: MediaEditProjectRecord,
     reason: string,

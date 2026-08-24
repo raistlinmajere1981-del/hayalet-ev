@@ -139,16 +139,14 @@ export function interpretLaboratoryControlDelta(
   evidence?: LaboratoryControlInterpretationEvidence
 ): LaboratoryControlSummaryInterpretation {
   const delta = toRecord(value);
-  const frameDifference = interpretDelta(readFiniteNumber(delta, "meanFrameDifferenceEnergy"), [
-    0.003,
-    0.01,
-    0.03,
-  ]);
-  const edgePersistence = interpretDelta(readFiniteNumber(delta, "edgePersistenceRatio"), [
-    0.03,
-    0.12,
-    0.3,
-  ]);
+  const frameDifference = interpretDelta(
+    readFiniteNumber(delta, "meanFrameDifferenceEnergy"),
+    [0.003, 0.01, 0.03]
+  );
+  const edgePersistence = interpretDelta(
+    readFiniteNumber(delta, "edgePersistenceRatio"),
+    [0.03, 0.12, 0.3]
+  );
   const edgeEnergy = interpretDelta(readFiniteNumber(delta, "meanEdgeEnergy"), [0.003, 0.01, 0.03]);
   const luminanceRange = interpretDelta(readFiniteNumber(delta, "lumaRange"), [0.005, 0.02, 0.06]);
   const chromaMagnitude = Math.max(

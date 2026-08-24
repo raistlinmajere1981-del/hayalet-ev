@@ -113,9 +113,9 @@ function compileVisualStage(stage: LaboratoryTransformStage): string[] {
       const chroma = formatNumber(clamp(params["chroma"], 0, 20, 3));
       return [`hqdn3d=${luma}:${chroma}:${luma}:${chroma}`];
     }
+    default:
+      return [];
   }
-
-  return [];
 }
 
 function compileAudioStage(stage: LaboratoryTransformStage): string[] {
@@ -133,16 +133,13 @@ function compileAudioStage(stage: LaboratoryTransformStage): string[] {
       const lowHz = clamp(params["lowHz"], 1, 20000, 80);
       const requestedHighHz = clamp(params["highHz"], 2, 24000, 8000);
       const highHz = Math.min(24000, Math.max(lowHz + 1, requestedHighHz));
-      return [
-        `highpass=f=${formatNumber(lowHz)}`,
-        `lowpass=f=${formatNumber(highHz)}`,
-      ];
+      return [`highpass=f=${formatNumber(lowHz)}`, `lowpass=f=${formatNumber(highHz)}`];
     }
     case "gain":
       return [`volume=${formatNumber(clamp(params["db"], -60, 30, 0))}dB`];
+    default:
+      return [];
   }
-
-  return [];
 }
 
 function appendFilterChain(command: string[], flag: "-vf" | "-af", filters: string[]) {
@@ -164,7 +161,9 @@ function appendFilterChain(command: string[], flag: "-vf" | "-af", filters: stri
   return nextCommand;
 }
 
-export function compileTransformStressTestFilters(projectValue: unknown): CompiledStressTestFilters {
+export function compileTransformStressTestFilters(
+  projectValue: unknown
+): CompiledStressTestFilters {
   const project = toRecord(projectValue);
   const video = getVisualStages(project).flatMap(compileVisualStage);
   const audio = getAudioStages(project).flatMap(compileAudioStage);

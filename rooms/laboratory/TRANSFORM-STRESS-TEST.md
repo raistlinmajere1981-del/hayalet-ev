@@ -133,7 +133,7 @@ First-stage operations:
 - mid / side extraction
 - phase inversion where meaningful
 
-The UI should allow a small interval to loop while parameters change. The subtitle remains visible as a *target hypothesis*, not as a transcription truth.
+The UI should allow a small interval to loop while parameters change. The subtitle remains visible as a _target hypothesis_, not as a transcription truth.
 
 The important question is whether speech-like structure survives multiple independent processing paths, or appears only after a narrow, highly tuned transformation.
 

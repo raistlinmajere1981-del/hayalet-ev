@@ -1,10 +1,6 @@
 import { interpretLaboratoryTemporalSummary } from "../../../shared/stress-test-interpretation.js";
-import {
-  normalizeLaboratoryTemporalStressTestRequest,
-} from "../../../shared/temporal-stress-test-model.js";
-import type {
-  LaboratoryTemporalStressTestRequest,
-} from "../../../shared/temporal-stress-test-model.js";
+import { normalizeLaboratoryTemporalStressTestRequest } from "../../../shared/temporal-stress-test-model.js";
+import type { LaboratoryTemporalStressTestRequest } from "../../../shared/temporal-stress-test-model.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryTemporalStressTestRuntimeRecord = LaboratoryRecord;
@@ -299,9 +295,7 @@ function buildTemporalResult(
   };
 }
 
-export function createLaboratoryTemporalStressTestRuntime(
-  deps: LaboratoryTemporalStressTestDeps
-) {
+export function createLaboratoryTemporalStressTestRuntime(deps: LaboratoryTemporalStressTestDeps) {
   const {
     callRoomTools,
     ensureProjectDirectories,
@@ -359,10 +353,7 @@ export function createLaboratoryTemporalStressTestRuntime(
     }
     const metadata = toRecord(source["metadata"]);
     const sourceDurationSeconds = asFiniteNumber(metadata["durationSeconds"]);
-    const request = normalizeLaboratoryTemporalStressTestRequest(
-      rawRequest,
-      sourceDurationSeconds
-    );
+    const request = normalizeLaboratoryTemporalStressTestRequest(rawRequest, sourceDurationSeconds);
     if (request === null) {
       throw new Error("Select a valid video time range before running temporal stress testing.");
     }

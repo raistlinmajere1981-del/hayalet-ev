@@ -11,15 +11,10 @@ export type LaboratoryVisualTransformStageKind =
   | "channel-isolation"
   | "denoise";
 
-export type LaboratoryAudioTransformStageKind =
-  | "high-pass"
-  | "low-pass"
-  | "band-pass"
-  | "gain";
+export type LaboratoryAudioTransformStageKind = "high-pass" | "low-pass" | "band-pass" | "gain";
 
 export type LaboratoryTransformStageKind =
-  | LaboratoryVisualTransformStageKind
-  | LaboratoryAudioTransformStageKind;
+  LaboratoryVisualTransformStageKind | LaboratoryAudioTransformStageKind;
 
 export type LaboratoryTransformStageRecord = Record<string, unknown>;
 
@@ -82,7 +77,15 @@ const LAB_TRANSFORM_STAGE_DEFINITIONS: readonly LaboratoryTransformStageDefiniti
     scope: "visual",
     label: "Contrast",
     parameters: [
-      { id: "value", label: "Value", kind: "number", defaultValue: 1, min: 0.1, max: 3, step: 0.05 },
+      {
+        id: "value",
+        label: "Value",
+        kind: "number",
+        defaultValue: 1,
+        min: 0.1,
+        max: 3,
+        step: 0.05,
+      },
     ],
   },
   {
@@ -90,7 +93,15 @@ const LAB_TRANSFORM_STAGE_DEFINITIONS: readonly LaboratoryTransformStageDefiniti
     scope: "visual",
     label: "Gamma",
     parameters: [
-      { id: "value", label: "Value", kind: "number", defaultValue: 1, min: 0.1, max: 5, step: 0.05 },
+      {
+        id: "value",
+        label: "Value",
+        kind: "number",
+        defaultValue: 1,
+        min: 0.1,
+        max: 5,
+        step: 0.05,
+      },
     ],
   },
   {
@@ -106,7 +117,15 @@ const LAB_TRANSFORM_STAGE_DEFINITIONS: readonly LaboratoryTransformStageDefiniti
     scope: "visual",
     label: "Blur",
     parameters: [
-      { id: "radius", label: "Radius", kind: "number", defaultValue: 1, min: 0.1, max: 20, step: 0.1 },
+      {
+        id: "radius",
+        label: "Radius",
+        kind: "number",
+        defaultValue: 1,
+        min: 0.1,
+        max: 20,
+        step: 0.1,
+      },
     ],
   },
   {
@@ -114,7 +133,15 @@ const LAB_TRANSFORM_STAGE_DEFINITIONS: readonly LaboratoryTransformStageDefiniti
     scope: "visual",
     label: "Sharpen",
     parameters: [
-      { id: "amount", label: "Amount", kind: "number", defaultValue: 1, min: 0, max: 3, step: 0.05 },
+      {
+        id: "amount",
+        label: "Amount",
+        kind: "number",
+        defaultValue: 1,
+        min: 0,
+        max: 3,
+        step: 0.05,
+      },
     ],
   },
   {
@@ -143,7 +170,15 @@ const LAB_TRANSFORM_STAGE_DEFINITIONS: readonly LaboratoryTransformStageDefiniti
     label: "Denoise",
     parameters: [
       { id: "luma", label: "Luma", kind: "number", defaultValue: 4, min: 0, max: 20, step: 0.5 },
-      { id: "chroma", label: "Chroma", kind: "number", defaultValue: 3, min: 0, max: 20, step: 0.5 },
+      {
+        id: "chroma",
+        label: "Chroma",
+        kind: "number",
+        defaultValue: 3,
+        min: 0,
+        max: 20,
+        step: 0.5,
+      },
     ],
   },
   {
@@ -151,7 +186,16 @@ const LAB_TRANSFORM_STAGE_DEFINITIONS: readonly LaboratoryTransformStageDefiniti
     scope: "audio",
     label: "High-pass",
     parameters: [
-      { id: "hz", label: "Frequency", kind: "number", defaultValue: 80, min: 1, max: 20000, step: 1, unit: "Hz" },
+      {
+        id: "hz",
+        label: "Frequency",
+        kind: "number",
+        defaultValue: 80,
+        min: 1,
+        max: 20000,
+        step: 1,
+        unit: "Hz",
+      },
     ],
   },
   {
@@ -159,7 +203,16 @@ const LAB_TRANSFORM_STAGE_DEFINITIONS: readonly LaboratoryTransformStageDefiniti
     scope: "audio",
     label: "Low-pass",
     parameters: [
-      { id: "hz", label: "Frequency", kind: "number", defaultValue: 8000, min: 1, max: 24000, step: 1, unit: "Hz" },
+      {
+        id: "hz",
+        label: "Frequency",
+        kind: "number",
+        defaultValue: 8000,
+        min: 1,
+        max: 24000,
+        step: 1,
+        unit: "Hz",
+      },
     ],
   },
   {
@@ -167,8 +220,26 @@ const LAB_TRANSFORM_STAGE_DEFINITIONS: readonly LaboratoryTransformStageDefiniti
     scope: "audio",
     label: "Band-pass",
     parameters: [
-      { id: "lowHz", label: "Low", kind: "number", defaultValue: 80, min: 1, max: 20000, step: 1, unit: "Hz" },
-      { id: "highHz", label: "High", kind: "number", defaultValue: 8000, min: 2, max: 24000, step: 1, unit: "Hz" },
+      {
+        id: "lowHz",
+        label: "Low",
+        kind: "number",
+        defaultValue: 80,
+        min: 1,
+        max: 20000,
+        step: 1,
+        unit: "Hz",
+      },
+      {
+        id: "highHz",
+        label: "High",
+        kind: "number",
+        defaultValue: 8000,
+        min: 2,
+        max: 24000,
+        step: 1,
+        unit: "Hz",
+      },
     ],
   },
   {
@@ -176,7 +247,16 @@ const LAB_TRANSFORM_STAGE_DEFINITIONS: readonly LaboratoryTransformStageDefiniti
     scope: "audio",
     label: "Gain",
     parameters: [
-      { id: "db", label: "Gain", kind: "number", defaultValue: 0, min: -60, max: 30, step: 0.5, unit: "dB" },
+      {
+        id: "db",
+        label: "Gain",
+        kind: "number",
+        defaultValue: 0,
+        min: -60,
+        max: 30,
+        step: 0.5,
+        unit: "dB",
+      },
     ],
   },
 ];
@@ -235,7 +315,10 @@ export function createLaboratoryTransformStageParams(
   }, {});
 }
 
-function createUniqueStageId(stages: LaboratoryTransformStage[], kind: LaboratoryTransformStageKind) {
+function createUniqueStageId(
+  stages: LaboratoryTransformStage[],
+  kind: LaboratoryTransformStageKind
+) {
   let suffix = 1;
   let candidate = `${kind}-${suffix}`;
   const ids = new Set(stages.map((stage) => stage.id));

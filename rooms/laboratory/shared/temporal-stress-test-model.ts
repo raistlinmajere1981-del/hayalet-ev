@@ -100,11 +100,7 @@ export function normalizeLaboratoryTemporalStressTestRequest(
   return {
     ...window,
     sampleFps: Math.round(
-      clamp(
-        requestedSampleFps ?? LAB_TEMPORAL_STRESS_TEST_DEFAULT_SAMPLE_FPS,
-        1,
-        10
-      )
+      clamp(requestedSampleFps ?? LAB_TEMPORAL_STRESS_TEST_DEFAULT_SAMPLE_FPS, 1, 10)
     ),
     roi: normalizeRoi(record["roi"]),
   };

@@ -1,6 +1,4 @@
-import {
-  normalizeLaboratoryTemporalStressTestRequest,
-} from "./temporal-stress-test-model.js";
+import { normalizeLaboratoryTemporalStressTestRequest } from "./temporal-stress-test-model.js";
 import type { LaboratoryTemporalStressTestRequest } from "./temporal-stress-test-model.js";
 
 export type LaboratoryControlInjectionKind = "noise" | "blur" | "sharpen" | "low-light";

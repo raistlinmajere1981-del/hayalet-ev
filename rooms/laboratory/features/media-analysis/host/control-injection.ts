@@ -143,7 +143,9 @@ function getRunText(value: unknown, toRecord: (value: unknown) => LaboratoryReco
     .join("\n");
 }
 
-function toMetricRequest(request: LaboratoryControlInjectionRequest): LaboratoryTemporalStressTestRequest {
+function toMetricRequest(
+  request: LaboratoryControlInjectionRequest
+): LaboratoryTemporalStressTestRequest {
   return {
     startSeconds: 0,
     endSeconds: request.temporalRequest.endSeconds - request.temporalRequest.startSeconds,
