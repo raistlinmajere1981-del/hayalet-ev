@@ -1,8 +1,9 @@
-import { asLabRecord, escapeHtml } from "../domain/lab-types.js";
-import type { LabEditConfig, LabInteractiveSettings } from "../domain/lab-types.js";
+import { escapeHtml } from "../domain/lab-types.js";
+import type { LabInteractiveSettings } from "../domain/lab-types.js";
 import { readLaboratoryTransformStackRenderContext } from "../shared/transform-stack-render-context.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
+import { renderWorkspaceStressTestSummaries } from "./workspace-stress-test-summary.js";
 import { renderWorkspaceTransformStack } from "./workspace-transform-stack.js";
 
 function renderSlider(
@@ -52,128 +53,6 @@ function renderToggle(label: string, field: string, active: boolean) {
   `;
 }
 
-function readFiniteMetric(record: Record<string, unknown>, key: string) {
-  const value = record[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function formatMetric(value: number | null) {
-  return value === null ? "—" : value.toFixed(3);
-}
-
-function formatPercent(value: number | null) {
-  return value === null ? "—" : `${Math.round(value * 100)}%`;
-}
-
-function formatSignedMetric(value: number | null) {
-  if (value === null) return "—";
-  return `${value >= 0 ? "+" : ""}${value.toFixed(3)}`;
-}
-
-function formatSignedPercent(value: number | null) {
-  if (value === null) return "—";
-  const percent = Math.round(value * 100);
-  return `${percent >= 0 ? "+" : ""}${percent}%`;
-}
-
-function getTemporalHistory(editConfig: LabEditConfig | null) {
-  const edit = asLabRecord(editConfig);
-  return Array.isArray(edit["temporalStressTests"]) ? edit["temporalStressTests"] : [];
-}
-
-function renderLatestTemporalStressSummary(editConfig: LabEditConfig | null, copy: LabI18n) {
-  const latest = asLabRecord(
-    getTemporalHistory(editConfig).find(function (entry) {
-      return asLabRecord(entry)["kind"] !== "control-injection";
-    })
-  );
-  if (Object.keys(latest).length === 0) {
-    return "";
-  }
-  const request = asLabRecord(latest["request"]);
-  const metrics = asLabRecord(latest["metrics"]);
-  const summary = asLabRecord(metrics["summary"]);
-  const startSeconds = readFiniteMetric(request, "startSeconds");
-  const endSeconds = readFiniteMetric(request, "endSeconds");
-  const windowLabel =
-    startSeconds === null || endSeconds === null
-      ? "—"
-      : `${startSeconds.toFixed(2)}–${endSeconds.toFixed(2)} s`;
-  const meanDifference = readFiniteMetric(summary, "meanFrameDifferenceEnergy");
-  const peakDifference = readFiniteMetric(summary, "peakFrameDifferenceEnergy");
-  const edgePersistence = readFiniteMetric(summary, "edgePersistenceRatio");
-  const lumaRange = readFiniteMetric(summary, "lumaRange");
-  const chromaURange = readFiniteMetric(summary, "chromaURange");
-  const chromaVRange = readFiniteMetric(summary, "chromaVRange");
-  const title = copy.locale === "tr" ? "Son Temporal Tarama" : "Latest Temporal Scan";
-
-  return `
-    <section class="labx-card labx-controls-card" data-lab-temporal-stress-summary="true">
-      <div class="labx-card__body">
-        <p class="labx-card__eyebrow">${escapeHtml(title)}</p>
-        <p class="labx-card__meta">${escapeHtml(windowLabel)} · ${asLabRecord(request["roi"])["width"] === undefined ? (copy.locale === "tr" ? "tam kare" : "full frame") : "ROI"}</p>
-        <div class="labx-controls-stack">
-          <div class="labx-control-row"><span class="labx-control-row__label">Frame Δ mean / peak</span><span class="labx-control-row__value">${escapeHtml(`${formatMetric(meanDifference)} / ${formatMetric(peakDifference)}`)}</span></div>
-          <div class="labx-control-row"><span class="labx-control-row__label">Edge persistence</span><span class="labx-control-row__value">${escapeHtml(formatPercent(edgePersistence))}</span></div>
-          <div class="labx-control-row"><span class="labx-control-row__label">Luma range</span><span class="labx-control-row__value">${escapeHtml(formatMetric(lumaRange))}</span></div>
-          <div class="labx-control-row"><span class="labx-control-row__label">Chroma U / V range</span><span class="labx-control-row__value">${escapeHtml(`${formatMetric(chromaURange)} / ${formatMetric(chromaVRange)}`)}</span></div>
-        </div>
-      </div>
-    </section>
-  `;
-}
-
-function renderLatestControlInjectionSummary(editConfig: LabEditConfig | null, copy: LabI18n) {
-  const latest = asLabRecord(
-    getTemporalHistory(editConfig).find(function (entry) {
-      return asLabRecord(entry)["kind"] === "control-injection";
-    })
-  );
-  if (Object.keys(latest).length === 0) {
-    return "";
-  }
-  const request = asLabRecord(latest["request"]);
-  const temporalRequest = asLabRecord(request["temporalRequest"]);
-  const params = asLabRecord(request["params"]);
-  const delta = asLabRecord(latest["delta"]);
-  const kind = typeof request["kind"] === "string" ? request["kind"] : "control";
-  const startSeconds = readFiniteMetric(temporalRequest, "startSeconds");
-  const endSeconds = readFiniteMetric(temporalRequest, "endSeconds");
-  const windowLabel =
-    startSeconds === null || endSeconds === null
-      ? "—"
-      : `${startSeconds.toFixed(2)}–${endSeconds.toFixed(2)} s`;
-  const meanDifferenceDelta = readFiniteMetric(delta, "meanFrameDifferenceEnergy");
-  const peakDifferenceDelta = readFiniteMetric(delta, "peakFrameDifferenceEnergy");
-  const edgePersistenceDelta = readFiniteMetric(delta, "edgePersistenceRatio");
-  const edgeEnergyDelta = readFiniteMetric(delta, "meanEdgeEnergy");
-  const lumaRangeDelta = readFiniteMetric(delta, "lumaRange");
-  const chromaURangeDelta = readFiniteMetric(delta, "chromaURange");
-  const chromaVRangeDelta = readFiniteMetric(delta, "chromaVRange");
-  const title = copy.locale === "tr" ? "Son Destruction Control" : "Latest Destruction Control";
-  const methodHint =
-    copy.locale === "tr"
-      ? "Δ = aynı trim/ROI/codec ile üretilen paired baseline → injected değişimi."
-      : "Δ = paired baseline → injected change with identical trim/ROI/codec.";
-
-  return `
-    <section class="labx-card labx-controls-card" data-lab-control-injection-summary="true">
-      <div class="labx-card__body">
-        <p class="labx-card__eyebrow">${escapeHtml(title)}</p>
-        <p class="labx-card__meta">${escapeHtml(`${kind} · ${windowLabel} · ${JSON.stringify(params)}`)}</p>
-        <div class="labx-controls-stack">
-          <div class="labx-control-row"><span class="labx-control-row__label">Δ Frame mean / peak</span><span class="labx-control-row__value">${escapeHtml(`${formatSignedMetric(meanDifferenceDelta)} / ${formatSignedMetric(peakDifferenceDelta)}`)}</span></div>
-          <div class="labx-control-row"><span class="labx-control-row__label">Δ Edge persistence</span><span class="labx-control-row__value">${escapeHtml(formatSignedPercent(edgePersistenceDelta))}</span></div>
-          <div class="labx-control-row"><span class="labx-control-row__label">Δ Edge energy</span><span class="labx-control-row__value">${escapeHtml(formatSignedMetric(edgeEnergyDelta))}</span></div>
-          <div class="labx-control-row"><span class="labx-control-row__label">Δ Luma range</span><span class="labx-control-row__value">${escapeHtml(formatSignedMetric(lumaRangeDelta))}</span></div>
-          <div class="labx-control-row"><span class="labx-control-row__label">Δ Chroma U / V</span><span class="labx-control-row__value">${escapeHtml(`${formatSignedMetric(chromaURangeDelta)} / ${formatSignedMetric(chromaVRangeDelta)}`)}</span></div>
-        </div>
-        <p class="labx-card__meta">${escapeHtml(methodHint)}</p>
-      </div>
-    </section>
-  `;
-}
-
 export function renderWorkspaceInteractiveControls(
   settings: LabInteractiveSettings,
   copy: LabI18n = LAB_FALLBACK_I18N
@@ -214,13 +93,9 @@ export function renderWorkspaceInteractiveControls(
           copy
         )
       : "";
-  const temporalSummaryMarkup =
+  const stressSummaryMarkup =
     transformContext?.sourceKind === "video"
-      ? renderLatestTemporalStressSummary(transformContext.editConfig, copy)
-      : "";
-  const controlSummaryMarkup =
-    transformContext?.sourceKind === "video"
-      ? renderLatestControlInjectionSummary(transformContext.editConfig, copy)
+      ? renderWorkspaceStressTestSummaries(transformContext.editConfig, copy)
       : "";
 
   return `
@@ -256,7 +131,6 @@ export function renderWorkspaceInteractiveControls(
       </div>
     </section>
     ${transformStackMarkup}
-    ${temporalSummaryMarkup}
-    ${controlSummaryMarkup}
+    ${stressSummaryMarkup}
   `;
 }
