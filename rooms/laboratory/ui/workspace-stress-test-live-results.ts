@@ -1,12 +1,18 @@
 import { asLabRecord, asNonEmptyString, escapeHtml } from "../domain/lab-types.js";
-import type { LabStoreState } from "../domain/lab-types.js";
+import type { LabEditConfig, LabStoreState } from "../domain/lab-types.js";
 import type { LabI18n } from "./lab-i18n.js";
+import { renderWorkspaceMotionImpactSummaries } from "./workspace-motion-impact-summary.js";
 import { renderWorkspaceStressTestSummaries } from "./workspace-stress-test-summary.js";
 
 type StressTestRecord = Record<string, unknown>;
 type TransformPreviewMode = "source" | "transform" | "difference";
 
 const CONTROL_KINDS = ["noise", "blur", "sharpen", "low-light", "recompression"] as const;
+const MOTION_HISTORY_KINDS = new Set([
+  "motion-reference-lock",
+  "motion-vector-probe",
+  "impact-window-compare",
+]);
 
 function readHistory(state: LabStoreState): StressTestRecord[] {
   const history = asLabRecord(state.editConfig)["temporalStressTests"];
@@ -16,6 +22,25 @@ function readHistory(state: LabStoreState): StressTestRecord[] {
   return history.map(function (entry: unknown) {
     return asLabRecord(entry);
   });
+}
+
+function isMotionHistoryEntry(entry: StressTestRecord) {
+  return MOTION_HISTORY_KINDS.has(asNonEmptyString(entry["kind"]) || "");
+}
+
+function buildLegacyStressSummaryEditConfig(editConfig: LabEditConfig | null): LabEditConfig | null {
+  if (editConfig === null) {
+    return null;
+  }
+  const history = asLabRecord(editConfig)["temporalStressTests"];
+  return {
+    ...editConfig,
+    temporalStressTests: Array.isArray(history)
+      ? history.filter(function (entry) {
+          return !isMotionHistoryEntry(asLabRecord(entry));
+        })
+      : [],
+  };
 }
 
 function readFiniteNumber(record: StressTestRecord, key: string): number | null {
@@ -171,7 +196,11 @@ function renderControlComparison(state: LabStoreState, copy: LabI18n) {
   const history = readHistory(state);
   const anchor =
     history.find(function (entry) {
-      return entry["kind"] !== "control-injection" && selectionKey(entry) !== null;
+      return (
+        !isMotionHistoryEntry(entry) &&
+        entry["kind"] !== "control-injection" &&
+        selectionKey(entry) !== null
+      );
     }) ||
     history.find(function (entry) {
       return entry["kind"] === "control-injection" && selectionKey(entry) !== null;
@@ -240,10 +269,15 @@ function renderControlComparison(state: LabStoreState, copy: LabI18n) {
 
 export function renderWorkspaceStressTestLiveResults(state: LabStoreState, copy: LabI18n) {
   const history = readHistory(state);
-  const summaries = renderWorkspaceStressTestSummaries(state.editConfig, copy);
+  const legacySummaryConfig = buildLegacyStressSummaryEditConfig(state.editConfig);
+  const summaries = renderWorkspaceStressTestSummaries(legacySummaryConfig, copy);
+  const motionSummaries = renderWorkspaceMotionImpactSummaries(state.editConfig, copy);
   const comparison = renderControlComparison(state, copy);
   const hasResultContent =
-    history.length > 0 || summaries.trim() !== "" || comparison.trim() !== "";
+    history.length > 0 ||
+    summaries.trim() !== "" ||
+    motionSummaries.trim() !== "" ||
+    comparison.trim() !== "";
 
   return `
     <div class="labx-strip-expanded labx-strip-expanded--live" data-lab-process-expanded="true" data-lab-live-results="true">
@@ -258,8 +292,8 @@ export function renderWorkspaceStressTestLiveResults(state: LabStoreState, copy:
         <div class="labx-strip-live-results__scroll">
           ${
             hasResultContent
-              ? `${summaries}${comparison}`
-              : `<div class="labx-strip-live-empty">${escapeHtml(copy.locale === "tr" ? "Henüz Temporal Scan veya Destruction Control sonucu yok." : "No Temporal Scan or Destruction Control result yet.")}</div>`
+              ? `${summaries}${motionSummaries}${comparison}`
+              : `<div class="labx-strip-live-empty">${escapeHtml(copy.locale === "tr" ? "Henüz manuel test sonucu yok." : "No manual test result yet.")}</div>`
           }
         </div>
       </div>
