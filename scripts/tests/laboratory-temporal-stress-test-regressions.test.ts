@@ -304,8 +304,8 @@ void test("video transform inspector exposes Temporal Scan only for a valid sele
   );
 });
 
-void test("latest temporal measurement is rendered as a compact numeric live-results summary", () => {
-  const markup = renderWorkspaceStressTestSummaries(
+void test("latest temporal measurement renders spatial persistence and falls back for legacy records", () => {
+  const spatialMarkup = renderWorkspaceStressTestSummaries(
     {
       temporalStressTests: [
         {
@@ -315,6 +315,7 @@ void test("latest temporal measurement is rendered as a compact numeric live-res
               meanFrameDifferenceEnergy: 0.125,
               peakFrameDifferenceEnergy: 0.4,
               edgePersistenceRatio: 0.75,
+              spatialEdgePersistenceRatio: 0.6,
               lumaRange: 0.2,
               chromaURange: 0.1,
               chromaVRange: 0.08,
@@ -330,11 +331,30 @@ void test("latest temporal measurement is rendered as a compact numeric live-res
       },
     } as never
   );
-  assert.match(markup, /data-lab-temporal-stress-summary="true"/);
-  assert.match(markup, /Frame Δ mean \/ peak/);
-  assert.match(markup, /0\.125 \/ 0\.400/);
-  assert.match(markup, /75%/);
-  assert.match(markup, /0\.100 \/ 0\.080/);
+  assert.match(spatialMarkup, /data-lab-temporal-stress-summary="true"/);
+  assert.match(spatialMarkup, /Frame Δ mean \/ peak/);
+  assert.match(spatialMarkup, /0\.125 \/ 0\.400/);
+  assert.match(spatialMarkup, /60%/);
+  assert.doesNotMatch(spatialMarkup, />75%</);
+  assert.match(spatialMarkup, /0\.100 \/ 0\.080/);
+
+  const legacyMarkup = renderWorkspaceStressTestSummaries(
+    {
+      temporalStressTests: [
+        {
+          request: { startSeconds: 2, endSeconds: 5, sampleFps: 5, roi: null },
+          metrics: { summary: { edgePersistenceRatio: 0.75 } },
+        },
+      ],
+    } as never,
+    {
+      locale: "en",
+      t(_key: string, fallback = "") {
+        return fallback;
+      },
+    } as never
+  );
+  assert.match(legacyMarkup, /75%/);
 });
 
 void test("temporal action is wired from live controller through the host action router", async () => {
