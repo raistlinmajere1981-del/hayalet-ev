@@ -4,16 +4,16 @@ export type LaboratoryTransformStackSourceKind = "video" | "audio" | "image";
 export type LaboratoryTransformPreviewMode = "source" | "transform" | "difference";
 
 export type LaboratoryTransformStackRenderContext = {
-  baselinePreviewUrl: string | null;
-  differencePreviewUrl: string | null;
+  baselinePreviewUrl?: string | null;
+  differencePreviewUrl?: string | null;
   editConfig: LabEditConfig | null;
   featureId: LabFeatureId;
   locked: boolean;
-  previewStatus: string;
+  previewStatus?: string;
   sourceKind: LaboratoryTransformStackSourceKind | null;
-  sourcePreviewUrl: string | null;
-  transformPreviewMode: LaboratoryTransformPreviewMode;
-  transformPreviewUrl: string | null;
+  sourcePreviewUrl?: string | null;
+  transformPreviewMode?: LaboratoryTransformPreviewMode;
+  transformPreviewUrl?: string | null;
 };
 
 const LAB_TRANSFORM_STACK_RENDER_CONTEXT = Symbol("laboratory-transform-stack-render-context");
