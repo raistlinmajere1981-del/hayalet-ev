@@ -2,6 +2,7 @@ import { createMediaEditArtifactRuntime } from "./edit-artifacts.js";
 import { createMediaEditSupportRuntime } from "./edit-support.js";
 import { createMediaEditPipelineRuntime } from "./edit-pipeline.js";
 import { createMediaProfilePreflightRuntime } from "./profile-preflight.js";
+import { createLaboratoryTemporalStressTestRuntime } from "./temporal-stress-test.js";
 import { extendEditCommandWithTransformStressTest } from "./transform-stress-test.js";
 import { createLaboratoryVisualAnalysisRuntime } from "./visual-analysis-runtime.js";
 
@@ -10,8 +11,12 @@ type MediaEditSupportRuntimeDeps = Parameters<typeof createMediaEditSupportRunti
 type MediaEditArtifactRuntimeDeps = Parameters<typeof createMediaEditArtifactRuntime>[0];
 type MediaEditPipelineRuntimeDeps = Parameters<typeof createMediaEditPipelineRuntime>[0];
 type MediaProfilePreflightRuntimeDeps = Parameters<typeof createMediaProfilePreflightRuntime>[0];
+type MediaTemporalStressTestRuntimeDeps = Parameters<
+  typeof createLaboratoryTemporalStressTestRuntime
+>[0];
 type MediaEditPipelineRuntimeApi = ReturnType<typeof createMediaEditPipelineRuntime>;
 type MediaProfilePreflightRuntimeApi = ReturnType<typeof createMediaProfilePreflightRuntime>;
+type MediaTemporalStressTestRuntimeApi = ReturnType<typeof createLaboratoryTemporalStressTestRuntime>;
 
 type LaboratoryToolReadyRuntime = LaboratoryRecord & {
   toolState?: unknown;
@@ -32,7 +37,8 @@ type LaboratoryMediaAnalysisHostRuntimeDeps = MediaEditSupportRuntimeDeps &
     | "getPreparedSourcePath"
     | "requirePreparedSource"
   > &
-  Omit<MediaProfilePreflightRuntimeDeps, "ensureProfileToolReady" | "sanitizeFileSegment"> & {
+  Omit<MediaProfilePreflightRuntimeDeps, "ensureProfileToolReady" | "sanitizeFileSegment"> &
+  Omit<MediaTemporalStressTestRuntimeDeps, "getPreparedSourcePath"> & {
     getCollectDerivedOutputMetadata: MediaEditPipelineRuntimeDeps["collectDerivedOutputMetadata"];
   };
 
@@ -80,6 +86,7 @@ export function createLaboratoryMediaAnalysisHostRuntime(
     roomId,
     syncProjectFeatureProjections,
     toRecord,
+    writeJsonFile,
   } = deps;
 
   function getFfmpegToolState(runtime: LaboratoryToolReadyRuntime) {
@@ -179,6 +186,25 @@ export function createLaboratoryMediaAnalysisHostRuntime(
     return mediaEditPipelineRuntime.runEditPipeline(...args);
   }
 
+  const temporalStressTestRuntime = createLaboratoryTemporalStressTestRuntime({
+    callRoomTools,
+    ensureProjectDirectories,
+    getActiveProject,
+    getPreparedSourcePath:
+      getPreparedSourcePath as MediaTemporalStressTestRuntimeDeps["getPreparedSourcePath"],
+    getProjectEditOutputDir,
+    patchActiveProject,
+    roomId,
+    toRecord,
+    writeJsonFile,
+  });
+
+  function runTemporalStressTest(
+    ...args: Parameters<MediaTemporalStressTestRuntimeApi["runTemporalStressTest"]>
+  ) {
+    return temporalStressTestRuntime.runTemporalStressTest(...args);
+  }
+
   function ensureProfileToolReady(
     runtime: Parameters<MediaProfilePreflightRuntimeDeps["ensureProfileToolReady"]>[0]
   ) {
@@ -245,6 +271,7 @@ export function createLaboratoryMediaAnalysisHostRuntime(
     resetEditForCurrentSource,
     runEditPipeline,
     runProfilePreflight,
+    runTemporalStressTest,
     sanitizeFileSegment,
     visualAnalysisRuntime,
   };
