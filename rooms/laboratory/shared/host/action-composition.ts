@@ -52,6 +52,7 @@ type LaboratoryMediaActionRuntimeDeps = {
   patchActiveProject: UnknownFn;
   patchActiveProjectDrafts: UnknownFn;
   pushJobState: UnknownFn;
+  readBinaryFileBytes: (filePath: string) => Promise<Uint8Array | null>;
   refreshActiveProjectMetadata: UnknownFn;
   refreshToolStatus: UnknownFn;
   registerJob: UnknownFn;
@@ -144,6 +145,7 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     patchActiveProject: deps.patchActiveProject,
     patchActiveProjectDrafts: deps.patchActiveProjectDrafts,
     pushJobState: deps.pushJobState,
+    readBinaryFileBytes: deps.readBinaryFileBytes,
     refreshActiveProjectMetadata: deps.refreshActiveProjectMetadata,
     refreshToolStatus: deps.refreshToolStatus,
     registerJob: deps.registerJob,
