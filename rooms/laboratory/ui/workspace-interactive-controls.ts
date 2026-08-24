@@ -1,5 +1,5 @@
-import { escapeHtml } from "../domain/lab-types.js";
-import type { LabInteractiveSettings } from "../domain/lab-types.js";
+import { asLabRecord, escapeHtml } from "../domain/lab-types.js";
+import type { LabEditConfig, LabInteractiveSettings } from "../domain/lab-types.js";
 import { readLaboratoryTransformStackRenderContext } from "../shared/transform-stack-render-context.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
@@ -52,6 +52,59 @@ function renderToggle(label: string, field: string, active: boolean) {
   `;
 }
 
+function readFiniteMetric(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function formatMetric(value: number | null) {
+  return value === null ? "—" : value.toFixed(3);
+}
+
+function formatPercent(value: number | null) {
+  return value === null ? "—" : `${Math.round(value * 100)}%`;
+}
+
+function renderLatestTemporalStressSummary(editConfig: LabEditConfig | null, copy: LabI18n) {
+  const edit = asLabRecord(editConfig);
+  const history = Array.isArray(edit["temporalStressTests"]) ? edit["temporalStressTests"] : [];
+  const latest = asLabRecord(history[0]);
+  if (Object.keys(latest).length === 0) {
+    return "";
+  }
+  const request = asLabRecord(latest["request"]);
+  const metrics = asLabRecord(latest["metrics"]);
+  const summary = asLabRecord(metrics["summary"]);
+  const startSeconds = readFiniteMetric(request, "startSeconds");
+  const endSeconds = readFiniteMetric(request, "endSeconds");
+  const windowLabel =
+    startSeconds === null || endSeconds === null
+      ? "—"
+      : `${startSeconds.toFixed(2)}–${endSeconds.toFixed(2)} s`;
+  const meanDifference = readFiniteMetric(summary, "meanFrameDifferenceEnergy");
+  const peakDifference = readFiniteMetric(summary, "peakFrameDifferenceEnergy");
+  const edgePersistence = readFiniteMetric(summary, "edgePersistenceRatio");
+  const lumaRange = readFiniteMetric(summary, "lumaRange");
+  const chromaURange = readFiniteMetric(summary, "chromaURange");
+  const chromaVRange = readFiniteMetric(summary, "chromaVRange");
+  const title = copy.locale === "tr" ? "Son Temporal Tarama" : "Latest Temporal Scan";
+
+  return `
+    <section class="labx-card labx-controls-card" data-lab-temporal-stress-summary="true">
+      <div class="labx-card__body">
+        <p class="labx-card__eyebrow">${escapeHtml(title)}</p>
+        <p class="labx-card__meta">${escapeHtml(windowLabel)} · ${asLabRecord(request["roi"])["width"] === undefined ? (copy.locale === "tr" ? "tam kare" : "full frame") : "ROI"}</p>
+        <div class="labx-controls-stack">
+          <div class="labx-control-row"><span class="labx-control-row__label">Frame Δ mean / peak</span><span class="labx-control-row__value">${escapeHtml(`${formatMetric(meanDifference)} / ${formatMetric(peakDifference)}`)}</span></div>
+          <div class="labx-control-row"><span class="labx-control-row__label">Edge persistence</span><span class="labx-control-row__value">${escapeHtml(formatPercent(edgePersistence))}</span></div>
+          <div class="labx-control-row"><span class="labx-control-row__label">Luma range</span><span class="labx-control-row__value">${escapeHtml(formatMetric(lumaRange))}</span></div>
+          <div class="labx-control-row"><span class="labx-control-row__label">Chroma U / V range</span><span class="labx-control-row__value">${escapeHtml(`${formatMetric(chromaURange)} / ${formatMetric(chromaVRange)}`)}</span></div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 export function renderWorkspaceInteractiveControls(
   settings: LabInteractiveSettings,
   copy: LabI18n = LAB_FALLBACK_I18N
@@ -92,6 +145,10 @@ export function renderWorkspaceInteractiveControls(
           copy
         )
       : "";
+  const temporalSummaryMarkup =
+    transformContext?.sourceKind === "video"
+      ? renderLatestTemporalStressSummary(transformContext.editConfig, copy)
+      : "";
 
   return `
     <section class="labx-card labx-controls-card labx-workspace-focus-row__panel" data-tone="accent">
@@ -126,5 +183,6 @@ export function renderWorkspaceInteractiveControls(
       </div>
     </section>
     ${transformStackMarkup}
+    ${temporalSummaryMarkup}
   `;
 }
