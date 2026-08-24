@@ -12,8 +12,11 @@ import { getCurrentSourceAsset, getLinkedAudioAssets } from "./lab-source-select
 
 function getTransformStackRenderContext(state: LabStoreState) {
   const rawSourceKind = asNonEmptyString(asLabRecord(state.source)["kind"]);
+  const comparisonActive =
+    asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId) !== null;
   const sourceKind: LaboratoryTransformStackSourceKind | null =
-    rawSourceKind === "video" || rawSourceKind === "audio" || rawSourceKind === "image"
+    comparisonActive !== true &&
+    (rawSourceKind === "video" || rawSourceKind === "audio" || rawSourceKind === "image")
       ? rawSourceKind
       : null;
   const runState = state.run?.state;
