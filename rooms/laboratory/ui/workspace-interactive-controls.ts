@@ -62,11 +62,17 @@ export function renderWorkspaceInteractiveControls(
     (transformContext.sourceKind === "video" || transformContext.sourceKind === "image")
       ? renderWorkspaceTransformStack(
           {
+            baselinePreviewUrl: transformContext.baselinePreviewUrl,
+            differencePreviewUrl: transformContext.differencePreviewUrl,
             editConfig: transformContext.editConfig,
             featureId: transformContext.featureId,
             locked: transformContext.locked,
+            previewStatus: transformContext.previewStatus,
             sourceKind: transformContext.sourceKind,
+            sourcePreviewUrl: transformContext.sourcePreviewUrl,
             scope: "visual",
+            transformPreviewMode: transformContext.transformPreviewMode,
+            transformPreviewUrl: transformContext.transformPreviewUrl,
           },
           copy
         )
