@@ -66,7 +66,10 @@ function buildCropFilter(request: LaboratoryControlInjectionRequest) {
 function buildControlFilter(request: LaboratoryControlInjectionRequest) {
   const params = request.params;
   if (request.kind === "noise") {
-    return `noise=alls=${formatNumber(params["strength"] ?? 12)}:allf=t+u`;
+    return (
+      `noise=alls=${formatNumber(params["strength"] ?? 12)}` +
+      `:allf=t+u:all_seed=${Math.round(params["seed"] ?? 4242)}`
+    );
   }
   if (request.kind === "blur") {
     return `boxblur=${formatNumber(params["radius"] ?? 2)}:1`;
@@ -78,7 +81,8 @@ function buildControlFilter(request: LaboratoryControlInjectionRequest) {
     `eq=brightness=${formatNumber(params["brightness"] ?? -0.25)}` +
       `:contrast=${formatNumber(params["contrast"] ?? 1.05)}` +
       `:saturation=${formatNumber(params["saturation"] ?? 0.9)}`,
-    `noise=alls=${formatNumber(params["noiseStrength"] ?? 8)}:allf=t+u`,
+    `noise=alls=${formatNumber(params["noiseStrength"] ?? 8)}` +
+      `:allf=t+u:all_seed=${Math.round(params["noiseSeed"] ?? 4242)}`,
   ].join(",");
 }
 
@@ -303,6 +307,14 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
       sourceKind: "video",
       sourcePath,
       comparisonMethod: "paired-reencode-baseline",
+      controlFilter: buildControlFilter(request),
+      encodeProfile: {
+        videoCodec: "libx264",
+        preset: "veryfast",
+        crf: 18,
+        pixelFormat: "yuv420p",
+        includeAudio: false,
+      },
       request,
       baselinePath: paths.baselinePath,
       injectedPath: paths.injectedPath,
