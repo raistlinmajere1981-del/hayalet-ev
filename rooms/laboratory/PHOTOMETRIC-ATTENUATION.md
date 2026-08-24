@@ -93,6 +93,10 @@ The next empirical step is to run the same probe on a nearby ordinary dark/refer
 
 The current implementation does not automate that reference comparison yet.
 
+## Validation status
+
+The host/runtime/UI slice is implemented but should be considered validation-pending until the local regression/typecheck/Laboratory gate and one real FFmpeg smoke run complete.
+
 ## Next refinement
 
 The current probe is ROI-internal. It can determine how dark and recoverable the selected region is, but it does not yet measure attenuation relative to a matched local reference region.
