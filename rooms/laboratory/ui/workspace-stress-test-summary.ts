@@ -16,6 +16,13 @@ function readFiniteMetric(record: Record<string, unknown>, key: string) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function readEdgePersistence(record: Record<string, unknown>) {
+  return (
+    readFiniteMetric(record, "spatialEdgePersistenceRatio") ??
+    readFiniteMetric(record, "edgePersistenceRatio")
+  );
+}
+
 function formatMetric(value: number | null) {
   return value === null ? "—" : value.toFixed(3);
 }
@@ -234,6 +241,7 @@ function localizeControlKind(kind: string, locale: string) {
   if (kind === "blur") return "Bulanıklık";
   if (kind === "sharpen") return "Keskinleştirme";
   if (kind === "low-light") return "Düşük ışık";
+  if (kind === "recompression") return "Yeniden sıkıştırma";
   return kind;
 }
 
@@ -258,7 +266,7 @@ function renderLatestTemporalStressSummary(editConfig: LabEditConfig | null, cop
       : `${startSeconds.toFixed(2)}–${endSeconds.toFixed(2)} s`;
   const meanDifference = readFiniteMetric(summary, "meanFrameDifferenceEnergy");
   const peakDifference = readFiniteMetric(summary, "peakFrameDifferenceEnergy");
-  const edgePersistence = readFiniteMetric(summary, "edgePersistenceRatio");
+  const edgePersistence = readEdgePersistence(summary);
   const lumaRange = readFiniteMetric(summary, "lumaRange");
   const chromaURange = readFiniteMetric(summary, "chromaURange");
   const chromaVRange = readFiniteMetric(summary, "chromaVRange");
@@ -312,7 +320,7 @@ function renderLatestControlInjectionSummary(editConfig: LabEditConfig | null, c
       : `${startSeconds.toFixed(2)}–${endSeconds.toFixed(2)} s`;
   const meanDifferenceDelta = readFiniteMetric(delta, "meanFrameDifferenceEnergy");
   const peakDifferenceDelta = readFiniteMetric(delta, "peakFrameDifferenceEnergy");
-  const edgePersistenceDelta = readFiniteMetric(delta, "edgePersistenceRatio");
+  const edgePersistenceDelta = readEdgePersistence(delta);
   const edgeEnergyDelta = readFiniteMetric(delta, "meanEdgeEnergy");
   const lumaRangeDelta = readFiniteMetric(delta, "lumaRange");
   const chromaURangeDelta = readFiniteMetric(delta, "chromaURange");
@@ -320,13 +328,17 @@ function renderLatestControlInjectionSummary(editConfig: LabEditConfig | null, c
   const title = copy.locale === "tr" ? "Son Destruction Control" : "Latest Destruction Control";
   const meaningTitle = copy.locale === "tr" ? "Control sonucu" : "Control result";
   const methodHint =
-    copy.locale === "tr"
-      ? "Δ = aynı trim/ROI/codec ile üretilen paired baseline → injected değişimi."
-      : "Δ = paired baseline → injected change with identical trim/ROI/codec.";
+    kind === "recompression"
+      ? copy.locale === "tr"
+        ? "Δ = aynı trim/ROI/codec ailesinde CRF 18 baseline → CRF 36 recompression değişimi."
+        : "Δ = CRF 18 baseline → CRF 36 recompression change with identical trim/ROI and codec family."
+      : copy.locale === "tr"
+        ? "Δ = aynı trim/ROI/codec ile üretilen paired baseline → injected değişimi."
+        : "Δ = paired baseline → injected change with identical trim/ROI/codec.";
   const caveat =
     copy.locale === "tr"
-      ? "Bu yorum yalnız control filtresinin ölçülen metriklere etkisini anlatır. Hedef yapının yok olduğu, üretildiği veya kaynağının açıklanmış olduğu anlamına gelmez."
-      : "This interpretation only describes the control filter's effect on measured metrics. It does not mean a target feature was destroyed, reproduced, or explained.";
+      ? "Bu yorum yalnız seçilen control işleminin ölçülen metriklere etkisini anlatır. Hedef yapının yok olduğu, üretildiği veya kaynağının açıklanmış olduğu anlamına gelmez."
+      : "This interpretation only describes the selected control operation's effect on measured metrics. It does not mean a target feature was destroyed, reproduced, or explained.";
 
   return `
     <section class="labx-card labx-controls-card" data-lab-control-injection-summary="true">
