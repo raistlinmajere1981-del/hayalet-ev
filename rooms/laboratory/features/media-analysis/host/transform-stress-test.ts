@@ -1,30 +1,19 @@
-type LaboratoryRecord = Record<string, unknown>;
+import {
+  LAB_AUDIO_TRANSFORM_STAGE_KINDS,
+  LAB_VISUAL_TRANSFORM_STAGE_KINDS,
+  normalizeLaboratoryTransformStages,
+} from "../../../shared/transform-stress-test-model.js";
+import type { LaboratoryTransformStage } from "../../../shared/transform-stress-test-model.js";
 
-type LaboratoryTransformStage = {
-  id: string;
-  kind: string;
-  enabled: boolean;
-  params: LaboratoryRecord;
-};
+type LaboratoryRecord = Record<string, unknown>;
 
 type CompiledStressTestFilters = {
   video: string[];
   audio: string[];
 };
 
-const VISUAL_STAGE_KINDS = new Set([
-  "brightness",
-  "contrast",
-  "gamma",
-  "saturation",
-  "blur",
-  "sharpen",
-  "grayscale",
-  "channel-isolation",
-  "denoise",
-]);
-
-const AUDIO_STAGE_KINDS = new Set(["high-pass", "low-pass", "band-pass", "gain"]);
+const VISUAL_STAGE_KINDS = new Set<string>(LAB_VISUAL_TRANSFORM_STAGE_KINDS);
+const AUDIO_STAGE_KINDS = new Set<string>(LAB_AUDIO_TRANSFORM_STAGE_KINDS);
 
 function toRecord(value: unknown): LaboratoryRecord {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -53,28 +42,6 @@ function formatNumber(value: number) {
   return Number(value.toFixed(4)).toString();
 }
 
-function normalizeStages(value: unknown): LaboratoryTransformStage[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map(function (entry: unknown, index: number): LaboratoryTransformStage | null {
-      const record = toRecord(entry);
-      const kind = asNonEmptyString(record["kind"]);
-      if (kind === null) {
-        return null;
-      }
-      return {
-        id: asNonEmptyString(record["id"]) || `stage-${index + 1}`,
-        kind,
-        enabled: record["enabled"] !== false,
-        params: toRecord(record["params"]),
-      };
-    })
-    .filter((entry): entry is LaboratoryTransformStage => entry !== null);
-}
-
 function getRecipe(project: LaboratoryRecord) {
   return toRecord(toRecord(project["edit"])["recipe"]);
 }
@@ -83,11 +50,14 @@ function getVisualStages(project: LaboratoryRecord) {
   const sourceKind = asNonEmptyString(toRecord(project["source"])["kind"]);
   const recipe = getRecipe(project);
   const section = sourceKind === "image" ? toRecord(recipe["image"]) : toRecord(recipe["video"]);
-  return normalizeStages(section["transformStages"]);
+  return normalizeLaboratoryTransformStages(section["transformStages"], "visual");
 }
 
 function getAudioStages(project: LaboratoryRecord) {
-  return normalizeStages(toRecord(getRecipe(project)["audio"])["transformStages"]);
+  return normalizeLaboratoryTransformStages(
+    toRecord(getRecipe(project)["audio"])["transformStages"],
+    "audio"
+  );
 }
 
 function compileVisualStage(stage: LaboratoryTransformStage): string[] {
