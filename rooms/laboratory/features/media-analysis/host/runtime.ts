@@ -131,6 +131,8 @@ export function createLaboratoryMediaAnalysisHostRuntime(
   const mediaEditArtifactRuntime = createMediaEditArtifactRuntime({
     asNonEmptyString,
     asNumber,
+    buildBaselineEditCommand:
+      buildBaseEditCommand as MediaEditArtifactRuntimeDeps["buildBaselineEditCommand"],
     callRoomTools,
     clampNumber,
     getProjectEditDir,
