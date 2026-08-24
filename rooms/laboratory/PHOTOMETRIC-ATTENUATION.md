@@ -93,6 +93,8 @@ The next empirical step is to run the same probe on a nearby ordinary dark/refer
 
 The current implementation does not automate that reference comparison yet.
 
+The previously validated CRF 18 → CRF 36 recompression control produced no clear measured change in its tested paired interval. That result does not answer the light-attenuation hypothesis because it tested codec robustness rather than the target's near-black signal structure.
+
 ## Validation status
 
 The host/runtime/UI slice is implemented but should be considered validation-pending until the local regression/typecheck/Laboratory gate and one real FFmpeg smoke run complete.
