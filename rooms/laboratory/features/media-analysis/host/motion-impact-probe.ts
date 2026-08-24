@@ -1,10 +1,7 @@
 import { join } from "node:path";
 
 import { normalizeLaboratoryTemporalStressTestRequest } from "../../../shared/temporal-stress-test-model.js";
-import type {
-  LaboratoryTemporalStressTestRequest,
-  LaboratoryTemporalStressTestRoi,
-} from "../../../shared/temporal-stress-test-model.js";
+import type { LaboratoryTemporalStressTestRoi } from "../../../shared/temporal-stress-test-model.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 type MotionRuntimeRecord = LaboratoryRecord;
@@ -96,10 +93,8 @@ function buildMotionGeometry(
   sourceHeight: number,
   roi: LaboratoryTemporalStressTestRoi | null
 ): MotionFrameGeometry {
-  const normalizedWidth = roi?.width ?? 1;
-  const normalizedHeight = roi?.height ?? 1;
-  const cropWidth = Math.max(1, sourceWidth * normalizedWidth);
-  const cropHeight = Math.max(1, sourceHeight * normalizedHeight);
+  const cropWidth = Math.max(1, sourceWidth * (roi?.width ?? 1));
+  const cropHeight = Math.max(1, sourceHeight * (roi?.height ?? 1));
   const aspect = cropWidth / cropHeight;
   if (aspect >= 1) {
     return {
@@ -263,8 +258,12 @@ function analyzeFramePair(
 export function analyzeLaboratoryMotionFrames(input: {
   frames: Uint8Array[];
   geometry: MotionFrameGeometry;
+  scaleX?: number;
+  scaleY?: number;
   startSeconds: number;
 }): { pairs: MotionPair[]; summary: MotionSummary } {
+  const scaleX = input.scaleX ?? 1;
+  const scaleY = input.scaleY ?? 1;
   const pairs: MotionPair[] = [];
   for (let index = 0; index < input.frames.length - 1; index += 1) {
     const previous = input.frames[index];
@@ -272,14 +271,20 @@ export function analyzeLaboratoryMotionFrames(input: {
     if (previous === undefined || current === undefined) {
       continue;
     }
-    pairs.push(
-      analyzeFramePair(
-        previous,
-        current,
-        input.geometry,
-        input.startSeconds + (index + 1) / MOTION_SAMPLE_FPS
-      )
+    const probePair = analyzeFramePair(
+      previous,
+      current,
+      input.geometry,
+      input.startSeconds + (index + 1) / MOTION_SAMPLE_FPS
     );
+    const dx = probePair.dx * scaleX;
+    const dy = probePair.dy * scaleY;
+    pairs.push({
+      ...probePair,
+      dx,
+      dy,
+      magnitude: Math.hypot(dx, dy),
+    });
   }
 
   const totalConfidence = pairs.reduce(function (sum, pair) {
@@ -467,6 +472,8 @@ export function createLaboratoryMotionImpactProbeRuntime(deps: MotionImpactProbe
     token: string;
   }) {
     const geometry = buildMotionGeometry(input.sourceWidth, input.sourceHeight, input.roi);
+    const cropWidth = input.sourceWidth * (input.roi?.width ?? 1);
+    const cropHeight = input.sourceHeight * (input.roi?.height ?? 1);
     const outputPath = join(
       getProjectEditOutputDir(input.runtime, input.project),
       `motion-probe-${input.token}.gray`
@@ -505,6 +512,8 @@ export function createLaboratoryMotionImpactProbeRuntime(deps: MotionImpactProbe
       ...analyzeLaboratoryMotionFrames({
         frames,
         geometry,
+        scaleX: cropWidth / geometry.width,
+        scaleY: cropHeight / geometry.height,
         startSeconds: input.startSeconds,
       }),
     };
@@ -588,6 +597,7 @@ export function createLaboratoryMotionImpactProbeRuntime(deps: MotionImpactProbe
         searchRadiusPixels: MOTION_SEARCH_RADIUS,
         sampleStepPixels: MOTION_SAMPLE_STEP,
         model: "grayscale-translation-block-match",
+        vectorSpace: "source-pixels-per-frame",
       },
     };
     await persistHistoryResult(runtime, result, createdAt);
@@ -717,6 +727,7 @@ export function createLaboratoryMotionImpactProbeRuntime(deps: MotionImpactProbe
         searchRadiusPixels: MOTION_SEARCH_RADIUS,
         sampleStepPixels: MOTION_SAMPLE_STEP,
         model: "grayscale-translation-block-match",
+        vectorSpace: "source-pixels-per-frame",
       },
     };
     await persistHistoryResult(runtime, result, createdAt);
