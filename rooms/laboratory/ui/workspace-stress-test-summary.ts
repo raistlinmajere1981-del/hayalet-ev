@@ -248,7 +248,8 @@ function localizeControlKind(kind: string, locale: string) {
 function renderLatestTemporalStressSummary(editConfig: LabEditConfig | null, copy: LabI18n) {
   const latest = asLabRecord(
     getTemporalHistory(editConfig).find(function (entry) {
-      return asLabRecord(entry)["kind"] !== "control-injection";
+      const kind = asLabRecord(entry)["kind"];
+      return kind !== "control-injection" && kind !== "photometric-attenuation";
     })
   );
   if (Object.keys(latest).length === 0) {
@@ -289,6 +290,107 @@ function renderLatestTemporalStressSummary(editConfig: LabEditConfig | null, cop
           <div class="labx-control-row"><span class="labx-control-row__label">Edge persistence</span><span class="labx-control-row__value">${escapeHtml(formatPercent(edgePersistence))}</span></div>
           <div class="labx-control-row"><span class="labx-control-row__label">Luma range</span><span class="labx-control-row__value">${escapeHtml(formatMetric(lumaRange))}</span></div>
           <div class="labx-control-row"><span class="labx-control-row__label">Chroma U / V range</span><span class="labx-control-row__value">${escapeHtml(`${formatMetric(chromaURange)} / ${formatMetric(chromaVRange)}`)}</span></div>
+        </div>
+        <p class="labx-card__meta">${escapeHtml(caveat)}</p>
+      </div>
+    </section>
+  `;
+}
+
+function describePhotometricInterpretation(
+  interpretation: Record<string, unknown>,
+  locale: string
+) {
+  const tr = locale === "tr";
+  if (interpretation["dataQuality"] !== "sufficient") {
+    return tr
+      ? "Fotometrik yorum için yeterli örnek oluşmadı."
+      : "The probe did not produce enough samples for photometric interpretation.";
+  }
+  const darkness = interpretation["darkness"];
+  const recoverability = interpretation["recoverability"];
+  const persistentFloor = interpretation["persistentFloor"];
+  const opening =
+    darkness === "very-dark"
+      ? tr
+        ? "ROI çok düşük luma taşıyor."
+        : "The ROI carries very low luminance."
+      : darkness === "dark"
+        ? tr
+          ? "ROI belirgin biçimde karanlık."
+          : "The ROI is distinctly dark."
+        : tr
+          ? "ROI ortalama olarak near-black düzeyinde değil."
+          : "The ROI is not near-black on average.";
+  const recovery =
+    recoverability === "high"
+      ? tr
+        ? "8× çarpımsal luma lift karanlık piksellerin büyük bölümünü geri kazanıyor; kaynakta düşük seviyeli sinyal mevcut."
+        : "An 8× multiplicative luma lift recovers a large share of dark pixels, indicating recoverable low-level signal."
+      : recoverability === "partial"
+        ? tr
+          ? "Luma lift karanlık piksellerin bir bölümünü geri kazanıyor."
+          : "The luma lift recovers part of the dark-pixel population."
+        : tr
+          ? "Luma lift karanlık piksellerin çok azını geri kazanıyor."
+          : "The luma lift recovers little of the dark-pixel population.";
+  const floor =
+    persistentFloor === "high"
+      ? tr
+        ? "Lift sonrasında da yüksek near-black oranı kalıyor; bu şiddetli zayıflama veya görüntüleme zincirinde tabana/clipping'e yakın davranışla uyumlu."
+        : "A high near-black fraction remains after lift; this is compatible with severe attenuation or imaging-chain floor/clipping behavior."
+      : persistentFloor === "moderate"
+        ? tr
+          ? "Lift sonrasında orta düzeyde near-black alan kalıyor."
+          : "A moderate near-black fraction remains after lift."
+        : tr
+          ? "Lift sonrasında near-black alanın çoğu çözülüyor."
+          : "Most near-black area resolves after lift.";
+  return `${opening} ${recovery} ${floor}`;
+}
+
+function renderLatestPhotometricSummary(editConfig: LabEditConfig | null, copy: LabI18n) {
+  const latest = asLabRecord(
+    getTemporalHistory(editConfig).find(function (entry) {
+      return asLabRecord(entry)["kind"] === "photometric-attenuation";
+    })
+  );
+  if (Object.keys(latest).length === 0) {
+    return "";
+  }
+  const request = asLabRecord(latest["request"]);
+  const metrics = asLabRecord(latest["metrics"]);
+  const summary = asLabRecord(metrics["summary"]);
+  const interpretation = asLabRecord(latest["interpretation"]);
+  const startSeconds = readFiniteMetric(request, "startSeconds");
+  const endSeconds = readFiniteMetric(request, "endSeconds");
+  const windowLabel =
+    startSeconds === null || endSeconds === null
+      ? "—"
+      : `${startSeconds.toFixed(2)}–${endSeconds.toFixed(2)} s`;
+  const meanLuma = readFiniteMetric(summary, "meanLuma");
+  const nearBlack = readFiniteMetric(summary, "meanNearBlackFraction");
+  const recovered = readFiniteMetric(summary, "recoveredDarkFraction");
+  const persistent = readFiniteMetric(summary, "persistentNearBlackFraction");
+  const spread = readFiniteMetric(summary, "lumaLowHighSpread");
+  const title = copy.locale === "tr" ? "Fotometrik Zayıflama Testi" : "Photometric Attenuation Probe";
+  const caveat =
+    copy.locale === "tr"
+      ? "Bu test yayıncının 'ışığı soğurma' iddiasını görüntü düzeyinde sınamak için bir hipotez probudur. Yüksek kalıcı near-black oranı aktif ışık soğurmayı kanıtlamaz; düşük yansıtıcılık, gölge/örtülme, düşük pozlama, sensör tabanı ve codec etkileri de benzer sonuç verebilir."
+      : "This probe operationalizes the publisher's light-absorption claim at image level. Persistent near-black signal does not prove active light absorption; low reflectance, shadow/occlusion, underexposure, sensor floor and codec effects can produce similar behavior.";
+
+  return `
+    <section class="labx-card labx-controls-card" data-lab-photometric-attenuation-summary="true">
+      <div class="labx-card__body">
+        <p class="labx-card__eyebrow">${escapeHtml(title)}</p>
+        <p class="labx-card__meta">${escapeHtml(windowLabel)} · ${asLabRecord(request["roi"])["width"] === undefined ? (copy.locale === "tr" ? "tam kare" : "full frame") : "ROI"}</p>
+        <p class="labx-card__meta" data-lab-stress-interpretation="photometric">${escapeHtml(describePhotometricInterpretation(interpretation, copy.locale))}</p>
+        <div class="labx-controls-stack">
+          <div class="labx-control-row"><span class="labx-control-row__label">Mean luma</span><span class="labx-control-row__value">${escapeHtml(formatMetric(meanLuma))}</span></div>
+          <div class="labx-control-row"><span class="labx-control-row__label">Near-black</span><span class="labx-control-row__value">${escapeHtml(formatPercent(nearBlack))}</span></div>
+          <div class="labx-control-row"><span class="labx-control-row__label">Recovered dark</span><span class="labx-control-row__value">${escapeHtml(formatPercent(recovered))}</span></div>
+          <div class="labx-control-row"><span class="labx-control-row__label">Persistent near-black</span><span class="labx-control-row__value">${escapeHtml(formatPercent(persistent))}</span></div>
+          <div class="labx-control-row"><span class="labx-control-row__label">Luma low-high spread</span><span class="labx-control-row__value">${escapeHtml(formatMetric(spread))}</span></div>
         </div>
         <p class="labx-card__meta">${escapeHtml(caveat)}</p>
       </div>
@@ -365,5 +467,5 @@ export function renderWorkspaceStressTestSummaries(
   editConfig: LabEditConfig | null,
   copy: LabI18n
 ) {
-  return `${renderLatestTemporalStressSummary(editConfig, copy)}${renderLatestControlInjectionSummary(editConfig, copy)}`;
+  return `${renderLatestTemporalStressSummary(editConfig, copy)}${renderLatestPhotometricSummary(editConfig, copy)}${renderLatestControlInjectionSummary(editConfig, copy)}`;
 }
