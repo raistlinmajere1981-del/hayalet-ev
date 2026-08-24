@@ -85,6 +85,14 @@ This exclusion makes no claim about why the edge maps are empty. Severe photomet
 
 Therefore edge absence is not discarded as evidence; it is simply not converted into a false persistence score. Photometric attenuation probing is the complementary measurement for cases where the target may carry too little luminance structure for edge metrics to be informative.
 
+## Comparison discipline
+
+The probe describes only the selected ROI. A strong result should not be interpreted in isolation.
+
+The next empirical step is to run the same probe on a nearby ordinary dark/reference region from the same scene and time window. If the target and reference behave similarly, the result supports an ordinary imaging explanation. If they separate consistently across multiple clips, that separation becomes a reason to refine the target/reference model.
+
+The current implementation does not automate that reference comparison yet.
+
 ## Next refinement
 
 The current probe is ROI-internal. It can determine how dark and recoverable the selected region is, but it does not yet measure attenuation relative to a matched local reference region.
