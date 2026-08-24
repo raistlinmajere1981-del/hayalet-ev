@@ -40,10 +40,17 @@ type LaboratorySignalStatsFrame = {
   values: Record<string, number>;
 };
 
+type LaboratoryTemporalStressTestMetric =
+  | "signal"
+  | "frame-difference"
+  | "edge"
+  | "edge-difference";
+
 type LaboratoryTemporalStressTestCommandSet = {
   signal: string[];
   frameDifference: string[];
   edge: string[];
+  edgeDifference: string[];
 };
 
 function asNonEmptyString(value: unknown): string | null {
@@ -82,7 +89,7 @@ function buildRoiFilter(request: LaboratoryTemporalStressTestRequest) {
 
 function buildMetricFilter(
   request: LaboratoryTemporalStressTestRequest,
-  metric: "signal" | "frame-difference" | "edge"
+  metric: LaboratoryTemporalStressTestMetric
 ) {
   const filters: string[] = [];
   const roiFilter = buildRoiFilter(request);
@@ -92,8 +99,11 @@ function buildMetricFilter(
   filters.push("setpts=PTS-STARTPTS", `fps=${String(request.sampleFps)}`);
   if (metric === "frame-difference") {
     filters.push("tblend=all_mode=difference");
-  } else if (metric === "edge") {
+  } else if (metric === "edge" || metric === "edge-difference") {
     filters.push("edgedetect=low=0.1:high=0.4");
+    if (metric === "edge-difference") {
+      filters.push("tblend=all_mode=difference");
+    }
   }
   filters.push("signalstats");
   if (metric === "signal") {
@@ -111,7 +121,7 @@ function buildMetricFilter(
 function buildMetricCommand(
   sourcePath: string,
   request: LaboratoryTemporalStressTestRequest,
-  metric: "signal" | "frame-difference" | "edge"
+  metric: LaboratoryTemporalStressTestMetric
 ) {
   return [
     "-hide_banner",
@@ -141,6 +151,7 @@ function buildCommands(
     signal: buildMetricCommand(sourcePath, request, "signal"),
     frameDifference: buildMetricCommand(sourcePath, request, "frame-difference"),
     edge: buildMetricCommand(sourcePath, request, "edge"),
+    edgeDifference: buildMetricCommand(sourcePath, request, "edge-difference"),
   };
 }
 
@@ -221,7 +232,8 @@ function buildTemporalResult(
   request: LaboratoryTemporalStressTestRequest,
   signalFrames: LaboratorySignalStatsFrame[],
   differenceFrames: LaboratorySignalStatsFrame[],
-  edgeFrames: LaboratorySignalStatsFrame[]
+  edgeFrames: LaboratorySignalStatsFrame[],
+  edgeDifferenceFrames: LaboratorySignalStatsFrame[] = []
 ) {
   const signal = signalFrames.map(function (frame) {
     return {
@@ -238,6 +250,12 @@ function buildTemporalResult(
     };
   });
   const edge = edgeFrames.map(function (frame) {
+    return {
+      timeSeconds: request.startSeconds + frame.timeSeconds,
+      energy: normalizeEightBitMetric(asFiniteNumber(frame.values["YAVG"])) ?? 0,
+    };
+  });
+  const edgeDifference = edgeDifferenceFrames.map(function (frame) {
     return {
       timeSeconds: request.startSeconds + frame.timeSeconds,
       energy: normalizeEightBitMetric(asFiniteNumber(frame.values["YAVG"])) ?? 0,
@@ -273,14 +291,38 @@ function buildTemporalResult(
           return value >= edgePersistenceThreshold;
         }).length / edgeValues.length;
 
+  const edgePairCount = Math.min(Math.max(0, edge.length - 1), edgeDifference.length);
+  const edgeOverlap = Array.from({ length: edgePairCount }, function (_unused, index) {
+    const previous = edge[index]?.energy ?? 0;
+    const current = edge[index + 1]?.energy ?? 0;
+    const difference = edgeDifference[index]?.energy ?? 0;
+    const intersection = clamp01((previous + current - difference) / 2);
+    const union = clamp01((previous + current + difference) / 2);
+    return {
+      timeSeconds: edgeDifference[index]?.timeSeconds ?? edge[index + 1]?.timeSeconds ?? request.startSeconds,
+      intersection,
+      union,
+      iou: union <= 1e-9 ? null : clamp01(intersection / union),
+    };
+  });
+  const spatialEdgePersistenceValues = edgeOverlap
+    .map(function (entry) {
+      return entry.iou;
+    })
+    .filter((value): value is number => value !== null);
+
   return {
     signal,
     frameDifference,
     edge,
+    edgeDifference,
+    edgeOverlap,
     summary: {
       sampleCount: signal.length,
       frameDifferenceSampleCount: frameDifference.length,
       edgeSampleCount: edge.length,
+      edgeDifferenceSampleCount: edgeDifference.length,
+      edgePersistenceSampleCount: spatialEdgePersistenceValues.length,
       meanLuma: mean(lumaValues),
       lumaRange: range(lumaValues),
       chromaURange: range(chromaUValues),
@@ -291,6 +333,9 @@ function buildTemporalResult(
       meanEdgeEnergy: mean(edgeValues),
       edgePersistenceThreshold,
       edgePersistenceRatio,
+      edgePresenceRatio: edgePersistenceRatio,
+      spatialEdgePersistenceRatio: mean(spatialEdgePersistenceValues),
+      edgePersistenceMethod: "adjacent-edge-map-iou",
     },
   };
 }
@@ -368,11 +413,18 @@ export function createLaboratoryTemporalStressTestRuntime(deps: LaboratoryTempor
       commands.frameDifference
     );
     const edgeText = await runMetricCommand(runtime, project, requestId, commands.edge);
+    const edgeDifferenceText = await runMetricCommand(
+      runtime,
+      project,
+      requestId,
+      commands.edgeDifference
+    );
     const metrics = buildTemporalResult(
       request,
       parseSignalStatsText(signalText),
       parseSignalStatsText(differenceText),
-      parseSignalStatsText(edgeText)
+      parseSignalStatsText(edgeText),
+      parseSignalStatsText(edgeDifferenceText)
     );
     const interpretation = interpretLaboratoryTemporalSummary(metrics.summary);
 
