@@ -232,7 +232,11 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
     const requiresTemporalSelection =
       feedback.buttonAction === "workspace-transform-temporal-scan" ||
       feedback.buttonAction === "workspace-photometric-attenuation" ||
+      feedback.buttonAction === "workspace-motion-reference-lock" ||
+      feedback.buttonAction === "workspace-motion-probe" ||
+      feedback.buttonAction === "workspace-impact-window-compare" ||
       feedback.buttonAction === "workspace-control-injection-run";
+    const requiresRoiSelection = feedback.buttonAction === "workspace-motion-reference-lock";
     button.textContent = feedback.idleLabel;
     delete button.dataset["labActionState"];
     delete button.dataset["labFeedbackRequestId"];
@@ -240,7 +244,8 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
     if (
       state === null ||
       state.locked ||
-      (requiresTemporalSelection && state.temporalRequest === null)
+      (requiresTemporalSelection && state.temporalRequest === null) ||
+      (requiresRoiSelection && state.temporalRequest?.roi === null)
     ) {
       button.setAttribute("disabled", "");
     } else {
@@ -362,6 +367,48 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
       });
       if (requestId !== null) {
         startActionFeedback(actionButton, state, "edit-photometric-attenuation", requestId);
+      }
+      return;
+    }
+
+    if (action === "workspace-motion-reference-lock") {
+      if (state.scope !== "visual" || state.temporalRequest?.roi == null) {
+        return;
+      }
+      event.preventDefault();
+      const requestId = sendMediaAction(deps.windowRef, state, "edit-motion-reference-lock", {
+        request: state.temporalRequest,
+      });
+      if (requestId !== null) {
+        startActionFeedback(actionButton, state, "edit-motion-reference-lock", requestId);
+      }
+      return;
+    }
+
+    if (action === "workspace-motion-probe") {
+      if (state.scope !== "visual" || state.temporalRequest === null) {
+        return;
+      }
+      event.preventDefault();
+      const requestId = sendMediaAction(deps.windowRef, state, "edit-motion-probe", {
+        request: state.temporalRequest,
+      });
+      if (requestId !== null) {
+        startActionFeedback(actionButton, state, "edit-motion-probe", requestId);
+      }
+      return;
+    }
+
+    if (action === "workspace-impact-window-compare") {
+      if (state.scope !== "visual" || state.temporalRequest === null) {
+        return;
+      }
+      event.preventDefault();
+      const requestId = sendMediaAction(deps.windowRef, state, "edit-impact-window-compare", {
+        request: state.temporalRequest,
+      });
+      if (requestId !== null) {
+        startActionFeedback(actionButton, state, "edit-impact-window-compare", requestId);
       }
       return;
     }
