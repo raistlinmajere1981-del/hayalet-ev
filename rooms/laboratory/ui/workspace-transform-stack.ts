@@ -27,6 +27,7 @@ type WorkspaceTransformStackInput = {
   featureId?: LabFeatureId;
   locked?: boolean;
   previewStatus?: string;
+  showPreview?: boolean;
   sourceKind: LaboratoryTransformStackSourceKind;
   sourcePreviewUrl?: string | null;
   scope: LaboratoryTransformStageScope;
@@ -389,7 +390,7 @@ export function renderWorkspaceTransformStack(
           <span class="labx-card__meta">${escapeHtml(`${enabledCount}/${stages.length}`)}</span>
         </div>
 
-        ${renderTransformComparisonPreview(input, enabledCount, copy)}
+        ${input.showPreview === false ? "" : renderTransformComparisonPreview(input, enabledCount, copy)}
         ${renderTemporalScanControl(input, copy)}
         ${renderControlInjectionPanel(input, copy)}
 
