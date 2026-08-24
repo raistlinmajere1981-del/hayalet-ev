@@ -232,9 +232,3 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
     attached = false;
   };
 }
-
-export const __testOnlyTransformStackLiveController = {
-  asRecipeSection,
-  asScope,
-  readRootState,
-};
