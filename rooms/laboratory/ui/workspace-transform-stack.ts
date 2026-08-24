@@ -1,5 +1,5 @@
 import { asLabRecord, escapeHtml } from "../domain/lab-types.js";
-import type { LabEditConfig } from "../domain/lab-types.js";
+import type { LabEditConfig, LabFeatureId } from "../domain/lab-types.js";
 import {
   getLaboratoryTransformStageDefinition,
   getLaboratoryTransformStageDefinitions,
@@ -10,14 +10,15 @@ import type {
   LaboratoryTransformStageParameter,
   LaboratoryTransformStageScope,
 } from "../shared/transform-stress-test-model.js";
+import type { LaboratoryTransformStackSourceKind } from "../shared/transform-stack-render-context.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
-type LaboratoryWorkspaceSourceKind = "video" | "audio" | "image";
-
 type WorkspaceTransformStackInput = {
   editConfig: LabEditConfig | null;
-  sourceKind: LaboratoryWorkspaceSourceKind;
+  featureId?: LabFeatureId;
+  locked?: boolean;
+  sourceKind: LaboratoryTransformStackSourceKind;
   scope: LaboratoryTransformStageScope;
 };
 
@@ -44,7 +45,8 @@ function getScopeRecipeSection(input: WorkspaceTransformStackInput) {
 function renderParameterControl(
   stage: LaboratoryTransformStage,
   parameter: LaboratoryTransformStageParameter,
-  scope: LaboratoryTransformStageScope
+  scope: LaboratoryTransformStageScope,
+  locked: boolean
 ) {
   const rawValue = stage.params[parameter.id] ?? parameter.defaultValue;
   const commonAttributes = [
@@ -52,12 +54,13 @@ function renderParameterControl(
     `data-lab-transform-stage-id="${escapeHtml(stage.id)}"`,
     `data-lab-transform-parameter-id="${escapeHtml(parameter.id)}"`,
   ].join(" ");
+  const disabledAttribute = locked ? " disabled" : "";
 
   if (parameter.kind === "select") {
     return `
       <label class="labx-control-row labx-transform-stage__parameter">
         <span class="labx-control-row__label">${escapeHtml(parameter.label)}</span>
-        <select class="labx-select" ${commonAttributes}>
+        <select class="labx-select" ${commonAttributes}${disabledAttribute}>
           ${(parameter.options || [])
             .map(function (option) {
               return `<option value="${escapeHtml(option.value)}" ${String(rawValue) === option.value ? "selected" : ""}>${escapeHtml(option.label)}</option>`;
@@ -78,7 +81,7 @@ function renderParameterControl(
         ${parameter.min === undefined ? "" : `min="${String(parameter.min)}"`}
         ${parameter.max === undefined ? "" : `max="${String(parameter.max)}"`}
         ${parameter.step === undefined ? "" : `step="${String(parameter.step)}"`}
-        ${commonAttributes}
+        ${commonAttributes}${disabledAttribute}
       />
       ${parameter.unit ? `<span class="labx-control-row__value">${escapeHtml(parameter.unit)}</span>` : ""}
     </label>
@@ -89,7 +92,8 @@ function renderStageRow(
   stage: LaboratoryTransformStage,
   index: number,
   stageCount: number,
-  scope: LaboratoryTransformStageScope
+  scope: LaboratoryTransformStageScope,
+  locked: boolean
 ) {
   const definition = getLaboratoryTransformStageDefinition(stage.kind);
   if (definition === undefined) {
@@ -110,6 +114,7 @@ function renderStageRow(
               data-lab-transform-scope="${escapeHtml(scope)}"
               data-lab-transform-stage-id="${escapeHtml(stage.id)}"
               data-lab-transform-stage-enabled="true"
+              ${locked ? "disabled" : ""}
             />
             <span>${escapeHtml(`${index + 1}. ${definition.label}`)}</span>
           </label>
@@ -121,7 +126,7 @@ function renderStageRow(
               data-lab-transform-scope="${escapeHtml(scope)}"
               data-lab-transform-stage-id="${escapeHtml(stage.id)}"
               data-lab-transform-direction="up"
-              ${index === 0 ? "disabled" : ""}
+              ${locked || index === 0 ? "disabled" : ""}
               title="Move up"
             >↑</button>
             <button
@@ -131,7 +136,7 @@ function renderStageRow(
               data-lab-transform-scope="${escapeHtml(scope)}"
               data-lab-transform-stage-id="${escapeHtml(stage.id)}"
               data-lab-transform-direction="down"
-              ${index === stageCount - 1 ? "disabled" : ""}
+              ${locked || index === stageCount - 1 ? "disabled" : ""}
               title="Move down"
             >↓</button>
             <button
@@ -140,12 +145,13 @@ function renderStageRow(
               data-lab-action="workspace-transform-stage-remove"
               data-lab-transform-scope="${escapeHtml(scope)}"
               data-lab-transform-stage-id="${escapeHtml(stage.id)}"
+              ${locked ? "disabled" : ""}
               title="Remove stage"
             >×</button>
           </div>
         </div>
         ${definition.parameters
-          .map((parameter) => renderParameterControl(stage, parameter, scope))
+          .map((parameter) => renderParameterControl(stage, parameter, scope, locked))
           .join("")}
       </div>
     </article>
@@ -160,6 +166,7 @@ export function renderWorkspaceTransformStack(
   const definitions = getLaboratoryTransformStageDefinitions(input.scope);
   const recipeSection = getScopeRecipeSection(input);
   const enabledCount = stages.filter((stage) => stage.enabled).length;
+  const locked = input.locked === true;
   const title =
     input.scope === "audio"
       ? copy.t("mediaAnalysis.transformStressTest.audioTitle", "Audio Transform Stack")
@@ -170,6 +177,10 @@ export function renderWorkspaceTransformStack(
       class="labx-card labx-controls-card labx-transform-stack"
       data-lab-transform-stack="${escapeHtml(input.scope)}"
       data-lab-transform-recipe-section="${escapeHtml(recipeSection)}"
+      data-lab-transform-source-kind="${escapeHtml(input.sourceKind)}"
+      data-lab-transform-feature-id="${escapeHtml(input.featureId || "media-analysis")}"
+      data-lab-transform-locked="${locked ? "true" : "false"}"
+      data-lab-transform-stages-json="${escapeHtml(JSON.stringify(stages))}"
     >
       <div class="labx-card__body">
         <div class="labx-transform-stack__header">
@@ -195,7 +206,9 @@ export function renderWorkspaceTransformStack(
                   )
                 )}</p>`
               : stages
-                  .map((stage, index) => renderStageRow(stage, index, stages.length, input.scope))
+                  .map((stage, index) =>
+                    renderStageRow(stage, index, stages.length, input.scope, locked)
+                  )
                   .join("")
           }
         </div>
@@ -205,6 +218,7 @@ export function renderWorkspaceTransformStack(
             class="labx-select"
             data-lab-transform-add-kind="${escapeHtml(input.scope)}"
             aria-label="${escapeHtml(copy.t("mediaAnalysis.transformStressTest.addStage", "Add transform stage"))}"
+            ${locked ? "disabled" : ""}
           >
             ${definitions
               .map(
@@ -218,12 +232,14 @@ export function renderWorkspaceTransformStack(
             type="button"
             data-lab-action="workspace-transform-stage-add"
             data-lab-transform-scope="${escapeHtml(input.scope)}"
+            ${locked ? "disabled" : ""}
           >${escapeHtml(copy.t("mediaAnalysis.transformStressTest.addAction", "Add Stage"))}</button>
           <button
             class="labx-inline-action"
             type="button"
             data-lab-action="workspace-transform-preview"
             data-lab-transform-scope="${escapeHtml(input.scope)}"
+            ${locked ? "disabled" : ""}
           >${escapeHtml(copy.t("mediaAnalysis.transformStressTest.previewAction", "Preview Stack"))}</button>
         </div>
       </div>
