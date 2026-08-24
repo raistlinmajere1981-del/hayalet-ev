@@ -136,3 +136,7 @@ Motion / Impact complements rather than replaces:
 - Destruction Controls for transform and codec resistance
 
 The combined workflow allows a later analysis session to ask separate questions about structure, photometry, motion and camera response without treating any single metric as a verdict about the target's origin or reality.
+
+## Validation status
+
+The implementation includes synthetic translation, source-pixel calibration, runtime reference/impact, UI exposure and host-routing regressions. The current branch still requires the local targeted test/typecheck/Laboratory gate before this slice is treated as validated.
