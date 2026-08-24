@@ -196,6 +196,9 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
         case "edit-temporal-stress-test":
           result = await mediaActionRuntime.runTemporalStressTest(runtime, requestId, actionPayload);
           break;
+        case "edit-control-injection":
+          result = await mediaActionRuntime.runControlInjection(runtime, requestId, actionPayload);
+          break;
         case "edit-apply":
           await mediaActionRuntime.applyEdit(api, runtime, requestId, actionPayload);
           break;
