@@ -76,10 +76,17 @@ function formatSignedPercent(value: number | null) {
   return `${percent >= 0 ? "+" : ""}${percent}%`;
 }
 
-function renderLatestTemporalStressSummary(editConfig: LabEditConfig | null, copy: LabI18n) {
+function getTemporalHistory(editConfig: LabEditConfig | null) {
   const edit = asLabRecord(editConfig);
-  const history = Array.isArray(edit["temporalStressTests"]) ? edit["temporalStressTests"] : [];
-  const latest = asLabRecord(history[0]);
+  return Array.isArray(edit["temporalStressTests"]) ? edit["temporalStressTests"] : [];
+}
+
+function renderLatestTemporalStressSummary(editConfig: LabEditConfig | null, copy: LabI18n) {
+  const latest = asLabRecord(
+    getTemporalHistory(editConfig).find(function (entry) {
+      return asLabRecord(entry)["kind"] !== "control-injection";
+    })
+  );
   if (Object.keys(latest).length === 0) {
     return "";
   }
@@ -117,9 +124,11 @@ function renderLatestTemporalStressSummary(editConfig: LabEditConfig | null, cop
 }
 
 function renderLatestControlInjectionSummary(editConfig: LabEditConfig | null, copy: LabI18n) {
-  const edit = asLabRecord(editConfig);
-  const history = Array.isArray(edit["controlInjectionRuns"]) ? edit["controlInjectionRuns"] : [];
-  const latest = asLabRecord(history[0]);
+  const latest = asLabRecord(
+    getTemporalHistory(editConfig).find(function (entry) {
+      return asLabRecord(entry)["kind"] === "control-injection";
+    })
+  );
   if (Object.keys(latest).length === 0) {
     return "";
   }
