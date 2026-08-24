@@ -1,3 +1,4 @@
+import { isLaboratoryControlInjectionKind } from "../../shared/control-injection-model.js";
 import { normalizeLaboratoryTemporalStressTestRequest } from "../../shared/temporal-stress-test-model.js";
 import type { LaboratoryTemporalStressTestRequest } from "../../shared/temporal-stress-test-model.js";
 import {
@@ -166,6 +167,25 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
       event.preventDefault();
       sendMediaAction(deps.windowRef, state, "edit-temporal-stress-test", {
         request: state.temporalRequest,
+      });
+      return;
+    }
+
+    if (action === "workspace-control-injection-run") {
+      if (state.scope !== "visual" || state.temporalRequest === null) {
+        return;
+      }
+      const kindSelect = root.querySelector<HTMLSelectElement>("[data-lab-control-injection-kind]");
+      const kind = kindSelect?.value || "";
+      if (!isLaboratoryControlInjectionKind(kind)) {
+        return;
+      }
+      event.preventDefault();
+      sendMediaAction(deps.windowRef, state, "edit-control-injection", {
+        request: {
+          kind,
+          temporalRequest: state.temporalRequest,
+        },
       });
       return;
     }
