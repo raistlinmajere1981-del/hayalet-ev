@@ -1,3 +1,4 @@
+import { interpretLaboratoryTemporalSummary } from "../../../shared/stress-test-interpretation.js";
 import {
   normalizeLaboratoryTemporalStressTestRequest,
 } from "../../../shared/temporal-stress-test-model.js";
@@ -382,6 +383,7 @@ export function createLaboratoryTemporalStressTestRuntime(
       parseSignalStatsText(differenceText),
       parseSignalStatsText(edgeText)
     );
+    const interpretation = interpretLaboratoryTemporalSummary(metrics.summary);
 
     const createdAt = new Date().toISOString();
     const timestampToken = createdAt.replace(/[:.]/g, "-");
@@ -393,6 +395,7 @@ export function createLaboratoryTemporalStressTestRuntime(
       sourcePath,
       request,
       metrics,
+      interpretation,
     };
     await patchActiveProject(runtime, function (nextProject) {
       const edit = toRecord(nextProject.edit);
