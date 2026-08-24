@@ -114,6 +114,8 @@ function compileVisualStage(stage: LaboratoryTransformStage): string[] {
       return [`hqdn3d=${luma}:${chroma}:${luma}:${chroma}`];
     }
   }
+
+  return [];
 }
 
 function compileAudioStage(stage: LaboratoryTransformStage): string[] {
@@ -139,6 +141,8 @@ function compileAudioStage(stage: LaboratoryTransformStage): string[] {
     case "gain":
       return [`volume=${formatNumber(clamp(params["db"], -60, 30, 0))}dB`];
   }
+
+  return [];
 }
 
 function appendFilterChain(command: string[], flag: "-vf" | "-af", filters: string[]) {
