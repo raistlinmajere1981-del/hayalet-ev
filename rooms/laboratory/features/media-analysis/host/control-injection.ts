@@ -301,7 +301,10 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
       request
     );
     const delta = buildSummaryDelta(baselineMetrics, injectedMetrics, toRecord);
-    const interpretation = interpretLaboratoryControlDelta(delta);
+    const interpretation = interpretLaboratoryControlDelta(delta, {
+      baselineSummary: baselineMetrics.summary,
+      injectedSummary: injectedMetrics.summary,
+    });
     const result = {
       schemaVersion: 1,
       kind: "control-injection",
