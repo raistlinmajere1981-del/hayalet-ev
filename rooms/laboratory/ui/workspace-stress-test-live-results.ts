@@ -6,7 +6,7 @@ import { renderWorkspaceStressTestSummaries } from "./workspace-stress-test-summ
 type StressTestRecord = Record<string, unknown>;
 type TransformPreviewMode = "source" | "transform" | "difference";
 
-const CONTROL_KINDS = ["noise", "blur", "sharpen", "low-light"] as const;
+const CONTROL_KINDS = ["noise", "blur", "sharpen", "low-light", "recompression"] as const;
 
 function readHistory(state: LabStoreState): StressTestRecord[] {
   const history = asLabRecord(state.editConfig)["temporalStressTests"];
@@ -21,6 +21,13 @@ function readHistory(state: LabStoreState): StressTestRecord[] {
 function readFiniteNumber(record: StressTestRecord, key: string): number | null {
   const value = record[key];
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readEdgePersistence(record: StressTestRecord) {
+  return (
+    readFiniteNumber(record, "spatialEdgePersistenceRatio") ??
+    readFiniteNumber(record, "edgePersistenceRatio")
+  );
 }
 
 function formatSigned(value: number | null, percent = false) {
@@ -148,6 +155,7 @@ function localizeControlKind(kind: string, locale: string) {
   if (kind === "blur") return "Bulanıklık";
   if (kind === "sharpen") return "Keskinleştirme";
   if (kind === "low-light") return "Düşük ışık";
+  if (kind === "recompression") return "Yeniden sıkıştırma";
   return kind;
 }
 
@@ -203,7 +211,7 @@ function renderControlComparison(state: LabStoreState, copy: LabI18n) {
       <th>${escapeHtml(localizeControlKind(kind, copy.locale))}</th>
       <td>${escapeHtml(localizeImpact(interpretation["overallImpact"], copy.locale))}</td>
       <td>${escapeHtml(formatSigned(readFiniteNumber(delta, "meanFrameDifferenceEnergy")))}</td>
-      <td>${escapeHtml(formatSigned(readFiniteNumber(delta, "edgePersistenceRatio"), true))}</td>
+      <td>${escapeHtml(formatSigned(readEdgePersistence(delta), true))}</td>
       <td>${escapeHtml(formatSigned(readFiniteNumber(delta, "lumaRange")))}</td>
     </tr>`;
   }).join("");
