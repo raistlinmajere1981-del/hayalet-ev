@@ -979,6 +979,75 @@ void test("laboratory run controller syncs the unified timeline playhead to the 
   assert.equal(playheadLabel.textContent, "00:02.500");
 });
 
+void test("laboratory run controller restores a paused playhead after state-driven timeline rendering", async () => {
+  const preview = new FakeMediaElement();
+  preview.duration = 5;
+  preview.currentTime = 1.25;
+  const playhead = new FakePlayheadElement();
+  const playheadLabel = new FakeTextElement(null);
+  const timelineRoot = { dataset: { duration: "5000" } };
+  const scheduledFrames: FrameRequestCallback[] = [];
+  const documentRef = new FakeDualPreviewDocument(
+    new Map<string, unknown>([
+      ['video[data-lab-preserve-media="workspace-preview"]', preview],
+      ['[data-lab-role="timeline-playhead"]', playhead],
+      ['[data-lab-role="timeline-playhead-label"]', playheadLabel],
+      [".labx-timeline", timelineRoot],
+    ]),
+    [preview]
+  );
+  Object.defineProperty(documentRef, "defaultView", {
+    configurable: true,
+    value: {
+      requestAnimationFrame(callback: FrameRequestCallback) {
+        scheduledFrames.push(callback);
+        return scheduledFrames.length;
+      },
+    },
+  });
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  eventBus.subscribe(function (event) {
+    store.dispatch(event);
+  });
+
+  const controller = createLabRunController({
+    documentRef: documentRef as unknown as Document,
+    eventBus,
+    store,
+    windowRef: {
+      roomAPI: {
+        sendEvent() {},
+      },
+      addEventListener() {},
+    } as unknown as Window,
+  });
+
+  controller.attach();
+  await Promise.resolve();
+
+  const initialSync = scheduledFrames.shift();
+  assert.ok(initialSync);
+  initialSync(16);
+
+  store.dispatch({
+    type: "workspace-timeline-updated",
+    startMs: 1000,
+    endMs: 3000,
+  });
+  playhead.style["left"] = "0%";
+  playheadLabel.textContent = "00:00.000";
+
+  const postRenderSync = scheduledFrames.shift();
+  assert.ok(postRenderSync);
+  postRenderSync(32);
+
+  assert.equal(preview.paused, true);
+  assert.equal(preview.currentTime, 1.25);
+  assert.equal(playhead.style["left"], "25%");
+  assert.equal(playheadLabel.textContent, "00:01.250");
+});
+
 void test("laboratory run controller updates focus layer from user workspace interactions", async () => {
   const originalElement = Object.getOwnPropertyDescriptor(globalThis, "Element");
   const preview = new FakeMediaElement();
@@ -1404,6 +1473,25 @@ void test("laboratory run controller drags timeline start and end handles indepe
     assert.ok(mouseDownListener);
     assert.ok(mouseMoveListener);
     assert.ok(mouseUpListener);
+
+    preview.currentTime = 8;
+    mouseDownListener(
+      new FakeMouseEvent(
+        new FakeTimelineActionElement("timeline-drag-start", timeline) as unknown as EventTarget,
+        200
+      ) as unknown as Event
+    );
+    mouseUpListener({} as unknown as Event);
+    assert.equal(preview.currentTime, 1);
+
+    mouseDownListener(
+      new FakeMouseEvent(
+        new FakeTimelineActionElement("timeline-drag-end", timeline) as unknown as EventTarget,
+        400
+      ) as unknown as Event
+    );
+    mouseUpListener({} as unknown as Event);
+    assert.equal(preview.currentTime, 3);
 
     mouseDownListener(
       new FakeMouseEvent(

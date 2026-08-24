@@ -1,3 +1,4 @@
+import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import { isLaboratoryControlInjectionKind } from "../../shared/control-injection-model.js";
 import { normalizeLaboratoryTemporalStressTestRequest } from "../../shared/temporal-stress-test-model.js";
 import type { LaboratoryTemporalStressTestRequest } from "../../shared/temporal-stress-test-model.js";
@@ -14,6 +15,8 @@ import type {
 type TransformStackRecipeSection = "video" | "audio" | "image";
 
 type TransformStackRoomApi = {
+  offHostMessage?: (listener: (message: unknown) => void) => void;
+  onHostMessage?: (listener: (message: unknown) => void) => (() => void) | void;
   sendEvent?: (eventName: string, payload: Record<string, unknown>) => void;
 };
 
@@ -34,6 +37,24 @@ type TransformStackRootState = {
   stages: ReturnType<typeof normalizeLaboratoryTransformStages>;
   temporalRequest: LaboratoryTemporalStressTestRequest | null;
 };
+
+type TransformActionFeedbackState = "running" | "success" | "error";
+
+type PendingTransformActionFeedback = {
+  action: string;
+  buttonAction: string;
+  errorLabel: string;
+  featureId: string;
+  idleLabel: string;
+  requestId: string;
+  runningLabel: string;
+  scope: LaboratoryTransformStageScope;
+  state: TransformActionFeedbackState;
+  successLabel: string;
+  timerId: number | null;
+};
+
+const ACTION_FEEDBACK_HOLD_MS = 1800;
 
 let attached = false;
 
@@ -89,6 +110,31 @@ function createRequestId(action: string) {
   return `transform-stack-${action}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export function readLaboratoryTransformStackActionResult(message: unknown) {
+  const envelope = asLabRecord(message);
+  if (envelope["type"] !== "lab-event") {
+    return null;
+  }
+  const payload = asLabRecord(envelope["payload"]);
+  const event = Object.keys(payload).length > 0 ? payload : envelope;
+  if (event["kind"] !== "request-result") {
+    return null;
+  }
+  const requestId = asNonEmptyString(event["requestId"]);
+  const stage = asNonEmptyString(event["stage"]);
+  if (
+    requestId === null ||
+    (stage !== "completed" && stage !== "failed" && stage !== "cancelled")
+  ) {
+    return null;
+  }
+  return {
+    action: asNonEmptyString(event["action"]),
+    requestId,
+    state: stage === "completed" ? ("success" as const) : ("error" as const),
+  };
+}
+
 function sendMediaAction(
   windowRef: TransformStackWindow,
   state: TransformStackRootState,
@@ -97,17 +143,18 @@ function sendMediaAction(
 ) {
   const roomApi = windowRef.roomAPI;
   if (!roomApi || typeof roomApi.sendEvent !== "function") {
-    return false;
+    return null;
   }
+  const requestId = createRequestId(action);
   roomApi.sendEvent("media-action", {
     action,
     payload: {
       featureId: state.featureId,
       ...payload,
     },
-    requestId: createRequestId(action),
+    requestId,
   });
-  return true;
+  return requestId;
 }
 
 function sendMutation(
@@ -116,7 +163,7 @@ function sendMutation(
   mutation: LaboratoryTransformStageMutation
 ) {
   if (state.locked) {
-    return false;
+    return null;
   }
   return sendMediaAction(windowRef, state, "edit-update-recipe", {
     patch: buildLaboratoryTransformStackRecipePatch(state, mutation),
@@ -135,8 +182,136 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
     return function noop() {};
   }
   attached = true;
+  const pendingFeedback = new Map<string, PendingTransformActionFeedback>();
+  let feedbackSyncFrame: number | null = null;
+
+  function findFeedbackButton(feedback: PendingTransformActionFeedback) {
+    const roots = deps.documentRef.querySelectorAll<HTMLElement>("[data-lab-transform-stack]");
+    for (const root of roots) {
+      if (
+        root.getAttribute("data-lab-transform-feature-id") !== feedback.featureId ||
+        root.getAttribute("data-lab-transform-stack") !== feedback.scope
+      ) {
+        continue;
+      }
+      const buttons = root.querySelectorAll<HTMLElement>('[data-lab-action-feedback="true"]');
+      for (const button of buttons) {
+        if (button.dataset["labAction"] === feedback.buttonAction) {
+          return button;
+        }
+      }
+    }
+    return null;
+  }
+
+  function setFeedbackButtonState(button: HTMLElement, feedback: PendingTransformActionFeedback) {
+    const label =
+      feedback.state === "running"
+        ? feedback.runningLabel
+        : feedback.state === "success"
+          ? feedback.successLabel
+          : feedback.errorLabel;
+    button.dataset["labActionState"] = feedback.state;
+    button.dataset["labFeedbackRequestId"] = feedback.requestId;
+    button.textContent = label;
+    button.setAttribute("disabled", "");
+    if (feedback.state === "running") {
+      button.setAttribute("aria-busy", "true");
+    } else {
+      button.removeAttribute("aria-busy");
+    }
+  }
+
+  function restoreFeedbackButton(feedback: PendingTransformActionFeedback) {
+    const button = findFeedbackButton(feedback);
+    if (button === null) {
+      return;
+    }
+    const root = getTransformRoot(button);
+    const state = root === null ? null : readRootState(root);
+    const requiresTemporalSelection =
+      feedback.buttonAction === "workspace-transform-temporal-scan" ||
+      feedback.buttonAction === "workspace-photometric-attenuation" ||
+      feedback.buttonAction === "workspace-control-injection-run";
+    button.textContent = feedback.idleLabel;
+    delete button.dataset["labActionState"];
+    delete button.dataset["labFeedbackRequestId"];
+    button.removeAttribute("aria-busy");
+    if (
+      state === null ||
+      state.locked ||
+      (requiresTemporalSelection && state.temporalRequest === null)
+    ) {
+      button.setAttribute("disabled", "");
+    } else {
+      button.removeAttribute("disabled");
+    }
+  }
+
+  function syncPendingFeedback() {
+    feedbackSyncFrame = null;
+    for (const feedback of pendingFeedback.values()) {
+      const button = findFeedbackButton(feedback);
+      if (button !== null) {
+        setFeedbackButtonState(button, feedback);
+      }
+    }
+  }
+
+  function schedulePendingFeedbackSync() {
+    if (pendingFeedback.size === 0 || feedbackSyncFrame !== null) {
+      return;
+    }
+    feedbackSyncFrame = deps.windowRef.requestAnimationFrame(syncPendingFeedback);
+  }
+
+  function startActionFeedback(
+    button: HTMLElement,
+    state: TransformStackRootState,
+    action: string,
+    requestId: string
+  ) {
+    if (button.dataset["labActionFeedback"] !== "true") {
+      return;
+    }
+    const idleLabel = (button.textContent || "").trim();
+    const feedback: PendingTransformActionFeedback = {
+      action,
+      buttonAction: button.dataset["labAction"] || "",
+      errorLabel: button.dataset["labFeedbackError"] || "Failed",
+      featureId: state.featureId,
+      idleLabel,
+      requestId,
+      runningLabel: button.dataset["labFeedbackRunning"] || "Working…",
+      scope: state.scope,
+      state: "running",
+      successLabel: button.dataset["labFeedbackSuccess"] || "Completed",
+      timerId: null,
+    };
+    pendingFeedback.set(requestId, feedback);
+    setFeedbackButtonState(button, feedback);
+  }
+
+  function handleHostMessage(message: unknown) {
+    const result = readLaboratoryTransformStackActionResult(message);
+    if (result !== null) {
+      const feedback = pendingFeedback.get(result.requestId);
+      if (feedback !== undefined && (result.action === null || result.action === feedback.action)) {
+        feedback.state = result.state;
+        if (feedback.timerId !== null) {
+          deps.windowRef.clearTimeout(feedback.timerId);
+        }
+        feedback.timerId = deps.windowRef.setTimeout(function () {
+          restoreFeedbackButton(feedback);
+          pendingFeedback.delete(feedback.requestId);
+        }, ACTION_FEEDBACK_HOLD_MS);
+      }
+    }
+    schedulePendingFeedbackSync();
+  }
 
   function handleClick(event: Event) {
+    schedulePendingFeedbackSync();
     if (!(event.target instanceof Element)) {
       return;
     }
@@ -156,7 +331,10 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
 
     if (action === "workspace-transform-preview") {
       event.preventDefault();
-      sendMediaAction(deps.windowRef, state, "edit-preview");
+      const requestId = sendMediaAction(deps.windowRef, state, "edit-preview");
+      if (requestId !== null) {
+        startActionFeedback(actionButton, state, "edit-preview", requestId);
+      }
       return;
     }
 
@@ -165,9 +343,12 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
         return;
       }
       event.preventDefault();
-      sendMediaAction(deps.windowRef, state, "edit-temporal-stress-test", {
+      const requestId = sendMediaAction(deps.windowRef, state, "edit-temporal-stress-test", {
         request: state.temporalRequest,
       });
+      if (requestId !== null) {
+        startActionFeedback(actionButton, state, "edit-temporal-stress-test", requestId);
+      }
       return;
     }
 
@@ -176,9 +357,12 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
         return;
       }
       event.preventDefault();
-      sendMediaAction(deps.windowRef, state, "edit-photometric-attenuation", {
+      const requestId = sendMediaAction(deps.windowRef, state, "edit-photometric-attenuation", {
         request: state.temporalRequest,
       });
+      if (requestId !== null) {
+        startActionFeedback(actionButton, state, "edit-photometric-attenuation", requestId);
+      }
       return;
     }
 
@@ -192,12 +376,15 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
         return;
       }
       event.preventDefault();
-      sendMediaAction(deps.windowRef, state, "edit-control-injection", {
+      const requestId = sendMediaAction(deps.windowRef, state, "edit-control-injection", {
         request: {
           kind,
           temporalRequest: state.temporalRequest,
         },
       });
+      if (requestId !== null) {
+        startActionFeedback(actionButton, state, "edit-control-injection", requestId);
+      }
       return;
     }
 
@@ -208,7 +395,10 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
         return;
       }
       event.preventDefault();
-      sendMutation(deps.windowRef, state, { type: "add", kind });
+      const requestId = sendMutation(deps.windowRef, state, { type: "add", kind });
+      if (requestId !== null) {
+        startActionFeedback(actionButton, state, "edit-update-recipe", requestId);
+      }
       return;
     }
 
@@ -278,10 +468,21 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
 
   deps.documentRef.addEventListener("click", handleClick);
   deps.documentRef.addEventListener("change", handleChange);
+  deps.windowRef.roomAPI?.onHostMessage?.(handleHostMessage);
 
   return function detach() {
     deps.documentRef.removeEventListener("click", handleClick);
     deps.documentRef.removeEventListener("change", handleChange);
+    deps.windowRef.roomAPI?.offHostMessage?.(handleHostMessage);
+    if (feedbackSyncFrame !== null) {
+      deps.windowRef.cancelAnimationFrame(feedbackSyncFrame);
+    }
+    for (const feedback of pendingFeedback.values()) {
+      if (feedback.timerId !== null) {
+        deps.windowRef.clearTimeout(feedback.timerId);
+      }
+    }
+    pendingFeedback.clear();
     attached = false;
   };
 }

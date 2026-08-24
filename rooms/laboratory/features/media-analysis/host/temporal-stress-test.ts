@@ -41,10 +41,7 @@ type LaboratorySignalStatsFrame = {
 };
 
 type LaboratoryTemporalStressTestMetric =
-  | "signal"
-  | "frame-difference"
-  | "edge"
-  | "edge-difference";
+  "signal" | "frame-difference" | "edge" | "edge-difference";
 
 type LaboratoryTemporalStressTestCommandSet = {
   signal: string[];
@@ -299,7 +296,8 @@ function buildTemporalResult(
     const intersection = clamp01((previous + current - difference) / 2);
     const union = clamp01((previous + current + difference) / 2);
     return {
-      timeSeconds: edgeDifference[index]?.timeSeconds ?? edge[index + 1]?.timeSeconds ?? request.startSeconds,
+      timeSeconds:
+        edgeDifference[index]?.timeSeconds ?? edge[index + 1]?.timeSeconds ?? request.startSeconds,
       intersection,
       union,
       iou: union <= 1e-9 ? null : clamp01(intersection / union),

@@ -229,6 +229,7 @@ function sanitizeWorkspaceForBoot(
     source["activeIconRailSlot"] === "denoise" ||
     source["activeIconRailSlot"] === "stabilize" ||
     source["activeIconRailSlot"] === "visual-adjust" ||
+    source["activeIconRailSlot"] === "transform-stack" ||
     source["activeIconRailSlot"] === "clip-export" ||
     source["activeIconRailSlot"] === "enhanced-frame" ||
     source["activeIconRailSlot"] === "image-comparison" ||

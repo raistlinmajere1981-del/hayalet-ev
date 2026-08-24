@@ -2,13 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-import { buildLaboratoryTransformStackRecipePatch } from "../../rooms/laboratory/runtime/controller/lab-transform-stack-live-controller.ts";
+import {
+  buildLaboratoryTransformStackRecipePatch,
+  readLaboratoryTransformStackActionResult,
+} from "../../rooms/laboratory/runtime/controller/lab-transform-stack-live-controller.ts";
 import {
   attachLaboratoryTransformStackRenderContext,
   readLaboratoryTransformStackRenderContext,
 } from "../../rooms/laboratory/shared/transform-stack-render-context.ts";
 import { renderWorkspaceAudioFocus } from "../../rooms/laboratory/ui/workspace-audio-focus.ts";
-import { renderWorkspaceInteractiveControls } from "../../rooms/laboratory/ui/workspace-interactive-controls.ts";
+import {
+  renderWorkspaceInteractiveControls,
+  renderWorkspaceVisualTransformControls,
+} from "../../rooms/laboratory/ui/workspace-interactive-controls.ts";
 
 const copy = {
   locale: "en",
@@ -51,12 +57,15 @@ void test("transform render context is non-enumerable and remains readable by in
   assert.equal(Object.keys(settings).includes("transformStack"), false);
   assert.equal(readLaboratoryTransformStackRenderContext(settings)?.sourceKind, "video");
 
-  const markup = renderWorkspaceInteractiveControls(settings, copy);
-  assert.match(markup, /data-lab-transform-stack="visual"/);
-  assert.match(markup, /data-lab-transform-stage="gamma-live"/);
-  assert.match(markup, /data-lab-transform-recipe-section="video"/);
-  assert.match(markup, /workspace view/);
-  assert.match(markup, /reproducible recipe/);
+  const liveMarkup = renderWorkspaceInteractiveControls(settings, copy);
+  const transformMarkup = renderWorkspaceVisualTransformControls(settings, copy);
+  assert.doesNotMatch(liveMarkup, /data-lab-transform-stack="visual"/);
+  assert.match(transformMarkup, /data-lab-transform-stack="visual"/);
+  assert.match(transformMarkup, /data-lab-transform-stage="gamma-live"/);
+  assert.match(transformMarkup, /data-lab-transform-recipe-section="video"/);
+  assert.match(liveMarkup, /workspace view/);
+  assert.match(liveMarkup, /Visual Transform Stack/);
+  assert.match(transformMarkup, /data-lab-action-feedback="true"/);
 });
 
 void test("audio inspector renders the reproducible audio stack beside live audition controls", () => {
@@ -76,7 +85,12 @@ void test("audio inspector renders the reproducible audio stack beside live audi
         recipe: {
           audio: {
             transformStages: [
-              { id: "band-live", kind: "band-pass", enabled: true, params: { lowHz: 120, highHz: 3200 } },
+              {
+                id: "band-live",
+                kind: "band-pass",
+                enabled: true,
+                params: { lowHz: 120, highHz: 3200 },
+              },
             ],
           },
         },
@@ -125,10 +139,52 @@ void test("locked transform stack disables mutation and preview controls", () =>
     }
   );
 
-  const markup = renderWorkspaceInteractiveControls(settings, copy);
+  const markup = renderWorkspaceVisualTransformControls(settings, copy);
   assert.match(markup, /data-lab-transform-locked="true"/);
   assert.match(markup, /data-lab-transform-stage-enabled="true"\s+disabled/);
   assert.match(markup, /data-lab-action="workspace-transform-preview"[\s\S]*?disabled/);
+});
+
+void test("transform action feedback resolves only matching terminal host results", () => {
+  assert.deepEqual(
+    readLaboratoryTransformStackActionResult({
+      type: "lab-event",
+      payload: {
+        action: "edit-preview",
+        kind: "request-result",
+        requestId: "request-preview-1",
+        stage: "completed",
+      },
+    }),
+    {
+      action: "edit-preview",
+      requestId: "request-preview-1",
+      state: "success",
+    }
+  );
+  assert.deepEqual(
+    readLaboratoryTransformStackActionResult({
+      type: "lab-event",
+      payload: {
+        action: "edit-control-injection",
+        kind: "request-result",
+        requestId: "request-control-1",
+        stage: "failed",
+      },
+    }),
+    {
+      action: "edit-control-injection",
+      requestId: "request-control-1",
+      state: "error",
+    }
+  );
+  assert.equal(
+    readLaboratoryTransformStackActionResult({
+      type: "media-state",
+      payload: { requestId: "request-preview-1" },
+    }),
+    null
+  );
 });
 
 void test("live controller builds the same ordered recipe patch that host edit-update-recipe consumes", () => {
@@ -158,7 +214,12 @@ void test("live controller builds the same ordered recipe patch that host edit-u
 
 void test("Laboratory UI entry explicitly installs the transform stack interaction binder", async () => {
   const source = await readFile("rooms/laboratory/ui/index.ts", "utf8");
+  const controllerSource = await readFile(
+    "rooms/laboratory/runtime/controller/lab-transform-stack-live-controller.ts",
+    "utf8"
+  );
   assert.match(source, /bindLaboratoryTransformStackInteractions/);
   assert.match(source, /documentRef: document/);
   assert.match(source, /windowRef: window/);
+  assert.match(controllerSource, /onHostMessage/);
 });

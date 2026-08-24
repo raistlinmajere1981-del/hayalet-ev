@@ -36,6 +36,16 @@ type WorkspaceTransformStackInput = {
   transformPreviewUrl?: string | null;
 };
 
+function renderActionFeedbackAttributes(copy: LabI18n) {
+  return [
+    'data-lab-action-feedback="true"',
+    `data-lab-feedback-running="${escapeHtml(copy.t("mediaAnalysis.transformStressTest.actionStatus.running", "Working…"))}"`,
+    `data-lab-feedback-success="${escapeHtml(copy.t("mediaAnalysis.transformStressTest.actionStatus.success", "Completed"))}"`,
+    `data-lab-feedback-error="${escapeHtml(copy.t("mediaAnalysis.transformStressTest.actionStatus.error", "Failed"))}"`,
+    'aria-live="polite"',
+  ].join(" ");
+}
+
 function readTransformStages(input: WorkspaceTransformStackInput) {
   const recipe = asLabRecord(input.editConfig?.recipe);
   if (input.scope === "audio") {
@@ -284,15 +294,17 @@ function renderTemporalScanControl(input: WorkspaceTransformStackInput, copy: La
     <div class="labx-transform-stack__temporal" data-lab-temporal-scan="true">
       <div class="labx-controls-actions">
         <button
-          class="labx-inline-action"
+          class="labx-inline-action labx-transform-action"
           type="button"
           data-lab-action="workspace-transform-temporal-scan"
+          ${renderActionFeedbackAttributes(copy)}
           ${disabled ? "disabled" : ""}
         >Temporal Scan</button>
         <button
-          class="labx-inline-action"
+          class="labx-inline-action labx-transform-action"
           type="button"
           data-lab-action="workspace-photometric-attenuation"
+          ${renderActionFeedbackAttributes(copy)}
           ${disabled ? "disabled" : ""}
         >${escapeHtml(copy.locale === "tr" ? "Fotometrik Test" : "Photometric Probe")}</button>
       </div>
@@ -348,9 +360,10 @@ function renderControlInjectionPanel(input: WorkspaceTransformStackInput, copy: 
               .join("")}
           </select>
           <button
-            class="labx-inline-action"
+            class="labx-inline-action labx-transform-action"
             type="button"
             data-lab-action="workspace-control-injection-run"
+            ${renderActionFeedbackAttributes(copy)}
             ${disabled ? "disabled" : ""}
           >${escapeHtml(copy.locale === "tr" ? "Control Çalıştır" : "Run Control")}</button>
         </div>
@@ -435,17 +448,19 @@ export function renderWorkspaceTransformStack(
               .join("")}
           </select>
           <button
-            class="labx-inline-action"
+            class="labx-inline-action labx-transform-action"
             type="button"
             data-lab-action="workspace-transform-stage-add"
             data-lab-transform-scope="${escapeHtml(input.scope)}"
+            ${renderActionFeedbackAttributes(copy)}
             ${locked ? "disabled" : ""}
           >${escapeHtml(copy.t("mediaAnalysis.transformStressTest.addAction", "Add Stage"))}</button>
           <button
-            class="labx-inline-action"
+            class="labx-inline-action labx-transform-action"
             type="button"
             data-lab-action="workspace-transform-preview"
             data-lab-transform-scope="${escapeHtml(input.scope)}"
+            ${renderActionFeedbackAttributes(copy)}
             ${locked ? "disabled" : ""}
           >${escapeHtml(copy.t("mediaAnalysis.transformStressTest.previewAction", "Preview Stack"))}</button>
         </div>

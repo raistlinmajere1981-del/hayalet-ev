@@ -2,11 +2,7 @@ import { normalizeLaboratoryTemporalStressTestRequest } from "./temporal-stress-
 import type { LaboratoryTemporalStressTestRequest } from "./temporal-stress-test-model.js";
 
 export type LaboratoryControlInjectionKind =
-  | "noise"
-  | "blur"
-  | "sharpen"
-  | "low-light"
-  | "recompression";
+  "noise" | "blur" | "sharpen" | "low-light" | "recompression";
 
 export type LaboratoryControlInjectionDefinition = {
   kind: LaboratoryControlInjectionKind;

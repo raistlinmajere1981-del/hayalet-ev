@@ -373,7 +373,8 @@ function renderLatestPhotometricSummary(editConfig: LabEditConfig | null, copy: 
   const recovered = readFiniteMetric(summary, "recoveredDarkFraction");
   const persistent = readFiniteMetric(summary, "persistentNearBlackFraction");
   const spread = readFiniteMetric(summary, "lumaLowHighSpread");
-  const title = copy.locale === "tr" ? "Fotometrik Zayıflama Testi" : "Photometric Attenuation Probe";
+  const title =
+    copy.locale === "tr" ? "Fotometrik Zayıflama Testi" : "Photometric Attenuation Probe";
   const caveat =
     copy.locale === "tr"
       ? "Bu test yayıncının 'ışığı soğurma' iddiasını görüntü düzeyinde sınamak için bir hipotez probudur. Yüksek kalıcı near-black oranı aktif ışık soğurmayı kanıtlamaz; düşük yansıtıcılık, gölge/örtülme, düşük pozlama, sensör tabanı ve codec etkileri de benzer sonuç verebilir."

@@ -36,6 +36,7 @@ export type LabIconRailSlotId =
   | "denoise"
   | "stabilize"
   | "visual-adjust"
+  | "transform-stack"
   | "clip-export"
   | "enhanced-frame"
   | "image-comparison"
@@ -46,7 +47,8 @@ export type LabIconRailSlotId =
 
 export type LabIconRailGroup = "realtime" | "post-process";
 
-export type LabIconRailSlotContent = "operation" | "audio-focus" | "visual-adjust";
+export type LabIconRailSlotContent =
+  "operation" | "audio-focus" | "visual-adjust" | "transform-stack";
 
 export interface LabIconRailSlot {
   id: LabIconRailSlotId;
@@ -125,6 +127,13 @@ export const ICON_RAIL_SLOTS: readonly LabIconRailSlot[] = [
     group: "post-process",
     capabilityId: null,
     content: "visual-adjust",
+    draft: false,
+  },
+  {
+    id: "transform-stack",
+    group: "post-process",
+    capabilityId: null,
+    content: "transform-stack",
     draft: false,
   },
 ];

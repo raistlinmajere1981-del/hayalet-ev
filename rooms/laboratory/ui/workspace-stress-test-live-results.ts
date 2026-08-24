@@ -130,9 +130,7 @@ function renderLiveTransformPreview(state: LabStoreState, copy: LabI18n) {
 
 function getTemporalRequest(entry: StressTestRecord) {
   const request = asLabRecord(entry["request"]);
-  return entry["kind"] === "control-injection"
-    ? asLabRecord(request["temporalRequest"])
-    : request;
+  return entry["kind"] === "control-injection" ? asLabRecord(request["temporalRequest"]) : request;
 }
 
 function selectionKey(entry: StressTestRecord) {
@@ -240,14 +238,12 @@ function renderControlComparison(state: LabStoreState, copy: LabI18n) {
   `;
 }
 
-export function renderWorkspaceStressTestLiveResults(
-  state: LabStoreState,
-  copy: LabI18n
-) {
+export function renderWorkspaceStressTestLiveResults(state: LabStoreState, copy: LabI18n) {
   const history = readHistory(state);
   const summaries = renderWorkspaceStressTestSummaries(state.editConfig, copy);
   const comparison = renderControlComparison(state, copy);
-  const hasResultContent = history.length > 0 || summaries.trim() !== "" || comparison.trim() !== "";
+  const hasResultContent =
+    history.length > 0 || summaries.trim() !== "" || comparison.trim() !== "";
 
   return `
     <div class="labx-strip-expanded labx-strip-expanded--live" data-lab-process-expanded="true" data-lab-live-results="true">

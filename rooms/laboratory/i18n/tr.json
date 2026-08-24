@@ -264,6 +264,7 @@
       "stem-separate": "Stem Ayirma",
       "stabilize": "Stabilizasyon",
       "visual-adjust": "Gorsel Ayarlar",
+      "transform-stack": "Görsel Dönüşüm Zinciri",
       "pin": "Paneli sabitle",
       "close": "Kapat",
       "draft": "Taslak",
@@ -2456,8 +2457,13 @@
       "addStage": "Dönüşüm aşaması ekle",
       "addAction": "Aşama Ekle",
       "previewAction": "Zinciri Önizle",
-      "liveControlsHint": "Canlı kontroller yalnız çalışma alanı görünümünü etkiler. Aşağıdaki Dönüşüm Zinciri tekrarlanabilir deney tarifidir.",
-      "liveAudioHint": "Canlı ses odağı yalnız dinleme içindir. Aşağıdaki Dönüşüm Zinciri tekrarlanabilir ses tarifidir."
+      "liveControlsHint": "Canlı kontroller yalnız çalışma alanı görünümünü etkiler. Tekrarlanabilir tarifi Görsel Dönüşüm Zinciri panelinden yönetin.",
+      "liveAudioHint": "Canlı ses odağı yalnız dinleme içindir. Aşağıdaki Dönüşüm Zinciri tekrarlanabilir ses tarifidir.",
+      "actionStatus": {
+        "running": "Çalışıyor…",
+        "success": "Tamamlandı",
+        "error": "İşlem başarısız"
+      }
     }
   },
   "visualAnalysis": {

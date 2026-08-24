@@ -75,10 +75,7 @@ function buildRoiFilter(request: LaboratoryTemporalStressTestRequest) {
   ].join("");
 }
 
-function buildPhotometricFilter(
-  request: LaboratoryTemporalStressTestRequest,
-  lifted: boolean
-) {
+function buildPhotometricFilter(request: LaboratoryTemporalStressTestRequest, lifted: boolean) {
   const filters: string[] = [];
   const roi = buildRoiFilter(request);
   if (roi !== null) {
@@ -252,9 +249,10 @@ function buildPhotometricResult(
 }
 
 function interpretPhotometricSummary(value: unknown) {
-  const summary = value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as LaboratoryRecord)
-    : {};
+  const summary =
+    value !== null && typeof value === "object" && !Array.isArray(value)
+      ? (value as LaboratoryRecord)
+      : {};
   const sampleCount = asFiniteNumber(summary["sampleCount"]) ?? 0;
   const liftedSampleCount = asFiniteNumber(summary["liftedSampleCount"]) ?? 0;
   const meanLuma = asFiniteNumber(summary["meanLuma"]) ?? 0;

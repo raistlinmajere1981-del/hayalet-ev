@@ -52,55 +52,59 @@ function renderToggle(label: string, field: string, active: boolean) {
   `;
 }
 
-export function renderWorkspaceInteractiveControls(
+export function renderWorkspaceVisualTransformControls(
   settings: LabInteractiveSettings,
   copy: LabI18n = LAB_FALLBACK_I18N
 ) {
   const transformContext = readLaboratoryTransformStackRenderContext(settings);
-  const transformStackMarkup =
-    transformContext !== null &&
+  return transformContext !== null &&
     (transformContext.sourceKind === "video" || transformContext.sourceKind === "image")
-      ? renderWorkspaceTransformStack(
-          {
-            editConfig: transformContext.editConfig,
-            featureId: transformContext.featureId,
-            locked: transformContext.locked,
-            showPreview: false,
-            sourceKind: transformContext.sourceKind,
-            scope: "visual",
-            ...(transformContext.baselinePreviewUrl === undefined
-              ? {}
-              : { baselinePreviewUrl: transformContext.baselinePreviewUrl }),
-            ...(transformContext.differencePreviewUrl === undefined
-              ? {}
-              : { differencePreviewUrl: transformContext.differencePreviewUrl }),
-            ...(transformContext.previewStatus === undefined
-              ? {}
-              : { previewStatus: transformContext.previewStatus }),
-            ...(transformContext.sourcePreviewUrl === undefined
-              ? {}
-              : { sourcePreviewUrl: transformContext.sourcePreviewUrl }),
-            ...(transformContext.temporalRequest === undefined
-              ? {}
-              : { temporalRequest: transformContext.temporalRequest }),
-            ...(transformContext.transformPreviewMode === undefined
-              ? {}
-              : { transformPreviewMode: transformContext.transformPreviewMode }),
-            ...(transformContext.transformPreviewUrl === undefined
-              ? {}
-              : { transformPreviewUrl: transformContext.transformPreviewUrl }),
-          },
-          copy
-        )
-      : "";
+    ? renderWorkspaceTransformStack(
+        {
+          editConfig: transformContext.editConfig,
+          featureId: transformContext.featureId,
+          locked: transformContext.locked,
+          showPreview: false,
+          sourceKind: transformContext.sourceKind,
+          scope: "visual",
+          ...(transformContext.baselinePreviewUrl === undefined
+            ? {}
+            : { baselinePreviewUrl: transformContext.baselinePreviewUrl }),
+          ...(transformContext.differencePreviewUrl === undefined
+            ? {}
+            : { differencePreviewUrl: transformContext.differencePreviewUrl }),
+          ...(transformContext.previewStatus === undefined
+            ? {}
+            : { previewStatus: transformContext.previewStatus }),
+          ...(transformContext.sourcePreviewUrl === undefined
+            ? {}
+            : { sourcePreviewUrl: transformContext.sourcePreviewUrl }),
+          ...(transformContext.temporalRequest === undefined
+            ? {}
+            : { temporalRequest: transformContext.temporalRequest }),
+          ...(transformContext.transformPreviewMode === undefined
+            ? {}
+            : { transformPreviewMode: transformContext.transformPreviewMode }),
+          ...(transformContext.transformPreviewUrl === undefined
+            ? {}
+            : { transformPreviewUrl: transformContext.transformPreviewUrl }),
+        },
+        copy
+      )
+    : "";
+}
 
+export function renderWorkspaceInteractiveControls(
+  settings: LabInteractiveSettings,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
   return `
     <section class="labx-card labx-controls-card labx-workspace-focus-row__panel" data-tone="accent">
       <div class="labx-card__body">
         <p class="labx-card__meta">${escapeHtml(
           copy.t(
             "mediaAnalysis.transformStressTest.liveControlsHint",
-            "Live controls affect only the workspace view. Transform Stack below is the reproducible recipe."
+            "Live controls affect only the workspace view. Use Visual Transform Stack for the reproducible recipe."
           )
         )}</p>
         <div class="labx-controls-stack">
@@ -126,6 +130,5 @@ export function renderWorkspaceInteractiveControls(
         </div>
       </div>
     </section>
-    ${transformStackMarkup}
   `;
 }
