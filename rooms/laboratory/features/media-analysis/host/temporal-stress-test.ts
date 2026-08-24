@@ -98,7 +98,16 @@ function buildMetricFilter(
   } else if (metric === "edge") {
     filters.push("edgedetect=low=0.1:high=0.4");
   }
-  filters.push("signalstats", "metadata=mode=print");
+  filters.push("signalstats");
+  if (metric === "signal") {
+    filters.push(
+      "metadata=mode=print:key=lavfi.signalstats.YAVG",
+      "metadata=mode=print:key=lavfi.signalstats.UAVG",
+      "metadata=mode=print:key=lavfi.signalstats.VAVG"
+    );
+  } else {
+    filters.push("metadata=mode=print:key=lavfi.signalstats.YAVG");
+  }
   return filters.join(",");
 }
 
@@ -139,26 +148,27 @@ function buildCommands(
 }
 
 function parseSignalStatsText(text: string): LaboratorySignalStatsFrame[] {
-  const frames: LaboratorySignalStatsFrame[] = [];
-  let current: LaboratorySignalStatsFrame | null = null;
+  const framesByTime = new Map<string, LaboratorySignalStatsFrame>();
+  let currentTimeSeconds = 0;
 
-  function flushCurrent() {
-    if (current !== null && Object.keys(current.values).length > 0) {
-      frames.push(current);
+  function getFrame(timeSeconds: number) {
+    const key = timeSeconds.toFixed(6);
+    const existing = framesByTime.get(key);
+    if (existing !== undefined) {
+      return existing;
     }
-    current = null;
+    const created = { timeSeconds, values: {} } satisfies LaboratorySignalStatsFrame;
+    framesByTime.set(key, created);
+    return created;
   }
 
   text.split(/\r?\n/).forEach(function (rawLine) {
     const line = rawLine.trim();
     const timeMatch = line.match(/\bpts_time[:=](-?\d+(?:\.\d+)?)/);
     if (timeMatch?.[1] !== undefined) {
-      flushCurrent();
       const timeSeconds = Number(timeMatch[1]);
-      current = {
-        timeSeconds: Number.isFinite(timeSeconds) ? Math.max(0, timeSeconds) : 0,
-        values: {},
-      };
+      currentTimeSeconds = Number.isFinite(timeSeconds) ? Math.max(0, timeSeconds) : 0;
+      getFrame(currentTimeSeconds);
       return;
     }
 
@@ -166,16 +176,19 @@ function parseSignalStatsText(text: string): LaboratorySignalStatsFrame[] {
     if (metricMatch?.[1] === undefined || metricMatch[2] === undefined) {
       return;
     }
-    if (current === null) {
-      current = { timeSeconds: 0, values: {} };
-    }
     const numericValue = Number(metricMatch[2]);
     if (Number.isFinite(numericValue)) {
-      current.values[metricMatch[1]] = numericValue;
+      getFrame(currentTimeSeconds).values[metricMatch[1]] = numericValue;
     }
   });
-  flushCurrent();
-  return frames;
+
+  return [...framesByTime.values()]
+    .filter(function (frame) {
+      return Object.keys(frame.values).length > 0;
+    })
+    .sort(function (left, right) {
+      return left.timeSeconds - right.timeSeconds;
+    });
 }
 
 function mean(values: number[]) {
