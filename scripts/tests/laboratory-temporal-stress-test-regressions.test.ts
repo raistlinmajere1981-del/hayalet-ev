@@ -29,8 +29,11 @@ function createTemporalRuntime() {
         ? (value as Record<string, unknown>)
         : {};
     },
-    async writeJsonFile() {},
   });
+}
+
+function assertNear(actual: number, expected: number, epsilon = 1e-9) {
+  assert.ok(Math.abs(actual - expected) <= epsilon, `${actual} was not near ${expected}`);
 }
 
 void test("temporal request clamps long workspace selections to a six second centered window", () => {
@@ -52,30 +55,30 @@ void test("temporal request clamps long workspace selections to a six second cen
 });
 
 void test("temporal request clamps ROI and sample rate without accepting an invalid time window", () => {
-  assert.deepEqual(
-    normalizeLaboratoryTemporalStressTestRequest(
-      {
-        startSeconds: 2,
-        endSeconds: 4,
-        sampleFps: 99,
-        roi: { x: -0.5, y: 0.9, width: 2, height: 0.5 },
-      },
-      8
-    ),
+  const request = normalizeLaboratoryTemporalStressTestRequest(
     {
       startSeconds: 2,
       endSeconds: 4,
-      sampleFps: 10,
-      roi: { x: 0, y: 0.9, width: 1, height: 0.09999999999999998 },
-    }
+      sampleFps: 99,
+      roi: { x: -0.5, y: 0.9, width: 2, height: 0.5 },
+    },
+    8
   );
+  assert.notEqual(request, null);
+  assert.equal(request?.startSeconds, 2);
+  assert.equal(request?.endSeconds, 4);
+  assert.equal(request?.sampleFps, 10);
+  assert.equal(request?.roi?.x, 0);
+  assert.equal(request?.roi?.y, 0.9);
+  assert.equal(request?.roi?.width, 1);
+  assertNear(request?.roi?.height ?? -1, 0.1);
   assert.equal(
     normalizeLaboratoryTemporalStressTestRequest({ startSeconds: 4, endSeconds: 4 }),
     null
   );
 });
 
-void test("temporal FFmpeg command set uses ROI, signalstats, frame difference and edge passes", () => {
+void test("temporal FFmpeg command set uses ROI and only requested signalstats keys", () => {
   const runtime = createTemporalRuntime();
   const request = normalizeLaboratoryTemporalStressTestRequest({
     startSeconds: 10,
@@ -88,21 +91,29 @@ void test("temporal FFmpeg command set uses ROI, signalstats, frame difference a
 
   assert.match(commands.signal.join(" "), /-ss 10 -t 4/);
   assert.match(commands.signal.join(" "), /crop=iw\*0\.4:ih\*0\.5:iw\*0\.2:ih\*0\.25/);
-  assert.match(commands.signal.join(" "), /signalstats,metadata=mode=print/);
+  assert.match(commands.signal.join(" "), /lavfi\.signalstats\.YAVG/);
+  assert.match(commands.signal.join(" "), /lavfi\.signalstats\.UAVG/);
+  assert.match(commands.signal.join(" "), /lavfi\.signalstats\.VAVG/);
   assert.match(commands.frameDifference.join(" "), /tblend=all_mode=difference/);
+  assert.match(commands.frameDifference.join(" "), /lavfi\.signalstats\.YAVG/);
+  assert.doesNotMatch(commands.frameDifference.join(" "), /lavfi\.signalstats\.UAVG/);
   assert.match(commands.edge.join(" "), /edgedetect=low=0\.1:high=0\.4/);
 });
 
-void test("signalstats parser keeps frame timestamps and requested metrics", () => {
+void test("signalstats parser merges repeated metadata blocks at the same timestamp", () => {
   const runtime = createTemporalRuntime();
   const frames = runtime.parseSignalStatsText(`
 frame:0 pts:0 pts_time:0
 lavfi.signalstats.YAVG=127.5
+frame:0 pts:0 pts_time:0
 lavfi.signalstats.UAVG=64
+frame:0 pts:0 pts_time:0
 lavfi.signalstats.VAVG=192
 frame:1 pts:1 pts_time:0.2
 lavfi.signalstats.YAVG=255
+frame:1 pts:1 pts_time:0.2
 lavfi.signalstats.UAVG=128
+frame:1 pts:1 pts_time:0.2
 lavfi.signalstats.VAVG=128
 `);
 
@@ -141,9 +152,9 @@ void test("temporal result exposes normalized luma chroma difference and edge pe
   assert.equal(result.signal[0]?.timeSeconds, 20);
   assert.equal(result.signal[0]?.luma, 0.5);
   assert.equal(result.frameDifference[0]?.energy, 0.1);
-  assert.equal(result.summary.meanFrameDifferenceEnergy, 0.15000000000000002);
+  assertNear(result.summary.meanFrameDifferenceEnergy, 0.15);
   assert.equal(result.summary.peakFrameDifferenceEnergy, 0.2);
-  assert.equal(result.summary.meanEdgeEnergy, 0.10000000000000002);
+  assertNear(result.summary.meanEdgeEnergy, 0.1);
   assert.ok(result.summary.edgePersistenceRatio > 0);
   assert.ok(result.summary.edgePersistenceRatio <= 1);
 });
