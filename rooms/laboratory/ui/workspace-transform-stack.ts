@@ -246,8 +246,3 @@ export function renderWorkspaceTransformStack(
     </section>
   `;
 }
-
-export const __testOnlyWorkspaceTransformStack = {
-  getScopeRecipeSection,
-  readTransformStages,
-};
