@@ -1,5 +1,6 @@
 import { createMediaActionRuntime } from "../../features/media-analysis/host/action-handlers.js";
 import { createLaboratoryHostActionRuntime } from "./action-runtime.js";
+import { readLaboratoryBinaryFileBytes } from "./electron-bridge.js";
 import { createLaboratoryToolMutationRuntime } from "./tool-mutations.js";
 
 type LaboratoryRecord = Record<string, unknown>;
@@ -52,7 +53,6 @@ type LaboratoryMediaActionRuntimeDeps = {
   patchActiveProject: UnknownFn;
   patchActiveProjectDrafts: UnknownFn;
   pushJobState: UnknownFn;
-  readBinaryFileBytes: (filePath: string) => Promise<Uint8Array | null>;
   refreshActiveProjectMetadata: UnknownFn;
   refreshToolStatus: UnknownFn;
   registerJob: UnknownFn;
@@ -145,7 +145,7 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     patchActiveProject: deps.patchActiveProject,
     patchActiveProjectDrafts: deps.patchActiveProjectDrafts,
     pushJobState: deps.pushJobState,
-    readBinaryFileBytes: deps.readBinaryFileBytes,
+    readBinaryFileBytes: readLaboratoryBinaryFileBytes,
     refreshActiveProjectMetadata: deps.refreshActiveProjectMetadata,
     refreshToolStatus: deps.refreshToolStatus,
     registerJob: deps.registerJob,
