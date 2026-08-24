@@ -36,7 +36,6 @@ type LaboratoryTemporalStressTestDeps = {
   ) => Promise<unknown>;
   roomId: string;
   toRecord: (value: unknown) => LaboratoryRecord;
-  writeJsonFile: (filePath: string, value: unknown) => Promise<unknown>;
 };
 
 type LaboratorySignalStatsFrame = {
@@ -298,7 +297,6 @@ export function createLaboratoryTemporalStressTestRuntime(
     patchActiveProject,
     roomId,
     toRecord,
-    writeJsonFile,
   } = deps;
 
   async function runMetricCommand(
@@ -374,20 +372,15 @@ export function createLaboratoryTemporalStressTestRuntime(
 
     const createdAt = new Date().toISOString();
     const timestampToken = createdAt.replace(/[:.]/g, "-");
-    const id = `temporal-stress-${timestampToken}`;
-    const outputDir = getProjectEditOutputDir(runtime, project);
-    const artifactPath = `${outputDir}/${id}.json`;
     const result = {
       schemaVersion: 1,
-      id,
+      id: `temporal-stress-${timestampToken}`,
       createdAt,
       sourceKind: "video",
       sourcePath,
       request,
       metrics,
-      artifactPath,
     };
-    await writeJsonFile(artifactPath, result);
     await patchActiveProject(runtime, function (nextProject) {
       const edit = toRecord(nextProject.edit);
       const existing = Array.isArray(edit["temporalStressTests"])
