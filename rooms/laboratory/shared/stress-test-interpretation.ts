@@ -47,12 +47,21 @@ function readFiniteNumber(record: LaboratoryRecord, key: string): number | null 
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function readEdgePersistence(record: LaboratoryRecord) {
+  return (
+    readFiniteNumber(record, "spatialEdgePersistenceRatio") ??
+    readFiniteNumber(record, "edgePersistenceRatio")
+  );
+}
+
 function hasTemporalSamples(value: unknown) {
   const summary = toRecord(value);
+  const spatialSampleCount = readFiniteNumber(summary, "edgePersistenceSampleCount");
   return (
     (readFiniteNumber(summary, "sampleCount") ?? 0) > 0 &&
     (readFiniteNumber(summary, "frameDifferenceSampleCount") ?? 0) > 0 &&
-    (readFiniteNumber(summary, "edgeSampleCount") ?? 0) > 0
+    (readFiniteNumber(summary, "edgeSampleCount") ?? 0) > 0 &&
+    (spatialSampleCount === null || spatialSampleCount > 0)
   );
 }
 
@@ -101,10 +110,7 @@ export function interpretLaboratoryTemporalSummary(
     0,
     readFiniteNumber(summary, "meanFrameDifferenceEnergy") ?? 0
   );
-  const edgePersistenceRatio = Math.max(
-    0,
-    Math.min(1, readFiniteNumber(summary, "edgePersistenceRatio") ?? 0)
-  );
+  const edgePersistenceRatio = Math.max(0, Math.min(1, readEdgePersistence(summary) ?? 0));
   const lumaRange = Math.max(0, readFiniteNumber(summary, "lumaRange") ?? 0);
   const chromaRange = Math.max(
     Math.max(0, readFiniteNumber(summary, "chromaURange") ?? 0),
@@ -143,10 +149,7 @@ export function interpretLaboratoryControlDelta(
     readFiniteNumber(delta, "meanFrameDifferenceEnergy"),
     [0.003, 0.01, 0.03]
   );
-  const edgePersistence = interpretDelta(
-    readFiniteNumber(delta, "edgePersistenceRatio"),
-    [0.03, 0.12, 0.3]
-  );
+  const edgePersistence = interpretDelta(readEdgePersistence(delta), [0.03, 0.12, 0.3]);
   const edgeEnergy = interpretDelta(readFiniteNumber(delta, "meanEdgeEnergy"), [0.003, 0.01, 0.03]);
   const luminanceRange = interpretDelta(readFiniteNumber(delta, "lumaRange"), [0.005, 0.02, 0.06]);
   const chromaMagnitude = Math.max(
