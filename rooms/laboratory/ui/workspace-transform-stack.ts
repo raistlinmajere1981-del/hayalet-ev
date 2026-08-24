@@ -10,16 +10,25 @@ import type {
   LaboratoryTransformStageParameter,
   LaboratoryTransformStageScope,
 } from "../shared/transform-stress-test-model.js";
-import type { LaboratoryTransformStackSourceKind } from "../shared/transform-stack-render-context.js";
+import type {
+  LaboratoryTransformPreviewMode,
+  LaboratoryTransformStackSourceKind,
+} from "../shared/transform-stack-render-context.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
 type WorkspaceTransformStackInput = {
+  baselinePreviewUrl?: string | null;
+  differencePreviewUrl?: string | null;
   editConfig: LabEditConfig | null;
   featureId?: LabFeatureId;
   locked?: boolean;
+  previewStatus?: string;
   sourceKind: LaboratoryTransformStackSourceKind;
+  sourcePreviewUrl?: string | null;
   scope: LaboratoryTransformStageScope;
+  transformPreviewMode?: LaboratoryTransformPreviewMode;
+  transformPreviewUrl?: string | null;
 };
 
 function readTransformStages(input: WorkspaceTransformStackInput) {
@@ -96,9 +105,6 @@ function renderStageRow(
   locked: boolean
 ) {
   const definition = getLaboratoryTransformStageDefinition(stage.kind);
-  if (definition === undefined) {
-    return "";
-  }
   return `
     <article
       class="labx-card labx-transform-stage"
@@ -158,6 +164,99 @@ function renderStageRow(
   `;
 }
 
+function renderTransformPreviewMedia(
+  sourceKind: LaboratoryTransformStackSourceKind,
+  url: string,
+  label: string
+) {
+  if (sourceKind === "video") {
+    return `<video class="labx-preview-media" controls preload="metadata" src="${escapeHtml(url)}" aria-label="${escapeHtml(label)}"></video>`;
+  }
+  return `<img class="labx-preview-media" src="${escapeHtml(url)}" alt="${escapeHtml(label)}" />`;
+}
+
+function renderTransformComparisonPreview(
+  input: WorkspaceTransformStackInput,
+  enabledCount: number,
+  copy: LabI18n
+) {
+  if (input.scope !== "visual") {
+    return "";
+  }
+  const mode = input.transformPreviewMode || "source";
+  const baselineUrl = input.baselinePreviewUrl || input.sourcePreviewUrl || null;
+  const modeUrl =
+    mode === "transform"
+      ? input.transformPreviewUrl || null
+      : mode === "difference"
+        ? input.differencePreviewUrl || null
+        : baselineUrl;
+  const sourceLabel = copy.t("mediaAnalysis.stages.source", "Source");
+  const differenceLabel = copy.t(
+    "mediaAnalysis.operations.comparison.viewModes.difference",
+    "Difference"
+  );
+  const transformLabel = "Transform";
+  const selectedValue =
+    mode === "difference" ? "difference" : mode === "transform" ? "stacked" : "side-by-side";
+  const previewStatus = input.previewStatus || "idle";
+  const previewCurrent = previewStatus === "ready";
+  const unavailableHint =
+    enabledCount === 0
+      ? copy.locale === "tr"
+        ? "Difference için en az bir etkin görsel dönüşüm aşaması ekleyin."
+        : "Add at least one enabled visual transform stage to produce Difference."
+      : previewStatus === "stale"
+        ? copy.t(
+            "mediaAnalysis.edit.previewStates.stale",
+            "Preview is stale. Generate a fresh preview before trusting the current frame."
+          )
+        : copy.locale === "tr"
+          ? "Bu görünüm için önce Zinciri Önizle ile güncel artefaktları üretin."
+          : "Generate a current Preview Stack before using this view.";
+
+  return `
+    <section
+      class="labx-card labx-transform-comparison"
+      data-lab-transform-comparison="true"
+      data-lab-transform-preview-mode="${escapeHtml(mode)}"
+      data-lab-transform-preview-status="${escapeHtml(previewStatus)}"
+    >
+      <div class="labx-card__body">
+        <div class="labx-control-row labx-control-row--select">
+          <span class="labx-control-row__label">Source / Transform / Difference</span>
+          <select
+            class="labx-select labx-select--compact"
+            data-lab-field="workspace.comparison.viewMode"
+            ${input.locked ? "disabled" : ""}
+          >
+            <option value="side-by-side" ${selectedValue === "side-by-side" ? "selected" : ""}>${escapeHtml(sourceLabel)}</option>
+            <option value="stacked" ${selectedValue === "stacked" ? "selected" : ""}>${escapeHtml(transformLabel)}</option>
+            <option value="difference" ${selectedValue === "difference" ? "selected" : ""}>${escapeHtml(differenceLabel)}</option>
+          </select>
+          <span class="labx-control-row__value">${previewCurrent ? "current" : escapeHtml(previewStatus)}</span>
+        </div>
+        <p class="labx-card__meta">${escapeHtml(
+          copy.locale === "tr"
+            ? "Source baseline aynı temel edit tarifini kullanır fakat stress-transform aşamalarını uygulamaz; Difference yalnız bu iki hizalı çıktı arasındaki piksel farkıdır."
+            : "Source baseline uses the same base edit recipe without stress-transform stages; Difference is the pixel difference between those aligned outputs."
+        )}</p>
+        <div class="labx-transform-comparison__viewport" data-lab-transform-comparison-viewport="true">
+          ${
+            modeUrl === null
+              ? `<div class="labx-empty-state"><p>${escapeHtml(unavailableHint)}</p></div>`
+              : renderTransformPreviewMedia(
+                  input.sourceKind,
+                  modeUrl,
+                  mode === "source" ? sourceLabel : mode === "difference" ? differenceLabel : transformLabel
+                )
+          }
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 export function renderWorkspaceTransformStack(
   input: WorkspaceTransformStackInput,
   copy: LabI18n = LAB_FALLBACK_I18N
@@ -195,6 +294,8 @@ export function renderWorkspaceTransformStack(
           </div>
           <span class="labx-card__meta">${escapeHtml(`${enabledCount}/${stages.length}`)}</span>
         </div>
+
+        ${renderTransformComparisonPreview(input, enabledCount, copy)}
 
         <div class="labx-controls-stack" data-lab-transform-stage-list="${escapeHtml(input.scope)}">
           ${
