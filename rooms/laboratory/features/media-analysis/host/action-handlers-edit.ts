@@ -1,3 +1,5 @@
+import { createLaboratoryTemporalStressTestRuntime } from "./temporal-stress-test.js";
+
 type MediaEditActionApi = Record<string, unknown>;
 type MediaEditProjectIdentity = {
   id?: unknown;
@@ -20,6 +22,7 @@ type MediaEditProjectRecord = {
   };
   source: {
     kind?: unknown;
+    storedPath?: unknown;
   };
 } & Record<string, unknown>;
 type MediaEditRuntimeRecord = {
@@ -35,6 +38,7 @@ type EditDeps = {
   ) => void;
   asNonEmptyString: (value: unknown) => string | null;
   audioFeatureId: string;
+  callRoomTools: (payload: Record<string, unknown>) => Promise<unknown>;
   cancelEditJobsForProject: (
     api: MediaEditActionApi,
     runtime: MediaEditRuntimeRecord,
@@ -49,6 +53,7 @@ type EditDeps = {
     presetId: string | null
   ) => Record<string, unknown> | null;
   getActiveProject: (runtime: MediaEditRuntimeRecord) => MediaEditProjectIdentity | null;
+  getProjectEditOutputDir: (runtime: MediaEditRuntimeRecord, project: MediaEditProjectRecord) => string;
   markCloseoutAsStale: (
     project: MediaEditProjectRecord,
     reason: string,
@@ -63,6 +68,7 @@ type EditDeps = {
     runtime: MediaEditRuntimeRecord,
     patcher: (project: MediaEditProjectRecord) => MediaEditProjectRecord
   ) => Promise<MediaEditProjectRecord>;
+  roomId: string;
   runEditPipeline: (
     api: MediaEditActionApi,
     runtime: MediaEditRuntimeRecord,
@@ -77,16 +83,42 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     applyEditRecipePatch,
     asNonEmptyString,
     audioFeatureId,
+    callRoomTools,
     cancelEditJobsForProject,
     createDefaultEditState,
     findEditPreset,
     getActiveProject,
+    getProjectEditOutputDir,
     markCloseoutAsStale,
     markProfileAsStale,
     patchActiveProject,
+    roomId,
     runEditPipeline,
     toRecord,
   } = deps;
+
+  const temporalStressTestRuntime = createLaboratoryTemporalStressTestRuntime({
+    callRoomTools,
+    async ensureProjectDirectories() {
+      // Prepared Laboratory projects already own the edit/output directory tree.
+    },
+    getActiveProject(runtime) {
+      return getActiveProject(runtime) as MediaEditProjectRecord | null;
+    },
+    getPreparedSourcePath(project) {
+      return asNonEmptyString(toRecord(project.source)["storedPath"]);
+    },
+    getProjectEditOutputDir(runtime, project) {
+      return getProjectEditOutputDir(runtime, project as MediaEditProjectRecord);
+    },
+    patchActiveProject(runtime, patcher) {
+      return patchActiveProject(runtime, function (project) {
+        return patcher(project) as MediaEditProjectRecord;
+      });
+    },
+    roomId,
+    toRecord,
+  });
 
   async function setEditMode(
     runtime: MediaEditRuntimeRecord,
@@ -212,6 +244,18 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     return runEditPipeline(api, runtime, requestId, "preview");
   }
 
+  async function runTemporalStressTest(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return temporalStressTestRuntime.runTemporalStressTest(
+      runtime,
+      requestId,
+      actionPayload["request"]
+    );
+  }
+
   async function applyEdit(
     api: MediaEditActionApi,
     runtime: MediaEditRuntimeRecord,
@@ -282,6 +326,7 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     cancelApply,
     cancelPreview,
     previewEdit,
+    runTemporalStressTest,
     setEditHandoff,
     setEditMode,
     setEditOutput,
