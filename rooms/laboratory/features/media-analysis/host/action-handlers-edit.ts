@@ -1,3 +1,4 @@
+import { createLaboratoryControlInjectionRuntime } from "./control-injection.js";
 import { createLaboratoryTemporalStressTestRuntime } from "./temporal-stress-test.js";
 
 type MediaEditActionApi = Record<string, unknown>;
@@ -117,6 +118,27 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
       });
     },
     roomId,
+    toRecord,
+  });
+
+  const controlInjectionRuntime = createLaboratoryControlInjectionRuntime({
+    callRoomTools,
+    getActiveProject(runtime) {
+      return getActiveProject(runtime) as MediaEditProjectRecord | null;
+    },
+    getPreparedSourcePath(project) {
+      return asNonEmptyString(toRecord(project.source)["storedPath"]);
+    },
+    getProjectEditOutputDir(runtime, project) {
+      return getProjectEditOutputDir(runtime, project as MediaEditProjectRecord);
+    },
+    patchActiveProject(runtime, patcher) {
+      return patchActiveProject(runtime, function (project) {
+        return patcher(project) as MediaEditProjectRecord;
+      });
+    },
+    roomId,
+    temporalRuntime: temporalStressTestRuntime,
     toRecord,
   });
 
@@ -256,6 +278,18 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     );
   }
 
+  async function runControlInjection(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return controlInjectionRuntime.runControlInjection(
+      runtime,
+      requestId,
+      actionPayload["request"]
+    );
+  }
+
   async function applyEdit(
     api: MediaEditActionApi,
     runtime: MediaEditRuntimeRecord,
@@ -326,6 +360,7 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     cancelApply,
     cancelPreview,
     previewEdit,
+    runControlInjection,
     runTemporalStressTest,
     setEditHandoff,
     setEditMode,
