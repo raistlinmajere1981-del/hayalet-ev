@@ -2,8 +2,8 @@ import { join } from "node:path";
 
 import { normalizeLaboratoryTemporalStressTestRequest } from "../../../shared/temporal-stress-test-model.js";
 import type {
-  LaboratoryNormalizedRoi,
   LaboratoryTemporalStressTestRequest,
+  LaboratoryTemporalStressTestRoi,
 } from "../../../shared/temporal-stress-test-model.js";
 
 type LaboratoryRecord = Record<string, unknown>;
@@ -94,7 +94,7 @@ function roundEven(value: number) {
 function buildMotionGeometry(
   sourceWidth: number,
   sourceHeight: number,
-  roi: LaboratoryNormalizedRoi | null
+  roi: LaboratoryTemporalStressTestRoi | null
 ): MotionFrameGeometry {
   const normalizedWidth = roi?.width ?? 1;
   const normalizedHeight = roi?.height ?? 1;
@@ -113,7 +113,7 @@ function buildMotionGeometry(
   };
 }
 
-function buildRoiFilter(roi: LaboratoryNormalizedRoi | null) {
+function buildRoiFilter(roi: LaboratoryTemporalStressTestRoi | null) {
   if (roi === null) {
     return null;
   }
@@ -130,7 +130,7 @@ export function buildLaboratoryMotionExtractionCommand(input: {
   endSeconds: number;
   geometry: MotionFrameGeometry;
   outputPath: string;
-  roi: LaboratoryNormalizedRoi | null;
+  roi: LaboratoryTemporalStressTestRoi | null;
   sourcePath: string;
   startSeconds: number;
 }) {
@@ -377,7 +377,7 @@ function getLatestReferenceLock(
   if (x === null || y === null || width === null || height === null) {
     return null;
   }
-  return { x, y, width, height } satisfies LaboratoryNormalizedRoi;
+  return { x, y, width, height } satisfies LaboratoryTemporalStressTestRoi;
 }
 
 function makeTimestampToken() {
@@ -458,7 +458,7 @@ export function createLaboratoryMotionImpactProbeRuntime(deps: MotionImpactProbe
     endSeconds: number;
     project: MotionProjectRecord;
     requestId: string;
-    roi: LaboratoryNormalizedRoi | null;
+    roi: LaboratoryTemporalStressTestRoi | null;
     runtime: MotionRuntimeRecord;
     sourceHeight: number;
     sourcePath: string;
