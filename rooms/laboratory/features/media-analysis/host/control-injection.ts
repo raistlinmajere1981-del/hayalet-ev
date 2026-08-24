@@ -39,6 +39,14 @@ type ControlPairPaths = {
   injectedPath: string;
 };
 
+type ControlEncodeProfile = {
+  videoCodec: "libx264";
+  preset: "veryfast";
+  crf: number;
+  pixelFormat: "yuv420p";
+  includeAudio: false;
+};
+
 function asFiniteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -64,7 +72,7 @@ function buildCropFilter(request: LaboratoryControlInjectionRequest) {
   ].join(":");
 }
 
-function buildControlFilter(request: LaboratoryControlInjectionRequest) {
+function buildControlFilter(request: LaboratoryControlInjectionRequest): string | null {
   const params = request.params;
   if (request.kind === "noise") {
     return (
@@ -78,13 +86,36 @@ function buildControlFilter(request: LaboratoryControlInjectionRequest) {
   if (request.kind === "sharpen") {
     return `unsharp=5:5:${formatNumber(params["amount"] ?? 1.25)}:5:5:0`;
   }
-  return [
-    `eq=brightness=${formatNumber(params["brightness"] ?? -0.25)}` +
-      `:contrast=${formatNumber(params["contrast"] ?? 1.05)}` +
-      `:saturation=${formatNumber(params["saturation"] ?? 0.9)}`,
-    `noise=alls=${formatNumber(params["noiseStrength"] ?? 8)}` +
-      `:allf=t+u:all_seed=${Math.round(params["noiseSeed"] ?? 4242)}`,
-  ].join(",");
+  if (request.kind === "low-light") {
+    return [
+      `eq=brightness=${formatNumber(params["brightness"] ?? -0.25)}` +
+        `:contrast=${formatNumber(params["contrast"] ?? 1.05)}` +
+        `:saturation=${formatNumber(params["saturation"] ?? 0.9)}`,
+      `noise=alls=${formatNumber(params["noiseStrength"] ?? 8)}` +
+        `:allf=t+u:all_seed=${Math.round(params["noiseSeed"] ?? 4242)}`,
+    ].join(",");
+  }
+  return null;
+}
+
+function buildEncodeProfile(
+  request: LaboratoryControlInjectionRequest,
+  injected: boolean
+): ControlEncodeProfile {
+  const params = request.params;
+  const crf =
+    request.kind === "recompression"
+      ? injected
+        ? Math.round(params["injectedCrf"] ?? 36)
+        : Math.round(params["baselineCrf"] ?? 18)
+      : 18;
+  return {
+    videoCodec: "libx264",
+    preset: "veryfast",
+    crf,
+    pixelFormat: "yuv420p",
+    includeAudio: false,
+  };
 }
 
 function buildPairCommand(
@@ -99,9 +130,11 @@ function buildPairCommand(
   if (crop !== null) {
     filters.push(crop);
   }
-  if (injected) {
-    filters.push(buildControlFilter(request));
+  const controlFilter = buildControlFilter(request);
+  if (injected && controlFilter !== null) {
+    filters.push(controlFilter);
   }
+  const encodeProfile = buildEncodeProfile(request, injected);
   return [
     "-y",
     "-hide_banner",
@@ -118,13 +151,13 @@ function buildPairCommand(
     "-dn",
     ...(filters.length > 0 ? ["-vf", filters.join(",")] : []),
     "-c:v",
-    "libx264",
+    encodeProfile.videoCodec,
     "-preset",
-    "veryfast",
+    encodeProfile.preset,
     "-crf",
-    "18",
+    String(encodeProfile.crf),
     "-pix_fmt",
-    "yuv420p",
+    encodeProfile.pixelFormat,
     "-movflags",
     "+faststart",
     outputPath,
@@ -278,6 +311,8 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
     const createdAt = new Date().toISOString();
     const timestampToken = createdAt.replace(/[:.]/g, "-");
     const paths = buildPairPaths(runtime, project, request, timestampToken);
+    const baselineEncodeProfile = buildEncodeProfile(request, false);
+    const injectedEncodeProfile = buildEncodeProfile(request, true);
     await runTool(
       runtime,
       project,
@@ -317,14 +352,15 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
       createdAt,
       sourceKind: "video",
       sourcePath,
-      comparisonMethod: "paired-reencode-baseline",
+      comparisonMethod:
+        request.kind === "recompression"
+          ? "paired-encode-quality-baseline"
+          : "paired-reencode-baseline",
       controlFilter: buildControlFilter(request),
-      encodeProfile: {
-        videoCodec: "libx264",
-        preset: "veryfast",
-        crf: 18,
-        pixelFormat: "yuv420p",
-        includeAudio: false,
+      encodeProfile: baselineEncodeProfile,
+      encodeProfiles: {
+        baseline: baselineEncodeProfile,
+        injected: injectedEncodeProfile,
       },
       request,
       baselinePath: paths.baselinePath,
@@ -355,6 +391,7 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
 
   return {
     buildControlFilter,
+    buildEncodeProfile,
     buildPairCommand,
     runControlInjection,
   };
