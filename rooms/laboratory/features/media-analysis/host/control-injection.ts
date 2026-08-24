@@ -1,5 +1,6 @@
 import { normalizeLaboratoryControlInjectionRequest } from "../../../shared/control-injection-model.js";
 import type { LaboratoryControlInjectionRequest } from "../../../shared/control-injection-model.js";
+import { interpretLaboratoryControlDelta } from "../../../shared/stress-test-interpretation.js";
 import type { LaboratoryTemporalStressTestRequest } from "../../../shared/temporal-stress-test-model.js";
 import type { createLaboratoryTemporalStressTestRuntime } from "./temporal-stress-test.js";
 
@@ -299,6 +300,8 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
       paths.injectedPath,
       request
     );
+    const delta = buildSummaryDelta(baselineMetrics, injectedMetrics, toRecord);
+    const interpretation = interpretLaboratoryControlDelta(delta);
     const result = {
       schemaVersion: 1,
       kind: "control-injection",
@@ -322,7 +325,8 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
         baseline: baselineMetrics,
         injected: injectedMetrics,
       },
-      delta: buildSummaryDelta(baselineMetrics, injectedMetrics, toRecord),
+      delta,
+      interpretation,
     };
 
     await patchActiveProject(runtime, function (nextProject) {
