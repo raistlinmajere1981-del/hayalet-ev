@@ -120,7 +120,10 @@ void test("photometric result separates recoverable darkness from persistent nea
   assert.equal(result.summary.sampleCount, 2);
   assert.equal(result.summary.liftedSampleCount, 2);
   assert.equal(result.summary.meanNearBlackFraction, 0.75);
-  assert.equal(result.summary.persistentNearBlackFraction, 0.15);
+  assert.ok(
+    Math.abs(result.summary.persistentNearBlackFraction - 0.15) <= 1e-9,
+    `${result.summary.persistentNearBlackFraction} was not near 0.15`
+  );
   assert.equal(result.summary.recoveredDarkFraction, 0.6);
   assert.ok(result.summary.meanLuma < 0.1);
   const interpretation = runtime.interpretPhotometricSummary(result.summary);
