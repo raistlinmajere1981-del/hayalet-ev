@@ -1,5 +1,8 @@
 import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import type { LabAsset, LabComparisonSide, LabStoreState } from "../../domain/lab-types.js";
+import {
+  buildLaboratoryTemporalStressTestRequestFromWorkspaceSelection,
+} from "../../shared/temporal-stress-test-model.js";
 import { attachLaboratoryTransformStackRenderContext } from "../../shared/transform-stack-render-context.js";
 import type {
   LaboratoryTransformPreviewMode,
@@ -35,6 +38,14 @@ function getTransformPreviewMode(state: LabStoreState): LaboratoryTransformPrevi
   return "source";
 }
 
+function getSourceDurationSeconds(source: Record<string, unknown>) {
+  const metadata = asLabRecord(source["metadata"]);
+  const durationSeconds = metadata["durationSeconds"];
+  return typeof durationSeconds === "number" && Number.isFinite(durationSeconds)
+    ? Math.max(0, durationSeconds)
+    : null;
+}
+
 function getTransformStackRenderContext(state: LabStoreState) {
   const source = asLabRecord(state.source);
   const rawSourceKind = asNonEmptyString(source["kind"]);
@@ -49,6 +60,13 @@ function getTransformStackRenderContext(state: LabStoreState) {
   const preview = asLabRecord(asLabRecord(state.editConfig)["preview"]);
   const previewStatus = asNonEmptyString(preview["status"]) || "idle";
   const previewReady = previewStatus === "ready";
+  const temporalRequest =
+    sourceKind === "video"
+      ? buildLaboratoryTemporalStressTestRequestFromWorkspaceSelection(
+          state.ui.workspace.activeSelection,
+          getSourceDurationSeconds(source)
+        )
+      : null;
   return {
     baselinePreviewUrl: previewReady
       ? findPreviewArtifactUrl(preview, "transform-source-baseline")
@@ -62,6 +80,7 @@ function getTransformStackRenderContext(state: LabStoreState) {
     previewStatus,
     sourceKind,
     sourcePreviewUrl: asNonEmptyString(source["previewUrl"]),
+    temporalRequest,
     transformPreviewMode: getTransformPreviewMode(state),
     transformPreviewUrl: previewReady ? asNonEmptyString(preview["previewUrl"]) : null,
   };
