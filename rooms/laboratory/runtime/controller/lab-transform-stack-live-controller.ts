@@ -171,6 +171,17 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
       return;
     }
 
+    if (action === "workspace-photometric-attenuation") {
+      if (state.scope !== "visual" || state.temporalRequest === null) {
+        return;
+      }
+      event.preventDefault();
+      sendMediaAction(deps.windowRef, state, "edit-photometric-attenuation", {
+        request: state.temporalRequest,
+      });
+      return;
+    }
+
     if (action === "workspace-control-injection-run") {
       if (state.scope !== "visual" || state.temporalRequest === null) {
         return;
