@@ -3,7 +3,11 @@ import {
   LAB_VISUAL_TRANSFORM_STAGE_KINDS,
   normalizeLaboratoryTransformStages,
 } from "../../../shared/transform-stress-test-model.js";
-import type { LaboratoryTransformStage } from "../../../shared/transform-stress-test-model.js";
+import type {
+  LaboratoryAudioTransformStageKind,
+  LaboratoryTransformStage,
+  LaboratoryVisualTransformStageKind,
+} from "../../../shared/transform-stress-test-model.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -12,8 +16,21 @@ type CompiledStressTestFilters = {
   audio: string[];
 };
 
-const VISUAL_STAGE_KINDS = new Set<string>(LAB_VISUAL_TRANSFORM_STAGE_KINDS);
-const AUDIO_STAGE_KINDS = new Set<string>(LAB_AUDIO_TRANSFORM_STAGE_KINDS);
+function isVisualStageKind(
+  value: LaboratoryTransformStage["kind"]
+): value is LaboratoryVisualTransformStageKind {
+  return LAB_VISUAL_TRANSFORM_STAGE_KINDS.some(function (kind) {
+    return kind === value;
+  });
+}
+
+function isAudioStageKind(
+  value: LaboratoryTransformStage["kind"]
+): value is LaboratoryAudioTransformStageKind {
+  return LAB_AUDIO_TRANSFORM_STAGE_KINDS.some(function (kind) {
+    return kind === value;
+  });
+}
 
 function toRecord(value: unknown): LaboratoryRecord {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -61,7 +78,7 @@ function getAudioStages(project: LaboratoryRecord) {
 }
 
 function compileVisualStage(stage: LaboratoryTransformStage): string[] {
-  if (stage.enabled !== true || VISUAL_STAGE_KINDS.has(stage.kind) !== true) {
+  if (stage.enabled !== true || !isVisualStageKind(stage.kind)) {
     return [];
   }
 
@@ -96,13 +113,11 @@ function compileVisualStage(stage: LaboratoryTransformStage): string[] {
       const chroma = formatNumber(clamp(params["chroma"], 0, 20, 3));
       return [`hqdn3d=${luma}:${chroma}:${luma}:${chroma}`];
     }
-    default:
-      return [];
   }
 }
 
 function compileAudioStage(stage: LaboratoryTransformStage): string[] {
-  if (stage.enabled !== true || AUDIO_STAGE_KINDS.has(stage.kind) !== true) {
+  if (stage.enabled !== true || !isAudioStageKind(stage.kind)) {
     return [];
   }
 
@@ -123,8 +138,6 @@ function compileAudioStage(stage: LaboratoryTransformStage): string[] {
     }
     case "gain":
       return [`volume=${formatNumber(clamp(params["db"], -60, 30, 0))}dB`];
-    default:
-      return [];
   }
 }
 
