@@ -275,19 +275,27 @@ function renderTemporalScanControl(input: WorkspaceTransformStackInput, copy: La
   const hint =
     request === null
       ? copy.locale === "tr"
-        ? "Önce timeline üzerinde bir zaman aralığı seçin. Tarama en fazla 6 saniyeyi ve varsa seçili ROI'yi ölçer."
-        : "Select a timeline range first. The scan measures at most six seconds and uses the selected ROI when present."
+        ? "Önce timeline üzerinde bir zaman aralığı seçin. Taramalar en fazla 6 saniyeyi ve varsa seçili ROI'yi ölçer."
+        : "Select a timeline range first. Probes measure at most six seconds and use the selected ROI when present."
       : copy.locale === "tr"
         ? `${request.startSeconds.toFixed(2)}–${request.endSeconds.toFixed(2)} sn · ${request.roi === null ? "tam kare" : "ROI"} · ${request.sampleFps} fps`
         : `${request.startSeconds.toFixed(2)}–${request.endSeconds.toFixed(2)} s · ${request.roi === null ? "full frame" : "ROI"} · ${request.sampleFps} fps`;
   return `
     <div class="labx-transform-stack__temporal" data-lab-temporal-scan="true">
-      <button
-        class="labx-inline-action"
-        type="button"
-        data-lab-action="workspace-transform-temporal-scan"
-        ${disabled ? "disabled" : ""}
-      >Temporal Scan</button>
+      <div class="labx-controls-actions">
+        <button
+          class="labx-inline-action"
+          type="button"
+          data-lab-action="workspace-transform-temporal-scan"
+          ${disabled ? "disabled" : ""}
+        >Temporal Scan</button>
+        <button
+          class="labx-inline-action"
+          type="button"
+          data-lab-action="workspace-photometric-attenuation"
+          ${disabled ? "disabled" : ""}
+        >${escapeHtml(copy.locale === "tr" ? "Fotometrik Test" : "Photometric Probe")}</button>
+      </div>
       <p class="labx-card__meta">${escapeHtml(hint)}</p>
     </div>
   `;
