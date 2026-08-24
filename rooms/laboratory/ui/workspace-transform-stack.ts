@@ -1,5 +1,9 @@
 import { asLabRecord, escapeHtml } from "../domain/lab-types.js";
 import type { LabEditConfig, LabFeatureId } from "../domain/lab-types.js";
+import {
+  getLaboratoryControlInjectionDefinitions,
+} from "../shared/control-injection-model.js";
+import type { LaboratoryControlInjectionKind } from "../shared/control-injection-model.js";
 import type { LaboratoryTemporalStressTestRequest } from "../shared/temporal-stress-test-model.js";
 import {
   getLaboratoryTransformStageDefinition,
@@ -286,6 +290,62 @@ function renderTemporalScanControl(input: WorkspaceTransformStackInput, copy: La
   `;
 }
 
+function getLocalizedControlLabel(kind: LaboratoryControlInjectionKind, copy: LabI18n) {
+  if (copy.locale !== "tr") {
+    return getLaboratoryControlInjectionDefinitions().find((entry) => entry.kind === kind)?.label || kind;
+  }
+  if (kind === "noise") return "Gürültü";
+  if (kind === "blur") return "Bulanıklık";
+  if (kind === "sharpen") return "Keskinleştirme";
+  return "Düşük ışık";
+}
+
+function renderControlInjectionPanel(input: WorkspaceTransformStackInput, copy: LabI18n) {
+  if (input.scope !== "visual" || input.sourceKind !== "video") {
+    return "";
+  }
+  const request = input.temporalRequest ?? null;
+  const disabled = input.locked === true || request === null;
+  const definitions = getLaboratoryControlInjectionDefinitions();
+  const title = copy.locale === "tr" ? "Destruction Controls" : "Destruction Controls";
+  const hint =
+    request === null
+      ? copy.locale === "tr"
+        ? "Control testi için önce gerçek bir timeline aralığı seçin."
+        : "Select a real timeline range before running a control test."
+      : copy.locale === "tr"
+        ? "Her koşu aynı trim/ROI/codec ile bir kontrol baseline ve bir injected klip üretir; gösterilen fark yeniden kodlamayı değil seçilen control filtresini izole etmeye çalışır."
+        : "Each run creates a control baseline and an injected clip with the same trim/ROI/codec so the measured delta isolates the selected control filter from re-encoding.";
+  return `
+    <section class="labx-card labx-transform-control-injection" data-lab-control-injection="true">
+      <div class="labx-card__body">
+        <p class="labx-card__eyebrow">${escapeHtml(title)}</p>
+        <div class="labx-controls-actions">
+          <select
+            class="labx-select"
+            data-lab-control-injection-kind="true"
+            aria-label="Destruction control"
+            ${disabled ? "disabled" : ""}
+          >
+            ${definitions
+              .map(function (definition) {
+                return `<option value="${escapeHtml(definition.kind)}">${escapeHtml(getLocalizedControlLabel(definition.kind, copy))}</option>`;
+              })
+              .join("")}
+          </select>
+          <button
+            class="labx-inline-action"
+            type="button"
+            data-lab-action="workspace-control-injection-run"
+            ${disabled ? "disabled" : ""}
+          >${escapeHtml(copy.locale === "tr" ? "Control Çalıştır" : "Run Control")}</button>
+        </div>
+        <p class="labx-card__meta">${escapeHtml(hint)}</p>
+      </div>
+    </section>
+  `;
+}
+
 export function renderWorkspaceTransformStack(
   input: WorkspaceTransformStackInput,
   copy: LabI18n = LAB_FALLBACK_I18N
@@ -327,6 +387,7 @@ export function renderWorkspaceTransformStack(
 
         ${renderTransformComparisonPreview(input, enabledCount, copy)}
         ${renderTemporalScanControl(input, copy)}
+        ${renderControlInjectionPanel(input, copy)}
 
         <div class="labx-controls-stack" data-lab-transform-stage-list="${escapeHtml(input.scope)}">
           ${
