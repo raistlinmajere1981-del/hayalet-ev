@@ -200,6 +200,13 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
             actionPayload
           );
           break;
+        case "edit-photometric-attenuation":
+          result = await mediaActionRuntime.runPhotometricAttenuation(
+            runtime,
+            requestId,
+            actionPayload
+          );
+          break;
         case "edit-control-injection":
           result = await mediaActionRuntime.runControlInjection(runtime, requestId, actionPayload);
           break;
