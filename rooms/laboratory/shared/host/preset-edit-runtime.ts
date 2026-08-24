@@ -36,11 +36,13 @@ type LaboratoryRecord = Record<string, unknown> & {
   preview?: LaboratoryRecord;
   recipe?: LaboratoryRecord;
   recipeSignature?: unknown;
+  recipeSnapshot?: unknown;
   redactionBoxes?: unknown[];
   requestId?: unknown;
   resizePresets?: LaboratoryRecord;
   sourcePath?: unknown;
   status?: unknown;
+  transformStackProvenance?: unknown;
   updatedAt?: unknown;
   video?: LaboratoryRecord;
   width?: unknown;
@@ -73,7 +75,9 @@ type LaboratoryEditOutput = {
   mimeType: string | null;
   path: string | null;
   recipeSignature: string | null;
+  recipeSnapshot: LaboratoryRecord;
   sourcePath: string | null;
+  transformStackProvenance: LaboratoryRecord;
 };
 
 type LaboratoryEditPreview = {
@@ -86,8 +90,10 @@ type LaboratoryEditPreview = {
   outputId: string | null;
   path: string | null;
   recipeSignature: string | null;
+  recipeSnapshot: LaboratoryRecord;
   requestId: string | null;
   status: string;
+  transformStackProvenance: LaboratoryRecord;
   updatedAt: string | null;
 };
 
@@ -248,6 +254,8 @@ export function createLaboratoryPresetEditRuntime(deps: LaboratoryPresetEditRunt
         artifacts: [],
         error: null,
         recipeSignature: null,
+        recipeSnapshot: {},
+        transformStackProvenance: {},
         updatedAt: null,
       },
       recipe: {
@@ -362,6 +370,8 @@ export function createLaboratoryPresetEditRuntime(deps: LaboratoryPresetEditRunt
       mimeType: asNonEmptyString(source.mimeType),
       createdAt: asNonEmptyString(source.createdAt) || new Date().toISOString(),
       recipeSignature: asNonEmptyString(source.recipeSignature),
+      recipeSnapshot: toRecord(source.recipeSnapshot),
+      transformStackProvenance: toRecord(source.transformStackProvenance),
       metadata: normalizeSourceMetadata(source.metadata),
       label: asNonEmptyString(source.label),
       jobId: asNonEmptyString(source.jobId),
@@ -422,6 +432,8 @@ export function createLaboratoryPresetEditRuntime(deps: LaboratoryPresetEditRunt
         artifacts: Array.isArray(previewArtifacts) ? previewArtifacts.map(toRecord) : [],
         error: asNonEmptyString(preview.error),
         recipeSignature: asNonEmptyString(preview.recipeSignature),
+        recipeSnapshot: toRecord(preview.recipeSnapshot),
+        transformStackProvenance: toRecord(preview.transformStackProvenance),
         updatedAt: asNonEmptyString(preview.updatedAt),
       },
       recipe: {
