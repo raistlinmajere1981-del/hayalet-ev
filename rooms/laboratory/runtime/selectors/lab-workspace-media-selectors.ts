@@ -1,7 +1,10 @@
 import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import type { LabAsset, LabComparisonSide, LabStoreState } from "../../domain/lab-types.js";
 import { attachLaboratoryTransformStackRenderContext } from "../../shared/transform-stack-render-context.js";
-import type { LaboratoryTransformStackSourceKind } from "../../shared/transform-stack-render-context.js";
+import type {
+  LaboratoryTransformPreviewMode,
+  LaboratoryTransformStackSourceKind,
+} from "../../shared/transform-stack-render-context.js";
 import { normalizeAudioFocusSettings } from "../lab-audio-focus-normalization.js";
 import {
   createLabComparisonInteractiveSettings,
@@ -10,8 +13,31 @@ import {
 import { getWorkspaceSourceSelectionResetKey } from "../lab-workspace-selection.js";
 import { getCurrentSourceAsset, getLinkedAudioAssets } from "./lab-source-selectors.js";
 
+function findPreviewArtifactUrl(preview: Record<string, unknown>, kind: string) {
+  const artifacts = Array.isArray(preview["artifacts"]) ? preview["artifacts"] : [];
+  for (const entry of artifacts) {
+    const artifact = asLabRecord(entry);
+    if (asNonEmptyString(artifact["kind"]) !== kind) {
+      continue;
+    }
+    return asNonEmptyString(artifact["previewUrl"]);
+  }
+  return null;
+}
+
+function getTransformPreviewMode(state: LabStoreState): LaboratoryTransformPreviewMode {
+  if (state.ui.workspace.comparisonViewMode === "difference") {
+    return "difference";
+  }
+  if (state.ui.workspace.comparisonViewMode === "stacked") {
+    return "transform";
+  }
+  return "source";
+}
+
 function getTransformStackRenderContext(state: LabStoreState) {
-  const rawSourceKind = asNonEmptyString(asLabRecord(state.source)["kind"]);
+  const source = asLabRecord(state.source);
+  const rawSourceKind = asNonEmptyString(source["kind"]);
   const comparisonActive =
     asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId) !== null;
   const sourceKind: LaboratoryTransformStackSourceKind | null =
@@ -20,11 +46,24 @@ function getTransformStackRenderContext(state: LabStoreState) {
       ? rawSourceKind
       : null;
   const runState = state.run?.state;
+  const preview = asLabRecord(asLabRecord(state.editConfig)["preview"]);
+  const previewStatus = asNonEmptyString(preview["status"]) || "idle";
+  const previewReady = previewStatus === "ready";
   return {
+    baselinePreviewUrl: previewReady
+      ? findPreviewArtifactUrl(preview, "transform-source-baseline")
+      : null,
+    differencePreviewUrl: previewReady
+      ? findPreviewArtifactUrl(preview, "transform-difference")
+      : null,
     editConfig: state.editConfig,
     featureId: state.featureId,
     locked: runState === "running" || runState === "queued",
+    previewStatus,
     sourceKind,
+    sourcePreviewUrl: asNonEmptyString(source["previewUrl"]),
+    transformPreviewMode: getTransformPreviewMode(state),
+    transformPreviewUrl: previewReady ? asNonEmptyString(preview["previewUrl"]) : null,
   };
 }
 
