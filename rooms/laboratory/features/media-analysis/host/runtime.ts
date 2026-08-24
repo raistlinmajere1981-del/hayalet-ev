@@ -86,7 +86,6 @@ export function createLaboratoryMediaAnalysisHostRuntime(
     roomId,
     syncProjectFeatureProjections,
     toRecord,
-    writeJsonFile,
   } = deps;
 
   function getFfmpegToolState(runtime: LaboratoryToolReadyRuntime) {
@@ -196,7 +195,6 @@ export function createLaboratoryMediaAnalysisHostRuntime(
     patchActiveProject,
     roomId,
     toRecord,
-    writeJsonFile,
   });
 
   function runTemporalStressTest(
