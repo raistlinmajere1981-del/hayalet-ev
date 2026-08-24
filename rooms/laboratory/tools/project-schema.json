@@ -94,7 +94,7 @@
         "recipe",
         "outputs"
       ],
-      "optional": ["lastError", "lastActionAt"],
+      "optional": ["lastError", "lastActionAt", "temporalStressTests"],
       "modes": ["beginner", "advanced"],
       "handoffModes": ["source", "derived"],
       "preview": {
