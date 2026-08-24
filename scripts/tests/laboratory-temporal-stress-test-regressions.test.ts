@@ -9,6 +9,7 @@ import {
 } from "../../rooms/laboratory/shared/temporal-stress-test-model.ts";
 import { attachLaboratoryTransformStackRenderContext } from "../../rooms/laboratory/shared/transform-stack-render-context.ts";
 import { renderWorkspaceInteractiveControls } from "../../rooms/laboratory/ui/workspace-interactive-controls.ts";
+import { renderWorkspaceStressTestSummaries } from "../../rooms/laboratory/ui/workspace-stress-test-summary.ts";
 
 function createTemporalRuntime() {
   return createLaboratoryTemporalStressTestRuntime({
@@ -267,52 +268,32 @@ void test("video transform inspector exposes Temporal Scan only for a valid sele
   );
 });
 
-void test("latest temporal measurement is rendered as a compact numeric inspector summary", () => {
-  const settings = attachLaboratoryTransformStackRenderContext(
+void test("latest temporal measurement is rendered as a compact numeric live-results summary", () => {
+  const markup = renderWorkspaceStressTestSummaries(
     {
-      brightness: 100,
-      contrast: 100,
-      gamma: 1,
-      saturation: 100,
-      hueRotate: 0,
-      sharpness: 100,
-      channelR: true,
-      channelG: true,
-      channelB: true,
-      edgeHighlight: false,
-      invert: false,
-    },
-    {
-      editConfig: {
-        recipe: { video: { transformStages: [] } },
-        temporalStressTests: [
-          {
-            request: { startSeconds: 2, endSeconds: 5, sampleFps: 5, roi: null },
-            metrics: {
-              summary: {
-                meanFrameDifferenceEnergy: 0.125,
-                peakFrameDifferenceEnergy: 0.4,
-                edgePersistenceRatio: 0.75,
-                lumaRange: 0.2,
-                chromaURange: 0.1,
-                chromaVRange: 0.08,
-              },
+      temporalStressTests: [
+        {
+          request: { startSeconds: 2, endSeconds: 5, sampleFps: 5, roi: null },
+          metrics: {
+            summary: {
+              meanFrameDifferenceEnergy: 0.125,
+              peakFrameDifferenceEnergy: 0.4,
+              edgePersistenceRatio: 0.75,
+              lumaRange: 0.2,
+              chromaURange: 0.1,
+              chromaVRange: 0.08,
             },
           },
-        ],
+        },
+      ],
+    } as never,
+    {
+      locale: "en",
+      t(_key: string, fallback = "") {
+        return fallback;
       },
-      featureId: "media-analysis",
-      locked: false,
-      sourceKind: "video",
-      temporalRequest: null,
-    }
+    } as never
   );
-  const markup = renderWorkspaceInteractiveControls(settings, {
-    locale: "en",
-    t(_key: string, fallback = "") {
-      return fallback;
-    },
-  } as never);
   assert.match(markup, /data-lab-temporal-stress-summary="true"/);
   assert.match(markup, /Frame Δ mean \/ peak/);
   assert.match(markup, /0\.125 \/ 0\.400/);
