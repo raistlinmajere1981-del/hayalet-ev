@@ -170,6 +170,7 @@ function buildSummaryDelta(
     "peakFrameDifferenceEnergy",
     "meanEdgeEnergy",
     "edgePersistenceRatio",
+    "spatialEdgePersistenceRatio",
     "lumaRange",
     "chromaURange",
     "chromaVRange",
@@ -224,11 +225,13 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
     const signalText = await runTool(runtime, project, requestId, commands.signal);
     const differenceText = await runTool(runtime, project, requestId, commands.frameDifference);
     const edgeText = await runTool(runtime, project, requestId, commands.edge);
+    const edgeDifferenceText = await runTool(runtime, project, requestId, commands.edgeDifference);
     return temporalRuntime.buildTemporalResult(
       metricRequest,
       temporalRuntime.parseSignalStatsText(signalText),
       temporalRuntime.parseSignalStatsText(differenceText),
-      temporalRuntime.parseSignalStatsText(edgeText)
+      temporalRuntime.parseSignalStatsText(edgeText),
+      temporalRuntime.parseSignalStatsText(edgeDifferenceText)
     );
   }
 
