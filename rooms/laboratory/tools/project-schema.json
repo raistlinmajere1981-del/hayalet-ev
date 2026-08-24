@@ -508,7 +508,7 @@
         "processDir": "artifacts/media-analysis/process",
         "processManifest": "artifacts/media-analysis/process/manifest.json",
         "reportDir": "reports/media-analysis",
-        "reportManifest": "reports/media-analysis/report/manifest.json"
+        "reportManifest": "reports/media-analysis/manifest.json"
       },
       "audio-analysis": {
         "rootDir": "artifacts/audio-analysis",
