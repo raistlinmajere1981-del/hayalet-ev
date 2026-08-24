@@ -73,7 +73,7 @@ The useful output is not "looks real". It is a persistence record describing whi
 
 The first temporal slice operates on the prepared original video source so that later transformed/control-injection runs can be compared against an unmodified temporal baseline.
 
-A real timeline selection is required. The selected range is capped at six seconds, centered when a longer range is supplied. Sampling defaults to 5 fps and is bounded to 1–10 fps. If the selection carries an ROI, only that normalized ROI is measured; otherwise the full frame is used.
+A real timeline selection is required. The synthetic full-source workspace selection is deliberately rejected so the room never chooses an arbitrary six-second center window without the operator selecting one. The selected range is capped at six seconds, centered when a longer range is supplied. Sampling defaults to 5 fps and is bounded to 1–10 fps. If the selection carries an ROI, only that normalized ROI is measured; otherwise the full frame is used.
 
 The current FFmpeg-only measurements are:
 
@@ -83,7 +83,7 @@ The current FFmpeg-only measurements are:
 - edge energy (`edgedetect` + `signalstats`)
 - an initial edge-persistence ratio derived from the edge-energy series
 
-The runtime prints only the required metadata keys, merges repeated metadata blocks by frame timestamp, normalizes 8-bit signal metrics to 0–1, and stores the newest twenty temporal measurements under `edit.temporalStressTests`. The visual inspector shows the latest summary rather than introducing a heavy chart/statistics subsystem in this first slice.
+The runtime prints only the required metadata keys, merges repeated metadata blocks by frame timestamp, normalizes 8-bit signal metrics to 0–1, and stores the newest twenty temporal measurements under `edit.temporalStressTests`. These records remain inside the normalized project state across reload/restart; a separate exported artifact file is intentionally deferred to the later report/export layer. The visual inspector shows the latest numeric summary rather than introducing a heavy chart/statistics subsystem in this first slice.
 
 Optical flow is intentionally deferred until these simpler measurements are validated against real clips.
 
