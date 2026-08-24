@@ -92,3 +92,33 @@ void test("audio stack exposes only audio transform choices", () => {
   assert.doesNotMatch(markup, /Brightness/);
   assert.match(markup, /data-lab-transform-recipe-section="audio"/);
 });
+
+void test("controls-only visual stack suppresses preview but retains stress-test actions", () => {
+  const markup = renderWorkspaceTransformStack(
+    {
+      editConfig: {
+        recipe: {
+          video: {
+            transformStages: [],
+          },
+        },
+      },
+      showPreview: false,
+      sourceKind: "video",
+      scope: "visual",
+      temporalRequest: {
+        startSeconds: 10,
+        endSeconds: 16,
+        sampleFps: 5,
+        roi: null,
+      },
+    },
+    copy
+  );
+
+  assert.doesNotMatch(markup, /data-lab-transform-comparison="true"/);
+  assert.doesNotMatch(markup, /Source \/ Transform \/ Difference/);
+  assert.match(markup, /data-lab-temporal-scan="true"/);
+  assert.match(markup, /data-lab-control-injection="true"/);
+  assert.match(markup, /data-lab-action="workspace-transform-preview"/);
+});
