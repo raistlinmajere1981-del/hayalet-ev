@@ -149,6 +149,8 @@ The record stores:
 
 Control results share `edit.temporalStressTests` with `kind: "control-injection"` so baseline and control runs remain one experiment family.
 
+Real-video smoke testing of the current CRF 18 → CRF 36 recompression control completed successfully. In the tested ROI/window it produced no clear measured change; that is an observation for that paired interval, not a global conclusion about the channel.
+
 Chromatic-aberration control remains optional and should only be added if real experiments create a concrete need for it.
 
 ## Readable interpretation layer
