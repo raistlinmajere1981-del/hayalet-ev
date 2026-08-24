@@ -302,7 +302,8 @@ function getLocalizedControlLabel(kind: LaboratoryControlInjectionKind, copy: La
   if (kind === "noise") return "Gürültü";
   if (kind === "blur") return "Bulanıklık";
   if (kind === "sharpen") return "Keskinleştirme";
-  return "Düşük ışık";
+  if (kind === "low-light") return "Düşük ışık";
+  return "Yeniden sıkıştırma";
 }
 
 function renderControlInjectionPanel(input: WorkspaceTransformStackInput, copy: LabI18n) {
@@ -319,8 +320,8 @@ function renderControlInjectionPanel(input: WorkspaceTransformStackInput, copy: 
         ? "Control testi için önce gerçek bir timeline aralığı seçin."
         : "Select a real timeline range before running a control test."
       : copy.locale === "tr"
-        ? "Her koşu aynı trim/ROI/codec ile bir kontrol baseline ve bir injected klip üretir; gösterilen fark yeniden kodlamayı değil seçilen control filtresini izole etmeye çalışır."
-        : "Each run creates a control baseline and an injected clip with the same trim/ROI/codec so the measured delta isolates the selected control filter from re-encoding.";
+        ? "Her koşu aynı trim/ROI ve codec ailesiyle paired çıktılar üretir; fark yalnız seçilen filtreyi veya recompression için encode kalitesini izole eder."
+        : "Each run creates paired outputs with the same trim/ROI and codec family; the delta isolates only the selected filter or, for recompression, encode quality.";
   return `
     <section class="labx-card labx-transform-control-injection" data-lab-control-injection="true">
       <div class="labx-card__body">
