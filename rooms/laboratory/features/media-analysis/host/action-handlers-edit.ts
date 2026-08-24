@@ -1,4 +1,5 @@
 import { createLaboratoryControlInjectionRuntime } from "./control-injection.js";
+import { createLaboratoryMotionImpactProbeRuntime } from "./motion-impact-probe.js";
 import { createLaboratoryPhotometricAttenuationRuntime } from "./photometric-attenuation.js";
 import { createLaboratoryTemporalStressTestRuntime } from "./temporal-stress-test.js";
 
@@ -73,6 +74,7 @@ type EditDeps = {
     runtime: MediaEditRuntimeRecord,
     patcher: (project: MediaEditProjectRecord) => MediaEditProjectRecord
   ) => Promise<MediaEditProjectRecord>;
+  readBinaryFileBytes: (filePath: string) => Promise<Uint8Array | null>;
   roomId: string;
   runEditPipeline: (
     api: MediaEditActionApi,
@@ -97,6 +99,7 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     markCloseoutAsStale,
     markProfileAsStale,
     patchActiveProject,
+    readBinaryFileBytes,
     roomId,
     runEditPipeline,
     toRecord,
@@ -162,6 +165,27 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
         return patcher(project) as MediaEditProjectRecord;
       });
     },
+    roomId,
+    toRecord,
+  });
+
+  const motionImpactProbeRuntime = createLaboratoryMotionImpactProbeRuntime({
+    callRoomTools,
+    getActiveProject(runtime) {
+      return getActiveProject(runtime);
+    },
+    getPreparedSourcePath(project) {
+      return asNonEmptyString(toRecord(project.source)["storedPath"]);
+    },
+    getProjectEditOutputDir(runtime, project) {
+      return getProjectEditOutputDir(runtime, project as MediaEditProjectRecord);
+    },
+    patchActiveProject(runtime, patcher) {
+      return patchActiveProject(runtime, function (project) {
+        return patcher(project) as MediaEditProjectRecord;
+      });
+    },
+    readBinaryFileBytes,
     roomId,
     toRecord,
   });
@@ -270,6 +294,7 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
       nextProject.edit.handoffMode = requestedMode;
       nextProject.edit.lastError = null;
       nextProject.edit.lastActionAt = new Date().toISOString();
+      markProfileAsStale(nextProject, "Downstream handoff changed.");
       markCloseoutAsStale(nextProject, "Downstream handoff changed.");
       return nextProject;
     });
@@ -320,6 +345,38 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     actionPayload: Record<string, unknown>
   ) {
     return photometricAttenuationRuntime.runPhotometricAttenuationProbe(
+      runtime,
+      requestId,
+      actionPayload["request"]
+    );
+  }
+
+  async function lockMotionReference(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return motionImpactProbeRuntime.lockReferenceRegion(
+      runtime,
+      requestId,
+      actionPayload["request"]
+    );
+  }
+
+  async function runMotionProbe(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return motionImpactProbeRuntime.runMotionProbe(runtime, requestId, actionPayload["request"]);
+  }
+
+  async function runImpactWindowCompare(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return motionImpactProbeRuntime.runImpactWindowCompare(
       runtime,
       requestId,
       actionPayload["request"]
@@ -395,8 +452,11 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     applyEditPreset,
     cancelApply,
     cancelPreview,
+    lockMotionReference,
     previewEdit,
     runControlInjection,
+    runImpactWindowCompare,
+    runMotionProbe,
     runPhotometricAttenuation,
     runTemporalStressTest,
     setEditHandoff,
