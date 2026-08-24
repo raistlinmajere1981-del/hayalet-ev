@@ -1,4 +1,5 @@
 import { createLaboratoryControlInjectionRuntime } from "./control-injection.js";
+import { createLaboratoryPhotometricAttenuationRuntime } from "./photometric-attenuation.js";
 import { createLaboratoryTemporalStressTestRuntime } from "./temporal-stress-test.js";
 
 type MediaEditActionApi = Record<string, unknown>;
@@ -142,6 +143,26 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     },
     roomId,
     temporalRuntime: temporalStressTestRuntime,
+    toRecord,
+  });
+
+  const photometricAttenuationRuntime = createLaboratoryPhotometricAttenuationRuntime({
+    callRoomTools,
+    getActiveProject(runtime) {
+      return getActiveProject(runtime);
+    },
+    getPreparedSourcePath(project) {
+      return asNonEmptyString(toRecord(project.source)["storedPath"]);
+    },
+    getProjectEditOutputDir(runtime, project) {
+      return getProjectEditOutputDir(runtime, project as MediaEditProjectRecord);
+    },
+    patchActiveProject(runtime, patcher) {
+      return patchActiveProject(runtime, function (project) {
+        return patcher(project) as MediaEditProjectRecord;
+      });
+    },
+    roomId,
     toRecord,
   });
 
@@ -293,6 +314,18 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     );
   }
 
+  async function runPhotometricAttenuation(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return photometricAttenuationRuntime.runPhotometricAttenuationProbe(
+      runtime,
+      requestId,
+      actionPayload["request"]
+    );
+  }
+
   async function applyEdit(
     api: MediaEditActionApi,
     runtime: MediaEditRuntimeRecord,
@@ -364,6 +397,7 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     cancelPreview,
     previewEdit,
     runControlInjection,
+    runPhotometricAttenuation,
     runTemporalStressTest,
     setEditHandoff,
     setEditMode,
