@@ -10,6 +10,7 @@ import type {
   LaboratoryTransformStageMutation,
   LaboratoryTransformStageScope,
 } from "../../shared/transform-stress-test-model.js";
+import { buildLaboratoryTransformStackProvenanceFromRecipe } from "../../shared/transform-stress-test-provenance.js";
 
 type LaboratoryTransformSourceKind = "video" | "audio" | "image";
 
@@ -100,11 +101,8 @@ export function buildLaboratoryTransformStackProvenance(
   editConfig: LabEditConfig | null,
   sourceKind: LaboratoryTransformSourceKind
 ) {
-  const visual = readLaboratoryTransformRecipeStages(editConfig, sourceKind, "visual");
-  const audio = readLaboratoryTransformRecipeStages(editConfig, sourceKind, "audio");
-  return {
-    sourceKind,
-    visual: visual.map((stage, index) => ({ ...stage, order: index })),
-    audio: audio.map((stage, index) => ({ ...stage, order: index })),
-  };
+  return buildLaboratoryTransformStackProvenanceFromRecipe(
+    asLabRecord(editConfig?.recipe),
+    sourceKind
+  );
 }
