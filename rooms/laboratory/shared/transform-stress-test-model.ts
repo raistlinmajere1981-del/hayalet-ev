@@ -68,7 +68,7 @@ export const LAB_AUDIO_TRANSFORM_STAGE_KINDS: readonly LaboratoryAudioTransformS
   "gain",
 ];
 
-export const LAB_TRANSFORM_STAGE_DEFINITIONS: readonly LaboratoryTransformStageDefinition[] = [
+const LAB_TRANSFORM_STAGE_DEFINITIONS: readonly LaboratoryTransformStageDefinition[] = [
   {
     kind: "brightness",
     scope: "visual",
