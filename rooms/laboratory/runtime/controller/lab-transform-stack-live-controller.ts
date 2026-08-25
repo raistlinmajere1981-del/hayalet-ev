@@ -33,6 +33,7 @@ type TransformStackBinderDeps = {
 
 type TransformStackRootState = {
   backgroundRoi: LaboratoryNormalizedRoi | null;
+  controlRoi: LaboratoryNormalizedRoi | null;
   featureId: string;
   locked: boolean;
   recipeSection: TransformStackRecipeSection;
@@ -92,8 +93,13 @@ function readRootState(root: HTMLElement): TransformStackRootState | null {
     root.getAttribute("data-lab-visual-stress-background-roi-json"),
     null
   );
+  const rawControlRoi = parseJsonAttribute(
+    root.getAttribute("data-lab-visual-stress-control-roi-json"),
+    null
+  );
   return {
     backgroundRoi: normalizeLaboratoryResponseBackgroundRoi(rawBackgroundRoi),
+    controlRoi: normalizeLaboratoryResponseBackgroundRoi(rawControlRoi),
     featureId: root.getAttribute("data-lab-transform-feature-id") || "media-analysis",
     locked: root.getAttribute("data-lab-transform-locked") === "true",
     recipeSection,
@@ -436,6 +442,7 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
           kind,
           temporalRequest: state.temporalRequest,
           ...(state.backgroundRoi === null ? {} : { backgroundRoi: state.backgroundRoi }),
+          ...(state.controlRoi === null ? {} : { controlRoi: state.controlRoi }),
         },
       });
       if (requestId !== null) {
