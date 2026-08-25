@@ -65,7 +65,9 @@ function normalizeRoi(value: unknown): LaboratoryNormalizedRoi | null {
   return { x, y, width, height };
 }
 
-export function isLaboratoryResponseSweepAxis(value: unknown): value is LaboratoryResponseSweepAxis {
+export function isLaboratoryResponseSweepAxis(
+  value: unknown
+): value is LaboratoryResponseSweepAxis {
   return LAB_RESPONSE_SWEEP_AXES.includes(value as LaboratoryResponseSweepAxis);
 }
 
@@ -84,7 +86,8 @@ export function normalizeLaboratoryVisualResponseProbeRequest(
     sourceDurationSeconds
   );
   const backgroundRoi = normalizeRoi(record["backgroundRoi"]);
-  if (temporalRequest === null || temporalRequest.roi === null || backgroundRoi === null) return null;
+  if (temporalRequest === null || temporalRequest.roi === null || backgroundRoi === null)
+    return null;
   return { axis: record["axis"], temporalRequest, backgroundRoi };
 }
 

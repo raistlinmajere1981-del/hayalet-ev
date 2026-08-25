@@ -45,7 +45,9 @@ function isResponseHistoryEntry(entry: StressTestRecord) {
   return RESPONSE_HISTORY_KINDS.has(asNonEmptyString(entry["kind"]) || "");
 }
 
-function buildLegacyStressSummaryEditConfig(editConfig: LabEditConfig | null): LabEditConfig | null {
+function buildLegacyStressSummaryEditConfig(
+  editConfig: LabEditConfig | null
+): LabEditConfig | null {
   if (editConfig === null) return null;
   const history = asLabRecord(editConfig)["temporalStressTests"];
   return {

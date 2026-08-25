@@ -1,12 +1,20 @@
-import { copyFile, mkdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { build } from "esbuild";
 
 const scriptsDirectory = dirname(fileURLToPath(import.meta.url));
-const projectRoot = resolve(scriptsDirectory, "../..");
-const vendorDirectory = resolve(projectRoot, "rooms/game-room/main-functions/yahtzee/vendor");
+const gameRoomDirectory = resolve(scriptsDirectory, "..");
+const projectRoot = resolve(gameRoomDirectory, "../..");
+const vendorDirectory = resolve(gameRoomDirectory, "main-functions/yahtzee/vendor");
+
+async function copyNormalizedTextFile(sourcePath, targetPath) {
+  const content = (await readFile(sourcePath, "utf8")).replace(/\r\n?/g, "\n");
+  const existingContent = await readFile(targetPath, "utf8").catch(() => null);
+  if (existingContent === content) return;
+  await writeFile(targetPath, content, "utf8");
+}
 
 await mkdir(vendorDirectory, { recursive: true });
 
@@ -27,11 +35,11 @@ await build({
 });
 
 await Promise.all([
-  copyFile(
+  copyNormalizedTextFile(
     resolve(projectRoot, "node_modules/@babylonjs/core/license.md"),
     resolve(vendorDirectory, "LICENSE.babylonjs.md")
   ),
-  copyFile(
+  copyNormalizedTextFile(
     resolve(projectRoot, "node_modules/@babylonjs/core/NOTICE.md"),
     resolve(vendorDirectory, "NOTICE.babylonjs.md")
   ),

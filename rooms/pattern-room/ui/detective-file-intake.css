@@ -89,7 +89,7 @@
   color: var(--pattern-accent-cyan);
   font-size: var(--pattern-rem-0-72);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--pattern-em-0-04);
   text-transform: uppercase;
 }
 

@@ -87,7 +87,7 @@
 }
 
 .labx-timeline__handle:hover:not([data-lab-locked="true"]) {
-  color: var(--lab-text-primary);
+  color: var(--lab-text-strong);
   filter: drop-shadow(0 0 var(--lab-timeline-roi-px-8) var(--lab-timeline-roi-color-04));
   transform: translateX(-50%) translateY(var(--lab-timeline-roi-px-neg-1));
 }

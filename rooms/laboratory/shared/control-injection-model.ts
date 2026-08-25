@@ -85,7 +85,12 @@ const CONTROL_INJECTION_DEFINITIONS: LaboratoryControlInjectionDefinition[] = [
   { kind: "response-brightness", label: "Response · Brightness", params: {}, group: "response" },
   { kind: "response-black-level", label: "Response · Black level", params: {}, group: "response" },
   { kind: "response-contrast", label: "Response · Contrast", params: {}, group: "response" },
-  { kind: "response-local-contrast", label: "Response · Local contrast", params: {}, group: "response" },
+  {
+    kind: "response-local-contrast",
+    label: "Response · Local contrast",
+    params: {},
+    group: "response",
+  },
   { kind: "response-blur", label: "Response · Blur", params: {}, group: "response" },
   { kind: "response-denoise", label: "Response · Denoise", params: {}, group: "response" },
   { kind: "response-sharpen", label: "Response · Sharpen", params: {}, group: "response" },
@@ -101,10 +106,6 @@ function toRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && Array.isArray(value) === false
     ? (value as Record<string, unknown>)
     : {};
-}
-
-function finite(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 export function getLaboratoryControlInjectionDefinitions(): LaboratoryControlInjectionDefinition[] {
@@ -135,13 +136,5 @@ export function normalizeLaboratoryControlInjectionRequest(
     sourceDurationSeconds
   );
   if (temporalRequest === null) return null;
-  const suppliedParams = toRecord(record["params"]);
-  const params = Object.entries(definition.params).reduce<Record<string, number>>(
-    (output, [key, fallback]) => {
-      output[key] = finite(suppliedParams[key]) ?? fallback;
-      return output;
-    },
-    {}
-  );
-  return { kind, params, temporalRequest };
+  return { kind, params: { ...definition.params }, temporalRequest };
 }

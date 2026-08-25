@@ -48,6 +48,7 @@ type MediaSourceActionRuntimeDeps = {
 };
 
 type MediaEditActionRuntimeDeps = Parameters<typeof createMediaEditActionRuntime>[0];
+type MediaEditActionRuntime = ReturnType<typeof createMediaEditActionRuntime>;
 type MediaExportActionRuntimeDeps = Parameters<typeof createMediaExportActionRuntime>[0];
 type MediaProfileActionRuntimeDeps = Parameters<typeof createMediaProfileActionRuntime>[0];
 type MediaProjectActionRuntimeDeps = Parameters<typeof createMediaProjectActionRuntime>[0];
@@ -59,8 +60,11 @@ type MediaActionRuntimeDeps = MediaSourceActionRuntimeDeps &
   MediaProjectActionRuntimeDeps;
 
 type MediaActionRuntime = ReturnType<typeof createMediaSourceActionRuntime> &
-  ReturnType<typeof createMediaEditActionRuntime> &
-  Omit<ReturnType<typeof createMediaExportActionRuntime>, "captureComparisonMoment"> &
+  Omit<MediaEditActionRuntime, "runControlInjection"> & {
+    runControlInjection: (
+      ...args: Parameters<MediaEditActionRuntime["runControlInjection"]>
+    ) => Promise<LaboratoryRecord>;
+  } & Omit<ReturnType<typeof createMediaExportActionRuntime>, "captureComparisonMoment"> &
   ReturnType<typeof createMediaAnnotationExportActionRuntime> &
   ReturnType<typeof createMediaProfileActionRuntime> &
   ReturnType<typeof createMediaProjectActionRuntime>;
@@ -172,7 +176,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     },
     patchActiveProject(runtime, patcher) {
       return deps.patchActiveProject(runtime, function (project) {
-        return patcher(asRecord(project)) as EditProject;
+        return patcher(asRecord(project));
       });
     },
     roomId: deps.roomId,
@@ -334,10 +338,8 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
               finite(targetDelta, "meanFrameDifferenceEnergy") -
               finite(backgroundDelta, "meanFrameDifferenceEnergy"),
             meanEdgeEnergy:
-              finite(targetDelta, "meanEdgeEnergy") -
-              finite(backgroundDelta, "meanEdgeEnergy"),
-            lumaRange:
-              finite(targetDelta, "lumaRange") - finite(backgroundDelta, "lumaRange"),
+              finite(targetDelta, "meanEdgeEnergy") - finite(backgroundDelta, "meanEdgeEnergy"),
+            lumaRange: finite(targetDelta, "lumaRange") - finite(backgroundDelta, "lumaRange"),
           },
         };
       });

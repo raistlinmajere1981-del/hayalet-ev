@@ -22,7 +22,7 @@ const requiredFiles = [
   "rooms/game-room/main-functions/yahtzee/vendor/NOTICE.babylonjs.md",
   "rooms/game-room/main-functions/yahtzee/protocols/game-room-yahtzee-ai-turn.md",
   "rooms/game-room/main-functions/yahtzee/protocols/game-room-yahtzee-us1-transport.md",
-  "scripts/rooms/build-game-room-babylon-runtime.mjs",
+  "rooms/game-room/scripts/build-babylon-runtime.mjs",
 ];
 
 void test("Game Room keeps the complete Yahtzee source and room-local Babylon runtime", () => {
@@ -94,7 +94,7 @@ void test("Yahtzee Babylon vendor build stays reproducible and licensed", () => 
   };
   assert.equal(
     packageJson.scripts?.["rooms:vendor:game-room"],
-    "node scripts/rooms/build-game-room-babylon-runtime.mjs"
+    "node rooms/game-room/scripts/build-babylon-runtime.mjs"
   );
   assert.equal(typeof packageJson.devDependencies?.["@babylonjs/core"], "string");
 

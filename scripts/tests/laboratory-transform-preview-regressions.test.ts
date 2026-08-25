@@ -188,5 +188,5 @@ void test("visual transform stack renders state-backed Source Transform Differen
   assert.match(markup, /data-lab-field="workspace\.comparison\.viewMode"/);
   assert.match(markup, /option value="difference" selected/);
   assert.match(markup, /src="file:\/\/\/difference\.png"/);
-  assert.match(markup, /Difference is the pixel difference between those aligned outputs/);
+  assert.match(markup, /Difference is the pixel difference between the aligned outputs/);
 });

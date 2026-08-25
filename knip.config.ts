@@ -42,7 +42,7 @@ const config: KnipConfig = {
     "rooms/*/host/runtime.ts",
     "rooms/*/ui/index.ts",
     "rooms/*/ui/bootstrap.ts",
-    "rooms/*/scripts/*.ts",
+    "rooms/*/scripts/*.{mjs,ts}",
 
     // Script entries invoked by package scripts, Electron hooks, or child processes
     "scripts/backup-cli.mjs",
@@ -62,6 +62,9 @@ const config: KnipConfig = {
     "rooms/game-room/shared/ui/*.ts",
     "rooms/game-room/shared/vendor/konva.min.js",
     "rooms/game-room/main-functions/*/ui/*.ts",
+    "rooms/game-room/main-functions/yahtzee/ui/*.js",
+    "rooms/game-room/main-functions/yahtzee/vendor/babylon-runtime-entry.js",
+    "rooms/game-room/main-functions/yahtzee/vendor/babylon.min.js",
 
     // Test runner discovers these dynamically
     "scripts/tests/**/*.test.ts",

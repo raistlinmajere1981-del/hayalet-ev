@@ -214,7 +214,11 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
           result = await mediaActionRuntime.runMotionProbe(runtime, requestId, actionPayload);
           break;
         case "edit-impact-window-compare":
-          result = await mediaActionRuntime.runImpactWindowCompare(runtime, requestId, actionPayload);
+          result = await mediaActionRuntime.runImpactWindowCompare(
+            runtime,
+            requestId,
+            actionPayload
+          );
           break;
         case "edit-control-injection":
           result = await mediaActionRuntime.runControlInjection(runtime, requestId, actionPayload);

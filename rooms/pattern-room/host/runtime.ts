@@ -1,5 +1,3 @@
-import type { SlotBridgeEnvelope, SlotBridgeResult } from "../../../src/types/commands.js";
-
 import { createPatternRoomCaseReviewHash } from "../shared/adapters/pattern-room-case-review-hash.js";
 import { parsePatternRoomCaseReviewResult } from "../shared/adapters/pattern-room-case-review-parser.js";
 import { PATTERN_ROOM_DOMAIN } from "../shared/data/pattern-room-domain.js";
@@ -81,6 +79,17 @@ type PatternRoomCommandResult =
     };
 
 type PatternRoomCommandHandler = (payload?: unknown) => Promise<PatternRoomCommandResult>;
+
+type PatternRoomSlotBridgeResult = {
+  brokerMessageId?: unknown;
+  clientRequestId?: unknown;
+  code?: unknown;
+  error?: unknown;
+  message?: unknown;
+  reply?: unknown;
+  reqId?: unknown;
+  success: boolean;
+};
 
 type PatternRoomElectronApi = {
   fmWriteFileAtomic?: (payload: {
@@ -405,12 +414,12 @@ function getSafeDispatchErrorMessage(error: unknown): string {
   return normalized;
 }
 
-function isSlotBridgeResult(value: unknown): value is SlotBridgeResult {
+function isSlotBridgeResult(value: unknown): value is PatternRoomSlotBridgeResult {
   return isRecord(value) && typeof value["success"] === "boolean";
 }
 
 function readCaseReviewReply(
-  result: SlotBridgeResult,
+  result: PatternRoomSlotBridgeResult,
   receivedAt: string
 ): PatternRoomCaseReviewReply | null {
   if (!isRecord(result.reply) || typeof result.reply["text"] !== "string") {
@@ -435,7 +444,7 @@ function readCaseReviewReply(
 }
 
 function hasValidSlotBridgeCorrelation(
-  result: SlotBridgeResult,
+  result: PatternRoomSlotBridgeResult,
   requestId: string,
   reply: PatternRoomCaseReviewReply | null
 ): boolean {
@@ -446,7 +455,7 @@ function hasValidSlotBridgeCorrelation(
   );
 }
 
-function getSlotBridgeFailureMessage(result: SlotBridgeResult): string {
+function getSlotBridgeFailureMessage(result: PatternRoomSlotBridgeResult): string {
   return (
     asNonEmptyString(result.error) ??
     asNonEmptyString(result.message) ??
@@ -456,7 +465,7 @@ function getSlotBridgeFailureMessage(result: SlotBridgeResult): string {
 
 function createCaseReviewBridgeEnvelope(
   request: PatternRoomCaseReviewDispatchCommandPayload
-): SlotBridgeEnvelope & Record<string, unknown> {
+): Record<string, unknown> {
   return {
     ...request.draft.payload,
     action: PATTERN_ROOM_CASE_REVIEW_DISPATCH_ACTION,

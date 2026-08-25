@@ -71,9 +71,7 @@ function fmt(value: number) {
 }
 
 function mean(values: number[]) {
-  return values.length === 0
-    ? 0
-    : values.reduce((sum, value) => sum + value, 0) / values.length;
+  return values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function median(values: number[]) {
@@ -300,9 +298,7 @@ export function buildLaboratoryResponseRegionMetrics(
   const signalNoiseLike = contrast / Math.max(0.01, noise);
   const meanNearBlackFraction = mean(nearBlack);
   const persistentNearBlackFraction = mean(persistentNearBlack);
-  const recoveredDarkFraction = clamp01(
-    meanNearBlackFraction - persistentNearBlackFraction
-  );
+  const recoveredDarkFraction = clamp01(meanNearBlackFraction - persistentNearBlackFraction);
   const visibilityScore = clamp01(
     contrast * 2.2 +
       edgeEnergy * 1.7 +
@@ -377,9 +373,7 @@ function responseInterpretation(
   const range = Math.max(...deltas) - Math.min(...deltas);
   const center = Math.abs(deltas[Math.floor(deltas.length / 2)] ?? 0);
   const localized = Math.max(...deltas.map(Math.abs));
-  const sensorAxis = ["exposure", "gamma", "brightness", "black-level", "denoise"].includes(
-    axis
-  );
+  const sensorAxis = ["exposure", "gamma", "brightness", "black-level", "denoise"].includes(axis);
 
   return {
     dataQuality: "sufficient",
@@ -516,11 +510,7 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
     };
   }
 
-  async function runResponseProbe(
-    runtime: RuntimeRecord,
-    requestId: string,
-    rawRequest: unknown
-  ) {
+  async function runResponseProbe(runtime: RuntimeRecord, requestId: string, rawRequest: unknown) {
     const project = getActiveProject(runtime);
     if (project === null) throw new Error("Active project is missing.");
     const source = toRecord(project.source);

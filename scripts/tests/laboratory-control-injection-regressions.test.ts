@@ -76,8 +76,22 @@ lavfi.signalstats.YAVG=${value}
 
 void test("destruction control definitions are fixed and canonical payload params cannot override them", () => {
   assert.deepEqual(
-    getLaboratoryControlInjectionDefinitions().map((entry) => entry.kind),
-    ["noise", "blur", "sharpen", "low-light", "recompression"]
+    getLaboratoryControlInjectionDefinitions()
+      .filter((entry) => entry.group === "destruction")
+      .map((entry) => entry.kind),
+    [
+      "noise",
+      "blur",
+      "sharpen",
+      "denoise",
+      "gamma",
+      "black-crush",
+      "highlight-clipping",
+      "chroma-suppression",
+      "low-light",
+      "recompression",
+      "recompression-ladder",
+    ]
   );
   const normalized = normalizeLaboratoryControlInjectionRequest({
     kind: "noise",
@@ -233,13 +247,14 @@ void test("destruction control measures spatial edge persistence on both sides a
       const injected = inputPath.includes("-injected.mp4");
       const hasEdge = joined.includes("edgedetect=low=0.1:high=0.4");
       const hasDifference = joined.includes("tblend=all_mode=difference");
-      const kind: MetricKind = hasEdge && hasDifference
-        ? "edge-difference"
-        : hasEdge
-          ? "edge"
-          : hasDifference
-            ? "difference"
-            : "signal";
+      const kind: MetricKind =
+        hasEdge && hasDifference
+          ? "edge-difference"
+          : hasEdge
+            ? "edge"
+            : hasDifference
+              ? "difference"
+              : "signal";
       return { run: { exitCode: 0, stderr: metricText(kind, injected) } };
     },
     getActiveProject() {
@@ -331,7 +346,10 @@ void test("temporal history normalizer preserves typed destruction-control recor
     "video"
   );
   assert.equal(normalized.temporalStressTests[0]?.["kind"], "control-injection");
-  assert.equal(toRecord(normalized.temporalStressTests[0]?.["delta"])["meanFrameDifferenceEnergy"], 0.1);
+  assert.equal(
+    toRecord(normalized.temporalStressTests[0]?.["delta"])["meanFrameDifferenceEnergy"],
+    0.1
+  );
   assert.equal(
     toRecord(normalized.temporalStressTests[0]?.["delta"])["spatialEdgePersistenceRatio"],
     -0.2

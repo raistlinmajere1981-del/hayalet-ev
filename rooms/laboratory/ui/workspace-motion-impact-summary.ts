@@ -123,7 +123,10 @@ function renderLatestMotionProbe(editConfig: LabEditConfig | null, copy: LabI18n
   `;
 }
 
-function readWindowVector(windowRecord: LaboratoryRecord, key: "target" | "reference" | "relative") {
+function readWindowVector(
+  windowRecord: LaboratoryRecord,
+  key: "target" | "reference" | "relative"
+) {
   const value = asLabRecord(windowRecord[key]);
   return key === "relative" ? value : readSummary(value);
 }
@@ -145,7 +148,8 @@ function renderLatestImpactCompare(editConfig: LabEditConfig | null, copy: LabI1
   const beforeRelative = readWindowVector(before, "relative");
   const afterRelative = readWindowVector(after, "relative");
   const impactTime = readFinite(latest, "impactTimeSeconds");
-  const hasReference = Object.keys(beforeReference).length > 0 && Object.keys(afterReference).length > 0;
+  const hasReference =
+    Object.keys(beforeReference).length > 0 && Object.keys(afterReference).length > 0;
   const caveat =
     copy.locale === "tr"
       ? "Temas anı seçili timeline aralığının orta noktasıdır. Pozitif reference lag, referans/kamera hareket zirvesinin hedef zirvesinden daha sonra ölçüldüğü anlamına gelir; nedensellik kanıtı değildir."

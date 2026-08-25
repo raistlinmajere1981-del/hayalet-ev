@@ -223,7 +223,11 @@ function renderTransformComparisonPreview(
               : renderTransformPreviewMedia(
                   input.sourceKind,
                   modeUrl,
-                  mode === "source" ? sourceLabel : mode === "difference" ? differenceLabel : transformLabel
+                  mode === "source"
+                    ? sourceLabel
+                    : mode === "difference"
+                      ? differenceLabel
+                      : transformLabel
                 )
           }
         </div>
@@ -259,7 +263,7 @@ function renderMotionImpactPanel(input: WorkspaceTransformStackInput, copy: LabI
   if (input.scope !== "visual" || input.sourceKind !== "video") return "";
   const request = input.temporalRequest ?? null;
   const disabled = input.locked === true || request === null;
-  const referenceDisabled = disabled || request?.roi === null;
+  const referenceDisabled = disabled || request.roi === null;
   const hint =
     request === null
       ? copy.locale === "tr"
@@ -310,24 +314,20 @@ const TR_CONTROL_LABELS: Partial<Record<LaboratoryControlInjectionKind, string>>
 };
 
 function getLocalizedControlLabel(kind: LaboratoryControlInjectionKind, copy: LabI18n) {
-  const definition = getLaboratoryControlInjectionDefinitions().find((entry) => entry.kind === kind);
+  const definition = getLaboratoryControlInjectionDefinitions().find(
+    (entry) => entry.kind === kind
+  );
   if (copy.locale !== "tr") return definition?.label || kind;
   return TR_CONTROL_LABELS[kind] || definition?.label || kind;
 }
 
-function getControlGroupLabel(
-  group: LaboratoryControlInjectionDefinition["group"],
-  copy: LabI18n
-) {
+function getControlGroupLabel(group: LaboratoryControlInjectionDefinition["group"], copy: LabI18n) {
   if (group === "response") return copy.locale === "tr" ? "Response Curves" : "Response Curves";
   if (group === "transition") return copy.locale === "tr" ? "Geçiş Analizi" : "Transition Analysis";
   return copy.locale === "tr" ? "Sensor / Codec Stress" : "Sensor / Codec Stress";
 }
 
-function renderControlOptions(
-  definitions: LaboratoryControlInjectionDefinition[],
-  copy: LabI18n
-) {
+function renderControlOptions(definitions: LaboratoryControlInjectionDefinition[], copy: LabI18n) {
   const groups: Array<NonNullable<LaboratoryControlInjectionDefinition["group"]>> = [
     "destruction",
     "response",
@@ -335,7 +335,9 @@ function renderControlOptions(
   ];
   return groups
     .map(function (group) {
-      const members = definitions.filter((definition) => (definition.group || "destruction") === group);
+      const members = definitions.filter(
+        (definition) => (definition.group || "destruction") === group
+      );
       if (members.length === 0) return "";
       return `<optgroup label="${escapeHtml(getControlGroupLabel(group, copy))}">${members
         .map(
