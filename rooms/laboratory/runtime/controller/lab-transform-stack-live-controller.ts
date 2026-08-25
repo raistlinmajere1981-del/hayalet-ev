@@ -2,6 +2,8 @@ import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import { isLaboratoryControlInjectionKind } from "../../shared/control-injection-model.js";
 import { normalizeLaboratoryTemporalStressTestRequest } from "../../shared/temporal-stress-test-model.js";
 import type { LaboratoryTemporalStressTestRequest } from "../../shared/temporal-stress-test-model.js";
+import { normalizeLaboratoryResponseBackgroundRoi } from "../../shared/visual-response-probe-model.js";
+import type { LaboratoryNormalizedRoi } from "../../shared/visual-response-probe-model.js";
 import {
   isLaboratoryTransformStageKind,
   mutateLaboratoryTransformStages,
@@ -30,6 +32,7 @@ type TransformStackBinderDeps = {
 };
 
 type TransformStackRootState = {
+  backgroundRoi: LaboratoryNormalizedRoi | null;
   featureId: string;
   locked: boolean;
   recipeSection: TransformStackRecipeSection;
@@ -85,7 +88,12 @@ function readRootState(root: HTMLElement): TransformStackRootState | null {
     root.getAttribute("data-lab-temporal-request-json"),
     null
   );
+  const rawBackgroundRoi = parseJsonAttribute(
+    root.getAttribute("data-lab-visual-stress-background-roi-json"),
+    null
+  );
   return {
+    backgroundRoi: normalizeLaboratoryResponseBackgroundRoi(rawBackgroundRoi),
     featureId: root.getAttribute("data-lab-transform-feature-id") || "media-analysis",
     locked: root.getAttribute("data-lab-transform-locked") === "true",
     recipeSection,
@@ -427,6 +435,7 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
         request: {
           kind,
           temporalRequest: state.temporalRequest,
+          ...(state.backgroundRoi === null ? {} : { backgroundRoi: state.backgroundRoi }),
         },
       });
       if (requestId !== null) {
