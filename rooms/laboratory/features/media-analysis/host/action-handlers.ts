@@ -4,6 +4,8 @@ import { createMediaAnnotationExportActionRuntime } from "./action-handlers-anno
 import { createMediaProfileActionRuntime } from "./action-handlers-profile.js";
 import { createMediaProjectActionRuntime } from "./action-handlers-project.js";
 import { createMediaSourceActionRuntime } from "./action-handlers-source.js";
+import { createLaboratoryStructuralTransitionRuntime } from "./structural-transition.js";
+import { createLaboratoryTransitionControlPhotometryRuntime } from "./transition-control-photometry.js";
 import { createLaboratoryVisualResponseProbeRuntime } from "./visual-response-probe.js";
 import { normalizeLaboratoryResponseBackgroundRoi } from "../../../shared/visual-response-probe-model.js";
 import { buildLaboratoryVisualResponseReportAssessment } from "../../../shared/visual-response-report-assessment.js";
@@ -82,6 +84,19 @@ function finite(record: LaboratoryRecord, key: string) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function finiteOrNull(record: LaboratoryRecord, key: string) {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function similarity(delta: number, tolerance: number) {
+  return clamp01(1 - Math.abs(delta) / tolerance);
+}
+
 async function sequentialMap<T, U>(
   values: readonly T[],
   mapper: (value: T) => Promise<U>
@@ -114,19 +129,7 @@ function resolveLatestResponseBackgroundRoi(
   });
   if (reference === undefined) return null;
   const roi = asRecord(asRecord(reference)["roi"]);
-  const x = roi["x"];
-  const y = roi["y"];
-  const width = roi["width"];
-  const height = roi["height"];
-  if (
-    typeof x !== "number" ||
-    typeof y !== "number" ||
-    typeof width !== "number" ||
-    typeof height !== "number"
-  ) {
-    return null;
-  }
-  return { x, y, width, height };
+  return normalizeLaboratoryResponseBackgroundRoi(roi);
 }
 
 function resolveResponseBackgroundRoi(
@@ -138,6 +141,61 @@ function resolveResponseBackgroundRoi(
     normalizeLaboratoryResponseBackgroundRoi(request["backgroundRoi"]) ??
     resolveLatestResponseBackgroundRoi(deps, runtime)
   );
+}
+
+function metricDifference(target: LaboratoryRecord, control: LaboratoryRecord) {
+  const keys = [
+    "visibilityScore",
+    "meanLuma",
+    "lumaSpread",
+    "chromaDistance",
+    "edgeEnergy",
+    "edgePersistence",
+    "frameDifferenceEnergy",
+    "temporalPersistence",
+    "recoveredDarkFraction",
+    "nearBlackFraction",
+  ] as const;
+  return keys.reduce<LaboratoryRecord>(function (output, key) {
+    const targetValue = finiteOrNull(target, key);
+    const controlValue = finiteOrNull(control, key);
+    output[key] = targetValue === null || controlValue === null ? null : targetValue - controlValue;
+    return output;
+  }, {});
+}
+
+function buildControlComparability(
+  target: LaboratoryRecord,
+  control: LaboratoryRecord,
+  targetRoi: LaboratoryRecord,
+  controlRoi: LaboratoryRecord
+) {
+  const targetArea = finite(targetRoi, "width") * finite(targetRoi, "height");
+  const controlArea = finite(controlRoi, "width") * finite(controlRoi, "height");
+  const areaRatio =
+    targetArea > 0 && controlArea > 0
+      ? Math.min(targetArea, controlArea) / Math.max(targetArea, controlArea)
+      : 0;
+  const meanLumaDelta = finite(target, "meanLuma") - finite(control, "meanLuma");
+  const lumaSpreadDelta = finite(target, "lumaSpread") - finite(control, "lumaSpread");
+  const chromaDelta = finite(target, "chromaDistance") - finite(control, "chromaDistance");
+  const edgeDelta = finite(target, "edgeEnergy") - finite(control, "edgeEnergy");
+  const score =
+    similarity(meanLumaDelta, 0.25) * 0.3 +
+    similarity(lumaSpreadDelta, 0.25) * 0.25 +
+    similarity(chromaDelta, 0.15) * 0.2 +
+    similarity(edgeDelta, 0.12) * 0.15 +
+    clamp01(areaRatio / 0.5) * 0.1;
+  return {
+    score,
+    status: score >= 0.75 ? "high" : score >= 0.55 ? "medium" : "low",
+    areaRatio,
+    meanLumaDelta,
+    lumaSpreadDelta,
+    chromaDelta,
+    edgeEnergyDelta: edgeDelta,
+    qualityOnly: true,
+  };
 }
 
 export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaActionRuntime {
@@ -175,6 +233,9 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
   });
 
   type EditProject = Parameters<typeof deps.getProjectEditOutputDir>[1];
+  const runtimeProjectOutput = function (runtime: LaboratoryRecord, project: LaboratoryRecord) {
+    return deps.getProjectEditOutputDir(runtime, project as EditProject);
+  };
   const visualResponseRuntime = createLaboratoryVisualResponseProbeRuntime({
     callRoomTools: deps.callRoomTools,
     getActiveProject(runtime) {
@@ -184,14 +245,25 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     getPreparedSourcePath(project) {
       return deps.asNonEmptyString(asRecord(project["source"])["storedPath"]);
     },
-    getProjectEditOutputDir(runtime, project) {
-      return deps.getProjectEditOutputDir(runtime, project as EditProject);
-    },
+    getProjectEditOutputDir: runtimeProjectOutput,
     patchActiveProject(runtime, patcher) {
       return deps.patchActiveProject(runtime, function (project) {
         return patcher(asRecord(project));
       });
     },
+    roomId: deps.roomId,
+    toRecord: deps.toRecord,
+  });
+  const structuralTransitionRuntime = createLaboratoryStructuralTransitionRuntime({
+    callRoomTools: deps.callRoomTools,
+    getProjectEditOutputDir: runtimeProjectOutput,
+    readBinaryFileBytes: deps.readBinaryFileBytes,
+    roomId: deps.roomId,
+    toRecord: deps.toRecord,
+  });
+  const controlPhotometryRuntime = createLaboratoryTransitionControlPhotometryRuntime({
+    callRoomTools: deps.callRoomTools,
+    getProjectEditOutputDir: runtimeProjectOutput,
     roomId: deps.roomId,
     toRecord: deps.toRecord,
   });
@@ -282,18 +354,12 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     });
   }
 
-  async function persistResponseAssessment(
+  async function replaceStoredResult(
     runtime: RunControlInjectionArgs[0],
     result: LaboratoryRecord
   ) {
-    const assessedResult: LaboratoryRecord = {
-      ...result,
-      interpretation: buildLaboratoryVisualResponseReportAssessment(result),
-    };
     const resultId = deps.asNonEmptyString(result["id"]);
-    if (resultId === null) {
-      return assessedResult;
-    }
+    if (resultId === null) return result;
     await deps.patchActiveProject(runtime, function (project) {
       const projectRecord = asRecord(project);
       const edit = asRecord(projectRecord["edit"]);
@@ -304,14 +370,161 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
         ...edit,
         temporalStressTests: existing.map(function (entry) {
           const record = asRecord(entry);
-          return deps.asNonEmptyString(record["id"]) === resultId ? assessedResult : entry;
+          return deps.asNonEmptyString(record["id"]) === resultId ? result : entry;
         }),
-        lastActionAt: assessedResult["createdAt"],
+        lastActionAt: result["createdAt"],
         lastError: null,
       };
       return project;
     });
-    return assessedResult;
+    return result;
+  }
+
+  async function persistResponseAssessment(
+    runtime: RunControlInjectionArgs[0],
+    result: LaboratoryRecord
+  ) {
+    return replaceStoredResult(runtime, {
+      ...result,
+      interpretation: buildLaboratoryVisualResponseReportAssessment(result),
+    });
+  }
+
+  async function enrichTransitionResult(
+    runtime: RunControlInjectionArgs[0],
+    requestId: string,
+    rawResult: LaboratoryRecord,
+    temporalRequest: LaboratoryRecord,
+    backgroundRoi: ReturnType<typeof normalizeLaboratoryResponseBackgroundRoi>,
+    controlRoi: ReturnType<typeof normalizeLaboratoryResponseBackgroundRoi>
+  ) {
+    const project = deps.getActiveProject(runtime);
+    if (project === null || backgroundRoi === null) return rawResult;
+    const projectRecord = asRecord(project);
+    const source = asRecord(projectRecord["source"]);
+    const sourcePath = deps.asNonEmptyString(source["storedPath"]);
+    const metadata = asRecord(source["metadata"]);
+    const sourceWidth = finite(metadata, "width");
+    const sourceHeight = finite(metadata, "height");
+    const durationSeconds = finiteOrNull(metadata, "durationSeconds");
+    const targetRoi = normalizeLaboratoryResponseBackgroundRoi(temporalRequest["roi"]);
+    const resultRequest = asRecord(rawResult["request"]);
+    const eventSeconds = finite(resultRequest, "eventSeconds");
+    if (
+      sourcePath === null ||
+      targetRoi === null ||
+      sourceWidth <= 0 ||
+      sourceHeight <= 0 ||
+      eventSeconds < 0
+    ) {
+      return rawResult;
+    }
+
+    const referenceRoi = resolveLatestResponseBackgroundRoi(deps, runtime) ?? backgroundRoi;
+    let structural: LaboratoryRecord;
+    try {
+      structural = asRecord(
+        await structuralTransitionRuntime.analyzeTransition({
+          backgroundRoi,
+          controlRoi,
+          durationSeconds,
+          eventSeconds,
+          project: projectRecord,
+          referenceRoi,
+          requestId,
+          runtime,
+          sourceHeight,
+          sourcePath,
+          sourceWidth,
+          targetRoi,
+        })
+      );
+    } catch (error) {
+      structural = {
+        status: "unavailable",
+        error: error instanceof Error ? error.message : "Structural transition analysis failed.",
+      };
+    }
+
+    const phases = Array.isArray(rawResult["phases"])
+      ? (rawResult["phases"] as unknown[]).map(asRecord)
+      : [];
+    let controlMeasurements: LaboratoryRecord[] = [];
+    if (controlRoi !== null) {
+      try {
+        controlMeasurements = (
+          await controlPhotometryRuntime.measureControlPhases({
+            controlRoi,
+            phases: phases.map(function (phase) {
+              return {
+                phase: deps.asNonEmptyString(phase["phase"]) || "phase",
+                startSeconds: finite(phase, "startSeconds"),
+                endSeconds: finite(phase, "endSeconds"),
+              };
+            }),
+            project: projectRecord,
+            requestId,
+            runtime,
+            sampleFps: finite(temporalRequest, "sampleFps") || 5,
+            sourcePath,
+          })
+        ).map(asRecord);
+      } catch {
+        controlMeasurements = [];
+      }
+    }
+
+    const enrichedPhases = phases.map(function (phase) {
+      const phaseName = deps.asNonEmptyString(phase["phase"]);
+      const controlEntry = controlMeasurements.find(function (entry) {
+        return deps.asNonEmptyString(entry["phase"]) === phaseName;
+      });
+      const control = controlEntry === undefined ? null : asRecord(controlEntry["metrics"]);
+      const target = asRecord(phase["target"]);
+      return {
+        ...phase,
+        control,
+        targetVsControl: control === null ? null : metricDifference(target, control),
+        targetVsBackground: phase["differential"],
+      };
+    });
+    const prePhase = enrichedPhases.find(function (phase) {
+      return phase["phase"] === "pre";
+    });
+    const preControl = prePhase === undefined ? null : asRecord(prePhase["control"]);
+    const controlComparability =
+      controlRoi === null || prePhase === undefined || preControl === null
+        ? null
+        : buildControlComparability(
+            asRecord(prePhase["target"]),
+            preControl,
+            targetRoi,
+            controlRoi
+          );
+    const oldInterpretation = asRecord(rawResult["interpretation"]);
+    const structuralAssessment = asRecord(structural["assessment"]);
+    const structuralClassification = deps.asNonEmptyString(structuralAssessment["classification"]);
+    const roiStability = asRecord(structural["roiStability"]);
+    const enrichedResult: LaboratoryRecord = {
+      ...rawResult,
+      schemaVersion: 2,
+      request: {
+        ...resultRequest,
+        controlRoi,
+      },
+      phases: enrichedPhases,
+      structural,
+      roiStability,
+      interpretation: {
+        ...oldInterpretation,
+        photometricClassification: oldInterpretation["classification"],
+        structuralClassification,
+        classification: structuralClassification ?? oldInterpretation["classification"],
+        controlComparability,
+        roiStability,
+      },
+    };
+    return replaceStoredResult(runtime, enrichedResult);
   }
 
   async function runControlInjection(...args: RunControlInjectionArgs) {
@@ -344,10 +557,21 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
           "Select a Background ROI before running Transition Probe. Legacy Motion Reference lock is accepted as fallback."
         );
       }
-      return visualResponseRuntime.runTransitionProbe(runtime, requestId, {
+      const controlRoi = normalizeLaboratoryResponseBackgroundRoi(request["controlRoi"]);
+      const result = asRecord(
+        await visualResponseRuntime.runTransitionProbe(runtime, requestId, {
+          temporalRequest,
+          backgroundRoi,
+        })
+      );
+      return enrichTransitionResult(
+        runtime,
+        requestId,
+        result,
         temporalRequest,
         backgroundRoi,
-      });
+        controlRoi
+      );
     }
 
     if (specialKind === "recompression-ladder") {
