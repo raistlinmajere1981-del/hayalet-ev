@@ -51,7 +51,7 @@ function exportMarkdown(
   const report = trigger.closest<HTMLElement>("[data-lab-exportable-report='true']");
   const filename = safeFileName(report?.dataset["labReportFilename"] ?? "laboratory-visual-report");
   const blob = new Blob([text, "\n"], { type: "text/markdown;charset=utf-8" });
-  const url = deps.windowRef.URL.createObjectURL(blob);
+  const url = URL.createObjectURL(blob);
   const anchor = deps.documentRef.createElement("a");
   anchor.href = url;
   anchor.download = filename;
@@ -60,7 +60,7 @@ function exportMarkdown(
   anchor.click();
   anchor.remove();
   deps.windowRef.setTimeout(function () {
-    deps.windowRef.URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url);
   }, 0);
 }
 
