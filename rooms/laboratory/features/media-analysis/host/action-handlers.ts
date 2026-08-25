@@ -76,6 +76,17 @@ function finite(record: LaboratoryRecord, key: string) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+async function sequentialMap<T, U>(
+  values: readonly T[],
+  mapper: (value: T) => Promise<U>
+): Promise<U[]> {
+  return values.reduce<Promise<U[]>>(async function (pending, value) {
+    const output = await pending;
+    output.push(await mapper(value));
+    return output;
+  }, Promise.resolve([]));
+}
+
 function resolveLatestResponseBackgroundRoi(
   deps: MediaActionRuntimeDeps,
   runtime: LaboratoryRecord
@@ -235,7 +246,10 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
   const originalRunControlInjection = mediaEditActionRuntime.runControlInjection;
   type RunControlInjectionArgs = Parameters<typeof originalRunControlInjection>;
 
-  async function persistCompositeResult(runtime: RunControlInjectionArgs[0], result: LaboratoryRecord) {
+  async function persistCompositeResult(
+    runtime: RunControlInjectionArgs[0],
+    result: LaboratoryRecord
+  ) {
     await deps.patchActiveProject(runtime, function (project) {
       const edit = asRecord(asRecord(project)["edit"]);
       const existing = Array.isArray(edit["temporalStressTests"])
@@ -287,8 +301,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     if (specialKind === "recompression-ladder") {
       const backgroundRoi = resolveLatestResponseBackgroundRoi(deps, runtime);
       const crfValues = [18, 24, 30, 36, 42];
-      const steps: LaboratoryRecord[] = [];
-      for (const crf of crfValues) {
+      const steps = await sequentialMap(crfValues, async function (crf) {
         const targetResult = asRecord(
           await originalRunControlInjection(runtime, requestId, {
             request: {
@@ -298,21 +311,21 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
             },
           })
         );
-        let backgroundResult: LaboratoryRecord | null = null;
-        if (backgroundRoi !== null) {
-          backgroundResult = asRecord(
-            await originalRunControlInjection(runtime, requestId, {
-              request: {
-                kind: "recompression",
-                params: { baselineCrf: 18, injectedCrf: crf },
-                temporalRequest: { ...temporalRequest, roi: backgroundRoi },
-              },
-            })
-          );
-        }
+        const backgroundResult =
+          backgroundRoi === null
+            ? null
+            : asRecord(
+                await originalRunControlInjection(runtime, requestId, {
+                  request: {
+                    kind: "recompression",
+                    params: { baselineCrf: 18, injectedCrf: crf },
+                    temporalRequest: { ...temporalRequest, roi: backgroundRoi },
+                  },
+                })
+              );
         const targetDelta = asRecord(targetResult["delta"]);
         const backgroundDelta = asRecord(backgroundResult?.["delta"]);
-        steps.push({
+        return {
           crf,
           target: targetResult,
           background: backgroundResult,
@@ -321,11 +334,13 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
               finite(targetDelta, "meanFrameDifferenceEnergy") -
               finite(backgroundDelta, "meanFrameDifferenceEnergy"),
             meanEdgeEnergy:
-              finite(targetDelta, "meanEdgeEnergy") - finite(backgroundDelta, "meanEdgeEnergy"),
-            lumaRange: finite(targetDelta, "lumaRange") - finite(backgroundDelta, "lumaRange"),
+              finite(targetDelta, "meanEdgeEnergy") -
+              finite(backgroundDelta, "meanEdgeEnergy"),
+            lumaRange:
+              finite(targetDelta, "lumaRange") - finite(backgroundDelta, "lumaRange"),
           },
-        });
-      }
+        };
+      });
       const createdAt = new Date().toISOString();
       const result: LaboratoryRecord = {
         schemaVersion: 1,
