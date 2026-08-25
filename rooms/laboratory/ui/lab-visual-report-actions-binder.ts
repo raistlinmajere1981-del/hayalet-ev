@@ -26,8 +26,9 @@ function fallbackCopy(documentRef: Document, text: string) {
 }
 
 async function copyText(deps: LaboratoryVisualReportActionsDeps, text: string) {
-  if (deps.windowRef.navigator.clipboard?.writeText !== undefined) {
-    await deps.windowRef.navigator.clipboard.writeText(text);
+  const clipboard = deps.windowRef.navigator.clipboard;
+  if (clipboard !== undefined && typeof clipboard.writeText === "function") {
+    await clipboard.writeText(text);
     return;
   }
   fallbackCopy(deps.documentRef, text);
