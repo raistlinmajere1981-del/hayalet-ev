@@ -16,22 +16,31 @@ Bir test sonucunun “farklı response” göstermesi H2 anlamına gelmez. Aynı
 
 ## ROI kontratı
 
-Diferansiyel testler iki ROI kullanır:
+Diferansiyel testler iki bağımsız ROI kullanır:
 
-- **Background / Reference ROI** — hedefin hemen yanında, mümkün olduğunca benzer fiziksel arka plan.
 - **Target ROI** — iddia edilen hedef yapı.
+- **Background ROI** — hedefin hemen yanında, mümkün olduğunca benzer fiziksel arka plan.
 
-Mevcut Motion Reference kilidi Background ROI olarak da kullanılır.
+Visual Stress Probes panelinde iki ayrı seçim rolü vardır:
+
+- `Target ROI`
+- `Background ROI`
 
 Önerilen akış:
 
 1. timeline aralığını seç,
-2. hedefin yanındaki sabit arka plan ROI'sini seç,
-3. **Reference / Background ROI Lock** ile kilitle,
-4. Target ROI'yi seç,
-5. response veya transition testini çalıştır.
+2. **Target ROI** rolünü seçip hedef alanını çiz veya yeniden boyutlandır,
+3. **Background ROI** rolünü seçip yakın arka plan alanını çiz veya yeniden boyutlandır,
+4. iki ROI'nin ekranda aynı anda görünür olduğunu kontrol et,
+5. response, transition veya codec ladder testini çalıştır.
 
-Motion Probe aynı kilidi kamera hareketi referansı olarak kullanmaya devam eder.
+Target ROI mevcut Laboratory seçim ROI'sidir ve temporal request içine taşınır. Background ROI ayrı workspace ROI slotunda tutulur; Target yeniden çizildiğinde Background kaybolmaz veya Target'ın üzerine yazılmaz.
+
+Görsel ayrım için Target ve Background farklı çerçeve stilleri kullanır. Aktif seçim rolü panelde ayrıca belirtilir.
+
+Motion Reference ROI artık diferansiyel testler için zorunlu değildir. Eski proje kayıtlarıyla uyumluluğu korumak amacıyla host tarafında yalnızca explicit Background ROI bulunmadığında legacy fallback olarak kabul edilir. Motion Probe kendi reference-lock davranışını kullanmaya devam eder.
+
+Kaynak değiştirildiğinde workspace ROI durumu kaynakla birlikte sıfırlanır; böylece önceki videodan kalan Background ROI yeni kaynağa sessizce taşınmaz.
 
 ## Visibility / Contrast Response Probe
 
@@ -153,7 +162,7 @@ Ayrıca codec ladder:
 CRF 18 → 24 → 30 → 36 → 42
 ```
 
-aynı Target ROI üzerinde çalıştırılır. Background ROI kilitliyse aynı ladder Background üzerinde de çalışır ve diferansiyel degradation sonucu üretilir.
+aynı Target ROI üzerinde çalıştırılır. Background ROI seçiliyse aynı ladder Background üzerinde de çalışır ve diferansiyel degradation sonucu üretilir.
 
 ## İnsan-dili yorum sınırı
 
@@ -194,7 +203,7 @@ Live Results mümkün olduğunca aynı kayıt üzerinden şunları görünür tu
 
 Source / Transform / Difference preview mevcut transform preview yüzeyinde korunur.
 
-Bu ilk sürüm Target/Background ROI için ayrı crop thumbnail artifact üretmez; ROI konumu ve ölçüm eğrileri sonuç kaydında tutulur. Görsel crop artifact'leri gerekirse sonraki turda aynı provenance zincirine eklenebilir.
+Bu sürüm Target ve Background ROI'yi çalışma alanında ayrı ve eşzamanlı overlay olarak gösterir. Ayrı crop thumbnail artifact hâlâ üretilmez; ROI konumu ve ölçüm eğrileri sonuç kaydında tutulur. Görsel crop artifact'leri gerekirse sonraki turda aynı provenance zincirine eklenebilir.
 
 ## Performans notu
 
@@ -224,7 +233,13 @@ ile birlikte tutulur.
 
 ## Doğrulama
 
-Yeni regression dosyası:
+Dual ROI regression:
+
+```bash
+npm run rooms:test:file -- scripts/tests/laboratory-visual-stress-dual-roi-regressions.test.ts
+```
+
+Visual response regression:
 
 ```bash
 npm run rooms:test:file -- scripts/tests/laboratory-visual-response-regressions.test.ts
