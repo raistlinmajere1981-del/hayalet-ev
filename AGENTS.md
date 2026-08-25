@@ -55,7 +55,11 @@ Session'ın ilk mesajı veya uzun ara tek başına mod kontrolü sebebi değildi
 
 ## Memory
 
-Kalıcı karar, tercih ve tekrar kullanılacak teknik bulgular için MCP Shared Memory kullanılır. Session başında `hev_memory_bootstrap_policy` bir kez çalıştırılır; kalıcı bir şey öğrenildiyse `hev_memory_write` kullanılır. Detay ve format kuralları: `.rovo/MEMORY.md`.
+Kalıcı karar, tercih ve tekrar kullanılacak teknik bulgular için MCP Shared Memory kullanılır. Session başında canonical policy listesi bir kez açıkça bootstrap edilir:
+
+`hev_memory_bootstrap_policy{ namespace: "policy", files: ["AGENTS.md", ".rovo/MODES.md", ".rovo/WORKFLOWS.md", ".rovo/MEMORY.md", ".rovo/03-ARCHITECTURE.md"] }`
+
+Kalıcı bir şey öğrenildiyse `hev_memory_write` kullanılır. Detay, migration ve format kuralları: `.rovo/MEMORY.md`.
 
 ## Karakter
 
