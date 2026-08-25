@@ -6,6 +6,7 @@ import { createMediaProjectActionRuntime } from "./action-handlers-project.js";
 import { createMediaSourceActionRuntime } from "./action-handlers-source.js";
 import { createLaboratoryVisualResponseProbeRuntime } from "./visual-response-probe.js";
 import { normalizeLaboratoryResponseBackgroundRoi } from "../../../shared/visual-response-probe-model.js";
+import { buildLaboratoryVisualResponseReportAssessment } from "../../../shared/visual-response-report-assessment.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -281,6 +282,38 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     });
   }
 
+  async function persistResponseAssessment(
+    runtime: RunControlInjectionArgs[0],
+    result: LaboratoryRecord
+  ) {
+    const assessedResult: LaboratoryRecord = {
+      ...result,
+      interpretation: buildLaboratoryVisualResponseReportAssessment(result),
+    };
+    const resultId = deps.asNonEmptyString(result["id"]);
+    if (resultId === null) {
+      return assessedResult;
+    }
+    await deps.patchActiveProject(runtime, function (project) {
+      const projectRecord = asRecord(project);
+      const edit = asRecord(projectRecord["edit"]);
+      const existing = Array.isArray(edit["temporalStressTests"])
+        ? (edit["temporalStressTests"] as unknown[])
+        : [];
+      projectRecord["edit"] = {
+        ...edit,
+        temporalStressTests: existing.map(function (entry) {
+          const record = asRecord(entry);
+          return deps.asNonEmptyString(record["id"]) === resultId ? assessedResult : entry;
+        }),
+        lastActionAt: assessedResult["createdAt"],
+        lastError: null,
+      };
+      return project;
+    });
+    return assessedResult;
+  }
+
   async function runControlInjection(...args: RunControlInjectionArgs) {
     const [runtime, requestId, actionPayload] = args;
     const request = asRecord(actionPayload["request"]);
@@ -294,11 +327,14 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
           "Select a Background ROI before running Visibility Response. Legacy Motion Reference lock is accepted as fallback."
         );
       }
-      return visualResponseRuntime.runResponseProbe(runtime, requestId, {
-        axis: specialKind.slice("response-".length),
-        temporalRequest,
-        backgroundRoi,
-      });
+      const result = asRecord(
+        await visualResponseRuntime.runResponseProbe(runtime, requestId, {
+          axis: specialKind.slice("response-".length),
+          temporalRequest,
+          backgroundRoi,
+        })
+      );
+      return persistResponseAssessment(runtime, result);
     }
 
     if (specialKind === "appearance-transition") {
