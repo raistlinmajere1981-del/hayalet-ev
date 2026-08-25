@@ -38,6 +38,7 @@
 
 .labx-selection-roi--visual-target {
   border-color: var(--lab-warning);
+  color: var(--lab-warning);
 }
 
 .labx-selection-roi--visual-target .labx-selection-roi__label {
@@ -54,6 +55,7 @@
   border-color: var(--lab-accent);
   border-style: dashed;
   background: transparent;
+  color: var(--lab-accent);
 }
 
 .labx-selection-roi--visual-background .labx-selection-roi__label {
@@ -71,5 +73,6 @@
 }
 
 .labx-selection-roi--visual-active {
+  z-index: 10;
   box-shadow: 0 0 0 2px currentColor, 0 0 22px color-mix(in srgb, currentColor 28%, transparent);
 }
