@@ -18,11 +18,23 @@ Important implemented workbench behaviors include:
 - room-local tool/model readiness management,
 - single-image and two-image inspection,
 - zoom/pan and selection/ROI-oriented inspection helpers,
+- ordered visual/audio transform stacks with Source / Transform / Difference preview,
+- Temporal Scan, Photometric Attenuation and Motion / Impact probes,
+- Target / Background differential photometry and Visibility Response sweeps,
+- Appearance / Disappearance PRE / EVENT / POST transition probing,
+- sensor/codec stress controls including CRF 18 → 42 recompression ladder,
 - comparison capture/export,
 - pen and circle/ellipse drawing annotations with configurable color/width and clear controls,
 - annotation-aware PNG comparison export,
 - audio analysis runners including advanced forensic, music/rhythm, sound-event and source-separation paths,
 - report/result surfaces that can feed later AI-assisted interpretation.
+
+The visual stress-test contract and deliberately non-verdict interpretation language are documented in:
+
+- [TRANSFORM-STRESS-TEST.md](./TRANSFORM-STRESS-TEST.md)
+- [VISUAL-RESPONSE-STRESS-PROBES.md](./VISUAL-RESPONSE-STRESS-PROBES.md)
+- [PHOTOMETRIC-ATTENUATION.md](./PHOTOMETRIC-ATTENUATION.md)
+- [MOTION-IMPACT-PROBE.md](./MOTION-IMPACT-PROBE.md)
 
 Availability of individual analysis runners can depend on local tools, models or platform capabilities. The readiness layer should remain the source of truth for whether a specific run can execute on the current machine.
 
@@ -87,7 +99,7 @@ node rooms/laboratory/scripts/laboratory-check.mjs --ci
 For a shorter targeted investigation, use:
 
 ```bash
-npm run rooms:test:file -- <test files>
+npm run rooms:test:file -- scripts/tests/laboratory-visual-response-regressions.test.ts
 npm run rooms:typecheck
 ```
 
