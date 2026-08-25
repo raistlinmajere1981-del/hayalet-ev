@@ -1,6 +1,6 @@
 # Visual Response Stress Probes
 
-Bu belge Laboratory'deki target/background diferansiyel görsel stres testlerinin çalışma kontratını açıklar.
+Bu belge Laboratory'deki diferansiyel görsel stress-testlerin çalışma kontratını açıklar.
 
 Amaç bir görüntü için “gerçek” veya “sahte” kararı vermek değildir. Amaç aynı sahne parçasının kontrollü dönüşümlere verdiği cevabı ölçmek ve farklı açıklamaların beklenen davranışlarını birbirinden ayırmaya yardımcı olacak veri üretmektir.
 
@@ -16,31 +16,36 @@ Bir test sonucunun “farklı response” göstermesi H2 anlamına gelmez. Aynı
 
 ## ROI kontratı
 
-Diferansiyel testler iki bağımsız ROI kullanır:
+Visual Stress video akışında üç seçim rolü bulunabilir:
 
-- **Target ROI** — iddia edilen hedef yapı.
-- **Background ROI** — hedefin hemen yanında, mümkün olduğunca benzer fiziksel arka plan.
+- **Target ROI** — incelenen hedef yapı.
+- **Control ROI** — opsiyonel, hedef dışında benzer başlangıç görüntü özelliklerine sahip sabit sahne alanı.
+- **Background ROI** — hedefin hemen yanında veya aynı sahne içinde fiziksel arka plan / diferansiyel referans.
 
-Visual Stress Probes panelinde iki ayrı seçim rolü vardır:
+Visibility Response ve codec karşılaştırmaları Target + Background ile çalışmaya devam eder. Appearance / Disappearance Transition ise Control seçiliyse üçüncü ROI'yi de ölçer.
+
+Visual Stress Probes panelindeki roller:
 
 - `Target ROI`
+- `Control ROI`
 - `Background ROI`
 
-Önerilen akış:
+Önerilen transition akışı:
 
 1. timeline aralığını seç,
-2. **Target ROI** rolünü seçip hedef alanını çiz veya yeniden boyutlandır,
-3. **Background ROI** rolünü seçip yakın arka plan alanını çiz veya yeniden boyutlandır,
-4. iki ROI'nin ekranda aynı anda görünür olduğunu kontrol et,
-5. response, transition veya codec ladder testini çalıştır.
+2. **Target ROI** ile hedef alanını çiz,
+3. mümkünse **Control ROI** ile hedef dışındaki benzer koyuluk / doku seviyesine sahip sabit sahne alanını çiz,
+4. **Background ROI** ile yakın fiziksel arka planı çiz,
+5. üç overlay'in aynı gerçek media frame üzerinde kaldığını kontrol et,
+6. Appearance / Disappearance Transition Probe'u çalıştır.
 
-Target ROI mevcut Laboratory seçim ROI'sidir ve temporal request içine taşınır. Background ROI ayrı workspace ROI slotunda tutulur; Target yeniden çizildiğinde Background kaybolmaz veya Target'ın üzerine yazılmaz.
+Target mevcut Laboratory seçim ROI'sidir. Control ve Background ayrı workspace comparison ROI slotlarında tutulur; biri yeniden çizildiğinde diğerleri Target'ın üzerine yazılmaz.
 
-Görsel ayrım için Target ve Background farklı çerçeve stilleri kullanır. Aktif seçim rolü panelde ayrıca belirtilir.
+Control ROI zorunlu değildir ve semantic doğruluk iddiası taşımaz. PRE fazı sonrasında üretilen comparability değeri yalnız measurement-quality göstergesidir.
 
-Motion Reference ROI artık diferansiyel testler için zorunlu değildir. Eski proje kayıtlarıyla uyumluluğu korumak amacıyla host tarafında yalnızca explicit Background ROI bulunmadığında legacy fallback olarak kabul edilir. Motion Probe kendi reference-lock davranışını kullanmaya devam eder.
+Motion Reference ROI diferansiyel testler için zorunlu değildir. Structural Transition stabilization sırasında aynı source için güncel Motion Reference lock varsa translation reference olarak tercih edilir; yoksa Background ROI kullanılabilir. Motion Probe kendi reference-lock davranışını korur.
 
-Kaynak değiştirildiğinde workspace ROI durumu kaynakla birlikte sıfırlanır; böylece önceki videodan kalan Background ROI yeni kaynağa sessizce taşınmaz.
+Kaynak değiştirildiğinde workspace ROI durumu kaynakla birlikte sıfırlanır; böylece önceki videodan kalan ROI yeni kaynağa sessizce taşınmaz.
 
 ## ROI geometrisi ve responsive layout
 
@@ -51,11 +56,11 @@ Laboratory tek-media preview'da ROI overlay'ini panel kutusuna değil, `object-f
 - gerçek media aspect ratio'sunu okur,
 - letterbox / pillarbox alanlarını hesaba katar,
 - ROI çizim frame'ini gerçek media rect'ine yerleştirir,
-- Target ve Background overlay'lerini aynı frame'e bağlar,
+- Target / Control / Background overlay'lerini aynı frame'e bağlar,
 - `ResizeObserver` ile layout değişimini izler,
 - preview zoom / transform ölçeğini local koordinata geri çevirir.
 
-Bu nedenle Live Results açılması, drawer değişimi, pencere resize/maximize veya benzeri bir panel düzeni değişikliği için ayrı ROI yamaları gerekmez. Aynı geometry authority bütün layout değişikliklerini kapsar.
+Bu nedenle Live Results açılması, drawer değişimi, pencere resize/maximize veya benzeri bir panel düzeni değişikliği için ayrı ROI yamaları gerekmez.
 
 ## Visibility / Contrast Response Probe
 
@@ -99,13 +104,11 @@ Target - Background
 
 farkı saklanır.
 
-Bu sayede tüm kameranın exposure değişimi ile hedefe lokalize response birbirinden ayrılmaya çalışılır.
-
 ## ROI comparability gate
 
 “Target ve Background farklı eğri verdi” cümlesi tek başına güçlü bir sonuç değildir. İki ROI başlangıçta birbirine yeterince benzemiyorsa response farkının nedeni yalnız ROI seçimi olabilir.
 
-Bu nedenle rapor assessment'i sweep ekseninin nötr noktasında şu karşılaştırılabilirlik sinyallerini birlikte kullanır:
+Rapor assessment'i sweep ekseninin nötr noktasında şu sinyalleri birlikte kullanır:
 
 - Target / Background ROI alan oranı,
 - mean luma farkı,
@@ -117,7 +120,7 @@ Bu nedenle rapor assessment'i sweep ekseninin nötr noktasında şu karşılaşt
 
 Sonuç `high`, `moderate` veya `low` comparability olarak saklanır.
 
-Özellikle ROI alan oranı `0.25` altındaysa karşılaştırma düşük güvene zorlanır. Bu eşik fiziksel bir yasa değildir; ilk sürümde aşırı farklı ROI ölçeklerinin güçlü yorum üretmesini önleyen konservatif bir guardrail'dir.
+Özellikle ROI alan oranı `0.25` altındaysa karşılaştırma düşük güvene zorlanır. Bu eşik fiziksel bir yasa değildir; aşırı farklı ROI ölçeklerinin güçlü yorum üretmesini önleyen konservatif bir guardrail'dir.
 
 Comparability düşükse sınıflandırma:
 
@@ -146,11 +149,7 @@ visibility-only-separation
 
 olarak tutulur.
 
-`target-response-differs` sınıfı için:
-
-- ROI comparability düşük olmamalı,
-- visibility separation yeterince güçlü olmalı,
-- en az iki destekleyici metrik ailesi eşlik etmelidir.
+`target-response-differs` sınıfı için ROI comparability düşük olmamalı, visibility separation yeterince güçlü olmalı ve en az iki destekleyici metrik ailesi eşlik etmelidir.
 
 Bu sınıf da yalnız ölçülen response ayrışmasını tarif eder; nedenini belirlemez.
 
@@ -158,7 +157,7 @@ Bu sınıf da yalnız ölçülen response ayrışmasını tarif eder; nedenini b
 
 Near-black tek başına “bilgi yok” anlamına gelmez.
 
-Bu nedenle Response Probe source ölçümüne ek olarak luma'yı 8x yükselten, sıfırı koruyan bir kontrol geçişi çalıştırır.
+Response Probe source ölçümüne ek olarak luma'yı 8x yükselten, sıfırı koruyan bir kontrol geçişi çalıştırır.
 
 - source near-black
 - 8x lift sonrası persistent near-black
@@ -166,13 +165,11 @@ Bu nedenle Response Probe source ölçümüne ek olarak luma'yı 8x yükselten, 
 
 ayrı tutulur.
 
-Bu metrik Photometric Attenuation Probe ile aynı kavramsal dili kullanır.
-
 ## Appearance / Disappearance Transition Probe
 
 Kullanıcının timeline seçiminin orta noktası olay zamanı olarak kabul edilir.
 
-Varsayılan pencereler:
+Varsayılan legacy fotometrik pencereler:
 
 ```text
 PRE   = event -1.0 s → event -0.2 s
@@ -180,57 +177,41 @@ EVENT = event -0.2 s → event +0.2 s
 POST  = event +0.2 s → event +1.0 s
 ```
 
-Kaynak başı/sonunda pencereler güvenli biçimde kırpılır.
+Target ve Background mevcut fotometrik metriklerle paralel ölçülür. Control seçiliyse aynı PRE / EVENT / POST pencerelerinde Control fotometrisi de eklenir ve Target-Control diferansiyeli ayrıca tutulur.
 
-Her fazda Target ve Background paralel ölçülür.
+Structural Transition bu legacy sonucu değiştirmez; aynı Transition kaydını yapısal timeline, diferansiyel structural loss ve ROI stability alanlarıyla zenginleştirir.
 
-Özellikle izlenen değişimler:
+Structural katmanın ayrıntılı kontratı:
 
-- visibility delta
-- luma / contrast
-- chroma
-- near-black / recovered dark
-- frame-difference energy
-- edge energy
-- edge persistence
-- temporal persistence
-
-Sonuç örneğin “target ve background birlikte değişiyor”, “değişim target'a lokalize görünüyor” veya “sonuç belirsiz” şeklinde sınıflandırılabilir.
+[STRUCTURAL-TRANSITION.md](./STRUCTURAL-TRANSITION.md)
 
 ## Response curve comparison
 
 Live Results son birden fazla Visibility Response kaydını birlikte tutar.
 
-Bu sayede aynı eksende farklı ROI veya sahneler çalıştırılarak örneğin:
-
-- iddia edilen hedef,
-- insan,
-- ağaç/kaya,
-- karanlık arka plan
-
-response curve'leri karşılaştırılabilir.
+Bu sayede aynı eksende farklı ROI veya sahneler çalıştırılarak örneğin hedef, insan, ağaç/kaya veya karanlık arka plan response curve'leri karşılaştırılabilir.
 
 Karşılaştırmanın anlamlı olması için mümkün olduğunca aynı sweep ekseni, benzer zaman penceresi ve benzer ROI ölçeği kullanılmalıdır.
 
 ## Sensor / Codec stress
 
-Paired degradation kontrollerine şunlar eklenmiştir:
+Paired degradation kontrollerine şunlar dahildir:
 
 - denoise
 - gamma stress
 - black crush
 - highlight clipping
 - chroma suppression
-- mevcut noise / blur / sharpen / low-light
+- noise / blur / sharpen / low-light
 - paired recompression
 
-Ayrıca codec ladder:
+Codec ladder:
 
 ```text
 CRF 18 → 24 → 30 → 36 → 42
 ```
 
-aynı Target ROI üzerinde çalıştırılır. Background ROI seçiliyse aynı ladder Background üzerinde de çalışır ve diferansiyel degradation sonucu üretilir.
+aynı Target ROI üzerinde çalıştırılır. Background seçiliyse aynı ladder Background üzerinde de çalışır ve diferansiyel degradation sonucu üretilir.
 
 ## İnsan-dili yorum sınırı
 
@@ -240,59 +221,51 @@ UI şu tür ifadeler kullanabilir:
 - Background ROI diferansiyel yorum için yeterince karşılaştırılabilir değil,
 - visibility eğrileri ayrışıyor fakat destekleyici metrikler zayıf,
 - target/background eğrileri birden fazla metrikte ayrışıyor; neden açık bırakılıyor,
-- değişim target'a lokalize görünüyor,
+- target ve control benzer yapısal değişim gösteriyor,
+- değişimin bir bölümü sahne geneline yayılıyor; target'ta ek yapısal değişim ölçülüyor,
+- structural değişim target'a ağırlıklı lokalize,
+- kamera / ROI drift'i sonucu etkileyebilecek düzeyde,
 - davranış düşük ışık / sensör açıklamasıyla uyumlu,
-- global sensör cevabı ölçülen çoklu-metrik ayrışmayı tek başına açıklamakta yetersiz,
 - codec degradation hedefi çevreden daha hızlı bozuyor,
-- hedef fiziksel çevre yapılarıyla benzer response gösteriyor,
 - örnek yetersiz,
 - sonuç belirsiz.
 
 Bu ifadeler mekanizma kanıtı değildir.
 
-Özellikle şu çıkarım yapılmaz:
+Özellikle şu çıkarımlar yapılmaz:
 
 ```text
 farklı response = paranormal
+structural loss = gerçek nesnenin kaybolması
 ```
-
-veya bunun herhangi bir eşdeğeri.
 
 ## Sonuç yüzeyi ve Nexa'ya aktarım
 
-Live Results mümkün olduğunca aynı kayıt üzerinden şunları görünür tutar:
+Live Results mevcut Response / Transition / Codec kartlarının yanında Structural Transition kartını da gösterebilir.
 
-- Target curve
-- Background curve
-- diferansiyel curve
-- Target / Background ROI koordinatları
-- ROI comparability ve destekleyen metrik sayısı
-- response tablosu
-- transition PRE / EVENT / POST tablosu
-- codec ladder tablosu
-- insan-dili yorum
+Structural kartta:
 
-Her Visual Response / Transition / Codec rapor kartında:
+- Target / Control / Background ROI koordinatları,
+- Control comparability,
+- fotometrik PRE / EVENT / POST,
+- structural PRE / EVENT / POST,
+- event çevresi structural timeline,
+- Target-Control / Target-Background structural loss,
+- ROI stabilization mode,
+- tracking confidence,
+- net dx/dy ve peak displacement,
+- drift risk,
+- temkinli assessment
 
-- **Kopyala / Copy**
-- **MD Dışa Aktar / Export MD**
+bulunur.
 
-aksiyonları bulunur.
+Visual Response / Transition / Codec ve Structural Transition rapor kartlarında desteklenen akışlar **Kopyala / Copy** ve **MD Dışa Aktar / Export MD** kullanır.
 
-Kopyalama DOM'daki görsel tabloyu düz metne çevirmek yerine doğrudan yapılandırılmış Markdown üretir. Export aynı metni UTF-8 `.md` dosyası olarak verir. Bu format özellikle raporu bir AI sohbetine taşımak için tasarlanmıştır ve şunları içerir:
-
-- rapor türü ve sweep ekseni,
-- source / oluşturma zamanı,
-- Target ve Background ROI,
-- zaman seçimi,
-- konservatif assessment,
-- comparability bilgisi,
-- sensör uyumluluk notu varsa bu not,
-- düzgün Markdown ölçüm tablosu.
+Kopyalama DOM'daki görsel tabloyu düz metne çevirmek yerine yapılandırılmış Markdown üretir. Structural export yöntem sınırlarını da taşır; örneğin SSIM-benzeri skorun canonical windowed SSIM olmadığı ve stabilization'ın translation-only olduğu raporda kaybolmaz.
 
 Source / Transform / Difference preview mevcut transform preview yüzeyinde korunur.
 
-Bu sürüm Target ve Background ROI'yi çalışma alanında ayrı ve eşzamanlı overlay olarak gösterir. Ayrı crop thumbnail artifact hâlâ üretilmez; ROI konumu ve ölçüm eğrileri sonuç kaydında tutulur. Görsel crop artifact'leri gerekirse sonraki turda aynı provenance zincirine eklenebilir.
+Ayrı crop thumbnail artifact hâlâ üretilmez; ROI konumu ve ölçüm eğrileri sonuç kaydında tutulur.
 
 ## Performans notu
 
@@ -302,47 +275,20 @@ Response Probe her sweep basamağında her ROI için üç ölçüm geçişi kull
 2. edge pass,
 3. 8x lifted-dark pass.
 
-Bu nedenle sıradan tek filtre preview'ından daha ağırdır. Sweep'ler bilinçli olarak tek eksen ve kısa temporal selection üzerinde çalışır.
+Structural Transition ek olarak event çevresinde küçük grayscale frame'ler çıkarır ve reference drift analizi çalıştırır. İşler sequential tutulur; kaynak medya değiştirilmez.
 
 ## Kaynak dosya ve provenance
 
 Probe'lar source medyayı değiştirmez.
 
-Sonuç kayıtları proje `temporalStressTests` geçmişine eklenir ve kullandıkları:
-
-- source path,
-- zaman aralığı,
-- Target ROI,
-- Background ROI,
-- sweep ekseni/değerleri,
-- metrikler,
-- comparability / corroboration assessment,
-- yorum sınıfı
-
-ile birlikte tutulur.
+Sonuç kayıtları proje `temporalStressTests` geçmişine eklenir ve kullandıkları source path, zaman aralığı, ROI'ler, sweep/transition metrikleri, comparability, structural timeline, stability bilgisi ve yorum sınıflarıyla birlikte tutulur.
 
 ## Doğrulama
 
-Dual ROI regression:
-
 ```bash
+npm run rooms:test:file -- scripts/tests/laboratory-structural-transition-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-visual-stress-dual-roi-regressions.test.ts
-```
-
-Visual response regression:
-
-```bash
 npm run rooms:test:file -- scripts/tests/laboratory-visual-response-regressions.test.ts
-```
-
-Geometry / report / conservative assessment regression:
-
-```bash
 npm run rooms:test:file -- scripts/tests/laboratory-visual-report-geometry-regressions.test.ts
-```
-
-Tam Laboratory gate:
-
-```bash
 node rooms/laboratory/scripts/laboratory-check.mjs
 ```
