@@ -160,7 +160,11 @@
       parts.stageInterface.append(scoreStack);
     }
 
-    if (dicePanel) dicePanel.remove();
+    if (dicePanel) {
+      dicePanel.classList.add("is-stage-proxy");
+      dicePanel.hidden = true;
+      parts.stageInterface.append(dicePanel);
+    }
     if (playArea) playArea.remove();
   }
 
