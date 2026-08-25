@@ -1,0 +1,338 @@
+.yahtzee-scene {
+  isolation: isolate;
+}
+
+.yahtzee-hybrid-backdrop,
+.yahtzee-hybrid-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.yahtzee-hybrid-backdrop {
+  z-index: 0;
+  background: #050811;
+}
+
+.yahtzee-babylon-canvas {
+  z-index: 1;
+  pointer-events: none;
+  cursor: default;
+}
+
+.yahtzee-hybrid-fx {
+  z-index: 2;
+  mix-blend-mode: screen;
+}
+
+.yahtzee-vignette {
+  z-index: 3;
+}
+
+.yahtzee-stage-sky,
+.yahtzee-stage-sea,
+.yahtzee-stage-deck-backdrop,
+.yahtzee-stage-horizon-fog,
+.yahtzee-stage-crew,
+.yahtzee-stage-players,
+.yahtzee-stage-lightning,
+.yahtzee-stage-rain-haze {
+  position: absolute;
+  inset: 0;
+}
+
+.yahtzee-stage-sky {
+  background:
+    radial-gradient(circle at 36% 17%, rgba(194, 211, 220, 0.2) 0 4%, transparent 11%),
+    linear-gradient(180deg, #09111d 0%, #08111a 43%, #0c1821 66%, #061018 100%);
+  background-position: center;
+  background-size: cover;
+  transform: scale(1.02);
+}
+
+.yahtzee-stage-sky.has-art,
+.yahtzee-stage-sea.has-art,
+.yahtzee-stage-deck-backdrop.has-art,
+.yahtzee-stage-crew-member.has-art,
+.yahtzee-stage-player-art.has-art,
+.yahtzee-stage-player-face.has-art,
+.yahtzee-stage-lightning.has-art {
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
+
+.yahtzee-stage-sea {
+  inset: auto -4% 0;
+  height: 45%;
+  opacity: 0.88;
+  background:
+    repeating-radial-gradient(ellipse at 50% 0%, rgba(92, 128, 153, 0.1) 0 3px, transparent 4px 24px),
+    linear-gradient(180deg, rgba(8, 23, 35, 0.12), rgba(3, 13, 22, 0.96));
+  transform: perspective(620px) rotateX(64deg) translateY(16%);
+  transform-origin: bottom;
+}
+
+.yahtzee-stage-sea.sea-enabled {
+  animation: yahtzee-sea-drift 8.5s ease-in-out infinite alternate;
+}
+
+.yahtzee-stage-deck-backdrop {
+  inset: 42% -5% -13%;
+  opacity: 0.58;
+  background:
+    linear-gradient(90deg, rgba(17, 8, 5, 0.85), rgba(84, 38, 18, 0.28) 48%, rgba(13, 6, 4, 0.88)),
+    repeating-linear-gradient(89deg, #25120a 0 74px, #130906 75px 80px);
+  clip-path: polygon(8% 8%, 92% 4%, 100% 100%, 0 100%);
+  filter: blur(0.2px);
+}
+
+.yahtzee-stage-horizon-fog {
+  inset: 32% 0 auto;
+  height: 24%;
+  background: linear-gradient(180deg, transparent, rgba(51, 75, 89, 0.08), transparent);
+  filter: blur(8px);
+}
+
+.yahtzee-stage-crew-member,
+.yahtzee-stage-player {
+  position: absolute;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.58));
+}
+
+.yahtzee-stage-crew-member {
+  bottom: 37%;
+  width: clamp(70px, 7vw, 132px);
+  aspect-ratio: 0.56;
+  opacity: 0.58;
+  background: linear-gradient(180deg, #12100f 0 18%, #21120d 19% 100%);
+  clip-path: polygon(32% 0, 68% 0, 76% 10%, 86% 12%, 81% 23%, 76% 28%, 92% 100%, 8% 100%, 24% 29%, 18% 22%, 14% 13%, 25% 10%);
+  animation: yahtzee-standee-bob 5.6s ease-in-out infinite alternate;
+}
+
+.yahtzee-stage-crew-member.crew-1 {
+  left: 13%;
+  bottom: 34%;
+  transform: rotate(-4deg) scale(1.08);
+}
+
+.yahtzee-stage-crew-member.crew-2 {
+  left: 31%;
+  bottom: 43%;
+  transform: rotate(2deg) scale(0.82);
+  animation-delay: -1.3s;
+}
+
+.yahtzee-stage-crew-member.crew-3 {
+  right: 29%;
+  bottom: 44%;
+  transform: rotate(-1deg) scale(0.78);
+  animation-delay: -2.4s;
+}
+
+.yahtzee-stage-crew-member.crew-4 {
+  right: 11%;
+  bottom: 33%;
+  transform: rotate(5deg) scale(1.08);
+  animation-delay: -3.1s;
+}
+
+.yahtzee-stage-players {
+  z-index: 1;
+}
+
+.yahtzee-stage-player {
+  bottom: 24%;
+  width: clamp(120px, 10vw, 184px);
+  min-height: clamp(190px, 24vh, 310px);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: end;
+  justify-items: center;
+  opacity: 0;
+  transition:
+    opacity 360ms ease,
+    transform 520ms ease,
+    filter 360ms ease;
+}
+
+.yahtzee-scene.has-two-players .yahtzee-stage-player {
+  opacity: 0.88;
+}
+
+.yahtzee-stage-player.is-left {
+  left: 3.5%;
+  transform: translateX(-6%) rotate(-2deg) scale(0.94);
+}
+
+.yahtzee-stage-player.is-right {
+  right: 3.5%;
+  transform: translateX(6%) rotate(2deg) scale(0.94);
+}
+
+.yahtzee-stage-player.is-active {
+  opacity: 1;
+  filter:
+    drop-shadow(0 18px 18px rgba(0, 0, 0, 0.62))
+    drop-shadow(0 0 18px rgba(255, 167, 74, 0.2));
+}
+
+.yahtzee-stage-player.is-left.is-active {
+  transform: translateX(0) rotate(-1deg) scale(1);
+}
+
+.yahtzee-stage-player.is-right.is-active {
+  transform: translateX(0) rotate(1deg) scale(1);
+}
+
+.yahtzee-stage-player-art {
+  position: relative;
+  width: 86%;
+  height: 100%;
+  min-height: 170px;
+  border-radius: 42% 42% 14% 14%;
+  background:
+    radial-gradient(circle at 50% 20%, #4b2b1d 0 10%, transparent 11%),
+    linear-gradient(180deg, #171312 0 22%, #352017 23% 100%);
+  clip-path: polygon(25% 0, 75% 0, 82% 12%, 90% 16%, 82% 28%, 76% 32%, 96% 100%, 4% 100%, 24% 33%, 16% 27%, 10% 16%, 18% 12%);
+  overflow: hidden;
+}
+
+.yahtzee-stage-player-face {
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  width: 42%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  border: 2px solid rgba(214, 168, 97, 0.42);
+  color: #f4d9a4;
+  background: rgba(23, 14, 10, 0.86);
+  font:
+    700 clamp(14px, 1.4vw, 22px)/1 Georgia,
+    serif;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.42);
+}
+
+.yahtzee-stage-player-label {
+  margin-top: 8px;
+  padding: 5px 10px;
+  border: 1px solid rgba(195, 141, 76, 0.28);
+  border-radius: 999px;
+  color: #dfc59a;
+  background: rgba(14, 8, 6, 0.78);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 6px #000;
+}
+
+.yahtzee-stage-lightning {
+  opacity: 0;
+  background:
+    radial-gradient(circle at 72% 13%, rgba(230, 241, 255, 0.95), rgba(166, 197, 231, 0.25) 8%, transparent 27%),
+    linear-gradient(180deg, rgba(210, 230, 255, 0.45), transparent 55%);
+}
+
+.yahtzee-hybrid-fx.lightning-enabled .yahtzee-stage-lightning {
+  animation: yahtzee-lightning-cycle 13s linear infinite;
+}
+
+.yahtzee-stage-rain-haze {
+  opacity: 0.1;
+  background: repeating-linear-gradient(112deg, transparent 0 18px, rgba(191, 214, 229, 0.12) 19px 20px, transparent 21px 46px);
+  transform: translateX(-8%);
+  animation: yahtzee-rain-drift 7s linear infinite;
+}
+
+.yahtzee-scene[data-yahtzee-stage-phase="match"] .yahtzee-stage-crew-member {
+  opacity: 0.42;
+}
+
+.yahtzee-scene[data-yahtzee-stage-phase="result"] .yahtzee-stage-player {
+  opacity: 0.98;
+}
+
+@keyframes yahtzee-sea-drift {
+  from {
+    transform: perspective(620px) rotateX(64deg) translate3d(-1.5%, 16%, 0);
+  }
+  to {
+    transform: perspective(620px) rotateX(64deg) translate3d(1.5%, 18%, 0);
+  }
+}
+
+@keyframes yahtzee-standee-bob {
+  from {
+    margin-bottom: 0;
+  }
+  to {
+    margin-bottom: 5px;
+  }
+}
+
+@keyframes yahtzee-rain-drift {
+  from {
+    transform: translateX(-10%);
+  }
+  to {
+    transform: translateX(10%);
+  }
+}
+
+@keyframes yahtzee-lightning-cycle {
+  0%,
+  67%,
+  70%,
+  100% {
+    opacity: 0;
+  }
+  68% {
+    opacity: 0.82;
+  }
+  68.35% {
+    opacity: 0.12;
+  }
+  68.75% {
+    opacity: 0.54;
+  }
+  69.15% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 1100px) {
+  .yahtzee-stage-player {
+    width: 110px;
+    min-height: 180px;
+    bottom: 29%;
+  }
+
+  .yahtzee-stage-crew-member {
+    opacity: 0.38;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yahtzee-stage-sea,
+  .yahtzee-stage-crew-member,
+  .yahtzee-stage-lightning,
+  .yahtzee-stage-rain-haze,
+  .yahtzee-stage-player {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .yahtzee-stage-lightning {
+    opacity: 0 !important;
+  }
+}
+
+.yahtzee-shell:not(.is-babylon-active) .yahtzee-hybrid-backdrop,
+.yahtzee-shell:not(.is-babylon-active) .yahtzee-hybrid-fx {
+  display: none;
+}
