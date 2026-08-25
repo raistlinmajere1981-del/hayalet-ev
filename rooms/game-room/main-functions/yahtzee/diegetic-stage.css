@@ -22,6 +22,13 @@
   pointer-events: none;
 }
 
+.yahtzee-stage-status-dock[hidden],
+.yahtzee-stage-action-bar[hidden],
+.yahtzee-stage-interface .yahtzee-score-stack[hidden],
+.yahtzee-stage-interface .yahtzee-dice-panel[hidden] {
+  display: none !important;
+}
+
 .yahtzee-stage-status-dock {
   position: absolute;
   left: 50%;
@@ -141,13 +148,13 @@
   backdrop-filter: none;
 }
 
-.yahtzee-stage-interface .yahtzee-score-card[data-seat-index="0"] {
-  left: clamp(18px, 3vw, 54px);
+.yahtzee-stage-interface .yahtzee-score-stack[data-player-count="2"] .yahtzee-score-card[data-seat-index="0"] {
+  left: clamp(120px, 13vw, 240px);
   transform: perspective(900px) rotateX(3deg) rotateZ(-1.1deg) scale(0.9);
 }
 
-.yahtzee-stage-interface .yahtzee-score-card[data-seat-index="1"] {
-  right: clamp(18px, 3vw, 54px);
+.yahtzee-stage-interface .yahtzee-score-stack[data-player-count="2"] .yahtzee-score-card[data-seat-index="1"] {
+  right: clamp(120px, 13vw, 240px);
   transform: perspective(900px) rotateX(3deg) rotateZ(1deg) scale(0.9);
 }
 
@@ -173,11 +180,15 @@
     inset 0 1px rgba(255, 244, 211, 0.22);
 }
 
-.yahtzee-stage-interface .yahtzee-score-card[data-seat-index="0"].is-active {
+.yahtzee-stage-interface
+  .yahtzee-score-stack[data-player-count="2"]
+  .yahtzee-score-card[data-seat-index="0"].is-active {
   transform: perspective(900px) translateY(-9px) rotateX(2deg) rotateZ(-0.45deg) scale(0.98);
 }
 
-.yahtzee-stage-interface .yahtzee-score-card[data-seat-index="1"].is-active,
+.yahtzee-stage-interface
+  .yahtzee-score-stack[data-player-count="2"]
+  .yahtzee-score-card[data-seat-index="1"].is-active,
 .yahtzee-stage-interface
   .yahtzee-score-stack[data-player-count="1"]
   .yahtzee-score-card.is-active {
@@ -233,11 +244,18 @@
     max-height: 47vh;
   }
 
-  .yahtzee-stage-interface .yahtzee-score-card[data-seat-index="0"] {
-    left: 14px;
+  .yahtzee-stage-interface
+    .yahtzee-score-stack[data-player-count="2"]
+    .yahtzee-score-card[data-seat-index="0"] {
+    left: clamp(105px, 12vw, 170px);
   }
 
-  .yahtzee-stage-interface .yahtzee-score-card[data-seat-index="1"],
+  .yahtzee-stage-interface
+    .yahtzee-score-stack[data-player-count="2"]
+    .yahtzee-score-card[data-seat-index="1"] {
+    right: clamp(105px, 12vw, 170px);
+  }
+
   .yahtzee-stage-interface .yahtzee-score-stack[data-player-count="1"] .yahtzee-score-card {
     right: 14px;
   }
@@ -255,11 +273,18 @@
     padding: 11px 10px;
   }
 
-  .yahtzee-stage-interface .yahtzee-score-card[data-seat-index="0"] {
-    left: 8px;
+  .yahtzee-stage-interface
+    .yahtzee-score-stack[data-player-count="2"]
+    .yahtzee-score-card[data-seat-index="0"] {
+    left: 86px;
   }
 
-  .yahtzee-stage-interface .yahtzee-score-card[data-seat-index="1"],
+  .yahtzee-stage-interface
+    .yahtzee-score-stack[data-player-count="2"]
+    .yahtzee-score-card[data-seat-index="1"] {
+    right: 86px;
+  }
+
   .yahtzee-stage-interface .yahtzee-score-stack[data-player-count="1"] .yahtzee-score-card {
     right: 8px;
   }
