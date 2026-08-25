@@ -55,15 +55,17 @@ function asNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 }
 
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
+
 function formatNumber(value: number) {
   return Number(value.toFixed(6)).toString();
 }
 
 function buildCropFilter(request: LaboratoryControlInjectionRequest) {
   const roi = request.temporalRequest.roi;
-  if (roi === null) {
-    return null;
-  }
+  if (roi === null) return null;
   return [
     `crop=trunc(iw*${formatNumber(roi.width)}/2)*2`,
     `trunc(ih*${formatNumber(roi.height)}/2)*2`,
@@ -85,6 +87,25 @@ function buildControlFilter(request: LaboratoryControlInjectionRequest): string 
   }
   if (request.kind === "sharpen") {
     return `unsharp=5:5:${formatNumber(params["amount"] ?? 1.25)}:5:5:0`;
+  }
+  if (request.kind === "denoise") {
+    const luma = params["luma"] ?? 6;
+    const chroma = params["chroma"] ?? 4.5;
+    return `hqdn3d=${formatNumber(luma)}:${formatNumber(chroma)}:${formatNumber(luma * 1.5)}:${formatNumber(chroma * 1.5)}`;
+  }
+  if (request.kind === "gamma") {
+    return `eq=gamma=${formatNumber(params["gamma"] ?? 1.8)}`;
+  }
+  if (request.kind === "black-crush") {
+    const threshold = Math.round(clamp01(params["threshold"] ?? 0.1) * 255);
+    return `lutyuv=y='if(lt(val,${String(threshold)}),0,val)'`;
+  }
+  if (request.kind === "highlight-clipping") {
+    const threshold = Math.round(clamp01(params["threshold"] ?? 0.85) * 255);
+    return `lutyuv=y='if(gt(val,${String(threshold)}),255,val)'`;
+  }
+  if (request.kind === "chroma-suppression") {
+    return `eq=saturation=${formatNumber(clamp01(params["saturation"] ?? 0.15))}`;
   }
   if (request.kind === "low-light") {
     return [
@@ -127,13 +148,9 @@ function buildPairCommand(
   const temporal = request.temporalRequest;
   const filters: string[] = [];
   const crop = buildCropFilter(request);
-  if (crop !== null) {
-    filters.push(crop);
-  }
+  if (crop !== null) filters.push(crop);
   const controlFilter = buildControlFilter(request);
-  if (injected && controlFilter !== null) {
-    filters.push(controlFilter);
-  }
+  if (injected && controlFilter !== null) filters.push(controlFilter);
   const encodeProfile = buildEncodeProfile(request, injected);
   return [
     "-y",
@@ -288,9 +305,7 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
     rawRequest: unknown
   ) {
     const project = getActiveProject(runtime);
-    if (project === null) {
-      throw new Error("Active project is missing.");
-    }
+    if (project === null) throw new Error("Active project is missing.");
     const source = toRecord(project.source);
     if (asNonEmptyString(source["kind"]) !== "video") {
       throw new Error("Destruction controls currently require a video source.");
@@ -306,6 +321,13 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
       throw new Error(
         "Select a valid control type and video time range before running a destruction control."
       );
+    }
+    if (
+      request.kind === "recompression-ladder" ||
+      request.kind.startsWith("response-") ||
+      request.kind === "appearance-transition"
+    ) {
+      throw new Error("This stress-test kind must be handled by the Laboratory composite runtime.");
     }
 
     const createdAt = new Date().toISOString();
@@ -380,7 +402,7 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
         : [];
       nextProject.edit = {
         ...edit,
-        temporalStressTests: [result, ...existing].slice(0, 20),
+        temporalStressTests: [result, ...existing].slice(0, 30),
         lastActionAt: createdAt,
         lastError: null,
       };
