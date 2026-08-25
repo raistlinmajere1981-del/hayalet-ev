@@ -4,7 +4,7 @@ This document describes the built-in Yahtzee feature under `rooms/game-room/main
 
 ## Purpose
 
-Yahtzee is the Game Room's first atmospheric 3D table game. The gameplay contract stays deterministic and host-owned while the browser runtime presents a pirate-ship deck scene using a room-local Babylon.js build.
+Yahtzee is the Game Room's first cinematic table game. Gameplay stays deterministic and host-owned while the browser runtime presents a pirate-ship setting through a hybrid stage: a Babylon 3D play surface layered over art-driven 2D/2.5D scenery.
 
 The current feature supports:
 
@@ -30,11 +30,11 @@ The host controls:
 - AI legal action lists,
 - US1 revision ordering.
 
-The Babylon scene never decides gameplay outcomes. It only renders the host state and animates transitions between known states.
+The presentation layer never decides gameplay outcomes. It only renders the host state and animates transitions between known states.
 
 ## Score card
 
-The feature implements the standard 13 categories used by the current engine:
+The feature implements the current 13 categories:
 
 - ones
 - twos
@@ -99,26 +99,64 @@ Live matches use a `matchId` plus monotonically increasing `revision`. Older or 
 
 See `rooms/game-room/main-functions/yahtzee/protocols/game-room-yahtzee-us1-transport.md`.
 
-## Browser presentation
+## Hybrid cinematic stage
 
-The main visual files are:
+The Yahtzee presentation deliberately avoids a free-roam 3D world.
 
-- `ui/runtime.js` — DOM controls, score cards, state rendering and interaction
-- `ui/bridge.js` — Game Room runtime integration
-- `ui/babylon-scene.js` — Babylon scene lifecycle and 3D state rendering
-- `styles.css` and `multiplayer.css` — overlay/fallback presentation
+The stage is split into three layers:
 
-The current 3D scene includes:
+1. **Art backdrop** — sky, sea, deck framing, weather and crew standees.
+2. **Babylon gameplay layer** — the play surface, table, lantern and five dice.
+3. **UI layer** — game controls, dice/hold controls and score cards.
 
-- wooden ship deck and table,
-- night sky, moon, ocean and fog,
-- mast, sail and rigging,
-- four low-poly spectator pirates,
-- lantern/light flicker,
-- five 3D dice with host-state pips and held-state highlighting,
-- lightweight ship sway and dice-roll animation.
+The main files are:
 
-A CSS fallback remains available if the Babylon runtime cannot be mounted.
+- `ui/theme-pirate-deck.js` — theme and camera preset contract
+- `ui/camera-director.js` — automatic state-driven camera transitions
+- `ui/hybrid-stage.js` — 2D/2.5D backdrop, weather, crew and player standees
+- `ui/stage-template-bridge.js` — connects full Yahtzee state to the stage without changing host rules
+- `ui/babylon-scene.js` — transparent Babylon gameplay layer
+- `ui/audio-runtime.js` — procedural ambient/interaction audio
+- `styles.css`, `multiplayer.css`, `hybrid-stage.css` — overlay and stage presentation
+
+A CSS fallback remains available if Babylon cannot mount.
+
+## Camera contract
+
+The camera is not user-controlled. Orbit, wheel zoom and drag navigation are intentionally disabled.
+
+`ui/theme-pirate-deck.js` defines these shots:
+
+- `showcase` — distant pre-game view
+- `match` — normal play composition
+- `turnLeft` / `turnRight` — subtle active-player emphasis
+- `roll` — temporary dice focus
+- `result` — wider end-of-game view
+
+The director interpolates automatically between these presets from game state. Local and remote rolls can briefly request the `roll` shot before returning to the correct match shot.
+
+Do not re-enable free orbit controls during the art pass; tune the presets instead.
+
+## Art slots
+
+Final art is intentionally separated from gameplay code.
+
+Room-local image slots are documented under:
+
+`rooms/game-room/main-functions/yahtzee/assets/hybrid/README.md`
+
+The intended art pass can provide:
+
+- a realistic/stylized storm sky,
+- a separate ocean layer,
+- a deck/background framing image,
+- optional lightning overlay,
+- four transparent paper/standee crew characters,
+- optional left/right player standee bases.
+
+Completed files are wired by replacing `null` values in `ui/theme-pirate-deck.js`.
+
+Player standees also accept per-player `avatarSrc`, `avatar` or `imageSrc` values when those become available in the room state. Until then they display compact initial-based placeholders.
 
 ## Babylon runtime
 
@@ -140,17 +178,31 @@ The Babylon Apache-2.0 license and notice are kept next to the generated vendor 
 
 ## Performance contract
 
-The scene is intentionally lightweight:
+The hybrid stage is intentionally lightweight:
 
-- low-poly/procedural geometry,
+- background and crew art are 2D/2.5D rather than full 3D geometry,
+- only the immediate play surface stays Babylon 3D,
 - no physics engine,
 - no real-time shadow pipeline,
 - limited light count,
 - hardware scaling on high-DPI displays,
-- rendering skips hidden documents,
-- `prefers-reduced-motion` disables ship/dice motion where appropriate.
+- hidden documents skip rendering,
+- `prefers-reduced-motion` disables nonessential movement.
 
-This keeps the feature usable on the same class of machines as the rest of Hayalet Ev while leaving room for later asset upgrades.
+This keeps the feature usable on the same class of machines as the rest of Hayalet Ev while making the visual result easier to art-direct from a fixed composition.
+
+## Local art/tuning handoff
+
+The next local Codex/art pass should concentrate on presentation rather than architecture:
+
+- generate/choose the final sky, sea and deck images,
+- create transparent crew/player standees,
+- wire those asset paths into `theme-pirate-deck.js`,
+- tune the six camera presets after the final images are visible,
+- adjust Babylon table scale/position to match the art,
+- tune lightning, wave, crew and sound levels.
+
+The hybrid-stage contract should stay intact while doing that work.
 
 ## Validation
 
