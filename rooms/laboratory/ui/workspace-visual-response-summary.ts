@@ -1,5 +1,6 @@
 import { asLabRecord, asNonEmptyString, escapeHtml } from "../domain/lab-types.js";
 import type { LabEditConfig } from "../domain/lab-types.js";
+import { buildLaboratoryVisualResponseReportAssessment } from "../shared/visual-response-report-assessment.js";
 import type { LabI18n } from "./lab-i18n.js";
 
 type Entry = Record<string, unknown>;
@@ -138,6 +139,14 @@ function reportMeta(entry: Entry, label: string) {
   return lines;
 }
 
+function comparabilityStatusLabel(status: string, copy: LabI18n) {
+  if (copy.locale !== "tr") return status;
+  if (status === "high") return "yüksek";
+  if (status === "moderate") return "orta";
+  if (status === "low") return "düşük";
+  return "bilinmiyor";
+}
+
 function comparabilitySummary(interpretation: Entry, copy: LabI18n) {
   const comparability = asLabRecord(interpretation["comparability"]);
   const score = finite(comparability, "score");
@@ -147,9 +156,13 @@ function comparabilitySummary(interpretation: Entry, copy: LabI18n) {
   const corroboration = asLabRecord(interpretation["corroboration"]);
   const count = finite(corroboration, "supportingMetricCount");
   if (copy.locale !== "tr") {
-    return `ROI comparability: ${status} (${pct(score)})${areaRatio === null ? "" : ` · area ratio ${pct(areaRatio)}`}${count === null ? "" : ` · supporting metrics ${String(Math.round(count))}/4`}`;
+    return `ROI comparability: ${comparabilityStatusLabel(status, copy)} (${pct(score)})${areaRatio === null ? "" : ` · area ratio ${pct(areaRatio)}`}${count === null ? "" : ` · supporting metrics ${String(Math.round(count))}/4`}`;
   }
-  return `ROI karşılaştırılabilirliği: ${status} (${pct(score)})${areaRatio === null ? "" : ` · alan oranı ${pct(areaRatio)}`}${count === null ? "" : ` · destekleyen metrik ${String(Math.round(count))}/4`}`;
+  return `ROI karşılaştırılabilirliği: ${comparabilityStatusLabel(status, copy)} (${pct(score)})${areaRatio === null ? "" : ` · alan oranı ${pct(areaRatio)}`}${count === null ? "" : ` · destekleyen metrik ${String(Math.round(count))}/4`}`;
+}
+
+function responseAssessment(entry: Entry) {
+  return asLabRecord(buildLaboratoryVisualResponseReportAssessment(entry));
 }
 
 function responseMarkdown(entry: Entry, copy: LabI18n) {
@@ -158,7 +171,7 @@ function responseMarkdown(entry: Entry, copy: LabI18n) {
   const points = Array.isArray(entry["points"])
     ? entry["points"].map((point) => asLabRecord(point))
     : [];
-  const interpretation = asLabRecord(entry["interpretation"]);
+  const interpretation = responseAssessment(entry);
   const classification = interpretationLabel(interpretation["classification"], copy);
   const sensorLabel = sensorCompatibilityLabel(interpretation["sensorCompatibility"], copy);
   const comparability = comparabilitySummary(interpretation, copy);
@@ -296,9 +309,6 @@ export function formatLaboratoryVisualReportMarkdown(
 
 function reportActions(entry: Entry, copy: LabI18n, kind: VisualReportKind) {
   const markdown = formatLaboratoryVisualReportMarkdown(entry, copy);
-  const createdAt = asNonEmptyString(entry["createdAt"]) || "report";
-  const axis = kind === "response" ? `-${axisLabel(asLabRecord(entry["request"])["axis"])}` : "";
-  const filename = `laboratory-${kind}${axis}-${createdAt}`;
   const copyLabel = copy.locale === "tr" ? "Kopyala" : "Copy";
   const copiedLabel = copy.locale === "tr" ? "Kopyalandı" : "Copied";
   const exportLabel = copy.locale === "tr" ? "MD Dışa Aktar" : "Export MD";
@@ -309,8 +319,7 @@ function reportActions(entry: Entry, copy: LabI18n, kind: VisualReportKind) {
       <button class="labx-inline-action" type="button" data-lab-report-copy="true" data-lab-report-idle-label="${escapeHtml(copyLabel)}" data-lab-report-success-label="${escapeHtml(copiedLabel)}" data-lab-report-error-label="${escapeHtml(failedLabel)}">${escapeHtml(copyLabel)}</button>
       <button class="labx-inline-action" type="button" data-lab-report-export="true" data-lab-report-idle-label="${escapeHtml(exportLabel)}" data-lab-report-success-label="${escapeHtml(exportedLabel)}" data-lab-report-error-label="${escapeHtml(failedLabel)}">${escapeHtml(exportLabel)}</button>
     </div>
-    <textarea hidden data-lab-report-markdown="true">${escapeHtml(markdown)}</textarea>
-    <span hidden data-lab-report-filename-source="true">${escapeHtml(filename)}</span>`;
+    <textarea hidden data-lab-report-markdown="true">${escapeHtml(markdown)}</textarea>`;
 }
 
 function exportableAttributes(entry: Entry, kind: VisualReportKind) {
@@ -352,7 +361,7 @@ function renderResponse(entry: Entry, copy: LabI18n) {
       </tr>`;
     })
     .join("");
-  const interpretation = asLabRecord(entry["interpretation"]);
+  const interpretation = responseAssessment(entry);
   const sensorLabel = sensorCompatibilityLabel(interpretation["sensorCompatibility"], copy);
   const comparability = comparabilitySummary(interpretation, copy);
   return `
