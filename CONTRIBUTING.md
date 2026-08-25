@@ -21,7 +21,7 @@ Bazı medya, Android veya dağıtım akışları ek sistem araçları gerektirir
 ## Değişiklik yapmadan önce
 
 - `README.md` ile genel yapıyı oku.
-- Mimari veya AI destekli geliştirme yapıyorsan `AGENTS.md` ve `.rovo/00-ONBOARDING.md` ile başla.
+- AI destekli geliştirmede `AGENTS.md` çekirdek kurallarıdır; mimari ayrıntı gerektiğinde `.rovo/03-ARCHITECTURE.md`, iş akışı gerektiğinde `.rovo/WORKFLOWS.md` kullan.
 - Slot/room iletişiminde `.rovo/slot-bridge-contract.md` sözleşmesini koru.
 - Var olan davranışı değiştiren bir çalışma için ilgili regression testlerini incele.
 
