@@ -10,28 +10,8 @@ function getReportText(trigger: Element) {
   return text === "" ? null : { report, text };
 }
 
-function fallbackCopy(documentRef: Document, text: string) {
-  const textarea = documentRef.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  documentRef.body.appendChild(textarea);
-  textarea.select();
-  const copied = documentRef.execCommand("copy");
-  textarea.remove();
-  if (!copied) {
-    throw new Error("Clipboard copy failed.");
-  }
-}
-
 async function copyText(deps: LaboratoryVisualReportActionsDeps, text: string) {
-  const clipboard = deps.windowRef.navigator.clipboard;
-  if (clipboard !== undefined && typeof clipboard.writeText === "function") {
-    await clipboard.writeText(text);
-    return;
-  }
-  fallbackCopy(deps.documentRef, text);
+  await deps.windowRef.navigator.clipboard.writeText(text);
 }
 
 function safeFileName(value: string) {
@@ -65,10 +45,10 @@ function exportMarkdown(
 }
 
 function showFeedback(windowRef: Window, button: HTMLElement, success: boolean) {
-  const idleLabel = button.dataset["labReportIdleLabel"] ?? button.textContent ?? "";
+  const idleLabel = button.getAttribute("data-lab-report-idle-label") || button.textContent || "";
   const label = success
-    ? button.dataset["labReportSuccessLabel"] ?? idleLabel
-    : button.dataset["labReportErrorLabel"] ?? "Failed";
+    ? button.getAttribute("data-lab-report-success-label") || idleLabel
+    : button.getAttribute("data-lab-report-error-label") || "Failed";
   button.textContent = label;
   button.dataset["labReportActionState"] = success ? "success" : "error";
   button.setAttribute("disabled", "");
