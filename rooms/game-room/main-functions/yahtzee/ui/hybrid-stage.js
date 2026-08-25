@@ -11,14 +11,15 @@
   }
 
   function safeImage(element, src) {
-    if (!element) return;
+    if (!element) return false;
     if (typeof src === "string" && src.trim() !== "") {
       element.style.backgroundImage = "url(" + JSON.stringify(src) + ")";
       element.classList.add("has-art");
-      return;
+      return true;
     }
     element.style.removeProperty("background-image");
     element.classList.remove("has-art");
+    return false;
   }
 
   function initials(label) {
@@ -66,13 +67,17 @@
     createElement("yahtzee-stage-horizon-fog", backdrop);
     const crewLayer = createElement("yahtzee-stage-crew", backdrop);
     const playerLayer = createElement("yahtzee-stage-players", backdrop);
+    createElement("yahtzee-stage-lantern-bloom", backdrop);
     const lightning = createElement("yahtzee-stage-lightning", fx);
     createElement("yahtzee-stage-rain-haze", fx);
 
-    safeImage(sky, assets.sky);
-    safeImage(sea, assets.sea);
-    safeImage(deckBackdrop, assets.deckBackdrop);
+    const hasEnvironmentArt = [
+      safeImage(sky, assets.sky),
+      safeImage(sea, assets.sea),
+      safeImage(deckBackdrop, assets.deckBackdrop),
+    ].some(Boolean);
     safeImage(lightning, assets.lightning);
+    sceneElement.classList.toggle("has-hybrid-art", hasEnvironmentArt);
 
     const crewCount = Math.max(
       0,
@@ -83,11 +88,15 @@
       standee.dataset.crewIndex = String(index);
       safeImage(standee, Array.isArray(assets.crew) ? assets.crew[index] : null);
     }
+    crewLayer.hidden = crewCount === 0;
 
     const leftActor = createActor(playerLayer, "left");
     const rightActor = createActor(playerLayer, "right");
     safeImage(leftActor.art, assets.playerLeft);
     safeImage(rightActor.art, assets.playerRight);
+    playerLayer.hidden = Boolean(
+      resolvedTheme.stage && resolvedTheme.stage.playerStandeesEnabled === false
+    );
 
     let disposed = false;
 
@@ -111,9 +120,11 @@
       const activeIndex = Number(source.activePlayerIndex) || 0;
       const phase =
         source.complete === true ? "result" : source.active === true ? "match" : "showcase";
+      const pan = phase === "match" && players.length > 1 ? (activeIndex === 1 ? -0.45 : 0.45) : 0;
 
       sceneElement.dataset.yahtzeeStagePhase = phase;
       sceneElement.dataset.yahtzeeActivePlayer = String(activeIndex);
+      sceneElement.style.setProperty("--yahtzee-stage-pan-x", pan + "%");
       sceneElement.classList.toggle("has-two-players", players.length > 1);
       fx.classList.toggle(
         "lightning-enabled",
@@ -145,6 +156,8 @@
       fx.innerHTML = "";
       delete sceneElement.dataset.yahtzeeStagePhase;
       delete sceneElement.dataset.yahtzeeActivePlayer;
+      sceneElement.style.removeProperty("--yahtzee-stage-pan-x");
+      sceneElement.classList.remove("has-hybrid-art", "has-two-players");
     }
 
     return {

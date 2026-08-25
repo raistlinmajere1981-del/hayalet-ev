@@ -7,16 +7,20 @@
     id: "pirate-deck-hybrid",
     label: "Pirate Deck Hybrid Stage",
 
-    // Codex/local art pass: replace nulls with room-local image paths.
-    // Recommended slots live under main-functions/yahtzee/assets/hybrid/.
+    // Paths stay document-relative so workspace and installed room copies resolve identically.
     assets: {
-      sky: null,
-      sea: null,
-      deckBackdrop: null,
-      lightning: null,
-      crew: [null, null, null, null],
-      playerLeft: null,
-      playerRight: null,
+      sky: "../main-functions/yahtzee/assets/hybrid/sky-night.webp",
+      sea: "../main-functions/yahtzee/assets/hybrid/sea-night.webp",
+      deckBackdrop: "../main-functions/yahtzee/assets/hybrid/deck-backdrop.webp",
+      lightning: "../main-functions/yahtzee/assets/hybrid/lightning.webp",
+      crew: [
+        "../main-functions/yahtzee/assets/hybrid/crew-1.webp",
+        "../main-functions/yahtzee/assets/hybrid/crew-2.webp",
+        "../main-functions/yahtzee/assets/hybrid/crew-3.webp",
+        "../main-functions/yahtzee/assets/hybrid/crew-4.webp",
+      ],
+      playerLeft: "../main-functions/yahtzee/assets/hybrid/player-left.webp",
+      playerRight: "../main-functions/yahtzee/assets/hybrid/player-right.webp",
     },
 
     shots: {

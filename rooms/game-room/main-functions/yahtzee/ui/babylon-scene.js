@@ -5,7 +5,13 @@
 
   const DEFAULT_DICE = [1, 1, 1, 1, 1];
   const DEFAULT_HELD = [false, false, false, false, false];
-  const DIE_SPACING = 1.12;
+  const DIE_LAYOUT = [
+    [-1.42, -0.72, -0.08],
+    [0, -0.86, 0.05],
+    [1.42, -0.7, -0.04],
+    [-0.7, 0.24, 0.08],
+    [0.74, 0.23, -0.07],
+  ];
   let activeHandle = null;
 
   const DIE_PIPS = {
@@ -45,11 +51,11 @@
   function hasRuntime(B) {
     return Boolean(
       B &&
-        typeof B.Engine === "function" &&
-        typeof B.Scene === "function" &&
-        typeof B.CreateBox === "function" &&
-        typeof B.CreateCylinder === "function" &&
-        typeof B.CreateDisc === "function"
+      typeof B.Engine === "function" &&
+      typeof B.Scene === "function" &&
+      typeof B.CreateBox === "function" &&
+      typeof B.CreateCylinder === "function" &&
+      typeof B.CreateDisc === "function"
     );
   }
 
@@ -96,19 +102,19 @@
   function createGamePlatform(B, scene, root, materials) {
     const deck = B.CreateBox(
       "yahtzee-stage-deck-slab",
-      { width: 12.8, height: 0.16, depth: 8.6 },
+      { width: 10.35, height: 0.12, depth: 6.15 },
       scene
     );
-    deck.position = new B.Vector3(0, -0.14, 0.25);
+    deck.position = new B.Vector3(0, -0.08, 0.42);
     deck.material = materials.deck;
     makeUnpickable(deck, root);
 
     const rim = B.CreateBox(
       "yahtzee-stage-deck-rim",
-      { width: 13.15, height: 0.22, depth: 8.95 },
+      { width: 10.62, height: 0.16, depth: 6.42 },
       scene
     );
-    rim.position = new B.Vector3(0, -0.26, 0.25);
+    rim.position = new B.Vector3(0, -0.17, 0.42);
     rim.material = materials.darkWood;
     makeUnpickable(rim, root);
 
@@ -121,33 +127,49 @@
 
     const top = B.CreateBox(
       "yahtzee-game-table-top",
-      { width: 7.4, height: 0.34, depth: 4.2 },
+      { width: 7.05, height: 0.3, depth: 3.86 },
       scene
     );
-    top.position = new B.Vector3(0, 1.02, -0.18);
+    top.position = new B.Vector3(0, 0.92, 0.08);
     top.material = materials.table;
     makeUnpickable(top, tableRoot);
 
     const inset = B.CreateBox(
       "yahtzee-game-table-inset",
-      { width: 6.72, height: 0.06, depth: 3.48 },
+      { width: 6.38, height: 0.055, depth: 3.22 },
       scene
     );
-    inset.position = new B.Vector3(0, 1.22, -0.18);
+    inset.position = new B.Vector3(0, 1.098, 0.08);
     inset.material = materials.tableInset;
     makeUnpickable(inset, tableRoot);
 
-    [-2.92, 2.92].forEach(function (x) {
-      [-1.42, 1.1].forEach(function (z) {
+    [-2.78, 2.78].forEach(function (x) {
+      [-1.2, 1.28].forEach(function (z) {
         const leg = B.CreateCylinder(
           "yahtzee-game-table-leg",
-          { height: 1.08, diameter: 0.3, tessellation: 10 },
+          { height: 0.98, diameter: 0.28, tessellation: 10 },
           scene
         );
-        leg.position = new B.Vector3(x, 0.46, z);
+        leg.position = new B.Vector3(x, 0.42, z);
         leg.material = materials.darkWood;
         makeUnpickable(leg, tableRoot);
       });
+    });
+
+    [
+      { width: 6.82, depth: 0.08, x: 0, z: -1.78 },
+      { width: 6.82, depth: 0.08, x: 0, z: 1.94 },
+      { width: 0.08, depth: 3.64, x: -3.39, z: 0.08 },
+      { width: 0.08, depth: 3.64, x: 3.39, z: 0.08 },
+    ].forEach(function (edge) {
+      const trim = B.CreateBox(
+        "yahtzee-game-table-trim",
+        { width: edge.width, height: 0.065, depth: edge.depth },
+        scene
+      );
+      trim.position = new B.Vector3(edge.x, 1.135, edge.z);
+      trim.material = materials.tableTrim;
+      makeUnpickable(trim, tableRoot);
     });
 
     return tableRoot;
@@ -155,7 +177,8 @@
 
   function createLantern(B, scene, root, materials) {
     const lanternRoot = new B.TransformNode("yahtzee-lantern-root", scene);
-    lanternRoot.position = new B.Vector3(0, 1.24, 1.26);
+    lanternRoot.position = new B.Vector3(2.58, 1.13, 0.88);
+    lanternRoot.scaling = new B.Vector3(0.9, 0.9, 0.9);
     lanternRoot.parent = root;
 
     const base = B.CreateCylinder(
@@ -176,6 +199,25 @@
     glass.material = materials.lanternGlass;
     makeUnpickable(glass, lanternRoot);
 
+    const cap = B.CreateCylinder(
+      "yahtzee-lantern-cap",
+      { height: 0.1, diameter: 0.43, tessellation: 12 },
+      scene
+    );
+    cap.position.y = 0.78;
+    cap.material = materials.metal;
+    makeUnpickable(cap, lanternRoot);
+
+    const handle = B.CreateTorus(
+      "yahtzee-lantern-handle",
+      { diameter: 0.48, thickness: 0.035, tessellation: 18 },
+      scene
+    );
+    handle.position.y = 0.98;
+    handle.rotation.x = Math.PI / 2;
+    handle.material = materials.metal;
+    makeUnpickable(handle, lanternRoot);
+
     const flame = B.CreateSphere("yahtzee-lantern-flame", { diameter: 0.2, segments: 8 }, scene);
     flame.position.y = 0.43;
     flame.scaling.y = 1.48;
@@ -186,28 +228,29 @@
     light.parent = lanternRoot;
     light.diffuse = color3(B, [1, 0.46, 0.14]);
     light.specular = color3(B, [1, 0.3, 0.08]);
-    light.intensity = 1.95;
-    light.range = 10;
+    light.intensity = 1.72;
+    light.range = 8.5;
 
     return { flame: flame, light: light };
   }
 
   function createDie(B, scene, root, materials, index) {
+    const layout = DIE_LAYOUT[index] || [0, 0, 0];
     const dieRoot = new B.TransformNode("yahtzee-die-root-" + index, scene);
-    dieRoot.position = new B.Vector3((index - 2) * DIE_SPACING, 1.69, -0.62 + (index % 2) * 0.1);
-    dieRoot.rotation.y = (index - 2) * 0.04;
+    dieRoot.position = new B.Vector3(layout[0], 1.53, layout[1]);
+    dieRoot.rotation.y = layout[2];
     dieRoot.parent = root;
 
-    const cube = B.CreateBox("yahtzee-die-mesh-" + index, { size: 0.82, wrap: true }, scene);
+    const cube = B.CreateBox("yahtzee-die-mesh-" + index, { size: 0.78, wrap: true }, scene);
     cube.material = materials.die;
     makeUnpickable(cube, dieRoot);
 
     const heldRing = B.CreateTorus(
       "yahtzee-die-held-ring-" + index,
-      { diameter: 1.03, thickness: 0.065, tessellation: 24 },
+      { diameter: 0.98, thickness: 0.06, tessellation: 24 },
       scene
     );
-    heldRing.position.y = -0.47;
+    heldRing.position.y = -0.445;
     heldRing.material = materials.heldGlow;
     heldRing.setEnabled(false);
     makeUnpickable(heldRing, dieRoot);
@@ -219,7 +262,7 @@
         { radius: 0.075, tessellation: 12 },
         scene
       );
-      pip.position.y = 0.416;
+      pip.position.y = 0.396;
       pip.rotation.x = Math.PI / 2;
       pip.material = materials.pip;
       pip.setEnabled(false);
@@ -298,18 +341,22 @@
       );
       moonFill.diffuse = color3(B, [0.38, 0.48, 0.62]);
       moonFill.groundColor = color3(B, [0.02, 0.022, 0.03]);
-      moonFill.intensity = 0.5;
+      moonFill.intensity = 0.58;
 
       const materials = {
-        deck: createMaterial(B, scene, "yahtzee-stage-deck", [0.095, 0.035, 0.016], {
-          specular: [0.05, 0.028, 0.012],
+        deck: createMaterial(B, scene, "yahtzee-stage-deck", [0.05, 0.026, 0.018], {
+          specular: [0.04, 0.025, 0.018],
+          alpha: 0.78,
         }),
-        darkWood: createMaterial(B, scene, "yahtzee-stage-dark-wood", [0.04, 0.014, 0.008]),
-        table: createMaterial(B, scene, "yahtzee-table", [0.235, 0.082, 0.024], {
-          specular: [0.16, 0.08, 0.03],
+        darkWood: createMaterial(B, scene, "yahtzee-stage-dark-wood", [0.032, 0.016, 0.012]),
+        table: createMaterial(B, scene, "yahtzee-table", [0.19, 0.065, 0.024], {
+          specular: [0.14, 0.075, 0.03],
         }),
-        tableInset: createMaterial(B, scene, "yahtzee-table-inset", [0.105, 0.028, 0.013], {
-          specular: [0.05, 0.026, 0.012],
+        tableInset: createMaterial(B, scene, "yahtzee-table-inset", [0.074, 0.022, 0.018], {
+          specular: [0.045, 0.022, 0.014],
+        }),
+        tableTrim: createMaterial(B, scene, "yahtzee-table-trim", [0.29, 0.15, 0.055], {
+          specular: [0.24, 0.13, 0.055],
         }),
         metal: createMaterial(B, scene, "yahtzee-metal", [0.17, 0.095, 0.032], {
           specular: [0.3, 0.16, 0.06],
@@ -340,6 +387,7 @@
       };
 
       const gameRoot = new B.TransformNode("yahtzee-game-root", scene);
+      gameRoot.position = new B.Vector3(0, -0.08, 0.12);
       createGamePlatform(B, scene, gameRoot, materials);
       createTable(B, scene, gameRoot, materials);
       const lantern = createLantern(B, scene, gameRoot, materials);
@@ -414,7 +462,8 @@
           const envelope = Math.sin(progress * Math.PI);
           model.root.position.x =
             model.basePosition.x + Math.sin(progress * Math.PI * 2 + index) * 0.11 * envelope;
-          model.root.position.y = model.basePosition.y + heldOffset + envelope * (0.5 + index * 0.025);
+          model.root.position.y =
+            model.basePosition.y + heldOffset + envelope * (0.5 + index * 0.025);
           model.root.position.z =
             model.basePosition.z + Math.cos(progress * Math.PI * 2 + index) * 0.08 * envelope;
           model.root.rotation.x = progress * model.roll.turnsX * Math.PI * 2;
@@ -437,13 +486,13 @@
         elapsed += delta * 0.001;
 
         if (!reduceMotion) {
-          gameRoot.rotation.z = Math.sin(elapsed * 0.5) * 0.006;
-          gameRoot.rotation.x = Math.sin(elapsed * 0.34 + 0.7) * 0.003;
-          gameRoot.position.y = Math.sin(elapsed * 0.56) * 0.018;
+          gameRoot.rotation.z = Math.sin(elapsed * 0.44) * 0.0045;
+          gameRoot.rotation.x = Math.sin(elapsed * 0.31 + 0.7) * 0.0022;
+          gameRoot.position.y = -0.08 + Math.sin(elapsed * 0.5) * 0.012;
           lantern.flame.scaling.y = 1.42 + Math.sin(elapsed * 8.9) * 0.16;
         }
         lantern.light.intensity =
-          1.9 + Math.sin(elapsed * 10.3) * 0.13 + Math.sin(elapsed * 4.2) * 0.07;
+          1.7 + Math.sin(elapsed * 10.3) * 0.1 + Math.sin(elapsed * 4.2) * 0.055;
 
         animateDice(delta);
         diceModels.forEach(function (model, index) {
@@ -481,7 +530,8 @@
           disposed = true;
           global.removeEventListener("resize", resize);
           delete canvas.dataset.babylonActive;
-          if (cameraDirector && typeof cameraDirector.dispose === "function") cameraDirector.dispose();
+          if (cameraDirector && typeof cameraDirector.dispose === "function")
+            cameraDirector.dispose();
           engine.stopRenderLoop();
           scene.dispose();
           engine.dispose();
