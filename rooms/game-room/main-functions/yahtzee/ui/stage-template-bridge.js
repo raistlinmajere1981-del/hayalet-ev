@@ -28,7 +28,6 @@
   function ensureStage(root) {
     const nextScene = root && root.querySelector ? root.querySelector(".yahtzee-scene") : null;
     if (!nextScene) return;
-
     if (sceneElement !== nextScene) {
       disposeHybrid();
       sceneElement = nextScene;
@@ -72,12 +71,21 @@
 
   const stageActions = {
     canToggleDie: function (index) {
+      const state = getState() || {};
+      const turn = state.turn && typeof state.turn === "object" ? state.turn : {};
       const button = findLegacyDieButton(index);
-      return Boolean(button && button.disabled !== true);
+      return Boolean(
+        state.active === true &&
+          state.complete !== true &&
+          Number(turn.rollCount) > 0 &&
+          button &&
+          button.disabled !== true
+      );
     },
     toggleDie: function (index) {
+      if (!stageActions.canToggleDie(index)) return false;
       const button = findLegacyDieButton(index);
-      if (!button || button.disabled === true || typeof button.click !== "function") return false;
+      if (!button || typeof button.click !== "function") return false;
       button.click();
       return true;
     },
@@ -88,24 +96,37 @@
   function createStageInterface(overlay) {
     const stageInterface = document.createElement("div");
     stageInterface.className = "yahtzee-stage-interface";
-
     const statusDock = document.createElement("div");
     statusDock.className = "yahtzee-stage-status-dock";
-
     const actionBar = document.createElement("div");
     actionBar.className = "yahtzee-stage-action-bar";
-
     stageInterface.append(statusDock, actionBar);
     overlay.append(stageInterface);
     return { stageInterface: stageInterface, statusDock: statusDock, actionBar: actionBar };
   }
 
+  function syncStage() {
+    if (!sceneElement) return;
+    const state = getState();
+    if (hybridHandle && typeof hybridHandle.update === "function") hybridHandle.update(state);
+    const sceneRuntime = global.GameRoomYahtzeeBabylonScene;
+    if (sceneRuntime && typeof sceneRuntime.syncState === "function") sceneRuntime.syncState(state);
+  }
+
+  function repairAfterLocalRender(root) {
+    global.setTimeout(function () {
+      if (activeRoot !== root || !root || !root.isConnected) return;
+      ensureStage(root);
+      promoteDiegeticUi(root);
+      syncStage();
+    }, 0);
+  }
+
   function promoteDiegeticUi(root) {
     if (!root || !root.querySelector) return;
     activeRoot = root;
-
     const overlay = root.querySelector(".yahtzee-overlay");
-    if (!overlay) return;
+    if (!overlay || overlay.querySelector(".yahtzee-stage-interface")) return;
 
     const controls = overlay.querySelector(".yahtzee-controls");
     const playArea = overlay.querySelector(".yahtzee-play-area");
@@ -115,11 +136,13 @@
     const rollMeta = dicePanel ? dicePanel.querySelector(".yahtzee-roll-meta") : null;
     const scoreStack = playArea ? playArea.querySelector(".yahtzee-score-stack") : null;
     const rollButton = controls ? controls.querySelector("button.primary") : null;
+    const controlButtons = controls ? Array.from(controls.querySelectorAll("button")) : [];
+    const soundButton = controlButtons.length > 0 ? controlButtons[controlButtons.length - 1] : null;
     const state = getState() || {};
     const players = Array.isArray(state.players) ? state.players : [];
     const playerCount = Math.max(1, players.length || 1);
-
     const parts = createStageInterface(overlay);
+
     parts.stageInterface.dataset.playerCount = String(playerCount);
     parts.stageInterface.dataset.activePlayer = String(Number(state.activePlayerIndex) || 0);
     parts.stageInterface.classList.toggle("is-match-active", state.active === true);
@@ -166,17 +189,11 @@
       parts.stageInterface.append(dicePanel);
     }
     if (playArea) playArea.remove();
-  }
 
-  function syncStage() {
-    if (!sceneElement) return;
-    const state = getState();
-    if (hybridHandle && typeof hybridHandle.update === "function") {
-      hybridHandle.update(state);
-    }
-    const sceneRuntime = global.GameRoomYahtzeeBabylonScene;
-    if (sceneRuntime && typeof sceneRuntime.syncState === "function") {
-      sceneRuntime.syncState(state);
+    if (soundButton && soundButton !== rollButton) {
+      soundButton.addEventListener("click", function () {
+        repairAfterLocalRender(root);
+      });
     }
   }
 
