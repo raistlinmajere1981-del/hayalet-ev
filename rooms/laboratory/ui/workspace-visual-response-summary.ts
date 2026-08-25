@@ -307,7 +307,7 @@ export function formatLaboratoryVisualReportMarkdown(
   return "";
 }
 
-function reportActions(entry: Entry, copy: LabI18n, kind: VisualReportKind) {
+function reportActions(entry: Entry, copy: LabI18n, _kind: VisualReportKind) {
   const markdown = formatLaboratoryVisualReportMarkdown(entry, copy);
   const copyLabel = copy.locale === "tr" ? "Kopyala" : "Copy";
   const copiedLabel = copy.locale === "tr" ? "Kopyalandı" : "Copied";
