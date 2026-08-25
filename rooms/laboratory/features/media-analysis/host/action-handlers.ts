@@ -4,6 +4,7 @@ import { createMediaAnnotationExportActionRuntime } from "./action-handlers-anno
 import { createMediaProfileActionRuntime } from "./action-handlers-profile.js";
 import { createMediaProjectActionRuntime } from "./action-handlers-project.js";
 import { createMediaSourceActionRuntime } from "./action-handlers-source.js";
+import { createLaboratoryVisualResponseProbeRuntime } from "./visual-response-probe.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -64,6 +65,48 @@ type MediaActionRuntime = ReturnType<typeof createMediaSourceActionRuntime> &
   ReturnType<typeof createMediaProfileActionRuntime> &
   ReturnType<typeof createMediaProjectActionRuntime>;
 
+function asRecord(value: unknown): LaboratoryRecord {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as LaboratoryRecord)
+    : {};
+}
+
+function resolveLatestResponseBackgroundRoi(
+  deps: MediaActionRuntimeDeps,
+  runtime: LaboratoryRecord
+) {
+  const project = deps.getActiveProject(runtime);
+  if (project === null) return null;
+  const projectRecord = asRecord(project);
+  const edit = asRecord(projectRecord["edit"]);
+  const sourcePath = deps.asNonEmptyString(asRecord(projectRecord["source"])["storedPath"]);
+  const history = Array.isArray(edit["temporalStressTests"])
+    ? (edit["temporalStressTests"] as unknown[])
+    : [];
+  const reference = history.find(function (entry) {
+    const record = asRecord(entry);
+    return (
+      record["kind"] === "motion-reference-lock" &&
+      (sourcePath === null || deps.asNonEmptyString(record["sourcePath"]) === sourcePath)
+    );
+  });
+  if (reference === undefined) return null;
+  const roi = asRecord(asRecord(reference)["roi"]);
+  const x = roi["x"];
+  const y = roi["y"];
+  const width = roi["width"];
+  const height = roi["height"];
+  if (
+    typeof x !== "number" ||
+    typeof y !== "number" ||
+    typeof width !== "number" ||
+    typeof height !== "number"
+  ) {
+    return null;
+  }
+  return { x, y, width, height };
+}
+
 export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaActionRuntime {
   const mediaSourceActionRuntime = createMediaSourceActionRuntime({
     asNonEmptyString: deps.asNonEmptyString,
@@ -95,6 +138,30 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     readBinaryFileBytes: deps.readBinaryFileBytes,
     roomId: deps.roomId,
     runEditPipeline: deps.runEditPipeline,
+    toRecord: deps.toRecord,
+  });
+
+  const visualResponseRuntime = createLaboratoryVisualResponseProbeRuntime({
+    callRoomTools: deps.callRoomTools,
+    getActiveProject(runtime) {
+      return asRecord(deps.getActiveProject(runtime));
+    },
+    getPreparedSourcePath(project) {
+      return deps.asNonEmptyString(asRecord(project["source"])["storedPath"]);
+    },
+    getProjectEditOutputDir(runtime, project) {
+      return deps.getProjectEditOutputDir(runtime, project as Parameters<typeof deps.getProjectEditOutputDir>[1]);
+    },
+    patchActiveProject(runtime, patcher) {
+      return deps.patchActiveProject(runtime, function (project) {
+        return patcher(asRecord(project)) as Parameters<typeof deps.patchActiveProject>[1] extends (
+          project: infer T
+        ) => unknown
+          ? T
+          : never;
+      });
+    },
+    roomId: deps.roomId,
     toRecord: deps.toRecord,
   });
 
@@ -162,9 +229,46 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     updateSelectedTools: deps.updateSelectedTools,
   });
 
+  const originalRunControlInjection = mediaEditActionRuntime.runControlInjection;
+  async function runControlInjection(
+    runtime: LaboratoryRecord,
+    requestId: string,
+    actionPayload: LaboratoryRecord
+  ) {
+    const request = asRecord(actionPayload["request"]);
+    const specialKind = deps.asNonEmptyString(request["kind"]);
+    if (specialKind === "visibility-response") {
+      const backgroundRoi = resolveLatestResponseBackgroundRoi(deps, runtime);
+      if (backgroundRoi === null) {
+        throw new Error(
+          "Lock a stable background ROI with Reference ROI before running Visibility Response."
+        );
+      }
+      return visualResponseRuntime.runResponseProbe(runtime, requestId, {
+        axis: request["axis"],
+        temporalRequest: request["temporalRequest"],
+        backgroundRoi,
+      });
+    }
+    if (specialKind === "appearance-transition") {
+      const backgroundRoi = resolveLatestResponseBackgroundRoi(deps, runtime);
+      if (backgroundRoi === null) {
+        throw new Error(
+          "Lock a stable background ROI with Reference ROI before running Transition Probe."
+        );
+      }
+      return visualResponseRuntime.runTransitionProbe(runtime, requestId, {
+        temporalRequest: request["temporalRequest"],
+        backgroundRoi,
+      });
+    }
+    return originalRunControlInjection(runtime, requestId, actionPayload);
+  }
+
   return {
     ...mediaSourceActionRuntime,
     ...mediaEditActionRuntime,
+    runControlInjection,
     ...mediaExportActionRuntime,
     ...mediaAnnotationExportActionRuntime,
     ...mediaProfileActionRuntime,
