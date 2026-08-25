@@ -491,7 +491,13 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     const prePhase = enrichedPhases.find(function (phase) {
       return phase["phase"] === "pre";
     });
-    const preControl = prePhase === undefined ? null : asRecord(prePhase["control"]);
+    const preControlValue = prePhase?.["control"];
+    const preControl =
+      preControlValue !== null &&
+      typeof preControlValue === "object" &&
+      !Array.isArray(preControlValue)
+        ? asRecord(preControlValue)
+        : null;
     const controlComparability =
       controlRoi === null || prePhase === undefined || preControl === null
         ? null
@@ -519,7 +525,6 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
         ...oldInterpretation,
         photometricClassification: oldInterpretation["classification"],
         structuralClassification,
-        classification: structuralClassification ?? oldInterpretation["classification"],
         controlComparability,
         roiStability,
       },
