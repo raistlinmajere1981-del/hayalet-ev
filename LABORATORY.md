@@ -81,6 +81,35 @@ gibi yüzeyler bulunur.
 
 Video kaynakları aynı proje ve timeline altyapısıyla çalışır.
 
+## 🧪 Görsel Stress Testleri
+
+Video çalışma alanındaki kontrollü stress-test katmanı kaynak medyayı değiştirmeden aynı timeline/ROI bağlamında tekrar üretilebilir ölçümler yapar.
+
+Mevcut yüzeyler arasında:
+
+- Ordered Visual Transform Stack,
+- Source / Transform / Difference preview,
+- Temporal Scan,
+- Photometric Attenuation Probe,
+- Motion Vector / Impact Probe,
+- Sensor / Codec Destruction Controls,
+- Target / Background Differential Photometry,
+- Visibility / Contrast Response Curve,
+- Appearance / Disappearance Transition Probe,
+- CRF `18 → 24 → 30 → 36 → 42` recompression ladder
+
+bulunur.
+
+Diferansiyel testlerde mevcut Reference ROI aynı zamanda **Background ROI** olarak kullanılabilir. Akış önce hedefin yanındaki arka planı kilitleyip daha sonra Target ROI'yi seçerek ilerler. Target ve Background aynı dönüşüm değerleri altında paralel ölçülür; sonuçta `Target - Background` farkı ayrıca tutulur.
+
+Response sweep eksenleri exposure, gamma, brightness, black level, contrast, local contrast, blur, denoise ve sharpen'dır. Luma dağılımı, chroma, near-black, recovered/persistent dark, edge energy/persistence, frame-change, temporal persistence, signal/noise-benzeri değer ve visibility score gibi metrikler birlikte kaydedilir.
+
+Transition Probe seçim orta noktasını olay zamanı olarak kullanır ve yaklaşık olarak PRE / EVENT / POST pencerelerini karşılaştırır.
+
+Bu katman “gerçek/sahte” veya mekanizma kararı vermez. Sonuç dili hedef ile arka planın birlikte değişmesi, target'a lokalize değişim, düşük ışık/sensör davranışıyla uyum, codec altında göreli bozulma veya belirsizlik gibi ölçüm sınıflarıyla sınırlıdır.
+
+Ayrıntılı kontrat: [rooms/laboratory/VISUAL-RESPONSE-STRESS-PROBES.md](rooms/laboratory/VISUAL-RESPONSE-STRESS-PROBES.md).
+
 ## ✏️ Annotation
 
 Görüntü çalışma alanında room-local annotation katmanı bulunur.
@@ -206,6 +235,12 @@ Ayrıntılı ownership kuralları: [rooms/laboratory/README.md](rooms/laboratory
 ```bash
 node rooms/laboratory/scripts/laboratory-check.mjs
 npm run check:all
+```
+
+Yeni diferansiyel response regression'ı doğrudan çalıştırmak için:
+
+```bash
+npm run rooms:test:file -- scripts/tests/laboratory-visual-response-regressions.test.ts
 ```
 
 ## 🎯 Amaç
