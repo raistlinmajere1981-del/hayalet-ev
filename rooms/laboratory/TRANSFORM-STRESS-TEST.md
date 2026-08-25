@@ -1,20 +1,20 @@
 # Laboratory Transform Stress Test
 
-This note defines the channel-specific forensic stress-test workflow without changing the original source media.
+This note defines the reproducible visual/audio transform stress-test workflow without changing the immutable source media.
 
-## Purpose
+Laboratory is not a paranormal detector and not an automatic fake detector. The stress-test layer asks a narrower question:
 
-Laboratory uses prepared-source handling, ROI/crop inspection, non-destructive edit preview/apply, FFmpeg-backed derived artifacts, audio forensic runners, comparison/export, and project persistence to answer a stricter question than "can I make the anomaly clearer?":
+> Which measured structures survive, weaken, emerge or disappear under controlled transforms, and is that behavior shared by the surrounding scene or localized to the target?
 
-> Which transformations preserve the target feature, which transformations weaken it, and can a known camera/codec/signal-processing mechanism produce comparable measured behavior?
-
-This workflow is not a paranormal detector and not an automatic fake detector. It is a reproducible stress-test layer that raises or lowers the cost of ordinary explanations.
-
-A separate [`PHOTOMETRIC-ATTENUATION.md`](./PHOTOMETRIC-ATTENUATION.md) probe operationalizes the channel claim that some target figures appear to absorb or strongly attenuate light. That claim is treated as a test hypothesis rather than as a fact.
+Detailed differential-response behavior is documented in [`VISUAL-RESPONSE-STRESS-PROBES.md`](./VISUAL-RESPONSE-STRESS-PROBES.md). Photometric dark-recovery behavior remains documented in [`PHOTOMETRIC-ATTENUATION.md`](./PHOTOMETRIC-ATTENUATION.md).
 
 ## Core model
 
-A stress-test session is an ordered, reproducible transform stack attached to a source interval and optional ROI.
+A stress-test session is attached to a prepared source, a real timeline interval and an optional ROI.
+
+The immutable source is never replaced. Preview, baseline, difference, control and analysis outputs are derived artifacts.
+
+The ordered transform recipe remains part of provenance:
 
 ```ts
 export type LaboratoryTransformStage = {
@@ -25,13 +25,11 @@ export type LaboratoryTransformStage = {
 };
 ```
 
-Order is evidence. `denoise -> sharpen` is not equivalent to `sharpen -> denoise`, so stage ordering is persisted in the recipe signature and provenance snapshot.
-
-The original source is immutable. Preview, baseline, difference, control and analysis outputs are derived artifacts.
+Order matters. `denoise -> sharpen` is not equivalent to `sharpen -> denoise`.
 
 ## Ordered transform stack
 
-The implemented first-stage visual operations include:
+Implemented visual operations include:
 
 - brightness
 - contrast
@@ -43,57 +41,45 @@ The implemented first-stage visual operations include:
 - RGB channel isolation
 - denoise
 
-The implemented first-stage audio operations include:
+Implemented audio operations include:
 
 - high-pass
 - low-pass
 - band-pass
 - gain
 
-Live workspace controls remain audition-only. The ordered Transform Stack is the reproducible experiment recipe.
+Live workspace controls are audition surfaces. The ordered Transform Stack is the reproducible experiment recipe.
 
 ## Source / Transform / Difference
 
-The workbench provides three aligned views for the same edit recipe:
+The visual workbench provides:
 
 1. Source baseline
 2. Transform
 3. Difference
 
-The Source baseline is a derived comparison control generated through the same base trim/crop/resize recipe but without stress-transform stages. Difference is computed between that aligned baseline and the transformed preview with FFmpeg `blend=all_mode=difference`.
+The Source baseline is generated through the same base trim/crop/resize recipe without stress-transform stages. Difference is computed between aligned outputs; raw source geometry is not compared directly against a resized/cropped transform.
 
-Using the raw immutable source directly against a cropped/resized transformed preview would create false difference energy from geometry alone, so the aligned baseline is deliberate.
+A stale preview is not treated as current evidence.
 
-A stale preview is not trusted. Disabled-only visual stacks do not generate a misleading Difference artifact.
+## Temporal Scan
 
-## Temporal ROI test
+Temporal testing uses the prepared original video source.
 
-Temporal stress testing operates on the prepared original video source so later transform/control runs can be compared against a common baseline.
+A real timeline selection is required. The range is capped at six seconds and defaults to 5 fps, bounded to 1–10 fps. When an ROI exists, the measurement is ROI-scoped; otherwise it is full-frame.
 
-A real timeline selection is required. The synthetic full-source workspace selection is rejected. The selected range is capped at six seconds and centered when a longer range is supplied. Sampling defaults to 5 fps and is bounded to 1–10 fps. When the selection contains an ROI, only that normalized ROI is measured; otherwise the full frame is measured.
+Current FFmpeg-first measurements include:
 
-The current FFmpeg-only measurements are:
-
-- luma trajectory (`signalstats.YAVG`)
-- chroma U/V trajectory (`signalstats.UAVG` / `VAVG`)
-- inter-frame difference energy (`tblend=all_mode=difference` + `signalstats`)
-- edge energy (`edgedetect` + `signalstats`)
-- legacy edge-presence persistence derived from the edge-energy series
+- luma trajectory
+- chroma U/V trajectory
+- frame-difference energy
+- edge energy
+- legacy edge-presence persistence
 - spatial adjacent-frame edge persistence
 
 ### Spatial edge persistence
 
-Real-video testing showed that average edge energy is too coarse: a large visible silhouette inside a broad ROI can coexist with a weak or zero legacy persistence score.
-
-The refined metric therefore compares adjacent edge maps rather than asking only whether average edge energy stays above a threshold.
-
-For each sampled pair the runtime produces:
-
-- edge-map energy for the previous frame
-- edge-map energy for the current frame
-- absolute edge-map difference via `tblend=all_mode=difference`
-
-From those normalized energies it derives a fuzzy/weighted intersection and union equivalent:
+Adjacent edge maps are compared using a weighted overlap equivalent derived from previous/current edge energy and absolute edge-map difference:
 
 ```text
 intersection = (previous + current - difference) / 2
@@ -101,172 +87,253 @@ union        = (previous + current + difference) / 2
 IoU          = intersection / union
 ```
 
-This is equivalent to a min/max weighted IoU when the difference pass represents absolute edge-map difference. Empty-edge pairs are excluded instead of being called 100% persistent.
+Empty-edge pairs are excluded instead of being called perfectly persistent.
 
-New summaries therefore store:
+Optical flow remains a separate question; spatial edge persistence does not claim tracked object identity.
 
-- `edgeDifference`
-- `edgeOverlap`
-- `edgePersistenceSampleCount`
-- `spatialEdgePersistenceRatio`
-- `edgePersistenceMethod: "adjacent-edge-map-iou"`
+## Photometric Attenuation Probe
 
-The old `edgePersistenceRatio` remains in stored records as a legacy edge-presence proxy. Interpretation prefers `spatialEdgePersistenceRatio` when present and falls back to the legacy field for older records.
+The dedicated photometric probe measures near-black structure and repeats the measurement after a zero-preserving 8x luma lift.
 
-A temporal scan now uses four FFmpeg measurement passes: signal, frame difference, edge map, and edge-map difference.
+It separates:
 
-Optical flow is intentionally deferred. Spatial edge persistence measures overlap of edge structure across adjacent frames; it does not claim object identity, motion vectors or tracked morphology.
+- source near-black fraction
+- persistent near-black floor after lift
+- recovered dark fraction
+- luma structure
 
-The newest twenty temporal measurements persist under `edit.temporalStressTests`. A separate heavy statistics/history subsystem is intentionally not part of this slice.
+This is a measurement of recoverability, not proof of an absorption mechanism.
 
-## Destruction controls
+## Reference / Background ROI
 
-The canonical controls are fixed and reproducible:
+The existing Motion Reference lock now has a second role.
 
-- Noise: strength 12, seed 4242
-- Blur: radius 2
-- Sharpen: amount 1.25
-- Low-light: brightness -0.25, contrast 1.05, saturation 0.9, noise strength 8, seed 4242
-- Recompression: CRF 18 baseline versus CRF 36 injected with the same codec/preset/pixel format
+A locked Reference ROI can be reused as the **Background ROI** for differential visual probes.
 
-Payload parameter overrides are ignored for these canonical presets.
+Recommended workflow:
 
-Filter controls create paired outputs from the same selected interval and ROI using the same H.264/libx264, veryfast, CRF 18, yuv420p, no-audio encode profile. Only the injected side receives the requested visual filter.
+1. select timeline interval,
+2. select stable nearby background,
+3. lock Reference / Background ROI,
+4. select Target ROI,
+5. run Motion, Visibility Response, Transition or codec differential tests.
 
-Recompression is encode-only. Baseline and injected outputs share source, trim, ROI, codec family, preset, pixel format and added codec-generation count. The controlled difference is second-stage encode quality: CRF 18 baseline versus CRF 36 recompression.
+The lock remains source-scoped so a stale reference from another source does not silently become the active background.
 
-Both paired outputs are measured independently with the same four-pass temporal metric stack. A complete control run therefore consists of two encode passes plus four baseline metric passes plus four injected metric passes: ten FFmpeg passes total.
+## Sensor / Codec destruction controls
 
-The record stores:
+Paired controls retain the same selected interval and ROI while changing one intended degradation family.
 
-- exact control filter when applicable
-- canonical parameters
-- baseline/injected encode profiles
-- paired paths
-- complete baseline/injected metrics
-- injected-minus-baseline deltas, including spatial edge persistence
-- versioned interpretation
+Current direct controls:
 
-Control results share `edit.temporalStressTests` with `kind: "control-injection"` so baseline and control runs remain one experiment family.
+- Noise
+- Blur
+- Sharpen
+- Denoise
+- Gamma stress
+- Black crush
+- Highlight clipping
+- Chroma suppression
+- Low-light
+- Recompression
 
-Real-video smoke testing of the current CRF 18 → CRF 36 recompression control completed successfully. In the tested ROI/window it produced no clear measured change; that is an observation for that paired interval, not a global conclusion about the channel.
+Filter controls use matched H.264/libx264 encode settings on baseline/injected outputs; only the injected side receives the selected visual degradation.
 
-Chromatic-aberration control remains optional and should only be added if real experiments create a concrete need for it.
+Recompression uses the same codec family/preset/pixel format and changes encode quality. The normal paired preset remains CRF 18 baseline versus CRF 36 injected.
+
+Unlike the original first slice, runtime parameter normalization now preserves valid supplied numeric overrides on top of definition defaults. This is required by the deterministic recompression ladder while ordinary UI presets still use their declared defaults.
+
+## Recompression ladder
+
+The composite codec stress test runs:
+
+```text
+CRF 18 → 24 → 30 → 36 → 42
+```
+
+Target is measured at every step. If a Background ROI is locked, the same ladder is repeated for Background and the target-minus-background degradation curve is retained.
+
+The ladder is intentionally sequential rather than launching all FFmpeg jobs at once.
+
+## Visibility / Contrast Response Probe
+
+A response run sweeps exactly one transform axis at a time:
+
+- exposure
+- gamma
+- brightness
+- black level
+- contrast
+- local contrast
+- blur
+- denoise
+- sharpen
+
+The transform is applied consistently before ROI measurement. Target and Background then receive the same measurement stack.
+
+Each sweep step records normalized metrics including:
+
+- mean/temporal-median luma
+- luma low/high/min/max spread
+- chroma distance
+- near-black
+- persistent near-black
+- recovered dark
+- edge energy
+- edge persistence
+- frame-difference energy
+- temporal persistence
+- signal/noise-like ratio
+- visibility score
+
+For each numeric metric the record also stores:
+
+```text
+Target - Background
+```
+
+The point is not “filter on/off” but the shape of the response curve.
+
+## Appearance / Disappearance Transition Probe
+
+The midpoint of the selected timeline interval is treated as the approximate event time.
+
+Default windows:
+
+```text
+PRE   event -1.0 s → event -0.2 s
+EVENT event -0.2 s → event +0.2 s
+POST  event +0.2 s → event +1.0 s
+```
+
+Windows are clamped at source boundaries.
+
+Target and Background are measured in parallel for each phase. The result can therefore distinguish a broad illumination/camera change from a change that is more localized to the target ROI.
 
 ## Readable interpretation layer
 
-Raw frame-difference, edge, luma and chroma values remain the primary evidence. The UI also provides a versioned human-readable interpretation so the operator does not need to decode normalized values during an experiment.
+Raw metrics remain primary evidence. Human-readable interpretation is deliberately restrained.
 
-New temporal and control records persist `interpretation.schemaVersion: 1`.
+Allowed result language includes:
 
-Interpretation is deliberately restrained. It may describe:
+- target and background change together
+- response resembles surrounding physical structures
+- target response differs
+- change appears localized toward target
+- behavior is compatible with low-light / sensor response
+- global sensor response alone does not explain the measured divergence
+- codec degradation affects target faster / similarly
+- sample insufficient
+- result uncertain
 
-- frame activity
-- edge persistence
-- luminance/chroma variation
-- negligible/small/moderate/strong control impact
+These labels are not mechanism verdicts.
 
-It may not claim that a target was destroyed, reproduced, explained, real, fake or paranormal.
+In particular:
 
-Sample-quality guards prevent empty measurements from being interpreted as perfectly stable zero-valued evidence. New spatial records also require at least one usable edge-overlap pair before edge-persistence interpretation is considered sufficient.
+```text
+different response != paranormal
+```
 
-Existing records without a persisted interpretation are interpreted from their stored raw metrics. Spatial persistence is preferred when available; legacy edge persistence remains a backward-compatible fallback.
+and the UI must not convert a metric class into a real/fake conclusion.
 
 ## Live result surface
 
-Manual stress-test work reuses the expandable lower process-strip area whenever a full analysis run is not active.
+Manual stress testing reuses the lower live-result area whenever a full analysis run is not active.
 
-The right inspector remains action-focused:
-
-- live visual controls
-- ordered Transform Stack
-- Temporal Scan
-- Photometric Probe
-- Destruction Control
-
-The lower surface contains:
+The workspace exposes:
 
 - Source / Transform / Difference preview
-- latest Temporal Scan interpretation and technical values
-- latest Photometric Attenuation interpretation and technical values
-- latest Destruction Control interpretation and technical values
-- same-selection comparison of Noise, Blur, Sharpen, Low-light and Recompression
+- Temporal Scan
+- Photometric Probe
+- Motion / Impact
+- Reference / Background ROI lock
+- Sensor / Codec stress controls
+- Response Curves
+- Appearance / Disappearance Transition
+- codec ladder
 
-When a full analysis run is active, the same lower area switches back to Analysis Summary + Raw Log.
+Live Results can show:
 
-UI layout/polish is intentionally secondary to metric correctness in this branch.
+- Target curve
+- Background curve
+- differential curve
+- Target / Background ROI coordinates
+- response metric table
+- PRE / EVENT / POST transition table
+- codec degradation table
+- human-readable classification
 
-## Audio reconstruction workbench
+The newest response records remain project-local history entries. This slice does not introduce a separate heavy statistics database.
 
-The later audio path should support a small loop aligned to a subtitle target interval with operations such as:
+## Response comparison
 
-- high/low/band-pass
-- EQ
-- gain/compression
-- noise reduction/gate
-- time stretch without pitch change
-- pitch shift
-- mono / left / right
-- L-R difference
-- mid/side extraction
-- phase inversion where meaningful
+Multiple Visibility Response records are retained and the latest runs are visible together. This supports comparisons such as target vs human vs tree/rock vs dark background, provided the operator keeps the sweep axis and experimental geometry comparable.
 
-The subtitle is a target hypothesis, never transcription ground truth.
+A cross-project statistical aggregation layer is intentionally not part of this implementation.
 
-The useful question is whether speech-like structure survives independent processing paths or appears only after a narrow tuned transformation.
+## Performance
 
-## Classification language
+The differential response probe is heavier than a preview filter.
 
-Later reports should use restrained result classes:
+For every sweep value and every ROI it runs three measurement passes:
 
-- `reproducible-artifact` — a known processing/control path can reproduce a close analogue
-- `processing-dependent` — the feature is present but recognizable only under a narrow transform family
-- `transform-resistant` — meaningful structure persists across several independent transformations
-- `inconclusive` — insufficient or conflicting evidence
+1. source signal/luma/chroma/near-black
+2. edge pass
+3. lifted-dark pass
 
-`transform-resistant` is not paranormal confirmation. It only means the tested ordinary artifact explanations did not cheaply remove or reproduce the feature.
+Sweeps are therefore deliberately short and sequential.
+
+The recompression ladder is also sequential to avoid turning one experiment into a burst of concurrent FFmpeg jobs.
 
 ## Persistence and provenance
 
-Every completed run should retain enough information to reproduce it:
+Completed runs retain the relevant:
 
-- source project/output id
+- source path / project relation
 - source timestamp interval
-- ROI
-- ordered stage list and parameters
-- generated artifact ids/paths
-- exact control/filter settings where relevant
-- optional subtitle target interval/text
-- operator notes where relevant
+- Target ROI
+- Background ROI when used
+- ordered stages or sweep axis
+- transform/control values
+- generated paired paths where applicable
+- raw metrics
+- target-minus-background deltas
+- interpretation class
 - run timestamp
 
 The immutable source is never replaced.
 
+## Validation
+
+Focused regression:
+
+```bash
+npm run rooms:test:file -- scripts/tests/laboratory-visual-response-regressions.test.ts
+```
+
+Full Laboratory gate:
+
+```bash
+node rooms/laboratory/scripts/laboratory-check.mjs
+```
+
 ## Current sequencing
 
-Completed foundation:
+Implemented foundation now includes:
 
 1. ordered visual/audio transform recipe
 2. stable recipe signatures and provenance
 3. Source / Transform / Difference
 4. temporal luma/chroma + frame-difference + edge metrics
-5. canonical Noise / Blur / Sharpen / Low-light destruction controls
-6. readable interpretation layer
-7. shared lower live-result surface
-8. spatial adjacent-edge-map persistence
-9. matched recompression control
+5. spatial adjacent-edge-map persistence
+6. Photometric Attenuation Probe
+7. Motion / Impact Probe
+8. expanded Sensor / Codec controls
+9. Target / Background differential measurement
+10. Visibility / Contrast response curves
+11. Appearance / Disappearance transition windows
+12. CRF 18 → 42 codec ladder
+13. human-readable non-verdict summaries
+14. shared live-result surface
 
-Current experimental slice:
-
-1. photometric attenuation probe for near-black / recoverable-dark behavior
-
-Next useful steps:
-
-1. validate the photometric probe on the target ROI and an ordinary dark reference ROI
-2. automate target/reference photometric comparison only if the manual comparison separates consistently
-3. add chromatic-aberration control if still useful
-4. add subtitle-aligned audio reconstruction
-5. add restrained automatic report/classification only after enough real experiments exist
-6. consider optical flow only if spatial overlap leaves a concrete unanswered question
-
-This sequencing deliberately keeps the system FFmpeg-first and simple before introducing heavier motion-analysis dependencies.
+Audio reconstruction remains a later stage. Optical flow should still be added only if the current motion/spatial measurements leave a concrete unanswered question.
