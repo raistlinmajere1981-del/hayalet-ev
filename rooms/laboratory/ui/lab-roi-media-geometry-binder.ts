@@ -89,12 +89,18 @@ function ensureFrameProxy(content: HTMLElement) {
   const proxy = content.ownerDocument.createElement("span");
   proxy.setAttribute("data-lab-roi-media-frame-proxy", "true");
   proxy.setAttribute("data-lab-selection-roi-frame", "true");
-  proxy.setAttribute("aria-hidden", "true");
   proxy.style.position = "absolute";
   proxy.style.pointerEvents = "none";
   proxy.style.zIndex = "5";
   content.appendChild(proxy);
   return proxy;
+}
+
+function toLocalCoordinate(delta: number, renderedSize: number, localSize: number) {
+  if (renderedSize <= 0 || localSize <= 0) {
+    return delta;
+  }
+  return delta / (renderedSize / localSize);
 }
 
 export function bindLaboratoryRoiMediaGeometry(deps: LaboratoryRoiMediaGeometryDeps) {
@@ -155,10 +161,20 @@ export function bindLaboratoryRoiMediaGeometry(deps: LaboratoryRoiMediaGeometryD
       getIntrinsicAspectRatio(media)
     );
     const proxy = ensureFrameProxy(content);
-    setPixelStyle(proxy, "left", renderedRect.left - contentRect.left);
-    setPixelStyle(proxy, "top", renderedRect.top - contentRect.top);
-    setPixelStyle(proxy, "width", renderedRect.width);
-    setPixelStyle(proxy, "height", renderedRect.height);
+    const localWidth = content.clientWidth;
+    const localHeight = content.clientHeight;
+    setPixelStyle(
+      proxy,
+      "left",
+      toLocalCoordinate(renderedRect.left - contentRect.left, contentRect.width, localWidth)
+    );
+    setPixelStyle(
+      proxy,
+      "top",
+      toLocalCoordinate(renderedRect.top - contentRect.top, contentRect.height, localHeight)
+    );
+    setPixelStyle(proxy, "width", toLocalCoordinate(renderedRect.width, contentRect.width, localWidth));
+    setPixelStyle(proxy, "height", toLocalCoordinate(renderedRect.height, contentRect.height, localHeight));
 
     if (overlay.parentElement !== proxy) {
       proxy.appendChild(overlay);
