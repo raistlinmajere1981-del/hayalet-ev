@@ -102,22 +102,12 @@
   function createGamePlatform(B, scene, root, materials) {
     const deck = B.CreateBox(
       "yahtzee-stage-deck-slab",
-      { width: 10.35, height: 0.12, depth: 6.15 },
+      { width: 7.82, height: 0.04, depth: 4.48 },
       scene
     );
-    deck.position = new B.Vector3(0, -0.08, 0.42);
+    deck.position = new B.Vector3(0, -0.09, 0.16);
     deck.material = materials.deck;
     makeUnpickable(deck, root);
-
-    const rim = B.CreateBox(
-      "yahtzee-stage-deck-rim",
-      { width: 10.62, height: 0.16, depth: 6.42 },
-      scene
-    );
-    rim.position = new B.Vector3(0, -0.17, 0.42);
-    rim.material = materials.darkWood;
-    makeUnpickable(rim, root);
-
     return deck;
   }
 
@@ -243,7 +233,9 @@
 
     const cube = B.CreateBox("yahtzee-die-mesh-" + index, { size: 0.78, wrap: true }, scene);
     cube.material = materials.die;
-    makeUnpickable(cube, dieRoot);
+    cube.parent = dieRoot;
+    cube.isPickable = true;
+    cube.metadata = Object.assign({}, cube.metadata || {}, { yahtzeeDieIndex: index });
 
     const heldRing = B.CreateTorus(
       "yahtzee-die-held-ring-" + index,
@@ -300,6 +292,27 @@
     if (!model.roll) model.root.position.y = model.basePosition.y + (held ? 0.16 : 0);
   }
 
+  function readPickedDieIndex(pickInfo) {
+    const mesh = pickInfo && pickInfo.hit === true ? pickInfo.pickedMesh : null;
+    const value = mesh && mesh.metadata ? Number(mesh.metadata.yahtzeeDieIndex) : NaN;
+    return Number.isInteger(value) && value >= 0 && value < DEFAULT_DICE.length ? value : -1;
+  }
+
+  function canToggleDie(index) {
+    const actions = global.GameRoomYahtzeeStageActions;
+    return Boolean(
+      actions &&
+        typeof actions.canToggleDie === "function" &&
+        actions.canToggleDie(index) === true
+    );
+  }
+
+  function toggleDie(index) {
+    const actions = global.GameRoomYahtzeeStageActions;
+    if (!actions || typeof actions.toggleDie !== "function") return false;
+    return actions.toggleDie(index) === true;
+  }
+
   function mount(canvas, initialState) {
     const B = global.BABYLON;
     if (!canvas || !hasRuntime(B)) return null;
@@ -344,9 +357,9 @@
       moonFill.intensity = 0.58;
 
       const materials = {
-        deck: createMaterial(B, scene, "yahtzee-stage-deck", [0.05, 0.026, 0.018], {
-          specular: [0.04, 0.025, 0.018],
-          alpha: 0.78,
+        deck: createMaterial(B, scene, "yahtzee-stage-deck", [0.035, 0.02, 0.016], {
+          specular: [0.03, 0.018, 0.012],
+          alpha: 0.16,
         }),
         darkWood: createMaterial(B, scene, "yahtzee-stage-dark-wood", [0.032, 0.016, 0.012]),
         table: createMaterial(B, scene, "yahtzee-table", [0.19, 0.065, 0.024], {
@@ -408,6 +421,17 @@
       let elapsed = 0;
       let disposed = false;
       let latestState = initialState && typeof initialState === "object" ? initialState : {};
+
+      scene.onPointerDown = function (_event, pickInfo) {
+        const index = readPickedDieIndex(pickInfo);
+        if (index < 0 || !canToggleDie(index)) return;
+        toggleDie(index);
+      };
+
+      scene.onPointerMove = function (_event, pickInfo) {
+        const index = readPickedDieIndex(pickInfo);
+        canvas.style.cursor = index >= 0 && canToggleDie(index) ? "pointer" : "default";
+      };
 
       function beginRoll() {
         if (cameraDirector && typeof cameraDirector.focusRoll === "function") {
@@ -528,10 +552,14 @@
         dispose: function () {
           if (disposed) return;
           disposed = true;
+          scene.onPointerDown = null;
+          scene.onPointerMove = null;
+          canvas.style.cursor = "default";
           global.removeEventListener("resize", resize);
           delete canvas.dataset.babylonActive;
-          if (cameraDirector && typeof cameraDirector.dispose === "function")
+          if (cameraDirector && typeof cameraDirector.dispose === "function") {
             cameraDirector.dispose();
+          }
           engine.stopRenderLoop();
           scene.dispose();
           engine.dispose();
