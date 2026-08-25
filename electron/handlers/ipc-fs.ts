@@ -2,6 +2,13 @@ import type { BrowserWindow } from "electron";
 import { readdir, stat } from "fs/promises";
 import { join } from "path";
 import { fmTempPath, fmEnsureDirs, openPath } from "../file-manager.ts";
+import {
+  archivePatternRoomFile,
+  listPatternRoomArchiveFiles,
+  openPatternRoomArchiveFile,
+  revealPatternRoomArchiveFile,
+  type PatternRoomArchiveFileInput,
+} from "../pattern-room-archive.ts";
 import { registerHandler } from "./ipc-helpers.ts";
 import { getLoggerCore } from "../logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
@@ -15,6 +22,18 @@ export function setupFsHandlers(_mainWindow: BrowserWindow | null): void {
   );
   registerHandler("fm-ensure-dirs", fmEnsureDirs);
   registerHandler("open-path", async (_event, path) => await openPath(path as string));
+  registerHandler("pattern-room-archive-file", async (_event, payload) => {
+    return await archivePatternRoomFile(payload as PatternRoomArchiveFileInput);
+  });
+  registerHandler("pattern-room-list-archive-files", async () => {
+    return await listPatternRoomArchiveFiles();
+  });
+  registerHandler("pattern-room-open-archive-file", async (_event, fileId) => {
+    return await openPatternRoomArchiveFile(fileId as string);
+  });
+  registerHandler("pattern-room-reveal-archive-file", async (_event, fileId) => {
+    return await revealPatternRoomArchiveFile(fileId as string);
+  });
 
   registerHandler("read-directory-files", async (_event, dirPath: string) => {
     try {
