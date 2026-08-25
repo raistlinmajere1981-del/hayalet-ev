@@ -1,7 +1,4 @@
-import type {
-  SlotBridgeEnvelope,
-  SlotBridgeResult,
-} from "../shared/types/pattern-room-slot-bridge.js";
+import type { SlotBridgeEnvelope, SlotBridgeResult } from "../../../src/types/commands.js";
 
 import { createPatternRoomCaseReviewHash } from "../shared/adapters/pattern-room-case-review-hash.js";
 import { parsePatternRoomCaseReviewResult } from "../shared/adapters/pattern-room-case-review-parser.js";

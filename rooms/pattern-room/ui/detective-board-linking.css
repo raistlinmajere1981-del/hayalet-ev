@@ -1,0 +1,128 @@
+/* Pattern Room v5 direct string-link interaction. */
+
+.pattern-room-detective-board-header {
+  align-items: center;
+}
+
+.pattern-room-detective-board-header-actions {
+  display: grid;
+  gap: var(--pattern-px-6);
+  justify-items: end;
+}
+
+.pattern-room-board-connection-tools {
+  display: grid;
+  grid-template-columns: minmax(var(--pattern-px-150), auto) auto minmax(
+      var(--pattern-px-110),
+      auto
+    );
+  gap: var(--pattern-px-6);
+  align-items: center;
+  min-height: var(--pattern-px-38);
+  padding: var(--pattern-px-4);
+  border: var(--pattern-px-1) solid var(--pattern-accent-red-alpha-22);
+  border-radius: var(--pattern-px-4);
+  background:
+    linear-gradient(90deg, var(--pattern-accent-red-alpha-08), transparent 48%),
+    var(--pattern-surface-depth-alpha-96);
+}
+
+.pattern-room-board-connection-type,
+.pattern-room-board-connect-button {
+  min-height: var(--pattern-px-30);
+  border: var(--pattern-px-1) solid var(--pattern-text-alpha-12);
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-surface-control-alpha-74);
+  color: var(--pattern-text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+}
+
+.pattern-room-board-connection-type {
+  padding: var(--pattern-px-4) var(--pattern-px-8);
+}
+
+.pattern-room-board-connection-type:disabled {
+  opacity: 0.42;
+}
+
+.pattern-room-board-connect-button {
+  padding: var(--pattern-px-4) var(--pattern-px-10);
+  border-color: var(--pattern-accent-red-alpha-28);
+  color: var(--pattern-accent-red);
+  cursor: pointer;
+}
+
+.pattern-room-board-connect-button:hover,
+.pattern-room-board-connect-button:focus-visible,
+.pattern-room-board-connect-button[data-pattern-board-connect-mode="true"] {
+  border-color: var(--pattern-accent-red-alpha-50);
+  background: var(--pattern-accent-red-alpha-10);
+  color: var(--pattern-danger-text);
+  outline: none;
+  box-shadow: 0 0 var(--pattern-px-10) var(--pattern-accent-red-alpha-16);
+}
+
+.pattern-room-board-connect-status {
+  min-width: var(--pattern-px-110);
+  color: var(--pattern-text-subtle);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  text-align: center;
+}
+
+.pattern-room-detective-note[data-pattern-board-connection-mode="true"] {
+  cursor: crosshair;
+}
+
+.pattern-room-detective-note[data-pattern-board-connection-mode="true"]::after {
+  position: absolute;
+  inset: var(--pattern-px-4);
+  border: var(--pattern-px-1) dashed var(--pattern-accent-red-alpha-28);
+  border-radius: var(--pattern-px-3);
+  content: "";
+  pointer-events: none;
+}
+
+.pattern-room-detective-note[data-pattern-board-connection-source="true"] {
+  z-index: 8;
+  border-color: var(--pattern-accent-red-alpha-50);
+  box-shadow:
+    0 var(--pattern-px-14) var(--pattern-px-28) var(--pattern-black-alpha-40),
+    0 0 0 var(--pattern-px-3) var(--pattern-accent-red-alpha-16),
+    inset 0 0 0 var(--pattern-px-1) var(--pattern-accent-red-alpha-28);
+}
+
+.pattern-room-detective-note[data-pattern-board-connection-source="true"]
+  .pattern-room-detective-note-pin {
+  background: var(--pattern-accent-red);
+  box-shadow: 0 0 var(--pattern-px-10) var(--pattern-accent-red-alpha-50);
+}
+
+@media (--pattern-bp-max-1180) {
+  .pattern-room-detective-board-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pattern-room-detective-board-header-actions {
+    justify-items: stretch;
+  }
+
+  .pattern-room-board-connection-tools {
+    grid-template-columns: minmax(var(--pattern-px-150), 1fr) auto minmax(
+        var(--pattern-px-110),
+        auto
+      );
+  }
+}
+
+@media (--pattern-bp-max-820) {
+  .pattern-room-board-connection-tools {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .pattern-room-board-connect-status {
+    grid-column: 1 / -1;
+  }
+}

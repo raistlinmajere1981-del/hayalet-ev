@@ -1,0 +1,228 @@
+/* Pattern Room V10 — physical board interaction pass.
+ * Adds a live thread draft, connection labels, eyelets and calmer selected
+ * relationship rendering without changing the investigation data model.
+ */
+
+/* ─────────────────────────────────────────
+   BOARD — physical thread mode
+───────────────────────────────────────── */
+.pattern-room-detective-board[data-pattern-board-thread-mode="true"]
+  .pattern-room-detective-board-scene {
+  cursor: crosshair;
+}
+
+.pattern-room-board-mode-badge {
+  position: absolute;
+  top: var(--pattern-px-14);
+  left: var(--pattern-px-14);
+  z-index: 24;
+  display: inline-flex;
+  gap: var(--pattern-px-7);
+  align-items: center;
+  min-height: var(--pattern-px-30);
+  padding: var(--pattern-px-5) var(--pattern-px-9);
+  border: var(--pattern-px-1) solid var(--pattern-accent-red-alpha-28);
+  border-radius: var(--pattern-px-999);
+  background: var(--pattern-surface-depth-alpha-96);
+  box-shadow: 0 var(--pattern-px-8) var(--pattern-px-18) var(--pattern-black-alpha-40);
+  color: var(--pattern-danger-text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.pattern-room-board-mode-badge[hidden] {
+  display: none;
+}
+
+.pattern-room-board-mode-badge > i {
+  width: var(--pattern-px-7);
+  height: var(--pattern-px-7);
+  border-radius: var(--pattern-px-999);
+  background: var(--pattern-accent-red);
+  box-shadow: 0 0 var(--pattern-px-8) var(--pattern-accent-red-alpha-50);
+}
+
+.pattern-room-detective-note-eyelet {
+  position: absolute;
+  right: var(--pattern-px-8);
+  bottom: var(--pattern-px-8);
+  width: var(--pattern-px-9);
+  height: var(--pattern-px-9);
+  border: var(--pattern-px-2) solid var(--pattern-accent-amber-deep);
+  border-radius: var(--pattern-px-999);
+  background: var(--pattern-surface-depth-alpha-96);
+  box-shadow: 0 var(--pattern-px-1) var(--pattern-px-2) var(--pattern-black-alpha-52);
+  pointer-events: none;
+}
+
+.pattern-room-detective-note[data-pattern-board-target-candidate="true"] {
+  border-color: var(--pattern-accent-red-alpha-38);
+  box-shadow:
+    0 var(--pattern-px-14) var(--pattern-px-28) var(--pattern-black-alpha-40),
+    inset 0 0 0 var(--pattern-px-1) var(--pattern-accent-red-alpha-16);
+}
+
+.pattern-room-detective-note[data-pattern-board-target-candidate="true"]
+  .pattern-room-detective-note-eyelet {
+  border-color: var(--pattern-danger-text);
+  box-shadow: 0 0 var(--pattern-px-8) var(--pattern-accent-red-alpha-50);
+}
+
+.pattern-room-detective-note[data-pattern-board-front="true"] {
+  z-index: 14;
+}
+
+.pattern-room-board-string-draft {
+  position: absolute;
+  z-index: 6;
+  display: block;
+  height: var(--pattern-px-18);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+.pattern-room-board-string-draft[hidden] {
+  display: none;
+}
+
+.pattern-room-board-string-draft > i {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: var(--pattern-px-2);
+  border-radius: var(--pattern-px-2);
+  background: var(--pattern-danger-text);
+  box-shadow: 0 0 var(--pattern-px-6) var(--pattern-accent-red-alpha-38);
+  transform: translateY(-50%);
+}
+
+.pattern-room-board-string-draft::before,
+.pattern-room-board-string-draft::after {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: var(--pattern-px-7);
+  height: var(--pattern-px-7);
+  border-radius: var(--pattern-px-999);
+  background: var(--pattern-danger-text);
+  box-shadow: 0 0 var(--pattern-px-6) var(--pattern-accent-red-alpha-38);
+  content: "";
+  transform: translateY(-50%);
+}
+
+.pattern-room-board-string-draft::before {
+  left: calc(var(--pattern-px-3) * -1);
+}
+
+.pattern-room-board-string-draft::after {
+  right: calc(var(--pattern-px-3) * -1);
+}
+
+/* Existing strings now communicate semantic relation type, not only scope. */
+.pattern-room-board-string[data-pattern-board-connection-type] {
+  color: var(--pattern-accent-amber-light);
+}
+
+.pattern-room-board-string[data-pattern-board-connection-type="supports"] {
+  color: var(--pattern-accent-green);
+}
+
+.pattern-room-board-string[data-pattern-board-connection-type="contradicts"],
+.pattern-room-board-string[data-pattern-board-connection-type="questions"],
+.pattern-room-board-string[data-pattern-board-connection-type="needs_review"] {
+  color: var(--pattern-accent-red);
+}
+
+.pattern-room-board-string[data-pattern-board-connection-type="derived_from"],
+.pattern-room-board-string[data-pattern-board-connection-type="references"] {
+  color: var(--pattern-accent-cyan);
+}
+
+.pattern-room-board-string[data-pattern-board-connection-type] .pattern-room-board-string-line,
+.pattern-room-board-string[data-pattern-board-connection-type]::before,
+.pattern-room-board-string[data-pattern-board-connection-type]::after {
+  background: currentColor;
+}
+
+.pattern-room-board-string-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  max-width: var(--pattern-px-150);
+  padding: var(--pattern-px-2) var(--pattern-px-5);
+  overflow: hidden;
+  border: var(--pattern-px-1) solid currentColor;
+  border-radius: var(--pattern-px-3);
+  background: var(--pattern-surface-depth-alpha-96);
+  box-shadow: 0 var(--pattern-px-2) var(--pattern-px-6) var(--pattern-black-alpha-40);
+  color: currentColor;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--pattern-rem-0-72);
+  font-weight: 700;
+  line-height: 1.2;
+  opacity: 0.82;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pattern-room-board-string:hover .pattern-room-board-string-label,
+.pattern-room-board-string:focus-visible .pattern-room-board-string-label,
+.pattern-room-board-string.selected .pattern-room-board-string-label {
+  opacity: 1;
+  box-shadow:
+    0 var(--pattern-px-3) var(--pattern-px-8) var(--pattern-black-alpha-52),
+    0 0 var(--pattern-px-5) currentColor;
+}
+
+.pattern-room-board-string:hover .pattern-room-board-string-line,
+.pattern-room-board-string:focus-visible .pattern-room-board-string-line,
+.pattern-room-board-string.selected .pattern-room-board-string-line {
+  height: var(--pattern-px-2);
+  box-shadow: 0 0 var(--pattern-px-5) currentColor;
+}
+
+/* ─────────────────────────────────────────
+   CASE MAP — selected relationships should
+   read as evidence links, not neon beams.
+───────────────────────────────────────── */
+.pattern-room-case-map-edge .pattern-room-graph-edge-line,
+.pattern-room-case-map-edge:hover .pattern-room-graph-edge-line,
+.pattern-room-case-map-edge:focus-visible .pattern-room-graph-edge-line,
+.pattern-room-case-map-edge.active .pattern-room-graph-edge-line {
+  height: var(--pattern-px-2);
+}
+
+.pattern-room-case-map-edge.active .pattern-room-graph-edge-line {
+  opacity: 0.9;
+  box-shadow: 0 0 var(--pattern-px-5) currentColor;
+}
+
+.pattern-room-case-map-edge.active .pattern-room-graph-edge-label {
+  border-color: currentColor;
+  background: var(--pattern-surface-depth-alpha-96);
+  box-shadow: 0 var(--pattern-px-4) var(--pattern-px-10) var(--pattern-black-alpha-40);
+}
+
+/* ─────────────────────────────────────────
+   REPORT — let the folio use the complete
+   investigation canvas when the drawer is shut.
+───────────────────────────────────────── */
+.pattern-room-app-shell[data-pattern-inspector-open="false"] .pattern-room-casefile-panel,
+.pattern-room-app-shell[data-pattern-inspector-open="false"] .pattern-room-casefile-workspace,
+.pattern-room-app-shell[data-pattern-inspector-open="false"]
+  .pattern-room-casefile-panel
+  .pattern-room-panel-header {
+  width: 100%;
+  max-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pattern-room-board-string-label {
+    transition: none;
+  }
+}
