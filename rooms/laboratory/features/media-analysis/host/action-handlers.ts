@@ -71,6 +71,11 @@ function asRecord(value: unknown): LaboratoryRecord {
     : {};
 }
 
+function finite(record: LaboratoryRecord, key: string) {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
 function resolveLatestResponseBackgroundRoi(
   deps: MediaActionRuntimeDeps,
   runtime: LaboratoryRecord
@@ -141,24 +146,22 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     toRecord: deps.toRecord,
   });
 
+  type EditProject = Parameters<typeof deps.getProjectEditOutputDir>[1];
   const visualResponseRuntime = createLaboratoryVisualResponseProbeRuntime({
     callRoomTools: deps.callRoomTools,
     getActiveProject(runtime) {
-      return asRecord(deps.getActiveProject(runtime));
+      const project = deps.getActiveProject(runtime);
+      return project === null ? null : asRecord(project);
     },
     getPreparedSourcePath(project) {
       return deps.asNonEmptyString(asRecord(project["source"])["storedPath"]);
     },
     getProjectEditOutputDir(runtime, project) {
-      return deps.getProjectEditOutputDir(runtime, project as Parameters<typeof deps.getProjectEditOutputDir>[1]);
+      return deps.getProjectEditOutputDir(runtime, project as EditProject);
     },
     patchActiveProject(runtime, patcher) {
       return deps.patchActiveProject(runtime, function (project) {
-        return patcher(asRecord(project)) as Parameters<typeof deps.patchActiveProject>[1] extends (
-          project: infer T
-        ) => unknown
-          ? T
-          : never;
+        return patcher(asRecord(project)) as EditProject;
       });
     },
     roomId: deps.roomId,
@@ -230,14 +233,31 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
   });
 
   const originalRunControlInjection = mediaEditActionRuntime.runControlInjection;
-  async function runControlInjection(
-    runtime: LaboratoryRecord,
-    requestId: string,
-    actionPayload: LaboratoryRecord
-  ) {
+  type RunControlInjectionArgs = Parameters<typeof originalRunControlInjection>;
+
+  async function persistCompositeResult(runtime: RunControlInjectionArgs[0], result: LaboratoryRecord) {
+    await deps.patchActiveProject(runtime, function (project) {
+      const edit = asRecord(asRecord(project)["edit"]);
+      const existing = Array.isArray(edit["temporalStressTests"])
+        ? (edit["temporalStressTests"] as unknown[])
+        : [];
+      asRecord(project)["edit"] = {
+        ...edit,
+        temporalStressTests: [result, ...existing].slice(0, 30),
+        lastActionAt: result["createdAt"],
+        lastError: null,
+      };
+      return project;
+    });
+  }
+
+  async function runControlInjection(...args: RunControlInjectionArgs) {
+    const [runtime, requestId, actionPayload] = args;
     const request = asRecord(actionPayload["request"]);
     const specialKind = deps.asNonEmptyString(request["kind"]);
-    if (specialKind === "visibility-response") {
+    const temporalRequest = asRecord(request["temporalRequest"]);
+
+    if (specialKind?.startsWith("response-") === true) {
       const backgroundRoi = resolveLatestResponseBackgroundRoi(deps, runtime);
       if (backgroundRoi === null) {
         throw new Error(
@@ -245,11 +265,12 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
         );
       }
       return visualResponseRuntime.runResponseProbe(runtime, requestId, {
-        axis: request["axis"],
-        temporalRequest: request["temporalRequest"],
+        axis: specialKind.slice("response-".length),
+        temporalRequest,
         backgroundRoi,
       });
     }
+
     if (specialKind === "appearance-transition") {
       const backgroundRoi = resolveLatestResponseBackgroundRoi(deps, runtime);
       if (backgroundRoi === null) {
@@ -258,11 +279,75 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
         );
       }
       return visualResponseRuntime.runTransitionProbe(runtime, requestId, {
-        temporalRequest: request["temporalRequest"],
+        temporalRequest,
         backgroundRoi,
       });
     }
-    return originalRunControlInjection(runtime, requestId, actionPayload);
+
+    if (specialKind === "recompression-ladder") {
+      const backgroundRoi = resolveLatestResponseBackgroundRoi(deps, runtime);
+      const crfValues = [18, 24, 30, 36, 42];
+      const steps: LaboratoryRecord[] = [];
+      for (const crf of crfValues) {
+        const targetResult = asRecord(
+          await originalRunControlInjection(runtime, requestId, {
+            request: {
+              kind: "recompression",
+              params: { baselineCrf: 18, injectedCrf: crf },
+              temporalRequest,
+            },
+          })
+        );
+        let backgroundResult: LaboratoryRecord | null = null;
+        if (backgroundRoi !== null) {
+          backgroundResult = asRecord(
+            await originalRunControlInjection(runtime, requestId, {
+              request: {
+                kind: "recompression",
+                params: { baselineCrf: 18, injectedCrf: crf },
+                temporalRequest: { ...temporalRequest, roi: backgroundRoi },
+              },
+            })
+          );
+        }
+        const targetDelta = asRecord(targetResult["delta"]);
+        const backgroundDelta = asRecord(backgroundResult?.["delta"]);
+        steps.push({
+          crf,
+          target: targetResult,
+          background: backgroundResult,
+          differential: {
+            meanFrameDifferenceEnergy:
+              finite(targetDelta, "meanFrameDifferenceEnergy") -
+              finite(backgroundDelta, "meanFrameDifferenceEnergy"),
+            meanEdgeEnergy:
+              finite(targetDelta, "meanEdgeEnergy") - finite(backgroundDelta, "meanEdgeEnergy"),
+            lumaRange: finite(targetDelta, "lumaRange") - finite(backgroundDelta, "lumaRange"),
+          },
+        });
+      }
+      const createdAt = new Date().toISOString();
+      const result: LaboratoryRecord = {
+        schemaVersion: 1,
+        kind: "recompression-ladder",
+        id: `recompression-ladder-${createdAt.replace(/[:.]/g, "-")}`,
+        createdAt,
+        request: { temporalRequest, backgroundRoi },
+        crfValues,
+        steps,
+        interpretation: {
+          dataQuality: backgroundRoi === null ? "target-only" : "differential",
+          classification:
+            backgroundRoi === null
+              ? "sample-insufficient-for-target-background-comparison"
+              : "compare-target-and-background-degradation-curves",
+        },
+      };
+      await persistCompositeResult(runtime, result);
+      return result;
+    }
+
+    return originalRunControlInjection(...args);
   }
 
   return {
