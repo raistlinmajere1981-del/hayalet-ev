@@ -10,6 +10,7 @@ import { bindLabDocumentEvents, isClosestCapableTarget } from "./lab-dom-events.
 const MIN_SELECTION_ROI_SIZE_PX = 8;
 const SELECTION_ROI_RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 type SelectionRoiResizeHandle = (typeof SELECTION_ROI_RESIZE_HANDLES)[number];
+type VisualStressRoiRole = "target" | "background";
 
 type RectLike = {
   bottom: number;
@@ -36,6 +37,7 @@ type SelectionRoiBinderDeps = {
 };
 
 type DrawDragState = {
+  comparisonSide: LabComparisonSide | null;
   lastSignature: string | null;
   mode: "draw";
   stage: StageElement;
@@ -44,6 +46,7 @@ type DrawDragState = {
 };
 
 type ResizeDragState = {
+  comparisonSide: LabComparisonSide | null;
   handle: SelectionRoiResizeHandle;
   initialRoi: LabSelectionROI;
   lastSignature: string | null;
@@ -62,6 +65,11 @@ type MouseLikeEvent = Event & {
   key?: string;
   preventDefault: () => void;
   target?: EventTarget | null;
+};
+
+type QueryableDocument = {
+  documentElement?: Element | null;
+  querySelectorAll?: (selector: string) => NodeListOf<Element>;
 };
 
 function getClosestTarget(target: EventTarget | null, selector: string): StageElement | null {
@@ -96,6 +104,10 @@ function isSelectionRoiResizeHandle(value: string | null): value is SelectionRoi
   return SELECTION_ROI_RESIZE_HANDLES.some(function (handle) {
     return handle === value;
   });
+}
+
+function isVisualStressRoiRole(value: string | null): value is VisualStressRoiRole {
+  return value === "target" || value === "background";
 }
 
 function getComparisonSideFromStage(stage: StageElement): LabComparisonSide | null {
@@ -247,15 +259,257 @@ function canDrawSelectionRoi(activeSelection: LabSelection | null, sourceKind: s
   return activeSelection !== null && activeSelection.endMs > activeSelection.startMs;
 }
 
+function formatVisualStressRoiStyle(roi: LabSelectionROI) {
+  return [
+    `left: ${String(roi.x * 100)}%`,
+    `top: ${String(roi.y * 100)}%`,
+    `width: ${String(roi.width * 100)}%`,
+    `height: ${String(roi.height * 100)}%`,
+  ].join("; ");
+}
+
+function formatVisualStressRoiSignature(roi: LabSelectionROI) {
+  return `${roi.x}:${roi.y}:${roi.width}:${roi.height}`;
+}
+
+function renderVisualStressResizeHandles(role: VisualStressRoiRole) {
+  return SELECTION_ROI_RESIZE_HANDLES.map(function (handle) {
+    return `<button class="labx-selection-roi__resize-handle labx-selection-roi__resize-handle--${handle}" type="button" data-lab-selection-roi-resize="${handle}" data-lab-selection-roi-ignore="true" data-lab-visual-stress-roi-role="${role}" aria-label="Resize ${role} ROI" title="Resize ${role} ROI"></button>`;
+  }).join("");
+}
+
 export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
   let dragState: DragState | null = null;
+  let activeVisualStressRole: VisualStressRoiRole = "target";
+  let dualRoiObserver: MutationObserver | null = null;
+  let dualRoiSyncQueued = false;
 
   function isMutationLocked() {
     return deps.isMutationLocked?.() === true;
   }
 
+  function queryAll(selector: string) {
+    const documentRef = deps.documentRef as typeof deps.documentRef & QueryableDocument;
+    if (typeof documentRef.querySelectorAll !== "function") {
+      return [] as Element[];
+    }
+    return Array.from(documentRef.querySelectorAll(selector));
+  }
+
+  function isDualVisualStressActive() {
+    return (
+      deps.getSourceKind() === "video" &&
+      queryAll("[data-lab-transform-stack][data-lab-transform-source-kind='video']").length > 0 &&
+      queryAll("[data-lab-control-injection='true']").length > 0
+    );
+  }
+
+  function getVisualStressRoleFromTarget(target: EventTarget | null) {
+    const trigger = getClosestTarget(target, "[data-lab-visual-stress-roi-role]");
+    if (trigger === null) {
+      return null;
+    }
+    const role = trigger.getAttribute("data-lab-visual-stress-roi-role");
+    return isVisualStressRoiRole(role) ? role : null;
+  }
+
+  function resolveInteractionComparisonSide(
+    target: EventTarget | null,
+    stage: StageElement | null
+  ): LabComparisonSide | null {
+    if (isDualVisualStressActive()) {
+      const explicitRole = getVisualStressRoleFromTarget(target);
+      if (explicitRole !== null) {
+        activeVisualStressRole = explicitRole;
+      }
+      return (explicitRole ?? activeVisualStressRole) === "background" ? "reference" : null;
+    }
+    return stage === null ? null : getComparisonSideFromStage(stage);
+  }
+
+  function syncVisualStressRoleControls() {
+    const targetRoi = deps.getActiveSelection()?.roi ?? null;
+    const backgroundRoi = deps.getComparisonRoi?.("reference") ?? null;
+    queryAll("[data-lab-control-injection='true']").forEach(function (panel) {
+      const body = panel.querySelector(".labx-card__body");
+      if (body === null) {
+        return;
+      }
+      let controls = body.querySelector("[data-lab-visual-stress-roi-controls='true']");
+      if (controls === null) {
+        body.insertAdjacentHTML(
+          "afterbegin",
+          `<div class="labx-visual-stress-roi-controls" data-lab-visual-stress-roi-controls="true">
+            <div class="labx-controls-actions labx-visual-stress-roi-controls__actions">
+              <button class="labx-inline-action labx-visual-stress-roi-role labx-visual-stress-roi-role--target" type="button" data-lab-visual-stress-roi-role-control="true" data-lab-visual-stress-roi-role="target">Target ROI</button>
+              <button class="labx-inline-action labx-visual-stress-roi-role labx-visual-stress-roi-role--background" type="button" data-lab-visual-stress-roi-role-control="true" data-lab-visual-stress-roi-role="background">Background ROI</button>
+            </div>
+            <p class="labx-card__meta labx-visual-stress-roi-controls__status" data-lab-visual-stress-roi-status="true"></p>
+          </div>`
+        );
+        controls = body.querySelector("[data-lab-visual-stress-roi-controls='true']");
+      }
+      if (controls === null) {
+        return;
+      }
+      controls.querySelectorAll("[data-lab-visual-stress-roi-role-control='true']").forEach(function (button) {
+        const role = button.getAttribute("data-lab-visual-stress-roi-role");
+        const active = role === activeVisualStressRole;
+        button.setAttribute("data-active", active ? "true" : "false");
+        button.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+      const status = controls.querySelector("[data-lab-visual-stress-roi-status='true']");
+      if (status !== null) {
+        const nextStatus = `Target ROI ${targetRoi === null ? "—" : "✓"} · Background ROI ${backgroundRoi === null ? "—" : "✓"} · Select role, then draw/resize on preview.`;
+        if (status.textContent !== nextStatus) {
+          status.textContent = nextStatus;
+        }
+      }
+    });
+  }
+
+  function syncTransformBackgroundRoiAttribute() {
+    const backgroundRoi = deps.getComparisonRoi?.("reference") ?? null;
+    const serialized = JSON.stringify(backgroundRoi);
+    queryAll("[data-lab-transform-stack][data-lab-transform-source-kind='video']").forEach(function (root) {
+      if (root.getAttribute("data-lab-visual-stress-background-roi-json") !== serialized) {
+        root.setAttribute("data-lab-visual-stress-background-roi-json", serialized);
+      }
+    });
+  }
+
+  function restoreTargetOverlay(targetOverlay: Element) {
+    const originalLabel = targetOverlay.getAttribute("data-lab-visual-stress-original-label");
+    const label = targetOverlay.querySelector(".labx-selection-roi__label");
+    if (label !== null && originalLabel !== null) {
+      label.textContent = originalLabel;
+    }
+    targetOverlay.removeAttribute("data-lab-visual-stress-original-label");
+    targetOverlay.removeAttribute("data-lab-visual-stress-roi-role");
+    targetOverlay.removeAttribute("data-active");
+    targetOverlay.classList.remove(
+      "labx-selection-roi--visual-target",
+      "labx-selection-roi--visual-active"
+    );
+  }
+
+  function syncVisualStressOverlays() {
+    const dualActive = isDualVisualStressActive();
+    const backgroundRoi = deps.getComparisonRoi?.("reference") ?? null;
+    const videoOverlays = queryAll(
+      "[data-lab-selection-roi-overlay='true'][data-lab-source-kind='video']"
+    ).filter(function (overlay) {
+      return overlay.closest("[data-lab-comparison-roi-side]") === null;
+    });
+
+    if (!dualActive) {
+      activeVisualStressRole = "target";
+      queryAll(".labx-selection-roi--visual-target").forEach(restoreTargetOverlay);
+      queryAll("[data-lab-visual-stress-background-overlay='true']").forEach(function (overlay) {
+        overlay.remove();
+      });
+      return;
+    }
+
+    videoOverlays.forEach(function (overlay) {
+      const targetOverlay = overlay.querySelector("[data-lab-selection-roi='true']");
+      if (targetOverlay !== null) {
+        const label = targetOverlay.querySelector(".labx-selection-roi__label");
+        if (
+          label !== null &&
+          targetOverlay.getAttribute("data-lab-visual-stress-original-label") === null
+        ) {
+          targetOverlay.setAttribute(
+            "data-lab-visual-stress-original-label",
+            label.textContent || "Inspection ROI"
+          );
+        }
+        if (label !== null && label.textContent !== "Target ROI") {
+          label.textContent = "Target ROI";
+        }
+        targetOverlay.setAttribute("data-lab-visual-stress-roi-role", "target");
+        targetOverlay.setAttribute(
+          "data-active",
+          activeVisualStressRole === "target" ? "true" : "false"
+        );
+        targetOverlay.classList.add("labx-selection-roi--visual-target");
+        targetOverlay.classList.toggle(
+          "labx-selection-roi--visual-active",
+          activeVisualStressRole === "target"
+        );
+      }
+
+      const existingBackground = overlay.querySelector(
+        "[data-lab-visual-stress-background-overlay='true']"
+      );
+      if (backgroundRoi === null) {
+        existingBackground?.remove();
+        return;
+      }
+
+      const signature = formatVisualStressRoiSignature(backgroundRoi);
+      if (existingBackground === null) {
+        overlay.insertAdjacentHTML(
+          "beforeend",
+          `<div class="labx-selection-roi labx-selection-roi--visual-background${activeVisualStressRole === "background" ? " labx-selection-roi--visual-active" : ""}" style="${formatVisualStressRoiStyle(backgroundRoi)}" data-lab-selection-roi="background" data-lab-selection-roi-ignore="true" data-lab-visual-stress-background-overlay="true" data-lab-visual-stress-roi-role="background" data-lab-visual-stress-roi-signature="${signature}" data-active="${activeVisualStressRole === "background" ? "true" : "false"}">
+            <div class="labx-selection-roi__label">Background ROI</div>
+            <button class="labx-selection-roi__clear" type="button" data-lab-selection-roi-clear="true" data-lab-selection-roi-ignore="true" data-lab-visual-stress-roi-role="background" aria-label="Clear background ROI" title="Clear background ROI">&times;</button>
+            ${renderVisualStressResizeHandles("background")}
+          </div>`
+        );
+        return;
+      }
+
+      if (existingBackground.getAttribute("data-lab-visual-stress-roi-signature") !== signature) {
+        existingBackground.setAttribute("style", formatVisualStressRoiStyle(backgroundRoi));
+        existingBackground.setAttribute("data-lab-visual-stress-roi-signature", signature);
+      }
+      existingBackground.setAttribute(
+        "data-active",
+        activeVisualStressRole === "background" ? "true" : "false"
+      );
+      existingBackground.classList.toggle(
+        "labx-selection-roi--visual-active",
+        activeVisualStressRole === "background"
+      );
+    });
+  }
+
+  function syncDualRoiDom() {
+    if (!isDualVisualStressActive()) {
+      syncVisualStressOverlays();
+      return;
+    }
+    syncVisualStressRoleControls();
+    syncTransformBackgroundRoiAttribute();
+    syncVisualStressOverlays();
+  }
+
+  function scheduleDualRoiSync() {
+    if (dualRoiSyncQueued) {
+      return;
+    }
+    dualRoiSyncQueued = true;
+    void Promise.resolve().then(function () {
+      dualRoiSyncQueued = false;
+      syncDualRoiDom();
+    });
+  }
+
   function handleClick(event: Event) {
     const target = event.target;
+    const roleControl = getClosestTarget(target, "[data-lab-visual-stress-roi-role-control='true']");
+    if (roleControl !== null) {
+      const role = roleControl.getAttribute("data-lab-visual-stress-roi-role");
+      if (!isVisualStressRoiRole(role) || !isDualVisualStressActive()) {
+        return;
+      }
+      event.preventDefault();
+      activeVisualStressRole = role;
+      syncDualRoiDom();
+      return;
+    }
+
     const clearTrigger = getClosestTarget(target, "[data-lab-selection-roi-clear]");
     if (clearTrigger) {
       if (isMutationLocked()) {
@@ -263,11 +517,12 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       }
       event.preventDefault();
       const stage = getClosestTarget(target, "[data-lab-selection-roi-stage='true']");
-      const comparisonSide = stage === null ? null : getComparisonSideFromStage(stage);
+      const comparisonSide = resolveInteractionComparisonSide(target, stage);
       deps.emit({
         type: "selection-roi-cleared",
         ...(comparisonSide === null ? {} : { comparisonSide }),
       });
+      scheduleDualRoiSync();
       return;
     }
 
@@ -301,11 +556,17 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       const stage = getClosestTarget(target, "[data-lab-selection-roi-stage='true']");
       activateComparisonSide(deps, stage);
       const activeSelection = deps.getActiveSelection();
-      const comparisonSide = stage === null ? null : getComparisonSideFromStage(stage);
+      const visualRole = isDualVisualStressActive() ? getVisualStressRoleFromTarget(target) : null;
+      if (visualRole !== null) {
+        activeVisualStressRole = visualRole;
+      }
+      const comparisonSide = resolveInteractionComparisonSide(target, stage);
       const initialRoi =
-        comparisonSide === null
-          ? (activeSelection?.roi ?? null)
-          : (deps.getComparisonRoi?.(comparisonSide) ?? activeSelection?.roi ?? null);
+        visualRole === "background"
+          ? (deps.getComparisonRoi?.("reference") ?? null)
+          : comparisonSide === null
+            ? (activeSelection?.roi ?? null)
+            : (deps.getComparisonRoi?.(comparisonSide) ?? activeSelection?.roi ?? null);
       if (
         !isSelectionRoiResizeHandle(handle) ||
         !stage ||
@@ -317,6 +578,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       const startPoint = clampPointToRect(event, getSelectionRoiRect(stage));
       event.preventDefault();
       dragState = {
+        comparisonSide,
         handle,
         initialRoi,
         lastSignature: null,
@@ -325,6 +587,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
         startX: startPoint.x,
         startY: startPoint.y,
       };
+      syncDualRoiDom();
       return;
     }
 
@@ -355,6 +618,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
 
     event.preventDefault();
     dragState = {
+      comparisonSide: resolveInteractionComparisonSide(target, stage),
       lastSignature: null,
       mode: "draw",
       stage,
@@ -382,12 +646,12 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
 
     dragState.lastSignature = nextSelectionRoi.signature;
     event.preventDefault();
-    const comparisonSide = getComparisonSideFromStage(dragState.stage);
     deps.emit({
       type: "selection-roi-updated",
       roi: nextSelectionRoi.roi,
-      ...(comparisonSide === null ? {} : { comparisonSide }),
+      ...(dragState.comparisonSide === null ? {} : { comparisonSide: dragState.comparisonSide }),
     });
+    scheduleDualRoiSync();
   }
 
   function handleMouseUp() {
@@ -403,11 +667,31 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     dragState = null;
   }
 
-  return bindLabDocumentEvents(deps.documentRef, [
+  const unbindDocumentEvents = bindLabDocumentEvents(deps.documentRef, [
     { type: "click", listener: handleClick },
     { type: "mousedown", listener: handleMouseDown },
     { type: "mousemove", listener: handleMouseMove },
     { type: "mouseup", listener: handleMouseUp },
     { type: "keydown", listener: handleKeyDown },
   ]);
+
+  const queryableDocument = deps.documentRef as typeof deps.documentRef & QueryableDocument;
+  if (
+    typeof MutationObserver !== "undefined" &&
+    queryableDocument.documentElement instanceof Element &&
+    typeof queryableDocument.querySelectorAll === "function"
+  ) {
+    dualRoiObserver = new MutationObserver(scheduleDualRoiSync);
+    dualRoiObserver.observe(queryableDocument.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+    scheduleDualRoiSync();
+  }
+
+  return function detachSelectionRoiInteractions() {
+    dualRoiObserver?.disconnect();
+    dualRoiObserver = null;
+    unbindDocumentEvents();
+  };
 }
