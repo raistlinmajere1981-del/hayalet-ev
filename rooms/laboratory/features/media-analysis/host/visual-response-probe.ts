@@ -6,7 +6,6 @@ import {
 import type {
   LaboratoryNormalizedRoi,
   LaboratoryResponseSweepAxis,
-  LaboratoryVisualResponseProbeRequest,
 } from "../../../shared/visual-response-probe-model.js";
 import { normalizeLaboratoryTemporalStressTestRequest } from "../../../shared/temporal-stress-test-model.js";
 import type { LaboratoryTemporalStressTestRequest } from "../../../shared/temporal-stress-test-model.js";
@@ -14,6 +13,7 @@ import type { LaboratoryTemporalStressTestRequest } from "../../../shared/tempor
 type RecordValue = Record<string, unknown>;
 type RuntimeRecord = RecordValue;
 type ProjectRecord = RecordValue & { edit?: unknown; source?: unknown };
+type MetricMode = "source" | "edge" | "lifted";
 
 type Deps = {
   callRoomTools: (payload: RecordValue) => Promise<unknown>;
@@ -40,13 +40,18 @@ type RegionMetrics = {
   lumaSpread: number;
   chromaDistance: number;
   nearBlackFraction: number;
+  persistentNearBlackFraction: number;
+  recoveredDarkFraction: number;
   edgeEnergy: number;
+  edgePersistence: number;
+  frameDifferenceEnergy: number;
   temporalPersistence: number;
   signalNoiseLike: number;
   visibilityScore: number;
 };
 
 const NEAR_BLACK_THRESHOLD = 32;
+const LUMA_RECOVERY_MULTIPLIER = 8;
 const EPSILON = 1e-6;
 
 function stringValue(value: unknown) {
@@ -66,7 +71,9 @@ function fmt(value: number) {
 }
 
 function mean(values: number[]) {
-  return values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length;
+  return values.length === 0
+    ? 0
+    : values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function median(values: number[]) {
@@ -97,7 +104,10 @@ function cropFilter(roi: LaboratoryNormalizedRoi) {
   ].join(":");
 }
 
-export function buildLaboratoryResponseAxisFilter(axis: LaboratoryResponseSweepAxis, value: number) {
+export function buildLaboratoryResponseAxisFilter(
+  axis: LaboratoryResponseSweepAxis,
+  value: number
+) {
   if (axis === "exposure") {
     const factor = 2 ** value;
     return `lutyuv=y='clip(val*${fmt(factor)},0,255)'`;
@@ -106,7 +116,7 @@ export function buildLaboratoryResponseAxisFilter(axis: LaboratoryResponseSweepA
   if (axis === "brightness") return `eq=brightness=${fmt(value)}`;
   if (axis === "black-level") {
     const threshold = Math.round(clamp01(value) * 255);
-    return `lutyuv=y='if(lt(val,${threshold}),0,val)'`;
+    return `lutyuv=y='if(lt(val,${String(threshold)}),0,val)'`;
   }
   if (axis === "contrast") return `eq=contrast=${fmt(value)}`;
   if (axis === "local-contrast") {
@@ -130,16 +140,28 @@ function buildMetricCommand(
   request: LaboratoryTemporalStressTestRequest,
   roi: LaboratoryNormalizedRoi,
   transformFilter: string | null,
-  edge: boolean
+  mode: MetricMode
 ) {
-  const filters = [cropFilter(roi), "setpts=PTS-STARTPTS", `fps=${String(request.sampleFps)}`];
+  const filters = [
+    cropFilter(roi),
+    "setpts=PTS-STARTPTS",
+    `fps=${String(request.sampleFps)}`,
+  ];
   if (transformFilter !== null) filters.push(transformFilter);
-  if (edge) filters.push("edgedetect=low=0.05:high=0.2");
-  filters.push("signalstats");
-  if (!edge) filters.push(`blackframe=amount=0:threshold=${String(NEAR_BLACK_THRESHOLD)}`);
-  filters.push("metadata=mode=print:key=lavfi.signalstats.YAVG");
-  if (!edge) {
+  if (mode === "edge") {
+    filters.push("edgedetect=low=0.05:high=0.2", "signalstats");
+    filters.push("metadata=mode=print:key=lavfi.signalstats.YAVG");
+  } else if (mode === "lifted") {
     filters.push(
+      `lutyuv=y=val*${String(LUMA_RECOVERY_MULTIPLIER)}`,
+      `blackframe=amount=0:threshold=${String(NEAR_BLACK_THRESHOLD)}`,
+      "metadata=mode=print:key=lavfi.blackframe.pblack"
+    );
+  } else {
+    filters.push(
+      "signalstats",
+      `blackframe=amount=0:threshold=${String(NEAR_BLACK_THRESHOLD)}`,
+      "metadata=mode=print:key=lavfi.signalstats.YAVG",
       "metadata=mode=print:key=lavfi.signalstats.YMIN",
       "metadata=mode=print:key=lavfi.signalstats.YLOW",
       "metadata=mode=print:key=lavfi.signalstats.YHIGH",
@@ -176,7 +198,7 @@ export function parseLaboratoryResponseMetricText(text: string): SampleFrame[] {
     const key = timeSeconds.toFixed(6);
     const found = frames.get(key);
     if (found) return found;
-    const created = { timeSeconds, values: {} };
+    const created: SampleFrame = { timeSeconds, values: {} };
     frames.set(key, created);
     return created;
   }
@@ -189,42 +211,87 @@ export function parseLaboratoryResponseMetricText(text: string): SampleFrame[] {
       frame(currentTime);
       return;
     }
-    const metric = line.match(/\blavfi\.(signalstats\.([A-Z0-9]+)|blackframe\.(pblack))=(-?\d+(?:\.\d+)?)/);
+    const metric = line.match(
+      /\blavfi\.(signalstats\.([A-Z0-9]+)|blackframe\.(pblack))=(-?\d+(?:\.\d+)?)/
+    );
     const name = metric?.[2] ?? metric?.[3];
     const numeric = metric?.[4];
     if (name === undefined || numeric === undefined) return;
     const value = Number(numeric);
     if (Number.isFinite(value)) frame(currentTime).values[name] = value;
   });
-  return [...frames.values()].filter((entry) => Object.keys(entry.values).length > 0).sort((a, b) => a.timeSeconds - b.timeSeconds);
+  return [...frames.values()]
+    .filter((entry) => Object.keys(entry.values).length > 0)
+    .sort((a, b) => a.timeSeconds - b.timeSeconds);
 }
 
 export function buildLaboratoryResponseRegionMetrics(
   sourceFrames: SampleFrame[],
-  edgeFrames: SampleFrame[]
+  edgeFrames: SampleFrame[],
+  liftedFrames: SampleFrame[] = []
 ): RegionMetrics {
-  const luma = sourceFrames.map((entry) => numberValue(entry.values["YAVG"])).filter((value): value is number => value !== null).map(normalize8);
-  const lows = sourceFrames.map((entry) => numberValue(entry.values["YLOW"])).filter((value): value is number => value !== null).map(normalize8);
-  const highs = sourceFrames.map((entry) => numberValue(entry.values["YHIGH"])).filter((value): value is number => value !== null).map(normalize8);
-  const mins = sourceFrames.map((entry) => numberValue(entry.values["YMIN"])).filter((value): value is number => value !== null).map(normalize8);
-  const maxs = sourceFrames.map((entry) => numberValue(entry.values["YMAX"])).filter((value): value is number => value !== null).map(normalize8);
-  const nearBlack = sourceFrames.map((entry) => clamp01((numberValue(entry.values["pblack"]) ?? 0) / 100));
+  const luma = sourceFrames
+    .map((entry) => numberValue(entry.values["YAVG"]))
+    .filter((value): value is number => value !== null)
+    .map(normalize8);
+  const lows = sourceFrames
+    .map((entry) => numberValue(entry.values["YLOW"]))
+    .filter((value): value is number => value !== null)
+    .map(normalize8);
+  const highs = sourceFrames
+    .map((entry) => numberValue(entry.values["YHIGH"]))
+    .filter((value): value is number => value !== null)
+    .map(normalize8);
+  const mins = sourceFrames
+    .map((entry) => numberValue(entry.values["YMIN"]))
+    .filter((value): value is number => value !== null)
+    .map(normalize8);
+  const maxs = sourceFrames
+    .map((entry) => numberValue(entry.values["YMAX"]))
+    .filter((value): value is number => value !== null)
+    .map(normalize8);
+  const nearBlack = sourceFrames.map((entry) =>
+    clamp01((numberValue(entry.values["pblack"]) ?? 0) / 100)
+  );
+  const persistentNearBlack = liftedFrames.map((entry) =>
+    clamp01((numberValue(entry.values["pblack"]) ?? 0) / 100)
+  );
   const chroma = sourceFrames.map((entry) => {
     const u = normalize8(numberValue(entry.values["UAVG"]) ?? 128);
     const v = normalize8(numberValue(entry.values["VAVG"]) ?? 128);
     return Math.sqrt((u - 0.5) ** 2 + (v - 0.5) ** 2);
   });
-  const edge = edgeFrames.map((entry) => numberValue(entry.values["YAVG"])).filter((value): value is number => value !== null).map(normalize8);
-  const transitions = luma.slice(1).map((value, index) => Math.abs(value - (luma[index] ?? value)));
+  const edge = edgeFrames
+    .map((entry) => numberValue(entry.values["YAVG"]))
+    .filter((value): value is number => value !== null)
+    .map(normalize8);
+  const lumaTransitions = luma
+    .slice(1)
+    .map((value, index) => Math.abs(value - (luma[index] ?? value)));
+  const edgeTransitions = edge
+    .slice(1)
+    .map((value, index) => Math.abs(value - (edge[index] ?? value)));
   const lumaLow = mean(lows);
   const lumaHigh = mean(highs);
   const contrast = Math.max(0, lumaHigh - lumaLow);
-  const temporalPersistence = clamp01(1 - mean(transitions) * 8);
+  const frameDifferenceEnergy = mean(lumaTransitions);
+  const temporalPersistence = clamp01(1 - frameDifferenceEnergy * 8);
   const edgeEnergy = mean(edge);
+  const edgePersistence = clamp01(1 - mean(edgeTransitions) * 8);
   const noise = stddev(luma);
   const signalNoiseLike = contrast / Math.max(0.01, noise);
+  const meanNearBlackFraction = mean(nearBlack);
+  const persistentNearBlackFraction = mean(persistentNearBlack);
+  const recoveredDarkFraction = clamp01(
+    meanNearBlackFraction - persistentNearBlackFraction
+  );
   const visibilityScore = clamp01(
-    contrast * 2.2 + edgeEnergy * 1.7 + temporalPersistence * 0.22 - mean(nearBlack) * 0.35
+    contrast * 2.2 +
+      edgeEnergy * 1.7 +
+      temporalPersistence * 0.16 +
+      edgePersistence * 0.12 +
+      recoveredDarkFraction * 0.2 -
+      meanNearBlackFraction * 0.35
   );
   return {
     sampleCount: luma.length,
@@ -236,8 +303,12 @@ export function buildLaboratoryResponseRegionMetrics(
     lumaMax: mean(maxs),
     lumaSpread: contrast,
     chromaDistance: mean(chroma),
-    nearBlackFraction: mean(nearBlack),
+    nearBlackFraction: meanNearBlackFraction,
+    persistentNearBlackFraction,
+    recoveredDarkFraction,
     edgeEnergy,
+    edgePersistence,
+    frameDifferenceEnergy,
     temporalPersistence,
     signalNoiseLike,
     visibilityScore,
@@ -255,7 +326,11 @@ function difference(target: RegionMetrics, background: RegionMetrics) {
     "lumaSpread",
     "chromaDistance",
     "nearBlackFraction",
+    "persistentNearBlackFraction",
+    "recoveredDarkFraction",
     "edgeEnergy",
+    "edgePersistence",
+    "frameDifferenceEnergy",
     "temporalPersistence",
     "signalNoiseLike",
     "visibilityScore",
@@ -266,12 +341,28 @@ function difference(target: RegionMetrics, background: RegionMetrics) {
   }, {});
 }
 
-function responseInterpretation(points: Array<{ differential: Record<string, number> }>) {
-  if (points.length < 3) return { dataQuality: "insufficient", classification: "sample-insufficient" };
+function responseInterpretation(
+  axis: LaboratoryResponseSweepAxis,
+  points: Array<{ differential: Record<string, number> }>
+) {
+  if (points.length < 3) {
+    return {
+      dataQuality: "insufficient",
+      classification: "sample-insufficient",
+      sensorCompatibility: "unknown",
+    };
+  }
   const deltas = points.map((entry) => entry.differential["visibilityScore"] ?? 0);
   const range = Math.max(...deltas) - Math.min(...deltas);
   const center = Math.abs(deltas[Math.floor(deltas.length / 2)] ?? 0);
   const localized = Math.max(...deltas.map(Math.abs));
+  const sensorAxis = new Set<LaboratoryResponseSweepAxis>([
+    "exposure",
+    "gamma",
+    "brightness",
+    "black-level",
+    "denoise",
+  ]).has(axis);
   return {
     dataQuality: "sufficient",
     classification:
@@ -282,33 +373,101 @@ function responseInterpretation(points: Array<{ differential: Record<string, num
           : range >= 0.22
             ? "target-response-differs"
             : "result-uncertain",
+    sensorCompatibility:
+      sensorAxis && range < 0.14
+        ? "low-light-sensor-compatible"
+        : sensorAxis && range >= 0.22
+          ? "not-explained-by-global-sensor-response-alone"
+          : "not-assessed",
     differentialVisibilityRange: range,
     peakLocalizedDifference: localized,
   };
 }
 
 export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
-  const { callRoomTools, getActiveProject, getPreparedSourcePath, getProjectEditOutputDir, patchActiveProject, roomId, toRecord } = deps;
+  const {
+    callRoomTools,
+    getActiveProject,
+    getPreparedSourcePath,
+    getProjectEditOutputDir,
+    patchActiveProject,
+    roomId,
+    toRecord,
+  } = deps;
 
-  async function runTool(runtime: RuntimeRecord, project: ProjectRecord, requestId: string, args: string[]) {
-    const result = toRecord(await callRoomTools({ args, cwd: getProjectEditOutputDir(runtime, project), operation: "tool-run", requestId, roomId, timeoutMs: 90_000, toolId: "ffmpeg" }));
+  async function runTool(
+    runtime: RuntimeRecord,
+    project: ProjectRecord,
+    requestId: string,
+    args: string[]
+  ) {
+    const result = toRecord(
+      await callRoomTools({
+        args,
+        cwd: getProjectEditOutputDir(runtime, project),
+        operation: "tool-run",
+        requestId,
+        roomId,
+        timeoutMs: 90_000,
+        toolId: "ffmpeg",
+      })
+    );
     const run = toRecord(result["run"]);
     const exitCode = numberValue(run["exitCode"]) ?? 0;
-    if (run["cancelled"] === true || exitCode !== 0) throw new Error(stringValue(run["stderr"]) || "Visual response FFmpeg probe failed.");
-    return [stringValue(run["stdout"]), stringValue(run["stderr"])].filter((entry): entry is string => entry !== null).join("\n");
+    if (run["cancelled"] === true || exitCode !== 0) {
+      throw new Error(stringValue(run["stderr"]) || "Visual response FFmpeg probe failed.");
+    }
+    return [stringValue(run["stdout"]), stringValue(run["stderr"])]
+      .filter((entry): entry is string => entry !== null)
+      .join("\n");
   }
 
-  async function measureRegion(runtime: RuntimeRecord, project: ProjectRecord, requestId: string, sourcePath: string, request: LaboratoryTemporalStressTestRequest, roi: LaboratoryNormalizedRoi, transform: string | null) {
-    const sourceText = await runTool(runtime, project, requestId, buildMetricCommand(sourcePath, request, roi, transform, false));
-    const edgeText = await runTool(runtime, project, requestId, buildMetricCommand(sourcePath, request, roi, transform, true));
-    return buildLaboratoryResponseRegionMetrics(parseLaboratoryResponseMetricText(sourceText), parseLaboratoryResponseMetricText(edgeText));
+  async function measureRegion(
+    runtime: RuntimeRecord,
+    project: ProjectRecord,
+    requestId: string,
+    sourcePath: string,
+    request: LaboratoryTemporalStressTestRequest,
+    roi: LaboratoryNormalizedRoi,
+    transform: string | null
+  ) {
+    const sourceText = await runTool(
+      runtime,
+      project,
+      requestId,
+      buildMetricCommand(sourcePath, request, roi, transform, "source")
+    );
+    const edgeText = await runTool(
+      runtime,
+      project,
+      requestId,
+      buildMetricCommand(sourcePath, request, roi, transform, "edge")
+    );
+    const liftedText = await runTool(
+      runtime,
+      project,
+      requestId,
+      buildMetricCommand(sourcePath, request, roi, transform, "lifted")
+    );
+    return buildLaboratoryResponseRegionMetrics(
+      parseLaboratoryResponseMetricText(sourceText),
+      parseLaboratoryResponseMetricText(edgeText),
+      parseLaboratoryResponseMetricText(liftedText)
+    );
   }
 
   async function store(runtime: RuntimeRecord, result: RecordValue) {
     await patchActiveProject(runtime, function (project) {
       const edit = toRecord(project.edit);
-      const existing = Array.isArray(edit["temporalStressTests"]) ? (edit["temporalStressTests"] as unknown[]) : [];
-      project.edit = { ...edit, temporalStressTests: [result, ...existing].slice(0, 30), lastActionAt: result["createdAt"], lastError: null };
+      const existing = Array.isArray(edit["temporalStressTests"])
+        ? (edit["temporalStressTests"] as unknown[])
+        : [];
+      project.edit = {
+        ...edit,
+        temporalStressTests: [result, ...existing].slice(0, 30),
+        lastActionAt: result["createdAt"],
+        lastError: null,
+      };
       return project;
     });
   }
@@ -316,33 +475,78 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
   async function lockBackgroundRoi(runtime: RuntimeRecord, rawRequest: unknown) {
     const request = normalizeLaboratoryTemporalStressTestRequest(rawRequest);
     const roi = normalizeLaboratoryResponseBackgroundRoi(request?.roi);
-    if (roi === null) throw new Error("Select a background ROI before locking the differential reference.");
+    if (roi === null) {
+      throw new Error("Select a background ROI before locking the differential reference.");
+    }
     const createdAt = new Date().toISOString();
     await patchActiveProject(runtime, function (project) {
       const edit = toRecord(project.edit);
-      project.edit = { ...edit, responseBackgroundRoi: roi, lastActionAt: createdAt, lastError: null };
+      project.edit = {
+        ...edit,
+        responseBackgroundRoi: roi,
+        lastActionAt: createdAt,
+        lastError: null,
+      };
       return project;
     });
-    return { schemaVersion: 1, kind: "response-background-lock", createdAt, backgroundRoi: roi };
+    return {
+      schemaVersion: 1,
+      kind: "response-background-lock",
+      createdAt,
+      backgroundRoi: roi,
+    };
   }
 
-  async function runResponseProbe(runtime: RuntimeRecord, requestId: string, rawRequest: unknown) {
+  async function runResponseProbe(
+    runtime: RuntimeRecord,
+    requestId: string,
+    rawRequest: unknown
+  ) {
     const project = getActiveProject(runtime);
     if (project === null) throw new Error("Active project is missing.");
     const source = toRecord(project.source);
-    if (stringValue(source["kind"]) !== "video") throw new Error("Visibility response probing currently requires a video source.");
+    if (stringValue(source["kind"]) !== "video") {
+      throw new Error("Visibility response probing currently requires a video source.");
+    }
     const sourcePath = getPreparedSourcePath(project);
-    if (sourcePath === null) throw new Error("Prepare a source file before running a response probe.");
+    if (sourcePath === null) {
+      throw new Error("Prepare a source file before running a response probe.");
+    }
     const duration = numberValue(toRecord(source["metadata"])["durationSeconds"]);
     const request = normalizeLaboratoryVisualResponseProbeRequest(rawRequest, duration);
-    if (request === null) throw new Error("Select a target ROI, lock a background ROI, and choose a valid response axis.");
+    if (request === null) {
+      throw new Error(
+        "Select a target ROI, lock a background ROI, and choose a valid response axis."
+      );
+    }
     const values = getLaboratoryResponseSweepValues(request.axis);
     const points = [];
     for (const value of values) {
       const transform = buildLaboratoryResponseAxisFilter(request.axis, value);
-      const target = await measureRegion(runtime, project, requestId, sourcePath, request.temporalRequest, request.temporalRequest.roi!, transform);
-      const background = await measureRegion(runtime, project, requestId, sourcePath, request.temporalRequest, request.backgroundRoi, transform);
-      points.push({ value, target, background, differential: difference(target, background) });
+      const target = await measureRegion(
+        runtime,
+        project,
+        requestId,
+        sourcePath,
+        request.temporalRequest,
+        request.temporalRequest.roi!,
+        transform
+      );
+      const background = await measureRegion(
+        runtime,
+        project,
+        requestId,
+        sourcePath,
+        request.temporalRequest,
+        request.backgroundRoi,
+        transform
+      );
+      points.push({
+        value,
+        target,
+        background,
+        differential: difference(target, background),
+      });
     }
     const createdAt = new Date().toISOString();
     const result: RecordValue = {
@@ -355,44 +559,133 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
       hypothesis: "target-vs-background-response",
       request,
       points,
-      interpretation: responseInterpretation(points),
-      method: { axisValues: values, metrics: ["luma", "luma-distribution", "chroma", "near-black", "edge-energy", "temporal-persistence", "signal-noise-like", "visibility-score"] },
+      interpretation: responseInterpretation(request.axis, points),
+      method: {
+        axisValues: values,
+        nearBlackThreshold8Bit: NEAR_BLACK_THRESHOLD,
+        recoveryMultiplier: LUMA_RECOVERY_MULTIPLIER,
+        metrics: [
+          "luma",
+          "luma-distribution",
+          "chroma",
+          "near-black",
+          "persistent-near-black",
+          "recovered-dark",
+          "edge-energy",
+          "edge-persistence",
+          "frame-difference-energy",
+          "temporal-persistence",
+          "signal-noise-like",
+          "visibility-score",
+        ],
+      },
     };
     await store(runtime, result);
     return result;
   }
 
-  async function runTransitionProbe(runtime: RuntimeRecord, requestId: string, rawRequest: unknown) {
+  async function runTransitionProbe(
+    runtime: RuntimeRecord,
+    requestId: string,
+    rawRequest: unknown
+  ) {
     const project = getActiveProject(runtime);
     if (project === null) throw new Error("Active project is missing.");
     const source = toRecord(project.source);
-    if (stringValue(source["kind"]) !== "video") throw new Error("Appearance/disappearance probing currently requires video.");
+    if (stringValue(source["kind"]) !== "video") {
+      throw new Error("Appearance/disappearance probing currently requires video.");
+    }
     const sourcePath = getPreparedSourcePath(project);
-    if (sourcePath === null) throw new Error("Prepare a source file before running a transition probe.");
+    if (sourcePath === null) {
+      throw new Error("Prepare a source file before running a transition probe.");
+    }
     const duration = numberValue(toRecord(source["metadata"])["durationSeconds"]);
     const record = toRecord(rawRequest);
-    const temporal = normalizeLaboratoryTemporalStressTestRequest(record["temporalRequest"], duration);
+    const temporal = normalizeLaboratoryTemporalStressTestRequest(
+      record["temporalRequest"],
+      duration
+    );
     const backgroundRoi = normalizeLaboratoryResponseBackgroundRoi(record["backgroundRoi"]);
-    if (temporal === null || temporal.roi === null || backgroundRoi === null) throw new Error("Select a target ROI and lock a background ROI before running a transition probe.");
+    if (temporal === null || temporal.roi === null || backgroundRoi === null) {
+      throw new Error(
+        "Select a target ROI and lock a background ROI before running a transition probe."
+      );
+    }
     const center = (temporal.startSeconds + temporal.endSeconds) / 2;
     const sourceEnd = duration ?? Math.max(center + 1, temporal.endSeconds);
     const windows = [
-      { phase: "pre", startSeconds: Math.max(0, center - 1), endSeconds: Math.max(0.001, center - 0.2) },
-      { phase: "event", startSeconds: Math.max(0, center - 0.2), endSeconds: Math.min(sourceEnd, center + 0.2) },
-      { phase: "post", startSeconds: Math.min(sourceEnd - 0.001, center + 0.2), endSeconds: Math.min(sourceEnd, center + 1) },
+      {
+        phase: "pre",
+        startSeconds: Math.max(0, center - 1),
+        endSeconds: Math.max(0.001, center - 0.2),
+      },
+      {
+        phase: "event",
+        startSeconds: Math.max(0, center - 0.2),
+        endSeconds: Math.min(sourceEnd, center + 0.2),
+      },
+      {
+        phase: "post",
+        startSeconds: Math.min(sourceEnd - 0.001, center + 0.2),
+        endSeconds: Math.min(sourceEnd, center + 1),
+      },
     ].filter((window) => window.endSeconds > window.startSeconds + 0.01);
     const phases = [];
     for (const window of windows) {
-      const phaseRequest: LaboratoryTemporalStressTestRequest = { startSeconds: window.startSeconds, endSeconds: window.endSeconds, sampleFps: temporal.sampleFps, roi: temporal.roi };
-      const target = await measureRegion(runtime, project, requestId, sourcePath, phaseRequest, temporal.roi, null);
-      const background = await measureRegion(runtime, project, requestId, sourcePath, phaseRequest, backgroundRoi, null);
-      phases.push({ ...window, target, background, differential: difference(target, background) });
+      const phaseRequest: LaboratoryTemporalStressTestRequest = {
+        startSeconds: window.startSeconds,
+        endSeconds: window.endSeconds,
+        sampleFps: temporal.sampleFps,
+        roi: temporal.roi,
+      };
+      const target = await measureRegion(
+        runtime,
+        project,
+        requestId,
+        sourcePath,
+        phaseRequest,
+        temporal.roi,
+        null
+      );
+      const background = await measureRegion(
+        runtime,
+        project,
+        requestId,
+        sourcePath,
+        phaseRequest,
+        backgroundRoi,
+        null
+      );
+      phases.push({
+        ...window,
+        target,
+        background,
+        differential: difference(target, background),
+      });
     }
     const eventPhase = phases.find((entry) => entry.phase === "event");
     const prePhase = phases.find((entry) => entry.phase === "pre");
     const postPhase = phases.find((entry) => entry.phase === "post");
-    const eventShift = eventPhase && prePhase ? (eventPhase.differential["visibilityScore"] ?? 0) - (prePhase.differential["visibilityScore"] ?? 0) : 0;
-    const postShift = postPhase && prePhase ? (postPhase.differential["visibilityScore"] ?? 0) - (prePhase.differential["visibilityScore"] ?? 0) : 0;
+    const eventShift =
+      eventPhase && prePhase
+        ? (eventPhase.differential["visibilityScore"] ?? 0) -
+          (prePhase.differential["visibilityScore"] ?? 0)
+        : 0;
+    const postShift =
+      postPhase && prePhase
+        ? (postPhase.differential["visibilityScore"] ?? 0) -
+          (prePhase.differential["visibilityScore"] ?? 0)
+        : 0;
+    const eventFrameShift =
+      eventPhase && prePhase
+        ? (eventPhase.differential["frameDifferenceEnergy"] ?? 0) -
+          (prePhase.differential["frameDifferenceEnergy"] ?? 0)
+        : 0;
+    const edgePersistenceShift =
+      eventPhase && prePhase
+        ? (eventPhase.differential["edgePersistence"] ?? 0) -
+          (prePhase.differential["edgePersistence"] ?? 0)
+        : 0;
     const localizedMagnitude = Math.max(Math.abs(eventShift), Math.abs(postShift));
     const createdAt = new Date().toISOString();
     const result: RecordValue = {
@@ -403,18 +696,33 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
       sourceKind: "video",
       sourcePath,
       hypothesis: "localized-appearance-disappearance-transition",
-      request: { temporalRequest: temporal, backgroundRoi, eventSeconds: center },
+      request: {
+        temporalRequest: temporal,
+        backgroundRoi,
+        eventSeconds: center,
+      },
       phases,
       interpretation: {
         dataQuality: phases.length === 3 ? "sufficient" : "limited",
-        classification: localizedMagnitude < 0.08 ? "target-and-background-change-together" : localizedMagnitude >= 0.22 ? "change-localized-to-target" : "result-uncertain",
+        classification:
+          localizedMagnitude < 0.08
+            ? "target-and-background-change-together"
+            : localizedMagnitude >= 0.22
+              ? "change-localized-to-target"
+              : "result-uncertain",
         eventVisibilityShift: eventShift,
         postVisibilityShift: postShift,
+        eventFrameDifferenceShift: eventFrameShift,
+        eventEdgePersistenceShift: edgePersistenceShift,
       },
     };
     await store(runtime, result);
     return result;
   }
 
-  return { lockBackgroundRoi, runResponseProbe, runTransitionProbe };
+  return {
+    lockBackgroundRoi,
+    runResponseProbe,
+    runTransitionProbe,
+  };
 }
