@@ -42,6 +42,21 @@ Motion Reference ROI artık diferansiyel testler için zorunlu değildir. Eski p
 
 Kaynak değiştirildiğinde workspace ROI durumu kaynakla birlikte sıfırlanır; böylece önceki videodan kalan Background ROI yeni kaynağa sessizce taşınmaz.
 
+## ROI geometrisi ve responsive layout
+
+ROI koordinatları kaynak görüntüye göre normalize edilmiş `0..1` uzayında tutulur. Preview alanının piksel boyutu bu koordinatların anlamını değiştirmez.
+
+Laboratory tek-media preview'da ROI overlay'ini panel kutusuna değil, `object-fit: contain` sonrasında gerçekten çizilen video / image alanına bağlar. Media geometry binder:
+
+- gerçek media aspect ratio'sunu okur,
+- letterbox / pillarbox alanlarını hesaba katar,
+- ROI çizim frame'ini gerçek media rect'ine yerleştirir,
+- Target ve Background overlay'lerini aynı frame'e bağlar,
+- `ResizeObserver` ile layout değişimini izler,
+- preview zoom / transform ölçeğini local koordinata geri çevirir.
+
+Bu nedenle Live Results açılması, drawer değişimi, pencere resize/maximize veya benzeri bir panel düzeni değişikliği için ayrı ROI yamaları gerekmez. Aynı geometry authority bütün layout değişikliklerini kapsar.
+
 ## Visibility / Contrast Response Probe
 
 Her koşu tek bir ekseni tarar. Böylece eksenler birbirine karışmaz ve sonuç bir response curve olarak okunabilir.
@@ -85,6 +100,59 @@ Target - Background
 farkı saklanır.
 
 Bu sayede tüm kameranın exposure değişimi ile hedefe lokalize response birbirinden ayrılmaya çalışılır.
+
+## ROI comparability gate
+
+“Target ve Background farklı eğri verdi” cümlesi tek başına güçlü bir sonuç değildir. İki ROI başlangıçta birbirine yeterince benzemiyorsa response farkının nedeni yalnız ROI seçimi olabilir.
+
+Bu nedenle rapor assessment'i sweep ekseninin nötr noktasında şu karşılaştırılabilirlik sinyallerini birlikte kullanır:
+
+- Target / Background ROI alan oranı,
+- mean luma farkı,
+- luma spread farkı,
+- edge-energy farkı,
+- temporal-persistence farkı,
+- chroma farkı,
+- Background ROI içi luma heterojenliği.
+
+Sonuç `high`, `moderate` veya `low` comparability olarak saklanır.
+
+Özellikle ROI alan oranı `0.25` altındaysa karşılaştırma düşük güvene zorlanır. Bu eşik fiziksel bir yasa değildir; ilk sürümde aşırı farklı ROI ölçeklerinin güçlü yorum üretmesini önleyen konservatif bir guardrail'dir.
+
+Comparability düşükse sınıflandırma:
+
+```text
+background-not-comparable
+```
+
+olur ve visibility eğrisi güçlü ayrılsa bile `target-response-differs` verilmez.
+
+## Corroboration gate
+
+Visibility score birleşik ve heuristic bir metriktir; tek başına mekanizma yorumu üretmez.
+
+Visibility ayrışmasının yanında dört bağımsız destek ailesi izlenir:
+
+- edge-energy response range,
+- recovered-dark response range,
+- temporal-persistence response range,
+- chroma response range.
+
+Karşılaştırılabilir ROI'lerde güçlü visibility ayrışması var fakat bu ailelerden en fazla biri destek veriyorsa sonuç:
+
+```text
+visibility-only-separation
+```
+
+olarak tutulur.
+
+`target-response-differs` sınıfı için:
+
+- ROI comparability düşük olmamalı,
+- visibility separation yeterince güçlü olmalı,
+- en az iki destekleyici metrik ailesi eşlik etmelidir.
+
+Bu sınıf da yalnız ölçülen response ayrışmasını tarif eder; nedenini belirlemez.
 
 ## Recovered dark
 
@@ -169,12 +237,14 @@ aynı Target ROI üzerinde çalıştırılır. Background ROI seçiliyse aynı l
 UI şu tür ifadeler kullanabilir:
 
 - target ve background birlikte değişiyor,
+- Background ROI diferansiyel yorum için yeterince karşılaştırılabilir değil,
+- visibility eğrileri ayrışıyor fakat destekleyici metrikler zayıf,
+- target/background eğrileri birden fazla metrikte ayrışıyor; neden açık bırakılıyor,
 - değişim target'a lokalize görünüyor,
 - davranış düşük ışık / sensör açıklamasıyla uyumlu,
-- global sensör cevabı tek başına target/background ayrışmasını açıklamıyor,
+- global sensör cevabı ölçülen çoklu-metrik ayrışmayı tek başına açıklamakta yetersiz,
 - codec degradation hedefi çevreden daha hızlı bozuyor,
 - hedef fiziksel çevre yapılarıyla benzer response gösteriyor,
-- hedef farklı response gösteriyor,
 - örnek yetersiz,
 - sonuç belirsiz.
 
@@ -188,7 +258,7 @@ farklı response = paranormal
 
 veya bunun herhangi bir eşdeğeri.
 
-## Sonuç yüzeyi
+## Sonuç yüzeyi ve Nexa'ya aktarım
 
 Live Results mümkün olduğunca aynı kayıt üzerinden şunları görünür tutar:
 
@@ -196,10 +266,29 @@ Live Results mümkün olduğunca aynı kayıt üzerinden şunları görünür tu
 - Background curve
 - diferansiyel curve
 - Target / Background ROI koordinatları
+- ROI comparability ve destekleyen metrik sayısı
 - response tablosu
 - transition PRE / EVENT / POST tablosu
 - codec ladder tablosu
 - insan-dili yorum
+
+Her Visual Response / Transition / Codec rapor kartında:
+
+- **Kopyala / Copy**
+- **MD Dışa Aktar / Export MD**
+
+aksiyonları bulunur.
+
+Kopyalama DOM'daki görsel tabloyu düz metne çevirmek yerine doğrudan yapılandırılmış Markdown üretir. Export aynı metni UTF-8 `.md` dosyası olarak verir. Bu format özellikle raporu bir AI sohbetine taşımak için tasarlanmıştır ve şunları içerir:
+
+- rapor türü ve sweep ekseni,
+- source / oluşturma zamanı,
+- Target ve Background ROI,
+- zaman seçimi,
+- konservatif assessment,
+- comparability bilgisi,
+- sensör uyumluluk notu varsa bu not,
+- düzgün Markdown ölçüm tablosu.
 
 Source / Transform / Difference preview mevcut transform preview yüzeyinde korunur.
 
@@ -227,6 +316,7 @@ Sonuç kayıtları proje `temporalStressTests` geçmişine eklenir ve kullandık
 - Background ROI,
 - sweep ekseni/değerleri,
 - metrikler,
+- comparability / corroboration assessment,
 - yorum sınıfı
 
 ile birlikte tutulur.
@@ -243,6 +333,12 @@ Visual response regression:
 
 ```bash
 npm run rooms:test:file -- scripts/tests/laboratory-visual-response-regressions.test.ts
+```
+
+Geometry / report / conservative assessment regression:
+
+```bash
+npm run rooms:test:file -- scripts/tests/laboratory-visual-report-geometry-regressions.test.ts
 ```
 
 Tam Laboratory gate:
