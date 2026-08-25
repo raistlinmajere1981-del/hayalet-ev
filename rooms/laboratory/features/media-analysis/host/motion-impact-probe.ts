@@ -1,5 +1,3 @@
-import { join } from "node:path";
-
 import { normalizeLaboratoryTemporalStressTestRequest } from "../../../shared/temporal-stress-test-model.js";
 import type { LaboratoryTemporalStressTestRoi } from "../../../shared/temporal-stress-test-model.js";
 
@@ -81,6 +79,10 @@ function mean(values: number[]) {
 
 function formatFfmpegNumber(value: number) {
   return Number(value.toFixed(6)).toString();
+}
+
+function joinDirectoryPath(directoryPath: string, fileName: string): string {
+  return `${directoryPath.replace(/[\\/]+$/, "")}/${fileName}`;
 }
 
 function roundEven(value: number) {
@@ -240,9 +242,7 @@ function analyzeFramePair(
   }
 
   const improvement = clamp01((zeroError - bestError) / Math.max(1e-6, zeroError));
-  const separation = clamp01(
-    (secondBestError - bestError) / Math.max(1e-6, secondBestError)
-  );
+  const separation = clamp01((secondBestError - bestError) / Math.max(1e-6, secondBestError));
   const textureFactor = clamp01(estimateTextureEnergy(previous, geometry) / 0.03);
   const confidence = clamp01((improvement * 0.7 + separation * 0.3) * textureFactor);
   return {
@@ -356,10 +356,13 @@ function normalizeDirectionDelta(before: number | null, after: number | null) {
   return delta;
 }
 
-function getHistory(project: MotionProjectRecord, toRecord: MotionImpactProbeDeps["toRecord"]) {
+function getHistory(
+  project: MotionProjectRecord,
+  toRecord: MotionImpactProbeDeps["toRecord"]
+): unknown[] {
   const edit = toRecord(project.edit);
   const history = edit["temporalStressTests"];
-  return Array.isArray(history) ? history : [];
+  return Array.isArray(history) ? (history as unknown[]) : [];
 }
 
 function getLatestReferenceLock(
@@ -474,7 +477,7 @@ export function createLaboratoryMotionImpactProbeRuntime(deps: MotionImpactProbe
     const geometry = buildMotionGeometry(input.sourceWidth, input.sourceHeight, input.roi);
     const cropWidth = input.sourceWidth * (input.roi?.width ?? 1);
     const cropHeight = input.sourceHeight * (input.roi?.height ?? 1);
-    const outputPath = join(
+    const outputPath = joinDirectoryPath(
       getProjectEditOutputDir(input.runtime, input.project),
       `motion-probe-${input.token}.gray`
     );

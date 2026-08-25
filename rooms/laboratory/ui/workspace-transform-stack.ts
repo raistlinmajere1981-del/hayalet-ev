@@ -319,7 +319,7 @@ function renderMotionImpactPanel(input: WorkspaceTransformStackInput, copy: LabI
   }
   const request = input.temporalRequest ?? null;
   const disabled = input.locked === true || request === null;
-  const referenceDisabled = disabled || request?.roi === null;
+  const referenceDisabled = disabled || request.roi === null;
   const hint =
     request === null
       ? copy.locale === "tr"

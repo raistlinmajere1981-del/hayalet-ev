@@ -8,7 +8,7 @@ import {
   normalizeLaboratoryTemporalStressTestRequest,
 } from "../../rooms/laboratory/shared/temporal-stress-test-model.ts";
 import { attachLaboratoryTransformStackRenderContext } from "../../rooms/laboratory/shared/transform-stack-render-context.ts";
-import { renderWorkspaceInteractiveControls } from "../../rooms/laboratory/ui/workspace-interactive-controls.ts";
+import { renderWorkspaceVisualTransformControls } from "../../rooms/laboratory/ui/workspace-interactive-controls.ts";
 import { renderWorkspaceStressTestSummaries } from "../../rooms/laboratory/ui/workspace-stress-test-summary.ts";
 
 function createTemporalRuntime() {
@@ -289,7 +289,7 @@ void test("video transform inspector exposes Temporal Scan only for a valid sele
       },
     }
   );
-  const markup = renderWorkspaceInteractiveControls(settings, {
+  const markup = renderWorkspaceVisualTransformControls(settings, {
     locale: "en",
     t(_key: string, fallback = "") {
       return fallback;

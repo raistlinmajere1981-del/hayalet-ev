@@ -38,3 +38,22 @@ void test("laboratory runtime has no direct UI dependencies", () => {
 
   assert.deepEqual(offenders.sort(), []);
 });
+
+void test("laboratory browser runtime has no direct Node built-in dependencies", () => {
+  const repoRoot = process.cwd();
+  const laboratoryRoot = resolve(repoRoot, "rooms/laboratory");
+  const offenders: string[] = [];
+  const nodeBuiltinImportPattern = /(?:\bfrom\s+|\bimport\s*)["']node:/;
+
+  for (const filePath of listTypeScriptFiles(laboratoryRoot)) {
+    const roomRelativePath = relative(laboratoryRoot, filePath).replace(/\\/g, "/");
+    if (roomRelativePath.startsWith("scripts/")) {
+      continue;
+    }
+    if (nodeBuiltinImportPattern.test(readFileSync(filePath, "utf8"))) {
+      offenders.push(relative(repoRoot, filePath));
+    }
+  }
+
+  assert.deepEqual(offenders.sort(), []);
+});
