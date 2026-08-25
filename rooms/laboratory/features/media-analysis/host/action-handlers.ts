@@ -5,6 +5,7 @@ import { createMediaProfileActionRuntime } from "./action-handlers-profile.js";
 import { createMediaProjectActionRuntime } from "./action-handlers-project.js";
 import { createMediaSourceActionRuntime } from "./action-handlers-source.js";
 import { createLaboratoryVisualResponseProbeRuntime } from "./visual-response-probe.js";
+import { normalizeLaboratoryResponseBackgroundRoi } from "../../../shared/visual-response-probe-model.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -125,6 +126,17 @@ function resolveLatestResponseBackgroundRoi(
     return null;
   }
   return { x, y, width, height };
+}
+
+function resolveResponseBackgroundRoi(
+  deps: MediaActionRuntimeDeps,
+  runtime: LaboratoryRecord,
+  request: LaboratoryRecord
+) {
+  return (
+    normalizeLaboratoryResponseBackgroundRoi(request["backgroundRoi"]) ??
+    resolveLatestResponseBackgroundRoi(deps, runtime)
+  );
 }
 
 export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaActionRuntime {
@@ -276,10 +288,10 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     const temporalRequest = asRecord(request["temporalRequest"]);
 
     if (specialKind?.startsWith("response-") === true) {
-      const backgroundRoi = resolveLatestResponseBackgroundRoi(deps, runtime);
+      const backgroundRoi = resolveResponseBackgroundRoi(deps, runtime, request);
       if (backgroundRoi === null) {
         throw new Error(
-          "Lock a stable background ROI with Reference ROI before running Visibility Response."
+          "Select a Background ROI before running Visibility Response. Legacy Motion Reference lock is accepted as fallback."
         );
       }
       return visualResponseRuntime.runResponseProbe(runtime, requestId, {
@@ -290,10 +302,10 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     }
 
     if (specialKind === "appearance-transition") {
-      const backgroundRoi = resolveLatestResponseBackgroundRoi(deps, runtime);
+      const backgroundRoi = resolveResponseBackgroundRoi(deps, runtime, request);
       if (backgroundRoi === null) {
         throw new Error(
-          "Lock a stable background ROI with Reference ROI before running Transition Probe."
+          "Select a Background ROI before running Transition Probe. Legacy Motion Reference lock is accepted as fallback."
         );
       }
       return visualResponseRuntime.runTransitionProbe(runtime, requestId, {
@@ -303,7 +315,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     }
 
     if (specialKind === "recompression-ladder") {
-      const backgroundRoi = resolveLatestResponseBackgroundRoi(deps, runtime);
+      const backgroundRoi = resolveResponseBackgroundRoi(deps, runtime, request);
       const crfValues = [18, 24, 30, 36, 42];
       const steps = await sequentialMap(crfValues, async function (crf) {
         const targetResult = asRecord(
