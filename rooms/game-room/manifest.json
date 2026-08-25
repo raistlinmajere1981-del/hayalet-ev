@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "id": "game-room",
   "name": "Game Room",
-  "version": "2.5.0",
+  "version": "2.7.0",
   "menu": {
     "label": "Game Room",
     "icon": "🎮",
@@ -93,15 +93,8 @@
       "scene": {
         "hotspot": {
           "id": "game-room-backgammon",
-          "rect": {
-            "leftPx": 188,
-            "topPx": 362,
-            "widthPx": 446,
-            "heightPx": 258
-          },
-          "label": {
-            "text": "Tavla"
-          }
+          "rect": { "leftPx": 188, "topPx": 362, "widthPx": 446, "heightPx": 258 },
+          "label": { "text": "Tavla" }
         },
         "view": {
           "id": "backgammon-closeup",
@@ -181,15 +174,8 @@
       "scene": {
         "hotspot": {
           "id": "game-room-team-tetris",
-          "rect": {
-            "leftPx": 958,
-            "topPx": 346,
-            "widthPx": 428,
-            "heightPx": 272
-          },
-          "label": {
-            "text": "Team Tetris"
-          }
+          "rect": { "leftPx": 958, "topPx": 346, "widthPx": 428, "heightPx": 272 },
+          "label": { "text": "Team Tetris" }
         },
         "view": {
           "id": "team-tetris-closeup",
@@ -202,38 +188,118 @@
           }
         }
       }
+    },
+    {
+      "id": "yahtzee",
+      "name": "Yahtzee",
+      "description": "A candlelit pirate-deck Yahtzee table for solo play, two local players, AI1, AI2, or the connected US1 remote user.",
+      "icon": "YZ",
+      "commandSpecs": [
+        {
+          "name": "GameRoomYahtzeeStart",
+          "description": "Start a solo or two-player Yahtzee match from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomYahtzeeReset",
+          "description": "Reset the active Yahtzee game or match.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomYahtzeeRoll",
+          "description": "Roll all non-held Yahtzee dice for the locally controlled seat using host-owned randomness.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomYahtzeeToggleHold",
+          "description": "Toggle one die between held and rerollable state for the locally controlled seat.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomYahtzeeScore",
+          "description": "Commit the current dice to one unused Yahtzee score category for the locally controlled seat.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomYahtzeeAiAction",
+          "description": "Apply a host-validated Yahtzee legalActionId returned by AI1 or AI2.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomYahtzeeRemoteStart",
+          "description": "Create the mirrored side of an incoming US1 Yahtzee match.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomYahtzeeRemoteSync",
+          "description": "Apply a newer synchronized US1 Yahtzee match revision.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomYahtzeeRemoteReset",
+          "description": "Reset the mirrored US1 Yahtzee match.",
+          "scope": "us1",
+          "exposure": "internal"
+        }
+      ],
+      "protocolSpecs": [
+        {
+          "key": "game-room-yahtzee-ai-turn",
+          "room": "game-room",
+          "scenario": "yahtzee-ai-turn",
+          "title": "[TURN][GAME-ROOM][YAHTZEE][AI]",
+          "editable": true,
+          "path": "main-functions/yahtzee/protocols/game-room-yahtzee-ai-turn.md"
+        },
+        {
+          "key": "game-room-yahtzee-us1-transport",
+          "room": "game-room",
+          "scenario": "yahtzee-us1-transport",
+          "title": "[INFO][GAME-ROOM][YAHTZEE][US1-TRANSPORT]",
+          "editable": false,
+          "path": "main-functions/yahtzee/protocols/game-room-yahtzee-us1-transport.md"
+        }
+      ],
+      "scene": {
+        "hotspot": {
+          "id": "game-room-yahtzee",
+          "rect": { "leftPx": 690, "topPx": 340, "widthPx": 220, "heightPx": 280 },
+          "label": { "text": "Yahtzee" }
+        },
+        "view": {
+          "id": "yahtzee-closeup",
+          "backgroundSrc": "shared/assets/room-background.webp",
+          "transparentWindow": {
+            "leftPct": 0.01,
+            "topPct": 0.01,
+            "widthPct": 99.98,
+            "heightPct": 99.98
+          }
+        }
+      }
     }
   ],
-  "description": "A focused board-game room for Tavla matches and four-seat Team Tetris matches.",
+  "description": "A focused Game Room for Tavla, four-seat Team Tetris, and solo or multiplayer pirate-deck Yahtzee.",
   "scene": {
-    "referenceSize": {
-      "width": 1600,
-      "height": 900
-    },
+    "referenceSize": { "width": 1600, "height": 900 },
     "roomBackgroundSrc": "shared/assets/room-background.webp",
     "roomsHotspot": {
       "id": "game-room-door",
-      "rect": {
-        "leftPx": 986,
-        "topPx": 454,
-        "widthPx": 164,
-        "heightPx": 168
-      },
-      "label": {
-        "text": "Game Room"
-      }
+      "rect": { "leftPx": 986, "topPx": 454, "widthPx": 164, "heightPx": 168 },
+      "label": { "text": "Game Room" }
     },
     "backHotspot": {
       "id": "game-room-back",
-      "rect": {
-        "leftPx": 52,
-        "topPx": 152,
-        "widthPx": 156,
-        "heightPx": 248
-      },
-      "label": {
-        "text": "Corridor"
-      }
+      "rect": { "leftPx": 52, "topPx": 152, "widthPx": 156, "heightPx": 248 },
+      "label": { "text": "Corridor" }
     },
     "characterRosterPreset": "connected-plus-user",
     "characters": [
@@ -264,11 +330,7 @@
         "depth": 5
       }
     ],
-    "chrome": {
-      "pageShellVariant": "immersive-stage"
-    }
+    "chrome": { "pageShellVariant": "immersive-stage" }
   },
-  "i18n": {
-    "baseDir": "i18n"
-  }
+  "i18n": { "baseDir": "i18n" }
 }

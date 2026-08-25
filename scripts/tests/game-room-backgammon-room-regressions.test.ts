@@ -641,7 +641,7 @@ void test("game-room manifest validates with the Tavla-first room contract", () 
   assert.equal(validation.manifest.defaultFeatureId, "backgammon");
   assert.deepEqual(
     validation.manifest.features.map((feature) => feature.id),
-    ["backgammon", "team-tetris"]
+    ["backgammon", "team-tetris", "yahtzee"]
   );
   assert.equal(validation.manifest.runtime.uiEntry, "ui/index.html");
   assert.equal(validation.manifest.runtime.hostEntry, "host/index.js");
