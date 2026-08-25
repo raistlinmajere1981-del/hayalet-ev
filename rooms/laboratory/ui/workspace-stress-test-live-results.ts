@@ -3,6 +3,7 @@ import type { LabEditConfig, LabStoreState } from "../domain/lab-types.js";
 import type { LabI18n } from "./lab-i18n.js";
 import { renderWorkspaceMotionImpactSummaries } from "./workspace-motion-impact-summary.js";
 import { renderWorkspaceStressTestSummaries } from "./workspace-stress-test-summary.js";
+import { renderWorkspaceStructuralTransitionSummary } from "./workspace-structural-transition-summary.js";
 import { renderWorkspaceVisualResponseSummaries } from "./workspace-visual-response-summary.js";
 
 type StressTestRecord = Record<string, unknown>;
@@ -283,12 +284,14 @@ export function renderWorkspaceStressTestLiveResults(state: LabStoreState, copy:
   const summaries = renderWorkspaceStressTestSummaries(legacySummaryConfig, copy);
   const motionSummaries = renderWorkspaceMotionImpactSummaries(state.editConfig, copy);
   const visualResponseSummaries = renderWorkspaceVisualResponseSummaries(state.editConfig, copy);
+  const structuralTransitionSummary = renderWorkspaceStructuralTransitionSummary(state.editConfig, copy);
   const comparison = renderControlComparison(state, copy);
   const hasResultContent =
     history.length > 0 ||
     summaries.trim() !== "" ||
     motionSummaries.trim() !== "" ||
     visualResponseSummaries.trim() !== "" ||
+    structuralTransitionSummary.trim() !== "" ||
     comparison.trim() !== "";
 
   return `
@@ -304,7 +307,7 @@ export function renderWorkspaceStressTestLiveResults(state: LabStoreState, copy:
         <div class="labx-strip-live-results__scroll">
           ${
             hasResultContent
-              ? `${summaries}${motionSummaries}${visualResponseSummaries}${comparison}`
+              ? `${summaries}${motionSummaries}${structuralTransitionSummary}${visualResponseSummaries}${comparison}`
               : `<div class="labx-strip-live-empty">${escapeHtml(copy.locale === "tr" ? "Henüz manuel test sonucu yok." : "No manual test result yet.")}</div>`
           }
         </div>
