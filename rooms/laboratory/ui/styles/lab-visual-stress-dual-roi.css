@@ -26,6 +26,11 @@
   color: var(--lab-warning);
 }
 
+.labx-visual-stress-roi-role--control[data-active="true"] {
+  border-color: var(--lab-success);
+  color: var(--lab-success);
+}
+
 .labx-visual-stress-roi-role--background[data-active="true"] {
   border-color: var(--lab-accent);
   color: var(--lab-accent);
@@ -48,6 +53,28 @@
 
 .labx-selection-roi--visual-target .labx-selection-roi__resize-handle {
   background: var(--lab-warning);
+}
+
+.labx-selection-roi--visual-control {
+  z-index: 8;
+  border-color: var(--lab-success);
+  border-style: dotted;
+  background: transparent;
+  color: var(--lab-success);
+}
+
+.labx-selection-roi--visual-control .labx-selection-roi__label {
+  border-color: var(--lab-success);
+  color: var(--lab-success);
+}
+
+.labx-selection-roi--visual-control .labx-selection-roi__resize-handle {
+  background: var(--lab-success);
+}
+
+.labx-selection-roi--visual-control .labx-selection-roi__clear {
+  border-color: var(--lab-success);
+  color: var(--lab-success);
 }
 
 .labx-selection-roi--visual-background {
