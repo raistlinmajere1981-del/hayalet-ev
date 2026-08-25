@@ -22,6 +22,9 @@ Important implemented workbench behaviors include:
 - Temporal Scan, Photometric Attenuation and Motion / Impact probes,
 - Target / Background differential photometry and Visibility Response sweeps,
 - Appearance / Disappearance PRE / EVENT / POST transition probing,
+- optional Target / Control / Background visual-stress ROI workflow,
+- Structural Transition timeline with SSIM-like, pixel-correlation, edge-similarity and structural-persistence metrics,
+- translation-only reference drift diagnostics and confidence-gated structural ROI stabilization,
 - sensor/codec stress controls including CRF 18 → 42 recompression ladder,
 - comparison capture/export,
 - pen and circle/ellipse drawing annotations with configurable color/width and clear controls,
@@ -33,6 +36,7 @@ The visual stress-test contract and deliberately non-verdict interpretation lang
 
 - [TRANSFORM-STRESS-TEST.md](./TRANSFORM-STRESS-TEST.md)
 - [VISUAL-RESPONSE-STRESS-PROBES.md](./VISUAL-RESPONSE-STRESS-PROBES.md)
+- [STRUCTURAL-TRANSITION.md](./STRUCTURAL-TRANSITION.md)
 - [PHOTOMETRIC-ATTENUATION.md](./PHOTOMETRIC-ATTENUATION.md)
 - [MOTION-IMPACT-PROBE.md](./MOTION-IMPACT-PROBE.md)
 
@@ -99,6 +103,7 @@ node rooms/laboratory/scripts/laboratory-check.mjs --ci
 For a shorter targeted investigation, use:
 
 ```bash
+npm run rooms:test:file -- scripts/tests/laboratory-structural-transition-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-visual-response-regressions.test.ts
 npm run rooms:typecheck
 ```
