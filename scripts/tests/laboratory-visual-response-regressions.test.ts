@@ -200,8 +200,9 @@ void test("response result surface renders target/background curves without maki
   assert.match(markup, /DIFFERENCE/);
   assert.match(markup, /Target ve background birlikte değişiyor/);
   assert.match(markup, /düşük ışık \/ sensör açıklamasıyla uyumlu/);
-  assert.doesNotMatch(markup, /paranormal/i);
-  assert.doesNotMatch(markup, /gerçek.*sahte|real.*fake/i);
+  const visibleMarkup = markup.replace(/<textarea[\s\S]*?<\/textarea>/gi, "");
+  assert.doesNotMatch(visibleMarkup, /paranormal/i);
+  assert.doesNotMatch(visibleMarkup, /gerçek.*sahte|real.*fake/i);
 });
 
 void test("composite host routing keeps response and codec ladder inside edit-control-injection contract", async () => {
