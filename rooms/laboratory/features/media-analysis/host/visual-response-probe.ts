@@ -95,6 +95,17 @@ function normalize8(value: number) {
   return clamp01(value / 255);
 }
 
+async function sequentialMap<T, U>(
+  values: readonly T[],
+  mapper: (value: T) => Promise<U>
+): Promise<U[]> {
+  return values.reduce<Promise<U[]>>(async function (pending, value) {
+    const output = await pending;
+    output.push(await mapper(value));
+    return output;
+  }, Promise.resolve([]));
+}
+
 function cropFilter(roi: LaboratoryNormalizedRoi) {
   return [
     `crop=iw*${fmt(roi.width)}`,
@@ -142,23 +153,26 @@ function buildMetricCommand(
   transformFilter: string | null,
   mode: MetricMode
 ) {
-  const filters = [
-    cropFilter(roi),
-    "setpts=PTS-STARTPTS",
-    `fps=${String(request.sampleFps)}`,
-  ];
+  const filters = ["setpts=PTS-STARTPTS", `fps=${String(request.sampleFps)}`];
   if (transformFilter !== null) filters.push(transformFilter);
+
   if (mode === "edge") {
-    filters.push("edgedetect=low=0.05:high=0.2", "signalstats");
-    filters.push("metadata=mode=print:key=lavfi.signalstats.YAVG");
+    filters.push(
+      "edgedetect=low=0.05:high=0.2",
+      cropFilter(roi),
+      "signalstats",
+      "metadata=mode=print:key=lavfi.signalstats.YAVG"
+    );
   } else if (mode === "lifted") {
     filters.push(
+      cropFilter(roi),
       `lutyuv=y=val*${String(LUMA_RECOVERY_MULTIPLIER)}`,
       `blackframe=amount=0:threshold=${String(NEAR_BLACK_THRESHOLD)}`,
       "metadata=mode=print:key=lavfi.blackframe.pblack"
     );
   } else {
     filters.push(
+      cropFilter(roi),
       "signalstats",
       `blackframe=amount=0:threshold=${String(NEAR_BLACK_THRESHOLD)}`,
       "metadata=mode=print:key=lavfi.signalstats.YAVG",
@@ -171,6 +185,7 @@ function buildMetricCommand(
       "metadata=mode=print:key=lavfi.blackframe.pblack"
     );
   }
+
   return [
     "-hide_banner",
     "-nostats",
@@ -194,15 +209,17 @@ function buildMetricCommand(
 export function parseLaboratoryResponseMetricText(text: string): SampleFrame[] {
   const frames = new Map<string, SampleFrame>();
   let currentTime = 0;
+
   function frame(timeSeconds: number) {
     const key = timeSeconds.toFixed(6);
     const found = frames.get(key);
-    if (found) return found;
+    if (found !== undefined) return found;
     const created: SampleFrame = { timeSeconds, values: {} };
     frames.set(key, created);
     return created;
   }
-  text.split(/\r?\n/).forEach((raw) => {
+
+  text.split(/\r?\n/).forEach(function (raw) {
     const line = raw.trim();
     const time = line.match(/\bpts_time[:=](-?\d+(?:\.\d+)?)/);
     if (time?.[1] !== undefined) {
@@ -220,6 +237,7 @@ export function parseLaboratoryResponseMetricText(text: string): SampleFrame[] {
     const value = Number(numeric);
     if (Number.isFinite(value)) frame(currentTime).values[name] = value;
   });
+
   return [...frames.values()]
     .filter((entry) => Object.keys(entry.values).length > 0)
     .sort((a, b) => a.timeSeconds - b.timeSeconds);
@@ -256,7 +274,7 @@ export function buildLaboratoryResponseRegionMetrics(
   const persistentNearBlack = liftedFrames.map((entry) =>
     clamp01((numberValue(entry.values["pblack"]) ?? 0) / 100)
   );
-  const chroma = sourceFrames.map((entry) => {
+  const chroma = sourceFrames.map(function (entry) {
     const u = normalize8(numberValue(entry.values["UAVG"]) ?? 128);
     const v = normalize8(numberValue(entry.values["VAVG"]) ?? 128);
     return Math.sqrt((u - 0.5) ** 2 + (v - 0.5) ** 2);
@@ -293,6 +311,7 @@ export function buildLaboratoryResponseRegionMetrics(
       recoveredDarkFraction * 0.2 -
       meanNearBlackFraction * 0.35
   );
+
   return {
     sampleCount: luma.length,
     meanLuma: mean(luma),
@@ -335,6 +354,7 @@ function difference(target: RegionMetrics, background: RegionMetrics) {
     "signalNoiseLike",
     "visibilityScore",
   ];
+
   return keys.reduce<Record<string, number>>((output, key) => {
     output[key] = target[key] - background[key];
     return output;
@@ -352,17 +372,15 @@ function responseInterpretation(
       sensorCompatibility: "unknown",
     };
   }
+
   const deltas = points.map((entry) => entry.differential["visibilityScore"] ?? 0);
   const range = Math.max(...deltas) - Math.min(...deltas);
   const center = Math.abs(deltas[Math.floor(deltas.length / 2)] ?? 0);
   const localized = Math.max(...deltas.map(Math.abs));
-  const sensorAxis = new Set<LaboratoryResponseSweepAxis>([
-    "exposure",
-    "gamma",
-    "brightness",
-    "black-level",
-    "denoise",
-  ]).has(axis);
+  const sensorAxis = ["exposure", "gamma", "brightness", "black-level", "denoise"].includes(
+    axis
+  );
+
   return {
     dataQuality: "sufficient",
     classification:
@@ -449,6 +467,7 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
       requestId,
       buildMetricCommand(sourcePath, request, roi, transform, "lifted")
     );
+
     return buildLaboratoryResponseRegionMetrics(
       parseLaboratoryResponseMetricText(sourceText),
       parseLaboratoryResponseMetricText(edgeText),
@@ -519,9 +538,12 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
         "Select a target ROI, lock a background ROI, and choose a valid response axis."
       );
     }
+    const targetRoi = request.temporalRequest.roi;
+    if (targetRoi === null) {
+      throw new Error("Select a target ROI before running a response probe.");
+    }
     const values = getLaboratoryResponseSweepValues(request.axis);
-    const points = [];
-    for (const value of values) {
+    const points = await sequentialMap(values, async function (value) {
       const transform = buildLaboratoryResponseAxisFilter(request.axis, value);
       const target = await measureRegion(
         runtime,
@@ -529,7 +551,7 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
         requestId,
         sourcePath,
         request.temporalRequest,
-        request.temporalRequest.roi!,
+        targetRoi,
         transform
       );
       const background = await measureRegion(
@@ -541,13 +563,13 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
         request.backgroundRoi,
         transform
       );
-      points.push({
+      return {
         value,
         target,
         background,
         differential: difference(target, background),
-      });
-    }
+      };
+    });
     const createdAt = new Date().toISOString();
     const result: RecordValue = {
       schemaVersion: 1,
@@ -611,6 +633,7 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
         "Select a target ROI and lock a background ROI before running a transition probe."
       );
     }
+    const targetRoi = temporal.roi;
     const center = (temporal.startSeconds + temporal.endSeconds) / 2;
     const sourceEnd = duration ?? Math.max(center + 1, temporal.endSeconds);
     const windows = [
@@ -630,13 +653,13 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
         endSeconds: Math.min(sourceEnd, center + 1),
       },
     ].filter((window) => window.endSeconds > window.startSeconds + 0.01);
-    const phases = [];
-    for (const window of windows) {
+
+    const phases = await sequentialMap(windows, async function (window) {
       const phaseRequest: LaboratoryTemporalStressTestRequest = {
         startSeconds: window.startSeconds,
         endSeconds: window.endSeconds,
         sampleFps: temporal.sampleFps,
-        roi: temporal.roi,
+        roi: targetRoi,
       };
       const target = await measureRegion(
         runtime,
@@ -644,7 +667,7 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
         requestId,
         sourcePath,
         phaseRequest,
-        temporal.roi,
+        targetRoi,
         null
       );
       const background = await measureRegion(
@@ -656,33 +679,34 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
         backgroundRoi,
         null
       );
-      phases.push({
+      return {
         ...window,
         target,
         background,
         differential: difference(target, background),
-      });
-    }
+      };
+    });
+
     const eventPhase = phases.find((entry) => entry.phase === "event");
     const prePhase = phases.find((entry) => entry.phase === "pre");
     const postPhase = phases.find((entry) => entry.phase === "post");
     const eventShift =
-      eventPhase && prePhase
+      eventPhase !== undefined && prePhase !== undefined
         ? (eventPhase.differential["visibilityScore"] ?? 0) -
           (prePhase.differential["visibilityScore"] ?? 0)
         : 0;
     const postShift =
-      postPhase && prePhase
+      postPhase !== undefined && prePhase !== undefined
         ? (postPhase.differential["visibilityScore"] ?? 0) -
           (prePhase.differential["visibilityScore"] ?? 0)
         : 0;
     const eventFrameShift =
-      eventPhase && prePhase
+      eventPhase !== undefined && prePhase !== undefined
         ? (eventPhase.differential["frameDifferenceEnergy"] ?? 0) -
           (prePhase.differential["frameDifferenceEnergy"] ?? 0)
         : 0;
     const edgePersistenceShift =
-      eventPhase && prePhase
+      eventPhase !== undefined && prePhase !== undefined
         ? (eventPhase.differential["edgePersistence"] ?? 0) -
           (prePhase.differential["edgePersistence"] ?? 0)
         : 0;
