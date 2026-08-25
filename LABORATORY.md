@@ -96,19 +96,29 @@ Mevcut yüzeyler arasında:
 - Target / Background Differential Photometry,
 - Visibility / Contrast Response Curve,
 - Appearance / Disappearance Transition Probe,
+- optional Target / Control / Background ROI workflow,
+- Structural Transition timeline,
+- ROI drift diagnostic ve confidence-gated translation stabilization,
 - CRF `18 → 24 → 30 → 36 → 42` recompression ladder
 
 bulunur.
 
-Diferansiyel testlerde mevcut Reference ROI aynı zamanda **Background ROI** olarak kullanılabilir. Akış önce hedefin yanındaki arka planı kilitleyip daha sonra Target ROI'yi seçerek ilerler. Target ve Background aynı dönüşüm değerleri altında paralel ölçülür; sonuçta `Target - Background` farkı ayrıca tutulur.
+Diferansiyel görsel testlerde Target ve Background birbirinden bağımsız ROI olarak seçilir. Transition analizi için ayrıca opsiyonel bir **Control ROI** seçilebilir. Control, hedef dışında mümkün olduğunca benzer başlangıç görüntü özelliklerine sahip sabit bir sahne bölgesi olarak kullanılır; Laboratory bunun semantik olarak doğru kontrol nesnesi olduğunu iddia etmez.
 
 Response sweep eksenleri exposure, gamma, brightness, black level, contrast, local contrast, blur, denoise ve sharpen'dır. Luma dağılımı, chroma, near-black, recovered/persistent dark, edge energy/persistence, frame-change, temporal persistence, signal/noise-benzeri değer ve visibility score gibi metrikler birlikte kaydedilir.
 
-Transition Probe seçim orta noktasını olay zamanı olarak kullanır ve yaklaşık olarak PRE / EVENT / POST pencerelerini karşılaştırır.
+Transition Probe seçim orta noktasını olay zamanı olarak kullanır ve yaklaşık olarak PRE / EVENT / POST pencerelerini karşılaştırır. Mevcut fotometrik sonuçlara ek olarak Structural Transition, PRE içindeki temsilî görüntüyü baseline alıp event çevresinde SSIM-benzeri similarity, pixel correlation, normalized pixel difference, edge similarity ve structural persistence üretir.
 
-Bu katman “gerçek/sahte” veya mekanizma kararı vermez. Sonuç dili hedef ile arka planın birlikte değişmesi, target'a lokalize değişim, düşük ışık/sensör davranışıyla uyum, codec altında göreli bozulma veya belirsizlik gibi ölçüm sınıflarıyla sınırlıdır.
+Structural timeline yaklaşık `-1.0 → +1.0 s` arasında kısa örnekler tutar. Target, Control ve Background structural loss değerleri ayrı kalır; Target-Control ve Target-Background diferansiyelleri ayrıca raporlanır.
 
-Ayrıntılı kontrat: [rooms/laboratory/VISUAL-RESPONSE-STRESS-PROBES.md](rooms/laboratory/VISUAL-RESPONSE-STRESS-PROBES.md).
+ROI stabilization ilk sürümde translation-only'dir. Mevcut Motion Reference lock varsa reference olarak kullanılır; yoksa Background ROI üzerinden translation tahmini denenebilir. Tracking confidence düşükse sessizce correction uygulanmaz ve fixed-ROI fallback raporlanır. Rotation, zoom ve perspective bu ilk sürümün kapsamı dışındadır.
+
+Bu katman “gerçek/sahte” veya mekanizma kararı vermez. Sonuç dili hedef ile kontrol/arka planın birlikte değişmesi, target'a lokalize ek değişim, sahne-geneli değişim, ROI drift riski veya belirsizlik gibi ölçüm sınıflarıyla sınırlıdır.
+
+Ayrıntılı kontratlar:
+
+- [rooms/laboratory/VISUAL-RESPONSE-STRESS-PROBES.md](rooms/laboratory/VISUAL-RESPONSE-STRESS-PROBES.md)
+- [rooms/laboratory/STRUCTURAL-TRANSITION.md](rooms/laboratory/STRUCTURAL-TRANSITION.md)
 
 ## ✏️ Annotation
 
@@ -189,6 +199,8 @@ Rapor:
 
 taşıyabilir.
 
+Görsel stress-test sonuç kartlarında desteklenen akışlar structured Markdown kopyalama / dışa aktarma sağlayabilir. Structural Transition export'u ROI'leri, fotometrik fazları, structural timeline'ı, Target-Control diferansiyelini ve ROI stability bilgisini tek AI-handoff metninde korur.
+
 Desteklenen akışlarda rapor veya seçili çalışma bağlamı AI slotuna aktarılabilir. Böylece yeni bir sohbet başlatmak yerine mevcut çalışmanın devamı oluşturulur.
 
 ## 💾 Export
@@ -197,9 +209,10 @@ Güncel görüntü akışında export:
 
 - tek çalışma anı,
 - iki görsel karşılaştırması,
-- annotation uygulanmış karşılaştırma
+- annotation uygulanmış karşılaştırma,
+- desteklenen görsel stress-test kartlarında structured Markdown rapor
 
-gibi PNG çıktıları üretebilir.
+gibi çıktılar üretebilir.
 
 Export kaynak dosyayı destructive biçimde değiştirmez.
 
@@ -237,9 +250,11 @@ node rooms/laboratory/scripts/laboratory-check.mjs
 npm run check:all
 ```
 
-Yeni diferansiyel response regression'ı doğrudan çalıştırmak için:
+Yeni structural / diferansiyel regression'ları doğrudan çalıştırmak için:
 
 ```bash
+npm run rooms:test:file -- scripts/tests/laboratory-structural-transition-regressions.test.ts
+npm run rooms:test:file -- scripts/tests/laboratory-visual-stress-dual-roi-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-visual-response-regressions.test.ts
 ```
 
