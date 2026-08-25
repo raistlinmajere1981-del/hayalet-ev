@@ -1,7 +1,10 @@
 import { asLabRecord, escapeHtml } from "../domain/lab-types.js";
 import type { LabEditConfig, LabFeatureId } from "../domain/lab-types.js";
 import { getLaboratoryControlInjectionDefinitions } from "../shared/control-injection-model.js";
-import type { LaboratoryControlInjectionKind } from "../shared/control-injection-model.js";
+import type {
+  LaboratoryControlInjectionDefinition,
+  LaboratoryControlInjectionKind,
+} from "../shared/control-injection-model.js";
 import type { LaboratoryTemporalStressTestRequest } from "../shared/temporal-stress-test-model.js";
 import {
   getLaboratoryTransformStageDefinition,
@@ -60,9 +63,7 @@ function readTransformStages(input: WorkspaceTransformStackInput) {
 }
 
 function getScopeRecipeSection(input: WorkspaceTransformStackInput) {
-  if (input.scope === "audio") {
-    return "audio";
-  }
+  if (input.scope === "audio") return "audio";
   return input.sourceKind === "image" ? "image" : "video";
 }
 
@@ -91,8 +92,7 @@ function renderParameterControl(
             })
             .join("")}
         </select>
-      </label>
-    `;
+      </label>`;
   }
 
   return `
@@ -108,8 +108,7 @@ function renderParameterControl(
         ${commonAttributes}${disabledAttribute}
       />
       ${parameter.unit ? `<span class="labx-control-row__value">${escapeHtml(parameter.unit)}</span>` : ""}
-    </label>
-  `;
+    </label>`;
 }
 
 function renderStageRow(
@@ -121,62 +120,33 @@ function renderStageRow(
 ) {
   const definition = getLaboratoryTransformStageDefinition(stage.kind);
   return `
-    <article
-      class="labx-card labx-transform-stage"
-      data-lab-transform-stage="${escapeHtml(stage.id)}"
-      data-enabled="${stage.enabled ? "true" : "false"}"
-    >
+    <article class="labx-card labx-transform-stage" data-lab-transform-stage="${escapeHtml(stage.id)}" data-enabled="${stage.enabled ? "true" : "false"}">
       <div class="labx-card__body">
         <div class="labx-transform-stage__header">
           <label class="labx-control-toggle">
-            <input
-              type="checkbox"
-              ${stage.enabled ? "checked" : ""}
+            <input type="checkbox" ${stage.enabled ? "checked" : ""}
               data-lab-transform-scope="${escapeHtml(scope)}"
               data-lab-transform-stage-id="${escapeHtml(stage.id)}"
-              data-lab-transform-stage-enabled="true"
-              ${locked ? "disabled" : ""}
-            />
+              data-lab-transform-stage-enabled="true" ${locked ? "disabled" : ""} />
             <span>${escapeHtml(`${index + 1}. ${definition.label}`)}</span>
           </label>
           <div class="labx-control-stepper" aria-label="Transform order">
-            <button
-              class="labx-control-stepper__btn"
-              type="button"
-              data-lab-action="workspace-transform-stage-move"
-              data-lab-transform-scope="${escapeHtml(scope)}"
-              data-lab-transform-stage-id="${escapeHtml(stage.id)}"
-              data-lab-transform-direction="up"
-              ${locked || index === 0 ? "disabled" : ""}
-              title="Move up"
-            >↑</button>
-            <button
-              class="labx-control-stepper__btn"
-              type="button"
-              data-lab-action="workspace-transform-stage-move"
-              data-lab-transform-scope="${escapeHtml(scope)}"
-              data-lab-transform-stage-id="${escapeHtml(stage.id)}"
-              data-lab-transform-direction="down"
-              ${locked || index === stageCount - 1 ? "disabled" : ""}
-              title="Move down"
-            >↓</button>
-            <button
-              class="labx-control-stepper__btn"
-              type="button"
-              data-lab-action="workspace-transform-stage-remove"
-              data-lab-transform-scope="${escapeHtml(scope)}"
-              data-lab-transform-stage-id="${escapeHtml(stage.id)}"
-              ${locked ? "disabled" : ""}
-              title="Remove stage"
-            >×</button>
+            <button class="labx-control-stepper__btn" type="button" data-lab-action="workspace-transform-stage-move"
+              data-lab-transform-scope="${escapeHtml(scope)}" data-lab-transform-stage-id="${escapeHtml(stage.id)}"
+              data-lab-transform-direction="up" ${locked || index === 0 ? "disabled" : ""} title="Move up">↑</button>
+            <button class="labx-control-stepper__btn" type="button" data-lab-action="workspace-transform-stage-move"
+              data-lab-transform-scope="${escapeHtml(scope)}" data-lab-transform-stage-id="${escapeHtml(stage.id)}"
+              data-lab-transform-direction="down" ${locked || index === stageCount - 1 ? "disabled" : ""} title="Move down">↓</button>
+            <button class="labx-control-stepper__btn" type="button" data-lab-action="workspace-transform-stage-remove"
+              data-lab-transform-scope="${escapeHtml(scope)}" data-lab-transform-stage-id="${escapeHtml(stage.id)}"
+              ${locked ? "disabled" : ""} title="Remove stage">×</button>
           </div>
         </div>
         ${definition.parameters
           .map((parameter) => renderParameterControl(stage, parameter, scope, locked))
           .join("")}
       </div>
-    </article>
-  `;
+    </article>`;
 }
 
 function renderTransformPreviewMedia(
@@ -195,9 +165,7 @@ function renderTransformComparisonPreview(
   enabledCount: number,
   copy: LabI18n
 ) {
-  if (input.scope !== "visual") {
-    return "";
-  }
+  if (input.scope !== "visual") return "";
   const mode = input.transformPreviewMode || "source";
   const baselineUrl = input.baselinePreviewUrl || input.sourcePreviewUrl || null;
   const modeUrl =
@@ -231,20 +199,12 @@ function renderTransformComparisonPreview(
           : "Generate a current Preview Stack before using this view.";
 
   return `
-    <section
-      class="labx-card labx-transform-comparison"
-      data-lab-transform-comparison="true"
-      data-lab-transform-preview-mode="${escapeHtml(mode)}"
-      data-lab-transform-preview-status="${escapeHtml(previewStatus)}"
-    >
+    <section class="labx-card labx-transform-comparison" data-lab-transform-comparison="true"
+      data-lab-transform-preview-mode="${escapeHtml(mode)}" data-lab-transform-preview-status="${escapeHtml(previewStatus)}">
       <div class="labx-card__body">
         <div class="labx-control-row labx-control-row--select">
           <span class="labx-control-row__label">Source / Transform / Difference</span>
-          <select
-            class="labx-select labx-select--compact"
-            data-lab-field="workspace.comparison.viewMode"
-            ${input.locked ? "disabled" : ""}
-          >
+          <select class="labx-select labx-select--compact" data-lab-field="workspace.comparison.viewMode" ${input.locked ? "disabled" : ""}>
             <option value="side-by-side" ${selectedValue === "side-by-side" ? "selected" : ""}>${escapeHtml(sourceLabel)}</option>
             <option value="stacked" ${selectedValue === "stacked" ? "selected" : ""}>${escapeHtml(transformLabel)}</option>
             <option value="difference" ${selectedValue === "difference" ? "selected" : ""}>${escapeHtml(differenceLabel)}</option>
@@ -253,8 +213,8 @@ function renderTransformComparisonPreview(
         </div>
         <p class="labx-card__meta">${escapeHtml(
           copy.locale === "tr"
-            ? "Source baseline aynı temel edit tarifini kullanır fakat stress-transform aşamalarını uygulamaz; Difference yalnız bu iki hizalı çıktı arasındaki piksel farkıdır."
-            : "Source baseline uses the same base edit recipe without stress-transform stages; Difference is the pixel difference between those aligned outputs."
+            ? "Source baseline aynı temel edit tarifini stress-transform aşamaları olmadan kullanır; Difference iki hizalı çıktı arasındaki piksel farkıdır."
+            : "Source baseline uses the same base edit recipe without stress-transform stages; Difference is the pixel difference between the aligned outputs."
         )}</p>
         <div class="labx-transform-comparison__viewport" data-lab-transform-comparison-viewport="true">
           ${
@@ -263,23 +223,16 @@ function renderTransformComparisonPreview(
               : renderTransformPreviewMedia(
                   input.sourceKind,
                   modeUrl,
-                  mode === "source"
-                    ? sourceLabel
-                    : mode === "difference"
-                      ? differenceLabel
-                      : transformLabel
+                  mode === "source" ? sourceLabel : mode === "difference" ? differenceLabel : transformLabel
                 )
           }
         </div>
       </div>
-    </section>
-  `;
+    </section>`;
 }
 
 function renderTemporalScanControl(input: WorkspaceTransformStackInput, copy: LabI18n) {
-  if (input.scope !== "visual" || input.sourceKind !== "video") {
-    return "";
-  }
+  if (input.scope !== "visual" || input.sourceKind !== "video") return "";
   const request = input.temporalRequest ?? null;
   const disabled = input.locked === true || request === null;
   const hint =
@@ -293,132 +246,135 @@ function renderTemporalScanControl(input: WorkspaceTransformStackInput, copy: La
   return `
     <div class="labx-transform-stack__temporal" data-lab-temporal-scan="true">
       <div class="labx-controls-actions">
-        <button
-          class="labx-inline-action labx-transform-action"
-          type="button"
-          data-lab-action="workspace-transform-temporal-scan"
-          ${renderActionFeedbackAttributes(copy)}
-          ${disabled ? "disabled" : ""}
-        >Temporal Scan</button>
-        <button
-          class="labx-inline-action labx-transform-action"
-          type="button"
-          data-lab-action="workspace-photometric-attenuation"
-          ${renderActionFeedbackAttributes(copy)}
-          ${disabled ? "disabled" : ""}
-        >${escapeHtml(copy.locale === "tr" ? "Fotometrik Test" : "Photometric Probe")}</button>
+        <button class="labx-inline-action labx-transform-action" type="button"
+          data-lab-action="workspace-transform-temporal-scan" ${renderActionFeedbackAttributes(copy)} ${disabled ? "disabled" : ""}>Temporal Scan</button>
+        <button class="labx-inline-action labx-transform-action" type="button"
+          data-lab-action="workspace-photometric-attenuation" ${renderActionFeedbackAttributes(copy)} ${disabled ? "disabled" : ""}>${escapeHtml(copy.locale === "tr" ? "Fotometrik Test" : "Photometric Probe")}</button>
       </div>
       <p class="labx-card__meta">${escapeHtml(hint)}</p>
-    </div>
-  `;
+    </div>`;
 }
 
 function renderMotionImpactPanel(input: WorkspaceTransformStackInput, copy: LabI18n) {
-  if (input.scope !== "visual" || input.sourceKind !== "video") {
-    return "";
-  }
+  if (input.scope !== "visual" || input.sourceKind !== "video") return "";
   const request = input.temporalRequest ?? null;
   const disabled = input.locked === true || request === null;
-  const referenceDisabled = disabled || request.roi === null;
+  const referenceDisabled = disabled || request?.roi === null;
   const hint =
     request === null
       ? copy.locale === "tr"
-        ? "Motion testi için önce timeline aralığı seçin. Referans kilidi için ayrıca sabit bir ROI seçin."
-        : "Select a timeline range for motion testing. Lock a stable ROI to compensate camera motion."
+        ? "Önce timeline aralığı seçin. Referans/Background kilidi için hedefin yanındaki sabit bir ROI seçilebilir."
+        : "Select a timeline range first. A stable ROI beside the target can be locked as the Reference/Background region."
       : copy.locale === "tr"
-        ? "Referans ROI kamera hareketini tahmin eder. Motion hedef−referans göreli vektörünü; Impact ise seçim orta noktasının ±500 ms pencerelerini karşılaştırır."
-        : "The reference ROI estimates camera motion. Motion reports target-minus-reference motion; Impact compares ±500 ms around the selection midpoint.";
+        ? "Bu kilit iki amaç taşır: Motion için kamera referansı; Visibility/Transition testleri için Background ROI. Önce arka planı kilitleyip sonra Target ROI'yi seçin."
+        : "The lock has two roles: camera-motion reference for Motion, and Background ROI for Visibility/Transition probes. Lock background first, then select the Target ROI.";
   return `
     <section class="labx-card labx-transform-motion-impact" data-lab-motion-impact="true">
       <div class="labx-card__body">
-        <p class="labx-card__eyebrow">Motion / Impact</p>
+        <p class="labx-card__eyebrow">Motion / Reference ROI</p>
         <div class="labx-controls-actions">
-          <button
-            class="labx-inline-action labx-transform-action"
-            type="button"
-            data-lab-action="workspace-motion-reference-lock"
-            ${renderActionFeedbackAttributes(copy)}
-            ${referenceDisabled ? "disabled" : ""}
-          >${escapeHtml(copy.locale === "tr" ? "Referans ROI Kilitle" : "Lock Reference ROI")}</button>
-          <button
-            class="labx-inline-action labx-transform-action"
-            type="button"
-            data-lab-action="workspace-motion-probe"
-            ${renderActionFeedbackAttributes(copy)}
-            ${disabled ? "disabled" : ""}
-          >Motion Probe</button>
-          <button
-            class="labx-inline-action labx-transform-action"
-            type="button"
-            data-lab-action="workspace-impact-window-compare"
-            ${renderActionFeedbackAttributes(copy)}
-            ${disabled ? "disabled" : ""}
-          >Impact ±500 ms</button>
+          <button class="labx-inline-action labx-transform-action" type="button"
+            data-lab-action="workspace-motion-reference-lock" ${renderActionFeedbackAttributes(copy)} ${referenceDisabled ? "disabled" : ""}>${escapeHtml(copy.locale === "tr" ? "Referans / Background ROI Kilitle" : "Lock Reference / Background ROI")}</button>
+          <button class="labx-inline-action labx-transform-action" type="button"
+            data-lab-action="workspace-motion-probe" ${renderActionFeedbackAttributes(copy)} ${disabled ? "disabled" : ""}>Motion Probe</button>
+          <button class="labx-inline-action labx-transform-action" type="button"
+            data-lab-action="workspace-impact-window-compare" ${renderActionFeedbackAttributes(copy)} ${disabled ? "disabled" : ""}>Impact ±500 ms</button>
         </div>
         <p class="labx-card__meta">${escapeHtml(hint)}</p>
       </div>
-    </section>
-  `;
+    </section>`;
 }
 
+const TR_CONTROL_LABELS: Partial<Record<LaboratoryControlInjectionKind, string>> = {
+  noise: "Gürültü",
+  blur: "Bulanıklık",
+  sharpen: "Keskinleştirme",
+  denoise: "Gürültü Azaltma",
+  gamma: "Gamma Stress",
+  "black-crush": "Siyah Ezme",
+  "highlight-clipping": "Parlak Alan Kırpma",
+  "chroma-suppression": "Kroma Bastırma",
+  "low-light": "Düşük Işık",
+  recompression: "Yeniden Sıkıştırma 18→36",
+  "recompression-ladder": "Codec Merdiveni · CRF 18→42",
+  "response-exposure": "Response · Exposure",
+  "response-gamma": "Response · Gamma",
+  "response-brightness": "Response · Brightness",
+  "response-black-level": "Response · Black Level",
+  "response-contrast": "Response · Contrast",
+  "response-local-contrast": "Response · Local Contrast",
+  "response-blur": "Response · Blur",
+  "response-denoise": "Response · Denoise",
+  "response-sharpen": "Response · Sharpen",
+  "appearance-transition": "Ortaya Çıkma / Kaybolma Geçişi",
+};
+
 function getLocalizedControlLabel(kind: LaboratoryControlInjectionKind, copy: LabI18n) {
-  if (copy.locale !== "tr") {
-    return (
-      getLaboratoryControlInjectionDefinitions().find((entry) => entry.kind === kind)?.label || kind
-    );
-  }
-  if (kind === "noise") return "Gürültü";
-  if (kind === "blur") return "Bulanıklık";
-  if (kind === "sharpen") return "Keskinleştirme";
-  if (kind === "low-light") return "Düşük ışık";
-  return "Yeniden sıkıştırma";
+  const definition = getLaboratoryControlInjectionDefinitions().find((entry) => entry.kind === kind);
+  if (copy.locale !== "tr") return definition?.label || kind;
+  return TR_CONTROL_LABELS[kind] || definition?.label || kind;
+}
+
+function getControlGroupLabel(
+  group: LaboratoryControlInjectionDefinition["group"],
+  copy: LabI18n
+) {
+  if (group === "response") return copy.locale === "tr" ? "Response Curves" : "Response Curves";
+  if (group === "transition") return copy.locale === "tr" ? "Geçiş Analizi" : "Transition Analysis";
+  return copy.locale === "tr" ? "Sensor / Codec Stress" : "Sensor / Codec Stress";
+}
+
+function renderControlOptions(
+  definitions: LaboratoryControlInjectionDefinition[],
+  copy: LabI18n
+) {
+  const groups: Array<NonNullable<LaboratoryControlInjectionDefinition["group"]>> = [
+    "destruction",
+    "response",
+    "transition",
+  ];
+  return groups
+    .map(function (group) {
+      const members = definitions.filter((definition) => (definition.group || "destruction") === group);
+      if (members.length === 0) return "";
+      return `<optgroup label="${escapeHtml(getControlGroupLabel(group, copy))}">${members
+        .map(
+          (definition) =>
+            `<option value="${escapeHtml(definition.kind)}">${escapeHtml(getLocalizedControlLabel(definition.kind, copy))}</option>`
+        )
+        .join("")}</optgroup>`;
+    })
+    .join("");
 }
 
 function renderControlInjectionPanel(input: WorkspaceTransformStackInput, copy: LabI18n) {
-  if (input.scope !== "visual" || input.sourceKind !== "video") {
-    return "";
-  }
+  if (input.scope !== "visual" || input.sourceKind !== "video") return "";
   const request = input.temporalRequest ?? null;
   const disabled = input.locked === true || request === null;
   const definitions = getLaboratoryControlInjectionDefinitions();
-  const title = copy.locale === "tr" ? "Destruction Controls" : "Destruction Controls";
+  const title = copy.locale === "tr" ? "Görsel Stress Probları" : "Visual Stress Probes";
   const hint =
     request === null
       ? copy.locale === "tr"
-        ? "Control testi için önce gerçek bir timeline aralığı seçin."
-        : "Select a real timeline range before running a control test."
+        ? "Önce gerçek bir timeline aralığı seçin. Diferansiyel testlerde ayrıca Background ROI kilidi gerekir."
+        : "Select a real timeline range first. Differential tests also require a locked Background ROI."
       : copy.locale === "tr"
-        ? "Her koşu aynı trim/ROI ve codec ailesiyle paired çıktılar üretir; fark yalnız seçilen filtreyi veya recompression için encode kalitesini izole eder."
-        : "Each run creates paired outputs with the same trim/ROI and codec family; the delta isolates only the selected filter or, for recompression, encode quality.";
+        ? "Sensor/Codec kontrolleri aynı trim/ROI üzerinde paired bozulma üretir. Response Curves, kilitli Background ROI ile seçili Target ROI'yi aynı sweep boyunca paralel ölçer. Transition testi seçim orta noktasını olay anı kabul edip PRE / EVENT / POST pencerelerini karşılaştırır."
+        : "Sensor/Codec controls produce paired degradation on the same trim/ROI. Response Curves measure the locked Background ROI and selected Target ROI through the same sweep. Transition treats the selection midpoint as the event and compares PRE / EVENT / POST windows.";
   return `
     <section class="labx-card labx-transform-control-injection" data-lab-control-injection="true">
       <div class="labx-card__body">
         <p class="labx-card__eyebrow">${escapeHtml(title)}</p>
         <div class="labx-controls-actions">
-          <select
-            class="labx-select"
-            data-lab-control-injection-kind="true"
-            aria-label="Destruction control"
-            ${disabled ? "disabled" : ""}
-          >
-            ${definitions
-              .map(function (definition) {
-                return `<option value="${escapeHtml(definition.kind)}">${escapeHtml(getLocalizedControlLabel(definition.kind, copy))}</option>`;
-              })
-              .join("")}
+          <select class="labx-select" data-lab-control-injection-kind="true" aria-label="Visual stress probe" ${disabled ? "disabled" : ""}>
+            ${renderControlOptions(definitions, copy)}
           </select>
-          <button
-            class="labx-inline-action labx-transform-action"
-            type="button"
-            data-lab-action="workspace-control-injection-run"
-            ${renderActionFeedbackAttributes(copy)}
-            ${disabled ? "disabled" : ""}
-          >${escapeHtml(copy.locale === "tr" ? "Control Çalıştır" : "Run Control")}</button>
+          <button class="labx-inline-action labx-transform-action" type="button"
+            data-lab-action="workspace-control-injection-run" ${renderActionFeedbackAttributes(copy)} ${disabled ? "disabled" : ""}>${escapeHtml(copy.locale === "tr" ? "Testi Çalıştır" : "Run Probe")}</button>
         </div>
         <p class="labx-card__meta">${escapeHtml(hint)}</p>
       </div>
-    </section>
-  `;
+    </section>`;
 }
 
 export function renderWorkspaceTransformStack(
@@ -436,16 +392,14 @@ export function renderWorkspaceTransformStack(
       : copy.t("mediaAnalysis.transformStressTest.visualTitle", "Visual Transform Stack");
 
   return `
-    <section
-      class="labx-card labx-controls-card labx-transform-stack"
+    <section class="labx-card labx-controls-card labx-transform-stack"
       data-lab-transform-stack="${escapeHtml(input.scope)}"
       data-lab-transform-recipe-section="${escapeHtml(recipeSection)}"
       data-lab-transform-source-kind="${escapeHtml(input.sourceKind)}"
       data-lab-transform-feature-id="${escapeHtml(input.featureId || "media-analysis")}"
       data-lab-transform-locked="${locked ? "true" : "false"}"
       data-lab-transform-stages-json="${escapeHtml(JSON.stringify(stages))}"
-      data-lab-temporal-request-json="${escapeHtml(JSON.stringify(input.temporalRequest ?? null))}"
-    >
+      data-lab-temporal-request-json="${escapeHtml(JSON.stringify(input.temporalRequest ?? null))}">
       <div class="labx-card__body">
         <div class="labx-transform-stack__header">
           <div>
@@ -483,12 +437,8 @@ export function renderWorkspaceTransformStack(
         </div>
 
         <div class="labx-controls-actions labx-transform-stack__add">
-          <select
-            class="labx-select"
-            data-lab-transform-add-kind="${escapeHtml(input.scope)}"
-            aria-label="${escapeHtml(copy.t("mediaAnalysis.transformStressTest.addStage", "Add transform stage"))}"
-            ${locked ? "disabled" : ""}
-          >
+          <select class="labx-select" data-lab-transform-add-kind="${escapeHtml(input.scope)}"
+            aria-label="${escapeHtml(copy.t("mediaAnalysis.transformStressTest.addStage", "Add transform stage"))}" ${locked ? "disabled" : ""}>
             ${definitions
               .map(
                 (definition) =>
@@ -496,24 +446,13 @@ export function renderWorkspaceTransformStack(
               )
               .join("")}
           </select>
-          <button
-            class="labx-inline-action labx-transform-action"
-            type="button"
-            data-lab-action="workspace-transform-stage-add"
-            data-lab-transform-scope="${escapeHtml(input.scope)}"
-            ${renderActionFeedbackAttributes(copy)}
-            ${locked ? "disabled" : ""}
-          >${escapeHtml(copy.t("mediaAnalysis.transformStressTest.addAction", "Add Stage"))}</button>
-          <button
-            class="labx-inline-action labx-transform-action"
-            type="button"
-            data-lab-action="workspace-transform-preview"
-            data-lab-transform-scope="${escapeHtml(input.scope)}"
-            ${renderActionFeedbackAttributes(copy)}
-            ${locked ? "disabled" : ""}
-          >${escapeHtml(copy.t("mediaAnalysis.transformStressTest.previewAction", "Preview Stack"))}</button>
+          <button class="labx-inline-action labx-transform-action" type="button"
+            data-lab-action="workspace-transform-stage-add" data-lab-transform-scope="${escapeHtml(input.scope)}"
+            ${renderActionFeedbackAttributes(copy)} ${locked ? "disabled" : ""}>${escapeHtml(copy.t("mediaAnalysis.transformStressTest.addAction", "Add Stage"))}</button>
+          <button class="labx-inline-action labx-transform-action" type="button"
+            data-lab-action="workspace-transform-preview" data-lab-transform-scope="${escapeHtml(input.scope)}"
+            ${renderActionFeedbackAttributes(copy)} ${locked ? "disabled" : ""}>${escapeHtml(copy.t("mediaAnalysis.transformStressTest.previewAction", "Preview Stack"))}</button>
         </div>
       </div>
-    </section>
-  `;
+    </section>`;
 }
