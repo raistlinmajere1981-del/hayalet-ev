@@ -12,6 +12,7 @@ import {
 
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
+import { renderWorkspaceStressTestLiveResults } from "./workspace-stress-test-live-results.js";
 
 function getCurrentRunFromState(state: LabStoreState) {
   return state.run;
@@ -181,9 +182,12 @@ function renderExpandedStrip(state: LabStoreState, copy: LabI18n, forcedOpen: bo
   if (forcedOpen !== true && state.ui.workspace.processViewActive !== true) {
     return "";
   }
+  if (forcedOpen !== true) {
+    return renderWorkspaceStressTestLiveResults(state, copy);
+  }
 
   return `
-    <div class="labx-strip-expanded" data-lab-process-expanded="true">
+    <div class="labx-strip-expanded" data-lab-process-expanded="true" data-lab-process-content="analysis">
       <section>
         <strong>${escapeHtml(copy.t("mediaAnalysis.strip.analysisSummary", "Analiz özeti"))}</strong>
         ${renderProcessSummaryRows(state, copy)}

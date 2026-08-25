@@ -1,8 +1,10 @@
 import { escapeHtml } from "../domain/lab-types.js";
 import type { LabAudioFocusSettings } from "../domain/lab-types.js";
 import { getLivePitchShiftSemitones } from "../domain/lab-live-audio-settings.js";
+import { readLaboratoryTransformStackRenderContext } from "../shared/transform-stack-render-context.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
+import { renderWorkspaceTransformStack } from "./workspace-transform-stack.js";
 
 function renderSettingStepper(
   label: string,
@@ -203,8 +205,29 @@ export function renderWorkspaceAudioFocus(
           ...audioFocus,
           ...options.temporalAudioFocus,
         };
+  const transformContext = readLaboratoryTransformStackRenderContext(audioFocus);
+  const transformStackMarkup =
+    transformContext !== null && transformContext.sourceKind !== null
+      ? renderWorkspaceTransformStack(
+          {
+            editConfig: transformContext.editConfig,
+            featureId: transformContext.featureId,
+            locked: transformContext.locked,
+            sourceKind: transformContext.sourceKind,
+            scope: "audio",
+          },
+          copy
+        )
+      : "";
+
   return `
     <section class="labx-audio-focus labx-workspace-focus-row__panel" id="lab-audio-focus">
+      <p class="labx-card__meta">${escapeHtml(
+        copy.t(
+          "mediaAnalysis.transformStressTest.liveAudioHint",
+          "Live audio focus is for audition. Transform Stack below is the reproducible audio recipe."
+        )
+      )}</p>
       <div class="labx-audio-focus__controls">
         ${renderAudioSlider(copy.t("mediaAnalysis.audioFocus.fields.gain", "Gain"), "gain", audioFocus.gain, 0, 3, 0.1, "x", 1)}
         <div class="labx-control-row labx-control-row--select">
@@ -243,5 +266,6 @@ export function renderWorkspaceAudioFocus(
         <button class="labx-inline-action" type="button" data-lab-action="workspace-reset-audio-focus">${escapeHtml(copy.t("mediaAnalysis.audioFocus.resetAction", "Reset All"))}</button>
       </div>
     </section>
+    ${transformStackMarkup}
   `;
 }

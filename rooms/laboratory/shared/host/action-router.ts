@@ -193,6 +193,32 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
         case "edit-preview":
           await mediaActionRuntime.previewEdit(api, runtime, requestId, actionPayload);
           break;
+        case "edit-temporal-stress-test":
+          result = await mediaActionRuntime.runTemporalStressTest(
+            runtime,
+            requestId,
+            actionPayload
+          );
+          break;
+        case "edit-photometric-attenuation":
+          result = await mediaActionRuntime.runPhotometricAttenuation(
+            runtime,
+            requestId,
+            actionPayload
+          );
+          break;
+        case "edit-motion-reference-lock":
+          result = await mediaActionRuntime.lockMotionReference(runtime, requestId, actionPayload);
+          break;
+        case "edit-motion-probe":
+          result = await mediaActionRuntime.runMotionProbe(runtime, requestId, actionPayload);
+          break;
+        case "edit-impact-window-compare":
+          result = await mediaActionRuntime.runImpactWindowCompare(runtime, requestId, actionPayload);
+          break;
+        case "edit-control-injection":
+          result = await mediaActionRuntime.runControlInjection(runtime, requestId, actionPayload);
+          break;
         case "edit-apply":
           await mediaActionRuntime.applyEdit(api, runtime, requestId, actionPayload);
           break;

@@ -1,3 +1,5 @@
+import { normalizeLaboratoryTransformStages } from "../../../shared/transform-stress-test-model.js";
+
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryMediaEditArtifactRuntime = LaboratoryRecord;
@@ -13,6 +15,7 @@ type LaboratoryProjectEditRecord = LaboratoryRecord & {
 
 type LaboratoryProjectEditRecipeRecord = LaboratoryRecord & {
   audio?: unknown;
+  image?: unknown;
   video?: unknown;
 };
 
@@ -47,12 +50,19 @@ type LaboratoryArtifactOptions = LaboratoryRecord & {
 type LaboratoryArtifactEntry = {
   fileName: string;
   kind: string;
+  metadata?: LaboratoryRecord;
   path: string;
 };
 
 type MediaEditArtifactRuntimeDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   asNumber: (value: unknown) => number | null;
+  buildBaselineEditCommand: (
+    runtime: LaboratoryMediaEditArtifactRuntime,
+    project: LaboratoryProjectRecord,
+    targetPath: string,
+    mode: "preview" | "apply"
+  ) => string[];
   callRoomTools: (payload: LaboratoryRecord) => Promise<unknown>;
   clampNumber: (value: unknown, min: number, max: number, fallback: number) => number;
   getProjectEditDir: (
@@ -76,6 +86,7 @@ export function createMediaEditArtifactRuntime(deps: MediaEditArtifactRuntimeDep
   const {
     asNonEmptyString,
     asNumber,
+    buildBaselineEditCommand,
     callRoomTools,
     clampNumber,
     getProjectEditDir,
@@ -116,15 +127,20 @@ export function createMediaEditArtifactRuntime(deps: MediaEditArtifactRuntimeDep
     return entry !== null;
   }
 
-  function buildArtifactEntry(filePath: unknown, kind: string): LaboratoryArtifactEntry | null {
+  function buildArtifactEntry(
+    filePath: unknown,
+    kind: string,
+    metadata?: LaboratoryRecord
+  ): LaboratoryArtifactEntry | null {
     const normalizedPath = asNonEmptyString(filePath);
     if (normalizedPath === null) {
       return null;
     }
     return {
-      kind: kind,
+      kind,
       path: normalizedPath,
       fileName: normalizedPath.split(/[\\/]/).pop() || normalizedPath,
+      ...(metadata === undefined ? {} : { metadata }),
     };
   }
 
@@ -141,6 +157,127 @@ export function createMediaEditArtifactRuntime(deps: MediaEditArtifactRuntimeDep
       .sort();
   }
 
+  function hasEnabledVisualTransformStages(project: LaboratoryProjectRecord) {
+    const projectSource = toProjectSourceRecord(project.source);
+    const recipe = toProjectEditRecipeRecord(toProjectEditRecord(project.edit).recipe);
+    const visualRecipe =
+      projectSource.kind === "image" ? toRecord(recipe.image) : toRecord(recipe.video);
+    return normalizeLaboratoryTransformStages(visualRecipe["transformStages"], "visual").some(
+      function (stage) {
+        return stage.enabled;
+      }
+    );
+  }
+
+  function getTransformPreviewExtension(sourceKind: unknown) {
+    return sourceKind === "image" ? "png" : "mp4";
+  }
+
+  function buildDifferenceCommand(
+    sourceKind: unknown,
+    baselinePath: string,
+    transformedPath: string,
+    differencePath: string
+  ) {
+    if (sourceKind === "image") {
+      return [
+        "-y",
+        "-i",
+        baselinePath,
+        "-i",
+        transformedPath,
+        "-filter_complex",
+        "[0:v]format=rgb24[base];[1:v]format=rgb24[transformed];[base][transformed]blend=all_mode=difference:all_opacity=1[out]",
+        "-map",
+        "[out]",
+        "-frames:v",
+        "1",
+        differencePath,
+      ];
+    }
+    return [
+      "-y",
+      "-i",
+      baselinePath,
+      "-i",
+      transformedPath,
+      "-filter_complex",
+      "[0:v]format=gbrp[base];[1:v]format=gbrp[transformed];[base][transformed]blend=all_mode=difference:all_opacity=1,format=yuv420p[out]",
+      "-map",
+      "[out]",
+      "-an",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "18",
+      differencePath,
+    ];
+  }
+
+  async function buildTransformComparisonArtifacts(
+    runtime: LaboratoryMediaEditArtifactRuntime,
+    project: LaboratoryProjectRecord,
+    artifactOptions: LaboratoryArtifactOptions,
+    artifactDir: string
+  ) {
+    const projectSource = toProjectSourceRecord(project.source);
+    if (
+      artifactOptions.mode !== "preview" ||
+      (projectSource.kind !== "image" && projectSource.kind !== "video") ||
+      !hasEnabledVisualTransformStages(project)
+    ) {
+      return [];
+    }
+
+    const transformedPath = asNonEmptyString(artifactOptions.outputPath);
+    if (transformedPath === null) {
+      return [];
+    }
+    const artifactBase = asNonEmptyString(artifactOptions.baseName) || "artifact";
+    const extension = getTransformPreviewExtension(projectSource.kind);
+    const baselinePath = `${artifactDir}/${artifactBase}-transform-source.${extension}`;
+    const differencePath = `${artifactDir}/${artifactBase}-transform-difference.${extension}`;
+    const commonToolPayload = {
+      operation: "tool-run",
+      roomId,
+      requestId: artifactOptions.requestId || null,
+      jobId: artifactOptions.jobId || null,
+      toolId: "ffmpeg",
+      cwd: getProjectEditDir(runtime, project),
+      timeoutMs: 20 * 60 * 1000,
+    };
+
+    await callRoomTools({
+      ...commonToolPayload,
+      args: buildBaselineEditCommand(runtime, project, baselinePath, "preview"),
+    });
+    await callRoomTools({
+      ...commonToolPayload,
+      args: buildDifferenceCommand(
+        projectSource.kind,
+        baselinePath,
+        transformedPath,
+        differencePath
+      ),
+    });
+
+    return [
+      buildArtifactEntry(baselinePath, "transform-source-baseline", {
+        comparisonRole: "source",
+        geometryBasis: "base-edit-recipe",
+        stressTransformsApplied: false,
+      }),
+      buildArtifactEntry(differencePath, "transform-difference", {
+        comparisonRole: "difference",
+        differenceMethod: "ffmpeg-blend-difference",
+        geometryBasis: "base-edit-recipe",
+        stressTransformsApplied: true,
+      }),
+    ].filter(isArtifactEntry);
+  }
+
   async function buildAuxiliaryArtifacts(
     runtime: LaboratoryMediaEditArtifactRuntime,
     project: LaboratoryProjectRecord,
@@ -154,6 +291,13 @@ export function createMediaEditArtifactRuntime(deps: MediaEditArtifactRuntimeDep
       artifactOptions.mode === "preview"
         ? getProjectEditPreviewDir(runtime, project)
         : getProjectEditOutputDir(runtime, project);
+
+    const transformComparisonArtifacts = await buildTransformComparisonArtifacts(
+      runtime,
+      project,
+      artifactOptions,
+      artifactDir
+    );
 
     if (projectSource.kind === "audio") {
       if (toAudioEditRecipeRecord(recipe.audio).spectrogram !== true) {
@@ -221,15 +365,17 @@ export function createMediaEditArtifactRuntime(deps: MediaEditArtifactRuntimeDep
         });
 
         const createdFrames = await listArtifactsWithPrefix(artifactDir, `${artifactBase}-frame-`);
-        return createdFrames
-          .map(function (filePath) {
-            return buildArtifactEntry(filePath, "frame");
-          })
-          .filter(isArtifactEntry);
+        return transformComparisonArtifacts.concat(
+          createdFrames
+            .map(function (filePath) {
+              return buildArtifactEntry(filePath, "frame");
+            })
+            .filter(isArtifactEntry)
+        );
       }
     }
 
-    return [];
+    return transformComparisonArtifacts;
   }
 
   return {

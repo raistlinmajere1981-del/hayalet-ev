@@ -61,7 +61,7 @@ void test("laboratory persistence stores only boot-safe state and skips transien
       previewVolume: 0.42,
       controlsDrawerTab: "operations",
       drawerCollapsed: true,
-      activeIconRailSlot: "stabilize",
+      activeIconRailSlot: "transform-stack",
     },
   } as unknown as LabPersistedState;
 
@@ -89,7 +89,7 @@ void test("laboratory persistence stores only boot-safe state and skips transien
   assert.equal(workspace["previewVolume"], 0.42);
   assert.equal(workspace["controlsDrawerTab"], "operations");
   assert.equal(workspace["drawerCollapsed"], true);
-  assert.equal(workspace["activeIconRailSlot"], "stabilize");
+  assert.equal(workspace["activeIconRailSlot"], "transform-stack");
 
   const transientOnlyChange = structuredClone(persisted);
   const transientWorkspace = transientOnlyChange.workspace as NonNullable<
@@ -102,9 +102,7 @@ void test("laboratory persistence stores only boot-safe state and skips transien
   assert.equal(writes, 1);
 
   const durableChange = structuredClone(transientOnlyChange);
-  const durableWorkspace = durableChange.workspace as NonNullable<
-    LabPersistedState["workspace"]
-  >;
+  const durableWorkspace = durableChange.workspace as NonNullable<LabPersistedState["workspace"]>;
   durableWorkspace.previewVolume = 0.75;
   saveLabPersistedState(windowRef, durableChange);
   assert.equal(writes, 2);

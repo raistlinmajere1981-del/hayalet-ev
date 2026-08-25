@@ -264,6 +264,7 @@
       "stem-separate": "Stem Separation",
       "stabilize": "Stabilize",
       "visual-adjust": "Visual Adjustments",
+      "transform-stack": "Visual Transform Stack",
       "pin": "Pin panel",
       "close": "Close",
       "draft": "Draft",
@@ -835,6 +836,9 @@
         "marker3Y": "Marker 3 Y"
       },
       "options": {
+        "512": "512 px",
+        "1024": "1024 px",
+        "2048": "2048 px",
         "enabled": "On",
         "disabled": "Off",
         "mp4": "MP4",
@@ -866,9 +870,6 @@
         "square": "Square",
         "16:9": "16:9",
         "4:3": "4:3",
-        "512": "512 px",
-        "1024": "1024 px",
-        "2048": "2048 px",
         "detail": "Detail",
         "keep": "Keep",
         "adaptive": "Adaptive",
@@ -2446,6 +2447,22 @@
           "success": "Audio report exported",
           "error": "Audio report could not be exported"
         }
+      }
+    },
+    "transformStressTest": {
+      "visualTitle": "Visual Transform Stack",
+      "audioTitle": "Audio Transform Stack",
+      "orderHint": "Order is part of the experiment recipe; changing it changes the result.",
+      "empty": "No transform stages. Source remains unchanged.",
+      "addStage": "Add transform stage",
+      "addAction": "Add Stage",
+      "previewAction": "Preview Stack",
+      "liveControlsHint": "Live controls affect only the workspace view. Use Visual Transform Stack for the reproducible recipe.",
+      "liveAudioHint": "Live audio focus is for audition. Transform Stack below is the reproducible audio recipe.",
+      "actionStatus": {
+        "running": "Working…",
+        "success": "Completed",
+        "error": "Action failed"
       }
     }
   },

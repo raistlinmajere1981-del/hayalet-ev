@@ -2,6 +2,7 @@ import { createMediaEditArtifactRuntime } from "./edit-artifacts.js";
 import { createMediaEditSupportRuntime } from "./edit-support.js";
 import { createMediaEditPipelineRuntime } from "./edit-pipeline.js";
 import { createMediaProfilePreflightRuntime } from "./profile-preflight.js";
+import { extendEditCommandWithTransformStressTest } from "./transform-stress-test.js";
 import { createLaboratoryVisualAnalysisRuntime } from "./visual-analysis-runtime.js";
 
 type LaboratoryRecord = Record<string, unknown>;
@@ -17,7 +18,7 @@ type LaboratoryToolReadyRuntime = LaboratoryRecord & {
 };
 
 type LaboratoryMediaAnalysisHostRuntimeDeps = MediaEditSupportRuntimeDeps &
-  MediaEditArtifactRuntimeDeps &
+  Omit<MediaEditArtifactRuntimeDeps, "buildBaselineEditCommand"> &
   Omit<
     MediaEditPipelineRuntimeDeps,
     | "buildAuxiliaryArtifacts"
@@ -101,7 +102,7 @@ export function createLaboratoryMediaAnalysisHostRuntime(
   });
   const {
     applyEditRecipePatch,
-    buildEditCommand,
+    buildEditCommand: buildBaseEditCommand,
     buildEditOutputLabel,
     buildEditTargetPath,
     findEditPreset,
@@ -112,6 +113,11 @@ export function createLaboratoryMediaAnalysisHostRuntime(
     resetEditForCurrentSource,
     sanitizeFileSegment,
   } = mediaEditSupportRuntime;
+
+  function buildEditCommand(...args: Parameters<typeof buildBaseEditCommand>) {
+    const baseCommand = buildBaseEditCommand(...args);
+    return extendEditCommandWithTransformStressTest(baseCommand, args[1]);
+  }
 
   function ensureEditToolReady(
     runtime: Parameters<MediaEditPipelineRuntimeDeps["ensureEditToolReady"]>[0]
@@ -125,6 +131,8 @@ export function createLaboratoryMediaAnalysisHostRuntime(
   const mediaEditArtifactRuntime = createMediaEditArtifactRuntime({
     asNonEmptyString,
     asNumber,
+    buildBaselineEditCommand:
+      buildBaseEditCommand as MediaEditArtifactRuntimeDeps["buildBaselineEditCommand"],
     callRoomTools,
     clampNumber,
     getProjectEditDir,

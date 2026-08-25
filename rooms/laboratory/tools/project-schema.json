@@ -94,7 +94,7 @@
         "recipe",
         "outputs"
       ],
-      "optional": ["lastError", "lastActionAt"],
+      "optional": ["lastError", "lastActionAt", "temporalStressTests"],
       "modes": ["beginner", "advanced"],
       "handoffModes": ["source", "derived"],
       "preview": {
@@ -109,6 +109,8 @@
           "artifacts",
           "error",
           "recipeSignature",
+          "recipeSnapshot",
+          "transformStackProvenance",
           "updatedAt"
         ]
       },
@@ -135,7 +137,7 @@
             "includeAudio",
             "blurFocusOutside"
           ],
-          "optional": ["frameGrabCount"]
+          "optional": ["frameGrabCount", "transformStages"]
         },
         "audio": {
           "required": [
@@ -149,7 +151,8 @@
             "spectrogram",
             "highpassHz",
             "lowpassHz"
-          ]
+          ],
+          "optional": ["transformStages"]
         },
         "image": {
           "required": [
@@ -161,7 +164,8 @@
             "contrast",
             "sharpen",
             "blurStrength"
-          ]
+          ],
+          "optional": ["transformStages"]
         }
       },
       "outputs": {
@@ -176,7 +180,14 @@
             "recipeSignature",
             "metadata"
           ],
-          "optional": ["label", "jobId", "sourcePath", "artifacts"]
+          "optional": [
+            "label",
+            "jobId",
+            "sourcePath",
+            "artifacts",
+            "recipeSnapshot",
+            "transformStackProvenance"
+          ]
         }
       }
     },

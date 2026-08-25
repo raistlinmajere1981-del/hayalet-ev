@@ -48,7 +48,10 @@ import {
   renderLabWaveformTimeline,
 } from "./lab-waveform-timeline.js";
 import { renderWorkspaceROIOverlay } from "./workspace-roi-overlay.js";
-import { renderWorkspaceInteractiveControls } from "./workspace-interactive-controls.js";
+import {
+  renderWorkspaceInteractiveControls,
+  renderWorkspaceVisualTransformControls,
+} from "./workspace-interactive-controls.js";
 import { renderWorkspaceAudioFocus } from "./workspace-audio-focus.js";
 import {
   renderCapabilityCard,
@@ -568,6 +571,7 @@ const ICON_RAIL_SVGS: Record<LabIconRailSlotId, string> = {
   "stem-separate": `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>`,
   stabilize: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>`,
   "visual-adjust": `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>`,
+  "transform-stack": `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>`,
 };
 
 type IconRailContentContext = {
@@ -597,7 +601,7 @@ function renderIconRail(input: {
     if (slot.content === "audio-focus") {
       return content.hasAudio;
     }
-    if (slot.content === "visual-adjust") {
+    if (slot.content === "visual-adjust" || slot.content === "transform-stack") {
       return content.hasVisualControls;
     }
     if (slot.capabilityId === null) {
@@ -659,7 +663,7 @@ function renderIconRail(input: {
     activeSlot !== null ? renderIconRailPopover({ content, copy, pinned, slot: activeSlot }) : "";
 
   return `
-    <aside class="labx-icon-rail" data-lab-region="icon-rail" data-pinned="${pinned ? "true" : "false"}" data-has-active="${activeSlot !== null ? "true" : "false"}" data-locked="${locked ? "true" : "false"}">
+    <aside class="labx-icon-rail" data-lab-region="icon-rail" data-pinned="${pinned ? "true" : "false"}" data-has-active="${activeSlot !== null ? "true" : "false"}" data-active-slot="${escapeHtml(activeSlot?.id || "")}" data-locked="${locked ? "true" : "false"}">
       <div class="labx-icon-rail__group" data-group="realtime">${renderGroup(realtimeSlots)}</div>
       <div class="labx-icon-rail__divider"></div>
       <div class="labx-icon-rail__group" data-group="post-process">${renderGroup(postProcessSlots)}</div>
@@ -692,6 +696,13 @@ function renderIconRailPopoverBody(
       return "";
     }
     return renderWorkspaceInteractiveControls(content.interactiveSettings, copy);
+  }
+
+  if (slot.content === "transform-stack") {
+    if (!content.hasVisualControls) {
+      return "";
+    }
+    return renderWorkspaceVisualTransformControls(content.interactiveSettings, copy);
   }
 
   if (slot.capabilityId === null) {

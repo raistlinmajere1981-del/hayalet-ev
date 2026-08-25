@@ -47,6 +47,7 @@ export function createLabTimelinePlaybackController(deps: LabTimelinePlaybackCon
 
   let boundTimelineSyncMedia: LabTimelineMediaLikeElement | null = null;
   let selectedPlaybackActive = false;
+  let timelinePlaybackUiSyncFrame: number | null = null;
 
   function getPrimaryWorkspacePreviewMedia() {
     const selectors = [
@@ -227,9 +228,26 @@ export function createLabTimelinePlaybackController(deps: LabTimelinePlaybackCon
     boundTimelineSyncMedia = nextMedia;
   }
 
+  function scheduleTimelinePlaybackUiSyncAfterRender() {
+    const windowRef = deps.documentRef.defaultView;
+    if (
+      timelinePlaybackUiSyncFrame !== null ||
+      !windowRef ||
+      typeof windowRef.requestAnimationFrame !== "function"
+    ) {
+      return;
+    }
+    timelinePlaybackUiSyncFrame = windowRef.requestAnimationFrame(function () {
+      timelinePlaybackUiSyncFrame = null;
+      bindTimelinePlaybackListeners();
+      updateTimelinePlaybackUi();
+    });
+  }
+
   function syncTimelinePlaybackUiFromState() {
     bindTimelinePlaybackListeners();
     updateTimelinePlaybackUi();
+    scheduleTimelinePlaybackUiSyncAfterRender();
   }
 
   function toggleTimelinePlayback() {

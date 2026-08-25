@@ -264,6 +264,7 @@
       "stem-separate": "Stem Ayirma",
       "stabilize": "Stabilizasyon",
       "visual-adjust": "Gorsel Ayarlar",
+      "transform-stack": "Görsel Dönüşüm Zinciri",
       "pin": "Paneli sabitle",
       "close": "Kapat",
       "draft": "Taslak",
@@ -835,6 +836,9 @@
         "marker3Y": "İşaret 3 Y"
       },
       "options": {
+        "512": "512 px",
+        "1024": "1024 px",
+        "2048": "2048 px",
         "enabled": "Acik",
         "disabled": "Kapali",
         "mp4": "MP4",
@@ -866,9 +870,6 @@
         "square": "Kare",
         "16:9": "16:9",
         "4:3": "4:3",
-        "512": "512 px",
-        "1024": "1024 px",
-        "2048": "2048 px",
         "detail": "Detay",
         "keep": "Koru",
         "adaptive": "Uyarlanir",
@@ -2446,6 +2447,22 @@
           "success": "Ses raporu dışa aktarıldı",
           "error": "Ses raporu dışa aktarılamadı"
         }
+      }
+    },
+    "transformStressTest": {
+      "visualTitle": "Görsel Dönüşüm Zinciri",
+      "audioTitle": "Ses Dönüşüm Zinciri",
+      "orderHint": "Sıra deney tarifinin bir parçasıdır; sırayı değiştirmek sonucu değiştirir.",
+      "empty": "Dönüşüm aşaması yok. Kaynak değişmeden kalır.",
+      "addStage": "Dönüşüm aşaması ekle",
+      "addAction": "Aşama Ekle",
+      "previewAction": "Zinciri Önizle",
+      "liveControlsHint": "Canlı kontroller yalnız çalışma alanı görünümünü etkiler. Tekrarlanabilir tarifi Görsel Dönüşüm Zinciri panelinden yönetin.",
+      "liveAudioHint": "Canlı ses odağı yalnız dinleme içindir. Aşağıdaki Dönüşüm Zinciri tekrarlanabilir ses tarifidir.",
+      "actionStatus": {
+        "running": "Çalışıyor…",
+        "success": "Tamamlandı",
+        "error": "İşlem başarısız"
       }
     }
   },

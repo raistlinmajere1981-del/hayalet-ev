@@ -866,10 +866,39 @@ void test("laboratory icon rail keeps only runnable realtime and output operatio
   assert.match(surface.main, /data-lab-value="roi-select"/);
   assert.match(surface.main, /data-lab-value="clip-export"/);
   assert.match(surface.main, /data-lab-value="enhanced-frame"/);
+  assert.match(surface.main, /data-lab-value="visual-adjust"/);
+  assert.match(surface.main, /data-lab-value="transform-stack"/);
   assert.doesNotMatch(surface.main, /data-lab-value="image-comparison"/);
   assert.doesNotMatch(surface.main, /data-lab-value="before-after"/);
   assert.doesNotMatch(surface.main, /data-lab-value="stem-separate"/);
   assert.doesNotMatch(surface.main, /data-lab-value="stabilize"/);
+});
+
+void test("laboratory icon rail separates visual adjustments from the transform stack", () => {
+  const store = createSeededState(true);
+  store.dispatch({
+    type: "icon-rail-slot-selected",
+    slotId: "visual-adjust",
+  });
+
+  const adjustmentsSurface = renderWorkspaceSurface(store.getState());
+  assert.match(adjustmentsSurface.main, /data-slot="visual-adjust"/);
+  assert.doesNotMatch(
+    adjustmentsSurface.main,
+    /data-slot="visual-adjust"[\s\S]*data-lab-transform-stack="visual"/
+  );
+
+  store.dispatch({
+    type: "icon-rail-slot-selected",
+    slotId: "transform-stack",
+  });
+  const transformSurface = renderWorkspaceSurface(store.getState());
+  assert.match(
+    transformSurface.main,
+    /data-slot="transform-stack"[^>]*data-content="transform-stack"/
+  );
+  assert.match(transformSurface.main, /data-lab-transform-stack="visual"/);
+  assert.match(transformSurface.main, /data-lab-action="workspace-transform-preview"/);
 });
 
 void test("laboratory icon rail operation popovers mirror active timeline and ROI scope", () => {
@@ -1045,4 +1074,3 @@ void test("laboratory workspace operations follow the selected asset media kind"
   assert.doesNotMatch(surface.inspector ?? "", /data-operation-id="enhanced-frame"/);
   assert.doesNotMatch(surface.inspector ?? "", /data-operation-id="frame-grab"/);
 });
-

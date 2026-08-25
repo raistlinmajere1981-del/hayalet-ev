@@ -1,3 +1,8 @@
+import { createLaboratoryControlInjectionRuntime } from "./control-injection.js";
+import { createLaboratoryMotionImpactProbeRuntime } from "./motion-impact-probe.js";
+import { createLaboratoryPhotometricAttenuationRuntime } from "./photometric-attenuation.js";
+import { createLaboratoryTemporalStressTestRuntime } from "./temporal-stress-test.js";
+
 type MediaEditActionApi = Record<string, unknown>;
 type MediaEditProjectIdentity = {
   id?: unknown;
@@ -20,6 +25,7 @@ type MediaEditProjectRecord = {
   };
   source: {
     kind?: unknown;
+    storedPath?: unknown;
   };
 } & Record<string, unknown>;
 type MediaEditRuntimeRecord = {
@@ -35,6 +41,7 @@ type EditDeps = {
   ) => void;
   asNonEmptyString: (value: unknown) => string | null;
   audioFeatureId: string;
+  callRoomTools: (payload: Record<string, unknown>) => Promise<unknown>;
   cancelEditJobsForProject: (
     api: MediaEditActionApi,
     runtime: MediaEditRuntimeRecord,
@@ -49,6 +56,10 @@ type EditDeps = {
     presetId: string | null
   ) => Record<string, unknown> | null;
   getActiveProject: (runtime: MediaEditRuntimeRecord) => MediaEditProjectIdentity | null;
+  getProjectEditOutputDir: (
+    runtime: MediaEditRuntimeRecord,
+    project: MediaEditProjectRecord
+  ) => string;
   markCloseoutAsStale: (
     project: MediaEditProjectRecord,
     reason: string,
@@ -63,6 +74,8 @@ type EditDeps = {
     runtime: MediaEditRuntimeRecord,
     patcher: (project: MediaEditProjectRecord) => MediaEditProjectRecord
   ) => Promise<MediaEditProjectRecord>;
+  readBinaryFileBytes: (filePath: string) => Promise<Uint8Array | null>;
+  roomId: string;
   runEditPipeline: (
     api: MediaEditActionApi,
     runtime: MediaEditRuntimeRecord,
@@ -77,16 +90,105 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     applyEditRecipePatch,
     asNonEmptyString,
     audioFeatureId,
+    callRoomTools,
     cancelEditJobsForProject,
     createDefaultEditState,
     findEditPreset,
     getActiveProject,
+    getProjectEditOutputDir,
     markCloseoutAsStale,
     markProfileAsStale,
     patchActiveProject,
+    readBinaryFileBytes,
+    roomId,
     runEditPipeline,
     toRecord,
   } = deps;
+
+  const temporalStressTestRuntime = createLaboratoryTemporalStressTestRuntime({
+    callRoomTools,
+    async ensureProjectDirectories() {
+      // Prepared Laboratory projects already own the edit/output directory tree.
+    },
+    getActiveProject(runtime) {
+      return getActiveProject(runtime);
+    },
+    getPreparedSourcePath(project) {
+      return asNonEmptyString(toRecord(project.source)["storedPath"]);
+    },
+    getProjectEditOutputDir(runtime, project) {
+      return getProjectEditOutputDir(runtime, project as MediaEditProjectRecord);
+    },
+    patchActiveProject(runtime, patcher) {
+      return patchActiveProject(runtime, function (project) {
+        return patcher(project) as MediaEditProjectRecord;
+      });
+    },
+    roomId,
+    toRecord,
+  });
+
+  const controlInjectionRuntime = createLaboratoryControlInjectionRuntime({
+    callRoomTools,
+    getActiveProject(runtime) {
+      return getActiveProject(runtime);
+    },
+    getPreparedSourcePath(project) {
+      return asNonEmptyString(toRecord(project.source)["storedPath"]);
+    },
+    getProjectEditOutputDir(runtime, project) {
+      return getProjectEditOutputDir(runtime, project as MediaEditProjectRecord);
+    },
+    patchActiveProject(runtime, patcher) {
+      return patchActiveProject(runtime, function (project) {
+        return patcher(project) as MediaEditProjectRecord;
+      });
+    },
+    roomId,
+    temporalRuntime: temporalStressTestRuntime,
+    toRecord,
+  });
+
+  const photometricAttenuationRuntime = createLaboratoryPhotometricAttenuationRuntime({
+    callRoomTools,
+    getActiveProject(runtime) {
+      return getActiveProject(runtime);
+    },
+    getPreparedSourcePath(project) {
+      return asNonEmptyString(toRecord(project.source)["storedPath"]);
+    },
+    getProjectEditOutputDir(runtime, project) {
+      return getProjectEditOutputDir(runtime, project as MediaEditProjectRecord);
+    },
+    patchActiveProject(runtime, patcher) {
+      return patchActiveProject(runtime, function (project) {
+        return patcher(project) as MediaEditProjectRecord;
+      });
+    },
+    roomId,
+    toRecord,
+  });
+
+  const motionImpactProbeRuntime = createLaboratoryMotionImpactProbeRuntime({
+    callRoomTools,
+    getActiveProject(runtime) {
+      return getActiveProject(runtime);
+    },
+    getPreparedSourcePath(project) {
+      return asNonEmptyString(toRecord(project.source)["storedPath"]);
+    },
+    getProjectEditOutputDir(runtime, project) {
+      return getProjectEditOutputDir(runtime, project as MediaEditProjectRecord);
+    },
+    patchActiveProject(runtime, patcher) {
+      return patchActiveProject(runtime, function (project) {
+        return patcher(project) as MediaEditProjectRecord;
+      });
+    },
+    readBinaryFileBytes,
+    roomId,
+    toRecord,
+  });
 
   async function setEditMode(
     runtime: MediaEditRuntimeRecord,
@@ -192,6 +294,7 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
       nextProject.edit.handoffMode = requestedMode;
       nextProject.edit.lastError = null;
       nextProject.edit.lastActionAt = new Date().toISOString();
+      markProfileAsStale(nextProject, "Downstream handoff changed.");
       markCloseoutAsStale(nextProject, "Downstream handoff changed.");
       return nextProject;
     });
@@ -210,6 +313,74 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
       });
     }
     return runEditPipeline(api, runtime, requestId, "preview");
+  }
+
+  async function runTemporalStressTest(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return temporalStressTestRuntime.runTemporalStressTest(
+      runtime,
+      requestId,
+      actionPayload["request"]
+    );
+  }
+
+  async function runControlInjection(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return controlInjectionRuntime.runControlInjection(
+      runtime,
+      requestId,
+      actionPayload["request"]
+    );
+  }
+
+  async function runPhotometricAttenuation(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return photometricAttenuationRuntime.runPhotometricAttenuationProbe(
+      runtime,
+      requestId,
+      actionPayload["request"]
+    );
+  }
+
+  async function lockMotionReference(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return motionImpactProbeRuntime.lockReferenceRegion(
+      runtime,
+      requestId,
+      actionPayload["request"]
+    );
+  }
+
+  async function runMotionProbe(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return motionImpactProbeRuntime.runMotionProbe(runtime, requestId, actionPayload["request"]);
+  }
+
+  async function runImpactWindowCompare(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return motionImpactProbeRuntime.runImpactWindowCompare(
+      runtime,
+      requestId,
+      actionPayload["request"]
+    );
   }
 
   async function applyEdit(
@@ -281,7 +452,13 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     applyEditPreset,
     cancelApply,
     cancelPreview,
+    lockMotionReference,
     previewEdit,
+    runControlInjection,
+    runImpactWindowCompare,
+    runMotionProbe,
+    runPhotometricAttenuation,
+    runTemporalStressTest,
     setEditHandoff,
     setEditMode,
     setEditOutput,

@@ -285,6 +285,8 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const durationMs = Math.max(1, model.durationMs);
   const rawStartMs = model.startMs ?? 0;
   const rawEndMs = model.endMs ?? durationMs;
+  const hasStartBoundary = model.startMs !== null;
+  const hasEndBoundary = model.endMs !== null;
   const hasSelection =
     model.startMs !== null && model.endMs !== null && model.endMs > model.startMs;
   const microZoomAvailable = model.waveformInspectionLens?.enabled === true;
@@ -293,8 +295,12 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
   const endMs = hasSelection ? rawEndMs : durationMs;
   const startPct = hasSelection ? Math.max(0, Math.min(100, (startMs / durationMs) * 100)) : 0;
   const endPct = hasSelection ? Math.max(0, Math.min(100, (endMs / durationMs) * 100)) : 100;
+  const startBoundaryPct = Math.max(0, Math.min(100, (rawStartMs / durationMs) * 100));
+  const endBoundaryPct = Math.max(0, Math.min(100, (rawEndMs / durationMs) * 100));
   const selectionCenterPct = hasSelection ? startPct + (endPct - startPct) / 2 : 0;
   const selectionDurationMs = hasSelection ? Math.max(0, endMs - startMs) : 0;
+  const selectionStartMarkerLabel = `${copy.t("mediaAnalysis.timeline.selectionStart", "Start")} · ${formatTimePrecise(rawStartMs)}`;
+  const selectionEndMarkerLabel = `${copy.t("mediaAnalysis.timeline.selectionEnd", "End")} · ${formatTimePrecise(rawEndMs)}`;
   const transportVolume = Math.max(0, Math.min(1, model.transportVolume ?? 1));
   const playbackRate = Math.max(0.1, Math.min(2, model.audioFocus?.playbackRate ?? 1));
   const selectionLoopEnabled = hasSelection === true && model.selectionLoopEnabled === true;
@@ -377,7 +383,8 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
         );
   return `
     <div class="labx-timeline labx-timeline-area${focusClassName}" id="lab-timeline" data-lab-region="timeline-area" data-duration="${String(durationMs)}" data-waveform-mode="source-audio" data-timeline-locked="${timelineLocked ? "true" : "false"}">
-      <div class="labx-timeline__track">
+      <div class="labx-timeline__track-stack">
+        <div class="labx-timeline__track">
         <div class="labx-timeline__waveform-bed"></div>
         ${
           hasVisibleWaveform
@@ -431,8 +438,6 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
 	            class="labx-timeline__selection lab-selection-overlay"
 	            style="left: ${String(startPct)}%; width: ${String(endPct - startPct)}%"
 	          >
-            <div class="labx-timeline__handle labx-timeline__handle--start" data-lab-action="timeline-drag-start" ${lockHandleAttr}></div>
-            <div class="labx-timeline__handle labx-timeline__handle--end" data-lab-action="timeline-drag-end" ${lockHandleAttr}></div>
             <div class="labx-timeline__selection-body" data-lab-action="timeline-drag-body" ${lockHandleAttr}></div>
             <div class="labx-timeline__selection-duration">${formatDuration(selectionDurationMs)}</div>
           </div>
@@ -440,6 +445,44 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
             : `<div class="labx-timeline__hint">${escapeHtml(hintLabel)}</div>`
         }
         ${bookmarkPins}
+        </div>
+        ${
+          hasStartBoundary || hasEndBoundary
+            ? `
+          <div
+            class="labx-timeline__boundary-rail"
+            aria-label="${escapeHtml(copy.t("mediaAnalysis.timeline.selection", "Selection"))}"
+          >
+            ${
+              hasStartBoundary
+                ? `<button
+              class="labx-timeline__handle labx-timeline__handle--start labx-timeline__boundary-marker"
+              type="button"
+              style="left: ${String(startBoundaryPct)}%"
+              data-lab-action="timeline-drag-start"
+              title="${escapeHtml(selectionStartMarkerLabel)}"
+              aria-label="${escapeHtml(selectionStartMarkerLabel)}"
+              ${lockHandleAttr}
+            ></button>`
+                : ""
+            }
+            ${
+              hasEndBoundary
+                ? `<button
+              class="labx-timeline__handle labx-timeline__handle--end labx-timeline__boundary-marker"
+              type="button"
+              style="left: ${String(endBoundaryPct)}%"
+              data-lab-action="timeline-drag-end"
+              title="${escapeHtml(selectionEndMarkerLabel)}"
+              aria-label="${escapeHtml(selectionEndMarkerLabel)}"
+              ${lockHandleAttr}
+            ></button>`
+                : ""
+            }
+          </div>
+        `
+            : ""
+        }
       </div>
       <div class="labx-timeline__controls">
         <div class="labx-timeline__controls-row labx-timeline__player-row">

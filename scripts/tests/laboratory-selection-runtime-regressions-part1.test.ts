@@ -591,6 +591,55 @@ void test("laboratory store treats reused local assets as ready sources during s
   assert.equal(state.ui.workspace.sourceIntakeCollapsed, true);
 });
 
+void test("waveform timeline renders draggable selection boundaries as arrows below the track", () => {
+  const markup = renderLabWaveformTimeline({
+    bookmarks: [],
+    durationMs: 10_000,
+    endMs: 7000,
+    startMs: 2000,
+    waveformSourceLabel: "Source audio",
+    waveformSyncLabel: "Preview and waveform share the same master axis.",
+    waveformWindowDurationMs: 10_000,
+    waveformWindowStartMs: 0,
+  });
+
+  assert.match(markup, /class="labx-timeline__track-stack"/);
+  assert.match(markup, /class="labx-timeline__boundary-rail"/);
+  assert.match(
+    markup,
+    /class="labx-timeline__handle labx-timeline__handle--start labx-timeline__boundary-marker"[\s\S]*?style="left: 20%"[\s\S]*?data-lab-action="timeline-drag-start"/
+  );
+  assert.match(
+    markup,
+    /class="labx-timeline__handle labx-timeline__handle--end labx-timeline__boundary-marker"[\s\S]*?style="left: 70%"[\s\S]*?data-lab-action="timeline-drag-end"/
+  );
+  assert.doesNotMatch(
+    markup,
+    /class="labx-timeline__selection lab-selection-overlay"[^>]*>\s*<div class="labx-timeline__handle/
+  );
+});
+
+void test("waveform timeline renders the start arrow before the end boundary is chosen", () => {
+  const markup = renderLabWaveformTimeline({
+    bookmarks: [],
+    durationMs: 10_000,
+    endMs: null,
+    startMs: 2500,
+    waveformSourceLabel: "Source audio",
+    waveformSyncLabel: "Preview and waveform share the same master axis.",
+    waveformWindowDurationMs: 10_000,
+    waveformWindowStartMs: 0,
+  });
+
+  assert.match(markup, /class="labx-timeline__boundary-rail"/);
+  assert.match(
+    markup,
+    /labx-timeline__handle--start[\s\S]*?style="left: 25%"[\s\S]*?data-lab-action="timeline-drag-start"/
+  );
+  assert.doesNotMatch(markup, /labx-timeline__handle--end/);
+  assert.doesNotMatch(markup, /labx-timeline__selection lab-selection-overlay/);
+});
+
 void test("waveform timeline hides selection affordances for invalid numeric ranges", () => {
   const baseModel = {
     bookmarks: [],
@@ -636,7 +685,7 @@ void test("waveform timeline renders selector-driven suggested actions alongside
     dualPreviewActive: false,
     durationMs: 60000,
     endMs: selection.endMs,
-    ...{} as any,
+    ...({} as any),
     activeSuggestionPreview: {
       suggestionId: "audio-inspect",
       title: "Ses analizi yapilacak",
@@ -705,7 +754,7 @@ void test("waveform timeline does not render suggested actions from fallback-onl
     dualPreviewActive: false,
     durationMs: 60000,
     endMs: 18900,
-    ...{} as any,
+    ...({} as any),
     activeSuggestionPreview: {
       suggestionId: "audio-inspect",
       title: "Ses analizi yapilacak",
@@ -851,7 +900,10 @@ void test("selection roi binder stores a full-video ROI without an explicit time
     startMs: 500,
     endMs: 1500,
   });
-  assert.notEqual(store.getState().ui.workspace.activeSelection?.id, "selection-default:full-video");
+  assert.notEqual(
+    store.getState().ui.workspace.activeSelection?.id,
+    "selection-default:full-video"
+  );
 });
 
 void test("workspace surface keeps image roi controls out of the visual preview stage", () => {

@@ -1,7 +1,9 @@
 import { escapeHtml } from "../domain/lab-types.js";
 import type { LabInteractiveSettings } from "../domain/lab-types.js";
+import { readLaboratoryTransformStackRenderContext } from "../shared/transform-stack-render-context.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
+import { renderWorkspaceTransformStack } from "./workspace-transform-stack.js";
 
 function renderSlider(
   label: string,
@@ -50,6 +52,48 @@ function renderToggle(label: string, field: string, active: boolean) {
   `;
 }
 
+export function renderWorkspaceVisualTransformControls(
+  settings: LabInteractiveSettings,
+  copy: LabI18n = LAB_FALLBACK_I18N
+) {
+  const transformContext = readLaboratoryTransformStackRenderContext(settings);
+  return transformContext !== null &&
+    (transformContext.sourceKind === "video" || transformContext.sourceKind === "image")
+    ? renderWorkspaceTransformStack(
+        {
+          editConfig: transformContext.editConfig,
+          featureId: transformContext.featureId,
+          locked: transformContext.locked,
+          showPreview: false,
+          sourceKind: transformContext.sourceKind,
+          scope: "visual",
+          ...(transformContext.baselinePreviewUrl === undefined
+            ? {}
+            : { baselinePreviewUrl: transformContext.baselinePreviewUrl }),
+          ...(transformContext.differencePreviewUrl === undefined
+            ? {}
+            : { differencePreviewUrl: transformContext.differencePreviewUrl }),
+          ...(transformContext.previewStatus === undefined
+            ? {}
+            : { previewStatus: transformContext.previewStatus }),
+          ...(transformContext.sourcePreviewUrl === undefined
+            ? {}
+            : { sourcePreviewUrl: transformContext.sourcePreviewUrl }),
+          ...(transformContext.temporalRequest === undefined
+            ? {}
+            : { temporalRequest: transformContext.temporalRequest }),
+          ...(transformContext.transformPreviewMode === undefined
+            ? {}
+            : { transformPreviewMode: transformContext.transformPreviewMode }),
+          ...(transformContext.transformPreviewUrl === undefined
+            ? {}
+            : { transformPreviewUrl: transformContext.transformPreviewUrl }),
+        },
+        copy
+      )
+    : "";
+}
+
 export function renderWorkspaceInteractiveControls(
   settings: LabInteractiveSettings,
   copy: LabI18n = LAB_FALLBACK_I18N
@@ -57,6 +101,12 @@ export function renderWorkspaceInteractiveControls(
   return `
     <section class="labx-card labx-controls-card labx-workspace-focus-row__panel" data-tone="accent">
       <div class="labx-card__body">
+        <p class="labx-card__meta">${escapeHtml(
+          copy.t(
+            "mediaAnalysis.transformStressTest.liveControlsHint",
+            "Live controls affect only the workspace view. Use Visual Transform Stack for the reproducible recipe."
+          )
+        )}</p>
         <div class="labx-controls-stack">
           ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.brightness", "Brightness"), "brightness", settings.brightness, 0, 200, 1, "%", 100)}
           ${renderSlider(copy.t("mediaAnalysis.interactiveControls.fields.contrast", "Contrast"), "contrast", settings.contrast, 0, 200, 1, "%", 100)}

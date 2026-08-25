@@ -1,12 +1,93 @@
 import { asLabRecord, asNonEmptyString } from "../../domain/lab-types.js";
 import type { LabAsset, LabComparisonSide, LabStoreState } from "../../domain/lab-types.js";
+import { buildLaboratoryTemporalStressTestRequestFromWorkspaceSelection } from "../../shared/temporal-stress-test-model.js";
+import { attachLaboratoryTransformStackRenderContext } from "../../shared/transform-stack-render-context.js";
+import type {
+  LaboratoryTransformPreviewMode,
+  LaboratoryTransformStackSourceKind,
+} from "../../shared/transform-stack-render-context.js";
 import { normalizeAudioFocusSettings } from "../lab-audio-focus-normalization.js";
 import {
   createLabComparisonInteractiveSettings,
   normalizeLabInteractiveSettings,
 } from "../lab-workspace-defaults.js";
-import { getWorkspaceSourceSelectionResetKey } from "../lab-workspace-selection.js";
+import {
+  getWorkspaceSourceSelectionResetKey,
+  isFullSourceWorkspaceSelection,
+} from "../lab-workspace-selection.js";
 import { getCurrentSourceAsset, getLinkedAudioAssets } from "./lab-source-selectors.js";
+
+function findPreviewArtifactUrl(preview: Record<string, unknown>, kind: string) {
+  const artifacts = Array.isArray(preview["artifacts"]) ? preview["artifacts"] : [];
+  for (const entry of artifacts) {
+    const artifact = asLabRecord(entry);
+    if (asNonEmptyString(artifact["kind"]) !== kind) {
+      continue;
+    }
+    return asNonEmptyString(artifact["previewUrl"]);
+  }
+  return null;
+}
+
+function getTransformPreviewMode(state: LabStoreState): LaboratoryTransformPreviewMode {
+  if (state.ui.workspace.comparisonViewMode === "difference") {
+    return "difference";
+  }
+  if (state.ui.workspace.comparisonViewMode === "stacked") {
+    return "transform";
+  }
+  return "source";
+}
+
+function getSourceDurationSeconds(source: Record<string, unknown>) {
+  const metadata = asLabRecord(source["metadata"]);
+  const durationSeconds = metadata["durationSeconds"];
+  return typeof durationSeconds === "number" && Number.isFinite(durationSeconds)
+    ? Math.max(0, durationSeconds)
+    : null;
+}
+
+function getTransformStackRenderContext(state: LabStoreState) {
+  const source = asLabRecord(state.source);
+  const rawSourceKind = asNonEmptyString(source["kind"]);
+  const comparisonActive = asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId) !== null;
+  const sourceKind: LaboratoryTransformStackSourceKind | null =
+    comparisonActive !== true &&
+    (rawSourceKind === "video" || rawSourceKind === "audio" || rawSourceKind === "image")
+      ? rawSourceKind
+      : null;
+  const runState = state.run?.state;
+  const preview = asLabRecord(asLabRecord(state.editConfig)["preview"]);
+  const previewStatus = asNonEmptyString(preview["status"]) || "idle";
+  const previewReady = previewStatus === "ready";
+  const activeSelection = state.ui.workspace.activeSelection;
+  const temporalRequest =
+    sourceKind === "video" &&
+    activeSelection !== null &&
+    isFullSourceWorkspaceSelection(activeSelection) !== true
+      ? buildLaboratoryTemporalStressTestRequestFromWorkspaceSelection(
+          activeSelection,
+          getSourceDurationSeconds(source)
+        )
+      : null;
+  return {
+    baselinePreviewUrl: previewReady
+      ? findPreviewArtifactUrl(preview, "transform-source-baseline")
+      : null,
+    differencePreviewUrl: previewReady
+      ? findPreviewArtifactUrl(preview, "transform-difference")
+      : null,
+    editConfig: state.editConfig,
+    featureId: state.featureId,
+    locked: runState === "running" || runState === "queued",
+    previewStatus,
+    sourceKind,
+    sourcePreviewUrl: asNonEmptyString(source["previewUrl"]),
+    temporalRequest,
+    transformPreviewMode: getTransformPreviewMode(state),
+    transformPreviewUrl: previewReady ? asNonEmptyString(preview["previewUrl"]) : null,
+  };
+}
 
 export function getROIRegions(state: LabStoreState) {
   return state.ui.workspace.roiRegions;
@@ -44,11 +125,17 @@ export function getInteractiveSettingsForComparisonSide(
 }
 
 export function getInteractiveSettings(state: LabStoreState) {
-  return getInteractiveSettingsForComparisonSide(state);
+  return attachLaboratoryTransformStackRenderContext(
+    getInteractiveSettingsForComparisonSide(state),
+    getTransformStackRenderContext(state)
+  );
 }
 
 export function getAudioFocusSettings(state: LabStoreState) {
-  return normalizeAudioFocusSettings(state.ui.workspace.audioFocus);
+  return attachLaboratoryTransformStackRenderContext(
+    normalizeAudioFocusSettings(state.ui.workspace.audioFocus),
+    getTransformStackRenderContext(state)
+  );
 }
 
 export function getEffectivePreviewAudioFocusSettings(state: LabStoreState) {

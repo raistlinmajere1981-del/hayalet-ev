@@ -1,5 +1,6 @@
 import { createMediaActionRuntime } from "../../features/media-analysis/host/action-handlers.js";
 import { createLaboratoryHostActionRuntime } from "./action-runtime.js";
+import { readLaboratoryBinaryFileBytes } from "./electron-bridge.js";
 import { createLaboratoryToolMutationRuntime } from "./tool-mutations.js";
 
 type LaboratoryRecord = Record<string, unknown>;
@@ -58,6 +59,7 @@ type LaboratoryMediaActionRuntimeDeps = {
   removeProfileModel: UnknownFn;
   resetEditForCurrentSource: UnknownFn;
   resetProfileForCurrentSource: UnknownFn;
+  roomId: string;
   runEditPipeline: UnknownFn;
   runFeatureProcess: UnknownFn;
   runProfilePreflight: UnknownFn;
@@ -143,12 +145,14 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     patchActiveProject: deps.patchActiveProject,
     patchActiveProjectDrafts: deps.patchActiveProjectDrafts,
     pushJobState: deps.pushJobState,
+    readBinaryFileBytes: readLaboratoryBinaryFileBytes,
     refreshActiveProjectMetadata: deps.refreshActiveProjectMetadata,
     refreshToolStatus: deps.refreshToolStatus,
     registerJob: deps.registerJob,
     removeProfileModel: deps.removeProfileModel,
     resetEditForCurrentSource: deps.resetEditForCurrentSource,
     resetProfileForCurrentSource: deps.resetProfileForCurrentSource,
+    roomId: deps.roomId,
     runFeatureProcess: deps.runFeatureProcess,
     runEditPipeline: deps.runEditPipeline,
     runProfilePreflight: deps.runProfilePreflight,
