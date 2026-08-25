@@ -3,41 +3,57 @@ import type { LabEditConfig, LabStoreState } from "../domain/lab-types.js";
 import type { LabI18n } from "./lab-i18n.js";
 import { renderWorkspaceMotionImpactSummaries } from "./workspace-motion-impact-summary.js";
 import { renderWorkspaceStressTestSummaries } from "./workspace-stress-test-summary.js";
+import { renderWorkspaceVisualResponseSummaries } from "./workspace-visual-response-summary.js";
 
 type StressTestRecord = Record<string, unknown>;
 type TransformPreviewMode = "source" | "transform" | "difference";
 
-const CONTROL_KINDS = ["noise", "blur", "sharpen", "low-light", "recompression"] as const;
+const CONTROL_KINDS = [
+  "noise",
+  "blur",
+  "sharpen",
+  "denoise",
+  "gamma",
+  "black-crush",
+  "highlight-clipping",
+  "chroma-suppression",
+  "low-light",
+  "recompression",
+] as const;
 const MOTION_HISTORY_KINDS = new Set([
   "motion-reference-lock",
   "motion-vector-probe",
   "impact-window-compare",
 ]);
+const RESPONSE_HISTORY_KINDS = new Set([
+  "visibility-response",
+  "appearance-transition",
+  "recompression-ladder",
+]);
 
 function readHistory(state: LabStoreState): StressTestRecord[] {
   const history = asLabRecord(state.editConfig)["temporalStressTests"];
-  if (!Array.isArray(history)) {
-    return [];
-  }
-  return history.map(function (entry: unknown) {
-    return asLabRecord(entry);
-  });
+  if (!Array.isArray(history)) return [];
+  return history.map((entry: unknown) => asLabRecord(entry));
 }
 
 function isMotionHistoryEntry(entry: StressTestRecord) {
   return MOTION_HISTORY_KINDS.has(asNonEmptyString(entry["kind"]) || "");
 }
 
+function isResponseHistoryEntry(entry: StressTestRecord) {
+  return RESPONSE_HISTORY_KINDS.has(asNonEmptyString(entry["kind"]) || "");
+}
+
 function buildLegacyStressSummaryEditConfig(editConfig: LabEditConfig | null): LabEditConfig | null {
-  if (editConfig === null) {
-    return null;
-  }
+  if (editConfig === null) return null;
   const history = asLabRecord(editConfig)["temporalStressTests"];
   return {
     ...editConfig,
     temporalStressTests: Array.isArray(history)
       ? history.filter(function (entry) {
-          return !isMotionHistoryEntry(asLabRecord(entry));
+          const record = asLabRecord(entry);
+          return !isMotionHistoryEntry(record) && !isResponseHistoryEntry(record);
         })
       : [],
   };
@@ -64,9 +80,7 @@ function formatSigned(value: number | null, percent = false) {
 
 function findPreviewArtifactUrl(preview: StressTestRecord, kind: string) {
   const artifacts = preview["artifacts"];
-  if (!Array.isArray(artifacts)) {
-    return null;
-  }
+  if (!Array.isArray(artifacts)) return null;
   for (const entry of artifacts) {
     const artifact = asLabRecord(entry);
     if (asNonEmptyString(artifact["kind"]) === kind) {
@@ -162,9 +176,7 @@ function selectionKey(entry: StressTestRecord) {
   const request = getTemporalRequest(entry);
   const startSeconds = readFiniteNumber(request, "startSeconds");
   const endSeconds = readFiniteNumber(request, "endSeconds");
-  if (startSeconds === null || endSeconds === null) {
-    return null;
-  }
+  if (startSeconds === null || endSeconds === null) return null;
   return JSON.stringify({
     endSeconds,
     roi: asLabRecord(request["roi"]),
@@ -177,6 +189,11 @@ function localizeControlKind(kind: string, locale: string) {
   if (kind === "noise") return "Gürültü";
   if (kind === "blur") return "Bulanıklık";
   if (kind === "sharpen") return "Keskinleştirme";
+  if (kind === "denoise") return "Gürültü azaltma";
+  if (kind === "gamma") return "Gamma";
+  if (kind === "black-crush") return "Siyah ezme";
+  if (kind === "highlight-clipping") return "Parlak alan kırpma";
+  if (kind === "chroma-suppression") return "Kroma bastırma";
   if (kind === "low-light") return "Düşük ışık";
   if (kind === "recompression") return "Yeniden sıkıştırma";
   return kind;
@@ -198,6 +215,7 @@ function renderControlComparison(state: LabStoreState, copy: LabI18n) {
     history.find(function (entry) {
       return (
         !isMotionHistoryEntry(entry) &&
+        !isResponseHistoryEntry(entry) &&
         entry["kind"] !== "control-injection" &&
         selectionKey(entry) !== null
       );
@@ -205,27 +223,17 @@ function renderControlComparison(state: LabStoreState, copy: LabI18n) {
     history.find(function (entry) {
       return entry["kind"] === "control-injection" && selectionKey(entry) !== null;
     });
-  if (anchor === undefined) {
-    return "";
-  }
+  if (anchor === undefined) return "";
   const anchorKey = selectionKey(anchor);
-  if (anchorKey === null) {
-    return "";
-  }
+  if (anchorKey === null) return "";
 
   const latestByKind = new Map<string, StressTestRecord>();
   history.forEach(function (entry) {
-    if (entry["kind"] !== "control-injection" || selectionKey(entry) !== anchorKey) {
-      return;
-    }
+    if (entry["kind"] !== "control-injection" || selectionKey(entry) !== anchorKey) return;
     const kind = asNonEmptyString(asLabRecord(entry["request"])["kind"]);
-    if (kind !== null && !latestByKind.has(kind)) {
-      latestByKind.set(kind, entry);
-    }
+    if (kind !== null && !latestByKind.has(kind)) latestByKind.set(kind, entry);
   });
-  if (latestByKind.size === 0) {
-    return "";
-  }
+  if (latestByKind.size === 0) return "";
 
   const rows = CONTROL_KINDS.map(function (kind) {
     const entry = latestByKind.get(kind);
@@ -272,11 +280,13 @@ export function renderWorkspaceStressTestLiveResults(state: LabStoreState, copy:
   const legacySummaryConfig = buildLegacyStressSummaryEditConfig(state.editConfig);
   const summaries = renderWorkspaceStressTestSummaries(legacySummaryConfig, copy);
   const motionSummaries = renderWorkspaceMotionImpactSummaries(state.editConfig, copy);
+  const visualResponseSummaries = renderWorkspaceVisualResponseSummaries(state.editConfig, copy);
   const comparison = renderControlComparison(state, copy);
   const hasResultContent =
     history.length > 0 ||
     summaries.trim() !== "" ||
     motionSummaries.trim() !== "" ||
+    visualResponseSummaries.trim() !== "" ||
     comparison.trim() !== "";
 
   return `
@@ -292,7 +302,7 @@ export function renderWorkspaceStressTestLiveResults(state: LabStoreState, copy:
         <div class="labx-strip-live-results__scroll">
           ${
             hasResultContent
-              ? `${summaries}${motionSummaries}${comparison}`
+              ? `${summaries}${motionSummaries}${visualResponseSummaries}${comparison}`
               : `<div class="labx-strip-live-empty">${escapeHtml(copy.locale === "tr" ? "Henüz manuel test sonucu yok." : "No manual test result yet.")}</div>`
           }
         </div>
