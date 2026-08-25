@@ -1,0 +1,22 @@
+.labx-strip-live-comparison__header {
+  flex-wrap: wrap;
+}
+
+.labx-strip-live-comparison__header > .labx-visual-report-actions {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.labx-visual-report-actions .labx-inline-action {
+  white-space: nowrap;
+}
+
+.labx-visual-report-actions .labx-inline-action[data-lab-report-action-state="success"] {
+  border-color: var(--lab-accent);
+  color: var(--lab-accent);
+}
+
+.labx-visual-report-actions .labx-inline-action[data-lab-report-action-state="error"] {
+  border-color: var(--lab-error);
+  color: var(--lab-error);
+}
