@@ -128,6 +128,26 @@ export function buildLaboratoryVisualResponseReportAssessment(value: unknown) {
       dataQuality: "insufficient",
       classification: "sample-insufficient",
       sensorCompatibility: "unknown",
+      differentialVisibilityRange: 0,
+      peakLocalizedDifference: 0,
+      comparability: {
+        status: "low",
+        score: 0,
+        roiAreaRatio: 0,
+        baselineMeanLumaDelta: 0,
+        baselineLumaSpreadDelta: 0,
+        baselineEdgeEnergyDelta: 0,
+        baselineTemporalPersistenceDelta: 0,
+        baselineChromaDelta: 0,
+        backgroundLumaSpread: 0,
+      },
+      corroboration: {
+        supportingMetricCount: 0,
+        edgeRange: 0,
+        recoveredDarkRange: 0,
+        temporalRange: 0,
+        chromaRange: 0,
+      },
     };
   }
 
