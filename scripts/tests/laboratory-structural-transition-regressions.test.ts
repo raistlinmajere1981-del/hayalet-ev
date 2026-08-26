@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+import { classifyLaboratoryReferenceConvergenceShape } from "../../rooms/laboratory/features/media-analysis/host/background-reference-convergence.ts";
 import { calculateLaboratoryStructuralFrameMetrics } from "../../rooms/laboratory/features/media-analysis/host/structural-transition.ts";
 import { formatLaboratoryStructuralTransitionMarkdown } from "../../rooms/laboratory/ui/workspace-structural-transition-summary.ts";
 
@@ -33,9 +34,37 @@ void test("structural metrics detect strong template replacement without a mecha
   assert.ok(result.structuralPersistence < 0.5);
 });
 
+void test("background reference convergence shape distinguishes abrupt from gradual change", () => {
+  assert.equal(
+    classifyLaboratoryReferenceConvergenceShape([
+      { offsetSeconds: -0.2, convergence: 0.2 },
+      { offsetSeconds: 0, convergence: 0.22 },
+      { offsetSeconds: 0.2, convergence: 0.25 },
+      { offsetSeconds: 0.4, convergence: 0.56 },
+      { offsetSeconds: 0.6, convergence: 0.58 },
+    ]),
+    "abrupt"
+  );
+  assert.equal(
+    classifyLaboratoryReferenceConvergenceShape([
+      { offsetSeconds: -0.2, convergence: 0.2 },
+      { offsetSeconds: 0, convergence: 0.25 },
+      { offsetSeconds: 0.2, convergence: 0.31 },
+      { offsetSeconds: 0.4, convergence: 0.38 },
+      { offsetSeconds: 0.6, convergence: 0.45 },
+      { offsetSeconds: 0.8, convergence: 0.52 },
+    ]),
+    "gradual"
+  );
+});
+
 void test("structural runtime keeps dense event timeline and translation-only confidence fallback", async () => {
   const source = await readFile(
     "rooms/laboratory/features/media-analysis/host/structural-transition.ts",
+    "utf8"
+  );
+  const convergenceSource = await readFile(
+    "rooms/laboratory/features/media-analysis/host/background-reference-convergence.ts",
     "utf8"
   );
   assert.match(source, /\[-1, -0\.8, -0\.6, -0\.4, -0\.2, 0, 0\.2, 0\.4, 0\.6, 0\.8, 1\]/);
@@ -45,10 +74,13 @@ void test("structural runtime keeps dense event timeline and translation-only co
   assert.match(source, /targetVsControlStructuralLoss/);
   assert.match(source, /targetSpecificStructuralLoss/);
   assert.match(source, /post-to-reference-convergence/);
-  assert.doesNotMatch(source, /paranormal/i);
+  assert.match(convergenceSource, /same-spatial target ROI template/);
+  assert.match(convergenceSource, /target-loss-with-reference-convergence/);
+  assert.match(convergenceSource, /weak-or-nonconvergent/);
+  assert.doesNotMatch(`${source}\n${convergenceSource}`, /paranormal/i);
 });
 
-void test("structural transition report exports control differential timeline and ROI stability", () => {
+void test("structural transition report exports convergence timeline and ROI stability", () => {
   const targetMetrics = {
     structuralSimilarity: 0.62,
     normalizedPixelCorrelation: 0.68,
@@ -77,6 +109,17 @@ void test("structural transition report exports control differential timeline an
       targetVsBackgroundStructuralLoss: 0.24,
     },
   };
+  const referenceMetrics = {
+    structuralSimilarity: 0.74,
+    normalizedPixelCorrelation: 0.81,
+    edgeSimilarity: 0.78,
+    structuralPersistence: 0.76,
+  };
+  const referencePoint = {
+    offsetSeconds: 0,
+    timeSeconds: 12.5,
+    metrics: referenceMetrics,
+  };
   const entry = {
     kind: "appearance-transition",
     createdAt: "2026-08-26T00:00:00.000Z",
@@ -87,6 +130,7 @@ void test("structural transition report exports control differential timeline an
       },
       controlRoi: { x: 0.4, y: 0.2, width: 0.2, height: 0.2 },
       backgroundRoi: { x: 0.65, y: 0.2, width: 0.2, height: 0.2 },
+      backgroundReferenceSeconds: 18.25,
       eventSeconds: 12.5,
     },
     phases: [
@@ -117,6 +161,26 @@ void test("structural transition report exports control differential timeline an
         riskRatio: 0.05,
         fallbackUsed: false,
       },
+      revealedBackground: {
+        status: "assessed",
+        referenceTimeSeconds: 18.25,
+        timeline: [referencePoint],
+        phaseSummary: {
+          pre: referencePoint,
+          event: referencePoint,
+          post: referencePoint,
+          peakPost: referencePoint,
+        },
+        assessment: {
+          classification: "target-loss-with-reference-convergence",
+          transitionShape: "gradual",
+          convergenceGain: 0.28,
+          edgeConvergenceGain: 0.24,
+          targetStructuralLossAtPeak: 0.34,
+          peakPostConvergence: 0.76,
+          peakPostOffsetSeconds: 0.6,
+        },
+      },
     },
   };
   const markdown = formatLaboratoryStructuralTransitionMarkdown(
@@ -129,16 +193,22 @@ void test("structural transition report exports control differential timeline an
     } as never
   );
   assert.match(markdown, /Control ROI/);
+  assert.match(markdown, /Background reference: 18\.25 s/);
   assert.match(markdown, /Structural PRE \/ EVENT \/ POST/);
   assert.match(markdown, /Structural Timeline/);
+  assert.match(markdown, /Reference convergence/);
+  assert.match(markdown, /Background Reference Convergence/);
+  assert.match(markdown, /Transition shape: kademeli/);
+  assert.match(markdown, /Target structural loss at peak convergence: 34%/);
   assert.match(markdown, /Target-Control structural loss/);
   assert.match(markdown, /ROI Stability/);
   assert.match(markdown, /Tracking confidence: 72%/);
+  assert.match(markdown, /reference-time motion is not modeled/);
   assert.match(markdown, /SSIM-like/);
   assert.doesNotMatch(markdown, /paranormal|real\/fake verdict/i);
 });
 
-void test("transition host enrichment keeps legacy photometry and adds control plus structural result", async () => {
+void test("transition host and UI carry a user-captured background reference into structural enrichment", async () => {
   const handlers = await readFile(
     "rooms/laboratory/features/media-analysis/host/action-handlers.ts",
     "utf8"
@@ -147,10 +217,18 @@ void test("transition host enrichment keeps legacy photometry and adds control p
     "rooms/laboratory/runtime/controller/lab-transform-stack-live-controller.ts",
     "utf8"
   );
+  assert.match(handlers, /createLaboratoryBackgroundReferenceConvergenceRuntime/);
+  assert.match(handlers, /backgroundReferenceSeconds/);
+  assert.match(handlers, /analyzeConvergence/);
+  assert.match(handlers, /revealedBackgroundClassification/);
   assert.match(handlers, /runTransitionProbe/);
   assert.match(handlers, /enrichTransitionResult/);
   assert.match(handlers, /measureControlPhases/);
   assert.match(handlers, /analyzeTransition/);
+  assert.match(controller, /workspace-background-reference-capture/);
+  assert.match(controller, /workspace-background-reference-clear/);
+  assert.match(controller, /backgroundReferenceSecondsBySource/);
+  assert.match(controller, /backgroundReferenceSeconds/);
   assert.match(controller, /controlRoi/);
   assert.match(controller, /backgroundRoi/);
 });
