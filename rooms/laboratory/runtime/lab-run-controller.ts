@@ -44,6 +44,7 @@ import { createLabTimelinePlaybackController } from "./controller/lab-timeline-p
 import { createLabWorkspaceSettingsController } from "./controller/lab-workspace-settings-controller.js";
 import { createLabSourceActionController } from "./controller/lab-source-action-controller.js";
 import { createLabWorkspaceOperationController } from "./controller/lab-workspace-operation-controller.js";
+import { syncLabYoutubeRangePlayerUi } from "./controller/lab-youtube-range-player-binder.js";
 import {
   isTimelineAction,
   normalizeWorkspaceControlTab,
@@ -286,6 +287,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   } = timelinePlayback;
 
   const sourceActions = createLabSourceActionController({
+    documentRef: deps.documentRef,
     dispatch,
     pushLockedWorkspaceEvent,
     sendMediaAction,
@@ -294,6 +296,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     windowRef: deps.windowRef,
   });
   const {
+    cancelYoutubeRangeSelection,
     deleteActiveProject,
     handleSourceClickAction,
     persistSourceDraftField,
@@ -1082,6 +1085,10 @@ export function createLabRunController(deps: LabRunControllerDeps) {
   }
 
   function handleKeyDown(event: KeyboardEvent) {
+    if (event.key === "Escape" && cancelYoutubeRangeSelection()) {
+      event.preventDefault();
+      return;
+    }
     if (event.key === "Escape" && analysisScopeOverlay.isOpen()) {
       event.preventDefault();
       cancelAnalysisScopeOverlay();
@@ -1752,6 +1759,34 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     deps.documentRef.addEventListener("mousedown", handleMouseDown);
     deps.documentRef.addEventListener("pointerdown", handleFocusSurfacePointer);
     deps.documentRef.addEventListener("keydown", handleKeyDown as EventListener);
+    deps.documentRef.addEventListener(
+      "timeupdate",
+      function (event) {
+        syncLabYoutubeRangePlayerUi(event, deps.documentRef);
+      },
+      true
+    );
+    deps.documentRef.addEventListener(
+      "loadedmetadata",
+      function (event) {
+        syncLabYoutubeRangePlayerUi(event, deps.documentRef);
+      },
+      true
+    );
+    deps.documentRef.addEventListener(
+      "durationchange",
+      function (event) {
+        syncLabYoutubeRangePlayerUi(event, deps.documentRef);
+      },
+      true
+    );
+    deps.documentRef.addEventListener(
+      "error",
+      function (event) {
+        syncLabYoutubeRangePlayerUi(event, deps.documentRef);
+      },
+      true
+    );
     deps.windowRef.addEventListener("mousemove", handleTimelineMouseMove as EventListener);
     deps.windowRef.addEventListener("mouseup", handleTimelineMouseUp as EventListener);
     let prevHeavyWorkActive = isAnyHeavyWorkActive(deps.store.getState());

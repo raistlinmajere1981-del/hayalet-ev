@@ -103,7 +103,11 @@ function roundEven(value: number) {
   return rounded % 2 === 0 ? rounded : rounded + 1;
 }
 
-function buildDriftGeometry(sourceWidth: number, sourceHeight: number, roi: LaboratoryNormalizedRoi) {
+function buildDriftGeometry(
+  sourceWidth: number,
+  sourceHeight: number,
+  roi: LaboratoryNormalizedRoi
+) {
   const cropWidth = Math.max(1, sourceWidth * roi.width);
   const cropHeight = Math.max(1, sourceHeight * roi.height);
   const aspect = cropWidth / cropHeight;
@@ -244,11 +248,9 @@ export function calculateLaboratoryStructuralFrameMetrics(
   const absoluteDifference = normalizedAbsoluteDifference(baseline, current);
   const c1 = 0.01 ** 2;
   const c2 = 0.03 ** 2;
-  const ssimNumerator =
-    (2 * baselineMean * currentMean + c1) * (2 * cov + c2);
+  const ssimNumerator = (2 * baselineMean * currentMean + c1) * (2 * cov + c2);
   const ssimDenominator =
-    (baselineMean ** 2 + currentMean ** 2 + c1) *
-    (baselineVariance + currentVariance + c2);
+    (baselineMean ** 2 + currentMean ** 2 + c1) * (baselineVariance + currentVariance + c2);
   const structuralSimilarity = clamp01(
     ssimDenominator <= EPSILON ? 0 : ssimNumerator / ssimDenominator
   );
@@ -259,12 +261,7 @@ export function calculateLaboratoryStructuralFrameMetrics(
   const edgeSimilarity = clamp01((edgeCorrelation + 1) / 2);
   const pixelAgreement = 1 - absoluteDifference;
   const structuralPersistence = clamp01(
-    mean([
-      structuralSimilarity,
-      normalizedPixelCorrelation,
-      edgeSimilarity,
-      pixelAgreement,
-    ])
+    mean([structuralSimilarity, normalizedPixelCorrelation, edgeSimilarity, pixelAgreement])
   );
   return {
     edgeSimilarity,
@@ -351,7 +348,12 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
     }
   }
 
-  async function extractFrame(input: LaboratoryStructuralTransitionInput, role: StructuralRole, timeSeconds: number, roi: LaboratoryNormalizedRoi) {
+  async function extractFrame(
+    input: LaboratoryStructuralTransitionInput,
+    role: StructuralRole,
+    timeSeconds: number,
+    roi: LaboratoryNormalizedRoi
+  ) {
     const token = safeToken(input.requestId);
     const outputPath = joinPath(
       getProjectEditOutputDir(input.runtime, input.project),
@@ -438,12 +440,13 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
       });
     });
     const baselineSeconds = Math.max(0, Math.min(sourceEnd, input.eventSeconds - 0.6));
-    const baselinePoint = nearestDriftPoint(points, baselineSeconds) ?? points[0] ?? {
-      confidence: 0,
-      dx: 0,
-      dy: 0,
-      timeSeconds: baselineSeconds,
-    };
+    const baselinePoint = nearestDriftPoint(points, baselineSeconds) ??
+      points[0] ?? {
+        confidence: 0,
+        dx: 0,
+        dy: 0,
+        timeSeconds: baselineSeconds,
+      };
     const relativePoints = points.map(function (point) {
       return {
         ...point,
@@ -461,7 +464,10 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
     }, 0);
     const targetMinDimension = Math.max(
       1,
-      Math.min(input.targetRoi.width * input.sourceWidth, input.targetRoi.height * input.sourceHeight)
+      Math.min(
+        input.targetRoi.width * input.sourceWidth,
+        input.targetRoi.height * input.sourceHeight
+      )
     );
     const riskRatio = peakDisplacement / targetMinDimension;
     const reliable = trackingConfidence >= TRACKING_CONFIDENCE_MIN && motion.pairs.length >= 3;
@@ -506,15 +512,29 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
         timeSeconds: Math.max(0, Math.min(sourceEnd, input.eventSeconds + offsetSeconds)),
       };
     }).filter(function (point, index, entries) {
-      return index === 0 || Math.abs(point.timeSeconds - (entries[index - 1]?.timeSeconds ?? -1)) > 0.001;
+      return (
+        index === 0 || Math.abs(point.timeSeconds - (entries[index - 1]?.timeSeconds ?? -1)) > 0.001
+      );
     });
     const baselineShift = drift.shiftAt(drift.baselineSeconds);
     const baselineRois = {
-      target: shiftedRoi(input.targetRoi, baselineShift.dx, baselineShift.dy, input.sourceWidth, input.sourceHeight),
+      target: shiftedRoi(
+        input.targetRoi,
+        baselineShift.dx,
+        baselineShift.dy,
+        input.sourceWidth,
+        input.sourceHeight
+      ),
       control:
         input.controlRoi === null
           ? null
-          : shiftedRoi(input.controlRoi, baselineShift.dx, baselineShift.dy, input.sourceWidth, input.sourceHeight),
+          : shiftedRoi(
+              input.controlRoi,
+              baselineShift.dx,
+              baselineShift.dy,
+              input.sourceWidth,
+              input.sourceHeight
+            ),
       background: shiftedRoi(
         input.backgroundRoi,
         baselineShift.dx,
@@ -547,13 +567,7 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
         return { metrics: identityStructuralMetrics(), roi };
       }
       const shift = drift.shiftAt(timeSeconds);
-      const currentRoi = shiftedRoi(
-        roi,
-        shift.dx,
-        shift.dy,
-        input.sourceWidth,
-        input.sourceHeight
-      );
+      const currentRoi = shiftedRoi(roi, shift.dx, shift.dy, input.sourceWidth, input.sourceHeight);
       const frame = await extractFrame(input, role, timeSeconds, currentRoi);
       return {
         metrics: calculateLaboratoryStructuralFrameMetrics(baseline, frame),
@@ -592,8 +606,7 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
         control,
         background,
         differential: {
-          targetVsControlStructuralLoss:
-            controlLoss === null ? null : targetLoss - controlLoss,
+          targetVsControlStructuralLoss: controlLoss === null ? null : targetLoss - controlLoss,
           targetVsBackgroundStructuralLoss: targetLoss - backgroundLoss,
         },
       };
@@ -602,7 +615,8 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
     function closestOffset(offsetSeconds: number) {
       return timeline.reduce<(typeof timeline)[number] | null>(function (best, point) {
         if (best === null) return point;
-        return Math.abs(point.offsetSeconds - offsetSeconds) < Math.abs(best.offsetSeconds - offsetSeconds)
+        return Math.abs(point.offsetSeconds - offsetSeconds) <
+          Math.abs(best.offsetSeconds - offsetSeconds)
           ? point
           : best;
       }, null);
@@ -615,7 +629,10 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
       postPoint === null ? 0 : 1 - postPoint.target.metrics.structuralPersistence
     );
     const controlLoss =
-      eventPoint?.control === null || eventPoint?.control === undefined || postPoint?.control === null || postPoint?.control === undefined
+      eventPoint?.control === null ||
+      eventPoint?.control === undefined ||
+      postPoint?.control === null ||
+      postPoint?.control === undefined
         ? null
         : Math.max(
             1 - eventPoint.control.metrics.structuralPersistence,
@@ -674,7 +691,8 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
         pixelCorrelation: "pearson-grayscale",
         absoluteDifference: "normalized-mean-absolute-difference",
         edgeSimilarity: "gradient-map-correlation",
-        structuralPersistence: "mean(ssim-like, normalized-correlation, edge-similarity, pixel-agreement)",
+        structuralPersistence:
+          "mean(ssim-like, normalized-correlation, edge-similarity, pixel-agreement)",
         timelineOffsetsSeconds: TIMELINE_OFFSETS,
         stabilization: "translation-only when reference tracking confidence is sufficient",
       },

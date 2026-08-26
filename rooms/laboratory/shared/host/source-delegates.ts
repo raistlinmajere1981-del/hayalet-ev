@@ -16,9 +16,16 @@ type LaboratorySourceIntakeRuntime = {
   buildYtDlpArgs: (
     project: LaboratorySourceDelegatesRecord,
     toolState: LaboratorySourceDelegatesRecord,
-    sourceDir: string
+    sourceDir: string,
+    rangeValue?: unknown,
+    sourceDurationSeconds?: unknown
   ) => unknown[];
-  handleYoutubeDownload: (api: unknown, runtime: unknown, requestId: string) => Promise<unknown>;
+  handleYoutubeDownload: (
+    api: unknown,
+    runtime: unknown,
+    requestId: string,
+    requestValue?: unknown
+  ) => Promise<unknown>;
   handleYoutubeProbe: (
     api: unknown,
     runtime: unknown,

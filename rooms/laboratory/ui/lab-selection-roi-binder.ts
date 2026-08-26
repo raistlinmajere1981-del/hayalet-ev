@@ -360,12 +360,14 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       if (controls === null) {
         return;
       }
-      controls.querySelectorAll("[data-lab-visual-stress-roi-role-control='true']").forEach(function (button) {
-        const role = button.getAttribute("data-lab-visual-stress-roi-role");
-        const active = role === activeVisualStressRole;
-        button.setAttribute("data-active", active ? "true" : "false");
-        button.setAttribute("aria-pressed", active ? "true" : "false");
-      });
+      controls
+        .querySelectorAll("[data-lab-visual-stress-roi-role-control='true']")
+        .forEach(function (button) {
+          const role = button.getAttribute("data-lab-visual-stress-roi-role");
+          const active = role === activeVisualStressRole;
+          button.setAttribute("data-active", active ? "true" : "false");
+          button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
       const status = controls.querySelector("[data-lab-visual-stress-roi-status='true']");
       if (status !== null) {
         const nextStatus = `Target ROI ${targetRoi === null ? "—" : "✓"} · Control ROI ${controlRoi === null ? "—" : "✓"} · Background ROI ${backgroundRoi === null ? "—" : "✓"} · Control is optional.`;
@@ -381,14 +383,18 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     const backgroundRoi = deps.getComparisonRoi?.("reference") ?? null;
     const serializedControl = JSON.stringify(controlRoi);
     const serializedBackground = JSON.stringify(backgroundRoi);
-    queryAll("[data-lab-transform-stack][data-lab-transform-source-kind='video']").forEach(function (root) {
-      if (root.getAttribute("data-lab-visual-stress-control-roi-json") !== serializedControl) {
-        root.setAttribute("data-lab-visual-stress-control-roi-json", serializedControl);
+    queryAll("[data-lab-transform-stack][data-lab-transform-source-kind='video']").forEach(
+      function (root) {
+        if (root.getAttribute("data-lab-visual-stress-control-roi-json") !== serializedControl) {
+          root.setAttribute("data-lab-visual-stress-control-roi-json", serializedControl);
+        }
+        if (
+          root.getAttribute("data-lab-visual-stress-background-roi-json") !== serializedBackground
+        ) {
+          root.setAttribute("data-lab-visual-stress-background-roi-json", serializedBackground);
+        }
       }
-      if (root.getAttribute("data-lab-visual-stress-background-roi-json") !== serializedBackground) {
-        root.setAttribute("data-lab-visual-stress-background-roi-json", serializedBackground);
-      }
-    });
+    );
   }
 
   function restoreTargetOverlay(targetOverlay: Element) {
@@ -515,7 +521,10 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
 
   function handleClick(event: Event) {
     const target = event.target;
-    const roleControl = getClosestTarget(target, "[data-lab-visual-stress-roi-role-control='true']");
+    const roleControl = getClosestTarget(
+      target,
+      "[data-lab-visual-stress-roi-role-control='true']"
+    );
     if (roleControl !== null) {
       const role = roleControl.getAttribute("data-lab-visual-stress-roi-role");
       if (!isVisualStressRoiRole(role) || !isVisualStressActive()) {

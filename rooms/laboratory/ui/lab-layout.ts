@@ -8,6 +8,7 @@ import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
 import { renderLabSourcePanel } from "./lab-source-panel.js";
 import { renderLaboratoryLayout } from "./laboratory-layout.js";
+import { renderYoutubeRangeOverlay } from "./youtube-range-overlay.js";
 import {
   getDrawerCollapsed,
   getWorkspaceMode,
@@ -87,5 +88,6 @@ export function renderLabLayout(
     })}
     ${renderToolManagementOverlay(state, copy)}
     ${renderReportOverlay(state, copy)}
+    ${renderYoutubeRangeOverlay(state, copy)}
   `;
 }

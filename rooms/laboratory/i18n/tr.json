@@ -1086,6 +1086,35 @@
         "noAudio": "Ayri ses yok",
         "directReady": "Dogrudan URL {type} olarak hazir"
       },
+      "youtubeRange": {
+        "eyebrow": "YouTube aralık indirme",
+        "start": "Başlangıç",
+        "end": "Bitiş",
+        "duration": "Süre",
+        "playbackError": "Geçici YouTube önizlemesi oynatılamadı. URL'yi yeniden kontrol edin.",
+        "previewUnavailableTitle": "Önizleme açılamıyor",
+        "previewUnavailableBody": "Bu video için geçici oynatılabilir stream bulunamadı.",
+        "actions": {
+          "downloadFull": "Tam Videoyu İndir",
+          "selectRange": "Aralık Seç",
+          "setStart": "Başlangıcı Buraya Koy",
+          "setEnd": "Bitişi Buraya Koy",
+          "cancel": "İptal",
+          "confirm": "Bu Aralığı İndir"
+        },
+        "validation": {
+          "missingBoundary": "Başlangıç ve bitiş noktalarını seçin.",
+          "invalidBoundary": "Seçilen zaman noktaları geçerli değil.",
+          "negativeStart": "Başlangıç zamanı sıfırdan küçük olamaz.",
+          "endAfterStart": "Bitiş zamanı başlangıçtan sonra olmalı.",
+          "tooShort": "En az 0.2 saniyelik bir aralık seçin.",
+          "afterDuration": "Bitiş zamanı video süresini aşamaz.",
+          "ffmpegRequired": "Aralık indirme için FFmpeg gerekli.",
+          "previewRequired": "Bu video için oynatılabilir önizleme bulunamadı.",
+          "durationRequired": "Aralık seçimi için video süresi gerekli.",
+          "ready": "Aralık indirmeye hazır."
+        }
+      },
       "clear": "Temizle",
       "add": "Ekle",
       "review": {

@@ -29,6 +29,9 @@ export function reduceLabImportUiEvent(state: LabStoreState, event: LabStoreEven
         formats: sameUrl ? state.ui.youtubeImport.formats : [],
         selectedVideoFormatId: sameUrl ? state.ui.youtubeImport.selectedVideoFormatId : null,
         selectedAudioFormatId: sameUrl ? state.ui.youtubeImport.selectedAudioFormatId : null,
+        rangeSelection: sameUrl
+          ? state.ui.youtubeImport.rangeSelection
+          : { open: false, startSeconds: null, endSeconds: null },
       };
       return true;
     }
@@ -40,6 +43,7 @@ export function reduceLabImportUiEvent(state: LabStoreState, event: LabStoreEven
         formats: [],
         selectedVideoFormatId: null,
         selectedAudioFormatId: null,
+        rangeSelection: { open: false, startSeconds: null, endSeconds: null },
       };
       return true;
     case "youtube-import-parse-success": {
@@ -78,6 +82,7 @@ export function reduceLabImportUiEvent(state: LabStoreState, event: LabStoreEven
         formats: [],
         selectedVideoFormatId: null,
         selectedAudioFormatId: null,
+        rangeSelection: { open: false, startSeconds: null, endSeconds: null },
       };
       return true;
     case "youtube-import-format-selected":
@@ -95,6 +100,43 @@ export function reduceLabImportUiEvent(state: LabStoreState, event: LabStoreEven
       return true;
     case "youtube-import-clear":
       state.ui.youtubeImport = createIdleYoutubeImportState();
+      return true;
+    case "youtube-range-selection-opened":
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        rangeSelection: {
+          open: true,
+          startSeconds: null,
+          endSeconds: null,
+        },
+      };
+      return true;
+    case "youtube-range-selection-closed":
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        rangeSelection: {
+          ...state.ui.youtubeImport.rangeSelection,
+          open: false,
+        },
+      };
+      return true;
+    case "youtube-range-start-set":
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        rangeSelection: {
+          ...state.ui.youtubeImport.rangeSelection,
+          startSeconds: event.seconds,
+        },
+      };
+      return true;
+    case "youtube-range-end-set":
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        rangeSelection: {
+          ...state.ui.youtubeImport.rangeSelection,
+          endSeconds: event.seconds,
+        },
+      };
       return true;
     case "project-import-kind-changed": {
       const kind = normalizeProjectImportKind(event.kind, state.ui.projectImport.activeKind);

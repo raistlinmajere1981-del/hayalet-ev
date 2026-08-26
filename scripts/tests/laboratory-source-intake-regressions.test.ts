@@ -98,6 +98,7 @@ void test("laboratory YouTube probe accepts only single video URLs", async () =>
       return {
         run: {
           stdout: JSON.stringify({
+            id: "abc123",
             title: "Evidence clip",
             duration: 154,
             thumbnail: "https://img.youtube.com/vi/abc123/0.jpg",
@@ -108,6 +109,8 @@ void test("laboratory YouTube probe accepts only single video URLs", async () =>
                 ext: "mp4",
                 vcodec: "avc1",
                 acodec: "mp4a",
+                height: 360,
+                url: "https://rr1---sn-example.googlevideo.com/videoplayback?id=abc123",
               },
             ],
           }),
@@ -195,6 +198,15 @@ void test("laboratory YouTube probe accepts only single video URLs", async () =>
   );
 
   assert.equal(toRecord(result)["kind"], "video");
+  assert.deepEqual(toRecord(toRecord(result)["preview"]), {
+    title: "Evidence clip",
+    duration: 154,
+    thumbnail: "https://img.youtube.com/vi/abc123/0.jpg",
+    uploader: null,
+    webpageUrl: "https://www.youtube.com/watch?v=abc123",
+    videoId: "abc123",
+    streamUrl: "https://rr1---sn-example.googlevideo.com/videoplayback?id=abc123",
+  });
   assert.deepEqual(toolCalls[0]?.["args"], [
     "--dump-single-json",
     "--skip-download",

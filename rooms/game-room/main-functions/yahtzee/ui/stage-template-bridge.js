@@ -76,10 +76,10 @@
       const button = findLegacyDieButton(index);
       return Boolean(
         state.active === true &&
-          state.complete !== true &&
-          Number(turn.rollCount) > 0 &&
-          button &&
-          button.disabled !== true
+        state.complete !== true &&
+        Number(turn.rollCount) > 0 &&
+        button &&
+        button.disabled !== true
       );
     },
     toggleDie: function (index) {
@@ -137,7 +137,8 @@
     const scoreStack = playArea ? playArea.querySelector(".yahtzee-score-stack") : null;
     const rollButton = controls ? controls.querySelector("button.primary") : null;
     const controlButtons = controls ? Array.from(controls.querySelectorAll("button")) : [];
-    const soundButton = controlButtons.length > 0 ? controlButtons[controlButtons.length - 1] : null;
+    const soundButton =
+      controlButtons.length > 0 ? controlButtons[controlButtons.length - 1] : null;
     const state = getState() || {};
     const players = Array.isArray(state.players) ? state.players : [];
     const playerCount = Math.max(1, players.length || 1);
@@ -177,9 +178,11 @@
       scoreStack.classList.add("is-diegetic");
       scoreStack.dataset.playerCount = String(playerCount);
       scoreStack.hidden = state.active !== true && state.complete !== true;
-      Array.from(scoreStack.querySelectorAll(".yahtzee-score-card")).forEach(function (card, index) {
-        card.dataset.seatIndex = String(index);
-      });
+      Array.from(scoreStack.querySelectorAll(".yahtzee-score-card")).forEach(
+        function (card, index) {
+          card.dataset.seatIndex = String(index);
+        }
+      );
       parts.stageInterface.append(scoreStack);
     }
 

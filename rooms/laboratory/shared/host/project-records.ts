@@ -25,6 +25,8 @@ type LaboratoryProjectRecordValue = Record<string, unknown> & {
   schemaVersion?: unknown;
   slug?: unknown;
   source?: LaboratoryProjectRecordValue;
+  sourceOrigin?: unknown;
+  sourceRangeStartSeconds?: unknown;
   sourceUrl?: unknown;
   status?: unknown;
   storedFileName?: unknown;
@@ -50,6 +52,8 @@ type LaboratoryProjectSource = {
   status: string;
   storedFileName: string | null;
   storedPath: string | null;
+  sourceOrigin?: LaboratoryProjectRecordValue;
+  sourceRangeStartSeconds?: number;
 };
 
 type LaboratoryProjectRecord = {
@@ -140,6 +144,34 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
     toRecord,
   } = deps;
 
+  function asNonNegativeFiniteNumber(value: unknown): number | null {
+    return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+  }
+
+  function normalizeSourceOrigin(value: unknown): LaboratoryProjectRecordValue | null {
+    const origin = toRecord(value);
+    const kind = asNonEmptyString(origin["kind"]);
+    const url = asNonEmptyString(origin["url"]);
+    if (kind !== "youtube-range" || url === null) {
+      return null;
+    }
+    const videoId = asNonEmptyString(origin["videoId"]);
+    const title = asNonEmptyString(origin["title"]);
+    const startSeconds = asNonNegativeFiniteNumber(origin["startSeconds"]);
+    const endSeconds = asNonNegativeFiniteNumber(origin["endSeconds"]);
+    const requestedDurationSeconds = asNonNegativeFiniteNumber(origin["requestedDurationSeconds"]);
+    return {
+      kind,
+      url,
+      ...(videoId === null ? {} : { videoId }),
+      ...(title === null ? {} : { title }),
+      ...(startSeconds === null ? {} : { startSeconds }),
+      ...(endSeconds === null ? {} : { endSeconds }),
+      ...(requestedDurationSeconds === null ? {} : { requestedDurationSeconds }),
+      rangeDownload: true,
+    };
+  }
+
   function createProjectRecord(
     sourcePresets: unknown,
     editPresets: unknown,
@@ -207,6 +239,10 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
       typeof rawProject.schemaVersion === "number"
         ? rawProject.schemaVersion
         : projectSchemaVersion;
+    const sourceOrigin = normalizeSourceOrigin(source.sourceOrigin);
+    const sourceRangeStartSeconds =
+      asNonNegativeFiniteNumber(source.sourceRangeStartSeconds) ??
+      asNonNegativeFiniteNumber(sourceOrigin?.["startSeconds"]);
 
     const normalizedProject: LaboratoryProjectRecord = {
       schemaVersion: schemaVersion,
@@ -233,6 +269,8 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
         lastError: asNonEmptyString(source.lastError),
         metadata: normalizeSourceMetadata(source.metadata),
         metadataError: asNonEmptyString(source.metadataError),
+        ...(sourceOrigin === null ? {} : { sourceOrigin }),
+        ...(sourceRangeStartSeconds === null ? {} : { sourceRangeStartSeconds }),
         drafts: {
           urlInput: asNonEmptyString(drafts.urlInput) || "",
           youtubeUrl: asNonEmptyString(drafts.youtubeUrl) || "",

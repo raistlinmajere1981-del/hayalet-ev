@@ -9,6 +9,14 @@ export interface LabYoutubeImportPreview {
   thumbnail?: string;
   uploader?: string;
   webpageUrl?: string;
+  videoId?: string;
+  streamUrl?: string;
+}
+
+export interface LabYoutubeRangeSelectionState {
+  open: boolean;
+  startSeconds: number | null;
+  endSeconds: number | null;
 }
 
 export type LabYoutubeImportFormatKind = "video" | "audio" | "muxed" | "unknown";
@@ -35,6 +43,7 @@ export interface LabYoutubeImportState {
   formats: LabYoutubeImportFormat[];
   selectedVideoFormatId: string | null;
   selectedAudioFormatId: string | null;
+  rangeSelection: LabYoutubeRangeSelectionState;
 }
 
 export type LabProjectImportKind = "video" | "audio" | "image";

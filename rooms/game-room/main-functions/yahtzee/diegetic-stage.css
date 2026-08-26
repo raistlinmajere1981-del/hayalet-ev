@@ -73,9 +73,7 @@
   border: 1px solid rgba(189, 122, 53, 0.72);
   border-radius: 999px;
   color: #f1d5a2;
-  background:
-    linear-gradient(180deg, rgba(104, 57, 24, 0.96), rgba(44, 23, 12, 0.98)),
-    #3a1c0d;
+  background: linear-gradient(180deg, rgba(104, 57, 24, 0.96), rgba(44, 23, 12, 0.98)), #3a1c0d;
   box-shadow:
     0 13px 28px rgba(0, 0, 0, 0.44),
     inset 0 1px rgba(255, 215, 148, 0.18),
@@ -117,9 +115,10 @@
   position: absolute;
   inset: 0;
   display: block;
-  width: auto;
+  width: 100%;
   max-width: none;
   padding: 0;
+  justify-self: stretch;
   pointer-events: none;
 }
 
@@ -148,13 +147,19 @@
   backdrop-filter: none;
 }
 
-.yahtzee-stage-interface .yahtzee-score-stack[data-player-count="2"] .yahtzee-score-card[data-seat-index="0"] {
-  left: clamp(120px, 13vw, 240px);
+.yahtzee-stage-interface
+  .yahtzee-score-stack[data-player-count="2"]
+  .yahtzee-score-card[data-seat-index="0"] {
+  right: auto;
+  left: clamp(220px, 14.5vw, 290px);
   transform: perspective(900px) rotateX(3deg) rotateZ(-1.1deg) scale(0.9);
 }
 
-.yahtzee-stage-interface .yahtzee-score-stack[data-player-count="2"] .yahtzee-score-card[data-seat-index="1"] {
-  right: clamp(120px, 13vw, 240px);
+.yahtzee-stage-interface
+  .yahtzee-score-stack[data-player-count="2"]
+  .yahtzee-score-card[data-seat-index="1"] {
+  right: clamp(220px, 14.5vw, 290px);
+  left: auto;
   transform: perspective(900px) rotateX(3deg) rotateZ(1deg) scale(0.9);
 }
 
@@ -189,9 +194,7 @@
 .yahtzee-stage-interface
   .yahtzee-score-stack[data-player-count="2"]
   .yahtzee-score-card[data-seat-index="1"].is-active,
-.yahtzee-stage-interface
-  .yahtzee-score-stack[data-player-count="1"]
-  .yahtzee-score-card.is-active {
+.yahtzee-stage-interface .yahtzee-score-stack[data-player-count="1"] .yahtzee-score-card.is-active {
   transform: perspective(900px) translateY(-9px) rotateX(2deg) rotateZ(0.4deg) scale(0.98);
 }
 
@@ -231,14 +234,50 @@
 }
 
 .yahtzee-shell.is-diegetic-table .yahtzee-stage-player.is-left {
-  left: 3.5%;
+  left: 9%;
 }
 
 .yahtzee-shell.is-diegetic-table .yahtzee-stage-player.is-right {
+  right: 20%;
+}
+
+.yahtzee-shell.is-diegetic-table .yahtzee-scene.has-two-players .yahtzee-stage-player.is-left {
+  left: 3.5%;
+}
+
+.yahtzee-shell.is-diegetic-table .yahtzee-scene.has-two-players .yahtzee-stage-player.is-right {
   right: 3.5%;
 }
 
+.yahtzee-shell.is-diegetic-table
+  .yahtzee-overlay:has(.yahtzee-stage-interface.is-match-active)
+  .yahtzee-header
+  h1 {
+  font-size: clamp(28px, 3.1vw, 44px);
+}
+
+.yahtzee-shell.is-diegetic-table
+  .yahtzee-overlay:has(.yahtzee-stage-interface.is-match-active)
+  .yahtzee-header
+  p {
+  display: none;
+}
+
+.yahtzee-shell.is-diegetic-table
+  .yahtzee-overlay:has(.yahtzee-stage-interface.is-match-active)
+  .yahtzee-controls {
+  margin-top: 8px;
+}
+
 @media (max-width: 1250px) {
+  .yahtzee-shell.is-diegetic-table .yahtzee-stage-player.is-left {
+    left: 5%;
+  }
+
+  .yahtzee-shell.is-diegetic-table .yahtzee-stage-player.is-right {
+    right: 4%;
+  }
+
   .yahtzee-stage-interface .yahtzee-score-card {
     width: clamp(205px, 18vw, 245px);
     max-height: 47vh;
@@ -247,13 +286,13 @@
   .yahtzee-stage-interface
     .yahtzee-score-stack[data-player-count="2"]
     .yahtzee-score-card[data-seat-index="0"] {
-    left: clamp(105px, 12vw, 170px);
+    left: clamp(155px, 15.5vw, 205px);
   }
 
   .yahtzee-stage-interface
     .yahtzee-score-stack[data-player-count="2"]
     .yahtzee-score-card[data-seat-index="1"] {
-    right: clamp(105px, 12vw, 170px);
+    right: clamp(155px, 15.5vw, 205px);
   }
 
   .yahtzee-stage-interface .yahtzee-score-stack[data-player-count="1"] .yahtzee-score-card {
@@ -276,13 +315,13 @@
   .yahtzee-stage-interface
     .yahtzee-score-stack[data-player-count="2"]
     .yahtzee-score-card[data-seat-index="0"] {
-    left: 86px;
+    left: clamp(135px, 17vw, 155px);
   }
 
   .yahtzee-stage-interface
     .yahtzee-score-stack[data-player-count="2"]
     .yahtzee-score-card[data-seat-index="1"] {
-    right: 86px;
+    right: clamp(135px, 17vw, 155px);
   }
 
   .yahtzee-stage-interface .yahtzee-score-stack[data-player-count="1"] .yahtzee-score-card {

@@ -225,6 +225,8 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
           nextSource["lastError"] = null;
           nextSource["metadata"] = preparedSource.metadata;
           nextSource["metadataError"] = preparedSource.metadataError;
+          delete nextSource["sourceOrigin"];
+          delete nextSource["sourceRangeStartSeconds"];
         });
         nextProject["assets"] = upsertLabAsset(
           nextProject["assets"],

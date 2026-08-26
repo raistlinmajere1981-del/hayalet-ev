@@ -348,6 +348,7 @@ function syncProjectImportUrlCheckFromHostEvent(state: LabStoreState, event: Lab
       formats: [],
       selectedVideoFormatId: null,
       selectedAudioFormatId: null,
+      rangeSelection: { open: false, startSeconds: null, endSeconds: null },
     };
     return;
   }
@@ -407,6 +408,7 @@ function syncProjectImportUrlCheckFromHostEvent(state: LabStoreState, event: Lab
       selectedAudioFormatId:
         normalizeYoutubeFormatSelection(result["selectedAudioFormatId"], formats) ||
         selectedDefaults.audioFormatId,
+      rangeSelection: { open: false, startSeconds: null, endSeconds: null },
     };
     return;
   }

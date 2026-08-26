@@ -30,7 +30,8 @@ type MediaSourceActionRuntimeDeps = {
   handleYoutubeDownload: (
     api: unknown,
     runtime: LaboratoryRecord,
-    requestId: string
+    requestId: string,
+    requestValue?: unknown
   ) => Promise<unknown>;
   handleYoutubeProbe: (
     api: unknown,
@@ -232,9 +233,8 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     toRecord: deps.toRecord,
   });
 
-  type EditProject = Parameters<typeof deps.getProjectEditOutputDir>[1];
   const runtimeProjectOutput = function (runtime: LaboratoryRecord, project: LaboratoryRecord) {
-    return deps.getProjectEditOutputDir(runtime, project as EditProject);
+    return deps.getProjectEditOutputDir(runtime, project);
   };
   const visualResponseRuntime = createLaboratoryVisualResponseProbeRuntime({
     callRoomTools: deps.callRoomTools,
@@ -474,7 +474,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
       }
     }
 
-    const enrichedPhases = phases.map(function (phase) {
+    const enrichedPhases: LaboratoryRecord[] = phases.map(function (phase): LaboratoryRecord {
       const phaseName = deps.asNonEmptyString(phase["phase"]);
       const controlEntry = controlMeasurements.find(function (entry) {
         return deps.asNonEmptyString(entry["phase"]) === phaseName;

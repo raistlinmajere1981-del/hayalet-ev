@@ -198,7 +198,8 @@ function responseMarkdown(entry: Entry, copy: LabI18n) {
     const target = asLabRecord(point["target"]);
     const background = asLabRecord(point["background"]);
     const differential = asLabRecord(point["differential"]);
-    const value = typeof point["value"] === "number" ? String(Number(point["value"].toFixed(3))) : "—";
+    const value =
+      typeof point["value"] === "number" ? String(Number(point["value"].toFixed(3))) : "—";
     lines.push(
       `| ${value} | ${pct(finite(target, "visibilityScore"))} | ${pct(finite(background, "visibilityScore"))} | ${signed(finite(differential, "visibilityScore"))} | ${signed(finite(differential, "edgeEnergy"))} | ${signed(finite(differential, "recoveredDarkFraction"))} | ${signed(finite(differential, "nearBlackFraction"))} |`
     );
@@ -297,10 +298,7 @@ function codecMarkdown(entry: Entry, copy: LabI18n) {
   return lines.join("\n");
 }
 
-export function formatLaboratoryVisualReportMarkdown(
-  entry: Entry,
-  copy: LabI18n
-): string {
+export function formatLaboratoryVisualReportMarkdown(entry: Entry, copy: LabI18n): string {
   if (entry["kind"] === "visibility-response") return responseMarkdown(entry, copy);
   if (entry["kind"] === "appearance-transition") return transitionMarkdown(entry, copy);
   if (entry["kind"] === "recompression-ladder") return codecMarkdown(entry, copy);

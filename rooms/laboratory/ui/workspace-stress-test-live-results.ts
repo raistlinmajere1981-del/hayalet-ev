@@ -284,7 +284,10 @@ export function renderWorkspaceStressTestLiveResults(state: LabStoreState, copy:
   const summaries = renderWorkspaceStressTestSummaries(legacySummaryConfig, copy);
   const motionSummaries = renderWorkspaceMotionImpactSummaries(state.editConfig, copy);
   const visualResponseSummaries = renderWorkspaceVisualResponseSummaries(state.editConfig, copy);
-  const structuralTransitionSummary = renderWorkspaceStructuralTransitionSummary(state.editConfig, copy);
+  const structuralTransitionSummary = renderWorkspaceStructuralTransitionSummary(
+    state.editConfig,
+    copy
+  );
   const comparison = renderControlComparison(state, copy);
   const hasResultContent =
     history.length > 0 ||

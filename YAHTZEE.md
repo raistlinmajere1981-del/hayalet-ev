@@ -105,8 +105,8 @@ The Yahtzee presentation deliberately avoids a free-roam 3D world.
 
 The stage is split into three layers:
 
-1. **Art backdrop** — sky, sea, deck framing, weather and crew standees.
-2. **Babylon gameplay layer** — the play surface, table, lantern and five dice.
+1. **Art backdrop** — an integrated cinematic deck environment with layered weather and crew standees.
+2. **Babylon gameplay layer** — the textured mahogany/felt play surface, lantern and five interactive dice.
 3. **UI layer** — game controls, dice/hold controls and score cards.
 
 The main files are:
@@ -139,7 +139,7 @@ Do not re-enable free orbit controls during the art pass; tune the presets inste
 
 ## Art slots
 
-Final art is intentionally separated from gameplay code.
+Final art is intentionally separated from gameplay code. The current pass uses an integrated realistic deck backdrop while retaining the separate sky, sea and deck slots as fallbacks.
 
 Room-local image slots are documented under:
 
@@ -150,13 +150,15 @@ The intended art pass can provide:
 - a realistic/stylized storm sky,
 - a separate ocean layer,
 - a deck/background framing image,
+- an integrated 16:9 deck environment with an empty center dais,
+- tileable mahogany and oxblood felt table materials,
 - optional lightning overlay,
 - four transparent paper/standee crew characters,
 - optional left/right player standee bases.
 
 Completed files are wired by replacing `null` values in `ui/theme-pirate-deck.js`.
 
-Player standees also accept per-player `avatarSrc`, `avatar` or `imageSrc` values when those become available in the room state. Until then they display compact initial-based placeholders.
+Player standees are avatar-ready pirate body templates with an open head area. The UI presentation bridge maps the active Game Room account avatars into `avatarSrc` by seat (`user`, `ai1`, `ai2`, `us1`); local second-player mode keeps the compact initial-based fallback because it has no separate account identity.
 
 ## Babylon runtime
 
@@ -172,7 +174,7 @@ npm run rooms:vendor:game-room
 
 The same vendor build is run before room bundle/workspace builds.
 
-The generated runtime contains only the Babylon APIs imported by `vendor/babylon-runtime-entry.js`; the room does not depend on a CDN at runtime.
+The generated runtime contains only the Babylon APIs imported by `vendor/babylon-runtime-entry.js`, including the ray-picking extension required by the interactive dice; the room does not depend on a CDN at runtime.
 
 The Babylon Apache-2.0 license and notice are kept next to the generated vendor file.
 

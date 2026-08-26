@@ -79,12 +79,16 @@ function structuralAssessmentLabel(value: unknown, copy: LabI18n) {
 function photometricAssessmentLabel(value: unknown, copy: LabI18n) {
   const kind = asNonEmptyString(value) || "result-uncertain";
   if (copy.locale !== "tr") {
-    if (kind === "target-and-background-change-together") return "Target/background change together.";
-    if (kind === "change-localized-to-target") return "Photometric change is localized toward target.";
+    if (kind === "target-and-background-change-together")
+      return "Target/background change together.";
+    if (kind === "change-localized-to-target")
+      return "Photometric change is localized toward target.";
     return "Photometric result is uncertain.";
   }
-  if (kind === "target-and-background-change-together") return "Target/background birlikte değişiyor.";
-  if (kind === "change-localized-to-target") return "Fotometrik değişim target'a lokalize görünüyor.";
+  if (kind === "target-and-background-change-together")
+    return "Target/background birlikte değişiyor.";
+  if (kind === "change-localized-to-target")
+    return "Fotometrik değişim target'a lokalize görünüyor.";
   return "Fotometrik sonuç belirsiz.";
 }
 
@@ -106,7 +110,14 @@ function comparabilityLabel(value: unknown, copy: LabI18n) {
   if (copy.locale !== "tr") {
     return `Control comparability: ${status} (${pct(score)}) — measurement-quality only.`;
   }
-  const localized = status === "high" ? "yüksek" : status === "medium" ? "orta" : status === "low" ? "düşük" : "bilinmiyor";
+  const localized =
+    status === "high"
+      ? "yüksek"
+      : status === "medium"
+        ? "orta"
+        : status === "low"
+          ? "düşük"
+          : "bilinmiyor";
   return `Control karşılaştırılabilirliği: ${localized} (${pct(score)}) — yalnız measurement-quality göstergesi.`;
 }
 
@@ -351,7 +362,10 @@ export function renderWorkspaceStructuralTransitionSummary(
   copy: LabI18n
 ) {
   const entry = history(editConfig).find(function (candidate) {
-    return candidate["kind"] === "appearance-transition" && Object.keys(asLabRecord(candidate["structural"])).length > 0;
+    return (
+      candidate["kind"] === "appearance-transition" &&
+      Object.keys(asLabRecord(candidate["structural"])).length > 0
+    );
   });
   if (entry === undefined) return "";
   const structural = asLabRecord(entry["structural"]);
@@ -374,7 +388,10 @@ export function renderWorkspaceStructuralTransitionSummary(
   const stability = asLabRecord(structural["roiStability"]);
   const controlQuality = comparabilityLabel(interpretation["controlComparability"], copy);
   const stabilityText = stabilitySummary(stability, copy);
-  const createdAt = (asNonEmptyString(entry["createdAt"]) || "report").replace(/[^a-zA-Z0-9._-]+/g, "-");
+  const createdAt = (asNonEmptyString(entry["createdAt"]) || "report").replace(
+    /[^a-zA-Z0-9._-]+/g,
+    "-"
+  );
   return `
     <section class="labx-strip-live-comparison" data-lab-structural-transition-summary="true" data-lab-exportable-report="true" data-lab-report-filename="laboratory-structural-transition-${escapeHtml(createdAt)}">
       <div class="labx-strip-live-comparison__header">

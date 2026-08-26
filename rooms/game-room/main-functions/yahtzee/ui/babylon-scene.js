@@ -68,10 +68,27 @@
     const material = new B.StandardMaterial(name, scene);
     material.diffuseColor = color3(B, diffuse);
     material.specularColor = color3(B, settings.specular || [0.05, 0.04, 0.03]);
+    material.specularPower = Number(settings.specularPower) || 48;
+    if (settings.ambient) material.ambientColor = color3(B, settings.ambient);
     if (settings.emissive) material.emissiveColor = color3(B, settings.emissive);
     if (typeof settings.alpha === "number") material.alpha = settings.alpha;
     if (settings.doubleSided) material.backFaceCulling = false;
     return material;
+  }
+
+  function applyTexture(B, scene, material, src, uScale, vScale) {
+    if (
+      !material ||
+      typeof src !== "string" ||
+      src.trim() === "" ||
+      typeof B.Texture !== "function"
+    ) {
+      return;
+    }
+    const texture = new B.Texture(src, scene, false, false);
+    texture.uScale = uScale;
+    texture.vScale = vScale;
+    material.diffuseTexture = texture;
   }
 
   function makeUnpickable(mesh, parent) {
@@ -126,10 +143,10 @@
 
     const inset = B.CreateBox(
       "yahtzee-game-table-inset",
-      { width: 6.38, height: 0.055, depth: 3.22 },
+      { width: 5.62, height: 0.055, depth: 3.18 },
       scene
     );
-    inset.position = new B.Vector3(0, 1.098, 0.08);
+    inset.position = new B.Vector3(-0.36, 1.098, 0.08);
     inset.material = materials.tableInset;
     makeUnpickable(inset, tableRoot);
 
@@ -147,19 +164,60 @@
     });
 
     [
-      { width: 6.82, depth: 0.08, x: 0, z: -1.78 },
-      { width: 6.82, depth: 0.08, x: 0, z: 1.94 },
-      { width: 0.08, depth: 3.64, x: -3.39, z: 0.08 },
-      { width: 0.08, depth: 3.64, x: 3.39, z: 0.08 },
+      { width: 6.84, depth: 0.14, x: 0, z: -1.78 },
+      { width: 6.84, depth: 0.14, x: 0, z: 1.94 },
+      { width: 0.14, depth: 3.66, x: -3.39, z: 0.08 },
+      { width: 0.14, depth: 3.66, x: 3.39, z: 0.08 },
     ].forEach(function (edge) {
       const trim = B.CreateBox(
         "yahtzee-game-table-trim",
-        { width: edge.width, height: 0.065, depth: edge.depth },
+        { width: edge.width, height: 0.12, depth: edge.depth },
         scene
       );
-      trim.position = new B.Vector3(edge.x, 1.135, edge.z);
+      trim.position = new B.Vector3(edge.x, 1.16, edge.z);
       trim.material = materials.tableTrim;
       makeUnpickable(trim, tableRoot);
+    });
+
+    const frontApron = B.CreateBox(
+      "yahtzee-game-table-front-apron",
+      { width: 6.44, height: 0.48, depth: 0.18 },
+      scene
+    );
+    frontApron.position = new B.Vector3(0, 0.68, -1.78);
+    frontApron.material = materials.darkWood;
+    makeUnpickable(frontApron, tableRoot);
+
+    [-2.48, -1.58, 0, 1.58, 2.48].forEach(function (x, index) {
+      const ornament = B.CreateDisc(
+        "yahtzee-game-table-ornament-" + index,
+        { radius: index === 2 ? 0.2 : 0.12, tessellation: 16 },
+        scene
+      );
+      ornament.position = new B.Vector3(x, 0.68, -1.875);
+      ornament.material = materials.brass;
+      makeUnpickable(ornament, tableRoot);
+    });
+
+    [-1.18, -0.6, 0, 0.6, 1.18].forEach(function (z, index) {
+      const well = B.CreateDisc(
+        "yahtzee-game-table-cup-well-" + index,
+        { radius: 0.15, tessellation: 20 },
+        scene
+      );
+      well.position = new B.Vector3(2.91, 1.226, z + 0.08);
+      well.rotation.x = Math.PI / 2;
+      well.material = materials.well;
+      makeUnpickable(well, tableRoot);
+
+      const ring = B.CreateTorus(
+        "yahtzee-game-table-cup-ring-" + index,
+        { diameter: 0.38, thickness: 0.055, tessellation: 20 },
+        scene
+      );
+      ring.position = new B.Vector3(2.91, 1.23, z + 0.08);
+      ring.material = materials.brass;
+      makeUnpickable(ring, tableRoot);
     });
 
     return tableRoot;
@@ -301,9 +359,7 @@
   function canToggleDie(index) {
     const actions = global.GameRoomYahtzeeStageActions;
     return Boolean(
-      actions &&
-        typeof actions.canToggleDie === "function" &&
-        actions.canToggleDie(index) === true
+      actions && typeof actions.canToggleDie === "function" && actions.canToggleDie(index) === true
     );
   }
 
@@ -332,7 +388,7 @@
 
       scene = new B.Scene(engine);
       scene.clearColor = new B.Color4(0, 0, 0, 0);
-      scene.ambientColor = color3(B, [0.045, 0.05, 0.065]);
+      scene.ambientColor = color3(B, [0.1, 0.09, 0.085]);
 
       const camera = new B.ArcRotateCamera(
         "yahtzee-stage-camera",
@@ -353,26 +409,55 @@
         scene
       );
       moonFill.diffuse = color3(B, [0.38, 0.48, 0.62]);
-      moonFill.groundColor = color3(B, [0.02, 0.022, 0.03]);
-      moonFill.intensity = 0.58;
+      moonFill.groundColor = color3(B, [0.065, 0.045, 0.032]);
+      moonFill.intensity = 1.08;
+
+      const warmFill = new B.PointLight(
+        "yahtzee-stage-warm-fill",
+        new B.Vector3(-3.6, 3.4, -3.6),
+        scene
+      );
+      warmFill.diffuse = color3(B, [1, 0.46, 0.2]);
+      warmFill.specular = color3(B, [1, 0.38, 0.12]);
+      warmFill.intensity = 0.72;
+      warmFill.range = 12;
+
+      const theme = global.GameRoomYahtzeePirateDeckTheme || { assets: {}, shots: {} };
+      const themeAssets = theme.assets || {};
 
       const materials = {
-        deck: createMaterial(B, scene, "yahtzee-stage-deck", [0.035, 0.02, 0.016], {
+        deck: createMaterial(B, scene, "yahtzee-stage-deck", [0.08, 0.035, 0.018], {
           specular: [0.03, 0.018, 0.012],
           alpha: 0.16,
         }),
-        darkWood: createMaterial(B, scene, "yahtzee-stage-dark-wood", [0.032, 0.016, 0.012]),
-        table: createMaterial(B, scene, "yahtzee-table", [0.19, 0.065, 0.024], {
-          specular: [0.14, 0.075, 0.03],
+        darkWood: createMaterial(B, scene, "yahtzee-stage-dark-wood", [0.58, 0.4, 0.33], {
+          specular: [0.11, 0.05, 0.02],
+          ambient: [0.055, 0.02, 0.01],
         }),
-        tableInset: createMaterial(B, scene, "yahtzee-table-inset", [0.074, 0.022, 0.018], {
-          specular: [0.045, 0.022, 0.014],
+        table: createMaterial(B, scene, "yahtzee-table", [0.72, 0.48, 0.36], {
+          specular: [0.28, 0.13, 0.045],
+          ambient: [0.1, 0.03, 0.012],
+          specularPower: 72,
         }),
-        tableTrim: createMaterial(B, scene, "yahtzee-table-trim", [0.29, 0.15, 0.055], {
-          specular: [0.24, 0.13, 0.055],
+        tableInset: createMaterial(B, scene, "yahtzee-table-inset", [0.7, 0.38, 0.34], {
+          specular: [0.08, 0.025, 0.018],
+          ambient: [0.07, 0.012, 0.01],
         }),
-        metal: createMaterial(B, scene, "yahtzee-metal", [0.17, 0.095, 0.032], {
-          specular: [0.3, 0.16, 0.06],
+        tableTrim: createMaterial(B, scene, "yahtzee-table-trim", [0.46, 0.22, 0.055], {
+          specular: [0.42, 0.21, 0.07],
+          ambient: [0.12, 0.055, 0.014],
+          specularPower: 82,
+        }),
+        brass: createMaterial(B, scene, "yahtzee-brass", [0.56, 0.3, 0.075], {
+          specular: [0.65, 0.36, 0.1],
+          emissive: [0.028, 0.012, 0.002],
+          specularPower: 96,
+        }),
+        well: createMaterial(B, scene, "yahtzee-table-well", [0.026, 0.012, 0.009], {
+          specular: [0.02, 0.008, 0.005],
+        }),
+        metal: createMaterial(B, scene, "yahtzee-metal", [0.32, 0.17, 0.045], {
+          specular: [0.46, 0.24, 0.075],
         }),
         lanternGlass: createMaterial(B, scene, "yahtzee-lantern-glass", [0.5, 0.18, 0.03], {
           emissive: [0.23, 0.06, 0.006],
@@ -382,8 +467,10 @@
           emissive: [1, 0.17, 0.006],
           specular: [0, 0, 0],
         }),
-        die: createMaterial(B, scene, "yahtzee-die", [0.69, 0.61, 0.45], {
-          specular: [0.24, 0.18, 0.11],
+        die: createMaterial(B, scene, "yahtzee-die", [0.9, 0.7, 0.33], {
+          specular: [0.42, 0.29, 0.12],
+          emissive: [0.045, 0.026, 0.008],
+          specularPower: 70,
         }),
         dieHeld: createMaterial(B, scene, "yahtzee-die-held", [0.87, 0.43, 0.1], {
           emissive: [0.11, 0.03, 0.003],
@@ -399,6 +486,10 @@
         }),
       };
 
+      applyTexture(B, scene, materials.darkWood, themeAssets.tableWood, 2.4, 1.35);
+      applyTexture(B, scene, materials.table, themeAssets.tableWood, 2.1, 1.25);
+      applyTexture(B, scene, materials.tableInset, themeAssets.tableFelt, 2, 2);
+
       const gameRoot = new B.TransformNode("yahtzee-game-root", scene);
       gameRoot.position = new B.Vector3(0, -0.08, 0.12);
       createGamePlatform(B, scene, gameRoot, materials);
@@ -408,7 +499,6 @@
         return createDie(B, scene, gameRoot, materials, index);
       });
 
-      const theme = global.GameRoomYahtzeePirateDeckTheme || { shots: {} };
       const directorFactory = global.GameRoomYahtzeeCameraDirector;
       const cameraDirector =
         directorFactory && typeof directorFactory.create === "function"
@@ -422,6 +512,7 @@
       let disposed = false;
       let latestState = initialState && typeof initialState === "object" ? initialState : {};
 
+      scene.constantlyUpdateMeshUnderPointer = true;
       scene.onPointerDown = function (_event, pickInfo) {
         const index = readPickedDieIndex(pickInfo);
         if (index < 0 || !canToggleDie(index)) return;

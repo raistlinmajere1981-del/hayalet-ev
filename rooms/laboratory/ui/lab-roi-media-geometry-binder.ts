@@ -22,7 +22,9 @@ const FRAME_PROXY_SELECTOR = "[data-lab-roi-media-frame-proxy='true']";
 
 function getIntrinsicAspectRatio(media: Element) {
   if (media instanceof HTMLVideoElement) {
-    return media.videoWidth > 0 && media.videoHeight > 0 ? media.videoWidth / media.videoHeight : null;
+    return media.videoWidth > 0 && media.videoHeight > 0
+      ? media.videoWidth / media.videoHeight
+      : null;
   }
   if (media instanceof HTMLImageElement) {
     return media.naturalWidth > 0 && media.naturalHeight > 0
@@ -74,7 +76,11 @@ export function calculateLaboratoryContainedMediaRect(
   };
 }
 
-function setPixelStyle(element: HTMLElement, property: "height" | "left" | "top" | "width", value: number) {
+function setPixelStyle(
+  element: HTMLElement,
+  property: "height" | "left" | "top" | "width",
+  value: number
+) {
   const next = `${String(Math.max(0, value))}px`;
   if (element.style[property] !== next) {
     element.style[property] = next;
@@ -114,7 +120,12 @@ export function bindLaboratoryRoiMediaGeometry(deps: LaboratoryRoiMediaGeometryD
     if (syncFrame !== null) {
       return;
     }
-    syncFrame = deps.windowRef.requestAnimationFrame(function () {
+    const requestFrame = deps.windowRef.requestAnimationFrame;
+    if (typeof requestFrame !== "function") {
+      syncAll();
+      return;
+    }
+    syncFrame = requestFrame.call(deps.windowRef, function () {
       syncFrame = null;
       syncAll();
     });
@@ -173,8 +184,16 @@ export function bindLaboratoryRoiMediaGeometry(deps: LaboratoryRoiMediaGeometryD
       "top",
       toLocalCoordinate(renderedRect.top - contentRect.top, contentRect.height, localHeight)
     );
-    setPixelStyle(proxy, "width", toLocalCoordinate(renderedRect.width, contentRect.width, localWidth));
-    setPixelStyle(proxy, "height", toLocalCoordinate(renderedRect.height, contentRect.height, localHeight));
+    setPixelStyle(
+      proxy,
+      "width",
+      toLocalCoordinate(renderedRect.width, contentRect.width, localWidth)
+    );
+    setPixelStyle(
+      proxy,
+      "height",
+      toLocalCoordinate(renderedRect.height, contentRect.height, localHeight)
+    );
 
     if (overlay.parentElement !== proxy) {
       proxy.appendChild(overlay);
@@ -182,7 +201,14 @@ export function bindLaboratoryRoiMediaGeometry(deps: LaboratoryRoiMediaGeometryD
   }
 
   function syncAll() {
-    deps.documentRef.querySelectorAll<HTMLElement>(SINGLE_STAGE_SELECTOR).forEach(function (stage) {
+    const querySelectorAll = deps.documentRef.querySelectorAll;
+    if (typeof querySelectorAll !== "function") {
+      return;
+    }
+    querySelectorAll.call(deps.documentRef, SINGLE_STAGE_SELECTOR).forEach(function (stage) {
+      if (!(stage instanceof HTMLElement)) {
+        return;
+      }
       syncStage(stage);
     });
   }
@@ -203,7 +229,10 @@ export function bindLaboratoryRoiMediaGeometry(deps: LaboratoryRoiMediaGeometryD
 
   return function detachLaboratoryRoiMediaGeometry() {
     if (syncFrame !== null) {
-      deps.windowRef.cancelAnimationFrame(syncFrame);
+      const cancelFrame = deps.windowRef.cancelAnimationFrame;
+      if (typeof cancelFrame === "function") {
+        cancelFrame.call(deps.windowRef, syncFrame);
+      }
       syncFrame = null;
     }
     mutationObserver?.disconnect();

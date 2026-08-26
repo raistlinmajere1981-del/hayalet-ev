@@ -42,8 +42,71 @@
     };
   }
 
+  function readAvatarSource(value) {
+    return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+  }
+
+  function resolveSeatAvatar(context, seatId) {
+    if (!context || typeof context !== "object") return undefined;
+    if (seatId === "user") {
+      const user = context.user;
+      return user && typeof user === "object" ? readAvatarSource(user.avatar) : null;
+    }
+    if (seatId === "ai1" || seatId === "ai2" || seatId === "us1") {
+      const slots = context.slots;
+      const slot = slots && typeof slots === "object" ? slots[seatId] : null;
+      return slot && typeof slot === "object" ? readAvatarSource(slot.avatar) : null;
+    }
+    return undefined;
+  }
+
   runtimeRegistry.createGameRoomUiRuntime = function createYahtzeeAwareGameRoomUiRuntime() {
     const base = createBaseRuntime();
+
+    function withContextAvatars(yahtzeeState) {
+      if (!yahtzeeState || typeof yahtzeeState !== "object") return yahtzeeState;
+      if (!Array.isArray(yahtzeeState.players)) return yahtzeeState;
+      const baseState = typeof base.getState === "function" ? base.getState() : null;
+      const context = baseState && typeof baseState === "object" ? baseState.context : null;
+      return {
+        ...yahtzeeState,
+        players: yahtzeeState.players.map(function (player) {
+          if (!player || typeof player !== "object") return player;
+          const avatarSrc = resolveSeatAvatar(context, player.seatId);
+          return avatarSrc === undefined ? player : { ...player, avatarSrc: avatarSrc };
+        }),
+      };
+    }
+
+    function withContextAvatarsInMessage(message) {
+      const payload = message && typeof message === "object" ? message.payload : null;
+      const nextState = payload && typeof payload === "object" ? payload.state : null;
+      if (!nextState || typeof nextState !== "object") return message;
+      return {
+        ...message,
+        payload: {
+          ...payload,
+          state: withContextAvatars(nextState),
+        },
+      };
+    }
+
+    function refreshYahtzeeAvatars() {
+      const yahtzeeUi = global.GameRoomYahtzeeUi;
+      if (
+        !yahtzeeUi ||
+        typeof yahtzeeUi.getState !== "function" ||
+        typeof yahtzeeUi.handleState !== "function"
+      ) {
+        return;
+      }
+      const currentState = yahtzeeUi.getState();
+      if (!currentState || typeof currentState !== "object") return;
+      yahtzeeUi.handleState({
+        type: "yahtzee-state",
+        payload: { state: withContextAvatars(currentState) },
+      });
+    }
 
     function isYahtzeeActive() {
       const state = typeof base.getState === "function" ? base.getState() : null;
@@ -85,14 +148,19 @@
           global.GameRoomYahtzeeUi &&
           typeof global.GameRoomYahtzeeUi.handleState === "function"
         ) {
-          global.GameRoomYahtzeeUi.handleState(message);
+          global.GameRoomYahtzeeUi.handleState(withContextAvatarsInMessage(message));
         }
         render();
         return;
       }
 
       base.handleHostMessage(message);
-      if (isYahtzeeActive()) render();
+      if (isYahtzeeActive()) {
+        if (message && typeof message === "object" && message.type === "host-context") {
+          refreshYahtzeeAvatars();
+        }
+        render();
+      }
     }
 
     function start() {

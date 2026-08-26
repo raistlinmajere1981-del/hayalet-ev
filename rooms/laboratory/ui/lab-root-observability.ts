@@ -19,6 +19,7 @@ export const LAB_REGION_SELECTORS = {
 export const LAB_OVERLAY_SELECTORS = {
   report: "#lab-report-overlay-root",
   tools: ".labx-overlay-root:not(#lab-report-overlay-root)",
+  youtubeRange: "#lab-youtube-range-overlay-root",
 } as const;
 
 export type LabRegionKey = keyof typeof LAB_REGION_SELECTORS;
@@ -44,6 +45,7 @@ const LAB_REGION_DEBUG_NAMES: Record<LabRegionKey, string> = {
 const LAB_OVERLAY_DEBUG_NAMES: Record<LabOverlayKey, string> = {
   report: "report",
   tools: "tools",
+  youtubeRange: "youtube-range",
 };
 
 const LAB_DEBUG_PANEL_SELECTOR = '[data-lab-debug-panel="true"]';

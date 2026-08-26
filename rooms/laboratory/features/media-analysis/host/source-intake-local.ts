@@ -264,6 +264,8 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
         nextSource["lastError"] = null;
         nextSource["metadata"] = preparedSource.metadata;
         nextSource["metadataError"] = preparedSource.metadataError;
+        delete nextSource["sourceOrigin"];
+        delete nextSource["sourceRangeStartSeconds"];
       });
       resetEditForCurrentSource(runtime, nextProject);
       resetProfileForCurrentSource(

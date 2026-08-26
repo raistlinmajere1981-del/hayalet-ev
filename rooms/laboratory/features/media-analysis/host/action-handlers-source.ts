@@ -39,7 +39,8 @@ type MediaSourceActionRuntimeDeps = {
   handleYoutubeDownload: (
     api: unknown,
     runtime: LaboratoryRecord,
-    requestId: string
+    requestId: string,
+    requestValue?: unknown
   ) => Promise<unknown>;
   handleYoutubeProbe: (
     api: unknown,
@@ -107,6 +108,8 @@ export function createMediaSourceActionRuntime(deps: MediaSourceActionRuntimeDep
       nextProject.source.lastError = null;
       nextProject.source.metadata = null;
       nextProject.source.metadataError = null;
+      delete nextProject.source["sourceOrigin"];
+      delete nextProject.source["sourceRangeStartSeconds"];
       nextProject["workbench"] = resetLaboratoryWorkbenchForSourceActivation(
         nextProject["workbench"]
       );
@@ -135,6 +138,8 @@ export function createMediaSourceActionRuntime(deps: MediaSourceActionRuntimeDep
       nextProject.source.lastError = null;
       nextProject.source.metadata = null;
       nextProject.source.metadataError = null;
+      delete nextProject.source["sourceOrigin"];
+      delete nextProject.source["sourceRangeStartSeconds"];
       nextProject["workbench"] = resetLaboratoryWorkbenchForSourceActivation(
         nextProject["workbench"]
       );
@@ -179,7 +184,7 @@ export function createMediaSourceActionRuntime(deps: MediaSourceActionRuntimeDep
     actionPayload: LaboratoryRecord
   ) {
     await patchActiveProjectDrafts(runtime, actionPayload["fields"]);
-    return handleYoutubeDownload(api, runtime, requestId);
+    return handleYoutubeDownload(api, runtime, requestId, actionPayload);
   }
 
   function isYoutubeUrl(value: string) {

@@ -1530,6 +1530,11 @@ void test("laboratory run controller routes YouTube source selection without imp
       formats: [],
       selectedVideoFormatId: null,
       selectedAudioFormatId: null,
+      rangeSelection: {
+        open: false,
+        startSeconds: null,
+        endSeconds: null,
+      },
     });
 
     assert.equal(
@@ -1573,4 +1578,3 @@ void test("laboratory run controller routes YouTube source selection without imp
     }
   }
 });
-

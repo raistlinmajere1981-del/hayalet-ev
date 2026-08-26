@@ -318,6 +318,7 @@ function renderUrlOverlay(state: LabStoreState, copy: LabI18n, locked: boolean):
   const addAction = buildProjectImportHostAction(state);
   const check = state.ui.projectImport.urlCheck;
   const ready = check.status === "ready";
+  const youtubeReady = ready && check.isYoutube === true;
   const checking = check.status === "checking";
   const primaryAction = ready ? "project-import-url-add" : "project-import-check-url";
   const primaryDisabledReason = ready
@@ -327,11 +328,35 @@ function renderUrlOverlay(state: LabStoreState, copy: LabI18n, locked: boolean):
       : checkAction.disabledReason;
   const primaryDisabledAttr = primaryDisabledReason !== null || locked ? " disabled" : "";
   const primaryLabel = ready
-    ? copy.t("mediaAnalysis.projectImport.url.add", "Projeye Ekle")
+    ? youtubeReady
+      ? copy.t("mediaAnalysis.projectImport.youtubeRange.actions.downloadFull", "Tam Videoyu İndir")
+      : copy.t("mediaAnalysis.projectImport.url.add", "Projeye Ekle")
     : checking
       ? copy.t("mediaAnalysis.projectImport.url.checking", "Kontrol ediliyor")
       : copy.t("mediaAnalysis.projectImport.url.check", "Kontrol Et");
   const clearDisabled = hasProjectImportDraftValue(state) !== true;
+  const tools = asLabRecord(asLabRecord(state.toolState)["tools"]);
+  const ffmpegInstalled = asLabRecord(tools["ffmpeg"])["installed"] === true;
+  const rangePreview = state.ui.youtubeImport.preview;
+  const rangeUnavailableReason =
+    addAction.disabledReason ||
+    (ffmpegInstalled !== true
+      ? copy.t(
+          "mediaAnalysis.projectImport.youtubeRange.validation.ffmpegRequired",
+          "Aralık indirme için FFmpeg gerekli."
+        )
+      : asNonEmptyString(rangePreview?.streamUrl) === null
+        ? copy.t(
+            "mediaAnalysis.projectImport.youtubeRange.validation.previewRequired",
+            "Bu video için oynatılabilir önizleme bulunamadı."
+          )
+        : typeof rangePreview?.duration !== "number" || rangePreview.duration <= 0
+          ? copy.t(
+              "mediaAnalysis.projectImport.youtubeRange.validation.durationRequired",
+              "Aralık seçimi için video süresi gerekli."
+            )
+          : null);
+  const rangeDisabled = locked || rangeUnavailableReason !== null;
 
   return `
     <div class="labx-sp-url-overlay">
@@ -348,6 +373,14 @@ function renderUrlOverlay(state: LabStoreState, copy: LabI18n, locked: boolean):
                   data-lab-action="${escapeHtml(primaryAction)}"${primaryDisabledAttr}>
             ${escapeHtml(primaryLabel)}
            </button>
+           ${
+             youtubeReady
+               ? `<button class="labx-sp-url__btn" type="button"
+                    data-lab-action="youtube-range-open"${rangeDisabled ? " disabled" : ""}${rangeUnavailableReason !== null ? ` title="${escapeHtml(rangeUnavailableReason)}"` : ""}>
+                    ${escapeHtml(copy.t("mediaAnalysis.projectImport.youtubeRange.actions.selectRange", "Aralık Seç"))}
+                  </button>`
+               : ""
+           }
            <button class="labx-sp-url__btn" type="button"
                    data-lab-action="project-import-clear"${clearDisabled || locked ? " disabled" : ""}>
             ${escapeHtml(copy.t("mediaAnalysis.projectImport.clear", "Temizle"))}

@@ -101,5 +101,7 @@
 
 .labx-selection-roi--visual-active {
   z-index: 10;
-  box-shadow: 0 0 0 2px currentColor, 0 0 22px color-mix(in srgb, currentColor 28%, transparent);
+  box-shadow:
+    0 0 0 2px currentColor,
+    0 0 22px color-mix(in srgb, currentColor 28%, transparent);
 }

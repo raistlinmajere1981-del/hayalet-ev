@@ -20,6 +20,7 @@ import { renderWorkspaceSurface } from "./workspace-surface.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
 import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 import { renderReportOverlay } from "./report-overlay.js";
+import { renderYoutubeRangeOverlay } from "./youtube-range-overlay.js";
 import { buildLabDecisionSnapshot, getLabDecisionStableKey } from "./lab-decision-layer.js";
 import {
   getActiveSelection,
@@ -618,6 +619,16 @@ export function startLaboratoryLabRoot() {
       LAB_OVERLAY_SELECTORS.tools,
       function () {
         return renderToolManagementOverlay(state, copy);
+      },
+      shell
+    );
+    syncOverlayRoot(
+      documentRef,
+      runtimeRoot,
+      "youtubeRange",
+      LAB_OVERLAY_SELECTORS.youtubeRange,
+      function () {
+        return renderYoutubeRangeOverlay(state, copy);
       },
       shell
     );

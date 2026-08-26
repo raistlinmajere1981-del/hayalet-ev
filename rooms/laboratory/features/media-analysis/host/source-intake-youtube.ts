@@ -1,4 +1,10 @@
 import { resetLaboratoryWorkbenchForSourceActivation } from "../../../shared/host/runtime-primitives.js";
+import {
+  buildLabYoutubeDownloadSection,
+  getLabYoutubeRequestedDurationSeconds,
+  normalizeLabYoutubeDownloadRange,
+} from "../../../shared/youtube-download-range.js";
+import type { LabYoutubeDownloadRange } from "../../../shared/youtube-download-range.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -52,6 +58,11 @@ type LaboratoryYoutubeFormatRecord = LaboratoryRecord & {
   formatId: string;
   kind: "video" | "audio" | "muxed";
   label: string;
+};
+
+type LaboratoryYoutubeDownloadRequest = LaboratoryRecord & {
+  range?: unknown;
+  youtubeMetadata?: unknown;
 };
 
 const SINGLE_YOUTUBE_VIDEO_URL_ERROR = "Only a single YouTube video URL is supported.";
@@ -278,6 +289,63 @@ export function createMediaYoutubeSourceIntakeRuntime(
     return null;
   }
 
+  function getYoutubePreviewStreamUrl(metadata: LaboratoryRecord): string | null {
+    const formats = Array.isArray(metadata["formats"]) ? metadata["formats"].map(toRecord) : [];
+    const candidates = formats
+      .filter(function (format) {
+        const url = asNonEmptyString(format["url"]);
+        let trustedPreviewUrl = false;
+        if (url !== null) {
+          try {
+            const parsedUrl = new URL(url);
+            const hostname = parsedUrl.hostname.toLowerCase();
+            trustedPreviewUrl =
+              parsedUrl.protocol === "https:" && hostname.endsWith(".googlevideo.com");
+          } catch {
+            trustedPreviewUrl = false;
+          }
+        }
+        return (
+          trustedPreviewUrl &&
+          getYoutubeFormatKind(format) === "muxed" &&
+          format["has_drm"] !== true
+        );
+      })
+      .sort(function (left, right) {
+        const leftExtension = asNonEmptyString(left["ext"]);
+        const rightExtension = asNonEmptyString(right["ext"]);
+        const leftHeight = toNumber(left["height"]) || 0;
+        const rightHeight = toNumber(right["height"]) || 0;
+        const leftScore =
+          (leftExtension === "mp4" ? 10_000 : 0) - Math.abs(Math.min(leftHeight, 720) - 480);
+        const rightScore =
+          (rightExtension === "mp4" ? 10_000 : 0) - Math.abs(Math.min(rightHeight, 720) - 480);
+        return rightScore - leftScore;
+      });
+    return asNonEmptyString(candidates[0]?.["url"]);
+  }
+
+  function getYoutubeVideoId(url: string, metadataValue: unknown): string | null {
+    const metadata = toRecord(metadataValue);
+    const metadataId = asNonEmptyString(metadata["videoId"] ?? metadata["id"]);
+    if (metadataId !== null) {
+      return metadataId;
+    }
+    try {
+      const parsedUrl = new URL(url);
+      const host = parsedUrl.hostname.toLowerCase().replace(/^www\./, "");
+      if (host === "youtu.be") {
+        return asNonEmptyString(parsedUrl.pathname.split("/").filter(Boolean)[0]);
+      }
+      return (
+        asNonEmptyString(parsedUrl.searchParams.get("v")) ||
+        asNonEmptyString(parsedUrl.pathname.split("/").filter(Boolean)[1])
+      );
+    } catch {
+      return null;
+    }
+  }
+
   function getYoutubeFormatKind(format: LaboratoryRecord) {
     const videoCodec = asNonEmptyString(format["vcodec"]);
     const audioCodec = asNonEmptyString(format["acodec"]);
@@ -403,6 +471,8 @@ export function createMediaYoutubeSourceIntakeRuntime(
         thumbnail: getBestThumbnail(metadata),
         uploader: asNonEmptyString(metadata["uploader"]) || asNonEmptyString(metadata["channel"]),
         webpageUrl: asNonEmptyString(metadata["webpage_url"]) || url,
+        videoId: asNonEmptyString(metadata["id"]),
+        streamUrl: getYoutubePreviewStreamUrl(metadata),
       },
       formats,
       ...defaults,
@@ -412,8 +482,17 @@ export function createMediaYoutubeSourceIntakeRuntime(
   function buildYtDlpArgs(
     project: LaboratoryProjectRecord,
     toolState: LaboratoryToolStateRecord,
-    sourceDir: string
+    sourceDir: string,
+    rangeValue?: unknown,
+    sourceDurationSeconds?: unknown
   ) {
+    const range =
+      rangeValue === null || rangeValue === undefined
+        ? null
+        : normalizeLabYoutubeDownloadRange(rangeValue, sourceDurationSeconds);
+    if (range !== null && toolState.ffmpeg.installed !== true) {
+      throw new Error("FFmpeg is required for YouTube range downloads.");
+    }
     const settings = getResolvedYoutubeSettings(project, toolState.sourcePresets);
     const values = settings.values;
     const drafts = getSourceDrafts(project);
@@ -497,6 +576,10 @@ export function createMediaYoutubeSourceIntakeRuntime(
       args.push("--retries", String(retries));
     }
 
+    if (range !== null) {
+      args.push("--download-sections", buildLabYoutubeDownloadSection(range));
+    }
+
     if (
       toolState.ffmpeg.installed === true &&
       typeof toolState.ffmpeg.binaryPath === "string" &&
@@ -518,7 +601,8 @@ export function createMediaYoutubeSourceIntakeRuntime(
   async function handleYoutubeDownload(
     api: unknown,
     runtime: LaboratoryMediaYoutubeRuntime,
-    requestId: string
+    requestId: string,
+    requestValue?: unknown
   ) {
     const project = getActiveProject(runtime);
     if (project === null) {
@@ -538,6 +622,18 @@ export function createMediaYoutubeSourceIntakeRuntime(
       throw new Error("YouTube URL is empty.");
     }
     assertSingleYoutubeVideoUrl(youtubeUrl);
+    const downloadRequest = toRecord(requestValue) as LaboratoryYoutubeDownloadRequest;
+    const youtubeMetadata = toRecord(downloadRequest.youtubeMetadata);
+    const sourceDurationSeconds = toNumber(
+      youtubeMetadata["durationSeconds"] ?? youtubeMetadata["duration"]
+    );
+    const range: LabYoutubeDownloadRange | null =
+      downloadRequest.range === null || downloadRequest.range === undefined
+        ? null
+        : normalizeLabYoutubeDownloadRange(downloadRequest.range, sourceDurationSeconds);
+    if (range !== null && getFfmpegToolState(runtime).installed !== true) {
+      throw new Error("FFmpeg is required for YouTube range downloads.");
+    }
     const captureMode = asNonEmptyString(drafts.youtubeCaptureMode) || "video+audio";
     const draftKind = asNonEmptyString(drafts["kind"]);
     const derivedSourceKind =
@@ -598,7 +694,9 @@ export function createMediaYoutubeSourceIntakeRuntime(
             ffmpeg: getFfmpegToolState(runtime),
             sourcePresets: toRecord(runtime.sourcePresets),
           },
-          sourceDir
+          sourceDir,
+          range,
+          sourceDurationSeconds
         ),
         cwd: sourceDir,
         jobId: jobId,
@@ -654,7 +752,32 @@ export function createMediaYoutubeSourceIntakeRuntime(
         nextSource["mimeType"] = preparedSource.mimeType;
         nextSource["routeLabel"] = "YouTube";
         nextSource["lastError"] = null;
-        nextSource["metadata"] = preparedSource.metadata;
+        if (range === null) {
+          nextSource["metadata"] = preparedSource.metadata;
+          delete nextSource["sourceOrigin"];
+          delete nextSource["sourceRangeStartSeconds"];
+        } else {
+          const requestedDurationSeconds = getLabYoutubeRequestedDurationSeconds(range);
+          const sourceOrigin = {
+            kind: "youtube-range",
+            url: youtubeUrl,
+            videoId: getYoutubeVideoId(youtubeUrl, youtubeMetadata),
+            title: asNonEmptyString(youtubeMetadata["title"]),
+            startSeconds: range.startSeconds,
+            endSeconds: range.endSeconds,
+            requestedDurationSeconds,
+            rangeDownload: true,
+          };
+          nextSource["metadata"] = {
+            ...toRecord(preparedSource.metadata),
+            requestedStartSeconds: range.startSeconds,
+            requestedEndSeconds: range.endSeconds,
+            requestedDurationSeconds,
+            sourceRangeStartSeconds: range.startSeconds,
+          };
+          nextSource["sourceOrigin"] = sourceOrigin;
+          nextSource["sourceRangeStartSeconds"] = range.startSeconds;
+        }
         nextSource["metadataError"] = preparedSource.metadataError;
         resetEditForCurrentSource(runtime, nextProject);
         resetProfileForCurrentSource(
@@ -686,6 +809,14 @@ export function createMediaYoutubeSourceIntakeRuntime(
       return {
         storedFileName: preparedSource.storedFileName,
         storedPath: preparedSource.storedPath,
+        ...(range === null
+          ? {}
+          : {
+              requestedStartSeconds: range.startSeconds,
+              requestedEndSeconds: range.endSeconds,
+              requestedDurationSeconds: getLabYoutubeRequestedDurationSeconds(range),
+              sourceRangeStartSeconds: range.startSeconds,
+            }),
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

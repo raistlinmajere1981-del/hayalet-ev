@@ -63,6 +63,7 @@
 
     const sky = createElement("yahtzee-stage-sky", backdrop);
     const sea = createElement("yahtzee-stage-sea", backdrop);
+    const environment = createElement("yahtzee-stage-environment", backdrop);
     const deckBackdrop = createElement("yahtzee-stage-deck-backdrop", backdrop);
     createElement("yahtzee-stage-horizon-fog", backdrop);
     const crewLayer = createElement("yahtzee-stage-crew", backdrop);
@@ -71,13 +72,17 @@
     const lightning = createElement("yahtzee-stage-lightning", fx);
     createElement("yahtzee-stage-rain-haze", fx);
 
-    const hasEnvironmentArt = [
-      safeImage(sky, assets.sky),
-      safeImage(sea, assets.sea),
-      safeImage(deckBackdrop, assets.deckBackdrop),
-    ].some(Boolean);
+    const hasIntegratedEnvironment = safeImage(environment, assets.environment);
+    const hasEnvironmentArt = hasIntegratedEnvironment
+      ? true
+      : [
+          safeImage(sky, assets.sky),
+          safeImage(sea, assets.sea),
+          safeImage(deckBackdrop, assets.deckBackdrop),
+        ].some(Boolean);
     safeImage(lightning, assets.lightning);
     sceneElement.classList.toggle("has-hybrid-art", hasEnvironmentArt);
+    sceneElement.classList.toggle("has-integrated-environment", hasIntegratedEnvironment);
 
     const crewCount = Math.max(
       0,
@@ -157,7 +162,11 @@
       delete sceneElement.dataset.yahtzeeStagePhase;
       delete sceneElement.dataset.yahtzeeActivePlayer;
       sceneElement.style.removeProperty("--yahtzee-stage-pan-x");
-      sceneElement.classList.remove("has-hybrid-art", "has-two-players");
+      sceneElement.classList.remove(
+        "has-hybrid-art",
+        "has-integrated-environment",
+        "has-two-players"
+      );
     }
 
     return {

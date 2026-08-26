@@ -1086,6 +1086,35 @@
         "noAudio": "No separate audio",
         "directReady": "Direct URL ready as {type}"
       },
+      "youtubeRange": {
+        "eyebrow": "YouTube range download",
+        "start": "Start",
+        "end": "End",
+        "duration": "Duration",
+        "playbackError": "The temporary YouTube preview could not be played. Check the URL again.",
+        "previewUnavailableTitle": "Preview unavailable",
+        "previewUnavailableBody": "No temporary playable stream was found for this video.",
+        "actions": {
+          "downloadFull": "Download Full Video",
+          "selectRange": "Select Range",
+          "setStart": "Set Start Here",
+          "setEnd": "Set End Here",
+          "cancel": "Cancel",
+          "confirm": "Download This Range"
+        },
+        "validation": {
+          "missingBoundary": "Choose both start and end points.",
+          "invalidBoundary": "The selected time points are invalid.",
+          "negativeStart": "The start time cannot be negative.",
+          "endAfterStart": "The end time must be after the start time.",
+          "tooShort": "Choose a range of at least 0.2 seconds.",
+          "afterDuration": "The end time cannot exceed the video duration.",
+          "ffmpegRequired": "FFmpeg is required for range downloads.",
+          "previewRequired": "No playable preview was found for this video.",
+          "durationRequired": "Video duration is required for range selection.",
+          "ready": "The range is ready to download."
+        }
+      },
       "clear": "Clear",
       "add": "Add",
       "review": {

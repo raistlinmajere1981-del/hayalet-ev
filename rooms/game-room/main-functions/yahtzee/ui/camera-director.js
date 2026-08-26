@@ -55,7 +55,8 @@
       }
       if (settings.temporary === true) {
         returnShotName = settings.returnTo || "match";
-        temporaryUntil = Date.now() + Math.max(0, Number(next.holdMs) || Number(settings.holdMs) || 700);
+        temporaryUntil =
+          Date.now() + Math.max(0, Number(next.holdMs) || Number(settings.holdMs) || 700);
       } else {
         returnShotName = null;
         temporaryUntil = 0;

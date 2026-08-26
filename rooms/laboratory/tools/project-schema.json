@@ -44,7 +44,9 @@
         "routeLabel",
         "lastError",
         "metadata",
-        "metadataError"
+        "metadataError",
+        "sourceOrigin",
+        "sourceRangeStartSeconds"
       ],
       "kinds": ["video", "audio", "image"],
       "videoModes": ["youtube", "local", "url"],
@@ -64,8 +66,24 @@
           "streamCount",
           "mimeType",
           "extractedBy",
-          "extractedAt"
+          "extractedAt",
+          "requestedStartSeconds",
+          "requestedEndSeconds",
+          "requestedDurationSeconds",
+          "sourceRangeStartSeconds"
         ]
+      },
+      "sourceOrigin": {
+        "required": ["kind", "url"],
+        "optional": [
+          "videoId",
+          "title",
+          "startSeconds",
+          "endSeconds",
+          "requestedDurationSeconds",
+          "rangeDownload"
+        ],
+        "kinds": ["youtube-range"]
       }
     },
     "assets": {

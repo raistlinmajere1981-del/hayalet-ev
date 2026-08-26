@@ -151,7 +151,8 @@ export function buildLaboratoryVisualResponseReportAssessment(value: unknown) {
     };
   }
 
-  const baselinePoint = findBaselinePoint(points, axis) ?? points[Math.floor(points.length / 2)] ?? {};
+  const baselinePoint =
+    findBaselinePoint(points, axis) ?? points[Math.floor(points.length / 2)] ?? {};
   const baselineTarget = record(baselinePoint["target"]);
   const baselineBackground = record(baselinePoint["background"]);
   const comparability = buildComparability(
@@ -208,7 +209,8 @@ export function buildLaboratoryVisualResponseReportAssessment(value: unknown) {
               : "result-uncertain";
 
   return {
-    dataQuality: comparability.status === "low" ? "limited-by-background-comparability" : "sufficient",
+    dataQuality:
+      comparability.status === "low" ? "limited-by-background-comparability" : "sufficient",
     classification,
     sensorCompatibility:
       comparability.status === "low"

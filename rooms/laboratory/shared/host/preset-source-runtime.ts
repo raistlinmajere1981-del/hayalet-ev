@@ -14,6 +14,10 @@ type LaboratorySourceMetadata = {
   streamCount: number | null;
   videoCodec: string | null;
   width: number | null;
+  requestedStartSeconds?: number;
+  requestedEndSeconds?: number;
+  requestedDurationSeconds?: number;
+  sourceRangeStartSeconds?: number;
 };
 
 type LaboratorySourceDrafts = {
@@ -51,6 +55,26 @@ export function createLaboratoryPresetSourceRuntime(deps: LaboratoryPresetSource
 
   function normalizeSourceMetadata(rawValue: unknown): LaboratorySourceMetadata | null {
     const source = toRecord(rawValue);
+    const requestedStartSeconds =
+      typeof source["requestedStartSeconds"] === "number" &&
+      Number.isFinite(source["requestedStartSeconds"])
+        ? source["requestedStartSeconds"]
+        : null;
+    const requestedEndSeconds =
+      typeof source["requestedEndSeconds"] === "number" &&
+      Number.isFinite(source["requestedEndSeconds"])
+        ? source["requestedEndSeconds"]
+        : null;
+    const requestedDurationSeconds =
+      typeof source["requestedDurationSeconds"] === "number" &&
+      Number.isFinite(source["requestedDurationSeconds"])
+        ? source["requestedDurationSeconds"]
+        : null;
+    const sourceRangeStartSeconds =
+      typeof source["sourceRangeStartSeconds"] === "number" &&
+      Number.isFinite(source["sourceRangeStartSeconds"])
+        ? source["sourceRangeStartSeconds"]
+        : null;
     const normalized: LaboratorySourceMetadata = {
       durationSeconds: asNumber(source["durationSeconds"]),
       width: asNumber(source["width"]),
@@ -65,6 +89,10 @@ export function createLaboratoryPresetSourceRuntime(deps: LaboratoryPresetSource
       mimeType: asNonEmptyString(source["mimeType"]),
       extractedBy: asNonEmptyString(source["extractedBy"]),
       extractedAt: asNonEmptyString(source["extractedAt"]),
+      ...(requestedStartSeconds === null ? {} : { requestedStartSeconds }),
+      ...(requestedEndSeconds === null ? {} : { requestedEndSeconds }),
+      ...(requestedDurationSeconds === null ? {} : { requestedDurationSeconds }),
+      ...(sourceRangeStartSeconds === null ? {} : { sourceRangeStartSeconds }),
     };
 
     const hasValue = Object.values(normalized).some(function (value: string | number | null) {

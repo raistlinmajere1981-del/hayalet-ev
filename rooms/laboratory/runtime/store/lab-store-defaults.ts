@@ -105,6 +105,11 @@ export function createIdleYoutubeImportState(): LabStoreState["ui"]["youtubeImpo
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
+    rangeSelection: {
+      open: false,
+      startSeconds: null,
+      endSeconds: null,
+    },
   };
 }
 

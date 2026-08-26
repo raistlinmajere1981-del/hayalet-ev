@@ -141,6 +141,11 @@ void test("laboratory store keeps checked YouTube import state UI-only and non-p
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
+    rangeSelection: {
+      open: false,
+      startSeconds: null,
+      endSeconds: null,
+    },
   });
 
   store.dispatch({
@@ -176,6 +181,11 @@ void test("laboratory store keeps checked YouTube import state UI-only and non-p
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
+    rangeSelection: {
+      open: false,
+      startSeconds: null,
+      endSeconds: null,
+    },
   });
   const formatSelectionSnapshots = {
     sourceDrafts: JSON.parse(JSON.stringify(store.getState().ui.sourceDrafts)) as Record<string, unknown>,
@@ -253,6 +263,11 @@ void test("laboratory store keeps checked YouTube import state UI-only and non-p
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
+    rangeSelection: {
+      open: false,
+      startSeconds: null,
+      endSeconds: null,
+    },
   });
   store.dispatch({ type: "youtube-import-set-url", url: "   " });
   assert.deepEqual(store.getState().ui.youtubeImport, {
@@ -262,6 +277,11 @@ void test("laboratory store keeps checked YouTube import state UI-only and non-p
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
+    rangeSelection: {
+      open: false,
+      startSeconds: null,
+      endSeconds: null,
+    },
   });
   store.dispatch({ type: "youtube-import-clear" });
   assert.deepEqual(store.getState().ui.youtubeImport, {
@@ -271,6 +291,11 @@ void test("laboratory store keeps checked YouTube import state UI-only and non-p
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
+    rangeSelection: {
+      open: false,
+      startSeconds: null,
+      endSeconds: null,
+    },
   });
   store.dispatch({
     type: "youtube-import-set-url",
@@ -285,6 +310,11 @@ void test("laboratory store keeps checked YouTube import state UI-only and non-p
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
+    rangeSelection: {
+      open: false,
+      startSeconds: null,
+      endSeconds: null,
+    },
   });
 
   const sourceDraftsBefore = store.getState().ui.sourceDrafts;
@@ -340,6 +370,11 @@ void test("laboratory store keeps checked YouTube import state UI-only and non-p
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
+    rangeSelection: {
+      open: false,
+      startSeconds: null,
+      endSeconds: null,
+    },
   });
   assert.equal("youtubeImport" in (store.getState().persisted as unknown as Record<string, unknown>), false);
   assert.equal(store.getState().ui.sourceDrafts.youtubeUrl, "https://youtube.com/watch?v=abc123");
@@ -513,6 +548,11 @@ void test("laboratory store resets project import drafts and checked YouTube sta
     formats: [],
     selectedVideoFormatId: null,
     selectedAudioFormatId: null,
+    rangeSelection: {
+      open: false,
+      startSeconds: null,
+      endSeconds: null,
+    },
   });
 });
 

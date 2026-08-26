@@ -106,12 +106,16 @@ export function normalizeYoutubeImportPreview(
   const duration = asNumber(record["duration"]);
   const uploader = asNonEmptyString(record["uploader"]);
   const webpageUrl = asNonEmptyString(record["webpageUrl"] ?? record["webpage_url"]);
+  const videoId = asNonEmptyString(record["videoId"] ?? record["id"]);
+  const streamUrl = asNonEmptyString(record["streamUrl"]);
   if (
     title === null &&
     thumbnail === null &&
     duration === null &&
     uploader === null &&
-    webpageUrl === null
+    webpageUrl === null &&
+    videoId === null &&
+    streamUrl === null
   ) {
     return null;
   }
@@ -121,6 +125,8 @@ export function normalizeYoutubeImportPreview(
     ...(thumbnail !== null ? { thumbnail } : {}),
     ...(uploader !== null ? { uploader } : {}),
     ...(webpageUrl !== null ? { webpageUrl } : {}),
+    ...(videoId !== null ? { videoId } : {}),
+    ...(streamUrl !== null ? { streamUrl } : {}),
   };
 }
 

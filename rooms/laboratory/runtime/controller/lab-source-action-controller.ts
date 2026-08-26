@@ -15,6 +15,7 @@ import {
   normalizeProjectImportKindValue,
   normalizeProjectImportMethodValue,
 } from "../lab-project-import.js";
+import { getLabYoutubeRangeValidationCode } from "../../shared/youtube-download-range.js";
 import type { createLabStore } from "../lab-store.js";
 import { buildAutoProjectName, buildUiEvent } from "./lab-controller-helpers.js";
 import {
@@ -25,6 +26,7 @@ import {
 } from "./lab-source-draft-controller.js";
 
 type LabSourceActionControllerDeps = {
+  documentRef: Pick<Document, "querySelector">;
   dispatch: ReturnType<typeof createLabStore>["dispatch"];
   pushLockedWorkspaceEvent: (message: string) => void;
   sendMediaAction: (action: string, payload?: Record<string, unknown>) => string | null;
@@ -132,26 +134,36 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
     deps.sendMediaAction("source-pick-local", { fields });
   }
 
-  function runProjectImportAction(importAction: ReturnType<typeof buildProjectImportHostAction>) {
+  function runProjectImportAction(
+    importAction: ReturnType<typeof buildProjectImportHostAction>,
+    requestFields: Record<string, unknown> = {}
+  ) {
     const state = deps.store.getState();
     if (getWorkspaceLockState(state).source === true || isRunActive(state)) {
       deps.pushLockedWorkspaceEvent("Kaynak ayarları aktif analiz sırasında kilitli.");
-      return;
+      return null;
     }
     if (importAction.disabledReason !== null) {
       deps.dispatch({
         type: "push-event",
         event: buildUiEvent(importAction.disabledReason, "warning"),
       });
-      return;
+      return null;
     }
-    const requestId = deps.sendMediaAction(importAction.action, { fields: importAction.fields });
+    const requestId =
+      Object.keys(requestFields).length === 0
+        ? deps.sendMediaAction(importAction.action, { fields: importAction.fields })
+        : deps.sendMediaAction(importAction.action, {
+            fields: importAction.fields,
+            ...requestFields,
+          });
     deps.dispatch({
       type: "project-import-review-focused",
       focus: requestId === null ? "draft" : "running",
       action: importAction.action,
       requestId,
     });
+    return requestId;
   }
 
   function runProjectImportAdd() {
@@ -191,6 +203,101 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
       type: "project-import-url-check-started",
       url: checkAction.url,
     });
+  }
+
+  function getYoutubeRangePlayerCurrentTime(): number | null {
+    const player = deps.documentRef.querySelector(
+      "video[data-lab-youtube-range-player='true']"
+    ) as HTMLVideoElement | null;
+    return player !== null && Number.isFinite(player.currentTime)
+      ? Math.max(0, player.currentTime)
+      : null;
+  }
+
+  function pushYoutubeRangeWarning(message: string) {
+    deps.dispatch({
+      type: "push-event",
+      event: buildUiEvent(message, "warning"),
+    });
+  }
+
+  function openYoutubeRangeSelection() {
+    if (guardSourceManagementLocked()) {
+      return;
+    }
+    const state = deps.store.getState();
+    const preview = state.ui.youtubeImport.preview;
+    const tools = asLabRecord(asLabRecord(state.toolState)["tools"]);
+    if (asLabRecord(tools["ffmpeg"])["installed"] !== true) {
+      pushYoutubeRangeWarning("Aralık indirme için FFmpeg gerekli.");
+      return;
+    }
+    if (
+      asNonEmptyString(preview?.streamUrl) === null ||
+      typeof preview?.duration !== "number" ||
+      Number.isFinite(preview.duration) !== true ||
+      preview.duration <= 0
+    ) {
+      pushYoutubeRangeWarning("Bu video için aralık önizlemesi kullanılamıyor.");
+      return;
+    }
+    deps.dispatch({ type: "youtube-range-selection-opened" });
+  }
+
+  function setYoutubeRangeBoundary(boundary: "start" | "end") {
+    const seconds = getYoutubeRangePlayerCurrentTime();
+    if (seconds === null) {
+      pushYoutubeRangeWarning("Önizleme zamanı okunamadı.");
+      return;
+    }
+    const duration = deps.store.getState().ui.youtubeImport.preview?.duration;
+    const boundedSeconds =
+      typeof duration === "number" && Number.isFinite(duration)
+        ? Math.min(seconds, duration)
+        : seconds;
+    deps.dispatch({
+      type: boundary === "start" ? "youtube-range-start-set" : "youtube-range-end-set",
+      seconds: boundedSeconds,
+    });
+  }
+
+  function cancelYoutubeRangeSelection() {
+    const open = deps.store.getState().ui.youtubeImport.rangeSelection.open;
+    if (open) {
+      deps.dispatch({ type: "youtube-range-selection-closed" });
+    }
+    return open;
+  }
+
+  function confirmYoutubeRangeSelection() {
+    if (guardSourceManagementLocked()) {
+      return;
+    }
+    const state = deps.store.getState();
+    const selection = state.ui.youtubeImport.rangeSelection;
+    const range = {
+      startSeconds: selection.startSeconds,
+      endSeconds: selection.endSeconds,
+    };
+    if (
+      getLabYoutubeRangeValidationCode(range, state.ui.youtubeImport.preview?.duration) !== null
+    ) {
+      pushYoutubeRangeWarning("Geçerli bir başlangıç ve bitiş aralığı seçin.");
+      return;
+    }
+    const preview = state.ui.youtubeImport.preview;
+    const requestId = runProjectImportAction(buildProjectImportHostAction(state), {
+      range,
+      youtubeMetadata: {
+        durationSeconds: preview?.duration,
+        title: preview?.title,
+        videoId: preview?.videoId,
+        webpageUrl: preview?.webpageUrl,
+      },
+    });
+    if (requestId !== null) {
+      deps.dispatch({ type: "youtube-range-selection-closed" });
+    }
   }
 
   function clearProjectImportDraft() {
@@ -345,6 +452,21 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
       case "project-import-add":
         runProjectImportAdd();
         return true;
+      case "youtube-range-open":
+        openYoutubeRangeSelection();
+        return true;
+      case "youtube-range-set-start":
+        setYoutubeRangeBoundary("start");
+        return true;
+      case "youtube-range-set-end":
+        setYoutubeRangeBoundary("end");
+        return true;
+      case "youtube-range-cancel":
+        cancelYoutubeRangeSelection();
+        return true;
+      case "youtube-range-confirm":
+        confirmYoutubeRangeSelection();
+        return true;
       case "project-import-youtube-video-format":
         if (guardSourceManagementLocked()) {
           return true;
@@ -387,6 +509,7 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
 
   return {
     clearProjectImportDraft,
+    cancelYoutubeRangeSelection,
     deleteActiveProject,
     handleSourceClickAction,
     persistSourceDraftField,

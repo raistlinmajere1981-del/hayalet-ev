@@ -102,6 +102,9 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/stage-template-bridge.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/bridge.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/README.md`,
+      `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/deck-stage-v2.webp`,
+      `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/table-mahogany.webp`,
+      `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/table-felt-burgundy.webp`,
       `${installedCopy.rootDir}/main-functions/yahtzee/protocols/game-room-yahtzee-ai-turn.md`,
       `${installedCopy.rootDir}/main-functions/yahtzee/protocols/game-room-yahtzee-us1-transport.md`,
     ].forEach((filePath) => {
@@ -141,6 +144,9 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
       "utf8"
     );
     assert.match(themeSource, /pirate-deck-hybrid/);
+    assert.match(themeSource, /deck-stage-v2\.webp/);
+    assert.match(themeSource, /table-mahogany\.webp/);
+    assert.match(themeSource, /table-felt-burgundy\.webp/);
     assert.match(themeSource, /showcase:/);
     assert.match(themeSource, /turnLeft:/);
     assert.match(themeSource, /turnRight:/);
