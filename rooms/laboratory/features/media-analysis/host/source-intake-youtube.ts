@@ -289,38 +289,48 @@ export function createMediaYoutubeSourceIntakeRuntime(
     return null;
   }
 
+  function isTrustedYoutubePreviewUrl(value: unknown) {
+    const url = asNonEmptyString(value);
+    if (url === null) return false;
+    try {
+      const parsedUrl = new URL(url);
+      const hostname = parsedUrl.hostname.toLowerCase();
+      return (
+        parsedUrl.protocol === "https:" &&
+        (hostname === "googlevideo.com" || hostname.endsWith(".googlevideo.com"))
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function scoreYoutubePreviewFormat(format: LaboratoryRecord) {
+    const kind = getYoutubeFormatKind(format);
+    const extension = asNonEmptyString(format["ext"]);
+    const videoCodec = asNonEmptyString(format["vcodec"]) || "";
+    const height = toNumber(format["height"]) || 0;
+    const targetHeight = Math.min(height, 720);
+    return (
+      (kind === "muxed" ? 100_000 : kind === "video" ? 50_000 : 0) +
+      (extension === "mp4" ? 10_000 : 0) +
+      (/^(avc1|h264)/i.test(videoCodec) ? 5_000 : 0) -
+      Math.abs(targetHeight - 480)
+    );
+  }
+
   function getYoutubePreviewStreamUrl(metadata: LaboratoryRecord): string | null {
     const formats = Array.isArray(metadata["formats"]) ? metadata["formats"].map(toRecord) : [];
     const candidates = formats
       .filter(function (format) {
-        const url = asNonEmptyString(format["url"]);
-        let trustedPreviewUrl = false;
-        if (url !== null) {
-          try {
-            const parsedUrl = new URL(url);
-            const hostname = parsedUrl.hostname.toLowerCase();
-            trustedPreviewUrl =
-              parsedUrl.protocol === "https:" && hostname.endsWith(".googlevideo.com");
-          } catch {
-            trustedPreviewUrl = false;
-          }
-        }
+        const kind = getYoutubeFormatKind(format);
         return (
-          trustedPreviewUrl &&
-          getYoutubeFormatKind(format) === "muxed" &&
+          isTrustedYoutubePreviewUrl(format["url"]) &&
+          (kind === "muxed" || kind === "video") &&
           format["has_drm"] !== true
         );
       })
       .sort(function (left, right) {
-        const leftExtension = asNonEmptyString(left["ext"]);
-        const rightExtension = asNonEmptyString(right["ext"]);
-        const leftHeight = toNumber(left["height"]) || 0;
-        const rightHeight = toNumber(right["height"]) || 0;
-        const leftScore =
-          (leftExtension === "mp4" ? 10_000 : 0) - Math.abs(Math.min(leftHeight, 720) - 480);
-        const rightScore =
-          (rightExtension === "mp4" ? 10_000 : 0) - Math.abs(Math.min(rightHeight, 720) - 480);
-        return rightScore - leftScore;
+        return scoreYoutubePreviewFormat(right) - scoreYoutubePreviewFormat(left);
       });
     return asNonEmptyString(candidates[0]?.["url"]);
   }
@@ -850,6 +860,7 @@ export function createMediaYoutubeSourceIntakeRuntime(
     buildYtDlpArgs,
     findYtDlpFinalPath,
     getResolvedYoutubeSettings,
+    getYoutubePreviewStreamUrl,
     handleYoutubeDownload,
     handleYoutubeProbe,
   };
