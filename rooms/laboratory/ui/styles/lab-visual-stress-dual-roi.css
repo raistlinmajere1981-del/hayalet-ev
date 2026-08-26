@@ -9,10 +9,17 @@
 }
 
 .labx-visual-stress-roi-controls__actions {
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--lab-space-1);
 }
 
 .labx-visual-stress-roi-role {
+  min-width: 0;
+  padding-inline: var(--lab-space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   opacity: 0.72;
 }
 
@@ -104,4 +111,17 @@
   box-shadow:
     0 0 0 2px currentColor,
     0 0 22px color-mix(in srgb, currentColor 28%, transparent);
+}
+
+.labx-selection-roi--visual-target .labx-selection-roi__resize-handle,
+.labx-selection-roi--visual-control .labx-selection-roi__resize-handle,
+.labx-selection-roi--visual-background .labx-selection-roi__resize-handle {
+  min-width: 0.86rem;
+  min-height: 0.86rem;
+}
+
+@media (max-width: 1180px) {
+  .labx-visual-stress-roi-controls__actions {
+    grid-template-columns: 1fr;
+  }
 }
