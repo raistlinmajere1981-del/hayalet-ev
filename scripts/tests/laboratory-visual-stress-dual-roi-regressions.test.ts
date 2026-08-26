@@ -39,8 +39,8 @@ void test("selection binder updates canonical target/control/background roles wi
   assert.match(binder, /type VisualStressRoiRole = "target" \| "control" \| "background"/);
   assert.match(binder, /data-lab-visual-stress-roi-role-control/);
   assert.match(binder, /Control ROI/);
-  assert.match(binder, /data-lab-visual-stress-control-overlay/);
-  assert.match(binder, /data-lab-visual-stress-background-overlay/);
+  assert.match(binder, /syncAuxiliaryOverlay\(overlay, "control"/);
+  assert.match(binder, /syncAuxiliaryOverlay\(overlay, "background"/);
   assert.match(binder, /getComparisonRoi\?\.\("primary"\)/);
   assert.match(binder, /getComparisonRoi\?\.\("reference"\)/);
   assert.match(binder, /role === "control".*"primary"/s);
