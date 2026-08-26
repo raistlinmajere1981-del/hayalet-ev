@@ -58,6 +58,12 @@ type PendingTransformActionFeedback = {
   timerId: number | null;
 };
 
+type WorkspacePreviewVideo = {
+  currentSrc?: string;
+  currentTime?: number;
+  src?: string;
+};
+
 const ACTION_FEEDBACK_HOLD_MS = 1800;
 
 let attached = false;
@@ -197,7 +203,95 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
   }
   attached = true;
   const pendingFeedback = new Map<string, PendingTransformActionFeedback>();
+  const backgroundReferenceSecondsBySource = new Map<string, number>();
   let feedbackSyncFrame: number | null = null;
+  let referenceMutationObserver: MutationObserver | null = null;
+  let referenceSyncQueued = false;
+
+  function getWorkspacePreviewVideo(): WorkspacePreviewVideo | null {
+    const candidate = deps.documentRef.querySelector?.(
+      'video[data-lab-preserve-media="workspace-preview"]'
+    );
+    return candidate === null ? null : (candidate as unknown as WorkspacePreviewVideo);
+  }
+
+  function getWorkspacePreviewSourceKey() {
+    const media = getWorkspacePreviewVideo();
+    if (media === null) return null;
+    const currentSrc = typeof media.currentSrc === "string" ? media.currentSrc.trim() : "";
+    if (currentSrc !== "") return currentSrc;
+    const src = typeof media.src === "string" ? media.src.trim() : "";
+    return src === "" ? null : src;
+  }
+
+  function getBackgroundReferenceSeconds() {
+    const sourceKey = getWorkspacePreviewSourceKey();
+    return sourceKey === null ? null : (backgroundReferenceSecondsBySource.get(sourceKey) ?? null);
+  }
+
+  function ensureBackgroundReferenceControls(root: HTMLElement, state: TransformStackRootState) {
+    if (state.scope !== "visual" || state.recipeSection !== "video") return null;
+    const panel = root.querySelector<HTMLElement>("[data-lab-control-injection='true'] .labx-card__body");
+    if (panel === null) return null;
+    let controls = panel.querySelector<HTMLElement>("[data-lab-background-reference-controls='true']");
+    if (controls === null) {
+      const markup = `<div class="labx-visual-stress-background-reference" data-lab-background-reference-controls="true">
+        <p class="labx-card__eyebrow">Background Reference</p>
+        <div class="labx-controls-actions">
+          <button class="labx-inline-action labx-transform-action" type="button" data-lab-action="workspace-background-reference-capture">Arka Plan Referansını Al</button>
+          <button class="labx-inline-action labx-transform-action" type="button" data-lab-action="workspace-background-reference-clear">Temizle</button>
+        </div>
+        <p class="labx-card__meta" data-lab-background-reference-status="true"></p>
+      </div>`;
+      const roiControls = panel.querySelector<HTMLElement>("[data-lab-visual-stress-roi-controls='true']");
+      if (roiControls !== null) {
+        roiControls.insertAdjacentHTML("afterend", markup);
+      } else {
+        panel.insertAdjacentHTML("afterbegin", markup);
+      }
+      controls = panel.querySelector<HTMLElement>("[data-lab-background-reference-controls='true']");
+    }
+    return controls;
+  }
+
+  function syncBackgroundReferenceUi() {
+    referenceSyncQueued = false;
+    const referenceSeconds = getBackgroundReferenceSeconds();
+    const sourceKey = getWorkspacePreviewSourceKey();
+    deps.documentRef.querySelectorAll<HTMLElement>("[data-lab-transform-stack]").forEach(function (root) {
+      const state = readRootState(root);
+      if (state === null) return;
+      const controls = ensureBackgroundReferenceControls(root, state);
+      if (controls === null) return;
+      const capture = controls.querySelector<HTMLButtonElement>(
+        '[data-lab-action="workspace-background-reference-capture"]'
+      );
+      const clear = controls.querySelector<HTMLButtonElement>(
+        '[data-lab-action="workspace-background-reference-clear"]'
+      );
+      const status = controls.querySelector<HTMLElement>("[data-lab-background-reference-status='true']");
+      const canCapture =
+        state.locked !== true &&
+        sourceKey !== null &&
+        state.temporalRequest !== null &&
+        state.temporalRequest.roi !== null;
+      if (capture !== null) capture.disabled = !canCapture;
+      if (clear !== null) clear.disabled = state.locked || referenceSeconds === null;
+      if (status !== null) {
+        const next =
+          referenceSeconds === null
+            ? "Aynı Target ROI için temiz arka planın göründüğü kareye gidip referansı alın."
+            : `Referans: ${referenceSeconds.toFixed(3)} s · aynı Target ROI koordinatı`;
+        if (status.textContent !== next) status.textContent = next;
+      }
+    });
+  }
+
+  function scheduleBackgroundReferenceUiSync() {
+    if (referenceSyncQueued) return;
+    referenceSyncQueued = true;
+    void Promise.resolve().then(syncBackgroundReferenceUi);
+  }
 
   function findFeedbackButton(feedback: PendingTransformActionFeedback) {
     const roots = deps.documentRef.querySelectorAll<HTMLElement>("[data-lab-transform-stack]");
@@ -327,10 +421,12 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
       }
     }
     schedulePendingFeedbackSync();
+    scheduleBackgroundReferenceUiSync();
   }
 
   function handleClick(event: Event) {
     schedulePendingFeedbackSync();
+    scheduleBackgroundReferenceUiSync();
     if (!(event.target instanceof Element)) {
       return;
     }
@@ -347,6 +443,34 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
       return;
     }
     const action = actionButton.dataset["labAction"] || "";
+
+    if (action === "workspace-background-reference-capture") {
+      if (state.scope !== "visual" || state.temporalRequest?.roi == null) return;
+      const media = getWorkspacePreviewVideo();
+      const sourceKey = getWorkspacePreviewSourceKey();
+      const currentTime = media?.currentTime;
+      if (
+        sourceKey === null ||
+        typeof currentTime !== "number" ||
+        Number.isFinite(currentTime) !== true ||
+        currentTime < 0
+      ) {
+        return;
+      }
+      event.preventDefault();
+      backgroundReferenceSecondsBySource.set(sourceKey, currentTime);
+      syncBackgroundReferenceUi();
+      return;
+    }
+
+    if (action === "workspace-background-reference-clear") {
+      const sourceKey = getWorkspacePreviewSourceKey();
+      if (sourceKey === null) return;
+      event.preventDefault();
+      backgroundReferenceSecondsBySource.delete(sourceKey);
+      syncBackgroundReferenceUi();
+      return;
+    }
 
     if (action === "workspace-transform-preview") {
       event.preventDefault();
@@ -437,12 +561,15 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
         return;
       }
       event.preventDefault();
+      const backgroundReferenceSeconds =
+        kind === "appearance-transition" ? getBackgroundReferenceSeconds() : null;
       const requestId = sendMediaAction(deps.windowRef, state, "edit-control-injection", {
         request: {
           kind,
           temporalRequest: state.temporalRequest,
           ...(state.backgroundRoi === null ? {} : { backgroundRoi: state.backgroundRoi }),
           ...(state.controlRoi === null ? {} : { controlRoi: state.controlRoi }),
+          ...(backgroundReferenceSeconds === null ? {} : { backgroundReferenceSeconds }),
         },
       });
       if (requestId !== null) {
@@ -532,11 +659,21 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
   deps.documentRef.addEventListener("click", handleClick);
   deps.documentRef.addEventListener("change", handleChange);
   deps.windowRef.roomAPI?.onHostMessage?.(handleHostMessage);
+  if (typeof MutationObserver !== "undefined") {
+    referenceMutationObserver = new MutationObserver(scheduleBackgroundReferenceUiSync);
+    referenceMutationObserver.observe(deps.documentRef.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+  }
+  scheduleBackgroundReferenceUiSync();
 
   return function detach() {
     deps.documentRef.removeEventListener("click", handleClick);
     deps.documentRef.removeEventListener("change", handleChange);
     deps.windowRef.roomAPI?.offHostMessage?.(handleHostMessage);
+    referenceMutationObserver?.disconnect();
+    referenceMutationObserver = null;
     if (feedbackSyncFrame !== null) {
       deps.windowRef.cancelAnimationFrame(feedbackSyncFrame);
     }
@@ -546,6 +683,7 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
       }
     }
     pendingFeedback.clear();
+    backgroundReferenceSecondsBySource.clear();
     attached = false;
   };
 }
