@@ -4,6 +4,7 @@ import { createMediaAnnotationExportActionRuntime } from "./action-handlers-anno
 import { createMediaProfileActionRuntime } from "./action-handlers-profile.js";
 import { createMediaProjectActionRuntime } from "./action-handlers-project.js";
 import { createMediaSourceActionRuntime } from "./action-handlers-source.js";
+import { createLaboratoryBackgroundReferenceConvergenceRuntime } from "./background-reference-convergence.js";
 import { createLaboratoryStructuralTransitionRuntime } from "./structural-transition.js";
 import { createLaboratoryTransitionControlPhotometryRuntime } from "./transition-control-photometry.js";
 import { createLaboratoryVisualResponseProbeRuntime } from "./visual-response-probe.js";
@@ -261,6 +262,14 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     roomId: deps.roomId,
     toRecord: deps.toRecord,
   });
+  const backgroundReferenceConvergenceRuntime =
+    createLaboratoryBackgroundReferenceConvergenceRuntime({
+      callRoomTools: deps.callRoomTools,
+      getProjectEditOutputDir: runtimeProjectOutput,
+      readBinaryFileBytes: deps.readBinaryFileBytes,
+      roomId: deps.roomId,
+      toRecord: deps.toRecord,
+    });
   const controlPhotometryRuntime = createLaboratoryTransitionControlPhotometryRuntime({
     callRoomTools: deps.callRoomTools,
     getProjectEditOutputDir: runtimeProjectOutput,
@@ -396,7 +405,8 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     rawResult: LaboratoryRecord,
     temporalRequest: LaboratoryRecord,
     backgroundRoi: ReturnType<typeof normalizeLaboratoryResponseBackgroundRoi>,
-    controlRoi: ReturnType<typeof normalizeLaboratoryResponseBackgroundRoi>
+    controlRoi: ReturnType<typeof normalizeLaboratoryResponseBackgroundRoi>,
+    backgroundReferenceSeconds: number | null
   ) {
     const project = deps.getActiveProject(runtime);
     if (project === null || backgroundRoi === null) return rawResult;
@@ -444,6 +454,40 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
         status: "unavailable",
         error: error instanceof Error ? error.message : "Structural transition analysis failed.",
       };
+    }
+
+    if (backgroundReferenceSeconds !== null && structural["status"] !== "unavailable") {
+      try {
+        const targetStructuralTimeline = Array.isArray(structural["timeline"])
+          ? (structural["timeline"] as unknown[])
+          : [];
+        structural = {
+          ...structural,
+          revealedBackground: await backgroundReferenceConvergenceRuntime.analyzeConvergence({
+            backgroundReferenceSeconds,
+            durationSeconds,
+            eventSeconds,
+            project: projectRecord,
+            requestId,
+            runtime,
+            sourcePath,
+            targetRoi,
+            targetStructuralTimeline,
+          }),
+        };
+      } catch (error) {
+        structural = {
+          ...structural,
+          revealedBackground: {
+            status: "unavailable",
+            referenceTimeSeconds: backgroundReferenceSeconds,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Background reference convergence analysis failed.",
+          },
+        };
+      }
     }
 
     const phases = Array.isArray(rawResult["phases"])
@@ -511,12 +555,15 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     const structuralAssessment = asRecord(structural["assessment"]);
     const structuralClassification = deps.asNonEmptyString(structuralAssessment["classification"]);
     const roiStability = asRecord(structural["roiStability"]);
+    const revealedBackground = asRecord(structural["revealedBackground"]);
+    const revealedBackgroundAssessment = asRecord(revealedBackground["assessment"]);
     const enrichedResult: LaboratoryRecord = {
       ...rawResult,
       schemaVersion: 2,
       request: {
         ...resultRequest,
         controlRoi,
+        ...(backgroundReferenceSeconds === null ? {} : { backgroundReferenceSeconds }),
       },
       phases: enrichedPhases,
       structural,
@@ -527,6 +574,12 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
         structuralClassification,
         controlComparability,
         roiStability,
+        revealedBackgroundClassification: deps.asNonEmptyString(
+          revealedBackgroundAssessment["classification"]
+        ),
+        referenceTransitionShape: deps.asNonEmptyString(
+          revealedBackgroundAssessment["transitionShape"]
+        ),
       },
     };
     return replaceStoredResult(runtime, enrichedResult);
@@ -563,6 +616,11 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
         );
       }
       const controlRoi = normalizeLaboratoryResponseBackgroundRoi(request["controlRoi"]);
+      const rawBackgroundReferenceSeconds = finiteOrNull(request, "backgroundReferenceSeconds");
+      const backgroundReferenceSeconds =
+        rawBackgroundReferenceSeconds !== null && rawBackgroundReferenceSeconds >= 0
+          ? rawBackgroundReferenceSeconds
+          : null;
       const result = asRecord(
         await visualResponseRuntime.runTransitionProbe(runtime, requestId, {
           temporalRequest,
@@ -575,7 +633,8 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
         result,
         temporalRequest,
         backgroundRoi,
-        controlRoi
+        controlRoi,
+        backgroundReferenceSeconds
       );
     }
 
