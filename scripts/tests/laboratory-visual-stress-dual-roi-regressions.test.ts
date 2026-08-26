@@ -26,7 +26,10 @@ void test("selection binder exposes independent target/control/background roles 
   assert.match(binder, /getComparisonRoi\?\.\("reference"\)/);
   assert.match(binder, /role === "control".*"primary"/s);
   assert.match(binder, /role === "background".*"reference"/s);
-  assert.match(binder, /comparisonSide: resolveInteractionComparisonSide/);
+  assert.match(binder, /role: VisualStressRoiRole \| null/);
+  assert.match(binder, /emitVisualStressComparisonRoi/);
+  assert.match(binder, /workspace-comparison-updated/);
+  assert.match(binder, /emitRoiUpdate\(dragState\.role, dragState\.comparisonSide/);
 });
 
 void test("control and background ROI are carried explicitly from UI controller to host runtime", async () => {
