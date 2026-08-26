@@ -17,22 +17,6 @@ type RenderWorkspaceROIOverlayOptions = {
 
 const SELECTION_ROI_RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 
-function renderSelectionFocusMask(selectionRoi: LabSelectionROI) {
-  const left = Math.max(0, Math.min(100, selectionRoi.x * 100));
-  const top = Math.max(0, Math.min(100, selectionRoi.y * 100));
-  const width = Math.max(0, Math.min(100 - left, selectionRoi.width * 100));
-  const height = Math.max(0, Math.min(100 - top, selectionRoi.height * 100));
-  const right = Math.max(0, 100 - (left + width));
-  const bottom = Math.max(0, 100 - (top + height));
-
-  return `
-    <div class="labx-selection-roi-mask labx-selection-roi-mask--top" style="left: 0%; top: 0%; width: 100%; height: ${String(top)}%"></div>
-    <div class="labx-selection-roi-mask labx-selection-roi-mask--left" style="left: 0%; top: ${String(top)}%; width: ${String(left)}%; height: ${String(height)}%"></div>
-    <div class="labx-selection-roi-mask labx-selection-roi-mask--right" style="left: ${String(left + width)}%; top: ${String(top)}%; width: ${String(right)}%; height: ${String(height)}%"></div>
-    <div class="labx-selection-roi-mask labx-selection-roi-mask--bottom" style="left: 0%; top: ${String(top + height)}%; width: 100%; height: ${String(bottom)}%"></div>
-  `;
-}
-
 function renderSelectionResizeHandles(
   copy: LabI18n,
   visualStressRole: VisualStressRoiRole | null = null
@@ -69,7 +53,6 @@ function renderSelectionRoi(
       ? ""
       : ` data-lab-visual-stress-roi-role="${visualStressRole}"`;
   return `
-    ${renderSelectionFocusMask(selectionRoi)}
     <div
       class="labx-selection-roi${roiFocusActive ? " labx-selection-roi--focused" : ""}"
       style="left: ${String(selectionRoi.x * 100)}%; top: ${String(selectionRoi.y * 100)}%; width: ${String(selectionRoi.width * 100)}%; height: ${String(selectionRoi.height * 100)}%"
@@ -206,6 +189,7 @@ export function renderWorkspaceROIOverlay(
       data-lab-selection-roi-enabled="${options.selectionRoiEnabled ? "true" : "false"}"
       data-lab-source-kind="${escapeHtml(options.sourceKind)}"
     >
+      <!-- labx-selection-roi-mask intentionally not rendered: ROI inspection must not dim the source preview. -->
       ${selectionRoi ? renderSelectionRoi(selectionRoi, roiFocusActive, mutationLocked, copy, options.sourceKind) : ""}
       ${visualStressNodes}
       ${regionElements}
