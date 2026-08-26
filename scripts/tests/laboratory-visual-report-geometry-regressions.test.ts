@@ -187,5 +187,7 @@ void test("visual report actions and geometry binders are wired at the Laborator
   assert.match(reportBinder, /clipboard/);
   assert.match(reportBinder, /text\/markdown/);
   assert.match(geometryBinder, /ResizeObserver/);
-  assert.match(geometryBinder, /data-lab-selection-roi-frame/);
+  assert.match(geometryBinder, /OVERLAY_SELECTOR = "\[data-lab-selection-roi-overlay='true'\]"/);
+  assert.match(geometryBinder, /overlay\.style\.inset = "auto"/);
+  assert.doesNotMatch(geometryBinder, /appendChild\(overlay\)/);
 });
