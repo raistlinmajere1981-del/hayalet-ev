@@ -38,10 +38,10 @@ type SelectionRoiBinderDeps = {
 
 type DrawDragState = {
   comparisonSide: LabComparisonSide | null;
+  interactionRect: RectLike;
   lastSignature: string | null;
   mode: "draw";
   role: VisualStressRoiRole | null;
-  stage: StageElement;
   startX: number;
   startY: number;
 };
@@ -50,10 +50,10 @@ type ResizeDragState = {
   comparisonSide: LabComparisonSide | null;
   handle: SelectionRoiResizeHandle;
   initialRoi: LabSelectionROI;
+  interactionRect: RectLike;
   lastSignature: string | null;
   mode: "resize";
   role: VisualStressRoiRole | null;
-  stage: StageElement;
   startX: number;
   startY: number;
 };
@@ -168,12 +168,8 @@ function createSelectionRoiResult(roi: LabSelectionROI, rect: RectLike) {
   };
 }
 
-function createSelectionRoiFromDrag(
-  stage: StageElement,
-  dragState: DrawDragState,
-  event: MouseLikeEvent
-) {
-  const rect = getSelectionRoiRect(stage);
+function createSelectionRoiFromDrag(dragState: DrawDragState, event: MouseLikeEvent) {
+  const rect = dragState.interactionRect;
   const currentPoint = clampPointToRect(event, rect);
   const left = Math.min(dragState.startX, currentPoint.x);
   const top = Math.min(dragState.startY, currentPoint.y);
@@ -200,12 +196,8 @@ function createSelectionRoiFromDrag(
   );
 }
 
-function createSelectionRoiFromResize(
-  stage: StageElement,
-  dragState: ResizeDragState,
-  event: MouseLikeEvent
-) {
-  const rect = getSelectionRoiRect(stage);
+function createSelectionRoiFromResize(dragState: ResizeDragState, event: MouseLikeEvent) {
+  const rect = dragState.interactionRect;
   if (rect.width <= 0 || rect.height <= 0) {
     return null;
   }
@@ -639,16 +631,17 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       ) {
         return;
       }
-      const startPoint = clampPointToRect(event, getSelectionRoiRect(stage));
+      const interactionRect = getSelectionRoiRect(stage);
+      const startPoint = clampPointToRect(event, interactionRect);
       event.preventDefault();
       dragState = {
         comparisonSide,
         handle,
         initialRoi,
+        interactionRect,
         lastSignature: null,
         mode: "resize",
         role,
-        stage,
         startX: startPoint.x,
         startY: startPoint.y,
       };
@@ -665,10 +658,10 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     const sourceKind = deps.getSourceKind();
     if (!canDrawSelectionRoi(deps.getActiveSelection(), sourceKind)) return;
 
-    const rect = getSelectionRoiRect(stage);
+    const interactionRect = getSelectionRoiRect(stage);
     const reserveBottom = getReserveBottom(stage);
-    const startPoint = clampPointToRect(event, rect);
-    if (startPoint.y > rect.bottom - reserveBottom) return;
+    const startPoint = clampPointToRect(event, interactionRect);
+    if (startPoint.y > interactionRect.bottom - reserveBottom) return;
 
     const role = resolveInteractionRole(target);
     event.preventDefault();
@@ -677,10 +670,10 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
         role === null
           ? resolveInteractionComparisonSide(target, stage)
           : visualRoleComparisonSide(role),
+      interactionRect,
       lastSignature: null,
       mode: "draw",
       role,
-      stage,
       startX: startPoint.x,
       startY: startPoint.y,
     };
@@ -695,8 +688,8 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     const event = rawEvent as MouseLikeEvent;
     const nextSelectionRoi =
       dragState.mode === "resize"
-        ? createSelectionRoiFromResize(dragState.stage, dragState, event)
-        : createSelectionRoiFromDrag(dragState.stage, dragState, event);
+        ? createSelectionRoiFromResize(dragState, event)
+        : createSelectionRoiFromDrag(dragState, event);
     if (nextSelectionRoi === null || dragState.lastSignature === nextSelectionRoi.signature) return;
 
     dragState.lastSignature = nextSelectionRoi.signature;
