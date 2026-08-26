@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { normalizeLaboratoryResponseBackgroundRoi } from "../../rooms/laboratory/shared/visual-response-probe-model.ts";
+import { renderWorkspaceROIOverlay } from "../../rooms/laboratory/ui/workspace-roi-overlay.ts";
 
 void test("visual stress ROI normalization accepts explicit comparison geometry", () => {
   assert.deepEqual(
@@ -15,7 +16,25 @@ void test("visual stress ROI normalization accepts explicit comparison geometry"
   );
 });
 
-void test("selection binder exposes independent target/control/background roles without replacing target ROI", async () => {
+void test("video ROI renderer owns stable target control and background nodes", () => {
+  const markup = renderWorkspaceROIOverlay({
+    legacyRegions: [],
+    selectionRoi: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+    selectionRoiEnabled: true,
+    sourceKind: "video",
+  });
+
+  assert.match(markup, /data-lab-selection-roi-frame="true"/);
+  assert.match(markup, /data-lab-visual-stress-roi-role="target"/);
+  assert.match(markup, /data-lab-visual-stress-control-overlay="true"/);
+  assert.match(markup, /data-lab-visual-stress-background-overlay="true"/);
+  assert.match(markup, /data-lab-selection-roi="control"/);
+  assert.match(markup, /data-lab-selection-roi="background"/);
+  assert.match(markup, /data-lab-visual-stress-control-overlay="true"[\s\S]*hidden/);
+  assert.match(markup, /data-lab-visual-stress-background-overlay="true"[\s\S]*hidden/);
+});
+
+void test("selection binder updates canonical target/control/background roles without replacing target ROI", async () => {
   const binder = await readFile("rooms/laboratory/ui/lab-selection-roi-binder.ts", "utf8");
   assert.match(binder, /type VisualStressRoiRole = "target" \| "control" \| "background"/);
   assert.match(binder, /data-lab-visual-stress-roi-role-control/);
@@ -30,6 +49,20 @@ void test("selection binder exposes independent target/control/background roles 
   assert.match(binder, /emitVisualStressComparisonRoi/);
   assert.match(binder, /workspace-comparison-updated/);
   assert.match(binder, /emitRoiUpdate\(dragState\.role, dragState\.comparisonSide/);
+  assert.doesNotMatch(binder, /overlay\.insertAdjacentHTML/);
+  assert.match(binder, /existing\.setAttribute\("hidden", ""\)/);
+  assert.match(binder, /existing\.removeAttribute\("hidden"\)/);
+});
+
+void test("ROI geometry binder keeps the canonical overlay in one coordinate parent", async () => {
+  const geometryBinder = await readFile(
+    "rooms/laboratory/ui/lab-roi-media-geometry-binder.ts",
+    "utf8"
+  );
+  assert.match(geometryBinder, /overlay\.style\.inset = "auto"/);
+  assert.match(geometryBinder, /setPixelStyle\(\s*overlay,/s);
+  assert.doesNotMatch(geometryBinder, /appendChild\(overlay\)/);
+  assert.doesNotMatch(geometryBinder, /data-lab-roi-media-frame-proxy/);
 });
 
 void test("control and background ROI are carried explicitly from UI controller to host runtime", async () => {
