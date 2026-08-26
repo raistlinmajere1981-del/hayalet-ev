@@ -102,7 +102,7 @@ function genericMarkdown(entry: Entry, title: string) {
     "",
     "## Record",
     "```json",
-    JSON.stringify(entry, null, 2) ?? "{}",
+    JSON.stringify(entry, null, 2),
     "```"
   );
   return lines.join("\n");
