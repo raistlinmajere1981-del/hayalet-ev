@@ -3,6 +3,8 @@ import type { LabROIRegion, LabSelectionROI } from "../domain/lab-types.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
+type VisualStressRoiRole = "target" | "control" | "background";
+
 type RenderWorkspaceROIOverlayOptions = {
   legacyRegions: LabROIRegion[];
   mutationLocked?: boolean;
@@ -31,15 +33,22 @@ function renderSelectionFocusMask(selectionRoi: LabSelectionROI) {
   `;
 }
 
-function renderSelectionResizeHandles(copy: LabI18n) {
+function renderSelectionResizeHandles(
+  copy: LabI18n,
+  visualStressRole: VisualStressRoiRole | null = null
+) {
   const label = escapeHtml(copy.t("mediaAnalysis.roi.actions.resizeRegion", "Resize region"));
+  const roleAttribute =
+    visualStressRole === null
+      ? ""
+      : ` data-lab-visual-stress-roi-role="${visualStressRole}"`;
   return SELECTION_ROI_RESIZE_HANDLES.map(function (handle) {
     return `
       <button
         class="labx-selection-roi__resize-handle labx-selection-roi__resize-handle--${handle}"
         type="button"
         data-lab-selection-roi-resize="${handle}"
-        data-lab-selection-roi-ignore="true"
+        data-lab-selection-roi-ignore="true"${roleAttribute}
         aria-label="${label}"
         title="${label}"
       ></button>
@@ -51,15 +60,21 @@ function renderSelectionRoi(
   selectionRoi: LabSelectionROI,
   roiFocusActive: boolean,
   mutationLocked: boolean,
-  copy: LabI18n
+  copy: LabI18n,
+  sourceKind: string
 ) {
+  const visualStressRole: VisualStressRoiRole | null = sourceKind === "video" ? "target" : null;
+  const roleAttribute =
+    visualStressRole === null
+      ? ""
+      : ` data-lab-visual-stress-roi-role="${visualStressRole}"`;
   return `
     ${renderSelectionFocusMask(selectionRoi)}
     <div
       class="labx-selection-roi${roiFocusActive ? " labx-selection-roi--focused" : ""}"
       style="left: ${String(selectionRoi.x * 100)}%; top: ${String(selectionRoi.y * 100)}%; width: ${String(selectionRoi.width * 100)}%; height: ${String(selectionRoi.height * 100)}%"
       data-lab-selection-roi="true"
-      data-lab-selection-roi-ignore="true"
+      data-lab-selection-roi-ignore="true"${roleAttribute}
     >
       <div class="labx-selection-roi__label">${escapeHtml(
         roiFocusActive
@@ -74,11 +89,48 @@ function renderSelectionRoi(
               class="labx-selection-roi__clear"
               type="button"
               data-lab-selection-roi-clear="true"
-              data-lab-selection-roi-ignore="true"
+              data-lab-selection-roi-ignore="true"${roleAttribute}
               aria-label="${escapeHtml(copy.t("mediaAnalysis.roi.actions.clearRegion", "Clear region"))}"
               title="${escapeHtml(copy.t("mediaAnalysis.roi.actions.clearRegion", "Clear region"))}"
             >&times;</button>
-            ${renderSelectionResizeHandles(copy)}
+            ${renderSelectionResizeHandles(copy, visualStressRole)}
+          `
+      }
+    </div>
+  `;
+}
+
+function renderVisualStressAuxiliaryRoi(
+  role: "control" | "background",
+  mutationLocked: boolean,
+  copy: LabI18n
+) {
+  const title = role === "control" ? "Control ROI" : "Background ROI";
+  return `
+    <div
+      class="labx-selection-roi labx-selection-roi--visual-${role}"
+      data-lab-selection-roi="${role}"
+      data-lab-selection-roi-ignore="true"
+      data-lab-visual-stress-${role}-overlay="true"
+      data-lab-visual-stress-roi-role="${role}"
+      data-active="false"
+      hidden
+    >
+      <div class="labx-selection-roi__label">${title}</div>
+      ${
+        mutationLocked
+          ? ""
+          : `
+            <button
+              class="labx-selection-roi__clear"
+              type="button"
+              data-lab-selection-roi-clear="true"
+              data-lab-selection-roi-ignore="true"
+              data-lab-visual-stress-roi-role="${role}"
+              aria-label="Clear ${title}"
+              title="Clear ${title}"
+            >&times;</button>
+            ${renderSelectionResizeHandles(copy, role)}
           `
       }
     </div>
@@ -138,18 +190,24 @@ export function renderWorkspaceROIOverlay(
   const mutationLocked = options.mutationLocked === true;
   const regionElements = renderLegacyRegions(options.legacyRegions, mutationLocked, copy);
   const overlayId = options.overlayId || "lab-roi-overlay";
+  const visualStressNodes =
+    options.sourceKind === "video"
+      ? `${renderVisualStressAuxiliaryRoi("control", mutationLocked, copy)}${renderVisualStressAuxiliaryRoi("background", mutationLocked, copy)}`
+      : "";
 
   return `
     <div
       class="labx-roi-overlay"
       id="${escapeHtml(overlayId)}"
       data-lab-selection-roi-overlay="true"
+      data-lab-selection-roi-frame="true"
       data-lab-roi-focus-active="${roiFocusActive ? "true" : "false"}"
       data-lab-roi-mutation-locked="${mutationLocked ? "true" : "false"}"
       data-lab-selection-roi-enabled="${options.selectionRoiEnabled ? "true" : "false"}"
       data-lab-source-kind="${escapeHtml(options.sourceKind)}"
     >
-      ${selectionRoi ? renderSelectionRoi(selectionRoi, roiFocusActive, mutationLocked, copy) : ""}
+      ${selectionRoi ? renderSelectionRoi(selectionRoi, roiFocusActive, mutationLocked, copy, options.sourceKind) : ""}
+      ${visualStressNodes}
       ${regionElements}
     </div>
   `;
