@@ -9,8 +9,8 @@ import {
 
 export const TEAM_TETRIS_STATUS_COPY = {
   idle: {
-    en: "Waiting for AI1, AI2, and US1 before Team Tetris can start.",
-    tr: "Takim Tetris baslamadan once AI1, AI2 ve US1 bekleniyor.",
+    en: "Waiting for AI1, AI2, and US1 (or AI0 in place of US1) before Team Tetris can start.",
+    tr: "Takim Tetris baslamadan once AI1, AI2 ve US1 (veya US1 yerine AI0) bekleniyor.",
   },
   ready: {
     en: "All required seats are ready. The Team Tetris opener can be seeded.",
@@ -44,8 +44,8 @@ export const TEAM_TETRIS_COMMAND_COPY = {
     tr: "Takim Tetris durumu sifirlandi.",
   },
   needReadySeats: {
-    en: "AI1, AI2, and US1 must all be ready before Team Tetris can start.",
-    tr: "Takim Tetris baslamadan once AI1, AI2 ve US1 hazir olmali.",
+    en: "AI1, AI2, and US1 (or AI0 in place of US1) must be ready before Team Tetris can start.",
+    tr: "Takim Tetris baslamadan once AI1, AI2 ve US1 (veya US1 yerine AI0) hazir olmali.",
   },
   needPartnerSelection: {
     en: "Select the local user's partner before starting Team Tetris.",
@@ -96,6 +96,7 @@ export const TEAM_TETRIS_COMMAND_COPY = {
 export type TeamTetrisStatusKey = keyof typeof TEAM_TETRIS_STATUS_COPY;
 export type TeamTetrisCommandKey = keyof typeof TEAM_TETRIS_COMMAND_COPY;
 export type TeamTetrisStateResult = TeamTetrisMatchResult | "idle" | "blocked";
+export type TeamTetrisFourthSeatSource = "ai0" | "us1";
 
 export interface TeamTetrisStateApi {
   getState(key: string): unknown;
@@ -110,6 +111,7 @@ export interface TeamTetrisHostState {
   result: TeamTetrisStateResult;
   statusKey: TeamTetrisStatusKey;
   localSeatId: "user" | "us1";
+  fourthSeatSource: TeamTetrisFourthSeatSource | null;
   hiddenPairs: boolean;
   revealPairsOnFinish: boolean;
   blockedReason: string;
@@ -142,6 +144,10 @@ function normalizeTeamTetrisResult(value: unknown): TeamTetrisStateResult {
     : "idle";
 }
 
+function normalizeFourthSeatSource(value: unknown): TeamTetrisFourthSeatSource | null {
+  return value === "ai0" || value === "us1" ? value : null;
+}
+
 export function createInitialTeamTetrisState(locale: unknown): TeamTetrisHostState {
   return {
     locale: normalizeLocale(locale),
@@ -150,6 +156,7 @@ export function createInitialTeamTetrisState(locale: unknown): TeamTetrisHostSta
     result: "idle",
     statusKey: "idle",
     localSeatId: "user",
+    fourthSeatSource: null,
     hiddenPairs: true,
     revealPairsOnFinish: true,
     blockedReason: "",
@@ -173,6 +180,9 @@ export function normalizeTeamTetrisState(
   state.result = normalizeTeamTetrisResult(source["result"]);
   state.statusKey = isKnownTeamTetrisStatusKey(source["statusKey"]) ? source["statusKey"] : "idle";
   state.localSeatId = source["localSeatId"] === "us1" ? "us1" : "user";
+  state.fourthSeatSource =
+    normalizeFourthSeatSource(source["fourthSeatSource"]) ||
+    (state.localSeatId === "us1" ? "us1" : null);
   state.hiddenPairs = source["hiddenPairs"] !== false;
   state.revealPairsOnFinish = source["revealPairsOnFinish"] !== false;
   state.blockedReason = normalizeText(source["blockedReason"]);

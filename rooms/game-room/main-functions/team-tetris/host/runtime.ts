@@ -40,6 +40,7 @@ import {
   pushActiveFeatureState,
   pushTeamTetrisState,
   resetTeamTetrisState,
+  resolveTeamTetrisFourthSeatSource,
   resolveTeamTetrisStatusText,
   serializeTeamTetrisState,
 } from "./runtime-sync.js";
@@ -64,8 +65,10 @@ interface TeamTetrisMessageRequest {
 
 interface TeamTetrisDispatchResult {
   success?: boolean;
+  message?: string;
   localSessionId?: unknown;
   remoteUserId?: unknown;
+  reply?: unknown;
 }
 
 interface TeamTetrisRuntimeApi extends TeamTetrisStateApi {
@@ -102,10 +105,13 @@ function isManualPartnerSeatId(value: unknown): value is "ai1" | "ai2" | "us1" {
 
 function readTeamTetrisProviderSeatId(
   provider: string,
-  localSeatId: "user" | "us1" = "user"
+  state: TeamTetrisHostState
 ): "user" | "ai1" | "ai2" | "us1" | null {
   if (provider === "room-ui") {
-    return localSeatId;
+    return state.localSeatId;
+  }
+  if (provider === "ai0" && state.fourthSeatSource === "ai0") {
+    return "us1";
   }
   if (provider === "ai1" || provider === "ai2" || provider === "us1") {
     return provider;
@@ -202,7 +208,7 @@ function surfaceTeamTetrisCommandFailure(
 
   const details = [
     `command=${options.commandName}`,
-    `provider=${options.providerSeatId}`,
+    `provider=${options.sourceProvider || options.providerSeatId}`,
     ...(typeof options.failureReason === "string" && options.failureReason.trim() !== ""
       ? [`reason=${options.failureReason.trim()}`]
       : []),
@@ -269,6 +275,69 @@ function normalizeTeamTetrisDispatchResult(value: unknown): TeamTetrisDispatchRe
   return isRecord(value) ? value : null;
 }
 
+function readTeamTetrisReplyText(value: unknown): string {
+  if (!isRecord(value)) {
+    return "";
+  }
+  const reply = isRecord(value["reply"]) ? value["reply"] : {};
+  return typeof reply["text"] === "string" ? reply["text"].trim() : "";
+}
+
+function parseTeamTetrisAi0MoveReply(text: string): Record<string, unknown> | null {
+  const trimmed = text.trim();
+  if (trimmed === "") {
+    return null;
+  }
+  const unfenced = trimmed
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+  try {
+    const parsed: unknown = JSON.parse(unfenced);
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildTeamTetrisAi0TurnPrompt(state: TeamTetrisHostState): string {
+  const packet = buildTeamTetrisAiTurnPacket(state.match, "us1");
+  if (!packet) {
+    return "";
+  }
+  return [
+    "You are AI0 playing the fourth seat in Hayalet Ev Team Tetris.",
+    "Choose one legal move for the supplied turn packet.",
+    "Return exactly one JSON object and nothing else. Do not use markdown, prose, code fences, or SlotBridge commands.",
+    "The JSON object must contain exactly these move fields: schemaVersion, matchId, turnIndex, turnToken, pieceId, rotation, rowShifts.",
+    "Copy schemaVersion, matchId, turnIndex, turnToken, and pieceId exactly from the turn packet.",
+    "rotation must be an integer chosen from legalRotations.",
+    "rowShifts must be an array of integers containing only -1, 0, or 1; each entry is the sideways shift for one planned downward advance.",
+    "Use pieceGeometryCatalog as the authoritative tetromino geometry reference instead of memory.",
+    "Compute the move from the private board snapshot supplied in the packet.",
+    "After the explicit rowShifts route ends, the host drops the piece straight down until it locks.",
+    packet.partnerLastPiece
+      ? "partnerLastPiece hides the latest partner lock from the visible board; infer that occupancy before choosing the route."
+      : "No partner lock is hidden from the current private board.",
+    "The host validates the move and rejects stale tokens, illegal rotations, paths, collisions, or piece mismatches.",
+    "",
+    "Turn packet JSON:",
+    JSON.stringify(packet, null, 2),
+  ].join("\n");
+}
+
+function adaptTeamTetrisMessageForFourthSeat(
+  message: string,
+  state: TeamTetrisHostState,
+  context: ReturnType<typeof loadContext>
+): string {
+  if (state.fourthSeatSource !== "ai0") {
+    return message;
+  }
+  const nickname = context.assistant.nickname.trim() || "AI0";
+  return message.replace(/\bUS1\b/g, nickname);
+}
+
 async function sendBridgeMessageSafe(
   api: TeamTetrisRuntimeApi,
   options: TeamTetrisMessageRequest & { protocol?: TeamTetrisProtocolRequest }
@@ -296,6 +365,25 @@ async function sendBridgeMessageSafe(
   return normalizeTeamTetrisDispatchResult(bridgeResult);
 }
 
+async function sendBridgeMessageWaitSafe(
+  api: TeamTetrisRuntimeApi,
+  options: TeamTetrisMessageRequest
+): Promise<TeamTetrisDispatchResult | null> {
+  if (typeof api.dispatchBridge !== "function") {
+    return null;
+  }
+  const bridgeResult = await api.dispatchBridge({
+    action: "message.sendWait",
+    timeoutMs: 180000,
+    toSlot: options.provider,
+    payload: {
+      text: options.text,
+      page: options.page,
+    },
+  });
+  return normalizeTeamTetrisDispatchResult(bridgeResult);
+}
+
 async function sendTeamTetrisStartAnnouncements(
   api: TeamTetrisRuntimeApi,
   state: TeamTetrisHostState,
@@ -316,7 +404,11 @@ async function sendTeamTetrisStartAnnouncements(
   const readyTargets = targets.filter(function (seatId) {
     return context.slots[seatId].dispatchable === true;
   });
-  const message = buildTeamTetrisAiStartMessage(state.match, options);
+  const message = adaptTeamTetrisMessageForFourthSeat(
+    buildTeamTetrisAiStartMessage(state.match, options),
+    state,
+    context
+  );
   const results = await Promise.all(
     readyTargets.map(function (seatId) {
       return sendBridgeMessageSafe(api, {
@@ -357,6 +449,35 @@ async function dispatchNextTeamTetrisTurn(
     return { success: true };
   }
   if (currentTurn.seatId === "us1") {
+    if (state.fourthSeatSource === "ai0") {
+      if (context.assistant.dispatchable !== true) {
+        blockTeamTetrisMatch(api, state, "blockedOpponent", "ai0-unavailable");
+        return {
+          success: false,
+          message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed"),
+        };
+      }
+      const prompt = buildTeamTetrisAi0TurnPrompt(state);
+      const waitResult = await sendBridgeMessageWaitSafe(api, {
+        provider: "ai0",
+        page: TEAM_TETRIS_PAGE_ID,
+        text: prompt,
+      });
+      const moveArgs = parseTeamTetrisAi0MoveReply(readTeamTetrisReplyText(waitResult));
+      if (!waitResult || waitResult.success !== true || moveArgs === null) {
+        blockTeamTetrisMatch(api, state, "blockedDispatch", "ai0-turn-dispatch-failed");
+        return {
+          success: false,
+          message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed"),
+        };
+      }
+      return await handleTeamTetrisMove(api, {
+        provider: "ai0",
+        roomCommand: "GameRoomTeamTetrisAiMove",
+        roomArgs: moveArgs,
+      });
+    }
+
     if (context.slots.us1.dispatchable !== true) {
       blockTeamTetrisMatch(api, state, "blockedOpponent", "us1-unavailable");
       return {
@@ -377,7 +498,11 @@ async function dispatchNextTeamTetrisTurn(
   const messageResult = await sendBridgeMessageSafe(api, {
     provider: currentTurn.seatId,
     page: TEAM_TETRIS_PAGE_ID,
-    text: buildTeamTetrisAiTurnMessage(state.match, currentTurn.seatId),
+    text: adaptTeamTetrisMessageForFourthSeat(
+      buildTeamTetrisAiTurnMessage(state.match, currentTurn.seatId),
+      state,
+      context
+    ),
     protocol: {
       room: ROOM_ID,
       scenario: buildTeamTetrisProtocolScenario(state.match),
@@ -408,7 +533,8 @@ async function handleTeamTetrisStart(
   clearTeamTetrisExpectedCommandCapture(api);
   const context = loadContext(api);
   const readiness = getTeamTetrisReadiness(context);
-  if (readiness.ai1 !== true || readiness.ai2 !== true || readiness.us1 !== true) {
+  const fourthSeatSource = resolveTeamTetrisFourthSeatSource(context);
+  if (readiness.ai1 !== true || readiness.ai2 !== true || fourthSeatSource === null) {
     pushTeamTetrisState(api, loadTeamTetrisState(api));
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "needReadySeats") };
   }
@@ -423,9 +549,12 @@ async function handleTeamTetrisStart(
   }
   const state = loadTeamTetrisState(api);
   state.localSeatId = "user";
+  state.fourthSeatSource = fourthSeatSource;
   state.hiddenPairs = args.hiddenPairs;
   state.revealPairsOnFinish = true;
   state.statusKey = "ready";
+  const fourthSeatNickname =
+    fourthSeatSource === "ai0" ? context.assistant.nickname : context.slots.us1.nickname;
   const nextMatch = createTeamTetrisMatch({
     seed:
       args.seed ||
@@ -434,7 +563,7 @@ async function handleTeamTetrisStart(
         context.user.nickname,
         context.slots.ai1.nickname,
         context.slots.ai2.nickname,
-        context.slots.us1.nickname,
+        fourthSeatNickname,
       ].join("|"),
     hiddenPairs: state.hiddenPairs,
     revealPairsOnFinish: state.revealPairsOnFinish,
@@ -444,7 +573,9 @@ async function handleTeamTetrisStart(
   state.matchId = nextMatch.matchId;
   state.active = true;
   state.result = nextMatch.result;
-  state.remoteUserId = context.slots.us1.remoteUserId || state.remoteUserId;
+  state.remoteUserId =
+    fourthSeatSource === "us1" ? context.slots.us1.remoteUserId || state.remoteUserId : null;
+  state.localSessionId = fourthSeatSource === "us1" ? state.localSessionId : null;
   saveTeamTetrisState(api, state);
   pushTeamTetrisState(api, state);
 
@@ -457,22 +588,31 @@ async function handleTeamTetrisStart(
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed") };
   }
 
-  const remoteResult = await sendTeamTetrisRemoteStart(api, state, {
-    selectedPartnerSeatId: args.selectedPartnerSeatId,
-  });
-  if (remoteResult.success !== true) {
-    blockTeamTetrisMatch(api, state, "blockedDispatch", "remote-start-dispatch-failed");
-    return { success: false, message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed") };
+  if (fourthSeatSource === "us1") {
+    const remoteResult = await sendTeamTetrisRemoteStart(api, state, {
+      selectedPartnerSeatId: args.selectedPartnerSeatId,
+    });
+    if (remoteResult.success !== true) {
+      blockTeamTetrisMatch(api, state, "blockedDispatch", "remote-start-dispatch-failed");
+      return { success: false, message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed") };
+    }
   }
 
-  await dispatchNextTeamTetrisTurn(api, state);
+  const dispatchResult = await dispatchNextTeamTetrisTurn(api, state);
+  if (dispatchResult.success !== true) {
+    return {
+      success: false,
+      message:
+        dispatchResult.message || teamTetrisCommandMessage(readLocale(api), "dispatchFailed"),
+    };
+  }
   return { success: true, message: teamTetrisCommandMessage(readLocale(api), "started") };
 }
 
 function handleTeamTetrisReset(api: TeamTetrisRuntimeApi): TeamTetrisCommandResult {
   clearTeamTetrisExpectedCommandCapture(api);
   const state = loadTeamTetrisState(api);
-  if (state.matchId) {
+  if (state.matchId && state.fourthSeatSource === "us1") {
     void sendTeamTetrisRemoteReset(api, state);
   }
   pushTeamTetrisState(api, resetTeamTetrisState(api, "idle"));
@@ -502,8 +642,8 @@ async function handleTeamTetrisMove(
   const provider =
     isRecord(payload) && typeof payload["provider"] === "string" ? payload["provider"] : "";
   const testMode = readTeamTetrisTestMode(payload);
-  const providerSeatId = readTeamTetrisProviderSeatId(provider, state.localSeatId);
-  const isRemoteTransportMove = provider === "us1";
+  const providerSeatId = readTeamTetrisProviderSeatId(provider, state);
+  const isRemoteTransportMove = provider === "us1" && state.fourthSeatSource !== "ai0";
   const transportMessageId = readTransportMessageId(payload);
   const roomCommandName = readTeamTetrisRoomCommandName(payload);
   const commandName = roomCommandName || buildExpectedTeamTetrisCommandName(currentTurn.seatId);
@@ -636,7 +776,12 @@ async function handleTeamTetrisMove(
       state.lastRemoteTransportMessageId = transportMessageId;
       saveTeamTetrisState(api, state);
     }
-    if (providerSeatId === "ai1" || providerSeatId === "ai2" || isRemoteTransportMove) {
+    if (
+      providerSeatId === "ai1" ||
+      providerSeatId === "ai2" ||
+      isRemoteTransportMove ||
+      provider === "ai0"
+    ) {
       blockTeamTetrisMatch(api, state, "blockedInvalidMove", failureReason);
       const message = teamTetrisCommandMessage(readLocale(api), "invalidMove");
       surfaceTeamTetrisCommandFailure(api, {
@@ -693,7 +838,7 @@ async function handleTeamTetrisMove(
   saveTeamTetrisState(api, state);
   pushTeamTetrisState(api, state);
 
-  if (isRemoteTransportMove !== true) {
+  if (isRemoteTransportMove !== true && state.fourthSeatSource === "us1") {
     const remoteResult = await sendTeamTetrisRemoteMove(api, state, move, boardHashBeforeMove);
     if (remoteResult.success !== true) {
       blockTeamTetrisMatch(api, state, "blockedDispatch", "remote-sync-failed");
@@ -730,6 +875,7 @@ export {
   pushActiveFeatureState,
   pushTeamTetrisState,
   resetTeamTetrisState,
+  resolveTeamTetrisFourthSeatSource,
   resolveTeamTetrisSeatFromProvider,
   resolveTeamTetrisStatusText,
   sendTeamTetrisRemoteMove,

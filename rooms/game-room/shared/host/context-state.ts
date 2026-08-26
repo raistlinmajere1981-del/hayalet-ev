@@ -82,6 +82,11 @@ export function sanitizeContext(payload: unknown): GameRoomContextSnapshot {
     : isRecord(source["slots"])
       ? source["slots"]
       : {};
+  const assistantSource = isRecord(presenceSource["assistant"])
+    ? presenceSource["assistant"]
+    : isRecord(source["assistant"])
+      ? source["assistant"]
+      : {};
   const userSource = isRecord(presenceSource["user"])
     ? presenceSource["user"]
     : isRecord(source["user"])
@@ -117,6 +122,7 @@ export function sanitizeContext(payload: unknown): GameRoomContextSnapshot {
         ? userSource["avatar"].trim()
         : fallbackContext.user.avatar,
   };
+  const assistant = normalizeSlot(assistantSource, "ai0");
   const slots = {
     ai1: normalizeSlot(slotsSource["ai1"], "ai1"),
     ai2: normalizeSlot(slotsSource["ai2"], "ai2"),
@@ -129,11 +135,13 @@ export function sanitizeContext(payload: unknown): GameRoomContextSnapshot {
       : fallbackContext.room,
     presentation: isRecord(source["presentation"]) ? source["presentation"] : { mode: "classic" },
     user,
+    assistant,
     features,
     activeFeature: features.find((feature) => feature.id === activeFeature.id) || activeFeature,
     slots,
     presence: {
       user: { ...user },
+      assistant: { ...assistant },
       slots: {
         ai1: { ...slots.ai1 },
         ai2: { ...slots.ai2 },

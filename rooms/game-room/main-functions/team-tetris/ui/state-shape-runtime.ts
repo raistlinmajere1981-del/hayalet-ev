@@ -90,6 +90,7 @@
     boards?: unknown;
     canStart?: unknown;
     currentTurn?: unknown;
+    fourthSeatSource?: unknown;
     hiddenPairs?: unknown;
     matchId?: unknown;
     requiredSlots?: unknown;
@@ -171,6 +172,7 @@
           revealPairsOnFinish: true,
           blockedReason: "",
           matchId: null,
+          fourthSeatSource: null,
           canStart: false,
           requiredSlots: {
             ai1: false,
@@ -394,6 +396,10 @@
         next.matchId =
           typeof source.matchId === "string" && source.matchId.trim() !== ""
             ? source.matchId.trim()
+            : null;
+        next["fourthSeatSource"] =
+          source.fourthSeatSource === "ai0" || source.fourthSeatSource === "us1"
+            ? source.fourthSeatSource
             : null;
         next.canStart = source.canStart === true;
 

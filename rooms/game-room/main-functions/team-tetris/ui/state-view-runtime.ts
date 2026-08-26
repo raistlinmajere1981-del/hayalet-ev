@@ -27,6 +27,20 @@
       return typeof localSeatId === "string" && localSeatId.trim() !== "" ? localSeatId : "user";
     }
 
+    function getTeamTetrisFourthSeatSource(): "ai0" | "us1" | null {
+      const source = getState().teamTetris["fourthSeatSource"];
+      return source === "ai0" || source === "us1" ? source : null;
+    }
+
+    function resolveTeamTetrisDisplaySeatId(seatId: string): string {
+      return seatId === "us1" && getTeamTetrisFourthSeatSource() === "ai0" ? "ai0" : seatId;
+    }
+
+    function readAssistantSlot(): GameRoomSlotRecord | null {
+      const context = getState().context as GameRoomUiContextState & { assistant?: unknown };
+      return readSlotRecord(context.assistant ?? null);
+    }
+
     function readCreatorPartnerSeatId(): string | null {
       const teams = getState().teamTetris.teams;
       if (!Array.isArray(teams)) {
@@ -84,12 +98,21 @@
           : "USER";
       }
 
-      const slot = readSlotRecord(state.context.slots?.[seatId] ?? null);
+      const displaySeatId = resolveTeamTetrisDisplaySeatId(seatId);
+      if (displaySeatId === "ai0") {
+        const assistant = readAssistantSlot();
+        if (assistant?.nickname && assistant.nickname.trim() !== "") {
+          return assistant.nickname.trim();
+        }
+        return "AI0";
+      }
+
+      const slot = readSlotRecord(state.context.slots?.[displaySeatId] ?? null);
       if (slot?.nickname && slot.nickname.trim() !== "") {
         return slot.nickname;
       }
 
-      return seatId.trim() !== "" ? seatId.toUpperCase() : "???";
+      return displaySeatId.trim() !== "" ? displaySeatId.toUpperCase() : "???";
     }
 
     function getTeamTetrisPlayerDisplay(seatId: string): GameRoomTeamTetrisPlayerDisplay {
@@ -115,7 +138,11 @@
           avatarUrl = userCtx.avatar;
         }
       } else {
-        const slot = readSlotRecord(state.context.slots?.[seatId] ?? null);
+        const displaySeatId = resolveTeamTetrisDisplaySeatId(seatId);
+        const slot =
+          displaySeatId === "ai0"
+            ? readAssistantSlot()
+            : readSlotRecord(state.context.slots?.[displaySeatId] ?? null);
         if (slot && typeof (slot as unknown as { avatar?: string }).avatar === "string") {
           avatarUrl = (slot as unknown as { avatar: string }).avatar || null;
         }

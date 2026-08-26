@@ -1,6 +1,6 @@
 # 🧩 Team Tetris
 
-Team Tetris, Game Room içinde USER, AI1, AI2 ve bağlı US1'i aynı maçta buluşturan dört koltuklu, tur tabanlı bir Tetris varyantıdır.
+Team Tetris, Game Room içinde USER, AI1, AI2 ve dördüncü oyuncu olarak AI0 ya da bağlı US1'i aynı maçta buluşturan dört koltuklu, tur tabanlı bir Tetris varyantıdır.
 
 Oyunun iki ayrı katmanı vardır:
 
@@ -13,14 +13,23 @@ Bu ayrım bilinçli olarak korunur.
 
 ### Dört Koltuk
 
-Motor dört seat tanımlar:
+Motor geriye dönük uyumluluk için dört mantıksal seat tanımlar:
 
 - `user`
 - `ai1`
 - `ai2`
 - `us1`
 
-Maç başlamadan önce gerekli AI/US1 koltuklarının hazır olması beklenir.
+Dördüncü mantıksal seat'in çalışma zamanı kaynağı iki farklı katılımcı olabilir:
+
+- bağlı ve hazır bir US1 varsa `us1`,
+- US1 yoksa ve AI0 hazırsa `ai0`.
+
+Her iki kaynak da hazırsa mevcut US1 davranışı korunur ve US1 tercih edilir. Maç başladıktan sonra seçilen dördüncü-seat kaynağı maç boyunca sabit kalır; sonradan başka bir kaynağın bağlanması aktif oyuncuyu değiştirmez.
+
+AI0 dördüncü oyuncu olduğunda engine içindeki `us1` seat kimliği korunur; UI ve runtime bu seat'i AI0'ın gerçek nickname/avatar bilgisiyle sunar. Böylece kayıt ve hidden-pair kontratı kırılmadan AI0 gerçek oyuncu olarak maça katılır.
+
+Maç başlamadan önce AI1 ve AI2 ile birlikte AI0 veya US1 kaynaklarından en az birinin hazır olması beklenir.
 
 ### 👥 İki Takım
 
@@ -50,6 +59,8 @@ State şu alanları taşır:
 - `revealPairsOnFinish`
 - `revealedPairs`
 
+Host state ayrıca dördüncü oyuncunun gerçek çalışma zamanı kaynağını `fourthSeatSource` ile taşır.
+
 Varsayılan yapı pair bilgisinin maç sonuna kadar gizli kalmasını destekler.
 
 ### 🧱 Tahta ve Parçalar
@@ -78,15 +89,22 @@ Move schema `rowShifts` ve `rotation` bilgilerini içerir.
 
 Ancak path'in oyuncunun psikolojik niyetini kesin olarak ifade ettiği motor tarafından garanti edilmez. Path bir oyun verisidir; onun iletişim veya stratejik anlamı oyun tasarımının daha üst katmanındadır.
 
-## 🤖 AI ve US1 Turları
+## 🤖 AI0, AI1/AI2 ve US1 Turları
 
 Runtime farklı hamle yollarını destekler:
 
 - local user move,
 - AI1/AI2 move,
+- AI0 fourth-seat move,
 - remote US1 move.
 
-AI turları opening/follow-up protokolleri üzerinden çalışabilir. US1 hamleleri Game Room transport üzerinden gelir. Stale veya duplicate remote move'lar host tarafından ele alınır.
+AI1/AI2 turları opening/follow-up protokolleri ve normal AI slot command-capture akışı üzerinden çalışabilir.
+
+AI0 dördüncü oyuncu olduğunda host `SlotBridge message.sendWait` ile AI0'dan yalnız yapılandırılmış hamle JSON'u bekler. Dönen `matchId`, `turnIndex`, `turnToken`, `pieceId`, `rotation` ve `rowShifts` alanları diğer oyuncularla aynı host engine doğrulamasından geçer. AI0 ayrı bir Tetris motoru veya güvenilir hamle kaynağı değildir; geçersiz hamle engine tarafından reddedilir.
+
+US1 dördüncü oyuncu olduğunda mevcut Game Room uzak transport yolu kullanılır. Stale veya duplicate remote move'lar host tarafından ele alınır.
+
+AI0-backed bir maçta US1 transport mesajı gönderilmez. US1-backed bir maçta ise mevcut remote start/move/reset senkronizasyonu korunur.
 
 ## 🧠 Match State
 
@@ -104,9 +122,11 @@ Match state temel olarak:
 
 bilgilerini taşır.
 
+Host runtime state'i bunlara ek olarak dördüncü seat'in `ai0` mı `us1` mi olduğunu saklar.
+
 Sonuç `pending`, `team-a-win`, `team-b-win` veya `draw` olabilir.
 
-Gerekli bir seat bağlantıdan düşer veya oyun güvenli biçimde sürdürülemez hale gelirse state blocked olabilir ve reset istenebilir.
+Gerekli bir seat bağlantıdan düşer veya oyun güvenli biçimde sürdürülemez hale gelirse state blocked olabilir ve reset istenebilir. Dördüncü seat için yalnız maç başında seçilmiş kaynak geçerli kabul edilir; örneğin AI0-backed bir maç sırasında AI0 düşerse sonradan bağlı US1 maçı otomatik devralmaz.
 
 ## 🧠 Oyunun Tasarım Fikri
 
@@ -182,11 +202,17 @@ npm run rooms:test:core
 npm run rooms:test:file -- <test files>
 ```
 
+AI0 fallback için ayrıca:
+
+```bash
+npm run rooms:test:file -- scripts/tests/game-room-team-tetris-ai0-regressions.test.ts
+```
+
 ## 🎯 Sonuç
 
 Team Tetris'in bugünkü çekirdeği:
 
-> dört seat + iki takım + hidden pair state + tur sırası + path tabanlı doğrulanmış Tetris hamleleri + AI/US1 transport
+> dört mantıksal seat + iki takım + hidden pair state + tur sırası + path tabanlı doğrulanmış Tetris hamleleri + AI0/AI slot/US1 çalışma zamanı yolları
 
 Bunun üzerine kurulan daha büyük fikir ise oyuncuların yalnızca parçaları değil, birbirlerinin kararlarını da okumaya çalıştığı bir takım oyunudur.
 
