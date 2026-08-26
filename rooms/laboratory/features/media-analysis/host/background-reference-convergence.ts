@@ -41,10 +41,6 @@ const FRAME_SIZE = 64;
 const TIMELINE_OFFSETS = [-1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1] as const;
 const EPSILON = 1e-8;
 
-function clamp01(value: number) {
-  return Math.max(0, Math.min(1, value));
-}
-
 function finite(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -79,7 +75,11 @@ function closestPoint(points: ReferenceConvergencePoint[], offsetSeconds: number
   }, null);
 }
 
-function targetPersistenceAt(timeline: unknown[], offsetSeconds: number, toRecord: (value: unknown) => RecordValue) {
+function targetPersistenceAt(
+  timeline: unknown[],
+  offsetSeconds: number,
+  toRecord: (value: unknown) => RecordValue
+) {
   const point = timeline.reduce<RecordValue | null>(function (best, value) {
     const record = toRecord(value);
     const offset = finite(record["offsetSeconds"]);
@@ -212,8 +212,12 @@ export function createLaboratoryBackgroundReferenceConvergenceRuntime(
   }
 
   async function analyzeConvergence(input: LaboratoryBackgroundReferenceConvergenceInput) {
-    const sourceEnd = input.durationSeconds ?? Math.max(input.eventSeconds + 1, input.backgroundReferenceSeconds);
-    const referenceTimeSeconds = Math.max(0, Math.min(sourceEnd, input.backgroundReferenceSeconds));
+    const sourceEnd =
+      input.durationSeconds ?? Math.max(input.eventSeconds + 1, input.backgroundReferenceSeconds);
+    const referenceTimeSeconds = Math.max(
+      0,
+      Math.min(sourceEnd, input.backgroundReferenceSeconds)
+    );
     const referenceFrame = await extractTargetFrame(input, referenceTimeSeconds, "template");
     const times = TIMELINE_OFFSETS.map(function (offsetSeconds) {
       return {
@@ -222,11 +226,16 @@ export function createLaboratoryBackgroundReferenceConvergenceRuntime(
       };
     }).filter(function (point, index, entries) {
       return (
-        index === 0 || Math.abs(point.timeSeconds - (entries[index - 1]?.timeSeconds ?? -1)) > 0.001
+        index === 0 ||
+        Math.abs(point.timeSeconds - (entries[index - 1]?.timeSeconds ?? -1)) > 0.001
       );
     });
-    const timeline = await sequentialMap(times, async function (point, index) {
-      const frame = await extractTargetFrame(input, point.timeSeconds, `timeline-${String(index)}`);
+    const timeline = await sequentialMap(times, async function (point) {
+      const frame = await extractTargetFrame(
+        input,
+        point.timeSeconds,
+        `timeline-${formatNumber(point.offsetSeconds)}`
+      );
       return {
         ...point,
         metrics: calculateLaboratoryStructuralFrameMetrics(referenceFrame, frame),
@@ -238,10 +247,13 @@ export function createLaboratoryBackgroundReferenceConvergenceRuntime(
     const postCandidates = timeline.filter(function (point) {
       return point.offsetSeconds >= 0.2;
     });
-    const peakPostPoint = postCandidates.reduce<ReferenceConvergencePoint | null>(function (best, point) {
-      if (best === null) return point;
-      return point.metrics.structuralPersistence > best.metrics.structuralPersistence ? point : best;
-    }, null);
+    const peakPostPoint = postCandidates.reduce<ReferenceConvergencePoint | null>(
+      function (best, point) {
+        if (best === null) return point;
+        return point.metrics.structuralPersistence > best.metrics.structuralPersistence ? point : best;
+      },
+      null
+    );
     const preConvergence = prePoint?.metrics.structuralPersistence ?? 0;
     const eventConvergence = eventPoint?.metrics.structuralPersistence ?? preConvergence;
     const postConvergence = postPoint?.metrics.structuralPersistence ?? eventConvergence;
