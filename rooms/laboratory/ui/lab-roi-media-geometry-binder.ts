@@ -18,7 +18,6 @@ const MEDIA_SELECTOR =
   "video.labx-preview-media--workspace-video, img.labx-preview-media--workspace-image";
 const OVERLAY_SELECTOR = "[data-lab-selection-roi-overlay='true']";
 const CONTENT_SELECTOR = "[data-lab-preview-inspection-content='true']";
-const FRAME_PROXY_SELECTOR = "[data-lab-roi-media-frame-proxy='true']";
 
 function getIntrinsicAspectRatio(media: Element) {
   if (media instanceof HTMLVideoElement) {
@@ -85,21 +84,6 @@ function setPixelStyle(
   if (element.style[property] !== next) {
     element.style[property] = next;
   }
-}
-
-function ensureFrameProxy(content: HTMLElement) {
-  const existing = content.querySelector<HTMLElement>(FRAME_PROXY_SELECTOR);
-  if (existing !== null) {
-    return existing;
-  }
-  const proxy = content.ownerDocument.createElement("span");
-  proxy.setAttribute("data-lab-roi-media-frame-proxy", "true");
-  proxy.setAttribute("data-lab-selection-roi-frame", "true");
-  proxy.style.position = "absolute";
-  proxy.style.pointerEvents = "none";
-  proxy.style.zIndex = "5";
-  content.appendChild(proxy);
-  return proxy;
 }
 
 function toLocalCoordinate(delta: number, renderedSize: number, localSize: number) {
@@ -171,33 +155,31 @@ export function bindLaboratoryRoiMediaGeometry(deps: LaboratoryRoiMediaGeometryD
       mediaBounds,
       getIntrinsicAspectRatio(media)
     );
-    const proxy = ensureFrameProxy(content);
     const localWidth = content.clientWidth;
     const localHeight = content.clientHeight;
+
+    overlay.style.position = "absolute";
+    overlay.style.inset = "auto";
     setPixelStyle(
-      proxy,
+      overlay,
       "left",
       toLocalCoordinate(renderedRect.left - contentRect.left, contentRect.width, localWidth)
     );
     setPixelStyle(
-      proxy,
+      overlay,
       "top",
       toLocalCoordinate(renderedRect.top - contentRect.top, contentRect.height, localHeight)
     );
     setPixelStyle(
-      proxy,
+      overlay,
       "width",
       toLocalCoordinate(renderedRect.width, contentRect.width, localWidth)
     );
     setPixelStyle(
-      proxy,
+      overlay,
       "height",
       toLocalCoordinate(renderedRect.height, contentRect.height, localHeight)
     );
-
-    if (overlay.parentElement !== proxy) {
-      proxy.appendChild(overlay);
-    }
   }
 
   function syncAll() {
