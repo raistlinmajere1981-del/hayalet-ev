@@ -51,6 +51,10 @@ function compactStatus(value: unknown, copy: LabI18n) {
     "structural-change-target-localized": "target-localized structural değişim",
     "structural-change-scene-wide-with-target-excess": "scene-wide + target ek fark",
     "structural-change-scene-wide": "scene-wide structural değişim",
+    "target-loss-with-reference-convergence": "target kaybı + background convergence",
+    "reference-convergence-without-strong-target-loss": "background convergence · target kaybı zayıf",
+    "target-loss-without-reference-convergence": "target kaybı · convergence zayıf",
+    "reference-convergence-uncertain": "background convergence belirsiz",
     "result-uncertain": "sonuç belirsiz",
     "sample-insufficient": "örnek yetersiz",
     "background-not-comparable": "background karşılaştırılabilir değil",
@@ -152,12 +156,22 @@ function describeEntry(entry: Entry, copy: LabI18n): ReportDescriptor[] {
     const descriptors: ReportDescriptor[] = [];
     if (Object.keys(structural).length > 0) {
       const assessment = asLabRecord(structural["assessment"]);
-      const structuralStatus =
+      const revealed = asLabRecord(structural["revealedBackground"]);
+      const revealedAssessment = asLabRecord(revealed["assessment"]);
+      const baseStructuralStatus =
         structural["status"] === "unavailable"
           ? copy.locale === "tr"
             ? "structural ölçüm kullanılamadı"
             : "structural measurement unavailable"
           : compactStatus(assessment["classification"], copy);
+      const convergenceClassification =
+        revealed["status"] === "assessed"
+          ? asNonEmptyString(revealedAssessment["classification"])
+          : null;
+      const structuralStatus =
+        convergenceClassification === null || convergenceClassification === "reference-convergence-uncertain"
+          ? baseStructuralStatus
+          : `${baseStructuralStatus} · ${compactStatus(convergenceClassification, copy)}`;
       const title = "Structural Transition";
       descriptors.push(
         createDescriptor(entry, {
