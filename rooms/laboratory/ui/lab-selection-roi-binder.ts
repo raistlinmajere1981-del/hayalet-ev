@@ -264,12 +264,6 @@ function formatVisualStressRoiSignature(roi: LabSelectionROI) {
   return `${roi.x}:${roi.y}:${roi.width}:${roi.height}`;
 }
 
-function renderVisualStressResizeHandles(role: VisualStressRoiRole) {
-  return SELECTION_ROI_RESIZE_HANDLES.map(function (handle) {
-    return `<button class="labx-selection-roi__resize-handle labx-selection-roi__resize-handle--${handle}" type="button" data-lab-selection-roi-resize="${handle}" data-lab-selection-roi-ignore="true" data-lab-visual-stress-roi-role="${role}" aria-label="Resize ${role} ROI" title="Resize ${role} ROI"></button>`;
-  }).join("");
-}
-
 export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
   let dragState: DragState | null = null;
   let activeVisualStressRole: VisualStressRoiRole = "target";
@@ -438,7 +432,6 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     const label = targetOverlay.querySelector(".labx-selection-roi__label");
     if (label !== null && originalLabel !== null) label.textContent = originalLabel;
     targetOverlay.removeAttribute("data-lab-visual-stress-original-label");
-    targetOverlay.removeAttribute("data-lab-visual-stress-roi-role");
     targetOverlay.removeAttribute("data-active");
     targetOverlay.classList.remove(
       "labx-selection-roi--visual-target",
@@ -453,27 +446,23 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
   ) {
     const selector = `[data-lab-visual-stress-${role}-overlay='true']`;
     const existing = overlay.querySelector(selector);
+    if (existing === null) {
+      return;
+    }
     if (roi === null) {
-      existing?.remove();
+      existing.setAttribute("hidden", "");
+      existing.removeAttribute("style");
+      existing.removeAttribute("data-lab-visual-stress-roi-signature");
+      existing.setAttribute("data-active", "false");
+      existing.classList.remove("labx-selection-roi--visual-active");
       return;
     }
     const signature = formatVisualStressRoiSignature(roi);
-    if (existing === null) {
-      const title = role === "control" ? "Control ROI" : "Background ROI";
-      overlay.insertAdjacentHTML(
-        "beforeend",
-        `<div class="labx-selection-roi labx-selection-roi--visual-${role}${activeVisualStressRole === role ? " labx-selection-roi--visual-active" : ""}" style="${formatVisualStressRoiStyle(roi)}" data-lab-selection-roi="${role}" data-lab-selection-roi-ignore="true" data-lab-visual-stress-${role}-overlay="true" data-lab-visual-stress-roi-role="${role}" data-lab-visual-stress-roi-signature="${signature}" data-active="${activeVisualStressRole === role ? "true" : "false"}">
-          <div class="labx-selection-roi__label">${title}</div>
-          <button class="labx-selection-roi__clear" type="button" data-lab-selection-roi-clear="true" data-lab-selection-roi-ignore="true" data-lab-visual-stress-roi-role="${role}" aria-label="Clear ${role} ROI" title="Clear ${role} ROI">&times;</button>
-          ${renderVisualStressResizeHandles(role)}
-        </div>`
-      );
-      return;
-    }
     if (existing.getAttribute("data-lab-visual-stress-roi-signature") !== signature) {
       existing.setAttribute("style", formatVisualStressRoiStyle(roi));
       existing.setAttribute("data-lab-visual-stress-roi-signature", signature);
     }
+    existing.removeAttribute("hidden");
     existing.setAttribute("data-active", activeVisualStressRole === role ? "true" : "false");
     existing.classList.toggle("labx-selection-roi--visual-active", activeVisualStressRole === role);
   }
@@ -490,12 +479,11 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
 
     if (!visualStressActive) {
       activeVisualStressRole = "target";
-      queryAll(".labx-selection-roi--visual-target").forEach(restoreTargetOverlay);
-      queryAll("[data-lab-visual-stress-control-overlay='true']").forEach(function (overlay) {
-        overlay.remove();
-      });
-      queryAll("[data-lab-visual-stress-background-overlay='true']").forEach(function (overlay) {
-        overlay.remove();
+      videoOverlays.forEach(function (overlay) {
+        const targetOverlay = overlay.querySelector("[data-lab-selection-roi='true']");
+        if (targetOverlay !== null) restoreTargetOverlay(targetOverlay);
+        syncAuxiliaryOverlay(overlay, "control", null);
+        syncAuxiliaryOverlay(overlay, "background", null);
       });
       return;
     }
@@ -514,7 +502,6 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
           );
         }
         if (label !== null && label.textContent !== "Target ROI") label.textContent = "Target ROI";
-        targetOverlay.setAttribute("data-lab-visual-stress-roi-role", "target");
         targetOverlay.setAttribute(
           "data-active",
           activeVisualStressRole === "target" ? "true" : "false"
