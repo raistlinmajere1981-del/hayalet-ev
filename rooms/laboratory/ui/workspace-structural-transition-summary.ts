@@ -92,6 +92,46 @@ function photometricAssessmentLabel(value: unknown, copy: LabI18n) {
   return "Fotometrik sonuç belirsiz.";
 }
 
+function convergenceAssessmentLabel(value: unknown, copy: LabI18n) {
+  const kind = asNonEmptyString(value) || "reference-convergence-uncertain";
+  if (copy.locale !== "tr") {
+    if (kind === "target-loss-with-reference-convergence") {
+      return "Target loses PRE structure while converging toward the user-defined background reference.";
+    }
+    if (kind === "reference-convergence-without-strong-target-loss") {
+      return "The target region converges toward the reference, without strong accompanying Target structural loss.";
+    }
+    if (kind === "target-loss-without-reference-convergence") {
+      return "Target structural loss is measured without clear convergence toward the background reference.";
+    }
+    return "Background-reference convergence is uncertain.";
+  }
+  if (kind === "target-loss-with-reference-convergence") {
+    return "Target PRE yapısını kaybederken kullanıcı tanımlı arka plan referansına yapısal yakınlaşma ölçülüyor.";
+  }
+  if (kind === "reference-convergence-without-strong-target-loss") {
+    return "Arka plan referansına yakınlaşma ölçülüyor, ancak güçlü Target structural loss eşlik etmiyor.";
+  }
+  if (kind === "target-loss-without-reference-convergence") {
+    return "Target yapısal kayıp gösteriyor, ancak arka plan referansına belirgin yakınlaşma ölçülmüyor.";
+  }
+  return "Arka plan referansına structural yakınlaşma belirsiz.";
+}
+
+function convergenceShapeLabel(value: unknown, copy: LabI18n) {
+  const shape = asNonEmptyString(value) || "weak-or-nonconvergent";
+  if (copy.locale !== "tr") {
+    if (shape === "gradual") return "gradual";
+    if (shape === "abrupt") return "abrupt";
+    if (shape === "mixed") return "mixed";
+    return "weak / non-convergent";
+  }
+  if (shape === "gradual") return "kademeli";
+  if (shape === "abrupt") return "ani";
+  if (shape === "mixed") return "karma";
+  return "zayıf / yakınlaşma yok";
+}
+
 function stabilityRiskLabel(value: unknown, copy: LabI18n) {
   const risk = asNonEmptyString(value) || "unknown";
   if (copy.locale !== "tr") return risk;
@@ -150,6 +190,29 @@ function phaseLabel(value: string, copy: LabI18n) {
   return value.toUpperCase();
 }
 
+function convergenceTimeline(structural: Entry) {
+  const revealed = asLabRecord(structural["revealedBackground"]);
+  return Array.isArray(revealed["timeline"])
+    ? revealed["timeline"].map((entry) => asLabRecord(entry))
+    : [];
+}
+
+function convergencePointForOffset(structural: Entry, offsetSeconds: number | null) {
+  if (offsetSeconds === null) return null;
+  return convergenceTimeline(structural).reduce<Entry | null>(function (best, point) {
+    const offset = finite(point, "offsetSeconds");
+    if (offset === null) return best;
+    if (best === null) return point;
+    const bestOffset = finite(best, "offsetSeconds");
+    if (bestOffset === null) return point;
+    return Math.abs(offset - offsetSeconds) < Math.abs(bestOffset - offsetSeconds) ? point : best;
+  }, null);
+}
+
+function convergenceMetrics(point: unknown) {
+  return asLabRecord(asLabRecord(point)["metrics"]);
+}
+
 function structuralPhaseRows(structural: Entry, copy: LabI18n) {
   const phaseSummary = asLabRecord(structural["phaseSummary"]);
   return ["pre", "event", "post"]
@@ -184,6 +247,8 @@ function structuralTimelineRows(structural: Entry) {
       const background = structuralMetrics(point["background"]);
       const differential = asLabRecord(point["differential"]);
       const offset = finite(point, "offsetSeconds");
+      const referencePoint = convergencePointForOffset(structural, offset);
+      const referenceMetrics = convergenceMetrics(referencePoint);
       return `<tr>
         <th scope="row">${escapeHtml(offset === null ? "—" : `${offset >= 0 ? "+" : ""}${decimal(offset, 1)} s`)}</th>
         <td>${escapeHtml(pct(finite(target, "structuralSimilarity")))}</td>
@@ -192,6 +257,7 @@ function structuralTimelineRows(structural: Entry) {
         <td>${escapeHtml(pct(finite(target, "structuralPersistence")))}</td>
         <td>${escapeHtml(control === null ? "—" : pct(finite(control, "structuralPersistence")))}</td>
         <td>${escapeHtml(pct(finite(background, "structuralPersistence")))}</td>
+        <td>${escapeHtml(pct(finite(referenceMetrics, "structuralPersistence")))}</td>
         <td>${escapeHtml(signedPct(finite(differential, "targetVsControlStructuralLoss")))}</td>
       </tr>`;
     })
@@ -210,7 +276,9 @@ function photometricPhaseRows(entry: Entry) {
       const targetVsControl = hasRole(phase["targetVsControl"])
         ? asLabRecord(phase["targetVsControl"])
         : null;
-      const targetVsBackground = asLabRecord(phase["targetVsBackground"] ?? phase["differential"]);
+      const targetVsBackground = asLabRecord(
+        phase["targetVsBackground"] ?? phase["differential"]
+      );
       return `<tr>
         <th scope="row">${escapeHtml((asNonEmptyString(phase["phase"]) || "phase").toUpperCase())}</th>
         <td>${escapeHtml(pct(finite(target, "visibilityScore")))}</td>
@@ -227,6 +295,45 @@ function markdownCell(value: string) {
   return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }
 
+function pushBackgroundReferenceMarkdown(lines: string[], structural: Entry, copy: LabI18n) {
+  const revealed = asLabRecord(structural["revealedBackground"]);
+  const status = asNonEmptyString(revealed["status"]);
+  if (status !== "assessed") {
+    if (status === "unavailable") {
+      lines.push(
+        "",
+        "## Background Reference Convergence",
+        `- Status: unavailable${asNonEmptyString(revealed["error"]) === null ? "" : ` — ${asNonEmptyString(revealed["error"])}`}`
+      );
+    }
+    return;
+  }
+  const assessment = asLabRecord(revealed["assessment"]);
+  const phaseSummary = asLabRecord(revealed["phaseSummary"]);
+  lines.push(
+    "",
+    "## Background Reference Convergence",
+    `- Reference time: ${decimal(finite(revealed, "referenceTimeSeconds"), 3)} s`,
+    `- Assessment: ${convergenceAssessmentLabel(assessment["classification"], copy)}`,
+    `- Transition shape: ${convergenceShapeLabel(assessment["transitionShape"], copy)}`,
+    `- Convergence gain: ${signedPct(finite(assessment, "convergenceGain"))}`,
+    `- Edge convergence gain: ${signedPct(finite(assessment, "edgeConvergenceGain"))}`,
+    `- Target structural loss at peak convergence: ${pct(finite(assessment, "targetStructuralLossAtPeak"))}`,
+    `- Peak post convergence: ${pct(finite(assessment, "peakPostConvergence"))} at ${decimal(finite(assessment, "peakPostOffsetSeconds"), 1)} s`,
+    "| Phase | Reference convergence | SSIM-like | Correlation | Edge convergence |",
+    "| --- | ---: | ---: | ---: | ---: |"
+  );
+  ["pre", "event", "post", "peakPost"].forEach(function (phaseName) {
+    const point = asLabRecord(phaseSummary[phaseName]);
+    if (Object.keys(point).length === 0) return;
+    const metrics = convergenceMetrics(point);
+    const label = phaseName === "peakPost" ? "PEAK POST" : phaseName.toUpperCase();
+    lines.push(
+      `| ${label} | ${pct(finite(metrics, "structuralPersistence"))} | ${pct(finite(metrics, "structuralSimilarity"))} | ${pct(finite(metrics, "normalizedPixelCorrelation"))} | ${pct(finite(metrics, "edgeSimilarity"))} |`
+    );
+  });
+}
+
 export function formatLaboratoryStructuralTransitionMarkdown(entry: Entry, copy: LabI18n) {
   const structural = asLabRecord(entry["structural"]);
   const request = asLabRecord(entry["request"]);
@@ -234,6 +341,8 @@ export function formatLaboratoryStructuralTransitionMarkdown(entry: Entry, copy:
   const interpretation = asLabRecord(entry["interpretation"]);
   const assessment = asLabRecord(structural["assessment"]);
   const stability = asLabRecord(structural["roiStability"]);
+  const revealed = asLabRecord(structural["revealedBackground"]);
+  const revealedAssessment = asLabRecord(revealed["assessment"]);
   const controlComparability = interpretation["controlComparability"];
   const lines = ["# Hayalet Ev Laboratory — Structural Transition"];
   const createdAt = asNonEmptyString(entry["createdAt"]);
@@ -247,12 +356,25 @@ export function formatLaboratoryStructuralTransitionMarkdown(entry: Entry, copy:
     `- Target ROI: ${roiLabel(temporal["roi"])}`,
     `- Control ROI: ${roiLabel(request["controlRoi"])}`,
     `- Background ROI: ${roiLabel(request["backgroundRoi"])}`,
-    `- Event: ${decimal(finite(request, "eventSeconds"), 3)} s`,
+    `- Event: ${decimal(finite(request, "eventSeconds"), 3)} s`
+  );
+  if (revealed["status"] === "assessed") {
+    lines.push(
+      `- Background reference: ${decimal(finite(revealed, "referenceTimeSeconds"), 3)} s · same Target ROI coordinates`
+    );
+  }
+  lines.push(
     "",
     "## Assessment",
     `- Structural: ${structuralAssessmentLabel(assessment["classification"], copy)}`,
     `- Photometric baseline: ${photometricAssessmentLabel(interpretation["photometricClassification"], copy)}`
   );
+  if (revealed["status"] === "assessed") {
+    lines.push(
+      `- Background convergence: ${convergenceAssessmentLabel(revealedAssessment["classification"], copy)}`,
+      `- Convergence shape: ${convergenceShapeLabel(revealedAssessment["transitionShape"], copy)}`
+    );
+  }
   const controlQuality = comparabilityLabel(controlComparability, copy);
   if (controlQuality !== "") lines.push(`- ${controlQuality}`);
   const stabilityText = stabilitySummary(stability, copy);
@@ -274,7 +396,9 @@ export function formatLaboratoryStructuralTransitionMarkdown(entry: Entry, copy:
     const targetVsControl = hasRole(phase["targetVsControl"])
       ? asLabRecord(phase["targetVsControl"])
       : null;
-    const targetVsBackground = asLabRecord(phase["targetVsBackground"] ?? phase["differential"]);
+    const targetVsBackground = asLabRecord(
+      phase["targetVsBackground"] ?? phase["differential"]
+    );
     lines.push(
       `| ${(asNonEmptyString(phase["phase"]) || "phase").toUpperCase()} | ${pct(finite(target, "visibilityScore"))} | ${control === null ? "—" : pct(finite(control, "visibilityScore"))} | ${pct(finite(background, "visibilityScore"))} | ${targetVsControl === null ? "—" : signedPct(finite(targetVsControl, "visibilityScore"))} | ${signedPct(finite(targetVsBackground, "visibilityScore"))} |`
     );
@@ -306,8 +430,8 @@ export function formatLaboratoryStructuralTransitionMarkdown(entry: Entry, copy:
   lines.push(
     "",
     "## Structural Timeline",
-    "| Offset | Target SSIM-like | Target corr. | Target edge sim. | Target persistence | Control persistence | Background persistence | Target-Control loss Δ |",
-    "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
+    "| Offset | Target SSIM-like | Target corr. | Target edge sim. | Target persistence | Control persistence | Background persistence | Reference convergence | Target-Control loss Δ |",
+    "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
   );
   timeline.forEach(function (point) {
     const target = structuralMetrics(point["target"]);
@@ -315,11 +439,16 @@ export function formatLaboratoryStructuralTransitionMarkdown(entry: Entry, copy:
     const background = structuralMetrics(point["background"]);
     const differential = asLabRecord(point["differential"]);
     const offset = finite(point, "offsetSeconds");
-    const offsetText = offset === null ? "—" : `${offset >= 0 ? "+" : ""}${decimal(offset, 1)} s`;
+    const offsetText =
+      offset === null ? "—" : `${offset >= 0 ? "+" : ""}${decimal(offset, 1)} s`;
+    const referencePoint = convergencePointForOffset(structural, offset);
+    const referenceMetrics = convergenceMetrics(referencePoint);
     lines.push(
-      `| ${offsetText} | ${pct(finite(target, "structuralSimilarity"))} | ${pct(finite(target, "normalizedPixelCorrelation"))} | ${pct(finite(target, "edgeSimilarity"))} | ${pct(finite(target, "structuralPersistence"))} | ${control === null ? "—" : pct(finite(control, "structuralPersistence"))} | ${pct(finite(background, "structuralPersistence"))} | ${signedPct(finite(differential, "targetVsControlStructuralLoss"))} |`
+      `| ${offsetText} | ${pct(finite(target, "structuralSimilarity"))} | ${pct(finite(target, "normalizedPixelCorrelation"))} | ${pct(finite(target, "edgeSimilarity"))} | ${pct(finite(target, "structuralPersistence"))} | ${control === null ? "—" : pct(finite(control, "structuralPersistence"))} | ${pct(finite(background, "structuralPersistence"))} | ${pct(finite(referenceMetrics, "structuralPersistence"))} | ${signedPct(finite(differential, "targetVsControlStructuralLoss"))} |`
     );
   });
+
+  pushBackgroundReferenceMarkdown(lines, structural, copy);
 
   lines.push(
     "",
@@ -336,9 +465,19 @@ export function formatLaboratoryStructuralTransitionMarkdown(entry: Entry, copy:
     "- Structural similarity: deterministic global grayscale SSIM-like metric; not canonical windowed SSIM.",
     "- Correlation: grayscale Pearson correlation; report uses normalized correlation for compact comparison.",
     "- Edge similarity: gradient-map correlation.",
-    "- Stabilization: translation-only reference tracking; rotation/zoom/perspective are not modeled.",
-    "- Revealed-background convergence: reserved in schema, not assessed in this implementation."
+    "- Stabilization: translation-only reference tracking; rotation/zoom/perspective are not modeled."
   );
+  if (revealed["status"] === "assessed") {
+    lines.push(
+      "- Background-reference convergence: user-selected reference time, sampled from the same normalized Target ROI coordinates.",
+      "- Reference-time alignment: fixed ROI only; camera translation between the event and reference frame is not modeled.",
+      "- Convergence describes image-structure similarity only; it does not identify a physical or compositing mechanism."
+    );
+  } else {
+    lines.push(
+      "- Background-reference convergence: not assessed; capture a clean reference frame to enable this measurement."
+    );
+  }
   return lines.join("\n");
 }
 
@@ -386,12 +525,18 @@ export function renderWorkspaceStructuralTransitionSummary(
   const interpretation = asLabRecord(entry["interpretation"]);
   const assessment = asLabRecord(structural["assessment"]);
   const stability = asLabRecord(structural["roiStability"]);
+  const revealed = asLabRecord(structural["revealedBackground"]);
+  const revealedAssessment = asLabRecord(revealed["assessment"]);
   const controlQuality = comparabilityLabel(interpretation["controlComparability"], copy);
   const stabilityText = stabilitySummary(stability, copy);
   const createdAt = (asNonEmptyString(entry["createdAt"]) || "report").replace(
     /[^a-zA-Z0-9._-]+/g,
     "-"
   );
+  const convergenceNote =
+    revealed["status"] === "assessed"
+      ? `${convergenceAssessmentLabel(revealedAssessment["classification"], copy)} · ${copy.locale === "tr" ? "şekil" : "shape"}: ${convergenceShapeLabel(revealedAssessment["transitionShape"], copy)}`
+      : "";
   return `
     <section class="labx-strip-live-comparison" data-lab-structural-transition-summary="true" data-lab-exportable-report="true" data-lab-report-filename="laboratory-structural-transition-${escapeHtml(createdAt)}">
       <div class="labx-strip-live-comparison__header">
@@ -400,6 +545,7 @@ export function renderWorkspaceStructuralTransitionSummary(
         ${reportActions(entry, copy)}
       </div>
       <p class="labx-strip-live-note">${escapeHtml(`Target ROI: ${roiLabel(temporal["roi"])} · Control ROI: ${roiLabel(request["controlRoi"])} · Background ROI: ${roiLabel(request["backgroundRoi"])}`)}</p>
+      ${revealed["status"] === "assessed" ? `<p class="labx-strip-live-note">${escapeHtml(`Background reference: ${decimal(finite(revealed, "referenceTimeSeconds"), 3)} s · ${convergenceNote}`)}</p>` : ""}
       ${controlQuality === "" ? "" : `<p class="labx-strip-live-note">${escapeHtml(controlQuality)}</p>`}
       ${stabilityText === "" ? "" : `<p class="labx-strip-live-note">${escapeHtml(stabilityText)}</p>`}
       <p class="labx-strip-live-note">${escapeHtml(`${copy.locale === "tr" ? "Fotometrik baseline" : "Photometric baseline"}: ${photometricAssessmentLabel(interpretation["photometricClassification"], copy)}`)}</p>
@@ -418,10 +564,10 @@ export function renderWorkspaceStructuralTransitionSummary(
       <p class="labx-strip-live-note"><strong>TIMELINE</strong> · PRE template'e göre structural response</p>
       <div class="labx-strip-live-comparison__table-wrap">
         <table>
-          <thead><tr><th scope="col">t</th><th scope="col">Target SSIM*</th><th scope="col">Target corr.</th><th scope="col">Target edge</th><th scope="col">Target persist.</th><th scope="col">Control persist.</th><th scope="col">Background persist.</th><th scope="col">T-C loss Δ</th></tr></thead>
+          <thead><tr><th scope="col">t</th><th scope="col">Target SSIM*</th><th scope="col">Target corr.</th><th scope="col">Target edge</th><th scope="col">Target persist.</th><th scope="col">Control persist.</th><th scope="col">Background persist.</th><th scope="col">Reference conv.</th><th scope="col">T-C loss Δ</th></tr></thead>
           <tbody>${structuralTimelineRows(structural)}</tbody>
         </table>
       </div>
-      <p class="labx-strip-live-note">${escapeHtml(copy.locale === "tr" ? "* SSIM*: global grayscale SSIM-benzeri deterministik skor; canonical windowed SSIM değildir. Stabilizasyon yalnız translation modelidir; confidence düşükse fixed ROI fallback kullanılır." : "* SSIM*: deterministic global grayscale SSIM-like score, not canonical windowed SSIM. Stabilization is translation-only; low confidence falls back to fixed ROI.")}</p>
+      <p class="labx-strip-live-note">${escapeHtml(copy.locale === "tr" ? "* SSIM*: global grayscale SSIM-benzeri deterministik skor; canonical windowed SSIM değildir. Background-reference ölçümü aynı Target ROI koordinatını kullanıcı tarafından seçilen referans zamanda örnekler; referans-zaman kamera hareketi modellenmez." : "* SSIM*: deterministic global grayscale SSIM-like score, not canonical windowed SSIM. Background-reference measurement samples the same Target ROI coordinates at the user-selected reference time; reference-time camera motion is not modeled.")}</p>
     </section>`;
 }
