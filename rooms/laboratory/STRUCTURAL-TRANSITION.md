@@ -2,13 +2,15 @@
 
 Bu belge Laboratory `Appearance / Disappearance Transition` akışına eklenen yapısal ölçüm katmanını açıklar.
 
-Amaç bir videonun gerçekliği veya mekanizması hakkında hüküm vermek değildir. Ölçüm sorusu şudur:
+Amaç bir videonun gerçekliği veya mekanizması hakkında hüküm vermek değildir. Ölçüm soruları şunlardır:
 
 > PRE fazında bulunan görüntü yapısı EVENT ve POST sırasında ne kadar korunuyor ve bu kayıp Target'a mı, Control'e mi, yoksa sahne geneline mi yayılıyor?
 
+> Target PRE yapısını kaybederken aynı görüntü bölgesi kullanıcı tarafından tanımlanmış temiz arka plan referansına yapısal olarak yaklaşıyor mu; yakınlaşma zamana nasıl yayılıyor?
+
 ## Mevcut Transition davranışı korunur
 
-Mevcut fotometrik Transition Probe değişmeden önce çalışır:
+Mevcut fotometrik Transition Probe önce çalışır:
 
 - PRE: event -1.0 → -0.2 s
 - EVENT: event -0.2 → +0.2 s
@@ -16,53 +18,45 @@ Mevcut fotometrik Transition Probe değişmeden önce çalışır:
 
 Target / Background visibility, luma, chroma, near-black, recovered-dark, edge ve temporal metrikleri aynı kayıt içinde korunur.
 
-Yeni structural analiz bu sonuca **enrichment** olarak eklenir. Structural aşama herhangi bir nedenle çalışamazsa eski fotometrik Transition sonucu yine geçerlidir ve kaybolmaz.
+Structural analiz bu sonuca **enrichment** olarak eklenir. Structural aşama herhangi bir nedenle çalışamazsa eski fotometrik Transition sonucu yine korunur.
 
-## Üç ROI
+## Üç spatial ROI
 
 Visual Stress yüzeyi video için üç seçim rolü destekler:
 
 - **Target ROI** — incelenen hedef.
 - **Control ROI** — opsiyonel, hedef dışında mümkün olduğunca benzer başlangıç görüntü özelliklerine sahip sabit sahne alanı.
-- **Background ROI** — yakın fiziksel arka plan / diferansiyel referans.
+- **Background ROI** — yakın fiziksel arka plan / diferansiyel ve motion referansı.
 
-Store şeması büyütülmeden mevcut workspace alanları yeniden kullanılır:
+Store eşlemesi:
 
 - Target = active selection ROI
 - Control = `comparisonRois.primary`
 - Background = `comparisonRois.reference`
 
-Bu anlam yalnız video Visual Stress modu aktifken kullanılır; mevcut image-comparison davranışı değiştirilmez.
-
-Control ROI zorunlu değildir. Control yoksa structural scene baseline Background üzerinden kurulabilir; Target-Control alanları `null` / `—` kalır.
+Control zorunlu değildir. Control yoksa structural scene baseline Background üzerinden kurulabilir; Target-Control alanları `null` / `—` kalır.
 
 ## Control comparability
 
 PRE fazında Target ve Control arasında yalnız ölçüm kalitesini anlatan bir karşılaştırılabilirlik skoru üretilir.
 
-İlk sürüm şu aileleri kullanır:
+İlk sürüm:
 
 - mean luma
-- luma spread / dağılım genişliği
+- luma spread
 - chroma distance
 - edge energy
 - ROI alan oranı
 
-Çıktı:
+kullanır.
 
-- high
-- medium
-- low
-
-ve 0–100% skorudur.
-
-Bu değer Control ROI'nin semantik olarak doğru fiziksel nesne olduğunu iddia etmez; yalnız görüntü özellikleri bakımından karşılaştırmanın ne kadar uygun olduğunu tarif eder.
+Çıktı `high / medium / low` ve 0–100% skordur. Bu değer Control ROI'nin semantik olarak doğru fiziksel yüzey olduğunu iddia etmez.
 
 ## Structural baseline
 
 PRE penceresinin orta noktasına yakın `event -0.6 s` kare structural template olarak kullanılır.
 
-Her ROI kendi baseline'ına sahiptir:
+Her spatial ROI kendi baseline'ına sahiptir:
 
 - Target PRE template
 - Control PRE template (varsa)
@@ -87,7 +81,7 @@ hesaplanır.
 
 İlk sürüm ağır bir CV framework kullanmaz. Global grayscale mean / variance / covariance üzerinden deterministik bir **SSIM-benzeri** skor hesaplanır.
 
-Bu değer canonical windowed SSIM değildir; UI ve Markdown raporunda açıkça `SSIM-like` olarak etiketlenir.
+Bu değer canonical windowed SSIM değildir; UI ve Markdown raporunda `SSIM-like` olarak etiketlenir.
 
 ### Pixel correlation
 
@@ -99,18 +93,18 @@ Yatay/dikey yerel gradient büyüklüklerinden hafif bir edge-map üretilir; bas
 
 ### Structural persistence
 
-İlk sürümde şu dört bileşenin ortalamasıdır:
+Şu dört bileşenin ortalamasıdır:
 
 - SSIM-like
 - normalized pixel correlation
 - edge similarity
 - `1 - normalized absolute difference`
 
-Tek bir fiziksel büyüklük değildir; yapının PRE template'e ne kadar benzediğini kompakt göstermek için kullanılan birleşik ölçüm skorudur.
+Tek bir fiziksel büyüklük değildir; görüntü yapısının template'e benzerliğini kompakt göstermek için kullanılan birleşik ölçüm skorudur.
 
 ## Event timeline
 
-Structural analiz event çevresinde şu varsayılan offsetleri örnekler:
+Structural analiz event çevresinde şu offsetleri örnekler:
 
 ```text
 -1.0
@@ -128,17 +122,18 @@ Structural analiz event çevresinde şu varsayılan offsetleri örnekler:
 
 Kaynak başlangıcı/sonu güvenli biçimde clamp edilir; aynı gerçek zamana clamp edilen tekrar noktaları çıkarılır.
 
-Her noktada en az:
+Her noktada:
 
-- Target structural similarity / correlation / edge similarity / persistence
+- Target similarity / correlation / edge similarity / persistence
 - Control persistence (varsa)
 - Background persistence
 - Target-Control structural-loss differential
 - Target-Background structural-loss differential
+- Background Reference seçilmişse aynı Target ROI'nin reference convergence değeri
 
 saklanır.
 
-PRE / EVENT / POST structural özetleri timeline'dan sırasıyla yaklaşık `-0.6 / 0.0 / +0.6 s` noktalarını kullanır. Eski fotometrik PRE/EVENT/POST pencere ortalamaları ayrı olarak korunur.
+PRE / EVENT / POST structural özetleri timeline'dan yaklaşık `-0.6 / 0.0 / +0.6 s` noktalarını kullanır. Eski fotometrik PRE/EVENT/POST pencere ortalamaları ayrı korunur.
 
 ## Differential structural loss
 
@@ -160,7 +155,7 @@ Structural sonuçta:
 
 saklanır.
 
-Control varsa ilk sürüm scene loss, Control ve Background loss ortalamasıdır. Control yoksa Background loss kullanılır.
+Control varsa scene loss, Control ve Background loss ortalamasıdır. Control yoksa Background loss kullanılır.
 
 ```text
 Target-specific structural loss
@@ -182,28 +177,18 @@ Kullanılabilecek sınıflar:
 
 Bu sınıflar mekanizma veya gerçeklik hükmü değildir.
 
-Özellikle şu tür çıkarımlar yapılmaz:
-
-```text
-structural change = paranormal
-structural persistence loss = gerçek nesnenin kaybolması
-```
-
 ## ROI drift diagnostic
 
-Structural Transition event çevresinde reference ROI'nin translation hareketini mevcut Motion Probe block-match algoritmasını yeniden kullanarak tahmin eder.
+Structural Transition event çevresinde reference ROI'nin translation hareketini mevcut Motion Probe block-match algoritmasıyla tahmin eder.
 
 Raporlanan alanlar:
 
-- net dx
-- net dy
+- net dx / dy
 - peak displacement
 - pair count
 - tracking confidence
 - Target ROI minimum boyutuna göre normalized drift ratio
 - risk: negligible / low / moderate / high
-
-Drift riski Target ROI ölçeğine göre normalize edilir; aynı piksel hareketi küçük ROI'de daha yüksek risk üretir.
 
 ## Translation-only stabilization
 
@@ -219,9 +204,9 @@ Reference seçimi:
 1. aynı source için mevcut Motion Reference lock varsa onu kullan,
 2. yoksa Background ROI'yi translation reference olarak kullan.
 
-Tracking confidence yeterliyse baseline-relative dx/dy, Target / Control / Background structural ROI'lerine aynı global camera translation olarak uygulanır.
+Tracking confidence yeterliyse baseline-relative dx/dy Target / Control / Background structural ROI'lerine aynı global camera translation olarak uygulanır.
 
-Confidence düşükse sessizce düzeltme yapılmaz:
+Confidence düşükse:
 
 ```text
 ROI stabilization: off
@@ -229,58 +214,126 @@ fallback: fixed ROI
 reason: tracking-confidence-low
 ```
 
-### Önemli ilk-sürüm sınırı
+Stabilizasyon şu anda **structural timeline ölçümlerine** uygulanır. Legacy fotometrik PRE/EVENT/POST ve Visibility Response geriye dönük davranışı korumak için fixed ROI kalır.
 
-Stabilizasyon şu anda **structural timeline ölçümlerine** uygulanır.
+## Background Reference Capture
 
-Mevcut legacy fotometrik PRE/EVENT/POST ölçümleri geriye dönük davranışı korumak için fixed ROI olarak bırakılmıştır. Böylece eski Transition sonuçları değişmez; structural kart hangi katmanın stabilize edildiğini raporda açıklar.
+Background Reference, spatial `Background ROI` ile aynı şey değildir.
 
-Visibility Response sweep de bu turda yeniden örneklenerek stabilize edilmez. Structural Transition'ın drift diagnostic/stabilization altyapısı ileride Response sweep'e aynı provenance ile genişletilebilir.
+Amaç başka bir fiziksel bölgenin görüntüsünü Target ile karşılaştırmak değil, **aynı Target ROI koordinatının hedef görünmüyorken nasıl göründüğünü** template olarak tanımlamaktır.
 
-## Revealed background / convergence
+Kullanım:
 
-İlk sürüm doğrudan `POST → beklenen fiziksel background` yakınlaşması hakkında semantik bir skor üretmez.
+1. Event aralığını ve Target ROI'yi seç.
+2. Videoda aynı kamera açısından, hedefin olmadığı ve beklenen arka planın görüldüğü bir kareye git.
+3. `Arka Plan Referansını Al` düğmesine bas.
+4. Gerekirse `Temizle` ile referansı kaldır.
+5. `Appearance / Disappearance Transition` çalıştır.
 
-Ancak structural sonuç şemasında şu alan ayrılmıştır:
+Referans zamanı source bazında UI oturumunda tutulur ve Transition request'ine `backgroundReferenceSeconds` olarak eklenir. Tam analiz sonucunda referans zamanı request/provenance içinde kalır.
+
+Referans seçilmezse mevcut Structural Transition davranışı değişmez ve `revealedBackground.status = not-assessed` kalır.
+
+## Background Reference Convergence
+
+Referans seçilmişse yeni runtime:
+
+- kullanıcı seçili referans zamanda aynı normalized Target ROI'den `64×64` grayscale template çıkarır,
+- event timeline'ın her noktasında yine aynı Target ROI bölgesini çıkarır,
+- event görüntüsünü PRE template'e değil bu clean background template'e karşılaştırır.
+
+Her noktada:
+
+- reference structural similarity
+- reference normalized pixel correlation
+- reference edge similarity
+- reference structural persistence
+
+üretilir.
+
+Compact anlamda:
 
 ```text
-revealedBackground.status = not-assessed
-revealedBackground.futureField = post-to-reference-convergence
+Reference convergence = Target bölgesinin user-captured background template'e structural persistence değeri
 ```
 
-Böylece daha sonra açıkça tanımlanmış bir reference/background template ile convergence eklenebilir; mevcut kayıt şeması yeniden kırılmaz.
+Rapor ayrıca:
+
+- PRE convergence
+- EVENT convergence
+- POST convergence
+- peak POST convergence
+- PRE → peak convergence gain
+- edge convergence gain
+- peak convergence anındaki Target structural loss
+
+alanlarını saklar.
+
+### Convergence assessment
+
+Temkinli sınıflar:
+
+- `target-loss-with-reference-convergence`
+- `reference-convergence-without-strong-target-loss`
+- `target-loss-without-reference-convergence`
+- `reference-convergence-uncertain`
+
+Örneğin ilk sınıf yalnız şunu anlatır:
+
+> Target bölgesi PRE template'e benzerliğini kaybederken kullanıcı tarafından tanımlanmış background template'e benzerliği artıyor.
+
+Bu ölçüm tek başına fiziksel nesne, opacity/fade, compositing veya başka bir mekanizma arasında karar vermez.
+
+### Transition shape
+
+Event sonrası convergence eğrisinin zamansal biçimi betimleyici olarak:
+
+- `gradual`
+- `abrupt`
+- `mixed`
+- `weak-or-nonconvergent`
+
+şeklinde sınıflanır.
+
+Bu sınıflama yalnız eğrinin şeklini tarif eder. `abrupt = fiziksel`, `gradual = compositing` gibi bir anlam taşımaz.
+
+### İlk sürüm sınırı
+
+Background Reference convergence aynı normalized Target ROI koordinatını referans zamanda kullanır.
+
+**Event ile background-reference zamanı arasındaki kamera translation/rotation/zoom ayrıca hizalanmaz.** Bu nedenle referans kare mümkün olduğunca aynı kamera açısına ve düşük harekete sahip bir bölümden seçilmelidir.
+
+Bu sınır Markdown raporunda açıkça yazılır.
 
 ## Live Results / Export
 
-Structural Transition kartı mevcut fotometrik Transition kartının yanında görünür.
-
-Kartta:
+Compact Report History tam tabloları panelde sürekli göstermez; ancak Structural Transition'ın **Kopyala / MD Dışa Aktar** çıktısı şunları taşır:
 
 - Target / Control / Background ROI
+- event zamanı
+- Background Reference zamanı (varsa)
 - Control comparability
 - photometric PRE / EVENT / POST
 - structural PRE / EVENT / POST
 - structural timeline
+- reference convergence timeline
 - Target-Control ve Target-Background diferansiyelleri
-- ROI stabilization mode
-- tracking confidence
-- dx / dy / peak displacement
-- drift risk
-- kısa structural assessment
-
-bulunur.
-
-Kartın kendi **Kopyala** ve **MD Dışa Aktar** düğmesi vardır. Markdown export ölçüm tablosunu ve yöntem sınırlarını korur; raporun analiz sohbetine doğrudan aktarılabilmesi amaçlanır.
+- convergence gain / edge gain
+- transition shape
+- ROI stabilization / drift
+- yöntem sınırları
 
 ## Kaynak / provenance
 
 Source medya değiştirilmez.
 
-Structural extraction geçici grayscale raw frame dosyaları üzerinden yapılır. Son proje kaydında source path, event zamanı, ROI'ler, structural timeline, drift/stabilization raporu, method açıklaması ve assessment birlikte tutulur.
+Structural ve convergence extraction geçici grayscale raw frame dosyaları üzerinden yapılır. Proje sonucunda source path, event zamanı, ROI'ler, referans zamanı, structural timeline, convergence timeline, drift/stabilization raporu, method açıklaması ve assessment birlikte tutulur.
 
 ## Doğrulama
 
 ```bash
+npm run rooms:typecheck
+npm run rooms:lint:strict
 npm run rooms:test:file -- scripts/tests/laboratory-structural-transition-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-visual-stress-dual-roi-regressions.test.ts
 node rooms/laboratory/scripts/laboratory-check.mjs
