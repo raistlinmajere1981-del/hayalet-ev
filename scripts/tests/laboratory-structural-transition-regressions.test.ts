@@ -203,7 +203,7 @@ void test("structural transition report exports convergence timeline and ROI sta
   assert.match(markdown, /Target-Control structural loss/);
   assert.match(markdown, /ROI Stability/);
   assert.match(markdown, /Tracking confidence: 72%/);
-  assert.match(markdown, /reference-time motion is not modeled/);
+  assert.match(markdown, /Reference-time alignment: fixed ROI only/);
   assert.match(markdown, /SSIM-like/);
   assert.doesNotMatch(markdown, /paranormal|real\/fake verdict/i);
 });
