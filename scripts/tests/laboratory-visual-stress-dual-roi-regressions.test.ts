@@ -32,6 +32,7 @@ void test("video ROI renderer owns stable target control and background nodes", 
   assert.match(markup, /data-lab-selection-roi="background"/);
   assert.match(markup, /data-lab-visual-stress-control-overlay="true"[\s\S]*hidden/);
   assert.match(markup, /data-lab-visual-stress-background-overlay="true"[\s\S]*hidden/);
+  assert.doesNotMatch(markup, /<div[^>]*class="[^"]*labx-selection-roi-mask/);
 });
 
 void test("selection binder updates canonical target/control/background roles without replacing target ROI", async () => {
