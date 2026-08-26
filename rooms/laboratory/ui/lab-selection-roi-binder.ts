@@ -40,6 +40,7 @@ type DrawDragState = {
   comparisonSide: LabComparisonSide | null;
   lastSignature: string | null;
   mode: "draw";
+  role: VisualStressRoiRole | null;
   stage: StageElement;
   startX: number;
   startY: number;
@@ -51,6 +52,7 @@ type ResizeDragState = {
   initialRoi: LabSelectionROI;
   lastSignature: string | null;
   mode: "resize";
+  role: VisualStressRoiRole | null;
   stage: StageElement;
   startX: number;
   startY: number;
@@ -219,18 +221,10 @@ function createSelectionRoiFromResize(
   const minWidth = MIN_SELECTION_ROI_SIZE_PX / rect.width;
   const minHeight = MIN_SELECTION_ROI_SIZE_PX / rect.height;
 
-  if (handle.indexOf("w") >= 0) {
-    left = nextX;
-  }
-  if (handle.indexOf("e") >= 0) {
-    right = nextX;
-  }
-  if (handle.indexOf("n") >= 0) {
-    top = nextY;
-  }
-  if (handle.indexOf("s") >= 0) {
-    bottom = nextY;
-  }
+  if (handle.indexOf("w") >= 0) left = nextX;
+  if (handle.indexOf("e") >= 0) right = nextX;
+  if (handle.indexOf("n") >= 0) top = nextY;
+  if (handle.indexOf("s") >= 0) bottom = nextY;
 
   if (right - left < minWidth) {
     if (handle.indexOf("w") >= 0) {
@@ -312,25 +306,81 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
 
   function getVisualStressRoleFromTarget(target: EventTarget | null) {
     const trigger = getClosestTarget(target, "[data-lab-visual-stress-roi-role]");
-    if (trigger === null) {
-      return null;
-    }
+    if (trigger === null) return null;
     const role = trigger.getAttribute("data-lab-visual-stress-roi-role");
     return isVisualStressRoiRole(role) ? role : null;
+  }
+
+  function resolveInteractionRole(target: EventTarget | null): VisualStressRoiRole | null {
+    if (!isVisualStressActive()) return null;
+    const explicitRole = getVisualStressRoleFromTarget(target);
+    if (explicitRole !== null) {
+      activeVisualStressRole = explicitRole;
+      return explicitRole;
+    }
+    return activeVisualStressRole;
   }
 
   function resolveInteractionComparisonSide(
     target: EventTarget | null,
     stage: StageElement | null
   ): LabComparisonSide | null {
-    if (isVisualStressActive()) {
-      const explicitRole = getVisualStressRoleFromTarget(target);
-      if (explicitRole !== null) {
-        activeVisualStressRole = explicitRole;
-      }
-      return visualRoleComparisonSide(explicitRole ?? activeVisualStressRole);
-    }
+    const role = resolveInteractionRole(target);
+    if (role !== null) return visualRoleComparisonSide(role);
     return stage === null ? null : getComparisonSideFromStage(stage);
+  }
+
+  function emitVisualStressComparisonRoi(
+    role: "control" | "background",
+    roi: LabSelectionROI | null
+  ) {
+    const side = visualRoleComparisonSide(role);
+    if (side === null) return;
+    const primary = side === "primary" ? roi : (deps.getComparisonRoi?.("primary") ?? null);
+    const reference =
+      side === "reference" ? roi : (deps.getComparisonRoi?.("reference") ?? null);
+    const updateEvent: Extract<LabStoreEvent, { type: "workspace-comparison-updated" }> = {
+      type: "workspace-comparison-updated",
+      patch: {},
+    };
+    Object.assign(updateEvent.patch, {
+      comparisonRois: {
+        activeSide: side,
+        primary,
+        reference,
+      },
+    });
+    deps.emit(updateEvent);
+  }
+
+  function emitRoiUpdate(
+    role: VisualStressRoiRole | null,
+    comparisonSide: LabComparisonSide | null,
+    roi: LabSelectionROI
+  ) {
+    if (role === "control" || role === "background") {
+      emitVisualStressComparisonRoi(role, roi);
+      return;
+    }
+    deps.emit({
+      type: "selection-roi-updated",
+      roi,
+      ...(comparisonSide === null ? {} : { comparisonSide }),
+    });
+  }
+
+  function emitRoiClear(
+    role: VisualStressRoiRole | null,
+    comparisonSide: LabComparisonSide | null
+  ) {
+    if (role === "control" || role === "background") {
+      emitVisualStressComparisonRoi(role, null);
+      return;
+    }
+    deps.emit({
+      type: "selection-roi-cleared",
+      ...(comparisonSide === null ? {} : { comparisonSide }),
+    });
   }
 
   function syncVisualStressRoleControls() {
@@ -339,9 +389,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     const backgroundRoi = deps.getComparisonRoi?.("reference") ?? null;
     queryAll("[data-lab-control-injection='true']").forEach(function (panel) {
       const body = panel.querySelector(".labx-card__body");
-      if (body === null) {
-        return;
-      }
+      if (body === null) return;
       let controls = body.querySelector("[data-lab-visual-stress-roi-controls='true']");
       if (controls === null) {
         body.insertAdjacentHTML(
@@ -357,9 +405,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
         );
         controls = body.querySelector("[data-lab-visual-stress-roi-controls='true']");
       }
-      if (controls === null) {
-        return;
-      }
+      if (controls === null) return;
       controls
         .querySelectorAll("[data-lab-visual-stress-roi-role-control='true']")
         .forEach(function (button) {
@@ -371,9 +417,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       const status = controls.querySelector("[data-lab-visual-stress-roi-status='true']");
       if (status !== null) {
         const nextStatus = `Target ROI ${targetRoi === null ? "—" : "✓"} · Control ROI ${controlRoi === null ? "—" : "✓"} · Background ROI ${backgroundRoi === null ? "—" : "✓"} · Control is optional.`;
-        if (status.textContent !== nextStatus) {
-          status.textContent = nextStatus;
-        }
+        if (status.textContent !== nextStatus) status.textContent = nextStatus;
       }
     });
   }
@@ -400,9 +444,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
   function restoreTargetOverlay(targetOverlay: Element) {
     const originalLabel = targetOverlay.getAttribute("data-lab-visual-stress-original-label");
     const label = targetOverlay.querySelector(".labx-selection-roi__label");
-    if (label !== null && originalLabel !== null) {
-      label.textContent = originalLabel;
-    }
+    if (label !== null && originalLabel !== null) label.textContent = originalLabel;
     targetOverlay.removeAttribute("data-lab-visual-stress-original-label");
     targetOverlay.removeAttribute("data-lab-visual-stress-roi-role");
     targetOverlay.removeAttribute("data-active");
@@ -479,9 +521,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
             label.textContent || "Inspection ROI"
           );
         }
-        if (label !== null && label.textContent !== "Target ROI") {
-          label.textContent = "Target ROI";
-        }
+        if (label !== null && label.textContent !== "Target ROI") label.textContent = "Target ROI";
         targetOverlay.setAttribute("data-lab-visual-stress-roi-role", "target");
         targetOverlay.setAttribute(
           "data-active",
@@ -509,9 +549,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
   }
 
   function scheduleMultiRoiSync() {
-    if (multiRoiSyncQueued) {
-      return;
-    }
+    if (multiRoiSyncQueued) return;
     multiRoiSyncQueued = true;
     void Promise.resolve().then(function () {
       multiRoiSyncQueued = false;
@@ -527,9 +565,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     );
     if (roleControl !== null) {
       const role = roleControl.getAttribute("data-lab-visual-stress-roi-role");
-      if (!isVisualStressRoiRole(role) || !isVisualStressActive()) {
-        return;
-      }
+      if (!isVisualStressRoiRole(role) || !isVisualStressActive()) return;
       event.preventDefault();
       activeVisualStressRole = role;
       syncMultiRoiDom();
@@ -538,26 +574,30 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
 
     const clearTrigger = getClosestTarget(target, "[data-lab-selection-roi-clear]");
     if (clearTrigger) {
-      if (isMutationLocked()) {
-        return;
-      }
+      if (isMutationLocked()) return;
       event.preventDefault();
       const stage = getClosestTarget(target, "[data-lab-selection-roi-stage='true']");
-      const comparisonSide = resolveInteractionComparisonSide(target, stage);
-      deps.emit({
-        type: "selection-roi-cleared",
-        ...(comparisonSide === null ? {} : { comparisonSide }),
-      });
+      const role = resolveInteractionRole(target);
+      const comparisonSide =
+        role === null
+          ? resolveInteractionComparisonSide(target, stage)
+          : visualRoleComparisonSide(role);
+      emitRoiClear(role, comparisonSide);
       scheduleMultiRoiSync();
+      return;
+    }
+
+    const overlayRole = getVisualStressRoleFromTarget(target);
+    if (overlayRole !== null && isVisualStressActive()) {
+      activeVisualStressRole = overlayRole;
+      syncMultiRoiDom();
       return;
     }
 
     const inspectionTrigger = getClosestTarget(target, "[data-lab-selection-inspection-mode]");
     if (inspectionTrigger) {
       const nextMode = inspectionTrigger.getAttribute("data-lab-selection-inspection-mode");
-      if (typeof nextMode !== "string" || nextMode.trim() === "") {
-        return;
-      }
+      if (typeof nextMode !== "string" || nextMode.trim() === "") return;
       event.preventDefault();
       deps.emit({
         type: "selection-inspection-mode-updated",
@@ -568,29 +608,25 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
 
   function handleMouseDown(rawEvent: Event) {
     const event = rawEvent as MouseLikeEvent;
-    if (typeof event.button === "number" && event.button !== 0) {
-      return;
-    }
+    if (typeof event.button === "number" && event.button !== 0) return;
 
     const target = event.target ?? null;
     const resizeTrigger = getClosestTarget(target, "[data-lab-selection-roi-resize]");
     if (resizeTrigger) {
-      if (isMutationLocked()) {
-        return;
-      }
+      if (isMutationLocked()) return;
       const handle = resizeTrigger.getAttribute("data-lab-selection-roi-resize");
       const stage = getClosestTarget(target, "[data-lab-selection-roi-stage='true']");
       activateComparisonSide(deps, stage);
       const activeSelection = deps.getActiveSelection();
-      const visualRole = isVisualStressActive() ? getVisualStressRoleFromTarget(target) : null;
-      if (visualRole !== null) {
-        activeVisualStressRole = visualRole;
-      }
-      const comparisonSide = resolveInteractionComparisonSide(target, stage);
+      const role = resolveInteractionRole(target);
+      const comparisonSide =
+        role === null
+          ? resolveInteractionComparisonSide(target, stage)
+          : visualRoleComparisonSide(role);
       const initialRoi =
-        visualRole === "control"
+        role === "control"
           ? (deps.getComparisonRoi?.("primary") ?? null)
-          : visualRole === "background"
+          : role === "background"
             ? (deps.getComparisonRoi?.("reference") ?? null)
             : comparisonSide === null
               ? (activeSelection?.roi ?? null)
@@ -611,6 +647,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
         initialRoi,
         lastSignature: null,
         mode: "resize",
+        role,
         stage,
         startX: startPoint.x,
         startY: startPoint.y,
@@ -619,36 +656,30 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       return;
     }
 
-    if (getClosestTarget(target, "[data-lab-selection-roi-ignore='true']")) {
-      return;
-    }
+    if (getClosestTarget(target, "[data-lab-selection-roi-ignore='true']")) return;
 
     const stage = getClosestTarget(target, "[data-lab-selection-roi-stage='true']");
-    if (!stage) {
-      return;
-    }
-    if (isMutationLocked()) {
-      return;
-    }
+    if (!stage || isMutationLocked()) return;
     activateComparisonSide(deps, stage);
 
     const sourceKind = deps.getSourceKind();
-    if (!canDrawSelectionRoi(deps.getActiveSelection(), sourceKind)) {
-      return;
-    }
+    if (!canDrawSelectionRoi(deps.getActiveSelection(), sourceKind)) return;
 
     const rect = getSelectionRoiRect(stage);
     const reserveBottom = getReserveBottom(stage);
     const startPoint = clampPointToRect(event, rect);
-    if (startPoint.y > rect.bottom - reserveBottom) {
-      return;
-    }
+    if (startPoint.y > rect.bottom - reserveBottom) return;
 
+    const role = resolveInteractionRole(target);
     event.preventDefault();
     dragState = {
-      comparisonSide: resolveInteractionComparisonSide(target, stage),
+      comparisonSide:
+        role === null
+          ? resolveInteractionComparisonSide(target, stage)
+          : visualRoleComparisonSide(role),
       lastSignature: null,
       mode: "draw",
+      role,
       stage,
       startX: startPoint.x,
       startY: startPoint.y,
@@ -656,9 +687,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
   }
 
   function handleMouseMove(rawEvent: Event) {
-    if (dragState === null) {
-      return;
-    }
+    if (dragState === null) return;
     if (isMutationLocked()) {
       dragState = null;
       return;
@@ -668,17 +697,11 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
       dragState.mode === "resize"
         ? createSelectionRoiFromResize(dragState.stage, dragState, event)
         : createSelectionRoiFromDrag(dragState.stage, dragState, event);
-    if (nextSelectionRoi === null || dragState.lastSignature === nextSelectionRoi.signature) {
-      return;
-    }
+    if (nextSelectionRoi === null || dragState.lastSignature === nextSelectionRoi.signature) return;
 
     dragState.lastSignature = nextSelectionRoi.signature;
     event.preventDefault();
-    deps.emit({
-      type: "selection-roi-updated",
-      roi: nextSelectionRoi.roi,
-      ...(dragState.comparisonSide === null ? {} : { comparisonSide: dragState.comparisonSide }),
-    });
+    emitRoiUpdate(dragState.role, dragState.comparisonSide, nextSelectionRoi.roi);
     scheduleMultiRoiSync();
   }
 
@@ -688,9 +711,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
 
   function handleKeyDown(rawEvent: Event) {
     const event = rawEvent as MouseLikeEvent;
-    if (dragState === null || event.key !== "Escape") {
-      return;
-    }
+    if (dragState === null || event.key !== "Escape") return;
     event.preventDefault();
     dragState = null;
   }
