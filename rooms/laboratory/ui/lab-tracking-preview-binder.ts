@@ -34,37 +34,30 @@ type TrackingCache = {
   fallbackUsed: boolean;
   mode: string;
   quality: string;
-  sourceHeight: number;
-  sourceWidth: number;
+  sourceHeight: number | null;
+  sourceWidth: number | null;
   transforms: TrackingPoint[];
 };
 
-type VisualStressRole = "target" | "control" | "background";
+type PreviewRois = {
+  background: PreviewRoi | null;
+  control: PreviewRoi | null;
+  target: PreviewRoi | null;
+};
 
-const PREVIEW_SELECTOR = "[data-lab-tracking-preview-stabilized='true']";
-const ROLE_SELECTOR = "[data-lab-visual-stress-roi-role]";
+type VisualStressRole = keyof PreviewRois;
+type PreviewBoxKind = "raw" | "stabilized";
+
+const ROLE_LABELS: Record<VisualStressRole, string> = {
+  target: "Target",
+  control: "Control",
+  background: "Background",
+};
 
 let attached = false;
 
 function finite(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function parsePercent(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed.endsWith("%")) return null;
-  const numeric = Number(trimmed.slice(0, -1));
-  return Number.isFinite(numeric) ? numeric / 100 : null;
-}
-
-function readRoi(element: HTMLElement): PreviewRoi | null {
-  const x = parsePercent(element.style.left);
-  const y = parsePercent(element.style.top);
-  const width = parsePercent(element.style.width);
-  const height = parsePercent(element.style.height);
-  if (x === null || y === null || width === null || height === null) return null;
-  if (width <= 0 || height <= 0) return null;
-  return { x, y, width, height };
 }
 
 function asTransform(value: unknown): SimilarityTransform | null {
@@ -108,9 +101,9 @@ function readTrackingPoint(value: unknown): TrackingPoint | null {
   };
 }
 
-function readCache(root: HTMLElement): TrackingCache | null {
-  const raw = root.getAttribute("data-lab-camera-tracking-cache-json");
-  if (raw === null || raw.trim() === "") return null;
+function readCache(surface: HTMLElement | null): TrackingCache | null {
+  const raw = surface?.getAttribute("data-lab-tracking-preview-cache-json");
+  if (raw === null || raw === undefined || raw.trim() === "") return null;
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw) as unknown;
@@ -119,37 +112,74 @@ function readCache(root: HTMLElement): TrackingCache | null {
   }
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return null;
   const record = parsed as Record<string, unknown>;
-  const sourceWidth = finite(record["sourceWidth"]);
-  const sourceHeight = finite(record["sourceHeight"]);
   const anchorSeconds = finite(record["anchorSeconds"]);
-  const transforms = Array.isArray(record["transforms"])
+  const rawTransforms = Array.isArray(record["transforms"])
     ? record["transforms"]
-        .map(readTrackingPoint)
-        .filter((entry): entry is TrackingPoint => entry !== null)
-        .sort(function (left, right) {
-          return left.timeSeconds - right.timeSeconds;
-        })
-    : [];
+    : Array.isArray(record["transformSeries"])
+      ? record["transformSeries"]
+      : [];
+  const transforms = rawTransforms
+    .map(readTrackingPoint)
+    .filter((entry): entry is TrackingPoint => entry !== null)
+    .sort(function (left, right) {
+      return left.timeSeconds - right.timeSeconds;
+    });
   if (
-    sourceWidth === null ||
-    sourceHeight === null ||
+    record["algorithm"] !== "feature-similarity-ransac-v2" ||
     anchorSeconds === null ||
-    sourceWidth <= 0 ||
-    sourceHeight <= 0 ||
     transforms.length === 0
   ) {
     return null;
   }
   return {
-    algorithm: typeof record["algorithm"] === "string" ? record["algorithm"] : "unknown",
+    algorithm: "feature-similarity-ransac-v2",
     anchorSeconds,
     cacheId: typeof record["cacheId"] === "string" ? record["cacheId"] : "unknown",
     fallbackUsed: record["fallbackUsed"] === true,
     mode: typeof record["mode"] === "string" ? record["mode"] : "unknown",
     quality: typeof record["quality"] === "string" ? record["quality"] : "unreliable",
-    sourceHeight,
-    sourceWidth,
+    sourceHeight: finite(record["sourceHeight"]),
+    sourceWidth: finite(record["sourceWidth"]),
     transforms,
+  };
+}
+
+function readRoi(value: unknown): PreviewRoi | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const x = finite(record["x"]);
+  const y = finite(record["y"]);
+  const width = finite(record["width"]);
+  const height = finite(record["height"]);
+  if (
+    x === null ||
+    y === null ||
+    width === null ||
+    height === null ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    return null;
+  }
+  return { x, y, width, height };
+}
+
+function readRois(surface: HTMLElement): PreviewRois {
+  const raw = surface.getAttribute("data-lab-tracking-preview-rois-json");
+  let parsed: unknown = null;
+  try {
+    parsed = JSON.parse(raw ?? "null") as unknown;
+  } catch {
+    parsed = null;
+  }
+  const record =
+    parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  return {
+    target: readRoi(record["target"]),
+    control: readRoi(record["control"]),
+    background: readRoi(record["background"]),
   };
 }
 
@@ -174,21 +204,19 @@ function interpolatePoint(cache: TrackingCache, timeSeconds: number): TrackingPo
   for (let index = 1; index < points.length; index += 1) {
     const right = points[index];
     const left = points[index - 1];
-    if (left === undefined || right === undefined) continue;
-    if (timeSeconds > right.timeSeconds) continue;
+    if (left === undefined || right === undefined || timeSeconds > right.timeSeconds) continue;
     const span = Math.max(1e-6, right.timeSeconds - left.timeSeconds);
     const ratio = Math.max(0, Math.min(1, (timeSeconds - left.timeSeconds) / span));
     const mix = function (a: number, b: number) {
       return a + (b - a) * ratio;
     };
-    const quality = left.confidence <= right.confidence ? left.quality : right.quality;
     return {
       timeSeconds,
       confidence: mix(left.confidence, right.confidence),
       inlierRatio: mix(left.inlierRatio, right.inlierRatio),
       forwardBackwardRatio: mix(left.forwardBackwardRatio, right.forwardBackwardRatio),
       residualErrorPx: mix(left.residualErrorPx, right.residualErrorPx),
-      quality,
+      quality: left.confidence <= right.confidence ? left.quality : right.quality,
       transform: {
         dx: mix(left.transform.dx, right.transform.dx),
         dy: mix(left.transform.dy, right.transform.dy),
@@ -224,10 +252,16 @@ export function applyTrackingPreviewTransform(
       y: sinScale * point.x + cosScale * point.y + transform.dy,
     };
   });
-  const minX = Math.max(0, Math.min(sourceWidth - 1, Math.min(...corners.map((p) => p.x))));
-  const maxX = Math.max(minX + 1, Math.min(sourceWidth, Math.max(...corners.map((p) => p.x))));
-  const minY = Math.max(0, Math.min(sourceHeight - 1, Math.min(...corners.map((p) => p.y))));
-  const maxY = Math.max(minY + 1, Math.min(sourceHeight, Math.max(...corners.map((p) => p.y))));
+  const minX = Math.max(0, Math.min(sourceWidth - 1, Math.min(...corners.map((point) => point.x))));
+  const maxX = Math.max(
+    minX + 1,
+    Math.min(sourceWidth, Math.max(...corners.map((point) => point.x)))
+  );
+  const minY = Math.max(0, Math.min(sourceHeight - 1, Math.min(...corners.map((point) => point.y))));
+  const maxY = Math.max(
+    minY + 1,
+    Math.min(sourceHeight, Math.max(...corners.map((point) => point.y)))
+  );
   return {
     x: minX / sourceWidth,
     y: minY / sourceHeight,
@@ -236,36 +270,67 @@ export function applyTrackingPreviewTransform(
   };
 }
 
-function roleOf(element: HTMLElement): VisualStressRole | null {
-  const role = element.getAttribute("data-lab-visual-stress-roi-role");
-  return role === "target" || role === "control" || role === "background" ? role : null;
+function setElementText(element: HTMLElement | null, value: string) {
+  if (element !== null && element.textContent !== value) element.textContent = value;
 }
 
-function createPreviewElement(
-  deps: TrackingPreviewDeps,
-  overlay: HTMLElement,
-  raw: HTMLElement,
-  role: VisualStressRole
+function setHidden(element: HTMLElement | null, hidden: boolean) {
+  if (element !== null && element.hidden !== hidden) element.hidden = hidden;
+}
+
+function boxSelector(role: VisualStressRole, kind: PreviewBoxKind) {
+  return `[data-lab-tracking-preview-box="${kind}"][data-lab-tracking-preview-role="${role}"]`;
+}
+
+function ensureBox(
+  documentRef: Document,
+  frame: HTMLElement,
+  role: VisualStressRole,
+  kind: PreviewBoxKind
 ) {
-  const preview = deps.documentRef.createElement("div");
-  preview.setAttribute("data-lab-tracking-preview-stabilized", "true");
-  preview.setAttribute("data-lab-tracking-preview-role", role);
-  preview.setAttribute("aria-hidden", "true");
-  preview.style.position = "absolute";
-  preview.style.pointerEvents = "none";
-  preview.style.boxSizing = "border-box";
-  preview.style.border = "2px dashed";
-  preview.style.zIndex = "14";
-  preview.style.opacity = "0.95";
-  preview.style.borderColor = deps.windowRef.getComputedStyle(raw).borderTopColor;
-  overlay.appendChild(preview);
-  return preview;
+  let box = frame.querySelector<HTMLElement>(boxSelector(role, kind));
+  if (box !== null) return box;
+  box = documentRef.createElement("div");
+  box.className = `labx-tracking-preview-box labx-tracking-preview-box--${role} labx-tracking-preview-box--${kind}`;
+  box.setAttribute("data-lab-tracking-preview-box", kind);
+  box.setAttribute("data-lab-tracking-preview-role", role);
+  const label = documentRef.createElement("span");
+  label.className = "labx-tracking-preview-box__label";
+  label.textContent = `${ROLE_LABELS[role]} ${kind}`;
+  box.appendChild(label);
+  frame.appendChild(box);
+  return box;
 }
 
-function removePreviewElements(documentRef: Document) {
-  documentRef.querySelectorAll<HTMLElement>(PREVIEW_SELECTOR).forEach(function (element) {
-    element.remove();
-  });
+function positionBox(box: HTMLElement, roi: PreviewRoi) {
+  box.style.left = `${String(roi.x * 100)}%`;
+  box.style.top = `${String(roi.y * 100)}%`;
+  box.style.width = `${String(roi.width * 100)}%`;
+  box.style.height = `${String(roi.height * 100)}%`;
+}
+
+function removeStabilizedBoxes(frame: HTMLElement) {
+  frame
+    .querySelectorAll<HTMLElement>('[data-lab-tracking-preview-box="stabilized"]')
+    .forEach(function (box) {
+      box.remove();
+    });
+}
+
+function syncVideoFrame(video: HTMLVideoElement, shell: HTMLElement, frame: HTMLElement) {
+  const width = shell.clientWidth;
+  const height = shell.clientHeight;
+  const intrinsicWidth = video.videoWidth;
+  const intrinsicHeight = video.videoHeight;
+  if (width <= 0 || height <= 0 || intrinsicWidth <= 0 || intrinsicHeight <= 0) return false;
+  const scale = Math.min(width / intrinsicWidth, height / intrinsicHeight);
+  const renderedWidth = intrinsicWidth * scale;
+  const renderedHeight = intrinsicHeight * scale;
+  frame.style.left = `${String((width - renderedWidth) / 2)}px`;
+  frame.style.top = `${String((height - renderedHeight) / 2)}px`;
+  frame.style.width = `${String(renderedWidth)}px`;
+  frame.style.height = `${String(renderedHeight)}px`;
+  return true;
 }
 
 export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
@@ -274,101 +339,175 @@ export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
   let active = false;
   let mutationObserver: MutationObserver | null = null;
 
-  function getRoot() {
-    return deps.documentRef.querySelector<HTMLElement>(
-      '[data-lab-transform-stack="visual"][data-lab-transform-source-kind="video"]'
+  function getToggleButton() {
+    return deps.documentRef.querySelector<HTMLButtonElement>(
+      '[data-lab-action="workspace-tracking-preview-toggle"]'
     );
   }
 
-  function getVideo() {
+  function getPanelStatus() {
+    return deps.documentRef.querySelector<HTMLElement>(
+      "[data-lab-tracking-preview-status='true']"
+    );
+  }
+
+  function getSurface() {
+    return deps.documentRef.querySelector<HTMLElement>(
+      '[data-lab-tracking-preview-surface="true"]'
+    );
+  }
+
+  function getMainVideo() {
     return deps.documentRef.querySelector<HTMLVideoElement>(
       'video[data-lab-preserve-media="workspace-preview"]'
     );
   }
 
-  function setButtonState() {
-    const root = getRoot();
-    const button = root?.querySelector<HTMLButtonElement>(
-      '[data-lab-action="workspace-tracking-preview-toggle"]'
+  function getTrackingVideo(surface: HTMLElement | null) {
+    return surface?.querySelector<HTMLVideoElement>('[data-lab-tracking-preview-video="true"]') ?? null;
+  }
+
+  function isCacheUsable(cache: TrackingCache | null) {
+    return (
+      cache !== null &&
+      cache.fallbackUsed !== true &&
+      cache.quality !== "unreliable" &&
+      cache.transforms.length > 0
     );
-    if (button !== null && button !== undefined) {
+  }
+
+  function syncAvailability() {
+    const button = getToggleButton();
+    const cache = readCache(getSurface());
+    const usable = isCacheUsable(cache);
+    if (button !== null) {
+      button.disabled = !usable;
       const label = active ? "Tracking Preview Kapat" : "Tracking Preview";
-      const pressed = active ? "true" : "false";
-      // NOTE: Avoid child-list writes when the document observer is synchronizing unchanged markup.
-      if (button.textContent !== label) {
-        button.textContent = label;
-      }
-      if (button.getAttribute("aria-pressed") !== pressed) {
-        button.setAttribute("aria-pressed", pressed);
-      }
+      setElementText(button, label);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    }
+    const status = getPanelStatus();
+    if (!usable) {
+      setElementText(
+        status,
+        "Henüz kullanılabilir Camera Tracking v2 sonucu yok. Transition veya Visibility Response cache üretecek."
+      );
+    } else if (!active && cache !== null) {
+      setElementText(
+        status,
+        `Tracking quality: ${cache.quality.toUpperCase()} · ${cache.mode} · önizleme alt sonuç panelinde açılır.`
+      );
+    }
+    if (!usable && active) {
+      active = false;
+      syncSurfaceVisibility();
     }
   }
 
-  function setStatus(message: string) {
-    const status = getRoot()?.querySelector<HTMLElement>(
-      "[data-lab-tracking-preview-status='true']"
+  function syncSurfaceVisibility() {
+    const surface = getSurface();
+    const transformContent = deps.documentRef.querySelector<HTMLElement>(
+      '[data-lab-transform-preview-content="true"]'
     );
-    if (status !== null && status !== undefined && status.textContent !== message) {
-      status.textContent = message;
+    const modeSelect = deps.documentRef.querySelector<HTMLSelectElement>(
+      '[data-lab-live-transform-mode="true"]'
+    );
+    const title = deps.documentRef.querySelector<HTMLElement>('[data-lab-live-preview-title="true"]');
+    const status = deps.documentRef.querySelector<HTMLElement>('[data-lab-live-preview-status="true"]');
+    const note = deps.documentRef.querySelector<HTMLElement>('[data-lab-live-preview-note="true"]');
+    setHidden(surface, !active);
+    setHidden(transformContent, active);
+    if (modeSelect !== null) modeSelect.disabled = active;
+    setElementText(title, active ? "Tracking Preview" : "Dönüşüm Önizlemesi");
+    if (active) {
+      setElementText(status, "raw + stabilized");
+      setElementText(
+        note,
+        "Solid kutu raw ekran koordinatını, dashed kutu Camera Tracking v2 ile düzeltilmiş fiziksel sahne koordinatını gösterir."
+      );
     }
   }
 
   function render() {
-    if (!active) {
-      removePreviewElements(deps.documentRef);
+    if (!active) return;
+    const surface = getSurface();
+    const cache = readCache(surface);
+    const video = getTrackingVideo(surface);
+    const shell = surface?.querySelector<HTMLElement>('[data-lab-tracking-preview-media-shell="true"]') ?? null;
+    const frame = surface?.querySelector<HTMLElement>('[data-lab-tracking-preview-frame="true"]') ?? null;
+    const detail = surface?.querySelector<HTMLElement>('[data-lab-tracking-preview-detail="true"]') ?? null;
+    if (
+      surface === null ||
+      cache === null ||
+      video === null ||
+      shell === null ||
+      frame === null ||
+      !isCacheUsable(cache)
+    ) {
       return;
     }
-    const root = getRoot();
-    const video = getVideo();
-    const overlay = deps.documentRef.querySelector<HTMLElement>(
-      "[data-lab-selection-roi-overlay='true']"
-    );
-    if (root === null || video === null || overlay === null) return;
-    const cache = readCache(root);
-    if (cache === null || cache.fallbackUsed) {
-      removePreviewElements(deps.documentRef);
-      setStatus("Tracking Preview kullanılamıyor: güvenilir v2 transform cache yok.");
-      return;
-    }
+    if (!syncVideoFrame(video, shell, frame)) return;
+    const sourceWidth = cache.sourceWidth ?? (video.videoWidth > 0 ? video.videoWidth : null);
+    const sourceHeight = cache.sourceHeight ?? (video.videoHeight > 0 ? video.videoHeight : null);
+    if (sourceWidth === null || sourceHeight === null) return;
+    const rois = readRois(surface);
+    (Object.keys(rois) as VisualStressRole[]).forEach(function (role) {
+      const roi = rois[role];
+      const existingRaw = frame.querySelector<HTMLElement>(boxSelector(role, "raw"));
+      if (roi === null) {
+        existingRaw?.remove();
+        frame.querySelector<HTMLElement>(boxSelector(role, "stabilized"))?.remove();
+        return;
+      }
+      positionBox(ensureBox(deps.documentRef, frame, role, "raw"), roi);
+    });
+
     const point = interpolatePoint(cache, video.currentTime);
     if (point === null || point.quality === "unreliable" || point.confidence < 0.38) {
-      removePreviewElements(deps.documentRef);
-      setStatus(`t=${video.currentTime.toFixed(3)} s · tracking bu anda güvenilir değil`);
+      removeStabilizedBoxes(frame);
+      setElementText(
+        detail,
+        `t=${video.currentTime.toFixed(3)} s · bu zaman cache aralığı dışında veya tracking güvenilir değil.`
+      );
       return;
     }
-    const rawElements = Array.from(
-      overlay.querySelectorAll<HTMLElement>(`${ROLE_SELECTOR}:not([hidden])`)
-    );
-    const liveRoles = new Set<VisualStressRole>();
-    rawElements.forEach(function (raw) {
-      const role = roleOf(raw);
-      const roi = readRoi(raw);
-      if (role === null || roi === null) return;
-      liveRoles.add(role);
-      const corrected = applyTrackingPreviewTransform(
-        roi,
-        point.transform,
-        cache.sourceWidth,
-        cache.sourceHeight
-      );
-      let preview = overlay.querySelector<HTMLElement>(
-        `${PREVIEW_SELECTOR}[data-lab-tracking-preview-role="${role}"]`
-      );
-      if (preview === null) preview = createPreviewElement(deps, overlay, raw, role);
-      preview.style.left = `${String(corrected.x * 100)}%`;
-      preview.style.top = `${String(corrected.y * 100)}%`;
-      preview.style.width = `${String(corrected.width * 100)}%`;
-      preview.style.height = `${String(corrected.height * 100)}%`;
+    (Object.keys(rois) as VisualStressRole[]).forEach(function (role) {
+      const roi = rois[role];
+      if (roi === null) return;
+      const corrected = applyTrackingPreviewTransform(roi, point.transform, sourceWidth, sourceHeight);
+      positionBox(ensureBox(deps.documentRef, frame, role, "stabilized"), corrected);
     });
-    overlay.querySelectorAll<HTMLElement>(PREVIEW_SELECTOR).forEach(function (preview) {
-      const role =
-        roleOf(preview) ??
-        (preview.getAttribute("data-lab-tracking-preview-role") as VisualStressRole | null);
-      if (role === null || !liveRoles.has(role)) preview.remove();
-    });
-    setStatus(
+    setElementText(
+      detail,
       `t=${video.currentTime.toFixed(3)} s · ${point.quality.toUpperCase()} · confidence ${Math.round(point.confidence * 100)}% · inlier ${Math.round(point.inlierRatio * 100)}% · FB ${Math.round(point.forwardBackwardRatio * 100)}% · dx/dy ${point.transform.dx.toFixed(1)}/${point.transform.dy.toFixed(1)} px · rot ${point.transform.rotationDegrees.toFixed(2)}° · scale ${point.transform.scale.toFixed(4)} · residual ${point.residualErrorPx.toFixed(2)} px`
     );
+  }
+
+  function activate() {
+    const surface = getSurface();
+    const cache = readCache(surface);
+    if (!isCacheUsable(cache) || cache === null) return;
+    active = true;
+    syncSurfaceVisibility();
+    syncAvailability();
+    const video = getTrackingVideo(surface);
+    if (video !== null) {
+      const mainTime = getMainVideo()?.currentTime;
+      const first = cache.transforms[0]?.timeSeconds ?? cache.anchorSeconds;
+      const last = cache.transforms[cache.transforms.length - 1]?.timeSeconds ?? cache.anchorSeconds;
+      const candidate =
+        typeof mainTime === "number" && mainTime >= first - 0.25 && mainTime <= last + 0.25
+          ? mainTime
+          : cache.anchorSeconds;
+      if (Number.isFinite(candidate)) video.currentTime = candidate;
+    }
+    render();
+  }
+
+  function deactivate() {
+    active = false;
+    syncSurfaceVisibility();
+    syncAvailability();
   }
 
   function handleClick(event: Event) {
@@ -378,39 +517,46 @@ export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
     );
     if (button === null) return;
     event.preventDefault();
-    active = !active;
-    if (!active) removePreviewElements(deps.documentRef);
-    setButtonState();
-    render();
+    if (active) deactivate();
+    else activate();
   }
 
   function handleMediaEvent(event: Event) {
     if (!active || !(event.target instanceof HTMLVideoElement)) return;
-    if (event.target.getAttribute("data-lab-preserve-media") !== "workspace-preview") return;
+    if (event.target.getAttribute("data-lab-tracking-preview-video") !== "true") return;
     render();
+  }
+
+  function handleResize() {
+    if (active) render();
   }
 
   deps.documentRef.addEventListener("click", handleClick);
   deps.documentRef.addEventListener("timeupdate", handleMediaEvent, true);
   deps.documentRef.addEventListener("seeking", handleMediaEvent, true);
   deps.documentRef.addEventListener("seeked", handleMediaEvent, true);
+  deps.documentRef.addEventListener("loadedmetadata", handleMediaEvent, true);
+  deps.windowRef.addEventListener("resize", handleResize);
   if (typeof MutationObserver !== "undefined") {
     mutationObserver = new MutationObserver(function () {
-      setButtonState();
+      syncAvailability();
+      syncSurfaceVisibility();
       if (active) render();
     });
     mutationObserver.observe(deps.documentRef.documentElement, { childList: true, subtree: true });
   }
-  setButtonState();
+  syncAvailability();
+  syncSurfaceVisibility();
 
   return function detach() {
     deps.documentRef.removeEventListener("click", handleClick);
     deps.documentRef.removeEventListener("timeupdate", handleMediaEvent, true);
     deps.documentRef.removeEventListener("seeking", handleMediaEvent, true);
     deps.documentRef.removeEventListener("seeked", handleMediaEvent, true);
+    deps.documentRef.removeEventListener("loadedmetadata", handleMediaEvent, true);
+    deps.windowRef.removeEventListener("resize", handleResize);
     mutationObserver?.disconnect();
     mutationObserver = null;
-    removePreviewElements(deps.documentRef);
     active = false;
     attached = false;
   };
