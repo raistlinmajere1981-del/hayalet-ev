@@ -2,7 +2,7 @@ import { asLabRecord, asNonEmptyString, escapeHtml } from "../domain/lab-types.j
 import type { LabEditConfig } from "../domain/lab-types.js";
 import { buildLaboratoryVisualResponseReportAssessment } from "../shared/visual-response-report-assessment.js";
 import type { LabI18n } from "./lab-i18n.js";
-import { formatLaboratoryStructuralTransitionMarkdown } from "./workspace-structural-transition-summary.js";
+import { formatLaboratoryStructuralTransitionV2Markdown } from "./workspace-structural-transition-v2-report.js";
 import { formatLaboratoryVisualReportMarkdown } from "./workspace-visual-response-summary.js";
 
 type Entry = Record<string, unknown>;
@@ -46,6 +46,9 @@ function compactStatus(value: unknown, copy: LabI18n) {
   if (status === null) return copy.locale === "tr" ? "ölçüm kaydı" : "measurement record";
   const tr: Record<string, string> = {
     "roi-drift-may-affect-result": "ROI drift yüksek",
+    "roi-tracking-quality-limits-structural-result": "tracking kalitesi structural sonucu sınırlıyor",
+    "roi-tracking-quality-limits-response-result": "tracking kalitesi response sonucunu sınırlıyor",
+    "reference-alignment-tracking-unreliable": "background reference hizalama güvenilmez",
     "structural-result-uncertain": "structural sonuç belirsiz",
     "target-and-control-structurally-similar": "target/control benzer structural değişim",
     "structural-change-target-localized": "target-localized structural değişim",
@@ -139,12 +142,17 @@ function describeEntry(entry: Entry, copy: LabI18n): ReportDescriptor[] {
   if (kind === "visibility-response") {
     const request = asLabRecord(entry["request"]);
     const assessment = asLabRecord(buildLaboratoryVisualResponseReportAssessment(entry));
+    const interpretation = asLabRecord(entry["interpretation"]);
+    const trackingLimited = interpretation["trackingQualityGate"] === "limited";
     const title = `Visibility Response · ${axisLabel(request["axis"])}`;
     return [
       createDescriptor(entry, {
         markdown: formatLaboratoryVisualReportMarkdown(entry, copy),
         rank: 20,
-        status: compactStatus(assessment["classification"], copy),
+        status: compactStatus(
+          trackingLimited ? "roi-tracking-quality-limits-response-result" : assessment["classification"],
+          copy
+        ),
         title,
       }),
     ];
@@ -165,7 +173,7 @@ function describeEntry(entry: Entry, copy: LabI18n): ReportDescriptor[] {
             : "structural measurement unavailable"
           : compactStatus(assessment["classification"], copy);
       const convergenceClassification =
-        revealed["status"] === "assessed"
+        revealed["status"] === "assessed" || revealed["status"] === "limited"
           ? asNonEmptyString(revealedAssessment["classification"])
           : null;
       const structuralStatus =
@@ -178,7 +186,7 @@ function describeEntry(entry: Entry, copy: LabI18n): ReportDescriptor[] {
           markdown:
             structural["status"] === "unavailable"
               ? genericMarkdown(entry, title)
-              : formatLaboratoryStructuralTransitionMarkdown(entry, copy),
+              : formatLaboratoryStructuralTransitionV2Markdown(entry, copy),
           rank: 0,
           status: structuralStatus,
           title,
