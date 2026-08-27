@@ -1,5 +1,6 @@
 import { bindLaboratoryTransformStackInteractions } from "../runtime/controller/lab-transform-stack-live-controller.js";
 import { bindLaboratoryRoiMediaGeometry } from "./lab-roi-media-geometry-binder.js";
+import { bindLaboratoryTrackingPreview } from "./lab-tracking-preview-binder.js";
 import { bindLaboratoryVisualReportActions } from "./lab-visual-report-actions-binder.js";
 import "./lab-root.js";
 
@@ -9,6 +10,11 @@ bindLaboratoryTransformStackInteractions({
 });
 
 bindLaboratoryRoiMediaGeometry({
+  documentRef: document,
+  windowRef: window,
+});
+
+bindLaboratoryTrackingPreview({
   documentRef: document,
   windowRef: window,
 });
