@@ -231,4 +231,5 @@ void test("tracking v2 is wired as a shared cache/provenance layer", async () =>
   assert.match(convergence, /event-to-reference|Camera Tracking v2|camera-tracking-v2-similarity/i);
   assert.match(preview, /workspace-tracking-preview-toggle/);
   assert.match(preview, /data-lab-tracking-preview-stabilized/);
+  assert.match(preview, /if \(button\.textContent !== label\)/);
 });

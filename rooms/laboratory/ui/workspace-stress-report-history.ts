@@ -46,7 +46,8 @@ function compactStatus(value: unknown, copy: LabI18n) {
   if (status === null) return copy.locale === "tr" ? "ölçüm kaydı" : "measurement record";
   const tr: Record<string, string> = {
     "roi-drift-may-affect-result": "ROI drift yüksek",
-    "roi-tracking-quality-limits-structural-result": "tracking kalitesi structural sonucu sınırlıyor",
+    "roi-tracking-quality-limits-structural-result":
+      "tracking kalitesi structural sonucu sınırlıyor",
     "roi-tracking-quality-limits-response-result": "tracking kalitesi response sonucunu sınırlıyor",
     "reference-alignment-tracking-unreliable": "background reference hizalama güvenilmez",
     "structural-result-uncertain": "structural sonuç belirsiz",
@@ -55,7 +56,8 @@ function compactStatus(value: unknown, copy: LabI18n) {
     "structural-change-scene-wide-with-target-excess": "scene-wide + target ek fark",
     "structural-change-scene-wide": "scene-wide structural değişim",
     "target-loss-with-reference-convergence": "target kaybı + background convergence",
-    "reference-convergence-without-strong-target-loss": "background convergence · target kaybı zayıf",
+    "reference-convergence-without-strong-target-loss":
+      "background convergence · target kaybı zayıf",
     "target-loss-without-reference-convergence": "target kaybı · convergence zayıf",
     "reference-convergence-uncertain": "background convergence belirsiz",
     "result-uncertain": "sonuç belirsiz",
@@ -150,7 +152,9 @@ function describeEntry(entry: Entry, copy: LabI18n): ReportDescriptor[] {
         markdown: formatLaboratoryVisualReportV2Markdown(entry, copy),
         rank: 20,
         status: compactStatus(
-          trackingLimited ? "roi-tracking-quality-limits-response-result" : assessment["classification"],
+          trackingLimited
+            ? "roi-tracking-quality-limits-response-result"
+            : assessment["classification"],
           copy
         ),
         title,
@@ -177,7 +181,8 @@ function describeEntry(entry: Entry, copy: LabI18n): ReportDescriptor[] {
           ? asNonEmptyString(revealedAssessment["classification"])
           : null;
       const structuralStatus =
-        convergenceClassification === null || convergenceClassification === "reference-convergence-uncertain"
+        convergenceClassification === null ||
+        convergenceClassification === "reference-convergence-uncertain"
           ? baseStructuralStatus
           : `${baseStructuralStatus} · ${compactStatus(convergenceClassification, copy)}`;
       const title = "Structural Transition";
@@ -240,7 +245,8 @@ export function buildLaboratoryStressReportHistory(
       return describeEntry(entry, copy);
     })
     .sort(function (left, right) {
-      const leftTime = left.createdAt === null ? Number.NEGATIVE_INFINITY : Date.parse(left.createdAt);
+      const leftTime =
+        left.createdAt === null ? Number.NEGATIVE_INFINITY : Date.parse(left.createdAt);
       const rightTime =
         right.createdAt === null ? Number.NEGATIVE_INFINITY : Date.parse(right.createdAt);
       const safeLeft = Number.isFinite(leftTime) ? leftTime : Number.NEGATIVE_INFINITY;

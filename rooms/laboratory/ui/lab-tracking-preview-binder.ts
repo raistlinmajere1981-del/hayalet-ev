@@ -292,13 +292,22 @@ export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
       '[data-lab-action="workspace-tracking-preview-toggle"]'
     );
     if (button !== null && button !== undefined) {
-      button.textContent = active ? "Tracking Preview Kapat" : "Tracking Preview";
-      button.setAttribute("aria-pressed", active ? "true" : "false");
+      const label = active ? "Tracking Preview Kapat" : "Tracking Preview";
+      const pressed = active ? "true" : "false";
+      // NOTE: Avoid child-list writes when the document observer is synchronizing unchanged markup.
+      if (button.textContent !== label) {
+        button.textContent = label;
+      }
+      if (button.getAttribute("aria-pressed") !== pressed) {
+        button.setAttribute("aria-pressed", pressed);
+      }
     }
   }
 
   function setStatus(message: string) {
-    const status = getRoot()?.querySelector<HTMLElement>("[data-lab-tracking-preview-status='true']");
+    const status = getRoot()?.querySelector<HTMLElement>(
+      "[data-lab-tracking-preview-status='true']"
+    );
     if (status !== null && status !== undefined && status.textContent !== message) {
       status.textContent = message;
     }
@@ -352,7 +361,8 @@ export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
       preview.style.height = `${String(corrected.height * 100)}%`;
     });
     overlay.querySelectorAll<HTMLElement>(PREVIEW_SELECTOR).forEach(function (preview) {
-      const role = roleOf(preview) ??
+      const role =
+        roleOf(preview) ??
         (preview.getAttribute("data-lab-tracking-preview-role") as VisualStressRole | null);
       if (role === null || !liveRoles.has(role)) preview.remove();
     });

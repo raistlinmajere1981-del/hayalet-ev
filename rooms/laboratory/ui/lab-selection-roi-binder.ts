@@ -323,8 +323,7 @@ export function bindLabSelectionRoiInteractions(deps: SelectionRoiBinderDeps) {
     const side = visualRoleComparisonSide(role);
     if (side === null) return;
     const primary = side === "primary" ? roi : (deps.getComparisonRoi?.("primary") ?? null);
-    const reference =
-      side === "reference" ? roi : (deps.getComparisonRoi?.("reference") ?? null);
+    const reference = side === "reference" ? roi : (deps.getComparisonRoi?.("reference") ?? null);
     const updateEvent: Extract<LabStoreEvent, { type: "workspace-comparison-updated" }> = {
       type: "workspace-comparison-updated",
       patch: {},

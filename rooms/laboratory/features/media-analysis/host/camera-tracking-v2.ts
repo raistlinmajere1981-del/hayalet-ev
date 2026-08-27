@@ -18,9 +18,7 @@ type CameraTrackingDeps = {
 
 export type LaboratoryTrackingQuality = "high" | "medium" | "low" | "unreliable";
 export type LaboratoryCameraTrackingMode =
-  | "global-feature-similarity"
-  | "reference-feature-similarity"
-  | "fixed-roi-fallback";
+  "global-feature-similarity" | "reference-feature-similarity" | "fixed-roi-fallback";
 
 export type LaboratorySimilarityTransform = {
   dx: number;
@@ -443,7 +441,10 @@ function estimateSimilarity(matches: MatchPoint[]) {
           return transformResidual(hypothesis, match);
         })
       );
-      if (inliers.length > bestInliers.length || (inliers.length === bestInliers.length && residual < bestResidual)) {
+      if (
+        inliers.length > bestInliers.length ||
+        (inliers.length === bestInliers.length && residual < bestResidual)
+      ) {
         bestInliers = inliers;
         bestResidual = residual;
       }
@@ -476,7 +477,10 @@ function estimateSimilarity(matches: MatchPoint[]) {
   };
 }
 
-function sourceTransform(transform: TrackTransform, geometry: TrackingGeometry): LaboratorySimilarityTransform {
+function sourceTransform(
+  transform: TrackTransform,
+  geometry: TrackingGeometry
+): LaboratorySimilarityTransform {
   return {
     dx: transform.tx * geometry.scaleX,
     dy: transform.ty * geometry.scaleY,
@@ -584,7 +588,9 @@ function cacheIdentity(input: LaboratoryCameraTrackingRequest) {
     .map(normalizedRoiKey)
     .sort()
     .join("|");
-  const reference = input.preferredReferenceRoi ? normalizedRoiKey(input.preferredReferenceRoi) : "none";
+  const reference = input.preferredReferenceRoi
+    ? normalizedRoiKey(input.preferredReferenceRoi)
+    : "none";
   return [
     input.sourcePath,
     input.anchorSeconds.toFixed(3),
@@ -747,10 +753,7 @@ export function createLaboratoryCameraTrackingRuntime(deps: CameraTrackingDeps) 
     return record as unknown as LaboratoryCameraTransformCache;
   }
 
-  async function persistCache(
-    runtime: RuntimeRecord,
-    cache: LaboratoryCameraTransformCache
-  ) {
+  async function persistCache(runtime: RuntimeRecord, cache: LaboratoryCameraTransformCache) {
     await patchActiveProject(runtime, function (project) {
       const edit = toRecord(project["edit"]);
       const existing = Array.isArray(edit["cameraTrackingCaches"])
@@ -788,11 +791,14 @@ export function createLaboratoryCameraTrackingRuntime(deps: CameraTrackingDeps) 
     const anchorFrame = await extractFrame(input, geometry, anchorSeconds, "anchor");
 
     async function estimateSeries(includeRoi: LaboratoryNormalizedRoi | null) {
-      const points: LaboratoryCameraTransformPoint[] = [];
-      for (const timeSeconds of sampleTimes) {
+      return sampleTimes.reduce<Promise<LaboratoryCameraTransformPoint[]>>(async function (
+        pending,
+        timeSeconds
+      ) {
+        const points = await pending;
         if (Math.abs(timeSeconds - anchorSeconds) <= 0.001) {
           points.push(identityPoint(timeSeconds));
-          continue;
+          return points;
         }
         const frame = await extractFrame(
           input,
@@ -810,8 +816,8 @@ export function createLaboratoryCameraTrackingRuntime(deps: CameraTrackingDeps) 
             timeSeconds,
           })
         );
-      }
-      return points;
+        return points;
+      }, Promise.resolve([]));
     }
 
     let mode: LaboratoryCameraTrackingMode = "global-feature-similarity";
@@ -876,7 +882,9 @@ export function createLaboratoryCameraTrackingRuntime(deps: CameraTrackingDeps) 
           exclusionRois: cache.exclusionRois,
           preferredReferenceRoi: cache.preferredReferenceRoi,
         };
-        return cacheIdentity(comparableInput) === identity && cacheCoversTimes(cache, requestedTimes);
+        return (
+          cacheIdentity(comparableInput) === identity && cacheCoversTimes(cache, requestedTimes)
+        );
       });
     return existing ?? buildCache(input);
   }

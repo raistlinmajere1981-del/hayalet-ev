@@ -3,10 +3,7 @@ import {
   applyLaboratoryCameraTransformToRoi,
   getLaboratoryCameraTransformAt,
 } from "./camera-tracking-v2.js";
-import type {
-  LaboratoryCameraTransformCache,
-  LaboratoryCameraTransformPoint,
-} from "./camera-tracking-v2.js";
+import type { LaboratoryCameraTransformCache } from "./camera-tracking-v2.js";
 import { calculateLaboratoryStructuralFrameMetrics } from "./structural-transition.js";
 
 type RecordValue = Record<string, unknown>;
@@ -128,20 +125,14 @@ function summarizeTracking(input: LaboratoryStructuralTransitionV2Input) {
   }, 0);
   const targetMinDimension = Math.max(
     1,
-    Math.min(
-      input.targetRoi.width * input.sourceWidth,
-      input.targetRoi.height * input.sourceHeight
-    )
+    Math.min(input.targetRoi.width * input.sourceWidth, input.targetRoi.height * input.sourceHeight)
   );
   const riskRatio = peakDisplacement / targetMinDimension;
   const last = usable[usable.length - 1] ?? null;
   const residualDx = mean(usable.map((point) => point.residual.dx));
   const residualDy = mean(usable.map((point) => point.residual.dy));
-  const residualRotationDegrees = mean(
-    usable.map((point) => point.residual.rotationDegrees)
-  );
-  const residualScale =
-    usable.length === 0 ? 1 : mean(usable.map((point) => point.residual.scale));
+  const residualRotationDegrees = mean(usable.map((point) => point.residual.rotationDegrees));
+  const residualScale = usable.length === 0 ? 1 : mean(usable.map((point) => point.residual.scale));
   return {
     algorithm: cache.algorithm,
     version: cache.version,
@@ -261,17 +252,14 @@ export function createLaboratoryStructuralTransitionV2Runtime(deps: StructuralTr
       };
     }).filter(function (point, index, entries) {
       return (
-        index === 0 ||
-        Math.abs(point.timeSeconds - (entries[index - 1]?.timeSeconds ?? -1)) > 0.001
+        index === 0 || Math.abs(point.timeSeconds - (entries[index - 1]?.timeSeconds ?? -1)) > 0.001
       );
     });
     const baselineSeconds = Math.max(0, Math.min(sourceEnd, input.eventSeconds - 0.6));
     const baselineRois = {
       target: transformedRoi(input, input.targetRoi, baselineSeconds),
       control:
-        input.controlRoi === null
-          ? null
-          : transformedRoi(input, input.controlRoi, baselineSeconds),
+        input.controlRoi === null ? null : transformedRoi(input, input.controlRoi, baselineSeconds),
       background: transformedRoi(input, input.backgroundRoi, baselineSeconds),
     };
     const baselineFrames = {
@@ -280,12 +268,7 @@ export function createLaboratoryStructuralTransitionV2Runtime(deps: StructuralTr
         baselineRois.control === null
           ? null
           : await extractFrame(input, "control", baselineSeconds, baselineRois.control),
-      background: await extractFrame(
-        input,
-        "background",
-        baselineSeconds,
-        baselineRois.background
-      ),
+      background: await extractFrame(input, "background", baselineSeconds, baselineRois.background),
     };
 
     async function measureRole(
@@ -377,18 +360,17 @@ export function createLaboratoryStructuralTransitionV2Runtime(deps: StructuralTr
     const targetSpecificStructuralLoss = targetLoss - sceneLoss;
     const roiStability = summarizeTracking(input);
     const trackingSuitable = roiStability.measurementSuitableForSmallRoi === true;
-    const classification =
-      !trackingSuitable
-        ? "roi-tracking-quality-limits-structural-result"
-        : controlLoss !== null && Math.abs(targetLoss - controlLoss) < 0.08
-          ? "target-and-control-structurally-similar"
-          : targetLoss >= 0.18 && targetSpecificStructuralLoss >= 0.12
-            ? "structural-change-target-localized"
-            : targetLoss >= 0.15 && sceneLoss >= 0.12 && targetSpecificStructuralLoss >= 0.06
-              ? "structural-change-scene-wide-with-target-excess"
-              : sceneLoss >= 0.12
-                ? "structural-change-scene-wide"
-                : "structural-result-uncertain";
+    const classification = !trackingSuitable
+      ? "roi-tracking-quality-limits-structural-result"
+      : controlLoss !== null && Math.abs(targetLoss - controlLoss) < 0.08
+        ? "target-and-control-structurally-similar"
+        : targetLoss >= 0.18 && targetSpecificStructuralLoss >= 0.12
+          ? "structural-change-target-localized"
+          : targetLoss >= 0.15 && sceneLoss >= 0.12 && targetSpecificStructuralLoss >= 0.06
+            ? "structural-change-scene-wide-with-target-excess"
+            : sceneLoss >= 0.12
+              ? "structural-change-scene-wide"
+              : "structural-result-uncertain";
 
     return {
       baseline: {

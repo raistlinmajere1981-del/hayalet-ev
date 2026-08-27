@@ -276,9 +276,7 @@ function photometricPhaseRows(entry: Entry) {
       const targetVsControl = hasRole(phase["targetVsControl"])
         ? asLabRecord(phase["targetVsControl"])
         : null;
-      const targetVsBackground = asLabRecord(
-        phase["targetVsBackground"] ?? phase["differential"]
-      );
+      const targetVsBackground = asLabRecord(phase["targetVsBackground"] ?? phase["differential"]);
       return `<tr>
         <th scope="row">${escapeHtml((asNonEmptyString(phase["phase"]) || "phase").toUpperCase())}</th>
         <td>${escapeHtml(pct(finite(target, "visibilityScore")))}</td>
@@ -396,9 +394,7 @@ export function formatLaboratoryStructuralTransitionMarkdown(entry: Entry, copy:
     const targetVsControl = hasRole(phase["targetVsControl"])
       ? asLabRecord(phase["targetVsControl"])
       : null;
-    const targetVsBackground = asLabRecord(
-      phase["targetVsBackground"] ?? phase["differential"]
-    );
+    const targetVsBackground = asLabRecord(phase["targetVsBackground"] ?? phase["differential"]);
     lines.push(
       `| ${(asNonEmptyString(phase["phase"]) || "phase").toUpperCase()} | ${pct(finite(target, "visibilityScore"))} | ${control === null ? "—" : pct(finite(control, "visibilityScore"))} | ${pct(finite(background, "visibilityScore"))} | ${targetVsControl === null ? "—" : signedPct(finite(targetVsControl, "visibilityScore"))} | ${signedPct(finite(targetVsBackground, "visibilityScore"))} |`
     );
@@ -439,8 +435,7 @@ export function formatLaboratoryStructuralTransitionMarkdown(entry: Entry, copy:
     const background = structuralMetrics(point["background"]);
     const differential = asLabRecord(point["differential"]);
     const offset = finite(point, "offsetSeconds");
-    const offsetText =
-      offset === null ? "—" : `${offset >= 0 ? "+" : ""}${decimal(offset, 1)} s`;
+    const offsetText = offset === null ? "—" : `${offset >= 0 ? "+" : ""}${decimal(offset, 1)} s`;
     const referencePoint = convergencePointForOffset(structural, offset);
     const referenceMetrics = convergenceMetrics(referencePoint);
     lines.push(

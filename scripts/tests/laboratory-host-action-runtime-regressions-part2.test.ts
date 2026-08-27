@@ -84,7 +84,7 @@ void test("laboratory host action composition is extracted into a shared host bo
   assert.match(workspaceActionCompositionSource, /from "\.\/tool-mutations\.js"/);
   assert.match(
     workspaceActionCompositionSource,
-    /from "\.\.\/\.\.\/features\/media-analysis\/host\/action-handlers\.js"/
+    /from "\.\.\/\.\.\/features\/media-analysis\/host\/action-handlers-v2\.js"/
   );
   assert.match(
     workspaceActionRouterSource,

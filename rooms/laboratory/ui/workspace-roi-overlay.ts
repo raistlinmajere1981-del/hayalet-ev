@@ -23,9 +23,7 @@ function renderSelectionResizeHandles(
 ) {
   const label = escapeHtml(copy.t("mediaAnalysis.roi.actions.resizeRegion", "Resize region"));
   const roleAttribute =
-    visualStressRole === null
-      ? ""
-      : ` data-lab-visual-stress-roi-role="${visualStressRole}"`;
+    visualStressRole === null ? "" : ` data-lab-visual-stress-roi-role="${visualStressRole}"`;
   return SELECTION_ROI_RESIZE_HANDLES.map(function (handle) {
     return `
       <button
@@ -49,9 +47,7 @@ function renderSelectionRoi(
 ) {
   const visualStressRole: VisualStressRoiRole | null = sourceKind === "video" ? "target" : null;
   const roleAttribute =
-    visualStressRole === null
-      ? ""
-      : ` data-lab-visual-stress-roi-role="${visualStressRole}"`;
+    visualStressRole === null ? "" : ` data-lab-visual-stress-roi-role="${visualStressRole}"`;
   return `
     <div
       class="labx-selection-roi${roiFocusActive ? " labx-selection-roi--focused" : ""}"

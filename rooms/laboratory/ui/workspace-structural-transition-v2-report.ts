@@ -21,7 +21,8 @@ function trackingQualityText(quality: string, copy: LabI18n) {
   if (copy.locale !== "tr") {
     if (quality === "high") return "HIGH — suitable for small-ROI structural comparison.";
     if (quality === "medium") return "MEDIUM — usable, with tracking diagnostics retained.";
-    if (quality === "low") return "LOW — structural differential may contain ROI drift contamination.";
+    if (quality === "low")
+      return "LOW — structural differential may contain ROI drift contamination.";
     return "UNRELIABLE — fixed ROI fallback; do not use tracking for a strong structural conclusion.";
   }
   if (quality === "high") return "YÜKSEK — küçük ROI structural karşılaştırması için uygun.";

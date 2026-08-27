@@ -208,8 +208,7 @@ export function createLaboratoryBackgroundReferenceConvergenceV2Runtime(deps: De
       };
     }).filter(function (point, index, entries) {
       return (
-        index === 0 ||
-        Math.abs(point.timeSeconds - (entries[index - 1]?.timeSeconds ?? -1)) > 0.001
+        index === 0 || Math.abs(point.timeSeconds - (entries[index - 1]?.timeSeconds ?? -1)) > 0.001
       );
     });
     const timeline = await sequentialMap(times, async function (point) {
@@ -234,7 +233,9 @@ export function createLaboratoryBackgroundReferenceConvergenceV2Runtime(deps: De
     });
     const peakPostPoint = postCandidates.reduce<ReferencePoint | null>(function (best, point) {
       if (best === null) return point;
-      return point.metrics.structuralPersistence > best.metrics.structuralPersistence ? point : best;
+      return point.metrics.structuralPersistence > best.metrics.structuralPersistence
+        ? point
+        : best;
     }, null);
     const preConvergence = prePoint?.metrics.structuralPersistence ?? 0;
     const eventConvergence = eventPoint?.metrics.structuralPersistence ?? preConvergence;
@@ -251,16 +252,15 @@ export function createLaboratoryBackgroundReferenceConvergenceV2Runtime(deps: De
       toRecord
     );
     const targetStructuralLossAtPeak = targetPersistence === null ? null : 1 - targetPersistence;
-    const classification =
-      !alignmentReliable
-        ? "reference-alignment-tracking-unreliable"
-        : convergenceGain >= 0.15 && (targetStructuralLossAtPeak ?? 0) >= 0.15
-          ? "target-loss-with-reference-convergence"
-          : convergenceGain >= 0.15
-            ? "reference-convergence-without-strong-target-loss"
-            : (targetStructuralLossAtPeak ?? 0) >= 0.15 && convergenceGain < 0.08
-              ? "target-loss-without-reference-convergence"
-              : "reference-convergence-uncertain";
+    const classification = !alignmentReliable
+      ? "reference-alignment-tracking-unreliable"
+      : convergenceGain >= 0.15 && (targetStructuralLossAtPeak ?? 0) >= 0.15
+        ? "target-loss-with-reference-convergence"
+        : convergenceGain >= 0.15
+          ? "reference-convergence-without-strong-target-loss"
+          : (targetStructuralLossAtPeak ?? 0) >= 0.15 && convergenceGain < 0.08
+            ? "target-loss-without-reference-convergence"
+            : "reference-convergence-uncertain";
     const transitionShape = classifyLaboratoryReferenceConvergenceShape(
       timeline.map(function (point) {
         return {

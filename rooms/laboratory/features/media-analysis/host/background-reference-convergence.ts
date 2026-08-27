@@ -20,10 +20,7 @@ type ReferenceConvergencePoint = {
 };
 
 export type LaboratoryReferenceConvergenceShape =
-  | "gradual"
-  | "abrupt"
-  | "mixed"
-  | "weak-or-nonconvergent";
+  "gradual" | "abrupt" | "mixed" | "weak-or-nonconvergent";
 
 export type LaboratoryBackgroundReferenceConvergenceInput = {
   backgroundReferenceSeconds: number;
@@ -214,10 +211,7 @@ export function createLaboratoryBackgroundReferenceConvergenceRuntime(
   async function analyzeConvergence(input: LaboratoryBackgroundReferenceConvergenceInput) {
     const sourceEnd =
       input.durationSeconds ?? Math.max(input.eventSeconds + 1, input.backgroundReferenceSeconds);
-    const referenceTimeSeconds = Math.max(
-      0,
-      Math.min(sourceEnd, input.backgroundReferenceSeconds)
-    );
+    const referenceTimeSeconds = Math.max(0, Math.min(sourceEnd, input.backgroundReferenceSeconds));
     const referenceFrame = await extractTargetFrame(input, referenceTimeSeconds, "template");
     const times = TIMELINE_OFFSETS.map(function (offsetSeconds) {
       return {
@@ -226,8 +220,7 @@ export function createLaboratoryBackgroundReferenceConvergenceRuntime(
       };
     }).filter(function (point, index, entries) {
       return (
-        index === 0 ||
-        Math.abs(point.timeSeconds - (entries[index - 1]?.timeSeconds ?? -1)) > 0.001
+        index === 0 || Math.abs(point.timeSeconds - (entries[index - 1]?.timeSeconds ?? -1)) > 0.001
       );
     });
     const timeline = await sequentialMap(times, async function (point) {
@@ -247,13 +240,15 @@ export function createLaboratoryBackgroundReferenceConvergenceRuntime(
     const postCandidates = timeline.filter(function (point) {
       return point.offsetSeconds >= 0.2;
     });
-    const peakPostPoint = postCandidates.reduce<ReferenceConvergencePoint | null>(
-      function (best, point) {
-        if (best === null) return point;
-        return point.metrics.structuralPersistence > best.metrics.structuralPersistence ? point : best;
-      },
-      null
-    );
+    const peakPostPoint = postCandidates.reduce<ReferenceConvergencePoint | null>(function (
+      best,
+      point
+    ) {
+      if (best === null) return point;
+      return point.metrics.structuralPersistence > best.metrics.structuralPersistence
+        ? point
+        : best;
+    }, null);
     const preConvergence = prePoint?.metrics.structuralPersistence ?? 0;
     const eventConvergence = eventPoint?.metrics.structuralPersistence ?? preConvergence;
     const postConvergence = postPoint?.metrics.structuralPersistence ?? eventConvergence;

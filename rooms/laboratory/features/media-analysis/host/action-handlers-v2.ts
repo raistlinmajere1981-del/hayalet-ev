@@ -63,29 +63,29 @@ function trackingProvenance(cache: LaboratoryCameraTransformCache) {
 export function createMediaActionRuntime(deps: LegacyDeps): LegacyRuntime {
   const legacy = createLegacyMediaActionRuntime(deps);
   const getProjectEditOutputDir = function (runtime: RecordValue, project: RecordValue) {
-    return deps.getProjectEditOutputDir(runtime as never, project as never);
+    return deps.getProjectEditOutputDir(runtime, project as never);
   };
   const tracker = createLaboratoryCameraTrackingRuntime({
-    callRoomTools: deps.callRoomTools as (payload: RecordValue) => Promise<unknown>,
+    callRoomTools: deps.callRoomTools,
     getProjectEditOutputDir,
     patchActiveProject(runtime, patcher) {
-      return deps.patchActiveProject(runtime as never, function (project) {
-        return patcher(asRecord(project)) as never;
-      }) as Promise<unknown>;
+      return deps.patchActiveProject(runtime, function (project) {
+        return patcher(asRecord(project));
+      });
     },
     readBinaryFileBytes: deps.readBinaryFileBytes,
     roomId: deps.roomId,
     toRecord: deps.toRecord,
   });
   const structuralV2 = createLaboratoryStructuralTransitionV2Runtime({
-    callRoomTools: deps.callRoomTools as (payload: RecordValue) => Promise<unknown>,
+    callRoomTools: deps.callRoomTools,
     getProjectEditOutputDir,
     readBinaryFileBytes: deps.readBinaryFileBytes,
     roomId: deps.roomId,
     toRecord: deps.toRecord,
   });
   const convergenceV2 = createLaboratoryBackgroundReferenceConvergenceV2Runtime({
-    callRoomTools: deps.callRoomTools as (payload: RecordValue) => Promise<unknown>,
+    callRoomTools: deps.callRoomTools,
     getProjectEditOutputDir,
     readBinaryFileBytes: deps.readBinaryFileBytes,
     roomId: deps.roomId,
@@ -95,7 +95,7 @@ export function createMediaActionRuntime(deps: LegacyDeps): LegacyRuntime {
   async function replaceStoredResult(runtime: RunControlInjectionArgs[0], result: RecordValue) {
     const resultId = stringValue(result["id"]);
     if (resultId === null) return result;
-    await deps.patchActiveProject(runtime as never, function (project) {
+    await deps.patchActiveProject(runtime, function (project) {
       const projectRecord = asRecord(project);
       const edit = asRecord(projectRecord["edit"]);
       const history = Array.isArray(edit["temporalStressTests"])
@@ -110,7 +110,7 @@ export function createMediaActionRuntime(deps: LegacyDeps): LegacyRuntime {
         lastActionAt: result["createdAt"],
         lastError: null,
       };
-      return projectRecord as never;
+      return projectRecord;
     });
     return result;
   }
@@ -130,7 +130,9 @@ export function createMediaActionRuntime(deps: LegacyDeps): LegacyRuntime {
     controlRoi: ReturnType<typeof normalizeLaboratoryResponseBackgroundRoi>;
     backgroundRoi: NonNullable<ReturnType<typeof normalizeLaboratoryResponseBackgroundRoi>>;
   }) {
-    const sourceEnd = input.durationSeconds ?? Math.max(input.eventSeconds + 1, input.backgroundReferenceSeconds ?? 0);
+    const sourceEnd =
+      input.durationSeconds ??
+      Math.max(input.eventSeconds + 1, input.backgroundReferenceSeconds ?? 0);
     const sampleTimes = TRANSITION_OFFSETS.map(function (offset) {
       return Math.max(0, Math.min(sourceEnd, input.eventSeconds + offset));
     });
@@ -144,7 +146,7 @@ export function createMediaActionRuntime(deps: LegacyDeps): LegacyRuntime {
       preferredReferenceRoi: input.backgroundRoi,
       project: input.project,
       requestId: input.requestId,
-      runtime: input.runtime as unknown as RecordValue,
+      runtime: input.runtime,
       sampleTimes,
       sourceHeight: input.sourceHeight,
       sourcePath: input.sourcePath,
@@ -158,7 +160,7 @@ export function createMediaActionRuntime(deps: LegacyDeps): LegacyRuntime {
     actionRequest: RecordValue,
     legacyResult: RecordValue
   ) {
-    const projectValue = deps.getActiveProject(runtime as never);
+    const projectValue = deps.getActiveProject(runtime);
     if (projectValue === null) return legacyResult;
     const project = asRecord(projectValue);
     const source = asRecord(project["source"]);
@@ -239,7 +241,7 @@ export function createMediaActionRuntime(deps: LegacyDeps): LegacyRuntime {
           project,
           referenceRoi: backgroundRoi,
           requestId,
-          runtime: runtime as unknown as RecordValue,
+          runtime: runtime,
           sourceHeight,
           sourcePath,
           sourceWidth,
@@ -256,7 +258,7 @@ export function createMediaActionRuntime(deps: LegacyDeps): LegacyRuntime {
             eventSeconds,
             project,
             requestId,
-            runtime: runtime as unknown as RecordValue,
+            runtime: runtime,
             sourceHeight,
             sourcePath,
             sourceWidth,
@@ -302,8 +304,9 @@ export function createMediaActionRuntime(deps: LegacyDeps): LegacyRuntime {
         trackingQuality: cache.quality,
         trackingQualityGate: trackingGate,
         photometricCoordinateMode: "fixed-roi-legacy",
-        structuralCoordinateMode:
-          cache.fallbackUsed ? "fixed-roi-fallback" : "camera-tracking-v2-similarity",
+        structuralCoordinateMode: cache.fallbackUsed
+          ? "fixed-roi-fallback"
+          : "camera-tracking-v2-similarity",
       },
     };
     return replaceStoredResult(runtime, result);
@@ -315,7 +318,7 @@ export function createMediaActionRuntime(deps: LegacyDeps): LegacyRuntime {
     actionRequest: RecordValue,
     legacyResult: RecordValue
   ) {
-    const projectValue = deps.getActiveProject(runtime as never);
+    const projectValue = deps.getActiveProject(runtime);
     if (projectValue === null) return legacyResult;
     const project = asRecord(projectValue);
     const source = asRecord(project["source"]);
@@ -354,14 +357,15 @@ export function createMediaActionRuntime(deps: LegacyDeps): LegacyRuntime {
         preferredReferenceRoi: backgroundRoi,
         project,
         requestId,
-        runtime: runtime as unknown as RecordValue,
+        runtime: runtime,
         sampleTimes,
         sourceHeight,
         sourcePath,
         sourceWidth,
       });
       const interpretation = asRecord(legacyResult["interpretation"]);
-      const limited = cache.fallbackUsed || cache.quality === "unreliable" || cache.quality === "low";
+      const limited =
+        cache.fallbackUsed || cache.quality === "unreliable" || cache.quality === "low";
       const result = {
         ...legacyResult,
         trackingV2: {
