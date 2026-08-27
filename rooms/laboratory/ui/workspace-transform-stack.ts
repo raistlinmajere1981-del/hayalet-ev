@@ -62,6 +62,15 @@ function readTransformStages(input: WorkspaceTransformStackInput) {
   return normalizeLaboratoryTransformStages(visualRecipe["transformStages"], "visual");
 }
 
+function readLatestCameraTrackingCache(input: WorkspaceTransformStackInput) {
+  const caches = asLabRecord(input.editConfig)["cameraTrackingCaches"];
+  if (!Array.isArray(caches)) return null;
+  const cache = caches.map(asLabRecord).find(function (entry) {
+    return entry["algorithm"] === "feature-similarity-ransac-v2";
+  });
+  return cache ?? null;
+}
+
 function getScopeRecipeSection(input: WorkspaceTransformStackInput) {
   if (input.scope === "audio") return "audio";
   return input.sourceKind === "image" ? "image" : "video";
@@ -289,6 +298,34 @@ function renderMotionImpactPanel(input: WorkspaceTransformStackInput, copy: LabI
     </section>`;
 }
 
+function renderTrackingPreviewPanel(input: WorkspaceTransformStackInput, copy: LabI18n) {
+  if (input.scope !== "visual" || input.sourceKind !== "video") return "";
+  const cache = readLatestCameraTrackingCache(input);
+  const quality = cache === null ? null : String(cache["quality"] ?? "unreliable");
+  const mode = cache === null ? null : String(cache["mode"] ?? "fixed-roi-fallback");
+  const cacheId = cache === null ? null : String(cache["cacheId"] ?? "");
+  const disabled = cache === null || cache["fallbackUsed"] === true;
+  const hint =
+    cache === null
+      ? copy.locale === "tr"
+        ? "Henüz Camera Tracking v2 cache yok. Transition veya Visibility Response çalıştırıldığında cache üretilecek."
+        : "No Camera Tracking v2 cache yet. A Transition or Visibility Response run will create it."
+      : copy.locale === "tr"
+        ? `Tracking quality: ${quality?.toUpperCase()} · ${mode} · raw Target sabit çizgi, stabilized Target kesikli çizgi.`
+        : `Tracking quality: ${quality?.toUpperCase()} · ${mode} · raw Target is solid, stabilized Target is dashed.`;
+  return `
+    <section class="labx-card labx-tracking-preview-panel" data-lab-tracking-preview-panel="true">
+      <div class="labx-card__body">
+        <p class="labx-card__eyebrow">ROI Tracking / Stabilization v2</p>
+        <div class="labx-controls-actions">
+          <button class="labx-inline-action" type="button" data-lab-action="workspace-tracking-preview-toggle" ${disabled ? "disabled" : ""}>Tracking Preview</button>
+        </div>
+        <p class="labx-card__meta" data-lab-tracking-preview-status="true">${escapeHtml(hint)}</p>
+        ${cacheId === null ? "" : `<span hidden data-lab-tracking-cache-id="${escapeHtml(cacheId)}"></span>`}
+      </div>
+    </section>`;
+}
+
 const TR_CONTROL_LABELS: Partial<Record<LaboratoryControlInjectionKind, string>> = {
   noise: "Gürültü",
   blur: "Bulanıklık",
@@ -388,6 +425,7 @@ export function renderWorkspaceTransformStack(
   const recipeSection = getScopeRecipeSection(input);
   const enabledCount = stages.filter((stage) => stage.enabled).length;
   const locked = input.locked === true;
+  const latestTrackingCache = readLatestCameraTrackingCache(input);
   const title =
     input.scope === "audio"
       ? copy.t("mediaAnalysis.transformStressTest.audioTitle", "Audio Transform Stack")
@@ -401,7 +439,8 @@ export function renderWorkspaceTransformStack(
       data-lab-transform-feature-id="${escapeHtml(input.featureId || "media-analysis")}"
       data-lab-transform-locked="${locked ? "true" : "false"}"
       data-lab-transform-stages-json="${escapeHtml(JSON.stringify(stages))}"
-      data-lab-temporal-request-json="${escapeHtml(JSON.stringify(input.temporalRequest ?? null))}">
+      data-lab-temporal-request-json="${escapeHtml(JSON.stringify(input.temporalRequest ?? null))}"
+      data-lab-camera-tracking-cache-json="${escapeHtml(JSON.stringify(latestTrackingCache))}">
       <div class="labx-card__body">
         <div class="labx-transform-stack__header">
           <div>
@@ -419,6 +458,7 @@ export function renderWorkspaceTransformStack(
         ${input.showPreview === false ? "" : renderTransformComparisonPreview(input, enabledCount, copy)}
         ${renderTemporalScanControl(input, copy)}
         ${renderMotionImpactPanel(input, copy)}
+        ${renderTrackingPreviewPanel(input, copy)}
         ${renderControlInjectionPanel(input, copy)}
 
         <div class="labx-controls-stack" data-lab-transform-stage-list="${escapeHtml(input.scope)}">
