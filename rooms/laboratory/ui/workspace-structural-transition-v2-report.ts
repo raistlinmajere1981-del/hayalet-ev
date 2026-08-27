@@ -73,7 +73,11 @@ export function formatLaboratoryStructuralTransitionV2Markdown(entry: Entry, cop
   const structural = asLabRecord(entry["structural"]);
   const stability = asLabRecord(structural["roiStability"]);
   const corrected = asLabRecord(stability["correctedResidual"]);
-  const quality = asNonEmptyString(tracking["quality"]) ||
+  const revealed = asLabRecord(structural["revealedBackground"]);
+  const revealedAssessment = asLabRecord(revealed["assessment"]);
+  const revealedTracking = asLabRecord(revealed["tracking"]);
+  const quality =
+    asNonEmptyString(tracking["quality"]) ||
     asNonEmptyString(stability["trackingQuality"]) ||
     "unreliable";
   const transforms = Array.isArray(tracking["transformSeries"])
@@ -107,11 +111,27 @@ export function formatLaboratoryStructuralTransitionV2Markdown(entry: Entry, cop
     `- rotation: ${decimal(finite(corrected, "rotationDegrees"), 3)}°`,
     `- scale: ${decimal(finite(corrected, "scale"), 5)}`,
     `- residual error: ${decimal(finite(corrected, "errorPx") ?? finite(tracking, "residualErrorPx"), 3)} px`,
+  ];
+
+  if (revealed["status"] === "limited") {
+    lines.push(
+      "",
+      "### Background Reference Alignment",
+      `- Status: LIMITED — ${asNonEmptyString(revealedAssessment["classification"]) || "reference-alignment-tracking-unreliable"}`,
+      `- Reference time: ${decimal(finite(revealed, "referenceTimeSeconds"), 3)} s`,
+      `- Reference confidence: ${pct(finite(revealedTracking, "referenceConfidence"))}`,
+      `- Reference inlier ratio: ${pct(finite(revealedTracking, "inlierRatio"))}`,
+      `- Reference residual: ${decimal(finite(revealedTracking, "residualErrorPx"), 3)} px`,
+      "- Convergence values may be retained for diagnostics, but the quality gate blocks a strong background-convergence interpretation."
+    );
+  }
+
+  lines.push(
     "",
     "### Transform series",
     "| Time | Quality | Confidence | Inlier | F/B | dx | dy | Rotation | Scale | Residual |",
-    "| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
-  ];
+    "| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
+  );
   transforms.forEach(function (value) {
     const point = formatTransformPoint(value);
     lines.push(
