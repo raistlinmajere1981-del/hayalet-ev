@@ -1,10 +1,15 @@
 import { asLabRecord, asNonEmptyString, escapeHtml } from "../domain/lab-types.js";
 import type { LabStoreState } from "../domain/lab-types.js";
+import { resolveLaboratoryTrackingPreviewCache } from "../shared/tracking-preview-model.js";
 import type { LabI18n } from "./lab-i18n.js";
 import { renderLaboratoryStressReportHistory } from "./workspace-stress-report-history.js";
 
 type StressTestRecord = Record<string, unknown>;
 type TransformPreviewMode = "source" | "transform" | "difference";
+
+function finite(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
 
 function findPreviewArtifactUrl(preview: StressTestRecord, kind: string) {
   const artifacts = preview["artifacts"];
@@ -31,6 +36,48 @@ function renderPreviewMedia(sourceKind: string, url: string, label: string) {
   return `<img class="labx-preview-media" src="${escapeHtml(url)}" alt="${escapeHtml(label)}" />`;
 }
 
+function renderTrackingPreviewSurface(state: LabStoreState, sourceUrl: string | null) {
+  const source = asLabRecord(state.source);
+  const metadata = asLabRecord(source["metadata"]);
+  const sourceWidth = finite(metadata["width"]);
+  const sourceHeight = finite(metadata["height"]);
+  const cache = resolveLaboratoryTrackingPreviewCache(state.editConfig, {
+    sourceHeight,
+    sourceWidth,
+  });
+  const rawRois = {
+    target: state.ui.workspace.activeSelection?.roi ?? null,
+    control: state.ui.workspace.comparisonRois.primary,
+    background: state.ui.workspace.comparisonRois.reference,
+  };
+  return `
+    <div
+      class="labx-tracking-preview-surface"
+      data-lab-tracking-preview-surface="true"
+      data-lab-tracking-preview-cache-json="${escapeHtml(JSON.stringify(cache))}"
+      data-lab-tracking-preview-rois-json="${escapeHtml(JSON.stringify(rawRois))}"
+      hidden
+    >
+      ${
+        sourceUrl === null
+          ? `<div class="labx-strip-live-empty">Tracking Preview için kaynak video önizlemesi bulunamadı.</div>`
+          : `<div class="labx-tracking-preview-media-shell" data-lab-tracking-preview-media-shell="true">
+              <video
+                class="labx-preview-media labx-tracking-preview-media"
+                controls
+                preload="metadata"
+                src="${escapeHtml(sourceUrl)}"
+                data-lab-tracking-preview-video="true"
+                aria-label="Tracking Preview source"
+              ></video>
+              <div class="labx-tracking-preview-frame" data-lab-tracking-preview-frame="true" aria-hidden="true"></div>
+            </div>`
+      }
+      <p class="labx-strip-live-note labx-tracking-preview-detail" data-lab-tracking-preview-detail="true"></p>
+    </div>
+  `;
+}
+
 function renderLiveTransformPreview(state: LabStoreState, copy: LabI18n) {
   const source = asLabRecord(state.source);
   const sourceKind = asNonEmptyString(source["kind"]);
@@ -41,9 +88,10 @@ function renderLiveTransformPreview(state: LabStoreState, copy: LabI18n) {
   const preview = asLabRecord(asLabRecord(state.editConfig)["preview"]);
   const previewStatus = asNonEmptyString(preview["status"]) || "idle";
   const previewReady = previewStatus === "ready";
+  const sourcePreviewUrl = asNonEmptyString(source["previewUrl"]);
   const baselineUrl =
     (previewReady ? findPreviewArtifactUrl(preview, "transform-source-baseline") : null) ||
-    asNonEmptyString(source["previewUrl"]);
+    sourcePreviewUrl;
   const transformUrl = previewReady ? asNonEmptyString(preview["previewUrl"]) : null;
   const differenceUrl = previewReady
     ? findPreviewArtifactUrl(preview, "transform-difference")
@@ -73,21 +121,24 @@ function renderLiveTransformPreview(state: LabStoreState, copy: LabI18n) {
 
   return `
     <div class="labx-strip-live-preview__toolbar">
-      <strong>${escapeHtml(copy.locale === "tr" ? "Dönüşüm Önizlemesi" : "Transform Preview")}</strong>
+      <strong data-lab-live-preview-title="true">${escapeHtml(copy.locale === "tr" ? "Dönüşüm Önizlemesi" : "Transform Preview")}</strong>
       <label>
         <span>Source / Transform / Difference</span>
-        <select class="labx-select labx-select--compact" data-lab-field="workspace.comparison.viewMode">
+        <select class="labx-select labx-select--compact" data-lab-field="workspace.comparison.viewMode" data-lab-live-transform-mode="true">
           <option value="side-by-side" ${selectedValue === "side-by-side" ? "selected" : ""}>${escapeHtml(sourceLabel)}</option>
           <option value="stacked" ${selectedValue === "stacked" ? "selected" : ""}>${escapeHtml(transformLabel)}</option>
           <option value="difference" ${selectedValue === "difference" ? "selected" : ""}>${escapeHtml(differenceLabel)}</option>
         </select>
       </label>
-      <span class="labx-strip-live-preview__status">${escapeHtml(previewReady ? "current" : previewStatus)}</span>
+      <span class="labx-strip-live-preview__status" data-lab-live-preview-status="true">${escapeHtml(previewReady ? "current" : previewStatus)}</span>
     </div>
     <div class="labx-strip-live-preview__viewport" data-lab-transform-comparison-viewport="true">
-      ${modeUrl === null ? `<p>${escapeHtml(unavailable)}</p>` : renderPreviewMedia(sourceKind, modeUrl, modeLabel)}
+      <div class="labx-strip-live-preview__content" data-lab-transform-preview-content="true">
+        ${modeUrl === null ? `<p>${escapeHtml(unavailable)}</p>` : renderPreviewMedia(sourceKind, modeUrl, modeLabel)}
+      </div>
+      ${sourceKind === "video" ? renderTrackingPreviewSurface(state, sourcePreviewUrl ?? baselineUrl) : ""}
     </div>
-    <p class="labx-strip-live-note">${escapeHtml(
+    <p class="labx-strip-live-note" data-lab-live-preview-note="true">${escapeHtml(
       copy.locale === "tr"
         ? "Source baseline aynı temel edit tarifini stress-transform aşamaları olmadan kullanır; Difference iki hizalı çıktı arasındaki piksel farkıdır."
         : "Source baseline uses the same base edit recipe without stress-transform stages; Difference is the pixel difference between the aligned outputs."
