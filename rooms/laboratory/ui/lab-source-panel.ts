@@ -15,6 +15,7 @@ import {
   getProjectImportUrlInput,
   hasProjectImportDraftValue,
 } from "../runtime/lab-project-import.js";
+import { getLabYoutubeRangeValidationCode } from "../shared/youtube-download-range.js";
 import {
   renderDirectUrlCheckResult,
   renderProjectImportProgress,
@@ -321,23 +322,42 @@ function renderUrlOverlay(state: LabStoreState, copy: LabI18n, locked: boolean):
   const youtubeReady = ready && check.isYoutube === true;
   const checking = check.status === "checking";
   const primaryAction = ready ? "project-import-url-add" : "project-import-check-url";
+  const tools = asLabRecord(asLabRecord(state.toolState)["tools"]);
+  const ffmpegInstalled = asLabRecord(tools["ffmpeg"])["installed"] === true;
+  const rangePreview = state.ui.youtubeImport.preview;
+  const rangeSelection = state.ui.youtubeImport.rangeSelection;
+  const hasSelectedRange =
+    rangeSelection.startSeconds !== null || rangeSelection.endSeconds !== null;
+  const selectedRangeValidation = getLabYoutubeRangeValidationCode(
+    rangeSelection,
+    rangePreview?.duration
+  );
+  const selectedRangeDisabledReason =
+    hasSelectedRange && selectedRangeValidation !== null
+      ? copy.t(
+          "mediaAnalysis.projectImport.youtubeRange.validation.invalidSelection",
+          "Select a valid time range before downloading."
+        )
+      : hasSelectedRange && ffmpegInstalled !== true
+        ? copy.t(
+            "mediaAnalysis.projectImport.youtubeRange.validation.ffmpegRequired",
+            "FFmpeg is required for range downloads."
+          )
+        : null;
   const primaryDisabledReason = ready
-    ? addAction.disabledReason
+    ? addAction.disabledReason || (youtubeReady ? selectedRangeDisabledReason : null)
     : checking
       ? copy.t("mediaAnalysis.projectImport.url.checking", "Kontrol ediliyor")
       : checkAction.disabledReason;
   const primaryDisabledAttr = primaryDisabledReason !== null || locked ? " disabled" : "";
   const primaryLabel = ready
     ? youtubeReady
-      ? copy.t("mediaAnalysis.projectImport.youtubeRange.actions.downloadFull", "Tam Videoyu İndir")
+      ? copy.t("mediaAnalysis.projectImport.youtubeRange.actions.download", "Videoyu İndir")
       : copy.t("mediaAnalysis.projectImport.url.add", "Projeye Ekle")
     : checking
       ? copy.t("mediaAnalysis.projectImport.url.checking", "Kontrol ediliyor")
       : copy.t("mediaAnalysis.projectImport.url.check", "Kontrol Et");
   const clearDisabled = hasProjectImportDraftValue(state) !== true;
-  const tools = asLabRecord(asLabRecord(state.toolState)["tools"]);
-  const ffmpegInstalled = asLabRecord(tools["ffmpeg"])["installed"] === true;
-  const rangePreview = state.ui.youtubeImport.preview;
   const rangeUnavailableReason =
     addAction.disabledReason ||
     (ffmpegInstalled !== true
@@ -371,23 +391,19 @@ function renderUrlOverlay(state: LabStoreState, copy: LabI18n, locked: boolean):
         <div class="labx-sp-url__actions">
           <button class="labx-sp-url__btn labx-sp-url__btn--primary" type="button"
                   data-lab-action="${escapeHtml(primaryAction)}"${primaryDisabledAttr}>
-            ${escapeHtml(primaryLabel)}
-           </button>
-           ${
-             youtubeReady
-               ? `<button class="labx-sp-url__btn" type="button"
-                    data-lab-action="youtube-range-open"${rangeDisabled ? " disabled" : ""}${rangeUnavailableReason !== null ? ` title="${escapeHtml(rangeUnavailableReason)}"` : ""}>
-                    ${escapeHtml(copy.t("mediaAnalysis.projectImport.youtubeRange.actions.selectRange", "Aralık Seç"))}
-                  </button>`
-               : ""
-           }
-           <button class="labx-sp-url__btn" type="button"
+             ${escapeHtml(primaryLabel)}
+            </button>
+            <button class="labx-sp-url__btn" type="button"
                    data-lab-action="project-import-clear"${clearDisabled || locked ? " disabled" : ""}>
             ${escapeHtml(copy.t("mediaAnalysis.projectImport.clear", "Temizle"))}
           </button>
         </div>
         ${renderProjectImportProgress(state, copy)}
-        ${renderYoutubeCheckResult(state, copy)}
+        ${renderYoutubeCheckResult(state, copy, {
+          clearDisabled: locked,
+          selectionDisabled: rangeDisabled,
+          unavailableReason: rangeUnavailableReason,
+        })}
         ${renderDirectUrlCheckResult(state, copy)}
       </div>
     </div>

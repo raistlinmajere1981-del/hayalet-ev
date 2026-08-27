@@ -388,14 +388,22 @@ void test("laboratory YouTube range UI keeps setters independent and cancel send
   assert.equal(controller.handleSourceClickAction("youtube-range-open", ""), true);
   assert.equal(store.getState().ui.youtubeImport.rangeSelection.open, true);
   const sourcePanelHtml = renderLabSourcePanel(store.getState(), LAB_FALLBACK_I18N);
-  assert.match(sourcePanelHtml, /data-lab-action="project-import-url-add"/);
-  assert.match(sourcePanelHtml, /Tam Videoyu İndir/);
-  assert.match(sourcePanelHtml, /data-lab-action="youtube-range-open"/);
+  assert.equal(sourcePanelHtml.match(/data-lab-action="project-import-url-add"/g)?.length, 1);
+  assert.match(sourcePanelHtml, /Videoyu İndir/);
+  const urlActions = sourcePanelHtml.match(/<div class="labx-sp-url__actions">([\s\S]*?)<\/div>/);
+  assert.ok(urlActions);
+  assert.doesNotMatch(urlActions[1] || "", /youtube-range-open/);
+  assert.match(
+    sourcePanelHtml,
+    /labx-project-import__yt-section--streams[\s\S]*data-lab-action="youtube-range-open"/
+  );
   const overlayHtml = renderYoutubeRangeOverlay(store.getState(), LAB_FALLBACK_I18N);
   assert.match(overlayHtml, /data-lab-youtube-range-player="true"/);
   assert.match(overlayHtml, / controls/);
   assert.match(overlayHtml, /data-lab-action="youtube-range-set-start"/);
   assert.match(overlayHtml, /data-lab-action="youtube-range-set-end"/);
+  assert.match(overlayHtml, /Bu Aralığı Kullan/);
+  assert.doesNotMatch(overlayHtml, /Bu Aralığı İndir/);
 
   player.currentTime = 10;
   controller.handleSourceClickAction("youtube-range-set-start", "");
@@ -414,10 +422,12 @@ void test("laboratory YouTube range UI keeps setters independent and cancel send
 
   controller.handleSourceClickAction("youtube-range-cancel", "");
   assert.equal(store.getState().ui.youtubeImport.rangeSelection.open, false);
+  assert.equal(store.getState().ui.youtubeImport.rangeSelection.startSeconds, null);
+  assert.equal(store.getState().ui.youtubeImport.rangeSelection.endSeconds, null);
   assert.equal(sentRequests.length, 0);
 });
 
-void test("laboratory YouTube range confirm sends the selected request and closes the overlay", () => {
+void test("laboratory YouTube range confirm applies the setting and the main download sends it", () => {
   const store = createReadyYoutubeStore();
   const sentRequests: Array<{ action: string; payload?: Record<string, unknown> }> = [];
   const player = { currentTime: 0 };
@@ -445,8 +455,31 @@ void test("laboratory YouTube range confirm sends the selected request and close
   controller.handleSourceClickAction("youtube-range-set-end", "");
   controller.handleSourceClickAction("youtube-range-confirm", "");
 
+  assert.equal(sentRequests.length, 0);
+  assert.equal(store.getState().ui.youtubeImport.rangeSelection.open, false);
+  assert.equal(store.getState().ui.youtubeImport.rangeSelection.startSeconds, 10);
+  assert.equal(store.getState().ui.youtubeImport.rangeSelection.endSeconds, 20);
+
+  controller.handleSourceClickAction("youtube-range-open", "");
+  player.currentTime = 12;
+  controller.handleSourceClickAction("youtube-range-set-start", "");
+  controller.handleSourceClickAction("youtube-range-cancel", "");
+  assert.equal(sentRequests.length, 0);
+  assert.equal(store.getState().ui.youtubeImport.rangeSelection.startSeconds, 10);
+  assert.equal(store.getState().ui.youtubeImport.rangeSelection.endSeconds, 20);
+
+  const sourcePanelHtml = renderLabSourcePanel(store.getState(), LAB_FALLBACK_I18N);
+  assert.match(
+    sourcePanelHtml,
+    /data-lab-youtube-range-summary="true">00:10\.000 – 00:20\.000 · 10\.000 s/
+  );
+  assert.match(sourcePanelHtml, /data-lab-action="youtube-range-clear"/);
+
+  controller.handleSourceClickAction("project-import-url-add", "");
+
   assert.equal(sentRequests.length, 1);
   assert.equal(sentRequests[0]?.action, "source-download-youtube");
+  assert.equal(toRecord(sentRequests[0]?.payload?.["fields"])["youtubeCaptureMode"], "video+audio");
   assert.deepEqual(sentRequests[0]?.payload?.["range"], {
     startSeconds: 10,
     endSeconds: 20,
@@ -457,5 +490,41 @@ void test("laboratory YouTube range confirm sends the selected request and close
     videoId: "abc123",
     webpageUrl: "https://www.youtube.com/watch?v=abc123",
   });
-  assert.equal(store.getState().ui.youtubeImport.rangeSelection.open, false);
+});
+
+void test("laboratory YouTube range can return to a full download before submitting", () => {
+  const store = createReadyYoutubeStore();
+  const sentRequests: Array<{ action: string; payload?: Record<string, unknown> }> = [];
+  const player = { currentTime: 0 };
+  const controller = createLabSourceActionController({
+    documentRef: {
+      querySelector() {
+        return player as unknown as Element;
+      },
+    } as Pick<Document, "querySelector">,
+    dispatch: store.dispatch,
+    pushLockedWorkspaceEvent() {},
+    sendMediaAction(action, payload) {
+      sentRequests.push(payload === undefined ? { action } : { action, payload });
+      return "request-youtube-full";
+    },
+    store,
+    updateWorkbench() {},
+    windowRef: { confirm: () => true },
+  });
+
+  controller.handleSourceClickAction("youtube-range-open", "");
+  player.currentTime = 10;
+  controller.handleSourceClickAction("youtube-range-set-start", "");
+  player.currentTime = 20;
+  controller.handleSourceClickAction("youtube-range-set-end", "");
+  controller.handleSourceClickAction("youtube-range-confirm", "");
+  controller.handleSourceClickAction("youtube-range-clear", "");
+
+  assert.equal(store.getState().ui.youtubeImport.rangeSelection.startSeconds, null);
+  assert.equal(store.getState().ui.youtubeImport.rangeSelection.endSeconds, null);
+  controller.handleSourceClickAction("project-import-url-add", "");
+  assert.equal(sentRequests.length, 1);
+  assert.equal(sentRequests[0]?.action, "source-download-youtube");
+  assert.equal("range" in (sentRequests[0]?.payload || {}), false);
 });

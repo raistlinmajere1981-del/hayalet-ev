@@ -12,6 +12,12 @@ import {
 } from "../runtime/lab-project-import.js";
 import { getYoutubePresetDefaults } from "../runtime/lab-source-presets.js";
 import {
+  formatLabYoutubeRangeClock,
+  getLabYoutubeRangeValidationCode,
+  getLabYoutubeRequestedDurationSeconds,
+} from "../shared/youtube-download-range.js";
+import type { LabYoutubeDownloadRange } from "../shared/youtube-download-range.js";
+import {
   findYtDlpFormField,
   getYtDlpFormSchema,
   shouldRenderAdvancedYtDlpFormField,
@@ -20,6 +26,12 @@ import type { YtDlpFormField } from "./project-source-form-schema.js";
 import type { LabI18n } from "./lab-i18n.js";
 
 type YoutubeCaptureMode = "video+audio" | "audio-only" | "video-only";
+
+type YoutubeRangeControlOptions = {
+  clearDisabled?: boolean;
+  selectionDisabled?: boolean;
+  unavailableReason?: string | null;
+};
 
 function selectedAttr(current: string | null, value: string) {
   return current === value ? " selected" : "";
@@ -219,7 +231,65 @@ function renderYoutubeStreamSelect(input: {
   `;
 }
 
-function renderYoutubeStreamControls(state: LabStoreState, copy: LabI18n) {
+function getSelectedYoutubeRange(state: LabStoreState): LabYoutubeDownloadRange | null {
+  const selection = state.ui.youtubeImport.rangeSelection;
+  const range = {
+    startSeconds: selection.startSeconds,
+    endSeconds: selection.endSeconds,
+  };
+  return getLabYoutubeRangeValidationCode(range, state.ui.youtubeImport.preview?.duration) === null
+    ? (range as LabYoutubeDownloadRange)
+    : null;
+}
+
+function renderYoutubeRangeControl(
+  state: LabStoreState,
+  copy: LabI18n,
+  options: YoutubeRangeControlOptions
+) {
+  const range = getSelectedYoutubeRange(state);
+  const summary =
+    range === null
+      ? copy.t("mediaAnalysis.projectImport.youtubeRange.fullVideo", "Full video")
+      : `${formatLabYoutubeRangeClock(range.startSeconds)} – ${formatLabYoutubeRangeClock(range.endSeconds)} · ${getLabYoutubeRequestedDurationSeconds(range).toFixed(3)} s`;
+  const selectionDisabled = options.selectionDisabled === true;
+  const unavailableReason = options.unavailableReason ?? null;
+  const selectionDisabledAttr = selectionDisabled ? " disabled" : "";
+  const selectionTitleAttr =
+    unavailableReason === null ? "" : ` title="${escapeHtml(unavailableReason)}"`;
+
+  return `
+    <div class="labx-project-import__yt-range" data-span="full">
+      <span class="labx-project-import__yt-range-label">${escapeHtml(copy.t("mediaAnalysis.projectImport.youtubeRange.settingLabel", "Time range"))}</span>
+      <strong class="labx-project-import__yt-range-value" data-lab-youtube-range-summary="true">${escapeHtml(summary)}</strong>
+      <div class="labx-project-import__yt-range-actions">
+        <button type="button" data-lab-action="youtube-range-open"${selectionDisabledAttr}${selectionTitleAttr}>
+          ${escapeHtml(
+            range === null
+              ? copy.t(
+                  "mediaAnalysis.projectImport.youtubeRange.actions.selectRange",
+                  "Select Range"
+                )
+              : copy.t("mediaAnalysis.projectImport.youtubeRange.actions.editRange", "Edit Range")
+          )}
+        </button>
+        ${
+          range === null
+            ? ""
+            : `<button type="button" data-lab-action="youtube-range-clear"${options.clearDisabled === true ? " disabled" : ""}>
+                 ${escapeHtml(copy.t("mediaAnalysis.projectImport.youtubeRange.actions.clearRange", "Use Full Video"))}
+               </button>`
+        }
+      </div>
+    </div>
+  `;
+}
+
+function renderYoutubeStreamControls(
+  state: LabStoreState,
+  copy: LabI18n,
+  rangeOptions: YoutubeRangeControlOptions
+) {
   const schema = getYtDlpFormSchema(state);
   const captureModeField = findYtDlpFormField(schema, "captureMode");
   const captureMode = getYoutubeCaptureMode(state);
@@ -256,16 +326,21 @@ function renderYoutubeStreamControls(state: LabStoreState, copy: LabI18n) {
               })
             : ""
         }
+        ${renderYoutubeRangeControl(state, copy, rangeOptions)}
       </div>
     </fieldset>
   `;
 }
 
-function renderYoutubeDetailedControls(state: LabStoreState, copy: LabI18n) {
+function renderYoutubeDetailedControls(
+  state: LabStoreState,
+  copy: LabI18n,
+  rangeOptions: YoutubeRangeControlOptions
+) {
   const schema = getYtDlpFormSchema(state);
   return `
     <div class="labx-project-import__yt-controls">
-      ${renderYoutubeStreamControls(state, copy)}
+      ${renderYoutubeStreamControls(state, copy, rangeOptions)}
       ${schema.sections
         .map(function (section) {
           const title = copy.t(
@@ -298,7 +373,11 @@ function renderYoutubeDetailedControls(state: LabStoreState, copy: LabI18n) {
   `;
 }
 
-export function renderYoutubeCheckResult(state: LabStoreState, copy: LabI18n) {
+export function renderYoutubeCheckResult(
+  state: LabStoreState,
+  copy: LabI18n,
+  rangeOptions: YoutubeRangeControlOptions = {}
+) {
   const youtube = state.ui.youtubeImport;
   if (youtube.status === "parsing" || state.ui.projectImport.urlCheck.status === "checking") {
     return `<p class="labx-project-import__status" role="status">${escapeHtml(copy.t("mediaAnalysis.source.youtubeImport.statusParsing", "Checking YouTube formats..."))}</p>`;
@@ -349,7 +428,7 @@ export function renderYoutubeCheckResult(state: LabStoreState, copy: LabI18n) {
         </div>
       </div>
       ${renderProjectImportDetails(state, copy)}
-      ${renderYoutubeDetailedControls(state, copy)}
+      ${renderYoutubeDetailedControls(state, copy, rangeOptions)}
     </div>
   `;
 }

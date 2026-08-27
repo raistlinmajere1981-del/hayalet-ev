@@ -109,7 +109,7 @@ export function renderYoutubeRangeOverlay(state: LabStoreState, copy: LabI18n): 
       <section class="labx-youtube-range" role="dialog" aria-modal="true" aria-labelledby="lab-youtube-range-title">
         <header class="labx-youtube-range__header">
           <div>
-            <p>${escapeHtml(copy.t("mediaAnalysis.projectImport.youtubeRange.eyebrow", "YouTube aralık indirme"))}</p>
+            <p>${escapeHtml(copy.t("mediaAnalysis.projectImport.youtubeRange.eyebrow", "YouTube zaman aralığı"))}</p>
             <h2 id="lab-youtube-range-title">${escapeHtml(title)}</h2>
           </div>
           <button class="labx-youtube-range__close" type="button" data-lab-action="youtube-range-cancel" aria-label="${escapeHtml(copy.t("mediaAnalysis.projectImport.youtubeRange.actions.cancel", "İptal"))}">×</button>
@@ -142,10 +142,10 @@ export function renderYoutubeRangeOverlay(state: LabStoreState, copy: LabI18n): 
           <button type="button" data-lab-action="youtube-range-set-start"${streamUrl === null ? " disabled" : ""}>${escapeHtml(copy.t("mediaAnalysis.projectImport.youtubeRange.actions.setStart", "Başlangıcı Buraya Koy"))}</button>
           <button type="button" data-lab-action="youtube-range-set-end"${streamUrl === null ? " disabled" : ""}>${escapeHtml(copy.t("mediaAnalysis.projectImport.youtubeRange.actions.setEnd", "Bitişi Buraya Koy"))}</button>
         </div>
-        <p class="labx-youtube-range__validation" data-code="${escapeHtml(validation.code || "ready")}" role="status">${escapeHtml(validation.message || copy.t("mediaAnalysis.projectImport.youtubeRange.validation.ready", "Aralık indirmeye hazır."))}</p>
+        <p class="labx-youtube-range__validation" data-code="${escapeHtml(validation.code || "ready")}" role="status">${escapeHtml(validation.message || copy.t("mediaAnalysis.projectImport.youtubeRange.validation.ready", "Bu aralık kullanılabilir."))}</p>
         <footer class="labx-youtube-range__actions">
           <button type="button" data-lab-action="youtube-range-cancel">${escapeHtml(copy.t("mediaAnalysis.projectImport.youtubeRange.actions.cancel", "İptal"))}</button>
-          <button class="labx-youtube-range__confirm" type="button" data-lab-action="youtube-range-confirm"${confirmDisabled ? " disabled" : ""}>${escapeHtml(copy.t("mediaAnalysis.projectImport.youtubeRange.actions.confirm", "Bu Aralığı İndir"))}</button>
+          <button class="labx-youtube-range__confirm" type="button" data-lab-action="youtube-range-confirm"${confirmDisabled ? " disabled" : ""}>${escapeHtml(copy.t("mediaAnalysis.projectImport.youtubeRange.actions.confirm", "Bu Aralığı Kullan"))}</button>
         </footer>
       </section>
     </div>

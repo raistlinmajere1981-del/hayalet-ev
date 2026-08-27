@@ -1087,7 +1087,9 @@
         "directReady": "Dogrudan URL {type} olarak hazir"
       },
       "youtubeRange": {
-        "eyebrow": "YouTube aralık indirme",
+        "eyebrow": "YouTube zaman aralığı",
+        "settingLabel": "Zaman aralığı",
+        "fullVideo": "Tam video",
         "start": "Başlangıç",
         "end": "Bitiş",
         "duration": "Süre",
@@ -1096,11 +1098,14 @@
         "previewUnavailableBody": "Bu video için geçici oynatılabilir stream bulunamadı.",
         "actions": {
           "downloadFull": "Tam Videoyu İndir",
+          "download": "Videoyu İndir",
           "selectRange": "Aralık Seç",
+          "editRange": "Aralığı Düzenle",
+          "clearRange": "Tam Videoyu Kullan",
           "setStart": "Başlangıcı Buraya Koy",
           "setEnd": "Bitişi Buraya Koy",
           "cancel": "İptal",
-          "confirm": "Bu Aralığı İndir"
+          "confirm": "Bu Aralığı Kullan"
         },
         "validation": {
           "missingBoundary": "Başlangıç ve bitiş noktalarını seçin.",
@@ -1112,7 +1117,8 @@
           "ffmpegRequired": "Aralık indirme için FFmpeg gerekli.",
           "previewRequired": "Bu video için oynatılabilir önizleme bulunamadı.",
           "durationRequired": "Aralık seçimi için video süresi gerekli.",
-          "ready": "Aralık indirmeye hazır."
+          "invalidSelection": "İndirmeden önce geçerli bir zaman aralığı seçin.",
+          "ready": "Bu aralık kullanılabilir."
         }
       },
       "clear": "Temizle",

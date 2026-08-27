@@ -105,9 +105,8 @@ export function reduceLabImportUiEvent(state: LabStoreState, event: LabStoreEven
       state.ui.youtubeImport = {
         ...state.ui.youtubeImport,
         rangeSelection: {
+          ...state.ui.youtubeImport.rangeSelection,
           open: true,
-          startSeconds: null,
-          endSeconds: null,
         },
       };
       return true;
@@ -117,6 +116,16 @@ export function reduceLabImportUiEvent(state: LabStoreState, event: LabStoreEven
         rangeSelection: {
           ...state.ui.youtubeImport.rangeSelection,
           open: false,
+        },
+      };
+      return true;
+    case "youtube-range-selection-replaced":
+      state.ui.youtubeImport = {
+        ...state.ui.youtubeImport,
+        rangeSelection: {
+          open: false,
+          startSeconds: event.startSeconds,
+          endSeconds: event.endSeconds,
         },
       };
       return true;

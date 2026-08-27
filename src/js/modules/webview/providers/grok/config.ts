@@ -8,7 +8,8 @@ export const config = {
   lastVerified: "2026-01-11",
   selectors: {
     sendButton:
-      'button[type="submit"][aria-label="Gönder"], button[type="submit"][aria-label="Submit"], button[type="submit"]',
+      'button[data-testid="chat-submit"], button[type="submit"][aria-label="Gönder"], button[type="submit"][aria-label="Submit"], button[type="submit"]',
+    sendButtonDisabled: 'form:has([data-testid="chat-input"] .is-empty)',
 
     stopButton:
       'button[aria-label="Model yanıtını durdur"], button[aria-label="Stop model response"], button[aria-label*="Stop" i]',

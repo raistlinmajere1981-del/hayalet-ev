@@ -39,7 +39,14 @@ type LabSourceActionControllerDeps = {
 
 type LabStoreState = ReturnType<ReturnType<typeof createLabStore>["getState"]>;
 
+type YoutubeRangeSelectionSnapshot = {
+  startSeconds: number | null;
+  endSeconds: number | null;
+};
+
 export function createLabSourceActionController(deps: LabSourceActionControllerDeps) {
+  let youtubeRangeSelectionBeforeOpen: YoutubeRangeSelectionSnapshot | null = null;
+
   function isSourceManagementLocked() {
     const state = deps.store.getState();
     return getWorkspaceLockState(state).source === true || isRunActive(state);
@@ -167,7 +174,32 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
   }
 
   function runProjectImportAdd() {
-    runProjectImportAction(buildProjectImportHostAction(deps.store.getState()));
+    const importAction = buildProjectImportHostAction(deps.store.getState());
+    const state = deps.store.getState();
+    const selection = state.ui.youtubeImport.rangeSelection;
+    const hasSelectedRange = selection.startSeconds !== null || selection.endSeconds !== null;
+    if (importAction.action !== "source-download-youtube" || hasSelectedRange !== true) {
+      runProjectImportAction(importAction);
+      return;
+    }
+    const range = {
+      startSeconds: selection.startSeconds,
+      endSeconds: selection.endSeconds,
+    };
+    const preview = state.ui.youtubeImport.preview;
+    if (getLabYoutubeRangeValidationCode(range, preview?.duration) !== null) {
+      pushYoutubeRangeWarning("Geçerli bir başlangıç ve bitiş aralığı seçin.");
+      return;
+    }
+    runProjectImportAction(importAction, {
+      range,
+      youtubeMetadata: {
+        durationSeconds: preview?.duration,
+        title: preview?.title,
+        videoId: preview?.videoId,
+        webpageUrl: preview?.webpageUrl,
+      },
+    });
   }
 
   function runProjectImportLocalAdd() {
@@ -226,6 +258,9 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
       return;
     }
     const state = deps.store.getState();
+    if (state.ui.youtubeImport.rangeSelection.open) {
+      return;
+    }
     const preview = state.ui.youtubeImport.preview;
     const tools = asLabRecord(asLabRecord(state.toolState)["tools"]);
     if (asLabRecord(tools["ffmpeg"])["installed"] !== true) {
@@ -241,6 +276,10 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
       pushYoutubeRangeWarning("Bu video için aralık önizlemesi kullanılamıyor.");
       return;
     }
+    youtubeRangeSelectionBeforeOpen = {
+      startSeconds: state.ui.youtubeImport.rangeSelection.startSeconds,
+      endSeconds: state.ui.youtubeImport.rangeSelection.endSeconds,
+    };
     deps.dispatch({ type: "youtube-range-selection-opened" });
   }
 
@@ -262,11 +301,33 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
   }
 
   function cancelYoutubeRangeSelection() {
-    const open = deps.store.getState().ui.youtubeImport.rangeSelection.open;
+    const selection = deps.store.getState().ui.youtubeImport.rangeSelection;
+    const open = selection.open;
     if (open) {
-      deps.dispatch({ type: "youtube-range-selection-closed" });
+      const previous = youtubeRangeSelectionBeforeOpen ?? {
+        startSeconds: selection.startSeconds,
+        endSeconds: selection.endSeconds,
+      };
+      deps.dispatch({
+        type: "youtube-range-selection-replaced",
+        startSeconds: previous.startSeconds,
+        endSeconds: previous.endSeconds,
+      });
+      youtubeRangeSelectionBeforeOpen = null;
     }
     return open;
+  }
+
+  function clearYoutubeRangeSelection() {
+    if (guardSourceManagementLocked()) {
+      return;
+    }
+    youtubeRangeSelectionBeforeOpen = null;
+    deps.dispatch({
+      type: "youtube-range-selection-replaced",
+      startSeconds: null,
+      endSeconds: null,
+    });
   }
 
   function confirmYoutubeRangeSelection() {
@@ -285,19 +346,8 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
       pushYoutubeRangeWarning("Geçerli bir başlangıç ve bitiş aralığı seçin.");
       return;
     }
-    const preview = state.ui.youtubeImport.preview;
-    const requestId = runProjectImportAction(buildProjectImportHostAction(state), {
-      range,
-      youtubeMetadata: {
-        durationSeconds: preview?.duration,
-        title: preview?.title,
-        videoId: preview?.videoId,
-        webpageUrl: preview?.webpageUrl,
-      },
-    });
-    if (requestId !== null) {
-      deps.dispatch({ type: "youtube-range-selection-closed" });
-    }
+    youtubeRangeSelectionBeforeOpen = null;
+    deps.dispatch({ type: "youtube-range-selection-closed" });
   }
 
   function clearProjectImportDraft() {
@@ -454,6 +504,9 @@ export function createLabSourceActionController(deps: LabSourceActionControllerD
         return true;
       case "youtube-range-open":
         openYoutubeRangeSelection();
+        return true;
+      case "youtube-range-clear":
+        clearYoutubeRangeSelection();
         return true;
       case "youtube-range-set-start":
         setYoutubeRangeBoundary("start");

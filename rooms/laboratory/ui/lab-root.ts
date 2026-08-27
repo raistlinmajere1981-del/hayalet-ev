@@ -55,12 +55,13 @@ import type { LabRegionDescriptor, LabRegionKey } from "./lab-root-observability
 export { __testOnlyLabRootDomSync } from "./lab-dom-sync.js";
 export { __testOnlyLabRootObservability } from "./lab-root-observability.js";
 
-type RootWindow = Window & {
-  roomAPI?: {
-    onHostMessage?: (listener: (message: unknown) => void) => void;
-    ready?: (payload: { feature: string; room: string; stage: string }) => void;
+type RootWindow = Window &
+  typeof globalThis & {
+    roomAPI?: {
+      onHostMessage?: (listener: (message: unknown) => void) => void;
+      ready?: (payload: { feature: string; room: string; stage: string }) => void;
+    };
   };
-};
 
 export const __testOnlyLabRootPersistence = {
   readPersistableState,
@@ -116,9 +117,15 @@ function readPersistableState(state: LabStoreState) {
   };
 }
 
-export function startLaboratoryLabRoot() {
-  const documentRef = document;
-  const windowRef = window as RootWindow;
+export function startLaboratoryLabRoot(
+  documentCandidate: Document | null = typeof document === "undefined" ? null : document,
+  windowCandidate: RootWindow | null = typeof window === "undefined" ? null : window
+) {
+  if (documentCandidate === null || windowCandidate === null) {
+    return;
+  }
+  const documentRef = documentCandidate;
+  const windowRef = windowCandidate;
   const root = documentRef.getElementById("app");
   if (!root) {
     return;
@@ -390,7 +397,7 @@ export function startLaboratoryLabRoot() {
     if (state === null) {
       return;
     }
-    saveLabPersistedState(window, readPersistableState(state));
+    saveLabPersistedState(windowRef, readPersistableState(state));
     render();
     previewInspectionController.sync();
     scheduleBootOverlayUnlock(state);
@@ -654,7 +661,7 @@ export function startLaboratoryLabRoot() {
     scheduleStoreSideEffects(state);
   });
 
-  const persisted = loadLabPersistedState(window);
+  const persisted = loadLabPersistedState(windowRef);
   eventBus.emit({
     type: "hydrate",
     payload: persisted,

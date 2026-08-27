@@ -231,9 +231,13 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
 
   function ensureBackgroundReferenceControls(root: HTMLElement, state: TransformStackRootState) {
     if (state.scope !== "visual" || state.recipeSection !== "video") return null;
-    const panel = root.querySelector<HTMLElement>("[data-lab-control-injection='true'] .labx-card__body");
+    const panel = root.querySelector<HTMLElement>(
+      "[data-lab-control-injection='true'] .labx-card__body"
+    );
     if (panel === null) return null;
-    let controls = panel.querySelector<HTMLElement>("[data-lab-background-reference-controls='true']");
+    let controls = panel.querySelector<HTMLElement>(
+      "[data-lab-background-reference-controls='true']"
+    );
     if (controls === null) {
       const markup = `<div class="labx-visual-stress-background-reference" data-lab-background-reference-controls="true">
         <p class="labx-card__eyebrow">Background Reference</p>
@@ -243,22 +247,33 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
         </div>
         <p class="labx-card__meta" data-lab-background-reference-status="true"></p>
       </div>`;
-      const roiControls = panel.querySelector<HTMLElement>("[data-lab-visual-stress-roi-controls='true']");
+      const roiControls = panel.querySelector<HTMLElement>(
+        "[data-lab-visual-stress-roi-controls='true']"
+      );
       if (roiControls !== null) {
         roiControls.insertAdjacentHTML("afterend", markup);
       } else {
         panel.insertAdjacentHTML("afterbegin", markup);
       }
-      controls = panel.querySelector<HTMLElement>("[data-lab-background-reference-controls='true']");
+      controls = panel.querySelector<HTMLElement>(
+        "[data-lab-background-reference-controls='true']"
+      );
     }
     return controls;
+  }
+
+  function getTransformRoots(): HTMLElement[] {
+    if (typeof deps.documentRef.querySelectorAll !== "function") {
+      return [];
+    }
+    return Array.from(deps.documentRef.querySelectorAll<HTMLElement>("[data-lab-transform-stack]"));
   }
 
   function syncBackgroundReferenceUi() {
     referenceSyncQueued = false;
     const referenceSeconds = getBackgroundReferenceSeconds();
     const sourceKey = getWorkspacePreviewSourceKey();
-    deps.documentRef.querySelectorAll<HTMLElement>("[data-lab-transform-stack]").forEach(function (root) {
+    getTransformRoots().forEach(function (root) {
       const state = readRootState(root);
       if (state === null) return;
       const controls = ensureBackgroundReferenceControls(root, state);
@@ -269,7 +284,9 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
       const clear = controls.querySelector<HTMLButtonElement>(
         '[data-lab-action="workspace-background-reference-clear"]'
       );
-      const status = controls.querySelector<HTMLElement>("[data-lab-background-reference-status='true']");
+      const status = controls.querySelector<HTMLElement>(
+        "[data-lab-background-reference-status='true']"
+      );
       const canCapture =
         state.locked !== true &&
         sourceKey !== null &&
@@ -294,7 +311,7 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
   }
 
   function findFeedbackButton(feedback: PendingTransformActionFeedback) {
-    const roots = deps.documentRef.querySelectorAll<HTMLElement>("[data-lab-transform-stack]");
+    const roots = getTransformRoots();
     for (const root of roots) {
       if (
         root.getAttribute("data-lab-transform-feature-id") !== feedback.featureId ||
@@ -373,6 +390,10 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
 
   function schedulePendingFeedbackSync() {
     if (pendingFeedback.size === 0 || feedbackSyncFrame !== null) {
+      return;
+    }
+    if (typeof deps.windowRef.requestAnimationFrame !== "function") {
+      syncPendingFeedback();
       return;
     }
     feedbackSyncFrame = deps.windowRef.requestAnimationFrame(syncPendingFeedback);
@@ -674,7 +695,7 @@ export function bindLaboratoryTransformStackInteractions(deps: TransformStackBin
     deps.windowRef.roomAPI?.offHostMessage?.(handleHostMessage);
     referenceMutationObserver?.disconnect();
     referenceMutationObserver = null;
-    if (feedbackSyncFrame !== null) {
+    if (feedbackSyncFrame !== null && typeof deps.windowRef.cancelAnimationFrame === "function") {
       deps.windowRef.cancelAnimationFrame(feedbackSyncFrame);
     }
     for (const feedback of pendingFeedback.values()) {

@@ -262,6 +262,9 @@ export async function testSendButtonDisabled(ctx: TestContext): Promise<Provider
   const start = Date.now();
   try {
     const selector = ctx.config.selectors.sendButtonDisabled ?? ctx.config.selectors.sendButton;
+    const hasDisabledStateSelector = JSON.stringify(
+      ctx.config.selectors.sendButtonDisabled !== undefined
+    );
     const script = `
       (function() {
         try {
@@ -270,7 +273,7 @@ export async function testSendButtonDisabled(ctx: TestContext): Promise<Provider
           
           return {
             exists: true,
-            disabled: btn.disabled || btn.getAttribute('aria-disabled') === 'true' || btn.classList.contains('disabled'),
+            disabled: ${hasDisabledStateSelector} || btn.disabled || btn.getAttribute('aria-disabled') === 'true' || btn.classList.contains('disabled'),
             tagName: btn.tagName,
             classes: btn.className
           };

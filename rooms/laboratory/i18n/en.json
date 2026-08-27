@@ -1087,7 +1087,9 @@
         "directReady": "Direct URL ready as {type}"
       },
       "youtubeRange": {
-        "eyebrow": "YouTube range download",
+        "eyebrow": "YouTube time range",
+        "settingLabel": "Time range",
+        "fullVideo": "Full video",
         "start": "Start",
         "end": "End",
         "duration": "Duration",
@@ -1096,11 +1098,14 @@
         "previewUnavailableBody": "No temporary playable stream was found for this video.",
         "actions": {
           "downloadFull": "Download Full Video",
+          "download": "Download Video",
           "selectRange": "Select Range",
+          "editRange": "Edit Range",
+          "clearRange": "Use Full Video",
           "setStart": "Set Start Here",
           "setEnd": "Set End Here",
           "cancel": "Cancel",
-          "confirm": "Download This Range"
+          "confirm": "Use This Range"
         },
         "validation": {
           "missingBoundary": "Choose both start and end points.",
@@ -1112,7 +1117,8 @@
           "ffmpegRequired": "FFmpeg is required for range downloads.",
           "previewRequired": "No playable preview was found for this video.",
           "durationRequired": "Video duration is required for range selection.",
-          "ready": "The range is ready to download."
+          "invalidSelection": "Select a valid time range before downloading.",
+          "ready": "This range can be used."
         }
       },
       "clear": "Clear",

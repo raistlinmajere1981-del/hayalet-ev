@@ -855,6 +855,11 @@ export type LabStoreEvent =
   | { type: "youtube-import-clear" }
   | { type: "youtube-range-selection-opened" }
   | { type: "youtube-range-selection-closed" }
+  | {
+      type: "youtube-range-selection-replaced";
+      startSeconds: number | null;
+      endSeconds: number | null;
+    }
   | { type: "youtube-range-start-set"; seconds: number }
   | { type: "youtube-range-end-set"; seconds: number }
   | { type: "project-import-kind-changed"; kind: LabProjectImportKind }
