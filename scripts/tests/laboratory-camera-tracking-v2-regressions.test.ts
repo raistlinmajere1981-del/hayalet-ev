@@ -6,6 +6,7 @@ import {
   applyLaboratoryCameraTransformToRoi,
   estimateLaboratoryCameraTransform,
 } from "../../rooms/laboratory/features/media-analysis/host/camera-tracking-v2.ts";
+import { resolveLaboratoryTrackingPreviewCache } from "../../rooms/laboratory/shared/tracking-preview-model.ts";
 
 const WIDTH = 160;
 const HEIGHT = 100;
@@ -200,7 +201,44 @@ void test("static camera plus strongly moving target never creates an 80px camer
   assert.ok(Math.hypot(result.transform.dx, result.transform.dy) < 80);
 });
 
-void test("tracking v2 is wired as a shared cache/provenance layer", async () => {
+void test("tracking preview cache resolver falls back to completed report provenance", () => {
+  const transformPoint = {
+    timeSeconds: 10,
+    confidence: 0.8,
+    inlierRatio: 0.7,
+    forwardBackwardRatio: 0.9,
+    residualErrorPx: 2,
+    quality: "high",
+    transform: { dx: 3, dy: -2, rotationDegrees: 0.2, scale: 1.01 },
+  };
+  const cache = resolveLaboratoryTrackingPreviewCache(
+    {
+      temporalStressTests: [
+        {
+          kind: "appearance-transition",
+          trackingV2: {
+            status: "completed",
+            algorithm: "feature-similarity-ransac-v2",
+            anchorSeconds: 10,
+            cacheId: "report-cache",
+            fallbackUsed: false,
+            mode: "global-feature-similarity",
+            quality: "high",
+            transformSeries: [transformPoint],
+          },
+        },
+      ],
+    },
+    { sourceWidth: 1920, sourceHeight: 1080 }
+  );
+  assert.notEqual(cache, null);
+  assert.equal(cache?.cacheId, "report-cache");
+  assert.equal(cache?.sourceWidth, 1920);
+  assert.equal(cache?.sourceHeight, 1080);
+  assert.equal(cache?.transforms.length, 1);
+});
+
+void test("tracking v2 is wired as a shared cache/provenance layer and live-results preview", async () => {
   const composition = await readFile(
     "rooms/laboratory/shared/host/action-composition.ts",
     "utf8"
@@ -221,6 +259,10 @@ void test("tracking v2 is wired as a shared cache/provenance layer", async () =>
     "rooms/laboratory/ui/lab-tracking-preview-binder.ts",
     "utf8"
   );
+  const liveResults = await readFile(
+    "rooms/laboratory/ui/workspace-stress-test-live-results.ts",
+    "utf8"
+  );
   assert.match(composition, /action-handlers-v2\.js/);
   assert.match(wrapper, /getOrCreateTrackingCache/);
   assert.match(wrapper, /exclusionRois: \[input\.targetRoi, input\.controlRoi\]/);
@@ -230,6 +272,10 @@ void test("tracking v2 is wired as a shared cache/provenance layer", async () =>
   assert.match(structural, /camera-tracking-v2 similarity transform/);
   assert.match(convergence, /event-to-reference|Camera Tracking v2|camera-tracking-v2-similarity/i);
   assert.match(preview, /workspace-tracking-preview-toggle/);
-  assert.match(preview, /data-lab-tracking-preview-stabilized/);
-  assert.match(preview, /if \(button\.textContent !== label\)/);
+  assert.match(preview, /data-lab-tracking-preview-surface/);
+  assert.match(preview, /data-lab-transform-preview-content/);
+  assert.doesNotMatch(preview, /data-lab-selection-roi-overlay/);
+  assert.match(liveResults, /resolveLaboratoryTrackingPreviewCache/);
+  assert.match(liveResults, /data-lab-tracking-preview-video/);
+  assert.match(liveResults, /raw \+ stabilized/);
 });
