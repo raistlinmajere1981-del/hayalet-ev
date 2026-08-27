@@ -3,7 +3,7 @@ import type { LabEditConfig } from "../domain/lab-types.js";
 import { buildLaboratoryVisualResponseReportAssessment } from "../shared/visual-response-report-assessment.js";
 import type { LabI18n } from "./lab-i18n.js";
 import { formatLaboratoryStructuralTransitionV2Markdown } from "./workspace-structural-transition-v2-report.js";
-import { formatLaboratoryVisualReportMarkdown } from "./workspace-visual-response-summary.js";
+import { formatLaboratoryVisualReportV2Markdown } from "./workspace-visual-response-v2-report.js";
 
 type Entry = Record<string, unknown>;
 
@@ -147,7 +147,7 @@ function describeEntry(entry: Entry, copy: LabI18n): ReportDescriptor[] {
     const title = `Visibility Response · ${axisLabel(request["axis"])}`;
     return [
       createDescriptor(entry, {
-        markdown: formatLaboratoryVisualReportMarkdown(entry, copy),
+        markdown: formatLaboratoryVisualReportV2Markdown(entry, copy),
         rank: 20,
         status: compactStatus(
           trackingLimited ? "roi-tracking-quality-limits-response-result" : assessment["classification"],
@@ -196,7 +196,7 @@ function describeEntry(entry: Entry, copy: LabI18n): ReportDescriptor[] {
     const title = "Appearance / Disappearance Transition";
     descriptors.push(
       createDescriptor(entry, {
-        markdown: formatLaboratoryVisualReportMarkdown(entry, copy),
+        markdown: formatLaboratoryVisualReportV2Markdown(entry, copy),
         rank: 10,
         status: compactStatus(
           interpretation["photometricClassification"] ?? interpretation["classification"],
@@ -212,7 +212,7 @@ function describeEntry(entry: Entry, copy: LabI18n): ReportDescriptor[] {
     const title = "Codec Degradation · CRF ladder";
     return [
       createDescriptor(entry, {
-        markdown: formatLaboratoryVisualReportMarkdown(entry, copy),
+        markdown: formatLaboratoryVisualReportV2Markdown(entry, copy),
         rank: 30,
         status: genericStatus(entry, copy),
         title,
