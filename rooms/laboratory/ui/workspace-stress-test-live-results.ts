@@ -56,6 +56,7 @@ function renderTrackingPreviewSurface(state: LabStoreState, sourceUrl: string | 
       data-lab-tracking-preview-surface="true"
       data-lab-tracking-preview-cache-json="${escapeHtml(JSON.stringify(cache))}"
       data-lab-tracking-preview-rois-json="${escapeHtml(JSON.stringify(rawRois))}"
+      aria-label="Tracking Preview: raw + stabilized"
       hidden
     >
       ${

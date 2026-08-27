@@ -170,7 +170,7 @@ function readRois(surface: HTMLElement): PreviewRois {
   try {
     parsed = JSON.parse(raw ?? "null") as unknown;
   } catch {
-    parsed = null;
+    // Malformed UI attributes are treated as an empty ROI set.
   }
   const record =
     parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
