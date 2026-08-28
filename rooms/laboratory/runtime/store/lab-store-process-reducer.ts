@@ -96,6 +96,7 @@ export function reduceLabProcessEvent(state: LabStoreState, event: LabStoreEvent
       state.ui.analysisCancelRequestId = null;
       state.ui.workspace = {
         ...state.ui.workspace,
+        trackingPreviewActive: false,
         userExploreToggle: false,
       };
       return true;

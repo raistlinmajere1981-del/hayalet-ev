@@ -87,8 +87,8 @@
 }
 
 .labx-workspace-preview.labx-focus-passive {
-  opacity: 0.85;
-  filter: brightness(0.85);
+  opacity: 1;
+  filter: brightness(1);
   box-shadow: none;
 }
 
@@ -361,6 +361,186 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: var(--lab-space-2);
+}
+
+.labx-workspace-preview-modes {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.labx-workspace-preview-modes__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--lab-space-2);
+  min-width: 0;
+  padding: var(--lab-space-1_5) var(--lab-space-2);
+  border-bottom: var(--lab-workspace-px-1) solid var(--lab-border-subtle);
+  background: var(--lab-surface-1);
+}
+
+.labx-workspace-preview-modes__toolbar > strong {
+  color: var(--lab-text-strong);
+  font-size: var(--lab-text-xs);
+}
+
+.labx-workspace-preview-modes__toolbar > label {
+  display: flex;
+  align-items: center;
+  gap: var(--lab-space-1);
+  min-width: 0;
+  margin-left: auto;
+  color: var(--lab-text-soft);
+  font-size: var(--lab-text-xs);
+}
+
+.labx-workspace-preview-modes__toolbar .labx-select {
+  width: auto;
+  min-width: var(--lab-workspace-rem-8);
+}
+
+.labx-workspace-preview-modes__status {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--lab-text-dim);
+  font-size: var(--lab-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labx-workspace-preview-modes__content {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  place-items: center;
+}
+
+.labx-workspace-preview-modes__content > * {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.labx-workspace-tracking-comparison .labx-workspace-comparison__pane {
+  opacity: 1;
+}
+
+.labx-workspace-tracking-comparison .labx-workspace-comparison__media-stage {
+  outline: none;
+}
+
+.labx-tracking-preview-surface {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.labx-tracking-preview-media-shell {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  place-items: center;
+  background: var(--lab-surface-0);
+}
+
+.labx-tracking-preview-media {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 0;
+  object-fit: contain;
+}
+
+.labx-tracking-preview-frame {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.labx-tracking-preview-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: var(--lab-workspace-px-2) solid currentColor;
+  background: transparent;
+  pointer-events: none;
+}
+
+.labx-tracking-preview-box--raw {
+  border-style: solid;
+  opacity: 0.42;
+}
+
+.labx-tracking-preview-box--stabilized {
+  border-style: dashed;
+  opacity: 1;
+  box-shadow: 0 0 0 var(--lab-workspace-px-1) color-mix(in srgb, currentColor 30%, transparent);
+}
+
+.labx-tracking-preview-box--target {
+  color: var(--lab-warning);
+}
+
+.labx-tracking-preview-box--control {
+  color: var(--lab-success);
+}
+
+.labx-tracking-preview-box--background {
+  color: var(--lab-accent);
+}
+
+.labx-tracking-preview-box__label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 100%;
+  padding: var(--lab-workspace-px-1) var(--lab-space-1);
+  overflow: hidden;
+  border-radius: 0 0 var(--lab-radius-sm) 0;
+  background: color-mix(in srgb, var(--lab-surface-0) 82%, transparent);
+  color: currentColor;
+  font-size: var(--lab-text-xs);
+  line-height: var(--lab-leading-tight);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labx-tracking-preview-detail,
+.labx-tracking-preview-empty {
+  margin: 0;
+  padding: var(--lab-space-2);
+  color: var(--lab-text-dim);
+  font-size: var(--lab-text-xs);
+}
+
+.labx-tracking-preview-detail {
+  min-height: calc(var(--lab-text-xs) * var(--lab-leading-tight));
+  overflow: hidden;
+  border-top: var(--lab-workspace-px-1) solid var(--lab-border-subtle);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labx-tracking-preview-empty {
+  place-self: center;
+  text-align: center;
 }
 
 @media (--lab-bp-max-960) {

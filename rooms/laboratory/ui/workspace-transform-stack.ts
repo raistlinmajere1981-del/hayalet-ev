@@ -304,22 +304,18 @@ function renderTrackingPreviewPanel(input: WorkspaceTransformStackInput, copy: L
   const quality = cache === null ? null : String(cache["quality"] ?? "unreliable");
   const mode = cache === null ? null : String(cache["mode"] ?? "fixed-roi-fallback");
   const cacheId = cache === null ? null : String(cache["cacheId"] ?? "");
-  const disabled = cache === null || cache["fallbackUsed"] === true;
   const hint =
     cache === null
       ? copy.locale === "tr"
         ? "Henüz Camera Tracking v2 cache yok. Transition veya Visibility Response çalıştırıldığında cache üretilecek."
         : "No Camera Tracking v2 cache yet. A Transition or Visibility Response run will create it."
       : copy.locale === "tr"
-        ? `Tracking quality: ${quality?.toUpperCase()} · ${mode} · raw Target sabit çizgi, stabilized Target kesikli çizgi.`
-        : `Tracking quality: ${quality?.toUpperCase()} · ${mode} · raw Target is solid, stabilized Target is dashed.`;
+        ? `Tracking quality: ${quality?.toUpperCase()} · ${mode} · önizleme timeline'da Mikro Zoom'un yanından açılır.`
+        : `Tracking quality: ${quality?.toUpperCase()} · ${mode} · open the preview beside Micro Zoom on the timeline.`;
   return `
     <section class="labx-card labx-tracking-preview-panel" data-lab-tracking-preview-panel="true">
       <div class="labx-card__body">
         <p class="labx-card__eyebrow">ROI Tracking / Stabilization v2</p>
-        <div class="labx-controls-actions">
-          <button class="labx-inline-action" type="button" data-lab-action="workspace-tracking-preview-toggle" ${disabled ? "disabled" : ""}>Tracking Preview</button>
-        </div>
         <p class="labx-card__meta" data-lab-tracking-preview-status="true">${escapeHtml(hint)}</p>
         ${cacheId === null ? "" : `<span hidden data-lab-tracking-cache-id="${escapeHtml(cacheId)}"></span>`}
       </div>

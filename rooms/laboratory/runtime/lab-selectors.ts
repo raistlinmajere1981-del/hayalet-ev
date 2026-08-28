@@ -66,6 +66,10 @@ import {
   getWorkspaceSurfaceSuggestions,
 } from "./selectors/lab-execution-flow-selectors.js";
 import { isFullSourceWorkspaceSelection } from "./lab-workspace-selection.js";
+import {
+  isLaboratoryTrackingPreviewCacheUsable,
+  resolveLaboratoryTrackingPreviewCache,
+} from "../shared/tracking-preview-model.js";
 
 export {
   getAnalysisPreparationGroups,
@@ -160,6 +164,7 @@ export {
   getPreviewVolume,
   getROIRegions,
   getSelectedDualPreviewAudioAsset,
+  getTransformPreviewSurfaceModel,
   isDualPreviewActive,
   isDualPreviewAvailable,
 } from "./selectors/lab-workspace-media-selectors.js";
@@ -423,6 +428,21 @@ export function getTimelineSelection(state: LabStoreState) {
   };
 }
 
+export function getTrackingPreviewAvailable(state: LabStoreState) {
+  if (getSourceKind(state) !== "video") return false;
+  return isLaboratoryTrackingPreviewCacheUsable(
+    resolveLaboratoryTrackingPreviewCache(state.editConfig)
+  );
+}
+
+export function getTrackingPreviewActive(state: LabStoreState) {
+  return (
+    state.ui.workspace.trackingPreviewActive === true &&
+    getTrackingPreviewAvailable(state) &&
+    !isRunActive(state)
+  );
+}
+
 export function getWaveformTimelineModel(state: LabStoreState) {
   const sourceKind = getSelectionContextSourceKind(state);
   const durationMs = getSelectionContextDurationMs(state);
@@ -496,6 +516,8 @@ export function getWaveformTimelineModel(state: LabStoreState) {
     roiFocusActive: getRoiFocusActive(state),
     selectionLoopEnabled: state.ui.workspace.selectionLoopEnabled,
     selectionMicroZoomOpen: state.ui.workspace.selectionMicroZoomOpen,
+    trackingPreviewActive: getTrackingPreviewActive(state),
+    trackingPreviewAvailable: getTrackingPreviewAvailable(state),
     selectionSuggestions: getWorkspaceSurfaceSuggestions(state),
     lockState: getWorkspaceLockState(state),
     startMs: selection.startMs,

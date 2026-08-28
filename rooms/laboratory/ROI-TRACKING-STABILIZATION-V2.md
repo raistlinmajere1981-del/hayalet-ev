@@ -221,6 +221,10 @@ Visual Stress panelinde Camera Tracking v2 cache üretildikten sonra **Tracking 
 
 Preview yeni analiz başlatmaz. Mevcut cache'i okur.
 
+Timeline'da **Mikro Zoom** düğmesinin sağındaki **Tracking Preview Aç / Kapat** düğmesi yalnız kullanılabilir bir cache varken etkinleşir. Açıldığında ana player, görsel karşılaştırma görünümündeki gibi iki eşit panele ayrılır: solda ham player ve mevcut ROI katmanları, sağda Camera Tracking v2 önizlemesi bulunur. Tracking Preview, player'daki Source / Transform / Difference seçimiyle aynı görüntü alanını kullanır; açıldığında Source görünümüne döner. Rapor şeridinin görünürlüğü değişmez ve rapor alanında tracking videosu üretilmez.
+
+Transform ve Difference artefaktları üretildiğinde bunlar da ana player'ın görünüm seçicisinde etkinleşir. Alt süreç şeridi video önizlemesi taşımaz; boşta yalnız proje içi rapor geçmişini gösterir.
+
 Video oynarken:
 
 - mevcut ROI çerçeveleri raw / event-anchor koordinatını gösterir,

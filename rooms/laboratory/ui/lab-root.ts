@@ -27,6 +27,7 @@ import {
   getActiveInspectionSnapshot,
   getActiveSuggestionPreviewId,
   getRoiFocusActive,
+  getSelectionContextSourceKind,
   getWaveformTimelineModel,
   getDrawerCollapsed,
   getWorkspaceLockState,
@@ -68,8 +69,11 @@ export const __testOnlyLabRootPersistence = {
 };
 
 function readPersistableState(state: LabStoreState) {
-  const { analysisPrepExpandedCapabilityIds: _analysisPrepExpandedCapabilityIds, ...workspace } =
-    state.ui.workspace;
+  const {
+    analysisPrepExpandedCapabilityIds: _analysisPrepExpandedCapabilityIds,
+    trackingPreviewActive: _trackingPreviewActive,
+    ...workspace
+  } = state.ui.workspace;
   return {
     schemaVersion: 4,
     artifactRenderCount: state.ui.artifactRenderCount,
@@ -159,8 +163,7 @@ export function startLaboratoryLabRoot(
       return store.getState().ui.workspace.comparisonRois[side];
     },
     getSourceKind() {
-      const sourceKind = asNonEmptyString(asLabRecord(store.getState().source)["kind"]);
-      return sourceKind || "video";
+      return getSelectionContextSourceKind(store.getState());
     },
     isMutationLocked() {
       return getWorkspaceLockState(store.getState()).roi;

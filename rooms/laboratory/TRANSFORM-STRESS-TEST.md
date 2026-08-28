@@ -50,15 +50,17 @@ Implemented audio operations include:
 
 Live workspace controls are audition surfaces. The ordered Transform Stack is the reproducible experiment recipe.
 
+Inspector and icon-rail panels follow the media kind currently selected in the workspace, falling back to the canonical project source when no asset is selected. Video selections expose temporal, motion, tracking-status and stress-probe cards; image selections keep only image-safe visual transforms; audio selections expose the audio focus and audio transform surfaces.
+
 ## Source / Transform / Difference
 
-The visual workbench provides:
+When current preview artifacts exist, the main player provides these mutually exclusive views:
 
-1. Source baseline
+1. Source player
 2. Transform
 3. Difference
 
-The Source baseline is generated through the same base trim/crop/resize recipe without stress-transform stages. Difference is computed between aligned outputs; raw source geometry is not compared directly against a resized/cropped transform.
+Source keeps the ordinary workspace player visible. Transform and Difference replace that player surface without opening the lower process strip. The comparison baseline is still generated through the same base trim/crop/resize recipe without stress-transform stages. Difference is computed between aligned outputs; raw source geometry is not compared directly against a resized/cropped transform.
 
 A stale preview is not treated as current evidence.
 
@@ -236,13 +238,14 @@ different response != paranormal
 
 and the UI must not convert a metric class into a real/fake conclusion.
 
-## Live result surface
+## Player preview and report history
 
-Manual stress testing reuses the lower live-result area whenever a full analysis run is not active.
+Source / Transform / Difference preview modes live in the main player. Transform and Difference become selectable only after a current preview stack has produced their artifacts. Tracking Preview shares this player surface and returns the selector to Source while its paired raw/tracked view is active.
 
-The workspace exposes:
+The lower process strip does not render media previews. Whenever a full analysis run is not active, it contains only newest-first project-local report history. An active analysis continues to use the strip for its analysis summary and raw log.
 
-- Source / Transform / Difference preview
+The workspace tools expose:
+
 - Temporal Scan
 - Photometric Probe
 - Motion / Impact
@@ -252,7 +255,7 @@ The workspace exposes:
 - Appearance / Disappearance Transition
 - codec ladder
 
-Live Results can show:
+Report history entries can show:
 
 - Target curve
 - Background curve
@@ -334,6 +337,6 @@ Implemented foundation now includes:
 11. Appearance / Disappearance transition windows
 12. CRF 18 → 42 codec ladder
 13. human-readable non-verdict summaries
-14. shared live-result surface
+14. project-local report history surface
 
 Audio reconstruction remains a later stage. Optical flow should still be added only if the current motion/spatial measurements leave a concrete unanswered question.

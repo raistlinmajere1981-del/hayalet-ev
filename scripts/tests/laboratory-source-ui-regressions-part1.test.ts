@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+import { getSelectionContextSourceKind } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
 import { renderLabDrawer } from "../../rooms/laboratory/ui/lab-drawer.ts";
 import { renderLabLeftRail, renderLabTopBar } from "../../rooms/laboratory/ui/lab-top-bar.ts";
@@ -1073,4 +1074,114 @@ void test("laboratory workspace operations follow the selected asset media kind"
   assert.match(surface.inspector ?? "", /data-operation-id="band-pass-voice"/);
   assert.doesNotMatch(surface.inspector ?? "", /data-operation-id="enhanced-frame"/);
   assert.doesNotMatch(surface.inspector ?? "", /data-operation-id="frame-grab"/);
+});
+
+void test("laboratory transform panels follow the selected workspace asset kind", () => {
+  const store = createSeededState(true);
+  const sourceState = store.getState();
+  sourceState.source = {
+    ...sourceState.source,
+    kind: "image",
+    previewUrl: "file:///tmp/project-cover.png",
+    storedFileName: "project-cover.png",
+    storedPath: "/tmp/project-cover.png",
+    metadata: {
+      height: 900,
+      width: 1600,
+    },
+  };
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-video-target",
+      type: "source",
+      name: "selected-video.mp4",
+      localPath: "/tmp/selected-video.mp4",
+      createdAt: 400,
+      metadata: {
+        durationMs: 12_000,
+        kind: "video",
+      },
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-image-target",
+      type: "image",
+      name: "selected-image.png",
+      localPath: "/tmp/selected-image.png",
+      createdAt: 500,
+      metadata: {
+        height: 720,
+        kind: "image",
+        width: 1280,
+      },
+    },
+  });
+  store.dispatch({
+    type: "asset-added",
+    asset: {
+      id: "asset-audio-panel-target",
+      type: "audio",
+      name: "selected-audio.wav",
+      localPath: "/tmp/selected-audio.wav",
+      createdAt: 600,
+      metadata: {
+        durationMs: 8000,
+        kind: "audio",
+      },
+    },
+  });
+
+  store.dispatch({ type: "workspace-asset-selected", assetId: "asset-video-target" });
+  store.dispatch({ type: "workspace-timeline-updated", startMs: 1000, endMs: 4000 });
+  store.dispatch({ type: "icon-rail-slot-selected", slotId: "transform-stack" });
+  const videoSurface = renderWorkspaceSurface(store.getState());
+
+  assert.equal(getSelectionContextSourceKind(store.getState()), "video");
+  assert.match(videoSurface.main, /data-lab-transform-source-kind="video"/);
+  assert.match(videoSurface.main, /data-lab-transform-recipe-section="video"/);
+  assert.match(videoSurface.main, /data-lab-temporal-scan="true"/);
+  assert.match(videoSurface.main, /data-lab-motion-impact="true"/);
+  assert.match(videoSurface.main, /data-lab-tracking-preview-panel="true"/);
+  assert.match(videoSurface.main, /data-lab-control-injection="true"/);
+  assert.match(videoSurface.main, /data-lab-value="audio-focus"/);
+
+  const videoProjectState = store.getState();
+  videoProjectState.source = {
+    ...videoProjectState.source,
+    kind: "video",
+    previewUrl: "file:///tmp/project-source.mp4",
+    storedFileName: "project-source.mp4",
+    storedPath: "/tmp/project-source.mp4",
+    metadata: {
+      durationSeconds: 20,
+      height: 720,
+      width: 1280,
+    },
+  };
+  store.dispatch({ type: "workspace-asset-selected", assetId: "asset-image-target" });
+  store.dispatch({ type: "icon-rail-slot-selected", slotId: "transform-stack" });
+  const imageSurface = renderWorkspaceSurface(store.getState());
+
+  assert.equal(getSelectionContextSourceKind(store.getState()), "image");
+  assert.match(imageSurface.main, /data-lab-transform-source-kind="image"/);
+  assert.match(imageSurface.main, /data-lab-transform-recipe-section="image"/);
+  assert.doesNotMatch(imageSurface.main, /data-lab-temporal-scan="true"/);
+  assert.doesNotMatch(imageSurface.main, /data-lab-motion-impact="true"/);
+  assert.doesNotMatch(imageSurface.main, /data-lab-tracking-preview-panel="true"/);
+  assert.doesNotMatch(imageSurface.main, /data-lab-control-injection="true"/);
+  assert.doesNotMatch(imageSurface.main, /data-lab-value="audio-focus"/);
+
+  store.dispatch({ type: "workspace-asset-selected", assetId: "asset-audio-panel-target" });
+  store.dispatch({ type: "icon-rail-slot-selected", slotId: "audio-focus" });
+  const audioSurface = renderWorkspaceSurface(store.getState());
+
+  assert.equal(getSelectionContextSourceKind(store.getState()), "audio");
+  assert.match(audioSurface.main, /data-lab-value="audio-focus"/);
+  assert.match(audioSurface.main, /data-lab-transform-source-kind="audio"/);
+  assert.match(audioSurface.main, /data-lab-transform-recipe-section="audio"/);
+  assert.doesNotMatch(audioSurface.main, /data-lab-value="visual-adjust"/);
+  assert.doesNotMatch(audioSurface.main, /data-lab-value="transform-stack"/);
 });

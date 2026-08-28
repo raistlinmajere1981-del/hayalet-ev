@@ -288,6 +288,7 @@ export interface LabWorkspaceUiState {
   controlsDrawerOpen: boolean;
   controlsDrawerTab: LabWorkspaceControlTab;
   processViewActive: boolean;
+  trackingPreviewActive: boolean;
   reportOverlayOpen: boolean;
   selectionTabActive: boolean;
   preflightAutoRunEnabled: boolean;
@@ -1039,6 +1040,7 @@ export type LabStoreEvent =
   | { type: "workspace-controls-tab-selected"; tab: LabWorkspaceControlTab }
   | { type: "workspace-audio-updated"; patch: Partial<LabAudioFocusSettings> }
   | { type: "workspace-process-view-toggled"; force?: boolean }
+  | { type: "workspace-tracking-preview-toggled"; force?: boolean }
   | { type: "report-overlay-toggled"; open: boolean }
   | { type: "selection-tab-toggled"; active: boolean }
   | { type: "analysis-preflight-auto-run-toggled"; enabled?: boolean }

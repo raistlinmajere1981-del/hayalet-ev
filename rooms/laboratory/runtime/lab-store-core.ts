@@ -400,6 +400,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           typeof event.patch.comparisonSplitPercent === "number"
             ? Math.max(0, Math.min(100, event.patch.comparisonSplitPercent))
             : state.ui.workspace.comparisonSplitPercent,
+        trackingPreviewActive:
+          event.patch.comparisonViewMode === undefined
+            ? state.ui.workspace.trackingPreviewActive
+            : false,
       };
       return state;
     case "document-overlay-opened":
@@ -1074,13 +1078,26 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         audioFocus: normalizeAudioFocusPatch(state.ui.workspace.audioFocus, event.patch),
       };
       return state;
-    case "workspace-process-view-toggled":
+    case "workspace-process-view-toggled": {
       state.ui.workspace = {
         ...state.ui.workspace,
         processViewActive:
           typeof event.force === "boolean" ? event.force : !state.ui.workspace.processViewActive,
       };
       return state;
+    }
+    case "workspace-tracking-preview-toggled": {
+      const trackingPreviewActive =
+        typeof event.force === "boolean" ? event.force : !state.ui.workspace.trackingPreviewActive;
+      state.ui.workspace = {
+        ...state.ui.workspace,
+        comparisonViewMode: trackingPreviewActive
+          ? "side-by-side"
+          : state.ui.workspace.comparisonViewMode,
+        trackingPreviewActive,
+      };
+      return state;
+    }
     case "report-overlay-toggled":
       if (event.open !== true) {
         state.ui.activeDocumentOverlayAssetId = null;

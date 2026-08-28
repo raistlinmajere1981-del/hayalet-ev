@@ -52,6 +52,8 @@ export type LabWaveformTimelineModel = {
   sourceKind?: string;
   startMs: number | null;
   timelineHighlight?: LabWaveformTimelineHighlightModel | null;
+  trackingPreviewActive?: boolean;
+  trackingPreviewAvailable?: boolean;
   transportVolume?: number;
   visualizationArtifact?: LabArtifactProjection | LabPreviewArtifactProjection | null;
   visualizationMode?: LabAudioFocusSettings["visualizationMode"];

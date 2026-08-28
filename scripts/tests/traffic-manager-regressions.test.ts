@@ -204,6 +204,43 @@ void test("provider-state ready transition marks loading as just ended", () => {
   }
 });
 
+void test("provider-state cannot reopen loading after the native webview is ready", () => {
+  const slot = "ai1";
+  const originalState = TrafficManager.state[slot];
+  const originalRunner = TrafficManager._runners[slot];
+  const originalWebview = TrafficManager.webviews[slot];
+
+  try {
+    TrafficManager._runners[slot] = { startedAt: Date.now(), nextProbeAt: Date.now() };
+    TrafficManager.state[slot] = makeTrafficState("https://chatgpt.com/c/provider-state");
+    TrafficManager.webviews[slot] = {
+      executeJavaScript: async () => null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      isLoading: () => false,
+    } as unknown as typeof TrafficManager.webviews[typeof slot];
+
+    TrafficManager.applyProviderState(slot, { readyState: "loading" });
+
+    const state = TrafficManager.state[slot];
+    assert.equal(state.status.loading, "idle");
+    assert.equal(state.loadingActive, false);
+    assert.equal(state.readyState, "ready");
+  } finally {
+    if (originalState !== undefined) TrafficManager.state[slot] = originalState;
+    if (originalRunner === undefined) {
+      delete TrafficManager._runners[slot];
+    } else {
+      TrafficManager._runners[slot] = originalRunner;
+    }
+    if (originalWebview === undefined) {
+      delete TrafficManager.webviews[slot];
+    } else {
+      TrafficManager.webviews[slot] = originalWebview;
+    }
+  }
+});
+
 void test("thinking is busy only while stop button is visible", () => {
   const tracker = new ThinkingTracker({ thinking: { stopButtonDetectionTimeoutMs: 2000 } });
   const now = Date.now();

@@ -151,14 +151,7 @@ function readRoi(value: unknown): PreviewRoi | null {
   const y = finite(record["y"]);
   const width = finite(record["width"]);
   const height = finite(record["height"]);
-  if (
-    x === null ||
-    y === null ||
-    width === null ||
-    height === null ||
-    width <= 0 ||
-    height <= 0
-  ) {
+  if (x === null || y === null || width === null || height === null || width <= 0 || height <= 0) {
     return null;
   }
   return { x, y, width, height };
@@ -257,7 +250,10 @@ export function applyTrackingPreviewTransform(
     minX + 1,
     Math.min(sourceWidth, Math.max(...corners.map((point) => point.x)))
   );
-  const minY = Math.max(0, Math.min(sourceHeight - 1, Math.min(...corners.map((point) => point.y))));
+  const minY = Math.max(
+    0,
+    Math.min(sourceHeight - 1, Math.min(...corners.map((point) => point.y)))
+  );
   const maxY = Math.max(
     minY + 1,
     Math.min(sourceHeight, Math.max(...corners.map((point) => point.y)))
@@ -272,10 +268,6 @@ export function applyTrackingPreviewTransform(
 
 function setElementText(element: HTMLElement | null, value: string) {
   if (element !== null && element.textContent !== value) element.textContent = value;
-}
-
-function setHidden(element: HTMLElement | null, hidden: boolean) {
-  if (element !== null && element.hidden !== hidden) element.hidden = hidden;
 }
 
 function boxSelector(role: VisualStressRole, kind: PreviewBoxKind) {
@@ -336,20 +328,9 @@ function syncVideoFrame(video: HTMLVideoElement, shell: HTMLElement, frame: HTML
 export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
   if (attached) return function noop() {};
   attached = true;
-  let active = false;
   let mutationObserver: MutationObserver | null = null;
-
-  function getToggleButton() {
-    return deps.documentRef.querySelector<HTMLButtonElement>(
-      '[data-lab-action="workspace-tracking-preview-toggle"]'
-    );
-  }
-
-  function getPanelStatus() {
-    return deps.documentRef.querySelector<HTMLElement>(
-      "[data-lab-tracking-preview-status='true']"
-    );
-  }
+  let resizeObserver: ResizeObserver | null = null;
+  let observedShell: HTMLElement | null = null;
 
   function getSurface() {
     return deps.documentRef.querySelector<HTMLElement>(
@@ -364,7 +345,9 @@ export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
   }
 
   function getTrackingVideo(surface: HTMLElement | null) {
-    return surface?.querySelector<HTMLVideoElement>('[data-lab-tracking-preview-video="true"]') ?? null;
+    return (
+      surface?.querySelector<HTMLVideoElement>('[data-lab-tracking-preview-video="true"]') ?? null
+    );
   }
 
   function isCacheUsable(cache: TrackingCache | null) {
@@ -376,66 +359,52 @@ export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
     );
   }
 
-  function syncAvailability() {
-    const button = getToggleButton();
-    const cache = readCache(getSurface());
-    const usable = isCacheUsable(cache);
-    if (button !== null) {
-      button.disabled = !usable;
-      const label = active ? "Tracking Preview Kapat" : "Tracking Preview";
-      setElementText(button, label);
-      button.setAttribute("aria-pressed", active ? "true" : "false");
-    }
-    const status = getPanelStatus();
-    if (!usable) {
-      setElementText(
-        status,
-        "Henüz kullanılabilir Camera Tracking v2 sonucu yok. Transition veya Visibility Response cache üretecek."
-      );
-    } else if (!active && cache !== null) {
-      setElementText(
-        status,
-        `Tracking quality: ${cache.quality.toUpperCase()} · ${cache.mode} · önizleme alt sonuç panelinde açılır.`
-      );
-    }
-    if (!usable && active) {
-      active = false;
-      syncSurfaceVisibility();
-    }
+  function isActive(surface: HTMLElement | null) {
+    return (
+      surface !== null &&
+      surface.hidden !== true &&
+      surface.getAttribute("data-lab-tracking-preview-active") === "true"
+    );
   }
 
-  function syncSurfaceVisibility() {
-    const surface = getSurface();
-    const transformContent = deps.documentRef.querySelector<HTMLElement>(
-      '[data-lab-transform-preview-content="true"]'
-    );
-    const modeSelect = deps.documentRef.querySelector<HTMLSelectElement>(
-      '[data-lab-live-transform-mode="true"]'
-    );
-    const title = deps.documentRef.querySelector<HTMLElement>('[data-lab-live-preview-title="true"]');
-    const status = deps.documentRef.querySelector<HTMLElement>('[data-lab-live-preview-status="true"]');
-    const note = deps.documentRef.querySelector<HTMLElement>('[data-lab-live-preview-note="true"]');
-    setHidden(surface, !active);
-    setHidden(transformContent, active);
-    if (modeSelect !== null) modeSelect.disabled = active;
-    setElementText(title, active ? "Tracking Preview" : "Dönüşüm Önizlemesi");
-    if (active) {
-      setElementText(status, "raw + stabilized");
-      setElementText(
-        note,
-        "Solid kutu raw ekran koordinatını, dashed kutu Camera Tracking v2 ile düzeltilmiş fiziksel sahne koordinatını gösterir."
-      );
+  function syncInitialTime(video: HTMLVideoElement, cache: TrackingCache) {
+    if (video.readyState < HTMLMediaElement.HAVE_METADATA) return;
+    const mainVideo = getMainVideo();
+    const mainTime = mainVideo?.currentTime;
+    const candidate = typeof mainTime === "number" ? mainTime : cache.anchorSeconds;
+    if (Number.isFinite(candidate)) {
+      const duration = Number.isFinite(video.duration) ? video.duration : candidate;
+      const boundedCandidate = Math.max(0, Math.min(candidate, duration));
+      try {
+        if (Math.abs(video.currentTime - boundedCandidate) > 0.04) {
+          video.currentTime = boundedCandidate;
+        }
+      } catch {
+        return;
+      }
     }
+    if (mainVideo !== null) {
+      video.playbackRate = mainVideo.playbackRate;
+      if (mainVideo.paused) {
+        if (!video.paused) video.pause();
+      } else if (video.paused) {
+        void video.play().catch(function () {});
+      }
+    }
+    video.setAttribute("data-lab-tracking-preview-synced-cache-id", cache.cacheId);
   }
 
   function render() {
-    if (!active) return;
     const surface = getSurface();
+    if (!isActive(surface)) return;
     const cache = readCache(surface);
     const video = getTrackingVideo(surface);
-    const shell = surface?.querySelector<HTMLElement>('[data-lab-tracking-preview-media-shell="true"]') ?? null;
-    const frame = surface?.querySelector<HTMLElement>('[data-lab-tracking-preview-frame="true"]') ?? null;
-    const detail = surface?.querySelector<HTMLElement>('[data-lab-tracking-preview-detail="true"]') ?? null;
+    const shell =
+      surface?.querySelector<HTMLElement>('[data-lab-tracking-preview-media-shell="true"]') ?? null;
+    const frame =
+      surface?.querySelector<HTMLElement>('[data-lab-tracking-preview-frame="true"]') ?? null;
+    const detail =
+      surface?.querySelector<HTMLElement>('[data-lab-tracking-preview-detail="true"]') ?? null;
     if (
       surface === null ||
       cache === null ||
@@ -446,6 +415,7 @@ export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
     ) {
       return;
     }
+    syncInitialTime(video, cache);
     if (!syncVideoFrame(video, shell, frame)) return;
     const sourceWidth = cache.sourceWidth ?? (video.videoWidth > 0 ? video.videoWidth : null);
     const sourceHeight = cache.sourceHeight ?? (video.videoHeight > 0 ? video.videoHeight : null);
@@ -474,7 +444,12 @@ export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
     (Object.keys(rois) as VisualStressRole[]).forEach(function (role) {
       const roi = rois[role];
       if (roi === null) return;
-      const corrected = applyTrackingPreviewTransform(roi, point.transform, sourceWidth, sourceHeight);
+      const corrected = applyTrackingPreviewTransform(
+        roi,
+        point.transform,
+        sourceWidth,
+        sourceHeight
+      );
       positionBox(ensureBox(deps.documentRef, frame, role, "stabilized"), corrected);
     });
     setElementText(
@@ -483,81 +458,77 @@ export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
     );
   }
 
-  function activate() {
-    const surface = getSurface();
-    const cache = readCache(surface);
-    if (!isCacheUsable(cache) || cache === null) return;
-    active = true;
-    syncSurfaceVisibility();
-    syncAvailability();
-    const video = getTrackingVideo(surface);
-    if (video !== null) {
-      const mainTime = getMainVideo()?.currentTime;
-      const first = cache.transforms[0]?.timeSeconds ?? cache.anchorSeconds;
-      const last = cache.transforms[cache.transforms.length - 1]?.timeSeconds ?? cache.anchorSeconds;
-      const candidate =
-        typeof mainTime === "number" && mainTime >= first - 0.25 && mainTime <= last + 0.25
-          ? mainTime
-          : cache.anchorSeconds;
-      if (Number.isFinite(candidate)) video.currentTime = candidate;
-    }
-    render();
-  }
-
-  function deactivate() {
-    active = false;
-    syncSurfaceVisibility();
-    syncAvailability();
-  }
-
-  function handleClick(event: Event) {
-    if (!(event.target instanceof Element)) return;
-    const button = event.target.closest<HTMLElement>(
-      '[data-lab-action="workspace-tracking-preview-toggle"]'
-    );
-    if (button === null) return;
-    event.preventDefault();
-    if (active) deactivate();
-    else activate();
-  }
-
   function handleMediaEvent(event: Event) {
-    if (!active || !(event.target instanceof HTMLVideoElement)) return;
-    if (event.target.getAttribute("data-lab-tracking-preview-video") !== "true") return;
+    if (!(event.target instanceof HTMLVideoElement)) return;
+    if (event.target.getAttribute("data-lab-tracking-preview-video") === "true") {
+      render();
+      return;
+    }
+    if (event.target.getAttribute("data-lab-preserve-media") !== "workspace-preview") return;
+    const surface = getSurface();
+    const trackingVideo = getTrackingVideo(surface);
+    const cache = readCache(surface);
+    if (!isActive(surface) || trackingVideo === null || cache === null) return;
+    syncInitialTime(trackingVideo, cache);
     render();
   }
 
   function handleResize() {
-    if (active) render();
+    render();
   }
 
-  deps.documentRef.addEventListener("click", handleClick);
+  function syncResizeTarget() {
+    if (resizeObserver === null) return;
+    const shell =
+      getSurface()?.querySelector<HTMLElement>('[data-lab-tracking-preview-media-shell="true"]') ??
+      null;
+    if (shell === observedShell) return;
+    resizeObserver.disconnect();
+    observedShell = shell;
+    if (shell !== null) resizeObserver.observe(shell);
+  }
+
   deps.documentRef.addEventListener("timeupdate", handleMediaEvent, true);
   deps.documentRef.addEventListener("seeking", handleMediaEvent, true);
   deps.documentRef.addEventListener("seeked", handleMediaEvent, true);
   deps.documentRef.addEventListener("loadedmetadata", handleMediaEvent, true);
+  deps.documentRef.addEventListener("play", handleMediaEvent, true);
+  deps.documentRef.addEventListener("pause", handleMediaEvent, true);
+  deps.documentRef.addEventListener("ratechange", handleMediaEvent, true);
   deps.windowRef.addEventListener("resize", handleResize);
+  if (typeof ResizeObserver !== "undefined") {
+    resizeObserver = new ResizeObserver(handleResize);
+    syncResizeTarget();
+  }
   if (typeof MutationObserver !== "undefined") {
     mutationObserver = new MutationObserver(function () {
-      syncAvailability();
-      syncSurfaceVisibility();
-      if (active) render();
+      syncResizeTarget();
+      render();
     });
-    mutationObserver.observe(deps.documentRef.documentElement, { childList: true, subtree: true });
+    mutationObserver.observe(deps.documentRef.documentElement, {
+      attributeFilter: ["data-lab-tracking-preview-active", "hidden", "src"],
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
   }
-  syncAvailability();
-  syncSurfaceVisibility();
+  syncResizeTarget();
+  render();
 
   return function detach() {
-    deps.documentRef.removeEventListener("click", handleClick);
     deps.documentRef.removeEventListener("timeupdate", handleMediaEvent, true);
     deps.documentRef.removeEventListener("seeking", handleMediaEvent, true);
     deps.documentRef.removeEventListener("seeked", handleMediaEvent, true);
     deps.documentRef.removeEventListener("loadedmetadata", handleMediaEvent, true);
+    deps.documentRef.removeEventListener("play", handleMediaEvent, true);
+    deps.documentRef.removeEventListener("pause", handleMediaEvent, true);
+    deps.documentRef.removeEventListener("ratechange", handleMediaEvent, true);
     deps.windowRef.removeEventListener("resize", handleResize);
     mutationObserver?.disconnect();
     mutationObserver = null;
-    active = false;
+    resizeObserver?.disconnect();
+    resizeObserver = null;
+    observedShell = null;
     attached = false;
   };
 }

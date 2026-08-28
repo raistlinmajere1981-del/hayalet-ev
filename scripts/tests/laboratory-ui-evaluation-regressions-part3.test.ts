@@ -748,8 +748,10 @@ void test("laboratory shell persists workspace-facing state and exposes tool lif
   assert.match(labRootSource, /schemaVersion:\s*4,/);
   assert.match(
     labRootSource,
-    /analysisPrepExpandedCapabilityIds:\s*_analysisPrepExpandedCapabilityIds,\s*\.\.\.workspace/
+    /analysisPrepExpandedCapabilityIds:\s*_analysisPrepExpandedCapabilityIds,/
   );
+  assert.match(labRootSource, /trackingPreviewActive:\s*_trackingPreviewActive,/);
+  assert.match(labRootSource, /\.\.\.workspace\s*\}\s*=\s*state\.ui\.workspace/);
   assert.match(labRootSource, /workspace,/);
   assert.match(
     labRootSource,
@@ -782,4 +784,3 @@ void test("laboratory shell persists workspace-facing state and exposes tool lif
   assert.doesNotMatch(workspaceSurfaceSource, /renderLabTopbarActions\(state, copy\)/);
   assert.doesNotMatch(workspaceSurfaceSource, /renderGlobalProcessSummary\(state, copy\)/);
 });
-

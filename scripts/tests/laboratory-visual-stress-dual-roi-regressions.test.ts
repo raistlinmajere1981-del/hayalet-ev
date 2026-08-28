@@ -55,6 +55,15 @@ void test("selection binder updates canonical target/control/background roles wi
   assert.match(binder, /existing\.removeAttribute\("hidden"\)/);
 });
 
+void test("visual stress ROI binder follows the selected workspace media kind", async () => {
+  const root = await readFile("rooms/laboratory/ui/lab-root.ts", "utf8");
+  assert.match(
+    root,
+    /getSourceKind\(\)\s*\{\s*return getSelectionContextSourceKind\(store\.getState\(\)\);\s*\}/
+  );
+  assert.doesNotMatch(root, /getSourceKind\(\)[\s\S]{0,180}store\.getState\(\)\.source/);
+});
+
 void test("ROI geometry binder keeps the canonical overlay in one coordinate parent", async () => {
   const geometryBinder = await readFile(
     "rooms/laboratory/ui/lab-roi-media-geometry-binder.ts",

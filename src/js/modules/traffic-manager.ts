@@ -652,10 +652,23 @@ class TrafficManagerClass {
     const now = Date.now();
 
     if (update.readyState === "loading") {
-      if (viewState.loadingActive !== true) {
-        this.loadingTracker.startLoading(viewState, now);
+      let shouldApplyLoading = true;
+      const webview = this.webviews[provider];
+
+      if (viewState.readyState === "ready" && typeof webview?.isLoading === "function") {
+        try {
+          shouldApplyLoading = webview.isLoading() === true;
+        } catch (_) {
+          shouldApplyLoading = true;
+        }
       }
-      this.setIndicator(provider, "loading", "busy");
+
+      if (shouldApplyLoading) {
+        if (viewState.loadingActive !== true) {
+          this.loadingTracker.startLoading(viewState, now);
+        }
+        this.setIndicator(provider, "loading", "busy");
+      }
     } else if (update.readyState === "ready") {
       const wasLoading = viewState.status.loading === "busy" || viewState.loadingActive === true;
       if (wasLoading) {

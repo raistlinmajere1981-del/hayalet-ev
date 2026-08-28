@@ -291,6 +291,11 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
     model.startMs !== null && model.endMs !== null && model.endMs > model.startMs;
   const microZoomAvailable = model.waveformInspectionLens?.enabled === true;
   const microZoomOpen = microZoomAvailable === true && model.selectionMicroZoomOpen === true;
+  const trackingPreviewAvailable = model.trackingPreviewAvailable === true;
+  const trackingPreviewActive =
+    trackingPreviewAvailable === true && model.trackingPreviewActive === true;
+  const trackingPreviewDisabledAttr =
+    timelineLocked || trackingPreviewAvailable !== true ? 'disabled aria-disabled="true"' : "";
   const startMs = hasSelection ? rawStartMs : 0;
   const endMs = hasSelection ? rawEndMs : durationMs;
   const startPct = hasSelection ? Math.max(0, Math.min(100, (startMs / durationMs) * 100)) : 0;
@@ -579,6 +584,28 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
               title="${escapeHtml(copy.t("mediaAnalysis.timeline.microZoomToggleTitle", "Show or hide selection micro zoom"))}"
               ${timelineLocked || microZoomAvailable !== true ? 'disabled aria-disabled="true"' : ""}
             >${escapeHtml(copy.t("mediaAnalysis.timeline.microZoomToggle", "Micro Zoom"))}</button>
+            <button
+              class="labx-timeline__export-btn labx-timeline__tracking-preview-toggle"
+              type="button"
+              data-lab-action="workspace-tracking-preview-toggle"
+              aria-pressed="${trackingPreviewActive ? "true" : "false"}"
+              title="${escapeHtml(
+                trackingPreviewAvailable
+                  ? copy.t(
+                      "mediaAnalysis.timeline.trackingPreviewToggleTitle",
+                      "Show or hide Camera Tracking v2 preview"
+                    )
+                  : copy.t(
+                      "mediaAnalysis.timeline.trackingPreviewUnavailableTitle",
+                      "Run a compatible tracking test to enable this preview"
+                    )
+              )}"
+              ${trackingPreviewDisabledAttr}
+            >${escapeHtml(
+              trackingPreviewActive
+                ? copy.t("mediaAnalysis.timeline.trackingPreviewClose", "Close Tracking Preview")
+                : copy.t("mediaAnalysis.timeline.trackingPreviewOpen", "Open Tracking Preview")
+            )}</button>
           </div>
         </div>
       </div>

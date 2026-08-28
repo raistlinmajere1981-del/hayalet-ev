@@ -302,7 +302,7 @@ void test("laboratory center workbench attaches media viewport and timeline as o
   );
   assert.match(
     themeSource,
-    /\.labx-workspace-preview\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.85;[\s\S]*filter:\s*brightness\(0\.85\);/
+    /\.labx-workspace-preview\.labx-focus-passive\s*\{[\s\S]*opacity:\s*1;[\s\S]*filter:\s*brightness\(1\);/
   );
   assert.match(themeSource, /\.labx-timeline\.labx-focus-secondary\s*\{[\s\S]*opacity:\s*1;/);
   assert.match(themeSource, /\.labx-timeline\.labx-focus-passive\s*\{[\s\S]*opacity:\s*0\.7;/);
@@ -606,4 +606,3 @@ void test("laboratory execution detail helper panels are removed from the select
     /lab-execution-collapsible|lab-execution-details|lab-execution-plan|lab-execution-simulation|lab-execution-readiness|lab-execution-payload|lab-execution-reflection|lab-execution-candidate|lab-execution-commitment|lab-execution-staging/
   );
 });
-

@@ -141,6 +141,7 @@ export function createDefaultWorkspaceUiState(): LabWorkspaceUiState {
     controlsDrawerOpen: true,
     controlsDrawerTab: "audio",
     processViewActive: false,
+    trackingPreviewActive: false,
     reportOverlayOpen: false,
     selectionTabActive: false,
     preflightAutoRunEnabled: true,

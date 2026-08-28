@@ -11,6 +11,7 @@ import {
   createLabComparisonInteractiveSettings,
   normalizeLabInteractiveSettings,
 } from "../lab-workspace-defaults.js";
+import { inferLabAssetSourceKind } from "../../shared/lab-asset-kind.js";
 import {
   getWorkspaceSourceSelectionResetKey,
   isFullSourceWorkspaceSelection,
@@ -39,27 +40,67 @@ function getTransformPreviewMode(state: LabStoreState): LaboratoryTransformPrevi
   return "source";
 }
 
-function getSourceDurationSeconds(source: Record<string, unknown>) {
-  const metadata = asLabRecord(source["metadata"]);
+function getMediaDurationSeconds(metadataValue: unknown) {
+  const metadata = asLabRecord(metadataValue);
   const durationSeconds = metadata["durationSeconds"];
-  return typeof durationSeconds === "number" && Number.isFinite(durationSeconds)
-    ? Math.max(0, durationSeconds)
+  if (typeof durationSeconds === "number" && Number.isFinite(durationSeconds)) {
+    return Math.max(0, durationSeconds);
+  }
+  const durationMs = metadata["durationMs"];
+  return typeof durationMs === "number" && Number.isFinite(durationMs)
+    ? Math.max(0, durationMs / 1000)
     : null;
 }
 
-function getTransformStackRenderContext(state: LabStoreState) {
+type TransformStackMediaContext = {
+  durationSeconds: number | null;
+  previewUrl: string | null;
+  sourceKind: LaboratoryTransformStackSourceKind | null;
+};
+
+function getTransformStackMediaContext(state: LabStoreState): TransformStackMediaContext {
+  const activeAssetId = asNonEmptyString(state.ui.activeWorkspaceAssetId);
+  if (activeAssetId !== null) {
+    const activeAsset =
+      state.assets.find(function (asset) {
+        return asset.id === activeAssetId;
+      }) || null;
+    if (activeAsset === null) {
+      return {
+        durationSeconds: null,
+        previewUrl: null,
+        sourceKind: null,
+      };
+    }
+    return {
+      durationSeconds: getMediaDurationSeconds(activeAsset.metadata),
+      previewUrl: asNonEmptyString(activeAsset.url) || asNonEmptyString(activeAsset.localPath),
+      sourceKind: inferLabAssetSourceKind(activeAsset),
+    };
+  }
+
   const source = asLabRecord(state.source);
   const rawSourceKind = asNonEmptyString(source["kind"]);
+  return {
+    durationSeconds: getMediaDurationSeconds(source["metadata"]),
+    previewUrl: asNonEmptyString(source["previewUrl"]),
+    sourceKind:
+      rawSourceKind === "video" || rawSourceKind === "audio" || rawSourceKind === "image"
+        ? rawSourceKind
+        : null,
+  };
+}
+
+function getTransformStackRenderContext(state: LabStoreState) {
+  const mediaContext = getTransformStackMediaContext(state);
   const comparisonActive = asNonEmptyString(state.ui.workspace.comparisonReferenceAssetId) !== null;
   const sourceKind: LaboratoryTransformStackSourceKind | null =
-    comparisonActive !== true &&
-    (rawSourceKind === "video" || rawSourceKind === "audio" || rawSourceKind === "image")
-      ? rawSourceKind
-      : null;
+    comparisonActive !== true ? mediaContext.sourceKind : null;
   const runState = state.run?.state;
   const preview = asLabRecord(asLabRecord(state.editConfig)["preview"]);
   const previewStatus = asNonEmptyString(preview["status"]) || "idle";
-  const previewReady = previewStatus === "ready";
+  const previewReady =
+    asNonEmptyString(state.ui.activeWorkspaceAssetId) === null && previewStatus === "ready";
   const activeSelection = state.ui.workspace.activeSelection;
   const temporalRequest =
     sourceKind === "video" &&
@@ -67,7 +108,7 @@ function getTransformStackRenderContext(state: LabStoreState) {
     isFullSourceWorkspaceSelection(activeSelection) !== true
       ? buildLaboratoryTemporalStressTestRequestFromWorkspaceSelection(
           activeSelection,
-          getSourceDurationSeconds(source)
+          mediaContext.durationSeconds
         )
       : null;
   return {
@@ -82,11 +123,15 @@ function getTransformStackRenderContext(state: LabStoreState) {
     locked: runState === "running" || runState === "queued",
     previewStatus,
     sourceKind,
-    sourcePreviewUrl: asNonEmptyString(source["previewUrl"]),
+    sourcePreviewUrl: mediaContext.previewUrl,
     temporalRequest,
     transformPreviewMode: getTransformPreviewMode(state),
     transformPreviewUrl: previewReady ? asNonEmptyString(preview["previewUrl"]) : null,
   };
+}
+
+export function getTransformPreviewSurfaceModel(state: LabStoreState) {
+  return getTransformStackRenderContext(state);
 }
 
 export function getROIRegions(state: LabStoreState) {

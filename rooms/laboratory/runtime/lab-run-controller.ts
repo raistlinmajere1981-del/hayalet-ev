@@ -16,6 +16,7 @@ import {
   getEditActionBlockReason,
   getReadySelectedAnalysisCapabilityIds,
   getSourceReady,
+  getTrackingPreviewAvailable,
   getToolLifecycleStage,
   getWorkbench,
   hasReportPayload,
@@ -1505,6 +1506,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         return;
       case "timeline-toggle-micro-zoom":
         dispatch({ type: "workspace-selection-micro-zoom-toggled" });
+        return;
+      case "workspace-tracking-preview-toggle":
+        if (isRunActive(state) || !getTrackingPreviewAvailable(state)) {
+          return;
+        }
+        dispatch({ type: "workspace-tracking-preview-toggled" });
         return;
       case "timeline-toggle-selection-loop":
         if (isWorkspaceMutationLocked("timeline")) {

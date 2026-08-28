@@ -12,6 +12,17 @@ export type LaboratoryTrackingPreviewCache = RecordValue & {
   transforms: unknown[];
 };
 
+export function isLaboratoryTrackingPreviewCacheUsable(
+  cache: LaboratoryTrackingPreviewCache | null
+) {
+  return (
+    cache !== null &&
+    cache.fallbackUsed !== true &&
+    cache.quality !== "unreliable" &&
+    cache.transforms.length > 0
+  );
+}
+
 function asRecord(value: unknown): RecordValue {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as RecordValue)

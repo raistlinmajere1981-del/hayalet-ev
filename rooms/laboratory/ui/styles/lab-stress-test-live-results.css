@@ -5,7 +5,7 @@
 }
 
 .labx-strip-expanded--live {
-  grid-template-columns: minmax(0, 46fr) minmax(0, 54fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--lab-space-2);
 }
 
@@ -20,7 +20,6 @@
   background: var(--lab-surface-0);
 }
 
-.labx-strip-live-preview__toolbar,
 .labx-strip-live-heading,
 .labx-strip-live-comparison__header {
   display: flex;
@@ -29,30 +28,12 @@
   min-width: 0;
 }
 
-.labx-strip-live-preview__toolbar > strong,
 .labx-strip-live-heading > strong,
 .labx-strip-live-comparison__header > strong {
   margin: 0;
   color: var(--lab-text-strong);
 }
 
-.labx-strip-live-preview__toolbar label {
-  display: flex;
-  align-items: center;
-  gap: var(--lab-space-1);
-  min-width: 0;
-  margin-left: auto;
-  color: var(--lab-text-soft);
-  font-size: var(--lab-text-xs);
-}
-
-.labx-strip-live-preview__toolbar label > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.labx-strip-live-preview__status,
 .labx-strip-live-heading > span,
 .labx-strip-live-comparison__header > span,
 .labx-strip-live-note {
@@ -60,123 +41,6 @@
   font-size: var(--lab-text-xs);
 }
 
-.labx-strip-live-preview__viewport {
-  position: relative;
-  display: grid;
-  flex: 1 1 auto;
-  min-height: var(--lab-workspace-rem-10);
-  margin-top: var(--lab-space-2);
-  overflow: hidden;
-  place-items: center;
-  border: var(--lab-workspace-px-1) solid var(--lab-border-subtle);
-  border-radius: var(--lab-radius-md);
-  background: var(--lab-surface-1);
-}
-
-.labx-strip-live-preview__content,
-.labx-tracking-preview-surface {
-  width: 100%;
-  height: 100%;
-  min-height: var(--lab-workspace-rem-10);
-}
-
-.labx-strip-live-preview__content {
-  display: grid;
-  place-items: center;
-}
-
-.labx-strip-live-preview__viewport .labx-preview-media {
-  display: block;
-  width: 100%;
-  height: 100%;
-  max-height: var(--lab-workspace-rem-18);
-  object-fit: contain;
-  background: var(--lab-surface-0);
-}
-
-.labx-tracking-preview-surface {
-  position: relative;
-  grid-template-rows: minmax(0, 1fr) auto;
-}
-
-.labx-tracking-preview-surface:not([hidden]) {
-  display: grid;
-}
-
-.labx-tracking-preview-media-shell {
-  position: relative;
-  display: grid;
-  min-width: 0;
-  min-height: var(--lab-workspace-rem-10);
-  overflow: hidden;
-  place-items: center;
-  background: var(--lab-surface-0);
-}
-
-.labx-tracking-preview-media {
-  position: relative;
-  z-index: 1;
-}
-
-.labx-tracking-preview-frame {
-  position: absolute;
-  z-index: 4;
-  pointer-events: none;
-}
-
-.labx-tracking-preview-box {
-  position: absolute;
-  box-sizing: border-box;
-  border: 2px solid currentColor;
-  background: transparent;
-  pointer-events: none;
-}
-
-.labx-tracking-preview-box--raw {
-  border-style: solid;
-  opacity: 0.42;
-}
-
-.labx-tracking-preview-box--stabilized {
-  border-style: dashed;
-  opacity: 1;
-  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent);
-}
-
-.labx-tracking-preview-box--target {
-  color: var(--lab-warning);
-}
-
-.labx-tracking-preview-box--control {
-  color: var(--lab-success);
-}
-
-.labx-tracking-preview-box--background {
-  color: var(--lab-accent);
-}
-
-.labx-tracking-preview-box__label {
-  position: absolute;
-  top: 0;
-  left: 0;
-  max-width: 100%;
-  padding: 1px 4px;
-  overflow: hidden;
-  border-radius: 0 0 var(--lab-radius-sm) 0;
-  background: color-mix(in srgb, var(--lab-surface-0) 82%, transparent);
-  color: currentColor;
-  font-size: var(--lab-text-xs);
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.labx-tracking-preview-detail {
-  border-top: var(--lab-workspace-px-1) solid var(--lab-border-subtle);
-  font-variant-numeric: tabular-nums;
-}
-
-.labx-strip-live-preview__viewport > p,
 .labx-strip-live-note {
   margin: 0;
   padding: var(--lab-space-2);
@@ -258,14 +122,4 @@
 
 .labx-strip-live-comparison tr[data-status="missing"] {
   opacity: 0.45;
-}
-
-@media (--lab-bp-max-840) {
-  .labx-strip-expanded--live {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .labx-strip-live-preview__viewport .labx-preview-media {
-    max-height: var(--lab-workspace-rem-14);
-  }
 }

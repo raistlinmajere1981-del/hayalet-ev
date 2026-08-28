@@ -36,6 +36,8 @@ import {
   getSourceKind,
   getSourceProbeStatus,
   getSourceRetryBlockReason,
+  getTrackingPreviewActive,
+  getTransformPreviewSurfaceModel,
   getWaveformTimelineModel,
   getWorkspaceLockState,
   isLabWorkspaceSurfaceReady,
@@ -82,6 +84,8 @@ import {
   getLabAssetPreviewKind,
   getLabAssetPreviewUrl,
 } from "./lab-asset-display.js";
+import { renderWorkspaceTrackingComparison } from "./workspace-tracking-preview.js";
+import { renderWorkspacePreviewModes } from "./workspace-preview-modes.js";
 export { renderSourceIntake } from "./workspace-source-intake.js";
 
 type WorkspaceSurfaceOptions = {
@@ -582,6 +586,7 @@ type IconRailContentContext = {
   comparisonPairActive: boolean;
   effectivePreviewAudioFocus: LabAudioFocusSettings;
   hasAudio: boolean;
+  hasTransformStack: boolean;
   hasVisualControls: boolean;
   interactiveSettings: LabInteractiveSettings;
   operationCapabilities: LabOperationCapabilityProjection[];
@@ -601,8 +606,11 @@ function renderIconRail(input: {
     if (slot.content === "audio-focus") {
       return content.hasAudio;
     }
-    if (slot.content === "visual-adjust" || slot.content === "transform-stack") {
+    if (slot.content === "visual-adjust") {
       return content.hasVisualControls;
+    }
+    if (slot.content === "transform-stack") {
+      return content.hasTransformStack;
     }
     if (slot.capabilityId === null) {
       return false;
@@ -699,7 +707,7 @@ function renderIconRailPopoverBody(
   }
 
   if (slot.content === "transform-stack") {
-    if (!content.hasVisualControls) {
+    if (!content.hasTransformStack) {
       return "";
     }
     return renderWorkspaceVisualTransformControls(content.interactiveSettings, copy);
@@ -891,6 +899,7 @@ export function renderWorkspaceSurface(
     workspaceAssetPreviewKind,
     workspaceAssetPreviewUrl
   );
+  const transformPreviewModel = getTransformPreviewSurfaceModel(state);
   const settings = getInteractiveSettings(state);
   const comparisonSettings = getComparisonInteractiveSettings(state);
   const operationSettings = asLabRecord(asLabRecord(state.workbench)["operationSettings"]);
@@ -923,6 +932,8 @@ export function renderWorkspaceSurface(
   const previewReady = workspaceAsset === null ? sourceReady : workspaceAssetReady;
   const hasVisualControls =
     previewReady && (activeMediaKind === "video" || activeMediaKind === "image");
+  const hasTransformStack =
+    hasVisualControls && transformPreviewModel.sourceKind === activeMediaKind;
   const operationCapabilities = previewReady ? getAvailableOperationCapabilities(state) : [];
   const comparisonFindingItems = getComparisonFindingListItems(state);
   const activeOperationCapabilityId = getOperationCapabilityIdForAction(
@@ -1019,6 +1030,39 @@ export function renderWorkspaceSurface(
     (workspaceAsset === null && sourceReady && (sourceKind === "video" || sourceKind === "image")
       ? sourceKind
       : null);
+  const runActive = isRunActive(state);
+  const transformPreviewEligible =
+    workspaceAsset === null &&
+    !comparisonPreviewActive &&
+    (singleInspectionKind === "video" || singleInspectionKind === "image");
+  const transformPreviewUrl = transformPreviewEligible
+    ? (transformPreviewModel.transformPreviewUrl ?? null)
+    : null;
+  const differencePreviewUrl = transformPreviewEligible
+    ? (transformPreviewModel.differencePreviewUrl ?? null)
+    : null;
+  const trackingPreviewActive =
+    getTrackingPreviewActive(state) &&
+    workspaceAsset === null &&
+    singleInspectionKind === "video" &&
+    !comparisonPreviewActive;
+  const requestedTransformPreviewMode = transformPreviewModel.transformPreviewMode;
+  const activeTransformPreviewMode =
+    !trackingPreviewActive &&
+    requestedTransformPreviewMode === "transform" &&
+    transformPreviewUrl !== null
+      ? "transform"
+      : !trackingPreviewActive &&
+          requestedTransformPreviewMode === "difference" &&
+          differencePreviewUrl !== null
+        ? "difference"
+        : "source";
+  const activeProjectPreviewUrl =
+    activeTransformPreviewMode === "transform"
+      ? transformPreviewUrl
+      : activeTransformPreviewMode === "difference"
+        ? differencePreviewUrl
+        : previewUrl;
   const roiOverlayMarkup =
     singleInspectionKind !== null
       ? renderWorkspaceROIOverlay(
@@ -1044,13 +1088,18 @@ export function renderWorkspaceSurface(
           )
         : renderWorkspaceAssetContent(state, workspaceAsset, sourceKind, settings, copy)
       : viewportState === "active"
-        ? renderPreviewMedia(sourceKind, sourceReady ? previewUrl : null, settings, copy)
+        ? renderPreviewMedia(
+            sourceKind,
+            sourceReady ? activeProjectPreviewUrl : null,
+            settings,
+            copy
+          )
         : renderViewportStatePanel(
             viewportState === "loading" || viewportState === "error" ? viewportState : "empty",
             getSourceRetryBlockReason(state),
             copy
           );
-  const previewMarkup = comparisonPreviewActive
+  const basePreviewMarkup = comparisonPreviewActive
     ? renderComparisonPreview({
         activeSide: state.ui.workspace.comparisonRois.activeSide,
         comparisonRois: state.ui.workspace.comparisonRois,
@@ -1078,9 +1127,27 @@ export function renderWorkspaceSurface(
           workspaceAssetKind: workspaceAssetPreviewKind,
         })
       : previewMediaMarkup;
+  const trackingPreviewSourceUrl =
+    previewUrl ?? asNonEmptyString(source["url"]) ?? asNonEmptyString(source["fileUrl"]);
+  const activePreviewMarkup = trackingPreviewActive
+    ? renderWorkspaceTrackingComparison({
+        copy,
+        rawPlayerMarkup: basePreviewMarkup,
+        sourceUrl: trackingPreviewSourceUrl,
+        state,
+      })
+    : basePreviewMarkup;
+  const previewMarkup = renderWorkspacePreviewModes({
+    activeMode: activeTransformPreviewMode,
+    content: activePreviewMarkup,
+    copy,
+    differenceAvailable: differencePreviewUrl !== null,
+    locked: runActive,
+    trackingPreviewActive,
+    transformAvailable: transformPreviewUrl !== null,
+  });
   const selectionPanelMarkup = renderLabWaveformSelectionPanel(timelineModel);
   const previewFocusClassName = getLabFocusClassName(state, "preview");
-  const runActive = isRunActive(state);
   const heavyWorkActive = isAnyHeavyWorkActive(state);
   const iconRailMarkup = previewReady
     ? renderIconRail({
@@ -1093,6 +1160,7 @@ export function renderWorkspaceSurface(
           comparisonPairActive: comparisonPreviewActive,
           effectivePreviewAudioFocus,
           hasAudio,
+          hasTransformStack,
           hasVisualControls,
           interactiveSettings: settings,
           operationCapabilities,

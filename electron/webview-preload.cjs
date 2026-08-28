@@ -316,15 +316,22 @@ function setupProvider() {
   let sendState = "not-found";
   let thinkingState = "idle";
   let stabilityTimer = null;
+  let lastStateSignature = "";
 
-  function updateState() {
+  function updateState(force = false) {
     try {
+      const stateSignature = JSON.stringify({ readyState, sendState, thinkingState });
+      if (!force && stateSignature === lastStateSignature) {
+        return;
+      }
+
       ipcRenderer.sendToHost("provider-state", {
         slot,
         readyState,
         sendState,
         thinkingState,
       });
+      lastStateSignature = stateSignature;
     } catch (err) {
       warnWebviewOnce(
         `webview-preload-provider-state-${slot}`,
@@ -339,14 +346,22 @@ function setupProvider() {
     const prompt = pcfg.inputField ? document.querySelector(pcfg.inputField) : null;
     const sendButton = pcfg.sendButton ? document.querySelector(pcfg.sendButton) : null;
 
-    if (prompt && sendButton) {
-      if (stabilityTimer) clearTimeout(stabilityTimer);
+    if (prompt) {
+      if (readyState === "ready" || stabilityTimer !== null) {
+        return;
+      }
+
       stabilityTimer = setTimeout(() => {
+        stabilityTimer = null;
         readyState = "ready";
-        sendState = sendButton.disabled ? "disabled" : "enabled";
+        sendState = sendButton ? (sendButton.disabled ? "disabled" : "enabled") : "not-found";
         updateState();
       }, 500);
     } else {
+      if (stabilityTimer !== null) {
+        clearTimeout(stabilityTimer);
+        stabilityTimer = null;
+      }
       readyState = "loading";
       updateState();
     }
@@ -381,10 +396,14 @@ function setupProvider() {
   }
 
   ipcRenderer.on("nav-start", () => {
+    if (stabilityTimer !== null) {
+      clearTimeout(stabilityTimer);
+      stabilityTimer = null;
+    }
     readyState = "loading";
     sendState = "not-found";
     thinkingState = "idle";
-    updateState();
+    updateState(true);
   });
 
   if (document.readyState === "loading") {

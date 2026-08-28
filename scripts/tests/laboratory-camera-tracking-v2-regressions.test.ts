@@ -6,7 +6,10 @@ import {
   applyLaboratoryCameraTransformToRoi,
   estimateLaboratoryCameraTransform,
 } from "../../rooms/laboratory/features/media-analysis/host/camera-tracking-v2.ts";
-import { resolveLaboratoryTrackingPreviewCache } from "../../rooms/laboratory/shared/tracking-preview-model.ts";
+import {
+  isLaboratoryTrackingPreviewCacheUsable,
+  resolveLaboratoryTrackingPreviewCache,
+} from "../../rooms/laboratory/shared/tracking-preview-model.ts";
 
 const WIDTH = 160;
 const HEIGHT = 100;
@@ -236,13 +239,11 @@ void test("tracking preview cache resolver falls back to completed report proven
   assert.equal(cache?.sourceWidth, 1920);
   assert.equal(cache?.sourceHeight, 1080);
   assert.equal(cache?.transforms.length, 1);
+  assert.equal(isLaboratoryTrackingPreviewCacheUsable(cache), true);
 });
 
-void test("tracking v2 is wired as a shared cache/provenance layer and live-results preview", async () => {
-  const composition = await readFile(
-    "rooms/laboratory/shared/host/action-composition.ts",
-    "utf8"
-  );
+void test("tracking v2 is wired as a shared cache/provenance layer and player comparison", async () => {
+  const composition = await readFile("rooms/laboratory/shared/host/action-composition.ts", "utf8");
   const wrapper = await readFile(
     "rooms/laboratory/features/media-analysis/host/action-handlers-v2.ts",
     "utf8"
@@ -255,12 +256,19 @@ void test("tracking v2 is wired as a shared cache/provenance layer and live-resu
     "rooms/laboratory/features/media-analysis/host/background-reference-convergence-v2.ts",
     "utf8"
   );
-  const preview = await readFile(
-    "rooms/laboratory/ui/lab-tracking-preview-binder.ts",
-    "utf8"
-  );
+  const preview = await readFile("rooms/laboratory/ui/lab-tracking-preview-binder.ts", "utf8");
   const liveResults = await readFile(
     "rooms/laboratory/ui/workspace-stress-test-live-results.ts",
+    "utf8"
+  );
+  const workspacePreview = await readFile(
+    "rooms/laboratory/ui/workspace-tracking-preview.ts",
+    "utf8"
+  );
+  const playerModes = await readFile("rooms/laboratory/ui/workspace-preview-modes.ts", "utf8");
+  const timeline = await readFile("rooms/laboratory/ui/lab-waveform-timeline-render.ts", "utf8");
+  const workspaceStyles = await readFile(
+    "rooms/laboratory/ui/styles/lab-workspace-selection.css",
     "utf8"
   );
   assert.match(composition, /action-handlers-v2\.js/);
@@ -271,11 +279,22 @@ void test("tracking v2 is wired as a shared cache/provenance layer and live-resu
   assert.match(wrapper, /photometricCoordinateMode: "fixed-roi-legacy"/);
   assert.match(structural, /camera-tracking-v2 similarity transform/);
   assert.match(convergence, /event-to-reference|Camera Tracking v2|camera-tracking-v2-similarity/i);
-  assert.match(preview, /workspace-tracking-preview-toggle/);
   assert.match(preview, /data-lab-tracking-preview-surface/);
-  assert.match(preview, /data-lab-transform-preview-content/);
   assert.doesNotMatch(preview, /data-lab-selection-roi-overlay/);
-  assert.match(liveResults, /resolveLaboratoryTrackingPreviewCache/);
-  assert.match(liveResults, /data-lab-tracking-preview-video/);
-  assert.match(liveResults, /raw \+ stabilized/);
+  assert.match(timeline, /workspace-tracking-preview-toggle/);
+  assert.ok(
+    timeline.indexOf("workspace-tracking-preview-toggle") >
+      timeline.indexOf("timeline-toggle-micro-zoom")
+  );
+  assert.doesNotMatch(liveResults, /data-lab-transform-preview-content/);
+  assert.doesNotMatch(liveResults, /data-lab-live-transform-mode/);
+  assert.doesNotMatch(liveResults, /data-lab-tracking-preview-video/);
+  assert.doesNotMatch(liveResults, /resolveLaboratoryTrackingPreviewCache/);
+  assert.match(playerModes, /data-lab-workspace-preview-modes/);
+  assert.match(playerModes, /workspace\.comparison\.viewMode/);
+  assert.match(workspacePreview, /data-lab-workspace-tracking-comparison/);
+  assert.match(workspacePreview, /data-lab-preserve-media="tracking-preview"/);
+  assert.match(workspacePreview, /resolveLaboratoryTrackingPreviewCache/);
+  assert.match(workspaceStyles, /labx-workspace-tracking-comparison/);
+  assert.match(workspaceStyles, /grid-template-rows: minmax\(0, 1fr\) auto/);
 });
