@@ -153,9 +153,7 @@ void test("pitch x speed sweep builds a bounded Cartesian variant set with prove
     )
   );
   assert.ok(
-    plan?.variants.some((variant) =>
-      variant.filters.some((filter) => filter.startsWith("atempo="))
-    )
+    plan?.variants.some((variant) => variant.filters.some((filter) => filter.startsWith("atempo=")))
   );
   assert.ok(
     plan?.variants.some((variant) =>
@@ -174,9 +172,7 @@ void test("audio preview emits aligned source transform difference waveform and 
       edit: {
         recipe: {
           audio: {
-            transformStages: [
-              { id: "gain-1", kind: "gain", enabled: true, params: { db: 3 } },
-            ],
+            transformStages: [{ id: "gain-1", kind: "gain", enabled: true, params: { db: 3 } }],
           },
         },
       },
@@ -265,7 +261,38 @@ void test("audio forensic UI keeps waveform context beside spectrogram, three-wa
   assert.match(markup, />Source</);
   assert.match(markup, />Transform</);
   assert.match(markup, /Audio Difference/);
-  assert.match(markup, /Gürültü profilini al/);
+  assert.match(markup, /data-lab-action="workspace-noise-profile-capture"/);
   assert.match(markup, /data-lab-action="workspace-audio-sweep-ab"/);
+  assert.match(markup, /data-lab-transform-stack="audio"/);
+});
+
+void test("audio forensic UI remains available for embedded video audio", () => {
+  const audioFocus = attachLaboratoryTransformStackRenderContext(
+    {
+      gain: 1,
+      filterType: "none" as const,
+      filterFrequency: 1000,
+      filterQ: 1,
+      playbackRate: 1,
+      preservePitch: true,
+      visualizationMode: "waveform" as const,
+      eqBands: [],
+    },
+    {
+      editConfig: {
+        recipe: { audio: { transformStages: [] } },
+      } as never,
+      featureId: "audio-analysis",
+      locked: false,
+      sourceKind: "video",
+    }
+  );
+
+  const markup = renderWorkspaceAudioFocus(audioFocus, {
+    previewTarget: "video",
+    temporalAudioFocus: audioFocus,
+  });
+  assert.match(markup, /data-lab-audio-forensics="true"/);
+  assert.match(markup, /data-lab-action="workspace-noise-profile-capture"/);
   assert.match(markup, /data-lab-transform-stack="audio"/);
 });

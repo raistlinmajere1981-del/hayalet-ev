@@ -17,12 +17,7 @@ type CompiledStressTestFilters = {
   audio: string[];
 };
 
-export type LaboratoryAudioSweepAxis =
-  | "pitch"
-  | "speed"
-  | "band-center"
-  | "band-q"
-  | "eq-gain";
+export type LaboratoryAudioSweepAxis = "pitch" | "speed" | "band-center" | "band-q" | "eq-gain";
 
 export type LaboratoryAudioSweepVariant = {
   id: string;
@@ -120,8 +115,10 @@ function compileVisualStage(stage: LaboratoryTransformStage): string[] {
       return ["hue=s=0"];
     case "channel-isolation": {
       const channel = asNonEmptyString(params["channel"]) || "red";
-      if (channel === "green") return ["colorchannelmixer=rr=0:rg=0:rb=0:gr=0:gg=1:gb=0:br=0:bg=0:bb=0"];
-      if (channel === "blue") return ["colorchannelmixer=rr=0:rg=0:rb=0:gr=0:gg=0:gb=0:br=0:bg=0:bb=1"];
+      if (channel === "green")
+        return ["colorchannelmixer=rr=0:rg=0:rb=0:gr=0:gg=1:gb=0:br=0:bg=0:bb=0"];
+      if (channel === "blue")
+        return ["colorchannelmixer=rr=0:rg=0:rb=0:gr=0:gg=0:gb=0:br=0:bg=0:bb=1"];
       return ["colorchannelmixer=rr=1:rg=0:rb=0:gr=0:gg=0:gb=0:br=0:bg=0:bb=0"];
     }
     case "denoise": {
@@ -198,7 +195,9 @@ export function compileLaboratoryAudioTransformStage(stage: LaboratoryTransformS
       const frequencyHz = clamp(params["frequencyHz"], 20, 20000, 1000);
       const gainDb = clamp(params["gainDb"], -24, 24, 0);
       const q = clamp(params["q"], 0.1, 20, 1);
-      return [`equalizer=f=${formatNumber(frequencyHz)}:t=q:w=${formatNumber(q)}:g=${formatNumber(gainDb)}`];
+      return [
+        `equalizer=f=${formatNumber(frequencyHz)}:t=q:w=${formatNumber(q)}:g=${formatNumber(gainDb)}`,
+      ];
     }
     case "formant-shift": {
       const ratio = pitchRatio(params["semitones"]);
@@ -223,7 +222,10 @@ export function compileLaboratoryAudioTransformStage(stage: LaboratoryTransformS
     }
     case "noise-profile": {
       const start = clamp(params["profileStartSec"], 0, 86399.99, 0);
-      const end = Math.min(86400, Math.max(start + 0.01, clamp(params["profileEndSec"], 0.01, 86400, start + 0.5)));
+      const end = Math.min(
+        86400,
+        Math.max(start + 0.01, clamp(params["profileEndSec"], 0.01, 86400, start + 0.5))
+      );
       const reduction = clamp(params["reductionDb"], 0, 30, 12);
       const noiseFloor = clamp(params["noiseFloorDb"], -80, -20, -50);
       return [
@@ -238,7 +240,9 @@ export function compileLaboratoryAudioTransformStage(stage: LaboratoryTransformS
       const ratio = clamp(params["ratio"], 1, 20, 3);
       const attack = clamp(params["attackMs"], 0.01, 2000, 20);
       const release = clamp(params["releaseMs"], 0.01, 9000, 250);
-      return [`acompressor=threshold=${formatNumber(thresholdLinear)}:ratio=${formatNumber(ratio)}:attack=${formatNumber(attack)}:release=${formatNumber(release)}`];
+      return [
+        `acompressor=threshold=${formatNumber(thresholdLinear)}:ratio=${formatNumber(ratio)}:attack=${formatNumber(attack)}:release=${formatNumber(release)}`,
+      ];
     }
     case "channel-matrix": {
       const mode = asNonEmptyString(params["mode"]) || "stereo";
@@ -253,9 +257,12 @@ export function compileLaboratoryAudioTransformStage(stage: LaboratoryTransformS
     case "polarity": {
       const mode = asNonEmptyString(params["mode"]) || "none";
       if (mode === "invert-both") return ["volume=-1"];
-      if (mode === "mono-collapse") return ["aformat=channel_layouts=stereo", "pan=mono|c0=0.5*c0+0.5*c1"];
-      if (mode === "invert-left") return ["aformat=channel_layouts=stereo", "pan=stereo|c0=-1*c0|c1=c1"];
-      if (mode === "invert-right") return ["aformat=channel_layouts=stereo", "pan=stereo|c0=c0|c1=-1*c1"];
+      if (mode === "mono-collapse")
+        return ["aformat=channel_layouts=stereo", "pan=mono|c0=0.5*c0+0.5*c1"];
+      if (mode === "invert-left")
+        return ["aformat=channel_layouts=stereo", "pan=stereo|c0=-1*c0|c1=c1"];
+      if (mode === "invert-right")
+        return ["aformat=channel_layouts=stereo", "pan=stereo|c0=c0|c1=-1*c1"];
       return [];
     }
     case "gain":
@@ -278,7 +285,9 @@ function appendFilterChain(command: string[], flag: "-vf" | "-af", filters: stri
   const nextCommand = [...command];
   const existingIndex = nextCommand.indexOf(flag);
   if (existingIndex >= 0 && existingIndex + 1 < nextCommand.length) {
-    nextCommand[existingIndex + 1] = [nextCommand[existingIndex + 1], ...filters].filter(Boolean).join(",");
+    nextCommand[existingIndex + 1] = [nextCommand[existingIndex + 1], ...filters]
+      .filter(Boolean)
+      .join(",");
     return nextCommand;
   }
   const outputIndex = Math.max(0, nextCommand.length - 1);
@@ -286,13 +295,19 @@ function appendFilterChain(command: string[], flag: "-vf" | "-af", filters: stri
   return nextCommand;
 }
 
-export function appendLaboratoryAudioFiltersToCommand(commandValue: readonly string[], filters: string[]) {
+export function appendLaboratoryAudioFiltersToCommand(
+  commandValue: readonly string[],
+  filters: string[]
+) {
   return appendFilterChain([...commandValue], "-af", filters);
 }
 
 function asSweepAxis(value: unknown): LaboratoryAudioSweepAxis {
   const candidate = asNonEmptyString(value);
-  return candidate === "speed" || candidate === "band-center" || candidate === "band-q" || candidate === "eq-gain"
+  return candidate === "speed" ||
+    candidate === "band-center" ||
+    candidate === "band-q" ||
+    candidate === "eq-gain"
     ? candidate
     : "pitch";
 }
@@ -303,7 +318,8 @@ function buildRange(start: number, end: number, step: number, hardLimit = 2000) 
   const normalizedStep = Math.max(0.000001, Math.abs(step)) * direction;
   let value = start;
   for (let index = 0; index < hardLimit; index += 1) {
-    if ((direction > 0 && value > end + 0.000001) || (direction < 0 && value < end - 0.000001)) break;
+    if ((direction > 0 && value > end + 0.000001) || (direction < 0 && value < end - 0.000001))
+      break;
     values.push(Number(value.toFixed(6)));
     value += normalizedStep;
   }
@@ -363,7 +379,13 @@ function overrideAxis(
     .filter((stage) => stage.kind !== "parameter-sweep")
     .map((stage) => ({ ...stage, params: { ...stage.params } }));
   const kind: LaboratoryAudioTransformStageKind =
-    axis === "pitch" ? "pitch-shift" : axis === "speed" ? "speed" : axis === "eq-gain" ? "eq" : "band-pass";
+    axis === "pitch"
+      ? "pitch-shift"
+      : axis === "speed"
+        ? "speed"
+        : axis === "eq-gain"
+          ? "eq"
+          : "band-pass";
   let target = stages.find((stage) => stage.enabled === true && stage.kind === kind) || null;
   if (target === null) {
     target = {
@@ -388,7 +410,13 @@ function overrideAxis(
   return stages;
 }
 
-function createVariantId(index: number, primaryAxis: LaboratoryAudioSweepAxis, primaryValue: number, secondaryAxis: string | null, secondaryValue: number | null) {
+function createVariantId(
+  index: number,
+  primaryAxis: LaboratoryAudioSweepAxis,
+  primaryValue: number,
+  secondaryAxis: string | null,
+  secondaryValue: number | null
+) {
   return [
     `audio-sweep-${String(index + 1).padStart(3, "0")}`,
     primaryAxis,
@@ -400,9 +428,12 @@ function createVariantId(index: number, primaryAxis: LaboratoryAudioSweepAxis, p
     .replace(/[^a-zA-Z0-9_.-]+/g, "-");
 }
 
-export function buildLaboratoryAudioSweepPlan(stagesValue: unknown): LaboratoryAudioSweepPlan | null {
+export function buildLaboratoryAudioSweepPlan(
+  stagesValue: unknown
+): LaboratoryAudioSweepPlan | null {
   const stages = normalizeLaboratoryTransformStages(stagesValue, "audio");
-  const sweepStage = stages.find((stage) => stage.enabled === true && stage.kind === "parameter-sweep") || null;
+  const sweepStage =
+    stages.find((stage) => stage.enabled === true && stage.kind === "parameter-sweep") || null;
   if (sweepStage === null) return null;
 
   const primaryAxis = asSweepAxis(sweepStage.params["primaryAxis"]);
@@ -414,7 +445,8 @@ export function buildLaboratoryAudioSweepPlan(stagesValue: unknown): LaboratoryA
         : requestedSecondary
       : null;
   const primaryValues = getAxisRange(primaryAxis, sweepStage.params);
-  const secondaryValues = secondaryAxis === null ? [null] : getAxisRange(secondaryAxis, sweepStage.params);
+  const secondaryValues =
+    secondaryAxis === null ? [null] : getAxisRange(secondaryAxis, sweepStage.params);
   const requestedVariantCount = primaryValues.length * secondaryValues.length;
   const maxVariants = Math.round(clamp(sweepStage.params["maxVariants"], 4, 200, 49));
   const variants: LaboratoryAudioSweepVariant[] = [];
@@ -430,7 +462,13 @@ export function buildLaboratoryAudioSweepPlan(stagesValue: unknown): LaboratoryA
           ? ""
           : ` · ${secondaryAxis} ${formatNumber(secondaryValue)} ${axisUnit(secondaryAxis)}`;
       variants.push({
-        id: createVariantId(variants.length, primaryAxis, primaryValue, secondaryAxis, secondaryValue),
+        id: createVariantId(
+          variants.length,
+          primaryAxis,
+          primaryValue,
+          secondaryAxis,
+          secondaryValue
+        ),
         label: `${primaryAxis} ${formatNumber(primaryValue)} ${axisUnit(primaryAxis)}${secondaryLabel}`,
         primaryAxis,
         primaryValue,
@@ -450,7 +488,9 @@ export function buildLaboratoryAudioSweepPlan(stagesValue: unknown): LaboratoryA
   };
 }
 
-export function compileTransformStressTestFilters(projectValue: unknown): CompiledStressTestFilters {
+export function compileTransformStressTestFilters(
+  projectValue: unknown
+): CompiledStressTestFilters {
   const project = toRecord(projectValue);
   const video = getVisualStages(project).flatMap(compileVisualStage);
   const audio = getAudioStages(project).flatMap(compileLaboratoryAudioTransformStage);
@@ -467,7 +507,9 @@ export function extendEditCommandWithTransformStressTest(
   const videoIncludesAudio = toRecord(getRecipe(project)["video"])["includeAudio"] === true;
 
   let command = [...commandValue];
-  if (sourceKind === "video" || sourceKind === "image") command = appendFilterChain(command, "-vf", compiled.video);
-  if (sourceKind === "audio" || (sourceKind === "video" && videoIncludesAudio)) command = appendFilterChain(command, "-af", compiled.audio);
+  if (sourceKind === "video" || sourceKind === "image")
+    command = appendFilterChain(command, "-vf", compiled.video);
+  if (sourceKind === "audio" || (sourceKind === "video" && videoIncludesAudio))
+    command = appendFilterChain(command, "-af", compiled.audio);
   return command;
 }

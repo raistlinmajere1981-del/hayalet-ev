@@ -21,7 +21,14 @@ let attached = false;
 function readTimelineSelection(documentRef: Document) {
   const timeline = documentRef.querySelector<HTMLElement>("#lab-timeline");
   const selection = timeline?.querySelector<HTMLElement>(".labx-timeline__selection");
-  if (timeline === null || timeline === undefined || selection === null) return null;
+  if (
+    timeline === null ||
+    timeline === undefined ||
+    selection === null ||
+    selection === undefined
+  ) {
+    return null;
+  }
   const durationMs = Number(timeline.dataset["duration"] || "");
   const leftPct = Number.parseFloat(selection.style.left || "");
   const widthPct = Number.parseFloat(selection.style.width || "");
@@ -34,10 +41,8 @@ function readTimelineSelection(documentRef: Document) {
   ) {
     return null;
   }
-  const startSeconds =
-    (durationMs * Math.max(0, Math.min(100, leftPct))) / 100 / 1000;
-  const endSeconds =
-    (durationMs * Math.max(0, Math.min(100, leftPct + widthPct))) / 100 / 1000;
+  const startSeconds = (durationMs * Math.max(0, Math.min(100, leftPct))) / 100 / 1000;
+  const endSeconds = (durationMs * Math.max(0, Math.min(100, leftPct + widthPct))) / 100 / 1000;
   return endSeconds > startSeconds ? { startSeconds, endSeconds } : null;
 }
 
@@ -49,11 +54,7 @@ function parseStages(value: string | undefined) {
   }
 }
 
-function buildNoiseProfileStages(
-  stagesValue: unknown,
-  startSeconds: number,
-  endSeconds: number
-) {
+function buildNoiseProfileStages(stagesValue: unknown, startSeconds: number, endSeconds: number) {
   let stages = normalizeLaboratoryTransformStages(stagesValue, "audio");
   let profile = stages.find((stage) => stage.kind === "noise-profile") || null;
   if (profile === null) {
@@ -92,8 +93,7 @@ export function bindLaboratoryAudioForensicsInteractions(deps: AudioForensicsBin
     if (abButton !== null && !abButton.disabled) {
       const root = abButton.closest<HTMLElement>("[data-lab-audio-forensics='true']");
       const player =
-        root?.querySelector<HTMLAudioElement>("[data-lab-audio-sweep-ab-player='true']") ||
-        null;
+        root?.querySelector<HTMLAudioElement>("[data-lab-audio-sweep-ab-player='true']") || null;
       const status =
         root?.querySelector<HTMLElement>("[data-lab-audio-sweep-ab-status='true']") || null;
       const sourceUrl = abButton.dataset["labSourceUrl"] || "";

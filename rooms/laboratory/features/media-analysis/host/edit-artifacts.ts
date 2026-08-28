@@ -382,6 +382,7 @@ export function createMediaEditArtifactRuntime(deps: MediaEditArtifactRuntimeDep
       const outputPath = `${artifactDir}/${artifactBase}-${variant.id}.wav`;
       const baseCommand = buildBaselineEditCommand(runtime, project, outputPath, "preview");
       const args = appendLaboratoryAudioFiltersToCommand(baseCommand, variant.filters);
+      // eslint-disable-next-line no-await-in-loop -- NOTE: keep FFmpeg sweep variants sequential to cap CPU and disk pressure.
       await callRoomTools({
         operation: "tool-run",
         roomId,
@@ -539,10 +540,7 @@ export function createMediaEditArtifactRuntime(deps: MediaEditArtifactRuntimeDep
           ],
           timeoutMs: 60_000,
         });
-        const createdFrames = await listArtifactsWithPrefix(
-          artifactDir,
-          `${artifactBase}-frame-`
-        );
+        const createdFrames = await listArtifactsWithPrefix(artifactDir, `${artifactBase}-frame-`);
         return transformComparisonArtifacts.concat(
           createdFrames
             .map((filePath) => buildArtifactEntry(filePath, "frame"))

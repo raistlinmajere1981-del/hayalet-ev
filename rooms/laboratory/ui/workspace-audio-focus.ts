@@ -106,7 +106,7 @@ function renderVisualizationMode(audioFocus: LabAudioFocusSettings, copy: LabI18
       <span class="labx-control-row__label">${escapeHtml(label)}</span>
       <select class="labx-select labx-select--compact" data-lab-field="workspace.audioFocus.visualizationMode">
         <option value="waveform" ${audioFocus.visualizationMode === "waveform" ? "selected" : ""}>${escapeHtml(copy.t("mediaAnalysis.audioFocus.visualizations.waveform", "Dalga"))}</option>
-        <option value="spectrum" ${audioFocus.visualizationMode === "spectrum" ? "selected" : ""}>${escapeHtml(copy.t("mediaAnalysis.audioFocus.visualizations.spectrum", "Canlı Spektrum"))}</option>
+        <option value="spectrum" ${audioFocus.visualizationMode === "spectrum" ? "selected" : ""}>${escapeHtml(copy.t("mediaAnalysis.audioFocus.visualizations.spectrum", "Spektrogram"))}</option>
       </select>
       <span class="labx-control-row__value"></span>
       ${renderOptionStepper(label, "workspace.audioFocus.visualizationMode", ["waveform", "spectrum"], "waveform")}
@@ -221,7 +221,8 @@ export function renderWorkspaceAudioFocus(
         )
       : "";
   const audioForensicsMarkup =
-    transformContext !== null && transformContext.sourceKind === "audio"
+    transformContext !== null &&
+    (transformContext.sourceKind === "audio" || transformContext.sourceKind === "video")
       ? renderWorkspaceAudioForensics(
           {
             editConfig: transformContext.editConfig,

@@ -18,9 +18,7 @@ function getPreviewRecord(editConfig: LabEditConfig | null) {
 
 function getPreviewArtifacts(editConfig: LabEditConfig | null) {
   const artifacts = getPreviewRecord(editConfig)["artifacts"];
-  return Array.isArray(artifacts)
-    ? artifacts.map((entry) => asLabRecord(entry) as AudioForensicsRecord)
-    : [];
+  return Array.isArray(artifacts) ? artifacts.map((entry) => asLabRecord(entry)) : [];
 }
 
 function getArtifactUrl(artifact: AudioForensicsRecord | null | undefined) {
@@ -61,11 +59,7 @@ function renderAudioPlayer(label: string, url: string | null) {
     </article>`;
 }
 
-function renderAnalysisImage(
-  label: string,
-  artifact: AudioForensicsRecord | null,
-  altSuffix = ""
-) {
+function renderAnalysisImage(label: string, artifact: AudioForensicsRecord | null, altSuffix = "") {
   const url = getArtifactUrl(artifact);
   if (url === null) return "";
   return `
@@ -89,7 +83,7 @@ function renderSweepVariants(editConfig: LabEditConfig | null, copy: LabI18n) {
         : "Add a Parameter Sweep stage and Preview Stack will list variant WAV files here for A/B listening."
     )}</p>`;
   }
-  const firstMetadata = asLabRecord(variants[0]?.["metadata"]) as AudioForensicsRecord;
+  const firstMetadata = asLabRecord(variants[0]?.["metadata"]);
   const requested = Number(firstMetadata["requestedVariantCount"] || variants.length);
   const truncated = firstMetadata["truncated"] === true;
   return `
@@ -123,7 +117,7 @@ function renderSweepVariants(editConfig: LabEditConfig | null, copy: LabI18n) {
         <div class="labx-controls-stack">
           ${variants
             .map(function (artifact, index) {
-              const metadata = asLabRecord(artifact["metadata"]) as AudioForensicsRecord;
+              const metadata = asLabRecord(artifact["metadata"]);
               const label =
                 asNonEmptyString(metadata["label"]) ||
                 `${copy.locale === "tr" ? "Varyant" : "Variant"} ${index + 1}`;
@@ -176,7 +170,7 @@ export function renderWorkspaceAudioForensics(
     audioRecipe["trimEnabled"] === true &&
     typeof audioRecipe["trimStartSeconds"] === "number" &&
     Number.isFinite(audioRecipe["trimStartSeconds"])
-      ? Math.max(0, audioRecipe["trimStartSeconds"] as number)
+      ? Math.max(0, audioRecipe["trimStartSeconds"])
       : 0;
   const selectionHint =
     copy.locale === "tr"
