@@ -3,6 +3,7 @@ import { createMediaEditSupportRuntime } from "./edit-support.js";
 import { createMediaEditPipelineRuntime } from "./edit-pipeline.js";
 import { createMediaProfilePreflightRuntime } from "./profile-preflight.js";
 import { extendEditCommandWithTransformStressTest } from "./transform-stress-test.js";
+import { createVideoAudioForensicsArtifactRuntime } from "./video-audio-forensics-artifacts.js";
 import { createLaboratoryVisualAnalysisRuntime } from "./visual-analysis-runtime.js";
 
 type LaboratoryRecord = Record<string, unknown>;
@@ -143,9 +144,33 @@ export function createLaboratoryMediaAnalysisHostRuntime(
     toRecord,
   });
 
+  const videoAudioForensicsArtifactRuntime = createVideoAudioForensicsArtifactRuntime({
+    asNonEmptyString,
+    buildBaselineEditCommand:
+      buildBaseEditCommand as MediaEditArtifactRuntimeDeps["buildBaselineEditCommand"],
+    callRoomTools,
+    getProjectEditDir,
+    getProjectEditPreviewDir,
+    roomId,
+    toRecord,
+  });
+
+  async function buildAuxiliaryArtifacts(
+    ...args: Parameters<typeof mediaEditArtifactRuntime.buildAuxiliaryArtifacts>
+  ) {
+    const baseArtifacts = await mediaEditArtifactRuntime.buildAuxiliaryArtifacts(...args);
+    const videoAudioArtifacts = await videoAudioForensicsArtifactRuntime.buildAuxiliaryArtifacts(
+      args[0],
+      args[1],
+      args[2],
+      baseArtifacts
+    );
+    return videoAudioArtifacts.concat(baseArtifacts);
+  }
+
   const mediaEditPipelineRuntime = createMediaEditPipelineRuntime({
     audioFeatureId,
-    buildAuxiliaryArtifacts: mediaEditArtifactRuntime.buildAuxiliaryArtifacts,
+    buildAuxiliaryArtifacts,
     buildEditCommand: buildEditCommand as MediaEditPipelineRuntimeDeps["buildEditCommand"],
     buildEditOutputLabel:
       buildEditOutputLabel as MediaEditPipelineRuntimeDeps["buildEditOutputLabel"],
