@@ -4,6 +4,7 @@ import { getLivePitchShiftSemitones } from "../domain/lab-live-audio-settings.js
 import { readLaboratoryTransformStackRenderContext } from "../shared/transform-stack-render-context.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
+import { renderWorkspaceAudioForensics } from "./workspace-audio-forensics.js";
 import { renderWorkspaceTransformStack } from "./workspace-transform-stack.js";
 
 function renderSettingStepper(
@@ -105,7 +106,7 @@ function renderVisualizationMode(audioFocus: LabAudioFocusSettings, copy: LabI18
       <span class="labx-control-row__label">${escapeHtml(label)}</span>
       <select class="labx-select labx-select--compact" data-lab-field="workspace.audioFocus.visualizationMode">
         <option value="waveform" ${audioFocus.visualizationMode === "waveform" ? "selected" : ""}>${escapeHtml(copy.t("mediaAnalysis.audioFocus.visualizations.waveform", "Dalga"))}</option>
-        <option value="spectrum" ${audioFocus.visualizationMode === "spectrum" ? "selected" : ""}>${escapeHtml(copy.t("mediaAnalysis.audioFocus.visualizations.spectrum", "Spektrogram"))}</option>
+        <option value="spectrum" ${audioFocus.visualizationMode === "spectrum" ? "selected" : ""}>${escapeHtml(copy.t("mediaAnalysis.audioFocus.visualizations.spectrum", "Canlı Spektrum"))}</option>
       </select>
       <span class="labx-control-row__value"></span>
       ${renderOptionStepper(label, "workspace.audioFocus.visualizationMode", ["waveform", "spectrum"], "waveform")}
@@ -219,6 +220,17 @@ export function renderWorkspaceAudioFocus(
           copy
         )
       : "";
+  const audioForensicsMarkup =
+    transformContext !== null && transformContext.sourceKind === "audio"
+      ? renderWorkspaceAudioForensics(
+          {
+            editConfig: transformContext.editConfig,
+            featureId: transformContext.featureId,
+            locked: transformContext.locked,
+          },
+          copy
+        )
+      : "";
 
   return `
     <section class="labx-audio-focus labx-workspace-focus-row__panel" id="lab-audio-focus">
@@ -266,6 +278,7 @@ export function renderWorkspaceAudioFocus(
         <button class="labx-inline-action" type="button" data-lab-action="workspace-reset-audio-focus">${escapeHtml(copy.t("mediaAnalysis.audioFocus.resetAction", "Reset All"))}</button>
       </div>
     </section>
+    ${audioForensicsMarkup}
     ${transformStackMarkup}
   `;
 }
