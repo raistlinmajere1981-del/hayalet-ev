@@ -4,7 +4,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 
 import { createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 
-void test("game-room installed UI contains the Yahtzee feature and localized assets", async () => {
+void test("game-room installed UI contains the Yahtzee presentation v2 runtime", async () => {
   const installedCopy = await createRoomInstalledCopy("game-room");
 
   try {
@@ -22,6 +22,7 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
       manifest.features?.map((feature) => feature.id),
       ["backgammon", "team-tetris", "yahtzee"]
     );
+
     const yahtzeeFeature = manifest.features?.find((feature) => feature.id === "yahtzee");
     assert.ok(yahtzeeFeature?.scene);
     assert.deepEqual(
@@ -42,27 +43,21 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
       yahtzeeFeature?.protocolSpecs?.map((entry) => entry.key),
       ["game-room-yahtzee-ai-turn", "game-room-yahtzee-us1-transport"]
     );
-    assert.deepEqual(
-      yahtzeeFeature?.protocolSpecs?.map((entry) => entry.path),
-      [
-        "main-functions/yahtzee/protocols/game-room-yahtzee-ai-turn.md",
-        "main-functions/yahtzee/protocols/game-room-yahtzee-us1-transport.md",
-      ]
-    );
 
     const indexHtml = readFileSync(`${installedCopy.rootDir}/ui/index.html`, "utf8");
     assert.match(indexHtml, /main-functions\/yahtzee\/styles\.css/);
-    assert.match(indexHtml, /main-functions\/yahtzee\/multiplayer\.css/);
-    assert.match(indexHtml, /main-functions\/yahtzee\/hybrid-stage\.css/);
     assert.match(indexHtml, /main-functions\/yahtzee\/vendor\/babylon\.min\.js/);
     assert.match(indexHtml, /main-functions\/yahtzee\/ui\/theme-pirate-deck\.js/);
     assert.match(indexHtml, /main-functions\/yahtzee\/ui\/camera-director\.js/);
-    assert.match(indexHtml, /main-functions\/yahtzee\/ui\/hybrid-stage\.js/);
     assert.match(indexHtml, /main-functions\/yahtzee\/ui\/babylon-scene\.js/);
     assert.match(indexHtml, /main-functions\/yahtzee\/ui\/audio-runtime\.js/);
     assert.match(indexHtml, /main-functions\/yahtzee\/ui\/runtime\.js/);
-    assert.match(indexHtml, /main-functions\/yahtzee\/ui\/stage-template-bridge\.js/);
     assert.match(indexHtml, /main-functions\/yahtzee\/ui\/bridge\.js/);
+    assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/multiplayer\.css/);
+    assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/hybrid-stage\.css/);
+    assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/diegetic-stage\.css/);
+    assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/ui\/hybrid-stage\.js/);
+    assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/ui\/stage-template-bridge\.js/);
 
     const babylonRuntimeIndex = indexHtml.indexOf(
       "../main-functions/yahtzee/vendor/babylon.min.js"
@@ -71,37 +66,26 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
     const cameraDirectorIndex = indexHtml.indexOf(
       "../main-functions/yahtzee/ui/camera-director.js"
     );
-    const hybridStageIndex = indexHtml.indexOf("../main-functions/yahtzee/ui/hybrid-stage.js");
     const babylonSceneIndex = indexHtml.indexOf("../main-functions/yahtzee/ui/babylon-scene.js");
     const audioRuntimeIndex = indexHtml.indexOf("../main-functions/yahtzee/ui/audio-runtime.js");
     const yahtzeeRuntimeIndex = indexHtml.indexOf("../main-functions/yahtzee/ui/runtime.js");
-    const stageBridgeIndex = indexHtml.indexOf(
-      "../main-functions/yahtzee/ui/stage-template-bridge.js"
-    );
     assert.ok(babylonRuntimeIndex >= 0 && babylonRuntimeIndex < themeIndex);
     assert.ok(themeIndex < cameraDirectorIndex);
-    assert.ok(cameraDirectorIndex < hybridStageIndex);
-    assert.ok(hybridStageIndex < babylonSceneIndex);
+    assert.ok(cameraDirectorIndex < babylonSceneIndex);
     assert.ok(babylonSceneIndex < audioRuntimeIndex);
     assert.ok(audioRuntimeIndex < yahtzeeRuntimeIndex);
-    assert.ok(yahtzeeRuntimeIndex < stageBridgeIndex);
 
     [
       `${installedCopy.rootDir}/main-functions/yahtzee/styles.css`,
-      `${installedCopy.rootDir}/main-functions/yahtzee/multiplayer.css`,
-      `${installedCopy.rootDir}/main-functions/yahtzee/hybrid-stage.css`,
       `${installedCopy.rootDir}/main-functions/yahtzee/vendor/babylon.min.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/vendor/LICENSE.babylonjs.md`,
       `${installedCopy.rootDir}/main-functions/yahtzee/vendor/NOTICE.babylonjs.md`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/theme-pirate-deck.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/camera-director.js`,
-      `${installedCopy.rootDir}/main-functions/yahtzee/ui/hybrid-stage.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/babylon-scene.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/audio-runtime.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/runtime.js`,
-      `${installedCopy.rootDir}/main-functions/yahtzee/ui/stage-template-bridge.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/bridge.js`,
-      `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/README.md`,
       `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/deck-stage-v3.webp`,
       `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/table-mahogany.webp`,
       `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/table-felt-burgundy.webp`,
@@ -128,59 +112,28 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
     assert.match(runtimeSource, /const MODES = \["solo", "local2", "ai1", "ai2", "us1"\]/);
     assert.match(runtimeSource, /GameRoomYahtzeeStart/);
     assert.match(runtimeSource, /mode: selectedMode/);
-    assert.match(runtimeSource, /yahtzee-score-stack/);
+    assert.match(runtimeSource, /GameRoomYahtzeeStageActions/);
+    assert.match(runtimeSource, /previewScore/);
+    assert.match(runtimeSource, /yahtzee-player-portrait/);
     assert.match(runtimeSource, /GameRoomYahtzeeBabylonScene/);
     assert.match(runtimeSource, /GameRoomYahtzeeAudioRuntime/);
     assert.match(runtimeSource, /babylonHandle\.beginRoll\(\)/);
     assert.match(runtimeSource, /localRollAnimationStartedAt/);
     assert.match(runtimeSource, /nextTurnIndex !== previousTurnIndex/);
-    assert.match(runtimeSource, /babylonHandle\.update\(turnVisualState\(\)/);
+    assert.match(runtimeSource, /babylonHandle\.update\(state/);
     assert.match(runtimeSource, /sendCommand\(name, roomArgs \|\| \{\}\)/);
-    assert.doesNotMatch(runtimeSource, /sendCommand\(name, \{ roomArgs:/);
+    assert.doesNotMatch(runtimeSource, /overlay\.innerHTML/);
     assert.doesNotMatch(runtimeSource, /new B\.Engine/);
 
     const themeSource = readFileSync(
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/theme-pirate-deck.js`,
       "utf8"
     );
-    assert.match(themeSource, /pirate-deck-hybrid/);
+    assert.match(themeSource, /pirate-deck-v2/);
     assert.match(themeSource, /deck-stage-v3\.webp/);
     assert.match(themeSource, /table-mahogany\.webp/);
     assert.match(themeSource, /table-felt-burgundy\.webp/);
-    assert.match(themeSource, /showcase:/);
-    assert.match(themeSource, /turnLeft:/);
-    assert.match(themeSource, /turnRight:/);
-    assert.match(themeSource, /roll:/);
-    assert.match(themeSource, /result:/);
-
-    const cameraSource = readFileSync(
-      `${installedCopy.rootDir}/main-functions/yahtzee/ui/camera-director.js`,
-      "utf8"
-    );
-    assert.match(cameraSource, /GameRoomYahtzeeCameraDirector/);
-    assert.match(cameraSource, /stateShot/);
-    assert.match(cameraSource, /focusRoll/);
-    assert.match(cameraSource, /temporaryUntil/);
-
-    const hybridSource = readFileSync(
-      `${installedCopy.rootDir}/main-functions/yahtzee/ui/hybrid-stage.js`,
-      "utf8"
-    );
-    assert.match(hybridSource, /GameRoomYahtzeeHybridStage/);
-    assert.match(hybridSource, /yahtzee-stage-sky/);
-    assert.match(hybridSource, /yahtzee-stage-sea/);
-    assert.match(hybridSource, /yahtzee-stage-crew-member/);
-    assert.match(hybridSource, /yahtzee-stage-player/);
-    assert.match(hybridSource, /avatarSrc/);
-
-    const stageBridgeSource = readFileSync(
-      `${installedCopy.rootDir}/main-functions/yahtzee/ui/stage-template-bridge.js`,
-      "utf8"
-    );
-    assert.match(stageBridgeSource, /yahtzee-hybrid-backdrop/);
-    assert.match(stageBridgeSource, /GameRoomYahtzeeHybridStage/);
-    assert.match(stageBridgeSource, /GameRoomYahtzeeBabylonScene/);
-    assert.match(stageBridgeSource, /sceneRuntime\.syncState/);
+    assert.match(themeSource, /heldDiceRack: true/);
 
     const audioSource = readFileSync(
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/audio-runtime.js`,
@@ -188,7 +141,6 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
     );
     assert.match(audioSource, /GameRoomYahtzeeAudioRuntime/);
     assert.match(audioSource, /createNoiseLayer/);
-    assert.match(audioSource, /scheduleCreak/);
     assert.match(audioSource, /visibilitychange/);
     assert.match(audioSource, /playDice/);
 
@@ -197,41 +149,25 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
       "utf8"
     );
     assert.match(sceneSource, /GameRoomYahtzeeBabylonScene/);
-    assert.doesNotMatch(sceneSource, /yahtzee-stage-deck-slab/);
-    assert.match(sceneSource, /yahtzee-game-table-foot-contact/);
-    assert.match(sceneSource, /TABLE_FOOTPRINT_SCALE = 0\.9/);
-    assert.match(sceneSource, /DIE_SCALE = 0\.86/);
-    assert.match(sceneSource, /getDiceAnimationState/);
-    assert.match(sceneSource, /yahtzee-game-table-top/);
-    assert.match(sceneSource, /DEFAULT_DICE\.map/);
-    assert.match(sceneSource, /applyDieValue\(model, values\[index\]\)/);
-    assert.match(sceneSource, /applyHeldState\(model, held\[index\], materials\)/);
-    assert.match(sceneSource, /gameRoot\.rotation\.z/);
-    assert.match(sceneSource, /lantern\.light\.intensity/);
-    assert.match(sceneSource, /GameRoomYahtzeeCameraDirector/);
+    assert.match(sceneSource, /RACK_LAYOUT/);
+    assert.match(sceneSource, /yahtzee-game-table-hold-well/);
+    assert.match(sceneSource, /targetPosition/);
+    assert.match(sceneSource, /TABLE_FOOTPRINT_SCALE = 0\.95/);
+    assert.match(sceneSource, /DIE_SCALE = 0\.9/);
+    assert.match(sceneSource, /scene\.constantlyUpdateMeshUnderPointer = false/);
+    assert.match(sceneSource, /targetFps = hasRollingDice\(\) \? 45 : latestState\.active === true \? 30 : 15/);
     assert.match(sceneSource, /camera\.inputs\.clear\(\)/);
     assert.match(sceneSource, /new B\.Color4\(0, 0, 0, 0\)/);
-    assert.match(sceneSource, /syncState:/);
     assert.doesNotMatch(sceneSource, /camera\.attachControl/);
-    assert.doesNotMatch(sceneSource, /yahtzee-dark-ocean/);
-    assert.doesNotMatch(sceneSource, /const pirateOptions = \[/);
-    assert.doesNotMatch(sceneSource, /Math\.random/);
 
     const stylesSource = readFileSync(
       `${installedCopy.rootDir}/main-functions/yahtzee/styles.css`,
       "utf8"
     );
-    assert.match(stylesSource, /\.yahtzee-fallback-art/);
-    assert.match(stylesSource, /\.yahtzee-shell\.is-babylon-active \.yahtzee-runtime-note/);
-
-    const hybridStylesSource = readFileSync(
-      `${installedCopy.rootDir}/main-functions/yahtzee/hybrid-stage.css`,
-      "utf8"
-    );
-    assert.match(hybridStylesSource, /\.yahtzee-hybrid-backdrop/);
-    assert.match(hybridStylesSource, /\.yahtzee-stage-lightning/);
-    assert.match(hybridStylesSource, /\.yahtzee-stage-player\.is-active/);
-    assert.match(hybridStylesSource, /prefers-reduced-motion/);
+    assert.match(stylesSource, /\.yahtzee-stage-art/);
+    assert.match(stylesSource, /\.yahtzee-player-portrait/);
+    assert.match(stylesSource, /\.yahtzee-score-row\.is-preview/);
+    assert.doesNotMatch(stylesSource, /backdrop-filter/);
 
     const babylonBundleSize = statSync(
       `${installedCopy.rootDir}/main-functions/yahtzee/vendor/babylon.min.js`

@@ -1,6 +1,8 @@
 /* global window, document */
 
 (function (global) {
+  "use strict";
+
   const CATEGORIES = [
     "ones",
     "twos",
@@ -20,24 +22,38 @@
   const MODES = ["solo", "local2", "ai1", "ai2", "us1"];
 
   const FALLBACK_LABELS = {
-    title: "Yahtzee",
-    start: "Start",
+    kicker: "GAME ROOM · NIGHT WATCH",
+    title: "Pirate Deck Yahtzee",
+    subtitle: "Five carved dice, thirteen choices, one score sheet by lantern light.",
+    start: "Start Game",
     reset: "Reset",
-    roll: "Roll",
+    roll: "Roll Dice",
     score: "Score",
-    mode: "Game",
+    mode: "Game Mode",
     turn: "Turn",
     winner: "Winner",
     draw: "Draw",
+    total: "Total",
+    upperBonus: "Upper Bonus",
+    rolls: "Roll",
+    sound: "Sound",
+    soundOn: "On",
+    soundOff: "Off",
+    babylonMissing: "3D table unavailable; lightweight stage fallback is active.",
     modes: {
       solo: "Solo",
-      local2: "2 players local",
+      local2: "2 Players Local",
       ai1: "vs AI1",
       ai2: "vs AI2",
-      us1: "vs US1 online",
+      us1: "vs US1 Online",
     },
     status: {
-      ready: "Ready.",
+      ready: "The table is ready.",
+      firstRoll: "The first dice are on the table.",
+      chooseDiceOrScore: "Hold dice or choose a score.",
+      finalRoll: "Final roll complete. Choose a score.",
+      newTurn: "A new turn begins.",
+      complete: "Score card complete.",
       waitOpponent: "Waiting for the other player.",
       aiThinking: "AI is choosing an action.",
       blockedOpponent: "Opponent is unavailable.",
@@ -52,8 +68,7 @@
   let audioRuntime = null;
   let babylonHandle = null;
   let mountedRoot = null;
-  let mountedShell = null;
-  let mountedOverlay = null;
+  let refs = null;
   let pendingRollAnimation = false;
   let localRollAnimationStartedAt = 0;
 
@@ -61,6 +76,7 @@
     return {
       seatId: seatId,
       label: label,
+      avatarSrc: null,
       card: { scores: {} },
       upperSubtotal: 0,
       upperBonus: 0,
@@ -80,6 +96,7 @@
       activePlayerIndex: 0,
       activeSeatId: "user",
       turnIndex: 0,
+      turnToken: "",
       turn: { dice: [1, 1, 1, 1, 1], held: [false, false, false, false, false], rollCount: 0 },
       card: player.card,
       upperSubtotal: 0,
@@ -102,13 +119,14 @@
   function t(key) {
     const path = String(key).split(".");
     return (
-      readPath(translations && translations.yahtzee, path) || readPath(FALLBACK_LABELS, path) || key
+      readPath(translations && translations.yahtzee, path) ||
+      readPath(FALLBACK_LABELS, path) ||
+      key
     );
   }
 
   function setTranslations(nextTranslations) {
-    translations =
-      nextTranslations && typeof nextTranslations === "object" ? nextTranslations : null;
+    translations = nextTranslations && typeof nextTranslations === "object" ? nextTranslations : null;
   }
 
   function command(name, roomArgs) {
@@ -119,15 +137,7 @@
   function getPlayers() {
     return Array.isArray(state.players) && state.players.length > 0
       ? state.players
-      : [
-          {
-            seatId: "user",
-            label: "Player 1",
-            card: state.card || { scores: {} },
-            upperBonus: state.upperBonus || 0,
-            total: state.total || 0,
-          },
-        ];
+      : [createPlayer("user", "Player 1")];
   }
 
   function activePlayer() {
@@ -143,6 +153,29 @@
     return state.activeSeatId === (state.localSeatId || "user");
   }
 
+  function turnState() {
+    const turn = state.turn && typeof state.turn === "object" ? state.turn : {};
+    return {
+      dice: Array.isArray(turn.dice) ? turn.dice : [1, 1, 1, 1, 1],
+      held: Array.isArray(turn.held) ? turn.held : [false, false, false, false, false],
+      rollCount: Number(turn.rollCount) || 0,
+    };
+  }
+
+  function didRoll(previousState, nextState) {
+    if (!nextState || typeof nextState !== "object") return false;
+    const previousTurn =
+      previousState && previousState.turn && typeof previousState.turn === "object"
+        ? previousState.turn
+        : {};
+    const nextTurn = nextState.turn && typeof nextState.turn === "object" ? nextState.turn : {};
+    const previousCount = Number(previousTurn.rollCount) || 0;
+    const nextCount = Number(nextTurn.rollCount) || 0;
+    const previousTurnIndex = Number(previousState && previousState.turnIndex) || 0;
+    const nextTurnIndex = Number(nextState.turnIndex) || 0;
+    return nextCount > previousCount || (nextTurnIndex !== previousTurnIndex && nextCount > 0);
+  }
+
   function getAudioRuntime() {
     if (audioRuntime) return audioRuntime;
     const registry = global.GameRoomYahtzeeAudioRuntime;
@@ -156,24 +189,18 @@
 
   function playWoodClick(frequency) {
     const audio = getAudioRuntime();
-    if (audio && typeof audio.playWoodClick === "function") {
-      audio.playWoodClick(frequency);
-    }
+    if (audio && typeof audio.playWoodClick === "function") audio.playWoodClick(frequency);
   }
 
   function playDiceSound() {
     const audio = getAudioRuntime();
-    if (audio && typeof audio.playDice === "function") {
-      audio.playDice();
-    }
+    if (audio && typeof audio.playDice === "function") audio.playDice();
   }
 
   function ensureAmbience() {
     if (!audioEnabled) return;
     const audio = getAudioRuntime();
-    if (audio && typeof audio.startAmbience === "function") {
-      audio.startAmbience();
-    }
+    if (audio && typeof audio.startAmbience === "function") audio.startAmbience();
   }
 
   function stopAmbience() {
@@ -202,115 +229,148 @@
     babylonHandle = null;
   }
 
-  function turnVisualState() {
-    const turn = state.turn && typeof state.turn === "object" ? state.turn : {};
-    return {
-      dice: Array.isArray(turn.dice) ? turn.dice : [1, 1, 1, 1, 1],
-      held: Array.isArray(turn.held) ? turn.held : [false, false, false, false, false],
-      rollCount: Number(turn.rollCount) || 0,
-    };
-  }
-
-  function didRoll(previousState, nextState) {
-    if (!nextState || typeof nextState !== "object") return false;
-    const previousTurn =
-      previousState && previousState.turn && typeof previousState.turn === "object"
-        ? previousState.turn
-        : {};
-    const nextTurn = nextState.turn && typeof nextState.turn === "object" ? nextState.turn : {};
-    const previousCount = Number(previousTurn.rollCount) || 0;
-    const nextCount = Number(nextTurn.rollCount) || 0;
-    const previousTurnIndex = Number(previousState && previousState.turnIndex) || 0;
-    const nextTurnIndex = Number(nextState.turnIndex) || 0;
-    return nextCount > previousCount || (nextTurnIndex !== previousTurnIndex && nextCount > 0);
-  }
-
-  function mountBabylon(canvas) {
-    const sceneRuntime = global.GameRoomYahtzeeBabylonScene;
-    if (!sceneRuntime || typeof sceneRuntime.mount !== "function") return false;
-    babylonHandle = sceneRuntime.mount(canvas, turnVisualState());
-    return Boolean(babylonHandle);
-  }
-
-  function renderDice(container) {
-    const dice = state.turn && Array.isArray(state.turn.dice) ? state.turn.dice : [1, 1, 1, 1, 1];
-    const held =
-      state.turn && Array.isArray(state.turn.held)
-        ? state.turn.held
-        : [false, false, false, false, false];
-    const localTurn = isLocalTurn();
-    dice.forEach(function (value, index) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "yahtzee-die" + (held[index] ? " is-held" : "");
-      button.disabled = !localTurn || state.turn.rollCount >= 3;
-      button.setAttribute("aria-pressed", held[index] ? "true" : "false");
-      button.dataset.dieIndex = String(index);
-      button.innerHTML =
-        '<span class="yahtzee-die-value">' +
-        String(value) +
-        '</span><span class="yahtzee-die-hold">' +
-        (held[index] ? t("held") : t("hold")) +
-        "</span>";
-      button.addEventListener("click", function () {
-        playWoodClick(190);
-        command("GameRoomYahtzeeToggleHold", { index: index });
-      });
-      container.append(button);
+  function countDice(dice) {
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    dice.forEach(function (die) {
+      const value = Number(die);
+      if (Number.isInteger(value) && value >= 1 && value <= 6) counts[value] += 1;
     });
+    return counts;
   }
 
-  function renderScores(container, player, isActive) {
-    const scores = player && player.card && player.card.scores ? player.card.scores : {};
-    const localTurn = isLocalTurn();
-    CATEGORIES.forEach(function (category) {
-      const row = document.createElement("div");
-      row.className = "yahtzee-score-row";
-      const used = typeof scores[category] === "number";
-      const value = used ? String(scores[category]) : "—";
-      row.innerHTML = "<span>" + t(category) + "</span><strong>" + value + "</strong>";
-      if (!used && isActive && localTurn && state.turn.rollCount > 0) {
-        const scoreButton = document.createElement("button");
-        scoreButton.type = "button";
-        scoreButton.textContent = t("score");
-        scoreButton.addEventListener("click", function () {
-          playWoodClick(105);
-          command("GameRoomYahtzeeScore", { category: category });
-        });
-        row.append(scoreButton);
+  function hasStraight(dice, length) {
+    const unique = Array.from(new Set(dice.map(Number))).sort(function (a, b) {
+      return a - b;
+    });
+    let run = unique.length > 0 ? 1 : 0;
+    for (let index = 1; index < unique.length; index += 1) {
+      if (unique[index] === unique[index - 1] + 1) {
+        run += 1;
+        if (run >= length) return true;
+      } else {
+        run = 1;
       }
-      container.append(row);
-    });
+    }
+    return run >= length;
   }
 
-  function renderScoreCard(player, index) {
-    const card = document.createElement("aside");
-    const isActive = index === state.activePlayerIndex && state.active;
-    card.className = "yahtzee-score-card" + (isActive ? " is-active" : "");
-    const cardTitle = document.createElement("h2");
-    cardTitle.textContent = player.label || player.seatId || t("scoreCard");
-    card.append(cardTitle);
-    if (isActive) {
-      const turnBadge = document.createElement("div");
-      turnBadge.className = "yahtzee-turn-badge";
-      turnBadge.textContent = t("turn");
-      card.append(turnBadge);
+  function previewScore(category, dice) {
+    if (!Array.isArray(dice) || dice.length !== 5) return 0;
+    const counts = countDice(dice);
+    const total = dice.reduce(function (sum, die) {
+      return sum + Number(die || 0);
+    }, 0);
+
+    switch (category) {
+      case "ones":
+        return counts[1] * 1;
+      case "twos":
+        return counts[2] * 2;
+      case "threes":
+        return counts[3] * 3;
+      case "fours":
+        return counts[4] * 4;
+      case "fives":
+        return counts[5] * 5;
+      case "sixes":
+        return counts[6] * 6;
+      case "three-kind":
+        return counts.some(function (count) {
+          return count >= 3;
+        })
+          ? total
+          : 0;
+      case "four-kind":
+        return counts.some(function (count) {
+          return count >= 4;
+        })
+          ? total
+          : 0;
+      case "full-house":
+        return counts.includes(3) && counts.includes(2) ? 25 : 0;
+      case "small-straight":
+        return hasStraight(dice, 4) ? 30 : 0;
+      case "large-straight":
+        return hasStraight(dice, 5) ? 40 : 0;
+      case "yahtzee":
+        return counts.includes(5) ? 50 : 0;
+      case "chance":
+        return total;
+      default:
+        return 0;
     }
-    renderScores(card, player, isActive);
-    const totals = document.createElement("div");
-    totals.className = "yahtzee-score-totals";
-    totals.innerHTML =
-      "<span>" +
-      t("upperBonus") +
-      " <strong>" +
-      String(player.upperBonus || 0) +
-      "</strong></span><span>" +
-      t("total") +
-      " <strong>" +
-      String(player.total || 0) +
-      "</strong></span>";
-    card.append(totals);
-    return card;
+  }
+
+  function initials(label) {
+    return (
+      String(label || "?")
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map(function (part) {
+          return part.charAt(0).toUpperCase();
+        })
+        .join("") || "?"
+    );
+  }
+
+  function createElement(tagName, className) {
+    const element = document.createElement(tagName);
+    if (className) element.className = className;
+    return element;
+  }
+
+  function createScoreCard(side) {
+    const panel = createElement("aside", "yahtzee-player-panel is-" + side);
+    const identity = createElement("div", "yahtzee-player-identity");
+    const portrait = createElement("div", "yahtzee-player-portrait");
+    const portraitImage = createElement("img", "yahtzee-player-portrait-image");
+    portraitImage.alt = "";
+    const portraitFallback = createElement("span", "yahtzee-player-portrait-fallback");
+    portrait.append(portraitImage, portraitFallback);
+
+    const identityCopy = createElement("div", "yahtzee-player-copy");
+    const name = createElement("h2", "yahtzee-player-name");
+    const total = createElement("div", "yahtzee-player-total");
+    identityCopy.append(name, total);
+    identity.append(portrait, identityCopy);
+    panel.append(identity);
+
+    const rows = new Map();
+    const scoreList = createElement("div", "yahtzee-score-list");
+    CATEGORIES.forEach(function (category) {
+      const row = createElement("button", "yahtzee-score-row");
+      row.type = "button";
+      row.dataset.category = category;
+      const label = createElement("span", "yahtzee-score-label");
+      const value = createElement("strong", "yahtzee-score-value");
+      row.append(label, value);
+      row.addEventListener("click", function () {
+        if (row.disabled) return;
+        playWoodClick(105);
+        command("GameRoomYahtzeeScore", { category: category });
+      });
+      rows.set(category, { row: row, label: label, value: value });
+      scoreList.append(row);
+    });
+    panel.append(scoreList);
+
+    const footer = createElement("div", "yahtzee-score-footer");
+    const bonus = createElement("span", "yahtzee-score-bonus");
+    const footerTotal = createElement("strong", "yahtzee-score-grand-total");
+    footer.append(bonus, footerTotal);
+    panel.append(footer);
+
+    return {
+      root: panel,
+      portraitImage: portraitImage,
+      portraitFallback: portraitFallback,
+      name: name,
+      total: total,
+      rows: rows,
+      bonus: bonus,
+      footerTotal: footerTotal,
+    };
   }
 
   function statusText() {
@@ -327,102 +387,105 @@
     return base + " · " + t("turn") + ": " + (current ? current.label : state.activeSeatId);
   }
 
-  function createSceneShell(root) {
-    disposeBabylon();
-    root.innerHTML = "";
-    const shell = document.createElement("section");
-    shell.className = "yahtzee-shell";
-    shell.innerHTML =
-      '<div class="yahtzee-scene"><canvas class="yahtzee-babylon-canvas"></canvas><div class="yahtzee-fallback-art"><div class="yahtzee-moon"></div><div class="yahtzee-mast"></div><div class="yahtzee-pirate p1"></div><div class="yahtzee-pirate p2"></div><div class="yahtzee-pirate p3"></div><div class="yahtzee-pirate p4"></div><div class="yahtzee-table"></div><div class="yahtzee-candle"></div></div><div class="yahtzee-vignette"></div></div>';
-
-    const overlay = document.createElement("div");
-    overlay.className = "yahtzee-overlay";
-    shell.append(overlay);
-
-    const note = document.createElement("div");
-    note.className = "yahtzee-runtime-note";
-    shell.append(note);
-
-    root.append(shell);
-    mountedRoot = root;
-    mountedShell = shell;
-    mountedOverlay = overlay;
-
-    const canvas = shell.querySelector(".yahtzee-babylon-canvas");
-    const fallback = shell.querySelector(".yahtzee-fallback-art");
-    const babylonActive = Boolean(canvas && mountBabylon(canvas));
-    shell.classList.toggle("is-babylon-active", babylonActive);
-    if (canvas) canvas.hidden = !babylonActive;
-    if (fallback) fallback.hidden = babylonActive;
-    note.hidden = babylonActive;
-  }
-
-  function ensureSceneShell(root) {
-    if (mountedRoot !== root || !mountedShell || !mountedOverlay || !root.contains(mountedShell)) {
-      createSceneShell(root);
+  function setBackdrop(backdrop) {
+    const theme = global.GameRoomYahtzeePirateDeckTheme || {};
+    const assets = theme.assets || {};
+    const src = typeof assets.environment === "string" ? assets.environment.trim() : "";
+    if (src) {
+      backdrop.style.backgroundImage = "url(" + JSON.stringify(src) + ")";
+      backdrop.classList.add("has-art");
+    } else {
+      backdrop.style.removeProperty("background-image");
+      backdrop.classList.remove("has-art");
     }
   }
 
-  function render(root) {
-    ensureSceneShell(root);
+  function mountBabylon(canvas) {
+    const sceneRuntime = global.GameRoomYahtzeeBabylonScene;
+    if (!sceneRuntime || typeof sceneRuntime.mount !== "function") return false;
+    babylonHandle = sceneRuntime.mount(canvas, state);
+    return Boolean(babylonHandle);
+  }
+
+  function createSceneShell(root) {
+    disposeBabylon();
+    root.innerHTML = "";
     root.classList.add("yahtzee-root");
-    const shell = mountedShell;
-    const overlay = mountedOverlay;
-    if (!shell || !overlay) return;
 
-    overlay.innerHTML =
-      '<header class="yahtzee-header"><div><span class="yahtzee-kicker">' +
-      t("kicker") +
-      "</span><h1>" +
-      t("title") +
-      "</h1><p>" +
-      t("subtitle") +
-      "</p></div></header>";
+    const shell = createElement("section", "yahtzee-shell");
+    const scene = createElement("div", "yahtzee-scene");
+    const backdrop = createElement("div", "yahtzee-stage-art");
+    setBackdrop(backdrop);
+    const canvas = createElement("canvas", "yahtzee-babylon-canvas");
+    const atmosphere = createElement("div", "yahtzee-stage-atmosphere");
+    const vignette = createElement("div", "yahtzee-vignette");
+    scene.append(backdrop, canvas, atmosphere, vignette);
 
-    const controls = document.createElement("div");
-    controls.className = "yahtzee-controls";
+    const overlay = createElement("div", "yahtzee-overlay");
 
-    const modeWrap = document.createElement("label");
-    modeWrap.className = "yahtzee-mode-select";
-    const modeLabel = document.createElement("span");
-    modeLabel.textContent = t("mode");
-    const modeSelect = document.createElement("select");
+    const pregame = createElement("section", "yahtzee-pregame");
+    const kicker = createElement("span", "yahtzee-kicker");
+    const title = createElement("h1", "yahtzee-title");
+    const subtitle = createElement("p", "yahtzee-subtitle");
+    const setup = createElement("div", "yahtzee-setup");
+    const modeWrap = createElement("label", "yahtzee-mode-select");
+    const modeLabel = createElement("span", "yahtzee-mode-label");
+    const modeSelect = createElement("select", "yahtzee-mode-control");
     MODES.forEach(function (mode) {
       const option = document.createElement("option");
       option.value = mode;
-      option.textContent = t("modes." + mode);
       modeSelect.append(option);
     });
-    const effectiveMode =
-      state.active || state.complete ? state.mode || selectedMode : selectedMode;
-    modeSelect.value = MODES.includes(effectiveMode) ? effectiveMode : "solo";
-    modeSelect.disabled = state.active || state.complete;
     modeSelect.addEventListener("change", function () {
       selectedMode = MODES.includes(modeSelect.value) ? modeSelect.value : "solo";
     });
     modeWrap.append(modeLabel, modeSelect);
-    controls.append(modeWrap);
-
-    const start = document.createElement("button");
-    start.type = "button";
-    start.textContent = state.active || state.complete ? t("reset") : t("start");
-    start.addEventListener("click", function () {
+    const startButton = createElement("button", "yahtzee-start-button");
+    startButton.type = "button";
+    startButton.addEventListener("click", function () {
       ensureAmbience();
       playWoodClick(135);
-      if (state.active || state.complete) {
-        command("GameRoomYahtzeeReset", {});
-      } else {
-        command("GameRoomYahtzeeStart", { mode: selectedMode });
-      }
+      command("GameRoomYahtzeeStart", { mode: selectedMode });
     });
-    controls.append(start);
+    setup.append(modeWrap, startButton);
+    pregame.append(kicker, title, subtitle, setup);
 
-    const roll = document.createElement("button");
-    roll.type = "button";
-    roll.className = "primary";
-    roll.textContent = t("roll");
-    roll.disabled = !isLocalTurn() || state.turn.rollCount >= 3;
-    roll.addEventListener("click", function () {
+    const utilityBar = createElement("div", "yahtzee-utility-bar");
+    const soundButton = createElement("button", "yahtzee-utility-button is-sound");
+    soundButton.type = "button";
+    soundButton.addEventListener("click", function () {
+      audioEnabled = !audioEnabled;
+      const audio = getAudioRuntime();
+      if (audio && typeof audio.setEnabled === "function") audio.setEnabled(audioEnabled);
+      if (audioEnabled) ensureAmbience();
+      else stopAmbience();
+      render(root);
+    });
+    const resetButton = createElement("button", "yahtzee-utility-button is-reset");
+    resetButton.type = "button";
+    resetButton.textContent = "↻";
+    resetButton.addEventListener("click", function () {
+      playWoodClick(125);
+      command("GameRoomYahtzeeReset", {});
+    });
+    const closeButton = createElement("button", "yahtzee-utility-button is-close");
+    closeButton.type = "button";
+    closeButton.textContent = "×";
+    closeButton.addEventListener("click", function () {
+      if (global.roomAPI && typeof global.roomAPI.close === "function") global.roomAPI.close();
+    });
+    utilityBar.append(soundButton, resetButton, closeButton);
+
+    const matchHud = createElement("section", "yahtzee-match-hud");
+    const leftCard = createScoreCard("left");
+    const rightCard = createScoreCard("right");
+    const center = createElement("div", "yahtzee-center-dock");
+    const status = createElement("div", "yahtzee-status");
+    const actionRow = createElement("div", "yahtzee-action-row");
+    const rollButton = createElement("button", "yahtzee-roll-button");
+    rollButton.type = "button";
+    rollButton.addEventListener("click", function () {
+      if (rollButton.disabled) return;
       ensureAmbience();
       playDiceSound();
       if (babylonHandle && typeof babylonHandle.beginRoll === "function") {
@@ -431,55 +494,209 @@
       }
       command("GameRoomYahtzeeRoll", {});
     });
-    controls.append(roll);
-
-    const sound = document.createElement("button");
-    sound.type = "button";
-    sound.textContent = t("sound") + ": " + (audioEnabled ? t("soundOn") : t("soundOff"));
-    sound.addEventListener("click", function () {
-      audioEnabled = !audioEnabled;
-      const audio = getAudioRuntime();
-      if (audio && typeof audio.setEnabled === "function") audio.setEnabled(audioEnabled);
-      if (audioEnabled) ensureAmbience();
-      else stopAmbience();
-      render(root);
+    const rollMeta = createElement("span", "yahtzee-roll-meta");
+    const resultResetButton = createElement("button", "yahtzee-result-button");
+    resultResetButton.type = "button";
+    resultResetButton.addEventListener("click", function () {
+      playWoodClick(125);
+      command("GameRoomYahtzeeReset", {});
     });
-    controls.append(sound);
-    overlay.append(controls);
+    actionRow.append(rollButton, rollMeta, resultResetButton);
+    center.append(status, actionRow);
+    matchHud.append(leftCard.root, rightCard.root, center);
 
-    const playArea = document.createElement("div");
-    playArea.className = "yahtzee-play-area";
-    const dicePanel = document.createElement("div");
-    dicePanel.className = "yahtzee-dice-panel";
-    const status = document.createElement("div");
-    status.className = "yahtzee-status";
-    status.textContent = statusText();
-    dicePanel.append(status);
-    const diceRow = document.createElement("div");
-    diceRow.className = "yahtzee-dice-row";
-    renderDice(diceRow);
-    dicePanel.append(diceRow);
-    const rollMeta = document.createElement("div");
-    rollMeta.className = "yahtzee-roll-meta";
-    rollMeta.textContent = t("rolls") + ": " + String(state.turn.rollCount) + "/3";
-    dicePanel.append(rollMeta);
-    playArea.append(dicePanel);
+    const runtimeNote = createElement("div", "yahtzee-runtime-note");
 
-    const scoreStack = document.createElement("div");
-    scoreStack.className = "yahtzee-score-stack";
-    getPlayers().forEach(function (player, index) {
-      scoreStack.append(renderScoreCard(player, index));
+    overlay.append(pregame, utilityBar, matchHud, runtimeNote);
+    shell.append(scene, overlay);
+    root.append(shell);
+
+    const babylonActive = mountBabylon(canvas);
+    shell.classList.toggle("is-babylon-active", babylonActive);
+    canvas.hidden = !babylonActive;
+    runtimeNote.hidden = babylonActive;
+
+    refs = {
+      shell: shell,
+      scene: scene,
+      backdrop: backdrop,
+      canvas: canvas,
+      pregame: pregame,
+      kicker: kicker,
+      title: title,
+      subtitle: subtitle,
+      setup: setup,
+      modeLabel: modeLabel,
+      modeSelect: modeSelect,
+      startButton: startButton,
+      utilityBar: utilityBar,
+      soundButton: soundButton,
+      resetButton: resetButton,
+      closeButton: closeButton,
+      matchHud: matchHud,
+      leftCard: leftCard,
+      rightCard: rightCard,
+      center: center,
+      status: status,
+      rollButton: rollButton,
+      rollMeta: rollMeta,
+      resultResetButton: resultResetButton,
+      runtimeNote: runtimeNote,
+    };
+    mountedRoot = root;
+  }
+
+  function ensureSceneShell(root) {
+    if (mountedRoot !== root || !refs || !refs.shell || !root.contains(refs.shell)) {
+      createSceneShell(root);
+    }
+  }
+
+  function updatePortrait(cardRefs, player) {
+    const avatar =
+      player && typeof player.avatarSrc === "string" && player.avatarSrc.trim() !== ""
+        ? player.avatarSrc.trim()
+        : null;
+    if (avatar) {
+      cardRefs.portraitImage.src = avatar;
+      cardRefs.portraitImage.hidden = false;
+      cardRefs.portraitFallback.hidden = true;
+    } else {
+      cardRefs.portraitImage.removeAttribute("src");
+      cardRefs.portraitImage.hidden = true;
+      cardRefs.portraitFallback.hidden = false;
+      cardRefs.portraitFallback.textContent = initials(player && (player.label || player.seatId));
+    }
+  }
+
+  function updateScoreCard(cardRefs, player, playerIndex) {
+    if (!player) {
+      cardRefs.root.hidden = true;
+      return;
+    }
+    cardRefs.root.hidden = false;
+    const isActive = state.active && playerIndex === state.activePlayerIndex;
+    const canScore = isActive && isLocalTurn() && turnState().rollCount > 0;
+    const scores = player.card && player.card.scores ? player.card.scores : {};
+    const dice = turnState().dice;
+
+    cardRefs.root.classList.toggle("is-active", isActive);
+    cardRefs.root.classList.toggle("is-local-turn", canScore);
+    cardRefs.name.textContent = player.label || player.seatId || "Player";
+    cardRefs.total.textContent = t("total") + " " + String(player.total || 0);
+    updatePortrait(cardRefs, player);
+
+    CATEGORIES.forEach(function (category) {
+      const rowRefs = cardRefs.rows.get(category);
+      if (!rowRefs) return;
+      const used = typeof scores[category] === "number";
+      const selectable = !used && canScore;
+      rowRefs.label.textContent = t(category);
+      rowRefs.value.textContent = used
+        ? String(scores[category])
+        : selectable
+          ? String(previewScore(category, dice))
+          : "—";
+      rowRefs.row.disabled = !selectable;
+      rowRefs.row.classList.toggle("is-used", used);
+      rowRefs.row.classList.toggle("is-preview", selectable);
+      rowRefs.row.title = selectable ? t("score") : "";
     });
-    playArea.append(scoreStack);
-    overlay.append(playArea);
 
-    const note = shell.querySelector(".yahtzee-runtime-note");
-    if (note) note.textContent = t("babylonMissing");
+    cardRefs.bonus.textContent = t("upperBonus") + " " + String(player.upperBonus || 0);
+    cardRefs.footerTotal.textContent = t("total") + " " + String(player.total || 0);
+  }
+
+  function updateModeOptions() {
+    if (!refs) return;
+    const options = Array.from(refs.modeSelect.options || []);
+    options.forEach(function (option) {
+      option.textContent = t("modes." + option.value);
+    });
+    const effectiveMode = state.active || state.complete ? state.mode || selectedMode : selectedMode;
+    refs.modeSelect.value = MODES.includes(effectiveMode) ? effectiveMode : "solo";
+  }
+
+  function updateUtilityButtons() {
+    if (!refs) return;
+    refs.soundButton.textContent = t("sound") + ": " + (audioEnabled ? t("soundOn") : t("soundOff"));
+    refs.soundButton.title = refs.soundButton.textContent;
+    refs.resetButton.hidden = !state.active && !state.complete;
+    refs.resetButton.title = t("reset");
+    refs.closeButton.title = "Close";
+  }
+
+  function updateStageClasses() {
+    if (!refs) return;
+    const phase = state.complete ? "result" : state.active ? "match" : "showcase";
+    refs.shell.dataset.phase = phase;
+    refs.shell.classList.toggle("is-match-active", state.active === true);
+    refs.shell.classList.toggle("is-result", state.complete === true);
+    refs.shell.classList.toggle("has-two-players", getPlayers().length > 1);
+  }
+
+  function render(root) {
+    ensureSceneShell(root);
+    if (!refs) return;
+
+    document.title = t("title");
+    updateStageClasses();
+    updateModeOptions();
+    updateUtilityButtons();
+
+    refs.kicker.textContent = t("kicker");
+    refs.title.textContent = t("title");
+    refs.subtitle.textContent = t("subtitle");
+    refs.modeLabel.textContent = t("mode");
+    refs.startButton.textContent = t("start");
+    refs.runtimeNote.textContent = t("babylonMissing");
+
+    const players = getPlayers();
+    const showMatchHud = state.active || state.complete;
+    refs.pregame.hidden = showMatchHud;
+    refs.matchHud.hidden = !showMatchHud;
+
+    updateScoreCard(refs.leftCard, players[0] || null, 0);
+    updateScoreCard(refs.rightCard, players[1] || null, 1);
+
+    refs.status.textContent = statusText();
+    const turn = turnState();
+    refs.rollButton.textContent = t("roll");
+    refs.rollButton.disabled = !isLocalTurn() || turn.rollCount >= 3;
+    refs.rollButton.hidden = state.complete || !state.active;
+    refs.rollMeta.textContent = t("rolls") + " " + String(turn.rollCount) + "/3";
+    refs.rollMeta.hidden = state.complete || !state.active;
+    refs.resultResetButton.textContent = t("reset");
+    refs.resultResetButton.hidden = !state.complete;
+
     if (babylonHandle && typeof babylonHandle.update === "function") {
-      babylonHandle.update(turnVisualState(), { animate: pendingRollAnimation });
+      babylonHandle.update(state, { animate: pendingRollAnimation });
     }
     pendingRollAnimation = false;
   }
+
+  const stageActions = {
+    canToggleDie: function (index) {
+      const turn = turnState();
+      return Boolean(
+        Number.isInteger(Number(index)) &&
+          Number(index) >= 0 &&
+          Number(index) < 5 &&
+          isLocalTurn() &&
+          turn.rollCount > 0 &&
+          turn.rollCount < 3
+      );
+    },
+    toggleDie: function (index) {
+      const normalized = Number(index);
+      if (!stageActions.canToggleDie(normalized)) return false;
+      playWoodClick(190);
+      command("GameRoomYahtzeeToggleHold", { index: normalized });
+      return true;
+    },
+  };
+
+  global.GameRoomYahtzeeStageActions = stageActions;
 
   function handleState(message) {
     const payload =
@@ -518,8 +735,7 @@
       disposeAudio();
       if (mountedRoot) mountedRoot.classList.remove("yahtzee-root");
       mountedRoot = null;
-      mountedShell = null;
-      mountedOverlay = null;
+      refs = null;
       pendingRollAnimation = false;
       localRollAnimationStartedAt = 0;
     },

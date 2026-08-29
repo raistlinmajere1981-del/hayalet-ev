@@ -11,57 +11,56 @@ type CameraShot = {
   ease: number;
 };
 
-void test("Yahtzee hybrid stage uses the 3D table as the primary game interface", () => {
+void test("Yahtzee presentation v2 renders the stage directly without the legacy promotion bridge", () => {
   const indexHtml = readFileSync("rooms/game-room/ui/index.html", "utf8");
-  const bridgeSource = readFileSync(
-    "rooms/game-room/main-functions/yahtzee/ui/stage-template-bridge.js",
+  const runtimeSource = readFileSync(
+    "rooms/game-room/main-functions/yahtzee/ui/runtime.js",
     "utf8"
   );
   const sceneSource = readFileSync(
     "rooms/game-room/main-functions/yahtzee/ui/babylon-scene.js",
     "utf8"
   );
+  const stylesSource = readFileSync(
+    "rooms/game-room/main-functions/yahtzee/styles.css",
+    "utf8"
+  );
   const vendorEntrySource = readFileSync(
     "rooms/game-room/main-functions/yahtzee/vendor/babylon-runtime-entry.js",
     "utf8"
   );
-  const diegeticStyles = readFileSync(
-    "rooms/game-room/main-functions/yahtzee/diegetic-stage.css",
-    "utf8"
-  );
 
-  assert.match(indexHtml, /main-functions\/yahtzee\/diegetic-stage\.css/);
+  assert.match(indexHtml, /main-functions\/yahtzee\/styles\.css/);
+  assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/multiplayer\.css/);
+  assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/hybrid-stage\.css/);
+  assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/diegetic-stage\.css/);
+  assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/ui\/hybrid-stage\.js/);
+  assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/ui\/stage-template-bridge\.js/);
 
-  assert.match(bridgeSource, /GameRoomYahtzeeStageActions/);
-  assert.match(bridgeSource, /yahtzee-stage-interface/);
-  assert.match(bridgeSource, /yahtzee-stage-roll-button/);
-  assert.match(bridgeSource, /yahtzee-stage-status-dock/);
-  assert.match(bridgeSource, /yahtzee-score-stack/);
-  assert.match(bridgeSource, /dicePanel\.hidden = true/);
-  assert.match(bridgeSource, /Number\(turn\.rollCount\) > 0/);
+  assert.match(runtimeSource, /GameRoomYahtzeeStageActions/);
+  assert.match(runtimeSource, /yahtzee-player-panel/);
+  assert.match(runtimeSource, /yahtzee-player-portrait/);
+  assert.match(runtimeSource, /previewScore/);
+  assert.match(runtimeSource, /GameRoomYahtzeeScore/);
+  assert.match(runtimeSource, /GameRoomYahtzeeToggleHold/);
+  assert.match(runtimeSource, /babylonHandle\.update\(state/);
+  assert.doesNotMatch(runtimeSource, /overlay\.innerHTML/);
 
+  assert.match(sceneSource, /RACK_LAYOUT/);
+  assert.match(sceneSource, /yahtzee-game-table-hold-well/);
+  assert.match(sceneSource, /targetPosition/);
+  assert.match(sceneSource, /scene\.constantlyUpdateMeshUnderPointer = false/);
+  assert.match(sceneSource, /targetFps = hasRollingDice\(\) \? 45 : latestState\.active === true \? 30 : 15/);
+  assert.match(sceneSource, /engine\.setHardwareScalingLevel\(Math\.max\(1\.15/);
   assert.match(sceneSource, /cube\.isPickable = true/);
-  assert.match(sceneSource, /yahtzeeDieIndex/);
   assert.match(sceneSource, /scene\.onPointerDown/);
-  assert.match(sceneSource, /scene\.constantlyUpdateMeshUnderPointer = true/);
-  assert.match(sceneSource, /GameRoomYahtzeeStageActions/);
-  assert.doesNotMatch(sceneSource, /yahtzee-stage-deck-slab/);
-  assert.match(sceneSource, /TABLE_FOOTPRINT_SCALE = 0\.9/);
-  assert.match(sceneSource, /DIE_SCALE = 0\.86/);
-  assert.match(sceneSource, /if \(model\.held\) \{\s*model\.roll = null;\s*return;/);
-  assert.match(sceneSource, /yahtzee-game-table-foot-contact/);
-  assert.match(sceneSource, /getDiceAnimationState/);
   assert.doesNotMatch(sceneSource, /camera\.attachControl/);
   assert.match(vendorEntrySource, /@babylonjs\/core\/Culling\/ray\.js/);
 
-  assert.match(diegeticStyles, /\.yahtzee-stage-interface/);
-  assert.match(diegeticStyles, /\.yahtzee-stage-action-bar/);
-  assert.match(diegeticStyles, /\.yahtzee-stage-roll-button/);
-  assert.match(diegeticStyles, /data-player-count="2"/);
-  assert.match(diegeticStyles, /pointer-events: auto/);
-  assert.match(diegeticStyles, /justify-self: stretch/);
-  assert.match(diegeticStyles, /left: clamp\(220px, 14\.5vw, 290px\)/);
-  assert.match(diegeticStyles, /right: clamp\(220px, 14\.5vw, 290px\)/);
+  assert.match(stylesSource, /\.yahtzee-player-portrait/);
+  assert.match(stylesSource, /\.yahtzee-score-row\.is-preview/);
+  assert.match(stylesSource, /\.yahtzee-center-dock/);
+  assert.doesNotMatch(stylesSource, /backdrop-filter/);
 });
 
 void test("Yahtzee Babylon runtime registers ray picking for interactive dice", async () => {
@@ -79,7 +78,7 @@ void test("Yahtzee Babylon runtime registers ray picking for interactive dice", 
   assert.equal(typeof runtime.BABYLON?.Texture, "function");
 });
 
-void test("Yahtzee camera presets stay cinematic without leaving the match composition", () => {
+void test("Yahtzee camera presets create a visible roll shot while keeping player turns controlled", () => {
   const source = readFileSync(
     "rooms/game-room/main-functions/yahtzee/ui/theme-pirate-deck.js",
     "utf8"
@@ -98,15 +97,12 @@ void test("Yahtzee camera presets stay cinematic without leaving the match compo
   const turnRight = shots["turnRight"];
   assert.ok(showcase && match && roll && turnLeft && turnRight);
 
-  assert.ok(showcase.radius >= match.radius);
-  assert.ok(showcase.radius - match.radius <= 0.8);
-  assert.ok(Math.abs(roll.radius - match.radius) <= 0.4);
-  assert.ok(Math.abs(roll.beta - match.beta) <= 0.04);
-  assert.ok(Math.abs(turnLeft.alpha - match.alpha) <= 0.02);
-  assert.ok(Math.abs(turnRight.alpha - match.alpha) <= 0.02);
-  assert.ok(Math.abs(turnLeft.radius - match.radius) <= 0.1);
-  assert.ok(Math.abs(turnRight.radius - match.radius) <= 0.1);
-  assert.ok(Math.abs(turnLeft.target[0] || 0) <= 0.2);
-  assert.ok(Math.abs(turnRight.target[0] || 0) <= 0.2);
-  assert.ok(Math.max(match.ease, roll.ease, turnLeft.ease, turnRight.ease) <= 3);
+  assert.ok(showcase.radius > match.radius);
+  assert.ok(match.radius - roll.radius >= 0.9);
+  assert.ok(match.beta - roll.beta >= 0.05);
+  assert.ok(Math.abs(turnLeft.alpha - match.alpha) <= 0.05);
+  assert.ok(Math.abs(turnRight.alpha - match.alpha) <= 0.05);
+  assert.ok(Math.abs(turnLeft.target[0] || 0) <= 0.35);
+  assert.ok(Math.abs(turnRight.target[0] || 0) <= 0.35);
+  assert.ok(roll.ease > match.ease);
 });
