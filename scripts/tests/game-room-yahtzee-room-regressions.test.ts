@@ -14,7 +14,7 @@ const requiredFiles = [
   "rooms/game-room/main-functions/yahtzee/ui/runtime.js",
   "rooms/game-room/main-functions/yahtzee/ui/bridge.js",
   "rooms/game-room/main-functions/yahtzee/ui/babylon-scene.js",
-  "rooms/game-room/main-functions/yahtzee/assets/hybrid/deck-stage-v2.webp",
+  "rooms/game-room/main-functions/yahtzee/assets/hybrid/deck-stage-v3.webp",
   "rooms/game-room/main-functions/yahtzee/assets/hybrid/table-mahogany.webp",
   "rooms/game-room/main-functions/yahtzee/assets/hybrid/table-felt-burgundy.webp",
   "rooms/game-room/main-functions/yahtzee/styles.css",

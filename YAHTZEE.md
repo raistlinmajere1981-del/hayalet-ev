@@ -105,7 +105,7 @@ The Yahtzee presentation deliberately avoids a free-roam 3D world.
 
 The stage is split into three layers:
 
-1. **Art backdrop** — an integrated cinematic deck environment with layered weather and crew standees.
+1. **Art backdrop** — an integrated cinematic flat-deck environment with layered weather and crew standees.
 2. **Babylon gameplay layer** — the textured mahogany/felt play surface, lantern and five interactive dice.
 3. **UI layer** — game controls, dice/hold controls and score cards.
 
@@ -150,7 +150,7 @@ The intended art pass can provide:
 - a realistic/stylized storm sky,
 - a separate ocean layer,
 - a deck/background framing image,
-- an integrated 16:9 deck environment with an empty center dais,
+- an integrated 16:9 deck environment with an open, continuous center deck,
 - tileable mahogany and oxblood felt table materials,
 - optional lightning overlay,
 - four transparent paper/standee crew characters,

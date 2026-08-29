@@ -128,7 +128,7 @@
   background-position: calc(50% + var(--yahtzee-stage-pan-x)) center;
   background-size: cover;
   filter: saturate(0.96) contrast(1.04) brightness(1.03);
-  transform: scale(1.012);
+  transform: scale(1.006);
   transform-origin: 50% 58%;
   transition:
     opacity 620ms ease,
@@ -274,12 +274,12 @@
 .yahtzee-stage-player {
   bottom: 9%;
   display: grid;
-  width: clamp(132px, 10.8vw, 192px);
-  min-height: clamp(220px, 34vh, 370px);
+  width: clamp(154px, 12.8vw, 228px);
+  min-height: clamp(252px, 38vh, 420px);
   grid-template-rows: 1fr auto;
   align-items: end;
   justify-items: center;
-  opacity: 0.72;
+  opacity: 0.8;
   transition:
     opacity 420ms ease,
     transform 620ms cubic-bezier(0.2, 0.7, 0.2, 1),
@@ -287,13 +287,13 @@
 }
 
 .yahtzee-stage-player.is-left {
-  left: 9%;
-  transform: translateX(-9%) rotate(-1.5deg) scale(0.94);
+  left: 6.5%;
+  transform: translateX(-7%) rotate(-1.2deg) scale(0.98);
 }
 
 .yahtzee-stage-player.is-right {
-  right: 21%;
-  transform: translateX(9%) rotate(1.5deg) scale(0.94);
+  right: 14%;
+  transform: translateX(7%) rotate(1.2deg) scale(0.98);
 }
 
 .yahtzee-scene.has-two-players .yahtzee-stage-player {
@@ -319,7 +319,7 @@
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 210px;
+  min-height: 244px;
   overflow: hidden;
   border-radius: 42% 42% 14% 14%;
   background:
@@ -469,10 +469,10 @@
 
 @keyframes yahtzee-environment-drift {
   from {
-    transform: translate3d(calc(var(--yahtzee-stage-pan-x) - 0.22%), 0, 0) scale(1.012);
+    transform: translate3d(calc(var(--yahtzee-stage-pan-x) - 0.08%), 0, 0) scale(1.006);
   }
   to {
-    transform: translate3d(calc(var(--yahtzee-stage-pan-x) + 0.22%), -0.16%, 0) scale(1.018);
+    transform: translate3d(calc(var(--yahtzee-stage-pan-x) + 0.08%), -0.06%, 0) scale(1.009);
   }
 }
 
@@ -559,8 +559,8 @@
 @media (max-width: 1100px) {
   .yahtzee-stage-player {
     bottom: 18%;
-    width: 116px;
-    min-height: 214px;
+    width: 132px;
+    min-height: 238px;
   }
 
   .yahtzee-stage-player.is-right {
@@ -585,8 +585,8 @@
 @media (max-width: 720px) {
   .yahtzee-stage-player {
     bottom: 24%;
-    width: 92px;
-    min-height: 176px;
+    width: 104px;
+    min-height: 194px;
   }
 
   .yahtzee-stage-player.is-left {
@@ -631,7 +631,7 @@
   }
 
   .yahtzee-stage-environment {
-    transform: scale(1.012);
+    transform: scale(1.006);
   }
 
   .yahtzee-stage-player-art {

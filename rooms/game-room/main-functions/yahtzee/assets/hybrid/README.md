@@ -6,7 +6,7 @@ The runtime does not require these files to exist. Until art is supplied it uses
 
 Recommended room-local files:
 
-- `deck-stage-v2.webp` — integrated 16:9 cinematic environment with the empty center dais aligned to the Babylon table
+- `deck-stage-v3.webp` — integrated 16:9 cinematic environment with a continuous flat center deck aligned to the Babylon table
 - `table-mahogany.webp` — tileable photorealistic mahogany texture for the Babylon table body
 - `table-felt-burgundy.webp` — tileable oxblood wool felt texture for the inset dice surface
 - `sky-night.webp` — 1920x1080 or wider, moon/storm sky with a clean horizon zone

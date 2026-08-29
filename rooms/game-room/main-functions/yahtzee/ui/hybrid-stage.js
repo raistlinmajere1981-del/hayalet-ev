@@ -125,7 +125,7 @@
       const activeIndex = Number(source.activePlayerIndex) || 0;
       const phase =
         source.complete === true ? "result" : source.active === true ? "match" : "showcase";
-      const pan = phase === "match" && players.length > 1 ? (activeIndex === 1 ? -0.45 : 0.45) : 0;
+      const pan = phase === "match" && players.length > 1 ? (activeIndex === 1 ? -0.18 : 0.18) : 0;
 
       sceneElement.dataset.yahtzeeStagePhase = phase;
       sceneElement.dataset.yahtzeeActivePlayer = String(activeIndex);

@@ -102,7 +102,7 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/stage-template-bridge.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/bridge.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/README.md`,
-      `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/deck-stage-v2.webp`,
+      `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/deck-stage-v3.webp`,
       `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/table-mahogany.webp`,
       `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/table-felt-burgundy.webp`,
       `${installedCopy.rootDir}/main-functions/yahtzee/protocols/game-room-yahtzee-ai-turn.md`,
@@ -144,7 +144,7 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
       "utf8"
     );
     assert.match(themeSource, /pirate-deck-hybrid/);
-    assert.match(themeSource, /deck-stage-v2\.webp/);
+    assert.match(themeSource, /deck-stage-v3\.webp/);
     assert.match(themeSource, /table-mahogany\.webp/);
     assert.match(themeSource, /table-felt-burgundy\.webp/);
     assert.match(themeSource, /showcase:/);
@@ -197,7 +197,11 @@ void test("game-room installed UI contains the Yahtzee feature and localized ass
       "utf8"
     );
     assert.match(sceneSource, /GameRoomYahtzeeBabylonScene/);
-    assert.match(sceneSource, /yahtzee-stage-deck-slab/);
+    assert.doesNotMatch(sceneSource, /yahtzee-stage-deck-slab/);
+    assert.match(sceneSource, /yahtzee-game-table-foot-contact/);
+    assert.match(sceneSource, /TABLE_FOOTPRINT_SCALE = 0\.9/);
+    assert.match(sceneSource, /DIE_SCALE = 0\.86/);
+    assert.match(sceneSource, /getDiceAnimationState/);
     assert.match(sceneSource, /yahtzee-game-table-top/);
     assert.match(sceneSource, /DEFAULT_DICE\.map/);
     assert.match(sceneSource, /applyDieValue\(model, values\[index\]\)/);
