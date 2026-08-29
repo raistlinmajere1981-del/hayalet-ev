@@ -99,17 +99,15 @@ Live matches use a `matchId` plus monotonically increasing `revision`. Older or 
 
 See `rooms/game-room/main-functions/yahtzee/protocols/game-room-yahtzee-us1-transport.md`.
 
-## Presentation V2
+## Presentation V3
 
-The second presentation pass removes the old "render a classic DOM game, then promote it into a cinematic stage" path.
-
-The active presentation is now direct:
+The active presentation is direct and intentionally narrow:
 
 1. **Integrated art backdrop** — one room-local cinematic deck image supplies the ship, sea and night environment.
 2. **Babylon play surface** — table, lantern and five interactive dice remain true 3D.
 3. **Direct HUD** — pre-game setup, player portrait frames, score sheets, status and roll controls are created once and updated in place.
 
-The old `hybrid-stage.js`, `stage-template-bridge.js`, `multiplayer.css`, `hybrid-stage.css` and `diegetic-stage.css` files are no longer loaded by `ui/index.html`. They are temporarily retained in the source tree as rollback/reference material until the V2 pass has completed local live testing.
+The earlier hybrid promotion path has now been removed from the source tree. `hybrid-stage.js`, `stage-template-bridge.js`, `multiplayer.css`, `hybrid-stage.css` and `diegetic-stage.css` are no longer shipped.
 
 ### Player identity
 
@@ -127,9 +125,34 @@ The preview is presentation-only. The host still validates and applies the actua
 
 ### Held dice rack
 
-The five brass wells on the right side of the 3D table are now functional. Clicking a die after a roll sends the normal host-owned hold command; when the host state marks that die as held, the 3D die moves into its corresponding rack position.
+The five brass wells on the right side of the 3D table are functional. Clicking a die after a roll sends the normal host-owned hold command; when the host state marks that die as held, the 3D die moves into its corresponding rack slot.
+
+Presentation V3 gives held dice their own scale, position and orientation targets. Held dice are smaller than play dice and are slightly fanned across the rack, which prevents four or five held dice from visually merging into one long block in perspective.
 
 Clicking a held die before the final roll returns it to the play surface through the same host command path.
+
+## Art-tuning contract
+
+`ui/theme-pirate-deck.js` owns the numbers expected to change during local art direction.
+
+The `stageConfig` object contains:
+
+- table position, scale and component geometry,
+- dice size, normal scale, held scale and five play positions,
+- roll timing and motion amplitudes,
+- five held-rack slots and brass-well geometry,
+- lantern placement and light values,
+- idle, active and rolling render budgets.
+
+`ui/babylon-scene.js` reads this object with safe defaults. The goal is to keep the Babylon implementation stable while the local Codex/art pass changes proportions, materials and composition through one compact contract.
+
+The five held-rack slot entries use:
+
+```text
+[x, y, z, yawOffset, pitch, roll]
+```
+
+This is a presentation-only contract. It does not alter host-owned held state or any gameplay rule.
 
 ## Camera contract
 
@@ -143,34 +166,36 @@ The camera is not user-controlled. Orbit, wheel zoom and drag navigation remain 
 - `roll` — a clearly closer temporary dice shot
 - `result` — wider end-of-game composition
 
-The roll shot is intentionally more visible than in the first cinematic pass; it still returns automatically to the correct match/turn shot.
+The roll shot returns automatically to the correct match/turn shot.
 
 ## Performance contract
 
-Presentation V2 is intentionally biased toward low-end systems.
+Presentation V3 remains intentionally biased toward low-end systems.
 
-The active path now:
+The active path:
 
-- creates the Yahtzee HUD once instead of rebuilding and re-parenting the old DOM on every state update,
-- removes the active 2.5D crew/player layer and its continuous CSS animations,
+- creates the Yahtzee HUD once instead of rebuilding and re-parenting a second DOM presentation on every state update,
+- has no active 2.5D crew/player animation layer,
 - avoids `backdrop-filter` in the Yahtzee UI,
 - uses a single integrated environment image behind the Babylon canvas,
 - keeps only the immediate play surface in 3D,
-- removes unnecessary table decoration meshes,
+- avoids unnecessary table decoration meshes,
 - disables Babylon's continuous mesh-under-pointer update,
-- increases hardware scaling slightly to reduce fill cost,
-- caps Babylon rendering at about 15 fps while idle/result, 30 fps during normal play and 45 fps only while dice are visibly rolling,
+- uses a configurable hardware scaling floor,
+- targets about 15 fps while idle/result, 30 fps during normal play and 45 fps only while dice are visibly rolling,
 - skips rendering while the document is hidden,
 - respects `prefers-reduced-motion` for nonessential motion.
+
+The render-budget values now live under `stageConfig.performance`, so profiling changes can be made without editing the scene runtime.
 
 No physics engine or real-time shadow pipeline is used.
 
 ## Main presentation files
 
 - `ui/runtime.js` — persistent direct HUD, score previews, stage actions and Babylon/audio coordination
-- `ui/theme-pirate-deck.js` — art slots and camera presets
+- `ui/theme-pirate-deck.js` — art slots, stage tuning contract and camera presets
 - `ui/camera-director.js` — automatic state-driven camera transitions
-- `ui/babylon-scene.js` — transparent 3D table, held-dice rack and render throttling
+- `ui/babylon-scene.js` — transparent 3D table, configurable held-dice rack and render throttling
 - `ui/audio-runtime.js` — procedural ambient/interaction audio
 - `styles.css` — active Yahtzee presentation styles
 
@@ -182,13 +207,15 @@ Room-local image slots remain under:
 
 `rooms/game-room/main-functions/yahtzee/assets/hybrid/`
 
-The V2 runtime actively consumes:
+The active runtime consumes:
 
 - `deck-stage-v3.webp` — integrated 16:9 deck environment
 - `table-mahogany.webp` — table wood texture
 - `table-felt-burgundy.webp` — inset felt texture
 
-Other retained art files are currently legacy/reference assets and are not loaded by the active presentation.
+Other retained image assets are reference/experimental material and are not loaded by the active presentation.
+
+See `rooms/game-room/main-functions/yahtzee/assets/hybrid/README.md` for the local art handoff contract.
 
 ## Babylon runtime
 
@@ -206,16 +233,20 @@ The generated runtime contains only the Babylon APIs imported by `vendor/babylon
 
 The Babylon Apache-2.0 license and notice are kept next to the generated vendor file.
 
-## Next local art/tuning pass
+## Next local Codex/art pass
 
-The architecture-heavy work should stay in the repository. A local Codex/art pass is a better use of interactive tuning time for:
+The architecture-heavy cleanup is complete enough that the next pass should concentrate on visible game assets and live tuning:
 
-- final table proportions against the real window size,
-- final camera preset numbers after live inspection,
-- dice trajectory feel and timing,
-- optional replacement of procedural interaction sounds with room-local recorded samples,
-- final typography/spacing corrections at the user's actual desktop resolution,
-- eventual removal of the parked legacy hybrid presentation files after rollback is no longer useful.
+- redesign the table silhouette and proportions for the pirate-deck theme,
+- redesign the dice with better edges/material response while preserving the five-die interaction contract,
+- generate/replace the final wood, felt, brass and die-surface art,
+- tune table/dice/rack values through `stageConfig`,
+- tune camera preset numbers only after the final table silhouette is stable,
+- tune dice trajectory feel and timing against the live window,
+- optionally replace procedural interaction sounds with room-local recorded samples,
+- finish typography/spacing corrections at the actual desktop resolution.
+
+The host engine, scoring logic, AI legal-action contract and US1 transport should remain outside that art pass unless a real gameplay defect is found.
 
 ## Validation
 
