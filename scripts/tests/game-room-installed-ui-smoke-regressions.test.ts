@@ -4,7 +4,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 
 import { createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 
-void test("game-room installed UI contains the Yahtzee presentation v2 runtime", async () => {
+void test("game-room installed UI contains the Yahtzee presentation v3 runtime", async () => {
   const installedCopy = await createRoomInstalledCopy("game-room");
 
   try {
@@ -129,10 +129,15 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/theme-pirate-deck.js`,
       "utf8"
     );
-    assert.match(themeSource, /pirate-deck-v2/);
+    assert.match(themeSource, /pirate-deck-v3/);
     assert.match(themeSource, /deck-stage-v3\.webp/);
     assert.match(themeSource, /table-mahogany\.webp/);
     assert.match(themeSource, /table-felt-burgundy\.webp/);
+    assert.match(themeSource, /stageConfig:/);
+    assert.match(themeSource, /heldScale: 0\.56/);
+    assert.match(themeSource, /idleFps: 15/);
+    assert.match(themeSource, /activeFps: 30/);
+    assert.match(themeSource, /rollFps: 45/);
     assert.match(themeSource, /heldDiceRack: true/);
 
     const audioSource = readFileSync(
@@ -149,13 +154,16 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
       "utf8"
     );
     assert.match(sceneSource, /GameRoomYahtzeeBabylonScene/);
-    assert.match(sceneSource, /RACK_LAYOUT/);
+    assert.match(sceneSource, /readStageConfig/);
     assert.match(sceneSource, /yahtzee-game-table-hold-well/);
     assert.match(sceneSource, /targetPosition/);
-    assert.match(sceneSource, /TABLE_FOOTPRINT_SCALE = 0\.95/);
-    assert.match(sceneSource, /DIE_SCALE = 0\.9/);
+    assert.match(sceneSource, /targetRotation/);
+    assert.match(sceneSource, /targetScaling/);
     assert.match(sceneSource, /scene\.constantlyUpdateMeshUnderPointer = false/);
-    assert.match(sceneSource, /targetFps = hasRollingDice\(\) \? 45 : latestState\.active === true \? 30 : 15/);
+    assert.match(sceneSource, /performanceConfig\.rollFps/);
+    assert.match(sceneSource, /performanceConfig\.activeFps/);
+    assert.match(sceneSource, /performanceConfig\.idleFps/);
+    assert.match(sceneSource, /hardwareScalingFloor/);
     assert.match(sceneSource, /camera\.inputs\.clear\(\)/);
     assert.match(sceneSource, /new B\.Color4\(0, 0, 0, 0\)/);
     assert.doesNotMatch(sceneSource, /camera\.attachControl/);
