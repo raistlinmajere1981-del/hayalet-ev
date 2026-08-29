@@ -11,7 +11,13 @@ type CameraShot = {
   ease: number;
 };
 
-void test("Yahtzee presentation v2 renders the stage directly without the legacy promotion bridge", () => {
+type StageConfig = {
+  dice?: { heldScale?: number; scale?: number; layout?: unknown[] };
+  rack?: { slots?: unknown[] };
+  performance?: { idleFps?: number; activeFps?: number; rollFps?: number };
+};
+
+void test("Yahtzee presentation renders directly and exposes an art-tuning contract", () => {
   const indexHtml = readFileSync("rooms/game-room/ui/index.html", "utf8");
   const runtimeSource = readFileSync(
     "rooms/game-room/main-functions/yahtzee/ui/runtime.js",
@@ -23,6 +29,10 @@ void test("Yahtzee presentation v2 renders the stage directly without the legacy
   );
   const stylesSource = readFileSync(
     "rooms/game-room/main-functions/yahtzee/styles.css",
+    "utf8"
+  );
+  const themeSource = readFileSync(
+    "rooms/game-room/main-functions/yahtzee/ui/theme-pirate-deck.js",
     "utf8"
   );
   const vendorEntrySource = readFileSync(
@@ -46,12 +56,20 @@ void test("Yahtzee presentation v2 renders the stage directly without the legacy
   assert.match(runtimeSource, /babylonHandle\.update\(state/);
   assert.doesNotMatch(runtimeSource, /overlay\.innerHTML/);
 
-  assert.match(sceneSource, /RACK_LAYOUT/);
+  assert.match(themeSource, /stageConfig:/);
+  assert.match(themeSource, /heldScale:/);
+  assert.match(themeSource, /slots:/);
+  assert.match(themeSource, /idleFps:/);
+  assert.match(sceneSource, /readStageConfig/);
   assert.match(sceneSource, /yahtzee-game-table-hold-well/);
   assert.match(sceneSource, /targetPosition/);
+  assert.match(sceneSource, /targetRotation/);
+  assert.match(sceneSource, /targetScaling/);
   assert.match(sceneSource, /scene\.constantlyUpdateMeshUnderPointer = false/);
-  assert.match(sceneSource, /targetFps = hasRollingDice\(\) \? 45 : latestState\.active === true \? 30 : 15/);
-  assert.match(sceneSource, /engine\.setHardwareScalingLevel\(Math\.max\(1\.15/);
+  assert.match(sceneSource, /performanceConfig\.rollFps/);
+  assert.match(sceneSource, /performanceConfig\.activeFps/);
+  assert.match(sceneSource, /performanceConfig\.idleFps/);
+  assert.match(sceneSource, /hardwareScalingFloor/);
   assert.match(sceneSource, /cube\.isPickable = true/);
   assert.match(sceneSource, /scene\.onPointerDown/);
   assert.doesNotMatch(sceneSource, /camera\.attachControl/);
@@ -61,6 +79,29 @@ void test("Yahtzee presentation v2 renders the stage directly without the legacy
   assert.match(stylesSource, /\.yahtzee-score-row\.is-preview/);
   assert.match(stylesSource, /\.yahtzee-center-dock/);
   assert.doesNotMatch(stylesSource, /backdrop-filter/);
+});
+
+void test("Yahtzee held-rack tuning keeps five separate slots and reduces held die scale", () => {
+  const source = readFileSync(
+    "rooms/game-room/main-functions/yahtzee/ui/theme-pirate-deck.js",
+    "utf8"
+  );
+  const sandbox = { window: {} } as {
+    window: {
+      GameRoomYahtzeePirateDeckTheme?: {
+        stageConfig?: StageConfig;
+      };
+    };
+  };
+  runInNewContext(source, sandbox);
+  const config = sandbox.window.GameRoomYahtzeePirateDeckTheme?.stageConfig;
+  assert.ok(config);
+  assert.equal(config.rack?.slots?.length, 5);
+  assert.equal(config.dice?.layout?.length, 5);
+  assert.ok((config.dice?.heldScale ?? 1) < (config.dice?.scale ?? 0));
+  assert.equal(config.performance?.idleFps, 15);
+  assert.equal(config.performance?.activeFps, 30);
+  assert.equal(config.performance?.rollFps, 45);
 });
 
 void test("Yahtzee Babylon runtime registers ray picking for interactive dice", async () => {
