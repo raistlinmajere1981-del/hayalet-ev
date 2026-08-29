@@ -5,23 +5,74 @@
 
   const DEFAULT_DICE = [1, 1, 1, 1, 1];
   const DEFAULT_HELD = [false, false, false, false, false];
-  const TABLE_FOOTPRINT_SCALE = 0.95;
-  const DIE_SCALE = 0.9;
-  const DIE_LAYOUT = [
-    [-1.28, -0.7, -0.08],
-    [0, -0.8, 0.05],
-    [1.28, -0.68, -0.04],
-    [-0.64, 0.2, 0.08],
-    [0.67, 0.19, -0.07],
-  ];
-  const RACK_LAYOUT = [
-    [2.62, 1.48, -1.06],
-    [2.62, 1.48, -0.54],
-    [2.62, 1.48, 0],
-    [2.62, 1.48, 0.54],
-    [2.62, 1.48, 1.06],
-  ];
   let activeHandle = null;
+
+  const DEFAULT_STAGE_CONFIG = {
+    table: {
+      position: [0, 0, 0.08],
+      scale: [0.95, 1, 0.95],
+      top: { size: [7.05, 0.32, 3.86], position: [0, 0.92, 0] },
+      inset: { size: [5.56, 0.06, 3.14], position: [-0.37, 1.112, 0] },
+      apron: { size: [6.42, 0.46, 0.18], position: [0, 0.68, -1.86] },
+      trim: [
+        { size: [6.84, 0.12, 0.14], position: [0, 1.17, -1.86] },
+        { size: [6.84, 0.12, 0.14], position: [0, 1.17, 1.86] },
+        { size: [0.14, 0.12, 3.66], position: [-3.39, 1.17, 0] },
+        { size: [0.14, 0.12, 3.66], position: [3.39, 1.17, 0] },
+      ],
+    },
+    dice: {
+      size: 0.78,
+      scale: 0.9,
+      heldScale: 0.56,
+      y: 1.47,
+      pipRadius: 0.075,
+      layout: [
+        [-1.28, -0.7, -0.08],
+        [0, -0.8, 0.05],
+        [1.28, -0.68, -0.04],
+        [-0.64, 0.2, 0.08],
+        [0.67, 0.19, -0.07],
+      ],
+      roll: {
+        durationMs: 560,
+        durationStepMs: 32,
+        bounce: 0.52,
+        bounceStep: 0.018,
+        lateral: 0.13,
+        lateralStep: 0.012,
+        depthWobble: 0.1,
+      },
+    },
+    rack: {
+      wellX: 2.91,
+      wellY: 1.228,
+      wellZ: [-1.18, -0.6, 0, 0.6, 1.18],
+      wellRadius: 0.16,
+      ringDiameter: 0.4,
+      ringThickness: 0.05,
+      slots: [
+        [2.66, 1.45, -1.18, -0.24, -0.045, 0.025],
+        [2.62, 1.45, -0.6, -0.12, -0.025, 0.012],
+        [2.59, 1.45, 0, 0, 0, 0],
+        [2.62, 1.45, 0.6, 0.12, 0.025, -0.012],
+        [2.66, 1.45, 1.18, 0.24, 0.045, -0.025],
+      ],
+    },
+    lantern: {
+      position: [2.3, 1.13, 0.86],
+      scale: 0.76,
+      lightIntensity: 1.58,
+      lightRange: 8.2,
+    },
+    performance: {
+      hardwareScalingFloor: 1.15,
+      pixelRatioDivisor: 1.2,
+      idleFps: 15,
+      activeFps: 30,
+      rollFps: 45,
+    },
+  };
 
   const DIE_PIPS = {
     1: [[0, 0]],
@@ -57,6 +108,39 @@
     ],
   };
 
+  function isRecord(value) {
+    return Boolean(value && typeof value === "object" && Array.isArray(value) === false);
+  }
+
+  function numberOr(value, fallback) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function vector3Values(candidate, fallback) {
+    const values = Array.isArray(candidate) ? candidate : [];
+    return [
+      numberOr(values[0], fallback[0]),
+      numberOr(values[1], fallback[1]),
+      numberOr(values[2], fallback[2]),
+    ];
+  }
+
+  function mergeRecord(base, candidate) {
+    return isRecord(candidate) ? Object.assign({}, base, candidate) : Object.assign({}, base);
+  }
+
+  function readStageConfig(theme) {
+    const source = isRecord(theme && theme.stageConfig) ? theme.stageConfig : {};
+    return {
+      table: mergeRecord(DEFAULT_STAGE_CONFIG.table, source.table),
+      dice: mergeRecord(DEFAULT_STAGE_CONFIG.dice, source.dice),
+      rack: mergeRecord(DEFAULT_STAGE_CONFIG.rack, source.rack),
+      lantern: mergeRecord(DEFAULT_STAGE_CONFIG.lantern, source.lantern),
+      performance: mergeRecord(DEFAULT_STAGE_CONFIG.performance, source.performance),
+    };
+  }
+
   function hasRuntime(B) {
     return Boolean(
       B &&
@@ -78,7 +162,7 @@
     const material = new B.StandardMaterial(name, scene);
     material.diffuseColor = color3(B, diffuse);
     material.specularColor = color3(B, settings.specular || [0.05, 0.04, 0.03]);
-    material.specularPower = Number(settings.specularPower) || 48;
+    material.specularPower = numberOr(settings.specularPower, 48);
     if (settings.ambient) material.ambientColor = color3(B, settings.ambient);
     if (settings.emissive) material.emissiveColor = color3(B, settings.emissive);
     if (typeof settings.alpha === "number") material.alpha = settings.alpha;
@@ -126,72 +210,96 @@
       : state || {};
   }
 
-  function createTable(B, scene, root, materials) {
+  function applyTransform(B, node, position, scaling) {
+    const p = vector3Values(position, [0, 0, 0]);
+    node.position = new B.Vector3(p[0], p[1], p[2]);
+    if (scaling) {
+      const s = vector3Values(scaling, [1, 1, 1]);
+      node.scaling = new B.Vector3(s[0], s[1], s[2]);
+    }
+  }
+
+  function createBoxFromConfig(B, scene, name, entry, material, parent) {
+    const fallback = { size: [1, 1, 1], position: [0, 0, 0] };
+    const config = isRecord(entry) ? entry : fallback;
+    const size = vector3Values(config.size, fallback.size);
+    const mesh = B.CreateBox(name, { width: size[0], height: size[1], depth: size[2] }, scene);
+    const position = vector3Values(config.position, fallback.position);
+    mesh.position = new B.Vector3(position[0], position[1], position[2]);
+    mesh.material = material;
+    makeUnpickable(mesh, parent);
+    return mesh;
+  }
+
+  function createTable(B, scene, root, materials, config) {
     const tableRoot = new B.TransformNode("yahtzee-table-root", scene);
-    tableRoot.position = new B.Vector3(0, 0, 0.08);
-    tableRoot.scaling = new B.Vector3(TABLE_FOOTPRINT_SCALE, 1, TABLE_FOOTPRINT_SCALE);
+    applyTransform(B, tableRoot, config.table.position, config.table.scale);
     tableRoot.parent = root;
 
-    const top = B.CreateBox(
-      "yahtzee-game-table-top",
-      { width: 7.05, height: 0.32, depth: 3.86 },
-      scene
-    );
-    top.position = new B.Vector3(0, 0.92, 0);
-    top.material = materials.table;
-    makeUnpickable(top, tableRoot);
-
-    const inset = B.CreateBox(
+    createBoxFromConfig(B, scene, "yahtzee-game-table-top", config.table.top, materials.table, tableRoot);
+    createBoxFromConfig(
+      B,
+      scene,
       "yahtzee-game-table-inset",
-      { width: 5.56, height: 0.06, depth: 3.14 },
-      scene
+      config.table.inset,
+      materials.tableInset,
+      tableRoot
     );
-    inset.position = new B.Vector3(-0.37, 1.112, 0);
-    inset.material = materials.tableInset;
-    makeUnpickable(inset, tableRoot);
+    createBoxFromConfig(
+      B,
+      scene,
+      "yahtzee-game-table-front-apron",
+      config.table.apron,
+      materials.darkWood,
+      tableRoot
+    );
 
-    [
-      { width: 6.84, depth: 0.14, x: 0, z: -1.86 },
-      { width: 6.84, depth: 0.14, x: 0, z: 1.86 },
-      { width: 0.14, depth: 3.66, x: -3.39, z: 0 },
-      { width: 0.14, depth: 3.66, x: 3.39, z: 0 },
-    ].forEach(function (edge) {
-      const trim = B.CreateBox(
-        "yahtzee-game-table-trim",
-        { width: edge.width, height: 0.12, depth: edge.depth },
-        scene
+    const trimEntries = Array.isArray(config.table.trim)
+      ? config.table.trim
+      : DEFAULT_STAGE_CONFIG.table.trim;
+    trimEntries.forEach(function (entry, index) {
+      createBoxFromConfig(
+        B,
+        scene,
+        "yahtzee-game-table-trim-" + index,
+        entry,
+        materials.tableTrim,
+        tableRoot
       );
-      trim.position = new B.Vector3(edge.x, 1.17, edge.z);
-      trim.material = materials.tableTrim;
-      makeUnpickable(trim, tableRoot);
     });
 
-    const apron = B.CreateBox(
-      "yahtzee-game-table-front-apron",
-      { width: 6.42, height: 0.46, depth: 0.18 },
-      scene
-    );
-    apron.position = new B.Vector3(0, 0.68, -1.86);
-    apron.material = materials.darkWood;
-    makeUnpickable(apron, tableRoot);
-
-    [-1.18, -0.6, 0, 0.6, 1.18].forEach(function (z, index) {
+    const wellZ = Array.isArray(config.rack.wellZ)
+      ? config.rack.wellZ
+      : DEFAULT_STAGE_CONFIG.rack.wellZ;
+    wellZ.slice(0, DEFAULT_DICE.length).forEach(function (z, index) {
       const well = B.CreateDisc(
         "yahtzee-game-table-hold-well-" + index,
-        { radius: 0.16, tessellation: 18 },
+        { radius: numberOr(config.rack.wellRadius, 0.16), tessellation: 18 },
         scene
       );
-      well.position = new B.Vector3(2.91, 1.228, z);
+      well.position = new B.Vector3(
+        numberOr(config.rack.wellX, 2.91),
+        numberOr(config.rack.wellY, 1.228),
+        numberOr(z, 0)
+      );
       well.rotation.x = Math.PI / 2;
       well.material = materials.well;
       makeUnpickable(well, tableRoot);
 
       const ring = B.CreateTorus(
         "yahtzee-game-table-hold-ring-" + index,
-        { diameter: 0.4, thickness: 0.05, tessellation: 18 },
+        {
+          diameter: numberOr(config.rack.ringDiameter, 0.4),
+          thickness: numberOr(config.rack.ringThickness, 0.05),
+          tessellation: 18,
+        },
         scene
       );
-      ring.position = new B.Vector3(2.91, 1.232, z);
+      ring.position = new B.Vector3(
+        numberOr(config.rack.wellX, 2.91),
+        numberOr(config.rack.wellY, 1.228) + 0.004,
+        numberOr(z, 0)
+      );
       ring.material = materials.brass;
       makeUnpickable(ring, tableRoot);
     });
@@ -199,10 +307,12 @@
     return tableRoot;
   }
 
-  function createLantern(B, scene, root, materials) {
+  function createLantern(B, scene, root, materials, config) {
     const lanternRoot = new B.TransformNode("yahtzee-lantern-root", scene);
-    lanternRoot.position = new B.Vector3(2.3, 1.13, 0.86);
-    lanternRoot.scaling = new B.Vector3(0.76, 0.76, 0.76);
+    const position = vector3Values(config.lantern.position, DEFAULT_STAGE_CONFIG.lantern.position);
+    const scale = numberOr(config.lantern.scale, DEFAULT_STAGE_CONFIG.lantern.scale);
+    lanternRoot.position = new B.Vector3(position[0], position[1], position[2]);
+    lanternRoot.scaling = new B.Vector3(scale, scale, scale);
     lanternRoot.parent = root;
 
     const base = B.CreateCylinder(
@@ -242,22 +352,57 @@
     light.parent = lanternRoot;
     light.diffuse = color3(B, [1, 0.46, 0.14]);
     light.specular = color3(B, [1, 0.3, 0.08]);
-    light.intensity = 1.58;
-    light.range = 8.2;
+    light.intensity = numberOr(
+      config.lantern.lightIntensity,
+      DEFAULT_STAGE_CONFIG.lantern.lightIntensity
+    );
+    light.range = numberOr(config.lantern.lightRange, DEFAULT_STAGE_CONFIG.lantern.lightRange);
 
     return { flame: flame, light: light };
   }
 
-  function createDie(B, scene, root, materials, index) {
-    const layout = DIE_LAYOUT[index] || [0, 0, 0];
-    const rack = RACK_LAYOUT[index] || RACK_LAYOUT[0];
+  function diceLayout(config, index) {
+    const layouts = Array.isArray(config.dice.layout)
+      ? config.dice.layout
+      : DEFAULT_STAGE_CONFIG.dice.layout;
+    const fallback = DEFAULT_STAGE_CONFIG.dice.layout[index] || [0, 0, 0];
+    const value = Array.isArray(layouts[index]) ? layouts[index] : fallback;
+    return [
+      numberOr(value[0], fallback[0]),
+      numberOr(value[1], fallback[1]),
+      numberOr(value[2], fallback[2]),
+    ];
+  }
+
+  function rackSlot(config, index) {
+    const slots = Array.isArray(config.rack.slots)
+      ? config.rack.slots
+      : DEFAULT_STAGE_CONFIG.rack.slots;
+    const fallback = DEFAULT_STAGE_CONFIG.rack.slots[index] || [2.6, 1.45, 0, 0, 0, 0];
+    const value = Array.isArray(slots[index]) ? slots[index] : fallback;
+    return Array.from({ length: 6 }, function (_unused, valueIndex) {
+      return numberOr(value[valueIndex], fallback[valueIndex]);
+    });
+  }
+
+  function createDie(B, scene, root, materials, config, index) {
+    const layout = diceLayout(config, index);
+    const y = numberOr(config.dice.y, DEFAULT_STAGE_CONFIG.dice.y);
+    const scale = numberOr(config.dice.scale, DEFAULT_STAGE_CONFIG.dice.scale);
+    const heldScale = numberOr(config.dice.heldScale, DEFAULT_STAGE_CONFIG.dice.heldScale);
+    const slot = rackSlot(config, index);
+
     const dieRoot = new B.TransformNode("yahtzee-die-root-" + index, scene);
-    dieRoot.position = new B.Vector3(layout[0], 1.47, layout[1]);
+    dieRoot.position = new B.Vector3(layout[0], y, layout[1]);
     dieRoot.rotation.y = layout[2];
-    dieRoot.scaling = new B.Vector3(DIE_SCALE, DIE_SCALE, DIE_SCALE);
+    dieRoot.scaling = new B.Vector3(scale, scale, scale);
     dieRoot.parent = root;
 
-    const cube = B.CreateBox("yahtzee-die-mesh-" + index, { size: 0.78, wrap: true }, scene);
+    const cube = B.CreateBox(
+      "yahtzee-die-mesh-" + index,
+      { size: numberOr(config.dice.size, DEFAULT_STAGE_CONFIG.dice.size), wrap: true },
+      scene
+    );
     cube.material = materials.die;
     cube.parent = dieRoot;
     cube.isPickable = true;
@@ -267,10 +412,10 @@
     for (let pipIndex = 0; pipIndex < 6; pipIndex += 1) {
       const pip = B.CreateDisc(
         "yahtzee-die-pip-" + index + "-" + pipIndex,
-        { radius: 0.075, tessellation: 10 },
+        { radius: numberOr(config.dice.pipRadius, 0.075), tessellation: 10 },
         scene
       );
-      pip.position.y = 0.396;
+      pip.position.y = numberOr(config.dice.size, 0.78) / 2 + 0.006;
       pip.rotation.x = Math.PI / 2;
       pip.material = materials.pip;
       pip.setEnabled(false);
@@ -278,14 +423,27 @@
       pips.push(pip);
     }
 
+    const basePosition = new B.Vector3(layout[0], y, layout[1]);
+    const baseRotation = new B.Vector3(0, layout[2], 0);
+    const baseScaling = new B.Vector3(scale, scale, scale);
+    const heldPosition = new B.Vector3(slot[0], slot[1], slot[2]);
+    const heldRotation = new B.Vector3(slot[4], layout[2] + slot[3], slot[5]);
+    const heldScaling = new B.Vector3(heldScale, heldScale, heldScale);
+
     return {
+      index: index,
       root: dieRoot,
       cube: cube,
       pips: pips,
-      basePosition: new B.Vector3(layout[0], 1.47, layout[1]),
-      rackPosition: new B.Vector3(rack[0], rack[1], rack[2]),
-      targetPosition: new B.Vector3(layout[0], 1.47, layout[1]),
-      baseYaw: layout[2],
+      basePosition: basePosition,
+      baseRotation: baseRotation,
+      baseScaling: baseScaling,
+      heldPosition: heldPosition,
+      heldRotation: heldRotation,
+      heldScaling: heldScaling,
+      targetPosition: basePosition.clone(),
+      targetRotation: baseRotation.clone(),
+      targetScaling: baseScaling.clone(),
       value: 1,
       held: false,
       roll: null,
@@ -307,7 +465,9 @@
   function applyHeldState(model, held, materials) {
     model.held = held;
     model.cube.material = held ? materials.dieHeld : materials.die;
-    model.targetPosition.copyFrom(held ? model.rackPosition : model.basePosition);
+    model.targetPosition.copyFrom(held ? model.heldPosition : model.basePosition);
+    model.targetRotation.copyFrom(held ? model.heldRotation : model.baseRotation);
+    model.targetScaling.copyFrom(held ? model.heldScaling : model.baseScaling);
   }
 
   function readPickedDieIndex(pickInfo) {
@@ -329,6 +489,13 @@
     return actions.toggleDie(index) === true;
   }
 
+  function nowMs() {
+    if (global.performance && typeof global.performance.now === "function") {
+      return global.performance.now();
+    }
+    return Date.now();
+  }
+
   function mount(canvas, initialState) {
     const B = global.BABYLON;
     if (!canvas || !hasRuntime(B)) return null;
@@ -337,6 +504,10 @@
     let scene = null;
 
     try {
+      const theme = global.GameRoomYahtzeePirateDeckTheme || { assets: {}, shots: {} };
+      const stageConfig = readStageConfig(theme);
+      const performanceConfig = stageConfig.performance;
+
       engine = new B.Engine(canvas, true, {
         antialias: true,
         preserveDrawingBuffer: false,
@@ -344,7 +515,9 @@
         premultipliedAlpha: true,
       });
       const pixelRatio = Number(global.devicePixelRatio) || 1;
-      engine.setHardwareScalingLevel(Math.max(1.15, pixelRatio / 1.2));
+      const scalingFloor = numberOr(performanceConfig.hardwareScalingFloor, 1.15);
+      const pixelRatioDivisor = Math.max(0.5, numberOr(performanceConfig.pixelRatioDivisor, 1.2));
+      engine.setHardwareScalingLevel(Math.max(scalingFloor, pixelRatio / pixelRatioDivisor));
 
       scene = new B.Scene(engine);
       scene.clearColor = new B.Color4(0, 0, 0, 0);
@@ -382,9 +555,7 @@
       warmFill.intensity = 0.62;
       warmFill.range = 11;
 
-      const theme = global.GameRoomYahtzeePirateDeckTheme || { assets: {}, shots: {} };
       const themeAssets = theme.assets || {};
-
       const materials = {
         darkWood: createMaterial(B, scene, "yahtzee-stage-dark-wood", [0.52, 0.34, 0.27], {
           specular: [0.1, 0.045, 0.018],
@@ -428,9 +599,9 @@
           emissive: [0.03, 0.018, 0.006],
           specularPower: 62,
         }),
-        dieHeld: createMaterial(B, scene, "yahtzee-die-held", [0.74, 0.37, 0.09], {
-          emissive: [0.07, 0.02, 0.002],
-          specular: [0.28, 0.13, 0.035],
+        dieHeld: createMaterial(B, scene, "yahtzee-die-held", [0.78, 0.49, 0.18], {
+          emissive: [0.045, 0.016, 0.002],
+          specular: [0.3, 0.15, 0.04],
         }),
         pip: createMaterial(B, scene, "yahtzee-pip", [0.018, 0.012, 0.009], {
           specular: [0, 0, 0],
@@ -444,10 +615,10 @@
 
       const gameRoot = new B.TransformNode("yahtzee-game-root", scene);
       gameRoot.position = new B.Vector3(0, -0.08, 0.12);
-      createTable(B, scene, gameRoot, materials);
-      const lantern = createLantern(B, scene, gameRoot, materials);
+      createTable(B, scene, gameRoot, materials, stageConfig);
+      const lantern = createLantern(B, scene, gameRoot, materials, stageConfig);
       const diceModels = DEFAULT_DICE.map(function (_value, index) {
-        return createDie(B, scene, gameRoot, materials, index);
+        return createDie(B, scene, gameRoot, materials, stageConfig, index);
       });
 
       const directorFactory = global.GameRoomYahtzeeCameraDirector;
@@ -471,7 +642,6 @@
         if (index < 0 || !canToggleDie(index)) return;
         toggleDie(index);
       };
-
       scene.onPointerMove = function (_event, pickInfo) {
         const index = readPickedDieIndex(pickInfo);
         canvas.style.cursor = index >= 0 && canToggleDie(index) ? "pointer" : "default";
@@ -483,13 +653,25 @@
           return;
         }
         model.root.position.copyFrom(model.basePosition);
+        model.root.rotation.copyFrom(model.baseRotation);
+        model.root.scaling.copyFrom(model.baseScaling);
         model.targetPosition.copyFrom(model.basePosition);
+        model.targetRotation.copyFrom(model.baseRotation);
+        model.targetScaling.copyFrom(model.baseScaling);
+        const rollConfig = mergeRecord(DEFAULT_STAGE_CONFIG.dice.roll, stageConfig.dice.roll);
         model.roll = {
           elapsed: 0,
-          duration: 560 + index * 32,
+          duration:
+            numberOr(rollConfig.durationMs, 560) + index * numberOr(rollConfig.durationStepMs, 32),
           turnsX: 2 + (index % 3),
           turnsZ: 2 + ((index + 1) % 3),
-          lateral: 0.13 + index * 0.012,
+          lateral:
+            numberOr(rollConfig.lateral, 0.13) +
+            index * numberOr(rollConfig.lateralStep, 0.012),
+          bounce:
+            numberOr(rollConfig.bounce, 0.52) +
+            index * numberOr(rollConfig.bounceStep, 0.018),
+          depthWobble: numberOr(rollConfig.depthWobble, 0.1),
         };
       }
 
@@ -530,9 +712,12 @@
         model.root.position.x += (model.targetPosition.x - model.root.position.x) * amount;
         model.root.position.y += (model.targetPosition.y - model.root.position.y) * amount;
         model.root.position.z += (model.targetPosition.z - model.root.position.z) * amount;
-        model.root.rotation.x *= 1 - amount;
-        model.root.rotation.y += (model.baseYaw - model.root.rotation.y) * amount;
-        model.root.rotation.z *= 1 - amount;
+        model.root.rotation.x += (model.targetRotation.x - model.root.rotation.x) * amount;
+        model.root.rotation.y += (model.targetRotation.y - model.root.rotation.y) * amount;
+        model.root.rotation.z += (model.targetRotation.z - model.root.rotation.z) * amount;
+        model.root.scaling.x += (model.targetScaling.x - model.root.scaling.x) * amount;
+        model.root.scaling.y += (model.targetScaling.y - model.root.scaling.y) * amount;
+        model.root.scaling.z += (model.targetScaling.z - model.root.scaling.z) * amount;
       }
 
       function animateDice(delta) {
@@ -546,19 +731,21 @@
           const progress = Math.min(1, model.roll.elapsed / model.roll.duration);
           const envelope = Math.sin(progress * Math.PI);
           model.root.position.x =
-            model.basePosition.x + Math.sin(progress * Math.PI * 2 + index) * model.roll.lateral * envelope;
-          model.root.position.y =
-            model.basePosition.y + envelope * (0.52 + index * 0.018);
+            model.basePosition.x +
+            Math.sin(progress * Math.PI * 2 + index) * model.roll.lateral * envelope;
+          model.root.position.y = model.basePosition.y + envelope * model.roll.bounce;
           model.root.position.z =
-            model.basePosition.z + Math.cos(progress * Math.PI * 2.35 + index) * 0.1 * envelope;
+            model.basePosition.z +
+            Math.cos(progress * Math.PI * 2.35 + index) * model.roll.depthWobble * envelope;
           model.root.rotation.x = progress * model.roll.turnsX * Math.PI * 2;
-          model.root.rotation.y = model.baseYaw + progress * (index + 2) * Math.PI * 2;
+          model.root.rotation.y = model.baseRotation.y + progress * (index + 2) * Math.PI * 2;
           model.root.rotation.z = progress * model.roll.turnsZ * Math.PI * 2;
 
           if (progress >= 1) {
             model.roll = null;
             model.root.position.copyFrom(model.targetPosition);
-            model.root.rotation.set(0, model.baseYaw, 0);
+            model.root.rotation.copyFrom(model.targetRotation);
+            model.root.scaling.copyFrom(model.targetScaling);
           }
         });
       }
@@ -574,7 +761,9 @@
         if (!reduceMotion) {
           lantern.flame.scaling.y = 1.4 + Math.sin(elapsed * 8.2) * 0.11;
           lantern.light.intensity =
-            1.56 + Math.sin(elapsed * 8.7) * 0.07 + Math.sin(elapsed * 3.7) * 0.035;
+            numberOr(stageConfig.lantern.lightIntensity, 1.58) +
+            Math.sin(elapsed * 8.7) * 0.07 +
+            Math.sin(elapsed * 3.7) * 0.035;
         }
 
         animateDice(delta);
@@ -582,13 +771,6 @@
           cameraDirector.tick(delta);
         }
       });
-
-      function nowMs() {
-        if (global.performance && typeof global.performance.now === "function") {
-          return global.performance.now();
-        }
-        return Date.now();
-      }
 
       function hasRollingDice() {
         return diceModels.some(function (model) {
@@ -599,8 +781,12 @@
       engine.runRenderLoop(function () {
         if (document.hidden || disposed) return;
         const now = nowMs();
-        const targetFps = hasRollingDice() ? 45 : latestState.active === true ? 30 : 15;
-        const frameInterval = 1000 / targetFps;
+        const targetFps = hasRollingDice()
+          ? numberOr(performanceConfig.rollFps, 45)
+          : latestState.active === true
+            ? numberOr(performanceConfig.activeFps, 30)
+            : numberOr(performanceConfig.idleFps, 15);
+        const frameInterval = 1000 / Math.max(1, targetFps);
         if (now - lastRenderAt < frameInterval) return;
         lastRenderAt = now;
         scene.render();
@@ -615,7 +801,14 @@
             rolling: Boolean(model.roll),
             position: [model.root.position.x, model.root.position.y, model.root.position.z],
             targetPosition: [model.targetPosition.x, model.targetPosition.y, model.targetPosition.z],
+            scaling: [model.root.scaling.x, model.root.scaling.y, model.root.scaling.z],
+            targetScaling: [model.targetScaling.x, model.targetScaling.y, model.targetScaling.z],
             rotation: [model.root.rotation.x, model.root.rotation.y, model.root.rotation.z],
+            targetRotation: [
+              model.targetRotation.x,
+              model.targetRotation.y,
+              model.targetRotation.z,
+            ],
           };
         });
       }
@@ -661,7 +854,7 @@
         if (scene) scene.dispose();
         if (engine) engine.dispose();
       } catch (_disposeError) {
-        /* Lightweight 2D stage remains available. */
+        /* Direct HUD fallback remains available. */
       }
       return null;
     }
