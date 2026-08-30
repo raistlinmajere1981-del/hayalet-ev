@@ -100,6 +100,24 @@ Universe music may use a symbolic per-universe theme plus reusable instrument/te
 
 TTS is optional and must not block V1.
 
+## Reserved decisions — do not guess
+
+The following details are intentionally not final yet. If a local task reaches one of them, preserve the contract surface and stop rather than inventing a rule:
+
+- exact player/base stat values
+- exact starting card catalogs for generated universes
+- exact energy/resource costs
+- exact combat resolution ordering when multiple actors commit actions
+- exact fallen recovery HP and injury severity/balance
+- exact enemy automation policy beyond deterministic engine ownership
+- exact loot quantities and inventory capacities
+- exact camp healing/equipment limits
+- exact symbolic music notation/synthesis backend
+- exact AI prompt/transport wire format for World Forge, DM, and AI0
+- exact persistence key names and migration strategy
+
+These are Raistlin/Nexa design decisions or later balancing decisions, not visual/runtime implementation choices.
+
 ## Areas where Codex has creative freedom
 
 Codex may decide, within a specific task:
