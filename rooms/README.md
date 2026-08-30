@@ -33,13 +33,13 @@ See [../CONTRIBUTING.md](../CONTRIBUTING.md) for contribution rules and [../.rov
 
 The repository ships first-party rooms both as product features and as examples of the room architecture.
 
-| Room           | Status                 | Current scope                                                                                                                                  | Documentation                                                                              |
-| -------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `laboratory`   | Implemented            | Media/audio project intake, readiness/tooling, processing, comparison and inspection, annotation/export, analysis and reporting.               | [Laboratory](../LABORATORY.md), [room ownership](laboratory/README.md)                     |
-| `forge-room`   | Implemented            | Goal/preflight workflow, task drafting, AI assignments, conflict review, synthesis and handoff packages.                                       | [Forge Room](../FORGEROOM.md)                                                              |
-| `repair-room`  | Implemented            | Electronics repair sessions, evidence/knowledge packs, board/camera workbench, measurements, timeline/overlays, AI and hands-free interaction. | [Repair Room](../REPAIRROOM.md)                                                            |
-| `game-room`    | Implemented / evolving | Tavla, four-seat Team Tetris, and pirate-deck Yahtzee with solo/local-two-player/AI1/AI2/US1 modes and room-owned transport.                   | [Backgammon](../BACKGAMMON.md), [Team Tetris](../TEAM-TETRIS.md), [Yahtzee](../YAHTZEE.md) |
-| `pattern-room` | Prototype / evolving   | Layered research workspace with sources, evidence, relationships, Case Review, persistence and reporting.                                      | [Pattern Room](../PATTERNROOM.md)                                                          |
+| Room           | Status                 | Current scope                                                                                                                                  | Documentation                                                          |
+| -------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `laboratory`   | Implemented            | Media/audio project intake, readiness/tooling, processing, comparison and inspection, annotation/export, analysis and reporting.               | [Laboratory](../LABORATORY.md), [room ownership](laboratory/README.md) |
+| `forge-room`   | Implemented            | Goal/preflight workflow, task drafting, AI assignments, conflict review, synthesis and handoff packages.                                       | [Forge Room](../FORGEROOM.md)                                          |
+| `repair-room`  | Implemented            | Electronics repair sessions, evidence/knowledge packs, board/camera workbench, measurements, timeline/overlays, AI and hands-free interaction. | [Repair Room](../REPAIRROOM.md)                                        |
+| `game-room`    | Implemented / evolving | Tavla and four-seat Team Tetris with AI/US1 participation and room transport.                                                                  | [Backgammon](../BACKGAMMON.md), [Team Tetris](../TEAM-TETRIS.md)       |
+| `pattern-room` | Prototype / evolving   | Layered research workspace with sources, evidence, relationships, Case Review, persistence and reporting.                                      | [Pattern Room](../PATTERNROOM.md)                                      |
 
 Status labels describe the current repository surface, not a compatibility or long-term support guarantee.
 
@@ -65,11 +65,10 @@ Repair Room owns electronics-repair state and interaction inside the room bounda
 
 ### Game Room
 
-Game Room currently contains three functioning game systems:
+Game Room currently contains two functioning game systems:
 
 - Tavla can target AI1, AI2 or connected US1.
 - Team Tetris uses four seats: `user`, `ai1`, `ai2`, `us1`.
-- Yahtzee supports solo play, local two-player hot-seat, AI1, AI2 and connected US1. Dice and scoring stay host-owned while a room-local Babylon.js runtime renders the pirate-deck table.
 
 ### Pattern Room
 
