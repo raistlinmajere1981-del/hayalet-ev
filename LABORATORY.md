@@ -98,7 +98,9 @@ Mevcut yüzeyler arasında:
 - Appearance / Disappearance Transition Probe,
 - optional Target / Control / Background ROI workflow,
 - Structural Transition timeline,
-- ROI drift diagnostic ve confidence-gated translation stabilization,
+- feature-consensus ROI Tracking / Stabilization ile `dx`, `dy`, rotation ve scale tahmini,
+- Background Reference event↔reference hizalama ve convergence ölçümü,
+- Tracking Preview ile raw / stabilized ROI karşılaştırması,
 - CRF `18 → 24 → 30 → 36 → 42` recompression ladder
 
 bulunur.
@@ -111,14 +113,46 @@ Transition Probe seçim orta noktasını olay zamanı olarak kullanır ve yakla�
 
 Structural timeline yaklaşık `-1.0 → +1.0 s` arasında kısa örnekler tutar. Target, Control ve Background structural loss değerleri ayrı kalır; Target-Control ve Target-Background diferansiyelleri ayrıca raporlanır.
 
-ROI stabilization ilk sürümde translation-only'dir. Mevcut Motion Reference lock varsa reference olarak kullanılır; yoksa Background ROI üzerinden translation tahmini denenebilir. Tracking confidence düşükse sessizce correction uygulanmaz ve fixed-ROI fallback raporlanır. Rotation, zoom ve perspective bu ilk sürümün kapsamı dışındadır.
+### ROI Tracking / Stabilization
 
-Bu katman “gerçek/sahte” veya mekanizma kararı vermez. Sonuç dili hedef ile kontrol/arka planın birlikte değişmesi, target'a lokalize ek değişim, sahne-geneli değişim, ROI drift riski veya belirsizlik gibi ölçüm sınıflarıyla sınırlıdır.
+Kamera hareketi nedeniyle sabit ekran koordinatındaki bir ROI fiziksel sahne bölgesinden ayrılabilir. Güncel tracking katmanı bu kirliliği azaltmak için tek bir hareketli Target'ı kamera referansı kabul etmek yerine çoklu sabit görüntü özelliklerinden consensus üretir.
+
+Tracking modeli similarity transform kullanır ve şu bileşenleri tahmin eder:
+
+- `dx`,
+- `dy`,
+- rotation,
+- scale/zoom.
+
+Target global kamera-feature tahmininden çıkarılır; Control verilmişse o da çıkarılır. Background/Reference bölgesi gerektiğinde yerel fallback referansı olarak kullanılabilir. Feature count, inlier ratio, forward/backward consistency ve residual error birlikte confidence/quality değerlendirmesine girer.
+
+Tracking kalitesi yetersizse yanlış transform sessizce uygulanmaz; fixed-ROI fallback açıkça raporlanır. Bu fallback geriye dönük uyumluluk değil, ölçüm güvenliği davranışıdır.
+
+Structural Transition, kalite gate'i geçtiğinde Target/Control/Background ölçüm koordinatlarını bu camera transform ile taşır. Kaynak medya değiştirilmez; yalnız ölçüm koordinatları değişir.
+
+Perspective/homography güncel modelin parçası değildir. Rotation uygulanmış bir ROI crop için axis-aligned bounding box ile temsil edilebilir; bu nedenle yüksek perspective veya büyük rotation içeren sahneler ayrıca temkinli yorumlanmalıdır.
+
+Tracking Preview raw ROI ile stabilize edilmiş ROI davranışını görsel olarak karşılaştırmak için diagnostik bir yüzeydir; sayısal confidence insan görsel kontrolünün yerine geçmez.
+
+### Background Reference
+
+Appearance / Disappearance çalışmasında kullanıcı Target'ın bulunduğu fiziksel bölgenin hedef yokken görünen temiz halini farklı bir zamanda Background Reference olarak işaretleyebilir.
+
+Laboratory event anındaki Target bölgesini referans zamanına camera transform üzerinden hizalamaya çalışır ve Target yapısı azalırken görüntünün temiz arka plan referansına yakınsayıp yakınsamadığını ölçer.
+
+Reference transform kalite gate'ini geçmezse convergence sonucu güçlü bir çıkarım için kullanılmaz ve sınırlı/güvenilmez hizalama olarak raporlanır.
+
+### Fotometrik koordinat sınırı
+
+Mevcut fotometrik PRE / EVENT / POST ve Visibility Response ölçümleri hâlen fixed-ROI koordinatlarıyla örneklenir. Tracking burada provenance ve kalite gate'i sağlayabilir, fakat bu sonuçlar dinamik stabilize fotometri olarak tarif edilmemelidir. Gerçek per-frame stabilize fotometrik sampling ayrı bir geliştirme konusudur.
+
+Bu katman “gerçek/sahte” veya mekanizma kararı vermez. Sonuç dili hedef ile kontrol/arka planın birlikte değişmesi, target'a lokalize ek değişim, sahne-geneli değişim, ROI tracking kalitesi, reference convergence veya belirsizlik gibi ölçüm sınıflarıyla sınırlıdır.
 
 Ayrıntılı kontratlar:
 
 - [rooms/laboratory/VISUAL-RESPONSE-STRESS-PROBES.md](rooms/laboratory/VISUAL-RESPONSE-STRESS-PROBES.md)
 - [rooms/laboratory/STRUCTURAL-TRANSITION.md](rooms/laboratory/STRUCTURAL-TRANSITION.md)
+- [rooms/laboratory/ROI-TRACKING-STABILIZATION-V2.md](rooms/laboratory/ROI-TRACKING-STABILIZATION-V2.md)
 
 ## ✏️ Annotation
 
@@ -164,6 +198,7 @@ Laboratory sonuçları yalnızca “başarılı” veya “başarısız” olara
 - timeline bağlamını,
 - seçili kapsamı,
 - çalışma bölgelerini,
+- tracking/provenance bilgisini,
 - keşif sonuçlarını
 
 aynı proje içinde tutar.
@@ -195,11 +230,12 @@ Rapor:
 - hangi koşullarda çalışıldığını,
 - seçilen çalışma bağlamını,
 - insan incelemesinin önemli noktalarını,
+- tracking kalite/provenance bilgisini,
 - AI'nin yeniden değerlendirebileceği teknik bağlamı
 
 taşıyabilir.
 
-Görsel stress-test sonuç kartlarında desteklenen akışlar structured Markdown kopyalama / dışa aktarma sağlayabilir. Structural Transition export'u ROI'leri, fotometrik fazları, structural timeline'ı, Target-Control diferansiyelini ve ROI stability bilgisini tek AI-handoff metninde korur.
+Görsel stress-test sonuç kartlarında desteklenen akışlar structured Markdown kopyalama / dışa aktarma sağlayabilir. Structural Transition export'u ROI'leri, fotometrik fazları, structural timeline'ı, Target-Control diferansiyelini, Background Reference durumunu ve ROI tracking/stability bilgisini aynı AI-handoff metninde koruyabilir.
 
 Desteklenen akışlarda rapor veya seçili çalışma bağlamı AI slotuna aktarılabilir. Böylece yeni bir sohbet başlatmak yerine mevcut çalışmanın devamı oluşturulur.
 
@@ -222,9 +258,11 @@ Laboratory geliştirilirken:
 
 - kaynak dosya ile çalışma durumu ayrılır,
 - annotation kaynak medyayı sessizce değiştirmez,
+- tracking/stabilization kaynak medyayı değiştirmez,
 - araç/model hazırlığı görünür tutulur,
 - sonuç kaynak ve proje bağlamından koparılmaz,
 - UI, runtime ve host ownership sınırları korunur,
+- düşük tracking kalitesi güçlü sonuca dönüştürülmez,
 - deneysel özellikler uygulanmış özellik gibi belgelenmez,
 - AI çıktısı otomatik olarak doğrulanmış bulgu kabul edilmez.
 
@@ -243,6 +281,8 @@ Laboratory'nin editable source of truth'u `rooms/laboratory` altındadır.
 
 Ayrıntılı ownership kuralları: [rooms/laboratory/README.md](rooms/laboratory/README.md).
 
+Güncel agresif bakım/canonicalization hedefi: [rooms/laboratory/ARCHITECTURE-RESET.md](rooms/laboratory/ARCHITECTURE-RESET.md).
+
 ## ✅ Doğrulama
 
 ```bash
@@ -250,16 +290,11 @@ node rooms/laboratory/scripts/laboratory-check.mjs
 npm run check:all
 ```
 
-Yeni structural / diferansiyel regression'ları doğrudan çalıştırmak için:
+Yeni structural / tracking / diferansiyel regression'ları doğrudan çalıştırmak için:
 
 ```bash
+npm run rooms:test:file -- scripts/tests/laboratory-camera-tracking-v2-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-structural-transition-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-visual-stress-dual-roi-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-visual-response-regressions.test.ts
 ```
-
-## 🎯 Amaç
-
-Laboratory'nin amacı yalnızca bir analiz işlemini tamamlamak değildir; kaynağı açmak değil, onunla çalışmaktır.
-
-Kaynak hazırlanır. İnsan inceler. Araçlar analiz eder. İşaretler eklenir. Bulgular kaydedilir. Rapor oluşur. Çalışma gerektiğinde AI ile başka bir aşamaya taşınabilir.
