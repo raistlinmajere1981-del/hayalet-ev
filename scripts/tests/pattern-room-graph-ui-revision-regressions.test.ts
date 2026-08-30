@@ -47,9 +47,8 @@ void test("pattern-room relationship graph keeps deterministic layout and presen
     assert.ok(viewport);
     assert.ok(zoomValue);
     assert.ok(zoomIn);
-    assert.equal(scene.dataset["patternGraphLayout"], "case-map-v3");
-    assert.ok(environment.app.querySelector("[data-pattern-graph-toolbar='true']"));
-    assert.ok(environment.app.querySelector("[data-pattern-connection-map='true']"));
+    assert.equal(scene.dataset["patternGraphLayout"], "layered-v1");
+    assert.equal(environment.app.querySelectorAll("[data-pattern-graph-column]").length, 3);
     assert.ok(environment.app.querySelectorAll("[data-pattern-graph-node]").length > 0);
 
     const edges = environment.app.querySelectorAll("[data-pattern-connection-edge]");

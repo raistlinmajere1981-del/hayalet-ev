@@ -1,5 +1,4 @@
 @custom-media --pattern-bp-min-1440 (min-width: 1440px);
-@custom-media --pattern-bp-min-1101 (min-width: 1101px);
 @custom-media --pattern-bp-max-1180 (max-width: 1180px);
 @custom-media --pattern-bp-max-1100 (max-width: 1100px);
 @custom-media --pattern-bp-max-960 (max-width: 960px);
@@ -59,9 +58,7 @@
   --pattern-accent-amber-alpha-08: rgba(200, 145, 58, 0.08);
   --pattern-accent-amber-alpha-09: rgba(200, 145, 58, 0.09);
   --pattern-accent-amber-alpha-10: rgba(200, 145, 58, 0.1);
-  --pattern-accent-amber-alpha-12: rgba(200, 145, 58, 0.12);
   --pattern-accent-amber-alpha-14: rgba(200, 145, 58, 0.14);
-  --pattern-accent-amber-alpha-16: rgba(200, 145, 58, 0.16);
   --pattern-accent-amber-alpha-18: rgba(200, 145, 58, 0.18);
   --pattern-accent-amber-alpha-22: rgba(200, 145, 58, 0.22);
   --pattern-accent-amber-alpha-24: rgba(200, 145, 58, 0.24);
@@ -87,23 +84,12 @@
 
   /* ── Aksan: Yeşil & Cyan ── */
   --pattern-accent-green: #6aaa6a;
-  --pattern-accent-green-light: #8ac48a;
-  --pattern-accent-green-alpha-08: rgba(106, 170, 106, 0.08);
   --pattern-accent-green-alpha-10: rgba(106, 170, 106, 0.1);
-  --pattern-accent-green-alpha-18: rgba(106, 170, 106, 0.18);
   --pattern-accent-green-alpha-22: rgba(106, 170, 106, 0.22);
-  --pattern-accent-green-alpha-28: rgba(106, 170, 106, 0.28);
-  --pattern-accent-green-alpha-42: rgba(106, 170, 106, 0.42);
-  --pattern-accent-green-alpha-46: rgba(106, 170, 106, 0.46);
   --pattern-accent-cyan: #54aec4;
   --pattern-accent-cyan-alpha-05: rgba(84, 174, 196, 0.05);
-  --pattern-accent-cyan-alpha-06: rgba(84, 174, 196, 0.06);
-  --pattern-accent-cyan-alpha-08: rgba(84, 174, 196, 0.08);
   --pattern-accent-cyan-alpha-10: rgba(84, 174, 196, 0.1);
-  --pattern-accent-cyan-alpha-14: rgba(84, 174, 196, 0.14);
-  --pattern-accent-cyan-alpha-18: rgba(84, 174, 196, 0.18);
   --pattern-accent-cyan-alpha-22: rgba(84, 174, 196, 0.22);
-  --pattern-accent-cyan-alpha-34: rgba(84, 174, 196, 0.34);
 
   /* ── Aksan: Soruşturma Kırmızısı (ikincil) ── */
   --pattern-accent-red: #c04040;
@@ -142,22 +128,18 @@
   --pattern-glow-amber-action: 0 0 0 3px var(--pattern-accent-amber-alpha-10);
 
   /* ── Utility alphas ── */
-  --pattern-white-alpha-02: rgba(255, 255, 255, 0.02);
   --pattern-white-alpha-03: rgba(255, 255, 255, 0.03);
   --pattern-white-alpha-04: rgba(255, 255, 255, 0.04);
   --pattern-white-alpha-05: rgba(255, 255, 255, 0.05);
   --pattern-white-alpha-06: rgba(255, 255, 255, 0.06);
   --pattern-white-alpha-07: rgba(255, 255, 255, 0.07);
   --pattern-white-alpha-08: rgba(255, 255, 255, 0.08);
-  --pattern-black-alpha-12: rgba(0, 0, 0, 0.12);
   --pattern-black-alpha-24: rgba(0, 0, 0, 0.24);
   --pattern-black-alpha-26: rgba(0, 0, 0, 0.26);
   --pattern-black-alpha-28: rgba(0, 0, 0, 0.28);
   --pattern-black-alpha-30: rgba(0, 0, 0, 0.3);
   --pattern-black-alpha-32: rgba(0, 0, 0, 0.32);
-  --pattern-black-alpha-38: rgba(0, 0, 0, 0.38);
   --pattern-black-alpha-40: rgba(0, 0, 0, 0.4);
-  --pattern-black-alpha-46: rgba(0, 0, 0, 0.46);
   --pattern-black-alpha-52: rgba(0, 0, 0, 0.52);
 
   /* ── Gradyanlar ── */
@@ -283,67 +265,10 @@
     rgba(200, 145, 58, 0.09),
     transparent 34%
   );
-  /* Paylaşılan fade sheen'ler (tek yön fade overlay) */
-  --pattern-gradient-amber-side-sheen: linear-gradient(
-    90deg,
-    var(--pattern-accent-amber-alpha-10),
-    transparent 34%
-  );
-  --pattern-gradient-amber-side-sheen-strong: linear-gradient(
-    90deg,
-    var(--pattern-accent-amber-alpha-14),
-    transparent
-  );
-  --pattern-gradient-amber-top-sheen: linear-gradient(
-    180deg,
-    var(--pattern-accent-amber-alpha-14),
-    transparent
-  );
-  --pattern-gradient-cyan-top-sheen: linear-gradient(
-    180deg,
-    var(--pattern-accent-cyan-alpha-10),
-    transparent 24%
-  );
-  --pattern-gradient-red-side-sheen: linear-gradient(
-    90deg,
-    var(--pattern-accent-red-alpha-08),
-    transparent 12%
-  );
-  --pattern-gradient-red-left-fade-34: linear-gradient(
-    90deg,
-    var(--pattern-accent-red-alpha-08),
-    transparent 34%
-  );
-  --pattern-gradient-green-left-fade-42: linear-gradient(
-    90deg,
-    var(--pattern-accent-green-alpha-10),
-    transparent 42%
-  );
-  --pattern-gradient-amber-left-fade-38: linear-gradient(
-    90deg,
-    var(--pattern-accent-amber-alpha-06),
-    transparent 38%
-  );
-  --pattern-gradient-amber-top-fade-24: linear-gradient(
-    180deg,
-    var(--pattern-accent-amber-alpha-06),
-    transparent 24%
-  );
-  --pattern-gradient-white-top-fade-24: linear-gradient(
-    180deg,
-    var(--pattern-white-alpha-04),
-    transparent 24%
-  );
-  --pattern-gradient-white-top-fade-32: linear-gradient(
-    180deg,
-    var(--pattern-white-alpha-03),
-    transparent 32%
-  );
 
   /* ── Spacing ── */
   --pattern-px-neg-4: -4px;
   --pattern-px-neg-1: -1px;
-  --pattern-px-0: 0px;
   --pattern-px-1: 1px;
   --pattern-px-2: 2px;
   --pattern-px-3: 3px;
@@ -374,10 +299,8 @@
   --pattern-px-40: 40px;
   --pattern-px-42: 42px;
   --pattern-px-44: 44px;
-  --pattern-px-46: 46px;
   --pattern-px-48: 48px;
   --pattern-px-50: 50px;
-  --pattern-px-52: 52px;
   --pattern-px-54: 54px;
   --pattern-px-56: 56px;
   --pattern-px-58: 58px;
@@ -404,7 +327,6 @@
   --pattern-px-156: 156px;
   --pattern-px-164: 164px;
   --pattern-px-168: 168px;
-  --pattern-px-172: 172px;
   --pattern-px-174: 174px;
   --pattern-px-176: 176px;
   --pattern-px-178: 178px;
@@ -413,65 +335,37 @@
   --pattern-px-188: 188px;
   --pattern-px-210: 210px;
   --pattern-px-218: 218px;
-  --pattern-px-220: 220px;
-  --pattern-px-228: 228px;
   --pattern-px-238: 238px;
   --pattern-px-260: 260px;
-  --pattern-px-280: 280px;
   --pattern-px-292: 292px;
-  --pattern-px-300: 300px;
   --pattern-px-320: 320px;
   --pattern-px-330: 330px;
   --pattern-px-360: 360px;
   --pattern-px-388: 388px;
-  --pattern-px-420: 420px;
   --pattern-px-472: 472px;
-  --pattern-px-520: 520px;
-  --pattern-px-540: 540px;
   --pattern-px-560: 560px;
   --pattern-px-570: 570px;
-  --pattern-px-620: 620px;
   --pattern-px-640: 640px;
   --pattern-px-720: 720px;
   --pattern-px-820: 820px;
   --pattern-px-920: 920px;
   --pattern-px-999: 999px;
   --pattern-px-1180: 1180px;
-
-  /* ── Dynamic / Runtime-fed ── */
-  --pattern-note-tilt: 0deg;
-  --pattern-command-file-index: 0;
-  --pattern-command-folio-index: 0;
   --pattern-em-0-04: 0.04em;
-  --pattern-em-0-05: 0.05em;
   --pattern-em-0-06: 0.06em;
   --pattern-em-0-08: 0.08em;
   --pattern-em-0-1: 0.1em;
   --pattern-em-neg-0-02: -0.02em;
-  --pattern-rem-0-58: 0.58rem;
-  --pattern-rem-0-62: 0.62rem;
-  --pattern-rem-0-64: 0.64rem;
-  --pattern-rem-0-66: 0.66rem;
-  --pattern-rem-0-68: 0.68rem;
-  --pattern-rem-0-7: 0.7rem;
   --pattern-rem-0-72: 0.72rem;
   --pattern-rem-0-74: 0.74rem;
   --pattern-rem-0-76: 0.76rem;
   --pattern-rem-0-78: 0.78rem;
   --pattern-rem-0-82: 0.82rem;
   --pattern-rem-0-88: 0.88rem;
-  --pattern-rem-0-9: 0.9rem;
-  --pattern-rem-0-92: 0.92rem;
   --pattern-rem-1: 1rem;
-  --pattern-rem-1-05: 1.05rem;
-  --pattern-rem-1-1: 1.1rem;
-  --pattern-rem-1-12: 1.12rem;
-  --pattern-rem-1-15: 1.15rem;
   --pattern-rem-1-2: 1.2rem;
   --pattern-rem-1-35: 1.35rem;
-  --pattern-rem-1-4: 1.4rem;
   --pattern-rem-1-5: 1.5rem;
-  --pattern-rem-1-55: 1.55rem;
   --pattern-rem-2-35: 2.35rem;
   --pattern-rem-3-8: 3.8rem;
 }

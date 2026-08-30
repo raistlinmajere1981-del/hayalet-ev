@@ -149,13 +149,13 @@ void test("pattern-room review task selection survives local debate rerenders", 
     assert.equal(aiTask.dataset["patternReviewTaskActive"], "true");
     assert.ok(environment.app.querySelector("[data-pattern-review-disclosure='case-request']"));
     assert.ok(
-      environment.app.querySelector("[data-pattern-analysis-workbench-panel='raw-response']")
+      environment.app.querySelector("[data-pattern-case-review-disclosure='raw-response']")
     );
-    assert.ok(environment.app.querySelector("[data-pattern-analysis-workbench-panel='apply']"));
+    assert.ok(environment.app.querySelector("[data-pattern-case-review-disclosure='apply']"));
     assert.ok(
-      environment.app.querySelector("[data-pattern-analysis-workbench-panel='candidates']")
+      environment.app.querySelector("[data-pattern-case-review-disclosure='evidence-candidates']")
     );
-    assert.ok(environment.app.querySelector("[data-pattern-analysis-workbench-panel='history']"));
+    assert.ok(environment.app.querySelector("[data-pattern-case-review-disclosure='history']"));
 
     const localTask = environment.app.querySelector("[data-pattern-review-task='tenth-man']");
     assert.ok(localTask);
@@ -185,7 +185,6 @@ void test("pattern-room review task selection survives local debate rerenders", 
     );
     assert.ok(historyNavigation);
     fireEvent(historyNavigation, "click");
-    await Promise.resolve();
 
     const historyDisclosure = environment.app.querySelector(
       "[data-pattern-case-review-history='true']"
@@ -235,7 +234,7 @@ void test("pattern-room report outline stays in the persistent inspector across 
     assert.equal(reportOutline.parentElement, inspectorContent);
     assert.notEqual(reportDocument.parentElement, inspectorContent);
     assert.ok(environment.app.querySelector("[data-pattern-report-summary='true']"));
-    assert.equal(environment.app.querySelectorAll("[data-pattern-casefile-priority]").length, 6);
+    assert.equal(environment.app.querySelectorAll("[data-pattern-report-priority]").length, 3);
     assert.equal(environment.app.querySelectorAll("[data-pattern-report-section]").length, 6);
     assert.equal(environment.app.querySelectorAll("[data-pattern-report-jump]").length, 6);
 

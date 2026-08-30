@@ -33,26 +33,33 @@ type PatternGraphLayout = {
   readonly nodesById: ReadonlyMap<string, PatternGraphNode>;
 };
 
-const GRAPH_LAYOUT_VERSION = "case-map-v3";
-const GRAPH_SCENE_WIDTH = 1180;
-const GRAPH_SCENE_HEIGHT = 760;
-const GRAPH_NODE_WIDTH = 218;
-const GRAPH_NODE_HEIGHT = 96;
-const GRAPH_RING_CAPACITY = 8;
+const GRAPH_LAYOUT_VERSION = "layered-v1";
+const GRAPH_SCENE_WIDTH = 1080;
+const GRAPH_NODE_WIDTH = 240;
+const GRAPH_NODE_HEIGHT = 104;
+const GRAPH_ROW_GAP = 150;
+const GRAPH_TOP = 90;
+const GRAPH_MIN_HEIGHT = 560;
 const GRAPH_ZOOM_MIN = 0.75;
 const GRAPH_ZOOM_MAX = 1.5;
 const GRAPH_ZOOM_STEP = 0.25;
 
+const GRAPH_COLUMN_X: Readonly<Record<PatternGraphNodeKind, number>> = {
+  source: 70,
+  evidence: 420,
+  node: 770,
+};
+
+const GRAPH_COLUMN_LABELS: Readonly<Record<PatternGraphNodeKind, string>> = {
+  source: "Kaynaklar",
+  evidence: "Kanıtlar",
+  node: "İddialar ve notlar",
+};
+
 const GRAPH_NODE_KIND_LABELS: Readonly<Record<PatternGraphNodeKind, string>> = {
   source: "Kaynak",
   evidence: "Kanıt",
-  node: "Pano izi",
-};
-
-const GRAPH_NODE_KIND_ORDER: Readonly<Record<PatternGraphNodeKind, number>> = {
-  source: 0,
-  evidence: 1,
-  node: 2,
+  node: "Pano öğesi",
 };
 
 function normalizeClaimNodeId(claimId: string): string {
@@ -60,10 +67,6 @@ function normalizeClaimNodeId(claimId: string): string {
 }
 
 function compareGraphNodes(left: PatternGraphNodeDraft, right: PatternGraphNodeDraft): number {
-  const kindComparison = GRAPH_NODE_KIND_ORDER[left.kind] - GRAPH_NODE_KIND_ORDER[right.kind];
-  if (kindComparison !== 0) {
-    return kindComparison;
-  }
   const labelComparison = left.label.localeCompare(right.label, "tr");
   return labelComparison === 0 ? left.id.localeCompare(right.id, "tr") : labelComparison;
 }
@@ -104,35 +107,47 @@ function createGraphNodeDrafts(data: PatternRoomWorkspaceModel): readonly Patter
   data.claims.forEach((claim) => {
     ensureNode(normalizeClaimNodeId(claim.id), claim.label);
   });
-  return [...nodesById.values()].sort(compareGraphNodes);
+
+  return [...nodesById.values()];
 }
 
 function createGraphLayout(data: PatternRoomWorkspaceModel): PatternGraphLayout {
   const drafts = createGraphNodeDrafts(data);
-  const centerX = GRAPH_SCENE_WIDTH / 2;
-  const centerY = GRAPH_SCENE_HEIGHT / 2 + 14;
-  const nodes: PatternGraphNode[] = [];
+  const grouped: Record<PatternGraphNodeKind, PatternGraphNodeDraft[]> = {
+    source: [],
+    evidence: [],
+    node: [],
+  };
+  drafts.forEach((node) => {
+    grouped[node.kind].push(node);
+  });
+  Object.values(grouped).forEach((nodes) => {
+    nodes.sort(compareGraphNodes);
+  });
 
-  drafts.forEach((node, index) => {
-    const ring = Math.floor(index / GRAPH_RING_CAPACITY);
-    const slot = index % GRAPH_RING_CAPACITY;
-    const ringStart = ring * GRAPH_RING_CAPACITY;
-    const ringCount = Math.min(GRAPH_RING_CAPACITY, drafts.length - ringStart);
-    const angleOffset = ring % 2 === 0 ? -90 : -67.5;
-    const angleDegrees = angleOffset + (360 * slot) / Math.max(ringCount, 1);
-    const angle = (angleDegrees * Math.PI) / 180;
-    const radiusX = Math.max(270, 430 - ring * 118);
-    const radiusY = Math.max(184, 270 - ring * 70);
-    nodes.push({
-      ...node,
-      x: centerX + Math.cos(angle) * radiusX - GRAPH_NODE_WIDTH / 2,
-      y: centerY + Math.sin(angle) * radiusY - GRAPH_NODE_HEIGHT / 2,
+  const largestColumn = Math.max(
+    grouped.source.length,
+    grouped.evidence.length,
+    grouped.node.length,
+    1
+  );
+  const height = Math.max(GRAPH_MIN_HEIGHT, GRAPH_TOP + largestColumn * GRAPH_ROW_GAP + 70);
+  const nodes: PatternGraphNode[] = [];
+  (["source", "evidence", "node"] as const).forEach((kind) => {
+    const column = grouped[kind];
+    const verticalOffset = ((largestColumn - column.length) * GRAPH_ROW_GAP) / 2;
+    column.forEach((node, index) => {
+      nodes.push({
+        ...node,
+        x: GRAPH_COLUMN_X[kind],
+        y: GRAPH_TOP + verticalOffset + index * GRAPH_ROW_GAP,
+      });
     });
   });
 
   return {
     width: GRAPH_SCENE_WIDTH,
-    height: GRAPH_SCENE_HEIGHT,
+    height,
     nodes,
     nodesById: new Map(
       nodes.map((node) => {
@@ -142,31 +157,17 @@ function createGraphLayout(data: PatternRoomWorkspaceModel): PatternGraphLayout 
   };
 }
 
-function createCaseFocus(subject: string, connectionCount: number): HTMLElement {
-  const focus = createElement("section", "pattern-room-case-map-focus");
-  focus.ariaHidden = "true";
-  focus.append(
-    createElement("span", "pattern-room-kicker", "Vaka odağı"),
-    createElement("strong", undefined, subject),
-    createElement("small", undefined, `${String(connectionCount)} kayıtlı ilişki`)
-  );
-  return focus;
-}
-
 function createGraphNode(node: PatternGraphNode, index: number): HTMLElement {
   const card = createElement(
     "article",
-    `pattern-room-graph-node pattern-room-case-map-node ${node.kind} ${
-      node.isLocal ? "local" : "domain"
-    }${node.claim === null ? "" : ` ${node.claim.stance}`}`
+    `pattern-room-graph-node ${node.kind} ${node.isLocal ? "local" : "domain"}${
+      node.claim === null ? "" : ` ${node.claim.stance}`
+    }`
   );
   card.dataset["patternGraphNode"] = node.id;
   card.dataset["patternGraphNodeKind"] = node.kind;
   card.dataset["patternGraphNodeScope"] = node.isLocal ? "local" : "domain";
-  card.setAttribute(
-    "style",
-    `left:${String(Math.round(node.x))}px;top:${String(Math.round(node.y))}px;`
-  );
+  card.setAttribute("style", `left:${String(node.x)}px;top:${String(node.y)}px;`);
   if (node.claim !== null) {
     card.dataset["patternConnectionClaim"] = node.claim.id;
     card.dataset["patternClaimCard"] = node.claim.id;
@@ -174,15 +175,26 @@ function createGraphNode(node: PatternGraphNode, index: number): HTMLElement {
 
   const summary =
     node.claim?.summary ??
-    `${GRAPH_NODE_KIND_LABELS[node.kind]} bağlantı ucu; ayrıntılar kaynak ve pano yüzeylerinde korunur.`;
+    `${GRAPH_NODE_KIND_LABELS[node.kind]} bağlantı ucu; ayrıntılar kaynak ve pano görünümlerinde korunur.`;
   card.append(
     createElement("span", "pattern-room-list-eyebrow", GRAPH_NODE_KIND_LABELS[node.kind]),
     createElement("span", "pattern-room-connection-node-index", String(index + 1)),
     createElement("h3", undefined, node.label),
     createElement("p", undefined, summary),
-    createElement("small", undefined, node.isLocal ? "Yerel vaka izi" : "Hazır vaka izi")
+    createElement("small", undefined, node.isLocal ? "Yerel vaka izi" : "Domain vaka izi")
   );
   return card;
+}
+
+function createGraphColumnLabel(kind: PatternGraphNodeKind): HTMLElement {
+  const label = createElement("div", `pattern-room-graph-column-label ${kind}`);
+  label.dataset["patternGraphColumn"] = kind;
+  label.setAttribute("style", `left:${String(GRAPH_COLUMN_X[kind])}px;`);
+  label.append(
+    createElement("span", undefined, GRAPH_NODE_KIND_LABELS[kind]),
+    createElement("strong", undefined, GRAPH_COLUMN_LABELS[kind])
+  );
+  return label;
 }
 
 function createGraphEdge(
@@ -200,14 +212,14 @@ function createGraphEdge(
   const deltaY = targetY - sourceY;
   const length = Math.max(Math.hypot(deltaX, deltaY), 72);
   const angle = (Math.atan2(deltaY, deltaX) * 180) / Math.PI;
-  const parallelOffset = ((index % 3) - 1) * 9;
+  const parallelOffset = ((index % 3) - 1) * 10;
   const radians = (angle * Math.PI) / 180;
   const offsetX = -Math.sin(radians) * parallelOffset;
   const offsetY = Math.cos(radians) * parallelOffset;
 
   const button = createElement(
     "button",
-    `pattern-room-connection-card pattern-room-graph-edge pattern-room-case-map-edge ${connection.scope}`
+    `pattern-room-connection-card pattern-room-graph-edge ${connection.scope}`
   );
   button.type = "button";
   button.dataset["patternConnectionEdge"] = connection.id;
@@ -235,7 +247,9 @@ function createGraphEdge(
     createElement(
       "span",
       "pattern-room-visually-hidden",
-      `${connection.sourceLabel} → ${connection.edgeTypeLabel} → ${connection.targetLabel}`
+      `${connection.sourceLabel} → ${connection.edgeTypeLabel} → ${connection.targetLabel}. ${
+        connection.scope === "local" ? "Yerel bağlantı" : "Domain bağlantısı"
+      }${connection.note === null ? "" : `. Not: ${connection.note}`}`
     )
   );
   button.addEventListener("click", () => {
@@ -280,46 +294,42 @@ function createGraphToolbar(
   readonly zoomOut: HTMLButtonElement;
   readonly zoomIn: HTMLButtonElement;
 } {
-  const toolbar = createElement("div", "pattern-room-graph-toolbar pattern-room-case-map-toolbar");
+  const toolbar = createElement("div", "pattern-room-graph-toolbar");
   toolbar.dataset["patternGraphToolbar"] = "true";
   const metrics = createElement("div", "pattern-room-graph-metrics");
   metrics.append(
-    createElement("span", undefined, `${String(nodeCount)} iz`),
-    createElement("span", undefined, `${String(connectionCount)} ilişki`),
-    createElement("span", undefined, "Vaka haritası")
+    createElement("span", undefined, `${String(nodeCount)} düğüm`),
+    createElement("span", undefined, `${String(connectionCount)} bağlantı`),
+    createElement("span", undefined, "Deterministik yerleşim")
   );
 
-  const legend = createElement("div", "pattern-room-case-map-legend");
-  (["source", "evidence", "node"] as const).forEach((kind) => {
-    const item = createElement("span", kind);
-    item.append(
-      createElement("i"),
-      createElement("small", undefined, GRAPH_NODE_KIND_LABELS[kind])
-    );
-    legend.append(item);
-  });
-
   const controls = createElement("div", "pattern-room-graph-zoom-controls");
-  controls.ariaLabel = "Harita yakınlaştırma";
+  controls.ariaLabel = "Grafik yakınlaştırma";
   const zoomOut = createElement("button", "pattern-room-graph-zoom-button", "−");
   zoomOut.type = "button";
-  zoomOut.ariaLabel = "Uzaklaştır";
   zoomOut.dataset["patternGraphZoom"] = "out";
+  zoomOut.ariaLabel = "Uzaklaştır";
   const zoomValue = createElement("span", "pattern-room-graph-zoom-value", "100%");
   zoomValue.dataset["patternGraphZoomValue"] = "true";
-  const reset = createElement("button", "pattern-room-graph-zoom-button reset", "Ortala");
+  const reset = createElement("button", "pattern-room-graph-zoom-button reset", "Sıfırla");
   reset.type = "button";
-  reset.ariaLabel = "Haritayı ortala";
   reset.dataset["patternGraphZoom"] = "reset";
+  reset.ariaLabel = "Yakınlaştırmayı sıfırla";
   const zoomIn = createElement("button", "pattern-room-graph-zoom-button", "+");
   zoomIn.type = "button";
-  zoomIn.ariaLabel = "Yakınlaştır";
   zoomIn.dataset["patternGraphZoom"] = "in";
-  zoomOut.addEventListener("click", () => onZoomChange("out"));
-  reset.addEventListener("click", () => onZoomChange("reset"));
-  zoomIn.addEventListener("click", () => onZoomChange("in"));
+  zoomIn.ariaLabel = "Yakınlaştır";
+  zoomOut.addEventListener("click", () => {
+    onZoomChange("out");
+  });
+  reset.addEventListener("click", () => {
+    onZoomChange("reset");
+  });
+  zoomIn.addEventListener("click", () => {
+    onZoomChange("in");
+  });
   controls.append(zoomOut, zoomValue, reset, zoomIn);
-  toolbar.append(metrics, legend, controls);
+  toolbar.append(metrics, controls);
   return { toolbar, zoomValue, zoomOut, zoomIn };
 }
 
@@ -330,7 +340,6 @@ export function createDeskPanel(
   text: PatternWorkspaceTranslator = createPatternWorkspaceTranslator("tr", null)
 ): HTMLElement {
   const shell = createPanelShell("desk", text("connections.title"), onBack);
-  shell.classList.add("pattern-room-case-map-panel");
   const layout = createElement(
     "div",
     "pattern-room-desk-layout pattern-room-connections-workspace pattern-room-connections-canvas-only"
@@ -338,18 +347,11 @@ export function createDeskPanel(
 
   const workSurface = createElement("section", "pattern-room-desk-surface");
   workSurface.ariaLabel = text("connections.title");
-  const surfaceHeader = createElement(
-    "header",
-    "pattern-room-desk-header pattern-room-case-map-header"
-  );
+  const surfaceHeader = createElement("header", "pattern-room-desk-header");
   surfaceHeader.append(
-    createElement("span", "pattern-room-kicker", "Bağlantı masası"),
+    createElement("span", "pattern-room-kicker", text("connections.kicker")),
     createElement("h2", undefined, data.subject),
-    createElement(
-      "p",
-      undefined,
-      "Kaynak, kanıt ve pano izlerini vaka odağının çevresinde karşılaştır."
-    )
+    createElement("p", undefined, text("connections.intro"))
   );
 
   const connectionMap = createElement("div", "pattern-room-connection-map pattern-room-graph-map");
@@ -357,9 +359,15 @@ export function createDeskPanel(
   const graphLayout = createGraphLayout(data);
   const stage = createElement("div", "pattern-room-graph-stage");
   stage.dataset["patternGraphStage"] = "true";
-  const scene = createElement("div", "pattern-room-graph-scene pattern-room-case-map-scene");
+  const scene = createElement("div", "pattern-room-graph-scene");
   scene.dataset["patternGraphScene"] = "true";
   scene.dataset["patternGraphLayout"] = GRAPH_LAYOUT_VERSION;
+  const columnLabels = createElement("div", "pattern-room-graph-column-labels");
+  columnLabels.append(
+    createGraphColumnLabel("source"),
+    createGraphColumnLabel("evidence"),
+    createGraphColumnLabel("node")
+  );
 
   const relationship = createElement(
     "div",
@@ -370,9 +378,13 @@ export function createDeskPanel(
   const connectionButtons: HTMLButtonElement[] = [];
   const updateSelectedConnection = (connectionId: string | null): void => {
     connectionButtons.forEach((button) => {
-      const selected = button.dataset["patternConnectionEdge"] === connectionId;
-      button.ariaPressed = selected ? "true" : "false";
-      button.classList.toggle("active", selected);
+      const isSelected = button.dataset["patternConnectionEdge"] === connectionId;
+      button.ariaPressed = isSelected ? "true" : "false";
+      if (isSelected) {
+        button.classList.add("active");
+      } else {
+        button.classList.remove("active");
+      }
     });
   };
 
@@ -391,18 +403,17 @@ export function createDeskPanel(
       connectionButtons.push(button);
       relationship.append(button);
     });
-
   graphLayout.nodes.forEach((node, index) => {
     graphNodes.append(createGraphNode(node, index));
   });
   updateSelectedConnection(actions.getSelectedConnectionId());
-  scene.append(createCaseFocus(data.subject, data.connections.length), relationship, graphNodes);
+  scene.append(columnLabels, relationship, graphNodes);
   stage.append(scene);
 
   const viewport = createElement("div", "pattern-room-graph-viewport");
   viewport.dataset["patternGraphViewport"] = "true";
   viewport.tabIndex = 0;
-  viewport.ariaLabel = "Kaydırılabilir vaka ilişki haritası";
+  viewport.ariaLabel = "Kaydırılabilir ilişki grafiği";
   viewport.append(stage);
 
   let zoom = 1;
@@ -439,16 +450,15 @@ export function createDeskPanel(
 
   connectionMap.append(toolbarElements.toolbar, viewport);
   if (graphLayout.nodes.length === 0) {
-    connectionMap.append(createEmptyState("Haritaya yerleştirilecek vaka izi yok.", "data-empty"));
+    connectionMap.append(
+      createEmptyState("Grafikte gösterilecek iddia veya karşı iz yok.", "data-empty")
+    );
   } else if (data.connections.length === 0) {
     connectionMap.append(
       createEmptyState(
-        "Henüz ilişki kurulmadı. Sağdaki İZ çekmecesinden iki öğeyi bağla.",
+        "Henüz seçilebilir bir bağlantı yok. Sağ panelden yeni bağlantı kurabilirsiniz.",
         "data-empty",
-        {
-          compact: true,
-          className: "pattern-room-connection-empty",
-        }
+        { compact: true, className: "pattern-room-connection-empty" }
       )
     );
   }
@@ -456,7 +466,7 @@ export function createDeskPanel(
   const hint = createElement(
     "p",
     "pattern-room-graph-hint",
-    "Bir ilişkiye tıklayarak ayrıntısını aç. Harita yakınlaştırması yalnız görünümü değiştirir."
+    "Grafiği kaydırarak gezebilirsiniz. Yakınlaştırma yalnız bu görünümü etkiler; vaka ve overlay verisini değiştirmez."
   );
   workSurface.append(surfaceHeader, connectionMap, hint);
   layout.append(workSurface);
