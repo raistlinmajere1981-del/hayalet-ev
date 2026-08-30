@@ -37,25 +37,32 @@ Delivered so far:
 - deterministic owned/granted/blocked card availability and legality resolver in `shared/card-legality.ts`
 - explicit standing/fallen target legality in the shared card requirement contract
 - deterministic card effect planning in `shared/effect-resolution.ts`
-- explicit separation between mechanical effect target and presentation `applyTo`
+- mechanical effect target stored in the canonical card effect contract, separate from presentation `applyTo`
 - ordered mechanical patches for damage/heal/shield/status/movement/stat/resource/card/reveal/retreat effects
 - combat discussion -> commit -> resolution -> aftermath phase/commit flow in `shared/combat-flow.ts`
-- no implicit initiative/order rule; multi-actor resolution order remains intentionally unresolved
 - combat-only runtime state in `shared/combat-runtime.ts` for shields, combat-scoped stat modifiers, timed-status bookkeeping and retreat requests
 - atomic ordered patch application in `shared/combat-patch-apply.ts`
 - shield absorption before HP damage and `0 HP -> fallen` applied by combat authority, not by the card planner
 - run reveal patches deferred out of combat authority rather than mutating run state directly
 - explicit terminal evaluation in `shared/combat-result.ts` for party victory, party defeat and retreat
 - ambiguous simultaneous fall/retreat terminal states are rejected rather than silently resolved by implementation order
+- deterministic two-pass resolution ordering in `shared/resolution-order.ts`: movement first, then action
+- per-pass ordering by `fast | normal | heavy` card priority, effective speed, then stable actor-id tie break
+- action queue intended to be rebuilt after movement; fallen actors are skipped/cancelled before unresolved actions
+- enemy tactical controller contract in `shared/enemy-controller.ts`
+- explicit `policy | ai0` enemy controller families without moving mechanical authority out of the engine
+- AI0 combat decision packets expose legal options and visible combat state but never hidden participant commits
+- deterministic policy heuristics deliberately remain explicit content modules rather than implicit fallback behavior
 
 Next planned pieces:
 
+- resolution executor that revalidates legality against post-movement state before each action and applies effect patches in queue order
 - aftermath settlement and timed-status turn bookkeeping
 - fallen post-victory recovery contract once exact recovery/injury values are deliberately chosen
 - run phase transitions
 - Universe Package validation/normalization shell
 - DM scene/result packet builders
-- AI0 NPC role packet builder
+- AI0 NPC role packet builder for narrative/non-combat interaction
 - presentation-event emitter helpers
 
 Requirements:
