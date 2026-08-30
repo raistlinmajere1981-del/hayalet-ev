@@ -69,6 +69,22 @@ Cards default to `normal` priority if they do not define a priority tier. Do not
 
 `0 HP` means `fallen` during combat. Party defeat ends the run.
 
+## Fixed V1 effect duration law
+
+Do not invent per-card timer semantics. V1 uses one small duration grammar:
+
+- damage/heal/resource/card ownership/movement effects are immediate state changes
+- shields are turn-scoped and clear in aftermath
+- direct combat stat modifiers are turn-scoped and clear in aftermath
+- a non-persistent status without `durationTurns` lasts only the current turn and clears in aftermath
+- a status with `durationTurns: N` survives the application turn and then remains for N complete following turns
+- timed status counters do not decrement in the same turn in which the status was applied
+- reapplying the same timed status does not stack another timer; it refreshes the existing status without shortening its remaining duration
+- a persistent status without `durationTurns` remains until an explicit remove effect or later run rule removes it
+- `durationTurns` overrides the status definition's default persistence behavior for that application
+
+If a design later needs a multi-turn stat change, represent it through an explicit status definition/card rather than adding a second independent modifier timer system.
+
 ## Fixed enemy combat control
 
 Enemy mechanics remain engine-owned. Enemy tactical choice has exactly two controller families in the initial contract:
