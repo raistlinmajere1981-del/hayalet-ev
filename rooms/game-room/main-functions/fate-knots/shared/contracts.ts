@@ -102,6 +102,7 @@ export interface FateKnotsCardRequirement {
   targetTeam?: FateKnotsTeamId | "self" | "any";
   targetRows?: FateKnotsRow[];
   targetRanges?: FateKnotsRange[];
+  targetLifeState?: "standing" | "fallen" | "any";
   actorMustBeStanding?: boolean;
 }
 
