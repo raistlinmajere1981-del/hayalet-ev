@@ -224,7 +224,7 @@ The initial configurable action budget is:
 
 Both are optional. This is external configuration, not a renderer decision.
 
-## 11. Combat defeat, falling, and death
+## 11. Combat defeat, falling, victory recovery, and death
 
 A character reaching `0 HP` during combat becomes `fallen`; this is not immediate permanent death.
 
@@ -234,7 +234,15 @@ A fallen character:
 - cannot commit normal action/movement cards
 - remains part of the combat state for effects that explicitly target fallen actors
 
-If the party wins, fallen player characters return with a low configured recovery HP and receive an injury/wound consequence according to the card/status rules.
+V1 party-victory recovery is intentionally severe and simple:
+
+- standing party actors keep the exact HP they finished combat with; victory does not heal the team
+- a party actor that is still `fallen` when the party wins returns at the configured recovery HP; the V1 default is `1 HP`
+- the recovered actor is no longer `fallen`
+- canonical `maxHp` is not automatically reduced
+- the engine does not automatically invent or attach a generic injury/wound card
+
+The design deliberately avoids an automatic max-HP penalty because that would require a second implicit restoration model. Lasting wounds remain available through the existing card/status language: if a universe or later balancing pass wants a broken arm, deep wound, concussion, reduced max HP, blocked card family, or similar consequence, it must exist as an explicit injury/status definition with visible mechanics and an explicit removal/recovery rule.
 
 If the player party loses the combat, the run ends as a failure. V1 does not require replacement characters, inheritance systems, or mid-run character recruitment to recover from party defeat.
 
