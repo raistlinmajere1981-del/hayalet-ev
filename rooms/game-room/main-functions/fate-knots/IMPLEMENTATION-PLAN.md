@@ -1,0 +1,119 @@
+# Fate Knots — Implementation Plan
+
+The rebuild is intentionally staged so each change is reviewable and can be merged/rebased independently of unrelated room work.
+
+## Stage A — Contract lock (Nexa / branch-safe)
+
+Status: in progress.
+
+Goals:
+
+- preserve the agreed game design in-repo
+- define data contracts before renderer work
+- prevent local implementation from inventing rules
+
+Deliverables:
+
+- `README.md` design contract
+- `CODEX-HANDOFF.md` guardrails
+- `shared/contracts.ts`
+- later: validation helpers for packages/state
+
+No Game Room registration or shared host wiring is required in this stage.
+
+## Stage B — Headless core (Nexa / branch-safe)
+
+Build inside `main-functions/fate-knots` without final visuals.
+
+Planned modules:
+
+- external/default rules config
+- card legality resolver
+- card effect resolver
+- lightweight position transitions
+- combat discussion/commit/resolution/aftermath state machine
+- fallen / party defeat result handling
+- run phase transitions
+- Universe Package validation/normalization shell
+- DM scene/result packet builders
+- AI0 NPC role packet builder
+- presentation-event emitter contracts
+
+Requirements:
+
+- deterministic by default
+- no Babylon dependency
+- no image/audio generation dependency
+- no Game Room shared integration until the feature core is coherent
+
+## Stage C — Persistence and host integration (Nexa + local verification)
+
+Only after Stage B contracts settle:
+
+- universe storage
+- run save/resume
+- feature registration
+- host command family
+- Game Room context/state bridge
+- player/AI transport integration points
+- neutral Hub state surface
+
+This is the first stage likely to touch shared Game Room files and therefore the first stage where rebasing/merging current `main` should be considered before edits.
+
+## Stage D — Neutral Hub and World Forge orchestration (shared)
+
+Implement the stable pre-universe management surface and orchestration:
+
+- saved universes
+- create/continue/reset/delete
+- connection/readiness display
+- World Forge progress
+- draft -> validation -> canonical Universe Package
+- generated theme/assets attached to the universe
+
+The Hub must work without a generated book/background/theme.
+
+## Stage E — Babylon book runtime (Codex/local)
+
+Local visual/runtime work after contracts are available:
+
+- closed book reveal
+- opening/page transitions
+- exploration spread
+- dialogue/choice composition
+- atlas/map spread
+- combat two-page spread
+- card selection/target/commit affordances
+- loot/camp/finale surfaces
+
+Codex should consume semantic state/events rather than infer mechanics from UI.
+
+Use at least two visually different mock universe Theme Packages to prove that the renderer is theme-driven rather than hardcoded to one book design.
+
+## Stage F — Presentation collection (Codex/local, iterative)
+
+Grow reusable catalogs independently from the rules engine:
+
+- slash/stab/blunt/projectile effects
+- defense/heal/status/movement effects
+- persistent status visuals
+- card SFX
+- ambience
+- music instrument/texture resources
+- universe music identity experiment
+
+Artistic variation is encouraged here; game-rule invention is not.
+
+## Stage G — Optional speech layer (later)
+
+- STT can feed normal player discussion/input
+- reserve/use `voiceProfileId`
+- TTS remains optional until multiple useful voice profiles are available
+
+Do not make speech a V1 launch dependency.
+
+## Local testing handoff
+
+GitHub Actions are not assumed available. After the current Laboratory work is finished and branches are merged locally, run the repository's normal typecheck/build/tests and live Game Room checks there.
+
+Until then, keep commits small and isolate Fate Knots work from shared room files wherever possible.
