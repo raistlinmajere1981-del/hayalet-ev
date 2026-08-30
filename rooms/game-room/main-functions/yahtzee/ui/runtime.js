@@ -119,14 +119,13 @@
   function t(key) {
     const path = String(key).split(".");
     return (
-      readPath(translations && translations.yahtzee, path) ||
-      readPath(FALLBACK_LABELS, path) ||
-      key
+      readPath(translations && translations.yahtzee, path) || readPath(FALLBACK_LABELS, path) || key
     );
   }
 
   function setTranslations(nextTranslations) {
-    translations = nextTranslations && typeof nextTranslations === "object" ? nextTranslations : null;
+    translations =
+      nextTranslations && typeof nextTranslations === "object" ? nextTranslations : null;
   }
 
   function command(name, roomArgs) {
@@ -613,13 +612,15 @@
     options.forEach(function (option) {
       option.textContent = t("modes." + option.value);
     });
-    const effectiveMode = state.active || state.complete ? state.mode || selectedMode : selectedMode;
+    const effectiveMode =
+      state.active || state.complete ? state.mode || selectedMode : selectedMode;
     refs.modeSelect.value = MODES.includes(effectiveMode) ? effectiveMode : "solo";
   }
 
   function updateUtilityButtons() {
     if (!refs) return;
-    refs.soundButton.textContent = t("sound") + ": " + (audioEnabled ? t("soundOn") : t("soundOff"));
+    refs.soundButton.textContent =
+      t("sound") + ": " + (audioEnabled ? t("soundOn") : t("soundOff"));
     refs.soundButton.title = refs.soundButton.textContent;
     refs.resetButton.hidden = !state.active && !state.complete;
     refs.resetButton.title = t("reset");
@@ -680,11 +681,11 @@
       const turn = turnState();
       return Boolean(
         Number.isInteger(Number(index)) &&
-          Number(index) >= 0 &&
-          Number(index) < 5 &&
-          isLocalTurn() &&
-          turn.rollCount > 0 &&
-          turn.rollCount < 3
+        Number(index) >= 0 &&
+        Number(index) < 5 &&
+        isLocalTurn() &&
+        turn.rollCount > 0 &&
+        turn.rollCount < 3
       );
     },
     toggleDie: function (index) {

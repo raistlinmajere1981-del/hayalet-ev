@@ -60,12 +60,12 @@
   function hasRuntime(B) {
     return Boolean(
       B &&
-        typeof B.Engine === "function" &&
-        typeof B.Scene === "function" &&
-        typeof B.CreateBox === "function" &&
-        typeof B.CreateCylinder === "function" &&
-        typeof B.CreateDisc === "function" &&
-        typeof B.CreateTorus === "function"
+      typeof B.Engine === "function" &&
+      typeof B.Scene === "function" &&
+      typeof B.CreateBox === "function" &&
+      typeof B.CreateCylinder === "function" &&
+      typeof B.CreateDisc === "function" &&
+      typeof B.CreateTorus === "function"
     );
   }
 
@@ -546,9 +546,9 @@
           const progress = Math.min(1, model.roll.elapsed / model.roll.duration);
           const envelope = Math.sin(progress * Math.PI);
           model.root.position.x =
-            model.basePosition.x + Math.sin(progress * Math.PI * 2 + index) * model.roll.lateral * envelope;
-          model.root.position.y =
-            model.basePosition.y + envelope * (0.52 + index * 0.018);
+            model.basePosition.x +
+            Math.sin(progress * Math.PI * 2 + index) * model.roll.lateral * envelope;
+          model.root.position.y = model.basePosition.y + envelope * (0.52 + index * 0.018);
           model.root.position.z =
             model.basePosition.z + Math.cos(progress * Math.PI * 2.35 + index) * 0.1 * envelope;
           model.root.rotation.x = progress * model.roll.turnsX * Math.PI * 2;
@@ -614,7 +614,11 @@
             held: model.held,
             rolling: Boolean(model.roll),
             position: [model.root.position.x, model.root.position.y, model.root.position.z],
-            targetPosition: [model.targetPosition.x, model.targetPosition.y, model.targetPosition.z],
+            targetPosition: [
+              model.targetPosition.x,
+              model.targetPosition.y,
+              model.targetPosition.z,
+            ],
             rotation: [model.root.rotation.x, model.root.rotation.y, model.root.rotation.z],
           };
         });
