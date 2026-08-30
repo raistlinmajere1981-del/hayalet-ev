@@ -45,10 +45,11 @@ Delivered so far:
 - atomic ordered patch application in `shared/combat-patch-apply.ts`
 - shield absorption before HP damage and `0 HP -> fallen` applied by combat authority, not by the card planner
 - run reveal patches deferred out of combat authority rather than mutating run state directly
+- explicit terminal evaluation in `shared/combat-result.ts` for party victory, party defeat and retreat
+- ambiguous simultaneous fall/retreat terminal states are rejected rather than silently resolved by implementation order
 
 Next planned pieces:
 
-- terminal combat result evaluation: party victory / party defeat / legal retreat
 - aftermath settlement and timed-status turn bookkeeping
 - fallen post-victory recovery contract once exact recovery/injury values are deliberately chosen
 - run phase transitions
