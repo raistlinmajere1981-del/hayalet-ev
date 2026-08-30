@@ -48,15 +48,18 @@ Delivered so far:
 - ambiguous simultaneous fall/retreat terminal states are rejected rather than silently resolved by implementation order
 - deterministic two-pass resolution ordering in `shared/resolution-order.ts`: movement first, then action
 - per-pass ordering by `fast | normal | heavy` card priority, effective speed, then stable actor-id tie break
-- action queue intended to be rebuilt after movement; fallen actors are skipped/cancelled before unresolved actions
 - enemy tactical controller contract in `shared/enemy-controller.ts`
 - explicit `policy | ai0` enemy controller families without moving mechanical authority out of the engine
 - AI0 combat decision packets expose legal options and visible combat state but never hidden participant commits
 - deterministic policy heuristics deliberately remain explicit content modules rather than implicit fallback behavior
+- full ordered turn execution in `shared/combat-resolution-executor.ts`
+- movement resolves before the action queue is rebuilt from the new state
+- every queued card is revalidated immediately before execution; post-commit range/status/position changes can cancel a card without corrupting combat
+- an actor made `fallen` by a faster action loses any unresolved queued action
+- terminal victory/defeat/retreat evaluation runs during ordered resolution and stops later queued actions once combat ends
 
 Next planned pieces:
 
-- resolution executor that revalidates legality against post-movement state before each action and applies effect patches in queue order
 - aftermath settlement and timed-status turn bookkeeping
 - fallen post-victory recovery contract once exact recovery/injury values are deliberately chosen
 - run phase transitions
