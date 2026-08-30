@@ -85,6 +85,15 @@ export type FateKnotsEnemyControllerDefinition =
       policyId?: null;
     };
 
+export type FateKnotsMechanicalEffectTarget =
+  | "self"
+  | "primaryTarget"
+  | "secondaryTarget"
+  | "allAllies"
+  | "allEnemies"
+  | "ownTeam"
+  | "run";
+
 export type FateKnotsEffectKind =
   | "damage"
   | "heal"
@@ -125,6 +134,7 @@ export interface FateKnotsCardRequirement {
 export interface FateKnotsCardEffect {
   id: string;
   kind: FateKnotsEffectKind;
+  target: FateKnotsMechanicalEffectTarget;
   value?: number;
   statId?: FateKnotsStatId;
   statusId?: string;
