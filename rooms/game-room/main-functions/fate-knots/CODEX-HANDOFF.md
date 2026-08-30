@@ -50,7 +50,37 @@ Combat uses:
 - lightweight position only: `front | rear` plus `engaged | near | far`
 - initial configurable budget: up to one movement card and one action card per actor per turn
 
+All participants commit before resolution. Pending player commits are hidden from AI0 enemy decision packets.
+
+Resolution is two-pass:
+
+1. movement cards
+2. action cards
+
+Within each pass, order is deterministic:
+
+1. card priority: `fast` before `normal` before `heavy`
+2. effective actor speed: higher first
+3. stable actor-id tie break
+
+The action queue is built after movement has resolved. Before every queued entry resolves, the actor must still be standing. If a faster action makes an actor `fallen`, that actor's unresolved action is cancelled.
+
+Cards default to `normal` priority if they do not define a priority tier. Do not add an initiative die or random tie break.
+
 `0 HP` means `fallen` during combat. Party defeat ends the run.
+
+## Fixed enemy combat control
+
+Enemy mechanics remain engine-owned. Enemy tactical choice has exactly two controller families in the initial contract:
+
+- `policy`: deterministic engine policy identified by an explicit `policyId`
+- `ai0`: personality-driven NPC choice over engine-provided legal options
+
+AI0 receives only combat-visible state and legal card/target options. It must not receive other participants' hidden commits or hidden canon facts. AI0 returns a choice; the normal legality/commit path validates it again before storage.
+
+Do not call AI0 for every enemy merely because it exists. Simple creatures may use explicit deterministic policies. AI0 is intended for NPCs/bosses where personality-driven tactical choice adds value.
+
+Individual policy heuristics are not yet globally fixed. Do not silently invent `aggressive-melee`, `defensive-ranged`, or similar behavior unless a task explicitly defines that policy.
 
 ## Fixed presentation direction
 
@@ -107,9 +137,8 @@ The following details are intentionally not final yet. If a local task reaches o
 - exact player/base stat values
 - exact starting card catalogs for generated universes
 - exact energy/resource costs
-- exact combat resolution ordering when multiple actors commit actions
 - exact fallen recovery HP and injury severity/balance
-- exact enemy automation policy beyond deterministic engine ownership
+- exact heuristics/content for individual deterministic enemy policies
 - exact loot quantities and inventory capacities
 - exact camp healing/equipment limits
 - exact symbolic music notation/synthesis backend
