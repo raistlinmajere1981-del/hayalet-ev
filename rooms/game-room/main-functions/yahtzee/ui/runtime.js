@@ -480,6 +480,9 @@
     const rightCard = createScoreCard("right");
     const center = createElement("div", "yahtzee-center-dock");
     const status = createElement("div", "yahtzee-status");
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    status.setAttribute("aria-atomic", "true");
     const actionRow = createElement("div", "yahtzee-action-row");
     const rollButton = createElement("button", "yahtzee-roll-button");
     rollButton.type = "button";

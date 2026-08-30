@@ -7,8 +7,8 @@ This directory contains room-local artwork used by the pirate-deck Yahtzee prese
 The current runtime actively consumes:
 
 - `deck-stage-v3.webp` — integrated 16:9 cinematic environment with a continuous flat center deck aligned to the Babylon table
-- `table-mahogany.webp` — tileable mahogany texture for the Babylon table body
-- `table-felt-burgundy.webp` — tileable oxblood felt texture for the inset dice surface
+- `table-mahogany-v2.webp` — lower-red, fine-grain mahogany texture for the Babylon table body
+- `table-felt-burgundy-v2.webp` — low-contrast oxblood baize texture for the inset dice surface
 
 The integrated environment is deliberately static in the active path. Continuous sky/sea/crew CSS animation was removed from the default runtime to reduce rendering cost on low-end systems.
 
@@ -23,6 +23,8 @@ The following files are currently kept for rollback, later art experiments or re
 - `crew-1.webp` … `crew-4.webp`
 - `player-left.webp`
 - `player-right.webp`
+- `table-mahogany.webp`
+- `table-felt-burgundy.webp`
 
 Player identity is now rendered by compact portrait frames in the direct HUD rather than full-body standees.
 

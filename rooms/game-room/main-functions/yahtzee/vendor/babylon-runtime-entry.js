@@ -14,8 +14,10 @@ import { CreateDisc } from "@babylonjs/core/Meshes/Builders/discBuilder.js";
 import { CreateGround } from "@babylonjs/core/Meshes/Builders/groundBuilder.js";
 import { CreateLines } from "@babylonjs/core/Meshes/Builders/linesBuilder.js";
 import { CreatePlane } from "@babylonjs/core/Meshes/Builders/planeBuilder.js";
+import { CreatePolyhedron } from "@babylonjs/core/Meshes/Builders/polyhedronBuilder.js";
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder.js";
 import { CreateTorus } from "@babylonjs/core/Meshes/Builders/torusBuilder.js";
+import { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import { Scene } from "@babylonjs/core/scene.js";
 
@@ -29,11 +31,13 @@ globalThis.BABYLON = Object.assign(globalThis.BABYLON || {}, {
   CreateGround,
   CreateLines,
   CreatePlane,
+  CreatePolyhedron,
   CreateSphere,
   CreateTorus,
   DirectionalLight,
   Engine,
   HemisphericLight,
+  Mesh,
   PointLight,
   Scene,
   StandardMaterial,

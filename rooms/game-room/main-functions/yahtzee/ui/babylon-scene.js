@@ -5,22 +5,91 @@
 
   const DEFAULT_DICE = [1, 1, 1, 1, 1];
   const DEFAULT_HELD = [false, false, false, false, false];
-  const TABLE_FOOTPRINT_SCALE = 0.95;
-  const DIE_SCALE = 0.9;
-  const DIE_LAYOUT = [
-    [-1.28, -0.7, -0.08],
-    [0, -0.8, 0.05],
-    [1.28, -0.68, -0.04],
-    [-0.64, 0.2, 0.08],
-    [0.67, 0.19, -0.07],
-  ];
-  const RACK_LAYOUT = [
-    [2.62, 1.48, -1.06],
-    [2.62, 1.48, -0.54],
-    [2.62, 1.48, 0],
-    [2.62, 1.48, 0.54],
-    [2.62, 1.48, 1.06],
-  ];
+  const FALLBACK_STAGE_CONFIG = {
+    root: { position: [0, -0.08, 0.12] },
+    table: {
+      position: [0, 0, 0],
+      footprintScale: 1,
+      width: 6.86,
+      height: 0.34,
+      depth: 3.74,
+      topY: 0.91,
+      insetWidth: 5.28,
+      insetHeight: 0.06,
+      insetDepth: 3,
+      insetX: -0.42,
+      insetY: 1.11,
+      outerTrimInset: 0.18,
+      outerTrimThickness: 0.16,
+      outerTrimHeight: 0.12,
+      outerTrimY: 1.17,
+      innerRailThickness: 0.09,
+      innerRailHeight: 0.075,
+      innerRailY: 1.165,
+      apronWidth: 6.44,
+      apronHeight: 0.48,
+      apronDepth: 0.2,
+      apronY: 0.66,
+      apronAccentHeight: 0.055,
+      rackBedWidth: 0.68,
+      rackBedHeight: 0.055,
+      rackBedDepth: 3.18,
+      rackDividerWidth: 0.065,
+      darkWoodTextureScale: [2.2, 1.2],
+      woodTextureScale: [1.8, 1.12],
+      feltTextureScale: [1.65, 1.65],
+    },
+    dice: {
+      size: 0.8,
+      chamfer: 0.105,
+      scale: 0.9,
+      heldScale: 0.65,
+      baseY: 1.5,
+      pipRadius: 0.082,
+      pipLift: 0.006,
+      pipTessellation: 12,
+      layout: [
+        [-1.3, -0.66, -0.08],
+        [-0.02, -0.77, 0.045],
+        [1.27, -0.64, -0.045],
+        [-0.66, 0.24, 0.075],
+        [0.68, 0.24, -0.065],
+      ],
+      moveEase: 0.016,
+      rollDurationMs: 540,
+      rollDurationStepMs: 30,
+      rollLateral: 0.13,
+      rollLateralStep: 0.012,
+      rollLift: 0.5,
+      rollLiftStep: 0.016,
+      rollDepth: 0.09,
+    },
+    rack: {
+      x: 2.69,
+      y: 1.4,
+      zSlots: [-1.2, -0.6, 0, 0.6, 1.2],
+      yawSlots: [-0.06, -0.03, 0, 0.03, 0.06],
+      wellY: 1.17,
+      wellRadius: 0.23,
+      ringDiameter: 0.58,
+      ringThickness: 0.05,
+      tessellation: 18,
+    },
+    lantern: {
+      position: [-2.72, 1.12, 1.42],
+      scale: 0.68,
+      lightIntensity: 1.48,
+      lightRange: 7.6,
+    },
+    lighting: { moonIntensity: 0.9, warmIntensity: 0.56, warmRange: 10.5 },
+    performance: {
+      hardwareScalingFloor: 1.15,
+      pixelRatioDivisor: 1.2,
+      rollingFps: 45,
+      activeFps: 30,
+      idleFps: 15,
+    },
+  };
   let activeHandle = null;
 
   const DIE_PIPS = {
@@ -57,6 +126,66 @@
     ],
   };
 
+  const DIE_FACES = [
+    {
+      name: "top",
+      value: 1,
+      normal: [0, 1, 0],
+      horizontal: [1, 0, 0],
+      vertical: [0, 0, 1],
+      rotation: [-Math.PI / 2, 0, 0],
+    },
+    {
+      name: "bottom",
+      value: 6,
+      normal: [0, -1, 0],
+      horizontal: [-1, 0, 0],
+      vertical: [0, 0, 1],
+      rotation: [Math.PI / 2, 0, 0],
+    },
+    {
+      name: "front",
+      value: 2,
+      normal: [0, 0, -1],
+      horizontal: [1, 0, 0],
+      vertical: [0, 1, 0],
+      rotation: [0, Math.PI, 0],
+    },
+    {
+      name: "back",
+      value: 5,
+      normal: [0, 0, 1],
+      horizontal: [-1, 0, 0],
+      vertical: [0, 1, 0],
+      rotation: [0, 0, 0],
+    },
+    {
+      name: "right",
+      value: 3,
+      normal: [1, 0, 0],
+      horizontal: [0, 0, -1],
+      vertical: [0, 1, 0],
+      rotation: [0, Math.PI / 2, 0],
+    },
+    {
+      name: "left",
+      value: 4,
+      normal: [-1, 0, 0],
+      horizontal: [0, 0, 1],
+      vertical: [0, 1, 0],
+      rotation: [0, -Math.PI / 2, 0],
+    },
+  ];
+
+  const DIE_VALUE_ROTATIONS = {
+    1: [0, 0, 0],
+    2: [Math.PI / 2, 0, 0],
+    3: [0, 0, Math.PI / 2],
+    4: [0, 0, -Math.PI / 2],
+    5: [-Math.PI / 2, 0, 0],
+    6: [Math.PI, 0, 0],
+  };
+
   function hasRuntime(B) {
     return Boolean(
       B &&
@@ -65,7 +194,10 @@
       typeof B.CreateBox === "function" &&
       typeof B.CreateCylinder === "function" &&
       typeof B.CreateDisc === "function" &&
-      typeof B.CreateTorus === "function"
+      typeof B.CreatePolyhedron === "function" &&
+      typeof B.CreateTorus === "function" &&
+      typeof B.Mesh === "function" &&
+      typeof B.Mesh.MergeMeshes === "function"
     );
   }
 
@@ -107,6 +239,148 @@
     return mesh;
   }
 
+  function resolveStageConfig(theme) {
+    const source =
+      theme && theme.stageConfig && typeof theme.stageConfig === "object" ? theme.stageConfig : {};
+    const resolved = {};
+    Object.keys(FALLBACK_STAGE_CONFIG).forEach(function (section) {
+      const candidate = source[section];
+      resolved[section] = Object.assign(
+        {},
+        FALLBACK_STAGE_CONFIG[section],
+        candidate && typeof candidate === "object" ? candidate : {}
+      );
+    });
+    return resolved;
+  }
+
+  function vector3Values(candidate, fallback) {
+    return [0, 1, 2].map(function (index) {
+      const value = Array.isArray(candidate) ? Number(candidate[index]) : NaN;
+      return Number.isFinite(value) ? value : fallback[index];
+    });
+  }
+
+  function createChamferedCubeData(chamfer) {
+    const half = 0.5;
+    const inset = Math.max(0.28, Math.min(0.47, half - (Number(chamfer) || 0.1)));
+    const vertices = [];
+    const vertexIndexes = new Map();
+    const signs = [-1, 1];
+
+    function addVertex(axis, sx, sy, sz) {
+      const coordinates = [inset * sx, inset * sy, inset * sz];
+      coordinates[axis] = half * [sx, sy, sz][axis];
+      const key = coordinates.join(":");
+      if (!vertexIndexes.has(key)) {
+        vertexIndexes.set(key, vertices.length);
+        vertices.push(coordinates);
+      }
+      return vertexIndexes.get(key);
+    }
+
+    signs.forEach(function (sx) {
+      signs.forEach(function (sy) {
+        signs.forEach(function (sz) {
+          addVertex(0, sx, sy, sz);
+          addVertex(1, sx, sy, sz);
+          addVertex(2, sx, sy, sz);
+        });
+      });
+    });
+
+    function orderedFace(indexes, normal) {
+      const center = [0, 0, 0];
+      indexes.forEach(function (index) {
+        center[0] += vertices[index][0] / indexes.length;
+        center[1] += vertices[index][1] / indexes.length;
+        center[2] += vertices[index][2] / indexes.length;
+      });
+      const reference = Math.abs(normal[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+      const tangent = [
+        normal[1] * reference[2] - normal[2] * reference[1],
+        normal[2] * reference[0] - normal[0] * reference[2],
+        normal[0] * reference[1] - normal[1] * reference[0],
+      ];
+      const bitangent = [
+        normal[1] * tangent[2] - normal[2] * tangent[1],
+        normal[2] * tangent[0] - normal[0] * tangent[2],
+        normal[0] * tangent[1] - normal[1] * tangent[0],
+      ];
+      return indexes.slice().sort(function (leftIndex, rightIndex) {
+        const left = vertices[leftIndex].map(function (value, axis) {
+          return value - center[axis];
+        });
+        const right = vertices[rightIndex].map(function (value, axis) {
+          return value - center[axis];
+        });
+        const leftAngle = Math.atan2(
+          left[0] * bitangent[0] + left[1] * bitangent[1] + left[2] * bitangent[2],
+          left[0] * tangent[0] + left[1] * tangent[1] + left[2] * tangent[2]
+        );
+        const rightAngle = Math.atan2(
+          right[0] * bitangent[0] + right[1] * bitangent[1] + right[2] * bitangent[2],
+          right[0] * tangent[0] + right[1] * tangent[1] + right[2] * tangent[2]
+        );
+        return leftAngle - rightAngle;
+      });
+    }
+
+    const faces = [];
+    [0, 1, 2].forEach(function (axis) {
+      signs.forEach(function (sign) {
+        const indexes = vertices
+          .map(function (vertex, index) {
+            return Math.abs(vertex[axis] - sign * half) < 0.0001 ? index : -1;
+          })
+          .filter(function (index) {
+            return index >= 0;
+          });
+        const normal = [0, 0, 0];
+        normal[axis] = sign;
+        faces.push(orderedFace(indexes, normal));
+      });
+    });
+
+    [
+      [0, 1],
+      [0, 2],
+      [1, 2],
+    ].forEach(function (axes) {
+      signs.forEach(function (firstSign) {
+        signs.forEach(function (secondSign) {
+          const indexes = vertices
+            .map(function (vertex, index) {
+              const plane = firstSign * vertex[axes[0]] + secondSign * vertex[axes[1]];
+              return Math.abs(plane - (half + inset)) < 0.0001 ? index : -1;
+            })
+            .filter(function (index) {
+              return index >= 0;
+            });
+          const normal = [0, 0, 0];
+          normal[axes[0]] = firstSign;
+          normal[axes[1]] = secondSign;
+          faces.push(orderedFace(indexes, normal));
+        });
+      });
+    });
+
+    signs.forEach(function (sx) {
+      signs.forEach(function (sy) {
+        signs.forEach(function (sz) {
+          const indexes = [
+            addVertex(0, sx, sy, sz),
+            addVertex(1, sx, sy, sz),
+            addVertex(2, sx, sy, sz),
+          ];
+          faces.push(orderedFace(indexes, [sx, sy, sz]));
+        });
+      });
+    });
+
+    return { vertex: vertices, face: faces };
+  }
+
   function normalizeDice(candidate) {
     return DEFAULT_DICE.map(function (fallback, index) {
       const value = Array.isArray(candidate) ? Number(candidate[index]) : fallback;
@@ -126,72 +400,229 @@
       : state || {};
   }
 
-  function createTable(B, scene, root, materials) {
+  function createTable(B, scene, root, materials, tableConfig, rackConfig) {
     const tableRoot = new B.TransformNode("yahtzee-table-root", scene);
-    tableRoot.position = new B.Vector3(0, 0, 0.08);
-    tableRoot.scaling = new B.Vector3(TABLE_FOOTPRINT_SCALE, 1, TABLE_FOOTPRINT_SCALE);
+    const tablePosition = vector3Values(tableConfig.position, [0, 0, 0]);
+    const footprintScale = Number(tableConfig.footprintScale) || 1;
+    tableRoot.position = new B.Vector3(tablePosition[0], tablePosition[1], tablePosition[2]);
+    tableRoot.scaling = new B.Vector3(footprintScale, 1, footprintScale);
     tableRoot.parent = root;
 
     const top = B.CreateBox(
       "yahtzee-game-table-top",
-      { width: 7.05, height: 0.32, depth: 3.86 },
+      {
+        width: Number(tableConfig.width),
+        height: Number(tableConfig.height),
+        depth: Number(tableConfig.depth),
+      },
       scene
     );
-    top.position = new B.Vector3(0, 0.92, 0);
+    top.position = new B.Vector3(0, Number(tableConfig.topY), 0);
     top.material = materials.table;
     makeUnpickable(top, tableRoot);
 
     const inset = B.CreateBox(
       "yahtzee-game-table-inset",
-      { width: 5.56, height: 0.06, depth: 3.14 },
+      {
+        width: Number(tableConfig.insetWidth),
+        height: Number(tableConfig.insetHeight),
+        depth: Number(tableConfig.insetDepth),
+      },
       scene
     );
-    inset.position = new B.Vector3(-0.37, 1.112, 0);
+    inset.position = new B.Vector3(Number(tableConfig.insetX), Number(tableConfig.insetY), 0);
     inset.material = materials.tableInset;
     makeUnpickable(inset, tableRoot);
 
+    const outerTrimInset = Number(tableConfig.outerTrimInset);
+    const outerTrimThickness = Number(tableConfig.outerTrimThickness);
+    const outerTrimWidth = Number(tableConfig.width) - outerTrimInset * 2;
+    const outerTrimDepth = Number(tableConfig.depth) - outerTrimInset * 2;
     [
-      { width: 6.84, depth: 0.14, x: 0, z: -1.86 },
-      { width: 6.84, depth: 0.14, x: 0, z: 1.86 },
-      { width: 0.14, depth: 3.66, x: -3.39, z: 0 },
-      { width: 0.14, depth: 3.66, x: 3.39, z: 0 },
+      {
+        width: outerTrimWidth,
+        depth: outerTrimThickness,
+        x: 0,
+        z: -(Number(tableConfig.depth) - outerTrimInset) / 2,
+      },
+      {
+        width: outerTrimWidth,
+        depth: outerTrimThickness,
+        x: 0,
+        z: (Number(tableConfig.depth) - outerTrimInset) / 2,
+      },
+      {
+        width: outerTrimThickness,
+        depth: outerTrimDepth,
+        x: -(Number(tableConfig.width) - outerTrimInset) / 2,
+        z: 0,
+      },
+      {
+        width: outerTrimThickness,
+        depth: outerTrimDepth,
+        x: (Number(tableConfig.width) - outerTrimInset) / 2,
+        z: 0,
+      },
     ].forEach(function (edge) {
       const trim = B.CreateBox(
         "yahtzee-game-table-trim",
-        { width: edge.width, height: 0.12, depth: edge.depth },
+        {
+          width: edge.width,
+          height: Number(tableConfig.outerTrimHeight),
+          depth: edge.depth,
+        },
         scene
       );
-      trim.position = new B.Vector3(edge.x, 1.17, edge.z);
+      trim.position = new B.Vector3(edge.x, Number(tableConfig.outerTrimY), edge.z);
       trim.material = materials.tableTrim;
       makeUnpickable(trim, tableRoot);
     });
 
+    const railThickness = Number(tableConfig.innerRailThickness);
+    const railX = Number(tableConfig.insetX);
+    const railHalfWidth = Number(tableConfig.insetWidth) / 2 + railThickness / 2;
+    const railHalfDepth = Number(tableConfig.insetDepth) / 2 + railThickness / 2;
+    [
+      {
+        width: Number(tableConfig.insetWidth) + railThickness * 2,
+        depth: railThickness,
+        x: railX,
+        z: -railHalfDepth,
+      },
+      {
+        width: Number(tableConfig.insetWidth) + railThickness * 2,
+        depth: railThickness,
+        x: railX,
+        z: railHalfDepth,
+      },
+      {
+        width: railThickness,
+        depth: Number(tableConfig.insetDepth),
+        x: railX - railHalfWidth,
+        z: 0,
+      },
+      {
+        width: railThickness,
+        depth: Number(tableConfig.insetDepth),
+        x: railX + railHalfWidth,
+        z: 0,
+      },
+    ].forEach(function (edge) {
+      const rail = B.CreateBox(
+        "yahtzee-game-table-inner-rail",
+        {
+          width: edge.width,
+          height: Number(tableConfig.innerRailHeight),
+          depth: edge.depth,
+        },
+        scene
+      );
+      rail.position = new B.Vector3(edge.x, Number(tableConfig.innerRailY), edge.z);
+      rail.material = materials.tableTrim;
+      makeUnpickable(rail, tableRoot);
+    });
+
     const apron = B.CreateBox(
       "yahtzee-game-table-front-apron",
-      { width: 6.42, height: 0.46, depth: 0.18 },
+      {
+        width: Number(tableConfig.apronWidth),
+        height: Number(tableConfig.apronHeight),
+        depth: Number(tableConfig.apronDepth),
+      },
       scene
     );
-    apron.position = new B.Vector3(0, 0.68, -1.86);
+    apron.position = new B.Vector3(
+      0,
+      Number(tableConfig.apronY),
+      -Number(tableConfig.depth) / 2 + Number(tableConfig.apronDepth) / 2
+    );
     apron.material = materials.darkWood;
     makeUnpickable(apron, tableRoot);
 
-    [-1.18, -0.6, 0, 0.6, 1.18].forEach(function (z, index) {
-      const well = B.CreateDisc(
+    const apronAccent = B.CreateBox(
+      "yahtzee-game-table-apron-accent",
+      {
+        width: Number(tableConfig.apronWidth) - 0.18,
+        height: Number(tableConfig.apronAccentHeight),
+        depth: 0.075,
+      },
+      scene
+    );
+    apronAccent.position = new B.Vector3(
+      0,
+      Number(tableConfig.apronY) + Number(tableConfig.apronHeight) * 0.24,
+      -Number(tableConfig.depth) / 2 - 0.012
+    );
+    apronAccent.material = materials.brass;
+    makeUnpickable(apronAccent, tableRoot);
+
+    const rackBed = B.CreateBox(
+      "yahtzee-game-table-rack-bed",
+      {
+        width: Number(tableConfig.rackBedWidth),
+        height: Number(tableConfig.rackBedHeight),
+        depth: Number(tableConfig.rackBedDepth),
+      },
+      scene
+    );
+    rackBed.position = new B.Vector3(Number(rackConfig.x), Number(tableConfig.insetY), 0);
+    rackBed.material = materials.darkWood;
+    makeUnpickable(rackBed, tableRoot);
+
+    const rackDivider = B.CreateBox(
+      "yahtzee-game-table-rack-divider",
+      {
+        width: Number(tableConfig.rackDividerWidth),
+        height: Number(tableConfig.innerRailHeight),
+        depth: Number(tableConfig.rackBedDepth),
+      },
+      scene
+    );
+    rackDivider.position = new B.Vector3(
+      Number(rackConfig.x) -
+        Number(tableConfig.rackBedWidth) / 2 -
+        Number(tableConfig.rackDividerWidth) / 2,
+      Number(tableConfig.innerRailY),
+      0
+    );
+    rackDivider.material = materials.brass;
+    makeUnpickable(rackDivider, tableRoot);
+
+    const zSlots = Array.isArray(rackConfig.zSlots)
+      ? rackConfig.zSlots.slice(0, DEFAULT_DICE.length)
+      : FALLBACK_STAGE_CONFIG.rack.zSlots;
+    zSlots.forEach(function (z, index) {
+      const well = B.CreateCylinder(
         "yahtzee-game-table-hold-well-" + index,
-        { radius: 0.16, tessellation: 18 },
+        {
+          height: 0.028,
+          diameter: Number(rackConfig.wellRadius) * 2,
+          tessellation: Number(rackConfig.tessellation),
+        },
         scene
       );
-      well.position = new B.Vector3(2.91, 1.228, z);
-      well.rotation.x = Math.PI / 2;
+      well.position = new B.Vector3(
+        Number(rackConfig.x),
+        Number(rackConfig.wellY) - 0.014,
+        Number(z)
+      );
       well.material = materials.well;
       makeUnpickable(well, tableRoot);
 
       const ring = B.CreateTorus(
         "yahtzee-game-table-hold-ring-" + index,
-        { diameter: 0.4, thickness: 0.05, tessellation: 18 },
+        {
+          diameter: Number(rackConfig.ringDiameter),
+          thickness: Number(rackConfig.ringThickness),
+          tessellation: Number(rackConfig.tessellation),
+        },
         scene
       );
-      ring.position = new B.Vector3(2.91, 1.232, z);
+      ring.position = new B.Vector3(
+        Number(rackConfig.x),
+        Number(rackConfig.wellY) + 0.006,
+        Number(z)
+      );
       ring.material = materials.brass;
       makeUnpickable(ring, tableRoot);
     });
@@ -199,10 +630,12 @@
     return tableRoot;
   }
 
-  function createLantern(B, scene, root, materials) {
+  function createLantern(B, scene, root, materials, config) {
     const lanternRoot = new B.TransformNode("yahtzee-lantern-root", scene);
-    lanternRoot.position = new B.Vector3(2.3, 1.13, 0.86);
-    lanternRoot.scaling = new B.Vector3(0.76, 0.76, 0.76);
+    const position = vector3Values(config.position, FALLBACK_STAGE_CONFIG.lantern.position);
+    const scale = Number(config.scale) || FALLBACK_STAGE_CONFIG.lantern.scale;
+    lanternRoot.position = new B.Vector3(position[0], position[1], position[2]);
+    lanternRoot.scaling = new B.Vector3(scale, scale, scale);
     lanternRoot.parent = root;
 
     const base = B.CreateCylinder(
@@ -242,50 +675,103 @@
     light.parent = lanternRoot;
     light.diffuse = color3(B, [1, 0.46, 0.14]);
     light.specular = color3(B, [1, 0.3, 0.08]);
-    light.intensity = 1.58;
-    light.range = 8.2;
+    light.intensity = Number(config.lightIntensity);
+    light.range = Number(config.lightRange);
 
     return { flame: flame, light: light };
   }
 
-  function createDie(B, scene, root, materials, index) {
-    const layout = DIE_LAYOUT[index] || [0, 0, 0];
-    const rack = RACK_LAYOUT[index] || RACK_LAYOUT[0];
+  function pipPositionOnFace(face, position, surface) {
+    return [
+      face.normal[0] * surface + face.horizontal[0] * position[0] + face.vertical[0] * position[1],
+      face.normal[1] * surface + face.horizontal[1] * position[0] + face.vertical[1] * position[1],
+      face.normal[2] * surface + face.horizontal[2] * position[0] + face.vertical[2] * position[1],
+    ];
+  }
+
+  function createDiePipMesh(B, scene, visualRoot, material, index, diceConfig) {
+    const sourceMeshes = [];
+    const surface = Number(diceConfig.size) / 2 + Number(diceConfig.pipLift);
+
+    DIE_FACES.forEach(function (face) {
+      const positions = DIE_PIPS[face.value];
+      positions.forEach(function (position, pipIndex) {
+        const pip = B.CreateDisc(
+          "yahtzee-die-pip-source-" + index + "-" + face.name + "-" + pipIndex,
+          {
+            radius: Number(diceConfig.pipRadius),
+            tessellation: Number(diceConfig.pipTessellation),
+          },
+          scene
+        );
+        const facePosition = pipPositionOnFace(face, position, surface);
+        pip.position.set(facePosition[0], facePosition[1], facePosition[2]);
+        pip.rotation.set(face.rotation[0], face.rotation[1], face.rotation[2]);
+        pip.material = material;
+        pip.isPickable = false;
+        sourceMeshes.push(pip);
+      });
+    });
+
+    const pipMesh = B.Mesh.MergeMeshes(sourceMeshes, true, true);
+    if (!pipMesh) throw new Error("Unable to merge Yahtzee die pips");
+    pipMesh.name = "yahtzee-die-pips-" + index;
+    pipMesh.material = material;
+    return makeUnpickable(pipMesh, visualRoot);
+  }
+
+  function createDie(B, scene, root, materials, index, diceConfig, rackConfig, geometry) {
+    const layoutSource = Array.isArray(diceConfig.layout)
+      ? diceConfig.layout
+      : FALLBACK_STAGE_CONFIG.dice.layout;
+    const layout = vector3Values(layoutSource[index], [0, 0, 0]);
+    const zSlots = Array.isArray(rackConfig.zSlots)
+      ? rackConfig.zSlots
+      : FALLBACK_STAGE_CONFIG.rack.zSlots;
+    const yawSlots = Array.isArray(rackConfig.yawSlots)
+      ? rackConfig.yawSlots
+      : FALLBACK_STAGE_CONFIG.rack.yawSlots;
+    const baseScale = Number(diceConfig.scale);
+    const heldScale = Number(diceConfig.heldScale);
+    const size = Number(diceConfig.size);
     const dieRoot = new B.TransformNode("yahtzee-die-root-" + index, scene);
-    dieRoot.position = new B.Vector3(layout[0], 1.47, layout[1]);
+    dieRoot.position = new B.Vector3(layout[0], Number(diceConfig.baseY), layout[1]);
     dieRoot.rotation.y = layout[2];
-    dieRoot.scaling = new B.Vector3(DIE_SCALE, DIE_SCALE, DIE_SCALE);
+    dieRoot.scaling = new B.Vector3(baseScale, baseScale, baseScale);
     dieRoot.parent = root;
 
-    const cube = B.CreateBox("yahtzee-die-mesh-" + index, { size: 0.78, wrap: true }, scene);
+    const visualRoot = new B.TransformNode("yahtzee-die-visual-root-" + index, scene);
+    visualRoot.parent = dieRoot;
+
+    const cube = B.CreatePolyhedron(
+      "yahtzee-die-mesh-" + index,
+      { custom: geometry, size: size, flat: false, sideOrientation: 2 },
+      scene
+    );
     cube.material = materials.die;
-    cube.parent = dieRoot;
+    cube.parent = visualRoot;
     cube.isPickable = true;
     cube.metadata = Object.assign({}, cube.metadata || {}, { yahtzeeDieIndex: index });
-
-    const pips = [];
-    for (let pipIndex = 0; pipIndex < 6; pipIndex += 1) {
-      const pip = B.CreateDisc(
-        "yahtzee-die-pip-" + index + "-" + pipIndex,
-        { radius: 0.075, tessellation: 10 },
-        scene
-      );
-      pip.position.y = 0.396;
-      pip.rotation.x = Math.PI / 2;
-      pip.material = materials.pip;
-      pip.setEnabled(false);
-      makeUnpickable(pip, dieRoot);
-      pips.push(pip);
-    }
+    const pipMesh = createDiePipMesh(B, scene, visualRoot, materials.pip, index, diceConfig);
 
     return {
       root: dieRoot,
+      visualRoot: visualRoot,
       cube: cube,
-      pips: pips,
-      basePosition: new B.Vector3(layout[0], 1.47, layout[1]),
-      rackPosition: new B.Vector3(rack[0], rack[1], rack[2]),
-      targetPosition: new B.Vector3(layout[0], 1.47, layout[1]),
+      pipMesh: pipMesh,
+      basePosition: new B.Vector3(layout[0], Number(diceConfig.baseY), layout[1]),
+      rackPosition: new B.Vector3(
+        Number(rackConfig.x),
+        Number(rackConfig.y),
+        Number(zSlots[index])
+      ),
+      targetPosition: new B.Vector3(layout[0], Number(diceConfig.baseY), layout[1]),
       baseYaw: layout[2],
+      rackYaw: Number(yawSlots[index]) || 0,
+      targetYaw: layout[2],
+      baseScale: baseScale,
+      heldScale: heldScale,
+      targetScale: baseScale,
       value: 1,
       held: false,
       roll: null,
@@ -294,20 +780,16 @@
 
   function applyDieValue(model, value) {
     model.value = value;
-    const positions = DIE_PIPS[value] || DIE_PIPS[1];
-    model.pips.forEach(function (pip, index) {
-      const position = positions[index];
-      pip.setEnabled(Boolean(position));
-      if (!position) return;
-      pip.position.x = position[0];
-      pip.position.z = position[1];
-    });
+    const rotation = DIE_VALUE_ROTATIONS[value] || DIE_VALUE_ROTATIONS[1];
+    model.visualRoot.rotation.set(rotation[0], rotation[1], rotation[2]);
   }
 
   function applyHeldState(model, held, materials) {
     model.held = held;
     model.cube.material = held ? materials.dieHeld : materials.die;
     model.targetPosition.copyFrom(held ? model.rackPosition : model.basePosition);
+    model.targetScale = held ? model.heldScale : model.baseScale;
+    model.targetYaw = held ? model.rackYaw : model.baseYaw;
   }
 
   function readPickedDieIndex(pickInfo) {
@@ -332,6 +814,9 @@
   function mount(canvas, initialState) {
     const B = global.BABYLON;
     if (!canvas || !hasRuntime(B)) return null;
+    const theme = global.GameRoomYahtzeePirateDeckTheme || { assets: {}, shots: {} };
+    const stageConfig = resolveStageConfig(theme);
+    const performanceConfig = stageConfig.performance;
 
     let engine = null;
     let scene = null;
@@ -344,7 +829,12 @@
         premultipliedAlpha: true,
       });
       const pixelRatio = Number(global.devicePixelRatio) || 1;
-      engine.setHardwareScalingLevel(Math.max(1.15, pixelRatio / 1.2));
+      engine.setHardwareScalingLevel(
+        Math.max(
+          Number(performanceConfig.hardwareScalingFloor),
+          pixelRatio / Number(performanceConfig.pixelRatioDivisor)
+        )
+      );
 
       scene = new B.Scene(engine);
       scene.clearColor = new B.Color4(0, 0, 0, 0);
@@ -370,7 +860,7 @@
       );
       moonFill.diffuse = color3(B, [0.36, 0.46, 0.6]);
       moonFill.groundColor = color3(B, [0.06, 0.04, 0.03]);
-      moonFill.intensity = 0.96;
+      moonFill.intensity = Number(stageConfig.lighting.moonIntensity);
 
       const warmFill = new B.PointLight(
         "yahtzee-stage-warm-fill",
@@ -379,10 +869,9 @@
       );
       warmFill.diffuse = color3(B, [1, 0.46, 0.2]);
       warmFill.specular = color3(B, [1, 0.38, 0.12]);
-      warmFill.intensity = 0.62;
-      warmFill.range = 11;
+      warmFill.intensity = Number(stageConfig.lighting.warmIntensity);
+      warmFill.range = Number(stageConfig.lighting.warmRange);
 
-      const theme = global.GameRoomYahtzeePirateDeckTheme || { assets: {}, shots: {} };
       const themeAssets = theme.assets || {};
 
       const materials = {
@@ -395,17 +884,17 @@
           ambient: [0.08, 0.026, 0.01],
           specularPower: 66,
         }),
-        tableInset: createMaterial(B, scene, "yahtzee-table-inset", [0.56, 0.2, 0.18], {
-          specular: [0.055, 0.02, 0.015],
-          ambient: [0.055, 0.01, 0.008],
+        tableInset: createMaterial(B, scene, "yahtzee-table-inset", [0.5, 0.13, 0.14], {
+          specular: [0.04, 0.015, 0.012],
+          ambient: [0.045, 0.009, 0.008],
         }),
         tableTrim: createMaterial(B, scene, "yahtzee-table-trim", [0.42, 0.2, 0.052], {
           specular: [0.38, 0.2, 0.065],
           ambient: [0.1, 0.045, 0.012],
           specularPower: 76,
         }),
-        brass: createMaterial(B, scene, "yahtzee-brass", [0.52, 0.28, 0.07], {
-          specular: [0.6, 0.33, 0.095],
+        brass: createMaterial(B, scene, "yahtzee-brass", [0.5, 0.3, 0.095], {
+          specular: [0.58, 0.36, 0.12],
           emissive: [0.02, 0.008, 0.002],
           specularPower: 88,
         }),
@@ -423,42 +912,86 @@
           emissive: [0.9, 0.15, 0.005],
           specular: [0, 0, 0],
         }),
-        die: createMaterial(B, scene, "yahtzee-die", [0.87, 0.69, 0.37], {
-          specular: [0.34, 0.23, 0.1],
-          emissive: [0.03, 0.018, 0.006],
-          specularPower: 62,
+        die: createMaterial(B, scene, "yahtzee-die", [0.92, 0.82, 0.63], {
+          specular: [0.24, 0.18, 0.1],
+          emissive: [0.018, 0.012, 0.006],
+          ambient: [0.08, 0.055, 0.026],
+          specularPower: 84,
         }),
-        dieHeld: createMaterial(B, scene, "yahtzee-die-held", [0.74, 0.37, 0.09], {
-          emissive: [0.07, 0.02, 0.002],
-          specular: [0.28, 0.13, 0.035],
+        dieHeld: createMaterial(B, scene, "yahtzee-die-held", [0.88, 0.73, 0.47], {
+          emissive: [0.035, 0.018, 0.006],
+          ambient: [0.075, 0.045, 0.018],
+          specular: [0.24, 0.17, 0.08],
+          specularPower: 76,
         }),
-        pip: createMaterial(B, scene, "yahtzee-pip", [0.018, 0.012, 0.009], {
+        pip: createMaterial(B, scene, "yahtzee-pip", [0.045, 0.022, 0.012], {
           specular: [0, 0, 0],
           doubleSided: true,
         }),
       };
 
-      applyTexture(B, scene, materials.darkWood, themeAssets.tableWood, 2.4, 1.35);
-      applyTexture(B, scene, materials.table, themeAssets.tableWood, 2.1, 1.25);
-      applyTexture(B, scene, materials.tableInset, themeAssets.tableFelt, 2, 2);
+      const darkWoodTextureScale = vector3Values(
+        stageConfig.table.darkWoodTextureScale,
+        [2.4, 1.35, 0]
+      );
+      const woodTextureScale = vector3Values(stageConfig.table.woodTextureScale, [2.1, 1.25, 0]);
+      const feltTextureScale = vector3Values(stageConfig.table.feltTextureScale, [2, 2, 0]);
+      applyTexture(
+        B,
+        scene,
+        materials.darkWood,
+        themeAssets.tableWood,
+        darkWoodTextureScale[0],
+        darkWoodTextureScale[1]
+      );
+      applyTexture(
+        B,
+        scene,
+        materials.table,
+        themeAssets.tableWood,
+        woodTextureScale[0],
+        woodTextureScale[1]
+      );
+      applyTexture(
+        B,
+        scene,
+        materials.tableInset,
+        themeAssets.tableFelt,
+        feltTextureScale[0],
+        feltTextureScale[1]
+      );
 
       const gameRoot = new B.TransformNode("yahtzee-game-root", scene);
-      gameRoot.position = new B.Vector3(0, -0.08, 0.12);
-      createTable(B, scene, gameRoot, materials);
-      const lantern = createLantern(B, scene, gameRoot, materials);
+      const rootPosition = vector3Values(
+        stageConfig.root.position,
+        FALLBACK_STAGE_CONFIG.root.position
+      );
+      gameRoot.position = new B.Vector3(rootPosition[0], rootPosition[1], rootPosition[2]);
+      createTable(B, scene, gameRoot, materials, stageConfig.table, stageConfig.rack);
+      const lantern = createLantern(B, scene, gameRoot, materials, stageConfig.lantern);
+      const dieGeometry = createChamferedCubeData(stageConfig.dice.chamfer);
       const diceModels = DEFAULT_DICE.map(function (_value, index) {
-        return createDie(B, scene, gameRoot, materials, index);
+        return createDie(
+          B,
+          scene,
+          gameRoot,
+          materials,
+          index,
+          stageConfig.dice,
+          stageConfig.rack,
+          dieGeometry
+        );
       });
-
-      const directorFactory = global.GameRoomYahtzeeCameraDirector;
-      const cameraDirector =
-        directorFactory && typeof directorFactory.create === "function"
-          ? directorFactory.create(camera, B, theme)
-          : null;
 
       const reduceMotion = Boolean(
         global.matchMedia && global.matchMedia("(prefers-reduced-motion: reduce)").matches
       );
+      const directorFactory = global.GameRoomYahtzeeCameraDirector;
+      const cameraDirector =
+        directorFactory && typeof directorFactory.create === "function"
+          ? directorFactory.create(camera, B, theme, { reduceMotion: reduceMotion })
+          : null;
+
       let elapsed = 0;
       let disposed = false;
       let latestState = initialState && typeof initialState === "object" ? initialState : {};
@@ -484,12 +1017,18 @@
         }
         model.root.position.copyFrom(model.basePosition);
         model.targetPosition.copyFrom(model.basePosition);
+        model.root.scaling.set(model.baseScale, model.baseScale, model.baseScale);
+        model.targetScale = model.baseScale;
+        model.targetYaw = model.baseYaw;
         model.roll = {
           elapsed: 0,
-          duration: 560 + index * 32,
+          duration:
+            Number(stageConfig.dice.rollDurationMs) +
+            index * Number(stageConfig.dice.rollDurationStepMs),
           turnsX: 2 + (index % 3),
           turnsZ: 2 + ((index + 1) % 3),
-          lateral: 0.13 + index * 0.012,
+          lateral:
+            Number(stageConfig.dice.rollLateral) + index * Number(stageConfig.dice.rollLateralStep),
         };
       }
 
@@ -526,12 +1065,17 @@
       }
 
       function moveTowardTarget(model, delta) {
-        const amount = reduceMotion ? 1 : 1 - Math.exp(-Math.max(1, delta) * 0.015);
+        const amount = reduceMotion
+          ? 1
+          : 1 - Math.exp(-Math.max(1, delta) * Number(stageConfig.dice.moveEase));
         model.root.position.x += (model.targetPosition.x - model.root.position.x) * amount;
         model.root.position.y += (model.targetPosition.y - model.root.position.y) * amount;
         model.root.position.z += (model.targetPosition.z - model.root.position.z) * amount;
+        const currentScale = model.root.scaling.x;
+        const nextScale = currentScale + (model.targetScale - currentScale) * amount;
+        model.root.scaling.set(nextScale, nextScale, nextScale);
         model.root.rotation.x *= 1 - amount;
-        model.root.rotation.y += (model.baseYaw - model.root.rotation.y) * amount;
+        model.root.rotation.y += (model.targetYaw - model.root.rotation.y) * amount;
         model.root.rotation.z *= 1 - amount;
       }
 
@@ -548,9 +1092,15 @@
           model.root.position.x =
             model.basePosition.x +
             Math.sin(progress * Math.PI * 2 + index) * model.roll.lateral * envelope;
-          model.root.position.y = model.basePosition.y + envelope * (0.52 + index * 0.018);
+          model.root.position.y =
+            model.basePosition.y +
+            envelope *
+              (Number(stageConfig.dice.rollLift) + index * Number(stageConfig.dice.rollLiftStep));
           model.root.position.z =
-            model.basePosition.z + Math.cos(progress * Math.PI * 2.35 + index) * 0.1 * envelope;
+            model.basePosition.z +
+            Math.cos(progress * Math.PI * 2.35 + index) *
+              Number(stageConfig.dice.rollDepth) *
+              envelope;
           model.root.rotation.x = progress * model.roll.turnsX * Math.PI * 2;
           model.root.rotation.y = model.baseYaw + progress * (index + 2) * Math.PI * 2;
           model.root.rotation.z = progress * model.roll.turnsZ * Math.PI * 2;
@@ -558,7 +1108,7 @@
           if (progress >= 1) {
             model.roll = null;
             model.root.position.copyFrom(model.targetPosition);
-            model.root.rotation.set(0, model.baseYaw, 0);
+            model.root.rotation.set(0, model.targetYaw, 0);
           }
         });
       }
@@ -574,7 +1124,9 @@
         if (!reduceMotion) {
           lantern.flame.scaling.y = 1.4 + Math.sin(elapsed * 8.2) * 0.11;
           lantern.light.intensity =
-            1.56 + Math.sin(elapsed * 8.7) * 0.07 + Math.sin(elapsed * 3.7) * 0.035;
+            Number(stageConfig.lantern.lightIntensity) +
+            Math.sin(elapsed * 8.7) * 0.055 +
+            Math.sin(elapsed * 3.7) * 0.025;
         }
 
         animateDice(delta);
@@ -599,7 +1151,11 @@
       engine.runRenderLoop(function () {
         if (document.hidden || disposed) return;
         const now = nowMs();
-        const targetFps = hasRollingDice() ? 45 : latestState.active === true ? 30 : 15;
+        const targetFps = hasRollingDice()
+          ? Number(performanceConfig.rollingFps)
+          : latestState.active === true
+            ? Number(performanceConfig.activeFps)
+            : Number(performanceConfig.idleFps);
         const frameInterval = 1000 / targetFps;
         if (now - lastRenderAt < frameInterval) return;
         lastRenderAt = now;
@@ -619,7 +1175,14 @@
               model.targetPosition.y,
               model.targetPosition.z,
             ],
+            scale: model.root.scaling.x,
+            targetScale: model.targetScale,
             rotation: [model.root.rotation.x, model.root.rotation.y, model.root.rotation.z],
+            visualRotation: [
+              model.visualRoot.rotation.x,
+              model.visualRoot.rotation.y,
+              model.visualRoot.rotation.z,
+            ],
           };
         });
       }

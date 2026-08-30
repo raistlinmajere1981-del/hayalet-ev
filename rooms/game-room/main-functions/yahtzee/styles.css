@@ -1,7 +1,7 @@
 .yahtzee-root {
   min-height: 100%;
-  color: #ead7b4;
-  background: #03070d;
+  color: var(--game-yahtzee-ink, #ead7b4);
+  background: var(--game-yahtzee-bg-root, #03070d);
 }
 
 .yahtzee-shell {
@@ -174,9 +174,13 @@
 .yahtzee-utility-button,
 .yahtzee-roll-button,
 .yahtzee-result-button {
-  border: 1px solid rgba(183, 119, 52, 0.58);
-  color: #efd2a0;
-  background: linear-gradient(180deg, rgba(91, 49, 23, 0.98), rgba(42, 22, 12, 0.99));
+  border: 1px solid var(--game-yahtzee-control-border, rgba(183, 119, 52, 0.58));
+  color: var(--game-yahtzee-control-ink, #efd2a0);
+  background: linear-gradient(
+    180deg,
+    var(--game-yahtzee-control-from, rgba(91, 49, 23, 0.98)),
+    var(--game-yahtzee-control-to, rgba(42, 22, 12, 0.99))
+  );
   box-shadow: inset 0 1px rgba(255, 225, 174, 0.12);
   font: inherit;
 }
@@ -185,7 +189,6 @@
   height: 36px;
   padding: 0 34px 0 11px;
   border-radius: 8px;
-  outline: none;
 }
 
 .yahtzee-mode-control option {
@@ -202,6 +205,22 @@
   cursor: pointer;
 }
 
+.yahtzee-start-button,
+.yahtzee-roll-button {
+  border-color: var(--game-yahtzee-primary-border, rgba(194, 132, 59, 0.9));
+  color: #fff0c9;
+  background: linear-gradient(
+    180deg,
+    var(--game-yahtzee-primary-from, #7c451c),
+    var(--game-yahtzee-primary-to, #44220d)
+  );
+}
+
+.yahtzee-result-button {
+  border-color: rgba(164, 118, 67, 0.55);
+  background: linear-gradient(180deg, rgba(58, 36, 23, 0.98), rgba(28, 17, 12, 0.99));
+}
+
 .yahtzee-start-button:hover,
 .yahtzee-start-button:focus-visible,
 .yahtzee-roll-button:hover:not(:disabled),
@@ -212,7 +231,15 @@
 .yahtzee-utility-button:focus-visible {
   border-color: rgba(236, 165, 79, 0.92);
   background: linear-gradient(180deg, rgba(116, 63, 27, 0.99), rgba(51, 26, 13, 0.99));
-  outline: none;
+}
+
+.yahtzee-mode-control:focus-visible,
+.yahtzee-start-button:focus-visible,
+.yahtzee-roll-button:focus-visible,
+.yahtzee-result-button:focus-visible,
+.yahtzee-utility-button:focus-visible {
+  outline: 2px solid var(--game-yahtzee-focus, #f0bc6a);
+  outline-offset: 2px;
 }
 
 .yahtzee-utility-bar {
@@ -231,6 +258,8 @@
   height: 34px;
   padding: 0 10px;
   border-radius: 999px;
+  border-color: rgba(151, 111, 70, 0.42);
+  background: rgba(22, 13, 9, 0.88);
   font-size: 12px;
   cursor: pointer;
 }
@@ -259,39 +288,44 @@
 .yahtzee-player-panel {
   position: absolute;
   bottom: clamp(18px, 2.8vh, 34px);
-  width: clamp(226px, 15.5vw, 272px);
-  max-height: min(57vh, 500px);
-  padding: 13px 13px 11px;
-  overflow: auto;
+  width: clamp(244px, 16.5vw, 286px);
+  max-height: min(62vh, 528px);
+  padding: 14px 14px 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
   box-sizing: border-box;
-  border: 1px solid rgba(119, 74, 33, 0.46);
-  border-radius: 10px 14px 11px 16px;
-  color: #4a2c16;
+  border: 1px solid var(--game-yahtzee-paper-border, rgba(119, 74, 33, 0.46));
+  border-radius: 14px;
+  color: var(--game-yahtzee-score-ink, #4a2c16);
   background:
-    radial-gradient(circle at 15% 6%, rgba(255, 245, 206, 0.5), transparent 28%),
-    linear-gradient(106deg, rgba(220, 183, 116, 0.98), rgba(183, 132, 74, 0.98));
+    radial-gradient(
+      circle at 15% 6%,
+      var(--game-yahtzee-paper-glow, rgba(255, 245, 206, 0.5)),
+      transparent 28%
+    ),
+    linear-gradient(
+      106deg,
+      var(--game-yahtzee-paper-from, rgba(220, 183, 116, 0.98)),
+      var(--game-yahtzee-paper-to, rgba(183, 132, 74, 0.98))
+    );
   box-shadow:
-    0 20px 42px rgba(0, 0, 0, 0.45),
-    inset 0 1px rgba(255, 244, 210, 0.35);
-  transform: translateY(0) scale(0.96);
+    0 18px 38px rgba(0, 0, 0, 0.43),
+    inset 0 1px var(--game-yahtzee-panel-highlight, rgba(255, 244, 210, 0.35));
+  transform: translateY(0);
   transform-origin: 50% 100%;
-  opacity: 0.76;
+  opacity: 1;
   pointer-events: auto;
-  transition:
-    transform 240ms ease,
-    opacity 220ms ease,
-    box-shadow 220ms ease;
+  transition: transform 220ms ease;
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
 }
 
 .yahtzee-player-panel.is-left {
   left: clamp(24px, 2.9vw, 54px);
-  transform: rotate(-0.5deg) scale(0.96);
 }
 
 .yahtzee-player-panel.is-right {
   right: clamp(24px, 2.9vw, 54px);
-  transform: rotate(0.5deg) scale(0.96);
 }
 
 .yahtzee-shell:not(.has-two-players) .yahtzee-player-panel.is-left {
@@ -299,55 +333,57 @@
 }
 
 .yahtzee-player-panel.is-active {
-  opacity: 1;
-  border-color: rgba(230, 164, 78, 0.86);
+  border-color: var(--game-yahtzee-active-border, rgba(230, 164, 78, 0.86));
   box-shadow:
-    0 23px 48px rgba(0, 0, 0, 0.52),
-    0 0 0 2px rgba(247, 180, 89, 0.12),
-    inset 0 1px rgba(255, 248, 221, 0.4);
-}
-
-.yahtzee-player-panel.is-left.is-active {
-  transform: translateY(-8px) rotate(-0.2deg) scale(1);
-}
-
-.yahtzee-player-panel.is-right.is-active {
-  transform: translateY(-8px) rotate(0.2deg) scale(1);
+    0 22px 44px rgba(0, 0, 0, 0.5),
+    0 0 0 2px var(--game-yahtzee-active-ring, rgba(247, 180, 89, 0.12)),
+    inset 0 1px var(--game-yahtzee-active-inset, rgba(255, 248, 221, 0.4));
+  transform: translateY(-5px);
 }
 
 .yahtzee-player-identity {
   display: grid;
-  grid-template-columns: 48px 1fr;
+  grid-template-columns: 50px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  padding-bottom: 9px;
+  gap: 11px;
+  padding-bottom: 10px;
   border-bottom: 1px solid rgba(91, 51, 21, 0.25);
+}
+
+.yahtzee-player-panel.is-active .yahtzee-player-identity {
+  border-bottom-color: var(--game-yahtzee-turn-border, rgba(79, 42, 14, 0.34));
+}
+
+.yahtzee-player-copy {
+  min-width: 0;
 }
 
 .yahtzee-player-portrait {
   position: relative;
   display: grid;
-  width: 46px;
-  aspect-ratio: 1;
+  width: 48px;
+  height: 52px;
   place-items: center;
   overflow: hidden;
   border: 2px solid rgba(93, 53, 24, 0.7);
-  border-radius: 50%;
+  border-radius: 10px;
   background: #28190f;
   box-shadow:
-    0 4px 10px rgba(38, 18, 7, 0.34),
-    0 0 0 3px rgba(224, 180, 106, 0.36);
+    0 4px 9px rgba(38, 18, 7, 0.3),
+    0 0 0 2px rgba(224, 180, 106, 0.32),
+    inset 0 1px rgba(255, 229, 177, 0.2);
 }
 
 .yahtzee-player-panel.is-active .yahtzee-player-portrait {
   border-color: rgba(132, 67, 23, 0.92);
   box-shadow:
-    0 5px 12px rgba(38, 18, 7, 0.4),
-    0 0 0 3px rgba(245, 198, 113, 0.58),
-    0 0 18px rgba(126, 66, 25, 0.28);
+    0 5px 11px rgba(38, 18, 7, 0.36),
+    0 0 0 2px rgba(245, 198, 113, 0.58),
+    inset 0 1px rgba(255, 236, 194, 0.28);
 }
 
 .yahtzee-player-portrait-image {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -362,10 +398,13 @@
 
 .yahtzee-player-name {
   margin: 0;
+  overflow: hidden;
   color: #4b2b15;
   font:
     700 16px/1.1 Georgia,
     serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .yahtzee-player-total {
@@ -375,6 +414,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
 }
 
 .yahtzee-score-list {
@@ -385,19 +425,20 @@
 
 .yahtzee-score-row {
   display: grid;
-  min-height: 25px;
-  grid-template-columns: minmax(0, 1fr) 36px;
+  min-height: 27px;
+  grid-template-columns: minmax(0, 1fr) 40px;
   align-items: center;
   gap: 7px;
   width: 100%;
-  padding: 3px 5px;
+  padding: 4px 7px;
   border: 0;
   border-bottom: 1px solid rgba(92, 53, 23, 0.13);
   border-radius: 4px;
   color: #513018;
   background: transparent;
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
+  line-height: 1.25;
   text-align: left;
 }
 
@@ -412,14 +453,16 @@
 
 .yahtzee-score-row.is-preview {
   color: #3e2412;
-  background: rgba(255, 236, 188, 0.18);
+  background: rgba(255, 236, 188, 0.24);
+  box-shadow: inset 3px 0 rgba(127, 67, 24, 0.42);
   cursor: pointer;
 }
 
 .yahtzee-score-row.is-preview:hover,
 .yahtzee-score-row.is-preview:focus-visible {
   background: rgba(255, 240, 195, 0.48);
-  outline: 1px solid rgba(112, 61, 24, 0.32);
+  outline: 2px solid rgba(112, 61, 24, 0.42);
+  outline-offset: -2px;
 }
 
 .yahtzee-score-label {
@@ -431,8 +474,9 @@
 .yahtzee-score-value {
   justify-self: end;
   min-width: 28px;
-  font-size: 11px;
+  font-size: 11.5px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .yahtzee-score-row.is-preview .yahtzee-score-value {
@@ -453,11 +497,12 @@
   padding-top: 8px;
   border-top: 1px solid rgba(86, 48, 20, 0.3);
   color: #4d2b14;
-  font-size: 10px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 .yahtzee-score-grand-total {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .yahtzee-center-dock {
@@ -473,17 +518,18 @@
 }
 
 .yahtzee-status {
+  min-height: 18px;
   max-width: 100%;
-  padding: 7px 15px;
+  padding: 8px 16px;
   border: 1px solid rgba(181, 126, 69, 0.34);
   border-radius: 999px;
-  color: #dbc6a1;
-  background: rgba(22, 13, 9, 0.9);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.36);
-  font-size: 11px;
+  color: var(--game-yahtzee-status, #dbc6a1);
+  background: rgba(20, 12, 9, 0.94);
+  box-shadow: 0 9px 22px rgba(0, 0, 0, 0.34);
+  font-size: 11.5px;
   line-height: 1.35;
   text-align: center;
-  text-shadow: 0 2px 7px #000;
+  overflow-wrap: anywhere;
 }
 
 .yahtzee-action-row {
@@ -502,7 +548,12 @@
   font-weight: 700;
   letter-spacing: 0.03em;
   cursor: pointer;
-  text-shadow: 0 2px 6px #000;
+}
+
+.yahtzee-roll-button {
+  box-shadow:
+    inset 0 1px rgba(255, 225, 174, 0.18),
+    0 7px 16px rgba(0, 0, 0, 0.28);
 }
 
 .yahtzee-roll-button:disabled {
@@ -511,13 +562,20 @@
 }
 
 .yahtzee-roll-meta {
-  padding: 6px 10px;
+  min-width: 58px;
+  padding: 7px 10px;
   border: 1px solid rgba(153, 111, 69, 0.28);
   border-radius: 999px;
-  color: #af9877;
-  background: rgba(15, 9, 8, 0.78);
+  color: var(--game-yahtzee-meta, #af9877);
+  background: rgba(15, 9, 8, 0.88);
+  box-sizing: border-box;
   font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.07em;
+  line-height: 1;
   text-align: center;
+  white-space: nowrap;
 }
 
 .yahtzee-runtime-note {
@@ -546,8 +604,8 @@
 
 @media (max-width: 1250px) {
   .yahtzee-player-panel {
-    width: clamp(210px, 18vw, 242px);
-    max-height: 52vh;
+    width: clamp(224px, 18vw, 252px);
+    max-height: 56vh;
   }
 
   .yahtzee-player-panel.is-left {
@@ -577,23 +635,25 @@
 
   .yahtzee-player-panel {
     bottom: 12px;
-    width: min(31vw, 220px);
-    max-height: 47vh;
+    width: min(32vw, 228px);
+    max-height: 50vh;
     padding: 10px;
   }
 
   .yahtzee-player-identity {
-    grid-template-columns: 40px 1fr;
+    grid-template-columns: 42px minmax(0, 1fr);
     gap: 8px;
   }
 
   .yahtzee-player-portrait {
-    width: 38px;
+    width: 40px;
+    height: 44px;
   }
 
   .yahtzee-score-row {
-    min-height: 23px;
-    font-size: 9px;
+    min-height: 25px;
+    padding: 3px 5px;
+    font-size: 10px;
   }
 
   .yahtzee-center-dock {
@@ -638,9 +698,8 @@
   }
 
   .yahtzee-player-panel {
-    width: min(43vw, 205px);
+    width: min(44vw, 214px);
     max-height: 42vh;
-    opacity: 0.88;
   }
 
   .yahtzee-player-panel.is-left {
@@ -656,7 +715,7 @@
   }
 
   .yahtzee-center-dock {
-    bottom: 46%;
+    bottom: calc(42dvh + 24px);
     width: 68vw;
   }
 

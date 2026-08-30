@@ -15,8 +15,8 @@ const requiredFiles = [
   "rooms/game-room/main-functions/yahtzee/ui/bridge.js",
   "rooms/game-room/main-functions/yahtzee/ui/babylon-scene.js",
   "rooms/game-room/main-functions/yahtzee/assets/hybrid/deck-stage-v3.webp",
-  "rooms/game-room/main-functions/yahtzee/assets/hybrid/table-mahogany.webp",
-  "rooms/game-room/main-functions/yahtzee/assets/hybrid/table-felt-burgundy.webp",
+  "rooms/game-room/main-functions/yahtzee/assets/hybrid/table-mahogany-v2.webp",
+  "rooms/game-room/main-functions/yahtzee/assets/hybrid/table-felt-burgundy-v2.webp",
   "rooms/game-room/main-functions/yahtzee/styles.css",
   "rooms/game-room/main-functions/yahtzee/multiplayer.css",
   "rooms/game-room/main-functions/yahtzee/vendor/babylon-runtime-entry.js",
@@ -108,6 +108,7 @@ void test("Yahtzee Babylon vendor build stays reproducible and licensed", () => 
   assert.match(vendorEntry, /@babylonjs\/core\/Engines\/engine\.js/);
   assert.match(vendorEntry, /@babylonjs\/core\/Culling\/ray\.js/);
   assert.match(vendorEntry, /@babylonjs\/core\/Materials\/Textures\/texture\.js/);
+  assert.match(vendorEntry, /@babylonjs\/core\/Meshes\/Builders\/polyhedronBuilder\.js/);
   assert.match(vendorEntry, /globalThis\.BABYLON/);
 
   const bundleHeader = readFileSync(

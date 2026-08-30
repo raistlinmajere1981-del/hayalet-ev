@@ -182,11 +182,11 @@ Room-local image slots remain under:
 
 `rooms/game-room/main-functions/yahtzee/assets/hybrid/`
 
-The V2 runtime actively consumes:
+The current runtime actively consumes:
 
 - `deck-stage-v3.webp` — integrated 16:9 deck environment
-- `table-mahogany.webp` — table wood texture
-- `table-felt-burgundy.webp` — inset felt texture
+- `table-mahogany-v2.webp` — table wood texture
+- `table-felt-burgundy-v2.webp` — inset felt texture
 
 Other retained art files are currently legacy/reference assets and are not loaded by the active presentation.
 

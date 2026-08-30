@@ -87,8 +87,8 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/runtime.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/bridge.js`,
       `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/deck-stage-v3.webp`,
-      `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/table-mahogany.webp`,
-      `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/table-felt-burgundy.webp`,
+      `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/table-mahogany-v2.webp`,
+      `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/table-felt-burgundy-v2.webp`,
       `${installedCopy.rootDir}/main-functions/yahtzee/protocols/game-room-yahtzee-ai-turn.md`,
       `${installedCopy.rootDir}/main-functions/yahtzee/protocols/game-room-yahtzee-us1-transport.md`,
     ].forEach((filePath) => {
@@ -131,9 +131,10 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
     );
     assert.match(themeSource, /pirate-deck-v2/);
     assert.match(themeSource, /deck-stage-v3\.webp/);
-    assert.match(themeSource, /table-mahogany\.webp/);
-    assert.match(themeSource, /table-felt-burgundy\.webp/);
+    assert.match(themeSource, /table-mahogany-v2\.webp/);
+    assert.match(themeSource, /table-felt-burgundy-v2\.webp/);
     assert.match(themeSource, /heldDiceRack: true/);
+    assert.match(themeSource, /stageConfig/);
 
     const audioSource = readFileSync(
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/audio-runtime.js`,
@@ -149,13 +150,13 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
       "utf8"
     );
     assert.match(sceneSource, /GameRoomYahtzeeBabylonScene/);
-    assert.match(sceneSource, /RACK_LAYOUT/);
+    assert.match(sceneSource, /resolveStageConfig/);
     assert.match(sceneSource, /yahtzee-game-table-hold-well/);
     assert.match(sceneSource, /targetPosition/);
-    assert.match(sceneSource, /TABLE_FOOTPRINT_SCALE = 0\.95/);
-    assert.match(sceneSource, /DIE_SCALE = 0\.9/);
+    assert.match(sceneSource, /CreatePolyhedron/);
+    assert.match(sceneSource, /targetScale/);
     assert.match(sceneSource, /scene\.constantlyUpdateMeshUnderPointer = false/);
-    assert.match(sceneSource, /targetFps = hasRollingDice\(\) \? 45 : latestState\.active === true \? 30 : 15/);
+    assert.match(sceneSource, /performanceConfig\.rollingFps/);
     assert.match(sceneSource, /camera\.inputs\.clear\(\)/);
     assert.match(sceneSource, /new B\.Color4\(0, 0, 0, 0\)/);
     assert.doesNotMatch(sceneSource, /camera\.attachControl/);

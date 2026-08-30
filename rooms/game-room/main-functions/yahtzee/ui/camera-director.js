@@ -16,9 +16,10 @@
     return shots[name] || shots.match || shots.showcase || null;
   }
 
-  function create(camera, B, theme) {
+  function create(camera, B, theme, options) {
     if (!camera || !B || !theme) return null;
 
+    const reduceMotion = Boolean(options && options.reduceMotion);
     let currentName = "showcase";
     let targetShot = normalizeShot(theme, currentName);
     let returnShotName = null;
@@ -50,7 +51,7 @@
       currentName = name;
       targetShot = next;
       const settings = options || {};
-      if (settings.immediate === true) {
+      if (settings.immediate === true || reduceMotion) {
         applyImmediate(next);
       }
       if (settings.temporary === true) {
@@ -80,6 +81,10 @@
     function focusRoll(state) {
       if (disposed) return;
       const returnTo = stateShot(state);
+      if (reduceMotion) {
+        setShot(returnTo, { immediate: true });
+        return;
+      }
       setShot("roll", { temporary: true, returnTo: returnTo });
     }
 
