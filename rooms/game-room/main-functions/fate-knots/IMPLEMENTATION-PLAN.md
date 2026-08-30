@@ -4,7 +4,7 @@ The rebuild is intentionally staged so each change is reviewable and can be merg
 
 ## Stage A — Contract lock (Nexa / branch-safe)
 
-Status: in progress.
+Status: complete for initial headless work.
 
 Goals:
 
@@ -12,32 +12,41 @@ Goals:
 - define data contracts before renderer work
 - prevent local implementation from inventing rules
 
-Deliverables:
+Delivered:
 
 - `README.md` design contract
 - `CODEX-HANDOFF.md` guardrails
 - `shared/contracts.ts`
-- later: validation helpers for packages/state
+
+Still intentionally deferred until the package/state shapes are exercised:
+
+- full Universe Package validation/normalization helpers
 
 No Game Room registration or shared host wiring is required in this stage.
 
 ## Stage B — Headless core (Nexa / branch-safe)
 
+Status: in progress.
+
 Build inside `main-functions/fate-knots` without final visuals.
 
-Planned modules:
+Delivered so far:
 
-- external/default rules config
-- card legality resolver
+- external/default rules configuration contract in `rules/config.ts`
+- lightweight `front | rear` + `engaged | near | far` position helpers in `shared/position.ts`
+- deterministic owned/granted/blocked card availability and legality resolver in `shared/card-legality.ts`
+- explicit standing/fallen target legality in the shared card requirement contract
+
+Next planned pieces:
+
 - card effect resolver
-- lightweight position transitions
 - combat discussion/commit/resolution/aftermath state machine
 - fallen / party defeat result handling
 - run phase transitions
 - Universe Package validation/normalization shell
 - DM scene/result packet builders
 - AI0 NPC role packet builder
-- presentation-event emitter contracts
+- presentation-event emitter helpers
 
 Requirements:
 
