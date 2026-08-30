@@ -16,6 +16,7 @@ export interface FateKnotsTimedStatusInstance {
   effectId: string;
   statusId: string;
   remainingTurns: number;
+  appliedTurnIndex: number;
 }
 
 export interface FateKnotsCombatActorRuntimeState {
