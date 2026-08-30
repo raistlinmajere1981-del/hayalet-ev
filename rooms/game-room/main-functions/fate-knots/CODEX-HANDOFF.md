@@ -69,6 +69,18 @@ Cards default to `normal` priority if they do not define a priority tier. Do not
 
 `0 HP` means `fallen` during combat. Party defeat ends the run.
 
+## Fixed V1 party-victory recovery
+
+V1 uses a deliberately severe but small recovery rule instead of a second hidden injury/health subsystem:
+
+- standing party actors keep the exact HP they finished combat with
+- a party actor that was `fallen` when the party wins returns at the configured low recovery HP; the V1 default is `1 HP`
+- recovered actors are no longer `fallen`
+- canonical `maxHp` is not automatically reduced by the engine
+- V1 does not automatically invent or attach a generic injury card after recovery
+
+If a lasting wound is desired later, represent it explicitly as an injury/status card with visible mechanics and an explicit removal/recovery rule. Do not silently lower max HP or invent a restoration timer in renderer/local code.
+
 ## Fixed V1 effect duration law
 
 Do not invent per-card timer semantics. V1 uses one small duration grammar:
@@ -153,7 +165,6 @@ The following details are intentionally not final yet. If a local task reaches o
 - exact player/base stat values
 - exact starting card catalogs for generated universes
 - exact energy/resource costs
-- exact fallen recovery HP and injury severity/balance
 - exact heuristics/content for individual deterministic enemy policies
 - exact loot quantities and inventory capacities
 - exact camp healing/equipment limits
