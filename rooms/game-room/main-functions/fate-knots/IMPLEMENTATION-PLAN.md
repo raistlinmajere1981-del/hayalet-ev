@@ -36,11 +36,14 @@ Delivered so far:
 - lightweight `front | rear` + `engaged | near | far` position helpers in `shared/position.ts`
 - deterministic owned/granted/blocked card availability and legality resolver in `shared/card-legality.ts`
 - explicit standing/fallen target legality in the shared card requirement contract
+- deterministic card effect planning in `shared/effect-resolution.ts`
+- explicit separation between mechanical effect target and presentation `applyTo`
+- ordered mechanical patches for damage/heal/shield/status/movement/stat/resource/card/reveal/retreat effects
 
 Next planned pieces:
 
-- card effect resolver
 - combat discussion/commit/resolution/aftermath state machine
+- atomic mechanical patch application inside combat/run authority
 - fallen / party defeat result handling
 - run phase transitions
 - Universe Package validation/normalization shell
