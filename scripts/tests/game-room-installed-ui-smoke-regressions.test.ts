@@ -129,7 +129,7 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/theme-pirate-deck.js`,
       "utf8"
     );
-    assert.match(themeSource, /pirate-deck-v2/);
+  assert.match(themeSource, /pirate-deck-v3/);
     assert.match(themeSource, /deck-stage-v3\.webp/);
     assert.match(themeSource, /table-mahogany-v2\.webp/);
     assert.match(themeSource, /table-felt-burgundy-v2\.webp/);
