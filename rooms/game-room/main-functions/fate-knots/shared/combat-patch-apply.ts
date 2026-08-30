@@ -220,6 +220,29 @@ function uniqueStrings(values: readonly string[]): string[] {
   return Array.from(new Set(values));
 }
 
+function refreshTimedStatus(
+  combat: FateKnotsCombatState,
+  runtimeActor: ReturnType<typeof getRuntimeActorOrThrow>,
+  effectId: string,
+  statusId: string,
+  durationTurns: number
+): void {
+  const existing = runtimeActor.timedStatuses.find((status) => status.statusId === statusId);
+  if (existing) {
+    existing.effectId = effectId;
+    existing.remainingTurns = Math.max(existing.remainingTurns, durationTurns);
+    existing.appliedTurnIndex = combat.turnIndex;
+    return;
+  }
+
+  runtimeActor.timedStatuses.push({
+    effectId,
+    statusId,
+    remainingTurns: durationTurns,
+    appliedTurnIndex: combat.turnIndex,
+  });
+}
+
 function applyActorPatch(
   combat: FateKnotsCombatState,
   runtime: FateKnotsCombatRuntimeState,
@@ -267,11 +290,13 @@ function applyActorPatch(
     case "status-add":
       actor.statusIds = uniqueStrings([...actor.statusIds, patch.statusId]);
       if (patch.durationTurns !== undefined && patch.durationTurns > 0) {
-        runtimeActor.timedStatuses.push({
-          effectId: patch.effectId,
-          statusId: patch.statusId,
-          remainingTurns: patch.durationTurns,
-        });
+        refreshTimedStatus(
+          combat,
+          runtimeActor,
+          patch.effectId,
+          patch.statusId,
+          patch.durationTurns
+        );
       }
       break;
     case "status-remove":
