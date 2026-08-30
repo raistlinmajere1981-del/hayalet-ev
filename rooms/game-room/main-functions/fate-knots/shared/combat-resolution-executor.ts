@@ -20,6 +20,7 @@ import {
 import type { FateKnotsCombatRuntimeState } from "./combat-runtime.js";
 import {
   resolveFateKnotsCardEffects,
+  type FateKnotsEffectResolutionContext,
   type FateKnotsEffectResolutionIssue,
   type FateKnotsExecutableCardDefinition,
   type FateKnotsMechanicalPatch,
@@ -121,6 +122,22 @@ function getPrimaryTarget(combat: FateKnotsCombatState, commit: FateKnotsCombatA
   const targetId = commit.primaryTargetId ?? null;
   if (!targetId) return null;
   return combat.actors.find((actor) => actor.actorId === targetId) ?? null;
+}
+
+function buildEffectContext(
+  card: FateKnotsCardDefinition,
+  actor: FateKnotsCombatState["actors"][number],
+  combat: FateKnotsCombatState,
+  commit: FateKnotsCombatActionCommit
+): FateKnotsEffectResolutionContext {
+  const context: FateKnotsEffectResolutionContext = {
+    card: card as FateKnotsExecutableCardDefinition,
+    actor,
+    actors: combat.actors,
+  };
+  if (commit.primaryTargetId !== undefined) context.primaryTargetId = commit.primaryTargetId;
+  if (commit.secondaryTargetId !== undefined) context.secondaryTargetId = commit.secondaryTargetId;
+  return context;
 }
 
 function recordCancelledFallen(
@@ -244,13 +261,7 @@ function executeResolutionPass(
       continue;
     }
 
-    const effectPlan = resolveFateKnotsCardEffects({
-      card: card as FateKnotsExecutableCardDefinition,
-      actor,
-      actors: combat.actors,
-      primaryTargetId: commit.primaryTargetId,
-      secondaryTargetId: commit.secondaryTargetId,
-    });
+    const effectPlan = resolveFateKnotsCardEffects(buildEffectContext(card, actor, combat, commit));
 
     if (!effectPlan.resolved) {
       return {
