@@ -69,6 +69,22 @@ export const FATE_KNOTS_CARD_KINDS = [
 
 export type FateKnotsCardKind = (typeof FATE_KNOTS_CARD_KINDS)[number];
 
+export const FATE_KNOTS_RESOLUTION_PRIORITY_TIERS = ["fast", "normal", "heavy"] as const;
+export type FateKnotsResolutionPriorityTier =
+  (typeof FATE_KNOTS_RESOLUTION_PRIORITY_TIERS)[number];
+
+export type FateKnotsEnemyControllerKind = "policy" | "ai0";
+
+export type FateKnotsEnemyControllerDefinition =
+  | {
+      kind: "policy";
+      policyId: string;
+    }
+  | {
+      kind: "ai0";
+      policyId?: null;
+    };
+
 export type FateKnotsEffectKind =
   | "damage"
   | "heal"
@@ -156,6 +172,7 @@ export interface FateKnotsCardDefinition {
   requirements?: FateKnotsCardRequirement[];
   effects: FateKnotsCardEffect[];
   presentation: FateKnotsPresentationCue[];
+  resolutionPriority?: FateKnotsResolutionPriorityTier;
   consumable?: boolean;
   sourceId?: string | null;
 }
@@ -200,6 +217,7 @@ export interface FateKnotsCharacterDefinition {
   };
   startingCardIds: string[];
   startingEquipmentIds: string[];
+  combatController?: FateKnotsEnemyControllerDefinition | null;
   voiceProfileId?: string | null;
 }
 
@@ -341,6 +359,9 @@ export interface FateKnotsActorState {
   teamId: FateKnotsTeamId;
   hp: number;
   maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
   energy: number;
   fallen: boolean;
   position: FateKnotsPosition;
