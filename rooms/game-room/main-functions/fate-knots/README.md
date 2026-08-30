@@ -447,3 +447,35 @@ The packet must not contain other participants' hidden pending commits, hidden t
 AI0 returns only a tactical choice such as movement card, action card, and target. That choice then enters the same legality and commit path used by other actors. AI0 cannot directly mutate HP, status, position, initiative, or combat result.
 
 Specific deterministic policy heuristics are content/balance definitions and are not implicit engine behavior. A policy such as `aggressive-melee` or `defensive-ranged` must be defined explicitly before use rather than invented by renderer/Codex code.
+
+## 20. V1 effect duration law
+
+Fate Knots V1 uses one deliberately small duration grammar instead of separate timer systems for shields, buffs, debuffs and statuses.
+
+Immediate state effects remain immediate:
+
+- damage/heal
+- energy/resource changes
+- movement/position changes
+- card grant/revoke/consume
+- reveal/retreat requests
+
+Combat-local protection and direct stat changes are turn-scoped:
+
+- shield created during a turn remains available for later effects in that turn, then clears during aftermath
+- direct `modify-stat` combat modifiers remain for the current turn, then clear during aftermath
+- when a temporary `maxHp` modifier disappears, current HP is clamped back to the canonical max if necessary
+
+Status duration uses three cases:
+
+1. non-persistent status with no `durationTurns` -> current turn only, removed in aftermath
+2. status with `durationTurns: N` -> survives its application turn and remains active for N complete following turns
+3. persistent status with no `durationTurns` -> remains until an explicit remove effect or later run rule removes it
+
+A timed status counter does not decrement during the same aftermath in which the status was first applied. Therefore `durationTurns: 1` means the status remains through the rest of the application turn and one complete next turn, expiring after that next turn's aftermath.
+
+Reapplying the same timed status does not create duplicate timers. V1 refreshes the existing timer and never shortens its remaining duration. Explicit status stacking, if later required, must be introduced as a deliberate status rule rather than emerging accidentally from repeated card use.
+
+When an application supplies `durationTurns`, that explicit duration takes precedence over the status definition's default persistence behavior for that application.
+
+This rule keeps common defense/buff cards easy to reason about, gives stun/poison-style statuses useful next-turn behavior, and avoids a second generic duration engine. Longer-lived stat behavior should be represented through an explicit status/card definition rather than by adding separate modifier lifetime semantics.
