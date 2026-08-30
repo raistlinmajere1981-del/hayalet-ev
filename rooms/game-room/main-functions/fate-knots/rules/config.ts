@@ -10,8 +10,17 @@ export interface FateKnotsRulesConfig {
     fallenAtZeroHp: true;
     partyDefeatEndsRun: true;
     retreatRequiresCardOrRule: true;
-    fallenRecoveryHp: number | null;
-    fallenInjuryCardCount: number | null;
+    /**
+     * V1 recovery floor for a party actor that was fallen when combat ended in
+     * party victory. Defaults to 1 HP and may be tuned explicitly later.
+     */
+    fallenRecoveryHp: number;
+    /**
+     * V1 deliberately does not invent a generic injury automatically. Lasting
+     * injuries remain explicit card/status content so their removal/effects are
+     * visible in canon instead of becoming a hidden second health model.
+     */
+    fallenInjuryCardCount: 0;
   };
   cards: {
     requirementSetMode: "all";
@@ -26,9 +35,9 @@ export interface FateKnotsRulesConfig {
 }
 
 /**
- * Stable rebuild defaults only contain rules that were explicitly locked in the
- * design contract. Balancing values that remain undecided intentionally stay
- * null so a renderer or local implementation cannot silently invent them.
+ * Stable rebuild defaults contain only rules intentionally locked in the design
+ * contract. V1 party-victory recovery is intentionally severe and simple:
+ * fallen party actors stand back up at 1 HP; max HP is not silently reduced.
  */
 export const DEFAULT_FATE_KNOTS_RULES: FateKnotsRulesConfig = {
   schemaVersion: FATE_KNOTS_RULES_SCHEMA_VERSION,
@@ -41,8 +50,8 @@ export const DEFAULT_FATE_KNOTS_RULES: FateKnotsRulesConfig = {
     fallenAtZeroHp: true,
     partyDefeatEndsRun: true,
     retreatRequiresCardOrRule: true,
-    fallenRecoveryHp: null,
-    fallenInjuryCardCount: null,
+    fallenRecoveryHp: 1,
+    fallenInjuryCardCount: 0,
   },
   cards: {
     requirementSetMode: "all",
@@ -64,14 +73,14 @@ function readNonNegativeInteger(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : fallback;
 }
 
-function readNullablePositiveInteger(value: unknown): number | null {
-  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+function readPositiveInteger(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : fallback;
 }
 
 /**
  * Normalizes persisted/external configuration without broadening the design
- * contract. Locked booleans remain locked; only explicitly configurable numeric
- * values are accepted from outside.
+ * contract. Locked booleans and the V1 zero automatic-injury rule remain
+ * locked; only explicitly configurable numeric values are accepted.
  */
 export function normalizeFateKnotsRules(candidate: unknown): FateKnotsRulesConfig {
   const source = isRecord(candidate) ? candidate : {};
@@ -92,12 +101,15 @@ export function normalizeFateKnotsRules(candidate: unknown): FateKnotsRulesConfi
           DEFAULT_FATE_KNOTS_RULES.combat.turn.maxActionCards
         ),
       },
-      fallenRecoveryHp: readNullablePositiveInteger(combat["fallenRecoveryHp"]),
-      fallenInjuryCardCount: readNullablePositiveInteger(combat["fallenInjuryCardCount"]),
+      fallenRecoveryHp: readPositiveInteger(
+        combat["fallenRecoveryHp"],
+        DEFAULT_FATE_KNOTS_RULES.combat.fallenRecoveryHp
+      ),
+      fallenInjuryCardCount: 0,
     },
   };
 }
 
 export function hasResolvedFallenRecoveryRules(config: FateKnotsRulesConfig): boolean {
-  return config.combat.fallenRecoveryHp !== null && config.combat.fallenInjuryCardCount !== null;
+  return config.combat.fallenRecoveryHp > 0 && config.combat.fallenInjuryCardCount === 0;
 }
