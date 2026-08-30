@@ -391,3 +391,59 @@ Babylon is a presentation/interactivity layer, not the rules owner.
 The headless engine must be able to represent a run without requiring the final book scene, generated artwork, particle effects, music, or TTS.
 
 Visual iteration should begin only after state, card, combat, World Forge, and presentation-event contracts are stable enough that a renderer does not need to invent missing game rules.
+
+## 18. Deterministic combat resolution order
+
+Participants make decisions before resolution; resolution does not become a sequence of reactive hidden counter-picks.
+
+Pending player/AI2/US1 commits are not exposed to AI0 enemy decision packets. Once the required commits are locked, the engine resolves the turn in two passes:
+
+1. movement pass
+2. action pass
+
+Within each pass the order is:
+
+1. card resolution priority
+2. effective character speed
+3. stable deterministic tie break
+
+The initial card priority vocabulary is:
+
+- `fast`
+- `normal`
+- `heavy`
+
+`fast` resolves before `normal`; `normal` resolves before `heavy`. A card without an explicit tier defaults to `normal`.
+
+Effective speed is the actor's canonical speed plus current combat-scoped speed modifiers. Exact ties use a stable actor-id ordering rather than RNG or a dice roll.
+
+The action queue is built after the movement pass has changed positions. Card legality/range must therefore be checked against the current state when an action is about to resolve, not only against the state that existed during commit.
+
+A queued action is also conditional on the actor still being able to act. If a faster action makes an actor `fallen` before that actor's action resolves, the unresolved action is cancelled.
+
+A card may contain its own ordered effect sequence. For example, a Lunge-style action may move and then damage as one action card; this does not create a grid or a separate movement subsystem.
+
+## 19. Enemy combat decision authority
+
+Enemy mechanics are always engine-owned. The initial design supports two tactical controller families:
+
+- `policy` — a deterministic engine policy selected by explicit `policyId`
+- `ai0` — a personality-driven NPC decision over engine-provided legal options
+
+Simple enemies should not require an AI0 call merely because AI0 exists. Creatures whose behavior is adequately represented by a deterministic policy should remain local/headless.
+
+AI0 is useful when personality or character intent should influence tactical choice, especially important NPCs and bosses.
+
+For an AI0-controlled enemy the engine provides only the combat-visible packet needed to choose:
+
+- the NPC's visible combat state
+- visible actor state
+- legal movement cards
+- legal action cards
+- legal target IDs
+
+The packet must not contain other participants' hidden pending commits, hidden target selections, hidden world facts, or precomputed mechanical outcomes.
+
+AI0 returns only a tactical choice such as movement card, action card, and target. That choice then enters the same legality and commit path used by other actors. AI0 cannot directly mutate HP, status, position, initiative, or combat result.
+
+Specific deterministic policy heuristics are content/balance definitions and are not implicit engine behavior. A policy such as `aggressive-melee` or `defensive-ranged` must be defined explicitly before use rather than invented by renderer/Codex code.
