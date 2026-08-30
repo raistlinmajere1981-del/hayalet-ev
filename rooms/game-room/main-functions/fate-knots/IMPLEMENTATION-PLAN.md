@@ -57,13 +57,19 @@ Delivered so far:
 - every queued card is revalidated immediately before execution; post-commit range/status/position changes can cancel a card without corrupting combat
 - an actor made `fallen` by a faster action loses any unresolved queued action
 - terminal victory/defeat/retreat evaluation runs during ordered resolution and stops later queued actions once combat ends
+- explicit V1 effect-duration law and aftermath settlement in `shared/combat-aftermath.ts`
+- shields and direct combat stat modifiers clear at aftermath
+- non-persistent untimed statuses are turn-scoped
+- `durationTurns` statuses survive the application turn plus the configured number of complete following turns
+- timed status reapplication refreshes one timer rather than stacking duplicate timers
+- persistent untimed statuses survive until explicit removal
 
 Next planned pieces:
 
-- aftermath settlement and timed-status turn bookkeeping
+- connect aftermath settlement to the turn/run orchestrator path
 - fallen post-victory recovery contract once exact recovery/injury values are deliberately chosen
 - run phase transitions
-- Universe Package validation/normalization shell
+- Universe Package validation/normalization shell, including effect/status duration validation
 - DM scene/result packet builders
 - AI0 NPC role packet builder for narrative/non-combat interaction
 - presentation-event emitter helpers
