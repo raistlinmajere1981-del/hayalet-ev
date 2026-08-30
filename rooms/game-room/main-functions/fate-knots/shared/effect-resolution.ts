@@ -6,12 +6,11 @@ import type {
   FateKnotsStatId,
   FateKnotsTeamId,
 } from "./contracts.js";
-import { applyFateKnotsPositionPatch } from "./position.js";
 
 /**
- * Mechanical targeting is intentionally separate from presentation `applyTo`.
- * A renderer may show an effect on a different visual surface than the state
- * object that receives the mechanical effect.
+ * Mechanical target selection is deliberately separate from presentation
+ * `applyTo`. A card may mechanically affect one actor while its visual cue is
+ * rendered on a card, page overlay, battlefield or several avatars.
  */
 export type FateKnotsMechanicalEffectTarget =
   | "self"
@@ -53,21 +52,17 @@ export interface FateKnotsEffectResolutionIssue {
   value?: string;
 }
 
+/**
+ * Ordered mechanical instructions produced by card resolution.
+ *
+ * These patches do not mutate canonical state. The combat/run state machine
+ * applies them in order, which keeps HP clamping, falling, shield lifetime,
+ * status duration and other phase rules in one authority layer.
+ */
 export type FateKnotsMechanicalPatch =
-  | {
-      kind: "hp";
-      effectId: string;
-      actorId: string;
-      delta: number;
-      nextHp: number;
-      nextFallen: boolean;
-    }
-  | {
-      kind: "shield";
-      effectId: string;
-      actorId: string;
-      delta: number;
-    }
+  | { kind: "damage"; effectId: string; actorId: string; amount: number }
+  | { kind: "heal"; effectId: string; actorId: string; amount: number }
+  | { kind: "shield"; effectId: string; actorId: string; amount: number }
   | {
       kind: "status-add";
       effectId: string;
@@ -75,17 +70,12 @@ export type FateKnotsMechanicalPatch =
       statusId: string;
       durationTurns?: number;
     }
-  | {
-      kind: "status-remove";
-      effectId: string;
-      actorId: string;
-      statusId: string;
-    }
+  | { kind: "status-remove"; effectId: string; actorId: string; statusId: string }
   | {
       kind: "position";
       effectId: string;
       actorId: string;
-      nextPosition: FateKnotsPosition;
+      moveTo: Partial<FateKnotsPosition>;
     }
   | {
       kind: "stat";
@@ -101,34 +91,11 @@ export type FateKnotsMechanicalPatch =
       statId: "energy";
       delta: number;
     }
-  | {
-      kind: "card-grant";
-      effectId: string;
-      actorId: string;
-      cardId: string;
-    }
-  | {
-      kind: "card-revoke";
-      effectId: string;
-      actorId: string;
-      cardId: string;
-    }
-  | {
-      kind: "card-consume";
-      effectId: string;
-      actorId: string;
-      cardId: string;
-    }
-  | {
-      kind: "run-reveal";
-      effectId: string;
-      revealId: string;
-    }
-  | {
-      kind: "retreat-request";
-      effectId: string;
-      teamId: FateKnotsTeamId;
-    };
+  | { kind: "card-grant"; effectId: string; actorId: string; cardId: string }
+  | { kind: "card-revoke"; effectId: string; actorId: string; cardId: string }
+  | { kind: "card-consume"; effectId: string; actorId: string; cardId: string }
+  | { kind: "run-reveal"; effectId: string; revealId: string }
+  | { kind: "retreat-request"; effectId: string; teamId: FateKnotsTeamId };
 
 export interface FateKnotsMechanicalResolvedEffect {
   effectId: string;
@@ -141,8 +108,6 @@ export interface FateKnotsMechanicalResolvedEffect {
   statusId?: string;
   cardRefId?: string;
   revealId?: string;
-  resultingHp?: number;
-  resultingPosition?: FateKnotsPosition;
 }
 
 export interface FateKnotsEffectResolutionContext {
@@ -166,15 +131,6 @@ interface PreparedEffect {
   teamId?: FateKnotsTeamId;
 }
 
-interface WorkingActorState {
-  source: FateKnotsActorState;
-  hp: number;
-  fallen: boolean;
-  position: FateKnotsPosition;
-  statusIds: Set<string>;
-  ownedCardIds: Set<string>;
-}
-
 const ACTOR_EFFECT_KINDS = new Set<FateKnotsCardEffect["kind"]>([
   "damage",
   "heal",
@@ -189,21 +145,6 @@ const ACTOR_EFFECT_KINDS = new Set<FateKnotsCardEffect["kind"]>([
   "consume",
 ]);
 
-function clonePosition(position: FateKnotsPosition): FateKnotsPosition {
-  return { row: position.row, range: position.range };
-}
-
-function createWorkingActor(actor: FateKnotsActorState): WorkingActorState {
-  return {
-    source: actor,
-    hp: actor.hp,
-    fallen: actor.fallen,
-    position: clonePosition(actor.position),
-    statusIds: new Set([...actor.statusIds, ...actor.injuryIds]),
-    ownedCardIds: new Set(actor.ownedCardIds),
-  };
-}
-
 function isPositiveFinite(value: number | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
@@ -212,7 +153,12 @@ function isFiniteNumber(value: number | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function getActorTargetIds(
+function findActor(context: FateKnotsEffectResolutionContext, actorId: string): FateKnotsActorState | null {
+  if (context.actor.actorId === actorId) return context.actor;
+  return context.actors.find((candidate) => candidate.actorId === actorId) ?? null;
+}
+
+function resolveTargetIds(
   effect: FateKnotsExecutableCardEffect,
   context: FateKnotsEffectResolutionContext,
   issues: FateKnotsEffectResolutionIssue[]
@@ -225,7 +171,7 @@ function getActorTargetIds(
         issues.push({ code: "missing-primary-target", effectId: effect.id });
         return [];
       }
-      if (!context.actors.some((candidate) => candidate.actorId === context.primaryTargetId)) {
+      if (!findActor(context, context.primaryTargetId)) {
         issues.push({ code: "target-not-found", effectId: effect.id, value: context.primaryTargetId });
         return [];
       }
@@ -236,8 +182,12 @@ function getActorTargetIds(
         issues.push({ code: "missing-secondary-target", effectId: effect.id });
         return [];
       }
-      if (!context.actors.some((candidate) => candidate.actorId === context.secondaryTargetId)) {
-        issues.push({ code: "target-not-found", effectId: effect.id, value: context.secondaryTargetId });
+      if (!findActor(context, context.secondaryTargetId)) {
+        issues.push({
+          code: "target-not-found",
+          effectId: effect.id,
+          value: context.secondaryTargetId,
+        });
         return [];
       }
       return [context.secondaryTargetId];
@@ -308,7 +258,7 @@ function prepareEffect(
   issues: FateKnotsEffectResolutionIssue[]
 ): PreparedEffect {
   validateEffectFields(effect, issues);
-  const targetIds = getActorTargetIds(effect, context, issues);
+  const targetIds = resolveTargetIds(effect, context, issues);
 
   if (ACTOR_EFFECT_KINDS.has(effect.kind)) {
     if (effect.target === "run" || effect.target === "ownTeam") {
@@ -332,15 +282,14 @@ function prepareEffect(
   return { effect, targetIds };
 }
 
-function createResolvedBase(
-  card: FateKnotsExecutableCardDefinition,
-  actor: FateKnotsActorState,
+function buildResolvedEffect(
+  context: FateKnotsEffectResolutionContext,
   prepared: PreparedEffect
 ): FateKnotsMechanicalResolvedEffect {
   const resolved: FateKnotsMechanicalResolvedEffect = {
     effectId: prepared.effect.id,
-    cardId: card.id,
-    actorId: actor.actorId,
+    cardId: context.card.id,
+    actorId: context.actor.actorId,
     targetIds: prepared.targetIds.slice(),
     kind: prepared.effect.kind,
   };
@@ -352,114 +301,56 @@ function createResolvedBase(
   return resolved;
 }
 
-function clampHp(value: number, maxHp: number): number {
-  return Math.min(Math.max(value, 0), Math.max(maxHp, 0));
-}
-
-function requireWorkingActor(
-  workingActors: Map<string, WorkingActorState>,
-  actorId: string
-): WorkingActorState {
-  const actor = workingActors.get(actorId);
-  if (!actor) throw new Error(`Fate Knots effect target disappeared: ${actorId}`);
-  return actor;
-}
-
-function resolveActorEffect(
-  card: FateKnotsExecutableCardDefinition,
-  prepared: PreparedEffect,
-  workingActors: Map<string, WorkingActorState>,
-  patches: FateKnotsMechanicalPatch[],
-  resolvedEffects: FateKnotsMechanicalResolvedEffect[]
-): void {
+function buildActorPatches(
+  context: FateKnotsEffectResolutionContext,
+  prepared: PreparedEffect
+): FateKnotsMechanicalPatch[] {
   const effect = prepared.effect;
+  const patches: FateKnotsMechanicalPatch[] = [];
 
-  for (const targetId of prepared.targetIds) {
-    const target = requireWorkingActor(workingActors, targetId);
-    const resolved = createResolvedBase(card, target.source, prepared);
-
+  for (const actorId of prepared.targetIds) {
     switch (effect.kind) {
-      case "damage": {
-        const value = effect.value as number;
-        target.hp = clampHp(target.hp - value, target.source.maxHp);
-        if (target.hp === 0) target.fallen = true;
-        patches.push({
-          kind: "hp",
-          effectId: effect.id,
-          actorId: targetId,
-          delta: -value,
-          nextHp: target.hp,
-          nextFallen: target.fallen,
-        });
-        resolved.resultingHp = target.hp;
+      case "damage":
+        patches.push({ kind: "damage", effectId: effect.id, actorId, amount: effect.value as number });
         break;
-      }
-      case "heal": {
-        const value = effect.value as number;
-        target.hp = clampHp(target.hp + value, target.source.maxHp);
-        patches.push({
-          kind: "hp",
-          effectId: effect.id,
-          actorId: targetId,
-          delta: value,
-          nextHp: target.hp,
-          nextFallen: target.fallen,
-        });
-        resolved.resultingHp = target.hp;
+      case "heal":
+        patches.push({ kind: "heal", effectId: effect.id, actorId, amount: effect.value as number });
         break;
-      }
       case "shield":
-        patches.push({
-          kind: "shield",
-          effectId: effect.id,
-          actorId: targetId,
-          delta: effect.value as number,
-        });
+        patches.push({ kind: "shield", effectId: effect.id, actorId, amount: effect.value as number });
         break;
       case "apply-status": {
-        const statusId = effect.statusId as string;
-        target.statusIds.add(statusId);
         const patch: Extract<FateKnotsMechanicalPatch, { kind: "status-add" }> = {
           kind: "status-add",
           effectId: effect.id,
-          actorId: targetId,
-          statusId,
+          actorId,
+          statusId: effect.statusId as string,
         };
         if (effect.durationTurns !== undefined) patch.durationTurns = effect.durationTurns;
         patches.push(patch);
         break;
       }
-      case "remove-status": {
-        const statusId = effect.statusId as string;
-        target.statusIds.delete(statusId);
+      case "remove-status":
         patches.push({
           kind: "status-remove",
           effectId: effect.id,
-          actorId: targetId,
-          statusId,
+          actorId,
+          statusId: effect.statusId as string,
         });
         break;
-      }
-      case "move": {
-        const nextPosition = applyFateKnotsPositionPatch(
-          target.position,
-          effect.moveTo as Partial<FateKnotsPosition>
-        );
-        target.position = nextPosition;
+      case "move":
         patches.push({
           kind: "position",
           effectId: effect.id,
-          actorId: targetId,
-          nextPosition: clonePosition(nextPosition),
+          actorId,
+          moveTo: { ...(effect.moveTo as Partial<FateKnotsPosition>) },
         });
-        resolved.resultingPosition = clonePosition(nextPosition);
         break;
-      }
       case "modify-stat":
         patches.push({
           kind: "stat",
           effectId: effect.id,
-          actorId: targetId,
+          actorId,
           statId: effect.statId as FateKnotsStatId,
           delta: effect.value as number,
         });
@@ -468,46 +359,54 @@ function resolveActorEffect(
         patches.push({
           kind: "resource",
           effectId: effect.id,
-          actorId: targetId,
+          actorId,
           statId: "energy",
           delta: effect.value as number,
         });
         break;
-      case "grant-card": {
-        const cardId = effect.cardId as string;
-        target.ownedCardIds.add(cardId);
-        patches.push({ kind: "card-grant", effectId: effect.id, actorId: targetId, cardId });
+      case "grant-card":
+        patches.push({
+          kind: "card-grant",
+          effectId: effect.id,
+          actorId,
+          cardId: effect.cardId as string,
+        });
         break;
-      }
-      case "revoke-card": {
-        const cardId = effect.cardId as string;
-        target.ownedCardIds.delete(cardId);
-        patches.push({ kind: "card-revoke", effectId: effect.id, actorId: targetId, cardId });
+      case "revoke-card":
+        patches.push({
+          kind: "card-revoke",
+          effectId: effect.id,
+          actorId,
+          cardId: effect.cardId as string,
+        });
         break;
-      }
-      case "consume": {
-        const cardId = effect.cardId ?? card.id;
-        target.ownedCardIds.delete(cardId);
-        patches.push({ kind: "card-consume", effectId: effect.id, actorId: targetId, cardId });
-        if (resolved.cardRefId === undefined) resolved.cardRefId = cardId;
+      case "consume":
+        patches.push({
+          kind: "card-consume",
+          effectId: effect.id,
+          actorId,
+          cardId: effect.cardId ?? context.card.id,
+        });
         break;
-      }
       case "reveal":
       case "retreat":
-        throw new Error(`Non-actor Fate Knots effect reached actor resolver: ${effect.kind}`);
+        break;
     }
-
-    resolvedEffects.push(resolved);
   }
+
+  return patches;
 }
 
 /**
- * Resolves a card into deterministic mechanical patches without mutating
- * canonical state. The caller is responsible for legality checks before this
- * function and for applying returned patches atomically afterward.
+ * Converts a legal card into an atomic, ordered mechanical resolution plan.
  *
- * Presentation cues are deliberately not resolved here. A later presentation
- * layer maps the resolved card/effect event onto animation, SFX and book UI.
+ * Preconditions:
+ * - card/target legality has already been checked
+ * - executable effects have explicit mechanical targets
+ *
+ * This function never mutates actors/run state and never selects presentation
+ * cues. Those responsibilities remain with the state machine and presentation
+ * layer respectively.
  */
 export function resolveFateKnotsCardEffects(
   context: FateKnotsEffectResolutionContext
@@ -519,27 +418,23 @@ export function resolveFateKnotsCardEffects(
     return { resolved: false, issues, effects: [], patches: [] };
   }
 
-  const workingActors = new Map(
-    context.actors.map((actor) => [actor.actorId, createWorkingActor(actor)] as const)
-  );
-  if (!workingActors.has(context.actor.actorId)) {
-    workingActors.set(context.actor.actorId, createWorkingActor(context.actor));
-  }
-
   const patches: FateKnotsMechanicalPatch[] = [];
   const effects: FateKnotsMechanicalResolvedEffect[] = [];
 
   for (const preparedEffect of prepared) {
+    effects.push(buildResolvedEffect(context, preparedEffect));
+
     if (ACTOR_EFFECT_KINDS.has(preparedEffect.effect.kind)) {
-      resolveActorEffect(context.card, preparedEffect, workingActors, patches, effects);
+      patches.push(...buildActorPatches(context, preparedEffect));
       continue;
     }
 
-    const resolved = createResolvedBase(context.card, context.actor, preparedEffect);
     if (preparedEffect.effect.kind === "reveal") {
-      const revealId = preparedEffect.effect.revealId as string;
-      patches.push({ kind: "run-reveal", effectId: preparedEffect.effect.id, revealId });
-      effects.push(resolved);
+      patches.push({
+        kind: "run-reveal",
+        effectId: preparedEffect.effect.id,
+        revealId: preparedEffect.effect.revealId as string,
+      });
       continue;
     }
 
@@ -549,14 +444,8 @@ export function resolveFateKnotsCardEffects(
         effectId: preparedEffect.effect.id,
         teamId: preparedEffect.teamId as FateKnotsTeamId,
       });
-      effects.push(resolved);
     }
   }
 
-  return {
-    resolved: true,
-    issues: [],
-    effects,
-    patches,
-  };
+  return { resolved: true, issues: [], effects, patches };
 }
