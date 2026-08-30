@@ -594,10 +594,7 @@ async function handleTeamTetrisStart(
     });
     if (remoteResult.success !== true) {
       blockTeamTetrisMatch(api, state, "blockedDispatch", "remote-start-dispatch-failed");
-      return {
-        success: false,
-        message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed"),
-      };
+      return { success: false, message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed") };
     }
   }
 

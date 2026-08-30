@@ -71,10 +71,7 @@
       if (seatId === "user") {
         return "USER";
       }
-      if (seatId === "us1" && getState().teamTetris["fourthSeatSource"] === "ai0") {
-        return getTeamTetrisSeatDisplayLabel(seatId);
-      }
-      return seatId.trim() !== "" ? seatId.trim().toUpperCase() : "???";
+      return seatId.trim() !== "" ? getTeamTetrisSeatDisplayLabel(seatId) : "???";
     }
 
     function buildTeamTetrisSelectionPreview(selectedPartnerSeatId: string): string[] {
