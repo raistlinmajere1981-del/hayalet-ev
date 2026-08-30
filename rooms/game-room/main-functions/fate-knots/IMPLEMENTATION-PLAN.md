@@ -39,16 +39,18 @@ Delivered so far:
 - deterministic card effect planning in `shared/effect-resolution.ts`
 - explicit separation between mechanical effect target and presentation `applyTo`
 - ordered mechanical patches for damage/heal/shield/status/movement/stat/resource/card/reveal/retreat effects
-- deterministic `discussion -> commit -> resolution -> aftermath` phase/commit flow in `shared/combat-flow.ts`
-- standing-actor commit quorum with no turn timer
-- explicit movement/action slot budgets and combat-card-kind validation
-- resolution order deliberately left undefined rather than inferred from array order
+- combat discussion -> commit -> resolution -> aftermath phase/commit flow in `shared/combat-flow.ts`
+- no implicit initiative/order rule; multi-actor resolution order remains intentionally unresolved
+- combat-only runtime state in `shared/combat-runtime.ts` for shields, combat-scoped stat modifiers, timed-status bookkeeping and retreat requests
+- atomic ordered patch application in `shared/combat-patch-apply.ts`
+- shield absorption before HP damage and `0 HP -> fallen` applied by combat authority, not by the card planner
+- run reveal patches deferred out of combat authority rather than mutating run state directly
 
 Next planned pieces:
 
-- atomic mechanical patch application inside combat/run authority
-- fallen / party defeat result handling
-- explicit resolution-order policy once locked
+- terminal combat result evaluation: party victory / party defeat / legal retreat
+- aftermath settlement and timed-status turn bookkeeping
+- fallen post-victory recovery contract once exact recovery/injury values are deliberately chosen
 - run phase transitions
 - Universe Package validation/normalization shell
 - DM scene/result packet builders
