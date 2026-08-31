@@ -220,6 +220,12 @@ function uniqueStrings(values: readonly string[]): string[] {
   return Array.from(new Set(values));
 }
 
+function removeOneString(values: readonly string[], value: string): string[] {
+  const index = values.indexOf(value);
+  if (index < 0) return values.slice();
+  return [...values.slice(0, index), ...values.slice(index + 1)];
+}
+
 function refreshTimedStatus(
   combat: FateKnotsCombatState,
   runtimeActor: ReturnType<typeof getRuntimeActorOrThrow>,
@@ -336,8 +342,10 @@ function applyActorPatch(
       actor.ownedCardIds = uniqueStrings([...actor.ownedCardIds, patch.cardId]);
       break;
     case "card-revoke":
-    case "card-consume":
       actor.ownedCardIds = actor.ownedCardIds.filter((cardId) => cardId !== patch.cardId);
+      break;
+    case "card-consume":
+      actor.ownedCardIds = removeOneString(actor.ownedCardIds, patch.cardId);
       break;
   }
 
