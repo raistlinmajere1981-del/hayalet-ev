@@ -18,16 +18,13 @@ Delivered:
 - `CODEX-HANDOFF.md` guardrails
 - `shared/contracts.ts`
 - `FORGE-ASSET-CONTRACT.md` for provider-independent image/asset generation boundaries
-
-Still intentionally deferred until the package/state shapes are exercised:
-
-- full Universe Package validation/normalization helpers
+- `forge/universe-validation.ts` runtime validation + lossless normalization gate for World Forge candidates
 
 No Game Room registration or shared host wiring is required in this stage.
 
 ## Stage B — Headless core (Nexa / branch-safe)
 
-Status: in progress, combat/run boundary established.
+Status: in progress, combat/run boundary and V1 loot ownership established.
 
 Build inside `main-functions/fate-knots` without final visuals.
 
@@ -44,6 +41,7 @@ Delivered so far:
 - combat-only runtime state in `shared/combat-runtime.ts` for shields, combat-scoped stat modifiers, timed-status bookkeeping and retreat requests
 - atomic ordered patch application in `shared/combat-patch-apply.ts`
 - shield absorption before HP damage and `0 HP -> fallen` applied by combat authority, not by the card planner
+- duplicate owned item-card ids represent multiple physical copies; `consume` removes one copy while `revoke` removes all copies
 - run reveal patches deferred out of combat authority rather than mutating run state directly
 - explicit terminal evaluation in `shared/combat-result.ts` for party victory, party defeat and retreat
 - ambiguous simultaneous fall/retreat terminal states are rejected rather than silently resolved by implementation order
@@ -69,14 +67,23 @@ Delivered so far:
 - combat entry/exit authority in `shared/run-flow.ts`
 - party defeat automatically moves the run to `failed`; victory/retreat require an explicit engine-selected next phase rather than guessed story flow
 - party combat state is synchronized back into persistent run actor state only at combat exit
+- V1 personal inventory/loot flow in `shared/loot.ts`
+- `ownedCardIds` is the personal card inventory; `item` and `equipment` cards are inventory-visible ownership
+- `teamPoolItemIds` is a transient neutral/unassigned loot pool, not a permanent shared inventory
+- loot allocation requires unanimous approval from the current party and covers every loot entry; no agreement means no state mutation
+- equipment ownership is the equipment card; `equipmentIds` stores only currently equipped mechanical definitions
+- one explicit equipment slot may be occupied at a time; equipping a new definition in the same slot unequips the old one
+- no weight, encumbrance, inventory-capacity or loot RNG subsystem in V1
+- Universe Package validation checks structural safety, unique IDs, references, effect target/value/duration shapes, map/finale links and equipment-card ownership consistency
+- normalization is lossless only: trim/dedupe/copy; it does not invent missing canon, rules, assets or fallback content
 
 Next planned pieces:
 
 - small run-phase helpers beyond combat entry/exit where the transition is already design-authorized
-- Universe Package validation/normalization shell, including card target/effect/status duration validation
 - DM scene/result packet builders
 - AI0 NPC role packet builder for narrative/non-combat interaction
 - presentation-event emitter helpers
+- later: persistence-facing naming/migration for the currently internal `teamPoolItemIds` loot-pool field
 
 Requirements:
 
@@ -96,6 +103,7 @@ Only after Stage B contracts settle:
 - Game Room context/state bridge
 - player/AI transport integration points
 - neutral Hub state surface
+- persistence-safe naming/migration for personal inventory and transient loot state
 
 This is the first stage likely to touch shared Game Room files and therefore the first stage where rebasing/merging current `main` should be considered before edits.
 
@@ -127,7 +135,9 @@ Local visual/runtime work after contracts are available:
 - atlas/map spread
 - combat two-page spread
 - card selection/target/commit affordances
-- loot/camp/finale surfaces
+- personal inventory/equipment spread
+- unanimous loot-allocation spread
+- camp/finale surfaces
 
 Codex should consume semantic state/events rather than infer mechanics from UI.
 
