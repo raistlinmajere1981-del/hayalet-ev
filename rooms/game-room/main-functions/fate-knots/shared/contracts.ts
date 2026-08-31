@@ -243,6 +243,19 @@ export interface FateKnotsNpcDefinition {
   combatCharacterId?: string | null;
 }
 
+/**
+ * Canonical AI0 knowledge boundary created during World Forge.
+ * Runtime packets are rebuilt from this definition and current engine state;
+ * AI0 session history or project memory is never authoritative NPC memory.
+ */
+export interface FateKnotsNpcRoleDefinition {
+  id: string;
+  npcId: string;
+  personaFacts: string[];
+  knownFacts: string[];
+  relationshipFacts: string[];
+}
+
 export interface FateKnotsLocationDefinition {
   id: string;
   name: string;
@@ -354,6 +367,7 @@ export interface FateKnotsUniversePackage {
   locations: FateKnotsLocationDefinition[];
   map: FateKnotsMapDefinition;
   npcs: FateKnotsNpcDefinition[];
+  npcRoles: FateKnotsNpcRoleDefinition[];
   characters: FateKnotsCharacterDefinition[];
   cards: FateKnotsCardDefinition[];
   equipment: FateKnotsEquipmentDefinition[];
