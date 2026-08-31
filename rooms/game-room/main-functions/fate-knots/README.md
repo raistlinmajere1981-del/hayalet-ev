@@ -487,3 +487,38 @@ Reapplying the same timed status does not create duplicate timers. V1 refreshes 
 When an application supplies `durationTurns`, that explicit duration takes precedence over the status definition's default persistence behavior for that application.
 
 This rule keeps common defense/buff cards easy to reason about, gives stun/poison-style statuses useful next-turn behavior, and avoids a second generic duration engine. Longer-lived stat behavior should be represented through an explicit status/card definition rather than by adding separate modifier lifetime semantics.
+
+## 21. V1 personal inventory and loot
+
+V1 keeps inventory inside the card language rather than adding a second item database/runtime.
+
+Personal ownership:
+
+- `ownedCardIds` is the actor's personal card ownership/inventory surface
+- cards of kind `item` and `equipment` are the physical inventory-visible belongings
+- duplicate occurrences of the same owned item-card ID represent multiple physical copies, so two identical potions are two uses
+- a `consume` effect removes one owned copy; a `revoke-card` effect removes every copy of that card id
+- no weight, encumbrance, backpack-size or inventory-capacity mechanic exists in V1
+
+Equipment has separate ownership and activation semantics:
+
+- owning an equipment card means the character possesses that item
+- an equipment card's `sourceId` must reference a canonical `FateKnotsEquipmentDefinition`
+- `equipmentIds` contains only the equipment definitions currently equipped/active
+- equipping may replace another currently equipped definition that uses the same explicit slot
+- merely owning equipment does not grant its combat techniques until it is equipped
+
+Loot is neutral before agreement:
+
+- the current internal `teamPoolItemIds` field represents transient unassigned loot, not a permanent shared backpack
+- every array occurrence is one physical loot copy
+- the party reviews the complete loot pool and proposes a recipient for every entry, or explicitly chooses to leave that entry behind
+- the exact proposal must be approved by every current party actor
+- without unanimity, the engine does not mutate ownership
+- AI1 may narrate what was found but cannot decide who receives it
+- AI0 does not decide player loot ownership
+- the engine does not randomly distribute contested loot
+
+After unanimous approval, assigned loot moves into the chosen actor's personal `ownedCardIds`; explicitly left loot disappears from the run. Equipment loot remains an owned equipment card until separately equipped.
+
+The internal `teamPoolItemIds` name may be cleaned up during Stage C persistence/migration work, but visual/runtime code must preserve its V1 meaning until then.
