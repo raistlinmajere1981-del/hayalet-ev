@@ -25,11 +25,11 @@ No Game Room registration or shared host wiring is required in this stage.
 
 ## Stage B — Headless core (Nexa / branch-safe)
 
-Status: in progress, combat/run boundary, V1 loot ownership and AI0 runtime profile established.
+Status: complete for the current V1 contract surface. Local typecheck/tests remain intentionally deferred until branch reconciliation.
 
 Build inside `main-functions/fate-knots` without final visuals.
 
-Delivered so far:
+Delivered:
 
 - external/default rules configuration contract in `rules/config.ts`
 - lightweight `front | rear` + `engaged | near | far` position helpers in `shared/position.ts`
@@ -68,6 +68,8 @@ Delivered so far:
 - combat entry/exit authority in `shared/run-flow.ts`
 - party defeat automatically moves the run to `failed`; victory/retreat require an explicit engine-selected next phase rather than guessed story flow
 - party combat state is synchronized back into persistent run actor state only at combat exit
+- bounded non-combat run transitions and explicit finale completion in `shared/run-phase.ts`
+- unresolved loot blocks leaving the loot phase; combat phases cannot be changed through the generic run-phase helper
 - V1 personal inventory/loot flow in `shared/loot.ts`
 - `ownedCardIds` is the personal card inventory; `item` and `equipment` cards are inventory-visible ownership
 - `teamPoolItemIds` is a transient neutral/unassigned loot pool, not a permanent shared inventory
@@ -76,21 +78,22 @@ Delivered so far:
 - one explicit equipment slot may be occupied at a time; equipping a new definition in the same slot unequips the old one
 - no weight, encumbrance, inventory-capacity or loot RNG subsystem in V1
 - Universe Package validation checks structural safety, unique IDs, references, effect target/value/duration shapes, map/finale links and equipment-card ownership consistency
+- canonical `npcRoles` definitions are part of the Universe Package and are validated against each NPC's `rolePacketId`
 - normalization is lossless only: trim/dedupe/copy; it does not invent missing canon, rules, assets or fallback content
 - isolated AI0 runtime contract in `shared/ai0-runtime.ts`
 - AI0 NPC runtime explicitly has no MCP/tool discovery, filesystem, shell, web, image-generation or project-memory capability
 - AI0 runtime requests are stateless packets; continuity comes from canonical NPC/relationship/combat packets rather than coding-agent session history
 - AI0 dialogue/combat responses are revalidated against request IDs, legal interaction IDs and engine-provided legal combat options
+- canonical AI0 NPC role packet builder in `shared/npc-role.ts`
+- AI0 role packets are rebuilt from Universe Package `npcRoles`, current run/location state and engine-approved legal interactions
+- bounded AI1 scene and terminal combat-result packet builders in `shared/dm-packets.ts`
+- AI1 scene packets accept only explicit player-visible facts/transitions and refuse all combat phases
+- semantic presentation-event helpers in `shared/presentation-events.ts`
+- presentation events report resolved cards, fallen actors, status/position deltas, combat start/end and page transitions without owning mechanics or animation choices
 
-Next planned pieces:
+Remaining before Stage C is not new game design; it is local verification/reconciliation only.
 
-- small run-phase helpers beyond combat entry/exit where the transition is already design-authorized
-- DM scene/result packet builders
-- canonical AI0 NPC role packet builder for narrative/non-combat interaction
-- presentation-event emitter helpers
-- later: persistence-facing naming/migration for the currently internal `teamPoolItemIds` loot-pool field
-
-Requirements:
+Requirements preserved:
 
 - deterministic by default
 - no Babylon dependency
@@ -99,7 +102,7 @@ Requirements:
 
 ## Stage C — Persistence and host integration (Nexa + local verification)
 
-Only after Stage B contracts settle:
+Next stage after rebasing/reconciling the current `main` and local Laboratory work:
 
 - universe storage
 - run save/resume
@@ -114,8 +117,10 @@ Only after Stage B contracts settle:
 - launch AI0 NPC/combat calls from that isolated workspace so root `AGENTS.md` and `.rovo/*` are never bootstrapped into gameplay context
 - expose an empty tool/MCP capability set for V1 AI0 runtime calls
 - keep AI0 gameplay continuity packet-owned rather than reusing development-agent conversation history
+- wire AI1/AI0 packet builders into the actual provider transport without widening their knowledge/tool surface
+- persist Universe Package and Run State separately so continuing a run never re-runs World Forge
 
-This is the first stage likely to touch shared Game Room files and therefore the first stage where rebasing/merging current `main` should be considered before edits.
+This is the first stage expected to touch shared Game Room/host files and therefore should begin only after the local branch situation is reconciled.
 
 ## Stage D — Neutral Hub and World Forge orchestration (shared)
 
