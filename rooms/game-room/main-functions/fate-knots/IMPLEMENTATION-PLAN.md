@@ -18,13 +18,14 @@ Delivered:
 - `CODEX-HANDOFF.md` guardrails
 - `shared/contracts.ts`
 - `FORGE-ASSET-CONTRACT.md` for provider-independent image/asset generation boundaries
+- `AI0-RUNTIME-OVERRIDE.md` for game-runtime isolation from the normal Hayalet Ev coding-agent bootstrap
 - `forge/universe-validation.ts` runtime validation + lossless normalization gate for World Forge candidates
 
 No Game Room registration or shared host wiring is required in this stage.
 
 ## Stage B — Headless core (Nexa / branch-safe)
 
-Status: in progress, combat/run boundary and V1 loot ownership established.
+Status: in progress, combat/run boundary, V1 loot ownership and AI0 runtime profile established.
 
 Build inside `main-functions/fate-knots` without final visuals.
 
@@ -76,12 +77,16 @@ Delivered so far:
 - no weight, encumbrance, inventory-capacity or loot RNG subsystem in V1
 - Universe Package validation checks structural safety, unique IDs, references, effect target/value/duration shapes, map/finale links and equipment-card ownership consistency
 - normalization is lossless only: trim/dedupe/copy; it does not invent missing canon, rules, assets or fallback content
+- isolated AI0 runtime contract in `shared/ai0-runtime.ts`
+- AI0 NPC runtime explicitly has no MCP/tool discovery, filesystem, shell, web, image-generation or project-memory capability
+- AI0 runtime requests are stateless packets; continuity comes from canonical NPC/relationship/combat packets rather than coding-agent session history
+- AI0 dialogue/combat responses are revalidated against request IDs, legal interaction IDs and engine-provided legal combat options
 
 Next planned pieces:
 
 - small run-phase helpers beyond combat entry/exit where the transition is already design-authorized
 - DM scene/result packet builders
-- AI0 NPC role packet builder for narrative/non-combat interaction
+- canonical AI0 NPC role packet builder for narrative/non-combat interaction
 - presentation-event emitter helpers
 - later: persistence-facing naming/migration for the currently internal `teamPoolItemIds` loot-pool field
 
@@ -104,6 +109,11 @@ Only after Stage B contracts settle:
 - player/AI transport integration points
 - neutral Hub state surface
 - persistence-safe naming/migration for personal inventory and transient loot state
+- create a Fate Knots AI0 runtime workspace outside the repository under app/user data
+- materialize only the minimal Fate Knots NPC runtime policy in that workspace when the provider wrapper requires a policy file
+- launch AI0 NPC/combat calls from that isolated workspace so root `AGENTS.md` and `.rovo/*` are never bootstrapped into gameplay context
+- expose an empty tool/MCP capability set for V1 AI0 runtime calls
+- keep AI0 gameplay continuity packet-owned rather than reusing development-agent conversation history
 
 This is the first stage likely to touch shared Game Room files and therefore the first stage where rebasing/merging current `main` should be considered before edits.
 
