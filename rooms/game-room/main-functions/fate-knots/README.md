@@ -477,7 +477,7 @@ Combat-local protection and direct stat changes are turn-scoped:
 Status duration uses three cases:
 
 1. non-persistent status with no `durationTurns` -> current turn only, removed in aftermath
-2. status with `durationTurns: N` -> survives its application turn and remains active for N complete following turns
+2. status with `durationTurns: N` -> survives the application turn and remains active for N complete following turns
 3. persistent status with no `durationTurns` -> remains until an explicit remove effect or later run rule removes it
 
 A timed status counter does not decrement during the same aftermath in which the status was first applied. Therefore `durationTurns: 1` means the status remains through the rest of the application turn and one complete next turn, expiring after that next turn's aftermath.
@@ -554,5 +554,7 @@ AI0 runtime interaction is packet-driven and stateless. Canonical continuity rem
 - legal interaction ids
 - visible combat state
 - legal card/target options
+
+World Forge stores the stable NPC knowledge boundary in canonical `npcRoles` definitions inside the Universe Package. Each NPC's `rolePacketId` must resolve to a role definition whose `npcId` matches that NPC. Runtime AI0 packets are rebuilt from that accepted role definition plus current run/location state and engine-approved legal interactions. The Hayalet Ev development database/MCP memory system is not part of V1 NPC memory authority.
 
 AI0 returns prose or a bounded choice. The engine validates that response before it can affect canonical state. Long-lived coding-agent history is never the source of NPC memory or authority.
