@@ -97,6 +97,7 @@ export type FateKnotsAi0ResponseIssueCode =
   | "actor-id-mismatch"
   | "illegal-movement-card"
   | "illegal-action-card"
+  | "missing-primary-target"
   | "illegal-primary-target";
 
 export interface FateKnotsAi0ResponseIssue {
@@ -193,34 +194,41 @@ export function validateFateKnotsAi0RuntimeResponse(
       issues.push({ code: "actor-id-mismatch", value: response.actorId });
     }
 
-    if (
-      response.movementCardId !== undefined &&
-      response.movementCardId !== null &&
-      !request.combatPacket.movementOptions.some((option) => option.cardId === response.movementCardId)
-    ) {
+    const movementOption =
+      response.movementCardId !== undefined && response.movementCardId !== null
+        ? request.combatPacket.movementOptions.find(
+            (option) => option.cardId === response.movementCardId
+          ) ?? null
+        : null;
+    const actionOption =
+      response.actionCardId !== undefined && response.actionCardId !== null
+        ? request.combatPacket.actionOptions.find((option) => option.cardId === response.actionCardId) ?? null
+        : null;
+
+    if (response.movementCardId !== undefined && response.movementCardId !== null && !movementOption) {
       issues.push({ code: "illegal-movement-card", value: response.movementCardId });
     }
 
-    if (
-      response.actionCardId !== undefined &&
-      response.actionCardId !== null &&
-      !request.combatPacket.actionOptions.some((option) => option.cardId === response.actionCardId)
-    ) {
+    if (response.actionCardId !== undefined && response.actionCardId !== null && !actionOption) {
       issues.push({ code: "illegal-action-card", value: response.actionCardId });
     }
 
-    if (response.primaryTargetId !== undefined && response.primaryTargetId !== null) {
-      const selectedOptions = [response.movementCardId, response.actionCardId]
-        .filter((cardId): cardId is string => typeof cardId === "string")
-        .flatMap((cardId) => [
-          ...request.combatPacket.movementOptions.filter((option) => option.cardId === cardId),
-          ...request.combatPacket.actionOptions.filter((option) => option.cardId === cardId),
-        ]);
+    const selectedOptions = [movementOption, actionOption].filter(
+      (option): option is NonNullable<typeof option> => option !== null
+    );
+    const requiresPrimaryTarget = selectedOptions.some((option) => option.targetRequired);
+    const primaryTargetId = response.primaryTargetId ?? null;
+
+    if (requiresPrimaryTarget && !primaryTargetId) {
+      issues.push({ code: "missing-primary-target" });
+    }
+
+    if (primaryTargetId) {
       const legalTarget = selectedOptions.some((option) =>
-        option.legalPrimaryTargetIds.includes(response.primaryTargetId as string)
+        option.legalPrimaryTargetIds.includes(primaryTargetId)
       );
       if (!legalTarget) {
-        issues.push({ code: "illegal-primary-target", value: response.primaryTargetId });
+        issues.push({ code: "illegal-primary-target", value: primaryTargetId });
       }
     }
   }
