@@ -27,6 +27,7 @@ export type FateKnotsUniverseValidationIssueCode =
   | "invalid-equipment-controller"
   | "invalid-equipment-card-link"
   | "starting-equipment-card-missing"
+  | "invalid-npc-role-link"
   | "invalid-map-edge"
   | "invalid-finale-reference";
 
@@ -371,6 +372,54 @@ function validateCharacterEquipmentOwnership(
   });
 }
 
+function validateNpcRoles(
+  npcs: unknown[] | null,
+  npcRoles: unknown[] | null,
+  roleIds: ReadonlySet<string>,
+  npcIds: ReadonlySet<string>,
+  characterIds: ReadonlySet<string>,
+  locationIds: ReadonlySet<string>,
+  assetIds: ReadonlySet<string>,
+  issues: FateKnotsUniverseValidationIssue[]
+): void {
+  const roleNpcById = new Map<string, string>();
+
+  npcRoles?.forEach((value, index) => {
+    const path = `npcRoles[${index}]`;
+    if (!isRecord(value) || !isNonEmptyString(value["id"])) return;
+    const npcId = value["npcId"];
+    requireReference(npcId, npcIds, `${path}.npcId`, issues);
+    if (isNonEmptyString(npcId)) roleNpcById.set(value["id"], npcId);
+
+    for (const key of ["personaFacts", "knownFacts", "relationshipFacts"] as const) {
+      if (!isStringArray(value[key])) {
+        pushTypeIssue(issues, `${path}.${key}`, value[key] !== undefined);
+      }
+    }
+  });
+
+  npcs?.forEach((value, index) => {
+    const path = `npcs[${index}]`;
+    if (!isRecord(value) || !isNonEmptyString(value["id"])) return;
+    const npcId = value["id"];
+
+    requireReference(value["locationId"], locationIds, `${path}.locationId`, issues);
+    requireReference(value["rolePacketId"], roleIds, `${path}.rolePacketId`, issues);
+
+    if (value["portraitAssetId"] !== undefined && value["portraitAssetId"] !== null) {
+      requireReference(value["portraitAssetId"], assetIds, `${path}.portraitAssetId`, issues);
+    }
+    if (value["combatCharacterId"] !== undefined && value["combatCharacterId"] !== null) {
+      requireReference(value["combatCharacterId"], characterIds, `${path}.combatCharacterId`, issues);
+    }
+
+    const roleId = value["rolePacketId"];
+    if (isNonEmptyString(roleId) && roleNpcById.get(roleId) !== npcId) {
+      issues.push({ code: "invalid-npc-role-link", path: `${path}.rolePacketId`, value: roleId });
+    }
+  });
+}
+
 /**
  * Runtime validation gate for a World Forge candidate.
  *
@@ -402,6 +451,7 @@ export function validateFateKnotsUniversePackage(
   const assets = requireArray(candidate, "assets", "$", issues);
   const locations = requireArray(candidate, "locations", "$", issues);
   const npcs = requireArray(candidate, "npcs", "$", issues);
+  const npcRoles = requireArray(candidate, "npcRoles", "$", issues);
   const characters = requireArray(candidate, "characters", "$", issues);
   const cards = requireArray(candidate, "cards", "$", issues);
   const equipment = requireArray(candidate, "equipment", "$", issues);
@@ -409,8 +459,9 @@ export function validateFateKnotsUniversePackage(
 
   const assetIds = collectUniqueIds(assets, "assets", issues);
   const locationIds = collectUniqueIds(locations, "locations", issues);
-  collectUniqueIds(npcs, "npcs", issues);
-  collectUniqueIds(characters, "characters", issues);
+  const npcIds = collectUniqueIds(npcs, "npcs", issues);
+  const npcRoleIds = collectUniqueIds(npcRoles, "npcRoles", issues);
+  const characterIds = collectUniqueIds(characters, "characters", issues);
   const cardIds = collectUniqueIds(cards, "cards", issues);
   const equipmentIds = collectUniqueIds(equipment, "equipment", issues);
   const statusIds = collectUniqueIds(statuses, "statuses", issues);
@@ -434,13 +485,16 @@ export function validateFateKnotsUniversePackage(
     validateStringReferences(value["sceneAssetIds"], assetIds, `locations[${index}].sceneAssetIds`, issues);
   });
 
-  npcs?.forEach((value, index) => {
-    if (!isRecord(value)) return;
-    requireReference(value["locationId"], locationIds, `npcs[${index}].locationId`, issues);
-    if (value["portraitAssetId"] !== undefined && value["portraitAssetId"] !== null) {
-      requireReference(value["portraitAssetId"], assetIds, `npcs[${index}].portraitAssetId`, issues);
-    }
-  });
+  validateNpcRoles(
+    npcs,
+    npcRoles,
+    npcRoleIds,
+    npcIds,
+    characterIds,
+    locationIds,
+    assetIds,
+    issues
+  );
 
   const cardMap = validateCards(cards, cardIds, equipmentIds, statusIds, issues);
   validateEquipment(equipment, cardIds, issues);
@@ -614,6 +668,14 @@ export function normalizeFateKnotsUniversePackage(
       }),
     },
     npcs: source.npcs.map((npc) => ({ ...npc, roleTags: uniqueTrimmed(npc.roleTags) })),
+    npcRoles: source.npcRoles.map((role) => ({
+      ...role,
+      id: role.id.trim(),
+      npcId: role.npcId.trim(),
+      personaFacts: uniqueTrimmed(role.personaFacts),
+      knownFacts: uniqueTrimmed(role.knownFacts),
+      relationshipFacts: uniqueTrimmed(role.relationshipFacts),
+    })),
     characters: source.characters.map((character) => {
       const next = {
         ...character,
@@ -644,9 +706,22 @@ export function normalizeFateKnotsUniversePackage(
       return next;
     }),
     hiddenKnotIds: uniqueTrimmed(source.hiddenKnotIds),
-    finale: { ...source.finale, requiredKnotIds: uniqueTrimmed(source.finale.requiredKnotIds), epilogueConditionIds: uniqueTrimmed(source.finale.epilogueConditionIds) },
-    theme: { ...source.theme, cardFrameByKind: { ...source.theme.cardFrameByKind }, visualTags: uniqueTrimmed(source.theme.visualTags) },
-    music: { ...source.music, instrumentTags: uniqueTrimmed(source.music.instrumentTags), moodTags: uniqueTrimmed(source.music.moodTags), stateCueIds: { ...source.music.stateCueIds } },
+    finale: {
+      ...source.finale,
+      requiredKnotIds: uniqueTrimmed(source.finale.requiredKnotIds),
+      epilogueConditionIds: uniqueTrimmed(source.finale.epilogueConditionIds),
+    },
+    theme: {
+      ...source.theme,
+      cardFrameByKind: { ...source.theme.cardFrameByKind },
+      visualTags: uniqueTrimmed(source.theme.visualTags),
+    },
+    music: {
+      ...source.music,
+      instrumentTags: uniqueTrimmed(source.music.instrumentTags),
+      moodTags: uniqueTrimmed(source.music.moodTags),
+      stateCueIds: { ...source.music.stateCueIds },
+    },
   } as FateKnotsUniversePackage;
 
   if (source.finale.requiredItemIds) {
