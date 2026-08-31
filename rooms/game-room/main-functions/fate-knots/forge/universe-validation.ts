@@ -4,7 +4,6 @@ import {
   FATE_KNOTS_SCHEMA_VERSION,
   type FateKnotsCardDefinition,
   type FateKnotsCardEffect,
-  type FateKnotsCardKind,
   type FateKnotsEquipmentDefinition,
   type FateKnotsMechanicalEffectTarget,
   type FateKnotsUniversePackage,
@@ -537,35 +536,38 @@ function uniqueTrimmed(values: readonly string[]): string[] {
 }
 
 function normalizeCard(card: FateKnotsCardDefinition): FateKnotsCardDefinition {
-  return {
+  const normalized = {
     ...card,
     id: card.id.trim(),
     name: card.name.trim(),
     tags: uniqueTrimmed(card.tags),
-    requirements: card.requirements?.map((requirement) => ({
-      ...requirement,
-      phases: requirement.phases?.slice(),
-      rows: requirement.rows?.slice(),
-      ranges: requirement.ranges?.slice(),
-      requiredCardTags: requirement.requiredCardTags
-        ? uniqueTrimmed(requirement.requiredCardTags)
-        : undefined,
-      requiredEquipmentTags: requirement.requiredEquipmentTags
-        ? uniqueTrimmed(requirement.requiredEquipmentTags)
-        : undefined,
-      forbiddenStatusIds: requirement.forbiddenStatusIds
-        ? uniqueTrimmed(requirement.forbiddenStatusIds)
-        : undefined,
-      targetRows: requirement.targetRows?.slice(),
-      targetRanges: requirement.targetRanges?.slice(),
-    })),
-    effects: card.effects.map((effect: FateKnotsCardEffect) => ({
-      ...effect,
-      tags: effect.tags ? uniqueTrimmed(effect.tags) : undefined,
-      moveTo: effect.moveTo ? { ...effect.moveTo } : undefined,
-    })),
+    effects: card.effects.map((effect: FateKnotsCardEffect) => {
+      const next = { ...effect } as FateKnotsCardEffect;
+      if (effect.tags) next.tags = uniqueTrimmed(effect.tags);
+      if (effect.moveTo) next.moveTo = { ...effect.moveTo };
+      return next;
+    }),
     presentation: card.presentation.map((cue) => ({ ...cue })),
-  };
+  } as FateKnotsCardDefinition;
+
+  if (card.requirements) {
+    normalized.requirements = card.requirements.map((requirement) => {
+      const next = { ...requirement };
+      if (requirement.phases) next.phases = requirement.phases.slice();
+      if (requirement.rows) next.rows = requirement.rows.slice();
+      if (requirement.ranges) next.ranges = requirement.ranges.slice();
+      if (requirement.requiredCardTags) next.requiredCardTags = uniqueTrimmed(requirement.requiredCardTags);
+      if (requirement.requiredEquipmentTags) {
+        next.requiredEquipmentTags = uniqueTrimmed(requirement.requiredEquipmentTags);
+      }
+      if (requirement.forbiddenStatusIds) next.forbiddenStatusIds = uniqueTrimmed(requirement.forbiddenStatusIds);
+      if (requirement.targetRows) next.targetRows = requirement.targetRows.slice();
+      if (requirement.targetRanges) next.targetRanges = requirement.targetRanges.slice();
+      return next;
+    });
+  }
+
+  return normalized;
 }
 
 /**
@@ -580,17 +582,16 @@ export function normalizeFateKnotsUniversePackage(
   if (!validated.valid || !validated.package) return validated;
   const source = validated.package;
 
-  const normalized: FateKnotsUniversePackage = {
+  const normalized = {
     ...source,
     universeId: source.universeId.trim(),
     title: source.title.trim(),
     premise: source.premise.trim(),
-    assets: source.assets.map((asset) => ({
-      ...asset,
-      id: asset.id.trim(),
-      path: asset.path.trim(),
-      tags: asset.tags ? uniqueTrimmed(asset.tags) : undefined,
-    })),
+    assets: source.assets.map((asset) => {
+      const next = { ...asset, id: asset.id.trim(), path: asset.path.trim() };
+      if (asset.tags) next.tags = uniqueTrimmed(asset.tags);
+      return next;
+    }),
     locations: source.locations.map((location) => ({
       ...location,
       id: location.id.trim(),
@@ -600,70 +601,66 @@ export function normalizeFateKnotsUniversePackage(
     })),
     map: {
       ...source.map,
-      nodes: source.map.nodes.map((node) => ({
-        ...node,
-        mapPosition: node.mapPosition ? { ...node.mapPosition } : node.mapPosition,
-      })),
-      edges: source.map.edges.map((edge) => ({
-        ...edge,
-        travelCardIds: edge.travelCardIds ? uniqueTrimmed(edge.travelCardIds) : undefined,
-        tags: edge.tags ? uniqueTrimmed(edge.tags) : undefined,
-      })),
+      nodes: source.map.nodes.map((node) => {
+        const next = { ...node };
+        if (node.mapPosition) next.mapPosition = { ...node.mapPosition };
+        return next;
+      }),
+      edges: source.map.edges.map((edge) => {
+        const next = { ...edge };
+        if (edge.travelCardIds) next.travelCardIds = uniqueTrimmed(edge.travelCardIds);
+        if (edge.tags) next.tags = uniqueTrimmed(edge.tags);
+        return next;
+      }),
     },
     npcs: source.npcs.map((npc) => ({ ...npc, roleTags: uniqueTrimmed(npc.roleTags) })),
-    characters: source.characters.map((character) => ({
-      ...character,
-      tags: uniqueTrimmed(character.tags),
-      baseStats: { ...character.baseStats },
-      startingCardIds: character.startingCardIds.slice(),
-      startingEquipmentIds: uniqueTrimmed(character.startingEquipmentIds),
-      combatController: character.combatController ? { ...character.combatController } : character.combatController,
-    })),
+    characters: source.characters.map((character) => {
+      const next = {
+        ...character,
+        tags: uniqueTrimmed(character.tags),
+        baseStats: { ...character.baseStats },
+        startingCardIds: character.startingCardIds.slice(),
+        startingEquipmentIds: uniqueTrimmed(character.startingEquipmentIds),
+      };
+      if (character.combatController) next.combatController = { ...character.combatController };
+      return next;
+    }),
     cards: source.cards.map(normalizeCard),
-    equipment: source.equipment.map((definition) => ({
-      ...definition,
-      tags: uniqueTrimmed(definition.tags),
-      grantedCardIds: uniqueTrimmed(definition.grantedCardIds),
-      removedCardIds: definition.removedCardIds ? uniqueTrimmed(definition.removedCardIds) : undefined,
-    })),
-    statuses: source.statuses.map((status) => ({
-      ...status,
-      tags: uniqueTrimmed(status.tags),
-      modifiers: status.modifiers?.map((modifier) => ({ ...modifier })),
-      grantedCardIds: status.grantedCardIds ? uniqueTrimmed(status.grantedCardIds) : undefined,
-      blockedCardTags: status.blockedCardTags ? uniqueTrimmed(status.blockedCardTags) : undefined,
-      presentation: status.presentation?.map((cue) => ({ ...cue })),
-    })),
+    equipment: source.equipment.map((definition) => {
+      const next = {
+        ...definition,
+        tags: uniqueTrimmed(definition.tags),
+        grantedCardIds: uniqueTrimmed(definition.grantedCardIds),
+      };
+      if (definition.removedCardIds) next.removedCardIds = uniqueTrimmed(definition.removedCardIds);
+      return next;
+    }),
+    statuses: source.statuses.map((status) => {
+      const next = { ...status, tags: uniqueTrimmed(status.tags) };
+      if (status.modifiers) next.modifiers = status.modifiers.map((modifier) => ({ ...modifier }));
+      if (status.grantedCardIds) next.grantedCardIds = uniqueTrimmed(status.grantedCardIds);
+      if (status.blockedCardTags) next.blockedCardTags = uniqueTrimmed(status.blockedCardTags);
+      if (status.presentation) next.presentation = status.presentation.map((cue) => ({ ...cue }));
+      return next;
+    }),
     hiddenKnotIds: uniqueTrimmed(source.hiddenKnotIds),
-    finale: {
-      ...source.finale,
-      requiredKnotIds: uniqueTrimmed(source.finale.requiredKnotIds),
-      requiredItemIds: source.finale.requiredItemIds
-        ? uniqueTrimmed(source.finale.requiredItemIds)
-        : undefined,
-      finalChoiceCardIds: source.finale.finalChoiceCardIds
-        ? uniqueTrimmed(source.finale.finalChoiceCardIds)
-        : undefined,
-      epilogueConditionIds: uniqueTrimmed(source.finale.epilogueConditionIds),
-    },
-    theme: {
-      ...source.theme,
-      cardFrameByKind: { ...source.theme.cardFrameByKind },
-      bookmarkAssetIds: source.theme.bookmarkAssetIds
-        ? uniqueTrimmed(source.theme.bookmarkAssetIds)
-        : undefined,
-      transitionAssetIds: source.theme.transitionAssetIds
-        ? uniqueTrimmed(source.theme.transitionAssetIds)
-        : undefined,
-      visualTags: uniqueTrimmed(source.theme.visualTags),
-    },
-    music: {
-      ...source.music,
-      instrumentTags: uniqueTrimmed(source.music.instrumentTags),
-      moodTags: uniqueTrimmed(source.music.moodTags),
-      stateCueIds: { ...source.music.stateCueIds },
-    },
-  };
+    finale: { ...source.finale, requiredKnotIds: uniqueTrimmed(source.finale.requiredKnotIds), epilogueConditionIds: uniqueTrimmed(source.finale.epilogueConditionIds) },
+    theme: { ...source.theme, cardFrameByKind: { ...source.theme.cardFrameByKind }, visualTags: uniqueTrimmed(source.theme.visualTags) },
+    music: { ...source.music, instrumentTags: uniqueTrimmed(source.music.instrumentTags), moodTags: uniqueTrimmed(source.music.moodTags), stateCueIds: { ...source.music.stateCueIds } },
+  } as FateKnotsUniversePackage;
+
+  if (source.finale.requiredItemIds) {
+    normalized.finale.requiredItemIds = uniqueTrimmed(source.finale.requiredItemIds);
+  }
+  if (source.finale.finalChoiceCardIds) {
+    normalized.finale.finalChoiceCardIds = uniqueTrimmed(source.finale.finalChoiceCardIds);
+  }
+  if (source.theme.bookmarkAssetIds) {
+    normalized.theme.bookmarkAssetIds = uniqueTrimmed(source.theme.bookmarkAssetIds);
+  }
+  if (source.theme.transitionAssetIds) {
+    normalized.theme.transitionAssetIds = uniqueTrimmed(source.theme.transitionAssetIds);
+  }
 
   return { valid: true, package: normalized, issues: [] };
 }
