@@ -1,5 +1,6 @@
 import type {
   FateKnotsCombatState,
+  FateKnotsPhase,
   FateKnotsPresentationEvent,
 } from "./contracts.js";
 
@@ -157,8 +158,8 @@ export function buildFateKnotsCombatEndedPresentationEvent(
 
 export function buildFateKnotsPageTransitionPresentationEvent(
   sequenceInput: FateKnotsPresentationEventSequence,
-  fromPhase: string,
-  toPhase: string
+  fromPhase: FateKnotsPhase,
+  toPhase: FateKnotsPhase
 ): FateKnotsPresentationEventBatch {
   const sequence = cloneSequence(sequenceInput);
   return {
