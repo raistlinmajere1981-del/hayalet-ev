@@ -522,3 +522,37 @@ Loot is neutral before agreement:
 After unanimous approval, assigned loot moves into the chosen actor's personal `ownedCardIds`; explicitly left loot disappears from the run. Equipment loot remains an owned equipment card until separately equipped.
 
 The internal `teamPoolItemIds` name may be cleaned up during Stage C persistence/migration work, but visual/runtime code must preserve its V1 meaning until then.
+
+## 22. AI0 game-runtime isolation
+
+Fate Knots AI0 is an in-world NPC actor, not a Hayalet Ev software-development agent.
+
+The normal repository agent bootstrap is therefore intentionally excluded from Fate Knots runtime calls. NPC/combat calls must not pay for or inherit development-only context such as root `AGENTS.md`, `.rovo/*`, MCP discovery, project memory bootstrap, repository structure or coding-agent conversation history.
+
+This isolation must happen before bootstrap rather than through a later prompt instruction. Telling an already-started coding agent to ignore repository policy does not recover the context budget already spent loading it.
+
+Stage C host integration must launch Fate Knots AI0 from a small workspace outside the repository tree, under application/user data. If the selected provider/agent wrapper requires a policy file, that workspace receives only the minimal Fate Knots NPC runtime policy defined by `AI0-RUNTIME-OVERRIDE.md` and `shared/ai0-runtime.ts`.
+
+V1 AI0 NPC runtime has no tools by default:
+
+- no filesystem
+- no shell
+- no MCP/tool discovery
+- no project Shared Memory
+- no web browsing
+- no GitHub
+- no image generation
+
+World Forge/image generation is a separate authority surface. It must not be attached to AI0 merely because both surfaces use AI.
+
+AI0 runtime interaction is packet-driven and stateless. Canonical continuity remains in the engine and is resent as bounded context when needed:
+
+- persona facts
+- known facts
+- relationship facts
+- visible scene facts
+- legal interaction ids
+- visible combat state
+- legal card/target options
+
+AI0 returns prose or a bounded choice. The engine validates that response before it can affect canonical state. Long-lived coding-agent history is never the source of NPC memory or authority.
