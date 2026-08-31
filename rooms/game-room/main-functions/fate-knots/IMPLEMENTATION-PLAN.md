@@ -17,6 +17,7 @@ Delivered:
 - `README.md` design contract
 - `CODEX-HANDOFF.md` guardrails
 - `shared/contracts.ts`
+- `FORGE-ASSET-CONTRACT.md` for provider-independent image/asset generation boundaries
 
 Still intentionally deferred until the package/state shapes are exercised:
 
@@ -26,7 +27,7 @@ No Game Room registration or shared host wiring is required in this stage.
 
 ## Stage B — Headless core (Nexa / branch-safe)
 
-Status: in progress.
+Status: in progress, combat/run boundary established.
 
 Build inside `main-functions/fate-knots` without final visuals.
 
@@ -63,13 +64,16 @@ Delivered so far:
 - `durationTurns` statuses survive the application turn plus the configured number of complete following turns
 - timed status reapplication refreshes one timer rather than stacking duplicate timers
 - persistent untimed statuses survive until explicit removal
+- V1 party-victory recovery in `shared/post-combat-settlement.ts`: standing actors keep HP, fallen party actors recover at the configured low HP (default 1), no implicit max-HP injury system
+- terminal cleanup in `shared/combat-closure.ts`: timed/combat-only statuses and combat runtime state cannot leak into the run
+- combat entry/exit authority in `shared/run-flow.ts`
+- party defeat automatically moves the run to `failed`; victory/retreat require an explicit engine-selected next phase rather than guessed story flow
+- party combat state is synchronized back into persistent run actor state only at combat exit
 
 Next planned pieces:
 
-- connect aftermath settlement to the turn/run orchestrator path
-- fallen post-victory recovery contract once exact recovery/injury values are deliberately chosen
-- run phase transitions
-- Universe Package validation/normalization shell, including effect/status duration validation
+- small run-phase helpers beyond combat entry/exit where the transition is already design-authorized
+- Universe Package validation/normalization shell, including card target/effect/status duration validation
 - DM scene/result packet builders
 - AI0 NPC role packet builder for narrative/non-combat interaction
 - presentation-event emitter helpers
@@ -105,8 +109,12 @@ Implement the stable pre-universe management surface and orchestration:
 - World Forge progress
 - draft -> validation -> canonical Universe Package
 - generated theme/assets attached to the universe
+- provider-independent image adapter
+- optional batch image-sheet extraction using `forge/image-sheet.ts`
 
 The Hub must work without a generated book/background/theme.
+
+Batch image generation is an optimization, not a runtime dependency. Prefer 6-8 illustration cells per request when quality is acceptable; extract accepted cells into normal individual assets and regenerate failed cells independently. Generated card art must not bake card typography/rules/UI into the image.
 
 ## Stage E — Babylon book runtime (Codex/local)
 
