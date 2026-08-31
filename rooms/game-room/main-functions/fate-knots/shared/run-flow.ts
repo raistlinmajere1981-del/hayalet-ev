@@ -45,6 +45,8 @@ export interface FateKnotsRunFlowResult {
 }
 
 export interface FateKnotsCombatExitContext {
+  /** Latest combat snapshot returned by combat flow/resolution. */
+  combat: FateKnotsCombatState;
   runtime: FateKnotsCombatRuntimeState;
   statuses: readonly FateKnotsStatusDefinition[];
   rules: FateKnotsRulesConfig;
@@ -135,6 +137,28 @@ export function enterFateKnotsCombat(
   return { ok: true, run, issues: [] };
 }
 
+/**
+ * Stores the newest authoritative combat snapshot in the run after a phase,
+ * commit, resolution or aftermath update. This prevents the run from retaining
+ * the initial encounter snapshot while the headless combat engine advances.
+ */
+export function updateFateKnotsActiveCombat(
+  runInput: FateKnotsRunState,
+  combatInput: FateKnotsCombatState
+): FateKnotsRunFlowResult {
+  if (runInput.result !== "active") return failed(runInput, [{ code: "run-not-active" }]);
+  if (!runInput.activeCombat) return failed(runInput, [{ code: "no-active-combat" }]);
+  if (runInput.activeCombat.combatId !== combatInput.combatId) {
+    return failed(runInput, [{ code: "combat-id-mismatch" }]);
+  }
+
+  const run = cloneRun(runInput);
+  run.activeCombat = cloneCombat(combatInput);
+  run.phase = combatInput.phase;
+  run.revision += 1;
+  return { ok: true, run, issues: [] };
+}
+
 function syncPartyActorsFromCombat(
   run: FateKnotsRunState,
   combat: FateKnotsCombatState
@@ -182,24 +206,27 @@ export function exitFateKnotsCombat(
   const activeCombat = runInput.activeCombat;
   if (!activeCombat) return failed(runInput, [{ code: "no-active-combat" }]);
 
-  if (activeCombat.combatId !== context.resultPackage.combatId) {
+  if (
+    activeCombat.combatId !== context.combat.combatId ||
+    context.combat.combatId !== context.resultPackage.combatId
+  ) {
     return failed(runInput, [{ code: "combat-id-mismatch" }]);
   }
-  if (activeCombat.result !== context.resultPackage.result) {
+  if (context.combat.result !== context.resultPackage.result) {
     return failed(runInput, [{ code: "combat-result-mismatch" }]);
   }
 
-  if (activeCombat.result !== "party-defeat" && !context.nextPhase) {
+  if (context.combat.result !== "party-defeat" && !context.nextPhase) {
     return failed(runInput, [{ code: "next-phase-required" }]);
   }
   if (
-    activeCombat.result !== "party-defeat" &&
-    !isAllowedExitPhase(activeCombat.result, context.nextPhase)
+    context.combat.result !== "party-defeat" &&
+    !isAllowedExitPhase(context.combat.result, context.nextPhase)
   ) {
     return failed(runInput, [{ code: "invalid-next-phase" }]);
   }
 
-  const closed = closeFateKnotsTerminalCombat(activeCombat, context.runtime, context.statuses);
+  const closed = closeFateKnotsTerminalCombat(context.combat, context.runtime, context.statuses);
   if (!closed.ok) {
     return failed(runInput, [{ code: "combat-closure-failed", closureIssues: closed.issues }]);
   }
