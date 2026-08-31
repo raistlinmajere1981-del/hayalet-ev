@@ -50,6 +50,39 @@ export const FATE_KNOTS_AI0_MINIMAL_POLICY = [
   "Return only the response shape requested by the packet.",
 ].join("\n");
 
+export interface FateKnotsAi0WorkspaceFile {
+  relativePath: "AGENTS.md";
+  content: string;
+}
+
+export interface FateKnotsAi0WorkspaceSpec {
+  root: "app-user-data";
+  relativeSegments: readonly ["fate-knots", "ai0-runtime", string];
+  files: readonly [FateKnotsAi0WorkspaceFile];
+}
+
+function sanitizeWorkspaceSegment(value: string): string {
+  const normalized = value.trim().replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  return normalized || "universe";
+}
+
+/**
+ * Provider-neutral workspace recipe. The host joins these segments under the
+ * application's user-data directory; it must never resolve them under the repo.
+ */
+export function buildFateKnotsAi0WorkspaceSpec(universeId: string): FateKnotsAi0WorkspaceSpec {
+  return {
+    root: "app-user-data",
+    relativeSegments: ["fate-knots", "ai0-runtime", sanitizeWorkspaceSegment(universeId)],
+    files: [
+      {
+        relativePath: "AGENTS.md",
+        content: `${FATE_KNOTS_AI0_MINIMAL_POLICY}\n`,
+      },
+    ],
+  };
+}
+
 export interface FateKnotsAi0DialogueRequest {
   requestId: string;
   kind: "npc-dialogue";
