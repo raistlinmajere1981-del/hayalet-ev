@@ -21,8 +21,6 @@ Delivered:
 - `AI0-RUNTIME-OVERRIDE.md` for game-runtime isolation from the normal Hayalet Ev coding-agent bootstrap
 - `forge/universe-validation.ts` runtime validation + lossless normalization gate for World Forge candidates
 
-No Game Room registration or shared host wiring is required in this stage.
-
 ## Stage B — Headless core (Nexa / branch-safe)
 
 Status: complete for the current V1 contract surface. Local typecheck/tests remain intentionally deferred until branch reconciliation.
@@ -91,8 +89,6 @@ Delivered:
 - semantic presentation-event helpers in `shared/presentation-events.ts`
 - presentation events report resolved cards, fallen actors, status/position deltas, combat start/end and page transitions without owning mechanics or animation choices
 
-Remaining before Stage C is not new game design; it is local verification/reconciliation only.
-
 Requirements preserved:
 
 - deterministic by default
@@ -102,40 +98,58 @@ Requirements preserved:
 
 ## Stage C — Persistence and host integration (Nexa + local verification)
 
-Next stage after rebasing/reconciling the current `main` and local Laboratory work:
+Status: in progress. The updated `main` was reviewed before shared integration; its intervening Laboratory/Yahtzee changes do not overlap the Fate Knots Stage C files.
 
-- universe storage
-- run save/resume
-- feature registration
-- host command family
-- Game Room context/state bridge
-- player/AI transport integration points
-- neutral Hub state surface
-- persistence-safe naming/migration for personal inventory and transient loot state
-- create a Fate Knots AI0 runtime workspace outside the repository under app/user data
-- materialize only the minimal Fate Knots NPC runtime policy in that workspace when the provider wrapper requires a policy file
-- launch AI0 NPC/combat calls from that isolated workspace so root `AGENTS.md` and `.rovo/*` are never bootstrapped into gameplay context
-- expose an empty tool/MCP capability set for V1 AI0 runtime calls
-- keep AI0 gameplay continuity packet-owned rather than reusing development-agent conversation history
-- wire AI1/AI0 packet builders into the actual provider transport without widening their knowledge/tool surface
-- persist Universe Package and Run State separately so continuing a run never re-runs World Forge
+Delivered:
 
-This is the first stage expected to touch shared Game Room/host files and therefore should begin only after the local branch situation is reconciled.
+- dedicated `feat/fate-knots-stage-c` integration branch over the completed headless rebuild
+- separate Universe Package and Run State stores in `host/persistence.ts`
+- Universe Package persistence reuses the Forge validation/normalization gate rather than duplicating canon validation
+- run snapshots preserve `combatRuntime` beside `RunState` only while combat is active, allowing safe mid-combat save/resume for shields, timed statuses and combat-scoped modifiers
+- active combat requires an actor-matched combat-runtime snapshot; non-combat saves reject stray combat runtime
+- universe deletion removes associated runs; run activation also activates its universe
+- Fate Knots host management command family for refresh/save/activate/delete of universes and runs
+- Game Room host runtime initializes Fate Knots persistence and publishes `fate-knots-state`
+- Fate Knots registered in shared Game Room feature metadata and room manifest
+- neutral pre-universe Hub in `ui/hub.js` + `ui/hub.css`
+- Hub manages accepted saved universes/runs without pretending an uncreated universe already has a book/theme
+- Hub uses the stable Game Room environment until a canonical Universe Package exists
+- World Forge creation is visibly reserved but remains disabled until the real orchestration/transport is connected
+- active Fate Knots feature receives its own host-state refresh through the shared Game Room lifecycle
 
-## Stage D — Neutral Hub and World Forge orchestration (shared)
+Remaining Stage C integration:
 
-Implement the stable pre-universe management surface and orchestration:
+- provider transport boundary for AI1 DM packets
+- isolated background AI0 transport that does not switch or reuse the visible development-agent session
+- create/materialize the Fate Knots AI0 app-data workspace and minimal runtime policy/config before the first NPC request
+- pin short-lived AI0 OpenCode sessions to that external directory and keep all tools/MCP disabled for the request
+- validate AI0 structured responses before forwarding them to the engine
+- persistence-facing cleanup/migration of the current internal `teamPoolItemIds` loot-pool name when the persisted V1 schema is finalized
+- local typecheck/build/regression verification after integration stabilizes
 
-- saved universes
-- create/continue/reset/delete
+AI0 transport direction after repository/OpenCode inspection:
+
+- do not use normal SlotBridge `session.open`; it changes the visible AI0 development session and does not provide the required workspace isolation
+- prefer a short background OpenCode session scoped to the external Fate Knots runtime directory while reusing the already-running OpenCode server process
+- send only the minimal Fate system policy + bounded packet and explicitly disable tools for each request
+- delete/close the temporary session after the response so NPC continuity remains canonical-packet-owned rather than conversation-history-owned
+- if the installed OpenCode build cannot create directory-scoped sessions, fail closed and use an explicit isolated compatibility path; never silently fall back to a repository-root NPC session
+
+## Stage D — World Forge orchestration (shared)
+
+Status: neutral Hub shell is already delivered in Stage C; World Forge itself remains pending.
+
+Implement orchestration behind the existing Hub:
+
+- create-universe flow
 - connection/readiness display
 - World Forge progress
-- draft -> validation -> canonical Universe Package
+- candidate draft -> validation -> canonical Universe Package
 - generated theme/assets attached to the universe
 - provider-independent image adapter
 - optional batch image-sheet extraction using `forge/image-sheet.ts`
 
-The Hub must work without a generated book/background/theme.
+The Hub must continue to work without a generated book/background/theme.
 
 Batch image generation is an optimization, not a runtime dependency. Prefer 6-8 illustration cells per request when quality is acceptable; extract accepted cells into normal individual assets and regenerate failed cells independently. Generated card art must not bake card typography/rules/UI into the image.
 
@@ -182,6 +196,6 @@ Do not make speech a V1 launch dependency.
 
 ## Local testing handoff
 
-GitHub Actions are not assumed available. After the current Laboratory work is finished and branches are merged locally, run the repository's normal typecheck/build/tests and live Game Room checks there.
+GitHub Actions are not assumed available. Run the repository's normal typecheck/build/tests and live Game Room checks locally once Stage C integration reaches a stable checkpoint.
 
-Until then, keep commits small and isolate Fate Knots work from shared room files wherever possible.
+Until then, keep commits small and preserve the Fate Knots engine/AI authority boundaries rather than weakening contracts to satisfy UI shortcuts.
