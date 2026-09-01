@@ -58,8 +58,14 @@ void test("game-room installed UI contains the Yahtzee presentation v2 and Fate 
         "GameRoomFateKnotsActivateRun",
         "GameRoomFateKnotsDeleteRun",
         "GameRoomFateKnotsDeleteUniverse",
+        "GameRoomFateKnotsGetGameplayState",
       ]
     );
+
+    const gameplayStateCommand = fateKnotsFeature.commandSpecs?.find(
+      (entry) => entry.name === "GameRoomFateKnotsGetGameplayState"
+    );
+    assert.equal(gameplayStateCommand?.scope, "room-ui");
 
     const indexHtml = readFileSync(`${installedCopy.rootDir}/ui/index.html`, "utf8");
     assert.match(indexHtml, /main-functions\/yahtzee\/styles\.css/);
