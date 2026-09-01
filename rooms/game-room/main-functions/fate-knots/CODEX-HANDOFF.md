@@ -2,7 +2,7 @@
 
 This file exists to keep local Codex work from redesigning Fate Knots while solving implementation or visual tasks.
 
-Read `README.md` in this directory first. Treat it as the design authority.
+Read `README.md` first. For image-provider work also read `FORGE-ASSET-CONTRACT.md` and `MATERIALIZER-HANDOFF.md`.
 
 ## Decisions Codex must not reinterpret
 
@@ -20,6 +20,7 @@ Do not introduce any of the following unless explicitly requested in a later tas
 - automatic/random loot ownership assignment
 - a generic quest scripting/eval DSL
 - an encounter coordinate/layout DSL for V1
+- a `loot` story-transition kind
 - generic player-facing dropdowns for action/target selection after a universe is loaded
 - generic player-facing dashboard/status prose when state can be communicated by composition, card state, animation, iconography, or sound
 - scroll-box narrative as the primary story surface
@@ -41,7 +42,30 @@ The engine owns canonical state and mechanical outcomes.
 
 AI1 and AI0 are interpreters/actors over canonical packets. They do not become the rules engine.
 
-Combat remains headless and deterministic. AI1 sees combat start context and a final result summary, not every combat action.
+Combat remains headless and deterministic. AI1 sees bounded scene context and a final combat result summary, not per-action combat authority.
+
+## Fixed renderer / host authority boundary
+
+The renderer is not a trusted canonical-state store.
+
+`fate-knots-state` intentionally exposes only spoiler-safe projections built through `shared/player-view.ts` plus Forge readiness/progress metadata.
+
+Do **not** send the full `FateKnotsUniversePackage` to Hub/Babylon/player-facing renderer code. In particular, renderer state must not receive:
+
+- hidden story knots
+- full story graph
+- finale hidden canon
+- NPC role/knowledge packets
+- encounter definitions that are not currently player-visible
+- raw provider/storage asset paths merely for convenience
+
+Do **not** send the full persisted Run snapshot or combat-runtime bookkeeping to the generic Hub state either. Detailed gameplay views must use bounded scene/combat/player projections.
+
+Public raw `GameRoomFateKnotsSaveUniverse` and `GameRoomFateKnotsSaveRun` commands were deliberately removed. Do not recreate equivalent "replace canonical state" commands from Babylon/UI.
+
+Player-facing code sends **intent** such as create/activate/delete universe/run, choose transition/card/target, commit action or resolve a specific allowed interaction. Host/engine code derives and persists the resulting canonical state.
+
+Debug tooling may inspect canonical state through an explicitly debug-only surface later, but that surface must not become the normal gameplay data path.
 
 ## Fixed canonical story authority
 
@@ -56,13 +80,29 @@ The Universe Package owns:
 - hidden/revealed knot identity
 - finale prerequisites
 
-V1 transition requirements are deliberately limited to:
+V1 story-transition kinds are exactly:
+
+- `scene`
+- `travel`
+- `combat`
+- `camp`
+- `finale`
+
+`loot` is a **run phase**, not a story-transition kind. The engine opens loot after encounter victory when canonical encounter loot exists.
+
+Normal story choices are selectable only from `exploration`.
+
+A `finale` transition moves the run into `finale`. While the run is in `finale`, the story resolver exposes only a combat transition whose `encounterId` equals `finale.finalEncounterId`. If no final encounter exists, finale completion/choice authority remains explicit elsewhere; do not improvise a generic finale transition loop.
+
+The playability gate requires at least one finale transition. When `finalEncounterId` exists, a matching combat transition must originate from a finale-entry knot. Do not replace this bounded deadlock check with a generic workflow engine.
+
+V1 transition requirements are limited to:
 
 - completed knot ids
 - revealed knot ids
 - party-owned card ids
 
-V1 progression patches are deliberately limited to:
+V1 progression patches are limited to:
 
 - reveal knot ids
 - complete knot ids
@@ -70,11 +110,11 @@ V1 progression patches are deliberately limited to:
 
 Do not replace this with scripts, expression evaluation, arbitrary prompt conditions, quest bytecode, or a generic workflow engine.
 
-AI1 scene packets must derive `visibleFacts` and `availableTransitionIds` from the canonical story resolver. Do not allow renderer/host code to inject arbitrary transition lists because it is convenient.
+AI1 scene packets derive `visibleFacts` and `availableTransitionIds` from the canonical story resolver. Renderer/host code must not inject arbitrary transition lists.
 
-Combat transitions do not reveal/activate their destination knot before victory. Retreat restores the source knot/location. Story transition and encounter ids remain attached until combat has actually exited so mid-combat persistence is coherent.
+Combat transitions do not reveal/activate their destination knot before victory. Retreat restores the source knot/location. Story transition and encounter ids remain attached until combat has actually exited so mid-combat persistence stays coherent.
 
-The V1 encounter opening position is intentionally fixed at `front + near` for both player and opposition actors. Tactical differentiation begins through movement cards. Do not add encounter coordinates or per-enemy placement unless a later design task explicitly requests it.
+The V1 encounter opening position is fixed at `front + near` for both player and opposition actors. Tactical differentiation begins through movement cards. Do not add encounter coordinates or per-enemy placement unless a later design task explicitly requests it.
 
 ## Fixed V1 run setup
 
@@ -87,7 +127,7 @@ World Forge creates complete spoiler-safe player templates tagged exactly `playe
 - generic enemy templates may use `opposition-template`
 - an `opposition-template` used in encounters must have an explicit combat controller
 
-V1 intentionally does not implement point-buy, class trees, origin combinators, or a large character-builder subsystem. The selected complete template becomes the actor state through the engine run-setup helper.
+V1 intentionally does not implement point-buy, class trees, origin combinators, or a large character-builder subsystem. The selected complete template becomes actor state through the engine run-setup helper.
 
 ## Fixed AI0 runtime isolation
 
@@ -144,44 +184,40 @@ Cards default to `normal` priority if they do not define a priority tier. Do not
 
 ## Fixed V1 party-victory recovery
 
-V1 uses a deliberately severe but small recovery rule instead of a second hidden injury/health subsystem:
-
 - standing party actors keep the exact HP they finished combat with
-- a party actor that was `fallen` when the party wins returns at the configured low recovery HP; the V1 default is `1 HP`
+- a party actor that was `fallen` when the party wins returns at the configured low recovery HP; V1 default is `1 HP`
 - recovered actors are no longer `fallen`
-- canonical `maxHp` is not automatically reduced by the engine
-- V1 does not automatically invent or attach a generic injury card after recovery
+- canonical `maxHp` is not automatically reduced
+- V1 does not automatically invent or attach a generic injury card
 
 If a lasting wound is desired later, represent it explicitly as an injury/status card with visible mechanics and an explicit removal/recovery rule. Do not silently lower max HP or invent a restoration timer in renderer/local code.
 
 ## Fixed V1 effect duration law
-
-Do not invent per-card timer semantics. V1 uses one small duration grammar:
 
 - damage/heal/resource/card ownership/movement effects are immediate state changes
 - shields are turn-scoped and clear in aftermath
 - direct combat stat modifiers are turn-scoped and clear in aftermath
 - a non-persistent status without `durationTurns` lasts only the current turn and clears in aftermath
 - a status with `durationTurns: N` survives the application turn and then remains for N complete following turns
-- timed status counters do not decrement in the same turn in which the status was applied
-- reapplying the same timed status does not stack another timer; it refreshes the existing status without shortening its remaining duration
-- a persistent status without `durationTurns` remains until an explicit remove effect or later run rule removes it
-- `durationTurns` overrides the status definition's default persistence behavior for that application
+- timed status counters do not decrement in the application turn
+- reapplying the same timed status refreshes one timer rather than stacking duplicate timers
+- a persistent status without `durationTurns` remains until explicit removal
+- `durationTurns` overrides default status persistence for that application
 
-If a design later needs a multi-turn stat change, represent it through an explicit status definition/card rather than adding a second independent modifier timer system.
+If a design later needs a multi-turn stat change, represent it through an explicit status definition/card rather than adding another modifier timer system.
 
 ## Fixed V1 inventory and loot law
 
 Inventory remains card-native and deliberately small:
 
 - every actor owns a personal card inventory through `ownedCardIds`
-- `item` and `equipment` cards are the inventory-visible physical belongings
+- `item` and `equipment` cards are inventory-visible physical belongings
 - duplicate owned item-card IDs represent multiple physical copies
-- consuming an item removes one owned copy; revoking a card removes all owned copies of that card id
+- consuming an item removes one owned copy; revoking a card removes all copies of that card id
 - equipment ownership is represented by owning its `equipment` card
-- an equipment card must point through `sourceId` to its mechanical equipment definition
-- `equipmentIds` represents only currently equipped definitions, not total ownership
-- equipping an item may replace another equipped definition in the same explicit equipment slot
+- an equipment card points through `sourceId` to its mechanical equipment definition
+- `equipmentIds` stores only currently equipped definitions
+- equipping may replace another definition in the same explicit slot
 - V1 has no weight, encumbrance or inventory-capacity limit
 
 `teamPoolItemIds` is currently an internal/transitional field name for the neutral, unassigned loot pool. It is not a permanent communal backpack.
@@ -199,16 +235,16 @@ Do not rename persistence fields ad hoc during visual work; any migration must b
 
 ## Fixed enemy combat control
 
-Enemy mechanics remain engine-owned. Enemy tactical choice has exactly two controller families in the initial contract:
+Enemy mechanics remain engine-owned. Tactical choice has exactly two controller families:
 
 - `policy`: deterministic engine policy identified by an explicit `policyId`
 - `ai0`: personality-driven NPC choice over engine-provided legal options
 
-AI0 receives only combat-visible state and legal card/target options. It must not receive other participants' hidden commits or hidden canon facts. AI0 returns a choice; the normal legality/commit path validates it again before storage.
+AI0 receives only combat-visible state and legal card/target options. It must not receive other participants' hidden commits or hidden canon. AI0 returns a choice; the normal legality/commit path validates it again before storage.
 
-Do not call AI0 for every enemy merely because it exists. Simple creatures may use explicit deterministic policies. AI0 is intended for NPCs/bosses where personality-driven tactical choice adds value.
+Simple creatures may use explicit deterministic policies. AI0 is intended for NPCs/bosses where personality adds value.
 
-Individual policy heuristics are not globally fixed. Do not silently invent `aggressive-melee`, `defensive-ranged`, or similar behavior unless a task explicitly defines that policy.
+Individual policy heuristics are not globally fixed. Do not silently invent named policy behavior unless a task explicitly defines it.
 
 ## Fixed World Forge and asset authority
 
@@ -222,16 +258,16 @@ The canonical pipeline is:
 
 `AI1 draft -> structural/playability validation -> asset materialization -> final validation -> durable Universe save`
 
-Do not bypass materialization by replacing pending paths with guessed placeholders or by accepting missing assets.
+Do not bypass materialization with guessed placeholder paths or missing files.
 
-Image generation is behind `FateKnotsAssetMaterializerAdapter`. Provider-specific generation/crop/storage code must remain behind that interface.
+Image generation is behind `FateKnotsAssetMaterializerAdapter`. Provider-specific generation/crop/storage remains behind that interface. The concrete task is documented in `MATERIALIZER-HANDOFF.md`.
 
 Batching rules:
 
 - at most eight cells per image sheet
 - six-to-eight related illustrations are preferred when quality is acceptable
-- four/five compatible cells may still use a sheet
-- one-to-three leftovers fall back to single generations
+- four/five compatible cells may still use a sheet when it avoids wasteful provider calls
+- small tails may fall back to single generation
 - partial success is retained; failed cells may regenerate independently
 - runtime consumes extracted individual assets, not the original sheet
 
@@ -245,9 +281,11 @@ World Forge image generation is not an AI0 tool capability.
 
 RoomHost `setState/getState` is a volatile hot cache, not persistence.
 
-Fate Knots restart-safe state is written under managed Game Room storage. Universe Package and Run snapshots are persisted separately. Mid-combat saves also preserve combat-runtime state and the active story transition/encounter identity.
+Fate Knots restart-safe state is written under managed Game Room storage. Universe Package and Run snapshots are persisted separately. Mid-combat saves preserve combat-runtime state and active story transition/encounter identity.
 
-Do not move canonical saves back into the RoomHost Map, localStorage, Babylon scene objects, provider session history or AI memory.
+Do not move canonical saves into RoomHost Map, localStorage, Babylon scene objects, provider session history or AI memory.
+
+Canonical persistence calls remain host/engine-internal. Do not expose a generic renderer API that accepts an arbitrary full Universe or Run object and persists it.
 
 ## Fixed presentation direction
 
@@ -258,9 +296,9 @@ Before universe creation/load:
 
 After universe creation/load:
 
-- the generated universe theme owns the game presentation
-- the living book is the primary gameplay surface
-- exploration, choices, dialogue, map, combat, loot, camp, finale all appear through book-native presentation
+- generated universe theme owns the presentation
+- living book is the primary gameplay surface
+- exploration, choices, dialogue, map, combat, loot, camp and finale appear through book-native presentation
 - combat uses a two-page spread with opposing teams on opposing pages
 
 Player-facing mechanics should be discoverable through interaction affordances.
@@ -279,15 +317,9 @@ Debug surfaces may show raw state and mechanical text. Player surfaces should no
 
 Do not hardcode card visuals into combat formulas.
 
-Cards/events reference reusable presentation IDs. Presentation may include:
+Cards/events reference reusable presentation IDs. Presentation may include animation/particle effect, target, timing, persistent status visual and SFX.
 
-- animation/particle effect
-- application target
-- timing
-- persistent status visual
-- SFX
-
-Exact visual style, particles, textures, lighting, and timing may be creatively implemented as long as they preserve the semantic event contract.
+Exact visual style, textures, lighting and timing may be creatively implemented as long as semantic event contracts are preserved.
 
 ## Audio direction
 
@@ -299,7 +331,7 @@ TTS is optional and must not block V1.
 
 ## Reserved decisions — do not guess
 
-The following details remain balancing/content decisions rather than visual implementation choices:
+The following remain balancing/content/provider decisions rather than renderer choices:
 
 - exact player/base stat values generated for a universe
 - exact starting card catalogs generated for a universe
@@ -309,9 +341,7 @@ The following details remain balancing/content decisions rather than visual impl
 - exact camp healing and when equipment changes are permitted in scene flow
 - exact symbolic music notation/synthesis backend
 - final persistence migration naming for the transient loot-pool field
-- concrete image-provider/materializer implementation details that do not change the adapter contract
-
-These are Raistlin/Nexa design decisions or later balancing/provider decisions, not renderer implementation choices.
+- concrete image-provider mechanics that stay behind the materializer adapter
 
 ## Areas where Codex has creative freedom
 
@@ -320,18 +350,28 @@ Codex may decide, within a specific task:
 - texture/art style execution requested for a universe
 - exact Babylon material/light parameters
 - particle shapes and animation curves
-- micro-animation duration and easing
-- camera composition that preserves the required page/interaction layout
-- implementation of a concrete image materializer behind the locked adapter
-- crop/storage implementation that obeys the locked sheet/output asset ids
+- micro-animation duration/easing
+- camera composition that preserves required page/interaction layout
+- implementation of the concrete image materializer behind the locked adapter
+- crop/storage implementation obeying exact planned asset IDs and sheet geometry
 - implementation refactors that do not alter contracts
 - naming of internal private helpers
-- performance optimizations that preserve behavior
+- performance optimizations preserving behavior
 
 When a task would require a new game rule, phase, card economy, AI authority, story-progression grammar or player-facing interaction grammar, stop and preserve the existing contract rather than inventing it.
 
-## Local testing expectation
+## Local testing / architecture audit expectation
 
-GitHub Actions availability is not assumed for this rebuild. Local Codex work should run strict typecheck/build/tests at the integration checkpoint and report failures, but it must not weaken contracts merely to make an unrelated test pass.
+GitHub Actions availability is not assumed. At the integration checkpoint local Codex should run strict typecheck/build/tests when available and report failures without weakening contracts.
 
-For an architecture audit, do not redesign the game. Look specifically for authority leaks, broken references, persistence/lifecycle gaps, impossible state transitions, hidden provider assumptions, exact-optional/noUncheckedIndexedAccess issues, and places where UI/Babylon could accidentally become rules authority.
+For the architecture audit, **do not redesign the game**. Look specifically for:
+
+- canonical authority leaks between engine, AI and renderer
+- hidden-canon exposure
+- broken references and impossible/deadlocked transitions
+- persistence/restart/rollback lifecycle gaps
+- Forge partial-failure and concurrent-run faults
+- AI session isolation regressions
+- exactOptionalPropertyTypes / noUncheckedIndexedAccess / strict TypeScript failures
+- shared Game Room regressions introduced by Fate integration
+- any place Babylon/UI could accidentally become rules or persistence authority
