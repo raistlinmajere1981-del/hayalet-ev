@@ -190,12 +190,22 @@ function restoreSourceDestination(
   run.revealedLocationIds = unique([...run.revealedLocationIds, sourceKnot.locationId]);
 }
 
+function phaseAllowsStoryTransition(
+  run: FateKnotsRunState,
+  transition: FateKnotsStoryTransitionDefinition
+): boolean {
+  if (run.phase === "exploration") return true;
+  if (run.phase === "finale") return transition.kind === "combat";
+  return false;
+}
+
 function isTransitionLegal(
   universe: FateKnotsUniversePackage,
   run: FateKnotsRunState,
   transition: FateKnotsStoryTransitionDefinition
 ): boolean {
   if (run.result !== "active" || run.activeCombat || run.activeStoryTransitionId) return false;
+  if (!phaseAllowsStoryTransition(run, transition)) return false;
   if (!run.activeKnotId || transition.fromKnotId !== run.activeKnotId) return false;
   if (!run.revealedKnotIds.includes(run.activeKnotId)) return false;
   if (!requirementsMet(transition.requirements, run)) return false;
@@ -204,7 +214,6 @@ function isTransitionLegal(
     const location = universe.locations.find((entry) => entry.id === run.activeLocationId);
     if (location?.campAllowed !== true) return false;
   }
-  if (transition.kind === "loot" && run.teamPoolItemIds.length === 0) return false;
   if (transition.kind === "combat" && !getEncounter(universe, transition.encounterId)) return false;
   return true;
 }
@@ -347,9 +356,6 @@ export function applyFateKnotsStoryTransition(
     applyDestination(universe, run, transition, null);
     if (transition.kind === "camp") {
       run.phase = "camp";
-      run.activeStoryTransitionId = null;
-    } else if (transition.kind === "loot") {
-      run.phase = "loot";
       run.activeStoryTransitionId = null;
     } else if (transition.kind === "finale") {
       run.phase = "finale";
