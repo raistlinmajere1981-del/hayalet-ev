@@ -1,4 +1,3 @@
-import type { GameRoomHostApi } from "../../../shared/host/activation.js";
 import { readArgs } from "../../../shared/host/command-args.js";
 import type { FateKnotsCombatRuntimeState } from "../shared/combat-runtime.js";
 import type { FateKnotsRunState } from "../shared/contracts.js";
@@ -25,12 +24,19 @@ import {
   deleteFateKnotsUniverseDurable,
 } from "./durable-persistence.js";
 import {
+  createFateKnotsUniverseThroughForge,
+  getFateKnotsForgeReadiness,
+  type FateKnotsForgeReadiness,
+} from "./forge-service.js";
+import {
   loadFateKnotsRunStore,
   loadFateKnotsUniverseStore,
 } from "./persistence.js";
+import type { FateKnotsTransportApi } from "./transport.js";
 
 export const FATE_KNOTS_COMMAND_NAMES = {
   refresh: "GameRoomFateKnotsRefresh",
+  createUniverse: "GameRoomFateKnotsCreateUniverse",
   saveUniverse: "GameRoomFateKnotsSaveUniverse",
   activateUniverse: "GameRoomFateKnotsActivateUniverse",
   deleteUniverse: "GameRoomFateKnotsDeleteUniverse",
@@ -40,7 +46,7 @@ export const FATE_KNOTS_COMMAND_NAMES = {
   deleteRun: "GameRoomFateKnotsDeleteRun",
 } as const;
 
-interface FateKnotsRuntimeApi extends GameRoomHostApi {
+interface FateKnotsRuntimeApi extends FateKnotsTransportApi {
   notifyRoom?(eventType: string, data: unknown): void;
 }
 
@@ -68,6 +74,7 @@ export interface FateKnotsHostState {
   runs: FateKnotsHostRunSummary[];
   activeUniverse: FateKnotsPlayerUniverseView | null;
   activeRun: FateKnotsPlayerRunView | null;
+  forge: FateKnotsForgeReadiness;
   persistenceIssueCount: number;
   storageError: string | null;
 }
@@ -141,6 +148,7 @@ export function buildFateKnotsHostState(api: FateKnotsRuntimeApi): FateKnotsHost
     })),
     activeUniverse: activeUniverse ? buildFateKnotsPlayerUniverseView(activeUniverse) : null,
     activeRun: activeRunSnapshot ? buildFateKnotsPlayerRunView(activeRunSnapshot.run) : null,
+    forge: getFateKnotsForgeReadiness(api),
     persistenceIssueCount:
       universes.issues.length + runs.issues.length + (storageError === null ? 0 : 1),
     storageError,
@@ -169,6 +177,35 @@ export async function initializeFateKnotsState(
 
 export function handleFateKnotsRefresh(api: FateKnotsRuntimeApi) {
   return result(true, "Fate Knots state refreshed.", pushFateKnotsState(api));
+}
+
+export async function handleFateKnotsCreateUniverse(
+  api: FateKnotsRuntimeApi,
+  payload: unknown
+) {
+  const readiness = getFateKnotsForgeReadiness(api);
+  if (!readiness.ready) {
+    return result(
+      false,
+      `World Forge is not ready: ${readiness.blockers.join(", ") || "unknown blocker"}.`,
+      pushFateKnotsState(api)
+    );
+  }
+
+  const brief = readStringArg(payload, "brief");
+  const forged = await createFateKnotsUniverseThroughForge(api, {
+    brief,
+    onProgress() {
+      pushFateKnotsState(api);
+    },
+  });
+  if (!forged) {
+    return result(false, "World Forge materializer is unavailable or another Forge run is active.", pushFateKnotsState(api));
+  }
+  if (!forged.ok) {
+    return result(false, `World Forge failed: ${forged.message}`, pushFateKnotsState(api));
+  }
+  return result(true, "Fate Knots universe created.", pushFateKnotsState(api));
 }
 
 export async function handleFateKnotsSaveUniverse(
