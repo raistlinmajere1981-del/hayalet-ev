@@ -291,6 +291,66 @@ export interface FateKnotsMapDefinition {
   edges: FateKnotsMapEdge[];
 }
 
+export const FATE_KNOTS_STORY_TRANSITION_KINDS = [
+  "scene",
+  "travel",
+  "combat",
+  "loot",
+  "camp",
+  "finale",
+] as const;
+
+export type FateKnotsStoryTransitionKind =
+  (typeof FATE_KNOTS_STORY_TRANSITION_KINDS)[number];
+
+export interface FateKnotsStoryRequirement {
+  completedKnotIds?: string[];
+  revealedKnotIds?: string[];
+  ownedCardIds?: string[];
+}
+
+export interface FateKnotsStoryProgressionPatch {
+  revealKnotIds?: string[];
+  completeKnotIds?: string[];
+  revealLocationIds?: string[];
+}
+
+export interface FateKnotsStoryKnotDefinition {
+  id: string;
+  locationId: string;
+  visibleFacts: string[];
+  initiallyRevealed: boolean;
+  tags?: string[];
+}
+
+export interface FateKnotsEncounterDefinition {
+  id: string;
+  locationId: string;
+  opponentCharacterIds: string[];
+  lootCardIds?: string[];
+}
+
+export interface FateKnotsStoryTransitionDefinition {
+  id: string;
+  fromKnotId: string;
+  label: string;
+  kind: FateKnotsStoryTransitionKind;
+  requirements?: FateKnotsStoryRequirement;
+  toKnotId?: string | null;
+  toLocationId?: string | null;
+  encounterId?: string | null;
+  onEnter?: FateKnotsStoryProgressionPatch;
+  onVictory?: FateKnotsStoryProgressionPatch;
+  onRetreat?: FateKnotsStoryProgressionPatch;
+}
+
+export interface FateKnotsStoryDefinition {
+  startKnotId: string;
+  knots: FateKnotsStoryKnotDefinition[];
+  transitions: FateKnotsStoryTransitionDefinition[];
+  encounters: FateKnotsEncounterDefinition[];
+}
+
 export type FateKnotsAssetKind =
   | "background"
   | "book-cover"
@@ -366,6 +426,7 @@ export interface FateKnotsUniversePackage {
   assets: FateKnotsAssetRef[];
   locations: FateKnotsLocationDefinition[];
   map: FateKnotsMapDefinition;
+  story: FateKnotsStoryDefinition;
   npcs: FateKnotsNpcDefinition[];
   npcRoles: FateKnotsNpcRoleDefinition[];
   characters: FateKnotsCharacterDefinition[];
@@ -475,6 +536,9 @@ export interface FateKnotsRunState {
   phase: FateKnotsPhase;
   revision: number;
   activeLocationId: string | null;
+  activeKnotId: string | null;
+  activeStoryTransitionId: string | null;
+  activeEncounterId: string | null;
   revealedLocationIds: string[];
   revealedKnotIds: string[];
   completedKnotIds: string[];
