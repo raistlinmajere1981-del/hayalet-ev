@@ -18,6 +18,7 @@ import {
 } from "./durable-persistence.js";
 import {
   resolveFateKnotsDurableStoragePaths,
+  verifyFateKnotsManagedAssetFiles,
   writeFateKnotsJsonFile,
 } from "./storage-bridge.js";
 import type { FateKnotsTransportApi } from "./transport.js";
@@ -56,6 +57,7 @@ export type FateKnotsWorldForgePipelineResult =
         | "storage-unavailable"
         | "authoring-failed"
         | "materialization-incomplete"
+        | "materialization-invalid"
         | "finalization-failed"
         | "playability-failed"
         | "card-art-failed"
@@ -96,7 +98,14 @@ function progress(
   totalAssets: number,
   message: string
 ): FateKnotsWorldForgeProgress {
-  return { requestId: request.requestId, universeId: request.universeId, stage, completedAssets, totalAssets, message };
+  return {
+    requestId: request.requestId,
+    universeId: request.universeId,
+    stage,
+    completedAssets,
+    totalAssets,
+    message,
+  };
 }
 
 function errorMessage(error: unknown): string {
@@ -158,7 +167,15 @@ export async function runFateKnotsWorldForge(
     totalAssets = draft.assetPlans.length;
     await writeCheckpoint({ schemaVersion: 1, request, status: "draft-validated", draft });
 
-    emit(progress(request, "materializing", 0, totalAssets, "Generating and storing universe assets."));
+    emit(
+      progress(
+        request,
+        "materializing",
+        0,
+        totalAssets,
+        "Generating and storing universe assets."
+      )
+    );
     const materialization = await materializeFateKnotsWorldForgeAssets(draft, adapter);
     completedAssets = materialization.assets.length;
     emit(
@@ -191,9 +208,44 @@ export async function runFateKnotsWorldForge(
       };
     }
 
+    const verifiedFiles = await verifyFateKnotsManagedAssetFiles(materialization.assets);
+    if (!verifiedFiles.valid) {
+      emit(
+        progress(
+          request,
+          "failed",
+          completedAssets,
+          totalAssets,
+          "Materialized assets failed managed-storage verification."
+        )
+      );
+      await writeCheckpoint({
+        schemaVersion: 1,
+        request,
+        status: "materialization-invalid",
+        failures: verifiedFiles.failures,
+        materialization,
+      });
+      return {
+        ok: false,
+        request,
+        code: "materialization-invalid",
+        message: `${verifiedFiles.failures.length} materialized asset file(s) failed verification.`,
+        materialization,
+      };
+    }
+
     const finalized = finalizeFateKnotsWorldForgeDraft(draft, materialization.assets);
     if (!finalized.ok || !finalized.universe) {
-      emit(progress(request, "failed", completedAssets, totalAssets, "Final universe validation failed."));
+      emit(
+        progress(
+          request,
+          "failed",
+          completedAssets,
+          totalAssets,
+          "Final universe validation failed."
+        )
+      );
       return {
         ok: false,
         request,
@@ -205,7 +257,15 @@ export async function runFateKnotsWorldForge(
 
     const playable = validateFateKnotsPlayableUniverse(finalized.universe);
     if (!playable.valid) {
-      emit(progress(request, "failed", completedAssets, totalAssets, "Final universe is not playable."));
+      emit(
+        progress(
+          request,
+          "failed",
+          completedAssets,
+          totalAssets,
+          "Final universe is not playable."
+        )
+      );
       return {
         ok: false,
         request,
@@ -217,7 +277,15 @@ export async function runFateKnotsWorldForge(
 
     const cardArtIssues = validateFateKnotsCardArtBindings(finalized.universe);
     if (cardArtIssues.length > 0) {
-      emit(progress(request, "failed", completedAssets, totalAssets, "Final card art bindings are invalid."));
+      emit(
+        progress(
+          request,
+          "failed",
+          completedAssets,
+          totalAssets,
+          "Final card art bindings are invalid."
+        )
+      );
       return {
         ok: false,
         request,
@@ -227,10 +295,26 @@ export async function runFateKnotsWorldForge(
       };
     }
 
-    emit(progress(request, "saving", completedAssets, totalAssets, "Saving canonical universe."));
+    emit(
+      progress(
+        request,
+        "saving",
+        completedAssets,
+        totalAssets,
+        "Saving canonical universe."
+      )
+    );
     const saved = await saveFateKnotsUniverseDurable(api, finalized.universe);
     if (!saved.ok || !saved.value) {
-      emit(progress(request, "failed", completedAssets, totalAssets, "Canonical universe save failed."));
+      emit(
+        progress(
+          request,
+          "failed",
+          completedAssets,
+          totalAssets,
+          "Canonical universe save failed."
+        )
+      );
       return {
         ok: false,
         request,
