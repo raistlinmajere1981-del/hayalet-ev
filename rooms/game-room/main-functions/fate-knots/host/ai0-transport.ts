@@ -26,10 +26,22 @@ export interface FateKnotsAi0TransportDependencies {
   provider: FateKnotsAi0ProviderAdapter;
 }
 
+export interface FateKnotsAi0TransportInvocation {
+  universeId: string;
+  request: FateKnotsAi0RuntimeRequest;
+}
+
 export type FateKnotsAi0TransportError =
+  | "invalid-runtime-context"
   | "workspace-unavailable"
   | "provider-failed"
   | "provider-response-rejected";
+
+export interface FateKnotsAi0TransportIssue {
+  code: string;
+  value?: string;
+  path?: string;
+}
 
 export type FateKnotsAi0TransportResult =
   | {
@@ -41,18 +53,22 @@ export type FateKnotsAi0TransportResult =
       ok: false;
       error: FateKnotsAi0TransportError;
       response: null;
-      issues: FateKnotsAi0ProviderResponseGateResult extends infer _T
-        ? Array<{ code: string; value?: string; path?: string }>
-        : never;
+      issues: FateKnotsAi0TransportIssue[];
     };
 
 function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function normalizeUniverseId(value: string): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 function normalizeGateIssues(
   result: Extract<FateKnotsAi0ProviderResponseGateResult, { ok: false }>
-): Array<{ code: string; value?: string; path?: string }> {
+): FateKnotsAi0TransportIssue[] {
   return result.issues.map((issue) => ({
     code: issue.code,
     ...(typeof (issue as { value?: unknown }).value === "string"
@@ -67,18 +83,41 @@ function normalizeGateIssues(
 /**
  * Provider-neutral AI0 transport authority.
  *
- * A real provider adapter is deliberately injected. The transport itself fixes
- * the safety/order contract: prepare isolated workspace -> invoke provider with
- * no development capabilities -> parse unknown response -> validate request and
- * engine legality -> return only the bounded accepted response.
+ * The universe id is explicit transport context rather than part of the combat-
+ * visible AI0 packet. This keeps workspace routing out of NPC tactical knowledge.
+ *
+ * A real provider adapter is deliberately injected. The transport fixes the
+ * safety/order contract: prepare isolated workspace -> invoke provider with the
+ * bounded runtime profile/request -> parse unknown response -> validate request
+ * and engine legality -> return only the accepted bounded response.
  */
 export async function invokeFateKnotsAi0Runtime(
   deps: FateKnotsAi0TransportDependencies,
-  request: FateKnotsAi0RuntimeRequest
+  invocation: FateKnotsAi0TransportInvocation
 ): Promise<FateKnotsAi0TransportResult> {
-  const prepared = await deps.prepareWorkspace(
-    request.kind === "npc-dialogue" ? request.rolePacket.universeId : request.combatPacket.universeId
-  );
+  const universeId = normalizeUniverseId(invocation.universeId);
+  if (universeId === null) {
+    return {
+      ok: false,
+      error: "invalid-runtime-context",
+      response: null,
+      issues: [],
+    };
+  }
+
+  if (
+    invocation.request.kind === "npc-dialogue" &&
+    invocation.request.rolePacket.universeId !== universeId
+  ) {
+    return {
+      ok: false,
+      error: "invalid-runtime-context",
+      response: null,
+      issues: [],
+    };
+  }
+
+  const prepared = await deps.prepareWorkspace(universeId);
   if (!prepared.ok) {
     return {
       ok: false,
@@ -102,7 +141,7 @@ export async function invokeFateKnotsAi0Runtime(
     candidate = await deps.provider.invoke({
       workspaceDir: prepared.workspace.workspaceDir,
       runtimeProfile: FATE_KNOTS_AI0_RUNTIME_PROFILE,
-      request: cloneJson(request),
+      request: cloneJson(invocation.request),
     });
   } catch {
     return {
@@ -113,7 +152,7 @@ export async function invokeFateKnotsAi0Runtime(
     };
   }
 
-  const gated = gateFateKnotsAi0ProviderResponse(request, candidate);
+  const gated = gateFateKnotsAi0ProviderResponse(invocation.request, candidate);
   if (!gated.ok) {
     return {
       ok: false,
