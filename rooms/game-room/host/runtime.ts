@@ -39,7 +39,10 @@ import {
   pushYahtzeeState,
 } from "../main-functions/yahtzee/host/runtime.js";
 import { createFateKnotsForgeOrchestrator } from "../main-functions/fate-knots/host/forge-orchestration.js";
-import { createFateKnotsGameplayCommands } from "../main-functions/fate-knots/host/gameplay-runtime.js";
+import {
+  FATE_KNOTS_GAMEPLAY_COMMAND_NAMES,
+  createFateKnotsGameplayCommands,
+} from "../main-functions/fate-knots/host/gameplay-runtime.js";
 import { createFateKnotsManagementCommands } from "../main-functions/fate-knots/host/management-runtime.js";
 import {
   createFateKnotsRunCommands,
@@ -76,6 +79,12 @@ type FateKnotsSyncApi = Parameters<typeof pushFateKnotsHubState>[0];
 type FateKnotsPlayerSeatId = Parameters<
   NonNullable<FateKnotsRunCommandDependencies["isPlayerSeatAvailable"]>
 >[0];
+
+function readRegisteredRoomArgs(payload: unknown): unknown {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return {};
+  const record = payload as Record<string, unknown>;
+  return "roomArgs" in record ? record["roomArgs"] : {};
+}
 
 export default function createGameRoomHostRuntime() {
   return {
@@ -239,11 +248,27 @@ export default function createGameRoomHostRuntime() {
         isPlayerSeatAvailable: isFateKnotsPlayerSeatAvailable,
       });
       const fateKnotsGameplayCommands = createFateKnotsGameplayCommands(api);
+      const fateKnotsGameplayCommand =
+        fateKnotsGameplayCommands[FATE_KNOTS_GAMEPLAY_COMMAND_NAMES.getGameplayState];
+
+      api.registerCommand?.(
+        FATE_KNOTS_GAMEPLAY_COMMAND_NAMES.getGameplayState,
+        function (payload: unknown) {
+          const result = fateKnotsGameplayCommand(readRegisteredRoomArgs(payload));
+          pushFateKnotsHubStateCompat(api);
+          return result;
+        },
+        {
+          description: "Read one player-safe Fate Knots active-run projection.",
+          scope: "room-ui",
+          exposure: "internal",
+        }
+      );
+
       const fateKnotsCommands = {
         ...fateKnotsManagementCommands,
         ...fateKnotsRunSetupCommands,
         ...fateKnotsRunCommands,
-        ...fateKnotsGameplayCommands,
       };
       for (const [commandName, handler] of Object.entries(fateKnotsCommands)) {
         commands[commandName] = function (payload?: unknown) {
