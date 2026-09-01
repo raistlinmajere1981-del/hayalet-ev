@@ -1,5 +1,6 @@
 import {
   FEATURE_ID,
+  GAME_ROOM_HOME_FEATURE_ID,
   getDefaultFeatureRecords,
   normalizeFeatureId,
   sanitizeFeatureRecord,
@@ -103,14 +104,11 @@ export function sanitizeContext(payload: unknown): GameRoomContextSnapshot {
     });
   }
   const features = Array.from(featureMap.values());
-  const roomSource = isRecord(source["room"]) ? source["room"] : {};
+  // The outer room shell intentionally reports activeFeature=null when Game Room
+  // itself is open. Do not reinterpret that as manifest.defaultFeatureId (Tavla).
   const activeFeature = sanitizeFeatureRecord(
     source["activeFeature"],
-    normalizeFeatureId(
-      typeof roomSource["defaultFeatureId"] === "string"
-        ? roomSource["defaultFeatureId"]
-        : FEATURE_ID
-    )
+    GAME_ROOM_HOME_FEATURE_ID
   );
   const user = {
     nickname:
