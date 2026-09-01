@@ -51,12 +51,13 @@ For `job.kind === "single"`:
 4. persist them under Fate Knots room storage
 5. return exactly one `FateKnotsMaterializedAsset` using `job.plan.assetId`
 
-The returned `path` must point to a real local stored file. Do not return:
+The returned `path` must point to a real local stored image file under the managed Fate Knots asset tree. Do not return:
 
 - provider CDN URLs
 - `data:` URLs
 - blob URLs
 - pending Forge URIs
+- paths outside `room-storage/game-room/fate-knots/assets/`
 - guessed/nonexistent paths
 
 A reasonable storage shape is:
@@ -64,6 +65,8 @@ A reasonable storage shape is:
 `room-storage/game-room/fate-knots/assets/<request-or-job>/<assetId>.<ext>`
 
 Exact private helper names and directory nesting may vary as long as canonical returned paths are stable local files.
+
+The host verifies managed-path containment, readable non-empty bytes, and an `image/*` MIME type before canonical finalization. Adapter success records that fail this boundary are rejected.
 
 ## Sheet job
 
@@ -79,17 +82,25 @@ For `job.kind === "sheet"`:
 
 Use the geometry from `forge/image-sheet.ts`. Do not infer a different grid from visual content.
 
+`plan.aspectRatio` describes each requested individual asset/cell. For a sheet, `job.aspectRatio` is the overall source-sheet ratio already derived by the engine from:
+
+`(columns × cellWidth) : (rows × cellHeight)`
+
+For example, six `3:4` cells in a `3 × 2` grid require a source sheet whose overall ratio is `9:8`, not `3:4`. Send the provider `job.aspectRatio`; do not substitute the first cell's ratio or independently recalculate a different layout.
+
 The source sheet is not a runtime asset dependency. Babylon/card rendering consumes only the extracted individual files.
 
 Prefer an already-available browser/Electron image primitive for cropping before adding a new heavyweight native dependency. If a new dependency becomes necessary, keep it confined to the provider/materializer implementation and do not leak it into the Fate Knots rules engine.
 
 ## Partial sheet success
 
-`forge/materializer.ts` already preserves successful prior jobs and reports missing asset IDs.
+`forge/materializer.ts` preserves successful prior jobs and reports missing asset IDs, but malformed provider responses fail closed.
 
 If a provider/extraction step can confidently recover some cells and not others, return the valid stored cells. Missing cells will remain failures and may later be regenerated individually.
 
 Never manufacture a successful asset record for a failed crop.
+
+A job response containing a foreign asset ID or the same asset ID more than once is malformed. Do not rely on the orchestrator to silently discard those records; the materializer authority treats them as failures.
 
 ## Asset identity
 
@@ -99,7 +110,7 @@ For a single job:
 
 `returned.assetId === job.plan.assetId`
 
-For a sheet job, every returned asset ID must be one of the job's planned output IDs.
+For a sheet job, every returned asset ID must be one of the job's planned output IDs and each planned ID may appear at most once.
 
 World Forge finalization rejects missing/foreign/duplicate assets.
 
@@ -120,6 +131,8 @@ Useful source artifact metadata:
 - MIME type
 
 The existing World Forge checkpoint already stores request/draft/materialization metadata. Do not duplicate the full hidden Universe Package into renderer-visible state.
+
+The canonical Universe Package is the commit point. A later provenance/checkpoint write failure is retryable bookkeeping and must not make an already-saved universe appear to have failed or disappeared.
 
 ## No baked UI
 
@@ -142,7 +155,7 @@ Those remain deterministic renderer composition.
 
 Fail closed.
 
-If provider generation, extraction, crop, or storage fails:
+If provider generation, extraction, crop, storage, managed-path verification, or output identity validation fails:
 
 - throw or return no asset for the failed output
 - leave the Forge pipeline incomplete
@@ -155,13 +168,14 @@ Do not silently fall back to placeholder art during canonical World Forge comple
 
 Verify these cases before visual polish:
 
-1. one single asset generates and is stored locally
-2. one 6-cell sheet produces six independent local files
-3. one 8-cell sheet produces eight independent local files
+1. one single asset generates and is stored under the managed Fate Knots asset tree
+2. one 6-cell sheet uses the engine-supplied overall sheet ratio and produces six independent local files
+3. one 8-cell sheet uses the engine-supplied overall sheet ratio and produces eight independent local files
 4. one intentionally missing sheet cell leaves Forge incomplete while preserving valid cells
-5. returned asset IDs remain exactly the planned IDs
-6. final canonical Universe Package contains real local paths and no `fate-knots-pending://` paths
-7. restarting Hayalet Ev still loads the forged universe from durable storage
-8. isolated Fate AI0 NPC runtime remains untouched by image generation
+5. duplicate or foreign returned asset IDs fail the job rather than being silently ignored
+6. returned asset IDs remain exactly the planned IDs
+7. final canonical Universe Package contains readable local `image/*` files and no `fate-knots-pending://` paths
+8. restarting Hayalet Ev still loads the forged universe from the single durable Fate Knots state envelope
+9. isolated Fate AI0 NPC runtime remains untouched by image generation
 
 After these checks, renderer/Babylon work may treat generated assets as ordinary local universe assets.
