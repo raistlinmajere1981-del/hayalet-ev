@@ -69,7 +69,7 @@ Delivered:
 - bounded non-combat run transitions and explicit finale completion in `shared/run-phase.ts`
 - unresolved loot blocks leaving the loot phase; combat phases cannot be changed through the generic run-phase helper
 - V1 personal inventory/loot flow in `shared/loot.ts`
-- `ownedCardIds` is the personal card inventory; `item` and `equipment` cards are inventory-visible ownership
+- `ownedCardIds` is the actor's personal card inventory; `item` and `equipment` cards are inventory-visible ownership
 - `teamPoolItemIds` is a transient neutral/unassigned loot pool, not a permanent shared inventory
 - loot allocation requires unanimous approval from the current party and covers every loot entry; no agreement means no state mutation
 - equipment ownership is the equipment card; `equipmentIds` stores only currently equipped mechanical definitions
@@ -103,51 +103,75 @@ Status: in progress. The updated `main` was reviewed before shared integration; 
 Delivered:
 
 - dedicated `feat/fate-knots-stage-c` integration branch over the completed headless rebuild
-- separate Universe Package and Run State stores in `host/persistence.ts`
+- separate Universe Package and Run State validation/mutation stores in `host/persistence.ts`
+- **real restart-safe persistence** under `room-storage/game-room/fate-knots/`; RoomHost `setState/getState` is treated only as a hot cache
+- durable JSON hydration before Game Room host readiness
+- atomic file writes through the existing Electron room-storage bridge
+- mutation rollback when a durable write fails
 - Universe Package persistence reuses the Forge validation/normalization gate rather than duplicating canon validation
 - run snapshots preserve `combatRuntime` beside `RunState` only while combat is active, allowing safe mid-combat save/resume for shields, timed statuses and combat-scoped modifiers
 - active combat requires an actor-matched combat-runtime snapshot; non-combat saves reject stray combat runtime
 - universe deletion removes associated runs; run activation also activates its universe
 - Fate Knots host management command family for refresh/save/activate/delete of universes and runs
-- Game Room host runtime initializes Fate Knots persistence and publishes `fate-knots-state`
+- Game Room host runtime hydrates Fate Knots durable state and publishes `fate-knots-state`
 - Fate Knots registered in shared Game Room feature metadata and room manifest
 - neutral pre-universe Hub in `ui/hub.js` + `ui/hub.css`
 - Hub manages accepted saved universes/runs without pretending an uncreated universe already has a book/theme
 - Hub uses the stable Game Room environment until a canonical Universe Package exists
-- World Forge creation is visibly reserved but remains disabled until the real orchestration/transport is connected
+- World Forge creation is visibly reserved but remains disabled until the real orchestration/asset materialization path is complete
 - active Fate Knots feature receives its own host-state refresh through the shared Game Room lifecycle
+- bounded AI1 narration runtime contract: narration only, no mechanics, no transition choice, no canon invention, no combat resolution
+- separate AI1 Forge/runtime session metadata so hidden Forge context is not reused as normal DM conversation history
+- AI1 SlotBridge transport supports dedicated session opening and validated JSON requests
+- isolated AI0 Electron transport through the existing `roomToolsCall` surface
+- Fate-specific background OpenCode server uses a separate 4120-4134 port range and app-data workspace; the normal visible development AI0 session/server is not switched or reused
+- isolated AI0 workspace materializes only a minimal Fate policy plus `permission: {"*":"deny"}` and `tools: {"*": false}`
+- every AI0 dialogue/combat request uses a fresh short-lived OpenCode session; the session is deleted after the response and continuity remains packet-owned
+- AI0 structured responses are parsed and revalidated before they can reach engine authority
+
+Transport research decision:
+
+- stable OpenCode V1 does not reliably honor a per-session `directory` override; do **not** reuse the repository-root OpenCode server for gameplay isolation
+- V2 directory-scoped sessions are still beta and are not a Fate Knots dependency
+- V1 therefore uses a separate isolated OpenCode `serve` process rooted in the Fate app-data workspace
+- fail closed on isolation/provider errors; never silently fall back to a repository-root NPC session
 
 Remaining Stage C integration:
 
-- provider transport boundary for AI1 DM packets
-- isolated background AI0 transport that does not switch or reuse the visible development-agent session
-- create/materialize the Fate Knots AI0 app-data workspace and minimal runtime policy/config before the first NPC request
-- pin short-lived AI0 OpenCode sessions to that external directory and keep all tools/MCP disabled for the request
-- validate AI0 structured responses before forwarding them to the engine
+- wire the bounded AI1/AI0 transports into actual run orchestration call sites after story/canon progression is explicit
 - persistence-facing cleanup/migration of the current internal `teamPoolItemIds` loot-pool name when the persisted V1 schema is finalized
-- local typecheck/build/regression verification after integration stabilizes
-
-AI0 transport direction after repository/OpenCode inspection:
-
-- do not use normal SlotBridge `session.open`; it changes the visible AI0 development session and does not provide the required workspace isolation
-- prefer a short background OpenCode session scoped to the external Fate Knots runtime directory while reusing the already-running OpenCode server process
-- send only the minimal Fate system policy + bounded packet and explicitly disable tools for each request
-- delete/close the temporary session after the response so NPC continuity remains canonical-packet-owned rather than conversation-history-owned
-- if the installed OpenCode build cannot create directory-scoped sessions, fail closed and use an explicit isolated compatibility path; never silently fall back to a repository-root NPC session
+- local strict typecheck/build/regression verification after World Forge reaches the canonical-save checkpoint
 
 ## Stage D — World Forge orchestration (shared)
 
-Status: neutral Hub shell is already delivered in Stage C; World Forge itself remains pending.
+Status: in progress behind the disabled Hub control.
 
-Implement orchestration behind the existing Hub:
+Delivered foundation:
 
-- create-universe flow
-- connection/readiness display
-- World Forge progress
-- candidate draft -> validation -> canonical Universe Package
-- generated theme/assets attached to the universe
-- provider-independent image adapter
-- optional batch image-sheet extraction using `forge/image-sheet.ts`
+- `forge/world-forge.ts` separates non-canonical AI authoring from canonical Universe Package authority
+- Forge `requestId`, `universeId`, and `createdAt` are engine-owned and must round-trip unchanged through the AI response
+- AI-authored asset paths are forbidden from becoming canonical paths
+- every draft visual asset uses `fate-knots-pending://<assetId>` and must have exactly one validated generation plan
+- audio-file generation is not a World Forge hard dependency; V1 music may use the existing symbolic/fallback model
+- canonical finalization requires every pending asset to be materialized into a real stored file path, then re-runs Universe validation + lossless normalization
+- missing/duplicate/foreign materialized assets fail closed instead of partially canonicalizing the universe
+
+Architectural gap found before enabling Forge:
+
+- the current Universe Package stores `hiddenKnotIds` and the Run State stores revealed/completed knot IDs, but the package does not yet contain canonical **story-knot definitions or progression links**
+- therefore AI1 currently has no engine-owned story graph from which `availableTransitionIds` can be derived
+- do not solve this by letting the World Forge prompt or Codex invent an implicit quest system
+- before Forge authoring is enabled, add the smallest explicit story-knot/progression contract needed for the engine to determine current visible facts, legal scene transitions, encounter entry, knot reveal/completion, and finale prerequisites
+- keep this bounded; Fate Knots needs a canonical story skeleton, not a generic quest scripting engine
+
+Still required before Hub `Create universe` is enabled:
+
+- story-knot/progression contract + validator
+- World Forge AI authoring request/response transport using a dedicated Forge session
+- provider-independent asset materializer interface
+- generated asset storage/provenance boundary
+- final draft -> materialized assets -> canonical save orchestration
+- Forge progress/readiness state surfaced to the Neutral Hub
 
 The Hub must continue to work without a generated book/background/theme.
 
@@ -196,6 +220,6 @@ Do not make speech a V1 launch dependency.
 
 ## Local testing handoff
 
-GitHub Actions are not assumed available. Run the repository's normal typecheck/build/tests and live Game Room checks locally once Stage C integration reaches a stable checkpoint.
+GitHub Actions are not assumed available. Run the repository's normal typecheck/build/tests and live Game Room checks locally once the full Hub -> Forge -> validated/materialized Universe Package -> durable save -> bounded AI runtime chain reaches a stable checkpoint.
 
 Until then, keep commits small and preserve the Fate Knots engine/AI authority boundaries rather than weakening contracts to satisfy UI shortcuts.
