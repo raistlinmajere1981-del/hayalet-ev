@@ -122,6 +122,24 @@ function buildLegalOptions(
 }
 
 /**
+ * Low-level shared builder for a caller that has already validated the actor,
+ * phase and controller/seat authority. Keeping this logic public prevents the
+ * human renderer and AI0 enemy packet from drifting into separate legality
+ * algorithms.
+ */
+export function buildFateKnotsActorCombatLegalOptions(
+  state: FateKnotsCombatState,
+  actor: FateKnotsActorState,
+  catalog: FateKnotsCombatOptionCatalog
+): FateKnotsCombatLegalOptions {
+  return {
+    actorId: actor.actorId,
+    movementOptions: buildLegalOptions(state, actor, catalog, "movement"),
+    actionOptions: buildLegalOptions(state, actor, catalog, "action"),
+  };
+}
+
+/**
  * Engine-owned deterministic legality projection shared by human/player and AI0
  * callers. It exposes only currently legal card ids and primary-target ids; it
  * does not expose another actor's commits, ownership or hidden canon.
@@ -152,11 +170,7 @@ export function buildFateKnotsCombatLegalOptions(
 
   return {
     ok: true,
-    options: {
-      actorId,
-      movementOptions: buildLegalOptions(state, actor, catalog, "movement"),
-      actionOptions: buildLegalOptions(state, actor, catalog, "action"),
-    },
+    options: buildFateKnotsActorCombatLegalOptions(state, actor, catalog),
     issues: [],
   };
 }
