@@ -54,7 +54,33 @@ Canonical persistence is host-owned:
 - browser/UI code does not receive raw `SaveUniverse` or `SaveRun` commands
 - continuing a saved run must not re-run World Forge
 
-The neutral Hub receives a player-safe projection, not a raw Universe Package. The active feature state event is `fate-knots-hub-state`.
+The neutral Hub receives a player-safe projection, not a raw Universe Package. The neutral event remains `fate-knots-hub-state`.
+
+After a selected run leaves `run-setup`, the host additionally publishes `fate-knots-gameplay-state`. The same safe projection is available through `GameRoomFateKnotsGetGameplayState`.
+
+These are the renderer read boundaries. Do not add a browser-side raw Universe/Run persistence reader because an image path, card definition or map field is inconvenient to reach.
+
+The safe gameplay projection deliberately includes only currently player-visible/referenced data:
+
+- active visible location/map state
+- party state
+- visible/referenced cards, equipment and statuses
+- bounded combat actor state
+- theme identity
+- a bounded asset path catalog
+- visible presentation cue definitions
+
+It deliberately excludes:
+
+- hidden/revealed knot ids and finale data
+- NPC role packets/hidden knowledge
+- unrevealed locations/nodes/edges/assets
+- combat commits
+- opposition hand/owned/available cards
+- hidden opposition card artwork/cues
+- raw card requirements/effects/reveal ids
+
+`ui/bridge.js` already hands the safe gameplay event to an optional future `GameRoomFateKnotsGameplayUi.handleState` and emits the `fate-knots-gameplay-state` browser custom event. Reuse that handoff instead of installing a parallel raw-state listener.
 
 Character/run setup has an explicit secrecy boundary:
 
@@ -93,11 +119,11 @@ Runtime NPC/combat calls must not bootstrap from the Hayalet Ev repository root 
 
 Do not solve this by adding "ignore AGENTS.md" to the prompt. Once repository policy is loaded, the context cost has already been paid.
 
-Stage C host integration must launch Fate Knots AI0 from an external app-data workspace outside the repository tree and materialize only the minimal NPC runtime policy described by `AI0-RUNTIME-OVERRIDE.md` / `shared/ai0-runtime.ts`.
+The branch now contains the physical external workspace materializer and a provider-neutral AI0 transport. A real provider adapter must use those existing boundaries rather than bypassing them.
 
 V1 Fate Knots AI0 runtime has no tools by default: no filesystem, shell, MCP, web, image generation, GitHub or project memory. World Forge image generation is a separate authority surface and must not be attached to the NPC actor merely because both use AI.
 
-AI0 calls are packet-driven/stateless. NPC continuity comes from canonical persona/known/relationship facts and current scene/combat packets supplied by the engine. AI0 output is validated before the engine accepts any interaction or combat choice.
+AI0 calls are packet-driven/stateless. NPC continuity comes from canonical persona/known/relationship facts and current scene/combat packets supplied by the engine. Provider output arrives as `unknown`, is shape-gated, then legality-validated before any result can reach the engine.
 
 ## Fixed combat direction
 
@@ -163,13 +189,15 @@ Inventory remains card-native and deliberately small:
 
 - every actor owns a personal card inventory through `ownedCardIds`
 - `item` and `equipment` cards are the inventory-visible physical belongings
-- duplicate owned item-card IDs represent multiple physical copies (for example two identical potions)
+- duplicate owned item-card IDs represent multiple physical copies
 - consuming an item removes one owned copy; revoking a card removes all owned copies of that card id
 - equipment ownership is represented by owning its `equipment` card
 - an equipment card must point through `sourceId` to its mechanical equipment definition
 - `equipmentIds` represents only currently equipped definitions, not total ownership
 - equipping an item may replace another equipped definition in the same explicit equipment slot
 - V1 has no weight, encumbrance or inventory-capacity limit
+
+`sourceId` is mechanical/semantic. Do not reuse it as a visual-art pointer. Card illustration is the separate optional `artAssetId` field.
 
 `teamPoolItemIds` is currently an internal/transitional field name for the neutral, unassigned loot pool. It is not a permanent communal backpack.
 
@@ -223,19 +251,34 @@ Examples:
 
 Debug surfaces may show raw state and mechanical text. Player surfaces should not.
 
-## Presentation effects
+## Presentation and asset safety
 
-Do not hardcode card visuals into combat formulas.
+Do not hardcode card visuals into combat formulas and do not open raw canon just to resolve presentation.
 
-Cards/events reference reusable presentation IDs. Presentation may include:
+The safe gameplay projection supplies:
 
-- animation/particle effect
-- application target
-- timing
-- persistent status visual
-- SFX
+- current Theme Package presentation identity
+- paths only for currently required player-visible assets
+- card/status presentation cue summaries only when those definitions are already player-visible
+- optional card illustration binding through `artAssetId`
 
-Exact visual style, particles, textures, lighting, and timing may be creatively implemented as long as they preserve the semantic event contract.
+World Forge image generation creates illustration material. Fate Knots still renders card frame, title, rules/icons and interaction state deterministically.
+
+A card with no `artAssetId` remains valid. When `artAssetId` exists it references an accepted normal asset. Do not make generated card art a runtime dependency.
+
+An opposition card is a special disclosure case: its persistent card definition/art/cues stay hidden before resolution. Once the engine emits a `card-resolved` semantic event, use `host/resolved-card-presentation.ts` to build the public one-card presentation snapshot. Do not expose the enemy hand/catalog merely to animate one resolved action.
+
+The resolved-card snapshot contains only:
+
+- card id/kind/name/description
+- optional art asset/path
+- the presentation cues named by the semantic event
+
+It does not contain requirements, effects, ownership, availability, hidden targets/canon or unrelated enemy cards.
+
+Presentation cue shape and renderer-facing theme/card-art references are validated at the canonical Forge acceptance gate. Do not weaken those checks to accommodate malformed generated content.
+
+Exact visual style, particles, textures, lighting and timing may be creatively implemented as long as they preserve the semantic event contract.
 
 ## Audio direction
 
@@ -257,6 +300,8 @@ The following details are intentionally not final yet. If a local task reaches o
 - exact camp healing and when equipment changes are permitted in scene flow
 - exact symbolic music notation/synthesis backend
 - exact provider/wrapper wire syntax for World Forge, DM, and isolated AI0 runtime transport
+- exact AI1 response shape for narration/scene progression
+- user-facing World Forge request grammar such as mandatory genre/theme/seed fields
 - persistence migration policy for older Fate Knots records if one is later required
 
 These are Raistlin/Nexa design decisions or later balancing decisions, not visual/runtime implementation choices.
@@ -275,7 +320,7 @@ Codex may decide, within a specific task:
 - naming of internal private helpers
 - performance optimizations that preserve behavior
 
-When a task would require a new game rule, new phase, new card economy, new AI authority, or new player-facing interaction grammar, stop and leave the decision to the Fate Knots design contract rather than inventing it.
+When a task would require a new game rule, new phase, new card economy, new AI authority, new hidden-data disclosure or new player-facing interaction grammar, stop and leave the decision to the Fate Knots design contract rather than inventing it.
 
 ## Local testing expectation
 
