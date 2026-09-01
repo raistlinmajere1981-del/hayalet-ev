@@ -173,6 +173,34 @@ void test("World Forge lifecycle exposes progress without leaking request or can
   assert.doesNotMatch(hubState, /prompt:/);
 });
 
+void test("AI0 runtime workspace uses managed Game Room storage instead of repository bootstrap", () => {
+  const materializer = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/host/ai0-workspace.ts",
+    "utf8"
+  );
+  const electronBridge = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/host/ai0-workspace-electron.ts",
+    "utf8"
+  );
+
+  assert.match(materializer, /buildFateKnotsAi0WorkspaceSpec\(universeId\)/);
+  assert.match(materializer, /await io\.deleteDirectory\(workspaceDir\)/);
+  assert.match(materializer, /await io\.ensureDirectory\(workspaceDir\)/);
+  assert.match(materializer, /file\.relativePath === "AGENTS\.md"/);
+  assert.doesNotMatch(materializer, /\.rovo/);
+  assert.doesNotMatch(materializer, /projectRoot/);
+
+  assert.match(electronBridge, /operation: "resolve-paths"/);
+  assert.match(electronBridge, /operation: "delete-path"/);
+  assert.match(electronBridge, /operation: "ensure-dir"/);
+  assert.match(electronBridge, /roomId: GAME_ROOM_ID/);
+  assert.match(electronBridge, /fmWriteFileAtomic/);
+  assert.match(electronBridge, /prepareFateKnotsAi0RuntimeWorkspace/);
+  assert.doesNotMatch(electronBridge, /AGENTS\.md/);
+  assert.doesNotMatch(electronBridge, /\.rovo/);
+  assert.doesNotMatch(electronBridge, /projectRoot/);
+});
+
 void test("Fate Knots browser bridge receives Hub projection rather than raw persistence authority", () => {
   const bridge = readFileSync(
     "rooms/game-room/main-functions/fate-knots/ui/bridge.js",
