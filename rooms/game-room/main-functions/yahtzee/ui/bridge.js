@@ -60,6 +60,13 @@
     return undefined;
   }
 
+  function disposeBackgammonStage() {
+    const stageRuntime = global.GameRoomBackgammonStageRuntime;
+    if (stageRuntime && typeof stageRuntime.destroyAll === "function") {
+      stageRuntime.destroyAll();
+    }
+  }
+
   runtimeRegistry.createGameRoomUiRuntime = function createYahtzeeAwareGameRoomUiRuntime() {
     const base = createBaseRuntime();
 
@@ -124,6 +131,7 @@
         global.GameRoomYahtzeeUi &&
         typeof global.GameRoomYahtzeeUi.render === "function"
       ) {
+        disposeBackgammonStage();
         const root = document.getElementById("app");
         const baseState = typeof base.getState === "function" ? base.getState() : null;
         if (typeof global.GameRoomYahtzeeUi.setTranslations === "function") {
