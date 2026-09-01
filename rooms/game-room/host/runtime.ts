@@ -17,7 +17,7 @@ import {
   readLocale,
   saveContext,
 } from "../shared/host/context-state.js";
-import { YAHTZEE_FEATURE_ID } from "../shared/host/feature-meta.js";
+import { FATE_KNOTS_FEATURE_ID, YAHTZEE_FEATURE_ID } from "../shared/host/feature-meta.js";
 import {
   handleTeamTetrisMove,
   handleTeamTetrisReset,
@@ -38,6 +38,11 @@ import {
   initializeYahtzeeState,
   pushYahtzeeState,
 } from "../main-functions/yahtzee/host/runtime.js";
+import {
+  createFateKnotsManagementCommands,
+} from "../main-functions/fate-knots/host/management-runtime.js";
+import { createFateKnotsRunCommands } from "../main-functions/fate-knots/host/run-runtime.js";
+import { pushFateKnotsHubState } from "../main-functions/fate-knots/host/runtime-sync.js";
 import {
   clearUs1SyncLoop as backgammonClearUs1SyncLoop,
   ensureUs1SyncLoop as backgammonEnsureUs1SyncLoop,
@@ -63,6 +68,8 @@ export { teamTetrisEngine };
 
 type BridgeCommandHandler = (handlerApi: GameRoomHostApi, payload: unknown) => unknown;
 type BridgeNoPayloadHandler = (handlerApi: GameRoomHostApi) => unknown;
+
+type FateKnotsSyncApi = Parameters<typeof pushFateKnotsHubState>[0];
 
 export default function createGameRoomHostRuntime() {
   return {
@@ -98,10 +105,19 @@ export default function createGameRoomHostRuntime() {
         );
       }
 
+      function pushFateKnotsHubStateCompat(handlerApi: GameRoomHostApi): void {
+        pushFateKnotsHubState(handlerApi as unknown as FateKnotsSyncApi);
+      }
+
       function pushActiveFeatureStateCompat(handlerApi: GameRoomHostApi): void {
         const context = loadContext(handlerApi);
-        if (getActiveFeatureId(context) === YAHTZEE_FEATURE_ID) {
+        const activeFeatureId = getActiveFeatureId(context);
+        if (activeFeatureId === YAHTZEE_FEATURE_ID) {
           pushYahtzeeState(handlerApi);
+          return;
+        }
+        if (activeFeatureId === FATE_KNOTS_FEATURE_ID) {
+          pushFateKnotsHubStateCompat(handlerApi);
           return;
         }
         pushActiveFeatureState(handlerApi);
@@ -116,6 +132,9 @@ export default function createGameRoomHostRuntime() {
 
       function syncFromContextCompat(handlerApi: GameRoomHostApi, payload: unknown): void {
         backgammonSyncFromContext(handlerApi, payload);
+        if (getActiveFeatureId(loadContext(handlerApi)) === FATE_KNOTS_FEATURE_ID) {
+          pushFateKnotsHubStateCompat(handlerApi);
+        }
       }
 
       function clearUs1SyncLoopCompat(handlerApi: GameRoomHostApi): void {
@@ -192,6 +211,20 @@ export default function createGameRoomHostRuntime() {
       commands[YAHTZEE_COMMAND_NAMES.remoteReset] = function (payload?: unknown) {
         return handleYahtzeeRemoteReset(api, payload ?? {});
       };
+
+      const fateKnotsManagementCommands = createFateKnotsManagementCommands(api);
+      const fateKnotsRunCommands = createFateKnotsRunCommands(api);
+      const fateKnotsCommands = {
+        ...fateKnotsManagementCommands,
+        ...fateKnotsRunCommands,
+      };
+      for (const [commandName, handler] of Object.entries(fateKnotsCommands)) {
+        commands[commandName] = function (payload?: unknown) {
+          const result = handler(payload);
+          pushFateKnotsHubStateCompat(api);
+          return result;
+        };
+      }
 
       return {
         commands,
