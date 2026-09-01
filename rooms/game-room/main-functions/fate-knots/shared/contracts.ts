@@ -295,7 +295,6 @@ export const FATE_KNOTS_STORY_TRANSITION_KINDS = [
   "scene",
   "travel",
   "combat",
-  "loot",
   "camp",
   "finale",
 ] as const;
