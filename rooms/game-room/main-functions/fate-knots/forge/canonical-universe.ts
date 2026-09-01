@@ -60,6 +60,60 @@ function validateRunStartContract(
   return issues;
 }
 
+function validateAssetReference(
+  assetIds: ReadonlySet<string>,
+  value: unknown,
+  path: string,
+  issues: FateKnotsUniverseValidationIssue[]
+): void {
+  if (typeof value !== "string" || value.trim() === "" || !assetIds.has(value.trim())) {
+    issues.push({
+      code: "missing-reference",
+      path,
+      ...(typeof value === "string" && value.trim() !== "" ? { value: value.trim() } : {}),
+    });
+  }
+}
+
+function validateRendererAssetContract(
+  universe: FateKnotsUniversePackage
+): FateKnotsUniverseValidationIssue[] {
+  const issues: FateKnotsUniverseValidationIssue[] = [];
+  const assetIds = new Set(universe.assets.map((asset) => asset.id));
+  const rawTheme = universe.theme as unknown;
+
+  if (!isRecord(rawTheme)) {
+    return [{ code: "invalid-field-type", path: "theme" }];
+  }
+
+  const cardFrames = rawTheme["cardFrameByKind"];
+  if (!isRecord(cardFrames)) {
+    issues.push({ code: "invalid-field-type", path: "theme.cardFrameByKind" });
+  } else {
+    Object.entries(cardFrames).forEach(([kind, assetId]) => {
+      validateAssetReference(assetIds, assetId, `theme.cardFrameByKind.${kind}`, issues);
+    });
+  }
+
+  for (const key of ["bookmarkAssetIds", "transitionAssetIds"] as const) {
+    const values = rawTheme[key];
+    if (values === undefined) continue;
+    if (!Array.isArray(values)) {
+      issues.push({ code: "invalid-field-type", path: `theme.${key}` });
+      continue;
+    }
+    values.forEach((assetId, index) =>
+      validateAssetReference(assetIds, assetId, `theme.${key}[${index}]`, issues)
+    );
+  }
+
+  if (universe.map.mapAssetId !== undefined && universe.map.mapAssetId !== null) {
+    validateAssetReference(assetIds, universe.map.mapAssetId, "map.mapAssetId", issues);
+  }
+
+  return issues;
+}
+
 function validateCardArtContract(
   universe: FateKnotsUniversePackage
 ): FateKnotsUniverseValidationIssue[] {
@@ -121,13 +175,13 @@ function cloneRunStartContract(universe: FateKnotsUniversePackage): FateKnotsUni
 }
 
 /**
- * Final World Forge acceptance gate for a runnable V1 universe.
+ * Final World Forge acceptance gate for a runnable/renderable V1 universe.
  *
  * The structural validator remains responsible for the broad Universe Package.
  * This layer adds deterministic data required to create/render a run without
  * renderer/Codex defaults: a canonical start node, explicit player-selectable
- * character templates, initial lightweight positions and valid optional card-art
- * asset references.
+ * character templates, initial lightweight positions, renderer-facing theme/map
+ * asset integrity and valid optional card-art references.
  */
 export function normalizeFateKnotsCanonicalUniversePackage(
   candidate: unknown
@@ -137,6 +191,7 @@ export function normalizeFateKnotsCanonicalUniversePackage(
 
   const issues = [
     ...validateRunStartContract(normalized.package),
+    ...validateRendererAssetContract(normalized.package),
     ...validateCardArtContract(normalized.package),
   ];
   if (issues.length > 0) {
