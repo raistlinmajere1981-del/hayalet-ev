@@ -55,10 +55,10 @@ void test("game-room installed UI contains the Yahtzee presentation v2 and Fate 
         "GameRoomFateKnotsGetRunSetup",
         "GameRoomFateKnotsCreateRun",
         "GameRoomFateKnotsStartRun",
+        "GameRoomFateKnotsGetGameplayState",
         "GameRoomFateKnotsActivateRun",
         "GameRoomFateKnotsDeleteRun",
         "GameRoomFateKnotsDeleteUniverse",
-        "GameRoomFateKnotsGetGameplayState",
       ]
     );
 
