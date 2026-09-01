@@ -39,6 +39,7 @@ import {
   pushYahtzeeState,
 } from "../main-functions/yahtzee/host/runtime.js";
 import { createFateKnotsForgeOrchestrator } from "../main-functions/fate-knots/host/forge-orchestration.js";
+import { createFateKnotsGameplayCommands } from "../main-functions/fate-knots/host/gameplay-runtime.js";
 import { createFateKnotsManagementCommands } from "../main-functions/fate-knots/host/management-runtime.js";
 import {
   createFateKnotsRunCommands,
@@ -237,10 +238,12 @@ export default function createGameRoomHostRuntime() {
       const fateKnotsRunCommands = createFateKnotsRunCommands(api, {
         isPlayerSeatAvailable: isFateKnotsPlayerSeatAvailable,
       });
+      const fateKnotsGameplayCommands = createFateKnotsGameplayCommands(api);
       const fateKnotsCommands = {
         ...fateKnotsManagementCommands,
         ...fateKnotsRunSetupCommands,
         ...fateKnotsRunCommands,
+        ...fateKnotsGameplayCommands,
       };
       for (const [commandName, handler] of Object.entries(fateKnotsCommands)) {
         commands[commandName] = function (payload?: unknown) {
