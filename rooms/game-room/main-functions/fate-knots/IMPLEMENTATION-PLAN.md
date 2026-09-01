@@ -118,10 +118,12 @@ Delivered:
 - player seat availability is derived from current Game Room context: local user is available, AI2/US1 require dispatchable slots
 - neutral Hub browser runtime in `ui/hub.js`, `ui/hub.css`, and `ui/bridge.js`
 - Fate Knots browser bridge wraps after the Yahtzee runtime and prevents the feature from falling through to the Tavla renderer
+- neutral Hub run setup uses only `GameRoomFateKnotsGetRunSetup`; user is mandatory, AI2/US1 are optional only when dispatchable, and one character cannot be assigned to two active seats
+- `CreateRun` remains a preparation action; a persisted `run-setup` entry exposes a separate `StartRun` action so the Forge-authored start node is not opened during character selection
 - Game Room manifest version `2.8.0` registers Fate Knots command specs
 - Fate Knots manifest entry intentionally has no invented `scene`/hotspot coordinates; visual room placement remains a later presentation task
 - structural manifest and installed-copy regression contracts updated for the fourth Game Room feature
-- dedicated `game-room-fate-knots-room-regressions.test.ts` guards host authority, player-safe setup data, Hub load order and the absence of raw browser persistence commands
+- dedicated `game-room-fate-knots-room-regressions.test.ts` guards host authority, player-safe setup data, Hub setup flow/load order and the absence of raw browser persistence commands
 
 Still pending in Stage C:
 
@@ -139,7 +141,7 @@ Still pending in Stage C:
 
 ## Stage D — Neutral Hub and World Forge orchestration (shared)
 
-Status: partially implemented. The neutral Hub/read-management foundation exists; World Forge orchestration is not yet wired.
+Status: partially implemented. The neutral Hub/read-management/run-setup foundation exists; World Forge orchestration is not yet wired.
 
 Already delivered from Stage C overlap:
 
@@ -147,6 +149,7 @@ Already delivered from Stage C overlap:
 - activate/continue/delete management commands
 - connection/readiness projection
 - player-safe character setup packet
+- neutral Hub controls for optional participants, unique character assignment, `CreateRun`, and separate `StartRun`
 - provider-independent Universe candidate validation/normalization gate
 - provider-independent Forge asset contracts and optional image-sheet extraction helper
 
@@ -159,7 +162,6 @@ Still required:
 - generated theme/assets attached to the accepted universe
 - provider-independent image adapter
 - optional batch image-sheet generation/extraction using `forge/image-sheet.ts`
-- neutral Hub controls for character assignment and `CreateRun` / `StartRun` using only the player-safe setup projection
 
 The World Forge provider is deliberately not fixed by the current game-role model. AI1 remains runtime DM and AI0 remains runtime NPC actor; neither should become Forge authority merely as an implementation shortcut.
 
