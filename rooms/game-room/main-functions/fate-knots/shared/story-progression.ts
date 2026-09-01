@@ -191,12 +191,18 @@ function restoreSourceDestination(
 }
 
 function phaseAllowsStoryTransition(
+  universe: FateKnotsUniversePackage,
   run: FateKnotsRunState,
   transition: FateKnotsStoryTransitionDefinition
 ): boolean {
   if (run.phase === "exploration") return true;
-  if (run.phase === "finale") return transition.kind === "combat";
-  return false;
+  if (run.phase !== "finale") return false;
+  const finalEncounterId = universe.finale.finalEncounterId ?? null;
+  return (
+    finalEncounterId !== null &&
+    transition.kind === "combat" &&
+    transition.encounterId === finalEncounterId
+  );
 }
 
 function isTransitionLegal(
@@ -205,7 +211,7 @@ function isTransitionLegal(
   transition: FateKnotsStoryTransitionDefinition
 ): boolean {
   if (run.result !== "active" || run.activeCombat || run.activeStoryTransitionId) return false;
-  if (!phaseAllowsStoryTransition(run, transition)) return false;
+  if (!phaseAllowsStoryTransition(universe, run, transition)) return false;
   if (!run.activeKnotId || transition.fromKnotId !== run.activeKnotId) return false;
   if (!run.revealedKnotIds.includes(run.activeKnotId)) return false;
   if (!requirementsMet(transition.requirements, run)) return false;
