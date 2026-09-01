@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "id": "game-room",
   "name": "Game Room",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "menu": {
     "label": "Game Room",
     "icon": "🎮",
@@ -285,9 +285,77 @@
           }
         }
       }
+    },
+    {
+      "id": "fate-knots",
+      "name": "Fate Knots",
+      "description": "A card-driven collaborative story game inside a forged, player-unknown universe.",
+      "icon": "FK",
+      "commandSpecs": [
+        {
+          "name": "GameRoomFateKnotsRefresh",
+          "description": "Refresh Fate Knots neutral Hub state.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsSaveUniverse",
+          "description": "Validate and persist a canonical Fate Knots Universe Package.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsActivateUniverse",
+          "description": "Select a saved Fate Knots universe as active.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsDeleteUniverse",
+          "description": "Delete a saved Fate Knots universe and its associated runs.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsSaveRun",
+          "description": "Persist a Fate Knots run and any required active-combat runtime snapshot.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsActivateRun",
+          "description": "Select a saved Fate Knots run and its universe as active.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsDeleteRun",
+          "description": "Delete a saved Fate Knots run.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        }
+      ],
+      "protocolSpecs": [],
+      "scene": {
+        "hotspot": {
+          "id": "game-room-fate-knots",
+          "rect": { "leftPx": 72, "topPx": 620, "widthPx": 400, "heightPx": 190 },
+          "label": { "text": "Fate Knots" }
+        },
+        "view": {
+          "id": "fate-knots-hub-closeup",
+          "backgroundSrc": "shared/assets/room-background.webp",
+          "transparentWindow": {
+            "leftPct": 0.01,
+            "topPct": 0.01,
+            "widthPct": 99.98,
+            "heightPct": 99.98
+          }
+        }
+      }
     }
   ],
-  "description": "A focused Game Room for Tavla, four-seat Team Tetris, and solo or multiplayer pirate-deck Yahtzee.",
+  "description": "A focused Game Room for Tavla, Team Tetris, pirate-deck Yahtzee, and the Fate Knots collaborative story game.",
   "scene": {
     "referenceSize": { "width": 1600, "height": 900 },
     "roomBackgroundSrc": "shared/assets/room-background.webp",
