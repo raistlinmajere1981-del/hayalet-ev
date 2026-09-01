@@ -7,6 +7,7 @@
   const FEATURE_ID = "backgammon";
   const TEAM_TETRIS_FEATURE_ID = "team-tetris";
   const YAHTZEE_FEATURE_ID = "yahtzee";
+  const FATE_KNOTS_FEATURE_ID = "fate-knots";
 
   const FEATURE_RECORDS: GameRoomFeatureRecord[] = [
     {
@@ -22,6 +23,11 @@
     {
       id: YAHTZEE_FEATURE_ID,
       name: "Yahtzee",
+      description: "",
+    },
+    {
+      id: FATE_KNOTS_FEATURE_ID,
+      name: "Kader Düğümleri",
       description: "",
     },
   ];
