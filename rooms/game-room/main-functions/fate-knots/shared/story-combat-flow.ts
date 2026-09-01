@@ -32,9 +32,12 @@ export interface FateKnotsStoryCombatExitResult {
  *
  * Story progression is calculated while terminal combat is still attached so
  * victory/retreat can reference the exact encounter. The regular combat authority
- * then settles HP/status/runtime state and removes combat. Only after that does
- * story tracking clear its transition/encounter ids. No successful intermediate
- * state violates the restart-safe persistence contract.
+ * then settles HP/status/runtime state and removes combat.
+ *
+ * When encounter loot exists, story transition/encounter tracking deliberately
+ * survives the combat exit until unanimous loot settlement. That tracking is the
+ * canonical post-loot destination marker (especially for final-encounter loot).
+ * Non-loot exits clear tracking immediately as before.
  */
 export function exitFateKnotsStoryCombat(
   universe: FateKnotsUniversePackage,
@@ -78,6 +81,17 @@ export function exitFateKnotsStoryCombat(
       run: structuredClone(runInput),
       issues: [{ code: "combat-exit-failed", combatIssues: exited.issues }],
     };
+  }
+
+  if (exited.run.phase === "loot") {
+    if (!exited.run.activeStoryTransitionId || !exited.run.activeEncounterId) {
+      return {
+        ok: false,
+        run: structuredClone(runInput),
+        issues: [{ code: "story-cleanup-failed", storyIssues: [{ code: "combat-transition-required" }] }],
+      };
+    }
+    return { ok: true, run: exited.run, issues: [] };
   }
 
   const cleaned = clearFateKnotsStoryCombatTracking(exited.run);
