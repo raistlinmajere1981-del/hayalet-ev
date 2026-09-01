@@ -5,12 +5,22 @@ import type {
   FateKnotsCombatState,
   FateKnotsPhase,
   FateKnotsPosition,
+  FateKnotsPresentationCue,
   FateKnotsResolutionPriorityTier,
   FateKnotsRunState,
   FateKnotsSeatId,
   FateKnotsTeamId,
   FateKnotsUniversePackage,
 } from "../shared/contracts.js";
+
+export interface FateKnotsGameplayPresentationCueSummary {
+  cueId: string;
+  animationId: string | null;
+  soundEffectId: string | null;
+  applyTo: FateKnotsPresentationCue["applyTo"];
+  timing: FateKnotsPresentationCue["timing"];
+  statusVisualId: string | null;
+}
 
 export interface FateKnotsGameplayCardSummary {
   cardId: string;
@@ -19,6 +29,7 @@ export interface FateKnotsGameplayCardSummary {
   description: string;
   artAssetId: string | null;
   tags: string[];
+  presentation: FateKnotsGameplayPresentationCueSummary[];
   resolutionPriority: FateKnotsResolutionPriorityTier;
   consumable: boolean;
 }
@@ -36,6 +47,7 @@ export interface FateKnotsGameplayStatusSummary {
   description: string;
   tags: string[];
   persistent: boolean;
+  presentation: FateKnotsGameplayPresentationCueSummary[];
 }
 
 export interface FateKnotsGameplayAssetSummary {
@@ -172,6 +184,17 @@ function compactStrings(values: readonly (string | null | undefined)[]): string[
   return unique(values.filter((value): value is string => typeof value === "string" && value !== ""));
 }
 
+function summarizeCue(cue: FateKnotsPresentationCue): FateKnotsGameplayPresentationCueSummary {
+  return {
+    cueId: cue.cueId,
+    animationId: cue.animationId ?? null,
+    soundEffectId: cue.soundEffectId ?? null,
+    applyTo: cue.applyTo,
+    timing: cue.timing,
+    statusVisualId: cue.statusVisualId ?? null,
+  };
+}
+
 function summarizeCard(card: FateKnotsCardDefinition): FateKnotsGameplayCardSummary {
   return {
     cardId: card.id,
@@ -180,6 +203,7 @@ function summarizeCard(card: FateKnotsCardDefinition): FateKnotsGameplayCardSumm
     description: card.description ?? "",
     artAssetId: card.artAssetId ?? null,
     tags: card.tags.slice(),
+    presentation: card.presentation.map(summarizeCue),
     resolutionPriority: card.resolutionPriority ?? "normal",
     consumable: card.consumable === true,
   };
@@ -213,12 +237,13 @@ function summarizeCombat(combat: FateKnotsCombatState | null): FateKnotsGameplay
  * - hidden/revealed knot ids and finale definition
  * - NPC role packets and NPC hidden knowledge
  * - unrevealed locations/nodes/edges and their presentation assets
- * - combat commits and opposition card ownership/availability/artwork
+ * - combat commits and opposition card ownership/availability/artwork/cues
  * - raw card effects/reveal ids that may point at hidden canon
  *
- * Theme identity is safe player-facing presentation data. Asset paths are
- * projected only for theme resources and currently visible/referenced entities;
- * the renderer never receives the complete Universe Package asset catalog.
+ * Theme identity and presentation cues for player-visible cards/statuses are
+ * safe player-facing presentation data. Asset paths are projected only for theme
+ * resources and currently visible/referenced entities; the renderer never
+ * receives the complete Universe Package asset catalog.
  *
  * The renderer receives enough public identity/state to compose the living book
  * but must use engine legality/presentation events rather than infer mechanics.
@@ -352,6 +377,7 @@ export function buildFateKnotsGameplayState(
         description: status.description ?? "",
         tags: status.tags.slice(),
         persistent: status.persistent,
+        presentation: status.presentation?.map(summarizeCue) ?? [],
       });
     }
   });
