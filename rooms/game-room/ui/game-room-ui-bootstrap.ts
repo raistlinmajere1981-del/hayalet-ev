@@ -41,7 +41,8 @@
     const featureContract = readFeatureContract(global.GameRoomUiFeatureContract);
     const roomId = readString(featureContract.ROOM_ID, "game-room");
     const gameRoomHomeFeatureId = readString(
-      featureContract.GAME_ROOM_HOME_FEATURE_ID,
+      (featureContract as GameRoomUiFeatureContractLike & { GAME_ROOM_HOME_FEATURE_ID?: unknown })
+        .GAME_ROOM_HOME_FEATURE_ID,
       "game-room-home"
     );
     const featureId = readString(featureContract.FEATURE_ID, "backgammon");
@@ -282,7 +283,6 @@
 
     return {
       roomId: roomId,
-      gameRoomHomeFeatureId: gameRoomHomeFeatureId,
       featureId: featureId,
       teamTetrisFeatureId: teamTetrisFeatureId,
       contextRuntime: contextRuntime,
