@@ -40,6 +40,10 @@
 
     const featureContract = readFeatureContract(global.GameRoomUiFeatureContract);
     const roomId = readString(featureContract.ROOM_ID, "game-room");
+    const gameRoomHomeFeatureId = readString(
+      featureContract.GAME_ROOM_HOME_FEATURE_ID,
+      "game-room-home"
+    );
     const featureId = readString(featureContract.FEATURE_ID, "backgammon");
     const teamTetrisFeatureId = readString(featureContract.TEAM_TETRIS_FEATURE_ID, "team-tetris");
     const bootstrapCopy: GameRoomBootstrapCopy =
@@ -48,6 +52,8 @@
         : {
             en: {
               roomTitle: "Game Room",
+              homeTitle: "Game Room",
+              homeBody: "Choose a game from the room when you are ready.",
               loadingTitle: "Loading Game Room",
               loadingBody: "Waiting for room context and translations.",
               userLabel: "User",
@@ -55,18 +61,21 @@
               commandSendFailed: "The command could not be sent to the room host.",
             },
             tr: {
-              roomTitle: "Oyun Odasi",
-              loadingTitle: "Oyun Odasi Yukleniyor",
-              loadingBody: "Oda baglami ve ceviriler bekleniyor.",
-              userLabel: "Kullanici",
-              roomApiUnavailable: "Room API koprusu bagli degil.",
-              commandSendFailed: "Komut oda host'una gonderilemedi.",
+              roomTitle: "Oyun Odası",
+              homeTitle: "Oyun Odası",
+              homeBody: "Hazır olduğunda odadan oynamak istediğin oyunu seç.",
+              loadingTitle: "Oyun Odası Yükleniyor",
+              loadingBody: "Oda bağlamı ve çeviriler bekleniyor.",
+              userLabel: "Kullanıcı",
+              roomApiUnavailable: "Room API köprüsü bağlı değil.",
+              commandSendFailed: "Komut oda host'una gönderilemedi.",
             },
           };
     const featureRecords: GameRoomFeatureRecord[] =
       typeof featureContract.getFeatureRecords === "function"
         ? featureContract.getFeatureRecords()
         : [
+            { id: gameRoomHomeFeatureId, name: "Game Room", description: "" },
             { id: featureId, name: "Tavla", description: "" },
             { id: teamTetrisFeatureId, name: "Team Tetris", description: "" },
           ];
@@ -168,12 +177,12 @@
       const activeFeatureId =
         typeof state.context.activeFeature?.id === "string"
           ? state.context.activeFeature.id
-          : featureId;
+          : gameRoomHomeFeatureId;
       return featureRecords.some(function (feature: GameRoomFeatureRecord) {
         return feature.id === activeFeatureId;
       })
         ? activeFeatureId
-        : featureId;
+        : gameRoomHomeFeatureId;
     }
 
     function getFeatureLabel(activeFeatureId: string): string {
@@ -273,6 +282,7 @@
 
     return {
       roomId: roomId,
+      gameRoomHomeFeatureId: gameRoomHomeFeatureId,
       featureId: featureId,
       teamTetrisFeatureId: teamTetrisFeatureId,
       contextRuntime: contextRuntime,
