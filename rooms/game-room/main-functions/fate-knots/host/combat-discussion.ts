@@ -10,6 +10,8 @@ const FATE_KNOTS_COMBAT_DISCUSSION_STATE_VERSION = 1;
 export const FATE_KNOTS_COMBAT_DISCUSSION_MAX_MESSAGES = 80;
 export const FATE_KNOTS_COMBAT_DISCUSSION_MAX_TEXT_LENGTH = 2000;
 
+const PARTY_CHAT_SEATS = new Set<FateKnotsSeatId>(["user", "ai2", "us1"]);
+
 export interface FateKnotsCombatDiscussionMessage {
   id: string;
   index: number;
@@ -61,6 +63,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isPartyChatSeat(value: unknown): value is FateKnotsSeatId {
+  return typeof value === "string" && PARTY_CHAT_SEATS.has(value as FateKnotsSeatId);
+}
+
 function emptyStore(): FateKnotsCombatDiscussionStore {
   return { version: FATE_KNOTS_COMBAT_DISCUSSION_STATE_VERSION, conversations: [] };
 }
@@ -76,7 +82,7 @@ function normalizeMessage(value: unknown): FateKnotsCombatDiscussionMessage | nu
     typeof index !== "number" ||
     !Number.isInteger(index) ||
     index < 0 ||
-    (seatId !== "user" && seatId !== "ai2" && seatId !== "us1") ||
+    !isPartyChatSeat(seatId) ||
     text === "" ||
     text.length > FATE_KNOTS_COMBAT_DISCUSSION_MAX_TEXT_LENGTH
   ) {
@@ -144,11 +150,17 @@ function activePartyActors(run: FateKnotsRunState): FateKnotsActorState[] {
   if (!run.activeCombat) return [];
   const partyIds = new Set(run.partyActorIds);
   return run.activeCombat.actors.filter(
-    (actor) => partyIds.has(actor.actorId) && !actor.fallen && actor.seatId !== null
+    (actor) =>
+      partyIds.has(actor.actorId) &&
+      !actor.fallen &&
+      actor.seatId !== undefined &&
+      actor.seatId !== null &&
+      isPartyChatSeat(actor.seatId)
   );
 }
 
 function seatActors(run: FateKnotsRunState, seatId: FateKnotsSeatId): FateKnotsActorState[] {
+  if (!isPartyChatSeat(seatId)) return [];
   return activePartyActors(run).filter((actor) => actor.seatId === seatId);
 }
 
@@ -192,7 +204,13 @@ function project(
   const conversation = getConversation(api, run);
   if (!conversation) return { ok: false, state: null, issues: [{ code: "no-active-combat" }] };
   const actors = activePartyActors(run);
-  const activeSeatIds = Array.from(new Set(actors.map((actor) => actor.seatId).filter((seat): seat is FateKnotsSeatId => seat !== null)));
+  const activeSeatIds = Array.from(
+    new Set(
+      actors
+        .map((actor) => actor.seatId)
+        .filter((seat): seat is FateKnotsSeatId => seat !== undefined && seat !== null && isPartyChatSeat(seat))
+    )
+  );
   const committedActorIds = new Set(
     combat.commits.filter((commit) => commit.committed).map((commit) => commit.actorId)
   );
