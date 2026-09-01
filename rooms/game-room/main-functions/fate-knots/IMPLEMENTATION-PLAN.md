@@ -20,7 +20,10 @@ Delivered:
 - `FORGE-ASSET-CONTRACT.md` for provider-independent image/asset generation boundaries
 - `AI0-RUNTIME-OVERRIDE.md` for game-runtime isolation from the normal Hayalet Ev coding-agent bootstrap
 - `WORLD-FORGE-RUNTIME.md` for provider-neutral Forge lifecycle/authority boundaries
-- `forge/universe-validation.ts` runtime validation + lossless normalization gate for World Forge candidates
+- `forge/universe-validation.ts` broad runtime validation + lossless normalization gate for World Forge candidates
+- `forge/canonical-universe.ts` final runnable/renderable acceptance gate for contracts that must be enforced before persistence
+
+The broad structural validator is a safety shell, not an exhaustive JSON Schema. New renderer-facing fields that are not deeply covered there must be validated by the final canonical acceptance gate before they are trusted.
 
 ## Stage B — Headless core (Nexa / branch-safe)
 
@@ -93,7 +96,7 @@ Requirements preserved:
 
 ## Stage C — Persistence and host integration (Nexa + local verification)
 
-Status: substantially implemented on `feat/fate-knots-rebuild`; real provider adapters and local reconciliation/typecheck/tests/live validation remain pending.
+Status: substantially implemented on `feat/fate-knots-rebuild`; real provider adapters, final gameplay mutation command wiring and local reconciliation/typecheck/tests/live validation remain pending.
 
 Delivered:
 
@@ -106,7 +109,7 @@ Delivered:
 - player-safe run-setup projection in `host/run-setup-state.ts`
 - Game Room feature registration through `FATE_KNOTS_FEATURE_ID`
 - management/setup/run command families registered by Game Room host
-- active-feature bridge emits `fate-knots-hub-state`
+- active-feature bridge always emits `fate-knots-hub-state`
 - player seat availability comes from Game Room context; local user is available, AI2/US1 require dispatchable slots
 - neutral Hub browser runtime in `ui/hub.js`, `ui/hub.css`, `ui/bridge.js`
 - Fate Knots browser bridge wraps after Yahtzee and prevents fallback into Tavla renderer
@@ -123,25 +126,73 @@ Delivered:
 - transport order is fixed: isolated workspace -> empty-tool runtime profile -> bounded packet -> unknown provider response -> shape gate -> legality gate
 - combat workspace selection receives `universeId` explicitly from host/runtime context rather than leaking it into the combat-visible packet
 - player-safe active-run projection in `host/gameplay-state.ts`
-- gameplay projection exposes current visible location/map, party state, visible card/equipment/status summaries and bounded visible combat state
-- gameplay projection excludes hidden knots/finale/NPC role packets, enemy owned/available cards and combat commits
-- read-only `GameRoomFateKnotsGetGameplayState` command returns only the safe gameplay projection
+- read-only `GameRoomFateKnotsGetGameplayState` returns only the safe gameplay projection
 - gameplay-state command is catalogued and explicitly registered as `room-ui` / `internal`; it is not an AI/public canonical-state surface
-- dedicated tests cover AI0 workspace isolation, provider-response parsing, transport ordering, gameplay-state secrecy and Game Room registration
+- selected runs that have left `run-setup` are additionally pushed as `fate-knots-gameplay-state` by `host/runtime-sync.ts`
+- invalid persistence/canonical state suppresses gameplay sync rather than falling back to raw state
+- `ui/bridge.js` hands `fate-knots-gameplay-state` to an optional future `GameRoomFateKnotsGameplayUi.handleState` and emits a browser custom event without rendering a placeholder book UI
+- browser handoff deliberately does not force Hub re-render or forward the safe gameplay payload into the base Tavla/Yahtzee runtime
+
+### Renderer-safe gameplay projection
+
+`host/gameplay-state.ts` currently exposes only player-visible/referenced state:
+
+- universe/run identity, phase, revision and result
+- active revealed location
+- revealed map nodes and bounded visible edges
+- party actor identity/stats/position/inventory references
+- visible/referenced card summaries
+- equipment/status summaries
+- loot card ids only during loot phase
+- bounded combat actor HP/life/position/status state
+- Theme Package presentation identity
+- a bounded asset path catalog for only currently required player-visible resources
+- presentation cue summaries for player-visible cards/statuses
+
+It deliberately excludes:
+
+- hidden/revealed knot ids and finale definition
+- NPC role packets/hidden knowledge
+- unrevealed locations/nodes/edges/assets
+- combat commits
+- opposition card ownership/availability
+- hidden opposition card artwork/cues
+- raw card requirements/effects/reveal ids
+
+Safe asset projection currently includes only referenced theme/book/page/card-frame/bookmark/transition/map assets, the active visible location's scene assets, party portraits and artwork for player-visible/referenced cards. The complete Universe Package asset catalog is never sent to the renderer.
+
+### Presentation disclosure boundary
+
+- `shared/presentation-events.ts` remains semantic and mechanics-free
+- `host/gameplay-state.ts` exposes presentation definitions only for cards/statuses already visible to the player
+- `host/resolved-card-presentation.ts` handles the special enemy-card case: after a `card-resolved` event, it can reveal only that resolved card's public name/description/art and the cue ids selected by that event
+- the resolved-card snapshot cannot inspect opposition inventory before resolution and contains no requirements/effects/ownership/availability
+- unknown cue ids are rejected rather than silently mapped
+
+### Renderer-facing canonical integrity
+
+The final canonical Forge gate now validates the renderer-facing data it relies on:
+
+- optional `FateKnotsCardDefinition.artAssetId` is type-checked and, when present, must reference an accepted asset
+- card art remains optional and is illustration-only; `sourceId` is not reused as an art pointer
+- theme card-frame, bookmark, transition and optional map asset references must exist
+- card/status presentation cues must have valid shapes, valid `applyTo`/`timing` values and unique cue ids within their owner
+- malformed renderer-facing provider data becomes validation issues rather than runtime exceptions
 
 Still pending in Stage C:
 
 - actual Hayalet Ev provider/wrapper adapter that invokes AI0 through the already-defined transport
 - actual AI1 transport wiring for DM scene/result packets
 - AI1 response contract remains intentionally unresolved; do not invent whether AI1 returns prose only or structured transition data until that runtime interaction is designed
-- additional host gameplay mutation commands only when an existing authority contract can determine legality without inventing story gating
+- wire actual gameplay mutation commands only where existing engine/story authority can determine legality without inventing missing story-gating rules
+- pair real combat resolution host events with semantic presentation events and the bounded resolved-card presentation snapshot
 - persistence migration strategy if an older persisted Fate Knots schema later needs support
 - local branch reconciliation against current `main`/Laboratory/Yahtzee work
 - local typecheck/build/tests and live Game Room validation
 
 Important boundary:
 
-`GameRoomFateKnotsGetGameplayState` is the renderer read surface after run setup. The future living-book runtime should consume this projection plus semantic presentation events rather than reading raw Universe Package/Run State or recomputing mechanics in Babylon/UI code.
+`GameRoomFateKnotsGetGameplayState` and `fate-knots-gameplay-state` are the renderer read surfaces after run setup. The future living-book runtime should consume these projections plus semantic presentation events rather than reading raw Universe Package/Run State or recomputing mechanics in Babylon/UI code.
 
 ## Stage D — Neutral Hub and World Forge orchestration (shared)
 
@@ -164,6 +215,8 @@ Delivered:
 - `WORLD-FORGE-RUNTIME.md` locks provider/host authority boundary
 - `fate-knots-forge-orchestration.test.ts` guards lifecycle behavior without inventing Forge content
 - provider-independent Forge asset contracts and optional image-sheet extraction helper
+- canonical cards now have optional `artAssetId` so extracted generated card illustrations can be bound without overloading mechanical `sourceId`
+- `FORGE-ASSET-CONTRACT.md` defines generated illustration -> accepted asset -> canonical `artAssetId` binding
 
 Still required:
 
@@ -181,7 +234,7 @@ The user-facing Forge request grammar is also deliberately unresolved. Do not ad
 
 The Hub must work without a generated book/background/theme.
 
-Batch image generation is an optimization, not a runtime dependency. Generate illustration cells, extract accepted cells into normal assets, regenerate failed cells independently, and never bake precise card typography/rules/UI into generated art.
+Batch image generation is an optimization, not a runtime dependency. Generate illustration cells, extract accepted cells into normal assets, regenerate failed cells independently, bind accepted card art through `artAssetId`, and never bake precise card typography/rules/UI into generated art.
 
 ## Stage E — Babylon book runtime (Codex/local)
 
@@ -201,8 +254,11 @@ Local visual/runtime work after contracts are verified:
 
 Renderer rules:
 
-- consume `GameRoomFateKnotsGetGameplayState` for player-visible canonical state
+- consume `GameRoomFateKnotsGetGameplayState` and/or `fate-knots-gameplay-state` for player-visible canonical state
+- receive gameplay pushes through the existing browser handoff instead of adding a raw persistence reader
 - consume semantic presentation events for effects/transitions
+- when an opposition card becomes public by resolving, consume the bounded resolved-card presentation snapshot rather than exposing the enemy hand/catalog
+- resolve images/audio/presentation from the safe projected asset/cue data; do not open the full Universe Package merely to obtain paths
 - do not read hidden Universe Package fields directly
 - do not infer mechanics from UI/Babylon state
 - do not expose internal numeric priority tiers as raw player-facing UI unless deliberately mapped to themed presentation language
@@ -235,6 +291,6 @@ Do not make speech a V1 launch dependency.
 
 GitHub Actions are not assumed available. Stage C/D now touches shared Game Room host/UI/manifest/tests, so local reconciliation is mandatory before merge-ready status.
 
-The remote branch is currently only one `main` commit behind; that commit is mainly Laboratory work plus a Yahtzee presentation cleanup. Fate Knots does not mechanically depend on the removed Yahtzee theme `stageConfig`; stale installed-copy expectation for that field has been removed on this branch.
+The remote branch was last checked as only one `main` commit behind; that commit is mainly Laboratory work plus a Yahtzee presentation cleanup. Fate Knots does not mechanically depend on the removed Yahtzee theme `stageConfig`; stale installed-copy expectation for that field has been removed on this branch.
 
 After current local Laboratory/Yahtzee work and Fate Knots are reconciled, run the repository normal typecheck/build/tests plus installed-copy and live Game Room checks. Do not weaken Fate Knots contracts merely to satisfy unrelated stale expectations; update stale feature/version expectations deliberately.
