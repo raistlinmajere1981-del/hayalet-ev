@@ -141,7 +141,7 @@ Still pending in Stage C:
 
 ## Stage D — Neutral Hub and World Forge orchestration (shared)
 
-Status: partially implemented. The neutral Hub/read-management/run-setup foundation exists; World Forge orchestration is not yet wired.
+Status: partially implemented. The neutral Hub/read-management/run-setup foundation exists; World Forge provider orchestration is not yet wired.
 
 Already delivered from Stage C overlap:
 
@@ -151,13 +151,15 @@ Already delivered from Stage C overlap:
 - player-safe character setup packet
 - neutral Hub controls for optional participants, unique character assignment, `CreateRun`, and separate `StartRun`
 - provider-independent Universe candidate validation/normalization gate
+- host-only `host/forge-acceptance.ts` gate: an untrusted provider candidate must pass `normalizeFateKnotsCanonicalUniversePackage` before it can reach universe persistence
+- no room-ui/browser command can submit or approve a raw World Forge candidate as canon
 - provider-independent Forge asset contracts and optional image-sheet extraction helper
 
 Still required:
 
 - create-new-universe / World Forge orchestration command flow
 - Forge progress/state reporting to the neutral Hub
-- candidate -> validation -> canonical Universe Package acceptance and persistence flow
+- wire provider completion into the host-only canonical acceptance gate
 - provider adapter for Forge text/content generation without assigning Forge authority to AI1 or AI0 by accident
 - generated theme/assets attached to the accepted universe
 - provider-independent image adapter
