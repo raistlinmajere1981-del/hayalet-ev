@@ -30,7 +30,11 @@ test("Tavla background work is gated and its stage is disposed on feature switch
   assert.match(hostRuntime, /function isBackgammonActive/);
   assert.match(hostRuntime, /if \(!isBackgammonActive\(handlerApi\)\)/);
   assert.match(uiIndex, /backgammon\/ui\/lifecycle-runtime\.js/);
+  assert.match(lifecycle, /const factories = global\.GameRoomUiFactories/);
+  assert.match(lifecycle, /instances\.add\(instance\)/);
   assert.match(lifecycle, /instance\.destroy\(\)/);
   assert.match(uiRuntime, /disposeBackgammonStage\(\)/);
-  assert.match(yahtzeeBridge, /disposeBackgammonStage\(\)/);
+  assert.match(uiRuntime, /activeFeatureId === yahtzeeFeatureId/);
+  assert.match(yahtzeeBridge, /base\.render\(\)/);
+  assert.doesNotMatch(yahtzeeBridge, /GameRoomBackgammonStageRuntime/);
 });
