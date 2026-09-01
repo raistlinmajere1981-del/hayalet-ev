@@ -50,7 +50,7 @@ export function validateFateKnotsPlayableUniverse(
       }
       if (
         character.tags.includes(FATE_KNOTS_OPPOSITION_TEMPLATE_TAG) &&
-        character.combatController === undefined
+        character.combatController == null
       ) {
         issues.push({
           code: "opponent-template-missing-controller",
