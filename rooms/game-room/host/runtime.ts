@@ -81,7 +81,9 @@ type BridgeNoPayloadHandler = (handlerApi: GameRoomHostApi) => unknown;
 
 export default function createGameRoomHostRuntime() {
   return {
-    async activate(api: GameRoomHostApi) {
+    activate(api: GameRoomHostApi) {
+      let fateKnotsHydration: ReturnType<typeof initializeFateKnotsState> | null = null;
+
       function asCommandHandler(handler: BridgeCommandHandler) {
         return (handlerApi: unknown, payload?: unknown) =>
           handler(handlerApi as GameRoomHostApi, payload ?? {});
@@ -89,6 +91,11 @@ export default function createGameRoomHostRuntime() {
 
       function asNoPayloadHandler(handler: BridgeNoPayloadHandler) {
         return (handlerApi: unknown) => handler(handlerApi as GameRoomHostApi);
+      }
+
+      async function withFateKnotsReady<T>(operation: () => T | Promise<T>): Promise<T> {
+        if (fateKnotsHydration) await fateKnotsHydration;
+        return await operation();
       }
 
       function saveBackgammonStateCompat(handlerApi: GameRoomHostApi, value: unknown): void {
@@ -117,6 +124,20 @@ export default function createGameRoomHostRuntime() {
         const context = loadContext(handlerApi);
         const activeFeatureId = getActiveFeatureId(context);
         if (activeFeatureId === FATE_KNOTS_FEATURE_ID) {
+          const hydration = fateKnotsHydration;
+          if (hydration) {
+            void hydration
+              .then(() => {
+                pushFateKnotsState(handlerApi);
+              })
+              .catch((error: unknown) => {
+                handlerApi.log(
+                  "warn",
+                  `Fate Knots state hydration failed before room-ready projection: ${error instanceof Error ? error.message : String(error)}`
+                );
+              });
+            return;
+          }
           pushFateKnotsState(handlerApi);
           return;
         }
@@ -156,7 +177,13 @@ export default function createGameRoomHostRuntime() {
         saveBackgammonState: saveBackgammonStateCompat,
       });
       initializeYahtzeeState(api);
-      await initializeFateKnotsState(api);
+      fateKnotsHydration = initializeFateKnotsState(api);
+      void fateKnotsHydration.catch((error: unknown) => {
+        api.log(
+          "warn",
+          `Fate Knots background hydration failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+      });
 
       const commands = createGameRoomCommandRegistry(api, {
         handleTeamTetrisMove: asCommandHandler(handleTeamTetrisMove),
@@ -215,25 +242,25 @@ export default function createGameRoomHostRuntime() {
       };
 
       commands[FATE_KNOTS_COMMAND_NAMES.refresh] = function () {
-        return handleFateKnotsRefresh(api);
+        return withFateKnotsReady(() => handleFateKnotsRefresh(api));
       };
       commands[FATE_KNOTS_COMMAND_NAMES.createUniverse] = function (payload?: unknown) {
-        return handleFateKnotsCreateUniverse(api, payload ?? {});
+        return withFateKnotsReady(() => handleFateKnotsCreateUniverse(api, payload ?? {}));
       };
       commands[FATE_KNOTS_COMMAND_NAMES.activateUniverse] = function (payload?: unknown) {
-        return handleFateKnotsActivateUniverse(api, payload ?? {});
+        return withFateKnotsReady(() => handleFateKnotsActivateUniverse(api, payload ?? {}));
       };
       commands[FATE_KNOTS_COMMAND_NAMES.deleteUniverse] = function (payload?: unknown) {
-        return handleFateKnotsDeleteUniverse(api, payload ?? {});
+        return withFateKnotsReady(() => handleFateKnotsDeleteUniverse(api, payload ?? {}));
       };
       commands[FATE_KNOTS_COMMAND_NAMES.createRun] = function (payload?: unknown) {
-        return handleFateKnotsCreateRun(api, payload ?? {});
+        return withFateKnotsReady(() => handleFateKnotsCreateRun(api, payload ?? {}));
       };
       commands[FATE_KNOTS_COMMAND_NAMES.activateRun] = function (payload?: unknown) {
-        return handleFateKnotsActivateRun(api, payload ?? {});
+        return withFateKnotsReady(() => handleFateKnotsActivateRun(api, payload ?? {}));
       };
       commands[FATE_KNOTS_COMMAND_NAMES.deleteRun] = function (payload?: unknown) {
-        return handleFateKnotsDeleteRun(api, payload ?? {});
+        return withFateKnotsReady(() => handleFateKnotsDeleteRun(api, payload ?? {}));
       };
 
       return {
