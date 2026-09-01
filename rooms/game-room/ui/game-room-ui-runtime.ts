@@ -2,6 +2,11 @@
 
 (function (global: GameRoomUiGlobal) {
   type UnknownRecord = GameRoomUnknownRecord;
+  type FateKnotsHubRuntime = {
+    featureId?: string;
+    handleHostMessage?: (message: unknown) => boolean;
+    render?: (root: HTMLElement) => void;
+  };
 
   function getRuntimeRegistry(host: GameRoomUiGlobal): GameRoomUiRuntimeRegistry {
     return host.GameRoomUiRuntime || (host.GameRoomUiRuntime = {});
@@ -15,6 +20,12 @@
 
   function readString(value: unknown): string | null {
     return typeof value === "string" ? value : null;
+  }
+
+  function getFateKnotsHub(): FateKnotsHubRuntime | null {
+    const candidate = (global as unknown as { GameRoomFateKnotsHub?: FateKnotsHubRuntime })
+      .GameRoomFateKnotsHub;
+    return candidate && typeof candidate === "object" ? candidate : null;
   }
 
   const registry = getRuntimeRegistry(global);
@@ -39,6 +50,7 @@
     });
     const roomId = bootstrapRuntime.roomId;
     const teamTetrisFeatureId = bootstrapRuntime.teamTetrisFeatureId;
+    const fateKnotsFeatureId = "fate-knots";
     const contextRuntime = bootstrapRuntime.contextRuntime;
     const scrollRuntime = bootstrapRuntime.scrollRuntime;
     const getState = bootstrapRuntime.getState;
@@ -160,9 +172,21 @@
           return;
         }
 
-        document.title = state.context.room.name + " - " + getFeatureLabel(getActiveFeatureId());
+        const activeFeatureId = getActiveFeatureId();
+        document.title = state.context.room.name + " - " + getFeatureLabel(activeFeatureId);
 
-        if (getActiveFeatureId() === teamTetrisFeatureId) {
+        if (activeFeatureId === fateKnotsFeatureId) {
+          const hub = getFateKnotsHub();
+          if (typeof hub?.render === "function") {
+            hub.render(root);
+          } else {
+            backgammonUi.renderBootstrap(root);
+          }
+          syncRoomCloseControl(root);
+          return;
+        }
+
+        if (activeFeatureId === teamTetrisFeatureId) {
           teamTetrisUi.renderTeamTetris(root);
           syncRoomCloseControl(root);
           return;
@@ -251,6 +275,14 @@
       }
     }
 
+    function refreshFateKnotsStateIfActive(): void {
+      if (getActiveFeatureId() !== fateKnotsFeatureId) return;
+      const roomApi = global.roomAPI;
+      if (roomApi && typeof roomApi.sendCommand === "function") {
+        roomApi.sendCommand("GameRoomFateKnotsRefresh", {});
+      }
+    }
+
     function handleHostMessage(message: unknown) {
       const state = getState();
       const messageRecord = readRecord(message);
@@ -259,6 +291,16 @@
       }
       const messageType = readString(messageRecord["type"]);
       if (messageType === null) {
+        return;
+      }
+
+      const fateKnotsHub = getFateKnotsHub();
+      if (
+        (messageType === "fate-knots-state" || messageType === "command-result") &&
+        typeof fateKnotsHub?.handleHostMessage === "function" &&
+        fateKnotsHub.handleHostMessage(messageRecord)
+      ) {
+        if (getActiveFeatureId() === fateKnotsFeatureId) render();
         return;
       }
 
@@ -280,6 +322,7 @@
             ? previousTarget
             : "ai1";
         render();
+        refreshFateKnotsStateIfActive();
         return;
       }
 
