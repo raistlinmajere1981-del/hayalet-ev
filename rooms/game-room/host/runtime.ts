@@ -38,6 +38,7 @@ import {
   initializeYahtzeeState,
   pushYahtzeeState,
 } from "../main-functions/yahtzee/host/runtime.js";
+import { createFateKnotsForgeOrchestrator } from "../main-functions/fate-knots/host/forge-orchestration.js";
 import { createFateKnotsManagementCommands } from "../main-functions/fate-knots/host/management-runtime.js";
 import {
   createFateKnotsRunCommands,
@@ -78,6 +79,8 @@ type FateKnotsPlayerSeatId = Parameters<
 export default function createGameRoomHostRuntime() {
   return {
     activate(api: GameRoomHostApi) {
+      const fateKnotsForge = createFateKnotsForgeOrchestrator(api);
+
       function asCommandHandler(handler: BridgeCommandHandler) {
         return (handlerApi: unknown, payload?: unknown) =>
           handler(handlerApi as GameRoomHostApi, payload ?? {});
@@ -110,7 +113,10 @@ export default function createGameRoomHostRuntime() {
       }
 
       function pushFateKnotsHubStateCompat(handlerApi: GameRoomHostApi): void {
-        pushFateKnotsHubState(handlerApi as unknown as FateKnotsSyncApi);
+        pushFateKnotsHubState(
+          handlerApi as unknown as FateKnotsSyncApi,
+          fateKnotsForge.getHubSnapshot()
+        );
       }
 
       function isFateKnotsPlayerSeatAvailable(seatId: FateKnotsPlayerSeatId): boolean {
@@ -224,7 +230,9 @@ export default function createGameRoomHostRuntime() {
         return handleYahtzeeRemoteReset(api, payload ?? {});
       };
 
-      const fateKnotsManagementCommands = createFateKnotsManagementCommands(api);
+      const fateKnotsManagementCommands = createFateKnotsManagementCommands(api, {
+        getForgeSnapshot: () => fateKnotsForge.getHubSnapshot(),
+      });
       const fateKnotsRunSetupCommands = createFateKnotsRunSetupCommands(api);
       const fateKnotsRunCommands = createFateKnotsRunCommands(api, {
         isPlayerSeatAvailable: isFateKnotsPlayerSeatAvailable,
