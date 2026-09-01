@@ -1,4 +1,5 @@
 export const ROOM_ID = "game-room";
+export const GAME_ROOM_HOME_FEATURE_ID = "game-room-home";
 export const PAGE_ID = "room:game-room:backgammon";
 export const FEATURE_ID = "backgammon";
 export const TEAM_TETRIS_FEATURE_ID = "team-tetris";
@@ -15,6 +16,10 @@ interface FeatureCatalogEntry {
 }
 
 const FEATURE_CATALOG: FeatureCatalogEntry[] = [
+  {
+    id: GAME_ROOM_HOME_FEATURE_ID,
+    name: "Game Room",
+  },
   {
     id: FEATURE_ID,
     name: "Tavla",
@@ -35,12 +40,14 @@ const FEATURE_CATALOG: FeatureCatalogEntry[] = [
 
 export function getFeatureName(featureId: string): string {
   const feature = FEATURE_CATALOG.find((entry) => entry.id === featureId);
-  return feature ? feature.name : "Tavla";
+  return feature ? feature.name : "Game Room";
 }
 
 export function normalizeFeatureId(value: unknown): string {
   const normalized = typeof value === "string" ? value.trim() : "";
-  return FEATURE_CATALOG.some((entry) => entry.id === normalized) ? normalized : FEATURE_ID;
+  return FEATURE_CATALOG.some((entry) => entry.id === normalized)
+    ? normalized
+    : GAME_ROOM_HOME_FEATURE_ID;
 }
 
 export function sanitizeFeatureRecord(
