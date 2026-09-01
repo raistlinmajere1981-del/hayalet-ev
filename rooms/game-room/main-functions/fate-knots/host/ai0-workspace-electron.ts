@@ -1,4 +1,8 @@
-import type { FateKnotsAi0WorkspaceIo } from "./ai0-workspace.js";
+import {
+  materializeFateKnotsAi0Workspace,
+  type FateKnotsAi0MaterializedWorkspace,
+  type FateKnotsAi0WorkspaceIo,
+} from "./ai0-workspace.js";
 
 const GAME_ROOM_ID = "game-room";
 
@@ -20,6 +24,10 @@ type FateKnotsElectronApi = {
   roomToolsCall(request: UnknownRecord): Promise<FateKnotsRoomToolsResult>;
   fmWriteFileAtomic(payload: { path: string; data: string }): Promise<FateKnotsFileWriteResult>;
 };
+
+export type FateKnotsAi0WorkspacePreparationResult =
+  | { ok: true; workspace: FateKnotsAi0MaterializedWorkspace }
+  | { ok: false; error: "bridge-unavailable" | "materialization-failed"; workspace: null };
 
 function readElectronApi(): FateKnotsElectronApi | null {
   if (typeof window === "undefined") return null;
@@ -93,4 +101,25 @@ export function createFateKnotsAi0WorkspaceElectronIo(): FateKnotsAi0WorkspaceIo
       }
     },
   };
+}
+
+/**
+ * Provider transports should call this before launching an AI0 NPC session.
+ * Failure is reduced to a bounded host error code; raw filesystem/provider
+ * details are not part of the gameplay packet surface.
+ */
+export async function prepareFateKnotsAi0RuntimeWorkspace(
+  universeId: string
+): Promise<FateKnotsAi0WorkspacePreparationResult> {
+  const io = createFateKnotsAi0WorkspaceElectronIo();
+  if (io === null) {
+    return { ok: false, error: "bridge-unavailable", workspace: null };
+  }
+
+  try {
+    const workspace = await materializeFateKnotsAi0Workspace(io, universeId);
+    return { ok: true, workspace };
+  } catch {
+    return { ok: false, error: "materialization-failed", workspace: null };
+  }
 }
