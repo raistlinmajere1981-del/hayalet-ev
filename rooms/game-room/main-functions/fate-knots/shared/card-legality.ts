@@ -21,6 +21,7 @@ export type FateKnotsCardLegalityIssueCode =
   | "forbidden-status-active"
   | "standing-actor-required"
   | "target-required"
+  | "secondary-target-unsupported"
   | "target-team-not-allowed"
   | "target-position-not-allowed"
   | "target-life-state-not-allowed";
@@ -45,7 +46,9 @@ export interface FateKnotsCardCatalog {
 export interface FateKnotsCardLegalityContext extends FateKnotsCardCatalog {
   phase: FateKnotsPhase;
   actor: FateKnotsActorState;
+  /** Primary target alias retained for existing callers. */
   target?: FateKnotsActorState | null;
+  primaryTarget?: FateKnotsActorState | null;
 }
 
 function uniqueIds(ids: readonly string[]): string[] {
@@ -153,7 +156,8 @@ function evaluateRequirement(
   requirement: FateKnotsCardRequirement,
   requirementIndex: number,
   context: FateKnotsCardLegalityContext,
-  availableCardIds: readonly string[]
+  availableCardIds: readonly string[],
+  target: FateKnotsActorState | null
 ): FateKnotsCardLegalityIssue[] {
   const issues: FateKnotsCardLegalityIssue[] = [];
 
@@ -202,9 +206,8 @@ function evaluateRequirement(
     }
   }
 
-  const target = context.target ?? null;
   if (requirementNeedsTarget(requirement) && !target) {
-    issues.push({ code: "target-required", requirementIndex });
+    issues.push({ code: "target-required", requirementIndex, value: "primaryTarget" });
     return issues;
   }
 
@@ -239,10 +242,20 @@ function evaluateRequirement(
   return issues;
 }
 
+function cardUsesEffectTarget(card: FateKnotsCardDefinition, target: "primaryTarget" | "secondaryTarget"): boolean {
+  return card.effects.some((effect) => effect.target === target);
+}
+
 /**
  * Returns machine-readable legality only. It deliberately contains no
  * player-facing status prose; the universe renderer decides how legal/illegal
  * state is communicated through card state and target affordances.
+ *
+ * V1 has only one fully-defined target legality grammar. Mechanical effects that
+ * reference primaryTarget therefore make that slot mandatory even if the card
+ * author omitted an explicit target requirement. secondaryTarget remains
+ * reserved until a distinct second-target legality grammar is designed, so V1
+ * fails closed instead of guessing how it should be constrained.
  */
 export function evaluateFateKnotsCardLegality(
   card: FateKnotsCardDefinition,
@@ -250,6 +263,7 @@ export function evaluateFateKnotsCardLegality(
 ): FateKnotsCardLegalityResult {
   const issues: FateKnotsCardLegalityIssue[] = [];
   const availableCardIds = buildFateKnotsAvailableCardIds(context.actor, context);
+  const primaryTarget = context.primaryTarget ?? context.target ?? null;
 
   if (!availableCardIds.includes(card.id)) {
     issues.push({ code: "card-not-available" });
@@ -259,8 +273,15 @@ export function evaluateFateKnotsCardLegality(
     issues.push({ code: "actor-fallen" });
   }
 
+  if (cardUsesEffectTarget(card, "primaryTarget") && !primaryTarget) {
+    issues.push({ code: "target-required", value: "primaryTarget" });
+  }
+  if (cardUsesEffectTarget(card, "secondaryTarget")) {
+    issues.push({ code: "secondary-target-unsupported", value: "secondaryTarget" });
+  }
+
   for (const [index, requirement] of (card.requirements ?? []).entries()) {
-    issues.push(...evaluateRequirement(requirement, index, context, availableCardIds));
+    issues.push(...evaluateRequirement(requirement, index, context, availableCardIds, primaryTarget));
   }
 
   return {
@@ -271,7 +292,7 @@ export function evaluateFateKnotsCardLegality(
 
 export function getFateKnotsLegalTargetIds(
   card: FateKnotsCardDefinition,
-  context: Omit<FateKnotsCardLegalityContext, "target">,
+  context: Omit<FateKnotsCardLegalityContext, "target" | "primaryTarget">,
   candidates: readonly FateKnotsActorState[]
 ): string[] {
   return candidates
@@ -279,7 +300,7 @@ export function getFateKnotsLegalTargetIds(
       (target) =>
         evaluateFateKnotsCardLegality(card, {
           ...context,
-          target,
+          primaryTarget: target,
         }).legal
     )
     .map((target) => target.actorId);
