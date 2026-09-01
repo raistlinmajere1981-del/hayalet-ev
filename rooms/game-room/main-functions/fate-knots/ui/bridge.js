@@ -77,6 +77,21 @@
       );
     }
 
+    function handoffGameplayState(message) {
+      const gameplayUi = global.GameRoomFateKnotsGameplayUi;
+      if (gameplayUi && typeof gameplayUi.handleState === "function") {
+        gameplayUi.handleState(message);
+      }
+
+      if (typeof global.dispatchEvent === "function" && typeof global.CustomEvent === "function") {
+        global.dispatchEvent(
+          new global.CustomEvent("fate-knots-gameplay-state", {
+            detail: message,
+          })
+        );
+      }
+    }
+
     function handleHostMessage(message) {
       if (message && typeof message === "object" && message.type === "fate-knots-hub-state") {
         const fateKnotsUi = getFateKnotsUi();
@@ -84,6 +99,11 @@
           fateKnotsUi.handleState(message);
         }
         if (isFateKnotsActive()) render();
+        return;
+      }
+
+      if (message && typeof message === "object" && message.type === "fate-knots-gameplay-state") {
+        handoffGameplayState(message);
         return;
       }
 
