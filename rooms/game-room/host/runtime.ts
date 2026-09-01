@@ -38,6 +38,10 @@ import {
   initializeYahtzeeState,
   pushYahtzeeState,
 } from "../main-functions/yahtzee/host/runtime.js";
+import {
+  FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES,
+  createFateKnotsCombatOptionCommands,
+} from "../main-functions/fate-knots/host/combat-options-runtime.js";
 import { createFateKnotsForgeOrchestrator } from "../main-functions/fate-knots/host/forge-orchestration.js";
 import {
   FATE_KNOTS_GAMEPLAY_COMMAND_NAMES,
@@ -248,8 +252,11 @@ export default function createGameRoomHostRuntime() {
         isPlayerSeatAvailable: isFateKnotsPlayerSeatAvailable,
       });
       const fateKnotsGameplayCommands = createFateKnotsGameplayCommands(api);
+      const fateKnotsCombatOptionCommands = createFateKnotsCombatOptionCommands(api);
       const fateKnotsGameplayCommand =
         fateKnotsGameplayCommands[FATE_KNOTS_GAMEPLAY_COMMAND_NAMES.getGameplayState];
+      const fateKnotsCombatOptionsCommand =
+        fateKnotsCombatOptionCommands[FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES.getLocalOptions];
 
       api.registerCommand?.(
         FATE_KNOTS_GAMEPLAY_COMMAND_NAMES.getGameplayState,
@@ -260,6 +267,18 @@ export default function createGameRoomHostRuntime() {
         },
         {
           description: "Read one player-safe Fate Knots active-run projection.",
+          scope: "room-ui",
+          exposure: "internal",
+        }
+      );
+
+      api.registerCommand?.(
+        FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES.getLocalOptions,
+        function (payload: unknown) {
+          return fateKnotsCombatOptionsCommand(readRegisteredRoomArgs(payload));
+        },
+        {
+          description: "Read the local player's current legal Fate Knots combat card/target options.",
           scope: "room-ui",
           exposure: "internal",
         }
