@@ -25,6 +25,7 @@ type FateKnotsStorageElectronApi = {
 
 export interface FateKnotsDurableStoragePaths {
   rootDir: string;
+  statePath: string;
   universesPath: string;
   runsPath: string;
   forgeDraftPath: string;
@@ -97,6 +98,8 @@ export async function resolveFateKnotsDurableStoragePaths(): Promise<FateKnotsDu
 
   cachedPaths = {
     rootDir,
+    statePath: joinRuntimePath(rootDir, "state-v1.json"),
+    // Legacy split stores remain readable only as a one-time migration source.
     universesPath: joinRuntimePath(rootDir, "universes-v1.json"),
     runsPath: joinRuntimePath(rootDir, "runs-v1.json"),
     forgeDraftPath: joinRuntimePath(rootDir, "forge-draft-v1.json"),
