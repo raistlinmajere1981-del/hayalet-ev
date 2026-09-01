@@ -31,6 +31,22 @@ export interface FateKnotsDurableStoragePaths {
   forgeDraftPath: string;
 }
 
+export interface FateKnotsManagedAssetCandidate {
+  assetId: string;
+  path: string;
+  mimeType?: string | null;
+}
+
+export interface FateKnotsManagedAssetVerificationFailure {
+  assetId: string;
+  message: string;
+}
+
+export interface FateKnotsManagedAssetVerificationResult {
+  valid: boolean;
+  failures: FateKnotsManagedAssetVerificationFailure[];
+}
+
 let cachedPaths: FateKnotsDurableStoragePaths | null = null;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -58,6 +74,17 @@ function joinRuntimePath(base: string, ...segments: string[]): string {
   const trimmedBase = base.replace(/[\\/]+$/, "");
   const cleanSegments = segments.map((segment) => segment.replace(/^[\\/]+|[\\/]+$/g, ""));
   return [trimmedBase, ...cleanSegments].join(separator);
+}
+
+function normalizeComparablePath(value: string): string | null {
+  const raw = value.trim().replace(/\\/g, "/").replace(/\/{2,}/g, "/");
+  if (raw === "" || raw.startsWith("data:") || raw.startsWith("blob:") || /^https?:\/\//i.test(raw)) {
+    return null;
+  }
+  const segments = raw.split("/");
+  if (segments.some((segment) => segment === "..")) return null;
+  const normalized = segments.filter((segment, index) => segment !== "." || index === 0).join("/").replace(/\/$/, "");
+  return /^[A-Za-z]:\//.test(normalized) ? normalized.toLowerCase() : normalized;
 }
 
 function decodeBase64Text(value: string): string {
@@ -128,4 +155,55 @@ export async function writeFateKnotsJsonFile(filePath: string, value: unknown): 
   if (result.success !== true) {
     throw new Error(result.error ?? result.message ?? "Fate Knots durable write failed.");
   }
+}
+
+/**
+ * Final World Forge gate for provider-produced runtime assets. The planner is
+ * provider-neutral, but canonical paths must resolve to non-empty image files
+ * physically stored under Fate Knots' managed assets directory.
+ */
+export async function verifyFateKnotsManagedAssetFiles(
+  assets: readonly FateKnotsManagedAssetCandidate[]
+): Promise<FateKnotsManagedAssetVerificationResult> {
+  const api = getElectronApi();
+  if (api === null) {
+    return {
+      valid: false,
+      failures: assets.map((asset) => ({ assetId: asset.assetId, message: "Electron storage bridge is unavailable." })),
+    };
+  }
+
+  const paths = await resolveFateKnotsDurableStoragePaths();
+  const managedRoot = normalizeComparablePath(joinRuntimePath(paths.rootDir, "assets"));
+  if (!managedRoot) {
+    return {
+      valid: false,
+      failures: assets.map((asset) => ({ assetId: asset.assetId, message: "Managed asset root is invalid." })),
+    };
+  }
+
+  const failures: FateKnotsManagedAssetVerificationFailure[] = [];
+  for (const asset of assets) {
+    const candidate = normalizeComparablePath(asset.path);
+    if (!candidate || !candidate.startsWith(`${managedRoot}/`)) {
+      failures.push({ assetId: asset.assetId, message: "Asset path is outside managed Fate Knots assets storage." });
+      continue;
+    }
+    if (typeof asset.mimeType !== "string" || !asset.mimeType.trim().toLowerCase().startsWith("image/")) {
+      failures.push({ assetId: asset.assetId, message: "Materialized runtime asset must declare an image MIME type." });
+      continue;
+    }
+    try {
+      // readFile returns base64 for binary files; a directory/nonexistent path is not a valid stored asset.
+      // eslint-disable-next-line no-await-in-loop
+      const encoded = await api.readFile(asset.path);
+      if (encoded === null || encoded.trim() === "") {
+        failures.push({ assetId: asset.assetId, message: "Materialized asset file is missing or empty." });
+      }
+    } catch {
+      failures.push({ assetId: asset.assetId, message: "Materialized asset file is not readable." });
+    }
+  }
+
+  return { valid: failures.length === 0, failures };
 }
