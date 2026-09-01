@@ -81,7 +81,7 @@ type BridgeNoPayloadHandler = (handlerApi: GameRoomHostApi) => unknown;
 
 export default function createGameRoomHostRuntime() {
   return {
-    activate(api: GameRoomHostApi) {
+    async activate(api: GameRoomHostApi) {
       function asCommandHandler(handler: BridgeCommandHandler) {
         return (handlerApi: unknown, payload?: unknown) =>
           handler(handlerApi as GameRoomHostApi, payload ?? {});
@@ -156,7 +156,7 @@ export default function createGameRoomHostRuntime() {
         saveBackgammonState: saveBackgammonStateCompat,
       });
       initializeYahtzeeState(api);
-      initializeFateKnotsState(api);
+      await initializeFateKnotsState(api);
 
       const commands = createGameRoomCommandRegistry(api, {
         handleTeamTetrisMove: asCommandHandler(handleTeamTetrisMove),
