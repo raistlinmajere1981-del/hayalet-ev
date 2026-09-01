@@ -10,8 +10,29 @@
   runtimeRegistry.createGameRoomUiRuntime = function createFateKnotsAwareGameRoomUiRuntime() {
     const base = createBaseRuntime();
 
+    function getBaseState() {
+      return typeof base.getState === "function" ? base.getState() : null;
+    }
+
+    function getFateKnotsUi() {
+      return global.GameRoomFateKnotsUi;
+    }
+
+    function syncFateKnotsContext() {
+      const fateKnotsUi = getFateKnotsUi();
+      const baseState = getBaseState();
+      if (
+        fateKnotsUi &&
+        typeof fateKnotsUi.setContext === "function" &&
+        baseState &&
+        baseState.context
+      ) {
+        fateKnotsUi.setContext(baseState.context);
+      }
+    }
+
     function isFateKnotsActive() {
-      const state = typeof base.getState === "function" ? base.getState() : null;
+      const state = getBaseState();
       return Boolean(
         state &&
           state.context &&
@@ -30,24 +51,35 @@
     function render() {
       if (isFateKnotsActive()) {
         disposeOtherFeatureUi();
+        syncFateKnotsContext();
         const root = document.getElementById("app");
-        const fateKnotsUi = global.GameRoomFateKnotsUi;
+        const fateKnotsUi = getFateKnotsUi();
         if (root && fateKnotsUi && typeof fateKnotsUi.render === "function") {
           fateKnotsUi.render(root);
         }
         return;
       }
 
-      const fateKnotsUi = global.GameRoomFateKnotsUi;
+      const fateKnotsUi = getFateKnotsUi();
       if (fateKnotsUi && typeof fateKnotsUi.dispose === "function") {
         fateKnotsUi.dispose();
       }
       base.render();
     }
 
+    function isFateKnotsCommandResult(message) {
+      return Boolean(
+        message &&
+          typeof message === "object" &&
+          message.type === "command-result" &&
+          typeof message.command === "string" &&
+          message.command.startsWith("GameRoomFateKnots")
+      );
+    }
+
     function handleHostMessage(message) {
       if (message && typeof message === "object" && message.type === "fate-knots-hub-state") {
-        const fateKnotsUi = global.GameRoomFateKnotsUi;
+        const fateKnotsUi = getFateKnotsUi();
         if (fateKnotsUi && typeof fateKnotsUi.handleState === "function") {
           fateKnotsUi.handleState(message);
         }
@@ -55,8 +87,18 @@
         return;
       }
 
+      if (isFateKnotsCommandResult(message)) {
+        const fateKnotsUi = getFateKnotsUi();
+        if (fateKnotsUi && typeof fateKnotsUi.handleCommandResult === "function") {
+          fateKnotsUi.handleCommandResult(message);
+        }
+        if (isFateKnotsActive()) render();
+        return;
+      }
+
       base.handleHostMessage(message);
       if (isFateKnotsActive() && message && typeof message === "object" && message.type === "host-context") {
+        syncFateKnotsContext();
         render();
       }
     }
@@ -73,7 +115,10 @@
         roomApi.onHostMessage(handleHostMessage);
       }
 
-      if (isFateKnotsActive()) render();
+      if (isFateKnotsActive()) {
+        syncFateKnotsContext();
+        render();
+      }
     }
 
     return {
