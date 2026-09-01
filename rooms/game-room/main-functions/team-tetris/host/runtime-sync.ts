@@ -21,7 +21,11 @@ import {
   type TeamTetrisStatusKey,
 } from "./state.js";
 import { getActiveFeatureId, loadContext, readLocale } from "../../../shared/host/context-state.js";
-import { ROOM_ID, TEAM_TETRIS_FEATURE_ID } from "../../../shared/host/feature-meta.js";
+import {
+  GAME_ROOM_HOME_FEATURE_ID,
+  ROOM_ID,
+  TEAM_TETRIS_FEATURE_ID,
+} from "../../../shared/host/feature-meta.js";
 import { translate } from "../../../shared/host/text.js";
 import { loadState, pushRoomState } from "../../backgammon/host/state.js";
 
@@ -281,7 +285,11 @@ function resetTeamTetrisState(
 
 function pushActiveFeatureState(api: TeamTetrisRuntimeSyncApi): unknown {
   const context = loadContext(api);
-  if (getActiveFeatureId(context) === TEAM_TETRIS_FEATURE_ID) {
+  const activeFeatureId = getActiveFeatureId(context);
+  if (activeFeatureId === GAME_ROOM_HOME_FEATURE_ID) {
+    return null;
+  }
+  if (activeFeatureId === TEAM_TETRIS_FEATURE_ID) {
     return pushTeamTetrisState(api, loadTeamTetrisState(api));
   }
   return pushRoomState(api, loadState(api));
