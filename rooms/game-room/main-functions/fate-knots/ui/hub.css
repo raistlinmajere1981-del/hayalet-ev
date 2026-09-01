@@ -1,0 +1,198 @@
+.fk-hub {
+  box-sizing: border-box;
+  width: min(1180px, calc(100% - 48px));
+  min-height: calc(100vh - 64px);
+  margin: 32px auto;
+  padding: clamp(24px, 4vw, 48px);
+  border: 1px solid rgba(212, 200, 174, 0.2);
+  border-radius: 28px;
+  background: linear-gradient(145deg, rgba(20, 23, 28, 0.94), rgba(10, 12, 15, 0.91));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+  color: #ece7dc;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.fk-hub * {
+  box-sizing: border-box;
+}
+
+.fk-hub__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid rgba(212, 200, 174, 0.14);
+}
+
+.fk-hub__eyebrow {
+  margin-bottom: 8px;
+  color: rgba(222, 210, 180, 0.62);
+  font-family: system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.fk-hub h1,
+.fk-hub h2,
+.fk-hub p {
+  margin-top: 0;
+}
+
+.fk-hub h1 {
+  margin-bottom: 10px;
+  font-size: clamp(2.1rem, 5vw, 4.3rem);
+  font-weight: 500;
+  line-height: 0.95;
+}
+
+.fk-hub h2 {
+  margin-bottom: 18px;
+  color: #dfd5bd;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.fk-hub__header p {
+  max-width: 720px;
+  margin-bottom: 0;
+  color: rgba(236, 231, 220, 0.72);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.fk-hub__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.fk-hub__panel {
+  padding: 22px;
+  border: 1px solid rgba(212, 200, 174, 0.13);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.fk-hub__panel--forge {
+  background: linear-gradient(145deg, rgba(142, 116, 70, 0.1), rgba(255, 255, 255, 0.02));
+}
+
+.fk-hub__panel--wide {
+  margin-top: 18px;
+}
+
+.fk-hub__records {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.fk-hub__record {
+  padding: 18px;
+  border: 1px solid rgba(212, 200, 174, 0.13);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.fk-hub__record-heading,
+.fk-hub__record-actions,
+.fk-hub__record-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.fk-hub__record-heading {
+  justify-content: space-between;
+}
+
+.fk-hub__record-copy,
+.fk-hub__empty {
+  margin: 12px 0 18px;
+  color: rgba(236, 231, 220, 0.64);
+  font-family: system-ui, sans-serif;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.fk-hub__record-meta {
+  margin: 12px 0 16px;
+}
+
+.fk-hub__chip {
+  padding: 5px 8px;
+  border: 1px solid rgba(210, 190, 145, 0.18);
+  border-radius: 999px;
+  color: rgba(231, 219, 193, 0.72);
+  background: rgba(210, 190, 145, 0.06);
+  font-family: system-ui, sans-serif;
+  font-size: 0.7rem;
+}
+
+.fk-hub__button {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-family: system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.fk-hub__button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.fk-hub__button--primary {
+  border-color: rgba(210, 190, 145, 0.3);
+  color: #17140e;
+  background: #cdbb8c;
+}
+
+.fk-hub__button--quiet {
+  border-color: rgba(212, 200, 174, 0.16);
+  color: rgba(236, 231, 220, 0.8);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.fk-hub__button:disabled {
+  color: rgba(236, 231, 220, 0.38);
+  background: rgba(255, 255, 255, 0.025);
+  border-color: rgba(212, 200, 174, 0.08);
+  cursor: default;
+}
+
+.fk-hub__warning {
+  margin-top: 18px;
+  padding: 11px 14px;
+  border: 1px solid rgba(216, 163, 111, 0.28);
+  border-radius: 10px;
+  color: rgba(246, 220, 192, 0.86);
+  background: rgba(112, 68, 37, 0.16);
+  font-family: system-ui, sans-serif;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 760px) {
+  .fk-hub {
+    width: calc(100% - 20px);
+    margin: 10px auto;
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .fk-hub__header {
+    flex-direction: column;
+  }
+
+  .fk-hub__grid {
+    grid-template-columns: 1fr;
+  }
+}
