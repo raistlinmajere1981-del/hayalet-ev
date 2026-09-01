@@ -129,6 +129,21 @@ void test("Fate Knots neutral Hub prepares players only from the safe setup proj
   assert.match(bridge, /fate-knots-hub-state/);
 });
 
+void test("World Forge candidates pass a host-only canonical acceptance gate", () => {
+  const acceptance = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/host/forge-acceptance.ts",
+    "utf8"
+  );
+  const manifest = readFileSync("rooms/game-room/manifest.json", "utf8");
+  const hub = readFileSync("rooms/game-room/main-functions/fate-knots/ui/hub.js", "utf8");
+
+  assert.match(acceptance, /normalizeFateKnotsCanonicalUniversePackage\(candidate\)/);
+  assert.match(acceptance, /saveFateKnotsUniverse\(api, canonical\.package\)/);
+  assert.match(acceptance, /intentionally not a room-ui command/);
+  assert.doesNotMatch(manifest, /GameRoomFateKnotsAcceptForgeCandidate/);
+  assert.doesNotMatch(hub, /AcceptForgeCandidate/);
+});
+
 void test("Fate Knots browser bridge receives Hub projection rather than raw persistence authority", () => {
   const bridge = readFileSync(
     "rooms/game-room/main-functions/fate-knots/ui/bridge.js",
