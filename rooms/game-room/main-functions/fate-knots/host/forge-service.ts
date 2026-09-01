@@ -13,7 +13,8 @@ const FATE_KNOTS_FORGE_PROGRESS_KEY = "game-room:fate-knots:forge-progress:v1";
 export type FateKnotsForgeBlocker =
   | "ai1-transport-unavailable"
   | "asset-materializer-unavailable"
-  | "storage-unavailable";
+  | "storage-unavailable"
+  | "forge-busy";
 
 export interface FateKnotsForgeReadiness {
   ready: boolean;
@@ -21,6 +22,7 @@ export interface FateKnotsForgeReadiness {
   ai1TransportAvailable: boolean;
   materializerAvailable: boolean;
   storageAvailable: boolean;
+  busy: boolean;
   progress: FateKnotsWorldForgeProgress | null;
 }
 
@@ -37,6 +39,10 @@ function isProgress(value: unknown): value is FateKnotsWorldForgeProgress {
     typeof record["totalAssets"] === "number" &&
     typeof record["message"] === "string"
   );
+}
+
+function isBusyProgress(progress: FateKnotsWorldForgeProgress | null): boolean {
+  return progress !== null && progress.stage !== "completed" && progress.stage !== "failed";
 }
 
 /**
@@ -80,10 +86,13 @@ export function getFateKnotsForgeReadiness(
   const ai1TransportAvailable = typeof api.dispatchBridge === "function";
   const materializerAvailable = materializerAdapter !== null;
   const storageAvailable = getFateKnotsDurableStorageError(api) === null;
+  const progress = getFateKnotsForgeProgress(api);
+  const busy = isBusyProgress(progress);
   const blockers: FateKnotsForgeBlocker[] = [];
   if (!ai1TransportAvailable) blockers.push("ai1-transport-unavailable");
   if (!materializerAvailable) blockers.push("asset-materializer-unavailable");
   if (!storageAvailable) blockers.push("storage-unavailable");
+  if (busy) blockers.push("forge-busy");
 
   return {
     ready: blockers.length === 0,
@@ -91,7 +100,8 @@ export function getFateKnotsForgeReadiness(
     ai1TransportAvailable,
     materializerAvailable,
     storageAvailable,
-    progress: getFateKnotsForgeProgress(api),
+    busy,
+    progress,
   };
 }
 
@@ -103,7 +113,7 @@ export async function createFateKnotsUniverseThroughForge(
   } = {}
 ): Promise<FateKnotsWorldForgePipelineResult | null> {
   const adapter = materializerAdapter;
-  if (adapter === null) return null;
+  if (adapter === null || isBusyProgress(getFateKnotsForgeProgress(api))) return null;
 
   return await runFateKnotsWorldForge(api, adapter, {
     ...(options.brief !== undefined ? { brief: options.brief } : {}),
