@@ -30,6 +30,7 @@ import {
   loadFateKnotsRunStore,
   loadFateKnotsUniverseStore,
 } from "./persistence.js";
+import { deleteFateKnotsDmSession } from "./session-state.js";
 import type { FateKnotsTransportApi } from "./transport.js";
 
 export const FATE_KNOTS_COMMAND_NAMES = {
@@ -112,6 +113,15 @@ function createRunId(): string {
     ? uuid.replace(/-/g, "")
     : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
   return `run-${suffix}`;
+}
+
+function createUniqueRunId(api: FateKnotsRuntimeApi): string | null {
+  const existing = new Set(loadFateKnotsRunStore(api).store.entries.map((entry) => entry.run.runId));
+  for (let attempt = 0; attempt < 32; attempt += 1) {
+    const runId = createRunId();
+    if (!existing.has(runId)) return runId;
+  }
+  return null;
 }
 
 function result(success: boolean, message: string, state?: FateKnotsHostState) {
@@ -232,6 +242,9 @@ export async function handleFateKnotsDeleteUniverse(
 ) {
   const universeId = readStringArg(payload, "universeId");
   if (!universeId) return result(false, "Fate Knots universeId is required.");
+  const removedRunIds = loadFateKnotsRunStore(api).store.entries
+    .filter((entry) => entry.run.universeId === universeId)
+    .map((entry) => entry.run.runId);
   const deleted = await deleteFateKnotsUniverseDurable(api, universeId);
   if (!deleted.ok) {
     return result(
@@ -241,6 +254,7 @@ export async function handleFateKnotsDeleteUniverse(
         : "Fate Knots universe was not found."
     );
   }
+  for (const runId of removedRunIds) deleteFateKnotsDmSession(api, runId);
   return result(true, "Fate Knots universe deleted.", pushFateKnotsState(api));
 }
 
@@ -252,7 +266,8 @@ export async function handleFateKnotsCreateRun(
   if (!universe) return result(false, "Activate a Fate Knots universe before creating a run.");
   const selections = readRunSelections(payload);
   if (!selections) return result(false, "Fate Knots run selections are invalid.");
-  const runId = readStringArg(payload, "runId") ?? createRunId();
+  const runId = createUniqueRunId(api);
+  if (!runId) return result(false, "Fate Knots could not allocate a unique run id.");
   const created = createFateKnotsRunFromSelections(universe, runId, selections);
   if (!created.ok || !created.run) {
     return result(
@@ -302,5 +317,6 @@ export async function handleFateKnotsDeleteRun(api: FateKnotsRuntimeApi, payload
         : "Fate Knots run was not found."
     );
   }
+  deleteFateKnotsDmSession(api, runId);
   return result(true, "Fate Knots run deleted.", pushFateKnotsState(api));
 }
