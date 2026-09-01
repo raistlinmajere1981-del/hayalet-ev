@@ -1,4 +1,5 @@
 import { buildFateKnotsHubSnapshot, type FateKnotsHubSnapshot } from "./hub-state.js";
+import type { FateKnotsForgeHubSnapshot } from "./forge-orchestration.js";
 import {
   deleteFateKnotsRun,
   deleteFateKnotsUniverse,
@@ -20,6 +21,10 @@ type FateKnotsManagementCommandName =
 
 type GenericRecord = Record<string, unknown>;
 
+export interface FateKnotsManagementCommandDependencies {
+  getForgeSnapshot?: () => FateKnotsForgeHubSnapshot;
+}
+
 export type FateKnotsManagementCommandResult =
   | { ok: true; hub: FateKnotsHubSnapshot; issues: FateKnotsPersistenceIssue[] }
   | {
@@ -39,29 +44,43 @@ function readRequiredId(payload: unknown, key: "universeId" | "runId"): string |
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
-function invalidPayload(api: FateKnotsPersistenceApi): FateKnotsManagementCommandResult {
+function buildHub(
+  api: FateKnotsPersistenceApi,
+  deps: FateKnotsManagementCommandDependencies
+): FateKnotsHubSnapshot {
+  return buildFateKnotsHubSnapshot(api, deps.getForgeSnapshot?.());
+}
+
+function invalidPayload(
+  api: FateKnotsPersistenceApi,
+  deps: FateKnotsManagementCommandDependencies
+): FateKnotsManagementCommandResult {
   return {
     ok: false,
     error: "invalid-payload",
-    hub: buildFateKnotsHubSnapshot(api),
+    hub: buildHub(api, deps),
     issues: [],
   };
 }
 
 function rejected(
   api: FateKnotsPersistenceApi,
+  deps: FateKnotsManagementCommandDependencies,
   issues: FateKnotsPersistenceIssue[]
 ): FateKnotsManagementCommandResult {
   return {
     ok: false,
     error: "persistence-rejected",
-    hub: buildFateKnotsHubSnapshot(api),
+    hub: buildHub(api, deps),
     issues,
   };
 }
 
-function accepted(api: FateKnotsPersistenceApi): FateKnotsManagementCommandResult {
-  const hub = buildFateKnotsHubSnapshot(api);
+function accepted(
+  api: FateKnotsPersistenceApi,
+  deps: FateKnotsManagementCommandDependencies
+): FateKnotsManagementCommandResult {
+  const hub = buildHub(api, deps);
   return { ok: true, hub, issues: hub.issues };
 }
 
@@ -73,63 +92,64 @@ function accepted(api: FateKnotsPersistenceApi): FateKnotsManagementCommandResul
  * flows; the renderer may only select or delete already accepted records.
  */
 export function createFateKnotsManagementCommands(
-  api: FateKnotsPersistenceApi
+  api: FateKnotsPersistenceApi,
+  deps: FateKnotsManagementCommandDependencies = {}
 ): Record<FateKnotsManagementCommandName, (payload?: unknown) => FateKnotsManagementCommandResult> {
   return {
     [FATE_KNOTS_MANAGEMENT_COMMAND_NAMES.getHubState]() {
-      return accepted(api);
+      return accepted(api, deps);
     },
 
     [FATE_KNOTS_MANAGEMENT_COMMAND_NAMES.activateUniverse](payload?: unknown) {
       const universeId = readRequiredId(payload, "universeId");
-      if (!universeId) return invalidPayload(api);
+      if (!universeId) return invalidPayload(api, deps);
       const saved = saveFateKnotsSessionSelection(api, {
         activeUniverseId: universeId,
         activeRunId: null,
       });
-      return saved.ok ? accepted(api) : rejected(api, saved.issues);
+      return saved.ok ? accepted(api, deps) : rejected(api, deps, saved.issues);
     },
 
     [FATE_KNOTS_MANAGEMENT_COMMAND_NAMES.activateRun](payload?: unknown) {
       const runId = readRequiredId(payload, "runId");
-      if (!runId) return invalidPayload(api);
+      if (!runId) return invalidPayload(api, deps);
       const saved = saveFateKnotsSessionSelection(api, {
         activeUniverseId: null,
         activeRunId: runId,
       });
-      return saved.ok ? accepted(api) : rejected(api, saved.issues);
+      return saved.ok ? accepted(api, deps) : rejected(api, deps, saved.issues);
     },
 
     [FATE_KNOTS_MANAGEMENT_COMMAND_NAMES.deleteRun](payload?: unknown) {
       const runId = readRequiredId(payload, "runId");
-      if (!runId) return invalidPayload(api);
-      const before = buildFateKnotsHubSnapshot(api);
+      if (!runId) return invalidPayload(api, deps);
+      const before = buildHub(api, deps);
       const deleted = deleteFateKnotsRun(api, runId);
-      if (!deleted.ok) return rejected(api, deleted.issues);
+      if (!deleted.ok) return rejected(api, deps, deleted.issues);
       if (before.activeRunId === runId) {
         const selection = saveFateKnotsSessionSelection(api, {
           activeUniverseId: before.activeUniverseId,
           activeRunId: null,
         });
-        if (!selection.ok) return rejected(api, selection.issues);
+        if (!selection.ok) return rejected(api, deps, selection.issues);
       }
-      return accepted(api);
+      return accepted(api, deps);
     },
 
     [FATE_KNOTS_MANAGEMENT_COMMAND_NAMES.deleteUniverse](payload?: unknown) {
       const universeId = readRequiredId(payload, "universeId");
-      if (!universeId) return invalidPayload(api);
-      const before = buildFateKnotsHubSnapshot(api);
+      if (!universeId) return invalidPayload(api, deps);
+      const before = buildHub(api, deps);
       const deleted = deleteFateKnotsUniverse(api, universeId);
-      if (!deleted.ok) return rejected(api, deleted.issues);
+      if (!deleted.ok) return rejected(api, deps, deleted.issues);
       if (before.activeUniverseId === universeId) {
         const selection = saveFateKnotsSessionSelection(api, {
           activeUniverseId: null,
           activeRunId: null,
         });
-        if (!selection.ok) return rejected(api, selection.issues);
+        if (!selection.ok) return rejected(api, deps, selection.issues);
       }
-      return accepted(api);
+      return accepted(api, deps);
     },
   };
 }
