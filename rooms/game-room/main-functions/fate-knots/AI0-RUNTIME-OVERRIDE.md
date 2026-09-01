@@ -8,9 +8,11 @@ The normal repository agent policy is therefore the wrong bootstrap surface for 
 
 A Fate Knots AI0 runtime call must not start from a working directory inside the Hayalet Ev repository tree.
 
-The host integration must create/use a small runtime workspace outside the repository, for example under the application's per-user data directory:
+The current materializer uses the Game Room managed app-data storage root and creates a per-universe workspace equivalent to:
 
-`<userData>/fate-knots/ai0-runtime/<universeId>/`
+`<dataDir>/room-storage/game-room/fate-knots/ai0-runtime/<universeId>/`
+
+This remains outside the repository tree while also staying inside Hayalet Ev's existing room-managed storage boundary.
 
 That workspace may contain only the minimal runtime policy required by the selected provider/agent wrapper. It must not copy or inherit:
 
@@ -27,7 +29,7 @@ A prompt that merely says "ignore AGENTS.md" is not sufficient because the conte
 
 ## Minimal AI0 runtime policy
 
-The generated runtime policy should communicate only these invariants:
+The generated runtime policy communicates only these invariants:
 
 - You are an NPC actor inside Fate Knots.
 - You are not a coding assistant and do not inspect or modify Hayalet Ev.
@@ -81,17 +83,43 @@ The engine may update these facts after accepted actions. A later AI0 call recei
 
 AI0 never writes canonical state directly.
 
-## Host integration boundary
+## Workspace materialization — implemented
 
-Stage B defines the runtime profile and packet builders only.
+The filesystem side of the isolation boundary now exists in:
 
-Stage C host integration must:
+- `host/ai0-workspace.ts`
+- `host/ai0-workspace-electron.ts`
 
-1. resolve/create an external AI0 runtime workspace under app data,
-2. materialize the minimal runtime policy there if the provider wrapper requires a policy file,
-3. launch/send AI0 runtime requests with repository policy inheritance disabled by workspace isolation,
-4. expose no normal coding/MCP tool list,
-5. send only the current Fate Knots packet,
-6. validate the returned structured response before forwarding it to the engine.
+The materializer:
+
+1. obtains the Game Room managed `storageDir` through the existing `roomToolsCall({ operation: "resolve-paths" })` boundary,
+2. derives the per-universe path only from `buildFateKnotsAi0WorkspaceSpec`,
+3. deletes the previous universe workspace recursively,
+4. recreates the empty workspace through `roomToolsCall({ operation: "ensure-dir" })`,
+5. writes only the declared minimal `AGENTS.md` policy,
+6. returns the isolated workspace path/profile identifier to the future provider transport.
+
+Deleting the universe workspace before recreation is intentional. It prevents stale files from a previous runtime version from silently joining AI0 context.
+
+The preparation entry point is:
+
+`prepareFateKnotsAi0RuntimeWorkspace(universeId)`
+
+A provider transport should call this immediately before launching an AI0 runtime session.
+
+## Remaining provider integration boundary
+
+Physical workspace preparation is implemented, but AI0 is **not yet launched through a real provider/wrapper**.
+
+The remaining Stage C transport work must:
+
+1. call `prepareFateKnotsAi0RuntimeWorkspace` before each provider session/launch that can bootstrap workspace policy,
+2. set that returned workspace as the provider's runtime working/bootstrap directory,
+3. disable repository policy inheritance by virtue of that external workspace,
+4. expose an empty coding/MCP tool capability set,
+5. send only the current Fate Knots dialogue/combat packet,
+6. validate the returned structured response with the existing AI0 response validator before forwarding it to the engine.
+
+Exact provider/wrapper command syntax remains deliberately unresolved until the real Hayalet Ev transport surface is selected.
 
 Do not modify root `AGENTS.md` to special-case Fate Knots. Development-agent behavior and game-runtime behavior must stay separate.
