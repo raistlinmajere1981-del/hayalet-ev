@@ -157,8 +157,9 @@ function createSingleJob(
 /**
  * Deterministically converts validated asset plans into provider-neutral jobs.
  * Compatible batch groups prefer 6-8 cells. Four or five compatible leftovers
- * still use a sheet; one-to-three leftovers become single generations so a small
- * tail does not waste large areas of a provider image.
+ * still use a sheet when that avoids extra provider calls. A one-to-three tail
+ * becomes single generation when rebalancing would force the leading sheet below
+ * the preferred six-cell quality/efficiency range.
  */
 export function planFateKnotsAssetMaterialization(
   draft: FateKnotsWorldForgeDraft
@@ -186,9 +187,13 @@ export function planFateKnotsAssetMaterialization(
       const remaining = plans.length - offset;
       const take = Math.min(FATE_KNOTS_MATERIALIZER_MAX_SHEET_CELLS, remaining);
       const tail = remaining - take;
-      const adjustedTake =
+      const rebalancedTake =
         tail > 0 && tail < FATE_KNOTS_MATERIALIZER_MIN_SHEET_CELLS
-          ? Math.max(FATE_KNOTS_MATERIALIZER_MIN_SHEET_CELLS, take - (FATE_KNOTS_MATERIALIZER_MIN_SHEET_CELLS - tail))
+          ? take - (FATE_KNOTS_MATERIALIZER_MIN_SHEET_CELLS - tail)
+          : take;
+      const adjustedTake =
+        rebalancedTake >= FATE_KNOTS_MATERIALIZER_PREFERRED_SHEET_MIN
+          ? rebalancedTake
           : take;
       const chunk = plans.slice(offset, offset + adjustedTake);
       sheetOrdinal += 1;
