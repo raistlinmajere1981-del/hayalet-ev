@@ -329,6 +329,12 @@
           "exposure": "internal"
         },
         {
+          "name": "GameRoomFateKnotsGetCombatOptions",
+          "description": "Read the local player's current legal Fate Knots combat card and target options.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "GameRoomFateKnotsActivateRun",
           "description": "Select one persisted Fate Knots run for continuation.",
           "scope": "room-ui",
