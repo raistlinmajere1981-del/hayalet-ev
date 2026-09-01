@@ -122,6 +122,15 @@ export type FateKnotsAi0RuntimeResponse =
   | FateKnotsAi0DialogueResponse
   | FateKnotsAi0CombatRuntimeResponse;
 
+export interface FateKnotsAi0ResponseParseIssue {
+  code: "invalid-response-shape";
+  path: string;
+}
+
+export type FateKnotsAi0ResponseParseResult =
+  | { ok: true; response: FateKnotsAi0RuntimeResponse; issues: [] }
+  | { ok: false; response: null; issues: FateKnotsAi0ResponseParseIssue[] };
+
 export type FateKnotsAi0ResponseIssueCode =
   | "request-id-mismatch"
   | "response-kind-mismatch"
@@ -141,6 +150,101 @@ export interface FateKnotsAi0ResponseIssue {
 export interface FateKnotsAi0ResponseValidationResult {
   valid: boolean;
   issues: FateKnotsAi0ResponseIssue[];
+}
+
+export type FateKnotsAi0ProviderResponseGateResult =
+  | { ok: true; response: FateKnotsAi0RuntimeResponse; issues: [] }
+  | {
+      ok: false;
+      response: null;
+      issues: Array<FateKnotsAi0ResponseParseIssue | FateKnotsAi0ResponseIssue>;
+    };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isOptionalNullableString(record: Record<string, unknown>, key: string): boolean {
+  if (!(key in record) || record[key] === undefined || record[key] === null) return true;
+  return typeof record[key] === "string";
+}
+
+function parseIssue(path: string): FateKnotsAi0ResponseParseIssue {
+  return { code: "invalid-response-shape", path };
+}
+
+function copyOptionalNullableString(
+  source: Record<string, unknown>,
+  key: string,
+  target: Record<string, unknown>
+): void {
+  if (!(key in source) || source[key] === undefined) return;
+  target[key] = source[key] as string | null;
+}
+
+/**
+ * Converts untrusted provider output into the bounded AI0 response union.
+ *
+ * Unknown fields are intentionally discarded. Required/optional field types are
+ * checked before any request/legality validation runs, so a provider response is
+ * never trusted merely because TypeScript code later expects the right shape.
+ */
+export function parseFateKnotsAi0RuntimeResponse(
+  candidate: unknown
+): FateKnotsAi0ResponseParseResult {
+  if (!isRecord(candidate)) {
+    return { ok: false, response: null, issues: [parseIssue("$")] };
+  }
+
+  if (typeof candidate["requestId"] !== "string") {
+    return { ok: false, response: null, issues: [parseIssue("requestId")] };
+  }
+
+  if (candidate["kind"] === "npc-dialogue") {
+    const issues: FateKnotsAi0ResponseParseIssue[] = [];
+    if (typeof candidate["utterance"] !== "string") issues.push(parseIssue("utterance"));
+    if (!isOptionalNullableString(candidate, "selectedInteractionId")) {
+      issues.push(parseIssue("selectedInteractionId"));
+    }
+    if (issues.length > 0) return { ok: false, response: null, issues };
+
+    const response: FateKnotsAi0DialogueResponse = {
+      requestId: candidate["requestId"],
+      kind: "npc-dialogue",
+      utterance: candidate["utterance"] as string,
+    };
+    if ("selectedInteractionId" in candidate && candidate["selectedInteractionId"] !== undefined) {
+      response.selectedInteractionId = candidate["selectedInteractionId"] as string | null;
+    }
+    return { ok: true, response, issues: [] };
+  }
+
+  if (candidate["kind"] === "combat-choice") {
+    const issues: FateKnotsAi0ResponseParseIssue[] = [];
+    if (typeof candidate["actorId"] !== "string") issues.push(parseIssue("actorId"));
+    for (const key of [
+      "movementCardId",
+      "actionCardId",
+      "primaryTargetId",
+      "secondaryTargetId",
+    ] as const) {
+      if (!isOptionalNullableString(candidate, key)) issues.push(parseIssue(key));
+    }
+    if (issues.length > 0) return { ok: false, response: null, issues };
+
+    const raw: Record<string, unknown> = {
+      requestId: candidate["requestId"],
+      kind: "combat-choice",
+      actorId: candidate["actorId"] as string,
+    };
+    copyOptionalNullableString(candidate, "movementCardId", raw);
+    copyOptionalNullableString(candidate, "actionCardId", raw);
+    copyOptionalNullableString(candidate, "primaryTargetId", raw);
+    copyOptionalNullableString(candidate, "secondaryTargetId", raw);
+    return { ok: true, response: raw as unknown as FateKnotsAi0CombatRuntimeResponse, issues: [] };
+  }
+
+  return { ok: false, response: null, issues: [parseIssue("kind")] };
 }
 
 export function buildFateKnotsAi0DialogueRequest(
@@ -267,4 +371,24 @@ export function validateFateKnotsAi0RuntimeResponse(
   }
 
   return { valid: issues.length === 0, issues };
+}
+
+/**
+ * Single provider-boundary gate: parse untrusted output first, then apply the
+ * existing request and engine-legality checks. Only a fully accepted bounded
+ * response is returned to host/engine code.
+ */
+export function gateFateKnotsAi0ProviderResponse(
+  request: FateKnotsAi0RuntimeRequest,
+  candidate: unknown
+): FateKnotsAi0ProviderResponseGateResult {
+  const parsed = parseFateKnotsAi0RuntimeResponse(candidate);
+  if (!parsed.ok) return { ok: false, response: null, issues: parsed.issues };
+
+  const validation = validateFateKnotsAi0RuntimeResponse(request, parsed.response);
+  if (!validation.valid) {
+    return { ok: false, response: null, issues: validation.issues };
+  }
+
+  return { ok: true, response: parsed.response, issues: [] };
 }
