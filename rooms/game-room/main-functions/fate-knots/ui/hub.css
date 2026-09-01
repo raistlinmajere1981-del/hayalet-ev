@@ -134,6 +134,32 @@
   font-size: 0.7rem;
 }
 
+.fk-hub__forge-brief {
+  display: block;
+  width: 100%;
+  min-height: 74px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  resize: vertical;
+  border: 1px solid rgba(212, 200, 174, 0.16);
+  border-radius: 10px;
+  outline: none;
+  color: rgba(236, 231, 220, 0.86);
+  background: rgba(0, 0, 0, 0.18);
+  font-family: system-ui, sans-serif;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.fk-hub__forge-brief:focus {
+  border-color: rgba(210, 190, 145, 0.36);
+}
+
+.fk-hub__forge-brief:disabled {
+  color: rgba(236, 231, 220, 0.34);
+  background: rgba(255, 255, 255, 0.018);
+}
+
 .fk-hub__button {
   min-height: 38px;
   padding: 8px 14px;
