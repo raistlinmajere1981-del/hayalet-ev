@@ -11,6 +11,10 @@ import {
   type FateKnotsWorldForgeRequest,
 } from "../forge/world-forge.js";
 import {
+  validateFateKnotsCardArtBindings,
+  type FateKnotsCardArtIssue,
+} from "../shared/card-art.js";
+import {
   clearFateKnotsForgeSession,
   setFateKnotsForgeSession,
 } from "./session-state.js";
@@ -22,7 +26,8 @@ import {
 
 export type FateKnotsWorldForgeAuthoringIssue =
   | FateKnotsWorldForgeIssue
-  | FateKnotsPlayabilityIssue;
+  | FateKnotsPlayabilityIssue
+  | FateKnotsCardArtIssue;
 
 export type FateKnotsWorldForgeAuthoringResult =
   | {
@@ -31,7 +36,12 @@ export type FateKnotsWorldForgeAuthoringResult =
     }
   | {
       ok: false;
-      code: "session-open-failed" | "provider-failed" | "draft-invalid" | "universe-not-playable";
+      code:
+        | "session-open-failed"
+        | "provider-failed"
+        | "draft-invalid"
+        | "universe-not-playable"
+        | "card-art-invalid";
       message: string;
       issues?: FateKnotsWorldForgeAuthoringIssue[];
     };
@@ -82,6 +92,17 @@ export async function authorFateKnotsWorldForgeDraft(
       code: "universe-not-playable",
       message: `World Forge draft failed ${playable.issues.length} playability check(s).`,
       issues: playable.issues,
+    };
+  }
+
+  const cardArtIssues = validateFateKnotsCardArtBindings(validated.draft.universe);
+  if (cardArtIssues.length > 0) {
+    clearFateKnotsForgeSession(api);
+    return {
+      ok: false,
+      code: "card-art-invalid",
+      message: `World Forge draft failed ${cardArtIssues.length} card-art binding check(s).`,
+      issues: cardArtIssues,
     };
   }
 
