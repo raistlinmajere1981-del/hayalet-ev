@@ -30,7 +30,11 @@ export function getFateKnotsCardArtAsset(
   cardId: string
 ): FateKnotsAssetRef | null {
   const matches = universe.assets.filter((asset) => cardIdFromAsset(asset) === cardId);
-  return matches.length === 1 ? { ...matches[0], tags: matches[0]?.tags?.slice() } as FateKnotsAssetRef : null;
+  const match = matches.length === 1 ? matches[0] : undefined;
+  if (!match) return null;
+  const result: FateKnotsAssetRef = { ...match };
+  if (match.tags) result.tags = match.tags.slice();
+  return result;
 }
 
 export function validateFateKnotsCardArtBindings(
