@@ -45,6 +45,7 @@ export type FateKnotsRunCommandResult =
       ok: false;
       error:
         | "invalid-payload"
+        | "player-seat-unavailable"
         | "universe-not-found"
         | "run-not-found"
         | "universe-rejected"
@@ -56,6 +57,7 @@ export type FateKnotsRunCommandResult =
 
 export interface FateKnotsRunCommandDependencies {
   createRunId?: () => string;
+  isPlayerSeatAvailable?: (seatId: FateKnotsPlayerSeatId) => boolean;
 }
 
 let runIdSequence = 0;
@@ -152,11 +154,29 @@ export function createFateKnotsRunCommands(
   deps: FateKnotsRunCommandDependencies = {}
 ): Record<FateKnotsRunCommandName, (payload?: unknown) => FateKnotsRunCommandResult> {
   const createRunId = deps.createRunId ?? defaultCreateRunId;
+  const isPlayerSeatAvailable = deps.isPlayerSeatAvailable ?? (() => true);
 
   return {
     [FATE_KNOTS_RUN_COMMAND_NAMES.createRun](payload?: unknown) {
       const request = readCreateRunPayload(payload);
-      if (!request) return failure(api, "invalid-payload", [{ source: "payload", code: "invalid-create-run" }]);
+      if (!request) {
+        return failure(api, "invalid-payload", [
+          { source: "payload", code: "invalid-create-run" },
+        ]);
+      }
+
+      const unavailableSeat = request.party.find(
+        (assignment) => assignment.seatId !== "user" && !isPlayerSeatAvailable(assignment.seatId)
+      );
+      if (unavailableSeat) {
+        return failure(api, "player-seat-unavailable", [
+          {
+            source: "payload",
+            code: "player-seat-unavailable",
+            value: unavailableSeat.seatId,
+          },
+        ]);
+      }
 
       const universeRead = readFateKnotsUniverseLibrary(api);
       if (universeRead.issues.length > 0) {
@@ -204,7 +224,11 @@ export function createFateKnotsRunCommands(
 
     [FATE_KNOTS_RUN_COMMAND_NAMES.startRun](payload?: unknown) {
       const runId = readRunIdPayload(payload);
-      if (!runId) return failure(api, "invalid-payload", [{ source: "payload", code: "invalid-run-id" }]);
+      if (!runId) {
+        return failure(api, "invalid-payload", [
+          { source: "payload", code: "invalid-run-id" },
+        ]);
+      }
 
       const runRead = readFateKnotsRunLibrary(api);
       if (runRead.issues.length > 0) {
