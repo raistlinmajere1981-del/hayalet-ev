@@ -14,6 +14,11 @@ export const FATE_KNOTS_MATERIALIZER_MAX_SHEET_CELLS = 8;
 export const FATE_KNOTS_MATERIALIZER_MIN_SHEET_CELLS = 4;
 export const FATE_KNOTS_MATERIALIZER_PREFERRED_SHEET_MIN = 6;
 
+export interface FateKnotsSourceAspectRatio {
+  width: number;
+  height: number;
+}
+
 export interface FateKnotsSingleImageMaterializerJob {
   kind: "single";
   jobId: string;
@@ -27,7 +32,10 @@ export interface FateKnotsSheetImageMaterializerJob {
   jobId: string;
   plans: FateKnotsWorldForgeAssetPlan[];
   prompt: string;
-  aspectRatio: FateKnotsForgeAspectRatio;
+  /** Aspect of each extracted cell. */
+  cellAspectRatio: FateKnotsForgeAspectRatio;
+  /** Aspect the provider must generate for the complete grid source. */
+  sourceAspectRatio: FateKnotsSourceAspectRatio;
   sheet: FateKnotsImageSheetDefinition;
 }
 
@@ -94,6 +102,36 @@ function gridForCellCount(count: number): { columns: number; rows: number } {
   return { columns: 4, rows: 2 };
 }
 
+function aspectComponents(aspectRatio: FateKnotsForgeAspectRatio): { width: number; height: number } {
+  if (aspectRatio === "3:4") return { width: 3, height: 4 };
+  if (aspectRatio === "4:3") return { width: 4, height: 3 };
+  if (aspectRatio === "16:9") return { width: 16, height: 9 };
+  return { width: 1, height: 1 };
+}
+
+function gcd(left: number, right: number): number {
+  let a = Math.abs(left);
+  let b = Math.abs(right);
+  while (b !== 0) {
+    const next = a % b;
+    a = b;
+    b = next;
+  }
+  return a || 1;
+}
+
+export function getFateKnotsSheetSourceAspectRatio(
+  cellAspectRatio: FateKnotsForgeAspectRatio,
+  columns: number,
+  rows: number
+): FateKnotsSourceAspectRatio {
+  const cell = aspectComponents(cellAspectRatio);
+  const width = cell.width * columns;
+  const height = cell.height * rows;
+  const divisor = gcd(width, height);
+  return { width: width / divisor, height: height / divisor };
+}
+
 function buildSheetPrompt(plans: readonly FateKnotsWorldForgeAssetPlan[]): string {
   const cellLines = plans.map(
     (plan, index) => `Cell ${index + 1} (asset ${plan.assetId}): ${plan.prompt.trim()}`
@@ -115,6 +153,7 @@ function createSheetJob(
   const purpose = purposeForPlan(plans[0] as FateKnotsWorldForgeAssetPlan) ?? "card-art";
   const { columns, rows } = gridForCellCount(plans.length);
   const jobId = `${draft.requestId}:sheet:${ordinal}`;
+  const cellAspectRatio = plans[0]?.aspectRatio ?? "1:1";
   const sheet: FateKnotsImageSheetDefinition = {
     sheetId: jobId,
     purpose,
@@ -135,7 +174,8 @@ function createSheetJob(
     jobId,
     plans: plans.map((plan) => ({ ...plan })),
     prompt: buildSheetPrompt(plans),
-    aspectRatio: plans[0]?.aspectRatio ?? "1:1",
+    cellAspectRatio,
+    sourceAspectRatio: getFateKnotsSheetSourceAspectRatio(cellAspectRatio, columns, rows),
     sheet,
   };
 }
@@ -217,8 +257,8 @@ function expectedAssetIds(job: FateKnotsAssetMaterializerJob): string[] {
 
 /**
  * Executes jobs sequentially to avoid accidental provider bursts. Partial success
- * is retained: a failed sheet does not discard assets produced by earlier jobs,
- * and missing cells are reported so callers may retry those ids as single jobs.
+ * is retained, but duplicate/foreign outputs are explicit failures rather than
+ * being silently ignored or overwritten in a Map.
  */
 export async function materializeFateKnotsWorldForgeAssets(
   draft: FateKnotsWorldForgeDraft,
@@ -232,18 +272,50 @@ export async function materializeFateKnotsWorldForgeAssets(
   for (const job of jobs) {
     const expectedIds = expectedAssetIds(job);
     try {
-      // Sequential execution is deliberate: image providers and webview-backed
-      // generators are commonly stateful and should not receive burst traffic.
       // eslint-disable-next-line no-await-in-loop
       const result = await adapter.materialize(job);
       const expected = new Set(expectedIds);
-      for (const asset of result.assets) {
-        if (!expected.has(asset.assetId) || asset.path.trim() === "") continue;
-        assetsById.set(asset.assetId, { ...asset, path: asset.path.trim() });
+      const jobSeen = new Set<string>();
+
+      for (const rawAsset of result.assets) {
+        const assetId = rawAsset.assetId.trim();
+        const path = rawAsset.path.trim();
+        if (assetId === "" || path === "") {
+          failures.push({ jobId: job.jobId, assetIds: assetId ? [assetId] : [], message: "Materializer returned an empty asset id or path." });
+          continue;
+        }
+        if (jobSeen.has(assetId)) {
+          failures.push({ jobId: job.jobId, assetIds: [assetId], message: "Materializer returned a duplicate asset id in one job." });
+          continue;
+        }
+        jobSeen.add(assetId);
+        if (!expected.has(assetId)) {
+          failures.push({ jobId: job.jobId, assetIds: [assetId], message: "Materializer returned a foreign asset id." });
+          continue;
+        }
+        if (assetsById.has(assetId)) {
+          failures.push({ jobId: job.jobId, assetIds: [assetId], message: "Materializer returned an asset id already produced by another job." });
+          continue;
+        }
+        assetsById.set(assetId, {
+          ...rawAsset,
+          assetId,
+          path,
+          ...(rawAsset.mimeType !== undefined && rawAsset.mimeType !== null
+            ? { mimeType: rawAsset.mimeType.trim() }
+            : {}),
+        });
       }
-      if (result.sourceArtifact && result.sourceArtifact.path.trim() !== "") {
-        sourceArtifacts.push({ ...result.sourceArtifact, path: result.sourceArtifact.path.trim() });
+
+      if (result.sourceArtifact) {
+        const sourcePath = result.sourceArtifact.path.trim();
+        if (result.sourceArtifact.jobId !== job.jobId || sourcePath === "") {
+          failures.push({ jobId: job.jobId, assetIds: expectedIds, message: "Materializer returned an invalid source artifact identity/path." });
+        } else {
+          sourceArtifacts.push({ ...result.sourceArtifact, path: sourcePath });
+        }
       }
+
       const missing = expectedIds.filter((assetId) => !assetsById.has(assetId));
       if (missing.length > 0) {
         failures.push({
@@ -262,9 +334,12 @@ export async function materializeFateKnotsWorldForgeAssets(
   }
 
   const expectedAll = new Set(draft.assetPlans.map((plan) => plan.assetId));
-  const assets = Array.from(assetsById.values()).filter((asset) => expectedAll.has(asset.assetId));
+  const assets = Array.from(assetsById.values());
   return {
-    complete: failures.length === 0 && assets.length === expectedAll.size,
+    complete:
+      failures.length === 0 &&
+      assets.length === expectedAll.size &&
+      assets.every((asset) => expectedAll.has(asset.assetId)),
     assets,
     sourceArtifacts,
     failures,
