@@ -1,6 +1,7 @@
 export interface ServerOptions {
   port?: number;
   cors?: string[];
+  workspacePath?: string;
 }
 
 export interface ServerInfo {
