@@ -10,6 +10,7 @@ const FATE_KNOTS_COMMANDS = [
   "GameRoomFateKnotsGetRunSetup",
   "GameRoomFateKnotsCreateRun",
   "GameRoomFateKnotsStartRun",
+  "GameRoomFateKnotsGetGameplayState",
   "GameRoomFateKnotsActivateRun",
   "GameRoomFateKnotsDeleteRun",
   "GameRoomFateKnotsDeleteUniverse",
@@ -32,6 +33,11 @@ void test("Game Room registers Fate Knots without inventing a scene layout", () 
     feature.commandSpecs?.map((entry) => entry.name),
     FATE_KNOTS_COMMANDS
   );
+  const gameplaySpec = feature.commandSpecs?.find(
+    (entry) => entry.name === "GameRoomFateKnotsGetGameplayState"
+  );
+  assert.equal(gameplaySpec?.scope, "room-ui");
+  assert.equal(gameplaySpec?.exposure, "internal");
   assert.equal(
     feature.commandSpecs?.some(
       (entry) =>
@@ -69,11 +75,42 @@ void test("Fate Knots host owns management, setup, run persistence and active-fe
   assert.match(hostRuntime, /createFateKnotsManagementCommands/);
   assert.match(hostRuntime, /createFateKnotsRunSetupCommands/);
   assert.match(hostRuntime, /createFateKnotsRunCommands/);
+  assert.match(hostRuntime, /createFateKnotsGameplayCommands/);
   assert.match(hostRuntime, /pushFateKnotsHubState/);
   assert.match(hostRuntime, /fateKnotsForge\.getHubSnapshot\(\)/);
   assert.match(hostRuntime, /isFateKnotsPlayerSeatAvailable/);
   assert.match(hostRuntime, /context\.slots\.ai2\.dispatchable === true/);
   assert.match(hostRuntime, /context\.slots\.us1\.dispatchable === true/);
+});
+
+void test("player-safe gameplay projection is an explicit room-ui internal command", () => {
+  const hostRuntime = readFileSync("rooms/game-room/host/runtime.ts", "utf8");
+  const gameplayRuntime = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/host/gameplay-runtime.ts",
+    "utf8"
+  );
+  const gameplayState = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/host/gameplay-state.ts",
+    "utf8"
+  );
+
+  assert.match(hostRuntime, /api\.registerCommand\?\(/);
+  assert.match(hostRuntime, /FATE_KNOTS_GAMEPLAY_COMMAND_NAMES\.getGameplayState/);
+  assert.match(hostRuntime, /scope: "room-ui"/);
+  assert.match(hostRuntime, /exposure: "internal"/);
+  assert.doesNotMatch(
+    hostRuntime,
+    /\.\.\.fateKnotsGameplayCommands[\s\S]*const fateKnotsCommands/
+  );
+
+  assert.match(gameplayRuntime, /buildFateKnotsGameplayState\(canonical\.package, run\)/);
+  assert.match(gameplayRuntime, /never returns raw canonical Universe\/Run objects/);
+  assert.match(gameplayState, /combat: summarizeCombat\(run\.activeCombat\)/);
+  assert.match(gameplayState, /edge\.initiallyRevealed/);
+  assert.doesNotMatch(gameplayState, /commits:/);
+  assert.doesNotMatch(gameplayState, /hiddenKnotIds:/);
+  assert.doesNotMatch(gameplayState, /finale:/);
+  assert.doesNotMatch(gameplayState, /npcRoles:/);
 });
 
 void test("Fate Knots run setup exposes only explicit player-selectable start data", () => {
