@@ -50,8 +50,6 @@ import {
   handleFateKnotsDeleteRun,
   handleFateKnotsDeleteUniverse,
   handleFateKnotsRefresh,
-  handleFateKnotsSaveRun,
-  handleFateKnotsSaveUniverse,
   initializeFateKnotsState,
   pushFateKnotsState,
 } from "../main-functions/fate-knots/host/runtime.js";
@@ -222,9 +220,6 @@ export default function createGameRoomHostRuntime() {
       commands[FATE_KNOTS_COMMAND_NAMES.createUniverse] = function (payload?: unknown) {
         return handleFateKnotsCreateUniverse(api, payload ?? {});
       };
-      commands[FATE_KNOTS_COMMAND_NAMES.saveUniverse] = function (payload?: unknown) {
-        return handleFateKnotsSaveUniverse(api, payload ?? {});
-      };
       commands[FATE_KNOTS_COMMAND_NAMES.activateUniverse] = function (payload?: unknown) {
         return handleFateKnotsActivateUniverse(api, payload ?? {});
       };
@@ -233,9 +228,6 @@ export default function createGameRoomHostRuntime() {
       };
       commands[FATE_KNOTS_COMMAND_NAMES.createRun] = function (payload?: unknown) {
         return handleFateKnotsCreateRun(api, payload ?? {});
-      };
-      commands[FATE_KNOTS_COMMAND_NAMES.saveRun] = function (payload?: unknown) {
-        return handleFateKnotsSaveRun(api, payload ?? {});
       };
       commands[FATE_KNOTS_COMMAND_NAMES.activateRun] = function (payload?: unknown) {
         return handleFateKnotsActivateRun(api, payload ?? {});
