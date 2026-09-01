@@ -3,9 +3,13 @@ import { readArgs } from "../../../shared/host/command-args.js";
 import type { FateKnotsCombatRuntimeState } from "../shared/combat-runtime.js";
 import type { FateKnotsRunState } from "../shared/contracts.js";
 import {
+  buildFateKnotsPlayerRunView,
+  buildFateKnotsPlayerUniverseView,
+  type FateKnotsPlayerRunView,
+  type FateKnotsPlayerUniverseView,
+} from "../shared/player-view.js";
+import {
   createFateKnotsRunFromSelections,
-  listFateKnotsPlayerTemplates,
-  type FateKnotsPlayerTemplateView,
   type FateKnotsRunSetupSelection,
 } from "../shared/run-setup.js";
 import {
@@ -62,9 +66,8 @@ export interface FateKnotsHostState {
   activeRunId: string | null;
   universes: FateKnotsHostUniverseSummary[];
   runs: FateKnotsHostRunSummary[];
-  activeUniverse: ReturnType<typeof getActiveFateKnotsUniverseDurable>;
-  activeRun: ReturnType<typeof getActiveFateKnotsRunSnapshotDurable>;
-  playerTemplates: FateKnotsPlayerTemplateView[];
+  activeUniverse: FateKnotsPlayerUniverseView | null;
+  activeRun: FateKnotsPlayerRunView | null;
   persistenceIssueCount: number;
   storageError: string | null;
 }
@@ -102,7 +105,9 @@ function readRunSelections(payload: unknown): FateKnotsRunSetupSelection[] | nul
 
 function createRunId(): string {
   const uuid = globalThis.crypto?.randomUUID?.();
-  const suffix = uuid ? uuid.replace(/-/g, "") : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  const suffix = uuid
+    ? uuid.replace(/-/g, "")
+    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
   return `run-${suffix}`;
 }
 
@@ -115,6 +120,7 @@ export function buildFateKnotsHostState(api: FateKnotsRuntimeApi): FateKnotsHost
   const runs = loadFateKnotsRunStore(api);
   const storageError = getFateKnotsDurableStorageError(api);
   const activeUniverse = getActiveFateKnotsUniverseDurable(api);
+  const activeRunSnapshot = getActiveFateKnotsRunSnapshotDurable(api);
   return {
     featureId: "fate-knots",
     activeUniverseId: universes.store.activeUniverseId,
@@ -133,9 +139,8 @@ export function buildFateKnotsHostState(api: FateKnotsRuntimeApi): FateKnotsHost
       result: entry.run.result,
       savedAt: entry.savedAt,
     })),
-    activeUniverse,
-    activeRun: getActiveFateKnotsRunSnapshotDurable(api),
-    playerTemplates: activeUniverse ? listFateKnotsPlayerTemplates(activeUniverse) : [],
+    activeUniverse: activeUniverse ? buildFateKnotsPlayerUniverseView(activeUniverse) : null,
+    activeRun: activeRunSnapshot ? buildFateKnotsPlayerRunView(activeRunSnapshot.run) : null,
     persistenceIssueCount:
       universes.issues.length + runs.issues.length + (storageError === null ? 0 : 1),
     storageError,
