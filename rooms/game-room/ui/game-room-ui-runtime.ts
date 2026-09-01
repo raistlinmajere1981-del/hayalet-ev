@@ -50,6 +50,7 @@
     });
     const roomId = bootstrapRuntime.roomId;
     const gameRoomHomeFeatureId = "game-room-home";
+    const backgammonFeatureId = bootstrapRuntime.featureId;
     const teamTetrisFeatureId = bootstrapRuntime.teamTetrisFeatureId;
     const fateKnotsFeatureId = "fate-knots";
     const contextRuntime = bootstrapRuntime.contextRuntime;
@@ -79,6 +80,17 @@
         value !== null &&
         typeof (value as { append?: unknown }).append === "function"
       );
+    }
+
+    function disposeBackgammonStage(): void {
+      const stageRuntime = (
+        global as unknown as {
+          GameRoomBackgammonStageRuntime?: { destroyAll?: () => void };
+        }
+      ).GameRoomBackgammonStageRuntime;
+      if (typeof stageRuntime?.destroyAll === "function") {
+        stageRuntime.destroyAll();
+      }
     }
 
     function getRoomCloseLabel(): string {
@@ -197,6 +209,9 @@
 
         const activeFeatureId = getActiveFeatureId();
         document.title = state.context.room.name + " - " + getFeatureLabel(activeFeatureId);
+        if (activeFeatureId !== backgammonFeatureId) {
+          disposeBackgammonStage();
+        }
 
         if (activeFeatureId === gameRoomHomeFeatureId) {
           renderGameRoomHome(root);
