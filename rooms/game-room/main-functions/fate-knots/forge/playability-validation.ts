@@ -1,13 +1,12 @@
 import type { FateKnotsUniversePackage } from "../shared/contracts.js";
-import {
-  FATE_KNOTS_OPPOSITION_TEMPLATE_TAG,
-  FATE_KNOTS_PLAYER_TEMPLATE_TAG,
-} from "../shared/run-setup.js";
+import { isFateKnotsEnemyPolicyId } from "../shared/enemy-policy.js";
+import { FATE_KNOTS_PLAYER_TEMPLATE_TAG } from "../shared/run-setup.js";
 
 export type FateKnotsPlayabilityIssueCode =
   | "player-template-missing"
   | "encounter-uses-player-template"
-  | "opponent-template-missing-controller"
+  | "encounter-opponent-missing-controller"
+  | "encounter-policy-unknown"
   | "story-has-no-transition"
   | "finale-transition-missing"
   | "final-encounter-transition-missing";
@@ -17,6 +16,7 @@ export interface FateKnotsPlayabilityIssue {
   characterId?: string;
   encounterId?: string;
   transitionId?: string;
+  policyId?: string;
 }
 
 export interface FateKnotsPlayabilityValidationResult {
@@ -34,7 +34,9 @@ export function validateFateKnotsPlayableUniverse(
   universe: FateKnotsUniversePackage
 ): FateKnotsPlayabilityValidationResult {
   const issues: FateKnotsPlayabilityIssue[] = [];
-  const characterById = new Map(universe.characters.map((character) => [character.id, character] as const));
+  const characterById = new Map(
+    universe.characters.map((character) => [character.id, character] as const)
+  );
   const playerTemplates = universe.characters.filter((character) =>
     character.tags.includes(FATE_KNOTS_PLAYER_TEMPLATE_TAG)
   );
@@ -79,14 +81,22 @@ export function validateFateKnotsPlayableUniverse(
           characterId,
         });
       }
-      if (
-        character.tags.includes(FATE_KNOTS_OPPOSITION_TEMPLATE_TAG) &&
-        character.combatController == null
-      ) {
+
+      const controller = character.combatController ?? null;
+      if (!controller) {
         issues.push({
-          code: "opponent-template-missing-controller",
+          code: "encounter-opponent-missing-controller",
           encounterId: encounter.id,
           characterId,
+        });
+        continue;
+      }
+      if (controller.kind === "policy" && !isFateKnotsEnemyPolicyId(controller.policyId)) {
+        issues.push({
+          code: "encounter-policy-unknown",
+          encounterId: encounter.id,
+          characterId,
+          policyId: controller.policyId,
         });
       }
     }
