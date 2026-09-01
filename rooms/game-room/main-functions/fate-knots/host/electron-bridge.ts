@@ -5,6 +5,19 @@ export interface FateKnotsAi0RoomToolCallRequest {
   universeId: string;
   payload: unknown;
   timeoutMs?: number;
+  /** Accepted only as an internal compatibility field; never forwarded to IPC. */
+  policyText?: string;
+  /** Accepted only as an internal compatibility field; never forwarded to IPC. */
+  systemPrompt?: string;
+}
+
+interface FateKnotsAi0ElectronRequest {
+  roomId: "game-room";
+  operation: "fate-knots-ai0-call";
+  requestId: string;
+  universeId: string;
+  payload: unknown;
+  timeoutMs?: number;
 }
 
 export interface FateKnotsAi0RoomToolCallResult {
@@ -21,7 +34,7 @@ export interface FateKnotsAi0RoomToolCallResult {
 
 type FateKnotsElectronApi = {
   roomToolsCall: (
-    request: FateKnotsAi0RoomToolCallRequest
+    request: FateKnotsAi0ElectronRequest
   ) => Promise<FateKnotsAi0RoomToolCallResult>;
 };
 
@@ -53,8 +66,17 @@ export async function callFateKnotsAi0RoomTool(
     };
   }
 
+  const ipcRequest: FateKnotsAi0ElectronRequest = {
+    roomId: "game-room",
+    operation: "fate-knots-ai0-call",
+    requestId: request.requestId,
+    universeId: request.universeId,
+    payload: request.payload,
+    ...(request.timeoutMs !== undefined ? { timeoutMs: request.timeoutMs } : {}),
+  };
+
   try {
-    const result = await electronApi.roomToolsCall(request);
+    const result = await electronApi.roomToolsCall(ipcRequest);
     return result.success === true
       ? result
       : {
