@@ -1,5 +1,4 @@
 import { readArgs } from "../../../shared/host/command-args.js";
-import type { FateKnotsCombatRuntimeState } from "../shared/combat-runtime.js";
 import type { FateKnotsRunState } from "../shared/contracts.js";
 import {
   buildFateKnotsPlayerRunView,
@@ -17,7 +16,6 @@ import {
   getActiveFateKnotsUniverseDurable,
   hydrateFateKnotsDurablePersistence,
   saveFateKnotsRunSnapshotDurable,
-  saveFateKnotsUniverseDurable,
   activateFateKnotsRunDurable,
   activateFateKnotsUniverseDurable,
   deleteFateKnotsRunDurable,
@@ -37,11 +35,9 @@ import type { FateKnotsTransportApi } from "./transport.js";
 export const FATE_KNOTS_COMMAND_NAMES = {
   refresh: "GameRoomFateKnotsRefresh",
   createUniverse: "GameRoomFateKnotsCreateUniverse",
-  saveUniverse: "GameRoomFateKnotsSaveUniverse",
   activateUniverse: "GameRoomFateKnotsActivateUniverse",
   deleteUniverse: "GameRoomFateKnotsDeleteUniverse",
   createRun: "GameRoomFateKnotsCreateRun",
-  saveRun: "GameRoomFateKnotsSaveRun",
   activateRun: "GameRoomFateKnotsActivateRun",
   deleteRun: "GameRoomFateKnotsDeleteRun",
 } as const;
@@ -200,29 +196,16 @@ export async function handleFateKnotsCreateUniverse(
     },
   });
   if (!forged) {
-    return result(false, "World Forge materializer is unavailable or another Forge run is active.", pushFateKnotsState(api));
+    return result(
+      false,
+      "World Forge materializer is unavailable or another Forge run is active.",
+      pushFateKnotsState(api)
+    );
   }
   if (!forged.ok) {
     return result(false, `World Forge failed: ${forged.message}`, pushFateKnotsState(api));
   }
   return result(true, "Fate Knots universe created.", pushFateKnotsState(api));
-}
-
-export async function handleFateKnotsSaveUniverse(
-  api: FateKnotsRuntimeApi,
-  payload: unknown
-) {
-  const candidate = readObjectArg(payload, "universe");
-  const saved = await saveFateKnotsUniverseDurable(api, candidate);
-  if (!saved.ok) {
-    return result(
-      false,
-      saved.storageError
-        ? `Fate Knots universe could not be persisted: ${saved.storageError}`
-        : "Fate Knots universe package was rejected."
-    );
-  }
-  return result(true, "Fate Knots universe saved.", pushFateKnotsState(api));
 }
 
 export async function handleFateKnotsActivateUniverse(
@@ -287,30 +270,6 @@ export async function handleFateKnotsCreateRun(
     );
   }
   return result(true, "Fate Knots run created.", pushFateKnotsState(api));
-}
-
-export async function handleFateKnotsSaveRun(api: FateKnotsRuntimeApi, payload: unknown) {
-  const runCandidate = readObjectArg(payload, "run");
-  if (!isRecord(runCandidate)) return result(false, "Fate Knots run snapshot is required.");
-  const runtimeCandidate = readObjectArg(payload, "combatRuntime");
-  const combatRuntime =
-    runtimeCandidate === undefined || runtimeCandidate === null
-      ? null
-      : (runtimeCandidate as FateKnotsCombatRuntimeState);
-  const saved = await saveFateKnotsRunSnapshotDurable(
-    api,
-    runCandidate as unknown as FateKnotsRunState,
-    combatRuntime
-  );
-  if (!saved.ok) {
-    return result(
-      false,
-      saved.storageError
-        ? `Fate Knots run could not be persisted: ${saved.storageError}`
-        : "Fate Knots run snapshot was rejected."
-    );
-  }
-  return result(true, "Fate Knots run saved.", pushFateKnotsState(api));
 }
 
 export async function handleFateKnotsActivateRun(
