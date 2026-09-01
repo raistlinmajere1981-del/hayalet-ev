@@ -1,4 +1,5 @@
 import type { FateKnotsPhase } from "../shared/contracts.js";
+import type { FateKnotsForgeHubSnapshot } from "./forge-orchestration.js";
 import {
   FATE_KNOTS_PERSISTENCE_VERSION,
   FATE_KNOTS_SESSION_STATE_KEY,
@@ -31,9 +32,18 @@ export interface FateKnotsHubSnapshot {
   runs: FateKnotsHubRunSummary[];
   activeUniverseId: string | null;
   activeRunId: string | null;
+  forge: FateKnotsForgeHubSnapshot;
   hasStorageIssues: boolean;
   issues: FateKnotsPersistenceIssue[];
 }
+
+const DEFAULT_FORGE_HUB_SNAPSHOT: FateKnotsForgeHubSnapshot = {
+  available: false,
+  stage: "idle",
+  revision: 0,
+  acceptedUniverseId: null,
+  failureCode: null,
+};
 
 function invalidSelectionIssue(entryId: string): FateKnotsPersistenceIssue {
   return {
@@ -43,14 +53,28 @@ function invalidSelectionIssue(entryId: string): FateKnotsPersistenceIssue {
   };
 }
 
+function cloneForgeSnapshot(snapshot: FateKnotsForgeHubSnapshot): FateKnotsForgeHubSnapshot {
+  return {
+    available: snapshot.available,
+    stage: snapshot.stage,
+    revision: snapshot.revision,
+    acceptedUniverseId: snapshot.acceptedUniverseId,
+    failureCode: snapshot.failureCode,
+  };
+}
+
 /**
  * Player-safe neutral Hub projection.
  *
- * This deliberately exposes saved-universe/run metadata only. It does not send
- * the canonical Universe Package, hidden knots, finale definition, NPC role
- * memory or other player-unknown world data to the neutral renderer.
+ * This deliberately exposes saved-universe/run metadata and a small World Forge
+ * lifecycle summary only. It does not send the canonical Universe Package,
+ * Forge prompts/candidates, hidden knots, finale definition, NPC role memory or
+ * other player-unknown world data to the neutral renderer.
  */
-export function buildFateKnotsHubSnapshot(api: FateKnotsPersistenceApi): FateKnotsHubSnapshot {
+export function buildFateKnotsHubSnapshot(
+  api: FateKnotsPersistenceApi,
+  forgeSnapshot: FateKnotsForgeHubSnapshot = DEFAULT_FORGE_HUB_SNAPSHOT
+): FateKnotsHubSnapshot {
   const universeRead = readFateKnotsUniverseLibrary(api);
   const runRead = readFateKnotsRunLibrary(api);
   const sessionRead = readFateKnotsSessionState(api);
@@ -109,6 +133,7 @@ export function buildFateKnotsHubSnapshot(api: FateKnotsPersistenceApi): FateKno
     runs,
     activeUniverseId,
     activeRunId,
+    forge: cloneForgeSnapshot(forgeSnapshot),
     hasStorageIssues: issues.length > 0,
     issues,
   };
