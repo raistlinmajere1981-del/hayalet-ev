@@ -1,6 +1,10 @@
 import type { GameRoomHostApi } from "../../../shared/host/activation.js";
 import { buildFateKnotsWorldForgeAuthoringPrompt } from "../forge/authoring-prompt.js";
 import {
+  validateFateKnotsPlayableUniverse,
+  type FateKnotsPlayabilityIssue,
+} from "../forge/playability-validation.js";
+import {
   validateFateKnotsWorldForgeDraftResponse,
   type FateKnotsWorldForgeDraft,
   type FateKnotsWorldForgeIssue,
@@ -16,6 +20,10 @@ import {
   type FateKnotsTransportApi,
 } from "./transport.js";
 
+export type FateKnotsWorldForgeAuthoringIssue =
+  | FateKnotsWorldForgeIssue
+  | FateKnotsPlayabilityIssue;
+
 export type FateKnotsWorldForgeAuthoringResult =
   | {
       ok: true;
@@ -23,9 +31,9 @@ export type FateKnotsWorldForgeAuthoringResult =
     }
   | {
       ok: false;
-      code: "session-open-failed" | "provider-failed" | "draft-invalid";
+      code: "session-open-failed" | "provider-failed" | "draft-invalid" | "universe-not-playable";
       message: string;
-      issues?: FateKnotsWorldForgeIssue[];
+      issues?: FateKnotsWorldForgeAuthoringIssue[];
     };
 
 export async function authorFateKnotsWorldForgeDraft(
@@ -47,6 +55,7 @@ export async function authorFateKnotsWorldForgeDraft(
     { sessionRef: opened.sessionRef, timeoutMs: 10 * 60_000 }
   );
   if (!transported.ok) {
+    clearFateKnotsForgeSession(api);
     return { ok: false, code: "provider-failed", message: transported.message };
   }
 
@@ -56,11 +65,23 @@ export async function authorFateKnotsWorldForgeDraft(
 
   const validated = validateFateKnotsWorldForgeDraftResponse(request, transported.value);
   if (!validated.ok || !validated.draft) {
+    clearFateKnotsForgeSession(api);
     return {
       ok: false,
       code: "draft-invalid",
       message: `World Forge draft failed ${validated.issues.length} validation check(s).`,
       issues: validated.issues,
+    };
+  }
+
+  const playable = validateFateKnotsPlayableUniverse(validated.draft.universe);
+  if (!playable.valid) {
+    clearFateKnotsForgeSession(api);
+    return {
+      ok: false,
+      code: "universe-not-playable",
+      message: `World Forge draft failed ${playable.issues.length} playability check(s).`,
+      issues: playable.issues,
     };
   }
 
