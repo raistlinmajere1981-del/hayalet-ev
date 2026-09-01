@@ -19,6 +19,8 @@ import {
 } from "../shared/host/context-state.js";
 import {
   FATE_KNOTS_FEATURE_ID,
+  FEATURE_ID,
+  GAME_ROOM_HOME_FEATURE_ID,
   YAHTZEE_FEATURE_ID,
 } from "../shared/host/feature-meta.js";
 import {
@@ -98,6 +100,10 @@ export default function createGameRoomHostRuntime() {
         return await operation();
       }
 
+      function isBackgammonActive(handlerApi: GameRoomHostApi): boolean {
+        return getActiveFeatureId(loadContext(handlerApi)) === FEATURE_ID;
+      }
+
       function saveBackgammonStateCompat(handlerApi: GameRoomHostApi, value: unknown): void {
         void saveState(handlerApi, value as Parameters<typeof saveState>[1]);
       }
@@ -115,6 +121,10 @@ export default function createGameRoomHostRuntime() {
       }
 
       function ensureUs1SyncLoopCompat(handlerApi: GameRoomHostApi): void {
+        if (!isBackgammonActive(handlerApi)) {
+          backgammonClearUs1SyncLoop(handlerApi as Parameters<typeof backgammonClearUs1SyncLoop>[0]);
+          return;
+        }
         backgammonEnsureUs1SyncLoop(
           handlerApi as unknown as Parameters<typeof backgammonEnsureUs1SyncLoop>[0]
         );
@@ -123,6 +133,9 @@ export default function createGameRoomHostRuntime() {
       function pushActiveFeatureStateCompat(handlerApi: GameRoomHostApi): void {
         const context = loadContext(handlerApi);
         const activeFeatureId = getActiveFeatureId(context);
+        if (activeFeatureId === GAME_ROOM_HOME_FEATURE_ID) {
+          return;
+        }
         if (activeFeatureId === FATE_KNOTS_FEATURE_ID) {
           const hydration = fateKnotsHydration;
           if (hydration) {
@@ -149,6 +162,13 @@ export default function createGameRoomHostRuntime() {
       }
 
       function syncUs1MailboxCompat(handlerApi: GameRoomHostApi, reason: string): Promise<unknown> {
+        if (!isBackgammonActive(handlerApi)) {
+          backgammonClearUs1SyncLoop(handlerApi as Parameters<typeof backgammonClearUs1SyncLoop>[0]);
+          return Promise.resolve(null);
+        }
+        backgammonEnsureUs1SyncLoop(
+          handlerApi as unknown as Parameters<typeof backgammonEnsureUs1SyncLoop>[0]
+        );
         return backgammonSyncUs1Mailbox(
           handlerApi as unknown as Parameters<typeof backgammonSyncUs1Mailbox>[0],
           reason
