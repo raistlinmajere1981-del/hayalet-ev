@@ -218,6 +218,8 @@ export interface FateKnotsCharacterDefinition {
   portraitAssetId: string;
   backgroundId?: string | null;
   tags: string[];
+  playerSelectable: boolean;
+  startingPosition: FateKnotsPosition;
   baseStats: {
     maxHp: number;
     attack: number;
@@ -287,6 +289,7 @@ export interface FateKnotsMapEdge {
 
 export interface FateKnotsMapDefinition {
   mapAssetId?: string | null;
+  startNodeId: string;
   nodes: FateKnotsMapNode[];
   edges: FateKnotsMapEdge[];
 }
