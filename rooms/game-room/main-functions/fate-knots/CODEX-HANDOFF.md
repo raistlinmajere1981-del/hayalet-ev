@@ -33,6 +33,8 @@ Do not introduce any of the following unless explicitly requested in a later tas
 
 Do not swap these roles as a convenience during implementation.
 
+World Forge is a separate pre-runtime authority surface. The current contract deliberately does not assign Forge ownership to AI1 or AI0. Keep Forge orchestration provider-independent unless a later design decision explicitly selects a provider/role.
+
 ## Fixed runtime ownership
 
 The engine owns canonical state and mechanical outcomes.
@@ -40,6 +42,39 @@ The engine owns canonical state and mechanical outcomes.
 AI1 and AI0 are interpreters/actors over canonical packets. They do not become the rules engine.
 
 Combat remains headless and deterministic. AI1 sees combat start context and a final result summary, not every combat action.
+
+## Stage C integration reality — preserve this boundary
+
+The branch already contains real Fate Knots persistence/host/Hub integration. Treat it as an implementation to reconcile and verify, not as an empty scaffold to redesign.
+
+Canonical persistence is host-owned:
+
+- Universe Packages and Run States are persisted separately
+- malformed persisted records are rejected rather than silently turned into fallback canon
+- browser/UI code does not receive raw `SaveUniverse` or `SaveRun` commands
+- continuing a saved run must not re-run World Forge
+
+The neutral Hub receives a player-safe projection, not a raw Universe Package. The active feature state event is `fate-knots-hub-state`.
+
+Character/run setup has an explicit secrecy boundary:
+
+- every Forge-authored map defines `startNodeId`
+- every character template explicitly defines `playerSelectable`
+- every character template explicitly defines `startingPosition`
+- renderer obtains selectable character data through `GameRoomFateKnotsGetRunSetup`
+- renderer must not inspect a raw Universe Package to discover selectable characters
+- the setup projection must not expose hidden map/NPC/finale/knot canon merely to build the character screen
+
+Run bootstrap is deliberately two-step:
+
+1. `GameRoomFateKnotsCreateRun` creates canonical `run-setup` state from the accepted universe and explicit player-seat/character assignments
+2. `GameRoomFateKnotsStartRun` opens the Forge-authored start node and enters exploration
+
+Do not collapse this into a renderer-created run object. The split prevents world/map canon from being opened during character preparation.
+
+Current neutral-Hub management commands are intent-level read/select/delete operations. Preserve that direction rather than giving browser code direct persistence authority.
+
+The Game Room manifest intentionally registers Fate Knots without a `scene` block for now. Do not invent hotspot coordinates, close-up backgrounds, or transparent-window geometry merely to satisfy the feature entry. Stage E/local visual work may choose the actual room placement while leaving all mechanics unchanged.
 
 ## Fixed AI0 runtime isolation
 
@@ -147,7 +182,7 @@ Loot allocation is a party decision:
 - AI0 does not choose player loot ownership
 - the engine does not randomly distribute contested loot
 
-Do not rename persistence fields ad hoc during visual work; Stage C may give the transient loot-pool field a cleaner persisted name/migration.
+Do not rename persistence fields ad hoc during visual work. If a migration or persisted-field rename becomes necessary, implement it as an explicit persistence migration rather than an implicit renderer change.
 
 ## Fixed enemy combat control
 
@@ -222,7 +257,7 @@ The following details are intentionally not final yet. If a local task reaches o
 - exact camp healing and when equipment changes are permitted in scene flow
 - exact symbolic music notation/synthesis backend
 - exact provider/wrapper wire syntax for World Forge, DM, and isolated AI0 runtime transport
-- exact persistence key names and migration strategy
+- persistence migration policy for older Fate Knots records if one is later required
 
 These are Raistlin/Nexa design decisions or later balancing decisions, not visual/runtime implementation choices.
 
@@ -230,6 +265,7 @@ These are Raistlin/Nexa design decisions or later balancing decisions, not visua
 
 Codex may decide, within a specific task:
 
+- the visual Game Room hotspot/close-up placement for Fate Knots when that presentation task is explicitly assigned
 - texture/art style execution requested for a universe
 - exact Babylon material/light parameters
 - particle shapes and animation curves
@@ -243,4 +279,6 @@ When a task would require a new game rule, new phase, new card economy, new AI a
 
 ## Local testing expectation
 
-GitHub Actions availability is not assumed for this rebuild. Local Codex work may run typecheck/build/tests when available and report failures, but it must not weaken contracts merely to make an unrelated test pass.
+GitHub Actions availability is not assumed for this rebuild. The branch now changes shared Game Room host/UI/manifest integration and includes structural regression coverage, but those tests have intentionally not been executed remotely.
+
+After reconciling this branch with the current local/main Laboratory work, Codex should run the repository's normal typecheck/build/tests, including the Game Room manifest/installed-copy/Fate Knots regressions, then perform a live Game Room smoke check. Fix genuine integration/type errors, but do not weaken the Fate Knots authority or secrecy contracts merely to make a stale unrelated expectation pass.
