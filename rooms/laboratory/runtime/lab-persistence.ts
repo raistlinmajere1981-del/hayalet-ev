@@ -1,10 +1,6 @@
 import type { LabPersistedState } from "../domain/lab-types.js";
 
 const LAB_PERSISTENCE_KEY = "hayalet-ev:laboratory-refactor:v4";
-const LAB_LEGACY_PERSISTENCE_KEYS = [
-  "hayalet-ev:laboratory-refactor:v3",
-  "hayalet-ev:laboratory-refactor:v2",
-];
 
 type PersistenceWindow = Window & typeof globalThis;
 
@@ -89,25 +85,20 @@ export function loadLabPersistedState(windowRef: PersistenceWindow | undefined) 
   }
 
   try {
-    const candidateKeys = [LAB_PERSISTENCE_KEY].concat(LAB_LEGACY_PERSISTENCE_KEYS);
-    for (const key of candidateKeys) {
-      const rawValue = storage.getItem(key);
-      if (!rawValue) {
-        continue;
-      }
-      const parsed = JSON.parse(rawValue) as Partial<LabPersistedState> & {
-        schemaVersion?: unknown;
-      };
-      const migrated = migratePersistedState(parsed);
-      const serialized = JSON.stringify(migrated);
-      if (key !== LAB_PERSISTENCE_KEY) {
-        storage.setItem(LAB_PERSISTENCE_KEY, serialized);
-      }
-      lastPersistedStorage = storage;
-      lastPersistedSerializedValue = serialized;
-      return migrated;
+    const rawValue = storage.getItem(LAB_PERSISTENCE_KEY);
+    if (!rawValue) {
+      return null;
     }
-    return null;
+    const parsed = JSON.parse(rawValue) as Partial<LabPersistedState> & {
+      schemaVersion?: unknown;
+    };
+    if (parsed.schemaVersion !== 4) {
+      return null;
+    }
+    const persistedForBoot = sanitizeBootPersistedState(parsed);
+    lastPersistedStorage = storage;
+    lastPersistedSerializedValue = JSON.stringify(persistedForBoot);
+    return persistedForBoot;
   } catch {
     return null;
   }
@@ -138,27 +129,6 @@ export function saveLabPersistedState(
     },
     { timeout: 1200 }
   );
-}
-
-function migratePersistedState(
-  persisted: Partial<LabPersistedState> & { schemaVersion?: unknown }
-): Partial<LabPersistedState> {
-  return sanitizeBootPersistedState({
-    ...persisted,
-    schemaVersion: 4,
-    activityFeed: Array.isArray(persisted.activityFeed) ? persisted.activityFeed : [],
-    selectedCapabilities: Array.isArray(persisted.selectedCapabilities)
-      ? persisted.selectedCapabilities
-      : [],
-    activePreviewArtifactId:
-      typeof persisted.activePreviewArtifactId === "string"
-        ? persisted.activePreviewArtifactId
-        : null,
-    liveFindingsExpanded: persisted.liveFindingsExpanded !== false,
-    analysisControlsCollapsed: persisted.analysisControlsCollapsed === true,
-    editSidePanelCollapsed: persisted.editSidePanelCollapsed === true,
-    rawLogCollapsed: persisted.rawLogCollapsed !== false,
-  });
 }
 
 function sanitizeWorkspaceForBoot(

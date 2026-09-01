@@ -48,10 +48,7 @@ function readFiniteNumber(record: LaboratoryRecord, key: string): number | null 
 }
 
 function readEdgePersistence(record: LaboratoryRecord) {
-  return (
-    readFiniteNumber(record, "spatialEdgePersistenceRatio") ??
-    readFiniteNumber(record, "edgePersistenceRatio")
-  );
+  return readFiniteNumber(record, "spatialEdgePersistenceRatio");
 }
 
 function hasTemporalSamples(value: unknown) {

@@ -20,6 +20,7 @@ import type {
   LaboratoryTransformPreviewMode,
   LaboratoryTransformStackSourceKind,
 } from "../shared/transform-stack-render-context.js";
+import { resolveLaboratoryTrackingPreviewCache } from "../shared/tracking-preview-model.js";
 import { LAB_FALLBACK_I18N } from "./lab-i18n.js";
 import type { LabI18n } from "./lab-i18n.js";
 
@@ -63,12 +64,7 @@ function readTransformStages(input: WorkspaceTransformStackInput) {
 }
 
 function readLatestCameraTrackingCache(input: WorkspaceTransformStackInput) {
-  const caches = asLabRecord(input.editConfig)["cameraTrackingCaches"];
-  if (!Array.isArray(caches)) return null;
-  const cache = caches.map(asLabRecord).find(function (entry) {
-    return entry["algorithm"] === "feature-similarity-ransac-v2";
-  });
-  return cache ?? null;
+  return resolveLaboratoryTrackingPreviewCache(input.editConfig);
 }
 
 function getScopeRecipeSection(input: WorkspaceTransformStackInput) {
@@ -301,21 +297,21 @@ function renderMotionImpactPanel(input: WorkspaceTransformStackInput, copy: LabI
 function renderTrackingPreviewPanel(input: WorkspaceTransformStackInput, copy: LabI18n) {
   if (input.scope !== "visual" || input.sourceKind !== "video") return "";
   const cache = readLatestCameraTrackingCache(input);
-  const quality = cache === null ? null : String(cache["quality"] ?? "unreliable");
-  const mode = cache === null ? null : String(cache["mode"] ?? "fixed-roi-fallback");
-  const cacheId = cache === null ? null : String(cache["cacheId"] ?? "");
+  const quality = cache?.quality ?? null;
+  const mode = cache?.mode ?? null;
+  const cacheId = cache?.cacheId ?? null;
   const hint =
     cache === null
       ? copy.locale === "tr"
-        ? "Henüz Camera Tracking v2 cache yok. Transition veya Visibility Response çalıştırıldığında cache üretilecek."
-        : "No Camera Tracking v2 cache yet. A Transition or Visibility Response run will create it."
+        ? "Henüz Camera Tracking cache yok. Transition veya Visibility Response çalıştırıldığında cache üretilecek."
+        : "No Camera Tracking cache yet. A Transition or Visibility Response run will create it."
       : copy.locale === "tr"
         ? `Tracking quality: ${quality?.toUpperCase()} · ${mode} · önizleme timeline'da Mikro Zoom'un yanından açılır.`
         : `Tracking quality: ${quality?.toUpperCase()} · ${mode} · open the preview beside Micro Zoom on the timeline.`;
   return `
     <section class="labx-card labx-tracking-preview-panel" data-lab-tracking-preview-panel="true">
       <div class="labx-card__body">
-        <p class="labx-card__eyebrow">ROI Tracking / Stabilization v2</p>
+        <p class="labx-card__eyebrow">ROI Tracking / Stabilization</p>
         <p class="labx-card__meta" data-lab-tracking-preview-status="true">${escapeHtml(hint)}</p>
         ${cacheId === null ? "" : `<span hidden data-lab-tracking-cache-id="${escapeHtml(cacheId)}"></span>`}
       </div>

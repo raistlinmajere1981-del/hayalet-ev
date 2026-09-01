@@ -98,6 +98,7 @@ type LaboratoryProjectStorageRuntimeDeps = {
     profileCapabilities: unknown,
     runtime: LaboratoryProjectStorageRuntime
   ) => LaboratoryProjectRecord;
+  projectSchemaVersion: number;
   readJsonFile: (filePath: string) => Promise<unknown>;
   syncProjectFeatureProjections: (
     runtime: LaboratoryProjectStorageRuntime,
@@ -125,6 +126,7 @@ export function createLaboratoryProjectStorageRuntime(deps: LaboratoryProjectSto
     getRuntimeToolIds,
     listDirectory,
     normalizeProject,
+    projectSchemaVersion,
     readJsonFile,
     syncProjectFeatureProjections,
     toRecord,
@@ -166,20 +168,20 @@ export function createLaboratoryProjectStorageRuntime(deps: LaboratoryProjectSto
       }
 
       // eslint-disable-next-line no-await-in-loop -- NOTE: keep project bootstrap reads sequential to cap disk IO.
-      const project = await readJsonFile(`${entry.path}/project.json`);
-      if (project) {
-        const normalizedProject = normalizeProject(
-          project,
-          runtime.sourcePresets,
-          runtime.editPresets,
-          runtime.profilePresets,
-          runtime.profileModels,
-          runtime.profileCapabilities,
-          runtime
-        );
-        syncProjectFeatureProjections(runtime, normalizedProject);
-        projects.push(normalizedProject);
-      }
+      const project = toRecord(await readJsonFile(`${entry.path}/project.json`));
+      // NOTE: Persisted Laboratory projects are pre-stable data; only the current schema crosses this storage boundary.
+      if (project["schemaVersion"] !== projectSchemaVersion) continue;
+      const normalizedProject = normalizeProject(
+        project,
+        runtime.sourcePresets,
+        runtime.editPresets,
+        runtime.profilePresets,
+        runtime.profileModels,
+        runtime.profileCapabilities,
+        runtime
+      );
+      syncProjectFeatureProjections(runtime, normalizedProject);
+      projects.push(normalizedProject);
     }
 
     runtime.projects = sortProjects(projects);

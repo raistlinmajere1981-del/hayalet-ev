@@ -6,7 +6,7 @@ import type { LabI18n } from "./lab-i18n.js";
 type VisualStressRoiRole = "target" | "control" | "background";
 
 type RenderWorkspaceROIOverlayOptions = {
-  legacyRegions: LabROIRegion[];
+  regions: LabROIRegion[];
   mutationLocked?: boolean;
   overlayId?: string;
   roiFocusActive?: boolean;
@@ -116,7 +116,7 @@ function renderVisualStressAuxiliaryRoi(
   `;
 }
 
-function renderLegacyRegions(regions: LabROIRegion[], mutationLocked: boolean, copy: LabI18n) {
+function renderRegions(regions: LabROIRegion[], mutationLocked: boolean, copy: LabI18n) {
   const mutationDisabledAttr = mutationLocked ? 'disabled aria-disabled="true"' : "";
   return regions
     .map(function (region) {
@@ -167,7 +167,7 @@ export function renderWorkspaceROIOverlay(
   const selectionRoi = options.selectionRoi ?? null;
   const roiFocusActive = options.roiFocusActive === true;
   const mutationLocked = options.mutationLocked === true;
-  const regionElements = renderLegacyRegions(options.legacyRegions, mutationLocked, copy);
+  const regionElements = renderRegions(options.regions, mutationLocked, copy);
   const overlayId = options.overlayId || "lab-roi-overlay";
   const visualStressNodes =
     options.sourceKind === "video"

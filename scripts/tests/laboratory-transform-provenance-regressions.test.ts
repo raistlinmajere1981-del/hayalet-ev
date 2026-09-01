@@ -29,9 +29,7 @@ const presetRuntime = createLaboratoryPresetEditRuntime({
 void test("recipe snapshot is detached from later recipe mutations", () => {
   const recipe = {
     video: {
-      transformStages: [
-        { id: "gamma-1", kind: "gamma", enabled: true, params: { value: 1.4 } },
-      ],
+      transformStages: [{ id: "gamma-1", kind: "gamma", enabled: true, params: { value: 1.4 } }],
     },
     audio: { transformStages: [] },
     image: { transformStages: [] },
@@ -41,7 +39,13 @@ void test("recipe snapshot is detached from later recipe mutations", () => {
   (recipe.video.transformStages[0] as { params: { value: number } }).params.value = 4;
 
   assert.equal(
-    (((snapshot["video"] as Record<string, unknown>)["transformStages"] as Array<Record<string, unknown>>)[0]?.["params"] as Record<string, unknown>)["value"],
+    (
+      (
+        (snapshot["video"] as Record<string, unknown>)["transformStages"] as Array<
+          Record<string, unknown>
+        >
+      )[0]?.["params"] as Record<string, unknown>
+    )["value"],
     1.4
   );
 });
@@ -55,9 +59,7 @@ void test("provenance records ordered visual/audio stages and excludes visual st
       ],
     },
     audio: {
-      transformStages: [
-        { id: "gain-1", kind: "gain", enabled: true, params: { db: 6 } },
-      ],
+      transformStages: [{ id: "gain-1", kind: "gain", enabled: true, params: { db: 6 } }],
     },
   };
 
@@ -69,13 +71,17 @@ void test("provenance records ordered visual/audio stages and excludes visual st
       ["blur-1", 1, false],
     ]
   );
-  assert.deepEqual(videoProvenance.audio.map((stage) => [stage.id, stage.order]), [
-    ["gain-1", 0],
-  ]);
+  assert.deepEqual(
+    videoProvenance.audio.map((stage) => [stage.id, stage.order]),
+    [["gain-1", 0]]
+  );
 
   const audioProvenance = buildLaboratoryTransformStackProvenanceFromRecipe(recipe, "audio");
   assert.deepEqual(audioProvenance.visual, []);
-  assert.deepEqual(audioProvenance.audio.map((stage) => stage.id), ["gain-1"]);
+  assert.deepEqual(
+    audioProvenance.audio.map((stage) => stage.id),
+    ["gain-1"]
+  );
 });
 
 void test("edit output normalization retains recipe and transform provenance snapshots", () => {
@@ -89,9 +95,7 @@ void test("edit output normalization retains recipe and transform provenance sna
     recipeSignature: "sig-1",
     recipeSnapshot: {
       video: {
-        transformStages: [
-          { id: "gamma-1", kind: "gamma", enabled: true, params: { value: 1.4 } },
-        ],
+        transformStages: [{ id: "gamma-1", kind: "gamma", enabled: true, params: { value: 1.4 } }],
       },
     },
     transformStackProvenance: {
@@ -106,12 +110,10 @@ void test("edit output normalization retains recipe and transform provenance sna
       .length,
     1
   );
-  assert.deepEqual(output.transformStackProvenance["visual"], [
-    { id: "gamma-1", order: 0 },
-  ]);
+  assert.deepEqual(output.transformStackProvenance["visual"], [{ id: "gamma-1", order: 0 }]);
 });
 
-void test("preview normalization retains provenance while old projects default safely to empty snapshots", () => {
+void test("preview normalization retains provenance while empty edits default safely to empty snapshots", () => {
   const normalized = presetRuntime.normalizeEditState(
     {
       preview: {
@@ -135,7 +137,7 @@ void test("preview normalization retains provenance while old projects default s
     audio: [],
   });
 
-  const legacy = presetRuntime.normalizeEditState({ recipe: {}, outputs: [] }, {}, "video");
-  assert.deepEqual(legacy.preview.recipeSnapshot, {});
-  assert.deepEqual(legacy.preview.transformStackProvenance, {});
+  const emptyEdit = presetRuntime.normalizeEditState({ recipe: {}, outputs: [] }, {}, "video");
+  assert.deepEqual(emptyEdit.preview.recipeSnapshot, {});
+  assert.deepEqual(emptyEdit.preview.transformStackProvenance, {});
 });

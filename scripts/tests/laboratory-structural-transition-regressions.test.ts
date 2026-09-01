@@ -2,8 +2,15 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { classifyLaboratoryReferenceConvergenceShape } from "../../rooms/laboratory/features/media-analysis/host/background-reference-convergence.ts";
-import { calculateLaboratoryStructuralFrameMetrics } from "../../rooms/laboratory/features/media-analysis/host/structural-transition.ts";
+import {
+  classifyLaboratoryReferenceConvergenceShape,
+  createLaboratoryBackgroundReferenceConvergenceRuntime,
+} from "../../rooms/laboratory/features/media-analysis/host/background-reference-convergence.ts";
+import {
+  calculateLaboratoryStructuralFrameMetrics,
+  createLaboratoryStructuralTransitionRuntime,
+} from "../../rooms/laboratory/features/media-analysis/host/structural-transition.ts";
+import type { CameraTrackingCache } from "../../rooms/laboratory/domain/lab-analysis-results.ts";
 import { formatLaboratoryStructuralTransitionMarkdown } from "../../rooms/laboratory/ui/workspace-structural-transition-summary.ts";
 
 function checkerboard(inverted = false) {
@@ -58,7 +65,7 @@ void test("background reference convergence shape distinguishes abrupt from grad
   );
 });
 
-void test("structural runtime keeps dense event timeline and translation-only confidence fallback", async () => {
+void test("structural runtime keeps dense stabilized timeline and confidence fallback", async () => {
   const source = await readFile(
     "rooms/laboratory/features/media-analysis/host/structural-transition.ts",
     "utf8"
@@ -68,16 +75,156 @@ void test("structural runtime keeps dense event timeline and translation-only co
     "utf8"
   );
   assert.match(source, /\[-1, -0\.8, -0\.6, -0\.4, -0\.2, 0, 0\.2, 0\.4, 0\.6, 0\.8, 1\]/);
-  assert.match(source, /grayscale-translation-block-match/);
-  assert.match(source, /tracking-confidence-low/);
-  assert.match(source, /fallbackUsed/);
+  assert.match(source, /getLaboratoryCameraTransformAt/);
+  assert.match(source, /camera similarity transform applied/);
+  assert.match(source, /measurementSuitableForSmallRoi/);
   assert.match(source, /targetVsControlStructuralLoss/);
   assert.match(source, /targetSpecificStructuralLoss/);
-  assert.match(source, /post-to-reference-convergence/);
-  assert.match(convergenceSource, /same-spatial target ROI template/);
+  assert.match(convergenceSource, /camera-similarity/);
+  assert.match(convergenceSource, /fixed-roi-fallback/);
   assert.match(convergenceSource, /target-loss-with-reference-convergence/);
   assert.match(convergenceSource, /weak-or-nonconvergent/);
   assert.doesNotMatch(`${source}\n${convergenceSource}`, /paranormal/i);
+});
+
+void test("failed tracking estimates do not become measured zero drift diagnostics", async () => {
+  const runtime = createLaboratoryStructuralTransitionRuntime({
+    async callRoomTools() {
+      return { run: { exitCode: 0, stderr: "" } };
+    },
+    getProjectEditOutputDir() {
+      return "/tmp";
+    },
+    async readBinaryFileBytes() {
+      return new Uint8Array(64 * 64).fill(24);
+    },
+    roomId: "laboratory",
+    toRecord(value) {
+      return value !== null && typeof value === "object" && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+  });
+  const failedPoint = (timeSeconds: number) => ({
+    confidence: 0,
+    featureCount: 20,
+    forwardBackwardRatio: 0,
+    inlierCount: 0,
+    inlierRatio: 0,
+    quality: "unreliable" as const,
+    residual: { dx: 0, dy: 0, rotationDegrees: 0, scale: 1 },
+    residualErrorPx: 0,
+    timeSeconds,
+    transform: { dx: 0, dy: 0, rotationDegrees: 0, scale: 1 },
+  });
+  const trackingCache: CameraTrackingCache = {
+    algorithm: "feature-similarity-ransac",
+    anchorSeconds: 10,
+    cacheId: "failed-estimate-cache",
+    createdAt: "2026-09-01T00:00:00.000Z",
+    exclusionRois: [],
+    fallbackUsed: true,
+    mode: "fixed-roi-fallback",
+    preferredReferenceRoi: null,
+    quality: "unreliable",
+    sourceHeight: 1080,
+    sourcePath: "/tmp/source.mp4",
+    sourceWidth: 1920,
+    transformModel: "similarity-dx-dy-rotation-scale",
+    transforms: [failedPoint(9), failedPoint(11)],
+    version: 2,
+  };
+  const result = await runtime.analyzeTransition({
+    backgroundRoi: { x: 0.65, y: 0.2, width: 0.2, height: 0.2 },
+    controlRoi: { x: 0.4, y: 0.2, width: 0.2, height: 0.2 },
+    durationSeconds: 20,
+    eventSeconds: 10,
+    project: {},
+    referenceRoi: { x: 0.1, y: 0.2, width: 0.2, height: 0.2 },
+    requestId: "failed-estimate",
+    runtime: {},
+    sourceHeight: 1080,
+    sourcePath: "/tmp/source.mp4",
+    sourceWidth: 1920,
+    targetRoi: { x: 0.1, y: 0.2, width: 0.2, height: 0.2 },
+    trackingCache,
+  });
+  assert.equal(result.status, "assessed");
+  if (result.status !== "assessed") return;
+  assert.equal(result.roiStability.residualErrorPx, null);
+  assert.equal(result.roiStability.peakDisplacement, null);
+  assert.equal(result.roiStability.peakRotationDegrees, null);
+  assert.equal(result.roiStability.peakScaleDelta, null);
+  assert.equal(result.roiStability.risk, "unknown");
+  assert.equal(result.roiStability.measurementSuitableForSmallRoi, false);
+});
+
+void test("limited reference alignment reports the reference point quality", async () => {
+  const runtime = createLaboratoryBackgroundReferenceConvergenceRuntime({
+    async callRoomTools() {
+      return { run: { exitCode: 0, stderr: "" } };
+    },
+    getProjectEditOutputDir() {
+      return "/tmp";
+    },
+    async readBinaryFileBytes() {
+      return new Uint8Array(64 * 64).fill(24);
+    },
+    roomId: "laboratory",
+    toRecord(value) {
+      return value !== null && typeof value === "object" && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+  });
+  const lowReferencePoint = {
+    confidence: 0.4,
+    featureCount: 20,
+    forwardBackwardRatio: 0.7,
+    inlierCount: 8,
+    inlierRatio: 0.4,
+    quality: "low" as const,
+    residual: { dx: 0.2, dy: -0.1, rotationDegrees: 0.01, scale: 1 },
+    residualErrorPx: 2.5,
+    timeSeconds: 12,
+    transform: { dx: 2, dy: -1, rotationDegrees: 0.2, scale: 1.01 },
+  };
+  const trackingCache: CameraTrackingCache = {
+    algorithm: "feature-similarity-ransac",
+    anchorSeconds: 10,
+    cacheId: "mixed-reference-cache",
+    createdAt: "2026-09-01T00:00:00.000Z",
+    exclusionRois: [],
+    fallbackUsed: false,
+    mode: "global-feature-similarity",
+    preferredReferenceRoi: null,
+    quality: "high",
+    sourceHeight: 1080,
+    sourcePath: "/tmp/source.mp4",
+    sourceWidth: 1920,
+    transformModel: "similarity-dx-dy-rotation-scale",
+    transforms: [lowReferencePoint],
+    version: 2,
+  };
+  const result = await runtime.analyzeConvergence({
+    backgroundReferenceSeconds: 12,
+    durationSeconds: 20,
+    eventSeconds: 10,
+    project: {},
+    requestId: "low-reference",
+    runtime: {},
+    sourceHeight: 1080,
+    sourcePath: "/tmp/source.mp4",
+    sourceWidth: 1920,
+    targetRoi: { x: 0.1, y: 0.2, width: 0.2, height: 0.2 },
+    targetStructuralTimeline: [],
+    trackingCache,
+  });
+  assert.equal(result.status, "limited");
+  if (result.status !== "limited") return;
+  assert.equal(result.tracking.quality, "low");
+  assert.equal(result.tracking.referenceConfidence, 0.4);
+  assert.equal(result.tracking.fallbackUsed, true);
 });
 
 void test("structural transition report exports convergence timeline and ROI stability", () => {
@@ -124,6 +271,23 @@ void test("structural transition report exports convergence timeline and ROI sta
     kind: "appearance-transition",
     createdAt: "2026-08-26T00:00:00.000Z",
     sourcePath: "/tmp/source.mp4",
+    tracking: {
+      status: "completed",
+      algorithm: "feature-similarity-ransac",
+      version: 2,
+      transformModel: "similarity-dx-dy-rotation-scale",
+      mode: "global-feature-similarity",
+      cacheId: "tracking-cache-1",
+      anchorSeconds: 12.5,
+      quality: "high",
+      confidence: 0.72,
+      inlierRatio: 0.68,
+      forwardBackwardRatio: 0.91,
+      residualErrorPx: 1.25,
+      featureCount: 48,
+      fallbackUsed: false,
+      transformSeries: [],
+    },
     request: {
       temporalRequest: {
         roi: { x: 0.1, y: 0.2, width: 0.2, height: 0.2 },
@@ -140,26 +304,29 @@ void test("structural transition report exports convergence timeline and ROI sta
         control: { visibilityScore: 0.6 },
         background: { visibilityScore: 0.61 },
         targetVsControl: { visibilityScore: -0.15 },
-        targetVsBackground: { visibilityScore: -0.16 },
+        differential: { visibilityScore: -0.16 },
       },
     ],
     interpretation: {
-      photometricClassification: "result-uncertain",
+      classification: "result-uncertain",
       controlComparability: { score: 0.84, status: "high" },
     },
     structural: {
-      assessment: { classification: "structural-change-target-localized" },
+      status: "assessed",
+      assessment: {
+        classification: "structural-change-target-localized",
+        trackingQualityGate: "pass",
+      },
       phaseSummary: { pre: point, event: point, post: point },
       timeline: [point],
       roiStability: {
-        mode: "translation",
-        trackingConfidence: 0.72,
-        netDx: 3.2,
-        netDy: -1.4,
+        residualErrorPx: 1.25,
         peakDisplacement: 4.1,
+        peakRotationDegrees: 0.18,
+        peakScaleDelta: 0.006,
         risk: "low",
         riskRatio: 0.05,
-        fallbackUsed: false,
+        measurementSuitableForSmallRoi: true,
       },
       revealedBackground: {
         status: "assessed",
@@ -183,15 +350,12 @@ void test("structural transition report exports convergence timeline and ROI sta
       },
     },
   };
-  const markdown = formatLaboratoryStructuralTransitionMarkdown(
-    entry,
-    {
-      locale: "tr",
-      t(_key: string, fallback = "") {
-        return fallback;
-      },
-    } as never
-  );
+  const markdown = formatLaboratoryStructuralTransitionMarkdown(entry, {
+    locale: "tr",
+    t(_key: string, fallback = "") {
+      return fallback;
+    },
+  } as never);
   assert.match(markdown, /Control ROI/);
   assert.match(markdown, /Background reference: 18\.25 s/);
   assert.match(markdown, /Structural PRE \/ EVENT \/ POST/);
@@ -201,14 +365,50 @@ void test("structural transition report exports convergence timeline and ROI sta
   assert.match(markdown, /Transition shape: kademeli/);
   assert.match(markdown, /Target structural loss at peak convergence: 34%/);
   assert.match(markdown, /Target-Control structural loss/);
-  assert.match(markdown, /ROI Stability/);
-  assert.match(markdown, /Tracking confidence: 72%/);
-  assert.match(markdown, /Reference-time alignment: fixed ROI only/);
+  assert.match(markdown, /ROI Tracking \/ Stabilization/);
+  assert.match(markdown, /Confidence: 72%/);
+  assert.match(markdown, /Residual alignment error: 1\.25 px/);
+  assert.match(markdown, /Measurement coordinate mode: camera similarity/);
+  assert.match(
+    markdown,
+    /Reference-time alignment: event-to-reference camera similarity transform; fixed ROI fallback/
+  );
   assert.match(markdown, /SSIM-like/);
+  assert.doesNotMatch(markdown, /Net dx\/dy|Corrected residual drift/);
   assert.doesNotMatch(markdown, /paranormal|real\/fake verdict/i);
+
+  const limitedMarkdown = formatLaboratoryStructuralTransitionMarkdown(
+    {
+      ...entry,
+      structural: {
+        ...entry.structural,
+        revealedBackground: {
+          ...entry.structural.revealedBackground,
+          status: "limited",
+          tracking: {
+            quality: "unreliable",
+            referenceConfidence: null,
+            inlierRatio: null,
+            residualErrorPx: null,
+          },
+        },
+      },
+    },
+    {
+      locale: "tr",
+      t(_key: string, fallback = "") {
+        return fallback;
+      },
+    } as never
+  );
+  assert.match(limitedMarkdown, /Reference tracking quality: unreliable/);
+  assert.doesNotMatch(
+    limitedMarkdown,
+    /Reference confidence|Reference inlier ratio|Reference residual alignment error/
+  );
 });
 
-void test("transition host and UI carry a user-captured background reference into structural enrichment", async () => {
+void test("canonical transition result carries a user-captured background reference into structural analysis", async () => {
   const handlers = await readFile(
     "rooms/laboratory/features/media-analysis/host/action-handlers.ts",
     "utf8"
@@ -220,7 +420,6 @@ void test("transition host and UI carry a user-captured background reference int
   assert.match(handlers, /createLaboratoryBackgroundReferenceConvergenceRuntime/);
   assert.match(handlers, /backgroundReferenceSeconds/);
   assert.match(handlers, /analyzeConvergence/);
-  assert.match(handlers, /revealedBackgroundClassification/);
   assert.match(handlers, /runTransitionProbe/);
   assert.match(handlers, /enrichTransitionResult/);
   assert.match(handlers, /measureControlPhases/);

@@ -1,28 +1,22 @@
 import { asLabRecord, asNonEmptyString, escapeHtml } from "../domain/lab-types.js";
+import type {
+  AnalysisReportDescriptor,
+  AnalysisReportModel,
+  LaboratoryHistoryEntry,
+} from "../domain/lab-analysis-results.js";
 import type { LabEditConfig } from "../domain/lab-types.js";
-import { buildLaboratoryVisualResponseReportAssessment } from "../shared/visual-response-report-assessment.js";
 import type { LabI18n } from "./lab-i18n.js";
-import { formatLaboratoryStructuralTransitionV2Markdown } from "./workspace-structural-transition-v2-report.js";
-import { formatLaboratoryVisualReportV2Markdown } from "./workspace-visual-response-v2-report.js";
+import { formatLaboratoryAnalysisReportSummary } from "./workspace-analysis-report-status.js";
+import { buildLaboratoryStructuralTransitionReportModel } from "./workspace-structural-transition-summary.js";
+import {
+  buildLaboratoryVisualReportModel,
+  formatLaboratoryVisualReportMarkdown,
+} from "./workspace-visual-response-summary.js";
 
 type Entry = Record<string, unknown>;
 
-type ReportDescriptor = {
-  createdAt: string | null;
-  filename: string;
-  markdown: string;
-  rank: number;
-  status: string;
-  title: string;
-};
-
-function history(editConfig: LabEditConfig | null) {
-  const value = asLabRecord(editConfig)["temporalStressTests"];
-  return Array.isArray(value) ? value.map((entry) => asLabRecord(entry)) : [];
-}
-
-function axisLabel(value: unknown) {
-  return (asNonEmptyString(value) || "response").replaceAll("-", " ");
+function history(editConfig: LabEditConfig | null): LaboratoryHistoryEntry[] {
+  return editConfig?.temporalStressTests ?? [];
 }
 
 function formatCreatedTime(value: string | null) {
@@ -39,38 +33,6 @@ function safeSlug(value: string) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 48);
   return slug === "" ? "report" : slug;
-}
-
-function compactStatus(value: unknown, copy: LabI18n) {
-  const status = asNonEmptyString(value);
-  if (status === null) return copy.locale === "tr" ? "ölçüm kaydı" : "measurement record";
-  const tr: Record<string, string> = {
-    "roi-drift-may-affect-result": "ROI drift yüksek",
-    "roi-tracking-quality-limits-structural-result":
-      "tracking kalitesi structural sonucu sınırlıyor",
-    "roi-tracking-quality-limits-response-result": "tracking kalitesi response sonucunu sınırlıyor",
-    "reference-alignment-tracking-unreliable": "background reference hizalama güvenilmez",
-    "structural-result-uncertain": "structural sonuç belirsiz",
-    "target-and-control-structurally-similar": "target/control benzer structural değişim",
-    "structural-change-target-localized": "target-localized structural değişim",
-    "structural-change-scene-wide-with-target-excess": "scene-wide + target ek fark",
-    "structural-change-scene-wide": "scene-wide structural değişim",
-    "target-loss-with-reference-convergence": "target kaybı + background convergence",
-    "reference-convergence-without-strong-target-loss":
-      "background convergence · target kaybı zayıf",
-    "target-loss-without-reference-convergence": "target kaybı · convergence zayıf",
-    "reference-convergence-uncertain": "background convergence belirsiz",
-    "result-uncertain": "sonuç belirsiz",
-    "sample-insufficient": "örnek yetersiz",
-    "background-not-comparable": "background karşılaştırılabilir değil",
-    "visibility-only-separation": "yalnız visibility ayrışması",
-    "target-response-differs": "çoklu-metrik response ayrışması",
-    "target-and-background-change-together": "target/background birlikte değişiyor",
-    "physical-environment-like-response": "çevre ile benzer response",
-    "change-localized-to-target": "target-localized değişim",
-  };
-  if (copy.locale === "tr" && tr[status] !== undefined) return tr[status];
-  return status.replaceAll("-", " ");
 }
 
 function genericTitle(entry: Entry, copy: LabI18n) {
@@ -91,7 +53,7 @@ function genericTitle(entry: Entry, copy: LabI18n) {
 
 function genericStatus(entry: Entry, copy: LabI18n) {
   const interpretation = asLabRecord(entry["interpretation"]);
-  return compactStatus(
+  return formatLaboratoryAnalysisReportSummary(
     interpretation["classification"] ??
       interpretation["overallImpact"] ??
       interpretation["dataQuality"] ??
@@ -117,15 +79,34 @@ function genericMarkdown(entry: Entry, title: string) {
   return lines.join("\n");
 }
 
-function createDescriptor(
-  entry: Entry,
-  input: {
-    markdown: string;
-    rank: number;
-    status: string;
-    title: string;
-  }
-): ReportDescriptor {
+type DescriptorInput = {
+  markdown: string;
+  rank: number;
+  status: string;
+  title: string;
+};
+
+function createCanonicalDescriptor(
+  model: AnalysisReportModel,
+  input: DescriptorInput
+): AnalysisReportDescriptor & { filename: string; rank: number } {
+  const descriptor: AnalysisReportDescriptor = {
+    classification: model.classification,
+    createdAt: model.createdAt,
+    id: model.id,
+    kind: model.kind,
+    markdown: input.markdown,
+    status: input.status,
+    title: input.title,
+  };
+  return {
+    ...descriptor,
+    filename: `laboratory-${safeSlug(input.title)}-${safeSlug(model.id)}`,
+    rank: input.rank,
+  };
+}
+
+function createGenericDescriptor(entry: Entry, input: DescriptorInput) {
   const createdAt = asNonEmptyString(entry["createdAt"]);
   const id = asNonEmptyString(entry["id"]);
   const identity = id ?? createdAt ?? `rank-${String(input.rank)}`;
@@ -139,100 +120,110 @@ function createDescriptor(
   };
 }
 
-function describeEntry(entry: Entry, copy: LabI18n): ReportDescriptor[] {
+type HistoryReportDescriptor =
+  ReturnType<typeof createCanonicalDescriptor> | ReturnType<typeof createGenericDescriptor>;
+
+function createDescriptor(
+  entry: Entry,
+  input: DescriptorInput,
+  model: AnalysisReportModel | null
+): HistoryReportDescriptor {
+  if (model !== null && model.createdAt !== "" && model.id !== "") {
+    return createCanonicalDescriptor(model, input);
+  }
+  return createGenericDescriptor(entry, input);
+}
+
+function formatReportModel(model: AnalysisReportModel) {
+  return model.sections.map((section) => section.lines.join("\n")).join("\n");
+}
+
+function describeEntry(
+  historyEntry: LaboratoryHistoryEntry,
+  copy: LabI18n
+): HistoryReportDescriptor[] {
+  const entry = asLabRecord(historyEntry);
   const kind = asNonEmptyString(entry["kind"]);
   if (kind === "visibility-response") {
-    const request = asLabRecord(entry["request"]);
-    const assessment = asLabRecord(buildLaboratoryVisualResponseReportAssessment(entry));
-    const interpretation = asLabRecord(entry["interpretation"]);
-    const trackingLimited = interpretation["trackingQualityGate"] === "limited";
-    const title = `Visibility Response · ${axisLabel(request["axis"])}`;
+    const model = buildLaboratoryVisualReportModel(entry, copy);
+    if (model === null) return [];
     return [
-      createDescriptor(entry, {
-        markdown: formatLaboratoryVisualReportV2Markdown(entry, copy),
-        rank: 20,
-        status: compactStatus(
-          trackingLimited
-            ? "roi-tracking-quality-limits-response-result"
-            : assessment["classification"],
-          copy
-        ),
-        title,
-      }),
+      createDescriptor(
+        entry,
+        {
+          markdown: formatReportModel(model),
+          rank: 20,
+          status: model.summary,
+          title: model.title,
+        },
+        model
+      ),
     ];
   }
 
   if (kind === "appearance-transition") {
-    const interpretation = asLabRecord(entry["interpretation"]);
-    const structural = asLabRecord(entry["structural"]);
-    const descriptors: ReportDescriptor[] = [];
-    if (Object.keys(structural).length > 0) {
-      const assessment = asLabRecord(structural["assessment"]);
-      const revealed = asLabRecord(structural["revealedBackground"]);
-      const revealedAssessment = asLabRecord(revealed["assessment"]);
-      const baseStructuralStatus =
-        structural["status"] === "unavailable"
-          ? copy.locale === "tr"
-            ? "structural ölçüm kullanılamadı"
-            : "structural measurement unavailable"
-          : compactStatus(assessment["classification"], copy);
-      const convergenceClassification =
-        revealed["status"] === "assessed" || revealed["status"] === "limited"
-          ? asNonEmptyString(revealedAssessment["classification"])
-          : null;
-      const structuralStatus =
-        convergenceClassification === null ||
-        convergenceClassification === "reference-convergence-uncertain"
-          ? baseStructuralStatus
-          : `${baseStructuralStatus} · ${compactStatus(convergenceClassification, copy)}`;
-      const title = "Structural Transition";
-      descriptors.push(
-        createDescriptor(entry, {
+    const structuralModel = buildLaboratoryStructuralTransitionReportModel(entry, copy);
+    const visualModel = buildLaboratoryVisualReportModel(entry, copy);
+    const descriptors: HistoryReportDescriptor[] = [
+      createDescriptor(
+        entry,
+        {
           markdown:
-            structural["status"] === "unavailable"
-              ? genericMarkdown(entry, title)
-              : formatLaboratoryStructuralTransitionV2Markdown(entry, copy),
+            structuralModel.status === "unavailable"
+              ? genericMarkdown(entry, structuralModel.title)
+              : formatReportModel(structuralModel),
           rank: 0,
-          status: structuralStatus,
-          title,
-        })
+          status: structuralModel.summary,
+          title: structuralModel.title,
+        },
+        structuralModel
+      ),
+    ];
+    if (visualModel !== null) {
+      descriptors.push(
+        createDescriptor(
+          entry,
+          {
+            markdown: formatReportModel(visualModel),
+            rank: 10,
+            status: visualModel.summary,
+            title: visualModel.title,
+          },
+          visualModel
+        )
       );
     }
-    const title = "Appearance / Disappearance Transition";
-    descriptors.push(
-      createDescriptor(entry, {
-        markdown: formatLaboratoryVisualReportV2Markdown(entry, copy),
-        rank: 10,
-        status: compactStatus(
-          interpretation["photometricClassification"] ?? interpretation["classification"],
-          copy
-        ),
-        title,
-      })
-    );
     return descriptors;
   }
 
   if (kind === "recompression-ladder") {
     const title = "Codec Degradation · CRF ladder";
     return [
-      createDescriptor(entry, {
-        markdown: formatLaboratoryVisualReportV2Markdown(entry, copy),
-        rank: 30,
-        status: genericStatus(entry, copy),
-        title,
-      }),
+      createDescriptor(
+        entry,
+        {
+          markdown: formatLaboratoryVisualReportMarkdown(entry, copy),
+          rank: 30,
+          status: genericStatus(entry, copy),
+          title,
+        },
+        null
+      ),
     ];
   }
 
   const title = genericTitle(entry, copy);
   return [
-    createDescriptor(entry, {
-      markdown: genericMarkdown(entry, title),
-      rank: 100,
-      status: genericStatus(entry, copy),
-      title,
-    }),
+    createDescriptor(
+      entry,
+      {
+        markdown: genericMarkdown(entry, title),
+        rank: 100,
+        status: genericStatus(entry, copy),
+        title,
+      },
+      null
+    ),
   ];
 }
 

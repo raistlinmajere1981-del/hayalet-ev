@@ -1,7 +1,8 @@
 import { asLabRecord, asNonEmptyString, escapeHtml } from "../domain/lab-types.js";
+import type { AnalysisReportModel } from "../domain/lab-analysis-results.js";
 import type { LabEditConfig } from "../domain/lab-types.js";
-import { buildLaboratoryVisualResponseReportAssessment } from "../shared/visual-response-report-assessment.js";
 import type { LabI18n } from "./lab-i18n.js";
+import { formatLaboratoryAnalysisReportSummary } from "./workspace-analysis-report-status.js";
 
 type Entry = Record<string, unknown>;
 
@@ -62,6 +63,9 @@ function interpretationLabel(value: unknown, copy: LabI18n) {
     if (kind === "target-response-differs") {
       return "Target/background curves separate across multiple metrics; the cause remains open.";
     }
+    if (kind === "roi-tracking-quality-limits-response-result") {
+      return "Tracking quality limits the response result; fixed-ROI photometry is retained for diagnostics.";
+    }
     if (kind === "change-localized-to-target") {
       return "The transition appears localized toward the target ROI.";
     }
@@ -82,6 +86,9 @@ function interpretationLabel(value: unknown, copy: LabI18n) {
   }
   if (kind === "target-response-differs") {
     return "Target/background eğrileri birden fazla metrikte ayrışıyor; neden açık bırakılıyor.";
+  }
+  if (kind === "roi-tracking-quality-limits-response-result") {
+    return "Tracking kalitesi response sonucunu sınırlıyor; fixed-ROI fotometri tanı amacıyla korunuyor.";
   }
   if (kind === "change-localized-to-target") {
     return "Değişim target'a lokalize görünüyor.";
@@ -135,7 +142,7 @@ function reportMeta(entry: Entry, label: string) {
   const sourcePath = asNonEmptyString(entry["sourcePath"]);
   if (createdAt !== null) lines.push(`- Created: ${markdownCell(createdAt)}`);
   if (sourcePath !== null) lines.push(`- Source: ${markdownCell(sourcePath)}`);
-  lines.push("- Interpretation policy: descriptive only; no real/fake or mechanism verdict.");
+  lines.push("- Interpretation policy: measurement only; no real/fake or mechanism verdict.");
   return lines;
 }
 
@@ -161,8 +168,61 @@ function comparabilitySummary(interpretation: Entry, copy: LabI18n) {
   return `ROI karşılaştırılabilirliği: ${comparabilityStatusLabel(status, copy)} (${pct(score)})${areaRatio === null ? "" : ` · alan oranı ${pct(areaRatio)}`}${count === null ? "" : ` · destekleyen metrik ${String(Math.round(count))}/4`}`;
 }
 
-function responseAssessment(entry: Entry) {
-  return asLabRecord(buildLaboratoryVisualResponseReportAssessment(entry));
+function trackingCoordinateModeLabel(value: string) {
+  if (value === "fixed-roi") return "fixed ROI";
+  if (value === "fixed-roi-fallback") return "fixed ROI fallback";
+  if (value === "camera-similarity") return "camera similarity";
+  return value.replaceAll("-", " ");
+}
+
+function visualTrackingMarkdown(entry: Entry) {
+  const tracking = asLabRecord(entry["tracking"]);
+  if (Object.keys(tracking).length === 0) return [];
+  const interpretation = asLabRecord(entry["interpretation"]);
+  const status = asNonEmptyString(tracking["status"]);
+  const quality = asNonEmptyString(tracking["quality"]) || "unreliable";
+  const qualityGate = asNonEmptyString(interpretation["trackingQualityGate"]) || "advisory";
+  const coordinateMode = asNonEmptyString(tracking["measurementCoordinateMode"]) || "fixed-roi";
+  const lines = ["## ROI Tracking / Stabilization"];
+  if (status !== null) lines.push(`- Status: ${status}`);
+  lines.push(`- Tracking quality: ${quality.toUpperCase()}`, `- Quality gate: ${qualityGate}`);
+  const algorithm = asNonEmptyString(tracking["algorithm"]);
+  if (algorithm !== null) lines.push(`- Algorithm: ${algorithm}`);
+  const version = finite(tracking, "version");
+  if (version !== null) lines.push(`- Provenance version: ${decimal(version, 0)}`);
+  const transformModel = asNonEmptyString(tracking["transformModel"]);
+  if (transformModel !== null) lines.push(`- Transform model: ${transformModel}`);
+  const mode = asNonEmptyString(tracking["mode"]);
+  if (mode !== null) lines.push(`- Tracking mode: ${mode}`);
+  const cacheId = asNonEmptyString(tracking["cacheId"]);
+  if (cacheId !== null) lines.push(`- Cache ID: ${cacheId}`);
+  const anchorSeconds = finite(tracking, "anchorSeconds");
+  if (anchorSeconds !== null) lines.push(`- Anchor: ${decimal(anchorSeconds, 3)} s`);
+  const confidence = finite(tracking, "confidence");
+  if (confidence !== null) lines.push(`- Confidence: ${pct(confidence)}`);
+  const inlierRatio = finite(tracking, "inlierRatio");
+  if (inlierRatio !== null) lines.push(`- Inlier ratio: ${pct(inlierRatio)}`);
+  const forwardBackwardRatio = finite(tracking, "forwardBackwardRatio");
+  if (forwardBackwardRatio !== null) {
+    lines.push(`- Forward/backward consistency: ${pct(forwardBackwardRatio)}`);
+  }
+  const residualErrorPx = finite(tracking, "residualErrorPx");
+  if (residualErrorPx !== null) {
+    lines.push(`- Residual alignment error: ${decimal(residualErrorPx, 3)} px`);
+  }
+  const featureCount = finite(tracking, "featureCount");
+  if (featureCount !== null) lines.push(`- Feature count: ${decimal(featureCount, 0)}`);
+  lines.push(
+    `- Fallback used: ${tracking["fallbackUsed"] === true ? "yes — fixed ROI fallback" : "no"}`,
+    `- Measurement coordinate mode: ${trackingCoordinateModeLabel(coordinateMode)}`
+  );
+  const trackingError = asNonEmptyString(tracking["error"]);
+  if (trackingError !== null) lines.push(`- Tracking error: ${trackingError}`);
+  lines.push(
+    "- Photometric measurements use fixed ROI coordinates. ROI Tracking / Stabilization is retained as provenance and a quality gate; it is not dynamically stabilized photometry.",
+    "- Source media remains immutable."
+  );
+  return lines;
 }
 
 function responseMarkdown(entry: Entry, copy: LabI18n) {
@@ -171,7 +231,7 @@ function responseMarkdown(entry: Entry, copy: LabI18n) {
   const points = Array.isArray(entry["points"])
     ? entry["points"].map((point) => asLabRecord(point))
     : [];
-  const interpretation = responseAssessment(entry);
+  const interpretation = asLabRecord(entry["interpretation"]);
   const classification = interpretationLabel(interpretation["classification"], copy);
   const sensorLabel = sensorCompatibilityLabel(interpretation["sensorCompatibility"], copy);
   const comparability = comparabilitySummary(interpretation, copy);
@@ -298,11 +358,56 @@ function codecMarkdown(entry: Entry, copy: LabI18n) {
   return lines.join("\n");
 }
 
+export function buildLaboratoryVisualReportModel(
+  entry: Entry,
+  copy: LabI18n
+): AnalysisReportModel | null {
+  const kind = entry["kind"];
+  if (kind !== "visibility-response" && kind !== "appearance-transition") return null;
+  const request = asLabRecord(entry["request"]);
+  const title =
+    kind === "visibility-response"
+      ? `Visibility Response · ${axisLabel(request["axis"])}`
+      : "Appearance / Disappearance Transition";
+  const interpretation = asLabRecord(entry["interpretation"]);
+  const summaryStatus =
+    kind === "visibility-response"
+      ? interpretation["trackingQualityGate"] === "limited"
+        ? "roi-tracking-quality-limits-response-result"
+        : interpretation["classification"]
+      : interpretation["classification"];
+  const report =
+    kind === "visibility-response"
+      ? responseMarkdown(entry, copy)
+      : transitionMarkdown(entry, copy);
+  const tracking = visualTrackingMarkdown(entry);
+  const sections: AnalysisReportModel["sections"] = [{ lines: report.split("\n"), title }];
+  if (tracking.length > 0) {
+    sections.push({ lines: ["", ...tracking], title: "ROI Tracking / Stabilization" });
+  }
+  return {
+    classification: asNonEmptyString(interpretation["classification"]),
+    createdAt: asNonEmptyString(entry["createdAt"]) ?? "",
+    id: asNonEmptyString(entry["id"]) ?? "",
+    kind,
+    sections,
+    status: asNonEmptyString(entry["status"]),
+    summary: formatLaboratoryAnalysisReportSummary(summaryStatus, copy),
+    title,
+  };
+}
+
+function formatAnalysisReportModel(model: AnalysisReportModel) {
+  return model.sections.map((section) => section.lines.join("\n")).join("\n");
+}
+
 export function formatLaboratoryVisualReportMarkdown(entry: Entry, copy: LabI18n): string {
-  if (entry["kind"] === "visibility-response") return responseMarkdown(entry, copy);
-  if (entry["kind"] === "appearance-transition") return transitionMarkdown(entry, copy);
-  if (entry["kind"] === "recompression-ladder") return codecMarkdown(entry, copy);
-  return "";
+  const model = buildLaboratoryVisualReportModel(entry, copy);
+  if (model !== null) return formatAnalysisReportModel(model);
+  if (entry["kind"] !== "recompression-ladder") return "";
+  const report = codecMarkdown(entry, copy);
+  const tracking = visualTrackingMarkdown(entry);
+  return tracking.length === 0 ? report : `${report}\n\n${tracking.join("\n")}`;
 }
 
 function reportActions(entry: Entry, copy: LabI18n, _kind: VisualReportKind) {
@@ -328,6 +433,8 @@ function exportableAttributes(entry: Entry, kind: VisualReportKind) {
 }
 
 function renderResponse(entry: Entry, copy: LabI18n) {
+  const reportModel = buildLaboratoryVisualReportModel(entry, copy);
+  if (reportModel === null) return "";
   const request = asLabRecord(entry["request"]);
   const temporal = asLabRecord(request["temporalRequest"]);
   const points = Array.isArray(entry["points"])
@@ -359,14 +466,14 @@ function renderResponse(entry: Entry, copy: LabI18n) {
       </tr>`;
     })
     .join("");
-  const interpretation = responseAssessment(entry);
+  const interpretation = asLabRecord(entry["interpretation"]);
   const sensorLabel = sensorCompatibilityLabel(interpretation["sensorCompatibility"], copy);
   const comparability = comparabilitySummary(interpretation, copy);
   return `
     <section class="labx-strip-live-comparison" data-lab-response-summary="true" ${exportableAttributes(entry, "response")}>
       <div class="labx-strip-live-comparison__header">
-        <strong>Visibility Response · ${escapeHtml(axisLabel(request["axis"]))}</strong>
-        <span>${escapeHtml(interpretationLabel(interpretation["classification"], copy))}</span>
+        <strong>${escapeHtml(reportModel.title)}</strong>
+        <span>${escapeHtml(reportModel.summary)}</span>
         ${reportActions(entry, copy, "response")}
       </div>
       ${comparability === "" ? "" : `<p class="labx-strip-live-note">${escapeHtml(comparability)}</p>`}
@@ -387,6 +494,8 @@ function renderResponse(entry: Entry, copy: LabI18n) {
 }
 
 function renderTransition(entry: Entry, copy: LabI18n) {
+  const reportModel = buildLaboratoryVisualReportModel(entry, copy);
+  if (reportModel === null) return "";
   const request = asLabRecord(entry["request"]);
   const temporal = asLabRecord(request["temporalRequest"]);
   const phases = Array.isArray(entry["phases"])
@@ -408,12 +517,11 @@ function renderTransition(entry: Entry, copy: LabI18n) {
       </tr>`;
     })
     .join("");
-  const interpretation = asLabRecord(entry["interpretation"]);
   return `
     <section class="labx-strip-live-comparison" data-lab-transition-summary="true" ${exportableAttributes(entry, "transition")}>
       <div class="labx-strip-live-comparison__header">
-        <strong>Appearance / Disappearance Transition</strong>
-        <span>${escapeHtml(interpretationLabel(interpretation["classification"], copy))}</span>
+        <strong>${escapeHtml(reportModel.title)}</strong>
+        <span>${escapeHtml(reportModel.summary)}</span>
         ${reportActions(entry, copy, "transition")}
       </div>
       <p class="labx-strip-live-note">${escapeHtml(

@@ -1,23 +1,14 @@
-import { asLabRecord, escapeHtml } from "../domain/lab-types.js";
+import { escapeHtml } from "../domain/lab-types.js";
 import type { LabStoreState } from "../domain/lab-types.js";
 import { resolveLaboratoryTrackingPreviewCache } from "../shared/tracking-preview-model.js";
 import type { LabI18n } from "./lab-i18n.js";
-
-function finite(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
 
 function renderTrackingPreviewSurface(
   state: LabStoreState,
   sourceUrl: string | null,
   copy: LabI18n
 ) {
-  const source = asLabRecord(state.source);
-  const metadata = asLabRecord(source["metadata"]);
-  const cache = resolveLaboratoryTrackingPreviewCache(state.editConfig, {
-    sourceHeight: finite(metadata["height"]),
-    sourceWidth: finite(metadata["width"]),
-  });
+  const cache = resolveLaboratoryTrackingPreviewCache(state.editConfig);
   const rois = {
     target: state.ui.workspace.activeSelection?.roi ?? null,
     control: state.ui.workspace.comparisonRois.primary,
@@ -49,7 +40,7 @@ function renderTrackingPreviewSurface(
                 playsinline
                 data-lab-preserve-media="tracking-preview"
                 data-lab-tracking-preview-video="true"
-                aria-label="${escapeHtml(copy.t("mediaAnalysis.timeline.trackingPreviewVideoLabel", "Camera Tracking v2 preview"))}"
+                aria-label="${escapeHtml(copy.t("mediaAnalysis.timeline.trackingPreviewVideoLabel", "Camera Tracking preview"))}"
               ></video>
               <div class="labx-tracking-preview-frame" data-lab-tracking-preview-frame="true" aria-hidden="true"></div>
             </div>`

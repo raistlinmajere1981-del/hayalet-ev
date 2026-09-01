@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 import { createLaboratoryControlInjectionRuntime } from "../../rooms/laboratory/features/media-analysis/host/control-injection.ts";
 import { createLaboratoryTemporalStressTestRuntime } from "../../rooms/laboratory/features/media-analysis/host/temporal-stress-test.ts";
@@ -275,7 +276,7 @@ void test("destruction control measures spatial edge persistence on both sides a
     toRecord,
   });
 
-  const result = await runtime.runControlInjection({}, "req-control", {
+  const request = {
     kind: "blur",
     temporalRequest: {
       startSeconds: 5,
@@ -283,7 +284,15 @@ void test("destruction control measures spatial edge persistence on both sides a
       sampleFps: 5,
       roi: null,
     },
-  });
+  };
+  const measured = await runtime.measureControlInjection({}, "req-control-measure", request);
+  const historyAfterMeasurement = toRecord(project["edit"])["temporalStressTests"] as unknown[];
+  assert.equal(measured.kind, "control-injection");
+  assert.equal(historyAfterMeasurement.length, 1);
+  assert.equal(toRecord(historyAfterMeasurement[0])["id"], "older-baseline");
+
+  calls.length = 0;
+  const result = await runtime.runControlInjection({}, "req-control", request);
 
   assert.equal(calls.length, 10);
   assert.equal(result.kind, "control-injection");
@@ -302,6 +311,20 @@ void test("destruction control measures spatial edge persistence on both sides a
   assert.equal(toRecord(history[0])["kind"], "control-injection");
   assert.equal(toRecord(toRecord(history[0])["interpretation"])["dataQuality"], "sufficient");
   assert.equal(toRecord(history[1])["id"], "older-baseline");
+});
+
+void test("recompression ladder measures internal steps without persisting intermediate history", () => {
+  const source = readFileSync(
+    "rooms/laboratory/features/media-analysis/host/action-handlers.ts",
+    "utf8"
+  );
+  const start = source.indexOf('if (specialKind === "recompression-ladder")');
+  const end = source.indexOf("return originalRunControlInjection(...args);", start);
+  assert.ok(start >= 0 && end > start);
+  const ladder = source.slice(start, end);
+  assert.equal((ladder.match(/measureControlInjection\(/g) ?? []).length, 2);
+  assert.doesNotMatch(ladder, /originalRunControlInjection\(/);
+  assert.equal((ladder.match(/persistCompositeResult\(runtime, result\)/g) ?? []).length, 1);
 });
 
 void test("temporal history normalizer preserves typed destruction-control records across restart", () => {
@@ -326,8 +349,12 @@ void test("temporal history normalizer preserves typed destruction-control recor
       ...defaults,
       temporalStressTests: [
         {
+          schemaVersion: 2,
           kind: "control-injection",
           id: "control-one",
+          createdAt: "2026-08-31T12:00:00.000Z",
+          sourceKind: "video",
+          sourcePath: "/tmp/source.mp4",
           comparisonMethod: "paired-reencode-baseline",
           delta: {
             meanFrameDifferenceEnergy: 0.1,

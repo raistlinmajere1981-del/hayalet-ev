@@ -212,6 +212,7 @@ export function createLaboratoryHostProjectRuntimes(deps: LaboratoryHostProjectR
     ) {
       return requireStateComposition().laboratoryProjectRecordsRuntime.normalizeProject(...args);
     },
+    projectSchemaVersion: deps.projectSchemaVersion,
     readJsonFile: io.readJsonFile,
     refreshProfileModelState: profileModelState.reloadProfileModelState,
     roomId: deps.roomId,

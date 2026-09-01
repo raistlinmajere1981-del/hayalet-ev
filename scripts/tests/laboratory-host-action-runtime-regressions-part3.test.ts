@@ -66,9 +66,20 @@ void test("laboratory frame export settings drive burst and preview filter argum
       };
     },
     pushJobState() {},
-    registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
-    clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
-    cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
+    registerJob: jobState.registerJob as unknown as (
+      runtime: Record<string, unknown>,
+      job: Record<string, unknown>
+    ) => void,
+    clearJob: jobState.clearJob as unknown as (
+      runtime: Record<string, unknown>,
+      jobId: string
+    ) => void,
+    cancelJobsForProject: jobState.cancelJobsForProject as unknown as (
+      runtime: Record<string, unknown>,
+      projectId: string,
+      requestId: string,
+      options?: { actionIds?: string[] }
+    ) => Promise<unknown>,
     toRecord(value: unknown) {
       return value !== null && typeof value === "object" && Array.isArray(value) === false
         ? (value as Record<string, unknown>)
@@ -174,7 +185,9 @@ void test("laboratory frame export settings drive burst and preview filter argum
     function (asset) {
       return (
         asset["type"] === "frame" &&
-        (typeof asset["name"] === "string" ? asset["name"] : "").includes("enhanced-frame-reference")
+        (typeof asset["name"] === "string" ? asset["name"] : "").includes(
+          "enhanced-frame-reference"
+        )
       );
     }
   );
@@ -543,15 +556,25 @@ void test("laboratory project lifecycle serializes concurrent active project ass
     async ensureProjectDirectories() {},
     findProject(runtime: Record<string, unknown>, projectId: unknown) {
       const projects = runtime["projects"] as Array<Record<string, unknown>>;
-      return projects.find(function (project) {
-        return (typeof project["id"] === "string" ? project["id"] : "") === (typeof projectId === "string" ? projectId : "");
-      }) ?? null;
+      return (
+        projects.find(function (project) {
+          return (
+            (typeof project["id"] === "string" ? project["id"] : "") ===
+            (typeof projectId === "string" ? projectId : "")
+          );
+        }) ?? null
+      );
     },
     getActiveProject(runtime: Record<string, unknown>) {
       const projects = runtime["projects"] as Array<Record<string, unknown>>;
-      return projects.find(function (project) {
-        return (typeof project["id"] === "string" ? project["id"] : "") === (typeof runtime["activeProjectId"] === "string" ? runtime["activeProjectId"] : "");
-      }) ?? null;
+      return (
+        projects.find(function (project) {
+          return (
+            (typeof project["id"] === "string" ? project["id"] : "") ===
+            (typeof runtime["activeProjectId"] === "string" ? runtime["activeProjectId"] : "")
+          );
+        }) ?? null
+      );
     },
     getFeatureIdFromContext() {
       return "media-analysis";
@@ -586,6 +609,7 @@ void test("laboratory project lifecycle serializes concurrent active project ass
     normalizeProject(rawValue: unknown) {
       return toRecord(rawValue);
     },
+    projectSchemaVersion: 1,
     pushBootstrapState() {},
     readJsonFile() {
       return {};

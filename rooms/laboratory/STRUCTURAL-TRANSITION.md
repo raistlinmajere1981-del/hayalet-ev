@@ -8,9 +8,9 @@ Amaç bir videonun gerçekliği veya mekanizması hakkında hüküm vermek deği
 
 > Target PRE yapısını kaybederken aynı görüntü bölgesi kullanıcı tarafından tanımlanmış temiz arka plan referansına yapısal olarak yaklaşıyor mu; yakınlaşma zamana nasıl yayılıyor?
 
-## Mevcut Transition davranışı korunur
+## Kanonik Transition sonucu
 
-Mevcut fotometrik Transition Probe önce çalışır:
+Source/ROI doğrulaması ve tracking cache hazırlığından sonra fotometrik Transition Probe şu pencereleri ölçer:
 
 - PRE: event -1.0 → -0.2 s
 - EVENT: event -0.2 → +0.2 s
@@ -18,7 +18,7 @@ Mevcut fotometrik Transition Probe önce çalışır:
 
 Target / Background visibility, luma, chroma, near-black, recovered-dark, edge ve temporal metrikleri aynı kayıt içinde korunur.
 
-Structural analiz bu sonuca **enrichment** olarak eklenir. Structural aşama herhangi bir nedenle çalışamazsa eski fotometrik Transition sonucu yine korunur.
+Fotometrik ve Structural ölçümler tek kanonik Transition sonucunda birleştirilip history'ye bir kez yazılır. Structural aşama çalışamazsa aynı sonuçta açık `unavailable` durumu ve hata bilgisi bulunur; ölçülmüş fotometrik alanlar korunur.
 
 ## Üç spatial ROI
 
@@ -133,7 +133,7 @@ Her noktada:
 
 saklanır.
 
-PRE / EVENT / POST structural özetleri timeline'dan yaklaşık `-0.6 / 0.0 / +0.6 s` noktalarını kullanır. Eski fotometrik PRE/EVENT/POST pencere ortalamaları ayrı korunur.
+PRE / EVENT / POST structural özetleri timeline'dan yaklaşık `-0.6 / 0.0 / +0.6 s` noktalarını kullanır. Fotometrik PRE/EVENT/POST pencere ortalamaları ayrı alanlarda korunur.
 
 ## Differential structural loss
 
@@ -177,34 +177,30 @@ Kullanılabilecek sınıflar:
 
 Bu sınıflar mekanizma veya gerçeklik hükmü değildir.
 
-## ROI drift diagnostic
+## ROI tracking diagnostic
 
-Structural Transition event çevresinde reference ROI'nin translation hareketini mevcut Motion Probe block-match algoritmasıyla tahmin eder.
+Structural Transition event çevresindeki global kamera hareketini çoklu özellik, consensus ve outlier rejection kullanan similarity transform ile tahmin eder. Target ve Control kamera özelliği seçiminden dışlanır; Background ROI uygun olduğunda tercih edilen referans bölgedir.
 
 Raporlanan alanlar:
 
-- net dx / dy
-- peak displacement
-- pair count
-- tracking confidence
-- Target ROI minimum boyutuna göre normalized drift ratio
-- risk: negligible / low / moderate / high
+- raw camera dx / dy, rotation ve scale,
+- feature ve inlier sayısı/oranı,
+- residual alignment error,
+- forward/backward consistency,
+- tracking quality,
+- Target ROI minimum boyutuna göre normalized drift ratio,
+- risk: negligible / low / moderate / high.
 
-## Translation-only stabilization
+## Similarity-transform stabilization
 
-İlk sürüm:
+Kanonik tracker:
 
 - translation dx/dy uygular,
-- rotation modellemez,
-- zoom modellemez,
-- perspective modellemez.
+- rotation modeller,
+- uniform scale modeller,
+- perspective/homography modellemez.
 
-Reference seçimi:
-
-1. aynı source için mevcut Motion Reference lock varsa onu kullan,
-2. yoksa Background ROI'yi translation reference olarak kullan.
-
-Tracking confidence yeterliyse baseline-relative dx/dy Target / Control / Background structural ROI'lerine aynı global camera translation olarak uygulanır.
+Tracking quality gate geçtiğinde aynı baseline-relative similarity transform Target / Control / Background structural ROI'lerine uygulanır.
 
 Confidence düşükse:
 
@@ -214,7 +210,7 @@ fallback: fixed ROI
 reason: tracking-confidence-low
 ```
 
-Stabilizasyon şu anda **structural timeline ölçümlerine** uygulanır. Legacy fotometrik PRE/EVENT/POST ve Visibility Response geriye dönük davranışı korumak için fixed ROI kalır.
+Stabilizasyon şu anda **structural timeline ölçümlerine** uygulanır. Fotometrik PRE/EVENT/POST ve Visibility Response ölçümleri fixed ROI kullanır.
 
 ## Background Reference Capture
 

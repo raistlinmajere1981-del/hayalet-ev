@@ -22,7 +22,7 @@ const activeShellFiles = [
   "ui/components/status-chip.js",
 ];
 
-const removedLegacyFiles = [
+const removedSupersededFiles = [
   "shared/styles/shell.css",
   "shared/ui/shell-runtime.js",
   "shared/ui/request-runtime.js",
@@ -118,7 +118,7 @@ void test("laboratory shipped room reports stale active lab-root shell build out
       assert.equal(existsSync(join(buildArtifact.rootDir, relativePath)), true, relativePath);
     });
 
-    removedLegacyFiles.forEach((relativePath) => {
+    removedSupersededFiles.forEach((relativePath) => {
       assert.equal(existsSync(join(buildArtifact.rootDir, relativePath)), false, relativePath);
     });
 
@@ -148,7 +148,7 @@ void test("laboratory shipped room reports stale active lab-root shell build out
         assert.equal(existsSync(join(shippedParityRoot, relativePath)), true, relativePath);
       });
 
-      removedLegacyFiles.forEach((relativePath) => {
+      removedSupersededFiles.forEach((relativePath) => {
         assert.equal(existsSync(join(shippedParityRoot, relativePath)), false, relativePath);
       });
 

@@ -1,18 +1,16 @@
-# Laboratory — ROI Tracking / Stabilization v2
+# Laboratory — ROI Tracking / Stabilization
 
 Bu katman Target / Control / Background ROI ölçümlerinde kamera hareketinin görüntü bölgesiyle karışmasını azaltmak için eklenmiştir.
 
 Amaç görüntü içeriğinin mekanizması hakkında hüküm vermek değildir. Kaynak medya immutable kalır; yalnız measurement coordinates dönüştürülür.
 
-## Neden v2?
+## Model yaklaşımı
 
-Eski tracker küçük bir reference ROI üzerinde grayscale translation block matching kullanıyordu. Karanlık, düşük dokulu veya hareketli içeriğe sahip sahnelerde confidence sık sık düşüyor ve fixed ROI fallback oluşuyordu.
-
-v2 kamera hareketini hareket eden Target içeriğinden değil, mümkün olduğunca daha geniş sabit sahne geometrisinden tahmin eder.
+Tracker kamera hareketini hareket eden Target içeriğinden değil, mümkün olduğunca daha geniş sabit sahne geometrisinden tahmin eder. Karanlık, düşük dokulu veya hareketli içeriğe sahip sahnelerde güvenilir consensus üretilemezse fixed ROI fallback kullanılır.
 
 ## Transform modeli
 
-İlk v2 sürümü **similarity transform** kullanır:
+Güncel model **similarity transform** kullanır:
 
 - dx
 - dy
@@ -98,14 +96,14 @@ Cache identity şu bağlamları içerir:
 - anchor/reference event time
 - exclusion ROI seti
 - preferred Background/Reference ROI
-- algorithm version
+- algorithm identity
 
 Aynı bağlam ve sample times daha önce hesaplanmışsa cache yeniden kullanılabilir.
 
 Provenance:
 
 ```text
-algorithm: feature-similarity-ransac-v2
+algorithm: feature-similarity-ransac
 version: 2
 transformModel: similarity-dx-dy-rotation-scale
 cacheId: ...
@@ -118,13 +116,13 @@ transformSeries: [...]
 
 ## Structural Transition
 
-Structural Transition v2 gerçek stabilized ROI coordinates kullanır.
+Structural Transition gerçek stabilized ROI coordinates kullanır.
 
 Kullanıcı Target / Control / Background ROI'lerini event frame bağlamında tanımlar. Her timeline zamanı için event-anchor camera transformu ROI'lere uygulanır.
 
 Böylece PRE / EVENT / POST structural örnekleri mümkün olduğunca aynı fiziksel sahne alanını takip eder.
 
-Her point kendi kullanılan transformed ROI'sini ve tracking point'ini provenance olarak taşır.
+Her structural timeline point kullanılan transformed ROI'yi taşır; tracking point serisi final sonuçtaki canonical provenance içinde tutulur.
 
 Tracking quality `high` veya `medium` değilse güçlü structural classification engellenir ve:
 
@@ -138,7 +136,7 @@ roi-tracking-quality-limits-structural-result
 
 Background Reference artık yalnız aynı ekran koordinatından alınmaz.
 
-Event Target ROI → user-selected Background Reference time arasında Camera Tracking v2 transformu hesaplanır.
+Event Target ROI → user-selected Background Reference time arasında canonical camera transformu hesaplanır.
 
 Reference frame'deki template ROI bu transformla taşınır. Aynı transform sistemi convergence timeline noktalarına da uygulanır.
 
@@ -150,18 +148,18 @@ reference-alignment-tracking-unreliable
 
 classification kullanılır ve convergence sonucu güçlü yorum için uygun sayılmaz.
 
-## Visibility Response / legacy photometry sınırı
+## Visibility Response / photometry sınırı
 
-İlk v2 entegrasyonda mevcut photometric pipeline geriye dönük ölçüm semantiğini korur.
+Mevcut photometric pipeline fixed-ROI ölçüm semantiğini korur.
 
 Bu nedenle:
 
-- legacy Transition photometric PRE/EVENT/POST: fixed ROI
+- Transition photometric PRE/EVENT/POST: fixed ROI
 - Visibility Response metric sweep: fixed ROI
 
 olarak ölçülmeye devam eder.
 
-Ancak aynı selection için Camera Tracking v2 cache üretilir ve provenance / quality gate sonuca eklenir.
+Ancak aynı selection için canonical Camera Tracking cache üretilir ve provenance / quality gate sonuca eklenir.
 
 Tracking düşükse Visibility Response insan-dili assessment'i:
 
@@ -169,38 +167,35 @@ Tracking düşükse Visibility Response insan-dili assessment'i:
 roi-tracking-quality-limits-response-result
 ```
 
-ile sınırlandırılır ve eski classification `ungatedClassification` olarak saklanır.
+ile sınırlandırılır ve quality gate öncesindeki measurement classification `ungatedClassification` olarak saklanır.
 
 Bu ayrım raporda açıkça:
 
 ```text
-photometricCoordinateMode: fixed-roi-legacy
-structuralCoordinateMode: camera-tracking-v2-similarity
+photometricCoordinateMode: fixed-roi
+structuralCoordinateMode: camera-similarity
 ```
 
 şeklinde tutulur.
 
-Dinamik per-frame photometric ROI sampling daha sonraki bir genişletme olabilir; v2'nin ilk amacı Structural ve Background Reference gibi camera drift'e en hassas küçük-ROI ölçümlerini güvenilir coordinate tracking'e geçirmek ve diğer probe'ların kalite kapısını doğru kurmaktır.
+Dinamik per-frame photometric ROI sampling ayrı bir geliştirme konusudur. Güncel tracking katmanı Structural ve Background Reference gibi camera drift'e en hassas küçük-ROI ölçümlerini güvenilir coordinate tracking'e geçirir ve diğer probe'ların kalite kapısını kurar.
 
 ## Drift / residual report
 
-Structural v2 raporu hem ham camera transformunu hem corrected residual diagnostics'i saklar.
+Canonical sonuç ham camera transform serisini ve ölçülen residual alignment error değerini saklar. Structural rapor ölçülmüş aggregate hareketi ve residual error'u sunar; Tracking Preview seçilen zamandaki ham transformu gösterir.
 
-Raw:
+Structural report:
 
-- dx / dy
-- rotation
-- scale
 - peak displacement
 - peak rotation
 - peak scale delta
+- residual alignment error px
 
-Corrected residual:
+Tracking Preview:
 
 - dx / dy
 - rotation
 - scale
-- residual error px
 
 Ek olarak:
 
@@ -217,18 +212,18 @@ raporlanır.
 
 ## Tracking Preview
 
-Visual Stress panelinde Camera Tracking v2 cache üretildikten sonra **Tracking Preview** kullanılabilir.
+Visual Stress panelinde Camera Tracking cache üretildikten sonra **Tracking Preview** kullanılabilir.
 
 Preview yeni analiz başlatmaz. Mevcut cache'i okur.
 
-Timeline'da **Mikro Zoom** düğmesinin sağındaki **Tracking Preview Aç / Kapat** düğmesi yalnız kullanılabilir bir cache varken etkinleşir. Açıldığında ana player, görsel karşılaştırma görünümündeki gibi iki eşit panele ayrılır: solda ham player ve mevcut ROI katmanları, sağda Camera Tracking v2 önizlemesi bulunur. Tracking Preview, player'daki Source / Transform / Difference seçimiyle aynı görüntü alanını kullanır; açıldığında Source görünümüne döner. Rapor şeridinin görünürlüğü değişmez ve rapor alanında tracking videosu üretilmez.
+Timeline'da **Mikro Zoom** düğmesinin sağındaki **Tracking Preview Aç / Kapat** düğmesi yalnız kullanılabilir bir cache varken etkinleşir. Açıldığında ana player, görsel karşılaştırma görünümündeki gibi iki eşit panele ayrılır: solda ham player ve mevcut ROI katmanları, sağda Camera Tracking önizlemesi bulunur. Tracking Preview, player'daki Source / Transform / Difference seçimiyle aynı görüntü alanını kullanır; açıldığında Source görünümüne döner. Rapor şeridinin görünürlüğü değişmez ve rapor alanında tracking videosu üretilmez.
 
 Transform ve Difference artefaktları üretildiğinde bunlar da ana player'ın görünüm seçicisinde etkinleşir. Alt süreç şeridi video önizlemesi taşımaz; boşta yalnız proje içi rapor geçmişini gösterir.
 
 Video oynarken:
 
 - mevcut ROI çerçeveleri raw / event-anchor koordinatını gösterir,
-- dashed overlay v2 transformla hesaplanan stabilized konumu gösterir.
+- dashed overlay camera transformla hesaplanan stabilized konumu gösterir.
 
 Target, Control ve Background için görünür ROI'ler doğrulanabilir.
 
@@ -249,7 +244,7 @@ Cache transformları arasında preview için lineer interpolation uygulanır. Bu
 
 ## Axis-aligned ROI sınırı
 
-Rotation uygulanmış ROI ilk v2 sürümünde transformed dört köşenin axis-aligned bounding box'ı olarak crop edilir.
+Rotation uygulanmış ROI transformed dört köşenin axis-aligned bounding box'ı olarak crop edilir.
 
 Bu küçük rotation'larda pratik ve hafiftir ancak döndürülmüş dikdörtgenin dışındaki az miktarda çevre pikselini crop'a dahil edebilir.
 
@@ -260,7 +255,7 @@ Daha ileri bir sürümde affine-warped crop uygulanabilir. Bu sınır provenance
 Sentetik benchmark dosyası:
 
 ```bash
-npm run rooms:test:file -- scripts/tests/laboratory-camera-tracking-v2-regressions.test.ts
+npm run rooms:test:file -- scripts/tests/laboratory-camera-tracking-regressions.test.ts
 ```
 
 Kapsanan senaryolar:
@@ -282,7 +277,7 @@ Kapsanan senaryolar:
 ```bash
 npm run rooms:typecheck
 npm run rooms:lint:strict
-npm run rooms:test:file -- scripts/tests/laboratory-camera-tracking-v2-regressions.test.ts
+npm run rooms:test:file -- scripts/tests/laboratory-camera-tracking-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-structural-transition-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-transform-stack-live-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-stress-report-history-regressions.test.ts

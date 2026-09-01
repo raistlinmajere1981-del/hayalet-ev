@@ -169,7 +169,7 @@ ayrı tutulur.
 
 Kullanıcının timeline seçiminin orta noktası olay zamanı olarak kabul edilir.
 
-Varsayılan legacy fotometrik pencereler:
+Varsayılan fotometrik pencereler:
 
 ```text
 PRE   = event -1.0 s → event -0.2 s
@@ -179,7 +179,7 @@ POST  = event +0.2 s → event +1.0 s
 
 Target ve Background mevcut fotometrik metriklerle paralel ölçülür. Control seçiliyse aynı PRE / EVENT / POST pencerelerinde Control fotometrisi de eklenir ve Target-Control diferansiyeli ayrıca tutulur.
 
-Structural Transition bu legacy sonucu değiştirmez; aynı Transition kaydını yapısal timeline, diferansiyel structural loss ve ROI stability alanlarıyla zenginleştirir.
+Kanonik Transition sonucu fotometrik ölçümleri yapısal timeline, diferansiyel structural loss ve ROI stability alanlarıyla birlikte tek kez kaydeder.
 
 Structural katmanın ayrıntılı kontratı:
 
@@ -261,7 +261,7 @@ bulunur.
 
 Visual Response / Transition / Codec ve Structural Transition rapor kartlarında desteklenen akışlar **Kopyala / Copy** ve **MD Dışa Aktar / Export MD** kullanır.
 
-Kopyalama DOM'daki görsel tabloyu düz metne çevirmek yerine yapılandırılmış Markdown üretir. Structural export yöntem sınırlarını da taşır; örneğin SSIM-benzeri skorun canonical windowed SSIM olmadığı ve stabilization'ın translation-only olduğu raporda kaybolmaz.
+Kopyalama DOM'daki görsel tabloyu düz metne çevirmek yerine yapılandırılmış Markdown üretir. Structural export yöntem sınırlarını da taşır; örneğin SSIM-benzeri skorun canonical windowed SSIM olmadığı, stabilization'ın similarity transform kullandığı ve perspective/homography modellemediği raporda kaybolmaz.
 
 Source / Transform / Difference preview mevcut transform preview yüzeyinde korunur.
 

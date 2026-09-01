@@ -192,11 +192,7 @@ export function getPreviewVolume(state: LabStoreState) {
 }
 
 export function getDualPreviewVolume(state: LabStoreState) {
-  const workspace = asLabRecord(state.ui.workspace);
-  const legacyVolume = workspace["dualPreviewVolume"];
-  return typeof legacyVolume === "number" && Number.isFinite(legacyVolume)
-    ? Math.max(0, Math.min(1, legacyVolume))
-    : getPreviewVolume(state);
+  return getPreviewVolume(state);
 }
 
 export function getSelectedDualPreviewAudioAsset(state: LabStoreState): LabAsset | null {

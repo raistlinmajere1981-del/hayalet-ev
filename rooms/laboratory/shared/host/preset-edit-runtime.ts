@@ -1,3 +1,12 @@
+import {
+  isCameraTrackingCache,
+  isLaboratoryHistoryEntry,
+} from "../../domain/lab-analysis-results.js";
+import type {
+  CameraTrackingCache,
+  LaboratoryHistoryEntry,
+} from "../../domain/lab-analysis-results.js";
+
 type LaboratoryRecord = Record<string, unknown> & {
   activeOutputId?: unknown;
   activePresetId?: unknown;
@@ -5,6 +14,7 @@ type LaboratoryRecord = Record<string, unknown> & {
   artifacts?: unknown[];
   audio?: LaboratoryRecord;
   beginner?: unknown[];
+  cameraTrackingCaches?: unknown[];
   common?: LaboratoryRecord;
   createdAt?: unknown;
   cropNormalized?: LaboratoryRecord;
@@ -156,6 +166,7 @@ type LaboratoryEditRecipe = {
 type LaboratoryEditState = {
   activeOutputId: string | null;
   activePresetId: string | null;
+  cameraTrackingCaches: CameraTrackingCache[];
   dirty: boolean;
   handoffMode: "source" | "derived";
   lastActionAt: string | null;
@@ -164,7 +175,7 @@ type LaboratoryEditState = {
   outputs: LaboratoryEditOutput[];
   preview: LaboratoryEditPreview;
   recipe: LaboratoryEditRecipe;
-  temporalStressTests: LaboratoryRecord[];
+  temporalStressTests: LaboratoryHistoryEntry[];
 };
 
 type LaboratoryPresetEditRuntimeDeps = {
@@ -307,6 +318,7 @@ export function createLaboratoryPresetEditRuntime(deps: LaboratoryPresetEditRunt
         },
       },
       outputs: [],
+      cameraTrackingCaches: [],
       temporalStressTests: [],
     };
 
@@ -463,8 +475,11 @@ export function createLaboratoryPresetEditRuntime(deps: LaboratoryPresetEditRunt
         },
       },
       outputs: outputs,
+      cameraTrackingCaches: Array.isArray(source.cameraTrackingCaches)
+        ? source.cameraTrackingCaches.filter(isCameraTrackingCache)
+        : [],
       temporalStressTests: Array.isArray(source.temporalStressTests)
-        ? source.temporalStressTests.map(toRecord).slice(0, 20)
+        ? source.temporalStressTests.filter(isLaboratoryHistoryEntry).slice(0, 20)
         : [],
     };
   }

@@ -17,10 +17,7 @@ function readFiniteMetric(record: Record<string, unknown>, key: string) {
 }
 
 function readEdgePersistence(record: Record<string, unknown>) {
-  return (
-    readFiniteMetric(record, "spatialEdgePersistenceRatio") ??
-    readFiniteMetric(record, "edgePersistenceRatio")
-  );
+  return readFiniteMetric(record, "spatialEdgePersistenceRatio");
 }
 
 function formatMetric(value: number | null) {

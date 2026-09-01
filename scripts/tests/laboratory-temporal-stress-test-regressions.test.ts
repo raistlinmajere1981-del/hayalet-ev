@@ -304,7 +304,7 @@ void test("video transform inspector exposes Temporal Scan only for a valid sele
   );
 });
 
-void test("latest temporal measurement renders spatial persistence and falls back for legacy records", () => {
+void test("latest temporal measurement renders canonical spatial persistence", () => {
   const spatialMarkup = renderWorkspaceStressTestSummaries(
     {
       temporalStressTests: [
@@ -337,24 +337,6 @@ void test("latest temporal measurement renders spatial persistence and falls bac
   assert.match(spatialMarkup, /60%/);
   assert.doesNotMatch(spatialMarkup, />75%</);
   assert.match(spatialMarkup, /0\.100 \/ 0\.080/);
-
-  const legacyMarkup = renderWorkspaceStressTestSummaries(
-    {
-      temporalStressTests: [
-        {
-          request: { startSeconds: 2, endSeconds: 5, sampleFps: 5, roi: null },
-          metrics: { summary: { edgePersistenceRatio: 0.75 } },
-        },
-      ],
-    } as never,
-    {
-      locale: "en",
-      t(_key: string, fallback = "") {
-        return fallback;
-      },
-    } as never
-  );
-  assert.match(legacyMarkup, /75%/);
 });
 
 void test("temporal action is wired from live controller through the host action router", async () => {

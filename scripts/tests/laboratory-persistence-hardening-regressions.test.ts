@@ -5,6 +5,35 @@ import {
   saveLabPersistedState,
 } from "../../rooms/laboratory/runtime/lab-persistence.ts";
 
+void test("laboratory persistence reads only the canonical current schema", () => {
+  const storage = new Map<string, string>();
+  const windowRef = {
+    localStorage: {
+      getItem(key: string) {
+        return storage.get(key) ?? null;
+      },
+      setItem(key: string, value: string) {
+        storage.set(key, value);
+      },
+    },
+  } as unknown as Window & typeof globalThis;
+
+  storage.set("hayalet-ev:laboratory-refactor:v3", JSON.stringify({ schemaVersion: 3 }));
+  assert.equal(loadLabPersistedState(windowRef), null);
+  assert.equal(storage.has("hayalet-ev:laboratory-refactor:v4"), false);
+
+  storage.set("hayalet-ev:laboratory-refactor:v4", JSON.stringify({ schemaVersion: 3 }));
+  assert.equal(loadLabPersistedState(windowRef), null);
+
+  storage.set(
+    "hayalet-ev:laboratory-refactor:v4",
+    JSON.stringify({ schemaVersion: 4, workspace: { previewVolume: 0.35 } })
+  );
+  const loaded = loadLabPersistedState(windowRef) as Record<string, unknown>;
+  assert.equal(loaded["schemaVersion"], 4);
+  assert.equal((loaded["workspace"] as Record<string, unknown>)["previewVolume"], 0.35);
+});
+
 void test("laboratory persistence stores only boot-safe state and skips transient rewrites", () => {
   const storage = new Map<string, string>();
   let writes = 0;

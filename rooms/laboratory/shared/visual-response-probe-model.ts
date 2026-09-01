@@ -1,26 +1,20 @@
 import { normalizeLaboratoryTemporalStressTestRequest } from "./temporal-stress-test-model.js";
 import type { LaboratoryTemporalStressTestRequest } from "./temporal-stress-test-model.js";
+import type { NormalizedRoi, VisualResponseSweepAxis } from "../domain/lab-analysis-results.js";
 
-export type LaboratoryResponseSweepAxis =
-  | "exposure"
-  | "gamma"
-  | "brightness"
-  | "black-level"
-  | "contrast"
-  | "local-contrast"
-  | "blur"
-  | "denoise"
-  | "sharpen";
+export type LaboratoryResponseSweepAxis = VisualResponseSweepAxis;
 
-export type LaboratoryNormalizedRoi = NonNullable<LaboratoryTemporalStressTestRequest["roi"]>;
+export type LaboratoryNormalizedRoi = NormalizedRoi;
 
 export type LaboratoryVisualResponseProbeRequest = {
   axis: LaboratoryResponseSweepAxis;
-  temporalRequest: LaboratoryTemporalStressTestRequest;
   backgroundRoi: LaboratoryNormalizedRoi;
+  temporalRequest: Omit<LaboratoryTemporalStressTestRequest, "roi"> & {
+    roi: LaboratoryNormalizedRoi;
+  };
 };
 
-export const LAB_RESPONSE_SWEEP_AXES: readonly LaboratoryResponseSweepAxis[] = [
+const LAB_RESPONSE_SWEEP_AXES: readonly LaboratoryResponseSweepAxis[] = [
   "exposure",
   "gamma",
   "brightness",
@@ -88,7 +82,11 @@ export function normalizeLaboratoryVisualResponseProbeRequest(
   const backgroundRoi = normalizeRoi(record["backgroundRoi"]);
   if (temporalRequest === null || temporalRequest.roi === null || backgroundRoi === null)
     return null;
-  return { axis: record["axis"], temporalRequest, backgroundRoi };
+  return {
+    axis: record["axis"],
+    backgroundRoi,
+    temporalRequest: { ...temporalRequest, roi: temporalRequest.roi },
+  };
 }
 
 export function normalizeLaboratoryResponseBackgroundRoi(value: unknown) {

@@ -1,4 +1,25 @@
-import type { LaboratoryNormalizedRoi } from "../../../shared/visual-response-probe-model.js";
+import {
+  isCameraTrackingCache,
+  isCameraTrackingCacheUsableForMeasurement,
+  isCameraTransformPointUsableForDiagnostics,
+  isCameraTransformPointUsableForMeasurement,
+} from "../../../domain/lab-analysis-results.js";
+import type {
+  CameraSimilarityTransform,
+  CameraTrackingCache,
+  CameraTrackingMode,
+  CameraTransformPoint,
+  NormalizedRoi,
+  TrackingQuality,
+} from "../../../domain/lab-analysis-results.js";
+
+export type {
+  CameraSimilarityTransform,
+  CameraTrackingCache,
+  CameraTrackingMode,
+  CameraTransformPoint,
+  TrackingQuality,
+} from "../../../domain/lab-analysis-results.js";
 
 type RecordValue = Record<string, unknown>;
 type RuntimeRecord = RecordValue;
@@ -16,49 +37,14 @@ type CameraTrackingDeps = {
   toRecord: (value: unknown) => RecordValue;
 };
 
-export type LaboratoryTrackingQuality = "high" | "medium" | "low" | "unreliable";
-export type LaboratoryCameraTrackingMode =
-  "global-feature-similarity" | "reference-feature-similarity" | "fixed-roi-fallback";
+type LaboratoryNormalizedRoi = NormalizedRoi;
+type LaboratoryTrackingQuality = TrackingQuality;
+type LaboratoryCameraTrackingMode = CameraTrackingMode;
+type LaboratorySimilarityTransform = CameraSimilarityTransform;
+type LaboratoryCameraTransformPoint = CameraTransformPoint;
+type LaboratoryCameraTransformCache = CameraTrackingCache;
 
-export type LaboratorySimilarityTransform = {
-  dx: number;
-  dy: number;
-  rotationDegrees: number;
-  scale: number;
-};
-
-export type LaboratoryCameraTransformPoint = {
-  confidence: number;
-  featureCount: number;
-  forwardBackwardRatio: number;
-  inlierCount: number;
-  inlierRatio: number;
-  quality: LaboratoryTrackingQuality;
-  residual: LaboratorySimilarityTransform;
-  residualErrorPx: number;
-  timeSeconds: number;
-  transform: LaboratorySimilarityTransform;
-};
-
-export type LaboratoryCameraTransformCache = {
-  algorithm: "feature-similarity-ransac-v2";
-  anchorSeconds: number;
-  cacheId: string;
-  createdAt: string;
-  exclusionRois: LaboratoryNormalizedRoi[];
-  fallbackUsed: boolean;
-  mode: LaboratoryCameraTrackingMode;
-  preferredReferenceRoi: LaboratoryNormalizedRoi | null;
-  quality: LaboratoryTrackingQuality;
-  sourceHeight: number;
-  sourcePath: string;
-  sourceWidth: number;
-  transformModel: "similarity-dx-dy-rotation-scale";
-  transforms: LaboratoryCameraTransformPoint[];
-  version: 2;
-};
-
-export type LaboratoryCameraTrackingRequest = {
+type LaboratoryCameraTrackingRequest = {
   anchorSeconds: number;
   durationSeconds: number | null;
   exclusionRois?: Array<LaboratoryNormalizedRoi | null>;
@@ -596,7 +582,7 @@ function cacheIdentity(input: LaboratoryCameraTrackingRequest) {
     input.anchorSeconds.toFixed(3),
     exclusions,
     reference,
-    "feature-similarity-ransac-v2",
+    "feature-similarity-ransac",
   ].join("::");
 }
 
@@ -613,10 +599,10 @@ export function getLaboratoryCameraTransformAt(
   cache: LaboratoryCameraTransformCache | null,
   timeSeconds: number
 ) {
-  if (cache === null || cache.fallbackUsed) return null;
+  if (cache === null || !isCameraTrackingCacheUsableForMeasurement(cache)) return null;
   const point = nearestTransform(cache, timeSeconds);
   if (point === null || Math.abs(point.timeSeconds - timeSeconds) > 0.16) return null;
-  if (point.quality === "unreliable" || point.confidence < 0.38) return null;
+  if (!isCameraTransformPointUsableForMeasurement(point)) return null;
   return point;
 }
 
@@ -745,12 +731,7 @@ export function createLaboratoryCameraTrackingRuntime(deps: CameraTrackingDeps) 
   }
 
   function deserializeCache(record: RecordValue): LaboratoryCameraTransformCache | null {
-    if (record["algorithm"] !== "feature-similarity-ransac-v2") return null;
-    const transforms = Array.isArray(record["transforms"])
-      ? (record["transforms"] as unknown[]).map(toRecord)
-      : [];
-    if (transforms.length === 0) return null;
-    return record as unknown as LaboratoryCameraTransformCache;
+    return isCameraTrackingCache(record) ? record : null;
   }
 
   async function persistCache(runtime: RuntimeRecord, cache: LaboratoryCameraTransformCache) {
@@ -837,9 +818,7 @@ export function createLaboratoryCameraTrackingRuntime(deps: CameraTrackingDeps) 
     const nonAnchor = transforms.filter(function (point) {
       return Math.abs(point.timeSeconds - anchorSeconds) > 0.001;
     });
-    const reliable = nonAnchor.filter(function (point) {
-      return point.quality !== "unreliable" && point.confidence >= 0.38;
-    });
+    const reliable = nonAnchor.filter(isCameraTransformPointUsableForDiagnostics);
     const averageConfidence = mean(reliable.map((point) => point.confidence));
     const coverage = reliable.length / Math.max(1, nonAnchor.length);
     const overallConfidence = clamp01(averageConfidence * 0.72 + coverage * 0.28);
@@ -848,9 +827,9 @@ export function createLaboratoryCameraTrackingRuntime(deps: CameraTrackingDeps) 
     if (fallbackUsed) mode = "fixed-roi-fallback";
     const createdAt = new Date().toISOString();
     const cache: LaboratoryCameraTransformCache = {
-      algorithm: "feature-similarity-ransac-v2",
+      algorithm: "feature-similarity-ransac",
       anchorSeconds,
-      cacheId: `camera-tracking-v2-${safeToken(cacheIdentity(input))}-${createdAt.replace(/[:.]/g, "-")}`,
+      cacheId: `camera-tracking-${safeToken(cacheIdentity(input))}-${createdAt.replace(/[:.]/g, "-")}`,
       createdAt,
       exclusionRois: exclusions,
       fallbackUsed,

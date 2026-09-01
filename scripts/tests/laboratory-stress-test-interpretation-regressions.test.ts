@@ -39,20 +39,6 @@ void test("temporal interpretation prefers spatial edge persistence when both pe
   assert.equal(interpretation.chromaVariation, "stable");
 });
 
-void test("temporal interpretation keeps legacy edge persistence as a fallback for older records", () => {
-  const interpretation = interpretLaboratoryTemporalSummary({
-    ...sufficientSummary,
-    meanFrameDifferenceEnergy: 0.002,
-    edgePersistenceRatio: 0.2,
-    lumaRange: 0.003,
-    chromaURange: 0.001,
-    chromaVRange: 0.001,
-  });
-
-  assert.equal(interpretation.dataQuality, "sufficient");
-  assert.equal(interpretation.edgePersistence, "intermittent");
-});
-
 void test("temporal interpretation refuses to infer stability from empty or unusable spatial samples", () => {
   const interpretation = interpretLaboratoryTemporalSummary({
     sampleCount: 2,
@@ -182,5 +168,8 @@ void test("stress-test cards render readable Turkish meaning above the technical
   assert.match(markup, /Control sonucu/);
   assert.match(markup, /ölçülen metriklerde belirgin bir değişiklik oluşturdu/);
   assert.match(markup, /Kareler arası değişim belirgin biçimde arttı/);
-  assert.match(markup, /Hedef yapının yok olduğu, üretildiği veya kaynağının açıklanmış olduğu anlamına gelmez/);
+  assert.match(
+    markup,
+    /Hedef yapının yok olduğu, üretildiği veya kaynağının açıklanmış olduğu anlamına gelmez/
+  );
 });

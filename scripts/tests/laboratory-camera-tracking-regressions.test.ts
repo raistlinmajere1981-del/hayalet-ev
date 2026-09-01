@@ -5,7 +5,10 @@ import test from "node:test";
 import {
   applyLaboratoryCameraTransformToRoi,
   estimateLaboratoryCameraTransform,
-} from "../../rooms/laboratory/features/media-analysis/host/camera-tracking-v2.ts";
+  getLaboratoryCameraTransformAt,
+} from "../../rooms/laboratory/features/media-analysis/host/camera-tracking.ts";
+import { isCameraTrackingCacheUsableForMeasurement } from "../../rooms/laboratory/domain/lab-analysis-results.ts";
+import type { CameraTrackingCache } from "../../rooms/laboratory/domain/lab-analysis-results.ts";
 import {
   isLaboratoryTrackingPreviewCacheUsable,
   resolveLaboratoryTrackingPreviewCache,
@@ -116,19 +119,19 @@ function assertTransformClose(
   assert.ok(estimated.inlierRatio > 0.35);
 }
 
-void test("camera tracking v2 recovers horizontal translation", () => {
+void test("camera tracking recovers horizontal translation", () => {
   const anchor = baseScene();
   const expected = { dx: 7, dy: 0, rotationDegrees: 0, scale: 1 };
   assertTransformClose(estimate(anchor, inverseWarp(anchor, expected)), expected);
 });
 
-void test("camera tracking v2 recovers vertical translation", () => {
+void test("camera tracking recovers vertical translation", () => {
   const anchor = baseScene();
   const expected = { dx: 0, dy: -6, rotationDegrees: 0, scale: 1 };
   assertTransformClose(estimate(anchor, inverseWarp(anchor, expected)), expected);
 });
 
-void test("camera tracking v2 recovers translation plus small rotation", () => {
+void test("camera tracking recovers translation plus small rotation", () => {
   const anchor = baseScene();
   const expected = { dx: 4, dy: 2, rotationDegrees: 2.5, scale: 1 };
   assertTransformClose(estimate(anchor, inverseWarp(anchor, expected)), expected, {
@@ -137,7 +140,7 @@ void test("camera tracking v2 recovers translation plus small rotation", () => {
   });
 });
 
-void test("camera tracking v2 recovers mild zoom", () => {
+void test("camera tracking recovers mild zoom", () => {
   const anchor = baseScene();
   const expected = { dx: 1, dy: -1, rotationDegrees: 0, scale: 1.035 };
   assertTransformClose(estimate(anchor, inverseWarp(anchor, expected)), expected, {
@@ -204,56 +207,157 @@ void test("static camera plus strongly moving target never creates an 80px camer
   assert.ok(Math.hypot(result.transform.dx, result.transform.dy) < 80);
 });
 
-void test("tracking preview cache resolver falls back to completed report provenance", () => {
+void test("tracking preview cache resolver reads canonical edit cache state", () => {
   const transformPoint = {
     timeSeconds: 10,
     confidence: 0.8,
+    featureCount: 32,
+    inlierCount: 24,
     inlierRatio: 0.7,
     forwardBackwardRatio: 0.9,
     residualErrorPx: 2,
     quality: "high",
+    residual: { dx: 0.1, dy: -0.1, rotationDegrees: 0.01, scale: 1 },
     transform: { dx: 3, dy: -2, rotationDegrees: 0.2, scale: 1.01 },
   };
-  const cache = resolveLaboratoryTrackingPreviewCache(
-    {
-      temporalStressTests: [
-        {
-          kind: "appearance-transition",
-          trackingV2: {
-            status: "completed",
-            algorithm: "feature-similarity-ransac-v2",
-            anchorSeconds: 10,
-            cacheId: "report-cache",
-            fallbackUsed: false,
-            mode: "global-feature-similarity",
-            quality: "high",
-            transformSeries: [transformPoint],
-          },
-        },
-      ],
-    },
-    { sourceWidth: 1920, sourceHeight: 1080 }
-  );
+  const cache = resolveLaboratoryTrackingPreviewCache({
+    cameraTrackingCaches: [
+      {
+        algorithm: "feature-similarity-ransac",
+        anchorSeconds: 10,
+        cacheId: "canonical-cache",
+        createdAt: "2026-08-30T00:00:00.000Z",
+        exclusionRois: [],
+        fallbackUsed: false,
+        mode: "global-feature-similarity",
+        preferredReferenceRoi: null,
+        quality: "high",
+        sourceHeight: 1080,
+        sourcePath: "/tmp/source.mp4",
+        sourceWidth: 1920,
+        transformModel: "similarity-dx-dy-rotation-scale",
+        transforms: [transformPoint],
+        version: 2,
+      },
+    ],
+  });
   assert.notEqual(cache, null);
-  assert.equal(cache?.cacheId, "report-cache");
+  assert.equal(cache?.cacheId, "canonical-cache");
   assert.equal(cache?.sourceWidth, 1920);
   assert.equal(cache?.sourceHeight, 1080);
   assert.equal(cache?.transforms.length, 1);
   assert.equal(isLaboratoryTrackingPreviewCacheUsable(cache), true);
 });
 
-void test("tracking v2 is wired as a shared cache/provenance layer and player comparison", async () => {
+void test("low non-anchor transforms remain preview diagnostics but never drive measurement coordinates", () => {
+  const point = (timeSeconds: number, quality: "high" | "low", confidence: number) => ({
+    timeSeconds,
+    confidence,
+    featureCount: 24,
+    inlierCount: 12,
+    inlierRatio: 0.5,
+    forwardBackwardRatio: 0.7,
+    residualErrorPx: 3,
+    quality,
+    residual: { dx: 0.2, dy: -0.1, rotationDegrees: 0.02, scale: 1 },
+    transform: { dx: 4, dy: -3, rotationDegrees: 0.4, scale: 1.01 },
+  });
+  const cache: CameraTrackingCache = {
+    algorithm: "feature-similarity-ransac",
+    anchorSeconds: 0,
+    cacheId: "low-non-anchor-cache",
+    createdAt: "2026-08-31T00:00:00.000Z",
+    exclusionRois: [],
+    fallbackUsed: false,
+    mode: "global-feature-similarity",
+    preferredReferenceRoi: null,
+    quality: "medium",
+    sourceHeight: 1080,
+    sourcePath: "/tmp/source.mp4",
+    sourceWidth: 1920,
+    transformModel: "similarity-dx-dy-rotation-scale",
+    transforms: [point(0, "high", 1), point(1, "low", 0.4), point(2, "low", 0.4)],
+    version: 2,
+  };
+
+  assert.equal(isCameraTrackingCacheUsableForMeasurement(cache), false);
+  assert.equal(getLaboratoryCameraTransformAt(cache, 1), null);
+  assert.equal(isLaboratoryTrackingPreviewCacheUsable(cache), true);
+});
+
+void test("measurement cache requires the established 55 percent usable timeline coverage", () => {
+  const point = (
+    timeSeconds: number,
+    quality: "high" | "medium" | "low",
+    confidence: number
+  ) => ({
+    timeSeconds,
+    confidence,
+    featureCount: 24,
+    inlierCount: 12,
+    inlierRatio: 0.5,
+    forwardBackwardRatio: 0.7,
+    residualErrorPx: 3,
+    quality,
+    residual: { dx: 0.2, dy: -0.1, rotationDegrees: 0.02, scale: 1 },
+    transform: { dx: 4, dy: -3, rotationDegrees: 0.4, scale: 1.01 },
+  });
+  const cache = (transforms: CameraTrackingCache["transforms"]): CameraTrackingCache => ({
+    algorithm: "feature-similarity-ransac",
+    anchorSeconds: 0,
+    cacheId: "mixed-quality-cache",
+    createdAt: "2026-09-01T00:00:00.000Z",
+    exclusionRois: [],
+    fallbackUsed: false,
+    mode: "global-feature-similarity",
+    preferredReferenceRoi: null,
+    quality: "medium",
+    sourceHeight: 1080,
+    sourcePath: "/tmp/source.mp4",
+    sourceWidth: 1920,
+    transformModel: "similarity-dx-dy-rotation-scale",
+    transforms,
+    version: 2,
+  });
+  const anchor = point(0, "high", 1);
+  const insufficient = cache([
+    anchor,
+    point(1, "medium", 0.6),
+    point(2, "medium", 0.6),
+    point(3, "low", 0.4),
+    point(4, "low", 0.4),
+  ]);
+  const sufficient = cache([
+    anchor,
+    point(1, "medium", 0.6),
+    point(2, "medium", 0.6),
+    point(3, "medium", 0.6),
+    point(4, "low", 0.4),
+  ]);
+
+  assert.equal(isCameraTrackingCacheUsableForMeasurement(insufficient), false);
+  assert.equal(getLaboratoryCameraTransformAt(insufficient, 1), null);
+  assert.equal(isCameraTrackingCacheUsableForMeasurement(sufficient), true);
+  assert.notEqual(getLaboratoryCameraTransformAt(sufficient, 1), null);
+  assert.equal(getLaboratoryCameraTransformAt(sufficient, 4), null);
+});
+
+void test("tracking is wired as the canonical shared cache/provenance layer", async () => {
   const composition = await readFile("rooms/laboratory/shared/host/action-composition.ts", "utf8");
-  const wrapper = await readFile(
-    "rooms/laboratory/features/media-analysis/host/action-handlers-v2.ts",
+  const handlers = await readFile(
+    "rooms/laboratory/features/media-analysis/host/action-handlers.ts",
     "utf8"
   );
   const structural = await readFile(
-    "rooms/laboratory/features/media-analysis/host/structural-transition-v2.ts",
+    "rooms/laboratory/features/media-analysis/host/structural-transition.ts",
     "utf8"
   );
   const convergence = await readFile(
-    "rooms/laboratory/features/media-analysis/host/background-reference-convergence-v2.ts",
+    "rooms/laboratory/features/media-analysis/host/background-reference-convergence.ts",
+    "utf8"
+  );
+  const responseProbe = await readFile(
+    "rooms/laboratory/features/media-analysis/host/visual-response-probe.ts",
     "utf8"
   );
   const preview = await readFile("rooms/laboratory/ui/lab-tracking-preview-binder.ts", "utf8");
@@ -271,14 +375,18 @@ void test("tracking v2 is wired as a shared cache/provenance layer and player co
     "rooms/laboratory/ui/styles/lab-workspace-selection.css",
     "utf8"
   );
-  assert.match(composition, /action-handlers-v2\.js/);
-  assert.match(wrapper, /getOrCreateTrackingCache/);
-  assert.match(wrapper, /exclusionRois: \[input\.targetRoi, input\.controlRoi\]/);
-  assert.match(wrapper, /preferredReferenceRoi: input\.backgroundRoi/);
-  assert.match(wrapper, /trackingV2/);
-  assert.match(wrapper, /photometricCoordinateMode: "fixed-roi-legacy"/);
-  assert.match(structural, /camera-tracking-v2 similarity transform/);
-  assert.match(convergence, /event-to-reference|Camera Tracking v2|camera-tracking-v2-similarity/i);
+  assert.match(composition, /action-handlers\.js/);
+  assert.match(handlers, /getOrCreateTrackingCache/);
+  assert.match(handlers, /exclusionRois: \[context\.targetRoi, controlRoi\]/);
+  assert.match(handlers, /preferredReferenceRoi: context\.backgroundRoi/);
+  assert.match(handlers, /photometricCoordinateMode: "fixed-roi"/);
+  assert.match(handlers, /structuralCoordinateMode:[\s\S]*"camera-similarity"/);
+  assert.match(handlers, /persistCompositeResult\(runtime, finalResult\)/);
+  assert.doesNotMatch(handlers, /persistFallbackTrackingCache/);
+  assert.doesNotMatch(handlers, /replaceStoredResult/);
+  assert.doesNotMatch(responseProbe, /temporalStressTests/);
+  assert.match(structural, /camera similarity transform applied/);
+  assert.match(convergence, /camera-similarity|feature-similarity-ransac camera transform/);
   assert.match(preview, /data-lab-tracking-preview-surface/);
   assert.doesNotMatch(preview, /data-lab-selection-roi-overlay/);
   assert.match(timeline, /workspace-tracking-preview-toggle/);

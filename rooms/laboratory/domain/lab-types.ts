@@ -1,4 +1,5 @@
 import type { AnalysisReference, AnalysisScope } from "../shared/types/analysis-scope.js";
+import type { CameraTrackingCache, LaboratoryHistoryEntry } from "./lab-analysis-results.js";
 import { asNonEmptyString } from "./lab-primitives.js";
 import type {
   CapabilityFamilyId,
@@ -59,7 +60,7 @@ export interface LabAsset {
   metadata?: LabRecord;
 }
 
-/** V2.3 workspace mode — replaces stage navigation */
+/** Canonical workspace mode; stage navigation is no longer the UI owner. */
 export type WorkspaceMode = "loading" | "workspace" | "analyzing" | "complete";
 export type LabFeatureStage = "source" | "edit" | "process" | "report";
 export type LabMediaViewportState = "empty" | "loading" | "active" | "error";
@@ -71,17 +72,17 @@ export type LabSourceRetryBlockReason =
   | "missing-yt-dlp"
   | "local-reselect-required";
 
-/** V2.4 report freshness — condition-driven, never gates UI */
+/** Report freshness is condition-driven and never gates UI. */
 export type ReportFreshnessState = "current" | "stale" | "previous-run";
 export interface ReportFreshness {
   state: ReportFreshnessState;
   workspaceDirty: boolean;
 }
 
-/** V2.5 preflight severity — shared contract between UI + controller */
+/** Preflight severity shared by the UI and controller. */
 export type PreflightSeverity = "clear" | "warning" | "will-fail";
 
-/** V3 drawer mode — derived from system state, never manually toggled */
+/** Drawer mode is derived from system state and never manually toggled. */
 export type LabDrawerMode = "setup" | "running" | "result" | "explore";
 export type LabDrawerModeOverride = "setup" | "result";
 export type LabDecisionIntent =
@@ -292,11 +293,11 @@ export interface LabWorkspaceUiState {
   reportOverlayOpen: boolean;
   selectionTabActive: boolean;
   preflightAutoRunEnabled: boolean;
-  /** V3 explore toggle — user manually switches Result ↔ Explore */
+  /** User-controlled Result ↔ Explore toggle. */
   userExploreToggle: boolean;
-  /** V3 top-bar requested mode, constrained by derived drawer mode rules */
+  /** Top-bar requested mode, constrained by derived drawer mode rules. */
   drawerModeOverride: LabDrawerModeOverride | null;
-  /** V3 drawer collapsed state */
+  /** Drawer collapsed state. */
   drawerCollapsed: boolean;
   /** V4B inspector pinned state — push vs popover */
   inspectorPinned: boolean;
@@ -429,11 +430,13 @@ export interface LabProfileDrafts {
 
 export interface LabEditConfig extends LabRecord {
   activeOutputId?: unknown;
+  cameraTrackingCaches?: CameraTrackingCache[];
   handoffMode?: unknown;
   mode?: unknown;
   outputs?: unknown;
   preview?: unknown;
   recipe?: unknown;
+  temporalStressTests?: LaboratoryHistoryEntry[];
 }
 
 export interface LabProfileConfig extends LabRecord {
@@ -753,9 +756,9 @@ export interface LabStoreUiState {
   editSidePanelCollapsed: boolean;
   /** Raw log section collapsed in Process stage */
   rawLogCollapsed: boolean;
-  /** V2.3 workspace state */
+  /** Canonical workspace state. */
   workspace: LabWorkspaceUiState;
-  /** V5 source panel (left rail) */
+  /** Source panel state for the left rail. */
   sourcePanelCollapsed: boolean;
 }
 
@@ -793,14 +796,14 @@ export interface LabPersistedState {
   analysisControlsCollapsed: boolean;
   editSidePanelCollapsed?: boolean;
   rawLogCollapsed?: boolean;
-  /** V2.3 workspace state persistence */
+  /** Canonical workspace state persistence. */
   workspace?: Partial<LabWorkspaceUiState>;
   projectImport?: Partial<LabProjectImportUiState>;
 }
 
 export interface LabStoreState {
   featureId: LabFeatureId;
-  /** Selected capability families — replaces module selection in v2.2 */
+  /** Selected capability families; module selection is no longer the owner. */
   selectedCapabilities: CapabilityFamilyId[];
   bootReady: boolean;
   roomReadySent: boolean;
@@ -973,7 +976,7 @@ export type LabStoreEvent =
   | { type: "user-action-updated"; id: string; patch: Partial<LabUserActionEvent> }
   | { type: "user-action-hub-dismissed"; id: string }
   | { type: "clear-events" }
-  // V2.3 workspace events
+  // Workspace events are the canonical UI mutation contract.
   | { type: "workspace-timeline-updated"; startMs: number | null; endMs: number | null }
   | { type: "workspace-comparison-reference-set"; assetId: string | null }
   | { type: "workspace-comparison-side-activated"; side: LabComparisonSide }

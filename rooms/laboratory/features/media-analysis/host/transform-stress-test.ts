@@ -152,7 +152,7 @@ function pitchRatio(semitonesValue: unknown) {
   return Math.pow(2, clamp(semitonesValue, -12, 12, 0) / 12);
 }
 
-export function compileLaboratoryAudioTransformStage(stage: LaboratoryTransformStage): string[] {
+function compileLaboratoryAudioTransformStage(stage: LaboratoryTransformStage): string[] {
   if (stage.enabled !== true || !isAudioStageKind(stage.kind)) return [];
   const params = stage.params;
   switch (stage.kind) {
@@ -274,7 +274,7 @@ export function compileLaboratoryAudioTransformStage(stage: LaboratoryTransformS
   }
 }
 
-export function compileLaboratoryAudioTransformStages(stagesValue: unknown) {
+function compileLaboratoryAudioTransformStages(stagesValue: unknown) {
   return normalizeLaboratoryTransformStages(stagesValue, "audio").flatMap(
     compileLaboratoryAudioTransformStage
   );

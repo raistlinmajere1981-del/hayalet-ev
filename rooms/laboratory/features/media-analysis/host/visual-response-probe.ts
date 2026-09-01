@@ -9,6 +9,13 @@ import type {
 } from "../../../shared/visual-response-probe-model.js";
 import { normalizeLaboratoryTemporalStressTestRequest } from "../../../shared/temporal-stress-test-model.js";
 import type { LaboratoryTemporalStressTestRequest } from "../../../shared/temporal-stress-test-model.js";
+import type {
+  AppearanceTransitionMeasurementPhase,
+  AppearanceTransitionMeasurement,
+  VisualResponseMetricDifference,
+  VisualResponseMeasurement,
+  VisualResponseRegionMetrics,
+} from "../../../domain/lab-analysis-results.js";
 
 type RecordValue = Record<string, unknown>;
 type RuntimeRecord = RecordValue;
@@ -20,35 +27,12 @@ type Deps = {
   getActiveProject: (runtime: RuntimeRecord) => ProjectRecord | null;
   getPreparedSourcePath: (project: ProjectRecord) => string | null;
   getProjectEditOutputDir: (runtime: RuntimeRecord, project: ProjectRecord) => string;
-  patchActiveProject: (
-    runtime: RuntimeRecord,
-    updater: (project: ProjectRecord) => ProjectRecord
-  ) => Promise<unknown>;
   roomId: string;
   toRecord: (value: unknown) => RecordValue;
 };
 
 type SampleFrame = { timeSeconds: number; values: Record<string, number> };
-type RegionMetrics = {
-  sampleCount: number;
-  meanLuma: number;
-  medianLuma: number;
-  lumaLow: number;
-  lumaHigh: number;
-  lumaMin: number;
-  lumaMax: number;
-  lumaSpread: number;
-  chromaDistance: number;
-  nearBlackFraction: number;
-  persistentNearBlackFraction: number;
-  recoveredDarkFraction: number;
-  edgeEnergy: number;
-  edgePersistence: number;
-  frameDifferenceEnergy: number;
-  temporalPersistence: number;
-  signalNoiseLike: number;
-  visibilityScore: number;
-};
+type RegionMetrics = VisualResponseRegionMetrics;
 
 const NEAR_BLACK_THRESHOLD = 32;
 const LUMA_RECOVERY_MULTIPLIER = 8;
@@ -330,7 +314,10 @@ export function buildLaboratoryResponseRegionMetrics(
   };
 }
 
-function difference(target: RegionMetrics, background: RegionMetrics) {
+function difference(
+  target: RegionMetrics,
+  background: RegionMetrics
+): VisualResponseMetricDifference {
   const keys: Array<keyof Omit<RegionMetrics, "sampleCount">> = [
     "meanLuma",
     "medianLuma",
@@ -351,10 +338,10 @@ function difference(target: RegionMetrics, background: RegionMetrics) {
     "visibilityScore",
   ];
 
-  return keys.reduce<Record<string, number>>((output, key) => {
+  return keys.reduce<VisualResponseMetricDifference>((output, key) => {
     output[key] = target[key] - background[key];
     return output;
-  }, {});
+  }, {} as VisualResponseMetricDifference);
 }
 
 function responseInterpretation(
@@ -402,7 +389,6 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
     getActiveProject,
     getPreparedSourcePath,
     getProjectEditOutputDir,
-    patchActiveProject,
     roomId,
     toRecord,
   } = deps;
@@ -469,47 +455,6 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
     );
   }
 
-  async function store(runtime: RuntimeRecord, result: RecordValue) {
-    await patchActiveProject(runtime, function (project) {
-      const edit = toRecord(project.edit);
-      const existing = Array.isArray(edit["temporalStressTests"])
-        ? (edit["temporalStressTests"] as unknown[])
-        : [];
-      project.edit = {
-        ...edit,
-        temporalStressTests: [result, ...existing].slice(0, 30),
-        lastActionAt: result["createdAt"],
-        lastError: null,
-      };
-      return project;
-    });
-  }
-
-  async function lockBackgroundRoi(runtime: RuntimeRecord, rawRequest: unknown) {
-    const request = normalizeLaboratoryTemporalStressTestRequest(rawRequest);
-    const roi = normalizeLaboratoryResponseBackgroundRoi(request?.roi);
-    if (roi === null) {
-      throw new Error("Select a background ROI before locking the differential reference.");
-    }
-    const createdAt = new Date().toISOString();
-    await patchActiveProject(runtime, function (project) {
-      const edit = toRecord(project.edit);
-      project.edit = {
-        ...edit,
-        responseBackgroundRoi: roi,
-        lastActionAt: createdAt,
-        lastError: null,
-      };
-      return project;
-    });
-    return {
-      schemaVersion: 1,
-      kind: "response-background-lock",
-      createdAt,
-      backgroundRoi: roi,
-    };
-  }
-
   async function runResponseProbe(runtime: RuntimeRecord, requestId: string, rawRequest: unknown) {
     const project = getActiveProject(runtime);
     if (project === null) throw new Error("Active project is missing.");
@@ -529,9 +474,6 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
       );
     }
     const targetRoi = request.temporalRequest.roi;
-    if (targetRoi === null) {
-      throw new Error("Select a target ROI before running a response probe.");
-    }
     const values = getLaboratoryResponseSweepValues(request.axis);
     const points = await sequentialMap(values, async function (value) {
       const transform = buildLaboratoryResponseAxisFilter(request.axis, value);
@@ -561,8 +503,7 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
       };
     });
     const createdAt = new Date().toISOString();
-    const result: RecordValue = {
-      schemaVersion: 1,
+    const result: VisualResponseMeasurement = {
       kind: "visibility-response",
       id: `visibility-response-${request.axis}-${createdAt.replace(/[:.]/g, "-")}`,
       createdAt,
@@ -592,7 +533,6 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
         ],
       },
     };
-    await store(runtime, result);
     return result;
   }
 
@@ -626,19 +566,23 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
     const targetRoi = temporal.roi;
     const center = (temporal.startSeconds + temporal.endSeconds) / 2;
     const sourceEnd = duration ?? Math.max(center + 1, temporal.endSeconds);
-    const windows = [
+    const windows: Array<{
+      endSeconds: number;
+      phase: AppearanceTransitionMeasurementPhase["phase"];
+      startSeconds: number;
+    }> = [
       {
-        phase: "pre",
+        phase: "pre" as const,
         startSeconds: Math.max(0, center - 1),
         endSeconds: Math.max(0.001, center - 0.2),
       },
       {
-        phase: "event",
+        phase: "event" as const,
         startSeconds: Math.max(0, center - 0.2),
         endSeconds: Math.min(sourceEnd, center + 0.2),
       },
       {
-        phase: "post",
+        phase: "post" as const,
         startSeconds: Math.min(sourceEnd - 0.001, center + 0.2),
         endSeconds: Math.min(sourceEnd, center + 1),
       },
@@ -682,28 +626,24 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
     const postPhase = phases.find((entry) => entry.phase === "post");
     const eventShift =
       eventPhase !== undefined && prePhase !== undefined
-        ? (eventPhase.differential["visibilityScore"] ?? 0) -
-          (prePhase.differential["visibilityScore"] ?? 0)
+        ? eventPhase.differential.visibilityScore - prePhase.differential.visibilityScore
         : 0;
     const postShift =
       postPhase !== undefined && prePhase !== undefined
-        ? (postPhase.differential["visibilityScore"] ?? 0) -
-          (prePhase.differential["visibilityScore"] ?? 0)
+        ? postPhase.differential.visibilityScore - prePhase.differential.visibilityScore
         : 0;
     const eventFrameShift =
       eventPhase !== undefined && prePhase !== undefined
-        ? (eventPhase.differential["frameDifferenceEnergy"] ?? 0) -
-          (prePhase.differential["frameDifferenceEnergy"] ?? 0)
+        ? eventPhase.differential.frameDifferenceEnergy -
+          prePhase.differential.frameDifferenceEnergy
         : 0;
     const edgePersistenceShift =
       eventPhase !== undefined && prePhase !== undefined
-        ? (eventPhase.differential["edgePersistence"] ?? 0) -
-          (prePhase.differential["edgePersistence"] ?? 0)
+        ? eventPhase.differential.edgePersistence - prePhase.differential.edgePersistence
         : 0;
     const localizedMagnitude = Math.max(Math.abs(eventShift), Math.abs(postShift));
     const createdAt = new Date().toISOString();
-    const result: RecordValue = {
-      schemaVersion: 1,
+    const result: AppearanceTransitionMeasurement = {
       kind: "appearance-transition",
       id: `appearance-transition-${createdAt.replace(/[:.]/g, "-")}`,
       createdAt,
@@ -711,9 +651,9 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
       sourcePath,
       hypothesis: "localized-appearance-disappearance-transition",
       request: {
-        temporalRequest: temporal,
         backgroundRoi,
         eventSeconds: center,
+        temporalRequest: { ...temporal, roi: targetRoi },
       },
       phases,
       interpretation: {
@@ -730,12 +670,10 @@ export function createLaboratoryVisualResponseProbeRuntime(deps: Deps) {
         eventEdgePersistenceShift: edgePersistenceShift,
       },
     };
-    await store(runtime, result);
     return result;
   }
 
   return {
-    lockBackgroundRoi,
     runResponseProbe,
     runTransitionProbe,
   };

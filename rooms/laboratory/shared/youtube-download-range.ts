@@ -1,4 +1,4 @@
-export const LAB_YOUTUBE_MIN_RANGE_SECONDS = 0.2;
+const LAB_YOUTUBE_MIN_RANGE_SECONDS = 0.2;
 const LAB_YOUTUBE_RANGE_EPSILON_SECONDS = 1e-9;
 
 export type LabYoutubeDownloadRange = {
@@ -104,7 +104,7 @@ export function normalizeLabYoutubeDownloadRange(
   };
 }
 
-export function formatLabYoutubeRangeSeconds(value: number): string {
+function formatLabYoutubeRangeSeconds(value: number): string {
   return value.toFixed(3).replace(/\.?0+$/, "");
 }
 

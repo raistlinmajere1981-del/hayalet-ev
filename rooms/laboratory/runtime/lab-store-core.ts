@@ -545,7 +545,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       state.activityFeed = [createSnapshotEvent("Olay akisi temizlendi.", "info")];
       state.ui.eventFeedCursor = 0;
       return state;
-    // V2.3 workspace events
+    // Workspace events are applied through the canonical store boundary.
     case "workspace-timeline-updated": {
       if (isRunMutationLocked(state)) {
         return state;

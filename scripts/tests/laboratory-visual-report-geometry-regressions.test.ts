@@ -5,6 +5,7 @@ import test from "node:test";
 import { calculateLaboratoryContainedMediaRect } from "../../rooms/laboratory/ui/lab-roi-media-geometry-binder.ts";
 import { buildLaboratoryVisualResponseReportAssessment } from "../../rooms/laboratory/shared/visual-response-report-assessment.ts";
 import {
+  buildLaboratoryVisualReportModel,
   formatLaboratoryVisualReportMarkdown,
   renderWorkspaceVisualResponseSummaries,
 } from "../../rooms/laboratory/ui/workspace-visual-response-summary.ts";
@@ -147,6 +148,24 @@ void test("visual report copy surface exports structured markdown instead of fla
     kind: "visibility-response",
     createdAt: "2026-08-25T20:00:00.000Z",
     sourcePath: "/tmp/source.mp4",
+    tracking: {
+      status: "completed",
+      algorithm: "feature-similarity-ransac",
+      version: 2,
+      transformModel: "similarity-dx-dy-rotation-scale",
+      mode: "global-feature-similarity",
+      cacheId: "tracking-cache-visual-1",
+      anchorSeconds: 11,
+      quality: "medium",
+      confidence: 0.69,
+      inlierRatio: 0.61,
+      forwardBackwardRatio: 0.84,
+      residualErrorPx: 1.8,
+      featureCount: 36,
+      fallbackUsed: false,
+      measurementCoordinateMode: "fixed-roi",
+      transformSeries: [],
+    },
     request: {
       axis: "contrast",
       temporalRequest: {
@@ -160,8 +179,12 @@ void test("visual report copy surface exports structured markdown instead of fla
   };
   const markdown = formatLaboratoryVisualReportMarkdown(entry, copy);
   assert.match(markdown, /# Hayalet Ev Laboratory/);
+  assert.match(markdown, /Interpretation policy: measurement only/);
   assert.match(markdown, /\| Axis \| Target visibility \| Background visibility \|/);
   assert.match(markdown, /\| 0\.5 \|/);
+  assert.match(markdown, /## ROI Tracking \/ Stabilization/);
+  assert.match(markdown, /Measurement coordinate mode: fixed ROI/);
+  assert.match(markdown, /Photometric measurements use fixed ROI coordinates/);
 
   const markup = renderWorkspaceVisualResponseSummaries(
     { temporalStressTests: [entry] } as never,
@@ -170,6 +193,66 @@ void test("visual report copy surface exports structured markdown instead of fla
   assert.match(markup, /data-lab-report-copy="true"/);
   assert.match(markup, /data-lab-report-export="true"/);
   assert.match(markup, /data-lab-report-markdown="true"/);
+  assert.match(markup, /ROI Tracking \/ Stabilization/);
+});
+
+void test("tracker-unavailable report exposes fallback provenance without fake zero diagnostics", () => {
+  const entry = {
+    kind: "visibility-response",
+    createdAt: "2026-08-31T12:00:00.000Z",
+    sourcePath: "/tmp/source.mp4",
+    tracking: {
+      status: "unavailable",
+      algorithm: "feature-similarity-ransac",
+      version: 2,
+      transformModel: "similarity-dx-dy-rotation-scale",
+      mode: "fixed-roi-fallback",
+      cacheId: "tracking-cache-unavailable",
+      anchorSeconds: 11,
+      quality: "unreliable",
+      confidence: null,
+      inlierRatio: null,
+      forwardBackwardRatio: null,
+      residualErrorPx: null,
+      featureCount: null,
+      fallbackUsed: true,
+      measurementCoordinateMode: "fixed-roi-fallback",
+      transformSeries: [],
+      error: "Camera tracker process unavailable.",
+    },
+    request: {
+      axis: "contrast",
+      temporalRequest: {
+        startSeconds: 10,
+        endSeconds: 12,
+        roi: { x: 0.1, y: 0.1, width: 0.25, height: 0.25 },
+      },
+      backgroundRoi: { x: 0.4, y: 0.1, width: 0.25, height: 0.25 },
+    },
+    interpretation: {
+      classification: "roi-tracking-quality-limits-response-result",
+      sensorCompatibility: "not-assessed",
+      trackingQualityGate: "limited",
+    },
+    points: [point(1, 0.05)],
+  };
+
+  const markdown = formatLaboratoryVisualReportMarkdown(entry, copy);
+  const model = buildLaboratoryVisualReportModel(entry, copy);
+  assert.equal(model?.classification, "roi-tracking-quality-limits-response-result");
+  assert.match(markdown, /Tracking kalitesi response sonucunu sınırlıyor/);
+  assert.doesNotMatch(markdown, /birden fazla metrikte ayrışıyor/);
+  assert.match(markdown, /Status: unavailable/);
+  assert.match(markdown, /Tracking quality: UNRELIABLE/);
+  assert.match(markdown, /Quality gate: limited/);
+  assert.match(markdown, /Fallback used: yes — fixed ROI fallback/);
+  assert.match(markdown, /Measurement coordinate mode: fixed ROI fallback/);
+  assert.match(markdown, /Tracking error: Camera tracker process unavailable\./);
+  assert.doesNotMatch(markdown, /- Confidence:/);
+  assert.doesNotMatch(markdown, /- Inlier ratio:/);
+  assert.doesNotMatch(markdown, /- Forward\/backward consistency:/);
+  assert.doesNotMatch(markdown, /- Residual alignment error:/);
+  assert.doesNotMatch(markdown, /- Feature count:/);
 });
 
 void test("visual report actions and geometry binders are wired at the Laboratory UI entry point", async () => {

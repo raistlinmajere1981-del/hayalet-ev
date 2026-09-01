@@ -19,8 +19,14 @@ import { renderWorkspaceSurface } from "../../rooms/laboratory/ui/workspace-surf
 import type { LabRun } from "../../rooms/laboratory/domain/lab-types.ts";
 import { FakeActionElement, FakeControllerDocument } from "./laboratory-runtime-truth.helpers.ts";
 
-const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8")) as Record<string, unknown>;
-const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")) as Record<string, unknown>;
+const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8")) as Record<
+  string,
+  unknown
+>;
+const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")) as Record<
+  string,
+  unknown
+>;
 
 function getPipelineBlockIds(markup: string): string[] {
   return Array.from(markup.matchAll(/data-block-id="([^"]+)"/g), function (match) {
@@ -86,7 +92,7 @@ function setRun(
   patch: Partial<LabRun> = {}
 ) {
   state.run = {
-    id: "run-wireframe-v2",
+    id: "run-wireframe",
     state: "running",
     startedAt: Date.now() - 1000,
     modules: {},
@@ -111,7 +117,7 @@ function setRun(
   };
 }
 
-void test("laboratory wireframe v2 derives active-run workspace locks and blocks locked timeline mutations", () => {
+void test("laboratory wireframe derives active-run workspace locks and blocks locked timeline mutations", () => {
   const store = createReadyStore();
   store.dispatch({ type: "workspace-timeline-updated", startMs: 1000, endMs: 3000 });
   store.dispatch({ type: "workspace-hypothesis-updated", text: "pre-run hypothesis" });
@@ -147,7 +153,7 @@ void test("laboratory wireframe v2 derives active-run workspace locks and blocks
   assert.equal(state.ui.workspace.interactiveSettings.brightness, 112);
 });
 
-void test("laboratory wireframe v2 renders locked timeline and roi without native preview controls", () => {
+void test("laboratory wireframe renders locked timeline and roi without native preview controls", () => {
   const store = createReadyStore();
   store.dispatch({ type: "workspace-timeline-updated", startMs: 1000, endMs: 3000 });
   setRun(store.getState());
@@ -197,7 +203,7 @@ void test("laboratory running drawer disables cancel while cancellation is pendi
   assert.match(drawer, /Analiz iptal ediliyor/);
 });
 
-void test("laboratory wireframe v2 failed source stays in setup with error viewport and idle strip", () => {
+void test("laboratory wireframe failed source stays in setup with error viewport and idle strip", () => {
   const store = createReadyStore();
   store.dispatch({
     type: "source-probe-failed",
@@ -227,7 +233,7 @@ void test("laboratory wireframe v2 failed source stays in setup with error viewp
   assert.match(strip, /data-strip-state="idle"/);
 });
 
-void test("laboratory wireframe v2 treats stale completed sources as empty viewport state", () => {
+void test("laboratory wireframe treats stale completed sources as empty viewport state", () => {
   const store = createReadyStore();
   const state = store.getState();
   state.source = {
@@ -246,7 +252,7 @@ void test("laboratory wireframe v2 treats stale completed sources as empty viewp
   assert.doesNotMatch(surface.main, /data-lab-action="timeline-interact"/);
 });
 
-void test("laboratory wireframe v2 source retry contract separates local block and replayable URLs", () => {
+void test("laboratory wireframe source retry contract separates local block and replayable URLs", () => {
   const originalElement: (typeof globalThis)["Element"] | undefined = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const documentRef = new FakeControllerDocument();
@@ -336,14 +342,16 @@ void test("laboratory wireframe v2 source retry contract separates local block a
   }
 });
 
-void test("laboratory wireframe v2 result drawer uses localized decision labels and advisory defaults", () => {
+void test("laboratory wireframe result drawer uses localized decision labels and advisory defaults", () => {
   const store = createReadyStore();
   store.dispatch({ type: "workspace-timeline-updated", startMs: 1000, endMs: 3000 });
 
   const state = store.getState();
   const suggestions = getSelectionSuggestions(state);
   assert.ok(suggestions.length > 0);
-  state.ui.activeExecutionIntentId = (suggestions[0] as NonNullable<typeof suggestions[number]>).id;
+  state.ui.activeExecutionIntentId = (
+    suggestions[0] as NonNullable<(typeof suggestions)[number]>
+  ).id;
   setRun(state, {
     state: "completed",
     endedAt: Date.now(),
@@ -374,7 +382,10 @@ void test("laboratory wireframe v2 result drawer uses localized decision labels 
   assert.match(trDrawer, /Secili aksiyon/);
   assert.match(enDrawer, /Selection/);
   assert.match(enDrawer, /Selected action/);
-  assert.doesNotMatch(trDrawer, /data-decision-card="candidate"|data-decision-card="commitment"|data-decision-card="staging"/);
+  assert.doesNotMatch(
+    trDrawer,
+    /data-decision-card="candidate"|data-decision-card="commitment"|data-decision-card="staging"/
+  );
   assert.doesNotMatch(enDrawer, /data-block-id="execution-advisories"/);
 
   store.dispatch({ type: "drawer-explore-toggled" });
@@ -393,7 +404,7 @@ void test("laboratory wireframe v2 result drawer uses localized decision labels 
   assert.doesNotMatch(enExploreDrawer, /data-lab-drawer-alternatives="true"/);
 });
 
-void test("laboratory wireframe v2 process strip covers partial, cancelled, and indeterminate states", () => {
+void test("laboratory wireframe process strip covers partial, cancelled, and indeterminate states", () => {
   const partialStore = createReadyStore();
   setRun(partialStore.getState(), {
     state: "completed",

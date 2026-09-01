@@ -299,7 +299,7 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
     };
   }
 
-  async function runControlInjection(
+  async function measureControlInjection(
     runtime: LaboratoryControlRuntimeRecord,
     requestId: string,
     rawRequest: unknown
@@ -368,7 +368,7 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
       injectedSummary: injectedMetrics.summary,
     });
     const result = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: "control-injection",
       id: `control-injection-${request.kind}-${timestampToken}`,
       createdAt,
@@ -395,6 +395,15 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
       interpretation,
     };
 
+    return result;
+  }
+
+  async function runControlInjection(
+    runtime: LaboratoryControlRuntimeRecord,
+    requestId: string,
+    rawRequest: unknown
+  ) {
+    const result = await measureControlInjection(runtime, requestId, rawRequest);
     await patchActiveProject(runtime, function (nextProject) {
       const edit = toRecord(nextProject.edit);
       const existing = Array.isArray(edit["temporalStressTests"])
@@ -403,7 +412,7 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
       nextProject.edit = {
         ...edit,
         temporalStressTests: [result, ...existing].slice(0, 30),
-        lastActionAt: createdAt,
+        lastActionAt: result.createdAt,
         lastError: null,
       };
       return nextProject;
@@ -415,6 +424,7 @@ export function createLaboratoryControlInjectionRuntime(deps: LaboratoryControlI
     buildControlFilter,
     buildEncodeProfile,
     buildPairCommand,
+    measureControlInjection,
     runControlInjection,
   };
 }

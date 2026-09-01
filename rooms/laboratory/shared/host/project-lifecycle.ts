@@ -204,6 +204,7 @@ export function createLaboratoryProjectLifecycleRuntime(
     getRuntimeToolIds: deps.getRuntimeToolIds,
     listDirectory: deps.listDirectory,
     normalizeProject: deps.normalizeProject,
+    projectSchemaVersion: deps.projectSchemaVersion,
     readJsonFile: deps.readJsonFile,
     syncProjectFeatureProjections,
     toRecord: deps.toRecord,

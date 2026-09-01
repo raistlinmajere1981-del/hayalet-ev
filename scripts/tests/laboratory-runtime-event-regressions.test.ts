@@ -14,7 +14,7 @@ function toRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-void test("laboratory runtime events throttle high-frequency custom module updates", () => {
+void test("canonical laboratory runtime events throttle high-frequency custom module updates", () => {
   const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const runtimeEvents = createLaboratoryRuntimeEvents({
     asNonEmptyString,

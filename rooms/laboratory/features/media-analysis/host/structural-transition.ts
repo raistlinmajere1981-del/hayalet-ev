@@ -1,12 +1,24 @@
-import {
-  analyzeLaboratoryMotionFrames,
-  buildLaboratoryMotionExtractionCommand,
-} from "./motion-impact-probe.js";
 import type { LaboratoryNormalizedRoi } from "../../../shared/visual-response-probe-model.js";
+import {
+  applyLaboratoryCameraTransformToRoi,
+  getLaboratoryCameraTransformAt,
+} from "./camera-tracking.js";
+import type {
+  CameraTrackingCache,
+  StructuralFrameMetrics,
+  StructuralRoiStability,
+  StructuralTransitionResult,
+} from "../../../domain/lab-analysis-results.js";
+import {
+  isCameraTrackingCacheUsableForMeasurement,
+  isCameraTransformPointUsableForDiagnostics,
+  isCameraTransformPointUsableForMeasurement,
+} from "../../../domain/lab-analysis-results.js";
 
 type RecordValue = Record<string, unknown>;
 type RuntimeRecord = RecordValue;
 type ProjectRecord = RecordValue;
+type StructuralRole = "target" | "control" | "background";
 
 type StructuralTransitionDeps = {
   callRoomTools: (payload: RecordValue) => Promise<unknown>;
@@ -14,39 +26,6 @@ type StructuralTransitionDeps = {
   readBinaryFileBytes: (filePath: string) => Promise<Uint8Array | null>;
   roomId: string;
   toRecord: (value: unknown) => RecordValue;
-};
-
-type StructuralFrameMetrics = {
-  edgeSimilarity: number;
-  normalizedAbsoluteDifference: number;
-  normalizedPixelCorrelation: number;
-  pixelCorrelation: number;
-  structuralPersistence: number;
-  structuralSimilarity: number;
-};
-
-type DriftPoint = {
-  confidence: number;
-  dx: number;
-  dy: number;
-  timeSeconds: number;
-};
-
-type StructuralRole = "target" | "control" | "background";
-
-export type LaboratoryRoiStabilityReport = {
-  fallbackReason: string | null;
-  fallbackUsed: boolean;
-  method: "grayscale-translation-block-match";
-  mode: "off" | "translation";
-  netDx: number;
-  netDy: number;
-  pairCount: number;
-  peakDisplacement: number;
-  referenceRoi: LaboratoryNormalizedRoi;
-  risk: "negligible" | "low" | "moderate" | "high";
-  riskRatio: number;
-  trackingConfidence: number;
 };
 
 export type LaboratoryStructuralTransitionInput = {
@@ -62,74 +41,15 @@ export type LaboratoryStructuralTransitionInput = {
   sourcePath: string;
   sourceWidth: number;
   targetRoi: LaboratoryNormalizedRoi;
+  trackingCache: CameraTrackingCache;
 };
 
 const STRUCTURAL_FRAME_SIZE = 64;
-const DRIFT_MAX_DIMENSION = 96;
-const TRACKING_CONFIDENCE_MIN = 0.12;
 const TIMELINE_OFFSETS = [-1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1] as const;
 const EPSILON = 1e-8;
 
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
-}
-
-function finite(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function mean(values: number[]) {
-  return values.length === 0
-    ? 0
-    : values.reduce(function (sum, value) {
-        return sum + value;
-      }, 0) / values.length;
-}
-
-function formatNumber(value: number) {
-  return Number(value.toFixed(6)).toString();
-}
-
-function joinPath(directoryPath: string, fileName: string) {
-  return `${directoryPath.replace(/[\\/]+$/, "")}/${fileName}`;
-}
-
-function safeToken(value: string) {
-  return value.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 72) || "structural";
-}
-
-function roundEven(value: number) {
-  const rounded = Math.max(8, Math.round(value));
-  return rounded % 2 === 0 ? rounded : rounded + 1;
-}
-
-function buildDriftGeometry(
-  sourceWidth: number,
-  sourceHeight: number,
-  roi: LaboratoryNormalizedRoi
-) {
-  const cropWidth = Math.max(1, sourceWidth * roi.width);
-  const cropHeight = Math.max(1, sourceHeight * roi.height);
-  const aspect = cropWidth / cropHeight;
-  if (aspect >= 1) {
-    return {
-      width: DRIFT_MAX_DIMENSION,
-      height: roundEven(DRIFT_MAX_DIMENSION / aspect),
-    };
-  }
-  return {
-    width: roundEven(DRIFT_MAX_DIMENSION * aspect),
-    height: DRIFT_MAX_DIMENSION,
-  };
-}
-
-function splitRawFrames(bytes: Uint8Array, width: number, height: number) {
-  const frameSize = width * height;
-  const frameCount = frameSize <= 0 ? 0 : Math.floor(bytes.byteLength / frameSize);
-  return Array.from({ length: frameCount }, function (_unused, index) {
-    const start = index * frameSize;
-    return bytes.subarray(start, start + frameSize);
-  });
 }
 
 function normalizedMean(frame: Uint8Array) {
@@ -273,43 +193,33 @@ export function calculateLaboratoryStructuralFrameMetrics(
   };
 }
 
-function identityStructuralMetrics(): StructuralFrameMetrics {
-  return {
-    edgeSimilarity: 1,
-    normalizedAbsoluteDifference: 0,
-    normalizedPixelCorrelation: 1,
-    pixelCorrelation: 1,
-    structuralPersistence: 1,
-    structuralSimilarity: 1,
-  };
+function finite(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function shiftedRoi(
-  roi: LaboratoryNormalizedRoi,
-  dx: number,
-  dy: number,
-  sourceWidth: number,
-  sourceHeight: number
-): LaboratoryNormalizedRoi {
-  const x = Math.max(0, Math.min(1 - roi.width, roi.x + dx / sourceWidth));
-  const y = Math.max(0, Math.min(1 - roi.height, roi.y + dy / sourceHeight));
-  return { ...roi, x, y };
+function mean(values: number[]) {
+  return values.length === 0
+    ? 0
+    : values.reduce(function (sum, value) {
+        return sum + value;
+      }, 0) / values.length;
 }
 
-function nearestDriftPoint(points: DriftPoint[], timeSeconds: number) {
-  return points.reduce<DriftPoint | null>(function (best, point) {
-    if (best === null) return point;
-    return Math.abs(point.timeSeconds - timeSeconds) < Math.abs(best.timeSeconds - timeSeconds)
-      ? point
-      : best;
-  }, null);
+function formatNumber(value: number) {
+  return Number(value.toFixed(6)).toString();
 }
 
-function riskFromRatio(ratio: number): LaboratoryRoiStabilityReport["risk"] {
-  if (ratio < 0.03) return "negligible";
-  if (ratio < 0.08) return "low";
-  if (ratio < 0.2) return "moderate";
-  return "high";
+function joinPath(directoryPath: string, fileName: string) {
+  return `${directoryPath.replace(/[\\/]+$/, "")}/${fileName}`;
+}
+
+function safeToken(value: string) {
+  return value.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 72) || "structural";
+}
+
+function identityMetrics() {
+  const frame = new Uint8Array(STRUCTURAL_FRAME_SIZE * STRUCTURAL_FRAME_SIZE);
+  return calculateLaboratoryStructuralFrameMetrics(frame, frame);
 }
 
 async function sequentialMap<T, U>(values: readonly T[], mapper: (value: T) => Promise<U>) {
@@ -318,6 +228,78 @@ async function sequentialMap<T, U>(values: readonly T[], mapper: (value: T) => P
     output.push(await mapper(value));
     return output;
   }, Promise.resolve([]));
+}
+
+function riskFromRatio(ratio: number): StructuralRoiStability["risk"] {
+  if (ratio < 0.03) return "negligible";
+  if (ratio < 0.08) return "low";
+  if (ratio < 0.2) return "moderate";
+  return "high";
+}
+
+function usableTransform(cache: CameraTrackingCache, timeSeconds: number) {
+  return getLaboratoryCameraTransformAt(cache, timeSeconds);
+}
+
+function transformedRoi(
+  input: LaboratoryStructuralTransitionInput,
+  roi: LaboratoryNormalizedRoi,
+  timeSeconds: number
+) {
+  const point = usableTransform(input.trackingCache, timeSeconds);
+  return point === null
+    ? roi
+    : applyLaboratoryCameraTransformToRoi(
+        roi,
+        point.transform,
+        input.sourceWidth,
+        input.sourceHeight
+      );
+}
+
+function summarizeTracking(input: LaboratoryStructuralTransitionInput) {
+  const cache = input.trackingCache;
+  const points = cache.transforms.filter(function (point) {
+    return Math.abs(point.timeSeconds - cache.anchorSeconds) > 0.001;
+  });
+  const usable = points.filter(isCameraTransformPointUsableForMeasurement);
+  const trackingUsable = isCameraTrackingCacheUsableForMeasurement(cache) && usable.length > 0;
+  const diagnostics = points.filter(isCameraTransformPointUsableForDiagnostics);
+  const residualError =
+    diagnostics.length === 0 ? null : mean(diagnostics.map((point) => point.residualErrorPx));
+  const peakDisplacement =
+    diagnostics.length === 0
+      ? null
+      : diagnostics.reduce(function (peak, point) {
+          return Math.max(peak, Math.hypot(point.transform.dx, point.transform.dy));
+        }, 0);
+  const peakRotationDegrees =
+    diagnostics.length === 0
+      ? null
+      : diagnostics.reduce(function (peak, point) {
+          return Math.max(peak, Math.abs(point.transform.rotationDegrees));
+        }, 0);
+  const peakScaleDelta =
+    diagnostics.length === 0
+      ? null
+      : diagnostics.reduce(function (peak, point) {
+          return Math.max(peak, Math.abs(point.transform.scale - 1));
+        }, 0);
+  const targetMinDimension = Math.max(
+    1,
+    Math.min(input.targetRoi.width * input.sourceWidth, input.targetRoi.height * input.sourceHeight)
+  );
+  const riskRatio = peakDisplacement === null ? null : peakDisplacement / targetMinDimension;
+  return {
+    peakDisplacement,
+    peakRotationDegrees,
+    peakScaleDelta,
+    risk: riskRatio === null ? "unknown" : riskFromRatio(riskRatio),
+    riskRatio,
+    referenceRoi: input.referenceRoi,
+    residualErrorPx: residualError,
+    measurementSuitableForSmallRoi: trackingUsable,
+  };
 }
 
 export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTransitionDeps) {
@@ -354,10 +336,9 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
     timeSeconds: number,
     roi: LaboratoryNormalizedRoi
   ) {
-    const token = safeToken(input.requestId);
     const outputPath = joinPath(
       getProjectEditOutputDir(input.runtime, input.project),
-      `structural-${token}-${role}.gray`
+      `structural-${safeToken(input.requestId)}-${role}-${safeToken(formatNumber(timeSeconds))}.gray`
     );
     const filter = [
       `crop=iw*${formatNumber(roi.width)}:ih*${formatNumber(roi.height)}:iw*${formatNumber(roi.x)}:ih*${formatNumber(roi.y)}`,
@@ -388,125 +369,16 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
     const bytes = await readBinaryFileBytes(outputPath);
     const expected = STRUCTURAL_FRAME_SIZE * STRUCTURAL_FRAME_SIZE;
     if (bytes === null || bytes.byteLength < expected) {
-      throw new Error("Structural frame extraction could not be read.");
+      throw new Error("Structural transition frame could not be read.");
     }
     return bytes.subarray(0, expected);
   }
 
-  async function analyzeDrift(input: LaboratoryStructuralTransitionInput) {
-    const startSeconds = Math.max(0, input.eventSeconds - 1);
+  async function analyzeTransition(
+    input: LaboratoryStructuralTransitionInput
+  ): Promise<StructuralTransitionResult> {
     const sourceEnd = input.durationSeconds ?? input.eventSeconds + 1;
-    const endSeconds = Math.min(sourceEnd, input.eventSeconds + 1);
-    const geometry = buildDriftGeometry(input.sourceWidth, input.sourceHeight, input.referenceRoi);
-    const outputPath = joinPath(
-      getProjectEditOutputDir(input.runtime, input.project),
-      `structural-${safeToken(input.requestId)}-drift.gray`
-    );
-    await runFfmpeg(
-      input.runtime,
-      input.project,
-      input.requestId,
-      buildLaboratoryMotionExtractionCommand({
-        endSeconds,
-        geometry,
-        outputPath,
-        roi: input.referenceRoi,
-        sourcePath: input.sourcePath,
-        startSeconds,
-      })
-    );
-    const bytes = await readBinaryFileBytes(outputPath);
-    const frames = bytes === null ? [] : splitRawFrames(bytes, geometry.width, geometry.height);
-    const cropWidth = input.sourceWidth * input.referenceRoi.width;
-    const cropHeight = input.sourceHeight * input.referenceRoi.height;
-    const motion = analyzeLaboratoryMotionFrames({
-      frames,
-      geometry,
-      scaleX: cropWidth / geometry.width,
-      scaleY: cropHeight / geometry.height,
-      startSeconds,
-    });
-    let cumulativeDx = 0;
-    let cumulativeDy = 0;
-    const points: DriftPoint[] = [{ confidence: 0, dx: 0, dy: 0, timeSeconds: startSeconds }];
-    motion.pairs.forEach(function (pair) {
-      cumulativeDx += pair.dx;
-      cumulativeDy += pair.dy;
-      points.push({
-        confidence: pair.confidence,
-        dx: cumulativeDx,
-        dy: cumulativeDy,
-        timeSeconds: pair.timeSeconds,
-      });
-    });
-    const baselineSeconds = Math.max(0, Math.min(sourceEnd, input.eventSeconds - 0.6));
-    const baselinePoint = nearestDriftPoint(points, baselineSeconds) ??
-      points[0] ?? {
-        confidence: 0,
-        dx: 0,
-        dy: 0,
-        timeSeconds: baselineSeconds,
-      };
-    const relativePoints = points.map(function (point) {
-      return {
-        ...point,
-        dx: point.dx - baselinePoint.dx,
-        dy: point.dy - baselinePoint.dy,
-      };
-    });
-    const trackingConfidence = mean(
-      motion.pairs.map(function (pair) {
-        return pair.confidence;
-      })
-    );
-    const peakDisplacement = relativePoints.reduce(function (peak, point) {
-      return Math.max(peak, Math.hypot(point.dx, point.dy));
-    }, 0);
-    const targetMinDimension = Math.max(
-      1,
-      Math.min(
-        input.targetRoi.width * input.sourceWidth,
-        input.targetRoi.height * input.sourceHeight
-      )
-    );
-    const riskRatio = peakDisplacement / targetMinDimension;
-    const reliable = trackingConfidence >= TRACKING_CONFIDENCE_MIN && motion.pairs.length >= 3;
-    const lastPoint = relativePoints[relativePoints.length - 1] ?? {
-      confidence: 0,
-      dx: 0,
-      dy: 0,
-      timeSeconds: endSeconds,
-    };
-    const report: LaboratoryRoiStabilityReport = {
-      fallbackReason: reliable ? null : "tracking-confidence-low",
-      fallbackUsed: !reliable,
-      method: "grayscale-translation-block-match",
-      mode: reliable ? "translation" : "off",
-      netDx: lastPoint.dx,
-      netDy: lastPoint.dy,
-      pairCount: motion.pairs.length,
-      peakDisplacement,
-      referenceRoi: input.referenceRoi,
-      risk: riskFromRatio(riskRatio),
-      riskRatio,
-      trackingConfidence,
-    };
-    return {
-      baselineSeconds,
-      points: relativePoints,
-      report,
-      shiftAt(timeSeconds: number) {
-        if (!reliable) return { dx: 0, dy: 0 };
-        const point = nearestDriftPoint(relativePoints, timeSeconds);
-        return point === null ? { dx: 0, dy: 0 } : { dx: point.dx, dy: point.dy };
-      },
-    };
-  }
-
-  async function analyzeTransition(input: LaboratoryStructuralTransitionInput) {
-    const drift = await analyzeDrift(input);
-    const sourceEnd = input.durationSeconds ?? input.eventSeconds + 1;
-    const times = TIMELINE_OFFSETS.map(function (offsetSeconds) {
+    const timelineTimes = TIMELINE_OFFSETS.map(function (offsetSeconds) {
       return {
         offsetSeconds,
         timeSeconds: Math.max(0, Math.min(sourceEnd, input.eventSeconds + offsetSeconds)),
@@ -516,66 +388,40 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
         index === 0 || Math.abs(point.timeSeconds - (entries[index - 1]?.timeSeconds ?? -1)) > 0.001
       );
     });
-    const baselineShift = drift.shiftAt(drift.baselineSeconds);
+    const baselineSeconds = Math.max(0, Math.min(sourceEnd, input.eventSeconds - 0.6));
     const baselineRois = {
-      target: shiftedRoi(
-        input.targetRoi,
-        baselineShift.dx,
-        baselineShift.dy,
-        input.sourceWidth,
-        input.sourceHeight
-      ),
+      target: transformedRoi(input, input.targetRoi, baselineSeconds),
       control:
-        input.controlRoi === null
-          ? null
-          : shiftedRoi(
-              input.controlRoi,
-              baselineShift.dx,
-              baselineShift.dy,
-              input.sourceWidth,
-              input.sourceHeight
-            ),
-      background: shiftedRoi(
-        input.backgroundRoi,
-        baselineShift.dx,
-        baselineShift.dy,
-        input.sourceWidth,
-        input.sourceHeight
-      ),
+        input.controlRoi === null ? null : transformedRoi(input, input.controlRoi, baselineSeconds),
+      background: transformedRoi(input, input.backgroundRoi, baselineSeconds),
     };
     const baselineFrames = {
-      target: await extractFrame(input, "target", drift.baselineSeconds, baselineRois.target),
+      target: await extractFrame(input, "target", baselineSeconds, baselineRois.target),
       control:
         baselineRois.control === null
           ? null
-          : await extractFrame(input, "control", drift.baselineSeconds, baselineRois.control),
-      background: await extractFrame(
-        input,
-        "background",
-        drift.baselineSeconds,
-        baselineRois.background
-      ),
+          : await extractFrame(input, "control", baselineSeconds, baselineRois.control),
+      background: await extractFrame(input, "background", baselineSeconds, baselineRois.background),
     };
 
     async function measureRole(
       role: StructuralRole,
-      roi: LaboratoryNormalizedRoi,
+      anchorRoi: LaboratoryNormalizedRoi,
       baseline: Uint8Array,
       timeSeconds: number
     ) {
-      if (Math.abs(timeSeconds - drift.baselineSeconds) <= 0.01) {
-        return { metrics: identityStructuralMetrics(), roi };
+      const roi = transformedRoi(input, anchorRoi, timeSeconds);
+      if (Math.abs(timeSeconds - baselineSeconds) <= 0.01) {
+        return { metrics: identityMetrics(), roi };
       }
-      const shift = drift.shiftAt(timeSeconds);
-      const currentRoi = shiftedRoi(roi, shift.dx, shift.dy, input.sourceWidth, input.sourceHeight);
-      const frame = await extractFrame(input, role, timeSeconds, currentRoi);
+      const frame = await extractFrame(input, role, timeSeconds, roi);
       return {
         metrics: calculateLaboratoryStructuralFrameMetrics(baseline, frame),
-        roi: currentRoi,
+        roi,
       };
     }
 
-    const timeline = await sequentialMap(times, async function (point) {
+    const timeline = await sequentialMap(timelineTimes, async function (point) {
       const target = await measureRole(
         "target",
         input.targetRoi,
@@ -644,23 +490,26 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
     );
     const sceneLoss = controlLoss === null ? backgroundLoss : mean([controlLoss, backgroundLoss]);
     const targetSpecificStructuralLoss = targetLoss - sceneLoss;
-    const classification =
-      drift.report.risk === "high" && drift.report.mode === "off"
-        ? "roi-drift-may-affect-result"
-        : controlLoss !== null && Math.abs(targetLoss - controlLoss) < 0.08
-          ? "target-and-control-structurally-similar"
-          : targetLoss >= 0.18 && targetSpecificStructuralLoss >= 0.12
-            ? "structural-change-target-localized"
-            : targetLoss >= 0.15 && sceneLoss >= 0.12 && targetSpecificStructuralLoss >= 0.06
-              ? "structural-change-scene-wide-with-target-excess"
-              : sceneLoss >= 0.12
-                ? "structural-change-scene-wide"
-                : "structural-result-uncertain";
+    const roiStability = summarizeTracking(input);
+    const trackingSuitable = roiStability.measurementSuitableForSmallRoi === true;
+    const classification = !trackingSuitable
+      ? "roi-tracking-quality-limits-structural-result"
+      : controlLoss !== null && Math.abs(targetLoss - controlLoss) < 0.08
+        ? "target-and-control-structurally-similar"
+        : targetLoss >= 0.18 && targetSpecificStructuralLoss >= 0.12
+          ? "structural-change-target-localized"
+          : targetLoss >= 0.15 && sceneLoss >= 0.12 && targetSpecificStructuralLoss >= 0.06
+            ? "structural-change-scene-wide-with-target-excess"
+            : sceneLoss >= 0.12
+              ? "structural-change-scene-wide"
+              : "structural-result-uncertain";
 
     return {
+      status: "assessed",
       baseline: {
-        timeSeconds: drift.baselineSeconds,
+        timeSeconds: baselineSeconds,
         model: "pre-midpoint-template",
+        roiCoordinateAnchorSeconds: input.eventSeconds,
       },
       timeline,
       phaseSummary: {
@@ -678,11 +527,11 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
       assessment: {
         classification,
         mechanismVerdict: "not-assessed",
+        trackingQualityGate: trackingSuitable ? "pass" : "limited",
       },
-      roiStability: drift.report,
+      roiStability,
       revealedBackground: {
         status: "not-assessed",
-        futureField: "post-to-reference-convergence",
       },
       method: {
         baseline: "PRE midpoint grayscale template",
@@ -694,13 +543,11 @@ export function createLaboratoryStructuralTransitionRuntime(deps: StructuralTran
         structuralPersistence:
           "mean(ssim-like, normalized-correlation, edge-similarity, pixel-agreement)",
         timelineOffsetsSeconds: TIMELINE_OFFSETS,
-        stabilization: "translation-only when reference tracking confidence is sufficient",
+        stabilization:
+          "camera similarity transform applied to Target/Control/Background measurement coordinates",
       },
     };
   }
 
-  return {
-    analyzeDrift,
-    analyzeTransition,
-  };
+  return { analyzeTransition };
 }

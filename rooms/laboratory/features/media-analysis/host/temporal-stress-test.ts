@@ -429,7 +429,8 @@ export function createLaboratoryTemporalStressTestRuntime(deps: LaboratoryTempor
     const createdAt = new Date().toISOString();
     const timestampToken = createdAt.replace(/[:.]/g, "-");
     const result = {
-      schemaVersion: 1,
+      schemaVersion: 2,
+      kind: "temporal-stress-test" as const,
       id: `temporal-stress-${timestampToken}`,
       createdAt,
       sourceKind: "video",

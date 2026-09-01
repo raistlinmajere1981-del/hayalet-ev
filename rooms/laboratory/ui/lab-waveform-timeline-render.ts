@@ -593,7 +593,7 @@ export function renderLabWaveformTimeline(model: LabWaveformTimelineModel) {
                 trackingPreviewAvailable
                   ? copy.t(
                       "mediaAnalysis.timeline.trackingPreviewToggleTitle",
-                      "Show or hide Camera Tracking v2 preview"
+                      "Show or hide Camera Tracking preview"
                     )
                   : copy.t(
                       "mediaAnalysis.timeline.trackingPreviewUnavailableTitle",

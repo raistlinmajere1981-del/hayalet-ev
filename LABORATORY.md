@@ -152,7 +152,7 @@ Ayrıntılı kontratlar:
 
 - [rooms/laboratory/VISUAL-RESPONSE-STRESS-PROBES.md](rooms/laboratory/VISUAL-RESPONSE-STRESS-PROBES.md)
 - [rooms/laboratory/STRUCTURAL-TRANSITION.md](rooms/laboratory/STRUCTURAL-TRANSITION.md)
-- [rooms/laboratory/ROI-TRACKING-STABILIZATION-V2.md](rooms/laboratory/ROI-TRACKING-STABILIZATION-V2.md)
+- [rooms/laboratory/ROI-TRACKING.md](rooms/laboratory/ROI-TRACKING.md)
 
 ## ✏️ Annotation
 
@@ -293,7 +293,7 @@ npm run check:all
 Yeni structural / tracking / diferansiyel regression'ları doğrudan çalıştırmak için:
 
 ```bash
-npm run rooms:test:file -- scripts/tests/laboratory-camera-tracking-v2-regressions.test.ts
+npm run rooms:test:file -- scripts/tests/laboratory-camera-tracking-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-structural-transition-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-visual-stress-dual-roi-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-visual-response-regressions.test.ts

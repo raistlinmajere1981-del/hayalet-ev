@@ -355,7 +355,7 @@ export function createLaboratoryPhotometricAttenuationRuntime(
     const createdAt = new Date().toISOString();
     const timestampToken = createdAt.replace(/[:.]/g, "-");
     const result = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: "photometric-attenuation",
       id: `photometric-attenuation-${timestampToken}`,
       createdAt,

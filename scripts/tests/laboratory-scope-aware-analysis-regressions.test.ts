@@ -135,7 +135,10 @@ void test("laboratory workbench preserves scope and density controls without dro
 
   assert.equal(workbench.activeModuleId, "media-analysis");
   assert.equal(workbench.analysisScope?.["focus"], "visual");
-  assert.equal((workbench.analysisScope as Record<string, unknown>)["lifecycle"]?.["mutable" as never], true);
+  assert.equal(
+    (workbench.analysisScope as Record<string, unknown>)["lifecycle"]?.["mutable" as never],
+    true
+  );
   assert.equal(workbench.activePreviewArtifactId, "preview-1");
   assert.equal(workbench.activeLiveFindingsStreamId, "media-analysis");
   assert.equal(workbench.controlsCollapsed, true);
@@ -148,7 +151,7 @@ void test("laboratory workbench preserves scope and density controls without dro
   );
 });
 
-void test("process normalization freezes scope snapshots after process start and carries v2 report fields", () => {
+void test("process normalization freezes scope snapshots after process start and carries report fields", () => {
   const runtime = createLaboratoryProcessReportStateRuntime({
     asNonEmptyString,
     asNumber,

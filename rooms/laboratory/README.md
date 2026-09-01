@@ -42,7 +42,7 @@ The visual stress-test contract and deliberately non-verdict interpretation lang
 - [TRANSFORM-STRESS-TEST.md](./TRANSFORM-STRESS-TEST.md)
 - [VISUAL-RESPONSE-STRESS-PROBES.md](./VISUAL-RESPONSE-STRESS-PROBES.md)
 - [STRUCTURAL-TRANSITION.md](./STRUCTURAL-TRANSITION.md)
-- [ROI-TRACKING-STABILIZATION-V2.md](./ROI-TRACKING-STABILIZATION-V2.md)
+- [ROI-TRACKING.md](./ROI-TRACKING.md)
 - [PHOTOMETRIC-ATTENUATION.md](./PHOTOMETRIC-ATTENUATION.md)
 - [MOTION-IMPACT-PROBE.md](./MOTION-IMPACT-PROBE.md)
 
@@ -115,7 +115,7 @@ node rooms/laboratory/scripts/laboratory-check.mjs --ci
 For a shorter targeted investigation, use:
 
 ```bash
-npm run rooms:test:file -- scripts/tests/laboratory-camera-tracking-v2-regressions.test.ts
+npm run rooms:test:file -- scripts/tests/laboratory-camera-tracking-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-structural-transition-regressions.test.ts
 npm run rooms:test:file -- scripts/tests/laboratory-visual-response-regressions.test.ts
 npm run rooms:typecheck

@@ -21,7 +21,7 @@ const activeShellFiles = [
   "ui/components/status-chip.js",
 ];
 
-const removedLegacyFiles = [
+const removedSupersededFiles = [
   "shared/styles/shell.css",
   "shared/ui/shell-runtime.js",
   "shared/ui/request-runtime.js",
@@ -74,7 +74,7 @@ void test("laboratory installed room mirrors the workspace package for the activ
       assert.equal(existsSync(join(installedCopy.rootDir, relativePath)), true, relativePath);
     });
 
-    removedLegacyFiles.forEach((relativePath) => {
+    removedSupersededFiles.forEach((relativePath) => {
       assert.equal(existsSync(join(buildArtifact.rootDir, relativePath)), false, relativePath);
       assert.equal(existsSync(join(installedCopy.rootDir, relativePath)), false, relativePath);
     });

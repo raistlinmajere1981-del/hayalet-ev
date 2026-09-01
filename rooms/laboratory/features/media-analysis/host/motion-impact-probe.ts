@@ -533,7 +533,7 @@ export function createLaboratoryMotionImpactProbeRuntime(deps: MotionImpactProbe
     }
     const { createdAt, timestampToken } = makeTimestampToken();
     const result = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: "motion-reference-lock",
       id: `motion-reference-${timestampToken}`,
       createdAt,
@@ -582,7 +582,7 @@ export function createLaboratoryMotionImpactProbeRuntime(deps: MotionImpactProbe
           });
     const { createdAt, timestampToken } = makeTimestampToken();
     const result = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: "motion-vector-probe",
       id: `motion-vector-${timestampToken}`,
       createdAt,
@@ -682,7 +682,7 @@ export function createLaboratoryMotionImpactProbeRuntime(deps: MotionImpactProbe
     const afterRelative = after.relative;
     const { createdAt, timestampToken } = makeTimestampToken();
     const result = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: "impact-window-compare",
       id: `impact-window-${timestampToken}`,
       createdAt,

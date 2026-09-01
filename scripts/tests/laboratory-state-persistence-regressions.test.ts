@@ -4,9 +4,7 @@ import { readFileSync } from "node:fs";
 
 import { createLaboratoryHostActivation } from "../../rooms/laboratory/shared/host/activation.ts";
 import { createLaboratoryProcessReportStateRuntime } from "../../rooms/laboratory/shared/host/process-report-state.ts";
-import {
-  createLaboratoryWorkbenchState,
-} from "../../rooms/laboratory/shared/host/runtime-primitives.ts";
+import { createLaboratoryWorkbenchState } from "../../rooms/laboratory/shared/host/runtime-primitives.ts";
 import { asNonEmptyString, asNumber } from "../../rooms/laboratory/domain/lab-types.ts";
 
 function toRecord(value: unknown) {
@@ -17,7 +15,7 @@ function toRecord(value: unknown) {
 
 const featureIds = ["media-analysis", "audio-analysis"];
 
-void test("laboratory workbench collapses analysis controls by default", () => {
+void test("canonical laboratory workbench collapses analysis controls by default", () => {
   const workbench = createLaboratoryWorkbenchState({});
   assert.equal(workbench.controlsCollapsed, true);
 });
@@ -76,7 +74,10 @@ void test("laboratory activation queues a follow-up process instance when scope 
 
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(queuedContexts.length, 1);
-  assert.equal(toRecord(toRecord(queuedContexts[0])["workbench"])["activeModuleId"], "media-analysis");
+  assert.equal(
+    toRecord(toRecord(queuedContexts[0])["workbench"])["activeModuleId"],
+    "media-analysis"
+  );
 });
 
 void test("queued process instance metadata survives normalized process state", () => {
@@ -157,7 +158,10 @@ void test("process runtime consumes queued process instances after the active ru
 
 void test("process actions merge live project context with process payload targets", () => {
   const actionRouterSource = readFileSync("rooms/laboratory/shared/host/action-router.ts", "utf8");
-  const processRuntimeSource = readFileSync("rooms/laboratory/shared/host/process-runtime.ts", "utf8");
+  const processRuntimeSource = readFileSync(
+    "rooms/laboratory/shared/host/process-runtime.ts",
+    "utf8"
+  );
 
   assert.match(actionRouterSource, /function getProcessWorkbenchSource/);
   assert.match(actionRouterSource, /loadContext\(api\)\)\["workbench"\]/);

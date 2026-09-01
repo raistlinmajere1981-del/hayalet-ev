@@ -339,6 +339,18 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     );
   }
 
+  async function measureControlInjection(
+    runtime: MediaEditRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    return controlInjectionRuntime.measureControlInjection(
+      runtime,
+      requestId,
+      actionPayload["request"]
+    );
+  }
+
   async function runPhotometricAttenuation(
     runtime: MediaEditRuntimeRecord,
     requestId: string,
@@ -453,6 +465,7 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
     cancelApply,
     cancelPreview,
     lockMotionReference,
+    measureControlInjection,
     previewEdit,
     runControlInjection,
     runImpactWindowCompare,

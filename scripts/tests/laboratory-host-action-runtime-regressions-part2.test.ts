@@ -84,7 +84,7 @@ void test("laboratory host action composition is extracted into a shared host bo
   assert.match(workspaceActionCompositionSource, /from "\.\/tool-mutations\.js"/);
   assert.match(
     workspaceActionCompositionSource,
-    /from "\.\.\/\.\.\/features\/media-analysis\/host\/action-handlers-v2\.js"/
+    /from "\.\.\/\.\.\/features\/media-analysis\/host\/action-handlers\.js"/
   );
   assert.match(
     workspaceActionRouterSource,
@@ -252,9 +252,20 @@ void test("laboratory media export runtime cancels only prior export jobs for ev
       pushJobState(_api, payload) {
         pushedJobStates.push({ ...payload });
       },
-      registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
-      clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
-      cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
+      registerJob: jobState.registerJob as unknown as (
+        runtime: Record<string, unknown>,
+        job: Record<string, unknown>
+      ) => void,
+      clearJob: jobState.clearJob as unknown as (
+        runtime: Record<string, unknown>,
+        jobId: string
+      ) => void,
+      cancelJobsForProject: jobState.cancelJobsForProject as unknown as (
+        runtime: Record<string, unknown>,
+        projectId: string,
+        requestId: string,
+        options?: { actionIds?: string[] }
+      ) => Promise<unknown>,
       toRecord(value: unknown) {
         return value !== null && typeof value === "object" && Array.isArray(value) === false
           ? (value as Record<string, unknown>)
@@ -410,7 +421,9 @@ void test("laboratory media export runtime cancels only prior export jobs for ev
       pushedJobStates.find(function (payload) {
         return payload["stage"] === "completed";
       }) ?? null;
-    assert.deepEqual((completedPayload as NonNullable<typeof completedPayload>)["resultAssetIds"], [outputAsset["id"]]);
+    assert.deepEqual((completedPayload as NonNullable<typeof completedPayload>)["resultAssetIds"], [
+      outputAsset["id"],
+    ]);
   }
 
   await runExportCase("image", async function (exportRuntime, runtime) {
@@ -471,27 +484,38 @@ void test("laboratory media export runtime reports cancelled tool runs without l
     asNumber(value: unknown) {
       return typeof value === "number" && Number.isFinite(value) ? value : null;
     },
-      callRoomTools: async (_payload) => ({
-        run: {
-          cancelled: true,
-          stderr: "ffmpeg version n6.1 -i /tmp/lab-demo.mp4 leaked command output",
-        },
-      }),
-      getActiveProject() {
-        return activeProject;
+    callRoomTools: async (_payload) => ({
+      run: {
+        cancelled: true,
+        stderr: "ffmpeg version n6.1 -i /tmp/lab-demo.mp4 leaked command output",
       },
-      getProjectEditOutputDir() {
-        return "/tmp";
-      },
-      async patchActiveProject(_runtime, patcher) {
-        activeProject = patcher(activeProject);
-      },
-      pushJobState(_api, payload) {
-        pushedJobStates.push({ ...payload });
-      },
-      registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
-      clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
-      cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
+    }),
+    getActiveProject() {
+      return activeProject;
+    },
+    getProjectEditOutputDir() {
+      return "/tmp";
+    },
+    async patchActiveProject(_runtime, patcher) {
+      activeProject = patcher(activeProject);
+    },
+    pushJobState(_api, payload) {
+      pushedJobStates.push({ ...payload });
+    },
+    registerJob: jobState.registerJob as unknown as (
+      runtime: Record<string, unknown>,
+      job: Record<string, unknown>
+    ) => void,
+    clearJob: jobState.clearJob as unknown as (
+      runtime: Record<string, unknown>,
+      jobId: string
+    ) => void,
+    cancelJobsForProject: jobState.cancelJobsForProject as unknown as (
+      runtime: Record<string, unknown>,
+      projectId: string,
+      requestId: string,
+      options?: { actionIds?: string[] }
+    ) => Promise<unknown>,
     toRecord(value: unknown) {
       return value !== null && typeof value === "object" && Array.isArray(value) === false
         ? (value as Record<string, unknown>)
@@ -514,7 +538,7 @@ void test("laboratory media export runtime reports cancelled tool runs without l
       return payload["stage"] === "cancelled";
     }) ?? null;
   assert.equal(cancelledPayload?.["message"], "İşlem iptal edildi.");
-  assert.doesNotMatch(String(cancelledPayload["message"] ), /ffmpeg|-i/);
+  assert.doesNotMatch(String(cancelledPayload["message"]), /ffmpeg|-i/);
   assert.equal(
     pushedJobStates.some(function (payload) {
       return payload["stage"] === "failed";
@@ -589,9 +613,20 @@ void test("laboratory audio variant exports preserve filter and lineage metadata
       pushJobState(_api, payload) {
         pushedJobStates.push({ ...payload });
       },
-      registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
-      clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
-      cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
+      registerJob: jobState.registerJob as unknown as (
+        runtime: Record<string, unknown>,
+        job: Record<string, unknown>
+      ) => void,
+      clearJob: jobState.clearJob as unknown as (
+        runtime: Record<string, unknown>,
+        jobId: string
+      ) => void,
+      cancelJobsForProject: jobState.cancelJobsForProject as unknown as (
+        runtime: Record<string, unknown>,
+        projectId: string,
+        requestId: string,
+        options?: { actionIds?: string[] }
+      ) => Promise<unknown>,
       toRecord(value: unknown) {
         return value !== null && typeof value === "object" && Array.isArray(value) === false
           ? (value as Record<string, unknown>)
@@ -709,9 +744,20 @@ void test("laboratory ROI exports normalize crop pixels and preserve operation l
       };
     },
     pushJobState() {},
-    registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
-    clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
-    cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
+    registerJob: jobState.registerJob as unknown as (
+      runtime: Record<string, unknown>,
+      job: Record<string, unknown>
+    ) => void,
+    clearJob: jobState.clearJob as unknown as (
+      runtime: Record<string, unknown>,
+      jobId: string
+    ) => void,
+    cancelJobsForProject: jobState.cancelJobsForProject as unknown as (
+      runtime: Record<string, unknown>,
+      projectId: string,
+      requestId: string,
+      options?: { actionIds?: string[] }
+    ) => Promise<unknown>,
     toRecord(value: unknown) {
       return value !== null && typeof value === "object" && Array.isArray(value) === false
         ? (value as Record<string, unknown>)
@@ -921,9 +967,20 @@ void test("laboratory comparison finding saves independent primary and reference
       };
     },
     pushJobState() {},
-    registerJob: jobState.registerJob as unknown as (runtime: Record<string, unknown>, job: Record<string, unknown>) => void,
-    clearJob: jobState.clearJob as unknown as (runtime: Record<string, unknown>, jobId: string) => void,
-    cancelJobsForProject: jobState.cancelJobsForProject as unknown as (runtime: Record<string, unknown>, projectId: string, requestId: string, options?: {actionIds?: string[]}) => Promise<unknown>,
+    registerJob: jobState.registerJob as unknown as (
+      runtime: Record<string, unknown>,
+      job: Record<string, unknown>
+    ) => void,
+    clearJob: jobState.clearJob as unknown as (
+      runtime: Record<string, unknown>,
+      jobId: string
+    ) => void,
+    cancelJobsForProject: jobState.cancelJobsForProject as unknown as (
+      runtime: Record<string, unknown>,
+      projectId: string,
+      requestId: string,
+      options?: { actionIds?: string[] }
+    ) => Promise<unknown>,
     toRecord(value: unknown) {
       return value !== null && typeof value === "object" && Array.isArray(value) === false
         ? (value as Record<string, unknown>)

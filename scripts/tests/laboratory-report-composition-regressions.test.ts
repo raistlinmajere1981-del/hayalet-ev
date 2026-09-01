@@ -42,14 +42,14 @@ function createReportExportHarness(
         userReport: { summary: "User report", audience: "user" },
         artifacts: [
           {
-            kind: "legacy-ai-payload",
-            path: "/tmp/legacy-ai-payload.json",
-            fileName: "legacy-ai-payload.json",
+            kind: "unrelated-ai-payload",
+            path: "/tmp/unrelated-ai-payload.json",
+            fileName: "unrelated-ai-payload.json",
           },
           {
-            kind: "legacy-channel-batch",
-            path: "/tmp/legacy-channel-batch.json",
-            fileName: "legacy-channel-batch.json",
+            kind: "unrelated-channel-batch",
+            path: "/tmp/unrelated-channel-batch.json",
+            fileName: "unrelated-channel-batch.json",
           },
         ],
         exports: [],
@@ -69,18 +69,25 @@ function createReportExportHarness(
       return "report-export";
     },
     getFeatureReportRecord(nextProject: Record<string, unknown>, featureId: string) {
-      const records = (nextProject["report"] as Record<string, unknown>)["records"] as Record<string, unknown>;
+      const records = (nextProject["report"] as Record<string, unknown>)["records"] as Record<
+        string,
+        unknown
+      >;
       const value = records[featureId];
       return (value ?? {}) as Record<string, unknown>;
     },
     normalizeReportExport(value: unknown) {
       const source = value as Record<string, unknown>;
       return {
-        id: String((source["fileName"] as string | undefined) ?? (source["path"] as string | undefined) ?? "export"),
+        id: String(
+          (source["fileName"] as string | undefined) ??
+            (source["path"] as string | undefined) ??
+            "export"
+        ),
         format: String((source["format"] as string | undefined) ?? "md"),
-        path: (source["path"]) ?? null,
-        fileName: (source["fileName"]) ?? null,
-        reportView: (source["reportView"]) ?? null,
+        path: source["path"] ?? null,
+        fileName: source["fileName"] ?? null,
+        reportView: source["reportView"] ?? null,
         createdAt: "2026-04-20T10:00:00.000Z",
         status: String((source["status"] as string | undefined) ?? "ready"),
       };
@@ -163,7 +170,7 @@ function createInsightRun(overrides: Partial<LabRun> = {}): LabRun {
   };
 }
 
-void test("laboratory report export persists only canonical user and AI report files", async () => {
+void test("canonical laboratory report export persists only user and AI report files", async () => {
   const harness = createReportExportHarness();
 
   await harness.runtime.exportFeatureReport({}, {}, "req-1", "media-analysis");
@@ -171,11 +178,11 @@ void test("laboratory report export persists only canonical user and AI report f
   assert.equal(harness.writes.length, 2);
   assert.equal(harness.persistedExports.length, 2);
   assert.equal(
-    harness.persistedExports.some((entry) => entry["fileName"] === "legacy-ai-payload.json"),
+    harness.persistedExports.some((entry) => entry["fileName"] === "unrelated-ai-payload.json"),
     false
   );
   assert.equal(
-    harness.persistedExports.some((entry) => entry["fileName"] === "legacy-channel-batch.json"),
+    harness.persistedExports.some((entry) => entry["fileName"] === "unrelated-channel-batch.json"),
     false
   );
 });
@@ -412,14 +419,8 @@ void test("laboratory reports surface temporal correlation, narrative cues, and 
 
   assert.match(userReport?.summary ?? "", /Composite anomaly cluster/);
   assert.equal(aiReport?.correlationClusters?.[0]?.signalTypes.includes("freeze"), true);
-  assert.equal(
-    aiReport.correlationClusters[0].signalTypes.includes("audio-discontinuity"),
-    true
-  );
-  assert.equal(
-    aiReport.correlationClusters[0].signalTypes.includes("luminance-collapse"),
-    true
-  );
+  assert.equal(aiReport.correlationClusters[0].signalTypes.includes("audio-discontinuity"), true);
+  assert.equal(aiReport.correlationClusters[0].signalTypes.includes("luminance-collapse"), true);
   assert.equal(
     aiReport.narrativeCues?.some((cue) => cue.phrase === "kaybol"),
     true
@@ -837,7 +838,11 @@ void test("laboratory counter-evidence ledger surfaces partial metadata and refe
             status: "measured",
             toolResults: {
               ssim: { sampledFrameCount: 1, status: "measured" },
-              vmaf: { reason: "libvmaf filter missing", sampledFrameCount: 0, status: "unavailable" },
+              vmaf: {
+                reason: "libvmaf filter missing",
+                sampledFrameCount: 0,
+                status: "unavailable",
+              },
             },
           },
         },

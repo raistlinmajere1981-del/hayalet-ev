@@ -12,7 +12,7 @@ This does **not** remove scientific or operational fallbacks. Confidence gates, 
 2. One canonical state owner for ROI/tracking UI state.
 3. Typed analysis/result contracts instead of repeated `Record<string, unknown>` parsing across host and UI.
 4. One report model per analysis result, reused by UI summary and Markdown export.
-5. No `legacy`, `compat`, or transition-only `v2` modules kept just to preserve old Laboratory data.
+5. No obsolete or transition-only modules kept just to preserve old Laboratory data.
 6. Keep measurement behavior stable while removing duplicate orchestration.
 
 ## Non-goals for this pass
@@ -23,23 +23,16 @@ In particular, do not add homography/perspective tracking, new stress probes, ne
 
 Dynamic stabilized photometric sampling may be implemented later as a separate feature after the canonical tracking/structural pipeline is stable.
 
-## Current duplication to remove
+## Canonical architecture
 
-The media-analysis host currently contains a transition architecture in which the older runtime produces a result and a second runtime enriches/replaces it.
+The media-analysis host has one orchestration path and one implementation module for each capability:
 
-Canonicalize these pairs:
+- `host/action-handlers.ts`
+- `host/structural-transition.ts`
+- `host/background-reference-convergence.ts`
+- `host/camera-tracking.ts`
 
-- `host/action-handlers.ts` + `host/action-handlers-v2.ts`
-- `host/structural-transition.ts` + `host/structural-transition-v2.ts`
-- `host/background-reference-convergence.ts` + `host/background-reference-convergence-v2.ts`
-- `host/camera-tracking-v2.ts` -> canonical camera-tracking module
-
-The UI has the same transition pattern around reports:
-
-- `ui/workspace-structural-transition-summary.ts` + `ui/workspace-structural-transition-v2-report.ts`
-- `ui/workspace-visual-response-summary.ts` + `ui/workspace-visual-response-v2-report.ts`
-
-The canonical implementation should not format an old report and then patch method text with string replacement.
+The UI likewise owns one structural summary/report formatter and one visual-response summary/report formatter. Canonical formatters build current report sections directly instead of patching previously formatted Markdown.
 
 ## Canonical host target
 
@@ -85,11 +78,7 @@ Create typed result/provenance contracts for at least:
 - Appearance/Disappearance result,
 - report descriptor/model.
 
-Prefer one canonical result field:
-
-- `tracking`
-
-instead of transition-only names such as `trackingV2`.
+The single canonical result field is `tracking`.
 
 Prefer canonical coordinate-mode values such as:
 
@@ -97,7 +86,7 @@ Prefer canonical coordinate-mode values such as:
 - `camera-similarity`
 - `fixed-roi-fallback`
 
-instead of values that encode implementation history such as `fixed-roi-legacy` or `camera-tracking-v2-similarity`.
+Coordinate modes describe current measurement behavior and do not encode implementation history.
 
 A schema version may remain useful for diagnostics/export, but only the current schema needs to be read. Do not add migrations for deleted test projects.
 
@@ -211,21 +200,21 @@ Do **not** delete a file merely because static search does not find an import if
 1. Move the current camera tracker to the canonical module/name.
 2. Merge Structural Transition metric helpers and stabilized runtime into one canonical module.
 3. Merge Background Reference convergence into one canonical aligned implementation.
-4. Fold the current tracking enrichment directly into `action-handlers.ts`.
+4. Fold the current tracking integration directly into `action-handlers.ts`.
 5. Point `shared/host/action-composition.ts` to canonical `action-handlers.js`.
-6. Delete superseded `*-v2.ts` host modules.
+6. Delete superseded duplicate host modules.
 
 ### Phase 2 — result contracts
 
 1. Add typed tracking and analysis result contracts in a focused domain module rather than expanding the existing general-purpose `lab-types.ts` indefinitely.
-2. Rename persisted `trackingV2` to canonical `tracking`.
+2. Persist tracking provenance in the canonical `tracking` field.
 3. Normalize coordinate-mode and provenance names.
 4. Remove old-result readers and compatibility branches.
 
 ### Phase 3 — reports
 
-1. Replace structural v2 report wrapper/string replacements with one canonical structural report formatter/model.
-2. Replace visual-response v2 wrapper with one canonical formatter/model.
+1. Replace the structural report wrapper/string replacements with one canonical structural report formatter/model.
+2. Replace the visual-response wrapper with one canonical formatter/model.
 3. Update report history to consume the canonical result/report model.
 4. Keep Copy / Export Markdown behavior and newest-first history behavior.
 
@@ -238,7 +227,7 @@ Do **not** delete a file merely because static search does not find an import if
 
 ### Phase 5 — delete / rename / docs
 
-1. Remove remaining `legacy`, compatibility-only and transition-only `v2` modules/names.
+1. Remove remaining obsolete, compatibility-only, and transition-only modules/names.
 2. Rename the tracking methodology document to a canonical non-versioned name.
 3. Update `README.md`, root `LABORATORY.md`, tests and comments to describe only the current architecture.
 4. Run cleanup inventory after the rename/deletion pass.
@@ -270,7 +259,7 @@ The reset is complete when:
 - no old result is generated only to be replaced by a second implementation,
 - Structural/Convergence use the canonical camera tracker directly,
 - report code no longer patches old Markdown strings,
-- `trackingV2` and transition-only `*-v2` source names are gone except where version history is intentionally part of provenance/documentation,
+- only canonical source and result names remain; numeric versions appear only in provenance where diagnostically useful,
 - ROI/tracking UI has one authoritative state path,
 - old Laboratory test projects can be deleted without any migration step,
 - Laboratory local gate passes,

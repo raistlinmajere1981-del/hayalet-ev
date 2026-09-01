@@ -267,11 +267,15 @@ function createWorkspaceState(overrides: {
       event: event as never,
     });
   });
-  const sourceKind = overrides.projectImportKind ?? String((overrides.source["kind"] as string | undefined) ?? "video");
+  const sourceKind =
+    overrides.projectImportKind ??
+    String((overrides.source["kind"] as string | undefined) ?? "video");
   if (sourceKind === "video" || sourceKind === "audio" || sourceKind === "image") {
     store.dispatch({ type: "project-import-kind-changed", kind: sourceKind });
   }
-  const sourceMethod = overrides.projectImportMethod ?? String((overrides.source["mode"] as string | undefined) ?? "local");
+  const sourceMethod =
+    overrides.projectImportMethod ??
+    String((overrides.source["mode"] as string | undefined) ?? "local");
   if (sourceMethod === "local" || sourceMethod === "url" || sourceMethod === "youtube") {
     store.dispatch({
       type: "project-import-method-changed",
@@ -306,9 +310,7 @@ function renderProjectWorkspaceHtml(overrides: Parameters<typeof createWorkspace
 }
 
 type ProjectImportSourceAction =
-  | "source-pick-local"
-  | "source-download-url"
-  | "source-download-youtube";
+  "source-pick-local" | "source-download-url" | "source-download-youtube";
 
 function createTrackedProjectImportStore(
   requestId = "req-project-import",
@@ -753,8 +755,12 @@ void test("laboratory workspace shows checked YouTube details and rich download 
 });
 
 void test("laboratory workspace shows YouTube conversion quality only when audio conversion applies", () => {
-  const enTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/en.json", "utf8")) as Record<string, unknown>;
-  const trTranslations = JSON.parse(readFileSync("rooms/laboratory/i18n/tr.json", "utf8")) as Record<string, unknown>;
+  const enTranslations = JSON.parse(
+    readFileSync("rooms/laboratory/i18n/en.json", "utf8")
+  ) as Record<string, unknown>;
+  const trTranslations = JSON.parse(
+    readFileSync("rooms/laboratory/i18n/tr.json", "utf8")
+  ) as Record<string, unknown>;
   const checkedYoutubeResult = {
     url: "https://youtube.com/watch?v=abc123",
     isYoutube: true,
@@ -832,14 +838,8 @@ void test("laboratory workspace shows YouTube conversion quality only when audio
   const trForm = trSource["youtubeForm"] as Record<string, unknown>;
   const enFields = enForm["fields"] as Record<string, unknown>;
   const trFields = trForm["fields"] as Record<string, unknown>;
-  assert.equal(
-    enFields["audioQuality"],
-    "Conversion quality"
-  );
-  assert.equal(
-    trFields["audioQuality"],
-    "Donusturme kalitesi"
-  );
+  assert.equal(enFields["audioQuality"], "Conversion quality");
+  assert.equal(trFields["audioQuality"], "Donusturme kalitesi");
 });
 
 void test("laboratory workspace hides URL check details while checking", () => {
@@ -959,7 +959,7 @@ void test("laboratory YouTube project import forwards selected yt-dlp streams to
   assertArgPair(audioOnlyArgs, "--audio-quality", "2");
 });
 
-void test("laboratory workspace removes the legacy local-copy helper copy from the intake panel", () => {
+void test("laboratory workspace omits the retired local-copy helper from the intake panel", () => {
   const html = renderProjectWorkspaceHtml({
     source: {
       kind: "video",

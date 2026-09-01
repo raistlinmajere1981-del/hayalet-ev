@@ -329,7 +329,7 @@ function renderComparisonPreview(input: {
   function renderComparisonOverlay(side: LabComparisonSide) {
     return renderWorkspaceROIOverlay(
       {
-        legacyRegions: [],
+        regions: [],
         mutationLocked: input.mutationLocked,
         overlayId: `lab-roi-overlay-${side}`,
         roiFocusActive: input.roiFocusActive === true && input.activeSide === side,
@@ -1067,7 +1067,7 @@ export function renderWorkspaceSurface(
     singleInspectionKind !== null
       ? renderWorkspaceROIOverlay(
           {
-            legacyRegions: roiRegions,
+            regions: roiRegions,
             roiFocusActive,
             selectionRoi: activeSelection?.roi ?? null,
             selectionRoiEnabled: true,

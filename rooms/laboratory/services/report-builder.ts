@@ -1350,7 +1350,7 @@ export function buildAiReport(run: LabRun | null, reportRecord: unknown): LabAiR
   };
 }
 
-/** V2.3: Build workspace context snapshot for report enrichment */
+/** Build the canonical workspace context snapshot used for report enrichment. */
 export interface LabWorkspaceReportContext {
   timeRange: { startMs: number | null; endMs: number | null };
   roiRegions: LabROIRegion[];

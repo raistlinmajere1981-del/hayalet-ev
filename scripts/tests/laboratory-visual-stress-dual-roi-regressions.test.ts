@@ -18,7 +18,7 @@ void test("visual stress ROI normalization accepts explicit comparison geometry"
 
 void test("video ROI renderer owns stable target control and background nodes", () => {
   const markup = renderWorkspaceROIOverlay({
-    legacyRegions: [],
+    regions: [],
     selectionRoi: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
     selectionRoiEnabled: true,
     sourceKind: "video",
@@ -90,8 +90,8 @@ void test("control and background ROI are carried explicitly from UI controller 
   assert.match(controller, /backgroundRoi: state\.backgroundRoi/);
   assert.match(handlers, /normalizeLaboratoryResponseBackgroundRoi\(request\["controlRoi"\]\)/);
   assert.match(handlers, /normalizeLaboratoryResponseBackgroundRoi\(request\["backgroundRoi"\]\)/);
-  assert.match(handlers, /resolveLatestResponseBackgroundRoi\(deps, runtime\)/);
-  assert.match(handlers, /resolveResponseBackgroundRoi\(deps, runtime, request\)/);
+  assert.match(handlers, /resolveResponseBackgroundRoi\(request\)/);
+  assert.doesNotMatch(handlers, /resolveLatestResponseBackgroundRoi/);
 });
 
 void test("visual stress styles distinguish target control and background and are loaded by Laboratory theme", async () => {

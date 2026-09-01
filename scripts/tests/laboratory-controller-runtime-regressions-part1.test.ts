@@ -7,7 +7,7 @@ import {
   FakeControllerDocument,
   installTimerMock,
   LAB_USER_ACTION_HUB_SUCCESS_WINDOW_MS,
-  test
+  test,
 } from "./laboratory-runtime-truth.helpers.ts";
 import { closeLabAssetMenusForClick } from "../../rooms/laboratory/runtime/controller/lab-asset-context-menu-controller.ts";
 
@@ -378,7 +378,9 @@ void test("laboratory run controller sends comparison ROI payloads with image co
 
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
-    clickListener({ target: new TestElement("workspace-comparison-moment-capture") } as unknown as Event);
+    clickListener({
+      target: new TestElement("workspace-comparison-moment-capture"),
+    } as unknown as Event);
 
     assert.equal(sentEvents.length, 1);
     assert.equal(sentEvents[0]?.eventName, "media-action");
@@ -404,7 +406,9 @@ void test("laboratory run controller sends comparison ROI payloads with image co
       reference: { x: 0.2, y: 0.1, width: 0.25, height: 0.35 },
     });
 
-    clickListener({ target: new TestElement("workspace-selection-roi-export") } as unknown as Event);
+    clickListener({
+      target: new TestElement("workspace-selection-roi-export"),
+    } as unknown as Event);
 
     assert.equal(sentEvents.length, 3);
     assert.equal(sentEvents[1]?.eventName, "media-action");
@@ -1001,8 +1005,10 @@ void test("laboratory run controller focuses the source preview through explicit
       this.listeners.set(
         type,
         typeof listener === "function"
-          ? (listener)
-          : (event: Event) => { listener.handleEvent(event); }
+          ? listener
+          : (event: Event) => {
+              listener.handleEvent(event);
+            }
       );
     },
     querySelector(selector: string) {
@@ -1040,7 +1046,9 @@ void test("laboratory run controller focuses the source preview through explicit
     const clickListener = documentRef.listeners.get("click");
     assert.ok(clickListener);
 
-    clickListener({ target: new TestElement("focus-source-preview", "source-active") } as unknown as Event);
+    clickListener({
+      target: new TestElement("focus-source-preview", "source-active"),
+    } as unknown as Event);
 
     assert.deepEqual(previewCalls, ["scroll", "focus"]);
   } finally {
@@ -1055,7 +1063,7 @@ void test("laboratory run controller focuses the source preview through explicit
   }
 });
 
-void test("laboratory run controller wires v2 shell action buttons into workspace state", () => {
+void test("laboratory run controller wires shell action buttons into workspace state", () => {
   const originalElement = globalThis.Element;
   const originalInput = globalThis.HTMLInputElement;
   const originalSelect = globalThis.HTMLSelectElement;
@@ -1142,7 +1150,9 @@ void test("laboratory run controller wires v2 shell action buttons into workspac
     );
     assert.ok(store.getState().selectedCapabilities.includes("audio-signal"));
 
-    clickListener({ target: new TestElement("workspace-process-view-toggled") } as unknown as Event);
+    clickListener({
+      target: new TestElement("workspace-process-view-toggled"),
+    } as unknown as Event);
     assert.equal(store.getState().ui.workspace.processViewActive, true);
   } finally {
     if (typeof originalElement === "undefined") {
@@ -1453,7 +1463,10 @@ void test("laboratory run controller routes YouTube source selection without imp
     assert.equal(sentEvents.length, 1);
     assert.equal(sentEvents[0]?.eventName, "media-action");
     assert.equal(sentEvents[0].payload["action"], "source-set-mode");
-    const sourceAfterModeSelection = JSON.parse(JSON.stringify(store.getState().source)) as Record<string, unknown>;
+    const sourceAfterModeSelection = JSON.parse(JSON.stringify(store.getState().source)) as Record<
+      string,
+      unknown
+    >;
 
     inputListener({
       target: new TestInputElement("source.youtubeUrl", "https://youtube.com/watch?v=focus"),

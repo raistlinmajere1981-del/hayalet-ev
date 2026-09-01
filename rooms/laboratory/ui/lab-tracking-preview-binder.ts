@@ -1,3 +1,11 @@
+import { isCameraTrackingCache } from "../domain/lab-analysis-results.js";
+import type {
+  CameraSimilarityTransform,
+  CameraTrackingCache,
+  CameraTransformPoint,
+} from "../domain/lab-analysis-results.js";
+import { isLaboratoryTrackingPreviewCacheUsable } from "../shared/tracking-preview-model.js";
+
 type TrackingPreviewDeps = {
   documentRef: Document;
   windowRef: Window;
@@ -10,34 +18,18 @@ type PreviewRoi = {
   y: number;
 };
 
-type SimilarityTransform = {
-  dx: number;
-  dy: number;
-  rotationDegrees: number;
-  scale: number;
-};
-
-type TrackingPoint = {
-  confidence: number;
-  forwardBackwardRatio: number;
-  inlierRatio: number;
-  quality: string;
-  residualErrorPx: number;
-  timeSeconds: number;
-  transform: SimilarityTransform;
-};
-
-type TrackingCache = {
-  algorithm: string;
-  anchorSeconds: number;
-  cacheId: string;
-  fallbackUsed: boolean;
-  mode: string;
-  quality: string;
-  sourceHeight: number | null;
-  sourceWidth: number | null;
-  transforms: TrackingPoint[];
-};
+type SimilarityTransform = CameraSimilarityTransform;
+type TrackingPoint = Pick<
+  CameraTransformPoint,
+  | "confidence"
+  | "forwardBackwardRatio"
+  | "inlierRatio"
+  | "quality"
+  | "residualErrorPx"
+  | "timeSeconds"
+  | "transform"
+>;
+type TrackingCache = CameraTrackingCache;
 
 type PreviewRois = {
   background: PreviewRoi | null;
@@ -60,47 +52,6 @@ function finite(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function asTransform(value: unknown): SimilarityTransform | null {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
-  const record = value as Record<string, unknown>;
-  const dx = finite(record["dx"]);
-  const dy = finite(record["dy"]);
-  const rotationDegrees = finite(record["rotationDegrees"]);
-  const scale = finite(record["scale"]);
-  if (dx === null || dy === null || rotationDegrees === null || scale === null) return null;
-  return { dx, dy, rotationDegrees, scale };
-}
-
-function readTrackingPoint(value: unknown): TrackingPoint | null {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
-  const record = value as Record<string, unknown>;
-  const timeSeconds = finite(record["timeSeconds"]);
-  const confidence = finite(record["confidence"]);
-  const inlierRatio = finite(record["inlierRatio"]);
-  const forwardBackwardRatio = finite(record["forwardBackwardRatio"]);
-  const residualErrorPx = finite(record["residualErrorPx"]);
-  const transform = asTransform(record["transform"]);
-  if (
-    timeSeconds === null ||
-    confidence === null ||
-    inlierRatio === null ||
-    forwardBackwardRatio === null ||
-    residualErrorPx === null ||
-    transform === null
-  ) {
-    return null;
-  }
-  return {
-    timeSeconds,
-    confidence,
-    inlierRatio,
-    forwardBackwardRatio,
-    residualErrorPx,
-    quality: typeof record["quality"] === "string" ? record["quality"] : "unreliable",
-    transform,
-  };
-}
-
 function readCache(surface: HTMLElement | null): TrackingCache | null {
   const raw = surface?.getAttribute("data-lab-tracking-preview-cache-json");
   if (raw === null || raw === undefined || raw.trim() === "") return null;
@@ -110,37 +61,12 @@ function readCache(surface: HTMLElement | null): TrackingCache | null {
   } catch {
     return null;
   }
-  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return null;
-  const record = parsed as Record<string, unknown>;
-  const anchorSeconds = finite(record["anchorSeconds"]);
-  const rawTransforms = Array.isArray(record["transforms"])
-    ? record["transforms"]
-    : Array.isArray(record["transformSeries"])
-      ? record["transformSeries"]
-      : [];
-  const transforms = rawTransforms
-    .map(readTrackingPoint)
-    .filter((entry): entry is TrackingPoint => entry !== null)
-    .sort(function (left, right) {
-      return left.timeSeconds - right.timeSeconds;
-    });
-  if (
-    record["algorithm"] !== "feature-similarity-ransac-v2" ||
-    anchorSeconds === null ||
-    transforms.length === 0
-  ) {
-    return null;
-  }
+  if (!isCameraTrackingCache(parsed)) return null;
   return {
-    algorithm: "feature-similarity-ransac-v2",
-    anchorSeconds,
-    cacheId: typeof record["cacheId"] === "string" ? record["cacheId"] : "unknown",
-    fallbackUsed: record["fallbackUsed"] === true,
-    mode: typeof record["mode"] === "string" ? record["mode"] : "unknown",
-    quality: typeof record["quality"] === "string" ? record["quality"] : "unreliable",
-    sourceHeight: finite(record["sourceHeight"]),
-    sourceWidth: finite(record["sourceWidth"]),
-    transforms,
+    ...parsed,
+    transforms: [...parsed.transforms].sort(function (left, right) {
+      return left.timeSeconds - right.timeSeconds;
+    }),
   };
 }
 
@@ -225,7 +151,7 @@ function interpolatePoint(cache: TrackingCache, timeSeconds: number): TrackingPo
   return null;
 }
 
-export function applyTrackingPreviewTransform(
+function applyTrackingPreviewTransform(
   roi: PreviewRoi,
   transform: SimilarityTransform,
   sourceWidth: number,
@@ -350,15 +276,6 @@ export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
     );
   }
 
-  function isCacheUsable(cache: TrackingCache | null) {
-    return (
-      cache !== null &&
-      cache.fallbackUsed !== true &&
-      cache.quality !== "unreliable" &&
-      cache.transforms.length > 0
-    );
-  }
-
   function isActive(surface: HTMLElement | null) {
     return (
       surface !== null &&
@@ -411,15 +328,14 @@ export function bindLaboratoryTrackingPreview(deps: TrackingPreviewDeps) {
       video === null ||
       shell === null ||
       frame === null ||
-      !isCacheUsable(cache)
+      !isLaboratoryTrackingPreviewCacheUsable(cache)
     ) {
       return;
     }
     syncInitialTime(video, cache);
     if (!syncVideoFrame(video, shell, frame)) return;
-    const sourceWidth = cache.sourceWidth ?? (video.videoWidth > 0 ? video.videoWidth : null);
-    const sourceHeight = cache.sourceHeight ?? (video.videoHeight > 0 ? video.videoHeight : null);
-    if (sourceWidth === null || sourceHeight === null) return;
+    const sourceWidth = cache.sourceWidth;
+    const sourceHeight = cache.sourceHeight;
     const rois = readRois(surface);
     (Object.keys(rois) as VisualStressRole[]).forEach(function (role) {
       const roi = rois[role];

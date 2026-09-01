@@ -18,7 +18,7 @@ import { createLaboratoryHostProjectRuntimes } from "./project-runtimes.js";
 import { createLaboratoryHostFeatureRuntimes } from "./feature-runtimes.js";
 
 const AUDIO_ANALYSIS_SCHEMA_VERSION = 1;
-const PROJECT_SCHEMA_VERSION = 1;
+const PROJECT_SCHEMA_VERSION = 2;
 
 type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryHostProjectRuntimes = ReturnType<typeof createLaboratoryHostProjectRuntimes>;

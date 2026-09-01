@@ -76,7 +76,7 @@ Current FFmpeg-first measurements include:
 - chroma U/V trajectory
 - frame-difference energy
 - edge energy
-- legacy edge-presence persistence
+- edge-presence persistence
 - spatial adjacent-frame edge persistence
 
 ### Spatial edge persistence

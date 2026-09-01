@@ -374,10 +374,7 @@ void test("laboratory operation outputs replace the targeted workspace media", (
   });
 
   assert.equal(store.getState().ui.activeWorkspaceAssetId, "asset-primary-crop");
-  assert.equal(
-    store.getState().ui.workspace.comparisonReferenceAssetId,
-    "asset-reference-crop"
-  );
+  assert.equal(store.getState().ui.workspace.comparisonReferenceAssetId, "asset-reference-crop");
   assert.equal(store.getState().ui.workspace.comparisonRois.primary, null);
   assert.equal(store.getState().ui.workspace.comparisonRois.reference, null);
 
@@ -495,6 +492,9 @@ void test("laboratory lineage selectors resolve current source, linked audio, an
   assert.equal(getSelectedDualPreviewAudioAsset(state)?.id, "asset-audio-linked");
   assert.equal(getDualPreviewVolume(state), 1);
 
+  store.dispatch({ type: "workspace-preview-volume-updated", volume: 0.35 });
+  assert.equal(getDualPreviewVolume(store.getState()), 0.35);
+
   store.dispatch({
     type: "asset-updated",
     id: "asset-audio-linked",
@@ -510,34 +510,6 @@ void test("laboratory lineage selectors resolve current source, linked audio, an
     getAssetById(store.getState(), "asset-audio-linked")?.derivedFromSourceId,
     "source-active"
   );
-});
-
-void test("laboratory hydrate ignores retired module manager persisted ui flags", () => {
-  const store = createLabStore();
-  const legacyPersistedPayload = {
-    featureId: "media-analysis",
-    projectIndex: {
-      activeProjectId: null,
-      projects: [],
-    },
-    workbench: {},
-    sourceProbeStatus: "idle",
-    reports: {
-      user: null,
-      ai: null,
-      emptyReason: "Rapor henüz üretilmedi.",
-    },
-    activityFeed: [],
-    moduleManagerOpen: true,
-    workspace: {},
-  } as unknown as NonNullable<ReturnType<typeof store.getState>["persisted"]>;
-
-  store.dispatch({
-    type: "hydrate",
-    payload: legacyPersistedPayload,
-  });
-
-  assert.equal(store.getState().ui.toolManagerOpen, false);
 });
 
 void test("laboratory hydrate reconstructs an active selection from a valid persisted primitive range", () => {
@@ -596,7 +568,7 @@ void test("laboratory hydrate reconstructs an active selection from a valid pers
   });
 });
 
-void test("laboratory hydrate drops legacy pixel-like persisted selection roi values", () => {
+void test("laboratory hydrate drops non-normalized pixel-like persisted selection roi values", () => {
   const store = createLabStore();
 
   store.dispatch({

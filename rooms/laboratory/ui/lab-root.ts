@@ -116,7 +116,7 @@ function readPersistableState(state: LabStoreState) {
     liveFindingsExpanded: state.ui.liveFindingsExpanded,
     rawLogCollapsed: state.ui.rawLogCollapsed,
     workbench: state.workbench,
-    // V2.3 workspace persistence
+    // Workspace state is persisted with the rest of the canonical UI state.
     workspace,
   };
 }
@@ -516,7 +516,7 @@ export function startLaboratoryLabRoot(
   }
 
   function renderSurface(state: LabStoreState, copy: LabI18n) {
-    // V2.3: single workspace surface replaces stage routing
+    // The single workspace surface owns rendering after stage routing was removed.
     return renderWorkspaceSurface(state, { copy });
   }
 

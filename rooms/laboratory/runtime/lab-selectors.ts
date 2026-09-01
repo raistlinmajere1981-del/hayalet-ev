@@ -231,7 +231,7 @@ export function getPrimaryActionLabel(state: LabStoreState) {
   return sourceProbeStatus === "completed" ? "Kaynağı Yenile" : "Kaynağı Hazırla";
 }
 
-// V2.3 workspace selectors
+// Workspace selectors keep derived UI state out of renderers.
 
 export function isLabWorkspaceSurfaceReady(state: LabStoreState) {
   if (state.bootReady) {

@@ -293,7 +293,7 @@ function createSeededState(ffmpegInstalled = false) {
   return store;
 }
 
-void test("laboratory top bar reflects active v2 shell navigation", () => {
+void test("laboratory top bar reflects active shell navigation", () => {
   const store = createSeededState();
   store.dispatch({ type: "tool-manager-toggled", open: true });
   const html = renderLabTopBar(store.getState());
@@ -504,7 +504,7 @@ void test("laboratory pipeline trace is debug gated and follows rendered block o
   });
 });
 
-void test("laboratory v2 shell renders source intake in the setup drawer and preview media in center", () => {
+void test("laboratory shell renders source intake in the setup drawer and preview media in center", () => {
   const store = createSeededState();
   store.dispatch({
     type: "asset-added",

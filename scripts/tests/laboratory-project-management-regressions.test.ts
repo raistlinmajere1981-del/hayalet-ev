@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { createLabStore } from "../../rooms/laboratory/runtime/lab-store.ts";
+import { createLaboratoryProjectStorageRuntime } from "../../rooms/laboratory/shared/host/project-storage.ts";
 import { renderLabSourcePanel } from "../../rooms/laboratory/ui/lab-source-panel.ts";
 import { renderLabTopBar } from "../../rooms/laboratory/ui/lab-top-bar.ts";
 
@@ -26,15 +27,13 @@ function hydrateState(overrides: {
         availableModuleIds: ["media-analysis", "audio-analysis"],
         selectedModuleIds: ["media-analysis"],
       },
-      source:
-        overrides.source ??
-        ({
-          status: "idle",
-          kind: "video",
-          mode: "local",
-          storedFileName: null,
-          routeLabel: null,
-        }),
+      source: overrides.source ?? {
+        status: "idle",
+        kind: "video",
+        mode: "local",
+        storedFileName: null,
+        routeLabel: null,
+      },
       sourceProbeStatus: overrides.sourceProbeStatus ?? "idle",
       reports: {
         user: null,
@@ -106,6 +105,134 @@ void test("laboratory source panel owns the active project selector", () => {
   assert.match(sourcePanel, /2026-04-20 18-30 - evidence\.mp4/);
 });
 
+void test("laboratory project storage loads only the current project schema", async () => {
+  const normalizedProjectIds: string[] = [];
+  const synchronizedProjectIds: string[] = [];
+  const storedProjects: Record<string, Record<string, unknown>> = {
+    "/projects/current/project.json": {
+      schemaVersion: 2,
+      id: "current",
+      updatedAt: "2026-08-31T12:00:00.000Z",
+    },
+    "/projects/old/project.json": {
+      schemaVersion: 1,
+      id: "old",
+      updatedAt: "2026-08-30T12:00:00.000Z",
+    },
+    "/projects/future/project.json": {
+      schemaVersion: 3,
+      id: "future",
+      updatedAt: "2026-08-29T12:00:00.000Z",
+    },
+    "/projects/unversioned/project.json": {
+      id: "unversioned",
+      updatedAt: "2026-08-28T12:00:00.000Z",
+    },
+  };
+  const projectStorage = createLaboratoryProjectStorageRuntime({
+    asNonEmptyString(value: unknown) {
+      return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+    },
+    buildEditManifest() {
+      return {};
+    },
+    buildProcessManifest() {
+      return {};
+    },
+    buildProfileManifest() {
+      return {};
+    },
+    buildReportManifest() {
+      return {};
+    },
+    createDefaultProfileModelEntry(modelId: string) {
+      return { modelId };
+    },
+    createDefaultToolEntry(toolId: string) {
+      return { toolId };
+    },
+    createDefaultToolState() {
+      return { schemaVersion: 1, tools: {}, updatedAt: null };
+    },
+    getProjectEditManifestPath() {
+      return "/tmp/edit-manifest.json";
+    },
+    getProjectMetaPath() {
+      return "/tmp/project.json";
+    },
+    getProjectProcessManifestPath() {
+      return "/tmp/process-manifest.json";
+    },
+    getProjectProfileManifestPath() {
+      return "/tmp/profile-manifest.json";
+    },
+    getProjectReportManifestPath() {
+      return "/tmp/report-manifest.json";
+    },
+    getRuntimeToolIds() {
+      return [];
+    },
+    listDirectory() {
+      return Promise.resolve(
+        Object.keys(storedProjects).map(function (filePath) {
+          const path = filePath.slice(0, -"/project.json".length);
+          return { isDirectory: true, name: path.split("/").at(-1) ?? "", path };
+        })
+      );
+    },
+    normalizeProject(rawValue: unknown) {
+      const project = rawValue as Record<string, unknown>;
+      normalizedProjectIds.push(String(project["id"]));
+      return project;
+    },
+    projectSchemaVersion: 2,
+    readJsonFile(filePath: string) {
+      return Promise.resolve(storedProjects[filePath] ?? null);
+    },
+    syncProjectFeatureProjections(_runtime, project) {
+      synchronizedProjectIds.push(String(project.id));
+    },
+    toRecord(value: unknown) {
+      return value !== null && typeof value === "object" && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+    writeJsonFile() {},
+  });
+  const runtime = {
+    activeProjectId: null,
+    editPresets: {},
+    paths: { projectsDir: "/projects" },
+    profileCapabilities: {},
+    profileModelState: {
+      activeLanguage: null,
+      activeModelId: null,
+      activeVariant: null,
+      models: {},
+      schemaVersion: 1,
+      updatedAt: null,
+    },
+    profileModels: {},
+    profilePresets: {},
+    projects: [],
+    sourcePresets: {},
+    toolState: { schemaVersion: 1, tools: {}, updatedAt: null },
+  };
+  const hostRuntime = readFileSync("rooms/laboratory/host/runtime.ts", "utf8");
+  assert.match(hostRuntime, /PROJECT_SCHEMA_VERSION = 2/);
+
+  await projectStorage.loadProjects(runtime);
+
+  assert.deepEqual(
+    runtime.projects.map(function (project) {
+      return project.id;
+    }),
+    ["current"]
+  );
+  assert.deepEqual(normalizedProjectIds, ["current"]);
+  assert.deepEqual(synchronizedProjectIds, ["current"]);
+});
+
 void test("laboratory controller starts clean projects and keeps naming/delete safeguards", () => {
   const source = readFileSync("rooms/laboratory/runtime/lab-run-controller.ts", "utf8");
   const sourceDraftControllerSource = readFileSync(
@@ -131,8 +258,14 @@ void test("laboratory controller starts clean projects and keeps naming/delete s
   assert.match(sourceActionControllerSource, /function startCleanProjectSession\(\)/);
   assert.match(sourceActionControllerSource, /if \(projectValue === "new"\)/);
   assert.match(source, /case "project-create":/);
-  assert.match(sourceActionControllerSource, /const resetSourceState = buildEmptySourceState\(state\);/);
-  assert.match(sourceActionControllerSource, /type: "source-config-patched",\s*patch: resetSourceState/);
+  assert.match(
+    sourceActionControllerSource,
+    /const resetSourceState = buildEmptySourceState\(state\);/
+  );
+  assert.match(
+    sourceActionControllerSource,
+    /type: "source-config-patched",\s*patch: resetSourceState/
+  );
   assert.match(
     sourceActionControllerSource,
     /type: "source-drafts-updated",\s*patch: resetSourceState\.drafts/

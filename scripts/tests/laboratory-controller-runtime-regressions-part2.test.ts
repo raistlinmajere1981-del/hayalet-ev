@@ -14,7 +14,7 @@ import {
   FakeTimelineRoot,
   FakeTimelineTrack,
   FakeWindowEventTarget,
-  test
+  test,
 } from "./laboratory-runtime-truth.helpers.ts";
 import { resolveDrawerMode } from "../../rooms/laboratory/runtime/lab-selectors.ts";
 import { createLabAnalysisScopeOverlay } from "../../rooms/laboratory/ui/lab-analysis-scope-overlay.ts";
@@ -41,7 +41,10 @@ void test("laboratory run controller sends project import draft fields without m
       metadata: {},
     },
   });
-  const committedSourceBeforeImport = JSON.parse(JSON.stringify(store.getState().source)) as Record<string, unknown>;
+  const committedSourceBeforeImport = JSON.parse(JSON.stringify(store.getState().source)) as Record<
+    string,
+    unknown
+  >;
 
   class TestElement extends FakeActionElement {}
   class TestInputElement {
@@ -193,7 +196,7 @@ void test("laboratory run controller sends project import draft fields without m
   }
 });
 
-void test("laboratory run controller routes topbar pills and cancel through v2 contracts", () => {
+void test("laboratory run controller routes topbar pills and cancel through canonical contracts", () => {
   const originalElement = globalThis.Element;
   const sentEvents: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
   const cancelStateDuringSend: Array<{ pending: boolean; requestId: string | null }> = [];
@@ -247,7 +250,7 @@ void test("laboratory run controller routes topbar pills and cancel through v2 c
     };
     state.sourceProbeStatus = "completed";
     state.run = {
-      id: "run-v2-shell-actions",
+      id: "run-shell-actions",
       state: "completed",
       startedAt: Date.now() - 2000,
       completedAt: Date.now() - 1000,
@@ -722,7 +725,10 @@ void test("laboratory run controller carries active image comparison pair into a
     store.dispatch({ type: "workspace-asset-selected", assetId: "asset-primary" });
     store.dispatch({ type: "workspace-comparison-reference-set", assetId: "asset-reference" });
     store.dispatch({ type: "capability-set", capabilities: ["visual-forensics"] });
-    store.dispatch({ type: "analysis-preflight-auto-run-toggled", force: false } as unknown as Parameters<typeof store.dispatch>[0]);
+    store.dispatch({
+      type: "analysis-preflight-auto-run-toggled",
+      force: false,
+    } as unknown as Parameters<typeof store.dispatch>[0]);
     store.dispatch({
       type: "workspace-comparison-updated",
       patch: {
@@ -745,7 +751,9 @@ void test("laboratory run controller carries active image comparison pair into a
     assert.ok(clickListener);
     clickListener({ target: new TestElement("run-deep-analysis") } as unknown as Event);
     if (!sentActions.includes("process-run")) {
-      clickListener({ target: new TestElement("analysis-scope-choice", "selected") } as unknown as Event);
+      clickListener({
+        target: new TestElement("analysis-scope-choice", "selected"),
+      } as unknown as Event);
     }
 
     const comparison = store.getState().run?.analysisScope?.comparison;
@@ -909,7 +917,9 @@ void test("laboratory run controller opens an in-room scope overlay for selected
     assert.equal(overlay.attributes["data-open"], "true");
     assert.match(overlay.innerHTML, /data-lab-action="analysis-scope-choice"/);
 
-    clickListener({ target: new TestElement("analysis-scope-choice", "selected") } as unknown as Event);
+    clickListener({
+      target: new TestElement("analysis-scope-choice", "selected"),
+    } as unknown as Event);
 
     const analysisScope = store.getState().run?.analysisScope;
     assert.equal(overlay.removed, true);
@@ -1537,4 +1547,3 @@ void test("laboratory run controller drags timeline start and end handles indepe
     }
   }
 });
-

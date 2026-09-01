@@ -1,4 +1,4 @@
-import { createMediaActionRuntime } from "../../features/media-analysis/host/action-handlers-v2.js";
+import { createMediaActionRuntime } from "../../features/media-analysis/host/action-handlers.js";
 import { createLaboratoryHostActionRuntime } from "./action-runtime.js";
 import { readLaboratoryBinaryFileBytes } from "./electron-bridge.js";
 import { createLaboratoryToolMutationRuntime } from "./tool-mutations.js";
