@@ -3,8 +3,6 @@ export interface FateKnotsAi0RoomToolCallRequest {
   operation: "fate-knots-ai0-call";
   requestId: string;
   universeId: string;
-  policyText: string;
-  systemPrompt: string;
   payload: unknown;
   timeoutMs?: number;
 }
