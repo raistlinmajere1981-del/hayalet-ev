@@ -17,6 +17,7 @@ export type FateKnotsForgeAspectRatio = "1:1" | "3:4" | "4:3" | "16:9";
 export interface FateKnotsWorldForgeRequest {
   schemaVersion: typeof FATE_KNOTS_WORLD_FORGE_SCHEMA_VERSION;
   requestId: string;
+  universeId: string;
   createdAt: string;
   brief?: string | null;
 }
@@ -54,6 +55,8 @@ export type FateKnotsWorldForgeIssueCode =
   | "invalid-response-root"
   | "unsupported-forge-schema-version"
   | "request-id-mismatch"
+  | "universe-id-mismatch"
+  | "created-at-mismatch"
   | "response-kind-mismatch"
   | "invalid-universe-package"
   | "invalid-asset-plan"
@@ -116,17 +119,21 @@ export function isFateKnotsPendingAssetPath(path: string): boolean {
 
 export function buildFateKnotsWorldForgeRequest(
   requestId: string,
+  universeId: string,
   createdAt: string,
   brief: string | null = null
 ): FateKnotsWorldForgeRequest {
   const normalizedRequestId = requestId.trim();
+  const normalizedUniverseId = universeId.trim();
   const normalizedCreatedAt = createdAt.trim();
   if (normalizedRequestId === "") throw new Error("Fate Knots World Forge requestId is required.");
+  if (normalizedUniverseId === "") throw new Error("Fate Knots World Forge universeId is required.");
   if (normalizedCreatedAt === "") throw new Error("Fate Knots World Forge createdAt is required.");
   const normalizedBrief = brief?.trim() ?? "";
   return {
     schemaVersion: FATE_KNOTS_WORLD_FORGE_SCHEMA_VERSION,
     requestId: normalizedRequestId,
+    universeId: normalizedUniverseId,
     createdAt: normalizedCreatedAt,
     ...(normalizedBrief !== "" ? { brief: normalizedBrief } : {}),
   };
@@ -235,6 +242,20 @@ export function validateFateKnotsWorldForgeDraftResponse(
   if (universe.schemaVersion !== FATE_KNOTS_SCHEMA_VERSION) {
     issues.push({ code: "invalid-universe-package", path: "universe.schemaVersion" });
   }
+  if (universe.universeId !== request.universeId) {
+    issues.push({
+      code: "universe-id-mismatch",
+      path: "universe.universeId",
+      value: universe.universeId,
+    });
+  }
+  if (universe.createdAt !== request.createdAt) {
+    issues.push({
+      code: "created-at-mismatch",
+      path: "universe.createdAt",
+      value: universe.createdAt,
+    });
+  }
 
   const assetKindById = new Map(universe.assets.map((asset) => [asset.id, asset.kind] as const));
   const rawPlans = response["assetPlans"];
@@ -277,11 +298,6 @@ export function validateFateKnotsWorldForgeDraftResponse(
       });
     }
   });
-
-  if (plans.length !== universe.assets.length) {
-    // More plans than assets are already rejected by parseAssetPlan; fewer are
-    // reported above. Keep this branch intentionally free of a second issue.
-  }
 
   if (issues.length > 0) return { ok: false, draft: null, issues };
 
