@@ -70,8 +70,7 @@ export const FATE_KNOTS_CARD_KINDS = [
 export type FateKnotsCardKind = (typeof FATE_KNOTS_CARD_KINDS)[number];
 
 export const FATE_KNOTS_RESOLUTION_PRIORITY_TIERS = ["fast", "normal", "heavy"] as const;
-export type FateKnotsResolutionPriorityTier =
-  (typeof FATE_KNOTS_RESOLUTION_PRIORITY_TIERS)[number];
+export type FateKnotsResolutionPriorityTier = (typeof FATE_KNOTS_RESOLUTION_PRIORITY_TIERS)[number];
 
 export type FateKnotsEnemyControllerKind = "policy" | "ai0";
 
@@ -86,13 +85,7 @@ export type FateKnotsEnemyControllerDefinition =
     };
 
 export type FateKnotsMechanicalEffectTarget =
-  | "self"
-  | "primaryTarget"
-  | "secondaryTarget"
-  | "allAllies"
-  | "allEnemies"
-  | "ownTeam"
-  | "run";
+  "self" | "primaryTarget" | "secondaryTarget" | "allAllies" | "allEnemies" | "ownTeam" | "run";
 
 export type FateKnotsEffectKind =
   | "damage"
@@ -109,13 +102,7 @@ export type FateKnotsEffectKind =
   | "reveal"
   | "retreat";
 
-export type FateKnotsStatId =
-  | "maxHp"
-  | "hp"
-  | "attack"
-  | "defense"
-  | "speed"
-  | "energy";
+export type FateKnotsStatId = "maxHp" | "hp" | "attack" | "defense" | "speed" | "energy";
 
 export interface FateKnotsCardRequirement {
   phases?: FateKnotsPhase[];
@@ -157,12 +144,7 @@ export type FateKnotsPresentationApplyTo =
   | "pageOverlay";
 
 export type FateKnotsPresentationTiming =
-  | "onSelect"
-  | "onCommit"
-  | "beforeResolve"
-  | "onResolve"
-  | "afterResolve"
-  | "persistent";
+  "onSelect" | "onCommit" | "beforeResolve" | "onResolve" | "afterResolve" | "persistent";
 
 export interface FateKnotsPresentationCue {
   cueId: string;
@@ -178,6 +160,7 @@ export interface FateKnotsCardDefinition {
   kind: FateKnotsCardKind;
   name: string;
   description?: string;
+  artAssetId?: string | null;
   tags: string[];
   requirements?: FateKnotsCardRequirement[];
   effects: FateKnotsCardEffect[];
@@ -218,6 +201,8 @@ export interface FateKnotsCharacterDefinition {
   portraitAssetId: string;
   backgroundId?: string | null;
   tags: string[];
+  playerSelectable: boolean;
+  startingPosition: FateKnotsPosition;
   baseStats: {
     maxHp: number;
     attack: number;
@@ -287,6 +272,7 @@ export interface FateKnotsMapEdge {
 
 export interface FateKnotsMapDefinition {
   mapAssetId?: string | null;
+  startNodeId: string;
   nodes: FateKnotsMapNode[];
   edges: FateKnotsMapEdge[];
 }
@@ -299,8 +285,7 @@ export const FATE_KNOTS_STORY_TRANSITION_KINDS = [
   "finale",
 ] as const;
 
-export type FateKnotsStoryTransitionKind =
-  (typeof FATE_KNOTS_STORY_TRANSITION_KINDS)[number];
+export type FateKnotsStoryTransitionKind = (typeof FATE_KNOTS_STORY_TRANSITION_KINDS)[number];
 
 export interface FateKnotsStoryRequirement {
   completedKnotIds?: string[];

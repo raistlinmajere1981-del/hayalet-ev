@@ -25,10 +25,7 @@ import {
 import { buildFateKnotsNpcRolePacket } from "../shared/npc-role.js";
 import { buildFateKnotsCanonicalDmScenePacket } from "../shared/story-dm.js";
 import { buildFateKnotsStoryView } from "../shared/story-progression.js";
-import {
-  getFateKnotsDmSession,
-  setFateKnotsDmSession,
-} from "./session-state.js";
+import { getFateKnotsDmSession, setFateKnotsDmSession } from "./session-state.js";
 import {
   dispatchFateKnotsAi0RuntimeRequest,
   dispatchFateKnotsAi1RuntimeRequest,
@@ -70,15 +67,15 @@ export type FateKnotsAi0CombatCommitResult =
   | { ok: false; issues: FateKnotsRuntimeAiIssue[] };
 
 function runtimeRequestId(prefix: string): string {
-  const uuid = globalThis.crypto?.randomUUID?.();
-  const suffix = uuid ? uuid.replace(/-/g, "") : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  const runtimeCrypto: { randomUUID?: () => string } = globalThis.crypto;
+  const uuid = runtimeCrypto.randomUUID?.();
+  const suffix = uuid
+    ? uuid.replace(/-/g, "")
+    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
   return `${prefix}-${suffix}`;
 }
 
-async function ensureDmSession(
-  api: GameRoomHostApi & FateKnotsTransportApi,
-  runId: string
-) {
+async function ensureDmSession(api: GameRoomHostApi & FateKnotsTransportApi, runId: string) {
   const existing = getFateKnotsDmSession(api, runId);
   if (existing) return { ok: true as const, sessionRef: existing };
 
@@ -106,7 +103,9 @@ export async function narrateFateKnotsScene(
   if (!packet.ok || !packet.packet) {
     return {
       ok: false,
-      issues: [{ code: "dm-packet-invalid", message: "Canonical DM scene packet could not be built." }],
+      issues: [
+        { code: "dm-packet-invalid", message: "Canonical DM scene packet could not be built." },
+      ],
     };
   }
 
@@ -169,7 +168,9 @@ export async function speakFateKnotsNpc(
   if (!role.ok || !role.packet) {
     return {
       ok: false,
-      issues: [{ code: "npc-packet-invalid", message: "Canonical NPC role packet could not be built." }],
+      issues: [
+        { code: "npc-packet-invalid", message: "Canonical NPC role packet could not be built." },
+      ],
     };
   }
   const story = buildFateKnotsStoryView(universe, run);
@@ -198,20 +199,29 @@ export async function chooseFateKnotsAi0CombatCommit(
   if (!actor) {
     return {
       ok: false,
-      issues: [{ code: "combat-actor-not-found", message: `Combat actor ${actorId} was not found.` }],
+      issues: [
+        { code: "combat-actor-not-found", message: `Combat actor ${actorId} was not found.` },
+      ],
     };
   }
   const character = universe.characters.find((candidate) => candidate.id === actor.characterId);
   if (!character) {
     return {
       ok: false,
-      issues: [{ code: "combat-character-not-found", message: `Character ${actor.characterId} was not found.` }],
+      issues: [
+        {
+          code: "combat-character-not-found",
+          message: `Character ${actor.characterId} was not found.`,
+        },
+      ],
     };
   }
   if (character.combatController?.kind !== "ai0") {
     return {
       ok: false,
-      issues: [{ code: "combat-controller-not-ai0", message: `Actor ${actorId} is not AI0-controlled.` }],
+      issues: [
+        { code: "combat-controller-not-ai0", message: `Actor ${actorId} is not AI0-controlled.` },
+      ],
     };
   }
 
@@ -228,7 +238,12 @@ export async function chooseFateKnotsAi0CombatCommit(
   if (!built.ok || !built.request) {
     return {
       ok: false,
-      issues: [{ code: "combat-packet-invalid", message: "AI0 combat decision packet could not be built." }],
+      issues: [
+        {
+          code: "combat-packet-invalid",
+          message: "AI0 combat decision packet could not be built.",
+        },
+      ],
     };
   }
 
@@ -252,8 +267,12 @@ export async function chooseFateKnotsAi0CombatCommit(
       actorId: response.actorId,
       ...(response.movementCardId !== undefined ? { movementCardId: response.movementCardId } : {}),
       ...(response.actionCardId !== undefined ? { actionCardId: response.actionCardId } : {}),
-      ...(response.primaryTargetId !== undefined ? { primaryTargetId: response.primaryTargetId } : {}),
-      ...(response.secondaryTargetId !== undefined ? { secondaryTargetId: response.secondaryTargetId } : {}),
+      ...(response.primaryTargetId !== undefined
+        ? { primaryTargetId: response.primaryTargetId }
+        : {}),
+      ...(response.secondaryTargetId !== undefined
+        ? { secondaryTargetId: response.secondaryTargetId }
+        : {}),
     }),
   };
 }

@@ -394,6 +394,27 @@ Codex may decide, within a specific task:
 
 When a task would require a new game rule, phase, card economy, AI authority, story-progression grammar or player-facing interaction grammar, stop and preserve the existing contract rather than inventing it.
 
+## Unified branch reconciliation contract
+
+The unified branch keeps the stricter Stage C lifecycle, hydration and crash-atomic persistence authority while using the rebuild's modular neutral Hub, run-setup, gameplay projection, combat-options, Forge and AI0 boundaries.
+
+The room-ui command surface is intent/read-only oriented:
+
+- `GameRoomFateKnotsGetHubState`
+- `GameRoomFateKnotsActivateUniverse`
+- `GameRoomFateKnotsGetRunSetup`
+- `GameRoomFateKnotsCreateRun`
+- `GameRoomFateKnotsStartRun`
+- `GameRoomFateKnotsGetGameplayState`
+- `GameRoomFateKnotsGetCombatOptions`
+- `GameRoomFateKnotsActivateRun`
+- `GameRoomFateKnotsDeleteRun`
+- `GameRoomFateKnotsDeleteUniverse`
+
+These commands must not be replaced by raw `SaveUniverse` / `SaveRun` authority. Mutating commands wait for durable hydration and commit through the single validated Universe+Run envelope. The compatibility library/session reads in `host/persistence.ts` are projections over that stricter store, not a second canonical persistence model.
+
+The current combat-discussion UX authority is `COMBAT-DISCUSSION-V1.md`: one party-only shared surface for the user plus active AI2/US1, no recipient selector, discussion available through `combat-discussion` and `combat-commit`, and card/target commits hidden until deterministic resolution.
+
 ## Local testing / architecture audit expectation
 
 GitHub Actions availability is not assumed. At the integration checkpoint local Codex should run strict typecheck/build/tests when available and report failures without weakening contracts.

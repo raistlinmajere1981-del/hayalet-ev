@@ -75,10 +75,12 @@
   registry.ROOM_ID = "game-room";
   registry.FEATURE_ID = FEATURE_ID;
   registry.TEAM_TETRIS_FEATURE_ID = TEAM_TETRIS_FEATURE_ID;
-  (registry as GameRoomUiFeatureContractLike & { GAME_ROOM_HOME_FEATURE_ID?: string })
-    .GAME_ROOM_HOME_FEATURE_ID = GAME_ROOM_HOME_FEATURE_ID;
-  (registry as GameRoomUiFeatureContractLike & { FATE_KNOTS_FEATURE_ID?: string }).FATE_KNOTS_FEATURE_ID =
-    FATE_KNOTS_FEATURE_ID;
+  (
+    registry as GameRoomUiFeatureContractLike & { GAME_ROOM_HOME_FEATURE_ID?: string }
+  ).GAME_ROOM_HOME_FEATURE_ID = GAME_ROOM_HOME_FEATURE_ID;
+  (
+    registry as GameRoomUiFeatureContractLike & { FATE_KNOTS_FEATURE_ID?: string }
+  ).FATE_KNOTS_FEATURE_ID = FATE_KNOTS_FEATURE_ID;
   registry.getFeatureRecords = function getFeatureRecords() {
     return cloneFeatureRecords();
   };

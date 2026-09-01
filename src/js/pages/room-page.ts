@@ -224,9 +224,7 @@ export class RoomPageController implements PageController {
     this.activeFeatureId = this.resolveInitialFeatureId(room, this.activeFeatureId);
     this.sceneFeatureId =
       this.sceneFeatureId !== null &&
-      room.features.some(
-        (feature) => feature.id === this.sceneFeatureId && feature.scene !== undefined
-      )
+      room.features.some((feature) => feature.id === this.sceneFeatureId)
         ? this.sceneFeatureId
         : null;
     this.room = { ...room };
@@ -421,7 +419,7 @@ export class RoomPageController implements PageController {
       return;
     }
     this.activeFeatureId = feature.id;
-    this.sceneFeatureId = feature.scene !== undefined ? feature.id : null;
+    this.sceneFeatureId = this.room.scene !== undefined ? feature.id : null;
     this.render();
     void this.runtimeContextRuntime.sync(reason);
   }

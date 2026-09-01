@@ -26,10 +26,7 @@ import {
   getFateKnotsForgeReadiness,
   type FateKnotsForgeReadiness,
 } from "./forge-service.js";
-import {
-  loadFateKnotsRunStore,
-  loadFateKnotsUniverseStore,
-} from "./persistence.js";
+import { loadFateKnotsRunStore, loadFateKnotsUniverseStore } from "./persistence.js";
 import { deleteFateKnotsDmSession } from "./session-state.js";
 import type { FateKnotsTransportApi } from "./transport.js";
 
@@ -108,7 +105,8 @@ function readRunSelections(payload: unknown): FateKnotsRunSetupSelection[] | nul
 }
 
 function createRunId(): string {
-  const uuid = globalThis.crypto?.randomUUID?.();
+  const runtimeCrypto: { randomUUID?: () => string } = globalThis.crypto;
+  const uuid = runtimeCrypto.randomUUID?.();
   const suffix = uuid
     ? uuid.replace(/-/g, "")
     : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
@@ -116,7 +114,9 @@ function createRunId(): string {
 }
 
 function createUniqueRunId(api: FateKnotsRuntimeApi): string | null {
-  const existing = new Set(loadFateKnotsRunStore(api).store.entries.map((entry) => entry.run.runId));
+  const existing = new Set(
+    loadFateKnotsRunStore(api).store.entries.map((entry) => entry.run.runId)
+  );
   for (let attempt = 0; attempt < 32; attempt += 1) {
     const runId = createRunId();
     if (!existing.has(runId)) return runId;
@@ -185,10 +185,7 @@ export function handleFateKnotsRefresh(api: FateKnotsRuntimeApi) {
   return result(true, "Fate Knots state refreshed.", pushFateKnotsState(api));
 }
 
-export async function handleFateKnotsCreateUniverse(
-  api: FateKnotsRuntimeApi,
-  payload: unknown
-) {
+export async function handleFateKnotsCreateUniverse(api: FateKnotsRuntimeApi, payload: unknown) {
   const readiness = getFateKnotsForgeReadiness(api);
   if (!readiness.ready) {
     return result(
@@ -218,10 +215,7 @@ export async function handleFateKnotsCreateUniverse(
   return result(true, "Fate Knots universe created.", pushFateKnotsState(api));
 }
 
-export async function handleFateKnotsActivateUniverse(
-  api: FateKnotsRuntimeApi,
-  payload: unknown
-) {
+export async function handleFateKnotsActivateUniverse(api: FateKnotsRuntimeApi, payload: unknown) {
   const universeId = readStringArg(payload, "universeId");
   if (!universeId) return result(false, "Fate Knots universeId is required.");
   const activated = await activateFateKnotsUniverseDurable(api, universeId);
@@ -236,14 +230,11 @@ export async function handleFateKnotsActivateUniverse(
   return result(true, "Fate Knots universe activated.", pushFateKnotsState(api));
 }
 
-export async function handleFateKnotsDeleteUniverse(
-  api: FateKnotsRuntimeApi,
-  payload: unknown
-) {
+export async function handleFateKnotsDeleteUniverse(api: FateKnotsRuntimeApi, payload: unknown) {
   const universeId = readStringArg(payload, "universeId");
   if (!universeId) return result(false, "Fate Knots universeId is required.");
-  const removedRunIds = loadFateKnotsRunStore(api).store.entries
-    .filter((entry) => entry.run.universeId === universeId)
+  const removedRunIds = loadFateKnotsRunStore(api)
+    .store.entries.filter((entry) => entry.run.universeId === universeId)
     .map((entry) => entry.run.runId);
   const deleted = await deleteFateKnotsUniverseDurable(api, universeId);
   if (!deleted.ok) {
@@ -258,10 +249,7 @@ export async function handleFateKnotsDeleteUniverse(
   return result(true, "Fate Knots universe deleted.", pushFateKnotsState(api));
 }
 
-export async function handleFateKnotsCreateRun(
-  api: FateKnotsRuntimeApi,
-  payload: unknown
-) {
+export async function handleFateKnotsCreateRun(api: FateKnotsRuntimeApi, payload: unknown) {
   const universe = getActiveFateKnotsUniverseDurable(api);
   if (!universe) return result(false, "Activate a Fate Knots universe before creating a run.");
   const selections = readRunSelections(payload);
@@ -287,10 +275,7 @@ export async function handleFateKnotsCreateRun(
   return result(true, "Fate Knots run created.", pushFateKnotsState(api));
 }
 
-export async function handleFateKnotsActivateRun(
-  api: FateKnotsRuntimeApi,
-  payload: unknown
-) {
+export async function handleFateKnotsActivateRun(api: FateKnotsRuntimeApi, payload: unknown) {
   const runId = readStringArg(payload, "runId");
   if (!runId) return result(false, "Fate Knots runId is required.");
   const activated = await activateFateKnotsRunDurable(api, runId);

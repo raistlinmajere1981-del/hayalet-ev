@@ -45,7 +45,7 @@ export function isRoomSceneFeatureOpen(
   return (
     isSceneUiMode() &&
     room.scene !== undefined &&
-    getRoomSceneFeature(room, sceneFeatureId)?.scene !== undefined
+    getRoomSceneFeature(room, sceneFeatureId) !== null
   );
 }
 

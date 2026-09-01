@@ -44,17 +44,29 @@ import {
   pushYahtzeeState,
 } from "../main-functions/yahtzee/host/runtime.js";
 import {
-  FATE_KNOTS_COMMAND_NAMES,
-  handleFateKnotsActivateRun,
-  handleFateKnotsActivateUniverse,
-  handleFateKnotsCreateRun,
-  handleFateKnotsCreateUniverse,
-  handleFateKnotsDeleteRun,
-  handleFateKnotsDeleteUniverse,
-  handleFateKnotsRefresh,
-  initializeFateKnotsState,
-  pushFateKnotsState,
-} from "../main-functions/fate-knots/host/runtime.js";
+  FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES,
+  createFateKnotsCombatOptionCommands,
+} from "../main-functions/fate-knots/host/combat-options-runtime.js";
+import { createFateKnotsForgeOrchestrator } from "../main-functions/fate-knots/host/forge-orchestration.js";
+import {
+  FATE_KNOTS_GAMEPLAY_COMMAND_NAMES,
+  createFateKnotsGameplayCommands,
+} from "../main-functions/fate-knots/host/gameplay-runtime.js";
+import {
+  FATE_KNOTS_MANAGEMENT_COMMAND_NAMES,
+  createFateKnotsManagementCommands,
+} from "../main-functions/fate-knots/host/management-runtime.js";
+import {
+  FATE_KNOTS_RUN_COMMAND_NAMES,
+  createFateKnotsRunCommands,
+  type FateKnotsRunCommandDependencies,
+} from "../main-functions/fate-knots/host/run-runtime.js";
+import { createFateKnotsRunSetupCommands } from "../main-functions/fate-knots/host/run-setup-runtime.js";
+import { pushFateKnotsHubState } from "../main-functions/fate-knots/host/runtime-sync.js";
+import {
+  hydrateFateKnotsDurablePersistence,
+  persistFateKnotsCommandMutation,
+} from "../main-functions/fate-knots/host/durable-persistence.js";
 import {
   clearUs1SyncLoop as backgammonClearUs1SyncLoop,
   ensureUs1SyncLoop as backgammonEnsureUs1SyncLoop,
@@ -80,11 +92,30 @@ export { teamTetrisEngine };
 
 type BridgeCommandHandler = (handlerApi: GameRoomHostApi, payload: unknown) => unknown;
 type BridgeNoPayloadHandler = (handlerApi: GameRoomHostApi) => unknown;
+type FateKnotsPlayerSeatId = Parameters<
+  NonNullable<FateKnotsRunCommandDependencies["isPlayerSeatAvailable"]>
+>[0];
+
+const FATE_KNOTS_MUTATION_COMMANDS = new Set<string>([
+  FATE_KNOTS_MANAGEMENT_COMMAND_NAMES.activateUniverse,
+  FATE_KNOTS_MANAGEMENT_COMMAND_NAMES.activateRun,
+  FATE_KNOTS_MANAGEMENT_COMMAND_NAMES.deleteRun,
+  FATE_KNOTS_MANAGEMENT_COMMAND_NAMES.deleteUniverse,
+  FATE_KNOTS_RUN_COMMAND_NAMES.createRun,
+  FATE_KNOTS_RUN_COMMAND_NAMES.startRun,
+]);
+
+function readRegisteredRoomArgs(payload: unknown): unknown {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return {};
+  const record = payload as Record<string, unknown>;
+  return "roomArgs" in record ? record["roomArgs"] : {};
+}
 
 export default function createGameRoomHostRuntime() {
   return {
     activate(api: GameRoomHostApi) {
-      let fateKnotsHydration: ReturnType<typeof initializeFateKnotsState> | null = null;
+      let fateKnotsHydration: ReturnType<typeof hydrateFateKnotsDurablePersistence> | null = null;
+      const fateKnotsForge = createFateKnotsForgeOrchestrator(api);
 
       function asCommandHandler(handler: BridgeCommandHandler) {
         return (handlerApi: unknown, payload?: unknown) =>
@@ -122,12 +153,46 @@ export default function createGameRoomHostRuntime() {
 
       function ensureUs1SyncLoopCompat(handlerApi: GameRoomHostApi): void {
         if (!isBackgammonActive(handlerApi)) {
-          backgammonClearUs1SyncLoop(handlerApi as Parameters<typeof backgammonClearUs1SyncLoop>[0]);
+          backgammonClearUs1SyncLoop(
+            handlerApi as Parameters<typeof backgammonClearUs1SyncLoop>[0]
+          );
           return;
         }
         backgammonEnsureUs1SyncLoop(
           handlerApi as unknown as Parameters<typeof backgammonEnsureUs1SyncLoop>[0]
         );
+      }
+
+      function pushFateKnotsHubStateCompat(handlerApi: GameRoomHostApi): void {
+        pushFateKnotsHubState(handlerApi, fateKnotsForge.getHubSnapshot());
+      }
+
+      function pushFateKnotsHubStateWhenReady(handlerApi: GameRoomHostApi): void {
+        const hydration = fateKnotsHydration;
+        if (!hydration) {
+          pushFateKnotsHubStateCompat(handlerApi);
+          return;
+        }
+        void hydration
+          .then(() => {
+            if (getActiveFeatureId(loadContext(handlerApi)) === FATE_KNOTS_FEATURE_ID) {
+              pushFateKnotsHubStateCompat(handlerApi);
+            }
+          })
+          .catch((error: unknown) => {
+            handlerApi.log(
+              "warn",
+              `Fate Knots state hydration failed before Hub projection: ${error instanceof Error ? error.message : String(error)}`
+            );
+          });
+      }
+
+      function isFateKnotsPlayerSeatAvailable(seatId: FateKnotsPlayerSeatId): boolean {
+        if (seatId === "user") return true;
+        const context = loadContext(api);
+        return seatId === "ai2"
+          ? context.slots.ai2.dispatchable === true
+          : context.slots.us1.dispatchable === true;
       }
 
       function pushActiveFeatureStateCompat(handlerApi: GameRoomHostApi): void {
@@ -136,26 +201,12 @@ export default function createGameRoomHostRuntime() {
         if (activeFeatureId === GAME_ROOM_HOME_FEATURE_ID) {
           return;
         }
-        if (activeFeatureId === FATE_KNOTS_FEATURE_ID) {
-          const hydration = fateKnotsHydration;
-          if (hydration) {
-            void hydration
-              .then(() => {
-                pushFateKnotsState(handlerApi);
-              })
-              .catch((error: unknown) => {
-                handlerApi.log(
-                  "warn",
-                  `Fate Knots state hydration failed before room-ready projection: ${error instanceof Error ? error.message : String(error)}`
-                );
-              });
-            return;
-          }
-          pushFateKnotsState(handlerApi);
-          return;
-        }
         if (activeFeatureId === YAHTZEE_FEATURE_ID) {
           pushYahtzeeState(handlerApi);
+          return;
+        }
+        if (activeFeatureId === FATE_KNOTS_FEATURE_ID) {
+          pushFateKnotsHubStateWhenReady(handlerApi);
           return;
         }
         pushActiveFeatureState(handlerApi);
@@ -163,12 +214,11 @@ export default function createGameRoomHostRuntime() {
 
       function syncUs1MailboxCompat(handlerApi: GameRoomHostApi, reason: string): Promise<unknown> {
         if (!isBackgammonActive(handlerApi)) {
-          backgammonClearUs1SyncLoop(handlerApi as Parameters<typeof backgammonClearUs1SyncLoop>[0]);
+          backgammonClearUs1SyncLoop(
+            handlerApi as Parameters<typeof backgammonClearUs1SyncLoop>[0]
+          );
           return Promise.resolve(null);
         }
-        backgammonEnsureUs1SyncLoop(
-          handlerApi as unknown as Parameters<typeof backgammonEnsureUs1SyncLoop>[0]
-        );
         return backgammonSyncUs1Mailbox(
           handlerApi as unknown as Parameters<typeof backgammonSyncUs1Mailbox>[0],
           reason
@@ -177,6 +227,14 @@ export default function createGameRoomHostRuntime() {
 
       function syncFromContextCompat(handlerApi: GameRoomHostApi, payload: unknown): void {
         backgammonSyncFromContext(handlerApi, payload);
+        const activeFeatureId = getActiveFeatureId(loadContext(handlerApi));
+        if (activeFeatureId === FATE_KNOTS_FEATURE_ID) {
+          pushFateKnotsHubStateWhenReady(handlerApi);
+          return;
+        }
+        if (activeFeatureId === YAHTZEE_FEATURE_ID) {
+          pushYahtzeeState(handlerApi);
+        }
       }
 
       function clearUs1SyncLoopCompat(handlerApi: GameRoomHostApi): void {
@@ -197,7 +255,7 @@ export default function createGameRoomHostRuntime() {
         saveBackgammonState: saveBackgammonStateCompat,
       });
       initializeYahtzeeState(api);
-      fateKnotsHydration = initializeFateKnotsState(api);
+      fateKnotsHydration = hydrateFateKnotsDurablePersistence(api);
       void fateKnotsHydration.catch((error: unknown) => {
         api.log(
           "warn",
@@ -261,27 +319,70 @@ export default function createGameRoomHostRuntime() {
         return handleYahtzeeRemoteReset(api, payload ?? {});
       };
 
-      commands[FATE_KNOTS_COMMAND_NAMES.refresh] = function () {
-        return withFateKnotsReady(() => handleFateKnotsRefresh(api));
+      const fateKnotsManagementCommands = createFateKnotsManagementCommands(api, {
+        getForgeSnapshot: () => fateKnotsForge.getHubSnapshot(),
+      });
+      const fateKnotsRunSetupCommands = createFateKnotsRunSetupCommands(api);
+      const fateKnotsRunCommands = createFateKnotsRunCommands(api, {
+        isPlayerSeatAvailable: isFateKnotsPlayerSeatAvailable,
+      });
+      const fateKnotsGameplayCommands = createFateKnotsGameplayCommands(api);
+      const fateKnotsCombatOptionCommands = createFateKnotsCombatOptionCommands(api);
+      const fateKnotsGameplayCommand =
+        fateKnotsGameplayCommands[FATE_KNOTS_GAMEPLAY_COMMAND_NAMES.getGameplayState];
+      const fateKnotsCombatOptionsCommand =
+        fateKnotsCombatOptionCommands[FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES.getLocalOptions];
+      if (fateKnotsGameplayCommand === undefined || fateKnotsCombatOptionsCommand === undefined) {
+        throw new Error("Fate Knots read command registry is incomplete.");
+      }
+
+      api.registerCommand?.(
+        FATE_KNOTS_GAMEPLAY_COMMAND_NAMES.getGameplayState,
+        function (payload: unknown) {
+          return withFateKnotsReady(() => {
+            const result = fateKnotsGameplayCommand(readRegisteredRoomArgs(payload));
+            pushFateKnotsHubStateCompat(api);
+            return result;
+          });
+        },
+        {
+          description: "Read one player-safe Fate Knots active-run projection.",
+          scope: "room-ui",
+          exposure: "internal",
+        }
+      );
+
+      api.registerCommand?.(
+        FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES.getLocalOptions,
+        function (payload: unknown) {
+          return withFateKnotsReady(() =>
+            fateKnotsCombatOptionsCommand(readRegisteredRoomArgs(payload))
+          );
+        },
+        {
+          description:
+            "Read the local player's current legal Fate Knots combat card/target options.",
+          scope: "room-ui",
+          exposure: "internal",
+        }
+      );
+
+      const fateKnotsCommands = {
+        ...fateKnotsManagementCommands,
+        ...fateKnotsRunSetupCommands,
+        ...fateKnotsRunCommands,
       };
-      commands[FATE_KNOTS_COMMAND_NAMES.createUniverse] = function (payload?: unknown) {
-        return withFateKnotsReady(() => handleFateKnotsCreateUniverse(api, payload ?? {}));
-      };
-      commands[FATE_KNOTS_COMMAND_NAMES.activateUniverse] = function (payload?: unknown) {
-        return withFateKnotsReady(() => handleFateKnotsActivateUniverse(api, payload ?? {}));
-      };
-      commands[FATE_KNOTS_COMMAND_NAMES.deleteUniverse] = function (payload?: unknown) {
-        return withFateKnotsReady(() => handleFateKnotsDeleteUniverse(api, payload ?? {}));
-      };
-      commands[FATE_KNOTS_COMMAND_NAMES.createRun] = function (payload?: unknown) {
-        return withFateKnotsReady(() => handleFateKnotsCreateRun(api, payload ?? {}));
-      };
-      commands[FATE_KNOTS_COMMAND_NAMES.activateRun] = function (payload?: unknown) {
-        return withFateKnotsReady(() => handleFateKnotsActivateRun(api, payload ?? {}));
-      };
-      commands[FATE_KNOTS_COMMAND_NAMES.deleteRun] = function (payload?: unknown) {
-        return withFateKnotsReady(() => handleFateKnotsDeleteRun(api, payload ?? {}));
-      };
+      for (const [commandName, handler] of Object.entries(fateKnotsCommands)) {
+        commands[commandName] = function (payload?: unknown) {
+          return withFateKnotsReady(async () => {
+            const result = FATE_KNOTS_MUTATION_COMMANDS.has(commandName)
+              ? await persistFateKnotsCommandMutation(api, () => handler(payload))
+              : handler(payload);
+            pushFateKnotsHubStateCompat(api);
+            return result;
+          });
+        };
+      }
 
       return {
         commands,

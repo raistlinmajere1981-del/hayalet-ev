@@ -1,224 +1,304 @@
-.fk-hub {
-  box-sizing: border-box;
-  width: min(1180px, calc(100% - 48px));
-  min-height: calc(100vh - 64px);
-  margin: 32px auto;
-  padding: clamp(24px, 4vw, 48px);
-  border: 1px solid rgba(212, 200, 174, 0.2);
-  border-radius: 28px;
-  background: linear-gradient(145deg, rgba(20, 23, 28, 0.94), rgba(10, 12, 15, 0.91));
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
-  color: #ece7dc;
-  font-family: Georgia, "Times New Roman", serif;
+.fate-knots-hub-root {
+  min-height: 100%;
+  overflow: auto;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(92, 78, 116, 0.18), transparent 34%),
+    linear-gradient(180deg, #111217 0%, #08090d 100%);
+  color: #f3eee3;
 }
 
-.fk-hub * {
-  box-sizing: border-box;
+.fate-knots-hub {
+  width: min(1120px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 52px 0 72px;
+  font-family: Inter, system-ui, sans-serif;
 }
 
-.fk-hub__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 28px;
-  padding-bottom: 28px;
-  border-bottom: 1px solid rgba(212, 200, 174, 0.14);
-}
-
-.fk-hub__eyebrow {
-  margin-bottom: 8px;
-  color: rgba(222, 210, 180, 0.62);
-  font-family: system-ui, sans-serif;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.fk-hub h1,
-.fk-hub h2,
-.fk-hub p {
-  margin-top: 0;
-}
-
-.fk-hub h1 {
-  margin-bottom: 10px;
-  font-size: clamp(2.1rem, 5vw, 4.3rem);
-  font-weight: 500;
-  line-height: 0.95;
-}
-
-.fk-hub h2 {
-  margin-bottom: 18px;
-  color: #dfd5bd;
-  font-size: 1.15rem;
-  font-weight: 600;
-}
-
-.fk-hub__header p {
-  max-width: 720px;
-  margin-bottom: 0;
-  color: rgba(236, 231, 220, 0.72);
-  font-size: 1rem;
-  line-height: 1.65;
-}
-
-.fk-hub__grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
-  gap: 18px;
-  margin-top: 24px;
-}
-
-.fk-hub__panel {
-  padding: 22px;
-  border: 1px solid rgba(212, 200, 174, 0.13);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.025);
-}
-
-.fk-hub__panel--forge {
-  background: linear-gradient(145deg, rgba(142, 116, 70, 0.1), rgba(255, 255, 255, 0.02));
-}
-
-.fk-hub__panel--wide {
-  margin-top: 18px;
-}
-
-.fk-hub__records {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
-}
-
-.fk-hub__record {
-  padding: 18px;
-  border: 1px solid rgba(212, 200, 174, 0.13);
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.18);
-}
-
-.fk-hub__record-heading,
-.fk-hub__record-actions,
-.fk-hub__record-meta {
+.fate-knots-hub__header,
+.fate-knots-hub__universe-heading,
+.fate-knots-hub__run,
+.fate-knots-hub__setup-heading,
+.fate-knots-hub__seat-heading,
+.fate-knots-hub__setup-footer {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 9px;
-}
-
-.fk-hub__record-heading {
   justify-content: space-between;
+  gap: 24px;
 }
 
-.fk-hub__record-copy,
-.fk-hub__empty {
-  margin: 12px 0 18px;
-  color: rgba(236, 231, 220, 0.64);
-  font-family: system-ui, sans-serif;
-  font-size: 0.88rem;
-  line-height: 1.5;
+.fate-knots-hub__header {
+  padding-bottom: 28px;
+  border-bottom: 1px solid rgba(235, 226, 207, 0.14);
 }
 
-.fk-hub__record-meta {
-  margin: 12px 0 16px;
+.fate-knots-hub__eyebrow {
+  margin-bottom: 8px;
+  font:
+    700 11px/1.2 "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.24em;
+  color: rgba(215, 198, 238, 0.72);
 }
 
-.fk-hub__chip {
-  padding: 5px 8px;
-  border: 1px solid rgba(210, 190, 145, 0.18);
+.fate-knots-hub__title,
+.fate-knots-hub__universe-title,
+.fate-knots-hub__setup-title,
+.fate-knots-hub__seat-title {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+}
+
+.fate-knots-hub__title {
+  font-size: clamp(34px, 5vw, 58px);
+}
+
+.fate-knots-hub__subtitle,
+.fate-knots-hub__universe-meta,
+.fate-knots-hub__run-meta,
+.fate-knots-hub__setup-copy,
+.fate-knots-hub__seat-status,
+.fate-knots-hub__character-meta,
+.fate-knots-hub__character-loadout,
+.fate-knots-hub__setup-note {
+  color: rgba(236, 229, 216, 0.62);
+}
+
+.fate-knots-hub__subtitle {
+  max-width: 680px;
+  margin: 12px 0 0;
+  line-height: 1.6;
+}
+
+.fate-knots-hub__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.fate-knots-hub__button {
+  border: 1px solid rgba(215, 198, 238, 0.28);
   border-radius: 999px;
-  color: rgba(231, 219, 193, 0.72);
-  background: rgba(210, 190, 145, 0.06);
-  font-family: system-ui, sans-serif;
-  font-size: 0.7rem;
-}
-
-.fk-hub__forge-brief {
-  display: block;
-  width: 100%;
-  min-height: 74px;
-  margin: 0 0 12px;
-  padding: 10px 12px;
-  resize: vertical;
-  border: 1px solid rgba(212, 200, 174, 0.16);
-  border-radius: 10px;
-  outline: none;
-  color: rgba(236, 231, 220, 0.86);
-  background: rgba(0, 0, 0, 0.18);
-  font-family: system-ui, sans-serif;
-  font-size: 0.8rem;
-  line-height: 1.45;
-}
-
-.fk-hub__forge-brief:focus {
-  border-color: rgba(210, 190, 145, 0.36);
-}
-
-.fk-hub__forge-brief:disabled {
-  color: rgba(236, 231, 220, 0.34);
-  background: rgba(255, 255, 255, 0.018);
-}
-
-.fk-hub__button {
-  min-height: 38px;
-  padding: 8px 14px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  font-family: system-ui, sans-serif;
-  font-size: 0.78rem;
-  font-weight: 650;
+  padding: 10px 16px;
+  background: rgba(127, 94, 166, 0.24);
+  color: #f7f1e8;
   cursor: pointer;
-  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+  font:
+    600 13px/1 Inter,
+    system-ui,
+    sans-serif;
 }
 
-.fk-hub__button:not(:disabled):hover {
-  transform: translateY(-1px);
+.fate-knots-hub__button:hover:not(:disabled) {
+  background: rgba(143, 110, 184, 0.36);
 }
 
-.fk-hub__button--primary {
-  border-color: rgba(210, 190, 145, 0.3);
-  color: #17140e;
-  background: #cdbb8c;
+.fate-knots-hub__button--secondary {
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.fk-hub__button--quiet {
-  border-color: rgba(212, 200, 174, 0.16);
-  color: rgba(236, 231, 220, 0.8);
-  background: rgba(255, 255, 255, 0.035);
+.fate-knots-hub__button--danger {
+  border-color: rgba(224, 139, 139, 0.24);
+  background: transparent;
+  color: rgba(239, 188, 188, 0.88);
 }
 
-.fk-hub__button:disabled {
-  color: rgba(236, 231, 220, 0.38);
-  background: rgba(255, 255, 255, 0.025);
-  border-color: rgba(212, 200, 174, 0.08);
+.fate-knots-hub__button.is-selected {
+  border-color: rgba(215, 198, 238, 0.7);
+  background: rgba(127, 94, 166, 0.46);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.fate-knots-hub__button:disabled {
+  opacity: 0.38;
   cursor: default;
 }
 
-.fk-hub__warning {
+.fate-knots-hub__content {
+  display: grid;
+  gap: 16px;
+  padding-top: 28px;
+}
+
+.fate-knots-hub__universe,
+.fate-knots-hub__setup,
+.fate-knots-hub__empty,
+.fate-knots-hub__warning,
+.fate-knots-hub__message {
+  border: 1px solid rgba(235, 226, 207, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.18);
+}
+
+.fate-knots-hub__universe {
+  padding: 22px;
+}
+
+.fate-knots-hub__universe-title {
+  font-size: 25px;
+}
+
+.fate-knots-hub__universe-meta {
+  margin: 7px 0 0;
+  font-size: 13px;
+}
+
+.fate-knots-hub__runs {
+  display: grid;
+  gap: 8px;
   margin-top: 18px;
-  padding: 11px 14px;
-  border: 1px solid rgba(216, 163, 111, 0.28);
-  border-radius: 10px;
-  color: rgba(246, 220, 192, 0.86);
-  background: rgba(112, 68, 37, 0.16);
-  font-family: system-ui, sans-serif;
-  font-size: 0.78rem;
+  padding-top: 14px;
+  border-top: 1px solid rgba(235, 226, 207, 0.1);
+}
+
+.fate-knots-hub__run {
+  min-height: 48px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.fate-knots-hub__run-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fate-knots-hub__run-title {
+  font-size: 14px;
+}
+
+.fate-knots-hub__run-meta {
+  font-size: 11px;
+}
+
+.fate-knots-hub__setup {
+  margin-top: 24px;
+  padding: 24px;
+}
+
+.fate-knots-hub__setup-heading {
+  align-items: flex-start;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(235, 226, 207, 0.1);
+}
+
+.fate-knots-hub__setup-title {
+  font-size: 28px;
+}
+
+.fate-knots-hub__setup-copy {
+  max-width: 720px;
+  margin: 8px 0 0;
+  line-height: 1.55;
+}
+
+.fate-knots-hub__seat {
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(235, 226, 207, 0.08);
+}
+
+.fate-knots-hub__seat-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.fate-knots-hub__seat-title {
+  font-size: 20px;
+}
+
+.fate-knots-hub__seat-status {
+  font-size: 12px;
+}
+
+.fate-knots-hub__character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.fate-knots-hub__character-choice {
+  min-height: 112px;
+  border-radius: 14px;
+  padding: 14px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 9px;
+  line-height: 1.25;
+}
+
+.fate-knots-hub__character-meta,
+.fate-knots-hub__character-loadout {
+  display: block;
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.fate-knots-hub__character-loadout {
+  color: rgba(236, 229, 216, 0.78);
+}
+
+.fate-knots-hub__setup-footer {
+  align-items: flex-start;
+  padding-top: 20px;
+}
+
+.fate-knots-hub__setup-note {
+  max-width: 680px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.fate-knots-hub__empty,
+.fate-knots-hub__warning,
+.fate-knots-hub__message {
+  padding: 20px 22px;
+  line-height: 1.55;
+}
+
+.fate-knots-hub__warning {
+  margin-top: 18px;
+  border-color: rgba(220, 173, 95, 0.25);
+  color: rgba(244, 220, 177, 0.9);
+}
+
+.fate-knots-hub__message {
+  margin-top: 16px;
+  color: rgba(239, 188, 188, 0.9);
 }
 
 @media (max-width: 760px) {
-  .fk-hub {
-    width: calc(100% - 20px);
-    margin: 10px auto;
-    padding: 20px;
-    border-radius: 18px;
+  .fate-knots-hub {
+    width: min(100% - 28px, 1120px);
+    padding-top: 32px;
   }
 
-  .fk-hub__header {
+  .fate-knots-hub__header,
+  .fate-knots-hub__universe-heading,
+  .fate-knots-hub__run,
+  .fate-knots-hub__setup-heading,
+  .fate-knots-hub__seat-heading,
+  .fate-knots-hub__setup-footer {
+    align-items: flex-start;
     flex-direction: column;
   }
 
-  .fk-hub__grid {
-    grid-template-columns: 1fr;
+  .fate-knots-hub__seat-title-group {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .fate-knots-hub__actions {
+    justify-content: flex-start;
   }
 }

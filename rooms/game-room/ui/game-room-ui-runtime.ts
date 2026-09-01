@@ -2,11 +2,6 @@
 
 (function (global: GameRoomUiGlobal) {
   type UnknownRecord = GameRoomUnknownRecord;
-  type FateKnotsHubRuntime = {
-    featureId?: string;
-    handleHostMessage?: (message: unknown) => boolean;
-    render?: (root: HTMLElement) => void;
-  };
 
   function getRuntimeRegistry(host: GameRoomUiGlobal): GameRoomUiRuntimeRegistry {
     return host.GameRoomUiRuntime || (host.GameRoomUiRuntime = {});
@@ -20,12 +15,6 @@
 
   function readString(value: unknown): string | null {
     return typeof value === "string" ? value : null;
-  }
-
-  function getFateKnotsHub(): FateKnotsHubRuntime | null {
-    const candidate = (global as unknown as { GameRoomFateKnotsHub?: FateKnotsHubRuntime })
-      .GameRoomFateKnotsHub;
-    return candidate && typeof candidate === "object" ? candidate : null;
   }
 
   const registry = getRuntimeRegistry(global);
@@ -181,9 +170,17 @@
         "backgammon-surface backgammon-surface--bootstrap game-room-home__surface",
         ""
       );
-      const brand = contextRuntime.createElement("div", "backgammon-brand game-room-home__brand", "");
+      const brand = contextRuntime.createElement(
+        "div",
+        "backgammon-brand game-room-home__brand",
+        ""
+      );
       brand.append(
-        contextRuntime.createElement("div", "backgammon-brand__eyebrow", bootstrapText("roomTitle")),
+        contextRuntime.createElement(
+          "div",
+          "backgammon-brand__eyebrow",
+          bootstrapText("roomTitle")
+        ),
         contextRuntime.createElement("h1", "backgammon-brand__title", bootstrapText("homeTitle")),
         contextRuntime.createElement("p", "backgammon-brand__subtitle", bootstrapText("homeBody"))
       );
@@ -221,12 +218,8 @@
         }
 
         if (activeFeatureId === fateKnotsFeatureId) {
-          const hub = getFateKnotsHub();
-          if (typeof hub?.render === "function") {
-            hub.render(root);
-          } else {
-            backgammonUi.renderBootstrap(root);
-          }
+          // The feature bridge owns Fate Knots rendering; the base runtime must
+          // stay neutral so it cannot fall through to Backgammon during handoff.
           syncRoomCloseControl(root);
           return;
         }
@@ -325,14 +318,6 @@
       }
     }
 
-    function refreshFateKnotsStateIfActive(): void {
-      if (getActiveFeatureId() !== fateKnotsFeatureId) return;
-      const roomApi = global.roomAPI;
-      if (roomApi && typeof roomApi.sendCommand === "function") {
-        roomApi.sendCommand("GameRoomFateKnotsRefresh", {});
-      }
-    }
-
     function handleHostMessage(message: unknown) {
       const state = getState();
       const messageRecord = readRecord(message);
@@ -341,16 +326,6 @@
       }
       const messageType = readString(messageRecord["type"]);
       if (messageType === null) {
-        return;
-      }
-
-      const fateKnotsHub = getFateKnotsHub();
-      if (
-        (messageType === "fate-knots-state" || messageType === "command-result") &&
-        typeof fateKnotsHub?.handleHostMessage === "function" &&
-        fateKnotsHub.handleHostMessage(messageRecord)
-      ) {
-        if (getActiveFeatureId() === fateKnotsFeatureId) render();
         return;
       }
 
@@ -372,7 +347,6 @@
             ? previousTarget
             : "ai1";
         render();
-        refreshFateKnotsStateIfActive();
         return;
       }
 

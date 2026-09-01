@@ -8,9 +8,11 @@ The normal repository agent policy is therefore the wrong bootstrap surface for 
 
 A Fate Knots AI0 runtime call must not start from a working directory inside the Hayalet Ev repository tree.
 
-The host integration must create/use a small runtime workspace outside the repository, for example under the application's per-user data directory:
+The current materializer uses the Game Room managed app-data storage root and creates a per-universe workspace equivalent to:
 
-`<userData>/fate-knots/ai0-runtime/<universeId>/`
+`<dataDir>/room-storage/game-room/fate-knots/ai0-runtime/<universeId>/`
+
+This remains outside the repository tree while also staying inside Hayalet Ev's existing room-managed storage boundary.
 
 That workspace may contain only the minimal runtime policy required by the selected provider/agent wrapper. It must not copy or inherit:
 
@@ -27,7 +29,7 @@ A prompt that merely says "ignore AGENTS.md" is not sufficient because the conte
 
 ## Minimal AI0 runtime policy
 
-The generated runtime policy should communicate only these invariants:
+The generated runtime policy communicates only these invariants:
 
 - You are an NPC actor inside Fate Knots.
 - You are not a coding assistant and do not inspect or modify Hayalet Ev.
@@ -77,21 +79,76 @@ The engine may update these facts after accepted actions. A later AI0 call recei
 
 ## Recommended call shape
 
-`engine canonical state -> build bounded AI0 packet -> isolated runtime workspace -> AI0 response -> validate response -> engine accepts/rejects -> canonical state`
+`engine canonical state -> build bounded AI0 packet -> isolated runtime workspace -> provider -> parse unknown response -> validate request/legality -> engine accepts/rejects -> canonical state`
 
 AI0 never writes canonical state directly.
 
-## Host integration boundary
+## Workspace materialization — implemented
 
-Stage B defines the runtime profile and packet builders only.
+The filesystem side of the isolation boundary exists in:
 
-Stage C host integration must:
+- `host/ai0-workspace.ts`
+- `host/ai0-workspace-electron.ts`
 
-1. resolve/create an external AI0 runtime workspace under app data,
-2. materialize the minimal runtime policy there if the provider wrapper requires a policy file,
-3. launch/send AI0 runtime requests with repository policy inheritance disabled by workspace isolation,
-4. expose no normal coding/MCP tool list,
-5. send only the current Fate Knots packet,
-6. validate the returned structured response before forwarding it to the engine.
+The materializer:
+
+1. obtains the Game Room managed `storageDir` through the existing `roomToolsCall({ operation: "resolve-paths" })` boundary,
+2. derives the per-universe path only from `buildFateKnotsAi0WorkspaceSpec`,
+3. deletes the previous universe workspace recursively,
+4. recreates the empty workspace through `roomToolsCall({ operation: "ensure-dir" })`,
+5. writes only the declared minimal `AGENTS.md` policy,
+6. returns the isolated workspace path/profile identifier to the provider transport.
+
+Deleting the universe workspace before recreation is intentional. It prevents stale files from a previous runtime version from silently joining AI0 context.
+
+The preparation entry point is:
+
+`prepareFateKnotsAi0RuntimeWorkspace(universeId)`
+
+## Provider response boundary — implemented
+
+Provider output is untrusted `unknown` data, not a TypeScript response merely because the caller expects one.
+
+`shared/ai0-runtime.ts` now applies two gates:
+
+1. `parseFateKnotsAi0RuntimeResponse(candidate)` checks the permitted response shape and rebuilds a bounded response containing only recognized fields. Unknown provider fields are discarded.
+2. `gateFateKnotsAi0ProviderResponse(request, candidate)` then applies request-id, response-kind, legal interaction, legal card and legal primary-target checks.
+
+Malformed provider output and mechanically illegal choices therefore never become accepted AI0 responses.
+
+## Provider-neutral transport authority — implemented
+
+`host/ai0-transport.ts` fixes the launch order without choosing a concrete provider/wrapper syntax.
+
+`invokeFateKnotsAi0Runtime` requires explicit host runtime context containing:
+
+- the canonical `universeId` used only for workspace routing,
+- the bounded dialogue/combat request.
+
+The combat-visible packet is not widened with `universeId` merely to choose a filesystem workspace. Dialogue requests are also checked so their role-packet universe matches the explicit transport context.
+
+The transport then:
+
+1. prepares the isolated per-universe workspace,
+2. rejects a workspace whose runtime profile does not match the Fate Knots NPC profile,
+3. invokes an injected provider adapter with the isolated workspace, fixed empty-tool runtime profile and a cloned bounded request,
+4. treats the provider result as `unknown`,
+5. passes it through the response parser + legality gate,
+6. returns only the accepted bounded response.
+
+Workspace failures, provider exceptions and rejected provider responses are reduced to bounded host error categories rather than leaking filesystem/provider internals into gameplay.
+
+## Remaining provider integration boundary
+
+The isolation, materialization, response validation and provider-neutral transport shell are implemented, but AI0 is **not yet connected to a concrete Hayalet Ev provider/wrapper**.
+
+The remaining Stage C work is now deliberately narrow:
+
+1. implement/select the real provider adapter that satisfies `FateKnotsAi0ProviderAdapter`,
+2. make that adapter use the transport-supplied `workspaceDir` as its actual bootstrap/working directory,
+3. ensure the provider/wrapper does not reattach repository policy, coding-agent memory or tools outside the supplied runtime profile,
+4. route NPC dialogue and delegated combat calls through `invokeFateKnotsAi0Runtime` rather than calling the provider directly.
+
+Exact provider/wrapper command syntax remains deliberately unresolved until the real Hayalet Ev transport surface is selected.
 
 Do not modify root `AGENTS.md` to special-case Fate Knots. Development-agent behavior and game-runtime behavior must stay separate.

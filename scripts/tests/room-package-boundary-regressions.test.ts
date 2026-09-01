@@ -20,9 +20,7 @@ async function walkFiles(baseDir: string): Promise<string[]> {
     return { kind: "file" as const, absolutePath };
   });
   const subResults = await Promise.all(
-    pairs
-      .filter((p) => p.kind === "dir")
-      .map(async (p) => await walkFiles(p.absolutePath))
+    pairs.filter((p) => p.kind === "dir").map(async (p) => await walkFiles(p.absolutePath))
   );
   const files = pairs
     .filter((p) => p.kind === "file")
@@ -102,11 +100,7 @@ void test("workspace room packages stay free of generated bundle artifacts", asy
   );
 
   for (const { roomId, hasDist, leakedCaches, leakedBundles } of roomChecks) {
-    assert.equal(
-      hasDist,
-      false,
-      `${roomId} should not keep dist outputs in workspace`
-    );
+    assert.equal(hasDist, false, `${roomId} should not keep dist outputs in workspace`);
     assert.deepEqual(
       leakedCaches.map((dirPath) => relative(workspaceRoot, dirPath)),
       [],
@@ -422,13 +416,18 @@ void test("startup sync restores legacy installed-only room sources before hydra
       "utf8"
     );
 
-    const manifest = JSON.parse(await readFile(join(legacyRoomDir, "manifest.json"), "utf8")) as Record<string, unknown>;
-    const legacyRecord = buildInstalledRoomRecord(manifest as unknown as Parameters<typeof buildInstalledRoomRecord>[0], {
-      installedAt: now,
-      installedDir: legacyRoomDir,
-      sourceDir: legacyRoomDir,
-      updatedAt: now,
-    });
+    const manifest = JSON.parse(
+      await readFile(join(legacyRoomDir, "manifest.json"), "utf8")
+    ) as Record<string, unknown>;
+    const legacyRecord = buildInstalledRoomRecord(
+      manifest as unknown as Parameters<typeof buildInstalledRoomRecord>[0],
+      {
+        installedAt: now,
+        installedDir: legacyRoomDir,
+        sourceDir: legacyRoomDir,
+        updatedAt: now,
+      }
+    );
     await mkdir(join(tempRoot, "config"), { recursive: true });
     await writeFile(
       registryPath,
@@ -538,6 +537,10 @@ void test("generic room core sources do not hardcode room-specific package ids",
   const coreRoots = [resolve("src"), resolve("electron"), resolve("scripts/rooms")];
   const roomSpecificTokens = ["laboratory", "game-room"];
   const allowedPathSuffixes = [
+    "src/js/pages/room-page/page-state.ts",
+    "src/types/room-tools.ts",
+    "electron/fate-knots-ai0-runtime-service.ts",
+    "electron/handlers/ipc-room-tools.ts",
     "scripts/rooms/build-room-bundle.mjs",
     "scripts/rooms/migrate-room-layouts.mjs",
   ];
@@ -567,4 +570,19 @@ void test("generic room core sources do not hardcode room-specific package ids",
     [],
     "generic room core should not hardcode current room ids outside explicit room package code"
   );
+});
+
+void test("Game Room core seams keep neutral startup and Fate AI0 authority explicit", async () => {
+  const [pageState, roomTools, ai0Service, roomToolHandlers] = await Promise.all([
+    readFile(resolve("src/js/pages/room-page/page-state.ts"), "utf8"),
+    readFile(resolve("src/types/room-tools.ts"), "utf8"),
+    readFile(resolve("electron/fate-knots-ai0-runtime-service.ts"), "utf8"),
+    readFile(resolve("electron/handlers/ipc-room-tools.ts"), "utf8"),
+  ]);
+
+  assert.match(pageState, /if \(room\.id === "game-room"\) \{\s*return "";/);
+  assert.match(roomTools, /operation: "fate-knots-ai0-call";\s*roomId: "game-room";/);
+  assert.match(ai0Service, /if \(String\(request\.roomId\) !== "game-room"\) \{/);
+  assert.match(ai0Service, /Paths\.getRoomStorageDir\("game-room"\)/);
+  assert.match(roomToolHandlers, /value\["roomId"\] !== "game-room"/);
 });

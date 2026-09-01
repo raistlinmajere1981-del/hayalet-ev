@@ -54,7 +54,7 @@ function sanitizeWorkspaceSegment(value: string): string {
     .trim()
     .replace(/[^a-zA-Z0-9._-]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return normalized || "universe";
+  return normalized !== "" ? normalized : "universe";
 }
 
 function normalizeTimeoutMs(value: number | undefined): number {
@@ -86,7 +86,10 @@ function quoteWindowsCommandArg(value: string): string {
   return `"${value.replace(/"/g, '\\"')}"`;
 }
 
-function buildSpawnSpec(command: string, args: string[]): {
+function buildSpawnSpec(
+  command: string,
+  args: string[]
+): {
   command: string;
   args: string[];
   shell: boolean;
@@ -118,8 +121,14 @@ function buildSpawnSpec(command: string, args: string[]): {
 async function isPortAvailable(port: number): Promise<boolean> {
   return await new Promise((resolve) => {
     const server = net.createServer();
-    server.once("error", () => resolve(false));
-    server.once("listening", () => server.close(() => resolve(true)));
+    server.once("error", () => {
+      resolve(false);
+    });
+    server.once("listening", () => {
+      server.close(() => {
+        resolve(true);
+      });
+    });
     server.listen(port, "127.0.0.1");
   });
 }
@@ -134,7 +143,9 @@ async function findAvailablePort(): Promise<number | null> {
 
 async function fetchJson(url: string, options: RequestInit, timeoutMs: number): Promise<unknown> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
   try {
     const response = await fetch(url, { ...options, signal: controller.signal });
     const text = await response.text();
@@ -180,8 +191,10 @@ class FateKnotsAi0RuntimeService {
     return await run;
   }
 
-  private async runCall(request: RoomToolFateKnotsAi0CallRequest): Promise<RoomToolFateKnotsAi0Result> {
-    if (request.roomId !== "game-room") {
+  private async runCall(
+    request: RoomToolFateKnotsAi0CallRequest
+  ): Promise<RoomToolFateKnotsAi0Result> {
+    if (String(request.roomId) !== "game-room") {
       throw new Error("Fate Knots AI0 runtime is restricted to game-room.");
     }
     const universeId = request.universeId.trim();
@@ -259,7 +272,10 @@ class FateKnotsAi0RuntimeService {
     return workspacePath;
   }
 
-  private async ensureServer(universeId: string, workspacePath: string): Promise<RuntimeServerState> {
+  private async ensureServer(
+    universeId: string,
+    workspacePath: string
+  ): Promise<RuntimeServerState> {
     if (
       this.server !== null &&
       this.server.universeId === universeId &&
@@ -296,7 +312,7 @@ class FateKnotsAi0RuntimeService {
     });
 
     let stderrTail = "";
-    child.stderr?.on("data", (chunk: Buffer | string) => {
+    child.stderr.on("data", (chunk: Buffer | string) => {
       stderrTail = `${stderrTail}${String(chunk)}`.slice(-4_000);
     });
 
@@ -323,6 +339,8 @@ class FateKnotsAi0RuntimeService {
     while (Date.now() <= deadline) {
       if (server.process.exitCode !== null) return false;
       try {
+        // Readiness probes must remain ordered against the same child process.
+        // eslint-disable-next-line no-await-in-loop
         const response = await fetch(url);
         if (response.ok) return true;
       } catch {
@@ -349,12 +367,14 @@ class FateKnotsAi0RuntimeService {
     }
     const current = this.server;
     this.server = null;
-    if (current === null || current.process.exitCode !== null) return;
+    if (current?.process.exitCode !== null) return;
 
     const pid = current.process.pid;
     if (process.platform === "win32" && typeof pid === "number") {
       await new Promise<void>((resolve) => {
-        execFile("taskkill.exe", ["/PID", String(pid), "/T", "/F"], { windowsHide: true }, () => resolve());
+        execFile("taskkill.exe", ["/PID", String(pid), "/T", "/F"], { windowsHide: true }, () => {
+          resolve();
+        });
       });
       return;
     }

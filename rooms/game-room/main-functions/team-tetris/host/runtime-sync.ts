@@ -22,6 +22,7 @@ import {
 } from "./state.js";
 import { getActiveFeatureId, loadContext, readLocale } from "../../../shared/host/context-state.js";
 import {
+  FEATURE_ID,
   GAME_ROOM_HOME_FEATURE_ID,
   ROOM_ID,
   TEAM_TETRIS_FEATURE_ID,
@@ -292,7 +293,7 @@ function pushActiveFeatureState(api: TeamTetrisRuntimeSyncApi): unknown {
   if (activeFeatureId === TEAM_TETRIS_FEATURE_ID) {
     return pushTeamTetrisState(api, loadTeamTetrisState(api));
   }
-  return pushRoomState(api, loadState(api));
+  return activeFeatureId === FEATURE_ID ? pushRoomState(api, loadState(api)) : null;
 }
 
 export {

@@ -28,6 +28,25 @@ In particular, card generation should normally separate:
 
 This keeps typography, mechanical information, selection state and accessibility under renderer control.
 
+## Canonical card-art binding
+
+A generated card illustration becomes a normal `FateKnotsAssetRef` after extraction/storage.
+
+The canonical card may reference that illustration through:
+
+`FateKnotsCardDefinition.artAssetId`
+
+Rules:
+
+- `artAssetId` is optional; a card without generated art remains valid
+- when present, it must reference an accepted asset in the same Universe Package
+- `artAssetId` points to illustration material only, not a fully rendered card UI
+- `sourceId` keeps its existing semantic/mechanical purpose and must not be reused as an art pointer
+- the gameplay renderer receives an art asset path only when that card is player-visible/referenced by the current safe gameplay projection
+- opposition hidden-card artwork must not be exposed merely because the enemy exists in combat
+
+The final canonical World Forge gate validates the optional card-art reference before an accepted universe can be persisted through the normal Forge path.
+
 ## Batch image sheets
 
 World Forge may reduce provider calls by requesting several related illustrations in one generated image sheet.
@@ -61,6 +80,7 @@ The eventual provider/image adapter is responsible for:
 3. converting normalized cell crop rectangles to pixels
 4. extracting each accepted cell into a normal individual asset file
 5. registering each extracted file under its own asset ID
+6. binding an accepted card illustration asset to the intended canonical card through `artAssetId`
 
 Runtime rendering should consume the extracted individual assets. Runtime should not need to understand the original provider sheet.
 
@@ -86,6 +106,7 @@ Therefore:
 - image models create artwork
 - Fate Knots creates exact card/UI composition
 - the extraction adapter creates normal assets
-- engine/card data remains independent from provider-specific image layout
+- canonical card data binds only to extracted normal asset IDs
+- engine/card mechanics remain independent from provider-specific image layout
 
 This lets the batch strategy change later without changing combat rules, card semantics, or the Babylon book renderer.

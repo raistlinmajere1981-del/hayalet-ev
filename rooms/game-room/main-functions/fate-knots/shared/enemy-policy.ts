@@ -30,7 +30,6 @@ function getActor(state: FateKnotsCombatState, actorId: string): FateKnotsActorS
 }
 
 function sortedAvailableCards(
-  state: FateKnotsCombatState,
   actor: FateKnotsActorState,
   catalog: FateKnotsEnemyControllerCatalog,
   slot: "action" | "movement"
@@ -51,7 +50,7 @@ function chooseCard(
   catalog: FateKnotsEnemyControllerCatalog,
   slot: "action" | "movement"
 ): { cardId: string; primaryTargetId?: string } | null {
-  for (const card of sortedAvailableCards(state, actor, catalog, slot)) {
+  for (const card of sortedAvailableCards(actor, catalog, slot)) {
     const withoutTarget = evaluateFateKnotsCardLegality(card, {
       phase: "combat-commit",
       actor,
@@ -73,9 +72,8 @@ function chooseCard(
       },
       state.actors
     ).sort((left, right) => left.localeCompare(right));
-    if (legalTargets.length > 0) {
-      return { cardId: card.id, primaryTargetId: legalTargets[0] };
-    }
+    const primaryTargetId = legalTargets[0];
+    if (primaryTargetId !== undefined) return { cardId: card.id, primaryTargetId };
   }
   return null;
 }

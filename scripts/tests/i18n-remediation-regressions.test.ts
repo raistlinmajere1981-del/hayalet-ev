@@ -345,7 +345,7 @@ void test("game-room UI smoke test reflects runtime locale updates", () => {
 
   assert.equal(runtime.readyPayload?.["stage"], "ui-ready");
   assert.equal(runtime.readyPayload["room"], "game-room");
-  assert.equal(runtime.readyPayload["feature"], "backgammon");
+  assert.equal(runtime.readyPayload["feature"], "game-room-home");
   assert.equal(
     findFirst(root, (element) => element.tagName === "h1")?.textContent,
     "Loading Game Room"
@@ -359,6 +359,10 @@ void test("game-room UI smoke test reflects runtime locale updates", () => {
     room: {
       id: "game-room",
       name: "Oyun Odasi",
+    },
+    activeFeature: {
+      id: "backgammon",
+      name: "Tavla",
     },
     user: {
       nickname: "Kullanici",

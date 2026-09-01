@@ -15,6 +15,7 @@ import {
   saveFateKnotsRunSnapshot,
   saveFateKnotsUniverse,
   type FateKnotsPersistedRunSnapshot,
+  type FateKnotsPersistenceIssue,
   type FateKnotsPersistenceMutationResult,
   type FateKnotsRunStore,
   type FateKnotsUniverseStore,
@@ -35,15 +36,20 @@ interface FateKnotsDurableEnvelope {
   runs: FateKnotsRunStore;
 }
 
-export interface FateKnotsDurableMutationResult<T>
-  extends FateKnotsPersistenceMutationResult<T> {
+export type FateKnotsDurableMutationResult<T> = FateKnotsPersistenceMutationResult<T> & {
   storageError?: string;
-}
+};
 
 export interface FateKnotsDurableHydrationResult {
   ok: boolean;
   persistenceIssueCount: number;
   storageError: string | null;
+}
+
+export interface FateKnotsDurableCommandFailure {
+  ok: false;
+  error: "persistence-rejected";
+  issues: FateKnotsPersistenceIssue[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -60,10 +66,7 @@ function readStorageError(api: Pick<GameRoomHostApi, "getState">): string | null
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 }
 
-function setStorageError(
-  api: Pick<GameRoomHostApi, "setState">,
-  value: string | null
-): void {
+function setStorageError(api: Pick<GameRoomHostApi, "setState">, value: string | null): void {
   api.setState(FATE_KNOTS_DURABLE_STORAGE_ERROR_KEY, value);
 }
 
@@ -80,7 +83,8 @@ function uniqueIssueCount(api: GameRoomHostApi): number {
   const runIssues = loadFateKnotsRunStore(api).issues;
   const fingerprints = new Set(
     [...universeIssues, ...runIssues].map(
-      (issue) => `${issue.code}\u0000${issue.entryId ?? ""}\u0000${JSON.stringify(issue.universeIssues ?? [])}`
+      (issue) =>
+        `${issue.code}\u0000${issue.entryId ?? ""}\u0000${JSON.stringify(issue.universeIssues ?? [])}`
     )
   );
   return fingerprints.size;
@@ -90,7 +94,9 @@ function buildValidatedEnvelope(api: GameRoomHostApi): FateKnotsDurableEnvelope 
   const universes = loadFateKnotsUniverseStore(api);
   const runs = loadFateKnotsRunStore(api);
   if (universes.issues.length > 0 || runs.issues.length > 0) {
-    throw new Error("Fate Knots durable state contains validation issues and cannot be overwritten.");
+    throw new Error(
+      "Fate Knots durable state contains validation issues and cannot be overwritten."
+    );
   }
   return {
     schemaVersion: FATE_KNOTS_DURABLE_ENVELOPE_SCHEMA_VERSION,
@@ -239,6 +245,53 @@ async function persistStateMutation<T>(
   }
 }
 
+function durableCommandFailure(message: string): FateKnotsDurableCommandFailure {
+  return {
+    ok: false,
+    error: "persistence-rejected",
+    issues: [
+      {
+        code: "durable-storage-error",
+        detail: message,
+      },
+    ],
+  };
+}
+
+/**
+ * Commits one intent-level host command through the same crash-atomic envelope
+ * used by the stricter Stage C runtime. Failed multi-step commands are rolled
+ * back so a partial cache mutation cannot become later canonical state.
+ */
+export async function persistFateKnotsCommandMutation<T extends { ok: boolean }>(
+  api: GameRoomHostApi,
+  mutate: () => T | Promise<T>
+): Promise<T | FateKnotsDurableCommandFailure> {
+  const existingStorageError = readStorageError(api);
+  if (existingStorageError !== null) return durableCommandFailure(existingStorageError);
+
+  const previousUniverse = cloneJson(api.getState(FATE_KNOTS_UNIVERSE_STORE_KEY));
+  const previousRun = cloneJson(api.getState(FATE_KNOTS_RUN_STORE_KEY));
+  const result = await mutate();
+  if (!result.ok) {
+    restoreCacheValue(api, FATE_KNOTS_UNIVERSE_STORE_KEY, previousUniverse);
+    restoreCacheValue(api, FATE_KNOTS_RUN_STORE_KEY, previousRun);
+    return result;
+  }
+
+  try {
+    await writeStateEnvelope(api);
+    setStorageError(api, null);
+    return result;
+  } catch (error) {
+    restoreCacheValue(api, FATE_KNOTS_UNIVERSE_STORE_KEY, previousUniverse);
+    restoreCacheValue(api, FATE_KNOTS_RUN_STORE_KEY, previousRun);
+    const storageError = error instanceof Error ? error.message : String(error);
+    setStorageError(api, storageError);
+    return durableCommandFailure(storageError);
+  }
+}
+
 export async function saveFateKnotsUniverseDurable(
   api: GameRoomHostApi,
   candidate: unknown,
@@ -286,7 +339,9 @@ export async function deleteFateKnotsUniverseDurable(
   return await persistStateMutation(api, () => deleteFateKnotsUniverse(api, universeId));
 }
 
-export function getActiveFateKnotsUniverseDurable(api: GameRoomHostApi): FateKnotsUniversePackage | null {
+export function getActiveFateKnotsUniverseDurable(
+  api: GameRoomHostApi
+): FateKnotsUniversePackage | null {
   return getActiveFateKnotsUniverse(api);
 }
 

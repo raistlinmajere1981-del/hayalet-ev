@@ -25,13 +25,7 @@ import type { FateKnotsTransportApi } from "./transport.js";
 import { authorFateKnotsWorldForgeDraft } from "./world-forge-authoring.js";
 
 export type FateKnotsWorldForgeProgressStage =
-  | "preparing"
-  | "authoring"
-  | "materializing"
-  | "finalizing"
-  | "saving"
-  | "completed"
-  | "failed";
+  "preparing" | "authoring" | "materializing" | "finalizing" | "saving" | "completed" | "failed";
 
 export interface FateKnotsWorldForgeProgress {
   requestId: string;
@@ -68,7 +62,8 @@ export type FateKnotsWorldForgePipelineResult =
     };
 
 function createUniqueSuffix(): string {
-  const uuid = globalThis.crypto?.randomUUID?.();
+  const runtimeCrypto: { randomUUID?: () => string } = globalThis.crypto;
+  const uuid = runtimeCrypto.randomUUID?.();
   if (uuid) return uuid.replace(/-/g, "");
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
 }
@@ -78,12 +73,7 @@ export function createFateKnotsWorldForgeRequest(
   createdAt = new Date().toISOString()
 ): FateKnotsWorldForgeRequest {
   const suffix = createUniqueSuffix();
-  return buildFateKnotsWorldForgeRequest(
-    `forge-${suffix}`,
-    `universe-${suffix}`,
-    createdAt,
-    brief
-  );
+  return buildFateKnotsWorldForgeRequest(`forge-${suffix}`, `universe-${suffix}`, createdAt, brief);
 }
 
 async function writeCheckpoint(value: unknown): Promise<void> {
@@ -168,13 +158,7 @@ export async function runFateKnotsWorldForge(
     await writeCheckpoint({ schemaVersion: 1, request, status: "draft-validated", draft });
 
     emit(
-      progress(
-        request,
-        "materializing",
-        0,
-        totalAssets,
-        "Generating and storing universe assets."
-      )
+      progress(request, "materializing", 0, totalAssets, "Generating and storing universe assets.")
     );
     const materialization = await materializeFateKnotsWorldForgeAssets(draft, adapter);
     completedAssets = materialization.assets.length;
@@ -258,13 +242,7 @@ export async function runFateKnotsWorldForge(
     const playable = validateFateKnotsPlayableUniverse(finalized.universe);
     if (!playable.valid) {
       emit(
-        progress(
-          request,
-          "failed",
-          completedAssets,
-          totalAssets,
-          "Final universe is not playable."
-        )
+        progress(request, "failed", completedAssets, totalAssets, "Final universe is not playable.")
       );
       return {
         ok: false,
@@ -295,25 +273,11 @@ export async function runFateKnotsWorldForge(
       };
     }
 
-    emit(
-      progress(
-        request,
-        "saving",
-        completedAssets,
-        totalAssets,
-        "Saving canonical universe."
-      )
-    );
+    emit(progress(request, "saving", completedAssets, totalAssets, "Saving canonical universe."));
     const saved = await saveFateKnotsUniverseDurable(api, finalized.universe);
-    if (!saved.ok || !saved.value) {
+    if (!saved.ok) {
       emit(
-        progress(
-          request,
-          "failed",
-          completedAssets,
-          totalAssets,
-          "Canonical universe save failed."
-        )
+        progress(request, "failed", completedAssets, totalAssets, "Canonical universe save failed.")
       );
       return {
         ok: false,

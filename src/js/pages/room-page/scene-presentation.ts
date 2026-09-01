@@ -143,7 +143,6 @@ export function renderRoomSceneView({
   const runtimeSlot = page.querySelector<HTMLElement>("[data-room-role='scene-runtime-slot']");
 
   if (
-    feature.scene === undefined ||
     view === null ||
     background === null ||
     panelArt === null ||
@@ -152,6 +151,30 @@ export function renderRoomSceneView({
   ) {
     return;
   }
+
+  if (feature.scene === undefined) {
+    view.classList.add("is-runtime-only");
+    background.hidden = true;
+    delete background.dataset["roomAssetSourcePath"];
+    background.removeAttribute("src");
+    panelArt.hidden = true;
+    delete panelArt.dataset["roomAssetSourcePath"];
+    panelArt.removeAttribute("src");
+    backHost.replaceChildren();
+    runtimeSlot.style.left = "0%";
+    runtimeSlot.style.top = "0%";
+    runtimeSlot.style.width = "100%";
+    runtimeSlot.style.height = "100%";
+
+    const standardBackHost = ensureStandardBackHost(page, view);
+    const button = buildStandardSceneViewBackButton(closeLabel);
+    button.addEventListener("click", onCloseFeatureView);
+    standardBackHost.replaceChildren(button);
+    return;
+  }
+
+  view.classList.remove("is-runtime-only");
+  background.hidden = false;
 
   applyRoomSceneImageSource({
     image: background,

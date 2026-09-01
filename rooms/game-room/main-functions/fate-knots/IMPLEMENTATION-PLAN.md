@@ -262,6 +262,23 @@ The first external audit found concrete authority/lifecycle/strict-TypeScript is
 - AI0 IPC prompt ownership
 - shared Game Room idle-home/Tavla cleanup
 
+## Unified rebuild reconciliation checkpoint
+
+The unified branch also carries the rebuild-side Stage C/D additions:
+
+- provider-neutral Forge lifecycle and host-only canonical acceptance
+- isolated external AI0 workspace and provider-response transport gates
+- player-safe neutral Hub and run-setup projections
+- separate CreateRun and StartRun intent commands
+- bounded active-gameplay projection and browser handoff
+- renderer-safe asset, card-art and presentation-cue projection
+- deterministic shared combat legal-options helpers and the local room-ui options command
+- Fate-specific regression coverage for Forge, AI0, gameplay, presentation and Game Room integration
+
+These additions use the Stage C durable store through compatibility projections. They do not create a parallel Universe/Run authority, and mutating room commands are committed through the validated crash-atomic state envelope after hydration.
+
+`COMBAT-DISCUSSION-V1.md` is the current V1 UX decision. Discussion is one party-only shared surface with no recipient selector, remains open through `combat-discussion` and `combat-commit` until all required standing player actors commit, and never reveals hidden card/target selections to AI0.
+
 Do **not** treat this list as proof that typecheck/tests are green. The next checkpoint is intentionally local verification against the current branch head.
 
 Before visual integration, local Codex should run:
@@ -286,5 +303,5 @@ The review must **not redesign Fate Knots**. It should look specifically for:
 
 Known non-visual cleanup still to verify at this checkpoint:
 
-- Game Room manifest command specs must match the intent-level Fate host command registry (`CreateUniverse` / `CreateRun`, not obsolete raw `SaveUniverse` / `SaveRun` names)
-- existing source-assertion regression tests may need expectation updates for the new neutral Game Room home and persistence envelope; update tests to the intended contract, never weaken runtime authority to satisfy stale assertions
+- Game Room manifest command specs must match the unified intent/read command registry and must never restore obsolete raw `SaveUniverse` / `SaveRun` names
+- source-assertion regression tests must follow the neutral Game Room home, safe gameplay/combat projections and persistence envelope; update stale expectations rather than weakening runtime authority

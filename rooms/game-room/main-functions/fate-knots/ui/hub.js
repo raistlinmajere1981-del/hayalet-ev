@@ -1,369 +1,567 @@
 /* global window, document */
+
 (function (global) {
-  "use strict";
+  const PLAYER_SEAT_IDS = ["user", "ai2", "us1"];
+  const state = {
+    hub: null,
+    setup: null,
+    context: null,
+    seatEnabled: {
+      user: true,
+      ai2: false,
+      us1: false,
+    },
+    assignments: {
+      user: null,
+      ai2: null,
+      us1: null,
+    },
+    lastMessage: "",
+  };
 
-  const FEATURE_ID = "fate-knots";
-  const COMMANDS = Object.freeze({
-    refresh: "GameRoomFateKnotsRefresh",
-    createUniverse: "GameRoomFateKnotsCreateUniverse",
-    activateUniverse: "GameRoomFateKnotsActivateUniverse",
-    deleteUniverse: "GameRoomFateKnotsDeleteUniverse",
-    activateRun: "GameRoomFateKnotsActivateRun",
-    deleteRun: "GameRoomFateKnotsDeleteRun",
-  });
-
-  let hostState = null;
-  let lastMessage = "";
-
-  function isRecord(value) {
-    return value !== null && typeof value === "object" && Array.isArray(value) === false;
+  function readRecord(value) {
+    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
   }
 
   function readArray(value) {
     return Array.isArray(value) ? value : [];
   }
 
-  function readString(value, fallback) {
-    return typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
+  function readString(value) {
+    return typeof value === "string" ? value : "";
   }
 
-  function currentLocale() {
-    const language = document.documentElement.lang || "en";
-    return language.toLowerCase().startsWith("tr") ? "tr" : "en";
-  }
-
-  function copy() {
-    return currentLocale() === "tr"
-      ? {
-          title: "Kader Düğümleri",
-          subtitle: "Evren seçimi ve kayıt yönetimi",
-          intro:
-            "Bir evren oluşturulmadan önce Fate Knots tarafsız bir merkezde kalır. Evren hazır olduğunda oyun onun kendi yaşayan kitabına dönüşür.",
-          continueTitle: "Devam et",
-          universesTitle: "Kayıtlı evrenler",
-          noRun: "Devam edilecek aktif oyun yok.",
-          noUniverse: "Henüz kayıtlı evren yok.",
-          continueAction: "Oyunu etkinleştir",
-          openUniverse: "Evreni etkinleştir",
-          deleteAction: "Sil",
-          forgeTitle: "Yeni evren",
-          forgeReady:
-            "World Forge hazır. İstersen kısa bir yön ver, istersen alanı boş bırakıp evreni Forge'a bırak.",
-          forgeUnavailable: "World Forge henüz bütün bağımlılıklarıyla hazır değil.",
-          forgeBusy: "World Forge çalışıyor",
-          createUniverse: "Evren oluştur",
-          briefPlaceholder: "İsteğe bağlı kısa yön: tema, atmosfer veya başlangıç fikri…",
-          blockerAi1: "AI1 bağlantısı yok",
-          blockerMaterializer: "görsel materializer bağlanmadı",
-          blockerStorage: "kalıcı depolama kullanılamıyor",
-          blockerBusy: "başka bir Forge işlemi sürüyor",
-          refresh: "Yenile",
-          active: "Aktif",
-          completed: "Tamamlandı",
-          failed: "Başarısız",
-          phase: "Aşama",
-          revision: "Revizyon",
-          persistenceWarning: "Bazı kayıt girdileri doğrulamada reddedildi.",
-          commandFailed: "İşlem host tarafından tamamlanamadı.",
-        }
-      : {
-          title: "Fate Knots",
-          subtitle: "Universe selection and save management",
-          intro:
-            "Before a universe exists, Fate Knots stays in a neutral hub. Once a universe is ready, play moves into that universe's own living book.",
-          continueTitle: "Continue",
-          universesTitle: "Saved universes",
-          noRun: "There is no active run to continue.",
-          noUniverse: "No universes have been saved yet.",
-          continueAction: "Activate run",
-          openUniverse: "Activate universe",
-          deleteAction: "Delete",
-          forgeTitle: "New universe",
-          forgeReady:
-            "World Forge is ready. Add a short direction if useful, or leave it empty and let Forge choose the universe.",
-          forgeUnavailable: "World Forge is not ready with all required dependencies yet.",
-          forgeBusy: "World Forge is running",
-          createUniverse: "Create universe",
-          briefPlaceholder: "Optional direction: theme, atmosphere, or starting idea…",
-          blockerAi1: "AI1 transport unavailable",
-          blockerMaterializer: "image materializer not connected",
-          blockerStorage: "durable storage unavailable",
-          blockerBusy: "another Forge run is active",
-          refresh: "Refresh",
-          active: "Active",
-          completed: "Completed",
-          failed: "Failed",
-          phase: "Phase",
-          revision: "Revision",
-          persistenceWarning: "Some stored entries were rejected during validation.",
-          commandFailed: "The room host could not complete the action.",
-        };
-  }
-
-  function sendCommand(command, payload) {
+  function sendCommand(name, payload) {
     const roomApi = global.roomAPI;
     if (!roomApi || typeof roomApi.sendCommand !== "function") {
-      lastMessage = copy().commandFailed;
+      state.lastMessage = "Oda bağlantısı hazır değil.";
+      renderCurrent();
       return false;
     }
-    const sent = roomApi.sendCommand(command, payload || {});
-    if (sent !== true) lastMessage = copy().commandFailed;
-    return sent === true;
+    const sent = roomApi.sendCommand(name, payload || {});
+    if (sent !== true) {
+      state.lastMessage = "Komut oda host'una gönderilemedi.";
+      renderCurrent();
+      return false;
+    }
+    state.lastMessage = "";
+    return true;
   }
 
-  function button(label, className, handler, disabled) {
-    const element = document.createElement("button");
-    element.type = "button";
-    element.className = className;
-    element.textContent = label;
-    element.disabled = disabled === true;
-    if (!element.disabled) element.addEventListener("click", handler);
+  function createElement(tag, className, text) {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    if (typeof text === "string") element.textContent = text;
     return element;
   }
 
-  function metaChip(text) {
-    const chip = document.createElement("span");
-    chip.className = "fk-hub__chip";
-    chip.textContent = text;
-    return chip;
+  function createButton(label, onClick, options) {
+    const button = createElement("button", "fate-knots-hub__button", label);
+    button.type = "button";
+    if (options && options.secondary) button.classList.add("fate-knots-hub__button--secondary");
+    if (options && options.danger) button.classList.add("fate-knots-hub__button--danger");
+    if (options && options.selected) button.classList.add("is-selected");
+    if (options && options.disabled) button.disabled = true;
+    if (!button.disabled && typeof onClick === "function")
+      button.addEventListener("click", onClick);
+    return button;
   }
 
-  function forgeBlockerText(blocker, labels) {
-    if (blocker === "ai1-transport-unavailable") return labels.blockerAi1;
-    if (blocker === "asset-materializer-unavailable") return labels.blockerMaterializer;
-    if (blocker === "storage-unavailable") return labels.blockerStorage;
-    if (blocker === "forge-busy") return labels.blockerBusy;
-    return blocker;
+  function seatLabel(seatId) {
+    if (seatId === "user") return "Sen";
+    if (seatId === "ai2") return "AI2";
+    return "US1";
   }
 
-  function renderRunCard(container, run, state, labels) {
-    const card = document.createElement("article");
-    card.className = "fk-hub__record fk-hub__record--run";
-    const heading = document.createElement("div");
-    heading.className = "fk-hub__record-heading";
-    const title = document.createElement("strong");
-    title.textContent = readString(run.runId, "run");
-    heading.append(title);
-    if (state.activeRunId === run.runId) heading.append(metaChip(labels.active));
+  function isSeatAvailable(seatId) {
+    if (seatId === "user") return true;
+    const context = readRecord(state.context);
+    const slots = context ? readRecord(context.slots) : null;
+    const slot = slots ? readRecord(slots[seatId]) : null;
+    return Boolean(slot && slot.dispatchable === true);
+  }
+
+  function resetSetupSelection() {
+    state.seatEnabled = {
+      user: true,
+      ai2: false,
+      us1: false,
+    };
+    state.assignments = {
+      user: null,
+      ai2: null,
+      us1: null,
+    };
+  }
+
+  function beginRunSetup(universeId) {
+    state.setup = null;
+    resetSetupSelection();
+    state.lastMessage = "Karakter seçenekleri hazırlanıyor…";
+    renderCurrent();
+    sendCommand("GameRoomFateKnotsGetRunSetup", { universeId: universeId });
+  }
+
+  function formatRunStatus(run) {
+    if (!run || typeof run !== "object") return "";
+    if (run.result === "completed") return "Tamamlandı";
+    if (run.result === "failed") return "Sona erdi";
+    if (run.phase === "run-setup") return "Hazırlık";
+    return "Devam ediyor";
+  }
+
+  function renderRun(run) {
+    const row = createElement("div", "fate-knots-hub__run");
+    const copy = createElement("div", "fate-knots-hub__run-copy");
+    copy.append(
+      createElement("strong", "fate-knots-hub__run-title", formatRunStatus(run)),
+      createElement("span", "fate-knots-hub__run-meta", `Revizyon ${String(run.revision || 0)}`)
+    );
+    row.append(copy);
+
+    const actions = createElement("div", "fate-knots-hub__actions");
+    if (run.canContinue === true) {
+      if (run.phase === "run-setup") {
+        actions.append(
+          createButton("Başlat", function () {
+            sendCommand("GameRoomFateKnotsStartRun", { runId: run.runId });
+          })
+        );
+      } else {
+        actions.append(
+          createButton("Devam et", function () {
+            sendCommand("GameRoomFateKnotsActivateRun", { runId: run.runId });
+          })
+        );
+      }
+    }
+    actions.append(
+      createButton(
+        "Sil",
+        function () {
+          sendCommand("GameRoomFateKnotsDeleteRun", { runId: run.runId });
+        },
+        { danger: true }
+      )
+    );
+    row.append(actions);
+    return row;
+  }
+
+  function renderUniverse(universe, runs) {
+    const card = createElement("article", "fate-knots-hub__universe");
+    const heading = createElement("div", "fate-knots-hub__universe-heading");
+    const copy = createElement("div", "fate-knots-hub__universe-copy");
+    copy.append(
+      createElement("h2", "fate-knots-hub__universe-title", universe.title || "Adsız Evren"),
+      createElement(
+        "p",
+        "fate-knots-hub__universe-meta",
+        runs.length === 0 ? "Henüz koşu yok" : `${runs.length} kayıtlı koşu`
+      )
+    );
+    heading.append(copy);
+
+    const actions = createElement("div", "fate-knots-hub__actions");
+    actions.append(
+      createButton("Yeni koşu", function () {
+        beginRunSetup(universe.universeId);
+      }),
+      createButton(
+        "Seç",
+        function () {
+          sendCommand("GameRoomFateKnotsActivateUniverse", { universeId: universe.universeId });
+        },
+        { secondary: true }
+      ),
+      createButton(
+        "Sil",
+        function () {
+          sendCommand("GameRoomFateKnotsDeleteUniverse", { universeId: universe.universeId });
+        },
+        { danger: true }
+      )
+    );
+    heading.append(actions);
     card.append(heading);
 
-    const meta = document.createElement("div");
-    meta.className = "fk-hub__record-meta";
-    meta.append(metaChip(`${labels.phase}: ${readString(run.phase, "-")}`));
-    meta.append(metaChip(`${labels.revision}: ${String(run.revision ?? 0)}`));
-    if (run.result === "completed") meta.append(metaChip(labels.completed));
-    if (run.result === "failed") meta.append(metaChip(labels.failed));
-    card.append(meta);
-
-    const actions = document.createElement("div");
-    actions.className = "fk-hub__record-actions";
-    actions.append(
-      button(labels.continueAction, "fk-hub__button fk-hub__button--primary", function () {
-        sendCommand(COMMANDS.activateRun, { runId: run.runId });
-      })
-    );
-    actions.append(
-      button(labels.deleteAction, "fk-hub__button fk-hub__button--quiet", function () {
-        sendCommand(COMMANDS.deleteRun, { runId: run.runId });
-      })
-    );
-    card.append(actions);
-    container.append(card);
+    const runList = createElement("div", "fate-knots-hub__runs");
+    runs.forEach(function (run) {
+      runList.append(renderRun(run));
+    });
+    if (runs.length > 0) card.append(runList);
+    return card;
   }
 
-  function renderUniverseCard(container, universe, state, labels) {
-    const card = document.createElement("article");
-    card.className = "fk-hub__record";
-    const heading = document.createElement("div");
-    heading.className = "fk-hub__record-heading";
-    const title = document.createElement("strong");
-    title.textContent = readString(universe.title, readString(universe.universeId, "universe"));
-    heading.append(title);
-    if (state.activeUniverseId === universe.universeId) heading.append(metaChip(labels.active));
-    card.append(heading);
-
-    const premise = document.createElement("p");
-    premise.className = "fk-hub__record-copy";
-    premise.textContent = readString(universe.premise, "");
-    card.append(premise);
-
-    const actions = document.createElement("div");
-    actions.className = "fk-hub__record-actions";
-    actions.append(
-      button(labels.openUniverse, "fk-hub__button fk-hub__button--primary", function () {
-        sendCommand(COMMANDS.activateUniverse, { universeId: universe.universeId });
-      })
-    );
-    actions.append(
-      button(labels.deleteAction, "fk-hub__button fk-hub__button--quiet", function () {
-        sendCommand(COMMANDS.deleteUniverse, { universeId: universe.universeId });
-      })
-    );
-    card.append(actions);
-    container.append(card);
+  function isCharacterAssignedElsewhere(characterId, seatId) {
+    return PLAYER_SEAT_IDS.some(function (candidateSeatId) {
+      return (
+        candidateSeatId !== seatId &&
+        state.seatEnabled[candidateSeatId] === true &&
+        state.assignments[candidateSeatId] === characterId
+      );
+    });
   }
 
-  function renderForgePanel(container, state, labels) {
-    const forge = isRecord(state.forge) ? state.forge : {};
-    const progress = isRecord(forge.progress) ? forge.progress : null;
-    const blockers = readArray(forge.blockers);
-    const busy = forge.busy === true;
-    const ready = forge.ready === true;
+  function renderCharacterChoice(character, seatId) {
+    const characterId = readString(character.characterId);
+    const selected = state.assignments[seatId] === characterId;
+    const usedElsewhere = isCharacterAssignedElsewhere(characterId, seatId);
+    const button = createButton(
+      readString(character.name) || "Adsız karakter",
+      function () {
+        state.assignments[seatId] = selected ? null : characterId;
+        renderCurrent();
+      },
+      { selected: selected, disabled: usedElsewhere }
+    );
+    button.classList.add("fate-knots-hub__character-choice");
 
-    const title = document.createElement("h2");
-    title.textContent = labels.forgeTitle;
-    const body = document.createElement("p");
-    body.className = "fk-hub__record-copy";
+    const stats = readRecord(character.baseStats) || {};
+    const position = readRecord(character.startingPosition) || {};
+    const details = [
+      `HP ${String(stats.maxHp ?? "-")}`,
+      `ATK ${String(stats.attack ?? "-")}`,
+      `DEF ${String(stats.defense ?? "-")}`,
+      `SPD ${String(stats.speed ?? "-")}`,
+      `ENG ${String(stats.energy ?? "-")}`,
+      `${readString(position.row) || "-"}/${readString(position.range) || "-"}`,
+    ].join(" · ");
+    button.append(createElement("span", "fate-knots-hub__character-meta", details));
 
-    if (busy && progress) {
-      const total = Number(progress.totalAssets || 0);
-      const completed = Number(progress.completedAssets || 0);
-      body.textContent =
-        readString(progress.message, labels.forgeBusy) +
-        (total > 0 ? ` · ${completed}/${total}` : "");
-    } else if (ready) {
-      body.textContent = labels.forgeReady;
-    } else {
-      const details = blockers
-        .filter(function (blocker) {
-          return blocker !== "forge-busy";
-        })
-        .map(function (blocker) {
-          return forgeBlockerText(blocker, labels);
-        });
-      body.textContent =
-        labels.forgeUnavailable + (details.length > 0 ? ` ${details.join(" · ")}.` : "");
+    const startingCards = readArray(character.startingCards);
+    const startingEquipment = readArray(character.startingEquipment);
+    const loadout = [
+      ...startingCards.map(function (card) {
+        return readString(readRecord(card)?.name);
+      }),
+      ...startingEquipment.map(function (equipment) {
+        return readString(readRecord(equipment)?.name);
+      }),
+    ].filter(Boolean);
+    if (loadout.length > 0) {
+      button.append(
+        createElement("span", "fate-knots-hub__character-loadout", loadout.join(" · "))
+      );
+    }
+    return button;
+  }
+
+  function renderSeatSetup(setup, seatId) {
+    const available = isSeatAvailable(seatId);
+    const enabled = state.seatEnabled[seatId] === true;
+    const section = createElement("section", "fate-knots-hub__seat");
+    const heading = createElement("div", "fate-knots-hub__seat-heading");
+    const titleGroup = createElement("div", "fate-knots-hub__seat-title-group");
+    titleGroup.append(
+      createElement("h3", "fate-knots-hub__seat-title", seatLabel(seatId)),
+      createElement(
+        "span",
+        "fate-knots-hub__seat-status",
+        seatId === "user"
+          ? "Zorunlu oyuncu"
+          : available
+            ? enabled
+              ? "Katılıyor"
+              : "Uygun"
+            : "Bağlı değil"
+      )
+    );
+    heading.append(titleGroup);
+
+    if (seatId !== "user") {
+      heading.append(
+        createButton(
+          enabled ? "Çıkar" : "Kat",
+          function () {
+            state.seatEnabled[seatId] = !enabled;
+            if (enabled) state.assignments[seatId] = null;
+            renderCurrent();
+          },
+          { secondary: true, disabled: !available }
+        )
+      );
+    }
+    section.append(heading);
+
+    if (enabled) {
+      const choices = createElement("div", "fate-knots-hub__character-grid");
+      readArray(setup.characters).forEach(function (character) {
+        const record = readRecord(character);
+        if (record) choices.append(renderCharacterChoice(record, seatId));
+      });
+      section.append(choices);
+    }
+    return section;
+  }
+
+  function getEnabledSeatIds() {
+    return PLAYER_SEAT_IDS.filter(function (seatId) {
+      return state.seatEnabled[seatId] === true && isSeatAvailable(seatId);
+    });
+  }
+
+  function canCreateRun() {
+    const seats = getEnabledSeatIds();
+    if (seats.length === 0 || !state.seatEnabled.user) return false;
+    const selectedIds = seats.map(function (seatId) {
+      return state.assignments[seatId];
+    });
+    return selectedIds.every(Boolean) && new Set(selectedIds).size === selectedIds.length;
+  }
+
+  function createRunFromSetup(setup) {
+    if (!canCreateRun()) return;
+    const party = getEnabledSeatIds().map(function (seatId) {
+      return {
+        seatId: seatId,
+        characterId: state.assignments[seatId],
+      };
+    });
+    sendCommand("GameRoomFateKnotsCreateRun", {
+      universeId: setup.universeId,
+      party: party,
+    });
+  }
+
+  function renderRunSetup() {
+    const setup = readRecord(state.setup);
+    if (!setup) return null;
+
+    const panel = createElement("section", "fate-knots-hub__setup");
+    const heading = createElement("div", "fate-knots-hub__setup-heading");
+    const copy = createElement("div");
+    copy.append(
+      createElement("div", "fate-knots-hub__eyebrow", "RUN SETUP"),
+      createElement(
+        "h2",
+        "fate-knots-hub__setup-title",
+        readString(setup.title) || "Koşu hazırlığı"
+      ),
+      createElement(
+        "p",
+        "fate-knots-hub__setup-copy",
+        "Katılacak oyuncuları ve her biri için farklı bir karakter seç. Bu ekran yalnız oyuncuya açık başlangıç bilgilerini gösterir."
+      )
+    );
+    heading.append(copy);
+    heading.append(
+      createButton(
+        "Kapat",
+        function () {
+          state.setup = null;
+          resetSetupSelection();
+          renderCurrent();
+        },
+        { secondary: true }
+      )
+    );
+    panel.append(heading);
+
+    const characters = readArray(setup.characters);
+    if (characters.length === 0) {
+      panel.append(
+        createElement("div", "fate-knots-hub__warning", "Bu evrende oyuncuya açık karakter yok.")
+      );
+      return panel;
     }
 
-    const brief = document.createElement("textarea");
-    brief.className = "fk-hub__forge-brief";
-    brief.rows = 3;
-    brief.placeholder = labels.briefPlaceholder;
-    brief.disabled = !ready || busy;
+    PLAYER_SEAT_IDS.forEach(function (seatId) {
+      panel.append(renderSeatSetup(setup, seatId));
+    });
 
-    const action = button(
-      busy ? labels.forgeBusy : labels.createUniverse,
-      "fk-hub__button fk-hub__button--primary",
-      function () {
-        sendCommand(COMMANDS.createUniverse, { brief: brief.value.trim() });
-      },
-      !ready || busy
+    const footer = createElement("div", "fate-knots-hub__setup-footer");
+    footer.append(
+      createElement(
+        "span",
+        "fate-knots-hub__setup-note",
+        "Koşu önce hazırlık olarak kaydedilir; başlangıç düğümü ayrı Başlat eyleminde açılır."
+      ),
+      createButton(
+        "Koşuyu hazırla",
+        function () {
+          createRunFromSetup(setup);
+        },
+        { disabled: !canCreateRun() }
+      )
     );
-
-    container.append(title, body, brief, action);
+    panel.append(footer);
+    return panel;
   }
 
   function render(root) {
-    const labels = copy();
-    const state = isRecord(hostState) ? hostState : {};
-    const universes = readArray(state.universes);
-    const runs = readArray(state.runs);
-    root.innerHTML = "";
+    root.classList.remove("yahtzee-root");
+    root.classList.add("fate-knots-hub-root");
+    root.replaceChildren();
 
-    const shell = document.createElement("main");
-    shell.className = "fk-hub";
-
-    const header = document.createElement("header");
-    header.className = "fk-hub__header";
-    const headingGroup = document.createElement("div");
-    const eyebrow = document.createElement("div");
-    eyebrow.className = "fk-hub__eyebrow";
-    eyebrow.textContent = labels.subtitle;
-    const title = document.createElement("h1");
-    title.textContent = labels.title;
-    const intro = document.createElement("p");
-    intro.textContent = labels.intro;
-    headingGroup.append(eyebrow, title, intro);
-    header.append(headingGroup);
-    header.append(
-      button(labels.refresh, "fk-hub__button fk-hub__button--quiet", function () {
-        sendCommand(COMMANDS.refresh, {});
-      })
+    const shell = createElement("main", "fate-knots-hub");
+    const header = createElement("header", "fate-knots-hub__header");
+    const titleGroup = createElement("div", "fate-knots-hub__title-group");
+    titleGroup.append(
+      createElement("div", "fate-knots-hub__eyebrow", "FATE KNOTS"),
+      createElement("h1", "fate-knots-hub__title", "Kader Düğümleri"),
+      createElement(
+        "p",
+        "fate-knots-hub__subtitle",
+        "Kaydedilmiş evrenlerini yönet; bir evren seçildiğinde oyun kendi kitabını açar."
+      )
     );
+    header.append(titleGroup);
+
+    const headerActions = createElement("div", "fate-knots-hub__actions");
+    headerActions.append(
+      createButton(
+        "Yenile",
+        function () {
+          sendCommand("GameRoomFateKnotsGetHubState", {});
+        },
+        { secondary: true }
+      ),
+      createButton("Yeni Evren", null, { disabled: true })
+    );
+    header.append(headerActions);
     shell.append(header);
 
-    if (Number(state.persistenceIssueCount || 0) > 0) {
-      const warning = document.createElement("div");
-      warning.className = "fk-hub__warning";
-      warning.textContent = labels.persistenceWarning;
-      shell.append(warning);
+    const setupPanel = renderRunSetup();
+    if (setupPanel) shell.append(setupPanel);
+
+    const hub = readRecord(state.hub);
+    if (!hub) {
+      shell.append(
+        createElement("div", "fate-knots-hub__empty", "Kayıt bilgileri host'tan bekleniyor…")
+      );
+      root.append(shell);
+      return;
     }
-    if (lastMessage) {
-      const note = document.createElement("div");
-      note.className = "fk-hub__warning";
-      note.textContent = lastMessage;
-      shell.append(note);
+
+    if (hub.hasStorageIssues === true) {
+      shell.append(
+        createElement(
+          "div",
+          "fate-knots-hub__warning",
+          "Bazı Fate Knots kayıtları doğrulanamadı. Host bu kayıtları otomatik olarak yeniden yazmadı."
+        )
+      );
     }
 
-    const grid = document.createElement("div");
-    grid.className = "fk-hub__grid";
-
-    const continueSection = document.createElement("section");
-    continueSection.className = "fk-hub__panel";
-    const continueTitle = document.createElement("h2");
-    continueTitle.textContent = labels.continueTitle;
-    continueSection.append(continueTitle);
-    const activeRun = runs.find(function (run) {
-      return isRecord(run) && run.runId === state.activeRunId;
-    });
-    if (activeRun) renderRunCard(continueSection, activeRun, state, labels);
-    else {
-      const empty = document.createElement("p");
-      empty.className = "fk-hub__empty";
-      empty.textContent = labels.noRun;
-      continueSection.append(empty);
-    }
-    grid.append(continueSection);
-
-    const forgeSection = document.createElement("section");
-    forgeSection.className = "fk-hub__panel fk-hub__panel--forge";
-    renderForgePanel(forgeSection, state, labels);
-    grid.append(forgeSection);
-    shell.append(grid);
-
-    const universeSection = document.createElement("section");
-    universeSection.className = "fk-hub__panel fk-hub__panel--wide";
-    const universeTitle = document.createElement("h2");
-    universeTitle.textContent = labels.universesTitle;
-    universeSection.append(universeTitle);
+    const universes = readArray(hub.universes);
+    const runs = readArray(hub.runs);
+    const content = createElement("section", "fate-knots-hub__content");
     if (universes.length === 0) {
-      const empty = document.createElement("p");
-      empty.className = "fk-hub__empty";
-      empty.textContent = labels.noUniverse;
-      universeSection.append(empty);
+      content.append(
+        createElement(
+          "div",
+          "fate-knots-hub__empty",
+          "Henüz kaydedilmiş bir evren yok. World Forge bağlantısı tamamlandığında yeni evren burada oluşturulacak."
+        )
+      );
     } else {
-      const records = document.createElement("div");
-      records.className = "fk-hub__records";
       universes.forEach(function (universe) {
-        if (isRecord(universe)) renderUniverseCard(records, universe, state, labels);
+        const universeRuns = runs.filter(function (run) {
+          return run && run.universeId === universe.universeId;
+        });
+        content.append(renderUniverse(universe, universeRuns));
       });
-      universeSection.append(records);
     }
-    shell.append(universeSection);
+    shell.append(content);
+
+    if (state.lastMessage) {
+      shell.append(createElement("div", "fate-knots-hub__message", state.lastMessage));
+    }
     root.append(shell);
   }
 
-  function handleHostMessage(message) {
-    if (!isRecord(message)) return false;
-    if (message.type === "fate-knots-state" && isRecord(message.state)) {
-      hostState = message.state;
-      lastMessage = "";
-      return true;
-    }
-    if (message.type === "command-result" && isRecord(message.result)) {
-      const resultState = message.result.state;
-      if (isRecord(resultState) && resultState.featureId === FEATURE_ID) {
-        hostState = resultState;
-        lastMessage = readString(message.result.message, "");
-        return true;
-      }
-    }
-    return false;
+  function renderCurrent() {
+    const root = document.getElementById("app");
+    if (root) render(root);
   }
 
-  global.GameRoomFateKnotsHub = {
-    featureId: FEATURE_ID,
-    handleHostMessage: handleHostMessage,
+  function handleState(message) {
+    const record = readRecord(message);
+    const payload = record ? readRecord(record.payload) : null;
+    const nextState = payload ? readRecord(payload.state) : null;
+    if (!nextState) return false;
+    state.hub = nextState;
+    return true;
+  }
+
+  function commandErrorMessage(result) {
+    const error = readString(result && result.error);
+    if (error === "universe-not-found") return "Seçilen evren artık bulunamıyor.";
+    if (error === "run-not-found") return "Seçilen koşu artık bulunamıyor.";
+    if (error === "run-setup-rejected")
+      return "Koşu hazırlığı host kuralları tarafından reddedildi.";
+    if (error === "universe-rejected") return "Evren canonical doğrulamadan geçemedi.";
+    if (error === "persistence-rejected") return "Kayıt durumu güvenli biçimde okunamadı.";
+    if (error === "invalid-payload") return "Gönderilen hazırlık bilgisi geçersiz.";
+    return "Fate Knots komutu tamamlanamadı.";
+  }
+
+  function handleCommandResult(message) {
+    const record = readRecord(message);
+    if (!record) return false;
+    const command = readString(record.command);
+    if (!command.startsWith("GameRoomFateKnots")) return false;
+    const result = readRecord(record.result) || {};
+
+    if (command === "GameRoomFateKnotsGetRunSetup") {
+      const setup = readRecord(result.setup);
+      if (result.ok === true && setup) {
+        state.setup = setup;
+        resetSetupSelection();
+        state.lastMessage = "";
+      } else {
+        state.setup = null;
+        state.lastMessage = commandErrorMessage(result);
+      }
+      return true;
+    }
+
+    if (command === "GameRoomFateKnotsCreateRun") {
+      if (result.ok === true) {
+        state.setup = null;
+        resetSetupSelection();
+        state.lastMessage = "Koşu hazırlandı. Kayıt listesindeki Başlat eylemi dünyayı açacak.";
+      } else {
+        state.lastMessage = commandErrorMessage(result);
+      }
+      return true;
+    }
+
+    if (command === "GameRoomFateKnotsStartRun") {
+      state.lastMessage =
+        result.ok === true ? "Koşu başlangıç düğümünde açıldı." : commandErrorMessage(result);
+      return true;
+    }
+
+    if (result.ok === false) {
+      state.lastMessage = commandErrorMessage(result);
+    }
+    return true;
+  }
+
+  function setContext(context) {
+    state.context = readRecord(context);
+    if (!isSeatAvailable("ai2")) {
+      state.seatEnabled.ai2 = false;
+      state.assignments.ai2 = null;
+    }
+    if (!isSeatAvailable("us1")) {
+      state.seatEnabled.us1 = false;
+      state.assignments.us1 = null;
+    }
+  }
+
+  function dispose() {
+    const root = document.getElementById("app");
+    if (root) root.classList.remove("fate-knots-hub-root");
+  }
+
+  global.GameRoomFateKnotsUi = {
+    dispose: dispose,
+    handleCommandResult: handleCommandResult,
+    handleState: handleState,
     render: render,
+    setContext: setContext,
   };
 })(window);
