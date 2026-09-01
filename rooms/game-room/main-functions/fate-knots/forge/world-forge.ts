@@ -3,11 +3,8 @@ import {
   type FateKnotsAssetKind,
   type FateKnotsUniversePackage,
 } from "../shared/contracts.js";
-import {
-  normalizeFateKnotsUniversePackage,
-  validateFateKnotsUniversePackage,
-  type FateKnotsUniverseValidationIssue,
-} from "./universe-validation.js";
+import { parseFateKnotsUniversePackage } from "./universe-boundary.js";
+import type { FateKnotsUniverseValidationIssue } from "./universe-validation.js";
 
 export const FATE_KNOTS_WORLD_FORGE_SCHEMA_VERSION = 1;
 export const FATE_KNOTS_PENDING_ASSET_SCHEME = "fate-knots-pending://";
@@ -228,7 +225,7 @@ export function validateFateKnotsWorldForgeDraftResponse(
     });
   }
 
-  const universeValidation = validateFateKnotsUniversePackage(response["universe"]);
+  const universeValidation = parseFateKnotsUniversePackage(response["universe"]);
   if (!universeValidation.valid || universeValidation.package === null) {
     issues.push({
       code: "invalid-universe-package",
@@ -385,7 +382,7 @@ export function finalizeFateKnotsWorldForgeDraft(
     };
   });
 
-  const normalized = normalizeFateKnotsUniversePackage(hydrated);
+  const normalized = parseFateKnotsUniversePackage(hydrated);
   if (!normalized.valid || normalized.package === null) {
     return {
       ok: false,
