@@ -16,14 +16,22 @@ const FATE_KNOTS_AI0_READY_TIMEOUT_MS = 90_000;
 const FATE_KNOTS_AI0_DEFAULT_CALL_TIMEOUT_MS = 180_000;
 const FATE_KNOTS_AI0_IDLE_STOP_MS = 10 * 60_000;
 
+const FATE_KNOTS_AI0_POLICY = [
+  "You are an NPC actor inside Fate Knots.",
+  "You are not a coding assistant and must not inspect or modify Hayalet Ev.",
+  "Use only the supplied runtime packet as knowledge.",
+  "Do not invent hidden canon, mechanical outcomes, items, stats, or unavailable actions.",
+  "Do not request tools, MCP discovery, filesystem, shell, web, image generation, or project memory.",
+  "For dialogue, portray only the supplied NPC and stay within its persona and known facts.",
+  "For combat, choose only from engine-provided legal options.",
+  "Engine state and legality override prose and choices.",
+  "Return only the response shape requested by the packet.",
+].join("\n");
+
 const FATE_KNOTS_AI0_OPENCODE_CONFIG = Object.freeze({
   $schema: "https://opencode.ai/config.json",
-  permission: {
-    "*": "deny",
-  },
-  tools: {
-    "*": false,
-  },
+  permission: { "*": "deny" },
+  tools: { "*": false },
 });
 
 type RuntimeServerState = {
@@ -33,18 +41,9 @@ type RuntimeServerState = {
   workspacePath: string;
 };
 
-type OpenCodeSessionRecord = {
-  id?: unknown;
-};
-
-type OpenCodeMessagePart = {
-  type?: unknown;
-  text?: unknown;
-};
-
-type OpenCodeMessageResponse = {
-  parts?: unknown;
-};
+type OpenCodeSessionRecord = { id?: unknown };
+type OpenCodeMessagePart = { type?: unknown; text?: unknown };
+type OpenCodeMessageResponse = { parts?: unknown };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && Array.isArray(value) === false;
@@ -65,10 +64,25 @@ function normalizeTimeoutMs(value: number | undefined): number {
   return Math.max(5_000, Math.min(10 * 60_000, Math.trunc(value)));
 }
 
+function buildSystemPrompt(payload: unknown): string {
+  const kind = isRecord(payload) ? payload["kind"] : null;
+  const responseContract =
+    kind === "npc-dialogue"
+      ? [
+          "Return JSON with exactly: requestId, kind, utterance, and optional selectedInteractionId.",
+          "kind must be npc-dialogue.",
+          "selectedInteractionId must be null, omitted, or one of rolePacket.legalInteractionIds.",
+        ]
+      : [
+          "Return JSON with exactly: requestId, kind, actorId, and optional movementCardId, actionCardId, primaryTargetId, secondaryTargetId.",
+          "kind must be combat-choice.",
+          "Choose only card ids and targets present in the supplied legal option lists.",
+        ];
+  return [FATE_KNOTS_AI0_POLICY, ...responseContract].join("\n");
+}
+
 function quoteWindowsCommandArg(value: string): string {
-  if (/^[A-Za-z0-9_./:=+\\-]+$/.test(value)) {
-    return value;
-  }
+  if (/^[A-Za-z0-9_./:=+\\-]+$/.test(value)) return value;
   return `"${value.replace(/"/g, '\\"')}"`;
 }
 
@@ -77,10 +91,7 @@ function buildSpawnSpec(command: string, args: string[]): {
   args: string[];
   shell: boolean;
 } {
-  if (process.platform !== "win32") {
-    return { command, args, shell: false };
-  }
-
+  if (process.platform !== "win32") return { command, args, shell: false };
   const extension = extname(command).toLowerCase();
   if (extension === ".cmd" || extension === ".bat") {
     return {
@@ -94,7 +105,6 @@ function buildSpawnSpec(command: string, args: string[]): {
       shell: false,
     };
   }
-
   if (extension === ".ps1") {
     return {
       command: "powershell.exe",
@@ -102,7 +112,6 @@ function buildSpawnSpec(command: string, args: string[]): {
       shell: false,
     };
   }
-
   return { command, args, shell: command === "opencode" };
 }
 
@@ -110,43 +119,29 @@ async function isPortAvailable(port: number): Promise<boolean> {
   return await new Promise((resolve) => {
     const server = net.createServer();
     server.once("error", () => resolve(false));
-    server.once("listening", () => {
-      server.close(() => resolve(true));
-    });
+    server.once("listening", () => server.close(() => resolve(true)));
     server.listen(port, "127.0.0.1");
   });
 }
 
 async function findAvailablePort(): Promise<number | null> {
   for (let port = FATE_KNOTS_AI0_PORT_START; port <= FATE_KNOTS_AI0_PORT_END; port += 1) {
-    // Sequential probing is deliberate: choose the first stable port deterministically.
     // eslint-disable-next-line no-await-in-loop
-    if (await isPortAvailable(port)) {
-      return port;
-    }
+    if (await isPortAvailable(port)) return port;
   }
   return null;
 }
 
-async function fetchJson(
-  url: string,
-  options: RequestInit,
-  timeoutMs: number
-): Promise<unknown> {
+async function fetchJson(url: string, options: RequestInit, timeoutMs: number): Promise<unknown> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
+    const response = await fetch(url, { ...options, signal: controller.signal });
     const text = await response.text();
     if (!response.ok) {
       throw new Error(`OpenCode request failed (${response.status}): ${text.slice(0, 500)}`);
     }
-    if (text.trim() === "") {
-      return null;
-    }
+    if (text.trim() === "") return null;
     try {
       return JSON.parse(text) as unknown;
     } catch {
@@ -189,19 +184,11 @@ class FateKnotsAi0RuntimeService {
     if (request.roomId !== "game-room") {
       throw new Error("Fate Knots AI0 runtime is restricted to game-room.");
     }
-
     const universeId = request.universeId.trim();
-    if (universeId === "") {
-      throw new Error("Fate Knots AI0 universeId is required.");
-    }
-    if (request.policyText.trim() === "") {
-      throw new Error("Fate Knots AI0 policyText is required.");
-    }
-    if (request.systemPrompt.trim() === "") {
-      throw new Error("Fate Knots AI0 systemPrompt is required.");
-    }
+    if (universeId === "") throw new Error("Fate Knots AI0 universeId is required.");
+    if (request.requestId.trim() === "") throw new Error("Fate Knots AI0 requestId is required.");
 
-    const workspacePath = await this.ensureWorkspace(universeId, request.policyText);
+    const workspacePath = await this.ensureWorkspace(universeId);
     const server = await this.ensureServer(universeId, workspacePath);
     this.armIdleStop();
 
@@ -215,14 +202,12 @@ class FateKnotsAi0RuntimeService {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: `Fate Knots AI0 ${request.requestId ?? "runtime"}` }),
+          body: JSON.stringify({ title: `Fate Knots AI0 ${request.requestId}` }),
         },
         Math.min(timeoutMs, 30_000)
       );
       sessionId = extractSessionId(created);
-      if (sessionId === "") {
-        throw new Error("Fate Knots AI0 session id was unavailable.");
-      }
+      if (sessionId === "") throw new Error("Fate Knots AI0 session id was unavailable.");
 
       const message = await fetchJson(
         `${baseUrl}/session/${encodeURIComponent(sessionId)}/message`,
@@ -230,27 +215,15 @@ class FateKnotsAi0RuntimeService {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            system: request.systemPrompt.trim(),
-            parts: [
-              {
-                type: "text",
-                text: JSON.stringify(request.payload),
-              },
-            ],
+            system: buildSystemPrompt(request.payload),
+            parts: [{ type: "text", text: JSON.stringify(request.payload) }],
           }),
         },
         timeoutMs
       );
       const text = extractResponseText(message);
-      if (text === "") {
-        throw new Error("Fate Knots AI0 returned an empty response.");
-      }
-
-      return {
-        text,
-        workspacePath: server.workspacePath,
-        port: server.port,
-      };
+      if (text === "") throw new Error("Fate Knots AI0 returned an empty response.");
+      return { text, workspacePath: server.workspacePath, port: server.port };
     } finally {
       if (sessionId !== "") {
         try {
@@ -260,14 +233,14 @@ class FateKnotsAi0RuntimeService {
             10_000
           );
         } catch {
-          // Session cleanup is best-effort; statelessness is also enforced by never reusing the id.
+          // Best-effort cleanup; statelessness is also enforced by never reusing the id.
         }
       }
       this.armIdleStop();
     }
   }
 
-  private async ensureWorkspace(universeId: string, policyText: string): Promise<string> {
+  private async ensureWorkspace(universeId: string): Promise<string> {
     const workspacePath = join(
       Paths.getRoomStorageDir("game-room"),
       "fate-knots",
@@ -276,7 +249,7 @@ class FateKnotsAi0RuntimeService {
     );
     await mkdir(workspacePath, { recursive: true });
     await Promise.all([
-      writeFile(join(workspacePath, "AGENTS.md"), `${policyText.trim()}\n`, "utf8"),
+      writeFile(join(workspacePath, "AGENTS.md"), `${FATE_KNOTS_AI0_POLICY}\n`, "utf8"),
       writeFile(
         join(workspacePath, "opencode.json"),
         `${JSON.stringify(FATE_KNOTS_AI0_OPENCODE_CONFIG, null, 2)}\n`,
@@ -286,10 +259,7 @@ class FateKnotsAi0RuntimeService {
     return workspacePath;
   }
 
-  private async ensureServer(
-    universeId: string,
-    workspacePath: string
-  ): Promise<RuntimeServerState> {
+  private async ensureServer(universeId: string, workspacePath: string): Promise<RuntimeServerState> {
     if (
       this.server !== null &&
       this.server.universeId === universeId &&
@@ -300,26 +270,14 @@ class FateKnotsAi0RuntimeService {
     }
 
     await this.stopServer();
-
     const diagnosis = await opencodeServerManager.diagnoseBinary();
-    if (!diagnosis.available) {
-      throw new Error(diagnosis.error ?? "OpenCode binary is unavailable.");
-    }
+    if (!diagnosis.available) throw new Error(diagnosis.error ?? "OpenCode binary is unavailable.");
 
     const port = await findAvailablePort();
-    if (port === null) {
-      throw new Error("No isolated Fate Knots AI0 OpenCode port is available.");
-    }
+    if (port === null) throw new Error("No isolated Fate Knots AI0 OpenCode port is available.");
 
     const command = diagnosis.resolvedPath ?? diagnosis.command;
-    const args = [
-      "serve",
-      "--port",
-      String(port),
-      "--hostname",
-      "127.0.0.1",
-      workspacePath,
-    ];
+    const args = ["serve", "--port", String(port), "--hostname", "127.0.0.1", workspacePath];
     const spec = buildSpawnSpec(command, args);
     const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
@@ -342,21 +300,13 @@ class FateKnotsAi0RuntimeService {
       stderrTail = `${stderrTail}${String(chunk)}`.slice(-4_000);
     });
 
-    const candidate: RuntimeServerState = {
-      process: child,
-      port,
-      universeId,
-      workspacePath,
-    };
+    const candidate: RuntimeServerState = { process: child, port, universeId, workspacePath };
     this.server = candidate;
     child.once("close", () => {
-      if (this.server?.process === child) {
-        this.server = null;
-      }
+      if (this.server?.process === child) this.server = null;
     });
 
-    const ready = await this.waitForReady(candidate);
-    if (!ready) {
+    if (!(await this.waitForReady(candidate))) {
       await this.stopServer();
       throw new Error(
         stderrTail.trim() !== ""
@@ -364,7 +314,6 @@ class FateKnotsAi0RuntimeService {
           : "Fate Knots AI0 OpenCode server did not become ready."
       );
     }
-
     return candidate;
   }
 
@@ -372,18 +321,13 @@ class FateKnotsAi0RuntimeService {
     const deadline = Date.now() + FATE_KNOTS_AI0_READY_TIMEOUT_MS;
     const url = `http://127.0.0.1:${server.port}/global/health`;
     while (Date.now() <= deadline) {
-      if (server.process.exitCode !== null) {
-        return false;
-      }
+      if (server.process.exitCode !== null) return false;
       try {
         const response = await fetch(url);
-        if (response.ok) {
-          return true;
-        }
+        if (response.ok) return true;
       } catch {
         // Keep polling until the bounded startup deadline.
       }
-      // Sequential readiness polling preserves bounded startup semantics.
       // eslint-disable-next-line no-await-in-loop
       await new Promise<void>((resolve) => setTimeout(resolve, 400));
     }
@@ -391,9 +335,7 @@ class FateKnotsAi0RuntimeService {
   }
 
   private armIdleStop(): void {
-    if (this.idleTimer !== null) {
-      clearTimeout(this.idleTimer);
-    }
+    if (this.idleTimer !== null) clearTimeout(this.idleTimer);
     this.idleTimer = setTimeout(() => {
       this.idleTimer = null;
       void this.stopServer();
@@ -405,19 +347,14 @@ class FateKnotsAi0RuntimeService {
       clearTimeout(this.idleTimer);
       this.idleTimer = null;
     }
-
     const current = this.server;
     this.server = null;
-    if (current === null || current.process.exitCode !== null) {
-      return;
-    }
+    if (current === null || current.process.exitCode !== null) return;
 
     const pid = current.process.pid;
     if (process.platform === "win32" && typeof pid === "number") {
       await new Promise<void>((resolve) => {
-        execFile("taskkill.exe", ["/PID", String(pid), "/T", "/F"], { windowsHide: true }, () => {
-          resolve();
-        });
+        execFile("taskkill.exe", ["/PID", String(pid), "/T", "/F"], { windowsHide: true }, () => resolve());
       });
       return;
     }
