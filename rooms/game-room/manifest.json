@@ -299,8 +299,8 @@
           "exposure": "internal"
         },
         {
-          "name": "GameRoomFateKnotsSaveUniverse",
-          "description": "Validate and persist a canonical Fate Knots Universe Package.",
+          "name": "GameRoomFateKnotsCreateUniverse",
+          "description": "Create a Fate Knots universe through the validated World Forge pipeline.",
           "scope": "room-ui",
           "exposure": "internal"
         },
@@ -317,8 +317,8 @@
           "exposure": "internal"
         },
         {
-          "name": "GameRoomFateKnotsSaveRun",
-          "description": "Persist a Fate Knots run and any required active-combat runtime snapshot.",
+          "name": "GameRoomFateKnotsCreateRun",
+          "description": "Create a Fate Knots run from validated player-template seat selections.",
           "scope": "room-ui",
           "exposure": "internal"
         },
