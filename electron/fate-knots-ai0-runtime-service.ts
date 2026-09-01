@@ -321,7 +321,7 @@ class FateKnotsAi0RuntimeService {
       workspacePath,
     ];
     const spec = buildSpawnSpec(command, args);
-    const childEnv = {
+    const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
       OPENCODE_CONFIG_CONTENT: JSON.stringify(FATE_KNOTS_AI0_OPENCODE_CONFIG),
     };
