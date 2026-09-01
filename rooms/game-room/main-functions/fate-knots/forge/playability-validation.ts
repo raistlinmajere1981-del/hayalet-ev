@@ -8,12 +8,15 @@ export type FateKnotsPlayabilityIssueCode =
   | "player-template-missing"
   | "encounter-uses-player-template"
   | "opponent-template-missing-controller"
-  | "story-has-no-transition";
+  | "story-has-no-transition"
+  | "finale-transition-missing"
+  | "final-encounter-transition-missing";
 
 export interface FateKnotsPlayabilityIssue {
   code: FateKnotsPlayabilityIssueCode;
   characterId?: string;
   encounterId?: string;
+  transitionId?: string;
 }
 
 export interface FateKnotsPlayabilityValidationResult {
@@ -23,7 +26,9 @@ export interface FateKnotsPlayabilityValidationResult {
 
 /**
  * Small V1 playability gate layered on structural Universe validation.
- * It intentionally does not score prose, balance or art quality.
+ * It intentionally does not score prose, balance or art quality and does not
+ * attempt generic graph reachability. The finale check only protects the fixed
+ * V1 entry shape from an obvious dead end.
  */
 export function validateFateKnotsPlayableUniverse(
   universe: FateKnotsUniversePackage
@@ -36,6 +41,32 @@ export function validateFateKnotsPlayableUniverse(
 
   if (playerTemplates.length === 0) issues.push({ code: "player-template-missing" });
   if (universe.story.transitions.length === 0) issues.push({ code: "story-has-no-transition" });
+
+  const finaleTransitions = universe.story.transitions.filter(
+    (transition) => transition.kind === "finale"
+  );
+  if (finaleTransitions.length === 0) {
+    issues.push({ code: "finale-transition-missing" });
+  }
+
+  const finalEncounterId = universe.finale.finalEncounterId ?? null;
+  if (finalEncounterId) {
+    const finaleEntryKnotIds = new Set(
+      finaleTransitions.map((transition) => transition.toKnotId ?? transition.fromKnotId)
+    );
+    const finalEncounterTransition = universe.story.transitions.find(
+      (transition) =>
+        transition.kind === "combat" &&
+        transition.encounterId === finalEncounterId &&
+        finaleEntryKnotIds.has(transition.fromKnotId)
+    );
+    if (!finalEncounterTransition) {
+      issues.push({
+        code: "final-encounter-transition-missing",
+        encounterId: finalEncounterId,
+      });
+    }
+  }
 
   for (const encounter of universe.story.encounters) {
     for (const characterId of encounter.opponentCharacterIds) {
