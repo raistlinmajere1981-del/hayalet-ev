@@ -79,13 +79,13 @@ The engine may update these facts after accepted actions. A later AI0 call recei
 
 ## Recommended call shape
 
-`engine canonical state -> build bounded AI0 packet -> isolated runtime workspace -> AI0 response -> validate response -> engine accepts/rejects -> canonical state`
+`engine canonical state -> build bounded AI0 packet -> isolated runtime workspace -> provider -> parse unknown response -> validate request/legality -> engine accepts/rejects -> canonical state`
 
 AI0 never writes canonical state directly.
 
 ## Workspace materialization — implemented
 
-The filesystem side of the isolation boundary now exists in:
+The filesystem side of the isolation boundary exists in:
 
 - `host/ai0-workspace.ts`
 - `host/ai0-workspace-electron.ts`
@@ -97,7 +97,7 @@ The materializer:
 3. deletes the previous universe workspace recursively,
 4. recreates the empty workspace through `roomToolsCall({ operation: "ensure-dir" })`,
 5. writes only the declared minimal `AGENTS.md` policy,
-6. returns the isolated workspace path/profile identifier to the future provider transport.
+6. returns the isolated workspace path/profile identifier to the provider transport.
 
 Deleting the universe workspace before recreation is intentional. It prevents stale files from a previous runtime version from silently joining AI0 context.
 
@@ -105,20 +105,49 @@ The preparation entry point is:
 
 `prepareFateKnotsAi0RuntimeWorkspace(universeId)`
 
-A provider transport should call this immediately before launching an AI0 runtime session.
+## Provider response boundary — implemented
+
+Provider output is untrusted `unknown` data, not a TypeScript response merely because the caller expects one.
+
+`shared/ai0-runtime.ts` now applies two gates:
+
+1. `parseFateKnotsAi0RuntimeResponse(candidate)` checks the permitted response shape and rebuilds a bounded response containing only recognized fields. Unknown provider fields are discarded.
+2. `gateFateKnotsAi0ProviderResponse(request, candidate)` then applies request-id, response-kind, legal interaction, legal card and legal primary-target checks.
+
+Malformed provider output and mechanically illegal choices therefore never become accepted AI0 responses.
+
+## Provider-neutral transport authority — implemented
+
+`host/ai0-transport.ts` fixes the launch order without choosing a concrete provider/wrapper syntax.
+
+`invokeFateKnotsAi0Runtime` requires explicit host runtime context containing:
+
+- the canonical `universeId` used only for workspace routing,
+- the bounded dialogue/combat request.
+
+The combat-visible packet is not widened with `universeId` merely to choose a filesystem workspace. Dialogue requests are also checked so their role-packet universe matches the explicit transport context.
+
+The transport then:
+
+1. prepares the isolated per-universe workspace,
+2. rejects a workspace whose runtime profile does not match the Fate Knots NPC profile,
+3. invokes an injected provider adapter with the isolated workspace, fixed empty-tool runtime profile and a cloned bounded request,
+4. treats the provider result as `unknown`,
+5. passes it through the response parser + legality gate,
+6. returns only the accepted bounded response.
+
+Workspace failures, provider exceptions and rejected provider responses are reduced to bounded host error categories rather than leaking filesystem/provider internals into gameplay.
 
 ## Remaining provider integration boundary
 
-Physical workspace preparation is implemented, but AI0 is **not yet launched through a real provider/wrapper**.
+The isolation, materialization, response validation and provider-neutral transport shell are implemented, but AI0 is **not yet connected to a concrete Hayalet Ev provider/wrapper**.
 
-The remaining Stage C transport work must:
+The remaining Stage C work is now deliberately narrow:
 
-1. call `prepareFateKnotsAi0RuntimeWorkspace` before each provider session/launch that can bootstrap workspace policy,
-2. set that returned workspace as the provider's runtime working/bootstrap directory,
-3. disable repository policy inheritance by virtue of that external workspace,
-4. expose an empty coding/MCP tool capability set,
-5. send only the current Fate Knots dialogue/combat packet,
-6. validate the returned structured response with the existing AI0 response validator before forwarding it to the engine.
+1. implement/select the real provider adapter that satisfies `FateKnotsAi0ProviderAdapter`,
+2. make that adapter use the transport-supplied `workspaceDir` as its actual bootstrap/working directory,
+3. ensure the provider/wrapper does not reattach repository policy, coding-agent memory or tools outside the supplied runtime profile,
+4. route NPC dialogue and delegated combat calls through `invokeFateKnotsAi0Runtime` rather than calling the provider directly.
 
 Exact provider/wrapper command syntax remains deliberately unresolved until the real Hayalet Ev transport surface is selected.
 
