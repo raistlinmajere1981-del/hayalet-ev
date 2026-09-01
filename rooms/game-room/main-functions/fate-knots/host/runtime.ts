@@ -3,16 +3,20 @@ import { readArgs } from "../../../shared/host/command-args.js";
 import type { FateKnotsCombatRuntimeState } from "../shared/combat-runtime.js";
 import type { FateKnotsRunState } from "../shared/contracts.js";
 import {
-  activateFateKnotsRun,
-  activateFateKnotsUniverse,
-  deleteFateKnotsRun,
-  deleteFateKnotsUniverse,
-  getActiveFateKnotsRunSnapshot,
-  getActiveFateKnotsUniverse,
+  getFateKnotsDurableStorageError,
+  getActiveFateKnotsRunSnapshotDurable,
+  getActiveFateKnotsUniverseDurable,
+  hydrateFateKnotsDurablePersistence,
+  saveFateKnotsRunSnapshotDurable,
+  saveFateKnotsUniverseDurable,
+  activateFateKnotsRunDurable,
+  activateFateKnotsUniverseDurable,
+  deleteFateKnotsRunDurable,
+  deleteFateKnotsUniverseDurable,
+} from "./durable-persistence.js";
+import {
   loadFateKnotsRunStore,
   loadFateKnotsUniverseStore,
-  saveFateKnotsRunSnapshot,
-  saveFateKnotsUniverse,
 } from "./persistence.js";
 
 export const FATE_KNOTS_COMMAND_NAMES = {
@@ -51,9 +55,10 @@ export interface FateKnotsHostState {
   activeRunId: string | null;
   universes: FateKnotsHostUniverseSummary[];
   runs: FateKnotsHostRunSummary[];
-  activeUniverse: ReturnType<typeof getActiveFateKnotsUniverse>;
-  activeRun: ReturnType<typeof getActiveFateKnotsRunSnapshot>;
+  activeUniverse: ReturnType<typeof getActiveFateKnotsUniverseDurable>;
+  activeRun: ReturnType<typeof getActiveFateKnotsRunSnapshotDurable>;
   persistenceIssueCount: number;
+  storageError: string | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -78,6 +83,7 @@ function result(success: boolean, message: string, state?: FateKnotsHostState) {
 export function buildFateKnotsHostState(api: FateKnotsRuntimeApi): FateKnotsHostState {
   const universes = loadFateKnotsUniverseStore(api);
   const runs = loadFateKnotsRunStore(api);
+  const storageError = getFateKnotsDurableStorageError(api);
   return {
     featureId: "fate-knots",
     activeUniverseId: universes.store.activeUniverseId,
@@ -96,9 +102,11 @@ export function buildFateKnotsHostState(api: FateKnotsRuntimeApi): FateKnotsHost
       result: entry.run.result,
       savedAt: entry.savedAt,
     })),
-    activeUniverse: getActiveFateKnotsUniverse(api),
-    activeRun: getActiveFateKnotsRunSnapshot(api),
-    persistenceIssueCount: universes.issues.length + runs.issues.length,
+    activeUniverse: getActiveFateKnotsUniverseDurable(api),
+    activeRun: getActiveFateKnotsRunSnapshotDurable(api),
+    persistenceIssueCount:
+      universes.issues.length + runs.issues.length + (storageError === null ? 0 : 1),
+    storageError,
   };
 }
 
@@ -108,10 +116,16 @@ export function pushFateKnotsState(api: FateKnotsRuntimeApi): FateKnotsHostState
   return state;
 }
 
-export function initializeFateKnotsState(api: FateKnotsRuntimeApi): FateKnotsHostState {
+export async function initializeFateKnotsState(
+  api: FateKnotsRuntimeApi
+): Promise<FateKnotsHostState> {
+  const hydration = await hydrateFateKnotsDurablePersistence(api);
   const state = pushFateKnotsState(api);
   if (state.persistenceIssueCount > 0) {
-    api.log("warn", `Fate Knots persistence loaded with ${state.persistenceIssueCount} rejected entry issue(s).`);
+    api.log(
+      "warn",
+      `Fate Knots persistence loaded with ${state.persistenceIssueCount} issue(s).${hydration.storageError ? ` storage=${hydration.storageError}` : ""}`
+    );
   }
   return state;
 }
@@ -120,30 +134,60 @@ export function handleFateKnotsRefresh(api: FateKnotsRuntimeApi) {
   return result(true, "Fate Knots state refreshed.", pushFateKnotsState(api));
 }
 
-export function handleFateKnotsSaveUniverse(api: FateKnotsRuntimeApi, payload: unknown) {
+export async function handleFateKnotsSaveUniverse(
+  api: FateKnotsRuntimeApi,
+  payload: unknown
+) {
   const candidate = readObjectArg(payload, "universe");
-  const saved = saveFateKnotsUniverse(api, candidate);
-  if (!saved.ok) return result(false, "Fate Knots universe package was rejected.");
+  const saved = await saveFateKnotsUniverseDurable(api, candidate);
+  if (!saved.ok) {
+    return result(
+      false,
+      saved.storageError
+        ? `Fate Knots universe could not be persisted: ${saved.storageError}`
+        : "Fate Knots universe package was rejected."
+    );
+  }
   return result(true, "Fate Knots universe saved.", pushFateKnotsState(api));
 }
 
-export function handleFateKnotsActivateUniverse(api: FateKnotsRuntimeApi, payload: unknown) {
+export async function handleFateKnotsActivateUniverse(
+  api: FateKnotsRuntimeApi,
+  payload: unknown
+) {
   const universeId = readStringArg(payload, "universeId");
   if (!universeId) return result(false, "Fate Knots universeId is required.");
-  const activated = activateFateKnotsUniverse(api, universeId);
-  if (!activated.ok) return result(false, "Fate Knots universe was not found.");
+  const activated = await activateFateKnotsUniverseDurable(api, universeId);
+  if (!activated.ok) {
+    return result(
+      false,
+      activated.storageError
+        ? `Fate Knots universe activation could not be persisted: ${activated.storageError}`
+        : "Fate Knots universe was not found."
+    );
+  }
   return result(true, "Fate Knots universe activated.", pushFateKnotsState(api));
 }
 
-export function handleFateKnotsDeleteUniverse(api: FateKnotsRuntimeApi, payload: unknown) {
+export async function handleFateKnotsDeleteUniverse(
+  api: FateKnotsRuntimeApi,
+  payload: unknown
+) {
   const universeId = readStringArg(payload, "universeId");
   if (!universeId) return result(false, "Fate Knots universeId is required.");
-  const deleted = deleteFateKnotsUniverse(api, universeId);
-  if (!deleted.ok) return result(false, "Fate Knots universe was not found.");
+  const deleted = await deleteFateKnotsUniverseDurable(api, universeId);
+  if (!deleted.ok) {
+    return result(
+      false,
+      deleted.storageError
+        ? `Fate Knots universe deletion could not be persisted: ${deleted.storageError}`
+        : "Fate Knots universe was not found."
+    );
+  }
   return result(true, "Fate Knots universe deleted.", pushFateKnotsState(api));
 }
 
-export function handleFateKnotsSaveRun(api: FateKnotsRuntimeApi, payload: unknown) {
+export async function handleFateKnotsSaveRun(api: FateKnotsRuntimeApi, payload: unknown) {
   const runCandidate = readObjectArg(payload, "run");
   if (!isRecord(runCandidate)) return result(false, "Fate Knots run snapshot is required.");
   const runtimeCandidate = readObjectArg(payload, "combatRuntime");
@@ -151,27 +195,51 @@ export function handleFateKnotsSaveRun(api: FateKnotsRuntimeApi, payload: unknow
     runtimeCandidate === undefined || runtimeCandidate === null
       ? null
       : (runtimeCandidate as FateKnotsCombatRuntimeState);
-  const saved = saveFateKnotsRunSnapshot(
+  const saved = await saveFateKnotsRunSnapshotDurable(
     api,
     runCandidate as unknown as FateKnotsRunState,
     combatRuntime
   );
-  if (!saved.ok) return result(false, "Fate Knots run snapshot was rejected.");
+  if (!saved.ok) {
+    return result(
+      false,
+      saved.storageError
+        ? `Fate Knots run could not be persisted: ${saved.storageError}`
+        : "Fate Knots run snapshot was rejected."
+    );
+  }
   return result(true, "Fate Knots run saved.", pushFateKnotsState(api));
 }
 
-export function handleFateKnotsActivateRun(api: FateKnotsRuntimeApi, payload: unknown) {
+export async function handleFateKnotsActivateRun(
+  api: FateKnotsRuntimeApi,
+  payload: unknown
+) {
   const runId = readStringArg(payload, "runId");
   if (!runId) return result(false, "Fate Knots runId is required.");
-  const activated = activateFateKnotsRun(api, runId);
-  if (!activated.ok) return result(false, "Fate Knots run was not found.");
+  const activated = await activateFateKnotsRunDurable(api, runId);
+  if (!activated.ok) {
+    return result(
+      false,
+      activated.storageError
+        ? `Fate Knots run activation could not be persisted: ${activated.storageError}`
+        : "Fate Knots run was not found."
+    );
+  }
   return result(true, "Fate Knots run activated.", pushFateKnotsState(api));
 }
 
-export function handleFateKnotsDeleteRun(api: FateKnotsRuntimeApi, payload: unknown) {
+export async function handleFateKnotsDeleteRun(api: FateKnotsRuntimeApi, payload: unknown) {
   const runId = readStringArg(payload, "runId");
   if (!runId) return result(false, "Fate Knots runId is required.");
-  const deleted = deleteFateKnotsRun(api, runId);
-  if (!deleted.ok) return result(false, "Fate Knots run was not found.");
+  const deleted = await deleteFateKnotsRunDurable(api, runId);
+  if (!deleted.ok) {
+    return result(
+      false,
+      deleted.storageError
+        ? `Fate Knots run deletion could not be persisted: ${deleted.storageError}`
+        : "Fate Knots run was not found."
+    );
+  }
   return result(true, "Fate Knots run deleted.", pushFateKnotsState(api));
 }
