@@ -1,0 +1,90 @@
+import {
+  FATE_KNOTS_PENDING_ASSET_SCHEME,
+  type FateKnotsWorldForgeRequest,
+} from "./world-forge.js";
+
+function briefLine(request: FateKnotsWorldForgeRequest): string {
+  return request.brief ? `Player brief: ${request.brief}` : "Player brief: none; choose a coherent original universe.";
+}
+
+/**
+ * Provider-neutral authoring prompt. It gives AI1 creative world authority only
+ * inside the canonical Fate Knots grammar; validation remains engine authority.
+ */
+export function buildFateKnotsWorldForgeAuthoringPrompt(
+  request: FateKnotsWorldForgeRequest
+): string {
+  return [
+    "You are the World Forge author for Fate Knots, not the runtime DM.",
+    "Create one bounded, internally coherent universe that players know nothing about at run start.",
+    "Do not explain the universe outside the requested JSON. Do not use markdown fences.",
+    "Do not invent dice, RNG, grids, pathfinding, CCG draw/discard loops, or mechanics outside the supplied card grammar.",
+    "The engine will reject broken references and unsupported mechanics rather than repairing them.",
+    "",
+    `requestId: ${request.requestId}`,
+    `universeId: ${request.universeId}`,
+    `createdAt: ${request.createdAt}`,
+    briefLine(request),
+    "",
+    "Return one JSON object with exactly these top-level keys:",
+    `{"schemaVersion":1,"requestId":"${request.requestId}","kind":"universe-draft","universe":{...},"assetPlans":[...]}`,
+    "",
+    "Universe required keys:",
+    "schemaVersion, universeId, title, premise, createdAt, theme, music, assets, locations, map, story, npcs, npcRoles, characters, cards, equipment, statuses, hiddenKnotIds, finale.",
+    `universe.schemaVersion must be 1, universeId must be "${request.universeId}", and createdAt must be "${request.createdAt}".`,
+    "",
+    "Story grammar:",
+    "story = {startKnotId, knots, transitions, encounters}.",
+    "Each knot = {id, locationId, visibleFacts:string[], initiallyRevealed:boolean, optional tags:string[]}.",
+    "The start knot must be initiallyRevealed=true.",
+    "hiddenKnotIds must contain exactly the knot ids whose initiallyRevealed is false.",
+    "Each transition = {id, fromKnotId, label, kind, optional requirements, optional toKnotId, optional toLocationId, optional encounterId, optional onEnter, optional onVictory, optional onRetreat}.",
+    "Transition kind is one of scene, travel, combat, loot, camp, finale.",
+    "requirements may contain completedKnotIds, revealedKnotIds, ownedCardIds.",
+    "Progression patches may contain revealKnotIds, completeKnotIds, revealLocationIds.",
+    "Only combat transitions may use encounterId/onVictory/onRetreat, and every combat transition must reference one encounter.",
+    "Each encounter = {id, locationId, opponentCharacterIds:[characterId...], optional lootCardIds:[cardId...]} and must contain at least one opponent.",
+    "Keep the story graph bounded: prefer roughly 6-10 knots and a clear path to one main finale rather than a large quest graph.",
+    "VisibleFacts are canonical player-visible scene facts, not prose instructions to the DM and never hidden spoilers.",
+    "",
+    "Character/card grammar:",
+    "character = {id,name,portraitAssetId,tags,baseStats:{maxHp,attack,defense,speed,energy},startingCardIds,startingEquipmentIds,optional combatController,optional voiceProfileId}.",
+    "combatController is either {kind:'policy',policyId:'...'} or {kind:'ai0'}; important personality-driven enemies may use ai0, simple enemies should use explicit policy ids.",
+    "For V1 enemy combat starts at front+near; do not encode coordinate positions or grid data.",
+    "card kind is one of character,movement,attack,defense,ability,item,equipment,status,injury,choice,event.",
+    "card = {id,kind,name,tags,effects,presentation, optional description,requirements,resolutionPriority,consumable,sourceId}.",
+    "resolutionPriority is fast, normal, or heavy; omitted means normal.",
+    "effect kind is damage,heal,shield,apply-status,remove-status,move,modify-stat,modify-resource,grant-card,revoke-card,consume,reveal,retreat.",
+    "Every effect must have {id,kind,target}; target is self,primaryTarget,secondaryTarget,allAllies,allEnemies,ownTeam,run.",
+    "damage/heal/shield require positive value. apply/remove status reference statusId. grant/revoke reference cardId. move has moveTo with row front|rear and/or range engaged|near|far. reveal targets run and has revealId. retreat targets ownTeam.",
+    "equipment card sourceId must reference an equipment definition. A character starting with equipment must also own its equipment card in startingCardIds.",
+    "equipment = {id,name,slot,tags,grantedCardIds, optional removedCardIds}.",
+    "status = {id,name,tags,persistent, optional description,maxStacks,modifiers,grantedCardIds,blockedCardTags,presentation}.",
+    "Keep numeric balance simple and internally consistent; no hidden hit/crit/dodge rolls.",
+    "",
+    "NPC grammar:",
+    "npc = {id,name,locationId,roleTags,publicSummary,rolePacketId, optional portraitAssetId,voiceProfileId,combatCharacterId}.",
+    "npcRole = {id,npcId,personaFacts,knownFacts,relationshipFacts}. rolePacketId must reference the matching npcRole and npcRole.npcId must match the NPC.",
+    "Known facts must be limited to what that NPC may know; do not put global hidden canon in every role packet.",
+    "",
+    "Map/location/finale grammar:",
+    "location = {id,name,description,sceneAssetIds,tags, optional campAllowed}.",
+    "map = {optional mapAssetId,nodes,edges}. node = {id,locationId,label,initiallyRevealed, optional mapPosition:{x,y}}. edge = {id,fromNodeId,toNodeId,initiallyRevealed, optional travelCardIds,tags}.",
+    "finale = {id,conflictSummary,finaleLocationId,requiredKnotIds,optional requiredItemIds,finalEncounterId,finalChoiceCardIds,successConditionId,epilogueConditionIds}.",
+    "finalEncounterId, when present, must reference story.encounters. requiredKnotIds must reference story.knots.",
+    "",
+    "Theme/assets:",
+    "theme = {id,name,backgroundAssetId,closedBookAssetId,openPageAssetId,cardFrameByKind,visualTags, optional mapStyleAssetId,iconFamilyId,bookmarkAssetIds,transitionAssetIds}.",
+    "music = {id,instrumentTags,moodTags,stateCueIds, optional tempo,meter,scaleOrMode,motif,fallbackCatalogId}. Do not require generated audio files.",
+    "Every visual asset entry = {id,kind,path, optional mimeType,tags}.",
+    `Every asset.path MUST equal "${FATE_KNOTS_PENDING_ASSET_SCHEME}<URL-encoded asset id>". Do not invent local file paths or URLs.`,
+    "Do not include audio assets in V1 World Forge asset generation.",
+    "For each asset there must be exactly one assetPlans entry = {assetId,kind,prompt,aspectRatio,optional batchGroup}.",
+    "aspectRatio is 1:1, 3:4, 4:3, or 16:9.",
+    "Asset prompts create illustration/material only: no baked card text, rules text, UI labels, or gameplay icons that the renderer can compose deterministically.",
+    "Use the same batchGroup for related card/item illustrations that can share one 2x3 or 2x4 generation sheet; batching is only a hint and must not alter asset identity.",
+    "",
+    "Keep the first playable universe modest: enough content to demonstrate exploration, NPC interaction, at least one normal combat, loot, camp opportunity, and one finale without generating an encyclopedic world.",
+    "Return JSON only.",
+  ].join("\n");
+}
