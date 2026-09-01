@@ -103,16 +103,32 @@ export function createFateKnotsManagementCommands(
     [FATE_KNOTS_MANAGEMENT_COMMAND_NAMES.deleteRun](payload?: unknown) {
       const runId = readRequiredId(payload, "runId");
       if (!runId) return invalidPayload(api);
+      const before = buildFateKnotsHubSnapshot(api);
       const deleted = deleteFateKnotsRun(api, runId);
       if (!deleted.ok) return rejected(api, deleted.issues);
+      if (before.activeRunId === runId) {
+        const selection = saveFateKnotsSessionSelection(api, {
+          activeUniverseId: before.activeUniverseId,
+          activeRunId: null,
+        });
+        if (!selection.ok) return rejected(api, selection.issues);
+      }
       return accepted(api);
     },
 
     [FATE_KNOTS_MANAGEMENT_COMMAND_NAMES.deleteUniverse](payload?: unknown) {
       const universeId = readRequiredId(payload, "universeId");
       if (!universeId) return invalidPayload(api);
+      const before = buildFateKnotsHubSnapshot(api);
       const deleted = deleteFateKnotsUniverse(api, universeId);
       if (!deleted.ok) return rejected(api, deleted.issues);
+      if (before.activeUniverseId === universeId) {
+        const selection = saveFateKnotsSessionSelection(api, {
+          activeUniverseId: null,
+          activeRunId: null,
+        });
+        if (!selection.ok) return rejected(api, selection.issues);
+      }
       return accepted(api);
     },
   };
