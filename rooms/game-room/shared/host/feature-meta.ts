@@ -5,6 +5,8 @@ export const TEAM_TETRIS_FEATURE_ID = "team-tetris";
 export const TEAM_TETRIS_PAGE_ID = "room:game-room:team-tetris";
 export const YAHTZEE_FEATURE_ID = "yahtzee";
 export const YAHTZEE_PAGE_ID = "room:game-room:yahtzee";
+export const FATE_KNOTS_FEATURE_ID = "fate-knots";
+export const FATE_KNOTS_PAGE_ID = "room:game-room:fate-knots";
 
 interface FeatureCatalogEntry {
   id: string;
@@ -24,6 +26,10 @@ const FEATURE_CATALOG: FeatureCatalogEntry[] = [
   {
     id: YAHTZEE_FEATURE_ID,
     name: "Yahtzee",
+  },
+  {
+    id: FATE_KNOTS_FEATURE_ID,
+    name: "Kader Düğümleri",
   },
 ];
 
