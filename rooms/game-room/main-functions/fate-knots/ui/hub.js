@@ -5,6 +5,7 @@
   const FEATURE_ID = "fate-knots";
   const COMMANDS = Object.freeze({
     refresh: "GameRoomFateKnotsRefresh",
+    createUniverse: "GameRoomFateKnotsCreateUniverse",
     activateUniverse: "GameRoomFateKnotsActivateUniverse",
     deleteUniverse: "GameRoomFateKnotsDeleteUniverse",
     activateRun: "GameRoomFateKnotsActivateRun",
@@ -46,9 +47,16 @@
           openUniverse: "Evreni etkinleştir",
           deleteAction: "Sil",
           forgeTitle: "Yeni evren",
-          forgeBody:
-            "World Forge bağlantısı bir sonraki entegrasyon adımında açılacak. Bu merkez hazır evrenleri ve oyun kayıtlarını şimdiden güvenli biçimde yönetebilir.",
-          forgePending: "World Forge hazırlanıyor",
+          forgeReady:
+            "World Forge hazır. İstersen kısa bir yön ver, istersen alanı boş bırakıp evreni Forge'a bırak.",
+          forgeUnavailable: "World Forge henüz bütün bağımlılıklarıyla hazır değil.",
+          forgeBusy: "World Forge çalışıyor",
+          createUniverse: "Evren oluştur",
+          briefPlaceholder: "İsteğe bağlı kısa yön: tema, atmosfer veya başlangıç fikri…",
+          blockerAi1: "AI1 bağlantısı yok",
+          blockerMaterializer: "görsel materializer bağlanmadı",
+          blockerStorage: "kalıcı depolama kullanılamıyor",
+          blockerBusy: "başka bir Forge işlemi sürüyor",
           refresh: "Yenile",
           active: "Aktif",
           completed: "Tamamlandı",
@@ -71,9 +79,16 @@
           openUniverse: "Activate universe",
           deleteAction: "Delete",
           forgeTitle: "New universe",
-          forgeBody:
-            "World Forge transport will be connected in the next integration step. This hub can already manage accepted universes and run saves safely.",
-          forgePending: "World Forge pending",
+          forgeReady:
+            "World Forge is ready. Add a short direction if useful, or leave it empty and let Forge choose the universe.",
+          forgeUnavailable: "World Forge is not ready with all required dependencies yet.",
+          forgeBusy: "World Forge is running",
+          createUniverse: "Create universe",
+          briefPlaceholder: "Optional direction: theme, atmosphere, or starting idea…",
+          blockerAi1: "AI1 transport unavailable",
+          blockerMaterializer: "image materializer not connected",
+          blockerStorage: "durable storage unavailable",
+          blockerBusy: "another Forge run is active",
           refresh: "Refresh",
           active: "Active",
           completed: "Completed",
@@ -111,6 +126,14 @@
     chip.className = "fk-hub__chip";
     chip.textContent = text;
     return chip;
+  }
+
+  function forgeBlockerText(blocker, labels) {
+    if (blocker === "ai1-transport-unavailable") return labels.blockerAi1;
+    if (blocker === "asset-materializer-unavailable") return labels.blockerMaterializer;
+    if (blocker === "storage-unavailable") return labels.blockerStorage;
+    if (blocker === "forge-busy") return labels.blockerBusy;
+    return blocker;
   }
 
   function renderRunCard(container, run, state, labels) {
@@ -180,6 +203,56 @@
     container.append(card);
   }
 
+  function renderForgePanel(container, state, labels) {
+    const forge = isRecord(state.forge) ? state.forge : {};
+    const progress = isRecord(forge.progress) ? forge.progress : null;
+    const blockers = readArray(forge.blockers);
+    const busy = forge.busy === true;
+    const ready = forge.ready === true;
+
+    const title = document.createElement("h2");
+    title.textContent = labels.forgeTitle;
+    const body = document.createElement("p");
+    body.className = "fk-hub__record-copy";
+
+    if (busy && progress) {
+      const total = Number(progress.totalAssets || 0);
+      const completed = Number(progress.completedAssets || 0);
+      body.textContent =
+        readString(progress.message, labels.forgeBusy) +
+        (total > 0 ? ` · ${completed}/${total}` : "");
+    } else if (ready) {
+      body.textContent = labels.forgeReady;
+    } else {
+      const details = blockers
+        .filter(function (blocker) {
+          return blocker !== "forge-busy";
+        })
+        .map(function (blocker) {
+          return forgeBlockerText(blocker, labels);
+        });
+      body.textContent =
+        labels.forgeUnavailable + (details.length > 0 ? ` ${details.join(" · ")}.` : "");
+    }
+
+    const brief = document.createElement("textarea");
+    brief.className = "fk-hub__forge-brief";
+    brief.rows = 3;
+    brief.placeholder = labels.briefPlaceholder;
+    brief.disabled = !ready || busy;
+
+    const action = button(
+      busy ? labels.forgeBusy : labels.createUniverse,
+      "fk-hub__button fk-hub__button--primary",
+      function () {
+        sendCommand(COMMANDS.createUniverse, { brief: brief.value.trim() });
+      },
+      !ready || busy
+    );
+
+    container.append(title, body, brief, action);
+  }
+
   function render(root) {
     const labels = copy();
     const state = isRecord(hostState) ? hostState : {};
@@ -244,15 +317,7 @@
 
     const forgeSection = document.createElement("section");
     forgeSection.className = "fk-hub__panel fk-hub__panel--forge";
-    const forgeTitle = document.createElement("h2");
-    forgeTitle.textContent = labels.forgeTitle;
-    const forgeBody = document.createElement("p");
-    forgeBody.className = "fk-hub__record-copy";
-    forgeBody.textContent = labels.forgeBody;
-    forgeSection.append(forgeTitle, forgeBody);
-    forgeSection.append(
-      button(labels.forgePending, "fk-hub__button fk-hub__button--primary", function () {}, true)
-    );
+    renderForgePanel(forgeSection, state, labels);
     grid.append(forgeSection);
     shell.append(grid);
 
