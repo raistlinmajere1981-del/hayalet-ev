@@ -8,6 +8,27 @@ import {
   type FateKnotsUniverseValidationResult,
 } from "./universe-validation.js";
 
+const PRESENTATION_APPLY_TO = new Set([
+  "card",
+  "self",
+  "primaryTarget",
+  "secondaryTarget",
+  "allAllies",
+  "allEnemies",
+  "casterAndTarget",
+  "battlefield",
+  "pageOverlay",
+]);
+
+const PRESENTATION_TIMING = new Set([
+  "onSelect",
+  "onCommit",
+  "beforeResolve",
+  "onResolve",
+  "afterResolve",
+  "persistent",
+]);
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -114,6 +135,100 @@ function validateRendererAssetContract(
   return issues;
 }
 
+function validatePresentationCue(
+  cue: unknown,
+  path: string,
+  seenCueIds: Set<string>,
+  issues: FateKnotsUniverseValidationIssue[]
+): void {
+  if (!isRecord(cue)) {
+    issues.push({ code: "invalid-field-type", path });
+    return;
+  }
+
+  const cueId = cue["cueId"];
+  if (typeof cueId !== "string" || cueId.trim() === "") {
+    issues.push({ code: "invalid-field-type", path: `${path}.cueId` });
+  } else if (seenCueIds.has(cueId.trim())) {
+    issues.push({ code: "duplicate-id", path: `${path}.cueId`, value: cueId.trim() });
+  } else {
+    seenCueIds.add(cueId.trim());
+  }
+
+  const applyTo = cue["applyTo"];
+  if (typeof applyTo !== "string" || !PRESENTATION_APPLY_TO.has(applyTo)) {
+    issues.push({
+      code: "invalid-field-type",
+      path: `${path}.applyTo`,
+      ...(typeof applyTo === "string" ? { value: applyTo } : {}),
+    });
+  }
+
+  const timing = cue["timing"];
+  if (typeof timing !== "string" || !PRESENTATION_TIMING.has(timing)) {
+    issues.push({
+      code: "invalid-field-type",
+      path: `${path}.timing`,
+      ...(typeof timing === "string" ? { value: timing } : {}),
+    });
+  }
+
+  for (const key of ["animationId", "soundEffectId", "statusVisualId"] as const) {
+    const value = cue[key];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== "string" || value.trim() === "") {
+      issues.push({ code: "invalid-field-type", path: `${path}.${key}` });
+    }
+  }
+}
+
+function validateRendererPresentationContract(
+  universe: FateKnotsUniversePackage
+): FateKnotsUniverseValidationIssue[] {
+  const issues: FateKnotsUniverseValidationIssue[] = [];
+
+  universe.cards.forEach((card, cardIndex) => {
+    const rawCard = card as unknown;
+    if (!isRecord(rawCard)) return;
+    const presentation = rawCard["presentation"];
+    if (!Array.isArray(presentation)) {
+      issues.push({ code: "invalid-field-type", path: `cards[${cardIndex}].presentation` });
+      return;
+    }
+    const seenCueIds = new Set<string>();
+    presentation.forEach((cue, cueIndex) =>
+      validatePresentationCue(
+        cue,
+        `cards[${cardIndex}].presentation[${cueIndex}]`,
+        seenCueIds,
+        issues
+      )
+    );
+  });
+
+  universe.statuses.forEach((status, statusIndex) => {
+    const rawStatus = status as unknown;
+    if (!isRecord(rawStatus)) return;
+    const presentation = rawStatus["presentation"];
+    if (presentation === undefined) return;
+    if (!Array.isArray(presentation)) {
+      issues.push({ code: "invalid-field-type", path: `statuses[${statusIndex}].presentation` });
+      return;
+    }
+    const seenCueIds = new Set<string>();
+    presentation.forEach((cue, cueIndex) =>
+      validatePresentationCue(
+        cue,
+        `statuses[${statusIndex}].presentation[${cueIndex}]`,
+        seenCueIds,
+        issues
+      )
+    );
+  });
+
+  return issues;
+}
+
 function validateCardArtContract(
   universe: FateKnotsUniversePackage
 ): FateKnotsUniverseValidationIssue[] {
@@ -193,7 +308,8 @@ function cloneRunStartContract(universe: FateKnotsUniversePackage): FateKnotsUni
  * This layer adds deterministic data required to create/render a run without
  * renderer/Codex defaults: a canonical start node, explicit player-selectable
  * character templates, initial lightweight positions, renderer-facing theme/map
- * asset integrity and valid optional card-art references.
+ * asset integrity, validated presentation cue shapes and valid optional card-art
+ * references.
  */
 export function normalizeFateKnotsCanonicalUniversePackage(
   candidate: unknown
@@ -204,6 +320,7 @@ export function normalizeFateKnotsCanonicalUniversePackage(
   const issues = [
     ...validateRunStartContract(normalized.package),
     ...validateRendererAssetContract(normalized.package),
+    ...validateRendererPresentationContract(normalized.package),
     ...validateCardArtContract(normalized.package),
   ];
   if (issues.length > 0) {
