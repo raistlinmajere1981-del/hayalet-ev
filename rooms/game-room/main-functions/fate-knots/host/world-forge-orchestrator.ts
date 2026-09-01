@@ -47,6 +47,7 @@ export type FateKnotsWorldForgePipelineResult =
       request: FateKnotsWorldForgeRequest;
       universe: FateKnotsUniversePackage;
       materialization: FateKnotsAssetMaterializationResult;
+      provenanceWarning?: string;
     }
   | {
       ok: false;
@@ -58,7 +59,8 @@ export type FateKnotsWorldForgePipelineResult =
         | "finalization-failed"
         | "playability-failed"
         | "card-art-failed"
-        | "save-failed";
+        | "save-failed"
+        | "unexpected-failure";
       message: string;
       materialization?: FateKnotsAssetMaterializationResult;
     };
@@ -94,22 +96,18 @@ function progress(
   totalAssets: number,
   message: string
 ): FateKnotsWorldForgeProgress {
-  return {
-    requestId: request.requestId,
-    universeId: request.universeId,
-    stage,
-    completedAssets,
-    totalAssets,
-    message,
-  };
+  return { requestId: request.requestId, universeId: request.universeId, stage, completedAssets, totalAssets, message };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**
- * Complete provider-neutral World Forge transaction.
- *
- * The only provider-specific dependency is the injected image materializer.
- * AI1 authors a non-canonical draft, assets are physically materialized, the
- * package is finalized and revalidated, then durable persistence accepts it.
+ * Complete provider-neutral World Forge transaction. Every pre-save exception
+ * becomes a terminal failed progress state. Once the canonical durable save has
+ * succeeded, provenance/checkpoint failure is only a retryable warning: a
+ * committed Universe Package is never reported as if it did not exist.
  */
 export async function runFateKnotsWorldForge(
   api: GameRoomHostApi & FateKnotsTransportApi,
@@ -122,148 +120,164 @@ export async function runFateKnotsWorldForge(
 ): Promise<FateKnotsWorldForgePipelineResult> {
   const request = options.request ?? createFateKnotsWorldForgeRequest(options.brief ?? null);
   const emit = options.onProgress ?? (() => undefined);
+  let completedAssets = 0;
+  let totalAssets = 0;
 
-  emit(progress(request, "preparing", 0, 0, "Preparing World Forge."));
-  const hydrated = await hydrateFateKnotsDurablePersistence(api);
-  if (!hydrated.ok) {
-    emit(progress(request, "failed", 0, 0, "Durable storage is unavailable."));
-    return {
-      ok: false,
+  try {
+    emit(progress(request, "preparing", 0, 0, "Preparing World Forge."));
+    const hydrated = await hydrateFateKnotsDurablePersistence(api);
+    if (!hydrated.ok) {
+      emit(progress(request, "failed", 0, 0, "Durable storage is unavailable."));
+      return {
+        ok: false,
+        request,
+        code: "storage-unavailable",
+        message: hydrated.storageError ?? "Fate Knots durable storage is unavailable.",
+      };
+    }
+
+    emit(progress(request, "authoring", 0, 0, "Authoring canonical world candidate."));
+    const authored = await authorFateKnotsWorldForgeDraft(api, request);
+    if (!authored.ok) {
+      emit(progress(request, "failed", 0, 0, authored.message));
+      try {
+        await writeCheckpoint({
+          schemaVersion: 1,
+          request,
+          status: "authoring-failed",
+          message: authored.message,
+          issues: authored.issues ?? [],
+        });
+      } catch {
+        // Primary failure remains the authoring failure.
+      }
+      return { ok: false, request, code: "authoring-failed", message: authored.message };
+    }
+
+    const draft = authored.draft;
+    totalAssets = draft.assetPlans.length;
+    await writeCheckpoint({ schemaVersion: 1, request, status: "draft-validated", draft });
+
+    emit(progress(request, "materializing", 0, totalAssets, "Generating and storing universe assets."));
+    const materialization = await materializeFateKnotsWorldForgeAssets(draft, adapter);
+    completedAssets = materialization.assets.length;
+    emit(
+      progress(
+        request,
+        materialization.complete ? "finalizing" : "failed",
+        completedAssets,
+        totalAssets,
+        materialization.complete
+          ? "All universe assets are materialized."
+          : "One or more universe assets could not be materialized."
+      )
+    );
+
+    await writeCheckpoint({
+      schemaVersion: 1,
       request,
-      code: "storage-unavailable",
-      message: hydrated.storageError ?? "Fate Knots durable storage is unavailable.",
-    };
-  }
+      status: materialization.complete ? "assets-materialized" : "materialization-incomplete",
+      draft,
+      materialization,
+    });
 
-  emit(progress(request, "authoring", 0, 0, "Authoring canonical world candidate."));
-  const authored = await authorFateKnotsWorldForgeDraft(api, request);
-  if (!authored.ok) {
-    emit(progress(request, "failed", 0, 0, authored.message));
+    if (!materialization.complete) {
+      return {
+        ok: false,
+        request,
+        code: "materialization-incomplete",
+        message: `${materialization.failures.length} materialization job(s) require retry.`,
+        materialization,
+      };
+    }
+
+    const finalized = finalizeFateKnotsWorldForgeDraft(draft, materialization.assets);
+    if (!finalized.ok || !finalized.universe) {
+      emit(progress(request, "failed", completedAssets, totalAssets, "Final universe validation failed."));
+      return {
+        ok: false,
+        request,
+        code: "finalization-failed",
+        message: `Final universe failed ${finalized.issues.length} validation check(s).`,
+        materialization,
+      };
+    }
+
+    const playable = validateFateKnotsPlayableUniverse(finalized.universe);
+    if (!playable.valid) {
+      emit(progress(request, "failed", completedAssets, totalAssets, "Final universe is not playable."));
+      return {
+        ok: false,
+        request,
+        code: "playability-failed",
+        message: `Final universe failed ${playable.issues.length} playability check(s).`,
+        materialization,
+      };
+    }
+
+    const cardArtIssues = validateFateKnotsCardArtBindings(finalized.universe);
+    if (cardArtIssues.length > 0) {
+      emit(progress(request, "failed", completedAssets, totalAssets, "Final card art bindings are invalid."));
+      return {
+        ok: false,
+        request,
+        code: "card-art-failed",
+        message: `Final universe failed ${cardArtIssues.length} card-art binding check(s).`,
+        materialization,
+      };
+    }
+
+    emit(progress(request, "saving", completedAssets, totalAssets, "Saving canonical universe."));
+    const saved = await saveFateKnotsUniverseDurable(api, finalized.universe);
+    if (!saved.ok || !saved.value) {
+      emit(progress(request, "failed", completedAssets, totalAssets, "Canonical universe save failed."));
+      return {
+        ok: false,
+        request,
+        code: "save-failed",
+        message: saved.storageError ?? "Canonical Fate Knots universe could not be saved.",
+        materialization,
+      };
+    }
+
+    let provenanceWarning: string | undefined;
     try {
       await writeCheckpoint({
         schemaVersion: 1,
         request,
-        status: "authoring-failed",
-        message: authored.message,
-        issues: authored.issues ?? [],
+        status: "completed",
+        universeId: saved.value.universeId,
+        sourceArtifacts: materialization.sourceArtifacts,
+        materializedAssets: materialization.assets,
       });
-    } catch {
-      // Primary failure remains the authoring failure.
+    } catch (error) {
+      provenanceWarning = `Universe saved, but Forge provenance checkpoint needs retry: ${errorMessage(error)}`;
     }
-    return { ok: false, request, code: "authoring-failed", message: authored.message };
-  }
 
-  const draft = authored.draft;
-  await writeCheckpoint({
-    schemaVersion: 1,
-    request,
-    status: "draft-validated",
-    draft,
-  });
-
-  emit(
-    progress(
-      request,
-      "materializing",
-      0,
-      draft.assetPlans.length,
-      "Generating and storing universe assets."
-    )
-  );
-  const materialization = await materializeFateKnotsWorldForgeAssets(draft, adapter);
-  emit(
-    progress(
-      request,
-      materialization.complete ? "finalizing" : "failed",
-      materialization.assets.length,
-      draft.assetPlans.length,
-      materialization.complete
-        ? "All universe assets are materialized."
-        : "One or more universe assets could not be materialized."
-    )
-  );
-
-  await writeCheckpoint({
-    schemaVersion: 1,
-    request,
-    status: materialization.complete ? "assets-materialized" : "materialization-incomplete",
-    draft,
-    materialization,
-  });
-
-  if (!materialization.complete) {
+    emit(
+      progress(
+        request,
+        "completed",
+        completedAssets,
+        totalAssets,
+        provenanceWarning ?? "Universe ready."
+      )
+    );
     return {
-      ok: false,
+      ok: true,
       request,
-      code: "materialization-incomplete",
-      message: `${materialization.failures.length} materialization job(s) require retry.`,
+      universe: saved.value,
       materialization,
+      ...(provenanceWarning ? { provenanceWarning } : {}),
     };
+  } catch (error) {
+    const message = `World Forge stopped safely: ${errorMessage(error)}`;
+    emit(progress(request, "failed", completedAssets, totalAssets, message));
+    try {
+      await writeCheckpoint({ schemaVersion: 1, request, status: "unexpected-failure", message });
+    } catch {
+      // Terminal progress remains authoritative even if the debug checkpoint cannot be written.
+    }
+    return { ok: false, request, code: "unexpected-failure", message };
   }
-
-  const finalized = finalizeFateKnotsWorldForgeDraft(draft, materialization.assets);
-  if (!finalized.ok || !finalized.universe) {
-    emit(progress(request, "failed", materialization.assets.length, draft.assetPlans.length, "Final universe validation failed."));
-    return {
-      ok: false,
-      request,
-      code: "finalization-failed",
-      message: `Final universe failed ${finalized.issues.length} validation check(s).`,
-      materialization,
-    };
-  }
-
-  const playable = validateFateKnotsPlayableUniverse(finalized.universe);
-  if (!playable.valid) {
-    emit(progress(request, "failed", materialization.assets.length, draft.assetPlans.length, "Final universe is not playable."));
-    return {
-      ok: false,
-      request,
-      code: "playability-failed",
-      message: `Final universe failed ${playable.issues.length} playability check(s).`,
-      materialization,
-    };
-  }
-
-  const cardArtIssues = validateFateKnotsCardArtBindings(finalized.universe);
-  if (cardArtIssues.length > 0) {
-    emit(progress(request, "failed", materialization.assets.length, draft.assetPlans.length, "Final card art bindings are invalid."));
-    return {
-      ok: false,
-      request,
-      code: "card-art-failed",
-      message: `Final universe failed ${cardArtIssues.length} card-art binding check(s).`,
-      materialization,
-    };
-  }
-
-  emit(progress(request, "saving", materialization.assets.length, draft.assetPlans.length, "Saving canonical universe."));
-  const saved = await saveFateKnotsUniverseDurable(api, finalized.universe);
-  if (!saved.ok || !saved.value) {
-    emit(progress(request, "failed", materialization.assets.length, draft.assetPlans.length, "Canonical universe save failed."));
-    return {
-      ok: false,
-      request,
-      code: "save-failed",
-      message: saved.storageError ?? "Canonical Fate Knots universe could not be saved.",
-      materialization,
-    };
-  }
-
-  await writeCheckpoint({
-    schemaVersion: 1,
-    request,
-    status: "completed",
-    universeId: saved.value.universeId,
-    sourceArtifacts: materialization.sourceArtifacts,
-    materializedAssets: materialization.assets,
-  });
-  emit(progress(request, "completed", materialization.assets.length, draft.assetPlans.length, "Universe ready."));
-
-  return {
-    ok: true,
-    request,
-    universe: saved.value,
-    materialization,
-  };
 }
