@@ -52,6 +52,14 @@ export type FateKnotsAi1TransportResult =
       message: string;
     };
 
+export type FateKnotsAi1SessionOpenResult =
+  | { ok: true; sessionRef: FateKnotsSessionRef }
+  | { ok: false; code: "bridge-unavailable" | "provider-failed" | "session-missing"; message: string };
+
+export type FateKnotsAi1JsonTransportResult =
+  | { ok: true; value: Record<string, unknown>; sessionRef: FateKnotsSessionRef | null }
+  | { ok: false; code: "bridge-unavailable" | "provider-failed" | "invalid-json"; message: string };
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && Array.isArray(value) === false;
 }
@@ -148,12 +156,17 @@ function coerceAi0Response(
   const actionCardId = readNullableString(value, "actionCardId");
   const primaryTargetId = readNullableString(value, "primaryTargetId");
   const secondaryTargetId = readNullableString(value, "secondaryTargetId");
-  const optionalValues = [movementCardId, actionCardId, primaryTargetId, secondaryTargetId];
+  const optionalKeys = [
+    "movementCardId",
+    "actionCardId",
+    "primaryTargetId",
+    "secondaryTargetId",
+  ] as const;
+  const optionalValues = [movementCardId, actionCardId, primaryTargetId, secondaryTargetId] as const;
   if (
-    optionalValues.some((entry, index) => {
-      const key = ["movementCardId", "actionCardId", "primaryTargetId", "secondaryTargetId"][index];
-      return entry === undefined && key !== undefined && value[key] !== undefined;
-    })
+    optionalValues.some(
+      (entry, index) => entry === undefined && value[optionalKeys[index] as (typeof optionalKeys)[number]] !== undefined
+    )
   ) {
     return null;
   }
@@ -207,6 +220,101 @@ function buildAi1Prompt(request: FateKnotsAi1RuntimeRequest): string {
   ].join("\n");
 }
 
+export async function openFateKnotsAi1Session(
+  api: FateKnotsTransportApi,
+  title: string
+): Promise<FateKnotsAi1SessionOpenResult> {
+  if (typeof api.dispatchBridge !== "function") {
+    return {
+      ok: false,
+      code: "bridge-unavailable",
+      message: "Fate Knots AI1 SlotBridge transport is unavailable.",
+    };
+  }
+
+  let result: unknown;
+  try {
+    result = await api.dispatchBridge({
+      action: "session.open",
+      toSlot: "ai1",
+      payload: {
+        title: title.trim() || "Fate Knots",
+        page: FATE_KNOTS_PAGE_ID,
+      },
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      code: "provider-failed",
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  if (!readBridgeSuccess(result)) {
+    return { ok: false, code: "provider-failed", message: readBridgeMessage(result) };
+  }
+  const sessionRef = readBridgeSessionRef(result);
+  if (sessionRef === null) {
+    return {
+      ok: false,
+      code: "session-missing",
+      message: "Fate Knots AI1 session was opened without a usable session reference.",
+    };
+  }
+  return { ok: true, sessionRef };
+}
+
+export async function dispatchFateKnotsAi1JsonPrompt(
+  api: FateKnotsTransportApi,
+  prompt: string,
+  options: { sessionRef?: FateKnotsSessionRef | null; timeoutMs?: number } = {}
+): Promise<FateKnotsAi1JsonTransportResult> {
+  if (typeof api.dispatchBridge !== "function") {
+    return {
+      ok: false,
+      code: "bridge-unavailable",
+      message: "Fate Knots AI1 SlotBridge transport is unavailable.",
+    };
+  }
+
+  let rawResult: unknown;
+  try {
+    rawResult = await api.dispatchBridge({
+      action: "message.sendWait",
+      timeoutMs: options.timeoutMs ?? FATE_KNOTS_PROVIDER_TIMEOUT_MS,
+      toSlot: "ai1",
+      ...(options.sessionRef ? { sessionRef: options.sessionRef } : {}),
+      payload: {
+        page: FATE_KNOTS_PAGE_ID,
+        text: prompt,
+      },
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      code: "provider-failed",
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  if (!readBridgeSuccess(rawResult)) {
+    return { ok: false, code: "provider-failed", message: readBridgeMessage(rawResult) };
+  }
+  const parsed = parseJsonObject(readBridgeReplyText(rawResult));
+  if (parsed === null) {
+    return {
+      ok: false,
+      code: "invalid-json",
+      message: "Fate Knots AI1 response was not a JSON object.",
+    };
+  }
+  return {
+    ok: true,
+    value: parsed,
+    sessionRef: readBridgeSessionRef(rawResult) ?? options.sessionRef ?? null,
+  };
+}
+
 export async function dispatchFateKnotsAi0RuntimeRequest(
   request: FateKnotsAi0RuntimeRequest,
   universeId: string
@@ -225,7 +333,10 @@ export async function dispatchFateKnotsAi0RuntimeRequest(
   if (result.success !== true || result.fateKnotsAi0 === undefined) {
     return {
       ok: false,
-      code: result.error?.includes("bridge is unavailable") === true ? "bridge-unavailable" : "provider-failed",
+      code:
+        result.error?.includes("bridge is unavailable") === true
+          ? "bridge-unavailable"
+          : "provider-failed",
       message: result.error ?? "Fate Knots AI0 transport failed.",
     };
   }
@@ -268,52 +379,10 @@ export async function dispatchFateKnotsAi1RuntimeRequest(
   request: FateKnotsAi1RuntimeRequest,
   options: { sessionRef?: FateKnotsSessionRef | null } = {}
 ): Promise<FateKnotsAi1TransportResult> {
-  if (typeof api.dispatchBridge !== "function") {
-    return {
-      ok: false,
-      code: "bridge-unavailable",
-      message: "Fate Knots AI1 SlotBridge transport is unavailable.",
-    };
-  }
+  const raw = await dispatchFateKnotsAi1JsonPrompt(api, buildAi1Prompt(request), options);
+  if (!raw.ok) return raw;
 
-  let rawResult: unknown;
-  try {
-    rawResult = await api.dispatchBridge({
-      action: "message.sendWait",
-      timeoutMs: FATE_KNOTS_PROVIDER_TIMEOUT_MS,
-      toSlot: "ai1",
-      ...(options.sessionRef ? { sessionRef: options.sessionRef } : {}),
-      payload: {
-        page: FATE_KNOTS_PAGE_ID,
-        text: buildAi1Prompt(request),
-      },
-    });
-  } catch (error) {
-    return {
-      ok: false,
-      code: "provider-failed",
-      message: error instanceof Error ? error.message : String(error),
-    };
-  }
-
-  if (!readBridgeSuccess(rawResult)) {
-    return {
-      ok: false,
-      code: "provider-failed",
-      message: readBridgeMessage(rawResult),
-    };
-  }
-
-  const replyText = readBridgeReplyText(rawResult);
-  const parsed = parseJsonObject(replyText);
-  if (parsed === null) {
-    return {
-      ok: false,
-      code: "invalid-json",
-      message: "Fate Knots AI1 response was not a JSON object.",
-    };
-  }
-  const response = coerceAi1Response(parsed, request);
+  const response = coerceAi1Response(raw.value, request);
   if (response === null) {
     return {
       ok: false,
@@ -333,6 +402,6 @@ export async function dispatchFateKnotsAi1RuntimeRequest(
   return {
     ok: true,
     response,
-    sessionRef: readBridgeSessionRef(rawResult) ?? options.sessionRef ?? null,
+    sessionRef: raw.sessionRef,
   };
 }
