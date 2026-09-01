@@ -39,6 +39,17 @@ import {
   pushYahtzeeState,
 } from "../main-functions/yahtzee/host/runtime.js";
 import {
+  FATE_KNOTS_COMMAND_NAMES,
+  handleFateKnotsActivateRun,
+  handleFateKnotsActivateUniverse,
+  handleFateKnotsDeleteRun,
+  handleFateKnotsDeleteUniverse,
+  handleFateKnotsRefresh,
+  handleFateKnotsSaveRun,
+  handleFateKnotsSaveUniverse,
+  initializeFateKnotsState,
+} from "../main-functions/fate-knots/host/runtime.js";
+import {
   clearUs1SyncLoop as backgammonClearUs1SyncLoop,
   ensureUs1SyncLoop as backgammonEnsureUs1SyncLoop,
   BACKGAMMON_COMMAND_NAMES,
@@ -136,6 +147,7 @@ export default function createGameRoomHostRuntime() {
         saveBackgammonState: saveBackgammonStateCompat,
       });
       initializeYahtzeeState(api);
+      initializeFateKnotsState(api);
 
       const commands = createGameRoomCommandRegistry(api, {
         handleTeamTetrisMove: asCommandHandler(handleTeamTetrisMove),
@@ -191,6 +203,28 @@ export default function createGameRoomHostRuntime() {
       };
       commands[YAHTZEE_COMMAND_NAMES.remoteReset] = function (payload?: unknown) {
         return handleYahtzeeRemoteReset(api, payload ?? {});
+      };
+
+      commands[FATE_KNOTS_COMMAND_NAMES.refresh] = function () {
+        return handleFateKnotsRefresh(api);
+      };
+      commands[FATE_KNOTS_COMMAND_NAMES.saveUniverse] = function (payload?: unknown) {
+        return handleFateKnotsSaveUniverse(api, payload ?? {});
+      };
+      commands[FATE_KNOTS_COMMAND_NAMES.activateUniverse] = function (payload?: unknown) {
+        return handleFateKnotsActivateUniverse(api, payload ?? {});
+      };
+      commands[FATE_KNOTS_COMMAND_NAMES.deleteUniverse] = function (payload?: unknown) {
+        return handleFateKnotsDeleteUniverse(api, payload ?? {});
+      };
+      commands[FATE_KNOTS_COMMAND_NAMES.saveRun] = function (payload?: unknown) {
+        return handleFateKnotsSaveRun(api, payload ?? {});
+      };
+      commands[FATE_KNOTS_COMMAND_NAMES.activateRun] = function (payload?: unknown) {
+        return handleFateKnotsActivateRun(api, payload ?? {});
+      };
+      commands[FATE_KNOTS_COMMAND_NAMES.deleteRun] = function (payload?: unknown) {
+        return handleFateKnotsDeleteRun(api, payload ?? {});
       };
 
       return {
