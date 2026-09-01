@@ -88,11 +88,13 @@ V1 story-transition kinds are exactly:
 - `camp`
 - `finale`
 
-`loot` is a **run phase**, not a story-transition kind. The engine opens loot after encounter victory when canonical encounter loot exists.
+`loot` is a **run phase**, not a story-transition kind. The engine opens loot after encounter victory when canonical encounter loot exists. Every encounter loot entry must be an `item` or `equipment` card.
 
 Normal story choices are selectable only from `exploration`.
 
-A `finale` transition moves the run into `finale`. While the run is in `finale`, the story resolver exposes only a combat transition whose `encounterId` equals `finale.finalEncounterId`. If no final encounter exists, finale completion/choice authority remains explicit elsewhere; do not improvise a generic finale transition loop.
+A `finale` transition moves the run into `finale`. While the run is in `finale`, the story resolver exposes only a combat transition whose `encounterId` equals `finale.finalEncounterId`. If the final encounter yields loot, the originating finale transition/encounter identity remains attached through loot settlement so the composed loot authority can return the run to `finale` rather than incorrectly resetting it to exploration.
+
+If no final encounter exists, finale completion/choice authority remains explicit elsewhere; do not improvise a generic finale transition loop.
 
 The playability gate requires at least one finale transition. When `finalEncounterId` exists, a matching combat transition must originate from a finale-entry knot. Do not replace this bounded deadlock check with a generic workflow engine.
 
@@ -112,6 +114,8 @@ Do not replace this with scripts, expression evaluation, arbitrary prompt condit
 
 AI1 scene packets derive `visibleFacts` and `availableTransitionIds` from the canonical story resolver. Renderer/host code must not inject arbitrary transition lists.
 
+Combat `reveal` effects are run-owned deferred patches. In V1 `revealId` is exactly a canonical `story.knots` id; the composed combat/run resolver applies successful reveal patches to `revealedKnotIds`. Do not invent a second generic reveal namespace.
+
 Combat transitions do not reveal/activate their destination knot before victory. Retreat restores the source knot/location. Story transition and encounter ids remain attached until combat has actually exited so mid-combat persistence stays coherent.
 
 The V1 encounter opening position is fixed at `front + near` for both player and opposition actors. Tactical differentiation begins through movement cards. Do not add encounter coordinates or per-enemy placement unless a later design task explicitly requests it.
@@ -124,8 +128,8 @@ World Forge creates complete spoiler-safe player templates tagged exactly `playe
 - AI2 and US1 may optionally select one template each
 - selected player templates must be distinct in V1
 - encounter opponents may not use a `player-template`
+- every character actually referenced by an encounter must have an explicit combat controller
 - generic enemy templates may use `opposition-template`
-- an `opposition-template` used in encounters must have an explicit combat controller
 
 V1 intentionally does not implement point-buy, class trees, origin combinators, or a large character-builder subsystem. The selected complete template becomes actor state through the engine run-setup helper.
 
@@ -151,6 +155,8 @@ The implemented V1 compatibility path uses a separate OpenCode `serve` process r
 V1 Fate Knots AI0 runtime has no tools by default: no filesystem, shell, MCP, web, image generation, GitHub or project memory. World Forge image generation is a separate authority surface and must not be attached to the NPC actor merely because both use AI.
 
 AI0 calls are packet-driven/stateless. NPC continuity comes from canonical persona/known/relationship facts and current scene/combat packets supplied by the engine. AI0 output is validated before the engine accepts any interaction or combat choice.
+
+The Electron AI0 IPC boundary owns the fixed Fate policy/system prompt. Renderer/room-host requests may supply bounded runtime data only; do not reintroduce renderer-controlled `policyText` or `systemPrompt` fields.
 
 ## Fixed combat direction
 
@@ -180,6 +186,8 @@ The action queue is built after movement has resolved. Before every queued entry
 
 Cards default to `normal` priority if they do not define a priority tier. Do not add an initiative die or random tie break.
 
+A card effect using `primaryTarget` makes a primary target mandatory at commit time. V1 does **not** define secondary-target legality/commit semantics; World Forge rejects `secondaryTarget` effects rather than allowing Codex or AI to invent a second-target rule.
+
 `0 HP` means `fallen` during combat. Party defeat ends the run.
 
 ## Fixed V1 party-victory recovery
@@ -197,6 +205,8 @@ If a lasting wound is desired later, represent it explicitly as an injury/status
 - damage/heal/resource/card ownership/movement effects are immediate state changes
 - shields are turn-scoped and clear in aftermath
 - direct combat stat modifiers are turn-scoped and clear in aftermath
+- V1 direct `modify-stat` effects may modify only `speed` or `maxHp`; attack/defense stat effects are rejected until an explicit combat formula uses them
+- status-definition `modifiers` are not a V1 authored mechanic and World Forge rejects non-empty status modifier lists
 - a non-persistent status without `durationTurns` lasts only the current turn and clears in aftermath
 - a status with `durationTurns: N` survives the application turn and then remains for N complete following turns
 - timed status counters do not decrement in the application turn
@@ -204,7 +214,7 @@ If a lasting wound is desired later, represent it explicitly as an injury/status
 - a persistent status without `durationTurns` remains until explicit removal
 - `durationTurns` overrides default status persistence for that application
 
-If a design later needs a multi-turn stat change, represent it through an explicit status definition/card rather than adding another modifier timer system.
+If a design later needs a multi-turn stat change, represent it through an explicit supported status/card contract rather than adding another modifier timer system silently.
 
 ## Fixed V1 inventory and loot law
 
@@ -240,11 +250,19 @@ Enemy mechanics remain engine-owned. Tactical choice has exactly two controller 
 - `policy`: deterministic engine policy identified by an explicit `policyId`
 - `ai0`: personality-driven NPC choice over engine-provided legal options
 
+Every character referenced by a canonical encounter must have one of those controllers. `opposition-template` is useful content metadata but is not the authority gate by itself.
+
+V1 currently registers exactly one deterministic policy id: `first-legal`. It is deliberately non-personality-driven and chooses:
+
+1. first legal action by stable card id, then stable target id
+2. otherwise first legal movement by stable card id, then stable target id
+3. otherwise an explicit empty commit
+
+It intentionally selects at most one card slot per turn because the current commit contract has one shared `primaryTargetId`. Do not invent additional policy IDs or personality heuristics until a later task explicitly defines them.
+
 AI0 receives only combat-visible state and legal card/target options. It must not receive other participants' hidden commits or hidden canon. AI0 returns a choice; the normal legality/commit path validates it again before storage.
 
-Simple creatures may use explicit deterministic policies. AI0 is intended for NPCs/bosses where personality adds value.
-
-Individual policy heuristics are not globally fixed. Do not silently invent named policy behavior unless a task explicitly defines it.
+Simple creatures may use `first-legal`. AI0 is intended for NPCs/bosses where personality adds value.
 
 ## Fixed World Forge and asset authority
 
@@ -252,11 +270,13 @@ AI1 World Forge authoring produces a **non-canonical candidate**. It does not di
 
 The engine owns Forge `requestId`, `universeId` and `createdAt`. AI1 must round-trip them unchanged.
 
+Unknown AI/disk Universe input crosses one parser boundary before it becomes canonical. Strings are normalized before identity/reference validation, required nested shapes are checked before typed normalization, and the normalized result is validated again. Do not replace this with `as FateKnotsUniversePackage` at an untrusted boundary.
+
 Before materialization every visual asset path is a `fate-knots-pending://<assetId>` sentinel. AI-authored local paths/URLs are not canonical.
 
 The canonical pipeline is:
 
-`AI1 draft -> structural/playability validation -> asset materialization -> final validation -> durable Universe save`
+`AI1 draft -> unknown/canonical boundary -> structural/playability validation -> asset materialization -> managed-file verification -> final validation -> durable Universe save`
 
 Do not bypass materialization with guessed placeholder paths or missing files.
 
@@ -268,20 +288,32 @@ Batching rules:
 - six-to-eight related illustrations are preferred when quality is acceptable
 - four/five compatible cells may still use a sheet when it avoids wasteful provider calls
 - small tails may fall back to single generation
-- partial success is retained; failed cells may regenerate independently
+- each plan aspect ratio describes an individual cell; sheet source aspect ratio is derived from grid dimensions × cell ratio
+- partial success is retained; missing cells may regenerate independently
+- foreign/duplicate provider asset IDs are malformed and fail closed
 - runtime consumes extracted individual assets, not the original sheet
 
 Generated card art contains illustration only. Typography, rules, icons, frame and interaction state remain renderer-owned.
 
 Canonical card-art binding uses one asset tag: `card-art:<cardId>`. The binding asset is kind `other`; duplicate/foreign bindings are invalid. Do not invent a second card-art mapping in Babylon code.
 
+Before finalization every materialized runtime asset must be a readable, non-empty `image/*` file under the managed Fate Knots `assets/` storage tree. Provider URLs, `data:`/blob URLs, outside paths and guessed paths are not canonical.
+
 World Forge image generation is not an AI0 tool capability.
+
+The canonical Universe durable save is the Forge commit point. A later provenance/checkpoint write failure is a retryable warning and must not make an already-saved universe appear to have failed.
 
 ## Fixed persistence authority
 
 RoomHost `setState/getState` is a volatile hot cache, not persistence.
 
-Fate Knots restart-safe state is written under managed Game Room storage. Universe Package and Run snapshots are persisted separately. Mid-combat saves preserve combat-runtime state and active story transition/encounter identity.
+Fate Knots restart-safe authority is one atomically-written `state-v1.json` envelope under managed Game Room storage containing the validated Universe store and Run store together. The older split `universes-v1.json` / `runs-v1.json` files are migration input only when no envelope exists; invalid durable state fails closed rather than being sanitized to empty and overwritten.
+
+Mid-combat saves preserve combat-runtime state and active story transition/encounter identity.
+
+Universe IDs are immutable canonical identities. Saving a different Universe Package under an existing `universeId` is rejected. Run creation IDs are host-generated rather than renderer supplied; ordinary snapshot saves update the existing run identity.
+
+`activeRunId`, `activeUniverseId` and the active run's `universeId` must remain coherent. Run/universe deletion also clears associated Fate DM session metadata.
 
 Do not move canonical saves into RoomHost Map, localStorage, Babylon scene objects, provider session history or AI memory.
 
@@ -336,12 +368,14 @@ The following remain balancing/content/provider decisions rather than renderer c
 - exact player/base stat values generated for a universe
 - exact starting card catalogs generated for a universe
 - exact energy/resource costs
-- exact heuristics/content for individual deterministic enemy policies
+- future deterministic enemy policy heuristics beyond the V1 `first-legal` baseline
 - exact loot quantities/content generated by a given encounter
 - exact camp healing and when equipment changes are permitted in scene flow
 - exact symbolic music notation/synthesis backend
 - final persistence migration naming for the transient loot-pool field
 - concrete image-provider mechanics that stay behind the materializer adapter
+- any future secondary-target legality/commit grammar
+- any future attack/defense combat formula
 
 ## Areas where Codex has creative freedom
 
