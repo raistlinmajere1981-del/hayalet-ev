@@ -43,6 +43,7 @@ import {
   createFateKnotsRunCommands,
   type FateKnotsRunCommandDependencies,
 } from "../main-functions/fate-knots/host/run-runtime.js";
+import { createFateKnotsRunSetupCommands } from "../main-functions/fate-knots/host/run-setup-runtime.js";
 import { pushFateKnotsHubState } from "../main-functions/fate-knots/host/runtime-sync.js";
 import {
   clearUs1SyncLoop as backgammonClearUs1SyncLoop,
@@ -224,11 +225,13 @@ export default function createGameRoomHostRuntime() {
       };
 
       const fateKnotsManagementCommands = createFateKnotsManagementCommands(api);
+      const fateKnotsRunSetupCommands = createFateKnotsRunSetupCommands(api);
       const fateKnotsRunCommands = createFateKnotsRunCommands(api, {
         isPlayerSeatAvailable: isFateKnotsPlayerSeatAvailable,
       });
       const fateKnotsCommands = {
         ...fateKnotsManagementCommands,
+        ...fateKnotsRunSetupCommands,
         ...fateKnotsRunCommands,
       };
       for (const [commandName, handler] of Object.entries(fateKnotsCommands)) {
