@@ -3,6 +3,15 @@ export interface GameRoomHostApi {
   getLocale?: () => unknown;
   getState: (key: string) => unknown;
   setState: (key: string, value: unknown) => unknown;
+  registerCommand?: (
+    commandName: string,
+    handler: (payload: unknown) => unknown,
+    options?: {
+      description?: string;
+      exposure?: "public" | "internal";
+      scope?: "system" | "room-ui" | "assistant" | "ai-slots" | "us1";
+    }
+  ) => void;
 }
 
 interface GameRoomBootstrapDependencies {
