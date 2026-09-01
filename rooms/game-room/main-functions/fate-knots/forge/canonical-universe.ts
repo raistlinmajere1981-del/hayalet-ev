@@ -60,6 +60,27 @@ function validateRunStartContract(
   return issues;
 }
 
+function validateCardArtContract(
+  universe: FateKnotsUniversePackage
+): FateKnotsUniverseValidationIssue[] {
+  const issues: FateKnotsUniverseValidationIssue[] = [];
+  const assetIds = new Set(universe.assets.map((asset) => asset.id));
+
+  universe.cards.forEach((card, index) => {
+    if (card.artAssetId === undefined || card.artAssetId === null) return;
+    const artAssetId = card.artAssetId.trim();
+    if (artAssetId === "" || !assetIds.has(artAssetId)) {
+      issues.push({
+        code: "missing-reference",
+        path: `cards[${index}].artAssetId`,
+        ...(artAssetId !== "" ? { value: artAssetId } : {}),
+      });
+    }
+  });
+
+  return issues;
+}
+
 function cloneRunStartContract(universe: FateKnotsUniversePackage): FateKnotsUniversePackage {
   return {
     ...universe,
@@ -88,16 +109,25 @@ function cloneRunStartContract(universe: FateKnotsUniversePackage): FateKnotsUni
           : {}),
       })
     ),
+    cards: universe.cards.map((card) => ({
+      ...card,
+      ...(typeof card.artAssetId === "string"
+        ? { artAssetId: card.artAssetId.trim() }
+        : card.artAssetId === null
+          ? { artAssetId: null }
+          : {}),
+    })),
   };
 }
 
 /**
  * Final World Forge acceptance gate for a runnable V1 universe.
  *
- * The structural validator remains responsible for the full Universe Package.
- * This layer adds only the deterministic data required to create a run without
+ * The structural validator remains responsible for the broad Universe Package.
+ * This layer adds deterministic data required to create/render a run without
  * renderer/Codex defaults: a canonical start node, explicit player-selectable
- * character templates, and an initial lightweight position for every character.
+ * character templates, initial lightweight positions and valid optional card-art
+ * asset references.
  */
 export function normalizeFateKnotsCanonicalUniversePackage(
   candidate: unknown
@@ -105,7 +135,10 @@ export function normalizeFateKnotsCanonicalUniversePackage(
   const normalized = normalizeFateKnotsUniversePackage(candidate);
   if (!normalized.valid || !normalized.package) return normalized;
 
-  const issues = validateRunStartContract(normalized.package);
+  const issues = [
+    ...validateRunStartContract(normalized.package),
+    ...validateCardArtContract(normalized.package),
+  ];
   if (issues.length > 0) {
     return { valid: false, package: null, issues };
   }
