@@ -10,17 +10,10 @@ import type {
   FateKnotsTeamId,
 } from "./contracts.js";
 import {
-  buildFateKnotsAvailableCardIds,
-  evaluateFateKnotsCardLegality,
-  type FateKnotsCardCatalog,
-} from "./card-legality.js";
-
-const ACTION_KINDS = new Set<FateKnotsCardDefinition["kind"]>([
-  "attack",
-  "defense",
-  "ability",
-  "item",
-]);
+  buildFateKnotsActorCombatLegalOptions,
+  type FateKnotsCombatLegalCardOption,
+  type FateKnotsCombatOptionCatalog,
+} from "./combat-options.js";
 
 export interface FateKnotsEnemyVisibleActorState {
   actorId: string;
@@ -33,11 +26,7 @@ export interface FateKnotsEnemyVisibleActorState {
   injuryIds: string[];
 }
 
-export interface FateKnotsEnemyLegalCardOption {
-  cardId: string;
-  targetRequired: boolean;
-  legalPrimaryTargetIds: string[];
-}
+export type FateKnotsEnemyLegalCardOption = FateKnotsCombatLegalCardOption;
 
 export interface FateKnotsAi0CombatDecisionRequest {
   combatId: string;
@@ -75,7 +64,7 @@ export interface FateKnotsAi0RequestBuildResult {
   issues: FateKnotsEnemyControllerIssue[];
 }
 
-export interface FateKnotsEnemyControllerCatalog extends FateKnotsCardCatalog {
+export interface FateKnotsEnemyControllerCatalog extends FateKnotsCombatOptionCatalog {
   cards: readonly FateKnotsCardDefinition[];
   equipment: readonly FateKnotsEquipmentDefinition[];
   statuses: readonly FateKnotsStatusDefinition[];
@@ -94,67 +83,6 @@ function toVisibleActor(actor: FateKnotsActorState): FateKnotsEnemyVisibleActorS
   };
 }
 
-function getLegalTargets(
-  state: FateKnotsCombatState,
-  actor: FateKnotsActorState,
-  card: FateKnotsCardDefinition,
-  catalog: FateKnotsEnemyControllerCatalog
-): FateKnotsEnemyLegalCardOption | null {
-  const withoutTarget = evaluateFateKnotsCardLegality(card, {
-    phase: "combat-commit",
-    actor,
-    target: null,
-    cards: catalog.cards,
-    equipment: catalog.equipment,
-    statuses: catalog.statuses,
-  });
-
-  if (withoutTarget.legal) {
-    return {
-      cardId: card.id,
-      targetRequired: false,
-      legalPrimaryTargetIds: [],
-    };
-  }
-
-  const legalPrimaryTargetIds = state.actors
-    .filter((target) =>
-      evaluateFateKnotsCardLegality(card, {
-        phase: "combat-commit",
-        actor,
-        target,
-        cards: catalog.cards,
-        equipment: catalog.equipment,
-        statuses: catalog.statuses,
-      }).legal
-    )
-    .map((target) => target.actorId);
-
-  if (legalPrimaryTargetIds.length === 0) return null;
-  return {
-    cardId: card.id,
-    targetRequired: true,
-    legalPrimaryTargetIds,
-  };
-}
-
-function buildLegalOptions(
-  state: FateKnotsCombatState,
-  actor: FateKnotsActorState,
-  catalog: FateKnotsEnemyControllerCatalog,
-  slot: "movement" | "action"
-): FateKnotsEnemyLegalCardOption[] {
-  const available = new Set(buildFateKnotsAvailableCardIds(actor, catalog));
-
-  return catalog.cards
-    .filter((card) => available.has(card.id))
-    .filter((card) =>
-      slot === "movement" ? card.kind === "movement" : ACTION_KINDS.has(card.kind)
-    )
-    .map((card) => getLegalTargets(state, actor, card, catalog))
-    .filter((option): option is FateKnotsEnemyLegalCardOption => option !== null);
-}
-
 export function isFateKnotsAi0EnemyController(
   controller: FateKnotsEnemyControllerDefinition
 ): controller is Extract<FateKnotsEnemyControllerDefinition, { kind: "ai0" }> {
@@ -171,8 +99,9 @@ export function isFateKnotsAi0EnemyController(
  * - hidden world/canon facts
  * - engine outcome calculations
  *
- * AI0 chooses only among engine-provided legal options. The returned decision
- * must still be revalidated by the normal commit/legality path.
+ * AI0 and player-facing option surfaces use the same shared deterministic
+ * legality option builder. The returned decision must still be revalidated by
+ * the normal commit/legality path.
  */
 export function buildFateKnotsAi0CombatDecisionRequest(
   state: FateKnotsCombatState,
@@ -198,6 +127,8 @@ export function buildFateKnotsAi0CombatDecisionRequest(
     return { ok: false, request: null, issues: [{ code: "controller-not-ai0", actorId }] };
   }
 
+  const legalOptions = buildFateKnotsActorCombatLegalOptions(state, actor, catalog);
+
   return {
     ok: true,
     request: {
@@ -206,8 +137,8 @@ export function buildFateKnotsAi0CombatDecisionRequest(
       actorId,
       ownActor: toVisibleActor(actor),
       visibleActors: state.actors.map(toVisibleActor),
-      movementOptions: buildLegalOptions(state, actor, catalog, "movement"),
-      actionOptions: buildLegalOptions(state, actor, catalog, "action"),
+      movementOptions: legalOptions.movementOptions,
+      actionOptions: legalOptions.actionOptions,
     },
     issues: [],
   };
