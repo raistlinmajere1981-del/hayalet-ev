@@ -3,19 +3,21 @@
 (function (global) {
   "use strict";
 
-  const registry = global.GameRoomBackgammonStageRuntime;
-  if (!registry || typeof registry.createBackgammonStageRuntime !== "function") return;
+  const factories = global.GameRoomUiFactories;
+  if (!factories || typeof factories.createBackgammonStageRuntime !== "function") return;
 
-  const createStageRuntime = registry.createBackgammonStageRuntime;
+  const createStageRuntime = factories.createBackgammonStageRuntime;
   const instances = new Set();
+  const lifecycleRegistry =
+    global.GameRoomBackgammonStageRuntime || (global.GameRoomBackgammonStageRuntime = {});
 
-  registry.createBackgammonStageRuntime = function createTrackedBackgammonStageRuntime(deps) {
+  factories.createBackgammonStageRuntime = function createTrackedBackgammonStageRuntime(deps) {
     const instance = createStageRuntime(deps);
     if (instance && typeof instance.destroy === "function") instances.add(instance);
     return instance;
   };
 
-  registry.destroyAll = function destroyAllBackgammonStages() {
+  lifecycleRegistry.destroyAll = function destroyAllBackgammonStages() {
     instances.forEach(function (instance) {
       try {
         instance.destroy();
