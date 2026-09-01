@@ -52,6 +52,7 @@
     const gameRoomHomeFeatureId = "game-room-home";
     const backgammonFeatureId = bootstrapRuntime.featureId;
     const teamTetrisFeatureId = bootstrapRuntime.teamTetrisFeatureId;
+    const yahtzeeFeatureId = "yahtzee";
     const fateKnotsFeatureId = "fate-knots";
     const contextRuntime = bootstrapRuntime.contextRuntime;
     const scrollRuntime = bootstrapRuntime.scrollRuntime;
@@ -83,13 +84,11 @@
     }
 
     function disposeBackgammonStage(): void {
-      const stageRuntime = (
-        global as unknown as {
-          GameRoomBackgammonStageRuntime?: { destroyAll?: () => void };
-        }
-      ).GameRoomBackgammonStageRuntime;
-      if (typeof stageRuntime?.destroyAll === "function") {
-        stageRuntime.destroyAll();
+      const disposer = (
+        backgammonUi as GameRoomBackgammonUiModule & { disposeBackgammon?: () => void }
+      ).disposeBackgammon;
+      if (typeof disposer === "function") {
+        disposer.call(backgammonUi);
       }
     }
 
@@ -232,6 +231,11 @@
 
         if (activeFeatureId === teamTetrisFeatureId) {
           teamTetrisUi.renderTeamTetris(root);
+          syncRoomCloseControl(root);
+          return;
+        }
+
+        if (activeFeatureId === yahtzeeFeatureId) {
           syncRoomCloseControl(root);
           return;
         }
