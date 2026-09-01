@@ -35,6 +35,8 @@ const universe: FateKnotsUniversePackage = {
     { id: "scene-visible", kind: "scene", path: "visible.webp" },
     { id: "portrait-player", kind: "portrait", path: "player.webp" },
     { id: "portrait-enemy", kind: "portrait", path: "enemy.webp" },
+    { id: "card-art-player", kind: "other", path: "player-card.webp" },
+    { id: "card-art-enemy", kind: "other", path: "enemy-card.webp" },
   ],
   locations: [
     {
@@ -131,6 +133,7 @@ const universe: FateKnotsUniversePackage = {
       kind: "attack",
       name: "Visible Strike",
       description: "Deal a visible attack.",
+      artAssetId: "card-art-player",
       tags: ["visible"],
       effects: [
         {
@@ -148,6 +151,7 @@ const universe: FateKnotsUniversePackage = {
       kind: "attack",
       name: "enemy-secret-card-name",
       description: "enemy-secret-card-description",
+      artAssetId: "card-art-enemy",
       tags: ["secret"],
       effects: [],
       presentation: [],
@@ -297,12 +301,17 @@ void test("gameplay projection keeps visible run state while excluding hidden ca
     "equipment-card",
     "player-card",
   ]);
+  assert.equal(
+    result.state.cards.find((card) => card.cardId === "player-card")?.artAssetId,
+    "card-art-player"
+  );
   assert.deepEqual(result.state.equipment.map((entry) => entry.equipmentId), ["equipment-1"]);
   assert.deepEqual(result.state.statuses.map((entry) => entry.statusId), ["status-visible"]);
   assert.deepEqual(result.state.assets.map((asset) => asset.assetId).sort(), [
     "asset-bg",
     "asset-cover",
     "asset-page",
+    "card-art-player",
     "portrait-player",
     "scene-visible",
   ]);
@@ -326,6 +335,8 @@ void test("gameplay projection keeps visible run state while excluding hidden ca
     "enemy-secret-card",
     "portrait-enemy",
     "enemy.webp",
+    "card-art-enemy",
+    "enemy-card.webp",
   ]) {
     assert.equal(serialized.includes(forbidden), false, forbidden);
   }
