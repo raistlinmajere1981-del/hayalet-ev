@@ -91,49 +91,77 @@ Delivered:
 - semantic presentation-event helpers in `shared/presentation-events.ts`
 - presentation events report resolved cards, fallen actors, status/position deltas, combat start/end and page transitions without owning mechanics or animation choices
 
-Remaining before Stage C is not new game design; it is local verification/reconciliation only.
-
 Requirements preserved:
 
 - deterministic by default
-- no Babylon dependency
+- no Babylon dependency in the headless core
 - no image/audio generation dependency
-- no Game Room shared integration until the feature core is coherent
+- mechanics remain independent from Game Room presentation
 
 ## Stage C — Persistence and host integration (Nexa + local verification)
 
-Next stage after rebasing/reconciling the current `main` and local Laboratory work:
+Status: substantially implemented on `feat/fate-knots-rebuild`; local reconciliation/typecheck/tests/live validation remain pending.
 
-- universe storage
-- run save/resume
-- feature registration
-- host command family
-- Game Room context/state bridge
-- player/AI transport integration points
-- neutral Hub state surface
-- persistence-safe naming/migration for personal inventory and transient loot state
-- create a Fate Knots AI0 runtime workspace outside the repository under app/user data
+Delivered:
+
+- separate validated persistence for canonical Universe Packages and Run States in `host/persistence.ts`
+- persistence reads reject malformed/incompatible records rather than silently coercing them into canonical state
+- neutral, player-safe Hub projection in `host/hub-state.ts`
+- intent-level Hub management commands for read/select/delete operations; no renderer command can submit raw `SaveUniverse` or `SaveRun` state
+- explicit run bootstrap contract: Forge must provide `map.startNodeId`; character templates must provide `playerSelectable` and `startingPosition`
+- `CreateRun` creates a canonical `run-setup` state from an accepted universe plus explicit player-seat/character assignments
+- `StartRun` separately opens the Forge-authored start node and enters exploration; this keeps map/world canon hidden during character setup
+- player-safe run-setup projection in `host/run-setup-state.ts`; renderer receives selectable public character start data rather than the raw Universe Package
+- Game Room feature registration through `FATE_KNOTS_FEATURE_ID`
+- Fate Knots management/setup/run command families registered by the Game Room host
+- active-feature state bridge emits `fate-knots-hub-state`
+- player seat availability is derived from current Game Room context: local user is available, AI2/US1 require dispatchable slots
+- neutral Hub browser runtime in `ui/hub.js`, `ui/hub.css`, and `ui/bridge.js`
+- Fate Knots browser bridge wraps after the Yahtzee runtime and prevents the feature from falling through to the Tavla renderer
+- Game Room manifest version `2.8.0` registers Fate Knots command specs
+- Fate Knots manifest entry intentionally has no invented `scene`/hotspot coordinates; visual room placement remains a later presentation task
+- structural manifest and installed-copy regression contracts updated for the fourth Game Room feature
+- dedicated `game-room-fate-knots-room-regressions.test.ts` guards host authority, player-safe setup data, Hub load order and the absence of raw browser persistence commands
+
+Still pending in Stage C:
+
+- actual AI1 transport wiring for DM scene/result packets
+- actual isolated AI0 provider/wrapper transport wiring for NPC dialogue and delegated combat choices
+- create the Fate Knots AI0 runtime workspace outside the repository under app/user data
 - materialize only the minimal Fate Knots NPC runtime policy in that workspace when the provider wrapper requires a policy file
 - launch AI0 NPC/combat calls from that isolated workspace so root `AGENTS.md` and `.rovo/*` are never bootstrapped into gameplay context
 - expose an empty tool/MCP capability set for V1 AI0 runtime calls
 - keep AI0 gameplay continuity packet-owned rather than reusing development-agent conversation history
-- wire AI1/AI0 packet builders into the actual provider transport without widening their knowledge/tool surface
-- persist Universe Package and Run State separately so continuing a run never re-runs World Forge
-
-This is the first stage expected to touch shared Game Room/host files and therefore should begin only after the local branch situation is reconciled.
+- any additional host gameplay commands needed to connect the already-headless run/combat/loot authorities to the final presentation runtime
+- persistence migration strategy if an older persisted Fate Knots schema must later be supported
+- local branch reconciliation against current `main`/Laboratory work
+- local typecheck/build/tests and live Game Room validation
 
 ## Stage D — Neutral Hub and World Forge orchestration (shared)
 
-Implement the stable pre-universe management surface and orchestration:
+Status: partially implemented. The neutral Hub/read-management foundation exists; World Forge orchestration is not yet wired.
 
-- saved universes
-- create/continue/reset/delete
-- connection/readiness display
-- World Forge progress
-- draft -> validation -> canonical Universe Package
-- generated theme/assets attached to the universe
+Already delivered from Stage C overlap:
+
+- saved-universe and saved-run Hub projection
+- activate/continue/delete management commands
+- connection/readiness projection
+- player-safe character setup packet
+- provider-independent Universe candidate validation/normalization gate
+- provider-independent Forge asset contracts and optional image-sheet extraction helper
+
+Still required:
+
+- create-new-universe / World Forge orchestration command flow
+- Forge progress/state reporting to the neutral Hub
+- candidate -> validation -> canonical Universe Package acceptance and persistence flow
+- provider adapter for Forge text/content generation without assigning Forge authority to AI1 or AI0 by accident
+- generated theme/assets attached to the accepted universe
 - provider-independent image adapter
-- optional batch image-sheet extraction using `forge/image-sheet.ts`
+- optional batch image-sheet generation/extraction using `forge/image-sheet.ts`
+- neutral Hub controls for character assignment and `CreateRun` / `StartRun` using only the player-safe setup projection
+
+The World Forge provider is deliberately not fixed by the current game-role model. AI1 remains runtime DM and AI0 remains runtime NPC actor; neither should become Forge authority merely as an implementation shortcut.
 
 The Hub must work without a generated book/background/theme.
 
@@ -143,6 +171,7 @@ Batch image generation is an optimization, not a runtime dependency. Prefer 6-8 
 
 Local visual/runtime work after contracts are available:
 
+- choose/implement the actual Game Room Fate Knots feature scene/hotspot placement without changing mechanics
 - closed book reveal
 - opening/page transitions
 - exploration spread
@@ -154,7 +183,7 @@ Local visual/runtime work after contracts are available:
 - unanimous loot-allocation spread
 - camp/finale surfaces
 
-Codex should consume semantic state/events rather than infer mechanics from UI.
+Codex should consume semantic state/events rather than infer mechanics from UI or read hidden Universe Package fields directly.
 
 Use at least two visually different mock universe Theme Packages to prove that the renderer is theme-driven rather than hardcoded to one book design.
 
@@ -182,6 +211,6 @@ Do not make speech a V1 launch dependency.
 
 ## Local testing handoff
 
-GitHub Actions are not assumed available. After the current Laboratory work is finished and branches are merged locally, run the repository's normal typecheck/build/tests and live Game Room checks there.
+GitHub Actions are not assumed available. The Stage C branch now touches shared Game Room host/UI/manifest files, so local reconciliation is mandatory before treating it as merge-ready.
 
-Until then, keep commits small and isolate Fate Knots work from shared room files wherever possible.
+After the current Laboratory work and Fate Knots branch are reconciled locally, run the repository's normal typecheck/build/tests plus installed-copy and live Game Room checks. Do not weaken Fate Knots contracts merely to satisfy an unrelated stale expectation; update stale feature/version expectations deliberately where the fourth Game Room feature changes them.
