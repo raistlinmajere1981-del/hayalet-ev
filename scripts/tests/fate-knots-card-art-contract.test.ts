@@ -24,6 +24,10 @@ void test("Fate Knots card art remains an optional accepted asset binding", () =
 
   assert.match(canonical, /validateCardArtContract/);
   assert.match(canonical, /new Set\(universe\.assets\.map\(\(asset\) => asset\.id\)\)/);
+  assert.match(canonical, /const rawCard = card as unknown/);
+  assert.match(canonical, /const rawArtAssetId = rawCard\["artAssetId"\]/);
+  assert.match(canonical, /typeof rawArtAssetId !== "string"/);
+  assert.match(canonical, /code: "invalid-field-type", path: `cards\[\$\{index\}\]\.artAssetId`/);
   assert.match(canonical, /cards\[\$\{index\}\]\.artAssetId/);
   assert.match(canonical, /code: "missing-reference"/);
 
