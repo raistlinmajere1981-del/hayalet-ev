@@ -80,6 +80,10 @@ function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 }
 
+function isNullableString(value: unknown): boolean {
+  return value === null || readNonEmptyString(value) !== null;
+}
+
 function readStringArray(value: unknown): string[] | null {
   return Array.isArray(value) && value.every((entry) => typeof entry === "string")
     ? value.slice()
@@ -87,8 +91,6 @@ function readStringArray(value: unknown): string[] | null {
 }
 
 function cloneJson<T>(value: T): T {
-  // Persisted Fate Knots state is intentionally JSON-only. Cloning at this
-  // boundary prevents UI/host references from mutating stored snapshots.
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
@@ -122,7 +124,15 @@ function isRunShape(value: unknown): value is FateKnotsRunState {
   ) {
     return false;
   }
-  if (value["activeLocationId"] !== null && typeof value["activeLocationId"] !== "string") {
+  if (
+    !isNullableString(value["activeLocationId"]) ||
+    !isNullableString(value["activeKnotId"]) ||
+    !isNullableString(value["activeStoryTransitionId"]) ||
+    !isNullableString(value["activeEncounterId"])
+  ) {
+    return false;
+  }
+  if (value["activeEncounterId"] !== null && value["activeStoryTransitionId"] === null) {
     return false;
   }
   if (
@@ -148,6 +158,7 @@ function isRunShape(value: unknown): value is FateKnotsRunState {
     if (!isRecord(activeCombat) || !readNonEmptyString(activeCombat["combatId"])) return false;
     if (!isCombatPhase(activeCombat["phase"]) || activeCombat["phase"] !== phase) return false;
     if (!Array.isArray(activeCombat["actors"]) || !Array.isArray(activeCombat["commits"])) return false;
+    if (value["activeStoryTransitionId"] === null || value["activeEncounterId"] === null) return false;
   }
 
   if (value["result"] === "completed" && phase !== "completed") return false;
