@@ -16,7 +16,10 @@
 
 .fate-knots-hub__header,
 .fate-knots-hub__universe-heading,
-.fate-knots-hub__run {
+.fate-knots-hub__run,
+.fate-knots-hub__setup-heading,
+.fate-knots-hub__seat-heading,
+.fate-knots-hub__setup-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -36,7 +39,9 @@
 }
 
 .fate-knots-hub__title,
-.fate-knots-hub__universe-title {
+.fate-knots-hub__universe-title,
+.fate-knots-hub__setup-title,
+.fate-knots-hub__seat-title {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
   font-weight: 500;
@@ -48,7 +53,12 @@
 
 .fate-knots-hub__subtitle,
 .fate-knots-hub__universe-meta,
-.fate-knots-hub__run-meta {
+.fate-knots-hub__run-meta,
+.fate-knots-hub__setup-copy,
+.fate-knots-hub__seat-status,
+.fate-knots-hub__character-meta,
+.fate-knots-hub__character-loadout,
+.fate-knots-hub__setup-note {
   color: rgba(236, 229, 216, 0.62);
 }
 
@@ -90,6 +100,12 @@
   color: rgba(239, 188, 188, 0.88);
 }
 
+.fate-knots-hub__button.is-selected {
+  border-color: rgba(215, 198, 238, 0.7);
+  background: rgba(127, 94, 166, 0.46);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
 .fate-knots-hub__button:disabled {
   opacity: 0.38;
   cursor: default;
@@ -102,6 +118,7 @@
 }
 
 .fate-knots-hub__universe,
+.fate-knots-hub__setup,
 .fate-knots-hub__empty,
 .fate-knots-hub__warning,
 .fate-knots-hub__message {
@@ -153,6 +170,89 @@
   font-size: 11px;
 }
 
+.fate-knots-hub__setup {
+  margin-top: 24px;
+  padding: 24px;
+}
+
+.fate-knots-hub__setup-heading {
+  align-items: flex-start;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(235, 226, 207, 0.1);
+}
+
+.fate-knots-hub__setup-title {
+  font-size: 28px;
+}
+
+.fate-knots-hub__setup-copy {
+  max-width: 720px;
+  margin: 8px 0 0;
+  line-height: 1.55;
+}
+
+.fate-knots-hub__seat {
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(235, 226, 207, 0.08);
+}
+
+.fate-knots-hub__seat-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.fate-knots-hub__seat-title {
+  font-size: 20px;
+}
+
+.fate-knots-hub__seat-status {
+  font-size: 12px;
+}
+
+.fate-knots-hub__character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.fate-knots-hub__character-choice {
+  min-height: 112px;
+  border-radius: 14px;
+  padding: 14px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 9px;
+  line-height: 1.25;
+}
+
+.fate-knots-hub__character-meta,
+.fate-knots-hub__character-loadout {
+  display: block;
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.fate-knots-hub__character-loadout {
+  color: rgba(236, 229, 216, 0.78);
+}
+
+.fate-knots-hub__setup-footer {
+  align-items: flex-start;
+  padding-top: 20px;
+}
+
+.fate-knots-hub__setup-note {
+  max-width: 680px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .fate-knots-hub__empty,
 .fate-knots-hub__warning,
 .fate-knots-hub__message {
@@ -179,9 +279,18 @@
 
   .fate-knots-hub__header,
   .fate-knots-hub__universe-heading,
-  .fate-knots-hub__run {
+  .fate-knots-hub__run,
+  .fate-knots-hub__setup-heading,
+  .fate-knots-hub__seat-heading,
+  .fate-knots-hub__setup-footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .fate-knots-hub__seat-title-group {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
 
   .fate-knots-hub__actions {
