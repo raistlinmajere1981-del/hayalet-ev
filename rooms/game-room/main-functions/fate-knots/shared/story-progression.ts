@@ -197,7 +197,6 @@ function isTransitionLegal(
   return true;
 }
 
-/** Initializes only the story portion of an already-created run. */
 export function initializeFateKnotsStoryProgression(
   universe: FateKnotsUniversePackage,
   runInput: FateKnotsRunState
@@ -270,10 +269,6 @@ export function buildFateKnotsStoryView(
   };
 }
 
-/**
- * Applies an engine-approved story transition. Combat creation remains separate;
- * combat transitions return the canonical encounter definition to the caller.
- */
 export function applyFateKnotsStoryTransition(
   universe: FateKnotsUniversePackage,
   runInput: FateKnotsRunState,
@@ -317,7 +312,7 @@ export function applyFateKnotsStoryTransition(
       ...fail(runInput, {
         code: "encounter-not-found",
         transitionId,
-        encounterId: transition.encounterId ?? undefined,
+        ...(transition.encounterId ? { encounterId: transition.encounterId } : {}),
       }),
       transition: structuredClone(transition),
       encounter: null,
@@ -360,7 +355,6 @@ export function applyFateKnotsStoryTransition(
   };
 }
 
-/** Completes a non-combat scene/travel transition after narration/presentation. */
 export function settleFateKnotsStoryTransition(
   universe: FateKnotsUniversePackage,
   runInput: FateKnotsRunState
@@ -389,10 +383,6 @@ export function settleFateKnotsStoryTransition(
   return { ok: true, run, issues: [] };
 }
 
-/**
- * Applies story consequences while combat is still attached to the run, then
- * returns the deterministic next phase that must be supplied to run-flow exit.
- */
 export function resolveFateKnotsStoryCombatOutcome(
   universe: FateKnotsUniversePackage,
   runInput: FateKnotsRunState
@@ -435,7 +425,6 @@ export function resolveFateKnotsStoryCombatOutcome(
     applyPatch(universe, run, transition.onRetreat);
     nextPhase = "exploration";
   } else {
-    // Party defeat is terminal run authority; no successful story progression is applied.
     nextPhase = null;
   }
 
