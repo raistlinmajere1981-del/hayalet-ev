@@ -17,7 +17,8 @@ export type RoomToolOperationName =
   | "tool-check-for-updates"
   | "tool-install"
   | "tool-update"
-  | "tool-run";
+  | "tool-run"
+  | "fate-knots-ai0-call";
 
 export interface RoomToolRuntimePaths {
   roomId: string;
@@ -68,6 +69,12 @@ export interface RoomToolRunResult {
   cancelled: boolean;
   stdout: string;
   stderr: string;
+}
+
+export interface RoomToolFateKnotsAi0Result {
+  text: string;
+  workspacePath: string;
+  port: number;
 }
 
 interface RoomToolRequestBase {
@@ -144,6 +151,15 @@ export interface RoomToolRunRequest extends RoomToolToolRequestBase {
   timeoutMs?: number;
 }
 
+export interface RoomToolFateKnotsAi0CallRequest extends RoomToolRequestBase {
+  operation: "fate-knots-ai0-call";
+  universeId: string;
+  policyText: string;
+  systemPrompt: string;
+  payload: unknown;
+  timeoutMs?: number;
+}
+
 export type RoomToolCallRequest =
   | RoomToolResolvePathsRequest
   | RoomToolEnsureDirRequest
@@ -156,7 +172,8 @@ export type RoomToolCallRequest =
   | RoomToolCheckForUpdatesRequest
   | RoomToolInstallRequest
   | RoomToolUpdateRequest
-  | RoomToolRunRequest;
+  | RoomToolRunRequest
+  | RoomToolFateKnotsAi0CallRequest;
 
 export interface RoomToolCancelRequest {
   roomId: string;
@@ -181,6 +198,7 @@ export interface RoomToolCallResult {
   tool?: RoomToolStatus;
   update?: RoomToolUpdateCheck;
   run?: RoomToolRunResult;
+  fateKnotsAi0?: RoomToolFateKnotsAi0Result;
 }
 
 export interface RoomToolCancelResult {
