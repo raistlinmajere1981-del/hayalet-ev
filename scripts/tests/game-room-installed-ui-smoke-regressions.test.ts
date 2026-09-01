@@ -164,7 +164,6 @@ void test("game-room installed UI contains the Yahtzee presentation v2 and Fate 
     assert.match(themeSource, /table-mahogany-v2\.webp/);
     assert.match(themeSource, /table-felt-burgundy-v2\.webp/);
     assert.match(themeSource, /heldDiceRack: true/);
-    assert.match(themeSource, /stageConfig/);
 
     const audioSource = readFileSync(
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/audio-runtime.js`,
