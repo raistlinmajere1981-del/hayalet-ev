@@ -46,6 +46,7 @@ import {
   handleFateKnotsActivateRun,
   handleFateKnotsActivateUniverse,
   handleFateKnotsCreateRun,
+  handleFateKnotsCreateUniverse,
   handleFateKnotsDeleteRun,
   handleFateKnotsDeleteUniverse,
   handleFateKnotsRefresh,
@@ -217,6 +218,9 @@ export default function createGameRoomHostRuntime() {
 
       commands[FATE_KNOTS_COMMAND_NAMES.refresh] = function () {
         return handleFateKnotsRefresh(api);
+      };
+      commands[FATE_KNOTS_COMMAND_NAMES.createUniverse] = function (payload?: unknown) {
+        return handleFateKnotsCreateUniverse(api, payload ?? {});
       };
       commands[FATE_KNOTS_COMMAND_NAMES.saveUniverse] = function (payload?: unknown) {
         return handleFateKnotsSaveUniverse(api, payload ?? {});
