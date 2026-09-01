@@ -84,11 +84,13 @@
     }
 
     function disposeBackgammonStage(): void {
-      const disposer = (
-        backgammonUi as GameRoomBackgammonUiModule & { disposeBackgammon?: () => void }
-      ).disposeBackgammon;
-      if (typeof disposer === "function") {
-        disposer.call(backgammonUi);
+      const stageRuntime = (
+        global as unknown as {
+          GameRoomBackgammonStageRuntime?: { destroyAll?: () => void };
+        }
+      ).GameRoomBackgammonStageRuntime;
+      if (typeof stageRuntime?.destroyAll === "function") {
+        stageRuntime.destroyAll();
       }
     }
 
