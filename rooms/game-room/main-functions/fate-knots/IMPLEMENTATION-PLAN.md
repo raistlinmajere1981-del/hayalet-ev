@@ -19,6 +19,7 @@ Delivered:
 - `shared/contracts.ts`
 - `FORGE-ASSET-CONTRACT.md` for provider-independent image/asset generation boundaries
 - `AI0-RUNTIME-OVERRIDE.md` for game-runtime isolation from the normal Hayalet Ev coding-agent bootstrap
+- `WORLD-FORGE-RUNTIME.md` for provider-neutral Forge lifecycle/authority boundaries
 - `forge/universe-validation.ts` runtime validation + lossless normalization gate for World Forge candidates
 
 No Game Room registration or shared host wiring is required in this stage.
@@ -141,9 +142,9 @@ Still pending in Stage C:
 
 ## Stage D — Neutral Hub and World Forge orchestration (shared)
 
-Status: partially implemented. The neutral Hub/read-management/run-setup foundation exists; World Forge provider orchestration is not yet wired.
+Status: provider-neutral lifecycle and acceptance shell implemented; actual provider adapter/request grammar and generated asset orchestration are still pending.
 
-Already delivered from Stage C overlap:
+Delivered:
 
 - saved-universe and saved-run Hub projection
 - activate/continue/delete management commands
@@ -152,20 +153,30 @@ Already delivered from Stage C overlap:
 - neutral Hub controls for optional participants, unique character assignment, `CreateRun`, and separate `StartRun`
 - provider-independent Universe candidate validation/normalization gate
 - host-only `host/forge-acceptance.ts` gate: an untrusted provider candidate must pass `normalizeFateKnotsCanonicalUniversePackage` before it can reach universe persistence
+- provider-neutral `host/forge-orchestration.ts` lifecycle: `idle -> generating -> validating -> accepted | failed`
+- Forge starts unavailable and cannot enter fake `generating` state until a real provider adapter explicitly marks itself available
+- one active Forge request at a time, with request-id matching across generation/validation completion
+- candidate data is never stored in the lifecycle state; it passes directly into the host-only acceptance gate
+- provider/canonical failures expose only bounded lifecycle metadata to the neutral Hub
+- Hub state now includes only safe Forge metadata: availability, stage, revision, accepted universe ID and short failure code
 - no room-ui/browser command can submit or approve a raw World Forge candidate as canon
+- `WORLD-FORGE-RUNTIME.md` locks the provider/host authority boundary
+- `fate-knots-forge-orchestration.test.ts` guards unavailable/busy/request/lifecycle/failure behavior without inventing Forge content
 - provider-independent Forge asset contracts and optional image-sheet extraction helper
 
 Still required:
 
-- create-new-universe / World Forge orchestration command flow
-- Forge progress/state reporting to the neutral Hub
-- wire provider completion into the host-only canonical acceptance gate
-- provider adapter for Forge text/content generation without assigning Forge authority to AI1 or AI0 by accident
+- explicit create-new-universe / World Forge request command flow once the user-facing Forge request grammar is decided
+- actual provider adapter for Forge text/content generation without assigning Forge authority to AI1 or AI0 by accident
+- mark provider availability and drive the existing lifecycle from that adapter
+- display the already-projected Forge lifecycle/progress state in the neutral Hub presentation
 - generated theme/assets attached to the accepted universe
 - provider-independent image adapter
 - optional batch image-sheet generation/extraction using `forge/image-sheet.ts`
 
 The World Forge provider is deliberately not fixed by the current game-role model. AI1 remains runtime DM and AI0 remains runtime NPC actor; neither should become Forge authority merely as an implementation shortcut.
+
+The user-facing Forge request grammar is also deliberately not invented by the host shell. Do not add mandatory genre/theme/seed fields until that interaction is explicitly designed.
 
 The Hub must work without a generated book/background/theme.
 
@@ -215,6 +226,6 @@ Do not make speech a V1 launch dependency.
 
 ## Local testing handoff
 
-GitHub Actions are not assumed available. The Stage C branch now touches shared Game Room host/UI/manifest files, so local reconciliation is mandatory before treating it as merge-ready.
+GitHub Actions are not assumed available. The Stage C/D branch now touches shared Game Room host/UI/manifest files, so local reconciliation is mandatory before treating it as merge-ready.
 
 After the current Laboratory work and Fate Knots branch are reconciled locally, run the repository's normal typecheck/build/tests plus installed-copy and live Game Room checks. Do not weaken Fate Knots contracts merely to satisfy an unrelated stale expectation; update stale feature/version expectations deliberately where the fourth Game Room feature changes them.
