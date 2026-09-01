@@ -323,6 +323,12 @@
           "exposure": "internal"
         },
         {
+          "name": "GameRoomFateKnotsGetGameplayState",
+          "description": "Read one player-safe Fate Knots active-run projection without exposing hidden canon.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "GameRoomFateKnotsActivateRun",
           "description": "Select one persisted Fate Knots run for continuation.",
           "scope": "room-ui",
