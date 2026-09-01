@@ -38,10 +38,11 @@ import {
   initializeYahtzeeState,
   pushYahtzeeState,
 } from "../main-functions/yahtzee/host/runtime.js";
+import { createFateKnotsManagementCommands } from "../main-functions/fate-knots/host/management-runtime.js";
 import {
-  createFateKnotsManagementCommands,
-} from "../main-functions/fate-knots/host/management-runtime.js";
-import { createFateKnotsRunCommands } from "../main-functions/fate-knots/host/run-runtime.js";
+  createFateKnotsRunCommands,
+  type FateKnotsRunCommandDependencies,
+} from "../main-functions/fate-knots/host/run-runtime.js";
 import { pushFateKnotsHubState } from "../main-functions/fate-knots/host/runtime-sync.js";
 import {
   clearUs1SyncLoop as backgammonClearUs1SyncLoop,
@@ -68,8 +69,10 @@ export { teamTetrisEngine };
 
 type BridgeCommandHandler = (handlerApi: GameRoomHostApi, payload: unknown) => unknown;
 type BridgeNoPayloadHandler = (handlerApi: GameRoomHostApi) => unknown;
-
 type FateKnotsSyncApi = Parameters<typeof pushFateKnotsHubState>[0];
+type FateKnotsPlayerSeatId = Parameters<
+  NonNullable<FateKnotsRunCommandDependencies["isPlayerSeatAvailable"]>
+>[0];
 
 export default function createGameRoomHostRuntime() {
   return {
@@ -107,6 +110,14 @@ export default function createGameRoomHostRuntime() {
 
       function pushFateKnotsHubStateCompat(handlerApi: GameRoomHostApi): void {
         pushFateKnotsHubState(handlerApi as unknown as FateKnotsSyncApi);
+      }
+
+      function isFateKnotsPlayerSeatAvailable(seatId: FateKnotsPlayerSeatId): boolean {
+        if (seatId === "user") return true;
+        const context = loadContext(api);
+        return seatId === "ai2"
+          ? context.slots.ai2.dispatchable === true
+          : context.slots.us1.dispatchable === true;
       }
 
       function pushActiveFeatureStateCompat(handlerApi: GameRoomHostApi): void {
@@ -213,7 +224,9 @@ export default function createGameRoomHostRuntime() {
       };
 
       const fateKnotsManagementCommands = createFateKnotsManagementCommands(api);
-      const fateKnotsRunCommands = createFateKnotsRunCommands(api);
+      const fateKnotsRunCommands = createFateKnotsRunCommands(api, {
+        isPlayerSeatAvailable: isFateKnotsPlayerSeatAvailable,
+      });
       const fateKnotsCommands = {
         ...fateKnotsManagementCommands,
         ...fateKnotsRunCommands,
