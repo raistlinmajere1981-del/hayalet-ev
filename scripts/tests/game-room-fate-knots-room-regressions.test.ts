@@ -65,10 +65,12 @@ void test("Fate Knots host owns management, setup, run persistence and active-fe
   const hostRuntime = readFileSync("rooms/game-room/host/runtime.ts", "utf8");
 
   assert.match(hostRuntime, /FATE_KNOTS_FEATURE_ID/);
+  assert.match(hostRuntime, /createFateKnotsForgeOrchestrator/);
   assert.match(hostRuntime, /createFateKnotsManagementCommands/);
   assert.match(hostRuntime, /createFateKnotsRunSetupCommands/);
   assert.match(hostRuntime, /createFateKnotsRunCommands/);
   assert.match(hostRuntime, /pushFateKnotsHubState/);
+  assert.match(hostRuntime, /fateKnotsForge\.getHubSnapshot\(\)/);
   assert.match(hostRuntime, /isFateKnotsPlayerSeatAvailable/);
   assert.match(hostRuntime, /context\.slots\.ai2\.dispatchable === true/);
   assert.match(hostRuntime, /context\.slots\.us1\.dispatchable === true/);
@@ -142,6 +144,33 @@ void test("World Forge candidates pass a host-only canonical acceptance gate", (
   assert.match(acceptance, /intentionally not a room-ui command/);
   assert.doesNotMatch(manifest, /GameRoomFateKnotsAcceptForgeCandidate/);
   assert.doesNotMatch(hub, /AcceptForgeCandidate/);
+});
+
+void test("World Forge lifecycle exposes progress without leaking request or candidate canon", () => {
+  const orchestration = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/host/forge-orchestration.ts",
+    "utf8"
+  );
+  const hubState = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/host/hub-state.ts",
+    "utf8"
+  );
+
+  assert.match(orchestration, /"idle"/);
+  assert.match(orchestration, /"generating"/);
+  assert.match(orchestration, /"validating"/);
+  assert.match(orchestration, /"accepted"/);
+  assert.match(orchestration, /"failed"/);
+  assert.match(orchestration, /available: boolean/);
+  assert.match(orchestration, /acceptFateKnotsForgeCandidate\(api, candidate\)/);
+  assert.match(orchestration, /state\.stage !== "validating"/);
+  assert.match(orchestration, /normalizeFailureCode/);
+
+  assert.match(hubState, /forge: FateKnotsForgeHubSnapshot/);
+  assert.match(hubState, /forge: cloneForgeSnapshot\(forgeSnapshot\)/);
+  assert.doesNotMatch(hubState, /requestId:/);
+  assert.doesNotMatch(hubState, /candidate:/);
+  assert.doesNotMatch(hubState, /prompt:/);
 });
 
 void test("Fate Knots browser bridge receives Hub projection rather than raw persistence authority", () => {
