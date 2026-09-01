@@ -20,8 +20,7 @@ export type FateKnotsStoryProgressionIssueCode =
   | "transition-settle-not-allowed"
   | "encounter-not-found"
   | "combat-transition-required"
-  | "combat-outcome-not-terminal"
-  | "loot-transition-empty";
+  | "combat-outcome-not-terminal";
 
 export interface FateKnotsStoryProgressionIssue {
   code: FateKnotsStoryProgressionIssueCode;
@@ -178,6 +177,19 @@ function applyDestination(
   }
 }
 
+function restoreSourceDestination(
+  universe: FateKnotsUniversePackage,
+  run: FateKnotsRunState,
+  transition: FateKnotsStoryTransitionDefinition
+): void {
+  const sourceKnot = getKnot(universe, transition.fromKnotId);
+  if (!sourceKnot) return;
+  run.activeKnotId = sourceKnot.id;
+  run.activeLocationId = sourceKnot.locationId;
+  run.revealedKnotIds = unique([...run.revealedKnotIds, sourceKnot.id]);
+  run.revealedLocationIds = unique([...run.revealedLocationIds, sourceKnot.locationId]);
+}
+
 function isTransitionLegal(
   universe: FateKnotsUniversePackage,
   run: FateKnotsRunState,
@@ -325,7 +337,10 @@ export function applyFateKnotsStoryTransition(
 
   if (transition.kind === "combat") {
     run.activeEncounterId = encounter?.id ?? null;
-    if (encounter) applyDestination(universe, run, transition, encounter);
+    if (encounter) {
+      run.activeLocationId = encounter.locationId;
+      run.revealedLocationIds = unique([...run.revealedLocationIds, encounter.locationId]);
+    }
     run.phase = "transition";
   } else {
     run.activeEncounterId = null;
@@ -383,6 +398,11 @@ export function settleFateKnotsStoryTransition(
   return { ok: true, run, issues: [] };
 }
 
+/**
+ * Applies story consequences while terminal combat is still attached. Tracking
+ * ids deliberately remain present until run-flow has actually removed combat,
+ * keeping every intermediate snapshot persistence-valid.
+ */
 export function resolveFateKnotsStoryCombatOutcome(
   universe: FateKnotsUniversePackage,
   runInput: FateKnotsRunState
@@ -423,16 +443,26 @@ export function resolveFateKnotsStoryCombatOutcome(
     }
   } else if (combat.result === "retreat") {
     applyPatch(universe, run, transition.onRetreat);
+    restoreSourceDestination(universe, run, transition);
     nextPhase = "exploration";
   } else {
     nextPhase = null;
   }
 
-  run.activeStoryTransitionId = null;
-  run.activeEncounterId = null;
   refreshFinaleUnlock(universe, run);
   run.revision += 1;
   return { ok: true, run, issues: [], nextPhase };
+}
+
+export function clearFateKnotsStoryCombatTracking(
+  runInput: FateKnotsRunState
+): FateKnotsStoryMutationResult {
+  if (runInput.activeCombat) return fail(runInput, { code: "active-combat-exists" });
+  const run = cloneRun(runInput);
+  run.activeStoryTransitionId = null;
+  run.activeEncounterId = null;
+  run.revision += 1;
+  return { ok: true, run, issues: [] };
 }
 
 export function getFateKnotsActiveEncounter(
