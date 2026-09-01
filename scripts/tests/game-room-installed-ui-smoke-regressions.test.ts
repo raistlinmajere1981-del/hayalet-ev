@@ -4,7 +4,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 
 import { createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 
-void test("game-room installed UI contains the Yahtzee presentation v2 runtime", async () => {
+void test("game-room installed UI contains the Yahtzee presentation v2 and Fate Knots hub runtimes", async () => {
   const installedCopy = await createRoomInstalledCopy("game-room");
 
   try {
@@ -17,10 +17,10 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
         protocolSpecs?: Array<{ key?: string; path?: string }>;
       }>;
     };
-    assert.equal(manifest.version, "2.7.0");
+    assert.equal(manifest.version, "2.8.0");
     assert.deepEqual(
       manifest.features?.map((feature) => feature.id),
-      ["backgammon", "team-tetris", "yahtzee"]
+      ["backgammon", "team-tetris", "yahtzee", "fate-knots"]
     );
 
     const yahtzeeFeature = manifest.features?.find((feature) => feature.id === "yahtzee");
@@ -44,6 +44,23 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
       ["game-room-yahtzee-ai-turn", "game-room-yahtzee-us1-transport"]
     );
 
+    const fateKnotsFeature = manifest.features?.find((feature) => feature.id === "fate-knots");
+    assert.ok(fateKnotsFeature);
+    assert.equal(fateKnotsFeature.scene, undefined);
+    assert.deepEqual(
+      fateKnotsFeature.commandSpecs?.map((entry) => entry.name),
+      [
+        "GameRoomFateKnotsGetHubState",
+        "GameRoomFateKnotsActivateUniverse",
+        "GameRoomFateKnotsActivateRun",
+        "GameRoomFateKnotsDeleteRun",
+        "GameRoomFateKnotsDeleteUniverse",
+        "GameRoomFateKnotsGetRunSetup",
+        "GameRoomFateKnotsCreateRun",
+        "GameRoomFateKnotsStartRun",
+      ]
+    );
+
     const indexHtml = readFileSync(`${installedCopy.rootDir}/ui/index.html`, "utf8");
     assert.match(indexHtml, /main-functions\/yahtzee\/styles\.css/);
     assert.match(indexHtml, /main-functions\/yahtzee\/vendor\/babylon\.min\.js/);
@@ -53,6 +70,9 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
     assert.match(indexHtml, /main-functions\/yahtzee\/ui\/audio-runtime\.js/);
     assert.match(indexHtml, /main-functions\/yahtzee\/ui\/runtime\.js/);
     assert.match(indexHtml, /main-functions\/yahtzee\/ui\/bridge\.js/);
+    assert.match(indexHtml, /main-functions\/fate-knots\/ui\/hub\.css/);
+    assert.match(indexHtml, /main-functions\/fate-knots\/ui\/hub\.js/);
+    assert.match(indexHtml, /main-functions\/fate-knots\/ui\/bridge\.js/);
     assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/multiplayer\.css/);
     assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/hybrid-stage\.css/);
     assert.doesNotMatch(indexHtml, /main-functions\/yahtzee\/diegetic-stage\.css/);
@@ -69,11 +89,18 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
     const babylonSceneIndex = indexHtml.indexOf("../main-functions/yahtzee/ui/babylon-scene.js");
     const audioRuntimeIndex = indexHtml.indexOf("../main-functions/yahtzee/ui/audio-runtime.js");
     const yahtzeeRuntimeIndex = indexHtml.indexOf("../main-functions/yahtzee/ui/runtime.js");
+    const yahtzeeBridgeIndex = indexHtml.indexOf("../main-functions/yahtzee/ui/bridge.js");
+    const fateKnotsHubIndex = indexHtml.indexOf("../main-functions/fate-knots/ui/hub.js");
+    const fateKnotsBridgeIndex = indexHtml.indexOf("../main-functions/fate-knots/ui/bridge.js");
+    const bootstrapIndex = indexHtml.indexOf("./bootstrap.js");
     assert.ok(babylonRuntimeIndex >= 0 && babylonRuntimeIndex < themeIndex);
     assert.ok(themeIndex < cameraDirectorIndex);
     assert.ok(cameraDirectorIndex < babylonSceneIndex);
     assert.ok(babylonSceneIndex < audioRuntimeIndex);
     assert.ok(audioRuntimeIndex < yahtzeeRuntimeIndex);
+    assert.ok(yahtzeeBridgeIndex >= 0 && yahtzeeBridgeIndex < fateKnotsHubIndex);
+    assert.ok(fateKnotsHubIndex < fateKnotsBridgeIndex);
+    assert.ok(fateKnotsBridgeIndex < bootstrapIndex);
 
     [
       `${installedCopy.rootDir}/main-functions/yahtzee/styles.css`,
@@ -91,6 +118,9 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
       `${installedCopy.rootDir}/main-functions/yahtzee/assets/hybrid/table-felt-burgundy-v2.webp`,
       `${installedCopy.rootDir}/main-functions/yahtzee/protocols/game-room-yahtzee-ai-turn.md`,
       `${installedCopy.rootDir}/main-functions/yahtzee/protocols/game-room-yahtzee-us1-transport.md`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/hub.css`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/hub.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/bridge.js`,
     ].forEach((filePath) => {
       assert.equal(existsSync(filePath), true, filePath);
     });
@@ -129,7 +159,7 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
       `${installedCopy.rootDir}/main-functions/yahtzee/ui/theme-pirate-deck.js`,
       "utf8"
     );
-  assert.match(themeSource, /pirate-deck-v3/);
+    assert.match(themeSource, /pirate-deck-v3/);
     assert.match(themeSource, /deck-stage-v3\.webp/);
     assert.match(themeSource, /table-mahogany-v2\.webp/);
     assert.match(themeSource, /table-felt-burgundy-v2\.webp/);
@@ -183,6 +213,14 @@ void test("game-room installed UI contains the Yahtzee presentation v2 runtime",
     assert.match(bridgeSource, /roomApi\.offHostMessage\(base\.handleHostMessage\)/);
     assert.match(bridgeSource, /roomApi\.onHostMessage\(handleHostMessage\)/);
     assert.doesNotMatch(bridgeSource, /roomApi\.onHostMessage\s*=(?!=)/);
+
+    const fateKnotsBridgeSource = readFileSync(
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/bridge.js`,
+      "utf8"
+    );
+    assert.match(fateKnotsBridgeSource, /fate-knots-hub-state/);
+    assert.match(fateKnotsBridgeSource, /GameRoomFateKnotsGetHubState/);
+    assert.match(fateKnotsBridgeSource, /GameRoomFateKnotsUi/);
   } finally {
     await installedCopy.cleanup();
   }
