@@ -153,9 +153,9 @@ export interface RoomToolRunRequest extends RoomToolToolRequestBase {
 
 export interface RoomToolFateKnotsAi0CallRequest extends RoomToolRequestBase {
   operation: "fate-knots-ai0-call";
+  roomId: "game-room";
+  requestId: string;
   universeId: string;
-  policyText: string;
-  systemPrompt: string;
   payload: unknown;
   timeoutMs?: number;
 }
