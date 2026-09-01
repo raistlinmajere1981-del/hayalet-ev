@@ -42,7 +42,7 @@ void test("Game Room manifest exposes Yahtzee multiplayer commands and protocols
   const validation = validateRoomManifest(manifest);
 
   assert.equal(validation.valid, true, validation.errors.join("\n"));
-  assert.equal(validation.manifest?.version, "2.7.0");
+  assert.equal(validation.manifest?.version, "2.8.0");
 
   const feature = validation.manifest?.features.find((entry) => entry.id === "yahtzee");
   assert.ok(feature);
