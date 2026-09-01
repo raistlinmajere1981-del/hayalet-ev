@@ -121,8 +121,20 @@ function validateCardArtContract(
   const assetIds = new Set(universe.assets.map((asset) => asset.id));
 
   universe.cards.forEach((card, index) => {
-    if (card.artAssetId === undefined || card.artAssetId === null) return;
-    const artAssetId = card.artAssetId.trim();
+    const rawCard = card as unknown;
+    if (!isRecord(rawCard)) {
+      issues.push({ code: "invalid-field-type", path: `cards[${index}]` });
+      return;
+    }
+
+    const rawArtAssetId = rawCard["artAssetId"];
+    if (rawArtAssetId === undefined || rawArtAssetId === null) return;
+    if (typeof rawArtAssetId !== "string") {
+      issues.push({ code: "invalid-field-type", path: `cards[${index}].artAssetId` });
+      return;
+    }
+
+    const artAssetId = rawArtAssetId.trim();
     if (artAssetId === "" || !assetIds.has(artAssetId)) {
       issues.push({
         code: "missing-reference",
