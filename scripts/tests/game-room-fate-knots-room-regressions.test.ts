@@ -238,6 +238,25 @@ void test("AI0 runtime workspace uses managed Game Room storage instead of repos
   assert.doesNotMatch(electronBridge, /projectRoot/);
 });
 
+void test("active Fate Knots sync emits Hub plus bounded gameplay state after run setup", () => {
+  const runtimeSync = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/host/runtime-sync.ts",
+    "utf8"
+  );
+
+  assert.match(runtimeSync, /readFateKnotsSessionState\(api\)/);
+  assert.match(runtimeSync, /sessionRead\.value\.activeRunId/);
+  assert.match(runtimeSync, /run\.phase === "run-setup"/);
+  assert.match(runtimeSync, /normalizeFateKnotsCanonicalUniversePackage\(storedUniverse\)/);
+  assert.match(runtimeSync, /buildFateKnotsGameplayState\(canonical\.package, run\)/);
+  assert.match(runtimeSync, /"fate-knots-hub-state"/);
+  assert.match(runtimeSync, /"fate-knots-gameplay-state"/);
+  assert.doesNotMatch(runtimeSync, /activeCombat\.commits/);
+  assert.doesNotMatch(runtimeSync, /hiddenKnotIds/);
+  assert.doesNotMatch(runtimeSync, /finale/);
+  assert.doesNotMatch(runtimeSync, /npcRoles/);
+});
+
 void test("Fate Knots browser bridge receives Hub projection rather than raw persistence authority", () => {
   const bridge = readFileSync(
     "rooms/game-room/main-functions/fate-knots/ui/bridge.js",
