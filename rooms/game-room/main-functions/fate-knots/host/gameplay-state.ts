@@ -17,6 +17,7 @@ export interface FateKnotsGameplayCardSummary {
   kind: FateKnotsCardKind;
   name: string;
   description: string;
+  artAssetId: string | null;
   tags: string[];
   resolutionPriority: FateKnotsResolutionPriorityTier;
   consumable: boolean;
@@ -177,6 +178,7 @@ function summarizeCard(card: FateKnotsCardDefinition): FateKnotsGameplayCardSumm
     kind: card.kind,
     name: card.name,
     description: card.description ?? "",
+    artAssetId: card.artAssetId ?? null,
     tags: card.tags.slice(),
     resolutionPriority: card.resolutionPriority ?? "normal",
     consumable: card.consumable === true,
@@ -211,7 +213,7 @@ function summarizeCombat(combat: FateKnotsCombatState | null): FateKnotsGameplay
  * - hidden/revealed knot ids and finale definition
  * - NPC role packets and NPC hidden knowledge
  * - unrevealed locations/nodes/edges and their presentation assets
- * - combat commits and opposition card ownership/availability
+ * - combat commits and opposition card ownership/availability/artwork
  * - raw card effects/reveal ids that may point at hidden canon
  *
  * Theme identity is safe player-facing presentation data. Asset paths are
@@ -379,6 +381,7 @@ export function buildFateKnotsGameplayState(
     universe.map.mapAssetId,
     ...(activeLocation?.sceneAssetIds ?? []),
     ...partyActors.map((actor) => actor.portraitAssetId),
+    ...cards.map((card) => card.artAssetId),
   ]);
   const assets: FateKnotsGameplayAssetSummary[] = [];
   referencedAssetIds.forEach((assetId) => {
