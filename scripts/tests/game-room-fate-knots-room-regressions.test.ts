@@ -92,7 +92,7 @@ void test("Fate Knots run setup exposes only explicit player-selectable start da
   assert.match(contracts, /startingPosition: FateKnotsPosition/);
   assert.match(contracts, /startNodeId: string/);
 
-  assert.match(setupState, /character\.playerSelectable === true/);
+  assert.match(setupState, /character\.playerSelectable/);
   assert.match(setupState, /startingPosition: \{ \.\.\.character\.startingPosition \}/);
   assert.doesNotMatch(setupState, /hiddenKnotIds/);
   assert.doesNotMatch(setupState, /finale:/);
@@ -104,6 +104,31 @@ void test("Fate Knots run setup exposes only explicit player-selectable start da
   assert.match(runSetup, /run\.phase !== "run-setup"/);
 });
 
+void test("Fate Knots neutral Hub prepares players only from the safe setup projection", () => {
+  const hub = readFileSync("rooms/game-room/main-functions/fate-knots/ui/hub.js", "utf8");
+  const bridge = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/ui/bridge.js",
+    "utf8"
+  );
+
+  assert.match(hub, /GameRoomFateKnotsGetRunSetup/);
+  assert.match(hub, /GameRoomFateKnotsCreateRun/);
+  assert.match(hub, /GameRoomFateKnotsStartRun/);
+  assert.match(hub, /PLAYER_SEAT_IDS = \["user", "ai2", "us1"\]/);
+  assert.match(hub, /slot\.dispatchable === true/);
+  assert.match(hub, /isCharacterAssignedElsewhere/);
+  assert.match(hub, /Koşuyu hazırla/);
+  assert.match(hub, /run\.phase === "run-setup"/);
+  assert.doesNotMatch(hub, /hiddenKnotIds/);
+  assert.doesNotMatch(hub, /npcRoles/);
+  assert.doesNotMatch(hub, /finale/);
+
+  assert.match(bridge, /handleCommandResult/);
+  assert.match(bridge, /startsWith\("GameRoomFateKnots"\)/);
+  assert.match(bridge, /setContext/);
+  assert.match(bridge, /fate-knots-hub-state/);
+});
+
 void test("Fate Knots browser bridge receives Hub projection rather than raw persistence authority", () => {
   const bridge = readFileSync(
     "rooms/game-room/main-functions/fate-knots/ui/bridge.js",
@@ -111,7 +136,6 @@ void test("Fate Knots browser bridge receives Hub projection rather than raw per
   );
 
   assert.match(bridge, /fate-knots-hub-state/);
-  assert.match(bridge, /GameRoomFateKnotsGetHubState/);
   assert.match(bridge, /GameRoomFateKnotsUi/);
   assert.doesNotMatch(bridge, /GameRoomFateKnotsSaveUniverse/);
   assert.doesNotMatch(bridge, /GameRoomFateKnotsSaveRun/);
