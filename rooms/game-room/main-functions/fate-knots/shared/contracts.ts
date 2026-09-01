@@ -178,6 +178,7 @@ export interface FateKnotsCardDefinition {
   kind: FateKnotsCardKind;
   name: string;
   description?: string;
+  artAssetId?: string | null;
   tags: string[];
   requirements?: FateKnotsCardRequirement[];
   effects: FateKnotsCardEffect[];
