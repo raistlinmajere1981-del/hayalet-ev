@@ -2,10 +2,14 @@ import {
   FATE_KNOTS_CARD_KINDS,
   FATE_KNOTS_RESOLUTION_PRIORITY_TIERS,
   FATE_KNOTS_SCHEMA_VERSION,
+  FATE_KNOTS_STORY_TRANSITION_KINDS,
   type FateKnotsCardDefinition,
   type FateKnotsCardEffect,
   type FateKnotsEquipmentDefinition,
   type FateKnotsMechanicalEffectTarget,
+  type FateKnotsStoryProgressionPatch,
+  type FateKnotsStoryRequirement,
+  type FateKnotsStoryTransitionDefinition,
   type FateKnotsUniversePackage,
 } from "../shared/contracts.js";
 
@@ -29,6 +33,11 @@ export type FateKnotsUniverseValidationIssueCode =
   | "starting-equipment-card-missing"
   | "invalid-npc-role-link"
   | "invalid-map-edge"
+  | "invalid-story-knot"
+  | "invalid-story-transition"
+  | "invalid-story-encounter"
+  | "invalid-story-start"
+  | "hidden-knot-mismatch"
   | "invalid-finale-reference";
 
 export interface FateKnotsUniverseValidationIssue {
@@ -68,6 +77,8 @@ const EFFECT_TARGETS = new Set<FateKnotsMechanicalEffectTarget>([
   "ownTeam",
   "run",
 ]);
+
+const STORY_TRANSITION_KINDS = new Set<string>(FATE_KNOTS_STORY_TRANSITION_KINDS);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -420,6 +431,167 @@ function validateNpcRoles(
   });
 }
 
+function validateStoryRequirement(
+  value: unknown,
+  path: string,
+  knotIds: ReadonlySet<string>,
+  cardIds: ReadonlySet<string>,
+  issues: FateKnotsUniverseValidationIssue[]
+): void {
+  if (value === undefined) return;
+  if (!isRecord(value)) {
+    issues.push({ code: "invalid-story-transition", path });
+    return;
+  }
+  if (value["completedKnotIds"] !== undefined) {
+    validateStringReferences(value["completedKnotIds"], knotIds, `${path}.completedKnotIds`, issues);
+  }
+  if (value["revealedKnotIds"] !== undefined) {
+    validateStringReferences(value["revealedKnotIds"], knotIds, `${path}.revealedKnotIds`, issues);
+  }
+  if (value["ownedCardIds"] !== undefined) {
+    validateStringReferences(value["ownedCardIds"], cardIds, `${path}.ownedCardIds`, issues);
+  }
+}
+
+function validateStoryPatch(
+  value: unknown,
+  path: string,
+  knotIds: ReadonlySet<string>,
+  locationIds: ReadonlySet<string>,
+  issues: FateKnotsUniverseValidationIssue[]
+): void {
+  if (value === undefined) return;
+  if (!isRecord(value)) {
+    issues.push({ code: "invalid-story-transition", path });
+    return;
+  }
+  if (value["revealKnotIds"] !== undefined) {
+    validateStringReferences(value["revealKnotIds"], knotIds, `${path}.revealKnotIds`, issues);
+  }
+  if (value["completeKnotIds"] !== undefined) {
+    validateStringReferences(value["completeKnotIds"], knotIds, `${path}.completeKnotIds`, issues);
+  }
+  if (value["revealLocationIds"] !== undefined) {
+    validateStringReferences(value["revealLocationIds"], locationIds, `${path}.revealLocationIds`, issues);
+  }
+}
+
+function validateStory(
+  story: unknown,
+  hiddenKnotIds: unknown,
+  locationIds: ReadonlySet<string>,
+  characterIds: ReadonlySet<string>,
+  cardIds: ReadonlySet<string>,
+  issues: FateKnotsUniverseValidationIssue[]
+): { knotIds: Set<string>; encounterIds: Set<string> } {
+  if (!isRecord(story)) {
+    pushTypeIssue(issues, "story", story !== undefined);
+    return { knotIds: new Set(), encounterIds: new Set() };
+  }
+
+  const knots = requireArray(story, "knots", "story", issues);
+  const transitions = requireArray(story, "transitions", "story", issues);
+  const encounters = requireArray(story, "encounters", "story", issues);
+  const knotIds = collectUniqueIds(knots, "story.knots", issues);
+  collectUniqueIds(transitions, "story.transitions", issues);
+  const encounterIds = collectUniqueIds(encounters, "story.encounters", issues);
+
+  const startKnotId = story["startKnotId"];
+  if (!isNonEmptyString(startKnotId) || !knotIds.has(startKnotId)) {
+    issues.push({ code: "invalid-story-start", path: "story.startKnotId", value: String(startKnotId) });
+  }
+
+  const initiallyHidden = new Set<string>();
+  knots?.forEach((value, index) => {
+    const path = `story.knots[${index}]`;
+    if (!isRecord(value) || !isNonEmptyString(value["id"])) return;
+    requireReference(value["locationId"], locationIds, `${path}.locationId`, issues);
+    if (!isStringArray(value["visibleFacts"])) {
+      issues.push({ code: "invalid-story-knot", path: `${path}.visibleFacts` });
+    }
+    if (value["initiallyRevealed"] !== true && value["initiallyRevealed"] !== false) {
+      issues.push({ code: "invalid-story-knot", path: `${path}.initiallyRevealed` });
+    } else if (value["initiallyRevealed"] === false) {
+      initiallyHidden.add(value["id"]);
+    }
+    if (value["tags"] !== undefined && !isStringArray(value["tags"])) {
+      issues.push({ code: "invalid-story-knot", path: `${path}.tags` });
+    }
+  });
+
+  if (isNonEmptyString(startKnotId)) {
+    const start = knots?.find(
+      (value) => isRecord(value) && value["id"] === startKnotId
+    );
+    if (!isRecord(start) || start["initiallyRevealed"] !== true) {
+      issues.push({ code: "invalid-story-start", path: "story.startKnotId", value: startKnotId });
+    }
+  }
+
+  encounters?.forEach((value, index) => {
+    const path = `story.encounters[${index}]`;
+    if (!isRecord(value) || !isNonEmptyString(value["id"])) return;
+    requireReference(value["locationId"], locationIds, `${path}.locationId`, issues);
+    if (!isStringArray(value["opponentCharacterIds"]) || value["opponentCharacterIds"].length === 0) {
+      issues.push({ code: "invalid-story-encounter", path: `${path}.opponentCharacterIds` });
+    } else {
+      value["opponentCharacterIds"].forEach((id, characterIndex) =>
+        requireReference(id, characterIds, `${path}.opponentCharacterIds[${characterIndex}]`, issues)
+      );
+    }
+    if (value["lootCardIds"] !== undefined) {
+      validateStringReferences(value["lootCardIds"], cardIds, `${path}.lootCardIds`, issues);
+    }
+  });
+
+  transitions?.forEach((value, index) => {
+    const path = `story.transitions[${index}]`;
+    if (!isRecord(value) || !isNonEmptyString(value["id"])) return;
+    requireReference(value["fromKnotId"], knotIds, `${path}.fromKnotId`, issues);
+    if (!isNonEmptyString(value["label"])) {
+      issues.push({ code: "invalid-story-transition", path: `${path}.label` });
+    }
+    const kind = value["kind"];
+    if (typeof kind !== "string" || !STORY_TRANSITION_KINDS.has(kind)) {
+      issues.push({ code: "invalid-story-transition", path: `${path}.kind`, value: String(kind) });
+    }
+    if (value["toKnotId"] !== undefined && value["toKnotId"] !== null) {
+      requireReference(value["toKnotId"], knotIds, `${path}.toKnotId`, issues);
+    }
+    if (value["toLocationId"] !== undefined && value["toLocationId"] !== null) {
+      requireReference(value["toLocationId"], locationIds, `${path}.toLocationId`, issues);
+    }
+    if (kind === "combat") {
+      requireReference(value["encounterId"], encounterIds, `${path}.encounterId`, issues);
+    } else if (value["encounterId"] !== undefined && value["encounterId"] !== null) {
+      issues.push({ code: "invalid-story-transition", path: `${path}.encounterId` });
+    }
+    validateStoryRequirement(value["requirements"], `${path}.requirements`, knotIds, cardIds, issues);
+    validateStoryPatch(value["onEnter"], `${path}.onEnter`, knotIds, locationIds, issues);
+    validateStoryPatch(value["onVictory"], `${path}.onVictory`, knotIds, locationIds, issues);
+    validateStoryPatch(value["onRetreat"], `${path}.onRetreat`, knotIds, locationIds, issues);
+    if (kind !== "combat" && (value["onVictory"] !== undefined || value["onRetreat"] !== undefined)) {
+      issues.push({ code: "invalid-story-transition", path });
+    }
+  });
+
+  if (!isStringArray(hiddenKnotIds)) {
+    pushTypeIssue(issues, "hiddenKnotIds", hiddenKnotIds !== undefined);
+  } else {
+    const hiddenSet = new Set(hiddenKnotIds);
+    hiddenKnotIds.forEach((id, index) => requireReference(id, knotIds, `hiddenKnotIds[${index}]`, issues));
+    if (
+      hiddenSet.size !== initiallyHidden.size ||
+      Array.from(initiallyHidden).some((id) => !hiddenSet.has(id))
+    ) {
+      issues.push({ code: "hidden-knot-mismatch", path: "hiddenKnotIds" });
+    }
+  }
+
+  return { knotIds, encounterIds };
+}
+
 /**
  * Runtime validation gate for a World Forge candidate.
  *
@@ -552,6 +724,15 @@ export function validateFateKnotsUniversePackage(
     });
   }
 
+  const storyValidation = validateStory(
+    candidate["story"],
+    candidate["hiddenKnotIds"],
+    locationIds,
+    characterIds,
+    cardIds,
+    issues
+  );
+
   if (!isRecord(candidate["finale"])) {
     pushTypeIssue(issues, "finale", candidate["finale"] !== undefined);
   } else {
@@ -568,6 +749,14 @@ export function validateFateKnotsUniversePackage(
     }
     if (!isStringArray(finale["requiredKnotIds"])) {
       issues.push({ code: "invalid-field-type", path: "finale.requiredKnotIds" });
+    } else {
+      validateStringReferences(finale["requiredKnotIds"], storyValidation.knotIds, "finale.requiredKnotIds", issues);
+    }
+    if (finale["requiredItemIds"] !== undefined) {
+      validateStringReferences(finale["requiredItemIds"], cardIds, "finale.requiredItemIds", issues);
+    }
+    if (finale["finalEncounterId"] !== undefined && finale["finalEncounterId"] !== null) {
+      requireReference(finale["finalEncounterId"], storyValidation.encounterIds, "finale.finalEncounterId", issues);
     }
     if (!isNonEmptyString(finale["successConditionId"])) {
       issues.push({ code: "missing-required-field", path: "finale.successConditionId" });
@@ -577,16 +766,57 @@ export function validateFateKnotsUniversePackage(
     }
   }
 
-  if (!isStringArray(candidate["hiddenKnotIds"])) {
-    pushTypeIssue(issues, "hiddenKnotIds", candidate["hiddenKnotIds"] !== undefined);
-  }
-
   if (issues.length > 0) return { valid: false, package: null, issues };
   return { valid: true, package: candidate as unknown as FateKnotsUniversePackage, issues: [] };
 }
 
 function uniqueTrimmed(values: readonly string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function trimmedPreservingDuplicates(values: readonly string[]): string[] {
+  return values.map((value) => value.trim()).filter(Boolean);
+}
+
+function normalizeStoryRequirement(requirement: FateKnotsStoryRequirement): FateKnotsStoryRequirement {
+  const next: FateKnotsStoryRequirement = {};
+  if (requirement.completedKnotIds) next.completedKnotIds = uniqueTrimmed(requirement.completedKnotIds);
+  if (requirement.revealedKnotIds) next.revealedKnotIds = uniqueTrimmed(requirement.revealedKnotIds);
+  if (requirement.ownedCardIds) next.ownedCardIds = uniqueTrimmed(requirement.ownedCardIds);
+  return next;
+}
+
+function normalizeStoryPatch(patch: FateKnotsStoryProgressionPatch): FateKnotsStoryProgressionPatch {
+  const next: FateKnotsStoryProgressionPatch = {};
+  if (patch.revealKnotIds) next.revealKnotIds = uniqueTrimmed(patch.revealKnotIds);
+  if (patch.completeKnotIds) next.completeKnotIds = uniqueTrimmed(patch.completeKnotIds);
+  if (patch.revealLocationIds) next.revealLocationIds = uniqueTrimmed(patch.revealLocationIds);
+  return next;
+}
+
+function normalizeStoryTransition(
+  transition: FateKnotsStoryTransitionDefinition
+): FateKnotsStoryTransitionDefinition {
+  const next: FateKnotsStoryTransitionDefinition = {
+    ...transition,
+    id: transition.id.trim(),
+    fromKnotId: transition.fromKnotId.trim(),
+    label: transition.label.trim(),
+  };
+  if (transition.toKnotId !== undefined) {
+    next.toKnotId = transition.toKnotId === null ? null : transition.toKnotId.trim();
+  }
+  if (transition.toLocationId !== undefined) {
+    next.toLocationId = transition.toLocationId === null ? null : transition.toLocationId.trim();
+  }
+  if (transition.encounterId !== undefined) {
+    next.encounterId = transition.encounterId === null ? null : transition.encounterId.trim();
+  }
+  if (transition.requirements) next.requirements = normalizeStoryRequirement(transition.requirements);
+  if (transition.onEnter) next.onEnter = normalizeStoryPatch(transition.onEnter);
+  if (transition.onVictory) next.onVictory = normalizeStoryPatch(transition.onVictory);
+  if (transition.onRetreat) next.onRetreat = normalizeStoryPatch(transition.onRetreat);
+  return next;
 }
 
 function normalizeCard(card: FateKnotsCardDefinition): FateKnotsCardDefinition {
@@ -664,6 +894,33 @@ export function normalizeFateKnotsUniversePackage(
         const next = { ...edge };
         if (edge.travelCardIds) next.travelCardIds = uniqueTrimmed(edge.travelCardIds);
         if (edge.tags) next.tags = uniqueTrimmed(edge.tags);
+        return next;
+      }),
+    },
+    story: {
+      ...source.story,
+      startKnotId: source.story.startKnotId.trim(),
+      knots: source.story.knots.map((knot) => {
+        const next = {
+          ...knot,
+          id: knot.id.trim(),
+          locationId: knot.locationId.trim(),
+          visibleFacts: uniqueTrimmed(knot.visibleFacts),
+        };
+        if (knot.tags) next.tags = uniqueTrimmed(knot.tags);
+        return next;
+      }),
+      transitions: source.story.transitions.map(normalizeStoryTransition),
+      encounters: source.story.encounters.map((encounter) => {
+        const next = {
+          ...encounter,
+          id: encounter.id.trim(),
+          locationId: encounter.locationId.trim(),
+          opponentCharacterIds: trimmedPreservingDuplicates(encounter.opponentCharacterIds),
+        };
+        if (encounter.lootCardIds) {
+          next.lootCardIds = trimmedPreservingDuplicates(encounter.lootCardIds);
+        }
         return next;
       }),
     },
