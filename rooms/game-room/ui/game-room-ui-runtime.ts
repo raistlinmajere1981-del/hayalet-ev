@@ -49,6 +49,7 @@
       render: render,
     });
     const roomId = bootstrapRuntime.roomId;
+    const gameRoomHomeFeatureId = "game-room-home";
     const teamTetrisFeatureId = bootstrapRuntime.teamTetrisFeatureId;
     const fateKnotsFeatureId = "fate-knots";
     const contextRuntime = bootstrapRuntime.contextRuntime;
@@ -156,6 +157,28 @@
       root.append(button);
     }
 
+    function renderGameRoomHome(root: HTMLElement): void {
+      const app = contextRuntime.createElement(
+        "main",
+        "backgammon-shell backgammon-shell--bootstrap game-room-home",
+        ""
+      );
+      const surface = contextRuntime.createElement(
+        "section",
+        "backgammon-surface backgammon-surface--bootstrap game-room-home__surface",
+        ""
+      );
+      const brand = contextRuntime.createElement("div", "backgammon-brand game-room-home__brand", "");
+      brand.append(
+        contextRuntime.createElement("div", "backgammon-brand__eyebrow", bootstrapText("roomTitle")),
+        contextRuntime.createElement("h1", "backgammon-brand__title", bootstrapText("homeTitle")),
+        contextRuntime.createElement("p", "backgammon-brand__subtitle", bootstrapText("homeBody"))
+      );
+      surface.append(brand);
+      app.append(surface);
+      root.replaceChildren(app);
+    }
+
     function render(): void {
       const state = getState();
       const root = document.getElementById("app");
@@ -174,6 +197,12 @@
 
         const activeFeatureId = getActiveFeatureId();
         document.title = state.context.room.name + " - " + getFeatureLabel(activeFeatureId);
+
+        if (activeFeatureId === gameRoomHomeFeatureId) {
+          renderGameRoomHome(root);
+          syncRoomCloseControl(root);
+          return;
+        }
 
         if (activeFeatureId === fateKnotsFeatureId) {
           const hub = getFateKnotsHub();
