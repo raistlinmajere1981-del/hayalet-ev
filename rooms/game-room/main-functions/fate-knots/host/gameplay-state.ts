@@ -1,4 +1,5 @@
 import type {
+  FateKnotsAssetKind,
   FateKnotsCardDefinition,
   FateKnotsCardKind,
   FateKnotsCombatState,
@@ -34,6 +35,28 @@ export interface FateKnotsGameplayStatusSummary {
   description: string;
   tags: string[];
   persistent: boolean;
+}
+
+export interface FateKnotsGameplayAssetSummary {
+  assetId: string;
+  kind: FateKnotsAssetKind;
+  path: string;
+  mimeType: string | null;
+  tags: string[];
+}
+
+export interface FateKnotsGameplayThemeSummary {
+  themeId: string;
+  name: string;
+  backgroundAssetId: string;
+  closedBookAssetId: string;
+  openPageAssetId: string;
+  mapStyleAssetId: string | null;
+  iconFamilyId: string | null;
+  cardFrameByKind: Partial<Record<FateKnotsCardKind, string>>;
+  bookmarkAssetIds: string[];
+  transitionAssetIds: string[];
+  visualTags: string[];
 }
 
 export interface FateKnotsGameplayLocationSummary {
@@ -104,6 +127,8 @@ export interface FateKnotsGameplayState {
   phase: FateKnotsPhase;
   revision: number;
   result: FateKnotsRunState["result"];
+  theme: FateKnotsGameplayThemeSummary;
+  assets: FateKnotsGameplayAssetSummary[];
   activeLocation: FateKnotsGameplayLocationSummary | null;
   map: {
     mapAssetId: string | null;
@@ -126,7 +151,8 @@ export type FateKnotsGameplayStateIssueCode =
   | "location-not-found"
   | "card-not-found"
   | "equipment-not-found"
-  | "status-not-found";
+  | "status-not-found"
+  | "asset-not-found";
 
 export interface FateKnotsGameplayStateIssue {
   code: FateKnotsGameplayStateIssueCode;
@@ -139,6 +165,10 @@ export type FateKnotsGameplayStateBuildResult =
 
 function unique(values: readonly string[]): string[] {
   return Array.from(new Set(values));
+}
+
+function compactStrings(values: readonly (string | null | undefined)[]): string[] {
+  return unique(values.filter((value): value is string => typeof value === "string" && value !== ""));
 }
 
 function summarizeCard(card: FateKnotsCardDefinition): FateKnotsGameplayCardSummary {
@@ -180,9 +210,13 @@ function summarizeCombat(combat: FateKnotsCombatState | null): FateKnotsGameplay
  * Deliberately absent:
  * - hidden/revealed knot ids and finale definition
  * - NPC role packets and NPC hidden knowledge
- * - unrevealed locations/nodes/edges
+ * - unrevealed locations/nodes/edges and their presentation assets
  * - combat commits and opposition card ownership/availability
  * - raw card effects/reveal ids that may point at hidden canon
+ *
+ * Theme identity is safe player-facing presentation data. Asset paths are
+ * projected only for theme resources and currently visible/referenced entities;
+ * the renderer never receives the complete Universe Package asset catalog.
  *
  * The renderer receives enough public identity/state to compose the living book
  * but must use engine legality/presentation events rather than infer mechanics.
@@ -211,6 +245,7 @@ export function buildFateKnotsGameplayState(
   const locationById = new Map(
     universe.locations.map((location) => [location.id, location] as const)
   );
+  const assetById = new Map(universe.assets.map((asset) => [asset.id, asset] as const));
   const issues: FateKnotsGameplayStateIssue[] = [];
 
   const partyActors: FateKnotsGameplayPartyActorSummary[] = [];
@@ -319,6 +354,48 @@ export function buildFateKnotsGameplayState(
     }
   });
 
+  const theme: FateKnotsGameplayThemeSummary = {
+    themeId: universe.theme.id,
+    name: universe.theme.name,
+    backgroundAssetId: universe.theme.backgroundAssetId,
+    closedBookAssetId: universe.theme.closedBookAssetId,
+    openPageAssetId: universe.theme.openPageAssetId,
+    mapStyleAssetId: universe.theme.mapStyleAssetId ?? null,
+    iconFamilyId: universe.theme.iconFamilyId ?? null,
+    cardFrameByKind: { ...universe.theme.cardFrameByKind },
+    bookmarkAssetIds: universe.theme.bookmarkAssetIds?.slice() ?? [],
+    transitionAssetIds: universe.theme.transitionAssetIds?.slice() ?? [],
+    visualTags: universe.theme.visualTags.slice(),
+  };
+
+  const referencedAssetIds = compactStrings([
+    theme.backgroundAssetId,
+    theme.closedBookAssetId,
+    theme.openPageAssetId,
+    theme.mapStyleAssetId,
+    ...Object.values(theme.cardFrameByKind),
+    ...theme.bookmarkAssetIds,
+    ...theme.transitionAssetIds,
+    universe.map.mapAssetId,
+    ...(activeLocation?.sceneAssetIds ?? []),
+    ...partyActors.map((actor) => actor.portraitAssetId),
+  ]);
+  const assets: FateKnotsGameplayAssetSummary[] = [];
+  referencedAssetIds.forEach((assetId) => {
+    const asset = assetById.get(assetId);
+    if (!asset) {
+      issues.push({ code: "asset-not-found", value: assetId });
+      return;
+    }
+    assets.push({
+      assetId: asset.id,
+      kind: asset.kind,
+      path: asset.path,
+      mimeType: asset.mimeType ?? null,
+      tags: asset.tags?.slice() ?? [],
+    });
+  });
+
   if (issues.length > 0) return { ok: false, state: null, issues };
 
   return {
@@ -329,6 +406,8 @@ export function buildFateKnotsGameplayState(
       phase: run.phase,
       revision: run.revision,
       result: run.result,
+      theme,
+      assets,
       activeLocation,
       map: {
         mapAssetId: universe.map.mapAssetId ?? null,
