@@ -17,7 +17,10 @@ import {
   readLocale,
   saveContext,
 } from "../shared/host/context-state.js";
-import { YAHTZEE_FEATURE_ID } from "../shared/host/feature-meta.js";
+import {
+  FATE_KNOTS_FEATURE_ID,
+  YAHTZEE_FEATURE_ID,
+} from "../shared/host/feature-meta.js";
 import {
   handleTeamTetrisMove,
   handleTeamTetrisReset,
@@ -48,6 +51,7 @@ import {
   handleFateKnotsSaveRun,
   handleFateKnotsSaveUniverse,
   initializeFateKnotsState,
+  pushFateKnotsState,
 } from "../main-functions/fate-knots/host/runtime.js";
 import {
   clearUs1SyncLoop as backgammonClearUs1SyncLoop,
@@ -111,7 +115,12 @@ export default function createGameRoomHostRuntime() {
 
       function pushActiveFeatureStateCompat(handlerApi: GameRoomHostApi): void {
         const context = loadContext(handlerApi);
-        if (getActiveFeatureId(context) === YAHTZEE_FEATURE_ID) {
+        const activeFeatureId = getActiveFeatureId(context);
+        if (activeFeatureId === FATE_KNOTS_FEATURE_ID) {
+          pushFateKnotsState(handlerApi);
+          return;
+        }
+        if (activeFeatureId === YAHTZEE_FEATURE_ID) {
           pushYahtzeeState(handlerApi);
           return;
         }
