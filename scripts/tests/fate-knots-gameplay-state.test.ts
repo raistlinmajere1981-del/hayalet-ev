@@ -289,6 +289,8 @@ void test("gameplay projection keeps visible run state while excluding hidden ca
   if (!result.ok) return;
 
   assert.equal(result.state.activeLocation?.name, "Visible Square");
+  assert.equal(result.state.theme.themeId, "theme-1");
+  assert.equal(result.state.theme.backgroundAssetId, "asset-bg");
   assert.deepEqual(result.state.map.nodes.map((node) => node.nodeId), ["node-visible"]);
   assert.deepEqual(result.state.map.edges, []);
   assert.deepEqual(result.state.cards.map((card) => card.cardId).sort(), [
@@ -297,6 +299,13 @@ void test("gameplay projection keeps visible run state while excluding hidden ca
   ]);
   assert.deepEqual(result.state.equipment.map((entry) => entry.equipmentId), ["equipment-1"]);
   assert.deepEqual(result.state.statuses.map((entry) => entry.statusId), ["status-visible"]);
+  assert.deepEqual(result.state.assets.map((asset) => asset.assetId).sort(), [
+    "asset-bg",
+    "asset-cover",
+    "asset-page",
+    "portrait-player",
+    "scene-visible",
+  ]);
 
   assert.equal(result.state.combat?.actors.length, 2);
   const enemy = result.state.combat?.actors.find((actor) => actor.actorId === "actor-enemy");
@@ -315,6 +324,8 @@ void test("gameplay projection keeps visible run state while excluding hidden ca
     "node-hidden-secret-label",
     "edge-hidden-secret-tag",
     "enemy-secret-card",
+    "portrait-enemy",
+    "enemy.webp",
   ]) {
     assert.equal(serialized.includes(forbidden), false, forbidden);
   }
