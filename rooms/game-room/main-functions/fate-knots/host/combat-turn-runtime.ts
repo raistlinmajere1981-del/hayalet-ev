@@ -160,7 +160,8 @@ function findSeatActor(
   const matching = playerPartyActors(run).filter((actor) => actor.seatId === seatId);
   if (matching.length === 0) return "missing";
   if (matching.length > 1) return "ambiguous";
-  return { actorId: matching[0].actorId };
+  const actor = matching[0];
+  return actor ? { actorId: actor.actorId } : "missing";
 }
 
 function hasCommit(combat: FateKnotsCombatState, actorId: string): boolean {
@@ -168,8 +169,9 @@ function hasCommit(combat: FateKnotsCombatState, actorId: string): boolean {
 }
 
 function allPlayerPartyCommitted(run: FateKnotsRunState): boolean {
-  if (!run.activeCombat) return false;
-  return playerPartyActors(run).every((actor) => hasCommit(run.activeCombat!, actor.actorId));
+  const combat = run.activeCombat;
+  if (!combat) return false;
+  return playerPartyActors(run).every((actor) => hasCommit(combat, actor.actorId));
 }
 
 function readiness(run: FateKnotsRunState): { ready: FateKnotsSeatId[]; pending: FateKnotsSeatId[] } {
