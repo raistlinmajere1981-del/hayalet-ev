@@ -116,14 +116,27 @@ function loadStore(api: Pick<GameRoomHostApi, "getState">): FateKnotsCombatDiscu
           return [];
         }
         const messages = Array.isArray(entry["messages"])
-          ? entry["messages"].map(normalizeMessage).filter((message): message is FateKnotsCombatDiscussionMessage => message !== null)
+          ? entry["messages"]
+              .map(normalizeMessage)
+              .filter((message): message is FateKnotsCombatDiscussionMessage => message !== null)
           : [];
-        return [{ runId, combatId, turnIndex, nextIndex, messages: messages.slice(-FATE_KNOTS_COMBAT_DISCUSSION_MAX_MESSAGES) }];
+        return [
+          {
+            runId,
+            combatId,
+            turnIndex,
+            nextIndex,
+            messages: messages.slice(-FATE_KNOTS_COMBAT_DISCUSSION_MAX_MESSAGES),
+          },
+        ];
       })
     : [];
   const byRunId = new Map<string, FateKnotsCombatDiscussionConversation>();
   conversations.forEach((entry) => byRunId.set(entry.runId, entry));
-  return { version: FATE_KNOTS_COMBAT_DISCUSSION_STATE_VERSION, conversations: Array.from(byRunId.values()) };
+  return {
+    version: FATE_KNOTS_COMBAT_DISCUSSION_STATE_VERSION,
+    conversations: Array.from(byRunId.values()),
+  };
 }
 
 function saveStore(
@@ -208,7 +221,10 @@ function project(
     new Set(
       actors
         .map((actor) => actor.seatId)
-        .filter((seat): seat is FateKnotsSeatId => seat !== undefined && seat !== null && isPartyChatSeat(seat))
+        .filter(
+          (seat): seat is FateKnotsSeatId =>
+            seat !== undefined && seat !== null && isPartyChatSeat(seat)
+        )
     )
   );
   const committedActorIds = new Set(
@@ -216,7 +232,8 @@ function project(
   );
   const readySeatIds = activeSeatIds.filter((seatId) => {
     const matchingActors = actors.filter((actor) => actor.seatId === seatId);
-    return matchingActors.length === 1 && committedActorIds.has(matchingActors[0].actorId);
+    const actor = matchingActors.length === 1 ? matchingActors[0] : undefined;
+    return actor !== undefined && committedActorIds.has(actor.actorId);
   });
   return {
     ok: true,
@@ -246,20 +263,32 @@ export function appendFateKnotsCombatDiscussionMessage(
   seatId: FateKnotsSeatId,
   textInput: string
 ): FateKnotsCombatDiscussionResult {
-  if (!run.activeCombat) return { ok: false, state: null, issues: [{ code: "no-active-combat" }] };
-  if (!isDiscussionOpen(run)) return { ok: false, state: null, issues: [{ code: "discussion-closed" }] };
+  if (!run.activeCombat) {
+    return { ok: false, state: null, issues: [{ code: "no-active-combat" }] };
+  }
+  if (!isDiscussionOpen(run)) {
+    return { ok: false, state: null, issues: [{ code: "discussion-closed" }] };
+  }
   const actors = seatActors(run, seatId);
-  if (actors.length === 0) return { ok: false, state: null, issues: [{ code: "seat-not-active", seatId }] };
-  if (actors.length > 1) return { ok: false, state: null, issues: [{ code: "seat-ambiguous", seatId }] };
+  if (actors.length === 0) {
+    return { ok: false, state: null, issues: [{ code: "seat-not-active", seatId }] };
+  }
+  if (actors.length > 1) {
+    return { ok: false, state: null, issues: [{ code: "seat-ambiguous", seatId }] };
+  }
 
   const text = textInput.trim();
-  if (text === "") return { ok: false, state: null, issues: [{ code: "empty-message", seatId }] };
+  if (text === "") {
+    return { ok: false, state: null, issues: [{ code: "empty-message", seatId }] };
+  }
   if (text.length > FATE_KNOTS_COMBAT_DISCUSSION_MAX_TEXT_LENGTH) {
     return { ok: false, state: null, issues: [{ code: "message-too-long", seatId }] };
   }
 
   const conversation = getConversation(api, run);
-  if (!conversation) return { ok: false, state: null, issues: [{ code: "no-active-combat" }] };
+  if (!conversation) {
+    return { ok: false, state: null, issues: [{ code: "no-active-combat" }] };
+  }
   const message: FateKnotsCombatDiscussionMessage = {
     id: `${conversation.combatId}:${conversation.turnIndex}:${conversation.nextIndex}`,
     index: conversation.nextIndex,
