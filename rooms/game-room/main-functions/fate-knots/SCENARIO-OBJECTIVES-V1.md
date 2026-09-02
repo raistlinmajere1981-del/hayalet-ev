@@ -59,7 +59,7 @@ Player-facing UI does not need to label the action as `Finale`; it should render
 
 It is not a phase gate and victory over that encounter does not automatically complete the scenario merely because its id matches `finalEncounterId`.
 
-A final encounter may instead apply normal canonical victory patches. Those patches can unlock a later terminal `finale` transition.
+A final encounter may instead apply the normal canonical combat-transition victory patch. That patch can satisfy the requirements for a later terminal `finale` transition.
 
 ## Bounded V1 grammar
 
@@ -79,7 +79,7 @@ Progression patches:
 - complete knot ids
 - reveal location ids
 
-`finale.successConditions` remains descriptive authoring/narration material. Runtime does not parse free-form success-condition text as executable rules.
+The existing `finale.successConditionId`, `finalChoiceCardIds` and `epilogueConditionIds` remain authored finale identity/presentation metadata in V1. Runtime does not turn those ids into a generic expression or scripting engine; terminal mechanical legality remains encoded by the bounded story transition requirements and canonical progression state.
 
 ## Example
 
