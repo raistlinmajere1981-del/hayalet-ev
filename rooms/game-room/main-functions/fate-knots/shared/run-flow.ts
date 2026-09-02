@@ -17,7 +17,7 @@ import {
 } from "./post-combat-settlement.js";
 import type { FateKnotsRulesConfig } from "../rules/config.js";
 
-export type FateKnotsCombatExitNextPhase = "exploration" | "transition" | "loot" | "finale";
+export type FateKnotsCombatExitNextPhase = "exploration" | "transition" | "loot";
 
 export type FateKnotsRunFlowIssueCode =
   | "run-not-active"
@@ -93,7 +93,7 @@ function failed(run: FateKnotsRunState, issues: FateKnotsRunFlowIssue[]): FateKn
 }
 
 function isCombatEntryPhase(phase: FateKnotsPhase): boolean {
-  return phase === "exploration" || phase === "transition" || phase === "finale";
+  return phase === "exploration" || phase === "transition";
 }
 
 function isAllowedExitPhase(
@@ -102,7 +102,7 @@ function isAllowedExitPhase(
 ): boolean {
   if (!phase) return false;
   if (result === "party-victory") {
-    return phase === "exploration" || phase === "loot" || phase === "finale";
+    return phase === "exploration" || phase === "loot";
   }
   if (result === "retreat") {
     return phase === "exploration" || phase === "transition";
@@ -115,7 +115,9 @@ function isAllowedExitPhase(
  *
  * Encounter creation remains a separate engine responsibility. This function
  * does not invent enemies, cards or starting positions; it only makes combat
- * the authoritative run phase.
+ * the authoritative run phase. Story-driven combat normally enters from the
+ * short-lived `transition` phase; there is no privileged runtime `finale`
+ * combat path in V1.
  */
 export function enterFateKnotsCombat(
   runInput: FateKnotsRunState,
@@ -190,7 +192,9 @@ function syncPartyActorsFromCombat(run: FateKnotsRunState, combat: FateKnotsComb
  *
  * The caller must explicitly provide the post-combat phase for victory/retreat.
  * This is deliberate: the rules engine should not guess whether a particular
- * victory opens loot, resumes exploration, or advances directly into a finale.
+ * victory opens loot or resumes exploration. Scenario completion is not a
+ * combat exit phase; only an authored legal `kind: "finale"` story transition
+ * may complete the run.
  *
  * Party defeat is the only automatic terminal run transition: it always becomes
  * `failed` and clears active combat.
