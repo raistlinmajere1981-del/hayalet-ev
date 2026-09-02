@@ -1,4 +1,4 @@
-/* global window, document */
+/* global window, document, Element */
 
 (function (global) {
   const base = global.GameRoomFateKnotsUi;
@@ -13,6 +13,12 @@
 
   function readString(value) {
     return typeof value === "string" ? value : "";
+  }
+
+  function sendSetupCommand(commandName, universeId) {
+    const roomApi = global.roomAPI;
+    if (!roomApi || typeof roomApi.sendCommand !== "function" || !universeId) return;
+    roomApi.sendCommand(commandName, { universeId: universeId });
   }
 
   base.handleCommandResult = function handleAi2LifecycleCommandResult(message) {
@@ -32,17 +38,27 @@
 
   document.addEventListener("click", function (event) {
     const target = event.target;
-    if (!(target instanceof Element)) return;
+    if (!(target instanceof Element) || !setupUniverseId) return;
     const button = target.closest("button.fate-knots-hub__button");
-    if (!button || button.textContent?.trim() !== "Kat") return;
+    if (!button) return;
+    const label = button.textContent?.trim();
+
+    if (label === "Kapat" && button.closest(".fate-knots-hub__setup")) {
+      sendSetupCommand("GameRoomFateKnotsCancelAi2RunCharacter", setupUniverseId);
+      setupUniverseId = null;
+      return;
+    }
+
+    if (label !== "Kat" && label !== "Çıkar") return;
     const seat = button.closest(".fate-knots-hub__seat");
     const title = seat?.querySelector(".fate-knots-hub__seat-title")?.textContent?.trim();
-    if (title !== "AI2" || !setupUniverseId) return;
+    if (title !== "AI2") return;
 
-    const roomApi = global.roomAPI;
-    if (!roomApi || typeof roomApi.sendCommand !== "function") return;
-    roomApi.sendCommand("GameRoomFateKnotsRequestAi2RunCharacter", {
-      universeId: setupUniverseId,
-    });
+    sendSetupCommand(
+      label === "Kat"
+        ? "GameRoomFateKnotsRequestAi2RunCharacter"
+        : "GameRoomFateKnotsCancelAi2RunCharacter",
+      setupUniverseId
+    );
   });
 })(window);
