@@ -117,9 +117,7 @@ function parsePayload(payload: unknown): CompleteMovePayload | null {
   };
 }
 
-function persistenceIssues(
-  issues: FateKnotsPersistenceIssue[]
-): FateKnotsCombatTurnCommandIssue[] {
+function persistenceIssues(issues: FateKnotsPersistenceIssue[]): FateKnotsCombatTurnCommandIssue[] {
   return issues.map((issue) => ({
     source: "persistence" as const,
     code: issue.code,
@@ -174,7 +172,10 @@ function allPlayerPartyCommitted(run: FateKnotsRunState): boolean {
   return playerPartyActors(run).every((actor) => hasCommit(combat, actor.actorId));
 }
 
-function readiness(run: FateKnotsRunState): { ready: FateKnotsSeatId[]; pending: FateKnotsSeatId[] } {
+function readiness(run: FateKnotsRunState): {
+  ready: FateKnotsSeatId[];
+  pending: FateKnotsSeatId[];
+} {
   const combat = run.activeCombat;
   if (!combat) return { ready: [], pending: [] };
   const ready: FateKnotsSeatId[] = [];
@@ -195,39 +196,51 @@ function withCombat(run: FateKnotsRunState, combat: FateKnotsCombatState): FateK
   };
 }
 
-function buildCommit(
-  actorId: string,
-  payload: CompleteMovePayload
-): FateKnotsCombatActionCommit {
+function buildCommit(actorId: string, payload: CompleteMovePayload): FateKnotsCombatActionCommit {
   return {
     actorId,
     committed: true,
     ...(payload.movementCardId !== undefined ? { movementCardId: payload.movementCardId } : {}),
     ...(payload.actionCardId !== undefined ? { actionCardId: payload.actionCardId } : {}),
     ...(payload.primaryTargetId !== undefined ? { primaryTargetId: payload.primaryTargetId } : {}),
-    ...(payload.secondaryTargetId !== undefined ? { secondaryTargetId: payload.secondaryTargetId } : {}),
+    ...(payload.secondaryTargetId !== undefined
+      ? { secondaryTargetId: payload.secondaryTargetId }
+      : {}),
   };
 }
+
+type FillOppositionCommitsResult =
+  { ok: true; combat: FateKnotsCombatState } | { ok: false; actorId: string; code: string };
 
 async function fillOppositionCommits(
   universe: FateKnotsUniversePackage,
   combatInput: FateKnotsCombatState
-): Promise<
-  | { ok: true; combat: FateKnotsCombatState }
-  | { ok: false; actorId: string; code: string }
-> {
-  let combat = structuredClone(combatInput);
-  const opposition = combat.actors.filter(
-    (actor) => actor.teamId === "opposition" && !actor.fallen && !hasCommit(combat, actor.actorId)
+): Promise<FillOppositionCommitsResult> {
+  const initialCombat = structuredClone(combatInput);
+  const opposition = initialCombat.actors.filter(
+    (actor) =>
+      actor.teamId === "opposition" && !actor.fallen && !hasCommit(initialCombat, actor.actorId)
   );
-  for (const actor of opposition) {
-    const chosen = await chooseFateKnotsEnemyCombatCommit(universe, combat, actor.actorId);
-    if (!chosen.ok) return { ok: false, actorId: actor.actorId, code: chosen.code };
-    const stored = setFateKnotsCombatCommit(combat, chosen.commit, universe);
-    if (!stored.ok) return { ok: false, actorId: actor.actorId, code: "enemy-commit-rejected" };
-    combat = stored.state;
-  }
-  return { ok: true, combat };
+
+  // Enemy decisions are chained so each actor observes the commits chosen before it.
+  return opposition.reduce<Promise<FillOppositionCommitsResult>>(
+    async (pending, actor) => {
+      const current = await pending;
+      if (!current.ok) return current;
+      const chosen = await chooseFateKnotsEnemyCombatCommit(
+        universe,
+        current.combat,
+        actor.actorId
+      );
+      if (!chosen.ok) return { ok: false, actorId: actor.actorId, code: chosen.code };
+      const stored = setFateKnotsCombatCommit(current.combat, chosen.commit, universe);
+      if (!stored.ok) {
+        return { ok: false, actorId: actor.actorId, code: "enemy-commit-rejected" };
+      }
+      return { ok: true, combat: stored.state };
+    },
+    Promise.resolve({ ok: true, combat: initialCombat })
+  );
 }
 
 async function completeMove(
@@ -249,18 +262,23 @@ async function completeMove(
   }
   const snapshot = runs.store.entries.find((entry) => entry.run.runId === payload.runId) ?? null;
   if (!snapshot) return failed("run-not-found", "combat-turn", "run-not-found", payload.runId);
-  if (!snapshot.run.activeCombat) return failed("no-active-combat", "combat-turn", "no-active-combat");
-  if (!snapshot.combatRuntime) return failed("combat-runtime-missing", "combat-turn", "combat-runtime-missing");
+  const snapshotCombat = snapshot.run.activeCombat;
+  if (!snapshotCombat) return failed("no-active-combat", "combat-turn", "no-active-combat");
+  if (!snapshot.combatRuntime)
+    return failed("combat-runtime-missing", "combat-turn", "combat-runtime-missing");
 
   let run = structuredClone(snapshot.run);
+  let combat = structuredClone(snapshotCombat);
   if (run.phase !== "combat-discussion" && run.phase !== "combat-commit") {
     return failed("wrong-phase", "combat-turn", "wrong-phase", run.phase);
   }
 
   const seatActor = findSeatActor(run, seatId);
-  if (seatActor === "missing") return failed("seat-not-active", "combat-turn", "seat-not-active", seatId);
-  if (seatActor === "ambiguous") return failed("seat-ambiguous", "combat-turn", "seat-ambiguous", seatId);
-  if (hasCommit(run.activeCombat, seatActor.actorId)) {
+  if (seatActor === "missing")
+    return failed("seat-not-active", "combat-turn", "seat-not-active", seatId);
+  if (seatActor === "ambiguous")
+    return failed("seat-ambiguous", "combat-turn", "seat-ambiguous", seatId);
+  if (hasCommit(combat, seatActor.actorId)) {
     return failed("seat-already-committed", "combat-turn", "seat-already-committed", seatId);
   }
 
@@ -273,10 +291,11 @@ async function completeMove(
       issues: persistenceIssues(universes.issues),
     };
   }
-  const storedUniverse = universes.store.entries.find(
-    (entry) => entry.universe.universeId === run.universeId
-  )?.universe ?? null;
-  if (!storedUniverse) return failed("universe-not-found", "universe", "universe-not-found", run.universeId);
+  const storedUniverse =
+    universes.store.entries.find((entry) => entry.universe.universeId === run.universeId)
+      ?.universe ?? null;
+  if (!storedUniverse)
+    return failed("universe-not-found", "universe", "universe-not-found", run.universeId);
   const canonical = normalizeFateKnotsCanonicalUniversePackage(storedUniverse);
   if (!canonical.valid || !canonical.package) {
     return {
@@ -292,14 +311,15 @@ async function completeMove(
   }
   const universe = canonical.package;
 
-  if (run.activeCombat.phase === "combat-discussion") {
-    const opened = openFateKnotsCombatCommitPhase(run.activeCombat);
+  if (combat.phase === "combat-discussion") {
+    const opened = openFateKnotsCombatCommitPhase(combat);
     if (!opened.ok) return failed("commit-rejected", "combat-turn", "open-commit-rejected");
-    run = withCombat(run, opened.state);
+    combat = opened.state;
+    run = withCombat(run, combat);
   }
 
   const committed = setFateKnotsCombatCommit(
-    run.activeCombat!,
+    combat,
     buildCommit(seatActor.actorId, payload),
     universe
   );
@@ -315,20 +335,17 @@ async function completeMove(
       })),
     };
   }
-  run = withCombat(run, committed.state);
+  combat = committed.state;
+  run = withCombat(run, combat);
 
   if (allPlayerPartyCommitted(run)) {
-    const enemyCommits = await fillOppositionCommits(universe, run.activeCombat!);
+    const enemyCommits = await fillOppositionCommits(universe, combat);
     if (!enemyCommits.ok) {
-      return failed(
-        "enemy-commit-failed",
-        "enemy",
-        enemyCommits.code,
-        enemyCommits.actorId
-      );
+      return failed("enemy-commit-failed", "enemy", enemyCommits.code, enemyCommits.actorId);
     }
-    run = withCombat(run, enemyCommits.combat);
-    const resolving = beginFateKnotsCombatResolution(run.activeCombat!);
+    combat = enemyCommits.combat;
+    run = withCombat(run, combat);
+    const resolving = beginFateKnotsCombatResolution(combat);
     if (!resolving.ok) {
       return failed(
         "resolution-transition-rejected",
@@ -336,12 +353,13 @@ async function completeMove(
         resolving.issues[0]?.code ?? "resolution-transition-rejected"
       );
     }
-    run = withCombat(run, resolving.state);
+    combat = resolving.state;
+    run = withCombat(run, combat);
   }
 
   run.revision += 1;
   const saved = saveFateKnotsRunSnapshot(api, run, snapshot.combatRuntime);
-  if (!saved.ok || !saved.value) {
+  if (!saved.ok) {
     return {
       ok: false,
       error: "save-rejected",
@@ -350,15 +368,16 @@ async function completeMove(
     };
   }
   const nextRun = saved.value.run;
+  const nextCombat = nextRun.activeCombat ?? combat;
   const readyState = readiness(nextRun);
   return {
     ok: true,
     state: {
       runId: nextRun.runId,
       runRevision: nextRun.revision,
-      combatId: nextRun.activeCombat?.combatId ?? run.activeCombat!.combatId,
-      turnIndex: nextRun.activeCombat?.turnIndex ?? run.activeCombat!.turnIndex,
-      phase: nextRun.activeCombat?.phase ?? run.activeCombat!.phase,
+      combatId: nextCombat.combatId,
+      turnIndex: nextCombat.turnIndex,
+      phase: nextCombat.phase,
       seatId,
       readySeatIds: readyState.ready,
       pendingSeatIds: readyState.pending,
