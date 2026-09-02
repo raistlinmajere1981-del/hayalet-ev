@@ -57,6 +57,13 @@ void test("game-room installed UI contains the Yahtzee presentation v2 and Fate 
         "GameRoomFateKnotsStartRun",
         "GameRoomFateKnotsGetGameplayState",
         "GameRoomFateKnotsGetCombatOptions",
+        "GameRoomFateKnotsGetCombatDiscussion",
+        "GameRoomFateKnotsSendCombatMessage",
+        "GameRoomFateKnotsAi2CombatMessage",
+        "GameRoomFateKnotsRemoteCombatMessage",
+        "GameRoomFateKnotsCompleteCombatMove",
+        "GameRoomFateKnotsAi2CompleteCombatMove",
+        "GameRoomFateKnotsRemoteCompleteCombatMove",
         "GameRoomFateKnotsActivateRun",
         "GameRoomFateKnotsDeleteRun",
         "GameRoomFateKnotsDeleteUniverse",
@@ -67,6 +74,18 @@ void test("game-room installed UI contains the Yahtzee presentation v2 and Fate 
       (entry) => entry.name === "GameRoomFateKnotsGetGameplayState"
     );
     assert.equal(gameplayStateCommand?.scope, "room-ui");
+    assert.equal(
+      fateKnotsFeature.commandSpecs?.find(
+        (entry) => entry.name === "GameRoomFateKnotsAi2CombatMessage"
+      )?.scope,
+      "ai-slots"
+    );
+    assert.equal(
+      fateKnotsFeature.commandSpecs?.find(
+        (entry) => entry.name === "GameRoomFateKnotsRemoteCombatMessage"
+      )?.scope,
+      "us1"
+    );
 
     const indexHtml = readFileSync(`${installedCopy.rootDir}/ui/index.html`, "utf8");
     assert.match(indexHtml, /main-functions\/yahtzee\/styles\.css/);
@@ -230,6 +249,8 @@ void test("game-room installed UI contains the Yahtzee presentation v2 and Fate 
       "utf8"
     );
     assert.match(fateKnotsBridgeSource, /fate-knots-hub-state/);
+    assert.match(fateKnotsBridgeSource, /fate-knots-gameplay-state/);
+    assert.match(fateKnotsBridgeSource, /fate-knots-combat-discussion-state/);
     assert.match(fateKnotsBridgeSource, /GameRoomFateKnotsUi/);
     assert.match(fateKnotsHubSource, /GameRoomFateKnotsGetHubState/);
   } finally {
