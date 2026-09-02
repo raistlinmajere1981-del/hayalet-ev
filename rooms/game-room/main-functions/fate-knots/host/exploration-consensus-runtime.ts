@@ -1,5 +1,6 @@
 import { normalizeFateKnotsCanonicalUniversePackage } from "../forge/canonical-universe.js";
 import { DEFAULT_FATE_KNOTS_RULES } from "../rules/config.js";
+import type { FateKnotsCombatRuntimeState } from "../shared/combat-runtime.js";
 import type {
   FateKnotsRunState,
   FateKnotsSeatId,
@@ -99,28 +100,28 @@ function readTransitionId(payload: unknown): string | null | "invalid" {
   return trimmed === "" ? null : trimmed;
 }
 
+function withOptionalValue(
+  source: FateKnotsExplorationConsensusCommandIssue["source"],
+  code: string,
+  value: string | undefined
+): FateKnotsExplorationConsensusCommandIssue {
+  return value ? { source, code, value } : { source, code };
+}
+
 function persistenceIssues(
   issues: FateKnotsPersistenceIssue[]
 ): FateKnotsExplorationConsensusCommandIssue[] {
-  return issues.map((issue) => ({
-    source: "persistence" as const,
-    code: issue.code,
-    ...(issue.entryId ? { value: issue.entryId } : {}),
-  }));
+  return issues.map((issue) =>
+    withOptionalValue("persistence", issue.code, issue.entryId)
+  );
 }
 
 function explorationIssues(
   issues: FateKnotsExplorationConsensusIssue[]
 ): FateKnotsExplorationConsensusCommandIssue[] {
-  return issues.map((issue) => ({
-    source: "exploration" as const,
-    code: issue.code,
-    ...(issue.transitionId
-      ? { value: issue.transitionId }
-      : issue.seatId
-        ? { value: issue.seatId }
-        : {}),
-  }));
+  return issues.map((issue) =>
+    withOptionalValue("exploration", issue.code, issue.transitionId ?? issue.seatId)
+  );
 }
 
 function fail(
@@ -133,7 +134,9 @@ function fail(
 function loadContext(
   api: FateKnotsPersistenceApi,
   runId: string
-): { ok: true; context: FateKnotsExplorationContext } | { ok: false; result: FateKnotsExplorationConsensusCommandResult } {
+):
+  | { ok: true; context: FateKnotsExplorationContext }
+  | { ok: false; result: FateKnotsExplorationConsensusCommandResult } {
   const runs = loadFateKnotsRunStore(api);
   if (runs.issues.length > 0) {
     return { ok: false, result: fail("persistence-rejected", persistenceIssues(runs.issues)) };
@@ -142,7 +145,9 @@ function loadContext(
   if (!snapshot) {
     return {
       ok: false,
-      result: fail("run-not-found", [{ source: "exploration", code: "run-not-found", value: runId }]),
+      result: fail("run-not-found", [
+        { source: "exploration", code: "run-not-found", value: runId },
+      ]),
     };
   }
 
@@ -168,11 +173,9 @@ function loadContext(
       ok: false,
       result: fail(
         "universe-rejected",
-        canonical.issues.map((issue) => ({
-          source: "universe" as const,
-          code: issue.code,
-          value: issue.path,
-        }))
+        canonical.issues.map((issue) =>
+          withOptionalValue("universe", issue.code, issue.path)
+        )
       ),
     };
   }
@@ -212,27 +215,31 @@ function advanceUnanimousTransition(
   if (!applied.ok || !applied.transition) {
     return fail(
       "story-transition-rejected",
-      applied.issues.map((issue) => ({
-        source: "story" as const,
-        code: issue.code,
-        value: issue.transitionId ?? issue.encounterId ?? issue.knotId,
-      }))
+      applied.issues.map((issue) =>
+        withOptionalValue(
+          "story",
+          issue.code,
+          issue.transitionId ?? issue.encounterId ?? issue.knotId
+        )
+      )
     );
   }
 
   let nextRun = applied.run;
-  let combatRuntime = null;
+  let combatRuntime: FateKnotsCombatRuntimeState | null = null;
 
   if (applied.transition.kind === "scene" || applied.transition.kind === "travel") {
     const settled = settleFateKnotsStoryTransition(universe, nextRun);
     if (!settled.ok) {
       return fail(
         "story-transition-rejected",
-        settled.issues.map((issue) => ({
-          source: "story" as const,
-          code: issue.code,
-          value: issue.transitionId ?? issue.encounterId ?? issue.knotId,
-        }))
+        settled.issues.map((issue) =>
+          withOptionalValue(
+            "story",
+            issue.code,
+            issue.transitionId ?? issue.encounterId ?? issue.knotId
+          )
+        )
       );
     }
     nextRun = settled.run;
@@ -253,11 +260,13 @@ function advanceUnanimousTransition(
     if (!built.ok || !built.combat || !built.runtime) {
       return fail(
         "encounter-open-rejected",
-        built.issues.map((issue) => ({
-          source: "encounter" as const,
-          code: issue.code,
-          value: issue.encounterId ?? issue.characterId ?? issue.actorId,
-        }))
+        built.issues.map((issue) =>
+          withOptionalValue(
+            "encounter",
+            issue.code,
+            issue.encounterId ?? issue.characterId ?? issue.actorId
+          )
+        )
       );
     }
     const entered = enterFateKnotsCombat(nextRun, built.combat);
