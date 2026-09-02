@@ -1,5 +1,6 @@
 import { normalizeFateKnotsCanonicalUniversePackage } from "../forge/canonical-universe.js";
 import { DEFAULT_FATE_KNOTS_RULES } from "../rules/config.js";
+import { settleFateKnotsCampRecovery, type FateKnotsCampIssue } from "../shared/camp.js";
 import type { FateKnotsCombatRuntimeState } from "../shared/combat-runtime.js";
 import type {
   FateKnotsRunState,
@@ -39,7 +40,14 @@ export const FATE_KNOTS_EXPLORATION_CONSENSUS_COMMAND_NAMES = {
 } as const;
 
 export interface FateKnotsExplorationConsensusCommandIssue {
-  source: "payload" | "persistence" | "universe" | "exploration" | "story" | "encounter";
+  source:
+    | "payload"
+    | "persistence"
+    | "universe"
+    | "exploration"
+    | "story"
+    | "encounter"
+    | "camp";
   code: string;
   value?: string;
 }
@@ -65,6 +73,7 @@ export type FateKnotsExplorationConsensusCommandResult =
         | "exploration-rejected"
         | "story-transition-rejected"
         | "encounter-open-rejected"
+        | "camp-entry-rejected"
         | "save-rejected";
       state: null;
       issues: FateKnotsExplorationConsensusCommandIssue[];
@@ -119,6 +128,16 @@ function explorationIssues(
 ): FateKnotsExplorationConsensusCommandIssue[] {
   return issues.map((issue) =>
     withOptionalValue("exploration", issue.code, issue.transitionId ?? issue.seatId)
+  );
+}
+
+function campIssues(issues: FateKnotsCampIssue[]): FateKnotsExplorationConsensusCommandIssue[] {
+  return issues.map((issue) =>
+    withOptionalValue(
+      "camp",
+      issue.code,
+      issue.locationId ?? issue.actorId ?? issue.equipmentId ?? issue.characterId ?? issue.slot
+    )
   );
 }
 
@@ -274,6 +293,10 @@ function advanceUnanimousTransition(
     }
     nextRun = entered.run;
     combatRuntime = built.runtime;
+  } else if (applied.transition.kind === "camp") {
+    const recovered = settleFateKnotsCampRecovery(universe, nextRun);
+    if (!recovered.ok) return fail("camp-entry-rejected", campIssues(recovered.issues));
+    nextRun = recovered.run;
   }
 
   const saved = saveFateKnotsRunSnapshot(api, nextRun, combatRuntime);
