@@ -5,16 +5,12 @@
   const state = {
     hub: null,
     setup: null,
+    setupSeats: null,
     context: null,
     seatEnabled: {
       user: true,
       ai2: false,
       us1: false,
-    },
-    assignments: {
-      user: null,
-      ai2: null,
-      us1: null,
     },
     lastMessage: "",
   };
@@ -62,8 +58,9 @@
     if (options && options.danger) button.classList.add("fate-knots-hub__button--danger");
     if (options && options.selected) button.classList.add("is-selected");
     if (options && options.disabled) button.disabled = true;
-    if (!button.disabled && typeof onClick === "function")
+    if (!button.disabled && typeof onClick === "function") {
       button.addEventListener("click", onClick);
+    }
     return button;
   }
 
@@ -82,15 +79,11 @@
   }
 
   function resetSetupSelection() {
+    state.setupSeats = null;
     state.seatEnabled = {
       user: true,
       ai2: false,
       us1: false,
-    };
-    state.assignments = {
-      user: null,
-      ai2: null,
-      us1: null,
     };
   }
 
@@ -100,6 +93,23 @@
     state.lastMessage = "Karakter seçenekleri hazırlanıyor…";
     renderCurrent();
     sendCommand("GameRoomFateKnotsGetRunSetup", { universeId: universeId });
+  }
+
+  function selectedCharacterId(seatId) {
+    const projection = readRecord(state.setupSeats);
+    const selections = projection ? readRecord(projection.selections) : null;
+    const value = selections ? readString(selections[seatId]) : "";
+    return value || null;
+  }
+
+  function acceptSeatProjection(projection) {
+    const record = readRecord(projection);
+    if (!record) return false;
+    const universeId = readString(record.universeId);
+    const setup = readRecord(state.setup);
+    if (setup && universeId && universeId !== readString(setup.universeId)) return false;
+    state.setupSeats = record;
+    return true;
   }
 
   function formatRunStatus(run) {
@@ -198,25 +208,12 @@
       return (
         candidateSeatId !== seatId &&
         state.seatEnabled[candidateSeatId] === true &&
-        state.assignments[candidateSeatId] === characterId
+        selectedCharacterId(candidateSeatId) === characterId
       );
     });
   }
 
-  function renderCharacterChoice(character, seatId) {
-    const characterId = readString(character.characterId);
-    const selected = state.assignments[seatId] === characterId;
-    const usedElsewhere = isCharacterAssignedElsewhere(characterId, seatId);
-    const button = createButton(
-      readString(character.name) || "Adsız karakter",
-      function () {
-        state.assignments[seatId] = selected ? null : characterId;
-        renderCurrent();
-      },
-      { selected: selected, disabled: usedElsewhere }
-    );
-    button.classList.add("fate-knots-hub__character-choice");
-
+  function appendCharacterDetails(target, character) {
     const stats = readRecord(character.baseStats) || {};
     const position = readRecord(character.startingPosition) || {};
     const details = [
@@ -227,7 +224,7 @@
       `ENG ${String(stats.energy ?? "-")}`,
       `${readString(position.row) || "-"}/${readString(position.range) || "-"}`,
     ].join(" · ");
-    button.append(createElement("span", "fate-knots-hub__character-meta", details));
+    target.append(createElement("span", "fate-knots-hub__character-meta", details));
 
     const startingCards = readArray(character.startingCards);
     const startingEquipment = readArray(character.startingEquipment);
@@ -240,16 +237,65 @@
       }),
     ].filter(Boolean);
     if (loadout.length > 0) {
-      button.append(
+      target.append(
         createElement("span", "fate-knots-hub__character-loadout", loadout.join(" · "))
       );
     }
+  }
+
+  function renderLocalCharacterChoice(setup, character) {
+    const characterId = readString(character.characterId);
+    const selected = selectedCharacterId("user") === characterId;
+    const usedElsewhere = isCharacterAssignedElsewhere(characterId, "user");
+    const button = createButton(
+      readString(character.name) || "Adsız karakter",
+      function () {
+        sendCommand("GameRoomFateKnotsSelectRunCharacter", {
+          universeId: setup.universeId,
+          characterId: selected ? null : characterId,
+        });
+      },
+      { selected: selected, disabled: usedElsewhere }
+    );
+    button.classList.add("fate-knots-hub__character-choice");
+    appendCharacterDetails(button, character);
     return button;
+  }
+
+  function renderRemoteCharacterSelection(setup, seatId) {
+    const characterId = selectedCharacterId(seatId);
+    if (!characterId) {
+      return createElement(
+        "div",
+        "fate-knots-hub__empty",
+        `${seatLabel(seatId)} kendi karakterini seçene kadar bekleniyor.`
+      );
+    }
+    const character = readArray(setup.characters)
+      .map(readRecord)
+      .find(function (entry) {
+        return entry && readString(entry.characterId) === characterId;
+      });
+    if (!character) {
+      return createElement(
+        "div",
+        "fate-knots-hub__warning",
+        `${seatLabel(seatId)} seçimi artık bu evrende kullanılamıyor.`
+      );
+    }
+    const summary = createElement(
+      "div",
+      "fate-knots-hub__character-choice is-selected",
+      readString(character.name) || "Adsız karakter"
+    );
+    appendCharacterDetails(summary, character);
+    return summary;
   }
 
   function renderSeatSetup(setup, seatId) {
     const available = isSeatAvailable(seatId);
     const enabled = state.seatEnabled[seatId] === true;
+    const selected = selectedCharacterId(seatId);
     const section = createElement("section", "fate-knots-hub__seat");
     const heading = createElement("div", "fate-knots-hub__seat-heading");
     const titleGroup = createElement("div", "fate-knots-hub__seat-title-group");
@@ -259,10 +305,14 @@
         "span",
         "fate-knots-hub__seat-status",
         seatId === "user"
-          ? "Zorunlu oyuncu"
+          ? selected
+            ? "Karakter seçildi"
+            : "Zorunlu oyuncu"
           : available
             ? enabled
-              ? "Katılıyor"
+              ? selected
+                ? "Karakterini seçti"
+                : "Oyuncu seçimi bekleniyor"
               : "Uygun"
             : "Bağlı değil"
       )
@@ -275,7 +325,6 @@
           enabled ? "Çıkar" : "Kat",
           function () {
             state.seatEnabled[seatId] = !enabled;
-            if (enabled) state.assignments[seatId] = null;
             renderCurrent();
           },
           { secondary: true, disabled: !available }
@@ -286,10 +335,14 @@
 
     if (enabled) {
       const choices = createElement("div", "fate-knots-hub__character-grid");
-      readArray(setup.characters).forEach(function (character) {
-        const record = readRecord(character);
-        if (record) choices.append(renderCharacterChoice(record, seatId));
-      });
+      if (seatId === "user") {
+        readArray(setup.characters).forEach(function (character) {
+          const record = readRecord(character);
+          if (record) choices.append(renderLocalCharacterChoice(setup, record));
+        });
+      } else {
+        choices.append(renderRemoteCharacterSelection(setup, seatId));
+      }
       section.append(choices);
     }
     return section;
@@ -301,12 +354,17 @@
     });
   }
 
+  function hasSelectionConflict() {
+    const selectedIds = getEnabledSeatIds()
+      .map(selectedCharacterId)
+      .filter(Boolean);
+    return new Set(selectedIds).size !== selectedIds.length;
+  }
+
   function canCreateRun() {
     const seats = getEnabledSeatIds();
     if (seats.length === 0 || !state.seatEnabled.user) return false;
-    const selectedIds = seats.map(function (seatId) {
-      return state.assignments[seatId];
-    });
+    const selectedIds = seats.map(selectedCharacterId);
     return selectedIds.every(Boolean) && new Set(selectedIds).size === selectedIds.length;
   }
 
@@ -315,7 +373,7 @@
     const party = getEnabledSeatIds().map(function (seatId) {
       return {
         seatId: seatId,
-        characterId: state.assignments[seatId],
+        characterId: selectedCharacterId(seatId),
       };
     });
     sendCommand("GameRoomFateKnotsCreateRun", {
@@ -341,7 +399,7 @@
       createElement(
         "p",
         "fate-knots-hub__setup-copy",
-        "Katılacak oyuncuları ve her biri için farklı bir karakter seç. Bu ekran yalnız oyuncuya açık başlangıç bilgilerini gösterir."
+        "Katılacak koltukları belirle. Sen kendi karakterini seçersin; AI2 ve US1 karakterlerini kendi bağlantılarından seçer."
       )
     );
     heading.append(copy);
@@ -370,12 +428,22 @@
       panel.append(renderSeatSetup(setup, seatId));
     });
 
+    if (hasSelectionConflict()) {
+      panel.append(
+        createElement(
+          "div",
+          "fate-knots-hub__warning",
+          "İki aktif oyuncu aynı karakteri seçti. Koşu hazırlanmadan önce bu seçimlerden biri değişmeli."
+        )
+      );
+    }
+
     const footer = createElement("div", "fate-knots-hub__setup-footer");
     footer.append(
       createElement(
         "span",
         "fate-knots-hub__setup-note",
-        "Koşu önce hazırlık olarak kaydedilir; başlangıç düğümü ayrı Başlat eyleminde açılır."
+        "Koşu ancak bütün aktif koltuklar kendi karakterini seçtiğinde hazırlanabilir."
       ),
       createButton(
         "Koşuyu hazırla",
@@ -485,12 +553,28 @@
     return true;
   }
 
+  function handleRunSetupSeatState(message) {
+    const record = readRecord(message);
+    const payload = record ? readRecord(record.payload) : null;
+    const nextState = payload ? readRecord(payload.state) : null;
+    if (!nextState || !acceptSeatProjection(nextState)) return false;
+    state.lastMessage = "";
+    return true;
+  }
+
   function commandErrorMessage(result) {
     const error = readString(result && result.error);
     if (error === "universe-not-found") return "Seçilen evren artık bulunamıyor.";
     if (error === "run-not-found") return "Seçilen koşu artık bulunamıyor.";
-    if (error === "run-setup-rejected")
+    if (error === "run-setup-rejected") {
       return "Koşu hazırlığı host kuralları tarafından reddedildi.";
+    }
+    if (error === "seat-selection-required") {
+      return "Aktif AI2/US1 koltuklarından biri henüz kendi karakter seçimini tamamlamadı.";
+    }
+    if (error === "character-not-player-selectable") {
+      return "Seçilen karakter artık oyuncuya açık değil.";
+    }
     if (error === "universe-rejected") return "Evren canonical doğrulamadan geçemedi.";
     if (error === "persistence-rejected") return "Kayıt durumu güvenli biçimde okunamadı.";
     if (error === "invalid-payload") return "Gönderilen hazırlık bilgisi geçersiz.";
@@ -507,11 +591,25 @@
     if (command === "GameRoomFateKnotsGetRunSetup") {
       const setup = readRecord(result.setup);
       if (result.ok === true && setup) {
-        state.setup = setup;
         resetSetupSelection();
+        state.setup = setup;
         state.lastMessage = "";
+        sendCommand("GameRoomFateKnotsGetRunSetupSeats", { universeId: setup.universeId });
       } else {
         state.setup = null;
+        state.lastMessage = commandErrorMessage(result);
+      }
+      return true;
+    }
+
+    if (
+      command === "GameRoomFateKnotsGetRunSetupSeats" ||
+      command === "GameRoomFateKnotsSelectRunCharacter"
+    ) {
+      const projection = readRecord(result.state);
+      if (result.ok === true && projection && acceptSeatProjection(projection)) {
+        state.lastMessage = "";
+      } else if (result.ok !== true) {
         state.lastMessage = commandErrorMessage(result);
       }
       return true;
@@ -542,14 +640,8 @@
 
   function setContext(context) {
     state.context = readRecord(context);
-    if (!isSeatAvailable("ai2")) {
-      state.seatEnabled.ai2 = false;
-      state.assignments.ai2 = null;
-    }
-    if (!isSeatAvailable("us1")) {
-      state.seatEnabled.us1 = false;
-      state.assignments.us1 = null;
-    }
+    if (!isSeatAvailable("ai2")) state.seatEnabled.ai2 = false;
+    if (!isSeatAvailable("us1")) state.seatEnabled.us1 = false;
   }
 
   function dispose() {
@@ -560,6 +652,7 @@
   global.GameRoomFateKnotsUi = {
     dispose: dispose,
     handleCommandResult: handleCommandResult,
+    handleRunSetupSeatState: handleRunSetupSeatState,
     handleState: handleState,
     render: render,
     setContext: setContext,
