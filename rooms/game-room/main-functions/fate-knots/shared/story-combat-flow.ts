@@ -32,9 +32,11 @@ export interface FateKnotsStoryCombatExitResult {
  * then settles HP/status/runtime state and removes combat.
  *
  * When encounter loot exists, story transition/encounter tracking deliberately
- * survives the combat exit until unanimous loot settlement. That tracking is the
- * canonical post-loot destination marker (especially for final-encounter loot).
- * Non-loot exits clear tracking immediately as before.
+ * survives the combat exit until unanimous loot settlement. The ids prove which
+ * authored combat/encounter produced the pending pool; they are not a hidden
+ * finale destination or completion flag. Loot settlement always returns through
+ * normal exploration and then clears this tracking. Non-loot exits clear it
+ * immediately.
  */
 export function exitFateKnotsStoryCombat(
   universe: FateKnotsUniversePackage,
