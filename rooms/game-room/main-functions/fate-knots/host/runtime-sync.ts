@@ -43,12 +43,14 @@ function buildSelectedFateKnotsGameplayState(
  * Compatibility sync entry point used by the Game Room host.
  *
  * The neutral Hub projection is always emitted so management/setup remains
- * available. Once the selected run has left run-setup, a second player-safe
- * gameplay projection is emitted for the future living-book renderer.
+ * available. A second player-safe gameplay projection is always emitted as
+ * either a bounded active-run state or explicit `null`. The null projection is
+ * the renderer's authoritative signal to dispose/close a previously active
+ * living-book surface when the selected run returns to the Hub.
  *
  * Raw Universe Packages, Run States, enemy commits and hidden canon never cross
- * this bridge. If persistence/canonical projection is invalid, gameplay sync is
- * skipped rather than falling back to raw state.
+ * this bridge. If persistence/canonical projection is invalid, gameplay sync
+ * fails closed to null rather than falling back to raw state.
  */
 export function pushFateKnotsHubState(
   api: FateKnotsRuntimeSyncApi,
@@ -62,13 +64,11 @@ export function pushFateKnotsHubState(
   });
 
   const gameplayState = buildSelectedFateKnotsGameplayState(api);
-  if (gameplayState !== null) {
-    api.notifyRoom?.("fate-knots-gameplay-state", {
-      roomId: ROOM_ID,
-      featureId: FATE_KNOTS_FEATURE_ID,
-      state: gameplayState,
-    });
-  }
+  api.notifyRoom?.("fate-knots-gameplay-state", {
+    roomId: ROOM_ID,
+    featureId: FATE_KNOTS_FEATURE_ID,
+    state: gameplayState,
+  });
 
   return hubState;
 }
