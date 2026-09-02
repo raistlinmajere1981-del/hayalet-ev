@@ -17,7 +17,11 @@ import {
 } from "./post-combat-settlement.js";
 import type { FateKnotsRulesConfig } from "../rules/config.js";
 
-export type FateKnotsCombatExitNextPhase = "exploration" | "transition" | "loot";
+/**
+ * `finale` remains in this compatibility union because older story/runtime types
+ * may still carry that token, but V1 run-flow rejects it in `isAllowedExitPhase`.
+ */
+export type FateKnotsCombatExitNextPhase = "exploration" | "transition" | "loot" | "finale";
 
 export type FateKnotsRunFlowIssueCode =
   | "run-not-active"
