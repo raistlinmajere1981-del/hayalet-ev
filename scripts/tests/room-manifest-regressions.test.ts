@@ -330,6 +330,7 @@ void test("game-room manifest registers Tavla, Team Tetris, Yahtzee, and Fate Kn
       "GameRoomFateKnotsCompleteCombatMove",
       "GameRoomFateKnotsAi2CompleteCombatMove",
       "GameRoomFateKnotsRemoteCompleteCombatMove",
+      "GameRoomFateKnotsResolveCombatTurn",
       "GameRoomFateKnotsActivateRun",
       "GameRoomFateKnotsDeleteRun",
       "GameRoomFateKnotsDeleteUniverse",
