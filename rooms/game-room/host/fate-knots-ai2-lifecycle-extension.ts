@@ -104,7 +104,8 @@ export function extendGameRoomHostRuntimeWithFateKnotsAi2Lifecycle<T extends Gam
 
       if (originalRegisterCommand) {
         api.registerCommand = function (commandName, handler, options) {
-          originalRegisterCommand(
+          originalRegisterCommand.call(
+            api,
             commandName,
             wrapCommandHandler(lifecycleApi, commandName, handler),
             options
@@ -123,7 +124,8 @@ export function extendGameRoomHostRuntimeWithFateKnotsAi2Lifecycle<T extends Gam
         activated.commands[commandName] = wrapCommandHandler(lifecycleApi, commandName, handler);
       }
 
-      originalRegisterCommand?.(
+      originalRegisterCommand?.call(
+        api,
         FATE_KNOTS_AI2_LIFECYCLE_COMMAND_NAMES.requestRunCharacter,
         async function (payload: unknown) {
           const universeId = readUniverseId(payload);
