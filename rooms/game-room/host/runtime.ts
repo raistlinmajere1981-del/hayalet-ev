@@ -44,9 +44,17 @@ import {
   pushYahtzeeState,
 } from "../main-functions/yahtzee/host/runtime.js";
 import {
+  FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES,
+  createFateKnotsCombatDiscussionCommands,
+} from "../main-functions/fate-knots/host/combat-discussion-runtime.js";
+import {
   FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES,
   createFateKnotsCombatOptionCommands,
 } from "../main-functions/fate-knots/host/combat-options-runtime.js";
+import {
+  FATE_KNOTS_COMBAT_TURN_COMMAND_NAMES,
+  createFateKnotsCombatTurnCommands,
+} from "../main-functions/fate-knots/host/combat-turn-runtime.js";
 import { createFateKnotsForgeOrchestrator } from "../main-functions/fate-knots/host/forge-orchestration.js";
 import {
   FATE_KNOTS_GAMEPLAY_COMMAND_NAMES,
@@ -95,6 +103,9 @@ type BridgeNoPayloadHandler = (handlerApi: GameRoomHostApi) => unknown;
 type FateKnotsPlayerSeatId = Parameters<
   NonNullable<FateKnotsRunCommandDependencies["isPlayerSeatAvailable"]>
 >[0];
+type FateKnotsNotifyApi = GameRoomHostApi & {
+  notifyRoom?: (eventType: string, data: unknown) => void;
+};
 
 const FATE_KNOTS_MUTATION_COMMANDS = new Set<string>([
   FATE_KNOTS_MANAGEMENT_COMMAND_NAMES.activateUniverse,
@@ -241,6 +252,14 @@ export default function createGameRoomHostRuntime() {
         backgammonClearUs1SyncLoop(handlerApi as Parameters<typeof backgammonClearUs1SyncLoop>[0]);
       }
 
+      function notifyFateKnotsCombatDiscussion(state: unknown): void {
+        (api as FateKnotsNotifyApi).notifyRoom?.("fate-knots-combat-discussion-state", {
+          roomId: "game-room",
+          featureId: FATE_KNOTS_FEATURE_ID,
+          state,
+        });
+      }
+
       bootstrapGameRoomHostState(api, {
         clearPendingInvite: clearPendingInviteCompat,
         createInitialTeamTetrisState: createInitialTeamTetrisState,
@@ -328,6 +347,8 @@ export default function createGameRoomHostRuntime() {
       });
       const fateKnotsGameplayCommands = createFateKnotsGameplayCommands(api);
       const fateKnotsCombatOptionCommands = createFateKnotsCombatOptionCommands(api);
+      const fateKnotsCombatDiscussionCommands = createFateKnotsCombatDiscussionCommands(api);
+      const fateKnotsCombatTurnCommands = createFateKnotsCombatTurnCommands(api);
       const fateKnotsGameplayCommand =
         fateKnotsGameplayCommands[FATE_KNOTS_GAMEPLAY_COMMAND_NAMES.getGameplayState];
       const fateKnotsCombatOptionsCommand =
@@ -366,6 +387,51 @@ export default function createGameRoomHostRuntime() {
           exposure: "internal",
         }
       );
+
+      const discussionRegistrations = [
+        [FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.get, "room-ui", "Read the shared Fate Knots party combat discussion."],
+        [FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.sendLocal, "room-ui", "Post the local player's message to shared Fate Knots combat discussion."],
+        [FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.sendAi2, "ai-slots", "Post AI2's player message to shared Fate Knots combat discussion."],
+        [FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.sendRemote, "us1", "Post US1's remote player message to shared Fate Knots combat discussion."],
+      ] as const;
+      for (const [commandName, scope, description] of discussionRegistrations) {
+        const handler = fateKnotsCombatDiscussionCommands[commandName];
+        if (handler === undefined) throw new Error(`Missing Fate Knots discussion handler: ${commandName}`);
+        api.registerCommand?.(
+          commandName,
+          function (payload: unknown) {
+            return withFateKnotsReady(() => {
+              const result = handler(readRegisteredRoomArgs(payload));
+              if (result.ok) notifyFateKnotsCombatDiscussion(result.state);
+              return result;
+            });
+          },
+          { description, scope, exposure: "internal" }
+        );
+      }
+
+      const completeMoveRegistrations = [
+        [FATE_KNOTS_COMBAT_TURN_COMMAND_NAMES.completeLocal, "room-ui", "Lock the local player's legal Fate Knots combat move."],
+        [FATE_KNOTS_COMBAT_TURN_COMMAND_NAMES.completeAi2, "ai-slots", "Lock AI2's legal Fate Knots combat move."],
+        [FATE_KNOTS_COMBAT_TURN_COMMAND_NAMES.completeRemote, "us1", "Lock US1's legal Fate Knots combat move."],
+      ] as const;
+      for (const [commandName, scope, description] of completeMoveRegistrations) {
+        const handler = fateKnotsCombatTurnCommands[commandName];
+        if (handler === undefined) throw new Error(`Missing Fate Knots combat-turn handler: ${commandName}`);
+        api.registerCommand?.(
+          commandName,
+          function (payload: unknown) {
+            return withFateKnotsReady(async () => {
+              const result = await persistFateKnotsCommandMutation(api, () =>
+                handler(readRegisteredRoomArgs(payload))
+              );
+              pushFateKnotsHubStateCompat(api);
+              return result;
+            });
+          },
+          { description, scope, exposure: "internal" }
+        );
+      }
 
       const fateKnotsCommands = {
         ...fateKnotsManagementCommands,
