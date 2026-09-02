@@ -1,5 +1,6 @@
 import type { FateKnotsUniversePackage } from "../shared/contracts.js";
 import { isFateKnotsEnemyPolicyId } from "../shared/enemy-policy.js";
+import { FATE_KNOTS_NPC_INTERACTION_TAG_PREFIX } from "../shared/npc-interaction.js";
 import { FATE_KNOTS_PLAYER_TEMPLATE_TAG } from "../shared/run-setup.js";
 
 export type FateKnotsPlayabilityIssueCode =
@@ -9,7 +10,10 @@ export type FateKnotsPlayabilityIssueCode =
   | "encounter-policy-unknown"
   | "story-has-no-transition"
   | "finale-transition-missing"
-  | "final-encounter-transition-missing";
+  | "final-encounter-transition-missing"
+  | "camp-transition-location-not-allowed"
+  | "npc-interaction-transition-missing"
+  | "npc-interaction-location-mismatch";
 
 export interface FateKnotsPlayabilityIssue {
   code: FateKnotsPlayabilityIssueCode;
@@ -17,6 +21,8 @@ export interface FateKnotsPlayabilityIssue {
   encounterId?: string;
   transitionId?: string;
   policyId?: string;
+  npcId?: string;
+  locationId?: string;
 }
 
 export interface FateKnotsPlayabilityValidationResult {
@@ -30,6 +36,10 @@ export interface FateKnotsPlayabilityValidationResult {
  * attempt generic graph reachability. Finale transitions are terminal success
  * routes; an optional final encounter is only required to be reachable through
  * an authored combat transition and is not treated as a special runtime phase.
+ *
+ * Camp and NPC social mechanics deliberately reuse the bounded story graph, so
+ * this gate also rejects camp destinations that cannot camp and NPC interaction
+ * tags that point outside that graph or into a different authored location.
  */
 export function validateFateKnotsPlayableUniverse(
   universe: FateKnotsUniversePackage
@@ -37,6 +47,13 @@ export function validateFateKnotsPlayableUniverse(
   const issues: FateKnotsPlayabilityIssue[] = [];
   const characterById = new Map(
     universe.characters.map((character) => [character.id, character] as const)
+  );
+  const locationById = new Map(
+    universe.locations.map((location) => [location.id, location] as const)
+  );
+  const knotById = new Map(universe.story.knots.map((knot) => [knot.id, knot] as const));
+  const transitionById = new Map(
+    universe.story.transitions.map((transition) => [transition.id, transition] as const)
   );
   const playerTemplates = universe.characters.filter((character) =>
     character.tags.includes(FATE_KNOTS_PLAYER_TEMPLATE_TAG)
@@ -55,14 +72,53 @@ export function validateFateKnotsPlayableUniverse(
   const finalEncounterId = universe.finale.finalEncounterId ?? null;
   if (finalEncounterId) {
     const finalEncounterTransition = universe.story.transitions.find(
-      (transition) =>
-        transition.kind === "combat" && transition.encounterId === finalEncounterId
+      (transition) => transition.kind === "combat" && transition.encounterId === finalEncounterId
     );
     if (!finalEncounterTransition) {
       issues.push({
         code: "final-encounter-transition-missing",
         encounterId: finalEncounterId,
       });
+    }
+  }
+
+  for (const transition of universe.story.transitions) {
+    if (transition.kind !== "camp") continue;
+    const destinationLocationId =
+      transition.toLocationId ??
+      (transition.toKnotId ? (knotById.get(transition.toKnotId)?.locationId ?? null) : null);
+    const destination = destinationLocationId ? locationById.get(destinationLocationId) : null;
+    if (!destination || destination.campAllowed !== true) {
+      issues.push({
+        code: "camp-transition-location-not-allowed",
+        transitionId: transition.id,
+        ...(destinationLocationId ? { locationId: destinationLocationId } : {}),
+      });
+    }
+  }
+
+  for (const npc of universe.npcs) {
+    for (const tag of npc.roleTags) {
+      if (!tag.startsWith(FATE_KNOTS_NPC_INTERACTION_TAG_PREFIX)) continue;
+      const transitionId = tag.slice(FATE_KNOTS_NPC_INTERACTION_TAG_PREFIX.length).trim();
+      const transition = transitionId ? transitionById.get(transitionId) : undefined;
+      if (!transition) {
+        issues.push({
+          code: "npc-interaction-transition-missing",
+          npcId: npc.id,
+          transitionId,
+        });
+        continue;
+      }
+      const sourceKnot = knotById.get(transition.fromKnotId);
+      if (sourceKnot && sourceKnot.locationId !== npc.locationId) {
+        issues.push({
+          code: "npc-interaction-location-mismatch",
+          npcId: npc.id,
+          transitionId: transition.id,
+          locationId: npc.locationId,
+        });
+      }
     }
   }
 
