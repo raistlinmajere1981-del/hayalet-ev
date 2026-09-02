@@ -52,6 +52,10 @@ import {
   createFateKnotsCombatOptionCommands,
 } from "../main-functions/fate-knots/host/combat-options-runtime.js";
 import {
+  FATE_KNOTS_COMBAT_RESOLUTION_COMMAND_NAMES,
+  createFateKnotsCombatResolutionCommands,
+} from "../main-functions/fate-knots/host/combat-resolution-runtime.js";
+import {
   FATE_KNOTS_COMBAT_TURN_COMMAND_NAMES,
   createFateKnotsCombatTurnCommands,
 } from "../main-functions/fate-knots/host/combat-turn-runtime.js";
@@ -349,18 +353,22 @@ export default function createGameRoomHostRuntime() {
       const fateKnotsCombatOptionCommands = createFateKnotsCombatOptionCommands(api);
       const fateKnotsCombatDiscussionCommands = createFateKnotsCombatDiscussionCommands(api);
       const fateKnotsCombatTurnCommands = createFateKnotsCombatTurnCommands(api);
+      const fateKnotsCombatResolutionCommands = createFateKnotsCombatResolutionCommands(api);
       const fateKnotsGameplayCommand =
         fateKnotsGameplayCommands[FATE_KNOTS_GAMEPLAY_COMMAND_NAMES.getGameplayState];
       const fateKnotsCombatOptionsCommand =
         fateKnotsCombatOptionCommands[FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES.getLocalOptions];
       const fateKnotsCombatDiscussionGetCommand =
         fateKnotsCombatDiscussionCommands[FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.get];
+      const fateKnotsCombatResolutionCommand =
+        fateKnotsCombatResolutionCommands[FATE_KNOTS_COMBAT_RESOLUTION_COMMAND_NAMES.resolveTurn];
       if (
         fateKnotsGameplayCommand === undefined ||
         fateKnotsCombatOptionsCommand === undefined ||
-        fateKnotsCombatDiscussionGetCommand === undefined
+        fateKnotsCombatDiscussionGetCommand === undefined ||
+        fateKnotsCombatResolutionCommand === undefined
       ) {
-        throw new Error("Fate Knots read command registry is incomplete.");
+        throw new Error("Fate Knots read/turn command registry is incomplete.");
       }
 
       api.registerCommand?.(
@@ -395,14 +403,32 @@ export default function createGameRoomHostRuntime() {
       );
 
       const discussionRegistrations = [
-        [FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.get, "room-ui", "Read the shared Fate Knots party combat discussion."],
-        [FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.sendLocal, "room-ui", "Post the local player's message to shared Fate Knots combat discussion."],
-        [FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.sendAi2, "ai-slots", "Post AI2's player message to shared Fate Knots combat discussion."],
-        [FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.sendRemote, "us1", "Post US1's remote player message to shared Fate Knots combat discussion."],
+        [
+          FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.get,
+          "room-ui",
+          "Read the shared Fate Knots party combat discussion.",
+        ],
+        [
+          FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.sendLocal,
+          "room-ui",
+          "Post the local player's message to shared Fate Knots combat discussion.",
+        ],
+        [
+          FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.sendAi2,
+          "ai-slots",
+          "Post AI2's player message to shared Fate Knots combat discussion.",
+        ],
+        [
+          FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.sendRemote,
+          "us1",
+          "Post US1's remote player message to shared Fate Knots combat discussion.",
+        ],
       ] as const;
       for (const [commandName, scope, description] of discussionRegistrations) {
         const handler = fateKnotsCombatDiscussionCommands[commandName];
-        if (handler === undefined) throw new Error(`Missing Fate Knots discussion handler: ${commandName}`);
+        if (handler === undefined) {
+          throw new Error(`Missing Fate Knots discussion handler: ${commandName}`);
+        }
         api.registerCommand?.(
           commandName,
           function (payload: unknown) {
@@ -417,13 +443,27 @@ export default function createGameRoomHostRuntime() {
       }
 
       const completeMoveRegistrations = [
-        [FATE_KNOTS_COMBAT_TURN_COMMAND_NAMES.completeLocal, "room-ui", "Lock the local player's legal Fate Knots combat move."],
-        [FATE_KNOTS_COMBAT_TURN_COMMAND_NAMES.completeAi2, "ai-slots", "Lock AI2's legal Fate Knots combat move."],
-        [FATE_KNOTS_COMBAT_TURN_COMMAND_NAMES.completeRemote, "us1", "Lock US1's legal Fate Knots combat move."],
+        [
+          FATE_KNOTS_COMBAT_TURN_COMMAND_NAMES.completeLocal,
+          "room-ui",
+          "Lock the local player's legal Fate Knots combat move.",
+        ],
+        [
+          FATE_KNOTS_COMBAT_TURN_COMMAND_NAMES.completeAi2,
+          "ai-slots",
+          "Lock AI2's legal Fate Knots combat move.",
+        ],
+        [
+          FATE_KNOTS_COMBAT_TURN_COMMAND_NAMES.completeRemote,
+          "us1",
+          "Lock US1's legal Fate Knots combat move.",
+        ],
       ] as const;
       for (const [commandName, scope, description] of completeMoveRegistrations) {
         const handler = fateKnotsCombatTurnCommands[commandName];
-        if (handler === undefined) throw new Error(`Missing Fate Knots combat-turn handler: ${commandName}`);
+        if (handler === undefined) {
+          throw new Error(`Missing Fate Knots combat-turn handler: ${commandName}`);
+        }
         api.registerCommand?.(
           commandName,
           function (payload: unknown) {
@@ -441,6 +481,26 @@ export default function createGameRoomHostRuntime() {
           { description, scope, exposure: "internal" }
         );
       }
+
+      api.registerCommand?.(
+        FATE_KNOTS_COMBAT_RESOLUTION_COMMAND_NAMES.resolveTurn,
+        function (payload: unknown) {
+          return withFateKnotsReady(async () => {
+            const result = await persistFateKnotsCommandMutation(api, () =>
+              fateKnotsCombatResolutionCommand(readRegisteredRoomArgs(payload))
+            );
+            pushFateKnotsHubStateCompat(api);
+            if (result.ok) notifyFateKnotsCombatDiscussion(null);
+            return result;
+          });
+        },
+        {
+          description:
+            "Resolve one already-committed Fate Knots turn from a stale-safe renderer handshake.",
+          scope: "room-ui",
+          exposure: "internal",
+        }
+      );
 
       const fateKnotsCommands = {
         ...fateKnotsManagementCommands,
