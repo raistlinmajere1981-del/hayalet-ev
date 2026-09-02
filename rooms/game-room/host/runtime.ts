@@ -353,7 +353,13 @@ export default function createGameRoomHostRuntime() {
         fateKnotsGameplayCommands[FATE_KNOTS_GAMEPLAY_COMMAND_NAMES.getGameplayState];
       const fateKnotsCombatOptionsCommand =
         fateKnotsCombatOptionCommands[FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES.getLocalOptions];
-      if (fateKnotsGameplayCommand === undefined || fateKnotsCombatOptionsCommand === undefined) {
+      const fateKnotsCombatDiscussionGetCommand =
+        fateKnotsCombatDiscussionCommands[FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.get];
+      if (
+        fateKnotsGameplayCommand === undefined ||
+        fateKnotsCombatOptionsCommand === undefined ||
+        fateKnotsCombatDiscussionGetCommand === undefined
+      ) {
         throw new Error("Fate Knots read command registry is incomplete.");
       }
 
@@ -422,10 +428,13 @@ export default function createGameRoomHostRuntime() {
           commandName,
           function (payload: unknown) {
             return withFateKnotsReady(async () => {
-              const result = await persistFateKnotsCommandMutation(api, () =>
-                handler(readRegisteredRoomArgs(payload))
-              );
+              const roomArgs = readRegisteredRoomArgs(payload);
+              const result = await persistFateKnotsCommandMutation(api, () => handler(roomArgs));
               pushFateKnotsHubStateCompat(api);
+              if (result.ok) {
+                const discussion = fateKnotsCombatDiscussionGetCommand(roomArgs);
+                notifyFateKnotsCombatDiscussion(discussion.ok ? discussion.state : null);
+              }
               return result;
             });
           },
