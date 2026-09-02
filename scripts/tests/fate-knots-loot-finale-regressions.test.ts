@@ -147,6 +147,7 @@ function createUniverse(): FateKnotsUniversePackage {
       conflictSummary: "Use what was learned beyond the guardian to resolve the objective.",
       finaleLocationId: "sanctum",
       requiredKnotIds: ["gate-knot"],
+      requiredItemIds: ["guardian-key"],
       finalEncounterId: "guardian",
       successConditionId: "objective-resolved",
       epilogueConditionIds: [],
@@ -192,12 +193,12 @@ function createLootRun(): FateKnotsRunState {
     ],
     teamPoolItemIds: ["guardian-key"],
     activeCombat: null,
-    finaleUnlocked: true,
+    finaleUnlocked: false,
     result: "active",
   };
 }
 
-void test("loot from finalEncounterId returns to exploration instead of privileged finale phase", () => {
+void test("final encounter loot returns to exploration and can unlock the authored success route", () => {
   const universe = createUniverse();
   const run = createLootRun();
   const result = resolveFateKnotsStoryLootDecision(universe, run, {
