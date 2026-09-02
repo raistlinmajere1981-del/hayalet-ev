@@ -128,9 +128,12 @@
 
     function handoffCommandResult(message) {
       const gameplayUi = getFateKnotsGameplayUi();
-      if (gameplayUi && typeof gameplayUi.handleCommandResult === "function") {
-        gameplayUi.handleCommandResult(message);
-      }
+      const gameplayHandled = Boolean(
+        gameplayUi &&
+          typeof gameplayUi.handleCommandResult === "function" &&
+          gameplayUi.handleCommandResult(message)
+      );
+      if (gameplayHandled) return;
 
       const fateKnotsUi = getFateKnotsUi();
       if (fateKnotsUi && typeof fateKnotsUi.handleCommandResult === "function") {
