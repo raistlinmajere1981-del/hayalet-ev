@@ -106,6 +106,21 @@ function readRun(
   return { ok: true, run: snapshot.run };
 }
 
+function seatHasCommittedMove(run: FateKnotsRunState, seatId: FateKnotsSeatId): boolean {
+  const combat = run.activeCombat;
+  if (!combat) return false;
+  const partyIds = new Set(run.partyActorIds);
+  const matchingActors = combat.actors.filter(
+    (actor) =>
+      partyIds.has(actor.actorId) &&
+      !actor.fallen &&
+      actor.seatId === seatId
+  );
+  const [actor, secondActor] = matchingActors;
+  if (actor === undefined || secondActor !== undefined) return false;
+  return combat.commits.some((commit) => commit.actorId === actor.actorId && commit.committed);
+}
+
 function project(
   api: FateKnotsPersistenceApi,
   payload: unknown
@@ -149,6 +164,14 @@ function append(
   }
   const read = readRun(api, runId);
   if (!read.ok) return read.result;
+  if (seatHasCommittedMove(read.run, seatId)) {
+    return {
+      ok: false,
+      error: "discussion-rejected",
+      state: null,
+      issues: [{ source: "combat-discussion", code: "seat-already-committed", value: seatId }],
+    };
+  }
   const discussion = appendFateKnotsCombatDiscussionMessage(api, read.run, seatId, text);
   return discussion.ok
     ? { ok: true, state: discussion.state, issues: [] }
@@ -163,7 +186,9 @@ function append(
 /**
  * V1 party-chat command surface. Sender identity is bound by command scope and
  * never accepted from payload, so room UI cannot impersonate AI2/US1 and remote
- * adapters cannot post as the local player.
+ * adapters cannot post as the local player. Once a seat locks its combat move,
+ * that seat can no longer append messages for the turn; the shared transcript
+ * remains visible until every required player seat has committed.
  */
 export function createFateKnotsCombatDiscussionCommands(
   api: FateKnotsPersistenceApi
