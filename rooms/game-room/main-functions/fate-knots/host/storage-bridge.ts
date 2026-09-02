@@ -47,6 +47,13 @@ export interface FateKnotsManagedAssetVerificationResult {
   failures: FateKnotsManagedAssetVerificationFailure[];
 }
 
+export interface FateKnotsManagedImageWriteRequest {
+  jobId: string;
+  fileId: string;
+  base64: string;
+  mimeType: string;
+}
+
 let cachedPaths: FateKnotsDurableStoragePaths | null = null;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -108,6 +115,50 @@ function decodeBase64Text(value: string): string {
   return new TextDecoder("utf-8").decode(bytes);
 }
 
+function stableSegmentHash(value: string): string {
+  let hash = 17;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) % 2_147_483_647;
+  }
+  return hash.toString(36);
+}
+
+function sanitizeManagedSegment(value: string, fallback: string): string {
+  const normalized = value
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "")
+    .slice(0, 72);
+  const stem = normalized || fallback;
+  return `${stem}-${stableSegmentHash(value)}`;
+}
+
+function imageExtensionForMimeType(mimeType: string): string | null {
+  const normalized = mimeType.trim().toLowerCase().split(";", 1)[0] ?? "";
+  if (normalized === "image/png") return "png";
+  if (normalized === "image/jpeg" || normalized === "image/jpg") return "jpg";
+  if (normalized === "image/webp") return "webp";
+  if (normalized === "image/gif") return "gif";
+  if (normalized === "image/bmp") return "bmp";
+  if (normalized === "image/avif") return "avif";
+  if (normalized === "image/svg+xml") return "svg";
+  return null;
+}
+
+async function ensureFateKnotsManagedDirectory(directoryPath: string, requestId: string): Promise<void> {
+  const api = getElectronApi();
+  if (api === null) throw new Error("Fate Knots durable Electron storage bridge is unavailable.");
+  const ensured = await api.roomToolsCall({
+    operation: "ensure-dir",
+    roomId: "game-room",
+    requestId,
+    targetPath: directoryPath,
+  });
+  if (ensured.success !== true) {
+    throw new Error(ensured.error ?? "Fate Knots managed asset directory could not be created.");
+  }
+}
+
 export async function resolveFateKnotsDurableStoragePaths(): Promise<FateKnotsDurableStoragePaths> {
   if (cachedPaths !== null) return { ...cachedPaths };
   const api = getElectronApi();
@@ -166,6 +217,67 @@ export async function writeFateKnotsJsonFile(filePath: string, value: unknown): 
   if (result.success !== true) {
     throw new Error(result.error ?? result.message ?? "Fate Knots durable write failed.");
   }
+}
+
+/** Reads an already archived provider artifact without teaching Fate Knots any provider DOM rules. */
+export async function readFateKnotsLocalFileBase64(filePath: string): Promise<string> {
+  const api = getElectronApi();
+  if (api === null) throw new Error("Fate Knots durable Electron storage bridge is unavailable.");
+  if (normalizeComparablePath(filePath) === null) {
+    throw new Error("Fate Knots provider artifact path is not a usable local file path.");
+  }
+  const encoded = await api.readFile(filePath);
+  if (encoded === null || encoded.trim() === "") {
+    throw new Error("Fate Knots provider artifact is missing or empty.");
+  }
+  return encoded.trim();
+}
+
+/**
+ * Promotes real image bytes into Fate Knots-owned storage. The returned path is
+ * always below `<game-room storage>/fate-knots/assets/` and can therefore pass
+ * the final World Forge containment/readability gate.
+ */
+export async function writeFateKnotsManagedImageFile(
+  request: FateKnotsManagedImageWriteRequest
+): Promise<string> {
+  const api = getElectronApi();
+  if (api === null) throw new Error("Fate Knots durable Electron storage bridge is unavailable.");
+  const base64 = request.base64.trim();
+  if (base64 === "") throw new Error("Fate Knots managed image write received empty bytes.");
+  const mimeType = request.mimeType.trim().toLowerCase().split(";", 1)[0] ?? "";
+  if (!mimeType.startsWith("image/")) {
+    throw new Error("Fate Knots managed image write requires an image MIME type.");
+  }
+  const extension = imageExtensionForMimeType(mimeType);
+  if (extension === null) {
+    throw new Error(`Fate Knots managed image MIME type is unsupported: ${mimeType}`);
+  }
+
+  const paths = await resolveFateKnotsDurableStoragePaths();
+  const assetsRoot = joinRuntimePath(paths.rootDir, "assets");
+  const jobDirectory = joinRuntimePath(
+    assetsRoot,
+    sanitizeManagedSegment(request.jobId, "job")
+  );
+  await ensureFateKnotsManagedDirectory(
+    jobDirectory,
+    `fate-knots-assets-${stableSegmentHash(request.jobId)}`
+  );
+
+  const filePath = joinRuntimePath(
+    jobDirectory,
+    `${sanitizeManagedSegment(request.fileId, "image")}.${extension}`
+  );
+  const result = await api.fmWriteFileAtomic({
+    path: filePath,
+    data: base64,
+    encoding: "base64",
+  });
+  if (result.success !== true) {
+    throw new Error(result.error ?? result.message ?? "Fate Knots managed image write failed.");
+  }
+  return filePath;
 }
 
 /**
