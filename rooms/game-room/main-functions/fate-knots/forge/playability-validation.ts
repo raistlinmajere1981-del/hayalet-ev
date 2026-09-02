@@ -12,6 +12,7 @@ export type FateKnotsPlayabilityIssueCode =
   | "finale-transition-missing"
   | "final-encounter-transition-missing"
   | "camp-transition-location-not-allowed"
+  | "camp-transition-destination-not-supported"
   | "npc-interaction-transition-missing"
   | "npc-interaction-location-mismatch";
 
@@ -38,9 +39,9 @@ export interface FateKnotsPlayabilityValidationResult {
  * an authored combat transition and is not treated as a special runtime phase.
  *
  * Camp is an action taken at the current story knot rather than a travel
- * destination. This mirrors story-transition legality: the source knot's
- * location must explicitly permit camp. NPC interactions likewise reuse the
- * bounded story graph rather than adding a second quest/social DSL.
+ * destination. V1 camp transitions therefore stay at their source knot and that
+ * source location must explicitly permit camp. NPC interactions likewise reuse
+ * the bounded story graph rather than adding a second quest/social DSL.
  */
 export function validateFateKnotsPlayableUniverse(
   universe: FateKnotsUniversePackage
@@ -85,6 +86,12 @@ export function validateFateKnotsPlayableUniverse(
 
   for (const transition of universe.story.transitions) {
     if (transition.kind !== "camp") continue;
+    if (transition.toKnotId || transition.toLocationId) {
+      issues.push({
+        code: "camp-transition-destination-not-supported",
+        transitionId: transition.id,
+      });
+    }
     const sourceKnot = knotById.get(transition.fromKnotId);
     const sourceLocationId = sourceKnot?.locationId ?? null;
     const sourceLocation = sourceLocationId ? locationById.get(sourceLocationId) : null;
