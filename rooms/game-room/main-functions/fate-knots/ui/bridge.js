@@ -39,9 +39,9 @@
       const state = getBaseState();
       return Boolean(
         state &&
-        state.context &&
-        state.context.activeFeature &&
-        state.context.activeFeature.id === FATE_KNOTS_FEATURE_ID
+          state.context &&
+          state.context.activeFeature &&
+          state.context.activeFeature.id === FATE_KNOTS_FEATURE_ID
       );
     }
 
@@ -93,10 +93,10 @@
     function isFateKnotsCommandResult(message) {
       return Boolean(
         message &&
-        typeof message === "object" &&
-        message.type === "command-result" &&
-        typeof message.command === "string" &&
-        message.command.startsWith("GameRoomFateKnots")
+          typeof message === "object" &&
+          message.type === "command-result" &&
+          typeof message.command === "string" &&
+          message.command.startsWith("GameRoomFateKnots")
       );
     }
 
@@ -150,12 +150,20 @@
       dispatchFateKnotsEvent("fate-knots-npc-dialogue-state", message);
     }
 
+    function handoffLootState(message) {
+      const gameplayUi = getFateKnotsGameplayUi();
+      if (gameplayUi && typeof gameplayUi.handleLootState === "function") {
+        gameplayUi.handleLootState(message);
+      }
+      dispatchFateKnotsEvent("fate-knots-loot-state", message);
+    }
+
     function handoffCommandResult(message) {
       const gameplayUi = getFateKnotsGameplayUi();
       const gameplayHandled = Boolean(
         gameplayUi &&
-        typeof gameplayUi.handleCommandResult === "function" &&
-        gameplayUi.handleCommandResult(message)
+          typeof gameplayUi.handleCommandResult === "function" &&
+          gameplayUi.handleCommandResult(message)
       );
       if (gameplayHandled) return;
 
@@ -213,6 +221,12 @@
         message.type === "fate-knots-npc-dialogue-state"
       ) {
         handoffNpcDialogueState(message);
+        if (isFateKnotsActive()) render();
+        return;
+      }
+
+      if (message && typeof message === "object" && message.type === "fate-knots-loot-state") {
+        handoffLootState(message);
         if (isFateKnotsActive()) render();
         return;
       }
