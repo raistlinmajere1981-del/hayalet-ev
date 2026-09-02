@@ -12,6 +12,13 @@ const FATE_KNOTS_COMMANDS = [
   "GameRoomFateKnotsStartRun",
   "GameRoomFateKnotsGetGameplayState",
   "GameRoomFateKnotsGetCombatOptions",
+  "GameRoomFateKnotsGetCombatDiscussion",
+  "GameRoomFateKnotsSendCombatMessage",
+  "GameRoomFateKnotsAi2CombatMessage",
+  "GameRoomFateKnotsRemoteCombatMessage",
+  "GameRoomFateKnotsCompleteCombatMove",
+  "GameRoomFateKnotsAi2CompleteCombatMove",
+  "GameRoomFateKnotsRemoteCompleteCombatMove",
   "GameRoomFateKnotsActivateRun",
   "GameRoomFateKnotsDeleteRun",
   "GameRoomFateKnotsDeleteUniverse",
@@ -34,11 +41,19 @@ void test("Game Room registers Fate Knots without inventing a scene layout", () 
     feature.commandSpecs?.map((entry) => entry.name),
     FATE_KNOTS_COMMANDS
   );
-  const gameplaySpec = feature.commandSpecs?.find(
-    (entry) => entry.name === "GameRoomFateKnotsGetGameplayState"
-  );
-  assert.equal(gameplaySpec?.scope, "room-ui");
-  assert.equal(gameplaySpec?.exposure, "internal");
+  const findSpec = (name: string) => feature.commandSpecs?.find((entry) => entry.name === name);
+  assert.equal(findSpec("GameRoomFateKnotsGetGameplayState")?.scope, "room-ui");
+  assert.equal(findSpec("GameRoomFateKnotsGetGameplayState")?.exposure, "internal");
+  assert.equal(findSpec("GameRoomFateKnotsGetCombatDiscussion")?.scope, "room-ui");
+  assert.equal(findSpec("GameRoomFateKnotsSendCombatMessage")?.scope, "room-ui");
+  assert.equal(findSpec("GameRoomFateKnotsCompleteCombatMove")?.scope, "room-ui");
+  assert.equal(findSpec("GameRoomFateKnotsAi2CombatMessage")?.scope, "ai-slots");
+  assert.equal(findSpec("GameRoomFateKnotsAi2CompleteCombatMove")?.scope, "ai-slots");
+  assert.equal(findSpec("GameRoomFateKnotsRemoteCombatMessage")?.scope, "us1");
+  assert.equal(findSpec("GameRoomFateKnotsRemoteCompleteCombatMove")?.scope, "us1");
+  for (const name of FATE_KNOTS_COMMANDS) {
+    assert.equal(findSpec(name)?.exposure, "internal", name);
+  }
   assert.equal(
     feature.commandSpecs?.some(
       (entry) =>
