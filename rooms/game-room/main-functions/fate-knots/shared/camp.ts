@@ -23,6 +23,7 @@ export interface FateKnotsCampIssue {
   actorId?: string;
   characterId?: string;
   equipmentId?: string;
+  locationId?: string;
   slot?: string;
 }
 
@@ -72,8 +73,10 @@ function validateCampContext(
   if (run.activeCombat) return { code: "active-combat-exists" };
   if (!run.activeLocationId) return { code: "camp-location-missing" };
   const location = universe.locations.find((entry) => entry.id === run.activeLocationId);
-  if (!location) return { code: "camp-location-missing" };
-  if (location.campAllowed !== true) return { code: "camp-location-not-allowed" };
+  if (!location) return { code: "camp-location-missing", locationId: run.activeLocationId };
+  if (location.campAllowed !== true) {
+    return { code: "camp-location-not-allowed", locationId: location.id };
+  }
   return null;
 }
 
@@ -96,7 +99,6 @@ export function settleFateKnotsCampRecovery(
   if (contextIssue) return fail(runInput, contextIssue);
 
   const run = cloneRun(runInput);
-  const partyIds = new Set(run.partyActorIds);
   let changed = false;
 
   for (const actorId of run.partyActorIds) {
@@ -119,8 +121,6 @@ export function settleFateKnotsCampRecovery(
     actor.fallen = false;
   }
 
-  // Non-party actors are not camp participants and remain untouched.
-  run.actors = run.actors.map((actor) => (partyIds.has(actor.actorId) ? actor : cloneActor(actor)));
   if (changed) run.revision += 1;
   return { ok: true, run, changed, issues: [] };
 }
