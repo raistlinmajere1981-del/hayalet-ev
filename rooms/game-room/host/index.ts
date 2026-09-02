@@ -4,6 +4,7 @@ import { extendGameRoomHostRuntimeWithFateKnotsExploration } from "./fate-knots-
 import { extendGameRoomHostRuntimeWithFateKnotsLoot } from "./fate-knots-loot-extension.js";
 import { extendGameRoomHostRuntimeWithFateKnotsPlayerCombat } from "./fate-knots-player-combat-extension.js";
 import { extendGameRoomHostRuntimeWithFateKnotsRunSetupSeats } from "./fate-knots-run-setup-extension.js";
+import { extendGameRoomHostRuntimeWithFateKnotsUs1Lifecycle } from "./fate-knots-us1-lifecycle-extension.js";
 import createGameRoomHostRuntime, { teamTetrisEngine } from "./runtime.js";
 
 export { teamTetrisEngine };
@@ -21,5 +22,8 @@ const fateKnotsRunSetupRuntime = extendGameRoomHostRuntimeWithFateKnotsRunSetupS
 const fateKnotsPlayerCombatRuntime = extendGameRoomHostRuntimeWithFateKnotsPlayerCombat(
   fateKnotsRunSetupRuntime
 );
+const fateKnotsAi2Runtime = extendGameRoomHostRuntimeWithFateKnotsAi2Lifecycle(
+  fateKnotsPlayerCombatRuntime
+);
 
-export default extendGameRoomHostRuntimeWithFateKnotsAi2Lifecycle(fateKnotsPlayerCombatRuntime);
+export default extendGameRoomHostRuntimeWithFateKnotsUs1Lifecycle(fateKnotsAi2Runtime);
