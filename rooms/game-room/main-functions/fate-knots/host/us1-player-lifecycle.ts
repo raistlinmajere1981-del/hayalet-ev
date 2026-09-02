@@ -25,15 +25,13 @@ import {
 } from "./run-setup-seat-coordination.js";
 import { buildFateKnotsRunSetupSnapshot } from "./run-setup-state.js";
 import { loadContext } from "../../../shared/host/context-state.js";
-import {
-  FATE_KNOTS_FEATURE_ID,
-  ROOM_ID,
-} from "../../../shared/host/feature-meta.js";
+import { FATE_KNOTS_FEATURE_ID, ROOM_ID } from "../../../shared/host/feature-meta.js";
 import { buildUs1RoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
 
 const MIRROR_SCHEMA_VERSION = 1;
 const CLIENT_MIRROR_STATE_KEY = "game-room:fate-knots:us1-client-mirror:v1";
 const WORLD_TRANSPORT_STATE_KEY = "game-room:fate-knots:us1-world-transport:v1";
+const WORLD_SETUP_STATE_KEY = "game-room:fate-knots:us1-world-setup:v1";
 const CLIENT_RETURN_TRANSPORT_STATE_KEY = "game-room:fate-knots:us1-client-return-transport:v1";
 const LAST_NPC_DIALOGUE_STATE_KEY = "game-room:fate-knots:us1-last-npc-dialogue:v1";
 
@@ -210,8 +208,7 @@ async function sendWorldMirrorSnapshot(
   const token = snapshotToken(snapshot);
   const previous = readTransportState(api, WORLD_TRANSPORT_STATE_KEY);
   if (previous.lastToken === token && previous.remoteUserId === remoteUserId) return true;
-  const reusableSessionId =
-    previous.remoteUserId === remoteUserId ? previous.localSessionId : null;
+  const reusableSessionId = previous.remoteUserId === remoteUserId ? previous.localSessionId : null;
 
   const raw = await api.dispatchBridge({
     action: "message.send",
@@ -280,13 +277,16 @@ function normalizeMirrorSnapshot(value: unknown): FateKnotsUs1MirrorSnapshot | n
 
 export function applyFateKnotsUs1ClientMirrorSync(
   api: FateKnotsUs1LifecycleApi,
-  payload: unknown
-): { ok: true; state: FateKnotsUs1MirrorSnapshot | null; issues: [] } | {
-  ok: false;
-  error: "invalid-payload";
-  state: null;
-  issues: Array<{ code: string }>;
-} {
+  payload: unknown,
+  peerRemoteUserId: string | null = null
+):
+  | { ok: true; state: FateKnotsUs1MirrorSnapshot | null; issues: [] }
+  | {
+      ok: false;
+      error: "invalid-payload";
+      state: null;
+      issues: Array<{ code: string }>;
+    } {
   const snapshot = isRecord(payload) ? normalizeMirrorSnapshot(payload["snapshot"]) : null;
   if (!snapshot) {
     return {
@@ -296,9 +296,17 @@ export function applyFateKnotsUs1ClientMirrorSync(
       issues: [{ code: "invalid-us1-mirror-snapshot" }],
     };
   }
+
+  if (peerRemoteUserId) {
+    const previous = readTransportState(api, CLIENT_RETURN_TRANSPORT_STATE_KEY);
+    writeTransportState(api, CLIENT_RETURN_TRANSPORT_STATE_KEY, {
+      ...previous,
+      remoteUserId: peerRemoteUserId,
+    });
+  }
+
   if (snapshot.kind === "clear") {
     clearStateKey(api, CLIENT_MIRROR_STATE_KEY);
-    clearStateKey(api, CLIENT_RETURN_TRANSPORT_STATE_KEY);
     return { ok: true, state: null, issues: [] };
   }
   api.setState(CLIENT_MIRROR_STATE_KEY, snapshot);
@@ -345,6 +353,44 @@ export function recordFateKnotsUs1NpcDialogue(
   const runId = readString(state["runId"]);
   if (!runId) return;
   api.setState(LAST_NPC_DIALOGUE_STATE_KEY, { runId, state: structuredClone(state) });
+}
+
+function buildSetupMirrorSnapshot(
+  api: FateKnotsUs1LifecycleApi,
+  universeId: string
+): FateKnotsUs1MirrorSnapshot | null {
+  const universe = loadCanonicalUniverse(api, universeId);
+  if (!universe) return null;
+  return {
+    schemaVersion: MIRROR_SCHEMA_VERSION,
+    kind: "setup",
+    universeId,
+    setup: buildFateKnotsRunSetupSnapshot(universe),
+    seats: readFateKnotsRunSetupSeatProjection(api, universeId),
+  };
+}
+
+function readPendingSetupUniverseId(api: FateKnotsUs1LifecycleApi): string | null {
+  const value = api.getState(WORLD_SETUP_STATE_KEY);
+  return isRecord(value) ? readString(value["universeId"]) : null;
+}
+
+function setPendingSetupUniverseId(api: FateKnotsUs1LifecycleApi, universeId: string | null): void {
+  if (universeId === null) {
+    clearStateKey(api, WORLD_SETUP_STATE_KEY);
+    return;
+  }
+  api.setState(WORLD_SETUP_STATE_KEY, { universeId });
+}
+
+export function completeFateKnotsUs1RunSetup(api: FateKnotsUs1LifecycleApi): void {
+  setPendingSetupUniverseId(api, null);
+  const transport = readTransportState(api, WORLD_TRANSPORT_STATE_KEY);
+  writeTransportState(api, WORLD_TRANSPORT_STATE_KEY, {
+    ...transport,
+    mode: null,
+    lastToken: null,
+  });
 }
 
 function buildRunMirrorSnapshot(
@@ -439,35 +485,25 @@ export async function requestFateKnotsUs1RunCharacter(
     return { ok: false, error: "us1-unavailable", issues: [{ code: "us1-unavailable" }] };
   }
 
-  const universes = loadFateKnotsUniverseStore(api);
-  const stored = universes.store.entries.find(
-    (entry) => entry.universe.universeId === universeId
-  )?.universe;
-  if (!stored) {
-    return {
-      ok: false,
-      error: "universe-not-found",
-      issues: [{ code: "universe-not-found", value: universeId }],
-    };
-  }
-  const canonical = normalizeFateKnotsCanonicalUniversePackage(stored);
-  if (!canonical.valid || !canonical.package) {
-    return {
-      ok: false,
-      error: "universe-rejected",
-      issues: canonical.issues.map((issue) => ({ code: issue.code, value: issue.path })),
-    };
+  const snapshot = buildSetupMirrorSnapshot(api, universeId);
+  if (!snapshot) {
+    const universes = loadFateKnotsUniverseStore(api);
+    const exists = universes.store.entries.some(
+      (entry) => entry.universe.universeId === universeId
+    );
+    return exists
+      ? { ok: false, error: "universe-rejected", issues: [{ code: "universe-rejected" }] }
+      : {
+          ok: false,
+          error: "universe-not-found",
+          issues: [{ code: "universe-not-found", value: universeId }],
+        };
   }
 
   setFateKnotsRunSetupSeatSelection(api, universeId, "us1", null);
-  const snapshot: FateKnotsUs1MirrorSnapshot = {
-    schemaVersion: MIRROR_SCHEMA_VERSION,
-    kind: "setup",
-    universeId,
-    setup: buildFateKnotsRunSetupSnapshot(canonical.package),
-    seats: readFateKnotsRunSetupSeatProjection(api, universeId),
-  };
-  if (!(await sendWorldMirrorSnapshot(api, snapshot, "setup"))) {
+  setPendingSetupUniverseId(api, universeId);
+  const refreshed = buildSetupMirrorSnapshot(api, universeId);
+  if (!refreshed || !(await sendWorldMirrorSnapshot(api, refreshed, "setup"))) {
     return { ok: false, error: "dispatch-failed", issues: [{ code: "dispatch-failed" }] };
   }
   return { ok: true, universeId, issues: [] };
@@ -482,6 +518,7 @@ export async function cancelFateKnotsUs1RunCharacter(
     return { ok: false, error: "invalid-payload", issues: [{ code: "invalid-universe-id" }] };
   }
   setFateKnotsRunSetupSeatSelection(api, universeId, "us1", null);
+  setPendingSetupUniverseId(api, null);
   const context = loadContext(api);
   if (context.slots.us1.dispatchable === true && context.slots.us1.remoteUserId) {
     await sendWorldMirrorSnapshot(
@@ -499,13 +536,16 @@ export async function dispatchFateKnotsUs1LifecycleIfNeeded(
   const context = loadContext(api);
   if (context.slots.us1.dispatchable !== true || !context.slots.us1.remoteUserId) return false;
 
+  const pendingSetupUniverseId = readPendingSetupUniverseId(api);
+  if (pendingSetupUniverseId) {
+    const setup = buildSetupMirrorSnapshot(api, pendingSetupUniverseId);
+    return setup ? await sendWorldMirrorSnapshot(api, setup, "setup") : false;
+  }
+
   const snapshot = buildRunMirrorSnapshot(api);
   if (snapshot) return await sendWorldMirrorSnapshot(api, snapshot, "run");
 
-  const runs = loadFateKnotsRunStore(api);
-  const hasActiveRun = runs.issues.length === 0 && Boolean(runs.store.activeRunId);
   const transport = readTransportState(api, WORLD_TRANSPORT_STATE_KEY);
-  if (!hasActiveRun && transport.mode === "setup") return true;
   if (transport.mode === null || transport.mode === "clear") return true;
   return await sendWorldMirrorSnapshot(
     api,
@@ -670,11 +710,11 @@ export async function forwardFateKnotsUs1ClientIntent(
   }
 
   const context = loadContext(api);
-  const remoteUserId = context.slots.us1.remoteUserId;
-  if (context.slots.us1.dispatchable !== true || !remoteUserId) {
+  const transport = readTransportState(api, CLIENT_RETURN_TRANSPORT_STATE_KEY);
+  const remoteUserId = transport.remoteUserId ?? context.slots.us1.remoteUserId;
+  if (!remoteUserId) {
     return { ok: false, error: "us1-unavailable", issues: [{ code: "us1-unavailable" }] };
   }
-  const transport = readTransportState(api, CLIENT_RETURN_TRANSPORT_STATE_KEY);
   const reusableSessionId =
     transport.remoteUserId === remoteUserId ? transport.localSessionId : null;
   const raw = await api.dispatchBridge({
@@ -713,6 +753,7 @@ export async function forwardFateKnotsUs1ClientIntent(
 
 export function clearFateKnotsUs1Lifecycle(api: FateKnotsUs1LifecycleApi): void {
   clearStateKey(api, WORLD_TRANSPORT_STATE_KEY);
+  clearStateKey(api, WORLD_SETUP_STATE_KEY);
   clearStateKey(api, CLIENT_RETURN_TRANSPORT_STATE_KEY);
   clearStateKey(api, CLIENT_MIRROR_STATE_KEY);
   clearStateKey(api, LAST_NPC_DIALOGUE_STATE_KEY);
