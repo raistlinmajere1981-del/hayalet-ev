@@ -35,9 +35,9 @@
       const state = getBaseState();
       return Boolean(
         state &&
-        state.context &&
-        state.context.activeFeature &&
-        state.context.activeFeature.id === FATE_KNOTS_FEATURE_ID
+          state.context &&
+          state.context.activeFeature &&
+          state.context.activeFeature.id === FATE_KNOTS_FEATURE_ID
       );
     }
 
@@ -70,11 +70,21 @@
     function isFateKnotsCommandResult(message) {
       return Boolean(
         message &&
-        typeof message === "object" &&
-        message.type === "command-result" &&
-        typeof message.command === "string" &&
-        message.command.startsWith("GameRoomFateKnots")
+          typeof message === "object" &&
+          message.type === "command-result" &&
+          typeof message.command === "string" &&
+          message.command.startsWith("GameRoomFateKnots")
       );
+    }
+
+    function dispatchFateKnotsEvent(eventName, message) {
+      if (typeof global.dispatchEvent === "function" && typeof global.CustomEvent === "function") {
+        global.dispatchEvent(
+          new global.CustomEvent(eventName, {
+            detail: message,
+          })
+        );
+      }
     }
 
     function handoffGameplayState(message) {
@@ -82,14 +92,15 @@
       if (gameplayUi && typeof gameplayUi.handleState === "function") {
         gameplayUi.handleState(message);
       }
+      dispatchFateKnotsEvent("fate-knots-gameplay-state", message);
+    }
 
-      if (typeof global.dispatchEvent === "function" && typeof global.CustomEvent === "function") {
-        global.dispatchEvent(
-          new global.CustomEvent("fate-knots-gameplay-state", {
-            detail: message,
-          })
-        );
+    function handoffCombatDiscussionState(message) {
+      const gameplayUi = global.GameRoomFateKnotsGameplayUi;
+      if (gameplayUi && typeof gameplayUi.handleCombatDiscussionState === "function") {
+        gameplayUi.handleCombatDiscussionState(message);
       }
+      dispatchFateKnotsEvent("fate-knots-combat-discussion-state", message);
     }
 
     function handleHostMessage(message) {
@@ -104,6 +115,15 @@
 
       if (message && typeof message === "object" && message.type === "fate-knots-gameplay-state") {
         handoffGameplayState(message);
+        return;
+      }
+
+      if (
+        message &&
+        typeof message === "object" &&
+        message.type === "fate-knots-combat-discussion-state"
+      ) {
+        handoffCombatDiscussionState(message);
         return;
       }
 
