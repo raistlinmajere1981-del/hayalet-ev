@@ -130,5 +130,5 @@ export function extendGameRoomHostRuntimeWithFateKnotsExploration<T extends Game
 
       return activated;
     },
-  } as T;
+  };
 }
