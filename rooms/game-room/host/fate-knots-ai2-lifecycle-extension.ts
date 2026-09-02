@@ -4,9 +4,14 @@ import {
   dispatchFateKnotsAi2LifecycleIfNeeded,
   requestFateKnotsAi2RunCharacter,
 } from "../main-functions/fate-knots/host/ai2-player-lifecycle.js";
-import { readFateKnotsRunSetupSeatProjection } from "../main-functions/fate-knots/host/run-setup-seat-coordination.js";
+import {
+  readFateKnotsRunSetupSeatProjection,
+  setFateKnotsRunSetupSeatSelection,
+} from "../main-functions/fate-knots/host/run-setup-seat-coordination.js";
 import { FATE_KNOTS_FEATURE_ID } from "../shared/host/feature-meta.js";
 import type { GameRoomHostApi } from "../shared/host/activation.js";
+
+const CANCEL_AI2_RUN_CHARACTER_COMMAND = "GameRoomFateKnotsCancelAi2RunCharacter";
 
 type CommandHandler = (payload?: unknown) => unknown;
 
@@ -138,6 +143,30 @@ export function extendGameRoomHostRuntimeWithFateKnotsAi2Lifecycle<T extends Gam
         },
         {
           description: "Invite AI2 to choose its own player character for Fate Knots run setup.",
+          scope: "room-ui",
+          exposure: "internal",
+        }
+      );
+
+      originalRegisterCommand?.call(
+        api,
+        CANCEL_AI2_RUN_CHARACTER_COMMAND,
+        function (payload: unknown) {
+          const universeId = readUniverseId(payload);
+          if (!universeId) {
+            return {
+              ok: false,
+              error: "invalid-payload",
+              issues: [{ code: "invalid-universe-id" }],
+            };
+          }
+          setFateKnotsRunSetupSeatSelection(lifecycleApi, universeId, "ai2", null);
+          clearFateKnotsAi2Lifecycle(lifecycleApi);
+          notifySetupSeats(lifecycleApi, universeId);
+          return { ok: true, universeId, issues: [] };
+        },
+        {
+          description: "Cancel AI2 participation in the current Fate Knots run setup.",
           scope: "room-ui",
           exposure: "internal",
         }
