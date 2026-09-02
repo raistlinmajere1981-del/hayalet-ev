@@ -14,6 +14,8 @@ import {
 
 export const FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES = {
   getLocalOptions: "GameRoomFateKnotsGetCombatOptions",
+  getAi2Options: "GameRoomFateKnotsAi2GetCombatOptions",
+  getRemoteOptions: "GameRoomFateKnotsRemoteGetCombatOptions",
 } as const;
 
 export interface FateKnotsLocalCombatOptionsState {
@@ -45,11 +47,15 @@ export type FateKnotsCombatOptionsCommandResult =
         | "no-active-combat"
         | "local-player-not-found"
         | "local-player-ambiguous"
+        | "seat-not-active"
+        | "seat-ambiguous"
         | "combat-options-rejected"
         | "persistence-rejected";
       state: null;
       issues: FateKnotsCombatOptionsCommandIssue[];
     };
+
+type PlayerSeatId = "user" | "ai2" | "us1";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -79,158 +85,188 @@ function optionIssues(issues: FateKnotsCombatOptionsIssue[]): FateKnotsCombatOpt
   }));
 }
 
+function missingSeatResult(seatId: PlayerSeatId): FateKnotsCombatOptionsCommandResult {
+  if (seatId === "user") {
+    return {
+      ok: false,
+      error: "local-player-not-found",
+      state: null,
+      issues: [{ source: "combat-options", code: "local-player-not-found" }],
+    };
+  }
+  return {
+    ok: false,
+    error: "seat-not-active",
+    state: null,
+    issues: [{ source: "combat-options", code: "seat-not-active", value: seatId }],
+  };
+}
+
+function ambiguousSeatResult(seatId: PlayerSeatId): FateKnotsCombatOptionsCommandResult {
+  if (seatId === "user") {
+    return {
+      ok: false,
+      error: "local-player-ambiguous",
+      state: null,
+      issues: [{ source: "combat-options", code: "local-player-ambiguous" }],
+    };
+  }
+  return {
+    ok: false,
+    error: "seat-ambiguous",
+    state: null,
+    issues: [{ source: "combat-options", code: "seat-ambiguous", value: seatId }],
+  };
+}
+
+function buildSeatOptions(
+  api: FateKnotsPersistenceApi,
+  payload: unknown,
+  seatId: PlayerSeatId
+): FateKnotsCombatOptionsCommandResult {
+  const runId = readRunId(payload);
+  if (!runId) {
+    return {
+      ok: false,
+      error: "invalid-payload",
+      state: null,
+      issues: [{ source: "payload", code: "invalid-run-id" }],
+    };
+  }
+
+  const runRead = readFateKnotsRunLibrary(api);
+  if (runRead.issues.length > 0) {
+    return {
+      ok: false,
+      error: "persistence-rejected",
+      state: null,
+      issues: persistenceIssues(runRead.issues),
+    };
+  }
+  const run = runRead.value.runs.find((entry) => entry.runId === runId) ?? null;
+  if (!run) {
+    return {
+      ok: false,
+      error: "run-not-found",
+      state: null,
+      issues: [{ source: "combat-options", code: "run-not-found", value: runId }],
+    };
+  }
+  if (!run.activeCombat) {
+    return {
+      ok: false,
+      error: "no-active-combat",
+      state: null,
+      issues: [{ source: "combat-options", code: "no-active-combat" }],
+    };
+  }
+
+  const partyIds = new Set(run.partyActorIds);
+  const matchingActors = run.activeCombat.actors.filter(
+    (actor) => actor.seatId === seatId && partyIds.has(actor.actorId)
+  );
+  const [seatActor, secondSeatActor] = matchingActors;
+  if (seatActor === undefined) return missingSeatResult(seatId);
+  if (secondSeatActor !== undefined) return ambiguousSeatResult(seatId);
+
+  const universeRead = readFateKnotsUniverseLibrary(api);
+  if (universeRead.issues.length > 0) {
+    return {
+      ok: false,
+      error: "persistence-rejected",
+      state: null,
+      issues: persistenceIssues(universeRead.issues),
+    };
+  }
+  const storedUniverse = universeRead.value.universes.find(
+    (universe) => universe.universeId === run.universeId
+  );
+  if (!storedUniverse) {
+    return {
+      ok: false,
+      error: "universe-not-found",
+      state: null,
+      issues: [{ source: "universe", code: "universe-not-found", value: run.universeId }],
+    };
+  }
+
+  const canonical = normalizeFateKnotsCanonicalUniversePackage(storedUniverse);
+  if (!canonical.valid || !canonical.package) {
+    return {
+      ok: false,
+      error: "universe-rejected",
+      state: null,
+      issues: canonical.issues.map((entry) => ({
+        source: "universe" as const,
+        code: entry.code,
+        value: entry.path,
+      })),
+    };
+  }
+
+  const options = buildFateKnotsCombatLegalOptions(
+    run.activeCombat,
+    seatActor.actorId,
+    canonical.package
+  );
+  if (!options.ok) {
+    return {
+      ok: false,
+      error: "combat-options-rejected",
+      state: null,
+      issues: optionIssues(options.issues),
+    };
+  }
+
+  const phase = run.activeCombat.phase;
+  if (phase !== "combat-discussion" && phase !== "combat-commit") {
+    return {
+      ok: false,
+      error: "combat-options-rejected",
+      state: null,
+      issues: [{ source: "combat-options", code: "wrong-phase" }],
+    };
+  }
+
+  return {
+    ok: true,
+    state: {
+      runId: run.runId,
+      runRevision: run.revision,
+      combatId: run.activeCombat.combatId,
+      turnIndex: run.activeCombat.turnIndex,
+      phase,
+      actorId: seatActor.actorId,
+      movementOptions: options.options.movementOptions.map((entry) => ({
+        ...entry,
+        legalPrimaryTargetIds: entry.legalPrimaryTargetIds.slice(),
+      })),
+      actionOptions: options.options.actionOptions.map((entry) => ({
+        ...entry,
+        legalPrimaryTargetIds: entry.legalPrimaryTargetIds.slice(),
+      })),
+    },
+    issues: [],
+  };
+}
+
 /**
- * Room-UI read surface for the local user's own combat options.
- *
- * The browser supplies only a run id. Actor identity is resolved host-side from
- * the canonical run's `seatId: "user"` party actor, preventing the local room UI
- * from querying AI2/US1/opposition private card options by actor id.
- *
- * This command does not close discussion, enter commit phase or store a commit.
+ * Private player combat options are resolved from command-bound seat identity.
+ * Payload contains only run identity, never actorId/seatId, so one player cannot
+ * query another seat's hidden hand/targets through this surface.
  */
 export function createFateKnotsCombatOptionCommands(
   api: FateKnotsPersistenceApi
 ): Record<string, (payload?: unknown) => FateKnotsCombatOptionsCommandResult> {
   return {
     [FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES.getLocalOptions](payload?: unknown) {
-      const runId = readRunId(payload);
-      if (!runId) {
-        return {
-          ok: false,
-          error: "invalid-payload",
-          state: null,
-          issues: [{ source: "payload", code: "invalid-run-id" }],
-        };
-      }
-
-      const runRead = readFateKnotsRunLibrary(api);
-      if (runRead.issues.length > 0) {
-        return {
-          ok: false,
-          error: "persistence-rejected",
-          state: null,
-          issues: persistenceIssues(runRead.issues),
-        };
-      }
-      const run = runRead.value.runs.find((entry) => entry.runId === runId) ?? null;
-      if (!run) {
-        return {
-          ok: false,
-          error: "run-not-found",
-          state: null,
-          issues: [{ source: "combat-options", code: "run-not-found", value: runId }],
-        };
-      }
-      if (!run.activeCombat) {
-        return {
-          ok: false,
-          error: "no-active-combat",
-          state: null,
-          issues: [{ source: "combat-options", code: "no-active-combat" }],
-        };
-      }
-
-      const localPartyActors = run.actors.filter(
-        (actor) => actor.seatId === "user" && run.partyActorIds.includes(actor.actorId)
-      );
-      const [localPartyActor, secondLocalPartyActor] = localPartyActors;
-      if (localPartyActor === undefined) {
-        return {
-          ok: false,
-          error: "local-player-not-found",
-          state: null,
-          issues: [{ source: "combat-options", code: "local-player-not-found" }],
-        };
-      }
-      if (secondLocalPartyActor !== undefined) {
-        return {
-          ok: false,
-          error: "local-player-ambiguous",
-          state: null,
-          issues: [{ source: "combat-options", code: "local-player-ambiguous" }],
-        };
-      }
-      const localActorId = localPartyActor.actorId;
-
-      const universeRead = readFateKnotsUniverseLibrary(api);
-      if (universeRead.issues.length > 0) {
-        return {
-          ok: false,
-          error: "persistence-rejected",
-          state: null,
-          issues: persistenceIssues(universeRead.issues),
-        };
-      }
-      const storedUniverse = universeRead.value.universes.find(
-        (universe) => universe.universeId === run.universeId
-      );
-      if (!storedUniverse) {
-        return {
-          ok: false,
-          error: "universe-not-found",
-          state: null,
-          issues: [{ source: "universe", code: "universe-not-found", value: run.universeId }],
-        };
-      }
-
-      const canonical = normalizeFateKnotsCanonicalUniversePackage(storedUniverse);
-      if (!canonical.valid || !canonical.package) {
-        return {
-          ok: false,
-          error: "universe-rejected",
-          state: null,
-          issues: canonical.issues.map((entry) => ({
-            source: "universe" as const,
-            code: entry.code,
-            value: entry.path,
-          })),
-        };
-      }
-
-      const options = buildFateKnotsCombatLegalOptions(
-        run.activeCombat,
-        localActorId,
-        canonical.package
-      );
-      if (!options.ok) {
-        return {
-          ok: false,
-          error: "combat-options-rejected",
-          state: null,
-          issues: optionIssues(options.issues),
-        };
-      }
-
-      const phase = run.activeCombat.phase;
-      if (phase !== "combat-discussion" && phase !== "combat-commit") {
-        return {
-          ok: false,
-          error: "combat-options-rejected",
-          state: null,
-          issues: [{ source: "combat-options", code: "wrong-phase" }],
-        };
-      }
-
-      return {
-        ok: true,
-        state: {
-          runId: run.runId,
-          runRevision: run.revision,
-          combatId: run.activeCombat.combatId,
-          turnIndex: run.activeCombat.turnIndex,
-          phase,
-          actorId: localActorId,
-          movementOptions: options.options.movementOptions.map((entry) => ({
-            ...entry,
-            legalPrimaryTargetIds: entry.legalPrimaryTargetIds.slice(),
-          })),
-          actionOptions: options.options.actionOptions.map((entry) => ({
-            ...entry,
-            legalPrimaryTargetIds: entry.legalPrimaryTargetIds.slice(),
-          })),
-        },
-        issues: [],
-      };
+      return buildSeatOptions(api, payload, "user");
+    },
+    [FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES.getAi2Options](payload?: unknown) {
+      return buildSeatOptions(api, payload, "ai2");
+    },
+    [FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES.getRemoteOptions](payload?: unknown) {
+      return buildSeatOptions(api, payload, "us1");
     },
   };
 }
