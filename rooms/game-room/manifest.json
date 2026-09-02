@@ -377,6 +377,12 @@
           "exposure": "internal"
         },
         {
+          "name": "GameRoomFateKnotsResolveCombatTurn",
+          "description": "Resolve one fully committed Fate Knots combat turn through host-owned deterministic authority.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "GameRoomFateKnotsActivateRun",
           "description": "Select one persisted Fate Knots run for continuation.",
           "scope": "room-ui",
