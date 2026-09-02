@@ -190,19 +190,8 @@ function restoreSourceDestination(
   run.revealedLocationIds = unique([...run.revealedLocationIds, sourceKnot.locationId]);
 }
 
-function phaseAllowsStoryTransition(
-  universe: FateKnotsUniversePackage,
-  run: FateKnotsRunState,
-  transition: FateKnotsStoryTransitionDefinition
-): boolean {
-  if (run.phase === "exploration") return true;
-  if (run.phase !== "finale") return false;
-  const finalEncounterId = universe.finale.finalEncounterId ?? null;
-  return (
-    finalEncounterId !== null &&
-    transition.kind === "combat" &&
-    transition.encounterId === finalEncounterId
-  );
+function phaseAllowsStoryTransition(run: FateKnotsRunState): boolean {
+  return run.phase === "exploration";
 }
 
 function isTransitionLegal(
@@ -211,7 +200,7 @@ function isTransitionLegal(
   transition: FateKnotsStoryTransitionDefinition
 ): boolean {
   if (run.result !== "active" || run.activeCombat || run.activeStoryTransitionId) return false;
-  if (!phaseAllowsStoryTransition(universe, run, transition)) return false;
+  if (!phaseAllowsStoryTransition(run)) return false;
   if (!run.activeKnotId || transition.fromKnotId !== run.activeKnotId) return false;
   if (!run.revealedKnotIds.includes(run.activeKnotId)) return false;
   if (!requirementsMet(transition.requirements, run)) return false;
@@ -364,7 +353,8 @@ export function applyFateKnotsStoryTransition(
       run.phase = "camp";
       run.activeStoryTransitionId = null;
     } else if (transition.kind === "finale") {
-      run.phase = "finale";
+      run.phase = "completed";
+      run.result = "completed";
       run.activeStoryTransitionId = null;
     } else {
       run.phase = "transition";
@@ -448,8 +438,6 @@ export function resolveFateKnotsStoryCombatOutcome(
     if (encounter.lootCardIds && encounter.lootCardIds.length > 0) {
       run.teamPoolItemIds = [...run.teamPoolItemIds, ...encounter.lootCardIds];
       nextPhase = "loot";
-    } else if (universe.finale.finalEncounterId === encounter.id) {
-      nextPhase = "finale";
     } else {
       nextPhase = "exploration";
     }
