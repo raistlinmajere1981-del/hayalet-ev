@@ -1,0 +1,281 @@
+.fate-knots-gameplay-root {
+  min-height: 100%;
+  overflow: auto;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(161, 124, 74, 0.18), transparent 38%),
+    linear-gradient(180deg, #17140f 0%, #0d0c0a 100%);
+  color: #eee5d3;
+}
+
+.fate-knots-gameplay {
+  box-sizing: border-box;
+  width: min(1240px, calc(100% - 32px));
+  min-height: calc(100vh - 32px);
+  margin: 16px auto;
+  padding: 22px;
+  border: 1px solid rgba(213, 181, 126, 0.28);
+  border-radius: 18px;
+  background: rgba(21, 18, 14, 0.96);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+}
+
+.fate-knots-gameplay__header,
+.fate-knots-gameplay__discussion-heading,
+.fate-knots-gameplay__planning-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.fate-knots-gameplay__header {
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(213, 181, 126, 0.2);
+}
+
+.fate-knots-gameplay__brand,
+.fate-knots-gameplay__eyebrow {
+  color: #bf9b62;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.fate-knots-gameplay__title,
+.fate-knots-gameplay__location {
+  margin: 4px 0 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+}
+
+.fate-knots-gameplay__title {
+  font-size: clamp(24px, 3vw, 38px);
+}
+
+.fate-knots-gameplay__location {
+  margin-top: 18px;
+  font-size: 30px;
+}
+
+.fate-knots-gameplay__location-copy {
+  max-width: 760px;
+  color: #cfc5b3;
+  line-height: 1.6;
+}
+
+.fate-knots-gameplay__button {
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 1px solid rgba(210, 172, 108, 0.42);
+  border-radius: 9px;
+  background: #6f4e25;
+  color: #fff7e7;
+  font: inherit;
+  cursor: pointer;
+}
+
+.fate-knots-gameplay__button:hover:not(:disabled),
+.fate-knots-gameplay__button.is-selected {
+  background: #9b6d32;
+  border-color: rgba(244, 209, 145, 0.72);
+}
+
+.fate-knots-gameplay__button--secondary {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.fate-knots-gameplay__button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.fate-knots-gameplay__combatants {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.fate-knots-gameplay__side,
+.fate-knots-gameplay__discussion,
+.fate-knots-gameplay__planning,
+.fate-knots-gameplay__resolution {
+  border: 1px solid rgba(213, 181, 126, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.fate-knots-gameplay__side {
+  padding: 14px;
+}
+
+.fate-knots-gameplay__side-title,
+.fate-knots-gameplay__discussion-title,
+.fate-knots-gameplay__option-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.fate-knots-gameplay__actor {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.fate-knots-gameplay__actor:first-of-type {
+  border-top: 0;
+}
+
+.fate-knots-gameplay__actor.is-fallen {
+  opacity: 0.5;
+}
+
+.fate-knots-gameplay__actor-hp,
+.fate-knots-gameplay__actor-meta,
+.fate-knots-gameplay__muted,
+.fate-knots-gameplay__ready-note {
+  color: #aaa08f;
+  font-size: 12px;
+}
+
+.fate-knots-gameplay__interaction {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(420px, 1.15fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.fate-knots-gameplay__discussion,
+.fate-knots-gameplay__planning {
+  padding: 14px;
+}
+
+.fate-knots-gameplay__readiness,
+.fate-knots-gameplay__option-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.fate-knots-gameplay__seat-state {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #b9ad99;
+  font-size: 11px;
+}
+
+.fate-knots-gameplay__seat-state.is-ready {
+  background: rgba(105, 146, 91, 0.2);
+  color: #c5d8b8;
+}
+
+.fate-knots-gameplay__messages {
+  min-height: 180px;
+  max-height: 300px;
+  margin-top: 12px;
+  overflow-y: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.fate-knots-gameplay__message {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  gap: 8px;
+  padding: 9px 0;
+}
+
+.fate-knots-gameplay__message-author {
+  color: #d2ad70;
+  font-size: 12px;
+}
+
+.fate-knots-gameplay__message-text {
+  color: #e1d8c9;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.fate-knots-gameplay__compose {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.fate-knots-gameplay__chat-input {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  min-height: 58px;
+  padding: 9px 10px;
+  border: 1px solid rgba(213, 181, 126, 0.24);
+  border-radius: 9px;
+  outline: 0;
+  background: rgba(0, 0, 0, 0.2);
+  color: #f1e8d8;
+  font: inherit;
+}
+
+.fate-knots-gameplay__chat-input:focus {
+  border-color: rgba(213, 181, 126, 0.58);
+}
+
+.fate-knots-gameplay__option-group + .fate-knots-gameplay__option-group {
+  margin-top: 15px;
+}
+
+.fate-knots-gameplay__planning-footer {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.fate-knots-gameplay__warning,
+.fate-knots-gameplay__notice,
+.fate-knots-gameplay__resolution {
+  padding: 11px 13px;
+  line-height: 1.45;
+}
+
+.fate-knots-gameplay__warning {
+  background: rgba(151, 78, 52, 0.16);
+  color: #e0b59e;
+}
+
+.fate-knots-gameplay__notice {
+  margin-top: 14px;
+  border-radius: 10px;
+  background: rgba(171, 132, 75, 0.12);
+  color: #d5c4aa;
+}
+
+.fate-knots-gameplay__resolution {
+  margin-top: 18px;
+  color: #d6c6ad;
+}
+
+@media (max-width: 860px) {
+  .fate-knots-gameplay {
+    width: calc(100% - 18px);
+    margin: 9px auto;
+    padding: 14px;
+  }
+
+  .fate-knots-gameplay__combatants,
+  .fate-knots-gameplay__interaction {
+    grid-template-columns: 1fr;
+  }
+
+  .fate-knots-gameplay__header,
+  .fate-knots-gameplay__discussion-heading,
+  .fate-knots-gameplay__planning-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
