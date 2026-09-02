@@ -3,6 +3,7 @@ import {
   applyFateKnotsUs1ClientMirrorSync,
   cancelFateKnotsUs1RunCharacter,
   clearFateKnotsUs1Lifecycle,
+  completeFateKnotsUs1RunSetup,
   dispatchFateKnotsUs1LifecycleIfNeeded,
   forwardFateKnotsUs1ClientIntent,
   recordFateKnotsUs1NpcDialogue,
@@ -47,6 +48,16 @@ function readUniverseId(payload: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 }
 
+function readRemoteUserId(payload: unknown): string | null {
+  if (!isRecord(payload)) return null;
+  const direct = payload["remoteUserId"];
+  if (typeof direct === "string" && direct.trim() !== "") return direct.trim();
+  const roomArgs = readRegisteredRoomArgs(payload);
+  if (!isRecord(roomArgs)) return null;
+  const nested = roomArgs["remoteUserId"];
+  return typeof nested === "string" && nested.trim() !== "" ? nested.trim() : null;
+}
+
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
   return (
     typeof value === "object" &&
@@ -86,7 +97,18 @@ function afterWorldCommand(
   commandName: string,
   value: unknown
 ): void {
-  if (commandName === "GameRoomFateKnotsRemoteSpeakNpc" && isRecord(value) && value["ok"] === true) {
+  if (
+    commandName === "GameRoomFateKnotsCreateRun" &&
+    isRecord(value) &&
+    value["ok"] === true
+  ) {
+    completeFateKnotsUs1RunSetup(api);
+  }
+  if (
+    commandName === "GameRoomFateKnotsRemoteSpeakNpc" &&
+    isRecord(value) &&
+    value["ok"] === true
+  ) {
     recordFateKnotsUs1NpcDialogue(api, value["state"]);
   }
   scheduleUs1Lifecycle(api);
@@ -214,7 +236,8 @@ export function extendGameRoomHostRuntimeWithFateKnotsUs1Lifecycle<T extends Gam
         function (payload: unknown) {
           const result = applyFateKnotsUs1ClientMirrorSync(
             lifecycleApi,
-            readRegisteredRoomArgs(payload)
+            readRegisteredRoomArgs(payload),
+            readRemoteUserId(payload)
           );
           if (result.ok) notifyUs1Mirror(lifecycleApi, result.state);
           return result;
