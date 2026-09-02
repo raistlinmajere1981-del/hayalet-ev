@@ -16,6 +16,10 @@ import {
   type FateKnotsPersistenceApi,
   type FateKnotsPersistenceIssue,
 } from "./persistence.js";
+import {
+  clearFateKnotsRunSetupSeatSelections,
+  getFateKnotsRunSetupSeatSelection,
+} from "./run-setup-seat-coordination.js";
 
 export const FATE_KNOTS_RUN_COMMAND_NAMES = {
   createRun: "GameRoomFateKnotsCreateRun",
@@ -28,7 +32,7 @@ type FateKnotsRunCommandName =
 type GenericRecord = Record<string, unknown>;
 
 export interface FateKnotsRunCommandIssue {
-  source: "payload" | "persistence" | "universe" | "run-setup";
+  source: "payload" | "persistence" | "universe" | "run-setup" | "seat";
   code: string;
   value?: string;
 }
@@ -46,6 +50,7 @@ export type FateKnotsRunCommandResult =
       error:
         | "invalid-payload"
         | "player-seat-unavailable"
+        | "seat-selection-required"
         | "universe-not-found"
         | "run-not-found"
         | "universe-rejected"
@@ -144,10 +149,39 @@ function success(
   return { ok: true, runId, phase, hub: buildFateKnotsHubSnapshot(api), issues: [] };
 }
 
+function validateSeatOwnedSelections(
+  api: FateKnotsPersistenceApi,
+  universeId: string,
+  party: readonly FateKnotsRunPartyAssignment[]
+): FateKnotsRunCommandResult | null {
+  for (const assignment of party) {
+    if (assignment.seatId === "user") continue;
+    const selectedCharacterId = getFateKnotsRunSetupSeatSelection(
+      api,
+      universeId,
+      assignment.seatId
+    );
+    if (selectedCharacterId !== assignment.characterId) {
+      return failure(api, "seat-selection-required", [
+        {
+          source: "seat",
+          code: "seat-selection-required",
+          value: assignment.seatId,
+        },
+      ]);
+    }
+  }
+  return null;
+}
+
 /**
  * Intent-level run lifecycle commands. The room renderer chooses only an
  * accepted universe and player-character assignments; it never submits a raw
  * FateKnotsRunState for persistence.
+ *
+ * Optional player seats are ownership-bound: the World Host may decide whether
+ * AI2/US1 participates, but the character assigned to such a seat must match the
+ * latest choice submitted through that seat's own scoped setup command.
  */
 export function createFateKnotsRunCommands(
   api: FateKnotsPersistenceApi,
@@ -175,6 +209,9 @@ export function createFateKnotsRunCommands(
           },
         ]);
       }
+
+      const seatFailure = validateSeatOwnedSelections(api, request.universeId, request.party);
+      if (seatFailure) return seatFailure;
 
       const universeRead = readFateKnotsUniverseLibrary(api);
       if (universeRead.issues.length > 0) {
@@ -217,6 +254,7 @@ export function createFateKnotsRunCommands(
       if (!selected.ok) {
         return failure(api, "persistence-rejected", persistenceIssues(selected.issues));
       }
+      clearFateKnotsRunSetupSeatSelections(api, request.universeId);
       return success(api, saved.value.runId, "run-setup");
     },
 
