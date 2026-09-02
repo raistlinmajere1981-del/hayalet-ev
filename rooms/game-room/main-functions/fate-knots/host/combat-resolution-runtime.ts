@@ -5,6 +5,7 @@ import {
   openFateKnotsCombatAftermath,
   openNextFateKnotsCombatDiscussion,
 } from "../shared/combat-flow.js";
+import type { FateKnotsResolvedQueueEntryRecord } from "../shared/combat-resolution-executor.js";
 import type {
   FateKnotsPresentationEvent,
   FateKnotsResolvedEffect,
@@ -143,13 +144,8 @@ function cueIdsForCard(universe: FateKnotsUniversePackage, cardId: string): stri
 
 function resolvedEffects(
   universe: FateKnotsUniversePackage,
-  entries: ReturnType<typeof executeFateKnotsRunCombatResolution>["execution"] extends infer T
-    ? T extends { entries: infer E }
-      ? E
-      : never
-    : never
+  entries: readonly FateKnotsResolvedQueueEntryRecord[]
 ): FateKnotsResolvedEffect[] {
-  if (!Array.isArray(entries)) return [];
   const result: FateKnotsResolvedEffect[] = [];
   for (const entry of entries) {
     for (const effect of entry.effects) {
@@ -173,7 +169,7 @@ function publicCardPresentations(
   universe: FateKnotsUniversePackage,
   combatId: string,
   turnIndex: number,
-  entries: NonNullable<ReturnType<typeof executeFateKnotsRunCombatResolution>["execution"]>["entries"]
+  entries: readonly FateKnotsResolvedQueueEntryRecord[]
 ):
   | { ok: true; cards: FateKnotsResolvedTurnCardPresentation[] }
   | { ok: false; code: string; value?: string } {
@@ -229,7 +225,9 @@ function resolveTurn(
     };
   }
   const snapshot = runs.store.entries.find((entry) => entry.run.runId === payload.runId) ?? null;
-  if (!snapshot) return failed("run-not-found", "combat-resolution", "run-not-found", payload.runId);
+  if (!snapshot) {
+    return failed("run-not-found", "combat-resolution", "run-not-found", payload.runId);
+  }
   if (!snapshot.run.activeCombat) {
     return failed("no-active-combat", "combat-resolution", "no-active-combat");
   }
