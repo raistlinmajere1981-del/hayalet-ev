@@ -335,6 +335,48 @@
           "exposure": "internal"
         },
         {
+          "name": "GameRoomFateKnotsGetCombatDiscussion",
+          "description": "Read the shared party-only Fate Knots combat discussion.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsSendCombatMessage",
+          "description": "Post the local player's message to shared Fate Knots combat discussion.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsAi2CombatMessage",
+          "description": "Post AI2's player message to shared Fate Knots combat discussion.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsRemoteCombatMessage",
+          "description": "Post US1's remote player message to shared Fate Knots combat discussion.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsCompleteCombatMove",
+          "description": "Lock the local player's legal Fate Knots combat move.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsAi2CompleteCombatMove",
+          "description": "Lock AI2's legal Fate Knots combat move.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsRemoteCompleteCombatMove",
+          "description": "Lock US1's legal Fate Knots combat move.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
           "name": "GameRoomFateKnotsActivateRun",
           "description": "Select one persisted Fate Knots run for continuation.",
           "scope": "room-ui",
