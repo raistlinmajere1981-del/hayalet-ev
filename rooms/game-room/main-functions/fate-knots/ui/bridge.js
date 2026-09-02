@@ -118,6 +118,14 @@
       dispatchFateKnotsEvent("fate-knots-gameplay-state", message);
     }
 
+    function handoffRunSetupSeatState(message) {
+      const fateKnotsUi = getFateKnotsUi();
+      if (fateKnotsUi && typeof fateKnotsUi.handleRunSetupSeatState === "function") {
+        fateKnotsUi.handleRunSetupSeatState(message);
+      }
+      dispatchFateKnotsEvent("fate-knots-run-setup-seat-state", message);
+    }
+
     function handoffCombatDiscussionState(message) {
       const gameplayUi = getFateKnotsGameplayUi();
       if (gameplayUi && typeof gameplayUi.handleCombatDiscussionState === "function") {
@@ -179,6 +187,16 @@
         if (fateKnotsUi && typeof fateKnotsUi.handleState === "function") {
           fateKnotsUi.handleState(message);
         }
+        if (isFateKnotsActive()) render();
+        return;
+      }
+
+      if (
+        message &&
+        typeof message === "object" &&
+        message.type === "fate-knots-run-setup-seat-state"
+      ) {
+        handoffRunSetupSeatState(message);
         if (isFateKnotsActive()) render();
         return;
       }
