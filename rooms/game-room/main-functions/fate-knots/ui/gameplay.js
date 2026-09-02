@@ -97,15 +97,39 @@
     );
   }
 
+  function combatActorMap() {
+    return new Map(
+      readArray(currentCombat()?.actors)
+        .map(function (entry) {
+          const actor = readRecord(entry);
+          return actor ? [readString(actor.actorId), actor] : null;
+        })
+        .filter(Boolean)
+    );
+  }
+
+  function isLocalActive() {
+    const discussion = readRecord(state.discussion);
+    return Boolean(discussion && readArray(discussion.activeSeatIds).includes("user"));
+  }
+
   function isLocalReady() {
     const discussion = readRecord(state.discussion);
-    return readArray(discussion?.readySeatIds).includes("user");
+    return Boolean(discussion && readArray(discussion.readySeatIds).includes("user"));
+  }
+
+  function canLocalInteract() {
+    return isCombatPlanningPhase() && isLocalActive() && !isLocalReady();
   }
 
   function combatRequestKey(gameplay) {
     const combat = readRecord(gameplay?.combat);
     if (!combat) return "";
-    return [readString(gameplay.runId), String(gameplay.revision ?? ""), String(combat.turnIndex ?? "")].join(":");
+    return [
+      readString(gameplay.runId),
+      String(gameplay.revision ?? ""),
+      String(combat.turnIndex ?? ""),
+    ].join(":");
   }
 
   function requestCombatData(gameplay) {
@@ -114,15 +138,17 @@
     if (!key || key === state.requestedCombatKey) return;
     state.requestedCombatKey = key;
     const runId = readString(gameplay.runId);
-    sendCommand("GameRoomFateKnotsGetCombatOptions", { runId: runId });
-    sendCommand("GameRoomFateKnotsGetCombatDiscussion", { runId: runId });
+    const optionsSent = sendCommand("GameRoomFateKnotsGetCombatOptions", { runId: runId });
+    const discussionSent = sendCommand("GameRoomFateKnotsGetCombatDiscussion", { runId: runId });
+    if (!optionsSent || !discussionSent) state.requestedCombatKey = "";
   }
 
   function selectedOption(kind) {
     const options = readRecord(state.combatOptions);
     const selectedId = kind === "movement" ? state.movementCardId : state.actionCardId;
     if (!options || !selectedId) return null;
-    const list = kind === "movement" ? readArray(options.movementOptions) : readArray(options.actionOptions);
+    const list =
+      kind === "movement" ? readArray(options.movementOptions) : readArray(options.actionOptions);
     return (
       list.find(function (entry) {
         return readString(readRecord(entry)?.cardId) === selectedId;
@@ -140,7 +166,9 @@
     if (required.length === 0) return [];
     let candidates = readArray(required[0].legalPrimaryTargetIds).map(readString).filter(Boolean);
     required.slice(1).forEach(function (option) {
-      const allowed = new Set(readArray(option.legalPrimaryTargetIds).map(readString).filter(Boolean));
+      const allowed = new Set(
+        readArray(option.legalPrimaryTargetIds).map(readString).filter(Boolean)
+      );
       candidates = candidates.filter(function (actorId) {
         return allowed.has(actorId);
       });
@@ -197,12 +225,18 @@
 
   function renderCombatants() {
     const combat = currentCombat();
+    const currentActors = combatActorMap();
     const section = createElement("section", "fate-knots-gameplay__combatants");
     const partyColumn = createElement("div", "fate-knots-gameplay__side");
     partyColumn.append(createElement("h2", "fate-knots-gameplay__side-title", "Grup"));
     readArray(readRecord(state.gameplay)?.partyActors).forEach(function (entry) {
-      const actor = readRecord(entry);
-      if (actor) partyColumn.append(renderActorSummary(actor, readString(actor.name) || "Oyuncu"));
+      const partyActor = readRecord(entry);
+      if (!partyActor) return;
+      const actorId = readString(partyActor.actorId);
+      const liveActor = currentActors.get(actorId) || partyActor;
+      partyColumn.append(
+        renderActorSummary(liveActor, readString(partyActor.name) || readString(partyActor.seatId) || "Oyuncu")
+      );
     });
 
     const enemyColumn = createElement("div", "fate-knots-gameplay__side");
@@ -223,7 +257,7 @@
     group.append(createElement("h3", "fate-knots-gameplay__option-title", title));
     const row = createElement("div", "fate-knots-gameplay__option-row");
     const selectedId = kind === "movement" ? state.movementCardId : state.actionCardId;
-    const locked = isLocalReady();
+    const locked = !canLocalInteract();
     row.append(
       createButton(
         "Yok",
@@ -285,7 +319,7 @@
             state.primaryTargetId = actorId;
             renderCurrent();
           },
-          { selected: state.primaryTargetId === actorId, disabled: isLocalReady() }
+          { selected: state.primaryTargetId === actorId, disabled: !canLocalInteract() }
         )
       );
     });
@@ -294,7 +328,7 @@
   }
 
   function canCompleteMove() {
-    if (!isCombatPlanningPhase() || isLocalReady()) return false;
+    if (!canLocalInteract()) return false;
     if (!targetIsRequired()) return true;
     return Boolean(state.primaryTargetId && legalTargetIds().includes(state.primaryTargetId));
   }
@@ -313,8 +347,27 @@
   function renderPlanningPanel() {
     const panel = createElement("section", "fate-knots-gameplay__planning");
     const options = readRecord(state.combatOptions);
+    const discussion = readRecord(state.discussion);
+    if (!discussion) {
+      panel.append(
+        createElement("div", "fate-knots-gameplay__muted", "Savaş oturumu host'tan bekleniyor…")
+      );
+      return panel;
+    }
+    if (!isLocalActive()) {
+      panel.append(
+        createElement(
+          "div",
+          "fate-knots-gameplay__muted",
+          "Local karakter bu tur aktif bir hamle koltuğu değil."
+        )
+      );
+      return panel;
+    }
     if (!options) {
-      panel.append(createElement("div", "fate-knots-gameplay__muted", "Yasal hamleler host'tan bekleniyor…"));
+      panel.append(
+        createElement("div", "fate-knots-gameplay__muted", "Yasal hamleler host'tan bekleniyor…")
+      );
       return panel;
     }
 
@@ -357,7 +410,7 @@
 
   function sendChatMessage() {
     const text = state.draftText.trim();
-    if (!text || isLocalReady()) return;
+    if (!text || !canLocalInteract()) return;
     state.lastMessage = "";
     sendCommand("GameRoomFateKnotsSendCombatMessage", { runId: currentRunId(), text: text });
   }
@@ -365,7 +418,9 @@
   function renderDiscussion() {
     const panel = createElement("section", "fate-knots-gameplay__discussion");
     const heading = createElement("div", "fate-knots-gameplay__discussion-heading");
-    heading.append(createElement("h3", "fate-knots-gameplay__discussion-title", "Ortak savaş sohbeti"));
+    heading.append(
+      createElement("h3", "fate-knots-gameplay__discussion-title", "Ortak savaş sohbeti")
+    );
     const discussion = readRecord(state.discussion);
     const activeSeats = readArray(discussion?.activeSeatIds);
     const readySeats = new Set(readArray(discussion?.readySeatIds));
@@ -385,8 +440,15 @@
     heading.append(readiness);
     panel.append(heading);
 
+    if (!discussion) {
+      panel.append(
+        createElement("div", "fate-knots-gameplay__muted", "Ortak sohbet host'tan bekleniyor…")
+      );
+      return panel;
+    }
+
     const messages = createElement("div", "fate-knots-gameplay__messages");
-    const entries = readArray(discussion?.messages);
+    const entries = readArray(discussion.messages);
     if (entries.length === 0) {
       messages.append(createElement("div", "fate-knots-gameplay__muted", "Henüz mesaj yok."));
     } else {
@@ -395,7 +457,11 @@
         if (!message) return;
         const row = createElement("div", "fate-knots-gameplay__message");
         row.append(
-          createElement("strong", "fate-knots-gameplay__message-author", seatLabel(readString(message.seatId))),
+          createElement(
+            "strong",
+            "fate-knots-gameplay__message-author",
+            seatLabel(readString(message.seatId))
+          ),
           createElement("span", "fate-knots-gameplay__message-text", readString(message.text))
         );
         messages.append(row);
@@ -403,7 +469,7 @@
     }
     panel.append(messages);
 
-    if (!isLocalReady()) {
+    if (canLocalInteract()) {
       const compose = createElement("div", "fate-knots-gameplay__compose");
       const input = document.createElement("textarea");
       input.className = "fate-knots-gameplay__chat-input";
@@ -423,7 +489,7 @@
       });
       compose.append(input, createButton("Gönder", sendChatMessage, { disabled: false }));
       panel.append(compose);
-    } else {
+    } else if (isLocalReady()) {
       panel.append(
         createElement(
           "div",
@@ -465,12 +531,21 @@
     const gameplay = readRecord(state.gameplay) || {};
     const location = readRecord(gameplay.activeLocation);
     shell.append(
-      createElement("div", "fate-knots-gameplay__eyebrow", readString(gameplay.phase).toUpperCase()),
-      createElement("h2", "fate-knots-gameplay__location", readString(location?.name) || "Açık sahne"),
+      createElement(
+        "div",
+        "fate-knots-gameplay__eyebrow",
+        readString(gameplay.phase).toUpperCase()
+      ),
+      createElement(
+        "h2",
+        "fate-knots-gameplay__location",
+        readString(location?.name) || "Açık sahne"
+      ),
       createElement(
         "p",
         "fate-knots-gameplay__location-copy",
-        readString(location?.description) || "Yaşayan kitap sahnesi bir sonraki görsel turda tamamlanacak."
+        readString(location?.description) ||
+          "Yaşayan kitap sahnesi bir sonraki görsel turda tamamlanacak."
       ),
       createElement(
         "div",
@@ -492,14 +567,20 @@
     const copy = createElement("div");
     copy.append(
       createElement("div", "fate-knots-gameplay__brand", "FATE KNOTS"),
-      createElement("h1", "fate-knots-gameplay__title", readString(readRecord(gameplay.theme)?.name) || "Kader Düğümleri")
+      createElement(
+        "h1",
+        "fate-knots-gameplay__title",
+        readString(readRecord(gameplay.theme)?.name) || "Kader Düğümleri"
+      )
     );
     header.append(
       copy,
       createButton(
         "Hub",
         function () {
-          sendCommand("GameRoomFateKnotsActivateUniverse", { universeId: readString(gameplay.universeId) });
+          sendCommand("GameRoomFateKnotsActivateUniverse", {
+            universeId: readString(gameplay.universeId),
+          });
         },
         { secondary: true }
       )
@@ -521,6 +602,16 @@
     if (root && state.gameplay) render(root);
   }
 
+  function resetCombatInteraction() {
+    state.combatOptions = null;
+    state.discussion = null;
+    state.requestedCombatKey = "";
+    state.movementCardId = null;
+    state.actionCardId = null;
+    state.primaryTargetId = null;
+    state.draftText = "";
+  }
+
   function handleState(message) {
     const record = readRecord(message);
     const payload = record ? readRecord(record.payload) : null;
@@ -529,23 +620,12 @@
     state.gameplay = nextState;
     state.lastMessage = "";
     if (!nextState) {
-      state.combatOptions = null;
-      state.discussion = null;
-      state.requestedCombatKey = "";
-      state.movementCardId = null;
-      state.actionCardId = null;
-      state.primaryTargetId = null;
-      state.draftText = "";
+      resetCombatInteraction();
       return true;
     }
 
     if (!isCombatPlanningPhase()) {
-      state.combatOptions = null;
-      state.discussion = null;
-      state.requestedCombatKey = "";
-      state.movementCardId = null;
-      state.actionCardId = null;
-      state.primaryTargetId = null;
+      resetCombatInteraction();
     } else {
       requestCombatData(nextState);
     }
@@ -561,13 +641,24 @@
     return true;
   }
 
+  function hasIssueCode(result, code) {
+    return readArray(result?.issues).some(function (entry) {
+      return readString(readRecord(entry)?.code) === code;
+    });
+  }
+
   function commandErrorMessage(result) {
     const error = readString(result?.error);
-    if (error === "seat-already-committed") return "Bu turdaki hamlen zaten kilitli.";
-    if (error === "commit-rejected") return "Seçilen hamle artık yasal değil; seçenekler yenileniyor.";
+    if (error === "seat-already-committed" || hasIssueCode(result, "seat-already-committed")) {
+      return "Bu turdaki hamlen zaten kilitli.";
+    }
+    if (error === "commit-rejected") {
+      return "Seçilen hamle artık yasal değil; seçenekler yenileniyor.";
+    }
     if (error === "wrong-phase") return "Savaş artık hamle hazırlama aşamasında değil.";
     if (error === "persistence-rejected") return "Kayıt durumu güvenli biçimde güncellenemedi.";
     if (error === "no-active-combat") return "Aktif savaş bulunamadı.";
+    if (error === "discussion-rejected") return "Ortak savaş sohbeti bu koltuk için kapalı.";
     return "Savaş komutu tamamlanamadı.";
   }
 
@@ -579,7 +670,10 @@
 
     if (command === "GameRoomFateKnotsGetCombatOptions") {
       state.combatOptions = result.ok === true ? readRecord(result.state) : null;
-      if (result.ok !== true) state.lastMessage = commandErrorMessage(result);
+      if (result.ok !== true) {
+        state.lastMessage = commandErrorMessage(result);
+        state.requestedCombatKey = "";
+      }
       normalizeTargetSelection();
       renderCurrent();
       return true;
@@ -587,7 +681,10 @@
 
     if (command === "GameRoomFateKnotsGetCombatDiscussion") {
       state.discussion = result.ok === true ? readRecord(result.state) : null;
-      if (result.ok !== true) state.lastMessage = commandErrorMessage(result);
+      if (result.ok !== true) {
+        state.lastMessage = commandErrorMessage(result);
+        state.requestedCombatKey = "";
+      }
       renderCurrent();
       return true;
     }
@@ -625,13 +722,7 @@
     const root = document.getElementById("app");
     if (root) root.classList.remove("fate-knots-gameplay-root");
     state.gameplay = null;
-    state.combatOptions = null;
-    state.discussion = null;
-    state.requestedCombatKey = "";
-    state.movementCardId = null;
-    state.actionCardId = null;
-    state.primaryTargetId = null;
-    state.draftText = "";
+    resetCombatInteraction();
     state.lastMessage = "";
   }
 
