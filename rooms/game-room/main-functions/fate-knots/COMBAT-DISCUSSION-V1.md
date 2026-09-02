@@ -47,7 +47,7 @@ The intended interaction is:
 4. if the engine is still in `combat-discussion`, the first completed move may open `combat-commit` internally before storing that player's validated commit
 5. other uncommitted players may continue talking and changing their own uncommitted plan
 6. committed plans remain hidden from AI0 and must not be exposed as card/target details through the chat UI
-7. after every required standing actor has a legal commit, the engine enters deterministic resolution
+7. after every required standing player-party actor has a legal commit, the host obtains any still-required opposition commits through the normal deterministic-policy/AI0 authority and the engine enters deterministic resolution
 
 UI may show that another party member is ready/committed through themed presentation, but must not reveal that player's committed card or target before resolution unless a later rule explicitly permits it.
 
@@ -58,19 +58,45 @@ Chat content is communication, not mechanical authority.
 - messages never mutate HP, position, status, inventory, legality, commit state, or combat result
 - combat legality remains engine-owned
 - `Complete move` must pass through the normal host/engine legality and commit path
+- a completed move is locked for that turn; the V1 host does not allow the same seat to replace it afterward
 - a chat message cannot be interpreted as an implicit card commit
 - AI/player adapters may use visible party discussion as conversational context only where their player-role transport explicitly supports it
+- opposition decisions receive legal combat state through their existing authority path, never the party transcript or hidden party commits
 
 ## Persistence
 
-V1 combat chat does not need to become canonical Universe/Run state.
+V1 combat chat is not canonical Universe/Run state.
 
-It may be stored as bounded per-combat session/transcript state for UI continuity or transport, but losing the transcript must not alter mechanical canon or make a saved run invalid.
+The implemented host keeps a bounded hot transcript scoped to `runId + combatId + turnIndex`. It retains at most 80 messages of at most 2000 characters each. A new combat or turn creates a fresh transcript surface.
 
-Do not place the chat transcript inside hidden world canon, NPC memory, combat commits, or the normal rules state merely to preserve UI history.
+Losing the transcript must not alter mechanical canon or make a saved run invalid. Do not place the chat transcript inside hidden world canon, NPC memory, combat commits, or the normal rules state merely to preserve UI history.
+
+Actual completed combat moves remain canonical and are persisted through the normal crash-atomic Fate Knots Universe/Run envelope.
+
+## Command/sender boundary
+
+Sender identity is command-bound rather than supplied by message payload:
+
+- `GameRoomFateKnotsGetCombatDiscussion` — `room-ui/internal`
+- `GameRoomFateKnotsSendCombatMessage` — local `user`, `room-ui/internal`
+- `GameRoomFateKnotsAi2CombatMessage` — `ai2`, `ai-slots/internal`
+- `GameRoomFateKnotsRemoteCombatMessage` — `us1`, `us1/internal`
+- `GameRoomFateKnotsCompleteCombatMove` — local `user`, `room-ui/internal`
+- `GameRoomFateKnotsAi2CompleteCombatMove` — `ai2`, `ai-slots/internal`
+- `GameRoomFateKnotsRemoteCompleteCombatMove` — `us1`, `us1/internal`
+
+Neither chat nor CompleteMove payloads accept `seatId` or `actorId` from the caller.
+
+## Resolution boundary
+
+`Hamleyi tamamla` does not itself execute the full combat turn presentation/mechanics pipeline.
+
+When the final required player-party move is locked, the host obtains and validates any required opposition commits and advances the canonical combat only to `combat-resolution`. The separate deterministic resolution authority then owns mechanical execution and semantic presentation events. This preserves a clean state boundary for the living-book renderer instead of skipping directly over the committed-turn presentation point.
 
 ## Presentation
 
-The first working version may use a simple shared chat panel integrated into the combat spread. It does not need recipient chips, threads, speech bubbles per target, or complex scene-directed dialogue routing.
+The first working version may use a simple shared chat panel integrated into the combat spread. This is a deliberate V1 exception to the general preference against chat-app-like story UI: tactical party coordination benefits from one clear shared surface.
+
+It does not need recipient chips, threads, speech bubbles per target, or complex scene-directed dialogue routing.
 
 The living-book visual pass may later theme this surface, but the interaction law remains: one party conversation, unlimited messages before move completion, hidden commits, then deterministic resolution.
