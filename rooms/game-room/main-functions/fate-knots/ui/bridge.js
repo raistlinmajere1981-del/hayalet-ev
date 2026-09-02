@@ -134,6 +134,22 @@
       dispatchFateKnotsEvent("fate-knots-exploration-consensus-state", message);
     }
 
+    function handoffCampState(message) {
+      const gameplayUi = getFateKnotsGameplayUi();
+      if (gameplayUi && typeof gameplayUi.handleCampState === "function") {
+        gameplayUi.handleCampState(message);
+      }
+      dispatchFateKnotsEvent("fate-knots-camp-state", message);
+    }
+
+    function handoffNpcDialogueState(message) {
+      const gameplayUi = getFateKnotsGameplayUi();
+      if (gameplayUi && typeof gameplayUi.handleNpcDialogueState === "function") {
+        gameplayUi.handleNpcDialogueState(message);
+      }
+      dispatchFateKnotsEvent("fate-knots-npc-dialogue-state", message);
+    }
+
     function handoffCommandResult(message) {
       const gameplayUi = getFateKnotsGameplayUi();
       const gameplayHandled = Boolean(
@@ -181,6 +197,22 @@
         message.type === "fate-knots-exploration-consensus-state"
       ) {
         handoffExplorationConsensusState(message);
+        if (isFateKnotsActive()) render();
+        return;
+      }
+
+      if (message && typeof message === "object" && message.type === "fate-knots-camp-state") {
+        handoffCampState(message);
+        if (isFateKnotsActive()) render();
+        return;
+      }
+
+      if (
+        message &&
+        typeof message === "object" &&
+        message.type === "fate-knots-npc-dialogue-state"
+      ) {
+        handoffNpcDialogueState(message);
         if (isFateKnotsActive()) render();
         return;
       }
