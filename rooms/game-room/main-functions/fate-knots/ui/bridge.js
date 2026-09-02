@@ -18,6 +18,10 @@
       return global.GameRoomFateKnotsUi;
     }
 
+    function getFateKnotsGameplayUi() {
+      return global.GameRoomFateKnotsGameplayUi;
+    }
+
     function syncFateKnotsContext() {
       const fateKnotsUi = getFateKnotsUi();
       const baseState = getBaseState();
@@ -48,21 +52,40 @@
       }
     }
 
+    function renderFateKnots(root) {
+      const gameplayUi = getFateKnotsGameplayUi();
+      if (
+        gameplayUi &&
+        typeof gameplayUi.hasGameplayState === "function" &&
+        gameplayUi.hasGameplayState() &&
+        typeof gameplayUi.render === "function"
+      ) {
+        gameplayUi.render(root);
+        return;
+      }
+
+      const fateKnotsUi = getFateKnotsUi();
+      if (fateKnotsUi && typeof fateKnotsUi.render === "function") {
+        fateKnotsUi.render(root);
+      }
+    }
+
     function render() {
       if (isFateKnotsActive()) {
         disposeOtherFeatureUi();
         syncFateKnotsContext();
         const root = document.getElementById("app");
-        const fateKnotsUi = getFateKnotsUi();
-        if (root && fateKnotsUi && typeof fateKnotsUi.render === "function") {
-          fateKnotsUi.render(root);
-        }
+        if (root) renderFateKnots(root);
         return;
       }
 
       const fateKnotsUi = getFateKnotsUi();
       if (fateKnotsUi && typeof fateKnotsUi.dispose === "function") {
         fateKnotsUi.dispose();
+      }
+      const gameplayUi = getFateKnotsGameplayUi();
+      if (gameplayUi && typeof gameplayUi.dispose === "function") {
+        gameplayUi.dispose();
       }
       base.render();
     }
@@ -88,7 +111,7 @@
     }
 
     function handoffGameplayState(message) {
-      const gameplayUi = global.GameRoomFateKnotsGameplayUi;
+      const gameplayUi = getFateKnotsGameplayUi();
       if (gameplayUi && typeof gameplayUi.handleState === "function") {
         gameplayUi.handleState(message);
       }
@@ -96,11 +119,23 @@
     }
 
     function handoffCombatDiscussionState(message) {
-      const gameplayUi = global.GameRoomFateKnotsGameplayUi;
+      const gameplayUi = getFateKnotsGameplayUi();
       if (gameplayUi && typeof gameplayUi.handleCombatDiscussionState === "function") {
         gameplayUi.handleCombatDiscussionState(message);
       }
       dispatchFateKnotsEvent("fate-knots-combat-discussion-state", message);
+    }
+
+    function handoffCommandResult(message) {
+      const gameplayUi = getFateKnotsGameplayUi();
+      if (gameplayUi && typeof gameplayUi.handleCommandResult === "function") {
+        gameplayUi.handleCommandResult(message);
+      }
+
+      const fateKnotsUi = getFateKnotsUi();
+      if (fateKnotsUi && typeof fateKnotsUi.handleCommandResult === "function") {
+        fateKnotsUi.handleCommandResult(message);
+      }
     }
 
     function handleHostMessage(message) {
@@ -115,6 +150,7 @@
 
       if (message && typeof message === "object" && message.type === "fate-knots-gameplay-state") {
         handoffGameplayState(message);
+        if (isFateKnotsActive()) render();
         return;
       }
 
@@ -124,14 +160,12 @@
         message.type === "fate-knots-combat-discussion-state"
       ) {
         handoffCombatDiscussionState(message);
+        if (isFateKnotsActive()) render();
         return;
       }
 
       if (isFateKnotsCommandResult(message)) {
-        const fateKnotsUi = getFateKnotsUi();
-        if (fateKnotsUi && typeof fateKnotsUi.handleCommandResult === "function") {
-          fateKnotsUi.handleCommandResult(message);
-        }
+        handoffCommandResult(message);
         if (isFateKnotsActive()) render();
         return;
       }
