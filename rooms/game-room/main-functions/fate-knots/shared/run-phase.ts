@@ -1,7 +1,7 @@
 import type { FateKnotsPhase, FateKnotsRunState } from "./contracts.js";
 
 export type FateKnotsNonCombatRunPhase =
-  "run-setup" | "exploration" | "transition" | "loot" | "camp" | "finale";
+  "run-setup" | "exploration" | "transition" | "loot" | "camp";
 
 export type FateKnotsRunPhaseIssueCode =
   | "run-not-active"
@@ -10,7 +10,7 @@ export type FateKnotsRunPhaseIssueCode =
   | "unsupported-source-phase"
   | "transition-not-allowed"
   | "unresolved-loot"
-  | "completion-requires-finale";
+  | "terminal-success-owned-by-story";
 
 export interface FateKnotsRunPhaseIssue {
   code: FateKnotsRunPhaseIssueCode;
@@ -28,11 +28,10 @@ const ALLOWED_NON_COMBAT_TRANSITIONS: Readonly<
   Record<FateKnotsNonCombatRunPhase, readonly FateKnotsNonCombatRunPhase[]>
 > = {
   "run-setup": ["exploration"],
-  exploration: ["transition", "loot", "camp", "finale"],
-  transition: ["exploration", "loot", "camp", "finale"],
-  loot: ["exploration", "camp", "finale"],
-  camp: ["exploration", "transition", "finale"],
-  finale: [],
+  exploration: ["transition", "loot", "camp"],
+  transition: ["exploration", "loot", "camp"],
+  loot: ["exploration", "camp"],
+  camp: ["exploration", "transition"],
 };
 
 function cloneRun(run: FateKnotsRunState): FateKnotsRunState {
@@ -91,7 +90,8 @@ function isNonCombatRunPhase(phase: FateKnotsPhase): phase is FateKnotsNonCombat
 /**
  * Advances only already-authorized non-combat run phases. Story logic decides
  * which destination is appropriate; this helper only rejects impossible or
- * authority-crossing transitions.
+ * authority-crossing transitions. V1 deliberately has no generic transition
+ * into a privileged `finale` phase: finale is an authored terminal story choice.
  */
 export function transitionFateKnotsRunPhase(
   runInput: FateKnotsRunState,
@@ -123,19 +123,14 @@ export function transitionFateKnotsRunPhase(
 }
 
 /**
- * Marks a run complete only after external finale-condition authority has
- * already established success and the run is sitting in the finale phase.
+ * Compatibility guard for old callers. V1 terminal success is owned exclusively
+ * by `applyFateKnotsStoryTransition` when a currently legal authored
+ * `kind: "finale"` transition is chosen. Generic phase code cannot complete a
+ * scenario or turn a legacy `finale` phase into success.
  */
 export function completeFateKnotsRun(runInput: FateKnotsRunState): FateKnotsRunPhaseResult {
-  if (runInput.result !== "active") return fail(runInput, { code: "run-not-active" });
-  if (runInput.activeCombat) return fail(runInput, { code: "active-combat-exists" });
-  if (runInput.phase !== "finale") {
-    return fail(runInput, { code: "completion-requires-finale", fromPhase: runInput.phase });
-  }
-
-  const run = cloneRun(runInput);
-  run.phase = "completed";
-  run.result = "completed";
-  run.revision += 1;
-  return { ok: true, run, issues: [] };
+  return fail(runInput, {
+    code: "terminal-success-owned-by-story",
+    fromPhase: runInput.phase,
+  });
 }
