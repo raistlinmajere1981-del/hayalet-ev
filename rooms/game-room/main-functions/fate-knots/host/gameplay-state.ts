@@ -249,8 +249,10 @@ function summarizeCombat(
  * resources and currently visible/referenced entities; the renderer never
  * receives the complete Universe Package asset catalog.
  *
- * The renderer receives enough public identity/state to compose the living book
- * but must use engine legality/presentation events rather than infer mechanics.
+ * While combat is active, party mechanical fields are projected from the live
+ * combat actors rather than the run-level actor snapshots. This keeps HP,
+ * position, cards, equipment and statuses current between turn resolution and
+ * terminal combat exit without exposing opposition inventories or commits.
  */
 export function buildFateKnotsGameplayState(
   universe: FateKnotsUniversePackage,
@@ -265,6 +267,9 @@ export function buildFateKnotsGameplayState(
   }
 
   const actorById = new Map(run.actors.map((actor) => [actor.actorId, actor] as const));
+  const combatActorById = new Map(
+    (run.activeCombat?.actors ?? []).map((actor) => [actor.actorId, actor] as const)
+  );
   const characterById = new Map(
     universe.characters.map((character) => [character.id, character] as const)
   );
@@ -281,20 +286,21 @@ export function buildFateKnotsGameplayState(
 
   const partyActors: FateKnotsGameplayPartyActorSummary[] = [];
   for (const actorId of run.partyActorIds) {
-    const actor = actorById.get(actorId);
-    if (!actor) {
+    const runActor = actorById.get(actorId);
+    if (!runActor) {
       issues.push({ code: "party-actor-not-found", value: actorId });
       continue;
     }
-    const character = characterById.get(actor.characterId);
+    const character = characterById.get(runActor.characterId);
     if (!character) {
-      issues.push({ code: "character-not-found", value: actor.characterId });
+      issues.push({ code: "character-not-found", value: runActor.characterId });
       continue;
     }
+    const actor = combatActorById.get(actorId) ?? runActor;
     partyActors.push({
       actorId: actor.actorId,
       characterId: actor.characterId,
-      seatId: actor.seatId ?? null,
+      seatId: actor.seatId ?? runActor.seatId ?? null,
       name: character.name,
       portraitAssetId: character.portraitAssetId,
       hp: actor.hp,
