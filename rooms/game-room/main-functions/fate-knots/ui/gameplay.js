@@ -6,10 +6,12 @@
     combatOptions: null,
     discussion: null,
     requestedCombatKey: "",
+    requestedResolutionKey: "",
     movementCardId: null,
     actionCardId: null,
     primaryTargetId: null,
     draftText: "",
+    lastResolvedCards: [],
     lastMessage: "",
   };
 
@@ -132,6 +134,23 @@
     ].join(":");
   }
 
+  function resolutionRequestKey(gameplay) {
+    const combat = readRecord(gameplay?.combat);
+    if (
+      !combat ||
+      gameplay?.phase !== "combat-resolution" ||
+      combat.phase !== "combat-resolution"
+    ) {
+      return "";
+    }
+    return [
+      readString(gameplay.runId),
+      String(gameplay.revision ?? ""),
+      readString(combat.combatId),
+      String(combat.turnIndex ?? ""),
+    ].join(":");
+  }
+
   function requestCombatData(gameplay) {
     if (!gameplay || !isCombatPlanningPhase()) return;
     const key = combatRequestKey(gameplay);
@@ -141,6 +160,20 @@
     const optionsSent = sendCommand("GameRoomFateKnotsGetCombatOptions", { runId: runId });
     const discussionSent = sendCommand("GameRoomFateKnotsGetCombatDiscussion", { runId: runId });
     if (!optionsSent || !discussionSent) state.requestedCombatKey = "";
+  }
+
+  function requestCombatResolution(gameplay) {
+    const combat = readRecord(gameplay?.combat);
+    const key = resolutionRequestKey(gameplay);
+    if (!combat || !key || key === state.requestedResolutionKey) return;
+    state.requestedResolutionKey = key;
+    const sent = sendCommand("GameRoomFateKnotsResolveCombatTurn", {
+      runId: readString(gameplay.runId),
+      runRevision: Number(gameplay.revision),
+      combatId: readString(combat.combatId),
+      turnIndex: Number(combat.turnIndex),
+    });
+    if (!sent) state.requestedResolutionKey = "";
   }
 
   function selectedOption(kind) {
@@ -235,7 +268,10 @@
       const actorId = readString(partyActor.actorId);
       const liveActor = currentActors.get(actorId) || partyActor;
       partyColumn.append(
-        renderActorSummary(liveActor, readString(partyActor.name) || readString(partyActor.seatId) || "Oyuncu")
+        renderActorSummary(
+          liveActor,
+          readString(partyActor.name) || readString(partyActor.seatId) || "Oyuncu"
+        )
       );
     });
 
@@ -501,6 +537,29 @@
     return panel;
   }
 
+  function renderResolvedCards() {
+    if (state.lastResolvedCards.length === 0) return null;
+    const panel = createElement("section", "fate-knots-gameplay__resolution");
+    panel.append(createElement("strong", "fate-knots-gameplay__side-title", "Son çözülen hamleler"));
+    const list = createElement("div", "fate-knots-gameplay__option-row");
+    state.lastResolvedCards.forEach(function (entry) {
+      const resolved = readRecord(entry);
+      const card = readRecord(resolved?.card);
+      if (!resolved || !card) return;
+      const outcome = readString(resolved.outcome);
+      const suffix = outcome === "resolved" ? "" : " · boşa çıktı";
+      list.append(
+        createElement(
+          "span",
+          "fate-knots-gameplay__seat-state",
+          `${readString(card.name) || readString(resolved.cardId)}${suffix}`
+        )
+      );
+    });
+    panel.append(list);
+    return panel;
+  }
+
   function renderCombat(shell) {
     const combat = currentCombat();
     const turnIndex = Number(combat?.turnIndex ?? 0) + 1;
@@ -521,7 +580,7 @@
         "div",
         "fate-knots-gameplay__resolution",
         readString(combat?.phase) === "combat-resolution"
-          ? "Hamleler kilitlendi. Deterministik çözüm bekleniyor…"
+          ? "Hamleler kilitlendi. Deterministik çözüm uygulanıyor…"
           : "Savaş sonucu işleniyor…"
       )
     );
@@ -590,6 +649,9 @@
     if (currentCombat()) renderCombat(shell);
     else renderExploration(shell);
 
+    const resolvedCards = renderResolvedCards();
+    if (resolvedCards) shell.append(resolvedCards);
+
     if (state.lastMessage) {
       shell.append(createElement("div", "fate-knots-gameplay__notice", state.lastMessage));
     }
@@ -616,18 +678,28 @@
     const record = readRecord(message);
     const payload = record ? readRecord(record.payload) : null;
     if (!payload || !("state" in payload)) return false;
+    const previousRunId = currentRunId();
     const nextState = readRecord(payload.state);
+    const nextRunId = readString(nextState?.runId);
+    if (previousRunId && nextRunId && previousRunId !== nextRunId) {
+      state.lastResolvedCards = [];
+    }
     state.gameplay = nextState;
     state.lastMessage = "";
     if (!nextState) {
       resetCombatInteraction();
+      state.requestedResolutionKey = "";
+      state.lastResolvedCards = [];
       return true;
     }
 
-    if (!isCombatPlanningPhase()) {
-      resetCombatInteraction();
-    } else {
+    if (isCombatPlanningPhase()) {
+      state.requestedResolutionKey = "";
       requestCombatData(nextState);
+    } else {
+      resetCombatInteraction();
+      if (nextState.phase === "combat-resolution") requestCombatResolution(nextState);
+      else state.requestedResolutionKey = "";
     }
     return true;
   }
@@ -654,6 +726,10 @@
     }
     if (error === "commit-rejected") {
       return "Seçilen hamle artık yasal değil; seçenekler yenileniyor.";
+    }
+    if (error === "stale-resolution-request") return "Tur zaten daha yeni bir duruma geçti.";
+    if (error === "resolution-failed" || error === "aftermath-failed" || error === "story-exit-failed") {
+      return "Deterministik tur çözümü tamamlanamadı.";
     }
     if (error === "wrong-phase") return "Savaş artık hamle hazırlama aşamasında değil.";
     if (error === "persistence-rejected") return "Kayıt durumu güvenli biçimde güncellenemedi.";
@@ -711,6 +787,19 @@
       return true;
     }
 
+    if (command === "GameRoomFateKnotsResolveCombatTurn") {
+      state.requestedResolutionKey = "";
+      if (result.ok === true) {
+        const resolutionState = readRecord(result.state);
+        state.lastResolvedCards = readArray(resolutionState?.cards);
+        state.lastMessage = "Tur deterministik olarak çözüldü.";
+      } else {
+        state.lastMessage = commandErrorMessage(result);
+      }
+      renderCurrent();
+      return true;
+    }
+
     return false;
   }
 
@@ -723,6 +812,8 @@
     if (root) root.classList.remove("fate-knots-gameplay-root");
     state.gameplay = null;
     resetCombatInteraction();
+    state.requestedResolutionKey = "";
+    state.lastResolvedCards = [];
     state.lastMessage = "";
   }
 
