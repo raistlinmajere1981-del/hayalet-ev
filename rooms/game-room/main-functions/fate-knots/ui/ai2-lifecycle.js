@@ -42,13 +42,6 @@
     const button = target.closest("button.fate-knots-hub__button");
     if (!button) return;
     const label = button.textContent?.trim();
-
-    if (label === "Kapat" && button.closest(".fate-knots-hub__setup")) {
-      sendSetupCommand("GameRoomFateKnotsCancelAi2RunCharacter", setupUniverseId);
-      setupUniverseId = null;
-      return;
-    }
-
     if (label !== "Kat" && label !== "Çıkar") return;
     const seat = button.closest(".fate-knots-hub__seat");
     const title = seat?.querySelector(".fate-knots-hub__seat-title")?.textContent?.trim();
