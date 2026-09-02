@@ -13,6 +13,8 @@ import {
 
 export const FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES = {
   get: "GameRoomFateKnotsGetCombatDiscussion",
+  getAi2: "GameRoomFateKnotsAi2GetCombatDiscussion",
+  getRemote: "GameRoomFateKnotsRemoteGetCombatDiscussion",
   sendLocal: "GameRoomFateKnotsSendCombatMessage",
   sendAi2: "GameRoomFateKnotsAi2CombatMessage",
   sendRemote: "GameRoomFateKnotsRemoteCombatMessage",
@@ -179,15 +181,21 @@ function append(
 /**
  * V1 party-chat command surface. Sender identity is bound by command scope and
  * never accepted from payload, so room UI cannot impersonate AI2/US1 and remote
- * adapters cannot post as the local player. Once a seat locks its combat move,
- * that seat can no longer append messages for the turn; the shared transcript
- * remains visible until every required player seat has committed.
+ * adapters cannot post as the local player. Distinct read commands allow each
+ * remote seat to receive the same shared transcript without sharing private
+ * combat-option surfaces.
  */
 export function createFateKnotsCombatDiscussionCommands(
   api: FateKnotsPersistenceApi
 ): Record<string, (payload?: unknown) => FateKnotsCombatDiscussionCommandResult> {
   return {
     [FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.get](payload?: unknown) {
+      return project(api, payload);
+    },
+    [FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.getAi2](payload?: unknown) {
+      return project(api, payload);
+    },
+    [FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.getRemote](payload?: unknown) {
       return project(api, payload);
     },
     [FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.sendLocal](payload?: unknown) {
