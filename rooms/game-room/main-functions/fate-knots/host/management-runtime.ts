@@ -1,3 +1,4 @@
+import { deleteFateKnotsCombatDiscussionForRun } from "./combat-discussion.js";
 import { buildFateKnotsHubSnapshot, type FateKnotsHubSnapshot } from "./hub-state.js";
 import type { FateKnotsForgeHubSnapshot } from "./forge-orchestration.js";
 import {
@@ -126,6 +127,7 @@ export function createFateKnotsManagementCommands(
       const before = buildHub(api, deps);
       const deleted = deleteFateKnotsRun(api, runId);
       if (!deleted.ok) return rejected(api, deps, deleted.issues);
+      deleteFateKnotsCombatDiscussionForRun(api, runId);
       if (before.activeRunId === runId) {
         const selection = saveFateKnotsSessionSelection(api, {
           activeUniverseId: before.activeUniverseId,
