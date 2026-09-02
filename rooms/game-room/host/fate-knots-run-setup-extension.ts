@@ -42,6 +42,12 @@ export function extendGameRoomHostRuntimeWithFateKnotsRunSetupSeats<T extends Ga
       const commands = createFateKnotsRunSetupSeatCommands(api);
       const registrations = [
         [
+          FATE_KNOTS_RUN_SETUP_SEAT_COMMAND_NAMES.getLocalState,
+          "room-ui",
+          "Read current Fate Knots run setup seat selections.",
+          false,
+        ],
+        [
           FATE_KNOTS_RUN_SETUP_SEAT_COMMAND_NAMES.getAi2,
           "ai-slots",
           "Read player-safe Fate Knots run setup data for AI2.",
