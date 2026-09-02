@@ -126,6 +126,14 @@
       dispatchFateKnotsEvent("fate-knots-combat-discussion-state", message);
     }
 
+    function handoffExplorationConsensusState(message) {
+      const gameplayUi = getFateKnotsGameplayUi();
+      if (gameplayUi && typeof gameplayUi.handleExplorationConsensusState === "function") {
+        gameplayUi.handleExplorationConsensusState(message);
+      }
+      dispatchFateKnotsEvent("fate-knots-exploration-consensus-state", message);
+    }
+
     function handoffCommandResult(message) {
       const gameplayUi = getFateKnotsGameplayUi();
       const gameplayHandled = Boolean(
@@ -163,6 +171,16 @@
         message.type === "fate-knots-combat-discussion-state"
       ) {
         handoffCombatDiscussionState(message);
+        if (isFateKnotsActive()) render();
+        return;
+      }
+
+      if (
+        message &&
+        typeof message === "object" &&
+        message.type === "fate-knots-exploration-consensus-state"
+      ) {
+        handoffExplorationConsensusState(message);
         if (isFateKnotsActive()) render();
         return;
       }
