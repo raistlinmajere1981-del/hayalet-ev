@@ -27,8 +27,9 @@ export interface FateKnotsPlayabilityValidationResult {
 /**
  * Small V1 playability gate layered on structural Universe validation.
  * It intentionally does not score prose, balance or art quality and does not
- * attempt generic graph reachability. The finale check only protects the fixed
- * V1 entry shape from an obvious dead end.
+ * attempt generic graph reachability. Finale transitions are terminal success
+ * routes; an optional final encounter is only required to be reachable through
+ * an authored combat transition and is not treated as a special runtime phase.
  */
 export function validateFateKnotsPlayableUniverse(
   universe: FateKnotsUniversePackage
@@ -53,14 +54,9 @@ export function validateFateKnotsPlayableUniverse(
 
   const finalEncounterId = universe.finale.finalEncounterId ?? null;
   if (finalEncounterId) {
-    const finaleEntryKnotIds = new Set(
-      finaleTransitions.map((transition) => transition.toKnotId ?? transition.fromKnotId)
-    );
     const finalEncounterTransition = universe.story.transitions.find(
       (transition) =>
-        transition.kind === "combat" &&
-        transition.encounterId === finalEncounterId &&
-        finaleEntryKnotIds.has(transition.fromKnotId)
+        transition.kind === "combat" && transition.encounterId === finalEncounterId
     );
     if (!finalEncounterTransition) {
       issues.push({
