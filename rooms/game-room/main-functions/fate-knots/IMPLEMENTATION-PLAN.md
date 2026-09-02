@@ -18,7 +18,7 @@ Delivered:
 
 ## Stage B — Headless core
 
-Status: complete for the current V1 mechanical surface. Local typecheck/tests remain intentionally deferred to the integration checkpoint.
+Status: complete for the current V1 mechanical surface.
 
 Delivered:
 
@@ -42,7 +42,7 @@ Delivered:
 - bounded AI0/AI1 runtime packet contracts
 - combat `reveal` effects composed into run-owned knot reveal state
 - presentation-event contract separate from mechanics
-- non-combat run phase authority and finale completion boundary
+- non-combat run phase authority and authored terminal-story completion boundary
 
 V1 deliberately rejects authored mechanics that the engine does not yet give observable meaning to:
 
@@ -54,7 +54,7 @@ Direct combat `modify-stat` currently supports `speed` and `maxHp` only.
 
 ## Stage C — Persistence, story authority and host integration
 
-Status: architecture-audit corrections implemented. Local strict verification is the next checkpoint; the remaining external dependency is the concrete World Forge image materializer from Stage D.
+Status: core story, persistence and USER/AI2/US1 player lifecycle implemented and locally verified. The remaining external dependency before the living-book visual stage is the concrete World Forge image materializer from Stage D.
 
 Delivered:
 
@@ -87,8 +87,8 @@ Delivered:
 - combat `revealId` means a canonical story-knot id in V1
 - retreat restores source knot/location
 - story outcome + combat exit + tracking cleanup has one composed authority path
-- final-encounter loot preserves originating finale transition/encounter identity through loot settlement
-- composed loot settlement returns deterministically to `finale` or `exploration` and then clears tracking
+- encounter loot preserves the originating combat transition/encounter identity until loot settlement
+- unanimous loot settlement returns to `exploration`, recomputes objective readiness, and clears story combat tracking
 - encounter factory creates live combat state from canonical definitions; AI does not author live combat state
 
 ### V1 story-phase law
@@ -107,25 +107,29 @@ Encounter loot may contain only `item` and `equipment` cards.
 
 Normal story choices are available only from `exploration`.
 
-A `finale` transition enters the `finale` phase. Inside `finale`, the story resolver exposes only the combat transition whose encounter id equals `finale.finalEncounterId`. If the final combat produces loot, loot resolution preserves and restores the finale destination rather than falling back to exploration.
+A currently legal `kind: "finale"` story transition is itself the canonical terminal-success action. Taking it sets the run to `completed`; V1 does not enter a privileged playable `finale` phase first. `finaleUnlocked` means only that the scenario-level prerequisite set is satisfied.
 
-If there is no final encounter, story transitions are not exposed in finale and the explicit finale-choice/success authority remains responsible for completion.
+`finale.finalEncounterId` is optional metadata describing a possible authored combat route. Reaching `finaleLocationId`, unlocking the finale, starting that encounter, or winning it does **not** complete the run. A victory with loot enters normal loot coordination and then returns to `exploration`; a victory without loot returns directly to `exploration`. The party may then camp, prepare, choose another route, or take a legal terminal finale transition.
 
-The playability gate requires at least one finale transition and, when `finalEncounterId` exists, a matching combat transition from a finale-entry knot. This is a bounded deadlock check, not generic graph search.
+Camp is also not travel. A `camp` transition means **camp here** at its source knot: it must omit `toKnotId` and `toLocationId`, and the source location must have `campAllowed=true`.
 
-### Run setup
+The playability gate requires at least one authored finale transition and, when `finalEncounterId` exists, at least one authored combat transition referencing that encounter. This is a bounded deadlock/reference check, not generic graph search and not a special finale-combat phase.
+
+### Run setup and multiplayer ownership
 
 - Forge creates spoiler-safe complete `player-template` character definitions
-- local user is required; AI2/US1 are optional player seats
+- local USER is required; AI2/US1 are optional player seats
+- each active player seat owns its own character choice; the host cannot choose AI2/US1's character on their behalf
 - selected templates are unique in V1
 - encounter opponents cannot use player templates
 - every encounter opponent requires an explicit `policy | ai0` controller
 - V1 policy registry currently contains only `first-legal`
 - V1 combat opening position fixed to `front + near`
 - no point-buy/class-tree/encounter-layout subsystem
-- host exposes intent-level run creation from seat -> template selections
+- run creation verifies the previously recorded seat-owned selections before canonical creation
+- stale optional-seat selections are cleared when a seat leaves setup or setup is closed
 
-### AI transport/runtime integration
+### AI and remote-player transport/runtime integration
 
 - AI1 Forge and runtime DM session metadata separated
 - runtime AI1 receives canonical scene/result packets and returns narration only
@@ -138,14 +142,20 @@ The playability gate requires at least one finale transition and, when `finalEnc
 - AI0 choices still pass through normal combat commit/legality authority
 - Electron owns the fixed AI0 policy/system prompt; renderer/room-host IPC cannot supply prompt text
 - AI0 IPC validates the bounded Fate runtime packet before invoking the service
+- AI2 is a real seat-bound player lifecycle: setup, exploration, private combat options/commit, loot approval and camp readiness are dispatched as bounded prompts and returned through AI2-scoped commands
+- repeated AI2 lifecycle probes are deduplicated and never grant AI2 mechanic/canonical authority
+- US1 is a real remote human player, not a second World Host
+- World Host sends US1 only a player-safe mirror; canonical Universe/Run, hidden canon and mechanic authority stay on World Host
+- US1 setup/exploration/NPC/combat/loot/camp actions return as intent-only room commands and are revalidated by existing `scope: "us1"` host handlers
+- no timeout/disconnect fallback removes a required active player seat or silently substitutes another controller
 
 ### Player-facing authority boundary
 
-- `shared/player-view.ts` is the renderer-facing projection boundary
-- `fate-knots-state` no longer sends the full Universe Package
-- hidden knots, finale canon, NPC role packets, encounters and raw asset paths remain host-only
-- `fate-knots-state` no longer sends the full canonical run/combat-runtime snapshot
-- detailed gameplay surfaces must use bounded scene/combat/player packets rather than requesting the whole canon
+- `shared/player-view.ts` / bounded gameplay projections are renderer-facing authority boundaries
+- Fate state surfaces do not send the full Universe Package
+- hidden knots, finale canon, NPC role packets, encounters and raw hidden asset data remain host-only
+- renderer/remote mirrors do not receive a replacement canonical run/combat-runtime snapshot that they can write back
+- detailed gameplay surfaces use bounded scene/combat/player packets rather than requesting the whole canon
 - public raw `SaveUniverse` / `SaveRun` host handlers were removed
 - renderer can send intent-level create/activate/delete/choice/action commands, but it cannot submit replacement canonical state
 
@@ -159,10 +169,10 @@ The playability gate requires at least one finale transition and, when `finalEnc
 - Forge readiness reports separate blockers for AI1 transport, durable storage, concrete materializer and concurrent Forge activity
 - progress exposes safe stage/count/message metadata only; draft/canon is never sent to renderer
 - concurrent Forge runs are blocked
-- Game Room itself now opens in a lightweight neutral `game-room-home` state instead of eagerly mounting Tavla
+- Game Room itself opens in a lightweight neutral `game-room-home` state instead of eagerly mounting Tavla
 - Tavla US1 background sync starts only while Tavla is the active feature
 - Tavla Konva stage/ResizeObserver resources are explicitly destroyed when another game mounts
-- Yahtzee already disposes Babylon/audio when deactivated and now also destroys Tavla before its own special bridge mount
+- Yahtzee disposes Babylon/audio when deactivated and also destroys Tavla before its own special bridge mount
 
 ## Stage D — World Forge and image materialization
 
@@ -204,7 +214,7 @@ Do not fake this dependency with placeholder paths. Until a real adapter exists,
 
 ## Stage E — Babylon living-book runtime
 
-Status: local/Codex visual work after strict verification and the concrete materializer boundary.
+Status: local/Codex visual work after the concrete materializer boundary.
 
 Planned surfaces:
 
@@ -217,7 +227,7 @@ Planned surfaces:
 - personal inventory/equipment spread
 - unanimous loot-allocation spread
 - run-setup/player-template selection
-- camp/finale surfaces
+- camp and terminal-objective/epilogue surfaces
 
 Renderer consumes semantic projections/events; it does not infer or mutate mechanics.
 
@@ -245,7 +255,7 @@ Later only:
 
 ## Architecture-audit correction checkpoint
 
-The first external audit found concrete authority/lifecycle/strict-TypeScript issues. The branch now contains the corresponding fixes for the reported BLOCKER/HIGH paths, including:
+The first external audit found concrete authority/lifecycle/strict-TypeScript issues. The branch contains the corresponding fixes for the reported BLOCKER/HIGH paths, including:
 
 - Electron environment-index strict typing
 - synchronous Game Room host activation contract
@@ -257,7 +267,7 @@ The first external audit found concrete authority/lifecycle/strict-TypeScript is
 - crash-consistent durable persistence
 - Forge busy/provenance lifecycle
 - materializer identity/aspect/path verification
-- finale-after-loot continuity
+- post-combat/loot objective continuity without a privileged finale phase
 - run-owned combat reveal application
 - AI0 IPC prompt ownership
 - shared Game Room idle-home/Tavla cleanup
@@ -269,28 +279,22 @@ The unified branch also carries the rebuild-side Stage C/D additions:
 - provider-neutral Forge lifecycle and host-only canonical acceptance
 - isolated external AI0 workspace and provider-response transport gates
 - player-safe neutral Hub and run-setup projections
+- seat-owned USER/AI2/US1 setup selections
+- automatic bounded AI2 player lifecycle
+- intent-only US1 remote mirror lifecycle
 - separate CreateRun and StartRun intent commands
 - bounded active-gameplay projection and browser handoff
 - renderer-safe asset, card-art and presentation-cue projection
-- deterministic shared combat legal-options helpers and the local room-ui options command
-- Fate-specific regression coverage for Forge, AI0, gameplay, presentation and Game Room integration
+- deterministic shared combat legal-options helpers and seat-private player options commands
+- Fate-specific regression coverage for Forge, AI0, gameplay, multiplayer, presentation and Game Room integration
 
 These additions use the Stage C durable store through compatibility projections. They do not create a parallel Universe/Run authority, and mutating room commands are committed through the validated crash-atomic state envelope after hydration.
 
 `COMBAT-DISCUSSION-V1.md` is the current V1 UX decision. Discussion is one party-only shared surface with no recipient selector, remains open through `combat-discussion` and `combat-commit` until all required standing player actors commit, and never reveals hidden card/target selections to AI0.
 
-Do **not** treat this list as proof that typecheck/tests are green. The next checkpoint is intentionally local verification against the current branch head.
+The USER/AI2/US1 lifecycle checkpoint has been locally typechecked, linted, regression-tested and built. Before visual integration, keep the next checks focused on:
 
-Before visual integration, local Codex should run:
-
-- strict TypeScript/typecheck used by the repo
-- relevant Game Room regression tests
-- Fate Knots regression/unit tests
-- build checks that do not depend on exhausted GitHub Actions quota
-- one second architecture pass focused on whether any BLOCKER/HIGH path survived or was replaced by a new authority leak
-
-The review must **not redesign Fate Knots**. It should look specifically for:
-
+- end-to-end headless phase continuity and tracking cleanup
 - engine/AI/renderer authority leaks
 - hidden-canon exposure
 - impossible or deadlocked state transitions
@@ -301,7 +305,4 @@ The review must **not redesign Fate Knots**. It should look specifically for:
 - Game Room integration regressions outside Fate Knots
 - places where Babylon/UI could accidentally become canonical state authority
 
-Known non-visual cleanup still to verify at this checkpoint:
-
-- Game Room manifest command specs must match the unified intent/read command registry and must never restore obsolete raw `SaveUniverse` / `SaveRun` names
-- source-assertion regression tests must follow the neutral Game Room home, safe gameplay/combat projections and persistence envelope; update stale expectations rather than weakening runtime authority
+The next hard implementation boundary after the headless-flow audit is the real World Forge asset materializer. Do not redesign Fate Knots or spend the visual/Codex budget on another mechanics layer before that adapter is proven.
