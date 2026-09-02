@@ -28,6 +28,7 @@ export interface FateKnotsGameplayCardSummary {
   name: string;
   description: string;
   artAssetId: string | null;
+  sourceId: string | null;
   tags: string[];
   presentation: FateKnotsGameplayPresentationCueSummary[];
   resolutionPriority: FateKnotsResolutionPriorityTier;
@@ -79,6 +80,13 @@ export interface FateKnotsGameplayLocationSummary {
   sceneAssetIds: string[];
   tags: string[];
   campAllowed: boolean;
+}
+
+export interface FateKnotsGameplayNpcSummary {
+  npcId: string;
+  name: string;
+  portraitAssetId: string | null;
+  publicSummary: string;
 }
 
 export interface FateKnotsGameplayMapNodeSummary {
@@ -143,6 +151,7 @@ export interface FateKnotsGameplayState {
   theme: FateKnotsGameplayThemeSummary;
   assets: FateKnotsGameplayAssetSummary[];
   activeLocation: FateKnotsGameplayLocationSummary | null;
+  visibleNpcs: FateKnotsGameplayNpcSummary[];
   map: {
     mapAssetId: string | null;
     nodes: FateKnotsGameplayMapNodeSummary[];
@@ -204,6 +213,7 @@ function summarizeCard(card: FateKnotsCardDefinition): FateKnotsGameplayCardSumm
     name: card.name,
     description: card.description ?? "",
     artAssetId: card.artAssetId ?? null,
+    sourceId: card.sourceId ?? null,
     tags: card.tags.slice(),
     presentation: card.presentation.map(summarizeCue),
     resolutionPriority: card.resolutionPriority ?? "normal",
@@ -239,10 +249,16 @@ function summarizeCombat(
  *
  * Deliberately absent:
  * - hidden/revealed knot ids and finale definition
- * - NPC role packets and NPC hidden knowledge
+ * - NPC role packets, role tags and NPC hidden knowledge
  * - unrevealed locations/nodes/edges and their presentation assets
  * - combat commits and opposition card ownership/availability/artwork/cues
  * - raw card effects/reveal ids that may point at hidden canon
+ *
+ * NPCs are projected only when physically present at the active location, and
+ * only their public identity/summary crosses the boundary. Equipment definitions
+ * are projected when equipped or when represented by an equipment card already
+ * owned by the party, which is enough for camp loadout UI without exposing future
+ * loot or hidden definitions.
  *
  * Theme identity and presentation cues for player-visible cards/statuses are
  * safe player-facing presentation data. Asset paths are projected only for theme
@@ -340,6 +356,17 @@ export function buildFateKnotsGameplayState(
     }
   }
 
+  const visibleNpcs: FateKnotsGameplayNpcSummary[] = run.activeLocationId
+    ? universe.npcs
+        .filter((npc) => npc.locationId === run.activeLocationId)
+        .map((npc) => ({
+          npcId: npc.id,
+          name: npc.name,
+          portraitAssetId: npc.portraitAssetId ?? null,
+          publicSummary: npc.publicSummary,
+        }))
+    : [];
+
   const revealedLocationIds = new Set(run.revealedLocationIds);
   const visibleNodes = universe.map.nodes.filter((node) =>
     revealedLocationIds.has(node.locationId)
@@ -359,7 +386,12 @@ export function buildFateKnotsGameplayState(
     else cards.push(summarizeCard(card));
   });
 
-  const referencedEquipmentIds = unique(partyActors.flatMap((actor) => actor.equipmentIds));
+  const referencedEquipmentIds = compactStrings([
+    ...partyActors.flatMap((actor) => actor.equipmentIds),
+    ...cards
+      .filter((card) => card.kind === "equipment")
+      .map((card) => card.sourceId),
+  ]);
   const equipment: FateKnotsGameplayEquipmentSummary[] = [];
   referencedEquipmentIds.forEach((equipmentId) => {
     const definition = equipmentById.get(equipmentId);
@@ -419,6 +451,7 @@ export function buildFateKnotsGameplayState(
     universe.map.mapAssetId,
     ...(activeLocation?.sceneAssetIds ?? []),
     ...partyActors.map((actor) => actor.portraitAssetId),
+    ...visibleNpcs.map((npc) => npc.portraitAssetId),
     ...cards.map((card) => card.artAssetId),
   ]);
   const assets: FateKnotsGameplayAssetSummary[] = [];
@@ -450,6 +483,7 @@ export function buildFateKnotsGameplayState(
       theme,
       assets,
       activeLocation,
+      visibleNpcs,
       map: {
         mapAssetId: universe.map.mapAssetId ?? null,
         nodes: visibleNodes.map((node) => ({
