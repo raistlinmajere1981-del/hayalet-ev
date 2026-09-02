@@ -37,9 +37,10 @@ export interface FateKnotsPlayabilityValidationResult {
  * routes; an optional final encounter is only required to be reachable through
  * an authored combat transition and is not treated as a special runtime phase.
  *
- * Camp and NPC social mechanics deliberately reuse the bounded story graph, so
- * this gate also rejects camp destinations that cannot camp and NPC interaction
- * tags that point outside that graph or into a different authored location.
+ * Camp is an action taken at the current story knot rather than a travel
+ * destination. This mirrors story-transition legality: the source knot's
+ * location must explicitly permit camp. NPC interactions likewise reuse the
+ * bounded story graph rather than adding a second quest/social DSL.
  */
 export function validateFateKnotsPlayableUniverse(
   universe: FateKnotsUniversePackage
@@ -84,15 +85,14 @@ export function validateFateKnotsPlayableUniverse(
 
   for (const transition of universe.story.transitions) {
     if (transition.kind !== "camp") continue;
-    const destinationLocationId =
-      transition.toLocationId ??
-      (transition.toKnotId ? (knotById.get(transition.toKnotId)?.locationId ?? null) : null);
-    const destination = destinationLocationId ? locationById.get(destinationLocationId) : null;
-    if (!destination || destination.campAllowed !== true) {
+    const sourceKnot = knotById.get(transition.fromKnotId);
+    const sourceLocationId = sourceKnot?.locationId ?? null;
+    const sourceLocation = sourceLocationId ? locationById.get(sourceLocationId) : null;
+    if (!sourceLocation || sourceLocation.campAllowed !== true) {
       issues.push({
         code: "camp-transition-location-not-allowed",
         transitionId: transition.id,
-        ...(destinationLocationId ? { locationId: destinationLocationId } : {}),
+        ...(sourceLocationId ? { locationId: sourceLocationId } : {}),
       });
     }
   }
