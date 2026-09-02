@@ -18,7 +18,7 @@ const extensionSource = readFileSync(
 void test("Fate Knots forge art uses AI1 SlotBridge generated-image archives, not AI0", () => {
   assert.match(providerSource, /action:\s*"message\.sendWait"/);
   assert.match(providerSource, /toSlot:\s*"ai1"/);
-  assert.match(providerSource, /kind\]\s*!==\s*"generated-image"/);
+  assert.match(providerSource, /kind !== "generated-image"/);
   assert.match(providerSource, /openFateKnotsAi1Session/);
   assert.doesNotMatch(providerSource, /fate-knots-ai0-call/);
   assert.doesNotMatch(extensionSource, /fate-knots-ai0-call/);
