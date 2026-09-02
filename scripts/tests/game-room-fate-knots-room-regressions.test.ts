@@ -19,6 +19,7 @@ const FATE_KNOTS_COMMANDS = [
   "GameRoomFateKnotsCompleteCombatMove",
   "GameRoomFateKnotsAi2CompleteCombatMove",
   "GameRoomFateKnotsRemoteCompleteCombatMove",
+  "GameRoomFateKnotsResolveCombatTurn",
   "GameRoomFateKnotsActivateRun",
   "GameRoomFateKnotsDeleteRun",
   "GameRoomFateKnotsDeleteUniverse",
@@ -47,6 +48,7 @@ void test("Game Room registers Fate Knots without inventing a scene layout", () 
   assert.equal(findSpec("GameRoomFateKnotsGetCombatDiscussion")?.scope, "room-ui");
   assert.equal(findSpec("GameRoomFateKnotsSendCombatMessage")?.scope, "room-ui");
   assert.equal(findSpec("GameRoomFateKnotsCompleteCombatMove")?.scope, "room-ui");
+  assert.equal(findSpec("GameRoomFateKnotsResolveCombatTurn")?.scope, "room-ui");
   assert.equal(findSpec("GameRoomFateKnotsAi2CombatMessage")?.scope, "ai-slots");
   assert.equal(findSpec("GameRoomFateKnotsAi2CompleteCombatMove")?.scope, "ai-slots");
   assert.equal(findSpec("GameRoomFateKnotsRemoteCombatMessage")?.scope, "us1");
@@ -85,6 +87,8 @@ void test("Fate Knots neutral Hub loads before shared feature bootstrap", () => 
     "rooms/game-room/main-functions/fate-knots/ui/hub.css",
     "rooms/game-room/main-functions/fate-knots/ui/hub.js",
     "rooms/game-room/main-functions/fate-knots/ui/bridge.js",
+    "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+    "rooms/game-room/main-functions/fate-knots/ui/gameplay.js",
   ].forEach((filePath) => assert.equal(existsSync(filePath), true, filePath));
 });
 
@@ -101,6 +105,7 @@ void test("Fate Knots host owns management, setup, run persistence and active-fe
   assert.match(hostRuntime, /createFateKnotsRunSetupCommands/);
   assert.match(hostRuntime, /createFateKnotsRunCommands/);
   assert.match(hostRuntime, /createFateKnotsGameplayCommands/);
+  assert.match(hostRuntime, /createFateKnotsCombatResolutionCommands/);
   assert.match(hostRuntime, /pushFateKnotsHubState/);
   assert.match(hostRuntime, /fateKnotsForge\.getHubSnapshot\(\)/);
   assert.match(hostRuntime, /isFateKnotsPlayerSeatAvailable/);
@@ -143,6 +148,7 @@ void test("player-safe gameplay projection is an explicit room-ui internal comma
 
   assert.match(gameplayRuntime, /buildFateKnotsGameplayState\(canonical\.package, run\)/);
   assert.match(gameplayRuntime, /never returns raw canonical Universe\/Run objects/);
+  assert.match(gameplayState, /combatActorById/);
   assert.match(gameplayState, /combat: summarizeCombat\(run\.activeCombat\)/);
   assert.match(gameplayState, /edge\.initiallyRevealed/);
   assert.doesNotMatch(gameplayState, /commits:/);
@@ -287,6 +293,7 @@ void test("active Fate Knots sync emits Hub plus bounded gameplay state after ru
   assert.match(runtimeSync, /buildFateKnotsGameplayState\(canonical\.package, run\)/);
   assert.match(runtimeSync, /"fate-knots-hub-state"/);
   assert.match(runtimeSync, /"fate-knots-gameplay-state"/);
+  assert.match(runtimeSync, /state: gameplayState/);
   assert.doesNotMatch(runtimeSync, /activeCombat\.commits/);
   assert.doesNotMatch(runtimeSync, /hiddenKnotIds/);
   assert.doesNotMatch(runtimeSync, /finale/);
