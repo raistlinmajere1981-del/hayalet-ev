@@ -22,6 +22,10 @@
       return global.GameRoomFateKnotsGameplayUi;
     }
 
+    function getFateKnotsUs1MirrorUi() {
+      return global.GameRoomFateKnotsUs1MirrorUi;
+    }
+
     function syncFateKnotsContext() {
       const fateKnotsUi = getFateKnotsUi();
       const baseState = getBaseState();
@@ -53,6 +57,17 @@
     }
 
     function renderFateKnots(root) {
+      const mirrorUi = getFateKnotsUs1MirrorUi();
+      if (
+        mirrorUi &&
+        typeof mirrorUi.hasMirrorState === "function" &&
+        mirrorUi.hasMirrorState() &&
+        typeof mirrorUi.render === "function"
+      ) {
+        mirrorUi.render(root);
+        return;
+      }
+
       const gameplayUi = getFateKnotsGameplayUi();
       if (
         gameplayUi &&
@@ -87,6 +102,10 @@
       if (gameplayUi && typeof gameplayUi.dispose === "function") {
         gameplayUi.dispose();
       }
+      const mirrorUi = getFateKnotsUs1MirrorUi();
+      if (mirrorUi && typeof mirrorUi.dispose === "function") {
+        mirrorUi.dispose();
+      }
       base.render();
     }
 
@@ -116,6 +135,14 @@
         gameplayUi.handleState(message);
       }
       dispatchFateKnotsEvent("fate-knots-gameplay-state", message);
+    }
+
+    function handoffUs1MirrorState(message) {
+      const mirrorUi = getFateKnotsUs1MirrorUi();
+      if (mirrorUi && typeof mirrorUi.handleState === "function") {
+        mirrorUi.handleState(message);
+      }
+      dispatchFateKnotsEvent("fate-knots-us1-mirror-state", message);
     }
 
     function handoffRunSetupSeatState(message) {
@@ -167,6 +194,14 @@
     }
 
     function handoffCommandResult(message) {
+      const mirrorUi = getFateKnotsUs1MirrorUi();
+      const mirrorHandled = Boolean(
+        mirrorUi &&
+          typeof mirrorUi.handleCommandResult === "function" &&
+          mirrorUi.handleCommandResult(message)
+      );
+      if (mirrorHandled) return;
+
       const gameplayUi = getFateKnotsGameplayUi();
       const gameplayHandled = Boolean(
         gameplayUi &&
@@ -187,6 +222,16 @@
         if (fateKnotsUi && typeof fateKnotsUi.handleState === "function") {
           fateKnotsUi.handleState(message);
         }
+        if (isFateKnotsActive()) render();
+        return;
+      }
+
+      if (
+        message &&
+        typeof message === "object" &&
+        message.type === "fate-knots-us1-mirror-state"
+      ) {
+        handoffUs1MirrorState(message);
         if (isFateKnotsActive()) render();
         return;
       }
