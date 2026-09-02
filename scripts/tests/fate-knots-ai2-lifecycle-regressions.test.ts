@@ -19,10 +19,10 @@ void test("Fate Knots AI2 lifecycle dispatches bounded seat-owned decisions", ()
   assert.match(driver, /GameRoomFateKnotsAi2CompleteCombatMove/);
   assert.match(driver, /FATE_KNOTS_CAMP_COMMAND_NAMES\.readyAi2/);
   assert.match(driver, /FATE_KNOTS_LOOT_COMMAND_NAMES\.approveAi2/);
+  assert.match(driver, /FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES\.getAi2Options/);
   assert.match(driver, /action: "message\.send"/);
   assert.match(driver, /toSlot: "ai2"/);
   assert.match(driver, /room\.expectedCommandCapture/);
-  assert.match(driver, /GameRoomFateKnotsAi2GetCombatOptions/);
   assert.doesNotMatch(driver, /GameRoomFateKnotsRemoteCompleteCombatMove/);
 
   const extension = readFileSync(extensionPath, "utf8");
