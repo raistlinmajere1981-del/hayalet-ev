@@ -67,9 +67,7 @@ export function getFateKnotsForgeProgress(
   return isProgress(value) ? { ...value } : null;
 }
 
-export function clearFateKnotsForgeProgress(
-  api: Pick<GameRoomHostApi, "setState">
-): void {
+export function clearFateKnotsForgeProgress(api: Pick<GameRoomHostApi, "setState">): void {
   api.setState(FATE_KNOTS_FORGE_PROGRESS_KEY, null);
 }
 

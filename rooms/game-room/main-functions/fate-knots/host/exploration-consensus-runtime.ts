@@ -40,14 +40,7 @@ export const FATE_KNOTS_EXPLORATION_CONSENSUS_COMMAND_NAMES = {
 } as const;
 
 export interface FateKnotsExplorationConsensusCommandIssue {
-  source:
-    | "payload"
-    | "persistence"
-    | "universe"
-    | "exploration"
-    | "story"
-    | "encounter"
-    | "camp";
+  source: "payload" | "persistence" | "universe" | "exploration" | "story" | "encounter" | "camp";
   code: string;
   value?: string;
 }

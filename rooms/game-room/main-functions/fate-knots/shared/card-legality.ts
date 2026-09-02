@@ -242,7 +242,10 @@ function evaluateRequirement(
   return issues;
 }
 
-function cardUsesEffectTarget(card: FateKnotsCardDefinition, target: "primaryTarget" | "secondaryTarget"): boolean {
+function cardUsesEffectTarget(
+  card: FateKnotsCardDefinition,
+  target: "primaryTarget" | "secondaryTarget"
+): boolean {
   return card.effects.some((effect) => effect.target === target);
 }
 
@@ -281,7 +284,9 @@ export function evaluateFateKnotsCardLegality(
   }
 
   for (const [index, requirement] of (card.requirements ?? []).entries()) {
-    issues.push(...evaluateRequirement(requirement, index, context, availableCardIds, primaryTarget));
+    issues.push(
+      ...evaluateRequirement(requirement, index, context, availableCardIds, primaryTarget)
+    );
   }
 
   return {

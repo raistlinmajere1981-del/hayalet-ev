@@ -1,11 +1,7 @@
 export const FATE_KNOTS_IMAGE_SHEET_MAX_CELLS = 8;
 
 export type FateKnotsImageSheetPurpose =
-  | "card-art"
-  | "portrait"
-  | "item-art"
-  | "scene-detail"
-  | "icon-art";
+  "card-art" | "portrait" | "item-art" | "scene-detail" | "icon-art";
 
 export interface FateKnotsImageSheetCell {
   slotId: string;

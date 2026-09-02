@@ -1,4 +1,8 @@
-import type { FateKnotsRunState, FateKnotsSeatId, FateKnotsUniversePackage } from "../shared/contracts.js";
+import type {
+  FateKnotsRunState,
+  FateKnotsSeatId,
+  FateKnotsUniversePackage,
+} from "../shared/contracts.js";
 import {
   getFateKnotsLegalStoryTransitions,
   type FateKnotsStoryTransitionView,
@@ -63,7 +67,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function cloneHotState(state: FateKnotsExplorationConsensusHotState): FateKnotsExplorationConsensusHotState {
+function cloneHotState(
+  state: FateKnotsExplorationConsensusHotState
+): FateKnotsExplorationConsensusHotState {
   return structuredClone(state);
 }
 
@@ -180,9 +186,10 @@ function loadScopedHotState(
   return stored && sameScope(stored, scope) ? stored : createHotState(scope);
 }
 
-function activePlayerSeats(
-  run: FateKnotsRunState
-): { seats: FateKnotsSeatId[]; issue: FateKnotsExplorationConsensusIssue | null } {
+function activePlayerSeats(run: FateKnotsRunState): {
+  seats: FateKnotsSeatId[];
+  issue: FateKnotsExplorationConsensusIssue | null;
+} {
   const partyIds = new Set(run.partyActorIds);
   const counts = new Map<FateKnotsSeatId, number>();
   for (const actor of run.actors) {
@@ -215,7 +222,9 @@ function normalizeChoices(
   availableTransitions: FateKnotsStoryTransitionView[]
 ): FateKnotsExplorationChoice[] {
   const legal = new Set(availableTransitions.map((transition) => transition.id));
-  const bySeat = new Map(hot.choices.map((choice) => [choice.seatId, choice.transitionId] as const));
+  const bySeat = new Map(
+    hot.choices.map((choice) => [choice.seatId, choice.transitionId] as const)
+  );
   return activeSeatIds.map((seatId) => {
     const current = bySeat.get(seatId) ?? null;
     return { seatId, transitionId: current !== null && legal.has(current) ? current : null };
@@ -320,7 +329,9 @@ export function chooseFateKnotsExplorationTransition(
       issues: [{ code: "transition-not-legal", seatId, transitionId }],
     };
   }
-  const bySeat = new Map(hot.choices.map((choice) => [choice.seatId, choice.transitionId] as const));
+  const bySeat = new Map(
+    hot.choices.map((choice) => [choice.seatId, choice.transitionId] as const)
+  );
   bySeat.set(seatId, transitionId);
   hot.choices = seats.seats.map((activeSeatId) => ({
     seatId: activeSeatId,

@@ -21,7 +21,9 @@ export interface FateKnotsCardPresentationContext {
   cueIds: readonly string[];
 }
 
-function cloneSequence(sequence: FateKnotsPresentationEventSequence): FateKnotsPresentationEventSequence {
+function cloneSequence(
+  sequence: FateKnotsPresentationEventSequence
+): FateKnotsPresentationEventSequence {
   return { ...sequence };
 }
 

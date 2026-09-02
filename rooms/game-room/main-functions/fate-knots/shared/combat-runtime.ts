@@ -1,8 +1,4 @@
-import type {
-  FateKnotsCombatState,
-  FateKnotsStatId,
-  FateKnotsTeamId,
-} from "./contracts.js";
+import type { FateKnotsCombatState, FateKnotsStatId, FateKnotsTeamId } from "./contracts.js";
 
 export type FateKnotsCombatModifierStatId = Exclude<FateKnotsStatId, "hp" | "energy">;
 
@@ -130,8 +126,5 @@ export function getFateKnotsEffectiveMaxHp(
 ): number | null {
   const actor = combat.actors.find((candidate) => candidate.actorId === actorId);
   if (!actor) return null;
-  return Math.max(
-    0,
-    actor.maxHp + getFateKnotsCombatStatModifierTotal(runtime, actorId, "maxHp")
-  );
+  return Math.max(0, actor.maxHp + getFateKnotsCombatStatModifierTotal(runtime, actorId, "maxHp"));
 }

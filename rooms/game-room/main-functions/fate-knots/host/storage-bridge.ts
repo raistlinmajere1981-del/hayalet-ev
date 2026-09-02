@@ -77,13 +77,24 @@ function joinRuntimePath(base: string, ...segments: string[]): string {
 }
 
 function normalizeComparablePath(value: string): string | null {
-  const raw = value.trim().replace(/\\/g, "/").replace(/\/{2,}/g, "/");
-  if (raw === "" || raw.startsWith("data:") || raw.startsWith("blob:") || /^https?:\/\//i.test(raw)) {
+  const raw = value
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/\/{2,}/g, "/");
+  if (
+    raw === "" ||
+    raw.startsWith("data:") ||
+    raw.startsWith("blob:") ||
+    /^https?:\/\//i.test(raw)
+  ) {
     return null;
   }
   const segments = raw.split("/");
   if (segments.some((segment) => segment === "..")) return null;
-  const normalized = segments.filter((segment, index) => segment !== "." || index === 0).join("/").replace(/\/$/, "");
+  const normalized = segments
+    .filter((segment, index) => segment !== "." || index === 0)
+    .join("/")
+    .replace(/\/$/, "");
   return /^[A-Za-z]:\//.test(normalized) ? normalized.toLowerCase() : normalized;
 }
 
@@ -169,7 +180,10 @@ export async function verifyFateKnotsManagedAssetFiles(
   if (api === null) {
     return {
       valid: false,
-      failures: assets.map((asset) => ({ assetId: asset.assetId, message: "Electron storage bridge is unavailable." })),
+      failures: assets.map((asset) => ({
+        assetId: asset.assetId,
+        message: "Electron storage bridge is unavailable.",
+      })),
     };
   }
 
@@ -178,7 +192,10 @@ export async function verifyFateKnotsManagedAssetFiles(
   if (!managedRoot) {
     return {
       valid: false,
-      failures: assets.map((asset) => ({ assetId: asset.assetId, message: "Managed asset root is invalid." })),
+      failures: assets.map((asset) => ({
+        assetId: asset.assetId,
+        message: "Managed asset root is invalid.",
+      })),
     };
   }
 
@@ -186,11 +203,20 @@ export async function verifyFateKnotsManagedAssetFiles(
   for (const asset of assets) {
     const candidate = normalizeComparablePath(asset.path);
     if (!candidate || !candidate.startsWith(`${managedRoot}/`)) {
-      failures.push({ assetId: asset.assetId, message: "Asset path is outside managed Fate Knots assets storage." });
+      failures.push({
+        assetId: asset.assetId,
+        message: "Asset path is outside managed Fate Knots assets storage.",
+      });
       continue;
     }
-    if (typeof asset.mimeType !== "string" || !asset.mimeType.trim().toLowerCase().startsWith("image/")) {
-      failures.push({ assetId: asset.assetId, message: "Materialized runtime asset must declare an image MIME type." });
+    if (
+      typeof asset.mimeType !== "string" ||
+      !asset.mimeType.trim().toLowerCase().startsWith("image/")
+    ) {
+      failures.push({
+        assetId: asset.assetId,
+        message: "Materialized runtime asset must declare an image MIME type.",
+      });
       continue;
     }
     try {
@@ -198,10 +224,16 @@ export async function verifyFateKnotsManagedAssetFiles(
       // eslint-disable-next-line no-await-in-loop
       const encoded = await api.readFile(asset.path);
       if (encoded === null || encoded.trim() === "") {
-        failures.push({ assetId: asset.assetId, message: "Materialized asset file is missing or empty." });
+        failures.push({
+          assetId: asset.assetId,
+          message: "Materialized asset file is missing or empty.",
+        });
       }
     } catch {
-      failures.push({ assetId: asset.assetId, message: "Materialized asset file is not readable." });
+      failures.push({
+        assetId: asset.assetId,
+        message: "Materialized asset file is not readable.",
+      });
     }
   }
 

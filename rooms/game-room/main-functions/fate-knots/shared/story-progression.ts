@@ -98,9 +98,7 @@ function getEncounter(
 function partyOwnedCardIds(run: FateKnotsRunState): Set<string> {
   const partyIds = new Set(run.partyActorIds);
   return new Set(
-    run.actors
-      .filter((actor) => partyIds.has(actor.actorId))
-      .flatMap((actor) => actor.ownedCardIds)
+    run.actors.filter((actor) => partyIds.has(actor.actorId)).flatMap((actor) => actor.ownedCardIds)
   );
 }
 
@@ -224,7 +222,8 @@ export function initializeFateKnotsStoryProgression(
   if (runInput.activeCombat) return fail(runInput, { code: "active-combat-exists" });
 
   const startKnot = getKnot(universe, universe.story.startKnotId);
-  if (!startKnot) return fail(runInput, { code: "active-knot-not-found", knotId: universe.story.startKnotId });
+  if (!startKnot)
+    return fail(runInput, { code: "active-knot-not-found", knotId: universe.story.startKnotId });
 
   const initiallyRevealedKnots = universe.story.knots
     .filter((knot) => knot.initiallyRevealed)
@@ -297,13 +296,25 @@ export function applyFateKnotsStoryTransition(
     return { ...fail(runInput, { code: "run-not-active" }), transition: null, encounter: null };
   }
   if (runInput.activeCombat) {
-    return { ...fail(runInput, { code: "active-combat-exists" }), transition: null, encounter: null };
+    return {
+      ...fail(runInput, { code: "active-combat-exists" }),
+      transition: null,
+      encounter: null,
+    };
   }
   if (runInput.activeStoryTransitionId) {
-    return { ...fail(runInput, { code: "story-transition-pending" }), transition: null, encounter: null };
+    return {
+      ...fail(runInput, { code: "story-transition-pending" }),
+      transition: null,
+      encounter: null,
+    };
   }
   if (!runInput.activeKnotId) {
-    return { ...fail(runInput, { code: "story-not-initialized" }), transition: null, encounter: null };
+    return {
+      ...fail(runInput, { code: "story-not-initialized" }),
+      transition: null,
+      encounter: null,
+    };
   }
 
   const transition = getTransition(universe, transitionId);
@@ -322,7 +333,8 @@ export function applyFateKnotsStoryTransition(
     };
   }
 
-  const encounter = transition.kind === "combat" ? getEncounter(universe, transition.encounterId) : null;
+  const encounter =
+    transition.kind === "combat" ? getEncounter(universe, transition.encounterId) : null;
   if (transition.kind === "combat" && !encounter) {
     return {
       ...fail(runInput, {
@@ -376,7 +388,8 @@ export function settleFateKnotsStoryTransition(
   universe: FateKnotsUniversePackage,
   runInput: FateKnotsRunState
 ): FateKnotsStoryMutationResult {
-  if (runInput.universeId !== universe.universeId) return fail(runInput, { code: "universe-mismatch" });
+  if (runInput.universeId !== universe.universeId)
+    return fail(runInput, { code: "universe-mismatch" });
   if (runInput.result !== "active") return fail(runInput, { code: "run-not-active" });
   if (runInput.activeCombat || runInput.activeEncounterId) {
     return fail(runInput, { code: "transition-settle-not-allowed" });
@@ -425,7 +438,12 @@ export function resolveFateKnotsStoryCombatOutcome(
 
   const transition = getTransition(universe, runInput.activeStoryTransitionId);
   const encounter = getEncounter(universe, runInput.activeEncounterId);
-  if (!transition || transition.kind !== "combat" || !encounter || transition.encounterId !== encounter.id) {
+  if (
+    !transition ||
+    transition.kind !== "combat" ||
+    !encounter ||
+    transition.encounterId !== encounter.id
+  ) {
     return { ...fail(runInput, { code: "combat-transition-required" }), nextPhase: null };
   }
 

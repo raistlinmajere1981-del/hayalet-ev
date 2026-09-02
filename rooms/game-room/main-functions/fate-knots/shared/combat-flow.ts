@@ -285,9 +285,7 @@ export function setFateKnotsCombatCommit(
   return succeeded(next);
 }
 
-export function getFateKnotsRequiredCombatCommitActorIds(
-  state: FateKnotsCombatState
-): string[] {
+export function getFateKnotsRequiredCombatCommitActorIds(state: FateKnotsCombatState): string[] {
   return state.actors.filter((actor) => !actor.fallen).map((actor) => actor.actorId);
 }
 

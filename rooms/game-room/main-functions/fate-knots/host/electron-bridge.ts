@@ -33,9 +33,7 @@ export interface FateKnotsAi0RoomToolCallResult {
 }
 
 type FateKnotsElectronApi = {
-  roomToolsCall: (
-    request: FateKnotsAi0ElectronRequest
-  ) => Promise<FateKnotsAi0RoomToolCallResult>;
+  roomToolsCall: (request: FateKnotsAi0ElectronRequest) => Promise<FateKnotsAi0RoomToolCallResult>;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

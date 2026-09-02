@@ -124,7 +124,8 @@ export function buildFateKnotsWorldForgeRequest(
   const normalizedUniverseId = universeId.trim();
   const normalizedCreatedAt = createdAt.trim();
   if (normalizedRequestId === "") throw new Error("Fate Knots World Forge requestId is required.");
-  if (normalizedUniverseId === "") throw new Error("Fate Knots World Forge universeId is required.");
+  if (normalizedUniverseId === "")
+    throw new Error("Fate Knots World Forge universeId is required.");
   if (normalizedCreatedAt === "") throw new Error("Fate Knots World Forge createdAt is required.");
   const normalizedBrief = brief?.trim() ?? "";
   return {
@@ -171,7 +172,11 @@ function parseAssetPlan(
     return null;
   }
   if (canonicalKind === "audio") {
-    issues.push({ code: "audio-generation-not-supported", path: `${path}.assetId`, value: assetId });
+    issues.push({
+      code: "audio-generation-not-supported",
+      path: `${path}.assetId`,
+      value: assetId,
+    });
     return null;
   }
   if (kind !== canonicalKind) {
@@ -267,7 +272,11 @@ export function validateFateKnotsWorldForgeDraftResponse(
     const plan = parseAssetPlan(value, index, assetKindById, issues);
     if (plan === null) return;
     if (planIds.has(plan.assetId)) {
-      issues.push({ code: "duplicate-asset-plan", path: `assetPlans[${index}].assetId`, value: plan.assetId });
+      issues.push({
+        code: "duplicate-asset-plan",
+        path: `assetPlans[${index}].assetId`,
+        value: plan.assetId,
+      });
       return;
     }
     planIds.add(plan.assetId);
@@ -276,7 +285,11 @@ export function validateFateKnotsWorldForgeDraftResponse(
 
   universe.assets.forEach((asset, index) => {
     if (asset.kind === "audio") {
-      issues.push({ code: "audio-generation-not-supported", path: `universe.assets[${index}]`, value: asset.id });
+      issues.push({
+        code: "audio-generation-not-supported",
+        path: `universe.assets[${index}]`,
+        value: asset.id,
+      });
       return;
     }
     const expectedPath = buildFateKnotsPendingAssetPath(asset.id);

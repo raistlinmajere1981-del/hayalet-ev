@@ -14,10 +14,7 @@ import {
   validateFateKnotsCardArtBindings,
   type FateKnotsCardArtIssue,
 } from "../shared/card-art.js";
-import {
-  clearFateKnotsForgeSession,
-  setFateKnotsForgeSession,
-} from "./session-state.js";
+import { clearFateKnotsForgeSession, setFateKnotsForgeSession } from "./session-state.js";
 import {
   dispatchFateKnotsAi1JsonPrompt,
   openFateKnotsAi1Session,
@@ -25,9 +22,7 @@ import {
 } from "./transport.js";
 
 export type FateKnotsWorldForgeAuthoringIssue =
-  | FateKnotsWorldForgeIssue
-  | FateKnotsPlayabilityIssue
-  | FateKnotsCardArtIssue;
+  FateKnotsWorldForgeIssue | FateKnotsPlayabilityIssue | FateKnotsCardArtIssue;
 
 export type FateKnotsWorldForgeAuthoringResult =
   | {

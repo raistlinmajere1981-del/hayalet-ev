@@ -54,7 +54,11 @@ export type FateKnotsAi1TransportResult =
 
 export type FateKnotsAi1SessionOpenResult =
   | { ok: true; sessionRef: FateKnotsSessionRef }
-  | { ok: false; code: "bridge-unavailable" | "provider-failed" | "session-missing"; message: string };
+  | {
+      ok: false;
+      code: "bridge-unavailable" | "provider-failed" | "session-missing";
+      message: string;
+    };
 
 export type FateKnotsAi1JsonTransportResult =
   | { ok: true; value: Record<string, unknown>; sessionRef: FateKnotsSessionRef | null }
@@ -64,7 +68,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && Array.isArray(value) === false;
 }
 
-function readNullableString(record: Record<string, unknown>, key: string): string | null | undefined {
+function readNullableString(
+  record: Record<string, unknown>,
+  key: string
+): string | null | undefined {
   const value = record[key];
   if (value === null) return null;
   if (value === undefined) return undefined;
@@ -162,10 +169,17 @@ function coerceAi0Response(
     "primaryTargetId",
     "secondaryTargetId",
   ] as const;
-  const optionalValues = [movementCardId, actionCardId, primaryTargetId, secondaryTargetId] as const;
+  const optionalValues = [
+    movementCardId,
+    actionCardId,
+    primaryTargetId,
+    secondaryTargetId,
+  ] as const;
   if (
     optionalValues.some(
-      (entry, index) => entry === undefined && value[optionalKeys[index] as (typeof optionalKeys)[number]] !== undefined
+      (entry, index) =>
+        entry === undefined &&
+        value[optionalKeys[index] as (typeof optionalKeys)[number]] !== undefined
     )
   ) {
     return null;

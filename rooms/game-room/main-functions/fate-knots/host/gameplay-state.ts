@@ -388,9 +388,7 @@ export function buildFateKnotsGameplayState(
 
   const referencedEquipmentIds = compactStrings([
     ...partyActors.flatMap((actor) => actor.equipmentIds),
-    ...cards
-      .filter((card) => card.kind === "equipment")
-      .map((card) => card.sourceId),
+    ...cards.filter((card) => card.kind === "equipment").map((card) => card.sourceId),
   ]);
   const equipment: FateKnotsGameplayEquipmentSummary[] = [];
   referencedEquipmentIds.forEach((equipmentId) => {

@@ -1,7 +1,4 @@
-import {
-  FATE_KNOTS_PHASES,
-  type FateKnotsUniversePackage,
-} from "../shared/contracts.js";
+import { FATE_KNOTS_PHASES, type FateKnotsUniversePackage } from "../shared/contracts.js";
 import {
   normalizeFateKnotsUniversePackage,
   validateFateKnotsUniversePackage,
@@ -76,7 +73,8 @@ function validateOptionalStringArray(
   path: string,
   issues: FateKnotsUniverseValidationIssue[]
 ): void {
-  if (record[key] !== undefined && !isStringArray(record[key])) issues.push(issue(`${path}.${key}`));
+  if (record[key] !== undefined && !isStringArray(record[key]))
+    issues.push(issue(`${path}.${key}`));
 }
 
 function validateCardRequirements(
@@ -93,7 +91,11 @@ function validateCardRequirements(
   requirements.forEach((value, index) => {
     const reqPath = `${path}.requirements[${index}]`;
     if (!requireRecord(value, reqPath, issues)) return;
-    for (const key of ["requiredCardTags", "requiredEquipmentTags", "forbiddenStatusIds"] as const) {
+    for (const key of [
+      "requiredCardTags",
+      "requiredEquipmentTags",
+      "forbiddenStatusIds",
+    ] as const) {
       validateOptionalStringArray(value, key, reqPath, issues);
     }
     if (value["phases"] !== undefined) {
@@ -298,7 +300,8 @@ function validateNormalizationShapes(
       }
       if (
         value["presentation"] !== undefined &&
-        (!Array.isArray(value["presentation"]) || value["presentation"].some((entry) => !isRecord(entry)))
+        (!Array.isArray(value["presentation"]) ||
+          value["presentation"].some((entry) => !isRecord(entry)))
       ) {
         issues.push(issue(`statuses[${index}].presentation`));
       }
@@ -339,13 +342,21 @@ function validateRuntimeMechanics(
     card.effects.forEach((effect, effectIndex) => {
       const path = `cards[${cardIndex}].effects[${effectIndex}]`;
       if (effect.kind === "reveal" && (!effect.revealId || !knotIds.has(effect.revealId))) {
-        issues.push({ code: "invalid-effect-shape", path: `${path}.revealId`, value: effect.revealId ?? "" });
+        issues.push({
+          code: "invalid-effect-shape",
+          path: `${path}.revealId`,
+          value: effect.revealId ?? "",
+        });
       }
       if (
         effect.kind === "modify-stat" &&
         (!effect.statId || !EFFECTIVE_V1_MODIFIER_STATS.has(effect.statId))
       ) {
-        issues.push({ code: "invalid-effect-shape", path: `${path}.statId`, value: effect.statId ?? "" });
+        issues.push({
+          code: "invalid-effect-shape",
+          path: `${path}.statId`,
+          value: effect.statId ?? "",
+        });
       }
     });
   });
@@ -365,7 +376,9 @@ function validateRuntimeMechanics(
  * nested shapes required by canonicalization are verified before typed code is
  * allowed to touch them, and the normalized package is validated again.
  */
-export function parseFateKnotsUniversePackage(candidate: unknown): FateKnotsUniverseValidationResult {
+export function parseFateKnotsUniversePackage(
+  candidate: unknown
+): FateKnotsUniverseValidationResult {
   const trimmed = deepTrimStrings(candidate);
   if (!isRecord(trimmed)) return validateFateKnotsUniversePackage(trimmed);
 

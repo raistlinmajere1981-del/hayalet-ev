@@ -28,11 +28,7 @@ export type FateKnotsCombatDiscussionCommandResult =
   | { ok: true; state: FateKnotsCombatDiscussionProjection; issues: [] }
   | {
       ok: false;
-      error:
-        | "invalid-payload"
-        | "run-not-found"
-        | "persistence-rejected"
-        | "discussion-rejected";
+      error: "invalid-payload" | "run-not-found" | "persistence-rejected" | "discussion-rejected";
       state: null;
       issues: FateKnotsCombatDiscussionCommandIssue[];
     };
@@ -111,10 +107,7 @@ function seatHasCommittedMove(run: FateKnotsRunState, seatId: FateKnotsSeatId): 
   if (!combat) return false;
   const partyIds = new Set(run.partyActorIds);
   const matchingActors = combat.actors.filter(
-    (actor) =>
-      partyIds.has(actor.actorId) &&
-      !actor.fallen &&
-      actor.seatId === seatId
+    (actor) => partyIds.has(actor.actorId) && !actor.fallen && actor.seatId === seatId
   );
   const [actor, secondActor] = matchingActors;
   if (actor === undefined || secondActor !== undefined) return false;

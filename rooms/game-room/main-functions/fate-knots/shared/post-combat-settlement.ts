@@ -2,8 +2,7 @@ import type { FateKnotsActorState, FateKnotsCombatState } from "./contracts.js";
 import type { FateKnotsRulesConfig } from "../rules/config.js";
 
 export type FateKnotsPostCombatSettlementIssueCode =
-  | "combat-not-party-victory"
-  | "invalid-recovery-hp";
+  "combat-not-party-victory" | "invalid-recovery-hp";
 
 export interface FateKnotsPostCombatSettlementIssue {
   code: FateKnotsPostCombatSettlementIssueCode;

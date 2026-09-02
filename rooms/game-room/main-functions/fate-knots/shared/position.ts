@@ -22,7 +22,10 @@ export function isFateKnotsPosition(value: unknown): value is FateKnotsPosition 
   return isFateKnotsRow(record["row"]) && isFateKnotsRange(record["range"]);
 }
 
-export function createFateKnotsPosition(row: FateKnotsRow, range: FateKnotsRange): FateKnotsPosition {
+export function createFateKnotsPosition(
+  row: FateKnotsRow,
+  range: FateKnotsRange
+): FateKnotsPosition {
   return { row, range };
 }
 

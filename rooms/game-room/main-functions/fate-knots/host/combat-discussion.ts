@@ -185,7 +185,11 @@ function getConversation(
   if (!combat) return null;
   const store = loadStore(api);
   const existing = store.conversations.find((entry) => entry.runId === run.runId) ?? null;
-  if (existing && existing.combatId === combat.combatId && existing.turnIndex === combat.turnIndex) {
+  if (
+    existing &&
+    existing.combatId === combat.combatId &&
+    existing.turnIndex === combat.turnIndex
+  ) {
     return existing;
   }
   const conversation: FateKnotsCombatDiscussionConversation = {

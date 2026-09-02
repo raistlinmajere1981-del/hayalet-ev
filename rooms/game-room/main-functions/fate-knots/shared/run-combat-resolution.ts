@@ -1,7 +1,4 @@
-import type {
-  FateKnotsRunState,
-  FateKnotsUniversePackage,
-} from "./contracts.js";
+import type { FateKnotsRunState, FateKnotsUniversePackage } from "./contracts.js";
 import type { FateKnotsCombatRuntimeState } from "./combat-runtime.js";
 import {
   executeFateKnotsCombatResolution,
@@ -10,9 +7,7 @@ import {
 } from "./combat-resolution-executor.js";
 
 export type FateKnotsRunCombatResolutionIssueCode =
-  | "no-active-combat"
-  | "combat-resolution-failed"
-  | "reveal-knot-not-found";
+  "no-active-combat" | "combat-resolution-failed" | "reveal-knot-not-found";
 
 export interface FateKnotsRunCombatResolutionIssue {
   code: FateKnotsRunCombatResolutionIssueCode;

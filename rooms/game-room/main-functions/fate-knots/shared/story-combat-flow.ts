@@ -5,10 +5,7 @@ import type {
   FateKnotsUniversePackage,
 } from "./contracts.js";
 import type { FateKnotsCombatRuntimeState } from "./combat-runtime.js";
-import {
-  exitFateKnotsCombat,
-  type FateKnotsRunFlowIssue,
-} from "./run-flow.js";
+import { exitFateKnotsCombat, type FateKnotsRunFlowIssue } from "./run-flow.js";
 import {
   clearFateKnotsStoryCombatTracking,
   resolveFateKnotsStoryCombatOutcome,
@@ -88,7 +85,9 @@ export function exitFateKnotsStoryCombat(
       return {
         ok: false,
         run: structuredClone(runInput),
-        issues: [{ code: "story-cleanup-failed", storyIssues: [{ code: "combat-transition-required" }] }],
+        issues: [
+          { code: "story-cleanup-failed", storyIssues: [{ code: "combat-transition-required" }] },
+        ],
       };
     }
     return { ok: true, run: exited.run, issues: [] };

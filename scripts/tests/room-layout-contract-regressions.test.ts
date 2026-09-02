@@ -39,7 +39,14 @@ void test("room root entrypoints stay orchestration-only after layout normalizat
   const laboratoryThemeStyleSource = readCssWithImports("rooms/laboratory/ui/lab-theme.css");
 
   assert.match(gameRoomHostIndexSource, /from "\.\/runtime\.js"/);
-  assert.match(gameRoomHostIndexSource, /export default createGameRoomHostRuntime\(\);/);
+  assert.match(
+    gameRoomHostIndexSource,
+    /extendGameRoomHostRuntimeWithFateKnotsExploration\(\s*createGameRoomHostRuntime\(\)\s*\)/
+  );
+  assert.match(
+    gameRoomHostIndexSource,
+    /export default extendGameRoomHostRuntimeWithFateKnotsCampSocial\(fateKnotsExplorationRuntime\);/
+  );
   assert.doesNotMatch(gameRoomHostIndexSource, /GameRoomTeamTetrisStart/);
   assert.match(gameRoomHostRuntimeSource, /createGameRoomCommandRegistry/);
   assert.match(gameRoomHostRuntimeSource, /createGameRoomHostLifecycle/);

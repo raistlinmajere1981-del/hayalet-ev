@@ -158,7 +158,8 @@ export function toFateKnotsEnemyCombatCommit(
   if (decision.movementCardId !== undefined) commit.movementCardId = decision.movementCardId;
   if (decision.actionCardId !== undefined) commit.actionCardId = decision.actionCardId;
   if (decision.primaryTargetId !== undefined) commit.primaryTargetId = decision.primaryTargetId;
-  if (decision.secondaryTargetId !== undefined) commit.secondaryTargetId = decision.secondaryTargetId;
+  if (decision.secondaryTargetId !== undefined)
+    commit.secondaryTargetId = decision.secondaryTargetId;
   return commit;
 }
 

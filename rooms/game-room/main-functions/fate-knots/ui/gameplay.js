@@ -53,10 +53,12 @@
   function createButton(label, onClick, options) {
     const button = createElement("button", "fate-knots-gameplay__button", label);
     button.type = "button";
-    if (options && options.secondary) button.classList.add("fate-knots-gameplay__button--secondary");
+    if (options && options.secondary)
+      button.classList.add("fate-knots-gameplay__button--secondary");
     if (options && options.selected) button.classList.add("is-selected");
     if (options && options.disabled) button.disabled = true;
-    if (!button.disabled && typeof onClick === "function") button.addEventListener("click", onClick);
+    if (!button.disabled && typeof onClick === "function")
+      button.addEventListener("click", onClick);
     return button;
   }
 
@@ -72,8 +74,8 @@
     const gameplay = readRecord(state.gameplay);
     return Boolean(
       gameplay &&
-        (gameplay.phase === "combat-discussion" || gameplay.phase === "combat-commit") &&
-        currentCombat()
+      (gameplay.phase === "combat-discussion" || gameplay.phase === "combat-commit") &&
+      currentCombat()
     );
   }
 
@@ -540,7 +542,9 @@
   function renderResolvedCards() {
     if (state.lastResolvedCards.length === 0) return null;
     const panel = createElement("section", "fate-knots-gameplay__resolution");
-    panel.append(createElement("strong", "fate-knots-gameplay__side-title", "Son çözülen hamleler"));
+    panel.append(
+      createElement("strong", "fate-knots-gameplay__side-title", "Son çözülen hamleler")
+    );
     const list = createElement("div", "fate-knots-gameplay__option-row");
     state.lastResolvedCards.forEach(function (entry) {
       const resolved = readRecord(entry);
@@ -728,7 +732,11 @@
       return "Seçilen hamle artık yasal değil; seçenekler yenileniyor.";
     }
     if (error === "stale-resolution-request") return "Tur zaten daha yeni bir duruma geçti.";
-    if (error === "resolution-failed" || error === "aftermath-failed" || error === "story-exit-failed") {
+    if (
+      error === "resolution-failed" ||
+      error === "aftermath-failed" ||
+      error === "story-exit-failed"
+    ) {
       return "Deterministik tur çözümü tamamlanamadı.";
     }
     if (error === "wrong-phase") return "Savaş artık hamle hazırlama aşamasında değil.";

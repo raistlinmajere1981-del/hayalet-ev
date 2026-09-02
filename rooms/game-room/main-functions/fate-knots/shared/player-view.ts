@@ -1,8 +1,4 @@
-import type {
-  FateKnotsPhase,
-  FateKnotsRunState,
-  FateKnotsUniversePackage,
-} from "./contracts.js";
+import type { FateKnotsPhase, FateKnotsRunState, FateKnotsUniversePackage } from "./contracts.js";
 import type { FateKnotsPlayerTemplateView } from "./run-setup.js";
 import { listFateKnotsPlayerTemplates } from "./run-setup.js";
 
@@ -60,9 +56,7 @@ export function buildFateKnotsPlayerUniverseView(
  * bookkeeping and may be paired with combat-runtime data. Detailed current
  * scene/combat views are emitted through their own bounded packets.
  */
-export function buildFateKnotsPlayerRunView(
-  run: FateKnotsRunState
-): FateKnotsPlayerRunView {
+export function buildFateKnotsPlayerRunView(run: FateKnotsRunState): FateKnotsPlayerRunView {
   const partyIds = new Set(run.partyActorIds);
   return {
     runId: run.runId,

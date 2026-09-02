@@ -4,10 +4,7 @@ import type {
   FateKnotsRunState,
   FateKnotsUniversePackage,
 } from "./contracts.js";
-import {
-  buildFateKnotsDmScenePacket,
-  type FateKnotsDmPacketIssue,
-} from "./dm-packets.js";
+import { buildFateKnotsDmScenePacket, type FateKnotsDmPacketIssue } from "./dm-packets.js";
 import { buildFateKnotsStoryView } from "./story-progression.js";
 
 export interface FateKnotsCanonicalDmScenePacketResult {

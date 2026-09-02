@@ -1,10 +1,9 @@
-import {
-  FATE_KNOTS_PENDING_ASSET_SCHEME,
-  type FateKnotsWorldForgeRequest,
-} from "./world-forge.js";
+import { FATE_KNOTS_PENDING_ASSET_SCHEME, type FateKnotsWorldForgeRequest } from "./world-forge.js";
 
 function briefLine(request: FateKnotsWorldForgeRequest): string {
-  return request.brief ? `Player brief: ${request.brief}` : "Player brief: none; choose a coherent original universe.";
+  return request.brief
+    ? `Player brief: ${request.brief}`
+    : "Player brief: none; choose a coherent original universe.";
 }
 
 /**

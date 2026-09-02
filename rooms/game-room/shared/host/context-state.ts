@@ -106,10 +106,7 @@ export function sanitizeContext(payload: unknown): GameRoomContextSnapshot {
   const features = Array.from(featureMap.values());
   // The outer room shell intentionally reports activeFeature=null when Game Room
   // itself is open. Do not reinterpret that as manifest.defaultFeatureId (Tavla).
-  const activeFeature = sanitizeFeatureRecord(
-    source["activeFeature"],
-    GAME_ROOM_HOME_FEATURE_ID
-  );
+  const activeFeature = sanitizeFeatureRecord(source["activeFeature"], GAME_ROOM_HOME_FEATURE_ID);
   const user = {
     nickname:
       typeof userSource["nickname"] === "string" && userSource["nickname"].trim() !== ""

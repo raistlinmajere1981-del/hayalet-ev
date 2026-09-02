@@ -13,13 +13,7 @@ import type {
  * rendered on a card, page overlay, battlefield or several avatars.
  */
 export type FateKnotsMechanicalEffectTarget =
-  | "self"
-  | "primaryTarget"
-  | "secondaryTarget"
-  | "allAllies"
-  | "allEnemies"
-  | "ownTeam"
-  | "run";
+  "self" | "primaryTarget" | "secondaryTarget" | "allAllies" | "allEnemies" | "ownTeam" | "run";
 
 export interface FateKnotsExecutableCardEffect extends FateKnotsCardEffect {
   target: FateKnotsMechanicalEffectTarget;
@@ -153,7 +147,10 @@ function isFiniteNumber(value: number | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function findActor(context: FateKnotsEffectResolutionContext, actorId: string): FateKnotsActorState | null {
+function findActor(
+  context: FateKnotsEffectResolutionContext,
+  actorId: string
+): FateKnotsActorState | null {
   if (context.actor.actorId === actorId) return context.actor;
   return context.actors.find((candidate) => candidate.actorId === actorId) ?? null;
 }
@@ -172,7 +169,11 @@ function resolveTargetIds(
         return [];
       }
       if (!findActor(context, context.primaryTargetId)) {
-        issues.push({ code: "target-not-found", effectId: effect.id, value: context.primaryTargetId });
+        issues.push({
+          code: "target-not-found",
+          effectId: effect.id,
+          value: context.primaryTargetId,
+        });
         return [];
       }
       return [context.primaryTargetId];
@@ -232,10 +233,7 @@ function validateEffectFields(
     issues.push({ code: "invalid-resource-stat", effectId: effect.id, value: effect.statId });
   }
 
-  if (
-    (effect.kind === "apply-status" || effect.kind === "remove-status") &&
-    !effect.statusId
-  ) {
+  if ((effect.kind === "apply-status" || effect.kind === "remove-status") && !effect.statusId) {
     issues.push({ code: "missing-status-id", effectId: effect.id });
   }
 
@@ -311,13 +309,28 @@ function buildActorPatches(
   for (const actorId of prepared.targetIds) {
     switch (effect.kind) {
       case "damage":
-        patches.push({ kind: "damage", effectId: effect.id, actorId, amount: effect.value as number });
+        patches.push({
+          kind: "damage",
+          effectId: effect.id,
+          actorId,
+          amount: effect.value as number,
+        });
         break;
       case "heal":
-        patches.push({ kind: "heal", effectId: effect.id, actorId, amount: effect.value as number });
+        patches.push({
+          kind: "heal",
+          effectId: effect.id,
+          actorId,
+          amount: effect.value as number,
+        });
         break;
       case "shield":
-        patches.push({ kind: "shield", effectId: effect.id, actorId, amount: effect.value as number });
+        patches.push({
+          kind: "shield",
+          effectId: effect.id,
+          actorId,
+          amount: effect.value as number,
+        });
         break;
       case "apply-status": {
         const patch: Extract<FateKnotsMechanicalPatch, { kind: "status-add" }> = {

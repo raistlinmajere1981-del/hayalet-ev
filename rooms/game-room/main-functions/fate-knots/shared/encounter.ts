@@ -159,11 +159,9 @@ export function buildFateKnotsEncounterCombat(
     return { ok: false, combat: null, runtime: null, issues };
   }
 
-  const combat = createFateKnotsCombatState(
-    combatId.trim(),
-    [...partyActors, ...opponentActors],
-    { ...config }
-  );
+  const combat = createFateKnotsCombatState(combatId.trim(), [...partyActors, ...opponentActors], {
+    ...config,
+  });
   const runtime = createFateKnotsCombatRuntimeState(combat);
   return { ok: true, combat, runtime, issues: [] };
 }

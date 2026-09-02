@@ -1,14 +1,9 @@
-import type {
-  FateKnotsAssetRef,
-  FateKnotsUniversePackage,
-} from "./contracts.js";
+import type { FateKnotsAssetRef, FateKnotsUniversePackage } from "./contracts.js";
 
 export const FATE_KNOTS_CARD_ART_TAG_PREFIX = "card-art:";
 
 export type FateKnotsCardArtIssueCode =
-  | "card-art-card-not-found"
-  | "duplicate-card-art-binding"
-  | "invalid-card-art-kind";
+  "card-art-card-not-found" | "duplicate-card-art-binding" | "invalid-card-art-kind";
 
 export interface FateKnotsCardArtIssue {
   code: FateKnotsCardArtIssueCode;
@@ -22,7 +17,7 @@ function cardIdFromAsset(asset: FateKnotsAssetRef): string | null {
     .filter((tag) => tag.startsWith(FATE_KNOTS_CARD_ART_TAG_PREFIX))
     .map((tag) => tag.slice(FATE_KNOTS_CARD_ART_TAG_PREFIX.length).trim())
     .filter(Boolean);
-  return bindings.length === 1 ? bindings[0] ?? null : null;
+  return bindings.length === 1 ? (bindings[0] ?? null) : null;
 }
 
 export function getFateKnotsCardArtAsset(

@@ -203,7 +203,10 @@ function validateEffect(
   }
 
   const target = effect["target"];
-  if (typeof target !== "string" || !EFFECT_TARGETS.has(target as FateKnotsMechanicalEffectTarget)) {
+  if (
+    typeof target !== "string" ||
+    !EFFECT_TARGETS.has(target as FateKnotsMechanicalEffectTarget)
+  ) {
     issues.push({ code: "invalid-effect-target", path: `${path}.target`, value: String(target) });
   }
 
@@ -281,7 +284,10 @@ function validateCards(
     }
 
     const priority = value["resolutionPriority"];
-    if (priority !== undefined && (typeof priority !== "string" || !allowedPriority.has(priority))) {
+    if (
+      priority !== undefined &&
+      (typeof priority !== "string" || !allowedPriority.has(priority))
+    ) {
       issues.push({
         code: "invalid-resolution-priority",
         path: `${path}.resolutionPriority`,
@@ -328,9 +334,12 @@ function validateEquipment(
   equipment.forEach((value, index) => {
     const path = `equipment[${index}]`;
     if (!isRecord(value) || !isNonEmptyString(value["id"])) return;
-    if (!isNonEmptyString(value["name"])) pushTypeIssue(issues, `${path}.name`, value["name"] !== undefined);
-    if (!isNonEmptyString(value["slot"])) pushTypeIssue(issues, `${path}.slot`, value["slot"] !== undefined);
-    if (!isStringArray(value["tags"])) issues.push({ code: "invalid-field-type", path: `${path}.tags` });
+    if (!isNonEmptyString(value["name"]))
+      pushTypeIssue(issues, `${path}.name`, value["name"] !== undefined);
+    if (!isNonEmptyString(value["slot"]))
+      pushTypeIssue(issues, `${path}.slot`, value["slot"] !== undefined);
+    if (!isStringArray(value["tags"]))
+      issues.push({ code: "invalid-field-type", path: `${path}.tags` });
     validateStringReferences(value["grantedCardIds"], cardIds, `${path}.grantedCardIds`, issues);
     if (value["removedCardIds"] !== undefined) {
       validateStringReferences(value["removedCardIds"], cardIds, `${path}.removedCardIds`, issues);
@@ -354,9 +363,16 @@ function validateCharacterEquipmentOwnership(
     if (!isRecord(value)) return;
     requireReference(value["portraitAssetId"], assetIds, `${path}.portraitAssetId`, issues);
     validateStringReferences(value["startingCardIds"], cardIds, `${path}.startingCardIds`, issues);
-    validateStringReferences(value["startingEquipmentIds"], equipmentIds, `${path}.startingEquipmentIds`, issues);
+    validateStringReferences(
+      value["startingEquipmentIds"],
+      equipmentIds,
+      `${path}.startingEquipmentIds`,
+      issues
+    );
 
-    const startingCards = new Set(isStringArray(value["startingCardIds"]) ? value["startingCardIds"] : []);
+    const startingCards = new Set(
+      isStringArray(value["startingCardIds"]) ? value["startingCardIds"] : []
+    );
     const startingEquipment = isStringArray(value["startingEquipmentIds"])
       ? value["startingEquipmentIds"]
       : [];
@@ -374,10 +390,16 @@ function validateCharacterEquipmentOwnership(
 
     const controller = value["combatController"];
     if (controller !== undefined && controller !== null) {
-      if (!isRecord(controller) || (controller["kind"] !== "policy" && controller["kind"] !== "ai0")) {
+      if (
+        !isRecord(controller) ||
+        (controller["kind"] !== "policy" && controller["kind"] !== "ai0")
+      ) {
         issues.push({ code: "invalid-equipment-controller", path: `${path}.combatController` });
       } else if (controller["kind"] === "policy" && !isNonEmptyString(controller["policyId"])) {
-        issues.push({ code: "invalid-equipment-controller", path: `${path}.combatController.policyId` });
+        issues.push({
+          code: "invalid-equipment-controller",
+          path: `${path}.combatController.policyId`,
+        });
       }
     }
   });
@@ -421,7 +443,12 @@ function validateNpcRoles(
       requireReference(value["portraitAssetId"], assetIds, `${path}.portraitAssetId`, issues);
     }
     if (value["combatCharacterId"] !== undefined && value["combatCharacterId"] !== null) {
-      requireReference(value["combatCharacterId"], characterIds, `${path}.combatCharacterId`, issues);
+      requireReference(
+        value["combatCharacterId"],
+        characterIds,
+        `${path}.combatCharacterId`,
+        issues
+      );
     }
 
     const roleId = value["rolePacketId"];
@@ -444,7 +471,12 @@ function validateStoryRequirement(
     return;
   }
   if (value["completedKnotIds"] !== undefined) {
-    validateStringReferences(value["completedKnotIds"], knotIds, `${path}.completedKnotIds`, issues);
+    validateStringReferences(
+      value["completedKnotIds"],
+      knotIds,
+      `${path}.completedKnotIds`,
+      issues
+    );
   }
   if (value["revealedKnotIds"] !== undefined) {
     validateStringReferences(value["revealedKnotIds"], knotIds, `${path}.revealedKnotIds`, issues);
@@ -473,7 +505,12 @@ function validateStoryPatch(
     validateStringReferences(value["completeKnotIds"], knotIds, `${path}.completeKnotIds`, issues);
   }
   if (value["revealLocationIds"] !== undefined) {
-    validateStringReferences(value["revealLocationIds"], locationIds, `${path}.revealLocationIds`, issues);
+    validateStringReferences(
+      value["revealLocationIds"],
+      locationIds,
+      `${path}.revealLocationIds`,
+      issues
+    );
   }
 }
 
@@ -499,7 +536,11 @@ function validateStory(
 
   const startKnotId = story["startKnotId"];
   if (!isNonEmptyString(startKnotId) || !knotIds.has(startKnotId)) {
-    issues.push({ code: "invalid-story-start", path: "story.startKnotId", value: String(startKnotId) });
+    issues.push({
+      code: "invalid-story-start",
+      path: "story.startKnotId",
+      value: String(startKnotId),
+    });
   }
 
   const initiallyHidden = new Set<string>();
@@ -521,9 +562,7 @@ function validateStory(
   });
 
   if (isNonEmptyString(startKnotId)) {
-    const start = knots?.find(
-      (value) => isRecord(value) && value["id"] === startKnotId
-    );
+    const start = knots?.find((value) => isRecord(value) && value["id"] === startKnotId);
     if (!isRecord(start) || start["initiallyRevealed"] !== true) {
       issues.push({ code: "invalid-story-start", path: "story.startKnotId", value: startKnotId });
     }
@@ -533,11 +572,19 @@ function validateStory(
     const path = `story.encounters[${index}]`;
     if (!isRecord(value) || !isNonEmptyString(value["id"])) return;
     requireReference(value["locationId"], locationIds, `${path}.locationId`, issues);
-    if (!isStringArray(value["opponentCharacterIds"]) || value["opponentCharacterIds"].length === 0) {
+    if (
+      !isStringArray(value["opponentCharacterIds"]) ||
+      value["opponentCharacterIds"].length === 0
+    ) {
       issues.push({ code: "invalid-story-encounter", path: `${path}.opponentCharacterIds` });
     } else {
       value["opponentCharacterIds"].forEach((id, characterIndex) =>
-        requireReference(id, characterIds, `${path}.opponentCharacterIds[${characterIndex}]`, issues)
+        requireReference(
+          id,
+          characterIds,
+          `${path}.opponentCharacterIds[${characterIndex}]`,
+          issues
+        )
       );
     }
     if (value["lootCardIds"] !== undefined) {
@@ -567,11 +614,20 @@ function validateStory(
     } else if (value["encounterId"] !== undefined && value["encounterId"] !== null) {
       issues.push({ code: "invalid-story-transition", path: `${path}.encounterId` });
     }
-    validateStoryRequirement(value["requirements"], `${path}.requirements`, knotIds, cardIds, issues);
+    validateStoryRequirement(
+      value["requirements"],
+      `${path}.requirements`,
+      knotIds,
+      cardIds,
+      issues
+    );
     validateStoryPatch(value["onEnter"], `${path}.onEnter`, knotIds, locationIds, issues);
     validateStoryPatch(value["onVictory"], `${path}.onVictory`, knotIds, locationIds, issues);
     validateStoryPatch(value["onRetreat"], `${path}.onRetreat`, knotIds, locationIds, issues);
-    if (kind !== "combat" && (value["onVictory"] !== undefined || value["onRetreat"] !== undefined)) {
+    if (
+      kind !== "combat" &&
+      (value["onVictory"] !== undefined || value["onRetreat"] !== undefined)
+    ) {
       issues.push({ code: "invalid-story-transition", path });
     }
   });
@@ -580,7 +636,9 @@ function validateStory(
     pushTypeIssue(issues, "hiddenKnotIds", hiddenKnotIds !== undefined);
   } else {
     const hiddenSet = new Set(hiddenKnotIds);
-    hiddenKnotIds.forEach((id, index) => requireReference(id, knotIds, `hiddenKnotIds[${index}]`, issues));
+    hiddenKnotIds.forEach((id, index) =>
+      requireReference(id, knotIds, `hiddenKnotIds[${index}]`, issues)
+    );
     if (
       hiddenSet.size !== initiallyHidden.size ||
       Array.from(initiallyHidden).some((id) => !hiddenSet.has(id))
@@ -650,23 +708,20 @@ export function validateFateKnotsUniversePackage(
     }
   }
 
-  if (!isRecord(candidate["music"])) pushTypeIssue(issues, "music", candidate["music"] !== undefined);
+  if (!isRecord(candidate["music"]))
+    pushTypeIssue(issues, "music", candidate["music"] !== undefined);
 
   locations?.forEach((value, index) => {
     if (!isRecord(value)) return;
-    validateStringReferences(value["sceneAssetIds"], assetIds, `locations[${index}].sceneAssetIds`, issues);
+    validateStringReferences(
+      value["sceneAssetIds"],
+      assetIds,
+      `locations[${index}].sceneAssetIds`,
+      issues
+    );
   });
 
-  validateNpcRoles(
-    npcs,
-    npcRoles,
-    npcRoleIds,
-    npcIds,
-    characterIds,
-    locationIds,
-    assetIds,
-    issues
-  );
+  validateNpcRoles(npcs, npcRoles, npcRoleIds, npcIds, characterIds, locationIds, assetIds, issues);
 
   const cardMap = validateCards(cards, cardIds, equipmentIds, statusIds, issues);
   validateEquipment(equipment, cardIds, issues);
@@ -674,7 +729,12 @@ export function validateFateKnotsUniversePackage(
   statuses?.forEach((value, index) => {
     if (!isRecord(value)) return;
     if (value["grantedCardIds"] !== undefined) {
-      validateStringReferences(value["grantedCardIds"], cardIds, `statuses[${index}].grantedCardIds`, issues);
+      validateStringReferences(
+        value["grantedCardIds"],
+        cardIds,
+        `statuses[${index}].grantedCardIds`,
+        issues
+      );
     }
   });
 
@@ -713,13 +773,26 @@ export function validateFateKnotsUniversePackage(
       const from = value["fromNodeId"];
       const to = value["toNodeId"];
       if (!isNonEmptyString(from) || !nodeIds.has(from)) {
-        issues.push({ code: "invalid-map-edge", path: `map.edges[${index}].fromNodeId`, value: String(from) });
+        issues.push({
+          code: "invalid-map-edge",
+          path: `map.edges[${index}].fromNodeId`,
+          value: String(from),
+        });
       }
       if (!isNonEmptyString(to) || !nodeIds.has(to)) {
-        issues.push({ code: "invalid-map-edge", path: `map.edges[${index}].toNodeId`, value: String(to) });
+        issues.push({
+          code: "invalid-map-edge",
+          path: `map.edges[${index}].toNodeId`,
+          value: String(to),
+        });
       }
       if (value["travelCardIds"] !== undefined) {
-        validateStringReferences(value["travelCardIds"], cardIds, `map.edges[${index}].travelCardIds`, issues);
+        validateStringReferences(
+          value["travelCardIds"],
+          cardIds,
+          `map.edges[${index}].travelCardIds`,
+          issues
+        );
       }
     });
   }
@@ -737,7 +810,10 @@ export function validateFateKnotsUniversePackage(
     pushTypeIssue(issues, "finale", candidate["finale"] !== undefined);
   } else {
     const finale = candidate["finale"];
-    if (!isNonEmptyString(finale["finaleLocationId"]) || !locationIds.has(finale["finaleLocationId"])) {
+    if (
+      !isNonEmptyString(finale["finaleLocationId"]) ||
+      !locationIds.has(finale["finaleLocationId"])
+    ) {
       issues.push({
         code: "invalid-finale-reference",
         path: "finale.finaleLocationId",
@@ -745,18 +821,38 @@ export function validateFateKnotsUniversePackage(
       });
     }
     if (finale["finalChoiceCardIds"] !== undefined) {
-      validateStringReferences(finale["finalChoiceCardIds"], cardIds, "finale.finalChoiceCardIds", issues);
+      validateStringReferences(
+        finale["finalChoiceCardIds"],
+        cardIds,
+        "finale.finalChoiceCardIds",
+        issues
+      );
     }
     if (!isStringArray(finale["requiredKnotIds"])) {
       issues.push({ code: "invalid-field-type", path: "finale.requiredKnotIds" });
     } else {
-      validateStringReferences(finale["requiredKnotIds"], storyValidation.knotIds, "finale.requiredKnotIds", issues);
+      validateStringReferences(
+        finale["requiredKnotIds"],
+        storyValidation.knotIds,
+        "finale.requiredKnotIds",
+        issues
+      );
     }
     if (finale["requiredItemIds"] !== undefined) {
-      validateStringReferences(finale["requiredItemIds"], cardIds, "finale.requiredItemIds", issues);
+      validateStringReferences(
+        finale["requiredItemIds"],
+        cardIds,
+        "finale.requiredItemIds",
+        issues
+      );
     }
     if (finale["finalEncounterId"] !== undefined && finale["finalEncounterId"] !== null) {
-      requireReference(finale["finalEncounterId"], storyValidation.encounterIds, "finale.finalEncounterId", issues);
+      requireReference(
+        finale["finalEncounterId"],
+        storyValidation.encounterIds,
+        "finale.finalEncounterId",
+        issues
+      );
     }
     if (!isNonEmptyString(finale["successConditionId"])) {
       issues.push({ code: "missing-required-field", path: "finale.successConditionId" });
@@ -778,15 +874,21 @@ function trimmedPreservingDuplicates(values: readonly string[]): string[] {
   return values.map((value) => value.trim()).filter(Boolean);
 }
 
-function normalizeStoryRequirement(requirement: FateKnotsStoryRequirement): FateKnotsStoryRequirement {
+function normalizeStoryRequirement(
+  requirement: FateKnotsStoryRequirement
+): FateKnotsStoryRequirement {
   const next: FateKnotsStoryRequirement = {};
-  if (requirement.completedKnotIds) next.completedKnotIds = uniqueTrimmed(requirement.completedKnotIds);
-  if (requirement.revealedKnotIds) next.revealedKnotIds = uniqueTrimmed(requirement.revealedKnotIds);
+  if (requirement.completedKnotIds)
+    next.completedKnotIds = uniqueTrimmed(requirement.completedKnotIds);
+  if (requirement.revealedKnotIds)
+    next.revealedKnotIds = uniqueTrimmed(requirement.revealedKnotIds);
   if (requirement.ownedCardIds) next.ownedCardIds = uniqueTrimmed(requirement.ownedCardIds);
   return next;
 }
 
-function normalizeStoryPatch(patch: FateKnotsStoryProgressionPatch): FateKnotsStoryProgressionPatch {
+function normalizeStoryPatch(
+  patch: FateKnotsStoryProgressionPatch
+): FateKnotsStoryProgressionPatch {
   const next: FateKnotsStoryProgressionPatch = {};
   if (patch.revealKnotIds) next.revealKnotIds = uniqueTrimmed(patch.revealKnotIds);
   if (patch.completeKnotIds) next.completeKnotIds = uniqueTrimmed(patch.completeKnotIds);
@@ -812,7 +914,8 @@ function normalizeStoryTransition(
   if (transition.encounterId !== undefined) {
     next.encounterId = transition.encounterId === null ? null : transition.encounterId.trim();
   }
-  if (transition.requirements) next.requirements = normalizeStoryRequirement(transition.requirements);
+  if (transition.requirements)
+    next.requirements = normalizeStoryRequirement(transition.requirements);
   if (transition.onEnter) next.onEnter = normalizeStoryPatch(transition.onEnter);
   if (transition.onVictory) next.onVictory = normalizeStoryPatch(transition.onVictory);
   if (transition.onRetreat) next.onRetreat = normalizeStoryPatch(transition.onRetreat);
@@ -840,11 +943,13 @@ function normalizeCard(card: FateKnotsCardDefinition): FateKnotsCardDefinition {
       if (requirement.phases) next.phases = requirement.phases.slice();
       if (requirement.rows) next.rows = requirement.rows.slice();
       if (requirement.ranges) next.ranges = requirement.ranges.slice();
-      if (requirement.requiredCardTags) next.requiredCardTags = uniqueTrimmed(requirement.requiredCardTags);
+      if (requirement.requiredCardTags)
+        next.requiredCardTags = uniqueTrimmed(requirement.requiredCardTags);
       if (requirement.requiredEquipmentTags) {
         next.requiredEquipmentTags = uniqueTrimmed(requirement.requiredEquipmentTags);
       }
-      if (requirement.forbiddenStatusIds) next.forbiddenStatusIds = uniqueTrimmed(requirement.forbiddenStatusIds);
+      if (requirement.forbiddenStatusIds)
+        next.forbiddenStatusIds = uniqueTrimmed(requirement.forbiddenStatusIds);
       if (requirement.targetRows) next.targetRows = requirement.targetRows.slice();
       if (requirement.targetRanges) next.targetRanges = requirement.targetRanges.slice();
       return next;

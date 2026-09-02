@@ -43,10 +43,12 @@
   function createButton(label, onClick, options) {
     const button = createElement("button", "fate-knots-gameplay__button", label);
     button.type = "button";
-    if (options && options.secondary) button.classList.add("fate-knots-gameplay__button--secondary");
+    if (options && options.secondary)
+      button.classList.add("fate-knots-gameplay__button--secondary");
     if (options && options.selected) button.classList.add("is-selected");
     if (options && options.disabled) button.disabled = true;
-    if (!button.disabled && typeof onClick === "function") button.addEventListener("click", onClick);
+    if (!button.disabled && typeof onClick === "function")
+      button.addEventListener("click", onClick);
     return button;
   }
 
@@ -185,7 +187,9 @@
     section.append(createElement("h3", "fate-knots-gameplay__discussion-title", "Ekipman"));
     const actor = localPartyActor();
     if (!actor) {
-      section.append(createElement("div", "fate-knots-gameplay__muted", "Yerel oyuncu karakteri bulunamadı."));
+      section.append(
+        createElement("div", "fate-knots-gameplay__muted", "Yerel oyuncu karakteri bulunamadı.")
+      );
       return section;
     }
 
@@ -204,7 +208,11 @@
 
     if (slots.length === 0) {
       section.append(
-        createElement("div", "fate-knots-gameplay__muted", "Bu karakterin değiştirilebilir ekipmanı yok.")
+        createElement(
+          "div",
+          "fate-knots-gameplay__muted",
+          "Bu karakterin değiştirilebilir ekipmanı yok."
+        )
       );
       return section;
     }
@@ -252,7 +260,11 @@
 
     if (!camp) {
       recovery.append(
-        createElement("div", "fate-knots-gameplay__muted", "Kamp durumu host tarafından hazırlanıyor…")
+        createElement(
+          "div",
+          "fate-knots-gameplay__muted",
+          "Kamp durumu host tarafından hazırlanıyor…"
+        )
       );
       interaction.append(recovery, renderCampEquipment());
       return interaction;
@@ -276,9 +288,7 @@
         )
       );
     } else {
-      recovery.append(
-        createButton("Hazırım", readyCamp, { disabled: false })
-      );
+      recovery.append(createButton("Hazırım", readyCamp, { disabled: false }));
     }
 
     interaction.append(recovery, renderCampEquipment());
@@ -314,7 +324,9 @@
     if (npcs.length === 0) return null;
 
     const section = createElement("section", "fate-knots-gameplay__discussion");
-    section.append(createElement("h3", "fate-knots-gameplay__discussion-title", "Sahnedeki kişiler"));
+    section.append(
+      createElement("h3", "fate-knots-gameplay__discussion-title", "Sahnedeki kişiler")
+    );
     const selector = createElement("div", "fate-knots-gameplay__option-row");
     const active = currentNpc();
     if (active && !state.selectedNpcId) state.selectedNpcId = readString(active.npcId);
@@ -416,7 +428,8 @@
     const previousRunId = currentRunId();
     state.gameplay = nextState;
 
-    const handled = typeof original.handleState === "function" ? original.handleState(message) : false;
+    const handled =
+      typeof original.handleState === "function" ? original.handleState(message) : false;
 
     const nextRunId = readString(nextState?.runId);
     if (previousRunId && nextRunId && previousRunId !== nextRunId) {
@@ -467,8 +480,10 @@
     if (error === "seat-already-ready") return "Bu kamp için hazır durumun zaten kilitli.";
     if (error === "seat-not-active") return "Bu koltuk aktif partiye bağlı değil.";
     if (error === "camp-rejected") return "Kamp işlemi mevcut canonical durumda uygulanamadı.";
-    if (error === "npc-interaction-rejected") return "Bu kişiyle konuşma artık bu sahnede geçerli değil.";
-    if (error === "ai0-dialogue-failed") return "NPC yanıtı alınamadı; canonical oyun durumu değişmedi.";
+    if (error === "npc-interaction-rejected")
+      return "Bu kişiyle konuşma artık bu sahnede geçerli değil.";
+    if (error === "ai0-dialogue-failed")
+      return "NPC yanıtı alınamadı; canonical oyun durumu değişmedi.";
     if (error === "persistence-rejected" || error === "save-rejected") {
       return "Kayıt durumu güvenli biçimde güncellenemedi.";
     }

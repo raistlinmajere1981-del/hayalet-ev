@@ -5,10 +5,7 @@ import type {
   FateKnotsEquipmentDefinition,
   FateKnotsStatusDefinition,
 } from "./contracts.js";
-import {
-  evaluateFateKnotsCardLegality,
-  type FateKnotsCardLegalityIssue,
-} from "./card-legality.js";
+import { evaluateFateKnotsCardLegality, type FateKnotsCardLegalityIssue } from "./card-legality.js";
 import {
   applyFateKnotsCombatPatches,
   type FateKnotsCombatPatchIssue,
@@ -34,10 +31,7 @@ import {
   type FateKnotsResolutionQueueEntry,
 } from "./resolution-order.js";
 
-export type FateKnotsResolvedEntryOutcome =
-  | "resolved"
-  | "cancelled-fallen"
-  | "cancelled-illegal";
+export type FateKnotsResolvedEntryOutcome = "resolved" | "cancelled-fallen" | "cancelled-illegal";
 
 export interface FateKnotsResolvedQueueEntryRecord {
   pass: FateKnotsResolutionPass;
@@ -213,12 +207,14 @@ function executeResolutionPass(
         runtime,
         entries,
         deferredRunPatches,
-        issues: [{
-          code: "card-not-found",
-          pass,
-          actorId: entry.actorId,
-          cardId: entry.cardId,
-        }],
+        issues: [
+          {
+            code: "card-not-found",
+            pass,
+            actorId: entry.actorId,
+            cardId: entry.cardId,
+          },
+        ],
       };
     }
 
@@ -230,12 +226,14 @@ function executeResolutionPass(
         runtime,
         entries,
         deferredRunPatches,
-        issues: [{
-          code: "commit-not-found",
-          pass,
-          actorId: entry.actorId,
-          cardId: entry.cardId,
-        }],
+        issues: [
+          {
+            code: "commit-not-found",
+            pass,
+            actorId: entry.actorId,
+            cardId: entry.cardId,
+          },
+        ],
       };
     }
 
@@ -270,13 +268,15 @@ function executeResolutionPass(
         runtime,
         entries,
         deferredRunPatches,
-        issues: [{
-          code: "effect-resolution-failed",
-          pass,
-          actorId: entry.actorId,
-          cardId: entry.cardId,
-          effectIssues: effectPlan.issues,
-        }],
+        issues: [
+          {
+            code: "effect-resolution-failed",
+            pass,
+            actorId: entry.actorId,
+            cardId: entry.cardId,
+            effectIssues: effectPlan.issues,
+          },
+        ],
       };
     }
 
@@ -288,13 +288,15 @@ function executeResolutionPass(
         runtime,
         entries,
         deferredRunPatches,
-        issues: [{
-          code: "patch-apply-failed",
-          pass,
-          actorId: entry.actorId,
-          cardId: entry.cardId,
-          patchIssues: applied.issues,
-        }],
+        issues: [
+          {
+            code: "patch-apply-failed",
+            pass,
+            actorId: entry.actorId,
+            cardId: entry.cardId,
+            patchIssues: applied.issues,
+          },
+        ],
       };
     }
 
@@ -317,13 +319,15 @@ function executeResolutionPass(
         runtime,
         entries,
         deferredRunPatches,
-        issues: [{
-          code: "terminal-evaluation-failed",
-          pass,
-          actorId: entry.actorId,
-          cardId: entry.cardId,
-          terminalIssues: terminal.issues,
-        }],
+        issues: [
+          {
+            code: "terminal-evaluation-failed",
+            pass,
+            actorId: entry.actorId,
+            cardId: entry.cardId,
+            terminalIssues: terminal.issues,
+          },
+        ],
       };
     }
 

@@ -1,12 +1,7 @@
 import type { FateKnotsPhase, FateKnotsRunState } from "./contracts.js";
 
 export type FateKnotsNonCombatRunPhase =
-  | "run-setup"
-  | "exploration"
-  | "transition"
-  | "loot"
-  | "camp"
-  | "finale";
+  "run-setup" | "exploration" | "transition" | "loot" | "camp" | "finale";
 
 export type FateKnotsRunPhaseIssueCode =
   | "run-not-active"

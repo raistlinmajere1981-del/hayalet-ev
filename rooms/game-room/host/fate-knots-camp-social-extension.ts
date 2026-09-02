@@ -61,8 +61,18 @@ export function extendGameRoomHostRuntimeWithFateKnotsCampSocial<T extends GameR
       const npcCommands = createFateKnotsNpcDialogueCommands(api);
 
       const campRegistrations = [
-        [FATE_KNOTS_CAMP_COMMAND_NAMES.open, "room-ui", true, "Open and settle one Fate Knots camp."],
-        [FATE_KNOTS_CAMP_COMMAND_NAMES.get, "room-ui", false, "Read current Fate Knots camp readiness."],
+        [
+          FATE_KNOTS_CAMP_COMMAND_NAMES.open,
+          "room-ui",
+          true,
+          "Open and settle one Fate Knots camp.",
+        ],
+        [
+          FATE_KNOTS_CAMP_COMMAND_NAMES.get,
+          "room-ui",
+          false,
+          "Read current Fate Knots camp readiness.",
+        ],
         [
           FATE_KNOTS_CAMP_COMMAND_NAMES.setLocalEquipment,
           "room-ui",
@@ -103,7 +113,8 @@ export function extendGameRoomHostRuntimeWithFateKnotsCampSocial<T extends GameR
 
       for (const [commandName, scope, mutatesCanon, description] of campRegistrations) {
         const handler = campCommands[commandName];
-        if (handler === undefined) throw new Error(`Missing Fate Knots camp handler: ${commandName}`);
+        if (handler === undefined)
+          throw new Error(`Missing Fate Knots camp handler: ${commandName}`);
         api.registerCommand?.(
           commandName,
           function (payload: unknown) {
@@ -126,14 +137,27 @@ export function extendGameRoomHostRuntimeWithFateKnotsCampSocial<T extends GameR
       }
 
       const npcRegistrations = [
-        [FATE_KNOTS_NPC_DIALOGUE_COMMAND_NAMES.speakLocal, "room-ui", "Speak to a Fate Knots NPC as the local player."],
-        [FATE_KNOTS_NPC_DIALOGUE_COMMAND_NAMES.speakAi2, "ai-slots", "Speak to a Fate Knots NPC as AI2."],
-        [FATE_KNOTS_NPC_DIALOGUE_COMMAND_NAMES.speakRemote, "us1", "Speak to a Fate Knots NPC as US1."],
+        [
+          FATE_KNOTS_NPC_DIALOGUE_COMMAND_NAMES.speakLocal,
+          "room-ui",
+          "Speak to a Fate Knots NPC as the local player.",
+        ],
+        [
+          FATE_KNOTS_NPC_DIALOGUE_COMMAND_NAMES.speakAi2,
+          "ai-slots",
+          "Speak to a Fate Knots NPC as AI2.",
+        ],
+        [
+          FATE_KNOTS_NPC_DIALOGUE_COMMAND_NAMES.speakRemote,
+          "us1",
+          "Speak to a Fate Knots NPC as US1.",
+        ],
       ] as const;
 
       for (const [commandName, scope, description] of npcRegistrations) {
         const handler = npcCommands[commandName];
-        if (handler === undefined) throw new Error(`Missing Fate Knots NPC handler: ${commandName}`);
+        if (handler === undefined)
+          throw new Error(`Missing Fate Knots NPC handler: ${commandName}`);
         api.registerCommand?.(
           commandName,
           async function (payload: unknown) {

@@ -159,10 +159,7 @@ export function updateFateKnotsActiveCombat(
   return { ok: true, run, issues: [] };
 }
 
-function syncPartyActorsFromCombat(
-  run: FateKnotsRunState,
-  combat: FateKnotsCombatState
-): void {
+function syncPartyActorsFromCombat(run: FateKnotsRunState, combat: FateKnotsCombatState): void {
   const combatByActorId = new Map(
     combat.actors
       .filter((actor) => actor.teamId === "party")
@@ -235,10 +232,12 @@ export function exitFateKnotsCombat(
   if (settledCombat.result === "party-victory") {
     const settlement = settleFateKnotsPartyVictory(settledCombat, context.rules);
     if (!settlement.ok) {
-      return failed(runInput, [{
-        code: "victory-settlement-failed",
-        settlementIssues: settlement.issues,
-      }]);
+      return failed(runInput, [
+        {
+          code: "victory-settlement-failed",
+          settlementIssues: settlement.issues,
+        },
+      ]);
     }
     settledCombat = settlement.combat;
   }

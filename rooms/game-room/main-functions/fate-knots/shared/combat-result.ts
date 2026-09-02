@@ -1,7 +1,4 @@
-import type {
-  FateKnotsCombatState,
-  FateKnotsTeamId,
-} from "./contracts.js";
+import type { FateKnotsCombatState, FateKnotsTeamId } from "./contracts.js";
 import type { FateKnotsCombatRuntimeState } from "./combat-runtime.js";
 
 export type FateKnotsCombatTerminalIssueCode =

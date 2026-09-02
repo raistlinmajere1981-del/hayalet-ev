@@ -282,7 +282,8 @@ function applyActorPatch(
     case "heal": {
       applied.hpBefore = actor.hp;
       applied.fallenBefore = actor.fallen;
-      const effectiveMaxHp = getFateKnotsEffectiveMaxHp(combat, runtime, actor.actorId) ?? actor.maxHp;
+      const effectiveMaxHp =
+        getFateKnotsEffectiveMaxHp(combat, runtime, actor.actorId) ?? actor.maxHp;
       actor.hp = Math.min(effectiveMaxHp, Math.max(0, actor.hp + patch.amount));
       applied.hpAfter = actor.hp;
       applied.fallenAfter = actor.fallen;
@@ -325,7 +326,8 @@ function applyActorPatch(
       if (patch.statId === "maxHp") {
         applied.hpBefore = actor.hp;
         applied.fallenBefore = actor.fallen;
-        const effectiveMaxHp = getFateKnotsEffectiveMaxHp(combat, runtime, actor.actorId) ?? actor.maxHp;
+        const effectiveMaxHp =
+          getFateKnotsEffectiveMaxHp(combat, runtime, actor.actorId) ?? actor.maxHp;
         actor.hp = Math.min(actor.hp, effectiveMaxHp);
         if (actor.hp === 0) actor.fallen = true;
         applied.hpAfter = actor.hp;

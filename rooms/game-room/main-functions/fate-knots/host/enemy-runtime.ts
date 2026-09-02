@@ -8,7 +8,15 @@ import { chooseFateKnotsAi0CombatCommit } from "./runtime-ai.js";
 
 export type FateKnotsEnemyCombatCommitAuthorityResult =
   | { ok: true; commit: FateKnotsCombatActionCommit; authority: "policy" | "ai0" }
-  | { ok: false; code: "actor-not-found" | "character-not-found" | "controller-missing" | "policy-unavailable" | "ai0-failed" };
+  | {
+      ok: false;
+      code:
+        | "actor-not-found"
+        | "character-not-found"
+        | "controller-missing"
+        | "policy-unavailable"
+        | "ai0-failed";
+    };
 
 /**
  * Single host-side authority router for opposition commits. Encounter validation

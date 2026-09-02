@@ -1,7 +1,4 @@
-import type {
-  FateKnotsCombatResultPackage,
-  FateKnotsDmScenePacket,
-} from "./contracts.js";
+import type { FateKnotsCombatResultPackage, FateKnotsDmScenePacket } from "./contracts.js";
 
 export const FATE_KNOTS_AI1_RUNTIME_PROFILE_ID = "fate-knots-ai1-dm-runtime-v1";
 
@@ -49,8 +46,7 @@ export interface FateKnotsAi1CombatResultNarrationRequest {
 }
 
 export type FateKnotsAi1RuntimeRequest =
-  | FateKnotsAi1SceneNarrationRequest
-  | FateKnotsAi1CombatResultNarrationRequest;
+  FateKnotsAi1SceneNarrationRequest | FateKnotsAi1CombatResultNarrationRequest;
 
 export interface FateKnotsAi1SceneNarrationResponse {
   requestId: string;
@@ -65,13 +61,10 @@ export interface FateKnotsAi1CombatResultNarrationResponse {
 }
 
 export type FateKnotsAi1RuntimeResponse =
-  | FateKnotsAi1SceneNarrationResponse
-  | FateKnotsAi1CombatResultNarrationResponse;
+  FateKnotsAi1SceneNarrationResponse | FateKnotsAi1CombatResultNarrationResponse;
 
 export type FateKnotsAi1ResponseIssueCode =
-  | "request-id-mismatch"
-  | "response-kind-mismatch"
-  | "empty-narration";
+  "request-id-mismatch" | "response-kind-mismatch" | "empty-narration";
 
 export interface FateKnotsAi1ResponseIssue {
   code: FateKnotsAi1ResponseIssueCode;

@@ -39,9 +39,9 @@
       const state = getBaseState();
       return Boolean(
         state &&
-          state.context &&
-          state.context.activeFeature &&
-          state.context.activeFeature.id === FATE_KNOTS_FEATURE_ID
+        state.context &&
+        state.context.activeFeature &&
+        state.context.activeFeature.id === FATE_KNOTS_FEATURE_ID
       );
     }
 
@@ -93,10 +93,10 @@
     function isFateKnotsCommandResult(message) {
       return Boolean(
         message &&
-          typeof message === "object" &&
-          message.type === "command-result" &&
-          typeof message.command === "string" &&
-          message.command.startsWith("GameRoomFateKnots")
+        typeof message === "object" &&
+        message.type === "command-result" &&
+        typeof message.command === "string" &&
+        message.command.startsWith("GameRoomFateKnots")
       );
     }
 
@@ -154,8 +154,8 @@
       const gameplayUi = getFateKnotsGameplayUi();
       const gameplayHandled = Boolean(
         gameplayUi &&
-          typeof gameplayUi.handleCommandResult === "function" &&
-          gameplayUi.handleCommandResult(message)
+        typeof gameplayUi.handleCommandResult === "function" &&
+        gameplayUi.handleCommandResult(message)
       );
       if (gameplayHandled) return;
 

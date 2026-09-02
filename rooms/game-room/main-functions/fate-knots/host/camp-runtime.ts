@@ -189,9 +189,10 @@ function loadContext(
   return { ok: true, context: { run: snapshot.run, universe: canonical.package } };
 }
 
-function activePlayerSeats(
-  run: FateKnotsRunState
-): { seats: FateKnotsCampPlayerSeatId[]; ambiguousSeatId: FateKnotsCampPlayerSeatId | null } {
+function activePlayerSeats(run: FateKnotsRunState): {
+  seats: FateKnotsCampPlayerSeatId[];
+  ambiguousSeatId: FateKnotsCampPlayerSeatId | null;
+} {
   const partyIds = new Set(run.partyActorIds);
   const counts = new Map<FateKnotsCampPlayerSeatId, number>();
   for (const actor of run.actors) {
@@ -224,7 +225,8 @@ function readHotState(value: unknown): FateKnotsCampHotState | null {
   const activeLocationId = readNonEmptyString(value["activeLocationId"]);
   const activeKnotId =
     value["activeKnotId"] === null ? null : readNonEmptyString(value["activeKnotId"]);
-  if (!runId || !activeLocationId || activeKnotId === null && value["activeKnotId"] !== null) return null;
+  if (!runId || !activeLocationId || (activeKnotId === null && value["activeKnotId"] !== null))
+    return null;
   if (!Array.isArray(value["readySeatIds"])) return null;
   const readySeatIds = value["readySeatIds"].filter(
     (seatId): seatId is FateKnotsCampPlayerSeatId =>
@@ -233,7 +235,10 @@ function readHotState(value: unknown): FateKnotsCampHotState | null {
   return { runId, activeKnotId, activeLocationId, readySeatIds: Array.from(new Set(readySeatIds)) };
 }
 
-function scopedHotState(api: FateKnotsPersistenceApi, run: FateKnotsRunState): FateKnotsCampHotState {
+function scopedHotState(
+  api: FateKnotsPersistenceApi,
+  run: FateKnotsRunState
+): FateKnotsCampHotState {
   const activeLocationId = run.activeLocationId ?? "";
   const stored = readHotState(api.getState(CAMP_COORDINATION_STATE_KEY));
   if (
@@ -269,7 +274,12 @@ function project(
     ]);
   }
   const hot = exited
-    ? { runId: run.runId, activeKnotId: run.activeKnotId, activeLocationId: run.activeLocationId ?? "", readySeatIds: [] }
+    ? {
+        runId: run.runId,
+        activeKnotId: run.activeKnotId,
+        activeLocationId: run.activeLocationId ?? "",
+        readySeatIds: [],
+      }
     : scopedHotState(api, run);
   const readySeatIds = hot.readySeatIds.filter((seatId) => seatResult.seats.includes(seatId));
   return {
@@ -390,7 +400,8 @@ function ready(
   hot.readySeatIds = [...hot.readySeatIds, seatId];
   api.setState(CAMP_COORDINATION_STATE_KEY, hot);
 
-  const allReady = seats.seats.length > 0 && seats.seats.every((id) => hot.readySeatIds.includes(id));
+  const allReady =
+    seats.seats.length > 0 && seats.seats.every((id) => hot.readySeatIds.includes(id));
   if (!allReady) return project(api, loaded.context.run);
 
   const exited = leaveFateKnotsCamp(loaded.context.universe, loaded.context.run);

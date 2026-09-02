@@ -9,9 +9,7 @@ import {
   type FateKnotsCombatRuntimeState,
 } from "./combat-runtime.js";
 
-export type FateKnotsCombatClosureIssueCode =
-  | "combat-still-active"
-  | "status-definition-not-found";
+export type FateKnotsCombatClosureIssueCode = "combat-still-active" | "status-definition-not-found";
 
 export interface FateKnotsCombatClosureIssue {
   code: FateKnotsCombatClosureIssueCode;
@@ -104,7 +102,9 @@ export function closeFateKnotsTerminalCombat(
   const removedCombatStatusIdsByActor: Record<string, string[]> = {};
 
   for (const actor of combat.actors) {
-    const runtimeActor = runtime.actorRuntime.find((candidate) => candidate.actorId === actor.actorId);
+    const runtimeActor = runtime.actorRuntime.find(
+      (candidate) => candidate.actorId === actor.actorId
+    );
     const timedIds = new Set(runtimeActor?.timedStatuses.map((status) => status.statusId) ?? []);
     const removed: string[] = [];
 

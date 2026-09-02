@@ -10,9 +10,7 @@ import {
 } from "./combat-runtime.js";
 
 export type FateKnotsCombatAftermathIssueCode =
-  | "wrong-phase"
-  | "combat-not-active"
-  | "status-definition-not-found";
+  "wrong-phase" | "combat-not-active" | "status-definition-not-found";
 
 export interface FateKnotsCombatAftermathIssue {
   code: FateKnotsCombatAftermathIssueCode;

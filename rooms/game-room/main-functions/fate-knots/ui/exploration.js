@@ -57,10 +57,12 @@
   function createButton(label, onClick, options) {
     const button = createElement("button", "fate-knots-gameplay__button", label);
     button.type = "button";
-    if (options && options.secondary) button.classList.add("fate-knots-gameplay__button--secondary");
+    if (options && options.secondary)
+      button.classList.add("fate-knots-gameplay__button--secondary");
     if (options && options.selected) button.classList.add("is-selected");
     if (options && options.disabled) button.disabled = true;
-    if (!button.disabled && typeof onClick === "function") button.addEventListener("click", onClick);
+    if (!button.disabled && typeof onClick === "function")
+      button.addEventListener("click", onClick);
     return button;
   }
 
@@ -83,7 +85,11 @@
     if (!key || key === state.requestedKey) return;
     state.requestedKey = key;
     state.consensus = null;
-    if (!sendCommand("GameRoomFateKnotsGetExplorationConsensus", { runId: readString(gameplay.runId) })) {
+    if (
+      !sendCommand("GameRoomFateKnotsGetExplorationConsensus", {
+        runId: readString(gameplay.runId),
+      })
+    ) {
       state.requestedKey = "";
     }
   }
@@ -342,8 +348,10 @@
   function explorationErrorMessage(result) {
     const error = readString(result?.error);
     if (error === "exploration-rejected") return "Bu exploration kararı artık geçerli değil.";
-    if (error === "story-transition-rejected") return "Seçilen senaryo yolu engine tarafından reddedildi.";
-    if (error === "encounter-open-rejected") return "Seçilen yolun savaşı güvenli biçimde açılamadı.";
+    if (error === "story-transition-rejected")
+      return "Seçilen senaryo yolu engine tarafından reddedildi.";
+    if (error === "encounter-open-rejected")
+      return "Seçilen yolun savaşı güvenli biçimde açılamadı.";
     if (error === "persistence-rejected" || error === "save-rejected") {
       return "Kayıt durumu güvenli biçimde güncellenemedi.";
     }

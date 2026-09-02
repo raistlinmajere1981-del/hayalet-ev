@@ -40,8 +40,7 @@ export interface FateKnotsSheetImageMaterializerJob {
 }
 
 export type FateKnotsAssetMaterializerJob =
-  | FateKnotsSingleImageMaterializerJob
-  | FateKnotsSheetImageMaterializerJob;
+  FateKnotsSingleImageMaterializerJob | FateKnotsSheetImageMaterializerJob;
 
 export interface FateKnotsMaterializerSourceArtifact {
   jobId: string;
@@ -77,7 +76,10 @@ export interface FateKnotsAssetMaterializationResult {
 }
 
 function sanitizeId(value: string): string {
-  const normalized = value.trim().replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  const normalized = value
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   return normalized || "asset";
 }
 
@@ -102,7 +104,10 @@ function gridForCellCount(count: number): { columns: number; rows: number } {
   return { columns: 4, rows: 2 };
 }
 
-function aspectComponents(aspectRatio: FateKnotsForgeAspectRatio): { width: number; height: number } {
+function aspectComponents(aspectRatio: FateKnotsForgeAspectRatio): {
+  width: number;
+  height: number;
+} {
   if (aspectRatio === "3:4") return { width: 3, height: 4 };
   if (aspectRatio === "4:3") return { width: 4, height: 3 };
   if (aspectRatio === "16:9") return { width: 16, height: 9 };
@@ -232,9 +237,7 @@ export function planFateKnotsAssetMaterialization(
           ? take - (FATE_KNOTS_MATERIALIZER_MIN_SHEET_CELLS - tail)
           : take;
       const adjustedTake =
-        rebalancedTake >= FATE_KNOTS_MATERIALIZER_PREFERRED_SHEET_MIN
-          ? rebalancedTake
-          : take;
+        rebalancedTake >= FATE_KNOTS_MATERIALIZER_PREFERRED_SHEET_MIN ? rebalancedTake : take;
       const chunk = plans.slice(offset, offset + adjustedTake);
       sheetOrdinal += 1;
       jobs.push(createSheetJob(draft, chunk, sheetOrdinal));
@@ -281,20 +284,36 @@ export async function materializeFateKnotsWorldForgeAssets(
         const assetId = rawAsset.assetId.trim();
         const path = rawAsset.path.trim();
         if (assetId === "" || path === "") {
-          failures.push({ jobId: job.jobId, assetIds: assetId ? [assetId] : [], message: "Materializer returned an empty asset id or path." });
+          failures.push({
+            jobId: job.jobId,
+            assetIds: assetId ? [assetId] : [],
+            message: "Materializer returned an empty asset id or path.",
+          });
           continue;
         }
         if (jobSeen.has(assetId)) {
-          failures.push({ jobId: job.jobId, assetIds: [assetId], message: "Materializer returned a duplicate asset id in one job." });
+          failures.push({
+            jobId: job.jobId,
+            assetIds: [assetId],
+            message: "Materializer returned a duplicate asset id in one job.",
+          });
           continue;
         }
         jobSeen.add(assetId);
         if (!expected.has(assetId)) {
-          failures.push({ jobId: job.jobId, assetIds: [assetId], message: "Materializer returned a foreign asset id." });
+          failures.push({
+            jobId: job.jobId,
+            assetIds: [assetId],
+            message: "Materializer returned a foreign asset id.",
+          });
           continue;
         }
         if (assetsById.has(assetId)) {
-          failures.push({ jobId: job.jobId, assetIds: [assetId], message: "Materializer returned an asset id already produced by another job." });
+          failures.push({
+            jobId: job.jobId,
+            assetIds: [assetId],
+            message: "Materializer returned an asset id already produced by another job.",
+          });
           continue;
         }
         assetsById.set(assetId, {
@@ -310,7 +329,11 @@ export async function materializeFateKnotsWorldForgeAssets(
       if (result.sourceArtifact) {
         const sourcePath = result.sourceArtifact.path.trim();
         if (result.sourceArtifact.jobId !== job.jobId || sourcePath === "") {
-          failures.push({ jobId: job.jobId, assetIds: expectedIds, message: "Materializer returned an invalid source artifact identity/path." });
+          failures.push({
+            jobId: job.jobId,
+            assetIds: expectedIds,
+            message: "Materializer returned an invalid source artifact identity/path.",
+          });
         } else {
           sourceArtifacts.push({ ...result.sourceArtifact, path: sourcePath });
         }

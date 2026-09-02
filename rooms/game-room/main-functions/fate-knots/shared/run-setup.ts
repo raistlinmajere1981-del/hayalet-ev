@@ -127,7 +127,9 @@ export function createFateKnotsRunFromSelections(
   const issues: FateKnotsRunSetupIssue[] = [];
   const seatIds = new Set<FateKnotsPlayerSeatId>();
   const characterIds = new Set<string>();
-  const characterById = new Map(universe.characters.map((character) => [character.id, character] as const));
+  const characterById = new Map(
+    universe.characters.map((character) => [character.id, character] as const)
+  );
   const actors: FateKnotsActorState[] = [];
 
   for (const selection of selections) {

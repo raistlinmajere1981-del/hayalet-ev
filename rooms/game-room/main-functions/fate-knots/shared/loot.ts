@@ -297,7 +297,9 @@ export function equipFateKnotsInventoryCard(
       ok: false,
       actor,
       unequippedEquipmentIds: [],
-      issues: [{ code: "equipment-source-missing", actorId: actor.actorId, cardId: equipmentCardId }],
+      issues: [
+        { code: "equipment-source-missing", actorId: actor.actorId, cardId: equipmentCardId },
+      ],
     };
   }
 
