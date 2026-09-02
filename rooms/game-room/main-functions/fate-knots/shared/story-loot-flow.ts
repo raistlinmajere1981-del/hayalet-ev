@@ -21,7 +21,7 @@ export type FateKnotsStoryLootIssue =
 export interface FateKnotsStoryLootResult {
   ok: boolean;
   run: FateKnotsRunState;
-  nextPhase: "exploration" | "finale" | null;
+  nextPhase: "exploration" | null;
   assigned: Array<{
     poolIndex: number;
     cardId: string;
@@ -45,8 +45,15 @@ function fail(run: FateKnotsRunState, issue: FateKnotsStoryLootIssue): FateKnots
 /**
  * Canonical story-encounter loot settlement. Combat exit leaves the source
  * transition/encounter ids attached while loot is pending. Once the unanimous
- * allocation consumes the pool, this helper uses those canonical ids to choose
- * the only valid post-loot destination, then clears tracking atomically.
+ * allocation consumes the pool, this helper returns the run to normal
+ * exploration at the already-applied combat destination and clears tracking
+ * atomically.
+ *
+ * `finalEncounterId` is only optional scenario metadata in V1. Winning that
+ * encounter, with or without loot, never creates a privileged finale phase and
+ * never completes the run by itself. If the victory satisfied objective
+ * prerequisites, the ordinary exploration story resolver may expose an authored
+ * terminal `finale` transition afterwards.
  */
 export function resolveFateKnotsStoryLootDecision(
   universe: FateKnotsUniversePackage,
@@ -82,10 +89,8 @@ export function resolveFateKnotsStoryLootDecision(
     return fail(runInput, { code: "loot-decision-failed", lootIssues: resolved.issues });
   }
 
-  const nextPhase: "exploration" | "finale" =
-    universe.finale.finalEncounterId === encounter.id ? "finale" : "exploration";
   const beforeCleanup = structuredClone(resolved.run);
-  beforeCleanup.phase = nextPhase;
+  beforeCleanup.phase = "exploration";
   const cleaned = clearFateKnotsStoryCombatTracking(beforeCleanup);
   if (!cleaned.ok) {
     return fail(runInput, {
@@ -97,7 +102,7 @@ export function resolveFateKnotsStoryLootDecision(
   return {
     ok: true,
     run: cleaned.run,
-    nextPhase,
+    nextPhase: "exploration",
     assigned: resolved.assigned,
     leftBehindCardIds: resolved.leftBehindCardIds,
     issues: [],
