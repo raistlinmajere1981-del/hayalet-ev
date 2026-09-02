@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-void test("Fate Knots bridge hands safe gameplay state to the future book runtime without drawing it", () => {
+void test("Fate Knots bridge renders the bounded gameplay surface when active-run state exists", () => {
   const bridge = readFileSync(
     "rooms/game-room/main-functions/fate-knots/ui/bridge.js",
     "utf8"
@@ -11,6 +11,8 @@ void test("Fate Knots bridge hands safe gameplay state to the future book runtim
   assert.match(bridge, /function handoffGameplayState\(message\)/);
   assert.match(bridge, /global\.GameRoomFateKnotsGameplayUi/);
   assert.match(bridge, /gameplayUi\.handleState\(message\)/);
+  assert.match(bridge, /gameplayUi\.hasGameplayState\(\)/);
+  assert.match(bridge, /gameplayUi\.render\(root\)/);
   assert.match(bridge, /message\.type === "fate-knots-gameplay-state"/);
   assert.match(bridge, /dispatchFateKnotsEvent\("fate-knots-gameplay-state", message\)/);
 
@@ -19,11 +21,11 @@ void test("Fate Knots bridge hands safe gameplay state to the future book runtim
     bridge.indexOf('message.type === "fate-knots-combat-discussion-state"')
   );
   assert.match(gameplayBranch, /handoffGameplayState\(message\)/);
-  assert.doesNotMatch(gameplayBranch, /render\(\)/);
+  assert.match(gameplayBranch, /if \(isFateKnotsActive\(\)\) render\(\)/);
   assert.doesNotMatch(gameplayBranch, /base\.handleHostMessage/);
 });
 
-void test("Fate Knots bridge hands shared combat discussion to the gameplay surface without Hub rerender", () => {
+void test("Fate Knots bridge rerenders shared combat discussion inside the gameplay surface", () => {
   const bridge = readFileSync(
     "rooms/game-room/main-functions/fate-knots/ui/bridge.js",
     "utf8"
@@ -39,6 +41,18 @@ void test("Fate Knots bridge hands shared combat discussion to the gameplay surf
     bridge.indexOf("if (isFateKnotsCommandResult(message))")
   );
   assert.match(discussionBranch, /handoffCombatDiscussionState\(message\)/);
-  assert.doesNotMatch(discussionBranch, /render\(\)/);
+  assert.match(discussionBranch, /if \(isFateKnotsActive\(\)\) render\(\)/);
   assert.doesNotMatch(discussionBranch, /base\.handleHostMessage/);
+});
+
+void test("Fate combat command results stay on gameplay UI instead of poisoning Hub messages", () => {
+  const bridge = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/ui/bridge.js",
+    "utf8"
+  );
+
+  assert.match(bridge, /const gameplayHandled = Boolean\(/);
+  assert.match(bridge, /gameplayUi\.handleCommandResult\(message\)/);
+  assert.match(bridge, /if \(gameplayHandled\) return;/);
+  assert.match(bridge, /fateKnotsUi\.handleCommandResult\(message\)/);
 });
