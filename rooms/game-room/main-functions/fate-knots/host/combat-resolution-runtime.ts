@@ -187,7 +187,7 @@ function publicCardPresentations(
       cueIds: cueIdsForCard(universe, entry.cardId),
     };
     const snapshot = buildFateKnotsResolvedCardPresentationSnapshot(universe, event);
-    if (!snapshot.ok || !snapshot.snapshot) {
+    if (!snapshot.ok) {
       return {
         ok: false,
         code: snapshot.issues[0]?.code ?? "resolved-card-presentation-failed",
@@ -298,12 +298,7 @@ function resolveTurn(
     resolved.execution.entries
   );
   if (!presentation.ok) {
-    return failed(
-      "presentation-failed",
-      "presentation",
-      presentation.code,
-      presentation.value
-    );
+    return failed("presentation-failed", "presentation", presentation.code, presentation.value);
   }
 
   let nextRun: FateKnotsRunState;
@@ -378,7 +373,7 @@ function resolveTurn(
   }
 
   const saved = saveFateKnotsRunSnapshot(api, nextRun, terminal ? null : nextRuntime);
-  if (!saved.ok || !saved.value) {
+  if (!saved.ok) {
     return {
       ok: false,
       error: "save-rejected",

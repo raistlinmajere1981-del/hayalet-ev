@@ -111,9 +111,7 @@ function withOptionalValue(
 function persistenceIssues(
   issues: FateKnotsPersistenceIssue[]
 ): FateKnotsExplorationConsensusCommandIssue[] {
-  return issues.map((issue) =>
-    withOptionalValue("persistence", issue.code, issue.entryId)
-  );
+  return issues.map((issue) => withOptionalValue("persistence", issue.code, issue.entryId));
 }
 
 function explorationIssues(
@@ -173,9 +171,7 @@ function loadContext(
       ok: false,
       result: fail(
         "universe-rejected",
-        canonical.issues.map((issue) =>
-          withOptionalValue("universe", issue.code, issue.path)
-        )
+        canonical.issues.map((issue) => withOptionalValue("universe", issue.code, issue.path))
       ),
     };
   }
@@ -281,7 +277,7 @@ function advanceUnanimousTransition(
   }
 
   const saved = saveFateKnotsRunSnapshot(api, nextRun, combatRuntime);
-  if (!saved.ok || !saved.value) {
+  if (!saved.ok) {
     return fail("save-rejected", persistenceIssues(saved.issues));
   }
 
