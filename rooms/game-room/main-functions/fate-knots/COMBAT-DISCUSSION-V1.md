@@ -31,7 +31,7 @@ The shared discussion surface remains usable during both:
 
 A player may speak any number of times before completing that turn's move.
 
-Completing one player's move does not close discussion for players who have not yet committed. The discussion surface closes for the turn only when all required standing player-party actors have committed and deterministic resolution begins.
+Completing one player's move closes message input for that seat for the current turn, but does not close the shared transcript or discussion input for players who have not yet committed. The discussion surface closes for the turn only when all required standing player-party actors have committed and deterministic resolution begins.
 
 Fallen actors are not required to commit a normal move.
 
@@ -45,7 +45,7 @@ The intended interaction is:
 2. each player selects up to the engine-configured legal movement/action budget
 3. the player uses one `Complete move` / `Hamleyi tamamla` action
 4. if the engine is still in `combat-discussion`, the first completed move may open `combat-commit` internally before storing that player's validated commit
-5. other uncommitted players may continue talking and changing their own uncommitted plan
+5. that seat's message input and plan editing close for the turn; other uncommitted players may continue talking and changing their own uncommitted plan
 6. committed plans remain hidden from AI0 and must not be exposed as card/target details through the chat UI
 7. after every required standing player-party actor has a legal commit, the host obtains any still-required opposition commits through the normal deterministic-policy/AI0 authority and the engine enters deterministic resolution
 
@@ -59,6 +59,7 @@ Chat content is communication, not mechanical authority.
 - combat legality remains engine-owned
 - `Complete move` must pass through the normal host/engine legality and commit path
 - a completed move is locked for that turn; the V1 host does not allow the same seat to replace it afterward
+- a committed seat cannot append new combat-chat messages for that turn
 - a chat message cannot be interpreted as an implicit card commit
 - AI/player adapters may use visible party discussion as conversational context only where their player-role transport explicitly supports it
 - opposition decisions receive legal combat state through their existing authority path, never the party transcript or hidden party commits
@@ -99,4 +100,4 @@ The first working version may use a simple shared chat panel integrated into the
 
 It does not need recipient chips, threads, speech bubbles per target, or complex scene-directed dialogue routing.
 
-The living-book visual pass may later theme this surface, but the interaction law remains: one party conversation, unlimited messages before move completion, hidden commits, then deterministic resolution.
+The living-book visual pass may later theme this surface, but the interaction law remains: one party conversation, unlimited messages until that seat completes its move, hidden commits, then deterministic resolution after all required seats are ready.
