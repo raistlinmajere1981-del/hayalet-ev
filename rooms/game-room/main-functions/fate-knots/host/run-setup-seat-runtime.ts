@@ -9,10 +9,14 @@ import {
   setFateKnotsRunSetupSeatSelection,
   type FateKnotsRunSetupSeatProjection,
 } from "./run-setup-seat-coordination.js";
-import { buildFateKnotsRunSetupSnapshot, type FateKnotsRunSetupSnapshot } from "./run-setup-state.js";
+import {
+  buildFateKnotsRunSetupSnapshot,
+  type FateKnotsRunSetupSnapshot,
+} from "./run-setup-state.js";
 import type { FateKnotsPlayerSeatId } from "./run-setup.js";
 
 export const FATE_KNOTS_RUN_SETUP_SEAT_COMMAND_NAMES = {
+  getLocalState: "GameRoomFateKnotsGetRunSetupSeats",
   getAi2: "GameRoomFateKnotsAi2GetRunSetup",
   getRemote: "GameRoomFateKnotsRemoteGetRunSetup",
   selectLocal: "GameRoomFateKnotsSelectRunCharacter",
@@ -50,15 +54,19 @@ function persistenceIssues(issues: FateKnotsPersistenceIssue[]): FateKnotsRunSet
   }));
 }
 
-function loadSetup(
-  api: FateKnotsPersistenceApi,
-  universeId: string
-): SetupResult {
+function loadSetup(api: FateKnotsPersistenceApi, universeId: string): SetupResult {
   const universes = loadFateKnotsUniverseStore(api);
   if (universes.issues.length > 0) {
-    return { ok: false, error: "persistence-rejected", setup: null, issues: persistenceIssues(universes.issues) };
+    return {
+      ok: false,
+      error: "persistence-rejected",
+      setup: null,
+      issues: persistenceIssues(universes.issues),
+    };
   }
-  const stored = universes.store.entries.find((entry) => entry.universe.universeId === universeId)?.universe;
+  const stored = universes.store.entries.find(
+    (entry) => entry.universe.universeId === universeId
+  )?.universe;
   if (!stored) {
     return {
       ok: false,
@@ -87,45 +95,67 @@ function readUniverseId(payload: unknown): string | null {
   return isRecord(payload) ? readString(payload["universeId"]) : null;
 }
 
+function project(
+  api: FateKnotsPersistenceApi,
+  payload: unknown
+): SelectionResult {
+  const universeId = readUniverseId(payload);
+  if (!universeId) {
+    return {
+      ok: false,
+      error: "invalid-payload",
+      state: null,
+      issues: [{ source: "payload", code: "invalid-universe-id" }],
+    };
+  }
+  const setup = loadSetup(api, universeId);
+  if (!setup.ok) {
+    return { ok: false, error: setup.error, state: null, issues: setup.issues };
+  }
+  return {
+    ok: true,
+    state: readFateKnotsRunSetupSeatProjection(api, universeId),
+    issues: [],
+  };
+}
+
 function select(
   api: FateKnotsPersistenceApi,
   payload: unknown,
   seatId: FateKnotsPlayerSeatId
 ): SelectionResult {
   if (!isRecord(payload)) {
-    return { ok: false, error: "invalid-payload", state: null, issues: [{ source: "payload", code: "invalid-selection" }] };
+    return {
+      ok: false,
+      error: "invalid-payload",
+      state: null,
+      issues: [{ source: "payload", code: "invalid-selection" }],
+    };
   }
   const universeId = readString(payload["universeId"]);
   const rawCharacterId = payload["characterId"];
   const characterId = rawCharacterId === null ? null : readString(rawCharacterId);
   if (!universeId || (rawCharacterId !== null && !characterId)) {
-    return { ok: false, error: "invalid-payload", state: null, issues: [{ source: "payload", code: "invalid-selection" }] };
+    return {
+      ok: false,
+      error: "invalid-payload",
+      state: null,
+      issues: [{ source: "payload", code: "invalid-selection" }],
+    };
   }
 
   const setup = loadSetup(api, universeId);
   if (!setup.ok) return { ok: false, error: setup.error, state: null, issues: setup.issues };
 
-  if (characterId !== null && !setup.setup.characters.some((character) => character.characterId === characterId)) {
+  if (
+    characterId !== null &&
+    !setup.setup.characters.some((character) => character.characterId === characterId)
+  ) {
     return {
       ok: false,
       error: "character-not-player-selectable",
       state: null,
       issues: [{ source: "universe", code: "character-not-player-selectable", value: characterId }],
-    };
-  }
-
-  const current = readFateKnotsRunSetupSeatProjection(api, universeId);
-  if (
-    characterId !== null &&
-    Object.entries(current.selections).some(
-      ([otherSeatId, selectedCharacterId]) => otherSeatId !== seatId && selectedCharacterId === characterId
-    )
-  ) {
-    return {
-      ok: false,
-      error: "character-already-selected",
-      state: null,
-      issues: [{ source: "seat", code: "character-already-selected", value: characterId }],
     };
   }
 
@@ -138,17 +168,30 @@ function select(
 
 export function createFateKnotsRunSetupSeatCommands(api: FateKnotsPersistenceApi) {
   return {
+    [FATE_KNOTS_RUN_SETUP_SEAT_COMMAND_NAMES.getLocalState](payload?: unknown): SelectionResult {
+      return project(api, payload);
+    },
     [FATE_KNOTS_RUN_SETUP_SEAT_COMMAND_NAMES.getAi2](payload?: unknown): SetupResult {
       const universeId = readUniverseId(payload);
       if (!universeId) {
-        return { ok: false, error: "invalid-payload", setup: null, issues: [{ source: "payload", code: "invalid-universe-id" }] };
+        return {
+          ok: false,
+          error: "invalid-payload",
+          setup: null,
+          issues: [{ source: "payload", code: "invalid-universe-id" }],
+        };
       }
       return loadSetup(api, universeId);
     },
     [FATE_KNOTS_RUN_SETUP_SEAT_COMMAND_NAMES.getRemote](payload?: unknown): SetupResult {
       const universeId = readUniverseId(payload);
       if (!universeId) {
-        return { ok: false, error: "invalid-payload", setup: null, issues: [{ source: "payload", code: "invalid-universe-id" }] };
+        return {
+          ok: false,
+          error: "invalid-payload",
+          setup: null,
+          issues: [{ source: "payload", code: "invalid-universe-id" }],
+        };
       }
       return loadSetup(api, universeId);
     },
