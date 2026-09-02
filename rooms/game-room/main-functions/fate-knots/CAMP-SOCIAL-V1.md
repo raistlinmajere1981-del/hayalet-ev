@@ -4,7 +4,7 @@ This document locks the smallest useful V1 rules for camp and non-combat NPC int
 
 ## Camp
 
-A `camp` story transition moves the canonical run to an authored destination whose location has `campAllowed: true`.
+A `camp` story transition means **camp here** at the current story knot. Its source location must have `campAllowed: true`, and V1 camp transitions do not move the party to a different knot or location. Travel to a campsite, when needed by a universe, is authored as a separate normal story transition before the camp action.
 
 Camp recovery is intentionally simple:
 
@@ -13,6 +13,8 @@ Camp recovery is intentionally simple:
 - a fallen party actor stands up;
 - persistent statuses and injuries are **not** cleared automatically;
 - no food, watch order, sleep quality, camp materials, encumbrance, crafting or random camp-event subsystem exists in V1.
+
+Recovery is settled as part of the canonical unanimous camp transition before that run snapshot is persisted. Reopening an already-settled camp is idempotent and does not repeatedly advance the run revision.
 
 Equipment may be changed only during run setup or camp. Physical ownership remains card-based: an equipment definition can be equipped only when the actor owns an `equipment` card whose `sourceId` references that definition. Equipping replaces any currently equipped definition in the same slot and the engine rebuilds available cards.
 
