@@ -10,6 +10,7 @@ import {
 } from "./loot.js";
 import {
   clearFateKnotsStoryCombatTracking,
+  computeFateKnotsFinaleUnlocked,
   type FateKnotsStoryProgressionIssue,
 } from "./story-progression.js";
 
@@ -51,9 +52,9 @@ function fail(run: FateKnotsRunState, issue: FateKnotsStoryLootIssue): FateKnots
  *
  * `finalEncounterId` is only optional scenario metadata in V1. Winning that
  * encounter, with or without loot, never creates a privileged finale phase and
- * never completes the run by itself. If the victory satisfied objective
- * prerequisites, the ordinary exploration story resolver may expose an authored
- * terminal `finale` transition afterwards.
+ * never completes the run by itself. If the victory or newly assigned loot
+ * satisfied objective prerequisites, the ordinary exploration story resolver
+ * may expose an authored terminal `finale` transition afterwards.
  */
 export function resolveFateKnotsStoryLootDecision(
   universe: FateKnotsUniversePackage,
@@ -91,6 +92,7 @@ export function resolveFateKnotsStoryLootDecision(
 
   const beforeCleanup = structuredClone(resolved.run);
   beforeCleanup.phase = "exploration";
+  beforeCleanup.finaleUnlocked = computeFateKnotsFinaleUnlocked(universe, beforeCleanup);
   const cleaned = clearFateKnotsStoryCombatTracking(beforeCleanup);
   if (!cleaned.ok) {
     return fail(runInput, {
