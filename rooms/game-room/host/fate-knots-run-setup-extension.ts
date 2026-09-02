@@ -75,7 +75,6 @@ export function extendGameRoomHostRuntimeWithFateKnotsRunSetupSeats<T extends Ga
 
       for (const [commandName, scope, description, notifies] of registrations) {
         const handler = commands[commandName];
-        if (handler === undefined) throw new Error(`Missing Fate Knots run setup handler: ${commandName}`);
         api.registerCommand?.(
           commandName,
           function (payload: unknown) {
