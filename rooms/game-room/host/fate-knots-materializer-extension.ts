@@ -1,4 +1,4 @@
-import { registerFateKnotsAssetMaterializer } from "../main-functions/fate-knots/host/forge-service.js";
+import { registerFateKnotsAssetMaterializerForProvider } from "../main-functions/fate-knots/host/forge-service.js";
 import { createFateKnotsProviderAssetMaterializer } from "../main-functions/fate-knots/host/provider-asset-materializer.js";
 import type { FateKnotsTransportApi } from "../main-functions/fate-knots/host/transport.js";
 import type { GameRoomHostApi } from "../shared/host/activation.js";
@@ -12,9 +12,9 @@ type GameRoomHostRuntime = {
 };
 
 /**
- * Installs the concrete World Forge image materializer for the lifetime of one
- * Game Room host activation. The adapter stays provider-neutral by going through
- * SlotBridge and the existing generated-image archive pipeline.
+ * Installs the existing conversational AI1 World Forge image materializer for
+ * one Game Room host activation. Additional backends (notably ai0-local) own
+ * their own registration and cannot silently replace this provider choice.
  */
 export function extendGameRoomHostRuntimeWithFateKnotsMaterializer<T extends GameRoomHostRuntime>(
   baseRuntime: T
@@ -23,13 +23,16 @@ export function extendGameRoomHostRuntimeWithFateKnotsMaterializer<T extends Gam
     ...baseRuntime,
     activate(api: GameRoomHostApi) {
       const transportApi = api as FateKnotsTransportApi;
-      registerFateKnotsAssetMaterializer(createFateKnotsProviderAssetMaterializer(transportApi));
+      registerFateKnotsAssetMaterializerForProvider(
+        "ai1",
+        createFateKnotsProviderAssetMaterializer(transportApi)
+      );
 
       let activated: ActivatedGameRoomHost;
       try {
         activated = baseRuntime.activate(api) as ActivatedGameRoomHost;
       } catch (error) {
-        registerFateKnotsAssetMaterializer(null);
+        registerFateKnotsAssetMaterializerForProvider("ai1", null);
         throw error;
       }
 
@@ -37,7 +40,7 @@ export function extendGameRoomHostRuntimeWithFateKnotsMaterializer<T extends Gam
       return {
         ...activated,
         dispose() {
-          registerFateKnotsAssetMaterializer(null);
+          registerFateKnotsAssetMaterializerForProvider("ai1", null);
           baseDispose?.();
         },
       };
