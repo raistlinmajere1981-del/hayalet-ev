@@ -32,7 +32,7 @@ const FATE_KNOTS_AI0_IMAGE_POLICY = [
   "Use only the image-generation capability explicitly enabled for this message.",
   "Create exactly one image for the requested art brief.",
   "Do not create alternatives, edit project files, browse the web, or perform unrelated work.",
-  "After the image tool succeeds, reply with only {\"ok\":true}.",
+  'After the image tool succeeds, reply with only {"ok":true}.',
 ].join("\n");
 
 type ImageServerState = {
@@ -178,13 +178,15 @@ function readToolIds(value: unknown): string[] {
           ? value["data"]
           : [];
   return Array.from(
-    new Set(source.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== ""))
+    new Set(
+      source.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "")
+    )
   );
 }
 
 function toolHasRequiredOutputContract(value: unknown): boolean {
   if (!Array.isArray(value)) return false;
-  const item = value.find(
+  const item: unknown = value.find(
     (entry) => isRecord(entry) && entry["id"] === FATE_KNOTS_AI0_IMAGE_TOOL_ID
   );
   if (!isRecord(item)) return false;
@@ -276,7 +278,10 @@ async function collectSkillFiles(root: string, depth = 0): Promise<string[]> {
   return files.slice(0, 100);
 }
 
-function parseSkillIdentity(content: string, filePath: string): { name: string; searchText: string } {
+function parseSkillIdentity(
+  content: string,
+  filePath: string
+): { name: string; searchText: string } {
   const head = content.slice(0, 12_000);
   const nameMatch = /^name:\s*["']?([^\r\n"']+)/im.exec(head);
   const descriptionMatch = /^description:\s*["']?([^\r\n"']+)/im.exec(head);
@@ -335,7 +340,9 @@ function buildSystemPrompt(
   return [
     FATE_KNOTS_AI0_IMAGE_POLICY,
     ...(imageSkillName !== null
-      ? [`First load the user-installed skill named "${imageSkillName}" if it is relevant to this request.`]
+      ? [
+          `First load the user-installed skill named "${imageSkillName}" if it is relevant to this request.`,
+        ]
       : []),
     `Then call ${FATE_KNOTS_AI0_IMAGE_TOOL_ID} exactly once.`,
     "Use the art brief from the user message as the tool prompt.",
@@ -403,7 +410,9 @@ class FateKnotsAi0ImageWorkerService {
     const server = await this.ensureServer(workspace.workspacePath, workspace.stagingRoot);
     const capability = await this.probeCapability(server, model, imageSkillNames);
     if (capability.status.available !== true) {
-      throw new Error(capability.status.reason ?? "AI0 image generation capability is unavailable.");
+      throw new Error(
+        capability.status.reason ?? "AI0 image generation capability is unavailable."
+      );
     }
     this.armIdleStop();
 
@@ -706,19 +715,14 @@ class FateKnotsAi0ImageWorkerService {
     }
     const current = this.server;
     this.server = null;
-    if (current === null || current.process.exitCode !== null) return;
+    if (current?.process.exitCode !== null) return;
 
     const pid = current.process.pid;
     if (process.platform === "win32" && typeof pid === "number") {
       await new Promise<void>((resolvePromise) => {
-        execFile(
-          "taskkill.exe",
-          ["/PID", String(pid), "/T", "/F"],
-          { windowsHide: true },
-          () => {
-            resolvePromise();
-          }
-        );
+        execFile("taskkill.exe", ["/PID", String(pid), "/T", "/F"], { windowsHide: true }, () => {
+          resolvePromise();
+        });
       });
       return;
     }
