@@ -1,6 +1,7 @@
 import { extendGameRoomHostRuntimeWithFateKnotsAi2Lifecycle } from "./fate-knots-ai2-lifecycle-extension.js";
 import { extendGameRoomHostRuntimeWithFateKnotsCampSocial } from "./fate-knots-camp-social-extension.js";
 import { extendGameRoomHostRuntimeWithFateKnotsExploration } from "./fate-knots-exploration-extension.js";
+import { extendGameRoomHostRuntimeWithFateKnotsForge } from "./fate-knots-forge-extension.js";
 import { extendGameRoomHostRuntimeWithFateKnotsLoot } from "./fate-knots-loot-extension.js";
 import { extendGameRoomHostRuntimeWithFateKnotsMaterializer } from "./fate-knots-materializer-extension.js";
 import { extendGameRoomHostRuntimeWithFateKnotsPlayerCombat } from "./fate-knots-player-combat-extension.js";
@@ -27,5 +28,6 @@ const fateKnotsAi2Runtime = extendGameRoomHostRuntimeWithFateKnotsAi2Lifecycle(
   fateKnotsPlayerCombatRuntime
 );
 const fateKnotsUs1Runtime = extendGameRoomHostRuntimeWithFateKnotsUs1Lifecycle(fateKnotsAi2Runtime);
+const fateKnotsForgeRuntime = extendGameRoomHostRuntimeWithFateKnotsForge(fateKnotsUs1Runtime);
 
-export default extendGameRoomHostRuntimeWithFateKnotsMaterializer(fateKnotsUs1Runtime);
+export default extendGameRoomHostRuntimeWithFateKnotsMaterializer(fateKnotsForgeRuntime);
