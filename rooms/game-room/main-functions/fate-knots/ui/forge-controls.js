@@ -74,8 +74,9 @@
     }
   }
 
-  function requestCapabilities() {
+  function requestCapabilities(force) {
     if (forgeState.requestedCapabilities) return;
+    if (forgeState.capabilities && force !== true) return;
     forgeState.requestedCapabilities = true;
     if (!sendCommand(CAPABILITIES_COMMAND, {})) {
       forgeState.requestedCapabilities = false;
@@ -114,13 +115,16 @@
       legacyButton.onclick = function () {
         forgeState.open = !forgeState.open;
         forgeState.status = "";
-        requestCapabilities();
+        if (forgeState.open) {
+          forgeState.capabilities = null;
+          requestCapabilities(true);
+        }
         renderCurrent();
       };
     }
 
     if (!forgeState.open) return;
-    requestCapabilities();
+    requestCapabilities(false);
 
     const panel = document.createElement("section");
     panel.className = "fate-knots-hub__universe fate-knots-forge-controls";
