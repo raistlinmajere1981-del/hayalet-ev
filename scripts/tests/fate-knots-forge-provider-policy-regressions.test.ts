@@ -70,10 +70,11 @@ void test("Fate Knots Forge keeps authoring and asset provider boundaries separa
 });
 
 void test("Fate Knots production host and Hub expose provider-aware universe creation", async () => {
-  const [forgeExtension, hostIndex, forgeControls, uiIndex] = await Promise.all([
+  const [forgeExtension, hostIndex, forgeControls, hubUi, uiIndex] = await Promise.all([
     readRepoFile("rooms/game-room/host/fate-knots-forge-extension.ts"),
     readRepoFile("rooms/game-room/host/index.ts"),
     readRepoFile("rooms/game-room/main-functions/fate-knots/ui/forge-controls.js"),
+    readRepoFile("rooms/game-room/main-functions/fate-knots/ui/hub.js"),
     readRepoFile("rooms/game-room/ui/index.html"),
   ]);
 
@@ -84,6 +85,12 @@ void test("Fate Knots production host and Hub expose provider-aware universe cre
   assert.match(forgeExtension, /createFateKnotsUniverseThroughForge/);
 
   assert.match(hostIndex, /extendGameRoomHostRuntimeWithFateKnotsForge/);
+  assert.match(hubUi, /createElement\("div", "fate-knots-hub__actions"\)/);
+  assert.match(
+    forgeControls,
+    /\.fate-knots-hub__header > \.fate-knots-hub__actions/
+  );
+  assert.match(forgeControls, /legacyButton\.disabled = false/);
   assert.match(forgeControls, /authoringProvider/);
   assert.match(forgeControls, /assetProvider/);
   assert.match(forgeControls, /AI0 Local/);
