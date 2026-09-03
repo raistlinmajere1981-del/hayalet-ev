@@ -100,7 +100,9 @@
 
   function injectForgeControls(root) {
     const shell = root.querySelector(".fate-knots-hub");
-    const headerActions = root.querySelector(".fate-knots-hub__header-actions");
+    const headerActions = root.querySelector(
+      ".fate-knots-hub__header > .fate-knots-hub__actions"
+    );
     if (!shell || !headerActions) return;
 
     const legacyButton = Array.from(headerActions.querySelectorAll("button")).find(function (button) {
