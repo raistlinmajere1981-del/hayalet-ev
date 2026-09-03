@@ -42,7 +42,12 @@ void test("Fate Knots managed storage promotion stays below the assets root and 
 void test("Fate Knots host activation owns materializer registration lifetime", () => {
   assert.match(
     extensionSource,
-    /registerFateKnotsAssetMaterializer\(createFateKnotsProviderAssetMaterializer\(transportApi\)\)/
+    /registerFateKnotsAssetMaterializerForProvider\(\s*"ai1",\s*createFateKnotsProviderAssetMaterializer\(transportApi\)\s*\)/
   );
-  assert.match(extensionSource, /registerFateKnotsAssetMaterializer\(null\)/);
+  assert.equal(
+    Array.from(
+      extensionSource.matchAll(/registerFateKnotsAssetMaterializerForProvider\("ai1", null\)/g)
+    ).length,
+    2
+  );
 });
