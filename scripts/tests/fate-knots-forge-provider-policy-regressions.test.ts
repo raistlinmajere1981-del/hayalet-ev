@@ -60,8 +60,33 @@ void test("Fate Knots Forge keeps authoring and asset provider boundaries separa
 
   assert.match(forgeService, /Map<FateKnotsForgeAssetProvider, FateKnotsAssetMaterializerAdapter>/);
   assert.match(forgeService, /materializerAdapters\.get\(policy\.assetProvider\)/);
-  assert.doesNotMatch(forgeService, /materializerAdapters\.get\(policy\.assetProvider\) \?\? materializerAdapters\.get\("ai1"\)/);
+  assert.doesNotMatch(
+    forgeService,
+    /materializerAdapters\.get\(policy\.assetProvider\) \?\? materializerAdapters\.get\("ai1"\)/
+  );
 
   assert.match(materializerExtension, /registerFateKnotsAssetMaterializerForProvider\(/);
   assert.match(materializerExtension, /"ai1"/);
+});
+
+void test("Fate Knots production host and Hub expose provider-aware universe creation", async () => {
+  const [forgeExtension, hostIndex, forgeControls, uiIndex] = await Promise.all([
+    readRepoFile("rooms/game-room/host/fate-knots-forge-extension.ts"),
+    readRepoFile("rooms/game-room/host/index.ts"),
+    readRepoFile("rooms/game-room/main-functions/fate-knots/ui/forge-controls.js"),
+    readRepoFile("rooms/game-room/ui/index.html"),
+  ]);
+
+  assert.match(forgeExtension, /GameRoomFateKnotsGetForgeCapabilities/);
+  assert.match(forgeExtension, /GameRoomFateKnotsCreateUniverse/);
+  assert.match(forgeExtension, /readFateKnotsForgeExecutionPolicy/);
+  assert.match(forgeExtension, /hasFateKnotsAssetMaterializer\(policy\.assetProvider\)/);
+  assert.match(forgeExtension, /createFateKnotsUniverseThroughForge/);
+
+  assert.match(hostIndex, /extendGameRoomHostRuntimeWithFateKnotsForge/);
+  assert.match(forgeControls, /authoringProvider/);
+  assert.match(forgeControls, /assetProvider/);
+  assert.match(forgeControls, /AI0 Local/);
+  assert.match(forgeControls, /option\.disabled = !providerAvailable/);
+  assert.match(uiIndex, /fate-knots\/ui\/forge-controls\.js/);
 });
