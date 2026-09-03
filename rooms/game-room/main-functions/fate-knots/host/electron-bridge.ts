@@ -32,6 +32,35 @@ export interface FateKnotsAi0RoomToolCallResult {
   };
 }
 
+export interface FateKnotsAi0ImageStatusRoomToolCallRequest {
+  roomId: "game-room";
+  operation: "fate-knots-ai0-image-status";
+  requestId: string;
+}
+
+export interface FateKnotsAi0ImageCapabilityStatus {
+  available: boolean;
+  activeModelKey: string | null;
+  providerId: string | null;
+  modelId: string | null;
+  toolId: string | null;
+  compatibleTool: boolean;
+  imageSkillDetected: boolean;
+  imageSkillNames: string[];
+  reason: string | null;
+  workspacePath?: string;
+  stagingRoot?: string;
+  port?: number;
+}
+
+export interface FateKnotsAi0ImageStatusRoomToolCallResult {
+  success: boolean;
+  operation?: string;
+  requestId?: string | null;
+  error?: string;
+  fateKnotsAi0ImageStatus?: FateKnotsAi0ImageCapabilityStatus;
+}
+
 export interface FateKnotsAi0ImageRoomToolCallRequest {
   roomId: "game-room";
   operation: "fate-knots-ai0-image-generate";
@@ -58,11 +87,18 @@ export interface FateKnotsAi0ImageRoomToolCallResult {
     workspacePath: string;
     stagingRoot: string;
     port: number;
+    activeModelKey: string;
   };
 }
 
-type FateKnotsElectronRequest = FateKnotsAi0ElectronRequest | FateKnotsAi0ImageElectronRequest;
-type FateKnotsElectronResult = FateKnotsAi0RoomToolCallResult | FateKnotsAi0ImageRoomToolCallResult;
+type FateKnotsElectronRequest =
+  | FateKnotsAi0ElectronRequest
+  | FateKnotsAi0ImageStatusRoomToolCallRequest
+  | FateKnotsAi0ImageElectronRequest;
+type FateKnotsElectronResult =
+  | FateKnotsAi0RoomToolCallResult
+  | FateKnotsAi0ImageStatusRoomToolCallResult
+  | FateKnotsAi0ImageRoomToolCallResult;
 
 type FateKnotsElectronApi = {
   roomToolsCall: (request: FateKnotsElectronRequest) => Promise<FateKnotsElectronResult>;
@@ -121,6 +157,38 @@ export async function callFateKnotsAi0RoomTool(
       requestId: request.requestId,
       error: error instanceof Error ? error.message : String(error),
     };
+  }
+}
+
+export async function readFateKnotsAi0ImageCapabilityStatus(): Promise<FateKnotsAi0ImageCapabilityStatus> {
+  const electronApi = getFateKnotsElectronApi();
+  const fallback: FateKnotsAi0ImageCapabilityStatus = {
+    available: false,
+    activeModelKey: null,
+    providerId: null,
+    modelId: null,
+    toolId: null,
+    compatibleTool: false,
+    imageSkillDetected: false,
+    imageSkillNames: [],
+    reason: "Fate Knots AI0 image Electron room-tool bridge is unavailable.",
+  };
+  if (electronApi === null) return fallback;
+
+  const request: FateKnotsAi0ImageStatusRoomToolCallRequest = {
+    roomId: "game-room",
+    operation: "fate-knots-ai0-image-status",
+    requestId: `fate-knots-ai0-image-status:${Date.now().toString(36)}`,
+  };
+  try {
+    const result = (await electronApi.roomToolsCall(
+      request
+    )) as FateKnotsAi0ImageStatusRoomToolCallResult;
+    return result.success === true && result.fateKnotsAi0ImageStatus
+      ? result.fateKnotsAi0ImageStatus
+      : { ...fallback, reason: result.error ?? "Fate Knots AI0 image status check failed." };
+  } catch (error) {
+    return { ...fallback, reason: error instanceof Error ? error.message : String(error) };
   }
 }
 
