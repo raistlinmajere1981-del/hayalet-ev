@@ -99,6 +99,28 @@
     return select;
   }
 
+  function formatAi0ImageStatus() {
+    const capabilities = readRecord(forgeState.capabilities);
+    if (!capabilities) {
+      return forgeState.requestedCapabilities ? "AI0 Local yeteneği kontrol ediliyor…" : "";
+    }
+    const status = readRecord(capabilities.ai0ImageStatus);
+    if (!status) return "AI0 Local durum bilgisi alınamadı.";
+
+    const model = readString(status.activeModelKey) || "AI0 modeli seçilmedi";
+    const skillNames = readArray(status.imageSkillNames)
+      .map(readString)
+      .filter(Boolean);
+    const skillText =
+      skillNames.length > 0 ? ` · skill: ${skillNames.join(", ")}` : " · image skill yok";
+    if (status.available === true) {
+      const toolId = readString(status.toolId) || "image_generate";
+      return `AI0 Local hazır · model: ${model}${skillText} · tool: ${toolId}`;
+    }
+    const reason = readString(status.reason) || "uyumlu image generation tool bulunamadı";
+    return `AI0 Local kapalı · model: ${model}${skillText} · ${reason}`;
+  }
+
   function injectForgeControls(root) {
     const shell = root.querySelector(".fate-knots-hub");
     const headerActions = root.querySelector(
@@ -151,6 +173,14 @@
     });
     assetRow.append(assetSelect);
     panel.append(assetRow);
+
+    const ai0StatusText = formatAi0ImageStatus();
+    if (ai0StatusText) {
+      const ai0Status = document.createElement("div");
+      ai0Status.className = "fate-knots-hub__message";
+      ai0Status.textContent = ai0StatusText;
+      panel.append(ai0Status);
+    }
 
     const brief = document.createElement("textarea");
     brief.rows = 4;
