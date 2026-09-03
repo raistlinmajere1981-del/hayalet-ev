@@ -1,3 +1,4 @@
+import { extendGameRoomHostRuntimeWithFateKnotsAi0ImageSmoke } from "./fate-knots-ai0-smoke-extension.js";
 import { extendGameRoomHostRuntimeWithFateKnotsAi2Lifecycle } from "./fate-knots-ai2-lifecycle-extension.js";
 import { extendGameRoomHostRuntimeWithFateKnotsCampSocial } from "./fate-knots-camp-social-extension.js";
 import { extendGameRoomHostRuntimeWithFateKnotsExploration } from "./fate-knots-exploration-extension.js";
@@ -29,5 +30,7 @@ const fateKnotsAi2Runtime = extendGameRoomHostRuntimeWithFateKnotsAi2Lifecycle(
 );
 const fateKnotsUs1Runtime = extendGameRoomHostRuntimeWithFateKnotsUs1Lifecycle(fateKnotsAi2Runtime);
 const fateKnotsForgeRuntime = extendGameRoomHostRuntimeWithFateKnotsForge(fateKnotsUs1Runtime);
+const fateKnotsAi0ImageSmokeRuntime =
+  extendGameRoomHostRuntimeWithFateKnotsAi0ImageSmoke(fateKnotsForgeRuntime);
 
-export default extendGameRoomHostRuntimeWithFateKnotsMaterializer(fateKnotsForgeRuntime);
+export default extendGameRoomHostRuntimeWithFateKnotsMaterializer(fateKnotsAi0ImageSmokeRuntime);

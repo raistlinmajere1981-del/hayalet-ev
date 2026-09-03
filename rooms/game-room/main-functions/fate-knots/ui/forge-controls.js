@@ -6,10 +6,13 @@
 
   const CREATE_COMMAND = "GameRoomFateKnotsCreateUniverse";
   const CAPABILITIES_COMMAND = "GameRoomFateKnotsGetForgeCapabilities";
+  const AI0_TEST_COMMAND = "GameRoomFateKnotsTestAi0Image";
   const forgeState = {
     open: false,
     requestedCapabilities: false,
     capabilities: null,
+    ai0TestRunning: false,
+    ai0TestStatus: "",
     authoringProvider: "ai1",
     assetProvider: "ai1",
     brief: "",
@@ -35,6 +38,10 @@
 
   function readString(value) {
     return typeof value === "string" ? value : "";
+  }
+
+  function readNumber(value) {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
   }
 
   function sendCommand(name, payload) {
@@ -167,6 +174,8 @@
     const assetSelect = makeProviderSelect("assetProviders", forgeState.assetProvider);
     assetSelect.addEventListener("change", function () {
       forgeState.assetProvider = assetSelect.value;
+      forgeState.ai0TestStatus = "";
+      renderCurrent();
     });
     assetRow.append(assetSelect);
     panel.append(assetRow);
@@ -177,6 +186,33 @@
       ai0Status.className = "fate-knots-hub__message";
       ai0Status.textContent = ai0StatusText;
       panel.append(ai0Status);
+    }
+
+    if (forgeState.assetProvider === "ai0-local") {
+      const ai0TestButton = document.createElement("button");
+      ai0TestButton.type = "button";
+      ai0TestButton.className = "fate-knots-hub__button";
+      ai0TestButton.textContent = forgeState.ai0TestRunning ? "AI0 Test çalışıyor…" : "AI0 Test";
+      ai0TestButton.disabled = Boolean(
+        forgeState.ai0TestRunning || !providerAvailable("assetProviders", "ai0-local")
+      );
+      ai0TestButton.addEventListener("click", function () {
+        forgeState.ai0TestRunning = true;
+        forgeState.ai0TestStatus = "AI0 image smoke test başlatılıyor…";
+        if (!sendCommand(AI0_TEST_COMMAND, {})) {
+          forgeState.ai0TestRunning = false;
+          forgeState.ai0TestStatus = "AI0 test başarısız · Komut gönderilemedi.";
+        }
+        renderCurrent();
+      });
+      panel.append(ai0TestButton);
+
+      if (forgeState.ai0TestStatus) {
+        const ai0TestStatus = document.createElement("div");
+        ai0TestStatus.className = "fate-knots-hub__message";
+        ai0TestStatus.textContent = forgeState.ai0TestStatus;
+        panel.append(ai0TestStatus);
+      }
     }
 
     const brief = document.createElement("textarea");
@@ -251,6 +287,28 @@
           readString(resultEnvelope.message) ||
           readString(resultEnvelope.error) ||
           "World Forge hazırlık bilgisi alınamadı.";
+      }
+      return true;
+    }
+
+    if (command === AI0_TEST_COMMAND) {
+      forgeState.ai0TestRunning = false;
+      if (result.ok === true) {
+        const managedPath = readString(result.managedPath);
+        const port = readNumber(result.port);
+        const bytes = readNumber(result.bytes);
+        forgeState.ai0TestStatus =
+          managedPath !== "" && port !== null && bytes !== null
+            ? `AI0 test başarılı · managed: ${managedPath} · port: ${port} · ${bytes} bytes`
+            : "AI0 test başarısız · Smoke sonucu eksik döndü.";
+      } else {
+        forgeState.ai0TestStatus = `AI0 test başarısız · ${
+          readString(result.message) ||
+          readString(result.error) ||
+          readString(resultEnvelope.message) ||
+          readString(resultEnvelope.error) ||
+          "Bilinmeyen hata."
+        }`;
       }
       return true;
     }
