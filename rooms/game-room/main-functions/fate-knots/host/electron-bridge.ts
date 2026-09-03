@@ -32,8 +32,40 @@ export interface FateKnotsAi0RoomToolCallResult {
   };
 }
 
+export interface FateKnotsAi0ImageRoomToolCallRequest {
+  roomId: "game-room";
+  operation: "fate-knots-ai0-image-generate";
+  requestId: string;
+  jobId: string;
+  prompt: string;
+  sourceAspectRatio: string;
+  timeoutMs?: number;
+}
+
+interface FateKnotsAi0ImageElectronRequest extends FateKnotsAi0ImageRoomToolCallRequest {}
+
+export interface FateKnotsAi0ImageRoomToolCallResult {
+  success: boolean;
+  operation?: string;
+  requestId?: string | null;
+  jobId?: string | null;
+  error?: string;
+  fateKnotsAi0Image?: {
+    path: string;
+    mimeType: "image/png";
+    bytes: number;
+    manifestPath: string;
+    workspacePath: string;
+    stagingRoot: string;
+    port: number;
+  };
+}
+
+type FateKnotsElectronRequest = FateKnotsAi0ElectronRequest | FateKnotsAi0ImageElectronRequest;
+type FateKnotsElectronResult = FateKnotsAi0RoomToolCallResult | FateKnotsAi0ImageRoomToolCallResult;
+
 type FateKnotsElectronApi = {
-  roomToolsCall: (request: FateKnotsAi0ElectronRequest) => Promise<FateKnotsAi0RoomToolCallResult>;
+  roomToolsCall: (request: FateKnotsElectronRequest) => Promise<FateKnotsElectronResult>;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -74,7 +106,7 @@ export async function callFateKnotsAi0RoomTool(
   };
 
   try {
-    const result = await electronApi.roomToolsCall(ipcRequest);
+    const result = (await electronApi.roomToolsCall(ipcRequest)) as FateKnotsAi0RoomToolCallResult;
     return result.success === true
       ? result
       : {
@@ -87,6 +119,52 @@ export async function callFateKnotsAi0RoomTool(
       success: false,
       operation: request.operation,
       requestId: request.requestId,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export async function callFateKnotsAi0ImageRoomTool(
+  request: FateKnotsAi0ImageRoomToolCallRequest
+): Promise<FateKnotsAi0ImageRoomToolCallResult> {
+  const electronApi = getFateKnotsElectronApi();
+  if (electronApi === null) {
+    return {
+      success: false,
+      operation: request.operation,
+      requestId: request.requestId,
+      jobId: request.jobId,
+      error: "Fate Knots AI0 image Electron room-tool bridge is unavailable.",
+    };
+  }
+
+  const ipcRequest: FateKnotsAi0ImageElectronRequest = {
+    roomId: "game-room",
+    operation: "fate-knots-ai0-image-generate",
+    requestId: request.requestId,
+    jobId: request.jobId,
+    prompt: request.prompt,
+    sourceAspectRatio: request.sourceAspectRatio,
+    ...(request.timeoutMs !== undefined ? { timeoutMs: request.timeoutMs } : {}),
+  };
+
+  try {
+    const result = (await electronApi.roomToolsCall(
+      ipcRequest
+    )) as FateKnotsAi0ImageRoomToolCallResult;
+    return result.success === true
+      ? result
+      : {
+          ...result,
+          success: false,
+          error: result.error ?? "Fate Knots AI0 image room-tool call failed.",
+        };
+  } catch (error) {
+    return {
+      success: false,
+      operation: request.operation,
+      requestId: request.requestId,
+      jobId: request.jobId,
       error: error instanceof Error ? error.message : String(error),
     };
   }
