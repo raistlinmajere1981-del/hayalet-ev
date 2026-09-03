@@ -133,16 +133,82 @@ function sanitizeManagedSegment(value: string, fallback: string): string {
   return `${stem}-${stableSegmentHash(value)}`;
 }
 
-function imageExtensionForMimeType(mimeType: string): string | null {
+function normalizeImageMimeType(mimeType: string): string {
   const normalized = mimeType.trim().toLowerCase().split(";", 1)[0] ?? "";
+  return normalized === "image/jpg" ? "image/jpeg" : normalized;
+}
+
+function imageExtensionForMimeType(mimeType: string): string | null {
+  const normalized = normalizeImageMimeType(mimeType);
   if (normalized === "image/png") return "png";
-  if (normalized === "image/jpeg" || normalized === "image/jpg") return "jpg";
+  if (normalized === "image/jpeg") return "jpg";
   if (normalized === "image/webp") return "webp";
   if (normalized === "image/gif") return "gif";
   if (normalized === "image/bmp") return "bmp";
   if (normalized === "image/avif") return "avif";
   if (normalized === "image/svg+xml") return "svg";
   return null;
+}
+
+function decodeBase64Prefix(value: string, maxBytes = 4096): Uint8Array | null {
+  try {
+    const binary = atob(value.trim());
+    if (binary.length === 0) return null;
+    const length = Math.min(binary.length, maxBytes);
+    const bytes = new Uint8Array(length);
+    for (let index = 0; index < length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
+  } catch {
+    return null;
+  }
+}
+
+function bytesStartWith(bytes: Uint8Array, signature: readonly number[]): boolean {
+  if (bytes.length < signature.length) return false;
+  return signature.every((byte, index) => bytes[index] === byte);
+}
+
+function asciiSlice(bytes: Uint8Array, start: number, end: number): string {
+  return String.fromCharCode(...bytes.slice(start, end));
+}
+
+function matchesImagePayload(base64: string, mimeType: string): boolean {
+  const normalized = normalizeImageMimeType(mimeType);
+  const bytes = decodeBase64Prefix(base64);
+  if (bytes === null) return false;
+
+  if (normalized === "image/png") {
+    return bytesStartWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  }
+  if (normalized === "image/jpeg") {
+    return bytesStartWith(bytes, [0xff, 0xd8, 0xff]);
+  }
+  if (normalized === "image/gif") {
+    const header = asciiSlice(bytes, 0, 6);
+    return header === "GIF87a" || header === "GIF89a";
+  }
+  if (normalized === "image/webp") {
+    return asciiSlice(bytes, 0, 4) === "RIFF" && asciiSlice(bytes, 8, 12) === "WEBP";
+  }
+  if (normalized === "image/bmp") {
+    return asciiSlice(bytes, 0, 2) === "BM";
+  }
+  if (normalized === "image/avif") {
+    const header = asciiSlice(bytes, 0, Math.min(bytes.length, 64));
+    return header.slice(4, 8) === "ftyp" && (header.includes("avif") || header.includes("avis"));
+  }
+  if (normalized === "image/svg+xml") {
+    const text = new TextDecoder("utf-8").decode(bytes).replace(/^\uFEFF/, "").trimStart();
+    return /<svg(?:\s|>)/i.test(text);
+  }
+  return false;
+}
+
+function pathMatchesImageMimeType(filePath: string, mimeType: string): boolean {
+  const extension = imageExtensionForMimeType(mimeType);
+  return extension !== null && filePath.trim().toLowerCase().endsWith(`.${extension}`);
 }
 
 async function ensureFateKnotsManagedDirectory(directoryPath: string, requestId: string): Promise<void> {
@@ -245,13 +311,16 @@ export async function writeFateKnotsManagedImageFile(
   if (api === null) throw new Error("Fate Knots durable Electron storage bridge is unavailable.");
   const base64 = request.base64.trim();
   if (base64 === "") throw new Error("Fate Knots managed image write received empty bytes.");
-  const mimeType = request.mimeType.trim().toLowerCase().split(";", 1)[0] ?? "";
+  const mimeType = normalizeImageMimeType(request.mimeType);
   if (!mimeType.startsWith("image/")) {
     throw new Error("Fate Knots managed image write requires an image MIME type.");
   }
   const extension = imageExtensionForMimeType(mimeType);
   if (extension === null) {
     throw new Error(`Fate Knots managed image MIME type is unsupported: ${mimeType}`);
+  }
+  if (matchesImagePayload(base64, mimeType) !== true) {
+    throw new Error(`Fate Knots managed image bytes do not match declared MIME type ${mimeType}.`);
   }
 
   const paths = await resolveFateKnotsDurableStoragePaths();
@@ -321,13 +390,19 @@ export async function verifyFateKnotsManagedAssetFiles(
       });
       continue;
     }
-    if (
-      typeof asset.mimeType !== "string" ||
-      !asset.mimeType.trim().toLowerCase().startsWith("image/")
-    ) {
+    const mimeType =
+      typeof asset.mimeType === "string" ? normalizeImageMimeType(asset.mimeType) : "";
+    if (!mimeType.startsWith("image/") || imageExtensionForMimeType(mimeType) === null) {
       failures.push({
         assetId: asset.assetId,
-        message: "Materialized runtime asset must declare an image MIME type.",
+        message: "Materialized runtime asset must declare a supported image MIME type.",
+      });
+      continue;
+    }
+    if (pathMatchesImageMimeType(asset.path, mimeType) !== true) {
+      failures.push({
+        assetId: asset.assetId,
+        message: "Materialized asset extension does not match its declared MIME type.",
       });
       continue;
     }
@@ -339,6 +414,11 @@ export async function verifyFateKnotsManagedAssetFiles(
         failures.push({
           assetId: asset.assetId,
           message: "Materialized asset file is missing or empty.",
+        });
+      } else if (matchesImagePayload(encoded, mimeType) !== true) {
+        failures.push({
+          assetId: asset.assetId,
+          message: "Materialized asset bytes do not match its declared MIME type.",
         });
       }
     } catch {
