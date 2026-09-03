@@ -14,12 +14,13 @@ import {
   validateFateKnotsCardArtBindings,
   type FateKnotsCardArtIssue,
 } from "../shared/card-art.js";
-import { clearFateKnotsForgeSession, setFateKnotsForgeSession } from "./session-state.js";
+import type { FateKnotsForgeAuthoringProvider } from "./forge-provider-policy.js";
 import {
-  dispatchFateKnotsAi1JsonPrompt,
-  openFateKnotsAi1Session,
-  type FateKnotsTransportApi,
-} from "./transport.js";
+  dispatchFateKnotsForgeProviderJsonPrompt,
+  openFateKnotsForgeProviderSession,
+} from "./forge-provider-transport.js";
+import { clearFateKnotsForgeSession, setFateKnotsForgeSession } from "./session-state.js";
+import type { FateKnotsTransportApi } from "./transport.js";
 
 export type FateKnotsWorldForgeAuthoringIssue =
   FateKnotsWorldForgeIssue | FateKnotsPlayabilityIssue | FateKnotsCardArtIssue;
@@ -43,10 +44,13 @@ export type FateKnotsWorldForgeAuthoringResult =
 
 export async function authorFateKnotsWorldForgeDraft(
   api: GameRoomHostApi & FateKnotsTransportApi,
-  request: FateKnotsWorldForgeRequest
+  request: FateKnotsWorldForgeRequest,
+  options: { provider?: FateKnotsForgeAuthoringProvider } = {}
 ): Promise<FateKnotsWorldForgeAuthoringResult> {
-  const opened = await openFateKnotsAi1Session(
+  const provider = options.provider ?? "ai1";
+  const opened = await openFateKnotsForgeProviderSession(
     api,
+    provider,
     `Fate Knots World Forge · ${request.universeId}`
   );
   if (!opened.ok) {
@@ -54,8 +58,9 @@ export async function authorFateKnotsWorldForgeDraft(
   }
 
   setFateKnotsForgeSession(api, request.requestId, opened.sessionRef);
-  const transported = await dispatchFateKnotsAi1JsonPrompt(
+  const transported = await dispatchFateKnotsForgeProviderJsonPrompt(
     api,
+    provider,
     buildFateKnotsWorldForgeAuthoringPrompt(request),
     { sessionRef: opened.sessionRef, timeoutMs: 10 * 60_000 }
   );
