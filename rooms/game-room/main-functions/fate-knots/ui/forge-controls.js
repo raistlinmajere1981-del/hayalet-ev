@@ -28,6 +28,11 @@
     return Array.isArray(value) ? value : [];
   }
 
+  function unwrapCommandResult(value) {
+    const result = readRecord(value) || {};
+    return readRecord(result.data) || result;
+  }
+
   function readString(value) {
     return typeof value === "string" ? value : "";
   }
@@ -35,7 +40,9 @@
   function sendCommand(name, payload) {
     const roomApi = global.roomAPI;
     return Boolean(
-      roomApi && typeof roomApi.sendCommand === "function" && roomApi.sendCommand(name, payload || {})
+      roomApi &&
+      typeof roomApi.sendCommand === "function" &&
+      roomApi.sendCommand(name, payload || {})
     );
   }
 
@@ -57,20 +64,12 @@
 
   function syncSelectionsFromCapabilities() {
     if (!providerAvailable("authoringProviders", forgeState.authoringProvider)) {
-      const fallback = readArray(readRecord(forgeState.capabilities)?.authoringProviders).find(function (
-        candidate
-      ) {
-        return readRecord(candidate)?.available === true;
-      });
+      const fallback = readArray(readRecord(forgeState.capabilities)?.authoringProviders).find(
+        function (candidate) {
+          return readRecord(candidate)?.available === true;
+        }
+      );
       forgeState.authoringProvider = readString(readRecord(fallback)?.provider) || "ai1";
-    }
-    if (!providerAvailable("assetProviders", forgeState.assetProvider)) {
-      const fallback = readArray(readRecord(forgeState.capabilities)?.assetProviders).find(function (
-        candidate
-      ) {
-        return readRecord(candidate)?.available === true;
-      });
-      forgeState.assetProvider = readString(readRecord(fallback)?.provider) || "ai1";
     }
   }
 
@@ -108,9 +107,7 @@
     if (!status) return "AI0 Local durum bilgisi alınamadı.";
 
     const model = readString(status.activeModelKey) || "AI0 modeli seçilmedi";
-    const skillNames = readArray(status.imageSkillNames)
-      .map(readString)
-      .filter(Boolean);
+    const skillNames = readArray(status.imageSkillNames).map(readString).filter(Boolean);
     const skillText =
       skillNames.length > 0 ? ` · skill: ${skillNames.join(", ")}` : " · image skill yok";
     if (status.available === true) {
@@ -123,14 +120,14 @@
 
   function injectForgeControls(root) {
     const shell = root.querySelector(".fate-knots-hub");
-    const headerActions = root.querySelector(
-      ".fate-knots-hub__header > .fate-knots-hub__actions"
-    );
+    const headerActions = root.querySelector(".fate-knots-hub__header > .fate-knots-hub__actions");
     if (!shell || !headerActions) return;
 
-    const legacyButton = Array.from(headerActions.querySelectorAll("button")).find(function (button) {
-      return button.textContent === "Yeni Evren";
-    });
+    const legacyButton = Array.from(headerActions.querySelectorAll("button")).find(
+      function (button) {
+        return button.textContent === "Yeni Evren";
+      }
+    );
     if (legacyButton) {
       legacyButton.disabled = false;
       legacyButton.title = "World Forge ile yeni evren oluştur";
@@ -196,13 +193,14 @@
     const createButton = document.createElement("button");
     createButton.type = "button";
     createButton.className = "fate-knots-hub__button";
-    createButton.textContent = capabilities && capabilities.busy === true ? "Forge çalışıyor…" : "Oluştur";
+    createButton.textContent =
+      capabilities && capabilities.busy === true ? "Forge çalışıyor…" : "Oluştur";
     createButton.disabled = Boolean(
       !capabilities ||
-        capabilities.busy === true ||
-        capabilities.storageAvailable !== true ||
-        !providerAvailable("authoringProviders", forgeState.authoringProvider) ||
-        !providerAvailable("assetProviders", forgeState.assetProvider)
+      capabilities.busy === true ||
+      capabilities.storageAvailable !== true ||
+      !providerAvailable("authoringProviders", forgeState.authoringProvider) ||
+      !providerAvailable("assetProviders", forgeState.assetProvider)
     );
     createButton.addEventListener("click", function () {
       forgeState.status = "World Forge başlatılıyor…";
@@ -236,7 +234,8 @@
   ui.handleCommandResult = function handleForgeCommandResult(message) {
     const record = readRecord(message);
     const command = readString(record?.command);
-    const result = readRecord(record?.result) || {};
+    const resultEnvelope = readRecord(record?.result) || {};
+    const result = unwrapCommandResult(resultEnvelope);
 
     if (command === CAPABILITIES_COMMAND) {
       forgeState.requestedCapabilities = false;
@@ -245,7 +244,13 @@
         syncSelectionsFromCapabilities();
         forgeState.status = "";
       } else {
-        forgeState.status = "World Forge hazırlık bilgisi alınamadı.";
+        forgeState.capabilities = null;
+        forgeState.status =
+          readString(result.message) ||
+          readString(result.error) ||
+          readString(resultEnvelope.message) ||
+          readString(resultEnvelope.error) ||
+          "World Forge hazırlık bilgisi alınamadı.";
       }
       return true;
     }

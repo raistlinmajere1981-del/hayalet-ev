@@ -221,6 +221,13 @@ export type RoomToolCallRequest =
   | RoomToolFateKnotsAi0ImageStatusRequest
   | RoomToolFateKnotsAi0ImageGenerateRequest;
 
+export type RoomToolGenericCallRequest = Exclude<
+  RoomToolCallRequest,
+  | RoomToolFateKnotsAi0CallRequest
+  | RoomToolFateKnotsAi0ImageStatusRequest
+  | RoomToolFateKnotsAi0ImageGenerateRequest
+>;
+
 export interface RoomToolCancelRequest {
   roomId: string;
   jobId: string;

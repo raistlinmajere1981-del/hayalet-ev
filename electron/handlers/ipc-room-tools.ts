@@ -4,7 +4,7 @@ import { roomToolService } from "../room-tool-service.ts";
 import { fateKnotsAi0RuntimeService } from "../fate-knots-ai0-runtime-service.ts";
 import { fateKnotsAi0ImageService } from "../fate-knots-ai0-image-service.ts";
 import type {
-  RoomToolCallRequest,
+  RoomToolGenericCallRequest,
   RoomToolCancelRequest,
   RoomToolFateKnotsAi0CallRequest,
   RoomToolFateKnotsAi0ImageGenerateRequest,
@@ -195,7 +195,7 @@ export function setupRoomToolHandlers(): void {
         };
       }
     }
-    return await roomToolService.handleCall(event, request as RoomToolCallRequest);
+    return await roomToolService.handleCall(event, request as RoomToolGenericCallRequest);
   });
 
   registerHandler("room-tools-cancel", (_event: IpcMainInvokeEvent, request: unknown) => {

@@ -100,5 +100,11 @@ void test("Fate Knots production host and Hub expose provider-aware universe cre
   assert.match(forgeControls, /assetProvider/);
   assert.match(forgeControls, /AI0 Local/);
   assert.match(forgeControls, /option\.disabled = !providerAvailable/);
+  assert.match(forgeControls, /unwrapCommandResult/);
+  assert.match(forgeControls, /readRecord\(result\.data\) \|\| result/);
+  assert.doesNotMatch(
+    forgeControls,
+    /forgeState\.assetProvider = readString\(readRecord\(fallback\)\?\.provider\)/
+  );
   assert.match(uiIndex, /fate-knots\/ui\/forge-controls\.js/);
 });

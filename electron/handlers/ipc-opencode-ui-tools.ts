@@ -183,7 +183,7 @@ export function setupOpencodeUiToolsHandlers(): void {
     }
   });
 
-  registerHandler("opencode-ui-shared-state-write", async (payload: unknown) => {
+  registerHandler("opencode-ui-shared-state-write", async (_event, payload: unknown) => {
     const filePath = getSharedStatePath();
 
     try {

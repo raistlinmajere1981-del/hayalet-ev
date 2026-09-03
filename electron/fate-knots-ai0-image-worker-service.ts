@@ -640,7 +640,7 @@ class FateKnotsAi0ImageWorkerService {
     }
 
     const command = diagnosis.resolvedPath ?? diagnosis.command;
-    const args = ["serve", "--port", String(port), "--hostname", "127.0.0.1", workspacePath];
+    const args = ["serve", "--port", String(port), "--hostname", "127.0.0.1"];
     const spec = buildSpawnSpec(command, args);
     const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
@@ -659,10 +659,12 @@ class FateKnotsAi0ImageWorkerService {
       shell: spec.shell,
       stdio: ["ignore", "pipe", "pipe"],
     });
-    let stderrTail = "";
-    child.stderr.on("data", (chunk: Buffer | string) => {
-      stderrTail = `${stderrTail}${String(chunk)}`.slice(-8_000);
-    });
+    let outputTail = "";
+    const appendOutput = (chunk: Buffer | string): void => {
+      outputTail = `${outputTail}${String(chunk)}`.slice(-8_000);
+    };
+    child.stdout.on("data", appendOutput);
+    child.stderr.on("data", appendOutput);
 
     const candidate: ImageServerState = { process: child, port, workspacePath, stagingRoot };
     this.server = candidate;
@@ -672,8 +674,8 @@ class FateKnotsAi0ImageWorkerService {
     if (!(await this.waitForReady(candidate))) {
       await this.stopServer();
       throw new Error(
-        stderrTail.trim() !== ""
-          ? `Fate Knots AI0 image OpenCode server did not become ready: ${stderrTail.trim()}`
+        outputTail.trim() !== ""
+          ? `Fate Knots AI0 image OpenCode server did not become ready: ${outputTail.trim()}`
           : "Fate Knots AI0 image OpenCode server did not become ready."
       );
     }

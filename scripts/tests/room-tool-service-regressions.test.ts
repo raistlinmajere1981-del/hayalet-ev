@@ -30,8 +30,12 @@ void test("room tool run request supports companion executable selection", () =>
 void test("room tool service stays generic and avoids laboratory-specific branching", () => {
   const serviceSource = readRoomToolServiceTreeSource();
   const handlerSource = readFileSync("electron/handlers/ipc-room-tools.ts", "utf8");
+  const typeSource = readFileSync("src/types/room-tools.ts", "utf8");
 
   assert.match(handlerSource, /registerHandler\("room-tools-call"/);
+  assert.match(typeSource, /export type RoomToolGenericCallRequest = Exclude</);
+  assert.match(serviceSource, /request: RoomToolGenericCallRequest/);
+  assert.match(handlerSource, /request as RoomToolGenericCallRequest/);
   assert.match(handlerSource, /registerHandler\("room-tools-cancel"/);
   assert.match(serviceSource, /case "ensure-dir":/);
   assert.match(serviceSource, /private async ensureDirPath\(/);

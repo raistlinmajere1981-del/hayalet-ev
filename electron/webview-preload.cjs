@@ -239,6 +239,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opcSaveAgentModelPreference: (prefs, folderPath) =>
     ipcRenderer.invoke("opc-save-agent-model-preference", prefs, folderPath),
   opencodeUiApiProxy: (options) => ipcRenderer.invoke("opencode-ui-api-proxy", options),
+  opencodeUiSharedStateRead: () => ipcRenderer.invoke("opencode-ui-shared-state-read"),
+  opencodeUiSharedStateWrite: (state) =>
+    ipcRenderer.invoke("opencode-ui-shared-state-write", state),
   opencodeUiFsListSessions: (dbPath) => ipcRenderer.invoke("opencode-ui-fs-list-sessions", dbPath),
   opencodeUiFsEnsureSession: (sessionId, title, dbPath) =>
     ipcRenderer.invoke("opencode-ui-fs-ensure-session", sessionId, title, dbPath),

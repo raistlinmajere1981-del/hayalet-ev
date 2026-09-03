@@ -21,10 +21,7 @@ void test("Fate Knots AI0 image worker has status/generate room-tools and an iso
   assert.match(types, /RoomToolFateKnotsAi0ImageGenerateRequest/);
   assert.match(ipc, /fateKnotsAi0ImageService\.status\(request\)/);
   assert.match(ipc, /fateKnotsAi0ImageService\.generate\(request\)/);
-  assert.match(
-    compatibilityService,
-    /fateKnotsAi0ImageWorkerService as fateKnotsAi0ImageService/
-  );
+  assert.match(compatibilityService, /fateKnotsAi0ImageWorkerService as fateKnotsAi0ImageService/);
 
   assert.match(imageService, /FATE_KNOTS_AI0_IMAGE_PORT_START = 4135/);
   assert.match(imageService, /FATE_KNOTS_AI0_IMAGE_PORT_END = 4149/);
@@ -49,21 +46,38 @@ void test("Fate Knots never installs or injects an image plugin on the user's be
 });
 
 void test("Fate Knots AI0 image capability uses the active AI0 model and validates a file-producing tool", async () => {
-  const [imageService, activeModel] = await Promise.all([
+  const [imageService, activeModel, webviewPreload, opencodeUiHandlers] = await Promise.all([
     readRepoFile("electron/fate-knots-ai0-image-worker-service.ts"),
     readRepoFile("electron/fate-knots-ai0-active-model.ts"),
+    readRepoFile("electron/webview-preload.cjs"),
+    readRepoFile("electron/handlers/ipc-opencode-ui-tools.ts"),
   ]);
 
   assert.match(activeModel, /"opencode-ui-state\.json"/);
   assert.match(activeModel, /lastSelectedModelKey/);
   assert.match(activeModel, /defaultModelKey/);
+  assert.match(webviewPreload, /opencodeUiSharedStateRead/);
+  assert.match(webviewPreload, /opencodeUiSharedStateWrite/);
+  assert.match(
+    opencodeUiHandlers,
+    /registerHandler\("opencode-ui-shared-state-write", async \(_event, payload: unknown\)/
+  );
   assert.match(imageService, /FATE_KNOTS_AI0_IMAGE_TOOL_ID = "image_generate"/);
   assert.match(imageService, /\/experimental\/tool\/ids/);
   assert.match(imageService, /\/experimental\/tool\?/);
   assert.match(imageService, /toolHasRequiredOutputContract/);
   assert.match(imageService, /propertiesValue\["output_path"\]/);
-  assert.match(imageService, /model:\s*\{ providerID: model\.providerID, modelID: model\.modelID \}/);
+  assert.match(
+    imageService,
+    /model:\s*\{ providerID: model\.providerID, modelID: model\.modelID \}/
+  );
   assert.match(imageService, /tools:\s*buildToolSelection/);
+  assert.match(
+    imageService,
+    /const args = \["serve", "--port", String\(port\), "--hostname", "127\.0\.0\.1"\]/
+  );
+  assert.match(imageService, /cwd: workspacePath/);
+  assert.doesNotMatch(imageService, /"127\.0\.0\.1", workspacePath/);
 });
 
 void test("Fate Knots image skills are discovery-only while staging keeps real PNG verification", async () => {
