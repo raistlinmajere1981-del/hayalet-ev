@@ -42,7 +42,7 @@ export interface FateKnotsAi0ImageRoomToolCallRequest {
   timeoutMs?: number;
 }
 
-interface FateKnotsAi0ImageElectronRequest extends FateKnotsAi0ImageRoomToolCallRequest {}
+type FateKnotsAi0ImageElectronRequest = FateKnotsAi0ImageRoomToolCallRequest;
 
 export interface FateKnotsAi0ImageRoomToolCallResult {
   success: boolean;
