@@ -1925,6 +1925,47 @@ async function readLatestArchivedReply(
   };
 }
 
+function mergeSyncedAndArchivedReply(
+  syncedReply: SlotBridgeReply | null,
+  archivedReply: SlotBridgeReply | null,
+  previousReply: SlotBridgeReply | null
+): SlotBridgeReply | null {
+  if (syncedReply === null) return archivedReply;
+  if (archivedReply === null) return syncedReply;
+
+  const syncedMessageId = syncedReply.messageId?.trim() ?? "";
+  const archivedMessageId = archivedReply.messageId?.trim() ?? "";
+  if (syncedMessageId !== "" && syncedMessageId === archivedMessageId) {
+    const syncedAttachments = syncedReply.attachments ?? [];
+    const archivedAttachments = archivedReply.attachments ?? [];
+    const attachments =
+      archivedAttachments.length > 0 ? archivedAttachments : syncedAttachments;
+    return {
+      ...syncedReply,
+      ...(archivedReply.brokerMessageId !== undefined
+        ? { brokerMessageId: archivedReply.brokerMessageId }
+        : {}),
+      ...(archivedReply.clientRequestId !== undefined
+        ? { clientRequestId: archivedReply.clientRequestId }
+        : {}),
+      ...(archivedReply.eventSeq !== undefined ? { eventSeq: archivedReply.eventSeq } : {}),
+      ...(attachments.length > 0 ? { attachments } : {}),
+    };
+  }
+
+  const previousMessageId = previousReply?.messageId?.trim() ?? "";
+  if (
+    previousMessageId !== "" &&
+    syncedMessageId === previousMessageId &&
+    archivedMessageId !== "" &&
+    archivedMessageId !== previousMessageId
+  ) {
+    return archivedReply;
+  }
+
+  return syncedReply;
+}
+
 async function syncReplyTarget(
   target: UnifiedMessageTarget,
   envelope: SlotBridgeEnvelope,
@@ -1994,14 +2035,17 @@ async function waitForReply(
 
     const syncResult = await syncReplyTarget(targetSlot, envelope, conversationId);
     const nextConversationId = syncResult.conversationId;
-    const reply =
-      syncResult.latestReply ??
-      (await readLatestArchivedReply(
-        targetSlot,
-        nextConversationId,
-        envelope,
-        previousReply?.eventSeq ?? null
-      ));
+    const archivedReply = await readLatestArchivedReply(
+      targetSlot,
+      nextConversationId,
+      envelope,
+      previousReply?.eventSeq ?? null
+    );
+    const reply = mergeSyncedAndArchivedReply(
+      syncResult.latestReply,
+      archivedReply,
+      previousReply
+    );
     const replyChanged =
       reply !== null &&
       (previousReply?.messageId === undefined || previousReply.messageId !== reply.messageId);
