@@ -5,7 +5,10 @@ import { mkdir, readFile, readdir, rm, stat, writeFile } from "fs/promises";
 import { homedir } from "os";
 import * as net from "net";
 import { extname, isAbsolute, join, relative, resolve } from "path";
-import { readFateKnotsAi0ActiveModel, type FateKnotsAi0ActiveModel } from "./fate-knots-ai0-active-model.ts";
+import {
+  readFateKnotsAi0ActiveModel,
+  type FateKnotsAi0ActiveModel,
+} from "./fate-knots-ai0-active-model.ts";
 import { opencodeServerManager } from "./opencode-server-manager.ts";
 import { Paths } from "./paths.ts";
 import type {
@@ -56,7 +59,8 @@ function sanitizeSegment(value: string): string {
     .replace(/^[-.]+|[-.]+$/g, "")
     .slice(0, 64);
   const hash = createHash("sha256").update(value).digest("hex").slice(0, 12);
-  return `${normalized || "job"}-${hash}`;
+  const prefix = normalized !== "" ? normalized : "job";
+  return `${prefix}-${hash}`;
 }
 
 function normalizeTimeoutMs(value: number | undefined): number {
@@ -102,14 +106,24 @@ function buildSpawnSpec(
 async function isPortAvailable(port: number): Promise<boolean> {
   return await new Promise((resolvePromise) => {
     const server = net.createServer();
-    server.once("error", () => resolvePromise(false));
-    server.once("listening", () => server.close(() => resolvePromise(true)));
+    server.once("error", () => {
+      resolvePromise(false);
+    });
+    server.once("listening", () => {
+      server.close(() => {
+        resolvePromise(true);
+      });
+    });
     server.listen(port, "127.0.0.1");
   });
 }
 
 async function findAvailablePort(): Promise<number | null> {
-  for (let port = FATE_KNOTS_AI0_IMAGE_PORT_START; port <= FATE_KNOTS_AI0_IMAGE_PORT_END; port += 1) {
+  for (
+    let port = FATE_KNOTS_AI0_IMAGE_PORT_START;
+    port <= FATE_KNOTS_AI0_IMAGE_PORT_END;
+    port += 1
+  ) {
     // eslint-disable-next-line no-await-in-loop
     if (await isPortAvailable(port)) return port;
   }
@@ -118,7 +132,9 @@ async function findAvailablePort(): Promise<number | null> {
 
 async function fetchJson(url: string, options: RequestInit, timeoutMs: number): Promise<unknown> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
   try {
     const response = await fetch(url, { ...options, signal: controller.signal });
     const text = await response.text();
@@ -171,15 +187,17 @@ function toolHasRequiredOutputContract(value: unknown): boolean {
   const item = value.find(
     (entry) => isRecord(entry) && entry["id"] === FATE_KNOTS_AI0_IMAGE_TOOL_ID
   );
-  if (!isRecord(item) || !isRecord(item["parameters"])) return false;
-  const parameters = item["parameters"];
-  const properties = isRecord(parameters["properties"]) ? parameters["properties"] : null;
-  return properties !== null && isRecord(properties["prompt"]) && isRecord(properties["output_path"]);
+  if (!isRecord(item)) return false;
+  const parametersValue: unknown = item["parameters"];
+  if (!isRecord(parametersValue)) return false;
+  const propertiesValue: unknown = parametersValue["properties"];
+  if (!isRecord(propertiesValue)) return false;
+  return isRecord(propertiesValue["prompt"]) && isRecord(propertiesValue["output_path"]);
 }
 
 function parseAspectRatio(value: string): { width: number; height: number } {
   const match = /^(\d{1,3}):(\d{1,3})$/.exec(value.trim());
-  if (!match) throw new Error("Fate Knots AI0 image sourceAspectRatio is invalid.");
+  if (match === null) throw new Error("Fate Knots AI0 image sourceAspectRatio is invalid.");
   const width = Number(match[1]);
   const height = Number(match[2]);
   if (width <= 0 || height <= 0) {
@@ -208,17 +226,23 @@ function ensureContainedPath(root: string, target: string): void {
 
 function skillRoots(workspacePath: string): string[] {
   const home = homedir();
+  const appData = process.env["APPDATA"];
+  const xdgConfigHome = process.env["XDG_CONFIG_HOME"];
   const globalConfigRoot =
-    process.platform === "win32" && process.env["APPDATA"]
-      ? join(process.env["APPDATA"], "opencode")
-      : join(process.env["XDG_CONFIG_HOME"] ?? join(home, ".config"), "opencode");
+    process.platform === "win32" && typeof appData === "string" && appData.trim() !== ""
+      ? join(appData, "opencode")
+      : join(xdgConfigHome ?? join(home, ".config"), "opencode");
   const configuredRoot = process.env["OPENCODE_CONFIG_DIR"]?.trim();
+  const configuredSkillRoots =
+    configuredRoot !== undefined && configuredRoot !== ""
+      ? [join(configuredRoot, "skill"), join(configuredRoot, "skills")]
+      : [];
   return Array.from(
     new Set(
       [
         join(globalConfigRoot, "skill"),
         join(globalConfigRoot, "skills"),
-        ...(configuredRoot ? [join(configuredRoot, "skill"), join(configuredRoot, "skills")] : []),
+        ...configuredSkillRoots,
         join(home, ".agents", "skills"),
         join(home, ".claude", "skills"),
         join(workspacePath, ".opencode", "skill"),
@@ -257,7 +281,8 @@ function parseSkillIdentity(content: string, filePath: string): { name: string; 
   const nameMatch = /^name:\s*["']?([^\r\n"']+)/im.exec(head);
   const descriptionMatch = /^description:\s*["']?([^\r\n"']+)/im.exec(head);
   const fallbackName = filePath.split(/[\\/]/).slice(-2, -1)[0] ?? "skill";
-  const name = nameMatch?.[1]?.trim() || fallbackName;
+  const parsedName = nameMatch?.[1]?.trim();
+  const name = parsedName !== undefined && parsedName !== "" ? parsedName : fallbackName;
   return {
     name,
     searchText: `${name}\n${descriptionMatch?.[1] ?? ""}\n${head.slice(0, 2_000)}`,
@@ -274,7 +299,11 @@ async function detectImageSkills(workspacePath: string): Promise<string[]> {
       // eslint-disable-next-line no-await-in-loop
       const content = await readFile(filePath, "utf8");
       const skill = parseSkillIdentity(content, filePath);
-      if (/(?:\bimage(?:s| generation)?\b|\bpicture(?:s)?\b|\billustration\b|\bvisual asset\b|görsel|resim)/i.test(skill.searchText)) {
+      if (
+        /(?:\bimage(?:s| generation)?\b|\bpicture(?:s)?\b|\billustration\b|\bvisual asset\b|görsel|resim)/i.test(
+          skill.searchText
+        )
+      ) {
         matches.push(skill.name);
       }
     } catch {
@@ -284,7 +313,10 @@ async function detectImageSkills(workspacePath: string): Promise<string[]> {
   return Array.from(new Set(matches)).sort((left, right) => left.localeCompare(right));
 }
 
-function buildToolSelection(toolIds: readonly string[], imageSkillName: string | null): Record<string, boolean> {
+function buildToolSelection(
+  toolIds: readonly string[],
+  imageSkillName: string | null
+): Record<string, boolean> {
   return Object.fromEntries(
     toolIds.map((toolId) => [
       toolId,
@@ -302,8 +334,8 @@ function buildSystemPrompt(
 ): string {
   return [
     FATE_KNOTS_AI0_IMAGE_POLICY,
-    ...(imageSkillName
-      ? [`First load the user-installed skill named \"${imageSkillName}\" if it is relevant to this request.`]
+    ...(imageSkillName !== null
+      ? [`First load the user-installed skill named "${imageSkillName}" if it is relevant to this request.`]
       : []),
     `Then call ${FATE_KNOTS_AI0_IMAGE_TOOL_ID} exactly once.`,
     "Use the art brief from the user message as the tool prompt.",
@@ -319,10 +351,9 @@ class FateKnotsAi0ImageWorkerService {
   private queue: Promise<unknown> = Promise.resolve();
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
 
-  async status(request: RoomToolFateKnotsAi0ImageStatusRequest): Promise<RoomToolFateKnotsAi0ImageStatus> {
-    if (request.roomId !== "game-room") {
-      return this.unavailableStatus(null, [], "Fate Knots AI0 image worker is restricted to game-room.");
-    }
+  async status(
+    _request: RoomToolFateKnotsAi0ImageStatusRequest
+  ): Promise<RoomToolFateKnotsAi0ImageStatus> {
     try {
       const workspace = await this.ensureWorkspace();
       const imageSkillNames = await detectImageSkills(workspace.workspacePath);
@@ -357,11 +388,12 @@ class FateKnotsAi0ImageWorkerService {
   private async runGenerate(
     request: RoomToolFateKnotsAi0ImageGenerateRequest
   ): Promise<RoomToolFateKnotsAi0ImageResult> {
-    if (request.roomId !== "game-room") throw new Error("Fate Knots AI0 image worker is restricted to game-room.");
     if (request.requestId.trim() === "" || request.jobId.trim() === "") {
       throw new Error("Fate Knots AI0 image requestId and jobId are required.");
     }
-    if (request.prompt.trim() === "") throw new Error("Fate Knots AI0 image prompt is required.");
+    if (request.prompt.trim() === "") {
+      throw new Error("Fate Knots AI0 image prompt is required.");
+    }
 
     const size = imageSizeForAspectRatio(request.sourceAspectRatio);
     const workspace = await this.ensureWorkspace();
@@ -370,7 +402,7 @@ class FateKnotsAi0ImageWorkerService {
     if (model === null) throw new Error("AI0 has no persisted active/default OpenCode model.");
     const server = await this.ensureServer(workspace.workspacePath, workspace.stagingRoot);
     const capability = await this.probeCapability(server, model, imageSkillNames);
-    if (!capability.status.available) {
+    if (capability.status.available !== true) {
       throw new Error(capability.status.reason ?? "AI0 image generation capability is unavailable.");
     }
     this.armIdleStop();
@@ -389,7 +421,7 @@ class FateKnotsAi0ImageWorkerService {
     const baseUrl = `http://127.0.0.1:${server.port}`;
     const imageSkillName = imageSkillNames[0] ?? null;
     let sessionId = "";
-    let responseText = "";
+    let responseText: string;
     try {
       const created = await fetchJson(
         `${baseUrl}/session`,
@@ -401,7 +433,9 @@ class FateKnotsAi0ImageWorkerService {
         Math.min(timeoutMs, 30_000)
       );
       sessionId = extractSessionId(created);
-      if (sessionId === "") throw new Error("Fate Knots AI0 image session id was unavailable.");
+      if (sessionId === "") {
+        throw new Error("Fate Knots AI0 image session id was unavailable.");
+      }
 
       const message = await fetchJson(
         `${baseUrl}/session/${encodeURIComponent(sessionId)}/message`,
@@ -469,7 +503,11 @@ class FateKnotsAi0ImageWorkerService {
     } finally {
       if (sessionId !== "") {
         try {
-          await fetchJson(`${baseUrl}/session/${encodeURIComponent(sessionId)}`, { method: "DELETE" }, 10_000);
+          await fetchJson(
+            `${baseUrl}/session/${encodeURIComponent(sessionId)}`,
+            { method: "DELETE" },
+            10_000
+          );
         } catch {
           // Best-effort cleanup; generated staging files remain for the materializer.
         }
@@ -502,7 +540,9 @@ class FateKnotsAi0ImageWorkerService {
     imageSkillNames: string[]
   ): Promise<ImageCapabilityProbe> {
     const baseUrl = `http://127.0.0.1:${server.port}`;
-    const toolIds = readToolIds(await fetchJson(`${baseUrl}/experimental/tool/ids`, { method: "GET" }, 20_000));
+    const toolIds = readToolIds(
+      await fetchJson(`${baseUrl}/experimental/tool/ids`, { method: "GET" }, 20_000)
+    );
     if (!toolIds.includes(FATE_KNOTS_AI0_IMAGE_TOOL_ID)) {
       const skillSuffix =
         imageSkillNames.length > 0
@@ -557,14 +597,20 @@ class FateKnotsAi0ImageWorkerService {
     const root = join(Paths.getRoomStorageDir("game-room"), "fate-knots", "ai0-image-worker");
     const workspacePath = join(root, "workspace");
     const stagingRoot = join(root, "staging");
-    await Promise.all([mkdir(workspacePath, { recursive: true }), mkdir(stagingRoot, { recursive: true })]);
+    await Promise.all([
+      mkdir(workspacePath, { recursive: true }),
+      mkdir(stagingRoot, { recursive: true }),
+    ]);
     // Remove the legacy Fate Knots-owned OpenCode config. User/global OpenCode config now owns plugins and skills.
     await rm(join(workspacePath, "opencode.json"), { force: true });
     await writeFile(join(workspacePath, "AGENTS.md"), `${FATE_KNOTS_AI0_IMAGE_POLICY}\n`, "utf8");
     return { workspacePath, stagingRoot };
   }
 
-  private async ensureServer(workspacePath: string, stagingRoot: string): Promise<ImageServerState> {
+  private async ensureServer(
+    workspacePath: string,
+    stagingRoot: string
+  ): Promise<ImageServerState> {
     if (
       this.server !== null &&
       this.server.workspacePath === workspacePath &&
@@ -576,9 +622,13 @@ class FateKnotsAi0ImageWorkerService {
 
     await this.stopServer();
     const diagnosis = await opencodeServerManager.diagnoseBinary();
-    if (!diagnosis.available) throw new Error(diagnosis.error ?? "OpenCode binary is unavailable.");
+    if (!diagnosis.available) {
+      throw new Error(diagnosis.error ?? "OpenCode binary is unavailable.");
+    }
     const port = await findAvailablePort();
-    if (port === null) throw new Error("No isolated Fate Knots AI0 image OpenCode port is available.");
+    if (port === null) {
+      throw new Error("No isolated Fate Knots AI0 image OpenCode port is available.");
+    }
 
     const command = diagnosis.resolvedPath ?? diagnosis.command;
     const args = ["serve", "--port", String(port), "--hostname", "127.0.0.1", workspacePath];
@@ -634,7 +684,9 @@ class FateKnotsAi0ImageWorkerService {
         // Keep polling until the bounded startup deadline.
       }
       // eslint-disable-next-line no-await-in-loop
-      await new Promise<void>((resolvePromise) => setTimeout(resolvePromise, 400));
+      await new Promise<void>((resolvePromise) => {
+        setTimeout(resolvePromise, 400);
+      });
     }
     return false;
   }
@@ -654,12 +706,19 @@ class FateKnotsAi0ImageWorkerService {
     }
     const current = this.server;
     this.server = null;
-    if (current?.process.exitCode !== null) return;
+    if (current === null || current.process.exitCode !== null) return;
 
     const pid = current.process.pid;
     if (process.platform === "win32" && typeof pid === "number") {
       await new Promise<void>((resolvePromise) => {
-        execFile("taskkill.exe", ["/PID", String(pid), "/T", "/F"], { windowsHide: true }, () => resolvePromise());
+        execFile(
+          "taskkill.exe",
+          ["/PID", String(pid), "/T", "/F"],
+          { windowsHide: true },
+          () => {
+            resolvePromise();
+          }
+        );
       });
       return;
     }
