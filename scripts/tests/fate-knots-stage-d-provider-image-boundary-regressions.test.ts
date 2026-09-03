@@ -24,8 +24,9 @@ void test("Fate Knots Stage D stays on the host provider image-generation bounda
   assert.match(materializer, /getFateKnotsImageSheetCropRect/);
   assert.match(materializer, /canvas\.toDataURL\(FATE_KNOTS_CROP_MIME_TYPE\)/);
 
-  assert.match(imageSheet, /FATE_KNOTS_SHEET_SAFE_INSET/);
+  assert.match(imageSheet, /safeInsetRatio/);
   assert.match(imageSheet, /getFateKnotsImageSheetCropRect/);
+  assert.match(imageSheet, /FATE_KNOTS_IMAGE_SHEET_PROMPT_RULES/);
 
   assert.match(slotBridge, /function mergeSyncedAndArchivedReply/);
   assert.match(slotBridge, /const archivedReply = await readLatestArchivedReply\(/);
