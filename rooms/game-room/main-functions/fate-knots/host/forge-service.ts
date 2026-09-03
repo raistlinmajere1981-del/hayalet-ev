@@ -1,6 +1,11 @@
 import type { GameRoomHostApi } from "../../../shared/host/activation.js";
 import type { FateKnotsAssetMaterializerAdapter } from "../forge/materializer.js";
 import { getFateKnotsDurableStorageError } from "./durable-persistence.js";
+import {
+  readFateKnotsForgeExecutionPolicy,
+  type FateKnotsForgeAssetProvider,
+  type FateKnotsForgeExecutionPolicy,
+} from "./forge-provider-policy.js";
 import type { FateKnotsTransportApi } from "./transport.js";
 import {
   runFateKnotsWorldForge,
@@ -24,9 +29,10 @@ export interface FateKnotsForgeReadiness {
   storageAvailable: boolean;
   busy: boolean;
   progress: FateKnotsWorldForgeProgress | null;
+  policy: FateKnotsForgeExecutionPolicy;
 }
 
-let materializerAdapter: FateKnotsAssetMaterializerAdapter | null = null;
+const materializerAdapters = new Map<FateKnotsForgeAssetProvider, FateKnotsAssetMaterializerAdapter>();
 
 function isProgress(value: unknown): value is FateKnotsWorldForgeProgress {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
@@ -46,18 +52,30 @@ function isBusyProgress(progress: FateKnotsWorldForgeProgress | null): boolean {
 }
 
 /**
- * Registers the concrete image materializer supplied by the local/provider
- * integration layer. The headless Fate Knots package never imports provider DOM
- * code directly; removing the adapter makes World Forge fail closed.
+ * Backward-compatible AI1 registration. Provider integrations that own another
+ * materialization backend should use registerFateKnotsAssetMaterializerForProvider.
  */
 export function registerFateKnotsAssetMaterializer(
   adapter: FateKnotsAssetMaterializerAdapter | null
 ): void {
-  materializerAdapter = adapter;
+  registerFateKnotsAssetMaterializerForProvider("ai1", adapter);
 }
 
-export function hasFateKnotsAssetMaterializer(): boolean {
-  return materializerAdapter !== null;
+export function registerFateKnotsAssetMaterializerForProvider(
+  provider: FateKnotsForgeAssetProvider,
+  adapter: FateKnotsAssetMaterializerAdapter | null
+): void {
+  if (adapter === null) {
+    materializerAdapters.delete(provider);
+    return;
+  }
+  materializerAdapters.set(provider, adapter);
+}
+
+export function hasFateKnotsAssetMaterializer(
+  provider: FateKnotsForgeAssetProvider = "ai1"
+): boolean {
+  return materializerAdapters.has(provider);
 }
 
 export function getFateKnotsForgeProgress(
@@ -79,10 +97,15 @@ function setProgress(
 }
 
 export function getFateKnotsForgeReadiness(
-  api: GameRoomHostApi & Partial<FateKnotsTransportApi>
+  api: GameRoomHostApi & Partial<FateKnotsTransportApi>,
+  executionPolicy?: unknown
 ): FateKnotsForgeReadiness {
+  const readPolicy = readFateKnotsForgeExecutionPolicy(executionPolicy);
+  const policy = readPolicy.ok
+    ? readPolicy.policy
+    : { authoringProvider: "ai1" as const, assetProvider: "ai1" as const };
   const ai1TransportAvailable = typeof api.dispatchBridge === "function";
-  const materializerAvailable = materializerAdapter !== null;
+  const materializerAvailable = materializerAdapters.has(policy.assetProvider);
   const storageAvailable = getFateKnotsDurableStorageError(api) === null;
   const progress = getFateKnotsForgeProgress(api);
   const busy = isBusyProgress(progress);
@@ -93,13 +116,14 @@ export function getFateKnotsForgeReadiness(
   if (busy) blockers.push("forge-busy");
 
   return {
-    ready: blockers.length === 0,
+    ready: readPolicy.ok && blockers.length === 0,
     blockers,
     ai1TransportAvailable,
     materializerAvailable,
     storageAvailable,
     busy,
     progress,
+    policy,
   };
 }
 
@@ -107,14 +131,19 @@ export async function createFateKnotsUniverseThroughForge(
   api: GameRoomHostApi & FateKnotsTransportApi,
   options: {
     brief?: string | null;
+    executionPolicy?: unknown;
     onProgress?: (event: FateKnotsWorldForgeProgress) => void;
   } = {}
 ): Promise<FateKnotsWorldForgePipelineResult | null> {
-  const adapter = materializerAdapter;
+  const readPolicy = readFateKnotsForgeExecutionPolicy(options.executionPolicy);
+  if (!readPolicy.ok) return null;
+  const policy = readPolicy.policy;
+  const adapter = materializerAdapters.get(policy.assetProvider) ?? null;
   if (adapter === null || isBusyProgress(getFateKnotsForgeProgress(api))) return null;
 
   return await runFateKnotsWorldForge(api, adapter, {
     ...(options.brief !== undefined ? { brief: options.brief } : {}),
+    authoringProvider: policy.authoringProvider,
     onProgress(event) {
       setProgress(api, event);
       options.onProgress?.({ ...event });
