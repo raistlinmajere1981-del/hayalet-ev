@@ -61,7 +61,7 @@ void test("Fate Knots AI0 image capability uses the active AI0 model and validat
   assert.match(imageService, /\/experimental\/tool\/ids/);
   assert.match(imageService, /\/experimental\/tool\?/);
   assert.match(imageService, /toolHasRequiredOutputContract/);
-  assert.match(imageService, /properties\["output_path"\]/);
+  assert.match(imageService, /propertiesValue\["output_path"\]/);
   assert.match(imageService, /model:\s*\{ providerID: model\.providerID, modelID: model\.modelID \}/);
   assert.match(imageService, /tools:\s*buildToolSelection/);
 });
