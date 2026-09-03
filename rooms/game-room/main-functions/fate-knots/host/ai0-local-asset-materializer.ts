@@ -22,7 +22,7 @@ type LoadedImage = {
 
 type Ai0ImageArtifact = {
   path: string;
-  mimeType: string;
+  mimeType: "image/png";
 };
 
 function sourceAspectRatio(job: FateKnotsAssetMaterializerJob): string {
@@ -177,7 +177,7 @@ async function requestAi0Image(job: FateKnotsAssetMaterializerJob): Promise<Ai0I
     throw new Error(result.error ?? "Fate Knots AI0 image worker returned no artifact.");
   }
   const source = result.fateKnotsAi0Image;
-  if (source.mimeType !== FATE_KNOTS_AI0_IMAGE_MIME_TYPE || source.path.trim() === "") {
+  if (source.path.trim() === "") {
     throw new Error("Fate Knots AI0 image worker returned an invalid PNG artifact descriptor.");
   }
   return { path: source.path, mimeType: source.mimeType };
