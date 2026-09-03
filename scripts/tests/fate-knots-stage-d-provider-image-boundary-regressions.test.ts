@@ -22,7 +22,7 @@ void test("Fate Knots Stage D stays on the host provider image-generation bounda
   assert.match(materializer, /readFateKnotsLocalFileBase64/);
   assert.match(materializer, /writeFateKnotsManagedImageFile/);
   assert.match(materializer, /getFateKnotsImageSheetCropRect/);
-  assert.match(materializer, /canvas\.toDataURL\("image\/png"\)/);
+  assert.match(materializer, /canvas\.toDataURL\(FATE_KNOTS_CROP_MIME_TYPE\)/);
 
   assert.match(imageSheet, /FATE_KNOTS_SHEET_SAFE_INSET/);
   assert.match(imageSheet, /getFateKnotsImageSheetCropRect/);
@@ -38,5 +38,5 @@ void test("Fate Knots Stage D stays on the host provider image-generation bounda
   assert.match(storageBridge, /Materialized asset bytes do not match its declared MIME type/);
 
   assert.match(hostExtension, /registerFateKnotsAssetMaterializer/);
-  assert.match(hostExtension, /FateKnotsAssetMaterializerAdapter/);
+  assert.match(hostExtension, /createFateKnotsProviderAssetMaterializer/);
 });
