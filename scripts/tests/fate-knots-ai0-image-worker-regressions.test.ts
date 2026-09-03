@@ -7,9 +7,10 @@ async function readRepoFile(relativePath: string): Promise<string> {
 }
 
 void test("Fate Knots AI0 image worker has status/generate room-tools and an isolated server range", async () => {
-  const [types, ipc, imageService, runtimeService] = await Promise.all([
+  const [types, ipc, compatibilityService, imageService, runtimeService] = await Promise.all([
     readRepoFile("src/types/room-tools.ts"),
     readRepoFile("electron/handlers/ipc-room-tools.ts"),
+    readRepoFile("electron/fate-knots-ai0-image-service.ts"),
     readRepoFile("electron/fate-knots-ai0-image-worker-service.ts"),
     readRepoFile("electron/fate-knots-ai0-runtime-service.ts"),
   ]);
@@ -18,8 +19,12 @@ void test("Fate Knots AI0 image worker has status/generate room-tools and an iso
   assert.match(types, /"fate-knots-ai0-image-generate"/);
   assert.match(types, /RoomToolFateKnotsAi0ImageStatus/);
   assert.match(types, /RoomToolFateKnotsAi0ImageGenerateRequest/);
-  assert.match(ipc, /fateKnotsAi0ImageWorkerService\.status\(request\)/);
-  assert.match(ipc, /fateKnotsAi0ImageWorkerService\.generate\(request\)/);
+  assert.match(ipc, /fateKnotsAi0ImageService\.status\(request\)/);
+  assert.match(ipc, /fateKnotsAi0ImageService\.generate\(request\)/);
+  assert.match(
+    compatibilityService,
+    /fateKnotsAi0ImageWorkerService as fateKnotsAi0ImageService/
+  );
 
   assert.match(imageService, /FATE_KNOTS_AI0_IMAGE_PORT_START = 4135/);
   assert.match(imageService, /FATE_KNOTS_AI0_IMAGE_PORT_END = 4149/);
@@ -29,9 +34,13 @@ void test("Fate Knots AI0 image worker has status/generate room-tools and an iso
 });
 
 void test("Fate Knots never installs or injects an image plugin on the user's behalf", async () => {
-  const imageService = await readRepoFile("electron/fate-knots-ai0-image-worker-service.ts");
+  const [imageService, compatibilityService] = await Promise.all([
+    readRepoFile("electron/fate-knots-ai0-image-worker-service.ts"),
+    readRepoFile("electron/fate-knots-ai0-image-service.ts"),
+  ]);
 
   assert.doesNotMatch(imageService, /opencode-image-generation@/);
+  assert.doesNotMatch(compatibilityService, /opencode-image-generation@/);
   assert.doesNotMatch(imageService, /\["plugin"\]|\["plugins"\]/);
   assert.doesNotMatch(imageService, /OPENCODE_CONFIG_CONTENT:\s*JSON\.stringify/);
   assert.match(imageService, /delete childEnv\["OPENCODE_CONFIG_CONTENT"\]/);
@@ -72,11 +81,12 @@ void test("Fate Knots image skills are discovery-only while staging keeps real P
 });
 
 void test("Fate Knots AI0 image adapter promotes staging bytes through canonical storage and crop", async () => {
-  const [adapter, bridge, extension, forgeExtension] = await Promise.all([
+  const [adapter, bridge, extension, forgeExtension, forgeControls] = await Promise.all([
     readRepoFile("rooms/game-room/main-functions/fate-knots/host/ai0-local-asset-materializer.ts"),
     readRepoFile("rooms/game-room/main-functions/fate-knots/host/electron-bridge.ts"),
     readRepoFile("rooms/game-room/host/fate-knots-materializer-extension.ts"),
     readRepoFile("rooms/game-room/host/fate-knots-forge-extension.ts"),
+    readRepoFile("rooms/game-room/main-functions/fate-knots/ui/forge-controls.js"),
   ]);
 
   assert.match(bridge, /readFateKnotsAi0ImageCapabilityStatus/);
@@ -93,4 +103,7 @@ void test("Fate Knots AI0 image adapter promotes staging bytes through canonical
   );
   assert.match(forgeExtension, /ai0Status\?\.available === true/);
   assert.match(forgeExtension, /readFateKnotsAi0ImageCapabilityStatus/);
+  assert.match(forgeControls, /formatAi0ImageStatus/);
+  assert.match(forgeControls, /AI0 Local hazır/);
+  assert.match(forgeControls, /AI0 Local kapalı/);
 });
