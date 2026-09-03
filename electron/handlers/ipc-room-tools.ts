@@ -2,12 +2,13 @@ import type { IpcMainInvokeEvent } from "electron";
 import { registerHandler } from "./ipc-helpers.ts";
 import { roomToolService } from "../room-tool-service.ts";
 import { fateKnotsAi0RuntimeService } from "../fate-knots-ai0-runtime-service.ts";
-import { fateKnotsAi0ImageService } from "../fate-knots-ai0-image-service.ts";
+import { fateKnotsAi0ImageWorkerService } from "../fate-knots-ai0-image-worker-service.ts";
 import type {
   RoomToolCallRequest,
   RoomToolCancelRequest,
   RoomToolFateKnotsAi0CallRequest,
   RoomToolFateKnotsAi0ImageGenerateRequest,
+  RoomToolFateKnotsAi0ImageStatusRequest,
 } from "../../src/types/room-tools.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -94,6 +95,17 @@ function isFateKnotsAi0CallRequest(value: unknown): value is RoomToolFateKnotsAi
   return isRuntimePayload(value["payload"], value["requestId"]);
 }
 
+function isFateKnotsAi0ImageStatusRequest(
+  value: unknown
+): value is RoomToolFateKnotsAi0ImageStatusRequest {
+  return (
+    isRecord(value) &&
+    value["operation"] === "fate-knots-ai0-image-status" &&
+    value["roomId"] === "game-room" &&
+    isNonEmptyString(value["requestId"])
+  );
+}
+
 function isFateKnotsAi0ImageGenerateRequest(
   value: unknown
 ): value is RoomToolFateKnotsAi0ImageGenerateRequest {
@@ -137,6 +149,23 @@ export function setupRoomToolHandlers(): void {
         fateKnotsAi0: result,
       };
     }
+    if (isRecord(request) && request["operation"] === "fate-knots-ai0-image-status") {
+      if (!isFateKnotsAi0ImageStatusRequest(request)) {
+        return {
+          success: false,
+          operation: "fate-knots-ai0-image-status",
+          requestId: isNonEmptyString(request["requestId"]) ? request["requestId"] : null,
+          error: "Invalid Fate Knots AI0 image status request.",
+        };
+      }
+      const status = await fateKnotsAi0ImageWorkerService.status(request);
+      return {
+        success: true,
+        operation: request.operation,
+        requestId: request.requestId,
+        fateKnotsAi0ImageStatus: status,
+      };
+    }
     if (isRecord(request) && request["operation"] === "fate-knots-ai0-image-generate") {
       if (!isFateKnotsAi0ImageGenerateRequest(request)) {
         return {
@@ -148,7 +177,7 @@ export function setupRoomToolHandlers(): void {
         };
       }
       try {
-        const result = await fateKnotsAi0ImageService.generate(request);
+        const result = await fateKnotsAi0ImageWorkerService.generate(request);
         return {
           success: true,
           operation: request.operation,
