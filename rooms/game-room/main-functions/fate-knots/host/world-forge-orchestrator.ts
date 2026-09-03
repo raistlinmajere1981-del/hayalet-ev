@@ -16,6 +16,7 @@ import {
   hydrateFateKnotsDurablePersistence,
   saveFateKnotsUniverseDurable,
 } from "./durable-persistence.js";
+import type { FateKnotsForgeAuthoringProvider } from "./forge-provider-policy.js";
 import {
   resolveFateKnotsDurableStoragePaths,
   verifyFateKnotsManagedAssetFiles,
@@ -114,10 +115,12 @@ export async function runFateKnotsWorldForge(
   options: {
     brief?: string | null;
     request?: FateKnotsWorldForgeRequest;
+    authoringProvider?: FateKnotsForgeAuthoringProvider;
     onProgress?: (event: FateKnotsWorldForgeProgress) => void;
   } = {}
 ): Promise<FateKnotsWorldForgePipelineResult> {
   const request = options.request ?? createFateKnotsWorldForgeRequest(options.brief ?? null);
+  const authoringProvider = options.authoringProvider ?? "ai1";
   const emit = options.onProgress ?? (() => undefined);
   let completedAssets = 0;
   let totalAssets = 0;
@@ -136,13 +139,16 @@ export async function runFateKnotsWorldForge(
     }
 
     emit(progress(request, "authoring", 0, 0, "Authoring canonical world candidate."));
-    const authored = await authorFateKnotsWorldForgeDraft(api, request);
+    const authored = await authorFateKnotsWorldForgeDraft(api, request, {
+      provider: authoringProvider,
+    });
     if (!authored.ok) {
       emit(progress(request, "failed", 0, 0, authored.message));
       try {
         await writeCheckpoint({
           schemaVersion: 1,
           request,
+          authoringProvider,
           status: "authoring-failed",
           message: authored.message,
           issues: authored.issues ?? [],
@@ -155,7 +161,13 @@ export async function runFateKnotsWorldForge(
 
     const draft = authored.draft;
     totalAssets = draft.assetPlans.length;
-    await writeCheckpoint({ schemaVersion: 1, request, status: "draft-validated", draft });
+    await writeCheckpoint({
+      schemaVersion: 1,
+      request,
+      authoringProvider,
+      status: "draft-validated",
+      draft,
+    });
 
     emit(
       progress(request, "materializing", 0, totalAssets, "Generating and storing universe assets.")
@@ -177,6 +189,7 @@ export async function runFateKnotsWorldForge(
     await writeCheckpoint({
       schemaVersion: 1,
       request,
+      authoringProvider,
       status: materialization.complete ? "assets-materialized" : "materialization-incomplete",
       draft,
       materialization,
@@ -206,6 +219,7 @@ export async function runFateKnotsWorldForge(
       await writeCheckpoint({
         schemaVersion: 1,
         request,
+        authoringProvider,
         status: "materialization-invalid",
         failures: verifiedFiles.failures,
         materialization,
@@ -293,6 +307,7 @@ export async function runFateKnotsWorldForge(
       await writeCheckpoint({
         schemaVersion: 1,
         request,
+        authoringProvider,
         status: "completed",
         universeId: saved.value.universeId,
         sourceArtifacts: materialization.sourceArtifacts,
@@ -322,7 +337,13 @@ export async function runFateKnotsWorldForge(
     const message = `World Forge stopped safely: ${errorMessage(error)}`;
     emit(progress(request, "failed", completedAssets, totalAssets, message));
     try {
-      await writeCheckpoint({ schemaVersion: 1, request, status: "unexpected-failure", message });
+      await writeCheckpoint({
+        schemaVersion: 1,
+        request,
+        authoringProvider,
+        status: "unexpected-failure",
+        message,
+      });
     } catch {
       // Terminal progress remains authoritative even if the debug checkpoint cannot be written.
     }
