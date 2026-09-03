@@ -11,6 +11,10 @@ import {
   readFateKnotsForgeExecutionPolicy,
   type FateKnotsForgeAuthoringProvider,
 } from "../main-functions/fate-knots/host/forge-provider-policy.js";
+import {
+  readFateKnotsAi0ImageCapabilityStatus,
+  type FateKnotsAi0ImageCapabilityStatus,
+} from "../main-functions/fate-knots/host/electron-bridge.js";
 import type { FateKnotsTransportApi } from "../main-functions/fate-knots/host/transport.js";
 import { loadContext } from "../shared/host/context-state.js";
 import type { GameRoomHostApi } from "../shared/host/activation.js";
@@ -51,8 +55,16 @@ function isAuthoringProviderSelectable(
   return slot.assigned === true && slot.urlExcluded !== true;
 }
 
-function getCapabilities(api: GameRoomHostApi & FateKnotsTransportApi) {
+async function getCapabilities(
+  api: GameRoomHostApi & FateKnotsTransportApi,
+  ai0StatusOverride?: FateKnotsAi0ImageCapabilityStatus
+) {
   const readiness = getFateKnotsForgeReadiness(api);
+  const ai0Status =
+    ai0StatusOverride ??
+    (hasFateKnotsAssetMaterializer("ai0-local")
+      ? await readFateKnotsAi0ImageCapabilityStatus()
+      : null);
   return {
     ok: true as const,
     defaults: { ...FATE_KNOTS_DEFAULT_FORGE_EXECUTION_POLICY },
@@ -62,8 +74,12 @@ function getCapabilities(api: GameRoomHostApi & FateKnotsTransportApi) {
     })),
     assetProviders: FATE_KNOTS_FORGE_ASSET_PROVIDERS.map((provider) => ({
       provider,
-      available: hasFateKnotsAssetMaterializer(provider),
+      available:
+        provider === "ai0-local"
+          ? hasFateKnotsAssetMaterializer(provider) && ai0Status?.available === true
+          : hasFateKnotsAssetMaterializer(provider),
     })),
+    ai0ImageStatus: ai0Status,
     storageAvailable: readiness.storageAvailable,
     busy: readiness.busy,
     progress: getFateKnotsForgeProgress(api),
@@ -71,14 +87,9 @@ function getCapabilities(api: GameRoomHostApi & FateKnotsTransportApi) {
 }
 
 /**
- * Adds the first production World Forge entry point. Provider selection stays
+ * Adds the production World Forge entry point. Provider selection stays
  * execution-only: the renderer chooses authoring/media backends before creation,
  * while the accepted Universe Package remains provider-neutral canonical data.
- *
- * Authoring capability intentionally follows slot assignment instead of the
- * transient dispatchable snapshot. The provider transport uses connectPolicy
- * "ensure", so an assigned non-excluded slot may reconnect when Forge starts;
- * the actual session open remains the authoritative availability check.
  */
 export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHostRuntime>(
   baseRuntime: T
@@ -91,8 +102,8 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
 
       api.registerCommand?.(
         FATE_KNOTS_FORGE_COMMAND_NAMES.getCapabilities,
-        function () {
-          return getCapabilities(transportApi);
+        async function () {
+          return await getCapabilities(transportApi);
         },
         {
           description: "Read Fate Knots World Forge provider and storage readiness.",
@@ -111,7 +122,7 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
               ok: false as const,
               error: "invalid-payload" as const,
               message: policyResult.message,
-              capabilities: getCapabilities(transportApi),
+              capabilities: await getCapabilities(transportApi),
             };
           }
 
@@ -121,7 +132,7 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
               ok: false as const,
               error: "invalid-payload" as const,
               message: "Fate Knots World Forge brief must be text or null.",
-              capabilities: getCapabilities(transportApi),
+              capabilities: await getCapabilities(transportApi),
             };
           }
 
@@ -131,7 +142,7 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
               ok: false as const,
               error: "authoring-provider-unavailable" as const,
               message: `${policy.authoringProvider.toUpperCase()} is not assigned to an available Forge slot.`,
-              capabilities: getCapabilities(transportApi),
+              capabilities: await getCapabilities(transportApi),
             };
           }
           if (!hasFateKnotsAssetMaterializer(policy.assetProvider)) {
@@ -139,8 +150,21 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
               ok: false as const,
               error: "asset-provider-unavailable" as const,
               message: `${policy.assetProvider} has no registered Fate Knots asset materializer.`,
-              capabilities: getCapabilities(transportApi),
+              capabilities: await getCapabilities(transportApi),
             };
+          }
+
+          let ai0Status: FateKnotsAi0ImageCapabilityStatus | undefined;
+          if (policy.assetProvider === "ai0-local") {
+            ai0Status = await readFateKnotsAi0ImageCapabilityStatus();
+            if (!ai0Status.available) {
+              return {
+                ok: false as const,
+                error: "asset-provider-unavailable" as const,
+                message: ai0Status.reason ?? "AI0 Local image generation is unavailable.",
+                capabilities: await getCapabilities(transportApi, ai0Status),
+              };
+            }
           }
 
           const readiness = getFateKnotsForgeReadiness(transportApi, policy);
@@ -149,7 +173,7 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
               ok: false as const,
               error: "forge-busy" as const,
               message: "Fate Knots World Forge is already running.",
-              capabilities: getCapabilities(transportApi),
+              capabilities: await getCapabilities(transportApi, ai0Status),
             };
           }
           if (!readiness.storageAvailable) {
@@ -157,7 +181,7 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
               ok: false as const,
               error: "storage-unavailable" as const,
               message: "Fate Knots durable storage is unavailable.",
-              capabilities: getCapabilities(transportApi),
+              capabilities: await getCapabilities(transportApi, ai0Status),
             };
           }
 
@@ -170,7 +194,7 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
               ok: false as const,
               error: "forge-unavailable" as const,
               message: "Fate Knots World Forge could not start with the selected providers.",
-              capabilities: getCapabilities(transportApi),
+              capabilities: await getCapabilities(transportApi, ai0Status),
             };
           }
           if (!result.ok) {
@@ -180,7 +204,7 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
               code: result.code,
               message: result.message,
               requestId: result.request.requestId,
-              capabilities: getCapabilities(transportApi),
+              capabilities: await getCapabilities(transportApi, ai0Status),
             };
           }
 
@@ -189,7 +213,7 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
             universeId: result.universe.universeId,
             requestId: result.request.requestId,
             provenanceWarning: result.provenanceWarning ?? null,
-            capabilities: getCapabilities(transportApi),
+            capabilities: await getCapabilities(transportApi, ai0Status),
           };
         },
         {
