@@ -83,14 +83,19 @@ void test("Fate Knots production host and Hub expose provider-aware universe cre
   assert.match(forgeExtension, /readFateKnotsForgeExecutionPolicy/);
   assert.match(forgeExtension, /hasFateKnotsAssetMaterializer\(policy\.assetProvider\)/);
   assert.match(forgeExtension, /createFateKnotsUniverseThroughForge/);
+  assert.match(forgeExtension, /function isAuthoringProviderSelectable/);
+  assert.match(forgeExtension, /slot\.assigned === true && slot\.urlExcluded !== true/);
+  assert.doesNotMatch(
+    forgeExtension,
+    /context\.slots\[policy\.authoringProvider\]\.dispatchable !== true/
+  );
 
   assert.match(hostIndex, /extendGameRoomHostRuntimeWithFateKnotsForge/);
   assert.match(hubUi, /createElement\("div", "fate-knots-hub__actions"\)/);
-  assert.match(
-    forgeControls,
-    /\.fate-knots-hub__header > \.fate-knots-hub__actions/
-  );
+  assert.match(forgeControls, /\.fate-knots-hub__header > \.fate-knots-hub__actions/);
   assert.match(forgeControls, /legacyButton\.disabled = false/);
+  assert.match(forgeControls, /forgeState\.capabilities && force !== true/);
+  assert.match(forgeControls, /forgeState\.capabilities = null/);
   assert.match(forgeControls, /authoringProvider/);
   assert.match(forgeControls, /assetProvider/);
   assert.match(forgeControls, /AI0 Local/);
