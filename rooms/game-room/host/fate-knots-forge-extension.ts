@@ -9,6 +9,7 @@ import {
   FATE_KNOTS_FORGE_ASSET_PROVIDERS,
   FATE_KNOTS_FORGE_AUTHORING_PROVIDERS,
   readFateKnotsForgeExecutionPolicy,
+  type FateKnotsForgeAuthoringProvider,
 } from "../main-functions/fate-knots/host/forge-provider-policy.js";
 import type { FateKnotsTransportApi } from "../main-functions/fate-knots/host/transport.js";
 import { loadContext } from "../shared/host/context-state.js";
@@ -41,16 +42,23 @@ function readBrief(value: unknown): string | null | undefined {
   return normalized === "" ? null : normalized.slice(0, 8_000);
 }
 
+function isAuthoringProviderSelectable(
+  api: GameRoomHostApi & FateKnotsTransportApi,
+  provider: FateKnotsForgeAuthoringProvider
+): boolean {
+  if (typeof api.dispatchBridge !== "function") return false;
+  const slot = loadContext(api).slots[provider];
+  return slot.assigned === true && slot.urlExcluded !== true;
+}
+
 function getCapabilities(api: GameRoomHostApi & FateKnotsTransportApi) {
-  const context = loadContext(api);
   const readiness = getFateKnotsForgeReadiness(api);
   return {
     ok: true as const,
     defaults: { ...FATE_KNOTS_DEFAULT_FORGE_EXECUTION_POLICY },
     authoringProviders: FATE_KNOTS_FORGE_AUTHORING_PROVIDERS.map((provider) => ({
       provider,
-      available:
-        typeof api.dispatchBridge === "function" && context.slots[provider].dispatchable === true,
+      available: isAuthoringProviderSelectable(api, provider),
     })),
     assetProviders: FATE_KNOTS_FORGE_ASSET_PROVIDERS.map((provider) => ({
       provider,
@@ -66,6 +74,11 @@ function getCapabilities(api: GameRoomHostApi & FateKnotsTransportApi) {
  * Adds the first production World Forge entry point. Provider selection stays
  * execution-only: the renderer chooses authoring/media backends before creation,
  * while the accepted Universe Package remains provider-neutral canonical data.
+ *
+ * Authoring capability intentionally follows slot assignment instead of the
+ * transient dispatchable snapshot. The provider transport uses connectPolicy
+ * "ensure", so an assigned non-excluded slot may reconnect when Forge starts;
+ * the actual session open remains the authoritative availability check.
  */
 export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHostRuntime>(
   baseRuntime: T
@@ -113,15 +126,11 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
           }
 
           const policy = policyResult.policy;
-          const context = loadContext(api);
-          if (
-            typeof transportApi.dispatchBridge !== "function" ||
-            context.slots[policy.authoringProvider].dispatchable !== true
-          ) {
+          if (!isAuthoringProviderSelectable(transportApi, policy.authoringProvider)) {
             return {
               ok: false as const,
               error: "authoring-provider-unavailable" as const,
-              message: `${policy.authoringProvider.toUpperCase()} is not dispatchable for World Forge.`,
+              message: `${policy.authoringProvider.toUpperCase()} is not assigned to an available Forge slot.`,
               capabilities: getCapabilities(transportApi),
             };
           }
