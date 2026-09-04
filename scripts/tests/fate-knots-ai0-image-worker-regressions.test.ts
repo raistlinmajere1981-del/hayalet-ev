@@ -7,13 +7,15 @@ async function readRepoFile(relativePath: string): Promise<string> {
 }
 
 void test("Fate Knots AI0 image worker has status/generate room-tools and an isolated server range", async () => {
-  const [types, ipc, compatibilityService, imageService, runtimeService] = await Promise.all([
-    readRepoFile("src/types/room-tools.ts"),
-    readRepoFile("electron/handlers/ipc-room-tools.ts"),
-    readRepoFile("electron/fate-knots-ai0-image-service.ts"),
-    readRepoFile("electron/fate-knots-ai0-image-worker-service.ts"),
-    readRepoFile("electron/fate-knots-ai0-runtime-service.ts"),
-  ]);
+  const [types, ipc, compatibilityService, imageService, runtimeService, electronMain] =
+    await Promise.all([
+      readRepoFile("src/types/room-tools.ts"),
+      readRepoFile("electron/handlers/ipc-room-tools.ts"),
+      readRepoFile("electron/fate-knots-ai0-image-service.ts"),
+      readRepoFile("electron/fate-knots-ai0-image-worker-service.ts"),
+      readRepoFile("electron/fate-knots-ai0-runtime-service.ts"),
+      readRepoFile("electron/main.ts"),
+    ]);
 
   assert.match(types, /"fate-knots-ai0-image-status"/);
   assert.match(types, /"fate-knots-ai0-image-generate"/);
@@ -28,6 +30,11 @@ void test("Fate Knots AI0 image worker has status/generate room-tools and an iso
   assert.match(runtimeService, /FATE_KNOTS_AI0_PORT_START = 4120/);
   assert.match(runtimeService, /FATE_KNOTS_AI0_PORT_END = 4134/);
   assert.doesNotMatch(imageService, /fateKnotsAi0RuntimeService/);
+  assert.match(imageService, /FATE_KNOTS_AI0_IMAGE_HEALTH_PROBE_TIMEOUT_MS = 2_000/);
+  assert.match(imageService, /await fetchJson\(\s*url,/);
+  assert.match(imageService, /process\.once\("exit", stopOnParentExit\)/);
+  assert.match(imageService, /async shutdown\(\): Promise<void>/);
+  assert.match(electronMain, /await fateKnotsAi0ImageService\.shutdown\(\)/);
 });
 
 void test("Fate Knots never installs or injects an image plugin on the user's behalf", async () => {

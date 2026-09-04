@@ -21,6 +21,7 @@ import type {
 const FATE_KNOTS_AI0_IMAGE_PORT_START = 4135;
 const FATE_KNOTS_AI0_IMAGE_PORT_END = 4149;
 const FATE_KNOTS_AI0_IMAGE_READY_TIMEOUT_MS = 90_000;
+const FATE_KNOTS_AI0_IMAGE_HEALTH_PROBE_TIMEOUT_MS = 2_000;
 const FATE_KNOTS_AI0_IMAGE_DEFAULT_CALL_TIMEOUT_MS = 10 * 60_000;
 const FATE_KNOTS_AI0_IMAGE_IDLE_STOP_MS = 10 * 60_000;
 const FATE_KNOTS_AI0_IMAGE_TOOL_ID = "image_generate";
@@ -40,6 +41,8 @@ type ImageServerState = {
   port: number;
   workspacePath: string;
   stagingRoot: string;
+  ready: boolean;
+  stopOnParentExit: () => void;
 };
 
 type ImageCapabilityProbe = {
@@ -392,6 +395,10 @@ class FateKnotsAi0ImageWorkerService {
     return await run;
   }
 
+  async shutdown(): Promise<void> {
+    await this.stopServer();
+  }
+
   private async runGenerate(
     request: RoomToolFateKnotsAi0ImageGenerateRequest
   ): Promise<RoomToolFateKnotsAi0ImageResult> {
@@ -620,13 +627,21 @@ class FateKnotsAi0ImageWorkerService {
     workspacePath: string,
     stagingRoot: string
   ): Promise<ImageServerState> {
+    const current = this.server;
     if (
-      this.server !== null &&
-      this.server.workspacePath === workspacePath &&
-      this.server.stagingRoot === stagingRoot &&
-      this.server.process.exitCode === null
+      current !== null &&
+      current.workspacePath === workspacePath &&
+      current.stagingRoot === stagingRoot &&
+      current.process.exitCode === null
     ) {
-      return this.server;
+      if (!current.ready) {
+        if (!(await this.waitForReady(current))) {
+          await this.stopServer();
+          throw new Error("Fate Knots AI0 image OpenCode server did not become ready.");
+        }
+        current.ready = true;
+      }
+      return current;
     }
 
     await this.stopServer();
@@ -666,9 +681,24 @@ class FateKnotsAi0ImageWorkerService {
     child.stdout.on("data", appendOutput);
     child.stderr.on("data", appendOutput);
 
-    const candidate: ImageServerState = { process: child, port, workspacePath, stagingRoot };
+    const stopOnParentExit = (): void => {
+      if (child.exitCode !== null) return;
+      try {
+        child.kill("SIGTERM");
+      } catch {}
+    };
+    process.once("exit", stopOnParentExit);
+    const candidate: ImageServerState = {
+      process: child,
+      port,
+      workspacePath,
+      stagingRoot,
+      ready: false,
+      stopOnParentExit,
+    };
     this.server = candidate;
     child.once("close", () => {
+      process.off("exit", stopOnParentExit);
       if (this.server?.process === child) this.server = null;
     });
     if (!(await this.waitForReady(candidate))) {
@@ -679,6 +709,7 @@ class FateKnotsAi0ImageWorkerService {
           : "Fate Knots AI0 image OpenCode server did not become ready."
       );
     }
+    candidate.ready = true;
     return candidate;
   }
 
@@ -688,9 +719,14 @@ class FateKnotsAi0ImageWorkerService {
     while (Date.now() <= deadline) {
       if (server.process.exitCode !== null) return false;
       try {
+        // OpenCode can accept the TCP connection before plugin/config bootstrap can answer it.
         // eslint-disable-next-line no-await-in-loop
-        const response = await fetch(url);
-        if (response.ok) return true;
+        await fetchJson(
+          url,
+          { method: "GET" },
+          Math.min(FATE_KNOTS_AI0_IMAGE_HEALTH_PROBE_TIMEOUT_MS, deadline - Date.now())
+        );
+        return true;
       } catch {
         // Keep polling until the bounded startup deadline.
       }
@@ -717,7 +753,9 @@ class FateKnotsAi0ImageWorkerService {
     }
     const current = this.server;
     this.server = null;
-    if (current?.process.exitCode !== null) return;
+    if (current === null) return;
+    process.off("exit", current.stopOnParentExit);
+    if (current.process.exitCode !== null) return;
 
     const pid = current.process.pid;
     if (process.platform === "win32" && typeof pid === "number") {

@@ -51,6 +51,7 @@ import {
   googleDriveT,
 } from "./googledrive-manager.ts";
 import { opencodeServerManager } from "./opencode-server-manager.ts";
+import { fateKnotsAi0ImageService } from "./fate-knots-ai0-image-service.ts";
 import { llmServerManager } from "./llm-server-manager.ts";
 import {
   archiveOpencodeUiSession,
@@ -534,6 +535,19 @@ async function performCleanup(): Promise<void> {
     await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "Capture cleanup failed.", {
       message,
     });
+  }
+
+  try {
+    await fateKnotsAi0ImageService.shutdown();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.info(`Fate Knots AI0 image worker cleanup failed: ${message}`);
+    await logger.logInternal(
+      LogCategory.MAIN,
+      LogLevel.ERROR,
+      "Fate Knots AI0 image worker cleanup failed.",
+      { message }
+    );
   }
 
   try {
