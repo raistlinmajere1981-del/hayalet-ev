@@ -1,3 +1,4 @@
+import { agentProfileCommand } from "./commands/agent-profile-commands.js";
 import { LogCategory } from "@shared/logging-core";
 import { Logger } from "./logger/index.js";
 import { AppI18n } from "./i18n/index.js";
@@ -40,6 +41,16 @@ interface CommandCatalogItem {
 }
 
 const BUILTIN_COMMANDS: CommandDefinition[] = [
+  ...[
+    "AgentProfileList",
+    "AgentProfileSelect",
+    "AgentProfileInspect",
+    "AgentProfileCapabilities",
+  ].map((name) => ({
+    name,
+    category: "ai1-ai2" as const,
+    additionalCategories: ["ai0", "us1"] as CommandCategory[],
+  })),
   { name: "WhisperManager", category: "ai1-ai2" },
   { name: "AIAIChatStart", category: "ai1-ai2" },
   { name: "AIAIChatStop", category: "ai1-ai2" },
@@ -302,6 +313,14 @@ function resolveSlotBridgeActionFromPayload(
 
 const handlers: Record<string, (payload?: CommandPayload) => unknown> = {};
 
+handlers["agentprofilelist"] = async (payload): Promise<unknown> =>
+  await agentProfileCommand("list", payload);
+handlers["agentprofileselect"] = async (payload): Promise<unknown> =>
+  await agentProfileCommand("select", payload);
+handlers["agentprofileinspect"] = async (payload): Promise<unknown> =>
+  await agentProfileCommand("inspect", payload);
+handlers["agentprofilecapabilities"] = async (payload): Promise<unknown> =>
+  await agentProfileCommand("capabilities", payload);
 handlers["whispermanager"] = whisperManagerHandler;
 handlers["aiaichatstart"] = async (payload): Promise<unknown> => {
   const { aiaiChatStartHandler } = await getAiChatHandlers();

@@ -447,6 +447,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opencodeUiQuickPromptsRead: () => ipcRenderer.invoke("opencode-ui-quick-prompts-read"),
   opencodeUiQuickPromptsWrite: (prompts) =>
     ipcRenderer.invoke("opencode-ui-quick-prompts-write", prompts),
+  agentProfileRequest: (request) => ipcRenderer.invoke("agent-profile-request", request),
+  assistantProfileSystem: () => ipcRenderer.invoke("assistant-profile-system"),
   opencodeUiSharedStateRead: () => ipcRenderer.invoke("opencode-ui-shared-state-read"),
   opencodeUiSharedStateWrite: (state) =>
     ipcRenderer.invoke("opencode-ui-shared-state-write", state),

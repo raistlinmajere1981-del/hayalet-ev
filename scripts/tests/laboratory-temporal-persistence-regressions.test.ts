@@ -242,7 +242,9 @@ void test("edit normalization preserves temporal stress-test history across rest
 
   assert.equal(normalized.temporalStressTests.length, 1);
   assert.equal(normalized.temporalStressTests[0]?.["id"], "temporal-stress-one");
-  assert.deepEqual(toRecord(normalized.temporalStressTests[0]?.["metrics"])["summary"], {
+  const first = normalized.temporalStressTests[0];
+  assert.ok(first?.kind === "temporal-stress-test");
+  assert.deepEqual(toRecord(first["metrics"])["summary"], {
     spatialEdgePersistenceRatio: 0.75,
     spatialEdgePersistenceSampleCount: 6,
   });

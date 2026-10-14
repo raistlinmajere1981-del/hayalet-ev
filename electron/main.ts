@@ -219,6 +219,8 @@ import { setupSettingsHandlers } from "./handlers/ipc-settings.ts";
 import { setupI18nHandlers } from "./handlers/ipc-i18n.ts";
 import { setupDatabaseHandlers } from "./handlers/ipc-database.ts";
 import { setupMemoryHandlers } from "./handlers/ipc-memory.ts";
+import { setupAgentProfileHandlers } from "./handlers/ipc-agent-profiles.js";
+import { closeAgentProfileRegistry } from "./agent-profile-service.js";
 import { setupOpencodeUiToolsHandlers } from "./handlers/ipc-opencode-ui-tools.ts";
 import { setupLlmServerHandlers } from "./handlers/ipc-llm-server.ts";
 import { setupRoomHandlers } from "./handlers/ipc-rooms.ts";
@@ -430,6 +432,7 @@ void app.whenReady().then(async () => {
     setupTtsHandlers();
     setupOperationsHandlers();
     setupOpencodeUiToolsHandlers();
+    setupAgentProfileHandlers();
     setupLlmServerHandlers();
     setupRoomHandlers(null);
     setupRoomToolHandlers();
@@ -651,6 +654,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("will-quit", () => {
+  closeAgentProfileRegistry();
   void DatabaseManager.closeAll();
   void performCleanup();
 });

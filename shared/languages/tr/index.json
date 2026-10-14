@@ -786,6 +786,30 @@
           "detail": "Cross-slot mesaj gönderimi, waited reply, attachment delivery, `connection.ensure`, `session.open`, `session.switch`, `session.sync` ve `room.command` dispatch aksiyonlarını tek JSON zarfında toplar. Yeni slot ve oda entegrasyonlarında desteklenen tek komut yüzeyi budur.",
           "usage": "++cmd:SlotBridge({\"action\":\"message.send\",\"fromSlot\":\"ai1\",\"toSlot\":\"ai0\",\"payload\":{\"text\":\"Merhaba\"}})\nAksiyonlar: message.send, message.sendWait, connection.ensure, session.open, session.switch, session.sync, room.command",
           "example": "++cmd:SlotBridge({\"action\":\"message.sendWait\",\"fromSlot\":\"ai0\",\"toSlot\":\"ai1\",\"replyToSlot\":\"ai0\",\"payload\":{\"text\":\"Hazır mısın?\"}})"
+        },
+        "AgentProfileList": {
+          "description": "Ortak agent profillerini listeler.",
+          "detail": "Profil seçimi araç yetkisi vermez. Doğrulanmamış yetenekler kullanılabilir sayılmaz.",
+          "usage": "++cmd:AgentProfileList",
+          "example": "++cmd:AgentProfileList"
+        },
+        "AgentProfileSelect": {
+          "description": "Bir agent/oda/rol kapsamında profil seçer.",
+          "detail": "Profil seçimi araç yetkisi vermez. Doğrulanmamış yetenekler kullanılabilir sayılmaz.",
+          "usage": "++cmd:AgentProfileSelect(profileId, agentId, roomId, roleId, purpose)",
+          "example": "++cmd:AgentProfileSelect(fate-knots-npc, ai0, fate-knots, fate-knots-npc, runtime)"
+        },
+        "AgentProfileInspect": {
+          "description": "Çözülmüş talimatları, sürümleri ve hash değerini gösterir.",
+          "detail": "Profil seçimi araç yetkisi vermez. Doğrulanmamış yetenekler kullanılabilir sayılmaz.",
+          "usage": "++cmd:AgentProfileInspect(agentId, roomId, roleId, purpose)",
+          "example": "++cmd:AgentProfileInspect(ai0, assistant, default, development)"
+        },
+        "AgentProfileCapabilities": {
+          "description": "Host tarafından doğrulanan yetenekleri ve eksikleri gösterir.",
+          "detail": "Profil seçimi araç yetkisi vermez. Doğrulanmamış yetenekler kullanılabilir sayılmaz.",
+          "usage": "++cmd:AgentProfileCapabilities(agentId, roomId, roleId, purpose)",
+          "example": "++cmd:AgentProfileCapabilities(ai0, fate-knots, fate-knots-image, runtime)"
         }
       }
     }
@@ -1585,17 +1609,17 @@
         "newProfileName": "Yeni Profil {{index}}",
         "emptyState": "Sağ panelden özellik ekleyin",
         "poolTitle": "Özellik Havuzu",
-        "footerNote": "Değişiklikler yeni sessionda aktif olur.",
-        "copyMessageTitle": "Mevcut session için hazır mesajı kopyala",
-        "copyMessageButton": "Mesajı Kopyala",
+        "footerNote": "Asistan profili sonraki mesajda uygulanır. Profil seçimi araç yetkisi vermez.",
+        "copyMessageTitle": "Çözülmüş sistem talimatını kopyala",
+        "copyMessageButton": "Talimatı Kopyala",
         "copiedButton": "Kopyalandı",
         "savedButton": "Kaydedildi",
         "removeTitle": "Kaldırmak için tıkla",
         "conflictMessage": "\"{{a}}\" ile \"{{b}}\" çelişiyor",
-        "copyPrompt": "Karakter profilin güncellendi. `.rovo/_metadata/CHARACTER.md` dosyasını oku ve bu sessiondan itibaren Aktif Profil bölümündeki özelliklere göre davran.",
+        "copyPrompt": "Seçili profil registry üzerinden uygulanır.",
         "errors": {
           "electronApiUnavailable": "electronAPI kullanılamıyor",
-          "profileReadFailed": "Karakter profil dosyası okunamadı",
+          "profileReadFailed": "Profil registry okunamadı",
           "saveFailed": "Karakter profili kaydedilemedi: {{message}}"
         },
         "categories": {
@@ -1647,6 +1671,14 @@
           "personalityCritic": "Eleştirmen — kodu sorgular, alternatif önerir",
           "personalityPragmatic": "Pragmatik — en hızlı çalışanı önerir",
           "personalityAssistant": "Asistan — sadece yapar, yorum yapmaz"
+        },
+        "scopeLabel": "Profil kapsamı",
+        "scopes": {
+          "assistant": "Asistan / AI0",
+          "ai1": "Runtime / AI1",
+          "ai2": "Runtime / AI2",
+          "npc": "Fate Knots / NPC",
+          "image": "Fate Knots / Görsel"
         }
       },
       "opencodeDoctor": {

@@ -22,20 +22,6 @@ export interface OpencodeUiModelSettingsOverlayState {
   showHidden: boolean;
 }
 
-export interface OpencodeUiCharacterProfileState {
-  id: string;
-  name: string;
-  description: string;
-  selectedFeatureIds: string[];
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface OpencodeUiCharacterProfilesState {
-  activeProfileId: string | null;
-  profiles: OpencodeUiCharacterProfileState[];
-}
-
 export interface OpencodeUiSharedState {
   version: 1;
   lastSessionId: string | null;
@@ -45,7 +31,6 @@ export interface OpencodeUiSharedState {
   modelPreferences: OpencodeUiModelPreferencesState;
   quickPrompts: OpencodeUiQuickPromptRecord[];
   modelSettingsOverlay: OpencodeUiModelSettingsOverlayState;
-  characterProfiles: OpencodeUiCharacterProfilesState;
 }
 
 export const DEFAULT_OPENCODE_UI_MODEL_PREFERENCES_STATE: OpencodeUiModelPreferencesState = {
@@ -69,10 +54,6 @@ export const DEFAULT_OPENCODE_UI_SHARED_STATE: OpencodeUiSharedState = {
   modelSettingsOverlay: {
     favoritesOnly: false,
     showHidden: false,
-  },
-  characterProfiles: {
-    activeProfileId: null,
-    profiles: [],
   },
 };
 
@@ -172,54 +153,6 @@ function normalizeModelSettingsOverlayState(value: unknown): OpencodeUiModelSett
   };
 }
 
-function normalizeCharacterProfileState(value: unknown): OpencodeUiCharacterProfileState | null {
-  if (value == null || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  const record = value as Record<string, unknown>;
-  const id = typeof record["id"] === "string" ? record["id"].trim() : "";
-  const name = typeof record["name"] === "string" ? record["name"].trim() : "";
-  const description = typeof record["description"] === "string" ? record["description"] : "";
-  const createdAt = typeof record["createdAt"] === "number" ? record["createdAt"] : Date.now();
-  const updatedAt = typeof record["updatedAt"] === "number" ? record["updatedAt"] : createdAt;
-
-  if (id === "" || name === "" || !Number.isFinite(createdAt) || !Number.isFinite(updatedAt)) {
-    return null;
-  }
-
-  return {
-    id,
-    name,
-    description,
-    selectedFeatureIds: normalizeStringArray(record["selectedFeatureIds"]),
-    createdAt,
-    updatedAt,
-  };
-}
-
-function normalizeCharacterProfilesState(value: unknown): OpencodeUiCharacterProfilesState {
-  if (value == null || typeof value !== "object" || Array.isArray(value)) {
-    return { ...DEFAULT_OPENCODE_UI_SHARED_STATE.characterProfiles, profiles: [] };
-  }
-
-  const record = value as Record<string, unknown>;
-  const profilesRaw = Array.isArray(record["profiles"]) ? record["profiles"] : [];
-  const profiles = profilesRaw
-    .map((item) => normalizeCharacterProfileState(item))
-    .filter((item): item is OpencodeUiCharacterProfileState => item !== null)
-    .sort((left, right) => right.updatedAt - left.updatedAt);
-  const activeProfileId = normalizeNullableString(record["activeProfileId"]);
-
-  return {
-    activeProfileId:
-      activeProfileId !== null && profiles.some((item) => item.id === activeProfileId)
-        ? activeProfileId
-        : null,
-    profiles,
-  };
-}
-
 export function normalizeOpencodeUiSharedState(value: unknown): OpencodeUiSharedState {
   if (value == null || typeof value !== "object" || Array.isArray(value)) {
     return {
@@ -227,7 +160,6 @@ export function normalizeOpencodeUiSharedState(value: unknown): OpencodeUiShared
       modelPreferences: { ...DEFAULT_OPENCODE_UI_SHARED_STATE.modelPreferences },
       quickPrompts: [],
       modelSettingsOverlay: { ...DEFAULT_OPENCODE_UI_SHARED_STATE.modelSettingsOverlay },
-      characterProfiles: { ...DEFAULT_OPENCODE_UI_SHARED_STATE.characterProfiles, profiles: [] },
     };
   }
 
@@ -241,6 +173,5 @@ export function normalizeOpencodeUiSharedState(value: unknown): OpencodeUiShared
     modelPreferences: normalizeOpencodeUiModelPreferencesState(record["modelPreferences"]),
     quickPrompts: normalizeOpencodeUiQuickPromptRecords(record["quickPrompts"]),
     modelSettingsOverlay: normalizeModelSettingsOverlayState(record["modelSettingsOverlay"]),
-    characterProfiles: normalizeCharacterProfilesState(record["characterProfiles"]),
   };
 }

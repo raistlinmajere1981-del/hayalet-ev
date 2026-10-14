@@ -786,6 +786,30 @@
           "detail": "Collects cross-slot messaging, waited replies, attachment delivery, `connection.ensure`, `session.open`, `session.switch`, `session.sync`, and `room.command` dispatch inside one JSON envelope. This is the only supported command surface for new slot and room integrations.",
           "usage": "++cmd:SlotBridge({\"action\":\"message.send\",\"fromSlot\":\"ai1\",\"toSlot\":\"ai0\",\"payload\":{\"text\":\"Hello\"}})\nActions: message.send, message.sendWait, connection.ensure, session.open, session.switch, session.sync, room.command",
           "example": "++cmd:SlotBridge({\"action\":\"message.sendWait\",\"fromSlot\":\"ai0\",\"toSlot\":\"ai1\",\"replyToSlot\":\"ai0\",\"payload\":{\"text\":\"Are you ready?\"}})"
+        },
+        "AgentProfileList": {
+          "description": "List shared agent profiles.",
+          "detail": "Profile selection never grants tools. Unverified capabilities are not treated as available.",
+          "usage": "++cmd:AgentProfileList",
+          "example": "++cmd:AgentProfileList"
+        },
+        "AgentProfileSelect": {
+          "description": "Select a profile for an agent/room/role scope.",
+          "detail": "Profile selection never grants tools. Unverified capabilities are not treated as available.",
+          "usage": "++cmd:AgentProfileSelect(profileId, agentId, roomId, roleId, purpose)",
+          "example": "++cmd:AgentProfileSelect(fate-knots-npc, ai0, fate-knots, fate-knots-npc, runtime)"
+        },
+        "AgentProfileInspect": {
+          "description": "Inspect resolved instructions, versions and hash.",
+          "detail": "Profile selection never grants tools. Unverified capabilities are not treated as available.",
+          "usage": "++cmd:AgentProfileInspect(agentId, roomId, roleId, purpose)",
+          "example": "++cmd:AgentProfileInspect(ai0, assistant, default, development)"
+        },
+        "AgentProfileCapabilities": {
+          "description": "Show host-attested capabilities and missing requirements.",
+          "detail": "Profile selection never grants tools. Unverified capabilities are not treated as available.",
+          "usage": "++cmd:AgentProfileCapabilities(agentId, roomId, roleId, purpose)",
+          "example": "++cmd:AgentProfileCapabilities(ai0, fate-knots, fate-knots-image, runtime)"
         }
       }
     }
@@ -1585,17 +1609,17 @@
         "newProfileName": "New Profile {{index}}",
         "emptyState": "Add features from the right panel",
         "poolTitle": "Feature Pool",
-        "footerNote": "Changes become active in the next session.",
-        "copyMessageTitle": "Copy the ready message for the current session",
-        "copyMessageButton": "Copy Message",
+        "footerNote": "The assistant profile applies to the next message. Selection never grants tools.",
+        "copyMessageTitle": "Copy resolved system instructions",
+        "copyMessageButton": "Copy Instructions",
         "copiedButton": "Copied",
         "savedButton": "Saved",
         "removeTitle": "Click to remove",
         "conflictMessage": "\"{{a}}\" conflicts with \"{{b}}\"",
-        "copyPrompt": "Your character profile has been updated. Read the `.rovo/_metadata/CHARACTER.md` file and follow the traits in the Active Profile section from this session onward.",
+        "copyPrompt": "The selected profile is applied through the registry.",
         "errors": {
           "electronApiUnavailable": "electronAPI is unavailable",
-          "profileReadFailed": "The character profile file could not be read",
+          "profileReadFailed": "Could not read profile registry",
           "saveFailed": "The character profile could not be saved: {{message}}"
         },
         "categories": {
@@ -1647,6 +1671,14 @@
           "personalityCritic": "Critic — questions the code and suggests alternatives",
           "personalityPragmatic": "Pragmatic — suggests the fastest working option",
           "personalityAssistant": "Assistant — just does it, no commentary"
+        },
+        "scopeLabel": "Profile scope",
+        "scopes": {
+          "assistant": "Assistant / AI0",
+          "ai1": "Runtime / AI1",
+          "ai2": "Runtime / AI2",
+          "npc": "Fate Knots / NPC",
+          "image": "Fate Knots / Image"
         }
       },
       "opencodeDoctor": {

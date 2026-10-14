@@ -1,3 +1,5 @@
+import type { AgentProfileRequest, AgentProfileResponse } from "../../shared/agent-profiles.js";
+import type { OpencodeUiSharedState } from "../../shared/opencode-ui-state.js";
 import type {
   ProviderConfig,
   ProviderScenarioProgressEvent,
@@ -1315,87 +1317,17 @@ declare global {
       path: string;
       error?: string;
     }>;
+    agentProfileRequest: (request: AgentProfileRequest) => Promise<AgentProfileResponse>;
+    assistantProfileSystem: () => Promise<AgentProfileResponse>;
     opencodeUiSharedStateRead: () => Promise<{
       success: boolean;
-      state: {
-        version: 1;
-        lastSessionId: string | null;
-        lastAgentId: string | null;
-        lastReasoningEffort: string | null;
-        interactionMode: "off" | "plan-harder-local" | "change-approval";
-        modelPreferences: {
-          hiddenProviders: string[];
-          hiddenModels: string[];
-          disabledProviders: string[];
-          disabledModels: string[];
-          favoriteModels: string[];
-          defaultModelKey: string | null;
-          lastSelectedModelKey: string | null;
-        };
-        quickPrompts: Array<{
-          id: string;
-          name: string;
-          content: string;
-          createdAt: number;
-        }>;
-        modelSettingsOverlay: {
-          favoritesOnly: boolean;
-          showHidden: boolean;
-        };
-        characterProfiles: {
-          activeProfileId: string | null;
-          profiles: Array<{
-            id: string;
-            name: string;
-            description: string;
-            selectedFeatureIds: string[];
-            createdAt: number;
-            updatedAt: number;
-          }>;
-        };
-      };
+      state: OpencodeUiSharedState;
       path: string;
       error?: string;
     }>;
     opencodeUiSharedStateWrite: (state: Record<string, unknown>) => Promise<{
       success: boolean;
-      state: {
-        version: 1;
-        lastSessionId: string | null;
-        lastAgentId: string | null;
-        lastReasoningEffort: string | null;
-        interactionMode: "off" | "plan-harder-local" | "change-approval";
-        modelPreferences: {
-          hiddenProviders: string[];
-          hiddenModels: string[];
-          disabledProviders: string[];
-          disabledModels: string[];
-          favoriteModels: string[];
-          defaultModelKey: string | null;
-          lastSelectedModelKey: string | null;
-        };
-        quickPrompts: Array<{
-          id: string;
-          name: string;
-          content: string;
-          createdAt: number;
-        }>;
-        modelSettingsOverlay: {
-          favoritesOnly: boolean;
-          showHidden: boolean;
-        };
-        characterProfiles: {
-          activeProfileId: string | null;
-          profiles: Array<{
-            id: string;
-            name: string;
-            description: string;
-            selectedFeatureIds: string[];
-            createdAt: number;
-            updatedAt: number;
-          }>;
-        };
-      };
+      state: OpencodeUiSharedState;
       path: string;
       error?: string;
     }>;

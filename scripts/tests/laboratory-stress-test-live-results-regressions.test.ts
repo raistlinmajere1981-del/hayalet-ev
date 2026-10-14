@@ -255,6 +255,10 @@ void test("tracking preview ignores report-history tracking when the canonical c
     cameraTrackingCaches: [],
     temporalStressTests: [
       {
+        id: "history-only-tracking",
+        createdAt: "2026-08-26T12:04:00.000Z",
+        schemaVersion: 2,
+        kind: "temporal-stress-test",
         tracking: {
           ...canonicalCache,
           cacheId: "history-only-tracking-cache",

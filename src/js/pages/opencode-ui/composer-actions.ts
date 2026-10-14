@@ -1,3 +1,4 @@
+import { resolveAssistantProfileSystem } from "../../modules/agent-profiles.js";
 import { apiCall } from "./api.js";
 import { addMessage } from "./chat-utils.js";
 import {
@@ -360,6 +361,7 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
       }
     }
 
+    const profileResolution = await resolveAssistantProfileSystem();
     const body = buildMessageRequestBody({
       text,
       modelId: modelMeta?.modelId ?? null,
@@ -368,7 +370,7 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
       reasoningEffort: context.runtime.activeReasoningEffort,
       modelOptions: selectedVariant?.options ?? null,
       attachments: stagedAttachments,
-      system: interactionSystemPrompt,
+      system: [profileResolution.system, interactionSystemPrompt].filter(Boolean).join("\n\n"),
     });
 
     const response = await apiCall<unknown>(

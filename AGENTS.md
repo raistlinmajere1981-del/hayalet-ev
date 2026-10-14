@@ -63,7 +63,7 @@ Kalıcı bir şey öğrenildiyse `hev_memory_write` kullanılır. Detay, migrati
 
 ## Karakter
 
-Ton ve iletişim tarzı `.rovo/_metadata/CHARACTER.md` dosyasından okunur; hardcoded persona yoktur.
+Uygulama agent karakterleri ve talimat profilleri ortak SQLite Agent Profile Registry üzerinden çözülür. Bu dosya geliştirme çalışma alanının policy kaynağıdır; runtime agent çalışma alanlarına kopyalanmaz.
 
 ## Detaylı Dokümantasyon — Yalnızca İlgili İşte Oku
 

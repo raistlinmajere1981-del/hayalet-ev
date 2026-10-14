@@ -1,18 +1,14 @@
-// NOTE: Opened from the assistant page; writes selected features to .rovo/_metadata/CHARACTER.md.
-import type { AppLanguage, TranslationCatalog } from "@shared/i18n.js";
 import { AppI18n } from "../../modules/i18n/index.js";
-import { translateCatalog } from "../../../../shared/i18n/catalog.js";
 import type { ManagedOverlayController } from "../../ui/overlay-system.js";
 import { createSharedAssistantToolOverlayController } from "../../ui/overlay-presets.js";
-import { loadBuiltInLanguagePack } from "../../modules/i18n/built-in-loader.js";
-import {
-  patchOpencodeUiSharedState,
-  readOpencodeUiSharedState,
-} from "../../modules/opencode-ui-shared-state.js";
+import { requestAgentProfiles } from "../../modules/agent-profiles.js";
+import { ASSISTANT_PROFILE_SCOPE } from "../../../../shared/agent-profiles.js";
 import type {
-  OpencodeUiCharacterProfileState,
-  OpencodeUiCharacterProfilesState,
-} from "../../../../shared/opencode-ui-state.js";
+  AgentCharacterProfile,
+  AgentCharacterEditorState,
+  AgentProfileScope,
+  AgentProfileResolution,
+} from "../../../../shared/agent-profiles.js";
 
 interface CharacterFeature {
   id: string;
@@ -36,11 +32,6 @@ function characterT(key: string, params?: Record<string, string | number>): stri
   return AppI18n.t(`shell.assistant.characterOverlay.${key}`, params);
 }
 
-const PROFILE_LABEL_LOCALES: AppLanguage[] = ["tr", "en"];
-const EMPTY_PROFILE_HINT_PATTERN =
-  /> \*(Henüz bir profil tanımlanmadı\..*?|No profile has been defined yet\..*?)\*/;
-const LAST_UPDATED_PATTERN = /\*\*(Son güncelleme|Last updated):\*\* .*/;
-
 function translateCharacterCatalogKey(key: string): string {
   return characterT(key);
 }
@@ -51,10 +42,6 @@ function getCategoryLabel(category: CharacterCategory): string {
 
 function getFeatureLabel(feature: CharacterFeature): string {
   return translateCharacterCatalogKey(feature.translationKey);
-}
-
-function normalizeProfileLabel(label: string): string {
-  return label.trim().toLocaleLowerCase("tr-TR");
 }
 
 const CATEGORIES: CharacterCategory[] = [
@@ -201,60 +188,8 @@ const CATEGORIES: CharacterCategory[] = [
 ];
 
 const FEATURE_MAP = new Map<string, CharacterFeature>();
-const FEATURE_LABEL_INDEX = new Map<string, string>();
-let featureLabelIndexPromise: Promise<void> | null = null;
-
-async function ensureFeatureLabelIndex(): Promise<void> {
-  if (featureLabelIndexPromise !== null) {
-    await featureLabelIndexPromise;
-    return;
-  }
-
-  featureLabelIndexPromise = (async (): Promise<void> => {
-    const fallbackCatalog = (await loadBuiltInLanguagePack("en"))?.catalog;
-    const localeCatalogs = new Map<AppLanguage, TranslationCatalog>();
-
-    await Promise.all(
-      PROFILE_LABEL_LOCALES.map(async (locale) => {
-        const pack = await loadBuiltInLanguagePack(locale);
-        if (pack !== null) {
-          localeCatalogs.set(locale, pack.catalog);
-        }
-      })
-    );
-
-    for (const category of CATEGORIES) {
-      for (const feature of category.features) {
-        for (const locale of PROFILE_LABEL_LOCALES) {
-          const catalog = localeCatalogs.get(locale);
-          if (catalog === undefined) {
-            continue;
-          }
-
-          FEATURE_LABEL_INDEX.set(
-            normalizeProfileLabel(
-              translateCatalog(
-                catalog,
-                `shell.assistant.characterOverlay.${feature.translationKey}`,
-                undefined,
-                fallbackCatalog
-              )
-            ),
-            feature.id
-          );
-        }
-      }
-    }
-  })();
-
-  await featureLabelIndexPromise;
-}
-
-for (const cat of CATEGORIES) {
-  for (const f of cat.features) {
-    FEATURE_MAP.set(f.id, f);
-    FEATURE_LABEL_INDEX.set(normalizeProfileLabel(f.id), f.id);
-  }
+for (const category of CATEGORIES) {
+  for (const feature of category.features) FEATURE_MAP.set(feature.id, feature);
 }
 
 const CONFLICTS: ConflictPair[] = [
@@ -276,19 +211,9 @@ const CONFLICTS: ConflictPair[] = [
   { a: "tone-emoji-few", b: "tone-emoji-none" },
 ];
 
-const CHARACTER_MD_PATH = ".rovo/_metadata/CHARACTER.md";
-const utf8Decoder = new TextDecoder();
-
-function decodeBase64Utf8(value: string): string {
-  const binary = atob(value);
-  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-  return utf8Decoder.decode(bytes);
-}
-
-function cloneCharacterProfilesState(
-  state: OpencodeUiCharacterProfilesState
-): OpencodeUiCharacterProfilesState {
+function cloneCharacterProfilesState(state: AgentCharacterEditorState): AgentCharacterEditorState {
   return {
+    revision: state.revision,
     activeProfileId: state.activeProfileId,
     profiles: state.profiles.map((profile) => ({
       ...profile,
@@ -328,8 +253,8 @@ function buildProfileName(index: number, rawName?: string): string {
 
 function createCharacterProfile(
   index: number,
-  seed: Partial<OpencodeUiCharacterProfileState> = {}
-): OpencodeUiCharacterProfileState {
+  seed: Partial<AgentCharacterProfile> = {}
+): AgentCharacterProfile {
   const createdAt = typeof seed.createdAt === "number" ? seed.createdAt : Date.now();
   const updatedAt = typeof seed.updatedAt === "number" ? seed.updatedAt : createdAt;
   return {
@@ -339,24 +264,15 @@ function createCharacterProfile(
     selectedFeatureIds: normalizeFeatureIds(
       Array.isArray(seed.selectedFeatureIds) ? seed.selectedFeatureIds : []
     ),
+    instructionId: seed.instructionId ?? null,
+    requestedCapabilities: seed.requestedCapabilities ?? [],
+    version: seed.version ?? 0,
     createdAt,
     updatedAt,
   };
 }
 
-function createFallbackProfilesState(
-  selectedFeatureIds: string[] = []
-): OpencodeUiCharacterProfilesState {
-  const profile = createCharacterProfile(0, { selectedFeatureIds });
-  return {
-    activeProfileId: profile.id,
-    profiles: [profile],
-  };
-}
-
-function ensureCharacterProfilesState(
-  state: OpencodeUiCharacterProfilesState
-): OpencodeUiCharacterProfilesState {
+function ensureCharacterProfilesState(state: AgentCharacterEditorState): AgentCharacterEditorState {
   const profiles = state.profiles.map((profile, index) =>
     createCharacterProfile(index, {
       ...profile,
@@ -364,9 +280,6 @@ function ensureCharacterProfilesState(
       description: typeof profile.description === "string" ? profile.description.trim() : "",
     })
   );
-  if (profiles.length === 0) {
-    return createFallbackProfilesState();
-  }
 
   const activeProfileId =
     state.activeProfileId != null &&
@@ -375,50 +288,15 @@ function ensureCharacterProfilesState(
       : (profiles[0]?.id ?? null);
 
   return {
+    revision: state.revision,
     activeProfileId,
     profiles,
   };
 }
 
-function buildCharacterMarkdownFallback(profileBlock: string, timestamp: string): string {
-  const emptyHint =
-    profileBlock.trim() === ""
-      ? "\n> *Henüz bir profil tanımlanmadı. Asistan sayfasındaki 🎭 butonuna tıklayarak karakter özelliklerini seç.*\n"
-      : "";
-
-  return [
-    "# 🎭 AI Karakter Profili",
-    "",
-    "> **Yönetim:** Asistan sayfasındaki 🎭 butonu ile overlay üzerinden düzenlenir.",
-    "> **Etki:** Yeni sessionlarda otomatik yüklenir. Mevcut session için aşağıdaki hazır mesajı kullan.",
-    "",
-    "---",
-    "",
-    "## 📋 Aktif Profil",
-    emptyHint,
-    "<!--PROFILE_START-->",
-    profileBlock,
-    "<!--PROFILE_END-->",
-    "",
-    "---",
-    "",
-    "## 💬 Mevcut Session İçin Hazır Mesaj",
-    "",
-    "```",
-    characterT("copyPrompt"),
-    "```",
-    "",
-    "---",
-    "",
-    `**Son güncelleme:** ${timestamp}`,
-    "**Versiyon:** 1.1",
-    "",
-  ]
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n");
-}
-
 export class CharacterOverlay {
+  private loadGeneration = 0;
+  private profileScope: AgentProfileScope = { ...ASSISTANT_PROFILE_SCOPE };
   private overlay: HTMLElement | null = null;
   private overlayController: ManagedOverlayController | null = null;
   private profileList: HTMLElement | null = null;
@@ -436,10 +314,19 @@ export class CharacterOverlay {
   private currentProfileLabel: HTMLElement | null = null;
   private unsubscribeI18n: (() => void) | null = null;
 
-  private draftProfilesState: OpencodeUiCharacterProfilesState = createFallbackProfilesState();
-  private savedProfilesState: OpencodeUiCharacterProfilesState = createFallbackProfilesState();
+  private draftProfilesState: AgentCharacterEditorState = {
+    revision: 0,
+    activeProfileId: null,
+    profiles: [],
+  };
+  private savedProfilesState: AgentCharacterEditorState = {
+    revision: 0,
+    activeProfileId: null,
+    profiles: [],
+  };
 
   destroy(): void {
+    this.loadGeneration += 1;
     this.unsubscribeI18n?.();
     this.unsubscribeI18n = null;
     this.overlayController?.destroy();
@@ -519,22 +406,85 @@ export class CharacterOverlay {
     });
 
     document.getElementById("character-copy-msg-btn")?.addEventListener("click", () => {
-      void navigator.clipboard.writeText(characterT("copyPrompt")).then(() => {
-        const btn = document.getElementById("character-copy-msg-btn");
-        const labelEl = btn?.querySelector<HTMLElement>("[data-character-copy-label]");
-        if (btn == null || labelEl == null) {
-          return;
-        }
+      void requestAgentProfiles<AgentProfileResolution>({
+        action: "resolve",
+        scope: this.profileScope,
+      })
+        .then(async (resolution) => {
+          await navigator.clipboard.writeText(resolution.system);
+        })
+        .then(() => {
+          const btn = document.getElementById("character-copy-msg-btn");
+          const labelEl = btn?.querySelector<HTMLElement>("[data-character-copy-label]");
+          if (btn == null || labelEl == null) {
+            return;
+          }
 
-        const originalLabel = characterT("copyMessageButton");
-        labelEl.textContent = characterT("copiedButton");
-        setTimeout(() => {
-          labelEl.textContent = originalLabel;
-        }, 2000);
+          const originalLabel = characterT("copyMessageButton");
+          labelEl.textContent = characterT("copiedButton");
+          setTimeout(() => {
+            labelEl.textContent = originalLabel;
+          }, 2000);
+        });
+    });
+
+    const scopeSelect = document.createElement("select");
+    scopeSelect.setAttribute("aria-label", characterT("scopeLabel"));
+    const scopes: Array<{ label: string; scope: AgentProfileScope }> = [
+      { label: "scopes.assistant", scope: ASSISTANT_PROFILE_SCOPE },
+      {
+        label: "scopes.ai1",
+        scope: { purpose: "runtime", agentId: "ai1", roomId: "default", roleId: "default" },
+      },
+      {
+        label: "scopes.ai2",
+        scope: { purpose: "runtime", agentId: "ai2", roomId: "default", roleId: "default" },
+      },
+      {
+        label: "scopes.npc",
+        scope: {
+          purpose: "runtime",
+          agentId: "ai0",
+          roomId: "fate-knots",
+          roleId: "fate-knots-npc",
+        },
+      },
+      {
+        label: "scopes.image",
+        scope: {
+          purpose: "runtime",
+          agentId: "ai0",
+          roomId: "fate-knots",
+          roleId: "fate-knots-image",
+        },
+      },
+    ];
+    for (const [index, item] of scopes.entries()) {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = characterT(item.label);
+      scopeSelect.appendChild(option);
+    }
+    this.profileList?.before(scopeSelect);
+    scopeSelect.addEventListener("change", () => {
+      this.profileScope = {
+        ...(scopes[Number(scopeSelect.value)]?.scope ?? ASSISTANT_PROFILE_SCOPE),
+      };
+      void this._loadProfiles().then(() => {
+        this._renderProfileList();
+        this._renderProfileEditor();
+        this._renderActivePanel();
+        this._updatePool();
+        this._checkConflicts();
       });
     });
 
     this.unsubscribeI18n ??= AppI18n.subscribe(() => {
+      scopeSelect.setAttribute("aria-label", characterT("scopeLabel"));
+      for (const [index, item] of scopes.entries()) {
+        const option = scopeSelect.options[index];
+        if (option !== undefined) option.textContent = characterT(item.label);
+      }
       this._renderPool();
       this._renderProfileList();
       this._renderProfileEditor();
@@ -551,7 +501,6 @@ export class CharacterOverlay {
 
   private open(): void {
     void (async (): Promise<void> => {
-      await ensureFeatureLabelIndex();
       await this._loadProfiles();
       this._renderPool();
       this._renderProfileList();
@@ -566,7 +515,7 @@ export class CharacterOverlay {
     this.overlayController?.close();
   }
 
-  private _getActiveProfile(): OpencodeUiCharacterProfileState | null {
+  private _getActiveProfile(): AgentCharacterProfile | null {
     const activeProfileId = this.draftProfilesState.activeProfileId;
     if (activeProfileId == null) {
       return null;
@@ -578,66 +527,18 @@ export class CharacterOverlay {
   }
 
   private async _loadProfiles(): Promise<void> {
-    const sharedState = await readOpencodeUiSharedState();
-    let nextState = ensureCharacterProfilesState(sharedState.characterProfiles);
-
-    if (sharedState.characterProfiles.profiles.length === 0) {
-      const legacySelected = await this._loadLegacySelectedFeatures();
-      nextState = createFallbackProfilesState(legacySelected);
-    }
-
+    const generation = ++this.loadGeneration;
+    const nextState = await requestAgentProfiles<AgentCharacterEditorState>({
+      action: "editor-read",
+      scope: this.profileScope,
+    });
+    if (generation !== this.loadGeneration) return;
     this.savedProfilesState = cloneCharacterProfilesState(nextState);
     this.draftProfilesState = cloneCharacterProfilesState(nextState);
   }
 
-  private async _readCharacterMarkdown(): Promise<string> {
-    const api = window.electronAPI;
-    if (api == null || typeof api.readFile !== "function") {
-      throw new Error(characterT("errors.electronApiUnavailable"));
-    }
-
-    const base64 = await api.readFile(CHARACTER_MD_PATH);
-    if (typeof base64 !== "string" || base64.trim() === "") {
-      return "";
-    }
-
-    return decodeBase64Utf8(base64);
-  }
-
-  private async _loadLegacySelectedFeatures(): Promise<string[]> {
-    try {
-      const content = await this._readCharacterMarkdown();
-      return Array.from(this._parseProfile(content));
-    } catch {
-      return [];
-    }
-  }
-
-  private _parseProfile(content: string): Set<string> {
-    const result = new Set<string>();
-    const match = content.match(/<!--PROFILE_START-->([\s\S]*?)<!--PROFILE_END-->/);
-    if (!match) {
-      return result;
-    }
-
-    const block = match[1] ?? "";
-    const lines = block
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.startsWith("- "));
-    lines.forEach((line) => {
-      const label = line.slice(2).trim();
-      const featureId = FEATURE_LABEL_INDEX.get(normalizeProfileLabel(label));
-      if (featureId !== undefined) {
-        result.add(featureId);
-      }
-    });
-
-    return result;
-  }
-
   private _updateActiveProfile(
-    updater: (profile: OpencodeUiCharacterProfileState) => OpencodeUiCharacterProfileState
+    updater: (profile: AgentCharacterProfile) => AgentCharacterProfile
   ): void {
     const activeProfile = this._getActiveProfile();
     if (activeProfile == null) {
@@ -687,6 +588,7 @@ export class CharacterOverlay {
       name: characterT("newProfileName", { index: this.draftProfilesState.profiles.length + 1 }),
     });
     this.draftProfilesState = {
+      revision: this.draftProfilesState.revision,
       activeProfileId: profile.id,
       profiles: [profile, ...this.draftProfilesState.profiles],
     };
@@ -710,15 +612,11 @@ export class CharacterOverlay {
     const remainingProfiles = this.draftProfilesState.profiles.filter(
       (profile) => profile.id !== activeProfile.id
     );
-    const nextState =
-      remainingProfiles.length > 0
-        ? {
-            activeProfileId: remainingProfiles[0]?.id ?? null,
-            profiles: remainingProfiles,
-          }
-        : createFallbackProfilesState();
-
-    this.draftProfilesState = nextState;
+    this.draftProfilesState = {
+      revision: this.draftProfilesState.revision,
+      activeProfileId: remainingProfiles[0]?.id ?? null,
+      profiles: remainingProfiles,
+    };
     this._renderProfileList();
     this._renderProfileEditor();
     this._renderActivePanel();
@@ -728,40 +626,14 @@ export class CharacterOverlay {
 
   private async save(): Promise<void> {
     const normalizedState = ensureCharacterProfilesState(this.draftProfilesState);
-    const activeProfile =
-      normalizedState.profiles.find((profile) => profile.id === normalizedState.activeProfileId) ??
-      normalizedState.profiles[0] ??
-      null;
-    const timestamp = new Date().toISOString().split("T")[0] ?? "";
-    let sharedStatePatched = false;
-
     try {
-      const currentContent = await this._readCharacterMarkdown().catch(() => "");
-      const profileBlock = this._buildProfileBlock(activeProfile);
-      const updatedContent =
-        currentContent.trim() !== ""
-          ? this._mergeCharacterMarkdown(currentContent, profileBlock, timestamp)
-          : buildCharacterMarkdownFallback(profileBlock, timestamp);
-
-      const api = window.electronAPI;
-      if (api == null || typeof api.fmWriteFileAtomic !== "function") {
-        throw new Error(characterT("errors.electronApiUnavailable"));
-      }
-
-      const writtenState = await patchOpencodeUiSharedState((current) => ({
-        ...current,
-        characterProfiles: normalizedState,
-      }));
-      sharedStatePatched = true;
-
-      await api.fmWriteFileAtomic({
-        path: CHARACTER_MD_PATH,
-        data: updatedContent,
-        encoding: "utf-8",
+      const writtenState = await requestAgentProfiles<AgentCharacterEditorState>({
+        action: "editor-save",
+        scope: this.profileScope,
+        state: normalizedState,
       });
-
-      this.savedProfilesState = ensureCharacterProfilesState(writtenState.characterProfiles);
-      this.draftProfilesState = cloneCharacterProfilesState(this.savedProfilesState);
+      this.savedProfilesState = cloneCharacterProfilesState(writtenState);
+      this.draftProfilesState = cloneCharacterProfilesState(writtenState);
 
       if (this.saveBtn != null) {
         const originalText = this.saveBtn.textContent;
@@ -775,15 +647,11 @@ export class CharacterOverlay {
         }, 2000);
       }
     } catch (error) {
-      if (sharedStatePatched) {
-        try {
-          await patchOpencodeUiSharedState((current) => ({
-            ...current,
-            characterProfiles: this.savedProfilesState,
-          }));
-        } catch {
-          // NOTE: Keep the original save error; rollback is best-effort.
-        }
+      if (this.conflictText !== null && this.conflictsEl !== null) {
+        this.conflictText.textContent = characterT("errors.saveFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        });
+        this.conflictsEl.classList.remove("is-hidden");
       }
       if (this.saveBtn != null) {
         const originalText = this.saveBtn.textContent;
@@ -803,59 +671,6 @@ export class CharacterOverlay {
         error
       );
     }
-  }
-
-  private _mergeCharacterMarkdown(
-    current: string,
-    profileBlock: string,
-    timestamp: string
-  ): string {
-    if (!current.includes("<!--PROFILE_START-->") || !current.includes("<!--PROFILE_END-->")) {
-      return buildCharacterMarkdownFallback(profileBlock, timestamp);
-    }
-
-    const nextProfileBlock =
-      profileBlock.trim() === ""
-        ? "<!--PROFILE_START-->\n<!--PROFILE_END-->"
-        : `<!--PROFILE_START-->\n${profileBlock}<!--PROFILE_END-->`;
-
-    let updated = current.replace(
-      /<!--PROFILE_START-->([\s\S]*?)<!--PROFILE_END-->/,
-      nextProfileBlock
-    );
-    if (profileBlock.trim() !== "") {
-      updated = updated.replace(EMPTY_PROFILE_HINT_PATTERN, "");
-    }
-    if (LAST_UPDATED_PATTERN.test(updated)) {
-      updated = updated.replace(
-        LAST_UPDATED_PATTERN,
-        (_match, label: string) => `**${label}:** ${timestamp}`
-      );
-    } else {
-      updated = `${updated.trimEnd()}\n\n**Son güncelleme:** ${timestamp}\n`;
-    }
-    return updated;
-  }
-
-  private _buildProfileBlock(profile: OpencodeUiCharacterProfileState | null): string {
-    if (profile == null || profile.selectedFeatureIds.length === 0) {
-      return "";
-    }
-
-    const selected = new Set(profile.selectedFeatureIds);
-    let block = "";
-    for (const category of CATEGORIES) {
-      const activeInCategory = category.features.filter((feature) => selected.has(feature.id));
-      if (activeInCategory.length === 0) {
-        continue;
-      }
-
-      block += `\n### ${category.icon} ${getCategoryLabel(category)}\n`;
-      activeInCategory.forEach((feature) => {
-        block += `- ${getFeatureLabel(feature)}\n`;
-      });
-    }
-    return `${block}\n`;
   }
 
   private _renderProfileList(): void {

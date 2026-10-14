@@ -20,6 +20,10 @@ export interface CommandDescriptionInfo {
 }
 
 const COMMAND_DESCRIPTION_NAMES = [
+  "AgentProfileList",
+  "AgentProfileSelect",
+  "AgentProfileInspect",
+  "AgentProfileCapabilities",
   "WhisperManager",
   "AIAIChatStart",
   "AIAIChatStop",

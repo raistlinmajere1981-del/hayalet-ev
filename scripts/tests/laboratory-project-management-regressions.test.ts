@@ -199,7 +199,7 @@ void test("laboratory project storage loads only the current project schema", as
     },
     writeJsonFile() {},
   });
-  const runtime = {
+  const runtime: Parameters<typeof projectStorage.loadProjects>[0] = {
     activeProjectId: null,
     editPresets: {},
     paths: { projectsDir: "/projects" },

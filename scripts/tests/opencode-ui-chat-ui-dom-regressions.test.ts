@@ -283,9 +283,11 @@ function findById(root: FakeHTMLElement, id: string): FakeHTMLElement | null {
   return null;
 }
 
-function installFakeDom(options: {
-  electronApi?: Record<string, unknown>;
-} = {}): {
+function installFakeDom(
+  options: {
+    electronApi?: Record<string, unknown>;
+  } = {}
+): {
   document: FakeDocument;
   restore: () => void;
 } {
@@ -487,9 +489,9 @@ void test("addMessage renders assistant notice, historic preview card, and seman
     const previewImage = chatMessages.querySelector(".ds-attachment-card__image");
 
     assert.ok(reasoningSection);
-    assert.match(reasoningSection.textContent , /Inspect session payload/u);
+    assert.match(reasoningSection.textContent, /Inspect session payload/u);
     assert.ok(patchSection);
-    assert.match(patchSection.textContent , /chat-utils\.ts/u);
+    assert.match(patchSection.textContent, /chat-utils\.ts/u);
     assert.equal(noticeTitle?.textContent, t("message.runtimeNotice.limitTitle"));
     assert.equal(previewImage?.src, "https://example.test/assets/screen.png");
   } finally {
@@ -549,7 +551,7 @@ void test("addMessage keeps the change-approval interaction card render path act
 
     const approvalCard = chatMessages.querySelector(".rovo-interaction--approval");
     assert.ok(approvalCard);
-    assert.match(approvalCard.textContent , /Revise the assistant message renderer/u);
+    assert.match(approvalCard.textContent, /Revise the assistant message renderer/u);
   } finally {
     restore();
   }
@@ -600,14 +602,20 @@ void test("sendComposerMessage keeps the Rovo card path when history sync falls 
     solution: "Use withHistorySyncFallback when the session store lags",
     canonicalReply: "evet",
   });
+  const outgoingBodies: string[] = [];
   const { document, restore } = installFakeDom({
     electronApi: {
-      opencodeUiApiProxy: () => ({
+      assistantProfileSystem: () => ({
         success: true,
-        data: {
-          parts: [{ type: "text", text: tokenizedReply }],
-        },
+        data: { system: "Resolved assistant profile" },
       }),
+      opencodeUiApiProxy: (payload: { body?: string }) => {
+        outgoingBodies.push(payload.body ?? "");
+        return {
+          success: true,
+          data: { parts: [{ type: "text", text: tokenizedReply }] },
+        };
+      },
       loadSettings: () => ({
         assistantSlot: {
           accountId: "opencode_ui_opencode_at_opencode_com",
@@ -668,9 +676,10 @@ void test("sendComposerMessage keeps the Rovo card path when history sync falls 
       scrollChatToBottom: () => {},
     });
 
+    assert.ok(outgoingBodies.some((body) => body.includes("Resolved assistant profile")));
     const approvalCard = chatMessages.querySelector(".rovo-interaction--approval");
     assert.ok(approvalCard);
-    assert.match(approvalCard.textContent , /Keep the fallback interaction card visible/u);
+    assert.match(approvalCard.textContent, /Keep the fallback interaction card visible/u);
   } finally {
     restore();
   }
@@ -679,6 +688,10 @@ void test("sendComposerMessage keeps the Rovo card path when history sync falls 
 void test("sendComposerMessage renders a notice bubble for request-time limit failures", async () => {
   const { document, restore } = installFakeDom({
     electronApi: {
+      assistantProfileSystem: () => ({
+        success: true,
+        data: { system: "Resolved assistant profile" },
+      }),
       opencodeUiApiProxy: () => ({
         success: false,
         data: {
