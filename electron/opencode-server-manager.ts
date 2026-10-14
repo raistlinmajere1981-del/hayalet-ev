@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { ChildProcess } from "child_process";
 import { execFile, spawn } from "child_process";
 import { existsSync } from "fs";
@@ -41,6 +42,7 @@ export class OpenCodeServerManager {
   private currentPort: number | null = null;
   private startTime: number | null = null;
   private usingExternalServer = false;
+  private serverPassword: string | null = null;
 
   private getWorkspacePath(): string | undefined {
     const workspacePath = Paths.getProjectRoot().trim();
@@ -50,7 +52,7 @@ export class OpenCodeServerManager {
   private parseVersion(raw: string): string | undefined {
     const output = raw.trim();
     if (output === "") return undefined;
-    const match = output.match(/\b(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)\b/);
+    const match = output.match(/(?:^|[^0-9])(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)\b/);
     return match?.[1];
   }
 
@@ -228,7 +230,7 @@ export class OpenCodeServerManager {
     return undefined;
   }
 
-  private buildSpawnCommand(command: string, args: string[]): SpawnCommandSpec {
+  buildSpawnCommand(command: string, args: string[]): SpawnCommandSpec {
     if (process.platform !== "win32") {
       return { command, args, shell: false };
     }
@@ -348,7 +350,7 @@ export class OpenCodeServerManager {
       }
 
       try {
-        const healthResult = await this.checkHealth(`http://127.0.0.1:${port}/global/health`);
+        const healthResult = await this.checkHealth(`http://127.0.0.1:${port}/api/info`);
         if (healthResult.success) {
           const workspacePath = this.getWorkspacePath();
           await logger.logInternalT(
@@ -442,9 +444,6 @@ export class OpenCodeServerManager {
     });
 
     const workspacePath = this.getWorkspacePath();
-    if (workspacePath !== undefined) {
-      args.push(workspacePath);
-    }
 
     await logger.logInternalT(
       LogCategory.MAIN,
@@ -460,7 +459,11 @@ export class OpenCodeServerManager {
       }
     );
 
-    const childEnv = { ...process.env };
+    this.serverPassword = randomBytes(32).toString("base64url");
+    const childEnv: NodeJS.ProcessEnv = {
+      ...process.env,
+      OPENCODE_SERVER_PASSWORD: this.serverPassword,
+    };
     delete childEnv["CDP_PORT"];
     delete childEnv["NODE_OPTIONS"];
     delete childEnv["NODE_INSPECT_RESUME_ON_START"];
@@ -636,39 +639,43 @@ export class OpenCodeServerManager {
     };
   }
 
-  // NOTE: Server health check (HTTP request via Node.js - CSP bypass).
+  authorizationForUrl(url: string): string | null {
+    const target = new URL(url);
+    if (
+      target.protocol !== "http:" ||
+      target.hostname !== "127.0.0.1" ||
+      target.port !== String(this.currentPort) ||
+      this.serverPassword === null
+    )
+      return null;
+    return `Basic ${Buffer.from(`opencode:${this.serverPassword}`).toString("base64")}`;
+  }
+
   async checkHealth(url: string): Promise<{ success: boolean; error?: string }> {
-    const http = await import("http");
-    return await new Promise((resolve) => {
-      const parsedUrl = new URL(url);
-
-      const req = http.request(
-        {
-          hostname: parsedUrl.hostname,
-          port: parsedUrl.port,
-          path: parsedUrl.pathname,
-          method: "GET",
-          timeout: 1000,
-        },
-        (res) => {
-          resolve({ success: res.statusCode === 200 });
-        }
-      );
-
-      req.on("error", (err: Error) => {
-        resolve({ success: false, error: err.message });
+    try {
+      const target = new URL(url);
+      target.pathname = "/api/info";
+      const authorization = this.authorizationForUrl(target.href);
+      const response = await fetch(target, {
+        headers: authorization === null ? {} : { Authorization: authorization },
+        signal: AbortSignal.timeout(1000),
       });
-
-      req.on("timeout", () => {
-        req.destroy();
-        resolve({ success: false, error: "timeout" });
-      });
-
-      req.end();
-    });
+      if (!response.ok) return { success: false };
+      const body: unknown = await response.json();
+      return {
+        success:
+          body !== null &&
+          typeof body === "object" &&
+          !Array.isArray(body) &&
+          typeof (body as Record<string, unknown>)["version"] === "string",
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
   }
 
   private cleanup(): void {
+    this.serverPassword = null;
     this.process = null;
     this.currentPort = null;
     this.startTime = null;

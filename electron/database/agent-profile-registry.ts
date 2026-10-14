@@ -44,6 +44,7 @@ export class AgentProfileRegistry {
   constructor(private readonly db: BetterSqlite3Database) {
     db.exec(`
       PRAGMA foreign_keys = ON;
+      CREATE TABLE IF NOT EXISTS ai0_runtime_models (scope TEXT PRIMARY KEY, provider_id TEXT NOT NULL, model_id TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS agent_character_features (id TEXT PRIMARY KEY, content TEXT NOT NULL, version INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS agent_registry_meta (id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS agent_instructions (id TEXT PRIMARY KEY, purpose TEXT NOT NULL, layer TEXT NOT NULL, target_id TEXT NOT NULL, content TEXT NOT NULL, version INTEGER NOT NULL, UNIQUE(purpose,layer,target_id));
@@ -142,7 +143,7 @@ export class AgentProfileRegistry {
           name: "Fate Knots Görsel Üreticisi",
           features: ["detail-verbose"],
           instructionId: "fate-knots-image-role",
-          capabilities: ["image-generation"],
+          capabilities: ["image_generate"],
         },
       ];
       for (const seed of seeds)
@@ -255,6 +256,35 @@ export class AgentProfileRegistry {
       this.db.prepare("DELETE FROM agent_profiles WHERE id=?").run(id);
       this.bump();
     });
+  }
+
+  selectedRuntimeModel(scope: AgentProfileScope): { providerID: string; id: string } | null {
+    const row = this.db
+      .prepare<[string], { provider_id: string; model_id: string }>(
+        "SELECT * FROM ai0_runtime_models WHERE scope=?"
+      )
+      .get(scopeKey(scope));
+    return row ? { providerID: row.provider_id, id: row.model_id } : null;
+  }
+
+  selectRuntimeModel(scope: AgentProfileScope, model: { providerID: string; id: string }): void {
+    for (const value of [model.providerID, model.id])
+      if (typeof value !== "string" || value.trim() === "" || value.length > 200)
+        throw new Error("Invalid AI0 model reference");
+    this.db
+      .prepare(
+        "INSERT INTO ai0_runtime_models VALUES (?,?,?) ON CONFLICT(scope) DO UPDATE SET provider_id=excluded.provider_id,model_id=excluded.model_id"
+      )
+      .run(scopeKey(scope), model.providerID, model.id);
+  }
+
+  ensureProfileSelection(scope: AgentProfileScope, profileId: string): void {
+    if (
+      this.db
+        .prepare("SELECT scope FROM agent_profile_selections WHERE scope=?")
+        .get(scopeKey(scope)) === undefined
+    )
+      this.select(scope, profileId);
   }
 
   private instruction(id: string): AgentInstruction | null {
@@ -370,7 +400,7 @@ export class AgentProfileRegistry {
     if (
       !Array.isArray(profile.requestedCapabilities) ||
       profile.requestedCapabilities.some(
-        (id) => typeof id !== "string" || !/^[a-z0-9-]{1,100}$/.test(id)
+        (id) => typeof id !== "string" || !/^[a-z0-9_-]{1,100}$/.test(id)
       )
     )
       throw new Error("Invalid requested capabilities");

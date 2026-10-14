@@ -1,8 +1,11 @@
 import type { IpcMainInvokeEvent } from "electron";
 import { registerHandler } from "./ipc-helpers.ts";
 import { roomToolService } from "../room-tool-service.ts";
-import { fateKnotsAi0RuntimeService } from "../fate-knots-ai0-runtime-service.ts";
-import { fateKnotsAi0ImageService } from "../fate-knots-ai0-image-service.ts";
+import {
+  callFateKnotsSharedAi0,
+  fateKnotsSharedImageStatus,
+  generateFateKnotsSharedImage,
+} from "../ai0/fate-knots-adapter.js";
 import type {
   RoomToolGenericCallRequest,
   RoomToolCancelRequest,
@@ -141,7 +144,7 @@ export function setupRoomToolHandlers(): void {
           error: "Invalid Fate Knots AI0 runtime request.",
         };
       }
-      const result = await fateKnotsAi0RuntimeService.call(request);
+      const result = await callFateKnotsSharedAi0(request);
       return {
         success: true,
         operation: request.operation,
@@ -158,7 +161,7 @@ export function setupRoomToolHandlers(): void {
           error: "Invalid Fate Knots AI0 image status request.",
         };
       }
-      const status = await fateKnotsAi0ImageService.status(request);
+      const status = await fateKnotsSharedImageStatus();
       return {
         success: true,
         operation: request.operation,
@@ -177,7 +180,7 @@ export function setupRoomToolHandlers(): void {
         };
       }
       try {
-        const result = await fateKnotsAi0ImageService.generate(request);
+        const result = await generateFateKnotsSharedImage(request);
         return {
           success: true,
           operation: request.operation,

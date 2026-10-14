@@ -1,3 +1,4 @@
+import { initAi0RuntimeOverlay } from "./ai0-runtime-overlay.js";
 // NOTE: Server lifecycle is delegated to provider adapters.
 // NOTE: To add a provider, implement AssistantProviderAdapter and register in provider-registry.ts.
 import type { TranslationParams } from "@shared/i18n.js";
@@ -477,6 +478,7 @@ export class AssistantController {
       this.testPanelOverlay.dataset["assistantTestOverlayBound"] = "true";
     }
     this.characterOverlay.init();
+    initAi0RuntimeOverlay();
     this.memoryOverlay.init();
     this._setupEventListeners(runtimeState?.desiredMode ?? "soft");
     this._refreshOpencodeDoctorStatus();

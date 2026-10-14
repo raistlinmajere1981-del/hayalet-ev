@@ -1,3 +1,5 @@
+import { setupAi0RuntimeHandlers } from "./handlers/ipc-ai0-runtime.js";
+import { ai0RuntimeHost } from "./ai0/runtime-host.js";
 import { app, BrowserWindow, dialog, shell, ipcMain } from "electron";
 import { fileURLToPath } from "url";
 import { existsSync, mkdirSync, readFileSync } from "fs";
@@ -51,7 +53,6 @@ import {
   googleDriveT,
 } from "./googledrive-manager.ts";
 import { opencodeServerManager } from "./opencode-server-manager.ts";
-import { fateKnotsAi0ImageService } from "./fate-knots-ai0-image-service.ts";
 import { llmServerManager } from "./llm-server-manager.ts";
 import {
   archiveOpencodeUiSession,
@@ -433,6 +434,7 @@ void app.whenReady().then(async () => {
     setupOperationsHandlers();
     setupOpencodeUiToolsHandlers();
     setupAgentProfileHandlers();
+    setupAi0RuntimeHandlers();
     setupLlmServerHandlers();
     setupRoomHandlers(null);
     setupRoomToolHandlers();
@@ -541,14 +543,14 @@ async function performCleanup(): Promise<void> {
   }
 
   try {
-    await fateKnotsAi0ImageService.shutdown();
+    await ai0RuntimeHost.shutdown();
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.info(`Fate Knots AI0 image worker cleanup failed: ${message}`);
+    console.info(`Common AI0 runtime cleanup failed: ${message}`);
     await logger.logInternal(
       LogCategory.MAIN,
       LogLevel.ERROR,
-      "Fate Knots AI0 image worker cleanup failed.",
+      "Common AI0 runtime cleanup failed.",
       { message }
     );
   }
@@ -557,7 +559,7 @@ async function performCleanup(): Promise<void> {
     if (keepServersOnAppClose) {
       console.info(await translateElectronMessage("electron.main.logs.cleanupSkippedBySettings"));
     } else {
-      const ocStatus = await opencodeServerManager.findRunningServer(4096, 4110);
+      const ocStatus = await ai0RuntimeHost.findDevelopmentAssistant(4096, 4110);
       if (ocStatus.running) {
         const ocPort = ocStatus.port != null ? String(ocStatus.port) : "unknown";
         console.info(
@@ -565,9 +567,9 @@ async function performCleanup(): Promise<void> {
             port: ocPort,
           })
         );
-        await opencodeServerManager.stop();
+        await ai0RuntimeHost.stopDevelopmentAssistant();
 
-        const ocAfter = await opencodeServerManager.findRunningServer(4096, 4110);
+        const ocAfter = await ai0RuntimeHost.findDevelopmentAssistant(4096, 4110);
         if (ocAfter.running) {
           const afterPort = ocAfter.port != null ? String(ocAfter.port) : "unknown";
           console.info(
@@ -805,7 +807,7 @@ registerHandler(
   "opencode-serve-start",
   async (_event, options?: { port?: number; cors?: string[] }) => {
     try {
-      const result = await opencodeServerManager.start(options);
+      const result = await ai0RuntimeHost.startDevelopmentAssistant(options);
       return { success: true, ...result };
     } catch (err) {
       await logger.logInternalT(
@@ -827,7 +829,7 @@ registerHandler(
 
 registerHandler("opencode-serve-stop", async () => {
   try {
-    await opencodeServerManager.stop();
+    await ai0RuntimeHost.stopDevelopmentAssistant();
     return { success: true };
   } catch (err) {
     await logger.logInternalT(
@@ -847,11 +849,11 @@ registerHandler("opencode-serve-stop", async () => {
 });
 
 registerHandler("opencode-serve-status", async () => {
-  const current = opencodeServerManager.getStatus();
+  const current = ai0RuntimeHost.developmentAssistantStatus();
   if (current.running === true) {
     return current;
   }
-  return await opencodeServerManager.findRunningServer(4096, 4110);
+  return await ai0RuntimeHost.findDevelopmentAssistant(4096, 4110);
 });
 
 registerHandler("opencode-serve-find-port", async (_event, start = 4096, end = 4110) => {
@@ -868,7 +870,7 @@ registerHandler("opencode-serve-find-port", async (_event, start = 4096, end = 4
 
 registerHandler("opencode-serve-find-running", async (_event, start = 4096, end = 4110) => {
   try {
-    return await opencodeServerManager.findRunningServer(start as number, end as number);
+    return await ai0RuntimeHost.findDevelopmentAssistant(start as number, end as number);
   } catch (err) {
     return { running: false, error: err instanceof Error ? err.message : "Unknown error" };
   }
@@ -942,9 +944,13 @@ registerHandler(
   "opencode-ui-api-proxy",
   async (_event, options: { url: string; method: string; body?: string }) => {
     try {
-      const fetchOpts: RequestInit = { method: options.method };
+      const authorization = opencodeServerManager.authorizationForUrl(options.url);
+      const fetchOpts: RequestInit = {
+        method: options.method,
+        headers: authorization === null ? {} : { Authorization: authorization },
+      };
       if (options.body !== undefined && options.body !== "") {
-        fetchOpts.headers = { "Content-Type": "application/json" };
+        fetchOpts.headers = { ...fetchOpts.headers, "Content-Type": "application/json" };
         fetchOpts.body = options.body;
       }
       const res = await fetch(options.url, fetchOpts);

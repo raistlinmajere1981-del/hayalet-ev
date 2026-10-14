@@ -2,6 +2,8 @@
 // NOTE: Dev/prod detection should only happen here.
 
 import { existsSync } from "fs";
+import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
 import { join } from "path";
 import { pathToFileURL } from "url";
 import type { PathConfig, PathResolver } from "./types/paths.ts";
@@ -77,6 +79,22 @@ function getConfig(): PathConfig & { electronDir: string } {
 const paths: PathResolver = {
   getProjectRoot(): string {
     return getConfig().projectRoot;
+  },
+
+  getAi0RuntimeRoot(): string {
+    const identity = createHash("sha256")
+      .update(getConfig().projectRoot)
+      .digest("hex")
+      .slice(0, 16);
+    return join(tmpdir(), `hayalet-ev-ai0-${identity}`);
+  },
+
+  getAi0ImageArtifactsDir(): string {
+    return join(getConfig().dataDir, "shared", "ai0-images");
+  },
+
+  getAi0ImagePluginDir(): string {
+    return join(getConfig().dataDir, "shared", "ai0-plugins", "image_generate");
   },
 
   getDataDir(): string {

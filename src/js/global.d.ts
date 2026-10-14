@@ -1,3 +1,4 @@
+import type { Ai0RuntimeRequest, Ai0RuntimeResponse } from "../../shared/ai0-runtime.js";
 import type { AgentProfileRequest, AgentProfileResponse } from "../../shared/agent-profiles.js";
 import type { OpencodeUiSharedState } from "../../shared/opencode-ui-state.js";
 import type {
@@ -1317,6 +1318,7 @@ declare global {
       path: string;
       error?: string;
     }>;
+    ai0RuntimeRequest: (request: Ai0RuntimeRequest) => Promise<Ai0RuntimeResponse>;
     agentProfileRequest: (request: AgentProfileRequest) => Promise<AgentProfileResponse>;
     assistantProfileSystem: () => Promise<AgentProfileResponse>;
     opencodeUiSharedStateRead: () => Promise<{

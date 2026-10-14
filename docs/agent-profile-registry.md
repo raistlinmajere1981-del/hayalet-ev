@@ -12,7 +12,7 @@ Kapsam `(purpose, agentId, roomId, roleId)` tuple'ıdır. `purpose` açıkça `d
 
 `attestAgentCapabilities` yalnız host adaptörlerine açıktır. Renderer request'leri yetenek bildiremez. Snapshot belirli kapsam içindir, model değişiminde host tarafından yenilenir ve araç listesi önceki modelden birleştirilmez. Doğrulanmayan araç envanteri boş gösterilir. Profildeki `requestedCapabilities` bir gereksinimdir, izin değildir. OpenCode UI mesaj transportunun sistem talimatı desteği bilinir; bu aşamada model ve araç envanteri doğrulanmış sayılmaz.
 
-`resolveAgentProfile` host'a doğrudan sistem talimatı sağlar. `prepareAgentProfileWorkspace` gerektiğinde `data/shared/agent-workspaces/` altında yeni, boş bir çalışma alanına AGENTS.md üretir. Her üretim farklı bir dizin kullanır; repository AGENTS.md üzerine yazılmaz, `.rovo` veya mevcut bir agent çalışma alanı kopyalanmaz. Bu API bir runtime başlatmaz. İkinci aşamadaki host adaptörü, server config/MCP/permission/çevre izolasyonunu sağlamalı ve model/araç snapshot'ını gerçek oturumdan doğrulamalıdır. Prompt metni araç izinlerinin güvenlik sınırı değildir.
+`resolveAgentProfile` host'a doğrudan sistem talimatı sağlar. `prepareAgentProfileWorkspace` gerektiğinde repository dışındaki `Paths.getAi0RuntimeRoot()` altında yeni, boş bir çalışma alanına AGENTS.md üretir. Her üretim farklı bir dizin kullanır; repository AGENTS.md üzerine yazılmaz, `.rovo` veya mevcut bir agent çalışma alanı kopyalanmaz. Bu API bir runtime başlatmaz. İkinci aşamadaki host adaptörü, server config/MCP/permission/çevre izolasyonunu sağlamalı ve model/araç snapshot'ını gerçek oturumdan doğrulamalıdır. Prompt metni araç izinlerinin güvenlik sınırı değildir.
 
 Asistan karakter editörü registry üzerinden oluşturma, düzenleme, silme ve kapsam seçimini kaydeder. OpenCode UI her mesajdan önce kayıtlı Asistan/AI0 profilini çözüp mevcut interaction sistem talimatıyla birlikte gönderir. Var olan geliştirme oturumunun geçmişi değiştirilmez. AI1/AI2 ve oda host'ları aynı API'yi kullanabilir; bu aşama her web provider'a otomatik talimat enjekte etmez.
 
@@ -26,3 +26,5 @@ Ortak `ServerCommands` catalog'una dört komut eklenmiştir:
 Komutlar mevcut slot kategorisi ve disabled-command kontrolünden geçer. Varsayılan kapsam runtime, komutu veren AI slotu, default oda ve default roldür. Örneğin NPC seçimi: `++cmd:AgentProfileSelect(fate-knots-npc, ai0, fate-knots, fate-knots-npc, runtime)`. Geliştirme asistanı seçimi: `++cmd:AgentProfileSelect(serious, ai0, assistant, default, development)`.
 
 Fate Knots AI0 NPC ve image-worker servisleri değiştirilmemiştir. İkinci aşama: bu servislerin ortak AI0 host'a taşınması, scope/config/MCP izolasyonunun launch sırasında uygulanması, gerçek model/araç envanterinin doğrulanması ve registry çözümünün runtime/görsel üretim isteklerine bağlanması.
+
+Ortak host entegrasyonu ve canlı kabul sınırları: [Ortak AI0 Runtime](ai0-runtime.md).

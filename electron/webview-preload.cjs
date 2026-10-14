@@ -239,6 +239,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opcSaveAgentModelPreference: (prefs, folderPath) =>
     ipcRenderer.invoke("opc-save-agent-model-preference", prefs, folderPath),
   opencodeUiApiProxy: (options) => ipcRenderer.invoke("opencode-ui-api-proxy", options),
+  ai0RuntimeRequest: (request) => ipcRenderer.invoke("ai0-runtime-request", request),
   agentProfileRequest: (request) => ipcRenderer.invoke("agent-profile-request", request),
   assistantProfileSystem: () => ipcRenderer.invoke("assistant-profile-system"),
   opencodeUiSharedStateRead: () => ipcRenderer.invoke("opencode-ui-shared-state-read"),

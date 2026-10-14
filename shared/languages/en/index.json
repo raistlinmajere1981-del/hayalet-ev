@@ -810,6 +810,18 @@
           "detail": "Profile selection never grants tools. Unverified capabilities are not treated as available.",
           "usage": "++cmd:AgentProfileCapabilities(agentId, roomId, roleId, purpose)",
           "example": "++cmd:AgentProfileCapabilities(ai0, fate-knots, fate-knots-image, runtime)"
+        },
+        "AI0ImageStatus": {
+          "description": "Show actual AI0 image capability.",
+          "detail": "Reports an error when the tool/model is unverified or no real PNG is produced.",
+          "usage": "++cmd:AI0ImageStatus",
+          "example": "++cmd:AI0ImageStatus"
+        },
+        "AI0ImageGenerate": {
+          "description": "Generate a real PNG independently of Fate Knots.",
+          "detail": "Reports an error when the tool/model is unverified or no real PNG is produced.",
+          "usage": "++cmd:AI0ImageGenerate(\"prompt\", \"1:1\")",
+          "example": "++cmd:AI0ImageGenerate(\"prompt\", \"1:1\")"
         }
       }
     }
@@ -1836,6 +1848,26 @@
         "runtimeStateUpdateFailed": "Assistant runtime state could not be updated",
         "opencodeSettingsUpdated": "OpenCode settings updated",
         "opencodeActionButtonFailure": "OpenCode action button failed: {{message}}"
+      },
+      "ai0Runtime": {
+        "title": "Shared AI0",
+        "task": "Task",
+        "chat": "Chat",
+        "image": "Image generation",
+        "model": "Model",
+        "profile": "Character profile",
+        "prompt": "Message / image brief",
+        "status": "Check image capability",
+        "newSession": "New session",
+        "openImage": "Open PNG file",
+        "run": "Send",
+        "loading": "Checking AI0 capabilities…",
+        "ready": "Select a model and profile, then send your message.",
+        "noModels": "No model is available in this AI0 runtime.",
+        "working": "AI0 is working…",
+        "imageReady": "image_generate verified in a real session.",
+        "imageUnavailable": "Image generation is unavailable.",
+        "imageSaved": "PNG verified and saved."
       }
     },
     "logs": {

@@ -810,6 +810,18 @@
           "detail": "Profil seçimi araç yetkisi vermez. Doğrulanmamış yetenekler kullanılabilir sayılmaz.",
           "usage": "++cmd:AgentProfileCapabilities(agentId, roomId, roleId, purpose)",
           "example": "++cmd:AgentProfileCapabilities(ai0, fate-knots, fate-knots-image, runtime)"
+        },
+        "AI0ImageStatus": {
+          "description": "AI0 görsel yeteneğinin gerçek durumunu gösterir.",
+          "detail": "Araç/model doğrulanmadığında veya gerçek PNG oluşmadığında hata döner.",
+          "usage": "++cmd:AI0ImageStatus",
+          "example": "++cmd:AI0ImageStatus"
+        },
+        "AI0ImageGenerate": {
+          "description": "Fate Knots’tan bağımsız, gerçek PNG görseli üretir.",
+          "detail": "Araç/model doğrulanmadığında veya gerçek PNG oluşmadığında hata döner.",
+          "usage": "++cmd:AI0ImageGenerate(\"prompt\", \"1:1\")",
+          "example": "++cmd:AI0ImageGenerate(\"prompt\", \"1:1\")"
         }
       }
     }
@@ -1836,6 +1848,26 @@
         "runtimeStateUpdateFailed": "Asistan runtime state güncellenemedi",
         "opencodeSettingsUpdated": "OpenCode ayarları güncellendi",
         "opencodeActionButtonFailure": "OpenCode aksiyon butonu başarısız: {{message}}"
+      },
+      "ai0Runtime": {
+        "title": "Ortak AI0",
+        "task": "Görev",
+        "chat": "Sohbet",
+        "image": "Görsel üretimi",
+        "model": "Model",
+        "profile": "Karakter profili",
+        "prompt": "Mesaj / görsel açıklaması",
+        "status": "Görsel yeteneğini kontrol et",
+        "newSession": "Yeni oturum",
+        "openImage": "PNG dosyasını aç",
+        "run": "Gönder",
+        "loading": "AI0 yetenekleri kontrol ediliyor…",
+        "ready": "Model ve profil seçip mesajınızı gönderin.",
+        "noModels": "Bu AI0 runtime içinde kullanılabilir model yok.",
+        "working": "AI0 çalışıyor…",
+        "imageReady": "image_generate gerçek oturumda doğrulandı.",
+        "imageUnavailable": "Görsel üretimi kullanılamıyor.",
+        "imageSaved": "PNG doğrulandı ve kaydedildi."
       }
     },
     "logs": {

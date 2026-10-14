@@ -1,3 +1,4 @@
+import { ai0RuntimeHost } from "../ai0/runtime-host.js";
 // NOTE: Stores OpenCode UI page-local state in the Electron data directory.
 
 import { join } from "path";
@@ -188,6 +189,7 @@ export function setupOpencodeUiToolsHandlers(): void {
 
     try {
       const state = await writeSharedStateFile(payload);
+      await ai0RuntimeHost.invalidateChangedContexts();
       return {
         success: true,
         state,

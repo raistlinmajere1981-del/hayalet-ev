@@ -99,7 +99,7 @@ void test("profile commands run through the common catalog and renderer transpor
       args: "ai0, fate-knots, fate-knots-image, runtime",
     })) as { success: boolean; data: { unavailableCapabilities: string[] } };
     assert.equal(status.success, true);
-    assert.deepEqual(status.data.unavailableCapabilities, ["image-generation"]);
+    assert.deepEqual(status.data.unavailableCapabilities, ["image_generate"]);
     const inspected = (await ServerCommands.run("AgentProfileInspect", {
       provider: "ai0",
       args: "ai0, fate-knots, fate-knots-image, runtime",

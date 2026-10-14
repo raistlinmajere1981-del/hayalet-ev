@@ -20,6 +20,8 @@ export interface CommandDescriptionInfo {
 }
 
 const COMMAND_DESCRIPTION_NAMES = [
+  "AI0ImageStatus",
+  "AI0ImageGenerate",
   "AgentProfileList",
   "AgentProfileSelect",
   "AgentProfileInspect",

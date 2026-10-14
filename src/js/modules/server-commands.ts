@@ -1,3 +1,4 @@
+import { ai0ImageCommand } from "./commands/ai0-image-commands.js";
 import { agentProfileCommand } from "./commands/agent-profile-commands.js";
 import { LogCategory } from "@shared/logging-core";
 import { Logger } from "./logger/index.js";
@@ -41,6 +42,8 @@ interface CommandCatalogItem {
 }
 
 const BUILTIN_COMMANDS: CommandDefinition[] = [
+  { name: "AI0ImageStatus", category: "ai0", additionalCategories: ["ai1-ai2", "us1"] },
+  { name: "AI0ImageGenerate", category: "ai0", additionalCategories: ["ai1-ai2", "us1"] },
   ...[
     "AgentProfileList",
     "AgentProfileSelect",
@@ -321,6 +324,10 @@ handlers["agentprofileinspect"] = async (payload): Promise<unknown> =>
   await agentProfileCommand("inspect", payload);
 handlers["agentprofilecapabilities"] = async (payload): Promise<unknown> =>
   await agentProfileCommand("capabilities", payload);
+handlers["ai0imagestatus"] = async (payload): Promise<unknown> =>
+  await ai0ImageCommand("status", payload);
+handlers["ai0imagegenerate"] = async (payload): Promise<unknown> =>
+  await ai0ImageCommand("generate", payload);
 handlers["whispermanager"] = whisperManagerHandler;
 handlers["aiaichatstart"] = async (payload): Promise<unknown> => {
   const { aiaiChatStartHandler } = await getAiChatHandlers();

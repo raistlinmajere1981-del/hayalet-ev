@@ -21,8 +21,8 @@ void test("Fate Knots AI0 image worker has status/generate room-tools and an iso
   assert.match(types, /"fate-knots-ai0-image-generate"/);
   assert.match(types, /RoomToolFateKnotsAi0ImageStatus/);
   assert.match(types, /RoomToolFateKnotsAi0ImageGenerateRequest/);
-  assert.match(ipc, /fateKnotsAi0ImageService\.status\(request\)/);
-  assert.match(ipc, /fateKnotsAi0ImageService\.generate\(request\)/);
+  assert.match(ipc, /fateKnotsSharedImageStatus\(\)/);
+  assert.match(ipc, /generateFateKnotsSharedImage\(request\)/);
   assert.match(compatibilityService, /fateKnotsAi0ImageWorkerService as fateKnotsAi0ImageService/);
 
   assert.match(imageService, /FATE_KNOTS_AI0_IMAGE_PORT_START = 4135/);
@@ -34,7 +34,7 @@ void test("Fate Knots AI0 image worker has status/generate room-tools and an iso
   assert.match(imageService, /await fetchJson\(\s*url,/);
   assert.match(imageService, /process\.once\("exit", stopOnParentExit\)/);
   assert.match(imageService, /async shutdown\(\): Promise<void>/);
-  assert.match(electronMain, /await fateKnotsAi0ImageService\.shutdown\(\)/);
+  assert.match(electronMain, /await ai0RuntimeHost\.shutdown\(\)/);
 });
 
 void test("Fate Knots never installs or injects an image plugin on the user's behalf", async () => {

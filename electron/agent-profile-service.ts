@@ -68,10 +68,7 @@ export function resolveAgentProfile(scope: AgentProfileScope): AgentProfileResol
 export async function prepareAgentProfileWorkspace(
   scope: AgentProfileScope
 ): Promise<{ workspacePath: string; agentsPath: string; hash: string }> {
-  return await createAgentProfileWorkspace(
-    join(Paths.getDataDir(), "shared", "agent-workspaces"),
-    resolveAgentProfile(scope)
-  );
+  return await createAgentProfileWorkspace(Paths.getAi0RuntimeRoot(), resolveAgentProfile(scope));
 }
 
 export function handleAgentProfileRequest(request: AgentProfileRequest): unknown {
@@ -120,4 +117,9 @@ export function handleAgentProfileRequest(request: AgentProfileRequest): unknown
     default:
       throw new Error("Unknown registry action");
   }
+}
+
+export function invalidateAgentCapabilities(scope: AgentProfileScope): void {
+  validateProfileScope(scope);
+  capabilities.delete(JSON.stringify([scope.purpose, scope.agentId, scope.roomId, scope.roleId]));
 }

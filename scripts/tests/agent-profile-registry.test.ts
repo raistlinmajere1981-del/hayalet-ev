@@ -187,8 +187,8 @@ void test("resolution hashes are deterministic and track content, version, scope
       updated.hash,
       store.resolve(scope, { ...noTools, modelId: "different-model" }).hash
     );
-    const a = store.resolve(scope, { ...noTools, tools: ["search", "image-generation", "search"] });
-    const b = store.resolve(scope, { ...noTools, tools: ["image-generation", "search"] });
+    const a = store.resolve(scope, { ...noTools, tools: ["search", "image_generate", "search"] });
+    const b = store.resolve(scope, { ...noTools, tools: ["image_generate", "search"] });
     assert.equal(a.hash, b.hash);
   } finally {
     db.close();
@@ -207,9 +207,9 @@ void test("task-bound presets cannot cross purposes or roles and never manufactu
     store.select(imageScope, "fate-knots-image");
     const unavailable = store.resolve(imageScope, noTools);
     assert.deepEqual(unavailable.capabilities.tools, []);
-    assert.deepEqual(unavailable.unavailableCapabilities, ["image-generation"]);
+    assert.deepEqual(unavailable.unavailableCapabilities, ["image_generate"]);
     assert.equal(unavailable.delivery, "system");
-    const available = store.resolve(imageScope, { ...noTools, tools: ["image-generation"] });
+    const available = store.resolve(imageScope, { ...noTools, tools: ["image_generate"] });
     assert.deepEqual(available.unavailableCapabilities, []);
     assert.notEqual(available.hash, unavailable.hash);
     assert.equal(
@@ -228,7 +228,7 @@ void test("character editor saves atomically, detects stale edits and keeps task
     const normal = editor.profiles.find((item) => item.id === "normal") as AgentCharacterProfile;
     normal.name = "Updated normal";
     normal.instructionId = "fate-knots-image-role";
-    normal.requestedCapabilities = ["image-generation"];
+    normal.requestedCapabilities = ["image_generate"];
     const saved = store.saveEditor(scope, editor);
     const actual = saved.profiles.find((item) => item.id === "normal");
     assert.equal(actual?.name, "Updated normal");

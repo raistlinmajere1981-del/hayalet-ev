@@ -11,6 +11,9 @@ export interface PathConfig {
 export interface PathResolver {
   getProjectRoot(): string;
   getDataDir(): string;
+  getAi0RuntimeRoot(): string;
+  getAi0ImagePluginDir(): string;
+  getAi0ImageArtifactsDir(): string;
   getConfigDir(): string;
   getLogsDir(): string;
   getMainAppLogsDir(): string;

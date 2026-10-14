@@ -1,3 +1,4 @@
+import { ai0RuntimeHost } from "../ai0/runtime-host.js";
 import { registerHandler } from "./ipc-helpers.ts";
 import {
   handleAgentProfileRequest,
@@ -14,11 +15,23 @@ export function setupAgentProfileHandlers(): void {
     systemInstructions: true,
     tools: [],
   });
-  registerHandler("agent-profile-request", (_event, payload: unknown) => {
+  registerHandler("agent-profile-request", async (_event, payload: unknown) => {
     if (payload === null || typeof payload !== "object" || Array.isArray(payload))
       throw new Error("Invalid registry request");
     const request = payload as AgentProfileRequest;
-    return { success: true, data: handleAgentProfileRequest(request) };
+    const data = handleAgentProfileRequest(request);
+    if (
+      [
+        "select",
+        "editor-save",
+        "profile-save",
+        "profile-delete",
+        "instruction-save",
+        "instruction-delete",
+      ].includes(request.action)
+    )
+      await ai0RuntimeHost.invalidateChangedContexts();
+    return { success: true, data };
   });
   registerHandler("assistant-profile-system", () => {
     const resolution = resolveAgentProfile(ASSISTANT_PROFILE_SCOPE);
