@@ -38,7 +38,11 @@
       render: render,
     });
     const roomId = bootstrapRuntime.roomId;
+    const gameRoomHomeFeatureId = "game-room-home";
+    const backgammonFeatureId = bootstrapRuntime.featureId;
     const teamTetrisFeatureId = bootstrapRuntime.teamTetrisFeatureId;
+    const yahtzeeFeatureId = "yahtzee";
+    const fateKnotsFeatureId = "fate-knots";
     const contextRuntime = bootstrapRuntime.contextRuntime;
     const scrollRuntime = bootstrapRuntime.scrollRuntime;
     const getState = bootstrapRuntime.getState;
@@ -66,6 +70,17 @@
         value !== null &&
         typeof (value as { append?: unknown }).append === "function"
       );
+    }
+
+    function disposeBackgammonStage(): void {
+      const stageRuntime = (
+        global as unknown as {
+          GameRoomBackgammonStageRuntime?: { destroyAll?: () => void };
+        }
+      ).GameRoomBackgammonStageRuntime;
+      if (typeof stageRuntime?.destroyAll === "function") {
+        stageRuntime.destroyAll();
+      }
     }
 
     function getRoomCloseLabel(): string {
@@ -144,6 +159,36 @@
       root.append(button);
     }
 
+    function renderGameRoomHome(root: HTMLElement): void {
+      const app = contextRuntime.createElement(
+        "main",
+        "backgammon-shell backgammon-shell--bootstrap game-room-home",
+        ""
+      );
+      const surface = contextRuntime.createElement(
+        "section",
+        "backgammon-surface backgammon-surface--bootstrap game-room-home__surface",
+        ""
+      );
+      const brand = contextRuntime.createElement(
+        "div",
+        "backgammon-brand game-room-home__brand",
+        ""
+      );
+      brand.append(
+        contextRuntime.createElement(
+          "div",
+          "backgammon-brand__eyebrow",
+          bootstrapText("roomTitle")
+        ),
+        contextRuntime.createElement("h1", "backgammon-brand__title", bootstrapText("homeTitle")),
+        contextRuntime.createElement("p", "backgammon-brand__subtitle", bootstrapText("homeBody"))
+      );
+      surface.append(brand);
+      app.append(surface);
+      root.replaceChildren(app);
+    }
+
     function render(): void {
       const state = getState();
       const root = document.getElementById("app");
@@ -160,10 +205,32 @@
           return;
         }
 
-        document.title = state.context.room.name + " - " + getFeatureLabel(getActiveFeatureId());
+        const activeFeatureId = getActiveFeatureId();
+        document.title = state.context.room.name + " - " + getFeatureLabel(activeFeatureId);
+        if (activeFeatureId !== backgammonFeatureId) {
+          disposeBackgammonStage();
+        }
 
-        if (getActiveFeatureId() === teamTetrisFeatureId) {
+        if (activeFeatureId === gameRoomHomeFeatureId) {
+          renderGameRoomHome(root);
+          syncRoomCloseControl(root);
+          return;
+        }
+
+        if (activeFeatureId === fateKnotsFeatureId) {
+          // The feature bridge owns Fate Knots rendering; the base runtime must
+          // stay neutral so it cannot fall through to Backgammon during handoff.
+          syncRoomCloseControl(root);
+          return;
+        }
+
+        if (activeFeatureId === teamTetrisFeatureId) {
           teamTetrisUi.renderTeamTetris(root);
+          syncRoomCloseControl(root);
+          return;
+        }
+
+        if (activeFeatureId === yahtzeeFeatureId) {
           syncRoomCloseControl(root);
           return;
         }

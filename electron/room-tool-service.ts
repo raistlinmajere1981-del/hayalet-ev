@@ -10,6 +10,7 @@ import type {
   RoomFileDownloadResult,
   RoomToolCallRequest,
   RoomToolCallResult,
+  RoomToolGenericCallRequest,
   RoomToolCancelRequest,
   RoomToolCancelResult,
   RoomToolProgressEvent,
@@ -111,7 +112,7 @@ class RoomToolService {
 
   async handleCall(
     event: IpcMainInvokeEvent,
-    request: RoomToolCallRequest
+    request: RoomToolGenericCallRequest
   ): Promise<RoomToolCallResult> {
     const roomId = normalizeRoomId(request.roomId);
     if (roomId === "") {

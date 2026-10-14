@@ -145,7 +145,9 @@ class MinimalFakeElement {
       target: this,
       preventDefault: () => undefined,
     };
-    (this.listeners["click"] ?? []).forEach((handler) => { handler(event); });
+    (this.listeners["click"] ?? []).forEach((handler) => {
+      handler(event);
+    });
   }
 
   querySelector(selector: string): MinimalFakeElement | null {
@@ -337,7 +339,9 @@ class FakeKonvaNode {
   }
 
   trigger(eventName: string): void {
-    (this.handlers[eventName] ?? []).forEach((handler) => { handler({ target: this }); });
+    (this.handlers[eventName] ?? []).forEach((handler) => {
+      handler({ target: this });
+    });
   }
 
   width(): number;
@@ -458,7 +462,9 @@ function createBackgammonUiStateHarness(): BackgammonUiStateHarness {
 
   const runtimeFactory = windowObject.GameRoomUiFactories?.createBackgammonUiStateRuntime;
   assert.equal(typeof runtimeFactory, "function");
-  const runtime = (runtimeFactory as (deps: Record<string, unknown>) => BackgammonUiStateHarness["runtime"])({
+  const runtime = (
+    runtimeFactory as (deps: Record<string, unknown>) => BackgammonUiStateHarness["runtime"]
+  )({
     getState: () => state,
     roomId: "game-room",
     featureId: "backgammon",
@@ -594,7 +600,8 @@ function createGameRoomUiCoalescingHarness(
   );
 
   const runtimeRegistry = windowObject["GameRoomUiRuntime"] as Record<string, unknown> | undefined;
-  const createRuntime = runtimeRegistry?.["createGameRoomUiRuntime"] as (() => GameRoomUiCoalescingHarness["runtime"]) | undefined;
+  const createRuntime = runtimeRegistry?.["createGameRoomUiRuntime"] as
+    (() => GameRoomUiCoalescingHarness["runtime"]) | undefined;
   assert.equal(typeof createRuntime, "function");
   const runtime = (createRuntime as () => GameRoomUiCoalescingHarness["runtime"])();
 
@@ -633,7 +640,10 @@ void test("game-room workspace keeps the required Tavla package files", () => {
 });
 
 void test("game-room manifest validates with the Tavla-first room contract", () => {
-  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<string, unknown>;
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<
+    string,
+    unknown
+  >;
   const validation = validateRoomManifest(manifest);
 
   assert.equal(validation.valid, true);
@@ -641,7 +651,7 @@ void test("game-room manifest validates with the Tavla-first room contract", () 
   assert.equal(validation.manifest.defaultFeatureId, "backgammon");
   assert.deepEqual(
     validation.manifest.features.map((feature) => feature.id),
-    ["backgammon", "team-tetris", "yahtzee"]
+    ["backgammon", "team-tetris", "yahtzee", "fate-knots"]
   );
   assert.equal(validation.manifest.runtime.uiEntry, "ui/index.html");
   assert.equal(validation.manifest.runtime.hostEntry, "host/index.js");
@@ -798,9 +808,15 @@ void test("game-room Tavla render keeps the board stage host stable across rail 
   );
 
   const registry = windowObject["GameRoomUiFactories"] as Record<string, unknown>;
-  const createRenderRuntime = registry["createBackgammonUiRenderRuntime"] as ((deps: Record<string, unknown>) => { renderBackgammon(root: MinimalFakeElement): void }) | undefined;
+  const createRenderRuntime = registry["createBackgammonUiRenderRuntime"] as
+    | ((deps: Record<string, unknown>) => { renderBackgammon(root: MinimalFakeElement): void })
+    | undefined;
   assert.equal(typeof createRenderRuntime, "function");
-  const renderRuntime = (createRenderRuntime as (deps: Record<string, unknown>) => { renderBackgammon(root: MinimalFakeElement): void })({
+  const renderRuntime = (
+    createRenderRuntime as (deps: Record<string, unknown>) => {
+      renderBackgammon(root: MinimalFakeElement): void;
+    }
+  )({
     getState: () => state,
     featureId: "backgammon",
     bootstrapText: (key: string) => key,
@@ -1044,12 +1060,16 @@ void test("game-room Tavla Konva stage coalesces resize redraws and skips unchan
       getPropertyValue: () => "",
     }),
     requestAnimationFrame: (callback: ScheduledFrameCallback) => {
-      frames.push(() => { callback(16); });
+      frames.push(() => {
+        callback(16);
+      });
       return frames.length;
     },
     globalThis: {
       requestAnimationFrame: (callback: ScheduledFrameCallback) => {
-        frames.push(() => { callback(16); });
+        frames.push(() => {
+          callback(16);
+        });
         return frames.length;
       },
     },
@@ -1329,7 +1349,9 @@ void test("game-room Tavla render scheduler supports timer fallback and clears f
     },
   });
   assert.equal(harness.getTimerCount(), 1);
-  assert.throws(() => { harness.flushTimer(); }, /render failed/);
+  assert.throws(() => {
+    harness.flushTimer();
+  }, /render failed/);
   assert.equal(harness.getRenderAttempts(), 2);
 
   harness.setRenderFailure(false);

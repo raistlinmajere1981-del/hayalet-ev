@@ -486,9 +486,8 @@ export function createRoomSceneReaders(deps: RoomSceneReaderDeps) {
     const featureSceneIds = features
       .filter((feature) => feature.scene !== undefined)
       .map((feature) => feature.id);
-    const missingFeatureScene = features
-      .filter((feature) => feature.scene === undefined)
-      .map((feature) => feature.id);
+    // Features without scene metadata remain valid runtime-only surfaces; only
+    // workbench entry points must participate in the room scene.
     if (workbench?.experienceId !== undefined) {
       if (featureSceneIds.length === 0) {
         errors.push("scene requires at least one feature.scene when workbench is enabled");
@@ -503,8 +502,6 @@ export function createRoomSceneReaders(deps: RoomSceneReaderDeps) {
           `scene requires feature.scene for workbench.primaryFeatureId: ${workbench.primaryFeatureId}`
         );
       }
-    } else if (missingFeatureScene.length > 0) {
-      errors.push(`scene requires feature.scene for: ${missingFeatureScene.join(", ")}`);
     }
 
     if (

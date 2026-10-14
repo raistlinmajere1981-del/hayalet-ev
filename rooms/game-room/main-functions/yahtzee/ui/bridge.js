@@ -124,6 +124,9 @@
         global.GameRoomYahtzeeUi &&
         typeof global.GameRoomYahtzeeUi.render === "function"
       ) {
+        // Let the base Game Room runtime release feature-specific resources first.
+        // Its explicit Yahtzee branch does not mount another game before returning.
+        base.render();
         const root = document.getElementById("app");
         const baseState = typeof base.getState === "function" ? base.getState() : null;
         if (typeof global.GameRoomYahtzeeUi.setTranslations === "function") {

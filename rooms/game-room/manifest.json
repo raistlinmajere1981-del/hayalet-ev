@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "id": "game-room",
   "name": "Game Room",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "menu": {
     "label": "Game Room",
     "icon": "🎮",
@@ -285,9 +285,125 @@
           }
         }
       }
+    },
+    {
+      "id": "fate-knots",
+      "name": "Fate Knots",
+      "description": "A deterministic collaborative story game built from validated, persistent forged universes and resumable runs.",
+      "icon": "FK",
+      "commandSpecs": [
+        {
+          "name": "GameRoomFateKnotsGetHubState",
+          "description": "Read the player-safe neutral Fate Knots Hub state.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsActivateUniverse",
+          "description": "Select one already accepted Fate Knots universe in the neutral Hub.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsGetRunSetup",
+          "description": "Read player-safe selectable character setup data for one accepted universe.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsCreateRun",
+          "description": "Create a canonical run from an accepted universe and player-character assignments.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsStartRun",
+          "description": "Open a prepared Fate Knots run at its Forge-authored start node.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsGetGameplayState",
+          "description": "Read one player-safe Fate Knots active-run projection without exposing hidden canon.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsGetCombatOptions",
+          "description": "Read the local player's current legal Fate Knots combat card and target options.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsGetCombatDiscussion",
+          "description": "Read the shared party-only Fate Knots combat discussion.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsSendCombatMessage",
+          "description": "Post the local player's message to shared Fate Knots combat discussion.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsAi2CombatMessage",
+          "description": "Post AI2's player message to shared Fate Knots combat discussion.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsRemoteCombatMessage",
+          "description": "Post US1's remote player message to shared Fate Knots combat discussion.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsCompleteCombatMove",
+          "description": "Lock the local player's legal Fate Knots combat move.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsAi2CompleteCombatMove",
+          "description": "Lock AI2's legal Fate Knots combat move.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsRemoteCompleteCombatMove",
+          "description": "Lock US1's legal Fate Knots combat move.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsResolveCombatTurn",
+          "description": "Resolve one fully committed Fate Knots combat turn through host-owned deterministic authority.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsActivateRun",
+          "description": "Select one persisted Fate Knots run for continuation.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsDeleteRun",
+          "description": "Delete one persisted Fate Knots run without rewriting its universe.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsDeleteUniverse",
+          "description": "Delete an accepted Fate Knots universe and its associated runs.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        }
+      ]
     }
   ],
-  "description": "A focused Game Room for Tavla, four-seat Team Tetris, and solo or multiplayer pirate-deck Yahtzee.",
+  "description": "A focused Game Room for Tavla, four-seat Team Tetris, pirate-deck Yahtzee, and the Fate Knots collaborative story game.",
   "scene": {
     "referenceSize": { "width": 1600, "height": 900 },
     "roomBackgroundSrc": "shared/assets/room-background.webp",

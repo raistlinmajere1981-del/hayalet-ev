@@ -18,7 +18,6 @@ const requiredFiles = [
   "rooms/game-room/main-functions/yahtzee/assets/hybrid/table-mahogany-v2.webp",
   "rooms/game-room/main-functions/yahtzee/assets/hybrid/table-felt-burgundy-v2.webp",
   "rooms/game-room/main-functions/yahtzee/styles.css",
-  "rooms/game-room/main-functions/yahtzee/multiplayer.css",
   "rooms/game-room/main-functions/yahtzee/vendor/babylon-runtime-entry.js",
   "rooms/game-room/main-functions/yahtzee/vendor/babylon.min.js",
   "rooms/game-room/main-functions/yahtzee/vendor/LICENSE.babylonjs.md",
@@ -42,7 +41,7 @@ void test("Game Room manifest exposes Yahtzee multiplayer commands and protocols
   const validation = validateRoomManifest(manifest);
 
   assert.equal(validation.valid, true, validation.errors.join("\n"));
-  assert.equal(validation.manifest?.version, "2.7.0");
+  assert.equal(validation.manifest?.version, "2.8.0");
 
   const feature = validation.manifest?.features.find((entry) => entry.id === "yahtzee");
   assert.ok(feature);

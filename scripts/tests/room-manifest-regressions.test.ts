@@ -229,7 +229,10 @@ void test("room id and command validators match project rules", () => {
 });
 
 void test("game-room manifest documents the US1 Tavla transport contract", () => {
-  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<string, unknown>;
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<
+    string,
+    unknown
+  >;
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true);
@@ -246,7 +249,10 @@ void test("game-room manifest documents the US1 Tavla transport contract", () =>
 });
 
 void test("game-room manifest documents the Team Tetris AI and US1 contracts", () => {
-  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<string, unknown>;
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<
+    string,
+    unknown
+  >;
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true);
@@ -274,14 +280,17 @@ void test("game-room manifest documents the Team Tetris AI and US1 contracts", (
   );
 });
 
-void test("game-room manifest registers Tavla, Team Tetris, and Yahtzee", () => {
-  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<string, unknown>;
+void test("game-room manifest registers Tavla, Team Tetris, Yahtzee, and Fate Knots", () => {
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<
+    string,
+    unknown
+  >;
   const result = validateRoomManifest(manifest);
 
   assert.equal(result.valid, true);
   assert.deepEqual(
     result.manifest?.features.map((feature) => feature.id),
-    ["backgammon", "team-tetris", "yahtzee"]
+    ["backgammon", "team-tetris", "yahtzee", "fate-knots"]
   );
 
   const yahtzeeFeature = result.manifest?.features.find((feature) => feature.id === "yahtzee");
@@ -298,6 +307,33 @@ void test("game-room manifest registers Tavla, Team Tetris, and Yahtzee", () => 
       "GameRoomYahtzeeRemoteStart",
       "GameRoomYahtzeeRemoteSync",
       "GameRoomYahtzeeRemoteReset",
+    ]
+  );
+
+  const fateKnotsFeature = result.manifest?.features.find((feature) => feature.id === "fate-knots");
+  assert.ok(fateKnotsFeature);
+  assert.equal(fateKnotsFeature.scene, undefined);
+  assert.deepEqual(
+    fateKnotsFeature.commandSpecs?.map((command) => command.name),
+    [
+      "GameRoomFateKnotsGetHubState",
+      "GameRoomFateKnotsActivateUniverse",
+      "GameRoomFateKnotsGetRunSetup",
+      "GameRoomFateKnotsCreateRun",
+      "GameRoomFateKnotsStartRun",
+      "GameRoomFateKnotsGetGameplayState",
+      "GameRoomFateKnotsGetCombatOptions",
+      "GameRoomFateKnotsGetCombatDiscussion",
+      "GameRoomFateKnotsSendCombatMessage",
+      "GameRoomFateKnotsAi2CombatMessage",
+      "GameRoomFateKnotsRemoteCombatMessage",
+      "GameRoomFateKnotsCompleteCombatMove",
+      "GameRoomFateKnotsAi2CompleteCombatMove",
+      "GameRoomFateKnotsRemoteCompleteCombatMove",
+      "GameRoomFateKnotsResolveCombatTurn",
+      "GameRoomFateKnotsActivateRun",
+      "GameRoomFateKnotsDeleteRun",
+      "GameRoomFateKnotsDeleteUniverse",
     ]
   );
 });

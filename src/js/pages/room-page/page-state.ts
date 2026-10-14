@@ -9,6 +9,11 @@ export function resolveRoomInitialFeatureId(
   if (preferredId !== null && room.features.some((feature) => feature.id === preferredId)) {
     return preferredId;
   }
+  // Game Room opens as the room itself rather than eagerly mounting its first
+  // game. Individual games become active only after the user selects one.
+  if (room.id === "game-room") {
+    return "";
+  }
   if (room.features.some((feature) => feature.id === room.defaultFeatureId)) {
     return room.defaultFeatureId;
   }
@@ -40,7 +45,7 @@ export function isRoomSceneFeatureOpen(
   return (
     isSceneUiMode() &&
     room.scene !== undefined &&
-    getRoomSceneFeature(room, sceneFeatureId)?.scene !== undefined
+    getRoomSceneFeature(room, sceneFeatureId) !== null
   );
 }
 

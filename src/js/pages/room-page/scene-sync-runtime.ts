@@ -61,7 +61,7 @@ export function syncRoomPageScene({
   const sceneRoom = getSceneRoom(page);
   const sceneView = getSceneView(page);
   const classicShell = getClassicShell(page);
-  const viewOpen = sceneEnabled && sceneFeature?.scene !== undefined;
+  const viewOpen = sceneEnabled && sceneFeature !== null;
 
   syncSceneViewRuntime({
     elements: {

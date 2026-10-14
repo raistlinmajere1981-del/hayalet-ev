@@ -348,10 +348,7 @@ void test("room page syncs slot-aware host context and scene runtime routing", (
   assert.match(sceneDebugRuntimeSource, /refreshEditor\(\);/);
   assert.match(sceneDebugRuntimeSource, /scene-editor-host/);
   assert.match(sceneSyncRuntimeSource, /export function syncRoomPageScene\(/);
-  assert.match(
-    sceneSyncRuntimeSource,
-    /const viewOpen = sceneEnabled && sceneFeature\?\.scene !== undefined;/
-  );
+  assert.match(sceneSyncRuntimeSource, /const viewOpen = sceneEnabled && sceneFeature !== null;/);
   assert.match(sceneSyncRuntimeSource, /syncSceneViewRuntime\(/);
   assert.match(sceneSyncRuntimeSource, /renderRoomSceneHotspots\(/);
   assert.match(sceneSyncRuntimeSource, /renderRoomSceneBack\(/);
@@ -365,6 +362,10 @@ void test("room page syncs slot-aware host context and scene runtime routing", (
     /const feature = room\.features\.find\(\(item\) => item\.scene\?\.hotspot\.id === node\.id\) \?\? null;/
   );
   assert.match(scenePresentationSource, /buildStandardSceneViewBackButton\(closeLabel\)/);
+  assert.match(scenePresentationSource, /if \(feature\.scene === undefined\) \{/);
+  assert.match(scenePresentationSource, /view\.classList\.add\("is-runtime-only"\);/);
+  assert.match(scenePresentationSource, /runtimeSlot\.style\.width = "100%";/);
+  assert.match(pageStateSource, /getRoomSceneFeature\(room, sceneFeatureId\) !== null/);
   assert.match(sceneAlphaWindowSource, /export function getRoomSceneViewBackgroundImage\(/);
   assert.match(sceneAlphaWindowSource, /export function getRoomSceneTransparentWindowBounds\(/);
   assert.match(sceneAlphaWindowSource, /export function toRoomPageTransparentWindowConfig\(/);
@@ -434,7 +435,10 @@ void test("room page syncs slot-aware host context and scene runtime routing", (
   assert.match(runtimeEventsSource, /export function createRoomRuntimeEventBinder\(/);
   assert.match(runtimeEventsSource, /webview\.addEventListener\("did-start-loading"/);
   assert.match(runtimeEventsSource, /__roomRuntimeBinding/);
-  assert.match(runtimeEventsSource, /webview\.removeEventListener\("ipc-message", handleIpcMessage\)/);
+  assert.match(
+    runtimeEventsSource,
+    /webview\.removeEventListener\("ipc-message", handleIpcMessage\)/
+  );
   assert.doesNotMatch(
     runtimeEventsSource,
     /if \(webview\.dataset\["roomRuntimeBound"\] === "true"\) \{\s*return;\s*\}/

@@ -39,7 +39,38 @@ void test("room root entrypoints stay orchestration-only after layout normalizat
   const laboratoryThemeStyleSource = readCssWithImports("rooms/laboratory/ui/lab-theme.css");
 
   assert.match(gameRoomHostIndexSource, /from "\.\/runtime\.js"/);
-  assert.match(gameRoomHostIndexSource, /export default createGameRoomHostRuntime\(\);/);
+  assert.match(
+    gameRoomHostIndexSource,
+    /extendGameRoomHostRuntimeWithFateKnotsExploration\(\s*createGameRoomHostRuntime\(\)\s*\)/
+  );
+  assert.match(
+    gameRoomHostIndexSource,
+    /extendGameRoomHostRuntimeWithFateKnotsCampSocial\(\s*fateKnotsExplorationRuntime\s*\)/
+  );
+  assert.match(
+    gameRoomHostIndexSource,
+    /extendGameRoomHostRuntimeWithFateKnotsLoot\(fateKnotsCampSocialRuntime\)/
+  );
+  assert.match(
+    gameRoomHostIndexSource,
+    /extendGameRoomHostRuntimeWithFateKnotsRunSetupSeats\(\s*fateKnotsLootRuntime\s*\)/
+  );
+  assert.match(
+    gameRoomHostIndexSource,
+    /extendGameRoomHostRuntimeWithFateKnotsPlayerCombat\(\s*fateKnotsRunSetupRuntime\s*\)/
+  );
+  assert.match(
+    gameRoomHostIndexSource,
+    /extendGameRoomHostRuntimeWithFateKnotsAi2Lifecycle\(\s*fateKnotsPlayerCombatRuntime\s*\)/
+  );
+  assert.match(
+    gameRoomHostIndexSource,
+    /extendGameRoomHostRuntimeWithFateKnotsUs1Lifecycle\(fateKnotsAi2Runtime\)/
+  );
+  assert.match(
+    gameRoomHostIndexSource,
+    /export default extendGameRoomHostRuntimeWithFateKnotsMaterializer\(fateKnotsUs1Runtime\);/
+  );
   assert.doesNotMatch(gameRoomHostIndexSource, /GameRoomTeamTetrisStart/);
   assert.match(gameRoomHostRuntimeSource, /createGameRoomCommandRegistry/);
   assert.match(gameRoomHostRuntimeSource, /createGameRoomHostLifecycle/);

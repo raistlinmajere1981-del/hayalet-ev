@@ -51,7 +51,10 @@ void test("game-room workspace keeps the required Team Tetris package files", ()
 });
 
 void test("game-room manifest exposes Team Tetris as a second feature with scene metadata", () => {
-  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<string, unknown>;
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8")) as Record<
+    string,
+    unknown
+  >;
   const validation = validateRoomManifest(manifest);
 
   assert.equal(validation.valid, true);
@@ -172,7 +175,7 @@ void test("game-room Team Tetris UI and host sources expose the new feature shel
   assert.match(indexHtmlSource, /game-room-ui-runtime\.js/);
   assert.match(uiEntrySource, /createGameRoomUiRuntime\(\)\.start\(\)/);
   assert.match(uiRuntimeSource, /(messageType|message\.type) === "team-tetris-state"/);
-  assert.match(uiRuntimeSource, /getActiveFeatureId\(\) === teamTetrisFeatureId/);
+  assert.match(uiRuntimeSource, /activeFeatureId === teamTetrisFeatureId/);
   assert.match(teamTetrisUiStateRuntimeSource, /GameRoomTeamTetrisStart/);
   assert.match(teamTetrisUiStateRuntimeSource, /createTeamTetrisUiStateShapeRuntime/);
   assert.match(teamTetrisUiStateRuntimeSource, /createTeamTetrisUiStateViewRuntime/);

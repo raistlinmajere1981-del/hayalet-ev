@@ -1,4 +1,8 @@
-import { FEATURE_ID, ROOM_ID, getDefaultFeatureRecords } from "../host/feature-meta.js";
+import {
+  GAME_ROOM_HOME_FEATURE_ID,
+  ROOM_ID,
+  getDefaultFeatureRecords,
+} from "../host/feature-meta.js";
 
 export const GAME_ROOM_SLOT_IDS = ["ai1", "ai2", "us1"] as const;
 export const GAME_ROOM_PRESENTATION_MODES = ["classic", "scene-view"] as const;
@@ -95,8 +99,8 @@ export function createGameRoomPresentationState(
 export function createGameRoomContextState(): GameRoomContextState {
   const featureRecords = getDefaultFeatureRecords();
   const activeFeature = featureRecords[0] || {
-    id: FEATURE_ID,
-    name: "Tavla",
+    id: GAME_ROOM_HOME_FEATURE_ID,
+    name: "Game Room",
     description: "",
   };
 
