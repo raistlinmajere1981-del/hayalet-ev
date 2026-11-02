@@ -7,7 +7,7 @@ import { deflateSync } from "node:zlib";
 import { Buffer } from "node:buffer";
 import Database from "../../electron/native/better-sqlite3.ts";
 import { AgentProfileRegistry } from "../../electron/database/agent-profile-registry.ts";
-import { Ai0RuntimeHost } from "../../electron/ai0/runtime-host.ts";
+import { Ai0RuntimeHost, extractAi0AssistantMessages } from "../../electron/ai0/runtime-host.ts";
 import type { Ai0HostDependencies } from "../../electron/ai0/runtime-host.ts";
 import type { Ai0Engine } from "../../electron/ai0/opencode-process.ts";
 import { buildAi0Environment } from "../../electron/ai0/opencode-process.ts";
@@ -62,7 +62,7 @@ async function fixture() {
   const root = await mkdtemp(join(tmpdir(), "hev-ai0-test-"));
   const db = new Database(":memory:");
   const registry = new AgentProfileRegistry(db);
-  let selectedModel: Ai0Model = { providerID: "test", id: "model-one" };
+  let selectedModel: Ai0Model = { providerID: "openai", id: "gpt-test-one" };
   const state = {
     toolAvailable: true,
     toolsSupported: true,
@@ -78,8 +78,8 @@ async function fixture() {
   const start: Ai0HostDependencies["start"] = async (workspacePath, _project, allowed) => {
     const outputs = new Map<string, string>();
     const models = [
-      { id: "model-one", providerID: "test", capabilities: { tools: state.toolsSupported } },
-      { id: "model-two", providerID: "test", capabilities: { tools: state.toolsSupported } },
+      { id: "gpt-test-one", providerID: "openai", capabilities: { tools: state.toolsSupported } },
+      { id: "gpt-test-two", providerID: "openai", capabilities: { tools: state.toolsSupported } },
     ];
     const process: FakeProcess = {
       allowed: [...allowed],
@@ -174,7 +174,6 @@ async function fixture() {
     artifactRoot: () => join(root, "artifacts"),
     projectRoot: () => "/development-repository",
     defaultModel: async () => selectedModel,
-    imagePlugin: async () => undefined,
     start,
   });
   return {
@@ -198,7 +197,7 @@ void test("normal AI0 preserves its conversation only while model and profile id
   const f = await fixture();
   try {
     const first = await f.host.chat("hello");
-    await f.host.selectModel(AI0_ASSISTANT_SCOPE, { providerID: "test", id: "model-one" });
+    await f.host.selectModel(AI0_ASSISTANT_SCOPE, { providerID: "openai", id: "gpt-test-one" });
     const second = await f.host.chat("again", AI0_ASSISTANT_SCOPE, first.sessionId);
     assert.equal(second.sessionId, first.sessionId);
     assert.equal(f.processes.length, 1);
@@ -211,13 +210,13 @@ void test("normal AI0 preserves its conversation only while model and profile id
     );
     const serious = await f.host.chat("new");
     assert.notEqual(serious.profileHash, first.profileHash);
-    await f.host.selectModel(AI0_ASSISTANT_SCOPE, { providerID: "test", id: "model-two" });
+    await f.host.selectModel(AI0_ASSISTANT_SCOPE, { providerID: "openai", id: "gpt-test-two" });
     await assert.rejects(
       f.host.chat("old model", AI0_ASSISTANT_SCOPE, serious.sessionId),
       /expired|changed/
     );
     const changed = await f.host.chat("new model");
-    assert.equal(changed.model.id, "model-two");
+    assert.equal(changed.model.id, "gpt-test-two");
     assert.notEqual(changed.sessionId, serious.sessionId);
   } finally {
     await f.cleanup();
@@ -298,7 +297,10 @@ void test("a successful tool event and a fully validated fresh PNG are both requ
     await assert.rejects(f.host.generateImage("prose success only"), /ENOENT/);
     f.state.writeFile = true;
     f.state.completeTool = false;
-    await assert.rejects(f.host.generateImage("file without tool evidence"), /exactly one real/);
+    await assert.rejects(
+      f.host.generateImage("file without tool evidence"),
+      /IMAGE_TOOL_NOT_COMPLETED/
+    );
     f.state.completeTool = true;
     f.state.invalidFile = true;
     await assert.rejects(f.host.generateImage("invalid PNG"), /not a PNG/);
@@ -426,5 +428,82 @@ void test("the host boundary blocks provider requests during capability probes a
   assert.match(AI0_BOUNDARY_PLUGIN, /PROBE_MUST_NOT_CALL_PROVIDER/);
   assert.match(AI0_BOUNDARY_PLUGIN, /ctx\.session\.hook\("generate"/);
   assert.match(AI0_BOUNDARY_PLUGIN, /ctx\.tool\.hook\("execute.before"/);
-  assert.match(AI0_BOUNDARY_PLUGIN, /value\.input\.output_path !== expected/);
+});
+
+void test("provider and image failures expose only allowlisted codes and HTTP status without error bodies or credentials", () => {
+  assert.throws(
+    () =>
+      extractAi0AssistantMessages({
+        data: [
+          {
+            type: "assistant",
+            error: {
+              message: "AI0 image generation: OAUTH_CODEX_ROUTE_REQUIRED",
+              response: { body: "SYNTHETIC_SECRET" },
+            },
+          },
+        ],
+      }),
+    /OAUTH_CODEX_ROUTE_REQUIRED/
+  );
+  assert.throws(
+    () =>
+      extractAi0AssistantMessages({
+        data: [
+          {
+            type: "assistant",
+            error: {
+              type: "provider.auth",
+              status: 403,
+              message: "SYNTHETIC_SECRET",
+              response: { body: "SYNTHETIC_SECRET" },
+            },
+          },
+        ],
+      }),
+    (error) => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /provider.auth.*HTTP 403/);
+      assert.doesNotMatch(error.message, /SYNTHETIC_SECRET/);
+      return true;
+    }
+  );
+  assert.throws(
+    () =>
+      extractAi0AssistantMessages({
+        data: [
+          {
+            type: "assistant",
+            error: { type: "SYNTHETIC_SECRET", status: 999, message: "SYNTHETIC_SECRET" },
+          },
+        ],
+      }),
+    (error) => {
+      assert.ok(error instanceof Error);
+      assert.doesNotMatch(error.message, /SYNTHETIC_SECRET|999/);
+      return true;
+    }
+  );
+  assert.throws(
+    () =>
+      extractAi0AssistantMessages({
+        data: [
+          {
+            type: "assistant",
+            content: [
+              {
+                type: "tool",
+                name: "image_generate",
+                state: {
+                  status: "error",
+                  error: { message: "AI0 image generation: CODEX_HTTP_403" },
+                },
+              },
+            ],
+            error: { message: "SYNTHETIC_SECRET" },
+          },
+        ],
+      }),
+    /CODEX_HTTP_403/
+  );
 });

@@ -1,6 +1,6 @@
 # Ortak AI0 Runtime — Aşama 2
 
-Aşama 2.1 OAuth görsel eklentisi denetimi: [`opencode-imagen@0.1.0` kurulu v2.0.21 içinde aktive olamadı](ai0-imagen-audit.md). Gerçek sağlayıcı çağrısı yapılmadı; görsel üretimi ve eski servisleri kaldırma koşulları hâlâ bekliyor. Bu sonuç OAuth hesabının görsel erişimini değerlendirmez.
+Aşama 2.2'de Hayalet Ev'e ait native V2 görsel eklentisi eklendi. Eklenti aktivasyonu ve gerçek session araç keşfi canlı doğrulandı. Asistan panelinden yapılan tek PNG denemesi, `openai/gpt-5.5` model isteğinde `provider.invalid-request` hatasıyla, `image_generate` çağrılmadan başarısız oldu. PNG üretimi/açma ve Fate Knots canlı materialization kabul koşulları bekliyor. Ayrıntılar: [görsel eklentisi denetimi](ai0-imagen-audit.md).
 
 Ortak sahip `electron/ai0/runtime-host.ts` içindeki `Ai0RuntimeHost`'tur. Normal runtime sohbeti, görsel görevler ve Fate Knots NPC/görsel adaptörleri bu servisi çağırır. Geliştirme Asistan sunucusunun start/stop/status işlemleri de host üzerinden mevcut OpenCode process manager'a devredilir. Geliştirme yüzeyi ayrı bir güvenlik kapsamıdır; eski OpenCode UI istemcisinin tüm v1 uç noktaları bu aşamada V2'ye taşınmış değildir.
 
@@ -12,7 +12,17 @@ V2, session bazında izinlerle araç snapshot'ını daraltır; bununla birlikte 
 
 Runtime çalışma alanları repository dışındaki `Paths.getAi0RuntimeRoot()` altında oluşur. Config dizini ve OpenCode test-home her süreç için özeldir; project config discovery kapalıdır. Global kullanıcı plugin/skill/MCP/AGENTS kaynakları kopyalanmaz. Başlatmada inherited `OPENCODE_*` config, simulation, CDP ve Node inspector ayarları temizlenir. Sağlayıcı anahtarları kopyalanmaz/değiştirilmez; OpenCode kendi credential store'unu kendi API'si içinde kullanır. Uygulama OpenCode SQLite dosyasına doğrudan erişmez.
 
-Host'un V2 eklentisi araç registry'sini ve model bağlamını sınırlar. NPC ve normal runtime sohbetinde araç listesi boştur. Görsel görevde yalnız `image_generate` izinlidir; farklı tool çalıştırma girişimleri ve ayrılan dosyadan farklı `output_path` reddedilir. Görsel eklentisi sağlanacaksa yalnız uygulamanın açıkça ayrılmış `data/shared/ai0-plugins/image_generate/` paket dizininden yüklenir. Kullanıcının bütün global eklentileri görsel runtime'a taşınmaz. Bu paket güvenilir kod olmalıdır; model tool izinleri plugin kodu için bir OS sandbox değildir.
+Host'un V2 sınır eklentisi araç registry'sini ve model bağlamını sınırlar. NPC ve normal runtime sohbetinde araç listesi boştur. Görsel görevde yalnız `image_generate` izinlidir. `electron/ai0/native-image-plugin.ts`, Electron build sırasında bağımsız `dist/electron/ai0-image-plugin.js` modülüne derlenir ve yalnız görsel çalışma alanına kopyalanır. Kullanıcı/veri dizininden üçüncü taraf image plugin yükleme yolu kaldırıldı; global config ve plugin'ler kullanılmaz. Model tool izinleri plugin kodu için bir OS sandbox değildir.
+
+## Native görsel eklentisi
+
+`hev.ai0.image`, OpenCode v2.0.21'in native Promise plugin API'sini kullanır. Dış SDK, Effect veya platform paketi import etmez; runtime'ın kendi Promise adaptörü, integration API'si ve JSON Schema tool sözleşmesi kullanılır. Dolaylı plugin bağımlılığı yoktur ve eski beta Effect taşınmaz. Host doğrulanmış binary sürümünü tam `2.0.21` olarak kontrol eder. Readiness, sınır ve gerekli görsel eklentisinin `/api/plugin` durumlarının gerçekten `active` olmasını gerektirir.
+
+Aracın tek girdileri `prompt` ve `output_path` olur. Host session'a bir kere rezervasyon verir: prompt, `images/<uuid>.png`, desteklenen PNG boyutu ve gerçek envanterden seçilmiş OpenAI model id'si. Araç bu değerleri değiştiremez, ek/reference parametresi kabul etmez ve aynı session'da ikinci sağlayıcı isteği yapamaz. Rezervasyon, session silinirken serbest bırakılır. Görsel görevler OpenAI model seçimi gerektirir; başka sağlayıcıya/model id'sine sessiz fallback yoktur. Dispatcher modeli seçili session modelidir; görsel model `gpt-image-2` olarak ayrıca belirtilir.
+
+OAuth yalnız OpenCode'un `integration.connection.active("openai")` / `resolve` API'siyle çözülür. Host rezervasyonunda OAuth preflight yapılır; API-key credential, dispatcher model prompt'u gönderilmeden reddedilir. Native `model.request` hook'u yalnız OpenAI/Codex base URL'sine izin verir. Araç invocation'ında bağlantı tekrar doğrulanır; token/hesap bilgisi yalnız istek belleğinde bulunur ve DB, dosya, manifest veya tool sonucuna yazılmaz. Backend adresi sabittir; redirect, credential fallback ve otomatik image retry kapalıdır. Bu Codex endpoint'i resmi/kararlı public görsel API değildir. Yetki veya kullanım limiti hataları başarıya çevrilmez.
+
+Response boyutu sınırlandırılır; SSE'de tek tamamlanmış görsel ve `response.completed` gerekir. PNG bytes yazılmadan doğrulanır, images dizinindeki symlink kaçışları reddedilir ve dosya `O_EXCL`/`O_NOFOLLOW` ile oluşturulur. Host PNG/hash doğrulamasını kalıcı artifact üzerinde tekrar yapar. Native tool hataları yalnız sabit kodlar (örneğin `CODEX_HTTP_403`) taşır; provider response body/header/cause loglanmaz veya renderer'a verilmez. OpenCode model hatalarında yalnız canonical hata türü ve varsa geçerli HTTP durumu gösterilir.
 
 ## Model, profil ve lifecycle
 

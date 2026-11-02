@@ -1,11 +1,12 @@
 import type { ChildProcess } from "node:child_process";
 import { spawn, execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdir, writeFile, realpath } from "node:fs/promises";
+import { mkdir, writeFile, realpath, copyFile } from "node:fs/promises";
 import { join, relative, isAbsolute } from "node:path";
 import { pathToFileURL } from "node:url";
 import { AI0_BOUNDARY_PLUGIN } from "./boundary-plugin.js";
 import { opencodeServerManager } from "../opencode-server-manager.ts";
+import { Paths } from "../paths.ts";
 import type { Ai0Model } from "../../shared/ai0-runtime.js";
 
 export interface Ai0SessionProbe {
@@ -56,8 +57,7 @@ export function buildAi0Environment(
 export async function startAi0Process(
   workspacePath: string,
   projectRoot: string,
-  allowedTools: string[],
-  imagePluginDir?: string
+  allowedTools: string[]
 ): Promise<Ai0Engine> {
   const [canonicalProject, canonicalWorkspace] = await Promise.all([
     realpath(projectRoot),
@@ -78,6 +78,22 @@ export async function startAi0Process(
     ),
     writeFile(join(pluginRoot, "server.js"), AI0_BOUNDARY_PLUGIN, "utf8"),
   ]);
+  const imagePluginRoot = join(workspacePath, "image-plugin");
+  if (allowedTools.includes("image_generate")) {
+    await mkdir(imagePluginRoot, { recursive: true });
+    await copyFile(Paths.getAi0ImagePluginBundlePath(), join(imagePluginRoot, "server.js"));
+    await writeFile(
+      join(imagePluginRoot, "package.json"),
+      JSON.stringify({
+        name: "hev-ai0-image",
+        version: "1.0.0",
+        type: "module",
+        main: "server.js",
+        dependencies: {},
+      }),
+      "utf8"
+    );
+  }
   const permissions = [
     { action: "*", resource: "*", effect: "deny" },
     ...allowedTools.map((action) => ({ action, resource: "*", effect: "allow" })),
@@ -92,13 +108,13 @@ export async function startAi0Process(
       "-opencode.config.skill",
       "-opencode.config.mcp",
       "-opencode.skill",
-      ...(imagePluginDir !== undefined ? [pathToFileURL(imagePluginDir).href] : []),
+      ...(allowedTools.includes("image_generate") ? [pathToFileURL(imagePluginRoot).href] : []),
       { package: pathToFileURL(pluginRoot).href, options: { allowedTools } },
     ],
   };
   const diagnosis = await opencodeServerManager.diagnoseBinary();
-  if (!diagnosis.available || diagnosis.version?.startsWith("2.") !== true)
-    throw new Error("Common AI0 requires the installed OpenCode v2 API");
+  if (!diagnosis.available || diagnosis.version !== "2.0.21")
+    throw new Error("Common AI0 native plugins require the verified OpenCode v2.0.21 API");
   const port = await opencodeServerManager.findAvailablePort(4150, 4199);
   if (port === null) throw new Error("No common AI0 runtime port is available");
   const password = randomBytes(32).toString("base64url");
@@ -153,9 +169,12 @@ export async function startAi0Process(
     }
   };
   const rpc = async (method: string, input: unknown): Promise<unknown> => {
+    const imageMethod = { output: "reserve", "image-release": "release", "image-result": "result" }[
+      method
+    ];
     const value = await request(
       "POST",
-      `/api/rpc/hev.ai0/${method}?directory=${encodeURIComponent(workspacePath)}`,
+      `/api/rpc/${imageMethod === undefined ? "hev.ai0" : "hev.ai0.image"}/${imageMethod ?? method}?directory=${encodeURIComponent(workspacePath)}`,
       { input }
     );
     return isRecord(value) ? value["output"] : undefined;
@@ -169,8 +188,30 @@ export async function startAi0Process(
         // Readiness includes plugin activation; a listening socket or HTML page is insufficient.
         // eslint-disable-next-line no-await-in-loop
         const ready = await rpc("ready", {});
-        if (isRecord(ready) && ready["ready"] === true)
-          return { workspacePath, port, request, rpc, stop };
+        if (isRecord(ready) && ready["ready"] === true) {
+          const plugins = unwrap(
+            // eslint-disable-next-line no-await-in-loop
+            await request("GET", `/api/plugin?directory=${encodeURIComponent(workspacePath)}`)
+          );
+          const required = [
+            "hev.ai0.boundary",
+            ...(allowedTools.includes("image_generate") ? ["hev.ai0.image"] : []),
+          ];
+          if (
+            Array.isArray(plugins) &&
+            required.every((id) =>
+              plugins.some(
+                (item) =>
+                  isRecord(item) &&
+                  item["id"] === id &&
+                  isRecord(item["state"]) &&
+                  item["state"]["status"] === "active"
+              )
+            )
+          )
+            return { workspacePath, port, request, rpc, stop };
+          throw new Error("AI0 native plugin lifecycle is not active");
+        }
       } catch {}
       // eslint-disable-next-line no-await-in-loop
       await new Promise<void>((resolve) => {

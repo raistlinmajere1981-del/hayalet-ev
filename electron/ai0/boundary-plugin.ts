@@ -6,7 +6,6 @@ export default {
     const allowed = new Set(ctx.options.allowedTools ?? []);
     const probes = new Set();
     const captures = new Map();
-    const outputs = new Map();
     const registrations = [];
     registrations.push(await ctx.tool.transform(editor => {
       for (const tool of editor.list()) {
@@ -33,18 +32,11 @@ export default {
     registrations.push(await ctx.session.hook("title", value => { value.result = "AI0"; }));
     registrations.push(await ctx.tool.hook("execute.before", value => {
       if (!allowed.has(value.tool)) throw new Error("Tool is outside the AI0 task boundary");
-      if (value.tool === "image_generate") {
-        const expected = outputs.get(value.sessionID);
-        if (!expected || !value.input || value.input.output_path !== expected) {
-          throw new Error("Image output_path is outside the reserved AI0 artifact");
-        }
-      }
     }));
     registrations.push(await ctx.rpc.register({
       id: "hev.ai0", events: {}, methods: {
         ready: { input: { type: "object" }, output: { type: "object" } },
         probe: { input: { type: "object", properties: { sessionId: { type: "string" } }, required: ["sessionId"] }, output: { type: "object" } },
-        output: { input: { type: "object", properties: { sessionId: { type: "string" }, path: { type: "string" } }, required: ["sessionId", "path"] }, output: { type: "object" } },
       }
     }, {
       async ready() {
@@ -62,7 +54,6 @@ export default {
         if (!capture) throw new Error("No effective session capability snapshot was captured");
         return capture;
       },
-      async output(input) { outputs.set(input.sessionId, input.path); return { configured: true }; },
     }));
     return async () => { for (const registration of registrations.reverse()) await registration.dispose(); };
   }

@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import { opencodeServerManager } from "../opencode-server-manager.ts";
 import type { ServerInfo, ServerOptions } from "../types/server.js";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, stat, writeFile, copyFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Paths } from "../paths.ts";
 import { createAgentProfileWorkspace } from "../agent-profile-workspace.js";
@@ -36,7 +36,6 @@ export interface Ai0HostDependencies {
   artifactRoot: () => string;
   projectRoot: () => string;
   defaultModel: () => Promise<Ai0Model | null>;
-  imagePlugin: () => Promise<string | undefined>;
   start: typeof startAi0Process;
 }
 interface Context {
@@ -73,9 +72,63 @@ export function extractAi0AssistantMessages(value: unknown): Record<string, unkn
   const assistants = data.filter(
     (item): item is Record<string, unknown> => isRecord(item) && item["type"] === "assistant"
   );
+  for (const assistant of assistants) {
+    const content = assistant["content"];
+    if (!Array.isArray(content)) continue;
+    for (const tool of content) {
+      if (
+        !isRecord(tool) ||
+        tool["type"] !== "tool" ||
+        tool["name"] !== "image_generate" ||
+        !isRecord(tool["state"])
+      )
+        continue;
+      const error = tool["state"]["error"];
+      if (
+        isRecord(error) &&
+        typeof error["message"] === "string" &&
+        /^AI0 image generation: [A-Z_0-9]+$/.test(error["message"])
+      )
+        throw new Error(error["message"]);
+    }
+  }
   for (const item of assistants)
-    if (item["error"] !== undefined && item["error"] !== null)
-      throw new Error("AI0 model request failed; no successful response was produced");
+    if (item["error"] !== undefined && item["error"] !== null) {
+      const error = item["error"];
+      if (
+        isRecord(error) &&
+        typeof error["message"] === "string" &&
+        /^AI0 image generation: [A-Z_0-9]+$/.test(error["message"])
+      )
+        throw new Error(error["message"]);
+      const status = isRecord(error) ? error["status"] : undefined;
+      const type = isRecord(error) ? error["type"] : undefined;
+      const knownTypes = [
+        "provider.rate-limit",
+        "provider.auth",
+        "provider.quota",
+        "provider.content-filter",
+        "provider.transport",
+        "provider.internal",
+        "provider.invalid-output",
+        "provider.invalid-request",
+        "provider.unsupported-operation",
+        "provider.no-route",
+        "provider.unknown",
+        "provider.timeout",
+        "permission.rejected",
+        "unknown",
+      ];
+      const kind = typeof type === "string" && knownTypes.includes(type) ? ` [${type}]` : "";
+      // Provider messages and response bodies can contain secrets; expose only canonical kinds and bounded HTTP status.
+      const suffix =
+        typeof status === "number" && Number.isInteger(status) && status >= 100 && status <= 599
+          ? ` (HTTP ${status})`
+          : "";
+      throw new Error(
+        `AI0 model request failed${kind}${suffix}; no successful response was produced`
+      );
+    }
   return assistants;
 }
 function textFromMessages(messages: Record<string, unknown>[]): string {
@@ -141,13 +194,7 @@ export class Ai0RuntimeHost {
     if (existing) await this.dispose(existing);
     invalidateAgentCapabilities(scope);
     const workspace = await createAgentProfileWorkspace(this.deps.root(), policy);
-    const plugin = isImageScope(scope) ? await this.deps.imagePlugin() : undefined;
-    const engine = await this.deps.start(
-      workspace.workspacePath,
-      this.deps.projectRoot(),
-      tools,
-      plugin
-    );
+    const engine = await this.deps.start(workspace.workspacePath, this.deps.projectRoot(), tools);
     const context: Context = {
       engine,
       fingerprint,
@@ -185,6 +232,10 @@ export class Ai0RuntimeHost {
     model: Ai0Model,
     sessionId: string
   ): Promise<{ resolution: AgentProfileResolution; tools: string[] }> {
+    if (isImageScope(context.scope) && model.providerID !== "openai")
+      throw new Error(
+        "Native AI0 image tasks require an available OpenAI session model and ChatGPT/Codex OAuth; no provider fallback is permitted"
+      );
     const value = await context.engine.rpc("probe", { sessionId });
     if (isRecord(value) && typeof value["error"] === "string")
       throw new Error(`AI0 effective session probe failed: ${value["error"]}`);
@@ -285,6 +336,7 @@ export class Ai0RuntimeHost {
         undefined,
         10_000
       );
+      if (isImageScope(context.scope)) await context.engine.rpc("image-release", { sessionId });
     } catch {
       await this.dispose(context);
     }
@@ -483,13 +535,19 @@ export class Ai0RuntimeHost {
         const relativeOutput = `images/${randomUUID()}.png`;
         const outputPath = join(context.engine.workspacePath, relativeOutput);
         await mkdir(join(context.engine.workspacePath, "images"), { recursive: true });
-        await context.engine.rpc("output", { sessionId, path: relativeOutput });
         const size = width === height ? "1024x1024" : width > height ? "1536x1024" : "1024x1536";
+        await context.engine.rpc("output", {
+          sessionId,
+          path: relativeOutput,
+          prompt,
+          size,
+          responseModel: model.id,
+        });
         await this.attach(
           context,
           sessionId,
           actual.resolution,
-          `Call image_generate exactly once with the supplied prompt and output_path exactly ${relativeOutput}. Request PNG, size ${size}, opaque background. Do not use other tools. A prose claim of success is insufficient.`
+          `Call image_generate exactly once. Its prompt must equal the user message verbatim, and output_path must equal ${relativeOutput}. PNG, ${size}, and opaque background are enforced by the host. Do not add parameters or use other tools. A prose claim of success is insufficient.`
         );
         const messages = await this.runPrompt(context, sessionId, prompt, timeout(timeoutMs, true));
         const completed = messages
@@ -502,8 +560,18 @@ export class Ai0RuntimeHost {
               isRecord(item["state"]) &&
               item["state"]["status"] === "completed"
           );
-        if (completed.length !== 1)
-          throw new Error("AI0 did not complete exactly one real image_generate tool invocation");
+        if (completed.length !== 1) {
+          const result = await context.engine.rpc("image-result", { sessionId });
+          if (
+            isRecord(result) &&
+            typeof result["error"] === "string" &&
+            /^AI0 image generation: [A-Z_0-9]+$/.test(result["error"])
+          )
+            throw new Error(result["error"]);
+          if (isRecord(result) && result["attempted"] === false)
+            throw new Error("AI0 image generation: IMAGE_TOOL_NOT_CALLED");
+          throw new Error("AI0 image generation: IMAGE_TOOL_NOT_COMPLETED");
+        }
         await verifyPngArtifact(context.engine.workspacePath, outputPath);
         const artifactRoot = this.deps.artifactRoot();
         await mkdir(artifactRoot, { recursive: true, mode: 0o700 });
@@ -589,14 +657,5 @@ export const ai0RuntimeHost = new Ai0RuntimeHost({
   artifactRoot: (): string => Paths.getAi0ImageArtifactsDir(),
   projectRoot: (): string => Paths.getProjectRoot(),
   defaultModel: readDefaultModel,
-  imagePlugin: async (): Promise<string | undefined> => {
-    const path = Paths.getAi0ImagePluginDir();
-    try {
-      return (await stat(path)).isDirectory() ? path : undefined;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-      throw error;
-    }
-  },
   start: startAi0Process,
 });
