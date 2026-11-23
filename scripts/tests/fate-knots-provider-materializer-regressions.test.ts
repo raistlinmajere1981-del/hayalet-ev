@@ -28,8 +28,8 @@ void test("Fate Knots AI1 forge art stays on SlotBridge generated-image archives
   assert.doesNotMatch(providerSource, /fate-knots-ai0-image-generate/);
 });
 
-void test("Fate Knots AI0 Local forge art uses the isolated file-producing room tool", () => {
-  assert.match(ai0LocalSource, /fate-knots-ai0-image-generate/);
+void test("Fate Knots AI0 Local forge art uses the shared image room capability", () => {
+  assert.match(ai0LocalSource, /ai0-image-generate/);
   assert.match(ai0LocalSource, /callFateKnotsAi0ImageRoomTool/);
   assert.doesNotMatch(ai0LocalSource, /dispatchBridge/);
   assert.doesNotMatch(ai0LocalSource, /fate-knots-ai0-call/);

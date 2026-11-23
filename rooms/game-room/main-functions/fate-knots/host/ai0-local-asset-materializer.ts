@@ -5,10 +5,7 @@ import type {
 } from "../forge/materializer.js";
 import type { FateKnotsMaterializedAsset } from "../forge/world-forge.js";
 import { callFateKnotsAi0ImageRoomTool } from "./electron-bridge.js";
-import {
-  readFateKnotsLocalFileBase64,
-  writeFateKnotsManagedImageFile,
-} from "./storage-bridge.js";
+import { readFateKnotsLocalFileBase64, writeFateKnotsManagedImageFile } from "./storage-bridge.js";
 import type { FateKnotsTransportApi } from "./transport.js";
 
 const FATE_KNOTS_AI0_IMAGE_TIMEOUT_MS = 10 * 60_000;
@@ -33,7 +30,9 @@ function sourceAspectRatio(job: FateKnotsAssetMaterializerJob): string {
 
 function loadImageFromBase64(base64: string, mimeType: string): Promise<LoadedImage> {
   if (typeof document === "undefined") {
-    return Promise.reject(new Error("Fate Knots AI0 image crop browser primitives are unavailable."));
+    return Promise.reject(
+      new Error("Fate Knots AI0 image crop browser primitives are unavailable.")
+    );
   }
   return new Promise((resolvePromise, rejectPromise) => {
     const image = document.createElement("img");
@@ -62,10 +61,7 @@ function cropImageToPngBase64(
   const sourceX = Math.max(0, Math.floor(crop.x * source.width));
   const sourceY = Math.max(0, Math.floor(crop.y * source.height));
   const sourceRight = Math.min(source.width, Math.ceil((crop.x + crop.width) * source.width));
-  const sourceBottom = Math.min(
-    source.height,
-    Math.ceil((crop.y + crop.height) * source.height)
-  );
+  const sourceBottom = Math.min(source.height, Math.ceil((crop.y + crop.height) * source.height));
   const width = sourceRight - sourceX;
   const height = sourceBottom - sourceY;
   if (width <= 0 || height <= 0) {
@@ -77,17 +73,7 @@ function cropImageToPngBase64(
   canvas.height = height;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Fate Knots AI0 image crop canvas context is unavailable.");
-  context.drawImage(
-    source.element,
-    sourceX,
-    sourceY,
-    width,
-    height,
-    0,
-    0,
-    width,
-    height
-  );
+  context.drawImage(source.element, sourceX, sourceY, width, height, 0, 0, width, height);
   const dataUrl = canvas.toDataURL(FATE_KNOTS_AI0_IMAGE_MIME_TYPE);
   const separatorIndex = dataUrl.indexOf(",");
   if (separatorIndex < 0) throw new Error("Fate Knots AI0 image crop did not produce PNG bytes.");
@@ -165,7 +151,7 @@ async function materializeSheet(
 
 async function requestAi0Image(job: FateKnotsAssetMaterializerJob): Promise<Ai0ImageArtifact> {
   const result = await callFateKnotsAi0ImageRoomTool({
-    operation: "fate-knots-ai0-image-generate",
+    operation: "ai0-image-generate",
     roomId: "game-room",
     requestId: `fate-knots-ai0-image:${job.jobId}`,
     jobId: job.jobId,
@@ -184,9 +170,9 @@ async function requestAi0Image(job: FateKnotsAssetMaterializerJob): Promise<Ai0I
 }
 
 /**
- * File-producing World Forge backend. AI0 image generation happens in an
- * isolated Electron-owned OpenCode workspace and only the verified staging PNG
- * crosses back into the existing Fate Knots managed-storage/crop pipeline.
+ * World Forge consumes the common Hayalet Ev AI0 image capability.
+ * AI0 owns the user's OpenCode connection, model choice and verified PNG;
+ * Fate Knots only manages its own artwork and crop/storage pipeline.
  */
 export function createFateKnotsAi0LocalAssetMaterializer(
   api: FateKnotsTransportApi

@@ -1,67 +1,57 @@
-# Ortak AI0 Runtime — Aşama 2
+# Ortak AI0 — OpenCode 2.3 Görsel Yeteneği (2026-11-23)
 
-Aşama 2.2'de Hayalet Ev'e ait native V2 görsel eklentisi eklendi. Eklenti aktivasyonu ve gerçek session araç keşfi canlı doğrulandı. Asistan panelinden yapılan tek PNG denemesi, `openai/gpt-5.5` model isteğinde `provider.invalid-request` hatasıyla, `image_generate` çağrılmadan başarısız oldu. PNG üretimi/açma ve Fate Knots canlı materialization kabul koşulları bekliyor. Ayrıntılar: [görsel eklentisi denetimi](ai0-imagen-audit.md).
+## Mimari karar
 
-Ortak sahip `electron/ai0/runtime-host.ts` içindeki `Ai0RuntimeHost`'tur. Normal runtime sohbeti, görsel görevler ve Fate Knots NPC/görsel adaptörleri bu servisi çağırır. Geliştirme Asistan sunucusunun start/stop/status işlemleri de host üzerinden mevcut OpenCode process manager'a devredilir. Geliştirme yüzeyi ayrı bir güvenlik kapsamıdır; eski OpenCode UI istemcisinin tüm v1 uç noktaları bu aşamada V2'ye taşınmış değildir.
+OpenCode'un kurulumu, sağlayıcı bağlantısı, ChatGPT/Codex OAuth, model erişimi, kullanıcı ayarları, skill ve plugin yönetimi **kullanıcının sorumluluğundadır**. Hayalet Ev ikinci bir OpenCode hesabı/konfigürasyon deposu, gizli anahtar kopyası veya özel bir görsel plugin'i oluşturmaz.
 
-## İzolasyon kararı
+Tek uygulama sahibi `electron/ai0/runtime-host.ts` içindeki `Ai0RuntimeHost`'tur. Asistan ve odalar buradan hizmet alır. OpenCode API ve model detayları odalardan saklanır.
 
-Kurulu binary canlı olarak `opencode v2.0.21` doğrulandı. V1 `/global/health` yolu bu sürümde HTTP 200 ile HTML SPA döndürür. Bu yanıt sağlık veya araç desteği değildir. V2 `/api/info` ve host sınır eklentisinin RPC readiness cevabı kimlik doğrulamalı JSON olarak kontrol edilir. V2 süreçleri parola gerektirir; host her süreç için rastgele özel parola üretir ve renderer'a döndürmez.
+- `electron/ai0/opencode-process.ts`: kurulu OpenCode binary'sini normal kullanıcı konfigürasyonuyla başlatır; eski `v2.0.21` kilidi kalkmıştır. Task workspace'leri yalnız **çalışma dosyaları ve session yönetimi** için ayrıdır; ayrı kullanıcı hesabı, home, global config, skill/plugin kurulumunu yönetmez. Bağlı hesaplar OpenCode'un mevcut bağlantı deposundan okunur. Geliştirme sunucusu `opencodeServerManager` üzerinden ayrıca yönetilir.
+- Başlatılan görev sunucusu localhost üzerindedir ve her süreç için yeni bir parola kullanır. `OPENCODE_PASSWORD` ve `OPENCODE_SERVER_PASSWORD` birlikte ayarlanır; kullanıcının ortamındaki eski parola bu sürece karışmaz.
+- Kullanıcı ayarlarının/eklenti kodunun yüklenmesi uygulamanın onu işletim sistemi düzeyinde izole ettiği anlamına gelmez. Normal sohbet ve NPC oturumlarında araç izinleri session seviyesinde `deny-all` olur. Fate-Knots NPC prompt'larına yalnız izin verilen kamuya açık paket alanları taşınır. Kullanıcıya ait kötü niyetli plugin kodları için ayrı OS sandbox iddiası yoktur.
 
-V2, session bazında izinlerle araç snapshot'ını daraltır; bununla birlikte server config directory, çevre ve plugin kayıtları host/süreç kapsamındadır. Gereken config/plugin/çevre izolasyonu tek sunucuda kanıtlanmadığı için farklı görev kapsamlarını tek süreçte birleştirmedik. Tek uygulama host'u, ayrı süreçleri yönetir. Bu kararın kaynakları: [V2 session context](https://github.com/anomalyco/opencode/blob/v2.0.21/packages/core/src/session/context.ts), [server composition](https://github.com/anomalyco/opencode/blob/v2.0.21/packages/server/src/routes.ts), [CLI server config](https://github.com/anomalyco/opencode/blob/v2.0.21/packages/cli/src/server-process.ts).
+## Yerleşik görsel API
 
-Runtime çalışma alanları repository dışındaki `Paths.getAi0RuntimeRoot()` altında oluşur. Config dizini ve OpenCode test-home her süreç için özeldir; project config discovery kapalıdır. Global kullanıcı plugin/skill/MCP/AGENTS kaynakları kopyalanmaz. Başlatmada inherited `OPENCODE_*` config, simulation, CDP ve Node inspector ayarları temizlenir. Sağlayıcı anahtarları kopyalanmaz/değiştirilmez; OpenCode kendi credential store'unu kendi API'si içinde kullanır. Uygulama OpenCode SQLite dosyasına doğrudan erişmez.
+OpenCode 2.3.2 üzerinde kimlik doğrulamalı canlı API keşfiyle `POST /api/experimental/generate/image` ve `opencode.config.image` dahili eklentisi doğrulandı. Bu endpoint stateless çalışır ve `model: {providerID,id}`, `prompt`, `aspect`, `resolution` alır; `data.images` içinde base64 görüntü döndürür. **Keşif gerçek görsel üretildiği veya Plus hesabının ilgili modele eriştiği anlamına gelmez.** Görsel üretim denemesi kota yenilenince yapılacaktır.
 
-Host'un V2 sınır eklentisi araç registry'sini ve model bağlamını sınırlar. NPC ve normal runtime sohbetinde araç listesi boştur. Görsel görevde yalnız `image_generate` izinlidir. `electron/ai0/native-image-plugin.ts`, Electron build sırasında bağımsız `dist/electron/ai0-image-plugin.js` modülüne derlenir ve yalnız görsel çalışma alanına kopyalanır. Kullanıcı/veri dizininden üçüncü taraf image plugin yükleme yolu kaldırıldı; global config ve plugin'ler kullanılmaz. Model tool izinleri plugin kodu için bir OS sandbox değildir.
+`electron/ai0/native-image-service.ts` endpoint'i seçilen **açık modelle** çağırır; model/sağlayıcı fallback veya otomatik tekrar deneme yoktur. Tam bir PNG, base64 ve PNG yapısı doğrulanmadan sonuç başarı sayılmaz. `Ai0RuntimeHost.generateImage` onaylı görseli `data/shared/ai0-images/` altına hash ve manifest ile saklar; açma işleminde yeniden doğrular.
 
-## Native görsel eklentisi
+`imageStatus` sadece dahili görsel API'nin **aktif** olduğunu denetler. `verified=false` ilk gerçek PNG üretilene kadar kalır; `available=true` ile karıştırılmaz. Model envanterinde görsel modeller metin modelleri arasında listelenmeyebilir. Görsel model ataması bu nedenle metin modeli listesiyle sınırlandırılmaz.
 
-`hev.ai0.image`, OpenCode v2.0.21'in native Promise plugin API'sini kullanır. Dış SDK, Effect veya platform paketi import etmez; runtime'ın kendi Promise adaptörü, integration API'si ve JSON Schema tool sözleşmesi kullanılır. Dolaylı plugin bağımlılığı yoktur ve eski beta Effect taşınmaz. Host doğrulanmış binary sürümünü tam `2.0.21` olarak kontrol eder. Readiness, sınır ve gerekli görsel eklentisinin `/api/plugin` durumlarının gerçekten `active` olmasını gerektirir.
+## Model atamaları ve UI
 
-Aracın tek girdileri `prompt` ve `output_path` olur. Host session'a bir kere rezervasyon verir: prompt, `images/<uuid>.png`, desteklenen PNG boyutu ve gerçek envanterden seçilmiş OpenAI model id'si. Araç bu değerleri değiştiremez, ek/reference parametresi kabul etmez ve aynı session'da ikinci sağlayıcı isteği yapamaz. Rezervasyon, session silinirken serbest bırakılır. Görsel görevler OpenAI model seçimi gerektirir; başka sağlayıcıya/model id'sine sessiz fallback yoktur. Dispatcher modeli seçili session modelidir; görsel model `gpt-image-2` olarak ayrıca belirtilir.
+`shared/ai0-runtime.ts` ve `app.db` / `ai0_runtime_models` üzerinden görev bazlı model seçimi:
 
-OAuth yalnız OpenCode'un `integration.connection.active("openai")` / `resolve` API'siyle çözülür. Host rezervasyonunda OAuth preflight yapılır; API-key credential, dispatcher model prompt'u gönderilmeden reddedilir. Native `model.request` hook'u yalnız OpenAI/Codex base URL'sine izin verir. Araç invocation'ında bağlantı tekrar doğrulanır; token/hesap bilgisi yalnız istek belleğinde bulunur ve DB, dosya, manifest veya tool sonucuna yazılmaz. Backend adresi sabittir; redirect, credential fallback ve otomatik image retry kapalıdır. Bu Codex endpoint'i resmi/kararlı public görsel API değildir. Yetki veya kullanım limiti hataları başarıya çevrilmez.
+- `AI0_ASSISTANT_SCOPE`: AI0 sohbeti (atanmamışsa Asistan UI modeli).
+- `AI0_ROOM_SCOPE`: odaların ortak metin modeli; eski oda-özel seçimlerin önündedir. Atama yoksa oda-özel kayıt ve sohbet varsayılanı kullanılabilir.
+- `AI0_IMAGE_SCOPE`: bütün odaların varsayılan görsel modeli; ilk aday `openai:gpt-image-2`. Fate-Knots resim isteği de aynı seçimi kullanır.
 
-Response boyutu sınırlandırılır; SSE'de tek tamamlanmış görsel ve `response.completed` gerekir. PNG bytes yazılmadan doğrulanır, images dizinindeki symlink kaçışları reddedilir ve dosya `O_EXCL`/`O_NOFOLLOW` ile oluşturulur. Host PNG/hash doğrulamasını kalıcı artifact üzerinde tekrar yapar. Native tool hataları yalnız sabit kodlar (örneğin `CODEX_HTTP_403`) taşır; provider response body/header/cause loglanmaz veya renderer'a verilmez. OpenCode model hatalarında yalnız canonical hata türü ve varsa geçerli HTTP durumu gösterilir.
+Asistan içindeki OpenCode UI'nin mevcut **Model Ayarları** modalına üç görev seçimi ve görsel durum göstergesi eklendi. Asistan AI0 test penceresi model seçimi, görsel deneme ve doğrulanmış görsel açmayı sürdürür. Kullanıcı OpenCode kurulumu veya OAuth girişini Hayalet Ev'den yönetmez.
 
-## Model, profil ve lifecycle
+## Oda köprüsü
 
-Görev bazlı model seçimleri uygulamanın `app.db` dosyasındaki `ai0_runtime_models` tablosundadır. Açık görev seçimi yoksa ortak normal AI0 seçimi, o da yoksa mevcut Asistan UI model tercihi kullanılır. Bu, tek host'un çözümleme sırasıdır; model seçiminde gerçek runtime model envanteri kontrol edilir. Model listeleri renderer'a yalnız id, provider, name ve capabilities alanlarıyla döndürülür; request/header/credential verileri döndürülmez.
+`room-tools-call` işlemleri `ai0-image-status` ve `ai0-image-generate` olarak genelleştirildi; `roomId`, `requestId`, üretimde `jobId`, `prompt`, `sourceAspectRatio` taşınır. Fate-Knots `electron-bridge.ts` yalnız genel oda yeteneğini çağırır; oyun içi World Forge plan, kırpma, dosya terfisi ve canonical state kendisine aittir. Metin NPC çağrısının oyun paketlerine özel güvenlik doğrulaması korunur.
 
-Agent Profile Registry talimatları V2 session instruction entry üzerinden verilir. Profil/katman hash'i veya model değişirse eski süreç ve oturum geçersizleşir. Eski session id ile devam isteği reddedilir. Aktif profile/model seçim değişiklikleri host bağlamlarını ve yetenek attestasyonunu geçersiz kılar. Görev devam ederken değişmiş kimliğin eski sonucu yayımlanmaz.
+Eski `electron/ai0/native-image-plugin.ts`, Fate-Knots özel image worker ve eski özel image IPC yolları **geçiş dönemi için** depoda tutulmaktadır; aktif yeni üretim yoluna fallback yapılmaz. Canlı endpoint ve World Forge dosya üretimi doğrulanınca kaldırılabilir. Tarihsel v2.0.21 tespitleri için [eski görsel eklentisi analizi](ai0-imagen-audit.md).
 
-Normal sohbet aynı kimlikte aynı oturumu sürdürebilir. NPC ve görsel görevler her istekte yeni root session kullanır ve sonunda silinir; parent session kullanılmaz. HTTP timeout, sunucu agent loop'unu kendiliğinden iptal etmediği için hatalı/timeout sürecinin tamamı durdurulur. İdle süreçler on dakika sonra kapanır; uygulama kapanışı ortak host süreçlerini sonlandırır. Signal ile kapanmış süreçlerin ikinci kez durdurulması idempotenttir.
+## Kabul ve smoke
 
-Fate Knots adaptörü, dialogue/combat paketlerini izinli alanlarla yeniden kurar. Bilinmeyen alanlar, nested hidden commits/canon ve geliştirme memory alanları prompt'a taşınmaz. Mevcut gameplay response parser ve legality gate korunur. NPC/görsel başlangıç seçimleri registry'ye kapsam bazında kaydedilir; kullanıcının açık seçimi üzerine yazılmaz.
+- Yerel API sözleşmesi / aktif dahili plugin: **doğrulandı, ücretli istek yok**.
+- Sahte provider/PNG ile host, hata ve görsel güvenlik testleri: **doğrulandı**.
+- Gerçek ChatGPT/Codex hesabıyla tek PNG: **bekliyor**.
+- Gerçek PNG'nin Electron ile açılması ve Fate-Knots World Forge üzerinden kalıcı materyale terfisi: **bekliyor**.
+- Eski özel servisleri kaldırma: **bekliyor**.
 
-## Gerçek yetenek ve PNG
-
-Capability probe gerçek session oluşturur. V2 session `generate` hook'u seçilen modeli ve o oturumun effective tool definitions snapshot'ını yakalar; provider request'inden önce probe kesilir. Ek model-request guard'ı probe'un LLM/ücretli sağlayıcı çağrısına dönüşmesini engeller. Model gerçek envanterde bulunmalı ve tool calling desteklemelidir. `image_generate` gerçek snapshot içinde `prompt` ve `output_path` schema alanlarıyla bulunmalıdır. Registry veya skill etiketi araç desteği olarak kabul edilmez.
-
-Görsel üretim success'i, tam bir completed `image_generate` tool olayı ve yeni ayrılan path'te gerçek PNG gerektirir. Dosya sınır, symlink, boyut, signature, chunk checksum, IHDR/IEND ve decompress edilmiş pixel/scanline yapısıyla kontrol edilir. Mevcut doğrulayıcı interlace ve indexed color içermeyen PNG kabul eder; unsupported encoding hata verir. Doğrulanmış dosya ve manifest `data/shared/ai0-images/` altında kalıcı saklanır. Açarken dosya hash'i yeniden kontrol edilir ve Electron native decoder görüntüyü okuyabilmelidir. Metinsel başarı yanıtı veya önceki bir dosya başarı sayılmaz.
-
-## Kullanım ve doğrulama
-
-Asistan sayfasındaki AI0 butonu ortak runtime panelini açar: sohbet/görsel görevi, gerçek model listesi, registry karakter profili, yeni oturum, yetenek kontrolü ve doğrulanmış PNG açma işlemleri vardır.
-
-Mevcut ortak komut catalog'unda:
-
-- `++cmd:AI0ImageStatus`
-- `++cmd:AI0ImageGenerate("a blue ghost", "1:1")`
-
-Fate Knots'un mevcut room-tool sözleşmesi aynı shared host adaptörüne bağlanmıştır. Yeni paralel komut sistemi veya başarısızlıkta eski worker'a fallback yoktur.
-
-Canlı smoke komutları:
+Gerçek provider çağrısı yapmadan modelleri göstermek:
 
 ```bash
 TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/ai0-runtime-smoke.ts --models
-TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/ai0-runtime-smoke.ts --chat --model=ollama/qwen2.5:7b
-TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/ai0-runtime-smoke.ts --model=ollama/qwen2.5:7b
+```
+
+Asistan'dan seçilen gerçek görsel modeli ile test etmek (kota kullanabilir):
+
+```bash
 TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/ai0-runtime-smoke.ts --image
 ```
 
-`--chat`/`--image` gerçek model/sağlayıcı çağrısı yapar; `--models` ve capability probe sağlayıcı inference çağrısı yapmaz. `--model` yalnız belirtilen görev kapsamının model seçimini kaydeder.
-
-2026-10-14 canlı sonuçları: yerel `ollama/qwen2.5:7b` üzerinden normal AI0 sohbeti `AI0 runtime verified.` yanıtını verdi. Aynı modelin gerçek görsel session probe'u `No real image_generate tool with a prompt + output_path contract is available in this AI0 session` döndürdü. Kayıtlı `openai:gpt-5.6-terra-fast` seçimi bu izole envanterde unavailable çıktı. Bu koşulda gerçek görsel üretilmedi ve PNG açma canlı kabul koşulu sağlanmış sayılmadı. Testte üretilen PNG fixture'ları gerçek sağlayıcı üretimi kanıtı değildir.
-
-Bu nedenle eski `fate-knots-ai0-runtime-service.ts`, `fate-knots-ai0-image-worker-service.ts`, barrel ve özel model helper kaynakları silinmedi. Aktif ortak room-tool yolu bu kaynaklara fallback yapmaz. Tam cutover/kaynak silme, kullanılabilir gerçek image tool ile ortak üretim ve Fate Knots materialization akışı canlı doğrulandığında yapılmalıdır. Aşama 2'nin görsel üretim ve eski servisleri kaldırma kabul koşulları henüz tamamlanmamıştır.
+**Not:** `--image` ancak görüntü modeli atanmış ve yetkili provider bu API'de çalışabilir olduğunda başarılı olur. Bu koşullar canlı test edilmedi.

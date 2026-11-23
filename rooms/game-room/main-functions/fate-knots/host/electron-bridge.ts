@@ -34,7 +34,7 @@ export interface FateKnotsAi0RoomToolCallResult {
 
 export interface FateKnotsAi0ImageStatusRoomToolCallRequest {
   roomId: "game-room";
-  operation: "fate-knots-ai0-image-status";
+  operation: "ai0-image-status";
   requestId: string;
 }
 
@@ -58,12 +58,12 @@ export interface FateKnotsAi0ImageStatusRoomToolCallResult {
   operation?: string;
   requestId?: string | null;
   error?: string;
-  fateKnotsAi0ImageStatus?: FateKnotsAi0ImageCapabilityStatus;
+  ai0ImageStatus?: FateKnotsAi0ImageCapabilityStatus;
 }
 
 export interface FateKnotsAi0ImageRoomToolCallRequest {
   roomId: "game-room";
-  operation: "fate-knots-ai0-image-generate";
+  operation: "ai0-image-generate";
   requestId: string;
   jobId: string;
   prompt: string;
@@ -89,6 +89,7 @@ export interface FateKnotsAi0ImageRoomToolCallResult {
     port: number;
     activeModelKey: string;
   };
+  ai0Image?: FateKnotsAi0ImageRoomToolCallResult["fateKnotsAi0Image"];
 }
 
 type FateKnotsElectronRequest =
@@ -177,15 +178,15 @@ export async function readFateKnotsAi0ImageCapabilityStatus(): Promise<FateKnots
 
   const request: FateKnotsAi0ImageStatusRoomToolCallRequest = {
     roomId: "game-room",
-    operation: "fate-knots-ai0-image-status",
+    operation: "ai0-image-status",
     requestId: `fate-knots-ai0-image-status:${Date.now().toString(36)}`,
   };
   try {
     const result = (await electronApi.roomToolsCall(
       request
     )) as FateKnotsAi0ImageStatusRoomToolCallResult;
-    return result.success === true && result.fateKnotsAi0ImageStatus
-      ? result.fateKnotsAi0ImageStatus
+    return result.success === true && result.ai0ImageStatus
+      ? result.ai0ImageStatus
       : { ...fallback, reason: result.error ?? "Fate Knots AI0 image status check failed." };
   } catch (error) {
     return { ...fallback, reason: error instanceof Error ? error.message : String(error) };
@@ -208,7 +209,7 @@ export async function callFateKnotsAi0ImageRoomTool(
 
   const ipcRequest: FateKnotsAi0ImageElectronRequest = {
     roomId: "game-room",
-    operation: "fate-knots-ai0-image-generate",
+    operation: "ai0-image-generate",
     requestId: request.requestId,
     jobId: request.jobId,
     prompt: request.prompt,
@@ -220,12 +221,12 @@ export async function callFateKnotsAi0ImageRoomTool(
     const result = (await electronApi.roomToolsCall(
       ipcRequest
     )) as FateKnotsAi0ImageRoomToolCallResult;
-    return result.success === true
-      ? result
+    return result.success === true && result.ai0Image
+      ? { ...result, fateKnotsAi0Image: result.ai0Image }
       : {
           ...result,
           success: false,
-          error: result.error ?? "Fate Knots AI0 image room-tool call failed.",
+          error: result.error ?? "Shared AI0 image room-tool returned no image.",
         };
   } catch (error) {
     return {

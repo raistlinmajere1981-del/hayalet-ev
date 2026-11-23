@@ -1,6 +1,8 @@
 import type { IpcMainInvokeEvent } from "electron";
 import { registerHandler } from "./ipc-helpers.ts";
 import { roomToolService } from "../room-tool-service.ts";
+import { ai0RuntimeHost } from "../ai0/runtime-host.js";
+import { AI0_IMAGE_SCOPE } from "../../shared/ai0-runtime.js";
 import {
   callFateKnotsSharedAi0,
   fateKnotsSharedImageStatus,
@@ -8,6 +10,8 @@ import {
 } from "../ai0/fate-knots-adapter.js";
 import type {
   RoomToolGenericCallRequest,
+  RoomToolAi0ImageStatusRequest,
+  RoomToolAi0ImageGenerateRequest,
   RoomToolCancelRequest,
   RoomToolFateKnotsAi0CallRequest,
   RoomToolFateKnotsAi0ImageGenerateRequest,
@@ -133,8 +137,91 @@ function isFateKnotsAi0ImageGenerateRequest(
   return true;
 }
 
+function isCommonImageStatusRequest(value: unknown): value is RoomToolAi0ImageStatusRequest {
+  return (
+    isRecord(value) &&
+    value["operation"] === "ai0-image-status" &&
+    isNonEmptyString(value["roomId"]) &&
+    isNonEmptyString(value["requestId"])
+  );
+}
+
+function isCommonImageGenerateRequest(value: unknown): value is RoomToolAi0ImageGenerateRequest {
+  return (
+    isRecord(value) &&
+    value["operation"] === "ai0-image-generate" &&
+    isNonEmptyString(value["roomId"]) &&
+    isNonEmptyString(value["requestId"]) &&
+    isNonEmptyString(value["jobId"]) &&
+    isNonEmptyString(value["prompt"]) &&
+    typeof value["prompt"] === "string" &&
+    value["prompt"].length <= 20_000 &&
+    isNonEmptyString(value["sourceAspectRatio"]) &&
+    /^[0-9]{1,3}:[0-9]{1,3}$/.test(value["sourceAspectRatio"]) &&
+    (value["timeoutMs"] === undefined ||
+      (typeof value["timeoutMs"] === "number" && Number.isFinite(value["timeoutMs"])))
+  );
+}
+
 export function setupRoomToolHandlers(): void {
   registerHandler("room-tools-call", async (event: IpcMainInvokeEvent, request: unknown) => {
+    if (isRecord(request) && request["operation"] === "ai0-image-status") {
+      if (!isCommonImageStatusRequest(request))
+        return {
+          success: false,
+          operation: "ai0-image-status",
+          error: "Invalid image status request",
+        };
+      const status = await ai0RuntimeHost.imageStatus(AI0_IMAGE_SCOPE);
+      return {
+        success: true,
+        operation: request.operation,
+        requestId: request.requestId,
+        ai0ImageStatus: {
+          available: status.available,
+          activeModelKey: status.model ? status.model.providerID + ":" + status.model.id : null,
+          providerId: status.model?.providerID ?? null,
+          modelId: status.model?.id ?? null,
+          toolId: status.toolId,
+          compatibleTool: status.available,
+          imageSkillDetected: false,
+          imageSkillNames: [],
+          verified: status.verified,
+          reason: status.reason,
+        },
+      };
+    }
+    if (isRecord(request) && request["operation"] === "ai0-image-generate") {
+      if (!isCommonImageGenerateRequest(request))
+        return {
+          success: false,
+          operation: "ai0-image-generate",
+          error: "Invalid image generation request",
+        };
+      try {
+        const artifact = await ai0RuntimeHost.generateImage(
+          request.prompt,
+          request.sourceAspectRatio,
+          AI0_IMAGE_SCOPE,
+          request.timeoutMs
+        );
+        return {
+          success: true,
+          operation: request.operation,
+          requestId: request.requestId,
+          jobId: request.jobId,
+          ai0Image: artifact,
+        };
+      } catch (error) {
+        return {
+          success: false,
+          operation: request.operation,
+          requestId: request.requestId,
+          jobId: request.jobId,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
     if (isRecord(request) && request["operation"] === "fate-knots-ai0-call") {
       if (!isFateKnotsAi0CallRequest(request)) {
         return {

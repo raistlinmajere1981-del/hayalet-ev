@@ -148,7 +148,7 @@ export async function runFateKnotsAi0ImageSmoke(): Promise<FateKnotsAi0ImageSmok
   try {
     const generated = await callFateKnotsAi0ImageRoomTool({
       roomId: "game-room",
-      operation: "fate-knots-ai0-image-generate",
+      operation: "ai0-image-generate",
       requestId: "fate-knots-ai0-image-smoke:" + nonce,
       jobId,
       prompt: FATE_KNOTS_AI0_IMAGE_SMOKE_PROMPT,

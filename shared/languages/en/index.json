@@ -1865,7 +1865,8 @@
         "ready": "Select a model and profile, then send your message.",
         "noModels": "No model is available in this AI0 runtime.",
         "working": "AI0 is working…",
-        "imageReady": "image_generate verified in a real session.",
+        "imageReady": "Image generation verified with a real PNG.",
+        "imageNotTested": "OpenCode image API ready; live generation not yet verified.",
         "imageUnavailable": "Image generation is unavailable.",
         "imageSaved": "PNG verified and saved."
       }
@@ -6162,6 +6163,17 @@
       "missingInputArea": "The message input area could not be found."
     },
     "modelSettings": {
+      "ai0SectionTitle": "Shared AI0 Task Models",
+      "ai0Chat": "AI0 chat",
+      "ai0Room": "Room AI requests",
+      "ai0Image": "Image generation",
+      "ai0Check": "Check image capability",
+      "ai0Unassigned": "Not assigned",
+      "ai0Saving": "Saving model…",
+      "ai0Checking": "Checking image capability…",
+      "ai0ImageVerified": "Image generation verified with a real PNG.",
+      "ai0ImageNotTested": "Image API is ready; live generation has not been verified.",
+      "ai0ImageUnavailable": "Image generation is unavailable.",
       "openTitle": "Model settings",
       "openLabel": "⚙ Model",
       "title": "Model Settings",

@@ -1,8 +1,7 @@
-import { constants } from "node:fs";
 import { opencodeServerManager } from "../opencode-server-manager.ts";
 import type { ServerInfo, ServerOptions } from "../types/server.js";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Paths } from "../paths.ts";
 import { createAgentProfileWorkspace } from "../agent-profile-workspace.js";
@@ -17,6 +16,7 @@ import { normalizeOpencodeUiSharedState } from "../../shared/opencode-ui-state.j
 import {
   AI0_ASSISTANT_SCOPE,
   AI0_IMAGE_SCOPE,
+  AI0_ROOM_SCOPE,
   FATE_KNOTS_NPC_SCOPE,
 } from "../../shared/ai0-runtime.js";
 import type {
@@ -27,7 +27,12 @@ import type {
 } from "../../shared/ai0-runtime.js";
 import type { AgentProfileScope, AgentProfileResolution } from "../../shared/agent-profiles.js";
 import { isRecord, startAi0Process, unwrap } from "./opencode-process.js";
-import type { Ai0Engine, Ai0SessionProbe } from "./opencode-process.js";
+import type { Ai0Engine } from "./opencode-process.js";
+import {
+  generateNativeImage,
+  hasNativeImageCapability,
+  NATIVE_IMAGE_ROUTE,
+} from "./native-image-service.js";
 import { verifyPngArtifact } from "./png-artifact.js";
 
 export interface Ai0HostDependencies {
@@ -146,6 +151,7 @@ export class Ai0RuntimeHost {
   private readonly contexts = new Map<string, Context>();
   private readonly queues = new Map<string, Promise<unknown>>();
   private readonly artifacts = new Map<string, Ai0ImageArtifact>();
+  private readonly verifiedImageModels = new Set<string>();
   private closing = false;
   constructor(private readonly deps: Ai0HostDependencies) {}
 
@@ -161,11 +167,19 @@ export class Ai0RuntimeHost {
     return await run;
   }
   private async chosenModel(scope: AgentProfileScope): Promise<Ai0Model> {
-    const model =
-      this.deps.registry().selectedRuntimeModel(scope) ??
-      this.deps.registry().selectedRuntimeModel(AI0_ASSISTANT_SCOPE) ??
-      (await this.deps.defaultModel());
-    if (!model) throw new Error("AI0 has no selected model. Select an available model first.");
+    const registry = this.deps.registry();
+    const model = isImageScope(scope)
+      ? registry.selectedRuntimeModel(AI0_IMAGE_SCOPE)
+      : ((scope.roomId !== "assistant" ? registry.selectedRuntimeModel(AI0_ROOM_SCOPE) : null) ??
+        registry.selectedRuntimeModel(scope) ??
+        registry.selectedRuntimeModel(AI0_ASSISTANT_SCOPE) ??
+        (await this.deps.defaultModel()));
+    if (!model)
+      throw new Error(
+        isImageScope(scope)
+          ? "No image model selected. Choose an image model in the Assistant Model Settings."
+          : "AI0 has no selected model. Select an available model first."
+      );
     return model;
   }
   private profile(
@@ -181,7 +195,7 @@ export class Ai0RuntimeHost {
     });
   }
   private async context(scope: AgentProfileScope, model: Ai0Model): Promise<Context> {
-    const tools = isImageScope(scope) ? ["image_generate"] : [];
+    const tools: string[] = [];
     const policy = this.profile(scope, model, []);
     const fingerprint = policy.hash;
     const key = scopeKey(scope);
@@ -206,16 +220,12 @@ export class Ai0RuntimeHost {
     return context;
   }
   private async createSession(context: Context, model: Ai0Model): Promise<string> {
-    const permissions = [
-      { action: "*", resource: "*", effect: "deny" },
-      ...(isImageScope(context.scope)
-        ? [{ action: "image_generate", resource: "*", effect: "allow" }]
-        : []),
-    ];
+    // User plugins/settings are inherited; runtime sessions still deny tool
+    // execution, including user-installed shell, file and network tools.
+    const permissions = [{ action: "*", resource: "*", effect: "deny" }];
     const created = unwrap(
       await context.engine.request("POST", "/api/session", {
         title: "Hayalet Ev AI0",
-        agent: "hev-ai0",
         model,
         location: { directory: context.engine.workspacePath },
         permissions,
@@ -230,59 +240,29 @@ export class Ai0RuntimeHost {
   private async probe(
     context: Context,
     model: Ai0Model,
-    sessionId: string
+    _sessionId: string
   ): Promise<{ resolution: AgentProfileResolution; tools: string[] }> {
-    if (isImageScope(context.scope) && model.providerID !== "openai")
-      throw new Error(
-        "Native AI0 image tasks require an available OpenAI session model and ChatGPT/Codex OAuth; no provider fallback is permitted"
-      );
-    const value = await context.engine.rpc("probe", { sessionId });
-    if (isRecord(value) && typeof value["error"] === "string")
-      throw new Error(`AI0 effective session probe failed: ${value["error"]}`);
     const models = unwrap(
       await context.engine.request(
         "GET",
-        `/api/model?directory=${encodeURIComponent(context.engine.workspacePath)}`
+        "/api/model?directory=" + encodeURIComponent(context.engine.workspacePath)
       )
     );
     if (!Array.isArray(models)) throw new Error("AI0 model inventory is unavailable");
-    const selected: unknown = models.find(
+    const selected = models.find(
       (item) => isRecord(item) && item["id"] === model.id && item["providerID"] === model.providerID
     );
     if (!isRecord(selected))
-      throw new Error(`Selected AI0 model ${modelKey(model)} is unavailable in this runtime`);
-    const capabilities = selected["capabilities"];
-    if (isImageScope(context.scope) && (!isRecord(capabilities) || capabilities["tools"] !== true))
-      throw new Error("Selected AI0 model cannot call image_generate tools");
-    if (
-      !isRecord(value) ||
-      value["sessionId"] !== sessionId ||
-      !isRecord(value["model"]) ||
-      !isRecord(value["tools"])
-    )
-      throw new Error("AI0 has no verified effective session capability snapshot");
-    const actualModel = value["model"];
-    if (actualModel["id"] !== model.id || actualModel["providerID"] !== model.providerID)
-      throw new Error("AI0 session model does not match the selected model");
-    const snapshot = value as unknown as Ai0SessionProbe;
-    const toolIds = Object.keys(snapshot.tools);
-    const allowed = isImageScope(context.scope) ? ["image_generate"] : [];
-    if (toolIds.some((id) => !allowed.includes(id)))
-      throw new Error("AI0 effective session includes tools outside the task boundary");
-    if (isImageScope(context.scope)) {
-      const properties = snapshot.tools["image_generate"]?.input.properties;
-      if (!properties || !isRecord(properties["prompt"]) || !isRecord(properties["output_path"]))
-        throw new Error(
-          "No real image_generate tool with a prompt + output_path contract is available in this AI0 session"
-        );
-    }
+      throw new Error("Selected AI0 model " + modelKey(model) + " is unavailable in OpenCode");
+    // No global tool is granted to a text/NPC session. OpenCode enforces the
+    // explicit deny-all rules supplied at session creation.
     attestAgentCapabilities(context.scope, {
-      source: "OpenCode v2 effective session context",
+      source: "OpenCode v2 configured session",
       modelId: modelKey(model),
       systemInstructions: true,
-      tools: toolIds,
+      tools: [],
     });
-    return { resolution: this.profile(context.scope, model, toolIds), tools: toolIds };
+    return { resolution: this.profile(context.scope, model, []), tools: [] };
   }
   private async attach(
     context: Context,
@@ -336,7 +316,6 @@ export class Ai0RuntimeHost {
         undefined,
         10_000
       );
-      if (isImageScope(context.scope)) await context.engine.rpc("image-release", { sessionId });
     } catch {
       await this.dispose(context);
     }
@@ -396,67 +375,67 @@ export class Ai0RuntimeHost {
       }
     });
   }
+  modelSelections(): Record<"chat" | "room" | "image", Ai0Model | null> {
+    const registry = this.deps.registry();
+    return {
+      chat: registry.selectedRuntimeModel(AI0_ASSISTANT_SCOPE),
+      room: registry.selectedRuntimeModel(AI0_ROOM_SCOPE),
+      image: registry.selectedRuntimeModel(AI0_IMAGE_SCOPE),
+    };
+  }
   async selectModel(scope: AgentProfileScope, model: Ai0Model): Promise<void> {
     validateScope(scope);
-    const current = await this.chosenModel(scope).catch(() => null);
-    const changed = current?.id !== model.id || current.providerID !== model.providerID;
+    if (
+      !model ||
+      typeof model.providerID !== "string" ||
+      typeof model.id !== "string" ||
+      !model.providerID.trim() ||
+      !model.id.trim()
+    )
+      throw new Error("Invalid AI0 model");
     await this.serialized(scope, async () => {
-      const context = await this.context(scope, model);
-      const models = unwrap(
-        await context.engine.request(
-          "GET",
-          `/api/model?directory=${encodeURIComponent(context.engine.workspacePath)}`
-        )
-      );
-      if (
-        !Array.isArray(models) ||
-        !models.some(
-          (item) =>
-            isRecord(item) && item["id"] === model.id && item["providerID"] === model.providerID
-        )
-      )
-        throw new Error("Selected model is unavailable in this AI0 runtime");
+      // A model assignment is configuration, not a provider call: do not
+      // start a second OpenCode process merely to save a selection.
+      // Chat verifies text-model inventory when used; the image endpoint
+      // validates an explicit image model during actual generation.
       this.deps.registry().selectRuntimeModel(scope, model);
-      if (changed) await this.dispose(context);
-      else this.armIdle(context);
     });
     await this.invalidateChangedContexts();
   }
-
   async imageStatus(scope: AgentProfileScope = AI0_IMAGE_SCOPE): Promise<Ai0CapabilityStatus> {
     return await this.serialized(scope, async () => {
       let context: Context | null = null;
-      let sessionId: string | null = null;
       let model: Ai0Model | null = null;
       try {
         if (!isImageScope(scope))
           throw new Error("Image generation requires an explicit image role");
         model = await this.chosenModel(scope);
         context = await this.context(scope, model);
-        sessionId = await this.createSession(context, model);
-        const actual = await this.probe(context, model, sessionId);
+        const active = await hasNativeImageCapability(context.engine);
+        if (!active) throw new Error("OpenCode native image generation plugin is unavailable");
         return {
           available: true,
+          verified: this.verifiedImageModels.has(modelKey(model)),
           reason: null,
           model,
-          toolId: "image_generate",
-          verifiedTools: actual.tools,
-          profileHash: actual.resolution.hash,
-          sessionId,
+          toolId: NATIVE_IMAGE_ROUTE,
+          verifiedTools: [NATIVE_IMAGE_ROUTE],
+          profileHash: context.fingerprint,
+          sessionId: null,
         };
       } catch (error) {
         invalidateAgentCapabilities(scope);
         return {
           available: false,
+          verified: false,
           reason: error instanceof Error ? error.message : String(error),
           model,
           toolId: null,
           verifiedTools: [],
           profileHash: null,
-          sessionId,
+          sessionId: null,
         };
       } finally {
-        if (context && sessionId !== null) await this.removeSession(context, sessionId);
         if (context) this.armIdle(context);
       }
     });
@@ -521,68 +500,31 @@ export class Ai0RuntimeHost {
         typeof prompt !== "string" ||
         prompt.trim() === "" ||
         prompt.length > 20_000 ||
-        !/^\d{1,3}:\d{1,3}$/.test(aspectRatio)
+        !/^[0-9]{1,3}:[0-9]{1,3}$/.test(aspectRatio)
       )
         throw new Error("Invalid AI0 image task");
       const [width, height] = aspectRatio.split(":").map(Number);
-      if (width === undefined || height === undefined || width <= 0 || height <= 0)
-        throw new Error("Image aspect ratio must be positive");
+      if (!width || !height) throw new Error("Image aspect ratio must be positive");
       const model = await this.chosenModel(scope);
       const context = await this.context(scope, model);
-      const sessionId = await this.createSession(context, model);
       try {
-        const actual = await this.probe(context, model, sessionId);
-        const relativeOutput = `images/${randomUUID()}.png`;
-        const outputPath = join(context.engine.workspacePath, relativeOutput);
-        await mkdir(join(context.engine.workspacePath, "images"), { recursive: true });
-        const size = width === height ? "1024x1024" : width > height ? "1536x1024" : "1024x1536";
-        await context.engine.rpc("output", {
-          sessionId,
-          path: relativeOutput,
+        if (!(await hasNativeImageCapability(context.engine)))
+          throw new Error("OpenCode native image generation plugin is unavailable");
+        const bytes = await generateNativeImage(
+          context.engine,
+          model,
           prompt,
-          size,
-          responseModel: model.id,
-        });
-        await this.attach(
-          context,
-          sessionId,
-          actual.resolution,
-          `Call image_generate exactly once. Its prompt must equal the user message verbatim, and output_path must equal ${relativeOutput}. PNG, ${size}, and opaque background are enforced by the host. Do not add parameters or use other tools. A prose claim of success is insufficient.`
+          aspectRatio,
+          timeout(timeoutMs, true)
         );
-        const messages = await this.runPrompt(context, sessionId, prompt, timeout(timeoutMs, true));
-        const completed = messages
-          .flatMap((item) => (Array.isArray(item["content"]) ? (item["content"] as unknown[]) : []))
-          .filter(
-            (item) =>
-              isRecord(item) &&
-              item["type"] === "tool" &&
-              item["name"] === "image_generate" &&
-              isRecord(item["state"]) &&
-              item["state"]["status"] === "completed"
-          );
-        if (completed.length !== 1) {
-          const result = await context.engine.rpc("image-result", { sessionId });
-          if (
-            isRecord(result) &&
-            typeof result["error"] === "string" &&
-            /^AI0 image generation: [A-Z_0-9]+$/.test(result["error"])
-          )
-            throw new Error(result["error"]);
-          if (isRecord(result) && result["attempted"] === false)
-            throw new Error("AI0 image generation: IMAGE_TOOL_NOT_CALLED");
-          throw new Error("AI0 image generation: IMAGE_TOOL_NOT_COMPLETED");
-        }
-        await verifyPngArtifact(context.engine.workspacePath, outputPath);
+        if (this.profile(scope, await this.chosenModel(scope), []).hash !== context.fingerprint)
+          throw new Error("AI0 model/profile changed during image generation; result discarded");
         const artifactRoot = this.deps.artifactRoot();
         await mkdir(artifactRoot, { recursive: true, mode: 0o700 });
-        const savedPath = join(artifactRoot, `${randomUUID()}.png`);
-        await copyFile(outputPath, savedPath, constants.COPYFILE_EXCL);
+        const savedPath = join(artifactRoot, randomUUID() + ".png");
+        await writeFile(savedPath, bytes, { flag: "wx", mode: 0o600 });
         const file = await verifyPngArtifact(artifactRoot, savedPath);
-        if (this.profile(scope, await this.chosenModel(scope), []).hash !== context.fingerprint)
-          throw new Error(
-            "AI0 model/profile changed during image generation; the old result was discarded"
-          );
-        const manifestPath = `${file.path}.json`;
+        const manifestPath = file.path + ".json";
         const artifact: Ai0ImageArtifact = {
           ...file,
           mimeType: "image/png",
@@ -591,16 +533,16 @@ export class Ai0RuntimeHost {
           stagingRoot: artifactRoot,
           port: context.engine.port,
           activeModelKey: modelKey(model),
-          profileHash: actual.resolution.hash,
+          profileHash: context.fingerprint,
         };
         await writeFile(manifestPath, JSON.stringify(artifact, null, 2), {
           encoding: "utf8",
           mode: 0o600,
         });
         this.artifacts.set(artifact.path, artifact);
+        this.verifiedImageModels.add(modelKey(model));
         return artifact;
       } finally {
-        await this.removeSession(context, sessionId);
         this.armIdle(context);
       }
     });

@@ -13,6 +13,9 @@ export function setupAi0RuntimeHandlers(): void {
       case "models":
         data = await ai0RuntimeHost.models();
         break;
+      case "model-selections":
+        data = ai0RuntimeHost.modelSelections();
+        break;
       case "model-select":
         await ai0RuntimeHost.selectModel(request.scope, request.model);
         data = { selected: true };

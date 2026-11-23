@@ -1,4 +1,5 @@
 import { escapeHtml } from "./chat-utils.js";
+import { createAi0AssignmentsController } from "./ai0-model-assignments.js";
 import type { ByIdFn } from "./host-helpers.js";
 import { getIntlLocale, t } from "./i18n.js";
 import type { OpencodeUiModelPreferences, RuntimeState, SelectItem } from "./types.js";
@@ -281,6 +282,7 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
     return overlayController;
   };
 
+  const ai0Assignments = createAi0AssignmentsController(options.runtime);
   const open = (): void => {
     const controller = ensureOverlayController();
     if (controller === null) {
@@ -289,6 +291,7 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
     controller.open();
     void hydrateUiState();
     refresh();
+    void ai0Assignments.refresh();
   };
 
   const close = (): void => {
@@ -537,6 +540,7 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
       ensureOverlayController();
       void hydrateUiState();
       bindActionHandlers();
+      ai0Assignments.bind();
       refresh();
     },
     refresh,

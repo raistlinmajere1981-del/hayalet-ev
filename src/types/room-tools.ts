@@ -19,6 +19,8 @@ export type RoomToolOperationName =
   | "tool-update"
   | "tool-run"
   | "fate-knots-ai0-call"
+  | "ai0-image-status"
+  | "ai0-image-generate"
   | "fate-knots-ai0-image-status"
   | "fate-knots-ai0-image-generate";
 
@@ -179,6 +181,22 @@ export interface RoomToolRunRequest extends RoomToolToolRequestBase {
   timeoutMs?: number;
 }
 
+export interface RoomToolAi0ImageStatusRequest extends RoomToolRequestBase {
+  operation: "ai0-image-status";
+  roomId: string;
+  requestId: string;
+}
+
+export interface RoomToolAi0ImageGenerateRequest extends RoomToolRequestBase {
+  operation: "ai0-image-generate";
+  roomId: string;
+  requestId: string;
+  jobId: string;
+  prompt: string;
+  sourceAspectRatio: string;
+  timeoutMs?: number;
+}
+
 export interface RoomToolFateKnotsAi0CallRequest extends RoomToolRequestBase {
   operation: "fate-knots-ai0-call";
   roomId: "game-room";
@@ -218,12 +236,16 @@ export type RoomToolCallRequest =
   | RoomToolUpdateRequest
   | RoomToolRunRequest
   | RoomToolFateKnotsAi0CallRequest
+  | RoomToolAi0ImageStatusRequest
+  | RoomToolAi0ImageGenerateRequest
   | RoomToolFateKnotsAi0ImageStatusRequest
   | RoomToolFateKnotsAi0ImageGenerateRequest;
 
 export type RoomToolGenericCallRequest = Exclude<
   RoomToolCallRequest,
   | RoomToolFateKnotsAi0CallRequest
+  | RoomToolAi0ImageStatusRequest
+  | RoomToolAi0ImageGenerateRequest
   | RoomToolFateKnotsAi0ImageStatusRequest
   | RoomToolFateKnotsAi0ImageGenerateRequest
 >;
@@ -252,6 +274,8 @@ export interface RoomToolCallResult {
   update?: RoomToolUpdateCheck;
   run?: RoomToolRunResult;
   fateKnotsAi0?: RoomToolFateKnotsAi0Result;
+  ai0ImageStatus?: RoomToolFateKnotsAi0ImageStatus;
+  ai0Image?: RoomToolFateKnotsAi0ImageResult;
   fateKnotsAi0ImageStatus?: RoomToolFateKnotsAi0ImageStatus;
   fateKnotsAi0Image?: RoomToolFateKnotsAi0ImageResult;
 }

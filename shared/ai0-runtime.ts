@@ -17,6 +17,12 @@ export const AI0_IMAGE_SCOPE: AgentProfileScope = {
   roomId: "assistant",
   roleId: "image-generator",
 };
+export const AI0_ROOM_SCOPE: AgentProfileScope = {
+  purpose: "runtime",
+  agentId: "ai0",
+  roomId: "shared",
+  roleId: "room-text",
+};
 export const FATE_KNOTS_NPC_SCOPE: AgentProfileScope = {
   purpose: "runtime",
   agentId: "ai0",
@@ -34,7 +40,8 @@ export interface Ai0CapabilityStatus {
   available: boolean;
   reason: string | null;
   model: Ai0Model | null;
-  toolId: "image_generate" | null;
+  toolId: string | null;
+  verified: boolean;
   verifiedTools: string[];
   profileHash: string | null;
   sessionId: string | null;
@@ -63,6 +70,7 @@ export interface Ai0TextResult {
 }
 export type Ai0RuntimeRequest =
   | { action: "models" }
+  | { action: "model-selections" }
   | { action: "model-select"; scope: AgentProfileScope; model: Ai0Model }
   | { action: "image-status"; scope?: AgentProfileScope }
   | {

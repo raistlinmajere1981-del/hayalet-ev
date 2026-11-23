@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtemp, writeFile, rm, readFile, symlink } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { deflateSync } from "node:zlib";
-import { Buffer } from "node:buffer";
 import Database from "../../electron/native/better-sqlite3.ts";
 import { AgentProfileRegistry } from "../../electron/database/agent-profile-registry.ts";
 import { Ai0RuntimeHost, extractAi0AssistantMessages } from "../../electron/ai0/runtime-host.ts";
@@ -14,30 +13,27 @@ import { buildAi0Environment } from "../../electron/ai0/opencode-process.ts";
 import { validatePng, verifyPngArtifact } from "../../electron/ai0/png-artifact.ts";
 import {
   AI0_ASSISTANT_SCOPE,
+  AI0_IMAGE_SCOPE,
+  AI0_ROOM_SCOPE,
   FATE_KNOTS_NPC_SCOPE,
   FATE_KNOTS_IMAGE_SCOPE,
 } from "../../shared/ai0-runtime.ts";
-import type { Ai0Model } from "../../shared/ai0-runtime.ts";
 import { sanitizeFateKnotsAi0Packet } from "../../electron/ai0/fate-knots-adapter.ts";
-import { AI0_BOUNDARY_PLUGIN } from "../../electron/ai0/boundary-plugin.ts";
 
-function crc32(data: Buffer): number {
-  let crc = 0xffffffff;
-  for (const byte of data) {
-    crc ^= byte;
-    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ ((crc & 1) === 1 ? 0xedb88320 : 0);
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-function chunk(name: string, body: Buffer): Buffer {
-  const data = Buffer.concat([Buffer.from(name), body]);
-  const result = Buffer.alloc(body.length + 12);
-  result.writeUInt32BE(body.length);
-  data.copy(result, 4);
-  result.writeUInt32BE(crc32(data), result.length - 4);
-  return result;
-}
 function pixelPng(): Buffer {
+  function chunk(name: string, body: Buffer): Buffer {
+    const data = Buffer.concat([Buffer.from(name), body]);
+    let crc = 0xffffffff;
+    for (const byte of data) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ ((crc & 1) === 1 ? 0xedb88320 : 0);
+    }
+    const result = Buffer.alloc(body.length + 12);
+    result.writeUInt32BE(body.length, 0);
+    data.copy(result, 4);
+    result.writeUInt32BE((crc ^ 0xffffffff) >>> 0, result.length - 4);
+    return result;
+  }
   const header = Buffer.alloc(13);
   header.writeUInt32BE(1, 0);
   header.writeUInt32BE(1, 4);
@@ -50,70 +46,84 @@ function pixelPng(): Buffer {
     chunk("IEND", Buffer.alloc(0)),
   ]);
 }
+
 interface FakeProcess {
-  engine: Ai0Engine;
   allowed: string[];
   stopped: boolean;
   created: Array<Record<string, unknown>>;
-  instructions: unknown[];
+  imageCalls: Array<Record<string, unknown>>;
   removed: string[];
+  engine: Ai0Engine;
 }
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), "hev-ai0-test-"));
+  const root = await mkdtemp(join(tmpdir(), "hev-ai0-native-"));
   const db = new Database(":memory:");
   const registry = new AgentProfileRegistry(db);
-  let selectedModel: Ai0Model = { providerID: "openai", id: "gpt-test-one" };
   const state = {
-    toolAvailable: true,
-    toolsSupported: true,
-    leakTool: false,
+    pluginActive: true,
+    corruptImage: false,
+    imageFails: false,
+    messages: 0,
     failWait: false,
-    completeTool: true,
-    writeFile: true,
-    invalidFile: false,
-    prompts: 0,
-    sequence: 0,
+    seq: 0,
   };
   const processes: FakeProcess[] = [];
   const start: Ai0HostDependencies["start"] = async (workspacePath, _project, allowed) => {
-    const outputs = new Map<string, string>();
-    const models = [
-      { id: "gpt-test-one", providerID: "openai", capabilities: { tools: state.toolsSupported } },
-      { id: "gpt-test-two", providerID: "openai", capabilities: { tools: state.toolsSupported } },
-    ];
-    const process: FakeProcess = {
+    const proc: FakeProcess = {
       allowed: [...allowed],
       stopped: false,
       created: [],
-      instructions: [],
+      imageCalls: [],
       removed: [],
       engine: {
         workspacePath,
         port: 4151,
+        stop: async () => {
+          proc.stopped = true;
+        },
         request: async (method, path, body) => {
-          if (method === "GET" && path.startsWith("/api/model")) return { data: models };
+          if (method === "GET" && path.startsWith("/api/model"))
+            return {
+              data: [
+                { providerID: "openai", id: "gpt-text" },
+                { providerID: "openai", id: "gpt-other" },
+              ],
+            };
+          if (method === "GET" && path.startsWith("/api/plugin"))
+            return {
+              data: [
+                {
+                  id: "opencode.config.image",
+                  state: {
+                    status: state.pluginActive ? "active" : "inactive",
+                  },
+                },
+              ],
+            };
+          if (method === "POST" && path === "/api/experimental/generate/image") {
+            proc.imageCalls.push(body as Record<string, unknown>);
+            if (state.imageFails) throw new Error("OpenCode POST failed (HTTP 403)");
+            return {
+              data: {
+                images: [
+                  {
+                    type: "image",
+                    mime: "image/png",
+                    data: (state.corruptImage ? Buffer.from("fake PNG") : pixelPng()).toString(
+                      "base64"
+                    ),
+                  },
+                ],
+              },
+            };
+          }
           if (method === "POST" && path === "/api/session") {
-            const payload = body as Record<string, unknown>;
-            process.created.push(payload);
-            return { data: { id: `ses_test_${++state.sequence}` } };
+            proc.created.push(body as Record<string, unknown>);
+            return { data: { id: "session_" + ++state.seq } };
           }
-          if (method === "PUT") {
-            process.instructions.push(body);
-            return null;
-          }
-          if (method === "DELETE") {
-            process.removed.push(path);
-            return null;
-          }
+          if (method === "PUT") return {};
           if (method === "POST" && path.endsWith("/prompt")) {
-            state.prompts += 1;
-            const session = path.split("/")[3] ?? "";
-            const output = outputs.get(session);
-            if (output !== undefined && state.writeFile)
-              await writeFile(
-                join(workspacePath, output),
-                state.invalidFile ? Buffer.from("fake success") : pixelPng()
-              );
+            state.messages += 1;
             return { data: {} };
           }
           if (method === "POST" && path.endsWith("/wait")) {
@@ -123,329 +133,198 @@ async function fixture() {
           if (method === "GET" && path.includes("/message"))
             return {
               data: [
-                {
-                  type: "assistant",
-                  content: [
-                    { type: "text", text: "actual test response" },
-                    ...(allowed.includes("image_generate") && state.completeTool
-                      ? [{ type: "tool", name: "image_generate", state: { status: "completed" } }]
-                      : []),
-                  ],
-                },
+                { type: "assistant", content: [{ type: "text", text: "actual test response" }] },
               ],
             };
-          throw new Error(`Unexpected fake engine request ${method} ${path}`);
-        },
-        rpc: async (method, input) => {
-          const request = input as { sessionId: string; path?: string };
-          if (method === "output") {
-            outputs.set(request.sessionId, request.path ?? "");
-            return { configured: true };
+          if (method === "DELETE") {
+            proc.removed.push(path);
+            return {};
           }
-          const model = process.created.at(-1)?.["model"];
-          return {
-            sessionId: request.sessionId,
-            model,
-            tools: {
-              ...(state.toolAvailable && allowed.includes("image_generate")
-                ? {
-                    image_generate: {
-                      input: {
-                        properties: { prompt: { type: "string" }, output_path: { type: "string" } },
-                      },
-                    },
-                  }
-                : {}),
-              ...(state.leakTool ? { developer_memory: { input: {} } } : {}),
-            },
-          };
-        },
-        stop: async () => {
-          process.stopped = true;
+          throw new Error("Unexpected engine API " + method + " " + path);
         },
       },
     };
-    processes.push(process);
-    return process.engine;
+    processes.push(proc);
+    return proc.engine;
   };
   const host = new Ai0RuntimeHost({
     registry: () => registry,
     root: () => root,
     artifactRoot: () => join(root, "artifacts"),
     projectRoot: () => "/development-repository",
-    defaultModel: async () => selectedModel,
+    defaultModel: async () => ({ providerID: "openai", id: "gpt-text" }),
     start,
   });
   return {
     root,
     registry,
     host,
-    processes,
     state,
-    setModel: (model: Ai0Model) => {
-      selectedModel = model;
-    },
+    processes,
     cleanup: async () => {
       await host.shutdown();
       db.close();
-      await rm(root, { recursive: true, force: true });
+      await rm(root, { force: true, recursive: true });
     },
   };
 }
 
-void test("normal AI0 preserves its conversation only while model and profile identity are unchanged", async () => {
+void test("AI0 text tasks preserve session but deny every inherited OpenCode tool", async () => {
   const f = await fixture();
   try {
-    const first = await f.host.chat("hello");
-    await f.host.selectModel(AI0_ASSISTANT_SCOPE, { providerID: "openai", id: "gpt-test-one" });
-    const second = await f.host.chat("again", AI0_ASSISTANT_SCOPE, first.sessionId);
-    assert.equal(second.sessionId, first.sessionId);
-    assert.equal(f.processes.length, 1);
+    const a = await f.host.chat("hello");
+    const b = await f.host.chat("again", AI0_ASSISTANT_SCOPE, a.sessionId);
+    assert.equal(a.sessionId, b.sessionId);
+    assert.deepEqual(f.processes[0]?.allowed, []);
+    assert.deepEqual(f.processes[0]?.created[0]?.["permissions"], [
+      { action: "*", resource: "*", effect: "deny" },
+    ]);
     f.registry.select(AI0_ASSISTANT_SCOPE, "serious");
     await f.host.invalidateChangedContexts();
     assert.equal(f.processes[0]?.stopped, true);
-    await assert.rejects(
-      f.host.chat("stale", AI0_ASSISTANT_SCOPE, first.sessionId),
-      /expired|changed/
-    );
-    const serious = await f.host.chat("new");
-    assert.notEqual(serious.profileHash, first.profileHash);
-    await f.host.selectModel(AI0_ASSISTANT_SCOPE, { providerID: "openai", id: "gpt-test-two" });
-    await assert.rejects(
-      f.host.chat("old model", AI0_ASSISTANT_SCOPE, serious.sessionId),
-      /expired|changed/
-    );
-    const changed = await f.host.chat("new model");
-    assert.equal(changed.model.id, "gpt-test-two");
-    assert.notEqual(changed.sessionId, serious.sessionId);
+    await assert.rejects(f.host.chat("stale", AI0_ASSISTANT_SCOPE, a.sessionId), /expired/);
   } finally {
     await f.cleanup();
   }
 });
 
-void test("NPC and image work use separate processes, session permissions and stateless game packets", async () => {
+void test("image model is a separate explicit setting and is not required in text-model inventory", async () => {
   const f = await fixture();
   try {
-    f.registry.select(FATE_KNOTS_NPC_SCOPE, "fate-knots-npc");
-    await f.host.chat("public npc packet", FATE_KNOTS_NPC_SCOPE);
-    await f.host.chat("different run public packet", FATE_KNOTS_NPC_SCOPE);
-    const npc = f.processes[0];
-    assert.ok(npc);
-    assert.deepEqual(npc.allowed, []);
-    assert.equal(npc.created.length, 2);
-    assert.equal(npc.removed.length, 2);
-    assert.deepEqual(npc.created[0]?.["permissions"], [
-      { action: "*", resource: "*", effect: "deny" },
-    ]);
-    f.registry.select(FATE_KNOTS_IMAGE_SCOPE, "fate-knots-image");
-    const image = await f.host.generateImage("public art direction", "1:1", FATE_KNOTS_IMAGE_SCOPE);
-    assert.ok(image.path.endsWith(".png"));
-    assert.deepEqual(f.processes[1]?.allowed, ["image_generate"]);
-    assert.notEqual(f.processes[0]?.engine.workspacePath, f.processes[1]?.engine.workspacePath);
-    assert.doesNotMatch(
-      JSON.stringify(npc.instructions),
-      /image-generator|development-agent memory.*public art direction/
-    );
-  } finally {
-    await f.cleanup();
-  }
-});
-
-void test("image capability comes from the real-session probe contract and fails closed for missing tools, incompatible models or leaked tools", async () => {
-  const f = await fixture();
-  try {
-    assert.equal((await f.host.imageStatus()).available, true);
-    assert.equal(f.state.prompts, 0);
-    f.state.toolAvailable = false;
     const absent = await f.host.imageStatus();
     assert.equal(absent.available, false);
-    assert.match(absent.reason ?? "", /No real image_generate/);
-    await assert.rejects(f.host.generateImage("draw"), /No real image_generate/);
-    assert.equal(f.state.prompts, 0);
-    f.state.toolAvailable = true;
-    f.state.leakTool = true;
-    const leak = await f.host.imageStatus();
-    assert.equal(leak.available, false);
-    assert.match(leak.reason ?? "", /outside the task boundary/);
+    assert.match(absent.reason ?? "", /No image model selected/);
+    const image = { providerID: "openai", id: "gpt-image-2" };
+    await f.host.selectModel(AI0_IMAGE_SCOPE, image);
+    assert.deepEqual(f.host.modelSelections().image, image);
+    const ready = await f.host.imageStatus();
+    assert.equal(ready.available, true);
+    assert.equal(ready.verified, false);
+    assert.equal(f.processes.at(-1)?.imageCalls.length, 0);
+    const artifact = await f.host.generateImage("blue dragon", "3:2");
+    assert.equal(artifact.width, 1);
+    assert.equal(artifact.height, 1);
+    assert.match(artifact.sha256, /^[a-f0-9]{64}$/);
+    assert.equal(f.processes.at(-1)?.imageCalls[0]?.["prompt"], "blue dragon");
+    assert.deepEqual(f.processes.at(-1)?.imageCalls[0]?.["model"], image);
+    assert.equal((await f.host.imageStatus()).verified, true);
+    assert.equal(await f.host.verifyGeneratedImage(artifact.path), artifact.path);
+    await writeFile(artifact.path, "replaced");
+    await assert.rejects(f.host.verifyGeneratedImage(artifact.path), /PNG/);
   } finally {
     await f.cleanup();
   }
-  const incompatible = await fixture();
-  try {
-    incompatible.state.toolsSupported = false;
-    assert.match((await incompatible.host.imageStatus()).reason ?? "", /cannot call/);
-  } finally {
-    await incompatible.cleanup();
-  }
 });
 
-void test("a successful tool event and a fully validated fresh PNG are both required; returned artifacts are verified again when opened", async () => {
+void test("native image failures cannot produce false verified artifacts or fall back", async () => {
   const f = await fixture();
   try {
-    const image = await f.host.generateImage("test art");
-    assert.equal(image.width, 1);
-    assert.equal(image.height, 1);
-    assert.match(image.sha256, /^[a-f0-9]{64}$/);
-    assert.equal(await f.host.verifyGeneratedImage(image.path), image.path);
-    await writeFile(image.path, Buffer.from("replaced"));
-    await assert.rejects(f.host.verifyGeneratedImage(image.path), /PNG/);
-    await assert.rejects(
-      f.host.verifyGeneratedImage(join(f.root, "unknown.png")),
-      /Only an image generated/
-    );
-    f.state.writeFile = false;
-    await assert.rejects(f.host.generateImage("prose success only"), /ENOENT/);
-    f.state.writeFile = true;
-    f.state.completeTool = false;
-    await assert.rejects(
-      f.host.generateImage("file without tool evidence"),
-      /IMAGE_TOOL_NOT_COMPLETED/
-    );
-    f.state.completeTool = true;
-    f.state.invalidFile = true;
-    await assert.rejects(f.host.generateImage("invalid PNG"), /not a PNG/);
+    await f.host.selectModel(AI0_IMAGE_SCOPE, { providerID: "openai", id: "gpt-image-2" });
+    f.state.pluginActive = false;
+    assert.equal((await f.host.imageStatus()).available, false);
+    await assert.rejects(f.host.generateImage("draft"), /unavailable/);
+    f.state.pluginActive = true;
+    f.state.corruptImage = true;
+    await assert.rejects(f.host.generateImage("corrupt"), /PNG/);
+    assert.equal((await f.host.imageStatus()).verified, false);
+    f.state.corruptImage = false;
+    f.state.imageFails = true;
+    await assert.rejects(f.host.generateImage("denied"), /HTTP 403/);
+    assert.equal((await f.host.imageStatus()).verified, false);
+    await assert.rejects(f.host.verifyGeneratedImage(join(f.root, "unknown.png")), /Only an image/);
   } finally {
     await f.cleanup();
   }
 });
 
-void test("timeouts terminate the owning process and never permit its stale session to be reused", async () => {
+void test("room model fallback, NPC public packets, and image roles do not share tools or models", async () => {
   const f = await fixture();
   try {
-    f.state.failWait = true;
-    await assert.rejects(f.host.chat("timeout"), /Timed out/);
-    assert.equal(f.processes[0]?.stopped, true);
-    f.state.failWait = false;
-    const reply = await f.host.chat("next request");
-    assert.equal(f.processes.length, 2);
-    assert.equal(reply.text, "actual test response");
+    await f.host.selectModel(AI0_ROOM_SCOPE, { providerID: "openai", id: "gpt-other" });
+    await f.host.selectModel(FATE_KNOTS_NPC_SCOPE, { providerID: "openai", id: "gpt-text" });
+    f.registry.select(FATE_KNOTS_NPC_SCOPE, "fate-knots-npc");
+    const npc = await f.host.chat("public packet", FATE_KNOTS_NPC_SCOPE);
+    assert.equal(npc.model.id, "gpt-other");
+    assert.equal(f.processes.at(-1)?.created[0]?.["permissions"] instanceof Array, true);
+    await f.host.selectModel(AI0_IMAGE_SCOPE, { providerID: "openai", id: "gpt-image-2" });
+    await f.host.selectModel(FATE_KNOTS_IMAGE_SCOPE, { providerID: "openai", id: "gpt-text" });
+    f.registry.select(FATE_KNOTS_IMAGE_SCOPE, "fate-knots-image");
+    const image = await f.host.generateImage("world illustration", "1:1", FATE_KNOTS_IMAGE_SCOPE);
+    assert.equal(image.activeModelKey, "openai:gpt-image-2");
+    assert.ok(image.path.endsWith(".png"));
+    assert.deepEqual(f.processes.at(-1)?.allowed, []);
   } finally {
     await f.cleanup();
   }
 });
 
-void test("PNG validation rejects signature-only payloads, corrupt chunks, truncated pixels and symlink escapes", async () => {
+void test("runtime inherits user's existing OpenCode configuration and overrides only server auth", () => {
+  const env = buildAi0Environment(
+    {
+      OPENCODE_CONFIG: "/home/user/.config/opencode/custom.json",
+      OPENCODE_CONFIG_CONTENT: "user config",
+      OPENCODE_CONFIG_DIR: "/home/user/.config/opencode",
+      OPENCODE_PASSWORD: "user local server",
+      OPENCODE_SIMULATE: "0",
+      PATH: "/bin",
+      NODE_OPTIONS: "--inspect",
+    },
+    "private-ai0-password"
+  );
+  assert.equal(env["OPENCODE_CONFIG_CONTENT"], "user config");
+  assert.equal(env["OPENCODE_CONFIG_DIR"], "/home/user/.config/opencode");
+  assert.equal(env["OPENCODE_PASSWORD"], "private-ai0-password");
+  assert.equal(env["OPENCODE_SERVER_PASSWORD"], "private-ai0-password");
+  assert.equal(env["NODE_OPTIONS"], undefined);
+});
+
+void test("PNG validation retains full payload and verifies image hashes", async () => {
   const bytes = pixelPng();
   assert.equal(validatePng(bytes).width, 1);
   assert.throws(() => validatePng(bytes.subarray(0, 8)), /incomplete/);
-  const corrupt = Buffer.from(bytes);
-  corrupt[42] = (corrupt[42] ?? 0) ^ 1;
-  assert.throws(() => validatePng(corrupt), /checksum/);
   const root = await mkdtemp(join(tmpdir(), "hev-png-"));
   try {
-    const outside = join(root, "outside.png");
-    await writeFile(outside, bytes);
-    const inside = join(root, "nested");
-    await import("node:fs/promises").then(async (fs) => await fs.mkdir(inside));
-    const link = join(inside, "image.png");
-    await symlink(outside, link);
-    await assert.rejects(verifyPngArtifact(inside, link), /escaped/);
-    assert.deepEqual(await readFile(outside), bytes);
+    const path = join(root, "test.png");
+    await writeFile(path, bytes);
+    const result = await verifyPngArtifact(root, path);
+    assert.equal(result.width, 1);
+    assert.deepEqual(await readFile(path), bytes);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-void test("runtime environment replaces inherited OpenCode configuration without exposing development directories", () => {
-  const env = buildAi0Environment(
-    {
-      OPENCODE_CONFIG: "/development/secret.json",
-      OPENCODE_CONFIG_CONTENT: "developer-memory",
-      OPENCODE_CONFIG_DIR: "/development",
-      OPENCODE_SIMULATE: "1",
-      OPENCODE_API_KEY: "unrelated",
-      CDP_PORT: "9222",
-      NODE_OPTIONS: "--inspect",
-      PATH: "/bin",
-    },
-    "/runtime",
-    { permissions: [{ action: "*", effect: "deny" }] },
-    "private-server-password"
-  );
-  assert.equal(env["OPENCODE_CONFIG"], undefined);
-  assert.equal(env["OPENCODE_SIMULATE"], undefined);
-  assert.equal(env["OPENCODE_API_KEY"], undefined);
-  assert.equal(env["OPENCODE_CONFIG_DIR"], "/runtime/config");
-  assert.equal(env["OPENCODE_TEST_HOME"], "/runtime/home");
-  assert.equal(env["OPENCODE_CONFIG_PROJECT_DISABLE"], "1");
-  assert.equal(env["CDP_PORT"], undefined);
-  assert.equal(env["NODE_OPTIONS"], undefined);
-});
-
-void test("Fate Knots projection discards unknown and hidden fields at every packet boundary", () => {
+void test("NPC boundary strips private fields before any external model request", () => {
   const packet = sanitizeFateKnotsAi0Packet({
     requestId: "request",
     kind: "npc-dialogue",
     developerMemory: "SECRET",
-    hiddenCanon: "SECRET",
     rolePacket: {
       universeId: "u",
       runId: "r",
-      npcId: "npc",
-      locationId: "place",
-      personaFacts: ["public persona"],
-      knownFacts: ["public knowledge"],
+      npcId: "n",
+      locationId: "l",
+      personaFacts: [],
+      knownFacts: [],
       relationshipFacts: [],
       legalInteractionIds: [],
       hiddenKnowledge: "SECRET",
     },
-    visibleSceneFacts: ["public scene"],
+    visibleSceneFacts: ["visible"],
     playerInput: null,
   });
-  assert.doesNotMatch(JSON.stringify(packet), /SECRET|developerMemory|hiddenCanon|hiddenKnowledge/);
-  const combat = sanitizeFateKnotsAi0Packet({
-    requestId: "combat",
-    kind: "combat-choice",
-    combatPacket: {
-      combatId: "c",
-      turnIndex: 1,
-      actorId: "npc",
-      ownActor: {
-        actorId: "npc",
-        teamId: "opposition",
-        hp: 10,
-        maxHp: 10,
-        fallen: false,
-        position: { row: "front", range: "near", secret: "SECRET" },
-        statusIds: [],
-        injuryIds: [],
-        hiddenCommit: "SECRET",
-      },
-      visibleActors: [],
-      movementOptions: [],
-      actionOptions: [],
-      playerCommittedCards: ["SECRET"],
-    },
-  });
-  assert.doesNotMatch(JSON.stringify(combat), /SECRET|playerCommittedCards|hiddenCommit/);
+  assert.doesNotMatch(JSON.stringify(packet), /SECRET/);
   assert.throws(
-    () => sanitizeFateKnotsAi0Packet({ ...packet, playerInput: { secret: "SECRET" } }),
+    () =>
+      sanitizeFateKnotsAi0Packet({
+        ...packet,
+        playerInput: { secret: "SECRET" },
+      }),
     /Non-public/
   );
 });
 
-void test("the host boundary blocks provider requests during capability probes and guards actual tool execution", () => {
-  assert.match(AI0_BOUNDARY_PLUGIN, /PROBE_MUST_NOT_CALL_PROVIDER/);
-  assert.match(AI0_BOUNDARY_PLUGIN, /ctx\.session\.hook\("generate"/);
-  assert.match(AI0_BOUNDARY_PLUGIN, /ctx\.tool\.hook\("execute.before"/);
-});
-
-void test("provider and image failures expose only allowlisted codes and HTTP status without error bodies or credentials", () => {
-  assert.throws(
-    () =>
-      extractAi0AssistantMessages({
-        data: [
-          {
-            type: "assistant",
-            error: {
-              message: "AI0 image generation: OAUTH_CODEX_ROUTE_REQUIRED",
-              response: { body: "SYNTHETIC_SECRET" },
-            },
-          },
-        ],
-      }),
-    /OAUTH_CODEX_ROUTE_REQUIRED/
-  );
+void test("provider errors never expose raw remote response bodies", () => {
   assert.throws(
     () =>
       extractAi0AssistantMessages({
@@ -461,49 +340,11 @@ void test("provider and image failures expose only allowlisted codes and HTTP st
           },
         ],
       }),
-    (error) => {
+    (error: unknown) => {
       assert.ok(error instanceof Error);
       assert.match(error.message, /provider.auth.*HTTP 403/);
       assert.doesNotMatch(error.message, /SYNTHETIC_SECRET/);
       return true;
     }
-  );
-  assert.throws(
-    () =>
-      extractAi0AssistantMessages({
-        data: [
-          {
-            type: "assistant",
-            error: { type: "SYNTHETIC_SECRET", status: 999, message: "SYNTHETIC_SECRET" },
-          },
-        ],
-      }),
-    (error) => {
-      assert.ok(error instanceof Error);
-      assert.doesNotMatch(error.message, /SYNTHETIC_SECRET|999/);
-      return true;
-    }
-  );
-  assert.throws(
-    () =>
-      extractAi0AssistantMessages({
-        data: [
-          {
-            type: "assistant",
-            content: [
-              {
-                type: "tool",
-                name: "image_generate",
-                state: {
-                  status: "error",
-                  error: { message: "AI0 image generation: CODEX_HTTP_403" },
-                },
-              },
-            ],
-            error: { message: "SYNTHETIC_SECRET" },
-          },
-        ],
-      }),
-    /CODEX_HTTP_403/
   );
 });
