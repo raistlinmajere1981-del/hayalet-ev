@@ -101,28 +101,29 @@ Bazı özellikler FFmpeg, model dosyaları, Android/ADB veya harici AI servisler
 
 ## 📚 Dokümantasyon
 
-| Alan | Belge |
-| --- | --- |
-| Oda mimarisi ve paketleme | [rooms/README.md](rooms/README.md) |
-| Laboratory | [LABORATORY.md](LABORATORY.md) |
-| Forge Room | [FORGEROOM.md](FORGEROOM.md) |
-| Repair Room | [REPAIRROOM.md](REPAIRROOM.md) |
-| Pattern Room | [PATTERNROOM.md](PATTERNROOM.md) |
-| Backgammon / Tavla | [BACKGAMMON.md](BACKGAMMON.md) |
-| Team Tetris | [TEAM-TETRIS.md](TEAM-TETRIS.md) |
-| Scene Mode | [SCENEMODE.md](SCENEMODE.md) |
-| Android Companion | [ANDROIDCOMPANION.md](ANDROIDCOMPANION.md) |
-| Güvenlik | [SECURITY.md](SECURITY.md) |
+| Alan                      | Belge                                      |
+| ------------------------- | ------------------------------------------ |
+| Oda mimarisi ve paketleme | [rooms/README.md](rooms/README.md)         |
+| Laboratory                | [LABORATORY.md](LABORATORY.md)             |
+| Forge Room                | [FORGEROOM.md](FORGEROOM.md)               |
+| Repair Room               | [REPAIRROOM.md](REPAIRROOM.md)             |
+| Pattern Room              | [PATTERNROOM.md](PATTERNROOM.md)           |
+| Backgammon / Tavla        | [BACKGAMMON.md](BACKGAMMON.md)             |
+| Team Tetris               | [TEAM-TETRIS.md](TEAM-TETRIS.md)           |
+| Scene Mode                | [SCENEMODE.md](SCENEMODE.md)               |
+| Android Companion         | [ANDROIDCOMPANION.md](ANDROIDCOMPANION.md) |
+| Güvenlik                  | [SECURITY.md](SECURITY.md)                 |
+| Gaia Room (planlama)      | [GAIA.md](GAIA.md)                         |
 
 ## 🚪 Yerleşik Odalar
 
-| Oda | Durum | Rolü |
-| --- | --- | --- |
-| Laboratory | Uygulanmış | Medya ve ses kaynaklarını hazırlamak, incelemek, analiz etmek ve bulguları raporlamak |
-| Forge Room | Uygulanmış | Belirsiz hedefleri uygulanabilir iş paketlerine dönüştürmek |
-| Repair Room | Uygulanmış | Fiziksel elektronik onarım sürecini AI, evidence ve gerçek ölçümlerle aynı oturumda tutmak |
-| Game Room | Uygulanmış / gelişiyor | İnsan, AI ve uzak kullanıcıları ortak oyun kurallarında buluşturmak |
-| Pattern Room | Prototip / gelişiyor | Kaynak, kanıt, yorum, çelişki ve belirsizlikleri araştırma bağlamında düzenlemek |
+| Oda          | Durum                  | Rolü                                                                                       |
+| ------------ | ---------------------- | ------------------------------------------------------------------------------------------ |
+| Laboratory   | Uygulanmış             | Medya ve ses kaynaklarını hazırlamak, incelemek, analiz etmek ve bulguları raporlamak      |
+| Forge Room   | Uygulanmış             | Belirsiz hedefleri uygulanabilir iş paketlerine dönüştürmek                                |
+| Repair Room  | Uygulanmış             | Fiziksel elektronik onarım sürecini AI, evidence ve gerçek ölçümlerle aynı oturumda tutmak |
+| Game Room    | Uygulanmış / gelişiyor | İnsan, AI ve uzak kullanıcıları ortak oyun kurallarında buluşturmak                        |
+| Pattern Room | Prototip / gelişiyor   | Kaynak, kanıt, yorum, çelişki ve belirsizlikleri araştırma bağlamında düzenlemek           |
 
 Ayrıntılar: [rooms/README.md](rooms/README.md).
 

@@ -4,13 +4,13 @@ Hayalet-ev üzerinde çalışan AI ajanları için çekirdek kurallar. Bu dosya 
 
 ## Proje Kimliği
 
-| Anahtar | Değer |
-|---|---|
-| Proje | Hayalet-ev — Ghost House |
-| Stack | Electron + TypeScript (strict) + Vite |
-| Database | SQLite, per-account, better-sqlite3, WAL |
-| MCP Server | app MCP — `hev_*` prefix |
-| Validation | Prettier → jscodeshift/Babel AST |
+| Anahtar    | Değer                                    |
+| ---------- | ---------------------------------------- |
+| Proje      | Hayalet-ev — Ghost House                 |
+| Stack      | Electron + TypeScript (strict) + Vite    |
+| Database   | SQLite, per-account, better-sqlite3, WAL |
+| MCP Server | app MCP — `hev_*` prefix                 |
+| Validation | Prettier → jscodeshift/Babel AST         |
 
 ## Tool Önceliği
 
@@ -67,13 +67,14 @@ Uygulama agent karakterleri ve talimat profilleri ortak SQLite Agent Profile Reg
 
 ## Detaylı Dokümantasyon — Yalnızca İlgili İşte Oku
 
-| Dosya | Ne zaman oku |
-|---|---|
-| `.rovo/MODES.md` | Mod geçişi, ghost-agent, wrapper control plane, AI-muhatap tespiti |
-| `.rovo/WORKFLOWS.md` | Yeni oda/özellik ekleme, bilinen tool senaryoları |
-| `.rovo/03-ARCHITECTURE.md` | Mimari/dosya-sorumluluk sorusu |
-| `.rovo/MEMORY.md` | Memory format/namespace detayları |
-| `.rovo/interactions/protocol.md` | `opencode-ui` interaction transportu |
+| Dosya                            | Ne zaman oku                                                       |
+| -------------------------------- | ------------------------------------------------------------------ |
+| `.rovo/MODES.md`                 | Mod geçişi, ghost-agent, wrapper control plane, AI-muhatap tespiti |
+| `.rovo/WORKFLOWS.md`             | Yeni oda/özellik ekleme, bilinen tool senaryoları                  |
+| `.rovo/03-ARCHITECTURE.md`       | Mimari/dosya-sorumluluk sorusu                                     |
+| `.rovo/MEMORY.md`                | Memory format/namespace detayları                                  |
+| `.rovo/interactions/protocol.md` | `opencode-ui` interaction transportu                               |
+| `GAIA.md`                        | Gaia Room, Client, Router ve ilgili mimari/teknoloji kararları     |
 
 ## Comment Convention
 

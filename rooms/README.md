@@ -43,6 +43,8 @@ The repository ships first-party rooms both as product features and as examples 
 
 Status labels describe the current repository surface, not a compatibility or long-term support guarantee.
 
+Planned room (not implemented or packaged yet): [Gaia Room](../GAIA.md), a local-first physical-space modeling, observation and management workspace. It must remain independent of other rooms.
+
 ## Room Notes
 
 ### Laboratory
