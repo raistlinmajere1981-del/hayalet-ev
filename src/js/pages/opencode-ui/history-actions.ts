@@ -34,7 +34,7 @@ interface HistoryContext {
   ) => HTMLElement | null;
   createHistoricAssistantToolHost: () => HTMLElement | null;
   renderHistoricToolCall: (targetContainer: HTMLElement, toolCall: OpencodeUiToolCall) => void;
-  readSessionFromDisk: (sessionId: string) => Promise<OpencodeUiSessionDetail | null>;
+  readServerSession: (sessionId: string) => Promise<OpencodeUiSessionDetail | null>;
   scrollChatToBottom: (force?: boolean) => void;
   buildSessionSnapshotKey: (messages: OpencodeUiSessionDetail["messages"] | undefined) => string;
   wait: (delayMs: number) => Promise<void>;
@@ -142,7 +142,7 @@ function renderSessionMessages(
 }
 
 async function loadMoreHistoryMessages(context: HistoryContext, sessionId: string): Promise<void> {
-  const detail = await context.readSessionFromDisk(sessionId);
+  const detail = await context.readServerSession(sessionId);
   if (detail == null || context.runtime.activeSessionId !== sessionId) {
     return;
   }
@@ -173,7 +173,7 @@ export async function loadActiveSessionHistory(
     return;
   }
 
-  const detail = await context.readSessionFromDisk(sessionId);
+  const detail = await context.readServerSession(sessionId);
   if (detail == null) {
     historyVisibleStarts.delete(sessionId);
     context.clearChatArea();
@@ -209,7 +209,7 @@ export async function syncActiveSessionHistoryIfUpdated(context: HistoryContext)
   liveSyncInFlight = true;
 
   try {
-    const detail = await context.readSessionFromDisk(sessionId);
+    const detail = await context.readServerSession(sessionId);
     if (detail == null || context.runtime.activeSessionId !== sessionId) {
       return;
     }
@@ -261,7 +261,7 @@ export async function withHistorySyncFallback(
   const minExpectedCount = context.runtime.lastRenderedMessageCount + 1;
 
   const trySync = async (attempt: number): Promise<boolean> => {
-    const detail = await context.readSessionFromDisk(sessionId);
+    const detail = await context.readServerSession(sessionId);
     const messageCount = detail?.messages.length ?? 0;
 
     if (detail != null && messageCount >= minExpectedCount) {

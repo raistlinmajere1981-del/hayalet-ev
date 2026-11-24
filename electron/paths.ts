@@ -93,14 +93,6 @@ const paths: PathResolver = {
     return join(getConfig().dataDir, "shared", "ai0-images");
   },
 
-  getAi0ImagePluginBundlePath(): string {
-    const cfg = getConfig();
-    return join(
-      cfg.isPackaged ? cfg.electronDir : join(cfg.projectRoot, "dist", "electron"),
-      "ai0-image-plugin.js"
-    );
-  },
-
   getDataDir(): string {
     return getConfig().dataDir;
   },

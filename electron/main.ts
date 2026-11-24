@@ -55,12 +55,11 @@ import {
 import { opencodeServerManager } from "./opencode-server-manager.ts";
 import { llmServerManager } from "./llm-server-manager.ts";
 import {
-  archiveOpencodeUiSession,
-  ensureOpencodeUiSession,
-  listOpencodeUiSessions,
-  readOpencodeUiSession,
-} from "./opencode-ui-session-store.ts";
-import { OpencodeUiSessionWatcherRegistry } from "./opencode-ui-session-watcher.ts";
+  listApiSessions,
+  readApiSession,
+  archiveApiSession,
+  type SessionApi,
+} from "./opencode-ui-session-api.ts";
 
 import { readConsoleLogs, readErrorLogs, readAllLogs, queryLogs } from "./logger/log-reader.ts";
 import {
@@ -265,7 +264,6 @@ const CDP_PORT = process.env["CDP_PORT"] ?? (app.isPackaged ? 9223 : 9222);
 app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
 
 let mainWindow: BrowserWindow | null = null;
-const opencodeUiSessionWatchers = new OpencodeUiSessionWatcherRegistry();
 
 if (process.stdout.isTTY === true) {
   try {
@@ -897,46 +895,55 @@ registerHandler("opencode-serve-doctor", async () => {
   }
 });
 
-registerHandler("opencode-ui-fs-list-sessions", (_event, dbPath?: string) => {
-  const options =
-    typeof dbPath === "string" && dbPath.trim() !== "" ? { dbPath: dbPath.trim() } : undefined;
-  return listOpencodeUiSessions(options);
-});
-
-registerHandler(
-  "opencode-ui-fs-ensure-session",
-  (_event, sessionId: string, title?: string, dbPath?: string) => {
-    const options =
-      typeof dbPath === "string" && dbPath.trim() !== "" ? { dbPath: dbPath.trim() } : undefined;
-    return ensureOpencodeUiSession(sessionId, title, options);
+function sessionApi(port?: number): SessionApi {
+  const active = opencodeServerManager.getStatus().port;
+  const targetPort = port ?? active;
+  if (
+    targetPort === undefined ||
+    !Number.isInteger(targetPort) ||
+    targetPort < 1024 ||
+    targetPort > 65535
+  )
+    throw new Error("Connect to OpenCode first");
+  return async (method, path, body) => {
+    const url = "http://127.0.0.1:" + targetPort + path;
+    const authorization = opencodeServerManager.authorizationForUrl(url);
+    const response = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(authorization !== null ? { Authorization: authorization } : {}),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw new Error("OpenCode session API HTTP " + response.status);
+    return (await response.json()) as unknown;
+  };
+}
+registerHandler("opencode-ui-list-sessions", async (_event, port?: number) => {
+  try {
+    return { success: true, sessions: await listApiSessions(sessionApi(port)) };
+  } catch (error) {
+    return { success: false, error: String(error) };
   }
-);
-
-registerHandler("opencode-ui-fs-read-session", (_event, sessionId: string, dbPath?: string) => {
-  const options =
-    typeof dbPath === "string" && dbPath.trim() !== "" ? { dbPath: dbPath.trim() } : undefined;
-  return readOpencodeUiSession(sessionId, options);
 });
-
-registerHandler(
-  "opencode-ui-session-watch-start",
-  (event, sessionId: string, dbPath?: string): { success: boolean } => {
-    opencodeUiSessionWatchers.start(event.sender, sessionId, dbPath);
-    return { success: true };
+registerHandler("opencode-ui-read-session", async (_event, sessionId: string, port?: number) => {
+  try {
+    return { success: true, session: await readApiSession(sessionApi(port), sessionId) };
+  } catch (error) {
+    return { success: false, error: String(error) };
   }
-);
-
-registerHandler("opencode-ui-session-watch-stop", (event): { success: boolean } => {
-  opencodeUiSessionWatchers.stop(event.sender);
-  return { success: true };
 });
-
 registerHandler(
-  "opencode-ui-fs-archive-session",
-  (_event, sessionId: string, archived?: boolean, dbPath?: string) => {
-    const options =
-      typeof dbPath === "string" && dbPath.trim() !== "" ? { dbPath: dbPath.trim() } : undefined;
-    return archiveOpencodeUiSession(sessionId, archived !== false, options);
+  "opencode-ui-archive-session",
+  async (_event, sessionId: string, archived: boolean, port?: number) => {
+    try {
+      await archiveApiSession(sessionApi(port), sessionId, archived);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
   }
 );
 

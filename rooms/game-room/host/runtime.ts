@@ -510,9 +510,10 @@ export default function createGameRoomHostRuntime() {
       for (const [commandName, handler] of Object.entries(fateKnotsCommands)) {
         commands[commandName] = function (payload?: unknown) {
           return withFateKnotsReady(async () => {
+            const roomArgs = readRegisteredRoomArgs(payload);
             const result = FATE_KNOTS_MUTATION_COMMANDS.has(commandName)
-              ? await persistFateKnotsCommandMutation(api, () => handler(payload))
-              : handler(payload);
+              ? await persistFateKnotsCommandMutation(api, () => handler(roomArgs))
+              : handler(roomArgs);
             pushFateKnotsHubStateCompat(api);
             return result;
           });

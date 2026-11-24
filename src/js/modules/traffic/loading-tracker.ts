@@ -40,6 +40,7 @@ interface ProbeData {
     atBottom?: boolean;
   };
   sendState?: string;
+  composerReady?: boolean;
 }
 
 interface LoadingEvent {
@@ -257,6 +258,9 @@ export class LoadingTracker {
       );
     }
 
+    if (viewState.loadingActive !== true && indicator === "busy" && data.composerReady === true) {
+      this.startLoading(viewState, now);
+    }
     if (viewState.loadingActive === true) {
       const result = await this.checkLoadingEnd(
         provider,
@@ -322,6 +326,15 @@ export class LoadingTracker {
       return { shouldEnd: false, reason: null, newState: viewState };
     }
 
+    // The composer is the readiness signal, including empty/short sessions
+    // where a scrollbar and a send button may never appear.
+    if (data.composerReady === true) {
+      return {
+        shouldEnd: true,
+        reason: "composer ready",
+        newState: this.endLoading(viewState, now),
+      };
+    }
     const scroll = data.scroll ?? {};
     const loadingElapsed = now - (viewState.loadingStartTime ?? now);
 

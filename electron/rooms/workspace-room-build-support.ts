@@ -174,6 +174,51 @@ function resolveEsbuildFormat(relativePath: string): Format | undefined {
   return undefined;
 }
 
+async function resolveRoomCustomMedia(sourceDir: string, buildDir: string): Promise<void> {
+  const files = (await collectFilesRecursive(sourceDir)).filter(
+    (file) => !file.relativePath.startsWith("scripts/") && extname(file.relativePath) === ".css"
+  );
+  const styles = await Promise.all(
+    files.map(async (file) => ({
+      relativePath: file.relativePath,
+      content: await readFile(file.absolutePath, "utf8"),
+    }))
+  );
+  const tokens = new Map<string, string>();
+  const definition = /@custom-media\s+(--[A-Za-z0-9_-]+)\s+([^;]+);/g;
+  for (const { content } of styles) {
+    for (const match of content.matchAll(definition)) {
+      const name = match[1];
+      const value = match[2]?.trim();
+      if (name === undefined || value === undefined) continue;
+      const previous = tokens.get(name);
+      if (previous !== undefined && previous !== value) {
+        throw new Error("Conflicting room custom media token: " + name);
+      }
+      tokens.set(name, value);
+    }
+  }
+  await Promise.all(
+    styles.map(async ({ relativePath, content }) => {
+      const resolved = content.replace(definition, "").replace(
+        /(@media\s+)([^{;]+)(?=\{)/g,
+        (_full: string, prefix: string, query: string) =>
+          prefix +
+          query.replace(/\(\s*(--[A-Za-z0-9_-]+)\s*\)/g, (_token: string, name: string) => {
+            const value = tokens.get(name);
+            if (value === undefined) {
+              throw new Error("Unknown room custom media token " + name + " in " + relativePath);
+            }
+            return value;
+          })
+      );
+      if (resolved !== content) {
+        await writeFile(join(buildDir, relativePath), resolved, "utf8");
+      }
+    })
+  );
+}
+
 export async function buildWorkspaceRoomOutput(sourceDir: string, buildDir: string): Promise<void> {
   await copyDirectoryContents(sourceDir, buildDir, {
     includeRelativePath: (relativePath) =>
@@ -181,6 +226,8 @@ export async function buildWorkspaceRoomOutput(sourceDir: string, buildDir: stri
       isWorkspaceTypeScriptSourcePath(relativePath) === false &&
       isTypeDeclarationPath(relativePath) === false,
   });
+
+  await resolveRoomCustomMedia(sourceDir, buildDir);
 
   const sourceFiles = (await collectFilesRecursive(sourceDir)).filter(
     (file) =>

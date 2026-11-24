@@ -1,3 +1,4 @@
+import { readPendingFateKnotsForge } from "../main-functions/fate-knots/host/world-forge-orchestrator.js";
 import {
   createFateKnotsUniverseThroughForge,
   getFateKnotsForgeProgress,
@@ -60,9 +61,11 @@ async function getCapabilities(
   ai0StatusOverride?: FateKnotsAi0ImageCapabilityStatus
 ) {
   const readiness = getFateKnotsForgeReadiness(api);
+  const pending =
+    !readiness.busy && readiness.storageAvailable ? await readPendingFateKnotsForge() : null;
   const ai0Status =
     ai0StatusOverride ??
-    (hasFateKnotsAssetMaterializer("ai0-local")
+    (!readiness.busy && hasFateKnotsAssetMaterializer("ai0-local")
       ? await readFateKnotsAi0ImageCapabilityStatus()
       : null);
   return {
@@ -83,6 +86,16 @@ async function getCapabilities(
     storageAvailable: readiness.storageAvailable,
     busy: readiness.busy,
     progress: getFateKnotsForgeProgress(api),
+    pending: pending
+      ? {
+          requestId: pending.request.requestId,
+          brief: pending.request.brief ?? "",
+          authoringProvider: pending.authoringProvider,
+          assetProvider: pending.assetProvider,
+          completedAssets: pending.materialization.assets.length,
+          totalAssets: pending.draft.assetPlans.length,
+        }
+      : null,
   };
 }
 
@@ -137,7 +150,14 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
           }
 
           const policy = policyResult.policy;
-          if (!isAuthoringProviderSelectable(transportApi, policy.authoringProvider)) {
+          const resumeRequestId =
+            typeof roomArgs["resumeRequestId"] === "string"
+              ? roomArgs["resumeRequestId"]
+              : undefined;
+          if (
+            !resumeRequestId &&
+            !isAuthoringProviderSelectable(transportApi, policy.authoringProvider)
+          ) {
             return {
               ok: false as const,
               error: "authoring-provider-unavailable" as const,
@@ -188,12 +208,13 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
           const result = await createFateKnotsUniverseThroughForge(transportApi, {
             ...(brief !== undefined ? { brief } : {}),
             executionPolicy: policy,
+            ...(resumeRequestId ? { resumeRequestId } : {}),
           });
           if (result === null) {
             return {
               ok: false as const,
               error: "forge-unavailable" as const,
-              message: "Fate Knots World Forge could not start with the selected providers.",
+              message: "Evren üretimi başlatılamadı. Varsa mevcut taslağa devam et.",
               capabilities: await getCapabilities(transportApi, ai0Status),
             };
           }
@@ -217,7 +238,8 @@ export function extendGameRoomHostRuntimeWithFateKnotsForge<T extends GameRoomHo
           };
         },
         {
-          description: "Create and persist one Fate Knots universe through provider-aware World Forge.",
+          description:
+            "Create and persist one Fate Knots universe through provider-aware World Forge.",
           scope: "room-ui",
           exposure: "internal",
         }

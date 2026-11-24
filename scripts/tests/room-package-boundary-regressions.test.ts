@@ -539,7 +539,7 @@ void test("generic room core sources do not hardcode room-specific package ids",
   const allowedPathSuffixes = [
     "src/js/pages/room-page/page-state.ts",
     "src/types/room-tools.ts",
-    "electron/fate-knots-ai0-runtime-service.ts",
+    "electron/ai0/fate-knots-adapter.ts",
     "electron/handlers/ipc-room-tools.ts",
     "scripts/rooms/build-room-bundle.mjs",
     "scripts/rooms/migrate-room-layouts.mjs",
@@ -576,13 +576,14 @@ void test("Game Room core seams keep neutral startup and Fate AI0 authority expl
   const [pageState, roomTools, ai0Service, roomToolHandlers] = await Promise.all([
     readFile(resolve("src/js/pages/room-page/page-state.ts"), "utf8"),
     readFile(resolve("src/types/room-tools.ts"), "utf8"),
-    readFile(resolve("electron/fate-knots-ai0-runtime-service.ts"), "utf8"),
+    readFile(resolve("electron/ai0/fate-knots-adapter.ts"), "utf8"),
     readFile(resolve("electron/handlers/ipc-room-tools.ts"), "utf8"),
   ]);
 
   assert.match(pageState, /if \(room\.id === "game-room"\) \{\s*return "";/);
   assert.match(roomTools, /operation: "fate-knots-ai0-call";\s*roomId: "game-room";/);
-  assert.match(ai0Service, /if \(String\(request\.roomId\) !== "game-room"\) \{/);
-  assert.match(ai0Service, /Paths\.getRoomStorageDir\("game-room"\)/);
+  assert.match(ai0Service, /String\(request\.roomId\) !== "game-room"/);
+  assert.match(ai0Service, /ai0RuntimeHost\.chat/);
+  assert.match(ai0Service, /sanitizeFateKnotsAi0Packet\(request\.payload\)/);
   assert.match(roomToolHandlers, /value\["roomId"\] !== "game-room"/);
 });

@@ -440,7 +440,7 @@ void test("syncConversation saves generated images as assistant attachments", as
   AppState.getNickname = ((slot: string) => slot);
 
   const mockWebview = {
-    getURL: () => "https://chatgpt.com/c/generated-image",
+    getURL: () => "https://chatgpt.com/c/123e4567-e89b-12d3-a456-426614174000",
     executeJavaScript: () => {
       executeCount += 1;
       if (executeCount === 1) {
@@ -602,7 +602,7 @@ void test("syncConversation skips generated image save when attachment already e
   AppState.getNickname = ((slot: string) => slot);
 
   const mockWebview = {
-    getURL: () => "https://chatgpt.com/c/generated-image",
+    getURL: () => "https://chatgpt.com/c/123e4567-e89b-12d3-a456-426614174000",
     executeJavaScript: () => {
       executeCount += 1;
       return [
@@ -711,7 +711,7 @@ void test("syncConversation replaces preview image attachment when final bytes c
   AppState.getNickname = ((slot: string) => slot);
 
   const mockWebview = {
-    getURL: () => "https://chatgpt.com/c/generated-image",
+    getURL: () => "https://chatgpt.com/c/123e4567-e89b-12d3-a456-426614174000",
     executeJavaScript: () => {
       executeCount += 1;
       if (executeCount === 1) {
@@ -822,7 +822,7 @@ void test("syncConversation uses a post-thinking probe to pick up generated imag
   ConversationSyncer._lastThinkingEndedAt["ai1"] = Date.now();
 
   const mockWebview = {
-    getURL: () => "https://chatgpt.com/c/generated-image",
+    getURL: () => "https://chatgpt.com/c/123e4567-e89b-12d3-a456-426614174000",
     executeJavaScript: () => {
       executeCount += 1;
       if (executeCount === 1) {
@@ -958,7 +958,7 @@ void test("syncConversation prefers webcontents capture fallback and isolates im
   AppState.getNickname = ((slot: string) => slot);
 
   const mockWebview = {
-    getURL: () => "https://chatgpt.com/c/generated-image",
+    getURL: () => "https://chatgpt.com/c/123e4567-e89b-12d3-a456-426614174000",
     getWebContentsId: () => 42,
     executeJavaScript: () => {
       executeCount += 1;

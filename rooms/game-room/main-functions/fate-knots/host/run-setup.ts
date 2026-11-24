@@ -1,3 +1,4 @@
+import { initializeFateKnotsStoryProgression } from "../shared/story-progression.js";
 import { buildFateKnotsAvailableCardIds } from "../shared/card-legality.js";
 import {
   FATE_KNOTS_SCHEMA_VERSION,
@@ -33,7 +34,8 @@ export type FateKnotsRunSetupIssueCode =
   | "run-not-active"
   | "run-not-in-setup"
   | "start-node-not-found"
-  | "start-location-not-found";
+  | "start-location-not-found"
+  | "story-initialization-failed";
 
 export interface FateKnotsRunSetupIssue {
   code: FateKnotsRunSetupIssueCode;
@@ -45,10 +47,6 @@ export interface FateKnotsRunSetupIssue {
 export type FateKnotsRunSetupResult =
   | { ok: true; run: FateKnotsRunState; issues: [] }
   | { ok: false; run: null; issues: FateKnotsRunSetupIssue[] };
-
-function unique(values: readonly string[]): string[] {
-  return Array.from(new Set(values));
-}
 
 function isPlayerSeatId(value: unknown): value is FateKnotsPlayerSeatId {
   return value === "user" || value === "ai2" || value === "us1";
@@ -218,30 +216,21 @@ export function startFateKnotsRun(
     };
   }
 
-  const initiallyRevealedLocationIds = universe.map.nodes
-    .filter((node) => node.initiallyRevealed)
-    .map((node) => node.locationId);
-
-  const run: FateKnotsRunState = {
-    ...runInput,
-    phase: "exploration",
-    revision: runInput.revision + 1,
-    activeLocationId: startNode.locationId,
-    revealedLocationIds: unique([...initiallyRevealedLocationIds, startNode.locationId]),
-    revealedKnotIds: runInput.revealedKnotIds.slice(),
-    completedKnotIds: runInput.completedKnotIds.slice(),
-    partyActorIds: runInput.partyActorIds.slice(),
-    actors: runInput.actors.map((actor) => ({
-      ...actor,
-      position: { ...actor.position },
-      ownedCardIds: actor.ownedCardIds.slice(),
-      availableCardIds: actor.availableCardIds.slice(),
-      equipmentIds: actor.equipmentIds.slice(),
-      statusIds: actor.statusIds.slice(),
-      injuryIds: actor.injuryIds.slice(),
-    })),
-    teamPoolItemIds: runInput.teamPoolItemIds.slice(),
-  };
-
-  return { ok: true, run, issues: [] };
+  const startKnot = universe.story.knots.find((knot) => knot.id === universe.story.startKnotId);
+  if (!startKnot || startKnot.locationId !== startNode.locationId) {
+    return {
+      ok: false,
+      run: null,
+      issues: [{ code: "story-initialization-failed", value: universe.story.startKnotId }],
+    };
+  }
+  const initialized = initializeFateKnotsStoryProgression(universe, runInput);
+  if (!initialized.ok) {
+    return {
+      ok: false,
+      run: null,
+      issues: [{ code: "story-initialization-failed", value: universe.story.startKnotId }],
+    };
+  }
+  return { ok: true, run: { ...initialized.run, phase: "exploration" }, issues: [] };
 }

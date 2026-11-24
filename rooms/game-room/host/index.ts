@@ -19,12 +19,10 @@ const fateKnotsCampSocialRuntime = extendGameRoomHostRuntimeWithFateKnotsCampSoc
   fateKnotsExplorationRuntime
 );
 const fateKnotsLootRuntime = extendGameRoomHostRuntimeWithFateKnotsLoot(fateKnotsCampSocialRuntime);
-const fateKnotsRunSetupRuntime = extendGameRoomHostRuntimeWithFateKnotsRunSetupSeats(
-  fateKnotsLootRuntime
-);
-const fateKnotsPlayerCombatRuntime = extendGameRoomHostRuntimeWithFateKnotsPlayerCombat(
-  fateKnotsRunSetupRuntime
-);
+const fateKnotsRunSetupRuntime =
+  extendGameRoomHostRuntimeWithFateKnotsRunSetupSeats(fateKnotsLootRuntime);
+const fateKnotsPlayerCombatRuntime =
+  extendGameRoomHostRuntimeWithFateKnotsPlayerCombat(fateKnotsRunSetupRuntime);
 const fateKnotsAi2Runtime = extendGameRoomHostRuntimeWithFateKnotsAi2Lifecycle(
   fateKnotsPlayerCombatRuntime
 );

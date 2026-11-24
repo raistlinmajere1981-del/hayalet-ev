@@ -1,3 +1,4 @@
+@custom-media --lab-bp-max-900 (max-width: 900px);
 @custom-media --lab-bp-max-840 (max-width: 840px);
 @custom-media --lab-bp-max-860 (max-width: 860px);
 @custom-media --lab-bp-max-960 (max-width: 960px);
@@ -1069,6 +1070,27 @@
   --lab-comparison-split: 50%;
   --lab-comparison-primary-transform: none;
   --lab-comparison-reference-transform: none;
+  --lab-color-rgb-2-6-16-82: rgb(2 6 16 / 82%);
+  --lab-size-10px: 10px;
+  --lab-size-780px: 780px;
+  --lab-size-1px: 1px;
+  --lab-color-rgb-0-0-0-55: rgb(0 0 0 / 55%);
+  --lab-size-28px: 28px;
+  --lab-size-80px: 80px;
+  --lab-size-2rem: 2rem;
+  --lab-color--02040a: #02040a;
+  --lab-size-0-65rem: 0.65rem;
+  --lab-size-neg-0-2rem: -0.2rem;
+  --lab-size-2px: 2px;
+  --lab-size-neg-1px: -1px;
+  --lab-size-2-25rem: 2.25rem;
+  --lab-size-3px: 3px;
+  --lab-size-6px: 6px;
+  --lab-size-999px: 999px;
+  --lab-size-0-72rem: 0.72rem;
+  --lab-size-0-78rem: 0.78rem;
+  --lab-size-22px: 22px;
+  --lab-size-0-86rem: 0.86rem;
 }
 
 /* Honor reduced-motion preferences. */

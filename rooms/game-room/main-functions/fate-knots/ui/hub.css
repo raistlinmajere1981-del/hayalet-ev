@@ -302,3 +302,171 @@
     justify-content: flex-start;
   }
 }
+
+/* Archive and universe creation use the same restrained fantasy palette. */
+.fate-knots-hub {
+  padding-top: 36px;
+}
+.fate-knots-hub__title {
+  font-size: clamp(32px, 4vw, 50px);
+}
+.fate-knots-hub__archive-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.fate-knots-hub__archive-heading h2 {
+  font-size: 24px;
+}
+.fate-knots-hub__archive-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px;
+  border-style: dashed;
+  gap: 14px;
+}
+.fate-knots-hub__archive-empty .fate-knots-hub__subtitle {
+  margin: 0;
+}
+.fate-knots-hub__book-mark {
+  font:
+    400 44px/1 Georgia,
+    serif;
+  color: #c0a8e4;
+}
+.fate-knots-forge {
+  margin-top: 24px;
+  padding: 26px;
+  border: 1px solid rgba(215, 198, 238, 0.23);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(104, 79, 139, 0.12), rgba(255, 255, 255, 0.025));
+}
+.fate-knots-forge__heading {
+  margin-bottom: 22px;
+}
+.fate-knots-forge__heading p {
+  margin-top: 7px;
+}
+.fate-knots-forge__form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 2.3fr);
+  gap: 24px;
+}
+.fate-knots-forge__settings {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.fate-knots-forge__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #eee6f2;
+  font:
+    600 13px/1.4 Inter,
+    system-ui,
+    sans-serif;
+  min-width: 0;
+}
+.fate-knots-forge__input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  background: #16151e;
+  color: #f3eee3;
+  border: 1px solid rgba(215, 198, 238, 0.23);
+  border-radius: 9px;
+  font:
+    400 14px/1.5 Inter,
+    system-ui,
+    sans-serif;
+  color-scheme: dark;
+}
+.fate-knots-forge__input:focus {
+  outline: 2px solid #aa90d0;
+  outline-offset: 2px;
+}
+.fate-knots-forge__input:disabled {
+  opacity: 0.65;
+}
+.fate-knots-forge__brief {
+  min-height: 132px;
+  resize: vertical;
+}
+.fate-knots-forge__hint {
+  color: rgba(236, 229, 216, 0.6);
+  font-size: 12px;
+  font-weight: 400;
+}
+.fate-knots-forge__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 22px;
+}
+.fate-knots-forge__status {
+  color: rgba(236, 229, 216, 0.75);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.fate-knots-forge__status.is-busy {
+  color: #cbb1ed;
+}
+.fate-knots-forge__create {
+  flex-shrink: 0;
+  padding: 13px 22px;
+}
+.fate-knots-hub [hidden] {
+  display: none !important;
+}
+@media (max-width: 760px) {
+  .fate-knots-forge {
+    padding: 18px;
+  }
+  .fate-knots-forge__form {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .fate-knots-forge__footer {
+    flex-wrap: wrap;
+  }
+  .fate-knots-hub__archive-empty {
+    padding: 32px 16px;
+  }
+}
+
+.fate-knots-forge__progress {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fate-knots-forge__progress-label {
+  display: flex;
+  justify-content: space-between;
+  color: #cbb1ed;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.fate-knots-forge__progress-bar {
+  width: 100%;
+  height: 9px;
+  border: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  accent-color: #ad91d5;
+  background: #25212f;
+}
+.fate-knots-forge__progress-bar::-webkit-progress-bar {
+  background: #25212f;
+  border-radius: 6px;
+}
+.fate-knots-forge__progress-bar::-webkit-progress-value {
+  background: #ad91d5;
+  border-radius: 6px;
+}

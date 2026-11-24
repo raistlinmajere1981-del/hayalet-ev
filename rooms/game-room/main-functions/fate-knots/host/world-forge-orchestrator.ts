@@ -9,6 +9,8 @@ import {
   buildFateKnotsWorldForgeRequest,
   finalizeFateKnotsWorldForgeDraft,
   type FateKnotsWorldForgeRequest,
+  type FateKnotsWorldForgeDraft,
+  type FateKnotsMaterializedAsset,
 } from "../forge/world-forge.js";
 import { validateFateKnotsCardArtBindings } from "../shared/card-art.js";
 import type { FateKnotsUniversePackage } from "../shared/contracts.js";
@@ -16,14 +18,21 @@ import {
   hydrateFateKnotsDurablePersistence,
   saveFateKnotsUniverseDurable,
 } from "./durable-persistence.js";
-import type { FateKnotsForgeAuthoringProvider } from "./forge-provider-policy.js";
+import type {
+  FateKnotsForgeAuthoringProvider,
+  FateKnotsForgeAssetProvider,
+} from "./forge-provider-policy.js";
 import {
   resolveFateKnotsDurableStoragePaths,
+  readFateKnotsJsonFile,
   verifyFateKnotsManagedAssetFiles,
   writeFateKnotsJsonFile,
 } from "./storage-bridge.js";
 import type { FateKnotsTransportApi } from "./transport.js";
-import { authorFateKnotsWorldForgeDraft } from "./world-forge-authoring.js";
+import {
+  authorFateKnotsWorldForgeDraft,
+  validateAuthoredFateKnotsDraft,
+} from "./world-forge-authoring.js";
 
 export type FateKnotsWorldForgeProgressStage =
   "preparing" | "authoring" | "materializing" | "finalizing" | "saving" | "completed" | "failed";
@@ -82,6 +91,88 @@ async function writeCheckpoint(value: unknown): Promise<void> {
   await writeFateKnotsJsonFile(paths.forgeDraftPath, value);
 }
 
+export interface FateKnotsForgeCheckpoint {
+  request: FateKnotsWorldForgeRequest;
+  draft: FateKnotsWorldForgeDraft;
+  authoringProvider: FateKnotsForgeAuthoringProvider;
+  assetProvider: FateKnotsForgeAssetProvider | null;
+  materialization: Pick<FateKnotsAssetMaterializationResult, "assets" | "sourceArtifacts">;
+}
+function record(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+export function parseFateKnotsForgeCheckpoint(value: unknown): FateKnotsForgeCheckpoint | null {
+  const root = record(value);
+  if (
+    !root ||
+    root["status"] === "completed" ||
+    root["status"] === "authoring-failed" ||
+    root["status"] === "unexpected-failure"
+  )
+    return null;
+  if (root["schemaVersion"] !== 1) throw new Error("Unsupported Forge checkpoint");
+  const q = record(root["request"]),
+    d = record(root["draft"]);
+  if (
+    !q ||
+    !d ||
+    q["schemaVersion"] !== 1 ||
+    typeof q["requestId"] !== "string" ||
+    typeof q["universeId"] !== "string" ||
+    typeof q["createdAt"] !== "string" ||
+    (q["brief"] != null && typeof q["brief"] !== "string")
+  )
+    throw new Error("Invalid saved Forge draft");
+  const request = q as unknown as FateKnotsWorldForgeRequest;
+  const checked = validateAuthoredFateKnotsDraft(request, { ...d, kind: "universe-draft" });
+  if (!checked.ok) throw new Error("Saved Forge draft failed validation: " + checked.message);
+  const m = record(root["materialization"]);
+  const ids = new Set(checked.draft.assetPlans.map((plan) => plan.assetId));
+  const seen = new Set<string>();
+  const assets: FateKnotsMaterializedAsset[] = [];
+  for (const value of Array.isArray(m?.["assets"]) ? m["assets"] : []) {
+    const a = record(value);
+    if (
+      !a ||
+      typeof a["assetId"] !== "string" ||
+      !ids.has(a["assetId"]) ||
+      seen.has(a["assetId"]) ||
+      typeof a["path"] !== "string" ||
+      typeof a["mimeType"] !== "string"
+    )
+      continue;
+    seen.add(a["assetId"]);
+    assets.push({ assetId: a["assetId"], path: a["path"], mimeType: a["mimeType"] });
+  }
+  const sources = (Array.isArray(m?.["sourceArtifacts"]) ? m["sourceArtifacts"] : []).flatMap(
+    (value) => {
+      const a = record(value);
+      return a &&
+        typeof a["jobId"] === "string" &&
+        a["jobId"].startsWith(request.requestId + ":") &&
+        typeof a["path"] === "string" &&
+        typeof a["mimeType"] === "string"
+        ? [{ jobId: a["jobId"], path: a["path"], mimeType: a["mimeType"] }]
+        : [];
+    }
+  );
+  const author = root["authoringProvider"];
+  const asset = root["assetProvider"];
+  return {
+    request,
+    draft: checked.draft,
+    authoringProvider: author === "ai2" ? "ai2" : "ai1",
+    assetProvider: asset === "ai0-local" || asset === "ai1" ? asset : null,
+    materialization: { assets, sourceArtifacts: sources },
+  };
+}
+export async function readPendingFateKnotsForge(): Promise<FateKnotsForgeCheckpoint | null> {
+  const paths = await resolveFateKnotsDurableStoragePaths();
+  return parseFateKnotsForgeCheckpoint(await readFateKnotsJsonFile(paths.forgeDraftPath));
+}
+
 function progress(
   request: FateKnotsWorldForgeRequest,
   stage: FateKnotsWorldForgeProgressStage,
@@ -116,11 +207,18 @@ export async function runFateKnotsWorldForge(
     brief?: string | null;
     request?: FateKnotsWorldForgeRequest;
     authoringProvider?: FateKnotsForgeAuthoringProvider;
+    assetProvider?: FateKnotsForgeAssetProvider;
+    resume?: FateKnotsForgeCheckpoint;
     onProgress?: (event: FateKnotsWorldForgeProgress) => void;
   } = {}
 ): Promise<FateKnotsWorldForgePipelineResult> {
-  const request = options.request ?? createFateKnotsWorldForgeRequest(options.brief ?? null);
-  const authoringProvider = options.authoringProvider ?? "ai1";
+  const request =
+    options.resume?.request ??
+    options.request ??
+    createFateKnotsWorldForgeRequest(options.brief ?? null);
+  const authoringProvider = options.resume?.authoringProvider ?? options.authoringProvider ?? "ai1";
+  const assetProvider = options.assetProvider ?? "ai1";
+  let draftPersisted = Boolean(options.resume);
   const emit = options.onProgress ?? (() => undefined);
   let completedAssets = 0;
   let totalAssets = 0;
@@ -138,41 +236,78 @@ export async function runFateKnotsWorldForge(
       };
     }
 
-    emit(progress(request, "authoring", 0, 0, "Authoring canonical world candidate."));
-    const authored = await authorFateKnotsWorldForgeDraft(api, request, {
-      provider: authoringProvider,
-    });
-    if (!authored.ok) {
-      emit(progress(request, "failed", 0, 0, authored.message));
-      try {
+    let draft: FateKnotsWorldForgeDraft;
+    if (options.resume) {
+      draft = options.resume.draft;
+    } else {
+      emit(progress(request, "authoring", 0, 0, "Authoring canonical world candidate."));
+      const authored = await authorFateKnotsWorldForgeDraft(api, request, {
+        provider: authoringProvider,
+        onRepair: () =>
+          emit(
+            progress(request, "authoring", 0, 0, "Evren taslağı doğrulama hataları düzeltiliyor…")
+          ),
+      });
+      if (!authored.ok) {
+        emit(progress(request, "failed", 0, 0, authored.message));
+        try {
+          await writeCheckpoint({
+            schemaVersion: 1,
+            request,
+            authoringProvider,
+            assetProvider,
+            status: "authoring-failed",
+            message: authored.message,
+            issues: authored.issues ?? [],
+          });
+        } catch {
+          // Primary failure remains the authoring failure.
+        }
+        return { ok: false, request, code: "authoring-failed", message: authored.message };
+      }
+
+      draft = authored.draft;
+    }
+    totalAssets = draft.assetPlans.length;
+    const retained = options.resume?.materialization;
+    const verified = retained ? await verifyFateKnotsManagedAssetFiles(retained.assets) : null;
+    const invalidIds = new Set(verified?.failures.map((failure) => failure.assetId) ?? []);
+    const retainedAssets = retained?.assets.filter((asset) => !invalidIds.has(asset.assetId)) ?? [];
+    completedAssets = retainedAssets.length;
+    emit(
+      progress(
+        request,
+        "materializing",
+        completedAssets,
+        totalAssets,
+        "Generating and storing universe assets."
+      )
+    );
+    const materialization = await materializeFateKnotsWorldForgeAssets(draft, adapter, {
+      retained: { assets: retainedAssets, sourceArtifacts: retained?.sourceArtifacts ?? [] },
+      async onCheckpoint(result) {
         await writeCheckpoint({
           schemaVersion: 1,
           request,
           authoringProvider,
-          status: "authoring-failed",
-          message: authored.message,
-          issues: authored.issues ?? [],
+          assetProvider,
+          status: result.complete ? "assets-materialized" : "materializing",
+          draft,
+          materialization: result,
         });
-      } catch {
-        // Primary failure remains the authoring failure.
-      }
-      return { ok: false, request, code: "authoring-failed", message: authored.message };
-    }
-
-    const draft = authored.draft;
-    totalAssets = draft.assetPlans.length;
-    await writeCheckpoint({
-      schemaVersion: 1,
-      request,
-      authoringProvider,
-      status: "draft-validated",
-      draft,
+        draftPersisted = true;
+        completedAssets = result.assets.length;
+        emit(
+          progress(
+            request,
+            "materializing",
+            completedAssets,
+            totalAssets,
+            "Generating and storing universe assets."
+          )
+        );
+      },
     });
-
-    emit(
-      progress(request, "materializing", 0, totalAssets, "Generating and storing universe assets.")
-    );
-    const materialization = await materializeFateKnotsWorldForgeAssets(draft, adapter);
     completedAssets = materialization.assets.length;
     emit(
       progress(
@@ -190,6 +325,7 @@ export async function runFateKnotsWorldForge(
       schemaVersion: 1,
       request,
       authoringProvider,
+      assetProvider,
       status: materialization.complete ? "assets-materialized" : "materialization-incomplete",
       draft,
       materialization,
@@ -200,7 +336,7 @@ export async function runFateKnotsWorldForge(
         ok: false,
         request,
         code: "materialization-incomplete",
-        message: `${materialization.failures.length} materialization job(s) require retry.`,
+        message: `${materialization.failures.length} görsel işi tamamlanamadı. Eksik görseller için devam edebilirsin.`,
         materialization,
       };
     }
@@ -220,6 +356,8 @@ export async function runFateKnotsWorldForge(
         schemaVersion: 1,
         request,
         authoringProvider,
+        assetProvider,
+        draft,
         status: "materialization-invalid",
         failures: verifiedFiles.failures,
         materialization,
@@ -337,13 +475,15 @@ export async function runFateKnotsWorldForge(
     const message = `World Forge stopped safely: ${errorMessage(error)}`;
     emit(progress(request, "failed", completedAssets, totalAssets, message));
     try {
-      await writeCheckpoint({
-        schemaVersion: 1,
-        request,
-        authoringProvider,
-        status: "unexpected-failure",
-        message,
-      });
+      if (!draftPersisted)
+        await writeCheckpoint({
+          schemaVersion: 1,
+          request,
+          authoringProvider,
+          assetProvider,
+          status: "unexpected-failure",
+          message,
+        });
     } catch {
       // Terminal progress remains authoritative even if the debug checkpoint cannot be written.
     }

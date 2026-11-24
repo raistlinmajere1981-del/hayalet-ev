@@ -1,0 +1,1986 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-11-24T20:49:03.311Z",
+  "totalIssues": 282,
+  "byRule": {
+    "hardcoded-color": 83,
+    "raw-unit-token": 196,
+    "raw-breakpoint-media": 3
+  },
+  "issues": [
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 5,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(161, 124, 74, 0.18)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|5|Hardcoded color function rgba(161, 124, 74, 0.18)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 6,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #0d0c0a",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|6|Hardcoded color token #0d0c0a"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 6,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #17140f",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|6|Hardcoded color token #17140f"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 7,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #eee5d3",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|7|Hardcoded color token #eee5d3"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 12,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1240px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|12|Raw CSS unit must be promoted to a token: 1240px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 12,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 32px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|12|Raw CSS unit must be promoted to a token: 32px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 13,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 32px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|13|Raw CSS unit must be promoted to a token: 32px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 14,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 16px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|14|Raw CSS unit must be promoted to a token: 16px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 15,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 22px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|15|Raw CSS unit must be promoted to a token: 22px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 16,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(213, 181, 126, 0.28)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|16|Hardcoded color function rgba(213, 181, 126, 0.28)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 16,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|16|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 17,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|17|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 18,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(21, 18, 14, 0.96)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|18|Hardcoded color function rgba(21, 18, 14, 0.96)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 19,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(0, 0, 0, 0.38)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|19|Hardcoded color function rgba(0, 0, 0, 0.38)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 19,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 24px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|19|Raw CSS unit must be promoted to a token: 24px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 19,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 70px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|19|Raw CSS unit must be promoted to a token: 70px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 28,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 16px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|28|Raw CSS unit must be promoted to a token: 16px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 32,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|32|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 33,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(213, 181, 126, 0.2)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|33|Hardcoded color function rgba(213, 181, 126, 0.2)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 33,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|33|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 38,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #bf9b62",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|38|Hardcoded color token #bf9b62"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 39,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 11px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|39|Raw CSS unit must be promoted to a token: 11px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 41,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 0.18em",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|41|Raw CSS unit must be promoted to a token: 0.18em"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 46,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 4px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|46|Raw CSS unit must be promoted to a token: 4px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 52,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 24px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|52|Raw CSS unit must be promoted to a token: 24px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 52,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 38px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|52|Raw CSS unit must be promoted to a token: 38px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 56,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|56|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 57,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 30px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|57|Raw CSS unit must be promoted to a token: 30px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 61,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 760px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|61|Raw CSS unit must be promoted to a token: 760px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 62,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #cfc5b3",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|62|Hardcoded color token #cfc5b3"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 67,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 38px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|67|Raw CSS unit must be promoted to a token: 38px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 68,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 13px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|68|Raw CSS unit must be promoted to a token: 13px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 68,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 8px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|68|Raw CSS unit must be promoted to a token: 8px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 69,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(210, 172, 108, 0.42)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|69|Hardcoded color function rgba(210, 172, 108, 0.42)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 69,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|69|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 70,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 9px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|70|Raw CSS unit must be promoted to a token: 9px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 71,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #6f4e25",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|71|Hardcoded color token #6f4e25"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 72,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #fff7e7",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|72|Hardcoded color token #fff7e7"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 79,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #9b6d32",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|79|Hardcoded color token #9b6d32"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 80,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(244, 209, 145, 0.72)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|80|Hardcoded color function rgba(244, 209, 145, 0.72)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 84,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(255, 255, 255, 0.04)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|84|Hardcoded color function rgba(255, 255, 255, 0.04)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 95,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|95|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 96,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|96|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 103,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(213, 181, 126, 0.18)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|103|Hardcoded color function rgba(213, 181, 126, 0.18)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 103,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|103|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 104,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|104|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 105,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(255, 255, 255, 0.025)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|105|Hardcoded color function rgba(255, 255, 255, 0.025)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 109,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|109|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 115,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 10px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|115|Raw CSS unit must be promoted to a token: 10px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 116,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|116|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 122,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 120px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|122|Raw CSS unit must be promoted to a token: 120px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 123,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|123|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 125,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 10px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|125|Raw CSS unit must be promoted to a token: 10px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 125,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 9px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|125|Raw CSS unit must be promoted to a token: 9px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 126,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(255, 255, 255, 0.06)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|126|Hardcoded color function rgba(255, 255, 255, 0.06)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 126,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|126|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 141,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #aaa08f",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|141|Hardcoded color token #aaa08f"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 142,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|142|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 147,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 280px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|147|Raw CSS unit must be promoted to a token: 280px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 147,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 420px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|147|Raw CSS unit must be promoted to a token: 420px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 148,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|148|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 149,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|149|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 154,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|154|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 161,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 7px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|161|Raw CSS unit must be promoted to a token: 7px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 165,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 4px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|165|Raw CSS unit must be promoted to a token: 4px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 165,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 7px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|165|Raw CSS unit must be promoted to a token: 7px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 166,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 999px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|166|Raw CSS unit must be promoted to a token: 999px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 167,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(255, 255, 255, 0.05)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|167|Hardcoded color function rgba(255, 255, 255, 0.05)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 168,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #b9ad99",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|168|Hardcoded color token #b9ad99"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 169,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 11px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|169|Raw CSS unit must be promoted to a token: 11px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 173,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(105, 146, 91, 0.2)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|173|Hardcoded color function rgba(105, 146, 91, 0.2)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 174,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #c5d8b8",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|174|Hardcoded color token #c5d8b8"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 178,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 180px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|178|Raw CSS unit must be promoted to a token: 180px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 179,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 300px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|179|Raw CSS unit must be promoted to a token: 300px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 180,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|180|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 182,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(255, 255, 255, 0.06)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|182|Hardcoded color function rgba(255, 255, 255, 0.06)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 182,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|182|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 183,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(255, 255, 255, 0.06)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|183|Hardcoded color function rgba(255, 255, 255, 0.06)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 183,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|183|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 188,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 54px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|188|Raw CSS unit must be promoted to a token: 54px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 189,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 8px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|189|Raw CSS unit must be promoted to a token: 8px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 190,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 9px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|190|Raw CSS unit must be promoted to a token: 9px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 194,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #d2ad70",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|194|Hardcoded color token #d2ad70"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 195,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|195|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 199,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #e1d8c9",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|199|Hardcoded color token #e1d8c9"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 207,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 8px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|207|Raw CSS unit must be promoted to a token: 8px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 208,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|208|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 215,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 58px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|215|Raw CSS unit must be promoted to a token: 58px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 216,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 10px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|216|Raw CSS unit must be promoted to a token: 10px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 216,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 9px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|216|Raw CSS unit must be promoted to a token: 9px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 217,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(213, 181, 126, 0.24)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|217|Hardcoded color function rgba(213, 181, 126, 0.24)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 217,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|217|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 218,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 9px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|218|Raw CSS unit must be promoted to a token: 9px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 220,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(0, 0, 0, 0.2)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|220|Hardcoded color function rgba(0, 0, 0, 0.2)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 221,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #f1e8d8",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|221|Hardcoded color token #f1e8d8"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 226,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(213, 181, 126, 0.58)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|226|Hardcoded color function rgba(213, 181, 126, 0.58)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 230,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 15px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|230|Raw CSS unit must be promoted to a token: 15px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 234,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|234|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 235,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|235|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 236,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(255, 255, 255, 0.07)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|236|Hardcoded color function rgba(255, 255, 255, 0.07)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 236,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|236|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 242,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 11px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|242|Raw CSS unit must be promoted to a token: 11px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 242,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 13px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|242|Raw CSS unit must be promoted to a token: 13px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 247,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(151, 78, 52, 0.16)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|247|Hardcoded color function rgba(151, 78, 52, 0.16)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 248,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #e0b59e",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|248|Hardcoded color token #e0b59e"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 252,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|252|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 253,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 10px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|253|Raw CSS unit must be promoted to a token: 10px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 254,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(171, 132, 75, 0.12)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|254|Hardcoded color function rgba(171, 132, 75, 0.12)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 255,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #d5c4aa",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|255|Hardcoded color token #d5c4aa"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 259,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|259|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 260,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #d6c6ad",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|260|Hardcoded color token #d6c6ad"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 263,
+      "rule": "raw-breakpoint-media",
+      "detail": "Raw responsive media query must use breakpoint token syntax: @media (max-width: 860px)",
+      "fingerprint": "raw-breakpoint-media|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|263|Raw responsive media query must use breakpoint token syntax: @media (max-width: 860px)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 263,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 860px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|263|Raw CSS unit must be promoted to a token: 860px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 265,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|265|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 266,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 9px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|266|Raw CSS unit must be promoted to a token: 9px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/gameplay.css",
+      "line": 267,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/gameplay.css|267|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 5,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(92, 78, 116, 0.18)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|5|Hardcoded color function rgba(92, 78, 116, 0.18)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 6,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #08090d",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|6|Hardcoded color token #08090d"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 6,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #111217",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|6|Hardcoded color token #111217"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 7,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #f3eee3",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|7|Hardcoded color token #f3eee3"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 11,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1120px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|11|Raw CSS unit must be promoted to a token: 1120px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 11,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 48px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|11|Raw CSS unit must be promoted to a token: 48px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 13,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 52px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|13|Raw CSS unit must be promoted to a token: 52px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 13,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 72px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|13|Raw CSS unit must be promoted to a token: 72px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 26,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 24px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|26|Raw CSS unit must be promoted to a token: 24px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 30,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 28px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|30|Raw CSS unit must be promoted to a token: 28px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 31,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(235, 226, 207, 0.14)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|31|Hardcoded color function rgba(235, 226, 207, 0.14)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 31,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|31|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 35,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 8px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|35|Raw CSS unit must be promoted to a token: 8px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 37,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 11px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|37|Raw CSS unit must be promoted to a token: 11px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 39,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 0.24em",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|39|Raw CSS unit must be promoted to a token: 0.24em"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 40,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(215, 198, 238, 0.72)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|40|Hardcoded color function rgba(215, 198, 238, 0.72)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 53,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 34px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|53|Raw CSS unit must be promoted to a token: 34px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 53,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 58px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|53|Raw CSS unit must be promoted to a token: 58px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 64,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(236, 229, 216, 0.62)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|64|Hardcoded color function rgba(236, 229, 216, 0.62)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 68,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 680px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|68|Raw CSS unit must be promoted to a token: 680px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 69,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|69|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 76,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 10px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|76|Raw CSS unit must be promoted to a token: 10px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 82,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(215, 198, 238, 0.28)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|82|Hardcoded color function rgba(215, 198, 238, 0.28)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 82,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|82|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 83,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 999px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|83|Raw CSS unit must be promoted to a token: 999px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 84,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 10px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|84|Raw CSS unit must be promoted to a token: 10px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 84,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 16px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|84|Raw CSS unit must be promoted to a token: 16px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 85,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(127, 94, 166, 0.24)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|85|Hardcoded color function rgba(127, 94, 166, 0.24)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 86,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #f7f1e8",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|86|Hardcoded color token #f7f1e8"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 89,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 13px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|89|Raw CSS unit must be promoted to a token: 13px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 95,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(143, 110, 184, 0.36)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|95|Hardcoded color function rgba(143, 110, 184, 0.36)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 99,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(255, 255, 255, 0.04)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|99|Hardcoded color function rgba(255, 255, 255, 0.04)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 103,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(224, 139, 139, 0.24)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|103|Hardcoded color function rgba(224, 139, 139, 0.24)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 105,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(239, 188, 188, 0.88)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|105|Hardcoded color function rgba(239, 188, 188, 0.88)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 109,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(215, 198, 238, 0.7)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|109|Hardcoded color function rgba(215, 198, 238, 0.7)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 110,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(127, 94, 166, 0.46)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|110|Hardcoded color function rgba(127, 94, 166, 0.46)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 111,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(255, 255, 255, 0.06)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|111|Hardcoded color function rgba(255, 255, 255, 0.06)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 111,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|111|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 121,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 16px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|121|Raw CSS unit must be promoted to a token: 16px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 122,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 28px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|122|Raw CSS unit must be promoted to a token: 28px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 130,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(235, 226, 207, 0.12)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|130|Hardcoded color function rgba(235, 226, 207, 0.12)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 130,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|130|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 131,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|131|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 132,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(255, 255, 255, 0.035)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|132|Hardcoded color function rgba(255, 255, 255, 0.035)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 133,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(0, 0, 0, 0.18)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|133|Hardcoded color function rgba(0, 0, 0, 0.18)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 133,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|133|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 133,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 60px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|133|Raw CSS unit must be promoted to a token: 60px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 137,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 22px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|137|Raw CSS unit must be promoted to a token: 22px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 141,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 25px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|141|Raw CSS unit must be promoted to a token: 25px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 145,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 7px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|145|Raw CSS unit must be promoted to a token: 7px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 146,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 13px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|146|Raw CSS unit must be promoted to a token: 13px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 151,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 8px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|151|Raw CSS unit must be promoted to a token: 8px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 152,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|152|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 153,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|153|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 154,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(235, 226, 207, 0.1)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|154|Hardcoded color function rgba(235, 226, 207, 0.1)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 154,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|154|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 158,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 48px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|158|Raw CSS unit must be promoted to a token: 48px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 159,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 10px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|159|Raw CSS unit must be promoted to a token: 10px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 159,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|159|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 160,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|160|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 161,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(0, 0, 0, 0.16)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|161|Hardcoded color function rgba(0, 0, 0, 0.16)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 167,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 4px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|167|Raw CSS unit must be promoted to a token: 4px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 171,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|171|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 175,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 11px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|175|Raw CSS unit must be promoted to a token: 11px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 179,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 24px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|179|Raw CSS unit must be promoted to a token: 24px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 180,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 24px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|180|Raw CSS unit must be promoted to a token: 24px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 185,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 20px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|185|Raw CSS unit must be promoted to a token: 20px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 186,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(235, 226, 207, 0.1)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|186|Hardcoded color function rgba(235, 226, 207, 0.1)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 186,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|186|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 190,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 28px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|190|Raw CSS unit must be promoted to a token: 28px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 194,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 720px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|194|Raw CSS unit must be promoted to a token: 720px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 195,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 8px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|195|Raw CSS unit must be promoted to a token: 8px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 200,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 20px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|200|Raw CSS unit must be promoted to a token: 20px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 201,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(235, 226, 207, 0.08)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|201|Hardcoded color function rgba(235, 226, 207, 0.08)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 201,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|201|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 207,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|207|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 211,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 20px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|211|Raw CSS unit must be promoted to a token: 20px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 215,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|215|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 220,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 220px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|220|Raw CSS unit must be promoted to a token: 220px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 221,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 10px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|221|Raw CSS unit must be promoted to a token: 10px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 222,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|222|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 226,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 112px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|226|Raw CSS unit must be promoted to a token: 112px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 227,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|227|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 228,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|228|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 234,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 9px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|234|Raw CSS unit must be promoted to a token: 9px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 241,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 11px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|241|Raw CSS unit must be promoted to a token: 11px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 247,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(236, 229, 216, 0.78)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|247|Hardcoded color function rgba(236, 229, 216, 0.78)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 252,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 20px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|252|Raw CSS unit must be promoted to a token: 20px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 256,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 680px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|256|Raw CSS unit must be promoted to a token: 680px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 257,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|257|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 264,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 20px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|264|Raw CSS unit must be promoted to a token: 20px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 264,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 22px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|264|Raw CSS unit must be promoted to a token: 22px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 269,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|269|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 270,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(220, 173, 95, 0.25)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|270|Hardcoded color function rgba(220, 173, 95, 0.25)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 271,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(244, 220, 177, 0.9)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|271|Hardcoded color function rgba(244, 220, 177, 0.9)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 275,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 16px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|275|Raw CSS unit must be promoted to a token: 16px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 276,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(239, 188, 188, 0.9)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|276|Hardcoded color function rgba(239, 188, 188, 0.9)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 279,
+      "rule": "raw-breakpoint-media",
+      "detail": "Raw responsive media query must use breakpoint token syntax: @media (max-width: 760px)",
+      "fingerprint": "raw-breakpoint-media|rooms/game-room/main-functions/fate-knots/ui/hub.css|279|Raw responsive media query must use breakpoint token syntax: @media (max-width: 760px)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 279,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 760px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|279|Raw CSS unit must be promoted to a token: 760px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 281,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1120px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|281|Raw CSS unit must be promoted to a token: 1120px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 281,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 28px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|281|Raw CSS unit must be promoted to a token: 28px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 282,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 32px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|282|Raw CSS unit must be promoted to a token: 32px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 298,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 4px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|298|Raw CSS unit must be promoted to a token: 4px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 308,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 36px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|308|Raw CSS unit must be promoted to a token: 36px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 311,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 32px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|311|Raw CSS unit must be promoted to a token: 32px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 311,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 50px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|311|Raw CSS unit must be promoted to a token: 50px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 317,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 16px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|317|Raw CSS unit must be promoted to a token: 16px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 320,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 24px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|320|Raw CSS unit must be promoted to a token: 24px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 327,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 24px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|327|Raw CSS unit must be promoted to a token: 24px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 327,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 48px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|327|Raw CSS unit must be promoted to a token: 48px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 329,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|329|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 336,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 44px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|336|Raw CSS unit must be promoted to a token: 44px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 338,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #c0a8e4",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|338|Hardcoded color token #c0a8e4"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 341,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 24px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|341|Raw CSS unit must be promoted to a token: 24px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 342,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 26px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|342|Raw CSS unit must be promoted to a token: 26px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 343,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(215, 198, 238, 0.23)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|343|Hardcoded color function rgba(215, 198, 238, 0.23)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 343,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|343|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 344,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|344|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 345,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(104, 79, 139, 0.12)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|345|Hardcoded color function rgba(104, 79, 139, 0.12)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 345,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(255, 255, 255, 0.025)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|345|Hardcoded color function rgba(255, 255, 255, 0.025)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 348,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 22px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|348|Raw CSS unit must be promoted to a token: 22px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 351,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 7px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|351|Raw CSS unit must be promoted to a token: 7px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 355,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 180px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|355|Raw CSS unit must be promoted to a token: 180px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 356,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 24px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|356|Raw CSS unit must be promoted to a token: 24px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 361,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|361|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 366,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 8px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|366|Raw CSS unit must be promoted to a token: 8px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 367,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #eee6f2",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|367|Hardcoded color token #eee6f2"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 369,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 13px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|369|Raw CSS unit must be promoted to a token: 13px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 377,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|377|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 378,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #16151e",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|378|Hardcoded color token #16151e"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 379,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #f3eee3",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|379|Hardcoded color token #f3eee3"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 380,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(215, 198, 238, 0.23)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|380|Hardcoded color function rgba(215, 198, 238, 0.23)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 380,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 1px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|380|Raw CSS unit must be promoted to a token: 1px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 381,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 9px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|381|Raw CSS unit must be promoted to a token: 9px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 383,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 14px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|383|Raw CSS unit must be promoted to a token: 14px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 389,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #aa90d0",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|389|Hardcoded color token #aa90d0"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 389,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 2px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|389|Raw CSS unit must be promoted to a token: 2px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 390,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 2px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|390|Raw CSS unit must be promoted to a token: 2px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 396,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 132px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|396|Raw CSS unit must be promoted to a token: 132px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 400,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(236, 229, 216, 0.6)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|400|Hardcoded color function rgba(236, 229, 216, 0.6)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 401,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 12px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|401|Raw CSS unit must be promoted to a token: 12px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 408,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 16px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|408|Raw CSS unit must be promoted to a token: 16px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 409,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 22px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|409|Raw CSS unit must be promoted to a token: 22px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 412,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color function rgba(236, 229, 216, 0.75)",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|412|Hardcoded color function rgba(236, 229, 216, 0.75)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 413,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 13px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|413|Raw CSS unit must be promoted to a token: 13px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 418,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #cbb1ed",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|418|Hardcoded color token #cbb1ed"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 422,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 13px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|422|Raw CSS unit must be promoted to a token: 13px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 422,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 22px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|422|Raw CSS unit must be promoted to a token: 22px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 427,
+      "rule": "raw-breakpoint-media",
+      "detail": "Raw responsive media query must use breakpoint token syntax: @media (max-width: 760px)",
+      "fingerprint": "raw-breakpoint-media|rooms/game-room/main-functions/fate-knots/ui/hub.css|427|Raw responsive media query must use breakpoint token syntax: @media (max-width: 760px)"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 427,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 760px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|427|Raw CSS unit must be promoted to a token: 760px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 429,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|429|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 433,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 18px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|433|Raw CSS unit must be promoted to a token: 18px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 439,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 16px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|439|Raw CSS unit must be promoted to a token: 16px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 439,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 32px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|439|Raw CSS unit must be promoted to a token: 32px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 444,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 24px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|444|Raw CSS unit must be promoted to a token: 24px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 447,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 8px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|447|Raw CSS unit must be promoted to a token: 8px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 452,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #cbb1ed",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|452|Hardcoded color token #cbb1ed"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 453,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 13px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|453|Raw CSS unit must be promoted to a token: 13px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 458,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 9px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|458|Raw CSS unit must be promoted to a token: 9px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 460,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 6px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|460|Raw CSS unit must be promoted to a token: 6px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 462,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #ad91d5",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|462|Hardcoded color token #ad91d5"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 463,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #25212f",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|463|Hardcoded color token #25212f"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 466,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #25212f",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|466|Hardcoded color token #25212f"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 467,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 6px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|467|Raw CSS unit must be promoted to a token: 6px"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 470,
+      "rule": "hardcoded-color",
+      "detail": "Hardcoded color token #ad91d5",
+      "fingerprint": "hardcoded-color|rooms/game-room/main-functions/fate-knots/ui/hub.css|470|Hardcoded color token #ad91d5"
+    },
+    {
+      "filePath": "rooms/game-room/main-functions/fate-knots/ui/hub.css",
+      "line": 471,
+      "rule": "raw-unit-token",
+      "detail": "Raw CSS unit must be promoted to a token: 6px",
+      "fingerprint": "raw-unit-token|rooms/game-room/main-functions/fate-knots/ui/hub.css|471|Raw CSS unit must be promoted to a token: 6px"
+    }
+  ]
+}

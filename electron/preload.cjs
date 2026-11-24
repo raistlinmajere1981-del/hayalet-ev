@@ -1,7 +1,6 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 const ALLOWED_IPC_RENDERER_CHANNELS = new Set(["log:ui-notify-batch"]);
-const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
 const PROVIDER_SCENARIO_PROGRESS_CHANNEL = "provider-scenario:progress";
 const ROOM_TOOLS_PROGRESS_CHANNEL = "room-tools:progress";
 const TRANSCRIPT_INGRESS_CHANNEL = "transcript:ingress";
@@ -11,7 +10,6 @@ const CAPTURE_AMBIENT_STATUS_CHANNEL = "capture:ambient-status";
 const TTS_STATUS_CHANNEL = "tts:status";
 const OPERATIONS_STATUS_CHANNEL = "operations:status";
 const SETTINGS_BROADCAST_NAME = "app-settings";
-const opencodeUiSessionUpdatedHandlers = new Map();
 const providerScenarioProgressHandlers = new Map();
 const roomToolsProgressHandlers = new Map();
 const transcriptIngressHandlers = new Map();
@@ -437,13 +435,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opencodeLaunchInstall: () => ipcRenderer.invoke("opencode-launch-install"),
 
   opencodeUiApiProxy: (options) => ipcRenderer.invoke("opencode-ui-api-proxy", options),
-  opencodeUiFsListSessions: (dbPath) => ipcRenderer.invoke("opencode-ui-fs-list-sessions", dbPath),
-  opencodeUiFsEnsureSession: (sessionId, title, dbPath) =>
-    ipcRenderer.invoke("opencode-ui-fs-ensure-session", sessionId, title, dbPath),
-  opencodeUiFsReadSession: (sessionId, dbPath) =>
-    ipcRenderer.invoke("opencode-ui-fs-read-session", sessionId, dbPath),
-  opencodeUiFsArchiveSession: (sessionId, archived, dbPath) =>
-    ipcRenderer.invoke("opencode-ui-fs-archive-session", sessionId, archived, dbPath),
+  opencodeUiListSessions: (port) => ipcRenderer.invoke("opencode-ui-list-sessions", port),
+  opencodeUiReadSession: (sessionId, port) =>
+    ipcRenderer.invoke("opencode-ui-read-session", sessionId, port),
+  opencodeUiArchiveSession: (sessionId, archived, port) =>
+    ipcRenderer.invoke("opencode-ui-archive-session", sessionId, archived, port),
   opencodeUiQuickPromptsRead: () => ipcRenderer.invoke("opencode-ui-quick-prompts-read"),
   opencodeUiQuickPromptsWrite: (prompts) =>
     ipcRenderer.invoke("opencode-ui-quick-prompts-write", prompts),
@@ -453,23 +449,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opencodeUiSharedStateRead: () => ipcRenderer.invoke("opencode-ui-shared-state-read"),
   opencodeUiSharedStateWrite: (state) =>
     ipcRenderer.invoke("opencode-ui-shared-state-write", state),
-  opencodeUiSessionWatchStart: (sessionId, dbPath) =>
-    ipcRenderer.invoke("opencode-ui-session-watch-start", sessionId, dbPath),
-  opencodeUiSessionWatchStop: () => ipcRenderer.invoke("opencode-ui-session-watch-stop"),
-  opencodeUiOnSessionUpdated: (callback) => {
-    if (typeof callback !== "function" || opencodeUiSessionUpdatedHandlers.has(callback)) {
-      return;
-    }
-    const handler = (_event, payload) => callback(payload);
-    opencodeUiSessionUpdatedHandlers.set(callback, handler);
-    ipcRenderer.on(OPENCODE_UI_SESSION_UPDATED_CHANNEL, handler);
-  },
-  opencodeUiOffSessionUpdated: (callback) => {
-    const handler = opencodeUiSessionUpdatedHandlers.get(callback);
-    if (!handler) return;
-    ipcRenderer.removeListener(OPENCODE_UI_SESSION_UPDATED_CHANNEL, handler);
-    opencodeUiSessionUpdatedHandlers.delete(callback);
-  },
+
   captureStatus: () => ipcRenderer.invoke("capture-status"),
   captureRefreshStatus: () => ipcRenderer.invoke("capture-refresh-status"),
   captureConsumeAnalyzeAssets: () => ipcRenderer.invoke("capture-consume-analyze-assets"),

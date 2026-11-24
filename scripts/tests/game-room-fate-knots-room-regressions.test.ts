@@ -251,33 +251,26 @@ void test("World Forge lifecycle exposes progress without leaking request or can
   assert.doesNotMatch(hubState, /prompt:/);
 });
 
-void test("AI0 runtime workspace uses managed Game Room storage instead of repository bootstrap", () => {
-  const materializer = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/ai0-workspace.ts",
-    "utf8"
-  );
-  const electronBridge = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/ai0-workspace-electron.ts",
+void test("Fate Knots NPC uses the shared AI0 workspace and runtime boundary", () => {
+  const adapter = readFileSync("electron/ai0/fate-knots-adapter.ts", "utf8");
+  const runtime = readFileSync("electron/ai0/runtime-host.ts", "utf8");
+  const workspace = readFileSync("electron/agent-profile-workspace.ts", "utf8");
+  const transport = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/host/transport.ts",
     "utf8"
   );
 
-  assert.match(materializer, /buildFateKnotsAi0WorkspaceSpec\(universeId\)/);
-  assert.match(materializer, /await io\.deleteDirectory\(workspaceDir\)/);
-  assert.match(materializer, /await io\.ensureDirectory\(workspaceDir\)/);
-  assert.match(materializer, /const policyFile = spec\.files\[0\];/);
-  assert.match(materializer, /\[policyFile\.relativePath\]/);
-  assert.doesNotMatch(materializer, /\.rovo/);
-  assert.doesNotMatch(materializer, /projectRoot/);
-
-  assert.match(electronBridge, /operation: "resolve-paths"/);
-  assert.match(electronBridge, /operation: "delete-path"/);
-  assert.match(electronBridge, /operation: "ensure-dir"/);
-  assert.match(electronBridge, /roomId: GAME_ROOM_ID/);
-  assert.match(electronBridge, /fmWriteFileAtomic/);
-  assert.match(electronBridge, /prepareFateKnotsAi0RuntimeWorkspace/);
-  assert.doesNotMatch(electronBridge, /AGENTS\.md/);
-  assert.doesNotMatch(electronBridge, /\.rovo/);
-  assert.doesNotMatch(electronBridge, /projectRoot/);
+  assert.match(transport, /operation: "fate-knots-ai0-call"/);
+  assert.match(adapter, /sanitizeFateKnotsAi0Packet\(request\.payload\)/);
+  assert.match(adapter, /ai0RuntimeHost\.chat\(/);
+  assert.match(adapter, /FATE_KNOTS_NPC_SCOPE/);
+  assert.match(runtime, /createAgentProfileWorkspace\(this\.deps\.root\(\), policy\)/);
+  assert.match(runtime, /Paths\.getAi0RuntimeRoot\(\)/);
+  assert.match(runtime, /action: "\*", resource: "\*", effect: "deny"/);
+  assert.match(workspace, /mkdtemp\(join\(workspaceRoot,/);
+  assert.match(workspace, /join\(workspacePath, "AGENTS\.md"\)/);
+  assert.match(workspace, /resolution\.system/);
+  assert.doesNotMatch(workspace, /copyFile|copyDirectory/);
 });
 
 void test("active Fate Knots sync emits Hub plus bounded gameplay state after run setup", () => {

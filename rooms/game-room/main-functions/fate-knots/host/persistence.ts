@@ -14,9 +14,6 @@ import type { FateKnotsCombatRuntimeState } from "../shared/combat-runtime.js";
 export const FATE_KNOTS_UNIVERSE_STORE_KEY = "game-room:fate-knots:universes:v1";
 export const FATE_KNOTS_RUN_STORE_KEY = "game-room:fate-knots:runs:v1";
 export const FATE_KNOTS_PERSISTENCE_SCHEMA_VERSION = 1;
-export const FATE_KNOTS_PERSISTENCE_VERSION = FATE_KNOTS_PERSISTENCE_SCHEMA_VERSION;
-export const FATE_KNOTS_UNIVERSE_LIBRARY_STATE_KEY = FATE_KNOTS_UNIVERSE_STORE_KEY;
-export const FATE_KNOTS_RUN_LIBRARY_STATE_KEY = FATE_KNOTS_RUN_STORE_KEY;
 export const FATE_KNOTS_SESSION_STATE_KEY = "game-room:fate-knots:session:v1";
 
 export interface FateKnotsPersistenceApi {
@@ -79,17 +76,17 @@ export interface FateKnotsPersistenceIssue {
 }
 
 export interface FateKnotsUniverseLibraryState {
-  storageVersion: typeof FATE_KNOTS_PERSISTENCE_VERSION;
+  storageVersion: typeof FATE_KNOTS_PERSISTENCE_SCHEMA_VERSION;
   universes: FateKnotsUniversePackage[];
 }
 
 export interface FateKnotsRunLibraryState {
-  storageVersion: typeof FATE_KNOTS_PERSISTENCE_VERSION;
+  storageVersion: typeof FATE_KNOTS_PERSISTENCE_SCHEMA_VERSION;
   runs: FateKnotsRunState[];
 }
 
 export interface FateKnotsSessionState {
-  storageVersion: typeof FATE_KNOTS_PERSISTENCE_VERSION;
+  storageVersion: typeof FATE_KNOTS_PERSISTENCE_SCHEMA_VERSION;
   activeUniverseId: string | null;
   activeRunId: string | null;
 }
@@ -786,7 +783,7 @@ function uniquePersistenceIssues(
 
 export function createEmptyFateKnotsSessionState(): FateKnotsSessionState {
   return {
-    storageVersion: FATE_KNOTS_PERSISTENCE_VERSION,
+    storageVersion: FATE_KNOTS_PERSISTENCE_SCHEMA_VERSION,
     activeUniverseId: null,
     activeRunId: null,
   };
@@ -798,7 +795,7 @@ export function readFateKnotsUniverseLibrary(
   const loaded = loadFateKnotsUniverseStore(api);
   return {
     value: {
-      storageVersion: FATE_KNOTS_PERSISTENCE_VERSION,
+      storageVersion: FATE_KNOTS_PERSISTENCE_SCHEMA_VERSION,
       universes: loaded.store.entries.map((entry) => cloneJson(entry.universe)),
     },
     issues: loaded.issues,
@@ -811,7 +808,7 @@ export function readFateKnotsRunLibrary(
   const loaded = loadFateKnotsRunStore(api);
   return {
     value: {
-      storageVersion: FATE_KNOTS_PERSISTENCE_VERSION,
+      storageVersion: FATE_KNOTS_PERSISTENCE_SCHEMA_VERSION,
       runs: loaded.store.entries.map((entry) => cloneJson(entry.run)),
     },
     issues: loaded.issues,
@@ -838,7 +835,7 @@ export function readFateKnotsSessionState(
 
   return {
     value: {
-      storageVersion: FATE_KNOTS_PERSISTENCE_VERSION,
+      storageVersion: FATE_KNOTS_PERSISTENCE_SCHEMA_VERSION,
       activeUniverseId: universes.store.activeUniverseId,
       activeRunId: runs.store.activeRunId,
     },
@@ -938,7 +935,7 @@ export function saveFateKnotsSessionSelection(
   return {
     ok: true,
     value: {
-      storageVersion: FATE_KNOTS_PERSISTENCE_VERSION,
+      storageVersion: FATE_KNOTS_PERSISTENCE_SCHEMA_VERSION,
       activeUniverseId: activeRun?.run.universeId ?? activeUniverseId,
       activeRunId,
     },

@@ -4,6 +4,7 @@ import {
   type FateKnotsUniversePackage,
 } from "../shared/contracts.js";
 import { parseFateKnotsUniversePackage } from "./universe-boundary.js";
+import { normalizeFateKnotsCanonicalUniversePackage } from "./canonical-universe.js";
 import type { FateKnotsUniverseValidationIssue } from "./universe-validation.js";
 
 export const FATE_KNOTS_WORLD_FORGE_SCHEMA_VERSION = 1;
@@ -160,7 +161,7 @@ function parseAssetPlan(
     prompt === null ||
     aspectRatio === null ||
     !ASPECT_RATIOS.has(aspectRatio as FateKnotsForgeAspectRatio) ||
-    batchGroup === undefined
+    (value["batchGroup"] !== undefined && batchGroup === undefined)
   ) {
     issues.push({ code: "invalid-asset-plan", path });
     return null;
@@ -230,7 +231,24 @@ export function validateFateKnotsWorldForgeDraftResponse(
     });
   }
 
-  const universeValidation = parseFateKnotsUniversePackage(response["universe"]);
+  // An empty object conveys no presentation cues, just like an empty array.
+  // Normalize only that unambiguous authoring mistake at the draft boundary.
+  // Non-empty objects and all other invalid fields remain validation errors.
+  const rawUniverse = response["universe"];
+  const normalizedUniverse =
+    isRecord(rawUniverse) && Array.isArray(rawUniverse["cards"])
+      ? {
+          ...rawUniverse,
+          cards: rawUniverse["cards"].map((card) =>
+            isRecord(card) &&
+            isRecord(card["presentation"]) &&
+            Object.keys(card["presentation"]).length === 0
+              ? { ...card, presentation: [] }
+              : card
+          ),
+        }
+      : rawUniverse;
+  const universeValidation = parseFateKnotsUniversePackage(normalizedUniverse);
   if (!universeValidation.valid || universeValidation.package === null) {
     issues.push({
       code: "invalid-universe-package",
@@ -240,7 +258,17 @@ export function validateFateKnotsWorldForgeDraftResponse(
     return { ok: false, draft: null, issues };
   }
 
-  const universe = universeValidation.package;
+  const canonical = normalizeFateKnotsCanonicalUniversePackage(universeValidation.package);
+  if (!canonical.valid || !canonical.package) {
+    return {
+      ok: false,
+      draft: null,
+      issues: [
+        { code: "invalid-universe-package", path: "universe", validationIssues: canonical.issues },
+      ],
+    };
+  }
+  const universe = canonical.package;
   if (universe.schemaVersion !== FATE_KNOTS_SCHEMA_VERSION) {
     issues.push({ code: "invalid-universe-package", path: "universe.schemaVersion" });
   }
@@ -395,7 +423,10 @@ export function finalizeFateKnotsWorldForgeDraft(
     };
   });
 
-  const normalized = parseFateKnotsUniversePackage(hydrated);
+  const boundary = parseFateKnotsUniversePackage(hydrated);
+  const normalized = boundary.valid
+    ? normalizeFateKnotsCanonicalUniversePackage(boundary.package)
+    : boundary;
   if (!normalized.valid || normalized.package === null) {
     return {
       ok: false,

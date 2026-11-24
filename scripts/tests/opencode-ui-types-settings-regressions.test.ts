@@ -127,13 +127,13 @@ void test("normalize settings backfills opencode-ui assistant account from legac
   assert.ok(providers.includes("opencode-ui"));
 });
 
-void test("default settings include opencode-ui db path binding", () => {
+void test("default OpenCode UI account does not bind a database path", () => {
   const settings = defaultSettings();
   const opencodeUiAccount = (settings.assistantAccounts ?? []).find(
     (account) => account.provider === "opencode-ui"
   );
 
-  assert.equal(opencodeUiAccount?.dbPath, "~/.local/share/opencode/opencode.db");
+  assert.equal(opencodeUiAccount?.dbPath, undefined);
 });
 
 void test("default settings scaffold assistants.opencode preferences", () => {

@@ -32,6 +32,7 @@ export function buildProbeScript(provider: string): string {
 
   const cfg = cfgRaw as {
     selectors?: {
+      inputField?: string;
       sendButtonBase?: string;
       sendButton?: string;
       stopButton?: string;
@@ -55,6 +56,7 @@ export function buildProbeScript(provider: string): string {
       string | string[] | Record<string, unknown>,
     locale
   );
+  const inputSel = resolveSelectorCandidates(selectors.inputField ?? "", locale);
   const stopSel = resolveSelectorCandidates(selectors.stopButton ?? "", locale);
   const voiceSel = resolveSelectorCandidates(selectors.voiceButton ?? "", locale);
   const scrollerSels = cfg.scrollerSelectors ?? [];
@@ -62,6 +64,7 @@ export function buildProbeScript(provider: string): string {
 
   return `(() => {
     try {
+      const inputSelectorCandidates = ${JSON.stringify(inputSel)};
       const sendSelectorCandidates = ${JSON.stringify(sendSel)};
       const stopSelectorCandidates = ${JSON.stringify(stopSel)};
       const voiceSelectorCandidates = ${JSON.stringify(voiceSel)};
@@ -82,7 +85,7 @@ export function buildProbeScript(provider: string): string {
       const findFirst = (candidates) => {
         for (const selector of candidates) {
           try {
-            const found = document.querySelector(selector);
+            const found = Array.from(document.querySelectorAll(selector)).find(isVisible);
             if (found && isVisible(found)) return found;
           } catch (_) {
             void 0;
@@ -223,9 +226,9 @@ export function buildProbeScript(provider: string): string {
       
       let sendState = 'missing';
       if (sendBtn) {
-        const disabledAttr = sendBtn.disabled ?? sendBtn.getAttribute('aria-disabled') === 'true';
+        const disabledAttr = sendBtn.disabled || sendBtn.getAttribute('aria-disabled') === 'true';
         const disabledStyle = getComputedStyle(sendBtn).pointerEvents === 'none';
-        const disabledClass = /disabled|opacity-4|opacity-5|cursor-not-allowed/i.test(sendBtn.className ?? '');
+        const disabledClass = /(?:^| )(?:disabled|opacity-40|opacity-50|cursor-not-allowed)(?: |$)/i.test(sendBtn.className ?? '');
         const disabledParent = sendBtn.closest('button[disabled], [aria-disabled="true"], [data-disabled="true"]');
         const disabled = disabledAttr || disabledStyle || disabledClass || !!disabledParent;
         sendState = disabled ? 'disabled' : 'enabled';
@@ -233,6 +236,7 @@ export function buildProbeScript(provider: string): string {
       
       return {
         atBottom,
+        composerReady: document.readyState !== "loading" && !!findFirst(inputSelectorCandidates),
         sendState,
         stopVisible: !!stopBtn,
         voiceMode: !!voiceBtn,

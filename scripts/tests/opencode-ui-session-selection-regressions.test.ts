@@ -41,7 +41,7 @@ function createContext(options: {
     } as BootstrapContext["runtime"],
     byId: () => null,
     getSessionsForTab: (sessions) => sessions.filter((session) => session.archived_at == null),
-    listSessionsFromDisk: async () => options.sessions,
+    listServerSessions: async () => options.sessions,
     createServerSession: async (title?: string) => {
       createServerSessionCalls.push(title ?? "");
       return createdSessionId;

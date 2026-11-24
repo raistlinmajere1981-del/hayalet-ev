@@ -1,7 +1,7 @@
 import type { FateKnotsPhase } from "../shared/contracts.js";
 import type { FateKnotsForgeHubSnapshot } from "./forge-orchestration.js";
 import {
-  FATE_KNOTS_PERSISTENCE_VERSION,
+  FATE_KNOTS_PERSISTENCE_SCHEMA_VERSION,
   FATE_KNOTS_SESSION_STATE_KEY,
   readFateKnotsRunLibrary,
   readFateKnotsSessionState,
@@ -128,7 +128,7 @@ export function buildFateKnotsHubSnapshot(
   }));
 
   return {
-    storageVersion: FATE_KNOTS_PERSISTENCE_VERSION,
+    storageVersion: FATE_KNOTS_PERSISTENCE_SCHEMA_VERSION,
     universes,
     runs,
     activeUniverseId,

@@ -474,13 +474,15 @@
 }
 
 .model-settings-modal {
-  width: min(var(--layout-opencode-model-settings-w), 94vw);
-  max-width: min(var(--layout-opencode-model-settings-w), 94vw);
-  max-height: var(--size-modal-tall);
-  min-height: min(78vh, var(--layout-opencode-model-settings-min-h));
+  width: min(var(--layout-opencode-model-settings-w), 96vw);
+  max-width: min(var(--layout-opencode-model-settings-w), 96vw);
+  height: 91vh;
+  max-height: 91vh;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .model-settings__header {
@@ -501,8 +503,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border: var(--border-1) solid color-mix(in srgb, var(--color-accent) 28%, transparent);
+  padding: var(--space-2);
+  border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-xl);
   background:
     linear-gradient(
@@ -541,7 +543,7 @@
 
 .model-settings__ai0-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: end;
   gap: var(--space-2);
 }
@@ -566,12 +568,6 @@
   font-size: var(--text-xs);
 }
 
-@media (max-width: 760px) {
-  .model-settings__ai0-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 .model-settings__filters {
   display: flex;
   flex-wrap: wrap;
@@ -590,10 +586,77 @@
 
 .model-settings__layout {
   display: grid;
-  grid-template-columns: minmax(var(--size-panel-compact), 0.34fr) minmax(0, 1fr);
-  gap: var(--space-5);
+  grid-template-columns:
+    minmax(var(--layout-opencode-model-settings-sidebar-min-w), 0.28fr)
+    minmax(0, 1fr);
+  gap: var(--space-3);
   min-height: 0;
   flex: 1;
+}
+
+.model-settings__sidebar,
+.model-settings__catalog {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: var(--space-3);
+}
+
+.model-settings__sidebar {
+  overflow-y: auto;
+  padding-right: var(--space-1);
+}
+
+.model-settings__sidebar > * {
+  flex-shrink: 0;
+}
+
+.model-settings__defaults {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.model-settings__panel--models {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+}
+
+.model-settings__panel--providers {
+  flex: 0 0 auto;
+}
+
+.model-settings__provider-filter {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.model-settings__provider-filter > button {
+  flex: 0 0 auto;
+}
+
+.model-settings__provider-select {
+  display: block;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+}
+
+.model-settings__provider-select[aria-pressed="true"],
+#model-settings-provider-all[aria-pressed="true"] {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  box-shadow: inset 0 0 0 var(--border-1) var(--color-accent);
+}
+
+.model-settings__provider-select[aria-pressed="true"] .model-settings__provider-name {
+  color: var(--color-accent);
 }
 
 .model-settings__panel {
@@ -613,7 +676,7 @@
 }
 
 .model-settings__panel-title {
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
   color: var(--text-primary);
   font-family: var(--font-display);
   font-size: var(--text-sm);
@@ -622,18 +685,45 @@
   text-transform: uppercase;
 }
 
-.model-settings__provider-list,
-.model-settings__model-list {
+.model-settings__provider-list {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2-5);
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
 }
 
-.model-settings__provider-list,
+.model-settings__provider-row {
+  flex: 0 0 auto;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+}
+
 .model-settings__model-list {
-  max-height: min(62vh, var(--layout-opencode-model-settings-list-max-h));
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding-right: var(--space-1);
+}
+
+.model-settings__model-row {
+  padding: var(--space-1-5) var(--space-2);
+  gap: var(--space-2);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-1);
+}
+
+.model-settings__model-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: var(--space-2);
+  row-gap: var(--space-0-5);
+}
+
+.model-settings__group-title {
+  padding: var(--space-1) 0;
 }
 
 .model-settings__provider-row.is-hidden,
@@ -691,14 +781,14 @@
 }
 
 .model-settings__icon-btn {
-  width: var(--size-control-lg);
-  height: var(--size-control-lg);
-  font-size: var(--text-base);
+  width: var(--size-control-md);
+  height: var(--size-control-md);
+  font-size: var(--text-sm);
 }
 
 .model-settings__action-btn,
 .model-settings__toggle-btn {
-  padding: var(--space-1-5) var(--space-2-5);
+  padding: var(--space-1) var(--space-2);
   font-size: var(--text-2xs);
   white-space: nowrap;
 }
@@ -734,8 +824,8 @@
 .model-settings__badge-row {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1-5);
-  margin-top: var(--space-2);
+  gap: var(--space-1);
+  margin-top: 0;
 }
 
 .model-settings__badge {
@@ -807,16 +897,43 @@
   }
 
   .model-settings__layout {
-    grid-template-columns: 1fr;
+    grid-template-columns:
+      minmax(var(--layout-opencode-model-settings-sidebar-min-w-compact), 0.4fr)
+      minmax(0, 1fr);
   }
 
-  .model-settings__model-list,
-  .model-settings__provider-list {
-    max-height: none;
+  .model-settings__model-row {
+    flex-wrap: wrap;
+  }
+
+  .model-settings__model-actions {
+    justify-content: flex-start;
   }
 }
 
 @media (--breakpoint-max-640) {
+  .model-settings__layout {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .model-settings__sidebar,
+  .model-settings__catalog {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .model-settings__panel--models {
+    flex: 0 0 auto;
+  }
+
+  .model-settings__model-list {
+    flex: 0 0 auto;
+    height: 55vh;
+    max-height: 60vh;
+  }
+
   .ds-right-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

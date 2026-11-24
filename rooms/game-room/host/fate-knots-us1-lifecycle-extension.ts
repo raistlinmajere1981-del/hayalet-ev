@@ -97,11 +97,7 @@ function afterWorldCommand(
   commandName: string,
   value: unknown
 ): void {
-  if (
-    commandName === "GameRoomFateKnotsCreateRun" &&
-    isRecord(value) &&
-    value["ok"] === true
-  ) {
+  if (commandName === "GameRoomFateKnotsCreateRun" && isRecord(value) && value["ok"] === true) {
     completeFateKnotsUs1RunSetup(api);
   }
   if (

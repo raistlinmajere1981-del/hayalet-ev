@@ -265,13 +265,43 @@ function expectedAssetIds(job: FateKnotsAssetMaterializerJob): string[] {
  */
 export async function materializeFateKnotsWorldForgeAssets(
   draft: FateKnotsWorldForgeDraft,
-  adapter: FateKnotsAssetMaterializerAdapter
+  adapter: FateKnotsAssetMaterializerAdapter,
+  options: {
+    retained?: Pick<FateKnotsAssetMaterializationResult, "assets" | "sourceArtifacts">;
+    onCheckpoint?: (result: FateKnotsAssetMaterializationResult) => Promise<void>;
+  } = {}
 ): Promise<FateKnotsAssetMaterializationResult> {
   const assetsById = new Map<string, FateKnotsMaterializedAsset>();
   const sourceArtifacts: FateKnotsMaterializerSourceArtifact[] = [];
   const failures: FateKnotsMaterializerFailure[] = [];
-  const jobs = planFateKnotsAssetMaterialization(draft);
-
+  const expectedAll = new Set(draft.assetPlans.map((plan) => plan.assetId));
+  for (const asset of options.retained?.assets ?? []) {
+    if (expectedAll.has(asset.assetId)) assetsById.set(asset.assetId, { ...asset });
+  }
+  sourceArtifacts.push(...(options.retained?.sourceArtifacts ?? []));
+  const jobs = planFateKnotsAssetMaterialization(draft).flatMap((job) => {
+    const missing = expectedAssetIds(job).filter((id) => !assetsById.has(id));
+    if (missing.length === 0) return [];
+    if (job.kind === "single" || missing.length === job.plans.length) return [job];
+    // Never regenerate already retained cells of a partially successful sheet.
+    return job.plans.flatMap((plan, index) =>
+      missing.includes(plan.assetId)
+        ? [
+            {
+              ...createSingleJob(draft, plan, index + 1),
+              jobId: job.jobId + ":retry:" + sanitizeId(plan.assetId),
+            },
+          ]
+        : []
+    );
+  });
+  const snapshot = (): FateKnotsAssetMaterializationResult => ({
+    complete: failures.length === 0 && assetsById.size === expectedAll.size,
+    assets: Array.from(assetsById.values()),
+    sourceArtifacts: [...sourceArtifacts],
+    failures: [...failures],
+  });
+  await options.onCheckpoint?.(snapshot());
   for (const job of jobs) {
     const expectedIds = expectedAssetIds(job);
     try {
@@ -354,17 +384,8 @@ export async function materializeFateKnotsWorldForgeAssets(
         message: error instanceof Error ? error.message : String(error),
       });
     }
+    await options.onCheckpoint?.(snapshot());
   }
 
-  const expectedAll = new Set(draft.assetPlans.map((plan) => plan.assetId));
-  const assets = Array.from(assetsById.values());
-  return {
-    complete:
-      failures.length === 0 &&
-      assets.length === expectedAll.size &&
-      assets.every((asset) => expectedAll.has(asset.assetId)),
-    assets,
-    sourceArtifacts,
-    failures,
-  };
+  return snapshot();
 }

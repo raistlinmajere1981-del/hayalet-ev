@@ -412,7 +412,6 @@ function mountChatShell(document: FakeDocument): {
 function createRuntime(): RuntimeState {
   return {
     baseUrl: "http://127.0.0.1:4096",
-    dbPath: "",
     activeSessionId: "ses_chat_dom",
     sessionTab: "active",
     submittingSessionId: null,
@@ -609,12 +608,18 @@ void test("sendComposerMessage keeps the Rovo card path when history sync falls 
         success: true,
         data: { system: "Resolved assistant profile" },
       }),
-      opencodeUiApiProxy: (payload: { body?: string }) => {
+      opencodeUiApiProxy: (payload: { url: string; method: string; body?: string }) => {
         outgoingBodies.push(payload.body ?? "");
-        return {
-          success: true,
-          data: { parts: [{ type: "text", text: tokenizedReply }] },
-        };
+        if (payload.method === "GET" && payload.url.includes("/message?")) {
+          return {
+            success: true,
+            data: {
+              data: [{ type: "assistant", content: [{ type: "text", text: tokenizedReply }] }],
+              cursor: { next: null },
+            },
+          };
+        }
+        return { success: true, data: {} };
       },
       loadSettings: () => ({
         assistantSlot: {
@@ -665,7 +670,7 @@ void test("sendComposerMessage keeps the Rovo card path when history sync falls 
             addMessage,
             createHistoricAssistantToolHost: () => null,
             renderHistoricToolCall: () => {},
-            readSessionFromDisk: async () => null,
+            readServerSession: async () => null,
             scrollChatToBottom: () => {},
             buildSessionSnapshotKey: () => "0",
             wait: async () => {},

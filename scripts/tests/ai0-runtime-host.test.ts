@@ -93,30 +93,13 @@ async function fixture() {
             return {
               data: [
                 {
-                  id: "opencode.config.image",
+                  id: "opencode-gpt-imagegen",
                   state: {
                     status: state.pluginActive ? "active" : "inactive",
                   },
                 },
               ],
             };
-          if (method === "POST" && path === "/api/experimental/generate/image") {
-            proc.imageCalls.push(body as Record<string, unknown>);
-            if (state.imageFails) throw new Error("OpenCode POST failed (HTTP 403)");
-            return {
-              data: {
-                images: [
-                  {
-                    type: "image",
-                    mime: "image/png",
-                    data: (state.corruptImage ? Buffer.from("fake PNG") : pixelPng()).toString(
-                      "base64"
-                    ),
-                  },
-                ],
-              },
-            };
-          }
           if (method === "POST" && path === "/api/session") {
             proc.created.push(body as Record<string, unknown>);
             return { data: { id: "session_" + ++state.seq } };
@@ -124,11 +107,45 @@ async function fixture() {
           if (method === "PUT") return {};
           if (method === "POST" && path.endsWith("/prompt")) {
             state.messages += 1;
+            const text = (body as { text: string }).text;
+            if (text.startsWith("Generate exactly one PNG using gpt_imagegen. Arguments: ")) {
+              const input = JSON.parse(text.slice(text.indexOf("Arguments: ") + 11)) as Record<
+                string,
+                unknown
+              >;
+              proc.imageCalls.push(input);
+              if (state.imageFails) throw new Error("OpenCode POST failed (HTTP 403)");
+              await writeFile(
+                String(input["out"]),
+                state.corruptImage ? Buffer.from("fake PNG") : pixelPng()
+              );
+            }
             return { data: {} };
           }
           if (method === "POST" && path.endsWith("/wait")) {
             if (state.failWait) throw new Error("Timed out");
             return null;
+          }
+          if (method === "GET" && path.includes("/message") && proc.imageCalls.length) {
+            const input = proc.imageCalls.at(-1)!;
+            return {
+              data: [
+                {
+                  type: "assistant",
+                  content: [
+                    {
+                      type: "tool",
+                      name: "gpt_imagegen",
+                      state: {
+                        status: "completed",
+                        input,
+                        metadata: { out: input["out"], versioned: false },
+                      },
+                    },
+                  ],
+                },
+              ],
+            };
           }
           if (method === "GET" && path.includes("/message"))
             return {
@@ -188,25 +205,30 @@ void test("AI0 text tasks preserve session but deny every inherited OpenCode too
   }
 });
 
-void test("image model is a separate explicit setting and is not required in text-model inventory", async () => {
+void test("image tasks use active model and exactly one OpenCode plugin tool", async () => {
   const f = await fixture();
   try {
-    const absent = await f.host.imageStatus();
-    assert.equal(absent.available, false);
-    assert.match(absent.reason ?? "", /No image model selected/);
-    const image = { providerID: "openai", id: "gpt-image-2" };
-    await f.host.selectModel(AI0_IMAGE_SCOPE, image);
-    assert.deepEqual(f.host.modelSelections().image, image);
+    await assert.rejects(
+      f.host.selectModel(AI0_IMAGE_SCOPE, { providerID: "openai", id: "gpt-image-2" }),
+      /active OpenCode model/
+    );
     const ready = await f.host.imageStatus();
     assert.equal(ready.available, true);
     assert.equal(ready.verified, false);
+    assert.equal(ready.toolId, "gpt_imagegen");
     assert.equal(f.processes.at(-1)?.imageCalls.length, 0);
     const artifact = await f.host.generateImage("blue dragon", "3:2");
     assert.equal(artifact.width, 1);
-    assert.equal(artifact.height, 1);
+    assert.equal(artifact.activeModelKey, "openai:gpt-text");
     assert.match(artifact.sha256, /^[a-f0-9]{64}$/);
-    assert.equal(f.processes.at(-1)?.imageCalls[0]?.["prompt"], "blue dragon");
-    assert.deepEqual(f.processes.at(-1)?.imageCalls[0]?.["model"], image);
+    const proc = f.processes.at(-1)!;
+    assert.equal(proc.imageCalls[0]?.["prompt"], "blue dragon");
+    assert.equal(proc.imageCalls[0]?.["size"], "1536x1024");
+    assert.deepEqual(proc.created[0]?.["permissions"], [
+      { action: "*", resource: "*", effect: "deny" },
+      { action: "gpt_imagegen", resource: "*", effect: "allow" },
+    ]);
+    assert.equal(proc.removed.length, 1);
     assert.equal((await f.host.imageStatus()).verified, true);
     assert.equal(await f.host.verifyGeneratedImage(artifact.path), artifact.path);
     await writeFile(artifact.path, "replaced");
@@ -215,14 +237,13 @@ void test("image model is a separate explicit setting and is not required in tex
     await f.cleanup();
   }
 });
-
-void test("native image failures cannot produce false verified artifacts or fall back", async () => {
+void test("plugin failures cannot produce false verified artifacts or fallback", async () => {
   const f = await fixture();
   try {
-    await f.host.selectModel(AI0_IMAGE_SCOPE, { providerID: "openai", id: "gpt-image-2" });
     f.state.pluginActive = false;
     assert.equal((await f.host.imageStatus()).available, false);
     await assert.rejects(f.host.generateImage("draft"), /unavailable/);
+    assert.equal(f.processes.flatMap((p) => p.imageCalls).length, 0);
     f.state.pluginActive = true;
     f.state.corruptImage = true;
     await assert.rejects(f.host.generateImage("corrupt"), /PNG/);
@@ -236,23 +257,18 @@ void test("native image failures cannot produce false verified artifacts or fall
     await f.cleanup();
   }
 });
-
-void test("room model fallback, NPC public packets, and image roles do not share tools or models", async () => {
+void test("room text model and old image selections do not override the active OpenCode image dispatcher", async () => {
   const f = await fixture();
   try {
     await f.host.selectModel(AI0_ROOM_SCOPE, { providerID: "openai", id: "gpt-other" });
-    await f.host.selectModel(FATE_KNOTS_NPC_SCOPE, { providerID: "openai", id: "gpt-text" });
     f.registry.select(FATE_KNOTS_NPC_SCOPE, "fate-knots-npc");
     const npc = await f.host.chat("public packet", FATE_KNOTS_NPC_SCOPE);
     assert.equal(npc.model.id, "gpt-other");
-    assert.equal(f.processes.at(-1)?.created[0]?.["permissions"] instanceof Array, true);
-    await f.host.selectModel(AI0_IMAGE_SCOPE, { providerID: "openai", id: "gpt-image-2" });
-    await f.host.selectModel(FATE_KNOTS_IMAGE_SCOPE, { providerID: "openai", id: "gpt-text" });
+    f.registry.selectRuntimeModel(AI0_IMAGE_SCOPE, { providerID: "codex-cli", id: "image_gen" });
     f.registry.select(FATE_KNOTS_IMAGE_SCOPE, "fate-knots-image");
     const image = await f.host.generateImage("world illustration", "1:1", FATE_KNOTS_IMAGE_SCOPE);
-    assert.equal(image.activeModelKey, "openai:gpt-image-2");
+    assert.equal(image.activeModelKey, "openai:gpt-text");
     assert.ok(image.path.endsWith(".png"));
-    assert.deepEqual(f.processes.at(-1)?.allowed, []);
   } finally {
     await f.cleanup();
   }

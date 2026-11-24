@@ -28,6 +28,7 @@ interface ModelSettingsOverlayOptions {
 
 interface OverlayUiState {
   searchQuery: string;
+  providerId: string | null;
   favoritesOnly: boolean;
   showHidden: boolean;
 }
@@ -38,18 +39,7 @@ function renderSummary(runtime: RuntimeState): string {
   const passiveProviderCount = runtime.modelPreferences.disabledProviders.length;
   const passiveModelCount = runtime.modelItems.filter((item) => item.isPassive === true).length;
   const favoriteCount = runtime.modelPreferences.favoriteModels.length;
-  const activeMeta =
-    runtime.activeModelKey != null ? runtime.modelMetaByKey[runtime.activeModelKey] : undefined;
-  const defaultMeta =
-    runtime.modelPreferences.defaultModelKey != null
-      ? runtime.modelMetaByKey[runtime.modelPreferences.defaultModelKey]
-      : undefined;
-  const activeLabel = activeMeta?.label ?? t("common.none");
-  const defaultLabel = defaultMeta?.label ?? t("modelSettings.endpointFallback");
-
   return (
-    `<span class="model-settings__chip model-settings__chip--active">${escapeHtml(t("modelSettings.chipCurrent", { value: activeLabel }))}</span>` +
-    `<span class="model-settings__chip">${escapeHtml(t("modelSettings.chipDefault", { value: defaultLabel }))}</span>` +
     `<span class="model-settings__chip">${escapeHtml(t("modelSettings.chipFavorite", { count: favoriteCount }))}</span>` +
     `<span class="model-settings__chip">${escapeHtml(t("modelSettings.chipPassiveProvider", { count: passiveProviderCount }))}</span>` +
     `<span class="model-settings__chip">${escapeHtml(t("modelSettings.chipPassiveModel", { count: passiveModelCount }))}</span>` +
@@ -58,7 +48,7 @@ function renderSummary(runtime: RuntimeState): string {
   );
 }
 
-function renderProviderRows(runtime: RuntimeState): string {
+function renderProviderRows(runtime: RuntimeState, selectedProviderId: string | null): string {
   if (runtime.providerItems.length === 0) {
     return `<div class="ds-empty-state">${escapeHtml(t("modelSettings.providerMissing"))}</div>`;
   }
@@ -82,12 +72,12 @@ function renderProviderRows(runtime: RuntimeState): string {
 
       return (
         `<div class="model-settings__provider-row${hidden ? " is-hidden" : ""}${passive ? " is-passive" : ""}">` +
-        `<div class="model-settings__provider-meta">` +
+        `<button type="button" class="model-settings__provider-meta model-settings__provider-select" data-provider-filter="${escapeHtml(provider.id)}" aria-pressed="${selectedProviderId === provider.id ? "true" : "false"}">` +
         `<div class="model-settings__provider-name">${escapeHtml(provider.name)}</div>` +
         `<div class="model-settings__provider-subtitle">${escapeHtml(statusLabel)} • ${escapeHtml(
           countLabel
         )}${passiveLabel}</div>` +
-        `</div>` +
+        `</button>` +
         `<div class="model-settings__provider-actions">` +
         `<button type="button" class="model-settings__toggle-btn${passive ? " is-active" : ""}" data-provider-passive="${escapeHtml(
           provider.id
@@ -111,6 +101,7 @@ function filterModelItems(runtime: RuntimeState, ui: OverlayUiState): SelectItem
   const query = ui.searchQuery.trim().toLocaleLowerCase(intlLocale);
 
   return runtime.modelItems.filter((item) => {
+    if (ui.providerId !== null && item.providerId !== ui.providerId) return false;
     const label =
       `${item.label} ${item.subtitle ?? ""} ${item.providerName ?? item.providerId ?? ""}`
         .trim()
@@ -168,7 +159,7 @@ function renderModelRows(runtime: RuntimeState, ui: OverlayUiState): string {
               : "",
             item.isConnected === true
               ? `<span class="model-settings__badge">${escapeHtml(t("modelSettings.badgeConnected"))}</span>`
-              : `<span class="model-settings__badge">${escapeHtml(t("modelSettings.badgeAvailable"))}</span>`,
+              : "",
           ]
             .filter((item) => item !== "")
             .join("");
@@ -176,9 +167,8 @@ function renderModelRows(runtime: RuntimeState, ui: OverlayUiState): string {
           return (
             `<div class="model-settings__model-row${isHidden ? " is-hidden" : ""}${isPassive ? " is-passive" : ""}">` +
             `<div class="model-settings__model-main">` +
-            `<div class="model-settings__model-title">${escapeHtml(item.label)}</div>` +
+            `<div class="model-settings__model-heading"><span class="model-settings__model-title">${escapeHtml(item.label)}</span><div class="model-settings__badge-row">${badges}</div></div>` +
             `<div class="model-settings__model-subtitle">${escapeHtml(item.subtitle ?? modelKey)}</div>` +
-            `<div class="model-settings__badge-row">${badges}</div>` +
             `</div>` +
             `<div class="model-settings__model-actions">` +
             `<button type="button" class="model-settings__icon-btn${
@@ -224,6 +214,7 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
 } {
   const ui: OverlayUiState = {
     searchQuery: "",
+    providerId: null,
     favoritesOnly: false,
     showHidden: false,
   };
@@ -306,7 +297,39 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
 
     const providerList = options.byId<HTMLElement>("model-settings-provider-list");
     if (providerList != null) {
-      providerList.innerHTML = renderProviderRows(options.runtime);
+      if (
+        ui.providerId !== null &&
+        !options.runtime.providerItems.some((provider) => provider.id === ui.providerId)
+      ) {
+        ui.providerId = null;
+      }
+      providerList.innerHTML = renderProviderRows(options.runtime, ui.providerId);
+    }
+
+    options
+      .byId<HTMLElement>("model-settings-provider-all")
+      ?.setAttribute("aria-pressed", String(ui.providerId === null));
+    for (const [id, selected] of [
+      ["model-settings-active-model", options.runtime.activeModelKey],
+      ["model-settings-default-model", options.runtime.modelPreferences.defaultModelKey],
+    ] as const) {
+      const select = options.byId<HTMLSelectElement>(id);
+      if (!select) continue;
+      const choices = options.runtime.modelItems.filter(
+        (item) =>
+          (item.isHidden !== true && item.isPassive !== true) ||
+          (item.modelKey ?? item.value) === selected
+      );
+      select.innerHTML =
+        `<option value="" disabled>${escapeHtml(t("modelSettings.endpointFallback"))}</option>` +
+        choices
+          .map(
+            (item) =>
+              `<option value="${escapeHtml(item.modelKey ?? item.value)}">${escapeHtml(item.label)}</option>`
+          )
+          .join("");
+      select.value = selected ?? "";
+      if (select.selectedIndex < 0) select.selectedIndex = 0;
     }
 
     const modelList = options.byId<HTMLElement>("model-settings-model-list");
@@ -452,12 +475,30 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
     await options.selectActiveModelKey(modelKey);
     options.showToast(t("modelSettings.activeUpdatedToast"));
     refresh();
+    void ai0Assignments.refresh();
   };
 
   const bindActionHandlers = (): void => {
     options.byId<HTMLButtonElement>("model-settings-btn")?.addEventListener("click", open);
     options.byId<HTMLButtonElement>("model-settings-close")?.addEventListener("click", close);
     options.byId<HTMLElement>("model-settings-backdrop")?.addEventListener("click", close);
+
+    options
+      .byId<HTMLSelectElement>("model-settings-active-model")
+      ?.addEventListener("change", (event) => {
+        const value = (event.target as HTMLSelectElement).value;
+        if (value !== "") void setActiveModel(value);
+      });
+    options
+      .byId<HTMLSelectElement>("model-settings-default-model")
+      ?.addEventListener("change", (event) => {
+        const value = (event.target as HTMLSelectElement).value;
+        if (value !== "") void setDefaultModel(value);
+      });
+    options.byId<HTMLElement>("model-settings-provider-all")?.addEventListener("click", () => {
+      ui.providerId = null;
+      refresh();
+    });
 
     options.byId<HTMLInputElement>("model-settings-search")?.addEventListener("input", (event) => {
       ui.searchQuery = (event.target as HTMLInputElement).value;
@@ -484,6 +525,13 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
       .byId<HTMLElement>("model-settings-provider-list")
       ?.addEventListener("click", (event) => {
         const target = event.target as HTMLElement;
+        const filterId =
+          target.closest<HTMLElement>("[data-provider-filter]")?.dataset["providerFilter"];
+        if (filterId !== undefined) {
+          ui.providerId = ui.providerId === filterId ? null : filterId;
+          refresh();
+          return;
+        }
         const providerId =
           target.closest<HTMLElement>("[data-provider-toggle]")?.dataset["providerToggle"];
         if (providerId != null && providerId !== "") {

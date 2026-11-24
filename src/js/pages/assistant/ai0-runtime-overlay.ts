@@ -45,9 +45,8 @@ export function initAi0RuntimeOverlay(): void {
   let sessionId: string | undefined;
   let imagePath: string | null = null;
   let availableModels: Array<Ai0Model & { name: string }> = [];
-  let selectedModels: { chat: Ai0Model | null; image: Ai0Model | null } = {
+  let selectedModels: { chat: Ai0Model | null } = {
     chat: null,
-    image: null,
   };
   const scope = (): AgentProfileScope =>
     task.value === "image" ? AI0_IMAGE_SCOPE : AI0_ASSISTANT_SCOPE;
@@ -61,22 +60,30 @@ export function initAi0RuntimeOverlay(): void {
   };
   const fillModels = (): void => {
     const image = task.value === "image";
-    const list = image
-      ? [{ providerID: "openai", id: "gpt-image-2", name: "GPT Image 2" }]
-      : availableModels;
+    const list = availableModels;
+    model.disabled = image;
+    model.hidden = image;
+    const label = document.querySelector<HTMLElement>('label[for="ai0-runtime-model"]');
+    if (label) label.hidden = image;
     model.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = t("noModels");
+    placeholder.disabled = true;
+    model.append(placeholder);
     for (const item of list) {
       const option = document.createElement("option");
-      option.value = JSON.stringify({ id: item.id, providerID: item.providerID });
+      option.value = JSON.stringify({ providerID: item.providerID, id: item.id });
       option.textContent = `${item.providerID} / ${item.name}`;
       model.append(option);
     }
-    const selected = image ? selectedModels.image : selectedModels.chat;
+    const selected = selectedModels.chat;
+    model.value = "";
     if (selected) {
-      const value = JSON.stringify(selected);
+      const value = JSON.stringify({ providerID: selected.providerID, id: selected.id });
       if (Array.from(model.options).some((item) => item.value === value)) model.value = value;
     }
-    run.disabled = model.options.length === 0 || profile.options.length === 0;
+    run.disabled = (task.value !== "image" && model.value === "") || profile.options.length === 0;
   };
   document.getElementById("assistant-ai0-runtime-btn")?.addEventListener("click", () => {
     controller.open();
@@ -86,7 +93,7 @@ export function initAi0RuntimeOverlay(): void {
       const [models, profiles, selections] = await Promise.all([
         requestAi0Runtime<Array<Ai0Model & { name: string }>>({ action: "models" }),
         requestAgentProfiles<AgentCharacterProfile[]>({ action: "list" }),
-        requestAi0Runtime<{ chat: Ai0Model | null; image: Ai0Model | null }>({
+        requestAi0Runtime<{ chat: Ai0Model | null }>({
           action: "model-selections",
         }),
       ]);
@@ -111,7 +118,11 @@ export function initAi0RuntimeOverlay(): void {
     reset();
     fillModels();
   });
-  for (const select of [model, profile]) select.addEventListener("change", reset);
+  for (const select of [model, profile])
+    select.addEventListener("change", () => {
+      reset();
+      run.disabled = (task.value !== "image" && model.value === "") || profile.options.length === 0;
+    });
   document.getElementById("ai0-runtime-image-status")?.addEventListener("click", () => {
     output.textContent = t("loading");
     void requestAi0Runtime<Ai0CapabilityStatus>({ action: "image-status" })
@@ -125,16 +136,17 @@ export function initAi0RuntimeOverlay(): void {
       .catch(displayError);
   });
   run.addEventListener("click", () => {
-    if (!model.value || !prompt.value.trim()) return;
+    if ((task.value !== "image" && model.value === "") || prompt.value.trim() === "") return;
     run.disabled = true;
     output.textContent = t("working");
     void (async (): Promise<void> => {
       const selectedScope = scope();
-      await requestAi0Runtime({
-        action: "model-select",
-        scope: selectedScope,
-        model: JSON.parse(model.value) as Ai0Model,
-      });
+      if (task.value !== "image")
+        await requestAi0Runtime({
+          action: "model-select",
+          scope: selectedScope,
+          model: JSON.parse(model.value) as Ai0Model,
+        });
       await requestAgentProfiles({
         action: "select",
         scope: selectedScope,

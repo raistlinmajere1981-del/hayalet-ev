@@ -33,8 +33,8 @@ void test("Fate Knots AI0 smoke validates staging files and promotes only a real
   assert.match(helper, /readFateKnotsAi0ImageCapabilityStatus/);
   assert.match(helper, /capability\.available !== true/);
   assert.match(helper, /callFateKnotsAi0ImageRoomTool/);
-  assert.match(helper, /"source\.png"/);
-  assert.match(helper, /"result\.json"/);
+  assert.match(helper, /"\.png"/);
+  assert.match(helper, /"\.json"/);
   assert.match(helper, /PNG_SIGNATURE/);
   assert.match(helper, /readFateKnotsJsonFile/);
   assert.match(helper, /writeFateKnotsManagedImageFile/);
@@ -44,17 +44,14 @@ void test("Fate Knots AI0 smoke validates staging files and promotes only a real
   assert.doesNotMatch(helper, /placeholder/i);
 });
 
-void test("Fate Knots Forge panel exposes AI0 Test only for the selected AI0 Local provider", async () => {
+void test("Fate Knots production hub omits development image smoke controls", async () => {
   const controls = await readRepoFile(
     "rooms/game-room/main-functions/fate-knots/ui/forge-controls.js"
   );
-
-  assert.match(controls, /GameRoomFateKnotsTestAi0Image/);
-  assert.match(controls, /forgeState\.assetProvider === "ai0-local"/);
-  assert.match(controls, /"AI0 Test"/);
-  assert.match(controls, /sendCommand\(AI0_TEST_COMMAND, \{\}\)/);
-  assert.match(controls, /AI0 test başarılı · managed:/);
-  assert.match(controls, /port:/);
-  assert.match(controls, /bytes/);
-  assert.match(controls, /AI0 test başarısız/);
+  assert.doesNotMatch(
+    controls,
+    /GameRoomFateKnotsTestAi0Image|AI0 Test|image skill|activeModelKey/
+  );
+  assert.match(controls, /readinessMessage/);
+  assert.match(controls, /forgeState.submitting/);
 });

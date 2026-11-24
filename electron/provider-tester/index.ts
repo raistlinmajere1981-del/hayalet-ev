@@ -2134,8 +2134,8 @@ export class ProviderTester {
         };
         const findVisible = (selectors) => {
           for (const selector of selectors) {
-            const el = document.querySelector(selector);
-            if (isVisible(el)) return el;
+            const el = Array.from(document.querySelectorAll(selector)).find(isVisible);
+            if (el) return el;
           }
           return null;
         };
@@ -2145,13 +2145,29 @@ export class ProviderTester {
         let clickedOpen = false;
         let clickedClose = false;
         if (!beforeClose && !beforeHistory && action === 'open' && openButton instanceof HTMLElement) {
-          openButton.click();
+          if (openButton.matches('[data-sidebar-destination="builtin:home"]')) {
+            for (const type of ['pointerover', 'pointerenter', 'mouseover', 'mouseenter']) {
+              const EventClass = type.startsWith('pointer') ? PointerEvent : MouseEvent;
+              openButton.dispatchEvent(new EventClass(type, {bubbles: true, pointerType: 'mouse'}));
+            }
+          } else openButton.click();
           clickedOpen = true;
         }
         const closeButton = beforeClose ?? findVisible(closeSelectors);
-        if ((beforeClose || beforeHistory) && action === 'close' && closeButton instanceof HTMLElement) {
-          closeButton.click();
-          clickedClose = true;
+        if ((beforeClose || beforeHistory) && action === 'close') {
+          if (closeButton instanceof HTMLElement) {
+            closeButton.click();
+            clickedClose = true;
+          } else {
+            const rail = document.querySelector('[data-sidebar-destination="builtin:home"]');
+            if (rail) {
+              for (const type of ['pointerout', 'pointerleave', 'mouseout', 'mouseleave']) {
+                const EventClass = type.startsWith('pointer') ? PointerEvent : MouseEvent;
+                rail.dispatchEvent(new EventClass(type, {bubbles: true, pointerType: 'mouse', relatedTarget: document.body}));
+              }
+              clickedClose = true;
+            }
+          }
         }
         const afterOpen = findVisible(openSelectors);
         const afterClose = findVisible(closeSelectors);
@@ -2229,7 +2245,7 @@ export class ProviderTester {
             const text = titleEl?.textContent?.trim();
             if (text) return text;
           }
-          return item.textContent?.trim() ?? '';
+          return item.getAttribute('aria-label')?.trim() || item.textContent?.trim() || '';
         };
         const sessions = [];
         for (const selector of itemSelectors) {

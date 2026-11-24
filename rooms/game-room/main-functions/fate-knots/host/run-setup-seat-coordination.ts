@@ -38,7 +38,8 @@ function readStore(api: FateKnotsPersistenceApi): FateKnotsRunSetupSeatStore {
   const entries: FateKnotsRunSetupSeatEntry[] = [];
   for (const rawEntry of rawEntries) {
     if (!isRecord(rawEntry)) continue;
-    const universeId = typeof rawEntry["universeId"] === "string" ? rawEntry["universeId"].trim() : "";
+    const universeId =
+      typeof rawEntry["universeId"] === "string" ? rawEntry["universeId"].trim() : "";
     if (!universeId) continue;
     const rawSelections = isRecord(rawEntry["selections"]) ? rawEntry["selections"] : {};
     const selections: Partial<Record<FateKnotsPlayerSeatId, string>> = {};

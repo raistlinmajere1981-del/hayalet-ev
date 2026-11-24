@@ -286,8 +286,10 @@
       const item = readRecord(entry);
       if (item) proposal.append(renderPoolItem(item, cards));
     });
+    const solo =
+      readArray(loot.activeSeatIds).length === 1 && readArray(loot.activeSeatIds).includes("user");
     proposal.append(
-      createButton("Dağıtımı öner", proposeLoot, {
+      createButton(solo ? "Dağıtımı tamamla" : "Dağıtımı öner", proposeLoot, {
         disabled: !draftComplete(),
       })
     );
@@ -300,7 +302,12 @@
     );
     const approved = readArray(loot.approvedSeatIds).includes("user");
     const hasProposal = readArray(loot.allocations).length > 0;
-    if (approved) {
+    const allApproved =
+      readArray(loot.activeSeatIds).length > 0 &&
+      readArray(loot.activeSeatIds).every((seat) => readArray(loot.approvedSeatIds).includes(seat));
+    if (hasProposal && allApproved) {
+      approval.append(createButton("Dağıtımı tamamla", approveLoot));
+    } else if (approved) {
       approval.append(
         createElement(
           "div",
@@ -373,7 +380,8 @@
     const error = readString(result?.error);
     if (error === "proposal-required") return "Önce tam bir loot dağıtım önerisi gerekiyor.";
     if (error === "loot-proposal-rejected") return "Loot önerisi artık mevcut havuzla uyuşmuyor.";
-    if (error === "loot-resolution-rejected") return "Ortak loot dağıtımı canonical engine tarafından reddedildi.";
+    if (error === "loot-resolution-rejected")
+      return "Ortak loot dağıtımı canonical engine tarafından reddedildi.";
     if (error === "seat-not-active") return "Bu koltuk aktif partiye bağlı değil.";
     if (error === "persistence-rejected" || error === "save-rejected") {
       return "Loot dağıtımı güvenli biçimde kaydedilemedi.";

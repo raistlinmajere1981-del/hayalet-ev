@@ -58,7 +58,10 @@ void test("Fate Knots Forge keeps authoring and asset provider boundaries separa
   assert.match(authoring, /openFateKnotsForgeProviderSession/);
   assert.match(authoring, /dispatchFateKnotsForgeProviderJsonPrompt/);
 
-  assert.match(forgeService, /Map<FateKnotsForgeAssetProvider, FateKnotsAssetMaterializerAdapter>/);
+  assert.match(
+    forgeService,
+    /Map<\s*FateKnotsForgeAssetProvider,\s*FateKnotsAssetMaterializerAdapter\s*>/
+  );
   assert.match(forgeService, /materializerAdapters\.get\(policy\.assetProvider\)/);
   assert.doesNotMatch(
     forgeService,
@@ -93,12 +96,12 @@ void test("Fate Knots production host and Hub expose provider-aware universe cre
   assert.match(hostIndex, /extendGameRoomHostRuntimeWithFateKnotsForge/);
   assert.match(hubUi, /createElement\("div", "fate-knots-hub__actions"\)/);
   assert.match(forgeControls, /\.fate-knots-hub__header > \.fate-knots-hub__actions/);
-  assert.match(forgeControls, /legacyButton\.disabled = false/);
+  assert.match(forgeControls, /openButton\.disabled = forgeState\.submitting/);
   assert.match(forgeControls, /forgeState\.capabilities && force !== true/);
   assert.match(forgeControls, /forgeState\.capabilities = null/);
   assert.match(forgeControls, /authoringProvider/);
   assert.match(forgeControls, /assetProvider/);
-  assert.match(forgeControls, /AI0 Local/);
+  assert.match(forgeControls, /AI0/);
   assert.match(forgeControls, /option\.disabled = !providerAvailable/);
   assert.match(forgeControls, /unwrapCommandResult/);
   assert.match(forgeControls, /readRecord\(result\.data\) \|\| result/);

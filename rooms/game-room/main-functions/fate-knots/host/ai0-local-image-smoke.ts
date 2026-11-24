@@ -23,11 +23,10 @@ export interface FateKnotsAi0ImageSmokeSuccess {
   jobId: string;
   prompt: string;
   activeModelKey: string;
-  toolId: "image_generate";
+  toolId: string;
   stagingPath: string;
   manifestPath: string;
   managedPath: string;
-  port: number;
   bytes: number;
 }
 
@@ -58,15 +57,15 @@ function normalizeComparablePath(value: string): string | null {
 function assertContainedFile(
   rootPath: string,
   filePath: string,
-  expectedFileName: "source.png" | "result.json"
+  extension: ".png" | ".json"
 ): string {
   const root = normalizeComparablePath(rootPath);
   const file = normalizeComparablePath(filePath);
   if (root === null || file === null || !file.startsWith(root + "/")) {
-    throw new Error("Fate Knots AI0 smoke artifact escaped the image-worker staging root.");
+    throw new Error("Fate Knots AI0 smoke artifact escaped the shared image artifact root.");
   }
-  if (!file.endsWith("/" + expectedFileName)) {
-    throw new Error("Fate Knots AI0 smoke expected staging file " + expectedFileName + ".");
+  if (!file.endsWith(extension)) {
+    throw new Error("Fate Knots AI0 smoke expected artifact extension " + extension + ".");
   }
   return file;
 }
@@ -74,49 +73,39 @@ function assertContainedFile(
 function decodeAndVerifyPng(base64: string): number {
   const normalized = base64.replace(/\s+/g, "");
   if (normalized === "") {
-    throw new Error("Fate Knots AI0 smoke source.png is missing or empty.");
+    throw new Error("Fate Knots AI0 smoke PNG is missing or empty.");
   }
 
   let binary: string;
   try {
     binary = atob(normalized);
   } catch {
-    throw new Error("Fate Knots AI0 smoke source.png is not valid base64.");
+    throw new Error("Fate Knots AI0 smoke PNG is not valid base64.");
   }
   if (
     binary.length < PNG_SIGNATURE.length ||
     !PNG_SIGNATURE.every((byte, index) => binary.charCodeAt(index) === byte)
   ) {
-    throw new Error("Fate Knots AI0 smoke source.png failed PNG signature verification.");
+    throw new Error("Fate Knots AI0 smoke PNG failed PNG signature verification.");
   }
   return binary.length;
 }
 
 function verifyManifest(
   value: unknown,
-  expected: {
-    jobId: string;
-    activeModelKey: string;
-    stagingPath: string;
-    bytes: number;
-  }
+  expected: { activeModelKey: string; stagingPath: string; bytes: number }
 ): void {
-  if (!isRecord(value)) {
-    throw new Error("Fate Knots AI0 smoke result.json is missing or invalid.");
-  }
-  const artifact = value["artifact"];
   if (
-    value["schemaVersion"] !== 1 ||
-    value["success"] !== true ||
-    value["jobId"] !== expected.jobId ||
+    !isRecord(value) ||
     value["activeModelKey"] !== expected.activeModelKey ||
-    !isRecord(artifact) ||
-    normalizeComparablePath(String(artifact["path"] ?? "")) !==
+    normalizeComparablePath(String(value["path"] ?? "")) !==
       normalizeComparablePath(expected.stagingPath) ||
-    artifact["mimeType"] !== FATE_KNOTS_AI0_IMAGE_MIME_TYPE ||
-    artifact["bytes"] !== expected.bytes
+    value["mimeType"] !== FATE_KNOTS_AI0_IMAGE_MIME_TYPE ||
+    value["bytes"] !== expected.bytes ||
+    typeof value["sha256"] !== "string" ||
+    !/^[a-f0-9]{64}$/.test(value["sha256"])
   ) {
-    throw new Error("Fate Knots AI0 smoke result.json does not match the generated PNG artifact.");
+    throw new Error("Fate Knots AI0 smoke manifest does not match the verified PNG artifact.");
   }
 }
 
@@ -160,35 +149,21 @@ export async function runFateKnotsAi0ImageSmoke(): Promise<FateKnotsAi0ImageSmok
     }
 
     const source = generated.fateKnotsAi0Image;
-    if (!Number.isInteger(source.port) || source.port < 4135 || source.port > 4149) {
-      throw new Error("Fate Knots AI0 smoke worker returned a port outside 4135-4149.");
-    }
-    if (capability.port !== undefined && capability.port !== source.port) {
-      throw new Error("Fate Knots AI0 smoke worker port changed after capability readiness.");
-    }
-
-    const stagingPath = assertContainedFile(source.stagingRoot, source.path, "source.png");
-    const manifestPath = assertContainedFile(
-      source.stagingRoot,
-      source.manifestPath,
-      "result.json"
-    );
-    if (
-      stagingPath.slice(0, stagingPath.lastIndexOf("/")) !==
-      manifestPath.slice(0, manifestPath.lastIndexOf("/"))
-    ) {
-      throw new Error("Fate Knots AI0 smoke source.png and result.json are not in the same job.");
-    }
+    if (!capability.toolId || source.activeModelKey !== capability.activeModelKey)
+      throw new Error("AI0 generation model changed after readiness check.");
+    const stagingPath = assertContainedFile(source.stagingRoot, source.path, ".png");
+    const manifestPath = assertContainedFile(source.stagingRoot, source.manifestPath, ".json");
+    if (manifestPath !== stagingPath + ".json")
+      throw new Error("AI0 artifact manifest must accompany its PNG.");
 
     const sourceBase64 = await readFateKnotsLocalFileBase64(source.path);
     const bytes = decodeAndVerifyPng(sourceBase64);
     if (source.bytes !== bytes) {
-      throw new Error("Fate Knots AI0 smoke source.png byte count does not match worker metadata.");
+      throw new Error("Fate Knots AI0 smoke PNG byte count does not match worker metadata.");
     }
 
     const manifest = await readFateKnotsJsonFile(source.manifestPath);
     verifyManifest(manifest, {
-      jobId,
       activeModelKey: source.activeModelKey,
       stagingPath: source.path,
       bytes,
@@ -216,7 +191,7 @@ export async function runFateKnotsAi0ImageSmoke(): Promise<FateKnotsAi0ImageSmok
 
     const managedBase64 = await readFateKnotsLocalFileBase64(managedPath);
     if (managedBase64 !== sourceBase64) {
-      throw new Error("Fate Knots AI0 smoke managed image bytes differ from source.png.");
+      throw new Error("Fate Knots AI0 smoke managed image bytes differ from PNG.");
     }
 
     return {
@@ -224,11 +199,10 @@ export async function runFateKnotsAi0ImageSmoke(): Promise<FateKnotsAi0ImageSmok
       jobId,
       prompt: FATE_KNOTS_AI0_IMAGE_SMOKE_PROMPT,
       activeModelKey: source.activeModelKey,
-      toolId: "image_generate",
+      toolId: capability.toolId,
       stagingPath: source.path,
       manifestPath: source.manifestPath,
       managedPath,
-      port: source.port,
       bytes,
     };
   } catch (error) {

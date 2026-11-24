@@ -464,7 +464,7 @@ class MessageSenderClass {
       let sendButton = null;
       for (const selector of selectorCandidates) {
         try {
-          const candidate = document.querySelector(selector);
+          const candidate = Array.from(document.querySelectorAll(selector)).find(isVisible);
           if (candidate && isVisible(candidate)) {
             sendButton = candidate;
             break;
@@ -480,7 +480,7 @@ class MessageSenderClass {
 
       const disabledAttr = sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true';
       const disabledStyle = getComputedStyle(sendButton).pointerEvents === 'none';
-      const disabledClass = /disabled|opacity-4|opacity-5|cursor-not-allowed/i.test(sendButton.className || '');
+      const disabledClass = /(?:^| )(?:disabled|opacity-40|opacity-50|cursor-not-allowed)(?: |$)/i.test(sendButton.className || '');
       return {
         found: true,
         disabled: disabledAttr || disabledStyle || disabledClass
@@ -662,7 +662,7 @@ class MessageSenderClass {
         let matchedSelector = null;
         for (const selector of selectorCandidates) {
           try {
-            const candidate = document.querySelector(selector);
+            const candidate = Array.from(document.querySelectorAll(selector)).find(isVisible);
             if (candidate && isVisible(candidate)) {
               sendButton = candidate;
               matchedSelector = selector;
@@ -683,7 +683,7 @@ class MessageSenderClass {
         
         const disabledAttr = sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true';
         const disabledStyle = getComputedStyle(sendButton).pointerEvents === 'none';
-        const disabledClass = /disabled|opacity-4|opacity-5|cursor-not-allowed/i.test(sendButton.className || '');
+        const disabledClass = /(?:^| )(?:disabled|opacity-40|opacity-50|cursor-not-allowed)(?: |$)/i.test(sendButton.className || '');
         const isDisabled = disabledAttr || disabledStyle || disabledClass;
         
         if (isDisabled) {

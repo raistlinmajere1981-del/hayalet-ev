@@ -31,7 +31,7 @@ export interface BootstrapContext {
     sessions: OpencodeUiSessionSummary[],
     tab?: "active" | "archived"
   ) => OpencodeUiSessionSummary[];
-  listSessionsFromDisk: () => Promise<OpencodeUiSessionSummary[]>;
+  listServerSessions: () => Promise<OpencodeUiSessionSummary[]>;
   createServerSession: (title?: string) => Promise<string>;
   setActiveSession: (sessionId: string | null) => Promise<void>;
   loadSessionListAndRender: (options?: {
@@ -71,7 +71,7 @@ export async function initializeSessionSelection(
   resumeModeRaw = ""
 ): Promise<void> {
   context.runtime.sessionTab = "active";
-  const sessions = await context.listSessionsFromDisk();
+  const sessions = await context.listServerSessions();
   const visibleSessions = context.getSessionsForTab(sessions, "active");
 
   if (visibleSessions.length === 0) {
@@ -129,30 +129,12 @@ export function startPeriodicRefresh(context: BootstrapContext): void {
 let sessionUpdatedListenerBound = false;
 
 export function startLiveMessageRefresh(context: BootstrapContext): void {
-  const api = window.electronAPI as
-    | undefined
-    | {
-        opencodeUiOnSessionUpdated?: (callback: (payload: { sessionId: string }) => void) => void;
-      };
-
-  if (sessionUpdatedListenerBound) {
-    return;
-  }
-
-  if (!api?.opencodeUiOnSessionUpdated) {
-    setInterval(() => {
-      void context.syncActiveSessionHistoryIfUpdated();
-    }, 1200);
-    return;
-  }
-
+  if (sessionUpdatedListenerBound) return;
   sessionUpdatedListenerBound = true;
-  api.opencodeUiOnSessionUpdated((payload) => {
-    if (payload.sessionId !== context.runtime.activeSessionId) {
-      return;
-    }
-    void context.syncActiveSessionHistoryIfUpdated();
-  });
+  setInterval(() => {
+    if (context.runtime.activeSessionId !== null && !document.hidden)
+      void context.syncActiveSessionHistoryIfUpdated().catch(() => {});
+  }, 1500);
 }
 
 export async function runOpencodeUiBootstrapPipeline(options: {

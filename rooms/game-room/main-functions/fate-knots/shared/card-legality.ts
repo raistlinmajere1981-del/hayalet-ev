@@ -283,6 +283,29 @@ export function evaluateFateKnotsCardLegality(
     issues.push({ code: "secondary-target-unsupported", value: "secondaryTarget" });
   }
 
+  // When authoring omits target constraints, a direct attack is hostile by
+  // default. Explicit target-team/life-state requirements remain authoritative.
+  // Apply this at the shared legality boundary, not only in the renderer.
+  if (
+    primaryTarget &&
+    card.kind === "attack" &&
+    card.effects.some((effect) => effect.kind === "damage" && effect.target === "primaryTarget")
+  ) {
+    const requirements = card.requirements ?? [];
+    if (
+      !requirements.some((requirement) => requirement.targetTeam !== undefined) &&
+      primaryTarget.teamId === context.actor.teamId
+    ) {
+      issues.push({ code: "target-team-not-allowed", value: "opposing-team" });
+    }
+    if (
+      !requirements.some((requirement) => requirement.targetLifeState !== undefined) &&
+      primaryTarget.fallen
+    ) {
+      issues.push({ code: "target-life-state-not-allowed", value: "standing" });
+    }
+  }
+
   for (const [index, requirement] of (card.requirements ?? []).entries()) {
     issues.push(
       ...evaluateRequirement(requirement, index, context, availableCardIds, primaryTarget)

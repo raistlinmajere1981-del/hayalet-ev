@@ -1866,7 +1866,7 @@
         "noModels": "No model is available in this AI0 runtime.",
         "working": "AI0 is working…",
         "imageReady": "Image generation verified with a real PNG.",
-        "imageNotTested": "OpenCode image API ready; live generation not yet verified.",
+        "imageNotTested": "OpenCode image plugin ready; live generation not yet verified.",
         "imageUnavailable": "Image generation is unavailable.",
         "imageSaved": "PNG verified and saved."
       }
@@ -5969,7 +5969,7 @@
     },
     "usage": {
       "title": "Token Usage",
-      "diskDb": "Disk DB",
+      "serverApi": "Server API",
       "prompt": "Prompt",
       "completion": "Completion",
       "reasoning": "Reasoning"
@@ -6163,16 +6163,19 @@
       "missingInputArea": "The message input area could not be found."
     },
     "modelSettings": {
+      "defaultsTitle": "Model assignments",
+      "currentModel": "Active model",
+      "defaultModel": "Default model",
+      "allProviders": "All",
       "ai0SectionTitle": "Shared AI0 Task Models",
       "ai0Chat": "AI0 chat",
       "ai0Room": "Room AI requests",
-      "ai0Image": "Image generation",
-      "ai0Check": "Check image capability",
+      "ai0Check": "Test image generation",
       "ai0Unassigned": "Not assigned",
       "ai0Saving": "Saving model…",
       "ai0Checking": "Checking image capability…",
       "ai0ImageVerified": "Image generation verified with a real PNG.",
-      "ai0ImageNotTested": "Image API is ready; live generation has not been verified.",
+      "ai0ImageNotTested": "Image plugin ready; live generation has not been verified.",
       "ai0ImageUnavailable": "Image generation is unavailable.",
       "openTitle": "Model settings",
       "openLabel": "⚙ Model",

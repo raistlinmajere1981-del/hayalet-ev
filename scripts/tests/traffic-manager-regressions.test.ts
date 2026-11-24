@@ -37,7 +37,12 @@ function installTimerCapture(): {
   const scheduled: Array<{ fn: () => void; delay: number }> = [];
 
   globalThis.setTimeout = ((fn: (...args: unknown[]) => void, delay?: number) => {
-    scheduled.push({ fn: () => { fn(); }, delay: delay ?? 0 });
+    scheduled.push({
+      fn: () => {
+        fn();
+      },
+      delay: delay ?? 0,
+    });
     return scheduled.length as unknown as ReturnType<typeof setTimeout>;
   }) as typeof globalThis.setTimeout;
 
@@ -140,7 +145,9 @@ void test("provider-state thinking transition drives traffic listeners", () => {
     } else {
       TrafficManager._runners[slot] = originalRunner;
     }
-    documentScope.document = originalDocument as { getElementById: (id: string) => HTMLElement | null; };
+    documentScope.document = originalDocument as {
+      getElementById: (id: string) => HTMLElement | null;
+    };
   }
 });
 
@@ -200,7 +207,9 @@ void test("provider-state ready transition marks loading as just ended", () => {
     } else {
       TrafficManager._runners[slot] = originalRunner;
     }
-    documentScope.document = originalDocument as { getElementById: (id: string) => HTMLElement | null; };
+    documentScope.document = originalDocument as {
+      getElementById: (id: string) => HTMLElement | null;
+    };
   }
 });
 
@@ -218,7 +227,7 @@ void test("provider-state cannot reopen loading after the native webview is read
       addEventListener: () => {},
       removeEventListener: () => {},
       isLoading: () => false,
-    } as unknown as typeof TrafficManager.webviews[typeof slot];
+    } as unknown as (typeof TrafficManager.webviews)[typeof slot];
 
     TrafficManager.applyProviderState(slot, { readyState: "loading" });
 
@@ -346,22 +355,22 @@ void test("loading is forced to idle when thinking becomes busy during loading",
         await Promise.resolve();
         return {
           href: "https://chatgpt.com/c/abc",
-        sendState: "disabled",
-        stopVisible: true,
-        voiceMode: false,
-        lastSend: now,
-        scroll: {
-          scrollTop: 0,
-          scrollHeight: 200,
-          clientHeight: 100,
+          sendState: "disabled",
+          stopVisible: true,
+          voiceMode: false,
+          lastSend: now,
+          scroll: {
+            scrollTop: 0,
+            scrollHeight: 200,
+            clientHeight: 100,
 
-          scrollLeft: 0,
-          scrollWidth: 800,
-          clientWidth: 400,
-        },
-        isSameOrigin: true,
-        isReady: true,
-      };
+            scrollLeft: 0,
+            scrollWidth: 800,
+            clientWidth: 400,
+          },
+          isSameOrigin: true,
+          isReady: true,
+        };
       },
       addEventListener: () => {},
       removeEventListener: () => {},
@@ -370,7 +379,8 @@ void test("loading is forced to idle when thinking becomes busy during loading",
       isLoading: () => false,
       getWebContents: () => ({ isLoading: () => false }),
     };
-    TrafficManager.webviews[slot] = mockWebview as unknown as typeof TrafficManager.webviews[typeof slot];
+    TrafficManager.webviews[slot] =
+      mockWebview as unknown as (typeof TrafficManager.webviews)[typeof slot];
 
     TrafficManager._handleNavigation(slot, "https://chatgpt.com/c/abc");
     assert.equal(TrafficManager.state[slot].status.loading, "busy");
@@ -384,7 +394,9 @@ void test("loading is forced to idle when thinking becomes busy during loading",
     AppState.getProviderIdForSlot = originalGetProvider;
     if (originalState !== undefined) TrafficManager.state[slot] = originalState;
     TrafficManager._skipNextLoading[slot] = originalSkip as boolean;
-    documentScope.document = originalDocument as { getElementById: (id: string) => HTMLElement | null; };
+    documentScope.document = originalDocument as {
+      getElementById: (id: string) => HTMLElement | null;
+    };
     if (originalWebview === undefined) {
       delete TrafficManager.webviews[slot];
     } else {
@@ -416,22 +428,22 @@ void test("non-default navigation keeps loading busy even if thinking is busy", 
         await Promise.resolve();
         return {
           href: "https://chatgpt.com/c/next",
-        sendState: "disabled",
-        stopVisible: true,
-        voiceMode: false,
-        lastSend: now,
-        scroll: {
-          scrollTop: 0,
-          scrollHeight: 200,
-          clientHeight: 100,
+          sendState: "disabled",
+          stopVisible: true,
+          voiceMode: false,
+          lastSend: now,
+          scroll: {
+            scrollTop: 0,
+            scrollHeight: 200,
+            clientHeight: 100,
 
-          scrollLeft: 0,
-          scrollWidth: 800,
-          clientWidth: 400,
-        },
-        isSameOrigin: true,
-        isReady: true,
-      };
+            scrollLeft: 0,
+            scrollWidth: 800,
+            clientWidth: 400,
+          },
+          isSameOrigin: true,
+          isReady: true,
+        };
       },
       addEventListener: () => {},
       removeEventListener: () => {},
@@ -440,7 +452,8 @@ void test("non-default navigation keeps loading busy even if thinking is busy", 
       isLoading: () => false,
       getWebContents: () => ({ isLoading: () => false }),
     };
-    TrafficManager.webviews[slot] = mockWebview as unknown as typeof TrafficManager.webviews[typeof slot];
+    TrafficManager.webviews[slot] =
+      mockWebview as unknown as (typeof TrafficManager.webviews)[typeof slot];
 
     TrafficManager._handleNavigation(slot, "https://chatgpt.com/c/next");
     assert.equal(TrafficManager.state[slot].status.loading, "busy");
@@ -454,11 +467,33 @@ void test("non-default navigation keeps loading busy even if thinking is busy", 
     AppState.getProviderIdForSlot = originalGetProvider;
     if (originalState !== undefined) TrafficManager.state[slot] = originalState;
     TrafficManager._skipNextLoading[slot] = originalSkip as boolean;
-    documentScope.document = originalDocument as { getElementById: (id: string) => HTMLElement | null; };
+    documentScope.document = originalDocument as {
+      getElementById: (id: string) => HTMLElement | null;
+    };
     if (originalWebview === undefined) {
       delete TrafficManager.webviews[slot];
     } else {
       TrafficManager.webviews[slot] = originalWebview;
     }
   }
+});
+
+void test("short conversation is ready without scrolling or a send button", async () => {
+  const tracker = TrafficManager.loadingTracker;
+  const state = { loadingActive: true, loadingStartTime: 1000 };
+  const result = await tracker.checkLoadingEnd(
+    "ai1",
+    state,
+    {
+      composerReady: true,
+      sendState: "missing",
+      scroll: { scrollHeight: 600, clientHeight: 600 },
+    },
+    1100,
+    { executeJavaScript: async () => null },
+    "https://chatgpt.com/c/test"
+  );
+  assert.equal(result.shouldEnd, true);
+  assert.equal(result.reason, "composer ready");
+  assert.equal(result.newState.loadingActive, false);
 });

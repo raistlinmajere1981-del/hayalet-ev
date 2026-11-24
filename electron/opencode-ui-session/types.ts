@@ -1,10 +1,3 @@
-export type JsonRecord = Record<string, unknown>;
-
-export interface OpencodeUiStoreOptions {
-  dbPath?: string;
-  now?: () => number;
-}
-
 export interface OpencodeUiSessionSummary {
   id: string;
   title: string;
@@ -97,28 +90,4 @@ export interface OpencodeUiReadSessionResult {
   success: boolean;
   session?: OpencodeUiSessionDetail;
   error?: string;
-}
-
-export interface SessionRow {
-  id: string;
-  title: string;
-  directory: string;
-  time_created: number;
-  time_updated: number;
-  time_archived?: number | null;
-  project_id: string;
-  version: string;
-  workspace_id?: string | null;
-}
-
-export interface MessageRow {
-  id: string;
-  data: string;
-  time_created: number;
-}
-
-export interface PartRow {
-  message_id: string;
-  data: string;
-  time_created: number;
 }

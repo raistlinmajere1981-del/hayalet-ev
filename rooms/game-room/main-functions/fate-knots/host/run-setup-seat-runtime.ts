@@ -95,10 +95,7 @@ function readUniverseId(payload: unknown): string | null {
   return isRecord(payload) ? readString(payload["universeId"]) : null;
 }
 
-function project(
-  api: FateKnotsPersistenceApi,
-  payload: unknown
-): SelectionResult {
+function project(api: FateKnotsPersistenceApi, payload: unknown): SelectionResult {
   const universeId = readUniverseId(payload);
   if (!universeId) {
     return {

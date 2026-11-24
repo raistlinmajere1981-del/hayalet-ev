@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createFateKnotsForgeOrchestrator } from "../../rooms/game-room/main-functions/fate-knots/host/forge-orchestration.ts";
-import { FATE_KNOTS_UNIVERSE_LIBRARY_STATE_KEY } from "../../rooms/game-room/main-functions/fate-knots/host/persistence.ts";
+import { FATE_KNOTS_UNIVERSE_STORE_KEY } from "../../rooms/game-room/main-functions/fate-knots/host/persistence.ts";
 
 function createMemoryApi() {
   const values = new Map<string, unknown>();
@@ -58,7 +58,7 @@ void test("World Forge requires generating then validating before candidate acce
   const premature = forge.complete("forge-2", {});
   assert.equal(premature.ok, false);
   if (!premature.ok) assert.equal(premature.error, "invalid-stage");
-  assert.equal(memory.values.has(FATE_KNOTS_UNIVERSE_LIBRARY_STATE_KEY), false);
+  assert.equal(memory.values.has(FATE_KNOTS_UNIVERSE_STORE_KEY), false);
 
   const wrongRequest = forge.markValidating("other-request");
   assert.equal(wrongRequest.ok, false);
@@ -81,7 +81,7 @@ void test("World Forge requires generating then validating before candidate acce
     acceptedUniverseId: null,
     failureCode: "candidate-rejected",
   });
-  assert.equal(memory.values.has(FATE_KNOTS_UNIVERSE_LIBRARY_STATE_KEY), false);
+  assert.equal(memory.values.has(FATE_KNOTS_UNIVERSE_STORE_KEY), false);
 });
 
 void test("World Forge provider failures expose only a normalized failure code", () => {

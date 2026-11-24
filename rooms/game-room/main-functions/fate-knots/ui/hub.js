@@ -167,14 +167,14 @@
       createElement(
         "p",
         "fate-knots-hub__universe-meta",
-        runs.length === 0 ? "Henüz koşu yok" : `${runs.length} kayıtlı koşu`
+        runs.length === 0 ? "Henüz macera yok" : `${runs.length} kayıtlı macera`
       )
     );
     heading.append(copy);
 
     const actions = createElement("div", "fate-knots-hub__actions");
     actions.append(
-      createButton("Yeni koşu", function () {
+      createButton("Yeni macera", function () {
         beginRunSetup(universe.universeId);
       }),
       createButton(
@@ -355,9 +355,7 @@
   }
 
   function hasSelectionConflict() {
-    const selectedIds = getEnabledSeatIds()
-      .map(selectedCharacterId)
-      .filter(Boolean);
+    const selectedIds = getEnabledSeatIds().map(selectedCharacterId).filter(Boolean);
     return new Set(selectedIds).size !== selectedIds.length;
   }
 
@@ -471,7 +469,7 @@
       createElement(
         "p",
         "fate-knots-hub__subtitle",
-        "Kaydedilmiş evrenlerini yönet; bir evren seçildiğinde oyun kendi kitabını açar."
+        "Her evren bir hikâye, her seçim yeni bir yol."
       )
     );
     header.append(titleGroup);
@@ -484,9 +482,11 @@
           sendCommand("GameRoomFateKnotsGetHubState", {});
         },
         { secondary: true }
-      ),
-      createButton("Yeni Evren", null, { disabled: true })
+      )
     );
+    const newUniverse = createButton("+ Yeni evren", null, { disabled: true });
+    newUniverse.dataset.fateKnotsCreate = "true";
+    headerActions.append(newUniverse);
     header.append(headerActions);
     shell.append(header);
 
@@ -496,7 +496,7 @@
     const hub = readRecord(state.hub);
     if (!hub) {
       shell.append(
-        createElement("div", "fate-knots-hub__empty", "Kayıt bilgileri host'tan bekleniyor…")
+        createElement("div", "fate-knots-hub__empty", "Evren arşivi host'tan bekleniyor…")
       );
       root.append(shell);
       return;
@@ -515,14 +515,27 @@
     const universes = readArray(hub.universes);
     const runs = readArray(hub.runs);
     const content = createElement("section", "fate-knots-hub__content");
+    const archiveHeading = createElement("div", "fate-knots-hub__archive-heading");
+    archiveHeading.append(
+      createElement("h2", "fate-knots-hub__universe-title", "Evrenler"),
+      createElement("span", "fate-knots-hub__universe-meta", String(universes.length) + " evren")
+    );
+    content.append(archiveHeading);
     if (universes.length === 0) {
-      content.append(
+      const empty = createElement("div", "fate-knots-hub__empty fate-knots-hub__archive-empty");
+      empty.append(
+        createElement("div", "fate-knots-hub__book-mark", "◇"),
+        createElement("h3", "fate-knots-hub__universe-title", "İlk hikâyen henüz yazılmadı"),
         createElement(
-          "div",
-          "fate-knots-hub__empty",
-          "Henüz kaydedilmiş bir evren yok. World Forge bağlantısı tamamlandığında yeni evren burada oluşturulacak."
+          "p",
+          "fate-knots-hub__subtitle",
+          "Yeni bir evren oluşturarak kendi macerana başlayabilirsin."
         )
       );
+      const create = createButton("İlk evrenini oluştur", null);
+      create.dataset.fateKnotsEmptyCreate = "true";
+      empty.append(create);
+      content.append(empty);
     } else {
       universes.forEach(function (universe) {
         const universeRuns = runs.filter(function (run) {
@@ -541,7 +554,7 @@
 
   function renderCurrent() {
     const root = document.getElementById("app");
-    if (root) render(root);
+    if (root) global.GameRoomFateKnotsUi.render(root);
   }
 
   function handleState(message) {
@@ -578,7 +591,11 @@
     if (error === "universe-rejected") return "Evren canonical doğrulamadan geçemedi.";
     if (error === "persistence-rejected") return "Kayıt durumu güvenli biçimde okunamadı.";
     if (error === "invalid-payload") return "Gönderilen hazırlık bilgisi geçersiz.";
-    return "Fate Knots komutu tamamlanamadı.";
+    const detail = readString(result && result.message);
+    return (
+      detail ||
+      (error ? "Macera işlemi tamamlanamadı (" + error + ")." : "Macera işlemi tamamlanamadı.")
+    );
   }
 
   function handleCommandResult(message) {

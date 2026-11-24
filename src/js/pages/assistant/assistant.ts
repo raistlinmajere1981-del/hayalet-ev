@@ -70,7 +70,6 @@ import {
   openOpencodeSettingsModal,
   refreshOpencodeDoctorStatus,
 } from "./opencode-doctor.js";
-import { resolveOpencodeUiDbPath } from "./opencode-preferences.js";
 import { bindAssistantBasicEvents } from "./event-bindings.js";
 import { populateAssistantProviderSelect } from "./provider-select.js";
 import {
@@ -1710,11 +1709,6 @@ export class AssistantController {
         const resumeSessionId = this._getResumeSessionId(providerId, options);
         if (resumeSessionId !== "") {
           parsed.searchParams.set("resumeSessionId", resumeSessionId);
-        }
-
-        const dbPath = resolveOpencodeUiDbPath(settings);
-        if (dbPath !== "") {
-          parsed.searchParams.set("dbPath", dbPath);
         }
 
         parsed.searchParams.set("theme", ThemeManager.current);

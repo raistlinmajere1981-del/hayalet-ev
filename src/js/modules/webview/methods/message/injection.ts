@@ -50,7 +50,7 @@ export async function sendMessage(
     const resolveInput = () => {
       for (const selector of inputSelectorCandidates) {
         try {
-          const found = document.querySelector(selector);
+          const found = Array.from(document.querySelectorAll(selector)).find(el => { const r = el.getBoundingClientRect(); const style = getComputedStyle(el); return r.width > 0 && r.height > 0 && style.visibility !== "hidden" && style.display !== "none"; });
           if (found) {
             return { element: found, selector };
           }
@@ -149,7 +149,7 @@ export async function sendMessage(
             let el = document.activeElement;
             for (const selector of inputSelectorCandidates) {
               try {
-                const found = document.querySelector(selector);
+                const found = Array.from(document.querySelectorAll(selector)).find(el => { const r = el.getBoundingClientRect(); const style = getComputedStyle(el); return r.width > 0 && r.height > 0 && style.visibility !== "hidden" && style.display !== "none"; });
                 if (found) {
                   el = found;
                   break;
@@ -197,7 +197,7 @@ export async function sendMessage(
             let el = document.activeElement;
             for (const selector of inputSelectorCandidates) {
               try {
-                const found = document.querySelector(selector);
+                const found = Array.from(document.querySelectorAll(selector)).find(el => { const r = el.getBoundingClientRect(); const style = getComputedStyle(el); return r.width > 0 && r.height > 0 && style.visibility !== "hidden" && style.display !== "none"; });
                 if (found) {
                   el = found;
                   break;
@@ -276,7 +276,7 @@ export async function sendMessage(
             let el = document.activeElement;
             for (const selector of inputSelectorCandidates) {
               try {
-                const found = document.querySelector(selector);
+                const found = Array.from(document.querySelectorAll(selector)).find(el => { const r = el.getBoundingClientRect(); const style = getComputedStyle(el); return r.width > 0 && r.height > 0 && style.visibility !== "hidden" && style.display !== "none"; });
                 if (found) {
                   el = found;
                   break;

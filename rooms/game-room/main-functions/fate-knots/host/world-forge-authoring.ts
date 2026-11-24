@@ -42,10 +42,44 @@ export type FateKnotsWorldForgeAuthoringResult =
       issues?: FateKnotsWorldForgeAuthoringIssue[];
     };
 
+export function validateAuthoredFateKnotsDraft(
+  request: FateKnotsWorldForgeRequest,
+  candidate: unknown
+): FateKnotsWorldForgeAuthoringResult {
+  const validated = validateFateKnotsWorldForgeDraftResponse(request, candidate);
+  if (!validated.ok || !validated.draft) {
+    return {
+      ok: false,
+      code: "draft-invalid",
+      message: "Evren taslağı doğrulanamadı.",
+      issues: validated.issues,
+    };
+  }
+  const playable = validateFateKnotsPlayableUniverse(validated.draft.universe);
+  if (!playable.valid) {
+    return {
+      ok: false,
+      code: "universe-not-playable",
+      message: "Evrenin oynanabilirlik kuralları doğrulanamadı.",
+      issues: playable.issues,
+    };
+  }
+  const cardArtIssues = validateFateKnotsCardArtBindings(validated.draft.universe);
+  if (cardArtIssues.length > 0) {
+    return {
+      ok: false,
+      code: "card-art-invalid",
+      message: "Kart ve görsel ilişkileri doğrulanamadı.",
+      issues: cardArtIssues,
+    };
+  }
+  return { ok: true, draft: validated.draft };
+}
+
 export async function authorFateKnotsWorldForgeDraft(
   api: GameRoomHostApi & FateKnotsTransportApi,
   request: FateKnotsWorldForgeRequest,
-  options: { provider?: FateKnotsForgeAuthoringProvider } = {}
+  options: { provider?: FateKnotsForgeAuthoringProvider; onRepair?: () => void } = {}
 ): Promise<FateKnotsWorldForgeAuthoringResult> {
   const provider = options.provider ?? "ai1";
   const opened = await openFateKnotsForgeProviderSession(
@@ -53,59 +87,54 @@ export async function authorFateKnotsWorldForgeDraft(
     provider,
     `Fate Knots World Forge · ${request.universeId}`
   );
-  if (!opened.ok) {
-    return { ok: false, code: "session-open-failed", message: opened.message };
-  }
+  if (!opened.ok) return { ok: false, code: "session-open-failed", message: opened.message };
 
-  setFateKnotsForgeSession(api, request.requestId, opened.sessionRef);
-  const transported = await dispatchFateKnotsForgeProviderJsonPrompt(
-    api,
-    provider,
-    buildFateKnotsWorldForgeAuthoringPrompt(request),
-    { sessionRef: opened.sessionRef, timeoutMs: 10 * 60_000 }
-  );
-  if (!transported.ok) {
+  let sessionRef = opened.sessionRef;
+  setFateKnotsForgeSession(api, request.requestId, sessionRef);
+  try {
+    const transported = await dispatchFateKnotsForgeProviderJsonPrompt(
+      api,
+      provider,
+      buildFateKnotsWorldForgeAuthoringPrompt(request),
+      { sessionRef, timeoutMs: 10 * 60_000 }
+    );
+    if (!transported.ok)
+      return { ok: false, code: "provider-failed", message: transported.message };
+    sessionRef = transported.sessionRef ?? sessionRef;
+    setFateKnotsForgeSession(api, request.requestId, sessionRef);
+    const initial = validateAuthoredFateKnotsDraft(request, transported.value);
+    if (initial.ok) return initial;
+    // One bounded correction in the same confirmed conversation, not a new
+    // universe and never an unbounded retry or a different provider.
+    if (!(sessionRef.conversationId || sessionRef.threadId || sessionRef.id)) return initial;
+    const repairRef = { ...sessionRef };
+    delete repairRef.openHint;
+    options.onRepair?.();
+    const repaired = await dispatchFateKnotsForgeProviderJsonPrompt(
+      api,
+      provider,
+      [
+        "Correct your immediately preceding World Forge JSON using the engine validation errors below.",
+        "Keep requestId, universeId, createdAt, existing story, IDs, and unrelated fields unchanged.",
+        "Return the COMPLETE corrected JSON object, no markdown or commentary.",
+        "music.stateCueIds is an object; use {} when no audio cues exist. card.presentation is an array.",
+        JSON.stringify(initial.issues ?? []),
+      ].join("\n"),
+      { sessionRef: repairRef, timeoutMs: 10 * 60_000 }
+    );
+    if (!repaired.ok)
+      return {
+        ...initial,
+        message: initial.message + " Düzeltme yanıtı alınamadı: " + repaired.message,
+      };
+    const checked = validateAuthoredFateKnotsDraft(request, repaired.value);
+    if (!checked.ok)
+      return {
+        ...checked,
+        message: checked.message + " Bir düzeltme turu tamamlandı ancak hatalar kaldı.",
+      };
+    return checked;
+  } finally {
     clearFateKnotsForgeSession(api);
-    return { ok: false, code: "provider-failed", message: transported.message };
   }
-
-  if (transported.sessionRef) {
-    setFateKnotsForgeSession(api, request.requestId, transported.sessionRef);
-  }
-
-  const validated = validateFateKnotsWorldForgeDraftResponse(request, transported.value);
-  if (!validated.ok || !validated.draft) {
-    clearFateKnotsForgeSession(api);
-    return {
-      ok: false,
-      code: "draft-invalid",
-      message: `World Forge draft failed ${validated.issues.length} validation check(s).`,
-      issues: validated.issues,
-    };
-  }
-
-  const playable = validateFateKnotsPlayableUniverse(validated.draft.universe);
-  if (!playable.valid) {
-    clearFateKnotsForgeSession(api);
-    return {
-      ok: false,
-      code: "universe-not-playable",
-      message: `World Forge draft failed ${playable.issues.length} playability check(s).`,
-      issues: playable.issues,
-    };
-  }
-
-  const cardArtIssues = validateFateKnotsCardArtBindings(validated.draft.universe);
-  if (cardArtIssues.length > 0) {
-    clearFateKnotsForgeSession(api);
-    return {
-      ok: false,
-      code: "card-art-invalid",
-      message: `World Forge draft failed ${cardArtIssues.length} card-art binding check(s).`,
-      issues: cardArtIssues,
-    };
-  }
-
-  clearFateKnotsForgeSession(api);
-  return { ok: true, draft: validated.draft };
 }

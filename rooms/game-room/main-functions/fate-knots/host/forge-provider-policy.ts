@@ -1,8 +1,7 @@
 export const FATE_KNOTS_FORGE_AUTHORING_PROVIDERS = ["ai1", "ai2"] as const;
 export const FATE_KNOTS_FORGE_ASSET_PROVIDERS = ["ai1", "ai0-local"] as const;
 
-export type FateKnotsForgeAuthoringProvider =
-  (typeof FATE_KNOTS_FORGE_AUTHORING_PROVIDERS)[number];
+export type FateKnotsForgeAuthoringProvider = (typeof FATE_KNOTS_FORGE_AUTHORING_PROVIDERS)[number];
 export type FateKnotsForgeAssetProvider = (typeof FATE_KNOTS_FORGE_ASSET_PROVIDERS)[number];
 
 export interface FateKnotsForgeExecutionPolicy {
@@ -26,7 +25,9 @@ export function isFateKnotsForgeAuthoringProvider(
   return value === "ai1" || value === "ai2";
 }
 
-export function isFateKnotsForgeAssetProvider(value: unknown): value is FateKnotsForgeAssetProvider {
+export function isFateKnotsForgeAssetProvider(
+  value: unknown
+): value is FateKnotsForgeAssetProvider {
   return value === "ai1" || value === "ai0-local";
 }
 

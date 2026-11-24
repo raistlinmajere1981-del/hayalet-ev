@@ -54,7 +54,7 @@ Direct combat `modify-stat` currently supports `speed` and `maxHp` only.
 
 ## Stage C — Persistence, story authority and host integration
 
-Status: core story, persistence and USER/AI2/US1 player lifecycle implemented and locally verified. The remaining external dependency before the living-book visual stage is the concrete World Forge image materializer from Stage D.
+Status: core story, persistence and player lifecycle implemented. Solo end-to-end engine acceptance passed on the generated universe (exploration, camp, loot, AI0 dialogue and combat, two finale routes). AI2/US1 live multiplayer and AI1 dynamic narration remain separate acceptance tasks.
 
 Delivered:
 
@@ -176,7 +176,7 @@ The playability gate requires at least one authored finale transition and, when 
 
 ## Stage D — World Forge and image materialization
 
-Status: headless orchestration complete; one concrete provider adapter remains.
+Status: complete for the AI1 authoring + AI0 shared OpenCode image path; live 37/37 asset acceptance passed on 2026-11-24. AI1 image authoring remains a separate live acceptance task.
 
 Delivered:
 
@@ -203,18 +203,16 @@ Delivered:
 - `host/forge-service.ts` keeps Forge disabled until a concrete adapter is registered
 - `MATERIALIZER-HANDOFF.md` defines the exact local/Codex adapter task
 
-Remaining hard dependency:
+Live acceptance:
 
-- implement one real `FateKnotsAssetMaterializerAdapter`
-- reuse/wrap existing generated-image extraction capability where practical
-- persist real source/crop files beneath managed Fate/Game Room storage
-- register the adapter through `registerFateKnotsAssetMaterializer`
-
-Do not fake this dependency with placeholder paths. Until a real adapter exists, Hub `Create universe` remains correctly blocked.
+- AI1 authored the first playable universe.
+- AI0 used the common OpenCode image tool; 37 managed assets verified.
+- Durable per-job checkpointing resumes only missing assets; 36 retained images verified unchanged by SHA-256.
+- No separate Codex CLI or room-owned OpenCode worker is required.
 
 ## Stage E — Babylon living-book runtime
 
-Status: local/Codex visual work after the concrete materializer boundary.
+Status: deferred until the next Fate Knots milestone. The current functional renderer is not the living-book presentation.
 
 Planned surfaces:
 

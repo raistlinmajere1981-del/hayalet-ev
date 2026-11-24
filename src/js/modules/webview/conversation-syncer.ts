@@ -539,7 +539,11 @@ class ConversationSyncerClass {
         { provider },
         { provider }
       );
-      return { success: false, message: syncT("syncAlreadyInProgress", { provider }) };
+      return {
+        success: false,
+        message: syncT("syncAlreadyInProgress", { provider }),
+        transient: true,
+      };
     }
     this._syncInProgress[provider] = true;
 
@@ -568,6 +572,15 @@ class ConversationSyncerClass {
       );
 
       const rawUrl = webview.getURL?.() ?? "";
+      // ChatGPT may expose a provisional local-chatgpt URL during the first
+      // turn. Wait for a canonical conversation before archiving its messages.
+      if (providerId === "chatgpt" && !/\/c\/[0-9a-f]{8}-[0-9a-f-]{27}(?:[/?#]|$)/i.test(rawUrl)) {
+        return {
+          success: false,
+          transient: true,
+          message: "ChatGPT conversation is not committed yet",
+        };
+      }
       const webUrl = normalizeSyncWebUrl(providerId, rawUrl);
 
       const { existing, prevCount, newEntry } = await this._getArchiveStatus(provider, webUrl);

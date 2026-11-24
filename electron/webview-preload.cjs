@@ -1,9 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 let __global_app_slot = null;
-const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
 const ASSISTANT_TRANSCRIPT_INGRESS_CHANNEL = "assistant-transcript-ingress";
-const opencodeUiSessionUpdatedHandlers = new Map();
 const assistantTranscriptIngressHandlers = new Map();
 let __app_preload_locale = "tr";
 let __app_preload_catalog = null;
@@ -245,30 +243,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opencodeUiSharedStateRead: () => ipcRenderer.invoke("opencode-ui-shared-state-read"),
   opencodeUiSharedStateWrite: (state) =>
     ipcRenderer.invoke("opencode-ui-shared-state-write", state),
-  opencodeUiFsListSessions: (dbPath) => ipcRenderer.invoke("opencode-ui-fs-list-sessions", dbPath),
-  opencodeUiFsEnsureSession: (sessionId, title, dbPath) =>
-    ipcRenderer.invoke("opencode-ui-fs-ensure-session", sessionId, title, dbPath),
-  opencodeUiFsReadSession: (sessionId, dbPath) =>
-    ipcRenderer.invoke("opencode-ui-fs-read-session", sessionId, dbPath),
-  opencodeUiFsArchiveSession: (sessionId, archived, dbPath) =>
-    ipcRenderer.invoke("opencode-ui-fs-archive-session", sessionId, archived, dbPath),
-  opencodeUiSessionWatchStart: (sessionId, dbPath) =>
-    ipcRenderer.invoke("opencode-ui-session-watch-start", sessionId, dbPath),
-  opencodeUiSessionWatchStop: () => ipcRenderer.invoke("opencode-ui-session-watch-stop"),
-  opencodeUiOnSessionUpdated: (callback) => {
-    if (typeof callback !== "function" || opencodeUiSessionUpdatedHandlers.has(callback)) {
-      return;
-    }
-    const handler = (_event, payload) => callback(payload);
-    opencodeUiSessionUpdatedHandlers.set(callback, handler);
-    ipcRenderer.on(OPENCODE_UI_SESSION_UPDATED_CHANNEL, handler);
-  },
-  opencodeUiOffSessionUpdated: (callback) => {
-    const handler = opencodeUiSessionUpdatedHandlers.get(callback);
-    if (!handler) return;
-    ipcRenderer.removeListener(OPENCODE_UI_SESSION_UPDATED_CHANNEL, handler);
-    opencodeUiSessionUpdatedHandlers.delete(callback);
-  },
+  opencodeUiListSessions: (port) => ipcRenderer.invoke("opencode-ui-list-sessions", port),
+  opencodeUiReadSession: (sessionId, port) =>
+    ipcRenderer.invoke("opencode-ui-read-session", sessionId, port),
+  opencodeUiArchiveSession: (sessionId, archived, port) =>
+    ipcRenderer.invoke("opencode-ui-archive-session", sessionId, archived, port),
+
   transcriptStatus: () => ipcRenderer.invoke("transcript-status"),
   transcriptEnsureRuntime: () => ipcRenderer.invoke("transcript-ensure-runtime"),
   transcriptTranscribeLocal: (request) =>
@@ -428,6 +408,7 @@ function setupProvider() {
   }
 
   setInterval(() => {
+    checkReady();
     updateSend();
     updateThinking();
   }, 1000);

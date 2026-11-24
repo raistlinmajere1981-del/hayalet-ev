@@ -373,11 +373,50 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
       system: [profileResolution.system, interactionSystemPrompt].filter(Boolean).join("\n\n"),
     });
 
-    const response = await apiCall<unknown>(
-      "POST",
-      `/session/${encodeURIComponent(sessionId)}/message`,
-      body
+    const sessionPath = "/api/session/" + encodeURIComponent(sessionId);
+    if (context.runtime.activeAgentId !== null)
+      await apiCall("POST", sessionPath + "/agent", { agent: context.runtime.activeAgentId });
+    if (modelMeta !== undefined && modelMeta.providerId !== "" && modelMeta.modelId !== "")
+      await apiCall("POST", sessionPath + "/model", {
+        model: {
+          providerID: modelMeta.providerId,
+          id: modelMeta.modelId,
+          ...(selectedVariant ? { variant: selectedVariant.key } : {}),
+        },
+      });
+    const instructions = typeof body["system"] === "string" ? body["system"] : "";
+    await apiCall(
+      "PUT",
+      "/api/experimental/session/" +
+        encodeURIComponent(sessionId) +
+        "/instructions/entries/hev-assistant",
+      {
+        value: { instructions, hash: profileResolution.hash },
+      }
     );
+    await apiCall("POST", sessionPath + "/prompt", {
+      text,
+      files: stagedAttachments.map((attachment) => ({
+        uri: buildDataUrl(attachment.mimeType, attachment.base64),
+        name: attachment.name,
+      })),
+    });
+    await apiCall(
+      "POST",
+      "/api/experimental/session/" + encodeURIComponent(sessionId) + "/wait",
+      {}
+    );
+    const history = await apiCall<unknown>(
+      "GET",
+      sessionPath + "/message?type=assistant&order=desc&limit=1"
+    );
+    const rows: unknown[] = Array.isArray(history) ? history : [];
+    const latest = rows[0];
+    const latestRecord =
+      latest !== null && typeof latest === "object" && !Array.isArray(latest)
+        ? (latest as Record<string, unknown>)
+        : null;
+    const response = latestRecord === null ? {} : { parts: latestRecord["content"] ?? [] };
     const fallbackMessage = extractAssistantMessageContent(response);
     const interactionCandidateText = extractLatestAssistantTextPart(response);
     const parsedInteractionCandidate =

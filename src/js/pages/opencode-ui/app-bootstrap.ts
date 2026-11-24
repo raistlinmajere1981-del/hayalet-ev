@@ -40,11 +40,9 @@ export async function bootstrapOpencodeUiApp(
   const port = params.get("port") ?? "4096";
   const resumeSessionId = params.get("resumeSessionId") ?? "";
   const resumeMode = params.get("resumeMode") ?? "";
-  const dbPath = params.get("dbPath") ?? "";
   const baseUrl = `http://127.0.0.1:${port}`;
 
   options.runtime.baseUrl = baseUrl;
-  options.runtime.dbPath = dbPath;
 
   options.setApiBaseUrl(baseUrl);
   options.setWorkspaceUrlLabel(window.location.href);

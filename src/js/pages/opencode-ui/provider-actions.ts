@@ -158,6 +158,42 @@ export async function updateModelPreferences(
   applyModelState(context);
 }
 
+export async function loadV2ModelCatalog(): Promise<Record<string, unknown>> {
+  const models = await apiCall<Array<Record<string, unknown>>>("GET", "/api/model?types=chat");
+  if (!Array.isArray(models)) throw new Error("Invalid model inventory");
+  const providers = new Map<
+    string,
+    { id: string; name: string; models: Record<string, unknown>[] }
+  >();
+  for (const model of models) {
+    const id = model["providerID"];
+    if (typeof id !== "string" || model["enabled"] === false) continue;
+    if (!providers.has(id)) providers.set(id, { id, name: id, models: [] });
+    const rawVariants: unknown[] = Array.isArray(model["variants"]) ? model["variants"] : [];
+    const variants = Object.fromEntries(
+      rawVariants
+        .filter(
+          (v): v is { id: string; settings?: unknown } =>
+            v !== null && typeof v === "object" && "id" in v && typeof v["id"] === "string"
+        )
+        .map((v) => [v.id, v.settings ?? {}] as const)
+    );
+    providers.get(id)?.models.push({ ...model, variants });
+  }
+  const selected = await apiCall<Record<string, unknown> | null>("GET", "/api/model/default").catch(
+    () => null
+  );
+  const defaults =
+    selected && typeof selected["providerID"] === "string" && typeof selected["id"] === "string"
+      ? { [selected["providerID"]]: selected["id"] }
+      : {};
+  return {
+    providers: [...providers.values()],
+    connected: [...providers.keys()],
+    default: defaults,
+  };
+}
+
 export async function loadModels(
   context: ProviderContext,
   payloadOverride?: unknown,
@@ -171,7 +207,7 @@ export async function loadModels(
   await ensureModelPreferencesLoaded(context);
 
   try {
-    const payload = payloadOverride ?? (await apiCall<unknown>("GET", "/config/providers"));
+    const payload = payloadOverride ?? (await loadV2ModelCatalog());
     const modelItems = normalizeModelItems(payload);
     const providerItems = providerItemsOverride ?? normalizeProviderItemsFromConfig(payload);
 
@@ -232,10 +268,8 @@ export async function loadProviderContextAndModels(
   configPayloadOverride?: unknown
 ): Promise<void> {
   try {
-    const providerPayload =
-      providerPayloadOverride ?? (await apiCall<Record<string, unknown>>("GET", "/provider"));
-    const configPayload =
-      configPayloadOverride ?? (await apiCall<Record<string, unknown>>("GET", "/config/providers"));
+    const configPayload = configPayloadOverride ?? (await loadV2ModelCatalog());
+    const providerPayload = providerPayloadOverride ?? configPayload;
 
     const connectedIds = normalizeConnectedProviderIds(providerPayload);
     const catalog = normalizeProviderItemsFromConfig(configPayload);

@@ -219,7 +219,11 @@ function isGlobalCssOverrideSelector(selector) {
 
 function isIntentionalScopedDuplicateVar(varName, selector) {
   // Scene-view overrides for component-scoped custom properties — check BEFORE global selector filter
-  if (selector !== null && selector.includes('data-presentation-mode="scene-view"]') && varName.startsWith("--tt-")) {
+  if (
+    selector !== null &&
+    selector.includes('data-presentation-mode="scene-view"]') &&
+    varName.startsWith("--tt-")
+  ) {
     return true;
   }
 
@@ -490,15 +494,15 @@ function summarizeIssues(inputIssues) {
   return byRule;
 }
 
-function loadBaseline() {
-  if (!existsSync(BASELINE_PATH)) {
+function loadBaseline(baselinePath) {
+  if (!existsSync(baselinePath)) {
     return null;
   }
-  return JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
+  return JSON.parse(readFileSync(baselinePath, "utf8"));
 }
 
-function writeBaseline(sortedIssues) {
-  mkdirSync(dirname(BASELINE_PATH), { recursive: true });
+function writeBaseline(sortedIssues, baselinePath) {
+  mkdirSync(dirname(baselinePath), { recursive: true });
   const payload = {
     schemaVersion: 1,
     updatedAt: new Date().toISOString(),
@@ -509,7 +513,7 @@ function writeBaseline(sortedIssues) {
       fingerprint: issueFingerprint(issue),
     })),
   };
-  writeFileSync(BASELINE_PATH, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  writeFileSync(baselinePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
 function emitJson(payload) {
@@ -567,6 +571,10 @@ function emitTextFailure(header, diffs, sortedIssues) {
 
 function main() {
   const options = parseArgs(process.argv.slice(2));
+  const baselinePath =
+    options.scope === "rooms"
+      ? join(dirname(BASELINE_PATH), "design-system-audit-rooms-baseline.json")
+      : BASELINE_PATH;
   const files = resolveScanRoots(options.scope).flatMap((rootPath) =>
     existsSync(rootPath) ? walkFiles(rootPath) : []
   );
@@ -631,24 +639,24 @@ function main() {
   const sortedIssues = sortIssues(issues);
 
   if (options.updateBaseline) {
-    writeBaseline(sortedIssues);
+    writeBaseline(sortedIssues, baselinePath);
     if (options.format === "json") {
       emitJson({
         updatedBaseline: true,
-        baselinePath: toProjectPath(BASELINE_PATH),
+        baselinePath: toProjectPath(baselinePath),
         totalIssues: sortedIssues.length,
         byRule: summarizeIssues(sortedIssues),
       });
       return;
     }
     console.log(
-      `Design system audit baseline updated at ${toProjectPath(BASELINE_PATH)} with ${sortedIssues.length} issue(s).`
+      `Design system audit baseline updated at ${toProjectPath(baselinePath)} with ${sortedIssues.length} issue(s).`
     );
     return;
   }
 
   if (options.useBaseline) {
-    const baseline = loadBaseline();
+    const baseline = loadBaseline(baselinePath);
     if (baseline !== null) {
       const currentByFingerprint = new Map(
         sortedIssues.map((issue) => [issueFingerprint(issue), issue])
@@ -667,7 +675,7 @@ function main() {
       if (options.format === "json") {
         emitJson({
           passed: added.length === 0 && removed.length === 0,
-          baselinePath: toProjectPath(BASELINE_PATH),
+          baselinePath: toProjectPath(baselinePath),
           totalIssues: sortedIssues.length,
           byRule: summarizeIssues(sortedIssues),
           added,

@@ -111,7 +111,6 @@ type BootstrapContext = Parameters<typeof initializeSessionSelectionFromModule>[
 
 const runtime: RuntimeState = {
   baseUrl: "http://127.0.0.1:4096",
-  dbPath: "",
   activeSessionId: null,
   sessionTab: "active",
   submittingSessionId: null,
@@ -146,7 +145,7 @@ let chatScrollTrackingBound = false;
 let programmaticChatScrollDepth = 0;
 
 function getInitialUsageText(): string {
-  return t("usage.diskDb");
+  return t("usage.serverApi");
 }
 
 function resolveHostBridgeErrorMessage(error: unknown): string {
@@ -169,23 +168,6 @@ async function setActiveSession(sessionId: string | null): Promise<void> {
     lastSessionId: sessionId != null && sessionId !== "" ? sessionId : null,
   }));
   sendSessionChangedToHost(sessionId);
-  const api = window.electronAPI as
-    | undefined
-    | {
-        opencodeUiSessionWatchStart?: (sessionId: string, dbPath?: string) => Promise<unknown>;
-        opencodeUiSessionWatchStop?: () => Promise<unknown>;
-      };
-  if (!api) {
-    return;
-  }
-
-  const normalized = typeof sessionId === "string" ? sessionId.trim() : "";
-  const dbPath = runtime.dbPath.trim() !== "" ? runtime.dbPath.trim() : undefined;
-  if (normalized !== "") {
-    void api.opencodeUiSessionWatchStart?.(normalized, dbPath);
-  } else {
-    void api.opencodeUiSessionWatchStop?.();
-  }
 }
 
 async function hydrateRuntimeFromSharedState(): Promise<void> {
@@ -244,20 +226,16 @@ function renderHistoricToolCall(targetContainer: HTMLElement, toolCall: Opencode
   renderHistoricToolCallFromModule(targetContainer, toolCall);
 }
 
-async function listSessionsFromDisk(): Promise<OpencodeUiSessionSummary[]> {
-  return await sessionStorage.listSessionsFromDisk();
+async function listServerSessions(): Promise<OpencodeUiSessionSummary[]> {
+  return await sessionStorage.listServerSessions();
 }
 
-async function ensureSessionInDisk(sessionId: string, title?: string): Promise<void> {
-  await sessionStorage.ensureSessionInDisk(sessionId, title);
+async function readServerSession(sessionId: string): Promise<OpencodeUiSessionDetail | null> {
+  return await sessionStorage.readServerSession(sessionId);
 }
 
-async function readSessionFromDisk(sessionId: string): Promise<OpencodeUiSessionDetail | null> {
-  return await sessionStorage.readSessionFromDisk(sessionId);
-}
-
-async function archiveSessionInDisk(sessionId: string, archived = true): Promise<void> {
-  await sessionStorage.archiveSessionInDisk(sessionId, archived);
+async function archiveServerSession(sessionId: string, archived = true): Promise<void> {
+  await sessionStorage.archiveServerSession(sessionId, archived);
 }
 
 function getSessionsForTab(
@@ -288,13 +266,12 @@ function sessionListContext(): SessionListContext {
     runtime,
     byId,
     formatTimestamp,
-    listSessionsFromDisk,
-    archiveSessionInDisk,
+    listServerSessions,
+    archiveServerSession,
     loadActiveSessionHistory,
     loadSessionListAndRender,
     setActiveSession,
     createServerSession,
-    ensureSessionInDisk,
     reportError: (error: unknown, options?: { defaultTitleKey: string }): void => {
       appendAssistantNotice(error, {
         defaultTitleKey: options?.defaultTitleKey ?? "session.actionFailedTitle",
@@ -318,7 +295,7 @@ function historyContext(): HistoryContext {
     addMessage,
     createHistoricAssistantToolHost,
     renderHistoricToolCall,
-    readSessionFromDisk,
+    readServerSession,
     scrollChatToBottom,
     buildSessionSnapshotKey,
     wait,
@@ -342,7 +319,7 @@ function bootstrapContext(): BootstrapContext {
     runtime,
     byId,
     getSessionsForTab,
-    listSessionsFromDisk,
+    listServerSessions,
     createServerSession,
     setActiveSession,
     loadSessionListAndRender,
@@ -508,14 +485,13 @@ async function withHistorySyncFallback(fallbackMessage: {
 }
 
 async function createServerSession(title = t("session.createDefaultTitle")): Promise<string> {
-  const response = await apiCall<unknown>("POST", "/session", { title });
+  const response = await apiCall<unknown>("POST", "/api/session", { title });
   const sessionId = normalizeSessionId(response);
 
   if (sessionId === "") {
     throw new Error(t("session.sessionIdUnavailable"));
   }
 
-  await ensureSessionInDisk(sessionId, title);
   return sessionId;
 }
 
@@ -524,7 +500,7 @@ async function ensureActiveSession(): Promise<string> {
     return runtime.activeSessionId;
   }
 
-  const sessions = await listSessionsFromDisk();
+  const sessions = await listServerSessions();
   const visibleSessions = getSessionsForTab(sessions, "active");
   if (visibleSessions.length > 0) {
     const firstId = visibleSessions[0]?.id;
@@ -692,7 +668,7 @@ async function loadAgents(): Promise<void> {
   }
 
   try {
-    const payload = await apiCall<unknown>("GET", "/agent");
+    const payload = await apiCall<unknown>("GET", "/api/agent");
     const items = normalizeAgentItems(payload);
     if (items.length === 0) {
       modeDropdown.setError(t("provider.none"));

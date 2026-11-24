@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { deflateSync } from "node:zlib";
 import {
-  decodeNativeImageResult,
-  generateNativeImage,
-  hasNativeImageCapability,
-  NATIVE_IMAGE_ROUTE,
+  assertImagePlugin,
+  imageSize,
+  readImageToolResult,
 } from "../../electron/ai0/native-image-service.ts";
 import type { Ai0Engine } from "../../electron/ai0/opencode-process.ts";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { join } from "node:path";
 
 function png(): Buffer {
   const chunk = (name: string, bytes: Buffer): Buffer => {
@@ -36,69 +37,72 @@ function png(): Buffer {
   ]);
 }
 
-void test("native image transport uses the user's OpenCode image API without dispatcher or custom OAuth", async () => {
-  const bytes = png();
-  const calls: Array<{ method: string; path: string; body: unknown; timeout: unknown }> = [];
-  const engine: Ai0Engine = {
-    workspacePath: "/tmp/hev-native-images",
-    port: 4151,
-    stop: async () => {},
-    request: async (method, path, body, timeout) => {
-      calls.push({ method, path, body, timeout });
-      if (method === "GET")
-        return { data: [{ id: "opencode.config.image", state: { status: "active" } }] };
-      return {
-        data: { images: [{ type: "image", mime: "image/png", data: bytes.toString("base64") }] },
-      };
-    },
-  };
-  assert.equal(await hasNativeImageCapability(engine), true);
-  const result = await generateNativeImage(
-    engine,
-    { providerID: "openai", id: "gpt-image-2" },
-    "glowing blue dragon",
-    "3:2",
-    10_000
-  );
-  assert.deepEqual(result, bytes);
-  assert.equal(calls[1]?.path, NATIVE_IMAGE_ROUTE);
-  assert.equal(calls[1]?.method, "POST");
-  assert.deepEqual(calls[1]?.body, {
-    model: { providerID: "openai", id: "gpt-image-2" },
-    prompt: "glowing blue dragon",
-    n: 1,
-    aspect: "3:2",
-    resolution: "1K",
-  });
-  assert.equal(calls[1]?.timeout, 10_000);
+void test("image size uses the installed plugin's supported dimensions", () => {
+  assert.equal(imageSize("1:1"), "1254x1254");
+  assert.equal(imageSize("3:2"), "1536x1024");
+  assert.equal(imageSize("16:9"), "1672x941");
+  assert.throws(() => imageSize("0:1"), /aspect/);
 });
-
-void test("native image output rejects missing, unsafe, and unverified files", () => {
-  const bytes = png();
-  const ok = (data: string): unknown => ({
-    data: { images: [{ type: "image", mime: "image/png", data }] },
-  });
-  assert.deepEqual(decodeNativeImageResult(ok(bytes.toString("base64"))), bytes);
-  assert.throws(() => decodeNativeImageResult({ data: { images: [] } }), /exactly one/);
-  assert.throws(() => decodeNativeImageResult(ok("not-base64!")), /invalid base64/);
-  assert.throws(() => decodeNativeImageResult(ok(Buffer.from("fake").toString("base64"))), /PNG/);
-  assert.throws(
-    () =>
-      decodeNativeImageResult({
-        data: { images: [{ type: "image", mime: "image/webp", data: bytes.toString("base64") }] },
-      }),
-    /PNG/
-  );
-});
-
-void test("a missing or inactive native image plugin never claims readiness", async () => {
+void test("plugin discovery only accepts the installed active image plugin", async () => {
+  let active = true;
   const engine: Ai0Engine = {
-    workspacePath: "/tmp/hev-native-images",
+    workspacePath: "/tmp/hev",
     port: 4151,
     stop: async () => {},
     request: async () => ({
-      data: [{ id: "opencode.config.image", state: { status: "inactive" } }],
+      data: [
+        { id: "opencode.config.image", state: { status: "active" } },
+        { id: "opencode-gpt-imagegen", state: { status: active ? "active" : "inactive" } },
+      ],
     }),
   };
-  assert.equal(await hasNativeImageCapability(engine), false);
+  await assertImagePlugin(engine);
+  active = false;
+  await assert.rejects(assertImagePlugin(engine), /unavailable/);
+});
+void test("image tool output must be exactly one completed call and a validated owned PNG", async () => {
+  const root = await mkdtemp("/tmp/hev-image-test-");
+  try {
+    const out = join(root, "asset.png");
+    await writeFile(out, png());
+    const part = {
+      type: "tool",
+      name: "gpt_imagegen",
+      state: { status: "completed", input: { out }, metadata: { out, versioned: false } },
+    };
+    assert.deepEqual(await readImageToolResult([{ content: [part] }], root, out), png());
+    await assert.rejects(
+      readImageToolResult([{ content: [part, part] }], root, out),
+      /exactly one/
+    );
+    await assert.rejects(
+      readImageToolResult(
+        [{ content: [{ ...part, state: { ...part.state, status: "error" } }] }],
+        root,
+        out
+      ),
+      /failed/
+    );
+    await assert.rejects(
+      readImageToolResult(
+        [
+          {
+            content: [
+              {
+                ...part,
+                state: { ...part.state, metadata: { out: "/tmp/foreign.png", versioned: false } },
+              },
+            ],
+          },
+        ],
+        root,
+        out
+      ),
+      /unexpected output/
+    );
+    await writeFile(out, "fake");
+    await assert.rejects(readImageToolResult([{ content: [part] }], root, out), /PNG/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

@@ -12,7 +12,6 @@ export interface PathResolver {
   getProjectRoot(): string;
   getDataDir(): string;
   getAi0RuntimeRoot(): string;
-  getAi0ImagePluginBundlePath(): string;
   getAi0ImageArtifactsDir(): string;
   getConfigDir(): string;
   getLogsDir(): string;

@@ -8,18 +8,12 @@ import {
   FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES,
   createFateKnotsCombatOptionCommands,
 } from "./combat-options-runtime.js";
-import {
-  FATE_KNOTS_CAMP_COMMAND_NAMES,
-  createFateKnotsCampCommands,
-} from "./camp-runtime.js";
+import { FATE_KNOTS_CAMP_COMMAND_NAMES, createFateKnotsCampCommands } from "./camp-runtime.js";
 import {
   FATE_KNOTS_EXPLORATION_CONSENSUS_COMMAND_NAMES,
   createFateKnotsExplorationConsensusCommands,
 } from "./exploration-consensus-runtime.js";
-import {
-  FATE_KNOTS_LOOT_COMMAND_NAMES,
-  createFateKnotsLootCommands,
-} from "./loot-runtime.js";
+import { FATE_KNOTS_LOOT_COMMAND_NAMES, createFateKnotsLootCommands } from "./loot-runtime.js";
 import {
   loadFateKnotsRunStore,
   loadFateKnotsUniverseStore,
@@ -176,7 +170,10 @@ function loadCanonicalUniverseForRun(api: FateKnotsAi2LifecycleApi, universeId: 
   return canonical.valid && canonical.package ? canonical.package : null;
 }
 
-function activeAi2ActorId(run: { partyActorIds: string[]; actors: Array<{ actorId: string; seatId?: string | null }> }): string | null {
+function activeAi2ActorId(run: {
+  partyActorIds: string[];
+  actors: Array<{ actorId: string; seatId?: string | null }>;
+}): string | null {
   const partyIds = new Set(run.partyActorIds);
   const matches = run.actors.filter(
     (actor) => partyIds.has(actor.actorId) && actor.seatId === "ai2"
@@ -224,8 +221,9 @@ export async function requestFateKnotsAi2RunCharacter(
     universeId,
     characterId: "<CHARACTER_ID>",
   });
-  const characterLines = setup.characters.map((character) =>
-    `${character.characterId}: ${character.name} · HP ${character.baseStats.maxHp} · ATK ${character.baseStats.attack} · DEF ${character.baseStats.defense} · SPD ${character.baseStats.speed} · ENG ${character.baseStats.energy}`
+  const characterLines = setup.characters.map(
+    (character) =>
+      `${character.characterId}: ${character.name} · HP ${character.baseStats.maxHp} · ATK ${character.baseStats.attack} · DEF ${character.baseStats.defense} · SPD ${character.baseStats.speed} · ENG ${character.baseStats.energy}`
   );
   const text = [
     "[SETUP][GAME-ROOM][FATE-KNOTS][AI2]",
@@ -264,7 +262,11 @@ async function dispatchExploration(
   if (!result.ok || !result.state.consensus) return false;
   const consensus = result.state.consensus;
   const ai2Choice = consensus.choices.find((choice) => choice.seatId === "ai2");
-  if (!ai2Choice || ai2Choice.transitionId !== null || consensus.availableTransitions.length === 0) {
+  if (
+    !ai2Choice ||
+    ai2Choice.transitionId !== null ||
+    consensus.availableTransitions.length === 0
+  ) {
     clearExpectedAi2Command(api);
     return true;
   }
@@ -318,8 +320,7 @@ async function dispatchCombat(
   const optionCommands = createFateKnotsCombatOptionCommands(api);
   const getOptions = optionCommands[FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES.getAi2Options];
   const discussionCommands = createFateKnotsCombatDiscussionCommands(api);
-  const getDiscussion =
-    discussionCommands[FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.getAi2];
+  const getDiscussion = discussionCommands[FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.getAi2];
   if (!getOptions || !getDiscussion) return false;
   const options = getOptions({ runId });
   const discussion = getDiscussion({ runId });
@@ -439,9 +440,7 @@ export async function dispatchFateKnotsAi2LifecycleIfNeeded(
     clearExpectedAi2Command(api);
     return true;
   }
-  const snapshot = runs.store.entries.find(
-    (entry) => entry.run.runId === runs.store.activeRunId
-  );
+  const snapshot = runs.store.entries.find((entry) => entry.run.runId === runs.store.activeRunId);
   if (!snapshot) {
     clearExpectedAi2Command(api);
     return true;

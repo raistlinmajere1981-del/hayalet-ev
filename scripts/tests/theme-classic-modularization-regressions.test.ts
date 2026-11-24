@@ -71,7 +71,7 @@ void test("classic scene scale tokens and theme aliases are centralized", () => 
   assert.doesNotMatch(opencodeUiTabsSource, /max-height: 52vh;/);
   assert.match(
     opencodeUiTabsSource,
-    /max-height: min\(62vh, var\(--layout-opencode-model-settings-list-max-h\)\);/
+    /\.model-settings-modal\s*\{[^}]*height: 91vh;[^}]*max-height: 91vh;/
   );
 });
 

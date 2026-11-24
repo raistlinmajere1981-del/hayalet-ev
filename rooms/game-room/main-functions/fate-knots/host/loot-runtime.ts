@@ -168,9 +168,9 @@ function loadContext(
   return { ok: true, context: { run: snapshot.run, universe: canonical.package } };
 }
 
-function buildSeatMap(run: FateKnotsRunState):
-  | { ok: true; value: FateKnotsLootSeatMap }
-  | { ok: false; result: FateKnotsLootCommandResult } {
+function buildSeatMap(
+  run: FateKnotsRunState
+): { ok: true; value: FateKnotsLootSeatMap } | { ok: false; result: FateKnotsLootCommandResult } {
   const partyIds = new Set(run.partyActorIds);
   const actorIdBySeat = new Map<FateKnotsLootPlayerSeatId, string>();
 
@@ -299,7 +299,10 @@ function readHotState(value: unknown): FateKnotsLootHotState | null {
   };
 }
 
-function scopedHotState(api: FateKnotsPersistenceApi, run: FateKnotsRunState): FateKnotsLootHotState {
+function scopedHotState(
+  api: FateKnotsPersistenceApi,
+  run: FateKnotsRunState
+): FateKnotsLootHotState {
   const signature = poolSignature(run);
   const stored = readHotState(api.getState(LOOT_COORDINATION_STATE_KEY));
   if (
@@ -442,9 +445,7 @@ function propose(
 
   const allocations = readProposal(payload, loaded.context.run);
   if (!allocations) {
-    return fail("loot-proposal-rejected", [
-      { source: "payload", code: "invalid-loot-proposal" },
-    ]);
+    return fail("loot-proposal-rejected", [{ source: "payload", code: "invalid-loot-proposal" }]);
   }
 
   const hot = scopedHotState(api, loaded.context.run);
@@ -459,7 +460,7 @@ function propose(
   }
   api.setState(LOOT_COORDINATION_STATE_KEY, hot);
 
-  return { ok: true, state: project(loaded.context.run, seatMap.value, hot), issues: [] };
+  return resolveIfUnanimous(api, loaded.context, seatMap.value, hot);
 }
 
 function resolveIfUnanimous(

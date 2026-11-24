@@ -1,3 +1,4 @@
+import { waitForChatGptNewConversation } from "./chatgpt-session-readiness.js";
 import { generateUniqueId } from "../../constants/index.js";
 import {
   getErrorMessage,
@@ -21,7 +22,6 @@ import { SlotController, SlotState } from "../slot-controller.js";
 import { SettingsManager } from "../settings-manager.js";
 import { TrafficManager } from "../traffic-manager.js";
 import { replaceProtocolTagsWithResolver } from "../../../../shared/protocol-tags.js";
-import { resolveOpencodeUiDbPath } from "../../pages/assistant/opencode-preferences.js";
 import { AssistantProviderRegistry } from "../../pages/assistant/provider-registry.js";
 import { hashString } from "../webview/providers/shared/scraper-helpers.js";
 import { ProviderRegistry } from "../webview/provider-registry.js";
@@ -69,6 +69,7 @@ interface SlotBridgeConversationListManagerRef {
 
 interface SlotBridgeWebviewRef {
   executeJavaScript(script: string): Promise<unknown>;
+  loadURL?(url: string): Promise<void>;
 }
 
 interface SlotBridgeWebviewManagerRef {
@@ -1388,11 +1389,6 @@ function resolveAssistantConnectUrl(baseUrl: string, providerId: string): string
         parsed.searchParams.set("resumeSessionId", resumeSessionId);
       }
 
-      const dbPath = resolveOpencodeUiDbPath(settings);
-      if (dbPath !== "") {
-        parsed.searchParams.set("dbPath", dbPath);
-      }
-
       const themeManager =
         window.__ThemeManager !== null && typeof window.__ThemeManager === "object"
           ? (window.__ThemeManager as { current?: unknown })
@@ -1938,8 +1934,7 @@ function mergeSyncedAndArchivedReply(
   if (syncedMessageId !== "" && syncedMessageId === archivedMessageId) {
     const syncedAttachments = syncedReply.attachments ?? [];
     const archivedAttachments = archivedReply.attachments ?? [];
-    const attachments =
-      archivedAttachments.length > 0 ? archivedAttachments : syncedAttachments;
+    const attachments = archivedAttachments.length > 0 ? archivedAttachments : syncedAttachments;
     return {
       ...syncedReply,
       ...(archivedReply.brokerMessageId !== undefined
@@ -2041,11 +2036,7 @@ async function waitForReply(
       envelope,
       previousReply?.eventSeq ?? null
     );
-    const reply = mergeSyncedAndArchivedReply(
-      syncResult.latestReply,
-      archivedReply,
-      previousReply
-    );
+    const reply = mergeSyncedAndArchivedReply(syncResult.latestReply, archivedReply, previousReply);
     const replyChanged =
       reply !== null &&
       (previousReply?.messageId === undefined || previousReply.messageId !== reply.messageId);
@@ -2438,6 +2429,22 @@ async function runMessageAction(
         if (ready.success !== true) {
           return buildErrorResult(activeEnvelope, ready.code, ready.message);
         }
+      }
+
+      if (
+        activeEnvelope.sessionRef?.openHint === "chatgpt-new" &&
+        activeEnvelope.sessionRef.conversationId == null
+      ) {
+        const manager = await getWebviewManager();
+        const target = targets[0];
+        const webview = target !== undefined ? manager.resolveWebview(target) : null;
+        const blank = webview ? await waitForChatGptNewConversation(webview, 3000) : false;
+        if (blank !== true)
+          return buildErrorResult(
+            activeEnvelope,
+            "SESSION_OPEN_FAILED",
+            "The new ChatGPT conversation is no longer active"
+          );
       }
 
       let previousReply: SlotBridgeReply | null = null;
@@ -3003,10 +3010,34 @@ async function runSessionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridg
         },
       });
     }
+    if (AppState.getProviderIdForSlot(targetSlot) === "chatgpt") {
+      const manager = await getWebviewManager();
+      const webview = manager.resolveWebview(targetSlot);
+      if (!webview?.loadURL)
+        return buildErrorResult(envelope, "SESSION_OPEN_FAILED", "ChatGPT webview is unavailable");
+      try {
+        await webview.loadURL("https://chatgpt.com/");
+        const ready = await waitForAiSlotReady(targetSlot);
+        if (!ready.success) return buildErrorResult(envelope, ready.code, ready.message);
+        const blank = await waitForChatGptNewConversation(webview);
+        if (blank !== true)
+          return buildErrorResult(
+            envelope,
+            "SESSION_OPEN_FAILED",
+            "ChatGPT new conversation is not ready"
+          );
+        return buildResult(envelope, {
+          session: { openHint: "chatgpt-new", conversationId: null },
+        });
+      } catch (error) {
+        return buildErrorResult(envelope, "SESSION_OPEN_FAILED", getErrorMessage(error));
+      }
+    }
     SlotController.navigate(targetSlot, null);
     return buildResult(envelope, {
       session: {
         ...(envelope.sessionRef ?? {}),
+        openHint: "new-conversation",
         conversationId: null,
       },
     });

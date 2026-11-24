@@ -1,4 +1,4 @@
-import { AI0_ASSISTANT_SCOPE, AI0_IMAGE_SCOPE } from "../shared/ai0-runtime.js";
+import { AI0_ASSISTANT_SCOPE } from "../shared/ai0-runtime.js";
 import { fileURLToPath } from "node:url";
 import { initPaths } from "../electron/paths.ts";
 import { ai0RuntimeHost } from "../electron/ai0/runtime-host.ts";
@@ -8,12 +8,16 @@ initPaths(fileURLToPath(new URL("../electron", import.meta.url)));
 try {
   const modelArg = process.argv.find((arg) => arg.startsWith("--model="))?.slice(8);
   if (modelArg !== undefined) {
+    if (process.argv.includes("--image"))
+      throw new Error(
+        "Image generation uses the active Assistant model; --model is only for chat."
+      );
     const separator = modelArg.indexOf("/");
     if (separator <= 0) throw new Error("Use --model=provider/modelId");
-    await ai0RuntimeHost.selectModel(
-      process.argv.includes("--chat") ? AI0_ASSISTANT_SCOPE : AI0_IMAGE_SCOPE,
-      { providerID: modelArg.slice(0, separator), id: modelArg.slice(separator + 1) }
-    );
+    await ai0RuntimeHost.selectModel(AI0_ASSISTANT_SCOPE, {
+      providerID: modelArg.slice(0, separator),
+      id: modelArg.slice(separator + 1),
+    });
   }
   if (process.argv.includes("--models")) {
     const models = await ai0RuntimeHost.models();

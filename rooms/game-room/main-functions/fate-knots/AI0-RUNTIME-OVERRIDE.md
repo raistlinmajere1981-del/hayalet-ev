@@ -83,27 +83,11 @@ The engine may update these facts after accepted actions. A later AI0 call recei
 
 AI0 never writes canonical state directly.
 
-## Workspace materialization — implemented
+## Workspace materialization — shared AI0 runtime
 
-The filesystem side of the isolation boundary exists in:
+The live room transport calls the shared AI0 host through the \`fate-knots-ai0-call\` room tool. The Electron adapter sanitizes the public packet and selects the NPC scope; the shared Agent Profile Registry resolves the policy and creates an isolated app-data workspace containing the resolved AGENTS.md. The session denies tool execution for NPC calls.
 
-- `host/ai0-workspace.ts`
-- `host/ai0-workspace-electron.ts`
-
-The materializer:
-
-1. obtains the Game Room managed `storageDir` through the existing `roomToolsCall({ operation: "resolve-paths" })` boundary,
-2. derives the per-universe path only from `buildFateKnotsAi0WorkspaceSpec`,
-3. deletes the previous universe workspace recursively,
-4. recreates the empty workspace through `roomToolsCall({ operation: "ensure-dir" })`,
-5. writes only the declared minimal `AGENTS.md` policy,
-6. returns the isolated workspace path/profile identifier to the provider transport.
-
-Deleting the universe workspace before recreation is intentional. It prevents stale files from a previous runtime version from silently joining AI0 context.
-
-The preparation entry point is:
-
-`prepareFateKnotsAi0RuntimeWorkspace(universeId)`
+See \`docs/ai0-runtime.md\`, \`electron/ai0/fate-knots-adapter.ts\`, \`electron/ai0/runtime-host.ts\` and \`electron/agent-profile-workspace.ts\`. The older room-local workspace recipe and provider-neutral transport are retained as tested domain contracts, not the live filesystem adapter.
 
 ## Provider response boundary — implemented
 

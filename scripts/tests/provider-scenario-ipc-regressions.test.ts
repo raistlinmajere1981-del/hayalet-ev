@@ -66,8 +66,8 @@ void test("opencode serve startup assigns the project root as the default worksp
   const content = readFileSync(opencodeServerManagerPath, "utf8");
 
   assert.match(content, /const workspacePath = Paths\.getProjectRoot\(\)\.trim\(\)/);
-  assert.match(content, /args\.push\(workspacePath\)/);
   assert.match(content, /cwd: workspacePath/);
+  assert.doesNotMatch(content, /args\.push\(workspacePath\)/);
 });
 
 void test("provider tester exposes a scenario-oriented entry point", () => {

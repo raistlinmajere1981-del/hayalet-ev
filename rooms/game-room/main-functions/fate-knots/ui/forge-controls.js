@@ -6,15 +6,13 @@
 
   const CREATE_COMMAND = "GameRoomFateKnotsCreateUniverse";
   const CAPABILITIES_COMMAND = "GameRoomFateKnotsGetForgeCapabilities";
-  const AI0_TEST_COMMAND = "GameRoomFateKnotsTestAi0Image";
   const forgeState = {
     open: false,
     requestedCapabilities: false,
     capabilities: null,
-    ai0TestRunning: false,
-    ai0TestStatus: "",
+    submitting: false,
     authoringProvider: "ai1",
-    assetProvider: "ai1",
+    assetProvider: "ai0-local",
     brief: "",
     status: "",
   };
@@ -40,10 +38,6 @@
     return typeof value === "string" ? value : "";
   }
 
-  function readNumber(value) {
-    return typeof value === "number" && Number.isFinite(value) ? value : null;
-  }
-
   function sendCommand(name, payload) {
     const roomApi = global.roomAPI;
     return Boolean(
@@ -53,9 +47,20 @@
     );
   }
 
+  let progressTimer = null;
+  function scheduleProgress() {
+    if (progressTimer !== null || !(forgeState.submitting || forgeState.capabilities?.busy)) return;
+    progressTimer = global.setTimeout(function () {
+      progressTimer = null;
+      if (!(forgeState.submitting || forgeState.capabilities?.busy)) return;
+      requestCapabilities(true);
+      scheduleProgress();
+    }, 3500);
+  }
+
   function renderCurrent() {
     const root = document.getElementById("app");
-    if (root) ui.render(root);
+    if (root?.querySelector(".fate-knots-hub")) ui.render(root);
   }
 
   function providerAvailable(kind, provider) {
@@ -92,172 +97,232 @@
 
   function makeProviderSelect(kind, selectedProvider) {
     const select = document.createElement("select");
-    select.className = "fate-knots-hub__button";
+    select.className = "fate-knots-forge__input";
     const providerIds = kind === "authoringProviders" ? ["ai1", "ai2"] : ["ai1", "ai0-local"];
     providerIds.forEach(function (provider) {
       const option = document.createElement("option");
       option.value = provider;
-      option.textContent = provider === "ai0-local" ? "AI0 Local" : provider.toUpperCase();
+      option.textContent = provider === "ai0-local" ? "AI0" : provider.toUpperCase();
       option.disabled = !providerAvailable(kind, provider);
       option.selected = provider === selectedProvider;
       select.append(option);
     });
+    select.disabled = forgeState.submitting || forgeState.capabilities?.busy === true;
     return select;
   }
 
-  function formatAi0ImageStatus() {
-    const capabilities = readRecord(forgeState.capabilities);
-    if (!capabilities) {
-      return forgeState.requestedCapabilities ? "AI0 Local yeteneği kontrol ediliyor…" : "";
+  function readinessMessage() {
+    const capabilities = forgeState.capabilities;
+    if (forgeState.submitting || capabilities?.busy) {
+      const progress = readRecord(capabilities?.progress);
+      switch (progress?.stage) {
+        case "authoring":
+          return progress.message === "Evren taslağı doğrulama hataları düzeltiliyor…"
+            ? progress.message
+            : "Evren yazılıyor…";
+        case "materializing":
+          return "Evrenin görselleri hazırlanıyor…";
+        case "finalizing":
+          return "Evren doğrulanıyor…";
+        case "saving":
+          return "Evren arşive kaydediliyor…";
+        default:
+          return "Evren hazırlanıyor…";
+      }
     }
-    const status = readRecord(capabilities.ai0ImageStatus);
-    if (!status) return "AI0 Local durum bilgisi alınamadı.";
+    if (!capabilities)
+      return forgeState.requestedCapabilities
+        ? "Hazırlık kontrol ediliyor…"
+        : "Hazırlık bilgisi alınamadı.";
+    if (!capabilities.storageAvailable) return "Evren arşivine erişilemiyor.";
+    if (capabilities.pending) {
+      if (!providerAvailable("assetProviders", forgeState.assetProvider))
+        return "Görsel üretimi hazır değil. Asistan bağlantısını kontrol edebilirsin.";
+      return "Önceki taslak ve tamamlanan görseller korunuyor. Yalnız eksik işler üretilecek.";
+    }
+    if (!providerAvailable("authoringProviders", forgeState.authoringProvider))
+      return "Evren yazarı için Asistan'da AI1 veya AI2 bağlantısı gerekli.";
+    if (!providerAvailable("assetProviders", forgeState.assetProvider))
+      return forgeState.assetProvider === "ai0-local"
+        ? "AI0 görsel üretimi hazır değil. Asistan'daki görsel üretim durumunu kontrol edebilirsin."
+        : "Seçilen görsel üreticisi hazır değil.";
+    return "";
+  }
 
-    const model = readString(status.activeModelKey) || "AI0 modeli seçilmedi";
-    const skillNames = readArray(status.imageSkillNames).map(readString).filter(Boolean);
-    const skillText =
-      skillNames.length > 0 ? ` · skill: ${skillNames.join(", ")}` : " · image skill yok";
-    if (status.available === true) {
-      const toolId = readString(status.toolId) || "image_generate";
-      return `AI0 Local hazır · model: ${model}${skillText} · tool: ${toolId}`;
-    }
-    const reason = readString(status.reason) || "uyumlu image generation tool bulunamadı";
-    return `AI0 Local kapalı · model: ${model}${skillText} · ${reason}`;
+  function element(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
   }
 
   function injectForgeControls(root) {
     const shell = root.querySelector(".fate-knots-hub");
     const headerActions = root.querySelector(".fate-knots-hub__header > .fate-knots-hub__actions");
     if (!shell || !headerActions) return;
+    if (!forgeState.capabilities && !forgeState.status) requestCapabilities(false);
+    const pending = readRecord(forgeState.capabilities?.pending);
 
-    const legacyButton = Array.from(headerActions.querySelectorAll("button")).find(
-      function (button) {
-        return button.textContent === "Yeni Evren";
+    const openButton = headerActions.querySelector("[data-fate-knots-create]");
+    const emptyButton = root.querySelector("[data-fate-knots-empty-create]");
+    const toggle = function () {
+      if (forgeState.submitting) return;
+      forgeState.open = !forgeState.open;
+      forgeState.status = "";
+      if (forgeState.open) {
+        forgeState.capabilities = null;
+        requestCapabilities(true);
       }
-    );
-    if (legacyButton) {
-      legacyButton.disabled = false;
-      legacyButton.title = "World Forge ile yeni evren oluştur";
-      legacyButton.onclick = function () {
-        forgeState.open = !forgeState.open;
-        forgeState.status = "";
-        if (forgeState.open) {
-          forgeState.capabilities = null;
-          requestCapabilities(true);
-        }
-        renderCurrent();
-      };
+      renderCurrent();
+    };
+    if (openButton) {
+      openButton.disabled = forgeState.submitting || forgeState.capabilities?.busy === true;
+      openButton.textContent = forgeState.open
+        ? "Kapat"
+        : pending
+          ? "Yarım kalan evren"
+          : "+ Yeni evren";
+      openButton.setAttribute("aria-expanded", String(forgeState.open));
+      openButton.onclick = toggle;
+    }
+    if (emptyButton) {
+      emptyButton.hidden = forgeState.open;
+      if (pending) emptyButton.textContent = "Yarım kalan evrene dön";
+      emptyButton.onclick = toggle;
     }
 
     if (!forgeState.open) return;
-    requestCapabilities(false);
+    if (!forgeState.status) requestCapabilities(false);
 
-    const panel = document.createElement("section");
-    panel.className = "fate-knots-hub__universe fate-knots-forge-controls";
+    const panel = element("section", "fate-knots-forge");
+    panel.setAttribute("aria-label", "Yeni evren");
+    const heading = element("div", "fate-knots-forge__heading");
+    heading.append(
+      element("span", "fate-knots-hub__eyebrow", pending ? "YARIM KALAN HİKÂYE" : "YENİ HİKÂYE"),
+      element(
+        "h2",
+        "fate-knots-hub__universe-title",
+        pending ? "Evrenini tamamla" : "Evrenini şekillendir"
+      ),
+      element(
+        "p",
+        "fate-knots-hub__subtitle",
+        pending
+          ? "Kaydedilmiş üretime kaldığın yerden devam et."
+          : "Bir dünya, karakterler ve keşfedilecek bir hikâye oluştur."
+      )
+    );
+    panel.append(heading);
 
-    const title = document.createElement("h2");
-    title.className = "fate-knots-hub__universe-title";
-    title.textContent = "World Forge";
-    panel.append(title);
-
-    const authorRow = document.createElement("label");
-    authorRow.textContent = "Evren yazarı ";
+    const form = element("div", "fate-knots-forge__form");
+    const settings = element("div", "fate-knots-forge__settings");
+    const authorRow = element("label", "fate-knots-forge__field", "Evren yazarı");
     const authorSelect = makeProviderSelect("authoringProviders", forgeState.authoringProvider);
     authorSelect.addEventListener("change", function () {
       forgeState.authoringProvider = authorSelect.value;
+      forgeState.status = "";
+      renderCurrent();
     });
+    authorSelect.disabled ||= Boolean(pending);
     authorRow.append(authorSelect);
-    panel.append(authorRow);
-
-    const assetRow = document.createElement("label");
-    assetRow.textContent = "Medya üretimi ";
+    const assetRow = element("label", "fate-knots-forge__field", "Görsel üretimi");
     const assetSelect = makeProviderSelect("assetProviders", forgeState.assetProvider);
     assetSelect.addEventListener("change", function () {
       forgeState.assetProvider = assetSelect.value;
-      forgeState.ai0TestStatus = "";
+      forgeState.status = "";
       renderCurrent();
     });
+    assetSelect.disabled ||= Boolean(pending?.assetProvider);
     assetRow.append(assetSelect);
-    panel.append(assetRow);
+    settings.append(authorRow, assetRow);
+    form.append(settings);
 
-    const ai0StatusText = formatAi0ImageStatus();
-    if (ai0StatusText) {
-      const ai0Status = document.createElement("div");
-      ai0Status.className = "fate-knots-hub__message";
-      ai0Status.textContent = ai0StatusText;
-      panel.append(ai0Status);
-    }
-
-    if (forgeState.assetProvider === "ai0-local") {
-      const ai0TestButton = document.createElement("button");
-      ai0TestButton.type = "button";
-      ai0TestButton.className = "fate-knots-hub__button";
-      ai0TestButton.textContent = forgeState.ai0TestRunning ? "AI0 Test çalışıyor…" : "AI0 Test";
-      ai0TestButton.disabled = Boolean(
-        forgeState.ai0TestRunning || !providerAvailable("assetProviders", "ai0-local")
-      );
-      ai0TestButton.addEventListener("click", function () {
-        forgeState.ai0TestRunning = true;
-        forgeState.ai0TestStatus = "AI0 image smoke test başlatılıyor…";
-        if (!sendCommand(AI0_TEST_COMMAND, {})) {
-          forgeState.ai0TestRunning = false;
-          forgeState.ai0TestStatus = "AI0 test başarısız · Komut gönderilemedi.";
-        }
-        renderCurrent();
-      });
-      panel.append(ai0TestButton);
-
-      if (forgeState.ai0TestStatus) {
-        const ai0TestStatus = document.createElement("div");
-        ai0TestStatus.className = "fate-knots-hub__message";
-        ai0TestStatus.textContent = forgeState.ai0TestStatus;
-        panel.append(ai0TestStatus);
-      }
-    }
-
+    const briefLabel = element("label", "fate-knots-forge__field", "Evren fikri");
     const brief = document.createElement("textarea");
-    brief.rows = 4;
+    brief.className = "fate-knots-forge__input fate-knots-forge__brief";
+    brief.rows = 5;
     brief.maxLength = 8000;
-    brief.placeholder = "İsteğe bağlı evren fikri / kısa brief";
+    brief.placeholder =
+      "Örneğin: Sisler altında kalmış bir liman kenti, kayıp bir krallık ve kadim bir sır…";
     brief.value = forgeState.brief;
+    brief.disabled = Boolean(
+      pending || forgeState.submitting || forgeState.capabilities?.busy === true
+    );
     brief.addEventListener("input", function () {
       forgeState.brief = brief.value;
     });
-    panel.append(brief);
+    briefLabel.append(
+      brief,
+      element(
+        "span",
+        "fate-knots-forge__hint",
+        "İsteğe bağlı. Boş bırakırsan evreni yapay zekâ tasarlar."
+      )
+    );
+    form.append(briefLabel);
+    panel.append(form);
 
     const capabilities = readRecord(forgeState.capabilities);
-    const createButton = document.createElement("button");
+    const busy = forgeState.submitting || capabilities?.busy === true;
+    const progress = busy ? readRecord(capabilities?.progress) : pending;
+    if (progress && Number.isFinite(progress.totalAssets) && progress.totalAssets > 0) {
+      const completed = Math.max(0, Math.min(progress.totalAssets, progress.completedAssets || 0));
+      const area = element("div", "fate-knots-forge__progress");
+      const line = element("div", "fate-knots-forge__progress-label");
+      line.append(
+        element("span", "", "Görseller"),
+        element("span", "", completed + " / " + progress.totalAssets)
+      );
+      const bar = element("progress", "fate-knots-forge__progress-bar");
+      bar.max = progress.totalAssets;
+      bar.value = completed;
+      bar.setAttribute("aria-label", "Tamamlanan görsel sayısı");
+      area.append(line, bar);
+      panel.append(area);
+    }
+    const footer = element("div", "fate-knots-forge__footer");
+    const status = element(
+      "div",
+      "fate-knots-forge__status",
+      forgeState.status || readinessMessage()
+    );
+    status.setAttribute("role", "status");
+    if (busy) status.classList.add("is-busy");
+    footer.append(status);
+
+    const createButton = element(
+      "button",
+      "fate-knots-hub__button fate-knots-forge__create",
+      busy ? "Oluşturuluyor…" : pending ? "Kaldığın yerden devam et" : "Evren oluştur"
+    );
     createButton.type = "button";
-    createButton.className = "fate-knots-hub__button";
-    createButton.textContent =
-      capabilities && capabilities.busy === true ? "Forge çalışıyor…" : "Oluştur";
     createButton.disabled = Boolean(
+      busy ||
       !capabilities ||
-      capabilities.busy === true ||
       capabilities.storageAvailable !== true ||
-      !providerAvailable("authoringProviders", forgeState.authoringProvider) ||
+      (!pending && !providerAvailable("authoringProviders", forgeState.authoringProvider)) ||
       !providerAvailable("assetProviders", forgeState.assetProvider)
     );
     createButton.addEventListener("click", function () {
-      forgeState.status = "World Forge başlatılıyor…";
+      forgeState.submitting = true;
+      forgeState.status = "";
+      scheduleProgress();
       const sent = sendCommand(CREATE_COMMAND, {
         brief: forgeState.brief.trim() || null,
+        ...(pending ? { resumeRequestId: pending.requestId } : {}),
         executionPolicy: {
           authoringProvider: forgeState.authoringProvider,
           assetProvider: forgeState.assetProvider,
         },
       });
-      if (!sent) forgeState.status = "World Forge komutu gönderilemedi.";
+      if (!sent) {
+        forgeState.submitting = false;
+        forgeState.status = "Evren oluşturma isteği gönderilemedi.";
+      }
       renderCurrent();
     });
-    panel.append(createButton);
-
-    if (forgeState.status) {
-      const status = document.createElement("div");
-      status.className = "fate-knots-hub__message";
-      status.textContent = forgeState.status;
-      panel.append(status);
-    }
+    footer.append(createButton);
+    panel.append(footer);
 
     shell.insertBefore(panel, shell.children[1] || null);
   }
@@ -276,8 +341,19 @@
     if (command === CAPABILITIES_COMMAND) {
       forgeState.requestedCapabilities = false;
       if (result.ok === true) {
+        const previousPending = forgeState.capabilities?.pending?.requestId;
         forgeState.capabilities = result;
-        syncSelectionsFromCapabilities();
+        const pending = readRecord(result.pending);
+        if (pending) {
+          forgeState.authoringProvider = pending.authoringProvider;
+          forgeState.assetProvider = pending.assetProvider || forgeState.assetProvider;
+          forgeState.brief = pending.brief || "";
+          if (previousPending !== pending.requestId) forgeState.open = true;
+        } else if (!result.busy) syncSelectionsFromCapabilities();
+        if (result.busy) {
+          forgeState.open = true;
+          scheduleProgress();
+        }
         forgeState.status = "";
       } else {
         forgeState.capabilities = null;
@@ -288,32 +364,14 @@
           readString(resultEnvelope.error) ||
           "World Forge hazırlık bilgisi alınamadı.";
       }
-      return true;
-    }
-
-    if (command === AI0_TEST_COMMAND) {
-      forgeState.ai0TestRunning = false;
-      if (result.ok === true) {
-        const managedPath = readString(result.managedPath);
-        const port = readNumber(result.port);
-        const bytes = readNumber(result.bytes);
-        forgeState.ai0TestStatus =
-          managedPath !== "" && port !== null && bytes !== null
-            ? `AI0 test başarılı · managed: ${managedPath} · port: ${port} · ${bytes} bytes`
-            : "AI0 test başarısız · Smoke sonucu eksik döndü.";
-      } else {
-        forgeState.ai0TestStatus = `AI0 test başarısız · ${
-          readString(result.message) ||
-          readString(result.error) ||
-          readString(resultEnvelope.message) ||
-          readString(resultEnvelope.error) ||
-          "Bilinmeyen hata."
-        }`;
-      }
+      renderCurrent();
       return true;
     }
 
     if (command === CREATE_COMMAND) {
+      forgeState.submitting = false;
+      if (progressTimer !== null) global.clearTimeout(progressTimer);
+      progressTimer = null;
       forgeState.capabilities = readRecord(result.capabilities) || forgeState.capabilities;
       forgeState.requestedCapabilities = false;
       if (result.ok === true) {
@@ -322,9 +380,18 @@
         forgeState.status = "";
         sendCommand("GameRoomFateKnotsGetHubState", {});
       } else {
+        const pending = readRecord(forgeState.capabilities?.pending);
+        if (pending) {
+          forgeState.authoringProvider = pending.authoringProvider;
+          forgeState.assetProvider = pending.assetProvider || forgeState.assetProvider;
+          forgeState.brief = pending.brief || "";
+        }
         const messageText = readString(result.message);
-        forgeState.status = messageText || "World Forge tamamlanamadı.";
+        forgeState.status = pending
+          ? "Üretim tamamlanamadı. Başarılı görseller saklandı."
+          : messageText || "Evren oluşturulamadı.";
       }
+      renderCurrent();
       return true;
     }
 

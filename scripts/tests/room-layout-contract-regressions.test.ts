@@ -69,7 +69,15 @@ void test("room root entrypoints stay orchestration-only after layout normalizat
   );
   assert.match(
     gameRoomHostIndexSource,
-    /export default extendGameRoomHostRuntimeWithFateKnotsMaterializer\(fateKnotsUs1Runtime\);/
+    /extendGameRoomHostRuntimeWithFateKnotsForge\(\s*fateKnotsUs1Runtime\s*\)/
+  );
+  assert.match(
+    gameRoomHostIndexSource,
+    /extendGameRoomHostRuntimeWithFateKnotsAi0ImageSmoke\(\s*fateKnotsForgeRuntime\s*\)/
+  );
+  assert.match(
+    gameRoomHostIndexSource,
+    /export default extendGameRoomHostRuntimeWithFateKnotsMaterializer\(\s*fateKnotsAi0ImageSmokeRuntime\s*\);/
   );
   assert.doesNotMatch(gameRoomHostIndexSource, /GameRoomTeamTetrisStart/);
   assert.match(gameRoomHostRuntimeSource, /createGameRoomCommandRegistry/);

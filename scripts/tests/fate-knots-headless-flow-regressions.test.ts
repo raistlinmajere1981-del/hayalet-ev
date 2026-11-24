@@ -1,3 +1,8 @@
+import {
+  createFateKnotsRunFromSetup,
+  startFateKnotsRun,
+} from "../../rooms/game-room/main-functions/fate-knots/host/run-setup.ts";
+import { getFateKnotsExplorationConsensus } from "../../rooms/game-room/main-functions/fate-knots/host/exploration-consensus.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -229,11 +234,7 @@ void test("headless run returns through exploration and only an authored finale 
   const universe = createUniverse();
   const initial = createRun();
 
-  const startedStoryCombat = applyFateKnotsStoryTransition(
-    universe,
-    initial,
-    "guardian-fight"
-  );
+  const startedStoryCombat = applyFateKnotsStoryTransition(universe, initial, "guardian-fight");
   assert.equal(startedStoryCombat.ok, true, JSON.stringify(startedStoryCombat.issues));
   assert.equal(startedStoryCombat.run.phase, "transition");
   assert.equal(startedStoryCombat.run.activeStoryTransitionId, "guardian-fight");
@@ -362,4 +363,39 @@ void test("legacy finale phase cannot be used as a privileged combat entry", () 
   const entered = enterFateKnotsCombat(legacyFinaleRun, encounter.combat);
   assert.equal(entered.ok, false);
   assert.equal(entered.issues[0]?.code, "invalid-combat-entry-phase");
+});
+
+void test("real host run start initializes the authored story and solo exploration choices", () => {
+  const universe = createUniverse();
+  const created = createFateKnotsRunFromSetup(universe, {
+    runId: "solo-start",
+    party: [{ seatId: "user", characterId: "hero" }],
+  });
+  assert.ok(created.ok);
+  assert.equal(created.run.activeKnotId, null);
+  const started = startFateKnotsRun(universe, created.run);
+  assert.ok(started.ok);
+  assert.equal(started.run.activeKnotId, universe.story.startKnotId);
+  assert.ok(started.run.revealedKnotIds.includes(universe.story.startKnotId));
+  assert.equal(started.run.revision, 1);
+  const state = new Map<string, unknown>();
+  const api = {
+    getState: (key: string) => state.get(key),
+    setState: (key: string, value: unknown) => state.set(key, value),
+  };
+  const projected = getFateKnotsExplorationConsensus(api, universe, started.run);
+  assert.ok(projected.ok);
+  assert.deepEqual(projected.state.activeSeatIds, ["user"]);
+  assert.ok(projected.state.availableTransitions.some((t) => t.id === "guardian-fight"));
+  assert.equal(created.run.activeKnotId, null);
+});
+void test("host run start rejects inconsistent story and map starts", () => {
+  const universe = createUniverse();
+  const created = createFateKnotsRunFromSetup(universe, {
+    runId: "bad-start",
+    party: [{ seatId: "user", characterId: "hero" }],
+  });
+  assert.ok(created.ok);
+  universe.map.startNodeId = "sanctum-node";
+  assert.equal(startFateKnotsRun(universe, created.run).ok, false);
 });

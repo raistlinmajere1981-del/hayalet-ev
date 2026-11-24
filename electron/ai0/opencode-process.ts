@@ -127,8 +127,8 @@ export async function startAi0Process(
       try {
         // Readiness is an authenticated V2 API response, not a listening socket.
         // No provider inference is used for this check.
-        // eslint-disable-next-line no-await-in-loop
         const models = unwrap(
+          // eslint-disable-next-line no-await-in-loop
           await request("GET", `/api/model?directory=${encodeURIComponent(workspacePath)}`)
         );
         if (Array.isArray(models)) return { workspacePath, port, request, stop };

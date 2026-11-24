@@ -462,6 +462,7 @@ export class OpenCodeServerManager {
     this.serverPassword = randomBytes(32).toString("base64url");
     const childEnv: NodeJS.ProcessEnv = {
       ...process.env,
+      OPENCODE_PASSWORD: this.serverPassword,
       OPENCODE_SERVER_PASSWORD: this.serverPassword,
     };
     delete childEnv["CDP_PORT"];

@@ -1,57 +1,42 @@
-# Ortak AI0 — OpenCode 2.3 Görsel Yeteneği (2026-11-23)
+# Ortak AI0 — OpenCode görsel ve metin yetenekleri (2026-11-24)
 
-## Mimari karar
+## Mimari
 
-OpenCode'un kurulumu, sağlayıcı bağlantısı, ChatGPT/Codex OAuth, model erişimi, kullanıcı ayarları, skill ve plugin yönetimi **kullanıcının sorumluluğundadır**. Hayalet Ev ikinci bir OpenCode hesabı/konfigürasyon deposu, gizli anahtar kopyası veya özel bir görsel plugin'i oluşturmaz.
+Hayalet Ev yalnızca OpenCode üzerinden AI0 görevlerini yürütür. OpenCode kurulumu, kullanıcı ayarları, hesap bağlantıları, skill ve plugin yönetimi kullanıcıya aittir. AI0 ayrı hesap veya kimlik bilgisi saklamaz. Görev sunucuları mevcut kullanıcı yapılandırmasını devralır; çalışma alanı ve oturum yetkileri göreve göre ayrılır. Sunucular localhost üzerinde, süreç başına parola ile açılır.
 
-Tek uygulama sahibi `electron/ai0/runtime-host.ts` içindeki `Ai0RuntimeHost`'tur. Asistan ve odalar buradan hizmet alır. OpenCode API ve model detayları odalardan saklanır.
+## Görsel üretimi
 
-- `electron/ai0/opencode-process.ts`: kurulu OpenCode binary'sini normal kullanıcı konfigürasyonuyla başlatır; eski `v2.0.21` kilidi kalkmıştır. Task workspace'leri yalnız **çalışma dosyaları ve session yönetimi** için ayrıdır; ayrı kullanıcı hesabı, home, global config, skill/plugin kurulumunu yönetmez. Bağlı hesaplar OpenCode'un mevcut bağlantı deposundan okunur. Geliştirme sunucusu `opencodeServerManager` üzerinden ayrıca yönetilir.
-- Başlatılan görev sunucusu localhost üzerindedir ve her süreç için yeni bir parola kullanır. `OPENCODE_PASSWORD` ve `OPENCODE_SERVER_PASSWORD` birlikte ayarlanır; kullanıcının ortamındaki eski parola bu sürece karışmaz.
-- Kullanıcı ayarlarının/eklenti kodunun yüklenmesi uygulamanın onu işletim sistemi düzeyinde izole ettiği anlamına gelmez. Normal sohbet ve NPC oturumlarında araç izinleri session seviyesinde `deny-all` olur. Fate-Knots NPC prompt'larına yalnız izin verilen kamuya açık paket alanları taşınır. Kullanıcıya ait kötü niyetli plugin kodları için ayrı OS sandbox iddiası yoktur.
+OpenCode 2.3.2 ve kullanıcının kurduğu **opencode-gpt-imagegen** eklentisi doğrulandı. Kullanıcı bu eklentiyi OpenCode'da kurar ve uygun OpenAI bağlantısını kendisi sağlar. Mevcut kurulumda legacy OAuth bağlantısı ile üretim başarılıdır. Hayalet Ev hesap bağlantısı yapmaz veya eklentinin sağlayıcı protokolünü kopyalamaz.
 
-## Yerleşik görsel API
+Görsel görevinde Asistan'ın aktif sohbet modeli, ayrı ve kısa ömürlü bir OpenCode oturumunda eklentinin **gpt_imagegen** aracını çağırır. Yalnız bu araca izin verilir. Normal sohbet/NPC görevleri deny-all araç kuralını korur. Bu, kullanıcı tarafından yüklenen plugin koduna karşı işletim sistemi sandbox garantisi değildir.
 
-OpenCode 2.3.2 üzerinde kimlik doğrulamalı canlı API keşfiyle `POST /api/experimental/generate/image` ve `opencode.config.image` dahili eklentisi doğrulandı. Bu endpoint stateless çalışır ve `model: {providerID,id}`, `prompt`, `aspect`, `resolution` alır; `data.images` içinde base64 görüntü döndürür. **Keşif gerçek görsel üretildiği veya Plus hesabının ilgili modele eriştiği anlamına gelmez.** Görsel üretim denemesi kota yenilenince yapılacaktır.
+AI0 desteklenen boyutlardan istenen en-boy oranına en yakın olanını seçer; eklenti gerçek çıktı boyutunu belirler. Tek tamamlanmış araç çağrısı, beklenen benzersiz yerel çıktı yolu, PNG yapısı ve SHA-256 doğrulanır. Sonuç ortak `data/shared/ai0-images/` arşivine PNG ve manifest olarak aktarılır. Farklı sağlayıcıya otomatik geçiş veya otomatik yeniden deneme yoktur. Eski Codex CLI adaptörü ve Hayalet Ev'in kendi görsel plugin'i kaldırıldı.
 
-`electron/ai0/native-image-service.ts` endpoint'i seçilen **açık modelle** çağırır; model/sağlayıcı fallback veya otomatik tekrar deneme yoktur. Tam bir PNG, base64 ve PNG yapısı doğrulanmadan sonuç başarı sayılmaz. `Ai0RuntimeHost.generateImage` onaylı görseli `data/shared/ai0-images/` altına hash ve manifest ile saklar; açma işleminde yeniden doğrular.
+## Asistan ayarları
 
-`imageStatus` sadece dahili görsel API'nin **aktif** olduğunu denetler. `verified=false` ilk gerçek PNG üretilene kadar kalır; `available=true` ile karıştırılmaz. Model envanterinde görsel modeller metin modelleri arasında listelenmeyebilir. Görsel model ataması bu nedenle metin modeli listesiyle sınırlandırılmaz.
-
-## Model atamaları ve UI
-
-`shared/ai0-runtime.ts` ve `app.db` / `ai0_runtime_models` üzerinden görev bazlı model seçimi:
-
-- `AI0_ASSISTANT_SCOPE`: AI0 sohbeti (atanmamışsa Asistan UI modeli).
-- `AI0_ROOM_SCOPE`: odaların ortak metin modeli; eski oda-özel seçimlerin önündedir. Atama yoksa oda-özel kayıt ve sohbet varsayılanı kullanılabilir.
-- `AI0_IMAGE_SCOPE`: bütün odaların varsayılan görsel modeli; ilk aday `openai:gpt-image-2`. Fate-Knots resim isteği de aynı seçimi kullanır.
-
-Asistan içindeki OpenCode UI'nin mevcut **Model Ayarları** modalına üç görev seçimi ve görsel durum göstergesi eklendi. Asistan AI0 test penceresi model seçimi, görsel deneme ve doğrulanmış görsel açmayı sürdürür. Kullanıcı OpenCode kurulumu veya OAuth girişini Hayalet Ev'den yönetmez.
+- Aktif model: OpenCode görsel aracını çağıran model.
+- AI0 sohbet ve oda metin çağrısı seçimleri: ayrı görev atamaları olarak korunur.
+- Ayrı görsel model seçimi yoktur. Eski görsel model kayıtları okunmaz.
+- Görsel durum kontrolü eklentinin aktifliğini ve model envanterini doğrular; yalnız gerçek PNG üretildikten sonra doğrulanmış durum gösterilir. Test düğmesi gerçek üretim çağrısı yapar.
 
 ## Oda köprüsü
 
-`room-tools-call` işlemleri `ai0-image-status` ve `ai0-image-generate` olarak genelleştirildi; `roomId`, `requestId`, üretimde `jobId`, `prompt`, `sourceAspectRatio` taşınır. Fate-Knots `electron-bridge.ts` yalnız genel oda yeteneğini çağırır; oyun içi World Forge plan, kırpma, dosya terfisi ve canonical state kendisine aittir. Metin NPC çağrısının oyun paketlerine özel güvenlik doğrulaması korunur.
+Odalar ortak `ai0-image-status` ve `ai0-image-generate` işlemlerini kullanır. Fate-Knots kendi World Forge planlama, kırpma, dosya terfisi ve oyun durumunu yönetir. Oda tarafından OpenCode eklentisi veya hesap seçilmez.
 
-Eski `electron/ai0/native-image-plugin.ts`, Fate-Knots özel image worker ve eski özel image IPC yolları **geçiş dönemi için** depoda tutulmaktadır; aktif yeni üretim yoluna fallback yapılmaz. Canlı endpoint ve World Forge dosya üretimi doğrulanınca kaldırılabilir. Tarihsel v2.0.21 tespitleri için [eski görsel eklentisi analizi](ai0-imagen-audit.md).
+## Kabul
 
-## Kabul ve smoke
+24 Kasım 2026: Kullanıcının OpenCode TUI testi, AI0 sunucusundaki gerçek gpt_imagegen çağrısı ve ortak AI0 arşivine 1254 × 1254 PNG kaydetme/hash doğrulama başarılı. Aktif model `openai:gpt-5.6-terra-fast` ile ortak host smoke testi geçti. Electron içindeki gerçek görsel testi ve Fate-Knots World Forge üretimi doğrulandı: 37/37 görsel, 36 mevcut görselin hash değerleri değişmeden eksik işten devam, nihai evren kaydı. Gerçek NPC konuşması ve AI0 kontrollü rakiple savaş da başarılı.
 
-- Yerel API sözleşmesi / aktif dahili plugin: **doğrulandı, ücretli istek yok**.
-- Sahte provider/PNG ile host, hata ve görsel güvenlik testleri: **doğrulandı**.
-- Gerçek ChatGPT/Codex hesabıyla tek PNG: **bekliyor**.
-- Gerçek PNG'nin Electron ile açılması ve Fate-Knots World Forge üzerinden kalıcı materyale terfisi: **bekliyor**.
-- Eski özel servisleri kaldırma: **bekliyor**.
-
-Gerçek provider çağrısı yapmadan modelleri göstermek:
+Model listesi:
 
 ```bash
 TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/ai0-runtime-smoke.ts --models
 ```
 
-Asistan'dan seçilen gerçek görsel modeli ile test etmek (kota kullanabilir):
+Aktif modelle gerçek görsel üretim (kota kullanabilir):
 
 ```bash
 TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/ai0-runtime-smoke.ts --image
 ```
 
-**Not:** `--image` ancak görüntü modeli atanmış ve yetkili provider bu API'de çalışabilir olduğunda başarılı olur. Bu koşullar canlı test edilmedi.
+Eski v2.0.21 araştırması yalnız tarihsel kayıt olarak [ai0-imagen-audit.md](ai0-imagen-audit.md) dosyasındadır. Eski Fate-Knots özel worker ve model okuyucuları canlı kabul sonrası kaldırıldı; tek etkin sahip ortak AI0 host. Kullanıcının OpenCode ayarları ve mevcut oyun verileri korunur.

@@ -43,9 +43,9 @@
       const state = getBaseState();
       return Boolean(
         state &&
-          state.context &&
-          state.context.activeFeature &&
-          state.context.activeFeature.id === FATE_KNOTS_FEATURE_ID
+        state.context &&
+        state.context.activeFeature &&
+        state.context.activeFeature.id === FATE_KNOTS_FEATURE_ID
       );
     }
 
@@ -112,10 +112,10 @@
     function isFateKnotsCommandResult(message) {
       return Boolean(
         message &&
-          typeof message === "object" &&
-          message.type === "command-result" &&
-          typeof message.command === "string" &&
-          message.command.startsWith("GameRoomFateKnots")
+        typeof message === "object" &&
+        message.type === "command-result" &&
+        typeof message.command === "string" &&
+        message.command.startsWith("GameRoomFateKnots")
       );
     }
 
@@ -194,19 +194,33 @@
     }
 
     function handoffCommandResult(message) {
+      // SlotBridge wraps the room handler result in data. All Fate Knots
+      // consumers (including setup lifecycle extensions) use the domain result.
+      const envelope = message.result;
+      if (
+        envelope &&
+        typeof envelope === "object" &&
+        envelope.data &&
+        typeof envelope.data === "object" &&
+        !Array.isArray(envelope.data) &&
+        envelope.success !== false &&
+        envelope.ok !== false
+      ) {
+        message = { ...message, result: envelope.data };
+      }
       const mirrorUi = getFateKnotsUs1MirrorUi();
       const mirrorHandled = Boolean(
         mirrorUi &&
-          typeof mirrorUi.handleCommandResult === "function" &&
-          mirrorUi.handleCommandResult(message)
+        typeof mirrorUi.handleCommandResult === "function" &&
+        mirrorUi.handleCommandResult(message)
       );
       if (mirrorHandled) return;
 
       const gameplayUi = getFateKnotsGameplayUi();
       const gameplayHandled = Boolean(
         gameplayUi &&
-          typeof gameplayUi.handleCommandResult === "function" &&
-          gameplayUi.handleCommandResult(message)
+        typeof gameplayUi.handleCommandResult === "function" &&
+        gameplayUi.handleCommandResult(message)
       );
       if (gameplayHandled) return;
 

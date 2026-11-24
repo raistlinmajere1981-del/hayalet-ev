@@ -10,8 +10,8 @@ interface SessionListContext {
   runtime: RuntimeState;
   byId: ByIdFn;
   formatTimestamp: (value: number) => string;
-  listSessionsFromDisk: () => Promise<OpencodeUiSessionSummary[]>;
-  archiveSessionInDisk: (sessionId: string, archived?: boolean) => Promise<void>;
+  listServerSessions: () => Promise<OpencodeUiSessionSummary[]>;
+  archiveServerSession: (sessionId: string, archived?: boolean) => Promise<void>;
   loadActiveSessionHistory: () => Promise<void>;
   loadSessionListAndRender: (options?: {
     preserveActive?: boolean;
@@ -19,7 +19,6 @@ interface SessionListContext {
   }) => Promise<void>;
   setActiveSession: (sessionId: string | null) => Promise<void>;
   createServerSession: (title?: string) => Promise<string>;
-  ensureSessionInDisk: (sessionId: string, title?: string) => Promise<void>;
   reportError: (error: unknown, options?: { defaultTitleKey: string }) => void;
 }
 
@@ -185,7 +184,7 @@ export async function syncActiveSessionToCurrentTab(
   context: SessionListContext,
   sessions?: OpencodeUiSessionSummary[]
 ): Promise<void> {
-  const availableSessions = sessions ?? (await context.listSessionsFromDisk());
+  const availableSessions = sessions ?? (await context.listServerSessions());
   const visibleSessions = getSessionsForTab(availableSessions, context.runtime.sessionTab);
   const activeSessionVisible =
     context.runtime.activeSessionId != null &&
@@ -207,7 +206,7 @@ export async function loadSessionListAndRender(
   } = {}
 ): Promise<void> {
   try {
-    const sessions = await context.listSessionsFromDisk();
+    const sessions = await context.listServerSessions();
     const visibleSessions = getSessionsForTab(sessions, context.runtime.sessionTab);
 
     if (options.syncSelectionToTab === true) {
@@ -269,9 +268,9 @@ export async function handleSessionAction(
       return;
     }
 
-    await context.archiveSessionInDisk(sessionId, true);
+    await context.archiveServerSession(sessionId, true);
     await syncActiveSessionToCurrentTab(context);
-    const sessions = await context.listSessionsFromDisk();
+    const sessions = await context.listServerSessions();
     renderSessionList(sessions, context);
     return;
   }
@@ -282,9 +281,9 @@ export async function handleSessionAction(
       return;
     }
 
-    await apiCall("DELETE", `/session/${encodeURIComponent(sessionId)}`);
+    await apiCall("DELETE", `/api/session/${encodeURIComponent(sessionId)}`);
     await syncActiveSessionToCurrentTab(context);
-    const sessions = await context.listSessionsFromDisk();
+    const sessions = await context.listServerSessions();
     renderSessionList(sessions, context);
     return;
   }
@@ -308,7 +307,7 @@ export async function handleSessionAction(
       const title = input.value.trim();
       if (title !== "" && title !== current) {
         try {
-          await apiCall("PATCH", `/session/${encodeURIComponent(sessionId)}`, { title });
+          await apiCall("PATCH", `/api/session/${encodeURIComponent(sessionId)}`, { title });
         } catch (_error) {}
       }
       await context.loadSessionListAndRender({ preserveActive: true });
@@ -345,12 +344,11 @@ export async function handleSessionAction(
   if (action === "fork") {
     const response = await apiCall<unknown>(
       "POST",
-      `/session/${encodeURIComponent(sessionId)}/fork`,
+      `/api/session/${encodeURIComponent(sessionId)}/fork`,
       {}
     );
     const forkId = normalizeSessionId(response);
     if (forkId !== "") {
-      await context.ensureSessionInDisk(forkId, t("session.actionFork"));
       await activateSession(context, forkId);
     } else {
       await context.loadSessionListAndRender({ preserveActive: true });

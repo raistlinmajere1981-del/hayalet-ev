@@ -79,6 +79,12 @@ function formatHttpStatus(status: unknown, statusText?: unknown): string {
   return t("api.requestFailed");
 }
 
+function unwrapApiData(value: unknown): unknown {
+  if (value !== null && typeof value === "object" && !Array.isArray(value) && "data" in value)
+    return value.data;
+  return value;
+}
+
 export async function apiCall<T = Record<string, unknown>>(
   method: HttpMethod,
   path: string,
@@ -103,7 +109,9 @@ export async function apiCall<T = Record<string, unknown>>(
       );
     }
 
-    return (result.data ?? {}) as T;
+    if (isHtmlDocumentPayload(result.data))
+      throw new Error("OpenCode returned HTML instead of API data");
+    return unwrapApiData(result.data) as T;
   }
 
   try {
@@ -120,7 +128,7 @@ export async function apiCall<T = Record<string, unknown>>(
 
     const text = await response.text();
     try {
-      return JSON.parse(text) as T;
+      return unwrapApiData(JSON.parse(text)) as T;
     } catch (_error) {
       return { _raw: text } as T;
     }

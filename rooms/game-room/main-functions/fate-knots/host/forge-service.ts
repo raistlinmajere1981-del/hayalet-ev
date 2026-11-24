@@ -9,6 +9,7 @@ import {
 import type { FateKnotsTransportApi } from "./transport.js";
 import {
   runFateKnotsWorldForge,
+  readPendingFateKnotsForge,
   type FateKnotsWorldForgePipelineResult,
   type FateKnotsWorldForgeProgress,
 } from "./world-forge-orchestrator.js";
@@ -32,7 +33,11 @@ export interface FateKnotsForgeReadiness {
   policy: FateKnotsForgeExecutionPolicy;
 }
 
-const materializerAdapters = new Map<FateKnotsForgeAssetProvider, FateKnotsAssetMaterializerAdapter>();
+let activeForge = false;
+const materializerAdapters = new Map<
+  FateKnotsForgeAssetProvider,
+  FateKnotsAssetMaterializerAdapter
+>();
 
 function isProgress(value: unknown): value is FateKnotsWorldForgeProgress {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
@@ -45,10 +50,6 @@ function isProgress(value: unknown): value is FateKnotsWorldForgeProgress {
     typeof record["totalAssets"] === "number" &&
     typeof record["message"] === "string"
   );
-}
-
-function isBusyProgress(progress: FateKnotsWorldForgeProgress | null): boolean {
-  return progress !== null && progress.stage !== "completed" && progress.stage !== "failed";
 }
 
 /**
@@ -108,7 +109,7 @@ export function getFateKnotsForgeReadiness(
   const materializerAvailable = materializerAdapters.has(policy.assetProvider);
   const storageAvailable = getFateKnotsDurableStorageError(api) === null;
   const progress = getFateKnotsForgeProgress(api);
-  const busy = isBusyProgress(progress);
+  const busy = activeForge;
   const blockers: FateKnotsForgeBlocker[] = [];
   if (!ai1TransportAvailable) blockers.push("ai1-transport-unavailable");
   if (!materializerAvailable) blockers.push("asset-materializer-unavailable");
@@ -131,6 +132,7 @@ export async function createFateKnotsUniverseThroughForge(
   api: GameRoomHostApi & FateKnotsTransportApi,
   options: {
     brief?: string | null;
+    resumeRequestId?: string;
     executionPolicy?: unknown;
     onProgress?: (event: FateKnotsWorldForgeProgress) => void;
   } = {}
@@ -139,14 +141,25 @@ export async function createFateKnotsUniverseThroughForge(
   if (!readPolicy.ok) return null;
   const policy = readPolicy.policy;
   const adapter = materializerAdapters.get(policy.assetProvider) ?? null;
-  if (adapter === null || isBusyProgress(getFateKnotsForgeProgress(api))) return null;
-
-  return await runFateKnotsWorldForge(api, adapter, {
-    ...(options.brief !== undefined ? { brief: options.brief } : {}),
-    authoringProvider: policy.authoringProvider,
-    onProgress(event) {
-      setProgress(api, event);
-      options.onProgress?.({ ...event });
-    },
-  });
+  if (adapter === null || activeForge) return null;
+  activeForge = true;
+  try {
+    const pending = await readPendingFateKnotsForge();
+    // Never overwrite an accepted unfinished world by starting a fresh one.
+    if (pending && pending.request.requestId !== options.resumeRequestId) return null;
+    if (options.resumeRequestId && !pending) return null;
+    if (pending?.assetProvider && pending.assetProvider !== policy.assetProvider) return null;
+    return await runFateKnotsWorldForge(api, adapter, {
+      ...(options.brief !== undefined ? { brief: options.brief } : {}),
+      ...(pending ? { resume: pending } : {}),
+      authoringProvider: policy.authoringProvider,
+      assetProvider: policy.assetProvider,
+      onProgress(event) {
+        setProgress(api, event);
+        options.onProgress?.({ ...event });
+      },
+    });
+  } finally {
+    activeForge = false;
+  }
 }

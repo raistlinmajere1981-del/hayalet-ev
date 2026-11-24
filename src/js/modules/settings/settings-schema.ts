@@ -1377,6 +1377,10 @@ export function normalizeSettings(raw: unknown): AppSettings {
   }
 
   merged.assistantAccounts.forEach((account) => {
+    if (account.provider === "opencode-ui") {
+      delete account.dbPath;
+      return;
+    }
     const dbPath = (account as { dbPath?: unknown }).dbPath;
     if (typeof dbPath !== "string" && dbPath !== null && dbPath !== undefined) {
       (account as { dbPath?: string | null }).dbPath = null;

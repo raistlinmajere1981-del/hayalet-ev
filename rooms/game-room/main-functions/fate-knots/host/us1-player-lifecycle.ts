@@ -345,10 +345,7 @@ function readLastNpcDialogue(api: FateKnotsUs1LifecycleApi, runId: string): unkn
   return isRecord(value) && value["runId"] === runId ? structuredClone(value["state"]) : null;
 }
 
-export function recordFateKnotsUs1NpcDialogue(
-  api: FateKnotsUs1LifecycleApi,
-  state: unknown
-): void {
+export function recordFateKnotsUs1NpcDialogue(api: FateKnotsUs1LifecycleApi, state: unknown): void {
   if (!isRecord(state)) return;
   const runId = readString(state["runId"]);
   if (!runId) return;
@@ -393,9 +390,7 @@ export function completeFateKnotsUs1RunSetup(api: FateKnotsUs1LifecycleApi): voi
   });
 }
 
-function buildRunMirrorSnapshot(
-  api: FateKnotsUs1LifecycleApi
-): FateKnotsUs1MirrorSnapshot | null {
+function buildRunMirrorSnapshot(api: FateKnotsUs1LifecycleApi): FateKnotsUs1MirrorSnapshot | null {
   const runs = loadFateKnotsRunStore(api);
   if (runs.issues.length > 0 || !runs.store.activeRunId) return null;
   const storedRun = runs.store.entries.find((entry) => entry.run.runId === runs.store.activeRunId);
@@ -428,9 +423,9 @@ function buildRunMirrorSnapshot(
     const options = optionCommands[FATE_KNOTS_COMBAT_OPTION_COMMAND_NAMES.getRemoteOptions]?.({
       runId: run.runId,
     });
-    const discussion = discussionCommands[
-      FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.getRemote
-    ]?.({ runId: run.runId });
+    const discussion = discussionCommands[FATE_KNOTS_COMBAT_DISCUSSION_COMMAND_NAMES.getRemote]?.({
+      runId: run.runId,
+    });
     if (options?.ok && discussion?.ok) {
       combat = {
         options: options.state,

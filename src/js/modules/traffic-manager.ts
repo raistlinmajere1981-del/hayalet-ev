@@ -455,10 +455,6 @@ class TrafficManagerClass {
             ? webContents.isLoading() === true
             : false;
 
-      if (isLoading) {
-        return false;
-      }
-
       const result = await webview.executeJavaScript(script);
       const data = result as {
         error?: string;
@@ -467,6 +463,7 @@ class TrafficManagerClass {
         thinkingState?: string;
         thinkingText?: string;
         messageCount?: number;
+        composerReady?: boolean;
       } | null;
 
       if (data?.error !== undefined && data.error !== "") {
@@ -511,6 +508,7 @@ class TrafficManagerClass {
       thinkingState?: string;
       thinkingText?: string;
       messageCount?: number;
+      composerReady?: boolean;
     } | null,
     isStillLoading = false
   ): Promise<boolean> {
@@ -528,7 +526,7 @@ class TrafficManagerClass {
       return false;
     }
 
-    if (isStillLoading) {
+    if (isStillLoading && data.composerReady !== true) {
       return false;
     }
 

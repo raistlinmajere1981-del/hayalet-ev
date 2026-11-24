@@ -200,7 +200,10 @@ function matchesImagePayload(base64: string, mimeType: string): boolean {
     return header.slice(4, 8) === "ftyp" && (header.includes("avif") || header.includes("avis"));
   }
   if (normalized === "image/svg+xml") {
-    const text = new TextDecoder("utf-8").decode(bytes).replace(/^\uFEFF/, "").trimStart();
+    const text = new TextDecoder("utf-8")
+      .decode(bytes)
+      .replace(/^\uFEFF/, "")
+      .trimStart();
     return /<svg(?:\s|>)/i.test(text);
   }
   return false;
@@ -211,7 +214,10 @@ function pathMatchesImageMimeType(filePath: string, mimeType: string): boolean {
   return extension !== null && filePath.trim().toLowerCase().endsWith(`.${extension}`);
 }
 
-async function ensureFateKnotsManagedDirectory(directoryPath: string, requestId: string): Promise<void> {
+async function ensureFateKnotsManagedDirectory(
+  directoryPath: string,
+  requestId: string
+): Promise<void> {
   const api = getElectronApi();
   if (api === null) throw new Error("Fate Knots durable Electron storage bridge is unavailable.");
   const ensured = await api.roomToolsCall({
@@ -325,10 +331,7 @@ export async function writeFateKnotsManagedImageFile(
 
   const paths = await resolveFateKnotsDurableStoragePaths();
   const assetsRoot = joinRuntimePath(paths.rootDir, "assets");
-  const jobDirectory = joinRuntimePath(
-    assetsRoot,
-    sanitizeManagedSegment(request.jobId, "job")
-  );
+  const jobDirectory = joinRuntimePath(assetsRoot, sanitizeManagedSegment(request.jobId, "job"));
   await ensureFateKnotsManagedDirectory(
     jobDirectory,
     `fate-knots-assets-${stableSegmentHash(request.jobId)}`

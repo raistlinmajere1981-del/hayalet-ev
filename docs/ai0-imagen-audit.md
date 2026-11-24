@@ -1,6 +1,6 @@
 # AI0 OAuth görsel eklentisi denetimi — Aşama 2.1
 
-Bu bölüm üçüncü taraf eklentisinin tarihsel denetimidir. Aşağıdaki **Aşama 2.2** bölümü, sonradan eklenen Hayalet Ev native eklentisinin güncel sonucunu verir.
+**Tarihsel kayıt (Ekim 2026).** Buradaki native eklenti ve önceki sağlayıcı denemeleri artık kullanılmıyor. 24 Kasım 2026 itibarıyla etkin mimari ve canlı kabul için [ai0-runtime.md](ai0-runtime.md) geçerlidir.
 
 2026-10-14 tarihinde kurulu `opencode v2.0.21` ile `opencode-imagen@0.1.0` denetlendi. Sonuç: eklenti bu runtime'da aktive olamadı. Uygulama görsel görevine kurulmadı; global yapılandırma değişmedi. Gerçek görsel sağlayıcı isteği yapılmadı, PNG üretilmedi veya açılmadı. Fate Knots canlı materializer doğrulaması ve eski servislerin kaldırılması bekliyor.
 

@@ -515,10 +515,6 @@
                   <div class="model-settings__header">
                     <div>
                       <h3 class="ds-modal__title" data-i18n-text="modelSettings.title"></h3>
-                      <p
-                        class="model-settings__subtitle"
-                        data-i18n-text="modelSettings.subtitle"
-                      ></p>
                     </div>
                     <button
                       type="button"
@@ -533,89 +529,112 @@
                     </button>
                   </div>
 
-                  <div class="model-settings__summary" id="model-settings-summary"></div>
-
-                  <div class="model-settings__filters">
-                    <input
-                      type="search"
-                      class="input ds-modal__input"
-                      id="model-settings-search"
-                      aria-label=""
-                      placeholder=""
-                      data-i18n-aria-label="modelSettings.searchPlaceholder"
-                      data-i18n-placeholder="modelSettings.searchPlaceholder"
-                    />
-                    <label
-                      class="model-settings__checkbox ds-choice-chip ds-choice-chip--segmented ds-choice-chip--dense"
-                    >
-                      <input type="checkbox" id="model-settings-favorites-only" />
-                      <span data-i18n-text="modelSettings.favoritesOnly"></span>
-                    </label>
-                    <label
-                      class="model-settings__checkbox ds-choice-chip ds-choice-chip--segmented ds-choice-chip--dense"
-                    >
-                      <input type="checkbox" id="model-settings-show-hidden" />
-                      <span data-i18n-text="modelSettings.showHidden"></span>
-                    </label>
-                  </div>
-
-                  <section class="ds-panel model-settings__ai0">
-                    <div class="ds-panel__header">
-                      <span
-                        class="ds-panel__title"
-                        data-i18n-text="modelSettings.ai0SectionTitle"
-                      ></span>
-                    </div>
-                    <div class="ds-panel__body">
-                      <div class="model-settings__ai0-grid">
-                        <label class="model-settings__ai0-field">
-                          <span data-i18n-text="modelSettings.ai0Chat"></span>
-                          <select id="model-settings-ai0-chat" class="input"></select>
-                        </label>
-                        <label class="model-settings__ai0-field">
-                          <span data-i18n-text="modelSettings.ai0Room"></span>
-                          <select id="model-settings-ai0-room" class="input"></select>
-                        </label>
-                        <label class="model-settings__ai0-field">
-                          <span data-i18n-text="modelSettings.ai0Image"></span>
-                          <select id="model-settings-ai0-image" class="input"></select>
-                        </label>
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-secondary"
-                          id="model-settings-ai0-check"
-                          data-i18n-text="modelSettings.ai0Check"
-                        ></button>
-                      </div>
-                      <p id="model-settings-ai0-status" role="status" aria-live="polite"></p>
-                    </div>
-                  </section>
                   <div class="model-settings__layout">
-                    <section class="model-settings__panel model-settings__panel--providers">
-                      <div
-                        class="model-settings__panel-title"
-                        data-i18n-text="modelSettings.providerSectionTitle"
-                      ></div>
-                      <div class="model-settings__provider-list" id="model-settings-provider-list">
+                    <aside class="model-settings__sidebar">
+                      <section class="model-settings__panel model-settings__defaults">
                         <div
-                          class="ds-empty-state"
-                          data-i18n-text="modelSettings.providersLoading"
+                          class="model-settings__panel-title"
+                          data-i18n-text="modelSettings.defaultsTitle"
                         ></div>
-                      </div>
-                    </section>
-
-                    <section class="model-settings__panel model-settings__panel--models">
-                      <div
-                        class="model-settings__panel-title"
-                        data-i18n-text="modelSettings.modelSectionTitle"
-                      ></div>
-                      <div class="model-settings__model-list" id="model-settings-model-list">
+                        <label class="model-settings__ai0-field">
+                          <span data-i18n-text="modelSettings.currentModel"></span>
+                          <select class="input" id="model-settings-active-model"></select>
+                        </label>
+                        <label class="model-settings__ai0-field">
+                          <span data-i18n-text="modelSettings.defaultModel"></span>
+                          <select class="input" id="model-settings-default-model"></select>
+                        </label>
+                      </section>
+                      <section class="ds-panel model-settings__ai0">
+                        <div class="ds-panel__header">
+                          <span
+                            class="ds-panel__title"
+                            data-i18n-text="modelSettings.ai0SectionTitle"
+                          ></span>
+                        </div>
+                        <div class="ds-panel__body">
+                          <div class="model-settings__ai0-grid">
+                            <label class="model-settings__ai0-field">
+                              <span data-i18n-text="modelSettings.ai0Chat"></span>
+                              <select id="model-settings-ai0-chat" class="input"></select>
+                            </label>
+                            <label class="model-settings__ai0-field">
+                              <span data-i18n-text="modelSettings.ai0Room"></span>
+                              <select id="model-settings-ai0-room" class="input"></select>
+                            </label>
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-secondary"
+                              id="model-settings-ai0-check"
+                              data-i18n-text="modelSettings.ai0Check"
+                            ></button>
+                          </div>
+                          <p id="model-settings-ai0-status" role="status" aria-live="polite"></p>
+                        </div>
+                      </section>
+                      <div class="model-settings__summary" id="model-settings-summary"></div>
+                    </aside>
+                    <div class="model-settings__catalog">
+                      <section class="model-settings__panel model-settings__panel--providers">
                         <div
-                          class="ds-empty-state"
-                          data-i18n-text="modelSettings.modelsLoading"
+                          class="model-settings__panel-title"
+                          data-i18n-text="modelSettings.providerSectionTitle"
                         ></div>
+                        <div class="model-settings__provider-filter">
+                          <button
+                            type="button"
+                            class="model-settings__toggle-btn"
+                            id="model-settings-provider-all"
+                            aria-pressed="true"
+                            data-i18n-text="modelSettings.allProviders"
+                          ></button>
+                          <div
+                            class="model-settings__provider-list"
+                            id="model-settings-provider-list"
+                          >
+                            <div
+                              class="ds-empty-state"
+                              data-i18n-text="modelSettings.providersLoading"
+                            ></div>
+                          </div>
+                        </div>
+                      </section>
+                      <div class="model-settings__filters">
+                        <input
+                          type="search"
+                          class="input ds-modal__input"
+                          id="model-settings-search"
+                          aria-label=""
+                          placeholder=""
+                          data-i18n-aria-label="modelSettings.searchPlaceholder"
+                          data-i18n-placeholder="modelSettings.searchPlaceholder"
+                        />
+                        <label
+                          class="model-settings__checkbox ds-choice-chip ds-choice-chip--segmented ds-choice-chip--dense"
+                        >
+                          <input type="checkbox" id="model-settings-favorites-only" />
+                          <span data-i18n-text="modelSettings.favoritesOnly"></span>
+                        </label>
+                        <label
+                          class="model-settings__checkbox ds-choice-chip ds-choice-chip--segmented ds-choice-chip--dense"
+                        >
+                          <input type="checkbox" id="model-settings-show-hidden" />
+                          <span data-i18n-text="modelSettings.showHidden"></span>
+                        </label>
                       </div>
-                    </section>
+                      <section class="model-settings__panel model-settings__panel--models">
+                        <div
+                          class="model-settings__panel-title"
+                          data-i18n-text="modelSettings.modelSectionTitle"
+                        ></div>
+                        <div class="model-settings__model-list" id="model-settings-model-list">
+                          <div
+                            class="ds-empty-state"
+                            data-i18n-text="modelSettings.modelsLoading"
+                          ></div>
+                        </div>
+                      </section>
+                    </div>
                   </div>
                 </div>
               </div>

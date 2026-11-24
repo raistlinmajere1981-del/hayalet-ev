@@ -1,3 +1,9 @@
+import { createFateKnotsLootCommands } from "../../rooms/game-room/main-functions/fate-knots/host/loot-runtime.ts";
+import {
+  saveFateKnotsUniverse,
+  saveFateKnotsRunSnapshot,
+  loadFateKnotsRunStore,
+} from "../../rooms/game-room/main-functions/fate-knots/host/persistence.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -222,4 +228,55 @@ void test("final encounter loot returns to exploration and can unlock the author
   assert.deepEqual(result.run.teamPoolItemIds, []);
   assert.deepEqual(result.run.actors[0]?.ownedCardIds, ["guardian-key"]);
   assert.equal(result.run.finaleUnlocked, true);
+});
+
+function hostFixture(multi = false) {
+  const u = createUniverse();
+  u.assets = [
+    { id: "background", kind: "background", path: "background.png" },
+    { id: "closed-book", kind: "book-cover", path: "closed.png" },
+    { id: "open-page", kind: "book-page", path: "open.png" },
+    { id: "hero-portrait", kind: "portrait", path: "hero.png" },
+    { id: "guardian-portrait", kind: "portrait", path: "guardian.png" },
+  ];
+  const run = createLootRun();
+  if (multi) {
+    run.actors.push({ ...structuredClone(run.actors[0]!), actorId: "ai2-actor", seatId: "ai2" });
+    run.partyActorIds.push("ai2-actor");
+  }
+  const state = new Map<string, unknown>();
+  const api = {
+    getState: (k: string) => state.get(k),
+    setState: (k: string, v: unknown) => state.set(k, v),
+  };
+  const saved = saveFateKnotsUniverse(api, u);
+  assert.ok(saved.ok, JSON.stringify(saved.issues));
+  const savedRun = saveFateKnotsRunSnapshot(api, run, null);
+  assert.ok(savedRun.ok, JSON.stringify(savedRun.issues));
+  return {
+    api,
+    run,
+    commands: createFateKnotsLootCommands(api),
+    payload: { runId: run.runId, allocations: [{ poolIndex: 0, recipientActorId: "hero-actor" }] },
+  };
+}
+void test("solo loot proposal commits immediately and cannot grant rewards twice", () => {
+  const f = hostFixture();
+  const result = f.commands["GameRoomFateKnotsProposeLoot"]!(f.payload);
+  assert.ok(result.ok, JSON.stringify(result.issues));
+  assert.equal(result.state.resolved, true);
+  const saved = loadFateKnotsRunStore(f.api).store.entries[0]!.run;
+  assert.equal(saved.phase, "exploration");
+  assert.deepEqual(saved.actors[0]!.ownedCardIds, ["guardian-key"]);
+  assert.equal(f.commands["GameRoomFateKnotsProposeLoot"]!(f.payload).ok, false);
+});
+void test("two player proposals still require both active seats and exact allocations", () => {
+  const f = hostFixture(true);
+  const first = f.commands["GameRoomFateKnotsProposeLoot"]!(f.payload);
+  assert.ok(first.ok, JSON.stringify(first.issues));
+  assert.equal(first.state.resolved, false);
+  assert.equal(loadFateKnotsRunStore(f.api).store.entries[0]!.run.phase, "loot");
+  const next = f.commands["GameRoomFateKnotsAi2ProposeLoot"]!(f.payload);
+  assert.ok(next.ok, JSON.stringify(next.issues));
+  assert.equal(next.state.resolved, true);
 });

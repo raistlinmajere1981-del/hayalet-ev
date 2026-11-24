@@ -389,8 +389,8 @@ class ConversationListManagerClass {
       const ai2Account = AppState.getAccountForSlot("ai2");
       const us1AccountId = AppState.getUs1ArchiveAccountId();
 
-      const listSessionsFn = electronApi["opencodeUiFsListSessions"] as
-        ((dbPath?: string) => Promise<{ success?: boolean; sessions?: unknown[] }>) | undefined;
+      const listSessionsFn = electronApi["opencodeUiListSessions"] as
+        ((port?: number) => Promise<{ success?: boolean; sessions?: unknown[] }>) | undefined;
       const getConversationsFn = electronApi["dbGetConversations"] as
         ((payload: Record<string, unknown>) => Promise<{ data?: unknown[] }>) | undefined;
 

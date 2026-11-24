@@ -15,12 +15,6 @@ import { DEFAULT_CAPTURE_COMMAND_PHRASES } from "../../shared/capture/command-ca
 export const DEFAULT_ASSISTANT_ACCOUNT_ID = "opencode_opencode_at_opencode_com";
 export const DEFAULT_OPENCODE_UI_ACCOUNT_ID = "opencode_ui_opencode_at_opencode_com";
 
-function getDefaultOpencodeUiDbPath(): string {
-  // Default to the POSIX-style user data path in settings scaffolding so
-  // the default value remains stable across platforms and in test suites.
-  return "~/.local/share/opencode/opencode.db";
-}
-
 export function createDefaultAssistantAccount(): Account {
   return {
     id: DEFAULT_ASSISTANT_ACCOUNT_ID,
@@ -38,7 +32,6 @@ export function createDefaultOpencodeUiAccount(): Account {
     provider: "opencode-ui",
     nickname: "Rovo",
     avatarPath: "src/assets/opencode.png",
-    dbPath: getDefaultOpencodeUiDbPath(),
   };
 }
 

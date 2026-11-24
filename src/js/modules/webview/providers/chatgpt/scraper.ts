@@ -268,7 +268,12 @@ export function scrapeMessages(): ScrapedMessage[] {
   // still get scraped when role attributes disappear during UI changes.
   const baseCandidates =
     wrappedBase.length !== 0 || preferred.length !== 0 ? [...wrappedBase, ...preferred] : fallback;
-  const base = Array.from(new Set(baseCandidates));
+  // Current ChatGPT renders both roles inside a virtualized turn. Use individual
+  // semantic content units, not the outer turn (which would merge both messages).
+  const modern = Array.from(document.querySelectorAll("[data-content-search-unit-key]")).filter(
+    (node) => /:(user|assistant)$/.test(node.getAttribute("data-content-search-unit-key") ?? "")
+  );
+  const base = Array.from(new Set(modern.length !== 0 ? modern : baseCandidates));
   const nodes = Array.from(new Set(base)).filter(
     (n, i, arr) => !arr.some((o, j) => i !== j && o.contains(n))
   );
@@ -281,7 +286,10 @@ export function scrapeMessages(): ScrapedMessage[] {
     const roleNode =
       authorRole !== null && authorRole !== "" ? node : node.closest("[data-message-author-role]");
     const roleAttr = roleNode?.getAttribute("data-message-author-role") ?? "";
+    const unitKey = node.getAttribute("data-content-search-unit-key") ?? "";
+    const explicitRole = /:(user|assistant)$/.exec(unitKey)?.[1];
     const role = ((): string => {
+      if (explicitRole !== undefined) return explicitRole;
       if (isUserWrapper) return "user";
       if (isAssistantWrapper) return "assistant";
       if (roleAttr === "user") return "user";
@@ -295,10 +303,29 @@ export function scrapeMessages(): ScrapedMessage[] {
       return rect.left > mid ? "user" : "assistant";
     })();
     const wrapper =
-      (messageWrapperSel !== "" ? node.closest(messageWrapperSel) : null) ??
-      node.closest("[data-message-id]") ??
-      node;
-    let text = extractMessageText(node, wrapper, role);
+      explicitRole !== undefined
+        ? node
+        : ((messageWrapperSel !== "" ? node.closest(messageWrapperSel) : null) ??
+          node.closest("[data-message-id]") ??
+          node);
+    let text =
+      explicitRole !== undefined
+        ? normalizeText(readElementText(node))
+        : extractMessageText(node, wrapper, role);
+    if (explicitRole === "assistant") {
+      const parts = Array.from(node.querySelectorAll("[dir='auto']")).filter(
+        (candidate) => Array.from(candidate.querySelectorAll("[dir='auto']")).length === 0
+      );
+      // Prefer the actual message body if the outer unit includes action chrome.
+      if (parts.length !== 0 && !node.querySelector("pre, table, ul, ol, blockquote, h1, h2, h3")) {
+        const joined = parts
+          .map((part) => readElementText(part))
+          .filter(Boolean)
+          .join("\n");
+        const normalized = normalizeText(joined);
+        if (normalized !== "") text = normalized;
+      }
+    }
     if (text === "") {
       const imgs = Array.from(node.querySelectorAll("img"));
       const alt = imgs
@@ -311,6 +338,7 @@ export function scrapeMessages(): ScrapedMessage[] {
     if (role === "assistant" && isAssistantStatusOnlyText(text)) return;
     if (text === "") return;
     const domIdCandidate =
+      (unitKey !== "" ? unitKey : null) ??
       wrapper.getAttribute("data-message-id") ??
       wrapper.getAttribute("data-turn-id") ??
       wrapper.getAttribute("id") ??

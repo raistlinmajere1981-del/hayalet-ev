@@ -1866,7 +1866,7 @@
         "noModels": "Bu AI0 runtime içinde kullanılabilir model yok.",
         "working": "AI0 çalışıyor…",
         "imageReady": "Görsel üretimi gerçek PNG ile doğrulandı.",
-        "imageNotTested": "OpenCode görsel API hazır; gerçek üretim henüz doğrulanmadı.",
+        "imageNotTested": "OpenCode görsel eklentisi hazır; gerçek üretim henüz doğrulanmadı.",
         "imageUnavailable": "Görsel üretimi kullanılamıyor.",
         "imageSaved": "PNG doğrulandı ve kaydedildi."
       }
@@ -5969,7 +5969,7 @@
     },
     "usage": {
       "title": "Token Kullanımı",
-      "diskDb": "Disk DB",
+      "serverApi": "Sunucu API",
       "prompt": "Prompt",
       "completion": "Completion",
       "reasoning": "Reasoning"
@@ -6163,16 +6163,19 @@
       "missingInputArea": "Mesaj alanı bulunamadı."
     },
     "modelSettings": {
+      "defaultsTitle": "Model atamaları",
+      "currentModel": "Aktif model",
+      "defaultModel": "Varsayılan model",
+      "allProviders": "Tümü",
       "ai0SectionTitle": "Ortak AI0 Görev Modelleri",
       "ai0Chat": "AI0 sohbet",
       "ai0Room": "Odaların AI çağrıları",
-      "ai0Image": "Görsel üretimi",
-      "ai0Check": "Görsel yeteneğini kontrol et",
+      "ai0Check": "Görsel üretimini test et",
       "ai0Unassigned": "Henüz atanmadı",
       "ai0Saving": "Model kaydediliyor…",
       "ai0Checking": "Görsel yeteneği kontrol ediliyor…",
       "ai0ImageVerified": "Görsel üretimi gerçek PNG ile doğrulandı.",
-      "ai0ImageNotTested": "Görsel API hazır; gerçek üretim henüz doğrulanmadı.",
+      "ai0ImageNotTested": "Görsel eklentisi hazır; gerçek üretim henüz doğrulanmadı.",
       "ai0ImageUnavailable": "Görsel üretimi kullanılamıyor.",
       "openTitle": "Model ayarları",
       "openLabel": "⚙ Model",
@@ -6182,8 +6185,8 @@
       "searchPlaceholder": "Provider veya model ara...",
       "favoritesOnly": "Sadece favoriler",
       "showHidden": "Gizlileri göster",
-      "providerSectionTitle": "Providers",
-      "modelSectionTitle": "Models",
+      "providerSectionTitle": "Sağlayıcılar",
+      "modelSectionTitle": "Modeller",
       "providersLoading": "Yükleniyor...",
       "modelsLoading": "Yükleniyor...",
       "providerMissing": "Provider bulunamadı",

@@ -1,94 +1,30 @@
-import type {
-  OpencodeUiFsReadResult,
-  OpencodeUiSessionDetail,
-  OpencodeUiSessionSummary,
-  RuntimeState,
-} from "./types.js";
-import { formatDetailedErrorMessage, t } from "./i18n.js";
-import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
+import type { OpencodeUiSessionDetail, OpencodeUiSessionSummary, RuntimeState } from "./types.js";
 
 export interface OpencodeUiSessionStorage {
-  listSessionsFromDisk(): Promise<OpencodeUiSessionSummary[]>;
-  ensureSessionInDisk(sessionId: string, title?: string): Promise<void>;
-  readSessionFromDisk(sessionId: string): Promise<OpencodeUiSessionDetail | null>;
-  archiveSessionInDisk(sessionId: string, archived?: boolean): Promise<void>;
+  listServerSessions(): Promise<OpencodeUiSessionSummary[]>;
+  readServerSession(sessionId: string): Promise<OpencodeUiSessionDetail | null>;
+  archiveServerSession(sessionId: string, archived?: boolean): Promise<void>;
 }
 
 export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionStorage {
-  const dbPathArg = (): string | undefined => {
-    const path = runtime.dbPath.trim();
-    return path !== "" ? path : undefined;
+  const electron = (): NonNullable<Window["electronAPI"]> => {
+    if (!window.electronAPI) throw new Error("Electron API unavailable");
+    return window.electronAPI;
   };
-
+  const port = (): number => Number(new URL(runtime.baseUrl).port);
   return {
-    async listSessionsFromDisk(): Promise<OpencodeUiSessionSummary[]> {
-      const electronApi = window.electronAPI;
-      if (electronApi === undefined) {
-        throw new Error(t("storage.electronUnavailable"));
-      }
-
-      const result = await electronApi.opencodeUiFsListSessions(dbPathArg());
-      if (result.success !== true) {
-        throw new Error(
-          formatDetailedErrorMessage("storage.listFailed", resolveIpcErrorMessage(result))
-        );
-      }
-
-      const sessions = Array.isArray(result.sessions) ? result.sessions : [];
-      return sessions.slice().sort((a, b) => {
-        const bUpdated = Number(b.updated_at);
-        const aUpdated = Number(a.updated_at);
-        const safeBUpdated = Number.isFinite(bUpdated) ? bUpdated : 0;
-        const safeAUpdated = Number.isFinite(aUpdated) ? aUpdated : 0;
-        return safeBUpdated - safeAUpdated;
-      });
+    async listServerSessions(): Promise<OpencodeUiSessionSummary[]> {
+      const result = await electron().opencodeUiListSessions(port());
+      if (!result.success) throw new Error(result.error ?? "OpenCode session list unavailable");
+      return result.sessions ?? [];
     },
-
-    async ensureSessionInDisk(sessionId: string, title?: string): Promise<void> {
-      const electronApi = window.electronAPI;
-      if (electronApi === undefined) {
-        throw new Error(t("storage.electronUnavailable"));
-      }
-
-      const result = await electronApi.opencodeUiFsEnsureSession(sessionId, title, dbPathArg());
-
-      if (result.success !== true) {
-        throw new Error(
-          formatDetailedErrorMessage("storage.ensureFailed", resolveIpcErrorMessage(result))
-        );
-      }
+    async readServerSession(sessionId: string): Promise<OpencodeUiSessionDetail | null> {
+      const result = await electron().opencodeUiReadSession(sessionId, port());
+      return result.success ? (result.session ?? null) : null;
     },
-
-    async readSessionFromDisk(sessionId: string): Promise<OpencodeUiSessionDetail | null> {
-      const electronApi = window.electronAPI;
-      if (electronApi === undefined) {
-        throw new Error(t("storage.electronUnavailable"));
-      }
-
-      const result = (await electronApi.opencodeUiFsReadSession(
-        sessionId,
-        dbPathArg()
-      )) as OpencodeUiFsReadResult;
-      if (result.success !== true) {
-        return null;
-      }
-
-      return result.session ?? null;
-    },
-
-    async archiveSessionInDisk(sessionId: string, archived = true): Promise<void> {
-      const electronApi = window.electronAPI;
-      if (electronApi === undefined) {
-        throw new Error(t("storage.electronUnavailable"));
-      }
-
-      const result = await electronApi.opencodeUiFsArchiveSession(sessionId, archived, dbPathArg());
-
-      if (result.success !== true) {
-        throw new Error(
-          formatDetailedErrorMessage("storage.archiveFailed", resolveIpcErrorMessage(result))
-        );
-      }
+    async archiveServerSession(sessionId: string, archived = true): Promise<void> {
+      const result = await electron().opencodeUiArchiveSession(sessionId, archived, port());
+      if (!result.success) throw new Error(result.error ?? "OpenCode archive failed");
     },
   };
 }

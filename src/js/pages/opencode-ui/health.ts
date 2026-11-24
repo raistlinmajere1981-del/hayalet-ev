@@ -16,12 +16,6 @@ interface PathResponse {
   worktree?: string;
 }
 
-interface OpencodeConfigResponse {
-  plugin?: unknown;
-  plugins?: unknown;
-  [key: string]: unknown;
-}
-
 const TRANSITIONAL_MCP_STATUSES = new Set([
   "",
   "starting",
@@ -219,12 +213,7 @@ async function loadPluginSummaryFromApiClient(): Promise<string | null> {
 
 async function loadPluginSummaryFromConfig(): Promise<string | null> {
   try {
-    const result = await apiCall<OpencodeConfigResponse>("GET", "/config");
-    if (!isRecord(result)) {
-      return null;
-    }
-
-    const plugins = result["plugin"] ?? result["plugins"];
+    const plugins = await apiCall<unknown>("GET", "/api/plugin");
     if (Array.isArray(plugins)) {
       return formatSummaryCount(plugins.length, t("health.pluginLabel").toLocaleLowerCase());
     }
@@ -536,8 +525,23 @@ export async function checkHealth(): Promise<{ mcpServers: McpStatusMap }> {
 
   const [globalHealth, mcpServers, hevToolCount, pluginSummaryFromConfig, pluginSummaryFromApi] =
     await Promise.all([
-      apiCall<GlobalHealthResponse>("GET", "/global/health"),
-      apiCall<McpStatusMap>("GET", "/mcp"),
+      apiCall<GlobalHealthResponse>("GET", "/api/info").then((info) => ({
+        ...info,
+        healthy: typeof info.version === "string",
+      })),
+      apiCall<unknown>("GET", "/api/mcp").then((value) =>
+        Array.isArray(value)
+          ? Object.fromEntries(
+              value.flatMap((item) =>
+                isRecord(item) && typeof (item["id"] ?? item["name"]) === "string"
+                  ? [[String(item["id"] ?? item["name"]), item]]
+                  : []
+              )
+            )
+          : isRecord(value)
+            ? value
+            : {}
+      ),
       loadHevToolCountFromOpenCodeServer(),
       loadPluginSummaryFromConfig(),
       loadPluginSummaryFromApiClient(),
@@ -576,7 +580,7 @@ export async function checkHealth(): Promise<{ mcpServers: McpStatusMap }> {
 }
 
 export async function loadStatusContext(): Promise<void> {
-  const pathResult = await apiCall<PathResponse>("GET", "/path");
+  const pathResult = await apiCall<PathResponse>("GET", "/api/location");
 
   const path = pathResult.directory ?? pathResult.worktree ?? pathResult.path ?? "";
   workspacePathForManualMcp = path;

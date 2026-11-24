@@ -9,7 +9,7 @@
   align-items: center;
   gap: var(--lab-space-2);
   padding: var(--lab-space-2);
-  border: 1px solid var(--lab-border-subtle);
+  border: var(--lab-size-1px) solid var(--lab-border-subtle);
   border-radius: var(--lab-radius-sm);
   background: var(--lab-surface-2);
 }
@@ -21,7 +21,7 @@
 .labx-report-history__identity {
   min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: var(--lab-size-3px);
 }
 
 .labx-report-history__title-row {
@@ -39,11 +39,11 @@
 
 .labx-report-history__latest {
   flex: 0 0 auto;
-  padding: 1px 6px;
-  border: 1px solid var(--lab-accent);
-  border-radius: 999px;
+  padding: var(--lab-size-1px) var(--lab-size-6px);
+  border: var(--lab-size-1px) solid var(--lab-accent);
+  border-radius: var(--lab-size-999px);
   color: var(--lab-accent);
-  font-size: 0.72rem;
+  font-size: var(--lab-size-0-72rem);
   line-height: 1.35;
 }
 
@@ -51,8 +51,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--lab-text-muted);
-  font-size: 0.78rem;
+  color: var(--lab-text-dim);
+  font-size: var(--lab-size-0-78rem);
 }
 
 .labx-report-history__actions {
@@ -60,7 +60,7 @@
   flex-wrap: nowrap;
 }
 
-@media (max-width: 900px) {
+@media (--lab-bp-max-900) {
   .labx-report-history__item {
     grid-template-columns: minmax(0, 1fr);
   }

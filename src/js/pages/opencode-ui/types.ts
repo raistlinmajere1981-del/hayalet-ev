@@ -111,30 +111,6 @@ export interface OpencodeUiSessionDetail {
   changed_files?: string[];
 }
 
-export interface OpencodeUiFsListResult {
-  success: boolean;
-  sessions?: OpencodeUiSessionSummary[];
-  error?: string;
-}
-
-export interface OpencodeUiFsReadResult {
-  success: boolean;
-  session?: OpencodeUiSessionDetail;
-  error?: string;
-}
-
-export interface OpencodeUiFsEnsureResult {
-  success: boolean;
-  created?: boolean;
-  error?: string;
-}
-
-export interface OpencodeUiFsArchiveResult {
-  success: boolean;
-  archived?: boolean;
-  error?: string;
-}
-
 export interface SelectItem {
   value: string;
   label: string;
@@ -202,7 +178,6 @@ export interface ProviderItem {
 
 export interface RuntimeState {
   baseUrl: string;
-  dbPath: string;
   activeSessionId: string | null;
   sessionTab: SessionTab;
   submittingSessionId: string | null;

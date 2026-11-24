@@ -5,10 +5,7 @@ import type {
 } from "../forge/materializer.js";
 import type { FateKnotsMaterializedAsset } from "../forge/world-forge.js";
 import { FATE_KNOTS_PAGE_ID } from "../../../shared/host/feature-meta.js";
-import {
-  readFateKnotsLocalFileBase64,
-  writeFateKnotsManagedImageFile,
-} from "./storage-bridge.js";
+import { readFateKnotsLocalFileBase64, writeFateKnotsManagedImageFile } from "./storage-bridge.js";
 import {
   openFateKnotsAi1Session,
   type FateKnotsSessionRef,
@@ -63,8 +60,7 @@ function readImageArtifact(value: unknown): ProviderImageArtifact | null {
     return null;
   }
 
-  const archivePath =
-    typeof value["archivePath"] === "string" ? value["archivePath"].trim() : "";
+  const archivePath = typeof value["archivePath"] === "string" ? value["archivePath"].trim() : "";
   const directPath = typeof value["path"] === "string" ? value["path"].trim() : "";
   const path = isLocalFilePath(archivePath)
     ? archivePath
@@ -74,15 +70,12 @@ function readImageArtifact(value: unknown): ProviderImageArtifact | null {
   if (path === "") return null;
 
   const mimeType = declaredMime.toLowerCase().startsWith("image/")
-    ? declaredMime.toLowerCase().split(";", 1)[0] ?? ""
+    ? (declaredMime.toLowerCase().split(";", 1)[0] ?? "")
     : (inferImageMimeType(path) ?? "");
   return mimeType.startsWith("image/") ? { path, mimeType } : null;
 }
 
-function appendArtifactArray(
-  target: ProviderImageArtifact[],
-  value: unknown
-): void {
+function appendArtifactArray(target: ProviderImageArtifact[], value: unknown): void {
   if (!Array.isArray(value)) return;
   for (const entry of value) {
     const artifact = readImageArtifact(entry);
@@ -205,10 +198,7 @@ function cropImageToPngBase64(
   const sourceX = Math.max(0, Math.floor(crop.x * source.width));
   const sourceY = Math.max(0, Math.floor(crop.y * source.height));
   const sourceRight = Math.min(source.width, Math.ceil((crop.x + crop.width) * source.width));
-  const sourceBottom = Math.min(
-    source.height,
-    Math.ceil((crop.y + crop.height) * source.height)
-  );
+  const sourceBottom = Math.min(source.height, Math.ceil((crop.y + crop.height) * source.height));
   const width = sourceRight - sourceX;
   const height = sourceBottom - sourceY;
   if (width <= 0 || height <= 0) {
@@ -220,17 +210,7 @@ function cropImageToPngBase64(
   canvas.height = height;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Fate Knots image crop canvas context is unavailable.");
-  context.drawImage(
-    source.element,
-    sourceX,
-    sourceY,
-    width,
-    height,
-    0,
-    0,
-    width,
-    height
-  );
+  context.drawImage(source.element, sourceX, sourceY, width, height, 0, 0, width, height);
   const dataUrl = canvas.toDataURL(FATE_KNOTS_CROP_MIME_TYPE);
   const separatorIndex = dataUrl.indexOf(",");
   if (separatorIndex < 0) throw new Error("Fate Knots image crop did not produce PNG bytes.");

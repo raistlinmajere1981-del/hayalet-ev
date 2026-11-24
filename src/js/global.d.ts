@@ -49,6 +49,10 @@ import type {
   TranscriptTranscriptionResult,
 } from "../types/transcript.js";
 import type {
+  OpencodeUiSessionDetail,
+  OpencodeUiSessionSummary,
+} from "../../electron/opencode-ui-session/types.ts";
+import type {
   TtsInstallModelResult,
   TtsManagedModelId,
   TtsManagedModelStatus,
@@ -1129,63 +1133,24 @@ declare global {
       status?: number;
     }>;
 
-    opencodeUiFsEnsureSession: (
+    opencodeUiListSessions: (port?: number) => Promise<{
+      success: boolean;
+      sessions?: OpencodeUiSessionSummary[];
+      error?: string;
+    }>;
+    opencodeUiReadSession: (
       sessionId: string,
-      title?: string,
-      dbPath?: string
+      port?: number
     ) => Promise<{
       success: boolean;
-      created?: boolean;
+      session?: OpencodeUiSessionDetail;
       error?: string;
     }>;
-    opencodeUiFsListSessions: (dbPath?: string) => Promise<{
-      success: boolean;
-      sessions?: Array<{
-        id: string;
-        title: string;
-        workspace_path: string;
-        updated_at: number;
-        created_at: number;
-        archived_at: number | null;
-      }>;
-      error?: string;
-    }>;
-    opencodeUiFsArchiveSession: (
+    opencodeUiArchiveSession: (
       sessionId: string,
-      archived?: boolean,
-      dbPath?: string
-    ) => Promise<{
-      success: boolean;
-      archived?: boolean;
-      error?: string;
-    }>;
-    opencodeUiFsReadSession: (
-      sessionId: string,
-      dbPath?: string
-    ) => Promise<{
-      success: boolean;
-      session?: {
-        id: string;
-        title: string;
-        workspace_path: string;
-        usage: Record<string, unknown>;
-        messages: Array<{
-          role: "user" | "assistant";
-          text: string;
-          files?: Array<{ name: string; media_type: string }>;
-          toolCalls?: Array<{ name: string; args?: string; result?: string }>;
-        }>;
-      };
-      error?: string;
-    }>;
-
-    opencodeUiSessionWatchStart: (
-      sessionId: string,
-      dbPath?: string
-    ) => Promise<{ success: boolean }>;
-    opencodeUiSessionWatchStop: () => Promise<{ success: boolean }>;
-    opencodeUiOnSessionUpdated: (callback: (payload: { sessionId: string }) => void) => void;
-    opencodeUiOffSessionUpdated: (callback: (payload: { sessionId: string }) => void) => void;
+      archived: boolean,
+      port?: number
+    ) => Promise<{ success: boolean; error?: string }>;
     captureStatus?: () => Promise<CaptureServiceStatus>;
     captureRefreshStatus?: () => Promise<CaptureServiceStatus>;
     captureConsumeAnalyzeAssets?: () => Promise<CaptureImportedAsset[]>;

@@ -83,13 +83,23 @@ export function extendGameRoomHostRuntimeWithFateKnotsLoot<T extends GameRoomHos
       ] as const;
       for (const [commandName, scope, description] of proposalRegistrations) {
         const handler = commands[commandName];
-        if (handler === undefined) throw new Error(`Missing Fate Knots loot proposal handler: ${commandName}`);
+        if (handler === undefined)
+          throw new Error(`Missing Fate Knots loot proposal handler: ${commandName}`);
         api.registerCommand?.(
           commandName,
           function (payload: unknown) {
-            const result = handler(readRegisteredRoomArgs(payload));
-            if (result.ok) notifyLoot(api, result.state);
-            return result;
+            const roomArgs = readRegisteredRoomArgs(payload);
+            return persistFateKnotsCommandMutation(api, () => handler(roomArgs)).then((result) => {
+              if (!result.ok) return result;
+              if (result.state.resolved) {
+                clearFateKnotsLootCoordinationAfterResolve(api);
+                notifyLoot(api, null);
+                pushFateKnotsHubState(api);
+              } else {
+                notifyLoot(api, result.state);
+              }
+              return result;
+            });
           },
           { description, scope, exposure: "internal" }
         );
@@ -114,7 +124,8 @@ export function extendGameRoomHostRuntimeWithFateKnotsLoot<T extends GameRoomHos
       ] as const;
       for (const [commandName, scope, description] of approvalRegistrations) {
         const handler = commands[commandName];
-        if (handler === undefined) throw new Error(`Missing Fate Knots loot approval handler: ${commandName}`);
+        if (handler === undefined)
+          throw new Error(`Missing Fate Knots loot approval handler: ${commandName}`);
         api.registerCommand?.(
           commandName,
           function (payload: unknown) {

@@ -92,7 +92,9 @@
   --layout-panel-card-min-h: 180px;
   --layout-panel-list-max-h: 260px;
   --layout-panel-scroll-vh-sm: 50vh;
-  --layout-opencode-model-settings-w: 1180px;
+  --layout-opencode-model-settings-w: 1500px;
+  --layout-opencode-model-settings-sidebar-min-w: 220px;
+  --layout-opencode-model-settings-sidebar-min-w-compact: 185px;
   --layout-opencode-model-settings-min-h: 860px;
   --layout-opencode-model-settings-list-max-h: 680px;
   --layout-whisper-dock-compose-min-w: var(--size-panel-compact);

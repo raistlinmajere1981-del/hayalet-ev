@@ -5,31 +5,31 @@ export const config = {
   name: "ChatGPT",
   baseUrl: "https://chatgpt.com",
   loginUrl: "https://chatgpt.com/auth/login",
-  lastVerified: "2026-03-29",
+  lastVerified: "2026-11-24",
   selectors: {
     sendButton:
-      '#composer-submit-button[data-testid="send-button"], button[data-testid="send-button"][aria-label="Send prompt"], button[data-testid="send-button"][aria-label="İstem gönder"], button[data-testid="send-button"], #composer-submit-button',
+      'button[aria-label="Gönder"], button[aria-label="Send"], #composer-submit-button[data-testid="send-button"], button[data-testid="send-button"][aria-label="Send prompt"], button[data-testid="send-button"][aria-label="İstem gönder"], button[data-testid="send-button"], #composer-submit-button',
 
     sendButtonDisabled:
-      '#composer-submit-button[data-testid="send-button"][disabled], button[data-testid="send-button"][aria-label="İstem gönder"][disabled], button[data-testid="send-button"][aria-label="Send prompt"][disabled], #composer-submit-button[disabled]',
+      'button[aria-label="Gönder"][disabled], button[aria-label="Send"][disabled], button[aria-label="Gönder"][aria-disabled="true"], button[aria-label="Send"][aria-disabled="true"], #composer-submit-button[data-testid="send-button"][disabled], button[data-testid="send-button"][aria-label="İstem gönder"][disabled], button[data-testid="send-button"][aria-label="Send prompt"][disabled], #composer-submit-button[disabled]',
 
     stopButton:
-      '[data-testid="stop-button"], #composer-submit-button[data-testid="stop-button"], button[aria-label="Stop streaming"], button[aria-label="Yanıtlamayı durdur"]',
+      'button[aria-label="Durdur"], button[aria-label="Stop"], button[aria-label="Stop generating"], [data-testid="stop-button"], #composer-submit-button[data-testid="stop-button"], button[aria-label="Stop streaming"], button[aria-label="Yanıtlamayı durdur"]',
 
     voiceButton:
-      'button.composer-btn[aria-label="Dikteyi başlatma"], button.composer-btn[aria-label="Start dictation"], button.composer-btn[aria-label="Dictate button"], button.composer-btn[aria-label="Dikte düğmesi"], button.composer-btn[aria-label*="Dikte"], button.composer-btn[aria-label*="dictat"]',
+      'button[aria-label="Dikte et"], button[aria-label="Dictate"], button.composer-btn[aria-label="Dikteyi başlatma"], button.composer-btn[aria-label="Start dictation"], button.composer-btn[aria-label="Dictate button"], button.composer-btn[aria-label="Dikte düğmesi"], button.composer-btn[aria-label*="Dikte"], button.composer-btn[aria-label*="dictat"]',
 
     dictateButton:
-      'button.composer-btn[aria-label="Dikteyi başlatma"], button.composer-btn[aria-label="Start dictation"], button.composer-btn[aria-label="Dictate button"], button.composer-btn[aria-label="Dikte düğmesi"], button.composer-btn[aria-label*="Dikte"], button.composer-btn[aria-label*="dictat"]',
+      'button[aria-label="Dikte et"], button[aria-label="Dictate"], button.composer-btn[aria-label="Dikteyi başlatma"], button.composer-btn[aria-label="Start dictation"], button.composer-btn[aria-label="Dictate button"], button.composer-btn[aria-label="Dikte düğmesi"], button.composer-btn[aria-label*="Dikte"], button.composer-btn[aria-label*="dictat"]',
 
     attachButton:
-      '#composer-plus-btn[data-testid="composer-plus-btn"], button#composer-plus-btn[aria-haspopup="menu"], button[data-testid="composer-plus-btn"][aria-label="Add files and more"], button[data-testid="composer-plus-btn"][aria-label="Dosyaları ve çok daha fazlasını ekle"]',
+      'button[aria-label="Dosyaları ve daha fazlasını ekle"], button[aria-label="Add files and more"], #composer-plus-btn[data-testid="composer-plus-btn"], button#composer-plus-btn[aria-haspopup="menu"], button[data-testid="composer-plus-btn"][aria-label="Add files and more"], button[data-testid="composer-plus-btn"][aria-label="Dosyaları ve çok daha fazlasını ekle"]',
 
     attachMenuItem:
       'div[role="menuitem"].group.__menu-item[data-orientation="vertical"], div[role="menuitem"][data-radix-collection-item]',
 
     inputField:
-      'div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"], #prompt-textarea[contenteditable="true"], #prompt-textarea',
+      '[data-composer-markdown][contenteditable="true"][role="textbox"], div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"], #prompt-textarea[contenteditable="true"], #prompt-textarea',
 
     messageContainer: "main",
 
@@ -48,8 +48,8 @@ export const config = {
   selectorMatrix: {
     selectors: {
       sendButton: {
-        tr: '#composer-submit-button[data-testid="send-button"]',
-        en: '#composer-submit-button[data-testid="send-button"], button[data-testid="send-button"][aria-label="Send prompt"]',
+        tr: 'button[aria-label="Gönder"], #composer-submit-button[data-testid="send-button"]',
+        en: 'button[aria-label="Send"], #composer-submit-button[data-testid="send-button"], button[data-testid="send-button"][aria-label="Send prompt"]',
         fallbacks: [
           'button[data-testid="send-button"][aria-label="Send prompt"]',
           'button[data-testid="send-button"][aria-label="İstem gönder"]',
@@ -58,13 +58,13 @@ export const config = {
         ],
       },
       inputField: {
-        tr: 'div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"], #prompt-textarea[contenteditable="true"]',
-        en: 'div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"], #prompt-textarea[contenteditable="true"]',
+        tr: '[data-composer-markdown][contenteditable="true"][role="textbox"], div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"], #prompt-textarea[contenteditable="true"]',
+        en: '[data-composer-markdown][contenteditable="true"][role="textbox"], div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"], #prompt-textarea[contenteditable="true"]',
         fallbacks: ["#prompt-textarea"],
       },
       attachButton: {
-        tr: 'button#composer-plus-btn[aria-haspopup="menu"], button[data-testid="composer-plus-btn"][aria-label="Dosyaları ve çok daha fazlasını ekle"]',
-        en: 'button#composer-plus-btn[aria-haspopup="menu"], button[data-testid="composer-plus-btn"][aria-label="Add files and more"]',
+        tr: 'button[aria-label="Dosyaları ve daha fazlasını ekle"], button#composer-plus-btn[aria-haspopup="menu"], button[data-testid="composer-plus-btn"][aria-label="Dosyaları ve çok daha fazlasını ekle"]',
+        en: 'button[aria-label="Add files and more"], button#composer-plus-btn[aria-haspopup="menu"], button[data-testid="composer-plus-btn"][aria-label="Add files and more"]',
         fallbacks: ['#composer-plus-btn[data-testid="composer-plus-btn"]'],
       },
     },
@@ -150,19 +150,25 @@ export const config = {
     readiness: "verified",
     sidebar: {
       openButtonSelectors: [
+        'button[data-sidebar-destination="builtin:home"][aria-expanded="false"]',
+        'button[aria-controls="app-shell-sidebar"][aria-expanded="false"]',
         'button[data-testid="open-sidebar-button"]',
         'button[aria-label="Open sidebar"]',
         'button[aria-label="Kenar çubuğunu aç"]',
       ],
       closeButtonSelectors: [
+        'button[aria-controls="app-shell-sidebar"][aria-expanded="true"]',
         'button[data-testid="close-sidebar-button"]',
         'button[aria-label="Close sidebar"]',
         'button[aria-label="Kenar çubuğunu kapat"]',
       ],
     },
     history: {
-      containerSelectors: ["#history"],
-      itemSelectors: ['#history a[data-sidebar-item="true"][href^="/c/"]'],
+      containerSelectors: ["#history", "[data-sidebar-archive-chatgpt-id]"],
+      itemSelectors: [
+        '[data-sidebar-archive-chatgpt-id] a[data-interactive-row-link][href*="/c/"]',
+        '#history a[data-sidebar-item="true"][href^="/c/"]',
+      ],
       titleSelectors: ['span[dir="auto"]'],
     },
   },
