@@ -1,6 +1,6 @@
 # Gaia Room
 
-> Durum: Ön planlama ve araştırma tamamlandı; ayrıntılı mimari kontratlar ve uygulama henüz başlamadı. Teknoloji seçimi koşullu kabul edildi.
+> Durum: Ön planlama ve araştırma tamamlandı. 01-C/D tasarımı ve bağımsız audit tamamlandı; P0 kontratları netleşti. Sıradaki 02-A/1 dar editör entegrasyonu. Teknoloji seçimi koşullu. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
 
 Referans uygulama commit'i: `d0e47947` (Hayalet Ev 5.4.0). Bu belge Gaia için mimari karar, proje hafızası, araştırma özeti, açık konular ve geliştirme planının tek başlangıç kaynağıdır. Yeni oda, Client veya Router henüz oluşturulmadı.
 
@@ -54,7 +54,7 @@ OpenCode'un localhost üzerinde çalışması model çıkarımının yerel oldu�
 
 ## 4. Mekânsal model ve UI
 
-Gaia kanonik veri otoritesidir. Editör ve viewer yalnızca projeksiyon/adaptör tüketicileridir. Koordinat, geometri ve ilişkilerin kesin şeması 01-C'de kararlaştırılır.
+Gaia kanonik veri otoritesidir. Editör ve viewer yalnızca projeksiyon/adaptör tüketicileridir. Koordinat, geometri ve ilişkilerin başlangıç şeması [GAIA-ARCHITECTURE.md](GAIA-ARCHITECTURE.md) içinde; çalışma zamanı kabulü 02-A'da.
 
 - Yerel metre cinsinden gerçek X/Y/Z; Z yükseklik ve negatif Z derinlik. Eksen yönü, orijin, rotasyon ve renderer dönüşümleri kontratta açıkça tanımlanır.
 - Arazi → yapı → kat/bölge → nesne hiyerarşisi; birden fazla bağımsız yapı, yer altı nesneleri, bağımsız konumlar, boyutlar, ilişkiler ve üç boyutlu altyapı hatları.
@@ -128,22 +128,22 @@ LAN protokolü, eşleme/kimlik doğrulama ve iletişim güvenliği Client deneyi
 
 ## 8. Milestone planı ve mevcut durum
 
-| Milestone  | Durum                                  | Çıkış kriteri                                                                               |
-| ---------- | -------------------------------------- | ------------------------------------------------------------------------------------------- |
-| 00         | Tamamlandı                             | Temiz referans repo; full check 1962 pass / 0 fail / 2 skipped, Fate Knots 282 CSS baseline |
-| 01-A       | Tamamlandı                             | Mevcut mimarinin salt okunur keşfi                                                          |
-| 01-B/B2/B3 | Tamamlandı (koşullu seçim)             | Açık kaynak/UI araştırması ve yerel fizibilite; eksikler 02-A kabul koşulu                  |
-| 01-C       | Sıradaki                               | Kanonik şema, koordinat/kimlik/ilişki kuralları, editör/viewer kontratları ve fixture       |
-| 01-D       | Planlama belgesi hazır; audit bekliyor | Bağımsız mimari audit, agent dağılımı ve ilk uygulama planı                                 |
-| 02-A       | Bekliyor                               | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
-| 02-B       | Bekliyor                               | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
-| 02-C       | Bekliyor                               | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
-| 02-D       | Bekliyor                               | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
-| 03         | Bekliyor                               | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
-| 04         | Bekliyor                               | Router, saha ağı ve Companion yönetimi                                                      |
-| 05         | Bekliyor                               | Elektronik ve deterministik otomasyon; güvenli test düzeneği                                |
-| 06         | Bekliyor                               | Yerel AI0/AI1 entegrasyonu; doğrulanmış araçlar ve kaynak tüketimi                          |
-| 07         | Bekliyor                               | Gerçek saha ve uzun süreli çalışma; veri koruma dönemine geçiş değerlendirmesi              |
+| Milestone  | Durum                               | Çıkış kriteri                                                                               |
+| ---------- | ----------------------------------- | ------------------------------------------------------------------------------------------- |
+| 00         | Tamamlandı                          | Temiz referans repo; full check 1962 pass / 0 fail / 2 skipped, Fate Knots 282 CSS baseline |
+| 01-A       | Tamamlandı                          | Mevcut mimarinin salt okunur keşfi                                                          |
+| 01-B/B2/B3 | Tamamlandı (koşullu seçim)          | Açık kaynak/UI araştırması ve yerel fizibilite; eksikler 02-A kabul koşulu                  |
+| 01-C       | Tamamlandı                          | Kanonik şema, koordinat/kimlik/ilişki kuralları, editör/viewer kontratları ve fixture       |
+| 01-D       | Tamamlandı (P0 kontratları işlendi) | Bağımsız mimari audit, agent dağılımı ve ilk uygulama planı                                 |
+| 02-A       | Bekliyor                            | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
+| 02-B       | Bekliyor                            | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
+| 02-C       | Bekliyor                            | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
+| 02-D       | Bekliyor                            | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
+| 03         | Bekliyor                            | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
+| 04         | Bekliyor                            | Router, saha ağı ve Companion yönetimi                                                      |
+| 05         | Bekliyor                            | Elektronik ve deterministik otomasyon; güvenli test düzeneği                                |
+| 06         | Bekliyor                            | Yerel AI0/AI1 entegrasyonu; doğrulanmış araçlar ve kaynak tüketimi                          |
+| 07         | Bekliyor                            | Gerçek saha ve uzun süreli çalışma; veri koruma dönemine geçiş değerlendirmesi              |
 
 ### 02-A kabul kriterleri
 
@@ -179,7 +179,7 @@ Yeni proje başlangıcı için kabul edilen 17 kural bu mevcut monorepo'ya uyarl
 
 ### Kapsam havuzu
 
-- Şimdi: 01-C/D, ardından 02-A; modelleme, bağımsız veri, hazır editör ve viewer. Sonraki milestone'lar kendi kapsamıyla açılır.
+- Şimdi: 02-A/1 dar editör veri turu, ardından diğer 02-A paketleri; modelleme, bağımsız veri, hazır editör ve viewer. Sonraki milestone'lar kendi kapsamıyla açılır.
 - Sonra: gelişmiş hayvan/kamera analizi, toprak nemi haritası, güneş enerjisi/invertör, sulama optimizasyonu, hazır protokol adaptörleri, görsel atmosfer.
 - Deneysel: Android mesh/repeater, bataryasız ve ekransız anakartlar, fiziksel kamera/mikrofon taşıma, manyetik/RF haritası, otomatik mekânsal çıkarım, dağıtık görüntü işleme. Başarısızlık ana projeyi bloke etmez.
 
@@ -191,6 +191,6 @@ Adayların ana depo lisansı uygun olsa bile transitif paketler, model/doku/font
 
 ## 11. Açık konular / sonraki session
 
-01-C'de önce kanonik model ve adaptör değişiklik kontratı tasarla; ardından 01-D bağımsız audit ve uygulama görevi. Teknoloji seçimi koşullu, performans hedefi henüz ölçülmedi. Çok yapılı hiyerarşi ve gerçek hat geometrisi, ayrı viewer, gerçek kalibrasyon, çevrimdışı varlık envanteri, görünürlük/dispose, Android/Router ve yerel model ölçümleri açık. Yerel LLM'nin modeli ve gerçek offline davranışı doğrulanmadı. Son full check referansındaki iki atlanan test ve 282 Fate Knots CSS borcu Gaia işi değildir.
+Sıradaki aşama 02-A/1. 01-D karar 2 ile tamamlandı: ortak arazi planı, mutasyon öncesi izin profili ve güvenilen tek yazıcı kontratları mimari belgeye işlendi. P1 kabul senaryoları ve P2 erteleme kararları aynı belgede. İlk paket gerçek editör hareketi ve küçük upstream patch ile kayıpsız veri turunu kanıtlar; sonraki paketler bu kapıdan sonra açılır. Teknoloji seçimi koşullu, performans hedefi henüz ölçülmedi. Çok yapılı hiyerarşi ve gerçek hat geometrisi, ayrı viewer, gerçek kalibrasyon, çevrimdışı varlık envanteri, görünürlük/dispose, Android/Router ve yerel model ölçümleri açık. Yerel LLM'nin modeli ve gerçek offline davranışı doğrulanmadı. Son full check referansındaki iki atlanan test ve 282 Fate Knots CSS borcu Gaia işi değildir.
 
 Yeni bir araştırma turu açmak yerine doğrulanabilir en küçük uygulama dilimini hedefle. Şu aşamada oda, manifest, dependency, Client/Router kodu, cihaz kurulumu veya release yoktur.
