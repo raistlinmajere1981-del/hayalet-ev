@@ -9,3 +9,6 @@
 *.node binary
 *.db binary
 *.sqlite binary
+
+# Unified diff context lines require a leading space even when empty.
+rooms/.gaia-room/editor/openplan3d.patch whitespace=-blank-at-eol

@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.rooms.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../.build/gaia-room/spatial.tsbuildinfo"
+  },
+  "include": [
+    "spatial/**/*.ts",
+    "editor/projection.ts",
+    "editor/session.ts",
+    "editor/host.d.ts",
+    "tests/**/*.ts"
+  ]
+}

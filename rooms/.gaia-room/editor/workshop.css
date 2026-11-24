@@ -1,0 +1,10 @@
+@import "tailwindcss" source(none);
+@source "./Workshop.svelte";
+@source "../../.build/gaia-room/openplan3d/src/lib/components/editor/FloorPlanCanvas.svelte";
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+}

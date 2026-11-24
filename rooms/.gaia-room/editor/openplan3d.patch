@@ -1,0 +1,758 @@
+diff --git a/src/lib/components/editor/ContextMenu.svelte b/src/lib/components/editor/ContextMenu.svelte
+index 2774050..cbd27a1 100644
+--- a/src/lib/components/editor/ContextMenu.svelte
++++ b/src/lib/components/editor/ContextMenu.svelte
+@@ -13,11 +13,12 @@
+     targetFurniture?: FurnitureItem | null;
+     targetRoom?: Room | null;
+     clipboard?: any;
++    allowAction?: (action: string) => boolean;
+     onclose: () => void;
+     onaction: (action: string, data?: any) => void;
+   }
+ 
+-  let { x, y, visible, targetType, targetId, targetWall, targetFurniture, targetRoom, clipboard, onclose, onaction }: Props = $props();
++  let { x, y, visible, targetType, targetId, targetWall, targetFurniture, targetRoom, clipboard, allowAction = () => true, onclose, onaction }: Props = $props();
+ 
+   let menuEl = $state<HTMLDivElement>();
+ 
+@@ -42,7 +43,7 @@
+   $effect(() => {
+     if (visible && menuEl) {
+       returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+-      menuEl.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus();
++      (menuEl.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? menuEl).focus();
+     }
+   });
+ 
+@@ -100,102 +101,102 @@
+     onkeydown={handleKeydown}
+   >
+     {#if targetType === 'furniture'}
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('duplicate-furniture')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('duplicate-furniture')} onclick={() => clickItem('duplicate-furniture')}>
+         <span class="ctx-icon">📋</span> {$t('contextMenu.duplicate')}
+       </button>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('rotate-furniture-90')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('rotate-furniture-90')} onclick={() => clickItem('rotate-furniture-90')}>
+         <span class="ctx-icon">🔄</span> {$t('contextMenu.rotate90')}
+       </button>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('flip-horizontal')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('flip-horizontal')} onclick={() => clickItem('flip-horizontal')}>
+         <span class="ctx-icon">↔️</span> {$t('contextMenu.flipHorizontal')}
+       </button>
+       <div class="ctx-sep"></div>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('bring-to-front')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('bring-to-front')} onclick={() => clickItem('bring-to-front')}>
+         <span class="ctx-icon">⬆️</span> {$t('contextMenu.bringToFront')}
+       </button>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('send-to-back')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('send-to-back')} onclick={() => clickItem('send-to-back')}>
+         <span class="ctx-icon">⬇️</span> {$t('contextMenu.sendToBack')}
+       </button>
+       <div class="ctx-sep"></div>
+       <div class="ctx-sep"></div>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('toggle-lock')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('toggle-lock')} onclick={() => clickItem('toggle-lock')}>
+         <span class="ctx-icon">{targetFurniture?.locked ? '🔓' : '🔒'}</span> {targetFurniture?.locked ? $t('contextMenu.unlock') : $t('contextMenu.lock')}
+       </button>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('properties')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('properties')} onclick={() => clickItem('properties')}>
+         <span class="ctx-icon">⚙️</span> {$t('contextMenu.properties')}
+       </button>
+       <div class="ctx-sep"></div>
+-      <button class="ctx-item ctx-danger" role="menuitem" onclick={() => clickItem('delete')}>
++      <button class="ctx-item ctx-danger" role="menuitem" disabled={!allowAction('delete')} onclick={() => clickItem('delete')}>
+         <span class="ctx-icon">🗑️</span> {$t('contextMenu.delete')}
+       </button>
+ 
+     {:else if targetType === 'wall'}
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('split-wall')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('split-wall')} onclick={() => clickItem('split-wall')}>
+         <span class="ctx-icon">✂️</span> {$t('contextMenu.splitWall')}
+       </button>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('toggle-curve')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('toggle-curve')} onclick={() => clickItem('toggle-curve')}>
+         <span class="ctx-icon">〰️</span> {$t(targetWall?.curvePoint ? 'contextMenu.curveOff' : 'contextMenu.curveOn')}
+       </button>
+       <div class="ctx-sep"></div>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('properties')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('properties')} onclick={() => clickItem('properties')}>
+         <span class="ctx-icon">⚙️</span> {$t('contextMenu.properties')}
+       </button>
+       <div class="ctx-sep"></div>
+-      <button class="ctx-item ctx-danger" role="menuitem" onclick={() => clickItem('delete')}>
++      <button class="ctx-item ctx-danger" role="menuitem" disabled={!allowAction('delete')} onclick={() => clickItem('delete')}>
+         <span class="ctx-icon">🗑️</span> {$t('contextMenu.deleteWall')}
+       </button>
+ 
+     {:else if targetType === 'door' || targetType === 'window'}
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('properties')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('properties')} onclick={() => clickItem('properties')}>
+         <span class="ctx-icon">⚙️</span> {$t('contextMenu.properties')}
+       </button>
+       {#if targetType === 'door'}
+         <div class="ctx-sep"></div>
+-        <button class="ctx-item" role="menuitem" onclick={() => clickItem('join-door')}>
++        <button class="ctx-item" role="menuitem" disabled={!allowAction('join-door')} onclick={() => clickItem('join-door')}>
+           <span class="ctx-icon">🔗</span> {$t('contextMenu.joinDoor')}
+         </button>
+       {/if}
+       <div class="ctx-sep"></div>
+-      <button class="ctx-item ctx-danger" role="menuitem" onclick={() => clickItem('delete')}>
++      <button class="ctx-item ctx-danger" role="menuitem" disabled={!allowAction('delete')} onclick={() => clickItem('delete')}>
+         <span class="ctx-icon">🗑️</span> {$t('contextMenu.delete')}
+       </button>
+ 
+     {:else if targetType === 'room'}
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('reset-room-label')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('reset-room-label')} onclick={() => clickItem('reset-room-label')}>
+         <span class="ctx-icon">↺</span> {$t('contextMenu.resetLabel')}
+       </button>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('rename-room')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('rename-room')} onclick={() => clickItem('rename-room')}>
+         <span class="ctx-icon">✏️</span> {$t('contextMenu.renameRoom')}
+       </button>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('change-floor-texture')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('change-floor-texture')} onclick={() => clickItem('change-floor-texture')}>
+         <span class="ctx-icon">🎨</span> {$t('contextMenu.changeFloorTexture')}
+       </button>
+       <div class="ctx-sep"></div>
+-      <button class="ctx-item ctx-danger" role="menuitem" onclick={() => clickItem('delete-room')}>
++      <button class="ctx-item ctx-danger" role="menuitem" disabled={!allowAction('delete-room')} onclick={() => clickItem('delete-room')}>
+         <span class="ctx-icon">🗑️</span> {$t('contextMenu.deleteRoom')}
+       </button>
+ 
+     {:else if targetType === 'canvas'}
+       {#if clipboard}
+-        <button class="ctx-item" role="menuitem" onclick={() => clickItem('paste')}>
++        <button class="ctx-item" role="menuitem" disabled={!allowAction('paste')} onclick={() => clickItem('paste')}>
+           <span class="ctx-icon">📋</span> {$t('contextMenu.paste')}
+         </button>
+         <div class="ctx-sep"></div>
+       {/if}
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('select-all')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('select-all')} onclick={() => clickItem('select-all')}>
+         <span class="ctx-icon">⬜</span> {$t('contextMenu.selectAll')}
+       </button>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('group')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('group')} onclick={() => clickItem('group')}>
+         <span class="ctx-icon">📦</span> {$t('contextMenu.groupSelected')}
+       </button>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('ungroup')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('ungroup')} onclick={() => clickItem('ungroup')}>
+         <span class="ctx-icon">📤</span> {$t('contextMenu.ungroup')}
+       </button>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('add-wall')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('add-wall')} onclick={() => clickItem('add-wall')}>
+         <span class="ctx-icon">🧱</span> {$t('contextMenu.addWall')}
+       </button>
+       <div class="ctx-sep"></div>
+-      <button class="ctx-item" role="menuitem" onclick={() => clickItem('zoom-to-fit')}>
++      <button class="ctx-item" role="menuitem" disabled={!allowAction('zoom-to-fit')} onclick={() => clickItem('zoom-to-fit')}>
+         <span class="ctx-icon">🔍</span> {$t('contextMenu.zoomToFit')}
+       </button>
+     {/if}
+@@ -220,6 +221,7 @@
+   .ctx-item:hover, .ctx-item:focus-visible {
+     background: #f3f4f6;
+   }
++  .ctx-item:disabled { opacity: 0.45; cursor: not-allowed; }
+   .ctx-danger {
+     color: #dc2626;
+   }
+diff --git a/src/lib/components/editor/FloorPlanCanvas.svelte b/src/lib/components/editor/FloorPlanCanvas.svelte
+index 0b5ec72..74a8a68 100644
+--- a/src/lib/components/editor/FloorPlanCanvas.svelte
++++ b/src/lib/components/editor/FloorPlanCanvas.svelte
+@@ -10,7 +10,7 @@
+   import { planContentBounds, hasPlanContent } from '$lib/utils/planContentBounds';
+   import { connectedWallEndpoints } from '$lib/utils/wallEditing';
+   import { createDrawScheduler } from '$lib/utils/drawScheduler';
+-  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoint, moveWallGeometryDuringDrag, updateDoor, updateWindow, addFurniture, moveFurniture, transformFurnitureDuringDrag, rotateFurniture, rotateSelection, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateSelection, pasteSelection, moveWallParallel, splitWall, wallSplitIntersectsOpening, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, setBackgroundImage, canvasZoom, canvasMinimumZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility, updateRoom, addMeasurement, updateMeasurement, removeMeasurement, addAnnotation, removeAnnotation, updateAnnotation, addTextAnnotation, removeTextAnnotation, updateTextAnnotation, moveTextAnnotation, toggleFurnitureLock, toggleSelectionLock, createGroup, ungroupElements, findGroupForElement, placingEntourageId, addEntourageItem, moveEntourage, resizeEntourage, currentProject, elevationWallId, elevationPickMode, doorJoinMode, joinScanDoors } from '$lib/stores/project';
++  import { activeFloor, selectedTool, selectedElementId, selectedElementIds, selectedRoomId, addWall, addDoor, addWindow, updateWall, moveWallEndpoints, moveWallGeometryDuringDrag, updateDoor, updateWindow, addFurniture, moveFurniture, transformFurnitureDuringDrag, rotateFurniture, rotateSelection, setFurnitureRotation, scaleFurniture, removeElement, placingFurnitureId, placingRotation, placingDoorType, placingWindowType, detectedRoomsStore, duplicateDoor, duplicateWindow, duplicateFurniture, duplicateSelection, pasteSelection, moveWallParallel, splitWall, wallSplitIntersectsOpening, snapEnabled, placingStair, addStair, moveStair, updateStair, placingColumn, placingColumnShape, addColumn, moveColumn, updateColumn, calibrationMode, calibrationPoints, updateBackgroundImage, setBackgroundImage, canvasZoom, canvasMinimumZoom, canvasCamX, canvasCamY, panMode, showFurnitureStore, addGuide, moveGuide, removeGuide, beginUndoGroup, endUndoGroup, layerVisibility, updateRoom, addMeasurement, updateMeasurement, removeMeasurement, addAnnotation, removeAnnotation, updateAnnotation, addTextAnnotation, removeTextAnnotation, updateTextAnnotation, moveTextAnnotation, toggleFurnitureLock, toggleSelectionLock, createGroup, ungroupElements, findGroupForElement, placingEntourageId, addEntourageItem, moveEntourage, resizeEntourage, currentProject, elevationWallId, elevationPickMode, doorJoinMode, joinScanDoors } from '$lib/stores/project';
+   import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column, GuideLine, Measurement, Annotation, TextAnnotation, CustomEntourageDef } from '$lib/models/types';
+   import type { Floor, Room } from '$lib/models/types';
+   import { resolveRoomGeometry, roomLabelPosition, roomCentroid } from '$lib/utils/roomDetection';
+@@ -42,10 +42,20 @@
+   import { isTracingImageType } from '$lib/utils/tracingImage';
+   import { findRoomLabelAt as _findRoomLabelAt, positionOnWall, findWallAt as _findWallAt, findHandleAt as _findHandleAt, findFurnitureAt as _findFurnitureAt, findColumnAt as _findColumnAt, findStairAt as _findStairAt, findDoorAt as _findDoorAt, findWindowAt as _findWindowAt, findRoomAt as _findRoomAt, hitTestMeasurement as _hitTestMeasurement, hitTestAnnotation as _hitTestAnnotation, hitTestTextAnnotation as _hitTestTextAnnotation, findEntourageAt } from '$lib/utils/hitTesting';
+ 
++  interface Props {
++    restrictEdits?: boolean;
++    onBlocked?: (feature: string) => void;
++    onGestureChange?: (active: boolean) => void;
++  }
++  let { restrictEdits = false, onBlocked, onGestureChange }: Props = $props();
++  const allowedMenuActions = new Set(['duplicate-furniture', 'rotate-furniture-90', 'paste', 'select-all', 'add-wall', 'zoom-to-fit', 'delete']);
++  const allowMenuAction = (action: string) => !restrictEdits || allowedMenuActions.has(action);
++
+   let canvas: HTMLCanvasElement;
+   let ctx: CanvasRenderingContext2D;
+   let splitBlocked = $state(false);
+   function trySplitWall(id: string, t: number): string | null {
++    if (restrictEdits) { onBlocked?.('Splitting walls'); return null; }
+     splitBlocked = wallSplitIntersectsOpening(id, t);
+     return splitWall(id, t);
+   }
+@@ -1929,7 +1939,7 @@
+ 
+     // Clipboard image paste handler — only if no internal plan clipboard
+     function handlePaste(e: ClipboardEvent) {
+-      if (!e.clipboardData) return;
++      if (restrictEdits || !e.clipboardData) return;
+       if (clipboard && clipboard.ids.length > 0) return; // internal clipboard takes priority
+       const files = e.clipboardData.files;
+       for (let i = 0; i < files.length; i++) {
+@@ -2233,6 +2243,7 @@
+     if (e.button === 0 && e.detail >= 2 && sameSelectionPress(e)) return;
+     selectionPress = null;
+     canvasGestureActive = true;
++    onGestureChange?.(true);
+     canvasPressPosition = { x: e.clientX, y: e.clientY };
+     if (e.button === 0 && e.shiftKey && currentTool === 'select' && currentFloor && !spaceDown && !$panMode) {
+       const rect = canvas.getBoundingClientRect();
+@@ -2514,6 +2525,7 @@
+             : { x: (selWall.start.x + selWall.end.x) / 2, y: (selWall.start.y + selWall.end.y) / 2 };
+           if (Math.hypot(wp.x - curveHandlePt.x, wp.y - curveHandlePt.y) < epThreshold) {
+             if (e.altKey) {
++              if (restrictEdits) { onBlocked?.('Curved walls'); return; }
+               draggingCurveHandle = selWall.id;
+             } else if (!selWall.curvePoint) {
+               // Parallel drag for straight walls
+@@ -2648,7 +2660,7 @@
+       } else {
+         // Check if clicking on a room label (for dragging)
+         const labelRoom = findRoomLabelAt(wp);
+-        if (labelRoom) {
++        if (labelRoom && !restrictEdits) {
+           draggingRoomLabelId = labelRoom.id;
+           roomLabelDragStart = { x: e.clientX, y: e.clientY };
+           roomLabelDragZoom = zoom;
+@@ -2667,6 +2679,7 @@
+           selectedRoomId.set(room.id);
+           selectedElementId.set(null);
+           selectedElementIds.set(new Set());
++          if (restrictEdits) return;
+           // Start room drag
+           draggingRoomId = room.id;
+           roomDragStartMouse = { x: wp.x, y: wp.y };
+@@ -2702,6 +2715,7 @@
+   }
+ 
+   function onDblClick(e: MouseEvent) {
++    if (restrictEdits && currentTool !== 'wall') return;
+     const rect = canvas.getBoundingClientRect();
+     const sx = e.clientX - rect.left;
+     const sy = e.clientY - rect.top;
+@@ -2710,13 +2724,13 @@
+     selectionPress = null;
+ 
+     // Double-click on horizontal ruler → add horizontal guide
+-    if (sy < R && sx > R) {
++    if (!restrictEdits && sy < R && sx > R) {
+       const wp = screenToWorld(sx, sy);
+       addGuide('horizontal', wp.y);
+       return;
+     }
+     // Double-click on vertical ruler → add vertical guide
+-    if (sx < R && sy > R) {
++    if (!restrictEdits && sx < R && sy > R) {
+       const wp = screenToWorld(sx, sy);
+       addGuide('vertical', wp.x);
+       return;
+@@ -2849,11 +2863,8 @@
+           else if (currentSnapEnabled && !pt.snappedToEndpoint && !pt.snappedToWall) pt = angleSnapWithin(other, pt, MAGNETIC_SNAP / zoom);
+         }
+       }
+-      moveWallEndpoint(draggingWallEndpoint.wallId, draggingWallEndpoint.endpoint, pt);
+-      // Move all connected endpoints together
+-      for (const conn of draggingConnectedEndpoints) {
+-        moveWallEndpoint(conn.wallId, conn.endpoint, pt);
+-      }
++      moveWallEndpoints([draggingWallEndpoint, ...draggingConnectedEndpoints]
++        .map(endpoint => ({ ...endpoint, position: pt })));
+     }
+     if (draggingWallParallel && currentFloor) {
+       const wall = currentFloor.walls.find(w => w.id === draggingWallParallel!.wallId);
+@@ -2874,15 +2885,12 @@
+             x: draggingWallParallel.origEnd.x + dx,
+             y: draggingWallParallel.origEnd.y + dy,
+           };
+-          moveWallEndpoint(draggingWallParallel.wallId, 'start', newStart);
+-          moveWallEndpoint(draggingWallParallel.wallId, 'end', newEnd);
+-          // Move connected walls' shared endpoints so adjacent walls stretch to stay connected
+-          for (const conn of draggingWallParallel.connectedStart) {
+-            moveWallEndpoint(conn.wallId, conn.endpoint, newStart);
+-          }
+-          for (const conn of draggingWallParallel.connectedEnd) {
+-            moveWallEndpoint(conn.wallId, conn.endpoint, newEnd);
+-          }
++          moveWallEndpoints([
++            ...[{ wallId: wall.id, endpoint: 'start' as const }, ...draggingWallParallel.connectedStart]
++              .map(endpoint => ({ ...endpoint, position: newStart })),
++            ...[{ wallId: wall.id, endpoint: 'end' as const }, ...draggingWallParallel.connectedEnd]
++              .map(endpoint => ({ ...endpoint, position: newEnd })),
++          ]);
+         }
+       }
+     }
+@@ -3079,6 +3087,7 @@
+   function onMouseUp(e: MouseEvent) {
+     markDirty();
+     canvasGestureActive = false;
++    onGestureChange?.(false);
+     isPanning = false;
+     draggingGuideId = null;
+ 
+@@ -3360,6 +3369,21 @@
+       return;
+     }
+     if (isControlKey(e)) return;
++    if (restrictEdits) {
++      const key = e.key.toLowerCase();
++      const mod = e.ctrlKey || e.metaKey;
++      if ((mod && ['g', 'l'].includes(key)) || (!mod && ['d', 'm', 'n', 't'].includes(key))) {
++        e.preventDefault();
++        onBlocked?.('This shortcut');
++        return;
++      }
++      if (!mod && key === 'tab') return;
++      if (mod && key === 'v' && clipboard && clipboard.floor.id !== currentFloor?.id) {
++        e.preventDefault();
++        onBlocked?.('Pasting from another floor');
++        return;
++      }
++    }
+     shiftDown = e.shiftKey;
+     if (e.code === 'Space') { spaceDown = true; e.preventDefault(); return; }
+ 
+@@ -3532,7 +3556,7 @@
+     // Commit and release the active pointer gesture before replaying history.
+     // Otherwise a later mouseup can write its pending label offset over Undo,
+     // or close a geometry group against a history state restored mid-drag.
+-    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'y')) {
++    if ((e.ctrlKey || e.metaKey) && ['z', 'y'].includes(e.key.toLowerCase())) {
+       finishCanvasGesture();
+     }
+ 
+@@ -3574,6 +3598,7 @@
+   }
+ 
+   function onDragOver(e: DragEvent) {
++    if (restrictEdits) { e.preventDefault(); return; }
+     if (e.dataTransfer?.types.includes('application/o3d-type')) {
+       e.preventDefault();
+       if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+@@ -3592,6 +3617,7 @@
+ 
+   function onDrop(e: DragEvent) {
+     e.preventDefault();
++    if (restrictEdits) { onBlocked?.('Catalog and file drops'); return; }
+     dragPreview = null;
+     const itemType = e.dataTransfer?.getData('application/o3d-type');
+     const itemId = e.dataTransfer?.getData('application/o3d-id');
+@@ -3741,6 +3767,10 @@
+             const room = findRoomLabelAt(wp) ?? findRoomAt(wp);
+             if (room) {
+               selectedRoomId.set(room.id);
++              if (restrictEdits) {
++                selectedElementId.set(null);
++                selectedElementIds.set(new Set());
++              }
+               ctxMenuTargetType = 'room';
+               ctxMenuTargetId = room.id;
+               ctxMenuRoom = room;
+@@ -3764,6 +3794,7 @@
+   }
+ 
+   function handleContextMenuAction(action: string, _data?: any) {
++    if (!allowMenuAction(action)) return;
+     if (!currentFloor) return;
+     const id = ctxMenuTargetId;
+ 
+@@ -3850,7 +3881,7 @@
+       // Canvas actions
+       case 'paste':
+         // Trigger paste via synthetic keyboard event
+-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', ctrlKey: true, metaKey: true }));
++        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', ctrlKey: true, cancelable: true }));
+         break;
+       case 'select-all':
+         selectAllPlanElements();
+@@ -4156,7 +4187,7 @@
+   {/if}
+ 
+   <!-- Contextual Toolbar (hidden while the integrated elevation view covers the canvas) -->
+-  {#if (currentSelectedId || currentSelectedIds.size > 0) && currentFloor && currentTool === 'select' && !elevationOpen}
++  {#if !restrictEdits && (currentSelectedId || currentSelectedIds.size > 0) && currentFloor && currentTool === 'select' && !elevationOpen}
+     {@const el = (() => {
+       const f = currentFloor;
+       const wall = f.walls.find(w => w.id === currentSelectedId);
+@@ -4354,5 +4385,6 @@
+     clipboard={clipboard}
+     onclose={() => { ctxMenuVisible = false; }}
+     onaction={handleContextMenuAction}
++    allowAction={allowMenuAction}
+   />
+ </div>
+diff --git a/src/lib/stores/project.ts b/src/lib/stores/project.ts
+index 6d04f65..f2f6ef9 100644
+--- a/src/lib/stores/project.ts
++++ b/src/lib/stores/project.ts
+@@ -18,6 +18,7 @@ import { doorJoin } from '$lib/utils/scanAlignment';
+ 
+ 
+ function uid(): string {
++  if (editingPolicy) return crypto.randomUUID();
+   return Math.random().toString(36).slice(2, 10);
+ }
+ 
+@@ -38,6 +39,17 @@ export function createDefaultProject(name = 'Untitled Project'): Project {
+   };
+ }
+ 
++export type MutationIntent =
++  | { kind: 'create' | 'remove'; ids: readonly string[] }
++  | { kind: 'history' };
++
++type EditingPolicy = (before: Project, after: Project, intent?: MutationIntent) => boolean;
++let editingPolicy: EditingPolicy | undefined;
++
++export function setEditingPolicy(policy?: EditingPolicy) {
++  editingPolicy = policy;
++}
++
+ export const currentProject = writable<Project | null>(null);
+ 
+ export const activeFloor = derived(currentProject, ($p) => {
+@@ -269,8 +281,7 @@ function pruneFloorContext(project: Project) {
+ }
+ 
+ /** Restore a history state with the selection recorded for it; entries without one keep the current selection, pruned. */
+-function restoreHistoryProject(state: string, selection?: SelectionSnapshot) {
+-  const project = reviveDates(JSON.parse(state));
++function restoreHistoryProject(project: Project, selection?: SelectionSnapshot) {
+   if (get(currentProject)?.activeFloorId !== project.activeFloorId) clearFloorContext();
+   currentProject.set(project);
+   if (selection) {
+@@ -282,21 +293,27 @@ function restoreHistoryProject(state: string, selection?: SelectionSnapshot) {
+ 
+ export function undo() {
+   resetCoalescing();
+-  const prev = undoStack.pop();
++  const prev = undoStack.at(-1);
+   if (!prev) return;
+   const cur = get(currentProject);
++  const project = reviveDates(JSON.parse(prev.state));
++  if (editingPolicy && (!cur || !editingPolicy(cur, project, { kind: 'history' }))) return;
++  undoStack.pop();
+   if (cur) pushHistory(redoStack, { state: JSON.stringify(cur), description: prev.description, timestamp: prev.timestamp, selection: captureSelection() });
+-  restoreHistoryProject(prev.state, prev.selection);
++  restoreHistoryProject(project, prev.selection);
+   syncHistoryStore();
+ }
+ 
+ export function redo() {
+   resetCoalescing();
+-  const next = redoStack.pop();
++  const next = redoStack.at(-1);
+   if (!next) return;
+   const cur = get(currentProject);
++  const project = reviveDates(JSON.parse(next.state));
++  if (editingPolicy && (!cur || !editingPolicy(cur, project, { kind: 'history' }))) return;
++  redoStack.pop();
+   if (cur) pushHistory(undoStack, { state: JSON.stringify(cur), description: next.description, timestamp: next.timestamp, selection: captureSelection() });
+-  restoreHistoryProject(next.state, next.selection);
++  restoreHistoryProject(project, next.selection);
+   syncHistoryStore();
+ }
+ 
+@@ -312,6 +329,8 @@ export function jumpToUndoStep(targetIndex: number) {
+   // Pair each redo state with the action that produced it, just as undo() does.
+   // Publish only the final state rather than every intermediate project.
+   const stepsBack = total - targetIndex;
++  const project = reviveDates(JSON.parse(undoStack[targetIndex].state));
++  if (editingPolicy && !editingPolicy(cur, project, { kind: 'history' })) return;
+   let state = JSON.stringify(cur), selection: SelectionSnapshot | undefined = captureSelection();
+   for (let i = 0; i < stepsBack; i++) {
+     const entry = undoStack.pop()!;
+@@ -319,21 +338,31 @@ export function jumpToUndoStep(targetIndex: number) {
+     state = entry.state;
+     selection = entry.selection;
+   }
+-  restoreHistoryProject(state, selection);
++  restoreHistoryProject(project, selection);
+   syncHistoryStore();
+ }
+ 
+ /** Apply `fn` to the active floor as one Undo step. An edit that changes nothing leaves history, Redo and updatedAt alone. */
+-function mutate(fn: (floor: Floor) => void, description?: string, coalesceKey?: string) {
+-  const p = get(currentProject);
+-  const floor = p?.floors.find((f) => f.id === p.activeFloorId);
+-  if (!p || !floor) return;
+-  const before = JSON.stringify(p);
+-  fn(floor);
+-  if (JSON.stringify(p) === before) return;
+-  snapshot(description, coalesceKey, before);
+-  p.updatedAt = new Date();
+-  currentProject.set({ ...p });
++type FloorEdit = (floor: Floor) => boolean | void;
++
++function editActiveFloor(fn: FloorEdit, history?: { description?: string; coalesceKey?: string }, intent?: MutationIntent): boolean {
++  const current = get(currentProject);
++  if (!current) return false;
++  // An embedding policy must see the entire proposed edit before the live floor or history changes.
++  const project = editingPolicy ? structuredClone(current) : current;
++  const floor = project.floors.find(f => f.id === project.activeFloorId);
++  if (!floor) return false;
++  const before = history ? JSON.stringify(current) : undefined;
++  if (fn(floor) === false || (history && JSON.stringify(project) === before)) return false;
++  if (editingPolicy && !editingPolicy(current, project, intent)) return false;
++  if (history) snapshot(history.description, history.coalesceKey, before);
++  project.updatedAt = new Date();
++  currentProject.set({ ...project });
++  return true;
++}
++
++function mutate(fn: (floor: Floor) => void, description?: string, coalesceKey?: string, intent?: MutationIntent): boolean {
++  return editActiveFloor(fn, { description, coalesceKey }, intent);
+ }
+ 
+ const samePoint = (a: Point, b: Point) => a.x === b.x && a.y === b.y;
+@@ -344,8 +373,8 @@ export function addWall(start: Point, end: Point): string {
+     // Copy the coordinates: the canvas passes magnet-snap results (with snappedTo* flags) and
+     // reuses one point for the next wall's start; the model keeps plain, independent points.
+     f.walls.push({ id, start: { x: start.x, y: start.y }, end: { x: end.x, y: end.y }, thickness: 15, height: 280, startHeight: 280, endHeight: 280, color: '#444444' });
+-  }, 'Added wall');
+-  if (typeof window !== 'undefined') {
++  }, 'Added wall', undefined, { kind: 'create', ids: [id] });
++  if (!editingPolicy && typeof window !== 'undefined') {
+     import('$lib/stores/onboarding.svelte').then(m => m.triggerTip('first-wall', end.x > 400 ? 300 : end.x + 20, 120)).catch(() => {});
+   }
+   return id;
+@@ -375,7 +404,7 @@ export function addDoor(wallId: string, position: number, doorType: Door['type']
+   mutate((f) => {
+     f.doors.push({ id, wallId, position, width, height, type: doorType, swingDirection: 'left', flipSide: false });
+   }, `Added ${doorType} door`);
+-  if (typeof window !== 'undefined') {
++  if (!editingPolicy && typeof window !== 'undefined') {
+     import('$lib/stores/onboarding.svelte').then(m => m.triggerTip('first-door', 300, 120)).catch(() => {});
+   }
+   return id;
+@@ -401,8 +430,8 @@ export function addFurniture(catalogId: string, position: Point): string {
+   const id = uid();
+   mutate((f) => {
+     f.furniture.push({ id, catalogId, position, rotation: 0, scale: { x: 1, y: 1, z: 1 } });
+-  }, `Added ${catalogId}`);
+-  if (typeof window !== 'undefined') {
++  }, `Added ${catalogId}`, undefined, { kind: 'create', ids: [id] });
++  if (!editingPolicy && typeof window !== 'undefined') {
+     import('$lib/stores/onboarding.svelte').then(m => m.triggerTip('first-furniture', position.x + 20, position.y + 20)).catch(() => {});
+   }
+   return id;
+@@ -416,30 +445,20 @@ export function beginDrag(description = 'Moved element') {
+ /** Move furniture without creating an undo snapshot on every call (used during drag).
+  *  Call `beginDrag()` when the drag starts to snapshot the pre-drag state. */
+ export function moveFurniture(id: string, position: Point) {
+-  const p = get(currentProject);
+-  if (!p) return;
+-  const floor = p.floors.find((f) => f.id === p.activeFloorId);
+-  if (!floor) return;
+-  const item = floor.furniture.find((fi) => fi.id === id);
+-  if (item && !samePoint(item.position, position)) {
+-    item.position = position;
+-    p.updatedAt = new Date();
+-    currentProject.set({ ...p });
+-  }
++  transformFurnitureDuringDrag(id, { position });
+ }
+ 
+ /** Apply one drag frame atomically. The canvas owns the enclosing undo group. */
+ export function transformFurnitureDuringDrag(id: string, updates: Partial<Pick<FurnitureItem, 'position' | 'rotation' | 'scale'>>) {
+-  const p = get(currentProject);
+-  const floor = p?.floors.find(f => f.id === p.activeFloorId);
+-  const item = floor?.furniture.find(fi => fi.id === id);
+-  if (!p || !item) return;
+-  const { position, rotation, scale } = updates;
+-  if ((!position || samePoint(item.position, position)) && (rotation === undefined || rotation === item.rotation)
+-    && (!scale || (scale.x === item.scale.x && scale.y === item.scale.y && scale.z === item.scale.z))) return;
+-  Object.assign(item, updates);
+-  p.updatedAt = new Date();
+-  currentProject.set({ ...p });
++  editActiveFloor(floor => {
++    const item = floor.furniture.find(fi => fi.id === id);
++    if (!item) return false;
++    const { position, rotation, scale } = updates;
++    if ((!position || samePoint(item.position, position)) && (rotation === undefined || rotation === item.rotation)
++      && (!scale || (scale.x === item.scale.x && scale.y === item.scale.y && scale.z === item.scale.z))) return false;
++    Object.assign(item, updates);
++    return true;
++  });
+ }
+ 
+ /** Snapshot the current state before a drag begins (call once at drag start).
+@@ -674,6 +693,7 @@ export const calibrationPoints = writable<Point[]>([]);
+ 
+ /** Delete a room's exclusive boundary and metadata, preserving neighboring rooms. */
+ export function removeRoom(id: string) {
++  if (editingPolicy) return;
+   const floor = get(activeFloor);
+   if (!floor) return;
+   const rooms = [...floor.rooms, ...get(detectedRoomsStore)];
+@@ -716,40 +736,41 @@ export function removeElement(id: string) {
+     if (f.annotations) f.annotations = f.annotations.filter(item => item.id !== id);
+     if (f.entourage) f.entourage = f.entourage.filter((e) => e.id !== id);
+     if (f.groups) f.groups = f.groups.map(group => ({ ...group, elementIds: group.elementIds.filter(itemId => !removedIds.has(itemId)) })).filter(group => group.elementIds.length >= 2);
+-  }, 'Deleted element');
++  }, 'Deleted element', undefined, { kind: 'remove', ids: [id] });
+ }
+ 
+ /** Move a wall endpoint without creating an undo snapshot (for dragging) */
+-export function moveWallEndpoint(id: string, endpoint: 'start' | 'end', position: Point) {
+-  if (!finitePoint(position)) return;
+-  const p = get(currentProject);
+-  if (!p) return;
+-  const floor = p.floors.find((f) => f.id === p.activeFloorId);
+-  if (!floor) return;
+-  const w = floor.walls.find((w) => w.id === id);
+-  if (w && !samePoint(w[endpoint], position)) {
+-    // Store only x/y: the drag passes magnet-snap results carrying snappedTo* flags and the
+-    // same object to every joined corner, which otherwise reach saves and Download JSON.
+-    w[endpoint] = { x: position.x, y: position.y };
+-    p.updatedAt = new Date();
+-    currentProject.set({ ...p });
+-  }
++export function moveWallEndpoint(id: string, endpoint: WallEndpoint, position: Point) {
++  moveWallEndpoints([{ wallId: id, endpoint, position }]);
++}
++
++/** Connected endpoints share a drag frame and must pass the editor policy together. */
++export function moveWallEndpoints(changes: readonly { wallId: string; endpoint: WallEndpoint; position: Point }[]) {
++  if (changes.some(change => !finitePoint(change.position))) return;
++  editActiveFloor(floor => {
++    let changed = false;
++    for (const { wallId, endpoint, position } of changes) {
++      const wall = floor.walls.find(w => w.id === wallId);
++      if (!wall || samePoint(wall[endpoint], position)) continue;
++      wall[endpoint] = { x: position.x, y: position.y };
++      changed = true;
++    }
++    return changed;
++  });
+ }
+ 
+ /** Translate wall geometry during a drag; the canvas owns the Undo group. */
+ export function moveWallGeometryDuringDrag(id: string, geometry: Pick<Wall, 'start' | 'end' | 'curvePoint'>) {
+   if (!finitePoint(geometry.start) || !finitePoint(geometry.end) ||
+     (geometry.curvePoint !== undefined && !finitePoint(geometry.curvePoint))) return;
+-  const project = get(currentProject);
+-  const wall = project?.floors.find(floor => floor.id === project.activeFloorId)?.walls.find(wall => wall.id === id);
+-  if (!project || !wall) return;
+-  if (samePoint(wall.start, geometry.start) && samePoint(wall.end, geometry.end)
+-    && (!geometry.curvePoint || (wall.curvePoint && samePoint(wall.curvePoint, geometry.curvePoint)))) return;
+-  wall.start = { x: geometry.start.x, y: geometry.start.y };
+-  wall.end = { x: geometry.end.x, y: geometry.end.y };
+-  if (geometry.curvePoint) wall.curvePoint = { x: geometry.curvePoint.x, y: geometry.curvePoint.y };
+-  project.updatedAt = new Date();
+-  currentProject.set({ ...project });
++  editActiveFloor(floor => {
++    const wall = floor.walls.find(w => w.id === id);
++    if (!wall || (samePoint(wall.start, geometry.start) && samePoint(wall.end, geometry.end)
++      && (!geometry.curvePoint || (wall.curvePoint && samePoint(wall.curvePoint, geometry.curvePoint))))) return false;
++    wall.start = { x: geometry.start.x, y: geometry.start.y };
++    wall.end = { x: geometry.end.x, y: geometry.end.y };
++    if (geometry.curvePoint) wall.curvePoint = { x: geometry.curvePoint.x, y: geometry.curvePoint.y };
++  });
+ }
+ 
+ /** Resize joined corners atomically. Openings keep their normalized wall positions. */
+@@ -1029,9 +1050,10 @@ export function setActiveFloor(floorId: string) {
+   const p = get(currentProject);
+   if (!p) return;
+   if (p.activeFloorId !== floorId && p.floors.some((f) => f.id === floorId)) {
++    const next = { ...p, activeFloorId: floorId };
++    if (editingPolicy && !editingPolicy(p, next)) return;
+     clearFloorContext();
+-    p.activeFloorId = floorId;
+-    currentProject.set({ ...p });
++    currentProject.set(next);
+   }
+ }
+ 
+@@ -1147,6 +1169,7 @@ export function selectImportedElements(floorId: string, ids: string[]) {
+  *  (see utils/moveToFloor), as one undo step. The target floor becomes the active one with the
+  *  moved elements selected. Returns their ids; nothing changes when nothing would move. */
+ export function moveSelectionToFloor(ids: ReadonlySet<string>, targetFloorId: string): string[] {
++  if (editingPolicy) return [];
+   const p = get(currentProject);
+   if (!p || !ids.size || targetFloorId === p.activeFloorId) return [];
+   const source = p.floors.find(f => f.id === p.activeFloorId), target = p.floors.find(f => f.id === targetFloorId);
+@@ -1235,17 +1258,17 @@ export function duplicateSelection(ids: ReadonlySet<string>): string[] {
+   if (!floor || !ids.size) return [];
+   const copy = structuredClone(floor);
+   const newIds = duplicatePlanSelection(copy, ids, uid);
+-  if (newIds.length) mutate(f => Object.assign(f, copy), 'Duplicated selection');
++  if (newIds.length && !mutate(f => Object.assign(f, copy), 'Duplicated selection', undefined, { kind: 'create', ids: newIds })) return [];
+   return newIds;
+ }
+ 
+ /** Paste a captured selection, with one history entry and no dependence on source IDs. */
+ export function pasteSelection(source: Floor, ids: ReadonlySet<string>, step = 1): string[] {
+   const floor = get(activeFloor);
+-  if (!floor) return [];
++  if (!floor || (editingPolicy && floor.id !== source.id)) return [];
+   const copy = structuredClone(floor);
+   const newIds = pastePlanSelection(source, copy, ids, uid, step);
+-  if (newIds.length) mutate(f => Object.assign(f, copy), 'Pasted selection');
++  if (newIds.length && !mutate(f => Object.assign(f, copy), 'Pasted selection', undefined, { kind: 'create', ids: newIds })) return [];
+   return newIds;
+ }
+ 
+@@ -1258,10 +1281,10 @@ export function duplicateFurniture(id: string): string | null {
+   const fi = floor.furniture.find(fi => fi.id === id);
+   if (!fi) return null;
+   const newId = uid();
+-  mutate(f => {
++  const changed = mutate(f => {
+     f.furniture.push({ ...fi, id: newId, position: { x: fi.position.x + 30, y: fi.position.y + 30 } });
+-  });
+-  return newId;
++  }, 'Duplicated furniture', undefined, { kind: 'create', ids: [newId] });
++  return changed ? newId : null;
+ }
+ 
+ /** Move a wall parallel to itself (both endpoints shift by the same perpendicular offset) without undo snapshot (for dragging) */
+diff --git a/src/lib/utils/shortcuts.ts b/src/lib/utils/shortcuts.ts
+index 419ccba..2a80ee3 100644
+--- a/src/lib/utils/shortcuts.ts
++++ b/src/lib/utils/shortcuts.ts
+@@ -23,10 +23,11 @@ export function isControlKey(e: KeyboardEvent): boolean {
+ export function handleGlobalShortcut(e: KeyboardEvent, ctx: ShortcutContext = {}): boolean {
+   if (hasOpenModal()) return false;
+   const mod = e.metaKey || e.ctrlKey;
++  const key = e.key.toLowerCase();
+ 
+   // Save remains available while editing. Text selection, clipboard and undo
+   // belong to the focused field, not the plan's selection/history.
+-  if (mod && e.key === 's') {
++  if (mod && key === 's') {
+     e.preventDefault();
+     if (ctx.save) ctx.save();
+     else void manualSave();
+@@ -35,13 +36,13 @@ export function handleGlobalShortcut(e: KeyboardEvent, ctx: ShortcutContext = {}
+   if (isEditingField(e.target) || isControlKey(e)) return false;
+ 
+   // Ctrl+Z undo
+-  if (mod && e.key === 'z' && !e.shiftKey) {
++  if (mod && key === 'z' && !e.shiftKey) {
+     e.preventDefault();
+     undo();
+     return true;
+   }
+   // Ctrl+Y or Ctrl+Shift+Z redo
+-  if ((mod && e.key === 'y') || (mod && e.key === 'z' && e.shiftKey)) {
++  if ((mod && key === 'y') || (mod && key === 'z' && e.shiftKey)) {
+     e.preventDefault();
+     redo();
+     return true;

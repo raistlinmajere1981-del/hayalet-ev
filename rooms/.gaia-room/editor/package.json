@@ -1,0 +1,22 @@
+{
+  "name": "gaia-openplan3d-editor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare:upstream": "node prepare-upstream.mjs",
+    "dev": "npm run prepare:upstream && vite --host 127.0.0.1 --port 4177 --strictPort",
+    "build": "npm run prepare:upstream && vite build",
+    "check": "npm run prepare:upstream && svelte-check --tsconfig ./tsconfig.json",
+    "test:ui": "npm run build -- --mode acceptance && playwright test --config=playwright.config.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@sveltejs/vite-plugin-svelte": "6.2.4",
+    "@tailwindcss/vite": "4.1.18",
+    "svelte": "5.57.0",
+    "svelte-check": "4.3.6",
+    "tailwindcss": "4.1.18",
+    "typescript": "5.9.3",
+    "vite": "7.3.7"
+  }
+}
