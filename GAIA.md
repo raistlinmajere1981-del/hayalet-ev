@@ -69,7 +69,7 @@ Gaia kanonik veri otoritesidir. Editör ve viewer yalnızca projeksiyon/adaptör
 
 ## 5. Açık kaynak araştırması ve teknoloji kararı
 
-01-B ve 01-B2 sonucunda **OpenPlan3D + Three.js koşullu ilk seçim**; NextFloor günlük yönetim UI'si ve kalibrasyon referansı, Pascal alternatif adaydır. Gaia dağıtımı mevcut diğer odalara veya Home Assistant'a bağlı olmayacak.
+01-B, 01-B2 ve 01-B3 sonucunda **OpenPlan3D + Three.js koşullu ilk seçim**; NextFloor günlük yönetim UI'si ve kalibrasyon referansı, Pascal alternatif adaydır. Gaia dağıtımı mevcut diğer odalara veya Home Assistant'a bağlı olmayacak.
 
 | Aday                                                                 | Lisans ve rol                                  | Bulgular                                                                                                                                           |
 | -------------------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -89,6 +89,14 @@ Diğer araştırma referansları: farmOS, Home Assistant/ESPHome, MQTT, RTSP/ONV
 - Pascal ayrı salt okunur viewer, örnek ev sahnesi ve WebGL fallback çalıştı; WebGPU cihazı bulunamadı. Dış ağ engelliyken temel geometri açıldı, eksik yerel dokular yüklenmedi. Tam editör kayıt turu ve Gaia fixture'ı tamamlanmadı. Unmount sonrası canvas kaldırıldı; gizleme sırasında render durduğu kanıtlanmadı.
 - Performans: 1280 × 720 gizli Electron penceresinde, farklı sahnelerle tek örnek renderer working set yaklaşık 182 MB (OpenPlan3D boş 3D) ve 273 MB (Pascal örnek viewer). CPU boşta %0 ve %0,62; GPU süreç working set yaklaşık 161 ve 183 MB. Bunlar eşit sahne benchmark'ı değildir; GPU kullanım yüzdesi/VRAM ölçülmedi. Kaynak üstünlüğü çıkarılamaz.
 - Araştırma kopyaları ve ekran görüntüleri `/tmp/gaia-editor-research/` altında üretildi; geçici ve repo dışında, kalıcı kaynak veya dağıtım girdisi değil. Deney sunucuları kapatıldı, repo değişmedi.
+
+### 01-B3 — Pascal son fizibilite deneyi
+
+- Pascal 1.1.6 resmi Next.js editör host'u ve MCP servisi izole geçici veri dizininde çalıştı. Çizim, kat, ölçüm, seçim, 2D/3D ve gezinme kontrolleri görünür oldu; etkileşimli davranışları doğrulanmadı.
+- MCP ile 40 × 60 m arazi sınırı, farklı kotlarda ev alanları, sera ve kümes oda geometrileri oluşturuldu ve otomatik kayıt sonrası yeniden yüklendi. Sera/kümes bağımsız building düğümleri değildi; evde başlangıçtan kalan ek katlar vardı. Açık save_scene checkpoint çağrıları kimlik ve version_conflict nedeniyle reddedildi. Otomatik kalıcılık, editör UI düzenleme–kayıt–yeniden açma kabulünün yerine geçmez.
+- Site → building → level hiyerarşisi, bağımsız viewer ve özel düğüm/panel eklenti mekanizması kaynak ve belgelerde doğrulandı. Tek aktif sahne singleton sınırı sürüyor. Özel cihaz düğümü/paneli, harici durum güncellemesi, negatif kotlu depo, bağımsız yapıların tam sahnesi, kesit/odaklanma ve aynı sahnenin ayrı viewer'da açılması test edilmedi.
+- İlk resmi host kurulumu 127,6 MB runtime indirdi. Kurulu resmi host'un tam çevrimdışı çalışması ve eşit sahneli Electron performans karşılaştırması yapılmadı. Bu miktar kurulu uygulamanın RAM tüketimi değildir. Transitif lisans/varlık denetimi iki adayda da tamamlanmadı.
+- Karar: OpenPlan3D + Three.js ilk uygulama için koşullu olarak korunur. Pascal'ın mimari avantajları geçerlidir ancak mevcut kanıtlar teknoloji değişikliği veya kesin performans/bakım üstünlüğü ilan etmek için yeterli değildir. Araştırma bu noktada kapanır; Pascal yalnız 02-A kabul koşullarında belirlenen vazgeçme nedenlerinden biri somut olarak gerçekleşirse yeniden değerlendirilir. Yeni bağımlılık veya kod eklenmedi; deney servisleri kapatıldı ve araştırma sırasında repo temiz kaldı.
 
 ### Uygulama koşulları
 
@@ -120,22 +128,22 @@ LAN protokolü, eşleme/kimlik doğrulama ve iletişim güvenliği Client deneyi
 
 ## 8. Milestone planı ve mevcut durum
 
-| Milestone | Durum                                  | Çıkış kriteri                                                                               |
-| --------- | -------------------------------------- | ------------------------------------------------------------------------------------------- |
-| 00        | Tamamlandı                             | Temiz referans repo; full check 1962 pass / 0 fail / 2 skipped, Fate Knots 282 CSS baseline |
-| 01-A      | Tamamlandı                             | Mevcut mimarinin salt okunur keşfi                                                          |
-| 01-B/B2   | Tamamlandı (koşullu seçim)             | Açık kaynak/UI araştırması ve yerel fizibilite; eksikler 02-A kabul koşulu                  |
-| 01-C      | Sıradaki                               | Kanonik şema, koordinat/kimlik/ilişki kuralları, editör/viewer kontratları ve fixture       |
-| 01-D      | Planlama belgesi hazır; audit bekliyor | Bağımsız mimari audit, agent dağılımı ve ilk uygulama planı                                 |
-| 02-A      | Bekliyor                               | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
-| 02-B      | Bekliyor                               | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
-| 02-C      | Bekliyor                               | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
-| 02-D      | Bekliyor                               | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
-| 03        | Bekliyor                               | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
-| 04        | Bekliyor                               | Router, saha ağı ve Companion yönetimi                                                      |
-| 05        | Bekliyor                               | Elektronik ve deterministik otomasyon; güvenli test düzeneği                                |
-| 06        | Bekliyor                               | Yerel AI0/AI1 entegrasyonu; doğrulanmış araçlar ve kaynak tüketimi                          |
-| 07        | Bekliyor                               | Gerçek saha ve uzun süreli çalışma; veri koruma dönemine geçiş değerlendirmesi              |
+| Milestone  | Durum                                  | Çıkış kriteri                                                                               |
+| ---------- | -------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 00         | Tamamlandı                             | Temiz referans repo; full check 1962 pass / 0 fail / 2 skipped, Fate Knots 282 CSS baseline |
+| 01-A       | Tamamlandı                             | Mevcut mimarinin salt okunur keşfi                                                          |
+| 01-B/B2/B3 | Tamamlandı (koşullu seçim)             | Açık kaynak/UI araştırması ve yerel fizibilite; eksikler 02-A kabul koşulu                  |
+| 01-C       | Sıradaki                               | Kanonik şema, koordinat/kimlik/ilişki kuralları, editör/viewer kontratları ve fixture       |
+| 01-D       | Planlama belgesi hazır; audit bekliyor | Bağımsız mimari audit, agent dağılımı ve ilk uygulama planı                                 |
+| 02-A       | Bekliyor                               | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
+| 02-B       | Bekliyor                               | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
+| 02-C       | Bekliyor                               | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
+| 02-D       | Bekliyor                               | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
+| 03         | Bekliyor                               | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
+| 04         | Bekliyor                               | Router, saha ağı ve Companion yönetimi                                                      |
+| 05         | Bekliyor                               | Elektronik ve deterministik otomasyon; güvenli test düzeneği                                |
+| 06         | Bekliyor                               | Yerel AI0/AI1 entegrasyonu; doğrulanmış araçlar ve kaynak tüketimi                          |
+| 07         | Bekliyor                               | Gerçek saha ve uzun süreli çalışma; veri koruma dönemine geçiş değerlendirmesi              |
 
 ### 02-A kabul kriterleri
 
