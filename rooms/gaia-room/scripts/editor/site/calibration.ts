@@ -38,3 +38,22 @@ export function calibrationValue(draft: CalibrationDraft | undefined, pixels: V2
   };
   return validCalibration(value, pixels) ? value : undefined;
 }
+
+export type CalibrationMark =
+  { ok: true; points: V2[] } | { ok: false; reason: "outside" | "coincident" };
+
+// Pixel calibration accepts at most two points: the first two marks form the pair and further
+// marks restart the pair. A duplicate second mark is rejected so the scale never becomes zero.
+export function markCalibrationPoint(
+  points: V2[],
+  pixels: V2 | undefined,
+  point: V2
+): CalibrationMark {
+  const [u, v] = point;
+  if (!pixels || u < 0 || v < 0 || u > pixels[0] || v > pixels[1])
+    return { ok: false, reason: "outside" };
+  const first = points[0];
+  if (points.length === 1 && first?.[0] === u && first[1] === v)
+    return { ok: false, reason: "coincident" };
+  return { ok: true, points: points.length === 1 ? [first!, point] : [point] };
+}

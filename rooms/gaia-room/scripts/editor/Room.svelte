@@ -3,6 +3,7 @@
   import en from "../../i18n/en.json";
   import tr from "../../i18n/tr.json";
   import { command, roomBridge, type InteriorOpened, type Opened, type Saved } from "./client.ts";
+  import { describeError } from "./site/errors.ts";
   import type { EditBatch } from "./session.ts";
   import type { SiteBatch } from "../spatial/site-edits.ts";
   import type { ReferenceBatch } from "../storage/reference-contract.ts";
@@ -11,6 +12,7 @@
   let locale = $state<"en" | "tr">("en");
   let labels = $state(en.workshop);
   let siteLabels = $state(en.site);
+  let roomName = $state(en.room.name);
   let project = $state("");
   let selected = $state("");
   let projects = $state<string[]>([]);
@@ -31,7 +33,7 @@
       projects = (await command<{ projects: string[] }>("GaiaProjects", {})).projects;
       if (!projects.includes(selected)) selected = projects[0] ?? "";
     } catch (e) {
-      error = String(e);
+      error = describeError(e, labels.error);
     }
   }
 
@@ -44,6 +46,7 @@
         const catalog = locale === "tr" ? tr : en;
         labels = { ...catalog.workshop, ...msg.translations?.workshop };
         siteLabels = { ...catalog.site, ...msg.translations?.site };
+        roomName = catalog.room.name;
         document.documentElement.lang = locale;
       } else if (msg.type === "gaia-theme") {
         for (const [key, value] of Object.entries(msg.payload ?? {}))
@@ -65,7 +68,7 @@
         if (active) Workshop = loaded;
       })
       .catch((e) => {
-        if (active) loadingError = String(e);
+        if (active) loadingError = describeError(e, labels.error);
       });
     return () => {
       active = false;
@@ -105,7 +108,7 @@
       );
       siteSelection = undefined;
     } catch (e) {
-      error = String(e);
+      error = describeError(e, labels.error);
     } finally {
       busy = false;
     }
@@ -194,7 +197,7 @@
   {/if}
 {:else if !disposed}
   <main class="projects">
-    <h1>Gaia Room</h1>
+    <h1>{roomName}</h1>
     <fieldset disabled={busy}>
       {#if projects.length}
         <label>
@@ -208,7 +211,7 @@
         {labels.name}<input
           bind:value={project}
           maxlength="64"
-          placeholder="atolye-1"
+          placeholder={labels.projectPlaceholder}
           aria-describedby="id-help"
         />
       </label>

@@ -2,7 +2,6 @@
   import { onDestroy, untrack } from "svelte";
   import type en from "../../../i18n/en.json";
   import {
-    applySiteEdits,
     removalPlan,
     type SiteBatch,
     type SiteEdit,
@@ -15,7 +14,6 @@
     type Id,
     type V2,
     type V3,
-    type SpatialNode,
   } from "../../spatial/world.ts";
   import {
     projectReference,
@@ -27,8 +25,12 @@
   import type { ReferenceBatch, ReferenceEdit } from "../../storage/reference-contract.ts";
   import { command, UnconfirmedCommand, type Opened, type Saved } from "../client.ts";
   import { referenceImages } from "../reference-images.svelte.ts";
-  import { calibrationDraft, calibrationValue, type CalibrationDraft } from "./calibration.ts";
+  import { calibrationDraft, calibrationValue, markCalibrationPoint, type CalibrationDraft } from "./calibration.ts";
   import CalibrationImage from "./CalibrationImage.svelte";
+  import { commitDraft } from "./draft.ts";
+  import { describeError } from "./errors.ts";
+  import { revealSelection, type LayerKind } from "./framing.ts";
+  import { StatusSession, nextFreshnessDeadline } from "./status-session.ts";
   import Measurements from "./Measurements.svelte";
   import References from "./References.svelte";
   import Layers from "./Layers.svelte";
@@ -38,11 +40,10 @@
   import Overview from "./Overview.svelte";
   import { deviceMarkers, spatialScene } from "./scene.ts";
   import {
-    activeStatuses,
     deviceHealth,
-    freshForMs,
-    observationFreshness,
+    visibleStatuses,
     type DeviceStatuses,
+    type StatusSnapshot,
   } from "../../devices/status.ts";
   import { deviceName, mountPath, type DeviceEdit } from "../../devices/inventory.ts";
   import type { VirtualUpdate } from "../../devices/status.ts";
@@ -91,16 +92,14 @@
   let underground = $state(false);
   let hidden = $state.raw<ReadonlySet<Id>>(new Set());
   let focus = $state.raw<{ id?: Id }>({});
-  let receivedStatuses = $state.raw<DeviceStatuses>({});
+  let statusSnapshot = $state.raw<StatusSnapshot>();
   let statusBusy = $state(false);
   let statusError = $state(false);
-  let statusRequest = 0;
   let creatingDevice = $state(false);
   let deviceDeletion = $state.raw<Extract<DeviceEdit, { op: "deleteDevice" }>>();
   let placingDevice = $state<Id>();
   let placementFrame = $state<Id>();
   let revealed = $state(false);
-  type LayerKind = SpatialNode["kind"] | "device";
   const layerKinds: LayerKind[] = [
     "site",
     "building",
@@ -131,6 +130,22 @@
   let measurementZ = $state<number | undefined>(0);
   let measurement = $state.raw<V3[]>([]);
   let disposed = false;
+  const status = new StatusSession({
+    read: async ({ project, session, update }) => {
+      const result = await command<{ statuses: DeviceStatuses; revision: number }>("GaiaStatus", {
+        project,
+        session,
+        ...(update ? { update } : {}),
+      });
+      return { statuses: result.statuses ?? {}, revision: result.revision };
+    },
+    active: () => visible && !disposed,
+    now: () => Date.now(),
+    busy: (value) => (statusBusy = value),
+    error: (value) => (statusError = value),
+    observed: (value) => (now = value),
+    snapshot: (value) => (statusSnapshot = value),
+  });
   onDestroy(() => {
     disposed = true;
   });
@@ -219,7 +234,7 @@
 
   const project = $derived(opened.world.id);
   const session = $derived(opened.session);
-  const statuses = $derived(activeStatuses(draft, receivedStatuses));
+  const statuses = $derived(visibleStatuses(draft, statusSnapshot, statusError));
   const states = $derived.by(() => {
     const result = new Map<Id, DeviceBadge>();
     if (!editable)
@@ -231,53 +246,31 @@
   });
 
   $effect(() => {
+    // Reading the revision makes a successful inventory save refetch statuses, because storage
+    // reconciles the sidecar against the newly saved world.
+    const revision = draft.revision;
     if (!visible || editable) {
-      statusBusy = false;
+      status.cancel();
       return;
     }
     now = Date.now();
-    if (untrack(() => Object.keys(draft.devices).length)) void loadStatus(project, session);
-    return () => {
-      statusRequest++;
-    };
+    if (revision >= 0 && untrack(() => Object.keys(draft.devices).length))
+      void status.load(project, session);
+    else statusBusy = false;
+    return () => status.cancel();
   });
 
   $effect(() => {
     if (!visible || editable) return;
-    let next = Infinity;
-    for (const status of Object.values(statuses))
-      for (const observation of Object.values(status.observations))
-        if (observationFreshness(status, observation, now) === "fresh")
-          next = Math.min(next, observation.at + freshForMs);
-    if (!Number.isFinite(next)) return;
-    const timer = setTimeout(() => (now = Date.now()), Math.max(0, next - Date.now()));
+    const deadline = nextFreshnessDeadline(statuses, now);
+    if (deadline === undefined) return;
+    const timer = setTimeout(() => (now = Date.now()), Math.max(0, deadline - Date.now()));
     return () => clearTimeout(timer);
   });
 
-  async function loadStatus(project: string, session: string, update?: VirtualUpdate) {
-    const request = ++statusRequest;
-    statusBusy = true;
-    statusError = false;
-    try {
-      const result = await command<{ statuses: DeviceStatuses }>("GaiaStatus", {
-        project,
-        session,
-        ...(update ? { update } : {}),
-      });
-      if (request === statusRequest && visible && !disposed) {
-        receivedStatuses = result.statuses ?? {};
-        now = Date.now();
-      }
-    } catch {
-      if (request === statusRequest && visible && !disposed) statusError = true;
-    } finally {
-      if (request === statusRequest) statusBusy = false;
-    }
-  }
-
   async function publish(update: VirtualUpdate) {
     if (!visible || editable || blocked || statusBusy) return;
-    await loadStatus(opened.world.id, opened.session, update);
+    await status.load(opened.world.id, opened.session, update);
   }
 
   function manage(edits: SiteEdit[]) {
@@ -306,21 +299,16 @@
   }
 
   function focusSelection(id: Id) {
-    revealed = !visibleIds.has(id);
-    if (revealed) {
-      const mount = draft.devices[id]?.mount;
-      const node = mount ?? id;
-      const next = new Set(hidden);
-      for (let cursor: Id | null = node; cursor; cursor = draft.nodes[cursor]?.parent ?? null)
-        next.delete(cursor);
-      hidden = next;
-      const kinds = new Set(hiddenKinds);
-      const kind = mount ? "device" : draft.nodes[id]?.kind;
-      if (kind) kinds.delete(kind);
-      hiddenKinds = kinds;
-      if (!spatialScene(draft, next, underground).some((item) => item.id === node))
-        underground = true;
-    }
+    const next = revealSelection(draft, id, {
+      visible: visibleIds.has(id),
+      hidden,
+      hiddenKinds,
+      underground,
+    });
+    revealed = next.revealed;
+    hidden = next.hidden;
+    hiddenKinds = next.hiddenKinds;
+    underground = next.underground;
     focus = { id };
   }
 
@@ -360,22 +348,12 @@
     if (blocked) return false;
     error = "";
     try {
-      const candidate = applySiteEdits(draft, changes);
-      if (candidate !== draft) {
-        if (
-          JSON.stringify(candidate.nodes) === JSON.stringify(opened.world.nodes) &&
-          JSON.stringify(candidate.devices) === JSON.stringify(opened.world.devices)
-        ) {
-          draft = opened.world;
-          edits = [];
-        } else {
-          draft = candidate;
-          edits = [...edits, ...changes];
-        }
-      }
+      const next = commitDraft(opened.world, draft, edits, changes);
+      draft = next.world;
+      edits = next.edits;
       return true;
     } catch (reason) {
-      error = reason instanceof Error ? reason.message : String(reason);
+      error = describeError(reason, storageLabels.error);
       return false;
     }
   }
@@ -572,7 +550,9 @@
         /^Invalid (or unsupported )?Gaia (image upload|reference image)/.test(reason.message)
       )
         error = labels.refInvalidImage;
-      else error = String(reason);
+      else if (describeError(reason, ""))
+        error = `${storageLabels.error}: ${describeError(reason, "")}`;
+      else error = storageLabels.error;
       return false;
     } finally {
       saving = false;
@@ -590,7 +570,7 @@
     try {
       await action();
     } catch (reason) {
-      error = String(reason);
+      error = describeError(reason, storageLabels.error);
     }
   }
 
@@ -609,7 +589,7 @@
       try {
         draft = pending ? (await onreopen()).world : opened.world;
       } catch (reason) {
-        error = String(reason);
+        error = describeError(reason, storageLabels.error);
         return;
       }
       edits = [];
@@ -671,19 +651,13 @@
 
   function markPoint(point: V2) {
     if (blocked || !calibration || calibration.view !== "pixels") return;
-    const [u, v] = point;
-    const pixels = referenceAsset?.pixels;
-    if (!pixels || u < 0 || v < 0 || u > pixels[0] || v > pixels[1]) {
-      error = labels.refOutside;
-      return;
-    }
-    const first = calibration.points[0];
-    if (calibration.points.length === 1 && first?.[0] === u && first[1] === v) {
-      error = labels.refCoincident;
+    const result = markCalibrationPoint(calibration.points, referenceAsset?.pixels, point);
+    if (!result.ok) {
+      error = result.reason === "outside" ? labels.refOutside : labels.refCoincident;
       return;
     }
     error = "";
-    calibration.points = calibration.points.length === 1 ? [first!, point] : [point];
+    calibration.points = result.points;
   }
 
   function previewCalibration() {
@@ -748,7 +722,9 @@
       <button type="button" class="text-button" onclick={() => request(onprojects)}>
         {storageLabels.projects}
       </button>
-      <span aria-hidden="true">/</span><strong>{opened.world.id}</strong>
+      <span aria-hidden="true">/</span><strong class="project-id" title={opened.world.id}
+        >{opened.world.id}</strong
+      >
     </div>
     <nav aria-label="Gaia">
       <button
@@ -1166,10 +1142,9 @@
         <div class="property-actions">
           <button
             type="button"
-            disabled={!visibleIds.has(selected)}
-            onclick={() => (focus = { id: selected })}
+            onclick={() => focusSelection(selected!)}
           >
-            {labels.focus}
+            {visibleIds.has(selected) ? labels.focus : labels.showFocus}
           </button>
           {#if editable}
             {#if selectedNode.kind === "building" && Object.values(draft.nodes).some((n) => n.kind === "floor" && n.parent === selected)}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from "svelte";
+  import { tick, untrack } from "svelte";
   import type en from "../../../i18n/en.json";
   import { deviceName } from "../../devices/inventory.ts";
   import type { Id, World } from "../../spatial/world.ts";
@@ -28,6 +28,7 @@
   } = $props();
 
   let collapsed = $state.raw(new Set<Id>());
+  let tree = $state<HTMLElement>();
   const children = $derived.by(() => {
     const index = new Map<Id | null, Id[]>();
     for (const [id, { parent }] of Object.entries(world.nodes)) {
@@ -68,6 +69,50 @@
     if (ancestors.some((id) => current.has(id)))
       collapsed = new Set([...current].filter((id) => !ancestors.includes(id)));
   });
+
+  $effect(() => {
+    const id = selected;
+    if (!id || !tree) return;
+    void tick().then(() => {
+      if (!tree) return;
+      tree
+        .querySelector<HTMLElement>(`[data-node="${CSS.escape(id)}"], [data-device="${CSS.escape(id)}"]`)
+        ?.scrollIntoView({ block: "nearest" });
+    });
+  });
+
+  // Arrow keys follow the visible tree order; Left/Right operate the collapse control without
+  // leaving the row, so keyboard selection does not depend on a pointer reaching tiny controls.
+  function navigate(event: KeyboardEvent) {
+    if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
+      return;
+    const target = event.target as HTMLElement;
+    const button = target.closest<HTMLButtonElement>("button.layer-select");
+    if (!button || !tree?.contains(button)) return;
+    const buttons = [...tree.querySelectorAll<HTMLButtonElement>("button.layer-select")].filter(
+      (entry) => !entry.disabled && entry.getClientRects().length
+    );
+    const index = buttons.indexOf(button);
+    if (index < 0) return;
+    event.preventDefault();
+    const row = button.closest<HTMLElement>(".layer-row");
+    const toggle = row?.querySelector<HTMLButtonElement>("button.visibility[aria-expanded]");
+    if (event.key === "ArrowDown") buttons[index + 1]?.focus();
+    else if (event.key === "ArrowUp") buttons[index - 1]?.focus();
+    else if (event.key === "Home") buttons[0]?.focus();
+    else if (event.key === "End") buttons.at(-1)?.focus();
+    else if (event.key === "ArrowRight") {
+      if (toggle?.getAttribute("aria-expanded") === "true") buttons[index + 1]?.focus();
+      else if (toggle) toggle.click();
+    } else if (event.key === "ArrowLeft") {
+      if (toggle?.getAttribute("aria-expanded") === "true") toggle.click();
+      else
+        row?.parentElement
+          ?.closest("li")
+          ?.querySelector<HTMLButtonElement>("button.layer-select")
+          ?.focus();
+    }
+  }
 </script>
 
 {#snippet deviceRows(parent: Id | null, depth: number)}
@@ -165,15 +210,17 @@
   </button>
 {/if}
 
-{#if children.has(null)}
-  {@render branch(null, 0)}
-{:else if !devices.has(null)}
-  <p class="muted">{labels.emptyLayers}</p>
-{/if}
+<div class="layer-tree" role="tree" tabindex="-1" bind:this={tree} onkeydown={navigate}>
+  {#if children.has(null)}
+    {@render branch(null, 0)}
+  {:else if !devices.has(null)}
+    <p class="muted">{labels.emptyLayers}</p>
+  {/if}
 
-{#if devices.has(null)}
-  <section class="reference-list">
-    <h3>{labels.unplacedDevices}</h3>
-    <ul>{@render deviceRows(null, 0)}</ul>
-  </section>
-{/if}
+  {#if devices.has(null)}
+    <section class="reference-list">
+      <h3>{labels.unplacedDevices}</h3>
+      <ul>{@render deviceRows(null, 0)}</ul>
+    </section>
+  {/if}
+</div>

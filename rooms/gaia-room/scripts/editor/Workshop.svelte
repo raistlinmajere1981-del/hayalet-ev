@@ -24,6 +24,7 @@
   import en from "../../i18n/en.json";
   import { UnconfirmedCommand, type InteriorOpened, type WorkshopStorage } from "./client.ts";
   import { nodeAt } from "../spatial/world.ts";
+  import { describeError } from "./site/errors.ts";
   import { floorId, interiorReferences } from "./projection.ts";
   import { referenceImages } from "./reference-images.svelte.ts";
   import { openSession, type EditBatch } from "./session.ts";
@@ -109,7 +110,7 @@
       session.authorize(before, after, intent);
       return true;
     } catch (error) {
-      report(error instanceof Error ? error.message : String(error), true);
+      report(describeError(error, labels.error), true);
       return false;
     }
   });
@@ -162,7 +163,7 @@
       report(`${labels.saved} ${world.revision}.`);
       return true;
     } catch (error) {
-      report(error instanceof Error ? error.message : String(error), true);
+      report(describeError(error, labels.error), true);
       return false;
     } finally {
       saving = false;
@@ -188,7 +189,7 @@
       epoch++;
       report(`${labels.reopened} ${world.revision}.`);
     } catch (e) {
-      report(String(e), true);
+      report(describeError(e, labels.error), true);
     } finally {
       saving = false;
     }
@@ -371,7 +372,7 @@
                   try {
                     await storage.reopen();
                   } catch (error) {
-                    report(String(error), true);
+                    report(describeError(error, labels.error), true);
                     return;
                   } finally {
                     saving = false;

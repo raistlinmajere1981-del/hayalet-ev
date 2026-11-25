@@ -1,6 +1,6 @@
 {
   "room": {
-    "name": "Gaia Room",
+    "name": "Gaia Odası",
     "feature": "Modelleme Atölyesi"
   },
   "workshop": {
@@ -9,6 +9,7 @@
     "demo": "Deney projesi oluştur",
     "open": "Projeyi aç",
     "name": "Proje kimliği",
+    "projectPlaceholder": "atolye-1",
     "hint": "Küçük Latin harfleri, rakam ve kısa çizgi kullanın.",
     "pick": "Kayıtlı projeler",
     "workshop": "Modelleme Atölyesi",
@@ -64,6 +65,8 @@
     "refPickB": "Görüntüde ikinci noktayı (B) seçin.",
     "refEnterDistance": "Bilinen mesafeyi girip planda önizleyin.",
     "refPixelEntry": "Piksel koordinatı gir",
+    "refPixelU": "Yatay piksel (U)",
+    "refPixelV": "Dikey piksel (V)",
     "refAddPoint": "Noktayı ekle",
     "refDistance": "A ile B arasındaki mesafe (m)",
     "refAnchor": "Çerçevede A noktası (m)",

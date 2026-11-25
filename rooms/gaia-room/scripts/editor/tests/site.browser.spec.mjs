@@ -307,4 +307,97 @@ test.describe("site fixture", () => {
     await expect(page.getByRole("combobox", { name: "Kat", exact: true })).toHaveValue("f-ground");
     await screenshot("gaia-interior-workshop");
   });
+
+  test("keeps compact calibration inside the inspector and navigates the layer tree", async ({
+    page,
+  }) => {
+    const { createSiteFixture } = await import("../../spatial/fixture.ts");
+    const world = createSiteFixture();
+    world.id = "a-very-long-project-identifier-used-to-check-header-layout";
+    world.nodes.plot.name = "Arazi — çok uzun bir arazi adı: kuzey bahçesi ve güney serası";
+    world.assets.grid = { mime: "image/png", pixels: [400, 600] };
+    world.references.survey = {
+      frame: "plot",
+      asset: "grid",
+      opacity: 0.5,
+      name: "survey-2026-11-25-kuzey-arazi-uydu-goruntusu-cok-uzun-dosya-adi.png",
+      calibration: {
+        pixels: [
+          [10, 10],
+          [110, 10],
+        ],
+        distanceM: 100,
+        anchor: [0, 0, 0],
+        bearingDeg: 0,
+      },
+    };
+    await page.addInitScript((world) => {
+      globalThis.roomAPI = {
+        ready() {},
+        onHostMessage(callback) {
+          callback({ type: "host-context", locale: "tr" });
+          return () => {};
+        },
+        async requestStorageCommand(name) {
+          return {
+            success: true,
+            data:
+              name === "GaiaProjects"
+                ? { projects: [world.id] }
+                : name === "GaiaStatus"
+                  ? { statuses: {}, revision: world.revision }
+                  : { world, session: "compact", missing: [], damaged: [], building: null },
+          };
+        },
+      };
+    }, world);
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Gaia Odası" })).toBeVisible();
+    await expect(page.getByPlaceholder("atolye-1")).toBeVisible();
+    await page.getByRole("button", { name: "Projeyi aç", exact: true }).click();
+
+    await page.setViewportSize({ width: 480, height: 850 });
+    const project = page.locator(".project-id");
+    await expect(project).toHaveAttribute("title", world.id);
+    expect(await project.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+      true
+    );
+    expect(
+      await page.evaluate(
+        () =>
+          globalThis.document.documentElement.scrollWidth <=
+          globalThis.document.documentElement.clientWidth
+      )
+    ).toBe(true);
+
+    const first = page.locator(".layer-tree button.layer-select[data-node]").first();
+    await first.focus();
+    await first.press("ArrowDown");
+    expect(
+      await page.evaluate(
+        () => globalThis.document.activeElement?.getAttribute("data-node") !== "plot"
+      )
+    ).toBe(true);
+    await page.locator('.layer-tree button.layer-select[data-node="plot"]').focus();
+    await page.keyboard.press("ArrowLeft");
+    await expect(
+      page.locator(".layer-tree button.visibility[aria-expanded]").first()
+    ).toHaveAttribute("aria-expanded", "false");
+    await page.keyboard.press("ArrowRight");
+    await expect(
+      page.locator(".layer-tree button.visibility[aria-expanded]").first()
+    ).toHaveAttribute("aria-expanded", "true");
+
+    await page.getByRole("button", { name: "Modelleme Atölyesi" }).click();
+    await page.locator(".reference-list button.layer-select").first().click();
+    await page.getByRole("button", { name: "Kalibrasyonu düzenle" }).click();
+    await page.getByText("Piksel koordinatı gir", { exact: true }).click();
+    await expect(page.getByRole("spinbutton", { name: "Yatay piksel (U)" })).toBeVisible();
+    await expect(page.getByRole("spinbutton", { name: "Dikey piksel (V)" })).toBeVisible();
+    expect(
+      await page
+        .locator(".properties-panel")
+        .evaluate((element) => element.scrollWidth <= element.clientWidth + 1)
+    ).toBe(true);
+  });
 });

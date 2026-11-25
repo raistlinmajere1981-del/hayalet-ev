@@ -6,7 +6,12 @@ import { newProject, referencePng } from "../spatial/project.ts";
 import { applyTrusted, fields, parseBatch, segment, uuid } from "./batch.ts";
 import { gridPng } from "./fixture-image.ts";
 import { applyTrustedSite, parseSiteBatch } from "./site-batch.ts";
-import { parseVirtualUpdate, projectStatuses } from "./status-store.ts";
+import {
+  deviceStatusIdentity,
+  parseVirtualUpdate,
+  projectStatuses,
+  reconcileStatuses,
+} from "./status-store.ts";
 import { directory, hasCode, publish, readRegular, serialized } from "./files.ts";
 import { assetIssues, readAsset, type DecodeRaster } from "./images.ts";
 import {
@@ -24,6 +29,7 @@ interface Receipt {
 interface Document {
   world: World;
   lastOperation: Receipt | null;
+  statusEpoch?: number;
 }
 interface Context {
   storageRoot: string;
@@ -54,12 +60,27 @@ function canonical(value: unknown): unknown {
   return value;
 }
 
+function recordHasEpoch(data: unknown): boolean {
+  return !!data && typeof data === "object" && Object.hasOwn(data, "statusEpoch");
+}
+
 async function readDocument(path: string, project: string): Promise<Document> {
   const data: unknown = JSON.parse((await readRegular(path)).toString("utf8"));
-  fields(data, ["world", "lastOperation"]);
+  fields(
+    data,
+    recordHasEpoch(data) ? ["world", "lastOperation", "statusEpoch"] : ["world", "lastOperation"]
+  );
   const world = data["world"] as World;
   validateWorld(world);
   if (world.id !== project) throw new Error("Stored project identity mismatch");
+  if (
+    recordHasEpoch(data) &&
+    (typeof data["statusEpoch"] !== "number" ||
+      !Number.isSafeInteger(data["statusEpoch"]) ||
+      data["statusEpoch"] < 0 ||
+      data["statusEpoch"] > world.revision)
+  )
+    throw new Error("Invalid Gaia status epoch");
   const receipt = data["lastOperation"];
   if (receipt !== null) {
     fields(receipt, ["id", "digest", "revision"]);
@@ -111,9 +132,15 @@ export async function projectCommand(
       const active = sessions.get(owner);
       if (active?.id !== session || active.project !== project)
         throw new Error("Gaia status session mismatch");
-      const { world } = await readDocument(join(dir, "world.json"), project);
+      const { world, statusEpoch = 0 } = await readDocument(join(dir, "world.json"), project);
       return {
-        statuses: await projectStatuses(dir, world, update && { ...update, source: "simulated" }),
+        statuses: await projectStatuses(
+          dir,
+          world,
+          statusEpoch,
+          update && { ...update, source: "simulated" }
+        ),
+        revision: world.revision,
       };
     });
   }
@@ -223,14 +250,28 @@ export async function projectCommand(
             : doc.world
           : applyTrusted(doc.world, batch));
       if (reference?.upload) await publishReferenceAsset(dir, reference.upload);
-      if (candidate !== doc.world)
+      if (candidate !== doc.world) {
+        // Persist the inventory generation with the world, not the disposable sidecar.
+        // A -> B -> A must not make an old sidecar valid after missed reconciliation.
+        const previousEpoch = doc.statusEpoch ?? 0;
+        const statusEpoch =
+          deviceStatusIdentity(candidate) !== deviceStatusIdentity(doc.world)
+            ? candidate.revision
+            : previousEpoch;
         await publish(
           path,
           JSON.stringify({
             world: candidate,
+            statusEpoch,
             lastOperation: { id: batch.operationId, digest, revision: candidate.revision },
           })
         );
+        try {
+          await reconcileStatuses(dir, candidate, doc.world, statusEpoch, previousEpoch);
+        } catch {
+          // The canonical world is durable. Status reads fail closed until the sidecar is replaced.
+        }
+      }
       if (reference?.removed) await retireReferenceAsset(dir, reference.removed);
       active.revision = candidate.revision;
       const damaged = issues.damaged.filter((id) => Object.hasOwn(candidate.assets, id));

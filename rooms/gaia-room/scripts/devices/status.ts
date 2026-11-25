@@ -26,6 +26,11 @@ export interface DeviceStatus {
 }
 
 export type DeviceStatuses = Record<Id, DeviceStatus>;
+export interface StatusSnapshot {
+  project: Id;
+  revision: number;
+  statuses: DeviceStatuses;
+}
 export type StatusInput =
   | { kind: "link"; state: "online" | "offline" }
   | {
@@ -45,6 +50,23 @@ export function statusMatches(device: Device, status: DeviceStatus): boolean {
     : status.source === "measured" &&
         !!device.hardwareId &&
         status.hardwareId === device.hardwareId;
+}
+
+// Renderer memory is trusted only for the exact saved world revision it was reconciled against.
+// A failed read or an inventory save therefore hides the old snapshot instead of presenting it.
+export function visibleStatuses(
+  world: World,
+  snapshot: StatusSnapshot | undefined,
+  unreadable: boolean
+): DeviceStatuses {
+  if (
+    unreadable ||
+    !snapshot ||
+    snapshot.project !== world.id ||
+    snapshot.revision !== world.revision
+  )
+    return {};
+  return activeStatuses(world, snapshot.statuses);
 }
 
 export function activeStatuses(world: World, current: DeviceStatuses): DeviceStatuses {

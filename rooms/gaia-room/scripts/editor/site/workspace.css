@@ -147,6 +147,9 @@
   border-color: transparent;
   background: transparent;
 }
+.gaia-workspace .layer-tree {
+  min-width: 0;
+}
 .gaia-workspace .map-panel {
   min-height: 0;
   display: flex;
@@ -312,7 +315,18 @@
 }
 .gaia-workspace .project-context {
   min-width: 0;
-  overflow-wrap: anywhere;
+  max-width: min(45vw, 36rem);
+  flex: 0 1 auto;
+}
+.gaia-workspace .project-context strong.project-id {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gaia-workspace .project-context .text-button,
+.gaia-workspace .project-context > span {
+  flex: none;
 }
 .gaia-workspace .layer-panel ul {
   list-style: none;
@@ -491,6 +505,17 @@
   min-width: 0;
   display: grid;
   gap: var(--gaia-space-7);
+}
+.gaia-workspace .properties-panel :is(label, fieldset, form, .field-row, .calibration-pose) {
+  min-width: 0;
+}
+.gaia-workspace .properties-panel :is(input, select, output) {
+  max-width: 100%;
+}
+.gaia-workspace .properties-panel button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .gaia-workspace .device-form fieldset {
   border: none;

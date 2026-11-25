@@ -159,10 +159,10 @@
           <summary>{labels.refPixelEntry}</summary>
           <div class="field-row">
             <label class="number-field"
-              ><span>U (px)</span><input type="number" step="any" bind:value={u} /></label
+              ><span>{labels.refPixelU}</span><input type="number" step="any" bind:value={u} /></label
             >
             <label class="number-field"
-              ><span>V (px)</span><input type="number" step="any" bind:value={v} /></label
+              ><span>{labels.refPixelV}</span><input type="number" step="any" bind:value={v} /></label
             >
           </div>
           <button
