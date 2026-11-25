@@ -8,8 +8,9 @@ import { spatialScene } from "../editor/site/scene.ts";
 import { virtualReadings } from "../editor/site/virtual.ts";
 import type { Opened } from "../editor/client.ts";
 import { createSiteFixture } from "../spatial/fixture.ts";
+import { newProject } from "../spatial/project.ts";
 import { applySiteEdits, removalPlan, type SiteBatch } from "../spatial/site-edits.ts";
-import { close, worldPose, type Pose } from "../spatial/world.ts";
+import { close, validateWorld, worldPose, type Pose } from "../spatial/world.ts";
 import { projectCommand } from "../storage/provider.ts";
 
 test("site projection shares rotated geometry, clips paths at the site datum, and filters frame children", () => {
@@ -104,6 +105,36 @@ test("virtual state keeps only the active subscriber and does not touch the spat
   stopAgain();
   assert.deepEqual(world, before);
   assert.deepEqual(spatialScene(world, new Set(), false), items);
+});
+
+test("a fixture project name can match a spatial ID without renaming the fixture", async (t) => {
+  const storageRoot = await mkdtemp(join(tmpdir(), "gaia-site-test-"));
+  t.after(() => rm(storageRoot, { force: true, recursive: true }));
+  const opened = (await projectCommand({ storageRoot, owner: {} }, "GaiaCreate", {
+    project: "bench",
+    fixture: true,
+    locale: "en",
+    layout: "site",
+  })) as Opened;
+  assert.equal(opened.world.id, "bench");
+  assert.deepEqual(opened.world.nodes["bench"], createSiteFixture().nodes["bench"]);
+  const reopened = (await projectCommand({ storageRoot, owner: {} }, "GaiaOpen", {
+    project: "bench",
+  })) as Opened;
+  assert.deepEqual(reopened.world, opened.world);
+});
+
+test("a synthetic reference requires two distinct points within the stored image", () => {
+  const world = newProject("calibration-fixture", true, "en", true);
+  validateWorld(world);
+  const calibration = world.references["survey"]!.calibration!;
+  const original = structuredClone(calibration.pixels);
+  calibration.pixels = [original[0], original[0]];
+  assert.throws(() => validateWorld(world), /reference calibration.*survey/);
+  calibration.pixels = [original[0], [401, 30]];
+  assert.throws(() => validateWorld(world), /reference calibration.*survey/);
+  calibration.pixels = original;
+  validateWorld(world);
 });
 
 test("site batches share the trusted writer and round-trip an empty project, IDs, elevations and receipt", async (t) => {

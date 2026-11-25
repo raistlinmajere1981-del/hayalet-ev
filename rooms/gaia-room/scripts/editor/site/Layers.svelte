@@ -42,7 +42,7 @@
           class="layer-row"
           class:filtered={!visibleIds.has(id)}
           class:chosen={selected === id}
-          style:--indent={`${depth * 0.7}rem`}
+          style:--gaia-layer-indent={`${depth * 0.7}rem`}
         >
           <button
             class="layer-select"

@@ -8,7 +8,7 @@
   import Workspace from "./site/Workspace.svelte";
   import { virtualReadings } from "./site/virtual.ts";
 
-  let locale = $state("en");
+  let locale = $state<"en" | "tr">("en");
   let labels = $state(en.workshop);
   let siteLabels = $state(en.site);
   let project = $state("");
@@ -161,6 +161,7 @@
         initial={inner}
         storage={{ save, reopen: () => reopenInterior(building) }}
         {labels}
+        {locale}
         {visible}
         transitionLabels={siteLabels}
         onleave={returnToSite}

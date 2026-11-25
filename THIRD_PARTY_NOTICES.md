@@ -96,7 +96,8 @@ Upstream ncnn lisans kopyası:
 
 - [OpenPlan3D kaynak kodu](https://github.com/laanlabs/openPlan3D/tree/771c9e1ad30bd1c3cc7584d6eca74deb2e14943d), sürüm 0.9.0, MIT, © 2026 theLodgeStudio. Sabit commit'ten derlenen 2D tuval, düzenleme store'u ve bağlam menüsü kullanılır. [Lisans kopyası](rooms/gaia-room/scripts/editor/OPENPLAN3D-LICENSE) · [Patch](rooms/gaia-room/scripts/editor/openplan3d.patch)
 - Yerel paketin JavaScript çıktısında Svelte 5.57.0 ve esm-env 1.2.2 (MIT) bulunur. Tailwind CSS 4.1.18 (MIT) derlenmiş CSS üretir. Derleme `OPENPLAN3D-LICENSE`, `DEPENDENCY-LICENSES.md` ve `TAILWIND-LICENSE` dosyalarını çıktıya ekler.
-- OpenPlan3D'nin kaynak içindeki 2D çizimleri ve inline ikonları kullanılır. Harici 3D model, doku, font ve görsel kataloğu pakete girmez. Test tarayıcısı ve derleme geliştirici bağımlılıkları için sürümler ve paket kayıtları [oda kilit dosyasında](rooms/gaia-room/scripts/editor/package-lock.json) yer alır.
+- OpenPlan3D’nin 2B çizimleri, inline ikonları ve izinli masa girdisi kullanılır. Gaia derlemesi mobilya listesini masayla sınırlar, entourage ve oda şablonu kataloglarını boşaltır ve upstream arayüz metnini tuval kapsamıyla sınırlar. Paket harici 3B model, doku, font veya görsel kataloğu içermez. [Üretim girdi filtresi](rooms/gaia-room/scripts/editor/openplan-distribution.mjs)
+- Vite 7.3.7, Svelte Vite eklentisi 6.2.4, Tailwind Vite eklentisi 4.1.18, TypeScript 5.9.3, Svelte Check 4.3.6 ve Playwright 1.63.0 yerel derleme veya test araçlarıdır. Dağıtılan Tailwind CSS ve Svelte çalışma zamanı bildirimleri oda çıktısındadır. [Oda kilit dosyası](rooms/gaia-room/scripts/editor/package-lock.json) · [Oda bağımlılık lisansları](rooms/gaia-room/ui/DEPENDENCY-LICENSES.md)
 
 ## Yeni üçüncü taraf materyal eklerken
 

@@ -3,16 +3,19 @@ import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/pr
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { createRequire } from "node:module";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { RoomPackageManager } from "../../electron/room-package-manager.ts";
+import {
+  electron,
+  expect,
+  PerspectiveCamera,
+  Vector3,
+} from "../../rooms/gaia-room/scripts/editor/desktop-test-dependencies.mjs";
 import { buildRoomBundle } from "../rooms/build-room-bundle.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const require = createRequire(join(repo, "rooms/gaia-room/scripts/editor/package.json"));
-const { PerspectiveCamera, Vector3 } = await import(
-  new URL("./three.module.js", pathToFileURL(require.resolve("three"))).href
-);
-const { _electron: electron, expect } = require("@playwright/test");
+const require = createRequire(import.meta.url);
+const standalone = process.argv.includes("--standalone");
 const root = await mkdtemp(join(tmpdir(), "hev-gaia-smoke-"));
 const path = join(root, "data/room-storage/gaia-room/projects/smoke/world.json");
 const doc = async () => JSON.parse(await readFile(path, "utf8"));
@@ -36,8 +39,9 @@ async function launch() {
     args: [
       "--no-sandbox",
       "--ozone-platform=x11",
-      "--use-angle=swiftshader",
-      "--enable-unsafe-swiftshader",
+      ...(standalone
+        ? ["--disable-webgl"]
+        : ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]),
       join(root, "dist/electron/main.js"),
       "--ui-mode=classic",
     ],
@@ -46,10 +50,15 @@ async function launch() {
   });
   try {
     await app.evaluate(({ session }) => {
+      globalThis.gaiaSmokeBlockedRequests = [];
       session
         .fromPartition("persist:room-gaia-room")
-        .webRequest.onBeforeRequest({ urls: ["http://*/*", "https://*/*"] }, (_request, done) =>
-          done({ cancel: true })
+        .webRequest.onBeforeRequest(
+          { urls: ["http://*/*", "https://*/*", "ws://*/*", "wss://*/*"] },
+          ({ url }, done) => {
+            globalThis.gaiaSmokeBlockedRequests.push(url);
+            done({ cancel: true });
+          }
         );
     });
     const page = await app.firstWindow();
@@ -80,6 +89,23 @@ async function launch() {
     await closeApp(app);
     throw error;
   }
+}
+
+async function assertTheme({ page, js }) {
+  const palette = () =>
+    js("getComputedStyle(document.documentElement).getPropertyValue('--gaia-bg-surface').trim()");
+  await expect.poll(palette).not.toBe("");
+  const original = await palette();
+  const next = await page.evaluate(() => {
+    globalThis.window.__ThemeManager.set("ivory-lab");
+    return globalThis
+      .getComputedStyle(globalThis.document.documentElement)
+      .getPropertyValue("--bg-surface")
+      .trim();
+  });
+  assert.notEqual(next, "");
+  assert.notEqual(next, original);
+  await expect.poll(palette).toBe(next);
 }
 const options = (en, tr = en) => JSON.stringify([en, tr]);
 async function press(session, en, tr) {
@@ -150,7 +176,7 @@ async function selectMode(session, overview) {
 }
 
 async function exerciseSite(session) {
-  const { js, page } = session;
+  const { js } = session;
   await expect.poll(() => js("!!document.querySelector('svg [data-gaia-id=coop]')")).toBe(true);
   assert.equal(await js("!!document.querySelector('svg [data-gaia-id=glass]')"), true);
   assert.equal(
@@ -164,6 +190,14 @@ async function exerciseSite(session) {
   assert.equal(await js("!!document.querySelector('svg [data-gaia-id=cellar]')"), true);
   console.info("Gaia overview selected in 2D");
   await press(session, "3D orbit", "3B yörünge");
+  if (standalone) {
+    await expect
+      .poll(() => js("document.querySelector('.map-status')?.textContent"))
+      .toMatch(/2D plan is active|2B plan açık/);
+    await selectMode(session, false);
+    await editSite(session);
+    return;
+  }
   await expect
     .poll(() => js("!!document.querySelector('.orbit canvas')"), { timeout: 20000 })
     .toBe(true);
@@ -184,6 +218,17 @@ async function exerciseSite(session) {
   await sendPointer(session, [left + ((1 + hit.x) * width) / 2, top + ((1 - hit.y) * height) / 2]);
   await selected(session, "coop");
 
+  await exerciseRoomVisibility(session);
+  await js(
+    'window.gaiaClosedContext = document.querySelector(".orbit canvas").getContext("webgl2")'
+  );
+  await selectMode(session, false);
+  await expect.poll(() => js("window.gaiaClosedContext.isContextLost()")).toBe(true);
+  await editSite(session);
+}
+
+async function exerciseRoomVisibility(session) {
+  const { page, js } = session;
   const navigate = async (room) => {
     const nav = page.locator(`button[data-room-nav][data-room-id="${room}"]`);
     await nav.evaluate((button) => button.click());
@@ -236,11 +281,10 @@ async function exerciseSite(session) {
     .toBe(1);
   await js("window.gaiaStopVisibilityProbe?.()");
   console.info("Gaia suspended and resumed the viewer across room navigation");
-  await js(
-    'window.gaiaClosedContext = document.querySelector(".orbit canvas").getContext("webgl2")'
-  );
-  await selectMode(session, false);
-  await expect.poll(() => js("window.gaiaClosedContext.isContextLost()")).toBe(true);
+}
+
+async function editSite(session) {
+  const { js } = session;
   await pickLayer(session, "glass");
   const start = await planPoint(session, [14.5, 13]);
   const end = await planPoint(session, [16.5, 14]);
@@ -300,10 +344,7 @@ async function exerciseSite(session) {
     saved.world.nodes[route].geometry.vertices.map((p) => p[2]),
     [-2.5, 1.25]
   );
-  console.info(
-    "Gaia site plan, 2D/3D selection, real room hide/show and revision",
-    saved.world.revision
-  );
+  console.info("Gaia site plan, 2D/3D selection and revision", saved.world.revision);
 }
 
 let running;
@@ -324,13 +365,22 @@ try {
   });
   const installed = await manager.importBundleFile(bundle.outputFile);
   assert.ok(installed.success, installed.error);
-  const forgeBundle = await buildRoomBundle("forge-room", {
-    outputFile: join(root, "forge.hevroom"),
-  });
-  const forgeInstalled = await manager.importBundleFile(forgeBundle.outputFile);
-  assert.ok(forgeInstalled.success, forgeInstalled.error);
+  if (!standalone) {
+    const forgeBundle = await buildRoomBundle("forge-room", {
+      outputFile: join(root, "forge.hevroom"),
+    });
+    const forgeInstalled = await manager.importBundleFile(forgeBundle.outputFile);
+    assert.ok(forgeInstalled.success, forgeInstalled.error);
+  }
   console.info("Opening installed Gaia Room");
   running = await launch();
+  if (standalone) {
+    const nav = running.page.locator("button[data-room-nav][data-room-id]");
+    await expect(nav).toHaveCount(1);
+    await expect(nav).toHaveAttribute("data-room-id", "gaia-room");
+    await expect.poll(() => running.js("document.documentElement.lang")).toBe("tr");
+    await assertTheme(running);
+  }
   const { js, guest } = running;
   await js(
     `const input=document.querySelector(".projects input");input.value="smoke";input.dispatchEvent(new Event("input",{bubbles:true}))`
@@ -393,11 +443,24 @@ try {
   assert.equal(ids.length, 1);
   assert.equal(saved.world.nodes[ids[0]].parent, "ground");
   assert.deepEqual(saved.world.devices, before.world.devices);
+  assert.deepEqual(await running.app.evaluate(() => globalThis.gaiaSmokeBlockedRequests), []);
   console.info("Committed revision", saved.world.revision);
   await closeApp(running.app);
   running = undefined;
+  if (standalone) {
+    const settingsPath = join(root, "config/settings.json");
+    const settings = JSON.parse(await readFile(settingsPath, "utf8"));
+    settings.general.language = "en";
+    await writeFile(settingsPath, JSON.stringify(settings));
+  }
   console.info("Opening installed Gaia Room");
   running = await launch();
+  if (standalone) {
+    await expect.poll(() => running.js("document.documentElement.lang")).toBe("en");
+    await expect
+      .poll(() => running.js("document.querySelector('.projects button')?.textContent"))
+      .toBe("Open project");
+  }
   await expect
     .poll(() => running.js("document.querySelector('.projects select')?.value"))
     .toBe("smoke");
@@ -411,19 +474,25 @@ try {
   assert.equal(reopened.success, true);
   assert.deepEqual(reopened.data.world, saved.world);
   assert.deepEqual(await doc(), saved);
-  await press(running, "3D orbit", "3B yörünge");
-  await expect
-    .poll(() => running.js("!!document.querySelector('.orbit canvas:not([hidden])')"), {
-      timeout: 20000,
-    })
-    .toBe(true);
+  if (!standalone) {
+    await press(running, "3D orbit", "3B yörünge");
+    await expect
+      .poll(() => running.js("!!document.querySelector('.orbit canvas:not([hidden])')"), {
+        timeout: 20000,
+      })
+      .toBe(true);
+  }
   await running.guest.evaluate((el) => {
     void el.executeJavaScript("document.querySelector('.close-room').click()").catch(() => {});
   });
 
   await running.guest.waitFor({ state: "detached" });
+  assert.deepEqual(await running.app.evaluate(() => globalThis.gaiaSmokeBlockedRequests), []);
   console.info("Gaia installed room saved and reopened after Electron restart", ids[0]);
 } finally {
   if (running) await closeApp(running.app);
   await rm(root, { recursive: true, force: true });
 }
+
+// Playwright's inspector transport can stay open after Electron exits in a network namespace.
+if (standalone) process.exit();

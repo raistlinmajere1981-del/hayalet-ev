@@ -145,7 +145,6 @@ export function openSession(
   const baseline = inspectPlan(initial.plan, initial.plan, world, building);
   const identities = new Map(initial.ids);
   const allocated = new Set([
-    world.id,
     ...Object.keys(world.nodes),
     ...Object.keys(world.devices),
     ...Object.keys(world.assets),

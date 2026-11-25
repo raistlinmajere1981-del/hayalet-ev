@@ -27,7 +27,7 @@ export interface SpatialItem {
   pose: Pose;
   shape: Shape;
   bounds: Bounds;
-  color: string;
+  color: number;
   below: boolean;
   ground: number;
 }
@@ -70,17 +70,17 @@ export function frame(items: SpatialItem[], id?: Id): Bounds {
 }
 
 const colors = {
-  site: "#73948c",
-  building: "#528eaa",
-  floor: "#76a9bd",
-  zone: "#73a878",
-  object: "#b1864c",
-  mount: "#10a699",
-  route: "#496dec",
+  site: 0x73948c,
+  building: 0x528eaa,
+  floor: 0x76a9bd,
+  zone: 0x73a878,
+  object: 0xb1864c,
+  mount: 0x10a699,
+  route: 0x496dec,
 };
 
 export const deviceColor = (state?: string) =>
-  state === "online" ? "#10a699" : state === "offline" ? "#cf7152" : "#80929b";
+  state === "online" ? 0x10a699 : state === "offline" ? 0xcf7152 : 0x80929b;
 
 const order = { site: 0, zone: 1, building: 2, floor: 3, object: 4, route: 5, mount: 6 };
 
@@ -114,7 +114,7 @@ export function spatialScene(
     let shape: Shape;
     let points: V3[];
     const color =
-      node.kind === "route" && node.role === "electricity" ? "#c79236" : colors[node.kind];
+      node.kind === "route" && node.role === "electricity" ? 0xc79236 : colors[node.kind];
     if (geometry?.kind === "path") {
       const vertices = geometry.vertices.map((point) => toParent(pose, point));
       const segments = vertices

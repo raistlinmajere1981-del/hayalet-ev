@@ -23,7 +23,7 @@ const SHARED_SCENE_SCALE_PATH = join(
   "scene-scale.css"
 );
 
-const SCAN_EXTENSIONS = new Set([".css", ".html", ".js", ".ts"]);
+const SCAN_EXTENSIONS = new Set([".css", ".html", ".js", ".svelte", ".ts"]);
 const IGNORED_DIRS = new Set(["node_modules", "dist", ".git", ".vite", "coverage", "logs"]);
 const HEX_COLOR_RE = /#[0-9A-Fa-f]{3,8}\b/g;
 const COLOR_FUNCTION_RE = /\b(?:rgb|rgba|hsl|hsla|lab|lch|oklab|oklch)\((?:[^()]|\([^()]*\))*\)/g;
@@ -97,6 +97,9 @@ function walkFiles(dirPath, acc = []) {
 
     if (!entry.isFile()) continue;
     if (!SCAN_EXTENSIONS.has(extname(entry.name).toLowerCase())) continue;
+    // Audit the Svelte and CSS sources of Gaia's generated bundles once.
+    if (/^rooms\/gaia-room\/ui\/assets\/[^/]+\.min\.(css|js)$/.test(toProjectPath(fullPath)))
+      continue;
     acc.push(fullPath);
   }
   return acc;
@@ -121,6 +124,7 @@ function toProjectPath(filePath) {
 function isTokenFile(projectPath) {
   return (
     projectPath.startsWith("src/styles/design-system/tokens/") ||
+    /^rooms\/[^/]+\/scripts\/editor\/tokens\.css$/.test(projectPath) ||
     /^rooms\/[^/]+\/ui\/tokens\.css$/.test(projectPath) ||
     /^rooms\/[^/]+\/ui\/styles\/[^/]*tokens\.css$/.test(projectPath)
   );
@@ -141,6 +145,21 @@ function isTokenOrThemeFile(projectPath) {
   return (
     isTokenFile(projectPath) || isThemeFile(projectPath) || isInfrastructureStyleFile(projectPath)
   );
+}
+
+function readStyleSource(filePath) {
+  const source = readFileSync(filePath, "utf8");
+  if (!filePath.endsWith(".svelte")) return source;
+  const sections = source.matchAll(/<style>([\s\S]*?)<\/style>/g);
+  const mask = (value) => value.replace(/[^\n]/g, " ");
+  let cursor = 0;
+  let result = "";
+  for (const match of sections) {
+    const start = match.index + "<style>".length;
+    result += mask(source.slice(cursor, start)) + match[1];
+    cursor = start + match[1].length;
+  }
+  return result + mask(source.slice(cursor));
 }
 
 function pushIssue(filePath, line, rule, detail) {
@@ -257,7 +276,7 @@ function isIntentionalScopedDuplicateVar(varName, selector) {
 function collectDefinedCssVars(cssFiles) {
   const definedVars = new Set();
   for (const filePath of cssFiles) {
-    const content = readFileSync(filePath, "utf8");
+    const content = readStyleSource(filePath);
     CSS_VAR_DEFINE_RE.lastIndex = 0;
     let match = CSS_VAR_DEFINE_RE.exec(content);
     while (match !== null) {
@@ -271,7 +290,7 @@ function collectDefinedCssVars(cssFiles) {
 function collectDefinedCustomMedia(cssFiles) {
   const definedMedia = new Set();
   for (const filePath of cssFiles) {
-    const content = readFileSync(filePath, "utf8");
+    const content = readStyleSource(filePath);
     CUSTOM_MEDIA_DEFINE_RE.lastIndex = 0;
     let match = CUSTOM_MEDIA_DEFINE_RE.exec(content);
     while (match !== null) {
@@ -287,7 +306,7 @@ function collectUndefinedVarIssues(cssFiles, definedVars) {
     const projectPath = toProjectPath(filePath);
     if (isTokenOrThemeFile(projectPath)) continue;
 
-    const content = readFileSync(filePath, "utf8");
+    const content = readStyleSource(filePath);
     CSS_VAR_USE_RE.lastIndex = 0;
     let match = CSS_VAR_USE_RE.exec(content);
     while (match !== null) {
@@ -310,7 +329,7 @@ function collectUndefinedCustomMediaIssues(cssFiles, definedMedia) {
     const projectPath = toProjectPath(filePath);
     if (isTokenOrThemeFile(projectPath)) continue;
 
-    const content = readFileSync(filePath, "utf8");
+    const content = readStyleSource(filePath);
     CUSTOM_MEDIA_USE_RE.lastIndex = 0;
     let match = CUSTOM_MEDIA_USE_RE.exec(content);
     while (match !== null) {
@@ -335,7 +354,7 @@ function collectDuplicateGradientIssues(cssFiles) {
     const projectPath = toProjectPath(filePath);
     if (isTokenOrThemeFile(projectPath)) continue;
 
-    const content = readFileSync(filePath, "utf8");
+    const content = readStyleSource(filePath);
     GRADIENT_RE.lastIndex = 0;
     let match = GRADIENT_RE.exec(content);
     while (match !== null) {
@@ -375,7 +394,7 @@ function collectDuplicateVarDefinitionIssues(cssFiles) {
   const definitions = new Map();
 
   for (const filePath of cssFiles) {
-    const content = readFileSync(filePath, "utf8");
+    const content = readStyleSource(filePath);
     CSS_VAR_DECL_RE.lastIndex = 0;
     let match = CSS_VAR_DECL_RE.exec(content);
     while (match !== null) {
@@ -437,7 +456,7 @@ function collectSceneScaleConsumerIssues(cssFiles) {
       continue;
     }
 
-    const content = readFileSync(filePath, "utf8");
+    const content = readStyleSource(filePath);
     const usedSceneVars = new Set();
     SCENE_SCALE_VAR_RE.lastIndex = 0;
     let match = SCENE_SCALE_VAR_RE.exec(content);
@@ -578,11 +597,11 @@ function main() {
   const files = resolveScanRoots(options.scope).flatMap((rootPath) =>
     existsSync(rootPath) ? walkFiles(rootPath) : []
   );
-  const cssFiles = files.filter((filePath) => extname(filePath).toLowerCase() === ".css");
-  const htmlFiles = files.filter((filePath) => extname(filePath).toLowerCase() === ".html");
+  const cssFiles = files.filter((filePath) => /\.(css|svelte)$/.test(filePath));
+  const htmlFiles = files.filter((filePath) => /\.(html|svelte)$/.test(filePath));
   const scriptFiles = files.filter((filePath) => {
     const extension = extname(filePath).toLowerCase();
-    return extension === ".js" || extension === ".ts";
+    return extension === ".js" || extension === ".ts" || extension === ".svelte";
   });
 
   const definedVars = collectDefinedCssVars(cssFiles);
@@ -597,7 +616,7 @@ function main() {
     const projectPath = toProjectPath(filePath);
     if (isTokenOrThemeFile(projectPath)) continue;
 
-    const content = readFileSync(filePath, "utf8");
+    const content = readStyleSource(filePath);
     collectPatternIssues(filePath, content, RAW_MEDIA_QUERY_RE, "raw-breakpoint-media", (value) => {
       return `Raw responsive media query must use breakpoint token syntax: ${value}`;
     });
@@ -620,7 +639,11 @@ function main() {
     const projectPath = toProjectPath(filePath);
     if (isTokenOrThemeFile(projectPath)) continue;
 
-    const content = readFileSync(filePath, "utf8");
+    let content = readFileSync(filePath, "utf8");
+    if (filePath.endsWith(".svelte"))
+      content = content.replace(/<style>[\s\S]*?<\/style>/g, (value) =>
+        value.replace(/[^\n]/g, " ")
+      );
     collectPatternIssues(filePath, content, HEX_COLOR_RE, "hardcoded-color", (value) => {
       return `Hardcoded color token ${value}`;
     });

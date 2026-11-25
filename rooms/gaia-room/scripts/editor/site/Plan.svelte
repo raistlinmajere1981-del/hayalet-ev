@@ -2,6 +2,7 @@
   import { onMount, untrack } from "svelte";
   import type { Id, V2, V3 } from "../../spatial/world.ts";
   import { boxRing, deviceColor, frame, type Bounds, type SpatialItem } from "./scene.ts";
+  import { cssColor, selectedPlan } from "../palette.ts";
 
   let {
     items,
@@ -201,11 +202,7 @@
   {#each items as item (item.id)}
     {@const { id, shape, pose, node } = item}
     {@const active = id === selected}
-    {@const color = active
-      ? "#dc8c21"
-      : node.kind === "mount"
-        ? deviceColor(states.get(id))
-        : item.color}
+    {@const color = cssColor(active ? selectedPlan : node.kind === "mount" ? deviceColor(states.get(id)) : item.color)}
     {@const moving = gesture?.mode === "move" && gesture.id === id && gesture.corner === undefined}
     <g
       data-gaia-id={id}
@@ -232,7 +229,7 @@
           cx={pose.p[0]}
           cy={-pose.p[1]}
           r={shape.kind === "cylinder" ? Math.max(4 * unit, shape.radius) : 5 * unit}
-          stroke={node.kind === "mount" ? "var(--gaia-bg-surface, #fff)" : color}
+          stroke={node.kind === "mount" ? "var(--gaia-bg-surface)" : color}
           stroke-width={1.5 * unit}
           fill="currentColor"
           fill-opacity={shape.kind === "cylinder" ? 0.35 : 1}
@@ -293,8 +290,8 @@
     {/each}
   {/if}
   {#if working.length}
-    <polyline points={polygon(working)} fill="none" stroke="#dc8c21" stroke-width={2 * unit} />
-    {#each working as [x, y]}<circle cx={x} cy={-y} r={4 * unit} fill="#dc8c21" />{/each}
+    <polyline points={polygon(working)} fill="none" stroke={cssColor(selectedPlan)} stroke-width={2 * unit} />
+    {#each working as [x, y]}<circle cx={x} cy={-y} r={4 * unit} fill={cssColor(selectedPlan)} />{/each}
   {/if}
   <g
     transform={`translate(${view.x - viewWidth / 2 + 20 * unit}, ${view.y + viewHeight / 2 - 24 * unit})`}
@@ -326,14 +323,14 @@
   .map-label {
     fill: currentColor;
     paint-order: stroke;
-    stroke: var(--gaia-bg-surface, #fff);
-    stroke-width: 0.24em;
+    stroke: var(--gaia-bg-surface);
+    stroke-width: var(--gaia-map-label-stroke);
     cursor: pointer;
     font-weight: 600;
   }
   .handle {
-    fill: #f4ad47;
-    stroke: var(--gaia-bg-surface, #fff);
+    fill: var(--gaia-map-handle);
+    stroke: var(--gaia-bg-surface);
     cursor: move;
   }
 </style>

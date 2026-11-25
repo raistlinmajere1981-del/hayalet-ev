@@ -7,13 +7,13 @@ import type { KnipConfig } from "knip";
  * Electron bundles, Vite page entries, MCP package entries, Ghost Agent,
  * dynamic room packages, scripts, tests, and shared TypeScript modules.
  */
-const config: KnipConfig = {
+const root = {
   entry: [
     // Ghost Agent tooling entry
     "ghost-agent/vite.config.js",
 
     // Electron runtime and packaged wrapper entries
-    "electron/main.ts",
+    "scripts/rooms/electron-main.mjs",
     "electron/preload.cjs",
     "electron/webview-preload.cjs",
     "electron/room-webview-preload.cjs",
@@ -43,6 +43,7 @@ const config: KnipConfig = {
     "rooms/*/ui/index.ts",
     "rooms/*/ui/bootstrap.ts",
     "rooms/*/scripts/*.{mjs,ts}",
+    "rooms/gaia-room/ui/assets/workshop.min.js",
 
     // Script entries invoked by package scripts, Electron hooks, or child processes
     "scripts/backup-cli.mjs",
@@ -55,6 +56,7 @@ const config: KnipConfig = {
     "scripts/rooms/build-workspace-rooms.ts",
     "scripts/rooms/clean-generated-room-artifacts.ts",
     "scripts/rooms/report-room-paths.ts",
+    "scripts/tests/gaia-room.electron-smoke.mjs",
     "scripts/tests/register-asset-loader.mjs",
     "scripts/tests/run-all-tests.mjs",
 
@@ -94,8 +96,24 @@ const config: KnipConfig = {
     "scripts/**/*.{js,mjs,ts}",
     "*.config.{js,cjs,ts}",
   ],
+};
 
+const config: KnipConfig = {
   ignoreFiles: [],
+
+  workspaces: {
+    ".": root,
+    "rooms/gaia-room/scripts/editor": {
+      entry: [
+        "desktop-test-dependencies.mjs",
+        "tests/*.browser.spec.mjs",
+        // The pinned upstream imports these through Vite aliases.
+        "openplan-locale.mjs",
+        "shell-shims.mjs",
+      ],
+      project: ["**/*.{css,mjs,svelte,ts}"],
+    },
+  },
 
   ignoreDependencies: [
     "depcheck", // manual dependency audit fallback

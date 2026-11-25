@@ -1,3 +1,4 @@
+import { cssColor, planWall } from "./palette.ts";
 import {
   close,
   fromParent,
@@ -73,7 +74,7 @@ export interface PlanObject extends PlanShape {
   collection: Collection;
 }
 
-const wallColor = "#444444";
+const wallColor = cssColor(planWall);
 const planPoint = ([x, y]: V3): Point => ({ x: x * 100, y: -y * 100 + 0 });
 const fromPlan = ({ x, y }: Point, z: number): V3 => [x / 100, -y / 100, z];
 export const objectKey = (floor: Id, collection: Collection, id: Id): string =>

@@ -124,7 +124,6 @@ function update(
 export function applySiteEdits(world: World, edits: readonly SiteEdit[]): World {
   const candidate = { ...world, nodes: { ...world.nodes }, devices: { ...world.devices } };
   const reserved = new Set([
-    world.id,
     ...Object.keys(world.nodes),
     ...Object.keys(world.devices),
     ...Object.keys(world.assets),

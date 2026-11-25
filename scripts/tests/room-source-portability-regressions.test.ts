@@ -11,7 +11,7 @@ async function walkSourceFiles(baseDir: string): Promise<string[]> {
   const entries = await readdir(baseDir, { withFileTypes: true });
   const results = await Promise.all(
     entries
-      .filter((entry) => entry.name !== ".build")
+      .filter((entry) => entry.name !== ".build" && entry.name !== "node_modules")
       .map(async (entry) => {
         const absolutePath = join(baseDir, entry.name);
         if (entry.isDirectory()) {

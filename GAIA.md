@@ -1,6 +1,6 @@
 # Gaia Room
 
-> **Durum** — 02-A/1, 02-A/2 ve 02-A/3 kabul edildi. Sıradaki 02-A/4 paket, performans ve kalite kabulü. Teknoloji seçimi koşullu. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
+> **Durum** — 02-A/4 bağımsız kabulü tamamlandı. 02-A Linux kapsamı kapatıldı. Sıradaki 02-B Modelleme Atölyesi. OpenPlan3D + Three.js ilk milestone için doğrulandı. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
 
 Referans uygulama commit'i: `d0e47947` (Hayalet Ev 5.4.0). Bu belge Gaia için mimari karar, proje hafızası, araştırma özeti, açık konular ve geliştirme planının tek başlangıç kaynağıdır. Hayalet Ev’de Gaia projeleri Genel Görünüm’de açılır ve Modelleme Atölyesi’nde düzenlenir.
 
@@ -135,8 +135,8 @@ LAN protokolü, eşleme/kimlik doğrulama ve iletişim güvenliği Client deneyi
 | 01-B/B2/B3 | Tamamlandı (koşullu seçim)          | Açık kaynak/UI araştırması ve yerel fizibilite; eksikler 02-A kabul koşulu                  |
 | 01-C       | Tamamlandı                          | Kanonik şema, koordinat/kimlik/ilişki kuralları, editör/viewer kontratları ve fixture       |
 | 01-D       | Tamamlandı (P0 kontratları işlendi) | Bağımsız mimari audit, agent dağılımı ve ilk uygulama planı                                 |
-| 02-A       | 02-A/3 kabul; 02-A/4 sıradaki       | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
-| 02-B       | Bekliyor                            | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
+| 02-A       | Tamamlandı (Linux)                  | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
+| 02-B       | Sıradaki                            | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
 | 02-C       | Bekliyor                            | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
 | 02-D       | Bekliyor                            | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
 | 03         | Bekliyor                            | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
@@ -195,7 +195,7 @@ Dört Chromium UI ve dört veri testi geçti. Electron 43.3.0’da üretim derle
 
 ### 02-A/2 — Oda ve güvenilen kayıt
 
-**Açılış.** Hayalet Ev’in klasik yan menüsünde **Gaia Room**’u açın. Yeni kurulumda görünmüyorsa **Oda Yönetimi → gaia-room → Yükle** yolunu kullanıp uygulamayı yeniden başlatın. Küçük Latin harfleri, rakam ve kısa çizgiyle bir proje kimliği girip **Proje oluştur**’u seçin. İlk model tahmini 10 × 10 m arazi, bir yapı ve boş zemin katıyla açılır. **Deney projesi oluştur** ayrı bir seçimdir. Modelleme Atölyesi’nde masa veya düz duvar ekleyip **Gaia’ya kaydet**’i seçin. Uygulamayı yeniden başlatınca **Kayıtlı projeler → Projeyi aç** aynı projeyi yükler.
+**02-A/2 açılışı.** Hayalet Ev’in klasik yan menüsünde **Gaia Room**’u açın. Yeni kurulumda görünmüyorsa **Oda Yönetimi → gaia-room → Yükle** yolunu kullanıp uygulamayı yeniden başlatın. Küçük Latin harfleri, rakam ve kısa çizgiyle bir proje kimliği girip **Proje oluştur**’u seçin. İlk model tahmini 10 × 10 m arazi, bir yapı ve boş zemin katıyla açılır. **Deney projesi oluştur** ayrı bir seçimdir. Modelleme Atölyesi’nde masa veya düz duvar ekleyip **Gaia’ya kaydet**’i seçin. Uygulamayı yeniden başlatınca **Kayıtlı projeler → Projeyi aç** aynı projeyi yükler.
 
 **Sınırlar.** Manifest, host, protokol ve TR/EN katalogları odadadır. Atölye, uygulamanın dilini ve tema renklerini oda bağlamından alır. Tek düzenlenebilir Svelte kaynağından üretilen `ui/` ve lisansları çevrimdışı oda paketinin girdisidir. Standart builder `scripts/` altındaki geliştirici kaynaklarını pakete almaz. Son oda runtime’ı `rooms/.build/gaia-room/runtime` altında oluşur. Editörü değiştirdikten sonra `npm --prefix rooms/gaia-room/scripts/editor run build` ile paket girdisini yenileyin.
 
@@ -236,6 +236,99 @@ TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/tests/gaia-room.el
 
 **Lisans ve açık riskler.** Three.js 0.187.0 ve OrbitControls MIT lisanslıdır. TypeScript tipleri ve tip paketinin transitif girdileri geliştirme bağımlılıklarıdır. 3B parçası yaklaşık 579 kB, gzip ile 146 kB ve Vite’ın varsayılan parça boyutu uyarısını aşıyor. Donanım GPU’su, diğer masaüstü platformları ve uzun süreli kaynak tüketimi 02-A/4’te doğrulanacak. [Üçüncü taraf bildirimleri](THIRD_PARTY_NOTICES.md#gaia-02-a3-threejs-görünümü)
 
+### 02-A/4 — Bağımsız paket, performans ve kalite kabulü
+
+Başlangıç `2337379b`. Linux x86_64 üzerinde ayrı geçici uygulama profilleri ve 40 × 60 m deney projesi kullanıldı. 02-A/4 değişiklikleri de kurulu paket ve güvenilen uygulama derlemesinde sınandı.
+
+#### Kabul matrisi
+
+| Alan                                           | Sonuç         | Gözlem                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Geometri ve kimlik                             | Doğrulandı    | Döndürülmüş serada `mc1=(11,16,−2)` ve `mr1=(11,15,4.8)` m. Güvenilen yazıcı üzerinden 100 açma ve değişikliksiz kayıt turunda dünya, kimlikler ve revizyon aynı kaldı. Dünya/yerel dönüşümü 10⁻⁶ m toleransını sağladı.                                                                                                                                                   |
+| Hat mesafesi                                   | Doğrulandı    | Sahne izdüşümündeki su hattı 5 m yatay, √34 m doğrudan ve 8 m güzergâh uzunluğuna sahip. Döndürülmüş ve ötelenmiş arazi ile yer altı kırpması kanonik köşeleri korudu. Ölçüm aracı 02-B kapsamındadır.                                                                                                                                                                     |
+| Arazi ve yapı kapsamı                          | Doğrulandı    | Ötelenip döndürülen ikinci araziye eş kotlu bağımsız kat eklendi. Sera iç plan kaydı diğer araziyi, katı ve katsız Kümes’i aynı bıraktı. Kurulu odada Sera taşındı, bodrum kotu değişti, yeni kat, cihaz noktası ve iki kotlu hat kaydedildi.                                                                                                                              |
+| Pozitif OpenPlan3D turu                        | Doğrulandı    | Chromium’da gerçek duvar/masa jestleri, duvar uçları, bağlı uç, boyut ve döndürme Gaia’dan yeniden projekte edildi. Beklenen 4 m duvar ve masa dünya pozu/180° veri testinde eşleşti. Değişikliksiz kayıt revizyonu artırmadı. Kurulu Electron yeniden başlatıldığında eklenen masa aynı kimlikle açıldı.                                                                  |
+| Kopya, silme, geri al/ileri al                 | Doğrulandı    | Chromium ve veri testlerinde kopya yeni kimlik aldı, geri al/ileri al aynı nesnenin kimliğini korudu, yeni tarihçe dalı ayrı kimlik kullandı ve silme tek hedefe uygulandı.                                                                                                                                                                                                |
+| İlişki, izinli düzenleme ve kayıp              | Doğrulandı    | Çakışan kimlik, eksik kat snapshot’ı, örtük kat geçişi, bağlı hedef silme ve izin dışı geometri atomik reddedildi. Açık yeniden bağlama dünya veya yerel pozu korudu. Geçerli hareketle birleşen yasak değişiklik de yayımlanmadı.                                                                                                                                         |
+| Sentetik referans                              | Doğrulandı    | 400 × 600 PNG’nin baytları, referans kimliği ve 10 m kontrol noktaları yapı kaydı sonrası korundu. Saklanan veriden merkez (1600, 800) cm ve +90° editör açısı hesaplandı. Çakışan ve görsel dışındaki kontrol noktaları reddedildi. Eksik PNG ile dünya açıldı.                                                                                                           |
+| Gerçek referans içe aktarma ve UI kalibrasyonu | Kapsam dışı   | 02-B.                                                                                                                                                                                                                                                                                                                                                                      |
+| Saklama ve tekrar teslim                       | Doğrulandı    | Aynı revizyona yarışan kayıtlar, kayıp onay, aynı işlemin tekrarı, içerik çakışması, eski onay, disk hatası ve süreç kesintisi test edildi. UI taslak ve geri alma geçmişini sakladı.                                                                                                                                                                                      |
+| Oda yetkilendirme sınırı                       | Doğrulandı    | Kurulu Electron’da farklı oda partition’ından gelen istek reddedildi. Dosya testleri proje/varlık yolu ve symlink denetimlerini doğruladı.                                                                                                                                                                                                                                 |
+| Sanal cihaz ve geometri                        | Doğrulandı    | Yerleşim bağı ve iki bölge üyeliği korundu. Örnek okuma değişirken plan içeriği, dünya revizyonu ve mekânsal izdüşüm sabit kaldı.                                                                                                                                                                                                                                          |
+| Fiziksel eşleme, donanım değiştirme ve geçmiş  | Kapsam dışı   | Client, Router ve telemetri aşamaları.                                                                                                                                                                                                                                                                                                                                     |
+| Editörsüz Genel Görünüm ve WebGL’siz 2B        | Doğrulandı    | Soğuk 2B açılışta OpenPlan3D veya Three.js parçası istenmedi. Ağaç/2B/3B aynı Kümes kimliğini seçti. Kat, tank, bodrum ve kırpılmış hat durumları doğrulandı. Chromium ve kurulu Electron’da WebGL devre dışıyken 2B seçim ve kayıt çalıştı.                                                                                                                               |
+| Yaşam döngüsü                                  | Doğrulandı    | Forge’a geçişte Gaia’nın WebGL çizim ve animasyon karesi sayaçları durdu. Tazelik zamanlayıcısı kaldırıldı, Chromium’da host mesajı aboneliği gizliyken 0, dönünce 1 oldu. Hızlı gezinmede tek canvas kaldı. 3B modundan çıkış bağlamı kaybetti ve oda kapanışı renderer’ı sonlandırdı. Geciktirilmiş grafik modülü kapanıştan sonra WebGL bağlamı oluşturmadı.            |
+| Kurulum, tema, TR/EN ve çevrimdışı işlem       | Doğrulandı    | Temiz profilde tek kurulu oda Gaia idi. Yalnız loopback arayüzüyle proje oluşturuldu, arazi ve iç plan düzenlendi, revizyon 9 yeni Electron sürecinde birebir açıldı. Gaia partition’ında dış HTTP(S)/WebSocket isteği görülmedi. Obsidian → Ivory Lab yüzey rengi aktarımı ve TR → EN açılış etiketleri doğrulandı. İç plan tuvali Türkçe etiketi Chromium’da doğrulandı. |
+| Windows, macOS ve diğer GPU’lar                | Doğrulanamadı | Mevcut koşum Linux/X11 (KDE Wayland oturumunda XWayland) ve Intel GPU ile sınırlı.                                                                                                                                                                                                                                                                                         |
+
+#### Paket ve lisans
+
+- `npm ci` ve `npm run build` iki ayrı dizinde çalıştırıldı. Node 26.13.1 ve npm 12.2.3 ile OpenPlan3D 0.9.0 için `771c9e1ad30bd1c3cc7584d6eca74deb2e14943d` commit’i, dört dosyalı patch ve kilit dosyası kullanıldı. Svelte CSS kapsamı ortak kaynak köküne bağlandı. Vite UI baytları ve normal oda builder’ından çıkan 18 paket girdisi eşleşti. `.hevroom` zarfındaki `exportedAt` üretim zamanını gösterir.
+- Paket 1.311.844 bayt, çözülmüş dosyalar 981.482 bayt. Manifest, derlenmiş host, iki dil kataloğu, saklama protokolü, göreli yollu UI, dokuz JS/CSS varlığı ve üç lisans dosyası taşıyor. Model/doku/font kataloğu, test dosyası, upstream checkout, `node_modules`, fixture PNG veya kullanıcı projesi arşivde bulunmadı. PNG, deney projesi oluşturulduğunda izole uygulama deposunda üretildi. Üretim iç plan parçası 468 kB’dan yaklaşık 258 kB’a, gzip ile 138 kB’dan 82 kB’a indi. 3B parçası 579 kB, gzip ile 146 kB. Vite 500 kB eşiği uyarısı sürüyor.
+- Dağıtım lisansları MIT. OpenPlan3D 0.9.0 © 2026 theLodgeStudio, Svelte 5.57.0 © 2016–2025 Svelte Contributors, esm-env 1.2.2 © 2022 Benjamin McCann, Three.js 0.187.0 ve OrbitControls © 2010–2026 three.js authors, Tailwind CSS 4.1.18 © Tailwind Labs. Svelte, esm-env ve Three.js lisansları Vite notice’ında. OpenPlan3D ve Tailwind lisansları ayrı dosyalarda. Vite, Svelte Check, Playwright, TypeScript ve Three tip ağacı derleme/test girdisi olarak kaldı. [Üçüncü taraf bildirimleri](THIRD_PARTY_NOTICES.md) · [Oda bağımlılık lisansları](rooms/gaia-room/ui/DEPENDENCY-LICENSES.md)
+- **Core uyumluluğu.** Gaia 0.2.0 paketinin çalışması için güvenilen Gaia storage sağlayıcısını ve oda görünürlük IPC’sini içeren bu çalışma ağacından derlenmiş Hayalet Ev 5.4.0 gerekir. Paket manifesti genel oda şemasını kullanır. Electron main sağlayıcısı uygulama derlemesinde kaydolur. Oda paketi yalnız renderer/host kaynakları ve metadata taşır. [Saklama kontratı](rooms/gaia-room/protocols/gaia-project.md)
+
+Üretim ve ayrı kabul kontrolleri için depo kökünden aşağıdaki komutlar çalıştırıldı.
+
+```bash
+npm --prefix rooms/gaia-room/scripts/editor ci
+npm --prefix rooms/gaia-room/scripts/editor run build
+npm run rooms:bundle -- gaia-room --output /tmp/gaia.hevroom
+npm --prefix rooms/gaia-room/scripts/editor run check
+npm --prefix rooms/gaia-room/scripts/editor run test:ui
+npm run check:all
+```
+
+Çevrimdışı Electron turu Linux ağ ad alanında yalnız loopback ile çalıştırıldı. Test derlenmiş Electron main ve renderer çıktısını geçici profile kopyalar. [Kurulu oda deneyi](scripts/tests/gaia-room.electron-smoke.mjs)
+
+```bash
+unshare --user --map-root-user --net sh -c '
+  ip link set lo up &&
+  xvfb-run -a -s "-screen 0 1920x1080x24" env TSX_TSCONFIG_PATH=src/tsconfig.json \
+    node --import tsx scripts/tests/gaia-room.electron-smoke.mjs --standalone
+'
+```
+
+#### Mimari ve hedefli düzeltmeler
+
+- `Workspace.svelte` taslak, seçim ve görünüm geçişini koordine eder. Katman listesi, özellik formu, plan ve orbit ayrı bileşenlerdir. Geometri ve ilişki doğrulaması `spatial/`, uygulama sınırı ve atomik kayıt `storage/` altındadır. `Workshop.svelte` ile projeksiyon ve oturum modülleri, OpenPlan3D hareketlerini doğrulanabilir partiye çevirir. Bu incelemede dosya boyuna bağlı refactor gerekmedi.
+- Kanonik otorite `world.json` ve aynı yayındaki işlem makbuzudur. OpenPlan3D store ve undo geçmişi geçici taslak tutar. Viewer aynı revizyondan türetilir. Sanal ölçümler oturum belleğinde kalır. Kayıtlı proje ad alanı ile proje içi nesne kimlikleri ayrıldı. Böylece `bench` adlı deney projesi özgün `bench` nesne kimliğini korur. Sentetik referansın yerel veri doğrulaması sıkılaştırıldı.
+- Core’un storage taşıyıcısı oda kimliğini güvenilen sağlayıcıdan alır. Webview türü, ana frame, üst pencere, partition, kurulu giriş ve komut kapsamı main’de kontrol edilir. Gaia’nın core bileşimine bağlandığı yer `scripts/rooms/electron-main.mjs`. Genel görünürlük sinyali mevcut room host köprüsünden geçer. Gaia başka bir odanın kaynak veya verisini kullanmaz. Forge ile gerçek görünürlük/tur ve tam repo testleri diğer oda akışlarını kapsadı.
+- OpenPlan3D patch’i dört dosyada tuval, bağlam menüsü, store ve kısayol izinlerine odaklanır. Yerel Vite girdi filtresi kullanılmayan mobilya, entourage, şablon ve Portekizce sözlük verisini çıkardı. İzinli masa ve çizim yardımcıları upstream’den kalır. Görünür iç plan kontrolleri için Gaia TR bağlamı kullanılır. `scripts/editor` düzenlenebilir, `ui/` yeniden üretilen paket girdisidir.
+- Gaia’nın renk ve boyutları oda token’larına taşındı. CSS denetimi yinelenen minified derlemeler yerine düzenlenebilir Svelte ve CSS kaynağını da tarıyor. Oda sınırı testi kurulmuş üçüncü taraf `node_modules` dizinlerine girmiyor. Knip, gerçek Electron bileşimi ve Gaia’nın bağımsız editor manifestini izliyor. 19 Gaia veri/kayıt testi tam test keşfine bağlı.
+
+#### Gerçek masaüstü ölçümleri
+
+Görünür ve odaklı Electron 43.3.0 (Chromium 150.0.7871.212), Intel i7-4510U, 1920 × 1080 masaüstü, 1350 × 850 içerik alanı, DPR 1 ve 795 × 453 WebGL tuvali. Tüm satırlarda aynı 40 × 60 m dünya kullanıldı. ANGLE OpenGL, WebGL 2 bağlamını Mesa 26.3.1 üzerindeki Intel HD Graphics 4400 ile açtı. Donanım hızlandırma, GPU compositing ve rasterization etkin. Electron’un cihaz listesi GeForce 840M’yi de gösterdi. Ölçülen bağlamın WebGL renderer adı ve GPU sürecinin `i915` açık dosyaları Intel yolunu doğruladı. Ayrı Chromium 153.0.8010.12 UI koşumunda ANGLE Vulkan SwiftShader/Subzero yazılım renderer’ı kullanıldı.
+
+Tablo hücreleri **ortalama CPU % / medyan RSS MiB**. CPU için %100 bir mantıksal çekirdek, örnek aralığı yaklaşık bir saniye. Durağan senaryolarda örneklemeden önce 1,8 saniye beklendi. Kamera sürüklemesi ve masa önizlemesinde girdi boyunca örnek alındı. Son satır 20 çevrim sonrasındaki 24 örneği izleyen 45 saniyelik beklemeden sonra alındı. Yardımcı süreç RSS’i yaklaşık 85 MiB ve ölçülen CPU’su %0,0. RSS paylaşılan sayfaları süreç başına sayar.
+
+| Senaryo                             | Örnek |         Main | Kabuk renderer | Gaia renderer |   GPU süreci | Forge renderer | i915 yerleşik sistem belleği (MiB) |
+| ----------------------------------- | ----: | -----------: | -------------: | ------------: | -----------: | -------------: | ---------------------------------: |
+| Gaia açılmadan                      |    12 |  0,2 / 318,7 |    0,1 / 211,2 |             — |  0,1 / 147,9 |              — |                              133,3 |
+| Genel Görünüm 2B, boşta             |    12 |  3,0 / 343,9 |    0,9 / 215,6 |   0,0 / 113,1 |  0,2 / 149,0 |              — |                               96,9 |
+| Genel Görünüm 3B, boşta             |    12 |  0,2 / 276,1 |    0,8 / 190,8 |   0,0 / 122,4 |  0,0 / 151,8 |              — |                              112,6 |
+| Genel Görünüm 3B, kamera hareketi   |    12 | 13,3 / 276,3 |   13,9 / 195,4 |   7,3 / 126,1 | 21,9 / 152,5 |              — |                              105,6 |
+| Arazi Atölyesi, açık                |    12 |  0,3 / 276,0 |    0,2 / 195,7 |   0,1 / 127,3 |  0,1 / 150,8 |              — |                               91,9 |
+| OpenPlan3D iç plan, boşta           |    12 |  0,3 / 276,7 |    0,2 / 193,8 |   0,0 / 138,1 |  0,0 / 151,1 |              — |                              116,6 |
+| OpenPlan3D masa yerleşim önizlemesi |    12 |  9,9 / 277,2 |   11,6 / 196,1 |   7,1 / 138,1 | 19,9 / 152,0 |              — |                               88,7 |
+| Gaia gizli, Forge açık              |    12 |  0,3 / 278,8 |    0,1 / 198,4 |   0,7 / 136,7 |  0,2 / 156,3 |    0,0 / 112,8 |                              172,7 |
+| Gaia tamamen kapalı                 |    12 |  0,3 / 277,9 |    0,1 / 197,2 |             — |  0,1 / 155,0 |    0,0 / 112,9 |                              107,5 |
+| 20 aç–gizle–kapat çevrimi sonrası   |    24 |  0,3 / 280,8 |    0,1 / 209,3 |             — |  0,0 / 161,0 |    0,0 / 114,8 |                              124,1 |
+| Bekleme sonrası                     |    12 |  0,4 / 280,3 |    0,2 / 209,3 |             — |  0,4 / 160,7 |    0,0 / 114,8 |                              114,7 |
+
+GPU süreci sütunu işletim sistemi süreç ölçümüdür. `i915` sütunu aynı süreç için DRM istemci kimliğiyle tekilleştirilen `drm-resident-system0` ölçümüdür. GPU busy sayacı erişimi işletim sistemi tarafından reddedildi. GPU kullanım yüzdesi ve ayrık VRAM ölçümü alınamadı.
+
+- 3B boşta ve Forge görünürken WebGL çizim ve animasyon karesi artışı sıfırdı. Görünür Gaia’da yaklaşık 32 saniyelik tazelik zamanlayıcısı varken oda geçişi sonrasında bekleyen zamanlayıcı sayısı sıfır oldu. Gizleme WebGL bağlamını sakladı. 3B modunu kapatma bağlamı kaybetti ve Gaia kapatıldığında renderer 20 turun tamamında sonlandı.
+- Gaia renderer yeniden açılış örnekleri 124,0–126,7 MiB aralığında kaldı. İlk kapanış 155,0 MiB olan paylaşılan GPU süreci 20 tur sonunda 161,0 MiB, bekleme sonrası 160,7 MiB medyan RSS kullandı. Aynı aşamalarda i915 yerleşik sistem belleği 107,5 → 124,1 → 114,7 MiB oldu. Yeniden açılan Gaia süreçlerinde birikim görülmedi. Paylaşılan süreçlerde kalan düşük RSS artışı daha uzun oturumlar için açık gözlem. Kapanış sırasında Chromium SharedImage mailbox kayıtları görüldü. Bağlam bırakma, ikinci açılış veya renderer sonlanması testlerinde işlevsel hata görülmedi.
+- Kamera hareketi sırasında GPU süreci CPU ortalaması %21,9, bir saniyelik tepe %24,7 oldu. İç plan masa önizlemesinde GPU süreci ortalama %19,9 CPU kullandı. Durağan ve gizli görünümde sürekli çizim görülmedi. Bu fixture’da kaynak odaklı bir render optimizasyonunu gerektiren kalıcı tüketim doğrulanmadı. [Yerel ham ölçümler](rooms/.build/gaia-room/evidence/02-a4/performance-raw.json)
+
+#### Kalite zinciri ve karar
+
+- `npm run check:all` geçti. Format, strict lint, TypeScript, 1.981 başarılı test ve 2 mevcut atlama, tasarım denetimleri, Dependency Cruiser, Knip, oda runtime üretimi ve uygulamanın renderer/Electron/MCP/Ghost Agent derlemeleri tamamlandı. Fate Knots için 282 CSS baseline bulgusu ve Game Room için 14 dependency uyarısı bulundu, hata yok. 19 Gaia veri ve kayıt testi bu toplamın içinde. [Tam koşum günlüğü](logs/check-all.log)
+- Svelte Check 0 hata ve 0 uyarı, ayrı Chromium koşumu 9 başarılı test. Kurulu Electron’da Forge ile gerçek navigasyon ve yalnız Gaia ile ağsız tur tamamlandı.
+- **02-A Linux kapsamı kapanabilir.** OpenPlan3D’nin izinli çizim profili ve Three.js’in talep üzerine bağımsız 3B yaklaşımı ilk milestone için kabul ölçütlerini karşılıyor. Güncellemede upstream patch ve gerçek UI izin testleri yeniden doğrulanmalı. Büyük sahneler, uzun oturumlar, yüksek çözünürlük ve DPR, diğer sürücüler, Windows ve macOS açık. Tam uygulama installer’ı bu oda kabulünde çalıştırılmadı.
+
 ## 9. Geliştirme ve kalite kuralları
 
 Yeni proje başlangıcı için kabul edilen 17 kural bu mevcut monorepo'ya uyarlanır.
@@ -260,7 +353,7 @@ Yeni proje başlangıcı için kabul edilen 17 kural bu mevcut monorepo'ya uyarl
 
 ### Kapsam havuzu
 
-- Şimdi: 02-A/4 dağıtım, kaynak ölçümü ve tam kalite zinciri. Sonraki milestone'lar kendi kapsamıyla açılır.
+- Şimdi: 02-B gerçek referans görüntüsü, kalibrasyon ve ölçüm. 02-A Linux kapsamı kapatıldı.
 - Sonra: gelişmiş hayvan/kamera analizi, toprak nemi haritası, güneş enerjisi/invertör, sulama optimizasyonu, hazır protokol adaptörleri, görsel atmosfer.
 - Deneysel: Android mesh/repeater, bataryasız ve ekransız anakartlar, fiziksel kamera/mikrofon taşıma, manyetik/RF haritası, otomatik mekânsal çıkarım, dağıtık görüntü işleme. Başarısızlık ana projeyi bloke etmez.
 
@@ -272,4 +365,4 @@ Adayların ana depo lisansı uygun olsa bile transitif paketler, model/doku/font
 
 ## 11. Açık konular / sonraki session
 
-02-A/3 kabul; 02-A/4 sıradaki. Teknoloji seçimi koşullu ve donanım performans hedefi açık. 02-A/4 kapanışında eş sahne kaynak ölçümü, tam paket zinciri ve bağımsız kabul yapılacak. Kalibrasyon araçları 02-B’de, gerçek cihaz ve ağ davranışı ilgili Client ve Router aşamalarında ele alınacak. Yerel LLM'nin modeli ve gerçek offline davranışı henüz doğrulanmadı. Son full check referansındaki iki atlanan test ve 282 Fate Knots CSS borcu Gaia işi değildir.
+02-A Linux kapsamı kapatıldı. Bağımsız kapanış incelemesinde tam kalite günlüğü (1981 pass, 0 fail, 2 skip), paket/ölçüm raporu ve kaynak denetimi değişiklikleri incelendi. Ölçüm ve UI deneyleri uygulama agent'ının kayıtlı sonuçlarına dayanır; full test yeniden çalıştırılmadı. 02-B gerçek referans içe aktarma, kalibrasyon ve ölçüm araçlarını kapsar. Gerçek cihaz ve ağ davranışı Client ve Router aşamalarındadır. Windows/macOS kurulumu, farklı GPU/sürücüler ve uzun süreli büyük sahnelerde kaynak davranışı açık doğrulama alanlarıdır. Yerel LLM’nin modeli ve çevrimdışı davranışı kendi entegrasyonunda ele alınacak.

@@ -144,13 +144,12 @@ export function validateWorld(world: World): void {
   if (world.schemaVersion !== 1 || !Number.isSafeInteger(world.revision) || world.revision < 0)
     throw new Error("Unsupported Gaia schema or revision");
   const ids = [
-    world.id,
     ...Object.keys(world.nodes),
     ...Object.keys(world.devices),
     ...Object.keys(world.assets),
     ...Object.keys(world.references),
   ];
-  if (ids.some((id) => !id.trim()) || new Set(ids).size !== ids.length)
+  if (!world.id.trim() || ids.some((id) => !id.trim()) || new Set(ids).size !== ids.length)
     throw new Error("Empty or duplicate Gaia ID");
   const levels = new Set<string>();
   for (const [id, node] of Object.entries(world.nodes)) {
@@ -214,10 +213,35 @@ export function validateWorld(world: World): void {
   }
   for (const [id, reference] of Object.entries(world.references)) {
     nodeAt(world, reference.frame);
+    const asset = Object.hasOwn(world.assets, reference.asset)
+      ? world.assets[reference.asset]
+      : undefined;
     if (
-      !Object.hasOwn(world.assets, reference.asset) ||
+      !asset ||
+      !Number.isFinite(reference.opacity) ||
       !(reference.opacity >= 0 && reference.opacity <= 1)
     )
       throw new Error(`Invalid Gaia reference at ${id}`);
+    const calibration = reference.calibration;
+    if (!calibration) continue;
+    const { pixels, distanceM, anchor, bearingDeg } = calibration;
+    const dimensions = asset.pixels;
+    if (
+      !dimensions ||
+      !validPoint(dimensions, 2) ||
+      !dimensions.every((size) => Number.isSafeInteger(size) && size > 0) ||
+      !Array.isArray(pixels) ||
+      pixels.length !== 2 ||
+      !pixels.every(
+        (point) =>
+          validPoint(point, 2) &&
+          point.every((coordinate, axis) => coordinate >= 0 && coordinate <= dimensions[axis]!)
+      ) ||
+      pixels[0].every((coordinate, axis) => coordinate === pixels[1][axis]) ||
+      !positive(distanceM) ||
+      !validPoint(anchor, 3) ||
+      !Number.isFinite(bearingDeg)
+    )
+      throw new Error(`Invalid Gaia reference calibration at ${id}`);
   }
 }

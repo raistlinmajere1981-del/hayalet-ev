@@ -195,6 +195,59 @@ test("draws an empty site's boundary, edits corners, places structures and disca
 });
 
 test.describe("site fixture", () => {
+  test("closing during the orbit download never creates a WebGL context", async ({ page }) => {
+    const { createSiteFixture } = await import("../../spatial/fixture.ts");
+    await page.addInitScript((world) => {
+      globalThis.roomAPI = {
+        ready() {},
+        close() {},
+        onHostMessage() {
+          return () => {};
+        },
+        async requestStorageCommand(name) {
+          return {
+            success: true,
+            data: name === "GaiaProjects" ? { projects: [world.id] } : { world, missing: [] },
+          };
+        },
+      };
+      globalThis.webglCreations = 0;
+      const getContext = globalThis.HTMLCanvasElement.prototype.getContext;
+      globalThis.HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+        if (type === "webgl2") globalThis.webglCreations++;
+        return getContext.call(this, type, ...args);
+      };
+    }, createSiteFixture());
+    const orbit = /\/assets\/orbit-[^/]+\.min\.js$/;
+    const download = Promise.withResolvers();
+    const release = Promise.withResolvers();
+    await page.route(orbit, async (route) => {
+      download.resolve(route.request().url());
+      await release.promise;
+      await route.continue();
+    });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Open project" }).click();
+    try {
+      await page.getByRole("button", { name: "3D orbit" }).click();
+      await download.promise;
+      await page.locator(".close-room").click();
+      await expect(page.locator(".gaia-workspace")).toHaveCount(0);
+    } finally {
+      release.resolve();
+    }
+    // Reuse the same import promise so the abandoned view's continuation has run.
+    const creations = await page.evaluate(
+      async (url) => {
+        await import(url);
+        return globalThis.webglCreations;
+      },
+      await download.promise
+    );
+    expect(creations).toBe(0);
+    await expect(page.locator(".orbit canvas")).toHaveCount(0);
+  });
+
   test("renders the 40 by 60 metre fixture in both viewer modes and opens the interior", async ({
     page,
   }) => {
@@ -250,7 +303,7 @@ test.describe("site fixture", () => {
     await expect(page.getByLabel("Yön (°)")).toHaveValue("90");
     await screenshot("gaia-site-workshop");
     await page.getByRole("button", { name: "İç planı düzenle" }).click();
-    await expect(page.getByLabel("Floor plan editor canvas")).toBeVisible();
+    await expect(page.getByLabel("İç plan düzenleme tuvali")).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Kat", exact: true })).toHaveValue("f-ground");
     await screenshot("gaia-interior-workshop");
   });

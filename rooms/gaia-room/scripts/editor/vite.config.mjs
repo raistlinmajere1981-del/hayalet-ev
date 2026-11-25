@@ -3,17 +3,39 @@ import { fileURLToPath, URL } from "node:url";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwind from "@tailwindcss/vite";
 import { defineConfig } from "vite";
+import { openPlanDistribution } from "./openplan-distribution.mjs";
 
 const path = (relative) => fileURLToPath(new URL(relative, import.meta.url));
 const upstream = path("../../../.build/gaia-room/openplan3d/src/lib");
 const shims = path("./shell-shims.mjs");
+const compact = /@custom-media --gaia-compact ([^;]+);/.exec(
+  readFileSync(path("./tokens.css"), "utf8")
+)[1];
 
 export default defineConfig(({ mode }) => ({
   base: "./",
   publicDir: false,
+  css: {
+    postcss: {
+      plugins: [
+        {
+          postcssPlugin: "gaia-compact-media",
+          Once(root) {
+            root.walkAtRules("custom-media", (rule) => {
+              if (rule.params.startsWith("--gaia-compact ")) rule.remove();
+            });
+            root.walkAtRules("media", (rule) => {
+              rule.params = rule.params.replaceAll("(--gaia-compact)", compact);
+            });
+          },
+        },
+      ],
+    },
+  },
   plugins: [
-    svelte(),
+    svelte({ compilerOptions: { rootDir: path("../../../") } }),
     tailwind(),
+    openPlanDistribution(upstream),
     {
       name: "gaia-editor-notices",
       generateBundle() {
@@ -32,6 +54,7 @@ export default defineConfig(({ mode }) => ({
       { find: "$app/paths", replacement: shims },
       { find: "./textureFiles", replacement: shims },
       { find: "virtual:catalog-assets", replacement: shims },
+      { find: /^\$lib\/i18n$/, replacement: path("./openplan-locale.mjs") },
       { find: "$lib", replacement: upstream },
     ],
     dedupe: ["svelte"],

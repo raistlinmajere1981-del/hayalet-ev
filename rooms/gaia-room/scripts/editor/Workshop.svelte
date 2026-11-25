@@ -26,12 +26,14 @@
   import { nodeAt } from "../spatial/world.ts";
   import { floorId } from "./projection.ts";
   import { openSession, type EditBatch } from "./session.ts";
+  import { setEditorLocale } from "./openplan-locale.mjs";
   import { untrack } from "svelte";
 
   let {
     initial,
     storage,
     labels = en.workshop,
+    locale = "en",
     onleave,
     visible = true,
     transitionLabels,
@@ -39,6 +41,7 @@
     initial: InteriorOpened;
     storage: WorkshopStorage;
     labels?: typeof en.workshop;
+    locale?: "en" | "tr";
     onleave?: () => void;
     visible?: boolean;
     transitionLabels?: typeof en.site;
@@ -67,6 +70,7 @@
   let saving = $state(false);
   let message = $state("");
   let failure = $state(false);
+  $effect(() => setEditorLocale(locale));
   let readOnly = $derived(session.readOnly.map((id) => nodeAt(world, id).name));
   function report(text: string, error = false) {
     message = text;
@@ -360,32 +364,32 @@
 
 <style>
   button {
-    border: 1px solid #cbd5e1;
-    border-radius: 0.375rem;
+    border: var(--gaia-border-width) solid var(--gaia-editor-line);
+    border-radius: var(--gaia-editor-button-radius);
     background: white;
-    padding: 0.35rem 0.65rem;
-    font-size: 0.875rem;
+    padding: var(--gaia-space-6) var(--gaia-space-12);
+    font-size: var(--gaia-editor-button-font);
     cursor: pointer;
   }
   button:hover:not(:disabled) {
-    background: #f1f5f9;
+    background: var(--gaia-editor-hover);
   }
   button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
   button[aria-pressed="true"] {
-    border-color: #0f766e;
-    color: #115e59;
-    background: #f0fdfa;
+    border-color: var(--gaia-editor-active-outline);
+    color: var(--gaia-editor-action);
+    background: var(--gaia-editor-active);
   }
   .save,
   .save:hover:not(:disabled) {
-    background: #115e59;
+    background: var(--gaia-editor-action);
     color: white;
-    border-color: #115e59;
+    border-color: var(--gaia-editor-action);
   }
   .failure {
-    color: #9f1239;
+    color: var(--gaia-editor-error);
   }
 </style>

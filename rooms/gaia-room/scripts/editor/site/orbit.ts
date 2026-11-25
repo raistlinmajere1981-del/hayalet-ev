@@ -25,6 +25,7 @@ import {
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { Id } from "../../spatial/world.ts";
 import { deviceColor, frame, type SpatialItem } from "./scene.ts";
+import { selectedOrbit } from "../palette.ts";
 
 export function createOrbit(
   host: HTMLElement,
@@ -106,7 +107,7 @@ export function createOrbit(
       const highlight = item.id === selected;
       const color = new Color(
         highlight
-          ? "#f7ae45"
+          ? selectedOrbit
           : item.node.kind === "mount"
             ? deviceColor(states.get(item.id))
             : item.color
