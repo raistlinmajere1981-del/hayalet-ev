@@ -101,3 +101,8 @@ Upstream ncnn lisans kopyası:
 ## Yeni üçüncü taraf materyal eklerken
 
 Kaynak ağacına yeni bir model, ikon, font, ses, görsel, vendored kütüphane veya başka bir üçüncü taraf materyal eklenirse kaynak ve yeniden dağıtım lisansı doğrulanmalı; gerekli attribution/lisans metinleri korunmalı, uygun upstream lisans kopyası eklenmeli ve bu dosya güncellenmelidir.
+
+## Gaia 02-A/3 Three.js görünümü
+
+- Three.js 0.187.0 (MIT) ve aynı paketin OrbitControls bileşeni, yalnız 3B görünüm açıldığında yüklenen yerel parçadadır. Telif ve lisans, oda paketindeki `DEPENDENCY-LICENSES.md` içinde yer alır. [Three.js kaynak kodu ve lisansı](https://github.com/mrdoob/three.js/tree/r187)
+- `@types/three` 0.187.0 (MIT), `@types/stats.js`, `@types/webxr`, `@tweenjs/tween.js`, `fflate` ve `meshoptimizer` (MIT) ile `@dimforge/rapier3d-compat` (Apache-2.0) geliştirme bağımlılıklarıdır. Bu tip ağacından uygulama kodu dağıtım paketine girmez.

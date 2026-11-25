@@ -14,4 +14,4 @@
 rooms/gaia-room/scripts/editor/openplan3d.patch whitespace=-blank-at-eol
 
 # Generated Vite editor bundles retain compiler-emitted whitespace.
-rooms/gaia-room/ui/assets/*.min.js whitespace=-blank-at-eol
+rooms/gaia-room/ui/assets/*.min.js whitespace=-blank-at-eol,-space-before-tab

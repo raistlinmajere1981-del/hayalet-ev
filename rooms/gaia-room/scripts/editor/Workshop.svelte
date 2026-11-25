@@ -22,8 +22,9 @@
   } from "$lib/stores/project";
   import { readProject } from "$lib/utils/projectValidation";
   import en from "../../i18n/en.json";
-  import { UnconfirmedCommand, type Opened, type WorkshopStorage } from "./client.ts";
+  import { UnconfirmedCommand, type InteriorOpened, type WorkshopStorage } from "./client.ts";
   import { nodeAt } from "../spatial/world.ts";
+  import { floorId } from "./projection.ts";
   import { openSession, type EditBatch } from "./session.ts";
   import { untrack } from "svelte";
 
@@ -32,23 +33,36 @@
     storage,
     labels = en.workshop,
     onleave,
+    visible = true,
+    transitionLabels,
   }: {
-    initial: Opened;
+    initial: InteriorOpened;
     storage: WorkshopStorage;
     labels?: typeof en.workshop;
     onleave?: () => void;
+    visible?: boolean;
+    transitionLabels?: typeof en.site;
   } = $props();
   const opened = untrack(() => initial);
   const building = opened.building;
   const acceptance = import.meta.env.MODE === "acceptance";
   let world = $state.raw(opened.world);
-  let session = $state.raw(openSession(opened.world, building));
+  const ground = Object.keys(opened.world.nodes).find((id) => {
+    const node = opened.world.nodes[id];
+    return node?.kind === "floor" && node.parent === building && node.level === 0;
+  });
+  let session = $state.raw(
+    openSession(opened.world, building, ground ? floorId(ground) : undefined)
+  );
   let trustedSession = opened.session;
   let cleanFloors: string | undefined;
   let missing = $state(opened.missing);
   let pending: EditBatch | undefined;
   let lastBatch: EditBatch | undefined;
   let epoch = $state(0);
+  let leaving = $state(false);
+  let current = $state.raw(get(currentProject));
+  let tool = $state(get(selectedTool));
   let gesturing = $state(false);
   let saving = $state(false);
   let message = $state("");
@@ -64,7 +78,7 @@
   }
 
   setEditingPolicy((before, after, intent) => {
-    if (saving) return false;
+    if (saving || !visible || leaving) return false;
     try {
       session.authorize(before, after, intent);
       return true;
@@ -78,22 +92,22 @@
   cleanFloors = JSON.stringify(get(currentProject)?.floors);
 
   async function save() {
-    if (gesturing || saving) {
+    if (!visible || gesturing || saving) {
       report(labels.gesture, true);
       return;
     }
     const draft = get(currentProject);
-    if (!draft) return;
+    if (!draft) return false;
     saving = true;
     try {
       const { candidate, batch, next } = session.prepareSave(draft, world, readProject);
       if (pending && JSON.stringify(pending.edits) !== JSON.stringify(batch.edits)) {
         report(labels.changedAfterTimeout, true);
-        return;
+        return false;
       }
       if (!batch.edits.length) {
         report(`${labels.same} ${world.revision}.`);
-        return;
+        return true;
       }
       const projection = readProject(next.plan);
       batch.session = trustedSession;
@@ -119,8 +133,10 @@
       cleanFloors = JSON.stringify(get(currentProject)?.floors);
       epoch++;
       report(`${labels.saved} ${world.revision}.`);
+      return true;
     } catch (error) {
       report(error instanceof Error ? error.message : String(error), true);
+      return false;
     } finally {
       saving = false;
     }
@@ -152,8 +168,13 @@
 
   function leave() {
     if (saving || gesturing) return;
-    if (JSON.stringify(get(currentProject)?.floors) !== cleanFloors && !confirm(labels.discard))
-      return;
+    if (pending || JSON.stringify(get(currentProject)?.floors) !== cleanFloors) {
+      if (transitionLabels) {
+        leaving = true;
+        return;
+      }
+      if (!confirm(labels.discard)) return;
+    }
     onleave?.();
   }
 
@@ -165,20 +186,32 @@
     selectedTool.set(tool);
   }
 
-  onMount(() => {
+  $effect(() => {
+    if (!visible) return;
+    const stopProject = currentProject.subscribe((project) => (current = project));
+    const stopTool = selectedTool.subscribe((value) => (tool = value));
     function onSaveKey(event: KeyboardEvent) {
       if (saving) {
         event.stopImmediatePropagation();
         event.preventDefault();
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+      if (!leaving && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
         event.stopImmediatePropagation();
-        save();
+        void save();
       }
     }
     window.addEventListener("keydown", onSaveKey, true);
+    return () => {
+      stopProject();
+      stopTool();
+      window.removeEventListener("keydown", onSaveKey, true);
+      gesturing = false;
+    };
+  });
+
+  onMount(() => {
     if (acceptance) {
       Object.defineProperty(window, "__gaiaAcceptance", {
         configurable: true,
@@ -195,7 +228,6 @@
       });
     }
     return () => {
-      window.removeEventListener("keydown", onSaveKey, true);
       setEditingPolicy();
       if (acceptance) Reflect.deleteProperty(window, "__gaiaAcceptance");
     };
@@ -209,7 +241,7 @@
     <div>
       <h1 class="text-lg font-semibold">{labels.workshop}</h1>
       <p class="text-sm text-slate-600">
-        {world.id} · {$currentProject?.name} · {labels.revision}
+        {world.id} · {current?.name} · {labels.revision}
         {world.revision}
       </p>
     </div>
@@ -217,48 +249,50 @@
       {labels.floor}
       <select
         class="rounded border border-slate-300 bg-white p-1.5"
-        value={$currentProject?.activeFloorId}
+        value={current?.activeFloorId}
         disabled={gesturing || saving}
         onchange={(event) => setActiveFloor(event.currentTarget.value)}
       >
-        {#each $currentProject?.floors ?? [] as floor (floor.id)}
+        {#each current?.floors ?? [] as floor (floor.id)}
           <option value={floor.id}>{floor.name}</option>
         {/each}
       </select>
     </label>
     <div class="flex flex-wrap items-center gap-2" role="group" aria-label={labels.tools}>
+      <button type="button" aria-pressed={tool === "select"} onclick={() => activate("select")}>
+        {labels.select}
+      </button>
+      <button type="button" aria-pressed={tool === "wall"} onclick={() => activate("wall")}>
+        {labels.wall}
+      </button>
       <button
         type="button"
-        aria-pressed={$selectedTool === "select"}
-        onclick={() => activate("select")}>{labels.select}</button
+        aria-pressed={tool === "furniture"}
+        onclick={() => activate("furniture")}
       >
-      <button type="button" aria-pressed={$selectedTool === "wall"} onclick={() => activate("wall")}
-        >{labels.wall}</button
-      >
-      <button
-        type="button"
-        aria-pressed={$selectedTool === "furniture"}
-        onclick={() => activate("furniture")}>{labels.table}</button
-      >
+        {labels.table}
+      </button>
       <button type="button" onclick={undo} disabled={gesturing || saving}>{labels.undo}</button>
       <button type="button" onclick={redo} disabled={gesturing || saving}>{labels.redo}</button>
     </div>
     <div class="ml-auto flex gap-2">
-      {#if onleave}<button type="button" onclick={leave} disabled={gesturing || saving}
-          >{labels.projects}</button
-        >{/if}
+      {#if onleave}<button type="button" onclick={leave} disabled={gesturing || saving}>
+          {transitionLabels?.backSite ?? labels.projects}
+        </button>{/if}
       <button type="button" onclick={reopen} disabled={gesturing || saving}>{labels.reopen}</button>
       <button type="button" class="save" onclick={save} disabled={saving}>{labels.save}</button>
     </div>
   </header>
-  <div class="flex min-h-0 flex-1" inert={saving}>
-    {#key epoch}
-      <FloorPlanCanvas
-        restrictEdits
-        onBlocked={explainBlocked}
-        onGestureChange={(active) => (gesturing = active)}
-      />
-    {/key}
+  <div class="flex min-h-0 flex-1" inert={saving || leaving}>
+    {#if visible}
+      {#key epoch}
+        <FloorPlanCanvas
+          restrictEdits
+          onBlocked={explainBlocked}
+          onGestureChange={(active) => (gesturing = active)}
+        />
+      {/key}
+    {/if}
   </div>
   <footer class="border-t border-slate-200 bg-white px-4 py-2 text-sm">
     <p role="status" class:failure>{saving ? labels.saving : message || labels.ready}</p>
@@ -272,6 +306,56 @@
       {/if}
     </details>
   </footer>
+  {#if visible && leaving && transitionLabels}
+    <div class="gaia-workspace">
+      <div class="dialog-overlay">
+        <div
+          class="workspace-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label={transitionLabels.leavePrompt}
+        >
+          <h2>{transitionLabels.leavePrompt}</h2>
+          {#if failure}<p role="alert">{message}</p>{/if}
+          <div>
+            <button type="button" disabled={saving} onclick={() => (leaving = false)}>
+              {transitionLabels.keepEditing}
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onclick={async () => {
+                if (pending) {
+                  saving = true;
+                  try {
+                    await storage.reopen();
+                  } catch (error) {
+                    report(String(error), true);
+                    return;
+                  } finally {
+                    saving = false;
+                  }
+                }
+                onleave?.();
+              }}
+            >
+              {transitionLabels.discardChanges}
+            </button>
+            <button
+              type="button"
+              class="save"
+              disabled={saving}
+              onclick={async () => {
+                if (await save()) onleave?.();
+              }}
+            >
+              {labels.save}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>

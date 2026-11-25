@@ -38,7 +38,7 @@
         },
         {
           "name": "GaiaSave",
-          "description": "Apply a workshop edit batch",
+          "description": "Apply an interior or site edit batch",
           "scope": "room-ui",
           "exposure": "internal"
         }

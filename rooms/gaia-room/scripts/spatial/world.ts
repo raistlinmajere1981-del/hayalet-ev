@@ -4,7 +4,12 @@ export type V3 = [number, number, number];
 export type Wall = { kind: "wall"; length: number; thickness: number; height: number };
 export type Box = { kind: "box"; size: V3 };
 export type EditableGeometry = Wall | Box;
-type Geometry = EditableGeometry | { kind: "point" } | { kind: "footprint"; ring: V2[] };
+export type Geometry =
+  | EditableGeometry
+  | { kind: "point" }
+  | { kind: "footprint"; ring: V2[] }
+  | { kind: "cylinder"; radius: number; height: number }
+  | { kind: "path"; vertices: V3[] };
 
 export interface Pose {
   p: V3;
@@ -12,7 +17,7 @@ export interface Pose {
 }
 
 export interface SpatialNode extends Pose {
-  kind: "site" | "building" | "floor" | "zone" | "object" | "mount";
+  kind: "site" | "building" | "floor" | "zone" | "object" | "mount" | "route";
   name: string;
   parent: Id | null;
   geometry?: Geometry;
@@ -39,7 +44,15 @@ export interface World {
   nodes: Record<Id, SpatialNode>;
   devices: Record<Id, Device>;
   assets: Record<Id, { mime: string; pixels?: V2 }>;
-  references: Record<Id, { frame: Id; asset: Id; opacity: number }>;
+  references: Record<
+    Id,
+    {
+      frame: Id;
+      asset: Id;
+      opacity: number;
+      calibration?: { pixels: [V2, V2]; distanceM: number; anchor: V3; bearingDeg: number };
+    }
+  >;
   [key: string]: unknown;
 }
 
@@ -81,13 +94,17 @@ export function positive(n: number): boolean {
   return Number.isFinite(n) && n > 0;
 }
 
+function validPoint(point: unknown, dimensions: number): boolean {
+  return Array.isArray(point) && point.length === dimensions && [...point].every(Number.isFinite);
+}
+
 function validRing(ring: V2[]): boolean {
+  if (!Array.isArray(ring) || !ring.every((point) => validPoint(point, 2))) return false;
   const edges = ring.map((point, index) => [point, ring[(index + 1) % ring.length]!] as const);
   const area = edges.reduce((sum, [[x, y], [u, v]]) => sum + x * v - y * u, 0);
   const cross = ([x, y]: V2, [u, v]: V2, [a, b]: V2) => (u - x) * (b - y) - (v - y) * (a - x);
   return (
     ring.length >= 3 &&
-    ring.every((point) => point.length === 2 && point.every(Number.isFinite)) &&
     new Set(ring.map((point) => JSON.stringify(point))).size === ring.length &&
     positive(area) &&
     edges.every(([a, b], i) =>
@@ -111,11 +128,12 @@ const profile = {
   building: { parents: ["site"], geometry: [undefined, "box"] },
   floor: { parents: ["building"], geometry: [undefined, "box"] },
   zone: { parents: ["site", "building", "floor"], geometry: ["footprint"] },
-  object: { parents: ["site", "building", "floor", "zone"], geometry: ["wall", "box"] },
+  object: { parents: ["site", "building", "floor", "zone"], geometry: ["wall", "box", "cylinder"] },
+  route: { parents: ["site", "building", "floor", "zone"], geometry: ["path"] },
   mount: { parents: ["site", "building", "floor", "zone"], geometry: ["point"] },
 } satisfies Record<SpatialNode["kind"], { parents: string[]; geometry: (string | undefined)[] }>;
 
-function siteOf(world: World, id: Id, ancestors = new Set<Id>()): Id {
+export function siteOf(world: World, id: Id, ancestors = new Set<Id>()): Id {
   if (ancestors.has(id)) throw new Error(`Cyclic Gaia parent at ${id}`);
   const { parent } = nodeAt(world, id);
   ancestors.add(id);
@@ -136,7 +154,7 @@ export function validateWorld(world: World): void {
     throw new Error("Empty or duplicate Gaia ID");
   const levels = new Set<string>();
   for (const [id, node] of Object.entries(world.nodes)) {
-    const rule: { parents: string[]; geometry: (string | undefined)[] } = profile[node.kind];
+    const rule = Object.hasOwn(profile, node.kind) ? profile[node.kind] : undefined;
     const geometry = node.geometry;
     if (
       !rule?.geometry.includes(geometry?.kind) ||
@@ -145,20 +163,23 @@ export function validateWorld(world: World): void {
         : node.parent === null || !rule.parents.includes(nodeAt(world, node.parent).kind))
     )
       throw new Error(`Incompatible Gaia kind, geometry or parent at ${id}`);
-    if (
-      node.p.length !== 3 ||
-      !node.p.every(Number.isFinite) ||
-      !Number.isFinite(node.yaw) ||
-      node.yaw < 0 ||
-      node.yaw >= 360
-    )
+    if (!validPoint(node.p, 3) || !Number.isFinite(node.yaw) || node.yaw < 0 || node.yaw >= 360)
       throw new Error(`Invalid Gaia pose at ${id}`);
     if (
       (geometry?.kind === "wall" &&
         ![geometry.length, geometry.thickness, geometry.height].every(positive)) ||
       (geometry?.kind === "box" &&
-        (geometry.size.length !== 3 || !geometry.size.every(positive))) ||
-      (geometry?.kind === "footprint" && !validRing(geometry.ring))
+        (!validPoint(geometry.size, 3) || !geometry.size.every(positive))) ||
+      (geometry?.kind === "footprint" && !validRing(geometry.ring)) ||
+      (geometry?.kind === "cylinder" && ![geometry.radius, geometry.height].every(positive)) ||
+      (geometry?.kind === "path" &&
+        (!Array.isArray(geometry.vertices) ||
+          geometry.vertices.length < 2 ||
+          !geometry.vertices.every(
+            (vertex, i, vertices) =>
+              validPoint(vertex, 3) &&
+              (!i || vertex.some((n, axis) => n !== vertices[i - 1]![axis]))
+          )))
     )
       throw new Error(`Invalid Gaia geometry at ${id}`);
     if (

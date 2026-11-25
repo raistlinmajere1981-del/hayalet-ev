@@ -3,27 +3,32 @@ import type { EditBatch } from "./session.ts";
 
 export interface Opened {
   world: World;
-  building: string;
+  building: string | null;
   session: string;
   missing: string[];
 }
+export type InteriorOpened = Opened & { building: string };
+
 export interface Saved {
   world: World;
   missing: string[];
 }
 export interface WorkshopStorage {
   save(batch: EditBatch, retry: boolean): Promise<Saved>;
-  reopen(): Promise<Opened>;
+  reopen(): Promise<InteriorOpened>;
 }
 interface RoomBridge {
   ready(): void;
+  close(): void;
+  onVisibilityChange?(callback: (visible: boolean) => void): () => void;
   onHostMessage(
     handler: (message: {
       type: string;
       locale?: string;
-      translations?: { workshop?: Record<string, string> };
+      translations?: { workshop?: Record<string, string>; site?: Record<string, string> };
       payload?: Record<string, string>;
-    }) => void
+    }) => void,
+    replayContext?: boolean
   ): () => void;
   requestStorageCommand(
     command: string,

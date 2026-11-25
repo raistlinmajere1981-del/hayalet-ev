@@ -43,7 +43,7 @@ export async function ensureRoomPageRuntimeHost({
 
   const runtimeUrl = toRoomRuntimeFileUrl(room.runtimeEntryPath);
   const preloadUrl = await getRoomPreloadUrl();
-  if (page.isConnected === false) {
+  if (!page.isConnected || getPage() !== page || getRuntimeMountHost(page) !== mount) {
     return;
   }
 
@@ -74,6 +74,8 @@ export async function ensureRoomPageRuntimeHost({
       sendRoomRuntimeMessage(pendingHostMessages, webview, payload);
     },
   });
+
+  if (!webview.isConnected || getPage() !== page) return;
 
   if (syncRoomRuntimeWebviewSource({ currentSrc, runtimeUrl, webview })) {
     setRuntimeState("loading", runtimeUrl);

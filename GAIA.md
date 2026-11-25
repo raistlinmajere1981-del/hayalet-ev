@@ -1,8 +1,8 @@
 # Gaia Room
 
-> **Durum** — 02-A/1 ve 02-A/2 kabul edildi. Sıradaki 02-A/3 ortak arazi planı ve bağımsız Genel Görünüm. Teknoloji seçimi koşullu. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
+> **Durum** — 02-A/1, 02-A/2 ve 02-A/3 kabul edildi. Sıradaki 02-A/4 paket, performans ve kalite kabulü. Teknoloji seçimi koşullu. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
 
-Referans uygulama commit'i: `d0e47947` (Hayalet Ev 5.4.0). Bu belge Gaia için mimari karar, proje hafızası, araştırma özeti, açık konular ve geliştirme planının tek başlangıç kaynağıdır. Modelleme Atölyesi Hayalet Ev içinde yerel projeleri açar ve kaydeder.
+Referans uygulama commit'i: `d0e47947` (Hayalet Ev 5.4.0). Bu belge Gaia için mimari karar, proje hafızası, araştırma özeti, açık konular ve geliştirme planının tek başlangıç kaynağıdır. Hayalet Ev’de Gaia projeleri Genel Görünüm’de açılır ve Modelleme Atölyesi’nde düzenlenir.
 
 ## 1. Vizyon ve kapsam
 
@@ -135,7 +135,7 @@ LAN protokolü, eşleme/kimlik doğrulama ve iletişim güvenliği Client deneyi
 | 01-B/B2/B3 | Tamamlandı (koşullu seçim)          | Açık kaynak/UI araştırması ve yerel fizibilite; eksikler 02-A kabul koşulu                  |
 | 01-C       | Tamamlandı                          | Kanonik şema, koordinat/kimlik/ilişki kuralları, editör/viewer kontratları ve fixture       |
 | 01-D       | Tamamlandı (P0 kontratları işlendi) | Bağımsız mimari audit, agent dağılımı ve ilk uygulama planı                                 |
-| 02-A       | 02-A/2 kabul; 02-A/3 sıradaki       | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
+| 02-A       | 02-A/3 kabul; 02-A/4 sıradaki       | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
 | 02-B       | Bekliyor                            | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
 | 02-C       | Bekliyor                            | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
 | 02-D       | Bekliyor                            | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
@@ -215,6 +215,27 @@ npm run build && npm run electron:build
 TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/tests/gaia-room.electron-smoke.mjs
 ```
 
+### 02-A/3 — Ortak arazi planı ve bağımsız Genel Görünüm
+
+**Açılış.** Gaia Room’da bir proje açılınca salt okunur Genel Görünüm gelir. Standart yeni proje boş açılır. **Deney projesi oluştur** seçeneği 40 × 60 m araziyi, Sera ve Kümes’i, negatif kotlu bodrumu, su deposunu, cihazları ve XYZ hatlarını oluşturur. Mimari örnekteki 400 × 600 px kalibrasyon fixture’ı proje varlığı olarak saklanır. Plan üzerinde referans görseliyle çalışma 02-B kapsamındadır.
+
+**Görünüm.** Katman listesi ve özellik paneli OpenPlan3D ve NextFloor araştırmasındaki gezinme düzenini izler. 2B plan ve 3B yörünge aynı Gaia kimliklerini, metrik dünya pozlarını, seçim ve kadraj sınırlarını kullanır. Yapı ve kat filtreleri hiyerarşiyi izler. Yer altı filtresi her arazinin kendi Z=0 düzlemine göre katları gizler ve hattın görünen kısmını kırpar. Three.js yalnız 3B seçildiğinde, OpenPlan3D yalnız bir yapının iç planı açıldığında yüklenir.
+
+**Atölye.** Sınır köşeleri ve yapı konumu fareyle veya sayısal alandan düzenlenir. Yapı boyutları ve yönü, kat kotu, cihaz konumu ve hat köşeleri özellik panelindedir. Yeni altyapı hattı her köşe için ayrı kot alır. Yapıyı taşımak çocuklarının yerel pozunu korur. Yeniden bağlama komutunda dünya veya yerel pozu koruma açıkça seçilir. Silmede etkilenen çocuklar ve yerleşimden çıkarılacak cihazlar gösterilir. Geriye referans bırakan işlem reddedilir. Site çerçevesindeki hat kendi koordinatlarını korur. İç plana geçişte ve geri dönüşte kirli taslak için kaydetme, vazgeçme ve düzenlemeye dönme seçenekleri vardır. [Oda kayıt kontratı](rooms/gaia-room/protocols/gaia-project.md)
+
+**Durum ve yaşam döngüsü.** Yeni cihaz noktası kanonik bir sanal sensöre bağlanır. Örnek ölçümler cihaz kimliğiyle oturum belleğinde tutulur ve ölçümün kaynağı, bağlantısı, zamanı ve tazeliği gösterilir. Güncelleme dünya revizyonunu ve geometrisini değiştirmez. Oda değişiminde host görünürlük sinyali gönderir. Gaia UI aboneliklerini, 2B çizim yüzeyini, 3B kontrollerini ve bekleyen kareleri bırakır. Askıdaki 3B görünüm kamera pozunu ve WebGL bağlamını korur. 3B modundan çıkıldığında veya oda kapandığında renderer kaynakları bırakılır.
+
+**Kontroller.** 17 Gaia veri ve kayıt testi, 8 Chromium UI testi ve 408 oda altyapısı testi geçti. Oda altyapısında 1 senaryo atlandı. Svelte, TypeScript, hedefli ESLint ve Prettier kontrolleri ile oda, renderer ve Electron derlemeleri geçti. Dependency Cruiser mevcut Game Room dosyaları için 14 yetim modül uyarısı bildirdi, hata bildirmedi.
+
+**Electron ve ekran görüntüleri.** Linux Electron 43.3.0’da kurulu Gaia paketiyle ve Gaia webview’inde dış ağ kapalıyken iki yapı birlikte açıldı. 2B ve 3B tıklamaları `coop` kimliğini döndürdü. Forge Room’a geçişte 3B çizim ve kontroller askıya alındı, hızlı geçişlerde tek görünüm döndü ve 3B’den çıkışta WebGL bağlamı bırakıldı. Yapı sürükleme, yön ve boyut değişikliği, bodrum kotu, yeni kat, cihaz ve iki kotlu hat revizyon 8’e kaydedildi. OpenPlan3D’de eklenen masa revizyon 9’da yeniden açıldı. Yeni kimlikler, cihaz bağlantıları ve hat köşeleri Electron yeniden başladıktan sonra doğrulandı. [Electron deneyi](scripts/tests/gaia-room.electron-smoke.mjs)
+
+- [Genel Görünüm 2B](rooms/.build/gaia-room/evidence/gaia-overview-2d.png) ve [Genel Görünüm 3B](rooms/.build/gaia-room/evidence/gaia-overview-3d.png), Electron webview.
+- [Arazi Atölyesi](rooms/.build/gaia-room/evidence/chromium/gaia-site-workshop.png) ve [OpenPlan3D iç planı](rooms/.build/gaia-room/evidence/chromium/gaia-interior-workshop.png), Chromium kabul koşumu.
+
+**Kabul incelemesi.** Kaynak incelemesinde ortak kayıt ve görünürlük sınırları kontrol edildi; 17 Gaia veri/kayıt testi bağımsız olarak tekrar geçti. Chromium, oda altyapısı ve Electron deneyleri uygulama agent'ının kayıtlı sonuçlarına dayanır. 02-A/4 açılabilir.
+
+**Lisans ve açık riskler.** Three.js 0.187.0 ve OrbitControls MIT lisanslıdır. TypeScript tipleri ve tip paketinin transitif girdileri geliştirme bağımlılıklarıdır. 3B parçası yaklaşık 579 kB, gzip ile 146 kB ve Vite’ın varsayılan parça boyutu uyarısını aşıyor. Donanım GPU’su, diğer masaüstü platformları ve uzun süreli kaynak tüketimi 02-A/4’te doğrulanacak. [Üçüncü taraf bildirimleri](THIRD_PARTY_NOTICES.md#gaia-02-a3-threejs-görünümü)
+
 ## 9. Geliştirme ve kalite kuralları
 
 Yeni proje başlangıcı için kabul edilen 17 kural bu mevcut monorepo'ya uyarlanır.
@@ -239,7 +260,7 @@ Yeni proje başlangıcı için kabul edilen 17 kural bu mevcut monorepo'ya uyarl
 
 ### Kapsam havuzu
 
-- Şimdi: 02-A/3 ortak arazi planı ve bağımsız viewer, ardından 02-A/4; modelleme, bağımsız veri, hazır editör ve viewer. Sonraki milestone'lar kendi kapsamıyla açılır.
+- Şimdi: 02-A/4 dağıtım, kaynak ölçümü ve tam kalite zinciri. Sonraki milestone'lar kendi kapsamıyla açılır.
 - Sonra: gelişmiş hayvan/kamera analizi, toprak nemi haritası, güneş enerjisi/invertör, sulama optimizasyonu, hazır protokol adaptörleri, görsel atmosfer.
 - Deneysel: Android mesh/repeater, bataryasız ve ekransız anakartlar, fiziksel kamera/mikrofon taşıma, manyetik/RF haritası, otomatik mekânsal çıkarım, dağıtık görüntü işleme. Başarısızlık ana projeyi bloke etmez.
 
@@ -251,6 +272,4 @@ Adayların ana depo lisansı uygun olsa bile transitif paketler, model/doku/font
 
 ## 11. Açık konular / sonraki session
 
-02-A/2 oda ve kayıt teslimi kabul edildi. Bağımsız kaynak incelemesinde 12 Gaia veri/kayıt testi yeniden geçti; Chromium, oda regresyonu ve Electron deneyleri uygulama agent'ının kayıtlı sonuçlarına dayanır. P1 kabul senaryoları ve P2 erteleme kararları mimari belgede. 02-A/3 açılabilir; 02-A/4 kabul sırasını korur. Core IPC ve build sınırı değiştiğinden 02-A/4 kapanışında geniş kalite zinciri çalıştırılmalı. Teknoloji seçimi koşullu, performans hedefi henüz ölçülmedi. Çok yapılı hiyerarşi ve gerçek hat geometrisi, ayrı viewer, gerçek kalibrasyon, çevrimdışı varlık envanteri, görünürlük/dispose, Android/Router ve yerel model ölçümleri açık. Yerel LLM'nin modeli ve gerçek offline davranışı doğrulanmadı. Son full check referansındaki iki atlanan test ve 282 Fate Knots CSS borcu Gaia işi değildir.
-
-Kalibrasyon, bağımsız Genel Görünüm ve kapsamlı arazi düzenleme ayrı teslimlerdir.
+02-A/3 kabul; 02-A/4 sıradaki. Teknoloji seçimi koşullu ve donanım performans hedefi açık. 02-A/4 kapanışında eş sahne kaynak ölçümü, tam paket zinciri ve bağımsız kabul yapılacak. Kalibrasyon araçları 02-B’de, gerçek cihaz ve ağ davranışı ilgili Client ve Router aşamalarında ele alınacak. Yerel LLM'nin modeli ve gerçek offline davranışı henüz doğrulanmadı. Son full check referansındaki iki atlanan test ve 282 Fate Knots CSS borcu Gaia işi değildir.

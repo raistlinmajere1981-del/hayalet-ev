@@ -1,17 +1,45 @@
-import { createFixture } from "./fixture.ts";
+import { createFixture, createSiteFixture } from "./fixture.ts";
 import type { World } from "./world.ts";
 
 export const referencePng =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNQSPAAAAFsAMl2ukAnAAAAAElFTkSuQmCC";
 
-export function newProject(id: string, fixture: boolean, locale: string): World {
+export function newProject(id: string, fixture: boolean, locale: string, sitePlan = false): World {
   if (fixture) {
-    const world = createFixture();
+    const world = sitePlan ? createSiteFixture() : createFixture();
     world.id = id;
+    if (sitePlan) {
+      world.assets["grid"] = { mime: "image/png", pixels: [400, 600] };
+      world.references["survey"] = {
+        frame: "plot",
+        asset: "grid",
+        opacity: 0.5,
+        calibration: {
+          pixels: [
+            [20, 30],
+            [120, 30],
+          ],
+          distanceM: 10,
+          anchor: [2, 57, 0],
+          bearingDeg: 0,
+        },
+      };
+      return world;
+    }
     world.assets["sample-pixel"] = { mime: "image/png", pixels: [1, 1] };
     world.references["sample-reference"] = { frame: "plot", asset: "sample-pixel", opacity: 1 };
     return world;
   }
+  if (sitePlan)
+    return {
+      schemaVersion: 1,
+      revision: 0,
+      id,
+      devices: {},
+      assets: {},
+      references: {},
+      nodes: {},
+    };
   const site = crypto.randomUUID();
   const building = crypto.randomUUID();
   const tr = locale === "tr";

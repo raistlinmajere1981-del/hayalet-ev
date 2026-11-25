@@ -219,7 +219,8 @@ declare global {
       sendCommand: (command: string, payload?: Record<string, unknown>) => boolean;
       sendEvent: (type: string, payload?: Record<string, unknown>) => boolean;
       close?: () => boolean;
-      onHostMessage: (callback: (payload: unknown) => void) => () => void;
+      onVisibilityChange?: (handler: (visible: boolean) => void) => () => void;
+      onHostMessage: (callback: (payload: unknown) => void, replayContext?: boolean) => () => void;
       offHostMessage: (callback: (payload: unknown) => void) => void;
     };
 

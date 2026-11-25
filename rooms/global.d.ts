@@ -1,6 +1,10 @@
 interface RoomApiBridge {
   ready?: (payload: Record<string, unknown>) => void;
-  onHostMessage?: (handler: (message: Record<string, unknown>) => void) => void;
+  onVisibilityChange?: (handler: (visible: boolean) => void) => () => void;
+  onHostMessage?: (
+    handler: (message: Record<string, unknown>) => void,
+    replayContext?: boolean
+  ) => void;
   requestStorageCommand?: (
     command: string,
     request: unknown

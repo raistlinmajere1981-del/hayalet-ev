@@ -2,7 +2,7 @@ import { inspectPlan, projectWorld, type PlanObject } from "../editor/projection
 import { applyBatch, type EditBatch } from "../editor/session.ts";
 import { nodeAt, type World } from "../spatial/world.ts";
 
-function record(value: unknown): value is Record<string, unknown> {
+export function record(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 

@@ -17,6 +17,9 @@ function requestStorageCommand(command, request) {
 }
 
 const hostMessageHandlers = new Set();
+const visibilityHandlers = new Set();
+let hostVisible = false;
+let latestContext;
 const pendingHostEvents = [];
 let pendingHostFlushTimer = null;
 let pendingAutoRoomReadyTimer = null;
@@ -81,12 +84,13 @@ function normalizeName(value) {
   return value.trim();
 }
 
-function addHostMessageHandler(callback) {
+function addHostMessageHandler(callback, replayContext = false) {
   if (typeof callback !== "function") {
     return () => {};
   }
 
   hostMessageHandlers.add(callback);
+  if (replayContext && latestContext) callback(latestContext);
   return () => {
     hostMessageHandlers.delete(callback);
   };
@@ -105,6 +109,13 @@ ipcRenderer.on(ROOM_HOST_MESSAGE_CHANNEL, (_event, payload) => {
       .finally(() => globalThis.clearTimeout(pending.timer));
     return;
   }
+  if (payload?.type === "host-visibility" && typeof payload.visible === "boolean") {
+    if (hostVisible === payload.visible) return;
+    hostVisible = payload.visible;
+    for (const handler of visibilityHandlers) handler(hostVisible);
+    return;
+  }
+  if (payload?.type === "host-context") latestContext = payload;
   for (const handler of hostMessageHandlers) {
     try {
       handler(payload);
@@ -164,7 +175,13 @@ contextBridge.exposeInMainWorld("roomAPI", {
     });
   },
   close: () => emitToHost("room-close", { stage: "ui-request" }),
-  onHostMessage: (callback) => addHostMessageHandler(callback),
+  onVisibilityChange: (callback) => {
+    if (typeof callback !== "function") return () => {};
+    visibilityHandlers.add(callback);
+    callback(hostVisible);
+    return () => visibilityHandlers.delete(callback);
+  },
+  onHostMessage: (callback, replayContext) => addHostMessageHandler(callback, replayContext),
   offHostMessage: (callback) => {
     if (typeof callback !== "function") {
       return;

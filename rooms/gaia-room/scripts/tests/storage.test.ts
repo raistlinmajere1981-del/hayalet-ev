@@ -19,6 +19,7 @@ async function setup(t: TestContext) {
     fixture: true,
     locale: "en",
   })) as Opened;
+  assert.ok(fresh.building);
   const batch: EditBatch = {
     project: "demo",
     building: fresh.building,

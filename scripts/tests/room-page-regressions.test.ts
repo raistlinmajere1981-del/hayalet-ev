@@ -201,7 +201,7 @@ void test("room page syncs slot-aware host context and scene runtime routing", (
   assert.match(source, /getRoomPageRuntimeMount\(this\.getPage\(\)\)\?\.replaceChildren\(\);/);
   assert.match(source, /getRoomPageSceneRuntimeSlot\(this\.getPage\(\)\)\?\.replaceChildren\(\);/);
   assert.match(source, /navigateToScenePage\("entrance"\);/);
-  assert.doesNotMatch(source, /onHide\(\): void/);
+  assert.match(source, /onHide\(\): void \{\s*this\.sendRuntimeVisibility\(false\);\s*\}/);
   assert.match(
     source,
     /return this\.runtimeClosed === false && page\.classList\.contains\("is-hidden"\) === false;/

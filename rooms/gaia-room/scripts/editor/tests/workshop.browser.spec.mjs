@@ -385,6 +385,11 @@ test("room project save locks the editor, retains history on a lost acknowledgem
   const requests = [];
   let release;
   try {
+    await projectCommand(context, "GaiaCreate", {
+      project: "workshop",
+      fixture: false,
+      locale: "en",
+    });
     await page.exposeFunction("deliverCommand", async (command, request) => {
       const data = await projectCommand(context, command, request);
       if (command === "GaiaSave") {
@@ -409,9 +414,14 @@ test("room project save locks the editor, retains history on a lost acknowledgem
     });
     await page.goto("/");
     await expect(canvas(page)).toHaveCount(0);
-    await page.getByLabel("Project ID").fill("workshop");
-    await tool(page, "Create project").click();
-    await expect(canvas(page)).toBeVisible();
+    async function openInterior() {
+      await tool(page, "Open project").click();
+      await tool(page, "Modeling Workshop").click();
+      await page.getByTitle("Building · Building").click();
+      await tool(page, "Edit interior").click();
+      await expect(canvas(page)).toBeVisible();
+    }
+    await openInterior();
     await tool(page, "Table").click();
     await clickAt(page, [100, 100]);
     const before = await view(page);
@@ -427,8 +437,9 @@ test("room project save locks the editor, retains history on a lost acknowledgem
     await tool(page, "Save to Gaia").click();
     await expect(status(page)).toContainText("Saved to Gaia revision 1");
     expect(requests[1]).toEqual({ ...requests[0], retry: true });
+    await tool(page, "Back to site plan").click();
     await tool(page, "Projects").click();
-    await tool(page, "Open project").click();
+    await openInterior();
     expect((await view(page)).world.revision).toBe(1);
   } finally {
     release?.();

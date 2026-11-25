@@ -1,0 +1,304 @@
+.gaia-workspace {
+  --panel: var(--gaia-bg-surface, #fbfcfd);
+  --ink: var(--gaia-text-primary, #172c36);
+  --line: var(--gaia-border-default, #d5e0e4);
+  --accent: var(--gaia-color-accent, #166c69);
+  --muted: color-mix(in srgb, var(--ink) 70%, var(--panel));
+  --wash: color-mix(in srgb, var(--panel) 94%, var(--ink));
+  --tint: color-mix(in srgb, var(--panel) 88%, var(--accent));
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 13px;
+}
+.gaia-workspace button,
+.gaia-workspace select,
+.gaia-workspace input:not([type="checkbox"]) {
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.36rem 0.6rem;
+}
+.gaia-workspace button {
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gaia-workspace button:hover:not(:disabled) {
+  background: var(--wash);
+}
+.gaia-workspace :is(button, input, select):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.gaia-workspace button:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+.gaia-workspace button[aria-pressed="true"],
+.gaia-workspace button.active {
+  background: var(--tint);
+  border-color: var(--accent);
+}
+.gaia-workspace button.primary {
+  background: #176863;
+  border-color: #176863;
+  color: #fff;
+}
+.gaia-workspace button.primary:hover:not(:disabled) {
+  background: #10534f;
+}
+.gaia-workspace button.danger,
+.gaia-workspace [role="alert"] {
+  color: var(--gaia-color-error, #a53544);
+}
+.gaia-workspace .muted {
+  color: var(--muted);
+}
+.gaia-workspace .workspace-header {
+  min-height: 59px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.gaia-workspace :is(.project-context, .project-actions, nav) {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.gaia-workspace .text-button {
+  border-color: transparent;
+  padding-left: 0.25rem;
+}
+.gaia-workspace .close-room {
+  font-size: 19px;
+  line-height: 1;
+}
+.gaia-workspace .workspace-body {
+  display: grid;
+  grid-template-columns: clamp(145px, 19vw, 235px) minmax(0, 1fr) clamp(172px, 22vw, 268px);
+  min-height: 0;
+}
+.gaia-workspace :is(.layer-panel, .properties-panel) {
+  overflow: auto;
+  padding: 14px;
+}
+.gaia-workspace .layer-panel {
+  border-right: 1px solid var(--line);
+}
+.gaia-workspace .properties-panel {
+  border-left: 1px solid var(--line);
+}
+.gaia-workspace aside > h2 {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+.gaia-workspace .layer-row {
+  display: flex;
+  align-items: center;
+  padding-left: var(--indent);
+  border-radius: 6px;
+}
+.gaia-workspace .layer-row.chosen {
+  background: var(--tint);
+}
+.gaia-workspace .layer-row.filtered:not(.chosen) {
+  opacity: 0.58;
+}
+.gaia-workspace button.layer-select {
+  background: transparent;
+  border-color: transparent;
+  display: flex;
+  gap: 0.4rem;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+.gaia-workspace button.layer-select span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gaia-workspace .layer-icon {
+  color: var(--accent);
+}
+.gaia-workspace button.visibility {
+  padding: 0 0.27rem;
+  border-color: transparent;
+  background: transparent;
+}
+.gaia-workspace .map-panel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.gaia-workspace :is(.map-toolbar, .edit-toolbar) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.gaia-workspace .map-toolbar > .check {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.gaia-workspace .view-toggle {
+  display: flex;
+  gap: 0.25rem;
+}
+.gaia-workspace .inline-number {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.gaia-workspace .inline-number input {
+  width: 5rem;
+}
+.gaia-workspace .map-viewport {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  background: var(--wash);
+}
+.gaia-workspace .map-empty {
+  margin: 0;
+  position: absolute;
+  inset: 42% 12% auto;
+  text-align: center;
+  pointer-events: none;
+}
+.gaia-workspace .map-status {
+  border-top: 1px solid var(--line);
+  padding: 7px 12px;
+  min-height: 2rem;
+  font-size: 12px;
+  color: var(--muted);
+}
+.gaia-workspace .object-heading {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.75rem;
+}
+.gaia-workspace .object-heading h2 {
+  font-size: 17px;
+  line-height: 1.25;
+  margin-top: 0.15rem;
+  overflow-wrap: anywhere;
+}
+.gaia-workspace .coordinates {
+  margin: 0.7rem 0;
+}
+.gaia-workspace :is(dt, legend, .number-field span) {
+  font-size: 11px;
+  color: var(--muted);
+}
+.gaia-workspace dd {
+  margin: 0.18rem 0 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.gaia-workspace fieldset {
+  margin: 0.65rem 0;
+  min-inline-size: 0;
+}
+.gaia-workspace .field-row {
+  display: flex;
+  gap: 0.36rem;
+}
+.gaia-workspace .field-row > * {
+  flex: 1;
+  min-width: 0;
+}
+.gaia-workspace .number-field {
+  display: block;
+}
+.gaia-workspace .number-field input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0.28rem;
+}
+.gaia-workspace .vertex {
+  display: flex;
+  align-items: end;
+  gap: 0.35rem;
+  margin: 0.25rem 0;
+}
+.gaia-workspace .vertex .field-row {
+  flex: 1;
+  min-width: 0;
+}
+.gaia-workspace .property-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 1.15rem;
+}
+.gaia-workspace .device-card {
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 0.65rem;
+}
+.gaia-workspace .device-card h3 {
+  font-weight: 650;
+}
+.gaia-workspace .device-card .reading {
+  font-size: 18px;
+  font-weight: 650;
+}
+.gaia-workspace .device-card form {
+  margin-top: 0.6rem;
+  display: grid;
+  gap: 0.4rem;
+}
+.gaia-workspace .dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: #141f29aa;
+}
+.gaia-workspace .workspace-dialog {
+  display: grid;
+  gap: 0.75rem;
+  width: min(95%, 440px);
+  padding: 1.2rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.gaia-workspace .workspace-dialog h2 {
+  font-size: 17px;
+}
+.gaia-workspace .workspace-dialog div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 0.45rem;
+}
+@media (max-width: 680px) {
+  .gaia-workspace .workspace-body {
+    grid-template-columns: minmax(0, 1fr) minmax(135px, 31%);
+    grid-template-rows: minmax(0, 1fr) 120px;
+  }
+  .gaia-workspace .layer-panel {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+  }
+  .gaia-workspace .project-actions small {
+    display: none;
+  }
+}

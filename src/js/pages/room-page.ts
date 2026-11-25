@@ -48,7 +48,7 @@ import {
 import { type RoomHostMessage } from "./room-page/runtime-context.js";
 import { createRoomPageRuntimeContextRuntime } from "./room-page/runtime-context-runtime.js";
 import { resolveRoomPreloadUrl } from "./room-page/runtime-host.js";
-import { type RoomWebviewElement } from "./room-page/runtime-messaging.js";
+import { sendRoomRuntimeMessage, type RoomWebviewElement } from "./room-page/runtime-messaging.js";
 import { type RoomRuntimeState } from "./room-page/runtime-events.js";
 import { createRoomPageSceneRuntime } from "./room-page/page-scene-runtime.js";
 
@@ -118,7 +118,7 @@ export class RoomPageController implements PageController {
       closeRoom: () => {
         this.closeRoomRuntime();
       },
-      getPage: () => this.getPage(),
+      getPage: () => (this.runtimeClosed ? null : this.getPage()),
       getRoomPreloadUrl: this.getRoomPreloadUrl.bind(this),
       getRoom: () => this.room,
       getRuntimeMountHost: (page) => {
@@ -131,6 +131,8 @@ export class RoomPageController implements PageController {
       runtimeSceneAriaLabel: roomPageT("page.runtimeSceneAriaLabel"),
       sendHostContext: (target, reason): void => {
         this.runtimeContextRuntime.sendHostContext(target, reason);
+        const page = this.getPage();
+        this.sendRuntimeVisibility(page !== null && this.shouldEnsureRuntimeHost(page), target);
       },
       setRuntimeState: (runtimeState, lastRuntimeEvent) => {
         this.runtimeState = runtimeState;
@@ -252,7 +254,23 @@ export class RoomPageController implements PageController {
     this.runtimeClosed = false;
     this.render();
     this.editor?.refresh();
+    this.sendRuntimeVisibility(true);
     void this.runtimeHostRuntime.ensure();
+  }
+
+  onHide(): void {
+    this.sendRuntimeVisibility(false);
+  }
+
+  private sendRuntimeVisibility(
+    visible: boolean,
+    webview = this.getPage()?.querySelector<RoomWebviewElement>("webview[data-room-runtime='true']")
+  ): void {
+    if (webview != null)
+      sendRoomRuntimeMessage(this.pendingHostMessages, webview, {
+        type: "host-visibility",
+        visible,
+      });
   }
 
   render(): void {
@@ -270,6 +288,8 @@ export class RoomPageController implements PageController {
   }
 
   dispose(): void {
+    this.runtimeClosed = true;
+    this.onHide();
     this.unsubscribeI18n?.();
     this.unsubscribeI18n = null;
     this.unsubscribeThemeChange?.();
@@ -320,6 +340,7 @@ export class RoomPageController implements PageController {
 
   private closeRoomRuntime(): void {
     this.runtimeClosed = true;
+    this.onHide();
     this.runtimeState = "idle";
     this.lastRuntimeEvent = roomPageT("status.closed");
     void RoomHostRuntime.disposeRoom(this.room.id);
