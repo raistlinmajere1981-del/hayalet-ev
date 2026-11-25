@@ -67,7 +67,8 @@ function remove(world: World, ids: Id[], detach: Id[]): void {
       throw new Error(`Resolve Gaia relationship with ${id} before deleting`);
   }
   for (const [id, ref] of Object.entries(world.references))
-    if (targets.has(ref.frame)) throw new Error(`Resolve Gaia reference ${id} before deleting`);
+    if (ref.frame !== null && targets.has(ref.frame))
+      throw new Error(`Resolve Gaia reference ${id} before deleting`);
   for (const [id, device] of Object.entries(world.devices)) {
     const affected = targets.has(device.mount ?? "");
     if (affected !== devices.delete(id))

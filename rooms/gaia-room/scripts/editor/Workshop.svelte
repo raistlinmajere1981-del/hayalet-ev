@@ -24,7 +24,8 @@
   import en from "../../i18n/en.json";
   import { UnconfirmedCommand, type InteriorOpened, type WorkshopStorage } from "./client.ts";
   import { nodeAt } from "../spatial/world.ts";
-  import { floorId } from "./projection.ts";
+  import { floorId, interiorReferences } from "./projection.ts";
+  import { referenceImages } from "./reference-images.svelte.ts";
   import { openSession, type EditBatch } from "./session.ts";
   import { setEditorLocale } from "./openplan-locale.mjs";
   import { untrack } from "svelte";
@@ -57,9 +58,10 @@
   let session = $state.raw(
     openSession(opened.world, building, ground ? floorId(ground) : undefined)
   );
-  let trustedSession = opened.session;
+  let trustedSession = $state(opened.session);
   let cleanFloors: string | undefined;
   let missing = $state(opened.missing);
+  let damaged = $state(opened.damaged ?? []);
   let pending: EditBatch | undefined;
   let lastBatch: EditBatch | undefined;
   let epoch = $state(0);
@@ -70,6 +72,26 @@
   let saving = $state(false);
   let message = $state("");
   let failure = $state(false);
+  let showReferences = $state(true);
+  const floorReferences = $derived(interiorReferences(world, building, current?.activeFloorId));
+  const source = referenceImages(() => ({
+    project: world.id,
+    session: trustedSession,
+    assets:
+      visible && showReferences
+        ? floorReferences
+            .filter(({ asset }) => !missing.includes(asset) && !damaged.includes(asset))
+            .map(({ asset }) => asset)
+        : [],
+  }));
+  const referenceUnderlays = $derived(
+    visible && showReferences
+      ? floorReferences.flatMap((layer) => {
+          const src = source(layer.asset);
+          return src ? [{ ...layer, src }] : [];
+        })
+      : []
+  );
   $effect(() => setEditorLocale(locale));
   let readOnly = $derived(session.readOnly.map((id) => nodeAt(world, id).name));
   function report(text: string, error = false) {
@@ -131,6 +153,7 @@
       pending = undefined;
       world = saved.world;
       missing = saved.missing;
+      damaged = saved.damaged ?? [];
       lastBatch = batch;
       session = next;
       loadProject(projection);
@@ -158,6 +181,7 @@
       world = saved.world;
       trustedSession = saved.session;
       missing = saved.missing;
+      damaged = saved.damaged ?? [];
       pending = undefined;
       loadProject(readProject(session.plan));
       cleanFloors = JSON.stringify(get(currentProject)?.floors);
@@ -279,6 +303,15 @@
       <button type="button" onclick={undo} disabled={gesturing || saving}>{labels.undo}</button>
       <button type="button" onclick={redo} disabled={gesturing || saving}>{labels.redo}</button>
     </div>
+    {#if floorReferences.length}
+      <button
+        type="button"
+        aria-pressed={showReferences}
+        onclick={() => (showReferences = !showReferences)}
+      >
+        {transitionLabels?.refLockedPreview ?? en.site.refLockedPreview}
+      </button>
+    {/if}
     <div class="ml-auto flex gap-2">
       {#if onleave}<button type="button" onclick={leave} disabled={gesturing || saving}>
           {transitionLabels?.backSite ?? labels.projects}
@@ -292,6 +325,7 @@
       {#key epoch}
         <FloorPlanCanvas
           restrictEdits
+          {referenceUnderlays}
           onBlocked={explainBlocked}
           onGestureChange={(active) => (gesturing = active)}
         />
@@ -301,6 +335,9 @@
   <footer class="border-t border-slate-200 bg-white px-4 py-2 text-sm">
     <p role="status" class:failure>{saving ? labels.saving : message || labels.ready}</p>
     {#if missing.length}<p>{labels.missing} · {missing.join(", ")}</p>{/if}
+    {#if damaged.length || floorReferences.some(({ asset }) => source(asset) === null)}
+      <p>{transitionLabels?.refDamaged ?? en.site.refDamaged}</p>
+    {/if}
     <details class="mt-1 text-slate-600">
       <summary>{labels.scope}</summary>
       <p>{labels.unsupported}</p>

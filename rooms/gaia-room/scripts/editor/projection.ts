@@ -1,4 +1,5 @@
 import { cssColor, planWall } from "./palette.ts";
+import { projectReference } from "../spatial/reference.ts";
 import {
   close,
   fromParent,
@@ -82,6 +83,41 @@ export const objectKey = (floor: Id, collection: Collection, id: Id): string =>
 
 export function floorId(id: Id): Id {
   return `f-${id}`;
+}
+
+export function interiorReferences(world: World, building: Id, activeFloorId?: Id) {
+  const floor = Object.keys(world.nodes).find((id) => floorId(id) === activeFloorId);
+  if (!floor) return [];
+  const floorNode = nodeAt(world, floor);
+  if (floorNode.kind !== "floor" || floorNode.parent !== building) return [];
+  const frames = new Set<Id | null>([null, floor, building]);
+  let parent = nodeAt(world, building).parent;
+  while (parent !== null) {
+    frames.add(parent);
+    parent = nodeAt(world, parent).parent;
+  }
+  for (const [id, node] of Object.entries(world.nodes))
+    if (node.kind === "zone" && node.parent === floor) frames.add(id);
+
+  return Object.entries(world.references).flatMap(([id, layer]) => {
+    if (layer.visible === false || !frames.has(layer.frame)) return [];
+    const projected = projectReference(world, layer, floor);
+    if (!projected) return [];
+    // The editor draws each floor in building XY and keeps the floor height separately.
+    const origin = planPoint(toParent(floorNode, projected.origin));
+    return [
+      {
+        id,
+        asset: layer.asset,
+        opacity: layer.opacity,
+        x: origin.x,
+        y: origin.y,
+        width: projected.pixels[0] * projected.scale * 100,
+        height: projected.pixels[1] * projected.scale * 100,
+        rotation: -yaw360(projected.yaw + floorNode.yaw),
+      },
+    ];
+  });
 }
 
 export function projectWorld(

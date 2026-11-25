@@ -162,7 +162,7 @@ index 2774050..cbd27a1 100644
      color: #dc2626;
    }
 diff --git a/src/lib/components/editor/FloorPlanCanvas.svelte b/src/lib/components/editor/FloorPlanCanvas.svelte
-index 0b5ec72..74a8a68 100644
+index 0b5ec72..151c17f 100644
 --- a/src/lib/components/editor/FloorPlanCanvas.svelte
 +++ b/src/lib/components/editor/FloorPlanCanvas.svelte
 @@ -10,7 +10,7 @@
@@ -174,16 +174,26 @@ index 0b5ec72..74a8a68 100644
    import type { Point, Wall, Door, Window as Win, FurnitureItem, Stair, Column, GuideLine, Measurement, Annotation, TextAnnotation, CustomEntourageDef } from '$lib/models/types';
    import type { Floor, Room } from '$lib/models/types';
    import { resolveRoomGeometry, roomLabelPosition, roomCentroid } from '$lib/utils/roomDetection';
-@@ -42,10 +42,20 @@
+@@ -42,10 +42,30 @@
    import { isTracingImageType } from '$lib/utils/tracingImage';
    import { findRoomLabelAt as _findRoomLabelAt, positionOnWall, findWallAt as _findWallAt, findHandleAt as _findHandleAt, findFurnitureAt as _findFurnitureAt, findColumnAt as _findColumnAt, findStairAt as _findStairAt, findDoorAt as _findDoorAt, findWindowAt as _findWindowAt, findRoomAt as _findRoomAt, hitTestMeasurement as _hitTestMeasurement, hitTestAnnotation as _hitTestAnnotation, hitTestTextAnnotation as _hitTestTextAnnotation, findEntourageAt } from '$lib/utils/hitTesting';
  
++  interface ReferenceUnderlay {
++    src: string;
++    x: number;
++    y: number;
++    width: number;
++    height: number;
++    rotation: number;
++    opacity: number;
++  }
 +  interface Props {
++    referenceUnderlays?: ReferenceUnderlay[];
 +    restrictEdits?: boolean;
 +    onBlocked?: (feature: string) => void;
 +    onGestureChange?: (active: boolean) => void;
 +  }
-+  let { restrictEdits = false, onBlocked, onGestureChange }: Props = $props();
++  let { restrictEdits = false, onBlocked, onGestureChange, referenceUnderlays = [] }: Props = $props();
 +  const allowedMenuActions = new Set(['duplicate-furniture', 'rotate-furniture-90', 'paste', 'select-all', 'add-wall', 'zoom-to-fit', 'delete']);
 +  const allowMenuAction = (action: string) => !restrictEdits || allowedMenuActions.has(action);
 +
@@ -195,7 +205,51 @@ index 0b5ec72..74a8a68 100644
      splitBlocked = wallSplitIntersectsOpening(id, t);
      return splitWall(id, t);
    }
-@@ -1929,7 +1939,7 @@
+@@ -63,6 +83,25 @@
+   // Events and subscriptions coalesce into one frame; no idle polling.
+   let drawing: ReturnType<typeof createDrawScheduler> | undefined;
+   function markDirty() { drawing?.invalidate(); }
++  const referenceBitmaps = new Map<string, HTMLImageElement>();
++  $effect(() => {
++    const images = new Map<string, HTMLImageElement>();
++    for (const { src } of referenceUnderlays) {
++      if (images.has(src)) continue;
++      const image = new Image();
++      images.set(src, image);
++      image.onload = () => {
++        referenceBitmaps.set(src, image);
++        markDirty();
++      };
++      image.src = src;
++    }
++    markDirty();
++    return () => {
++      for (const image of images.values()) image.onload = null;
++      referenceBitmaps.clear();
++    };
++  });
+   onDestroy(locale.subscribe(() => markDirty()));
+   function getCS(): CanvasState { return { ctx, width, height, zoom, camX, camY }; }
+   // Sync zoom with shared store
+@@ -1187,6 +1226,17 @@
+     drawGrid();
+     if (layerVis.guides) drawGuides();
+     drawBackgroundImage();
++    for (const { src, x, y, width, height, rotation, opacity } of referenceUnderlays) {
++      const image = referenceBitmaps.get(src);
++      if (!image) continue;
++      const origin = worldToScreen(x, y);
++      ctx.save();
++      ctx.globalAlpha = opacity;
++      ctx.translate(origin.x, origin.y);
++      ctx.rotate(rotation * Math.PI / 180);
++      ctx.drawImage(image, 0, 0, width * zoom, height * zoom);
++      ctx.restore();
++    }
+ 
+     const floor = currentFloor;
+     if (!floor) return;
+@@ -1929,7 +1979,7 @@
  
      // Clipboard image paste handler — only if no internal plan clipboard
      function handlePaste(e: ClipboardEvent) {
@@ -204,7 +258,7 @@ index 0b5ec72..74a8a68 100644
        if (clipboard && clipboard.ids.length > 0) return; // internal clipboard takes priority
        const files = e.clipboardData.files;
        for (let i = 0; i < files.length; i++) {
-@@ -2233,6 +2243,7 @@
+@@ -2233,6 +2283,7 @@
      if (e.button === 0 && e.detail >= 2 && sameSelectionPress(e)) return;
      selectionPress = null;
      canvasGestureActive = true;
@@ -212,7 +266,7 @@ index 0b5ec72..74a8a68 100644
      canvasPressPosition = { x: e.clientX, y: e.clientY };
      if (e.button === 0 && e.shiftKey && currentTool === 'select' && currentFloor && !spaceDown && !$panMode) {
        const rect = canvas.getBoundingClientRect();
-@@ -2514,6 +2525,7 @@
+@@ -2514,6 +2565,7 @@
              : { x: (selWall.start.x + selWall.end.x) / 2, y: (selWall.start.y + selWall.end.y) / 2 };
            if (Math.hypot(wp.x - curveHandlePt.x, wp.y - curveHandlePt.y) < epThreshold) {
              if (e.altKey) {
@@ -220,7 +274,7 @@ index 0b5ec72..74a8a68 100644
                draggingCurveHandle = selWall.id;
              } else if (!selWall.curvePoint) {
                // Parallel drag for straight walls
-@@ -2648,7 +2660,7 @@
+@@ -2648,7 +2700,7 @@
        } else {
          // Check if clicking on a room label (for dragging)
          const labelRoom = findRoomLabelAt(wp);
@@ -229,7 +283,7 @@ index 0b5ec72..74a8a68 100644
            draggingRoomLabelId = labelRoom.id;
            roomLabelDragStart = { x: e.clientX, y: e.clientY };
            roomLabelDragZoom = zoom;
-@@ -2667,6 +2679,7 @@
+@@ -2667,6 +2719,7 @@
            selectedRoomId.set(room.id);
            selectedElementId.set(null);
            selectedElementIds.set(new Set());
@@ -237,7 +291,7 @@ index 0b5ec72..74a8a68 100644
            // Start room drag
            draggingRoomId = room.id;
            roomDragStartMouse = { x: wp.x, y: wp.y };
-@@ -2702,6 +2715,7 @@
+@@ -2702,6 +2755,7 @@
    }
  
    function onDblClick(e: MouseEvent) {
@@ -245,7 +299,7 @@ index 0b5ec72..74a8a68 100644
      const rect = canvas.getBoundingClientRect();
      const sx = e.clientX - rect.left;
      const sy = e.clientY - rect.top;
-@@ -2710,13 +2724,13 @@
+@@ -2710,13 +2764,13 @@
      selectionPress = null;
  
      // Double-click on horizontal ruler → add horizontal guide
@@ -261,7 +315,7 @@ index 0b5ec72..74a8a68 100644
        const wp = screenToWorld(sx, sy);
        addGuide('vertical', wp.x);
        return;
-@@ -2849,11 +2863,8 @@
+@@ -2849,11 +2903,8 @@
            else if (currentSnapEnabled && !pt.snappedToEndpoint && !pt.snappedToWall) pt = angleSnapWithin(other, pt, MAGNETIC_SNAP / zoom);
          }
        }
@@ -275,7 +329,7 @@ index 0b5ec72..74a8a68 100644
      }
      if (draggingWallParallel && currentFloor) {
        const wall = currentFloor.walls.find(w => w.id === draggingWallParallel!.wallId);
-@@ -2874,15 +2885,12 @@
+@@ -2874,15 +2925,12 @@
              x: draggingWallParallel.origEnd.x + dx,
              y: draggingWallParallel.origEnd.y + dy,
            };
@@ -297,7 +351,7 @@ index 0b5ec72..74a8a68 100644
          }
        }
      }
-@@ -3079,6 +3087,7 @@
+@@ -3079,6 +3127,7 @@
    function onMouseUp(e: MouseEvent) {
      markDirty();
      canvasGestureActive = false;
@@ -305,7 +359,7 @@ index 0b5ec72..74a8a68 100644
      isPanning = false;
      draggingGuideId = null;
  
-@@ -3360,6 +3369,21 @@
+@@ -3360,6 +3409,21 @@
        return;
      }
      if (isControlKey(e)) return;
@@ -327,7 +381,7 @@ index 0b5ec72..74a8a68 100644
      shiftDown = e.shiftKey;
      if (e.code === 'Space') { spaceDown = true; e.preventDefault(); return; }
  
-@@ -3532,7 +3556,7 @@
+@@ -3532,7 +3596,7 @@
      // Commit and release the active pointer gesture before replaying history.
      // Otherwise a later mouseup can write its pending label offset over Undo,
      // or close a geometry group against a history state restored mid-drag.
@@ -336,7 +390,7 @@ index 0b5ec72..74a8a68 100644
        finishCanvasGesture();
      }
  
-@@ -3574,6 +3598,7 @@
+@@ -3574,6 +3638,7 @@
    }
  
    function onDragOver(e: DragEvent) {
@@ -344,7 +398,7 @@ index 0b5ec72..74a8a68 100644
      if (e.dataTransfer?.types.includes('application/o3d-type')) {
        e.preventDefault();
        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
-@@ -3592,6 +3617,7 @@
+@@ -3592,6 +3657,7 @@
  
    function onDrop(e: DragEvent) {
      e.preventDefault();
@@ -352,7 +406,7 @@ index 0b5ec72..74a8a68 100644
      dragPreview = null;
      const itemType = e.dataTransfer?.getData('application/o3d-type');
      const itemId = e.dataTransfer?.getData('application/o3d-id');
-@@ -3741,6 +3767,10 @@
+@@ -3741,6 +3807,10 @@
              const room = findRoomLabelAt(wp) ?? findRoomAt(wp);
              if (room) {
                selectedRoomId.set(room.id);
@@ -363,7 +417,7 @@ index 0b5ec72..74a8a68 100644
                ctxMenuTargetType = 'room';
                ctxMenuTargetId = room.id;
                ctxMenuRoom = room;
-@@ -3764,6 +3794,7 @@
+@@ -3764,6 +3834,7 @@
    }
  
    function handleContextMenuAction(action: string, _data?: any) {
@@ -371,7 +425,7 @@ index 0b5ec72..74a8a68 100644
      if (!currentFloor) return;
      const id = ctxMenuTargetId;
  
-@@ -3850,7 +3881,7 @@
+@@ -3850,7 +3921,7 @@
        // Canvas actions
        case 'paste':
          // Trigger paste via synthetic keyboard event
@@ -380,7 +434,7 @@ index 0b5ec72..74a8a68 100644
          break;
        case 'select-all':
          selectAllPlanElements();
-@@ -4156,7 +4187,7 @@
+@@ -4156,7 +4227,7 @@
    {/if}
  
    <!-- Contextual Toolbar (hidden while the integrated elevation view covers the canvas) -->
@@ -389,7 +443,7 @@ index 0b5ec72..74a8a68 100644
      {@const el = (() => {
        const f = currentFloor;
        const wall = f.walls.find(w => w.id === currentSelectedId);
-@@ -4354,5 +4385,6 @@
+@@ -4354,5 +4425,6 @@
      clipboard={clipboard}
      onclose={() => { ctxMenuVisible = false; }}
      onaction={handleContextMenuAction}

@@ -7,6 +7,13 @@ import { applyTrusted, fields, parseBatch, segment, uuid } from "./batch.ts";
 import { gridPng } from "./fixture-image.ts";
 import { applyTrustedSite, parseSiteBatch } from "./site-batch.ts";
 import { directory, hasCode, publish, readRegular, serialized } from "./files.ts";
+import { assetIssues, readAsset, type DecodeRaster } from "./images.ts";
+import {
+  parseReferenceBatch,
+  prepareReference,
+  publishReferenceAsset,
+  retireReferenceAsset,
+} from "./reference-batch.ts";
 
 interface Receipt {
   id: string;
@@ -25,7 +32,7 @@ const sessions = new WeakMap<
   object,
   { project: string; building: string | null; revision: number; id: string }
 >();
-const commands = ["GaiaProjects", "GaiaCreate", "GaiaOpen", "GaiaSave"];
+const commands = ["GaiaProjects", "GaiaCreate", "GaiaOpen", "GaiaSave", "GaiaReference"];
 
 // Key order has no meaning in a room command. Array order is part of its content.
 function canonical(value: unknown): unknown {
@@ -59,42 +66,11 @@ async function readDocument(path: string, project: string): Promise<Document> {
   return data as unknown as Document;
 }
 
-async function missingAssets(dir: string, world: World): Promise<string[]> {
-  const missing = await Promise.all(
-    Object.entries(world.assets).map(async ([id, asset]) => {
-      segment(id);
-      const pixels: unknown = asset.pixels;
-      if (
-        asset.mime !== "image/png" ||
-        !Array.isArray(pixels) ||
-        pixels.length !== 2 ||
-        !pixels.every((n) => Number.isSafeInteger(n) && n > 0)
-      )
-        throw new Error("Invalid reference metadata: " + id);
-      try {
-        const bytes = await readRegular(join(await directory(dir, "assets", false), id));
-        if (
-          bytes.length < 24 ||
-          bytes.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||
-          bytes.toString("ascii", 12, 16) !== "IHDR" ||
-          bytes.readUInt32BE(16) !== pixels[0] ||
-          bytes.readUInt32BE(20) !== pixels[1]
-        )
-          throw new Error("Reference image mismatch: " + id);
-        return [];
-      } catch (error) {
-        if (hasCode(error, "ENOENT")) return [id];
-        throw error;
-      }
-    })
-  );
-  return missing.flat();
-}
-
 export async function projectCommand(
   { storageRoot, owner }: Context,
   command: string,
-  request: unknown
+  request: unknown,
+  decode?: DecodeRaster
 ) {
   const projects = await directory(storageRoot, "projects", true);
   if (command === "GaiaProjects") {
@@ -135,7 +111,9 @@ export async function projectCommand(
   const input = request["batch"];
   const batch = save
     ? input && typeof input === "object" && "scope" in input
-      ? parseSiteBatch(input)
+      ? input.scope === "reference"
+        ? parseReferenceBatch(input)
+        : parseSiteBatch(input)
       : parseBatch(input)
     : undefined;
   const project = batch?.project ?? request["project"];
@@ -179,10 +157,10 @@ export async function projectCommand(
         }
       }
       doc = { world, lastOperation: null };
-      await missingAssets(dir, world);
+      await assetIssues(dir, world);
       await publish(path, JSON.stringify(doc));
     } else doc = await readDocument(path, project);
-    const missing = await missingAssets(dir, doc.world);
+    const issues = await assetIssues(dir, doc.world);
     if (batch) {
       const digest = createHash("sha256")
         .update(JSON.stringify(canonical(batch)))
@@ -190,7 +168,11 @@ export async function projectCommand(
       if (doc.lastOperation?.id === batch.operationId) {
         if (doc.lastOperation.digest !== digest)
           throw new Error("Operation ID was reused with different content");
-        return { world: doc.world, missing };
+        return {
+          world: doc.world,
+          missing: issues.missing,
+          ...(issues.damaged.length ? { damaged: issues.damaged } : {}),
+        };
       }
       if (doc.world.revision !== batch.baseRevision)
         return { error: request["retry"] ? "unknown" : "conflict", revision: doc.world.revision };
@@ -203,8 +185,18 @@ export async function projectCommand(
         throw new Error("Workshop session mismatch");
       if (active.revision !== batch.baseRevision)
         return { error: "conflict", revision: doc.world.revision };
+      const reference =
+        "scope" in batch && batch.scope === "reference"
+          ? prepareReference(doc.world, batch, decode)
+          : undefined;
       const candidate =
-        "scope" in batch ? applyTrustedSite(doc.world, batch) : applyTrusted(doc.world, batch);
+        reference?.next ??
+        ("scope" in batch
+          ? batch.scope === "site"
+            ? applyTrustedSite(doc.world, batch)
+            : doc.world
+          : applyTrusted(doc.world, batch));
+      if (reference?.upload) await publishReferenceAsset(dir, reference.upload);
       if (candidate !== doc.world)
         await publish(
           path,
@@ -213,8 +205,14 @@ export async function projectCommand(
             lastOperation: { id: batch.operationId, digest, revision: candidate.revision },
           })
         );
+      if (reference?.removed) await retireReferenceAsset(dir, reference.removed);
       active.revision = candidate.revision;
-      return { world: candidate, missing };
+      const damaged = issues.damaged.filter((id) => Object.hasOwn(candidate.assets, id));
+      return {
+        world: candidate,
+        missing: issues.missing.filter((id) => Object.hasOwn(candidate.assets, id)),
+        ...(damaged.length ? { damaged } : {}),
+      };
     }
     const hasFloor = (id: string) =>
       nodeAt(doc.world, id).kind === "building" &&
@@ -227,8 +225,47 @@ export async function projectCommand(
       throw new Error("No workshop floor in this building");
     const session = randomUUID();
     sessions.set(owner, { project, building, revision: doc.world.revision, id: session });
-    return { world: doc.world, building, session, missing };
+    return {
+      world: doc.world,
+      building,
+      session,
+      missing: issues.missing,
+      ...(issues.damaged.length ? { damaged: issues.damaged } : {}),
+    };
   });
 }
 
-export const gaiaStorage = { roomId: "gaia-room", commands, execute: projectCommand };
+async function referenceCommand(
+  { storageRoot, owner }: Context,
+  request: unknown,
+  decode: DecodeRaster
+) {
+  fields(request, ["project", "session", "asset"]);
+  const { project, session, asset } = request;
+  segment(project);
+  uuid(session);
+  segment(asset);
+  const dir = await directory(await directory(storageRoot, "projects", false), project, false);
+  return await serialized(dir, async () => {
+    const active = sessions.get(owner);
+    if (active?.id !== session || active.project !== project)
+      throw new Error("Gaia reference session mismatch");
+    const { world } = await readDocument(join(dir, "world.json"), project);
+    const record = Object.hasOwn(world.assets, asset) ? world.assets[asset] : undefined;
+    if (!record || !Object.values(world.references).some((layer) => layer.asset === asset))
+      throw new Error("Unknown Gaia reference asset");
+    const { bytes, raster } = await readAsset(dir, asset, record);
+    const preview = decode(bytes, raster, true);
+    if (!preview) throw new Error("Gaia reference preview is unavailable");
+    return preview;
+  });
+}
+
+export const gaiaStorage = (decode: DecodeRaster) => ({
+  roomId: "gaia-room",
+  commands,
+  execute: (context: Context, command: string, request: unknown) =>
+    command === "GaiaReference"
+      ? referenceCommand(context, request, decode)
+      : projectCommand(context, command, request, decode),
+});

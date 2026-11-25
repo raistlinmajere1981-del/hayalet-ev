@@ -6,12 +6,14 @@ export interface Opened {
   building: string | null;
   session: string;
   missing: string[];
+  damaged?: string[];
 }
 export type InteriorOpened = Opened & { building: string };
 
 export interface Saved {
   world: World;
   missing: string[];
+  damaged?: string[];
 }
 export interface WorkshopStorage {
   save(batch: EditBatch, retry: boolean): Promise<Saved>;

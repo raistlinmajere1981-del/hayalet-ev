@@ -1,6 +1,6 @@
 # Gaia Room
 
-> **Durum** — 02-A/4 bağımsız kabulü tamamlandı. 02-A Linux kapsamı kapatıldı. Sıradaki 02-B Modelleme Atölyesi. OpenPlan3D + Three.js ilk milestone için doğrulandı. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
+> **Durum** — 02-B/1 referans, kalibrasyon ve ölçüm araçları Linux kapsamında kabul edildi. Sıradaki 02-B/2 gerçek arazi modelleme deneyimi. OpenPlan3D + Three.js ilk milestone için doğrulandı. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
 
 Referans uygulama commit'i: `d0e47947` (Hayalet Ev 5.4.0). Bu belge Gaia için mimari karar, proje hafızası, araştırma özeti, açık konular ve geliştirme planının tek başlangıç kaynağıdır. Hayalet Ev’de Gaia projeleri Genel Görünüm’de açılır ve Modelleme Atölyesi’nde düzenlenir.
 
@@ -136,7 +136,7 @@ LAN protokolü, eşleme/kimlik doğrulama ve iletişim güvenliği Client deneyi
 | 01-C       | Tamamlandı                          | Kanonik şema, koordinat/kimlik/ilişki kuralları, editör/viewer kontratları ve fixture       |
 | 01-D       | Tamamlandı (P0 kontratları işlendi) | Bağımsız mimari audit, agent dağılımı ve ilk uygulama planı                                 |
 | 02-A       | Tamamlandı (Linux)                  | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
-| 02-B       | Sıradaki                            | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
+| 02-B       | 02-B/1 kabul; 02-B/2 sıradaki       | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
 | 02-C       | Bekliyor                            | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
 | 02-D       | Bekliyor                            | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
 | 03         | Bekliyor                            | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
@@ -329,6 +329,26 @@ GPU süreci sütunu işletim sistemi süreç ölçümüdür. `i915` sütunu ayn�
 - Svelte Check 0 hata ve 0 uyarı, ayrı Chromium koşumu 9 başarılı test. Kurulu Electron’da Forge ile gerçek navigasyon ve yalnız Gaia ile ağsız tur tamamlandı.
 - **02-A Linux kapsamı kapanabilir.** OpenPlan3D’nin izinli çizim profili ve Three.js’in talep üzerine bağımsız 3B yaklaşımı ilk milestone için kabul ölçütlerini karşılıyor. Güncellemede upstream patch ve gerçek UI izin testleri yeniden doğrulanmalı. Büyük sahneler, uzun oturumlar, yüksek çözünürlük ve DPR, diğer sürücüler, Windows ve macOS açık. Tam uygulama installer’ı bu oda kabulünde çalıştırılmadı.
 
+### 02-B/1 — Referans görüntüsü, kalibrasyon ve ölçüm
+
+- Modelleme Atölyesi’ndeki **Referanslar** paneli yerel PNG, JPEG ve sıkıştırılmamış 24/32 bit BMP kabul eder. Üst sınır 32 MiB, 32 milyon piksel ve kenar başına 32.768 pikseldir. Dosya adı ve uzantısı görsel biçimini belirlemez. Güvenilen yazıcı özgün baytları ayrı varlık olarak saklar. Yeniden üretilen önizlemenin en uzun kenarı 1.800 pikseldir. Kalibrasyon özgün piksel boyutlarını kullanır.
+- Boş proje, proje koordinatlarında bir görüntüyle başlayabilir. Referanslar arazi, yapı, kat veya bölgeye bağlanabilir. Çerçeve değişikliğinde kalibrasyonun dünyadaki konumu ve yönü korunur. Yerleşim kilitlenebilir. Görünürlük, opaklık ve kilit proje kaydında saklanır. Görüntüyü değiştirmek yeni varlık kimliği oluşturur ve aynı katmanda yeni kalibrasyon açar. Mevcut geometriler yerinde kalır.
+- Görüntüde A ve B seçilir, bilinen mesafe metreyle girilir, A’nın çerçeveye göre konumu ve A→B doğrultusu ayarlanır. **Planda önizle** ve **Kalibrasyonu onayla** iki ayrı adımdır. A’nın yatay konumu planda da seçilebilir. Saklanan ham noktalar daha sonra yeniden düzenlenebilir.
+- Genel Görünüm ve Atölye’nin 2B planı aynı katmanları gösterir. Arazi sınırı, yapı, cihaz ve güzergâh araçları planın metrik koordinatlarını kullanır. OpenPlan3D, aktif katla ilişkili referansları kilitli altlık olarak çizer. Bu projeksiyon katın ofseti, açısı ve kotunu Gaia’dan çözer.
+- **Ölçüm** aracı planda geçici XYZ noktalarından yatay mesafeyi, doğrudan 3B mesafeyi veya toplam 3B güzergâhı hesaplar. Seçili arazi ve bölgenin yatay alanı, nesnenin boyut ve kotu ve kayıtlı hattın tam uzunluğu Özellikler’de görünür. Geçici ölçümler proje revizyonunu artırmaz.
+
+**Linux kabul deneyleri**
+
+| Deney                    | Sonuç                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| İçe aktarma ve iki nokta | Kurulu odada 2.400 × 1.800 sentetik PNG ve yerel progresif JPEG içe alındı. Büyük PNG’nin özgün piksel boyutları önizlemeden bağımsız kaldı. İki çakışan nokta, negatif mesafe ve bozuk dosya arayüzde reddedildi. Sınır dışı piksel ve sıfır mesafe veri testinde reddedildi. [İçe aktarma](rooms/.build/gaia-room/evidence/02-b1/00-import.png) · [Kalibrasyon](rooms/.build/gaia-room/evidence/02-b1/01-calibration.png) |
+| Ortak plan ve ölçek      | A noktası (12, 8, 0) m, A→B yönü 15° ve bilinen mesafe 20 m olarak kaydedildi. Zoom ve pan kamera değerlerini değiştirdi, altlığın metrik dönüşümü aynı kaldı. Görsel üzerinden arazi sınırı, yapı, cihaz noktası ve üç noktalı, değişken kotlu hat çizildi. [Ortak 2B plan](rooms/.build/gaia-room/evidence/02-b1/02-site-plan.png)                                                                                        |
+| Ölçüm                    | Geçici iki nokta için yatay ve doğrudan 3B mesafe ile geçici güzergâh, proje revizyonu değişmeden hesaplandı. Döndürülmüş fixture’da kayıtlı boru 5 m yatay, √34 m doğrudan ve 8 m güzergâh verdi. Arazi alanı 2.400 m², bölge alanı 48 m². [Geçici ölçümler](rooms/.build/gaia-room/evidence/02-b1/03-measurement.png)                                                                                                     |
+| İç plan                  | 35° döndürülmüş yapı ve −3 m kotlu katta PNG ve JPEG altlıklarının tuvale çizildiği doğrulandı. Veri testi ayrıca ofsetli ve döndürülmüş katın yerel XYZ dönüşümünü sınadı. [Kilitli OpenPlan3D önizlemesi](rooms/.build/gaia-room/evidence/02-b1/04-locked-interior.png)                                                                                                                                                   |
+| Kayıt ve varlık ömrü     | Electron kapatılıp yeniden açıldı. Orijinal PNG ve JPEG baytları, ham A/B noktaları ve kanonik dünya eşleşti. Görünürlük, kilit ve %40 opaklık değişiklikleri kaydedildi. Görüntü değişimi mevcut geometri ve cihaz kayıtlarını korudu. Eksik ve bozuk varlıklar kendi durumlarıyla gösterildi. [Çevrimdışı Electron günlüğü](rooms/.build/gaia-room/evidence/02-b1/electron-offline.log)                                   |
+
+24 Gaia veri testi, 27 oda sözleşmesi testi ve 9 Chromium arayüz testi geçti. Hedefli strict ESLint, Prettier, Gaia ve oda TypeScript kontrolleri ile script TypeScript kontrolü geçti. Svelte Check 0 hata ve 0 uyarı verdi. Oda ve Electron üretim çıktıları yenilendi. Referans deneyleri Linux ağ ad alanında yalnız loopback açıkken çalıştı. Ayrı kurulu 02-A turu Forge gezinmesi ve 3B yaşam döngüsünü kapsadı. BMP dönüştürücüsü Electron’da ayrıca piksel ve boyut açısından doğrulandı. [Gaia veri günlüğü](rooms/.build/gaia-room/evidence/02-b1/data.log) · [Chromium günlüğü](rooms/.build/gaia-room/evidence/02-b1/browser.log)
+
 ## 9. Geliştirme ve kalite kuralları
 
 Yeni proje başlangıcı için kabul edilen 17 kural bu mevcut monorepo'ya uyarlanır.
@@ -353,7 +373,7 @@ Yeni proje başlangıcı için kabul edilen 17 kural bu mevcut monorepo'ya uyarl
 
 ### Kapsam havuzu
 
-- Şimdi: 02-B gerçek referans görüntüsü, kalibrasyon ve ölçüm. 02-A Linux kapsamı kapatıldı.
+- Şimdi: 02-B/2 gerçek arazi modelleme deneyimi; kapsam kullanıcı deneyimindeki somut eksiklere göre belirlenir.
 - Sonra: gelişmiş hayvan/kamera analizi, toprak nemi haritası, güneş enerjisi/invertör, sulama optimizasyonu, hazır protokol adaptörleri, görsel atmosfer.
 - Deneysel: Android mesh/repeater, bataryasız ve ekransız anakartlar, fiziksel kamera/mikrofon taşıma, manyetik/RF haritası, otomatik mekânsal çıkarım, dağıtık görüntü işleme. Başarısızlık ana projeyi bloke etmez.
 
@@ -365,4 +385,4 @@ Adayların ana depo lisansı uygun olsa bile transitif paketler, model/doku/font
 
 ## 11. Açık konular / sonraki session
 
-02-A Linux kapsamı kapatıldı. Bağımsız kapanış incelemesinde tam kalite günlüğü (1981 pass, 0 fail, 2 skip), paket/ölçüm raporu ve kaynak denetimi değişiklikleri incelendi. Ölçüm ve UI deneyleri uygulama agent'ının kayıtlı sonuçlarına dayanır; full test yeniden çalıştırılmadı. 02-B gerçek referans içe aktarma, kalibrasyon ve ölçüm araçlarını kapsar. Gerçek cihaz ve ağ davranışı Client ve Router aşamalarındadır. Windows/macOS kurulumu, farklı GPU/sürücüler ve uzun süreli büyük sahnelerde kaynak davranışı açık doğrulama alanlarıdır. Yerel LLM’nin modeli ve çevrimdışı davranışı kendi entegrasyonunda ele alınacak.
+02-A Linux kapsamı kapatıldı. Bağımsız kapanış incelemesinde tam kalite günlüğü (1981 pass, 0 fail, 2 skip), paket/ölçüm raporu ve kaynak denetimi değişiklikleri incelendi. Ölçüm ve UI deneyleri uygulama agent'ının kayıtlı sonuçlarına dayanır; full test yeniden çalıştırılmadı. 02-B/1 Linux kapsamında kabul edildi. Bağımsız incelemede referans, ölçüm ve kayıt kaynakları incelendi; 24 Gaia veri testi yeniden geçti. Chromium, Electron ve oda sözleşmesi deneyleri uygulama agent'ının kayıtlı sonuçlarına dayanır. 02-B/2 gerçek arazi modelleme deneyimi ile açılır. Gerçek cihaz ve ağ davranışı Client ve Router aşamalarındadır. Windows/macOS kurulumu, farklı GPU/sürücüler ve uzun süreli büyük sahnelerde kaynak davranışı açık doğrulama alanlarıdır. Yerel LLM’nin modeli ve çevrimdışı davranışı kendi entegrasyonunda ele alınacak.

@@ -11,6 +11,10 @@ import {
   PerspectiveCamera,
   Vector3,
 } from "../../rooms/gaia-room/scripts/editor/desktop-test-dependencies.mjs";
+import {
+  projectReference,
+  referencePoint,
+} from "../../rooms/gaia-room/scripts/spatial/reference.ts";
 import { buildRoomBundle } from "../rooms/build-room-bundle.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -109,14 +113,20 @@ async function assertTheme({ page, js }) {
 }
 const options = (en, tr = en) => JSON.stringify([en, tr]);
 async function press(session, en, tr) {
-  const clicked = await session.js(`(() => {
+  await expect
+    .poll(
+      () =>
+        session.js(`(() => {
     const labels = ${options(en, tr)};
-    const button = [...document.querySelectorAll("button")].find((b) => labels.includes(b.textContent.trim()) && !b.disabled);
+    const button = [...document.querySelectorAll("button")].find((b) =>
+      !b.disabled && (labels.includes(b.textContent.trim()) || labels.includes(b.getAttribute("aria-label"))));
     if (!button) return false;
     button.click();
     return true;
-  })()`);
-  assert.ok(clicked, `Missing enabled button: ${en}`);
+  })()`),
+      { message: `Missing enabled button: ${en}` }
+    )
+    .toBe(true);
 }
 async function selected(session, id) {
   await expect
@@ -347,6 +357,419 @@ async function editSite(session) {
   console.info("Gaia site plan, 2D/3D selection and revision", saved.world.revision);
 }
 
+const referenceRun = process.argv.includes("--references");
+const referenceProject = "survey-yard";
+const referenceRoot = join(root, "data/room-storage/gaia-room/projects", referenceProject);
+const referenceDoc = async () =>
+  JSON.parse(await readFile(join(referenceRoot, "world.json"), "utf8"));
+const evidence = join(repo, "rooms/.build/gaia-room/evidence/02-b1");
+
+async function capture(session, filename) {
+  await session.js(
+    "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+  );
+  await mkdir(evidence, { recursive: true });
+  const id = await session.guest.evaluate((guest) => guest.getWebContentsId());
+  const encoded = await session.app.evaluate(
+    async ({ webContents }, guestId) =>
+      (await webContents.fromId(guestId).capturePage()).toPNG().toString("base64"),
+    id
+  );
+  await writeFile(join(evidence, filename), Buffer.from(encoded, "base64"));
+}
+
+async function selectProject(session, id) {
+  await expect
+    .poll(() => session.js(`!!document.querySelector('.projects option[value="${id}"]')`))
+    .toBe(true);
+  await session.js(`document.querySelector('.projects select').value = ${JSON.stringify(id)};
+    document.querySelector('.projects select').dispatchEvent(new Event("change", {bubbles: true}));`);
+  await press(session, "Open project", "Projeyi aç");
+  await expect
+    .poll(() => session.js("document.querySelector('.project-context strong')?.textContent"))
+    .toBe(id);
+}
+
+async function fillReferenceField(session, name, value) {
+  const changed = await session.js(`(() => {
+    const label = [...document.querySelectorAll(".properties-panel label")].find((el) =>
+      (el.firstElementChild?.textContent ?? el.textContent).trim() === ${JSON.stringify(name)});
+    const field = label?.querySelector("input, select");
+    if (!field || field.disabled) return false;
+    field.value = ${JSON.stringify(String(value))};
+    field.dispatchEvent(new Event(field instanceof HTMLSelectElement ? "change" : "input", { bubbles: true }));
+    return true;
+  })()`);
+  assert.equal(changed, true, name);
+}
+
+async function importFile(session, image, name, replace = false) {
+  const index = replace ? 1 : 0;
+  const imported = await session.js(`(() => {
+    const input = document.querySelectorAll('input[type=file]')[${index}];
+    if (!input || input.disabled) return false;
+    const bytes = Uint8Array.fromBase64(${JSON.stringify(image.toString("base64"))});
+    const files = new DataTransfer();
+    files.items.add(new File([bytes], ${JSON.stringify(name)}, { type: "application/octet-stream" }));
+    input.files = files.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  })()`);
+  assert.equal(imported, true);
+}
+
+async function pixelClick(session, x, y) {
+  const point = await session.js(`(() => {
+    const svg = document.querySelector('.calibration-image svg');
+    const p = new DOMPoint(${x}, ${y}).matrixTransform(svg.getScreenCTM());
+    return [p.x, p.y];
+  })()`);
+  await sendPointer(session, point);
+}
+
+async function revision(n) {
+  await expect.poll(async () => (await referenceDoc()).world.revision).toBe(n);
+}
+
+async function drawWaypoints(session, points) {
+  for (const point of points) await sendPointer(session, await planPoint(session, point));
+}
+
+async function selectedProperty(session, name) {
+  return session.js(`(() => {
+    const label = [...document.querySelectorAll(".properties-panel dt")].find((el) => el.textContent.trim() === ${JSON.stringify(name)});
+    return label?.nextElementSibling?.textContent?.trim();
+  })()`);
+}
+
+async function syntheticSurvey(session) {
+  const image = await session.js(`(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 2400; canvas.height = 1800;
+    const c = canvas.getContext("2d");
+    c.scale(3, 3);
+    c.fillStyle = "#d8ddc2"; c.fillRect(0, 0, 800, 600);
+    c.fillStyle = "#bdcda9"; c.fillRect(34, 35, 734, 522);
+    for (const [color, x, y, w, h] of [
+      ["#9fac87", 110, 84, 279, 134], ["#b5be8a", 431, 95, 214, 130],
+      ["#becb9e", 464, 325, 208, 145], ["#a9bd97", 110, 306, 226, 125],
+      ["#f1e5c3", 26, 254, 750, 26], ["#f1e5c3", 390, 72, 27, 478],
+      ["#788c80", 170, 145, 117, 70], ["#ddce9f", 527, 141, 68, 42]
+    ]) { c.fillStyle = color; c.fillRect(x, y, w, h); }
+    c.strokeStyle = "#657761"; c.lineWidth = 2; c.strokeRect(75, 68, 637, 480);
+    for (let i = 0; i < 9; i++) {
+      c.beginPath(); c.arc(511 + (i % 3) * 50, 348 + Math.floor(i / 3) * 47, 10, 0, 2 * Math.PI);
+      c.fillStyle = "#758a65"; c.fill();
+    }
+    c.fillStyle = "#3d5246"; c.font = "bold 18px sans-serif";
+    c.fillText("GAIA  •  SURVEY PLAN", 93, 103);
+    c.font = "14px sans-serif"; c.fillText("Greenhouse", 175, 179); c.fillText("Shed", 536, 165);
+    c.fillText("Orchard", 580, 462);
+    c.lineWidth = 3; c.beginPath(); c.moveTo(100, 500); c.lineTo(300, 500); c.stroke();
+    c.fillStyle = "#3d5246"; c.fillRect(97, 495, 6, 10); c.fillRect(297, 495, 6, 10);
+    c.fillText("A", 94, 524); c.fillText("20 m", 185, 524); c.fillText("B", 296, 524);
+    return canvas.toDataURL("image/png").split(",")[1];
+  })()`);
+  return Buffer.from(image, "base64");
+}
+
+async function exerciseReferences(session) {
+  const png = await syntheticSurvey(session);
+  const jpeg = await readFile(join(repo, "src/assets/logo.jpg"));
+  await press(session, "Projects", "Projeler");
+  await session.js(`(() => {
+    const input = document.querySelector('.projects input');
+    input.value = ${JSON.stringify(referenceProject)};
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  await press(session, "Create project", "Proje oluştur");
+  await expect
+    .poll(() => session.js("document.querySelector('.project-context strong')?.textContent"))
+    .toBe(referenceProject);
+  await selectMode(session, false);
+  await press(session, "References");
+  await importFile(session, Buffer.from("not a raster"), "corrupt.png");
+  await expect
+    .poll(() => session.js("document.querySelector('.map-status [role=alert]')?.textContent"))
+    .toMatch(/Invalid/);
+  await importFile(session, png, "survey.png");
+  await revision(1);
+  await expect
+    .poll(() =>
+      session.js("document.querySelector('.properties-panel .object-heading')?.textContent")
+    )
+    .toMatch(/2400 × 1800 px/);
+  let saved = await referenceDoc();
+  const id = Object.keys(saved.world.references)[0];
+  const asset = saved.world.references[id].asset;
+  assert.equal(saved.world.references[id].frame, null);
+  assert.deepEqual(await readFile(join(referenceRoot, "assets", asset)), png);
+  await expect
+    .poll(() =>
+      session.js(
+        "[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Calibrate' && !b.disabled)"
+      )
+    )
+    .toBe(true);
+  await capture(session, "00-import.png");
+  await press(session, "Calibrate");
+  await pixelClick(session, 300, 1500);
+  await pixelClick(session, 300, 1500);
+  await expect
+    .poll(() => session.js("document.querySelector('.map-status [role=alert]')?.textContent"))
+    .toMatch(/different points/);
+  await pixelClick(session, 900, 1500);
+  await fillReferenceField(session, "Distance from A to B (m)", -1);
+  assert.equal(
+    await session.js(
+      "[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Preview on plan').disabled"
+    ),
+    true
+  );
+  await fillReferenceField(session, "Distance from A to B (m)", 20);
+  await fillReferenceField(session, "X", 12);
+  await fillReferenceField(session, "Y", 8);
+  await fillReferenceField(session, "Bearing from A to B (°)", 15);
+  await expect
+    .poll(() => session.js("document.querySelector('.properties-panel output')?.textContent"))
+    .toMatch(/m\/px/);
+  await capture(session, "01-calibration.png");
+  await press(session, "Preview on plan");
+  const overlay = () =>
+    session.js(`(() => {
+    const image = document.querySelector('svg image[data-gaia-reference]');
+    return [image.getAttribute("width"), image.getAttribute("height"), image.getAttribute("transform")];
+  })()`);
+  const before = await overlay();
+  const view = () =>
+    session.js("document.querySelector('.map-viewport svg').getAttribute('viewBox')");
+  const camera = await view();
+  await session.js(`(() => {
+    const svg = document.querySelector('.map-viewport svg');
+    const r = svg.getBoundingClientRect();
+    svg.dispatchEvent(new WheelEvent("wheel",{deltaY: -250, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2}));
+  })()`);
+  await expect.poll(view).not.toBe(camera);
+  const zoomed = await view();
+  const center = await session.js(`(() => {
+    const { x, y, width, height } = document.querySelector('.map-viewport svg').getBoundingClientRect();
+    return [x + width / 2, y + height / 2];
+  })()`);
+  await sendPointer(session, center, [center[0] + 20, center[1] - 12]);
+  await expect.poll(view).not.toBe(zoomed);
+  assert.deepEqual(await overlay(), before);
+  await revision(1);
+  await press(session, "Confirm calibration");
+  await revision(2);
+  saved = await referenceDoc();
+  const calibration = saved.world.references[id].calibration;
+  assert.equal(calibration.distanceM, 20);
+  assert.equal(calibration.bearingDeg, 15);
+  assert.deepEqual(calibration.anchor, [12, 8, 0]);
+  assert.ok(
+    Math.abs(calibration.pixels[0][0] - 300) < 8 && Math.abs(calibration.pixels[1][0] - 900) < 8
+  );
+  const projection = projectReference(saved.world, saved.world.references[id]);
+  const onImage = (xy) => referencePoint(projection, xy);
+  await press(session, "Fit all");
+  await press(session, "Draw boundary");
+  await drawWaypoints(
+    session,
+    [
+      [250, 250],
+      [2050, 250],
+      [2050, 1450],
+      [250, 1450],
+    ].map(onImage)
+  );
+  await press(session, "Finish drawing");
+  const site = await session.js("document.querySelector('[data-selected-id]').dataset.selectedId");
+  assert.match(await selectedProperty(session, "Horizontal area"), /m²/);
+  await press(session, "Place building");
+  await drawWaypoints(session, [onImage([700, 650])]);
+  await editNumber(session, ["Direction (°)"], 35);
+  const building = await session.js(
+    "document.querySelector('[data-selected-id]').dataset.selectedId"
+  );
+  await press(session, "Add floor");
+  await editNumber(session, ["Elevation (m)"], -3);
+  const floor = await session.js("document.querySelector('[data-selected-id]').dataset.selectedId");
+  await toggleUnderground(session);
+  await press(session, "Place device");
+  await drawWaypoints(session, [onImage([715, 680])]);
+  await press(session, "Draw utility line");
+  await editNumber(session, ["Elevation (m)"], -2, ".edit-toolbar");
+  await drawWaypoints(session, [onImage([668, 600]), onImage([835, 600])]);
+  await editNumber(session, ["Elevation (m)"], 1, ".edit-toolbar");
+  await drawWaypoints(session, [onImage([835, 600])]);
+  await press(session, "Finish drawing");
+  assert.match(await selectedProperty(session, "3D route length"), /m/);
+  await press(session, "Save to Gaia");
+  await revision(3);
+
+  await press(session, "Measure");
+  await fillReferenceField(session, "World elevation of next point (m)", -2);
+  await drawWaypoints(session, [onImage([1250, 780])]);
+  await fillReferenceField(session, "World elevation of next point (m)", 1);
+  await drawWaypoints(session, [onImage([1400, 975])]);
+  const horizontal = parseFloat(await selectedProperty(session, "Horizontal distance"));
+  const direct = parseFloat(await selectedProperty(session, "Direct 3D distance"));
+  assert.ok(direct > horizontal && Math.abs(direct - Math.hypot(horizontal, 3)) < 0.01);
+  await capture(session, "03-measurement.png");
+  await fillReferenceField(session, "Measurement type", "route");
+  await drawWaypoints(session, [onImage([1250, 780]), onImage([1400, 975]), onImage([1500, 950])]);
+  assert.ok(parseFloat(await selectedProperty(session, "3D route length")) > horizontal);
+  await revision(3);
+  await press(session, "Measure");
+
+  await press(session, "Overview");
+  await expect
+    .poll(() => session.js("!!document.querySelector('image[data-gaia-reference]')"))
+    .toBe(true);
+  await pickLayer(session, site);
+  await capture(session, "02-site-plan.png");
+  await selectMode(session, false);
+  await pickLayer(session, floor);
+  await press(session, "References");
+  await importFile(session, jpeg, "floor-reference.jpg");
+  await revision(4);
+  const jpegDoc = await referenceDoc();
+  const floorLayer = Object.keys(jpegDoc.world.references).find((key) => key !== id);
+  const jpegId = jpegDoc.world.references[floorLayer].asset;
+  assert.equal(jpegDoc.world.references[floorLayer].frame, floor);
+  assert.equal(jpegDoc.world.assets[jpegId].mime, "image/jpeg");
+  assert.deepEqual(await readFile(join(referenceRoot, "assets", jpegId)), jpeg);
+  await expect
+    .poll(() =>
+      session.js(
+        "[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Calibrate' && !b.disabled)"
+      )
+    )
+    .toBe(true);
+  await press(session, "Calibrate");
+  await pixelClick(session, 120, 750);
+  await pixelClick(session, 820, 750);
+  await fillReferenceField(session, "Distance from A to B (m)", 7);
+  await press(session, "Preview on plan");
+  await press(session, "Confirm calibration");
+  await revision(5);
+  await pickLayer(session, building);
+  await session.js(`(() => {
+    const draw = CanvasRenderingContext2D.prototype.drawImage;
+    window.gaiaDrawnReferenceFormats = new Set();
+    CanvasRenderingContext2D.prototype.drawImage = function(image, ...args) {
+      if (image instanceof HTMLImageElement && image.src.startsWith("data:image/"))
+        window.gaiaDrawnReferenceFormats.add(image.src.slice(5, image.src.indexOf(";")));
+      return draw.call(this, image, ...args);
+    };
+  })()`);
+  await press(session, "Edit interior");
+  await expect
+    .poll(() =>
+      session.js(
+        "[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Locked reference preview')"
+      )
+    )
+    .toBe(true);
+  await expect.poll(() => session.js("!!document.querySelector('canvas')")).toBe(true);
+  const canvasHash = () => session.js("document.querySelector('canvas').toDataURL()");
+  await press(session, "Locked reference preview");
+  await session.js(
+    "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+  );
+  const behind = await canvasHash();
+  await press(session, "Locked reference preview");
+  await expect.poll(canvasHash).not.toBe(behind);
+  await expect
+    .poll(() => session.js("[...window.gaiaDrawnReferenceFormats].sort()"))
+    .toEqual(["image/jpeg", "image/png"]);
+  await capture(session, "04-locked-interior.png");
+  await press(session, "Back to site plan");
+  const result = await referenceDoc();
+  assert.equal(result.world.nodes[building].yaw, 35);
+  assert.equal(result.world.nodes[floor].p[2], -3);
+  assert.equal(result.world.nodes[site].kind, "site");
+  assert.ok(Object.values(result.world.nodes).some((node) => node.kind === "mount"));
+  console.info(
+    "Gaia 02-B/1 imported PNG and JPEG, calibrated original pixels, built from the reference, measured and previewed the negative floor"
+  );
+  return { id, asset, png, jpeg, floorLayer, jpegId, result };
+}
+
+async function reopenReferences(session, test) {
+  await selectProject(session, referenceProject);
+  await expect
+    .poll(() => session.js("!!document.querySelector('image[data-gaia-reference]')"))
+    .toBe(true);
+  assert.deepEqual(await referenceDoc(), test.result);
+  assert.deepEqual(await readFile(join(referenceRoot, "assets", test.asset)), test.png);
+  assert.deepEqual(await readFile(join(referenceRoot, "assets", test.jpegId)), test.jpeg);
+  await selectMode(session, false);
+  await press(session, "survey.png");
+  const toggle = (label) =>
+    session.js(`[...document.querySelectorAll(".properties-panel label")]
+    .find((el) => el.textContent.trim() === ${JSON.stringify(label)}).querySelector("input").click()`);
+  const visible = () =>
+    session.js(`!!document.querySelector('[data-gaia-reference="${test.id}"]')`);
+  await toggle("Show on plan");
+  await toggle("Lock placement");
+  await press(session, "Apply settings");
+  await revision(6);
+  await expect.poll(visible).toBe(false);
+  assert.equal((await referenceDoc()).world.references[test.id].locked, true);
+  await expect
+    .poll(() =>
+      session.js(
+        "document.querySelector('.properties-panel input[type=checkbox]:checked')?.parentElement.textContent"
+      )
+    )
+    .toMatch(/Lock placement/);
+  await toggle("Show on plan");
+  await toggle("Lock placement");
+  await session.js(`(() => {
+    const slider = document.querySelector('.properties-panel input[type=range]');
+    slider.value = "40";
+    slider.dispatchEvent(new Event("input", {bubbles:true}));
+  })()`);
+  await press(session, "Apply settings");
+  await revision(7);
+  await expect.poll(visible).toBe(true);
+  assert.equal((await referenceDoc()).world.references[test.id].opacity, 0.4);
+  await importFile(session, test.jpeg, "replacement.jpg", true);
+  await revision(8);
+  const replaced = (await referenceDoc()).world;
+  assert.equal(replaced.references[test.id].calibration, undefined);
+  assert.deepEqual(replaced.nodes, test.result.world.nodes);
+  assert.deepEqual(replaced.devices, test.result.world.devices);
+  assert.deepEqual(
+    await readFile(join(referenceRoot, "assets", replaced.references[test.id].asset)),
+    test.jpeg
+  );
+  await rm(join(referenceRoot, "assets", test.jpegId));
+  await writeFile(
+    join(referenceRoot, "assets", replaced.references[test.id].asset),
+    Buffer.from("damaged")
+  );
+  await press(session, "Projects", "Projeler");
+  await selectProject(session, referenceProject);
+  await press(session, "floor-reference.jpg");
+  await expect
+    .poll(() =>
+      session.js("document.querySelector('.properties-panel [role=status]')?.textContent")
+    )
+    .toMatch(/missing/);
+  await press(session, "replacement.jpg");
+  await expect
+    .poll(() =>
+      session.js("document.querySelector('.properties-panel [role=status]')?.textContent")
+    )
+    .toMatch(/damaged/);
+  assert.deepEqual((await referenceDoc()).world.nodes, test.result.world.nodes);
+  console.info(
+    "Gaia 02-B/1 restored bytes and raw calibration after app restart, kept geometry on replacement and recovered the view with missing and damaged assets"
+  );
+}
+
 let running;
 try {
   await mkdir(join(root, "data"));
@@ -481,6 +904,12 @@ try {
         timeout: 20000,
       })
       .toBe(true);
+  }
+  if (referenceRun) {
+    const referenceTest = await exerciseReferences(running);
+    await closeApp(running.app);
+    running = await launch();
+    await reopenReferences(running, referenceTest);
   }
   await running.guest.evaluate((el) => {
     void el.executeJavaScript("document.querySelector('.close-room').click()").catch(() => {});

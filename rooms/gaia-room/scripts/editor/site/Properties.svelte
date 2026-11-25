@@ -2,6 +2,7 @@
   import type en from "../../../i18n/en.json";
   import { yaw360, worldPose, type Id, type V2, type V3, type World } from "../../spatial/world.ts";
   import type { SiteEdit } from "../../spatial/site-edits.ts";
+  import { objectMeasurements } from "../../spatial/measurements.ts";
   import type { VirtualReading } from "./virtual.ts";
 
   let {
@@ -29,6 +30,7 @@
   const node = $derived(world.nodes[id]!);
   const geometry = $derived(node.geometry);
   const worldPosition = $derived(worldPose(world, id).p);
+  const measurements = $derived(objectMeasurements(world, id));
   const devices = $derived(
     Object.entries(world.devices).filter(([, device]) => device.mount === id)
   );
@@ -91,6 +93,24 @@
 <dl class="coordinates">
   <dt>{labels.coordinates}</dt>
   <dd>{worldPosition.map(fmt).join(" · ")}</dd>
+  <dt>{labels.measureElevation}</dt>
+  <dd>{fmt(measurements.elevation)} m</dd>
+  {#if measurements.area !== undefined}
+    <dt>{labels.measureArea}</dt>
+    <dd>{fmt(measurements.area)} m²</dd>
+  {/if}
+  {#if measurements.dimensions && node.kind !== "building"}
+    <dt>{labels.size}</dt>
+    <dd>{measurements.dimensions.map(fmt).join(" × ")} m</dd>
+  {/if}
+  {#if measurements.route}
+    <dt>{labels.measureRoute}</dt>
+    <dd>{fmt(measurements.route.length)} m</dd>
+    <dt>{labels.measureEndpoints} · {labels.measureHorizontal}</dt>
+    <dd>{fmt(measurements.route.horizontal)} m</dd>
+    <dt>{labels.measureEndpoints} · {labels.measureDirect}</dt>
+    <dd>{fmt(measurements.route.direct)} m</dd>
+  {/if}
 </dl>
 
 {#snippet number(

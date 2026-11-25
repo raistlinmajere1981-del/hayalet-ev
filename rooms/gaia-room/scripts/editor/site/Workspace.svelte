@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from "svelte";
+  import { onDestroy, untrack } from "svelte";
   import type en from "../../../i18n/en.json";
   import {
     applySiteEdits,
@@ -16,7 +16,20 @@
     type V2,
     type V3,
   } from "../../spatial/world.ts";
+  import {
+    projectReference,
+    referenceFrame,
+    referencePoint,
+    type ReferenceProjection,
+  } from "../../spatial/reference.ts";
+  import { signedArea } from "../../spatial/measurements.ts";
+  import type { ReferenceBatch, ReferenceEdit } from "../../storage/reference-contract.ts";
   import { UnconfirmedCommand, type Opened, type Saved } from "../client.ts";
+  import { referenceImages } from "../reference-images.svelte.ts";
+  import { calibrationDraft, calibrationValue, type CalibrationDraft } from "./calibration.ts";
+  import CalibrationImage from "./CalibrationImage.svelte";
+  import Measurements from "./Measurements.svelte";
+  import References from "./References.svelte";
   import Layers from "./Layers.svelte";
   import Orbit from "./Orbit.svelte";
   import Plan from "./Plan.svelte";
@@ -46,7 +59,7 @@
     startEditing: boolean;
     initialSelection?: Id;
     readingsSource: ReturnType<typeof virtualReadings>;
-    onsave: (batch: SiteBatch, retry: boolean) => Promise<Saved>;
+    onsave: (batch: SiteBatch | ReferenceBatch, retry: boolean) => Promise<Saved>;
     onreopen: () => Promise<Opened>;
     oninterior: (id: Id) => Promise<void>;
     onprojects: () => void;
@@ -64,7 +77,7 @@
   let readings = $state.raw<ReadonlyMap<Id, VirtualReading>>(new Map());
   let now = $state(Date.now());
   let edits = $state.raw<SiteEdit[]>([]);
-  let pending = $state.raw<SiteBatch>();
+  let pending = $state.raw<SiteBatch | ReferenceBatch>();
   let saving = $state(false);
   let error = $state("");
   let leave = $state.raw<() => void | Promise<void>>();
@@ -73,6 +86,17 @@
   let anchor = $state<Id>();
   let working = $state.raw<V3[]>([]);
   let z = $state(0);
+  let referencePanel = $state(false);
+  let selectedReference = $state<Id>();
+  let calibration = $state<CalibrationDraft>();
+  let measuring = $state(false);
+  let measurementMode = $state<"points" | "route">("points");
+  let measurementZ = $state<number | undefined>(0);
+  let measurement = $state.raw<V3[]>([]);
+  let disposed = false;
+  onDestroy(() => {
+    disposed = true;
+  });
 
   const dirty = $derived(draft !== opened.world || !!working.length || !!pending);
   const blocked = $derived(saving || !!pending || !!leave || !!deletion);
@@ -89,6 +113,59 @@
       ? selected
       : site
   );
+  const reference = $derived(selectedReference ? draft.references[selectedReference] : undefined);
+  const referenceAsset = $derived(reference ? draft.assets[reference.asset] : undefined);
+  const candidate = $derived(calibrationValue(calibration, referenceAsset?.pixels));
+  const unavailableAssets = $derived(new Set([...opened.missing, ...(opened.damaged ?? [])]));
+  const layers = $derived(
+    Object.entries(draft.references).filter(
+      ([id, layer]) =>
+        (layer.visible !== false || (id === selectedReference && !!calibration?.view)) &&
+        (layer.frame === null ||
+          visibleIds.has(layer.frame) ||
+          (id === selectedReference && !!calibration)) &&
+        !unavailableAssets.has(layer.asset)
+    )
+  );
+  const imageSource = referenceImages(() => ({
+    project: opened.world.id,
+    session: opened.session,
+    assets: visible
+      ? [
+          ...layers
+            .filter(([, layer]) => !three && !!layer.calibration)
+            .map(([, layer]) => layer.asset),
+          ...(referencePanel && reference && !unavailableAssets.has(reference.asset)
+            ? [reference.asset]
+            : []),
+        ]
+      : [],
+  }));
+  const currentSource = $derived(reference ? imageSource(reference.asset) : undefined);
+  const planLayers = $derived.by(() => {
+    const images: { id: Id; projection: ReferenceProjection; opacity: number; source?: string }[] =
+      [];
+    for (const [id, layer] of layers) {
+      const preview = id === selectedReference && calibration?.view !== "pixels" && candidate;
+      const view = projectReference(draft, preview ? { ...layer, calibration: candidate } : layer);
+      const source = imageSource(layer.asset);
+      if (view && source !== null)
+        images.push({
+          id,
+          projection: view,
+          source,
+          opacity: preview ? Math.max(layer.opacity, 0.55) : layer.opacity,
+        });
+    }
+    return images;
+  });
+  const calibrationGuide = $derived.by(() => {
+    const projected = planLayers.find((layer) => layer.id === selectedReference)?.projection;
+    return projected && candidate && calibration?.view !== "pixels"
+      ? candidate.pixels.map((point) => referencePoint(projected, point))
+      : [];
+  });
+
   const states = $derived.by(() => {
     const result = new Map<Id, string>();
     for (const [id, device] of Object.entries(draft.devices)) {
@@ -156,6 +233,9 @@
 
   function begin(kind: typeof tool) {
     resetTool();
+    referencePanel = false;
+    calibration = undefined;
+    measuring = false;
     tool = kind;
     anchor = kind === "building" || kind === "route" ? site : frameId;
     z = 0;
@@ -202,11 +282,7 @@
     const id = crypto.randomUUID();
     if (tool === "site" && working.length >= 3) {
       const ring = working.map(([x, y]): V2 => [x, y]);
-      const area = ring.reduce((sum, [x, y], i) => {
-        const [u, v] = ring[(i + 1) % ring.length]!;
-        return sum + x * v - y * u;
-      }, 0);
-      if (area < 0) ring.reverse();
+      if (signedArea(ring) < 0) ring.reverse();
       if (
         !commit([
           {
@@ -301,32 +377,46 @@
     commit([{ op: "boundary", id, ring: geometry.ring.map((p, i) => (i === index ? [x, y] : p)) }]);
   }
 
+  function batchContext() {
+    return {
+      project: opened.world.id,
+      baseRevision: opened.world.revision,
+      session: opened.session,
+      operationId: crypto.randomUUID(),
+    };
+  }
+
   async function save() {
     if (saving || working.length) return false;
-    if (!edits.length) return true;
+    if (!edits.length && !pending) return true;
+    return persist(pending ?? { scope: "site", ...batchContext(), edits }, !!pending);
+  }
+
+  async function persist(batch: SiteBatch | ReferenceBatch, retry: boolean) {
     saving = true;
     error = "";
-    const retry = !!pending;
-    const batch =
-      pending ??
-      ({
-        scope: "site",
-        project: opened.world.id,
-        baseRevision: opened.world.revision,
-        session: opened.session,
-        operationId: crypto.randomUUID(),
-        edits,
-      } satisfies SiteBatch);
     pending = batch;
     try {
       const saved = await onsave(batch, retry);
       draft = saved.world;
       edits = [];
       pending = undefined;
+      if (batch.scope === "reference") {
+        calibration = undefined;
+        selectedReference = batch.edit.op === "remove" ? undefined : batch.edit.id;
+        if (batch.edit.op === "import" || batch.edit.op === "replace") focus = {};
+      }
       return true;
     } catch (reason) {
       if (!(reason instanceof UnconfirmedCommand)) pending = undefined;
-      error = reason instanceof UnconfirmedCommand ? storageLabels.retry : String(reason);
+      if (reason instanceof UnconfirmedCommand) error = storageLabels.retry;
+      else if (
+        batch.scope === "reference" &&
+        reason instanceof Error &&
+        /^Invalid (or unsupported )?Gaia (image upload|reference image)/.test(reason.message)
+      )
+        error = labels.refInvalidImage;
+      else error = String(reason);
       return false;
     } finally {
       saving = false;
@@ -336,6 +426,8 @@
   async function transition(action: () => void | Promise<void>) {
     if (saving) return;
     resetTool();
+    calibration = undefined;
+    measuring = false;
     leave = undefined;
     try {
       await action();
@@ -387,7 +479,88 @@
   }
 
   function pick(id?: Id) {
-    if (!tool && !saving) selected = id;
+    if (tool || blocked) return;
+    selected = id;
+    referencePanel = false;
+    calibration = undefined;
+    measuring = false;
+  }
+
+  function openReference(id?: Id) {
+    if (blocked || tool) return;
+    three = false;
+    measuring = false;
+    referencePanel = true;
+    if (selectedReference !== id) calibration = undefined;
+    selectedReference = id;
+    error = "";
+  }
+
+  function saveReference(edit: ReferenceEdit): Promise<boolean> {
+    if (disposed || blocked || working.length) return Promise.resolve(false);
+    const persistReference = () => persist({ scope: "reference", ...batchContext(), edit }, false);
+    if (!dirty) return persistReference();
+    leave = async () => {
+      await persistReference();
+    };
+    return Promise.resolve(false);
+  }
+
+  function markPoint(point: V2) {
+    if (blocked || !calibration || calibration.view !== "pixels") return;
+    const [u, v] = point;
+    const pixels = referenceAsset?.pixels;
+    if (!pixels || u < 0 || v < 0 || u > pixels[0] || v > pixels[1]) {
+      error = labels.refOutside;
+      return;
+    }
+    const first = calibration.points[0];
+    if (calibration.points.length === 1 && first?.[0] === u && first[1] === v) {
+      error = labels.refCoincident;
+      return;
+    }
+    error = "";
+    calibration.points = calibration.points.length === 1 ? [first!, point] : [point];
+  }
+
+  function previewCalibration() {
+    if (!calibration || !selectedReference) return;
+    calibration.view = "plan";
+    focus = { id: selectedReference };
+  }
+
+  function measure() {
+    if (blocked || tool) return;
+    measuring = !measuring;
+    if (measuring) {
+      three = false;
+      referencePanel = false;
+      calibration = undefined;
+      measurement = [];
+      measurementZ = 0;
+    }
+  }
+
+  function placeOnPlan(point: V3, hit?: Id) {
+    if (blocked) return;
+    if (calibration?.view === "anchor" && reference) {
+      const pose = referenceFrame(draft, reference.frame);
+      const [x, y] = rounded(fromParent(pose, point));
+      calibration.anchor = [x, y, calibration.anchor[2]];
+      calibration.view = "plan";
+      return;
+    }
+    if (measuring) {
+      const mount = hit && draft.nodes[hit]?.kind === "mount";
+      if (!mount && measurementZ === undefined) return;
+      const value: V3 = mount ? worldPose(draft, hit).p : [point[0], point[1], measurementZ!];
+      measurement =
+        measurementMode === "points" && measurement.length === 2
+          ? [value]
+          : [...measurement, value];
+      return;
+    }
+    place(point);
   }
 
   function publish(id: Id, state: VirtualReading["state"], value: number) {
@@ -438,7 +611,7 @@
         <button
           type="button"
           class="primary"
-          disabled={saving || !edits.length || !!working.length}
+          disabled={saving || (!edits.length && !pending) || !!working.length}
           onclick={save}
         >
           {storageLabels.save}
@@ -468,6 +641,30 @@
         onselect={pick}
         ontoggle={toggle}
       />
+      {#if Object.keys(draft.references).length}
+        <section class="reference-list" aria-label={labels.references}>
+          <h3>{labels.references}</h3>
+          {#each Object.entries(draft.references) as [id, layer] (id)}
+            <div
+              class="layer-row"
+              class:chosen={referencePanel && selectedReference === id}
+              class:filtered={layer.visible === false}
+            >
+              <button
+                type="button"
+                class="layer-select"
+                aria-label={layer.name ?? id}
+                aria-pressed={referencePanel && selectedReference === id}
+                disabled={blocked || !!tool}
+                onclick={() => openReference(id)}
+              >
+                <span aria-hidden="true" class="layer-icon">▧</span>
+                <span>{layer.name ?? id}</span>
+              </button>
+            </div>
+          {/each}
+        </section>
+      {/if}
     </aside>
 
     <section class="map-panel" aria-label={labels.sitePlan}>
@@ -481,13 +678,38 @@
               type="button"
               aria-pressed={three}
               disabled={!webgl || !items.length}
-              onclick={() => (three = true)}
+              onclick={() => {
+                three = true;
+                measuring = false;
+                referencePanel = false;
+              }}
             >
               {labels.orbit}
             </button>
           </div>
         {/if}
-        <button type="button" onclick={() => (focus = {})}>{labels.fit}</button>
+        <button type="button" disabled={calibration?.view === "pixels"} onclick={() => (focus = {})}
+          >{labels.fit}</button
+        >
+        {#if editable}
+          <button
+            type="button"
+            aria-pressed={referencePanel}
+            disabled={blocked || !!tool}
+            onclick={() => {
+              if (referencePanel) {
+                referencePanel = false;
+                calibration = undefined;
+              } else openReference(selectedReference ?? Object.keys(draft.references)[0]);
+            }}>{labels.references}</button
+          >
+        {/if}
+        <button
+          type="button"
+          aria-pressed={measuring}
+          disabled={blocked || !!tool}
+          onclick={measure}>{labels.measure}</button
+        >
         <label class="check">
           <input type="checkbox" bind:checked={underground} />{labels.underground}
         </label>
@@ -571,28 +793,49 @@
               webgl = false;
             }}
           />
+        {:else if visible && calibration?.view === "pixels" && currentSource && referenceAsset?.pixels}
+          <CalibrationImage
+            source={currentSource}
+            pixels={referenceAsset.pixels}
+            points={calibration.points}
+            label={labels.refImage}
+            hint={calibration.points.length === 0
+              ? labels.refPickA
+              : calibration.points.length === 1
+                ? labels.refPickB
+                : labels.refEnterDistance}
+            onpick={markPoint}
+          />
         {:else if visible}
           <Plan
             {items}
             {selected}
             {states}
             {focus}
-            {working}
-            editable={editable && !blocked}
-            placement={!!tool}
+            working={measuring ? measurement : working}
+            referenceLayers={planLayers}
+            {calibrationGuide}
+            editable={editable && !blocked && !referencePanel}
+            placement={!!tool || measuring || calibration?.view === "anchor"}
             label={labels.overviewPlan}
             onselect={pick}
-            onplace={place}
+            onplace={placeOnPlan}
             onmove={moveBuilding}
             oncorner={moveCorner}
           />
         {/if}
-        {#if visible && !items.length && !editable}<p class="map-empty">{labels.noSite}</p>{/if}
+        {#if visible && !items.length && !planLayers.length && !editable}<p class="map-empty">
+            {labels.noSite}
+          </p>{/if}
       </div>
       <footer class="map-status">
         {#if error}<span role="alert">{error}</span>
         {:else if !webgl && !editable}<span role="status">{labels.webgl}</span>
+        {:else if calibration?.view === "anchor"}<span>{labels.refAnchorHint}</span>
         {:else if opened.missing.length}<span>{labels.missing} · {opened.missing.join(", ")}</span>
+        {:else if opened.damaged?.length}<span
+            >{labels.refDamaged} · {opened.damaged.join(", ")}</span
+          >
         {:else}
           <span>
             {three
@@ -608,8 +851,49 @@
     </section>
 
     <aside class="properties-panel" aria-label={labels.inspector}>
-      <h2>{labels.inspector}</h2>
-      {#if selected && selectedNode}
+      <h2>{referencePanel ? labels.references : measuring ? labels.measure : labels.inspector}</h2>
+      {#if referencePanel}
+        {#key (selectedReference ?? "") + ":" + draft.revision}
+          <References
+            world={draft}
+            id={selectedReference}
+            {labels}
+            {editable}
+            disabled={blocked}
+            frame={frameId ?? null}
+            {calibration}
+            value={candidate}
+            ready={!!currentSource}
+            focusable={planLayers.some(({ id }) => id === selectedReference)}
+            loadFailed={currentSource === null ||
+              !!(reference && opened.damaged?.includes(reference.asset))}
+            missing={!!(reference && opened.missing.includes(reference.asset))}
+            onsave={saveReference}
+            onstart={() => {
+              if (!currentSource) return;
+              error = "";
+              calibration = calibrationDraft(reference?.calibration);
+            }}
+            oncancel={() => {
+              calibration = undefined;
+              error = "";
+            }}
+            onpick={markPoint}
+            onpreview={previewCalibration}
+            onfocus={() => (focus = { id: selectedReference })}
+            onerror={(message) => (error = message)}
+          />
+        {/key}
+      {:else if measuring}
+        <Measurements
+          {labels}
+          bind:mode={measurementMode}
+          bind:z={measurementZ}
+          points={measurement}
+          onundo={() => (measurement = measurement.slice(0, -1))}
+          onclear={() => (measurement = [])}
+        />
+      {:else if selected && selectedNode}
         {#key selected}
           <Properties
             world={draft}

@@ -5,6 +5,7 @@
   import { command, roomBridge, type InteriorOpened, type Opened, type Saved } from "./client.ts";
   import type { EditBatch } from "./session.ts";
   import type { SiteBatch } from "../spatial/site-edits.ts";
+  import type { ReferenceBatch } from "../storage/reference-contract.ts";
   import Workspace from "./site/Workspace.svelte";
   import { virtualReadings } from "./site/virtual.ts";
 
@@ -113,13 +114,14 @@
     }
   }
 
-  async function save(batch: EditBatch | SiteBatch, retry: boolean) {
+  async function save(batch: EditBatch | SiteBatch | ReferenceBatch, retry: boolean) {
     const reply = await command<Saved | { error: "unknown" | "conflict"; revision: number }>(
       "GaiaSave",
       { batch, retry }
     );
     if ("error" in reply) throw new Error(labels[reply.error] + " " + reply.revision);
-    if (opened?.world.id === reply.world.id) opened = { ...opened, ...reply };
+    if (opened?.world.id === reply.world.id)
+      opened = { ...opened, ...reply, damaged: reply.damaged ?? [] };
     return reply;
   }
 

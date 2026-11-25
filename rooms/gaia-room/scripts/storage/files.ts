@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { lstat, mkdir, open, rename, rm } from "node:fs/promises";
+import { lstat, mkdir, open, rename, rm, unlink } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
@@ -27,14 +27,29 @@ async function regular(path: string): Promise<boolean> {
   return Boolean(stat);
 }
 
-export async function readRegular(path: string): Promise<Buffer> {
+export async function readRegular(path: string, maxBytes?: number): Promise<Buffer> {
   await regular(path);
   const fd = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
+    if (maxBytes !== undefined) {
+      const { size } = await fd.stat();
+      if (size > maxBytes)
+        throw Object.assign(new Error("Gaia file exceeds size limit"), {
+          code: "ERR_GAIA_FILE_SIZE",
+        });
+      const buffer = Buffer.allocUnsafe(size + 1);
+      const { bytesRead } = await fd.read(buffer, 0, buffer.length, 0);
+      if (bytesRead !== size) throw new Error("Gaia file changed during read");
+      return buffer.subarray(0, bytesRead);
+    }
     return await fd.readFile();
   } finally {
     await fd.close();
   }
+}
+
+export async function removeRegular(path: string): Promise<void> {
+  if (await regular(path)) await unlink(path);
 }
 
 export async function publish(path: string, bytes: string | Buffer): Promise<void> {

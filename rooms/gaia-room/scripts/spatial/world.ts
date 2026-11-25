@@ -37,22 +37,38 @@ interface Device {
   [key: string]: unknown;
 }
 
+export interface Calibration {
+  pixels: [V2, V2];
+  distanceM: number;
+  anchor: V3;
+  bearingDeg: number;
+}
+
+export interface ReferenceLayer {
+  frame: Id | null;
+  asset: Id;
+  opacity: number;
+  name?: string;
+  visible?: boolean;
+  locked?: boolean;
+  calibration?: Calibration;
+  [key: string]: unknown;
+}
+
+export interface ReferenceAsset {
+  mime: string;
+  pixels?: V2;
+  sha256?: string;
+}
+
 export interface World {
   schemaVersion: 1;
   id: Id;
   revision: number;
   nodes: Record<Id, SpatialNode>;
   devices: Record<Id, Device>;
-  assets: Record<Id, { mime: string; pixels?: V2 }>;
-  references: Record<
-    Id,
-    {
-      frame: Id;
-      asset: Id;
-      opacity: number;
-      calibration?: { pixels: [V2, V2]; distanceM: number; anchor: V3; bearingDeg: number };
-    }
-  >;
+  assets: Record<Id, ReferenceAsset>;
+  references: Record<Id, ReferenceLayer>;
   [key: string]: unknown;
 }
 
@@ -140,6 +156,37 @@ export function siteOf(world: World, id: Id, ancestors = new Set<Id>()): Id {
   return parent === null ? id : siteOf(world, parent, ancestors);
 }
 
+export function validCalibration(calibration: Calibration, dimensions: V2 | undefined): boolean {
+  if (typeof calibration !== "object" || !calibration) return false;
+  const { pixels, distanceM, anchor, bearingDeg } = calibration;
+  if (
+    !dimensions ||
+    !validPoint(dimensions, 2) ||
+    !dimensions.every((size) => Number.isSafeInteger(size) && size > 0) ||
+    !Array.isArray(pixels) ||
+    pixels.length !== 2 ||
+    !pixels.every(
+      (point) =>
+        validPoint(point, 2) &&
+        point.every((coordinate, axis) => coordinate >= 0 && coordinate <= dimensions[axis]!)
+    ) ||
+    !positive(distanceM) ||
+    !validPoint(anchor, 3) ||
+    !Number.isFinite(bearingDeg)
+  )
+    return false;
+  const [a, b] = pixels;
+  const span = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const scale = distanceM / span;
+  const radius = Math.hypot(...dimensions) * scale;
+  return (
+    positive(span) &&
+    positive(scale) &&
+    positive(radius) &&
+    anchor.slice(0, 2).every((n) => Number.isFinite(Math.abs(n) + radius))
+  );
+}
+
 export function validateWorld(world: World): void {
   if (world.schemaVersion !== 1 || !Number.isSafeInteger(world.revision) || world.revision < 0)
     throw new Error("Unsupported Gaia schema or revision");
@@ -212,35 +259,25 @@ export function validateWorld(world: World): void {
     }
   }
   for (const [id, reference] of Object.entries(world.references)) {
-    nodeAt(world, reference.frame);
+    if (reference.frame !== null) nodeAt(world, reference.frame);
     const asset = Object.hasOwn(world.assets, reference.asset)
       ? world.assets[reference.asset]
       : undefined;
     if (
       !asset ||
+      (reference.name !== undefined &&
+        (typeof reference.name !== "string" ||
+          !reference.name.trim() ||
+          reference.name.length > 160)) ||
+      (reference.visible !== undefined && typeof reference.visible !== "boolean") ||
+      (reference.locked !== undefined && typeof reference.locked !== "boolean") ||
       !Number.isFinite(reference.opacity) ||
       !(reference.opacity >= 0 && reference.opacity <= 1)
     )
       throw new Error(`Invalid Gaia reference at ${id}`);
-    const calibration = reference.calibration;
-    if (!calibration) continue;
-    const { pixels, distanceM, anchor, bearingDeg } = calibration;
-    const dimensions = asset.pixels;
     if (
-      !dimensions ||
-      !validPoint(dimensions, 2) ||
-      !dimensions.every((size) => Number.isSafeInteger(size) && size > 0) ||
-      !Array.isArray(pixels) ||
-      pixels.length !== 2 ||
-      !pixels.every(
-        (point) =>
-          validPoint(point, 2) &&
-          point.every((coordinate, axis) => coordinate >= 0 && coordinate <= dimensions[axis]!)
-      ) ||
-      pixels[0].every((coordinate, axis) => coordinate === pixels[1][axis]) ||
-      !positive(distanceM) ||
-      !validPoint(anchor, 3) ||
-      !Number.isFinite(bearingDeg)
+      reference.calibration !== undefined &&
+      !validCalibration(reference.calibration, asset.pixels)
     )
       throw new Error(`Invalid Gaia reference calibration at ${id}`);
   }

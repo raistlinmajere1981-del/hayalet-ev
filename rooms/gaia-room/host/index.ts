@@ -8,7 +8,7 @@ interface Host {
 }
 
 export default function activate(api: Host) {
-  for (const command of ["GaiaProjects", "GaiaCreate", "GaiaOpen", "GaiaSave"]) {
+  for (const command of ["GaiaProjects", "GaiaCreate", "GaiaOpen", "GaiaSave", "GaiaReference"]) {
     api.registerCommand(
       command,
       ({ roomArgs }) => {

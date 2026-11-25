@@ -78,9 +78,12 @@ interface SpatialNode {
 }
 
 interface ReferenceLayer {
-  frame: Id;
+  frame: Id | null;
   asset: Id;
   opacity: number;
+  name?: string;
+  visible?: boolean;
+  locked?: boolean;
   calibration?: {
     pixels: [V2, V2];
     distanceM: number;
@@ -103,7 +106,7 @@ interface World {
   revision: number;
   nodes: Record<Id, SpatialNode>;
   devices: Record<Id, Device>;
-  assets: Record<Id, { mime: string; pixels?: V2 }>;
+  assets: Record<Id, { mime: string; pixels?: V2; sha256?: string }>;
   references: Record<Id, ReferenceLayer>;
 }
 ```
@@ -116,7 +119,7 @@ interface World {
 
 ### Referans ve kalibrasyon
 
-Görsel isteğe bağlıdır. `asset` değişmez orijinali, `frame` arazi veya başka bir yatay çerçeveyi gösterir. Sürekli piksel koordinatında sol üst kenar (0,0), sağ alt kenar (genişlik,yükseklik), +v aşağıdır. İki farklı piksel A, B, pozitif bilinen mesafe d, A'nın çerçevedeki konumu ve A→B doğrultusunun +X'e göre açısı saklanır. İki tıklama ve mesafe tek başına konum ve yönü belirlemez. Hizalama kullanıcıdan ya da açık seçilmiş proje ekseninden gelir.
+Görsel isteğe bağlıdır. `asset` değişmez orijinali, `frame` arazi veya başka bir yatay çerçeveyi gösterir. `null` proje koordinatlarını kullanır ve ilk arazi çizilmeden önce referans eklenebilir. Eski kayıtlarda görünürlük varsayılan olarak açık, yerleşim kilidi kapalıdır. Sürekli piksel koordinatında sol üst kenar (0,0), sağ alt kenar (genişlik,yükseklik), +v aşağıdır. İki farklı piksel A, B, pozitif bilinen mesafe d, A'nın çerçevedeki konumu ve A→B doğrultusunun +X'e göre açısı saklanır. İki tıklama ve mesafe tek başına konum ve yönü belirlemez. Hizalama kullanıcıdan ya da açık seçilmiş proje ekseninden gelir.
 
 `q(u,v)=(u,−v)`, `s=d/|B−A|` m/px, `θ=bearing−arg(q(B)−q(A))`. Her pikselin yatay konumu `anchor.xy + s · R(θ) · (q(pixel)−q(A))`, Z değeri `anchor.z` olur. Böylece kalıcı benzerlik dönüşümü verilenlerden yeniden üretilebilir. Piksel orijini resmin sol üst kenarıdır, u sağa ve v aşağı artar. bearingDeg, ilk işaretten ikinciye çerçevenin +X eksenine göre pozitif saat yönü tersinde ölçülür. Piksel boyutları pozitif tamsayı, işaretler görüntü içinde ve farklı, distanceM pozitif, opaklık [0,1] aralığında ve dönüşüm sonlu olmalıdır. Kalibrasyonsuz referans önizlemesi ölçüm kaynağı olamaz. Kamera pan/zoom'u dönüşüme katılmaz.
 

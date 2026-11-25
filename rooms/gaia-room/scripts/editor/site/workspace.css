@@ -103,6 +103,16 @@
   font-size: var(--gaia-font-sm);
   font-weight: 650;
 }
+.gaia-workspace .reference-list {
+  margin-top: var(--gaia-space-15);
+  padding-top: var(--gaia-space-12);
+  border-top: var(--gaia-border-width) solid var(--line);
+}
+.gaia-workspace .reference-list h3 {
+  color: var(--muted);
+  font-size: var(--gaia-font-sm);
+  margin: 0 0 var(--gaia-space-7);
+}
 .gaia-workspace .layer-row {
   --gaia-layer-indent: 0;
   display: flex;

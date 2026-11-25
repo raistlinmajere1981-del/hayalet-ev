@@ -38,7 +38,13 @@
         },
         {
           "name": "GaiaSave",
-          "description": "Apply an interior or site edit batch",
+          "description": "Apply an interior, site or reference edit batch",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GaiaReference",
+          "description": "Read a project reference image preview",
           "scope": "room-ui",
           "exposure": "internal"
         }

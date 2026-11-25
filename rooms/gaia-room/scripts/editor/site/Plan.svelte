@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import type { Id, V2, V3 } from "../../spatial/world.ts";
-  import { boxRing, deviceColor, frame, type Bounds, type SpatialItem } from "./scene.ts";
+  import { boundsOf, boxRing, deviceColor, frame, type Bounds, type SpatialItem } from "./scene.ts";
+  import { referencePoint, type ReferenceProjection } from "../../spatial/reference.ts";
   import { cssColor, selectedPlan } from "../palette.ts";
 
   let {
@@ -13,6 +14,8 @@
     editable,
     placement,
     working,
+    referenceLayers,
+    calibrationGuide,
     onselect,
     onplace,
     onmove,
@@ -26,8 +29,15 @@
     editable: boolean;
     placement: boolean;
     working: V3[];
+    referenceLayers: {
+      id: Id;
+      projection: ReferenceProjection;
+      opacity: number;
+      source?: string;
+    }[];
+    calibrationGuide: V3[];
     onselect: (id?: Id) => void;
-    onplace: (point: V3) => void;
+    onplace: (point: V3, id?: Id) => void;
     onmove: (id: Id, delta: V2) => void;
     oncorner: (id: Id, index: number, point: V3) => void;
   } = $props();
@@ -65,12 +75,25 @@
   $effect(() => {
     // The camera follows explicit focus and viewport size changes, leaving edits in place.
     const { id } = focus;
-    fit(
-      frame(
-        untrack(() => items),
-        id
-      )
-    );
+    const bounds = untrack(() => {
+      const geometry = frame(items, id);
+      const references = referenceLayers.flatMap(({ id: layerId, projection }) => {
+        if (id && id !== layerId) return [];
+        const [w, h] = projection.pixels;
+        return (
+          [
+            [0, 0],
+            [w, 0],
+            [0, h],
+            [w, h],
+          ] satisfies V2[]
+        ).map((p) => referencePoint(projection, p));
+      });
+      if (!references.length) return geometry;
+      if (id || !items.length) return boundsOf(references);
+      return boundsOf([geometry.min, geometry.max, ...references]);
+    });
+    fit(bounds);
   });
 
   function pointer(event: MouseEvent): V3 {
@@ -123,7 +146,7 @@
     const { mode, client, id, corner } = gesture;
     const moved = Math.hypot(event.clientX - client[0], event.clientY - client[1]) > 4;
     if (event.button === 0 && !moved && !event.shiftKey) {
-      if (placement) onplace(pointer(event));
+      if (placement) onplace(pointer(event), id);
       else onselect(id);
     } else if (mode === "move" && id && moved) {
       if (corner === undefined) onmove(id, delta);
@@ -199,10 +222,27 @@
     height={viewHeight}
     fill="url(#gaia-grid)"
   />
+  {#each referenceLayers as layer (layer.id)}
+    {#if layer.source}
+      {@const { origin, yaw, scale, pixels } = layer.projection}
+      <image
+        data-gaia-reference={layer.id}
+        href={layer.source}
+        width={pixels[0] * scale}
+        height={pixels[1] * scale}
+        opacity={layer.opacity}
+        transform={`translate(${origin[0]} ${-origin[1]}) rotate(${-yaw})`}
+        preserveAspectRatio="none"
+        pointer-events="none"
+      />
+    {/if}
+  {/each}
   {#each items as item (item.id)}
     {@const { id, shape, pose, node } = item}
     {@const active = id === selected}
-    {@const color = cssColor(active ? selectedPlan : node.kind === "mount" ? deviceColor(states.get(id)) : item.color)}
+    {@const color = cssColor(
+      active ? selectedPlan : node.kind === "mount" ? deviceColor(states.get(id)) : item.color
+    )}
     {@const moving = gesture?.mode === "move" && gesture.id === id && gesture.corner === undefined}
     <g
       data-gaia-id={id}
@@ -289,9 +329,35 @@
       />
     {/each}
   {/if}
+  {#if calibrationGuide.length}
+    <g pointer-events="none" style:color={cssColor(selectedPlan)}>
+      <polyline
+        points={polygon(calibrationGuide)}
+        fill="none"
+        stroke="currentColor"
+        stroke-width={2.5 * unit}
+      />
+      {#each calibrationGuide as [x, y], index}
+        <circle cx={x} cy={-y} r={5 * unit} fill="currentColor" />
+        <text x={x + 8 * unit} y={-y + 4 * unit} font-size={13 * unit} class="map-label">
+          {index === 0 ? "A" : "B"}
+        </text>
+      {/each}
+    </g>
+  {/if}
   {#if working.length}
-    <polyline points={polygon(working)} fill="none" stroke={cssColor(selectedPlan)} stroke-width={2 * unit} />
-    {#each working as [x, y]}<circle cx={x} cy={-y} r={4 * unit} fill={cssColor(selectedPlan)} />{/each}
+    <polyline
+      points={polygon(working)}
+      fill="none"
+      stroke={cssColor(selectedPlan)}
+      stroke-width={2 * unit}
+    />
+    {#each working as [x, y]}<circle
+        cx={x}
+        cy={-y}
+        r={4 * unit}
+        fill={cssColor(selectedPlan)}
+      />{/each}
   {/if}
   <g
     transform={`translate(${view.x - viewWidth / 2 + 20 * unit}, ${view.y + viewHeight / 2 - 24 * unit})`}
