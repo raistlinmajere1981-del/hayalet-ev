@@ -1,6 +1,6 @@
 # Gaia Room
 
-> **Durum** — 02-B/1 Linux kapsamında, 02-B/2 gerçek arazi kullanımıyla kabul edildi. 02-C günlük cihaz yönetimi Linux kapsamında kabul edildi. Sıradaki 02-D kapanış denetimi. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
+> **Durum** — 02-B/1 Linux kapsamında, 02-B/2 gerçek arazi kullanımıyla kabul edildi. 02-C günlük cihaz yönetimi Linux kapsamında kabul edildi. 02-D kapanış denetimi başladı; kota odaklı agent dağılımı uygulanıyor. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
 
 Referans uygulama commit'i: `d0e47947` (Hayalet Ev 5.4.0). Bu belge Gaia için mimari karar, proje hafızası, araştırma özeti, açık konular ve geliştirme planının tek başlangıç kaynağıdır. Hayalet Ev’de Gaia projeleri Genel Görünüm’de açılır ve Modelleme Atölyesi’nde düzenlenir.
 
@@ -138,7 +138,7 @@ LAN protokolü, eşleme/kimlik doğrulama ve iletişim güvenliği Client deneyi
 | 02-A       | Tamamlandı (Linux)                  | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
 | 02-B       | 02-B/1 ve 02-B/2 kabul              | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
 | 02-C       | Tamamlandı (Linux)                  | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
-| 02-D       | Sıradaki                            | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
+| 02-D       | Devam ediyor                        | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
 | 03         | Bekliyor                            | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
 | 04         | Bekliyor                            | Router, saha ağı ve Companion yönetimi                                                      |
 | 05         | Bekliyor                            | Elektronik ve deterministik otomasyon; güvenli test düzeneği                                |
@@ -398,6 +398,24 @@ Yeni proje başlangıcı için kabul edilen 17 kural bu mevcut monorepo'ya uyarl
 - 02-D’de gerçek arazi deneyimindeki modelleme ince ayarları, kalibrasyon sihirbazı ve günlük yönetim kullanılabilirliği değerlendirilecek.
 - Sonra: gelişmiş hayvan/kamera analizi, toprak nemi haritası, güneş enerjisi/invertör, sulama optimizasyonu, hazır protokol adaptörleri, görsel atmosfer.
 - Deneysel: Android mesh/repeater, bataryasız ve ekransız anakartlar, fiziksel kamera/mikrofon taşıma, manyetik/RF haritası, otomatik mekânsal çıkarım, dağıtık görüntü işleme. Başarısızlık ana projeyi bloke etmez.
+
+### Kota odaklı yürütme planı — 02-D ve sonrası
+
+Codex haftalık kotası kritik karar ve bağımsız güvenlik/mimari inceleme için korunur. Terminal üzerinden Nexa kaynak incelemesi, dar düzeltmeler, komutlar, testlerin doğrulanması, paket, belge ve Git işlemlerini üstlenir. OpenCode DeepSeek, açık kapsamlı ve testlenebilir uygulama/refactor işlerini yürütür. Her iş paketi tek konu/tek session; aynı dosyalara eşzamanlı yazma yok. DeepSeek limitinde güvenli duraklama, ilerleme kaydı ve kullanıcı bildirimi; otomatik model değişimi yok. Model ve reasoning gerçek CLI seçeneklerine göre seçilir. Codex çağrısı ancak çözülemeyen blokaj, kritik güvenlik/kontrat kararı veya bağımsız kabul ihtiyacı oluştuğunda açılır; her pakette zorunlu değildir.
+
+| İş paketi                      | Sorumlu                                                                                                 | Çıkış                                                                                                                                                     |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 02-D/1 durum yaşam döngüsü     | Nexa audit ve kabul; DeepSeek hedefli düzeltme/test                                                     | Capability kaldırma/geri ekleme, cihaz silme/kimlik, eski durum ve bozuk yan dosya davranışı.                                                             |
+| 02-D/2 değişim eksenleri ve UI | DeepSeek high/max (destekleniyorsa), Nexa bağımsız inceleme                                             | Workspace bağımsız sorumluluklarının gerektiği ölçüde ayrılması; yatay taşma, dil, mevcut akışların korunması.                                            |
+| 02-D/3 kapanış                 | Nexa terminal ve log kabulü; DeepSeek dar regresyon düzeltmeleri                                        | Hedefli testler, paket, offline Electron, kaynak regresyonu ve tam check:all. Gerekirse kullanıcı yerel uzun koşumu başlatır. Codex yalnız somut engelde. |
+| 03-A                           | Nexa + kullanıcı; Codex yalnız kritik kontrat incelemesi                                                | Telefon envanteri, Android/API/ABI/yetenek matrisi, salt okunur ilk Client kapsamı ve güvenli kimlik/eşleme, transport, heartbeat ve zaman kontratı.      |
+| 03-B/C                         | DeepSeek dar Client ve gözlem adapter işleri; Nexa gerçek cihaz/terminal kabulü                         | Önce sanal, sonra bir gerçek cihazdan kimlikli ve kaynak işaretli gözlem; UI kapalıyken alım. Kritik ağ yetki sınırı bağımsız denetlenir.                 |
+| 04                             | Nexa cihaz/ağ deneyleri, DeepSeek tanımlı adapter ve Companion yönetim işleri; Codex gerekirse güvenlik | Doğrudan Client ve Router yolları, doğrulanmış saha bağlantısı, güvenli provisioning.                                                                     |
+| 05                             | Nexa + kullanıcı donanım ve güvenli deney; Codex kritik kontrol güvenliği; DeepSeek test/arayüz         | Deterministik kural ve komut/ACK/safe-state sınırları; fiziksel güvenlik kabulünden önce gerçek yük kontrolü yok.                                         |
+| 06                             | Nexa yerel model ölçümü, DeepSeek dar UI/adapter; Codex kritik araç/yetki audit'i                       | AI0/AI1 yerel açıklama ve öneri, deterministik kontrol otoritesi korunur.                                                                                 |
+| 07                             | Nexa + kullanıcı gerçek saha/uzun süreli test, DeepSeek düzeltmeler; Codex gerektiğinde final audit     | Dayanıklılık, veri koruma dönemi kararı, paket ve platform kabulü.                                                                                        |
+
+02-D/1 ön incelemesi (taban `2f4cc40e`): geçici bağımsız projede sıcaklık yeteneği kaldırıldıktan sonra durum okuması örneği filtreledi; yetenek geri eklenince eski 23 °C örneği geri geldi. Sebep: `activeStatuses` yalnız görünümü filtreliyor, envanter yayını kalıcı son durum yaşam döngüsünü sonlandırmıyor. Renderer'ın bellekteki snapshot'ı da incelenmeli. Bozuk JSON yan dosyasıyla `GaiaOpen` başarılı, `GaiaStatus` hata verdi; bu mevcut davranış, kanonik dünya bağımsızlığına uygun ama durum kurtarma ve eski snapshot gösterimi netleştirilmeli. Gerçek proje değiştirilmedi, geçici deney dizini silindi. Düzeltme ve regresyon testleri 02-D/1 kapsamındadır.
 
 ## 10. Lisans ve dağıtım
 
