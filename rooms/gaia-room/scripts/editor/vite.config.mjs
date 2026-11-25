@@ -5,7 +5,7 @@ import tailwind from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 const path = (relative) => fileURLToPath(new URL(relative, import.meta.url));
-const upstream = path("../../.build/gaia-room/openplan3d/src/lib");
+const upstream = path("../../../.build/gaia-room/openplan3d/src/lib");
 const shims = path("./shell-shims.mjs");
 
 export default defineConfig(({ mode }) => ({
@@ -36,14 +36,20 @@ export default defineConfig(({ mode }) => ({
     ],
     dedupe: ["svelte"],
   },
-  server: { fs: { allow: [path("../../..")] } },
+  server: { fs: { allow: [path("../../../..")] } },
   build: {
+    target: "es2022",
     outDir: path(
-      mode === "acceptance"
-        ? "../../.build/gaia-room/acceptance-runtime"
-        : "../../.build/gaia-room/runtime"
+      mode === "acceptance" ? "../../../.build/gaia-room/acceptance-runtime" : "../../ui"
     ),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: "assets/workshop.min.js",
+        chunkFileNames: "assets/[name]-[hash].min.js",
+        assetFileNames: "assets/[name].min[extname]",
+      },
+    },
     license: { fileName: "DEPENDENCY-LICENSES.md" },
   },
 }));

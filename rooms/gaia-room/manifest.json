@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 2,
+  "id": "gaia-room",
+  "name": "Gaia Room",
+  "version": "0.2.0",
+  "menu": {
+    "label": "Gaia Room",
+    "icon": "GA",
+    "order": 105
+  },
+  "runtime": {
+    "uiEntry": "ui/index.html",
+    "hostEntry": "host/index.js"
+  },
+  "defaultFeatureId": "workshop",
+  "features": [
+    {
+      "id": "workshop",
+      "name": "Modeling Workshop",
+      "commandSpecs": [
+        {
+          "name": "GaiaProjects",
+          "description": "List local projects",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GaiaCreate",
+          "description": "Create a project",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GaiaOpen",
+          "description": "Open a saved project",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GaiaSave",
+          "description": "Apply a workshop edit batch",
+          "scope": "room-ui",
+          "exposure": "internal"
+        }
+      ]
+    }
+  ],
+  "i18n": {
+    "baseDir": "i18n"
+  },
+  "protocolSpecs": [
+    {
+      "key": "gaia-project",
+      "room": "gaia-room",
+      "scenario": "project",
+      "title": "Gaia project storage v1",
+      "editable": false,
+      "path": "protocols/gaia-project.md"
+    }
+  ]
+}

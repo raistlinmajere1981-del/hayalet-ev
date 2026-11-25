@@ -30,7 +30,7 @@ async function copyIntoDir(files, outDir) {
 
 async function buildMainElectron() {
   const tsconfig = "electron/tsconfig.electron.json";
-  await buildNodeBundle("electron/main.ts", "dist/electron/main.js", tsconfig);
+  await buildNodeBundle("scripts/rooms/electron-main.mjs", "dist/electron/main.js", tsconfig);
   await buildNodeBundle(
     "electron/packaged-wrapper-main.ts",
     "dist/electron/packaged-wrapper-main.js",

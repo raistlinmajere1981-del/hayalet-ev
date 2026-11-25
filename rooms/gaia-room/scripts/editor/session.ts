@@ -59,7 +59,11 @@ function sameGeometry(a: EditableGeometry, b: EditableGeometry): boolean {
   );
 }
 
-function applyBatch(world: World, batch: EditBatch, scope: ReadonlyMap<Id, PlanObject>): World {
+export function applyBatch(
+  world: World,
+  batch: EditBatch,
+  scope: ReadonlyMap<Id, Pick<PlanObject, "floor" | "geometry">>
+): World {
   if (batch.project !== world.id || batch.baseRevision !== world.revision)
     throw new Error("Gaia revision changed. Reopen the saved model before editing again.");
   if (!batch.edits.length) return world;
@@ -116,6 +120,7 @@ function applyBatch(world: World, batch: EditBatch, scope: ReadonlyMap<Id, PlanO
       delete nodes[edit.id];
     }
   }
+  if (JSON.stringify(nodes) === JSON.stringify(world.nodes)) return world;
   const candidate = { ...world, revision: world.revision + 1, nodes };
   validateWorld(candidate);
   return candidate;
@@ -218,7 +223,7 @@ export function openSession(
       if (!sameGeometry(node.geometry as EditableGeometry, geometry))
         edits.push({ op: "geometry", id, geometry });
     }
-    const batch = {
+    const batch: EditBatch = {
       project: world.id,
       building,
       session,

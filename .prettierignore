@@ -14,3 +14,4 @@ protocol/
 *.min.js
 *.tsbuildinfo
 package-lock.json
+rooms/gaia-room/ui/

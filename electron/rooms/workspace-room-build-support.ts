@@ -115,7 +115,9 @@ function resolveCompiledOutputRelativePath(relativePath: string): string {
 export async function collectWorkspaceRoomSourceBuildState(
   sourceDir: string
 ): Promise<WorkspaceRoomSourceBuildState> {
-  const sourceFiles = await collectFilesRecursive(sourceDir);
+  const sourceFiles = (await collectFilesRecursive(sourceDir)).filter(
+    (file) => !file.relativePath.startsWith("scripts/") && !isTypeDeclarationPath(file.relativePath)
+  );
   const latestSourceMtimeMs =
     sourceFiles.length === 0
       ? 0
@@ -130,13 +132,11 @@ export async function collectWorkspaceRoomSourceBuildState(
 
   const outputRelativePaths = Array.from(
     new Set(
-      sourceFiles
-        .filter((file) => isTypeDeclarationPath(file.relativePath) === false)
-        .map((file) =>
-          isWorkspaceTypeScriptSourcePath(file.relativePath)
-            ? resolveCompiledOutputRelativePath(file.relativePath)
-            : file.relativePath
-        )
+      sourceFiles.map((file) =>
+        isWorkspaceTypeScriptSourcePath(file.relativePath)
+          ? resolveCompiledOutputRelativePath(file.relativePath)
+          : file.relativePath
+      )
     )
   ).sort((left, right) => left.localeCompare(right));
 

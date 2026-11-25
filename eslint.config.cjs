@@ -519,12 +519,20 @@ module.exports = tseslint.config(
     },
   },
 
+  {
+    files: ["rooms/gaia-room/scripts/**/*.ts"],
+    extends: [...tseslint.configs.recommended],
+  },
+
   // === Room TypeScript Files ===
   {
     files: [
       "rooms/**/ui/**/*.ts",
       "rooms/**/shared/ui/**/*.ts",
       "rooms/**/host/**/*.ts",
+      "rooms/gaia-room/scripts/storage/**/*.ts",
+      "rooms/gaia-room/scripts/editor/client.ts",
+      "rooms/gaia-room/scripts/spatial/project.ts",
       "rooms/laboratory/services/forensic-signature-mapper.ts",
       "rooms/laboratory/services/report-builder.ts",
       "rooms/**/shared/host/**/*.ts",

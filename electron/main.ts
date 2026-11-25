@@ -434,7 +434,7 @@ void app.whenReady().then(async () => {
     setupAgentProfileHandlers();
     setupAi0RuntimeHandlers();
     setupLlmServerHandlers();
-    setupRoomHandlers(null);
+    setupRoomHandlers(() => mainWindow);
     setupRoomToolHandlers();
     setupSceneThemeHandlers();
     setupBackupHandlers();

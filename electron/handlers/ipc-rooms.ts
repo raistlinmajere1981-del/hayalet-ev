@@ -1,8 +1,14 @@
 import type { BrowserWindow } from "electron";
+import { executeRoomStorage } from "../rooms/storage-commands.ts";
 import { registerHandler } from "./ipc-helpers.ts";
 import { getRoomPackageManager } from "../room-package-manager.ts";
 
-export function setupRoomHandlers(_mainWindow: BrowserWindow | null): void {
+export function setupRoomHandlers(getWindow: () => BrowserWindow | null): void {
+  registerHandler(
+    "room-storage-command",
+    async (event, command: string, request: unknown) =>
+      await executeRoomStorage(getWindow, event, command, request)
+  );
   registerHandler("rooms-list-workspace", async () => {
     const roomPackageManager = getRoomPackageManager();
     return {

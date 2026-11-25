@@ -21,43 +21,46 @@
     undoHistoryStore,
   } from "$lib/stores/project";
   import { readProject } from "$lib/utils/projectValidation";
-  import { createFixture } from "../spatial/fixture.ts";
+  import en from "../../i18n/en.json";
+  import { UnconfirmedCommand, type Opened, type WorkshopStorage } from "./client.ts";
   import { nodeAt } from "../spatial/world.ts";
   import { openSession, type EditBatch } from "./session.ts";
+  import { untrack } from "svelte";
 
-  const building = "glass";
-  const model = createFixture();
+  let {
+    initial,
+    storage,
+    labels = en.workshop,
+    onleave,
+  }: {
+    initial: Opened;
+    storage: WorkshopStorage;
+    labels?: typeof en.workshop;
+    onleave?: () => void;
+  } = $props();
+  const opened = untrack(() => initial);
+  const building = opened.building;
   const acceptance = import.meta.env.MODE === "acceptance";
-  if (acceptance && new URLSearchParams(location.search).get("fixture") === "two-floors") {
-    model.nodes["upper"] = {
-      kind: "floor",
-      name: "Fide katı",
-      parent: building,
-      level: 1,
-      p: [0.5, -1, 3],
-      yaw: 25,
-    };
-  }
-
-  let world = $state.raw(model);
-  let session = openSession(model, building);
+  let world = $state.raw(opened.world);
+  let session = $state.raw(openSession(opened.world, building));
+  let trustedSession = opened.session;
+  let cleanFloors: string | undefined;
+  let missing = $state(opened.missing);
+  let pending: EditBatch | undefined;
   let lastBatch: EditBatch | undefined;
   let epoch = $state(0);
   let gesturing = $state(false);
   let saving = $state(false);
-  let message = $state("Edit a straight wall or a table, then save to Gaia.");
+  let message = $state("");
   let failure = $state(false);
   let readOnly = $derived(session.readOnly.map((id) => nodeAt(world, id).name));
-  const unsupported =
-    "Curved walls, detected room edits, openings, groups, other catalog items and floor moves are disabled in this editor.";
-
   function report(text: string, error = false) {
     message = text;
     failure = error;
   }
 
   function explainBlocked(feature: string) {
-    report(`${feature} unavailable in this editor.`, true);
+    report(`${feature} ${labels.blocked}`, true);
   }
 
   setEditingPolicy((before, after, intent) => {
@@ -70,11 +73,13 @@
       return false;
     }
   });
-  loadProject(readProject(session.plan));
+  loadProject(readProject(untrack(() => session.plan)));
 
-  function save() {
+  cleanFloors = JSON.stringify(get(currentProject)?.floors);
+
+  async function save() {
     if (gesturing || saving) {
-      report("Finish the current gesture before saving.", true);
+      report(labels.gesture, true);
       return;
     }
     const draft = get(currentProject);
@@ -82,17 +87,38 @@
     saving = true;
     try {
       const { candidate, batch, next } = session.prepareSave(draft, world, readProject);
+      if (pending && JSON.stringify(pending.edits) !== JSON.stringify(batch.edits)) {
+        report(labels.changedAfterTimeout, true);
+        return;
+      }
       if (!batch.edits.length) {
-        report(`No changes to save. Gaia revision ${world.revision}.`);
+        report(`${labels.same} ${world.revision}.`);
         return;
       }
       const projection = readProject(next.plan);
-      world = candidate;
+      batch.session = trustedSession;
+      const retry = pending !== undefined;
+      if (pending) batch.operationId = pending.operationId;
+      pending = batch;
+      let saved;
+      try {
+        saved = await storage.save(batch, retry);
+      } catch (error) {
+        if (error instanceof UnconfirmedCommand) throw new Error(labels.retry);
+        pending = undefined;
+        throw error;
+      }
+      if (JSON.stringify(saved.world) !== JSON.stringify(candidate))
+        throw new Error("Saved projection mismatch");
+      pending = undefined;
+      world = saved.world;
+      missing = saved.missing;
       lastBatch = batch;
       session = next;
       loadProject(projection);
+      cleanFloors = JSON.stringify(get(currentProject)?.floors);
       epoch++;
-      report(`Saved to Gaia revision ${world.revision}.`);
+      report(`${labels.saved} ${world.revision}.`);
     } catch (error) {
       report(error instanceof Error ? error.message : String(error), true);
     } finally {
@@ -100,15 +126,35 @@
     }
   }
 
-  function reopen() {
+  async function reopen() {
     const draft = get(currentProject);
     if (!draft || gesturing || saving) return;
-    const edited = JSON.stringify(draft.floors) !== JSON.stringify(session.plan.floors);
-    if (edited && !confirm("Discard the current draft and reopen the saved Gaia model?")) return;
-    session = openSession(world, building, draft.activeFloorId);
-    loadProject(readProject(session.plan));
-    epoch++;
-    report(`Reopened Gaia revision ${world.revision}.`);
+    const edited = JSON.stringify(draft.floors) !== cleanFloors;
+    if (edited && !confirm(labels.discard)) return;
+    saving = true;
+    try {
+      const saved = await storage.reopen();
+      session = openSession(saved.world, saved.building, draft.activeFloorId);
+      world = saved.world;
+      trustedSession = saved.session;
+      missing = saved.missing;
+      pending = undefined;
+      loadProject(readProject(session.plan));
+      cleanFloors = JSON.stringify(get(currentProject)?.floors);
+      epoch++;
+      report(`${labels.reopened} ${world.revision}.`);
+    } catch (e) {
+      report(String(e), true);
+    } finally {
+      saving = false;
+    }
+  }
+
+  function leave() {
+    if (saving || gesturing) return;
+    if (JSON.stringify(get(currentProject)?.floors) !== cleanFloors && !confirm(labels.discard))
+      return;
+    onleave?.();
   }
 
   function activate(tool: "select" | "wall" | "furniture") {
@@ -121,6 +167,11 @@
 
   onMount(() => {
     function onSaveKey(event: KeyboardEvent) {
+      if (saving) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        return;
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -156,13 +207,14 @@
     class="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-slate-200 bg-white px-4 py-3"
   >
     <div>
-      <h1 class="text-lg font-semibold">Gaia Workshop</h1>
+      <h1 class="text-lg font-semibold">{labels.workshop}</h1>
       <p class="text-sm text-slate-600">
-        {$currentProject?.name} · Revision {world.revision} · In memory
+        {world.id} · {$currentProject?.name} · {labels.revision}
+        {world.revision}
       </p>
     </div>
     <label class="flex items-center gap-2 text-sm">
-      Floor
+      {labels.floor}
       <select
         class="rounded border border-slate-300 bg-white p-1.5"
         value={$currentProject?.activeFloorId}
@@ -174,31 +226,32 @@
         {/each}
       </select>
     </label>
-    <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Edit tools">
+    <div class="flex flex-wrap items-center gap-2" role="group" aria-label={labels.tools}>
       <button
         type="button"
         aria-pressed={$selectedTool === "select"}
-        onclick={() => activate("select")}>Select</button
+        onclick={() => activate("select")}>{labels.select}</button
       >
       <button type="button" aria-pressed={$selectedTool === "wall"} onclick={() => activate("wall")}
-        >Straight wall</button
+        >{labels.wall}</button
       >
       <button
         type="button"
         aria-pressed={$selectedTool === "furniture"}
-        onclick={() => activate("furniture")}>Table</button
+        onclick={() => activate("furniture")}>{labels.table}</button
       >
-      <button type="button" onclick={undo} disabled={gesturing || saving}>Undo</button>
-      <button type="button" onclick={redo} disabled={gesturing || saving}>Redo</button>
+      <button type="button" onclick={undo} disabled={gesturing || saving}>{labels.undo}</button>
+      <button type="button" onclick={redo} disabled={gesturing || saving}>{labels.redo}</button>
     </div>
     <div class="ml-auto flex gap-2">
-      <button type="button" onclick={reopen} disabled={gesturing || saving}
-        >Reopen saved model</button
-      >
-      <button type="button" class="save" onclick={save} disabled={saving}>Save to Gaia</button>
+      {#if onleave}<button type="button" onclick={leave} disabled={gesturing || saving}
+          >{labels.projects}</button
+        >{/if}
+      <button type="button" onclick={reopen} disabled={gesturing || saving}>{labels.reopen}</button>
+      <button type="button" class="save" onclick={save} disabled={saving}>{labels.save}</button>
     </div>
   </header>
-  <div class="flex min-h-0 flex-1">
+  <div class="flex min-h-0 flex-1" inert={saving}>
     {#key epoch}
       <FloorPlanCanvas
         restrictEdits
@@ -208,12 +261,14 @@
     {/key}
   </div>
   <footer class="border-t border-slate-200 bg-white px-4 py-2 text-sm">
-    <p role="status" class:failure>{message}</p>
+    <p role="status" class:failure>{saving ? labels.saving : message || labels.ready}</p>
+    {#if missing.length}<p>{labels.missing} · {missing.join(", ")}</p>{/if}
     <details class="mt-1 text-slate-600">
-      <summary>Edit scope</summary>
-      <p>{unsupported}</p>
+      <summary>{labels.scope}</summary>
+      <p>{labels.unsupported}</p>
+      <p>{labels.receiptLimit}</p>
       {#if readOnly.length}
-        <p>Read-only Gaia records on these floors: {readOnly.join(", ")}.</p>
+        <p>{labels.readonly} · {readOnly.join(", ")}.</p>
       {/if}
     </details>
   </footer>

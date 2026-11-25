@@ -3,7 +3,7 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   testMatch: "*.browser.spec.mjs",
-  outputDir: "../../.build/gaia-room/test-results",
+  outputDir: "../../../.build/gaia-room/test-results",
   workers: 1,
   reporter: "list",
   use: {

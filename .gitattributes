@@ -11,4 +11,7 @@
 *.sqlite binary
 
 # Unified diff context lines require a leading space even when empty.
-rooms/.gaia-room/editor/openplan3d.patch whitespace=-blank-at-eol
+rooms/gaia-room/scripts/editor/openplan3d.patch whitespace=-blank-at-eol
+
+# Generated Vite editor bundles retain compiler-emitted whitespace.
+rooms/gaia-room/ui/assets/*.min.js whitespace=-blank-at-eol

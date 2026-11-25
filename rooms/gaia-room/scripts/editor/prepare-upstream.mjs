@@ -15,7 +15,7 @@ import { resolve } from "node:path";
 import { fileURLToPath, URL } from "node:url";
 
 const roomEditor = fileURLToPath(new URL(".", import.meta.url));
-const output = resolve(roomEditor, "../../.build/gaia-room");
+const output = resolve(roomEditor, "../../../.build/gaia-room");
 const upstream = resolve(output, "openplan3d");
 const patch = resolve(roomEditor, "openplan3d.patch");
 const commit = "771c9e1ad30bd1c3cc7584d6eca74deb2e14943d";

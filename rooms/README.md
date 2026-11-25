@@ -40,10 +40,9 @@ The repository ships first-party rooms both as product features and as examples 
 | `repair-room`  | Implemented            | Electronics repair sessions, evidence/knowledge packs, board/camera workbench, measurements, timeline/overlays, AI and hands-free interaction. | [Repair Room](../REPAIRROOM.md)                                        |
 | `game-room`    | Implemented / evolving | Tavla and four-seat Team Tetris with AI/US1 participation and room transport.                                                                  | [Backgammon](../BACKGAMMON.md), [Team Tetris](../TEAM-TETRIS.md)       |
 | `pattern-room` | Prototype / evolving   | Layered research workspace with sources, evidence, relationships, Case Review, persistence and reporting.                                      | [Pattern Room](../PATTERNROOM.md)                                      |
+| `gaia-room`    | First acceptance       | Local spatial projects and a 2D modeling workshop with revision-checked storage.                                                               | [Gaia Room](../GAIA.md)                                                |
 
 Status labels describe the current repository surface, not a compatibility or long-term support guarantee.
-
-Planned room (not implemented or packaged yet): [Gaia Room](../GAIA.md), a local-first physical-space modeling, observation and management workspace. It must remain independent of other rooms.
 
 ## Room Notes
 

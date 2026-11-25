@@ -11,8 +11,9 @@
     "allowImportingTsExtensions": true,
     "types": ["vite/client"],
     "paths": {
-      "$lib/*": ["../../.build/gaia-room/openplan3d/src/lib/*"]
-    }
+      "$lib/*": ["../../../.build/gaia-room/openplan3d/src/lib/*"]
+    },
+    "resolveJsonModule": true
   },
-  "include": ["Workshop.svelte", "host.d.ts"]
+  "include": ["Room.svelte", "Workshop.svelte", "host.d.ts"]
 }

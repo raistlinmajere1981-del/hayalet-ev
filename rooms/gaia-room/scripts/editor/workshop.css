@@ -1,0 +1,67 @@
+@import "tailwindcss" source(none);
+@source "./Workshop.svelte";
+@source "../../../.build/gaia-room/openplan3d/src/lib/components/editor/FloorPlanCanvas.svelte";
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--gaia-bg-surface, #f8fafc);
+  color: var(--gaia-text-primary, #17232b);
+  font-family: system-ui, sans-serif;
+}
+#app header,
+#app footer,
+.projects,
+#app header select,
+#app header button:not(.save):not([aria-pressed="true"]) {
+  background: var(--gaia-bg-surface, #fff);
+  color: var(--gaia-text-primary, #17232b);
+}
+#app header p,
+#app footer details {
+  color: inherit;
+}
+#app header h1,
+.projects h1 {
+  color: var(--gaia-color-accent, #115e59);
+}
+.projects {
+  max-width: 38rem;
+  margin: auto;
+  padding: clamp(1.2rem, 5vw, 4rem);
+}
+.projects h1 {
+  font-size: 2rem;
+  font-weight: 650;
+  margin: 0 0 1.5rem;
+}
+.projects label,
+.projects small {
+  display: block;
+  margin: 1rem 0 0.4rem;
+}
+.projects input,
+.projects select,
+.projects button {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--gaia-border-default, #98a6b3);
+  border-radius: 0.4rem;
+}
+.projects input,
+.projects select {
+  display: block;
+  margin-top: 0.4rem;
+  width: 100%;
+}
+.projects button {
+  margin: 0.45rem 0.5rem 0.45rem 0;
+  cursor: pointer;
+}
+.projects button:disabled {
+  opacity: 0.5;
+}

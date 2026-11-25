@@ -1,8 +1,8 @@
 # Gaia Room
 
-> **Durum** — 02-A/1 ilk kabul kapısı geçildi. Sıradaki 02-A/2 oda ve kalıcı kayıt entegrasyonu. Teknoloji seçimi koşullu. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
+> **Durum** — 02-A/1 ve 02-A/2 kabul edildi. Sıradaki 02-A/3 ortak arazi planı ve bağımsız Genel Görünüm. Teknoloji seçimi koşullu. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
 
-Referans uygulama commit'i: `d0e47947` (Hayalet Ev 5.4.0). Bu belge Gaia için mimari karar, proje hafızası, araştırma özeti, açık konular ve geliştirme planının tek başlangıç kaynağıdır. Modelleme Atölyesi'nin ilk editör deneyi yerel ve bağımsız çalışır.
+Referans uygulama commit'i: `d0e47947` (Hayalet Ev 5.4.0). Bu belge Gaia için mimari karar, proje hafızası, araştırma özeti, açık konular ve geliştirme planının tek başlangıç kaynağıdır. Modelleme Atölyesi Hayalet Ev içinde yerel projeleri açar ve kaydeder.
 
 ## 1. Vizyon ve kapsam
 
@@ -135,7 +135,7 @@ LAN protokolü, eşleme/kimlik doğrulama ve iletişim güvenliği Client deneyi
 | 01-B/B2/B3 | Tamamlandı (koşullu seçim)          | Açık kaynak/UI araştırması ve yerel fizibilite; eksikler 02-A kabul koşulu                  |
 | 01-C       | Tamamlandı                          | Kanonik şema, koordinat/kimlik/ilişki kuralları, editör/viewer kontratları ve fixture       |
 | 01-D       | Tamamlandı (P0 kontratları işlendi) | Bağımsız mimari audit, agent dağılımı ve ilk uygulama planı                                 |
-| 02-A       | 02-A/1 kabul; 02-A/2 sıradaki       | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
+| 02-A       | 02-A/2 kabul; 02-A/3 sıradaki       | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
 | 02-B       | Bekliyor                            | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
 | 02-C       | Bekliyor                            | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
 | 02-D       | Bekliyor                            | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
@@ -157,11 +157,11 @@ LAN protokolü, eşleme/kimlik doğrulama ve iletişim güvenliği Client deneyi
 
 ### 02-A/1 — İlk çalışan editör veri turu
 
-Kaynak `rooms/.gaia-room` altında. Gizli workspace dizini deneyi manifest gerektiren oda keşfinin dışında tutuyor. Üretim derlemesi `rooms/.build/gaia-room/runtime`, Chromium kabul derlemesi `rooms/.build/gaia-room/acceptance-runtime` altında üretilir. Tek yapı ve kat içeren sentetik model her sayfa yüklemesinde revizyon 7 ile başlar. **Save to Gaia** bellekteki modeli yayımlar, **Reopen saved model** aynı modelden projeksiyonu baştan kurar.
+02-A/1 gizli bir workspace dizininde, bellekte yayımlanan sentetik modelle doğrulandı. Aynı editörün geliştirici girişi artık `rooms/gaia-room/scripts/editor` altında. Bağımsız sunucuda **Open temporary example workshop** ile geçici örnek açılır. Üretim odasının proje seçimi aşağıda açıklanmıştır.
 
 ```bash
-npm --prefix rooms/.gaia-room/editor ci --ignore-scripts
-npm --prefix rooms/.gaia-room/editor run dev
+npm --prefix rooms/gaia-room/scripts/editor ci --ignore-scripts
+npm --prefix rooms/gaia-room/scripts/editor run dev
 ```
 
 Editör [127.0.0.1:4177](http://127.0.0.1:4177/) adresinde açılır. İlk hazırlık sabit OpenPlan3D commit'ini GitHub'dan sığ ve seyrek bir checkout ile alır. Sonraki açılışlar hazır checkout'u ve kilitli npm bağımlılıklarını kullanır.
@@ -179,21 +179,41 @@ Editör [127.0.0.1:4177](http://127.0.0.1:4177/) adresinde açılır. İlk hazı
 
 Son Chromium koşumunda yeni duvar `ccc2b7c2-36a7-4c10-afe0-00d0ed5a563a` kimliğini aldı ve ortak uç düzenlemesinde aynı kimlikle kaldı. Masa genişliği `1.50099693046586` m olarak kaydedildi ve yeniden açılışta korundu. Ayrı deneyde oluşturulan `54ce3bed-5fe5-4d0f-ac4a-8fe0773675d8` masası bir sonraki Gaia kaydında aynı kimlikle silindi.
 
-Upstream [`771c9e1a` patch'i](rooms/.gaia-room/editor/openplan3d.patch) dört dosyaya dokunuyor. Yama tuval ve bağlam menüsündeki izinleri, yazım öncesi store kontrolünü ve jest/undo sınırlarını kapsıyor. Yerel giriş kayıt komutunu Gaia oturumuna veriyor. Undo snapshot'larını OpenPlan3D tutuyor. Başlıca bakım riski bir upstream güncellemesinin kısayol, gesture veya store'a yeni yazım yolları eklemesi. Commit değişiminde patch'in yeniden uygulanması ve gerçek UI izin testlerinin tekrar çalışması gerekiyor. Üretim derlemesinde ana JS yaklaşık 510,6 kB, gzip ile 154,3 kB. Vite varsayılan 500 kB parça eşiğini raporladı.
+Upstream [`771c9e1a` patch'i](rooms/gaia-room/scripts/editor/openplan3d.patch) dört dosyaya dokunuyor. Yama tuval ve bağlam menüsündeki izinleri, yazım öncesi store kontrolünü ve jest/undo sınırlarını kapsıyor. Yerel giriş kayıt komutunu Gaia oturumuna veriyor. Undo snapshot'larını OpenPlan3D tutuyor. Başlıca bakım riski bir upstream güncellemesinin kısayol, gesture veya store'a yeni yazım yolları eklemesi. Commit değişiminde patch'in yeniden uygulanması ve gerçek UI izin testlerinin tekrar çalışması gerekiyor. Üretim derlemesinde ana JS yaklaşık 510,6 kB, gzip ile 154,3 kB. Vite varsayılan 500 kB parça eşiğini raporladı.
 
 Vite ve Svelte derlemesi upstream ana kabuğunu, Firebase'i, analytics'i, agent bridge'i ve IndexedDB datastore'u yüklemiyor. Üretim çıktısı kaynak içi 2D çizimleri taşıyor. Model, fotoğraf dokusu ve font katalogları dışarıda. [Üçüncü taraf bildirimleri](THIRD_PARTY_NOTICES.md#gaia-02-a1-yerel-openplan3d-editörü)
 
 ```bash
-npm run rooms:test:file -- rooms/.gaia-room/tests/round-trip.test.ts
-npm --prefix rooms/.gaia-room/editor exec -- playwright install chromium --only-shell
-npm --prefix rooms/.gaia-room/editor run test:ui
-npm --prefix rooms/.gaia-room/editor run check
-./node_modules/.bin/tsc --noEmit -p rooms/.gaia-room/tsconfig.json
+npm run rooms:test:file -- rooms/gaia-room/scripts/tests/round-trip.test.ts
+npm --prefix rooms/gaia-room/scripts/editor exec -- playwright install chromium --only-shell
+npm --prefix rooms/gaia-room/scripts/editor run test:ui
+npm --prefix rooms/gaia-room/scripts/editor run check
+./node_modules/.bin/tsc --noEmit -p rooms/gaia-room/scripts/tsconfig.json
 ```
 
 Dört Chromium UI ve dört veri testi geçti. Electron 43.3.0’da üretim derlemesinde fareyle masa eklendi, Ctrl+S ile kaydedildi ve aynı Gaia modelinden yeniden açıldı. Strict TypeScript, Svelte ve hedefli lint/format kontrolleri geçti.
 
-02-A/1 kabul edildi. Bağımsız incelemede dört round-trip veri testi tekrar geçti; UI ve Electron sonuçları uygulama agent'ının kayıtlı deneylerine dayanır. 02-A/2'de bu parti ilk oda komutuna ve güvenilen tek yazıcıya bağlanacak. Çevrimdışı kurulu oda, disk hataları ve kayıp onay testleri, kalibre arka plan, genel görünüm ve yaşam döngüsü sonraki paketlerde açık.
+### 02-A/2 — Oda ve güvenilen kayıt
+
+**Açılış.** Hayalet Ev’in klasik yan menüsünde **Gaia Room**’u açın. Yeni kurulumda görünmüyorsa **Oda Yönetimi → gaia-room → Yükle** yolunu kullanıp uygulamayı yeniden başlatın. Küçük Latin harfleri, rakam ve kısa çizgiyle bir proje kimliği girip **Proje oluştur**’u seçin. İlk model tahmini 10 × 10 m arazi, bir yapı ve boş zemin katıyla açılır. **Deney projesi oluştur** ayrı bir seçimdir. Modelleme Atölyesi’nde masa veya düz duvar ekleyip **Gaia’ya kaydet**’i seçin. Uygulamayı yeniden başlatınca **Kayıtlı projeler → Projeyi aç** aynı projeyi yükler.
+
+**Sınırlar.** Manifest, host, protokol ve TR/EN katalogları odadadır. Atölye, uygulamanın dilini ve tema renklerini oda bağlamından alır. Tek düzenlenebilir Svelte kaynağından üretilen `ui/` ve lisansları çevrimdışı oda paketinin girdisidir. Standart builder `scripts/` altındaki geliştirici kaynaklarını pakete almaz. Son oda runtime’ı `rooms/.build/gaia-room/runtime` altında oluşur. Editörü değiştirdikten sonra `npm --prefix rooms/gaia-room/scripts/editor run build` ile paket girdisini yenileyin.
+
+**Yazıcı.** GaiaProjects, GaiaCreate, GaiaOpen ve GaiaSave komutları mevcut SlotBridge oda yolundan geçer. Preload istek içeriğini çağıran webview’de tutar. Electron main, üst pencereyi, ana frame’i, oda partition’ını, kurulu runtime girişini ve manifest komut kapsamını denetler. Güvenilen Gaia sağlayıcısı uygulama derlemesine bağlanır. Yeni bir .hevroom kurulumu main sürecine kod yükleyemez. Main storage kökünü çözer. Oda sağlayıcısı açık atölyeyi, taban revizyonunu, düzenlenebilir Gaia kimliklerini, işlem türlerini, alanları ve ilişkileri doğrular.
+
+**Kalıcılık.** `data/room-storage/gaia-room/projects/<id>/world.json` dünya ile son başarılı işlemin kimliğini, SHA-256 istek özetini ve sonuç revizyonunu birlikte taşır. PNG baytları proje altındaki `assets/` dizininde ayrı saklanır. Eksik PNG adı gösterilir ve dünya açılır. Okunamayan proje hata verir. Yazıcı proje başına sıralar, masaüstü süreçleri arasında işletim sistemine ait adlandırılmış bir kilit kullanır, geçici dosyayı tamamlar ve aynı dizinde rename ile yayımlar. Bu güvence süreç kesintisini kapsar. Güç kaybı dayanıklılığı ölçülmedi. Yayın öncesi kesinti geçici dosya veya referanssız PNG bırakabilir. Deney projesini yeniden oluşturma aynı PNG baytlarını güvenle kullanır.
+
+**Onay kaybı.** Taslak ve undo geçmişi onay gelene kadar korunur. Aynı düzenlemeyle Kaydet’e tekrar basmak aynı işlem kimliğini kullanır. Son başarılı farklı kayıt önceki işlemin teyit penceresini kapatır. Eski istek belirsiz sonuçla döner. Kullanıcı güncel revizyonu açıkça yeniden açar. Otomatik birleştirme yoktur.
+
+**Doğrulama.** 12 Gaia veri/kayıt testi ve 27 oda altyapısı regresyonu geçti. Saf adaptör, domain ve gerçek dosya testlerine eşzamanlı kayıt, işlem tekrarı ve çakışması, eski onay, disk hatası, rename öncesi çocuk süreç kesintisi, eksik PNG, bozuk JSON, yetkisiz kapsam ve symlink senaryoları dahildir. Chromium’da önceki dört editör senaryosu ve kayıt kilidi/onay kaybı testi geçti. Linux Electron smoke testi boş profilde yalnız Gaia paketini kurdu, oda ağını engelledi, gerçek tuvalde masa ekledi ve uygulamayı ikinci süreçte açtı. Dünya, masa kimliği, geometri ve ilişkiler eşleşti. Başka oda partition’ından gelen erişim reddedildi. Windows koşumu ve kullanıcı görseli içe aktarma bu kabulde doğrulanmadı.
+
+```bash
+npm run rooms:test:file -- rooms/gaia-room/scripts/tests/*.test.ts
+npm --prefix rooms/gaia-room/scripts/editor run test:ui
+npm --prefix rooms/gaia-room/scripts/editor run check
+npm run build && npm run electron:build
+TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/tests/gaia-room.electron-smoke.mjs
+```
 
 ## 9. Geliştirme ve kalite kuralları
 
@@ -219,7 +239,7 @@ Yeni proje başlangıcı için kabul edilen 17 kural bu mevcut monorepo'ya uyarl
 
 ### Kapsam havuzu
 
-- Şimdi: 02-A/2 oda ve kalıcı kayıt, ardından diğer 02-A paketleri; modelleme, bağımsız veri, hazır editör ve viewer. Sonraki milestone'lar kendi kapsamıyla açılır.
+- Şimdi: 02-A/3 ortak arazi planı ve bağımsız viewer, ardından 02-A/4; modelleme, bağımsız veri, hazır editör ve viewer. Sonraki milestone'lar kendi kapsamıyla açılır.
 - Sonra: gelişmiş hayvan/kamera analizi, toprak nemi haritası, güneş enerjisi/invertör, sulama optimizasyonu, hazır protokol adaptörleri, görsel atmosfer.
 - Deneysel: Android mesh/repeater, bataryasız ve ekransız anakartlar, fiziksel kamera/mikrofon taşıma, manyetik/RF haritası, otomatik mekânsal çıkarım, dağıtık görüntü işleme. Başarısızlık ana projeyi bloke etmez.
 
@@ -231,6 +251,6 @@ Adayların ana depo lisansı uygun olsa bile transitif paketler, model/doku/font
 
 ## 11. Açık konular / sonraki session
 
-02-A/1 editör veri turunun ilk kabul kapısı geçildi; sıradaki 02-A/2. P1 kabul senaryoları ve P2 erteleme kararları mimari belgede. 02-A/2 açılabilir; 02-A/3 ve /4 kendi kabul sırasını korur. Teknoloji seçimi koşullu, performans hedefi henüz ölçülmedi. Çok yapılı hiyerarşi ve gerçek hat geometrisi, ayrı viewer, gerçek kalibrasyon, çevrimdışı varlık envanteri, görünürlük/dispose, Android/Router ve yerel model ölçümleri açık. Yerel LLM'nin modeli ve gerçek offline davranışı doğrulanmadı. Son full check referansındaki iki atlanan test ve 282 Fate Knots CSS borcu Gaia işi değildir.
+02-A/2 oda ve kayıt teslimi kabul edildi. Bağımsız kaynak incelemesinde 12 Gaia veri/kayıt testi yeniden geçti; Chromium, oda regresyonu ve Electron deneyleri uygulama agent'ının kayıtlı sonuçlarına dayanır. P1 kabul senaryoları ve P2 erteleme kararları mimari belgede. 02-A/3 açılabilir; 02-A/4 kabul sırasını korur. Core IPC ve build sınırı değiştiğinden 02-A/4 kapanışında geniş kalite zinciri çalıştırılmalı. Teknoloji seçimi koşullu, performans hedefi henüz ölçülmedi. Çok yapılı hiyerarşi ve gerçek hat geometrisi, ayrı viewer, gerçek kalibrasyon, çevrimdışı varlık envanteri, görünürlük/dispose, Android/Router ve yerel model ölçümleri açık. Yerel LLM'nin modeli ve gerçek offline davranışı doğrulanmadı. Son full check referansındaki iki atlanan test ve 282 Fate Knots CSS borcu Gaia işi değildir.
 
-İlk editör deneyi yerel bağımlılıklarıyla çalışır. Oda komutu, manifest ve kalıcı oda deposu 02-A/2 kapsamında değerlendirilir.
+Kalibrasyon, bağımsız Genel Görünüm ve kapsamlı arazi düzenleme ayrı teslimlerdir.

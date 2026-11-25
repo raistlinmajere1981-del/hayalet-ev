@@ -2,6 +2,20 @@
 const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 const ROOM_HOST_MESSAGE_CHANNEL = "room-host-message";
+const storageRequests = new Map();
+
+function requestStorageCommand(command, request) {
+  const requestId = globalThis.crypto.randomUUID();
+  return new Promise((resolve, reject) => {
+    const timer = globalThis.setTimeout(() => {
+      storageRequests.delete(requestId);
+      reject(new Error("Room command acknowledgement timed out"));
+    }, 15000);
+    storageRequests.set(requestId, { command, request, resolve, reject, timer });
+    emitToHost("room-command", { command, payload: { requestId } });
+  });
+}
+
 const hostMessageHandlers = new Set();
 const pendingHostEvents = [];
 let pendingHostFlushTimer = null;
@@ -79,6 +93,18 @@ function addHostMessageHandler(callback) {
 }
 
 ipcRenderer.on(ROOM_HOST_MESSAGE_CHANNEL, (_event, payload) => {
+  if (payload?.type === "room-storage-dispatch") {
+    const { requestId, command } = payload.payload ?? {};
+    const pending = storageRequests.get(requestId);
+    if (!pending || pending.command !== command) return;
+    storageRequests.delete(requestId);
+    // The request stays in the initiating guest so main can authenticate its actual sender.
+    ipcRenderer
+      .invoke("room-storage-command", command, pending.request)
+      .then(pending.resolve, pending.reject)
+      .finally(() => globalThis.clearTimeout(pending.timer));
+    return;
+  }
   for (const handler of hostMessageHandlers) {
     try {
       handler(payload);
@@ -111,6 +137,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 });
 
 contextBridge.exposeInMainWorld("roomAPI", {
+  requestStorageCommand,
   ready: (payload = {}) => {
     explicitRoomReadySent = true;
     clearPendingAutoRoomReady();

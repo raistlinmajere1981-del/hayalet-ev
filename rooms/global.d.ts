@@ -1,6 +1,10 @@
 interface RoomApiBridge {
   ready?: (payload: Record<string, unknown>) => void;
   onHostMessage?: (handler: (message: Record<string, unknown>) => void) => void;
+  requestStorageCommand?: (
+    command: string,
+    request: unknown
+  ) => Promise<{ success: boolean; data?: unknown; error?: string }>;
   sendCommand?: (command: string, payload?: Record<string, unknown>) => boolean;
   sendEvent?: (type: string, payload?: Record<string, unknown>) => boolean;
   close?: () => boolean;

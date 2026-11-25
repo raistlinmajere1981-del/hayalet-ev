@@ -1,7 +1,7 @@
 {
-  "extends": "../tsconfig.rooms.json",
+  "extends": "../../tsconfig.rooms.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "../.build/gaia-room/spatial.tsbuildinfo"
+    "tsBuildInfoFile": "../../.build/gaia-room/spatial.tsbuildinfo"
   },
   "include": [
     "spatial/**/*.ts",

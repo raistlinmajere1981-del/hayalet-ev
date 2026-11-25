@@ -94,9 +94,9 @@ Upstream ncnn lisans kopyası:
 
 ## Gaia 02-A/1 yerel OpenPlan3D editörü
 
-- [OpenPlan3D kaynak kodu](https://github.com/laanlabs/openPlan3D/tree/771c9e1ad30bd1c3cc7584d6eca74deb2e14943d), sürüm 0.9.0, MIT, © 2026 theLodgeStudio. Sabit commit'ten derlenen 2D tuval, düzenleme store'u ve bağlam menüsü kullanılır. [Lisans kopyası](rooms/.gaia-room/editor/OPENPLAN3D-LICENSE) · [Patch](rooms/.gaia-room/editor/openplan3d.patch)
+- [OpenPlan3D kaynak kodu](https://github.com/laanlabs/openPlan3D/tree/771c9e1ad30bd1c3cc7584d6eca74deb2e14943d), sürüm 0.9.0, MIT, © 2026 theLodgeStudio. Sabit commit'ten derlenen 2D tuval, düzenleme store'u ve bağlam menüsü kullanılır. [Lisans kopyası](rooms/gaia-room/scripts/editor/OPENPLAN3D-LICENSE) · [Patch](rooms/gaia-room/scripts/editor/openplan3d.patch)
 - Yerel paketin JavaScript çıktısında Svelte 5.57.0 ve esm-env 1.2.2 (MIT) bulunur. Tailwind CSS 4.1.18 (MIT) derlenmiş CSS üretir. Derleme `OPENPLAN3D-LICENSE`, `DEPENDENCY-LICENSES.md` ve `TAILWIND-LICENSE` dosyalarını çıktıya ekler.
-- OpenPlan3D'nin kaynak içindeki 2D çizimleri ve inline ikonları kullanılır. Harici 3D model, doku, font ve görsel kataloğu pakete girmez. Test tarayıcısı ve derleme geliştirici bağımlılıkları için sürümler ve paket kayıtları [oda kilit dosyasında](rooms/.gaia-room/editor/package-lock.json) yer alır.
+- OpenPlan3D'nin kaynak içindeki 2D çizimleri ve inline ikonları kullanılır. Harici 3D model, doku, font ve görsel kataloğu pakete girmez. Test tarayıcısı ve derleme geliştirici bağımlılıkları için sürümler ve paket kayıtları [oda kilit dosyasında](rooms/gaia-room/scripts/editor/package-lock.json) yer alır.
 
 ## Yeni üçüncü taraf materyal eklerken
 

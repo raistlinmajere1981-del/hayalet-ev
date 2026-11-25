@@ -43,7 +43,7 @@ async function draw(page, points) {
 }
 
 async function open(page, variant = "") {
-  await page.goto(`/${variant}`);
+  await page.goto(`/${variant || "?fixture=demo"}`);
   await expect(canvas(page)).toBeVisible();
   // Initial fit runs in the canvas draw scheduler after the first store projection.
   await expect.poll(async () => (await view(page)).camera.x).not.toEqual(0);
@@ -371,4 +371,67 @@ test("blocks curved walls, room deletion, openings, groups, catalog drops and cr
   await expect(status(page)).toContainText("Pasting from another floor");
   expect((await view(page)).draft).toEqual(changedFloor.draft);
   expect((await view(page)).world).toEqual(baseline.world);
+});
+
+test("room project save locks the editor, retains history on a lost acknowledgement and retries the same operation", async ({
+  page,
+}) => {
+  const { mkdtemp, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { projectCommand } = await import("../../storage/provider.ts");
+  const storageRoot = await mkdtemp(join(tmpdir(), "gaia-ui-"));
+  const context = { storageRoot, owner: {} };
+  const requests = [];
+  let release;
+  try {
+    await page.exposeFunction("deliverCommand", async (command, request) => {
+      const data = await projectCommand(context, command, request);
+      if (command === "GaiaSave") {
+        requests.push(request);
+        if (requests.length === 1) {
+          await new Promise((resolve) => {
+            release = resolve;
+          });
+          throw new Error("Acknowledgement lost");
+        }
+      }
+      return { success: true, data };
+    });
+    await page.addInitScript(() => {
+      globalThis.roomAPI = {
+        ready() {},
+        onHostMessage() {
+          return () => {};
+        },
+        requestStorageCommand: (...args) => globalThis.deliverCommand(...args),
+      };
+    });
+    await page.goto("/");
+    await expect(canvas(page)).toHaveCount(0);
+    await page.getByLabel("Project ID").fill("workshop");
+    await tool(page, "Create project").click();
+    await expect(canvas(page)).toBeVisible();
+    await tool(page, "Table").click();
+    await clickAt(page, [100, 100]);
+    const before = await view(page);
+    await tool(page, "Save to Gaia").click();
+    await expect.poll(() => requests.length).toBe(1);
+    await expect(status(page)).toContainText("Saving");
+    await expect(tool(page, "Undo")).toBeDisabled();
+    await page.keyboard.press("Control+z");
+    expect((await view(page)).draft).toEqual(before.draft);
+    release();
+    await expect(status(page)).toContainText("Save again");
+    expect((await view(page)).history).toEqual(before.history);
+    await tool(page, "Save to Gaia").click();
+    await expect(status(page)).toContainText("Saved to Gaia revision 1");
+    expect(requests[1]).toEqual({ ...requests[0], retry: true });
+    await tool(page, "Projects").click();
+    await tool(page, "Open project").click();
+    expect((await view(page)).world.revision).toBe(1);
+  } finally {
+    release?.();
+    await rm(storageRoot, { recursive: true, force: true });
+  }
 });
