@@ -1,0 +1,8 @@
+# Local SDK configuration, caches, build outputs and experimental telemetry
+/.gradle/
+/.kotlin/
+/local.properties
+/app/build/
+/build/
+/diagnostic_obs.jsonl
+__pycache__/

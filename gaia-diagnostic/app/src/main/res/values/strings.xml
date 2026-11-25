@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Gaia Diagnostic</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="status_idle">Service stopped. Press Start to begin.</string>
+    <string name="notif_channel_name">Gaia Diagnostic</string>
+    <string name="notif_channel_desc">Hardware observation foreground service</string>
+    <string name="notif_title">Gaia Diagnostic</string>
+    <string name="notif_text">Observing hardware…</string>
+</resources>

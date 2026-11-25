@@ -1,6 +1,6 @@
 # Gaia Room
 
-> **Durum** — 02-B/1 Linux kapsamında, 02-B/2 gerçek arazi kullanımıyla, 02-C günlük cihaz yönetimi Linux kapsamında kabul edildi. 02-D/1 durum yaşam döngüsü, 02-D/2 değişim eksenleri ve 02-D/3 bağımsız kapanış denetimi (tam kalite zinciri, çevrimdışı Electron/paket, görünür 3B performans ve 03 Client hazırlık incelemesi) tamamlandı; iki P1 düzeltmesi doğrulandı ve 02 milestone'u Linux kapsamında kabul edildi. 03-A Client donanım ve kontrat tasarımı başladı; ilk cihaz incelemesi ve USB iletişim fizibilitesi tamamlandı. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
+> **Durum** — 02-B/1 Linux kapsamında, 02-B/2 gerçek arazi kullanımıyla, 02-C günlük cihaz yönetimi Linux kapsamında kabul edildi. 02-D/1 durum yaşam döngüsü, 02-D/2 değişim eksenleri ve 02-D/3 bağımsız kapanış denetimi (tam kalite zinciri, çevrimdışı Electron/paket, görünür 3B performans ve 03 Client hazırlık incelemesi) tamamlandı; iki P1 düzeltmesi doğrulandı ve 02 milestone'u Linux kapsamında kabul edildi. 03-A/1 donanım incelemesi ve 03-A/2 rootsuz Android telemetri fizibilitesi kabul edildi; 03-A/3 güvenlik ve gözlem kontratı sıradaki. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
 
 Referans uygulama commit'i: `d0e47947` (Hayalet Ev 5.4.0). Bu belge Gaia için mimari karar, proje hafızası, araştırma özeti, açık konular ve geliştirme planının tek başlangıç kaynağıdır. Hayalet Ev’de Gaia projeleri Genel Görünüm’de açılır ve Modelleme Atölyesi’nde düzenlenir.
 
@@ -163,7 +163,7 @@ LAN protokolü, eşleme/kimlik doğrulama ve iletişim güvenliği Client deneyi
 | 02-B       | 02-B/1 ve 02-B/2 kabul              | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
 | 02-C       | Tamamlandı (Linux)                  | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
 | 02-D       | Tamamlandı (Linux)                  | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
-| 03         | 03-A/1 tamam; /2 sıradaki           | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
+| 03         | 03-A/1–2 kabul; /3 sıradaki         | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
 | 04         | Bekliyor                            | Router, saha ağı ve Companion yönetimi                                                      |
 | 05         | Bekliyor                            | Elektronik ve deterministik otomasyon; güvenli test düzeneği                                |
 | 06         | Bekliyor                            | Yerel AI0/AI1 entegrasyonu; doğrulanmış araçlar ve kaynak tüketimi                          |
@@ -481,6 +481,26 @@ Codex haftalık kotası kritik karar ve bağımsız güvenlik/mimari inceleme i�
 Hayalet Ev'in özgün kodu MIT kalır. MIT/BSD/ISC ve uygun Apache-2.0 bileşenleri öncelikli; telif, LICENSE ve NOTICE korunur. GPL/AGPL/LGPL/MPL gibi farklı yükümlülükleri olan projeler ancak koşulları ayrı değerlendirilerek fikir referansı veya uygun bağımsız entegrasyon olabilir; izinsiz kaynak aktarımı yapılmaz. Lisansı belirsiz veya dağıtımı yasak kod/varlık kullanılmaz.
 
 Adayların ana depo lisansı uygun olsa bile transitif paketler, model/doku/font, decoder, görsel, uydu verisi, firmware ve model ağırlıkları ayrı denetlenir. Kullanıcının içe aktardığı görsel dağıtım varlığı sayılmaz. Upstream kaynak ve sabit sürüm kaydedilir. `THIRD_PARTY_NOTICES.md` ve oda paketindeki notice dosyaları gerçek bağımlılık eklenince güncellenir. 02-A/1 yerel editörünün kaynak ve lisans envanteri bildirim dosyasına işlendi.
+
+### 03-A/2 — Android Client Donanım ve Çalışma Fizibilitesi
+
+Taban `2dd0bdf2`. Hedef cihaz SM-J701F (Android 9, API 28, armeabi-v7a). SM-J700F'ye dokunulmadı.
+
+**Bağımsız Gaia Diagnostic APK** oluşturuldu (`gaia-diagnostic/`): Companion'dan bağımsız, native lib/TTS/AI içermeyen, minSdk 28, saf Kotlin + AGP 9.2.1. Derleme komutu: `cd gaia-diagnostic && ./gradlew assembleDebug --no-daemon`.
+
+**Donanım keşfi (SM-J701F):** 2 donanım sensörü: STM K2HH ivmeölçer (5–100 Hz) ve Capella CM36672P yakınlık (on-change, wake-up). Jiroskop, manyetometre, barometre, ortam ışığı yok. İvmeölçer x≈−0,09 / y≈−0,47 / z≈9,68 m/s² (yerçekimi doğrulandı). Prox sabit 8,0 cm (nesne yok). Batarya: %82–85, paket sıcaklığı 19,8–20,0 °C, gerilim 4312 mV (USB şarjda). Ağ: test süresinde offline. Kamera/mikrofon donanım keşfi kod seviyesinde var, aktif kayıt kapsam dışı.
+
+**Yaşam döngüsü:** Foreground service (`isForeground=true`) Activity aracılığıyla başlatıldı; HOME ve POWER tuşlarından sonra 10s aralıklı tick'ler kesilmedi. `onDestroy`'da sensör unregister ve scope cancel doğrulandı. Süreç sonlandırma sonrası yeniden başlatma raporlandı; gerçek force-stop ve açık kullanıcı Stop ayrımı doğrulanmadı. Üretimde açık durdurma ve kaynak bırakma ayrı kabul koşulu.
+
+**Bağlantı deneyi:** `adb -s "$J701F_SERIAL" reverse tcp:7701 tcp:7701` + `test_receiver.py`. 5 gözlem başarıyla alındı, RTT 8–13 ms. Bağlantı kesince `ECONNREFUSED` ile graceful fallback; geri gelince otomatik toparlandı (her tick bağımsız TCP). **Saat sapması: J701F wall clock ≈2017 Ocak (sistem saati ≈9,9 yıl geri). Monotonik zaman yalnız aynı boot/oturum içinde karşılaştırılır; sensör örnek zamanı ve merkezi kabul zamanı ayrı tutulur. TLS saat önkoşulu ayrıca çözülür.** PSS ≈33 MB, RSS ≈78 MB, 25 thread. Wake lock alınmadı.
+
+**Yeniden kullanılabilir bileşenler:** `HardwareCollector.kt`, `SensorObserver.kt` uyarlama adaylarıdır. `DiagnosticService.kt` foreground service deney iskeleti; `TestConnector.kt` ve `test_receiver.py` yalnız deney aracı. Geçici test sunucusu ve reverse eşlemesi deney sonunda kapatıldı.
+
+**Açık (03-B/C için):** Wi-Fi RSSI gerçek ağda test edilmedi. Uzun süreli batarya/kararlılık ölçümü yapılmadı. LAN transport, heartbeat/timeout, kimlik doğrulama ve toplu telemetri tamponlaması üretim protokolüne aittir.
+
+**Bağımsız kabul (Nexa):** 5 ham gözlem yerelde doğrulandı; APK 12.461.499 bayt, cihazda kurulu; test servisi, reverse eşlemesi ve 7701 dinleyicisi kapanmış. Çevrimdışı assembleDebug tekrar koşumu geçti (37 görev up-to-date). Agent'ın kısa HOME/POWER, RTT ve bellek ölçümleri yeniden koşulmadı. USB şarjından bağımsız Doze/uzun süreli çalışma ve açık Stop kanıtlanmadı. Sonnet 4.6 Thinking temel Android fizibilite işinde kullanıldı. Ayrıntılı sınırlamalar ve kaynak denetimi `gaia-diagnostic/MEASUREMENT_REPORT.md` içinde. Sensör örnek tazeliği, yetenek/izinler, açık durdurma, bağlantı ACK ve socket cleanup üretim Client'ına geçmeden düzeltilir. Prototip ve ham ölçümler üretim veri otoritesi değildir; build/cache, APK, yerel SDK yolu ve JSONL ham kayıt Git dışında bırakıldı.
+
+03-A/3 yalnız kontrat tasarımı: bağımsız uygulama kimliği, yetkili fiziksel ingest, standart güvenli transport ve eşleme/iptal, saat sapması, yeniden bağlanma/heartbeat, sıra ve örnek tazeliği, bounded latest-state saklama. Önce güvenlik kontratı, sonra modüler uygulama. Root şu anda gerekmiyor; J701F ROM korunacak. Companion ve Router 04'e kadar bağımsız ve değişmeden kalır.
 
 ## 11. Açık konular / sonraki session
 
