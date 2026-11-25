@@ -315,7 +315,7 @@
 }
 .gaia-workspace .project-context {
   min-width: 0;
-  max-width: min(45vw, 36rem);
+  max-width: min(45vw, var(--gaia-project-context-max));
   flex: 0 1 auto;
 }
 .gaia-workspace .project-context strong.project-id {

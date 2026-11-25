@@ -400,4 +400,52 @@ test.describe("site fixture", () => {
         .evaluate((element) => element.scrollWidth <= element.clientWidth + 1)
     ).toBe(true);
   });
+
+  test("discarding a newly placed node clears the dangling selection when returning to overview", async ({
+    page,
+  }) => {
+    const { createSiteFixture } = await import("../../spatial/fixture.ts");
+    const world = createSiteFixture();
+    await page.addInitScript((world) => {
+      globalThis.roomAPI = {
+        ready() {},
+        onHostMessage(callback) {
+          callback({ type: "host-context", locale: "en" });
+          return () => {};
+        },
+        async requestStorageCommand(name) {
+          return {
+            success: true,
+            data:
+              name === "GaiaProjects"
+                ? { projects: [world.id] }
+                : name === "GaiaStatus"
+                  ? { statuses: {}, revision: world.revision }
+                  : { world, building: null, session: "discard-selection", missing: [] },
+          };
+        },
+      };
+    }, world);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Open project" }).click();
+    await page.getByRole("button", { name: "Modeling Workshop" }).click();
+    await page.getByRole("button", { name: "Place building" }).click();
+    const plan = page.getByRole("application", { name: "2D plan" });
+    const box = await plan.boundingBox();
+    await page.mouse.click(box.x + box.width * 0.6, box.y + box.height * 0.6);
+    const createdId = await page.locator("[data-selected-id]").getAttribute("data-selected-id");
+    expect(createdId).toBeTruthy();
+
+    await page.getByRole("button", { name: "Overview" }).click();
+    await page.getByRole("button", { name: "Discard changes" }).click();
+    await expect(page.locator(".object-heading")).not.toHaveAttribute(
+      "data-selected-id",
+      createdId
+    );
+    await expect(page.locator("[data-selected-id]")).toHaveCount(0);
+    await expect(page.locator('[data-count="total"]')).toHaveText("7");
+    await expect(
+      page.locator(".properties-panel").getByRole("button", { name: "Focus" })
+    ).toHaveCount(0);
+  });
 });

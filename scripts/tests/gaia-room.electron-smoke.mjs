@@ -421,6 +421,106 @@ async function exerciseDeviceStatus(session) {
   );
 }
 
+async function toggleDeviceCheckbox(session, names) {
+  const toggled = await session.js(`(() => {
+    const names = ${JSON.stringify(names)};
+    const label = [...document.querySelectorAll(".device-form label")].find((el) =>
+      names.includes(el.textContent.trim())
+    );
+    const box = label?.querySelector("input[type=checkbox]");
+    if (!box) return false;
+    box.click();
+    return true;
+  })()`);
+  assert.equal(toggled, true, `Missing device checkbox: ${names[0]}`);
+}
+
+async function exerciseDeviceLifecycle(session) {
+  const { js } = session;
+  const project = "device-audit";
+  const projectDoc = async () =>
+    JSON.parse(
+      await readFile(
+        join(root, "data/room-storage/gaia-room/projects", project, "world.json"),
+        "utf8"
+      )
+    );
+  await press(session, "Projects", "Projeler");
+  await session.js(`(() => {
+    const input = document.querySelector(".projects input");
+    input.value = ${JSON.stringify(project)};
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  await expect
+    .poll(() => js("document.querySelector('.projects button:last-child').disabled"))
+    .toBe(false);
+  await js("document.querySelector('.projects button:last-child').click()");
+  await expect
+    .poll(() => js("document.querySelector('[data-count=total]')?.textContent"))
+    .toBe("7");
+
+  await press(session, "Add device", "Cihaz ekle");
+  await session.js(`(() => {
+    const input = document.querySelector(".device-form input");
+    input.value = "Audit sensor";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  await toggleDeviceCheckbox(session, ["Temperature", "Sıcaklık"]);
+  await toggleDeviceCheckbox(session, ["Humidity", "Nem"]);
+  await press(session, "Create device", "Cihaz oluştur");
+  await expect
+    .poll(() =>
+      js(
+        "document.querySelector('.properties-panel .object-heading[data-selected-id]')?.dataset.selectedId"
+      )
+    )
+    .toBeTruthy();
+  const deviceId = await js(
+    "document.querySelector('.properties-panel .object-heading[data-selected-id]')?.dataset.selectedId"
+  );
+  assert.ok(deviceId, "Expected created device selection");
+
+  await press(session, "Change placement", "Yerleşimi değiştir");
+  await press(session, "Place on plan", "Plana yerleştir");
+  await expect.poll(() => js("!!document.querySelector('.map-viewport svg')")).toBe(true);
+  await sendPointer(session, await planPoint(session, [16, 16]));
+  await expect
+    .poll(() => js(`!!document.querySelector('svg [data-gaia-id="${deviceId}"]')`))
+    .toBe(true);
+
+  await js("document.querySelector('.virtual-input summary').click()");
+  await press(session, "Update connection", "Bağlantıyı güncelle");
+  await expect
+    .poll(() => js("document.querySelector('.properties-panel .object-heading')?.innerText"))
+    .toMatch(/Online|Bağlı/);
+  await js(`(() => {
+    const input = document.querySelector('.virtual-input input[name=sample]');
+    input.value = "23";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  await press(session, "Update sample", "Ölçümü güncelle");
+  await expect
+    .poll(() => js("document.querySelector('li[data-freshness=fresh] .reading')?.textContent"))
+    .toMatch(/23 °C/);
+  await js("document.querySelector('.virtual-input summary').click()");
+
+  await press(session, "Edit device", "Cihazı düzenle");
+  await toggleDeviceCheckbox(session, ["Temperature", "Sıcaklık"]);
+  await press(session, "Save device", "Cihazı kaydet");
+  await expect.poll(() => js("document.querySelectorAll('.observation-list li').length")).toBe(1);
+  assert.equal(await js("document.body.innerText.includes('23 °C')"), false);
+  const removedEpochDoc = await projectDoc();
+  assert.equal(removedEpochDoc.statusEpoch, removedEpochDoc.world.revision);
+
+  await press(session, "Edit device", "Cihazı düzenle");
+  await toggleDeviceCheckbox(session, ["Temperature", "Sıcaklık"]);
+  await press(session, "Save device", "Cihazı kaydet");
+  await expect.poll(() => js("document.querySelectorAll('.observation-list li').length")).toBe(2);
+  assert.equal(await js("document.body.innerText.includes('23 °C')"), false);
+  console.info("Gaia Electron verified device creation, placement and capability removal/re-add");
+  return { project, deviceId };
+}
+
 const referenceRun = process.argv.includes("--references");
 const referenceProject = "survey-yard";
 const referenceRoot = join(root, "data/room-storage/gaia-room/projects", referenceProject);
@@ -983,6 +1083,18 @@ try {
       })
       .toBe(true);
   }
+  if (deviceRun) {
+    const lifecycle = await exerciseDeviceLifecycle(running);
+    await closeApp(running.app);
+    running = await launch();
+    await selectProject(running, lifecycle.project);
+    await running.js(`document.querySelector('[data-device="${lifecycle.deviceId}"]').click()`);
+    await selected(running, lifecycle.deviceId);
+    await expect
+      .poll(() => running.js("document.querySelectorAll('.observation-list li').length"))
+      .toBe(2);
+    assert.equal(await running.js("document.body.innerText.includes('23 °C')"), false);
+  }
   if (referenceRun) {
     const referenceTest = await exerciseReferences(running);
     await closeApp(running.app);
@@ -1002,4 +1114,4 @@ try {
 }
 
 // Playwright's inspector transport can stay open after Electron exits in a network namespace.
-if (standalone) process.exit();
+process.exit();

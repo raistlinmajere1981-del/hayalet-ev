@@ -594,6 +594,8 @@
       }
       edits = [];
       pending = undefined;
+      if (selected && !draft.nodes[selected] && !draft.devices[selected]) selected = undefined;
+      if (selectedReference && !draft.references[selectedReference]) selectedReference = undefined;
     }
     await transition(action);
   }
